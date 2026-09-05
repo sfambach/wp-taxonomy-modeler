@@ -75,16 +75,16 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $registry  = ShippedRenderers::registry();
 
 // ⚠️ **Die Prüfung geht denselben Weg wie die Anwendung, und das ist der Punkt.** *Sie fragt beide
 // Quellen und lässt die neue gewinnen — genau wie {@see \Taxmod\Core\Service\Rendering}. **Fragte sie
 // nur die alte, würde sie nach dem Umzug rot, obwohl die Oberfläche stimmt** — und wäre damit
 // wertlos für das, wofür sie gebaut wurde.*
-$model = new ModelValues(new WpdbRecordRepository(), $edges, $nodes, $framework);
+$model = new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework);
 
 /** @return array<string,\Taxmod\Core\Model\ResolvedSetting> */
 function beideQuellen(\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $subject): array
@@ -246,7 +246,7 @@ foreach ($stellen as [$vonName, $feldName, $soll]) {
 
     $kante = null;
 
-    foreach ($edges->fieldEdgesOf([...$von->ancestorIds(), $von->id]) as $eine) {
+    foreach ($relations->fieldRelationsOf([...$von->ancestorIds(), $von->id]) as $eine) {
         if ($eine->name === $feldName) {
             $kante = $eine;
         }
@@ -288,7 +288,7 @@ $rendering = new Rendering(
     new Labels(new WpdbLabelRepository(), $framework),
     null,
     $model,
-    $edges
+    $relations
 );
 
 $merkmal = [

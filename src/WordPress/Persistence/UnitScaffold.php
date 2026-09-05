@@ -230,13 +230,13 @@ final class UnitScaffold
      * The attribute of this name on this node, made if it is not there.
      *
      * ⚠️ **The kind is never chosen** ([D-161](../../../docs/NewConcept/90-decision-log.md)): the
-     * target sits in `Data Types`, so the edge is a composition and nobody said so.
+     * target sits in `Data Types`, so the relation is a composition and nobody said so.
      */
     private function field(Node $owner, string $name, string $typeName): Relation
     {
-        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
-                return $edge;
+        foreach ($this->editor->fieldsOf($owner->id) as $relation) {
+            if ($relation->name === $name && $relation->fromNodeId === $owner->id) {
+                return $relation;
             }
         }
 
@@ -274,9 +274,9 @@ final class UnitScaffold
      */
     private function fieldTo(Node $owner, string $name, Node $target): Relation
     {
-        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
-                return $edge;
+        foreach ($this->editor->fieldsOf($owner->id) as $relation) {
+            if ($relation->name === $name && $relation->fromNodeId === $owner->id) {
+                return $relation;
             }
         }
 

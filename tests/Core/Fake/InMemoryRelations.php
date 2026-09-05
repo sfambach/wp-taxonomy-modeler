@@ -6,7 +6,7 @@ use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\RelationRepository;
 
-/** Edges in an array, ordered the way the SQL one orders them. */
+/** Relations in an array, ordered the way the SQL one orders them. */
 final class InMemoryRelations implements RelationRepository
 {
     /** @var array<int,Relation> */
@@ -46,11 +46,11 @@ final class InMemoryRelations implements RelationRepository
         $this->rows[$relation->id] = $relation;
     }
 
-    public function byId(int $edgeId): ?Relation
+    public function byId(int $relationId): ?Relation
     {
-        foreach ($this->rows as $edge) {
-            if ($edge->id === $edgeId) {
-                return $edge;
+        foreach ($this->rows as $relation) {
+            if ($relation->id === $relationId) {
+                return $relation;
             }
         }
 
@@ -62,80 +62,80 @@ final class InMemoryRelations implements RelationRepository
 
     public function nextFieldPositionUnder(int $ownerId): int
     {
-        $edges = $this->fieldEdgesOf([$ownerId]);
+        $relations = $this->fieldRelationsOf([$ownerId]);
 
-        return $edges === [] ? 0 : end($edges)->sortOrder + 1;
+        return $relations === [] ? 0 : end($relations)->sortOrder + 1;
     }
 
-    public function fieldEdgesOf(array $ownerIds): array
+    public function fieldRelationsOf(array $ownerIds): array
     {
         // Parked ones are left out here, as in the real repository: a parked attribute is hidden by
         // default in its owning node (D-128).
         return $this->fieldsOf($ownerIds, false);
     }
 
-    public function parkedFieldEdgesOf(array $ownerIds): array
+    public function parkedFieldRelationsOf(array $ownerIds): array
     {
-        $edges = [];
+        $relations = [];
 
-        foreach ($this->geparkt as $edge) {
-            if (in_array($edge->fromNodeId, $ownerIds, true)) {
-                $edges[] = $edge;
+        foreach ($this->geparkt as $relation) {
+            if (in_array($relation->fromNodeId, $ownerIds, true)) {
+                $relations[] = $relation;
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
+        usort($relations, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
 
-        return $edges;
+        return $relations;
     }
 
-    public function park(int $edgeId, int $changeGroupId): void
+    public function park(int $relationId, int $changeGroupId): void
     {
-        $edge = $this->rows[$edgeId] ?? null;
+        $relation = $this->rows[$relationId] ?? null;
 
-        if ($edge === null) {
+        if ($relation === null) {
             return;
         }
 
-        $this->geparkt[$edgeId] = $edge->parkedBy($changeGroupId);
+        $this->geparkt[$relationId] = $relation->parkedBy($changeGroupId);
 
-        unset($this->rows[$edgeId]);
+        unset($this->rows[$relationId]);
     }
 
-    public function unpark(int $edgeId): ?Relation
+    public function unpark(int $relationId): ?Relation
     {
-        $edge = $this->geparkt[$edgeId] ?? null;
+        $relation = $this->geparkt[$relationId] ?? null;
 
-        if ($edge === null) {
-            return $this->rows[$edgeId] ?? null;
+        if ($relation === null) {
+            return $this->rows[$relationId] ?? null;
         }
 
-        $revived = $edge->revived();
+        $revived = $relation->revived();
 
-        $this->rows[$edgeId] = $revived;
+        $this->rows[$relationId] = $revived;
 
-        unset($this->geparkt[$edgeId]);
+        unset($this->geparkt[$relationId]);
 
         return $revived;
     }
 
-    public function fieldEdgesTo(array $targetIds): array
+    public function fieldRelationsTo(array $targetIds): array
     {
-        $edges = [];
+        $relations = [];
 
-        foreach ($this->rows as $edge) {
-            if (! in_array($edge->toNodeId, $targetIds, true)) {
+        foreach ($this->rows as $relation) {
+            if (! in_array($relation->toNodeId, $targetIds, true)) {
                 continue;
             }
 
-            if (! $edge->isParked()) {
-                $edges[] = $edge;
+            if (! $relation->isParked()) {
+                $relations[] = $relation;
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => [$a->fromNodeId, $a->sortOrder, $a->id] <=> [$b->fromNodeId, $b->sortOrder, $b->id]);
+        usort($relations, static fn (Relation $a, Relation $b): int => [$a->fromNodeId, $a->sortOrder, $a->id] <=> [$b->fromNodeId, $b->sortOrder, $b->id]);
 
-        return $edges;
+        return $relations;
     }
 
     /**
@@ -144,27 +144,27 @@ final class InMemoryRelations implements RelationRepository
      */
     private function fieldsOf(array $ownerIds, bool $parked = false): array
     {
-        $edges = [];
+        $relations = [];
 
-        foreach ($this->rows as $edge) {
-            if (! in_array($edge->fromNodeId, $ownerIds, true)) {
+        foreach ($this->rows as $relation) {
+            if (! in_array($relation->fromNodeId, $ownerIds, true)) {
                 continue;
             }
 
-            if ($edge->isParked() === $parked) {
-                $edges[] = $edge;
+            if ($relation->isParked() === $parked) {
+                $relations[] = $relation;
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
+        usort($relations, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
 
-        return $edges;
+        return $relations;
     }
 
-    public function purgeEdgesTouching(int $nodeId): void
+    public function purgeRelationsTouching(int $nodeId): void
     {
-        foreach ($this->rows as $id => $edge) {
-            if ($edge->fromNodeId === $nodeId || $edge->toNodeId === $nodeId) {
+        foreach ($this->rows as $id => $relation) {
+            if ($relation->fromNodeId === $nodeId || $relation->toNodeId === $nodeId) {
                 unset($this->rows[$id]);
             }
         }
@@ -175,13 +175,13 @@ final class InMemoryRelations implements RelationRepository
         return count($this->rows);
     }
 
-    public function edgesTouching(array $nodeIds): array
+    public function relationsTouching(array $nodeIds): array
     {
         $found = [];
 
-        foreach ($this->rows as $edge) {
-            if (in_array($edge->fromNodeId, $nodeIds, true) || in_array($edge->toNodeId, $nodeIds, true)) {
-                $found[] = $edge;
+        foreach ($this->rows as $relation) {
+            if (in_array($relation->fromNodeId, $nodeIds, true) || in_array($relation->toNodeId, $nodeIds, true)) {
+                $found[] = $relation;
             }
         }
 
@@ -191,11 +191,11 @@ final class InMemoryRelations implements RelationRepository
     /** @var array<int,int> Kanten-Id => Satz-Id */
     private array $settingsRecords = [];
 
-    public function settingsRecordIdsOfEdges(array $edgeIds): array
+    public function settingsRecordIdsOfRelations(array $relationIds): array
     {
         $aus = [];
 
-        foreach ($edgeIds as $id) {
+        foreach ($relationIds as $id) {
             if (isset($this->rows[(int) $id])) {
                 $aus[(int) $id] = [
                     'own'    => $this->settingsRecords[(int) $id] ?? 0,
@@ -207,14 +207,14 @@ final class InMemoryRelations implements RelationRepository
         return $aus;
     }
 
-    public function rememberSettingsRecord(int $edgeId, int $recordId): void
+    public function rememberSettingsRecord(int $relationId, int $recordId): void
     {
         if ($recordId === 0) {
-            unset($this->settingsRecords[$edgeId]);
+            unset($this->settingsRecords[$relationId]);
 
             return;
         }
 
-        $this->settingsRecords[$edgeId] = $recordId;
+        $this->settingsRecords[$relationId] = $recordId;
     }
 }

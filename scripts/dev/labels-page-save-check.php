@@ -238,7 +238,7 @@ if ($wpdb->last_error !== '') {
 $seite = [
     'do'           => 'put_setting',
     'id'           => (string) $knoten->id,
-    'edge'         => '0',
+    'relation'         => '0',
     'name'         => '__lb Knoten neu',
     'label_locale' => '',
     'taxmod_setting' => ['read_only' => '1'],

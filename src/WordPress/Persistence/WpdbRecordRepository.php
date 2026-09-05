@@ -5,7 +5,7 @@ namespace Taxmod\WordPress\Persistence;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\RecordType;
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
 
@@ -13,7 +13,7 @@ use Taxmod\Core\Repository\RecordRepository;
  * The data half, in its own two tables and its own id space (D-164).
  *
  * ⚠️ **`AUTO_INCREMENT` serves records** precisely because they do **not** share the model's
- * space. The model's had to be a table of its own so that nodes and edges could draw from one
+ * space. The model's had to be a table of its own so that nodes and relations could draw from one
  * number; here there is no such ambiguity, and a hand-built allocator on the hottest write path
  * in the system would be paid for nothing.
  *
@@ -108,7 +108,7 @@ final class WpdbRecordRepository implements RecordRepository
      * Dieselbe Reihenfolge wie {@see self::valuesOf()} — `position`, bei Gleichstand die Id.*
      *
      * @param  list<int>                    $recordIds
-     * @return array<int, list<EdgeRecord>>
+     * @return array<int, list<RelationRecord>>
      */
     public function valuesOfMany(array $recordIds): array
     {
@@ -133,7 +133,7 @@ final class WpdbRecordRepository implements RecordRepository
         ));
 
         foreach ($rows ?: [] as $r) {
-            $nachSatz[(int) $r['node_record_id']][] = new EdgeRecord(
+            $nachSatz[(int) $r['node_record_id']][] = new RelationRecord(
                 (int) $r['node_record_id'],
                 (string) $r['path'],
                 (int) $r['relation_id'],
@@ -169,7 +169,7 @@ final class WpdbRecordRepository implements RecordRepository
         ));
 
         return array_map(
-            static fn (array $r): EdgeRecord => new EdgeRecord(
+            static fn (array $r): RelationRecord => new RelationRecord(
                 (int) $r['node_record_id'],
                 (string) $r['path'],
                 (int) $r['relation_id'],
@@ -210,9 +210,9 @@ final class WpdbRecordRepository implements RecordRepository
      *
      * @param array<string, mixed> $r
      */
-    private function valueFromRow(array $r): EdgeRecord
+    private function valueFromRow(array $r): RelationRecord
     {
-        return new EdgeRecord(
+        return new RelationRecord(
             (int) $r['node_record_id'],
             (string) $r['path'],
             (int) $r['relation_id'],
@@ -270,14 +270,14 @@ final class WpdbRecordRepository implements RecordRepository
 
         return $aus;
     }
-    public function putValue(EdgeRecord $value): int
+    public function putValue(RelationRecord $value): int
     {
         global $wpdb;
 
         $spalten = [
             'node_record_id'     => $value->recordId,
             'path'          => $value->path,
-            'relation_id'       => $value->edgeId,
+            'relation_id'       => $value->relationId,
             'locale'        => $value->locale,
             'position'      => $value->position,
             'value_int'     => $value->value->int,
@@ -304,7 +304,7 @@ final class WpdbRecordRepository implements RecordRepository
         // *Umgekehrt hielte der Schatten zweimal den neuen Wert.*
         Shadow::keepOne('relation_records', $value->id);
 
-        // ⚠️ *Die Version wird hier gezählt und nicht im Kern: **`EdgeRecord` trägt sie nicht**, weil
+        // ⚠️ *Die Version wird hier gezählt und nicht im Kern: **`RelationRecord` trägt sie nicht**, weil
         // eine Version eine Aussage über die Zeile im Speicher ist und nicht über den Wert. Ohne das
         // Hochzählen träfe jedes Aufheben denselben Schlüssel `(id, 1)` und der Schatten hielte nur
         // den ersten Zustand.*
@@ -412,11 +412,11 @@ final class WpdbRecordRepository implements RecordRepository
         return $version;
     }
 
-    public function findByEdgeValue(int $edgeId, TypedValue $value): array
+    public function findByRelationValue(int $relationId, TypedValue $value): array
     {
         global $wpdb;
 
-        // ⚠️ This is the query D-134 was designed for: the edge is indexed, so *which parts are
+        // ⚠️ This is the query D-134 was designed for: the relation is indexed, so *which parts are
         // 4k7* is one lookup rather than a walk through every record.
         [$column, $bound] = match (true) {
             $value->int !== null       => ['value_int', $value->int],
@@ -429,7 +429,7 @@ final class WpdbRecordRepository implements RecordRepository
         $ids = Query::column('Datensaetze zu einem Kantenwert lesen', $wpdb->prepare(
             'SELECT DISTINCT node_record_id FROM ' . Schema::table('relation_records') . "
              WHERE relation_id = %d AND {$column} = %s",
-            $edgeId,
+            $relationId,
             $bound
         ));
 

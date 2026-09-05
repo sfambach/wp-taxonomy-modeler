@@ -40,7 +40,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\WordPress\Persistence\Schema;
@@ -224,7 +224,7 @@ if ($vorlage === null) {
         }
     });
 
-    $records->putValue(EdgeRecord::direct($satzId, (int) $vorlage->relation_id, TypedValue::ofText('erster Stand')));
+    $records->putValue(RelationRecord::direct($satzId, (int) $vorlage->relation_id, TypedValue::ofText('erster Stand')));
 
     $geschrieben = $records->valuesOf($satzId);
 
@@ -239,7 +239,7 @@ if ($vorlage === null) {
     // der Schatten den neuen Wert und nicht den alten.*
     check('ein Anlegen hebt nichts auf', $imSchatten === 0, "{$imSchatten} Zeilen");
 
-    $records->putValue(new EdgeRecord(
+    $records->putValue(new RelationRecord(
         $satzId,
         $geschrieben[0]->path,
         (int) $vorlage->relation_id,

@@ -10,7 +10,7 @@ use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\Storage;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\Changelog;
@@ -74,7 +74,7 @@ final class DataEntry
      *
      * ⚠️ **Die Version ist Pflicht und wird an jeder Stelle vom Speicher erfragt**
      * ([D-634](../../../docs/NewConcept/90-decision-log.md)): *{@see RecordRepository::putValue()} und
-     * die drei Vergess-Wege geben sie zurück, weil `EdgeRecord` sie nicht trägt. **Geraten wird sie
+     * die drei Vergess-Wege geben sie zurück, weil `RelationRecord` sie nicht trägt. **Geraten wird sie
      * nirgends.***
      *
      * ⚠️ *Der Betreff ist der **Datensatz**, nicht die Wertzeile: so steht die Geschichte eines Satzes
@@ -141,14 +141,14 @@ final class DataEntry
      * ⚠️ *Resolved along the ordinary chain, so a **type** may declare itself non-persistent once and
      * every attribute using it inherits that — the owner's arrangement.*
      */
-    public function keepsValues(Relation $edge): bool
+    public function keepsValues(Relation $relation): bool
     {
         // ⚠️ **Die Art der Kante sagt es** ([D-538](../../../docs/NewConcept/90-decision-log.md)).
         // *Seine Herleitung: «für den Benutzer werden ja nur die **Felder** gespeichert, nicht die
         // Settings, weil die Settings Eigenschaften des Modells sind.» **Damit können «nicht
         // speichernd» und «ist eine Einstellung» nie auseinanderfallen** — und zwei Angaben, die nie
         // widersprechen können, sind eine.*
-        if ($edge->isSetting()) {
+        if ($relation->isSetting()) {
             return false;
         }
 
@@ -197,7 +197,7 @@ final class DataEntry
         // er vorher konnte. Ein Modell, an dem noch nichts erklärt ist, ist eine Baustelle und kein
         // Fehler.*
         $branch = $this->framework->branchOf($model);
-        $hatFelder = $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) !== [];
+        $hatFelder = $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($model)) !== [];
 
         if (($branch === null || ! $branch->holdsData()) && ! $hatFelder) {
             throw NotYetStorable::thatBranchHasNoRecords($model->name);
@@ -253,18 +253,18 @@ final class DataEntry
      */
     private function ensureRequiredParts(int $recordId, Node $model, RecordType $kind): void
     {
-        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) as $edge) {
-            if (! $edge->multiplicity->requiresOne() || $edge->hide) {
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($model)) as $relation) {
+            if (! $relation->multiplicity->requiresOne() || $relation->hide) {
                 continue;
             }
 
-            if ($kind === RecordType::User && ! $this->keepsValues($edge)) {
+            if ($kind === RecordType::User && ! $this->keepsValues($relation)) {
                 continue;
             }
 
-            $ziel = $this->nodes->find($edge->toNodeId);
+            $ziel = $this->nodes->find($relation->toNodeId);
 
-            if ($ziel === null || ! $this->ownsItsRecord($edge, $ziel)) {
+            if ($ziel === null || ! $this->ownsItsRecord($relation, $ziel)) {
                 continue;
             }
 
@@ -277,7 +277,7 @@ final class DataEntry
                 continue;
             }
 
-            $this->createPart($recordId, $edge->id);
+            $this->createPart($recordId, $relation->id);
         }
     }
 
@@ -298,21 +298,21 @@ final class DataEntry
      *
      * @param string $locale Only ever non-empty for an attribute declared translatable (D-317).
      */
-    public function put(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): void
+    public function put(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
-        $edge      = $this->writableEdge($recordId, $edgeId);
-        $vorhanden = $this->valuesOn($recordId, $edge->id, $locale);
+        $relation      = $this->writableRelation($recordId, $relationId);
+        $vorhanden = $this->valuesOn($recordId, $relation->id, $locale);
 
         // ⚠️ **Sonst schriebe jedes Speichern eine zweite Zeile** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
         // *Bis dahin tat `$wpdb->replace()` das über den eindeutigen Schlüssel; **der ist weg**, und
         // damit muss dieser Dienst sagen, welche Zeile er meint.*
         if (count($vorhanden) > 1) {
-            throw NotYetStorable::thatFieldHasSeveralValues($edge->name, count($vorhanden));
+            throw NotYetStorable::thatFieldHasSeveralValues($relation->name, count($vorhanden));
         }
 
         $neu = $vorhanden === []
-            ? EdgeRecord::direct($recordId, $edge->id, $value, $locale)
-            : new EdgeRecord($recordId, $vorhanden[0]->path, $edge->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
+            ? RelationRecord::direct($recordId, $relation->id, $value, $locale)
+            : new RelationRecord($recordId, $vorhanden[0]->path, $relation->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
 
         $version = $this->records->putValue($neu);
 
@@ -337,17 +337,17 @@ final class DataEntry
      * ⚠️ *Gemessen benutzen 21 Zeilen der alten Settings-Tabelle diese Adresse längst — 20 davon sind
      * die Exponenten von `Prefixes.exponent`. **Nur gelesen hat sie in `relation_records` nie jemand.***
      *
-     * @param list<int> $edgeIds Von aussen nach innen.
+     * @param list<int> $relationIds Von aussen nach innen.
      */
-    public function putAt(int $recordId, array $edgeIds, TypedValue $value, string $locale = ''): void
+    public function putAt(int $recordId, array $relationIds, TypedValue $value, string $locale = ''): void
     {
-        $kette  = $this->walkedEdges($recordId, $edgeIds);
+        $kette  = $this->walkedRelations($recordId, $relationIds);
         $letzte = $kette[array_key_last($kette)];
         $satz   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
 
         $this->refuseUnwritable($letzte, $satz->recordType);
 
-        $pfad      = implode('.', $edgeIds);
+        $pfad      = implode('.', $relationIds);
         $vorhanden = $this->valuesAtPath($recordId, $pfad, $locale);
 
         if (count($vorhanden) > 1) {
@@ -356,8 +356,8 @@ final class DataEntry
 
         $version = $this->records->putValue(
             $vorhanden === []
-                ? EdgeRecord::at($recordId, $edgeIds, $value, $locale)
-                : new EdgeRecord($recordId, $pfad, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+                ? RelationRecord::at($recordId, $relationIds, $value, $locale)
+                : new RelationRecord($recordId, $pfad, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
         );
 
         $this->melden(
@@ -373,14 +373,14 @@ final class DataEntry
     /**
      * Die Werte an einer Verwendungsstelle, in ihrer Reihenfolge.
      *
-     * @param  list<int> $edgeIds
-     * @return list<EdgeRecord>
+     * @param  list<int> $relationIds
+     * @return list<RelationRecord>
      */
-    public function valuesAt(int $recordId, array $edgeIds, string $locale = ''): array
+    public function valuesAt(int $recordId, array $relationIds, string $locale = ''): array
     {
-        $this->walkedEdges($recordId, $edgeIds);
+        $this->walkedRelations($recordId, $relationIds);
 
-        return $this->valuesAtPath($recordId, implode('.', $edgeIds), $locale);
+        return $this->valuesAtPath($recordId, implode('.', $relationIds), $locale);
     }
 
     /**
@@ -391,12 +391,12 @@ final class DataEntry
      * 4654 ist. **Ohne die Prüfung könnte man an jede erfundene Stelle schreiben**, und es fiele erst
      * auf, wenn jemand dort etwas sucht.*
      *
-     * @param  list<int>      $edgeIds
+     * @param  list<int>      $relationIds
      * @return list<Relation>
      */
-    private function walkedEdges(int $recordId, array $edgeIds): array
+    private function walkedRelations(int $recordId, array $relationIds): array
     {
-        if ($edgeIds === []) {
+        if ($relationIds === []) {
             throw new \InvalidArgumentException('Ein Pfad ohne Kante adressiert nichts.');
         }
 
@@ -404,17 +404,17 @@ final class DataEntry
         $besitzer = $this->nodes->byId($record->nodeId);
         $kette    = [];
 
-        foreach ($edgeIds as $edgeId) {
+        foreach ($relationIds as $relationId) {
             $gefunden = null;
 
-            foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
-                if ($kante->id === $edgeId) {
+            foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
+                if ($kante->id === $relationId) {
                     $gefunden = $kante;
                 }
             }
 
             if ($gefunden === null) {
-                throw NotYetStorable::notAFieldOfThisModel($edgeId, $besitzer->name);
+                throw NotYetStorable::notAFieldOfThisModel($relationId, $besitzer->name);
             }
 
             $kette[]  = $gefunden;
@@ -424,7 +424,7 @@ final class DataEntry
         return $kette;
     }
 
-    /** Die Zeilen unter genau diesem Pfad. @return list<EdgeRecord> */
+    /** Die Zeilen unter genau diesem Pfad. @return list<RelationRecord> */
     private function valuesAtPath(int $recordId, string $path, string $locale): array
     {
         $meine = [];
@@ -441,14 +441,14 @@ final class DataEntry
     /**
      * Die Zeilen, die ein Feld in diesem Datensatz belegt — in ihrer Reihenfolge.
      *
-     * @return list<EdgeRecord>
+     * @return list<RelationRecord>
      */
-    private function valuesOn(int $recordId, int $edgeId, string $locale): array
+    private function valuesOn(int $recordId, int $relationId, string $locale): array
     {
         $meine = [];
 
         foreach ($this->records->valuesOf($recordId) as $wert) {
-            if ($wert->edgeId === $edgeId && $wert->locale === $locale) {
+            if ($wert->relationId === $relationId && $wert->locale === $locale) {
                 $meine[] = $wert;
             }
         }
@@ -474,16 +474,16 @@ final class DataEntry
      * kennt. Der Rand fragt, bevor er den Knopf zeichnet.*
      *
      */
-    public function appendValue(int $recordId, int $edgeId, TypedValue $value, string $locale = ''): void
+    public function appendValue(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
-        $edge     = $this->writableEdge($recordId, $edgeId);
+        $relation     = $this->writableRelation($recordId, $relationId);
         $hinterste = -1;
 
-        foreach ($this->valuesOn($recordId, $edge->id, $locale) as $vorhanden) {
+        foreach ($this->valuesOn($recordId, $relation->id, $locale) as $vorhanden) {
             $hinterste = max($hinterste, $vorhanden->position);
         }
 
-        $neu     = EdgeRecord::direct($recordId, $edge->id, $value, $locale, $hinterste + 1);
+        $neu     = RelationRecord::direct($recordId, $relation->id, $value, $locale, $hinterste + 1);
         $version = $this->records->putValue($neu);
 
         // ⚠️ *Ein eigenes Verb: ein angehängter Wert **ersetzt** keinen, er stellt sich daneben — ein
@@ -504,12 +504,12 @@ final class DataEntry
      * ⚠️ *Über die **Kanten-Id**: alle Werte eines Feldes teilen sich eine Kante, und seit
      * [D-530](../../../docs/NewConcept/90-decision-log.md) auch einen Pfad.*
      */
-    public function countValues(int $recordId, int $edgeId): int
+    public function countValues(int $recordId, int $relationId): int
     {
         $n = 0;
 
         foreach ($this->records->valuesOf($recordId) as $value) {
-            if ($value->edgeId === $edgeId) {
+            if ($value->relationId === $relationId) {
                 $n++;
             }
         }
@@ -523,14 +523,14 @@ final class DataEntry
      * ⚠️ **Herausgezogen, damit `put()` und {@see appendValue()} nicht zwei Sätze Wächter haben.**
      * *Zwei Kopien einer Prüfung sind zwei Orte, an denen die nächste Regel vergessen wird.*
      */
-    private function writableEdge(int $recordId, int $edgeId): Relation
+    private function writableRelation(int $recordId, int $relationId): Relation
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
-        $edge   = $this->edgeOf($record, $edgeId);
+        $relation   = $this->relationOf($record, $relationId);
 
-        $this->refuseUnwritable($edge, $record->recordType);
+        $this->refuseUnwritable($relation, $record->recordType);
 
-        return $edge;
+        return $relation;
     }
 
     /**
@@ -558,9 +558,9 @@ final class DataEntry
      * `Model` von `Compositions`, und das ist eine Frage des **Besitzes**, die dieses Ziel nicht
      * beantworten kann ([D-133](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private function ownsItsRecord(Relation $edge, Node $target): bool
+    private function ownsItsRecord(Relation $relation, Node $target): bool
     {
-        if ($edge->isSetting()) {
+        if ($relation->isSetting()) {
             return $this->hasOwnFields($target);
         }
 
@@ -578,8 +578,8 @@ final class DataEntry
      */
     private function hasOwnFields(Node $target): bool
     {
-        foreach ($this->relations->fieldEdgesOf([$target->id]) as $edge) {
-            if ($edge->fromNodeId === $target->id) {
+        foreach ($this->relations->fieldRelationsOf([$target->id]) as $relation) {
+            if ($relation->fromNodeId === $target->id) {
                 return true;
             }
         }
@@ -587,9 +587,9 @@ final class DataEntry
         return false;
     }
 
-    private function refuseUnwritable(Relation $edge, RecordType $kind = RecordType::User): void
+    private function refuseUnwritable(Relation $relation, RecordType $kind = RecordType::User): void
     {
-        $target = $this->nodes->byId($edge->toNodeId);
+        $target = $this->nodes->byId($relation->toNodeId);
         $branch = $this->framework->branchOf($target);
 
         if ($branch === null) {
@@ -606,15 +606,15 @@ final class DataEntry
         // [D-026](../../../docs/NewConcept/90-decision-log.md) sagt, wo er lebt: «at model level there
         // are no values, only defaults». Ohne diese Ausnahme liesse sich der Exponent von `kilo` nicht
         // hinschreiben — der einzige echte nicht-speichernde Fall im ganzen Modell.*
-        if ($kind === RecordType::User && ! $this->keepsValues($edge)) {
-            throw NotYetStorable::thatFieldKeepsNothing($edge->name);
+        if ($kind === RecordType::User && ! $this->keepsValues($relation)) {
+            throw NotYetStorable::thatFieldKeepsNothing($relation->name);
         }
 
         // ⚠️ Refused rather than guessed: a composed part is a record of its own, and nothing
         // here creates one yet. Storing it inline would put the value in the wrong place and
         // look right until somebody tried to share it.
-        if ($this->ownsItsRecord($edge, $target)) {
-            throw NotYetStorable::compositionsNeedTheirOwnRecords($edge->name);
+        if ($this->ownsItsRecord($relation, $target)) {
+            throw NotYetStorable::compositionsNeedTheirOwnRecords($relation->name);
         }
     }
 
@@ -642,7 +642,7 @@ final class DataEntry
      * having an identity* — two positions on an order are two positions, and a method that quietly
      * reused the first would make them one thing wearing two names.
      *
-     * @param string $path Where under the holder it sits. Empty for a direct attribute, so the edge
+     * @param string $path Where under the holder it sits. Empty for a direct attribute, so the relation
      *                     id is the whole path; an index like `2` for the third of several.
      */
     /**
@@ -653,16 +653,16 @@ final class DataEntry
      * fiel das nicht auf. **Sobald echte Daten an mehrstufige Adressen wandern, ist eine ungeprüfte
      * Adresse eine, die auf nichts zeigt**, und man merkt es erst beim Suchen.*
      *
-     * @param list<int> $edgeIds Von aussen nach innen; die **letzte** ist die zusammengesetzte Kante.
+     * @param list<int> $relationIds Von aussen nach innen; die **letzte** ist die zusammengesetzte Kante.
      */
-    public function createPartAt(int $recordId, array $edgeIds): NodeRecord
+    public function createPartAt(int $recordId, array $relationIds): NodeRecord
     {
-        $kette = $this->walkedEdges($recordId, $edgeIds);
+        $kette = $this->walkedRelations($recordId, $relationIds);
 
         return $this->createPart(
             $recordId,
             $kette[array_key_last($kette)]->id,
-            implode('.', $edgeIds)
+            implode('.', $relationIds)
         );
     }
 
@@ -698,13 +698,13 @@ final class DataEntry
      */
     public function putSettingValue(int $nodeId, SettingKey $key, TypedValue $value, string $locale = ''): void
     {
-        $aussen = $this->framework->settingEdgeId($key);
+        $aussen = $this->framework->settingRelationId($key);
 
         if ($aussen === 0) {
-            throw NotYetStorable::thatSettingHasNoEdgeYet($key->value);
+            throw NotYetStorable::thatSettingHasNoRelationYet($key->value);
         }
 
-        $this->putSettingAt($nodeId, $aussen, $this->framework->settingValueEdgeId($key), $value, $locale);
+        $this->putSettingAt($nodeId, $aussen, $this->framework->settingValueRelationId($key), $value, $locale);
     }
 
     /**
@@ -864,7 +864,7 @@ final class DataEntry
      * ⚠️ **Gesucht wird an der Kette des *Besitzers*, und das ist gemessen und nicht überlegt.**
      * *Erst stand hier die Kette des **Ziels** — und `read_only` gibt es zweimal: an `Root` und an
      * `Integer`. Geschrieben wurde die Kante von `Integer`, und
-     * {@see ModelValues::settingEdge()} sucht die Kante einer Verwendungsstelle an der Kette ihres
+     * {@see ModelValues::settingRelation()} sucht die Kante einer Verwendungsstelle an der Kette ihres
      * **Besitzers** — dort ist `Integer` nicht. **Die Zeile stand richtig in der Datenbank und war
      * für den Leser nicht da.** Genau der Fehler, den dieses Projekt schon mehrfach hatte: Schreiber
      * und Leser auf zwei Adressen.*
@@ -874,7 +874,7 @@ final class DataEntry
      * Schlüssel, den nur das Ziel erklärt, bekommt ebenfalls `null`**: ihn zu schreiben hiesse, eine
      * Zeile anzulegen, die niemand liest.*
      */
-    public function settingEdgeAtUseSite(Relation $useSite, string $key): ?Relation
+    public function settingRelationAtUseSite(Relation $useSite, string $key): ?Relation
     {
         $besitzer = $this->nodes->find($useSite->fromNodeId);
 
@@ -882,7 +882,7 @@ final class DataEntry
             return null;
         }
 
-        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
             if ($kante->isSetting() && $kante->name === $key) {
                 return $kante;
             }
@@ -891,19 +891,19 @@ final class DataEntry
         return null;
     }
 
-    public function putSettingAtUseSite(int $edgeId, int $settingEdgeId, TypedValue $value, string $locale = ''): void
+    public function putSettingAtUseSite(int $relationId, int $settingRelationId, TypedValue $value, string $locale = ''): void
     {
-        $stelle = $this->relations->byId($edgeId) ?? throw NotYetStorable::noSuchUseSite($edgeId);
+        $stelle = $this->relations->byId($relationId) ?? throw NotYetStorable::noSuchUseSite($relationId);
 
         // ⚠️ **Nicht über {@see self::putAt()}, und der Grund ist gemessen.** *Jener prüft die zweite
         // Stufe an der Kette des **Ziels** — «ist `converter` ein Feld von `Integer`?». Eine
         // Einstellungskante einer Verwendungsstelle gehört aber dem **Besitzer**: sie ist an ihm oder
         // an einem seiner Vorfahren erklärt, und genau dort sucht sie der Leser wieder
-        // ({@see ModelValues::settingEdge()}). **Durch `putAt()` gelegt wurde jede Angabe abgewiesen,
+        // ({@see ModelValues::settingRelation()}). **Durch `putAt()` gelegt wurde jede Angabe abgewiesen,
         // die der Besitzer erklärt hat** — also die, um die es hier geht.*
         $satzId    = $this->defaultRecordOf($stelle->fromNodeId);
-        $kante     = $this->useSiteSettingEdge($stelle, $settingEdgeId);
-        $pfad      = $edgeId . '.' . $kante->id;
+        $kante     = $this->useSiteSettingRelation($stelle, $settingRelationId);
+        $pfad      = $relationId . '.' . $kante->id;
         $vorhanden = $this->valuesAtPath($satzId, $pfad, $locale);
 
         // ⚠️ *Zwei Zeilen auf einem Pfad liessen die erste gewinnen, und das Ändern ginge ins Leere —
@@ -914,8 +914,8 @@ final class DataEntry
 
         $version = $this->records->putValue(
             $vorhanden === []
-                ? EdgeRecord::at($satzId, [$edgeId, $kante->id], $value, $locale)
-                : new EdgeRecord($satzId, $pfad, $kante->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+                ? RelationRecord::at($satzId, [$relationId, $kante->id], $value, $locale)
+                : new RelationRecord($satzId, $pfad, $kante->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
         );
 
         $this->melden(
@@ -934,17 +934,17 @@ final class DataEntry
      * ⚠️ **Geprüft statt geglaubt** (`CD-5`). *Eine Id aus einem Formular, die keine
      * Einstellungskante des Besitzers ist, würde eine Zeile an eine Adresse legen, die niemand liest.*
      */
-    private function useSiteSettingEdge(Relation $useSite, int $settingEdgeId): Relation
+    private function useSiteSettingRelation(Relation $useSite, int $settingRelationId): Relation
     {
         $besitzer = $this->nodes->byId($useSite->fromNodeId);
 
-        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
-            if ($kante->id === $settingEdgeId && $kante->isSetting()) {
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
+            if ($kante->id === $settingRelationId && $kante->isSetting()) {
                 return $kante;
             }
         }
 
-        throw NotYetStorable::notAFieldOfThisModel($settingEdgeId, $besitzer->name);
+        throw NotYetStorable::notAFieldOfThisModel($settingRelationId, $besitzer->name);
     }
 
     /**
@@ -958,13 +958,13 @@ final class DataEntry
      * ⚠️ *Kein Satz wird angelegt, um in ihm zu löschen — gibt es keinen, ist die Angabe schon
      * unbeantwortet. Dieselbe Zurückhaltung wie in {@see self::clearSettingAt()}.*
      */
-    public function clearSettingAtUseSite(int $edgeId, int $settingEdgeId, string $locale = ''): void
+    public function clearSettingAtUseSite(int $relationId, int $settingRelationId, string $locale = ''): void
     {
-        $stelle = $this->relations->byId($edgeId) ?? throw NotYetStorable::noSuchUseSite($edgeId);
+        $stelle = $this->relations->byId($relationId) ?? throw NotYetStorable::noSuchUseSite($relationId);
 
         foreach ($this->records->ofNode($stelle->fromNodeId) as $satz) {
             if ($satz->recordType === RecordType::Default) {
-                $this->clearPath($satz->id, $edgeId . '.' . $settingEdgeId, $locale);
+                $this->clearPath($satz->id, $relationId . '.' . $settingRelationId, $locale);
             }
         }
     }
@@ -979,18 +979,18 @@ final class DataEntry
      * ⚠️ *Nur aus dem `default`-Satz ([D-026](../../../docs/NewConcept/90-decision-log.md): «at model
      * level there are no values, only defaults») und in **einem** Zug für alle Kanten (`CD-7`).*
      *
-     * @param  list<int>              $edgeIds
+     * @param  list<int>              $relationIds
      * @return array<int, TypedValue> Kanten-Id => Wert; fehlt einer, fehlt der Eintrag.
      */
-    public function settingValuesOf(int $nodeId, array $edgeIds): array
+    public function settingValuesOf(int $nodeId, array $relationIds): array
     {
-        if ($edgeIds === []) {
+        if ($relationIds === []) {
             return [];
         }
 
         $gesucht = [];
 
-        foreach ($edgeIds as $id) {
+        foreach ($relationIds as $id) {
             $gesucht[(string) $id] = $id;
         }
 
@@ -1024,9 +1024,9 @@ final class DataEntry
      * nichts. Ob am Ziel überhaupt ein Teil entstehen darf, sagt {@see self::createPart()}: dort sitzt
      * [D-541](../../../docs/NewConcept/90-decision-log.md)s Regel, und sie wird hier nicht kopiert.*
      */
-    public function addSettingPart(int $nodeId, int $carrierEdgeId): NodeRecord
+    public function addSettingPart(int $nodeId, int $carrierRelationId): NodeRecord
     {
-        return $this->createPart($this->defaultRecordOf($nodeId), $carrierEdgeId);
+        return $this->createPart($this->defaultRecordOf($nodeId), $carrierRelationId);
     }
 
     /**
@@ -1050,19 +1050,19 @@ final class DataEntry
      * ({@see \Taxmod\Core\Repository\RecordRepository::valuesOfMany()}). `CD-7` und
      * [D-159](../../../docs/NewConcept/90-decision-log.md).*
      *
-     * @param  list<int>                                  $edgeIds Trägerkanten
+     * @param  list<int>                                  $relationIds Trägerkanten
      * @return array<int, list<array{id: int, werte: array<int, TypedValue>}>>
      *         Kanten-Id => je Teil seine Satz-Id und seine Werte, geschlüsselt über die **innere** Kante.
      */
-    public function settingPartsOf(int $nodeId, array $edgeIds): array
+    public function settingPartsOf(int $nodeId, array $relationIds): array
     {
-        if ($edgeIds === []) {
+        if ($relationIds === []) {
             return [];
         }
 
         $gesucht = [];
 
-        foreach ($edgeIds as $id) {
+        foreach ($relationIds as $id) {
             $gesucht[(string) $id] = $id;
         }
 
@@ -1109,7 +1109,7 @@ final class DataEntry
 
                 foreach ($innere[$teilId] ?? [] as $wert) {
                     if (! $wert->value->isNothing()) {
-                        $werte[$wert->edgeId] = $wert->value;
+                        $werte[$wert->relationId] = $wert->value;
                     }
                 }
 
@@ -1165,11 +1165,11 @@ final class DataEntry
 
             foreach ($this->records->valuesOf($satz->id) as $innen) {
                 if (! $innen->value->isNothing()) {
-                    $werte[$innen->edgeId] = $innen->value;
+                    $werte[$innen->relationId] = $innen->value;
                 }
             }
 
-            $aus[$wert->edgeId][] = [
+            $aus[$wert->relationId][] = [
                 'id'     => $satz->id,
                 'nodeId' => $satz->nodeId,
                 'werte'  => $werte,
@@ -1216,7 +1216,7 @@ final class DataEntry
     /**
      * Braucht das Ziel dieser Kante einen eigenen Datensatz?
      */
-    private function targetOwnsItsRecord(int $recordId, int $edgeId): bool
+    private function targetOwnsItsRecord(int $recordId, int $relationId): bool
     {
         $record = $this->records->find($recordId);
 
@@ -1224,7 +1224,7 @@ final class DataEntry
             return false;
         }
 
-        return $this->targetOwnsItsRecordAtNode($record->nodeId, $edgeId);
+        return $this->targetOwnsItsRecordAtNode($record->nodeId, $relationId);
     }
 
     /**
@@ -1234,11 +1234,11 @@ final class DataEntry
      * der Knoten gefunden wurde. Ihn dafür anzulegen wäre genau das, was
      * [D-609](../../../docs/NewConcept/90-decision-log.md) verbietet.*
      */
-    private function targetOwnsItsRecordAtNode(int $nodeId, int $edgeId): bool
+    private function targetOwnsItsRecordAtNode(int $nodeId, int $relationId): bool
     {
-        $edge = $this->fieldEdgeOf($nodeId, $edgeId);
+        $relation = $this->fieldRelationOf($nodeId, $relationId);
 
-        return $this->ownsItsRecord($edge, $this->nodes->byId($edge->toNodeId));
+        return $this->ownsItsRecord($relation, $this->nodes->byId($relation->toNodeId));
     }
 
     /**
@@ -1293,9 +1293,9 @@ final class DataEntry
         );
     }
 
-    private function chooseSettingRecord(int $recordId, int $edgeId, int $chosenNodeId): void
+    private function chooseSettingRecord(int $recordId, int $relationId, int $chosenNodeId): void
     {
-        $teilId = $this->partsOf($recordId)[(string) $edgeId] ?? null;
+        $teilId = $this->partsOf($recordId)[(string) $relationId] ?? null;
 
         if ($teilId !== null) {
             $teil = $this->records->find($teilId);
@@ -1307,21 +1307,21 @@ final class DataEntry
             $this->satzEntfernen($teilId);
         }
 
-        $this->createPart($recordId, $edgeId, '', $chosenNodeId);
+        $this->createPart($recordId, $relationId, '', $chosenNodeId);
     }
 
-    public function createPart(int $recordId, int $edgeId, string $path = '', int $chosenNodeId = 0): NodeRecord
+    public function createPart(int $recordId, int $relationId, string $path = '', int $chosenNodeId = 0): NodeRecord
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
-        $edge   = $this->edgeOf($record, $edgeId);
-        $target = $this->nodes->byId($edge->toNodeId);
+        $relation   = $this->relationOf($record, $relationId);
+        $target = $this->nodes->byId($relation->toNodeId);
         $branch = $this->framework->branchOf($target);
 
         // ⚠️ Refused rather than accommodated: a part is only a part where the branch says the value
         // has records of its own. Anywhere else the value belongs *in* the holder's record and a part
         // would be a second home for it.
-        if (! $this->ownsItsRecord($edge, $target)) {
-            throw NotYetStorable::thatIsNotAComposedPart($edge->name);
+        if (! $this->ownsItsRecord($relation, $target)) {
+            throw NotYetStorable::thatIsNotAComposedPart($relation->name);
         }
 
         // ⚠️ **Ein Teil erbt die Art seines Besitzers.** *Ein Teil eines `default`-Satzes ist selbst
@@ -1347,7 +1347,7 @@ final class DataEntry
             $gewaehlt = $this->nodes->byId($chosenNodeId);
 
             if (! $gewaehlt->isDescendantOf($target)) {
-                throw NotYetStorable::thatIsNotAComposedPart($edge->name);
+                throw NotYetStorable::thatIsNotAComposedPart($relation->name);
             }
         }
 
@@ -1356,25 +1356,25 @@ final class DataEntry
         $this->changelog?->beginAct();
 
         try {
-            return $this->teilAnlegen($recordId, $edgeId, $path, $gewaehlt, $record->recordType);
+            return $this->teilAnlegen($recordId, $relationId, $path, $gewaehlt, $record->recordType);
         } finally {
             $this->changelog?->endAct();
         }
     }
 
     /** Der Teil selbst und der Verweis, der ihn hält — innerhalb der Klammer von {@see createPart()}. */
-    private function teilAnlegen(int $recordId, int $edgeId, string $path, Node $gewaehlt, RecordType $kind): NodeRecord
+    private function teilAnlegen(int $recordId, int $relationId, string $path, Node $gewaehlt, RecordType $kind): NodeRecord
     {
         $part = $this->create($gewaehlt->id, $kind);
 
-        $pfad = $path === '' ? (string) $edgeId : $path;
+        $pfad = $path === '' ? (string) $relationId : $path;
 
         // The holder points at it, which is the whole of the relationship.
         // ⚠️ *Ein **Datensatz**verweis und kein Knotenverweis — die einzige Stelle im Kern, die
         // einen schreibt. Der Raum wandert seit TASK-005 mit in die Spalte `value_ref_kind`.*
         $verweis = TypedValue::ofRecordReference($part->id);
 
-        $version = $this->records->putValue(new EdgeRecord($recordId, $pfad, $edgeId, '', $verweis));
+        $version = $this->records->putValue(new RelationRecord($recordId, $pfad, $relationId, '', $verweis));
 
         $this->melden(
             $recordId,
@@ -1408,19 +1408,19 @@ final class DataEntry
         $model = $this->nodes->byId($record->nodeId);
         $owned = [];
 
-        foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) as $edge) {
-            $target = $this->nodes->byId($edge->toNodeId);
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($model)) as $relation) {
+            $target = $this->nodes->byId($relation->toNodeId);
             $branch = $this->framework->branchOf($target);
 
-            if ($this->ownsItsRecord($edge, $target)) {
-                $owned[$edge->id] = true;
+            if ($this->ownsItsRecord($relation, $target)) {
+                $owned[$relation->id] = true;
             }
         }
 
         $parts = [];
 
         foreach ($this->records->valuesOf($recordId) as $value) {
-            if (isset($owned[$value->edgeId]) && $value->value->reference !== null) {
+            if (isset($owned[$value->relationId]) && $value->value->reference !== null) {
                 $parts[$value->path] = $value->value->reference;
             }
         }
@@ -1429,17 +1429,17 @@ final class DataEntry
     }
 
     /** Take a value out again, so the attribute is simply unanswered (D-232's three states). */
-    public function clear(int $recordId, int $edgeId, string $locale = ''): void
+    public function clear(int $recordId, int $relationId, string $locale = ''): void
     {
-        $this->wertLeeren($recordId, (string) $edgeId, $locale);
+        $this->wertLeeren($recordId, (string) $relationId, $locale);
     }
 
     /**
-     * Take a value out again, addressed by its **path** rather than by its edge.
+     * Take a value out again, addressed by its **path** rather than by its relation.
      *
      * ⚠️ **The two are not the same and confusing them removed the wrong row.** A direct attribute's
-     * path *is* its edge id, so {@see clear()} reads as if it covered everything — but the second
-     * occurrence of a multi-valued member is `<edge>.1`, and clearing by edge silently took out the
+     * path *is* its relation id, so {@see clear()} reads as if it covered everything — but the second
+     * occurrence of a multi-valued member is `<relation>.1`, and clearing by relation silently took out the
      * **first** one. *Found while making a check idempotent: it cleared what it meant to keep.*
      */
     public function clearPath(int $recordId, string $path, string $locale = ''): void
@@ -1489,7 +1489,7 @@ final class DataEntry
         $this->melden($recordId, 'record', 'record removed', $this->satzZustand($satz), null, $version);
     }
 
-    /** @return list<EdgeRecord> */
+    /** @return list<RelationRecord> */
     public function valuesOf(int $recordId): array
     {
         return $this->records->valuesOf($recordId);
@@ -1508,7 +1508,7 @@ final class DataEntry
      * sie eine Abfrage ist. Hier steht sie, damit der Rand nicht am Repository vorbei fragen muss.*
      *
      * @param  list<int> $recordIds
-     * @return array<int, \Taxmod\Core\Model\EdgeRecord>
+     * @return array<int, \Taxmod\Core\Model\RelationRecord>
      */
     public function holdersOf(array $recordIds): array
     {
@@ -1524,11 +1524,11 @@ final class DataEntry
      *
      * @return list<NodeRecord>
      */
-    public function findByValue(int $edgeId, TypedValue $value): array
+    public function findByValue(int $relationId, TypedValue $value): array
     {
         $found = [];
 
-        foreach ($this->records->findByEdgeValue($edgeId, $value) as $id) {
+        foreach ($this->records->findByRelationValue($relationId, $value) as $id) {
             $record = $this->records->find($id);
 
             if ($record !== null) {
@@ -1542,28 +1542,28 @@ final class DataEntry
     /**
      * The attribute must belong to the record's model — its own or an inherited one.
      *
-     * ⚠️ **Checked rather than trusted.** An edge id arriving from a form is input, and a value
+     * ⚠️ **Checked rather than trusted.** An relation id arriving from a form is input, and a value
      * written against an attribute the model does not have is a value nothing will ever read.
      */
-    private function edgeOf(NodeRecord $record, int $edgeId): \Taxmod\Core\Model\Relation
+    private function relationOf(NodeRecord $record, int $relationId): \Taxmod\Core\Model\Relation
     {
-        return $this->fieldEdgeOf($record->nodeId, $edgeId);
+        return $this->fieldRelationOf($record->nodeId, $relationId);
     }
 
     /**
      * Dieselbe Suche am Knoten statt am Datensatz — die Kette ist ohnehin die des Knotens.
      */
-    private function fieldEdgeOf(int $nodeId, int $edgeId): \Taxmod\Core\Model\Relation
+    private function fieldRelationOf(int $nodeId, int $relationId): \Taxmod\Core\Model\Relation
     {
         $model = $this->nodes->byId($nodeId);
-        $owned = $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model));
+        $owned = $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($model));
 
-        foreach ($owned as $edge) {
-            if ($edge->id === $edgeId) {
-                return $edge;
+        foreach ($owned as $relation) {
+            if ($relation->id === $relationId) {
+                return $relation;
             }
         }
 
-        throw NotYetStorable::notAFieldOfThisModel($edgeId, $model->name);
+        throw NotYetStorable::notAFieldOfThisModel($relationId, $model->name);
     }
 }

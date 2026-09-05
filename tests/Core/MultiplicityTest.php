@@ -11,7 +11,7 @@ use Taxmod\Core\Model\Multiplicity;
  *
  * ⚠️ **This file exists because nothing guarded the default and a change to it went unnoticed.** On
  * 2026-08-26 the standard moved from `0..1` to `1` ([D-434](../../../docs/NewConcept/90-decision-log.md))
- * — **flipping 23 of 32 attribute edges from optional to required** — and all 285 tests stayed green.
+ * — **flipping 23 of 32 attribute relations from optional to required** — and all 285 tests stayed green.
  * *A default nobody asserts is a decision nobody can defend.*
  *
  * @see docs/NewConcept/10-domain-core.md

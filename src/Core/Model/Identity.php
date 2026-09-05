@@ -4,11 +4,11 @@ namespace Taxmod\Core\Model;
 
 
 /**
- * What a node and an edge have in common: an **id** from the one space, and a **version**.
+ * What a node and an relation have in common: an **id** from the one space, and a **version**.
  *
  * ⚠️ **The owner designed this and it took a day to notice it was missing from the code.** He, from
  * memory: *I had defined that everything that can be rendered implements an interface, so a node and
- * an edge and other elements could do it.* **It is decided three times** —
+ * an relation and other elements could do it.* **It is decided three times** —
  * [D-080](../../../docs/NewConcept/90-decision-log.md) says what it carries, *«`Identity` carries `id`
  * and `version` only. Named `Identity`, not `WPClassHead`, because `CD-1` forbids the core knowing
  * WordPress exists»*; [D-091](../../../docs/NewConcept/90-decision-log.md) puts it in the renderer's
@@ -20,10 +20,10 @@ namespace Taxmod\Core\Model;
  *
  * ⚠️ **Closed 2026-08-28: the union is down to none.** *Forty across eighteen files became two, and both
  * of those were stale docblock sentences rather than code. What carries the contract now is a pair:
- * **this class** for what a node and an edge share — `id`, `version`, `name` — and
+ * **this class** for what a node and an relation share — `id`, `version`, `name` — and
  * {@see \Taxmod\Core\Renderer\Renderable} for what a renderer may ask of anything it draws. The owner
  * separated those two himself: «`Renderable` is an interface … functions in the interface guarantee the
- * interface», and «the `Identity` class would have everything that node and edge have in common —
+ * interface», and «the `Identity` class would have everything that node and relation have in common —
  * **independent of the interface**».*
  *
  * ⚠️ **A parent class rather than an interface, on the owner's own design.**
@@ -40,12 +40,12 @@ namespace Taxmod\Core\Model;
  *
  * ⚠️ **What it deliberately does not carry, and each has a reason that was measured.** **`name`**: both
  * have one and they mean different things — a node's is what an author works with
- * ([D-369](../../../docs/NewConcept/90-decision-log.md)), an edge's is the attribute's own name — *and
+ * ([D-369](../../../docs/NewConcept/90-decision-log.md)), an relation's is the attribute's own name — *and
  * a renderer should not read either off the subject at all
  * ([D-159](../../../docs/NewConcept/90-decision-log.md)), which is what
  * [row 21](../../../docs/NewConcept/97-implementation-plan.md#the-working-list) is about.* **`position`**:
- * measured, it is on the **edge alone** — a node's order among its siblings is the position of its
- * *inheritance edge* ([D-435](../../../docs/NewConcept/90-decision-log.md),
+ * measured, it is on the **relation alone** — a node's order among its siblings is the position of its
+ * *inheritance relation* ([D-435](../../../docs/NewConcept/90-decision-log.md),
  * [D-014](../../../docs/NewConcept/90-decision-log.md)). **`type`**: excluded by D-080 in as many words
  * — *a node's type **is** its inheritance branch, and a relation has its own `kind`.*
  *
@@ -71,7 +71,7 @@ abstract class Identity
      * @param string $name What the thing is called, in the neutral base language.
      *
      * ⚠️ **On the owner's word, and it supersedes D-080's «only»**
-     * ([D-436](../../../docs/NewConcept/90-decision-log.md)): *edge and node both have names and both
+     * ([D-436](../../../docs/NewConcept/90-decision-log.md)): *relation and node both have names and both
      * should be translatable.* **Both carry one and by [D-410](../../../docs/NewConcept/90-decision-log.md)
      * both carry labels for it** — so it passes C86's own test, *all the attributes that relations and
      * nodes have in common*. *D-080 was written before an attribute had labels; D-410 changed the
@@ -92,8 +92,8 @@ abstract class Identity
         public readonly int $version,
         public readonly string $name,
         // ⚠️ *`hide` stood here and went to {@see Relation} alone ([D-467](../../../docs/NewConcept/90-decision-log.md)).
-        // **It is not in the intersection after all**: a node is hidden by hiding the inheritance edge
-        // that puts it in the tree, so only an edge ever carries it. *`read_only` and `persistent`
+        // **It is not in the intersection after all**: a node is hidden by hiding the inheritance relation
+        // that puts it in the tree, so only an relation ever carries it. *`read_only` and `persistent`
         // remain the genuine intersection candidates ([OQ-114](../../../docs/NewConcept/91-open-questions.md)),
         // and both stay settings ([D-460](../../../docs/NewConcept/90-decision-log.md), [D-461](../../../docs/NewConcept/90-decision-log.md)).*
     ) {

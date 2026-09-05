@@ -111,7 +111,7 @@ final class SettingShapeTest extends TestCase
 
     // ⚠️ **`order` had a test and no reader** ([D-407](../../docs/NewConcept/90-decision-log.md)).
     // The key is gone. Ordering lives in the `position` **column** on `relations`, which
-    // `FormRenderer` sorts by and `moveUp`/`moveDown` write — 84 edges use it.
+    // `FormRenderer` sorts by and `moveUp`/`moveDown` write — 84 relations use it.
     //
     // ⚠️ *A test asserting the shape of a key nothing consulted was the most honest thing about it: it
     // was right about the shape and the shape was never asked for.*

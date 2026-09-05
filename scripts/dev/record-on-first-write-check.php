@@ -61,13 +61,13 @@ function check(string $what, bool $ok, string $detail = ''): void
 
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $rows      = new WpdbRecordRepository();
 $labelRows = new WpdbLabelRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 
-$editor = new ModelEditor($nodes, $edges, $framework, $log, $labelRows, $rows);
-$data   = new DataEntry($rows, $edges, $nodes, $framework, new SystemClock());
+$editor = new ModelEditor($nodes, $relations, $framework, $log, $labelRows, $rows);
+$data   = new DataEntry($rows, $relations, $nodes, $framework, new SystemClock());
 
 global $wpdb;
 

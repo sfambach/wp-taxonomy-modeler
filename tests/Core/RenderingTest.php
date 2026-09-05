@@ -9,7 +9,7 @@ use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SettingKey;
@@ -59,7 +59,7 @@ final class RenderingTest extends TestCase
     private const INSTALLATION = 999000;
 
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private InMemoryRecords $records;
     private CountingIdentities $zaehler;
     private ModelValues $model;
@@ -82,8 +82,8 @@ final class RenderingTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->edges  = new InMemoryRelations();
-        $this->nodes  = new InMemoryNodes($this->edges);
+        $this->relations  = new InMemoryRelations();
+        $this->nodes  = new InMemoryNodes($this->relations);
         $this->records = new InMemoryRecords();
         $identities    = new CountingIdentities();
         $this->zaehler = $identities;
@@ -117,7 +117,7 @@ final class RenderingTest extends TestCase
 
         $this->labelStore = new InMemoryLabels();
 
-        $this->editor    = new ModelEditor($this->nodes, $this->edges, $framework, new RecordedChanges());
+        $this->editor    = new ModelEditor($this->nodes, $this->relations, $framework, new RecordedChanges());
         $this->typeNodes = new RememberedTypeNodes();
         $this->framework = $framework;
         $this->neuZeichnen();
@@ -133,7 +133,7 @@ final class RenderingTest extends TestCase
      */
     private function neuZeichnen(): void
     {
-        $this->model     = new ModelValues($this->records, $this->edges, $this->nodes, $this->framework);
+        $this->model     = new ModelValues($this->records, $this->relations, $this->nodes, $this->framework);
         $this->rendering = new Rendering(
             $this->nodes,
             $this->framework,
@@ -171,9 +171,9 @@ final class RenderingTest extends TestCase
                 $this->branchRoot['constants']->id,
                 RelationKind::Setting,
                 $key,
-                $this->edges->nextFieldPositionUnder($traegerId)
+                $this->relations->nextFieldPositionUnder($traegerId)
             );
-            $this->edges->add($kante);
+            $this->relations->add($kante);
         }
 
         $satzId = $this->records->add(new NodeRecord(
@@ -185,7 +185,7 @@ final class RenderingTest extends TestCase
 
         $pfad = $wer instanceof Node ? (string) $kante->id : $wer->id . '.' . $kante->id;
 
-        $this->records->putValue(new EdgeRecord($satzId, $pfad, $kante->id, '', $wert));
+        $this->records->putValue(new RelationRecord($satzId, $pfad, $kante->id, '', $wert));
 
         $this->neuZeichnen();
     }
@@ -193,7 +193,7 @@ final class RenderingTest extends TestCase
     /** Die Einstellungskante dieses Namens an diesem Träger, falls sie schon steht. */
     private function kanteFuer(int $traegerId, string $key): ?Relation
     {
-        foreach ($this->edges->fieldEdgesOf([$traegerId]) as $eine) {
+        foreach ($this->relations->fieldRelationsOf([$traegerId]) as $eine) {
             if ($eine->kind === RelationKind::Setting && $eine->name === $key) {
                 return $eine;
             }
@@ -239,9 +239,9 @@ final class RenderingTest extends TestCase
     public function an_attribute_is_drawn_by_the_default_of_the_type_it_points_at(): void
     {
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
+        $relation = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v');
 
         self::assertCount(1, $fields);
         self::assertSame(SimpleType::Bool, $fields[0]->type);
@@ -260,9 +260,9 @@ final class RenderingTest extends TestCase
         $description = $this->type('Description', $text);
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $description->id, 'notes');
+        $relation = $this->editor->addField($part->id, $description->id, 'notes');
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v');
 
         self::assertSame(SimpleType::Text, $fields[0]->type);
         self::assertSame(FieldRenderer::NAME, $fields[0]->rendererName);
@@ -276,9 +276,9 @@ final class RenderingTest extends TestCase
         $impostor = $this->editor->createNode('text', $this->branchRoot['model']->id);
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $impostor->id, 'supplier');
+        $relation = $this->editor->addField($part->id, $impostor->id, 'supplier');
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
 
         self::assertNull($fields[0]->type);
         self::assertTrue($fields[0]->hasNoRenderer());
@@ -295,11 +295,11 @@ final class RenderingTest extends TestCase
         // node names deliberately non-unique, so a name could never have been a key.*
         $int  = $this->type('int');
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $int->id, 'count');
+        $relation = $this->editor->addField($part->id, $int->id, 'count');
 
         $this->editor->rename($int->id, 'Ganzzahl');
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v');
 
         self::assertSame(SimpleType::Int, $fields[0]->type);
         self::assertFalse($fields[0]->hasNoRenderer());
@@ -316,9 +316,9 @@ final class RenderingTest extends TestCase
         $this->editor->rename($text->id, 'Freitext');
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $description->id, 'notes');
+        $relation = $this->editor->addField($part->id, $description->id, 'notes');
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v');
 
         self::assertSame(SimpleType::Text, $fields[0]->type);
         self::assertSame(FieldRenderer::NAME, $fields[0]->rendererName);
@@ -338,9 +338,9 @@ final class RenderingTest extends TestCase
         self::assertNull($this->rendering->typeOfNode($impostor));
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $impostor->id, 'supplier');
+        $relation = $this->editor->addField($part->id, $impostor->id, 'supplier');
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
 
         self::assertNull($fields[0]->type);
         self::assertTrue($fields[0]->hasNoRenderer());
@@ -354,11 +354,11 @@ final class RenderingTest extends TestCase
         // D-032 / R14a: *I give the whole thing a new look by using it.* The chain already does
         // this; nothing separate is walked for the renderer.
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $this->einstellung($edge, SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
+        $this->einstellung($relation, SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v');
 
         self::assertSame(SpinnerRenderer::NAME, $fields[0]->rendererName);
     }
@@ -389,11 +389,11 @@ final class RenderingTest extends TestCase
     public function a_renderer_nobody_registered_is_a_visible_fault_not_a_silent_one(): void
     {
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $this->einstellung($edge, SettingKey::Renderer->value, TypedValue::ofText('a renderer from a plugin that is gone'));
+        $this->einstellung($relation, SettingKey::Renderer->value, TypedValue::ofText('a renderer from a plugin that is gone'));
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
 
         self::assertSame(PlainRenderer::NAME, $fields[0]->rendererName);
         self::assertStringContainsString('taxmod-no-renderer', $fields[0]->result->markup);
@@ -408,14 +408,14 @@ final class RenderingTest extends TestCase
         // answers for search yet (D-217's mechanism), so the same attribute is drawn for display
         // and left out entirely for search.
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
+        $relation = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
 
-        self::assertCount(1, $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v'));
-        self::assertCount(0, $this->rendering->fieldsFor([$edge], [], Purpose::Search, 'v'));
+        self::assertCount(1, $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v'));
+        self::assertCount(0, $this->rendering->fieldsFor([$relation], [], Purpose::Search, 'v'));
     }
 
     #[Test]
-    public function the_form_field_is_keyed_by_the_edge_and_never_by_position(): void
+    public function the_form_field_is_keyed_by_the_relation_and_never_by_position(): void
     {
         // ⚠️ A checkbox does not submit when unticked. Positional names would shift every later
         // value onto the wrong attribute — silently, and only for the rows somebody unticked.
@@ -448,15 +448,15 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
-    public function the_rendering_says_which_edge_it_used(): void
+    public function the_rendering_says_which_relation_it_used(): void
     {
         // D-021: metadata a caller cannot recover from the markup afterwards.
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('text')->id, 'label');
+        $relation = $this->editor->addField($part->id, $this->type('text')->id, 'label');
 
-        $fields = $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v');
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
 
-        self::assertSame([$edge->id], $fields[0]->result->usedEdges);
+        self::assertSame([$relation->id], $fields[0]->result->usedRelations);
     }
 
     #[Test]
@@ -471,14 +471,14 @@ final class RenderingTest extends TestCase
         // members had already been drawn and thrown away. «Does not look at the children» is the owner's
         // own wording, and a list entry with empty markup does not honour it.*
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('text')->id, 'internal');
+        $relation = $this->editor->addField($part->id, $this->type('text')->id, 'internal');
 
-        self::assertCount(1, $this->rendering->fieldsFor([$edge], [], Purpose::Display, 'v'));
+        self::assertCount(1, $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v'));
 
         // The column, not a setting — D-457. Hiding is a property of the placement.
-        $this->edges->save($edge->withHide(true), $edge->version);
+        $this->relations->save($relation->withHide(true), $relation->version);
 
-        $fresh = $this->edges->fieldEdgesOf([$part->id]);
+        $fresh = $this->relations->fieldRelationsOf([$part->id]);
 
         self::assertSame([], $this->rendering->fieldsFor($fresh, [], Purpose::Display, 'v'));
     }
@@ -598,9 +598,9 @@ final class RenderingTest extends TestCase
         // value + prefix + unit, one row per member by path, D-134), and `k` is that node's
         // `symbol` label resolved at render time (D-049, D-260).
         //
-        // ⚠️ **Two edges at one target, because that is what could not work before.** The role was
+        // ⚠️ **Two relations at one target, because that is what could not work before.** The role was
         // nailed to `form` in the descent, so a prefix could only ever read `kilo`. Keying the
-        // resolved names by **target** would have been the same bug one level up: whichever edge
+        // resolved names by **target** would have been the same bug one level up: whichever relation
         // was resolved second would have won for both.
         $kilo = $this->editor->createNode('kilo', $this->branchRoot['constants']->id);
 
@@ -617,7 +617,7 @@ final class RenderingTest extends TestCase
         $short    = $this->editor->addField($resistor->id, $kilo->id, 'prefix');
         $spelled  = $this->editor->addField($resistor->id, $kilo->id, 'prefix in full');
 
-        // The setting rides on the **edge** — the use site, which is what makes the two differ.
+        // The setting rides on the **relation** — the use site, which is what makes the two differ.
         $this->einstellung($short, Rendering::LABEL_ROLE, TypedValue::ofText(SeededRole::Symbol->value));
 
         $fields = $this->rendering->fieldsFor(
@@ -633,7 +633,7 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('k</', $fields[0]->result->markup, 'the symbol role was not used');
         self::assertStringNotContainsString('kilo', $fields[0]->result->markup);
 
-        // The other edge said nothing, so it keeps the ordinary role — same node, other text.
+        // The other relation said nothing, so it keeps the ordinary role — same node, other text.
         self::assertStringContainsString('kilo', $fields[1]->result->markup);
     }
 
@@ -645,13 +645,13 @@ final class RenderingTest extends TestCase
         // it stays visible as wrong, because the text shown is the ordinary one.
         $kilo = $this->editor->createNode('kilo', $this->branchRoot['constants']->id);
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $kilo->id, 'prefix');
+        $relation = $this->editor->addField($part->id, $kilo->id, 'prefix');
 
-        $this->einstellung($edge, Rendering::LABEL_ROLE, TypedValue::ofText('symbool'));
+        $this->einstellung($relation, Rendering::LABEL_ROLE, TypedValue::ofText('symbool'));
 
         $field = $this->rendering->fieldsFor(
-            [$edge],
-            [$edge->id => TypedValue::ofReference($kilo->id)],
+            [$relation],
+            [$relation->id => TypedValue::ofReference($kilo->id)],
             Purpose::Display,
             ''
         )[0];
@@ -672,9 +672,9 @@ final class RenderingTest extends TestCase
         $this->editor->createNode('table', $rollen->id);
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $rollen->id, 'label_role');
+        $relation = $this->editor->addField($part->id, $rollen->id, 'label_role');
 
-        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v')[0];
+        $field = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v')[0];
 
         self::assertSame(ChoiceRenderer::NAME, $field->rendererName);
         self::assertStringContainsString('>form<', $field->result->markup);
@@ -695,9 +695,9 @@ final class RenderingTest extends TestCase
         $this->editor->createNode('read_only', $bool->id);
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $bool->id, 'with_label');
+        $relation = $this->editor->addField($part->id, $bool->id, 'with_label');
 
-        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v')[0];
+        $field = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v')[0];
 
         self::assertNotSame(ChoiceRenderer::NAME, $field->rendererName);
         self::assertSame(SimpleType::Bool, $field->type);
@@ -714,11 +714,11 @@ final class RenderingTest extends TestCase
         $this->editor->createNode('form', $rollen->id);
 
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $rollen->id, 'label_role');
+        $relation = $this->editor->addField($part->id, $rollen->id, 'label_role');
 
-        $this->einstellung($edge, SettingKey::Renderer->value, TypedValue::ofText(PlainRenderer::NAME));
+        $this->einstellung($relation, SettingKey::Renderer->value, TypedValue::ofText(PlainRenderer::NAME));
 
-        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Edit, 'v')[0];
+        $field = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v')[0];
 
         self::assertSame(PlainRenderer::NAME, $field->rendererName);
     }
@@ -771,12 +771,12 @@ final class RenderingTest extends TestCase
         // control with nothing to fix.
         $composed = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
         $part     = $this->thing('Resistor');
-        $edge     = $this->editor->addField($part->id, $composed->id, 'resistance');
+        $relation     = $this->editor->addField($part->id, $composed->id, 'resistance');
 
         $field = $this->rendering->fieldsFor(
-            [$edge],
+            [$relation],
             // A record id, not a node id — which is exactly why no simple type comes back for it.
-            [$edge->id => TypedValue::ofReference(999_001)],
+            [$relation->id => TypedValue::ofReference(999_001)],
             Purpose::Display
         )[0];
 
@@ -794,15 +794,15 @@ final class RenderingTest extends TestCase
         // Working list row 7: the `converter` key existed and drew as a **dead** control, because
         // nothing was registered. D-219 decided converters; this is the descent running one.
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $before = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+        $before = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
         self::assertStringContainsString('12', $before->result->markup, 'no converter means shown as stored');
 
-        $this->einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('roman'));
+        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('roman'));
 
-        $after = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+        $after = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
         self::assertStringContainsString('XII', $after->result->markup);
         // ⚠️ *The same renderer as before* — the mapping changed, the form did not. That is D-219's
@@ -816,11 +816,11 @@ final class RenderingTest extends TestCase
         // ⚠️ A mapping of a value that is not there would be a reading of an unanswered question
         // (D-232) — and `roman` would have drawn its out-of-range marker over an empty field.
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $this->einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('roman'));
+        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('roman'));
 
-        $field = $this->rendering->fieldsFor([$edge], [], Purpose::Display)[0];
+        $field = $this->rendering->fieldsFor([$relation], [], Purpose::Display)[0];
 
         self::assertStringNotContainsString('—', $field->result->markup);
     }
@@ -832,11 +832,11 @@ final class RenderingTest extends TestCase
         // `text` — and running an integer mapping over characters would invent a reading. So
         // eligibility is checked at the drawing too, not only where the name was chosen.
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('text')->id, 'notes');
+        $relation = $this->editor->addField($part->id, $this->type('text')->id, 'notes');
 
-        $this->einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('roman'));
+        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('roman'));
 
-        $field = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofText('12')], Purpose::Display)[0];
+        $field = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofText('12')], Purpose::Display)[0];
 
         self::assertStringContainsString('12', $field->result->markup);
     }
@@ -848,11 +848,11 @@ final class RenderingTest extends TestCase
         // would otherwise throw on every form that named it — so the honest failure here is to show
         // the value stored, and refusing belongs at the **write** where the name is chosen (D-360).
         $part = $this->thing('Part');
-        $edge = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $this->einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('ein-konverter-den-es-nicht-gibt'));
+        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('ein-konverter-den-es-nicht-gibt'));
 
-        $field = $this->rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+        $field = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
         self::assertStringContainsString('12', $field->result->markup);
     }
@@ -1210,7 +1210,7 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('taxmod-form', $form->markup);
         self::assertStringContainsString('label', $form->markup);
         self::assertStringContainsString('4k7', $form->markup);
-        self::assertSame([$label->id], $form->usedEdges);
+        self::assertSame([$label->id], $form->usedRelations);
     }
 
     #[Test]
@@ -1253,9 +1253,9 @@ final class RenderingTest extends TestCase
         $part   = $this->thing('Part');
         $secret = $this->editor->addField($part->id, $this->type('text')->id, 'internal');
 
-        $this->edges->save($secret->withHide(true), $secret->version);
+        $this->relations->save($secret->withHide(true), $secret->version);
 
-        $fresh = $this->edges->fieldEdgesOf([$part->id]);
+        $fresh = $this->relations->fieldRelationsOf([$part->id]);
 
         self::assertSame('', $this->rendering->nodeAsForm($part, $fresh, [], Purpose::Display)->markup);
     }
@@ -1505,11 +1505,11 @@ final class RenderingTest extends TestCase
     }
 
     /** Das gezeichnete Multiplizitäts-Steuerelement einer Feldkante. */
-    private function multiplicityMarkup(\Taxmod\Core\Model\Relation $edge): string
+    private function multiplicityMarkup(\Taxmod\Core\Model\Relation $relation): string
     {
         $drawn = $this->rendering->settingsFor(
-            $edge,
-            $this->rendering->settingsForUseSites([$edge])[$edge->id] ?? [],
+            $relation,
+            $this->rendering->settingsForUseSites([$relation])[$relation->id] ?? [],
             Purpose::Edit
         );
 
@@ -1574,10 +1574,10 @@ final class RenderingTest extends TestCase
     {
         $part     = $this->thing('Part');
         $position = $this->thing('BOM Position');
-        $edge     = $this->editor->addField($part->id, $position->id, 'position');
+        $relation     = $this->editor->addField($part->id, $position->id, 'position');
 
         $rows = $this->rendering->fieldRowsFor(
-            [$edge],
+            [$relation],
             $part->id,
             [],
             [],
@@ -1604,9 +1604,9 @@ final class RenderingTest extends TestCase
     {
         $part     = $this->thing('Part');
         $position = $this->thing('BOM Position');
-        $edge     = $this->editor->addField($part->id, $position->id, 'position');
+        $relation     = $this->editor->addField($part->id, $position->id, 'position');
 
-        $rows = $this->rendering->fieldRowsFor([$edge], $part->id);
+        $rows = $this->rendering->fieldRowsFor([$relation], $part->id);
 
         $markup = $rows[0]->result->markup;
 

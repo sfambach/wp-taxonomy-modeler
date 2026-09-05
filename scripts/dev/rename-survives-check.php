@@ -78,8 +78,8 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
 $records   = new WpdbRecordRepository();
 $registry  = ShippedRenderers::registry();
 
@@ -97,9 +97,9 @@ $n = Schema::table('nodes');
  */
 function gezeichnet(array $ids): array
 {
-    global $nodes, $edges, $framework, $records, $registry;
+    global $nodes, $relations, $framework, $records, $registry;
 
-    $model   = new ModelValues($records, $edges, $nodes, $framework);
+    $model   = new ModelValues($records, $relations, $nodes, $framework);
     $antwort = [];
 
     foreach ($ids as $id) {
@@ -131,8 +131,8 @@ echo "\n== Die Ids stehen aufgeschrieben ==\n";
 
 $vorher = gezeichnet($beobachtet);
 
-$aussenId = $framework->settingEdgeId(SettingKey::Renderer);
-$innenId  = $framework->settingValueEdgeId(SettingKey::Renderer);
+$aussenId = $framework->settingRelationId(SettingKey::Renderer);
+$innenId  = $framework->settingValueRelationId(SettingKey::Renderer);
 
 // ⚠️ **Hier standen zwei Zusagen auf aufgeschriebene Kanten-Ids, und beide waren rot.** *Der
 // Renderer haengt seit TASK-020 an `nodes.settings_record_id` ([D-584](../../docs/NewConcept/90-decision-log.md));

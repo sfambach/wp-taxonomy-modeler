@@ -26,7 +26,7 @@ use Taxmod\Tests\Core\Fake\InMemoryRelations;
 final class ModelEditorTest extends TestCase
 {
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private RecordedChanges $changes;
     private ModelEditor $editor;
     private Node $root;
@@ -37,8 +37,8 @@ final class ModelEditorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->edges   = new InMemoryRelations();
-        $this->nodes   = new InMemoryNodes($this->edges);
+        $this->relations   = new InMemoryRelations();
+        $this->nodes   = new InMemoryNodes($this->relations);
         $this->changes = new RecordedChanges();
         $identities    = $this->identities = new CountingIdentities();
 
@@ -50,7 +50,7 @@ final class ModelEditorTest extends TestCase
 
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
+            $this->relations,
             new FixedFramework($this->root, $this->trash),
             $this->changes
         );
@@ -163,9 +163,9 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function children_come_back_in_the_order_the_edges_give_them(): void
+    public function children_come_back_in_the_order_the_relations_give_them(): void
     {
-        // Not alphabetical. Order is a property of the edge, so it is the order somebody put
+        // Not alphabetical. Order is a property of the relation, so it is the order somebody put
         // them in — and it stays that way until somebody moves one.
         $parent = $this->editor->createNode('Board', $this->root->id);
         $this->editor->createNode('Resistor', $parent->id);
@@ -224,7 +224,7 @@ final class ModelEditorTest extends TestCase
 
         self::assertSame($this->root->id, $node->parentNodeId);
         self::assertSame($this->root->id, $this->nodes->byId($node->id)->parentNodeId);
-        self::assertSame(0, $this->edges->count(), 'ein neuer Knoten legt keine Kante an');
+        self::assertSame(0, $this->relations->count(), 'ein neuer Knoten legt keine Kante an');
     }
 
     #[Test]
@@ -240,7 +240,7 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function moving_repoints_the_edge_and_rewrites_the_path(): void
+    public function moving_repoints_the_relation_and_rewrites_the_path(): void
     {
         $a = $this->editor->createNode('Model', $this->root->id);
         $b = $this->editor->createNode('Primitives', $this->root->id);
@@ -300,7 +300,7 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function parking_is_a_move_and_the_edge_says_so(): void
+    public function parking_is_a_move_and_the_relation_says_so(): void
     {
         $node = $this->editor->createNode('Board', $this->root->id);
         $this->editor->moveToTrash($node->id);
@@ -336,7 +336,7 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function every_path_can_be_rebuilt_from_the_edges_alone(): void
+    public function every_path_can_be_rebuilt_from_the_relations_alone(): void
     {
         // ⚠️ This is the property D-014 actually asks for: path is derived, rebuildable, and
         // never a second truth. If this ever fails, the tree and its shortcut have drifted.
@@ -346,12 +346,12 @@ final class ModelEditorTest extends TestCase
         $this->editor->move($b->id, $this->root->id);
 
         foreach ([$this->trash, $a, $this->nodes->byId($b->id), $this->nodes->byId($c->id)] as $node) {
-            self::assertSame($this->pathFromEdges($node->id), $node->path, "path of «{$node->name}»");
+            self::assertSame($this->pathFromRelations($node->id), $node->path, "path of «{$node->name}»");
         }
     }
 
-    /** Walk the edges upwards and build the path the long way round. */
-    private function pathFromEdges(int $id): string
+    /** Walk the relations upwards and build the path the long way round. */
+    private function pathFromRelations(int $id): string
     {
         $ids = [$id];
 
@@ -761,7 +761,7 @@ final class ModelEditorTest extends TestCase
 
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
+            $this->relations,
             new FixedFramework($this->root, $this->trash, [\Taxmod\Core\Model\Branch::Model->value => $model]),
             $this->changes
         );
@@ -787,12 +787,12 @@ final class ModelEditorTest extends TestCase
 
         self::assertSame(
             ['einheit', 'menge_einheit'],
-            array_map(static fn (Relation $edge): string => $edge->name, $used)
+            array_map(static fn (Relation $relation): string => $relation->name, $used)
         );
 
         self::assertSame(
             [$part->id, $recipe->id],
-            array_map(static fn (Relation $edge): int => $edge->fromNodeId, $used)
+            array_map(static fn (Relation $relation): int => $relation->fromNodeId, $used)
         );
 
         // ⚠️ *Eine Vererbungskante ist ein **Kind**, und das zeichnet der Baum. Der Knoten `Einheit`
@@ -807,11 +807,11 @@ final class ModelEditorTest extends TestCase
         $unit  = $this->editor->createNode('Einheit', $model->id);
         $part  = $this->editor->createNode('Teil', $model->id);
 
-        $edge = $this->editor->addField($part->id, $unit->id, 'einheit');
+        $relation = $this->editor->addField($part->id, $unit->id, 'einheit');
 
         self::assertCount(1, $this->editor->usedBy($unit->id));
 
-        $this->editor->removeField($part->id, $edge->id);
+        $this->editor->removeField($part->id, $relation->id);
 
         // ⚠️ *D-128: eine geparkte Kante ist in ihrem eigenen Knoten versteckt. Sie hier zu zeigen
         // hiesse, eine Abhängigkeit zu melden, die ihr eigener Knoten nicht zeigt.*

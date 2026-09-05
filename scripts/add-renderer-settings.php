@@ -55,10 +55,10 @@ use Taxmod\WordPress\SystemClock;
 global $wpdb;
 
 $nodes  = new WpdbNodeRepository();
-$edges  = new WpdbRelationRepository();
+$relations  = new WpdbRelationRepository();
 $log    = new WpdbChangelog(new SystemClock());
-$fw     = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor = new ModelEditor($nodes, $edges, $fw, $log, records: new WpdbRecordRepository());
+$fw     = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor = new ModelEditor($nodes, $relations, $fw, $log, records: new WpdbRecordRepository());
 
 $n = Schema::table('nodes');
 
@@ -82,7 +82,7 @@ function knotenNamens(string $name, string $unterPfad = ''): ?int
 /** Ein Feld anlegen, falls es fehlt, und als Einstellungskante markieren. */
 function feld(ModelEditor $editor, RelationRepositoryHolder $r, int $ownerId, int $zielId, string $name): string
 {
-    foreach ($r->edges->fieldEdgesOf([$ownerId]) as $eine) {
+    foreach ($r->relations->fieldRelationsOf([$ownerId]) as $eine) {
         if ($eine->name === $name && $eine->fromNodeId === $ownerId) {
             return "stand schon ({$eine->id})";
         }
@@ -97,12 +97,12 @@ function feld(ModelEditor $editor, RelationRepositoryHolder $r, int $ownerId, in
 /** Kleiner Halter, damit die Funktion oben keine Globalen braucht. */
 final class RelationRepositoryHolder
 {
-    public function __construct(public readonly WpdbRelationRepository $edges)
+    public function __construct(public readonly WpdbRelationRepository $relations)
     {
     }
 }
 
-$halter    = new RelationRepositoryHolder($edges);
+$halter    = new RelationRepositoryHolder($relations);
 $settings  = $fw->rootOf(Branch::Settings);
 $rendererId = knotenNamens('Renderer');
 $booleanId  = knotenNamens('Boolean');

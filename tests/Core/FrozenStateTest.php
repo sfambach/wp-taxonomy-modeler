@@ -138,7 +138,7 @@ final class FrozenStateTest extends TestCase
     #[Test]
     public function a_row_that_is_not_a_field_list_stays_exactly_what_it_was(): void
     {
-        foreach (['10', '0', '1.189.191', '3 parked', '3 nodes, 7 edges', 'framework: Model', 'the root'] as $stored) {
+        foreach (['10', '0', '1.189.191', '3 parked', '3 nodes, 7 relations', 'framework: Model', 'the root'] as $stored) {
             $read = FrozenState::parse($stored);
 
             self::assertNotNull($read, $stored);
@@ -212,8 +212,8 @@ final class FrozenStateTest extends TestCase
     #[Test]
     public function a_label_entry_says_the_verb_in_what_and_the_address_in_the_state(): void
     {
-        $edges  = new InMemoryRelations();
-        $nodes  = new InMemoryNodes($edges);
+        $relations  = new InMemoryRelations();
+        $nodes  = new InMemoryNodes($relations);
         $ids    = new CountingIdentities();
         $root   = Node::create($ids->next(), 'Root', null);
         $trash  = Node::create($ids->next(), 'Trash', $root->path);

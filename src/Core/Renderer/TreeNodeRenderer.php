@@ -115,14 +115,14 @@ final class TreeNodeRenderer extends RendererNode
         // indistinguishable from a visible one — and the whole point of that mode is to work **on** the
         // hidden ones.
         //
-        // ⚠️ **Handed in, because a cell draws a **node** and `hide` sits on its **edge**.**
+        // ⚠️ **Handed in, because a cell draws a **node** and `hide` sits on its **relation**.**
         // *This line has been rewritten three times and the last one is the design:
         // it read a **setting** (which put `hide` in the chain, so hiding a type blanked every field of
         // that type — [D-426](../../../docs/NewConcept/90-decision-log.md)), then a **column on the
         // node** ([D-457](../../../docs/NewConcept/90-decision-log.md)), and now the prepared fact
         // ([D-467](../../../docs/NewConcept/90-decision-log.md), [D-445](../../../docs/NewConcept/90-decision-log.md)):
-        // `hide` is on the **inheritance edge**, which is what puts the node in the tree at all, and
-        // `Tree::rowsUnder()` loads those edges anyway.*
+        // `hide` is on the **inheritance relation**, which is what puts the node in the tree at all, and
+        // `Tree::rowsUnder()` loads those relations anyway.*
         $hidden = $context->surroundings->hidden;
 
         $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
@@ -131,7 +131,7 @@ final class TreeNodeRenderer extends RendererNode
             . $named;
 
         // ⚠️ **Right-aligned**, the owner's ask: `margin-left:auto` pushes everything after the
-        // name to the far edge, so the names stay a readable column and the controls line up.
+        // name to the far relation, so the names stay a readable column and the controls line up.
         // WICHTIG: Ohne Bearbeitung keine Funktionen rechts -- auf sein Wort: die Baumansicht im
         // Auswahldialog "sollte so wie in tree view aussehen, nur ohne die Funktionen rechts,
         // somit koennte hier der gleiche Render verwendet werden, wir muessen nur eine Einstellung

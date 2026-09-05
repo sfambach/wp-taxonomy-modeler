@@ -39,7 +39,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\WordPress\Persistence\Restore;
@@ -111,11 +111,11 @@ function jetzt(int $satzId): ?array
 
 echo "\n== 1. Drei Staende schreiben ==\n";
 
-$records->putValue(EdgeRecord::direct($satzId, (int) $vorlage->relation_id, TypedValue::ofText('erster')));
+$records->putValue(RelationRecord::direct($satzId, (int) $vorlage->relation_id, TypedValue::ofText('erster')));
 $zeile = $records->valuesOf($satzId)[0];
 
 foreach (['zweiter', 'dritter'] as $text) {
-    $records->putValue(new EdgeRecord(
+    $records->putValue(new RelationRecord(
         $satzId,
         $zeile->path,
         (int) $vorlage->relation_id,

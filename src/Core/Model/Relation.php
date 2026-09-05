@@ -7,7 +7,7 @@ use Taxmod\Core\Renderer\Renderable;
 use Taxmod\Core\Exception\InvalidName;
 
 /**
- * An edge — and seen from the node that owns it, an **attribute** (D-031). Two names, one thing.
+ * An relation — and seen from the node that owns it, an **attribute** (D-031). Two names, one thing.
  *
  * ⚠️ **Nicht mehr `final`, und das ist [D-639](../../../docs/NewConcept/90-decision-log.md)** —
  * dieselbe Bewegung wie beim Knoten ([D-620](../../../docs/NewConcept/90-decision-log.md)). *Sein
@@ -113,15 +113,15 @@ abstract class Relation extends Identity implements Renderable
 
     /**
      * @param int    $id       From the model identity space, shared with nodes (C11) — which is
-     *                         what lets an edge carry settings and labels of its own (C8).
-     * @param string $name     Empty for an inheritance edge: the tree edge has no name of its
+     *                         what lets an relation carry settings and labels of its own (C8).
+     * @param string $name     Empty for an inheritance relation: the tree relation has no name of its
      *                         own, the child does.
      * @param int      $sortOrder     Order among the siblings of `fromNodeId`, counted from zero.
      * @param int|null $parkedByGroup The act that parked it, or null while it is live.
      *
-     * ⚠️ **An edge is parked by a column, and a node is not** ([D-371](../../../docs/NewConcept/90-decision-log.md)).
+     * ⚠️ **An relation is parked by a column, and a node is not** ([D-371](../../../docs/NewConcept/90-decision-log.md)).
      * A node's **position** is its mark — it sits under the trash — so a flag would be the same fact
-     * twice; an edge has no position in the tree, so there is nothing to duplicate. **It holds the
+     * twice; an relation has no position in the tree, so there is nothing to duplicate. **It holds the
      * change group rather than a bare flag** because [D-128](../../../docs/NewConcept/90-decision-log.md)
      * wants a parked attribute labelled *deleted with «X»*, and the group is where that act is
      * written down ([D-348](../../../docs/NewConcept/90-decision-log.md)).
@@ -138,9 +138,9 @@ abstract class Relation extends Identity implements Renderable
         /**
          * Whether the walk stops at this placement.
          *
-         * ⚠️ **On the edge alone, and the owner narrowed it there himself** ([D-467](../../../docs/NewConcept/90-decision-log.md)):
-         * *«then we only need it on the edge»*, once the access he thought was missing —
-         * {@see \Taxmod\Core\Repository\RelationRepository::inheritanceEdgeTo()} — turned out to exist.
+         * ⚠️ **On the relation alone, and the owner narrowed it there himself** ([D-467](../../../docs/NewConcept/90-decision-log.md)):
+         * *«then we only need it on the relation»*, once the access he thought was missing —
+         * {@see \Taxmod\Core\Repository\RelationRepository::inheritanceRelationTo()} — turned out to exist.
          *
          * ⚠️ **Hiding is about a placement, not about a thing.** *«I do not simply create a model node
          * and then say I will not draw it — that would be nonsense. Where I would say it is on the
@@ -218,10 +218,10 @@ abstract class Relation extends Identity implements Renderable
     }
 
     /**
-     * The same edge under another name, one version on.
+     * The same relation under another name, one version on.
      *
      * ⚠️ **An attribute's name is trimmed like a node's, and an empty one is refused.** Nothing
-     * decided that for edges — [D-022](../../../docs/NewConcept/90-decision-log.md) governs node
+     * decided that for relations — [D-022](../../../docs/NewConcept/90-decision-log.md) governs node
      * names — but *the use site is an attribute* argues they are the same kind of thing, and it is
      * the assumption Package 3 recorded rather than invented quietly.
      */
@@ -242,13 +242,13 @@ abstract class Relation extends Identity implements Renderable
         return $this->parkedByGroup !== null;
     }
 
-    /** The same edge, parked by one act. */
+    /** The same relation, parked by one act. */
     public function parkedBy(int $changeGroup): self
     {
         return $this->copy(parkedByGroup: $changeGroup);
     }
 
-    /** The same edge, live again — what a restore writes (D-172: forwards, never a rewind). */
+    /** The same relation, live again — what a restore writes (D-172: forwards, never a rewind). */
     public function revived(): self
     {
         return $this->copy(unpark: true);
@@ -260,7 +260,7 @@ abstract class Relation extends Identity implements Renderable
     // statt gleich danach eine zweite Zeile zu brauchen.*
 
     /**
-     * An attribute edge: the owner points at a target, and the **kind comes from the caller
+     * An attribute relation: the owner points at a target, and the **kind comes from the caller
      * having read it off the target's branch** — never from a person choosing it (D-161).
      */
     public static function attribute(
@@ -338,7 +338,7 @@ abstract class Relation extends Identity implements Renderable
         );
     }
 
-    /** The same edge pointing at a new parent, one version on. */
+    /** The same relation pointing at a new parent, one version on. */
     public function reparentedTo(int $parentId, int $sortOrder): self
     {
         if ($parentId === $this->fromNodeId && $sortOrder === $this->sortOrder) {
@@ -349,10 +349,10 @@ abstract class Relation extends Identity implements Renderable
     }
 
     /**
-     * The same edge hidden or shown again, one version on.
+     * The same relation hidden or shown again, one version on.
      *
      * ⚠️ *Same shape as {@see Node::withHide()}, and it exists because the owner asked for both:
-     * «edge and node both having an attribute `hide`» ([D-457](../../../docs/NewConcept/90-decision-log.md)).
+     * «relation and node both having an attribute `hide`» ([D-457](../../../docs/NewConcept/90-decision-log.md)).
      * A node hides itself; a **placement** hides what hangs there.*
      */
     /**
@@ -415,7 +415,7 @@ abstract class Relation extends Identity implements Renderable
         return $this->copy(version: $this->version + 1, multiplicity: $multiplicity);
     }
 
-    /** The same edge in a different place among its siblings, one version on. */
+    /** The same relation in a different place among its siblings, one version on. */
     public function movedTo(int $sortOrder): self
     {
         return $this->reparentedTo($this->fromNodeId, $sortOrder);

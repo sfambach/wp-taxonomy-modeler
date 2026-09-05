@@ -9,8 +9,8 @@ namespace Taxmod\Core\Model;
  * nothing in the model ever wanted, and they invite a pair that contradicts itself — `min = 5`
  * with `max = 2`. One key with four values cannot be wrong.
  *
- * ⚠️ **It belongs to the edge, never to the node.** A node describes a *thing* and a thing has
- * no multiplicity; an edge describes a *use of a thing*, and a use does.
+ * ⚠️ **It belongs to the relation, never to the node.** A node describes a *thing* and a thing has
+ * no multiplicity; an relation describes a *use of a thing*, and a use does.
  *
  * ## What "narrower" means here
  *
@@ -53,7 +53,7 @@ enum Multiplicity: string
      * something and it was meaning nothing: the chooser offered a blank option and the screen showed
      * an em dash ([D-379](../../../docs/NewConcept/90-decision-log.md)).
      *
-     * ⚠️ **Not seeded onto every edge, because settings are sparse**
+     * ⚠️ **Not seeded onto every relation, because settings are sparse**
      * ([D-015](../../../docs/NewConcept/90-decision-log.md)). An absent row **means** this rather
      * than being a gap to fill — writing it onto every attribute would put a fact in a thousand
      * places and make *nobody has narrowed this* indistinguishable from *somebody chose it*.
@@ -65,7 +65,7 @@ enum Multiplicity: string
      * [D-405](../../../docs/NewConcept/90-decision-log.md) that is exactly what it does, in his words:
      * *a floor of one **is** mandatoriness.*
      *
-     * ⚠️ *Measured when it changed: **23 of 32 attribute edges** carried no row of their own, so their
+     * ⚠️ *Measured when it changed: **23 of 32 attribute relations** carried no row of their own, so their
      * meaning flipped from optional to required in one edit. Nothing enforces it yet
      * ([row 31](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)) — the rule lands
      * before the enforcement, which is the right order and only safe if the rule is known first.*

@@ -56,10 +56,10 @@ global $wpdb;
 $schreiben = in_array('--write', $argv, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
 
-$traeger = $framework->settingEdgeId(SettingKey::Renderer);
+$traeger = $framework->settingRelationId(SettingKey::Renderer);
 
 if ($traeger === 0) {
     fwrite(STDERR, "Die Traegerkante steht nicht aufgeschrieben — nichts getan.\n");

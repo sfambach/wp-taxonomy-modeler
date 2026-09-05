@@ -73,9 +73,9 @@ $p = $wpdb->prefix . 'taxmod_';
 
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
 
 /** Die Seite als Markup, so wie ein Browser sie bekommt. */
 function seite(int $nodeId): string

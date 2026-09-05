@@ -50,7 +50,7 @@ $go = in_array('--go', $argv, true);
 global $wpdb;
 
 $nodesTable = Schema::table('nodes');
-$edgesTable = Schema::table('relations');
+$relationsTable = Schema::table('relations');
 
 // ---------------------------------------------------------------- die Sperre nachpruefen
 
@@ -89,7 +89,7 @@ foreach (['min', 'max'] as $name) {
     // Was auf ihn zeigt — die Probe aus D-606. Zeigt heute etwas darauf, ist die Lage eine andere
     // als die gemessene, und dann wird nicht verschoben.
     $zeiger = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$edgesTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
+        "SELECT COUNT(*) FROM {$relationsTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
         (int) $row->id
     ));
 
@@ -100,7 +100,7 @@ foreach (['min', 'max'] as $name) {
     }
 
     $vorhanden = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$edgesTable} WHERE from_node_id = %d AND name = %s",
+        "SELECT COUNT(*) FROM {$relationsTable} WHERE from_node_id = %d AND name = %s",
         (int) $integer->id,
         $name
     ));
@@ -145,8 +145,8 @@ file_put_contents($backup, json_encode([
         (int) $ziele['min']['node']->id,
         (int) $ziele['max']['node']->id
     ), ARRAY_A),
-    'edges' => $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM {$edgesTable} WHERE from_node_id IN (%d, %d, %d) OR to_node_id IN (%d, %d, %d)",
+    'relations' => $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM {$relationsTable} WHERE from_node_id IN (%d, %d, %d) OR to_node_id IN (%d, %d, %d)",
         (int) $integer->id,
         (int) $ziele['min']['node']->id,
         (int) $ziele['max']['node']->id,
@@ -167,9 +167,9 @@ if (! $go) {
 // ---------------------------------------------------------------- schreiben
 
 $nodes  = new WpdbNodeRepository();
-$edges  = new WpdbRelationRepository();
+$relations  = new WpdbRelationRepository();
 $log    = new WpdbChangelog(new SystemClock());
-$editor = new ModelEditor($nodes, $edges, new SeededFrameworkNodes($nodes, $edges, $log), $log);
+$editor = new ModelEditor($nodes, $relations, new SeededFrameworkNodes($nodes, $relations, $log), $log);
 
 $wpdb->query('START TRANSACTION');
 

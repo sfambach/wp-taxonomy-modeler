@@ -52,7 +52,7 @@ final class Schema
      *     `settings.key` becomes `setting_key`, because `KEY` is reserved and dbDelta cannot
      *     parse an index over a backticked column — the same reason `before` became
      *     `before_state`.
-     * 3 — inheritance edges become the tree and `nodes.path` is derived from them (D-014);
+     * 3 — inheritance relations become the tree and `nodes.path` is derived from them (D-014);
      *     `relations.from_node_id` and `to_node_id` join the foreign keys.
      * 4 — the changelog gains `change_group_id`, the bracket around one act (D-348).
      * 5 — the three branches are seeded as framework nodes; no table changed, but the version
@@ -76,17 +76,17 @@ final class Schema
      *      (D-426, D-457). *A column is **not in the chain**, which is the whole point: as a
      *      setting, `hide` on a type blanked every field of that type, because an attribute's
      *      chain contains its target node. Measured twice — by experiment on 2026-08-26 and
-     *      again on 2026-08-27.* **Both node and edge, because the owner asked for both**:
-     *      «edge and node both having an attribute `hide`».
+     *      again on 2026-08-27.* **Both node and relation, because the owner asked for both**:
+     *      «relation and node both having an attribute `hide`».
      * 11 — `range_min`, `range_max` and `range_step` become `min`, `max` and `step` (D-466),
      *      on the owner: «shorter, we do not need the range». **16 rows, a rename and nothing
      *      else.** *The new names were free — a collision would have hit the unique key and
      *      failed loudly, which is the good failure.*
-     * 12 — `nodes.hide` goes; `hide` lives on the **edge** alone (D-467). *The owner narrowed
+     * 12 — `nodes.hide` goes; `hide` lives on the **relation** alone (D-467). *The owner narrowed
      *      schema 10 once the access he thought was missing turned out to exist: «then we only
-     *      need it on the edge». **Hiding is about a placement**, and a node-level flag had no
+     *      need it on the relation». **Hiding is about a placement**, and a node-level flag had no
      *      use case behind it — «I do not simply create a model node and then say I will not
-     *      draw it, that would be nonsense».* All 7 values travel to their inheritance edge.
+     *      draw it, that would be nonsense».* All 7 values travel to their inheritance relation.
      * 13 — `records.is_test`, das Kennzeichen für Testdaten (D-028). ⚠️ **Es stand seit dem
      *      22.08. im Konzept und war nie gebaut**: «Testdaten sind gewöhnliche Daten,
      *      gekennzeichnet … kein eigener Testdaten-Speicher und keine dritte Art von Ding».
@@ -281,12 +281,12 @@ final class Schema
      * {@see Shadow::shadowFor()} sie nicht mehr: er liest die beiden Listen nach Stelle.*
      *
      * ⚠️ **Und zwei Spalten nach derselben Regel wie `from_node_id`:** *`record_id` wird
-     * `node_record_id`, `edge_id` wird `relation_id` — ein Fremdschlüssel nennt seine Zieltabelle
+     * `node_record_id`, `relation_id` wird `relation_id` — ein Fremdschlüssel nennt seine Zieltabelle
      * ([D-164](../../../docs/NewConcept/90-decision-log.md)). **Das Wort ist `relation` und nicht
-     * `edge`** ([D-576](../../../docs/NewConcept/90-decision-log.md)); die Frage, die in TASK-014
+     * `relation`** ([D-576](../../../docs/NewConcept/90-decision-log.md)); die Frage, die in TASK-014
      * offen stand, hat diese Entscheidung schon beantwortet.*
      *
-     * ⚠️ **Der Index hiess `edge_id` und musste von Hand fallen**, wie schon bei `from_id`: *eine
+     * ⚠️ **Der Index hiess `relation_id` und musste von Hand fallen**, wie schon bei `from_id`: *eine
      * umbenannte Spalte behält den **Namen** ihres Indexes, und `dbDelta` legte daneben einen
      * zweiten mit dem neuen Namen. Der zusammengesetzte `of_field` folgt der Umbenennung von selbst
      * — sein Name ändert sich nicht.*
@@ -495,7 +495,7 @@ final class Schema
         self::shortenRangeKeys();
         self::moveTestFlagIntoKind();
         self::dropTheOneValueKey();
-        self::moveMultiplicityOntoTheEdge();
+        self::moveMultiplicityOntoTheRelation();
         self::nameTheReferenceSpace();
         self::dropIdentitiesTable();
         self::dropSettingsTable();
@@ -526,7 +526,7 @@ final class Schema
      * `Einheitenwert` «Kiloohm» statt «kΩ».*
      *
      * ⚠️ *Zuletzt im Lauf, wie `identities`: die älteren Schritte darüber lesen die Tabelle noch
-     * (`moveHideOutOfSettings()`, `moveMultiplicityOntoTheEdge()`), und jeder von ihnen prüft mit
+     * (`moveHideOutOfSettings()`, `moveMultiplicityOntoTheRelation()`), und jeder von ihnen prüft mit
      * `SHOW TABLES`, ob es sie gibt. **Eine Installation, die von Fassung 9 kommt, wandert also
      * vollständig, bevor hier gelöscht wird.***
      */
@@ -607,7 +607,7 @@ final class Schema
         $wpdb->query("DROP TABLE {$tabelle}");
     }
 
-    // ⚠️ **Hier stand `moveHideOntoTheEdge()` — Fassung 12 — und der Schritt ist gestrichen**
+    // ⚠️ **Hier stand `moveHideOntoTheRelation()` — Fassung 12 — und der Schritt ist gestrichen**
     // (TASK-018, [D-581](../../../docs/NewConcept/90-decision-log.md)). *Er schob `nodes.hide` auf
     // die Vererbungskante und liess die Spalte dann fallen. **Fassung 28 legt sie wieder an**, also
     // hätte er sie bei jedem Aufstieg aufs Neue entfernt — und zwar **nach** `dbDelta`, das sie
@@ -659,7 +659,7 @@ final class Schema
      * no longer reach each other **by construction** rather than by a rule somebody has to remember.»*
      *
      * ⚠️ **Both tables, because the owner asked for both** ([D-457](../../../docs/NewConcept/90-decision-log.md)):
-     * *«edge and node both having an attribute `hide`»* — a node hides itself, a placement hides what
+     * *«relation and node both having an attribute `hide`»* — a node hides itself, a placement hides what
      * hangs there.
      *
      * ⚠️ **After `dbDelta`, unlike the rename in schema 9** — this one needs the columns to exist before
@@ -1056,14 +1056,14 @@ final class Schema
     }
 
     /**
-     * `relation_records.record_id` heisst `node_record_id`, `edge_id` heisst `relation_id` —
+     * `relation_records.record_id` heisst `node_record_id`, `relation_id` heisst `relation_id` —
      * Fassung 29 (TASK-014).
      *
      * ⚠️ **Ein Fremdschlüssel nennt seine Zieltabelle** ([D-164](../../../docs/NewConcept/90-decision-log.md)),
      * dieselbe Regel, die aus `from_id` `from_node_id` gemacht hat. *Und das Wort ist `relation`,
-     * nicht `edge` ([D-576](../../../docs/NewConcept/90-decision-log.md)).*
+     * nicht `relation` ([D-576](../../../docs/NewConcept/90-decision-log.md)).*
      *
-     * ⚠️ **Der Einzelindex `edge_id` muss von Hand fallen:** *eine umbenannte Spalte behält den
+     * ⚠️ **Der Einzelindex `relation_id` muss von Hand fallen:** *eine umbenannte Spalte behält den
      * **Namen** ihres Indexes, und `dbDelta` legte daneben einen zweiten `relation_id`. Der
      * zusammengesetzte `of_field` behält seinen Namen und folgt der Umbenennung von selbst.*
      */
@@ -1073,7 +1073,7 @@ final class Schema
 
         $umzuege = [
             ['record_id', 'node_record_id'],
-            ['edge_id', 'relation_id'],
+            ['relation_id', 'relation_id'],
         ];
 
         foreach (['relation_records', 'relation_records_history'] as $name) {
@@ -1104,11 +1104,11 @@ final class Schema
                 'SELECT INDEX_NAME FROM information_schema.STATISTICS
                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
                 $table,
-                'edge_id'
+                'relation_id'
             ));
 
             if ($alterIndex !== []) {
-                $wpdb->query("ALTER TABLE {$table} DROP INDEX edge_id");
+                $wpdb->query("ALTER TABLE {$table} DROP INDEX relation_id");
             }
         }
     }
@@ -1120,7 +1120,7 @@ final class Schema
      * hiessen `kind` und meinten drei verschiedene Dinge. Die erste wurde `field_type` (TASK-007),
      * die zweite fällt mit der Kantenart, und diese heisst jetzt, was sie ist.*
      *
-     * ⚠️ *Der Index hiess `kind` und zieht mit — dieselbe Falle wie bei `edge_id`: eine umbenannte
+     * ⚠️ *Der Index hiess `kind` und zieht mit — dieselbe Falle wie bei `relation_id`: eine umbenannte
      * Spalte behält den **Namen** ihres Indexes, und `dbDelta` legte daneben einen zweiten.*
      */
     private static function renameRecordTypeColumn(): void
@@ -1303,7 +1303,7 @@ final class Schema
         $wpdb->query("ALTER TABLE {$table} RENAME INDEX owner_key_path TO owner_key");
     }
 
-    // ⚠️ **Hier stand `backfillInheritanceEdges()` — Fassung 3 — und der Schritt ist gestrichen**
+    // ⚠️ **Hier stand `backfillInheritanceRelations()` — Fassung 3 — und der Schritt ist gestrichen**
     // (TASK-018, [D-581](../../../docs/NewConcept/90-decision-log.md)). *Er legte für jeden Knoten,
     // dessen Pfad einen Vater nennt, die fehlende Vererbungskante an. **Seit Fassung 28 gibt es
     // keine mehr** — er hätte beim nächsten Aufstieg 136 Kanten neu erfunden, die die Wanderung
@@ -1319,7 +1319,7 @@ final class Schema
      * `records.is_test` wird `records.kind` — Schema 15.
      *
      * ⚠️ **Nach `dbDelta`, weil die neue Spalte erst da sein muss, bevor etwas hineingeschrieben
-     * wird** — dieselbe Reihenfolge, die {@see moveHideOntoTheEdge()} braucht. *`dbDelta` kennt kein
+     * wird** — dieselbe Reihenfolge, die {@see moveHideOntoTheRelation()} braucht. *`dbDelta` kennt kein
      * Umbenennen; es fügt hinzu, und dieser Schritt trägt den Inhalt hinüber.*
      *
      * ⚠️ **Und er ist zweimal ausführbar.** *Er läuft nur, solange die alte Spalte da ist, und die
@@ -1397,7 +1397,7 @@ final class Schema
      * Was etwas anderes sagt, behält die Spaltenvorgabe `1..1`, **die ohnehin das war, was eine
      * fehlende Setting-Zeile bedeutete** ([D-434](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private static function moveMultiplicityOntoTheEdge(): void
+    private static function moveMultiplicityOntoTheRelation(): void
     {
         global $wpdb;
 
@@ -1653,7 +1653,7 @@ final class Schema
      * nichts sonst — es gibt keine zweite Spalte, die sich merkt, was hier geschah.*
      *
      * ⚠️ *`parked_by_group_id` bleibt bei den wandernden Kanten **leer**: sie sind nicht geparkt,
-     * sondern abgelöst, und `parkedFieldEdgesOf()` liest genau diese Spalte. Eine Gruppe darauf
+     * sondern abgelöst, und `parkedFieldRelationsOf()` liest genau diese Spalte. Eine Gruppe darauf
      * hätte 136 Geister in die Liste «entfernte Felder» gestellt.*
      *
      * @throws \RuntimeException Wenn die Struktur vorher nicht in Ordnung ist oder nachher nicht
@@ -1684,7 +1684,7 @@ final class Schema
             return;
         }
 
-        $vorher = self::countedShapeFromEdges($kanten, $nodes);
+        $vorher = self::countedShapeFromRelations($kanten, $nodes);
 
         // ⚠️ *Die Wanderung selbst: Zeile für Zeile, weil jede ihren eigenen Vater bekommt. **Das ist
         // nicht das N+1, das `CD-7` verbietet** — das ist ein einmaliger Lauf über ein Modell, das
@@ -1736,9 +1736,9 @@ final class Schema
      * Die fünf Zahlen, aus den **Kanten** gelesen — und der Abbruch, wenn sie keinen Baum ergeben.
      *
      * @param  list<array<string,mixed>> $kanten
-     * @return array{nodes: int, edges: int, roots: int, depths: array<int,int>, siblings: string}
+     * @return array{nodes: int, relations: int, roots: int, depths: array<int,int>, siblings: string}
      */
-    private static function countedShapeFromEdges(array $kanten, string $nodes): array
+    private static function countedShapeFromRelations(array $kanten, string $nodes): array
     {
         global $wpdb;
 
@@ -1761,7 +1761,7 @@ final class Schema
     /**
      * Dieselben fünf Zahlen, aus den **Spalten** gelesen.
      *
-     * @return array{nodes: int, edges: int, roots: int, depths: array<int,int>, siblings: string}
+     * @return array{nodes: int, relations: int, roots: int, depths: array<int,int>, siblings: string}
      */
     private static function countedShapeFromColumns(string $nodes): array
     {
@@ -1792,7 +1792,7 @@ final class Schema
      *
      * @param  list<int>                 $alle
      * @param  array<int, array{int,int}> $vater Kind-Id => [Vater-Id, Stelle].
-     * @return array{nodes: int, edges: int, roots: int, depths: array<int,int>, siblings: string}
+     * @return array{nodes: int, relations: int, roots: int, depths: array<int,int>, siblings: string}
      */
     private static function countedShape(array $alle, array $vater): array
     {
@@ -1842,9 +1842,9 @@ final class Schema
         sort($tripel);
 
         return [
-            'nodes'    => count($alle),
-            'edges'    => count($vater),
-            'roots'    => $wurzeln,
+            'nodes'     => count($alle),
+            'relations' => count($vater),
+            'roots'     => $wurzeln,
             'depths'   => $tiefen,
             'siblings' => md5(implode('|', $tripel)),
         ];
@@ -1974,7 +1974,7 @@ final class Schema
                 KEY record_type (record_type)
             ) {$charset};",
 
-            // Keyed on a path with the last edge repeated in relation_id, so that
+            // Keyed on a path with the last relation repeated in relation_id, so that
             // `WHERE relation_id = ... AND value_decimal > 1000` finds every occurrence
             // regardless of how deep it sits (D-134).
             "CREATE TABLE {$t('relation_records')} (

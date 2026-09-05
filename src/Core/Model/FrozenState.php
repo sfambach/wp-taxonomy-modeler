@@ -25,7 +25,7 @@ use Taxmod\Core\Exception\NotAFrozenState;
  *
  * ⚠️ **One place builds and one place reads, because there were already three dialects and two
  * copies of the reader.** *Measured over 10745 rows: `id=… version=… name=… path=…` for a node,
- * `name=… to=… kind=… parked=…` for an edge, a bare value for a setting and for a promotion, and
+ * `name=… to=… kind=… parked=…` for an relation, a bare value for a setting and for a promotion, and
  * prose for a trash sweep. The `path` was dug out with `strrpos(' path=')` — in
  * {@see \Taxmod\WordPress\Persistence\WpdbChangelog} **and** again in the test double. A format
  * with two readers is a format that will disagree with itself.*
@@ -35,7 +35,7 @@ use Taxmod\Core\Exception\NotAFrozenState;
  * whitespace.** *{@see of()} refuses anything else rather than writing a row that cannot be read
  * back. Measured: **844** existing rows carry a node name with a space in it, so this is not a
  * hypothetical — it is why `name` moved behind `path` in the node state and behind `parked` in the
- * edge state.*
+ * relation state.*
  *
  * ⚠️ **Every row written before this class stays readable and none is rewritten.** *A field list
  * begins with `key=`; anything else is a {@see plainValue()} — measured across all 10745 rows,

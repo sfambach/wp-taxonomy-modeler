@@ -29,7 +29,7 @@ enum SettingKey: string
     /**
      * How often the attribute may occur — one of exactly four values (D-351).
      *
-     * ⚠️ **Edge-only**, and the only key that is: a node describes a thing and a thing has no
+     * ⚠️ **Relation-only**, and the only key that is: a node describes a thing and a thing has no
      * multiplicity. See {@see Multiplicity} for what *narrower* means among the four.
      */
     case Multiplicity = 'multiplicity';
@@ -43,7 +43,7 @@ enum SettingKey: string
     /**
      * ⚠️ **`Hide` was here and is gone since 2026-08-28 — [D-457](../../../docs/NewConcept/90-decision-log.md).**
      *
-     * *It is a **column** on {@see \Taxmod\Core\Model\Identity} now, on a node and on an edge. The
+     * *It is a **column** on {@see \Taxmod\Core\Model\Identity} now, on a node and on an relation. The
      * reason is measured twice: as a **setting** it sat in the resolution chain, and an attribute's chain
      * contains its **target node** — so hiding a **type** blanked **every field of that type**
      * ([OQ-101](../../../docs/NewConcept/91-open-questions.md), and again on 2026-08-27).*
@@ -162,7 +162,7 @@ enum SettingKey: string
      * simple data types, the attribute takes it over and can override it.* That is the ordinary chain
      * ([D-015](../../../docs/NewConcept/90-decision-log.md), [D-032](../../../docs/NewConcept/90-decision-log.md))
      * and needs nothing new. **A type can therefore declare itself a calculation basis once** and
-     * every use of it inherits that, instead of every author remembering it per edge.
+     * every use of it inherits that, instead of every author remembering it per relation.
      *
      * ⚠️ **Why *here* and not on {@see SimpleType}, which is where I first put the same idea and it
      * failed.** As a property of the **type** it made one of twelve types answer *no column at all*,
@@ -193,7 +193,7 @@ enum SettingKey: string
     // ⚠️ **`order` used to be here and is gone** ([D-407](../../../docs/NewConcept/90-decision-log.md)).
     // The owner: *if `order` is not used then remove it.* **It was not used**: nothing in
     // `Taxmod\Core` read it, and the ordering it claimed to hold is the `position` **column** on
-    // `relations` — 84 edges use that, `FormRenderer` sorts by it, and `moveUp`/`moveDown` write it.
+    // `relations` — 84 relations use that, `FormRenderer` sorts by it, and `moveUp`/`moveDown` write it.
     // *Two homes for one fact, and only one of them was ever the truth.*
 
 
@@ -202,13 +202,13 @@ enum SettingKey: string
      *
      * ⚠️ **The asymmetry runs one way** ([50 Persistence](../../../docs/NewConcept/50-wordpress-persistence.md)):
      * everything sayable about a node is also sayable about one use of it, and the reverse is
-     * not true. A node describes a *thing*, an edge describes a *use of a thing* — and a thing
+     * not true. A node describes a *thing*, an relation describes a *use of a thing* — and a thing
      * has no multiplicity, while a use of it does.
      *
      * ⚠️ **This is about where a key applies, not a second mechanism.** Multiplicity still
      * inherits down the chain and is still narrowable: a subtype may tighten `0..1` to `1`.
      */
-    public function isEdgeOnly(): bool
+    public function isRelationOnly(): bool
     {
         return $this === self::Multiplicity;
     }
@@ -342,16 +342,16 @@ enum SettingKey: string
      * an integer has* would be a table to maintain beside the truth, and the two would drift.
      *
      * @param  SimpleType|null $subject The simple type being configured, or null for anything else.
-     * @param  bool            $isEdge  Whether the subject is a use site rather than a node.
+     * @param  bool            $isRelation  Whether the subject is a use site rather than a node.
      * @return list<self>
      */
-    public static function applyingTo(?SimpleType $subject, bool $isEdge = false): array
+    public static function applyingTo(?SimpleType $subject, bool $isRelation = false): array
     {
         $applying = [];
 
         foreach (self::cases() as $key) {
             // ⚠️ A node describes a thing, and a thing has no multiplicity (D-351).
-            if ($key->isEdgeOnly() && ! $isEdge) {
+            if ($key->isRelationOnly() && ! $isRelation) {
                 continue;
             }
 

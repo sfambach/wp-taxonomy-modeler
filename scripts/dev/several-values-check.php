@@ -73,11 +73,11 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $records   = new WpdbRecordRepository();
-$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
+$data      = new DataEntry($records, $relations, $nodes, $framework, new SystemClock());
 
 /** @var list<int> Alles, was dieser Lauf angelegt hat. */
 $meine = [];
@@ -236,14 +236,14 @@ echo "\n== 6. Die Multiplizitaet liegt an der Kante ==\n";
 // Umweg zeigt zugleich, dass die Spalte auch auf dem gewöhnlichen Leseweg ankommt.*
 $kante = null;
 
-foreach ($edges->fieldEdgesOf([(int) $kandidat->from_node_id]) as $eine) {
+foreach ($relations->fieldRelationsOf([(int) $kandidat->from_node_id]) as $eine) {
     if ($eine->id === (int) $kandidat->id) {
         $kante = $eine;
     }
 }
 
 if ($kante === null) {
-    check('die Kante ueber den gewoehnlichen Leseweg gefunden', false, 'fieldEdgesOf kennt sie nicht');
+    check('die Kante ueber den gewoehnlichen Leseweg gefunden', false, 'fieldRelationsOf kennt sie nicht');
 
     echo "\n$bad fehlgeschlagen, $ok in Ordnung\n";
 

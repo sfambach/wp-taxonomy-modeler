@@ -8,7 +8,7 @@ use Taxmod\Core\Model\SettingKey;
  * A setting written where it has nothing to say.
  *
  * ⚠️ **The asymmetry runs one way.** Everything sayable about a node is also sayable about one
- * use of it; the reverse is not true. A node describes a *thing*, an edge describes a *use of a
+ * use of it; the reverse is not true. A node describes a *thing*, an relation describes a *use of a
  * thing* — so a thing has no multiplicity while a use of it does.
  *
  * ⚠️ **Refused in the core, not merely hidden in the screen.** A key that cannot be reached

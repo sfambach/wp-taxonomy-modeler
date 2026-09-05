@@ -56,13 +56,13 @@ Schema::install();
 update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $framework, $log);
-$data   = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
+$editor = new ModelEditor($nodes, $relations, $framework, $log);
+$data   = new DataEntry(new WpdbRecordRepository(), $relations, $nodes, $framework, new SystemClock());
 
 $part = $editor->createNode('__p6 Part', $framework->rootOf(Branch::Model)->id);
 $text = $editor->createNode('__p6 Text', $framework->rootOf(Branch::DataTypes)->id);
@@ -95,7 +95,7 @@ $data->put($record->id, $description->id, TypedValue::ofText('__p6 a resistor'))
 $values = $data->valuesOf($record->id);
 check('one value', count($values) === 1, (string) count($values));
 check('with the text', $values[0]->value->text === '__p6 a resistor');
-check('the last edge sits beside the path (D-134)', $values[0]->edgeId === $description->id && $values[0]->path === (string) $description->id);
+check('the last relation sits beside the path (D-134)', $values[0]->relationId === $description->id && $values[0]->path === (string) $description->id);
 
 echo "\n== 3. Typed columns, not one stringly value ==\n";
 $data->put($record->id, $unit->id, TypedValue::ofReference($gram->id));
@@ -149,7 +149,7 @@ $data->put($child->id, $description->id, TypedValue::ofText('__p6 inherited'));
 $geerbt = null;
 
 foreach ($data->valuesOf($child->id) as $wert) {
-    if ($wert->edgeId === $description->id) {
+    if ($wert->relationId === $description->id) {
         $geerbt = $wert->value->text;
     }
 }
@@ -190,7 +190,7 @@ foreach ([$part->id, $resistor->id, $text->id, $gram->id, $line->id, $supplier->
 }
 foreach ([$part->id, $text->id, $gram->id, $line->id, $supplier->id] as $scratch) {
     $node = $nodes->find($scratch);
-    if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }
+    if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
 $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p6%"');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p6%"');

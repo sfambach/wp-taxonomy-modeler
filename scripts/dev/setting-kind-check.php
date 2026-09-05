@@ -68,7 +68,7 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodesTable = Schema::table('nodes');
-$edgesTable = Schema::table('relations');
+$relationsTable = Schema::table('relations');
 
 echo "\n== 1. Der Ast ist auffindbar ==\n";
 
@@ -109,11 +109,11 @@ foreach ($rows as $row) {
     // haelt. Zaehlt nicht als Fehler, wird aber genannt.
     if (substr_count((string) $row['path'], '.') + 1 === $depth) {
         $incoming = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$edgesTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
+            "SELECT COUNT(*) FROM {$relationsTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
             $id
         ));
         $outgoing = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$edgesTable} WHERE from_node_id = %d",
+            "SELECT COUNT(*) FROM {$relationsTable} WHERE from_node_id = %d",
             $id
         ));
 

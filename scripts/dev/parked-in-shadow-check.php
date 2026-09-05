@@ -88,12 +88,12 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $records   = new WpdbRecordRepository();
-$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
+$data      = new DataEntry($records, $relations, $nodes, $framework, new SystemClock());
 
 /** @var array{knoten: list<int>, saetze: list<int>} Alles, was dieser Lauf angelegt hat. */
 $meines = ['knoten' => [], 'saetze' => []];
@@ -233,8 +233,8 @@ check(
 
 echo "\n4 · Sie ist als geparkt lesbar, aber nicht als lebend\n";
 
-$geparkte = array_map(static fn ($e): int => $e->id, $edges->parkedFieldEdgesOf([$eigner->id]));
-$lebende  = array_map(static fn ($e): int => $e->id, $edges->fieldEdgesOf([$eigner->id]));
+$geparkte = array_map(static fn ($e): int => $e->id, $relations->parkedFieldRelationsOf([$eigner->id]));
+$lebende  = array_map(static fn ($e): int => $e->id, $relations->fieldRelationsOf([$eigner->id]));
 
 check('die geparkte Liste kennt sie', in_array($kante->id, $geparkte, true));
 check('die lebende Liste kennt sie nicht', ! in_array($kante->id, $lebende, true));
@@ -268,8 +268,8 @@ check('mit ihrem Inhalt', in_array('haengt an der Kante', $texte, true), implode
 
 echo "\n6 · Und sie gilt nicht mehr als geparkt\n";
 
-$geparkteDanach = array_map(static fn ($e): int => $e->id, $edges->parkedFieldEdgesOf([$eigner->id]));
-$lebendeDanach  = array_map(static fn ($e): int => $e->id, $edges->fieldEdgesOf([$eigner->id]));
+$geparkteDanach = array_map(static fn ($e): int => $e->id, $relations->parkedFieldRelationsOf([$eigner->id]));
+$lebendeDanach  = array_map(static fn ($e): int => $e->id, $relations->fieldRelationsOf([$eigner->id]));
 
 check('die geparkte Liste kennt sie nicht mehr', ! in_array($kante->id, $geparkteDanach, true));
 check('die lebende Liste kennt sie wieder', in_array($kante->id, $lebendeDanach, true));

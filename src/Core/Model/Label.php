@@ -15,8 +15,8 @@ namespace Taxmod\Core\Model;
 final class Label
 {
     /**
-     * @param int    $ownerId A node **or** an edge — labels hang on an identity (C8).
-     * @param string $path    Which thing inside that owner, as a path of edge ids. Empty for
+     * @param int    $ownerId A node **or** an relation — labels hang on an identity (C8).
+     * @param string $path    Which thing inside that owner, as a path of relation ids. Empty for
      *                        the owner itself; used to reach one validator of several (D-158).
      * @param int    $roleId  A role **node** (D-151), not a constant.
      * @param string $number  A plural category — `one`, `other`, and where a language needs

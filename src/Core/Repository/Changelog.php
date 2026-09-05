@@ -20,7 +20,7 @@ interface Changelog
      *
      * ⚠️ **The owner asked for this and the column was already there and grouping nothing**
      * ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)): *I think
-     * we need a unique change number — whatever was changed in one change, edge, node, setting, if
+     * we need a unique change number — whatever was changed in one change, relation, node, setting, if
      * they were changed together they should have one change number.* **Measured before the bracket:
      * 2282 rows across 1945 groups, 1609 of them holding a single row, and 0 of 1945 spanning more
      * than one kind of owner.** *A group id was handed out per **write** rather than per change.*

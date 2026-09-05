@@ -231,6 +231,6 @@ final class RendererTest extends TestCase
         $both = $first->followedBy($second);
 
         self::assertSame('<b>40</b><span class="rings"></span>', $both->markup);
-        self::assertSame([7, 9], $both->usedEdges);
+        self::assertSame([7, 9], $both->usedRelations);
     }
 }

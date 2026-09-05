@@ -54,11 +54,11 @@ use Taxmod\WordPress\SystemClock;
 global $wpdb;
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $records   = new WpdbRecordRepository();
-$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
+$data      = new DataEntry($records, $relations, $nodes, $framework, new SystemClock());
 
 /** Die zwei Kanten, ohne die nichts geht. */
 $rendererFeld = (int) $wpdb->get_var(

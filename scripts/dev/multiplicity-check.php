@@ -80,9 +80,9 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 
 /**
  * ⚠️ *Fest hingeschrieben und nicht aus der Tabelle gesucht — dieselbe Lehre wie beim Renderer:
@@ -122,7 +122,7 @@ foreach ($erwartet as [$vonName, $feldName, $soll]) {
 
     $kante = null;
 
-    foreach ($edges->fieldEdgesOf([...$von->ancestorIds(), $von->id]) as $eine) {
+    foreach ($relations->fieldRelationsOf([...$von->ancestorIds(), $von->id]) as $eine) {
         if ($eine->name === $feldName) {
             $kante = $eine;
         }
@@ -184,7 +184,7 @@ if ($ausTabelle === []) {
             (int) $z['owner_id']
         ));
 
-        foreach ($edges->fieldEdgesOf([$von]) as $eine) {
+        foreach ($relations->fieldRelationsOf([$von]) as $eine) {
             if ($eine->id === (int) $z['owner_id']) {
                 $kante = $eine;
             }
@@ -221,7 +221,7 @@ $rendering = new Rendering(
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework),
     ShippedConverters::registry(),
-    model: new ModelValues(new WpdbRecordRepository(), $edges, $nodes, $framework)
+    model: new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework)
 );
 
 if ($gefunden !== []) {
@@ -246,7 +246,7 @@ if ($gefunden !== []) {
 echo "\n== Und «wie oft» beim Renderer: genau einmal, und das sagt die Spalte ==\n";
 
 // WICHTIG: Hier stand die Einstellungskante `renderer` an der Wurzel mit «1..*», gesucht ueber
-// `settingEdgeId(SettingKey::Renderer)` -- und beides ist weg. Das ist eine sichtbare Aenderung
+// `settingRelationId(SettingKey::Renderer)` -- und beides ist weg. Das ist eine sichtbare Aenderung
 // dieser Zusage (PR-9), und sie hat zwei Gruende, keinen davon technisch:
 //
 // ⚠️ **Erstens hat D-584 die Vielzahl abgeschafft.** *Sein Wort: «eine Kante und ein Knoten haben
@@ -264,8 +264,8 @@ echo "\n== Und «wie oft» beim Renderer: genau einmal, und das sagt die Spalte 
 // Ablage. Geprueft wird, dass diese Form haelt -- kein Zeiger ins Leere.
 check(
     'die alte Traegerkante ist nicht mehr aufgeschrieben',
-    $framework->settingEdgeId(SettingKey::Renderer) === 0,
-    (string) $framework->settingEdgeId(SettingKey::Renderer)
+    $framework->settingRelationId(SettingKey::Renderer) === 0,
+    (string) $framework->settingRelationId(SettingKey::Renderer)
 );
 
 $mitSpalte = (int) $wpdb->get_var(
@@ -308,7 +308,7 @@ if ($verwalter === []) {
         throw new RuntimeException('__weitergeleitet__' . (string) $ziel);
     }, 10, 1);
 
-    $editor = new ModelEditor($nodes, $edges, $framework, $log);
+    $editor = new ModelEditor($nodes, $relations, $framework, $log);
     // ⚠️ *Ein eigener Typknoten und nicht die Wurzel des Astes — die steht für den Ast selbst und
     // nicht für ein Ding darin, und der Kern verweigert sie zu Recht.*
     $text   = $editor->createNode('__wieoft Text', $framework->rootOf(Branch::DataTypes)->id);

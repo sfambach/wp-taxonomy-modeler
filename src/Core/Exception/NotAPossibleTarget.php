@@ -5,7 +5,7 @@ namespace Taxmod\Core\Exception;
 /**
  * A node that cannot stand at the far end of an attribute.
  *
- * ⚠️ **The kind of an edge is read off the target's branch and never chosen** (D-161). A target
+ * ⚠️ **The kind of an relation is read off the target's branch and never chosen** (D-161). A target
  * that sits in no branch therefore has no kind to read, and there is nothing sensible to fall
  * back on — inventing one is precisely how a supplier ends up *composed* into an order, which
  * is the error the branch rule exists to prevent.
@@ -29,15 +29,15 @@ final class NotAPossibleTarget extends DomainError
     }
 
     /**
-     * ⚠️ An inherited attribute belongs to an ancestor. Writing to its edge would change it for
+     * ⚠️ An inherited attribute belongs to an ancestor. Writing to its relation would change it for
      * every sibling too, and where a subtype's own narrowing would hang is not decided
      * ([OQ-086](../../../docs/NewConcept/91-open-questions.md)).
      */
-    public static function notAnOwnField(int $edgeId): self
+    public static function notAnOwnField(int $relationId): self
     {
         return new self(sprintf(
             'Field %d is not one this node owns — an inherited field is changed where it is declared.',
-            $edgeId
+            $relationId
         ));
     }
 

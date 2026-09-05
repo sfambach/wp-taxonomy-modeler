@@ -70,15 +70,15 @@ function check(string $what, bool $ok, string $detail = ''): void
 
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $labelRows = new WpdbLabelRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 
 // ⚠️ *Das Record-Repository geht mit hinein — hier stand ein `$rows`, das es nie gab, und damit nahm
 // der Akt in diesem Lauf die Datensaetze **nicht** mit.*
 $rows = new WpdbRecordRepository();
 
-$editor = new ModelEditor($nodes, $edges, $framework, $log, $labelRows, $rows);
+$editor = new ModelEditor($nodes, $relations, $framework, $log, $labelRows, $rows);
 
 global $wpdb;
 
@@ -103,7 +103,7 @@ echo "\n== something to throw away ==\n";
 $root  = $framework->rootOf(Branch::Compositions);
 $doomed = $editor->createNode('__ct doomed', $root->id);
 $target = $editor->createNode('__ct target', $root->id);
-$edge   = $editor->addField($doomed->id, $target->id, 'feld');
+$relation   = $editor->addField($doomed->id, $target->id, 'feld');
 
 // ⚠️ *Hier bekam der Knoten eine Zeile in der `settings`-Tabelle, damit sich zeigen laesst, dass sie
 // mit ihm verschwindet. **Die Tabelle ist mit D-579 gestrichen**; was mitgeht, sind Labels, Kanten
@@ -124,11 +124,11 @@ $labelRows->put(new Label($doomed->id, '', $roleId, '', 'de_DE', 'Weg damit'));
 // ⚠️ *Ein eigener Datensatz, damit die Zusage «its records went with it» etwas zu pruefen hat —
 // [C102](../../docs/NewConcept/10-domain-core.md): einen Datensatz ohne seinen Knoten darf es nicht
 // geben.*
-$data = new DataEntry($rows, $edges, $nodes, $framework, new SystemClock());
+$data = new DataEntry($rows, $relations, $nodes, $framework, new SystemClock());
 
 $data->create($doomed->id);
 
-$owners = [$doomed->id, $edge->id];
+$owners = [$doomed->id, $relation->id];
 
 // ⚠️ **Was schon im Papierkorb liegt, gehoert nicht dem Waechter — und wird von ihm nicht angefasst.**
 // *Gemessener Schaden (TASK-039): der Eigentuemer hatte `DisplayOption` (44089) geparkt; der naechste
@@ -164,7 +164,7 @@ echo "\n== clearing it ==\n";
 // Eigentuemer geparkt hat, steht nicht darin und bleibt liegen.*
 $gone = $editor->clearTrash([$doomed->id]);
 
-printf("  %d Knoten, %d Kanten, %d Labels\n", $gone['nodes'], $gone['edges'], $gone['labels']);
+printf("  %d Knoten, %d Kanten, %d Labels\n", $gone['nodes'], $gone['relations'], $gone['labels']);
 
 // ⚠️ **Geaenderte Zusage (`PR-9`).** *Hier stand «the trash is empty». Das war die Zusage, die den
 // Schaden festschrieb: sie ist nur wahr, wenn der Waechter auch fremdes Geparktes mitnimmt. Was
@@ -179,7 +179,7 @@ check('vom Waechter bleibt nichts im Papierkorb', $reste === [], (string) count(
 check('nur der eigene Knoten wurde geraeumt', $gone['nodes'] === 1, (string) $gone['nodes']);
 check('the node is gone', $nodes->find($doomed->id) === null);
 check('its labels went with it', rowsFor('labels', $owners) === 0, (string) rowsFor('labels', $owners));
-check('its edges went with it', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relations WHERE id = {$edge->id}") === 0);
+check('its relations went with it', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relations WHERE id = {$relation->id}") === 0);
 check(
     'its records went with it',
     (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE node_id = {$doomed->id}") === 0
@@ -217,7 +217,7 @@ check(
 );
 
 // ⚠️ **The counter-check that gives the whole file its meaning**: the attribute's **target** was never
-// parked, so it must still be there. *Without this, a purge that followed edges outward would pass
+// parked, so it must still be there. *Without this, a purge that followed relations outward would pass
 // every assertion above and quietly delete half the model.*
 check('a living node the rubbish pointed at is untouched', $nodes->find($target->id) !== null);
 

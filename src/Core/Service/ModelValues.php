@@ -62,9 +62,9 @@ final class ModelValues
 
     private const VALUE_NODE = 'Renderer';
 
-    private ?int $rendererEdge = null;
+    private ?int $rendererRelation = null;
 
-    private ?int $renderEdge = null;
+    private ?int $renderRelation = null;
 
     private bool $gesucht = false;
 
@@ -95,11 +95,11 @@ final class ModelValues
      * und dort kein {@see ModelValues} gesetzt sein muss — **eine Fassung der Regel und nicht zwei**
      * (`CD`).*
      */
-    public static function inheritanceBlocked(Relation $edge, int $heirId): bool
+    public static function inheritanceBlocked(Relation $relation, int $heirId): bool
     {
-        return $edge->isSetting()
-            && $edge->toNodeId === $heirId
-            && $edge->fromNodeId !== $heirId;
+        return $relation->isSetting()
+            && $relation->toNodeId === $heirId
+            && $relation->fromNodeId !== $heirId;
     }
 
     /**
@@ -168,7 +168,7 @@ final class ModelValues
      * gefragten Knotens.
      *
      * ⚠️ *Gelesen wird mit `$subject` und nicht mit dem Träger: die Einstellungskante ist am Vorfahren
-     * erklärt, der Wert kann am Nachfahren liegen, und umgekehrt. {@see self::settingEdge()} kennt für
+     * erklärt, der Wert kann am Nachfahren liegen, und umgekehrt. {@see self::settingRelation()} kennt für
      * `$subject` die ganze Kette und findet beides.*
      *
      * @return array<string,ResolvedSetting>
@@ -273,13 +273,13 @@ final class ModelValues
         // ([D-511](../../../docs/NewConcept/90-decision-log.md)). {@see self::rendererNameAt()} steigt
         // dort hinein — je Glied der Kette einmal. **Gemessen, was das kostet: 31 Abfragen für 7
         // Felder und 59 für 14**, also linear, weil jeder Vorfahr seinen eigenen Teil hat.*
-        $this->findEdges();
+        $this->findRelations();
 
         $teile = [];
 
         foreach ($fehlend as $satzId) {
             foreach ($this->wertGedaechtnis[$satzId] ?? [] as $wert) {
-                if ($wert->edgeId === $this->rendererEdge
+                if ($wert->relationId === $this->rendererRelation
                     && $wert->value->reference !== null
                     && ! isset($this->wertGedaechtnis[$wert->value->reference])
                 ) {
@@ -316,7 +316,7 @@ final class ModelValues
      * Einstellungskanten heissen `read_only`, `with_label`, `label_role`, `orientation` — genau wie
      * {@see SettingKey}. *Der Name ist hier **die Angabe selbst** und nicht eine Beschriftung; ihn
      * umzubenennen heisst, eine andere Angabe zu meinen. Dieselbe Unterscheidung, die
-     * {@see self::findEdges()} für die zwei Renderer-Kanten trifft.*
+     * {@see self::findRelations()} für die zwei Renderer-Kanten trifft.*
      *
      * ⚠️ **Die Trägerkante bleibt aussen vor.** *Ihr Wert ist ein Verweis auf einen **Teil** und nicht
      * auf einen Knoten; {@see self::rendererNameAt()} steigt dort hinein. Sie hier auch auszugeben,
@@ -343,7 +343,7 @@ final class ModelValues
             return [];
         }
 
-        $this->findEdges();
+        $this->findRelations();
 
         $aus    = [];
         $anfang = $vorlauf === [] ? '' : implode('.', $vorlauf) . '.';
@@ -352,15 +352,15 @@ final class ModelValues
             foreach ($this->valuesOf($recordId) as $wert) {
                 // ⚠️ *Genau diese Adresse und keine tiefere: ein Pfad, der weitergeht, liegt in einem
                 // Teil, und dessen Werte gehören der Kante des Teils, nicht dieser hier.*
-                if ($wert->path !== $anfang . $wert->edgeId || $wert->value->isNothing()) {
+                if ($wert->path !== $anfang . $wert->relationId || $wert->value->isNothing()) {
                     continue;
                 }
 
-                if ($wert->edgeId === $this->rendererEdge) {
+                if ($wert->relationId === $this->rendererRelation) {
                     continue;
                 }
 
-                $kante = $this->settingEdge($subject, $wert->edgeId);
+                $kante = $this->settingRelation($subject, $wert->relationId);
 
                 if ($kante === null || isset($aus[$kante->name])) {
                     continue;
@@ -390,7 +390,7 @@ final class ModelValues
      * an `Root` und sein Wert an `Integer`. Ohne die Vorfahren wäre die Kante nicht zu finden; eine
      * Abfrage je Wert wäre das N+1, das `package7-check.php` misst.*
      */
-    private function settingEdge(Node|Relation $subject, int $edgeId): ?Relation
+    private function settingRelation(Node|Relation $subject, int $relationId): ?Relation
     {
         // ⚠️ **Auch die Vorfahren, und bei einer Verwendungsstelle habe ich das im ersten Zug
         // vergessen.** *`read_only` ist an `Root` erklärt und sein Wert steht am Knoten — ohne die
@@ -401,7 +401,7 @@ final class ModelValues
         $this->kantenVorladen($kette);
 
         foreach ($kette as $besitzer) {
-            $kante = $this->kantenNachBesitzer[$besitzer][$edgeId] ?? null;
+            $kante = $this->kantenNachBesitzer[$besitzer][$relationId] ?? null;
 
             if ($kante !== null) {
                 return $kante->isSetting() ? $kante : null;
@@ -458,7 +458,7 @@ final class ModelValues
             $this->kantenNachBesitzer[$id] = [];
         }
 
-        foreach ($this->relations->fieldEdgesOf($offen) as $eine) {
+        foreach ($this->relations->fieldRelationsOf($offen) as $eine) {
             $this->kantenNachBesitzer[$eine->fromNodeId][$eine->id] = $eine;
         }
     }
@@ -547,24 +547,24 @@ final class ModelValues
      *
      * @return array<string,ResolvedSetting>
      */
-    public function forUseSite(Relation $edge): array
+    public function forUseSite(Relation $relation): array
     {
-        $aus = $this->settingsAt($edge, $this->recordsOf($edge->fromNodeId), $edge->id, [$edge->id]);
+        $aus = $this->settingsAt($relation, $this->recordsOf($relation->fromNodeId), $relation->id, [$relation->id]);
 
         // ⚠️ **Auch hier zuerst die Spalte** ([D-586](../../../docs/NewConcept/90-decision-log.md)):
         // *`relations.settings_record_id` trägt den eigenen Renderer der Kante. Der zweistufige Pfad
         // am Datensatz des Besitzers bleibt als Rückfall.*
-        $name = $this->rendererNameOfEdge($edge->id)
-            ?? $this->rendererNameAt($this->recordsOf($edge->fromNodeId), [$edge->id]);
+        $name = $this->rendererNameOfRelation($relation->id)
+            ?? $this->rendererNameAt($this->recordsOf($relation->fromNodeId), [$relation->id]);
 
         if ($name !== null) {
-            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $edge->id, true);
+            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $relation->id, true);
         }
 
         // ⚠️ **Stufe 2 und 3 der Kette** ([D-602](../../../docs/NewConcept/90-decision-log.md)): *was
         // die Kante nicht selbst sagt, sagt der **Zielknoten**, und was der nicht sagt, seine
         // Vorfahren. Vom Standpunkt der Kante ist beides geerbt — deshalb `false`.*
-        $ziel = $this->knoten($edge->toNodeId);
+        $ziel = $this->knoten($relation->toNodeId);
 
         if ($ziel === null) {
             return $aus;
@@ -635,13 +635,13 @@ final class ModelValues
     }
 
     /** Dasselbe an einer Kante ([D-586](../../../docs/NewConcept/90-decision-log.md)). */
-    private function rendererNameOfEdge(int $edgeId): ?string
+    private function rendererNameOfRelation(int $relationId): ?string
     {
-        if (! array_key_exists($edgeId, $this->spalteAnDerKante)) {
-            $this->spalteAnDerKante[$edgeId] = $this->relations->settingsRecordIdsOfEdges([$edgeId])[$edgeId]['own'] ?? 0;
+        if (! array_key_exists($relationId, $this->spalteAnDerKante)) {
+            $this->spalteAnDerKante[$relationId] = $this->relations->settingsRecordIdsOfRelations([$relationId])[$relationId]['own'] ?? 0;
         }
 
-        return $this->rendererNameOfRecord($this->spalteAnDerKante[$edgeId]);
+        return $this->rendererNameOfRecord($this->spalteAnDerKante[$relationId]);
     }
 
     /**
@@ -666,13 +666,13 @@ final class ModelValues
      */
     private function rendererNameAt(array $recordIds, array $vorlauf): ?string
     {
-        $this->findEdges();
+        $this->findRelations();
 
-        if ($this->rendererEdge === null || $this->renderEdge === null || $recordIds === []) {
+        if ($this->rendererRelation === null || $this->renderRelation === null || $recordIds === []) {
             return null;
         }
 
-        $pfad = implode('.', [...$vorlauf, $this->rendererEdge]);
+        $pfad = implode('.', [...$vorlauf, $this->rendererRelation]);
 
         foreach ($recordIds as $recordId) {
             foreach ($this->valuesOf($recordId) as $wert) {
@@ -683,7 +683,7 @@ final class ModelValues
                 // ⚠️ *Eine Stufe tiefer: der Teil trägt das Feld `render`, und dessen Verweis ist ein
                 // **Knoten** unter `Renderer` — sein Name ist der Renderer ([D-511](../../../docs/NewConcept/90-decision-log.md)).*
                 foreach ($this->valuesOf($wert->value->reference) as $imTeil) {
-                    if ($imTeil->edgeId !== $this->renderEdge || $imTeil->value->reference === null) {
+                    if ($imTeil->relationId !== $this->renderRelation || $imTeil->value->reference === null) {
                         continue;
                     }
 
@@ -711,9 +711,9 @@ final class ModelValues
      * `settings.path` schon benutzte: 20 Exponenten lagen dort unter der Id des Feldes
      * `Prefixes.exponent`.*
      */
-    public function defaultFor(Node $node, Relation $edge): ?TypedValue
+    public function defaultFor(Node $node, Relation $relation): ?TypedValue
     {
-        $pfad = (string) $edge->id;
+        $pfad = (string) $relation->id;
 
         // ⚠️ *Auch hier über das Gedächtnis: `nonPersistentValue()` wird je Feld gefragt, und ohne
         // das wäre es dasselbe N+1, das `package7-check.php` eben gemeldet hat.*
@@ -742,7 +742,7 @@ final class ModelValues
      */
     private array $satzGedaechtnis = [];
 
-    /** @var array<int,list<\Taxmod\Core\Model\EdgeRecord>> Datensatz-Id => seine Wertzeilen */
+    /** @var array<int,list<\Taxmod\Core\Model\RelationRecord>> Datensatz-Id => seine Wertzeilen */
     private array $wertGedaechtnis = [];
 
     /** Die Datensätze eines Knotens — einmal geholt. @return list<\Taxmod\Core\Model\NodeRecord> */
@@ -763,7 +763,7 @@ final class ModelValues
         return $ids;
     }
 
-    /** @return list<\Taxmod\Core\Model\EdgeRecord> */
+    /** @return list<\Taxmod\Core\Model\RelationRecord> */
     private function valuesOf(int $recordId): array
     {
         return $this->wertGedaechtnis[$recordId] ??= $this->records->valuesOf($recordId);
@@ -782,7 +782,7 @@ final class ModelValues
      * Fehlt eine der beiden Kanten, antwortet diese Klasse «nichts» und der alte Weg trägt weiter —
      * **kein Absturz, solange der Umzug läuft**.*
      */
-    private function findEdges(): void
+    private function findRelations(): void
     {
         if ($this->gesucht) {
             return;
@@ -792,18 +792,18 @@ final class ModelValues
 
         // ⚠️ **Zuerst die aufgeschriebenen Ids** ([D-543](../../../docs/NewConcept/90-decision-log.md)).
         // *Stehen sie da, wird kein Name mehr angesehen, und Umbenennen ist frei.*
-        $aussen = $this->framework->settingEdgeId(SettingKey::Renderer);
-        $innen  = $this->framework->settingValueEdgeId(SettingKey::Renderer);
+        $aussen = $this->framework->settingRelationId(SettingKey::Renderer);
+        $innen  = $this->framework->settingValueRelationId(SettingKey::Renderer);
 
         if ($aussen !== 0 && $innen !== 0) {
-            $this->rendererEdge = $aussen;
-            $this->renderEdge   = $innen;
+            $this->rendererRelation = $aussen;
+            $this->renderRelation   = $innen;
 
             return;
         }
 
         $wurzel = $this->framework->root();
-        $kanten = $this->relations->fieldEdgesOf([$wurzel->id]);
+        $kanten = $this->relations->fieldRelationsOf([$wurzel->id]);
 
         // ⚠️ **Der Notnagel, und er läuft genau einmal** — dieselbe Form wie
         // {@see \Taxmod\Core\Repository\TypeNodes::remember()}. *Danach steht die Id da und dieser
@@ -823,7 +823,7 @@ final class ModelValues
             return;
         }
 
-        [$this->rendererEdge, $ziel] = $traeger;
+        [$this->rendererRelation, $ziel] = $traeger;
 
         $tragender = $this->nodes->find($ziel);
 
@@ -832,19 +832,19 @@ final class ModelValues
         }
 
         $innen = $this->carrierAmong(
-            $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($tragender)),
+            $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($tragender)),
             self::VALUE_NODE
         );
 
         if ($innen !== null) {
-            $this->renderEdge = $innen[0];
+            $this->renderRelation = $innen[0];
         }
 
-        if ($this->rendererEdge !== null && $this->renderEdge !== null) {
-            $this->framework->rememberSettingEdges(
+        if ($this->rendererRelation !== null && $this->renderRelation !== null) {
+            $this->framework->rememberSettingRelations(
                 SettingKey::Renderer,
-                $this->rendererEdge,
-                $this->renderEdge
+                $this->rendererRelation,
+                $this->renderRelation
             );
         }
     }

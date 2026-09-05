@@ -87,9 +87,9 @@ set_exception_handler(static function (\Throwable $fehler): void {
 });
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 
 echo "\n== 1. Die drei Zahlen sind eine Zahl ==\n";

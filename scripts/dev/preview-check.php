@@ -155,7 +155,7 @@ if ($dataType > 0) {
 
 echo "\n== hide removes a row from the preview and says which ==\n";
 
-$edge = $wpdb->get_row(
+$relation = $wpdb->get_row(
     // ⚠️ *Und hier ebenso: eine Kante, die die Vorschau wirklich zeichnet — keine Einstellung.*
     $wpdb->prepare(
         "SELECT id, name FROM {$prefix}relations
@@ -165,11 +165,11 @@ $edge = $wpdb->get_row(
     ARRAY_A
 );
 
-if ($edge === null) {
+if ($relation === null) {
     echo "  --   no named attribute on that model; the flag half is not exercised\n";
 } else {
-    $edgeId = (int) $edge['id'];
-    $name   = (string) $edge['name'];
+    $relationId = (int) $relation['id'];
+    $name   = (string) $relation['name'];
 
     // ── Wo `read_only` heute wirklich liegt ──────────────────────────────────────────────────────
     //
@@ -181,7 +181,7 @@ if ($edge === null) {
     //
     // ⚠️ *Die Adresse einer Angabe an einer **Verwendungsstelle** ist `<Stelle>.<Einstellung>` im
     // `default`-Satz des Besitzers — dieselbe Form, die der Renderer schon benutzt.*
-    $readOnlyEdge = (int) $wpdb->get_var(
+    $readOnlyRelation = (int) $wpdb->get_var(
         "SELECT id FROM {$prefix}relations WHERE BINARY name = 'read_only' AND kind = 'setting' ORDER BY id LIMIT 1"
     );
 
@@ -190,18 +190,18 @@ if ($edge === null) {
         $model
     ));
 
-    check('die read_only-Kante steht im Modell', $readOnlyEdge > 0, (string) $readOnlyEdge);
+    check('die read_only-Kante steht im Modell', $readOnlyRelation > 0, (string) $readOnlyRelation);
     check('und das Modell hat einen default-Satz', $ownerRecord > 0, (string) $ownerRecord);
 
     /**
-     * Puts one flag on the edge, or clears both.
+     * Puts one flag on the relation, or clears both.
      *
      * ⚠️ **Two homes since 2026-08-28, and that is the decision** ([D-457]): `hide` is a **column**
      * on `relations`, `read_only` stays a setting ([D-461]) — *und eine Einstellung ist seit
      * [D-529](../../docs/NewConcept/90-decision-log.md) eine **Kante mit einem Wert im Datensatz**.*
      */
-    $flag = static function (?string $key) use ($wpdb, $prefix, $edgeId, $readOnlyEdge, $ownerRecord): void {
-        $pfad = $edgeId . '.' . $readOnlyEdge;
+    $flag = static function (?string $key) use ($wpdb, $prefix, $relationId, $readOnlyRelation, $ownerRecord): void {
+        $pfad = $relationId . '.' . $readOnlyRelation;
 
         $wpdb->query($wpdb->prepare(
             "DELETE FROM {$prefix}relation_records WHERE node_record_id = %d AND path = %s",
@@ -210,13 +210,13 @@ if ($edge === null) {
         ));
         $wpdb->query($wpdb->prepare(
             "UPDATE {$prefix}relations SET hide = 0 WHERE id = %d",
-            $edgeId
+            $relationId
         ));
 
         if ($key === 'hide') {
             $wpdb->query($wpdb->prepare(
                 "UPDATE {$prefix}relations SET hide = 1 WHERE id = %d",
-                $edgeId
+                $relationId
             ));
 
             return;
@@ -227,7 +227,7 @@ if ($edge === null) {
                 "INSERT INTO {$prefix}relation_records (node_record_id, relation_id, path, locale, value_int, position, version)
                  VALUES (%d, %d, %s, '', 1, 0, 1)",
                 $ownerRecord,
-                $readOnlyEdge,
+                $readOnlyRelation,
                 $pfad
             ));
         }

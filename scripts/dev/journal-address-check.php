@@ -94,11 +94,11 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $changelog = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $changelog);
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, $changelog);
 $framework->seed();
 
-$editor   = new ModelEditor($nodes, $edges, $framework, $changelog);
+$editor   = new ModelEditor($nodes, $relations, $framework, $changelog);
 $labels   = new Labels(new WpdbLabelRepository(), $framework, $changelog, $nodes);
 
 $journal = Schema::table('changelog');

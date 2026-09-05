@@ -64,9 +64,9 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 
 $gefallen  = 0;

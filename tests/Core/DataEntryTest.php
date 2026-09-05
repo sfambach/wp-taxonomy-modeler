@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
@@ -27,7 +27,7 @@ use Taxmod\Tests\Core\Fake\RecordedChanges;
 final class DataEntryTest extends TestCase
 {
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private InMemoryRecords $records;
     private ModelEditor $editor;
     private DataEntry $data;
@@ -43,8 +43,8 @@ final class DataEntryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->edges   = new InMemoryRelations();
-        $this->nodes   = new InMemoryNodes($this->edges);
+        $this->relations   = new InMemoryRelations();
+        $this->nodes   = new InMemoryNodes($this->relations);
         $this->records = new InMemoryRecords();
         $identities    = new CountingIdentities();
 
@@ -80,13 +80,13 @@ final class DataEntryTest extends TestCase
         // Record seinen Knoten** — und der Docblock der Methode behauptete das Gegenteil.*
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
+            $this->relations,
             $framework,
             new RecordedChanges(),
             records: $this->records
         );
         $this->buch   = new RecordedChanges();
-        $this->data   = new DataEntry($this->records, $this->edges, $this->nodes, $framework, new FixedClock(), $this->buch);
+        $this->data   = new DataEntry($this->records, $this->relations, $this->nodes, $framework, new FixedClock(), $this->buch);
 
         $this->part = $this->editor->createNode('Part', $this->branchRoot['model']->id);
         $this->text = $this->editor->createNode('Text', $this->branchRoot['data-types']->id);
@@ -142,9 +142,9 @@ final class DataEntryTest extends TestCase
     }
 
     #[Test]
-    public function the_last_edge_is_kept_beside_the_path(): void
+    public function the_last_relation_is_kept_beside_the_path(): void
     {
-        // ⚠️ D-134, and it is what makes the data searchable: the edge is indexed, the path
+        // ⚠️ D-134, and it is what makes the data searchable: the relation is indexed, the path
         // narrows.
         $record = $this->data->create($this->part->id);
 
@@ -152,7 +152,7 @@ final class DataEntryTest extends TestCase
 
         $value = $this->data->valuesOf($record->id)[0];
 
-        self::assertSame($this->description->id, $value->edgeId);
+        self::assertSame($this->description->id, $value->relationId);
         self::assertSame((string) $this->description->id, $value->path);
     }
 
@@ -335,7 +335,7 @@ final class DataEntryTest extends TestCase
      * dieser Record interpretiert werden soll.**»*
      *
      * ⚠️ *Der Docblock von `clearTrash()` behauptete das seit dem Anfang — «settings, labels, **records**
-     * und edges» — und die Methode löschte vier von sechs. **Geschrieben und nicht gebaut.***
+     * und relations» — und die Methode löschte vier von sechs. **Geschrieben und nicht gebaut.***
      */
     #[Test]
     public function clearing_the_trash_takes_a_nodes_records_with_it(): void
@@ -443,7 +443,7 @@ final class DataEntryTest extends TestCase
 
         // ⚠️ *Die **letzte** Stufe steht in `relation_id`, damit «alle Renderer, wo auch immer sie sitzen»
         // ein indizierter Zugriff bleibt (D-134).*
-        self::assertSame($renderer->id, $werte[0]->edgeId);
+        self::assertSame($renderer->id, $werte[0]->relationId);
     }
 
     /**

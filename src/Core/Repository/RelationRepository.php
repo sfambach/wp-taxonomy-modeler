@@ -5,9 +5,9 @@ namespace Taxmod\Core\Repository;
 use Taxmod\Core\Model\Relation;
 
 /**
- * Storage for edges.
+ * Storage for relations.
  *
- * ⚠️ **The inheritance edges are the tree.** `nodes.path` is a **materialised** ancestor path
+ * ⚠️ **The inheritance relations are the tree.** `nodes.path` is a **materialised** ancestor path
  * (D-014) — derived, rebuildable, and never a second truth. What is asked here is the truth;
  * `path` is what makes asking it cheap.
  *
@@ -35,8 +35,8 @@ interface RelationRepository
      */
     public function save(Relation $relation, int $expectedVersion): void;
 
-    // ⚠️ **Hier standen `inheritanceEdgeTo()`, `childEdgesOf()`, `nextPositionUnder()`,
-    // `reparentChildEdges()` und `allInheritanceEdges()` — der ganze Baum** (TASK-018,
+    // ⚠️ **Hier standen `inheritanceRelationTo()`, `childRelationsOf()`, `nextPositionUnder()`,
+    // `reparentChildRelations()` und `allInheritanceRelations()` — der ganze Baum** (TASK-018,
     // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Vererbung ist keine Kantenart mehr,
     // sondern `nodes.parent_node_id` mit `nodes.sort_order`; ihre Leser stehen jetzt in
     // {@see NodeRepository}. **Damit verschwindet auch die Frage «ist es Vererbung?»**, die
@@ -46,7 +46,7 @@ interface RelationRepository
     public function nextFieldPositionUnder(int $ownerId): int;
 
     /**
-     * The attribute edges owned by any of these nodes — everything that is not inheritance.
+     * The attribute relations owned by any of these nodes — everything that is not inheritance.
      *
      * ⚠️ **Several owners in one call, because attributes are inherited.** A node's attributes
      * are its own plus every ancestor's, and asking per ancestor would be one query per level —
@@ -57,9 +57,9 @@ interface RelationRepository
      *
      * @return list<Relation>
      */
-    public function fieldEdgesOf(array $ownerIds): array;
+    public function fieldRelationsOf(array $ownerIds): array;
 
-    /** Remove the edges belonging to a purge. The only place edges are deleted outright. */
+    /** Remove the relations belonging to a purge. The only place relations are deleted outright. */
     /**
      * The removed attributes of these owners — D-128's *show deleted*.
      *
@@ -71,7 +71,7 @@ interface RelationRepository
      * @param  list<int>      $ownerIds
      * @return list<Relation>
      */
-    public function parkedFieldEdgesOf(array $ownerIds): array;
+    public function parkedFieldRelationsOf(array $ownerIds): array;
 
     /**
      * Eine Kante parken — **sie und alles, was zu ihr gehört**.
@@ -86,49 +86,49 @@ interface RelationRepository
      * Schreiben einer Spalte mehr, sondern ein **Umzug**. Wer es als `save()` einer veränderten Kante
      * schriebe, müsste die Wertzeilen selbst mitnehmen — und würde es beim nächsten Mal vergessen.*
      */
-    public function park(int $edgeId, int $changeGroupId): void;
+    public function park(int $relationId, int $changeGroupId): void;
 
     /**
      * Die Umkehrung von {@see self::park()} — und ausdrücklich keine zweite Mechanik.
      *
      * @return Relation|null Die zurückgeholte Kante, oder `null`, wenn dort nichts geparkt liegt.
      */
-    public function unpark(int $edgeId): ?Relation;
+    public function unpark(int $relationId): ?Relation;
 
     /**
-     * The mirror of {@see self::fieldEdgesOf()} — every attribute **pointing at** these nodes.
+     * The mirror of {@see self::fieldRelationsOf()} — every attribute **pointing at** these nodes.
      *
      * ⚠️ **This is the one direction that appears nowhere else** ([D-199](../../../docs/NewConcept/90-decision-log.md)):
      * *«everything going out of the current node is in the attributes»* — outgoing non-inheritance
-     * edges **are** the attributes table, the parent edge is a chip in the head and the children are
+     * relations **are** the attributes table, the parent relation is a chip in the head and the children are
      * the tree. **Incoming is what was left, and it had no query.**
      *
      * ⚠️ *Inheritance is excluded here for the same reason it is excluded there: an incoming
-     * inheritance edge is a **child**, and the tree already draws every one of them.*
+     * inheritance relation is a **child**, and the tree already draws every one of them.*
      *
-     * ⚠️ **Parked attributes are left out**, as in {@see self::fieldEdgesOf()} — a parked attribute
+     * ⚠️ **Parked attributes are left out**, as in {@see self::fieldRelationsOf()} — a parked attribute
      * is hidden in its owning node ([D-128](../../../docs/NewConcept/90-decision-log.md)), so listing
      * it as a *use* of this node would show a dependency its own node does not show.
      *
      * @param  list<int>      $targetIds
      * @return list<Relation>
      */
-    public function fieldEdgesTo(array $targetIds): array;
+    public function fieldRelationsTo(array $targetIds): array;
 
     /**
-     * Every edge with one end on any of these nodes — **both** ends, and every kind.
+     * Every relation with one end on any of these nodes — **both** ends, and every kind.
      *
-     * ⚠️ **Both ends and every kind, because a purge has to reach what hangs off an edge.** An edge is
+     * ⚠️ **Both ends and every kind, because a purge has to reach what hangs off an relation.** An relation is
      * an identity ([D-080](../../../docs/NewConcept/90-decision-log.md)) and may carry settings and
      * labels of its own, so the tidy-up needs its **id** and not only its deletion — *which is why this
-     * exists beside {@see self::purgeEdgesTouching()} rather than instead of it.*
+     * exists beside {@see self::purgeRelationsTouching()} rather than instead of it.*
      *
      * @param  list<int>      $nodeIds
      * @return list<Relation>
      */
-    public function edgesTouching(array $nodeIds): array;
+    public function relationsTouching(array $nodeIds): array;
 
-    public function purgeEdgesTouching(int $nodeId): void;
+    public function purgeRelationsTouching(int $nodeId): void;
 
     /**
      * Eine Kante zu ihrer Id.
@@ -138,7 +138,7 @@ interface RelationRepository
      * gefunden wurden, ging es; seit [D-543](../../../docs/NewConcept/90-decision-log.md) ist die **Id**
      * einer Kante eine aufgeschriebene Angabe, und dann muss man von ihr aus auch zurückkommen.*
      */
-    public function byId(int $edgeId): ?Relation;
+    public function byId(int $relationId): ?Relation;
 
     /**
      * Die beiden Einstellungszeiger dieser Kanten ([D-586](../../../docs/NewConcept/90-decision-log.md)).
@@ -148,12 +148,12 @@ interface RelationRepository
      * `settings_record_id` trägt den Renderer der Kante selbst, `target_settings_record_id` die
      * Überschreibungen am Zielknoten.
      *
-     * @param  list<int>                               $edgeIds
+     * @param  list<int>                               $relationIds
      * @return array<int, array{own: int, target: int}> Kanten-Id => beide Zeiger; `0` heisst «hier
      *                                                  nichts gesagt».
      */
-    public function settingsRecordIdsOfEdges(array $edgeIds): array;
+    public function settingsRecordIdsOfRelations(array $relationIds): array;
 
     /** Den eigenen Einstellungszeiger dieser Kante setzen; `0` nimmt ihn weg. */
-    public function rememberSettingsRecord(int $edgeId, int $recordId): void;
+    public function rememberSettingsRecord(int $relationId, int $recordId): void;
 }

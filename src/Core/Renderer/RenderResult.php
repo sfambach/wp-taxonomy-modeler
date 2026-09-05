@@ -22,19 +22,19 @@ final class RenderResult
      *                              **here**, in the core, with plain PHP — a renderer may not
      *                              call a WordPress function (`CD-1`), and markup that leaves
      *                              unescaped would have no second chance.
-     * @param list<int>  $usedEdges The edges whose values went into it.
+     * @param list<int>  $usedRelations The relations whose values went into it.
      * @param mixed|null $condition Under `Purpose::Search`, what to filter by.
      */
     public function __construct(
         public readonly string $markup,
-        public readonly array $usedEdges = [],
+        public readonly array $usedRelations = [],
         public readonly mixed $condition = null,
     ) {
     }
 
-    public static function of(string $markup, int ...$usedEdges): self
+    public static function of(string $markup, int ...$usedRelations): self
     {
-        return new self($markup, array_values($usedEdges));
+        return new self($markup, array_values($usedRelations));
     }
 
     /**
@@ -47,7 +47,7 @@ final class RenderResult
     {
         return new self(
             $this->markup . $next->markup,
-            array_values(array_unique([...$this->usedEdges, ...$next->usedEdges])),
+            array_values(array_unique([...$this->usedRelations, ...$next->usedRelations])),
             $this->condition ?? $next->condition,
         );
     }

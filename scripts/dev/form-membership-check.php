@@ -144,8 +144,8 @@ function stummeElemente(string $markup): array
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
 $records   = new WpdbRecordRepository();
 $rendering = new Rendering(
     $nodes,
@@ -154,7 +154,7 @@ $rendering = new Rendering(
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework),
     null,
-    new ModelValues($records, $edges, $nodes, $framework)
+    new ModelValues($records, $relations, $nodes, $framework)
 );
 
 $geruest = new Geruest('__fm');
@@ -175,7 +175,7 @@ $beides     = $geruest->feldMit('Beides', 'auch eigen', '1')['von'];
 foreach ([$erklaerend, $erbend, $beides] as $id) {
     $name   = '#' . $id;
     $knoten = $nodes->byId($id);
-    $kanten = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
+    $kanten = $relations->fieldRelationsOf([...$knoten->ancestorIds(), $knoten->id]);
 
     // ⚠️ *Dieselben Zutaten, die der Schirm einsetzt — sonst prüft der Lauf eine Zeile, die es so
     // nirgends gibt. Der Speicherknopf ist der, an dem es hängt.*
@@ -188,7 +188,7 @@ foreach ([$erklaerend, $erbend, $beides] as $id) {
         $submits[$kante->id] = new Submission('/wp-admin/admin-post.php', [
             'action'        => 'taxmod_nodes',
             'id'            => (string) $id,
-            'edge'          => (string) $kante->id,
+            'relation'          => (string) $kante->id,
             'setting_key'   => 'multiplicity',
             '_taxmod_nonce' => 'pruefung',
         ]);
@@ -254,7 +254,7 @@ echo "\n== Und das Namensfeld ist eines davon ==\n";
 // eigene Felder erklärt, und einen davon hat der Lauf gerade selbst gebaut.*
 $id       = $erklaerend;
 $knoten   = $nodes->byId($id);
-$kanten   = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
+$kanten   = $relations->fieldRelationsOf([...$knoten->ancestorIds(), $knoten->id]);
 $actions  = [];
 $submits  = [];
 
@@ -264,7 +264,7 @@ foreach ($kanten as $kante) {
     $submits[$kante->id] = new Submission('/wp-admin/admin-post.php', [
         'action'        => 'taxmod_nodes',
         'id'            => (string) $id,
-        'edge'          => (string) $kante->id,
+        'relation'          => (string) $kante->id,
         '_taxmod_nonce' => 'pruefung',
     ]);
 }
@@ -303,7 +303,7 @@ $id = (int) $wpdb->get_var(
 );
 
 $knoten     = $nodes->byId($id);
-$kanten     = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
+$kanten     = $relations->fieldRelationsOf([...$knoten->ancestorIds(), $knoten->id]);
 $seitenForm = 'taxmod-page-' . $id;
 
 $zeilen = $rendering->fieldRowsFor(

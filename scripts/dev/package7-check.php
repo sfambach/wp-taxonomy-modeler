@@ -72,13 +72,13 @@ Schema::install();
 update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $framework->seed();
 
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
-$data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
+$data      = new DataEntry(new WpdbRecordRepository(), $relations, $nodes, $framework, new SystemClock());
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
 $registry  = ShippedRenderers::registry();
 $types     = new SeededTypeNodes($nodes, $framework);
@@ -112,20 +112,20 @@ $satzVon = static function (int $knotenId) use ($nodes): int {
 // ein Ziel, das der Schluessel gar nicht braucht** — er darf nur nicht liegenbleiben.*
 $selbstGelegteKanten = [];
 
-$kanteFuer = static function (int $traegerId, string $key) use ($edges, $framework, &$selbstGelegteKanten): \Taxmod\Core\Model\Relation {
-    foreach ($edges->fieldEdgesOf([$traegerId]) as $eine) {
+$kanteFuer = static function (int $traegerId, string $key) use ($relations, $framework, &$selbstGelegteKanten): \Taxmod\Core\Model\Relation {
+    foreach ($relations->fieldRelationsOf([$traegerId]) as $eine) {
         if ($eine->kind === \Taxmod\Core\Model\RelationKind::Setting && $eine->name === $key) {
             return $eine;
         }
     }
 
-    $neu = $edges->add(\Taxmod\Core\Model\Relation::attribute(
+    $neu = $relations->add(\Taxmod\Core\Model\Relation::attribute(
         0,
         $traegerId,
         $framework->rootOf(Branch::Constants)->id,
         \Taxmod\Core\Model\RelationKind::Setting,
         $key,
-        $edges->nextFieldPositionUnder($traegerId)
+        $relations->nextFieldPositionUnder($traegerId)
     ));
 
     $selbstGelegteKanten[$neu->id] = $neu->id;
@@ -155,7 +155,7 @@ $angabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $
     // ⚠️ *Erst die alte Zeile weg — `putValue()` ohne Id legt **an** statt zu ersetzen, und zwei
     // Zeilen auf demselben Pfad liessen die erste gewinnen.*
     $records->forgetValue($satzId, (string) $kante->id, '');
-    $records->putValue(new \Taxmod\Core\Model\EdgeRecord($satzId, (string) $kante->id, $kante->id, '', $wert));
+    $records->putValue(new \Taxmod\Core\Model\RelationRecord($satzId, (string) $kante->id, $kante->id, '', $wert));
 };
 
 /** Dieselbe Angabe wieder wegnehmen. */
@@ -227,7 +227,7 @@ $every = [$count, $weight, $label, $stock, $mail, $when, $colour];
 echo "\n== 1. Every attribute finds the renderer of its type ==\n";
 $fields = [];
 foreach ($rendering->fieldsFor($every, [], Purpose::Edit, 'taxmod_value') as $field) {
-    $fields[$field->edge->id] = $field;
+    $fields[$field->relation->id] = $field;
 }
 
 check('seven fields drawn', count($fields) === 7, (string) count($fields));
@@ -260,7 +260,7 @@ check('the date is a date control', str_contains($fields[$when->id]->result->mar
 check('the address is an address control', str_contains($fields[$mail->id]->result->markup, 'type="email"'));
 check('the colour is a picker', str_contains($fields[$colour->id]->result->markup, 'type="color"'));
 check(
-    'every field is keyed by its edge, never by position',
+    'every field is keyed by its relation, never by position',
     str_contains($fields[$label->id]->result->markup, 'name="taxmod_value[' . $label->id . ']"')
 );
 
@@ -330,7 +330,7 @@ $tief = $editor->addField($part->id, $unterTyp->id, '__p7 tiefe Zahl');
 $gezeichnet = static function (array $kanten) use (&$zeichnerNeu): array {
     $aus = [];
     foreach ($zeichnerNeu()->fieldsFor($kanten, [], Purpose::Edit, 'taxmod_value') as $feld) {
-        $aus[$feld->edge->id] = $feld->rendererName;
+        $aus[$feld->relation->id] = $feld->rendererName;
     }
 
     return $aus;
@@ -395,18 +395,18 @@ $typed = [
 
 $types = $rendering->typesFor($every);
 
-foreach ($typed as [$edge, $characters, $expected]) {
-    $data->put($record->id, $edge->id, $types[$edge->id]->valueFrom($characters));
+foreach ($typed as [$relation, $characters, $expected]) {
+    $data->put($record->id, $relation->id, $types[$relation->id]->valueFrom($characters));
 }
 
 $back = [];
-foreach ($data->valuesOf($record->id) as $value) { $back[$value->edgeId] = $value->value; }
+foreach ($data->valuesOf($record->id) as $value) { $back[$value->relationId] = $value->value; }
 
-foreach ($typed as [$edge, $characters, $expected]) {
+foreach ($typed as [$relation, $characters, $expected]) {
     check(
-        "«{$edge->name}» survives a round trip",
-        isset($back[$edge->id]) && $expected($back[$edge->id]),
-        isset($back[$edge->id]) ? $back[$edge->id]->describe() : 'missing'
+        "«{$relation->name}» survives a round trip",
+        isset($back[$relation->id]) && $expected($back[$relation->id]),
+        isset($back[$relation->id]) ? $back[$relation->id]->describe() : 'missing'
     );
 }
 
@@ -432,7 +432,7 @@ check('a bool lands in value_int as 1 (D-315)', (int) $row['value_int'] === 1 &&
 echo "\n== 7. What was stored is what the control shows again ==\n";
 $reloaded = [];
 foreach ($rendering->fieldsFor($every, $back, Purpose::Edit, 'taxmod_value') as $field) {
-    $reloaded[$field->edge->id] = $field->result->markup;
+    $reloaded[$field->relation->id] = $field->result->markup;
 }
 check('the switch comes back ticked', str_contains($reloaded[$stock->id], 'checked'));
 check('the date comes back in the control format', str_contains($reloaded[$when->id], 'value="2026-08-25T14:32"'), $reloaded[$when->id]);
@@ -493,12 +493,12 @@ check('and one outcome is not a decision (R30)', str_contains($editing->result->
 echo "\n== 11. Hide and read-only close a field wherever it is drawn ==\n";
 // ⚠️ *Die Spalte, nicht die Einstellung ([D-457]): `hide` ist eine Eigenschaft der Platzierung,
 // und der Abstieg **bricht ab** statt ein leeres Feld zu zeichnen ([D-450]).*
-$edges->save($label->withHide(true), $label->version);
+$relations->save($label->withHide(true), $label->version);
 
 // ⚠️ *Frisch holen, und zwar **alle**: eine Kante ist unveraenderlich, also haelt jede aeltere
 // Kopie weiter `hide = false`. Genau das hat diese Pruefung beim Umbau gefangen.*
 $frisch = [];
-foreach ($edges->fieldEdgesOf([$part->id]) as $one) { $frisch[$one->id] = $one; }
+foreach ($relations->fieldRelationsOf([$part->id]) as $one) { $frisch[$one->id] = $one; }
 $label = $frisch[$label->id] ?? $label;
 $every = array_map(static fn ($e) => $frisch[$e->id] ?? $e, $every);
 $angabe($mail, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
@@ -506,7 +506,7 @@ $rendering = $zeichnerNeu();
 
 $closed = [];
 foreach ($rendering->fieldsFor([$label, $mail], $back, Purpose::Edit, 'taxmod_value') as $field) {
-    $closed[$field->edge->id] = $field;
+    $closed[$field->relation->id] = $field;
 }
 // ⚠️ **Beide Behauptungen sind 2026-08-28 gedreht** ([D-450], [D-452], [D-457]): `hide` ist ein
 // **Abbruch**. Das Feld wird nicht leer gezeichnet, es wird **nicht aufgezaehlt** — «und schaut auch
@@ -650,7 +650,7 @@ check('every member is in it', count(array_filter(
     $every,
     static fn ($e): bool => str_contains($formed->markup, $e->name)
 )) === count($every) - 1, 'one is hidden by the column from section 11');
-check('and it says which edges went into it (D-021)', $formed->usedEdges !== []);
+check('and it says which relations went into it (D-021)', $formed->usedRelations !== []);
 
 // R75: read-only values first. `__p7 contact` was made read-only in section 11.
 $readOnlyAt = strpos($formed->markup, '__p7 contact');
@@ -671,7 +671,7 @@ echo "\n== 17. The screen renders at all ==\n";
 try {
     $screen = new Taxmod\WordPress\Admin\NodesScreen(
         $editor,
-        new Taxmod\Core\Service\Tree($nodes, $edges),
+        new Taxmod\Core\Service\Tree($nodes, $relations),
         $labels,
         $data,
         $framework,
@@ -728,8 +728,8 @@ try {
     // Gegenstand, von dem sie redet. **Findet sich kein Knoten mit eigenem Feld, wird sie rot** — die
     // Zeile darunter sagt es dann statt still durchzulaufen.*
     foreach ($editor->childrenOf($framework->rootOf(Branch::Compositions)->id) as $candidate) {
-        foreach ($editor->fieldsOf($candidate->id) as $edge) {
-            if ($edge->fromNodeId === $candidate->id) {
+        foreach ($editor->fieldsOf($candidate->id) as $relation) {
+            if ($relation->fromNodeId === $candidate->id) {
                 $withAttributes = $candidate;
 
                 break;
@@ -894,18 +894,18 @@ $scratchIds = $wpdb->get_col(
 
 // ⚠️ **What hangs off them goes first, and measuring is what found this.** After the 892 orphaned
 // setting rows were cleared, the whole net was run check by check and the counter watched: **this file
-// was the only one still leaking, five rows a run.** *It deleted the nodes and the edges and left their
+// was the only one still leaking, five rows a run.** *It deleted the nodes and the relations and left their
 // settings behind — [row 28](../../docs/NewConcept/97-implementation-plan.md#the-working-list)'s fault
 // in its purest form, produced by the very net that is supposed to catch it.*
 // ⚠️ **By endpoint *and* by name, and the second half took a second measurement.** The first fix
-// gathered edges through `edgesTouching()` — their endpoints — and **five rows still leaked**: three
-// edge owners survived because their nodes had already gone in an earlier run, so no endpoint pointed
-// at them any more. *The raw delete below finds those edges by **name**, so the cleanup has to look
-// them up the same way, or it clears the settings of exactly the edges it can still see.*
+// gathered relations through `relationsTouching()` — their endpoints — and **five rows still leaked**: three
+// relation owners survived because their nodes had already gone in an earlier run, so no endpoint pointed
+// at them any more. *The raw delete below finds those relations by **name**, so the cleanup has to look
+// them up the same way, or it clears the settings of exactly the relations it can still see.*
 $ownersToClear = array_map('intval', $scratchIds);
 
-foreach ($edges->edgesTouching($ownersToClear) as $edge) {
-    $ownersToClear[] = $edge->id;
+foreach ($relations->relationsTouching($ownersToClear) as $relation) {
+    $ownersToClear[] = $relation->id;
 }
 
 foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p7%"') as $named) {
@@ -924,7 +924,7 @@ if ($ownersToClear !== []) {
 
 foreach ($scratchIds as $scratch) {
     $node = $nodes->find((int) $scratch);
-    if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }
+    if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
 
 $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p7%"');

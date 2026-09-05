@@ -59,10 +59,10 @@ use Taxmod\WordPress\SystemClock;
 global $wpdb;
 
 $nodes  = new WpdbNodeRepository();
-$edges  = new WpdbRelationRepository();
+$relations  = new WpdbRelationRepository();
 $log    = new WpdbChangelog(new SystemClock());
-$fw     = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor = new ModelEditor($nodes, $edges, $fw, $log, records: new WpdbRecordRepository());
+$fw     = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor = new ModelEditor($nodes, $relations, $fw, $log, records: new WpdbRecordRepository());
 
 $ziel = $fw->rootOf(Branch::Settings);
 
@@ -132,7 +132,7 @@ foreach ($plan as $p) {
 
 $gone = $editor->clearTrash();
 
-echo "\nMuell geleert: nodes {$gone['nodes']}, edges {$gone['edges']}\n\nDer Zweig jetzt:\n";
+echo "\nMuell geleert: nodes {$gone['nodes']}, relations {$gone['relations']}\n\nDer Zweig jetzt:\n";
 
 foreach ($wpdb->get_results($wpdb->prepare(
     "SELECT id, name, path FROM {$n} WHERE path LIKE %s AND path NOT LIKE %s ORDER BY name",

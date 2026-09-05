@@ -9,9 +9,9 @@ use Taxmod\Core\Model\Relation;
 /**
  * Everything a person sees comes from one of these (sentence 14 of the core on one page).
  *
- * ⚠️ **One contract for both halves.** The subject is a node **or** an edge, because both are
+ * ⚠️ **One contract for both halves.** The subject is a node **or** an relation, because both are
  * identities drawn from one space (C11) and both carry a resolved renderer setting (D-091).
- * There is no second interface for edges, and none for pages either: a page is a rendered node.
+ * There is no second interface for relations, and none for pages either: a page is a rendered node.
  *
  * ⚠️ **`supports()` declares the purposes; the registry does not key on them** (D-217). One
  * lookup by type — display, edit and search are answered or **declined** by the same renderer.
@@ -21,7 +21,7 @@ use Taxmod\Core\Model\Relation;
  *
  * ```mermaid
  * flowchart LR
- *   S["the edge's own setting"] --> T["the target node's setting"]
+ *   S["the relation's own setting"] --> T["the target node's setting"]
  *   T --> A["its ancestors"] --> F["the fallback"]
  * ```
  *

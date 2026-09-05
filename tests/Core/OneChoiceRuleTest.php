@@ -57,7 +57,7 @@ final class OneChoiceRuleTest extends TestCase
 
     /**
      * ⚠️ **Wer `mayBeNothing` aus der Multiplizität ableitet, baut den Weg nach.** *Genau dieses
-     * Muster stand viermal: `! $edge->multiplicity->requiresOne()`, `$shape !== OneOfFour`, ein festes
+     * Muster stand viermal: `! $relation->multiplicity->requiresOne()`, `$shape !== OneOfFour`, ein festes
      * `true` und «wird in Ruhe gelassen». **Die Multiplizität allein zu fragen ist erlaubt und nötig** —
      * `Rendering` filtert damit, welche Multiplizitäten ein `bool` überhaupt angeboten bekommt
      * ([D-412](../../docs/NewConcept/90-decision-log.md)), und das ist eine andere Frage. Verboten ist

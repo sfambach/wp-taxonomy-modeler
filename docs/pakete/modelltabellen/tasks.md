@@ -483,7 +483,7 @@ Bewerber, an dem die Vorschau überhaupt gezeichnet wird, in fester Reihenfolge.
 geschrieben, angezeigt und **nirgends verglichen**. 29 von 209 Datensätzen sind älter als ihr Knoten.
 
 ```text
-[ ] TASK-016  «edge» im Quelltext durch «relation» ersetzen
+[x] TASK-016  «edge» im Quelltext durch «relation» ersetzen
 ```
 
 [D-576](../../NewConcept/90-decision-log.md). **Nicht Teil der Tabellenbenennung** — eigenes
@@ -494,6 +494,43 @@ Arbeitsstück.
 `RelationRecord`.
 
 ⚠️ *Kein Feldzug mit einem regulären Ausdruck — siehe [`bekannte-fallen.md`](../../bekannte-fallen.md).*
+
+**Gebaut am 2026-09-05.** *`EdgeRecord` heisst `RelationRecord`, `$edge` heisst `$relation`,
+`edgeId` heisst `relationId`, `fieldEdgesOf()` heisst `fieldRelationsOf()`, und die drei
+Wächterdateien `setting-edge-check`, `setting-branch-edge-check` und `dead-edge-values-clean` tragen
+den neuen Namen.*
+
+⚠️ **Gezählt, nicht geschätzt** — gemessen über `src`, `tests` und `scripts` ohne die Sonden der
+stillgelegten Fassung:
+
+| | vorher | nachher |
+|---|---|---|
+| `edge` in `src` und `tests` | 1524 | **24** |
+| `edge` in `scripts` (ohne `_smoke-*`) | 514 | **8** |
+
+⚠️ **Und die 32, die stehen, stehen mit Grund — jede einzelne ist nachgesehen:**
+
+| | Zahl | warum |
+|---|---|---|
+| `SettingEdge`, `AggregationEdge`, `CompositionEdge` samt Namensraum und ihrem Wächter | **17** | **TASK-032**, an dem gleichzeitig gebaut wurde |
+| `'taxmod_setting_edge_'` und `'taxmod_setting_value_edge_'` | **3** | **Optionsschlüssel sind Daten** — ein neuer Name fände die vorhandenen Zeilen nicht |
+| die Aufzeichnung `taxmod_task018_shape` und ihr Leser | **2** | dieselbe Regel, und Geschichte ist eingefroren ([D-065](../../NewConcept/90-decision-log.md)) |
+| `knowledge`, `hedge` | **3** | Wörter, die «edge» enthalten und keine Kante meinen |
+
+⚠️ **Was dabei kaputtging und was es gefunden hat:** *`inheritance-column-check` wurde rot und hatte
+recht. Die Wanderung von TASK-018 hat ihre gemessene Gestalt als **Option** hinterlegt, und deren
+Schlüssel hiess `edges`. **Der Leser suchte nach `relations`, fand nichts und meldete einen Umbau,
+den es nie gegeben hat.** Geschrieben wird jetzt `relations`, gelesen werden beide — das ist
+dieselbe Regel wie bei den Optionsnamen, nur eine Ebene tiefer.*
+
+⚠️ **Der eine Dateiname, der bleibt:** *[`edge-class-check.php`](../../../scripts/dev/edge-class-check.php)
+gehört zu TASK-032 und wurde im selben Baum gerade geschrieben. **Umbenannt wird er, wenn TASK-032
+eingecheckt ist**; im Kopf der Datei steht, warum er heisst, wie er heisst.*
+
+⚠️ *Kein Schnitt über Zeilenbereiche, keine gelöschte Methode: der Umbau ist ausschliesslich
+Umbenennung. Geprüft mit `php -l` über jede Datei, mit dem Kernlauf (443 grün) und mit **allen**
+Wächtern — grün bis auf die beiden, die schon vorher rot waren (`unitvalue-check` an `OQ-134`,
+`always-on-check` an `INF-036`).*
 
 ```text
 [x] TASK-017  settings streichen — Tabelle und Code
@@ -603,7 +640,7 @@ Wanderung.
 **Mitgezogen sind:** `package2-check` (Abschnitt 1 und 2 lesen die Spalte statt der Kante),
 `sort-order-check` (Abschnitt 4 tauscht jetzt zwei **Felder**, denn der Schlüssel
 `(from_node_id, kind, sort_order)` bewacht nur noch die), `preview-check`, `setting-write-check`,
-`cleanup-screen-check` (seine Wiese muss beides kappen), `setting-branch-edge-check`, `used-by-check`
+`cleanup-screen-check` (seine Wiese muss beides kappen), `setting-branch-relation-check`, `used-by-check`
 und `package5-check`. **Keiner davon ist entschärft** — jeder prüft dieselbe Zusage an der Stelle, an
 der sie heute steht.
 
@@ -1254,7 +1291,7 @@ Drei Teile, aus [D-618](../../NewConcept/90-decision-log.md):
    *Gemessen am 2026-09-04 stimmt das — der Wächter hält fest, er stellt nicht her.*
 
 **Teil 3 gebaut am 2026-09-05:**
-[`setting-branch-edge-check.php`](../../../scripts/dev/setting-branch-edge-check.php). *Er meldet und
+[`setting-branch-relation-check.php`](../../../scripts/dev/setting-branch-relation-check.php). *Er meldet und
 ändert nichts. **Nachgemessen: 4 Kanten zeigen in den Ast, alle vier tragen `setting`** — null
 Abweichungen. Vererbungskanten sind ausgenommen, weil sie **der Ast selbst** sind.*
 

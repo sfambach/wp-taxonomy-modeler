@@ -55,12 +55,12 @@ Schema::install();
 update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $framework, $log);
+$editor = new ModelEditor($nodes, $relations, $framework, $log);
 $stored = new WpdbLabelRepository();
 $labels = new Labels($stored, $framework);
 
@@ -117,13 +117,13 @@ $stored->put(new Label($thing->id, '', $form, 'other', 'de_DE', '__p5 Widerstand
 check('the plural form is used when stored', $labels->of($thing, SeededRole::Form, 'de_DE', 'other') === '__p5 Widerstandswerte');
 check('and falls back to the base form of the same role', $labels->of($thing, SeededRole::Form, 'en_US', 'other') === '__p5 Resistance value');
 
-echo "\n== 5. A label hangs on an identity, so an edge can carry one ==\n";
+echo "\n== 5. A label hangs on an identity, so an relation can carry one ==\n";
 $text = $editor->createNode('__p5 Text', $framework->rootOf(Branch::DataTypes)->id);
-$edge = $editor->addField($thing->id, $text->id, '__p5 description');
-$stored->put(new Label($edge->id, '', $form, 'one', 'de_DE', '__p5 Beschreibung'));
+$relation = $editor->addField($thing->id, $text->id, '__p5 description');
+$stored->put(new Label($relation->id, '', $form, 'one', 'de_DE', '__p5 Beschreibung'));
 
 // ⚠️ **Gefiltert statt gezählt, und der Grund ist gemessen** (TASK-018): *dieser Satz lautete
-// `count($onEdge) === 1`. **Er ist rot geworden, und nicht an den Beschriftungen** — seit ein neuer
+// `count($onRelation) === 1`. **Er ist rot geworden, und nicht an den Beschriftungen** — seit ein neuer
 // Knoten keine Vererbungskante mehr anlegt, laufen die beiden Zähler anders auseinander, und in
 // diesem Lauf trug die frische Kante **dieselbe Nummer** wie der Knoten `$thing` zwei Zeilen darüber.
 // `labels.owner_id` sagt nicht, welchen Raum sie meint, also kamen sechs Zeilen zurück statt einer.
@@ -132,11 +132,11 @@ $stored->put(new Label($edge->id, '', $form, 'one', 'de_DE', '__p5 Beschreibung'
 // geschriebene Zeile an der Kante steht. **Dass `owner_id` ihren Raum nicht nennt, steht als
 // `INF-035` im Eingang** — es ist dieselbe Lücke, die `INF-009` an `settings.owner_id` hatte, und sie
 // war schon vorher da; TASK-018 hat sie nur sichtbar gemacht.*
-$onEdge = array_values(array_filter(
-    $stored->forOwners([$edge->id]),
+$onRelation = array_values(array_filter(
+    $stored->forOwners([$relation->id]),
     static fn ($l): bool => $l->roleId === $form && $l->locale === 'de_DE' && $l->number === 'one'
 ));
-check('the edge has its own label', count($onEdge) === 1 && $onEdge[0]->text === '__p5 Beschreibung');
+check('the relation has its own label', count($onRelation) === 1 && $onRelation[0]->text === '__p5 Beschreibung');
 check('and it did not land on the type', count(array_filter($stored->forOwners([$text->id]))) === 0);
 
 echo "\n== 6. One row per owner, path, role, number and locale ==\n";
@@ -159,8 +159,8 @@ echo "\n== 7. The check cleans up after itself ==\n";
 // goes, and a name is a description of the thing rather than a handle on what it owns.*
 $ownersToClear = [$thing->id, $text->id];
 
-foreach ($edges->edgesTouching($ownersToClear) as $edge) {
-    $ownersToClear[] = $edge->id;
+foreach ($relations->relationsTouching($ownersToClear) as $relation) {
+    $ownersToClear[] = $relation->id;
 }
 
 foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('relations') . ' WHERE name LIKE "__p5%"') as $named) {
@@ -171,7 +171,7 @@ $stored->forgetOwners($ownersToClear);
 
 foreach ([$thing->id, $text->id] as $scratch) {
     $node = $nodes->find($scratch);
-    if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }
+    if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
 
 $wpdb->query('DELETE FROM ' . Schema::table('labels') . ' WHERE text LIKE "__p5%"');

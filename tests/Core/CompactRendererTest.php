@@ -201,12 +201,12 @@ final class CompactRendererTest extends TestCase
     }
 
     #[Test]
-    public function every_part_carries_its_edge_out_with_the_markup(): void
+    public function every_part_carries_its_relation_out_with_the_markup(): void
     {
         // D-021: what went into a rendering is not recoverable from the string afterwards.
         $result = $this->draw([$this->part(7, 'sieben', '<i>G</i>'), $this->part(9, 'neun', '<i>I</i>')]);
 
-        self::assertSame([7, 9], $result->usedEdges);
+        self::assertSame([7, 9], $result->usedRelations);
     }
 
     #[Test]
@@ -272,14 +272,14 @@ final class CompactRendererTest extends TestCase
     }
 
     #[Test]
-    public function an_edge_is_not_a_subject_it_claims(): void
+    public function an_relation_is_not_a_subject_it_claims(): void
     {
         // Deliberately narrow: D-245 speaks of a **node** with several attributes, and what a
-        // compact rendering of an edge would mean is not decided.
-        $edge = Relation::attribute(1, $this->subject->id, 501, RelationKind::Composition, 'Wert', 1);
+        // compact rendering of an relation would mean is not decided.
+        $relation = Relation::attribute(1, $this->subject->id, 501, RelationKind::Composition, 'Wert', 1);
 
         self::assertTrue($this->renderer->fits($this->subject));
-        self::assertFalse($this->renderer->fits($edge));
+        self::assertFalse($this->renderer->fits($relation));
     }
 
     /** @return list<array<int, string>> */

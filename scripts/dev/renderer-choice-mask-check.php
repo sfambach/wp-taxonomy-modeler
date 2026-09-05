@@ -73,10 +73,10 @@ $p = $wpdb->prefix . 'taxmod_';
 
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $rows      = new WpdbRecordRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log, new WpdbLabelRepository(), $rows);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log, new WpdbLabelRepository(), $rows);
 $types     = new SeededTypeNodes($nodes, $framework);
 
 /** Die Seite als Markup, so wie ein Browser sie bekommt. */
@@ -182,9 +182,9 @@ echo "\n== waehlen, speichern, frisch lesen ==\n";
 function gespeicherterRenderer(int $nodeId): string
 {
     $nodes = new WpdbNodeRepository();
-    $edges = new WpdbRelationRepository();
-    $fw    = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
-    $model = new ModelValues(new WpdbRecordRepository(), $edges, $nodes, $fw);
+    $relations = new WpdbRelationRepository();
+    $fw    = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
+    $model = new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $fw);
 
     $node = $nodes->find($nodeId);
 

@@ -30,7 +30,7 @@ final class StoredDecimalTest extends TestCase
     public function zero_survives_being_written_as_ten_zeros(): void
     {
         // ⚠️ Trimming `0.0000000000` naively leaves an empty string, and `-0.5000000000` leaves `-`.
-        // **Neither is a number**, and zero is a value — this is the edge the trim is written for.
+        // **Neither is a number**, and zero is a value — this is the relation the trim is written for.
         self::assertSame('0', StoredDecimal::read('0.0000000000'));
         self::assertSame('-0.5', StoredDecimal::read('-0.5000000000'));
     }

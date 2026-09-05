@@ -9,7 +9,7 @@
  * anything — a core test with a double would only prove that the double agrees with me.
  *
  * ⚠️ **A preview needs no record**, which is what makes this checkable today: the descent takes
- * values keyed by edge id, so example values can be handed in directly. *Storing one is a separate
+ * values keyed by relation id, so example values can be handed in directly. *Storing one is a separate
  * matter and is refused on purpose — see the last section of the output.*
  *
  * Usage: php scripts/dev/unitvalue-check.php C:/Devel/Wordpress
@@ -67,11 +67,11 @@ function check(string $what, bool $ok, string $detail = ''): void
 
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
-$data      = new DataEntry(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
+$data      = new DataEntry(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $relations, $nodes, $framework, new SystemClock());
 $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), new SeededTypeNodes($nodes, $framework), $labels,
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
@@ -111,18 +111,18 @@ if ($unitValue === null) {
 // werden».*
 $vonDerWurzel = [];
 
-foreach ($editor->fieldsOf($framework->root()->id) as $edge) {
-    $vonDerWurzel[$edge->name] = true;
+foreach ($editor->fieldsOf($framework->root()->id) as $relation) {
+    $vonDerWurzel[$relation->name] = true;
 }
 
 $members = [];
 
-foreach ($editor->fieldsOf($unitValue->id) as $edge) {
-    if (isset($vonDerWurzel[$edge->name])) {
+foreach ($editor->fieldsOf($unitValue->id) as $relation) {
+    if (isset($vonDerWurzel[$relation->name])) {
         continue;
     }
 
-    $members[$edge->name] = $edge;
+    $members[$relation->name] = $relation;
 }
 
 echo '  (von der Wurzel geerbt und darum nicht gezählt: '
@@ -213,7 +213,7 @@ check('all three members were drawn', count($fields) === 3, (string) count($fiel
 $drawn = [];
 
 foreach ($fields as $field) {
-    $drawn[$field->edge->name] = $field->result->markup;
+    $drawn[$field->relation->name] = $field->result->markup;
 }
 
 check(
@@ -260,7 +260,7 @@ $withoutPrefix = $rendering->fieldsFor(
 $second = [];
 
 foreach ($withoutPrefix as $field) {
-    $second[$field->edge->name] = strip_tags($field->result->markup);
+    $second[$field->relation->name] = strip_tags($field->result->markup);
 }
 
 // ⚠️ *Nothing is nothing* (D-232): an unanswered reference is not an empty string and not a zero.
@@ -288,7 +288,7 @@ check('a record can be started against a composed type', $holder->id > 0);
 // ⚠️ **A refusal from the core is a finding, not a crash.** This died with an uncaught
 // `NotYetStorable` on 2026-08-26 — *«einheit» is not persistent* — because the **owner** had set
 // `persistent = 0` on `Base units` while experimenting, and `Base units` is the *target* of that
-// attribute, so the chain carried it down to the edge. The core was right and the check was brittle.
+// attribute, so the chain carried it down to the relation. The core was right and the check was brittle.
 //
 // ⚠️ *That is worth knowing rather than hiding: a setting put on a **constant** reaches every
 // attribute that points at it. Setting `persistent = 0` there means «nothing typed as a base unit is
@@ -313,7 +313,7 @@ foreach ([
 $held = [];
 
 foreach ($data->valuesOf($holder->id) as $value) {
-    $held[$value->edgeId] = $value->value;
+    $held[$value->relationId] = $value->value;
 }
 
 check('all three members were kept', count($held) === 3, (string) count($held));
@@ -330,7 +330,7 @@ check(
 $readBack = [];
 
 foreach ($rendering->fieldsFor(array_values($members), $held, Purpose::Display) as $field) {
-    $readBack[$field->edge->name] = trim(strip_tags($field->result->markup));
+    $readBack[$field->relation->name] = trim(strip_tags($field->result->markup));
 }
 
 check('und es zeichnet sich als 2.7 kilo Ohm — bis `OQ-134` steht', ($readBack['wert'] ?? '') === '2.7'
@@ -363,9 +363,9 @@ $thing ??= $editor->createNode('__uv Resistor', $framework->rootOf(Branch::Model
 
 $has = null;
 
-foreach ($editor->fieldsOf($thing->id) as $edge) {
-    if ($edge->name === 'resistance') {
-        $has = $edge;
+foreach ($editor->fieldsOf($thing->id) as $relation) {
+    if ($relation->name === 'resistance') {
+        $has = $relation;
     }
 }
 
@@ -394,7 +394,7 @@ check('asking again makes another one', $second->id !== $part->id);
 check('and both are reachable', count($data->partsOf($owner->id)) === $before + 1);
 
 // ⚠️ **Only the second one goes back, and the first is left alone.** My first attempt cleared the
-// holder by **edge** — which removes the *first* part's row, path `<edge>` — and then tried to write
+// holder by **relation** — which removes the *first* part's row, path `<relation>` — and then tried to write
 // the reference back with `put()`, which refuses a composed target on purpose. *The reference is
 // written by `createPart()` and by nothing else, so undoing it means removing the row it wrote.*
 $data->clearPath($owner->id, $has->id . '.1');

@@ -35,7 +35,7 @@ final class DuplicateTest extends TestCase
     private const INSTALLATION = 999000;
 
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private InMemoryLabels $labelStore;
     private ModelEditor $editor;
     /** @var array<string,Node> */
@@ -43,8 +43,8 @@ final class DuplicateTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->edges      = new InMemoryRelations();
-        $this->nodes      = new InMemoryNodes($this->edges);
+        $this->relations      = new InMemoryRelations();
+        $this->nodes      = new InMemoryNodes($this->relations);
         $this->labelStore = new InMemoryLabels();
         $identities       = new CountingIdentities();
 
@@ -77,7 +77,7 @@ final class DuplicateTest extends TestCase
 
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
+            $this->relations,
             $framework,
             new RecordedChanges(),
             $this->labelStore
@@ -94,12 +94,12 @@ final class DuplicateTest extends TestCase
         return $this->editor->createNode($name, $this->branchRoot['data-types']->id);
     }
 
-    /** The copy's own attribute of that name — the edge the remap has to have produced. */
+    /** The copy's own attribute of that name — the relation the remap has to have produced. */
     private function fieldNamed(Node $node, string $name): Relation
     {
-        foreach ($this->edges->fieldEdgesOf([$node->id]) as $edge) {
-            if ($edge->name === $name) {
-                return $edge;
+        foreach ($this->relations->fieldRelationsOf([$node->id]) as $relation) {
+            if ($relation->name === $name) {
+                return $relation;
             }
         }
 
@@ -126,14 +126,14 @@ final class DuplicateTest extends TestCase
         $this->labelStore->put(new Label($part->id, (string) $count->id, 901, '', 'de_DE', 'Stückzahl'));
 
         $copy     = $this->editor->duplicate($part->id);
-        $copyEdge = $this->fieldNamed($copy, 'count');
+        $copyRelation = $this->fieldNamed($copy, 'count');
 
         $paths = array_map(
             static fn (Label $one): string => $one->path,
             array_values($this->labelStore->forOwners([$copy->id]))
         );
 
-        self::assertContains((string) $copyEdge->id, $paths);
+        self::assertContains((string) $copyRelation->id, $paths);
         self::assertNotContains((string) $count->id, $paths);
     }
 

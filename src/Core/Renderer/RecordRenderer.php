@@ -25,7 +25,7 @@ use Taxmod\Core\Model\SimpleType;
  * ```
  *
  * ⚠️ **The subject is the *model* node and not the record**, because a record is neither a node nor
- * an edge and {@see Renderer::fits()} takes those two ([C11](../../../docs/NewConcept/10-domain-core.md)).
+ * an relation and {@see Renderer::fits()} takes those two ([C11](../../../docs/NewConcept/10-domain-core.md)).
  * *That is not a workaround: what this draws is «one record **of this model**», and which record it
  * happens to be is a fact that travels in the context like a value does.*
  *
@@ -34,7 +34,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * ⚠️ **~~A renderer cannot call another renderer — it has no registry~~ — never decided.** *The owner
  * asked who had said so and the answer was **nobody**: [D-159](../../../docs/NewConcept/90-decision-log.md)
- * forbids **fetching per edge** and **writing**, and a registry lookup is neither. See
+ * forbids **fetching per relation** and **writing**, and a registry lookup is neither. See
  * {@see \Taxmod\Core\Service\Rendering::recordAsBlock()} for the full correction. **How it is built is
  * not the same as what is required**, and stating the second when you mean the first is how a
  * convention becomes a rule nobody agreed to (`PR-10`).*

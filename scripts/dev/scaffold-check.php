@@ -63,9 +63,9 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, new WpdbChangelog(new SystemClock()));
-$editor    = new ModelEditor($nodes, $edges, $framework, new WpdbChangelog(new SystemClock()));
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
+$editor    = new ModelEditor($nodes, $relations, $framework, new WpdbChangelog(new SystemClock()));
 $types     = new SeededTypeNodes($nodes, $framework);
 $scaffold  = new BaseScaffold($editor, $framework, $types);
 
@@ -109,8 +109,8 @@ check('and has no records of its own — the value sits in the holder\'s record'
 
 echo "\n== 3. An attribute pointing at one gets its kind without being asked ==\n";
 $thing = $editor->createNode('__sc thing', $framework->rootOf(Branch::Model)->id);
-$edge  = $editor->addField($thing->id, $present['int']->id, '__sc count');
-check('the kind is composition', $edge->kind === RelationKind::Composition, $edge->kind->value);
+$relation  = $editor->addField($thing->id, $present['int']->id, '__sc count');
+check('the kind is composition', $relation->kind === RelationKind::Composition, $relation->kind->value);
 
 echo "\n== 4. Imported once, then hands off (D-119) ==\n";
 $before = (int) get_option(BaseScaffold::OPTION, 0);
@@ -141,7 +141,7 @@ foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('nodes') . ' WHERE nam
     $node = $nodes->find((int) $stale);
 
     if ($node !== null) {
-        $edges->purgeEdgesTouching($node->id);
+        $relations->purgeRelationsTouching($node->id);
         $nodes->purgeSubtree($node);
     }
 }
@@ -151,7 +151,7 @@ foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('nodes') . ' WHERE nam
 $still = $nodes->find($thing->id);
 
 if ($still !== null) {
-    $edges->purgeEdgesTouching($still->id);
+    $relations->purgeRelationsTouching($still->id);
     $nodes->purgeSubtree($still);
 }
 $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "__sc%"');

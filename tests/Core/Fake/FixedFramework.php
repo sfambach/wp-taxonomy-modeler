@@ -58,7 +58,7 @@ final class FixedFramework implements FrameworkNodes
     }
 
     /** @var array<string, array{int, int}> */
-    private array $settingEdges = [];
+    private array $settingRelations = [];
 
     /**
      * ⚠️ *Ohne einen Settings-Ast im Doppel gilt die alte Kette — die Regel greift nur, wo der Ast
@@ -80,19 +80,19 @@ final class FixedFramework implements FrameworkNodes
         return $wo === false ? $kette : array_values(array_slice($kette, (int) $wo));
     }
 
-    public function settingEdgeId(SettingKey $key): int
+    public function settingRelationId(SettingKey $key): int
     {
-        return $this->settingEdges[$key->value][0] ?? 0;
+        return $this->settingRelations[$key->value][0] ?? 0;
     }
 
-    public function settingValueEdgeId(SettingKey $key): int
+    public function settingValueRelationId(SettingKey $key): int
     {
-        return $this->settingEdges[$key->value][1] ?? 0;
+        return $this->settingRelations[$key->value][1] ?? 0;
     }
 
-    public function rememberSettingEdges(SettingKey $key, int $edgeId, int $valueEdgeId): void
+    public function rememberSettingRelations(SettingKey $key, int $relationId, int $valueRelationId): void
     {
-        $this->settingEdges[$key->value] = [$edgeId, $valueEdgeId];
+        $this->settingRelations[$key->value] = [$relationId, $valueRelationId];
     }
 
     public function installationId(): int

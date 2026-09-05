@@ -9,7 +9,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
- * One attribute as its own row — **the first renderer whose subject is an edge**.
+ * One attribute as its own row — **the first renderer whose subject is an relation**.
  *
  * The owner asked for two things in one breath: *the name of the attribute should be changeable —
  * is that already a renderer for attributes?* It was not: the attribute table was hand-built
@@ -17,14 +17,14 @@ use Taxmod\Core\Model\SimpleType;
  *
  * ```mermaid
  * flowchart LR
- *   E["the edge · name · kind"] --> A[this]
+ *   E["the relation · name · kind"] --> A[this]
  *   T["refersTo · what it points at"] --> A
  *   C["configured · multiplicity"] --> A
  *   S["sections · its settings panel"] --> A
  *   K["actions · save · remove"] --> A
  * ```
  *
- * ⚠️ **That the subject may be an edge was in the contract from the start** and had never been
+ * ⚠️ **That the subject may be an relation was in the contract from the start** and had never been
  * used. {@see Renderer::fits()} takes {@see Renderable} — *it said `Node|Relation` until 2026-08-28,
  * which was the union [D-091](../../../docs/NewConcept/90-decision-log.md) had asked to be a type all
  * along* — because
@@ -80,9 +80,9 @@ final class FieldRowRenderer extends RendererNode
      * the select submitted nothing at all, and a multiplicity change looked like a save that did
      * nothing. *The owner found it on `Bauteilliste`'s `Position` going from `0..1` to `0..*`.*
      */
-    public static function formFor(Relation $edge): string
+    public static function formFor(Relation $relation): string
     {
-        return 'taxmod-field-' . $edge->id;
+        return 'taxmod-field-' . $relation->id;
     }
 
     /** Unter diesem Namen erwartet die Zeile den gezeichneten **Wert** ihrer Angabe. */
@@ -244,13 +244,13 @@ final class FieldRowRenderer extends RendererNode
     /**
      * The multiplicity, as the settings side already drew it.
      *
-     * ⚠️ **Not built here.** It is an ordinary setting on the edge
+     * ⚠️ **Not built here.** It is an ordinary setting on the relation
      * ([D-351](../../../docs/NewConcept/90-decision-log.md)) and the descent draws settings; a
      * second select built in this class would be the same control twice, and the two would come
      * apart the moment R28–R32's greying lands in one of them.
      *
      * ⚠️ *It is the one key kept **out** of the panel below and shown in the row instead, because it
-     * is the only edge-only key there is (D-351) — the thing that makes a use site a use site.*
+     * is the only relation-only key there is (D-351) — the thing that makes a use site a use site.*
      */
     /**
      * Der **Wert** der Angabe — die Spalte, ohne die eine Einstellung nicht einzustellen ist.

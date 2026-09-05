@@ -32,7 +32,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * ⚠️ **And it closes a hole rather than only tidying:** the attribute's settings had **no way to be
  * written at all**. `persistent` ([D-378](../../../docs/NewConcept/90-decision-log.md)) is a setting
- * on the edge, and a flag one cannot set is a flag one cannot use.
+ * on the relation, and a flag one cannot set is a flag one cannot use.
  *
  * ⚠️ **The three acts arrive once and this greys them per row**, which is the renderer's job and not
  * the boundary's: *`Nothing` makes no sense for a choice — its empty option already is nothing — and

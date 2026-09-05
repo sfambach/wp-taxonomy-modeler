@@ -20,11 +20,11 @@ use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, SeededTypeNodes, WpdbCha
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
-$edges = new WpdbRelationRepository();
+$relations = new WpdbRelationRepository();
 $log   = new WpdbChangelog(new SystemClock());
-$fw    = new SeededFrameworkNodes($nodes, $edges, $log);
+$fw    = new SeededFrameworkNodes($nodes, $relations, $log);
 
-$editor    = new ModelEditor($nodes, $edges, $fw, $log);
+$editor    = new ModelEditor($nodes, $relations, $fw, $log);
 
 // ⚠️ *Frisch gebaut nach jeder gesetzten Angabe: {@see \Taxmod\Core\Service\ModelValues} merkt sich
 // die Saetze eines Knotens beim ersten Lesen. Ein Waechter, der erst zeichnet, dann setzt und wieder
@@ -71,10 +71,10 @@ if ($integerId === null) {
     exit(2);
 }
 
-$edge = $editor->addField($holder->id, $integerId, 'zaehler');
+$relation = $editor->addField($holder->id, $integerId, 'zaehler');
 
 // ⚠️ **Eine Angabe an einer Verwendungsstelle setzen — jetzt ueber den Kern.**
-// *Hier stand `$settings->put($settings->chainForUseSite($edge), …)`, und danach stand hier ein
+// *Hier stand `$settings->put($settings->chainForUseSite($relation), …)`, und danach stand hier ein
 // **Behelf**: der Waechter legte die Zeile selbst ueber die Speicher an, weil
 // {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} am **Knoten** schreibt und es fuer eine
 // Verwendungsstelle keinen Schreiber gab ([`INF-011`](../../docs/pakete/modelltabellen/inbox.md)).
@@ -83,26 +83,26 @@ $edge = $editor->addField($holder->id, $integerId, 'zaehler');
 //
 // ⚠️ *Was hier bleibt, ist das Anlegen der Einstellungskante: der Kern **erfindet** keine Kante
 // (`CD-5`), und die Spielwiese dieses Laufs bringt sie nicht mit.*
-$einstellung = static function (\Taxmod\Core\Model\Relation $stelle, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($nodes, $edges, $fw, $zeichner, &$rendering): void {
+$einstellung = static function (\Taxmod\Core\Model\Relation $stelle, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($nodes, $relations, $fw, $zeichner, &$rendering): void {
     $traeger = $nodes->byId($stelle->fromNodeId);
     $data    = new \Taxmod\Core\Service\DataEntry(
         new WpdbRecordRepository(),
-        $edges,
+        $relations,
         $nodes,
         $fw,
         new \Taxmod\WordPress\SystemClock()
     );
 
-    $kante = $data->settingEdgeAtUseSite($stelle, $key);
+    $kante = $data->settingRelationAtUseSite($stelle, $key);
 
     if ($kante === null) {
-        $kante = $edges->add(\Taxmod\Core\Model\Relation::attribute(
+        $kante = $relations->add(\Taxmod\Core\Model\Relation::attribute(
             0,
             $traeger->id,
             $fw->rootOf(Branch::Constants)->id,
             \Taxmod\Core\Model\RelationKind::Setting,
             $key,
-            $edges->nextFieldPositionUnder($traeger->id)
+            $relations->nextFieldPositionUnder($traeger->id)
         ));
     }
 
@@ -117,8 +117,8 @@ echo "== der Schluessel war ein totes Steuerelement, jetzt nicht mehr ==\n";
 // also auch keine passenden Konverter — die Kante bekommt ihren Typ vom Ziel (`Integer`), und dort
 // ist die Frage «welche Abbildung darf dieser Wert bekommen» ueberhaupt gestellt.
 $drawn = $rendering->settingsFor(
-    $edge,
-    $rendering->settingsForUseSites([$edge])[$edge->id] ?? [],
+    $relation,
+    $rendering->settingsForUseSites([$relation])[$relation->id] ?? [],
     Purpose::Edit
 );
 
@@ -147,40 +147,40 @@ if ($row === null) {
 
 echo "\n== ohne Konverter steht der Wert wie gespeichert ==\n";
 
-$before = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+$before = $rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
 $say(str_contains($before->result->markup, '12'), 'die 12 steht als 12 da');
 
 echo "\n== mit roman wird sie XII, ohne den Renderer zu wechseln ==\n";
 
-$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('roman'));
+$einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('roman'));
 
-$after = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+$after = $rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
 $say(str_contains($after->result->markup, 'XII'), 'XII steht auf dem Schirm');
 $say($after->rendererName === $before->rendererName, 'derselbe Renderer wie vorher — die Abbildung wechselte, nicht die Form');
 
 echo "\n== und XII kommt als 12 zurueck ==\n";
 
-$read = $rendering->valuesFrom([$edge], [$edge->id => 'XII']);
+$read = $rendering->valuesFrom([$relation], [$relation->id => 'XII']);
 
-$say(($read[$edge->id]->int ?? null) === 12, 'die Eingaberichtung liest XII als 12');
+$say(($read[$relation->id]->int ?? null) === 12, 'die Eingaberichtung liest XII als 12');
 
-$read = $rendering->valuesFrom([$edge], [$edge->id => 'xii']);
+$read = $rendering->valuesFrom([$relation], [$relation->id => 'xii']);
 
-$say(($read[$edge->id]->int ?? null) === 12, 'auch klein geschrieben');
+$say(($read[$relation->id]->int ?? null) === 12, 'auch klein geschrieben');
 
 echo "\n== hexadecimal genauso ==\n";
 
-$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
+$einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
 
-$hex = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(255)], Purpose::Display)[0];
+$hex = $rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(255)], Purpose::Display)[0];
 
 $say(str_contains($hex->result->markup, 'FF'), '255 steht als FF da');
 
-$read = $rendering->valuesFrom([$edge], [$edge->id => 'FF']);
+$read = $rendering->valuesFrom([$relation], [$relation->id => 'FF']);
 
-$say(($read[$edge->id]->int ?? null) === 255, 'und FF kommt als 255 zurueck');
+$say(($read[$relation->id]->int ?? null) === 255, 'und FF kommt als 255 zurueck');
 
 echo "\n== binary und octal auch, in beide Richtungen ==\n";
 
@@ -188,25 +188,25 @@ echo "\n== binary und octal auch, in beide Richtungen ==\n";
 // Zeichenkette auf dem Schirm, nicht durch einen direkten Aufruf des Konverters. **Der Kern prüft die
 // Abbildung; hier steht die Frage, ob sie über Einstellung und Auflösung überhaupt ankommt.***
 foreach ([['binary', 12, '1100'], ['octal', 493, '755']] as [$konverter, $zahl, $zeichen]) {
-    $einstellung($edge, SettingKey::Converter->value, TypedValue::ofText($konverter));
+    $einstellung($relation, SettingKey::Converter->value, TypedValue::ofText($konverter));
 
-    $gezeichnet = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt($zahl)], Purpose::Display)[0];
+    $gezeichnet = $rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt($zahl)], Purpose::Display)[0];
 
     $say(str_contains($gezeichnet->result->markup, $zeichen), "{$konverter}: {$zahl} steht als {$zeichen} da");
 
-    $zurueck = $rendering->valuesFrom([$edge], [$edge->id => $zeichen]);
+    $zurueck = $rendering->valuesFrom([$relation], [$relation->id => $zeichen]);
 
-    $say(($zurueck[$edge->id]->int ?? null) === $zahl, "und {$zeichen} kommt als {$zahl} zurueck");
+    $say(($zurueck[$relation->id]->int ?? null) === $zahl, "und {$zeichen} kommt als {$zahl} zurueck");
 }
 
 echo "\n== eine Ziffer, die es in dieser Basis nicht gibt, wird verweigert ==\n";
 
 // ⚠️ *`bindec('2')` ist `0` und `octdec('9')` ist `0` — dieselbe stille Null, die
 // [D-071](../../docs/NewConcept/90-decision-log.md) verbietet.*
-$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('binary'));
+$einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('binary'));
 
 try {
-    $rendering->valuesFrom([$edge], [$edge->id => '2']);
+    $rendering->valuesFrom([$relation], [$relation->id => '2']);
     $say(false, 'binary lehnt die Ziffer 2 ab');
 } catch (\Taxmod\Core\Exception\NotAValueOfThatType) {
     $say(true, 'binary lehnt die Ziffer 2 ab');
@@ -214,10 +214,10 @@ try {
 
 echo "\n== was nicht lesbar ist, wird verweigert und nicht als 0 gespeichert ==\n";
 
-$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
+$einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('hexadecimal'));
 
 try {
-    $rendering->valuesFrom([$edge], [$edge->id => 'zz']);
+    $rendering->valuesFrom([$relation], [$relation->id => 'zz']);
     $say(false, 'zz wurde abgelehnt');
 } catch (\Taxmod\Core\Exception\NotAValueOfThatType) {
     $say(true, 'zz wurde abgelehnt');
@@ -225,9 +225,9 @@ try {
 
 echo "\n== ein Konvertername, den es nicht gibt, nimmt kein Formular mit runter ==\n";
 
-$einstellung($edge, SettingKey::Converter->value, TypedValue::ofText('gibt-es-nicht'));
+$einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('gibt-es-nicht'));
 
-$stale = $rendering->fieldsFor([$edge], [$edge->id => TypedValue::ofInt(12)], Purpose::Display)[0];
+$stale = $rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
 $say(str_contains($stale->result->markup, '12'), 'der Wert steht gespeichert da');
 

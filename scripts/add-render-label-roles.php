@@ -51,10 +51,10 @@ use Taxmod\WordPress\SystemClock;
 global $wpdb;
 
 $nodes  = new WpdbNodeRepository();
-$edges  = new WpdbRelationRepository();
+$relations  = new WpdbRelationRepository();
 $log    = new WpdbChangelog(new SystemClock());
-$fw     = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor = new ModelEditor($nodes, $edges, $fw, $log, records: new WpdbRecordRepository());
+$fw     = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor = new ModelEditor($nodes, $relations, $fw, $log, records: new WpdbRecordRepository());
 
 $n = Schema::table('nodes');
 
@@ -116,7 +116,7 @@ foreach ($dieDrei as $name) {
 // Das Feld, und es ist eine Einstellungskante: die Rolle ist eine Angabe des Modells.
 $vorhanden = null;
 
-foreach ($edges->fieldEdgesOf([$gruppe]) as $eine) {
+foreach ($relations->fieldRelationsOf([$gruppe]) as $eine) {
     if ($eine->name === 'label_role') {
         $vorhanden = $eine;
     }

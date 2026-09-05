@@ -74,10 +74,10 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
 
 echo "\n== 1. Die Spalte ist da und die Fassung sagt es ==\n";
 

@@ -81,11 +81,11 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $records   = new WpdbRecordRepository();
-$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
+$data      = new DataEntry($records, $relations, $nodes, $framework, new SystemClock());
 
 /** @var list<int> Was dieser Lauf angelegt hat — Knoten und Datensätze. */
 $meineKnoten  = [];
@@ -143,14 +143,14 @@ echo "\n== Der Renderer haengt an der Spalte, nicht an einem Kantenpaar ==\n";
 // «nicht aufgeschrieben», und das ist die Wahrheit.*
 check(
     'die alte Traegerkante ist nicht mehr aufgeschrieben',
-    $framework->settingEdgeId(SettingKey::Renderer) === 0,
-    (string) $framework->settingEdgeId(SettingKey::Renderer)
+    $framework->settingRelationId(SettingKey::Renderer) === 0,
+    (string) $framework->settingRelationId(SettingKey::Renderer)
 );
 
 check(
     'und die alte Wertkante auch nicht',
-    $framework->settingValueEdgeId(SettingKey::Renderer) === 0,
-    (string) $framework->settingValueEdgeId(SettingKey::Renderer)
+    $framework->settingValueRelationId(SettingKey::Renderer) === 0,
+    (string) $framework->settingValueRelationId(SettingKey::Renderer)
 );
 
 $rendererPfad = (string) $wpdb->get_var(
@@ -188,7 +188,7 @@ echo "\n== Ein Renderer wird geschrieben und wieder gelesen ==\n";
 // ([D-339](../../docs/NewConcept/90-decision-log.md)), nicht aus `AUTO_INCREMENT` — ein `INSERT` von
 // Hand bekam `insert_id = 0` zurück und legte nichts an.*
 $modellWurzel = $framework->rootOf(\Taxmod\Core\Model\Branch::Model);
-$editor       = new \Taxmod\Core\Service\ModelEditor($nodes, $edges, $framework, $log);
+$editor       = new \Taxmod\Core\Service\ModelEditor($nodes, $relations, $framework, $log);
 
 $knoten        = $editor->createNode('Pruefknoten Einstellung', $modellWurzel->id);
 $knotenId      = $knoten->id;
@@ -236,7 +236,7 @@ if ($rendererKnoten === null) {
 
         // ⚠️ **Ein frischer Leser.** *{@see ModelValues} merkt sich seine Funde je Instanz (`CD-7`) —
         // ein wiederverwendeter würde die Antwort von vorher zurückgeben und den Rundlauf grün lügen.*
-        $gelesen = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
+        $gelesen = (new ModelValues($records, $relations, $nodes, $framework))->forNode($knoten);
 
         check(
             'und der Leser gibt ihn zurueck',
@@ -345,7 +345,7 @@ if ($zweiter === null || $rendererKnoten === null) {
 
     check('nach der Wahl steht ein anderer Satz da', $neu !== 0 && $neu !== $alt, "{$alt} -> {$neu}");
 
-    $gelesen = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
+    $gelesen = (new ModelValues($records, $relations, $nodes, $framework))->forNode($knoten);
 
     check(
         'und der Leser gibt den neuen zurueck',
@@ -367,7 +367,7 @@ if ($zweiter === null || $rendererKnoten === null) {
     // des Eigentuemers -- hier der eigene Pruefknoten, aber die Gewohnheit zaehlt.
     $data->chooseSettingRecordAtNode($knotenId, (int) $rendererKnoten['id']);
 
-    $zurueck = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
+    $zurueck = (new ModelValues($records, $relations, $nodes, $framework))->forNode($knoten);
 
     check(
         'und der Wert ist wieder da',
@@ -406,7 +406,7 @@ if ($typId === null) {
 
 $stelle = $editor->addField($knotenId, $typId, 'pruefstelle');
 
-$einstellung = $data->settingEdgeAtUseSite($stelle, 'read_only');
+$einstellung = $data->settingRelationAtUseSite($stelle, 'read_only');
 
 if ($einstellung === null) {
     check('die Einstellungskante «read_only» ist an der Stelle zu finden', false, 'nicht gefunden');
@@ -414,8 +414,8 @@ if ($einstellung === null) {
     check('die Einstellungskante «read_only» ist an der Stelle zu finden', true);
 
     // ⚠️ *Ein frischer Leser je Frage — {@see ModelValues} merkt sich seine Funde je Instanz (`CD-7`).*
-    $anDerStelle = static function () use ($records, $edges, $nodes, $framework, $stelle): ?bool {
-        $angabe = (new ModelValues($records, $edges, $nodes, $framework))->forUseSite($stelle)['read_only'] ?? null;
+    $anDerStelle = static function () use ($records, $relations, $nodes, $framework, $stelle): ?bool {
+        $angabe = (new ModelValues($records, $relations, $nodes, $framework))->forUseSite($stelle)['read_only'] ?? null;
 
         return $angabe === null ? null : $angabe->setHere;
     };

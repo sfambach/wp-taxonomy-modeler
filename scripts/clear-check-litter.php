@@ -53,10 +53,10 @@ use Taxmod\WordPress\SystemClock;
 global $wpdb;
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log, records: new WpdbRecordRepository());
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log, records: new WpdbRecordRepository());
 
 $muell = $framework->trash();
 

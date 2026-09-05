@@ -29,7 +29,7 @@ final class RelationCopyTest extends TestCase
     }
 
     #[Test]
-    public function renaming_an_edge_keeps_it_hidden(): void
+    public function renaming_an_relation_keeps_it_hidden(): void
     {
         self::assertTrue(
             $this->verstecktesFeld()->renamedTo('anders')->hide,
@@ -38,7 +38,7 @@ final class RelationCopyTest extends TestCase
     }
 
     #[Test]
-    public function reviving_an_edge_keeps_it_hidden(): void
+    public function reviving_an_relation_keeps_it_hidden(): void
     {
         self::assertTrue(
             $this->verstecktesFeld()->parkedBy(99)->revived()->hide,
@@ -51,7 +51,7 @@ final class RelationCopyTest extends TestCase
      * bereits eingegebenen Werte nicht mehr speichern, und niemand hat je etwas geändert.*
      */
     #[Test]
-    public function every_derived_edge_keeps_its_multiplicity(): void
+    public function every_derived_relation_keeps_its_multiplicity(): void
     {
         $feld = Relation::attribute(4654, 3988, 1171, RelationKind::Composition, 'exponent', 1, Multiplicity::OneToMany);
 
@@ -64,7 +64,7 @@ final class RelationCopyTest extends TestCase
 
     /** ⚠️ *Die Vorgabe ist `1..1` — [D-434](../../docs/NewConcept/90-decision-log.md), «weil das der Standard beim Eingeben ist».* */
     #[Test]
-    public function an_edge_nobody_configured_requires_exactly_one(): void
+    public function an_relation_nobody_configured_requires_exactly_one(): void
     {
         self::assertSame(
             Multiplicity::ExactlyOne,

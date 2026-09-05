@@ -400,11 +400,11 @@ $node = $id === 0 ? null : (new \Taxmod\WordPress\Persistence\WpdbNodeRepository
 if ($node === null) {
     check('ein Knoten mit geerbter Renderer-Einstellung', false);
 } else {
-    $edges     = new \Taxmod\WordPress\Persistence\WpdbRelationRepository();
+    $relations     = new \Taxmod\WordPress\Persistence\WpdbRelationRepository();
     $nodesRepo = new \Taxmod\WordPress\Persistence\WpdbNodeRepository();
     $framework = new \Taxmod\WordPress\Persistence\SeededFrameworkNodes(
         $nodesRepo,
-        $edges,
+        $relations,
         new \Taxmod\WordPress\Persistence\WpdbChangelog(new \Taxmod\WordPress\SystemClock())
     );
 
@@ -417,11 +417,11 @@ if ($node === null) {
         null,
         new \Taxmod\Core\Service\ModelValues(
             new \Taxmod\WordPress\Persistence\WpdbRecordRepository(),
-            $edges,
+            $relations,
             $nodesRepo,
             $framework
         ),
-        $edges
+        $relations
     );
 
     $angebot = [];

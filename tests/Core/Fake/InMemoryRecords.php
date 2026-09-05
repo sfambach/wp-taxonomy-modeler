@@ -3,7 +3,7 @@
 namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Model\NodeRecord;
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
 
@@ -13,7 +13,7 @@ final class InMemoryRecords implements RecordRepository
     /** @var array<int,NodeRecord> */
     private array $records = [];
 
-    /** @var array<string,EdgeRecord> */
+    /** @var array<string,RelationRecord> */
     private array $values = [];
 
     private int $lastId = 0;
@@ -76,7 +76,7 @@ final class InMemoryRecords implements RecordRepository
 
     /**
      * @param  list<int>                    $recordIds
-     * @return array<int, list<EdgeRecord>>
+     * @return array<int, list<RelationRecord>>
      */
     public function valuesOfMany(array $recordIds): array
     {
@@ -93,7 +93,7 @@ final class InMemoryRecords implements RecordRepository
     {
         $meine = array_filter(
             $this->values,
-            static fn (EdgeRecord $v): bool => $v->recordId === $recordId
+            static fn (RelationRecord $v): bool => $v->recordId === $recordId
         );
 
         // ⚠️ *Dieselbe Ordnung wie in SQL — `position`, bei Gleichstand die Id
@@ -101,7 +101,7 @@ final class InMemoryRecords implements RecordRepository
         // sortiert, lässt einen Reihenfolgetest grün werden, den SQL rot machen würde.*
         uasort(
             $meine,
-            static fn (EdgeRecord $a, EdgeRecord $b): int => [$a->position, $a->id ?? 0] <=> [$b->position, $b->id ?? 0]
+            static fn (RelationRecord $a, RelationRecord $b): int => [$a->position, $a->id ?? 0] <=> [$b->position, $b->id ?? 0]
         );
 
         return array_values($meine);
@@ -112,7 +112,7 @@ final class InMemoryRecords implements RecordRepository
      * Datensatz kann nicht an zwei Stellen hängen, und wenn doch, wäre das ein Fehler und keine Auswahl.*
      *
      * @param  list<int> $recordIds
-     * @return array<int, EdgeRecord>
+     * @return array<int, RelationRecord>
      */
     public function holdersOf(array $recordIds): array
     {
@@ -138,7 +138,7 @@ final class InMemoryRecords implements RecordRepository
      * Schlüssel `(recordId, path, locale)`, könnte kein Kerntest zeigen, dass drei Werte eines Feldes
      * nebeneinander stehen.*
      */
-    public function putValue(EdgeRecord $value): int
+    public function putValue(RelationRecord $value): int
     {
         $id = $value->id ?? ++$this->lastValueId;
 
@@ -189,12 +189,12 @@ final class InMemoryRecords implements RecordRepository
         return $version;
     }
 
-    public function findByEdgeValue(int $edgeId, TypedValue $value): array
+    public function findByRelationValue(int $relationId, TypedValue $value): array
     {
         $found = [];
 
         foreach ($this->values as $stored) {
-            if ($stored->edgeId === $edgeId && $stored->value->equals($value)) {
+            if ($stored->relationId === $relationId && $stored->value->equals($value)) {
                 $found[] = $stored->recordId;
             }
         }

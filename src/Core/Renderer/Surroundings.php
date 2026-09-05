@@ -115,7 +115,7 @@ final class Surroundings
          * Whether this reference points at a **record** rather than at a node.
          *
          * ⚠️ **A prepared fact, so no renderer has to ask** ([D-445](../../../docs/NewConcept/90-decision-log.md)):
-         * the descent already resolved the edge's type, and `null` there means the target is not a
+         * the descent already resolved the relation's type, and `null` there means the target is not a
          * data type and not a constant — *`typeOf()`'s own words: «a `Model` target is a reference to
          * a **record**, which has no simple type of its own and no renderer either — it wants the
          * summary renderer ([D-106](../../../docs/NewConcept/90-decision-log.md))».* **Costs nothing:
@@ -131,12 +131,12 @@ final class Surroundings
         /**
          * Whether this placement is hidden — prepared by the descent, never asked for.
          *
-         * ⚠️ **`hide` lives on the **inheritance edge** ([D-467](../../../docs/NewConcept/90-decision-log.md)),
+         * ⚠️ **`hide` lives on the **inheritance relation** ([D-467](../../../docs/NewConcept/90-decision-log.md)),
          * and a tree cell draws the **node**.** *So the cell cannot read it off its subject; the walk
-         * loads those edges anyway and hands the answer in ([D-445](../../../docs/NewConcept/90-decision-log.md)).*
+         * loads those relations anyway and hands the answer in ([D-445](../../../docs/NewConcept/90-decision-log.md)).*
          *
          * ⚠️ *Only ever true in developer mode's «show hidden» view: with it off the row does not
-         * exist, because the walk did not follow its edge.*
+         * exist, because the walk did not follow its relation.*
          */
         public readonly bool $hidden = false,
         /**

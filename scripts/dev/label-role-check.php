@@ -79,11 +79,11 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $records   = new WpdbRecordRepository();
-$model     = new ModelValues($records, $edges, $nodes, $framework);
+$model     = new ModelValues($records, $relations, $nodes, $framework);
 
 $rendering = new Rendering(
     $nodes,
@@ -163,7 +163,7 @@ $alleBesitzer = array_map(intval(...), $wpdb->get_col(
 $mitSymbol = [];
 $gesehen   = 0;
 
-foreach ($edges->fieldEdgesOf($alleBesitzer) as $kante) {
+foreach ($relations->fieldRelationsOf($alleBesitzer) as $kante) {
     ++$gesehen;
 
     if ($rendering->labelRoleFor($kante) === SeededRole::Symbol) {
@@ -194,7 +194,7 @@ echo "\n== Woher die Auskunft kommt ==\n";
     // traegt, beantwortet `OQ-134` und nicht diese Datei (`PR-4`).*
     $feld = null;
 
-    foreach ($edges->fieldEdgesOf(array_map(static fn ($n) => $n->id, $nodes->byIds(array_map('intval', $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes')))))) as $eine) {
+    foreach ($relations->fieldRelationsOf(array_map(static fn ($n) => $n->id, $nodes->byIds(array_map('intval', $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes')))))) as $eine) {
         if ($eine->name === 'label_role') {
             $feld = $eine;
         }

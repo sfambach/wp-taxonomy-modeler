@@ -83,7 +83,7 @@ interface FrameworkNodes
      *
      * @return int `0`, wenn die Saat sie noch nicht aufgeschrieben hat.
      */
-    public function settingEdgeId(SettingKey $key): int;
+    public function settingRelationId(SettingKey $key): int;
 
     /**
      * Die Kante **innerhalb** dieses Datensatzes, die den Wert trägt.
@@ -94,7 +94,7 @@ interface FrameworkNodes
      *
      * @return int `0`, wenn die Saat sie noch nicht aufgeschrieben hat.
      */
-    public function settingValueEdgeId(SettingKey $key): int;
+    public function settingValueRelationId(SettingKey $key): int;
 
     /**
      * Beide aufschreiben — der Notnagel, wenn sie noch nicht dastehen.
@@ -102,7 +102,7 @@ interface FrameworkNodes
      * ⚠️ *Genau wie {@see \Taxmod\Core\Repository\TypeNodes::remember()}: einmal auf dem alten Weg
      * gefunden, danach nie wieder. **Ab dann ist Umbenennen frei**, und das ist der Sinn der Sache.*
      */
-    public function rememberSettingEdges(SettingKey $key, int $edgeId, int $valueEdgeId): void;
+    public function rememberSettingRelations(SettingKey $key, int $relationId, int $valueRelationId): void;
 
     /**
      * Die Besitzer, deren Felder dieser Knoten erbt — **einschliesslich sich selbst**.

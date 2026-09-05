@@ -45,9 +45,9 @@ use Taxmod\WordPress\SystemClock;
 $go = in_array('--go', $argv, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $changelog = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $changelog);
+$framework = new SeededFrameworkNodes($nodes, $relations, $changelog);
 
 $installation = $framework->installationId();
 

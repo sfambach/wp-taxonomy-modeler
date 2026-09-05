@@ -26,11 +26,11 @@ use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, WpdbChangelog, WpdbNodeR
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
-$edges = new WpdbRelationRepository();
+$relations = new WpdbRelationRepository();
 $log   = new WpdbChangelog(new SystemClock());
-$fw    = new SeededFrameworkNodes($nodes, $edges, $log);
+$fw    = new SeededFrameworkNodes($nodes, $relations, $log);
 
-$editor = new ModelEditor($nodes, $edges, $fw, $log);
+$editor = new ModelEditor($nodes, $relations, $fw, $log);
 
 $failed = 0;
 
@@ -46,7 +46,7 @@ $model = $fw->rootOf(Branch::Model)->id;
 
 $teil = $editor->createNode('__tl Teil', $model);
 $pos  = $editor->createNode('__tl Position', $model);
-$edge = $editor->addField($teil->id, $pos->id, 'position');
+$relation = $editor->addField($teil->id, $pos->id, 'position');
 
 $r      = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
 $plugin = $r->newInstanceWithoutConstructor();

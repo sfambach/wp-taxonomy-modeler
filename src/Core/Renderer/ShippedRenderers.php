@@ -126,7 +126,7 @@ final class ShippedRenderers
         // *draw me as a choice*, and the set it needs has to be handed in by whoever knows it.
         $registry->addForSurfaces(new ChoiceRenderer());
 
-        // ⚠️ **The attribute row, and the first renderer whose subject is an **edge**.** Surface-only
+        // ⚠️ **The attribute row, and the first renderer whose subject is an **relation**.** Surface-only
         // for the same reason as the tree's cell: it is asked for by a panel, and naming it as a
         // node's `renderer` would be meaningless — it cannot draw a node at all ({@see
         // FieldRowRenderer::fits()}).

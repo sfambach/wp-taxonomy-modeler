@@ -57,12 +57,12 @@ Schema::install();
 update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $framework, $log);
+$editor = new ModelEditor($nodes, $relations, $framework, $log);
 
 echo "\n== 1. The branches exist and are protected ==\n";
 foreach (Branch::cases() as $branch) {
@@ -92,7 +92,7 @@ $row = $wpdb->get_row($wpdb->prepare(
     'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations') . ' WHERE id = %d',
     $byModel->id
 ), ARRAY_A);
-check('the edge is stored', $row !== null);
+check('the relation is stored', $row !== null);
 check('it points from the owner to the target', (int) $row['from_node_id'] === $order->id && (int) $row['to_node_id'] === $supplier->id);
 check('it carries its name', $row['name'] === 'supplied by', (string) $row['name']);
 // ⚠️ *Bis Fassung 20 hiess die Zusage «die Id kam aus dem geteilten Raum». **Seit TASK-004 gibt es
@@ -104,7 +104,7 @@ check('its id came from the relations table itself', (int) $wpdb->get_var($wpdb-
 echo "\n== 4. Attributes are inherited ==\n";
 $part    = $editor->createNode('__p3 Part', $order->id);
 $deeper  = $editor->createNode('__p3 Deeper', $part->id);
-$ownEdge = $editor->addField($part->id, $text->id, 'part number');
+$ownRelation = $editor->addField($part->id, $text->id, 'part number');
 
 // ⚠️ **Was die Wurzel erklärt, gehört keinem Knoten weiter unten** — und diese Zeile gibt es, weil
 // diese Prüfung am 2026-08-29 rot wurde, ohne dass jemand sie oder ihr Versprechen angefasst hat.
@@ -155,14 +155,14 @@ $editor->moveToTrash($gram->id);
 try { $editor->addField($part->id, $gram->id, 'x'); check('a parked target is refused', false); }
 catch (NotAPossibleTarget $e) { check('a parked target is refused', true); }
 
-echo "\n== 6. The inheritance edge is not an attribute ==\n";
-check('the tree edge stays out of the list', ! in_array('', $names($part->id), true));
+echo "\n== 6. The inheritance relation is not an attribute ==\n";
+check('the tree relation stays out of the list', ! in_array('', $names($part->id), true));
 check('and the child itself is not one either', count($names($order->id)) === 4, implode(', ', $names($order->id)));
 
 echo "\n== 7. The check cleans up after itself ==\n";
 foreach ([$order->id, $supplier->id, $line->id, $text->id, $gram->id] as $scratch) {
     $node = $nodes->find($scratch);
-    if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }
+    if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
 $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "%supplied by%" OR name IN ("lines","note","unit","part number")');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p3%"');
@@ -173,7 +173,7 @@ $dangling = (int) $wpdb->get_var(
      LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
      WHERE n.id IS NULL'
 );
-check('no edge points at a node that is gone', $dangling === 0, "$dangling dangling");
+check('no relation points at a node that is gone', $dangling === 0, "$dangling dangling");
 
 echo "\n== An attribute can be removed, and it is parked (D-371) ==\n";
 $removable = $editor->createNode('__p3 Removable', $framework->rootOf(Branch::Model)->id);
@@ -192,7 +192,7 @@ check('it comes back whole', ! $back->isParked() && $back->name === '__p3 doomed
 check('and is live again', $eigene($removable->id) === 1);
 
 foreach ([$removable->id, $doomedType->id] as $scratchId) {
-    $edges->purgeEdgesTouching($scratchId);
+    $relations->purgeRelationsTouching($scratchId);
     $nodes->purgeSubtree($nodes->byId($scratchId));
 }
 
@@ -205,7 +205,7 @@ check('Prefixes is there', isset($underConstants['Prefixes']));
 check('Base units is there', isset($underConstants['Base units']));
 
 if (isset($underConstants['Prefixes'])) {
-    $prefixModel    = new \Taxmod\Core\Service\ModelValues(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $edges, $nodes, $framework);
+    $prefixModel    = new \Taxmod\Core\Service\ModelValues(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $relations, $nodes, $framework);
     $prefixNodes    = $nodes->childrenOf($underConstants['Prefixes']);
 
     check('twenty prefixes', count($prefixNodes) === 20, (string) count($prefixNodes));
@@ -215,17 +215,17 @@ if (isset($underConstants['Prefixes'])) {
     // multiplicator is not persistent* — and that is what justifies an attribute where no record can
     // ever answer. **Its worth is that inheritance says who has an exponent**, which a reserved key
     // offered on every text node in the system cannot.
-    $declaredEdges = $editor->fieldsOf($underConstants['Prefixes']->id);
-    $declared      = array_map(static fn ($e): string => $e->name, $declaredEdges);
+    $declaredRelations = $editor->fieldsOf($underConstants['Prefixes']->id);
+    $declared      = array_map(static fn ($e): string => $e->name, $declaredRelations);
     check('Prefixes declares an exponent attribute', in_array('exponent', $declared, true), implode(', ', $declared));
 
     $notKept = [];
-    foreach ($declaredEdges as $edge) {
+    foreach ($declaredRelations as $relation) {
         // ⚠️ **Seit [D-538](../../docs/NewConcept/90-decision-log.md) sagt es die Art der Kante.**
         // *Diese Zusage las den Schluessel `persistent` und stuerzte, als seine 148 Zeilen fielen — zu
         // Recht: **sie ist der Waechter dafuer, dass die Auskunft nicht verlorengeht**, nur nicht dafuer,
         // woher sie kommt.*
-        $notKept[$edge->name] = $edge->isSetting();
+        $notKept[$relation->name] = $relation->isSetting();
     }
 
     check('and declares it non-persistent, so nothing tries to store it', ($notKept['exponent'] ?? false) === true);
@@ -237,11 +237,11 @@ if (isset($underConstants['Prefixes'])) {
     // work**: `kilo`'s `default = 3` sat there saying *kilo defaults to three*, which no attribute
     // could see. *The check was right that a value should be there and wrong about where, which is why
     // it stayed green through four days of D-378 not functioning.*
-    $exponentEdge = null;
+    $exponentRelation = null;
 
-    foreach ($declaredEdges as $edge) {
-        if ($edge->name === 'exponent') {
-            $exponentEdge = $edge;
+    foreach ($declaredRelations as $relation) {
+        if ($relation->name === 'exponent') {
+            $exponentRelation = $relation;
         }
     }
 
@@ -251,9 +251,9 @@ if (isset($underConstants['Prefixes'])) {
         // ⚠️ **Seit dem Umzug steht die Vorgabe im Modell und nicht mehr in der Settings-Tabelle**
         // ([D-529](../../docs/NewConcept/90-decision-log.md)). *Diese Zusage las die alte Stelle und
         // wurde beim Umzug rot — **zu Recht**, sie ist der Waechter dafuer. Jetzt fragt sie die neue.*
-        $exponents[$prefixNode->id] = $exponentEdge === null
+        $exponents[$prefixNode->id] = $exponentRelation === null
             ? null
-            : $prefixModel->defaultFor($prefixNode, $exponentEdge)?->int;
+            : $prefixModel->defaultFor($prefixNode, $exponentRelation)?->int;
     }
 
     // ⚠️ *Hier stand die Gegenprobe «keine Zeile mehr am eigenen Default des Knotens». **Die
@@ -298,7 +298,7 @@ if (isset($underConstants['Base units'])) {
             // der Leser stand noch.*
             $celsius = (new ModelValues(
                 new WpdbRecordRepository(),
-                $edges,
+                $relations,
                 $nodes,
                 $framework
             ))->forNode($shifted);

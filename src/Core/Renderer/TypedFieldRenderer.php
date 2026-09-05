@@ -39,7 +39,7 @@ abstract class TypedFieldRenderer extends RendererNode
     /**
      * ⚠️ **The type answers eligibility, not the structure** — {@see Renderer::handles()} is the
      * registry key (R14a). `fits()` stays for the structural questions a later renderer needs to
-     * ask: a table renderer only fits a multi-valued edge (D-098).
+     * ask: a table renderer only fits a multi-valued relation (D-098).
      */
     public function fits(Renderable $subject): bool
     {
@@ -48,7 +48,7 @@ abstract class TypedFieldRenderer extends RendererNode
 
     final public function render(Renderable $subject, RenderContext $context): RenderResult
     {
-        // The edge whose value went into this rendering — metadata a caller cannot recover from
+        // The relation whose value went into this rendering — metadata a caller cannot recover from
         // the markup afterwards (D-021).
         $used = $subject instanceof Relation ? [$subject->id] : [];
 

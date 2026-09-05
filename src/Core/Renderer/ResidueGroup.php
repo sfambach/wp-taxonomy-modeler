@@ -8,7 +8,7 @@ namespace Taxmod\Core\Renderer;
  * ⚠️ **Three of these and no more, because [D-247](../../../docs/NewConcept/90-decision-log.md)
  * names three**: *[D-123](../../../docs/NewConcept/90-decision-log.md)'s two-stage deletion,
  * [D-156](../../../docs/NewConcept/90-decision-log.md)'s orphaned overrides,
- * [D-159](../../../docs/NewConcept/90-decision-log.md)'s values whose edge is gone.* **Each was
+ * [D-159](../../../docs/NewConcept/90-decision-log.md)'s values whose relation is gone.* **Each was
  * decided as *leave it alone rather than tidy it silently*** — so a group carries the reason with
  * it: a person clicking «remove» is undoing a deliberate non-decision, not fixing a bug.
  *

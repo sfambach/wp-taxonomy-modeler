@@ -3,7 +3,7 @@
 namespace Taxmod\Core\Model;
 
 /**
- * Where a value given through an edge is kept — read off the target's branch, never chosen.
+ * Where a value given through an relation is kept — read off the target's branch, never chosen.
  *
  * ⚠️ **Multiplicity plays no part in this** (D-232). Five integers are five **paths** inside one
  * record, not five records; the branch decides the *kind* of place, and how many there are of

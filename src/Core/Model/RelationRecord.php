@@ -11,24 +11,24 @@ namespace Taxmod\Core\Model;
  *   P --> E["relation_id · 101 · the last step"]
  * ```
  *
- * ⚠️ **The last edge is kept alongside the path** (D-134), and that is what makes the data
+ * ⚠️ **The last relation is kept alongside the path** (D-134), and that is what makes the data
  * searchable at all: `WHERE relation_id = … AND value_decimal > 1000` finds every price over a
  * thousand **wherever it sits**, and adding the path narrows it to one attribute. Without the
  * separate column the same question would need a `LIKE` over a text path.
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
-final class EdgeRecord
+final class RelationRecord
 {
     /**
-     * @param string $path   Edge ids from the record's model down to this value, `.`-separated.
-     * @param int    $edgeId The last step of that path, kept apart so it can be indexed.
+     * @param string $path   Relation ids from the record's model down to this value, `.`-separated.
+     * @param int    $relationId The last step of that path, kept apart so it can be indexed.
      * @param string $locale Empty unless the attribute is declared translatable (D-317).
      */
     public function __construct(
         public readonly int $recordId,
         public readonly string $path,
-        public readonly int $edgeId,
+        public readonly int $relationId,
         public readonly string $locale,
         public readonly TypedValue $value,
         /**
@@ -59,9 +59,9 @@ final class EdgeRecord
      * durch ihre eigene Id unterschieden und durch `position` geordnet. **Der Pfad bleibt, was der
      * Docblock oben sagt: Kanten-Ids.***
      */
-    public static function direct(int $recordId, int $edgeId, TypedValue $value, string $locale = '', int $position = 0): self
+    public static function direct(int $recordId, int $relationId, TypedValue $value, string $locale = '', int $position = 0): self
     {
-        return new self($recordId, (string) $edgeId, $edgeId, $locale, $value, null, $position);
+        return new self($recordId, (string) $relationId, $relationId, $locale, $value, null, $position);
     }
 
     /**
@@ -81,18 +81,18 @@ final class EdgeRecord
      * ⚠️ *`relation_id` bleibt die **letzte** Stufe, damit die Suche «alle Renderer, wo auch immer sie
      * sitzen» ein indizierter Zugriff bleibt ([D-134](../../../docs/NewConcept/90-decision-log.md)).*
      *
-     * @param list<int> $edgeIds Von aussen nach innen, mindestens eine.
+     * @param list<int> $relationIds Von aussen nach innen, mindestens eine.
      */
-    public static function at(int $recordId, array $edgeIds, TypedValue $value, string $locale = '', int $position = 0): self
+    public static function at(int $recordId, array $relationIds, TypedValue $value, string $locale = '', int $position = 0): self
     {
-        if ($edgeIds === []) {
+        if ($relationIds === []) {
             throw new \InvalidArgumentException('Ein Pfad ohne Kante adressiert nichts.');
         }
 
         return new self(
             $recordId,
-            implode('.', $edgeIds),
-            $edgeIds[array_key_last($edgeIds)],
+            implode('.', $relationIds),
+            $relationIds[array_key_last($relationIds)],
             $locale,
             $value,
             null,
@@ -103,12 +103,12 @@ final class EdgeRecord
     /** Dieselbe Zeile, nachdem der Speicher ihr eine Id gegeben hat. */
     public function stored(int $id): self
     {
-        return new self($this->recordId, $this->path, $this->edgeId, $this->locale, $this->value, $id, $this->position);
+        return new self($this->recordId, $this->path, $this->relationId, $this->locale, $this->value, $id, $this->position);
     }
 
     /** Derselbe Wert an einer anderen Stelle unter seinen Geschwistern. */
     public function movedTo(int $position): self
     {
-        return new self($this->recordId, $this->path, $this->edgeId, $this->locale, $this->value, $this->id, $position);
+        return new self($this->recordId, $this->path, $this->relationId, $this->locale, $this->value, $this->id, $position);
     }
 }

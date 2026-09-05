@@ -97,8 +97,8 @@ final class CompactRenderer extends RendererNode
 
     /**
      * ⚠️ **A node, for {@see FormRenderer::fits()}'s reason and no wider.** D-245 describes the
-     * subject as *a node with several attributes*; what a compact rendering of an **edge** would
-     * mean — the target's fields, or the edge's own — is not decided, and answering it here by
+     * subject as *a node with several attributes*; what a compact rendering of an **relation** would
+     * mean — the target's fields, or the relation's own — is not decided, and answering it here by
      * accident is how a concept acquires a rule nobody wrote.
      */
     public function fits(Renderable $subject): bool
@@ -112,7 +112,7 @@ final class CompactRenderer extends RendererNode
         $withLabel = $this->withLabel($context);
 
         $inner     = '';
-        $usedEdges = [];
+        $usedRelations = [];
 
         foreach ($context->surroundings->parts as $part) {
             if ($part->isHidden()) {
@@ -121,13 +121,13 @@ final class CompactRenderer extends RendererNode
                 continue;
             }
 
-            $usedEdges = [...$usedEdges, ...$part->result->usedEdges];
+            $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
             $inner    .= $this->createHtmlPart($part, $withLabel);
         }
 
         return new RenderResult(
             $inner === '' ? '' : $this->createHtmlContainer($inner, $vertical),
-            array_values(array_unique($usedEdges))
+            array_values(array_unique($usedRelations))
         );
     }
 
@@ -186,14 +186,14 @@ final class CompactRenderer extends RendererNode
      * {@see FormRenderer::row()} names rather than fills.** A field should read its label in the
      * **`form` role** ([D-196](../../../docs/NewConcept/90-decision-log.md) seeds one by that
      * name), which means the label has to arrive in the context the way a reference's does. *Until
-     * it does, this shows the edge's internal name — the same honesty the chain itself ends on: a
+     * it does, this shows the relation's internal name — the same honesty the chain itself ends on: a
      * node's own name, never nothing ([D-020](../../../docs/NewConcept/90-decision-log.md)).*
      */
     private function createHtmlPart(RenderedField $part, bool $withLabel): string
     {
         $label = $withLabel
             ? RenderResult::htmlTag('span', ['class' => 'taxmod-compact-label'])
-                . RenderResult::escape($part->edge->name) . '</span>'
+                . RenderResult::escape($part->relation->name) . '</span>'
             : '';
 
         return RenderResult::htmlTag('span', ['class' => 'taxmod-compact-part'])

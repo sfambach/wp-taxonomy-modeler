@@ -7,7 +7,7 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Repository\RelationRepository;
 
 /**
- * Edges in a table of our own, reached through `$wpdb`.
+ * Relations in a table of our own, reached through `$wpdb`.
  *
  * ⚠️ **The inheritance rows are the tree.** `nodes.path` is derived from them (D-014); this is
  * where the truth is written, and the path is rewritten from it afterwards.
@@ -131,21 +131,21 @@ final class WpdbRelationRepository implements RelationRepository
         }
     }
 
-    public function byId(int $edgeId): ?Relation
+    public function byId(int $relationId): ?Relation
     {
         global $wpdb;
 
         $row = Query::row('Kante lesen', $wpdb->prepare(
             'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
              WHERE id = %d',
-            $edgeId
+            $relationId
         ));
 
         return $row === null ? null : $this->hydrate($row);
     }
 
-    // ⚠️ **Hier standen die fünf Leser des Baumes** — `inheritanceEdgeTo()`, `childEdgesOf()`,
-    // `nextPositionUnder()`, `allInheritanceEdges()` und `reparentChildEdges()` (TASK-018,
+    // ⚠️ **Hier standen die fünf Leser des Baumes** — `inheritanceRelationTo()`, `childRelationsOf()`,
+    // `nextPositionUnder()`, `allInheritanceRelations()` und `reparentChildRelations()` (TASK-018,
     // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Vererbung ist keine Kantenart mehr,
     // sondern `nodes.parent_node_id` mit `nodes.sort_order`; ihre Ablösung steht in
     // {@see WpdbNodeRepository}. **Damit fällt auch jede `kind <> inheritance`-Bedingung hier**:
@@ -163,7 +163,7 @@ final class WpdbRelationRepository implements RelationRepository
         return $highest === null ? 0 : (int) $highest + 1;
     }
 
-    public function fieldEdgesOf(array $ownerIds): array
+    public function fieldRelationsOf(array $ownerIds): array
     {
         global $wpdb;
 
@@ -177,7 +177,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         // ⚠️ **Parked attributes are left out here**, because D-128 says a parked one is *hidden by
         // default in its owning node — a model full of ghost attributes is unreadable*. Whoever
-        // wants to see them asks {@see parkedFieldEdgesOf()} instead, which is the *show
+        // wants to see them asks {@see parkedFieldRelationsOf()} instead, which is the *show
         // deleted* toggle rather than a second reading of the same query.
         //
         // ⚠️ *Seit [D-619](../../../docs/NewConcept/90-decision-log.md) braucht das keine Bedingung
@@ -194,7 +194,7 @@ final class WpdbRelationRepository implements RelationRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
-    public function fieldEdgesTo(array $targetIds): array
+    public function fieldRelationsTo(array $targetIds): array
     {
         global $wpdb;
 
@@ -206,7 +206,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         // ⚠️ **`to_node_id` and not `from_node_id` — that one word is the whole method** ([D-199]). *Ordered by
         // the owning node so the section reads as «who uses me», grouped, rather than as a pile of
-        // edge ids.*
+        // relation ids.*
         $rows = Query::rows('Feldkanten auf das Ziel lesen', $wpdb->prepare(
             'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity
              FROM ' . Schema::table('relations') . "
@@ -226,7 +226,7 @@ final class WpdbRelationRepository implements RelationRepository
      * hat lebend keine Entsprechung mehr. **Beide Hälften werden gebraucht** — ohne die zweite käme
      * eine zurückgeholte Kante doppelt zurück, einmal lebend und einmal als Geist.*
      */
-    public function parkedFieldEdgesOf(array $ownerIds): array
+    public function parkedFieldRelationsOf(array $ownerIds): array
     {
         global $wpdb;
 
@@ -276,12 +276,12 @@ final class WpdbRelationRepository implements RelationRepository
      * ⚠️ **Parken ist kein Löschen** ([D-604](../../../docs/NewConcept/90-decision-log.md)): der
      * Schatten hält alles, und {@see self::unpark()} ist die Umkehrung und keine zweite Mechanik.
      */
-    public function park(int $edgeId, int $changeGroupId): void
+    public function park(int $relationId, int $changeGroupId): void
     {
         global $wpdb;
 
         // 1 · Die Kante in den Schatten, dort mit der Gruppe gestempelt.
-        Shadow::keepOne('relations', $edgeId, true);
+        Shadow::keepOne('relations', $relationId, true);
 
         Query::run('Parkgruppe im Schatten vermerken', $wpdb->prepare(
             'UPDATE ' . Schema::table('relations_history') . '
@@ -289,22 +289,22 @@ final class WpdbRelationRepository implements RelationRepository
              WHERE id = %d AND version = (SELECT * FROM (SELECT MAX(version) FROM '
                 . Schema::table('relations_history') . ' WHERE id = %d) AS neuste)',
             $changeGroupId,
-            $edgeId,
-            $edgeId
+            $relationId,
+            $relationId
         ));
 
         // 2 · Die Wertzeilen der Kante gehen denselben Weg — **eine Gruppe, ein Akt**.
-        Shadow::keep('relation_records', 'relation_id = %d', [$edgeId], true);
+        Shadow::keep('relation_records', 'relation_id = %d', [$relationId], true);
 
         Query::run('Wertzeilen der geparkten Kante entfernen', $wpdb->prepare(
             'DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
-            $edgeId
+            $relationId
         ));
 
         // 3 · Und erst jetzt die lebende Zeile.
         Query::run('geparkte Kante lebend entfernen', $wpdb->prepare(
             'DELETE FROM ' . Schema::table('relations') . ' WHERE id = %d',
-            $edgeId
+            $relationId
         ));
     }
 
@@ -316,7 +316,7 @@ final class WpdbRelationRepository implements RelationRepository
      *
      * @return Relation|null `null`, wenn dort nichts geparkt liegt.
      */
-    public function unpark(int $edgeId): ?Relation
+    public function unpark(int $relationId): ?Relation
     {
         global $wpdb;
 
@@ -326,7 +326,7 @@ final class WpdbRelationRepository implements RelationRepository
             "SELECT * FROM {$schatten}
              WHERE id = %d AND parked_by_group_id IS NOT NULL
              ORDER BY version DESC LIMIT 1",
-            $edgeId
+            $relationId
         ));
 
         if ($zeile === null) {
@@ -335,11 +335,11 @@ final class WpdbRelationRepository implements RelationRepository
 
         $lebt = Query::value('lebt die Kante schon wieder', $wpdb->prepare(
             'SELECT id FROM ' . Schema::table('relations') . ' WHERE id = %d',
-            $edgeId
+            $relationId
         ));
 
         if ($lebt !== null) {
-            return $this->byId($edgeId);
+            return $this->byId($relationId);
         }
 
         $spalten = [];
@@ -363,9 +363,9 @@ final class WpdbRelationRepository implements RelationRepository
             throw new \RuntimeException('Die geparkte Kante liess sich nicht zurückholen: ' . $wpdb->last_error);
         }
 
-        $this->unparkValues($edgeId);
+        $this->unparkValues($relationId);
 
-        return $this->byId($edgeId);
+        return $this->byId($relationId);
     }
 
     /**
@@ -374,7 +374,7 @@ final class WpdbRelationRepository implements RelationRepository
      * ⚠️ *Der jüngste Schattenstand je Wertzeile, und nur der als gelöscht markierte — eine Zeile,
      * die es lebend noch gibt, wird nicht ein zweites Mal eingefügt.*
      */
-    private function unparkValues(int $edgeId): void
+    private function unparkValues(int $relationId): void
     {
         global $wpdb;
 
@@ -388,8 +388,8 @@ final class WpdbRelationRepository implements RelationRepository
              ) neuste ON neuste.id = h.id AND neuste.version = h.version
              WHERE h.relation_id = %d AND h.deleted = 1
                AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)",
-            $edgeId,
-            $edgeId
+            $relationId,
+            $relationId
         ));
 
         foreach ($zeilen as $zeile) {
@@ -414,13 +414,13 @@ final class WpdbRelationRepository implements RelationRepository
     }
 
     /**
-     * Every edge with one end on any of these nodes — both ends, every kind.
+     * Every relation with one end on any of these nodes — both ends, every kind.
      *
      * ⚠️ *One statement for the whole set, because a purge over forty parked nodes must not be forty
      * queries (`CD-7`). Ids are cast here, so nothing user-written reaches the SQL, and placeholders
      * are used anyway (`CD-6`).*
      */
-    public function edgesTouching(array $nodeIds): array
+    public function relationsTouching(array $nodeIds): array
     {
         global $wpdb;
 
@@ -441,7 +441,7 @@ final class WpdbRelationRepository implements RelationRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
-    public function purgeEdgesTouching(int $nodeId): void
+    public function purgeRelationsTouching(int $nodeId): void
     {
         global $wpdb;
 
@@ -456,22 +456,22 @@ final class WpdbRelationRepository implements RelationRepository
         ));
     }
 
-    public function settingsRecordIdsOfEdges(array $edgeIds): array
+    public function settingsRecordIdsOfRelations(array $relationIds): array
     {
         global $wpdb;
 
-        $edgeIds = array_values(array_unique(array_filter(array_map(intval(...), $edgeIds))));
+        $relationIds = array_values(array_unique(array_filter(array_map(intval(...), $relationIds))));
 
-        if ($edgeIds === []) {
+        if ($relationIds === []) {
             return [];
         }
 
-        $slots = implode(',', array_fill(0, count($edgeIds), '%d'));
+        $slots = implode(',', array_fill(0, count($relationIds), '%d'));
 
         $rows = Query::rows('Einstellungsdatensaetze der Kanten lesen', $wpdb->prepare(
             'SELECT id, settings_record_id, target_settings_record_id FROM ' . Schema::table('relations')
                 . " WHERE id IN ($slots)",
-            ...$edgeIds
+            ...$relationIds
         ));
 
         $aus = [];
@@ -486,7 +486,7 @@ final class WpdbRelationRepository implements RelationRepository
         return $aus;
     }
 
-    public function rememberSettingsRecord(int $edgeId, int $recordId): void
+    public function rememberSettingsRecord(int $relationId, int $recordId): void
     {
         global $wpdb;
 
@@ -495,7 +495,7 @@ final class WpdbRelationRepository implements RelationRepository
         if ($recordId === 0) {
             $wpdb->query($wpdb->prepare(
                 'UPDATE ' . Schema::table('relations') . ' SET settings_record_id = NULL WHERE id = %d',
-                $edgeId
+                $relationId
             ));
 
             return;
@@ -504,7 +504,7 @@ final class WpdbRelationRepository implements RelationRepository
         $wpdb->query($wpdb->prepare(
             'UPDATE ' . Schema::table('relations') . ' SET settings_record_id = %d WHERE id = %d',
             $recordId,
-            $edgeId
+            $relationId
         ));
     }
 

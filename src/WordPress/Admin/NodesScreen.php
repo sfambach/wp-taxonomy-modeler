@@ -62,9 +62,9 @@ final class NodesScreen
     private const ACTION = 'taxmod_node';
 
     /**
-     * The form field the record's values arrive under, as `taxmod_value[<edge id>]`.
+     * The form field the record's values arrive under, as `taxmod_value[<relation id>]`.
      *
-     * ⚠️ **Keyed by the edge, never by position.** A checkbox does not submit when it is unticked,
+     * ⚠️ **Keyed by the relation, never by position.** A checkbox does not submit when it is unticked,
      * so parallel `relation_id[]` / `value[]` arrays would shift every later value onto the wrong
      * attribute — silently, and only in the rows somebody unticked.
      */
@@ -89,7 +89,7 @@ final class NodesScreen
     private const ROW_SETTING_FIELD = 'taxmod_field_setting';
 
     /**
-     * Where an attribute's new name is submitted, keyed by edge id.
+     * Where an attribute's new name is submitted, keyed by relation id.
      *
      * ⚠️ **Its own prefix rather than sharing the settings one**, because two different kinds of
      * thing under one name — `taxmod_setting[multiplicity]` beside `taxmod_setting[418]` — is how a
@@ -258,8 +258,8 @@ final class NodesScreen
         //
         // ⚠️ **The filter that stood here is gone into the walk**
         // ([D-467](../../../docs/NewConcept/90-decision-log.md)). *`hide` sits on the **inheritance
-        // edge**, which is the one thing that puts a node in the tree — so `Tree::rowsUnder()` already
-        // has the answer in the edges it just loaded, and a hidden placement is simply not followed.
+        // relation**, which is the one thing that puts a node in the tree — so `Tree::rowsUnder()` already
+        // has the answer in the relations it just loaded, and a hidden placement is simply not followed.
         // **That takes the subtree with it by construction**, where this screen had to reconstruct the
         // ancestry from `path` to get the same result.*
 
@@ -649,10 +649,10 @@ final class NodesScreen
         }
 
         return sprintf(
-            /* translators: 1: nodes, 2: edges, 3: settings, 4: labels. */
-            __('Trash cleared: %1$d nodes, %2$d edges, %3$d settings and %4$d labels are gone. Their ids and their changelog entries stay.', 'taxmod'),
+            /* translators: 1: nodes, 2: relations, 3: settings, 4: labels. */
+            __('Trash cleared: %1$d nodes, %2$d relations, %3$d settings and %4$d labels are gone. Their ids and their changelog entries stay.', 'taxmod'),
             $gone['nodes'],
-            $gone['edges'],
+            $gone['relations'],
             $gone['settings'],
             $gone['labels']
         );
@@ -950,19 +950,19 @@ final class NodesScreen
             ) . '<p><em>' . esc_html__('Nothing to preview here.', 'taxmod') . '</em></p>';
         }
 
-        $edges = $this->editor->fieldsOf($selected->id);
+        $relations = $this->editor->fieldsOf($selected->id);
 
         $html = $this->heading(
             __('Preview', 'taxmod'),
             __('How this node reads when it is filled in. The left column is what a reader sees, the right what an editor sees — a field that differs between them is read-only, and that is the point of looking.', 'taxmod')
         );
 
-        if ($edges === []) {
+        if ($relations === []) {
             return $html . '<p><em>' . esc_html__('No fields yet, so there is nothing to fill in.', 'taxmod') . '</em></p>';
         }
 
         // ⚠️ **Über die eine Naht des Kerns und nicht direkt an die Settings-Tabelle** ({@see Rendering::settingsForUseSites()}).
-        // *Hier stand `$this->settings->resolveForUseSites($edges)` — die alte Tabelle allein, und die
+        // *Hier stand `$this->settings->resolveForUseSites($relations)` — die alte Tabelle allein, und die
         // hat heute fünf Zeilen. **`read_only` lag im Datensatz und die Vorschau sah es nie**: der achte
         // Fall von «Daten umgezogen, Leser stehengeblieben» an derselben Naht.*
         //
@@ -970,11 +970,11 @@ final class NodesScreen
         // gekapselt und dann rausgenommen, hätte man sehen können, überall da, wo er knallt». **Solange
         // es zwei Wege gab, konnte ein Aufrufer den falschen nehmen — und der falsche antwortete
         // plausibel statt zu knallen.***
-        $resolved = $this->rendering->settingsForUseSites($edges);
+        $resolved = $this->rendering->settingsForUseSites($relations);
         $seen     = $this->previewSource($selected);
 
-        $values     = $this->rendering->previewValuesFor($edges, $resolved, $seen['held']);
-        $visibility = $this->rendering->previewVisibilityFor($edges, $resolved);
+        $values     = $this->rendering->previewValuesFor($relations, $resolved, $seen['held']);
+        $visibility = $this->rendering->previewVisibilityFor($relations, $resolved);
         $locale     = $this->localeFromRequest();
 
         $html .= '<p class="description taxmod-preview-source">' . esc_html($seen['says']) . '</p>';
@@ -1002,8 +1002,8 @@ final class NodesScreen
         // die Felder — die eine fürs Frontend, die andere fürs Modell —, und **Settings** zeigt die
         // Einstellungen. Jede Seite bekommt genau die Kanten, die zu ihr gehören.*
         $einstellungen = array_values(array_filter(
-            $edges,
-            static fn (Relation $edge): bool => $edge->isSetting() && ! $edge->hide
+            $relations,
+            static fn (Relation $relation): bool => $relation->isSetting() && ! $relation->hide
         ));
 
         // ⚠️ **`Settings` bekommt eine eigene Zeile über die ganze Breite** — *auf sein Wort: «ich würde
@@ -1047,8 +1047,8 @@ final class NodesScreen
         if ($visibility['hidden'] !== []) {
             $names = [];
 
-            foreach ($visibility['hidden'] as $edge) {
-                $names[] = $edge->name;
+            foreach ($visibility['hidden'] as $relation) {
+                $names[] = $relation->name;
             }
 
             $html .= '<p class="description taxmod-preview-hidden">'
@@ -1067,8 +1067,8 @@ final class NodesScreen
         if ($visibility['settings'] !== []) {
             $namen = [];
 
-            foreach ($visibility['settings'] as $edge) {
-                $namen[] = $edge->name;
+            foreach ($visibility['settings'] as $relation) {
+                $namen[] = $relation->name;
             }
 
             $html .= '<p class="description taxmod-preview-settings">'
@@ -1129,7 +1129,7 @@ final class NodesScreen
         $held = [];
 
         foreach ($this->data->valuesOf($chosen->id) as $value) {
-            $held[$value->edgeId] = $value->value;
+            $held[$value->relationId] = $value->value;
         }
 
         return [
@@ -1157,8 +1157,8 @@ final class NodesScreen
      *
      * ⚠️ **One direction, and [D-199](../../../docs/NewConcept/90-decision-log.md) says why.** The
      * owner: *«everything going out of the current node is in the attributes. As long as that stays
-     * so, we do not need to show them in the relations.»* *Outgoing non-inheritance edges **are** the
-     * attributes table, the parent edge is a chip in the head, the children are the tree.* **The
+     * so, we do not need to show them in the relations.»* *Outgoing non-inheritance relations **are** the
+     * attributes table, the parent relation is a chip in the head, the children are the tree.* **The
      * incoming direction appeared nowhere, which is what left this slot empty since Package 4.**
      *
      * ```mermaid
@@ -1169,10 +1169,10 @@ final class NodesScreen
      * ```
      *
      * ⚠️ **His condition is checked and not assumed.** *The section may hold one direction only
-     * because every outgoing edge is visible elsewhere — «if an outgoing edge ever appears that is
+     * because every outgoing relation is visible elsewhere — «if an outgoing relation ever appears that is
      * neither an attribute nor inheritance, the section has to grow back or it quietly stops being
-     * complete.» Measured on the model before building: 102 inheritance edges, 29 composition, 5
-     * aggregation, and **every** composition and aggregation edge carries a name. There is no third
+     * complete.» Measured on the model before building: 102 inheritance relations, 29 composition, 5
+     * aggregation, and **every** composition and aggregation relation carries a name. There is no third
      * case, so the condition still holds.*
      *
      * ⚠️ **An impact estimate rather than a listing** ([D-199](../../../docs/NewConcept/90-decision-log.md)):
@@ -1182,14 +1182,14 @@ final class NodesScreen
      */
     private function usedByPanel(Node $selected): string
     {
-        $edges = $this->editor->usedBy($selected->id);
+        $relations = $this->editor->usedBy($selected->id);
 
         $html = $this->heading(
             __('Used by', 'taxmod'),
             __('Which attributes of other nodes are typed by this one. Everything going out of this node is in the attributes above; this is the direction that appears nowhere else, and it is what would break if this node were deleted.', 'taxmod')
         );
 
-        if ($edges === []) {
+        if ($relations === []) {
             // ⚠️ *Gesagt statt weggelassen: «nichts verweist hierher» und «ich habe nicht
             // nachgesehen» sehen in einem leeren Kasten gleich aus, und nur das erste ist eine
             // Antwort auf «was bricht, wenn ich das lösche».*
@@ -1198,21 +1198,21 @@ final class NodesScreen
 
         // ⚠️ **Die Besitzer in **einer** Abfrage** (`CD-7`) — pro Kante nachzuschlagen wäre genau die
         // Schleife, die der Kodierstandard verbietet.
-        $owners = $this->editor->ownersOf($edges);
+        $owners = $this->editor->ownersOf($relations);
 
         $html .= '<ul class="taxmod-used-by">';
 
-        foreach ($edges as $edge) {
-            $owner = $owners[$edge->fromNodeId] ?? null;
+        foreach ($relations as $relation) {
+            $owner = $owners[$relation->fromNodeId] ?? null;
 
             $html .= '<li>'
-                . '<code>' . esc_html($edge->name) . '</code> '
+                . '<code>' . esc_html($relation->name) . '</code> '
                 . esc_html__('on', 'taxmod') . ' '
                 . ($owner === null
                     // ⚠️ *Ein Besitzer, den es nicht mehr gibt, wird **benannt** und nicht
                     // verschwiegen — eine Kante ohne ihren Knoten ist ein Befund
                     // ([D-485](../../../docs/NewConcept/90-decision-log.md)) und keine leere Zeile.*
-                    ? '<span class="taxmod-nothing">#' . (int) $edge->fromNodeId . '</span>'
+                    ? '<span class="taxmod-nothing">#' . (int) $relation->fromNodeId . '</span>'
                     : '<a href="' . esc_url($this->backTo($owner->id)) . '" class="taxmod-used-by-link">'
                         . esc_html($owner->name) . '</a>')
                 . '</li>';
@@ -1262,13 +1262,13 @@ final class NodesScreen
         // gehört — Name, Labels, der Speicherknopf — nennt es über `form="…"` und steht ausserhalb.
         // Das ist reines HTML und braucht kein Skript.*
         //
-        // ⚠️ *`edge` ist `0`, weil ein Knoten keine Verwendungsstelle ist — dieselbe Bedeutung, die
+        // ⚠️ *`relation` ist `0`, weil ein Knoten keine Verwendungsstelle ist — dieselbe Bedeutung, die
         // das entfallene `settingSubmission` der Null immer gegeben hat.*
         $pageForm = '<form method="post" id="' . esc_attr(self::pageForm($selected)) . '"'
             . ' action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
             . '<input type="hidden" name="id" value="' . esc_attr((string) $selected->id) . '">'
-            . '<input type="hidden" name="edge" value="0">'
+            . '<input type="hidden" name="relation" value="0">'
             . '<input type="hidden" name="_taxmod_nonce" value="'
             . esc_attr(wp_create_nonce(self::ACTION . '_' . $selected->id)) . '">'
             // ⚠️ *Auch hier, und es ist dasselbe Versäumnis: das Seitenformular ist der Knopf, den man
@@ -1359,7 +1359,7 @@ final class NodesScreen
      * What cannot be changed — `PageSlot::Fixed`'s meaning, as a row of chips.
      *
      * ⚠️ **Every one of these is derived**, which is what makes them belong together: `path` comes off
-     * the edges ([D-014](../../../docs/NewConcept/90-decision-log.md)), `id` is handed out once and
+     * the relations ([D-014](../../../docs/NewConcept/90-decision-log.md)), `id` is handed out once and
      * never reissued ([D-340](../../../docs/NewConcept/90-decision-log.md)), `version` rises so a
      * record can say what it was written against ([D-060](../../../docs/NewConcept/90-decision-log.md)).
      *
@@ -1382,7 +1382,7 @@ final class NodesScreen
     private function constants(Node $selected): string
     {
         $chips = [
-            [__('Path', 'taxmod'), $selected->path, __('Where it hangs in the tree. Derived from the edges and never edited.', 'taxmod')],
+            [__('Path', 'taxmod'), $selected->path, __('Where it hangs in the tree. Derived from the relations and never edited.', 'taxmod')],
             [__('Id', 'taxmod'), (string) $selected->id, __('Handed out once and never reissued.', 'taxmod')],
             [__('Version', 'taxmod'), (string) $selected->version, __('Rises when the model changes, so a record can say what it was written against.', 'taxmod')],
         ];
@@ -1537,7 +1537,7 @@ final class NodesScreen
      */
     private function attributes(Node $selected, array $rows): string
     {
-        $edges = $this->editor->fieldsOf($selected->id);
+        $relations = $this->editor->fieldsOf($selected->id);
         $body  = '';
 
         // ⚠️ **Through the renderer, and the acts arrive as **facts** rather than as markup**
@@ -1557,9 +1557,9 @@ final class NodesScreen
         // would reorder it for everybody.*
         $ownOrder = [];
 
-        foreach ($edges as $edge) {
-            if ($edge->fromNodeId === $selected->id) {
-                $ownOrder[] = $edge->id;
+        foreach ($relations as $relation) {
+            if ($relation->fromNodeId === $selected->id) {
+                $ownOrder[] = $relation->id;
             }
         }
 
@@ -1568,16 +1568,16 @@ final class NodesScreen
         // überhaupt Teile gibt.*
         $teile = $this->data->settingPartsOf(
             $selected->id,
-            array_map(static fn (Relation $edge): int => $edge->id, $edges)
+            array_map(static fn (Relation $relation): int => $relation->id, $relations)
         );
 
         $firstOwn = $ownOrder[0] ?? 0;
         $lastOwn  = $ownOrder === [] ? 0 : $ownOrder[count($ownOrder) - 1];
 
-        foreach ($edges as $edge) {
-            $own = $edge->fromNodeId === $selected->id;
+        foreach ($relations as $relation) {
+            $own = $relation->fromNodeId === $selected->id;
 
-            $actions[$edge->id] = [
+            $actions[$relation->id] = [
                 // ⚠️ The two words the core cannot make ([OQ-087](../../../docs/NewConcept/91-open-questions.md)):
                 // the text domain is the boundary's (`AR-2`), so they travel with the controls.
                 new Control('word:own', '', __('own', 'taxmod')),
@@ -1597,12 +1597,12 @@ final class NodesScreen
                 new Control(
                     'do',
                     'toggle_field_hide',
-                    $edge->hide ? __('Show', 'taxmod') : __('Hide', 'taxmod'),
-                    $edge->hide
+                    $relation->hide ? __('Show', 'taxmod') : __('Hide', 'taxmod'),
+                    $relation->hide
                         ? __('Show this field again — it is hidden from forms and from the preview', 'taxmod')
                         : __('Hide this field — it stays in the model and is not drawn', 'taxmod'),
                     $own,
-                    icon: $edge->hide ? 'visibility' : 'hidden'
+                    icon: $relation->hide ? 'visibility' : 'hidden'
                 ),
                 // ⚠️ **Die Diskette der Zeile ist weg, und das ist sein Wunsch von zweimal:** *«biete
                 // keinen Button an» und «Save in Fields sollte eigentlich auch über die Seite gehen».*
@@ -1628,13 +1628,13 @@ final class NodesScreen
                     'add_part',
                     __('Add row', 'taxmod'),
                     __('Add another one of these — the model allows several', 'taxmod'),
-                    $edge->multiplicity->allowsMany() && isset($teile[$edge->id]),
+                    $relation->multiplicity->allowsMany() && isset($teile[$relation->id]),
                     icon: 'plus-alt2'
                 ),
                 // ⚠️ **Up and down, the same two the tree row has** — the owner: *the attribute row
                 // should have up and down buttons like the nodes in the tree; `position` is part of node
-                // and also part of edge.* **Measured: it is part of the edge only** — a node's order is
-                // its *inheritance* edge's position, so this is the same column reached through a
+                // and also part of relation.* **Measured: it is part of the relation only** — a node's order is
+                // its *inheritance* relation's position, so this is the same column reached through a
                 // different sibling list, not a fact waiting for a shared base class.
                 //
                 // ⚠️ *And it is the missing half of [row 30](../../../docs/NewConcept/97-implementation-plan.md#the-working-list):
@@ -1646,7 +1646,7 @@ final class NodesScreen
                     'field_up',
                     __('Up', 'taxmod'),
                     __('Move this field up among the ones declared here', 'taxmod'),
-                    $own && $edge->id !== $firstOwn,
+                    $own && $relation->id !== $firstOwn,
                     false,
                     'arrow-up-alt2'
                 ),
@@ -1655,7 +1655,7 @@ final class NodesScreen
                     'field_down',
                     __('Down', 'taxmod'),
                     __('Move this field down among the ones declared here', 'taxmod'),
-                    $own && $edge->id !== $lastOwn,
+                    $own && $relation->id !== $lastOwn,
                     false,
                     'arrow-down-alt2'
                 ),
@@ -1664,14 +1664,14 @@ final class NodesScreen
                 // it, so copying it from here would put a second declaration where the first never was.
                 //
                 // ⚠️ *The copy needs a **different name**: [D-281](../../../docs/NewConcept/90-decision-log.md)
-                // refuses an edge with the same `from`, `kind`, `to` **and name**, because the name is
-                // part of what makes an edge itself. So the boundary supplies «(copy)» — a translatable
+                // refuses an relation with the same `from`, `kind`, `to` **and name**, because the name is
+                // part of what makes an relation itself. So the boundary supplies «(copy)» — a translatable
                 // word the core has no business inventing (`AR-2`).*
                 new Control(
                     'do',
                     'duplicate_field',
                     __('Duplicate', 'taxmod'),
-                    __('Copy this field with its settings — under a new name, because an edge is partly its name', 'taxmod'),
+                    __('Copy this field with its settings — under a new name, because an relation is partly its name', 'taxmod'),
                     $own,
                     icon: 'admin-page'
                 ),
@@ -1691,12 +1691,12 @@ final class NodesScreen
                 ),
             ];
 
-            $submits[$edge->id] = new Submission(
+            $submits[$relation->id] = new Submission(
                 admin_url('admin-post.php'),
                 [
                     'action'         => self::ACTION,
                     'id'             => (string) $selected->id,
-                    'edge'           => (string) $edge->id,
+                    'relation'           => (string) $relation->id,
                     'setting_key'    => SettingKey::Multiplicity->value,
                     '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $selected->id),
                     ...array_filter($this->circumstances()),
@@ -1715,8 +1715,8 @@ final class NodesScreen
         // **Selecting the target is the jump; where the tree then sits is the script's business.***
         $targetHrefs = [];
 
-        foreach ($edges as $edge) {
-            $targetHrefs[$edge->toNodeId] ??= $this->backTo($edge->toNodeId);
+        foreach ($relations as $relation) {
+            $targetHrefs[$relation->toNodeId] ??= $this->backTo($relation->toNodeId);
         }
 
         // ⚠️ **Zwei Blöcke, ein Renderer** ([D-518](../../../docs/NewConcept/90-decision-log.md)). Der
@@ -1746,8 +1746,8 @@ final class NodesScreen
 
         foreach ([false, true] as $istEinstellung) {
             $dieser = array_values(array_filter(
-                $edges,
-                static fn (Relation $edge): bool => $edge->isSetting() === $istEinstellung
+                $relations,
+                static fn (Relation $relation): bool => $relation->isSetting() === $istEinstellung
             ));
 
             $sorte = $istEinstellung ? FieldType::Setting : FieldType::Model;
@@ -1772,7 +1772,7 @@ final class NodesScreen
                 // ⚠️ *In **einem** Zug für alle Zeilen (`CD-7`), aus dem `default`-Satz des Knotens.*
                 $this->data->settingValuesOf(
                     $selected->id,
-                    array_map(static fn (Relation $edge): int => $edge->id, $dieser)
+                    array_map(static fn (Relation $relation): int => $relation->id, $dieser)
                 ),
                 self::VALUE_FIELD,
                 // ⚠️ *Ein Speichern oben und keines je Wert — sein Wunsch: «Save in Fields sollte
@@ -1877,8 +1877,8 @@ final class NodesScreen
         }
 
         return $this->heading(
-            __('Settings without an edge', 'taxmod'),
-            __('Settings whose carrier is a column on the node rather than an edge — today the renderer. They are saved with the page like everything else.', 'taxmod')
+            __('Settings without an relation', 'taxmod'),
+            __('Settings whose carrier is a column on the node rather than an relation — today the renderer. They are saved with the page like everything else.', 'taxmod')
         ) . '<table class="wp-list-table widefat striped"><tbody>' . $body . '</tbody></table>';
     }
 
@@ -1907,7 +1907,7 @@ final class NodesScreen
         ) as $drawn) {
             $key = SettingKey::tryFrom($drawn->key);
 
-            if ($key === null || $this->framework->settingEdgeId($key) !== 0) {
+            if ($key === null || $this->framework->settingRelationId($key) !== 0) {
                 continue;
             }
 
@@ -1934,26 +1934,26 @@ final class NodesScreen
      * ⚠️ *Der Einstiegsast ist der Ast, in dem das heutige Ziel liegt: wer einen Typ ändert, will
      * meistens einen anderen aus derselben Familie.*
      *
-     * @param list<Relation> $edges
+     * @param list<Relation> $relations
      * @return array<int, string>
      */
-    private function targetChoosersFor(array $edges, Node $selected): array
+    private function targetChoosersFor(array $relations, Node $selected): array
     {
         $aus = [];
 
-        foreach ($edges as $edge) {
-            if ($edge->fromNodeId !== $selected->id) {
+        foreach ($relations as $relation) {
+            if ($relation->fromNodeId !== $selected->id) {
                 continue;
             }
 
-            $ziel = $this->editor->find($edge->toNodeId);
+            $ziel = $this->editor->find($relation->toNodeId);
             $ast  = $ziel === null ? null : $this->framework->branchOf($ziel);
 
-            $aus[$edge->id] = $this->rendering->nodeChooser(
+            $aus[$relation->id] = $this->rendering->nodeChooser(
                 $this->framework->root(),
-                'retarget_' . $edge->id,
+                'retarget_' . $relation->id,
                 $ast === null ? null : $this->framework->rootOf($ast),
-                $edge->toNodeId,
+                $relation->toNodeId,
                 [$this->framework->trash()->id],
                 $this->barredTargets(),
                 $ziel?->name,
@@ -2052,18 +2052,18 @@ final class NodesScreen
 
         $rows = '';
 
-        foreach ($parked as $edge) {
+        foreach ($parked as $relation) {
             $rows .= '<div style="display:flex;gap:.5em;align-items:center;opacity:.6;margin:.2em 0">'
-                . '<span style="flex:1"><s>' . esc_html($edge->name) . '</s> '
+                . '<span style="flex:1"><s>' . esc_html($relation->name) . '</s> '
                 . '<span class="description">' . esc_html(sprintf(
                     /* translators: %d is the id of the act that removed it. */
                     __('removed by act #%d', 'taxmod'),
-                    (int) $edge->parkedByGroup
+                    (int) $relation->parkedByGroup
                 )) . '</span></span>'
                 . $this->form(
                     $selected->id,
                     [['restore_field', esc_html__('Restore', 'taxmod'), __('Put it back', 'taxmod')]],
-                    '<input type="hidden" name="edge" value="' . (int) $edge->id . '">'
+                    '<input type="hidden" name="relation" value="' . (int) $relation->id . '">'
                 )
                 . '</div>';
         }
@@ -2232,7 +2232,7 @@ final class NodesScreen
      * button stands outside its form, here five fields do.
      *
      * ⚠️ **Only `label_locale` rides along, because the rest is already in that form.** *`action`,
-     * `id`, `edge` and the nonce are the settings panel's hidden fields; sending them a second time
+     * `id`, `relation` and the nonce are the settings panel's hidden fields; sending them a second time
      * would put two `id` fields in one submission, where the last one silently wins.*
      *
      * ⚠️ *And the locale **must** ride along: it is chosen by a `GET` and lives in the URL, which a
@@ -2408,8 +2408,8 @@ final class NodesScreen
 
         $attributes = [];
 
-        foreach ($this->editor->fieldsOf($nodeId) as $edge) {
-            $attributes[$edge->id] = $edge;
+        foreach ($this->editor->fieldsOf($nodeId) as $relation) {
+            $attributes[$relation->id] = $relation;
         }
 
         // One resolution for the whole form rather than one per field (`CD-7`).
@@ -2421,11 +2421,11 @@ final class NodesScreen
         // would resolve the converter setting per field, which is `CD-7`'s loop.
         $typedIn = [];
 
-        foreach ($submitted as $rawEdge => $rawValue) {
-            $edgeId = absint($rawEdge);
+        foreach ($submitted as $rawRelation => $rawValue) {
+            $relationId = absint($rawRelation);
 
-            if (isset($attributes[$edgeId])) {
-                $typedIn[$edgeId] = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+            if (isset($attributes[$relationId])) {
+                $typedIn[$relationId] = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
             }
         }
 
@@ -2434,12 +2434,12 @@ final class NodesScreen
             array_filter($typedIn, static fn (string $one): bool => $one !== '')
         );
 
-        foreach ($submitted as $rawEdge => $rawValue) {
-            $edgeId = absint($rawEdge);
-            $edge   = $attributes[$edgeId] ?? null;
+        foreach ($submitted as $rawRelation => $rawValue) {
+            $relationId = absint($rawRelation);
+            $relation   = $attributes[$relationId] ?? null;
 
-            if ($edge === null) {
-                // An edge id from a form is input. DataEntry refuses it as well; refusing twice
+            if ($relation === null) {
+                // An relation id from a form is input. DataEntry refuses it as well; refusing twice
                 // costs nothing and this one keeps a stale form from reaching the core at all.
                 continue;
             }
@@ -2449,20 +2449,20 @@ final class NodesScreen
             if ($characters === '') {
                 // Empty means unanswered — the row goes, which is a third state beside a value
                 // and an explicit nothing.
-                $this->data->clear($recordId, $edgeId);
+                $this->data->clear($recordId, $relationId);
 
                 continue;
             }
 
-            $type = $types[$edgeId] ?? null;
+            $type = $types[$relationId] ?? null;
 
             if ($type === null) {
-                throw NotYetStorable::thatFieldHasNoTypeYet($edge->name);
+                throw NotYetStorable::thatFieldHasNoTypeYet($relation->name);
             }
 
             // ⚠️ *Already read above, converter and all. The `??` is not a fallback for a missing
-            // value — `valuesFrom()` answers for every edge that had a type, and this one does.*
-            $this->data->put($recordId, $edgeId, $values[$edgeId] ?? $type->valueFrom($characters));
+            // value — `valuesFrom()` answers for every relation that had a type, and this one does.*
+            $this->data->put($recordId, $relationId, $values[$relationId] ?? $type->valueFrom($characters));
         }
     }
 
@@ -2534,9 +2534,9 @@ final class NodesScreen
         // eine Einstellung ist keine Daten. Und sie ist genau das, was seine «schmale Zeile» braucht.*
         $attributes = [];
 
-        foreach ($this->editor->fieldsOf($selected->id) as $edge) {
-            if (! $edge->isSetting()) {
-                $attributes[] = $edge;
+        foreach ($this->editor->fieldsOf($selected->id) as $relation) {
+            if (! $relation->isSetting()) {
+                $attributes[] = $relation;
             }
         }
 
@@ -2592,7 +2592,7 @@ final class NodesScreen
             $held = [];
 
             foreach ($this->data->valuesOf($record->id) as $value) {
-                $held[$value->edgeId] = $value->value;
+                $held[$value->relationId] = $value->value;
             }
 
             $zeilen[] = [
@@ -2639,7 +2639,7 @@ final class NodesScreen
      * ⚠️ *Der Name des haltenden Knotens wird über den Datensatz gefunden und nicht geraten. Fehlt er,
      * steht die Id da — **eine Lücke, die man sieht, ist besser als eine, die aussieht wie nichts**.*
      */
-    private function belongsTo(Node $selected, ?\Taxmod\Core\Model\EdgeRecord $halter): string
+    private function belongsTo(Node $selected, ?\Taxmod\Core\Model\RelationRecord $halter): string
     {
         if ($halter === null) {
             return esc_html($selected->name);
@@ -2653,14 +2653,14 @@ final class NodesScreen
         $kante = null;
 
         foreach ($satz === null ? [] : $this->editor->fieldsOf($satz->nodeId) as $eine) {
-            if ($eine->id === $halter->edgeId) {
+            if ($eine->id === $halter->relationId) {
                 $kante = $eine;
             }
         }
 
         return '<span class="taxmod-record-part">'
             . esc_html($node?->name ?? ('#' . (string) ($satz->nodeId ?? 0)))
-            . ' · <code>' . esc_html($kante?->name ?? ('#' . (string) $halter->edgeId)) . '</code>'
+            . ' · <code>' . esc_html($kante?->name ?? ('#' . (string) $halter->relationId)) . '</code>'
             . '</span>';
     }
 
@@ -2698,7 +2698,7 @@ final class NodesScreen
                 ? '<strong style="color:#b32d2e">' . esc_html__('no renderer', 'taxmod') . '</strong>'
                 : esc_html(($field->type?->value ?? '—') . ' · ' . $field->rendererName);
 
-            $lines .= '<li><code>' . esc_html($field->edge->name) . '</code> — ' . $what
+            $lines .= '<li><code>' . esc_html($field->relation->name) . '</code> — ' . $what
                 . ($field->isHidden() ? ' · ' . esc_html__('hidden by a setting', 'taxmod') : '')
                 . '</li>';
         }
@@ -2834,12 +2834,12 @@ final class NodesScreen
      * ⚠️ *The multiplicity is written through the ordinary settings path, so `D-312`'s narrowing rule
      * still applies and a widening is still refused by the core rather than here.*
      */
-    private function saveField(int $id, int $edge, string $name, string $multiplicity): void
+    private function saveField(int $id, int $relation, string $name, string $multiplicity): void
     {
-        $existing = $this->editor->ownAttribute($id, $edge);
+        $existing = $this->editor->ownAttribute($id, $relation);
 
         if ($name !== '' && $name !== $existing->name) {
-            $this->editor->renameField($id, $edge, $name);
+            $this->editor->renameField($id, $relation, $name);
         }
 
         if ($multiplicity === '') {
@@ -2858,7 +2858,7 @@ final class NodesScreen
             return;
         }
 
-        $this->editor->setMultiplicity($id, $edge, $gewuenscht);
+        $this->editor->setMultiplicity($id, $relation, $gewuenscht);
     }
 
     
@@ -2998,14 +2998,14 @@ final class NodesScreen
      * ⚠️ *`$locale` comes from a hidden field and not from the URL: the page is saved by a `POST` to
      * `admin-post.php`, which never sees the `taxmod_locale` the panel was drawn with.*
      */
-    private function saveNodePage(int $nodeId, int $edgeId, string $name, string $locale): void
+    private function saveNodePage(int $nodeId, int $relationId, string $name, string $locale): void
     {
-        $this->saveSettings($nodeId, $edgeId, $name);
+        $this->saveSettings($nodeId, $relationId, $name);
         $this->saveFieldRows($nodeId);
         $this->saveSettingValues($nodeId);
         $this->savePartValues($nodeId);
         $this->saveLabels($nodeId, $locale);
-        $this->saveKind($nodeId, $edgeId);
+        $this->saveKind($nodeId, $relationId);
     }
 
     /**
@@ -3112,7 +3112,7 @@ final class NodesScreen
                 continue;
             }
 
-            $kante = $this->data->settingEdgeAtUseSite($useSite, $key);
+            $kante = $this->data->settingRelationAtUseSite($useSite, $key);
 
             if ($kante === null) {
                 continue;
@@ -3166,12 +3166,12 @@ final class NodesScreen
      * kann, entscheidet der Kern ({@see \Taxmod\Core\Service\DataEntry::createPart()}) — dort sitzt die
      * Regel aus [D-541](../../../docs/NewConcept/90-decision-log.md), und hier wird sie nicht kopiert.*
      */
-    private function addPart(int $nodeId, int $edgeId): void
+    private function addPart(int $nodeId, int $relationId): void
     {
         $kante = null;
 
         foreach ($this->editor->fieldsOf($nodeId) as $eine) {
-            if ($eine->id === $edgeId) {
+            if ($eine->id === $relationId) {
                 $kante = $eine;
             }
         }
@@ -3196,7 +3196,7 @@ final class NodesScreen
         // ⚠️ *Alle Feldkanten des Knotens, damit sowohl Einstellungen als auch zusammengesetzte Felder
         // erfasst sind — beide leben in einem Teil.*
         $kanten = array_map(
-            static fn (Relation $edge): int => $edge->id,
+            static fn (Relation $relation): int => $relation->id,
             $this->editor->fieldsOf($nodeId)
         );
 
@@ -3268,8 +3268,8 @@ final class NodesScreen
         // gehört nicht hierher (`CD-5`).*
         $aussen = [];
 
-        foreach ($this->editor->fieldsOf($nodeId) as $edge) {
-            $aussen[$edge->id] = $edge;
+        foreach ($this->editor->fieldsOf($nodeId) as $relation) {
+            $aussen[$relation->id] = $relation;
         }
 
         foreach ($eingereicht as $rohAussen => $roh) {
@@ -3383,9 +3383,9 @@ final class NodesScreen
      * ⚠️ *Ein leerer Wert ist hier **kein** «nicht gesendet», sondern die dritte Wahl: «erbt». Darum
      * `array_key_exists` und nicht `!== ''`.*
      */
-    private function saveKind(int $nodeId, int $edgeId): void
+    private function saveKind(int $nodeId, int $relationId): void
     {
-        if ($edgeId !== 0 || ! array_key_exists('node_field_type', $_POST)) {
+        if ($relationId !== 0 || ! array_key_exists('node_field_type', $_POST)) {
             return;
         }
 
@@ -3414,7 +3414,7 @@ final class NodesScreen
      * should do with a partial batch is genuinely undecided and is on the roadmap; failing loudly is
      * the honest interim rather than writing twenty-nine and mentioning none.*
      */
-    private function saveSettings(int $nodeId, int $edgeId, string $name = ''): void
+    private function saveSettings(int $nodeId, int $relationId, string $name = ''): void
     {
         // ⚠️ **The page save writes the name too, and forgetting that was a regression I shipped.**
         // [D-392](../../../docs/NewConcept/90-decision-log.md) put the name field inside this form and
@@ -3422,10 +3422,10 @@ final class NodesScreen
         // was thrown away**. The owner found it in one try: *changing and saving a node name does not
         // work at the moment — name not in the form?* **It was in the form; nothing read it.**
         //
-        // ⚠️ *Only for a node. An **edge**'s name is `save_attribute`'s business, and only where the
+        // ⚠️ *Only for a node. An **relation**'s name is `save_attribute`'s business, and only where the
         // attribute is declared ([D-376](../../../docs/NewConcept/90-decision-log.md)) — renaming an
         // inherited one from a descendant would rename it for everybody, silently.*
-        if ($edgeId === 0 && $name !== '') {
+        if ($relationId === 0 && $name !== '') {
             $node = $this->editor->find($nodeId);
 
             // ⚠️ *Only when it actually differs.* A page save posts the name every time, and renaming
@@ -3444,7 +3444,7 @@ final class NodesScreen
         //
         // ⚠️ *Nur an einem Knoten. An einer Verwendungsstelle ist die Spalte eine andere, und was dort
         // gilt, schreibt {@see self::saveUseSiteSettings()}.*
-        if ($edgeId === 0) {
+        if ($relationId === 0) {
             $this->saveColumnSettings($nodeId);
         }
 
@@ -3608,7 +3608,7 @@ final class NodesScreen
      * walked key by key* ([D-079](../../../docs/NewConcept/90-decision-log.md), [D-093](../../../docs/NewConcept/90-decision-log.md)),
      * and says what a **key** answers here.
      *
-     * ⚠️ *They are confusable because the chain **walks the inheritance edges**: the same ancestors,
+     * ⚠️ *They are confusable because the chain **walks the inheritance relations**: the same ancestors,
      * two different questions. `hide` moves down the **chain**, so a child of a hidden node resolves to
      * hidden and nothing here has to walk or remember. A filter tracking ancestors itself would be a
      * second implementation of **the chain**.*
@@ -3630,12 +3630,12 @@ final class NodesScreen
         $hidden = [];
 
         // ⚠️ **Off the row, which carries it since [D-467](../../../docs/NewConcept/90-decision-log.md).**
-        // *`hide` lives on the **inheritance edge**, and `Tree::rowsUnder()` loads those edges anyway —
+        // *`hide` lives on the **inheritance relation**, and `Tree::rowsUnder()` loads those relations anyway —
         // so the walk answers it and this method only rearranges. **What stood here before was a query**
         // resolving every visible node's settings, and its only consumer was this one flag.*
         //
         // ⚠️ *True only while «show hidden» is on: with it off a hidden row is not in `$rows` at all,
-        // because the walk did not follow its edge.*
+        // because the walk did not follow its relation.*
         foreach ($rows as $row) {
             $hidden[$row['node']->id] = $row['hidden'];
         }
@@ -3657,13 +3657,13 @@ final class NodesScreen
      */
     private function toggleHidden(int $nodeId): int
     {
-        // ⚠️ **The eye writes the node's **inheritance edge**, not the node**
-        // ([D-467](../../../docs/NewConcept/90-decision-log.md)). *That edge is what puts the node in
+        // ⚠️ **The eye writes the node's **inheritance relation**, not the node**
+        // ([D-467](../../../docs/NewConcept/90-decision-log.md)). *That relation is what puts the node in
         // the tree ([D-014](../../../docs/NewConcept/90-decision-log.md)), so hiding it is hiding the
         // placement — which is what the owner meant: «I do not simply create a model node and then say
         // I will not draw it».*
         //
-        // ⚠️ *The root has no inheritance edge and therefore cannot be hidden. **That is correct rather
+        // ⚠️ *The root has no inheritance relation and therefore cannot be hidden. **That is correct rather
         // than a gap**: it is machinery ([D-194](../../../docs/NewConcept/90-decision-log.md)), and the
         // editor answers with the id unchanged instead of failing.*
         $this->editor->hidePlacement($nodeId);
@@ -3674,7 +3674,7 @@ final class NodesScreen
     // ⚠️ *`withoutHidden()` stood here and is gone into `Tree::rowsUnder()`
     // ([D-467](../../../docs/NewConcept/90-decision-log.md)). It filtered rows **after** the walk and
     // had to read every node's `path` to find a hidden ancestor. **The walk owns both facts**: it
-    // loads the inheritance edges anyway, and not following one takes its subtree with it — so the
+    // loads the inheritance relations anyway, and not following one takes its subtree with it — so the
     // subtree disappears by construction rather than by a second pass.*
 
     /**
@@ -3762,7 +3762,7 @@ final class NodesScreen
         $target       = isset($_POST['target']) ? absint($_POST['target']) : 0;
         // ⚠️ *Its own name so the two choosers cannot share a radio group ({@see fieldForm()}).*
         $pointsAt     = isset($_POST['field_target']) ? absint($_POST['field_target']) : 0;
-        $edge         = isset($_POST['edge']) ? absint($_POST['edge']) : 0;
+        $relation         = isset($_POST['relation']) ? absint($_POST['relation']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         // Each setting is edited where it sits, under `taxmod_setting[<key>]`.
         $settingValue = isset($_POST[self::SETTING_FIELD][$settingKey])
@@ -3778,11 +3778,11 @@ final class NodesScreen
         $stay   = $id;
 
         // ⚠️ **One act, one change number** ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
-        // The owner: *whatever was changed in one change — edge, node, setting — if they were changed
+        // The owner: *whatever was changed in one change — relation, node, setting — if they were changed
         // together they should have one change number.* **This `match` is where an act begins**: one
         // POST is one thing a person did, and everything it writes belongs together.
         //
-        // ⚠️ *Measured before the bracket: a node renamed, its edge reordered and its setting written
+        // ⚠️ *Measured before the bracket: a node renamed, its relation reordered and its setting written
         // in one act produced **three** groups. `change_group_id` existed, was decided
         // ([D-348](../../../docs/NewConcept/90-decision-log.md)) and grouped nothing — 1609 of 1945
         // groups held a single row.*
@@ -3815,8 +3815,8 @@ final class NodesScreen
                 'move'           => $this->editor->move($id, $target),
                 // ⚠️ **Dieselbe Spalte, andere Geschwisterliste** ([D-435](../../../docs/NewConcept/90-decision-log.md)):
                 // ein Knoten ordnet seine Vererbungskante, ein Attribut seine eigene.
-                'field_up'   => $this->editor->moveField($id, $edge, -1),
-                'field_down' => $this->editor->moveField($id, $edge, 1),
+                'field_up'   => $this->editor->moveField($id, $relation, -1),
+                'field_down' => $this->editor->moveField($id, $relation, 1),
                 'up'             => $this->editor->moveUp($id),
                 'down'           => $this->editor->moveDown($id),
                 'restore'        => $this->editor->restore($id),
@@ -3840,33 +3840,33 @@ final class NodesScreen
                 // Daten: "sollten keine Daten da sein einfach aendern, wenn Daten da sind neue
                 // Version und Konflikt". Die Kante wird ueber ihre Version gespeichert, also
                 // meldet ein gleichzeitiger Umbau sich als Konflikt statt still zu gewinnen.
-                'retarget_field' => $this->editor->retargetField($id, $edge, $this->retargetTo($edge)),
-                'remove_field'  => $this->editor->removeField($id, $edge),
-                'restore_field' => $this->editor->restoreField($id, $edge),
+                'retarget_field' => $this->editor->retargetField($id, $relation, $this->retargetTo($relation)),
+                'remove_field'  => $this->editor->removeField($id, $relation),
+                'restore_field' => $this->editor->restoreField($id, $relation),
                 // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
                 // because an inherited attribute belongs to the ancestor and renaming it from a
                 // descendant would rename it for every other user, silently.
-                'toggle_field_hide' => $this->editor->hideField($id, $edge),
+                'toggle_field_hide' => $this->editor->hideField($id, $relation),
                 // ⚠️ *`save_field` stand hier und ist mit der Diskette der Zeile gegangen — Name und «wie
                 // oft» kommen jetzt mit dem Seitenformular ({@see self::saveFieldRows()}).*
                 // ⚠️ **Eine Zeile mehr** — *auf sein Bestehen, dass `Display Option` `1..*` ist: «somit
                 // muss ich Zeilen hinzufügen können». Ein Teil ist eine Zeile
                 // ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere Teile sind mehrere
                 // Renderer, für das Farbschema ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
-                'add_part'      => $this->addPart($id, $edge),
-                // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an edge
+                'add_part'      => $this->addPart($id, $relation),
+                // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an relation
                 // with the same name, and inventing a suffix is writing user-visible text — which
                 // goes through the text domain at the boundary (`AR-2`) and never in `Taxmod\Core`.
                 'duplicate_field' => $this->editor->duplicateField(
                     $id,
-                    $edge,
+                    $relation,
                     sprintf(
                         /* translators: %s: the name of the attribute being copied. */
                         __('%s (copy)', 'taxmod'),
-                        $this->editor->ownAttribute($id, $edge)->name
+                        $this->editor->ownAttribute($id, $relation)->name
                     )
                 )->id,
-                // ⚠️ **`$edge` decides the owner** (D-381): the same three acts serve a node and a use site,
+                // ⚠️ **`$relation` decides the owner** (D-381): the same three acts serve a node and a use site,
                 // and a write meant for one attribute must not land on the type it points at.
                 // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the
                 // panel is one form, so there is no single key to write — every changed value is.
@@ -3878,7 +3878,7 @@ final class NodesScreen
                 // die Frage «soll er weg»: «zu 1: ja» — und damit schickte **niemand** mehr `put_labels`.
                 // **Ein Akt, den kein Knopf abschickt, ist toter Code**, und `CLAUDE.md` verbietet ihn
                 // ausdrücklich. Er ist mit seiner Konstante `LabelsRenderer::WRITE` verschwunden.*
-                'put_setting'    => $this->saveNodePage($id, $edge, $name, $labelLocale),
+                'put_setting'    => $this->saveNodePage($id, $relation, $name, $labelLocale),
                 // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
                 // eligible set is what the screen offers, and an unusual choice is a special case
                 // rather than an error. A name no renderer answers to is the error.
@@ -3897,7 +3897,7 @@ final class NodesScreen
                 // ganze Liste ([D-351](../../../docs/NewConcept/90-decision-log.md)).*
                 'put_multiplicity' => $this->editor->setMultiplicity(
                     $id,
-                    $edge,
+                    $relation,
                     Multiplicity::tryFrom($settingValue)
                         ?? throw new \InvalidArgumentException('Keine solche Multiplizitaet.')
                 ),

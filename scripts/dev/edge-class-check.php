@@ -4,6 +4,10 @@
  *
  *     php scripts/dev/edge-class-check.php [path/to/wordpress]
  *
+ * ⚠️ *Der Dateiname trägt als einziger im Baum noch das Wort «edge» (TASK-016,
+ * [D-576](../../docs/NewConcept/90-decision-log.md)). **Er bleibt, weil an dieser Datei gerade
+ * jemand anders baut** — umbenannt wird sie, wenn TASK-032 eingecheckt ist.*
+ *
  * ⚠️ **[D-639](../../docs/NewConcept/90-decision-log.md), sein Wort:** *«dann frage ich mich, ob wir
  * diesen Schalter nicht einfach weglassen und das ueber einen dritten Wert Komposition machen. Dann
  * haben wir **ein Mittel**, das bestimmt, was fuer eine Verbindung es ist, und nicht noch einen
@@ -178,7 +182,7 @@ $geladen  = [];
 $falsche  = [];
 
 foreach (Query::column('die Besitzer aller Kanten holen', 'SELECT DISTINCT from_node_id FROM ' . Schema::table(Schema::LIVE_TABLES[1])) as $besitzer) {
-    foreach ($kanten->fieldEdgesOf([(int) $besitzer]) as $kante) {
+    foreach ($kanten->fieldRelationsOf([(int) $besitzer]) as $kante) {
         $geladen[$kante->kind->value] = ($geladen[$kante->kind->value] ?? 0) + 1;
 
         if ($kante::class !== Relation::classFor($kante->kind)) {

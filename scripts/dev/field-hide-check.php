@@ -68,10 +68,10 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
 
 // ── Ein Knoten, der ein eigenes Feld erklärt und zwei erbt ──────────────────
 $prefixes = null;
@@ -92,9 +92,9 @@ if ($prefixes === null) {
 
 $eigenes = null;
 
-foreach ($editor->fieldsOf($prefixes->id) as $edge) {
-    if ($edge->fromNodeId === $prefixes->id) {
-        $eigenes = $edge;
+foreach ($editor->fieldsOf($prefixes->id) as $relation) {
+    if ($relation->fromNodeId === $prefixes->id) {
+        $eigenes = $relation;
     }
 }
 
@@ -179,13 +179,13 @@ check(
 echo "\n== 3. Und es wird beim Zeichnen wirklich gelesen ==\n";
 
 // ⚠️ **Die Zusage, um die es geht.** *`Rendering` filtert versteckte Kanten aus dem Formular
-// (`array_filter(… ! $edge->hide)`). **Ohne diese Zeile wäre der Schalter ein Knopf ohne Wirkung** —
+// (`array_filter(… ! $relation->hide)`). **Ohne diese Zeile wäre der Schalter ein Knopf ohne Wirkung** —
 // und genau so war es, solange er fehlte: die Spalte konnte es, niemand las sie für Felder.*
 $roh = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Service/Rendering.php');
 
 check(
     'das Zeichnen filtert versteckte Kanten heraus',
-    str_contains($roh, 'static fn (Relation $edge): bool => ! $edge->hide')
+    str_contains($roh, 'static fn (Relation $relation): bool => ! $relation->hide')
 );
 
 $editor->hideField($prefixes->id, $eigenes->id, false);

@@ -42,12 +42,12 @@ use Taxmod\WordPress\Persistence\{Residue, Schema, SeededFrameworkNodes, WpdbCha
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
-$edges = new WpdbRelationRepository();
+$relations = new WpdbRelationRepository();
 $log   = new WpdbChangelog(new SystemClock());
-$fw    = new SeededFrameworkNodes($nodes, $edges, $log);
+$fw    = new SeededFrameworkNodes($nodes, $relations, $log);
 
-$editor   = new ModelEditor($nodes, $edges, $fw, $log);
-$data     = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $fw, new SystemClock());
+$editor   = new ModelEditor($nodes, $relations, $fw, $log);
+$data     = new DataEntry(new WpdbRecordRepository(), $relations, $nodes, $fw, new SystemClock());
 
 $residue = new Residue($fw, new WpdbLabelRepository(), $log, new WpdbRecordRepository());
 
@@ -77,7 +77,7 @@ $roh = static function (string $sql) use ($wpdb): void {
 
 // ⚠️ *Was schon liegt, wird gezählt und **nicht** angetastet: die sieben echten Werte ohne Kante sind
 // der Rückstand des Eigentümers, nicht der dieser Prüfung. Jede Zusage unten ist eine **Differenz**.*
-$vorherWerte  = array_sum($residue->valuesWithoutEdge());
+$vorherWerte  = array_sum($residue->valuesWithoutRelation());
 $vorherAllein = count($residue->nodesWithoutConnections());
 $vorherDaten  = count($residue->recordsWithoutNode());
 
@@ -125,7 +125,7 @@ $roh("DELETE FROM {$p}nodes WHERE id = {$leiche->id}");
 
 echo "\n== 1. gemessen: alle drei Quellen sehen ihren eigenen Rückstand ==\n";
 
-$werte  = $residue->valuesWithoutEdge();
+$werte  = $residue->valuesWithoutRelation();
 $einzel = array_map(static fn (object $n): int => $n->id, $residue->nodesWithoutConnections());
 
 $say(array_key_exists($feld->id, $werte), sprintf('der Wert an der verschwundenen Kante %d liegt da (%d Zeile(n))', $feld->id, $werte[$feld->id] ?? 0));
@@ -207,7 +207,7 @@ if ($wpdb->last_error !== '') {
     exit(2);
 }
 
-$goneWerte  = $residue->forgetValuesOfEdge($feld->id);
+$goneWerte  = $residue->forgetValuesOfRelation($feld->id);
 $goneKnoten = $residue->purgeNodeWithoutConnections($allein->id);
 $goneDaten  = $residue->forgetRecordsOfGoneNode($leiche->id);
 
@@ -225,7 +225,7 @@ $say($neu >= 3, sprintf('drei Akte, drei Zeilen im Log — die Geschichte bleibt
 
 echo "\n== 4. danach ist es weg, und was nie Rückstand war, ist unberührt ==\n";
 
-$say(! array_key_exists($feld->id, $residue->valuesWithoutEdge()), 'der Wert ist weg');
+$say(! array_key_exists($feld->id, $residue->valuesWithoutRelation()), 'der Wert ist weg');
 $say(! in_array($allein->id, array_map(static fn (object $n): int => $n->id, $residue->nodesWithoutConnections()), true), 'der Knoten ist weg');
 $say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE id = {$allein->id}") === 0, 'seine Zeile in nodes auch');
 $say(! array_key_exists($leiche->id, $residue->recordsWithoutNode()), 'die Daten ohne Knoten sind weg');
@@ -237,7 +237,7 @@ $say(
 // ⚠️ **Der Rückstand des Eigentümers muss noch genauso daliegen.** *Eine Reparaturfläche, die beim
 // Aufräumen der eigenen Wiese fremde Zeilen mitnimmt, wäre genau das automatische Aufräumen, das
 // [D-247](../../docs/NewConcept/90-decision-log.md) verbietet.*
-$say(array_sum($residue->valuesWithoutEdge()) === $vorherWerte, sprintf('die %d vorher vorhandenen Werte ohne Kante liegen unberührt da', $vorherWerte));
+$say(array_sum($residue->valuesWithoutRelation()) === $vorherWerte, sprintf('die %d vorher vorhandenen Werte ohne Kante liegen unberührt da', $vorherWerte));
 $say(
     count($residue->recordsWithoutNode()) === $vorherDaten,
     sprintf('und die %d fremden Datenleichen liegen noch', $vorherDaten)
@@ -245,7 +245,7 @@ $say(
 
 echo "\n== 5. der Wächter: eine Id, die kein Rückstand ist, wird nicht entfernt ==\n";
 
-$say($residue->forgetValuesOfEdge($modell->id) === 0, 'eine Id, die keine verschwundene Kante ist, entfernt nichts');
+$say($residue->forgetValuesOfRelation($modell->id) === 0, 'eine Id, die keine verschwundene Kante ist, entfernt nichts');
 $say($residue->purgeNodeWithoutConnections($modell->id) === null, 'ein Knoten im Baum wird nicht entfernt — und es wird nicht als Akt gemeldet');
 $say($residue->forgetRecordsOfGoneNode($modell->id) === null, 'die Daten eines lebenden Knotens werden nicht entfernt');
 $say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE id = {$modell->id}") === 1, 'er steht noch');
@@ -282,7 +282,7 @@ $eigene = (int) $wpdb->get_var(
 );
 
 $say($eigene === 0, 'die Wiese ist wieder weg');
-$say(array_sum($residue->valuesWithoutEdge()) === $vorherWerte, 'und der fremde Rückstand ist unverändert');
+$say(array_sum($residue->valuesWithoutRelation()) === $vorherWerte, 'und der fremde Rückstand ist unverändert');
 
 // ⚠️ *Der leere Fall — [D-247](../../docs/NewConcept/90-decision-log.md) will «nichts aufzuräumen»
 // als Nachricht und nicht als leere Tabelle.*
@@ -294,7 +294,7 @@ $say(array_sum($residue->valuesWithoutEdge()) === $vorherWerte, 'und der fremde 
 // nicht den Schirm.*
 $leer = $plugin->cleanupScreen()->render();
 
-$eineLeer = $residue->valuesWithoutEdge() === []
+$eineLeer = $residue->valuesWithoutRelation() === []
     || $residue->nodesWithoutConnections() === []
     || $residue->recordsWithoutNode() === [];
 

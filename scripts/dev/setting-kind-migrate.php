@@ -202,9 +202,9 @@ if (! $go) {
 // ---------------------------------------------------------------- schreiben
 
 $nodes  = new WpdbNodeRepository();
-$edges  = new WpdbRelationRepository();
+$relations  = new WpdbRelationRepository();
 $log    = new WpdbChangelog(new SystemClock());
-$editor = new ModelEditor($nodes, $edges, new SeededFrameworkNodes($nodes, $edges, $log), $log);
+$editor = new ModelEditor($nodes, $relations, new SeededFrameworkNodes($nodes, $relations, $log), $log);
 
 $wpdb->query('START TRANSACTION');
 

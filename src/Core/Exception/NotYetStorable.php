@@ -104,22 +104,22 @@ final class NotYetStorable extends DomainError
      * Vorgänger dieser Zeile, ein `return` ohne Wort, ist genau der Grund, warum ein Renderer-Ausfall
      * einen ganzen Tag unsichtbar bleiben konnte.*
      */
-    public static function thatSettingHasNoEdgeYet(string $key): self
+    public static function thatSettingHasNoRelationYet(string $key): self
     {
-        return new self(sprintf('The setting «%s» has no edge written down yet, so nothing can be stored at it.', $key));
+        return new self(sprintf('The setting «%s» has no relation written down yet, so nothing can be stored at it.', $key));
     }
 
-    public static function notAFieldOfThisModel(int $edgeId, string $model): self
+    public static function notAFieldOfThisModel(int $relationId, string $model): self
     {
-        return new self(sprintf('Field %d does not belong to «%s» or anything it inherits from.', $edgeId, $model));
+        return new self(sprintf('Field %d does not belong to «%s» or anything it inherits from.', $relationId, $model));
     }
 
     /**
      * ⚠️ *Eine Verwendungsstelle wird über ihre **Id** angesprochen, und eine Id, die auf nichts zeigt,
      * ist Eingabe und kein Zustand — sie wird gemeldet und nicht als «nichts zu tun» geschluckt.*
      */
-    public static function noSuchUseSite(int $edgeId): self
+    public static function noSuchUseSite(int $relationId): self
     {
-        return new self(sprintf('There is no use site %d.', $edgeId));
+        return new self(sprintf('There is no use site %d.', $relationId));
     }
 }

@@ -76,7 +76,7 @@ $unknown = $wpdb->get_col("SELECT DISTINCT setting_key FROM {$prefix}settings WH
 
 say('Schluessel, die weder Motor noch bekannt frei sind', count($unknown), implode(', ', $unknown));
 
-// A setting must belong to a node, an edge, or the installation — nothing else has an identity.
+// A setting must belong to a node, an relation, or the installation — nothing else has an identity.
 say(
     'Settings an einem Besitzer, den es nicht gibt',
     (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}settings s WHERE s.owner_id <> {$installation} AND NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = s.owner_id) AND NOT EXISTS (SELECT 1 FROM {$prefix}relations r WHERE r.id = s.owner_id)")

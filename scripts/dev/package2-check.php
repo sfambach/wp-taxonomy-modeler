@@ -55,12 +55,12 @@ Schema::install();
 update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $framework, $log);
+$editor = new ModelEditor($nodes, $relations, $framework, $log);
 $tree   = new Tree($nodes);
 
 $treeRoot = $framework->root();
@@ -125,7 +125,7 @@ check('moving repoints the node', $nodes->byId($x->id)->parentNodeId === $b->id)
 check('moving rewrites the path', $moved->path === $b->path . '.' . $x->id, $moved->path);
 check('the subtree came along', $nodes->byId($deep->id)->path === $moved->path . '.' . $deep->id, $nodes->byId($deep->id)->path);
 
-echo "\n== 4. Order lives on the edge ==\n";
+echo "\n== 4. Order lives on the relation ==\n";
 $one = $editor->createNode('__check 1', $a->id);
 $two = $editor->createNode('__check 2', $a->id);
 $names = static fn (): array => array_map(
@@ -268,7 +268,7 @@ $dangling = (int) $wpdb->get_var(
      LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
      WHERE n.id IS NULL'
 );
-check('purging took the edges with it', $dangling === 0, "$dangling dangling edges");
+check('purging took the relations with it', $dangling === 0, "$dangling dangling relations");
 
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

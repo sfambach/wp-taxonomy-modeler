@@ -13,7 +13,7 @@ use Taxmod\Core\Repository\RecordRepository;
  *
  * [D-247](../../../docs/NewConcept/90-decision-log.md) names three sources:
  * [D-156](../../../docs/NewConcept/90-decision-log.md)'s **orphaned overrides**,
- * [D-159](../../../docs/NewConcept/90-decision-log.md)'s **values whose edge is gone**, and **nodes
+ * [D-159](../../../docs/NewConcept/90-decision-log.md)'s **values whose relation is gone**, and **nodes
  * with no connections any more**. *Each of the three was decided as «leave it alone rather than tidy
  * it silently», which is right at the moment of the change and leaves residue over years.*
  *
@@ -97,7 +97,7 @@ final class Residue
     }
 
     /**
-     * Record values whose edge is gone — [D-159](../../../docs/NewConcept/90-decision-log.md).
+     * Record values whose relation is gone — [D-159](../../../docs/NewConcept/90-decision-log.md).
      *
      * ⚠️ **D-159 is the decision *not* to touch these while drawing**: *«those are simply not drawn,
      * and **not touched**: they stay in `relation_records` … because removing them is a migration
@@ -105,9 +105,9 @@ final class Residue
      * drawing.»* *This class is not drawing. It is the surface D-247 asks for, where the same rows are
      * removed **deliberately** — which is the only place that sentence leaves open.*
      *
-     * @return array<int,int> edge id ⇒ how many values still name it
+     * @return array<int,int> relation id ⇒ how many values still name it
      */
-    public function valuesWithoutEdge(): array
+    public function valuesWithoutRelation(): array
     {
         $rows = $this->rows(
             'SELECT v.relation_id AS owner, COUNT(*) AS rows_held FROM ' . Schema::table('relation_records') . ' v
@@ -122,11 +122,11 @@ final class Residue
     /**
      * Nodes that hang on nothing at all — the third of [D-247](../../../docs/NewConcept/90-decision-log.md)'s sources.
      *
-     * ⚠️ **No edge in either direction, and both directions matter.** *A node with no **parent** edge
+     * ⚠️ **No relation in either direction, and both directions matter.** *A node with no **parent** relation
      * is not necessarily residue — the root has none by construction and is the top of everything. A
-     * node with no edge **touching** it is in no tree, holds no attribute and is pointed at by
+     * node with no relation **touching** it is in no tree, holds no attribute and is pointed at by
      * nothing: it is what [D-123](../../../docs/NewConcept/90-decision-log.md)'s purge leaves when an
-     * edge went and the node did not.*
+     * relation went and the node did not.*
      *
      * ⚠️ *Measured 2026-08-28 on the real model: **0**. That is the answer a repair surface should
      * usually give, and it is why the empty case had to read as good news rather than as an empty
@@ -144,7 +144,7 @@ final class Residue
         //
         // ⚠️ *`parent_node_id IS NULL` **und** niemand hängt an mir: die Wurzel hat keinen Vater und
         // ist trotzdem kein Rückstand — sie trägt Kinder. Genau diese Unterscheidung stand vorher in
-        // «no edge in either direction».*
+        // «no relation in either direction».*
         $rows = $this->rows(
             'SELECT n.id, n.version, n.name, n.path FROM ' . Schema::table('nodes') . ' n
              WHERE n.parent_node_id IS NULL
@@ -182,28 +182,28 @@ final class Residue
         return $gone;
     }
 
-    /** Remove the values of an edge that no longer exists, and say how many went. */
-    public function forgetValuesOfEdge(int $edgeId): int
+    /** Remove the values of an relation that no longer exists, and say how many went. */
+    public function forgetValuesOfRelation(int $relationId): int
     {
         global $wpdb;
 
-        if (! array_key_exists($edgeId, $this->valuesWithoutEdge())) {
+        if (! array_key_exists($relationId, $this->valuesWithoutRelation())) {
             return 0;
         }
 
         // ⚠️ *Vor dem Löschen gelesen — danach wäre die Version nicht mehr feststellbar.*
-        $version = $this->hoechsteVersion('relation_records', 'relation_id = %d', [$edgeId]);
+        $version = $this->hoechsteVersion('relation_records', 'relation_id = %d', [$relationId]);
 
         $gone = (int) $wpdb->query($wpdb->prepare(
             'DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
-            $edgeId
+            $relationId
         ));
 
         $this->refuseBrokenQuery('relation_records wegräumen');
 
         // ⚠️ *`relation` and not {@see self::KIND_GONE}: the id came out of `relation_records.relation_id`, so
         // what it **was** is known even though the row it named is not there any more.*
-        $this->record($edgeId, 'relation', 'values removed', $gone, $version);
+        $this->record($relationId, 'relation', 'values removed', $gone, $version);
 
         return $gone;
     }
@@ -343,7 +343,7 @@ final class Residue
         return $gone;
     }
     /**
-     * Owners a table names that are neither a node, nor an edge, nor the installation.
+     * Owners a table names that are neither a node, nor an relation, nor the installation.
      *
      * @return array<int,int> owner id ⇒ rows held
      */

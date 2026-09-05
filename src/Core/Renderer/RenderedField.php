@@ -11,7 +11,7 @@ use Taxmod\Core\Model\SimpleType;
  * ⚠️ **The type and the renderer travel out with the markup on purpose.** A caller that had to
  * re-derive *which renderer drew this* in order to say anything about it would be resolving the
  * chain a second time, and the second answer is the one that drifts. Same reason
- * {@see RenderResult} carries its edges rather than only its string (D-021).
+ * {@see RenderResult} carries its relations rather than only its string (D-021).
  *
  * @see docs/NewConcept/30-renderer.md
  */
@@ -24,7 +24,7 @@ final class RenderedField
      *                       would mean resolving the chain a second time.
      */
     public function __construct(
-        public readonly Relation $edge,
+        public readonly Relation $relation,
         public readonly ?SimpleType $type,
         public readonly string $rendererName,
         public readonly RenderResult $result,

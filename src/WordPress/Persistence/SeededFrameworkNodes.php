@@ -48,10 +48,16 @@ final class SeededFrameworkNodes implements FrameworkNodes
      *
      * ⚠️ *Dasselbe Muster wie {@see self::ROLE_OPTION_PREFIX} — **kein zweiter Mechanismus**, auf seine
      * Korrektur: «ich verstehe auch nicht, warum wir hier was Neues erfinden.»*
+     *
+     * ⚠️ **Der Name der Konstante ist mit TASK-016 gewandert, die Zeichenkette nicht — und das ist
+     * kein Versehen.** *`taxmod_setting_edge_…` ist der **Schlüssel einer WordPress-Option** und
+     * damit ein Datum: ein neuer Schlüssel fände die vorhandenen Zeilen nicht mehr wieder. Sie
+     * umzuschreiben wäre eine Wanderung und keine Umbenennung, und
+     * [D-576](../../../docs/NewConcept/90-decision-log.md) verlangt das Wort im **Quelltext**.*
      */
-    private const SETTING_EDGE_PREFIX = 'taxmod_setting_edge_';
+    private const SETTING_RELATION_PREFIX = 'taxmod_setting_edge_';
 
-    private const SETTING_VALUE_EDGE_PREFIX = 'taxmod_setting_value_edge_';
+    private const SETTING_VALUE_RELATION_PREFIX = 'taxmod_setting_value_edge_';
 
     /** `Primitives` is a container that splits; the branches are the two nodes beneath it. */
     private const PRIMITIVES_OPTION = 'taxmod_primitives_id';
@@ -227,24 +233,24 @@ final class SeededFrameworkNodes implements FrameworkNodes
         return array_values(array_slice($kette, (int) $wo));
     }
 
-    public function settingEdgeId(SettingKey $key): int
+    public function settingRelationId(SettingKey $key): int
     {
-        return (int) get_option(self::SETTING_EDGE_PREFIX . $key->value, 0);
+        return (int) get_option(self::SETTING_RELATION_PREFIX . $key->value, 0);
     }
 
-    public function settingValueEdgeId(SettingKey $key): int
+    public function settingValueRelationId(SettingKey $key): int
     {
-        return (int) get_option(self::SETTING_VALUE_EDGE_PREFIX . $key->value, 0);
+        return (int) get_option(self::SETTING_VALUE_RELATION_PREFIX . $key->value, 0);
     }
 
     /**
      * ⚠️ *`autoload` an, wie bei den Rollen: die Angabe wird auf **jeder** gezeichneten Seite
      * gebraucht, und ein Nachschlag je Aufruf wäre eine Abfrage, die niemand sieht.*
      */
-    public function rememberSettingEdges(SettingKey $key, int $edgeId, int $valueEdgeId): void
+    public function rememberSettingRelations(SettingKey $key, int $relationId, int $valueRelationId): void
     {
-        update_option(self::SETTING_EDGE_PREFIX . $key->value, $edgeId, true);
-        update_option(self::SETTING_VALUE_EDGE_PREFIX . $key->value, $valueEdgeId, true);
+        update_option(self::SETTING_RELATION_PREFIX . $key->value, $relationId, true);
+        update_option(self::SETTING_VALUE_RELATION_PREFIX . $key->value, $valueRelationId, true);
     }
 
     public function isProtected(Node $node): bool

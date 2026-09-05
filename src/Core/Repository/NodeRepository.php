@@ -79,7 +79,7 @@ interface NodeRepository
     /**
      * Wo jeder Knoten des Modells hängt — Vater, Stelle, und ob er gezeichnet wird.
      *
-     * ⚠️ **Die Ablösung von `RelationRepository::allInheritanceEdges()`** (TASK-018,
+     * ⚠️ **Die Ablösung von `RelationRepository::allInheritanceRelations()`** (TASK-018,
      * [D-581](../../../docs/NewConcept/90-decision-log.md)). *Bewusst unbegrenzt, aus demselben
      * Grund wie dort: das Modell ist entwurfsgemäss klein ([D-308](../../../docs/NewConcept/90-decision-log.md)),
      * und je Elternteil zu fragen wäre eine Abfrage je Ebene.*

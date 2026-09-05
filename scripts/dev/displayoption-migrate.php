@@ -47,10 +47,10 @@ $p = $wpdb->prefix . 'taxmod_';
 $hullNodeId = 44089;
 // Die Felder des gefallenen Huellknotens. Ihre Kanten sind mit ihm gegangen, ihre Ids stehen aber
 // noch in den Wertzeilen.
-$renderEdgeId    = 44091;
-$converterEdgeId = 44092;
+$renderRelationId    = 44091;
+$converterRelationId = 44092;
 // Das geerbte `converter`-Feld am Basisknoten `Renderer` (D-585).
-$inheritedConverterEdgeId = 65595;
+$inheritedConverterRelationId = 65595;
 
 // ---------------------------------------------------------------- messen
 
@@ -61,7 +61,7 @@ $renderRows = $wpdb->get_results(
            JOIN {$p}node_records r ON r.id = v.node_record_id
           WHERE r.node_id = %d AND v.relation_id = %d",
         $hullNodeId,
-        $renderEdgeId
+        $renderRelationId
     ),
     ARRAY_A
 );
@@ -114,7 +114,7 @@ $converterRows = $wpdb->get_results(
            JOIN {$p}node_records r ON r.id = v.node_record_id
           WHERE r.node_id = %d AND v.relation_id = %d",
         $hullNodeId,
-        $converterEdgeId
+        $converterRelationId
     ),
     ARRAY_A
 );
@@ -186,7 +186,7 @@ foreach ($byTarget as $target => $count) {
     printf("   %-18s %2d  (Knoten %d)\n", $known[$target]->name, $count, $target);
 }
 
-printf("\nKonverter-Werte an die geerbte Kante %d: %d\n", $inheritedConverterEdgeId, count($converterMoves));
+printf("\nKonverter-Werte an die geerbte Kante %d: %d\n", $inheritedConverterRelationId, count($converterMoves));
 printf("Leere Behaelter, die fallen: %d\n", count($emptyRecords));
 printf("   mit ihnen ihre Halterzeilen ins Leere: %d\n", count($danglingHolders));
 
@@ -245,7 +245,7 @@ if ($failed === null) {
     foreach ($converterMoves as $valueRowId) {
         $ok = $wpdb->query($wpdb->prepare(
             "UPDATE {$p}relation_records SET relation_id = %d WHERE id = %d",
-            $inheritedConverterEdgeId,
+            $inheritedConverterRelationId,
             $valueRowId
         ));
 

@@ -24,7 +24,7 @@ use Taxmod\WordPress\Plugin;
  * ```mermaid
  * flowchart LR
  *   A["orphaned overrides · D-156"] --> R["Residue · measures"]
- *   B["values whose edge is gone · D-159"] --> R
+ *   B["values whose relation is gone · D-159"] --> R
  *   C["nodes with no connections"] --> R
  *   R --> S["this screen"] --> V["ResidueRenderer · the shape"]
  * ```
@@ -86,7 +86,7 @@ final class CleanupScreen
             . '</p>'
             . $this->notice()
             . $this->renderer->render([
-                $this->valuesWithoutEdge(),
+                $this->valuesWithoutRelation(),
                 $this->nodesWithoutConnections(),
                 $this->recordsWithoutNode(),
             ])
@@ -99,26 +99,26 @@ final class CleanupScreen
      * nicht mehr gibt, hinterlaesst keinen Rest.** *Die drei anderen Gruppen bleiben.*
      */
 
-    /** [D-159](../../../docs/NewConcept/90-decision-log.md) — a value whose edge went. */
-    private function valuesWithoutEdge(): ResidueGroup
+    /** [D-159](../../../docs/NewConcept/90-decision-log.md) — a value whose relation went. */
+    private function valuesWithoutRelation(): ResidueGroup
     {
         $entries = [];
 
-        foreach ($this->residue->valuesWithoutEdge() as $edge => $rows) {
+        foreach ($this->residue->valuesWithoutRelation() as $relation => $rows) {
             $entries[] = new ResidueEntry(
                 sprintf(
-                    /* translators: 1: edge id, 2: how many recorded values still name it. */
+                    /* translators: 1: relation id, 2: how many recorded values still name it. */
                     _n(
                         'Attribute %1$d is gone and %2$d recorded value still names it.',
                         'Attribute %1$d is gone and %2$d recorded values still name it.',
                         $rows,
                         'taxmod'
                     ),
-                    $edge,
+                    $relation,
                     $rows
                 ),
                 $this->act(self::FORGET_VALUES, __('Remove these values for good', 'taxmod')),
-                $this->submits(self::FORGET_VALUES, $edge)
+                $this->submits(self::FORGET_VALUES, $relation)
             );
         }
 
@@ -145,7 +145,7 @@ final class CleanupScreen
 
         return new ResidueGroup(
             __('Nodes with no connections', 'taxmod'),
-            __('No edge points at them and none leaves them, so they are in no tree, hold no attribute and are pointed at by nothing. Removing one keeps its id and its changelog: an id is never handed out twice, and the history still says what was there.', 'taxmod'),
+            __('No relation points at them and none leaves them, so they are in no tree, hold no attribute and are pointed at by nothing. Removing one keeps its id and its changelog: an id is never handed out twice, and the history still says what was there.', 'taxmod'),
             __('Nothing to tidy up here.', 'taxmod'),
             $entries
         );
@@ -296,7 +296,7 @@ final class CleanupScreen
         }
 
         return match ($act) {
-            self::FORGET_VALUES   => $this->removed($this->residue->forgetValuesOfEdge($target)),
+            self::FORGET_VALUES   => $this->removed($this->residue->forgetValuesOfRelation($target)),
             self::PURGE_NODE      => $this->purged($target),
             self::FORGET_RECORDS  => $this->forgotRecords($target),
             default              => __('That is not something this page can do.', 'taxmod'),

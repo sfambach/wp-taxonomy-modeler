@@ -195,15 +195,15 @@ final class LabelsTest extends TestCase
     }
 
     #[Test]
-    public function a_label_hangs_on_an_identity_so_an_edge_can_have_one_too(): void
+    public function a_label_hangs_on_an_identity_so_an_relation_can_have_one_too(): void
     {
         // C8: labels hang off an identity, not off a node — which is what lets a use site be
         // called something else from the type it points at.
-        $edgeId = 7777;
+        $relationId = 7777;
 
-        $this->stored->put(new Label($edgeId, '', self::ROLE_IDS['form'], 'one', '', 'Tolerance'));
+        $this->stored->put(new Label($relationId, '', self::ROLE_IDS['form'], 'one', '', 'Tolerance'));
 
-        $found = $this->labels->storedFor($edgeId);
+        $found = $this->labels->storedFor($relationId);
 
         self::assertCount(1, $found);
         self::assertSame('Tolerance', $found[0]->text);

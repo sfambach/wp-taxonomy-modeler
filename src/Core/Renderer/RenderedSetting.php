@@ -11,10 +11,10 @@ use Taxmod\Core\Model\SimpleType;
 /**
  * One setting, drawn — the settings side's answer to {@see RenderedField}.
  *
- * ⚠️ **A setting is not an attribute, so it does not borrow that class.** An attribute is an edge
+ * ⚠️ **A setting is not an attribute, so it does not borrow that class.** An attribute is an relation
  * pointing at a type; a setting is a key resolved along a chain, and it carries **where it came
  * from** ([D-079](../../../docs/NewConcept/90-decision-log.md)), which an attribute has no notion
- * of. Sharing one class would have meant a null edge on every row.
+ * of. Sharing one class would have meant a null relation on every row.
  *
  * ⚠️ **`result` is null when the key is a *choice* rather than a value** — multiplicity's four
  * constants, or a name a registry answers to. Those want a chooser, one is decided

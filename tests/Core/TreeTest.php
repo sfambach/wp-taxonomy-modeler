@@ -22,7 +22,7 @@ use Taxmod\Tests\Core\Fake\RecordedChanges;
 final class TreeTest extends TestCase
 {
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private ModelEditor $editor;
     private Tree $tree;
     private Node $root;
@@ -30,8 +30,8 @@ final class TreeTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->edges = new InMemoryRelations();
-        $this->nodes = new InMemoryNodes($this->edges);
+        $this->relations = new InMemoryRelations();
+        $this->nodes = new InMemoryNodes($this->relations);
         $identities  = new CountingIdentities();
 
         $this->root  = Node::create($identities->next(), 'Root', null);
@@ -42,7 +42,7 @@ final class TreeTest extends TestCase
 
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
+            $this->relations,
             new FixedFramework($this->root, $this->trash),
             new RecordedChanges()
         );
@@ -95,7 +95,7 @@ final class TreeTest extends TestCase
     }
 
     #[Test]
-    public function siblings_come_in_edge_order_and_follow_a_reorder(): void
+    public function siblings_come_in_relation_order_and_follow_a_reorder(): void
     {
         $this->editor->createNode('Model', $this->root->id);
         $second = $this->editor->createNode('Primitives', $this->root->id);

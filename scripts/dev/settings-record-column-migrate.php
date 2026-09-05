@@ -35,7 +35,7 @@ $p = $wpdb->prefix . 'taxmod_';
 
 // ⚠️ *Die gefallene Traegerkante «Display Option». Sie steht nicht mehr in `relations`; ihre Id
 // steht nur noch in den Wertzeilen, die sie halten.*
-$deadCarrierEdgeId = 44093;
+$deadCarrierRelationId = 44093;
 
 // ---------------------------------------------------------------- messen
 
@@ -45,7 +45,7 @@ $rows = $wpdb->get_results(
            FROM {$p}relation_records v
            JOIN {$p}node_records r ON r.id = v.node_record_id
           WHERE v.relation_id = %d",
-        $deadCarrierEdgeId
+        $deadCarrierRelationId
     ),
     ARRAY_A
 );

@@ -279,18 +279,29 @@ if (! is_array($damals) || ! isset($damals['shape'])) {
 } else {
     $heute = [
         'nodes'  => count($alle),
-        'edges'  => count($vater),
+        'relations'  => count($vater),
         'roots'  => $wurzeln,
         'depths' => $tiefen,
     ];
 
     $war = $damals['shape'];
 
-    foreach (['nodes', 'edges', 'roots'] as $name) {
+    // ⚠️ **Die aufgezeichnete Gestalt ist ein Datum und trägt das Wort von damals.** *Bis TASK-016
+    // hiess die Zahl der Einordnungen `edges`; wer die Aufzeichnung einer bestehenden Installation
+    // nur unter dem neuen Namen sucht, liest `?` und meldet einen Umbau, den es nie gab. **Neu
+    // geschrieben wird `relations`, gelesen werden beide** — Geschichte ist eingefroren
+    // ([D-065](../../docs/NewConcept/90-decision-log.md)).
+    $damalsGeschrieben = static fn (string $name): int => match (true) {
+        isset($war[$name])                                 => (int) $war[$name],
+        $name === 'relations' && isset($war['edges'])       => (int) $war['edges'],
+        default                                            => -1,
+    };
+
+    foreach (['nodes', 'relations', 'roots'] as $name) {
         check(
             "«{$name}» wie bei der Wanderung",
-            (int) ($war[$name] ?? -1) === $heute[$name],
-            ($war[$name] ?? '?') . ' → ' . $heute[$name]
+            $damalsGeschrieben($name) === $heute[$name],
+            ($damalsGeschrieben($name) === -1 ? '?' : (string) $damalsGeschrieben($name)) . ' → ' . $heute[$name]
         );
     }
 

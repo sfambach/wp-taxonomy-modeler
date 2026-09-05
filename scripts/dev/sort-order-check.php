@@ -198,10 +198,10 @@ echo "\n4 · Ein Tausch tauscht wirklich\n";
 // schreibt zwangsläufig einmal auf eine besetzte Stelle; MySQL weist das zurück, und `$wpdb` sagt
 // darüber nichts. `ModelEditor` geht seither über eine freie Stelle.*
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relationStore     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
+$framework = new SeededFrameworkNodes($nodes, $relationStore, $log);
+$editor    = new ModelEditor($nodes, $relationStore, $framework, $log);
 
 // ⚠️ **Der Fall ist ein anderer geworden, die Zusage nicht** (TASK-018,
 // [D-581](../../NewConcept/90-decision-log.md)): *hier standen zwei **Kinder** eines Elternknotens.

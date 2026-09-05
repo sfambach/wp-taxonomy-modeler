@@ -66,8 +66,8 @@ foreach (Schema::tableNames() as $name) {
 echo "\n== 2. Framework nodes ==\n";
 $nodes = new WpdbNodeRepository();
 $log = new WpdbChangelog(new SystemClock());
-$edges = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$relations = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $framework->seed();
 
 $root = $framework->root();
@@ -110,7 +110,7 @@ foreach (['nodes', 'relations'] as $name) {
 }
 
 echo "\n== 4. Create, rename, trash ==\n";
-$editor = new ModelEditor($nodes, $edges, $framework, $log);
+$editor = new ModelEditor($nodes, $relations, $framework, $log);
 
 $made = $editor->createNode('  __p1 Platine  ', $root->id);
 check('name is trimmed on the way in', $made->name === '__p1 Platine', "«{$made->name}»");

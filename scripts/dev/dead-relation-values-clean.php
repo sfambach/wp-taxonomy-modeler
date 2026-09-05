@@ -2,7 +2,7 @@
 /**
  * Die vier Wertzeilen wegraeumen, die an geloeschten Kanten haengen.
  *
- *     php scripts/dev/dead-edge-values-clean.php [--apply] [path/to/wordpress]
+ *     php scripts/dev/dead-relation-values-clean.php [--apply] [path/to/wordpress]
  *
  * ⚠️ **Der Anlass:** *der Eigentuemer hat den Huellknoten `DisplayOption` geloescht; seine Kanten
  * `render` (44091), `converter` (44092) und die Traegerkante (44093) sind mit ihm gefallen. Vier

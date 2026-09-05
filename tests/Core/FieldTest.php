@@ -29,11 +29,11 @@ final class FieldTest extends TestCase
     public function an_attribute_can_be_removed_and_it_is_parked_not_purged(): void
     {
         // ⚠️ This was missing since Package 3, and the reason was **storage**: `relations` had
-        // nowhere to record that an edge was gone (D-371). Two stages as everywhere (D-123).
+        // nowhere to record that an relation was gone (D-371). Two stages as everywhere (D-123).
         $part = $this->under('model', 'Part');
-        $edge = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
+        $relation = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
 
-        $removed = $this->editor->removeField($part->id, $edge->id);
+        $removed = $this->editor->removeField($part->id, $relation->id);
 
         self::assertTrue($removed->isParked());
         self::assertNotNull($removed->parkedByGroup, 'it names the act that removed it (D-128)');
@@ -47,16 +47,16 @@ final class FieldTest extends TestCase
     public function a_removed_attribute_can_come_back(): void
     {
         $part = $this->under('model', 'Part');
-        $edge = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
+        $relation = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
 
-        $this->editor->removeField($part->id, $edge->id);
-        $back = $this->editor->restoreField($part->id, $edge->id);
+        $this->editor->removeField($part->id, $relation->id);
+        $back = $this->editor->restoreField($part->id, $relation->id);
 
         // ⚠️ Everything it had comes back with it — the name, the target, the kind. Parking is not
         // purging (D-123), which is exactly why nothing else had to be preserved by hand.
         self::assertFalse($back->isParked());
-        self::assertSame($edge->name, $back->name);
-        self::assertSame($edge->toNodeId, $back->toNodeId);
+        self::assertSame($relation->name, $back->name);
+        self::assertSame($relation->toNodeId, $back->toNodeId);
         self::assertCount(1, $this->editor->fieldsOf($part->id));
         self::assertSame([], $this->editor->removedFieldsOf($part->id));
     }
@@ -65,10 +65,10 @@ final class FieldTest extends TestCase
     public function removing_it_twice_changes_nothing_the_second_time(): void
     {
         $part = $this->under('model', 'Part');
-        $edge = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
+        $relation = $this->editor->addField($part->id, $this->under('data-types', 'text')->id, 'label');
 
-        $first  = $this->editor->removeField($part->id, $edge->id);
-        $second = $this->editor->removeField($part->id, $edge->id);
+        $first  = $this->editor->removeField($part->id, $relation->id);
+        $second = $this->editor->removeField($part->id, $relation->id);
 
         // ⚠️ The same act, not a second one — otherwise a double click would write two brackets and
         // the history would claim it was removed twice.
@@ -93,7 +93,7 @@ final class FieldTest extends TestCase
     }
 
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private ModelEditor $editor;
     private Node $root;
     private Node $trash;
@@ -102,8 +102,8 @@ final class FieldTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->edges = new InMemoryRelations();
-        $this->nodes = new InMemoryNodes($this->edges);
+        $this->relations = new InMemoryRelations();
+        $this->nodes = new InMemoryNodes($this->relations);
         $identities  = new CountingIdentities();
 
         $make = function (string $name, ?Node $parent) use ($identities): Node {
@@ -135,7 +135,7 @@ final class FieldTest extends TestCase
 
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
+            $this->relations,
             new FixedFramework($this->root, $this->trash, $this->branchRoot),
             new RecordedChanges()
         );
@@ -155,9 +155,9 @@ final class FieldTest extends TestCase
         $order    = $this->under('model', 'Order');
         $supplier = $this->under('model', 'Supplier');
 
-        $edge = $this->editor->addField($order->id, $supplier->id, 'supplied by');
+        $relation = $this->editor->addField($order->id, $supplier->id, 'supplied by');
 
-        self::assertSame(RelationKind::Aggregation, $edge->kind);
+        self::assertSame(RelationKind::Aggregation, $relation->kind);
     }
 
     #[Test]
@@ -319,15 +319,15 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
-    public function the_attribute_edge_takes_its_own_identity(): void
+    public function the_attribute_relation_takes_its_own_identity(): void
     {
         $part = $this->under('model', 'Part');
         $text = $this->under('data-types', 'Text');
 
-        $edge = $this->editor->addField($part->id, $text->id, 'description');
+        $relation = $this->editor->addField($part->id, $text->id, 'description');
 
-        self::assertNotSame($edge->id, $part->id);
-        self::assertNotSame($edge->id, $text->id);
+        self::assertNotSame($relation->id, $part->id);
+        self::assertNotSame($relation->id, $text->id);
     }
 
     #[Test]
@@ -382,7 +382,7 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
-    public function the_inheritance_edge_is_not_an_attribute(): void
+    public function the_inheritance_relation_is_not_an_attribute(): void
     {
         // Both are relations; only one is an attribute seen from the node that owns it.
         $thing = $this->under('model', 'Thing');

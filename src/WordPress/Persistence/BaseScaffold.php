@@ -23,7 +23,7 @@ use Taxmod\Core\Service\ModelEditor;
  *
  * ⚠️ **Composed types are not here yet.** `quantity`, `money`, `range`, `period`, `tolerance`,
  * `ratio`, `address`, `markup` and `Link` are composed *of* attributes, so seeding them means
- * seeding edges — a bigger step, and one that wants the renderers to be worth looking at.
+ * seeding relations — a bigger step, and one that wants the renderers to be worth looking at.
  *
  * @see docs/NewConcept/10-domain-core.md
  */

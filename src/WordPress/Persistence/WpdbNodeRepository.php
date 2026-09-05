@@ -257,7 +257,7 @@ final class WpdbNodeRepository implements NodeRepository
         // ⚠️ *Auch eine Massenänderung hebt in den Schatten* ([D-536](../../../docs/NewConcept/90-decision-log.md))
         // — **sie zählt `version` selbst hoch**, also muss der alte Stand vorher hinüber. *Bis
         // TASK-018 lag der alte Stand in `relations` und `Shadow::keep()` stand in
-        // `reparentChildEdges()`; die Zusage zieht mit der Spalte um.*
+        // `reparentChildRelations()`; die Zusage zieht mit der Spalte um.*
         Shadow::keep('nodes', 'parent_node_id = %d', [$fromParentId]);
 
         $wpdb->query($wpdb->prepare(
@@ -360,7 +360,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         Shadow::keep('nodes', 'id = %d OR path LIKE %s', [$node->id, $under], true);
 
-        // The edges go first, because a relation row whose node is gone is the dangling
+        // The relations go first, because a relation row whose node is gone is the dangling
         // reference the whole two-stage deletion exists to avoid. Both are one statement.
         $wpdb->query($wpdb->prepare(
             "DELETE r FROM {$relations} r

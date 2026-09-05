@@ -2,7 +2,7 @@
 /**
  * Eine Einstellungskante nimmt keinen Benutzerwert an.
  *
- *     php scripts/dev/setting-edge-check.php [path/to/wordpress]
+ *     php scripts/dev/setting-relation-check.php [path/to/wordpress]
  *
  * ⚠️ **[D-538](../../docs/NewConcept/90-decision-log.md): «nicht speichernd» und «ist eine
  * Einstellung» sind dieselbe Aussage.** *Der Eigentümer hat es hergeleitet: «für den Benutzer werden
@@ -82,17 +82,17 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $records   = new WpdbRecordRepository();
-$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
+$data      = new DataEntry($records, $relations, $nodes, $framework, new SystemClock());
 $geruest   = new Geruest('__se');
 
 /** Ein Feld eines Knotens über seinen Namen. */
 function feldVon(string $knotenName, string $feldName): ?\Taxmod\Core\Model\Relation
 {
-    global $wpdb, $nodes, $edges;
+    global $wpdb, $nodes, $relations;
 
     $id = (int) $wpdb->get_var($wpdb->prepare(
         'SELECT id FROM ' . Schema::table('nodes') . ' WHERE name = %s LIMIT 1',
@@ -105,7 +105,7 @@ function feldVon(string $knotenName, string $feldName): ?\Taxmod\Core\Model\Rela
         return null;
     }
 
-    foreach ($edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]) as $eine) {
+    foreach ($relations->fieldRelationsOf([...$knoten->ancestorIds(), $knoten->id]) as $eine) {
         if ($eine->name === $feldName) {
             return $eine;
         }
@@ -193,7 +193,7 @@ if ($exponent === null) {
         $gebaut = $geruest->feldMit('Vergleich', 'gewoehnlich', '1');
         $normal = null;
 
-        foreach ($edges->fieldEdgesOf([$gebaut['von']]) as $eine) {
+        foreach ($relations->fieldRelationsOf([$gebaut['von']]) as $eine) {
             if ($eine->id === $gebaut['kante']) {
                 $normal = $eine;
             }
@@ -270,7 +270,7 @@ $rendering = new Rendering(
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), $framework),
     null,
-    new ModelValues($records, $edges, $nodes, $framework)
+    new ModelValues($records, $relations, $nodes, $framework)
 );
 
 // ⚠️ **Drei gebaute Knoten statt `Passiv`, `Dimension`, `Integer`**
@@ -286,7 +286,7 @@ $vorschauKnoten = [
 foreach ($vorschauKnoten as $id) {
     $name   = '#' . $id;
     $knoten = $nodes->byId($id);
-    $kanten = $edges->fieldEdgesOf([...$knoten->ancestorIds(), $knoten->id]);
+    $kanten = $relations->fieldRelationsOf([...$knoten->ancestorIds(), $knoten->id]);
     $sicht  = $rendering->previewVisibilityFor($kanten, $rendering->settingsForUseSites($kanten));
 
     $einstellungen = 0;

@@ -3,7 +3,7 @@
 namespace Taxmod\Core\Repository;
 
 use Taxmod\Core\Model\NodeRecord;
-use Taxmod\Core\Model\EdgeRecord;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\TypedValue;
 
 /**
@@ -37,7 +37,7 @@ interface RecordRepository
      */
     public function ofNodes(array $nodeIds): array;
 
-    /** @return list<EdgeRecord> Everything one record holds, in one statement. */
+    /** @return list<RelationRecord> Everything one record holds, in one statement. */
     public function valuesOf(int $recordId): array;
 
     /**
@@ -50,7 +50,7 @@ interface RecordRepository
      * Zahl der Abfragen die Zahl der Zeilen, und genau das verbietet die Regel.*
      *
      * @param  list<int>                    $recordIds
-     * @return array<int, list<EdgeRecord>> Je angefragte Id genau ein Eintrag, notfalls leer.
+     * @return array<int, list<RelationRecord>> Je angefragte Id genau ein Eintrag, notfalls leer.
      */
     public function valuesOfMany(array $recordIds): array;
 
@@ -67,7 +67,7 @@ interface RecordRepository
      * ⚠️ *In **einer** Abfrage für alle (`CD-7`), weil die Frage je Zeile eines Blocks gestellt wird.*
      *
      * @param  list<int> $recordIds
-     * @return array<int, EdgeRecord> Satz-Id => die Wertzeile, die ihn hält; fehlt sie, ist er eigenständig.
+     * @return array<int, RelationRecord> Satz-Id => die Wertzeile, die ihn hält; fehlt sie, ist er eigenständig.
      */
     public function holdersOf(array $recordIds): array;
     /**
@@ -75,12 +75,12 @@ interface RecordRepository
      *
      * ⚠️ **Der Rückgabewert ist neu und er ist der Grund, warum Wertänderungen überhaupt melden
      * können** ([D-634](../../../docs/NewConcept/90-decision-log.md)): *die Version wird im Speicher
-     * gezählt, weil `EdgeRecord` sie nicht trägt. Ohne diese Antwort wüsste der Kern die Nummer nicht,
+     * gezählt, weil `RelationRecord` sie nicht trägt. Ohne diese Antwort wüsste der Kern die Nummer nicht,
      * die er ins Änderungsbuch schreiben muss — und genau daran lag es, dass er es nicht tat.*
      *
      * @return int Die Version der geschriebenen Zeile; bei einer neuen Zeile die erste.
      */
-    public function putValue(EdgeRecord $value): int;
+    public function putValue(RelationRecord $value): int;
 
     /** @return int|null Die Version der entfernten Zeile, oder null, wenn keine da war. */
     public function forgetValue(int $recordId, string $path, string $locale): ?int;
@@ -104,7 +104,7 @@ interface RecordRepository
     public function forgetRecord(int $id): ?int;
 
     /**
-     * Records whose value at one edge equals this one, wherever in the record it sits.
+     * Records whose value at one relation equals this one, wherever in the record it sits.
      *
      * ⚠️ **This is what `relation_id` is for** (D-134) — the question *which parts are 4k7* asked
      * once, over an index, rather than by unpacking every record. A range asks the same way with
@@ -112,7 +112,7 @@ interface RecordRepository
      *
      * @return list<int> record ids
      */
-    public function findByEdgeValue(int $edgeId, TypedValue $value): array;
+    public function findByRelationValue(int $relationId, TypedValue $value): array;
 
     /**
      * Everything these nodes hold as data — the records and their values.

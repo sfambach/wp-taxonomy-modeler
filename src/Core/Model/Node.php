@@ -344,7 +344,7 @@ class Node extends Identity implements Renderable
     // ⚠️ *`withHide()` stood here and is gone to {@see Relation::withHide()} alone
     // ([D-467](../../../docs/NewConcept/90-decision-log.md)). **Hiding is about a placement, not
     // about a thing** — the owner: «I do not simply create a model node and then say I will not draw
-    // it, that would be nonsense». A node is hidden by hiding the inheritance edge that puts it in
+    // it, that would be nonsense». A node is hidden by hiding the inheritance relation that puts it in
     // the tree, which is one thing to hide rather than two that can disagree.*
 
     /**

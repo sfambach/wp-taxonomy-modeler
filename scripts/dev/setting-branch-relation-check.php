@@ -2,7 +2,7 @@
 /**
  * Jede Kante, die in den Einstellungsast zeigt, ist eine Einstellungskante.
  *
- *     php scripts/dev/setting-branch-edge-check.php [path/to/wordpress]
+ *     php scripts/dev/setting-branch-relation-check.php [path/to/wordpress]
  *
  * ⚠️ **Er haelt einen Zustand fest, er stellt ihn nicht her**
  * ([D-618](../../docs/NewConcept/90-decision-log.md), TASK-053 Teil 3). *Gemessen am 2026-09-04

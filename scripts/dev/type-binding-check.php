@@ -80,10 +80,10 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), $types,
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
@@ -167,11 +167,11 @@ $doppel = $editor->createNode('__tb Platzhalter', $dataTypes->id);
 // fiel daran um, und die Saat band sich an einen von ihnen. **Ein Schmierknoten, der wie echte
 // Modellstruktur heisst, ist nicht wiederzufinden** — also muss er weg, bevor irgendetwas anderes
 // schiefgehen kann.*
-register_shutdown_function(static function () use ($nodes, $edges, $doppel): void {
+register_shutdown_function(static function () use ($nodes, $relations, $doppel): void {
     $rest = $nodes->find($doppel->id);
 
     if ($rest !== null) {
-        $edges->purgeEdgesTouching($rest->id);
+        $relations->purgeRelationsTouching($rest->id);
         $nodes->purgeSubtree($rest);
         fwrite(STDERR, "  (Aufräumen beim Beenden: Knoten {$rest->id} «{$rest->name}» entfernt)\n");
     }
@@ -275,7 +275,7 @@ foreach ([...$eigene, ...array_map('intval', $stale)] as $id) {
     $node = $nodes->find((int) $id);
 
     if ($node !== null) {
-        $edges->purgeEdgesTouching($node->id);
+        $relations->purgeRelationsTouching($node->id);
         $nodes->purgeSubtree($node);
     }
 }

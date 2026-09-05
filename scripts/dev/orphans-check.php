@@ -9,9 +9,9 @@
  * that has to be repeated, and the thing producing the litter was this very net.*
  *
  * ⚠️ **Measured after the sweep, check by check: exactly one leaked.** `package7-check` left **five
- * rows a run** — it deleted its scratch nodes and edges and left their settings standing. It took two
- * goes to fix, because the raw delete finds its edges by **name** while the first fix only knew them by
- * **endpoint**, and edges whose nodes had already gone had no endpoint left to be found by.
+ * rows a run** — it deleted its scratch nodes and relations and left their settings standing. It took two
+ * goes to fix, because the raw delete finds its relations by **name** while the first fix only knew them by
+ * **endpoint**, and relations whose nodes had already gone had no endpoint left to be found by.
  *
  * ⚠️ **The installation identity is not an orphan and every naive query says it is.** It is an identity
  * with no node and no relation behind it ([D-079](../../docs/NewConcept/90-decision-log.md)), and its
@@ -47,9 +47,9 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $changelog = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $changelog);
+$framework = new SeededFrameworkNodes($nodes, $relations, $changelog);
 
 $installation = $framework->installationId();
 
@@ -90,7 +90,7 @@ check('keine Waisen-Labels', $labels === 0, "{$labels} Zeilen");
 // Rueckstand, den bewusstes Nicht-Aufraeumen hinterlaesst: [D-159](../../docs/NewConcept/90-decision-log.md)
 // sagt ausdruecklich, dass Werte einer verschwundenen Kante **stehen bleiben**. Eine Zahl hier, ein
 // Knopf auf der Seite — eine Pruefung, die daran scheitert, wuerde eine Entscheidung ueberstimmen.*
-$werte  = array_sum($residue->valuesWithoutEdge());
+$werte  = array_sum($residue->valuesWithoutRelation());
 $allein = count($residue->nodesWithoutConnections());
 
 printf("  --   %d Werte ohne Kante, %d Knoten ohne Verbindungen (Cleanup-Seite)\n", $werte, $allein);

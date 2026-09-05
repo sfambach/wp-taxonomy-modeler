@@ -256,7 +256,7 @@ final class RendererRegistry
     }
 
     /**
-     * The renderer the chain chose — the edge's own setting, then the target, then its ancestors,
+     * The renderer the chain chose — the relation's own setting, then the target, then its ancestors,
      * then the type's default (R41). Nothing separate is walked here: the chain has already been
      * resolved and its answer simply read.
      *

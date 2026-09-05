@@ -218,9 +218,9 @@ final class CompositionScaffold
      * [D-528](../../../docs/NewConcept/90-decision-log.md) ist es dieselbe Aussage an derselben
      * Stelle, nur ohne Kette.*
      */
-    private function widen(Relation $edge, Multiplicity $multiplicity): void
+    private function widen(Relation $relation, Multiplicity $multiplicity): void
     {
-        $this->editor->setMultiplicity($edge->fromNodeId, $edge->id, $multiplicity);
+        $this->editor->setMultiplicity($relation->fromNodeId, $relation->id, $multiplicity);
     }
 
     /**
@@ -277,9 +277,9 @@ final class CompositionScaffold
     /** An attribute pointing at a simple type, found by name under the data types. */
     private function field(Node $owner, string $name, string $typeName): Relation
     {
-        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
-                return $edge;
+        foreach ($this->editor->fieldsOf($owner->id) as $relation) {
+            if ($relation->name === $name && $relation->fromNodeId === $owner->id) {
+                return $relation;
             }
         }
 
@@ -303,9 +303,9 @@ final class CompositionScaffold
     /** An attribute pointing at a node given directly, rather than at a type found by name. */
     private function fieldTo(Node $owner, string $name, Node $target): Relation
     {
-        foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
-                return $edge;
+        foreach ($this->editor->fieldsOf($owner->id) as $relation) {
+            if ($relation->name === $name && $relation->fromNodeId === $owner->id) {
+                return $relation;
             }
         }
 

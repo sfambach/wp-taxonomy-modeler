@@ -39,11 +39,11 @@ use Taxmod\WordPress\Persistence\{SeededFrameworkNodes, WpdbChangelog, WpdbNodeR
 use Taxmod\WordPress\SystemClock;
 
 $nodes = new WpdbNodeRepository();
-$edges = new WpdbRelationRepository();
+$relations = new WpdbRelationRepository();
 $log   = new WpdbChangelog(new SystemClock());
-$fw    = new SeededFrameworkNodes($nodes, $edges, $log);
+$fw    = new SeededFrameworkNodes($nodes, $relations, $log);
 
-$editor = new ModelEditor($nodes, $edges, $fw, $log);
+$editor = new ModelEditor($nodes, $relations, $fw, $log);
 $tree   = new Tree($nodes);
 
 $failed = 0;

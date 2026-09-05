@@ -12,7 +12,7 @@
  * a collection of composed members. *A renderer that handles only the first would pass a one-example
  * check and fail the concept.*
  *
- * ⚠️ **It is a boundary check** because the question is about real nodes, real edges and real
+ * ⚠️ **It is a boundary check** because the question is about real nodes, real relations and real
  * settings resolving together — a core test with doubles would only prove the doubles agree with me.
  *
  * ⚠️ **It delivers the scaffold itself rather than assuming activation ran**, and `import()` is
@@ -74,10 +74,10 @@ function check(string $what, bool $ok, string $detail = ''): void
 
 $log       = new WpdbChangelog(new SystemClock());
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
+$relations     = new WpdbRelationRepository();
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $labels    = new Labels(new WpdbLabelRepository(), $framework);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), $types, $labels,
     model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
@@ -90,9 +90,9 @@ function membersOf(ModelEditor $editor, \Taxmod\Core\Model\Node $node): array
 {
     $members = [];
 
-    foreach ($editor->fieldsOf($node->id) as $edge) {
-        if ($edge->fromNodeId === $node->id) {
-            $members[$edge->name] = $edge;
+    foreach ($editor->fieldsOf($node->id) as $relation) {
+        if ($relation->fromNodeId === $node->id) {
+            $members[$relation->name] = $relation;
         }
     }
 
@@ -163,11 +163,11 @@ check('at least five simple members', count($addressMembers) >= 5, implode(', ',
 
 $textMembers = [];
 
-foreach ($addressMembers as $mitgliedName => $mitgliedEdge) {
-    $ziel = $nodes->byId($mitgliedEdge->toNodeId);
+foreach ($addressMembers as $mitgliedName => $mitgliedRelation) {
+    $ziel = $nodes->byId($mitgliedRelation->toNodeId);
 
     if (SimpleType::fromNodeName($ziel->name) === SimpleType::Text) {
-        $textMembers[$mitgliedName] = $mitgliedEdge;
+        $textMembers[$mitgliedName] = $mitgliedRelation;
     }
 }
 
@@ -191,8 +191,8 @@ $zweites = $namen[1] ?? '';
 // assertion is about is the **type**, never its spelling.*
 $eingesetzt = [];
 
-foreach ($textMembers as $mitgliedName => $mitgliedEdge) {
-    $eingesetzt[$mitgliedEdge->id] = match ($mitgliedName) {
+foreach ($textMembers as $mitgliedName => $mitgliedRelation) {
+    $eingesetzt[$mitgliedRelation->id] = match ($mitgliedName) {
         $erstes  => TypedValue::ofText('01067'),
         $zweites => TypedValue::ofText('12a'),
         default  => TypedValue::ofText('Dresden'),
@@ -202,7 +202,7 @@ foreach ($textMembers as $mitgliedName => $mitgliedEdge) {
 $drawnAddress = [];
 
 foreach ($rendering->fieldsFor(array_values($textMembers), $eingesetzt, Purpose::Display) as $field) {
-    $drawnAddress[$field->edge->name] = strip_tags($field->result->markup);
+    $drawnAddress[$field->relation->name] = strip_tags($field->result->markup);
 }
 
 check(
@@ -232,8 +232,8 @@ $dimensionMembers = membersOf($editor, $dimension);
 
 check('three members', count($dimensionMembers) === 3, implode(', ', array_keys($dimensionMembers)));
 
-foreach ($dimensionMembers as $name => $edge) {
-    check("  · {$name} points at Einheitenwert", $edge->toNodeId === $unitValue->id);
+foreach ($dimensionMembers as $name => $relation) {
+    check("  · {$name} points at Einheitenwert", $relation->toNodeId === $unitValue->id);
 }
 
 // ⚠️ **The measurement, and its outcome is not assumed.** A member that is itself a composed type
@@ -242,7 +242,7 @@ foreach ($dimensionMembers as $name => $edge) {
 $drawnDimension = [];
 
 foreach ($rendering->fieldsFor(array_values($dimensionMembers), [], Purpose::Display) as $field) {
-    $drawnDimension[$field->edge->name] = $field->result->markup;
+    $drawnDimension[$field->relation->name] = $field->result->markup;
 }
 
 check('all three members were drawn', count($drawnDimension) === 3, (string) count($drawnDimension));
@@ -297,7 +297,7 @@ check('  · menge points at Einheitenwert', ($ingredientMembers['menge'] ?? null
 $drawnRecipe = [];
 
 foreach ($rendering->fieldsFor(array_values($recipeMembers), [], Purpose::Display) as $field) {
-    $drawnRecipe[$field->edge->name] = $field->result->markup;
+    $drawnRecipe[$field->relation->name] = $field->result->markup;
 }
 
 check('all four members were drawn', count($drawnRecipe) === 4, (string) count($drawnRecipe));

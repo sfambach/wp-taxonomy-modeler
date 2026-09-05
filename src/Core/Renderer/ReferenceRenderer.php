@@ -9,7 +9,7 @@ use Taxmod\Core\Model\SimpleType;
  * ([D-105](../../../docs/NewConcept/90-decision-log.md)).
  *
  * ⚠️ **It bounds the load, not only the display** ([R58](../../../docs/NewConcept/30-renderer.md#owner-statement--2026-08-22-thirteenth-pass-the-reference-renderer)).
- * That is the point of it being the default for an aggregation edge: a supplier on a part draws one
+ * That is the point of it being the default for an aggregation relation: a supplier on a part draws one
  * label, not a whole supplier — so a parts list of five hundred rows does not pull five hundred
  * suppliers with everything they own. *A renderer that shows less also asks for less, and the guard
  * against a runaway descent becomes a backstop rather than the mechanism.*

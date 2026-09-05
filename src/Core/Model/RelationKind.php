@@ -3,7 +3,7 @@
 namespace Taxmod\Core\Model;
 
 /**
- * The kinds of edge — and the kind is never chosen.
+ * The kinds of relation — and the kind is never chosen.
  *
  * It is **read off** the branch the target sits in (sentence 5 of the core on one page), which
  * is why this enum has no factory taking user input: nothing outside the branch rule may decide

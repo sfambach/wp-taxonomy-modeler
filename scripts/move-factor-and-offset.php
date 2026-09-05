@@ -64,13 +64,13 @@ use Taxmod\WordPress\SystemClock;
 global $wpdb;
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $records   = new WpdbRecordRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
-$data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock());
-$model     = new ModelValues($records, $edges, $nodes, $framework);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
+$data      = new DataEntry($records, $relations, $nodes, $framework, new SystemClock());
+$model     = new ModelValues($records, $relations, $nodes, $framework);
 $typen     = new SeededTypeNodes($nodes, $framework);
 
 $fehler = 0;

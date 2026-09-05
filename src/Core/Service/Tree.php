@@ -45,7 +45,7 @@ final class Tree
     private array $hiddenTargets = [];
 
     /**
-     * Everything below a node, depth-first, in the order the edges give.
+     * Everything below a node, depth-first, in the order the relations give.
      *
      * ⚠️ **Collapsing is answered here, not on the screen.** Which rows a person can see is a
      * question about the tree, so it is settled once and every surface asks the same way — the
@@ -170,14 +170,14 @@ final class Tree
      * to it does not contain. **The node itself stays folded** — its ancestors are what make it
      * visible, and unfolding it as well would open a branch nobody asked to see.*
      *
-     * ⚠️ **One query and no walk.** *Who has children is what the inheritance edges say, and the
+     * ⚠️ **One query and no walk.** *Who has children is what the inheritance relations say, and the
      * ancestors are already in the node's own `path` — ids separated by `.`, own id last
-     * ([D-014](../../../docs/NewConcept/90-decision-log.md)). So this costs the edges and nothing
+     * ([D-014](../../../docs/NewConcept/90-decision-log.md)). So this costs the relations and nothing
      * else; a second descent to find the same answer would be the loop `CD-7` forbids.*
      *
      * ```mermaid
      * flowchart LR
-     *   E["inheritance edges"] --> P["every node that has children"]
+     *   E["inheritance relations"] --> P["every node that has children"]
      *   S["the selected node's path"] --> A["its ancestors"]
      *   P --> M["fold everything"]
      *   A -->|"minus"| M

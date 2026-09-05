@@ -118,22 +118,22 @@ foreach ( $packages as $pkg ) {
 		count( $node['setMembers'] ?? array() )
 	);
 
-	foreach ( array( 'L', 'B', 'H' ) as $edge ) {
-		$m = wtt_member( $node, $edge );
+	foreach ( array( 'L', 'B', 'H' ) as $relation ) {
+		$m = wtt_member( $node, $relation );
 		if ( null === $m ) {
-			echo "FAIL: missing member {$edge}\n";
+			echo "FAIL: missing member {$relation}\n";
 			++$errors;
 			continue;
 		}
 		$type_name = is_array( $m['type'] ?? null ) ? (string) ( $m['type']['name'] ?? '' ) : '';
 		$literal   = (string) ( $m['fixedLiteral'] ?? '' );
-		printf( "  %s type=%s fixedLiteral=%s\n", $edge, $type_name !== '' ? $type_name : '(none)', $literal !== '' ? $literal : '(none)' );
+		printf( "  %s type=%s fixedLiteral=%s\n", $relation, $type_name !== '' ? $type_name : '(none)', $literal !== '' ? $literal : '(none)' );
 		if ( 'Meter' !== $type_name ) {
-			echo "FAIL: {$edge} must be typed Meter\n";
+			echo "FAIL: {$relation} must be typed Meter\n";
 			++$errors;
 		}
 		if ( str_starts_with( $label, 'SMD' ) && '' === $literal ) {
-			echo "FAIL: SMD {$edge} must have a fixed magnitude literal\n";
+			echo "FAIL: SMD {$relation} must have a fixed magnitude literal\n";
 			++$errors;
 		}
 	}

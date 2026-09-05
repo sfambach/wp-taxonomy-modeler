@@ -6,9 +6,9 @@ namespace Taxmod\Core\Model;
  * One thing somebody entered against a model node.
  *
  * ⚠️ **Its id comes from the record space, not the model's** (D-164). The two halves do not
- * share a number space: between nodes and edges the ambiguity is real, and there it must be one
+ * share a number space: between nodes and relations the ambiguity is real, and there it must be one
  * space; between model and data it is not, because the target's **branch** decides which sort a
- * reference resolves to, deterministically and per edge (D-131).
+ * reference resolves to, deterministically and per relation (D-131).
  *
  * ⚠️ **It keeps the model version it was written against** (D-060, D-210) — *written against*,
  * not *checked against*. Records at several versions are a normal steady state, and only what

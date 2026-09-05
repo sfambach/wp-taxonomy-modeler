@@ -52,7 +52,7 @@ interface Renderable
     /**
      * What it holds, as characters — empty where it holds nothing.
      *
-     * ⚠️ *Empty is a real answer and not a gap: a node and an edge **have** no content of their own,
+     * ⚠️ *Empty is a real answer and not a gap: a node and an relation **have** no content of their own,
      * which is why the value of a field travels in {@see RenderContext} today. **That is the seam S7
      * closes**: a composed value is a renderable that answers this properly, and it has no model id at
      * all ([D-232](../../../docs/NewConcept/90-decision-log.md)) — which is exactly why the parameter

@@ -72,7 +72,7 @@ final class TableRenderer extends RendererNode
         }
 
         $spalten   = $this->columns($datensaetze);
-        $usedEdges = [];
+        $usedRelations = [];
 
         if ($spalten === []) {
             return RenderResult::of('');
@@ -99,8 +99,8 @@ final class TableRenderer extends RendererNode
 
             foreach ($felder as $feld) {
                 if ($feld instanceof RenderedField && ! $feld->isHidden()) {
-                    $nachKante[$feld->edge->id] = $feld;
-                    $usedEdges                  = [...$usedEdges, ...$feld->result->usedEdges];
+                    $nachKante[$feld->relation->id] = $feld;
+                    $usedRelations                  = [...$usedRelations, ...$feld->result->usedRelations];
                 }
             }
 
@@ -117,8 +117,8 @@ final class TableRenderer extends RendererNode
             // ⚠️ **Über die Spaltenliste und nicht über die vorhandenen Felder.** *Fehlt einem
             // Datensatz ein Feld, muss die Zelle **leer** erscheinen und nicht wegfallen — sonst
             // verrutscht die ganze Zeile, und das sieht wie Daten aus.*
-            foreach ($spalten as $edgeId => $name) {
-                $feld    = $nachKante[$edgeId] ?? null;
+            foreach ($spalten as $relationId => $name) {
+                $feld    = $nachKante[$relationId] ?? null;
                 $zellen .= '<td class="taxmod-table-cell">' . ($feld?->result->markup ?? '') . '</td>';
             }
 
@@ -136,7 +136,7 @@ final class TableRenderer extends RendererNode
             . $this->head($spalten, $context, $vorspalten, $mitActs)
             . '<tbody>' . $zeilen . '</tbody>'
             . '</table>',
-            array_values(array_unique($usedEdges))
+            array_values(array_unique($usedRelations))
         );
     }
 
@@ -156,7 +156,7 @@ final class TableRenderer extends RendererNode
         foreach ($datensaetze as $felder) {
             foreach ($felder as $feld) {
                 if ($feld instanceof RenderedField && ! $feld->isHidden()) {
-                    $gesehen[$feld->edge->id] = $feld->edge;
+                    $gesehen[$feld->relation->id] = $feld->relation;
                 }
             }
         }
@@ -166,7 +166,7 @@ final class TableRenderer extends RendererNode
             static fn ($a, $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]
         );
 
-        return array_map(static fn ($edge): string => $edge->name, $gesehen);
+        return array_map(static fn ($relation): string => $relation->name, $gesehen);
     }
 
     /**

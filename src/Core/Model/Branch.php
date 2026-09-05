@@ -57,7 +57,7 @@ enum Branch: string
      */
     case Settings = 'settings';
 
-    /** Which kind of edge reaches a node in this branch (D-161). */
+    /** Which kind of relation reaches a node in this branch (D-161). */
     public function relationKind(): RelationKind
     {
         return match ($this) {
@@ -87,7 +87,7 @@ enum Branch: string
         };
     }
 
-    /** Where a value given through such an edge is kept (D-232). */
+    /** Where a value given through such an relation is kept (D-232). */
     public function storage(): Storage
     {
         return match ($this) {

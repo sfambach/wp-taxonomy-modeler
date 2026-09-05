@@ -74,11 +74,11 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $log);
-$editor    = new ModelEditor($nodes, $edges, $framework, $log);
-$data      = new DataEntry(new WpdbRecordRepository(), $edges, $nodes, $framework, new SystemClock());
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log);
+$data      = new DataEntry(new WpdbRecordRepository(), $relations, $nodes, $framework, new SystemClock());
 
 /** @var list<int> Alles, was dieser Lauf angelegt hat. */
 $meine = [];
@@ -130,9 +130,9 @@ if ($kilo === null) {
 
     $exponent = null;
 
-    foreach ($editor->fieldsOf($kilo->id) as $edge) {
-        if ($edge->name === 'exponent') {
-            $exponent = $edge;
+    foreach ($editor->fieldsOf($kilo->id) as $relation) {
+        if ($relation->name === 'exponent') {
+            $exponent = $relation;
         }
     }
 

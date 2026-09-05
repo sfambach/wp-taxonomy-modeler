@@ -77,7 +77,7 @@ final class TreeRenderer extends RendererNode
         $zuAb = null;
 
         foreach ($rows as $row) {
-            $used = [...$used, ...$row->cell->usedEdges];
+            $used = [...$used, ...$row->cell->usedRelations];
 
             $versteckt = $zuAb !== null && $row->depth > $zuAb;
 

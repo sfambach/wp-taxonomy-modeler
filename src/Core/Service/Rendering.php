@@ -58,7 +58,7 @@ use Taxmod\Core\Repository\TypeNodes;
  *
  * ```mermaid
  * flowchart LR
- *   E["attribute edge"] --> T["its target"] --> Y["the simple type<br/>own name, else an ancestor's"]
+ *   E["attribute relation"] --> T["its target"] --> Y["the simple type<br/>own name, else an ancestor's"]
  *   Y --> R["the renderer<br/>the chain, else the type default"]
  *   R --> M["markup"]
  * ```
@@ -135,41 +135,41 @@ final class Rendering
      * `> XII` in a search box possible at all.*
      *
      * ⚠️ **One resolution for the whole form, not one per field** (`CD-7`). *Same construction as the
-     * drawing side: settings and types for every edge at once, then a loop with no query in it.*
+     * drawing side: settings and types for every relation at once, then a loop with no query in it.*
      *
      * ⚠️ **Only an invertible converter is asked** ([D-076](../../../docs/NewConcept/90-decision-log.md)).
      * *A lossy one is display only, so what a person typed into it is read by the type — which is the
      * honest reading: the characters on screen were never the whole value.*
      *
-     * @param  list<Relation>        $edges      The attributes the form drew.
-     * @param  array<int, string>    $characters What was typed, by edge id. Empty strings belong to
+     * @param  list<Relation>        $relations      The attributes the form drew.
+     * @param  array<int, string>    $characters What was typed, by relation id. Empty strings belong to
      *                                           the caller: an empty field means *unanswered* and the
      *                                           row goes, which is not this method's decision.
-     * @return array<int, TypedValue>            By edge id, for every edge that had a type.
+     * @return array<int, TypedValue>            By relation id, for every relation that had a type.
      */
-    public function valuesFrom(array $edges, array $characters): array
+    public function valuesFrom(array $relations, array $characters): array
     {
-        if ($edges === []) {
+        if ($relations === []) {
             return [];
         }
 
-        $types    = $this->typesOf($edges);
-        $resolved = $this->settingsForUseSites($edges);
+        $types    = $this->typesOf($relations);
+        $resolved = $this->settingsForUseSites($relations);
         $values   = [];
 
-        foreach ($edges as $edge) {
-            $typed = $characters[$edge->id] ?? null;
-            $type  = $types[$edge->id] ?? null;
+        foreach ($relations as $relation) {
+            $typed = $characters[$relation->id] ?? null;
+            $type  = $types[$relation->id] ?? null;
 
             if ($typed === null || $type === null) {
                 continue;
             }
 
-            $converter = $this->readingConverter($resolved[$edge->id] ?? [], $type);
+            $converter = $this->readingConverter($resolved[$relation->id] ?? [], $type);
 
             // ⚠️ *`NotAValueOfThatType` travels on either way — from the converter or from the type.
             // Both refuse rather than coerce, and the boundary turns it into a `WP_Error` (`CD-10`).*
-            $values[$edge->id] = $converter === null
+            $values[$relation->id] = $converter === null
                 ? $type->valueFrom($typed)
                 : $converter->written($typed, $type);
         }
@@ -268,7 +268,7 @@ final class Rendering
      * the choice of text *is a setting on the renderer naming the label role* — and the role was
      * nailed to `form` here, so no author could ask for `symbol` and a prefix could only ever read
      * `kilo` where `k` was wanted. *The owner found it by asking the one question that mattered:
-     * **which field do we hang the renderer on?** The answer is the referring edge, and this is the
+     * **which field do we hang the renderer on?** The answer is the referring relation, and this is the
      * key it carries.*
      *
      * ⚠️ *[D-264](90-decision-log.md) wants a **pattern** here eventually — roles and fixed
@@ -285,39 +285,39 @@ final class Rendering
      * from — and it is one query for the whole form rather than one per row, which is what `CD-7`
      * forbids and what made the legacy parts list slow.
      *
-     * ⚠️ **Keyed by *edge*, not by target, because the role belongs to the edge.** The same node
+     * ⚠️ **Keyed by *relation*, not by target, because the role belongs to the relation.** The same node
      * reached from two attributes may want `symbol` in one and `form` in the other — *a parts list
      * showing `k` and a heading showing `kilo`* — so a map keyed by target could only hold one of
      * them and would silently give the second row the first one's answer.
      *
-     * ⚠️ **Grouped by role rather than asked per edge.** `CD-7` bounds this at *one query per
-     * distinct role*, which is at most a handful whatever the size of the form; asking per edge
+     * ⚠️ **Grouped by role rather than asked per relation.** `CD-7` bounds this at *one query per
+     * distinct role*, which is at most a handful whatever the size of the form; asking per relation
      * would be the loop again, one level down and harder to see.
      *
-     * @param  list<Relation>                                          $edges
+     * @param  list<Relation>                                          $relations
      * @param  array<int, TypedValue>                                  $values
      * @param  array<int, array<string, \Taxmod\Core\Model\ResolvedSetting>> $resolved
-     * @return array<int, string>                                      Keyed by the **edge's** id.
+     * @return array<int, string>                                      Keyed by the **relation's** id.
      */
-    private function namesOfReferences(array $edges, array $values, array $resolved, string $locale): array
+    private function namesOfReferences(array $relations, array $values, array $resolved, string $locale): array
     {
         if ($this->labels === null) {
             return [];
         }
 
-        // Which targets each role has to answer for — the role is read off the edge that points.
+        // Which targets each role has to answer for — the role is read off the relation that points.
         $wanted = [];
 
-        foreach ($edges as $edge) {
-            $reference = ($values[$edge->id] ?? null)?->reference;
+        foreach ($relations as $relation) {
+            $reference = ($values[$relation->id] ?? null)?->reference;
 
             if ($reference === null) {
                 continue;
             }
 
-            $role = $this->roleOf($resolved[$edge->id] ?? []);
+            $role = $this->roleOf($resolved[$relation->id] ?? []);
 
-            $wanted[$role->value][$reference][] = $edge->id;
+            $wanted[$role->value][$reference][] = $relation->id;
         }
 
         $names = [];
@@ -329,12 +329,12 @@ final class Rendering
                 $locale
             );
 
-            foreach ($targets as $target => $edgeIds) {
-                foreach ($edgeIds as $edgeId) {
+            foreach ($targets as $target => $relationIds) {
+                foreach ($relationIds as $relationId) {
                     // ⚠️ Absent stays absent: a dangling reference is drawn as a marked fault
                     // rather than as its id (D-363), and that decision is the renderer's to make.
                     if (isset($resolvedNames[$target])) {
-                        $names[$edgeId] = $resolvedNames[$target];
+                        $names[$relationId] = $resolvedNames[$target];
                     }
                 }
             }
@@ -344,7 +344,7 @@ final class Rendering
     }
 
     /**
-     * Which label role this edge asked for, or the ordinary one.
+     * Which label role this relation asked for, or the ordinary one.
      *
      * ⚠️ **An unknown role falls back rather than throwing.** The set is seeded
      * ([D-196](90-decision-log.md)) and a typo, an import or a pack could name something outside it;
@@ -364,9 +364,9 @@ final class Rendering
      * ([D-529](../../../docs/NewConcept/90-decision-log.md)) — eine Pruefung, die einen kuerzeren Weg
      * nimmt, prueft etwas anderes als das, was der Benutzer sieht.*
      */
-    public function labelRoleFor(Relation $edge): SeededRole
+    public function labelRoleFor(Relation $relation): SeededRole
     {
-        return $this->roleOf($this->settingsForUseSites([$edge])[$edge->id] ?? []);
+        return $this->roleOf($this->settingsForUseSites([$relation])[$relation->id] ?? []);
     }
 
     /**
@@ -382,7 +382,7 @@ final class Rendering
      * ⚠️ *Die Spalte `multiplicity` ist `NOT NULL` seit [D-528](../../../docs/NewConcept/90-decision-log.md) —
      * es gibt kein «sagt nichts» mehr, darum steht hier keine Bedingung.*
      *
-     * @param  list<Relation>                            $edges
+     * @param  list<Relation>                            $relations
      * @return array<int, array<string, ResolvedSetting>> Nach Kanten-Id.
      */
     /**
@@ -411,16 +411,16 @@ final class Rendering
         return $aus;
     }
 
-    private function vonDenKanten(array $edges): array
+    private function vonDenKanten(array $relations): array
     {
         $aus = [];
 
-        foreach ($edges as $edge) {
-            $aus[$edge->id] = [
+        foreach ($relations as $relation) {
+            $aus[$relation->id] = [
                 SettingKey::Multiplicity->value => new ResolvedSetting(
                     SettingKey::Multiplicity->value,
-                    TypedValue::ofText($edge->multiplicity->value),
-                    $edge->id,
+                    TypedValue::ofText($relation->multiplicity->value),
+                    $relation->id,
                     true
                 ),
             ];
@@ -439,17 +439,17 @@ final class Rendering
     /**
      * Draw every attribute of a record.
      *
-     * @param  list<Relation>         $edges       The attributes, in the order they are shown.
-     * @param  array<int, TypedValue> $values      What the record holds, keyed by edge id. A
+     * @param  list<Relation>         $relations       The attributes, in the order they are shown.
+     * @param  array<int, TypedValue> $values      What the record holds, keyed by relation id. A
      *                                             missing key is *not answered* (D-232).
-     * @param  string                 $fieldPrefix Form fields become `prefix[edge id]`. Keyed by
-     *                                             the edge and never by position: a checkbox that
+     * @param  string                 $fieldPrefix Form fields become `prefix[relation id]`. Keyed by
+     *                                             the relation and never by position: a checkbox that
      *                                             does not submit when unticked would shift every
      *                                             later field onto the wrong attribute.
      * @return list<RenderedField>
      */
     public function fieldsFor(
-        array $edges,
+        array $relations,
         array $values,
         Purpose $purpose,
         string $fieldPrefix = '',
@@ -475,7 +475,7 @@ final class Rendering
          * *«the descent has two inputs, both loaded before it starts»*).
          *
          * ⚠️ **Und das ist keine Formalie: mein erster Entwurf hat es falsch gemacht.** *Er hätte je
-         * zusammengesetztem Feld die Kanten des Ziels nachgeladen — «a descent that fetches per edge is
+         * zusammengesetztem Feld die Kanten des Ziels nachgeladen — «a descent that fetches per relation is
          * N+1 by construction», sagt dieselbe Entscheidung. **Jetzt eine Abfrage je Stufe**, nicht eine
          * je Feld: drei Stufen sind drei Abfragen, egal wie breit das Modell ist.*
          *
@@ -532,7 +532,7 @@ final class Rendering
          */
         bool $onlySettingParts = false,
     ): array {
-        if ($edges === []) {
+        if ($relations === []) {
             return [];
         }
 
@@ -542,16 +542,16 @@ final class Rendering
         // string — which means it had already been asked, and for a composed value its members had
         // already been drawn and thrown away.*
         //
-        // ⚠️ **The edge's `hide`, and deliberately not the target node's.** *That distinction is what
+        // ⚠️ **The relation's `hide`, and deliberately not the target node's.** *That distinction is what
         // keeps [D-426](90-decision-log.md)'s fix: as a setting, `hide` on a **type** reached every
         // field of that type and blanked them all — measured twice. A field is one **placement** of a
         // type, so hiding the type must not hide the fields that point at it. **A node's own `hide`
         // stops the walk where the walk enters the node** — the tree, and a composed value's members —
         // not where something merely points at it.* Recorded as [OQ-118](91-open-questions.md), because
         // the concept says «render no further» and does not say which walk.
-        $edges = array_values(array_filter($edges, static fn (Relation $edge): bool => ! $edge->hide));
+        $relations = array_values(array_filter($relations, static fn (Relation $relation): bool => ! $relation->hide));
 
-        if ($edges === []) {
+        if ($relations === []) {
             return [];
         }
 
@@ -560,22 +560,22 @@ final class Rendering
         // ([D-366](../../../docs/NewConcept/90-decision-log.md)), und {@see FormRenderer::groupOf()} hat
         // die Gruppen dafür. **Gemessen: der Form-Renderer sortierte danach wieder nach `position` und
         // machte sie zunichte** — zwei Stellen für eine Reihenfolge, und die zweite gewann.*
-        $types    = $this->typesOf($edges);
-        $resolved = $this->settingsForUseSites($edges);
-        $names    = $this->namesOfReferences($edges, $values, $resolved, $locale);
-        $wahl     = $this->optionsFor($edges);
+        $types    = $this->typesOf($relations);
+        $resolved = $this->settingsForUseSites($relations);
+        $names    = $this->namesOfReferences($relations, $values, $resolved, $locale);
+        $wahl     = $this->optionsFor($relations);
         $fields   = [];
 
         // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
         // Datenbank nicht mehr an.*
         if ($tiefe === 0 && $unterbau === []) {
-            $unterbau = $this->subgraph($edges, self::TIEFSTENS);
+            $unterbau = $this->subgraph($relations, self::TIEFSTENS);
         }
 
-        foreach ($edges as $edge) {
-            $type     = $types[$edge->id] ?? null;
-            $settings = $this->withModelValues($resolved[$edge->id] ?? [], $edge);
-            $renderer = $this->renderers->chosenFor($edge, $settings, $purpose, $type);
+        foreach ($relations as $relation) {
+            $type     = $types[$relation->id] ?? null;
+            $settings = $this->withModelValues($resolved[$relation->id] ?? [], $relation);
+            $renderer = $this->renderers->chosenFor($relation, $settings, $purpose, $type);
 
             // ⚠️ **[D-540](../../../docs/NewConcept/90-decision-log.md), und die Regel ist seine:**
             // *«ein Feld ist eine **Auswahl**, wenn sein Ziel sichtbare, unmarkierte Kinder hat».*
@@ -598,9 +598,9 @@ final class Rendering
             // kann sein, dass du den mehrfach erfindest». **Gemessen stand der Weg viermal**, und ein
             // Kerntest zählt jetzt nach, dass er einmal steht.*
             $dieWahl = Choice::atUseSite(
-                $edge->multiplicity,
-                $istWahl ? ($wahl[$edge->id] ?? []) : [],
-                $values[$edge->id] ?? null,
+                $relation->multiplicity,
+                $istWahl ? ($wahl[$relation->id] ?? []) : [],
+                $values[$relation->id] ?? null,
                 $editable
             );
 
@@ -617,10 +617,10 @@ final class Rendering
             // alle Zeilen (`CD-7`). Löst er **nicht** auf, hängt der Verweis ins Leere, und dann wird kein
             // Eintrag erfunden: [D-363](../../../docs/NewConcept/90-decision-log.md) will einen
             // markierten Fehler sehen und nicht eine Id, die wie ein Name aussieht.*
-            $verweis = ($values[$edge->id] ?? null)?->reference;
+            $verweis = ($values[$relation->id] ?? null)?->reference;
 
-            if ($istWahl && $verweis !== null && isset($names[$edge->id])) {
-                $dieWahl = $dieWahl->including($verweis, $names[$edge->id]);
+            if ($istWahl && $verweis !== null && isset($names[$relation->id])) {
+                $dieWahl = $dieWahl->including($verweis, $names[$relation->id]);
             }
 
             $angebot = $dieWahl->options;
@@ -637,8 +637,8 @@ final class Rendering
             // ⚠️ **Ein Angebot, kein Zaun** ([D-360](../../../docs/NewConcept/90-decision-log.md)): *was
             // schon gespeichert ist, bleibt stehen, auch wenn es heute nicht mehr angeboten würde —
             // sonst verschwände eine Wahl, die jemand bewusst getroffen hat.*
-            if ($angebot !== [] && $forNode !== 0 && $edge->id === $this->framework->settingValueEdgeId(SettingKey::Renderer)) {
-                $angebot = $this->onlyUsableRenderers($angebot, $forNode, $values[$edge->id] ?? null);
+            if ($angebot !== [] && $forNode !== 0 && $relation->id === $this->framework->settingValueRelationId(SettingKey::Renderer)) {
+                $angebot = $this->onlyUsableRenderers($angebot, $forNode, $values[$relation->id] ?? null);
             }
 
             // ⚠️ **Eine Auswahl bleibt eine Auswahl, auch wenn nichts zu wählen ist** —
@@ -678,7 +678,7 @@ final class Rendering
                 $renderer = $this->renderers->fallback();
             }
 
-            $value = $values[$edge->id] ?? TypedValue::nothing();
+            $value = $values[$relation->id] ?? TypedValue::nothing();
 
             $context = new RenderContext(
                 purpose: $purpose,
@@ -687,12 +687,12 @@ final class Rendering
                 locale: $locale,
                 level: $level,
                 editable: $editable,
-                fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $edge->id . ']',
+                fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $relation->id . ']',
                 type: $type,
                 surroundings: new Surroundings(
-                    // ⚠️ By **edge**, not by target: the role that decided this text belongs to the
-                    // edge, so two attributes pointing at one node can show `k` and `kilo`.
-                    refersTo: $value->reference === null ? null : ($names[$edge->id] ?? null),
+                    // ⚠️ By **relation**, not by target: the role that decided this text belongs to the
+                    // relation, so two attributes pointing at one node can show `k` and `kilo`.
+                    refersTo: $value->reference === null ? null : ($names[$relation->id] ?? null),
                     // ⚠️ **Already known, so it is handed over rather than looked up** (D-445). A
                     // reference with no simple type behind it is a reference to a record: `typeOf()`
                     // answers `node_ref` for a constant and a real type for a data type, so `null`
@@ -724,12 +724,12 @@ final class Rendering
             // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
             // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
-            $tiefer = $onlySettingParts && ! $edge->isSetting()
+            $tiefer = $onlySettingParts && ! $relation->isSetting()
                 ? null
-                : $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$edge->id] ?? [], $forNode);
+                : $this->partBelow($relation, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$relation->id] ?? [], $forNode);
 
             $fields[] = new RenderedField(
-                $edge,
+                $relation,
                 $type,
                 $tiefer === null ? $renderer->name() : $tiefer['renderer'],
                 // WICHTIG: Bei einer Auswahl bleiben *beide* stehen -- der Kasten, in dem gewaehlt
@@ -737,8 +737,8 @@ final class Rendering
                 // anhaengen finde ich am schoensten"). Vorher ersetzte der Abstieg den Kasten,
                 // und der Renderer liess sich nicht mehr wechseln.
                 $tiefer === null
-                    ? $renderer->render($edge, $context)
-                    : $this->chosenAndItsFields($edge, $type, $renderer, $context, $tiefer['result']),
+                    ? $renderer->render($relation, $context)
+                    : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
                 $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch()
@@ -752,12 +752,12 @@ final class Rendering
      * A node drawn **as a value** — what a field of this type looks like, with this node's settings.
      *
      * ⚠️ **[D-430](../../../docs/NewConcept/90-decision-log.md), and it exists because the descent
-     * takes edges while a type node has none.** The owner: *why no preview on the simple data types?*
+     * takes relations while a type node has none.** The owner: *why no preview on the simple data types?*
      * The panel refused them for a reason that answers a different question — *only a node that can
      * hold records has something to preview* — which is right about **records** and wrong about
      * **fields**: a data type does not hold one, it **is** one.
      *
-     * ⚠️ **No synthetic edge.** {@see RendererRegistry::chosenFor()} and {@see Renderer::render()}
+     * ⚠️ **No synthetic relation.** {@see RendererRegistry::chosenFor()} and {@see Renderer::render()}
      * already accept a `Node`, so nothing has to be invented to fit a signature — *a fake `Relation`
      * in the core to satisfy a parameter list is the kind of thing that later gets stored.*
      *
@@ -1054,13 +1054,13 @@ final class Rendering
      * ⚠️ **This is how it was built and not what any decision requires** — the owner asked *«who told
      * you a renderer has no access to the registry?»* and the answer was **nobody.** *[D-159](90-decision-log.md)
      * says the narrower thing: «the descent has two inputs, **both loaded before it starts**», «a
-     * descent that fetches per edge is N+1 by construction» and «the renderer never writes». **A
+     * descent that fetches per relation is N+1 by construction» and «the renderer never writes». **A
      * registry lookup is neither a fetch nor a write**, so nothing decided forbids a renderer from
      * descending. Three docblocks claimed it did, citing D-159, and then got quoted back as though
      * D-159 had said it — `PR-10`'s dangling rule, with a citation to make it look agreed.*
      *
-     * @param list<Relation>         $edges  The model's attributes, in the order they are shown.
-     * @param array<int, TypedValue> $values What this record holds, keyed by edge id.
+     * @param list<Relation>         $relations  The model's attributes, in the order they are shown.
+     * @param array<int, TypedValue> $values What this record holds, keyed by relation id.
      * @param list<Control>          $acts
      */
     /**
@@ -1087,12 +1087,12 @@ final class Rendering
      *   T --> R["record: Rahmen und Diagnose"]
      * ```
      *
-     * @param list<Relation>                                                                                        $edges  Die Felder des Modells, in ihrer Reihenfolge.
+     * @param list<Relation>                                                                                        $relations  Die Felder des Modells, in ihrer Reihenfolge.
      * @param list<array{id: int, values: array<int, TypedValue>, lead: array<string,string>, acts: list<Control>, submits: Submission}> $rows
      */
     public function recordsAsTable(
         Node $model,
-        array $edges,
+        array $relations,
         array $rows,
         string $fieldPrefix = '',
         string $diagnostic = '',
@@ -1111,7 +1111,7 @@ final class Rendering
             // ⚠️ *Der Knoten selbst gilt als «schon besucht»: eine Einstellung, die auf ihn zeigt, würde
             // ihn sonst ein zweites Mal aufklappen ([OQ-133](../../../docs/NewConcept/91-open-questions.md)).*
             $gezeichnet[] = $this->fieldsFor(
-                $edges,
+                $relations,
                 $row['values'],
                 $purpose,
                 $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $row['id'] . ']',
@@ -1166,7 +1166,7 @@ final class Rendering
 
     public function recordAsBlock(
         Node $model,
-        array $edges,
+        array $relations,
         array $values,
         string $title,
         array $acts = [],
@@ -1193,7 +1193,7 @@ final class Rendering
                 $title,
                 $this->nodeAsForm(
                     $model,
-                    $edges,
+                    $relations,
                     $values,
                     $purpose,
                     $fieldPrefix,
@@ -1225,7 +1225,7 @@ final class Rendering
     
 
     /**
-     * Draw a node's attributes as rows — one renderer per attribute, the subject being the **edge**.
+     * Draw a node's attributes as rows — one renderer per attribute, the subject being the **relation**.
      *
      * ⚠️ **The attribute table was the last hand-built markup on the detail page**, which `R1`
      * forbids: *everything that is displayed must be a renderer.* The owner found it by asking for
@@ -1234,7 +1234,7 @@ final class Rendering
      *
      * ```mermaid
      * flowchart LR
-     *   E["each attribute edge"] --> C["its multiplicity, drawn"]
+     *   E["each attribute relation"] --> C["its multiplicity, drawn"]
      *   E --> T["its target's name"]
      *   E --> A["what may be done, from the boundary"]
      *   C & T & A --> R["the attribute renderer · one row"]
@@ -1245,24 +1245,24 @@ final class Rendering
      * is the same one that decides *own or inherited*. Two fields for one truth would drift.
      *
      * ⚠️ **The multiplicity is drawn by the settings side rather than built here** — it is an
-     * ordinary setting on the edge ([D-351](90-decision-log.md)), and a second select composed in
+     * ordinary setting on the relation ([D-351](90-decision-log.md)), and a second select composed in
      * this method would be the same control twice. *That is precisely the defect D-376 records: the
      * hand-built one had been posting to a field name nobody read since the settings panel moved.*
      *
-     * @param  list<Relation>                  $edges     The attributes, in the order shown.
-     * @param  array<int, list<Control>>       $actions   What may be done, keyed by **edge** id.
-     * @param  array<int, Submission>          $submits   Where those go, keyed by edge id.
+     * @param  list<Relation>                  $relations     The attributes, in the order shown.
+     * @param  array<int, list<Control>>       $actions   What may be done, keyed by **relation** id.
+     * @param  array<int, Submission>          $submits   Where those go, keyed by relation id.
      * @param  int                             $declaredBy The node whose page this is — an
      *                                                    attribute is editable only on the node that
      *                                                    declares it.
      * @param  array<int, string>              $targetHrefs Where a target node is reached, keyed by
-     *                                                    **node** id — not by edge id, because two
+     *                                                    **node** id — not by relation id, because two
      *                                                    attributes pointing at one node share the
      *                                                    address.
      * @return list<RenderedField>
      */
     public function fieldRowsFor(
-        array $edges,
+        array $relations,
         int $declaredBy,
         array $actions = [],
         array $submits = [],
@@ -1316,13 +1316,13 @@ final class Rendering
          */
         bool $showValue = true,
     ): array {
-        if ($edges === []) {
+        if ($relations === []) {
             return [];
         }
 
         $renderer = $this->renderers->byName(FieldRowRenderer::NAME);
-        $resolved = $this->vonDenKanten($edges);
-        $targets  = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $edges));
+        $resolved = $this->vonDenKanten($relations);
+        $targets  = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
 
         // ⚠️ One query for the whole table, not one per row (`CD-7`) — and through the ordinary
         // label walk, so an attribute's target reads the same here as it does anywhere else.
@@ -1332,8 +1332,8 @@ final class Rendering
 
         $rows = [];
 
-        foreach ($edges as $edge) {
-            $settings = $this->withModelValues($resolved[$edge->id] ?? [], $edge);
+        foreach ($relations as $relation) {
+            $settings = $this->withModelValues($resolved[$relation->id] ?? [], $relation);
 
             // The multiplicity, drawn once by the settings side and handed to the row.
             $configured = [];
@@ -1352,10 +1352,10 @@ final class Rendering
             // ⚠️ **Dieselbe Angabe wie die Zeile selbst** ([D-376](../../../docs/NewConcept/90-decision-log.md)):
             // *eine geerbte Kante gehört dem Vorfahren, und «wie oft» hier zu ändern hiesse, es für alle
             // zu ändern — still. Die Zeile wusste es und gab es nicht weiter.*
-            $rowSettings = $settingPrefix === '' ? '' : $settingPrefix . '[' . $edge->id . ']';
-            $rowForm     = $pageForm === '' ? FieldRowRenderer::formFor($edge) : $pageForm;
+            $rowSettings = $settingPrefix === '' ? '' : $settingPrefix . '[' . $relation->id . ']';
+            $rowForm     = $pageForm === '' ? FieldRowRenderer::formFor($relation) : $pageForm;
 
-            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $rowSettings, $locale, $level, [], $rowForm, $edge->fromNodeId === $declaredBy) as $drawn) {
+            foreach ($this->settingsFor($relation, $settings, Purpose::Edit, $rowSettings, $locale, $level, [], $rowForm, $relation->fromNodeId === $declaredBy) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
 
@@ -1368,7 +1368,7 @@ final class Rendering
             // {@see self::subgraph()} in einer festen Zahl von Abfragen
             // ([D-159](../../../docs/NewConcept/90-decision-log.md)).*
             $gezeichneterWert = ! $showValue ? [] : $this->fieldsFor(
-                [$edge],
+                [$relation],
                 $values,
                 Purpose::Edit,
                 $valuePrefix,
@@ -1397,11 +1397,11 @@ final class Rendering
                 settings: $settings,
                 locale: $locale,
                 level: $level,
-                editable: $edge->fromNodeId === $declaredBy,
-                fieldName: $namePrefix === '' ? '' : $namePrefix . '[' . $edge->id . ']',
+                editable: $relation->fromNodeId === $declaredBy,
+                fieldName: $namePrefix === '' ? '' : $namePrefix . '[' . $relation->id . ']',
                 surroundings: new Surroundings(
-                    refersTo: $names[$edge->toNodeId] ?? null,
-                    actions: $actions[$edge->id] ?? [],
+                    refersTo: $names[$relation->toNodeId] ?? null,
+                    actions: $actions[$relation->id] ?? [],
                     // ⚠️ **The target's address, so the row can be a way *to* it.** The owner,
                     // 2026-08-26: *should have a jump link to the node.* Reading a model meant
                     // finding `BOM Position` in the tree by eye.
@@ -1409,11 +1409,11 @@ final class Rendering
                     // ⚠️ *Keyed by the **target's** id and handed in, because a URL is a boundary
                     // fact (`CD-1`) and one lookup per row would be `CD-7`'s loop. The screen
                     // builds it from the same method the tree rows use.*
-                    href: $targetHrefs[$edge->toNodeId] ?? null,
+                    href: $targetHrefs[$relation->toNodeId] ?? null,
                     // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
                     // Rand, weil er URL und Nonce braucht, und wird nur durchgereicht.
 
-                    submits: $submits[$edge->id] ?? null,
+                    submits: $submits[$relation->id] ?? null,
                     // ⚠️ *Das Formular der **Seite**, damit das Namensfeld mit ihr gespeichert wird —
                     // sein Wunsch: «Save in Fields sollte eigentlich auch über die Seite gehen». Leer
                     // heisst «keins», und dann nimmt die Zeile wieder ihr eigenes.*
@@ -1424,7 +1424,7 @@ final class Rendering
                     // stellen, weil sie den Knoten der Seite nicht kennt — genau dafür ist
                     // `$declaredBy` da. **Weggelassen wird die Zeile nicht**
                     // ([D-608](../../../docs/NewConcept/90-decision-log.md)).*
-                    locked: ModelValues::inheritanceBlocked($edge, $declaredBy),
+                    locked: ModelValues::inheritanceBlocked($relation, $declaredBy),
                     configured: $configured,
                     // ⚠️ **The same panel as a node's, drawn here and placed there** — so the attribute
                     // row cannot grow a settings list of its own.
@@ -1469,18 +1469,18 @@ final class Rendering
                             )],
                         // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
                         // Rand, weil er URL und Nonce braucht (CD-1), und wird durchgereicht.
-                        isset($targetChoosers[$edge->id])
-                            ? ['target-chooser' => new Section('', $targetChoosers[$edge->id])]
+                        isset($targetChoosers[$relation->id])
+                            ? ['target-chooser' => new Section('', $targetChoosers[$relation->id])]
                             : []
                     )
                 ),
             );
 
             $rows[] = new RenderedField(
-                $edge,
+                $relation,
                 null,
                 $renderer->name(),
-                $renderer->render($edge, $context),
+                $renderer->render($relation, $context),
                 false
             );
         }
@@ -1521,10 +1521,10 @@ final class Rendering
         bool $editable = true,
     ): array {
         // ⚠️ **A use site is configured too, and its type is its target's.** [C8](../../../docs/NewConcept/10-domain-core.md)
-        // gives an edge settings of its own and [D-091](90-decision-log.md) resolves them the same
-        // way; what differs is only where the type comes from — a node *is* the type, an edge
+        // gives an relation settings of its own and [D-091](90-decision-log.md) resolves them the same
+        // way; what differs is only where the type comes from — a node *is* the type, an relation
         // *points* at it. *Until the attribute renderer wanted the multiplicity drawn, nothing had
-        // ever asked this method about an edge, so the narrower signature had never been wrong.*
+        // ever asked this method about an relation, so the narrower signature had never been wrong.*
         $subject = $node instanceof Relation ? $this->typeAt($node) : $this->typeOfNode($node);
 
         // ⚠️ **Every key that applies, not only the ones somebody wrote.** The owner, on an `int`
@@ -1532,7 +1532,7 @@ final class Rendering
         // max, step — should be shown as such.* An unset key becomes a row with an empty control
         // and `setHere = false`, which is the truth about it: nothing along the chain has said.
         //
-        // ⚠️ **`multiplicity` applies only to an edge** and is the one key that does (D-351) — a
+        // ⚠️ **`multiplicity` applies only to an relation** and is the one key that does (D-351) — a
         // node describes a thing, and a thing has no multiplicity.
         foreach (SettingKey::applyingTo($subject, $node instanceof Relation) as $key) {
             $resolved[$key->value] ??= new ResolvedSetting(
@@ -1633,7 +1633,7 @@ final class Rendering
      * it, which is why `eligibleFor()` on a supplier stopped being empty the moment the form
      * renderer existed.
      *
-     * @param list<Relation>        $edges
+     * @param list<Relation>        $relations
      * @param array<int, TypedValue> $values
      */
     /**
@@ -1651,12 +1651,12 @@ final class Rendering
      *
      * ⚠️ **A default is a `choosing` setting, so it may be anything the type permits**
      * ([D-312](90-decision-log.md)) — which is why this reads the resolved chain rather than the
-     * edge: a default written at the type is exactly the one a preview should show.
+     * relation: a default written at the type is exactly the one a preview should show.
      *
-     * @param  list<Relation>                                    $edges
-     * @param  array<int, array<string, ResolvedSetting>>         $resolved Settings per edge id.
+     * @param  list<Relation>                                    $relations
+     * @param  array<int, array<string, ResolvedSetting>>         $resolved Settings per relation id.
      * @param  array<int, TypedValue>                             $held     What a record holds, if any.
-     * @return array<int, TypedValue>                                       Keyed by edge id.
+     * @return array<int, TypedValue>                                       Keyed by relation id.
      */
     /**
      * What a **non-persistent** attribute is worth for one particular node.
@@ -1682,14 +1682,14 @@ final class Rendering
      * ⚠️ *Nothing is invented when nothing is there. A missing row means this node says nothing about
      * that attribute, which is a different fact from «zero» and is returned as such.*
      */
-    public function nonPersistentValue(Node $node, Relation $edge): ?TypedValue
+    public function nonPersistentValue(Node $node, Relation $relation): ?TypedValue
     {
         // ⚠️ **Nur noch die neue Stelle** ([D-579](../../../docs/NewConcept/90-decision-log.md)):
         // *hier stand darunter der Rückfall auf die `settings`-Tabelle. Sie ist gestrichen, und
         // gemessen am 2026-09-04 trug sie **keine einzige `default`-Zeile** mehr, sondern nur noch
         // 13 Zeilen mit `read_only` und `label_role`. **Ein Rückfall auf eine Tabelle, die für
         // diesen Schlüssel nichts hält, ist kein Rückfall, sondern toter Code.***
-        return $this->model?->defaultFor($node, $edge);
+        return $this->model?->defaultFor($node, $relation);
     }
 
     /**
@@ -1739,25 +1739,25 @@ final class Rendering
         return $marked;
     }
 
-    public function previewValuesFor(array $edges, array $resolved, array $held = []): array
+    public function previewValuesFor(array $relations, array $resolved, array $held = []): array
     {
         $values = [];
 
-        foreach ($edges as $edge) {
+        foreach ($relations as $relation) {
             // ⚠️ **Real data wins, and the rung between it and the defaults is
             // {@see previewRecordAmong()}** — the caller has already chosen *which* record the
             // values came from, so what is left here is the decided *«fällt auf die Vorgaben
             // zurück, wo keine da sind»* of [D-028](90-decision-log.md).
-            if (isset($held[$edge->id]) && ! $held[$edge->id]->isNothing()) {
-                $values[$edge->id] = $held[$edge->id];
+            if (isset($held[$relation->id]) && ! $held[$relation->id]->isNothing()) {
+                $values[$relation->id] = $held[$relation->id];
 
                 continue;
             }
 
-            $default = $resolved[$edge->id][SettingKey::DefaultValue->value] ?? null;
+            $default = $resolved[$relation->id][SettingKey::DefaultValue->value] ?? null;
 
             if ($default !== null && ! $default->value->isNothing()) {
-                $values[$edge->id] = $default->value;
+                $values[$relation->id] = $default->value;
             }
         }
 
@@ -1765,7 +1765,7 @@ final class Rendering
     }
 
     /**
-     * Which edges a preview may leave out, and which it must draw dead rather than absent.
+     * Which relations a preview may leave out, and which it must draw dead rather than absent.
      *
      * ⚠️ **This is what the owner is after** — *we need the preview to fix the flag and renderer
      * concept errors.* `hide` and `read_only` are stored, resolved and had **no surface that showed
@@ -1782,26 +1782,26 @@ final class Rendering
      * and refuses the edit — *a computed value a reader should see and nobody may type*. Collapsing
      * them would make a read-only field invisible, which is the opposite of what it is for.
      *
-     * @param  list<Relation>                            $edges
+     * @param  list<Relation>                            $relations
      * @param  array<int, array<string, ResolvedSetting>> $resolved
      * @return array{shown: list<Relation>, hidden: list<Relation>, settings: list<Relation>, fixed: list<int>}
      */
-    public function previewVisibilityFor(array $edges, array $resolved): array
+    public function previewVisibilityFor(array $relations, array $resolved): array
     {
         $shown    = [];
         $hidden   = [];
         $settings = [];
         $fixed    = [];
 
-        foreach ($edges as $edge) {
-            $keys = $resolved[$edge->id] ?? [];
+        foreach ($relations as $relation) {
+            $keys = $resolved[$relation->id] ?? [];
 
             // ⚠️ `($a['x'] ?? null)?->y` and **not** `$a['x']?->y` — the second is a warning on a
             // missing key, which is a bug this file's own docblock warns about and which was written
             // two files away on 2026-08-26.
-            // ⚠️ *The edge's own column ([D-457](90-decision-log.md)) — no chain, no resolution.*
-            if ($edge->hide) {
-                $hidden[] = $edge;
+            // ⚠️ *The relation's own column ([D-457](90-decision-log.md)) — no chain, no resolution.*
+            if ($relation->hide) {
+                $hidden[] = $relation;
 
                 continue;
             }
@@ -1822,16 +1822,16 @@ final class Rendering
             // jedem Knoten «Left out by hide: Display Option, validator, read_only», obwohl niemand etwas
             // versteckt hatte. **Ein Etikett, das den falschen Grund nennt, ist schlimmer als keines**,
             // und `preview-check.php` hat genau daran drei Zusagen verloren.*
-            if ($edge->isSetting()) {
-                $settings[] = $edge;
+            if ($relation->isSetting()) {
+                $settings[] = $relation;
 
                 continue;
             }
 
-            $shown[] = $edge;
+            $shown[] = $relation;
 
             if ((($keys[SettingKey::ReadOnly->value] ?? null)?->value->asBool() ?? SettingKey::ReadOnly->defaultSwitch()) === true) {
-                $fixed[] = $edge->id;
+                $fixed[] = $relation->id;
             }
         }
 
@@ -1868,7 +1868,7 @@ final class Rendering
     }
     public function nodeAsForm(
         Node $node,
-        array $edges,
+        array $relations,
         array $values,
         Purpose $purpose,
         string $fieldPrefix = '',
@@ -1883,7 +1883,7 @@ final class Rendering
     ): RenderResult {
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
-        $parts = $this->fieldsFor($edges, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true]);
+        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true]);
 
         $container = $containerName === ''
             ? $this->containerFor($node, $purpose)
@@ -1953,23 +1953,23 @@ final class Rendering
      * Stelle im Kern beantwortet die Frage**, und wenn die alte Tabelle herausgenommen wird, knallt es
      * hier — an einer Stelle — und nicht still an acht.*
      *
-     * @param  list<Relation> $edges
+     * @param  list<Relation> $relations
      * @return array<int, array<string, \Taxmod\Core\Model\ResolvedSetting>> Kanten-Id => Angaben
      */
-    public function settingsForUseSites(array $edges): array
+    public function settingsForUseSites(array $relations): array
     {
-        $resolved = $this->vonDenKanten($edges);
+        $resolved = $this->vonDenKanten($relations);
 
         // ⚠️ *Alle Ketten auf einmal, bevor die erste gelesen wird (`CD-7`,
         // [D-602](../../../docs/NewConcept/90-decision-log.md)). Sieben Felder eines Formulars zeigen
         // auf sieben Typen, deren Vorfahren sich fast vollständig überschneiden — je Feld nachzusehen
         // wäre linear in der Zahl der Felder, und genau das misst `package7-check.php`.*
-        $this->model?->preload($edges);
+        $this->model?->preload($relations);
 
         $aus = [];
 
-        foreach ($edges as $edge) {
-            $aus[$edge->id] = $this->withModelValues($resolved[$edge->id] ?? [], $edge);
+        foreach ($relations as $relation) {
+            $aus[$relation->id] = $this->withModelValues($resolved[$relation->id] ?? [], $relation);
         }
 
         return $aus;
@@ -2077,7 +2077,7 @@ final class Rendering
                         href: $hrefs[$node->id] ?? null,
                         submits: $submits[$node->id] ?? null,
                         // ⚠️ *Prepared, not asked: a cell draws a **node** and `hide` sits on its
-                        // **edge** ([D-467](90-decision-log.md), [D-445](90-decision-log.md)).*
+                        // **relation** ([D-467](90-decision-log.md), [D-445](90-decision-log.md)).*
                         hidden: $hidden[$node->id] ?? false
                     ),
                     // ⚠️ **A circumstance and not a setting** (D-389): developer mode is a fact about
@@ -2132,7 +2132,7 @@ final class Rendering
 
         $nodes = array_map(static fn (array $row): Node => $row['node'], $walked);
         // ⚠️ *The rows already carry it — {@see \Taxmod\Core\Service\Tree::rowsUnder()} reads it off
-        // the inheritance edges it loads anyway ([D-467](90-decision-log.md)). No parameter at the
+        // the inheritance relations it loads anyway ([D-467](90-decision-log.md)). No parameter at the
         // boundary, and no query here.*
         $hidden = [];
 
@@ -2187,9 +2187,9 @@ final class Rendering
     }
 
     /** What this attribute's value has to be read back as. */
-    public function typeAt(Relation $edge): ?SimpleType
+    public function typeAt(Relation $relation): ?SimpleType
     {
-        return $this->typesFor([$edge])[$edge->id] ?? null;
+        return $this->typesFor([$relation])[$relation->id] ?? null;
     }
 
     /**
@@ -2199,12 +2199,12 @@ final class Rendering
      * to be read as its own type; asking per field would be a query per field on **save** as well
      * as on draw, which is the loop `CD-7` forbids either way round.
      *
-     * @param  list<Relation> $edges
+     * @param  list<Relation> $relations
      * @return array<int, SimpleType|null>
      */
-    public function typesFor(array $edges): array
+    public function typesFor(array $relations): array
     {
-        return $this->typesOf($edges);
+        return $this->typesOf($relations);
     }
 
     /**
@@ -2400,9 +2400,9 @@ final class Rendering
      *
      * @return list<Renderer>
      */
-    public function choicesFor(Relation $edge, ?Purpose $purpose = null): array
+    public function choicesFor(Relation $relation, ?Purpose $purpose = null): array
     {
-        return $this->renderers->eligibleFor($edge, $this->typeAt($edge), $purpose);
+        return $this->renderers->eligibleFor($relation, $this->typeAt($relation), $purpose);
     }
 
     /**
@@ -2466,7 +2466,7 @@ final class Rendering
     }
 
     /**
-     * The simple type behind each attribute's target, keyed by edge id.
+     * The simple type behind each attribute's target, keyed by relation id.
      *
      * ⚠️ **A subtype of a type is still that type.** A node `Description` under `text` has no
      * `SimpleType` of its own name and stores exactly what a text stores — so the nearest ancestor
@@ -2481,22 +2481,22 @@ final class Rendering
      * since the binding is by id ([D-510](../../../docs/NewConcept/90-decision-log.md)) the ids a
      * node's path already carries answer the same question with one query fewer.*
      *
-     * @param  list<Relation> $edges
+     * @param  list<Relation> $relations
      * @return array<int, SimpleType|null>
      */
-    private function typesOf(array $edges): array
+    private function typesOf(array $relations): array
     {
-        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $edges));
+        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
 
         $types = [];
         $offen = [];
 
-        foreach ($edges as $edge) {
-            $target           = $targets[$edge->toNodeId] ?? null;
-            $types[$edge->id] = $target === null ? null : $this->typeOf($target);
+        foreach ($relations as $relation) {
+            $target           = $targets[$relation->toNodeId] ?? null;
+            $types[$relation->id] = $target === null ? null : $this->typeOf($target);
 
-            if ($target !== null && $types[$edge->id] === null) {
-                $offen[$edge->id] = $target->id;
+            if ($target !== null && $types[$relation->id] === null) {
+                $offen[$relation->id] = $target->id;
             }
         }
 
@@ -2513,10 +2513,10 @@ final class Rendering
         if ($offen !== []) {
             $kinder = $this->nodes->visibleChildrenOf(array_values(array_unique($offen)));
 
-            foreach ($offen as $edgeId => $targetId) {
+            foreach ($offen as $relationId => $targetId) {
                 if (($kinder[$targetId] ?? []) !== []) {
-                    $types[$edgeId] = SimpleType::NodeRef;
-                    unset($offen[$edgeId]);
+                    $types[$relationId] = SimpleType::NodeRef;
+                    unset($offen[$relationId]);
                 }
             }
         }
@@ -2540,15 +2540,15 @@ final class Rendering
         // die Regel genau **eine** Kante: `validator`.*
         //
         // ⚠️ *In **einer** Abfrage für alle offenen Ziele (`CD-7`) — die Felder eines Ziels sind Kanten,
-        // und `fieldEdgesOf()` nimmt eine Liste.*
+        // und `fieldRelationsOf()` nimmt eine Liste.*
         if ($offen !== [] && $this->relations !== null) {
             $mitFeldern = [];
 
-            foreach ($this->relations->fieldEdgesOf(array_values(array_unique($offen))) as $eine) {
+            foreach ($this->relations->fieldRelationsOf(array_values(array_unique($offen))) as $eine) {
                 $mitFeldern[$eine->fromNodeId] = true;
             }
 
-            foreach ($offen as $edgeId => $targetId) {
+            foreach ($offen as $relationId => $targetId) {
                 $ziel = $targets[$targetId] ?? null;
 
                 if ($ziel === null || isset($mitFeldern[$targetId])) {
@@ -2556,7 +2556,7 @@ final class Rendering
                 }
 
                 if ($this->framework->branchOf($ziel) === Branch::Settings) {
-                    $types[$edgeId] = SimpleType::NodeRef;
+                    $types[$relationId] = SimpleType::NodeRef;
                 }
             }
         }
@@ -2580,7 +2580,7 @@ final class Rendering
      * Verwendungsstelle wählbar sind (`R14a`). Zwei Fragen, ein Wort, und beim Lesen fällt es nicht
      * auf; deshalb heisst diese nach dem, was sie füllt ({@see Surroundings::$options}).*
      *
-     * @param  list<Relation>                 $edges
+     * @param  list<Relation>                 $relations
      * @return array<int, array<int, string>> Kanten-Id => (Knoten-Id => Name)
      */
     /**
@@ -2610,10 +2610,10 @@ final class Rendering
      * Alle Feldkanten, die der Abstieg brauchen wird — **eine Abfrage je Stufe**.
      *
      * ⚠️ **[D-159](../../../docs/NewConcept/90-decision-log.md), und der Satz gilt wörtlich:** *«the
-     * descent has two inputs, both loaded before it starts … a descent that fetches per edge is N+1 by
+     * descent has two inputs, both loaded before it starts … a descent that fetches per relation is N+1 by
      * construction».*
      *
-     * ⚠️ *Deshalb wird je **Stufe** geladen und nicht je Feld: `fieldEdgesOf()` nimmt eine Liste von
+     * ⚠️ *Deshalb wird je **Stufe** geladen und nicht je Feld: `fieldRelationsOf()` nimmt eine Liste von
      * Besitzern, also kostet eine Ebene eine Abfrage, gleich wie breit sie ist. Drei Stufen sind drei
      * Abfragen.*
      *
@@ -2624,17 +2624,17 @@ final class Rendering
      *   C --> D["deren Ziele … bis TIEFSTENS"]
      * ```
      *
-     * @param  list<Relation>            $edges
+     * @param  list<Relation>            $relations
      * @return array<int, list<Relation>> Knoten-Id => seine Feldkanten
      */
-    private function subgraph(array $edges, int $tiefstens): array
+    private function subgraph(array $relations, int $tiefstens): array
     {
         if ($this->relations === null) {
             return [];
         }
 
         $unterbau = [];
-        $offen    = array_values(array_unique(array_map(static fn (Relation $e): int => $e->toNodeId, $edges)));
+        $offen    = array_values(array_unique(array_map(static fn (Relation $e): int => $e->toNodeId, $relations)));
 
         for ($stufe = 0; $stufe < $tiefstens && $offen !== []; $stufe++) {
             // ⚠️ *Nur Ziele, die überhaupt eigene Felder haben könnten — ein `Text` hat keine, und ihn
@@ -2670,7 +2670,7 @@ final class Rendering
 
             $weiter = [];
 
-            foreach ($this->relations->fieldEdgesOf($fragen) as $kante) {
+            foreach ($this->relations->fieldRelationsOf($fragen) as $kante) {
                 $unterbau[$kante->fromNodeId][] = $kante;
                 $weiter[]                   = $kante->toNodeId;
             }
@@ -2700,7 +2700,7 @@ final class Rendering
      * @return array{renderer: string, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
      */
     private function partBelow(
-        Relation $edge,
+        Relation $relation,
         ?SimpleType $type,
         Purpose $purpose,
         string $fieldPrefix,
@@ -2730,11 +2730,11 @@ final class Rendering
         // ⚠️ **Ein Ziel, in dem der Lauf schon war, wird nicht wieder aufgeklappt.** *`DisplayOption`
         // erbt `Display Option` mit **sich selbst** als Ziel ([OQ-133](../../../docs/NewConcept/91-open-questions.md)),
         // und ohne diese Zeile stand `render` in jedem seiner Datensätze doppelt.*
-        if (isset($gesehen[$edge->toNodeId])) {
+        if (isset($gesehen[$relation->toNodeId])) {
             return null;
         }
 
-        $innen = $unterbau[$edge->toNodeId] ?? [];
+        $innen = $unterbau[$relation->toNodeId] ?? [];
 
         // ⚠️ **Was aus einem Teil gezeichnet wird, hängt daran, was der Teil ist.**
         //
@@ -2746,7 +2746,7 @@ final class Rendering
         // `render` und `converter` auf sein Wort zu Einstellungskanten wurden — «warum sehe ich hier
         // wieder die Einstellungen als Fields, nur damit du rendern kannst, das ist falsch»: die Zelle
         // von `Display Option` wurde im selben Zug leer, weil dieser Filter sie wegnahm.***
-        $nurEchte = ! $edge->isSetting();
+        $nurEchte = ! $relation->isSetting();
 
         $innen = array_values(array_filter(
             $innen,
@@ -2757,7 +2757,7 @@ final class Rendering
             return null;
         }
 
-        $ziel = $this->nodes->find($edge->toNodeId);
+        $ziel = $this->nodes->find($relation->toNodeId);
 
         if ($ziel === null) {
             return null;
@@ -2782,7 +2782,7 @@ final class Rendering
             // WICHTIG: Die Felder des *gewaehlten* Knotens, nicht die des Kantenziels (D-584).
             // Die Kante zeigt auf den Basisknoten «Renderer»; im Datensatz steht «compact», und
             // gezeichnet gehoeren dessen Felder. Ohne das endet der Abstieg an der Auswahl.
-            $dieseFelder = $teil === null ? $innen : $this->fieldsOfChosen($teil, $edge->toNodeId, $innen);
+            $dieseFelder = $teil === null ? $innen : $this->fieldsOfChosen($teil, $relation->toNodeId, $innen);
 
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
@@ -2795,7 +2795,7 @@ final class Rendering
                 $formId,
                 $tiefe + 1,
                 $unterbau,
-                [...$gesehen, $edge->toNodeId => true],
+                [...$gesehen, $relation->toNodeId => true],
                 // WICHTIG: Hier stand eine leere Liste, und daran endete der Abstieg. Die Teile
                 // *dieses* Teils sind der gewaehlte Renderer und was unter ihm haengt (D-583).
                 $teil['teile'] ?? [],
@@ -2820,7 +2820,7 @@ final class Rendering
         //
         // ⚠️ *Kein `Level`-Vorbehalt: eine Einstellung wird nur im Modell bearbeitet, nie im Frontend
         // gezeichnet — eine Bedingung darauf hätte einen Fall unterschieden, den es nicht gibt.*
-        $behaelter = $edge->isSetting()
+        $behaelter = $relation->isSetting()
             ? $this->renderers->byName(TableRenderer::NAME)
             : $this->containerFor($ziel, $purpose);
 
@@ -2872,7 +2872,7 @@ final class Rendering
         }
 
         $eigene = array_values(array_filter(
-            $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($knoten)),
+            $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)),
             static fn (Relation $e): bool => ! $e->hide
         ));
 
@@ -2886,7 +2886,7 @@ final class Rendering
      * Kunden -- hat nichts zu waehlen; dort waere ein Kasten davor sinnlos.
      */
     private function chosenAndItsFields(
-        Relation $edge,
+        Relation $relation,
         ?SimpleType $type,
         Renderer $renderer,
         RenderContext $context,
@@ -2896,11 +2896,11 @@ final class Rendering
             return $tiefer;
         }
 
-        $wahl = $renderer->render($edge, $context);
+        $wahl = $renderer->render($relation, $context);
 
         return new RenderResult(
             $wahl->markup . $tiefer->markup,
-            [...$wahl->usedEdges, ...$tiefer->usedEdges],
+            [...$wahl->usedRelations, ...$tiefer->usedRelations],
             $tiefer->condition
         );
     }
@@ -3049,12 +3049,12 @@ final class Rendering
         return $walked;
     }
 
-    private function optionsFor(array $edges): array
+    private function optionsFor(array $relations): array
     {
         $ziele = [];
 
-        foreach ($edges as $edge) {
-            $ziele[$edge->id] = $edge->toNodeId;
+        foreach ($relations as $relation) {
+            $ziele[$relation->id] = $relation->toNodeId;
         }
 
         if ($ziele === []) {
@@ -3064,11 +3064,11 @@ final class Rendering
         $unter = $this->offeredUnder(array_values(array_unique($ziele)));
         $wahl  = [];
 
-        foreach ($ziele as $edgeId => $targetId) {
+        foreach ($ziele as $relationId => $targetId) {
             $angebot = $unter[$targetId] ?? [];
 
             if ($angebot !== []) {
-                $wahl[$edgeId] = $angebot;
+                $wahl[$relationId] = $angebot;
             }
         }
 

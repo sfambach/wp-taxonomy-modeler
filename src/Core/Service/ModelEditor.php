@@ -24,8 +24,8 @@ use Taxmod\Core\Repository\RelationRepository;
  * Everything a person can do to the shape of the model: make a node, rename it, move it,
  * reorder it among its siblings, throw it away.
  *
- * ⚠️ **The tree is the inheritance edges; `path` is derived from them** (D-014). Every operation
- * here changes the edge first and rewrites the path afterwards. Writing the path alone would
+ * ⚠️ **The tree is the inheritance relations; `path` is derived from them** (D-014). Every operation
+ * here changes the relation first and rewrites the path afterwards. Writing the path alone would
  * make the derived value the only truth, which is exactly what D-014 forbids.
  *
  * ⚠️ **Deletion is two stages, and only the second is irreversible** (D-123). Parking is an
@@ -51,7 +51,7 @@ final class ModelEditor
         private readonly Changelog $changelog,
         // ⚠️ **Only `duplicate()` uses this, and that is why it is optional.** A copy has to
         // resolve exactly like its original or it is not a copy — which means its **own** labels
-        // travel with it. *Everything else in this service moves nodes and edges around and has
+        // travel with it. *Everything else in this service moves nodes and relations around and has
         // no business reading them.*
         //
         // ⚠️ *Hier stand daneben ein `SettingRepository`. Die `settings`-Tabelle ist mit
@@ -289,49 +289,49 @@ final class ModelEditor
      * ⚠️ *Derselbe Akt-Rahmen wie {@see hideField()}: ein Journaleintrag mit Vorher und Nachher, und
      * ein Schreiben, das an der Version scheitert, wenn jemand dazwischenkam.*
      */
-    public function setMultiplicity(int $ownerId, int $edgeId, Multiplicity $multiplicity): Relation
+    public function setMultiplicity(int $ownerId, int $relationId, Multiplicity $multiplicity): Relation
     {
-        $edge     = $this->ownAttribute($ownerId, $edgeId);
-        $geaendert = $edge->withMultiplicity($multiplicity);
+        $relation     = $this->ownAttribute($ownerId, $relationId);
+        $geaendert = $relation->withMultiplicity($multiplicity);
 
-        if ($geaendert === $edge) {
-            return $edge;
+        if ($geaendert === $relation) {
+            return $relation;
         }
 
         $this->changelog->record(
-            $edge->id,
+            $relation->id,
             'relation',
             'multiplicity set',
-            $this->edgeState($edge),
-            $this->edgeState($geaendert),
+            $this->relationState($relation),
+            $this->relationState($geaendert),
             $geaendert->version
         );
 
-        $this->relations->save($geaendert, $edge->version);
+        $this->relations->save($geaendert, $relation->version);
 
         return $geaendert;
     }
 
-    public function hideField(int $ownerId, int $edgeId, ?bool $hide = null): Relation
+    public function hideField(int $ownerId, int $relationId, ?bool $hide = null): Relation
     {
-        $edge   = $this->ownAttribute($ownerId, $edgeId);
-        $wanted = $hide ?? ! $edge->hide;
-        $hidden = $edge->withHide($wanted);
+        $relation   = $this->ownAttribute($ownerId, $relationId);
+        $wanted = $hide ?? ! $relation->hide;
+        $hidden = $relation->withHide($wanted);
 
-        if ($hidden === $edge) {
-            return $edge;
+        if ($hidden === $relation) {
+            return $relation;
         }
 
         $this->changelog->record(
-            $edge->id,
+            $relation->id,
             'relation',
             $wanted ? 'field hidden' : 'field shown',
-            $this->edgeState($edge),
-            $this->edgeState($hidden),
+            $this->relationState($relation),
+            $this->relationState($hidden),
             $hidden->version
         );
 
-        $this->relations->save($hidden, $edge->version);
+        $this->relations->save($hidden, $relation->version);
 
         return $hidden;
     }
@@ -422,8 +422,8 @@ final class ModelEditor
      * would invent twenty facts nobody entered.
      *
      * ⚠️ **What *does* come along, and why each.** Its **own settings**, because a copy that resolves
-     * differently from its original is not a copy. Its **own attribute declarations**, as new edges —
-     * an attribute is an edge owned by the node ([D-031](../../../docs/NewConcept/90-decision-log.md)),
+     * differently from its original is not a copy. Its **own attribute declarations**, as new relations —
+     * an attribute is an relation owned by the node ([D-031](../../../docs/NewConcept/90-decision-log.md)),
      * so there is nothing to share and a copy either declares its own or declares none. *Inherited
      * attributes are not copied because they were never here: the copy is a sibling, so it inherits
      * exactly what the original inherits.*
@@ -465,26 +465,26 @@ final class ModelEditor
         // inherited attribute belongs to an ancestor and the copy inherits it too, by sitting where it
         // sits.
         //
-        // ⚠️ **The pairs are kept, because a copy gets *new* edges** and everything the original said
-        // *about* one of its attributes is addressed by that attribute's **edge id**
+        // ⚠️ **The pairs are kept, because a copy gets *new* relations** and everything the original said
+        // *about* one of its attributes is addressed by that attribute's **relation id**
         // ([D-413](../../../docs/NewConcept/90-decision-log.md)). *Without the map those rows either
         // vanished or, restored naively, would have addressed the **original's** attributes — which
         // {@see \Taxmod\Core\Service\Settings::materialise()} names in its own docblock as «different
         // act, real problem, not this one». This is that act.*
-        $newEdges = [];
+        $newRelations = [];
 
-        foreach ($this->fieldsOf($node->id) as $edge) {
+        foreach ($this->fieldsOf($node->id) as $relation) {
             // ⚠️ **`fromNodeId` is what «own» means** — the same test {@see ownAttribute()} makes. An
-            // inherited edge belongs to an ancestor, and the copy inherits it by sitting where it
+            // inherited relation belongs to an ancestor, and the copy inherits it by sitting where it
             // sits; declaring it again would give the subtree the same attribute twice.
-            if ($edge->fromNodeId !== $node->id) {
+            if ($relation->fromNodeId !== $node->id) {
                 continue;
             }
 
-            $newEdges[$edge->id] = $this->addField($copy->id, $edge->toNodeId, $edge->name)->id;
+            $newRelations[$relation->id] = $this->addField($copy->id, $relation->toNodeId, $relation->name)->id;
         }
 
-        $this->copyLabels($node->id, $copy->id, $newEdges);
+        $this->copyLabels($node->id, $copy->id, $newRelations);
 
         return $copy;
     }
@@ -497,9 +497,9 @@ final class ModelEditor
      * ⚠️ **A node's copy may carry the same name and an attribute's may not.**
      * [D-022](../../../docs/NewConcept/90-decision-log.md) makes node names explicitly *not unique*,
      * so `duplicate()` reuses one. But [D-281](../../../docs/NewConcept/90-decision-log.md) refuses a
-     * **duplicate edge** — same `from`, `kind`, `to` **and name** — because *`Breite` and `Höhe` both
-     * reach `int` and are two different things; the name is part of what makes an edge itself.* **So a
-     * copy with the same name is not a copy, it is the same edge, and the core refuses it.**
+     * **duplicate relation** — same `from`, `kind`, `to` **and name** — because *`Breite` and `Höhe` both
+     * reach `int` and are two different things; the name is part of what makes an relation itself.* **So a
+     * copy with the same name is not a copy, it is the same relation, and the core refuses it.**
      *
      * ⚠️ **Which is why the name is a parameter and not derived here.** Inventing «Breite 2» would be
      * the core writing user-visible content, and a suffix like *(copy)* is a translatable string that
@@ -507,11 +507,11 @@ final class ModelEditor
      * not.*
      *
      * ⚠️ **Its own settings travel with it**, for the same reason a node's do: a copy that resolves
-     * differently from its original is not a copy. *Its labels do not, because an edge owns none —
-     * measured 2026-08-26: 17 edges carry a name and zero labels belong to an edge
+     * differently from its original is not a copy. *Its labels do not, because an relation owns none —
+     * measured 2026-08-26: 17 relations carry a name and zero labels belong to an relation
      * ([OQ-095](../../../docs/NewConcept/91-open-questions.md)).*
      */
-    public function duplicateField(int $ownerId, int $edgeId, string $name): Relation
+    public function duplicateField(int $ownerId, int $relationId, string $name): Relation
     {
         // ⚠️ **Ein Akt, eine Änderungsnummer** ([Zeile 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
         // *Dasselbe wie beim Knoten, eine Ebene tiefer. Verschachtelte Klammern werden gezählt, also gewinnt die äußere — die,
@@ -519,21 +519,21 @@ final class ModelEditor
         $this->changelog->beginAct();
 
         try {
-            return $this->duplicatedField($ownerId, $edgeId, $name);
+            return $this->duplicatedField($ownerId, $relationId, $name);
         } finally {
             $this->changelog->endAct();
         }
     }
 
-    private function duplicatedField(int $ownerId, int $edgeId, string $name): Relation
+    private function duplicatedField(int $ownerId, int $relationId, string $name): Relation
     {
         // ⚠️ **`ownAttribute()` and not `fieldsOf()`**: an inherited attribute belongs to the
         // ancestor that declared it, and copying it from a descendant would put a second declaration
         // in a place that never had the first ([D-376](../../../docs/NewConcept/90-decision-log.md)
         // refuses renaming for the same reason).
-        $edge = $this->ownAttribute($ownerId, $edgeId);
+        $relation = $this->ownAttribute($ownerId, $relationId);
 
-        $copy = $this->addField($ownerId, $edge->toNodeId, $name);
+        $copy = $this->addField($ownerId, $relation->toNodeId, $name);
 
         return $copy;
     }
@@ -543,25 +543,25 @@ final class ModelEditor
      * An address on the original, read as the same address on the copy.
      *
      * ⚠️ **An unmapped segment is kept rather than dropped, and that is the correct half of it.** *A
-     * path may name an **inherited** edge, and a copy sitting under the same parent inherits **the
-     * same edge** — the same id ([D-405](../../../docs/NewConcept/90-decision-log.md): an inherited
-     * attribute *is* the same edge). So the address is already the copy's own address. Only the
+     * path may name an **inherited** relation, and a copy sitting under the same parent inherits **the
+     * same relation** — the same id ([D-405](../../../docs/NewConcept/90-decision-log.md): an inherited
+     * attribute *is* the same relation). So the address is already the copy's own address. Only the
      * original's **own** declarations get new ids, and only those are in the map.*
      *
      * ⚠️ *Split on `.` although nothing writes a multi-segment path today — a `path` is documented as
-     * a **chain** of edge ids and `Node::$path` already spells a chain that way. **One line now, or a
+     * a **chain** of relation ids and `Node::$path` already spells a chain that way. **One line now, or a
      * silent half-remap the day the second segment arrives.***
      *
-     * @param array<int, int> $edgeMap
+     * @param array<int, int> $relationMap
      */
-    private function remapPath(string $path, array $edgeMap): string
+    private function remapPath(string $path, array $relationMap): string
     {
-        if ($path === '' || $edgeMap === []) {
+        if ($path === '' || $relationMap === []) {
             return $path;
         }
 
         $moved = array_map(
-            static fn (string $segment): string => (string) ($edgeMap[(int) $segment] ?? $segment),
+            static fn (string $segment): string => (string) ($relationMap[(int) $segment] ?? $segment),
             explode('.', $path)
         );
 
@@ -577,12 +577,12 @@ final class ModelEditor
      * ⚠️ **And the `path` fault was here too, one line over, unmentioned by the row that found it.**
      * *`labels.path` addresses a place the same way `settings.path` does — [D-413](../../../docs/NewConcept/90-decision-log.md)
      * says it is the same choice — and this method passed `$one->path` straight through. So a label
-     * written **for one attribute** of the original arrived on the copy naming the **original's** edge.
+     * written **for one attribute** of the original arrived on the copy naming the **original's** relation.
      * **The same map fixes both, because it is one act.***
      *
-     * @param array<int, int> $edgeMap Original edge id ⇒ the copy's own new edge id.
+     * @param array<int, int> $relationMap Original relation id ⇒ the copy's own new relation id.
      */
-    private function copyLabels(int $fromNodeId, int $toNodeId, array $edgeMap = []): void
+    private function copyLabels(int $fromNodeId, int $toNodeId, array $relationMap = []): void
     {
         if ($this->labels === null) {
             return;
@@ -591,7 +591,7 @@ final class ModelEditor
         foreach ($this->labels->forOwners([$fromNodeId]) as $one) {
             $this->labels->put(new Label(
                 $toNodeId,
-                $this->remapPath($one->path, $edgeMap),
+                $this->remapPath($one->path, $relationMap),
                 $one->roleId,
                 $one->number,
                 $one->locale,
@@ -631,7 +631,7 @@ final class ModelEditor
             throw NotAPossibleTarget::itIsInTheTrash($target->name);
         }
 
-        $edge = Relation::attribute(
+        $relation = Relation::attribute(
             // ⚠️ *`0` heisst «die Tabelle vergibt sie» (TASK-004).*
             0,
             $owner->id,
@@ -641,20 +641,20 @@ final class ModelEditor
             $this->relations->nextFieldPositionUnder($owner->id)
         );
 
-        $edge = $this->relations->add($edge);
+        $relation = $this->relations->add($relation);
         $this->changelog->record(
-            $edge->id,
+            $relation->id,
             'relation',
             'attribute added',
             null,
-            sprintf('%s: %s → %s (%s)', $owner->name, $edge->name, $target->name, $edge->kind->value),
-            $edge->version
+            sprintf('%s: %s → %s (%s)', $owner->name, $relation->name, $target->name, $relation->kind->value),
+            $relation->version
         );
 
         // ⚠️ *Hier wurden dem neuen Feld die Angaben seines **Ziels** als eigene Zeilen
         // hineingeschrieben ([D-423](../../../docs/NewConcept/90-decision-log.md)). Mit der
         // `settings`-Tabelle ist auch das gestrichen ([D-579](../../../docs/NewConcept/90-decision-log.md)).*
-        return $edge;
+        return $relation;
     }
 
     /**
@@ -670,7 +670,7 @@ final class ModelEditor
     {
         $node = $this->nodes->byId($nodeId);
 
-        return $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($node));
+        return $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($node));
     }
 
     /**
@@ -679,26 +679,26 @@ final class ModelEditor
      * ⚠️ **[D-199](../../../docs/NewConcept/90-decision-log.md), and it is one direction on purpose.**
      * The owner: *«everything going out of the current node is in the attributes. As long as that
      * stays so, we do not need to show them in the relations.»* **His condition is recorded with the
-     * decision** — the section may hold one direction only *because every outgoing edge is currently
-     * visible elsewhere*, and if an outgoing edge appears that is neither an attribute nor
+     * decision** — the section may hold one direction only *because every outgoing relation is currently
+     * visible elsewhere*, and if an outgoing relation appears that is neither an attribute nor
      * inheritance, the section has to grow back. *Measured before building: the model holds three
      * kinds — 102 inheritance, 29 composition, 5 aggregation — and every composition and aggregation
-     * edge carries a name, which is what makes it an attribute. The condition still holds.*
+     * relation carries a name, which is what makes it an attribute. The condition still holds.*
      *
-     * ⚠️ **Direct incoming edges and not the descendants of this node.** *An attribute typed by an
+     * ⚠️ **Direct incoming relations and not the descendants of this node.** *An attribute typed by an
      * **ancestor** accepts this node too, but deleting this node does not break it — and the section
      * is an impact estimate ([D-122](../../../docs/NewConcept/90-decision-log.md)). Widening it to
      * the ancestors would answer a question nobody asked.*
      *
      * ⚠️ *No ancestors on the way in either, so this is not the mirror of {@see fieldsOf()} in that
-     * respect: **inherited** attributes are not repeated per descendant here, because the edge is
+     * respect: **inherited** attributes are not repeated per descendant here, because the relation is
      * owned once and that one owner is what a person has to go and look at.*
      *
      * @return list<Relation>
      */
     public function usedBy(int $nodeId): array
     {
-        return $this->relations->fieldEdgesTo([$nodeId]);
+        return $this->relations->fieldRelationsTo([$nodeId]);
     }
 
     /**
@@ -716,17 +716,17 @@ final class ModelEditor
      *
      * ⚠️ **And it takes what belongs to a node with it**, which is
      * [row 28](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)'s rule from the
-     * writing side: settings, labels, records and edges. *720 rows once belonged to owners that no
+     * writing side: settings, labels, records and relations. *720 rows once belonged to owners that no
      * longer existed, because deleting a node used to take only the row called «node».*
      *
      * ⚠️ **The trash itself is never touched** — it is framework-protected
      * ([D-194](../../../docs/NewConcept/90-decision-log.md)) and it is the parent of what it holds, so
-     * its own inheritance edges go with the children and it stays behind, empty.
+     * its own inheritance relations go with the children and it stays behind, empty.
      *
      * ```mermaid
      * flowchart LR
      *   T["Trash"] --> P["parked · everything under it"]
-     *   P --> G["records · values · settings · labels · edges · nodes"]
+     *   P --> G["records · values · settings · labels · relations · nodes"]
      *   P --> K["changelog<br/>bleibt"]
      * ```
      *
@@ -770,23 +770,23 @@ final class ModelEditor
         }
 
         if ($parked === []) {
-            return ['nodes' => 0, 'edges' => 0, 'labels' => 0, 'records' => 0, 'values' => 0];
+            return ['nodes' => 0, 'relations' => 0, 'labels' => 0, 'records' => 0, 'values' => 0];
         }
 
         $ids   = array_map(static fn (Node $one): int => $one->id, $parked);
-        $edges = [];
+        $relations = [];
 
-        foreach ($this->relations->edgesTouching($ids) as $edge) {
-            $edges[] = $edge->id;
+        foreach ($this->relations->relationsTouching($ids) as $relation) {
+            $relations[] = $relation->id;
         }
 
         // ⚠️ **Order matters**: what points at something goes before what it points at, or a foreign
-        // key refuses. *Settings and labels hang off both nodes and edges, so they go first of all.*
-        $owners = [...$ids, ...$edges];
+        // key refuses. *Settings and labels hang off both nodes and relations, so they go first of all.*
+        $owners = [...$ids, ...$relations];
 
         // ⚠️ **Die Daten gehen mit, und das fehlte — [C102](../../../docs/NewConcept/10-domain-core.md)
         // durchgesetzt.** *Der Docblock über dieser Methode behauptete es seit dem Anfang («und es nimmt
-        // mit, was zu einem Knoten gehört: settings, labels, **records** und edges», und das Diagramm
+        // mit, was zu einem Knoten gehört: settings, labels, **records** und relations», und das Diagramm
         // zeichnet «records · values»), **gelöscht wurden vier von sechs**. Geschrieben und nicht
         // gebaut, dasselbe Muster wie `hide` gespeichert-und-nie-gelesen
         // ([D-396](../../../docs/NewConcept/90-decision-log.md)) und der Container in
@@ -805,25 +805,25 @@ final class ModelEditor
             'labels'   => $this->labels?->forgetOwners($owners) ?? 0,
             'records'  => $data['records'],
             'values'   => $data['values'],
-            'edges'    => count($edges),
+            'relations'    => count($relations),
             'nodes'    => count($ids),
         ];
 
         // ⚠️ **The children are read before anything is deleted, and getting that wrong cost a run.**
-        // The first version purged the edges first — *and the edges are how a child of the trash is
+        // The first version purged the relations first — *and the relations are how a child of the trash is
         // found.* `childrenOf()` then returned nothing, `purgeSubtree()` was never called, and 53 nodes
         // stayed behind while the act reported them gone. **A tidy-up must not destroy its own map
         // before reading it.**
         //
-        // ⚠️ *And the edge loop was not merely mis-ordered, it was redundant:
-        // {@see NodeRepository::purgeSubtree()} deletes a subtree's edges **and** its nodes in two
-        // statements. Its own comment says why the edges go first — «a relation row whose node is gone
+        // ⚠️ *And the relation loop was not merely mis-ordered, it was redundant:
+        // {@see NodeRepository::purgeSubtree()} deletes a subtree's relations **and** its nodes in two
+        // statements. Its own comment says why the relations go first — «a relation row whose node is gone
         // is the dangling reference the whole two-stage deletion exists to avoid».*
-        // ⚠️ **By path and not by edge, and measuring is what settled it.** `childrenOf()` reads the
-        // **inheritance edges**, and a first run left **53 nodes standing**: under the trash sit nodes
-        // whose edge was removed by an earlier raw-SQL tidy-up of mine, so an edge-walk cannot see them
+        // ⚠️ **By path and not by relation, and measuring is what settled it.** `childrenOf()` reads the
+        // **inheritance relations**, and a first run left **53 nodes standing**: under the trash sit nodes
+        // whose relation was removed by an earlier raw-SQL tidy-up of mine, so an relation-walk cannot see them
         // at all. *`subtreeOf()` asks the materialised path, which is the truth about «under the trash»
-        // — [D-014](../../../docs/NewConcept/90-decision-log.md) derives the path from the edges, and
+        // — [D-014](../../../docs/NewConcept/90-decision-log.md) derives the path from the relations, and
         // when the two disagree the orphan is exactly what has to go.*
         //
         // ⚠️ *Each call deletes by path prefix, so overlapping subtrees cost a statement and change
@@ -840,9 +840,9 @@ final class ModelEditor
             'trash cleared',
             sprintf('%d parked', count($ids)),
             sprintf(
-                '%d nodes, %d edges, %d labels, %d records, %d values',
+                '%d nodes, %d relations, %d labels, %d records, %d values',
                 $gone['nodes'],
-                $gone['edges'],
+                $gone['relations'],
                 $gone['labels'],
                 $gone['records'],
                 $gone['values']
@@ -1046,20 +1046,20 @@ final class ModelEditor
      *
      * ⚠️ **The owner, 2026-08-26: *the attribute row should have up and down buttons like the nodes in
      * the tree.*** And his reason for expecting it to be shared: *«`position` is part of node and also
-     * part of edge, that is why I had moved it into the `Identity` class — which we do not have.»*
+     * part of relation, that is why I had moved it into the `Identity` class — which we do not have.»*
      *
      * ⚠️ **Measured, and the answer is better than the expectation: `position` lives *only* on the
-     * edge.** `Node` carries `id`, `version`, `name`, `path` and no position at all — **a node's order
-     * among its siblings is its *inheritance edge's* position**, which is
+     * relation.** `Node` carries `id`, `version`, `name`, `path` and no position at all — **a node's order
+     * among its siblings is its *inheritance relation's* position**, which is
      * [D-014](../../../docs/NewConcept/90-decision-log.md) working as designed: *the tree **is** the
-     * edges.* So this is not a fact waiting for a shared base class; **it is the same column, reached
+     * relations.* So this is not a fact waiting for a shared base class; **it is the same column, reached
      * through a different sibling list**, and {@see self::swapWithNeighbour()} was already doing it for
      * nodes.
      *
      * ```mermaid
      * flowchart LR
-     *   N["a node"] --> I["its inheritance edge · position"]
-     *   A["an attribute"] --> E["its own edge · position"]
+     *   N["a node"] --> I["its inheritance relation · position"]
+     *   A["an attribute"] --> E["its own relation · position"]
      *   I --> S["one swap"]
      *   E --> S
      * ```
@@ -1068,18 +1068,18 @@ final class ModelEditor
      * an inherited one belongs to an ancestor, and reordering it from a descendant would reorder it
      * for everybody.*
      */
-    public function moveField(int $ownerId, int $edgeId, int $direction): void
+    public function moveField(int $ownerId, int $relationId, int $direction): void
     {
         $own = [];
 
-        foreach ($this->relations->fieldEdgesOf([$ownerId]) as $edge) {
-            if ($edge->fromNodeId === $ownerId) {
-                $own[] = $edge;
+        foreach ($this->relations->fieldRelationsOf([$ownerId]) as $relation) {
+            if ($relation->fromNodeId === $ownerId) {
+                $own[] = $relation;
             }
         }
 
         $this->swapAmong(
-            $edgeId,
+            $relationId,
             array_map(
                 static fn (Relation $e): array => ['id' => $e->id, 'sortOrder' => $e->sortOrder, 'version' => $e->version],
                 $own
@@ -1100,52 +1100,52 @@ final class ModelEditor
     /**
      * The nodes a list of attributes points at, in one query (`CD-7`).
      *
-     * @param  list<Relation>   $edges
+     * @param  list<Relation>   $relations
      * @return array<int, Node> Keyed by node id.
      */
-    public function targetsOf(array $edges): array
+    public function targetsOf(array $relations): array
     {
-        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->toNodeId, $edges));
+        return $this->nodes->byIds(array_map(static fn (Relation $relation): int => $relation->toNodeId, $relations));
     }
 
     /**
-     * The other end — the nodes these edges come **from**, in one query (`CD-7`).
+     * The other end — the nodes these relations come **from**, in one query (`CD-7`).
      *
      * ⚠️ *What {@see usedBy()} needs to be readable: an incoming attribute means nothing without the
-     * node that owns it, and asking per edge would be the loop the code standard forbids.*
+     * node that owns it, and asking per relation would be the loop the code standard forbids.*
      *
-     * @param  list<Relation>   $edges
+     * @param  list<Relation>   $relations
      * @return array<int, Node> Keyed by id.
      */
-    public function ownersOf(array $edges): array
+    public function ownersOf(array $relations): array
     {
-        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->fromNodeId, $edges));
+        return $this->nodes->byIds(array_map(static fn (Relation $relation): int => $relation->fromNodeId, $relations));
     }
 
     /**
-     * One of a node's **own** attributes, by edge id.
+     * One of a node's **own** attributes, by relation id.
      *
-     * ⚠️ **Ownership is checked here rather than trusted from the request.** An inherited edge
+     * ⚠️ **Ownership is checked here rather than trusted from the request.** An inherited relation
      * belongs to an ancestor, and writing to it would change it for every sibling too.
      *
      * @throws \Taxmod\Core\Exception\NotAPossibleTarget
      */
-    public function ownAttribute(int $ownerId, int $edgeId): Relation
+    public function ownAttribute(int $ownerId, int $relationId): Relation
     {
-        foreach ($this->fieldsOf($ownerId) as $edge) {
-            if ($edge->id === $edgeId && $edge->fromNodeId === $ownerId) {
-                return $edge;
+        foreach ($this->fieldsOf($ownerId) as $relation) {
+            if ($relation->id === $relationId && $relation->fromNodeId === $ownerId) {
+                return $relation;
             }
         }
 
-        throw NotAPossibleTarget::notAnOwnField($edgeId);
+        throw NotAPossibleTarget::notAnOwnField($relationId);
     }
 
     /**
      * Remove an attribute — **parked, not purged**, and under one bracket.
      *
      * ⚠️ **This was missing since Package 3, and the reason was storage rather than reluctance:**
-     * `relations` had nowhere to record that an edge was gone. [D-371](../../../docs/NewConcept/90-decision-log.md)
+     * `relations` had nowhere to record that an relation was gone. [D-371](../../../docs/NewConcept/90-decision-log.md)
      * gives it `parked_by_group_id` — the **act** that parked it, not a bare flag, so
      * [D-128](../../../docs/NewConcept/90-decision-log.md)'s *deleted with «X»* has something to
      * name.
@@ -1161,38 +1161,38 @@ final class ModelEditor
      * Today the act is a single row, so the bracket is the row's own id — which is exactly what that
      * decision prescribes, and what makes the bracket cost nothing.
      */
-    public function removeField(int $ownerId, int $edgeId): Relation
+    public function removeField(int $ownerId, int $relationId): Relation
     {
-        // ⚠️ **The parked ones are looked at too, and that is not tidiness.** Once parked, an edge
+        // ⚠️ **The parked ones are looked at too, and that is not tidiness.** Once parked, an relation
         // leaves the live list (D-128), so a second click — a double tap, a back button, a stale
         // form — would otherwise be refused with *not one this node owns*, which is both wrong and
         // confusing. It **is** owned; it is already gone. So the act is idempotent.
-        foreach ($this->relations->parkedFieldEdgesOf([$ownerId]) as $already) {
-            if ($already->id === $edgeId) {
+        foreach ($this->relations->parkedFieldRelationsOf([$ownerId]) as $already) {
+            if ($already->id === $relationId) {
                 return $already;
             }
         }
 
-        $edge = $this->ownAttribute($ownerId, $edgeId);
+        $relation = $this->ownAttribute($ownerId, $relationId);
 
         $group = $this->changelog->record(
-            $edge->id,
+            $relation->id,
             'relation',
             'attribute removed',
-            $this->edgeState($edge),
-            $this->edgeState($edge->parkedBy(0)),
+            $this->relationState($relation),
+            $this->relationState($relation->parkedBy(0)),
             // ⚠️ *Das Parken hebt die Version **nicht**: die Zeile wandert unverändert in den
             // Schatten ({@see \Taxmod\WordPress\Persistence\Shadow::keepOne()}) und verschwindet
             // lebend. Die Version, die diese Änderung erzeugt hat, ist also die der gelesenen Zeile.*
-            $edge->version
+            $relation->version
         );
 
         // ⚠️ **Seit [D-619](../../../docs/NewConcept/90-decision-log.md) ein Umzug und kein
         // Spaltenschreiben** (TASK-013): die Kante wandert in den Schatten, **und ihre Wertzeilen
         // wandern mit**. Eine Gruppe, ein Akt, umkehrbar.
-        $this->relations->park($edge->id, $group);
+        $this->relations->park($relation->id, $group);
 
-        return $edge->parkedBy($group);
+        return $relation->parkedBy($group);
     }
 
     /**
@@ -1202,14 +1202,14 @@ final class ModelEditor
      * history is extended, because the changelog is also the migration script
      * ([D-061](../../../docs/NewConcept/90-decision-log.md)).
      */
-    public function restoreField(int $ownerId, int $edgeId): Relation
+    public function restoreField(int $ownerId, int $relationId): Relation
     {
-        foreach ($this->relations->parkedFieldEdgesOf([$ownerId]) as $edge) {
-            if ($edge->id !== $edgeId) {
+        foreach ($this->relations->parkedFieldRelationsOf([$ownerId]) as $relation) {
+            if ($relation->id !== $relationId) {
                 continue;
             }
 
-            $revived = $edge->revived();
+            $revived = $relation->revived();
 
             // ⚠️ *Die Umkehrung des Umzugs, **mit den Wertzeilen**
             // ([D-619](../../../docs/NewConcept/90-decision-log.md), TASK-013) — und nicht ein
@@ -1219,21 +1219,21 @@ final class ModelEditor
             // ([D-634](../../../docs/NewConcept/90-decision-log.md)): *das Zurückholen schreibt die
             // Zeile mit einer **neuen** Version, und die kennt erst der Speicher. Vorher gemeldet
             // hätte die Zeile die Version von gestern getragen.*
-            $zurueck = $this->relations->unpark($edge->id) ?? $revived;
+            $zurueck = $this->relations->unpark($relation->id) ?? $revived;
 
             $this->changelog->record(
-                $edge->id,
+                $relation->id,
                 'relation',
                 'attribute restored',
-                $this->edgeState($edge),
-                $this->edgeState($zurueck),
+                $this->relationState($relation),
+                $this->relationState($zurueck),
                 $zurueck->version
             );
 
             return $zurueck;
         }
 
-        throw NotAPossibleTarget::notAnOwnField($edgeId);
+        throw NotAPossibleTarget::notAnOwnField($relationId);
     }
 
     /**
@@ -1269,43 +1269,43 @@ final class ModelEditor
      * einzige Art, die nicht vom Ort abgelesen wird — also muss das Zurücknehmen sie neu ablesen und
      * darf nicht raten, welche es vorher war.*
      */
-    public function markAsSetting(int $ownerId, int $edgeId, bool $isSetting): Relation
+    public function markAsSetting(int $ownerId, int $relationId, bool $isSetting): Relation
     {
-        $edge = $this->ownAttribute($ownerId, $edgeId);
+        $relation = $this->ownAttribute($ownerId, $relationId);
 
         if ($isSetting) {
             $art = RelationKind::Setting;
         } else {
-            $target = $this->nodes->byId($edge->toNodeId);
+            $target = $this->nodes->byId($relation->toNodeId);
             $branch = $this->framework->branchOf($target)
                 ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
 
             $art = $branch->relationKind();
         }
 
-        $marked = $edge->withKind($art);
+        $marked = $relation->withKind($art);
 
-        if ($marked === $edge) {
-            return $edge;
+        if ($marked === $relation) {
+            return $relation;
         }
 
         $this->changelog->record(
-            $edge->id,
+            $relation->id,
             'relation',
             $isSetting ? 'field became a setting' : 'setting became a field',
-            $this->edgeState($edge),
-            $this->edgeState($marked),
+            $this->relationState($relation),
+            $this->relationState($marked),
             $marked->version
         );
 
-        $this->relations->save($marked, $edge->version);
+        $this->relations->save($marked, $relation->version);
 
         return $marked;
     }
 
-    public function retargetField(int $ownerId, int $edgeId, int $targetId): Relation
+    public function retargetField(int $ownerId, int $relationId, int $targetId): Relation
     {
-        $edge   = $this->ownAttribute($ownerId, $edgeId);
+        $relation   = $this->ownAttribute($ownerId, $relationId);
         $target = $this->nodes->byId($targetId);
 
         $branch = $this->framework->branchOf($target)
@@ -1319,41 +1319,41 @@ final class ModelEditor
             throw NotAPossibleTarget::itIsInTheTrash($target->name);
         }
 
-        $moved = $edge->retargetedTo($targetId, $branch->relationKind());
+        $moved = $relation->retargetedTo($targetId, $branch->relationKind());
 
-        if ($moved === $edge) {
-            return $edge;
+        if ($moved === $relation) {
+            return $relation;
         }
 
         $this->changelog->record(
-            $edge->id,
+            $relation->id,
             'relation',
             'field retargeted',
-            $this->edgeState($edge),
-            $this->edgeState($moved),
+            $this->relationState($relation),
+            $this->relationState($moved),
             $moved->version
         );
 
-        $this->relations->save($moved, $edge->version);
+        $this->relations->save($moved, $relation->version);
 
         return $moved;
     }
 
-    public function renameField(int $ownerId, int $edgeId, string $name): Relation
+    public function renameField(int $ownerId, int $relationId, string $name): Relation
     {
-        $edge    = $this->ownAttribute($ownerId, $edgeId);
-        $renamed = $edge->renamedTo($name);
+        $relation    = $this->ownAttribute($ownerId, $relationId);
+        $renamed = $relation->renamedTo($name);
 
         $this->changelog->record(
-            $edge->id,
+            $relation->id,
             'relation',
             'attribute renamed',
-            $this->edgeState($edge),
-            $this->edgeState($renamed),
+            $this->relationState($relation),
+            $this->relationState($renamed),
             $renamed->version
         );
 
-        $this->relations->save($renamed, $edge->version);
+        $this->relations->save($renamed, $relation->version);
 
         return $renamed;
     }
@@ -1366,7 +1366,7 @@ final class ModelEditor
      * zeigt, eine ist** — und seit [D-516](../../../docs/NewConcept/90-decision-log.md) hat jede Angabe
      * ihren eigenen Zielknoten, also trifft die Markierung nichts anderes mit.*
      *
-     * @param  list<Relation>          $edges
+     * @param  list<Relation>          $relations
      * @return array<int, FieldType>    Je Kanten-Id genau ein Eintrag.
      */
     /**
@@ -1380,18 +1380,18 @@ final class ModelEditor
         return $this->nodes->resolvedFieldTypes($ids);
     }
 
-    public function kindsOfTargets(array $edges): array
+    public function kindsOfTargets(array $relations): array
     {
-        if ($edges === []) {
+        if ($relations === []) {
             return [];
         }
 
-        $sorten = $this->nodes->resolvedFieldTypes(array_map(static fn (Relation $e): int => $e->toNodeId, $edges));
+        $sorten = $this->nodes->resolvedFieldTypes(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
 
         $je = [];
 
-        foreach ($edges as $edge) {
-            $je[$edge->id] = $sorten[$edge->toNodeId] ?? FieldType::standard();
+        foreach ($relations as $relation) {
+            $je[$relation->id] = $sorten[$relation->toNodeId] ?? FieldType::standard();
         }
 
         return $je;
@@ -1400,22 +1400,22 @@ final class ModelEditor
     /** @return list<Relation> The removed attributes of one node — D-128's *show deleted*. */
     public function removedFieldsOf(int $ownerId): array
     {
-        return $this->relations->parkedFieldEdgesOf([$ownerId]);
+        return $this->relations->parkedFieldRelationsOf([$ownerId]);
     }
 
     /**
-     * What a changelog row records about an edge.
+     * What a changelog row records about an relation.
      *
      * ⚠️ *`name` last, for the same reason it is last in {@see state()}: an attribute's name may hold
      * a space, and a field behind it could not be told apart from the name.*
      */
-    private function edgeState(Relation $edge): string
+    private function relationState(Relation $relation): string
     {
         return FrozenState::of([
-            'to'     => $edge->toNodeId,
-            'kind'   => $edge->kind->value,
-            'parked' => $edge->parkedByGroup ?? 0,
-            'name'   => $edge->name,
+            'to'     => $relation->toNodeId,
+            'kind'   => $relation->kind->value,
+            'parked' => $relation->parkedByGroup ?? 0,
+            'name'   => $relation->name,
         ])->write();
     }
 
@@ -1431,7 +1431,7 @@ final class ModelEditor
     }
 
     /**
-     * Exchange two neighbouring edges' positions.
+     * Exchange two neighbouring relations' positions.
      *
      * ⚠️ **A swap, not a renumbering.** Reordering by rewriting every sibling would be a write
      * per row, which is the loop `CD-7` forbids; a swap is always exactly two, however many
@@ -1468,7 +1468,7 @@ final class ModelEditor
      * Swap one thing with its neighbour in a given list — the whole of reordering, for both callers.
      *
      * ⚠️ **Extracted rather than copied** ([D-435](../../../docs/NewConcept/90-decision-log.md)): a
-     * node reorders **itself** among its parent's children, an attribute reorders **its own** edge
+     * node reorders **itself** among its parent's children, an attribute reorders **its own** relation
      * among the attributes its owner declares. *Two sibling lists, one column, one swap — and a
      * second copy of the equal-positions trick below is exactly how the two would drift.*
      *
@@ -1533,9 +1533,9 @@ final class ModelEditor
     }
 
     /**
-     * Change which parent an edge points at, then bring the paths along.
+     * Change which parent an relation points at, then bring the paths along.
      *
-     * ⚠️ **The order is not arbitrary.** The edge is the truth, so it moves first; the paths of
+     * ⚠️ **The order is not arbitrary.** The relation is the truth, so it moves first; the paths of
      * the node and everything under it are rewritten from it afterwards, in one statement
      * rather than one per descendant (`CD-7`).
      */

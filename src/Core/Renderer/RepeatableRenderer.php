@@ -95,14 +95,14 @@ final class RepeatableRenderer extends RendererNode
         }
 
         $zeilen    = '';
-        $usedEdges = [];
+        $usedRelations = [];
 
         foreach ($context->surroundings->parts as $part) {
             if (! $part instanceof RenderedField) {
                 continue;
             }
 
-            $usedEdges = [...$usedEdges, ...$part->result->usedEdges];
+            $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
 
             // ⚠️ *Über die Zeilen-Id und nicht über die Stellung: entfernt jemand den zweiten von
             // dreien, rutschen die übrigen in der Liste nach oben, **ihre Ids bleiben** — eine
@@ -120,7 +120,7 @@ final class RepeatableRenderer extends RendererNode
         return RenderResult::of(
             '<ul class="taxmod-repeatable">' . $zeilen . '</ul>'
             . ($hinzu === null ? '' : '<div class="taxmod-repeatable-add">' . ControlMarkup::button($hinzu) . '</div>'),
-            ...$usedEdges
+            ...$usedRelations
         );
     }
 }

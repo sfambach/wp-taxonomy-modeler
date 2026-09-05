@@ -91,7 +91,7 @@ $model = $fw->rootOf(Branch::Model)->id;
 
 $einheit = $editor->createNode('__ub Einheit', $model);
 $teil    = $editor->createNode('__ub Teil', $model);
-$edge    = $editor->addField($teil->id, $einheit->id, 'ub_einheit');
+$relation    = $editor->addField($teil->id, $einheit->id, 'ub_einheit');
 
 try {
     $page = $pageOf($einheit->id);
@@ -125,7 +125,7 @@ try {
     // ── Eine geparkte Kante ist keine Benutzung (D-128) ──────────────────────────────────────────
     echo "\n== eine geparkte Kante zählt nicht ==\n";
 
-    $editor->removeField($teil->id, $edge->id);
+    $editor->removeField($teil->id, $relation->id);
 
     $parked = $pageOf($einheit->id);
 
