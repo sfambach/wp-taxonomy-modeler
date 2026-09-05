@@ -522,4 +522,39 @@
 		}
 	} );
 
+	/**
+	 * Den Klappzustand beim Laden anwenden.
+	 *
+	 * Der Auswahldialog traegt ALLE Zeilen im Dokument - er muss, weil er ohne Neuaufbau klappen
+	 * koennen soll. Welche Aeste zu sind, sagt data-fold am Klapper. Ohne diese Stelle stand die
+	 * Marke da und niemand las sie: gemessen 24 Aeste auf zu und trotzdem 125 sichtbare Zeilen.
+	 */
+	function klappzustandAnwenden( wurzel ) {
+		var zu = wurzel.querySelectorAll( '.taxmod-tree-fold[data-fold="zu"]' );
+
+		for ( var i = 0; i < zu.length; i++ ) {
+			var zeile = zu[ i ].closest( '.taxmod-tree-row' );
+
+			if ( ! zeile ) {
+				continue;
+			}
+
+			var tiefe    = parseInt( zeile.getAttribute( 'data-depth' ), 10 );
+			var naechste = zeile.nextElementSibling;
+
+			while ( naechste && parseInt( naechste.getAttribute( 'data-depth' ), 10 ) > tiefe ) {
+				naechste.style.display = 'none';
+				naechste = naechste.nextElementSibling;
+			}
+		}
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', function () {
+			klappzustandAnwenden( document );
+		} );
+	} else {
+		klappzustandAnwenden( document );
+	}
+
 } )();

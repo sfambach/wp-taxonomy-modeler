@@ -2995,14 +2995,18 @@ final class Rendering
      */
     private function closedApartFrom(array $walked, ?Node $expanded): array
     {
-        if ($expanded === null) {
-            return $walked;
-        }
+        // WICHTIG: Ohne genannten Ast ist ALLES zu, nicht alles offen. Auf sein Wort: "der
+        // gewaehlte Ast im Dialog entscheidet nur, welcher Ast expanded ist, die anderen sollten
+        // collapsed sein, nicht mehr und nicht weniger". Vorher kamen die Zeilen unveraendert
+        // zurueck -- gemessen 125 Zeilen mit dem ganzen Modellast darin.
+        $offen = [];
 
-        $offen = [$expanded->id => true];
+        if ($expanded !== null) {
+            $offen = [$expanded->id => true];
 
-        foreach ($expanded->ancestorIds() as $id) {
-            $offen[$id] = true;
+            foreach ($expanded->ancestorIds() as $id) {
+                $offen[$id] = true;
+            }
         }
 
         foreach ($walked as &$row) {

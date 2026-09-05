@@ -648,3 +648,14 @@ Knotennamen sind **absichtlich nicht eindeutig**, und «nothing resolves, refere
 name». **Gemessen kommen fünf Namen doppelt vor, darunter `Adresse`.** Ein Wächter mit
 `WHERE name = … LIMIT 1` greift eine von beiden und weiss nicht welche — der Fall ist in
 `setting-write-check` schon dokumentiert.*
+
+```text
+[ ] TASK-050  Ein Testast fuer Waechterknoten (D-614) — dort duerfen sie
+              liegenbleiben; unsichtbar, ausserhalb jeder Aufloesungskette,
+              und zaehlbar
+```
+
+⚠️ **Warum ein Ast und nicht besseres Aufräumen:** *aufgeräumt wird schon — die Regel greift nur
+nicht, wenn ein Lauf **mitten in der Arbeit abstürzt.** Genau das ist am 2026-09-04 dreimal
+passiert: 60, dann 12, dann 8 Probeknoten in seinem Arbeitsbaum. **Wer abstürzt, räumt nicht auf.**
+Ein eigener Ast hält den Rückstand dort, wo er niemanden stört.*
