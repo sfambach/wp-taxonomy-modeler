@@ -124,10 +124,10 @@ final class Geruest
                 continue;
             }
 
-            $summe += (int) $wpdb->get_var($wpdb->prepare(
-                'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
-                $wpdb->esc_like($knoten->path . '.') . '%'
-            ));
+            // ⚠️ *Seit Fassung 35 gibt es keine Spalte `path` mehr (TASK-001); die Frage «was haengt
+            // unter diesem Knoten» stellt der Speicher, damit sie hier dieselbe Antwort bekommt wie
+            // im Kode, den dieser Lauf prueft. **Ohne den Knoten selbst**, wie das `LIKE` vorher.*
+            $summe += count($this->nodes->subtreeIds($knoten->id)) - 1;
         }
 
         return $summe;
@@ -154,10 +154,8 @@ final class Geruest
                 continue;
             }
 
-            $ids = $wpdb->get_col($wpdb->prepare(
-                'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
-                $wpdb->esc_like($knoten->path . '.') . '%'
-            ));
+            // ⚠️ *Ohne den Behaelter selbst — er bleibt stehen, sein Inhalt geht (TASK-001).*
+            $ids = array_values(array_diff($this->nodes->subtreeIds($knoten->id), [$knoten->id]));
 
             $records = new WpdbRecordRepository();
 
@@ -315,10 +313,15 @@ final class Geruest
 
         $wurzel = $this->framework->rootOf($ast);
 
-        $id = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s AND path LIKE %s LIMIT 1',
+        // ⚠️ *«Unter dieser Astwurzel» kommt seit Fassung 35 aus dem Speicher und nicht aus einem
+        // `LIKE` auf eine Spalte, die es nicht mehr gibt (TASK-001).*
+        $unten   = array_values(array_diff($this->nodes->subtreeIds($wurzel->id), [$wurzel->id]));
+        $plaetze = implode(',', array_fill(0, count($unten), '%d'));
+
+        $id = $unten === [] ? 0 : (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT id FROM ' . Schema::table('nodes_named') . " WHERE name = %s AND id IN ({$plaetze}) LIMIT 1",
             $name,
-            $wpdb->esc_like($this->nodes->byId($wurzel->id)->path . '.') . '%'
+            ...$unten
         ));
 
         if ($id === 0) {

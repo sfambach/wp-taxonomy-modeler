@@ -896,7 +896,7 @@ if ($selbstGelegteKanten !== []) {
 // `range_min` the owner had set by hand — leaves its scratch nodes behind, and the next run then
 // reports them as its own failure. Cleaning up by name makes the check self-healing.
 $scratchIds = $wpdb->get_col(
-    'SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__p7%" ORDER BY LENGTH(path) DESC'
+    'SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__p7%" ORDER BY id DESC' /* tiefste zuerst: ein Kind hat immer die groessere Id als sein Vater; `LENGTH(path)` ging mit der Spalte (TASK-001) */
 );
 
 // ⚠️ **What hangs off them goes first, and measuring is what found this.** After the 892 orphaned

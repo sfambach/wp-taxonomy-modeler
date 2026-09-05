@@ -84,11 +84,12 @@ say(
 
 echo "\n== Baum ==\n";
 
-// ⚠️ `path` is derived and rebuildable ([D-014]) — so a path that does not end in its own id is a
-// materialisation that drifted, which makes the indexed walk lie.
+// ⚠️ *Seit Fassung 35 gibt es keinen gespeicherten Pfad mehr, der driften koennte (TASK-001) —
+// er wird aus `parent_node_id` gerechnet. **Was gefragt bleibt, ist die Wurzel:** mehr als eine
+// hiesse, ein Ast haengt an nichts, und dann faende der Abstieg ihn nicht.
 say(
-    'Knoten, deren Pfad nicht auf die eigene Id endet',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}nodes WHERE path NOT LIKE CONCAT('%.', id) AND path <> CAST(id AS CHAR)")
+    'Wurzeln (genau eine ist richtig)',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}nodes WHERE parent_node_id IS NULL") - 1
 );
 
 say(
@@ -96,7 +97,8 @@ say(
     (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relations r WHERE NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = r.to_node_id) OR NOT EXISTS (SELECT 1 FROM {$prefix}nodes n2 WHERE n2.id = r.from_node_id)")
 );
 
-$parked = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$prefix}nodes WHERE path LIKE %s", $trash->path . '.%'));
+// ⚠️ *Was im Muell liegt, fragt seit Fassung 35 der Speicher — der Weg ist keine Spalte mehr.*
+$parked = count((new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeIds($trash->id)) - 1;
 
 printf("  --   %-52s %d\n", 'im Trash geparkt (kein Fehler, nur zur Kenntnis)', $parked);
 
@@ -140,8 +142,10 @@ echo "\n== Duplikate mit gleichem Namen unter demselben Vater ==\n";
 
 // ⚠️ Names are **not unique** ([D-022]) and duplicates are legitimate — but two siblings with the same
 // name are worth seeing, because a duplicate act now makes them on purpose.
+// ⚠️ *Der Vater kommt aus seiner eigenen Spalte statt aus einer Scheibe des Pfades (TASK-001) —
+// dieselbe Frage, in der Form, die der Baum ohnehin hat.*
 $twins = $wpdb->get_results(
-    "SELECT SUBSTRING_INDEX(path, '.', LENGTH(path) - LENGTH(REPLACE(path, '.', ''))) AS parent, name, COUNT(*) c
+    "SELECT COALESCE(parent_node_id, 0) AS parent, name, COUNT(*) c
      FROM {$prefix}nodes_named GROUP BY parent, name HAVING c > 1 ORDER BY c DESC LIMIT 10",
     ARRAY_A
 );

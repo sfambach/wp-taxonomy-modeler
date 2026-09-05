@@ -232,6 +232,189 @@ check(
     substr_count($eintrag, '$gesucht[$wert->path]') >= 2
 );
 
+echo "\n3 · TASK-001 · nodes traegt keinen Pfad mehr — und die Vorfahren sind dieselben\n";
+
+$knoten = Schema::table('nodes');
+
+check('nodes hat keine Spalte path', ! hatSpalte($knoten, 'path'));
+check('die Anweisung fuer nodes nennt keinen Pfad', anweisungOhnePfad($anweisungen, $knoten));
+
+// ⚠️ *Der Schluessel darauf faellt mit ihr — `dbDelta` ruehrt einen Index nie an, also waere er
+// stehengeblieben, wenn die Fassung ihn nicht mitgenommen haette.*
+$schluessel = $wpdb->get_col($wpdb->prepare(
+    'SELECT INDEX_NAME FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+    $knoten,
+    'path'
+));
+
+check('und keinen Schluessel darauf', $schluessel === []);
+
+// ⚠️ **Der Schatten behaelt seinen Weg, und das ist keine Nachlaessigkeit** — *dieselbe Begruendung
+// wie bei `name` ([D-065](../../docs/NewConcept/90-decision-log.md)): eine alte Zeile fuehrt ihre
+// Angaben als **Datum** mit. Damit `shadow-shape-check` das nicht als Bruch liest, steht sie in
+// {@see Schema::SHADOW_ONLY_IN} — hier wird nachgesehen, dass sie wirklich beides tut.*
+check('der Schatten behaelt ihn', hatSpalte(Schema::table('nodes_history'), 'path'));
+
+check(
+    'und die Ausnahme ist benannt, nicht still',
+    in_array('path', Schema::SHADOW_ONLY_IN['nodes_history'] ?? [], true)
+);
+
+// ⚠️ **Die Wanderung hat ihre Zusage hinterlassen, und hier wird nachgesehen, dass sie steht.**
+// *Sie ist kein Vergleich mit einer festen Zahl auf seinen Bestand — **er darf jederzeit einen
+// Knoten anlegen, verschieben oder wegwerfen**, und eine eingefrorene Pruefsumme waere am naechsten
+// Tag rot, ohne dass etwas kaputt waere ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md)).
+// **Gefragt ist, ob der Rueckweg da ist:** die Zahlen der Wanderung, eine Aenderungsgruppe, je Zeile
+// ihr alter Weg und ihre Version.*
+$stand = get_option('taxmod_nodepath_shape', []);
+
+check(
+    'die Fassung hat ihre Zahlen hinterlassen',
+    is_array($stand) && isset($stand['wege'], $stand['tree'], $stand['depths'])
+);
+
+$journal = Schema::table('changelog');
+
+$gemeldet = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$journal} WHERE what = 'path dropped'");
+$gruppen  = (int) $wpdb->get_var("SELECT COUNT(DISTINCT change_group_id) FROM {$journal} WHERE what = 'path dropped'");
+$ohneWeg  = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$journal}
+     WHERE what = 'path dropped' AND (before_state IS NULL OR before_state = '')"
+);
+$ohneVersion = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$journal}
+     WHERE what = 'path dropped' AND (version IS NULL OR version = 0)"
+);
+
+// ⚠️ **Gefragt ist «es gibt sie», nicht «es sind genau so viele», und das ist derselbe Fehler zum
+// zweiten Mal an einem Tag** (`INF-053`). *Die Wanderung hat **167** Meldungen geschrieben, eine je
+// Knoten. Heute stehen weniger da — weil Knoten seither weggeraeumt wurden und ihre Journalzeilen
+// mit ihnen. **Eine feste Zahl auf seinen Bestand ist ein Waechter, der ihm sein eigenes Aufraeumen
+// als Verlust meldet.** Die Zahl von damals steht in `taxmod_nodepath_shape`; hier steht sie zum
+// Nachlesen und nicht als Bedingung.*
+check('die Knoten haben ihren alten Weg ins Journal bekommen', $gemeldet > 0, "$gemeldet Zeilen");
+
+printf(
+    "       gemessen: %d Meldungen heute, %s Knoten bei der Wanderung\n",
+    $gemeldet,
+    (string) ($stand['nodes'] ?? '?')
+);
+check('und alle unter einer Aenderungsgruppe', $gemeldet === 0 || $gruppen === 1, "$gruppen Gruppen");
+check('keine Meldung ohne den Weg, den sie aufhebt', $ohneWeg === 0, "$ohneWeg ohne");
+check('keine Meldung ohne Version (D-634)', $ohneVersion === 0, "$ohneVersion ohne");
+
+// ⚠️ **Und der Schatten traegt die Zeilen — aber das wird **gezaehlt** und nicht verlangt, und der
+// Grund ist gemessen.** *Die Wanderung hat alle 167 aufgehoben; **eine Schattenzeile ist trotzdem
+// nicht ewig**: mehrere Randpruefungen raeumen ihre eigenen Zeilen dort wieder weg
+// (`move-mask-check`, `restore-check`, `parked-in-shadow-check` loeschen aus `nodes_history`), und
+// eine davon hat am 2026-09-05 eine Zeile mitgenommen. **Ein Wächter, der daraufhin rot wird, meldet
+// eine Aufraeumung als Verlust.** Was bleibt, ist die Journalzeile: sie traegt den Weg selbst.*
+$ohneSchatten = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$journal} c
+     WHERE c.what = 'path dropped'
+       AND NOT EXISTS (SELECT 1 FROM " . Schema::table('nodes_history') . " h
+                       WHERE h.id = c.owner_id AND h.version = c.version)"
+);
+
+printf("       gemessen: %d von %d Meldungen haben ihre Schattenzeile noch\n", $gemeldet - $ohneSchatten, $gemeldet);
+
+// ⚠️ **Die eigentliche Zusage: zwei Wege zum selben Ergebnis.** *Die gerechnete Kette und der
+// Aufstieg ueber `parent_node_id` sind **verschiedene Rechnungen** — die eine im Server, die andere
+// in PHP. Stimmten sie nicht ueberein, waere der Weg nicht mehr das, was `parent_node_id` sagt, und
+// genau das war die Doppelung, die mit der Spalte fiel. **An gezaehlten Zahlen und nicht an
+// Namen**, und sie erneuert sich mit seinem Bestand, statt ihn einzufrieren.*
+$alle = $wpdb->get_results("SELECT id, parent_node_id FROM {$knoten}", ARRAY_A) ?: [];
+$vater = [];
+
+foreach ($alle as $zeile) {
+    $vater[(int) $zeile['id']] = $zeile['parent_node_id'] === null ? null : (int) $zeile['parent_node_id'];
+}
+
+$gerechnet = $wpdb->get_results(
+    "WITH RECURSIVE taxmod_ahnen (id, path) AS (
+         SELECT id, CAST(id AS CHAR(255)) FROM {$knoten} WHERE parent_node_id IS NULL
+         UNION ALL
+         SELECT k.id, CONCAT(v.path, '.', k.id)
+           FROM {$knoten} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
+     )
+     SELECT id, path FROM taxmod_ahnen",
+    ARRAY_A
+) ?: [];
+
+$verglichen = 0;
+$auseinander = [];
+
+foreach ($gerechnet as $zeile) {
+    $id   = (int) $zeile['id'];
+    $auf  = [];
+    $lauf = $id;
+
+    // ⚠️ *Nach oben, Schritt fuer Schritt, mit einer Bremse: ein Kreis in `parent_node_id` liefe
+    // sonst ewig, und dieser Lauf soll ihn **melden** und nicht daran haengenbleiben.*
+    for ($i = 0; $i < 1000 && $lauf !== null; $i++) {
+        array_unshift($auf, $lauf);
+        $lauf = $vater[$lauf] ?? null;
+    }
+
+    $verglichen++;
+
+    if (implode('.', $auf) !== (string) $zeile['path']) {
+        $auseinander[] = $id;
+    }
+}
+
+check(
+    'der gerechnete Weg und der Aufstieg ueber parent_node_id sagen dasselbe',
+    $auseinander === [],
+    count($auseinander) . ' auseinander: ' . implode(', ', array_slice($auseinander, 0, 5))
+);
+
+check('und der Vergleich hat wirklich Zeilen gesehen', $verglichen === count($alle), "$verglichen von " . count($alle));
+
+// ⚠️ **Und der gerechnete Weg erreicht jeden Knoten.** *Ein Knoten, den der Abstieg nicht erreicht,
+// haette frueher einen Pfad in seiner Spalte gehabt und **keinen Vater** — er waere sichtbar
+// geblieben und unerreichbar gewesen. Jetzt faellt er aus jedem Leser heraus, also muss diese Zahl
+// null sein.*
+$unerreicht = (int) $wpdb->get_var(
+    "WITH RECURSIVE taxmod_ahnen (id) AS (
+         SELECT id FROM {$knoten} WHERE parent_node_id IS NULL
+         UNION ALL
+         SELECT k.id FROM {$knoten} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
+     )
+     SELECT COUNT(*) FROM {$knoten} n WHERE n.id NOT IN (SELECT id FROM taxmod_ahnen)"
+);
+
+check('jeder Knoten wird vom Abstieg erreicht', $unerreicht === 0, "$unerreicht unerreicht");
+
+// ⚠️ *Und der Leser liefert wirklich etwas — die Gegenprobe zu allem darueber. **Ein Weg, der leer
+// waere, wuerde jede Pruefsumme oben trotzdem erfuellen**, solange er ueberall gleich leer ist.*
+$speicher = new \Taxmod\WordPress\Persistence\WpdbNodeRepository();
+$wurzelId = (int) $wpdb->get_var("SELECT id FROM {$knoten} WHERE parent_node_id IS NULL LIMIT 1");
+$tiefste  = (int) $wpdb->get_var("SELECT id FROM {$knoten} WHERE parent_node_id IS NOT NULL ORDER BY id DESC LIMIT 1");
+
+$wurzel = $wurzelId === 0 ? null : $speicher->find($wurzelId);
+$tief   = $tiefste === 0 ? null : $speicher->find($tiefste);
+
+check('die Wurzel traegt ihre eigene Nummer als Weg', $wurzel !== null && $wurzel->path === (string) $wurzelId, $wurzel?->path ?? 'nicht gefunden');
+
+check(
+    'ein Knoten mit Vater traegt eine Kette und endet auf sich selbst',
+    $tief !== null && str_contains($tief->path, '.') && str_ends_with($tief->path, '.' . $tiefste),
+    $tief?->path ?? 'nicht gefunden'
+);
+
+// ⚠️ *`ancestorIds()` laesst den Knoten selbst weg — die naechste Stufe darin ist sein Vater. **Das
+// ist die Stelle, an der ein Leser den Baum wirklich benutzt**, und sie muss dasselbe sagen wie die
+// Spalte, aus der jetzt alles kommt.*
+$ahnen = $tief?->ancestorIds() ?? [];
+
+check(
+    'und seine Vorfahren enden auf seinem Vater',
+    $tief !== null && $ahnen !== [] && $ahnen[count($ahnen) - 1] === $tief->parentNodeId,
+    $tief === null ? 'nicht gefunden' : implode('.', $ahnen) . ' gegen Vater ' . (string) $tief->parentNodeId
+);
+
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);

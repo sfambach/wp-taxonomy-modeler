@@ -135,11 +135,16 @@ function gezeichnet(array $ids): array
 // ⚠️ *Der Gegenfall wird davon **stärker**, nicht schwächer: beobachtet wird jeder Knoten unter der
 // Wurzel, und verlangt wird, dass mindestens vier davon überhaupt etwas anderes als `plain`
 // zeichnen. Fällt die Auflösung aus, ist diese Zahl null — genau der Ausfall, den es zu fangen gilt.*
-$beobachtet = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
-    "SELECT id FROM {$n} WHERE path LIKE %s AND path NOT LIKE %s ORDER BY id",
-    $wpdb->esc_like($framework->root()->path . '.') . '%',
-    $wpdb->esc_like($framework->trash()->path . '.') . '%'
-)));
+// ⚠️ *«Unter der Wurzel, aber nicht im Muell» fragt seit Fassung 35 der Speicher — der Weg ist keine
+// Spalte mehr, und ein `LIKE` darauf laege still leer, was diesen Lauf gruen und blind machte
+// (TASK-001).*
+$beobachtet = array_values(array_diff(
+    $nodes->subtreeIds($framework->root()->id),
+    $nodes->subtreeIds($framework->trash()->id),
+    [$framework->root()->id]
+));
+
+sort($beobachtet);
 
 echo "\n== Die Ids stehen aufgeschrieben ==\n";
 

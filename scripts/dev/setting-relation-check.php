@@ -137,10 +137,13 @@ function ersterUnter(int $elternId): int
         return 0;
     }
 
-    return (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s ORDER BY id LIMIT 1',
-        $wpdb->esc_like($eltern->path . '.') . '%'
-    ));
+    // ⚠️ *Seit Fassung 35 fragt der Speicher, was unter einem Knoten haengt (TASK-001) — der Weg ist
+    // keine Spalte mehr, und ein `LIKE` darauf liefe still leer.*
+    $unten = array_values(array_diff($nodes->subtreeIds($eltern->id), [$eltern->id]));
+
+    sort($unten);
+
+    return $unten[0] ?? 0;
 }
 
 /** @var list<int> Was dieser Lauf angelegt hat. */
@@ -238,10 +241,8 @@ echo "\n== Und die Vorgabe bleibt lesbar ==\n";
 $mitVorgabe = 0;
 
 if ($exponent !== null && ($eltern = $nodes->find($exponent->fromNodeId)) !== null) {
-    $kinder = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
-        $wpdb->esc_like($eltern->path . '.') . '%'
-    )));
+    // ⚠️ *Wie oben: der Ast kommt aus dem Speicher, nicht aus der gefallenen Spalte (TASK-001).*
+    $kinder = array_values(array_diff($nodes->subtreeIds($eltern->id), [$eltern->id]));
 
     foreach ($kinder as $kindId) {
         foreach ($records->ofNode($kindId) as $satz) {

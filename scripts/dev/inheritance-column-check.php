@@ -130,7 +130,9 @@ $vater = [];
 $alle  = [];
 $stellen = [];
 
-foreach ($wpdb->get_results("SELECT id, parent_node_id, sort_order, path, hide FROM {$nodes}", ARRAY_A) ?: [] as $zeile) {
+// ⚠️ *`path` ist seit Fassung 35 keine Spalte mehr (TASK-001); der Weg wird beim Lesen aus
+// `parent_node_id` gerechnet, und Abschnitt 4 unten stellt ihn dieser Spalte gegenueber.*
+foreach ($wpdb->get_results("SELECT id, parent_node_id, sort_order, hide FROM {$nodes}", ARRAY_A) ?: [] as $zeile) {
     $id     = (int) $zeile['id'];
     $alle[$id] = $zeile;
 
@@ -144,15 +146,10 @@ $wurzeln = count($alle) - count($vater);
 
 check('genau eine Wurzel', $wurzeln === 1, (string) $wurzeln);
 
-$verwaist = 0;
-
-foreach ($alle as $id => $zeile) {
-    if ($zeile['parent_node_id'] === null && str_contains((string) $zeile['path'], '.')) {
-        $verwaist++;
-    }
-}
-
-check('kein Knoten mit Vorfahren im Pfad und ohne Vater', $verwaist === 0, (string) $verwaist);
+// ⚠️ **Hier stand «kein Knoten mit Vorfahren im Pfad und ohne Vater».** *Die Frage war, ob die
+// gespeicherte Kette und die Spalte einander widersprechen — **seit Fassung 35 kann sie das nicht
+// mehr**, weil es nur noch eine der beiden gibt (TASK-001). Was von der Zusage bleibt, ist die
+// Zaehlung darueber: genau eine Wurzel, und jeder Vater existiert.*
 
 $fehlend = 0;
 
@@ -206,7 +203,27 @@ printf(
     json_encode($tiefen)
 );
 
-echo "\n4 · Der Pfad stimmt mit der Spalte überein\n";
+echo "\n4 · Der gerechnete Pfad stimmt mit der Spalte überein\n";
+
+// ⚠️ *Der Weg kommt seit Fassung 35 aus demselben rekursiven Ausdruck, den jeder Leser benutzt
+// ({@see \Taxmod\WordPress\Persistence\WpdbNodeRepository::ancestry()}) — die Zusage ist dieselbe
+// geblieben: **er folgt der Spalte**, nur steht er nicht mehr daneben (TASK-001).*
+$gerechnet = [];
+
+foreach ($wpdb->get_results(
+    "WITH RECURSIVE taxmod_ahnen (id, path) AS (
+         SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
+         UNION ALL
+         SELECT k.id, CONCAT(v.path, '.', k.id)
+           FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
+     )
+     SELECT id, path FROM taxmod_ahnen",
+    ARRAY_A
+) ?: [] as $zeile) {
+    $gerechnet[(int) $zeile['id']] = (string) $zeile['path'];
+}
+
+check('der Abstieg erreicht jeden Knoten', count($gerechnet) === count($alle), count($gerechnet) . ' von ' . count($alle));
 
 $falsch = [];
 
@@ -220,7 +237,7 @@ foreach ($alle as $id => $zeile) {
         array_unshift($kette, $laeufer);
     }
 
-    if (implode('.', $kette) !== (string) $zeile['path']) {
+    if (implode('.', $kette) !== ($gerechnet[$id] ?? '')) {
         $falsch[] = $id;
     }
 }

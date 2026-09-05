@@ -142,7 +142,7 @@ echo "\n== 5. The check cleans up after itself ==\n";
 // and it is here because two runs of mine died before this line on 2026-08-26 and left a `__sc thing`
 // each. *A cleanup that only knows the ids of the run it is in reports the **previous** run's litter
 // as its own failure, which is the least useful thing a check can say.*
-foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "\\_\\_sc%" ORDER BY LENGTH(path) DESC') as $stale) {
+foreach ($wpdb->get_col('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "\\_\\_sc%" ORDER BY id DESC' /* tiefste zuerst: ein Kind hat immer die groessere Id als sein Vater; `LENGTH(path)` ging mit der Spalte (TASK-001) */) as $stale) {
     $node = $nodes->find((int) $stale);
 
     if ($node !== null) {

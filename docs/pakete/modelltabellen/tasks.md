@@ -8,12 +8,66 @@ Eine Wanderung, bei der die Daten vorangehen, bleibt grün und zeigt still das F
 ---
 
 ```text
-[ ] TASK-001  path aus nodes entfernen
+[x] TASK-001  path aus nodes entfernen
 ```
 
 Beschlossen am 2026-09-01. **Die teuerste der vier**: `WpdbNodeRepository` fasst die Spalte an
 **20 Stellen** an, und sie ist **indiziert** — der Vorfahrenweg muss danach aus `relations` kommen.
 `path-check.php` prüft heute eigens diese Spalte und zieht mit.
+
+⚠️ **Gebaut am 2026-09-05, Schema 35 — und der teuerste Teil war schon erledigt.** *Die Beschreibung
+oben verlangt, der Vorfahrenweg müsse danach «aus `relations` kommen». **Das war vor TASK-018.** Seit
+[D-581](../../NewConcept/90-decision-log.md) ist `nodes.parent_node_id` der Baum, und
+[D-082](../../NewConcept/90-decision-log.md) nannte die punktseparierte Kette von Anfang an «derived
+and rebuildable». Was fiel, ist die **zweite Ablage derselben Tatsache** — nicht die Tatsache.*
+
+⚠️ **Ein `Node` trägt den Weg weiter, in genau derselben Form.** *Er wird beim Lesen gerechnet, in
+einem rekursiven Ausdruck, den jeder Leser gleich benutzt (`WpdbNodeRepository::ancestry()`) — eine
+Anweisung, keine Runde je Ebene (`CD-7`). **Damit brauchte keine der gesperrten Dateien angefasst zu
+werden**: `ModelEditor`, `NodesScreen` und `RendererChoiceRenderer` fragen `$node->path`,
+`ancestorIds()` und `isDescendantOf()`, und die antworten wie zuvor.*
+
+**Die Zahlen, vorher und nachher:**
+
+| | vor der Wanderung | nach ihr |
+|---|---|---|
+| Knoten | 167 | 167 |
+| Kanten | 93 | 93 |
+| Datensätze · Wertzeilen | 531 · 103 | 531 · 103 |
+| Beschriftungen | 212 | 212 |
+| Tiefen je Ebene | `0:1 1:6 2:40 3:54 4:49 5:17` | dieselben |
+| Prüfsumme Vater · Stelle · Kind | `f1d5a047…` | dieselbe |
+
+⚠️ **Die Bedingung stand vor dem Löschen, nicht danach:** *der Schritt hat für **jede** Zeile den
+gerechneten Weg neben den gespeicherten gestellt — **0 Abweichungen von 167** — und wäre bei einer
+einzigen still umgekehrt, ohne die Fassungsnummer zu heben. Danach dieselben Zahlen wie oben, sonst
+Abbruch.*
+
+⚠️ **Umkehrbar:** *167 Schattenzeilen, 167 Journalzeilen unter **einer** Änderungsgruppe
+([D-348](../../NewConcept/90-decision-log.md)), jede mit ihrer **Version**
+([D-634](../../NewConcept/90-decision-log.md)) und ihrem alten Weg. **Der Schatten behält seine
+Spalte** — dieselbe Begründung wie bei `name` ([D-065](../../NewConcept/90-decision-log.md)): eine
+alte Zeile führt ihre Angaben als **Datum** mit. Sie steht als benannte Ausnahme in
+`Schema::SHADOW_ONLY_IN`, nicht als stille.*
+
+⚠️ **Und das Sichern liegt im Fassungsschritt selbst, nicht in einem Skript daneben.** *Die Falle ist
+an diesem Tag zweimal zugeschnappt: `require wp-load.php` hebt die Fassung, **bevor** ein Skript
+seine erste Zeile sichert. Sie ist auch hier zugeschnappt — die Wanderung lief, während ein
+Messskript noch geschrieben wurde —, und **weil sie im Schritt selbst sichert, hat sie nichts
+gekostet**.*
+
+⚠️ **`moveSubtree()` ist damit leer geworden, und das ist die Aussage der Aufgabe.** *Sie schrieb den
+Weg jedes Nachfahren um; es gibt keinen umzuschreiben. **Auch der Versionszähler bleibt jetzt
+stehen**, und sein eigener Grund fällt mit derselben Spalte: er lief mit, weil «`save()` writes name
+and path together, so a stale form could rename a node and write its old path back» — ein veraltetes
+Formular kann keinen Weg mehr zurückschreiben, weil keiner geschrieben wird. Sie ganz zu streichen
+braucht `ModelEditor`, der gesperrt war: `INF-052`.*
+
+**Mitgezogen sind zwölf Wächter** (`PR-9`) — *und die Hälfte davon war **still** kaputt, nicht laut:
+`$wpdb` gibt bei einer Abfrage über eine gefallene Spalte dasselbe zurück wie bei einem leeren
+Ergebnis, und «0 falsche Pfade» las sich wie ein Erfolg.* Was an ihre Stelle trat, ist überall
+dasselbe: `WpdbNodeRepository::subtreeIds()` — **ein Ort für die Frage «was hängt unter diesem
+Knoten», nicht zwölf**, und dieselbe Antwort wie im Kode, den sie prüfen.
 
 ```text
 [ ] TASK-002  path aus record_values entfernen

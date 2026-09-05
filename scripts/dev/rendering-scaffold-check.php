@@ -185,11 +185,16 @@ register_shutdown_function(static function () use ($editor, $framework, &$vorher
     $trash  = $framework->trash()->id;
     $eigene = implode(',', array_map('intval', $wegzuraeumen)) ?: '0';
 
-    $drin = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->prefix}taxmod_nodes
-         WHERE path LIKE %s AND id NOT IN ({$eigene})",
-        $wpdb->esc_like('1.' . $trash . '.') . '%'
+    // ⚠️ *Seit Fassung 35 fragt der Speicher, was im Muell liegt — der Weg ist keine Spalte mehr
+    // (TASK-001). **Damit faellt zugleich die feste `1.` aus dem Muster**, die den Fehler von damals
+    // erst moeglich gemacht hat.*
+    $imMuell = array_values(array_diff(
+        (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeIds($trash),
+        [$trash],
+        array_map('intval', $wegzuraeumen)
     ));
+
+    $drin = count($imMuell);
 
     if ($drin > 0) {
         echo "\n  ?? " . count($wegzuraeumen) . ' Knoten bleiben stehen: im Müll liegen schon '

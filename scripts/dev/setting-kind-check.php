@@ -92,12 +92,15 @@ $astKnoten = (new SeededFrameworkNodes(
     new WpdbChangelog(new SystemClock())
 ))->rootOf(Branch::Settings);
 
-$branch = $wpdb->get_row($wpdb->prepare(
-    "SELECT id, path FROM {$nodesNamed} WHERE id = %d AND path NOT LIKE '%%.%%.%%'",
-    $astKnoten->id
-));
+// ⚠️ *Der Weg ist seit Fassung 35 keine Spalte mehr (TASK-001); «direkt unter der Wurzel» heisst
+// jetzt, was es immer hiess — der Vater hat selbst keinen Vater.*
+$speicher = new WpdbNodeRepository();
+$branch   = $speicher->find($astKnoten->id);
 
-check('die Astwurzel des Einstellungsastes steht direkt unter der Wurzel', $branch !== null);
+check(
+    'die Astwurzel des Einstellungsastes steht direkt unter der Wurzel',
+    $branch !== null && $branch->parentNodeId !== null && $speicher->byId($branch->parentNodeId)->parentNodeId === null
+);
 
 if ($branch === null) {
     echo "\n$ok ok, $bad fehlgeschlagen\n";
@@ -105,10 +108,22 @@ if ($branch === null) {
     exit(1);
 }
 
-$rows = $wpdb->get_results($wpdb->prepare(
-    "SELECT id, name, path FROM {$nodesNamed} WHERE path LIKE %s ORDER BY path",
-    $wpdb->esc_like($branch->path . '.') . '%'
+// ⚠️ *«Alles unter dieser Astwurzel» fragt jetzt der Speicher — dieselbe Antwort wie im Kode, den
+// dieser Lauf prueft, statt eines `LIKE` auf eine gefallene Spalte (TASK-001).*
+$unten   = array_values(array_diff($speicher->subtreeIds($branch->id), [$branch->id]));
+$plaetze = implode(',', array_fill(0, max(1, count($unten)), '%d'));
+
+$rows = $unten === [] ? [] : $wpdb->get_results($wpdb->prepare(
+    "SELECT id, name FROM {$nodesNamed} WHERE id IN ({$plaetze}) ORDER BY id",
+    ...$unten
 ), ARRAY_A);
+
+// ⚠️ *Die Tiefe kommt aus dem gerechneten Weg des geladenen Knotens, nicht aus einer Spalte.*
+$wegeImAst = [];
+
+foreach ($speicher->byIds($unten) as $einer) {
+    $wegeImAst[$einer->id] = $einer->path;
+}
 
 check('und traegt Knoten', $rows !== [], (string) count($rows));
 
@@ -118,7 +133,7 @@ echo "\n== 2. Jeder Knoten im Ast wird als Einstellung erkannt ==\n";
 $sorten = (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())
     ->resolvedFieldTypes(array_map(static fn (array $r): int => (int) $r['id'], $rows));
 
-$depth   = substr_count((string) $branch->path, '.') + 2;
+$depth   = substr_count($branch->path, '.') + 2;
 $fehlend = [];
 $rest    = [];
 
@@ -132,7 +147,7 @@ foreach ($rows as $row) {
 
     // Rest im Sinne von D-606: direktes Astkind, auf das keine Kante zeigt und das selbst keine
     // haelt. Zaehlt nicht als Fehler, wird aber genannt.
-    if (substr_count((string) $row['path'], '.') + 1 === $depth) {
+    if (substr_count($wegeImAst[$id] ?? '', '.') + 1 === $depth) {
         $incoming = (int) $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$relationsTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
             $id

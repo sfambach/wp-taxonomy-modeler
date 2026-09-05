@@ -355,8 +355,20 @@ final class Schema
      * Sprachabhängige je Sprache in sechs Spalten: `text_name`, `text_form`, `text_table`,
      * `text_select`, `text_help`, `text_symbol`. **Knoten und Kanten zeigen mit `label_id` dorthin**,
      * damit jeder Fremdschlüssel echt und einspaltig ist; `nodes.name` und `relations.name` fallen.*
+     *
+     * ⚠️ **Fassung 35 nimmt `nodes.path` weg — die letzte der vier Pfadspalten** (TASK-001,
+     * [`review-tabellen.md`](../../../docs/review-tabellen.md) §A). *Der Weg zur Wurzel war **zweimal**
+     * gespeichert: als `parent_node_id` und als punktseparierte Kette daneben. **Seit TASK-018 ist
+     * `parent_node_id` der Baum** ([D-581](../../../docs/NewConcept/90-decision-log.md)), und
+     * [D-082](../../../docs/NewConcept/90-decision-log.md) nannte die Kette von Anfang an «derived and
+     * rebuildable». **Ein `Node` trägt den Weg weiter** — er wird beim Lesen gerechnet
+     * ({@see WpdbNodeRepository::ancestry()}), nicht abgeschrieben.*
+     *
+     * ⚠️ *Der Schatten behält seine Spalte, aus demselben Grund wie `name`
+     * ([D-065](../../../docs/NewConcept/90-decision-log.md)): eine alte Zeile führt ihre Angaben als
+     * **Datum** mit. Sie steht deshalb in {@see self::SHADOW_ONLY_IN}.*
      */
-    public const VERSION = 34;
+    public const VERSION = 35;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -468,7 +480,12 @@ final class Schema
      */
     public const SHADOW_ONLY_IN = [
         'relations_history' => ['parked_by_group_id', 'name'],
-        'nodes_history'     => ['name'],
+        // ⚠️ **`path` steht hier seit Fassung 35** (TASK-001): *die lebende Zeile hat keinen Weg mehr,
+        // er wird beim Lesen aus `parent_node_id` gerechnet. **Der Schatten behält ihn**, aus
+        // demselben Grund wie `name` ([D-065](../../../docs/NewConcept/90-decision-log.md)) — 23 470
+        // Wege wegzuwerfen, um eine Spaltenliste symmetrisch zu machen, wäre der teuerste denkbare
+        // Aufräumschritt, und eine alte Zeile führt ihre Angaben als **Datum** mit.*
+        'nodes_history'     => ['name', 'path'],
     ];
 
     /** @return list<string> The table names, without the WordPress prefix. */
@@ -593,6 +610,11 @@ final class Schema
         // ⚠️ **Nach `dbDelta`, weil `label_texts`, `labels.icon` und die beiden `label_id` dastehen
         // müssen, bevor etwas hineinwandert** (Fassung 34, TASK-019).
         self::moveNamesIntoLabels();
+
+        // ⚠️ **Nach `dbDelta` und aus demselben Grund wie die drei Schritte darüber** (Fassung 35,
+        // TASK-001) — *und **vor** {@see self::buildTheReadableViews()}: eine Sicht auf `q.*` friert
+        // die Spaltenliste beim Anlegen ein und trüge sonst eine Spalte weiter, die es nicht gibt.*
+        self::dropNodePathColumn();
 
         // ⚠️ **Nach der Wanderung, weil sie auf `label_texts` steht** (Fassung 34, TASK-019).
         self::buildTheReadableViews();
@@ -1004,6 +1026,212 @@ final class Schema
                 'node',
                 'field type dropped',
                 (string) $zeile['field_type'],
+                null,
+                (int) $zeile['version'],
+                $gruppe
+            );
+        }
+    }
+
+    /**
+     * `nodes.path` fällt — die letzte der vier Pfadspalten (Fassung 35, TASK-001).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   V["parent_node_id"] --> R["gerechneter Weg"]
+     *   P["gespeicherter Weg"] -.wird verglichen.-> R
+     *   R --> D["Spalte faellt"]
+     * ```
+     *
+     * ⚠️ **Der Weg war zweimal gespeichert, und das ist der ganze Befund**
+     * ([`review-tabellen.md`](../../../docs/review-tabellen.md) §A). *Seit TASK-018 ist
+     * `parent_node_id` der Baum ([D-581](../../../docs/NewConcept/90-decision-log.md)); die
+     * punktseparierte Kette daneben ist seine Abkürzung, und
+     * [D-082](../../../docs/NewConcept/90-decision-log.md) hat sie von Anfang an «derived and
+     * rebuildable» genannt. **Ein `Node` trägt sie weiter** — sie wird beim Lesen gerechnet
+     * ({@see WpdbNodeRepository::ancestry()}); was fällt, ist die zweite Ablage, nicht die Tatsache.*
+     *
+     * ⚠️ **Der Schritt vergleicht, bevor er löscht, und kehrt bei der ersten Abweichung um.** *«Der
+     * gerechnete Weg ist derselbe wie der gespeicherte» ist keine Vermutung, die man nach dem Löschen
+     * nicht mehr prüfen kann — **hier ist sie die Bedingung dafür, dass gelöscht wird.** Findet er
+     * eine einzige Zeile, bei der die beiden auseinandergehen, bleibt die Spalte stehen und die
+     * Fassungsnummer bleibt, wo sie war.*
+     *
+     * ⚠️ **Und er sichert im Fassungsschritt selbst, nicht in einem Skript daneben** (`PR-9`,
+     * derselbe Grund wie bei {@see self::dropNodeFieldTypeColumn()}): *jede Zeile geht als
+     * Schattenzeile fort — dort **behält** sie ihren Weg ({@see self::SHADOW_ONLY_IN}) — und bekommt
+     * eine Journalzeile mit ihrer **Version** ([D-634](../../../docs/NewConcept/90-decision-log.md))
+     * unter **einer** Änderungsgruppe ([D-348](../../../docs/NewConcept/90-decision-log.md)). *Ein
+     * Skript, das WordPress lädt, kommt zu spät: das Laden hebt die Fassung, bevor das Skript seine
+     * erste Zeile sichert.*
+     *
+     * ⚠️ *Die Zahlen bleiben in einer Option stehen, damit `path-check` sie **vergleichen** kann,
+     * statt sie nachzurechnen — dieselbe Vorsorge wie bei TASK-018 und Fassung 31.*
+     *
+     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine Spalte mehr.*
+     */
+    private static function dropNodePathColumn(): void
+    {
+        global $wpdb;
+
+        $nodes = self::table('nodes');
+
+        if (self::tableMissing($nodes) || ! self::hasColumn($nodes, 'path')) {
+            return;
+        }
+
+        $vorher = self::countedTree($nodes);
+
+        // ⚠️ **Die eine Abfrage, die den Schritt rechtfertigt.** *Sie rechnet den Weg aus
+        // `parent_node_id` und stellt ihn neben den gespeicherten. **Null Abweichungen ist die
+        // Bedingung**, nicht das erwartete Ergebnis.*
+        $abweichend = (int) $wpdb->get_var(
+            "WITH RECURSIVE taxmod_ahnen (id, path) AS (
+                 SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
+                 UNION ALL
+                 SELECT k.id, CONCAT(v.path, '.', k.id)
+                   FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
+             )
+             SELECT COUNT(*) FROM {$nodes} n
+             LEFT JOIN taxmod_ahnen a ON a.id = n.id
+             WHERE a.path IS NULL OR a.path <> n.path"
+        );
+
+        if ($abweichend > 0) {
+            // ⚠️ *Still umkehren und nicht werfen — eine Aktivierung darf nicht mit einem Fatal enden.
+            // `path-check.php` meldet denselben Befund laut, und die Spalte steht so lange weiter.*
+            return;
+        }
+
+        // ⚠️ **Die Prüfsumme über die Wege selbst, genommen, solange die Spalte noch dasteht.** *Sie
+        // ist die Zusage, die dieser Schritt einem späteren Lauf hinterlässt: **die Vorfahren liefern
+        // dieselbe Kette wie vorher** — nachprüfbar an einer Zahl und nicht an einem Namen. Genommen
+        // wird sie vom **gerechneten** Weg, und weil der oben Zeile für Zeile mit dem gespeicherten
+        // verglichen wurde, ist es dieselbe Zahl für beide.*
+        $wege = (string) $wpdb->get_var(self::ancestryChecksum($nodes));
+
+        self::keepPathsBeforeDropping($nodes);
+
+        $wpdb->query("ALTER TABLE {$nodes} DROP COLUMN path");
+
+        if ($wpdb->last_error !== '') {
+            return;
+        }
+
+        $nachher = self::countedTree($nodes);
+
+        // ⚠️ **Dieselben Zahlen wie vorher, sonst hat der Schritt etwas getan, was er nicht sollte**
+        // (`PR-9`). *Verglichen wird an gezählten Zahlen und nicht an Namen: Knoten, Kanten,
+        // Datensätze, Wertzeilen, Beschriftungen, die Tiefen je Ebene und eine Prüfsumme über
+        // **Vater · Stelle · Kind**. **Die Prüfsumme nennt den Pfad bewusst nicht** — sie soll gleich
+        // bleiben, während genau diese Spalte verschwindet.*
+        if ($vorher !== $nachher) {
+            throw new \RuntimeException(
+                'Fassung 35: der Baum nach dem Streichen von nodes.path ist nicht der von vorher. '
+                . 'Vorher ' . wp_json_encode($vorher) . ', nachher ' . wp_json_encode($nachher) . '. '
+                . 'Die Zeilen stehen als Schattenzeilen; die Fassungsnummer bleibt stehen.'
+            );
+        }
+
+        update_option('taxmod_nodepath_shape', ['wege' => $wege, ...$nachher], false);
+
+        // ⚠️ *Der Spaltenplan von {@see Shadow} ist je Tabelle gemerkt — sonst kopierte der nächste
+        // Aufruf eine Spalte, die es nicht mehr gibt.*
+        Shadow::forgetColumnPlan();
+    }
+
+    /**
+     * Die Prüfsumme über **alle gerechneten Wege**, als Anweisung.
+     *
+     * ⚠️ *Sie steht hier und nicht zweimal ausgeschrieben, weil sie an zwei Orten dieselbe sein muss:
+     * die Fassung nimmt sie, solange die Spalte noch steht, und `path-check.php` nimmt sie danach
+     * wieder. **Zwei Abschriften derselben Abfrage wären zwei Abfragen, die auseinanderlaufen können.***
+     */
+    public static function ancestryChecksum(?string $nodes = null): string
+    {
+        $nodes ??= self::table('nodes');
+
+        return "WITH RECURSIVE taxmod_ahnen (id, path) AS (
+                    SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
+                    UNION ALL
+                    SELECT k.id, CONCAT(v.path, '.', k.id)
+                      FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
+                )
+                SELECT COALESCE(MD5(GROUP_CONCAT(a.path ORDER BY a.path SEPARATOR '|')), '')
+                FROM taxmod_ahnen a";
+    }
+
+    /**
+     * Der Baum, gezählt — und **ohne den Pfad**, damit die Zahl den Schritt überlebt.
+     *
+     * @return array{nodes: int, relations: int, records: int, values: int, labels: int, depths: string, tree: string}
+     */
+    private static function countedTree(string $nodes): array
+    {
+        global $wpdb;
+
+        $zaehle = static fn (string $tabelle): int => (int) $wpdb->get_var(
+            'SELECT COUNT(*) FROM ' . self::table($tabelle)
+        );
+
+        return [
+            'nodes'     => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$nodes}"),
+            'relations' => $zaehle('relations'),
+            'records'   => $zaehle('node_records'),
+            'values'    => $zaehle('relation_records'),
+            'labels'    => $zaehle('labels'),
+            // ⚠️ *Die Tiefen je Ebene — **aus `parent_node_id` gerechnet**, nie aus dem Pfad, sonst
+            // stünde die Zusage auf dem, was gerade geprüft wird.*
+            'depths'    => (string) $wpdb->get_var(
+                "WITH RECURSIVE taxmod_tiefe (id, ebene) AS (
+                     SELECT id, 0 FROM {$nodes} WHERE parent_node_id IS NULL
+                     UNION ALL
+                     SELECT k.id, v.ebene + 1 FROM {$nodes} k INNER JOIN taxmod_tiefe v ON v.id = k.parent_node_id
+                 )
+                 SELECT COALESCE(GROUP_CONCAT(CONCAT(x.ebene, ':', x.wieviele) ORDER BY x.ebene SEPARATOR '|'), '')
+                 FROM (SELECT ebene, COUNT(*) AS wieviele FROM taxmod_tiefe GROUP BY ebene) x"
+            ),
+            // ⚠️ *Vater · Stelle · Kind, als eine Prüfsumme. **Das ist der Baum selbst**, in der
+            // einzigen Form, die ohne den Pfad auskommt.*
+            'tree'      => (string) $wpdb->get_var(
+                "SELECT COALESCE(MD5(GROUP_CONCAT(z.s ORDER BY z.s SEPARATOR '|')), '')
+                 FROM (SELECT CONCAT_WS(':', COALESCE(parent_node_id, 0), sort_order, id) s FROM {$nodes}) z"
+            ),
+        ];
+    }
+
+    /**
+     * Die Wege in den Schatten und ins Journal, bevor die Spalte fällt (Fassung 35).
+     *
+     * ⚠️ **Erst der Schatten, dann das Journal**, und die Reihenfolge ist überall dieselbe: *die
+     * Schattenzeile ist das, woraus man zurückkommt; die Journalzeile ist nur der Hinweis darauf.*
+     *
+     * ⚠️ *Eine Änderungsgruppe für alle Zeilen — es ist **ein** Akt
+     * ([D-348](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private static function keepPathsBeforeDropping(string $nodes): void
+    {
+        global $wpdb;
+
+        $zeilen = $wpdb->get_results("SELECT id, version, path FROM {$nodes}", ARRAY_A) ?: [];
+
+        if ($zeilen === []) {
+            return;
+        }
+
+        $log    = new WpdbChangelog(new SystemClock());
+        $gruppe = null;
+
+        foreach ($zeilen as $zeile) {
+            $id = (int) $zeile['id'];
+
+            Shadow::keepOne('nodes', $id);
+
+            $gruppe = $log->record(
+                $id,
+                'node',
+                'path dropped',
+                (string) $zeile['path'],
                 null,
                 (int) $zeile['version'],
                 $gruppe
@@ -2909,17 +3137,21 @@ final class Schema
             // (TASK-019, D-580, D-646). *Der Verweis zeigt vom Knoten auf die Beschriftung und nicht
             // umgekehrt — «so bekommt jede Tabelle ihre eigene `label_id`, und jeder Fremdschlüssel
             // ist echt und einspaltig». **Am Knoten ist er Pflicht**, an der Kante freiwillig.*
+            // ⚠️ **`path` steht hier seit Fassung 35 nicht mehr, und der Schlüssel darauf auch nicht**
+            // (TASK-001). *Der Weg zur Wurzel war zweimal gespeichert; seit TASK-018 ist
+            // `parent_node_id` der Baum ([D-581](../../../docs/NewConcept/90-decision-log.md)), und
+            // der Weg wird beim Lesen daraus gerechnet ({@see WpdbNodeRepository::ancestry()}) —
+            // «derived and rebuildable», wie [D-082](../../../docs/NewConcept/90-decision-log.md) ihn
+            // von Anfang an genannt hat.*
             "CREATE TABLE {$t('nodes')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 label_id bigint(20) unsigned NOT NULL DEFAULT 0,
-                path varchar(255) NOT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
-                KEY path (path),
                 KEY label_id (label_id),
                 KEY implemented_by (implemented_by),
                 UNIQUE KEY one_place (parent_node_id,sort_order)

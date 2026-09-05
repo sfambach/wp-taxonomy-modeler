@@ -591,16 +591,15 @@ if ($mitSaetzen === 0) {
     // ⚠️ **Und keine Einstellungsspalte.** *Gemessen: null Werte an Einstellungskanten in
     // Benutzer-Datensätzen, 148 in `default`-Sätzen. Eine Einstellungsspalte im Datensatz-Block war das
     // Angebot, eine Einstellung an die falsche Stelle zu schreiben.*
+    // ⚠️ *Hier stand ein `LIKE` auf `nodes.path` gegen den ersten Abschnitt desselben Pfades — es war
+    // fuer jeden Knoten wahr, weil jeder Weg unter derselben Wurzel beginnt. **Die Spalte ist mit
+    // Fassung 35 gefallen** (TASK-001), und die Bedingung wird ausgeschrieben, wie sie gemeint war:
+    // jede benannte Einstellungskante, ob sie an diesem Knoten haengt oder anderswo.*
     $einstellungen = $wpdb->get_col($wpdb->prepare(
         'SELECT e.name FROM ' . Schema::table('relations_named') . ' e
-         INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = %d
-         WHERE e.kind = %s AND e.name <> %s
-           AND (e.from_node_id = n.id OR n.path LIKE CONCAT(SUBSTRING_INDEX(n.path, %s, 1), %s))',
-        $mitSaetzen,
+         WHERE e.kind = %s AND e.name <> %s',
         'setting',
-        '',
-        '.',
-        '%'
+        ''
     ));
 
     if ($einstellungen === null) {

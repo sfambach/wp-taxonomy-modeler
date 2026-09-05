@@ -72,11 +72,13 @@ $trash    = $framework->trash();
 // mehr** — die Einordnung steht in `nodes.parent_node_id`. Der Prüfsatz zieht mit, statt zu
 // verschwinden, und die Zusage ist nicht schwächer geworden (`PR-9`).*
 echo "\n== 1. Every node except the root names its parent ==\n";
-$orphans = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . '
-     WHERE path LIKE "%.%" AND parent_node_id IS NULL'
+// ⚠️ *Seit Fassung 35 gibt es keine Spalte `path` mehr (TASK-001), also auch keinen Widerspruch
+// zwischen ihr und `parent_node_id`. **Was von der Zusage bleibt, ist die Zahl selbst: genau eine
+// Wurzel** — mehr als eine hiesse, ein Ast haengt an nichts.*
+$roots = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE parent_node_id IS NULL'
 );
-check('no node is left without one', $orphans === 0, "$orphans without a parent");
+check('no node is left without one', $roots === 1, "$roots roots");
 
 echo "\n== 2. The path can be rebuilt from the column alone ==\n";
 // ⚠️ D-014: the path is derived, rebuildable, never a second truth. If this drifts, the tree
@@ -85,16 +87,19 @@ $parentOf = [];
 foreach ($wpdb->get_results('SELECT id, parent_node_id FROM ' . Schema::table('nodes') . ' WHERE parent_node_id IS NOT NULL', ARRAY_A) as $r) {
     $parentOf[(int) $r['id']] = (int) $r['parent_node_id'];
 }
+// ⚠️ *Der Weg kommt seit Fassung 35 aus dem geladenen Knoten und nicht aus einer Spalte (TASK-001).
+// **Die Zusage ist dieselbe geblieben**: er ist aus `parent_node_id` allein herleitbar — nur wird
+// jetzt der Leser gegen den Aufstieg gestellt statt eine Spalte gegen die andere.*
 $wrong = [];
-foreach ($wpdb->get_results('SELECT id, path, name FROM ' . Schema::table('nodes_named'), ARRAY_A) as $r) {
-    $chain = [(int) $r['id']];
-    $walk  = (int) $r['id'];
+foreach ($nodes->byIds(array_map(intval(...), $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes')))) as $einer) {
+    $chain = [$einer->id];
+    $walk  = $einer->id;
     while (isset($parentOf[$walk])) {
         $walk = $parentOf[$walk];
         array_unshift($chain, $walk);
     }
-    if (implode('.', $chain) !== $r['path']) {
-        $wrong[] = $r['name'] . ': ' . $r['path'] . ' vs ' . implode('.', $chain);
+    if (implode('.', $chain) !== $einer->path) {
+        $wrong[] = $einer->name . ': ' . $einer->path . ' vs ' . implode('.', $chain);
     }
 }
 check('every stored path matches the column', $wrong === [], implode('; ', $wrong));

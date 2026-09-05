@@ -296,10 +296,11 @@ $stelle = 1 + (int) Query::value(
 $beschriftungen = new WpdbLabelRepository();
 
 foreach (['__zweiBesitzerA', '__zweiBesitzerB'] as $name) {
+    // ⚠️ *Seit Fassung 35 hat `nodes` keine Spalte `path` mehr (TASK-001) — die Einordnung steht in
+    // `parent_node_id`, und der Weg wird beim Lesen daraus gerechnet.*
     Query::run('Probeknoten anlegen', $wpdb->prepare(
-        'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[0]) . ' (version, path, parent_node_id, sort_order, hide)
-         VALUES (1, %s, %d, %d, 1)',
-        (string) $wurzel,
+        'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[0]) . ' (version, parent_node_id, sort_order, hide)
+         VALUES (1, %d, %d, 1)',
         $wurzel,
         $stelle++
     ));

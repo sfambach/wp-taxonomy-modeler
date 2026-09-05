@@ -34,8 +34,56 @@ final class WpdbNodeRepository implements NodeRepository
      * letzte Schritt jeder Rückfallkette ({@see \Taxmod\Core\Service\Labels}), und ein `Node` trägt
      * genau diesen einen Namen. Die sprachabhängige Anzeige läuft über die Kette und nicht über
      * dieses Feld.*
+     *
+     * ⚠️ **`n.path` steht hier seit Fassung 35 nicht mehr** (TASK-001). *Der Pfad ist keine Spalte
+     * mehr, sondern wird beim Lesen aus `parent_node_id` gerechnet — `a.path` kommt aus
+     * {@see self::ancestry()}. **Ein `Node` trägt ihn weiter**, und zwar in derselben Form wie zuvor;
+     * was fiel, ist die zweite Ablage derselben Tatsache, nicht die Tatsache.*
      */
-    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, '') AS name, n.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide";
+    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide";
+
+    /**
+     * Der Vorfahrenweg, **einmal gerechnet statt gespeichert** (TASK-001,
+     * [D-082](../../../docs/NewConcept/90-decision-log.md): «materialised ancestor path, derived and
+     * rebuildable»).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   W["Wurzel · parent_node_id IS NULL"] --> K["Kind · CONCAT(Weg, '.', id)"]
+     *   K --> K
+     * ```
+     *
+     * ⚠️ **Eine Anweisung und keine Runde je Ebene** (`CD-7`). *Ein rekursiver Ausdruck steigt vom
+     * einen wurzellosen Knoten abwärts und setzt den Weg dabei zusammen; eine Funktion, die je Stufe
+     * fragt, wäre genau das, was die Regel verbietet.*
+     *
+     * ⚠️ **Er rechnet den **ganzen** Baum, auch wenn nur eine Zeile gesucht ist, und das ist eine
+     * bewusste Wahl.** *Ein Aufstieg von der gesuchten Zeile aus wäre billiger, aber sein Anker
+     * hinge an der `WHERE`-Bedingung des äusseren Lesers — und die ist bei jedem Leser eine andere.
+     * **Ein Ausdruck, den jeder Leser gleich benutzt, ist mehr wert als sechs verschiedene**
+     * (`CD-7`: einmal gelöst, an einer Stelle). Gemessen am 2026-09-05 sind es 137 Zeilen.*
+     *
+     * ⚠️ *`CAST(... AS CHAR(255))` im Anker gibt der Spalte ihre Breite — MySQL nimmt sie von dort
+     * und schneidet sonst am ersten Wert ab. **255 ist dieselbe Breite, die die gefallene Spalte
+     * hatte**, also kann kein Weg dadurch kürzer werden, als er war.*
+     */
+    private static function ancestry(): string
+    {
+        $nodes = Schema::table('nodes');
+
+        return "WITH RECURSIVE taxmod_ahnen (id, path) AS (
+                    SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
+                    UNION ALL
+                    SELECT k.id, CONCAT(v.path, '.', k.id)
+                      FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
+                ) ";
+    }
+
+    /** Ein Knotenleser: der Vorfahrenausdruck, die Spalten, die Herkunft — und dann seine Bedingung. */
+    private static function selectNodes(string $rest): string
+    {
+        return self::ancestry() . 'SELECT ' . self::COLUMNS . self::fromNodes() . $rest;
+    }
 
     /**
      * ⚠️ **`LEFT JOIN` und kein `JOIN`:** *ein Knoten ohne Beschriftungszeile hätte sonst gar keine
@@ -44,7 +92,12 @@ final class WpdbNodeRepository implements NodeRepository
      */
     private static function fromNodes(): string
     {
-        return ' FROM ' . Schema::table('nodes') . ' n LEFT JOIN ' . Schema::table('label_texts') . ' t'
+        // ⚠️ *`INNER JOIN` auf den Vorfahrenausdruck und kein `LEFT JOIN`: **ein Knoten, den der
+        // Abstieg nicht erreicht, hat keinen Weg zur Wurzel** — er ist verwaist, nicht namenlos, und
+        // das ist ein Befund für `orphans-check` und nicht eine Zeile mit leerem Pfad (TASK-001).*
+        return ' FROM ' . Schema::table('nodes') . ' n'
+            . ' INNER JOIN taxmod_ahnen a ON a.id = n.id'
+            . ' LEFT JOIN ' . Schema::table('label_texts') . ' t'
             . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s ';
     }
 
@@ -69,7 +122,7 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $row = Query::row('Knoten lesen', $wpdb->prepare(
-            'SELECT ' . self::COLUMNS . self::fromNodes() . 'WHERE n.id = %d',
+            self::selectNodes('WHERE n.id = %d'),
             ...[...self::nameArgs(), $id]
         ));
 
@@ -91,7 +144,7 @@ final class WpdbNodeRepository implements NodeRepository
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Knoten nach Ids lesen', $wpdb->prepare(
-            'SELECT ' . self::COLUMNS . self::fromNodes() . "WHERE n.id IN ($slots)",
+            self::selectNodes("WHERE n.id IN ($slots)"),
             ...[...self::nameArgs(), ...array_map(intval(...), $ids)]
         ));
 
@@ -114,9 +167,10 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
+        // ⚠️ *`path` steht hier seit Fassung 35 nicht mehr (TASK-001) — er wird gelesen, nicht
+        // geschrieben. Was den Knoten einordnet, ist `parent_node_id`, und das steht schon da.*
         $spalten = [
             'version'        => $node->version,
-            'path'           => $node->path,
             'implemented_by' => $node->implementedBy,
             // ⚠️ *Seit TASK-018 kommt die Einordnung mit der Zeile* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
             // *`null` ist die Wurzel und nicht «weiss nicht» — `$wpdb->insert()` schreibt dafür ein
@@ -125,7 +179,7 @@ final class WpdbNodeRepository implements NodeRepository
             'sort_order'     => $node->sortOrder,
             'hide'           => $node->hide ? 1 : 0,
         ];
-        $formate = ['%d', '%s', '%s', '%d', '%d', '%d'];
+        $formate = ['%d', '%s', '%d', '%d', '%d'];
 
         if ($node->id !== 0) {
             $spalten = ['id' => $node->id, ...$spalten];
@@ -140,16 +194,10 @@ final class WpdbNodeRepository implements NodeRepository
             return $node;
         }
 
+        // ⚠️ *Der Pfad des zurückgegebenen Knotens trug bis eben die `0` an letzter Stelle und wird
+        // mit der vergebenen Nummer nachgezogen — **nur noch im Hauptspeicher** (TASK-001). Die zweite
+        // Schreibrunde in die Tabelle ist mit der Spalte weggefallen.*
         $node = $node->withAssignedId((int) $wpdb->insert_id);
-
-        // Der Pfad trug bis eben die 0 an letzter Stelle; er wird mit der vergebenen Id nachgezogen.
-        $wpdb->update(
-            Schema::table('nodes'),
-            ['path' => $node->path],
-            ['id' => $node->id],
-            ['%s'],
-            ['%d']
-        );
 
         $this->writeName($node);
 
@@ -208,7 +256,9 @@ final class WpdbNodeRepository implements NodeRepository
             Schema::table('nodes'),
             [
                 'version'        => $node->version,
-                'path'           => $node->path,
+                // ⚠️ *`path` fährt seit Fassung 35 nicht mehr mit (TASK-001) — und damit ist auch die
+                // Falle weg, die er hier trug: ein veraltetes Formular kann keinen alten Weg mehr
+                // zurückschreiben, weil keiner geschrieben wird.*
                 // ⚠️ *Fährt mit, aus demselben Grund wie `kind`: ein Umbenennen hätte sonst die
                 // Klassenangabe gelöscht (TASK-008).*
                 'implemented_by' => $node->implementedBy,
@@ -222,7 +272,7 @@ final class WpdbNodeRepository implements NodeRepository
                 'id'      => $node->id,
                 'version' => $expectedVersion,
             ],
-            ['%d', '%s', '%s', '%d', '%d', '%d'],
+            ['%d', '%s', '%d', '%d', '%d'],
 
         );
 
@@ -271,9 +321,10 @@ final class WpdbNodeRepository implements NodeRepository
         // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort dazu: «wäre
         // selektionstechnisch billiger».*
         $rows = Query::rows('sichtbare Kinder lesen', $wpdb->prepare(
-            'SELECT ' . self::COLUMNS . self::fromNodes()
-                . 'WHERE n.hide = 0 AND n.parent_node_id IN (' . $platzhalter . ')
-             ORDER BY n.parent_node_id ASC, n.sort_order ASC, n.id ASC',
+            self::selectNodes(
+                'WHERE n.hide = 0 AND n.parent_node_id IN (' . $platzhalter . ')
+             ORDER BY n.parent_node_id ASC, n.sort_order ASC, n.id ASC'
+            ),
             ...[...self::nameArgs(), ...$ids]
         ));
 
@@ -294,8 +345,9 @@ final class WpdbNodeRepository implements NodeRepository
         // und bleibt es. Bis TASK-018 stand die Wahrheit in den Vererbungskanten und dieser Leser
         // war ein Join.*
         $rows = Query::rows('Kinder lesen', $wpdb->prepare(
-            'SELECT ' . self::COLUMNS . self::fromNodes()
-                . 'WHERE n.parent_node_id = %d ORDER BY n.sort_order ASC, n.id ASC',
+            self::selectNodes(
+                'WHERE n.parent_node_id = %d ORDER BY n.sort_order ASC, n.id ASC'
+            ),
             ...[...self::nameArgs(), $parent->id]
         ));
 
@@ -366,39 +418,39 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
+        // ⚠️ *`a.path` und nicht `n.path` — der Weg kommt aus {@see self::ancestry()}, seit die
+        // Spalte gefallen ist (TASK-001). **Die Bedingung ist dieselbe geblieben**: alles, dessen Weg
+        // mit dem der Wurzel und einem Punkt beginnt.*
         $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
-            'SELECT ' . self::COLUMNS . self::fromNodes() . 'WHERE n.path LIKE %s ORDER BY n.path ASC',
+            self::selectNodes('WHERE a.path LIKE %s ORDER BY a.path ASC'),
             ...[...self::nameArgs(), $wpdb->esc_like($root->path . '.') . '%']
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
+
+    /**
+     * ⚠️ **Seit Fassung 35 gibt es hier nichts mehr zu tun, und das ist die ganze Aussage von
+     * TASK-001.**
+     *
+     * *Diese Methode schrieb den Weg jedes Nachfahren um, weil er als Spalte dastand. **Er steht
+     * nicht mehr da**: er wird beim Lesen aus `parent_node_id` gerechnet
+     * ({@see self::ancestry()}), und `parent_node_id` hat der Aufrufer bereits gesetzt, bevor er
+     * hierherkommt. Ein Umzug ändert also **eine** Zeile — die des umgezogenen Knotens —, und die
+     * Wege aller Nachfahren stimmen im selben Augenblick.*
+     *
+     * ⚠️ **Auch der Versionszähler bleibt jetzt stehen, und der Grund dafür fällt mit derselben
+     * Spalte.** *Er lief mit, weil «`save()` writes name and path together, so a stale form could
+     * rename a node and write its old path back» — ein veraltetes Formular kann keinen Weg mehr
+     * zurückschreiben, denn `save()` schreibt keinen. **Eine Version zu heben, ohne dass sich die
+     * Zeile ändert, hiesse fünfhundert unveränderte Zeilen in den Schatten zu schreiben** und die
+     * Geschichte mit Nichts zu füllen.*
+     *
+     * ⚠️ *Die Methode bleibt in der Schnittstelle stehen, statt in einem Zug mit gesperrten Dateien
+     * zu verschwinden — dass sie fallen sollte, steht als `INF-052` im Eingang (`PR-4`).*
+     */
     public function moveSubtree(string $oldPath, string $newPath): void
     {
-        global $wpdb;
-
-        // One statement for the whole subtree. Done node by node this would be N+1, which the
-        // code standard forbids outright (`CD-7`).
-        //
-        // ⚠️ **The counter rides along in the same UPDATE** (D-349). It has to move: `save()`
-        // writes name and path together, so without it a stale form could rename a node and
-        // write its old path back, silently undoing somebody else's move. Five hundred
-        // descendants cost no extra statement for it.
-        // ⚠️ *Auch eine Massenänderung hebt auf ([D-536](../../../docs/NewConcept/90-decision-log.md)).
-        // **Sie zählt `version` selbst hoch** — also muss der alte Stand vorher hinüber, sonst fehlt
-        // genau die Version, auf die ein Zurückspringen zielt.*
-        Shadow::keep('nodes', 'path LIKE %s', [$wpdb->esc_like($oldPath . '.') . '%']);
-
-        $wpdb->query(
-            $wpdb->prepare(
-                'UPDATE ' . Schema::table('nodes') . '
-                 SET path = CONCAT(%s, SUBSTRING(path, %d)), version = version + 1
-                 WHERE path LIKE %s',
-                $newPath,
-                strlen($oldPath) + 1,
-                $wpdb->esc_like($oldPath . '.') . '%'
-            )
-        );
     }
 
     public function purgeSubtree(Node $node): void
@@ -407,7 +459,15 @@ final class WpdbNodeRepository implements NodeRepository
 
         $nodes     = Schema::table('nodes');
         $relations = Schema::table('relations');
-        $under     = $wpdb->esc_like($node->path . '.') . '%';
+
+        // ⚠️ **Der Knoten und alles unter ihm, als Liste von Nummern** (TASK-001). *Vorher stand hier
+        // fünfmal `n.path LIKE '<Weg>.%'`. Der Weg ist keine Spalte mehr, und ein `LIKE` auf den
+        // gerechneten Weg ginge in einem `DELETE` nicht: **MySQL verbietet, dieselbe Tabelle im
+        // Unterausdruck zu lesen, aus der gelöscht wird.** Also **eine** Abfrage vorweg, die den Ast
+        // einsammelt, und danach fünf Bedingungen auf dieselbe Liste — kein `LIKE`, keine Runde je
+        // Ebene (`CD-7`).*
+        $ast    = $this->subtreeIds($node->id);
+        $plaetze = implode(',', array_fill(0, count($ast), '%d'));
 
         // ⚠️ **Erst in den Schatten, dann weg** ([D-536](../../../docs/NewConcept/90-decision-log.md)).
         // *Der Eigentümer: «auch wenn es gelöscht ist, nur mit Löschkennzeichen versehen». **Hier ist
@@ -417,13 +477,12 @@ final class WpdbNodeRepository implements NodeRepository
         Shadow::keep(
             'relations',
             "id IN (SELECT x.id FROM {$relations} x
-                    INNER JOIN {$nodes} n ON n.id = x.to_node_id OR n.id = x.from_node_id
-                    WHERE n.id = %d OR n.path LIKE %s)",
-            [$node->id, $under],
+                    WHERE x.to_node_id IN ({$plaetze}) OR x.from_node_id IN ({$plaetze}))",
+            [...$ast, ...$ast],
             true
         );
 
-        Shadow::keep('nodes', 'id = %d OR path LIKE %s', [$node->id, $under], true);
+        Shadow::keep('nodes', "id IN ({$plaetze})", $ast, true);
 
         // ⚠️ **Die Beschriftungen gehen mit, und das ist seit TASK-019 nicht mehr optional**
         // ([D-580](../../../docs/NewConcept/90-decision-log.md)). *Vorher hatte ein Knoten nur dann
@@ -431,32 +490,64 @@ final class WpdbNodeRepository implements NodeRepository
         // weil der Name eine ist. Ein Löschen, das sie stehenlässt, hinterlässt eine Waise je
         // gelöschtem Knoten — gemessen an den Prüfläufen, die genau das taten.*
         $this->forgetLabelsOf(
-            "SELECT n.label_id FROM {$nodes} n WHERE n.id = %d OR n.path LIKE %s",
-            [$node->id, $under]
+            "SELECT n.label_id FROM {$nodes} n WHERE n.id IN ({$plaetze})",
+            $ast
         );
 
         $this->forgetLabelsOf(
             "SELECT r.label_id FROM {$relations} r
-             INNER JOIN {$nodes} n ON n.id = r.to_node_id OR n.id = r.from_node_id
-             WHERE n.id = %d OR n.path LIKE %s",
-            [$node->id, $under]
+             WHERE r.to_node_id IN ({$plaetze}) OR r.from_node_id IN ({$plaetze})",
+            [...$ast, ...$ast]
         );
 
         // The relations go first, because a relation row whose node is gone is the dangling
         // reference the whole two-stage deletion exists to avoid. Both are one statement.
         $wpdb->query($wpdb->prepare(
-            "DELETE r FROM {$relations} r
-             INNER JOIN {$nodes} n ON n.id = r.to_node_id OR n.id = r.from_node_id
-             WHERE n.id = %d OR n.path LIKE %s",
-            $node->id,
-            $under
+            "DELETE FROM {$relations}
+             WHERE to_node_id IN ({$plaetze}) OR from_node_id IN ({$plaetze})",
+            ...[...$ast, ...$ast]
         ));
 
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$nodes} WHERE id = %d OR path LIKE %s",
-            $node->id,
-            $under
+            "DELETE FROM {$nodes} WHERE id IN ({$plaetze})",
+            ...$ast
         ));
+    }
+
+    /**
+     * Ein Knoten und alles unter ihm, als Nummern — **eine Abfrage, nicht eine je Ebene** (`CD-7`).
+     *
+     * ⚠️ *Der Aufstieg aus {@see self::ancestry()} taugt hier nicht: er rechnet **Wege** und würde
+     * wieder auf ein `LIKE` hinauslaufen. Hier steigt derselbe rekursive Ausdruck vom Knoten selbst
+     * abwärts und sammelt nur Nummern ein.*
+     *
+     * ⚠️ *Öffentlich, weil die Randprüfungen dieselbe Frage stellen und sie bisher als
+     * `WHERE path LIKE '<Weg>.%'` selbst geschrieben haben. **Ein Ort für die Frage, nicht zwölf**
+     * (`CD-7`) — und sie sollen dieselbe Antwort bekommen wie der Kode, den sie prüfen.*
+     *
+     * @return list<int> Die Nummer des Knotens selbst zuerst; nie leer.
+     */
+    public function subtreeIds(int $id): array
+    {
+        global $wpdb;
+
+        $nodes = Schema::table('nodes');
+
+        $rows = Query::column('Ast einsammeln', $wpdb->prepare(
+            "WITH RECURSIVE taxmod_ast (id) AS (
+                 SELECT id FROM {$nodes} WHERE id = %d
+                 UNION ALL
+                 SELECT k.id FROM {$nodes} k INNER JOIN taxmod_ast v ON v.id = k.parent_node_id
+             )
+             SELECT id FROM taxmod_ast",
+            $id
+        ));
+
+        $ast = array_values(array_unique(array_map('intval', $rows)));
+
+        // ⚠️ *Der Knoten selbst gehört dazu, auch wenn ihn die Abfrage nicht mehr fände — sonst hätte
+        // eine leere Liste `IN ()` ergeben, und das ist ein Syntaxfehler, über den `$wpdb` schweigt.*
+        return $ast === [] ? [$id] : $ast;
     }
 
     /**
@@ -571,8 +662,11 @@ final class WpdbNodeRepository implements NodeRepository
 
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
+        // ⚠️ *Der Weg kommt aus {@see self::ancestry()} statt aus einer Spalte (TASK-001) — die Form
+        // ist dieselbe, also ändert sich an der Auflösung darunter nichts.*
         $rows = Query::rows('Pfade für den Sortenlauf lesen', $wpdb->prepare(
-            'SELECT id, path FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+            self::ancestry() . 'SELECT n.id, a.path FROM ' . Schema::table('nodes') . ' n'
+                . " INNER JOIN taxmod_ahnen a ON a.id = n.id WHERE n.id IN ($slots)",
             ...$ids
         )) ?: [];
 
@@ -631,7 +725,7 @@ final class WpdbNodeRepository implements NodeRepository
         // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
         // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
         $rows = Query::rows('Knoten nach Klasse lesen', $wpdb->prepare(
-            'SELECT ' . self::COLUMNS . self::fromNodes() . "WHERE n.implemented_by IN ($slots) ORDER BY n.id",
+            self::selectNodes("WHERE n.implemented_by IN ($slots) ORDER BY n.id"),
             ...[...self::nameArgs(), ...$classNames]
         ));
 

@@ -1550,3 +1550,63 @@ Hinweistext — sichtbar falsch statt geraten, dieselbe Haltung wie bei «own» 
 
 ⚠️ *Es ist dieselbe offene Naht wie dort und keine neue; hier steht sie, damit sie beim Sammeln nicht
 untergeht.*
+
+---
+
+## INF-052 · `moveSubtree()` ist leer geworden und sollte fallen
+
+**Aufgefallen beim Bauen von TASK-001**, am 2026-09-05.
+
+⚠️ **Die Methode schrieb den Weg jedes Nachfahren um. Es gibt keinen umzuschreiben.** *Seit
+Fassung 35 wird der Weg beim Lesen aus `parent_node_id` gerechnet, und das hat der Aufrufer schon
+gesetzt, bevor er hierherkommt. **Ein Umzug ändert genau eine Zeile** — die des umgezogenen
+Knotens.*
+
+⚠️ **Sie steht trotzdem noch da, und der Grund ist banal:** *ihr Aufrufer ist
+[`ModelEditor`](../../../src/Core/Service/ModelEditor.php), und der war für diesen Durchgang
+gesperrt, weil ein zweiter Agent darin gearbeitet hat. Sie zu streichen heisst, zwei Aufrufe dort
+zu entfernen und `NodeRepository` zu kürzen — ein Handgriff, aber einer in einer fremden Datei.*
+
+⚠️ *Was **mit** ihr gefallen ist und keine eigene Aufgabe braucht: der Versionszähler auf allen
+Nachfahren. Sein Grund stand in ihrem eigenen Kommentar — «`save()` writes name and path together,
+so a stale form could rename a node and write its old path back» — und ein veraltetes Formular kann
+keinen Weg mehr zurückschreiben, weil keiner geschrieben wird. **Fünfhundert unveränderte Zeilen in
+den Schatten zu schreiben, hiesse die Geschichte mit Nichts zu füllen.***
+
+---
+
+## INF-053 · Zwei Wächter vergleichen mit einer eingefrorenen Zahl auf seinen Bestand
+
+**Aufgefallen beim Bauen von TASK-001**, am 2026-09-05 — *und es ist genau der Mangel, den
+[`waechter-bestand.md`](waechter-bestand.md) als «feste Gleichheit auf eine Menge, die er jederzeit
+vergrössern darf» beschreibt.*
+
+⚠️ **`inheritance-column-check` Abschnitt 6 vergleicht mit den Zahlen der Wanderung von TASK-018** —
+137 Knoten, 136 Kanten, eine feste Tiefenverteilung. *Am 2026-09-05 ist er rot geworden, weil **ein**
+Knoten dazukam (`user`, aus [D-649](../../NewConcept/90-decision-log.md)). **Nichts ist kaputt**; die
+Zahl ist nur nicht mehr die von damals.*
+
+⚠️ **Der erste Entwurf von `path-check` hatte denselben Fehler**, und deshalb steht das hier: *er
+verglich die Prüfsumme über alle Wege mit der, die die Fassung hinterlassen hatte — und war beim
+ersten Lauf rot, weil in derselben Stunde Knoten entstanden und vergingen. **Er fragt jetzt eine
+Invariante statt eines Standes:** der gerechnete Weg und der Aufstieg über `parent_node_id` sagen
+dasselbe, und die Wanderung hat ihren Rückweg hinterlassen. Das erneuert sich mit seinem Bestand.*
+
+**ENTSCHEIDUNG ERFORDERLICH: NEIN, aber eine Wahl:** *entweder Abschnitt 6 auf dieselbe Art
+umschreiben, oder die Zahlen bei jeder bewussten Änderung nachziehen. **Das zweite ist die
+Einladung, einen roten Wächter für normal zu halten** — und dann übersieht man den nächsten.*
+
+---
+
+## INF-054 · Zwei abgelaufene Wanderungsskripte lesen eine gefallene Spalte
+
+**Aufgefallen beim Bauen von TASK-001.** *Sie stehen **nicht** im Randlauf und sind deshalb still —
+sie würden erst beim Aufruf auffallen:*
+
+| Skript | Was es liest | Stand |
+|---|---|---|
+| [`field-type-drop-migrate.php`](../../../scripts/dev/field-type-drop-migrate.php) | `nodes.path` **und** `nodes.field_type` | *beide Spalten sind gefallen (Fassung 33 und 35) — das Skript hat nichts mehr zu tun* |
+| [`minmax-specialize.php`](../../../scripts/dev/minmax-specialize.php) | `nodes.path`, dazu ein festes Pfadmuster `1.40768.%` | *einmaliger Lauf, gelaufen* |
+
+⚠️ *Nicht angefasst, weil ein abgelaufenes Wanderungsskript wegzuwerfen eine Entscheidung ist und
+kein Aufräumen (`PR-4`): **es ist der Beleg dafür, wie die Daten dorthin kamen, wo sie sind.***

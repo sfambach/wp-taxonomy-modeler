@@ -166,7 +166,10 @@ final class Residue
         // ⚠️ *Der Name kommt seit TASK-019 aus den Beschriftungen ([D-580](../../../docs/NewConcept/90-decision-log.md)),
         // in der Standardsprache — `nodes.name` gibt es nicht mehr.*
         $rows = $this->rows($wpdb->prepare(
-            "SELECT n.id, n.version, COALESCE(t.text_name, '') AS name, n.path
+            // ⚠️ *Der Weg ist seit Fassung 35 keine Spalte mehr (TASK-001), und hier braucht es
+            // dafür keinen Abstieg: **gefragt sind ausschliesslich Knoten ohne Vater und ohne
+            // Kinder**, und deren Weg ist ihre eigene Nummer — die Wurzel ihres eigenen Astes.*
+            "SELECT n.id, n.version, COALESCE(t.text_name, '') AS name, CAST(n.id AS CHAR) AS path
              FROM " . Schema::table('nodes') . ' n
              LEFT JOIN ' . Schema::table('label_texts') . ' t
                ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s

@@ -204,14 +204,10 @@ if ($rendererId === 0) {
     // ⚠️ *Kein Knoten unter `Renderer` traegt noch eine eigene Sorte — auf keinen zeigt eine Kante.
     // **Das ist die Berichtigung aus [D-621](../../docs/NewConcept/90-decision-log.md)**: «sie sind
     // Werte, die man in einer Einstellung waehlt, keine Einstellungen».*
-    $pfad = (string) $wpdb->get_var(
-        $wpdb->prepare('SELECT path FROM ' . Schema::table('nodes') . ' WHERE id = %d', $rendererId)
-    );
-
-    $unter  = array_map('intval', $wpdb->get_col($wpdb->prepare(
-        'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
-        $wpdb->esc_like($pfad . '.') . '%'
-    )));
+    // ⚠️ *«Alles unter `Renderer`» fragt seit Fassung 35 der Speicher — der Weg ist keine Spalte
+    // mehr, und ein `LIKE` darauf laege still leer und machte diesen Satz gruen und blind
+    // (TASK-001).*
+    $unter = array_values(array_diff($nodes->subtreeIds($rendererId), [$rendererId]));
 
     $markiert = count(array_filter($nodes->ownFieldTypes($unter)));
 

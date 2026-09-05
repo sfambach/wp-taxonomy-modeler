@@ -180,9 +180,17 @@ check(
     (string) $framework->settingValueRelationId(SettingKey::Renderer)
 );
 
-$rendererPfad = (string) $wpdb->get_var(
-    'SELECT path FROM ' . Schema::table('nodes_named') . " WHERE name = 'Renderer' LIMIT 1"
+// ⚠️ *Der Renderer-Ast als Liste von Nummern statt als Pfadmuster — die Spalte ist mit Fassung 35
+// gefallen (TASK-001), und `id IN (…)` sagt dasselbe ohne `LIKE`.*
+$rendererWurzel = (int) $wpdb->get_var(
+    'SELECT id FROM ' . Schema::table('nodes_named') . " WHERE name = 'Renderer' LIMIT 1"
 );
+
+$rendererAst = $rendererWurzel === 0
+    ? []
+    : array_values(array_diff((new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeIds($rendererWurzel), [$rendererWurzel]));
+
+$astPlaetze = implode(',', array_fill(0, max(1, count($rendererAst)), '%d'));
 // ⚠️ **Dieselbe Zusage wie frueher «jeder gespeicherte Renderer zeigt in den Renderer-Ast», nur an
 // der neuen Adresse.** *Sie ist am eigenen Fehler gelernt: es gibt zwei Knoten namens `form` -- die
 // Label-Rolle und den Renderer (D-022: Knotennamen sind absichtlich nicht eindeutig). Ein Wert, der
@@ -198,15 +206,14 @@ $gesamt = (int) $wpdb->get_var($wpdb->prepare(
     $rendererKante
 ));
 
-$daneben = (int) $wpdb->get_var($wpdb->prepare(
+$daneben = $rendererAst === [] ? $gesamt : (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
        INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = v.value_ref
        LEFT JOIN ' . Schema::table('nodes') . " z ON z.id = r.node_id
       WHERE v.relation_id = %d AND v.value_ref_kind = 'record'
-        AND COALESCE(z.path, %s) NOT LIKE %s",
+        AND (z.id IS NULL OR z.id NOT IN ({$astPlaetze}))",
     $rendererKante,
-    '',
-    $wpdb->esc_like($rendererPfad . '.') . '%'
+    ...$rendererAst
 ));
 
 check('jeder Traeger zeigt auf einen Satz im Renderer-Ast', $daneben === 0, "{$daneben} von {$gesamt} daneben");
