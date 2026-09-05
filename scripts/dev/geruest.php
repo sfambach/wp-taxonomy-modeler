@@ -26,6 +26,17 @@ use Taxmod\WordPress\SystemClock;
 
 final class Geruest
 {
+    /**
+     * Wo die Id des Testastes eines Astes steht — je Ast einer.
+     *
+     * ⚠️ *Dasselbe Muster wie die Rahmenwerksknoten ([D-510](../../docs/NewConcept/90-decision-log.md)):
+     * **die Id steht in einer Option, nicht der Name im Kode.** Der Behälter heisst `__Test`, aber
+     * gefunden wird er nie darüber.*
+     */
+    private const TESTAST_OPTION_PREFIX = 'taxmod_testast_';
+
+    private const TESTAST_NAME = '__Test';
+
     private readonly ModelEditor $editor;
 
     private readonly SeededFrameworkNodes $framework;
@@ -46,6 +57,129 @@ final class Geruest
     }
 
     /**
+     * Der Testast eines Astes — ein Behälter, unter dem alles Probeweise liegt (TASK-050, D-614).
+     *
+     * ⚠️ **Sein Wort:** *«von mir aus könnten sie auch irgendwo bestehen bleiben bis wir live gehen,
+     * solange sie nicht den aktuellen Baum kaputt machen und nicht sichtbar oder nur in einem Testast
+     * sich befinden.»* **Drei Bedingungen, und der Behälter erfüllt alle drei:**
+     *
+     * - **Im Testast**: alles Gebaute hängt unter ihm, an einer Stelle statt zwischen seinen Knoten.
+     * - **Nicht sichtbar**: seine Vererbungskante ist versteckt, mit dem Mittel des Plugins selbst
+     *   ([D-467](../../docs/NewConcept/90-decision-log.md)) — der Baum überspringt einen versteckten
+     *   Platz samt allem, was darunter hängt. Kein Schirm musste dafür angefasst werden.
+     * - **Den Arbeitsbaum nicht beschädigend**: der Behälter erklärt kein Feld, also erbt niemand
+     *   etwas von ihm, und keine echte Kante zeigt hinein.
+     *
+     * ⚠️ **Warum er im Ast liegt und nicht neben ihm:** *die Speicherregel hängt am Ast des **Ziels**
+     * ({@see \Taxmod\WordPress\Persistence\SeededFrameworkNodes::branchOf()}). Ein Behälter ausserhalb
+     * jedes Astes hätte keine Semantik, und ein Probeknoten darin wäre kein gültiges Ziel — das
+     * Gerüst könnte nichts mehr bauen, was dem echten Fall gleicht.*
+     *
+     * ⚠️ **Warum er stehenbleibt:** *dreimal an einem Tag lagen Probeknoten in seinem Baum — 60, dann
+     * 12, dann 8 —, **jedes Mal nach einem Absturz mitten im Lauf. Wer abstürzt, räumt nicht auf.**
+     * Der Behälter fängt genau diesen Rückstand auf; {@see rueckstand()} zählt ihn.*
+     */
+    public function testast(Branch $ast): int
+    {
+        $option = self::TESTAST_OPTION_PREFIX . str_replace('-', '_', $ast->value) . '_id';
+        $id     = (int) get_option($option, 0);
+
+        if ($id > 0 && $this->nodes->find($id) !== null) {
+            return $id;
+        }
+
+        $behaelter = $this->editor->createNode(self::TESTAST_NAME, $this->framework->rootOf($ast)->id);
+
+        // Unsichtbar — und zwar über den Platz, nicht über den Knoten (D-467).
+        $this->editor->hidePlacement($behaelter->id, true);
+
+        update_option($option, $behaelter->id);
+
+        return $behaelter->id;
+    }
+
+    /**
+     * Wie viel in den Testästen liegengeblieben ist — der Behälter selbst zählt nicht mit.
+     *
+     * ⚠️ *Das ist die zweite Hälfte von [D-614](../../docs/NewConcept/90-decision-log.md): der Ast
+     * **macht den Rückstand zählbar**, «ohne dass jemand den Baum durchsieht».*
+     */
+    public function rueckstand(): int
+    {
+        global $wpdb;
+
+        $summe = 0;
+
+        foreach (Branch::cases() as $ast) {
+            $option = self::TESTAST_OPTION_PREFIX . str_replace('-', '_', $ast->value) . '_id';
+            $id     = (int) get_option($option, 0);
+
+            if ($id === 0) {
+                continue;
+            }
+
+            $knoten = $this->nodes->find($id);
+
+            if ($knoten === null) {
+                continue;
+            }
+
+            $summe += (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
+                $wpdb->esc_like($knoten->path . '.') . '%'
+            ));
+        }
+
+        return $summe;
+    }
+
+    /**
+     * Den Rückstand wegräumen — die Behälter bleiben, ihr Inhalt geht.
+     *
+     * ⚠️ *Aufräumen bleibt der Normalfall ([D-614](../../docs/NewConcept/90-decision-log.md)); das
+     * hier ist der Nachtrag für die Läufe, die es nicht mehr geschafft haben.*
+     */
+    public function rueckstandRaeumen(): int
+    {
+        global $wpdb;
+
+        $weg = 0;
+
+        foreach (Branch::cases() as $ast) {
+            $option = self::TESTAST_OPTION_PREFIX . str_replace('-', '_', $ast->value) . '_id';
+            $id     = (int) get_option($option, 0);
+            $knoten = $id === 0 ? null : $this->nodes->find($id);
+
+            if ($knoten === null) {
+                continue;
+            }
+
+            $ids = $wpdb->get_col($wpdb->prepare(
+                'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
+                $wpdb->esc_like($knoten->path . '.') . '%'
+            ));
+
+            $records = new WpdbRecordRepository();
+
+            foreach (array_map(intval(...), $ids) as $weggehend) {
+                foreach ($records->ofNode($weggehend) as $satz) {
+                    $records->forgetRecord($satz->id);
+                }
+
+                $wpdb->query($wpdb->prepare(
+                    'DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d',
+                    $weggehend,
+                    $weggehend
+                ));
+                $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $weggehend));
+                $weg++;
+            }
+        }
+
+        return $weg;
+    }
+
+    /**
      * Eine Komposition aus lauter Textgliedern, und ein Besitzer, der auf sie zeigt.
      *
      * ⚠️ *Der Besitzer gehört dazu: eine Komposition ohne Verwendungsstelle beantwortet die Frage
@@ -58,14 +192,14 @@ final class Geruest
     {
         $text = $this->knotenNamens('Text', Branch::DataTypes);
 
-        $ziel = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->framework->rootOf(Branch::Compositions)->id);
+        $ziel = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->testast(Branch::Compositions));
         $this->gebaut[] = $ziel->id;
 
         foreach ($felder as $feld) {
             $this->editor->addField($ziel->id, $text, $feld);
         }
 
-        $besitzer = $this->editor->createNode($this->vorsatz . ' Traeger', $this->framework->rootOf(Branch::Model)->id);
+        $besitzer = $this->editor->createNode($this->vorsatz . ' Traeger', $this->testast(Branch::Model));
         $this->gebaut[] = $besitzer->id;
 
         $this->editor->addField($besitzer->id, $ziel->id, $name);
@@ -88,7 +222,7 @@ final class Geruest
         global $wpdb;
 
         $text = $this->knotenNamens('Text', Branch::DataTypes);
-        $ziel = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->framework->rootOf(Branch::Compositions)->id);
+        $ziel = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->testast(Branch::Compositions));
         $this->gebaut[] = $ziel->id;
 
         foreach ($felder as $feld => $wie) {
@@ -115,7 +249,7 @@ final class Geruest
         global $wpdb;
 
         $ziel = $zielId ?? $this->knotenNamens('Text', Branch::DataTypes);
-        $von  = $this->editor->createNode($this->vorsatz . ' ' . $vonName, $this->framework->rootOf(Branch::Model)->id);
+        $von  = $this->editor->createNode($this->vorsatz . ' ' . $vonName, $this->testast(Branch::Model));
         $this->gebaut[] = $von->id;
 
         $kante = $this->editor->addField($von->id, $ziel, $feldName);
@@ -136,13 +270,13 @@ final class Geruest
      */
     public function einstellung(string $name, string $feld): array
     {
-        $einstellung = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->framework->rootOf(Branch::Settings)->id);
+        $einstellung = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->testast(Branch::Settings));
         $this->gebaut[] = $einstellung->id;
 
         // Der Ast allein markiert nicht -- D-518 hat die Spalte gesetzt, nicht abgeleitet.
         $this->editor->setKind($einstellung->id, \Taxmod\Core\Model\NodeKind::Setting);
 
-        $traeger = $this->editor->createNode($this->vorsatz . ' Nutzer', $this->framework->rootOf(Branch::Model)->id);
+        $traeger = $this->editor->createNode($this->vorsatz . ' Nutzer', $this->testast(Branch::Model));
         $this->gebaut[] = $traeger->id;
 
         $kante = $this->editor->addField($traeger->id, $einstellung->id, $feld);
