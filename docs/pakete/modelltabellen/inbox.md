@@ -763,3 +763,41 @@ Kommentar in derselben Datei sagt es selbst: «Hier standen `boundTheNumbers()`,
 wird nur nicht genommen, weil `importOnce()` bei gesetzter Option früh zurückkehrt. *Auf einer
 frischen Installation wäre es der erste Lauf, der stirbt.* **Gemeldet und nicht repariert**, weil es
 zu einer anderen Arbeit gehört als der, in der es auffiel.
+
+### Der Vorschlag dazu, auf seine Bitte — untersucht am 2026-09-05
+
+**Sein Auftrag:** *«welchen Vorteil wird das denn bringen? … einen Nachteil seh ich schon: wenn wir
+das umschalten, müssten wir eine andere Klasse hinterlegen. Und was passiert mit den Daten, wenn
+ich von einer Klasse in die andere umschalte? … Ich seh aktuell noch nicht die Notwendigkeit.
+Vielleicht kannst Du's mal untersuchen und einen Vorschlag machen.»*
+
+**Vorschlag: keine Klassen für Äste und Rollen — aber die zehn Optionen fallen trotzdem.**
+
+⚠️ **Gemessen, woran D-484 hing, und der Grund trägt hier nicht.** *D-484 wollte das **Inventar**:
+«wie viele spezialisierte Typen haben wir» stand an **drei** Stellen — Aufzählung 11, gesät 11,
+Registratur 10 — und sie stimmten nicht überein. **Bei Ästen und Rollen gibt es diese drei Stellen
+nicht:** keine Registratur bindet etwas je Ast, keine je Rolle. Die Aufzählung ist die einzige
+Stelle, und sie kann nicht auseinanderlaufen.*
+
+⚠️ **Gemessen, wieviel Verhalten es zu tragen gäbe.** *`Branch` hat 102 Zeilen und drei
+Verzweigungen (`relationKind`, `holdsData`, `storage`), 17 Aufrufstellen. `SeededRole` hat 44
+Zeilen, **keine einzige Verzweigung** und eine Methode, die ein Ja/Nein zurückgibt. Zum Vergleich
+trug `SimpleType` 257 Zeilen. **Fünf Klassen für eine Ja/Nein-Frage ist Bauwerk ohne Last.***
+
+⚠️ **Und sein Einwand ist der stärkere Teil, nicht der schwächere.** *Der Ast eines Knotens
+**wechselt** — er hat am selben Tag `Street / H#` nach `Combined` verschieben wollen (TASK-055).
+Ein Typwechsel ist selten und in [D-595](../../NewConcept/90-decision-log.md) als Datenfrage
+geklärt; **ein Astwechsel ist gewöhnliche Modellarbeit.** Mit einer Klasse je Ast würde ein
+Verschieben die **Klasse des Objekts** ändern — ein Vorgang, den keine Sprache leicht macht und
+den heute eine Zeilenänderung erledigt. **Der Vorteil, den er nennt — der Übersetzer erkennt es —
+kostet genau an der Stelle, an der am meisten passiert.***
+
+**Was stattdessen die zehn Optionen ablöst — der Knoten sagt, was er ist.** *Dieselbe Regel, die
+schon `field_type` trägt (98 leer, 39 `setting`): **was ein Ding ist, sagt das Ding, nicht der
+Ort.** Ein Astkopf und ein Rollenknoten tragen ihre Marke in einer Spalte; die Option verschwindet,
+und niemand muss dafür eine Klasse erfinden.*
+
+⚠️ **Offen und ausdrücklich seine Entscheidung:** *ob die Marke in `field_type` mitwohnt oder eine
+eigene Spalte bekommt. **Dafür, dass sie es nicht tut:** `field_type` sagt heute, ob ein Knoten eine
+Einstellung ist — «ist ein Astkopf» ist eine andere Frage, und zwei Fragen in einer Spalte war schon
+einmal der Fehler ([`geltende-regeln.md`](geltende-regeln.md)).*
