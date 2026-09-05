@@ -1609,3 +1609,11 @@ fehlt, sind die sechs unter dem Zwischenknoten `render with label`: `INF-043`.*
 ⚠️ *Alle beruehrten Waechter gruen, `vendor/bin/phpunit` 445 gruen. **Zwei Waechter bleiben rot und
 waren es vorher schon:** `unitvalue-check` (dokumentiert im Eingang, `OQ-134` und der Befund darunter)
 und `always-on-check` (Groesse des Immer-Gelesenen).*
+
+⚠️ **Nicht fertig, und es steht hier statt in einer stillen Annahme:** *[D-644](../../NewConcept/90-decision-log.md)
+schliesst `INF-042` mit Antwort 1 — «genau 1, bitte so umsetzen» —, und Antwort 1 hat **zwei**
+Haelften: der Waehler kommt zurueck, **und der eigene Renderer-Block faellt weg**. **Die erste ist
+gebaut, die zweite nicht.** Gemessen: fiele der Block heute, verlöre der Eigentuemer `form`, `table`,
+`compact`, `reference` und die beiden Waehler-Renderer — sie haengen unter dem Zwischenknoten
+`render with label`, und nur der Block holt sie noch aus der Registratur. **Das ist eine Entscheidung
+ueber diese sechs und keine Aufraeumarbeit** (`PR-4`, `INF-043`).*

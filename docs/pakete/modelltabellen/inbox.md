@@ -1261,3 +1261,12 @@ steht es trotzdem, weil ein Verlust, den niemand nennt, ein Verlust ist, den nie
 muss, gehört **in den Fassungsschritt selbst** und nicht in ein Skript daneben. Ein Skript läuft auf
 dieser einen Installation, die Fassung läuft auf jeder — und ein Sichern, das die Wanderung überholen
 kann, ist keines. Fassung 33 macht es jetzt so.*
+
+⚠️ **Nachtrag: [D-644](../../NewConcept/90-decision-log.md) sagt mehr, als hier gebaut ist, und der
+Rest ist ausdruecklich offen.** *Sein Wort war «genau 1, bitte so umsetzen», und Antwort 1 lautet
+vollstaendig: «dann zeichnet die Wertspalte den Waehler von selbst, **und der eigene Block faellt
+weg**». **Die erste Haelfte ist gebaut, die zweite nicht** — und der Grund ist der Befund oben:
+**faellt der Block heute, verliert der Eigentuemer die sechs Renderer unter `render with label`**,
+weil der Weg ueber das Modell sie nicht mehr erreicht und nur der Block sie noch aus der Registratur
+holt. **Den Block zu loeschen waere eine Entscheidung ueber diese sechs, und die ist nicht getroffen**
+(`PR-4`). Der Block faellt, sobald `INF-043` beantwortet ist — nicht vorher.*
