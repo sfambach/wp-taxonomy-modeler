@@ -137,6 +137,17 @@ flowchart LR
 **Antwort auf die Kernfrage des Auftrags: ja — das Änderungsbuch *ist* ein Ereignisspeicher, aber
 ein unvollständiger und einer ohne Verteilung.**
 
+⚠️ **Nachgetragen am 2026-09-05, und die Antwort steht damit gegen einen Satz des Eigentümers —
+das wird hier nicht geglättet, sondern ihm vorgelegt** ([D-627](../../NewConcept/90-decision-log.md)).
+*Er sagte, auf dieselbe Frage: «das ist kein Speicher an sich, ist einfach nur ein Mechanismus, den
+man anschalten kann, und der dann je nach Filter — Error, Debug oder sonst was — die entsprechenden
+Ausgaben mitloggt. Das soll zur Fehlerbehebung dienen.»* **Vermutlich reden beide Seiten von
+verschiedenen Dingen:** *er von dem **Protokoll** aus [§14](konzept.md) — abschaltbar, für die
+Fehlersuche —, die Messung von der Tabelle `changelog`, die 35 422 Zeilen Modellgeschichte trägt
+und ausdrücklich **nicht** abschaltbar ist, weil das Rückgängigmachen darauf steht. **Wenn das so
+ist, sind es zwei Dinge und die Frage `F-4` unten ist die richtige;** wenn nicht, ist diese Messung
+die falsche Antwort auf seine Frage. **Das entscheidet er, nicht dieses Dokument** (`PR-4`).*
+
 Was **dafür** spricht, gemessen:
 
 - Es hat Identität (`id`), Typ (`what`), Betreff und Nutzlast — genau die vier Angaben aus §6/§8.
