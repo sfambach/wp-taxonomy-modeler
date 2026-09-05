@@ -595,13 +595,66 @@ final class Rendering
 
             $gewaehlt = $values[$relation->id] ?? null;
 
+            $moeglich = $wahl[$relation->id] ?? [];
+
+            // ⚠️ **Für den Renderer sagt die Registratur, was es gibt — nicht der Baum**
+            // ([D-603](../../../docs/NewConcept/90-decision-log.md)): *«wofür ein Konverter oder ein
+            // Renderer taugt, bleibt im Kode — `handles()` an der Klasse»*, und `eligibleFor()`
+            // verengt auf den Typ, **am Knoten der Knoten selbst**.
+            //
+            // ⚠️ **Warum die Kinderregel hier nicht mehr trägt** ([D-644](../../../docs/NewConcept/90-decision-log.md)):
+            // *[D-540](../../../docs/NewConcept/90-decision-log.md) sammelt die Kinder des Kantenziels
+            // und sah früher durch **markierte** Knoten hindurch ([D-544](../../../docs/NewConcept/90-decision-log.md)).
+            // Mit dem Fall der Marke wurde der Zwischenknoten `render with label` selbst eine
+            // Möglichkeit statt eines Durchgangs — **gemessen verschwanden `form`, `table`, `compact`,
+            // `chooser-inline` und `chooser-dialog` aus der Wahl**, und der eigene Renderer-Block war
+            // der letzte Weg zu ihnen. *`reference` gehört zwar auch unter den Zwischenknoten, war aber
+            // nie darunter: er zeichnet nur zum Anzeigen.*
+            //
+            // ⚠️ **Und die naheliegende Ersatzregel ist gemessen falsch:** *«ein Knoten mit Kindern ist
+            // ein Durchgang» machte `Base units` von 2 auf 14 wählbare Werte und `Electronic Parts`
+            // von 2 auf 4 — man könnte `With prefix` und `Passiv` nicht mehr wählen.*
+            //
+            // ⚠️ *Keine Sonderregel für **einen Knoten**: gefragt wird der Einstellungsschlüssel
+            // `renderer`, nicht ein Name und nicht ein Ast (`CD · Prohibited`). Ein Knoten, der unter
+            // `Renderer` hängt, aber in der Registratur fehlt, ist damit keine Möglichkeit.*
+            if ($istWahl && $forNode !== 0 && $relation->id === $this->framework->settingRelationId(SettingKey::Renderer)) {
+                $knoten = $this->nodes->find($forNode);
+
+                if ($knoten !== null) {
+                    $moeglich = $this->renderersOffered($knoten);
+
+                    // ⚠️ **Und die Zeile muss zeigen, was gilt — sonst wäre sie eine Falle.** *Eine
+                    // Auswahlliste ohne Vorauswahl zeigt immer den ersten Eintrag, und der nächste
+                    // Klick schreibt ihn, auch wenn niemand ihn wollte.*
+                    //
+                    // ⚠️ **Der gespeicherte Wert ist hier ein **Datensatz** und keine Knoten-Id**
+                    // ([D-583](../../../docs/NewConcept/90-decision-log.md), [D-584](../../../docs/NewConcept/90-decision-log.md)):
+                    // *seit `Renderer` das Feld `converter` trägt, legt die Wahl einen eigenen Satz an.
+                    // **Die Wahlliste steht aber auf Knoten-Ids**, also fand sich der Verweis dort nie
+                    // wieder — solange der eigene Block danebenstand, ist es niemandem aufgefallen,
+                    // weil dieser über den **Namen** ging.*
+                    //
+                    // ⚠️ *Gezeigt und nicht geschrieben ([R33c](../../../docs/NewConcept/30-renderer.md)):
+                    // gefragt wird, welcher Renderer **jetzt** zeichnet — auch wenn das die Vorgabe des
+                    // Typs ist. Ein leeres Steuerelement über einem laufenden Renderer liest sich als
+                    // «hier zeichnet nichts».*
+                    $name = $this->rendererNameFor($knoten);
+                    $id   = $name === null ? false : array_search($name, $moeglich, true);
+
+                    if ($id !== false) {
+                        $gewaehlt = TypedValue::ofReference((int) $id);
+                    }
+                }
+            }
+
             // ⚠️ **Die Wahl wird gebaut und nicht stückweise ausgerechnet** ({@see Choice}). *Der
             // Eigentümer hat den Grund benannt: «von der Multiplizität zum Choice ist ein Weg … und es
             // kann sein, dass du den mehrfach erfindest». **Gemessen stand der Weg viermal**, und ein
             // Kerntest zählt jetzt nach, dass er einmal steht.*
             $dieWahl = Choice::atUseSite(
                 $relation->multiplicity,
-                $istWahl ? ($wahl[$relation->id] ?? []) : [],
+                $istWahl ? $moeglich : [],
                 $gewaehlt,
                 $editable
             );
@@ -625,27 +678,10 @@ final class Rendering
                 $dieWahl = $dieWahl->including($verweis, $names[$relation->id]);
             }
 
+            // ⚠️ *Der gespeicherte Wert ist über {@see Choice::including()} schon darin
+            // ([D-360](../../../docs/NewConcept/90-decision-log.md)) — die Menge selbst kommt für den
+            // Renderer aus der Registratur, oben.*
             $angebot = $dieWahl->options;
-
-            // ⚠️ **Ein Renderer wird nur angeboten, wenn er das hier auch zeichnen kann**
-            // ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
-            //
-            // ⚠️ *Der Eigentümer an `Integer`: «Integer sieht jetzt alle Renderer, wobei nur
-            // int-Renderer ok wären» — und die Präzisierung: «allgemeiner `field` wäre auch noch ok».
-            // **Genau das sagt die Registratur schon**: `eligibleFor()` antwortet für `Integer` mit
-            // `field, spinner, slider`, für `Boolean` mit `toggle, checkbox`. [D-540](../../../docs/NewConcept/90-decision-log.md)
-            // liefert die Möglichkeiten aus dem Modell, `R14a` verengt sie auf die brauchbaren.*
-            //
-            // ⚠️ **Ein Angebot, kein Zaun** ([D-360](../../../docs/NewConcept/90-decision-log.md)): *was
-            // schon gespeichert ist, bleibt stehen, auch wenn es heute nicht mehr angeboten würde —
-            // sonst verschwände eine Wahl, die jemand bewusst getroffen hat.*
-            // ⚠️ **Die Kante selbst und nicht mehr eine Wertkante darin** (TASK-057,
-            // [D-642](../../../docs/NewConcept/90-decision-log.md)): *der Renderer hängt an einer
-            // gewöhnlichen Einstellungskante `1..1`, und die innere Kante, die den Hüllknoten
-            // durchstieg, ist mit ihm gefallen.*
-            if ($angebot !== [] && $forNode !== 0 && $relation->id === $this->framework->settingRelationId(SettingKey::Renderer)) {
-                $angebot = $this->onlyUsableRenderers($angebot, $forNode, $gewaehlt);
-            }
 
             // ⚠️ **Eine Auswahl bleibt eine Auswahl, auch wenn nichts zu wählen ist** —
             // *[R28](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete): «mit **keinem**
@@ -3111,47 +3147,6 @@ final class Rendering
      * @param  list<int>                       $parentIds
      * @return array<int, array<int, string>>  Eltern-Id => (Knoten-Id => Name)
      */
-    /**
-     * Von den angebotenen Renderern die, die diesen Knoten zeichnen können.
-     *
-     * ⚠️ **Die Antwort kommt aus der Registratur und wird hier nicht nachgebaut** (`R14a`): *sie kennt,
-     * welcher Renderer welchen Typ anfasst, und der Eigentümer hat den Fall genannt — «Integer sieht
-     * jetzt alle Renderer, wobei nur int-Renderer ok wären», dazu «allgemeiner `field` wäre auch noch
-     * ok». **Gemessen sagt `eligibleFor()` für `Integer` genau `field, spinner, slider`.***
-     *
-     * ⚠️ **Das Gespeicherte bleibt stehen, auch wenn es nicht mehr angeboten würde**
-     * ([D-360](../../../docs/NewConcept/90-decision-log.md)): *die zulässige Menge ist ein Angebot und
-     * kein Zaun. Fiele der gesetzte Wert aus der Liste, zeigte die Auswahl ihn nicht mehr — und das
-     * nächste Speichern hätte ihn stillschweigend ersetzt.*
-     *
-     * @param  array<int, string> $angebot Knoten-Id => Name
-     * @return array<int, string>
-     */
-    private function onlyUsableRenderers(array $angebot, int $forNode, ?TypedValue $gesetzt): array
-    {
-        $knoten = $this->nodes->find($forNode);
-
-        if ($knoten === null) {
-            return $angebot;
-        }
-
-        $erlaubt = [];
-
-        foreach ($this->renderers->eligibleFor($knoten, $this->typeOfNode($knoten), Purpose::Edit) as $einer) {
-            $erlaubt[$einer->name()] = true;
-        }
-
-        if ($erlaubt === []) {
-            return $angebot;
-        }
-
-        return array_filter(
-            $angebot,
-            static fn (string $name, int $id): bool => isset($erlaubt[$name]) || $gesetzt?->reference === $id,
-            ARRAY_FILTER_USE_BOTH
-        );
-    }
-
     private function offeredUnder(array $parentIds): array
     {
         $angebot = array_fill_keys($parentIds, []);
@@ -3203,6 +3198,61 @@ final class Rendering
 
             $offen = $weiter;
         }
+
+        return $angebot;
+    }
+
+    /**
+     * Welche Renderer diesen Knoten zeichnen können — **aus der Registratur**, nicht aus dem Baum.
+     *
+     * ⚠️ **[D-603](../../../docs/NewConcept/90-decision-log.md) sagt, wo die Antwort steht:** *«wofür
+     * ein Konverter oder ein Renderer taugt, bleibt im Kode — `handles()` an der Klasse»*, und
+     * *«am Knoten den Knoten und an der Kante den to-Knoten»*. `eligibleFor()` verengt auf den Typ —
+     * *gemessen für `Integer` genau `field`, `spinner`, `slider`, für `Boolean` `toggle`, `checkbox`.*
+     *
+     * ⚠️ **Der Baum sagt nur noch, welcher Knoten der gemeinte ist.** *Ein Wert ist ein Knotenverweis
+     * ([D-583](../../../docs/NewConcept/90-decision-log.md)), also wird der Renderer über seine
+     * **Klasse** auf seinen Knoten abgebildet — dieselbe Bindung, die
+     * {@see \Taxmod\Core\Service\ModelEditor::nodeImplementing()} benutzt, und sie liegt im Modell
+     * und nicht in einer Option daneben (`AR-1`).*
+     *
+     * ⚠️ **Ein Knoten unter `Renderer`, den die Registratur nicht kennt, ist keine Möglichkeit.**
+     * *Genau das trifft den Zwischenknoten `render with label`: es gibt keinen Renderer dieses Namens,
+     * also fällt er heraus — **ohne dass jemand ihn löschen oder verschieben müsste**, und seine Kinder
+     * stehen wieder zur Wahl. **Fünf von sechs**, gemessen: `reference` unterstützt nur
+     * `Purpose::Display` und ist beim Bearbeiten nirgends wählbar — auch vorher nicht (`INF-048`).*
+     *
+     * ⚠️ *Eine Abfrage, unabhängig von der Zahl der Renderer (`CD-7`): die Klassen in einem Zug.*
+     *
+     * @return array<int, string> Knoten-Id => Name
+     */
+    private function renderersOffered(Node $knoten): array
+    {
+        $klassen = [];
+
+        foreach ($this->renderers->eligibleFor($knoten, $this->typeOfNode($knoten), Purpose::Edit) as $einer) {
+            $klassen[] = $einer::class;
+        }
+
+        if ($klassen === []) {
+            return [];
+        }
+
+        $muell   = $this->framework->trash();
+        $angebot = [];
+
+        foreach ($this->nodes->byImplementations($klassen) as $einer) {
+            // ⚠️ *Was im Müll liegt, ist keine Möglichkeit — dieselbe Grenze wie in
+            // {@see \Taxmod\Core\Service\ModelEditor::nodeImplementing()}.*
+            if ($einer->id === $muell->id || $einer->isDescendantOf($muell)) {
+                continue;
+            }
+
+            $angebot[$einer->id] = $einer->name;
+        }
+
+        // ⚠️ *Nach Namen, damit die Liste sich nicht mit der Anlagereihenfolge umsortiert.*
+        asort($angebot);
 
         return $angebot;
     }

@@ -33,8 +33,10 @@ define('WP_USE_THEMES', false);
 require rtrim($wordpress, '/') . '/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -139,6 +141,45 @@ function abschicken(array $post): bool
 
 wp_set_current_user(1);
 
+// ⚠️ **Die Wahl steht in der Zeile `renderer` des Einstellungsblocks und nirgends sonst**
+// ([D-644](../../docs/NewConcept/90-decision-log.md)). *Adressiert wird sie wie jeder andere Wert —
+// ueber die **Id der Einstellungskante**, `taxmod_value[<kante>]`, und nicht ueber einen Schluessel.*
+$kante = $framework->settingRelationId(SettingKey::Renderer);
+
+if ($kante === 0) {
+    echo "  FAIL die Einstellungskante `renderer` ist nicht aufgeschrieben\n";
+
+    exit(1);
+}
+
+/**
+ * Was die Zeile `renderer` auf dieser Seite anbietet — Knoten-Id => Name.
+ *
+ * @return array<int, string>
+ */
+function angebotDerZeile(string $markup, int $kante): array
+{
+    global $wpdb;
+
+    $hinter = preg_split('/name="taxmod_value\[' . $kante . '\]"/', $markup)[1] ?? '';
+
+    preg_match_all('/<option value="([^"]*)"/', explode('</select>', $hinter)[0], $treffer);
+
+    $aus = [];
+
+    foreach ($treffer[1] ?? [] as $roh) {
+        if ($roh === '') {
+            continue;
+        }
+
+        $id  = (int) $roh;
+        $p   = $wpdb->prefix . 'taxmod_';
+        $aus[$id] = (string) $wpdb->get_var("SELECT name FROM {$p}nodes_named WHERE id = {$id}");
+    }
+
+    return $aus;
+}
+
 echo "\n== ein eigener Knoten, der einen Renderer haben kann ==\n";
 
 $intId = $types->nodeId(SimpleType::Int);
@@ -154,9 +195,19 @@ $probe = $editor->createNode('__rcm probe', $intId);
 $markup = seite($probe->id);
 
 check(
-    'die Seite zeichnet einen Renderer-Waehler',
-    str_contains($markup, 'name="taxmod_setting[renderer]"'),
+    'die Zeile `renderer` zeichnet einen Waehler',
+    str_contains($markup, 'name="taxmod_value[' . $kante . ']"'),
     'kein Steuerelement mit diesem Namen im Markup'
+);
+
+// ⚠️ **Der eigene Renderer-Block ist gefallen** ([D-644](../../docs/NewConcept/90-decision-log.md),
+// sein Wort: «Renderer-Box ist uebrigens immer noch da, die muss weg!»). *Zwei Orte fuer eine Sache
+// waeren zwei Gelegenheiten, verschieden zu antworten — und der Block war der einzige Ort, an dem die
+// Menge aus der Registratur kam. **Jetzt kommt sie dort, wo die Zeile steht.***
+check(
+    'und der eigene Renderer-Block kommt im Markup nicht mehr vor',
+    ! str_contains($markup, 'taxmod_setting[renderer]'),
+    'der Block zeichnet noch ein zweites Steuerelement'
 );
 
 // ⚠️ **Ohne `form="…"` schickt das Steuerelement lautlos nichts** — genau der Regress, den
@@ -165,21 +216,96 @@ check(
 check(
     'er haengt am Seitenformular',
     (bool) preg_match(
-        '/<select name="taxmod_setting\[renderer\]" form="taxmod-page-' . $probe->id . '"/',
+        '/<select name="taxmod_value\[' . $kante . '\]" form="taxmod-page-' . $probe->id . '"/',
         $markup
     ),
     'kein form="taxmod-page-' . $probe->id . '" am Waehler'
 );
 
-preg_match_all(
-    '/<option value="([^"]*)"/',
-    (string) (preg_split('/name="taxmod_setting\[renderer\]"/', $markup)[1] ?? ''),
-    $treffer
+// ⚠️ **Eine Ebene heisst Liste** ([R63](../../docs/NewConcept/30-renderer.md),
+// [D-109](../../docs/NewConcept/90-decision-log.md)): *«one level → list, several levels → tree
+// view»*, und die Menge aus der Registratur ist flach — **ein Baumdialog waere hier Moebiliar ohne
+// Aufgabe**.
+//
+// ⚠️ *Und ehrlich gesagt: **der zweite Fall der Regel ist nirgends gebaut**. Jede Menge, die dieser
+// Bildschirm anbietet, ist heute flach, also hat noch nie etwas einen Baum gebraucht. Steht als
+// Befund im Eingang und wird hier nicht erfunden (`PR-4`).*
+check(
+    'und er ist eine Liste, weil die Menge eine Ebene hat',
+    (bool) preg_match('/<select name="taxmod_value\[' . $kante . '\]"/', $markup),
+    'die Zeile zeichnet kein `<select>`'
 );
 
-$angebot = array_values(array_filter(array_slice($treffer[1] ?? [], 0, 8), static fn (string $n): bool => $n !== ''));
+$angebot = angebotDerZeile($markup, $kante);
 
 check('er bietet mindestens zwei Renderer an', count($angebot) >= 2, implode(',', $angebot));
+
+// ⚠️ **Die Menge kommt aus der Registratur und nicht aus den Kindern des Kantenziels**
+// ([D-603](../../docs/NewConcept/90-decision-log.md)): *`eligibleFor()` verengt auf den Typ — fuer
+// `Integer` genau `field`, `spinner`, `slider`.*
+check(
+    'und nur, was diesen Knoten auch zeichnen kann',
+    array_values(array_diff(array_values($angebot), ['field', 'spinner', 'slider'])) === [],
+    implode(',', $angebot)
+);
+
+echo "\n== die sechs unter dem Zwischenknoten sind wieder zu erreichen ==\n";
+
+// ⚠️ **Der Anlass** (`INF-043`): *`form`, `table`, `compact`, `reference`, `chooser-dialog`,
+// `chooser-inline` haengen unter `render with label`. Solange die Menge aus den **Kindern** des
+// Kantenziels kam, fielen sie heraus, sobald der Zwischenknoten seine Marke verlor — und nur der
+// eigene Block holte sie noch. **Aus der Registratur kommen sie ohne Zwischenknoten.***
+//
+// ⚠️ *Welche fuenf wo erscheinen, sagt die Registratur selbst: ein Knoten **ohne** eigenen Typ
+// bekommt die Behaelter, ein Knotenverweis die Waehler. `reference` ist nicht darunter, und das ist
+// keine Luecke dieses Umbaus — **er unterstuetzt nur `Purpose::Display`**, wird also beim Bearbeiten
+// nirgends angeboten und wurde es auch vom eigenen Block nie.*
+$faelle = [
+    'model'     => ['form', 'table', 'compact'],
+    'constants' => ['chooser-dialog', 'chooser-inline'],
+];
+
+foreach ($faelle as $ast => $erwartet) {
+    $wurzel = $framework->rootOf(Branch::from($ast));
+    $unter  = $editor->createNode('__rcm unter ' . $ast, $wurzel->id);
+    $namen  = array_values(angebotDerZeile(seite($unter->id), $kante));
+
+    check(
+        'unter `' . $ast . '` stehen ' . implode(', ', $erwartet) . ' zur Wahl',
+        array_values(array_diff($erwartet, $namen)) === [],
+        'angeboten: ' . (implode(',', $namen) ?: '—')
+    );
+}
+
+echo "\n== was die Registratur nicht kennt, ist keine Moeglichkeit ==\n";
+
+// ⚠️ **Die Zusage, die den Weg festhaelt und nicht nur sein Ergebnis.** *Ein Knoten unter `Renderer`,
+// den keine Klasse umsetzt, waere nach der Kinderregel eine Wahl — nach
+// [D-603](../../docs/NewConcept/90-decision-log.md) ist er keine. **Genau das trennt die beiden
+// Quellen**, und genau daran haengt, dass `render with label` von selbst herausfaellt, ohne dass ihn
+// jemand loeschen oder verschieben muss.*
+$rendererKnoten = $editor->nodeImplementing(\Taxmod\Core\Renderer\FormRenderer::class);
+
+if ($rendererKnoten === null) {
+    check('ein Knoten setzt den Form-Renderer um', false, 'keiner gefunden');
+} else {
+    $eltern = $rendererKnoten->parentId() ?? 0;
+    $blind  = $editor->createNode('__rcm ohne registratur', $eltern);
+    $unter  = $editor->createNode('__rcm modellknoten', $framework->rootOf(Branch::Model)->id);
+    $namen  = angebotDerZeile(seite($unter->id), $kante);
+
+    check(
+        'ein Knoten neben den Renderern, den keine Klasse umsetzt, wird nicht angeboten',
+        ! isset($namen[$blind->id]),
+        'er steht in der Wahl'
+    );
+
+    check(
+        'und der Zwischenknoten `render with label` steht auch nicht darin',
+        ! in_array('render with label', array_values($namen), true),
+        implode(',', $namen)
+    );
+}
 
 echo "\n== waehlen, speichern, frisch lesen ==\n";
 
@@ -201,13 +327,20 @@ function gespeicherterRenderer(int $nodeId): string
 }
 
 $vorher = gespeicherterRenderer($probe->id);
-$wahl   = $angebot[0] === $vorher ? $angebot[1] : $angebot[0];
+
+// ⚠️ *Angeboten wird Knoten-Id => Name; gewaehlt wird die Id, gelesen der Name.*
+$ids    = array_keys($angebot);
+$wahlId = $angebot[$ids[0]] === $vorher ? $ids[1] : $ids[0];
+$wahl   = $angebot[$wahlId];
 
 $gewandert = abschicken([
-    'do'             => 'put_setting',
-    'id'             => (string) $probe->id,
-    '_taxmod_nonce'  => wp_create_nonce('taxmod_node_' . $probe->id),
-    'taxmod_setting' => ['renderer' => $wahl],
+    'do'            => 'put_setting',
+    'id'            => (string) $probe->id,
+    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $probe->id),
+    // ⚠️ **Ueber die Zeile und nicht mehr ueber einen eigenen Schluessel**
+    // ([D-644](../../docs/NewConcept/90-decision-log.md)): *`taxmod_value[<kante>]` ist derselbe Weg,
+    // den jede andere Einstellung nimmt.*
+    'taxmod_value'  => [(string) $kante => (string) $wahlId],
 ]);
 
 check('der Akt ist durchgelaufen', $gewandert);
@@ -228,8 +361,6 @@ check(
 //
 // ⚠️ *Ohne sie waere «gelesen» auch dann gruen, wenn der Wert irgendwo laege, wo ihn niemand
 // wiederfindet — genau der Zustand, aus dem TASK-052 entstanden ist.*
-$kante = $framework->settingRelationId(SettingKey::Renderer);
-
 check('die Einstellungskante `renderer` ist aufgeschrieben', $kante !== 0, (string) $kante);
 
 $satz = (int) $wpdb->get_var(
@@ -264,19 +395,20 @@ $markup = seite($probe->id);
 
 check(
     'der Waehler steht auf der Wahl',
-    (bool) preg_match('/<option value="' . preg_quote($wahl, '/') . '" selected/', $markup),
+    (bool) preg_match('/<option value="' . $wahlId . '" selected/', $markup),
     "«{$wahl}» ist im Markup nicht als gewaehlt markiert"
 );
 
 echo "\n== eine zweite Wahl gewinnt gegen die erste ==\n";
 
-$zweite = $angebot[0] === $wahl ? ($angebot[1] ?? $wahl) : $angebot[0];
+$zweiteId = $ids[0] === $wahlId ? ($ids[1] ?? $wahlId) : $ids[0];
+$zweite   = $angebot[$zweiteId];
 
 abschicken([
-    'do'             => 'put_setting',
-    'id'             => (string) $probe->id,
-    '_taxmod_nonce'  => wp_create_nonce('taxmod_node_' . $probe->id),
-    'taxmod_setting' => ['renderer' => $zweite],
+    'do'            => 'put_setting',
+    'id'            => (string) $probe->id,
+    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $probe->id),
+    'taxmod_value'  => [(string) $kante => (string) $zweiteId],
 ]);
 
 check(

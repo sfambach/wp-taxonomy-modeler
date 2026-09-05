@@ -1318,3 +1318,47 @@ Knoten wie `Base units` überhaupt eine Renderer-Wahl tragen, wenn ein Feld auf 
 *Das Immer-Gelesene liegt 2266 Bytes über der Decke, und das Regelverzeichnis nennt eine andere Zahl
 als die 303 Regeln im Baum. **Beide betreffen gesperrte Dateien** (`CLAUDE.md`, `AGENTS.md`,
 `arbeitsmodell.md`) und wurden hier nicht angefasst.*
+
+---
+
+## INF-048 · Die Renderer-Wahl kommt aus der Registratur — was dabei auffiel
+
+**2026-09-05, beim Fall des eigenen Renderer-Blocks** ([D-644](../../NewConcept/90-decision-log.md),
+sein Wort: *«Renderer-Box ist übrigens immer noch da, die muss weg!»*). *Befunde, keine
+Entscheidungen (`PR-4`, `PR-7`).*
+
+**Gebaut ist, was er gesagt hat, und aus zwei Quellen, die einander nicht ersetzen:** *die **Menge**
+kommt aus der Registratur ([D-603](../../NewConcept/90-decision-log.md), `eligibleFor()` am Knoten),
+die **Gestalt** aus der Tiefe (`R63`, [D-109](../../NewConcept/90-decision-log.md)). `INF-042` und
+`INF-043` sind damit beantwortet: der eigene Block ist weg, und `render with label` fällt aus der
+Wahl, weil ihn keine Renderer-Klasse umsetzt — **ohne dass er gelöscht oder verschoben wurde**.*
+
+⚠️ **Erstens: der zweite Fall von `R63` ist nirgends gebaut.** *«Several levels → tree view» hat
+heute keinen Fall — jede Menge, die dieser Bildschirm anbietet, ist flach, weil sie entweder aus der
+Registratur kommt (eine Ebene) oder aus dem Abstieg unter das Kantenziel, der die Ebenen einebnet.
+**Die Ableitung wird also nirgends falsch, sie wird nur nirgends gebraucht** — und ob sie fehlt, zeigt
+sich erst an einem Ziel, das sie braucht. Nicht erfunden, aufgeschrieben.*
+
+⚠️ **Zweitens: `reference` ist beim Bearbeiten nirgends wählbar, und das war schon vorher so.**
+*Von den sechs Renderern unter `render with label` sind fünf wieder zu erreichen — `form`, `table`,
+`compact` an einem Knoten ohne eigenen Typ, `chooser-dialog` und `chooser-inline` an einem
+Knotenverweis. **`reference` unterstützt nur `Purpose::Display`**, wird also von `eligibleFor(…, Edit)`
+nie zurückgegeben. Der eigene Block hat ihn aus demselben Grund nie angeboten; hier geht nichts
+verloren. Was fehlt, ist die Entscheidung, ob ein reiner Anzeige-Renderer überhaupt wählbar sein soll.*
+
+⚠️ **Drittens: ein Knoten verliert seine Wahl, und es ist genau einer.** *`User reference` hat
+**keinen einzigen** tauglichen Renderer — vorher fiel die Verengung an ihm aus und die Zeile bot
+ersatzweise alles an, was im Baum stand. **Jetzt ist die Zeile leer und gesperrt**, und das ist
+[R28](../../NewConcept/30-renderer.md#r28r32--the-rule-complete)s Antwort auf «nichts zu wählen» —
+dieselbe, die `validator` schon bekommt. **Gemessen an allen 137 Knoten: einer hat keinen tauglichen
+Renderer, 136 haben mindestens einen.***
+
+⚠️ **Viertens, und das ist der teuerste Fund: die Zeile zeigte nicht, was gesetzt ist.** *Der
+gespeicherte Wert ist seit [D-583](../../NewConcept/90-decision-log.md) ein **Datensatz** des
+gewählten Renderers, die Wahlliste steht aber auf **Knoten-Ids** — der Verweis fand sich dort nie
+wieder, und die Liste stand auf ihrem ersten Eintrag. **Der nächste Klick hätte den geschrieben.**
+Aufgefallen ist es erst, als der eigene Block wegfiel, denn der ging über den **Namen**. Behoben,
+indem die Zeile den geltenden Renderer über seinen Namen auf seinen Knoten abbildet und ihn so
+vorwählt — **gezeigt, nicht geschrieben** ([R33c](../../NewConcept/30-renderer.md)). ⚠️ *Was hier
+nicht entschieden ist: **ob eine Wertzeile allgemein einen Datensatzverweis auf seinen Knoten
+abbilden soll**. Heute tut es nur die Renderer-Zeile, weil nur sie einen eigenen Satz anlegt.*

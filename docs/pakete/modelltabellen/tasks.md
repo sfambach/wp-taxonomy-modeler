@@ -1724,3 +1724,20 @@ gefragt werden».** *Die beiden beantworten verschiedene Fragen und ersetzen ein
 *Der Ast liefert also die **Gestalt** der Bedienung, die Registratur die **Menge**. Wer nur den Ast
 fragt, bietet an einem `Text`-Feld alle vier Ganzzahl-Konverter an — der gemessene Fehler aus
 D-603. Wer nur die Registratur fragt, verliert die Baumansicht, die `R63` verlangt.*
+
+⚠️ **Erledigt am 2026-09-05: der eigene Renderer-Block ist gefallen, [D-644](../../NewConcept/90-decision-log.md)
+ist damit ganz erfuellt.** *Sein Wort war «Renderer-Box ist uebrigens immer noch da, die muss weg!».
+**Die Menge kommt jetzt aus der Registratur** — `eligibleFor()` am Knoten selbst
+([D-603](../../NewConcept/90-decision-log.md)) —, und damit fallen `render with label` und jeder
+andere Knoten heraus, den keine Renderer-Klasse umsetzt. **Er ist nicht geloescht und nicht
+verschoben**, wie oben festgehalten; er stoert den Waehler nur nicht mehr.*
+
+*Gemessen vorher/nachher, je Zeile `renderer`: `Integer` 3 → 3, `Text` 2 → 2, `Boolean` 2 → 2,
+`Prefixes` **0 → 2**, `kilo` **0 → 2**, `Electronic Parts` **1 → 4**. **Fuenf der sechs vermissten
+Renderer sind wieder zu erreichen** — `form`, `table`, `compact` an einem Knoten ohne eigenen Typ,
+`chooser-dialog` und `chooser-inline` an einem Knotenverweis. `reference` unterstuetzt nur
+`Purpose::Display` und war auch im alten Block nie waehlbar (`INF-048`).*
+
+*Der Waechter `renderer-choice-mask-check` haelt es fest: die Zeile bietet an, der Block kommt im
+Markup nicht mehr vor, ein Knoten neben den Renderern ohne Klasse ist keine Moeglichkeit, und die
+Wahl laesst sich ueber die Zeile speichern und wiederfinden — 19 Zusagen, alle gruen.*
