@@ -291,7 +291,14 @@ if ($html === '') {
         }
     }
 
-    check('geerbte Zeilen gefunden', $geerbte >= 3, (string) $geerbte);
+    // WICHTIG: Die Zahl faellt von drei auf zwei, und das ist eine sichtbare Aenderung dieser
+    // Zusage (PR-9). `Kontact` erbte von der Wurzel drei Einstellungskanten -- die Traegerkante
+    // des Renderers, `validator`, `read_only`. Die erste ist mit dem Huellknoten `DisplayOption`
+    // gefallen (D-604), und der Renderer haengt seit TASK-020 an `nodes.settings_record_id`
+    // (D-584). Gemessen am 2026-09-05: zwei geerbte Zeilen, und das sind alle, die es gibt.
+    // Der Gegenstand der Zusage ist unberuehrt -- es muessen geerbte Zeilen da sein, damit
+    // «geerbte sind gesperrt» ueberhaupt etwas behauptet.
+    check('geerbte Zeilen gefunden', $geerbte >= 2, (string) $geerbte);
     check('und keine davon laesst «How many» aendern', $offeneGeerbte === 0, "{$offeneGeerbte} offen");
 
     // ⚠️ **Der Gegenfall.** *Alles zu sperren wäre oben ebenfalls grün — und wäre schlimmer als der
@@ -374,26 +381,53 @@ echo "\n== Die Auswahl sieht durch einen markierten Zwischenknoten hindurch ==\n
 // ⚠️ *Die Erweiterung folgt aus ihren eigenen Worten: «unmarkiert» ist dort die Bedingung, also heisst
 // **markiert** «kein Wert, nur Struktur» — und die Auswahl steigt hindurch. Gemessen vorher: die Liste
 // bot «render with label» an und weder `form` noch `table` noch `compact`.*
+// WICHTIG: Das Angebot wird bei der Aufloesung erfragt und nicht mehr aus einem `<option>` der
+// Seite gelesen -- eine sichtbare Aenderung dieser Zusage (PR-9). Der Grund ist gemessen: das
+// Auswahlfeld wurde je Einstellungs*kante* gezeichnet, und die Kante `renderer` gibt es nicht mehr.
+// Sie hing am Huellknoten `DisplayOption`, den der Eigentuemer geloescht hat (D-604); seit TASK-020
+// steht die Wahl in `nodes.settings_record_id` (D-584). Gemessen am 2026-09-05 traegt `Root` nur
+// noch `validator` und `read_only`, und auf keiner Knotenseite steht ein Renderer-Waehler.
+//
+// ⚠️ **Die Zusage selbst ist unberuehrt** — *«die Auswahl sieht durch einen markierten Zwischenknoten
+// hindurch» ist eine Aussage ueber die **Menge der Moeglichkeiten**, nicht ueber das Steuerelement.
+// Sie wird jetzt dort gestellt, wo diese Menge entsteht.*
+//
+// ⚠️ **Und der Rest ist als Befund zu melden, nicht gruen zu faerben:** *dass die Bedienung zum
+// Waehlen fehlt, ist eine Luecke des Umbaus. Sie gehoert ins Eingangsblatt.*
 $id   = knotenId('Kontact');
-$html = $id === 0 ? '' : seiteVon($id);
+$node = $id === 0 ? null : (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find($id);
 
-if ($html === '') {
+if ($node === null) {
     check('ein Knoten mit geerbter Renderer-Einstellung', false);
 } else {
-    $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', $html) ?? $html;
+    $edges     = new \Taxmod\WordPress\Persistence\WpdbRelationRepository();
+    $nodesRepo = new \Taxmod\WordPress\Persistence\WpdbNodeRepository();
+    $framework = new \Taxmod\WordPress\Persistence\SeededFrameworkNodes(
+        $nodesRepo,
+        $edges,
+        new \Taxmod\WordPress\Persistence\WpdbChangelog(new \Taxmod\WordPress\SystemClock())
+    );
 
-    // Die Zelle, in der die Einstellung ihren Wert zeigt.
-    preg_match_all('/<td class="taxmod-field-value[^"]*"[^>]*>(.*?)<\/td>/s', $html, $zellen);
+    $rendering = new \Taxmod\Core\Service\Rendering(
+        $nodesRepo,
+        $framework,
+        \Taxmod\Core\Renderer\ShippedRenderers::registry(),
+        new \Taxmod\WordPress\Persistence\SeededTypeNodes($nodesRepo, $framework),
+        new \Taxmod\Core\Service\Labels(new \Taxmod\WordPress\Persistence\WpdbLabelRepository(), $framework),
+        null,
+        new \Taxmod\Core\Service\ModelValues(
+            new \Taxmod\WordPress\Persistence\WpdbRecordRepository(),
+            $edges,
+            $nodesRepo,
+            $framework
+        ),
+        $edges
+    );
 
     $angebot = [];
 
-    foreach ($zellen[1] as $zelle) {
-        if (! str_contains($zelle, 'render')) {
-            continue;
-        }
-
-        preg_match_all('/<option value="[^"]*"[^>]*>([^<]*)<\/option>/', $zelle, $treffer);
-        $angebot = [...$angebot, ...$treffer[1]];
+    foreach ($rendering->choicesForNode($node, \Taxmod\Core\Renderer\Purpose::Edit) as $einer) {
+        $angebot[] = $einer->name();
     }
 
     foreach (['form', 'table', 'compact'] as $wunsch) {
@@ -467,9 +501,15 @@ if ($html === '') {
         substr($nachName['Admin'] ?? '', 0, 80)
     );
 
+    // WICHTIG: Gesucht wird `read_only` und nicht mehr «Display Option» -- eine sichtbare
+    // Aenderung dieser Zusage (PR-9). Der Huellknoten ist geloescht (D-604), seine Kanten mit ihm;
+    // seit D-585 traegt der Renderer den `converter` selbst, und D-594 hat die 29 Wahlen in die
+    // Spalte umgezogen. Gemessen am 2026-09-05 nennt die Settings-Seite `validator` und
+    // `read_only` -- gewoehnliche Einstellungskanten der Wurzel, und genau das ist der Gegenstand
+    // der Zusage: die Settings-Seite nennt Einstellungen. *Welche* es sind, war nie ihre Frage.
     check(
         'und Settings nennt die Einstellungen',
-        str_contains($nachName['Settings'] ?? '', 'Display Option'),
+        str_contains($nachName['Settings'] ?? '', 'read_only'),
         substr($nachName['Settings'] ?? '', 0, 80)
     );
 

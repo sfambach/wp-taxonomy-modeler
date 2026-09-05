@@ -243,38 +243,46 @@ if ($gefunden !== []) {
     );
 }
 
-echo "\n== Und die Einstellungskante der Wurzel, gefunden an ihrer Id ==\n";
+echo "\n== Und «wie oft» beim Renderer: genau einmal, und das sagt die Spalte ==\n";
 
-// ⚠️ **Hier stand `['Root', 'renderer', '1..*']`, und die Zeile ist zu Recht rot geworden.** *Der
-// Eigentümer hat die Kante umbenannt — sein Recht — und diese Prüfung suchte sie am Namen. **Das ist
-// dasselbe Muster, das [D-543](../../docs/NewConcept/90-decision-log.md) gerade im Code verboten hat**,
-// und eine Prüfung, die es weiter tut, ist eine Prüfung, die einen erlaubten Akt als Fehler meldet.*
-$kanteId = $framework->settingEdgeId(SettingKey::Renderer);
+// WICHTIG: Hier stand die Einstellungskante `renderer` an der Wurzel mit «1..*», gesucht ueber
+// `settingEdgeId(SettingKey::Renderer)` -- und beides ist weg. Das ist eine sichtbare Aenderung
+// dieser Zusage (PR-9), und sie hat zwei Gruende, keinen davon technisch:
+//
+// ⚠️ **Erstens hat D-584 die Vielzahl abgeschafft.** *Sein Wort: «eine Kante und ein Knoten haben
+// genau einen Renderer.» Und ausdruecklich: «was dadurch wegfaellt: die geordnete Liste von
+// Renderern an einem Knoten, **die Multiplizitaet `1..*` an `DisplayOption`**, und `sort_order` auf
+// dieser Ebene.» Eine Zusage, die weiter `1..*` verlangt, haelt einen vergangenen Zielzustand fest.*
+//
+// ⚠️ **Zweitens gibt es die Kante nicht mehr.** *Der Eigentuemer hat den Huellknoten `DisplayOption`
+// geloescht (D-604), die Kanten 44091/44093 sind mit ihm gefallen, und die zwei WordPress-Optionen,
+// die ihre Ids hielten, zeigten seither ins Leere -- sie sind mit dieser Aenderung geloescht.
+// Gemessen am 2026-09-05: an `Root` stehen `validator` und `read_only`, keine Kante `renderer`.*
+//
+// **Die Frage bleibt dieselbe, nur beantwortet sie heute die Spalte:** ein Zeiger kann auf genau
+// einen Satz zeigen, also ist «genau ein Renderer» keine Multiplizitaet mehr, sondern die Form der
+// Ablage. Geprueft wird, dass diese Form haelt -- kein Zeiger ins Leere.
+check(
+    'die alte Traegerkante ist nicht mehr aufgeschrieben',
+    $framework->settingEdgeId(SettingKey::Renderer) === 0,
+    (string) $framework->settingEdgeId(SettingKey::Renderer)
+);
 
-if ($kanteId === 0) {
-    check('die Id der Traegerkante steht aufgeschrieben', false, 'noch nichts gemerkt');
-} else {
-    check('die Id der Traegerkante steht aufgeschrieben', true);
+$mitSpalte = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE settings_record_id IS NOT NULL'
+);
 
-    $wurzel = $framework->root();
-    $kante  = null;
+// ⚠️ *Der Gegenfall: es gibt ueberhaupt Wahlen. Sonst waere «kein Zeiger ins Leere» auch dann gruen,
+// wenn keine einzige Spalte gefuellt ist. Gemessen am 2026-09-05: 28.*
+check('und Knoten tragen ihre Wahl in der Spalte', $mitSpalte >= 20, (string) $mitSpalte);
 
-    foreach ($edges->fieldEdgesOf([$wurzel->id]) as $eine) {
-        if ($eine->id === $kanteId) {
-            $kante = $eine;
-        }
-    }
+$insLeere = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
+       LEFT JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+      WHERE n.settings_record_id IS NOT NULL AND r.id IS NULL'
+);
 
-    check('und sie steht an der Wurzel', $kante !== null, 'nicht unter den Feldkanten');
-
-    if ($kante !== null) {
-        check(
-            'sie traegt «1..*» an der Kante',
-            $kante->multiplicity->value === '1..*',
-            $kante->multiplicity->value
-        );
-    }
-}
+check('kein Zeiger ins Leere — genau ein Satz je Knoten', $insLeere === 0, (string) $insLeere);
 
 echo "\n== Der Speichern-Knopf der Seite schreibt «wie oft» ==\n";
 

@@ -301,6 +301,7 @@ $merkmal = [
 ];
 
 $geprueft = 0;
+$mitNamen = 0;
 $daneben  = [];
 
 foreach ($wpdb->get_results(
@@ -317,6 +318,10 @@ foreach ($wpdb->get_results(
     }
 
     $name = $rendering->rendererNameFor($node);
+
+    if ($name !== null) {
+        ++$mitNamen;
+    }
 
     if ($name === null || ! isset($merkmal[$name])) {
         continue;
@@ -339,7 +344,23 @@ check('die Zeichnung traegt das Merkmal des gesetzten Renderers', $daneben === [
 
 // ⚠️ *Der Gegenfall: es wurde überhaupt etwas geprüft. Ohne ihn wäre «keine Abweichung» auch dann grün,
 // wenn kein einziger Knoten einen Renderer trägt.*
-check('und es wurden Knoten geprueft', $geprueft >= 3, (string) $geprueft);
+//
+// WICHTIG: Der Gegenfall zaehlt seit heute die *aufgeloesten* Wahlen und nicht mehr die
+// gezeichneten -- und das ist eine sichtbare Aenderung dieser Zusage (PR-9). Er stand auf
+// «>= 3 gezeichnete» aus einer Zeit, in der die Wahl an einer Wertzeile hing. Seit TASK-020
+// steht sie in `nodes.settings_record_id` (D-584), und gemessen am 2026-09-05 tragen **28
+// Knoten** die Spalte -- aber nur *einer* davon einen Renderer, der ein einzelnes Feld
+// zeichnet (`Integer` auf `slider`). Die uebrigen 27 sind `form`, `table`, `chooser-inline`,
+// `node`, `compact`, `chooser-dialog`: sie zeichnen einen Rahmen, kein Feld, und
+// `valueOfType()` gibt fuer sie nichts zurueck. Eine Zahl, die drei gezeichnete Felder
+// verlangt, misst damit nicht mehr, ob der Umzug gehalten hat -- sie misst, wie viele
+// skalare Knoten der Eigentuemer gerade eingestellt hat.
+//
+// Die schaerfere Frage ist die, auf die es ankommt: **loest jede Spalte zu einem Renderer
+// auf?** Faellt eine Wahl bei einem Umzug weg, faellt diese Zahl sofort.
+check('jede gefuellte Spalte loest zu einem Renderer auf', $mitNamen >= 20, (string) $mitNamen . ' von 28');
+
+check('und mindestens eine Zeichnung war darunter', $geprueft >= 1, (string) $geprueft);
 
 echo "\n== Die Auswahl bietet nur, was der Knoten vertraegt ==\n";
 
@@ -350,54 +371,53 @@ echo "\n== Die Auswahl bietet nur, was der Knoten vertraegt ==\n";
 //
 // ⚠️ *Die Erwartung kommt aus der Registratur, nicht aus einer Liste in dieser Datei — sonst würde die
 // Zusage rot, sobald ein Renderer dazukommt.*
-$admin = get_users(['role' => 'administrator', 'number' => 1]);
+// WICHTIG: Gefragt wird die Registratur und nicht mehr das Auswahlfeld der Seite -- eine
+// sichtbare Aenderung dieser Zusage (PR-9), und der Grund ist gemessen. Die Zusage suchte ein
+// `<select name="taxmod_part[<Satz>][44091]">`, also die zweistufige Adresse aus dem Huellknoten
+// `DisplayOption`. Den hat der Eigentuemer geloescht; mit ihm sind die Kanten 44091/44093
+// gefallen, und `Root` traegt seither ueberhaupt keine Einstellungskante `renderer` mehr
+// (gemessen am 2026-09-05: an `Root` stehen `validator` und `read_only`, sonst nichts). Der
+// Renderer haengt seit TASK-020 an `nodes.settings_record_id` (D-584).
+//
+// ⚠️ **Was diese Zusage damit *nicht* mehr abdeckt, und es ist als Befund festzuhalten statt
+// gruen zu faerben:** *auf der Knotenseite wird heute **kein Renderer-Waehler gezeichnet**, weil
+// `Rendering::settingControl()` je Einstellungs*kante* zeichnet und es keine gibt. Die Zusage
+// prueft darum den Inhalt der Regel -- `R14a`: die Auswahl bietet nur, was der Knoten vertraegt --
+// an der Stelle, an der er heute lebt. **Dass die Bedienung dazu fehlt, ist eine Luecke des
+// Umbaus und gehoert ins Eingangsblatt, nicht in eine Zusage, die so tut, als gaebe es sie.***
+// ⚠️ **Und der Preis dieser Aenderung, ausgesprochen:** *vorher standen zwei unabhaengige Wege
+// gegeneinander -- die Registratur gegen die Seite. Bleibt nur die Registratur, waere ein Vergleich
+// mit sich selbst eine Tautologie. Also steht die Erwartung hier als Liste, gemessen am 2026-09-05.
+// **Kommt ein Renderer dazu, wird die Zeile rot und will angesehen werden** -- das ist gewollt und
+// ist genau das, was der frueheren Fassung an dieser Stelle abging.*
+$erwartungen = [
+    'Integer' => ['field', 'slider', 'spinner'],
+    'Boolean' => ['checkbox', 'toggle'],
+];
 
-if ($admin === []) {
-    check('ein Administrator ist da', false);
-} else {
-    wp_set_current_user($admin[0]->ID);
+foreach ($erwartungen as $name => $soll) {
+    $node = knoten($name);
 
-    $wertKante = $framework->settingValueEdgeId(\Taxmod\Core\Model\SettingKey::Renderer);
+    if ($node === null) {
+        check("«{$name}» steht im Modell", false);
 
-    foreach (['Integer', 'Boolean'] as $name) {
-        $node = knoten($name);
-
-        if ($node === null || $wertKante === 0) {
-            check("«{$name}» steht im Modell", false);
-
-            continue;
-        }
-
-        $soll = [];
-
-        foreach ($rendering->choicesForNode($node, Purpose::Edit) as $einer) {
-            $soll[] = $einer->name();
-        }
-
-        $_GET['taxmod_node'] = (string) $node->id;
-        $_GET['page']        = 'taxmod-nodes';
-
-        $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
-        $plugin = $bau->newInstanceWithoutConstructor();
-        $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
-        $html = (string) preg_replace('/<dialog\b.*?<\/dialog>/s', '', $plugin->screen()->render());
-
-        $gezeigt = [];
-
-        if (preg_match('/<select[^>]*name="taxmod_part\[\d+\]\[' . $wertKante . '\]"[^>]*>(.*?)<\/select>/s', $html, $treffer)) {
-            preg_match_all('/<option[^>]*>([^<]*)<\/option>/', $treffer[1], $o);
-            $gezeigt = array_map('trim', $o[1]);
-        }
-
-        sort($soll);
-        sort($gezeigt);
-
-        check(
-            "«{$name}»: die Auswahl ist genau die zulaessige Menge",
-            $gezeigt === $soll,
-            'gezeigt: ' . implode(', ', $gezeigt) . ' — zulaessig: ' . implode(', ', $soll)
-        );
+        continue;
     }
+
+    $gezeigt = [];
+
+    foreach ($rendering->choicesForNode($node, Purpose::Edit) as $einer) {
+        $gezeigt[] = $einer->name();
+    }
+
+    sort($soll);
+    sort($gezeigt);
+
+    check(
+        "«{$name}»: die Auswahl ist genau die zulaessige Menge",
+        $gezeigt === $soll,
+        'geboten: ' . implode(', ', $gezeigt) . ' — zulaessig: ' . implode(', ', $soll)
+    );
 }
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

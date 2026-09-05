@@ -124,13 +124,60 @@ register_shutdown_function(static function () use (&$meineKnoten, &$meineSaetze)
     }
 });
 
-echo "\n== Die Saat hat die zwei Kanten aufgeschrieben ==\n";
+echo "\n== Der Renderer haengt an der Spalte, nicht an einem Kantenpaar ==\n";
 
-$aussen = $framework->settingEdgeId(SettingKey::Renderer);
-$innen  = $framework->settingValueEdgeId(SettingKey::Renderer);
+// WICHTIG: Hier stand «die Saat hat die zwei Kanten aufgeschrieben», und die zwei Kanten gibt es
+// nicht mehr. Das ist eine sichtbare Aenderung dieser Zusage (PR-9), und sie ist die Umschrift des
+// ganzen Waechters auf die heutige Form.
+//
+// ⚠️ **D-584, sein Wort:** *«eine Kante und ein Knoten haben genau einen Renderer.»* Und die Folge,
+// die er selbst zieht: *«`settings_record_id` hoert auf, ein zweiter Mechanismus zu sein -- bei
+// genau einem Renderer ist ein einzelner Zeiger auf einen einzelnen Datensatz genau richtig, und
+// **dessen `node_id` sagt schon, welcher Renderer es ist**.»*
+//
+// ⚠️ **Und die alte Adresse ist nicht nur ueberholt, sie ist weg.** *Der Eigentuemer hat den
+// Huellknoten `DisplayOption` geloescht (D-604); die Kanten 44091 (`render`) und 44093 (Traeger)
+// sind mit ihm gefallen. Die zwei WordPress-Optionen, die ihre Ids hielten, zeigten seither auf
+// nichts -- **sie sind mit dieser Aenderung geloescht**, weil eine gemerkte Id, die es nicht mehr
+// gibt, schlimmer ist als keine: sie kann einer spaeteren Kante wieder gehoeren. `0` heisst
+// «nicht aufgeschrieben», und das ist die Wahrheit.*
+check(
+    'die alte Traegerkante ist nicht mehr aufgeschrieben',
+    $framework->settingEdgeId(SettingKey::Renderer) === 0,
+    (string) $framework->settingEdgeId(SettingKey::Renderer)
+);
 
-check('die Traegerkante steht da', $aussen !== 0, (string) $aussen);
-check('die Wertkante steht da', $innen !== 0, (string) $innen);
+check(
+    'und die alte Wertkante auch nicht',
+    $framework->settingValueEdgeId(SettingKey::Renderer) === 0,
+    (string) $framework->settingValueEdgeId(SettingKey::Renderer)
+);
+
+$rendererPfad = (string) $wpdb->get_var(
+    'SELECT path FROM ' . Schema::table('nodes') . " WHERE name = 'Renderer' LIMIT 1"
+);
+
+// ⚠️ **Dieselbe Zusage wie frueher «jeder gespeicherte Renderer zeigt in den Renderer-Ast», nur an
+// der neuen Adresse.** *Sie ist am eigenen Fehler gelernt: es gibt zwei Knoten namens `form` -- die
+// Label-Rolle und den Renderer (D-022: Knotennamen sind absichtlich nicht eindeutig). Ein Wert, der
+// richtig heisst und falsch zeigt, ist schlimmer als ein leerer.*
+$gesamt = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE settings_record_id IS NOT NULL'
+);
+
+$daneben = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
+       INNER JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+       LEFT JOIN ' . Schema::table('nodes') . ' z ON z.id = r.node_id
+      WHERE COALESCE(z.path, %s) NOT LIKE %s',
+    '',
+    $wpdb->esc_like($rendererPfad . '.') . '%'
+));
+
+check('jede Spalte zeigt auf einen Satz im Renderer-Ast', $daneben === 0, "{$daneben} von {$gesamt} daneben");
+
+// ⚠️ *Der Gegenfall: es gibt ueberhaupt gespeicherte Renderer. Gemessen am 2026-09-05: 28.*
+check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
 
 echo "\n== Ein Renderer wird geschrieben und wieder gelesen ==\n";
 
@@ -171,10 +218,15 @@ if ($rendererKnoten === null) {
 } else {
     check('«spinner» steht als Knoten unter «Renderer»', true);
 
+    // WICHTIG: Geschrieben wird ueber die Spalte und nicht mehr ueber `putSettingValue()` --
+    // sichtbare Aenderung dieser Zusage (PR-9). `putSettingValue()` schlaegt die Traegerkante nach
+    // und wirft heute zu Recht: es gibt keine. Der Weg von D-584 ist
+    // `chooseSettingRecordAtNode()`: ein `default`-Satz des gewaehlten Renderer-Knotens, und
+    // `nodes.settings_record_id` zeigt darauf.
     $geschrieben = true;
 
     try {
-        $data->putSettingValue($knotenId, SettingKey::Renderer, TypedValue::ofReference((int) $rendererKnoten['id']));
+        $data->chooseSettingRecordAtNode($knotenId, (int) $rendererKnoten['id']);
     } catch (NotYetStorable $e) {
         $geschrieben = false;
         check('der Renderer laesst sich schreiben', false, $e->getMessage());
@@ -196,278 +248,134 @@ if ($rendererKnoten === null) {
         // ⚠️ *Und er liegt im **default**-Satz, nicht in einem Benutzersatz
         // ([D-026](../../docs/NewConcept/90-decision-log.md): «at model level there are no values,
         // only defaults»).*
-        $arten = $wpdb->get_col($wpdb->prepare(
-            'SELECT kind FROM ' . Schema::table('records') . ' WHERE node_id = %d',
+        // WICHTIG: Gefragt wird der Satz, auf den die Spalte zeigt -- er gehoert dem *Renderer*,
+        // nicht dem eingestellten Knoten (D-584: «dessen `node_id` sagt schon, welcher Renderer es
+        // ist»). Die alte Fassung suchte Saetze mit `node_id = <mein Knoten>` und haette hier
+        // nichts gefunden.
+        $satz = $wpdb->get_row($wpdb->prepare(
+            'SELECT r.kind, r.node_id FROM ' . Schema::table('nodes') . ' n
+             INNER JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+             WHERE n.id = %d',
             $knotenId
-        )) ?: [];
+        ), ARRAY_A);
 
         check(
-            'und zwar im default-Satz',
-            $arten === ['default'],
-            implode(', ', $arten) ?: 'kein Satz',
+            'und zwar im default-Satz des gewaehlten Renderers',
+            ($satz['kind'] ?? null) === 'default'
+                && (int) ($satz['node_id'] ?? 0) === (int) $rendererKnoten['id'],
+            json_encode($satz) ?: 'kein Satz'
         );
 
         // ⚠️ **Zweimal schreiben legt keinen zweiten Satz an.** *Sonst stünden am Ende zwei Antworten
         // auf eine Frage da, und der Leser nähme die erste — ein Fehler, der erst beim zweiten Ändern
         // auffällt.*
-        $data->putSettingValue($knotenId, SettingKey::Renderer, TypedValue::ofReference((int) $rendererKnoten['id']));
-
-        $wieViele = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT COUNT(*) FROM ' . Schema::table('records') . ' WHERE node_id = %d',
+        // WICHTIG: Gezaehlt werden jetzt die Saetze, auf die *irgendein* Knoten mit dieser Spalte
+        // zeigt -- fuer diesen einen Pruefknoten kann es hoechstens einer sein, weil eine Spalte
+        // eine Zahl haelt. Das ist genau die Aussage von D-584, und sie ist staerker als die alte
+        // Zaehlung: «genau ein Renderer» ist keine Regel mehr, die eingehalten werden muss,
+        // sondern die Form der Ablage. Geprueft wird, dass der zweite Schreibakt den vorhandenen
+        // Satz *behaelt* und keinen neuen anlegt.
+        $vorher = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT settings_record_id FROM ' . Schema::table('nodes') . ' WHERE id = %d',
             $knotenId
         ));
 
-        check('zweimal geschrieben, ein Satz', $wieViele === 1, (string) $wieViele);
-    }
-}
+        $data->chooseSettingRecordAtNode($knotenId, (int) $rendererKnoten['id']);
 
-echo "\n== Und derselbe Weg ueber die Seite, wie ein Mensch ihn geht ==\n";
-
-// ⚠️ **Das ist die Zusage, die zaehlt.** *Der Eigentümer: «gut, ich sehe die Settings, kann sie aber
-// nicht einstellen» — und danach, als ich daneben einen eigenen Wähler baute: «das ist genau dafür da,
-// und das ist glaube ich das, was du am Konzept vorbei machst». **Also prüft dieser Abschnitt den Weg,
-// den das Konzept nennt**: die Wertspalte des Einstellungsblocks, ein Speichern für die Seite.*
-//
-// ⚠️ *Es wird wirklich abgeschickt — `handlePost()` mit Nonce und Fähigkeit, kein Umweg um die
-// Prüfungen des Randes (`CD-5`). Die Weiterleitung am Ende wird abgefangen, sonst endete der Lauf hier.*
-$rendererId = $rendererKnoten === null ? 0 : (int) $rendererKnoten['id'];
-
-if ($rendererId === 0 || $aussen === 0 || $innen === 0) {
-    check('die Zutaten fuer den Seitenweg stehen bereit', false, "renderer={$rendererId} aussen={$aussen} innen={$innen}");
-} else {
-    check('die Zutaten fuer den Seitenweg stehen bereit', true);
-
-    $verwalter = get_users(['role' => 'administrator', 'number' => 1]);
-
-    if ($verwalter === []) {
-        check('ein Administrator ist da', false);
-    } else {
-        wp_set_current_user($verwalter[0]->ID);
-
-        add_filter('wp_redirect', static function ($ziel) {
-            throw new RuntimeException('__weitergeleitet__' . (string) $ziel);
-        }, 10, 1);
-
-        $_POST = [
-            'action'        => 'taxmod_node',
-            'id'            => (string) $knotenId,
-            'do'            => 'put_setting',
-            '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $knotenId),
-            // Genau die Adresse, die die Wertspalte zeichnet.
-            'taxmod_value'  => [(string) $aussen => [(string) $innen => (string) $rendererId]],
-        ];
-        $_REQUEST = $_POST;
-
-        $meldung = '';
-
-        try {
-            $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
-            $plugin = $bau->newInstanceWithoutConstructor();
-            $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
-            $plugin->screen()->handlePost();
-        } catch (RuntimeException $e) {
-            $meldung = str_starts_with($e->getMessage(), '__weitergeleitet__')
-                ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
-                : $e->getMessage();
-        }
-
-        check('der Akt laeuft durch', $meldung === 'ok', $meldung);
-
-        $nachher = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
-
-        check(
-            'und der Renderer steht danach im Modell',
-            ($nachher['renderer']->value->text ?? null) === 'spinner',
-            $nachher['renderer']->value->text ?? 'nichts'
-        );
-
-        // ⚠️ **Der Gegenfall: der Teildatensatz ist entstanden, obwohl vorher keiner da war.** *Die
-        // Multiplizität von `Display Option` ist `1..*` — der Eigentümer hat darauf bestanden. Angelegt
-        // wird er beim **Speichern**, nicht beim Ansehen: eine Seite zu zeichnen darf nichts schreiben.*
-        $teile = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT COUNT(*) FROM ' . Schema::table('records') . ' r
-             INNER JOIN ' . Schema::table('record_values') . ' v ON v.value_ref = r.id
-             WHERE v.path = %s',
-            (string) $aussen
+        $nachher = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT settings_record_id FROM ' . Schema::table('nodes') . ' WHERE id = %d',
+            $knotenId
         ));
 
-        check('ein Teildatensatz ist dabei entstanden', $teile >= 1, (string) $teile);
+        check('zweimal geschrieben, derselbe Satz', $vorher !== 0 && $vorher === $nachher, "{$vorher} → {$nachher}");
     }
 }
 
-echo "\n== Die Wertspalte zeigt, was gespeichert ist ==\n";
+echo "\n== Ein anderer Renderer ersetzt den Satz, er kommt nicht dazu ==\n";
 
-// ⚠️ **Er hat den Mangel gefunden, bevor ich ihn zugab:** *«auch bezweifle ich, dass dies Datensätze
-// sind, die wir hier sehen — bitte überrasch mich, dass es doch so ist.» **Gemessen hatte er recht:**
-// gezeichnet wurden die **Kanten** des Teils, kein einziger seiner Kanten-Datensätze wurde gelesen. Im
-// Teil von `Passiv` stand `render = form`, der Auswahlkasten zeigte nichts.*
+// WICHTIG: Hier standen drei Abschnitte, die alle ueber die Seitenadresse
+// `taxmod_value[<Traegerkante>][<Wertkante>]` beziehungsweise `taxmod_part[<Satz>][<Kante>]`
+// gingen -- «derselbe Weg ueber die Seite», «die Wertspalte zeigt, was gespeichert ist» und
+// «Nichts ist eine Wahl, und sie loescht». Sie sind ersetzt, und das ist eine sichtbare
+// Aenderung dieser Zusagen (PR-9). Der Grund ist gemessen und nicht technisch:
 //
-// ⚠️ **Und die Adresse ist seine Lehre:** *zweimal «arbeitest auf einmal mit Pfaden anstatt mit den Ids,
-// die wir haben», und als es dastand: «siehst du, Satz-Id». Ein Teil wird über
-// `taxmod_part[<Satz-Id>][<Kanten-Id>]` angesprochen — eindeutig auch bei mehreren Teilen
-// ([D-548](../../docs/NewConcept/90-decision-log.md)).*
-$verwalter = get_users(['role' => 'administrator', 'number' => 1]);
+// WICHTIG: Die Adresse gibt es nicht mehr. Der Renderer-Waehler wurde je Einstellungs*kante*
+// gezeichnet; die Kante hing am Huellknoten `DisplayOption`, den der Eigentuemer geloescht hat
+// (D-604), und seit TASK-020 haengt der Renderer an `nodes.settings_record_id` (D-584).
+// Gemessen am 2026-09-05 traegt `Root` nur noch `validator` und `read_only`. Die drei
+// Abschnitte liefen weiter durch und schrieben nichts -- «der Akt laeuft durch» war gruen,
+// waehrend danach kein Wert dastand. Eine Zusage, die einen wirkungslosen Akt bestaetigt, ist
+// schlimmer als keine.
+//
+// WICHTIG: Was sie geprueft haben, war im Kern: ein Renderer laesst sich aendern, und die alte
+// Angabe bleibt nicht daneben stehen. Genau das steht in D-584 als Regel des neuen Ortes:
+// «der alte Satz wird vergessen, wenn ein anderer Renderer gewaehlt wird -- seine Felder sind
+// die des alten Knotens und sagen ueber den neuen nichts.» Das wird hier gefragt.
+//
+// WICHTIG: Und was ungedeckt bleibt, gehoert gemeldet statt gruen gefaerbt: auf der Knotenseite
+// steht heute kein Renderer-Waehler, und es gibt keinen Weg, ihn ueber die Seite zu setzen oder
+// herauszunehmen. Der Rundlauf ueber `handlePost()` kann darum nicht geprueft werden -- er
+// existiert nicht. Das ist eine Luecke des Umbaus und gehoert ins Eingangsblatt.
+$zweiter = $wpdb->get_row($wpdb->prepare(
+    'SELECT k.id, k.name FROM ' . Schema::table('relations') . ' e
+     INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = e.to_id
+     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = e.from_id
+     WHERE v.name = %s AND e.kind = %s AND k.name = %s LIMIT 1',
+    'Renderer',
+    'inheritance',
+    'slider'
+), ARRAY_A);
 
-if ($verwalter === []) {
-    check('ein Administrator ist da', false);
+$spalte = static function () use ($wpdb, $knotenId): int {
+    return (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT settings_record_id FROM ' . Schema::table('nodes') . ' WHERE id = %d',
+        $knotenId
+    ));
+};
+
+if ($zweiter === null || $rendererKnoten === null) {
+    check('«slider» steht als Knoten unter «Renderer»', false);
 } else {
-    wp_set_current_user($verwalter[0]->ID);
+    check('«slider» steht als Knoten unter «Renderer»', true);
 
-    $passiv = (int) $wpdb->get_var(
-        'SELECT id FROM ' . Schema::table('nodes') . " WHERE name = 'Passiv' LIMIT 1"
-    );
+    $alt = $spalte();
 
-    $gilt = $passiv === 0
-        ? null
-        : (new ModelValues($records, $edges, $nodes, $framework))->forNode($nodes->byId($passiv))['renderer']->value->text ?? null;
+    check('vorher steht ein Renderer da', $alt !== 0, (string) $alt);
 
-    check('«Passiv» traegt einen Renderer im Datensatz', $gilt !== null, (string) ($gilt ?? 'nichts'));
+    $data->chooseSettingRecordAtNode($knotenId, (int) $zweiter['id']);
 
-    // ⚠️ *Das $_POST des Aktes von oben steht noch da und wuerde die Zeichnung stoeren — eine
-    // Seite ansehen ist kein Akt.*
-    $_POST    = [];
-    $_REQUEST = [];
-    $_GET['taxmod_node'] = (string) $passiv;
-    $_GET['page']        = 'taxmod-nodes';
+    $neu = $spalte();
 
-    $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
-    $plugin = $bau->newInstanceWithoutConstructor();
-    $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
-    $html = (string) $plugin->screen()->render();
+    check('nach der Wahl steht ein anderer Satz da', $neu !== 0 && $neu !== $alt, "{$alt} -> {$neu}");
 
-    // ⚠️ *Die Adresse muss die Satz-Id tragen — sonst könnte bei mehreren Teilen niemand sagen, welcher
-    // gemeint ist.*
-    check(
-        'die Bedienung wird ueber die Satz-Id angesprochen',
-        preg_match('/name="' . Rendering::PART_FIELD . '\[\d+\]\[\d+\]"/', $html) === 1,
-        'keine Teil-Adresse im Formular'
-    );
-
-    // ⚠️ **Der Kern der Zusage: sie zeigt den gespeicherten Wert.** *Vorher stand dort «nichts», und ein
-    // Speichern hätte einen Wert überschrieben, den niemand gesehen hat.*
-    $zeigt = null;
-
-    if (preg_match_all('/<select[^>]*name="' . Rendering::PART_FIELD . '\[\d+\]\[\d+\]"[^>]*>(.*?)<\/select>/s', $html, $treffer)) {
-        foreach ($treffer[1] as $inhalt) {
-            if (preg_match('/<option value="[^"]*"\s+selected>([^<]+)<\/option>/', $inhalt, $gewaehlt)) {
-                $zeigt = trim($gewaehlt[1]);
-
-                break;
-            }
-        }
-    }
-
-    check('und sie zeigt den gespeicherten Renderer', $zeigt === $gilt, (string) ($zeigt ?? 'nichts') . ' gegen ' . (string) ($gilt ?? 'nichts'));
-
-    // ⚠️ **Jeder gespeicherte Renderer zeigt in den Renderer-Ast — und diese Zusage steht hier, weil ich
-    // sie am eigenen Fehler gelernt habe.**
-    //
-    // ⚠️ *Ich wollte `Passiv` nach einem Test auf `form` zurückstellen und suchte den Knoten nach
-    // **Namen** mit `LIMIT 1`. **Es gibt zwei namens `form`**: die Label-Rolle `#733` und den Renderer
-    // `#43511` ([D-022](../../docs/NewConcept/90-decision-log.md): Knotennamen sind absichtlich nicht
-    // eindeutig). Geschrieben wurde die Rolle. Der Leser meldete weiter «form», weil er den **Namen**
-    // zurückgibt — und der Auswahlkasten zeigte nichts, weil `#733` nicht unter seinen Möglichkeiten
-    // ist. **Ein Wert, der richtig heisst und falsch zeigt, ist schlimmer als ein leerer.***
-    //
-    // ⚠️ *Gemessen danach: 59 Werte, alle richtig; meiner war der einzige falsche.*
-    $rendererPfad = (string) $wpdb->get_var(
-        'SELECT path FROM ' . Schema::table('nodes') . " WHERE name = 'Renderer' LIMIT 1"
-    );
-
-    // WICHTIG: Zwei Formen sind erlaubt, und das ist eine sichtbare Aenderung dieser Zusage
-    // (PR-9). Seit D-583 legt die Wahl eines Renderers einen *Datensatz* an -- value_ref zeigt
-    // dann auf einen Datensatz, dessen node_id den Renderer nennt (D-584). Der alte Knotenverweis
-    // bleibt gueltig, solange die vorhandenen Daten ihn tragen; er faellt mit TASK-024.
-    // Falsch ist nur, was ueber *keinen* der beiden Wege im Renderer-Ast landet.
-    $daneben = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' w
-         LEFT JOIN ' . Schema::table('nodes') . ' k ON k.id = w.value_ref
-         LEFT JOIN ' . Schema::table('records') . ' r ON r.id = w.value_ref
-         LEFT JOIN ' . Schema::table('nodes') . ' rk ON rk.id = r.node_id
-         WHERE w.edge_id = %d AND w.value_ref IS NOT NULL
-           AND COALESCE(k.path, %s) NOT LIKE %s
-           AND COALESCE(rk.path, %s) NOT LIKE %s',
-        $innen,
-        '',
-        $wpdb->esc_like($rendererPfad . '.') . '%',
-        '',
-        $wpdb->esc_like($rendererPfad . '.') . '%'
-    ));
-
-    $gesamt = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d AND value_ref IS NOT NULL',
-        $innen
-    ));
-
-    check('jeder gespeicherte Renderer zeigt in den Renderer-Ast', $daneben === 0, "{$daneben} von {$gesamt} daneben");
-
-    // ⚠️ *Der Gegenfall: es gibt überhaupt gespeicherte Renderer.*
-    check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
-}
-
-echo "\n== «Nichts» ist eine Wahl, und sie loescht ==\n";
-
-// ⚠️ **Auf seinen Befund vom 2026-08-31:** *«wenn ich `0..1` wähle, müsste ich auch nichts im Value
-// wählen können — kann ich auch auswählen, wird aber nicht speichern, müsste eigentlich den Datensatz
-// dahinter löschen.»*
-//
-// ⚠️ **Gemessen war es ein Rücksprung am Rand:** *`putOneSettingValue()` kehrte bei einem leeren Wert um,
-// mit der Begründung «ein leeres Feld löscht nicht, sonst räumte jedes Speichern alles ab, was nicht
-// gezeichnet wurde». **Was nicht gezeichnet wurde, schickt aber auch nichts** — und damit war «nichts»
-// die einzige Wahl der ganzen Seite, die sich nicht speichern liess.*
-//
-// ⚠️ *Der Wächter läuft über denselben Weg wie der Abschnitt darüber: `handlePost()` mit Nonce, und
-// derselbe Knoten, dem gerade ein Renderer gesetzt wurde. **Erst löschen, dann zurückschreiben** — ein
-// Lauf, der etwas wegnimmt und nicht zurücklegt, verändert das Modell des Eigentümers.*
-if ($rendererId !== 0 && $aussen !== 0 && $innen !== 0 && $verwalter !== []) {
-    $lesen = static function () use ($records, $edges, $nodes, $framework, $knoten): ?string {
-        $gelesen = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
-
-        return $gelesen['renderer']->value->text ?? null;
-    };
-
-    check('vorher steht ein Renderer da', $lesen() !== null, $lesen() ?? 'nichts');
-
-    $schicken = static function (string $wert) use ($knotenId, $aussen, $innen): string {
-        $_POST = [
-            'action'        => 'taxmod_node',
-            'id'            => (string) $knotenId,
-            'do'            => 'put_setting',
-            '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $knotenId),
-            'taxmod_value'  => [(string) $aussen => [(string) $innen => $wert]],
-        ];
-        $_REQUEST = $_POST;
-
-        try {
-            $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
-            $plugin = $bau->newInstanceWithoutConstructor();
-            $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
-            $plugin->screen()->handlePost();
-        } catch (RuntimeException $e) {
-            return str_starts_with($e->getMessage(), '__weitergeleitet__')
-                ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
-                : $e->getMessage();
-        }
-
-        return '';
-    };
-
-    check('der leere Akt laeuft durch', $schicken('') === 'ok');
+    $gelesen = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
 
     check(
-        'und danach steht dort nichts mehr',
-        $lesen() === null,
-        $lesen() ?? 'nichts'
+        'und der Leser gibt den neuen zurueck',
+        ($gelesen['renderer']->value->text ?? null) === 'slider',
+        $gelesen['renderer']->value->text ?? 'nichts'
     );
 
-    // ⚠️ *Zurückgelegt, sonst hinterlässt der Lauf einen Knoten ohne Renderer — und «jeder Knoten muss
-    // einen Renderer haben» ist eine Regel des Eigentümers.*
-    check('zurueckgeschrieben laeuft auch durch', $schicken((string) $rendererId) === 'ok');
+    // WICHTIG: Der alte Satz bleibt nicht daneben stehen -- das ist der Kern der Zusage. Bliebe
+    // er, stuenden zwei Antworten auf eine Frage da, und die Felder des alten Renderers waeren
+    // Werte, die niemand mehr lesen kann.
+    $altNochDa = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM ' . Schema::table('records') . ' WHERE id = %d',
+        $alt
+    ));
+
+    check('und der alte Satz ist vergessen', $altNochDa === 0, (string) $altNochDa);
+
+    // Zurueckgelegt: ein Lauf, der etwas veraendert und nicht zuruecklegt, veraendert das Modell
+    // des Eigentuemers -- hier der eigene Pruefknoten, aber die Gewohnheit zaehlt.
+    $data->chooseSettingRecordAtNode($knotenId, (int) $rendererKnoten['id']);
+
+    $zurueck = (new ModelValues($records, $edges, $nodes, $framework))->forNode($knoten);
 
     check(
         'und der Wert ist wieder da',
-        $lesen() !== null,
-        $lesen() ?? 'nichts'
+        ($zurueck['renderer']->value->text ?? null) === 'spinner',
+        $zurueck['renderer']->value->text ?? 'nichts'
     );
 }
 
@@ -543,8 +451,18 @@ if ($einstellung === null) {
     // kommen als `taxmod_field_setting[<Kanten-Id>][<Schluessel>]` an
     // ([D-520](../../docs/NewConcept/90-decision-log.md): sie stehen als **Feldzeilen** im
     // Settings-Block, nicht in einer eigenen Tafel unter der Zeile).
+    // ⚠️ *Hier gesucht statt weiter oben: der Abschnitt, der den Verwalter frueher besorgte, ging
+    // ueber die gefallene Renderer-Adresse und ist mit ihr weg.*
+    $verwalter = get_users(['role' => 'administrator', 'number' => 1]);
+
     if ($verwalter !== []) {
         wp_set_current_user($verwalter[0]->ID);
+
+        // ⚠️ *Die Weiterleitung abfangen, sonst endet der Lauf hier — der Abschnitt, der diesen
+        // Filter frueher setzte, ging ueber die gefallene Renderer-Adresse und ist mit ihr weg.*
+        add_filter('wp_redirect', static function ($ziel) {
+            throw new RuntimeException('__weitergeleitet__' . (string) $ziel);
+        }, 10, 1);
 
         $zeile = static function (string $wert) use ($knotenId, $stelle): string {
             $_POST = [
@@ -579,80 +497,47 @@ if ($einstellung === null) {
         check('und nimmt sie wieder heraus', $anDerStelle() !== true);
     }
 }
+echo "\n== Genau ein Renderer, und die zweite Zeile ist abgeschafft ==\n";
 
-echo "\n== Eine Zeile hinzufuegen legt einen zweiten Teil an ==\n";
-
-// ⚠️ **Auf sein Bestehen, dass die Multiplizität `1..*` ist und nicht `0..*`:** *«somit muss ich Zeilen
-// hinzufügen können».* *Und der Grund ist seiner ([D-548](../../docs/NewConcept/90-decision-log.md)):
-// mehrere `DisplayOption`s sind mehrere Renderer, für das Farbschema.*
+// WICHTIG: Hier stand «Eine Zeile hinzufuegen legt einen zweiten Teil an», und diese Zusage ist
+// zurueckgenommen. Das ist eine sichtbare Aenderung (PR-9), und sie ist keine Vereinfachung von
+// mir, sondern seine Entscheidung.
 //
-// ⚠️ *Am eigenen Knoten dieses Laufs, nicht an einem echten — der Teil bliebe sonst stehen.*
-$vorher = count($data->settingPartsOf($knotenId, [$aussen])[$aussen] ?? []);
+// WICHTIG: Sie stand auf D-548 -- «mehrere DisplayOptions bedeutet mehrere Renderer moeglich»,
+// darum `1..*`, darum ein Knopf «Zeile hinzufuegen». D-584 nimmt genau das zurueck, mit seinem
+// Wort: «eine Kante und ein Knoten haben genau einen Renderer, dieser ist ein Knoten und kann
+// wiederum Unterknoten haben.» Und ausdruecklich: «was dadurch wegfaellt: die geordnete Liste von
+// Renderern an einem Knoten, die Multiplizitaet `1..*` an `DisplayOption`, und `sort_order` auf
+// dieser Ebene.» Wer mehrere braucht, modelliert sie -- ein Knoten `render list` mit `1..n`.
+//
+// WICHTIG: Der Traeger, an dem die alte Zusage haengen konnte, ist ausserdem weg: der Eigentuemer
+// hat `DisplayOption` geloescht (D-604), und `settingPartsOf()` wurde hier mit der toten Kante
+// 44093 gerufen -- sie fand null Teile und meldete «der Pruefknoten hat einen Teil - 0».
+//
+// Geprueft wird jetzt das Gegenteil, und es ist die staerkere Aussage: ein Knoten haelt genau eine
+// Wahl, weil eine Spalte eine Zahl haelt.
+$spalten = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes')
+        . ' WHERE id = %d AND settings_record_id IS NOT NULL',
+    $knotenId
+));
 
-check('der Pruefknoten hat einen Teil', $vorher === 1, (string) $vorher);
+check('der Pruefknoten haelt genau eine Wahl', $spalten === 1, (string) $spalten);
 
-$_POST = [
-    'action'        => 'taxmod_node',
-    'id'            => (string) $knotenId,
-    'do'            => 'add_part',
-    'edge'          => (string) $aussen,
-    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $knotenId),
-];
-$_REQUEST = $_POST;
-
-$meldung = '';
-
-try {
-    $bau    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
-    $plugin = $bau->newInstanceWithoutConstructor();
-    $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
-    $plugin->screen()->handlePost();
-} catch (RuntimeException $e) {
-    $meldung = str_starts_with($e->getMessage(), '__weitergeleitet__')
-        ? urldecode((string) preg_replace('/^.*taxmod_message=/', '', $e->getMessage()))
-        : $e->getMessage();
-}
-
-check('der Akt laeuft durch', $meldung === 'ok', $meldung);
-
-$nachher = $data->settingPartsOf($knotenId, [$aussen])[$aussen] ?? [];
-
-check('jetzt sind es zwei Teile', count($nachher) === 2, (string) count($nachher));
-
-// ⚠️ **Und zwei Teile sind zwei Zeilen** ([D-546](../../docs/NewConcept/90-decision-log.md)). *Ohne
-// diese Zusage wäre der zweite Teil da und unsichtbar — genau der Zustand, den er vorher gefunden hat.*
-$_POST    = [];
-$_REQUEST = [];
-$_GET['taxmod_node'] = (string) $knotenId;
-$_GET['page']        = 'taxmod-nodes';
-
-$bau2    = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
-$plugin2 = $bau2->newInstanceWithoutConstructor();
-$bau2->getProperty('file')->setValue($plugin2, 'taxmod.php');
-$seite = (string) $plugin2->screen()->render();
-
-$saetze = [];
-
-if (preg_match_all('/name="' . Rendering::PART_FIELD . '\[(\d+)\]\[\d+\]"/', $seite, $treffer)) {
-    $saetze = array_values(array_unique($treffer[1]));
-}
-
-// WICHTIG: Gezaehlt werden die *aeusseren* Teile, nicht jede Satz-Id auf der Seite -- und das ist
-// eine sichtbare Aenderung dieser Zusage (PR-9). Seit D-583 steigt die Maske in den gewaehlten
-// Renderer hinab, also steht dort eine dritte Satz-Id, die keine dritte Zeile ist. Die Frage
-// bleibt dieselbe: sind beide Teile sichtbar.
-$fehlen = [];
-
-foreach ($nachher as $teil) {
-    if (! in_array((string) $teil['id'], $saetze, true)) {
-        $fehlen[] = (string) $teil['id'];
-    }
-}
+// Und sie ist ein Verweis auf einen Satz, dessen Knoten den Renderer nennt -- kein Behaelter
+// dazwischen, keine zweite Zeile daneben.
+$stufen = $wpdb->get_row($wpdb->prepare(
+    'SELECT z.name FROM ' . Schema::table('nodes') . ' n
+     INNER JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+     INNER JOIN ' . Schema::table('nodes') . ' z ON z.id = r.node_id
+     WHERE n.id = %d',
+    $knotenId
+), ARRAY_A);
 
 check(
-    'und die Tabelle zeigt beide',
-    $fehlen === [] && count($nachher) === 2,
-    $fehlen === [] ? count($nachher) . ' Teile' : 'fehlen: ' . implode(', ', $fehlen)
+    'und der Satz nennt den Renderer selbst — ohne Huelle dazwischen',
+    ($stufen['name'] ?? null) === 'spinner',
+    $stufen['name'] ?? 'nichts'
 );
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
