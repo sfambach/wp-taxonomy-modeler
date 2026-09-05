@@ -625,3 +625,13 @@ Hüllknoten `DisplayOption`; seit [D-584](../../NewConcept/90-decision-log.md) s
 `nodes.settings_record_id` und nicht mehr an einem Kantenpaar. **Alle zwanzig verbliebenen
 Fehlschläge von `setting-write`, `page-blocks`, `multiplicity` und `renderer-choice` fragen nach der
 alten Form.** Das umzuschreiben ist eine sichtbare Konzeptänderung (`PR-9`) und gehört benannt.*
+
+```text
+[ ] TASK-048  Ein Klick auf den Klapp-Pfeil gewinnt gegen den Vorrang der
+              Auswahl (D-612) — heute tut er sichtbar nichts, wenn der
+              gewaehlte Knoten in diesem Ast liegt
+```
+
+⚠️ *Die Stelle ist eine Zeile in `NodesScreen`: `$collapsed = array_diff($collapsed,
+$selected->ancestorIds())`. **Sie stammt aus [D-480](../../NewConcept/90-decision-log.md) und ist
+richtig** — sie darf nur nicht gegen eine ausdrückliche Handlung gewinnen.*
