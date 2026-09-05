@@ -1040,7 +1040,7 @@ umbenannt, die TASK-032 streicht — sie ist deshalb gestrichen. **TASK-018 nimm
 166 Zeilen ab**, und was danach übrig ist, fällt in einem Zug.*
 
 ```text
-[ ] TASK-037  Loeschen fragt nach den Verwendungen — Dialog, und bei «ja»
+[x] TASK-037  Loeschen fragt nach den Verwendungen — Dialog, und bei «ja»
               wandern sie mit in den Papierkorb        (D-604)
 [x] TASK-038  Ein Verweis auf einen verschwundenen Knoten ist am Feld
               sichtbar, nicht in einer Liste woanders  (D-604)
@@ -1068,8 +1068,37 @@ wählt. Falsch wäre nur, ihn auszublenden.*
 [D-608](../../NewConcept/90-decision-log.md) für die gesperrte Zeile verlangt. Die Nummer ist
 sprachlos und darum vom Kern zeichenbar; ein Satz wäre Benutzertext und müsste vom Rand kommen.*
 
-⚠️ *TASK-037 — der **Dialog beim Löschen** — bleibt offen. Erst er erzeugt den Fall absichtlich;
-sichtbar ist er ab jetzt.*
+**TASK-037 gebaut am 2026-09-05, und der Knopf ist kein Knopf mehr, sobald etwas hierher zeigt.**
+*Wird der Knoten benutzt, ist der Papierkorb ein **Dialog**: er nennt jede Verwendung mit Namen und
+mit dem Knoten, an dem sie hängt, und bietet zwei Antworten — «mit den Verwendungen» und «nur den
+Knoten». Wird er nicht benutzt, steht der gewöhnliche Knopf da wie bisher.*
+
+⚠️ **Genau ein Papierkorbknopf auf der Seite, und der steht im Dialog.** *Das ist die Zusage, ohne
+die der Dialog Zierat wäre: ein zweiter Knopf daneben liesse die Frage umgehen, und dann hätte D-604
+eine Oberfläche statt einer Wirkung.*
+
+⚠️ **Was der Bestand hergibt, gemessen am 2026-09-05:** *von **137** lebenden Knoten sind **22** Ziel
+einer benannten Kante — nur dort erscheint der Dialog. **5** davon werden mehrfach verwendet, die
+schwerste ist `Text` mit **26** Verwendungen. Für die übrigen **115** ändert sich nichts.*
+
+⚠️ **Was mitgeht, sind die Kanten — nicht die Datensätze, und das ist [D-639](../../NewConcept/90-decision-log.md).**
+*Komposition ist eine Aussage über **Datensätze**: «wenn ich den Datensatz von Kunde A lösche, muss
+auch die Adresse von Kunde A gelöscht werden.» Ein Zielknoten ist ein **Typ** und selbstverständlich
+geteilt — **36 der 42 Kompositionskanten zeigen auf mehrfach verwendete Ziele**. Deshalb nimmt das
+Parken die **Verwendungsstellen** mit, und jede geparkte Kante nimmt nach
+[D-619](../../NewConcept/90-decision-log.md) ihre Wertzeilen mit. Alles umkehrbar; erst das Leeren
+ist es nicht.*
+
+⚠️ **Der Wächter ist gewachsen statt entstanden:** [`used-by-check.php`](../../../scripts/dev/used-by-check.php)
+*hatte die Daten schon — dieselben Knoten, dieselbe Frage «was bricht, wenn ich das lösche». Er geht
+den Weg jetzt **über die Maske**: Seite zeichnen, Dialog im Markup nachweisen, Knopfzahl zählen,
+`handlePost()` mit echtem Nonce rufen, frisch nachlesen, aufräumen. **Der Gegenfall steht daneben** —
+ein unbenutzter Knoten darf keinen Dialog bekommen, sonst wäre «es fragt» auch dann wahr, wenn es
+immer fragt.*
+
+⚠️ **Offen und im Eingang als `INF-050`:** *der zweite Löschknopf — «die Kinder rücken auf» — parkt
+den Knoten genauso und fragt nichts. Sein Ergebnis ist die von D-604 erlaubte «nein»-Hälfte, aber
+gewählt hat sie niemand.*
 
 ⚠️ **TASK-039 ist kein Notfall, aber es ist derselbe Fehler wie bei TASK-025:** *ein Wächter, der
 mehr anfasst als seine eigenen Knoten. **«Geparkt, nicht gelöscht» gilt nicht, solange ein

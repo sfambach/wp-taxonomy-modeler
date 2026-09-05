@@ -1317,15 +1317,22 @@ final class NodesScreen
             ))
             . $this->form(
                 $selected->id,
-                [
+                // ⚠️ **Der Papierkorbknopf steht hier nur, solange niemand den Knoten benutzt**
+                // ([D-604](../../../docs/NewConcept/90-decision-log.md), TASK-037). *Wird er benutzt,
+                // ist der Knopf der **Öffner eines Dialogs** und kein Akt mehr — sein Wort: «ein
+                // Knoten, der verwendet wird, darf nicht einfach so gelöscht werden».*
+                array_values(array_filter([
                     ['duplicate', '', __('Copy this node beside itself, with its own settings and fields — not its children and not its records', 'taxmod'), 'admin-page'],
-                    ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true],
+                    $this->editor->usedBy($selected->id) === []
+                        ? ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true]
+                        : null,
                     ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
-                ],
+                ])),
                 // ⚠️ **The move button *is* the dialog's opener** — the owner: *button move with dialog
                 // tree chooser*, and then *nicht inline*. So the chooser no longer sits beside a move
                 // button; it is behind it, and its own confirm lives inside the overlay.
                 $this->parentChooser($selected, $root)
+                . $this->trashDialog($selected)
             );
 
         return $this->rendering->headFor($selected, [
@@ -1502,6 +1509,110 @@ final class NodesScreen
             $trigger,
             $confirm
         )->markup;
+    }
+
+    /**
+     * Löschen fragt nach den Verwendungen — der Dialog aus [D-604](../../../docs/NewConcept/90-decision-log.md).
+     *
+     * **Sein Wort:** *«ein Knoten, der verwendet wird, darf nicht einfach so gelöscht werden. Es muss
+     * einen Dialog für den Benutzer geben, der fragt, ob die Verwendungen mitgelöscht werden sollen.
+     * Bei ja müssen diese auch in den Papierkorb wandern, bei nein haben wir Leichen im Baum, die auf
+     * nichts mehr zeigen — das muss sichtbar sein, also am Feld in der Kante.»*
+     *
+     * ⚠️ **Der Dialog **nennt** die Verwendungen, er zählt sie nicht.** *«3 Verwendungen» ist keine
+     * Antwort auf «was bricht» — der Benutzer muss die Namen sehen, um sich zu entscheiden, und es
+     * sind dieselben Zeilen wie unter {@see usedByPanel()}: die Kanten anderer Knoten, die diesen
+     * als Typ haben.*
+     *
+     * ⚠️ **Zwei Knöpfe, beide sagen was sie tun, und keiner ist der Standard.** *«Ja» parkt die
+     * Verwendungen mit, «nein» lässt sie stehen — beides ist nach D-604 erlaubt, und genau darum darf
+     * die Maske keins von beidem vorwegnehmen. Geschlossen wird der Dialog über die Schattenfläche,
+     * und dann ist nichts geschehen.*
+     *
+     * ⚠️ **Wo die Verwendung sitzt, gehört dazu.** *Eine Kante `menge` sagt nichts; `menge an
+     * Bestellposition` sagt, wohin man sehen muss, wenn man «nein» wählt.*
+     *
+     * ⚠️ **Leer heisst: kein Dialog.** *Der gewöhnliche Papierkorbknopf steht dann wie bisher in der
+     * Reihe — ein Dialog, der «nichts zeigt hierher, wirklich löschen?» fragt, wäre die Rückfrage, die
+     * [D-123](../../../docs/NewConcept/90-decision-log.md) mit den zwei Stufen gerade abgeschafft hat.*
+     *
+     * ⚠️ **Die Hülle ist dieselbe wie beim Baumdialog** — verborgenes Kontrollkästchen, `<label>` als
+     * Öffner, Schattenfläche zum Schliessen, alles ohne Skript ({@see DialogChooserRenderer}). *Sie
+     * steht hier und nicht dort, weil dieser Dialog keinen Knoten **wählt**: er stellt eine Frage mit
+     * zwei Antworten, und der Wähler-Renderer hätte einen Baum zeichnen müssen, den niemand braucht.*
+     */
+    private function trashDialog(Node $selected): string
+    {
+        $uses = $this->editor->usedBy($selected->id);
+
+        if ($uses === []) {
+            return '';
+        }
+
+        // ⚠️ **Die Besitzer in **einer** Abfrage** (`CD-7`) — dieselbe Regel wie unter {@see usedByPanel()}.
+        $owners = $this->editor->ownersOf($uses);
+        $switch = 'taxmod-trash-' . $selected->id;
+
+        $liste = '';
+
+        foreach ($uses as $use) {
+            $owner = $owners[$use->fromNodeId] ?? null;
+
+            $liste .= '<span class="taxmod-trash-use" style="display:block">'
+                . '<code>' . esc_html($use->name) . '</code> '
+                . esc_html__('on', 'taxmod') . ' '
+                . ($owner === null
+                    ? '<span class="taxmod-nothing">#' . (int) $use->fromNodeId . '</span>'
+                    : esc_html($owner->name))
+                . '</span>';
+        }
+
+        return '<span class="taxmod-chooser">'
+            // Ohne `name`, damit es nie mitgeschickt wird — dasselbe wie beim Baumdialog.
+            . '<input type="checkbox" class="taxmod-dialog-switch" id="' . esc_attr($switch) . '">'
+            . '<label class="button taxmod-icon-button taxmod-dialog-open" for="' . esc_attr($switch) . '"'
+            . ' title="' . esc_attr__('Trash this node and everything under it — it is used, so this asks first', 'taxmod') . '">'
+            . IconMarkup::dashicon('trash')
+            . '<span class="screen-reader-text">' . esc_html__('Trash', 'taxmod') . '</span>'
+            . '</label>'
+            . '<span class="taxmod-dialog">'
+            . '<label class="taxmod-dialog-shade" for="' . esc_attr($switch) . '"></label>'
+            . '<span class="taxmod-dialog-panel">'
+            . '<span class="taxmod-dialog-head">'
+            . '<span class="taxmod-chooser-current">' . esc_html(sprintf(
+                /* translators: %s: the name of the node being trashed. */
+                __('«%s» is used', 'taxmod'),
+                $selected->name
+            )) . '</span>'
+            . '<label class="taxmod-dialog-close" for="' . esc_attr($switch) . '">&times;</label>'
+            . '</span>'
+            . '<span class="taxmod-trash-uses" style="display:block">'
+            . '<span style="display:block">' . esc_html__('These fields are typed by it. Should they go into the trash as well?', 'taxmod') . '</span>'
+            . $liste
+            . '<span style="display:block"><em>' . esc_html__('If they stay, they point at nothing — which is allowed, and the field says so where it sits.', 'taxmod') . '</em></span>'
+            . '</span>'
+            . '<span class="taxmod-dialog-foot">'
+            . ControlMarkup::button(new Control(
+                'do',
+                'trash_with_uses',
+                __('Trash it and its uses', 'taxmod'),
+                __('The node and every field typed by it go into the trash together', 'taxmod'),
+                true,
+                true,
+                '',
+                '',
+                true
+            ))
+            . ControlMarkup::button(new Control(
+                'do',
+                'trash',
+                __('Trash it only', 'taxmod'),
+                __('The fields stay and point at nothing', 'taxmod'),
+                true,
+                true
+            ))
+            . '</span>'
+            . '</span></span></span>';
     }
 
     /**
@@ -3659,6 +3770,11 @@ final class NodesScreen
                 // und Changelog ([D-065](../../../docs/NewConcept/90-decision-log.md)) ueberleben die Sache.
                 'clear_trash'    => $this->clearedTrash(),
                 'trash'          => $this->editor->moveToTrash($id),
+                // ⚠️ **Der zweite Akt ist die Zusage aus dem Dialog** ([D-604](../../../docs/NewConcept/90-decision-log.md),
+                // TASK-037). *Er ist ein **eigener** Akt und kein Häkchen an `trash`: was ein Benutzer
+                // bestätigt hat, steht damit im Änderungsbuch unter eigenem Namen, und ein alter
+                // Knopf, der nur `trash` kennt, kann die Verwendungen nicht versehentlich mitnehmen.*
+                'trash_with_uses' => $this->editor->moveToTrash($id, true),
                 'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
                 // WICHTIG: Leerer Name heisst «nimm den des Zielknotens» (TASK-026). Entschieden
                 // wird es hier und nicht im Kern: welcher Name gemeint ist, ist eine Frage der

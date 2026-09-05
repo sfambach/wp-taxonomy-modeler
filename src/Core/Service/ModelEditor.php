@@ -817,10 +817,43 @@ final class ModelEditor
      * ⚠️ **The old path is written to the changelog and nowhere else.** That is what a restore
      * reads, and it is why the node itself needs no `parked_from` column — one place owns each
      * fact.
+     *
+     * ⚠️ **`$withUses` ist die Antwort auf eine Frage, die der Rand gestellt hat**
+     * ([D-604](../../../docs/NewConcept/90-decision-log.md), TASK-037). *Sein Wort: «ein Knoten, der
+     * verwendet wird, darf nicht einfach so gelöscht werden. Es muss einen Dialog für den Benutzer
+     * geben, der fragt, ob die Verwendungen mitgelöscht werden sollen. Bei ja müssen diese auch in
+     * den Papierkorb wandern, bei nein haben wir Leichen im Baum.»* **Der Kern rät hier nicht** — er
+     * bekommt gesagt, was der Benutzer bestätigt hat, und `false` ist ausdrücklich die Hälfte, die
+     * Leichen zurücklässt, nicht ein Versehen.
+     *
+     * ⚠️ **Was mitgeht, sind die Kanten, nicht die Datensätze.** *Komposition ist nach
+     * [D-639](../../../docs/NewConcept/90-decision-log.md) eine Aussage über **Datensätze** — «wenn
+     * ich den Datensatz von Kunde A lösche, muss auch die Adresse von Kunde A gelöscht werden» — und
+     * nicht über Knoten. Ein geparkter Knoten nimmt darum die **Verwendungsstellen** mit, und jede
+     * geparkte Kante nimmt ihre Wertzeilen mit ([D-619](../../../docs/NewConcept/90-decision-log.md)).
+     * Beides ist umkehrbar; erst das endgültige Leeren ist es nicht.*
      */
-    public function moveToTrash(int $id): Node
+    public function moveToTrash(int $id, bool $withUses = false): Node
     {
-        return $this->reparent($id, $this->framework->trash(), 'parked');
+        // ⚠️ **Ein Akt, eine Änderungsnummer.** *Parken und die Verwendungen, die mitgehen, sind
+        // **eine** Sache, die jemand bestätigt hat — verschachtelte Klammern werden gezählt, also
+        // gewinnt die äussere, die der Rand schon geöffnet hat.*
+        $this->changelog->beginAct();
+
+        try {
+            if ($withUses) {
+                // ⚠️ **Erst die Verwendungen, dann der Knoten.** *{@see usedBy()} liest die lebenden
+                // Kanten; wäre der Knoten schon im Papierkorb, stünden sie noch genauso da — aber die
+                // Reihenfolge hält das Änderungsbuch lesbar: zuerst fällt, was auf ihn zeigte.*
+                foreach ($this->usedBy($id) as $use) {
+                    $this->removeField($use->fromNodeId, $use->id);
+                }
+            }
+
+            return $this->reparent($id, $this->framework->trash(), 'parked');
+        } finally {
+            $this->changelog->endAct();
+        }
     }
 
     /**

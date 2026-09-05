@@ -1403,3 +1403,26 @@ hätte es niemand nebeneinander gesehen.*
 sie stehen bei 17 zu 11.** *Vorher 27 Kennungen gegen 17 Knoten; der Wähler macht daraus 28 gegen 17.
 **Beide Richtungen sind bewacht** — jeder wählbare Renderer hat einen Knoten mit seiner Klasse, und
 kein interner hat einen. Vorher war beides nur gemessen.*
+
+---
+
+## INF-050 · Der zweite Löschknopf fragt nicht
+
+**Aufgefallen beim Bauen von TASK-037** ([D-604](../../NewConcept/90-decision-log.md)).
+
+⚠️ **Es gibt zwei Wege in den Papierkorb, und nur einer fragt jetzt.** *`trash` — «der Knoten und
+alles darunter» — bekommt den Dialog. **`trash_node` — «die Kinder rücken zum Grosselternknoten
+auf» — parkt den Knoten genauso und fragt nichts.* Das ist heute nicht falsch: sein Ergebnis ist die
+Hälfte, die D-604 mit «nein» ausdrücklich erlaubt — die Verwendungen bleiben stehen und zeigen ins
+Leere, und seit TASK-038 ist das am Feld sichtbar. **Aber der Benutzer hat es nicht gewählt**, und
+genau das ist der Satz seiner Entscheidung.
+
+⚠️ **Nicht geraten, weil zwei Wege denkbar sind und beide etwas kosten:** *derselbe Dialog mit einem
+dritten Knopf («aufrücken und Verwendungen mitnehmen») — dann hat ein Dialog drei Antworten, und
+zwei davon unterscheiden sich in etwas, das mit den Verwendungen nichts zu tun hat. Oder ein zweiter
+Dialog am zweiten Knopf — dann steht dieselbe Frage zweimal auf der Seite.*
+
+⚠️ **Gemessen am 2026-09-05, damit die Frage eine Grösse hat:** *von 137 lebenden Knoten sind **22**
+Ziel einer benannten Kante, **5** davon mehr als einmal; die schwerste ist `Text` mit **26**
+Verwendungen. **Für 115 Knoten ändert sich durch TASK-037 nichts** — der Dialog erscheint nur dort,
+wo etwas zerbrechen kann.*

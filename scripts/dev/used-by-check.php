@@ -136,6 +136,128 @@ try {
 
     $say(! str_contains($parked, 'ub_einheit'), 'das geparkte Attribut verschwindet aus Used by');
     $say(str_contains($parked, 'Nothing points at this node'), 'und der Knoten meldet sich als unbenutzt');
+
+    // ── TASK-037: Loeschen fragt nach den Verwendungen (D-604) ───────────────────────────────────
+    //
+    // ⚠️ **Ueber die Maske und nicht ueber den Kern.** *Ein Waechter, der nur `moveToTrash($id, true)`
+    // ruft, prueft die Haelfte, die nie kaputt war — die Frage ist, ob die Seite **fragt**, statt
+    // stillschweigend zu loeschen. `renderer-choice-mask-check` und `move-mask-check` machen es vor:
+    // zeichnen, Markup lesen, abschicken, frisch nachlesen.*
+    //
+    // ⚠️ **Der Gegenfall gehoert dazu:** *ein unbenutzter Knoten darf **keinen** Dialog bekommen,
+    // sonst waere «es fragt» auch dann wahr, wenn es immer fragt — und D-604 verlangt die Frage genau
+    // dort, wo etwas zerbricht.*
+    echo "\n== Loeschen fragt nach den Verwendungen ==\n";
+
+    $editor->restoreField($teil->id, $relation->id);
+
+    $seite = $pageOf($einheit->id);
+
+    $say(
+        (bool) preg_match('/id="taxmod-trash-' . $einheit->id . '"/', $seite),
+        'der benutzte Knoten bekommt einen Loeschdialog statt eines Knopfes'
+    );
+
+    // ⚠️ *Genau **einer**, und der steht im Dialog. Zwei hiessen: die Frage ist zu umgehen, und dann
+    // ist der Dialog Zierat statt Bedingung.*
+    $say(
+        preg_match_all('/<button[^>]*name="do"[^>]*value="trash"/', $seite) === 1,
+        'es gibt keinen zweiten Papierkorbknopf, der die Frage umgeht',
+        (string) preg_match_all('/<button[^>]*name="do"[^>]*value="trash"/', $seite)
+    );
+
+    $say(str_contains($seite, 'ub_einheit'), 'der Dialog nennt die Verwendung beim Namen');
+    $say(str_contains($seite, '__ub Teil'), 'und sagt, an welchem Knoten sie haengt');
+
+    $say(
+        (bool) preg_match('/<button[^>]*name="do"[^>]*value="trash_with_uses"/', $seite),
+        'er bietet «ja, mit den Verwendungen» an'
+    );
+
+    $say(
+        (bool) preg_match('/<button[^>]*name="do"[^>]*value="trash"/', $seite),
+        'und «nein, nur den Knoten»'
+    );
+
+    // ⚠️ *Ein Knopf ausserhalb des Formulars schickt lautlos nichts mit — dieselbe Falle wie in
+    // `move-mask-check`. Gemessen wird die Formulartiefe an der Stelle des Ja-Knopfes.*
+    $vorJa = substr($seite, 0, (int) strpos($seite, 'value="trash_with_uses"'));
+
+    $say(
+        substr_count($vorJa, '<form') - substr_count($vorJa, '</form>') === 1,
+        'die Zusage steckt in einem Formular',
+        'Formulartiefe ' . (substr_count($vorJa, '<form') - substr_count($vorJa, '</form>'))
+    );
+
+    // Der Gegenfall: der benutzende Knoten wird von niemandem benutzt.
+    $ohne = $pageOf($teil->id);
+
+    $say(
+        ! str_contains($ohne, 'id="taxmod-trash-' . $teil->id . '"'),
+        'ein unbenutzter Knoten bekommt keinen Dialog'
+    );
+
+    $say(
+        (bool) preg_match('/<button[^>]*name="do"[^>]*value="trash"/', $ohne),
+        'sondern den gewoehnlichen Papierkorbknopf'
+    );
+
+    echo "\n== und die Zusage geht den Weg ueber die Maske ==\n";
+
+    $_POST = $_REQUEST = [
+        'do'            => 'trash_with_uses',
+        'id'            => (string) $einheit->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $einheit->id),
+    ];
+
+    $lief = false;
+    $fang = static function () use (&$lief): string {
+        $lief = true;
+
+        throw new RuntimeException('redirect');
+    };
+
+    add_filter('wp_redirect', $fang, 1);
+
+    try {
+        $screen->handlePost();
+    } catch (RuntimeException) {
+        // Erwartet: der Akt ist durch und wollte weiterleiten.
+    } finally {
+        remove_filter('wp_redirect', $fang, 1);
+
+        $_POST = $_REQUEST = [];
+    }
+
+    $say($lief, 'der Akt ist durchgelaufen');
+
+    // ⚠️ **Frisch nachgelesen und nicht aus dem Gedaechtnis** — ein Dienst mit warmem Zustand haette
+    // dieselbe Antwort gegeben, ob geschrieben wurde oder nicht.
+    $frisch = (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find($einheit->id);
+
+    $say(
+        $frisch !== null && $frisch->parentId() === $fw->trash()->id,
+        'der Knoten liegt im Papierkorb',
+        'Elternknoten ' . (string) ($frisch?->parentId() ?? 0)
+    );
+
+    $say(
+        (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$prefix}relations WHERE id = %d",
+            $relation->id
+        )) === 0,
+        'und die Verwendung ist mitgegangen — sie steht nicht mehr lebend da'
+    );
+
+    // ⚠️ *Umkehrbar oder gar nicht: die geparkte Kante liegt im Schatten
+    // ([D-535](../../docs/NewConcept/90-decision-log.md)), nicht im Nichts.*
+    $say(
+        (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$prefix}relations_history WHERE id = %d",
+            $relation->id
+        )) > 0,
+        'sie steht im Schatten, ist also zurueckzuholen'
+    );
 } finally {
     // Aufräumen, auch nach einer gefallenen Zusage.
     foreach ([$teil->id, $einheit->id] as $id) {
@@ -153,6 +275,15 @@ try {
             $wpdb->query('DELETE FROM ' . $prefix . 'relations WHERE id IN (' . implode(',', $e) . ')');
         }
 
+        // ⚠️ *Der Schatten gehoert mit weggeraeumt, seit dieser Lauf eine Kante **parkt**: eine
+        // geparkte Zeile steht nicht mehr in `relations`, sondern in `relations_history` — und wer
+        // nur die lebende Tabelle raeumt, laesst genau das liegen, was er selbst erzeugt hat.*
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$prefix}relations_history WHERE from_node_id = %d OR to_node_id = %d",
+            $id,
+            $id
+        ));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}nodes_history WHERE id = %d", $id));
         $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}nodes WHERE id = %d", $id));
     }
 }
