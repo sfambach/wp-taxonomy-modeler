@@ -589,3 +589,21 @@ Daten des Eigentümers.*
 
 ⚠️ *`clearTrash()` selbst ist seit TASK-039 richtig — es nimmt die Datensätze mit. Zu finden ist,
 welcher Schritt des Wächters einen Datensatz **nach** dem Wegräumen anlegt.*
+
+---
+
+## INF-022 · Welcher Ast im Verschiebe-Dialog aufgeht, ist gewählt und nicht entschieden
+
+**2026-09-05, bei TASK-054. Gebaut und ausdrücklich benannt, weil es eine Annahme ist.**
+
+[D-615](../../NewConcept/90-decision-log.md) sagt, **was** der Einstiegsast tut — er klappt einen Ast
+auf und den Rest zu —, aber nicht, **welcher** es beim Verschieben sein soll. Ich habe den Ast
+genommen, in dem der Knoten heute liegt: wer verschiebt, bleibt meistens in der Nähe.
+
+⚠️ *Die anderen drei Dialoge machen es je anders — der Typ-Dialog öffnet die Datentypen, der
+Ziel-Wechsel den Ast des heutigen Ziels. **Das ist dreimal plausibel und nirgends entschieden.**
+Wenn er einen anderen Anfangspunkt will, ist es je eine Zeile.*
+
+⚠️ *Und ein Sonderfall bleibt offen: liegt der Knoten in **keinem** Ast, geht gar nichts auf, und der
+Dialog zeigt nur die Zweigköpfe. Ob das richtig ist oder ob dann der Ast des heutigen Elternknotens
+gelten soll, ist ungeprüft.*
