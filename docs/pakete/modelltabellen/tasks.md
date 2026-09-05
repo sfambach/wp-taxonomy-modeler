@@ -635,3 +635,16 @@ alten Form.** Das umzuschreiben ist eine sichtbare Konzeptänderung (`PR-9`) und
 ⚠️ *Die Stelle ist eine Zeile in `NodesScreen`: `$collapsed = array_diff($collapsed,
 $selected->ancestorIds())`. **Sie stammt aus [D-480](../../NewConcept/90-decision-log.md) und ist
 richtig** — sie darf nur nicht gegen eine ausdrückliche Handlung gewinnen.*
+
+```text
+[ ] TASK-049  Zehn Waechter von seinen Knotennamen loesen (D-613)
+              form-membership · label-role · package1 · page-blocks
+              record-on-any-node · rename-survives · renderer-choice
+              setting-edge · setting-write · unitvalue
+```
+
+⚠️ **Der Grund ist schärfer als «fragil»:** *[D-022](../../NewConcept/90-decision-log.md) sagt,
+Knotennamen sind **absichtlich nicht eindeutig**, und «nothing resolves, references or branches on a
+name». **Gemessen kommen fünf Namen doppelt vor, darunter `Adresse`.** Ein Wächter mit
+`WHERE name = … LIMIT 1` greift eine von beiden und weiss nicht welche — der Fall ist in
+`setting-write-check` schon dokumentiert.*
