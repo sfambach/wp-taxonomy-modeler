@@ -205,6 +205,27 @@ der elf ist der, der in der Aufgabe wörtlich steht** — «welcher Knoten ist d
 lässt sich mit dieser Spalte nicht beantworten, ohne die Entscheidung zu brechen. Nicht erfunden
 (`PR-4`); `type-binding-check` bewacht die alte Form unverändert und ist grün.*
 
+**Nachgemessen am 2026-09-05, und die Zahl ist wieder eine andere: 40, nicht 23** (`INF-025`).
+*49 `taxmod_`-Optionen stehen da, **40** merken sich eine Knoten-Id, **31** zeigen dabei auf einen
+Knoten, den es gibt. Die Zählung darüber hatte die fünf Äste, die fünf Beschriftungsrollen, die vier
+gesäten Einzelknoten und die drei Wegwerfäste der Wächter nicht angesehen.*
+
+⚠️ **Und damit ist die offene Frage viermal so gross wie gedacht, aber es ist dieselbe.** *`Branch`
+und `SeededRole` sind genau wie `SimpleType` Aufzählungen und keine Klassen — betroffen sind
+**einundzwanzig** Optionen, nicht elf. **Nichts davon ist abgelöst worden**, weil jede Ablösung die
+Entscheidung aus TASK-008 gebrochen hätte (`PR-4`). Die drei Wege stehen unverändert in `INF-020`;
+nur der Preis von (a) hat sich vervierfacht.*
+
+⚠️ **Ein Befund korrigiert `INF-020`:** *die neun Rückstände zeigen **nicht** auf ältere Knoten. Ihre
+Ids stehen weder in `nodes` noch im Schatten — sie halten gar keine Bindung. Stehengelassen, weil
+Löschen in seinem Bestand seine Entscheidung ist; die Frage ist damit nur noch eine Ja-Nein-Frage.*
+
+**Der Wächter dazu ist neu:** [`node-binding-check.php`](../../../scripts/dev/node-binding-check.php).
+*Er hält fest, was TASK-009 erreicht hat — **keine der 23 abgelösten Klassenoptionen kommt zurück**,
+jede registrierte Klasse steht an genau einem Knoten — und er macht den Rest sichtbar: keine
+**unbekannte** Option merkt sich eine Knoten-Id, und die neun Rückstände zeigen weiter auf nichts.
+Geprüft, dass er beisst, und er lässt beim Lauf nichts liegen (`INF-021`).*
+
 ```text
 [x] TASK-010  from_id/to_id in from_node_id/to_node_id, Constraint auf nodes.id
 ```

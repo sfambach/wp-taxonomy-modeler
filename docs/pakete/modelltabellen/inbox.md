@@ -674,3 +674,56 @@ c  eine Kante mit Werten laesst sich nicht parken   — eine neue Regel an der O
 nicht wieder lebt), und Wiederherstellen ginge über den vorhandenen `Restore`-Weg. **Das ist zu
 bauen, sobald a, b oder c dasteht** — vorher wäre jede Fassung eine stillschweigende Entscheidung
 über seine Daten.*
+
+---
+
+## INF-025 · Nachgemessen zu TASK-009: es sind 40 Optionen, und 31 davon sind eine lebende Bindung
+
+**2026-09-05, beim Zuendebringen von TASK-009. Gemessen, nicht aus dem Bericht übernommen — und
+darum stehen hier andere Zahlen als in `INF-020`.**
+
+**`INF-020` sagte «23 stehen weiter». Das war zu wenig gezählt.** *Gemessen an der Datenbank stehen
+heute **49 `taxmod_`-Optionen**; **40** davon merken sich eine Knoten-Id, und **31** zeigen dabei auf
+einen Knoten, den es wirklich gibt. Die frühere Zählung hatte die gesäten Einzelknoten, die fünf Äste
+und die fünf Beschriftungsrollen gar nicht angesehen.*
+
+```text
+11  taxmod_type_<name>_id          einfache Typen        Aufzaehlungsfall SimpleType
+ 5  taxmod_branch_<ast>_id         Aeste                 Aufzaehlungsfall Branch
+ 5  taxmod_role_<rolle>            Beschriftungsrollen   Aufzaehlungsfall SeededRole
+ 4  taxmod_{root,trash,primitives,roles}_id              je ein einzelner Ort
+ 3  taxmod_render_<behaelter>_id   Renderer/Converter/Validator — ein Ort, keine Klasse
+ 3  taxmod_testast_<ast>_id        Wegwerfaeste der Waechter, kein Modellwissen
+ 9  taxmod_render_renderer_…_id    Rueckstand — zeigen auf nichts
+```
+
+⚠️ **Die Frage aus `INF-020` ist dieselbe, sie ist nur viermal so gross.** *Sie betraf elf
+Typoptionen; gemessen betrifft sie **einundzwanzig**, denn `Branch` und `SeededRole` sind genau wie
+`SimpleType` Aufzählungen und keine Klassen. `nodes.implemented_by` trägt den Klassennamen
+(TASK-008, auf sein Wort: «wenn das ohne Factory geht, weil der Klassenname da drinsteht,
+perfekt»), und ein Aufzählungsfall hat keinen. **Nichts davon lässt sich mit der heutigen Spalte
+ablösen, ohne die Entscheidung zu brechen** (`PR-4`), also ist nichts davon abgelöst worden.*
+
+⚠️ **Die drei Wege stehen unverändert und keiner ist gewählt** — *(a) je Fall eine Klasse; (b) die
+Spalte darf auch einen Aufzählungsfall nennen, dann prüft der Wächter `defined()` statt
+`class_exists()`; (c) es bleibt, bis ein Knoten über etwas anderes zu finden ist. **Heute gilt (c).**
+Was sich gegenüber `INF-020` ändert, ist nur der Preis von (a): elf Klassen zu erfinden ist eine
+Überlegung wert, einundzwanzig eher nicht.*
+
+⚠️ **Ein Befund korrigiert `INF-020` und macht die neun Rückstände billiger, als sie dort klangen.**
+*Dort stand, sie zeigten «auf Knoten, die eine ältere Fassung der Saat angelegt hat», und darum
+wäre ihr Löschen ein Wegwerfen einer Bindung zu seinen Daten. **Gemessen ist das nicht so:** die
+neun Ids (`43643`–`43659`) stehen **weder in `nodes` noch in `nodes_history`** — sie zeigen auf
+nichts, das je existiert hat. **Sie halten keine Bindung, und ihr Löschen verlöre nichts.** Ich habe
+sie trotzdem stehenlassen, weil Löschen in seinem Bestand seine Entscheidung ist und nicht meine;
+die Frage ist jetzt nur eine Ja-Nein-Frage statt einer Abwägung.*
+
+⚠️ *`taxmod_installation_id` sieht wie eine zwölfte aus und ist keine — der Kern sagt selbst «Not a
+node». Wo die Installationsidentität wohnt, ist `INF-008`.*
+
+**Was dazugekommen ist:** [`node-binding-check.php`](../../../scripts/dev/node-binding-check.php).
+*Er hält vier Zusagen: keine **unbekannte** Option merkt sich eine Knoten-Id; **keine der 23
+abgelösten Klassenoptionen ist zurück**; jede registrierte Klasse steht an genau einem Knoten; und
+die neun Rückstände zeigen weiterhin auf nichts. **Geprüft, dass er beisst** — mit einer
+untergeschobenen `taxmod_render_renderer_slider_id` und einer erfundenen Option wird er rot, und er
+lässt beim Lauf nichts liegen (`INF-021`).*
