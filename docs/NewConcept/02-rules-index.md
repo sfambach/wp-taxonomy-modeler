@@ -45,11 +45,11 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 13 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 10 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 14 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 54 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 57 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
-| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 14 |
+| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 16 |
 | **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 21 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:44](../../CLAUDE.md) | 2 |
 
@@ -57,7 +57,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 72 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 75 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:69](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:70](../../CLAUDE.md) | 1 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:71](../../CLAUDE.md) | **nie** |
@@ -65,7 +65,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 13 |
 | **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 117 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 3 |
-| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 28 |
+| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 29 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 6 |
 | **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:78](../../CLAUDE.md) | 2 |
 | **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:79](../../CLAUDE.md) | 7 |
@@ -335,7 +335,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **I2** | A node name is text too. Identity runs over the id, not over the name. | [40-i18n.md:32](40-i18n.md) | 5 |
 | **I3** | Every text should be translatable. | [40-i18n.md:33](40-i18n.md) | **nie** |
 | **I4** | A node carries several labels: a long description, a form label, a table label, and a symbol of roughly three characters or fewer. | [40-i18n.md:34](40-i18n.md) | 1 |
-| **I5** | A node also carries an icon, which is not language-dependent but must be changeable in a suitable place. | [40-i18n.md:35](40-i18n.md) | 5 |
+| **I5** | A node also carries an icon, which is not language-dependent but must be changeable in a suitable place. | [40-i18n.md:35](40-i18n.md) | 6 |
 | **I6** | Validators and dialogs contain texts that must be translatable too. | [40-i18n.md:36](40-i18n.md) | 2 |
 | **I7** | WordPress standard is preferred, including for multilingual operation. | [40-i18n.md:37](40-i18n.md) | 1 |
 | **I8** | Modelling translations as nodes is not sensible — they are not really translations in that sense. | [40-i18n.md:38](40-i18n.md) | 2 |
