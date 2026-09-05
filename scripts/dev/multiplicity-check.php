@@ -180,7 +180,7 @@ if ($ausTabelle === []) {
         $kante = null;
 
         $von = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT from_id FROM ' . Schema::table('relations') . ' WHERE id = %d',
+            'SELECT from_node_id FROM ' . Schema::table('relations') . ' WHERE id = %d',
             (int) $z['owner_id']
         ));
 
@@ -400,7 +400,7 @@ if ($verwalter === []) {
             $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
         }
 
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d', $meinerId, $meinerId));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d', $meinerId, $meinerId));
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $meinerId));
     }
 

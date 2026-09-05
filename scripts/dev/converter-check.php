@@ -84,7 +84,7 @@ $edge = $editor->addField($holder->id, $integerId, 'zaehler');
 // ⚠️ *Was hier bleibt, ist das Anlegen der Einstellungskante: der Kern **erfindet** keine Kante
 // (`CD-5`), und die Spielwiese dieses Laufs bringt sie nicht mit.*
 $einstellung = static function (\Taxmod\Core\Model\Relation $stelle, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($nodes, $edges, $fw, $zeichner, &$rendering): void {
-    $traeger = $nodes->byId($stelle->fromId);
+    $traeger = $nodes->byId($stelle->fromNodeId);
     $data    = new \Taxmod\Core\Service\DataEntry(
         new WpdbRecordRepository(),
         $edges,
@@ -233,7 +233,7 @@ $say(str_contains($stale->result->markup, '12'), 'der Wert steht gespeichert da'
 
 // aufraeumen
 $in  = (string) $holder->id;
-$all = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$in} OR to_id = {$in}"));
+$all = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$in} OR to_node_id = {$in}"));
 $own = $all === [] ? $in : $in . ',' . implode(',', $all);
 
 (new WpdbRecordRepository())->forgetNodes([$holder->id]);

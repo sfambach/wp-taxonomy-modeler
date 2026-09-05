@@ -332,7 +332,7 @@ if ($zusammengesetzt === null) {
 
     $innen = $wpdb->get_col($wpdb->prepare(
         'SELECT rel.name FROM ' . Schema::table('relations') . " rel
-         WHERE rel.from_id = %d AND rel.kind <> 'inheritance' AND rel.hide = 0 AND rel.kind <> 'setting'",
+         WHERE rel.from_node_id = %d AND rel.kind <> 'inheritance' AND rel.hide = 0 AND rel.kind <> 'setting'",
         (int) $zusammengesetzt['ziel']
     )) ?: [];
 
@@ -531,7 +531,7 @@ echo "\n== Der Datensatz-Block ist eine Tabelle, mit Aktionen rechts ==\n";
 // Zusage, die hier fehlte.*
 $mitSaetzen = (int) $wpdb->get_var(
     'SELECT r.node_id FROM ' . Schema::table('records') . ' r
-     INNER JOIN ' . Schema::table('relations') . " e ON e.from_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
+     INNER JOIN ' . Schema::table('relations') . " e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
      GROUP BY r.node_id HAVING COUNT(DISTINCT r.id) > 2 ORDER BY COUNT(DISTINCT r.id) DESC LIMIT 1"
 );
 
@@ -587,7 +587,7 @@ if ($mitSaetzen === 0) {
         'SELECT e.name FROM ' . Schema::table('relations') . ' e
          INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = %d
          WHERE e.kind = %s AND e.name <> %s
-           AND (e.from_id = n.id OR n.path LIKE CONCAT(SUBSTRING_INDEX(n.path, %s, 1), %s))',
+           AND (e.from_node_id = n.id OR n.path LIKE CONCAT(SUBSTRING_INDEX(n.path, %s, 1), %s))',
         $mitSaetzen,
         'setting',
         '',

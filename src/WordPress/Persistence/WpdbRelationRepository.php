@@ -30,8 +30,8 @@ final class WpdbRelationRepository implements RelationRepository
                 Schema::table('relations'),
                 [
                     'version'  => $relation->version,
-                    'from_id'  => $relation->fromId,
-                    'to_id'    => $relation->toId,
+                    'from_node_id'  => $relation->fromNodeId,
+                    'to_node_id'    => $relation->toNodeId,
                     'kind'     => $relation->kind->value,
                     'name'     => $relation->name,
                     'sort_order' => $relation->sortOrder,
@@ -49,8 +49,8 @@ final class WpdbRelationRepository implements RelationRepository
             [
                 'id'       => $relation->id,
                 'version'  => $relation->version,
-                'from_id'  => $relation->fromId,
-                'to_id'    => $relation->toId,
+                'from_node_id'  => $relation->fromNodeId,
+                'to_node_id'    => $relation->toNodeId,
                 'kind'     => $relation->kind->value,
                 'name'     => $relation->name,
                 'sort_order' => $relation->sortOrder,
@@ -70,8 +70,8 @@ final class WpdbRelationRepository implements RelationRepository
         $parked    = $relation->parkedByGroup === null ? 'NULL' : '%d';
         $arguments = [
             $relation->version,
-            $relation->fromId,
-            $relation->toId,
+            $relation->fromNodeId,
+            $relation->toNodeId,
             $relation->kind->value,
             $relation->name,
             $relation->sortOrder,
@@ -104,7 +104,7 @@ final class WpdbRelationRepository implements RelationRepository
                 // group reads as *parked by an act that never happened*. Found by a boundary check:
                 // restoring an attribute left it parked.
                 'UPDATE ' . Schema::table('relations') . '
-                 SET version = %d, from_id = %d, to_id = %d, kind = %s, name = %s, sort_order = %d,
+                 SET version = %d, from_node_id = %d, to_node_id = %d, kind = %s, name = %s, sort_order = %d,
                      hide = %d,
                      multiplicity = %s,
                      parked_by_group_id = ' . $parked . '
@@ -135,7 +135,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
                  WHERE id = %d',
                 $edgeId
             ),
@@ -151,8 +151,8 @@ final class WpdbRelationRepository implements RelationRepository
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-                 WHERE to_id = %d AND kind = %s',
+                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+                 WHERE to_node_id = %d AND kind = %s',
                 $childId,
                 RelationKind::Inheritance->value
             ),
@@ -168,8 +168,8 @@ final class WpdbRelationRepository implements RelationRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
-                 WHERE from_id = %d AND kind = %s
+                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+                 WHERE from_node_id = %d AND kind = %s
                  ORDER BY sort_order ASC, id ASC',
                 $parentId,
                 RelationKind::Inheritance->value
@@ -185,7 +185,7 @@ final class WpdbRelationRepository implements RelationRepository
         global $wpdb;
 
         $highest = $wpdb->get_var($wpdb->prepare(
-            'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_id = %d AND kind = %s',
+            'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d AND kind = %s',
             $parentId,
             RelationKind::Inheritance->value
         ));
@@ -199,9 +199,9 @@ final class WpdbRelationRepository implements RelationRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
+                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity FROM ' . Schema::table('relations') . '
                  WHERE kind = %s
-                 ORDER BY from_id ASC, sort_order ASC, id ASC',
+                 ORDER BY from_node_id ASC, sort_order ASC, id ASC',
                 RelationKind::Inheritance->value
             ),
             ARRAY_A
@@ -219,8 +219,8 @@ final class WpdbRelationRepository implements RelationRepository
         // order relative to each other while placing them after their new siblings.
         $wpdb->query($wpdb->prepare(
             'UPDATE ' . Schema::table('relations') . '
-             SET from_id = %d, sort_order = sort_order + %d, version = version + 1
-             WHERE from_id = %d AND kind = %s',
+             SET from_node_id = %d, sort_order = sort_order + %d, version = version + 1
+             WHERE from_node_id = %d AND kind = %s',
             $toParentId,
             $startPosition,
             $fromParentId,
@@ -235,7 +235,7 @@ final class WpdbRelationRepository implements RelationRepository
         global $wpdb;
 
         $highest = $wpdb->get_var($wpdb->prepare(
-            'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_id = %d AND kind <> %s',
+            'SELECT MAX(sort_order) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d AND kind <> %s',
             $ownerId,
             RelationKind::Inheritance->value
         ));
@@ -261,9 +261,9 @@ final class WpdbRelationRepository implements RelationRepository
         // deleted* toggle rather than a second reading of the same query.
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
                  FROM ' . Schema::table('relations') . "
-                 WHERE from_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+                 WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
                  ORDER BY sort_order ASC, id ASC",
                 [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
             ),
@@ -283,15 +283,15 @@ final class WpdbRelationRepository implements RelationRepository
 
         $places = implode(',', array_fill(0, count($targetIds), '%d'));
 
-        // ⚠️ **`to_id` and not `from_id` — that one word is the whole method** ([D-199]). *Ordered by
+        // ⚠️ **`to_node_id` and not `from_node_id` — that one word is the whole method** ([D-199]). *Ordered by
         // the owning node so the section reads as «who uses me», grouped, rather than as a pile of
         // edge ids.*
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
                  FROM ' . Schema::table('relations') . "
-                 WHERE to_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
-                 ORDER BY from_id ASC, sort_order ASC, id ASC",
+                 WHERE to_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+                 ORDER BY from_node_id ASC, sort_order ASC, id ASC",
                 [...array_map(intval(...), $targetIds), RelationKind::Inheritance->value]
             ),
             ARRAY_A
@@ -313,9 +313,9 @@ final class WpdbRelationRepository implements RelationRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, from_id, to_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+                'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
                  FROM ' . Schema::table('relations') . "
-                 WHERE from_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
+                 WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
                  ORDER BY sort_order ASC, id ASC",
                 [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
             ),
@@ -347,7 +347,7 @@ final class WpdbRelationRepository implements RelationRepository
         $rows = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT * FROM " . Schema::table("relations") . "
-                 WHERE from_id IN ({$places}) OR to_id IN ({$places})",
+                 WHERE from_node_id IN ({$places}) OR to_node_id IN ({$places})",
                 ...[...$ids, ...$ids]
             ),
             ARRAY_A
@@ -362,10 +362,10 @@ final class WpdbRelationRepository implements RelationRepository
 
         // ⚠️ *Erst in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md)): eine Kante,
         // die verschwindet, nimmt sonst mit, **warum** sie da war.*
-        Shadow::keep('relations', 'from_id = %d OR to_id = %d', [$nodeId, $nodeId], true);
+        Shadow::keep('relations', 'from_node_id = %d OR to_node_id = %d', [$nodeId, $nodeId], true);
 
         $wpdb->query($wpdb->prepare(
-            'DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d',
+            'DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
             $nodeId,
             $nodeId
         ));
@@ -432,8 +432,8 @@ final class WpdbRelationRepository implements RelationRepository
         return Relation::fromStorage(
             (int) $row['id'],
             (int) $row['version'],
-            (int) $row['from_id'],
-            (int) $row['to_id'],
+            (int) $row['from_node_id'],
+            (int) $row['to_node_id'],
             (string) $row['kind'],
             (string) $row['name'],
             (int) $row['sort_order'],

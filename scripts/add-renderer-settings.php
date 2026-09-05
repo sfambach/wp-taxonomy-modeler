@@ -83,7 +83,7 @@ function knotenNamens(string $name, string $unterPfad = ''): ?int
 function feld(ModelEditor $editor, RelationRepositoryHolder $r, int $ownerId, int $zielId, string $name): string
 {
     foreach ($r->edges->fieldEdgesOf([$ownerId]) as $eine) {
-        if ($eine->name === $name && $eine->fromId === $ownerId) {
+        if ($eine->name === $name && $eine->fromNodeId === $ownerId) {
             return "stand schon ({$eine->id})";
         }
     }

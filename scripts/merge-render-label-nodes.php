@@ -75,20 +75,20 @@ echo "Ziel:   «{$ziel['name']}» #{$ziel['id']}\n\n";
 
 // Was bewegt wird: die Vererbungskanten der Kinder und die eigenen Felder.
 $kinder = $wpdb->get_results($wpdb->prepare(
-    "SELECT e.id, k.name FROM {$r} e INNER JOIN {$n} k ON k.id = e.to_id
-     WHERE e.from_id = %d AND e.kind = 'inheritance' ORDER BY e.position",
+    "SELECT e.id, k.name FROM {$r} e INNER JOIN {$n} k ON k.id = e.to_node_id
+     WHERE e.from_node_id = %d AND e.kind = 'inheritance' ORDER BY e.position",
     $quelle['id']
 ), ARRAY_A) ?: [];
 
 $felder = $wpdb->get_results($wpdb->prepare(
-    "SELECT rel.id, rel.name FROM {$r} rel WHERE rel.from_id = %d AND rel.kind <> 'inheritance'",
+    "SELECT rel.id, rel.name FROM {$r} rel WHERE rel.from_node_id = %d AND rel.kind <> 'inheritance'",
     $quelle['id']
 ), ARRAY_A) ?: [];
 
 // ⚠️ *Hinter die vorhandenen Kinder, nicht davor — die Reihenfolge unter dem Ziel ist eine Aussage
 // ([D-407](../docs/NewConcept/90-decision-log.md)), und ein Umzug soll sie nicht umsortieren.*
 $naechste = 1 + (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT COALESCE(MAX(position), 0) FROM {$r} WHERE from_id = %d AND kind = 'inheritance'",
+    "SELECT COALESCE(MAX(position), 0) FROM {$r} WHERE from_node_id = %d AND kind = 'inheritance'",
     $ziel['id']
 ));
 
@@ -114,7 +114,7 @@ $bewegt = 0;
 
 foreach ($kinder as $k) {
     $getan = $wpdb->query($wpdb->prepare(
-        "UPDATE {$r} SET from_id = %d, position = %d, version = version + 1 WHERE id = %d",
+        "UPDATE {$r} SET from_node_id = %d, position = %d, version = version + 1 WHERE id = %d",
         $ziel['id'],
         $naechste++,
         (int) $k['id']
@@ -133,7 +133,7 @@ foreach ($kinder as $k) {
 
 foreach ($felder as $f) {
     $getan = $wpdb->query($wpdb->prepare(
-        "UPDATE {$r} SET from_id = %d, version = version + 1 WHERE id = %d",
+        "UPDATE {$r} SET from_node_id = %d, version = version + 1 WHERE id = %d",
         $ziel['id'],
         (int) $f['id']
     ));
@@ -184,7 +184,7 @@ if ($trash === 0) {
 $trashPfad = (string) $wpdb->get_var($wpdb->prepare("SELECT path FROM {$n} WHERE id = %d", $trash));
 
 $wpdb->query($wpdb->prepare(
-    "UPDATE {$r} SET from_id = %d, version = version + 1 WHERE to_id = %d AND kind = 'inheritance'",
+    "UPDATE {$r} SET from_node_id = %d, version = version + 1 WHERE to_node_id = %d AND kind = 'inheritance'",
     $trash,
     $quelle['id']
 ));

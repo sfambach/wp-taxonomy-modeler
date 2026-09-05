@@ -89,7 +89,7 @@ foreach (['min', 'max'] as $name) {
     // Was auf ihn zeigt — die Probe aus D-606. Zeigt heute etwas darauf, ist die Lage eine andere
     // als die gemessene, und dann wird nicht verschoben.
     $zeiger = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$edgesTable} WHERE to_id = %d AND kind <> 'inheritance'",
+        "SELECT COUNT(*) FROM {$edgesTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
         (int) $row->id
     ));
 
@@ -100,7 +100,7 @@ foreach (['min', 'max'] as $name) {
     }
 
     $vorhanden = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$edgesTable} WHERE from_id = %d AND name = %s",
+        "SELECT COUNT(*) FROM {$edgesTable} WHERE from_node_id = %d AND name = %s",
         (int) $integer->id,
         $name
     ));
@@ -146,7 +146,7 @@ file_put_contents($backup, json_encode([
         (int) $ziele['max']['node']->id
     ), ARRAY_A),
     'edges' => $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM {$edgesTable} WHERE from_id IN (%d, %d, %d) OR to_id IN (%d, %d, %d)",
+        "SELECT * FROM {$edgesTable} WHERE from_node_id IN (%d, %d, %d) OR to_node_id IN (%d, %d, %d)",
         (int) $integer->id,
         (int) $ziele['min']['node']->id,
         (int) $ziele['max']['node']->id,

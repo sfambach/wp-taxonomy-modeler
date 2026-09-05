@@ -1179,7 +1179,7 @@ final class NodesScreen
         $html .= '<ul class="taxmod-used-by">';
 
         foreach ($edges as $edge) {
-            $owner = $owners[$edge->fromId] ?? null;
+            $owner = $owners[$edge->fromNodeId] ?? null;
 
             $html .= '<li>'
                 . '<code>' . esc_html($edge->name) . '</code> '
@@ -1188,7 +1188,7 @@ final class NodesScreen
                     // ⚠️ *Ein Besitzer, den es nicht mehr gibt, wird **benannt** und nicht
                     // verschwiegen — eine Kante ohne ihren Knoten ist ein Befund
                     // ([D-485](../../../docs/NewConcept/90-decision-log.md)) und keine leere Zeile.*
-                    ? '<span class="taxmod-nothing">#' . (int) $edge->fromId . '</span>'
+                    ? '<span class="taxmod-nothing">#' . (int) $edge->fromNodeId . '</span>'
                     : '<a href="' . esc_url($this->backTo($owner->id)) . '" class="taxmod-used-by-link">'
                         . esc_html($owner->name) . '</a>')
                 . '</li>';
@@ -1531,7 +1531,7 @@ final class NodesScreen
         $ownOrder = [];
 
         foreach ($edges as $edge) {
-            if ($edge->fromId === $selected->id) {
+            if ($edge->fromNodeId === $selected->id) {
                 $ownOrder[] = $edge->id;
             }
         }
@@ -1548,7 +1548,7 @@ final class NodesScreen
         $lastOwn  = $ownOrder === [] ? 0 : $ownOrder[count($ownOrder) - 1];
 
         foreach ($edges as $edge) {
-            $own = $edge->fromId === $selected->id;
+            $own = $edge->fromNodeId === $selected->id;
 
             $actions[$edge->id] = [
                 // ⚠️ The two words the core cannot make ([OQ-087](../../../docs/NewConcept/91-open-questions.md)):
@@ -1688,7 +1688,7 @@ final class NodesScreen
         $targetHrefs = [];
 
         foreach ($edges as $edge) {
-            $targetHrefs[$edge->toId] ??= $this->backTo($edge->toId);
+            $targetHrefs[$edge->toNodeId] ??= $this->backTo($edge->toNodeId);
         }
 
         // ⚠️ **Zwei Blöcke, ein Renderer** ([D-518](../../../docs/NewConcept/90-decision-log.md)). Der
@@ -1914,18 +1914,18 @@ final class NodesScreen
         $aus = [];
 
         foreach ($edges as $edge) {
-            if ($edge->fromId !== $selected->id) {
+            if ($edge->fromNodeId !== $selected->id) {
                 continue;
             }
 
-            $ziel = $this->editor->find($edge->toId);
+            $ziel = $this->editor->find($edge->toNodeId);
             $ast  = $ziel === null ? null : $this->framework->branchOf($ziel);
 
             $aus[$edge->id] = $this->rendering->nodeChooser(
                 $this->framework->root(),
                 'retarget_' . $edge->id,
                 $ast === null ? null : $this->framework->rootOf($ast),
-                $edge->toId,
+                $edge->toNodeId,
                 [$this->framework->trash()->id],
                 $this->barredTargets(),
                 $ziel?->name,
@@ -3013,7 +3013,7 @@ final class NodesScreen
         }
 
         foreach ($this->editor->fieldsOf($nodeId) as $kante) {
-            if ($kante->fromId !== $nodeId) {
+            if ($kante->fromNodeId !== $nodeId) {
                 continue;
             }
 
@@ -3256,7 +3256,7 @@ final class NodesScreen
             // ⚠️ *Die Felder des Teils, einmal geholt — nicht je Wert (`CD-7`).*
             $innen = [];
 
-            foreach ($this->editor->fieldsOf($kante->toId) as $feld) {
+            foreach ($this->editor->fieldsOf($kante->toNodeId) as $feld) {
                 $innen[$feld->id] = $feld;
             }
 

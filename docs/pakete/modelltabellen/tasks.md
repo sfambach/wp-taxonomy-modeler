@@ -206,7 +206,7 @@ lässt sich mit dieser Spalte nicht beantworten, ohne die Entscheidung zu breche
 (`PR-4`); `type-binding-check` bewacht die alte Form unverändert und ist grün.*
 
 ```text
-[ ] TASK-010  from_id/to_id in from_node_id/to_node_id, Constraint auf nodes.id
+[x] TASK-010  from_id/to_id in from_node_id/to_node_id, Constraint auf nodes.id
 ```
 
 *Der Eigentümer: «machen wir es eh eindeutiger … das ist eine Knoten-Id, da ist ein Constraint.»*
@@ -214,6 +214,31 @@ lässt sich mit dieser Spalte nicht beantworten, ohne die Entscheidung zu breche
 **Keine Umbenennung, sondern eine Verschärfung.** Die sieben heutigen Fremdschlüssel zeigen **alle**
 auf `identities.id` — die Bedingung erlaubt strukturell eine Kante, die von einem **Datensatz**
 ausgeht. Gehört zu TASK-004, weil `identities` dabei ohnehin fällt.
+
+**Gebaut am 2026-09-05, Schema 26.** Die Spalten heissen `from_node_id` und `to_node_id`, lebend und
+im Schatten; im Kern `Relation::$fromNodeId` und `$toNodeId`. **Und beide tragen wieder eine echte
+Bedingung**, `taxmod_rel_from_node` und `taxmod_rel_to_node` auf `nodes.id`.
+
+⚠️ **Der Aufräumweg hält es aus, und das war zu prüfen, nicht zu hoffen:** *`purgeSubtree()` löscht
+die **Kanten vor den Knoten**, und der Kommentar dort sagt seit jeher warum. Die Reihenfolge war
+schon richtig; jetzt kann sie niemand mehr versehentlich umdrehen.*
+
+⚠️ **Der Schatten bekommt die Umbenennung und keine Bedingung** — *eine alte Zeile führt ihre
+Verweise als Datum mit, nicht als Zwang; sonst hielte die Geschichte einen Knoten am Leben, den
+jemand weggeräumt hat.*
+
+⚠️ *Die Wanderung legt die Bedingung **nicht**, wenn eine Waise dasteht: eine, die MySQL zurückweist,
+wäre still, und ein halb gesichertes Schema ist schlimmer als ein ungesichertes. Gemessen vor dem
+Umbau: null Waisen in beiden Spalten.*
+
+⚠️ **Und die Indexnamen mussten mit, sonst hätte `dbDelta` zweimal dasselbe gelegt:** *eine
+umbenannte Spalte behält den **Namen** ihres Indexes. Der Schritt räumt `from_id` wie `to_id` ab,
+gleich unter welchem der beiden Namen er ihn findet.*
+
+**`id-space-check.php` ist auf die neue Form umgeschrieben** (`PR-9`): *sein Kopf versprach «bis
+dahin hält dieser Lauf dieselbe Zusage lesend». Er hält sie weiter für die fünf Verweise ohne
+Bedingung — und **prüft für die beiden Kantenspalten zusätzlich, dass die Bedingung wirklich
+dasteht**.*
 
 ⚠️ **TASK-011 ist gestrichen** (2026-09-04, auf sein Wort: *«TASK-011 löschen»*). *Sie hätte
 `relations.kind` in `relation_type` umbenannt — **und [D-587](../../NewConcept/90-decision-log.md)
@@ -279,7 +304,7 @@ der alte Einzelindex ist fort, keine Doppelung, und **ein Tausch tauscht wirklic
 `label_role` und `with_label`. **Meine Zusage «zu bereinigen gibt es nichts» war vorschnell.***
 
 ```text
-[ ] TASK-013  parked_by_group_id aus relations entfernen; Parken wandert in den Schatten
+[?] TASK-013  parked_by_group_id aus relations entfernen; Parken wandert in den Schatten
 ```
 
 [D-575](../../NewConcept/90-decision-log.md), wörtlich von ihm: *«Parken heisst: in die
@@ -291,6 +316,14 @@ erwähnen «geparkt», darunter `ModelEditor` 18, `WpdbRelationRepository` 12, `
 ⚠️ *Drei bis vier Ansichten brauchen danach eine zweite Abfrage, um Gelöschtes zu zeigen
 ([D-128](../../NewConcept/90-decision-log.md)s Umschalter). **Das ist der genannte Preis** — gegen
 23 Stellen, die heute etwas vergessen können.*
+
+⚠️ **Am 2026-09-05 bewusst nicht angefangen, und der Grund steht als `INF-024` im Eingang.** *Das
+Handwerk ist überschaubar und der Platz für die Änderungsgruppe existiert schon —
+`relations_history` **hat** die Spalte `parked_by_group_id`. **Offen ist, was aus den Wertzeilen
+einer geparkten Kante wird**, sobald ihre Zeile aus `relations` verschwindet: mitwandern,
+stehenbleiben (Waisen), oder das Parken verbieten. Heute trägt keine der 14 geparkten Kanten eine
+Wertzeile — **also verliert man nichts und entscheidet trotzdem etwas, und dazu sagt keine
+Entscheidung etwas** (`PR-4`).*
 
 ```text
 [ ] TASK-014  records -> node_records, record_values -> relation_records

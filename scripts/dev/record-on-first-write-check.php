@@ -123,7 +123,7 @@ $in    = $meine === [] ? (string) $ziel->id : implode(',', $meine);
 $wpdb->query("DELETE FROM {$p}record_values WHERE record_id IN (SELECT id FROM {$p}records WHERE node_id IN ({$in}))");
 $wpdb->query("DELETE FROM {$p}records WHERE node_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$in})");
-$wpdb->query("DELETE FROM {$p}relations WHERE from_id IN ({$in}) OR to_id IN ({$in})");
+$wpdb->query("DELETE FROM {$p}relations WHERE from_node_id IN ({$in}) OR to_node_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
 check(

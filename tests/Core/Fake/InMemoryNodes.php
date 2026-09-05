@@ -90,7 +90,7 @@ final class InMemoryNodes implements NodeRepository
             }
 
             foreach ($this->relations->childEdgesOf($id) as $edge) {
-                $child = $edge->hide ? null : $this->find($edge->toId);
+                $child = $edge->hide ? null : $this->find($edge->toNodeId);
 
                 if ($child !== null) {
                     $kinder[$id][] = $child;
@@ -109,7 +109,7 @@ final class InMemoryNodes implements NodeRepository
             $children = [];
 
             foreach ($this->relations->childEdgesOf($parent->id) as $edge) {
-                $child = $this->find($edge->toId);
+                $child = $this->find($edge->toNodeId);
 
                 if ($child !== null) {
                     $children[] = $child;

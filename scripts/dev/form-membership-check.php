@@ -183,7 +183,7 @@ foreach ([$erklaerend, $erbend, $beides] as $id) {
     $submits = [];
 
     foreach ($kanten as $kante) {
-        $eigen             = $kante->fromId === $id;
+        $eigen             = $kante->fromNodeId === $id;
         $actions[$kante->id] = [Control::saving('do', 'save_field', 'Save', '', $eigen)];
         $submits[$kante->id] = new Submission('/wp-admin/admin-post.php', [
             'action'        => 'taxmod_nodes',
@@ -259,7 +259,7 @@ $actions  = [];
 $submits  = [];
 
 foreach ($kanten as $kante) {
-    $eigen               = $kante->fromId === $id;
+    $eigen               = $kante->fromNodeId === $id;
     $actions[$kante->id] = [Control::saving('do', 'save_field', 'Save', '', $eigen)];
     $submits[$kante->id] = new Submission('/wp-admin/admin-post.php', [
         'action'        => 'taxmod_nodes',
@@ -299,7 +299,7 @@ echo "\n== Name und «wie oft» gehoeren ins Seitenformular, je Zeile eigen ==\n
 // nicht mehr gibt — und (b) je Zeile einen **eigenen** Namen tragen. Ohne (b) wäre ein Formular voller
 // `taxmod_setting[multiplicity]` genau eine Angabe für sechzig Zeilen, und die letzte gewinnt.*
 $id = (int) $wpdb->get_var(
-    'SELECT from_id FROM ' . Schema::table('relations') . " WHERE kind <> 'inheritance' GROUP BY from_id ORDER BY COUNT(*) DESC LIMIT 1"
+    'SELECT from_node_id FROM ' . Schema::table('relations') . " WHERE kind <> 'inheritance' GROUP BY from_node_id ORDER BY COUNT(*) DESC LIMIT 1"
 );
 
 $knoten     = $nodes->byId($id);

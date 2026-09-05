@@ -161,7 +161,7 @@ final class RenderingTest extends TestCase
      */
     private function einstellung(Node|Relation $wer, string $key, TypedValue $wert): void
     {
-        $traegerId = $wer instanceof Node ? $wer->id : $wer->fromId;
+        $traegerId = $wer instanceof Node ? $wer->id : $wer->fromNodeId;
         $traeger   = $this->nodes->find($traegerId);
 
         $kante = $this->kanteFuer($traegerId, $key);

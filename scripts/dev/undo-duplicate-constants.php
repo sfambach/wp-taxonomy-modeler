@@ -91,7 +91,7 @@ function haengtDran(int $id): int
     }
 
     $felder = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$kantenTabelle} WHERE (from_id = %d OR to_id = %d) AND kind <> 'inheritance'",
+        "SELECT COUNT(*) FROM {$kantenTabelle} WHERE (from_node_id = %d OR to_node_id = %d) AND kind <> 'inheritance'",
         $id,
         $id
     ));
@@ -215,7 +215,7 @@ foreach (['Renderer', 'Converter', 'Validator'] as $name) {
 
         foreach ([...$eine['unten'], $eine['id']] as $wegId) {
             $wpdb->query($wpdb->prepare(
-                "DELETE FROM {$kantenTabelle} WHERE from_id = %d OR to_id = %d",
+                "DELETE FROM {$kantenTabelle} WHERE from_node_id = %d OR to_node_id = %d",
                 $wegId,
                 $wegId
             ));

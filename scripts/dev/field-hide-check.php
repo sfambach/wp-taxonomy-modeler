@@ -93,7 +93,7 @@ if ($prefixes === null) {
 $eigenes = null;
 
 foreach ($editor->fieldsOf($prefixes->id) as $edge) {
-    if ($edge->fromId === $prefixes->id) {
+    if ($edge->fromNodeId === $prefixes->id) {
         $eigenes = $edge;
     }
 }

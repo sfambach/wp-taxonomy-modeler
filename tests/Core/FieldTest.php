@@ -56,7 +56,7 @@ final class FieldTest extends TestCase
         // purging (D-123), which is exactly why nothing else had to be preserved by hand.
         self::assertFalse($back->isParked());
         self::assertSame($edge->name, $back->name);
-        self::assertSame($edge->toId, $back->toId);
+        self::assertSame($edge->toNodeId, $back->toNodeId);
         self::assertCount(1, $this->editor->fieldsOf($part->id));
         self::assertSame([], $this->editor->removedFieldsOf($part->id));
     }

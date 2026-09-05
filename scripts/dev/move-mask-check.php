@@ -266,7 +266,7 @@ $in    = $meine === [] ? '0' : implode(',', $meine);
 $wpdb->query("DELETE FROM {$p}record_values WHERE record_id IN (SELECT id FROM {$p}records WHERE node_id IN ({$in}))");
 $wpdb->query("DELETE FROM {$p}records WHERE node_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$in})");
-$wpdb->query("DELETE FROM {$p}relations WHERE from_id IN ({$in}) OR to_id IN ({$in})");
+$wpdb->query("DELETE FROM {$p}relations WHERE from_node_id IN ({$in}) OR to_node_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}nodes_history WHERE id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}changelog WHERE owner_id IN ({$in}) AND owner_kind = 'node'");

@@ -91,7 +91,7 @@ echo "== the preview appears where records are possible, and not elsewhere ==\n"
 // nicht gezeichnet wird. **Die Prüfung war rot, ohne dass am Schirm etwas falsch war.***
 $model = (int) $wpdb->get_var(
     "SELECT r.node_id FROM {$prefix}records r
-     INNER JOIN {$prefix}relations e ON e.from_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
+     INNER JOIN {$prefix}relations e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
      GROUP BY r.node_id ORDER BY COUNT(*) DESC LIMIT 1"
 );
 
@@ -133,7 +133,7 @@ $dataTypeRoot = (int) $wpdb->get_var($wpdb->prepare(
 ));
 
 $dataType = $dataTypeRoot === 0 ? 0 : (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT to_id FROM {$prefix}relations WHERE from_id = %d AND kind = %s ORDER BY sort_order ASC LIMIT 1",
+    "SELECT to_node_id FROM {$prefix}relations WHERE from_node_id = %d AND kind = %s ORDER BY sort_order ASC LIMIT 1",
     $dataTypeRoot,
     'inheritance'
 ));
@@ -159,7 +159,7 @@ $edge = $wpdb->get_row(
     // ⚠️ *Und hier ebenso: eine Kante, die die Vorschau wirklich zeichnet — keine Einstellung.*
     $wpdb->prepare(
         "SELECT id, name FROM {$prefix}relations
-         WHERE from_id = %d AND name <> '' AND kind <> 'setting' AND kind <> 'inheritance' LIMIT 1",
+         WHERE from_node_id = %d AND name <> '' AND kind <> 'setting' AND kind <> 'inheritance' LIMIT 1",
         $model
     ),
     ARRAY_A
@@ -338,7 +338,7 @@ echo "\n== real data → rows marked as test data → the defaults ==\n";
 $clean = (int) $wpdb->get_var(
     "SELECT n.id
        FROM {$prefix}nodes n
-       JOIN {$prefix}relations r ON r.from_id = n.id AND r.name <> ''
+       JOIN {$prefix}relations r ON r.from_node_id = n.id AND r.name <> ''
       WHERE n.id NOT IN (SELECT node_id FROM {$prefix}records)
       GROUP BY n.id
       ORDER BY COUNT(r.id) DESC

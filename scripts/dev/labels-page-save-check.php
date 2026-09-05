@@ -357,7 +357,7 @@ $say(
 $say(count($ueber) === 1 && $ueber[0]->text === '__lb Über den eigenen Knopf', 'der Text steht: ' . ($ueber[0]->text ?? '—'));
 
 // aufraeumen
-$e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$knoten->id} OR to_id = {$knoten->id}"));
+$e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$knoten->id} OR to_node_id = {$knoten->id}"));
 $own = $e === [] ? (string) $knoten->id : $knoten->id . ',' . implode(',', $e);
 
 $roh("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");

@@ -165,7 +165,7 @@ if ($exponent === null) {
     // *`kilo` ist sein Inhalt und darf sich jederzeit ändern; **`Prefixes` ist Rahmenwerk** und
     // steht hier als Besitzer der Kante, nicht als gesuchter Name. Gefragt wird der Baum: welcher
     // Knoten erbt dieses Feld? Der erste, den es gibt, beantwortet die Frage genauso gut.*
-    $traegerId = ersterUnter($exponent->fromId);
+    $traegerId = ersterUnter($exponent->fromNodeId);
 
     if ($traegerId === 0) {
         check('ein Knoten erbt «Prefixes.exponent»', false);
@@ -204,7 +204,7 @@ if ($exponent === null) {
         } else {
             check('ein gewoehnliches Feld zum Vergleich gefunden', true);
 
-            $satz2    = $data->create($normal->fromId, RecordKind::User);
+            $satz2    = $data->create($normal->fromNodeId, RecordKind::User);
             $meine[]  = $satz2->id;
             $ging     = true;
 
@@ -231,7 +231,7 @@ echo "\n== Und die Vorgabe bleibt lesbar ==\n";
 // und welche Zahl darin steht, entscheidet er.*
 $mitVorgabe = 0;
 
-if ($exponent !== null && ($eltern = $nodes->find($exponent->fromId)) !== null) {
+if ($exponent !== null && ($eltern = $nodes->find($exponent->fromNodeId)) !== null) {
     $kinder = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
         'SELECT id FROM ' . Schema::table('nodes') . ' WHERE path LIKE %s',
         $wpdb->esc_like($eltern->path . '.') . '%'

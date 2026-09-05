@@ -57,7 +57,7 @@ $zeilen = $wpdb->get_results(
      FROM {$s} s
      LEFT JOIN {$nodes} n   ON n.id = s.owner_id
      LEFT JOIN {$rels} rel  ON rel.id = s.owner_id
-     LEFT JOIN {$nodes} von ON von.id = rel.from_id
+     LEFT JOIN {$nodes} von ON von.id = rel.from_node_id
      WHERE s.setting_key IN ('min', 'max', 'step', 'factor', 'offset', 'default')
      ORDER BY s.setting_key, s.id",
     ARRAY_A

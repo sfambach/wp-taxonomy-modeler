@@ -25,7 +25,7 @@ final class Relation extends Identity implements Renderable
      *                         what lets an edge carry settings and labels of its own (C8).
      * @param string $name     Empty for an inheritance edge: the tree edge has no name of its
      *                         own, the child does.
-     * @param int      $sortOrder     Order among the siblings of `fromId`, counted from zero.
+     * @param int      $sortOrder     Order among the siblings of `fromNodeId`, counted from zero.
      * @param int|null $parkedByGroup The act that parked it, or null while it is live.
      *
      * ⚠️ **An edge is parked by a column, and a node is not** ([D-371](../../../docs/NewConcept/90-decision-log.md)).
@@ -38,8 +38,8 @@ final class Relation extends Identity implements Renderable
     private function __construct(
         int $id,
         int $version,
-        public readonly int $fromId,
-        public readonly int $toId,
+        public readonly int $fromNodeId,
+        public readonly int $toNodeId,
         public readonly RelationKind $kind,
         string $name,
         public readonly int $sortOrder,
@@ -102,8 +102,8 @@ final class Relation extends Identity implements Renderable
      */
     private function copy(
         ?int $version = null,
-        ?int $fromId = null,
-        ?int $toId = null,
+        ?int $fromNodeId = null,
+        ?int $toNodeId = null,
         ?RelationKind $kind = null,
         ?string $name = null,
         ?int $sortOrder = null,
@@ -115,8 +115,8 @@ final class Relation extends Identity implements Renderable
         return new self(
             $this->id,
             $version ?? $this->version,
-            $fromId ?? $this->fromId,
-            $toId ?? $this->toId,
+            $fromNodeId ?? $this->fromNodeId,
+            $toNodeId ?? $this->toNodeId,
             $kind ?? $this->kind,
             $name ?? $this->name,
             $sortOrder ?? $this->sortOrder,
@@ -208,8 +208,8 @@ final class Relation extends Identity implements Renderable
         return new self(
             $id,
             $this->version,
-            $this->fromId,
-            $this->toId,
+            $this->fromNodeId,
+            $this->toNodeId,
             $this->kind,
             $this->name,
             $this->sortOrder,
@@ -222,8 +222,8 @@ final class Relation extends Identity implements Renderable
     public static function fromStorage(
         int $id,
         int $version,
-        int $fromId,
-        int $toId,
+        int $fromNodeId,
+        int $toNodeId,
         string $kind,
         string $name,
         int $sortOrder,
@@ -234,8 +234,8 @@ final class Relation extends Identity implements Renderable
         return new self(
             $id,
             $version,
-            $fromId,
-            $toId,
+            $fromNodeId,
+            $toNodeId,
             RelationKind::from($kind),
             $name,
             $sortOrder,
@@ -251,11 +251,11 @@ final class Relation extends Identity implements Renderable
     /** The same edge pointing at a new parent, one version on. */
     public function reparentedTo(int $parentId, int $sortOrder): self
     {
-        if ($parentId === $this->fromId && $sortOrder === $this->sortOrder) {
+        if ($parentId === $this->fromNodeId && $sortOrder === $this->sortOrder) {
             return $this;
         }
 
-        return $this->copy(version: $this->version + 1, fromId: $parentId, sortOrder: $sortOrder, unpark: true);
+        return $this->copy(version: $this->version + 1, fromNodeId: $parentId, sortOrder: $sortOrder, unpark: true);
     }
 
     /**
@@ -294,11 +294,11 @@ final class Relation extends Identity implements Renderable
 
     public function retargetedTo(int $targetId, RelationKind $kind): self
     {
-        if ($targetId === $this->toId && $kind === $this->kind) {
+        if ($targetId === $this->toNodeId && $kind === $this->kind) {
             return $this;
         }
 
-        return $this->copy(version: $this->version + 1, toId: $targetId, kind: $kind);
+        return $this->copy(version: $this->version + 1, toNodeId: $targetId, kind: $kind);
     }
 
     public function withHide(bool $hide): self
@@ -328,7 +328,7 @@ final class Relation extends Identity implements Renderable
     /** The same edge in a different place among its siblings, one version on. */
     public function movedTo(int $sortOrder): self
     {
-        return $this->reparentedTo($this->fromId, $sortOrder);
+        return $this->reparentedTo($this->fromNodeId, $sortOrder);
     }
 
     /**

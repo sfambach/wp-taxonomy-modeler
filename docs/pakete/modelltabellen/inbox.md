@@ -642,3 +642,35 @@ aufgetaucht.*
 ⚠️ **Die Lehre gehört zu den nächsten Aufgaben:** *jeder eindeutige Schlüssel, der über eine Spalte
 geht, die jemand tauschen kann, braucht diesen Umweg. **TASK-018 legt genau so einen an**
 (`(parent_node_id, sort_order)`).*
+
+---
+
+## INF-024 · TASK-013 hängt an einer Frage, die keine Entscheidung beantwortet: was wird aus den Werten einer geparkten Kante
+
+**2026-09-05. Aufgabe **nicht angefangen**, weil das Wichtigste daran nicht entschieden ist
+(`PR-4`).**
+
+[D-575](../../NewConcept/90-decision-log.md), wörtlich von ihm: *«Parken heisst: in die
+Schattentabelle wandern, mit der Änderungsgruppe im Gepäck.»*
+
+**Was gemessen schon steht und die Aufgabe leichter macht, als sie aussieht:** *`relations_history`
+**hat** die Spalte `parked_by_group_id` — die Änderungsgruppe kann also mitreisen, ohne dass eine
+Spalte erfunden werden muss. Und **von 14 geparkten Kanten trägt keine einzige eine Wertzeile**, es
+wäre heute also nichts zu verlieren.*
+
+⚠️ **Genau das ist aber der Punkt, an dem ich nichts erfinden darf.** *Sobald die Zeile aus
+`relations` **verschwindet**, zeigen ihre `record_values.edge_id` auf nichts mehr — heute an null
+Zeilen, morgen an der ersten geparkten Kante, an der jemand Daten eingegeben hat.* **Drei mögliche
+Antworten, und keine steht irgendwo:**
+
+```text
+a  die Wertzeilen wandern mit in ihren Schatten     — Daten verschwinden aus der Ansicht
+b  die Wertzeilen bleiben stehen                    — Waisen, die id-space-check meldet
+c  eine Kante mit Werten laesst sich nicht parken   — eine neue Regel an der Oberflaeche
+```
+
+⚠️ **Der Rest der Aufgabe ist Handwerk und gemessen:** *23 Stellen in 12 Dateien sprechen von
+«geparkt», `parkedFieldEdgesOf()` müsste aus dem Schatten lesen (jüngste Fassung je Id, sofern die Id
+nicht wieder lebt), und Wiederherstellen ginge über den vorhandenen `Restore`-Weg. **Das ist zu
+bauen, sobald a, b oder c dasteht** — vorher wäre jede Fassung eine stillschweigende Entscheidung
+über seine Daten.*

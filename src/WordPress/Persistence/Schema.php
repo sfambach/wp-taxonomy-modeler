@@ -54,7 +54,7 @@ final class Schema
      *     parse an index over a backticked column — the same reason `before` became
      *     `before_state`.
      * 3 — inheritance edges become the tree and `nodes.path` is derived from them (D-014);
-     *     `relations.from_id` and `to_id` join the foreign keys.
+     *     `relations.from_node_id` and `to_node_id` join the foreign keys.
      * 4 — the changelog gains `change_group_id`, the bracket around one act (D-348).
      * 5 — the three branches are seeded as framework nodes; no table changed, but the version
      *     moves so that an already-installed copy gets them (D-161).
@@ -163,7 +163,7 @@ final class Schema
      * im Änderungsbuch steht.*
      *
      * ⚠️ **Die sieben Fremdschlüssel auf `identities.id` fallen ersatzlos, und das ist eine
-     * Entscheidung und keine Nachlässigkeit** (`PR-9`): *`relations.from_id`/`to_id` bekommen ihre
+     * Entscheidung und keine Nachlässigkeit** (`PR-9`): *`relations.from_node_id`/`to_node_id` bekommen ihre
      * Bedingung auf `nodes.id` in **TASK-010**, wo auch die Umbenennung steht; sie hier zu setzen
      * hiesse, `ON DELETE RESTRICT` gegen die bestehenden Aufräumwege laufen zu lassen, ohne dass
      * jemand deren Reihenfolge geprüft hat. **Bis dahin hält
@@ -211,17 +211,31 @@ final class Schema
      * (TASK-015).*
      */
     /**
-     * Fassung 25: `relations.position` heisst `sort_order`, und `(from_id, kind, sort_order)` wird
+     * Fassung 25: `relations.position` heisst `sort_order`, und `(from_node_id, kind, sort_order)` wird
      * eindeutig (TASK-012).
      *
      * ⚠️ **Der Schlüssel geht über drei Spalten, und die dritte ist der ganze Befund** — die
-     * Begründung steht bei {@see renameRelationPositionColumn()}. *Der Einzelindex auf `from_id`
+     * Begründung steht bei {@see renameRelationPositionColumn()}. *Der Einzelindex auf `from_node_id`
      * fällt dabei, weil der neue Schlüssel mit derselben Spalte beginnt.*
      *
      * ⚠️ *Der Schatten bekommt die Umbenennung, aber **nicht** den Schlüssel: dort darf dieselbe
      * Stelle mehrfach vorkommen.*
      */
-    public const VERSION = 25;
+    /**
+     * Fassung 26: `relations.from_id` heisst `from_node_id`, `to_id` heisst `to_node_id`, **und beide
+     * bekommen eine Bedingung auf `nodes.id`** (TASK-010).
+     *
+     * ⚠️ **Der Eigentümer:** *«machen wir es eh eindeutiger … das ist eine Knoten-Id, da ist ein
+     * Constraint.»* **Die Umbenennung ist die kleinere Hälfte.** *Bis Fassung 20 zeigten alle sieben
+     * Fremdschlüssel auf `identities.id`, und die Bedingung erlaubte strukturell eine Kante, die von
+     * einem **Datensatz** ausgeht. Seit TASK-004 hielt nur noch ein Wächter lesend fest, was jetzt
+     * die Datenbank hält.*
+     *
+     * ⚠️ *Der Schatten bekommt die Umbenennung und **keine** Bedingung: eine alte Zeile führt ihre
+     * Verweise als Datum mit, nicht als Zwang — sonst hielte die Geschichte einen Knoten am Leben,
+     * den jemand weggeräumt hat.*
+     */
+    public const VERSION = 26;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -239,8 +253,8 @@ final class Schema
     private const RETIRED_IDENTITY_REFERENCES = [
         ['nodes', 'id'],
         ['relations', 'id'],
-        ['relations', 'from_id'],
-        ['relations', 'to_id'],
+        ['relations', 'from_node_id'],
+        ['relations', 'to_node_id'],
         ['settings', 'owner_id'],
         ['labels', 'owner_id'],
         ['changelog', 'owner_id'],
@@ -332,9 +346,13 @@ final class Schema
         // `field_type` neben `kind`, mit den Daten in der Spalte, die niemand mehr liest (TASK-007).*
         self::renameNodeKindColumn();
 
+        // ⚠️ **Vor der Umbenennung von `position`, und die Reihenfolge ist keine Geschmacksfrage:**
+        // *deren Schlüssel lautet schon auf `from_node_id` (TASK-010, TASK-012).*
+        self::renameRelationNodeColumns();
+
         // ⚠️ **Vor `dbDelta`, und dazu der Grund für die Reihenfolge *innerhalb* des Schritts:** *er
         // benennt um **und räumt die eine echte Doppelung weg**, bevor `dbDelta` den eindeutigen
-        // Schlüssel `(from_id, kind, sort_order)` anlegt. Umgekehrt wiese MySQL den Schlüssel zurück
+        // Schlüssel `(from_node_id, kind, sort_order)` anlegt. Umgekehrt wiese MySQL den Schlüssel zurück
         // — still, wie `$wpdb` es tut (TASK-012).*
         self::renameRelationPositionColumn();
 
@@ -361,6 +379,10 @@ final class Schema
         self::nameTheReferenceSpace();
         self::dropIdentitiesTable();
         self::dropSettingsTable();
+
+        // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
+        // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
+        self::constrainRelationsToNodes();
     }
 
     /**
@@ -436,7 +458,7 @@ final class Schema
         // which is the one thing that puts a node in the tree ([D-014]).*
         $wpdb->query(
             "UPDATE {$relations} r
-             JOIN {$nodes} n ON n.id = r.to_id AND r.kind = 'inheritance'
+             JOIN {$nodes} n ON n.id = r.to_node_id AND r.kind = 'inheritance'
              SET r.hide = 1
              WHERE n.hide = 1"
         );
@@ -591,7 +613,7 @@ final class Schema
     }
 
     /**
-     * `relations.position` heisst `sort_order`, und `(from_id, kind, sort_order)` wird eindeutig —
+     * `relations.position` heisst `sort_order`, und `(from_node_id, kind, sort_order)` wird eindeutig —
      * Fassung 25 (TASK-012).
      *
      * ⚠️ **Der Eigentümer:** *«Position würde ich eher Order nennen. Und die erste Position ist immer
@@ -600,7 +622,7 @@ final class Schema
      * ⚠️ **Der Schlüssel geht über **drei** Spalten, und die dritte ist der Befund.** *Meine
      * gemeldeten «17 doppelten Reihenfolgen» waren keine: alle 8 Gruppen mischen Kantenarten — Kind
      * im Baum gegen Feld des Knotens —, und **nicht eine Doppelung liegt innerhalb derselben Art**.
-     * **Ein Schlüssel auf `(from_id, sort_order)` hätte 17 gültige Zeilen abgelehnt.** Gemessen am
+     * **Ein Schlüssel auf `(from_node_id, sort_order)` hätte 17 gültige Zeilen abgelehnt.** Gemessen am
      * 2026-09-05: ohne die Art 11 Verletzungen, mit ihr genau eine.*
      *
      * ⚠️ **Diese eine wird hier weggeräumt, und das ist eine Änderung an seinen Daten:** *der Knoten
@@ -609,7 +631,7 @@ final class Schema
      * beide auf 0 standen, war ohnehin nicht festgelegt. *Umkehrbar: die Zeile steht vorher im
      * Schatten ({@see Shadow::keep()}).*
      *
-     * ⚠️ *Der Einzelindex auf `from_id` fällt: der neue Schlüssel beginnt mit derselben Spalte und
+     * ⚠️ *Der Einzelindex auf `from_node_id` fällt: der neue Schlüssel beginnt mit derselben Spalte und
      * dient damit als Suchindex. **Zwei Indizes über dieselbe führende Spalte sind Doppelung**, und
      * `dbDelta` räumt einen bestehenden nie von selbst ab.*
      *
@@ -646,15 +668,142 @@ final class Schema
 
         $relations = self::table('relations');
 
-        $alterIndex = $wpdb->get_col($wpdb->prepare(
+        // ⚠️ **Beide Namen, und das ist kein Übereifer.** *Ein Umbenennen einer Spalte lässt den
+        // **Namen** ihres Indexes stehen — auf einer Installation, die vor Fassung 26 gesät wurde,
+        // heisst er weiter `from_id`, obwohl die Spalte `from_node_id` heisst (TASK-010). **Ein Index,
+        // den dieser Schritt nicht findet, bleibt für immer neben dem neuen stehen.***
+        foreach (['from_id', 'from_node_id'] as $alt) {
+            $alterIndex = $wpdb->get_col($wpdb->prepare(
+                'SELECT INDEX_NAME FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+                $relations,
+                $alt
+            ));
+
+            if ($alterIndex !== []) {
+                $wpdb->query("ALTER TABLE {$relations} DROP INDEX {$alt}");
+            }
+        }
+
+        // ⚠️ *Dasselbe für `to_id`: die Spalte heisst `to_node_id`, der Index hiess weiter `to_id`,
+        // und `dbDelta` hätte einen zweiten daneben gelegt.*
+        $altesZiel = $wpdb->get_col($wpdb->prepare(
             'SELECT INDEX_NAME FROM information_schema.STATISTICS
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
             $relations,
-            'from_id'
+            'to_id'
         ));
 
-        if ($alterIndex !== []) {
-            $wpdb->query("ALTER TABLE {$relations} DROP INDEX from_id");
+        if ($altesZiel !== []) {
+            $wpdb->query("ALTER TABLE {$relations} DROP INDEX to_id");
+        }
+    }
+
+    /**
+     * `relations.from_id` heisst `from_node_id`, `to_id` heisst `to_node_id` — Fassung 26 (TASK-010).
+     *
+     * ⚠️ **Der Eigentümer:** *«machen wir es eh eindeutiger … das ist eine Knoten-Id, da ist ein
+     * Constraint.»* **Der Name ist die kleinere Hälfte; die Bedingung ist die eigentliche Aufgabe**
+     * ({@see constrainRelationsToNodes()}).
+     *
+     * ⚠️ *Vor `dbDelta`, wie jede Umbenennung hier — es kennt keine und legte die neuen Spalten
+     * daneben. Und vor {@see renameRelationPositionColumn()}, weil deren Schlüssel schon auf den
+     * neuen Namen lautet.*
+     */
+    private static function renameRelationNodeColumns(): void
+    {
+        global $wpdb;
+
+        $umzuege = [
+            ['from_id', 'from_node_id'],
+            ['to_id', 'to_node_id'],
+        ];
+
+        foreach (['relations', 'relations_history'] as $name) {
+            $table = self::table($name);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+                continue;
+            }
+
+            foreach ($umzuege as [$von, $nach]) {
+                $vorhanden = $wpdb->get_col($wpdb->prepare(
+                    'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+                    $table,
+                    $von
+                ));
+
+                if ($vorhanden === []) {
+                    continue;
+                }
+
+                $wpdb->query(
+                    "ALTER TABLE {$table} CHANGE {$von} {$nach} bigint(20) unsigned NOT NULL"
+                );
+            }
+        }
+    }
+
+    /**
+     * Eine Kante geht von einem **Knoten** aus und zeigt auf einen **Knoten** — und die Datenbank
+     * hält das fest (TASK-010).
+     *
+     * ⚠️ **Das ist die Verschärfung, nicht die Umbenennung.** *Bis Fassung 20 zeigten alle sieben
+     * Fremdschlüssel auf `identities.id` — die Bedingung erlaubte strukturell eine Kante, die von
+     * einem **Datensatz** ausgeht. Mit TASK-004 fiel `identities`, und die Bedingungen fielen
+     * ersatzlos mit; seither hielt [`id-space-check.php`](../../../scripts/dev/id-space-check.php)
+     * dieselbe Zusage **lesend**. Jetzt hält sie die Datenbank.*
+     *
+     * ⚠️ **`ON DELETE RESTRICT`, und der Aufräumweg hält es aus** — *gemessen: {@see
+     * WpdbNodeRepository::purgeSubtree()} löscht die Kanten **vor** den Knoten, und der Kommentar
+     * dort sagt seit jeher warum: «a relation row whose node is gone is the dangling reference the
+     * whole two-stage deletion exists to avoid». **Die Reihenfolge war schon richtig; jetzt kann sie
+     * niemand mehr versehentlich umdrehen.***
+     *
+     * ⚠️ *`dbDelta` kennt keine Fremdschlüssel — darum von Hand, und nur, wenn keiner dasteht. **Und
+     * nur, wenn keine Waise dasteht**: eine Bedingung, die MySQL zurückweist, wäre still, und ein
+     * halb gesichertes Schema ist schlimmer als ein ungesichertes, weil man sich darauf verlässt.*
+     */
+    private static function constrainRelationsToNodes(): void
+    {
+        global $wpdb;
+
+        $relations = self::table('relations');
+        $nodes     = self::table('nodes');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $relations)) !== $relations) {
+            return;
+        }
+
+        foreach ([['from_node_id', 'taxmod_rel_from_node'], ['to_node_id', 'taxmod_rel_to_node']] as [$spalte, $bedingung]) {
+            $steht = (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s
+                   AND REFERENCED_TABLE_NAME IS NOT NULL',
+                $relations,
+                $spalte
+            ));
+
+            if ($steht > 0) {
+                continue;
+            }
+
+            $waisen = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$relations} r
+                 LEFT JOIN {$nodes} n ON n.id = r.{$spalte} WHERE n.id IS NULL"
+            );
+
+            // ⚠️ *Keine Bedingung auf Daten, die sie verletzen — sie käme still nicht zustande.
+            // `id-space-check.php` zählt die Waisen und wird rot, also bleibt der Befund sichtbar.*
+            if ($waisen > 0) {
+                continue;
+            }
+
+            $wpdb->query(
+                "ALTER TABLE {$relations}
+                 ADD CONSTRAINT {$bedingung} FOREIGN KEY ({$spalte}) REFERENCES {$nodes} (id)"
+            );
         }
     }
 
@@ -679,18 +828,18 @@ final class Schema
             return;
         }
 
-        /** @var list<array{from_id: string, kind: string, sort_order: string}> $gruppen */
+        /** @var list<array{from_node_id: string, kind: string, sort_order: string}> $gruppen */
         $gruppen = $wpdb->get_results(
-            "SELECT from_id, kind, sort_order FROM {$relations}
-             GROUP BY from_id, kind, sort_order HAVING COUNT(*) > 1",
+            "SELECT from_node_id, kind, sort_order FROM {$relations}
+             GROUP BY from_node_id, kind, sort_order HAVING COUNT(*) > 1",
             ARRAY_A
         ) ?: [];
 
         foreach ($gruppen as $gruppe) {
             $ids = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
                 "SELECT id FROM {$relations}
-                 WHERE from_id = %d AND kind = %s AND sort_order = %d ORDER BY id",
-                (int) $gruppe['from_id'],
+                 WHERE from_node_id = %d AND kind = %s AND sort_order = %d ORDER BY id",
+                (int) $gruppe['from_node_id'],
                 (string) $gruppe['kind'],
                 (int) $gruppe['sort_order']
             )));
@@ -700,8 +849,8 @@ final class Schema
 
             foreach ($ids as $id) {
                 $frei = 1 + (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COALESCE(MAX(sort_order), 0) FROM {$relations} WHERE from_id = %d AND kind = %s",
-                    (int) $gruppe['from_id'],
+                    "SELECT COALESCE(MAX(sort_order), 0) FROM {$relations} WHERE from_node_id = %d AND kind = %s",
+                    (int) $gruppe['from_node_id'],
                     (string) $gruppe['kind']
                 ));
 
@@ -839,7 +988,7 @@ final class Schema
         $orphans = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT n.id, n.path FROM {$nodes} n
-                 LEFT JOIN {$relations} r ON r.to_id = n.id AND r.kind = %s
+                 LEFT JOIN {$relations} r ON r.to_node_id = n.id AND r.kind = %s
                  WHERE n.path LIKE %s AND r.id IS NULL
                  ORDER BY LENGTH(n.path) ASC, n.id ASC",
                 RelationKind::Inheritance->value,
@@ -854,7 +1003,7 @@ final class Schema
             $parentId = (int) end($segments);
 
             $position = $wpdb->get_var($wpdb->prepare(
-                "SELECT MAX(sort_order) FROM {$relations} WHERE from_id = %d AND kind = %s",
+                "SELECT MAX(sort_order) FROM {$relations} WHERE from_node_id = %d AND kind = %s",
                 $parentId,
                 RelationKind::Inheritance->value
             ));
@@ -864,8 +1013,8 @@ final class Schema
                 // ⚠️ *Ohne `id`: seit TASK-004 vergibt `relations` sie selbst.*
                 [
                     'version'  => 1,
-                    'from_id'  => $parentId,
-                    'to_id'    => (int) $row['id'],
+                    'from_node_id'  => $parentId,
+                    'to_node_id'    => (int) $row['id'],
                     'kind'     => RelationKind::Inheritance->value,
                     'name'     => '',
                     'sort_order' => $position === null ? 0 : (int) $position + 1,
@@ -1058,7 +1207,7 @@ final class Schema
      * die Stelle, die es merkt.*
      *
      * ⚠️ **Ersatzlos, und das ist eine Entscheidung** (`PR-9`): *die Bedingungen auf die jeweilige
-     * Zieltabelle setzt **TASK-010**, zusammen mit der Umbenennung von `from_id`/`to_id`. Sie hier
+     * Zieltabelle setzt **TASK-010**, zusammen mit der Umbenennung von `from_node_id`/`to_node_id`. Sie hier
      * schon zu setzen hiesse, `ON DELETE RESTRICT` gegen die bestehenden Aufräumwege zu stellen, ohne
      * deren Reihenfolge geprüft zu haben. **Gemessen am 2026-09-04: alle sieben Spalten hatten null
      * Waisen** — die Zusage ist also erfüllt, sie wird bis TASK-010 nur lesend gehalten.*
@@ -1239,8 +1388,8 @@ final class Schema
             "CREATE TABLE {$t('relations')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
-                from_id bigint(20) unsigned NOT NULL,
-                to_id bigint(20) unsigned NOT NULL,
+                from_node_id bigint(20) unsigned NOT NULL,
+                to_node_id bigint(20) unsigned NOT NULL,
                 kind varchar(20) NOT NULL,
                 name varchar(191) NOT NULL DEFAULT '',
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
@@ -1250,8 +1399,8 @@ final class Schema
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
                 target_settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
-                UNIQUE KEY one_place (from_id,kind,sort_order),
-                KEY to_id (to_id),
+                UNIQUE KEY one_place (from_node_id,kind,sort_order),
+                KEY to_node_id (to_node_id),
                 KEY parked_by_group_id (parked_by_group_id),
                 KEY settings_record_id (settings_record_id),
                 KEY target_settings_record_id (target_settings_record_id)
@@ -1363,8 +1512,8 @@ final class Schema
             "CREATE TABLE {$t('relations_history')} (
                 id bigint(20) unsigned NOT NULL,
                 version int(10) unsigned NOT NULL,
-                from_id bigint(20) unsigned NOT NULL,
-                to_id bigint(20) unsigned NOT NULL,
+                from_node_id bigint(20) unsigned NOT NULL,
+                to_node_id bigint(20) unsigned NOT NULL,
                 kind varchar(20) NOT NULL,
                 name varchar(191) NOT NULL DEFAULT '',
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,

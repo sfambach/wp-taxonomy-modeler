@@ -157,7 +157,7 @@ echo "\n== Welche Rolle ein Feld zeichnet ==\n";
 // wörtlich dieselbe:** solange `OQ-134` offen ist, zeichnet **keine** Feldkante mit `symbol`; sobald
 // sie gebaut ist, wird diese Zeile rot und will neu geschrieben werden.*
 $alleBesitzer = array_map(intval(...), $wpdb->get_col(
-    'SELECT DISTINCT from_id FROM ' . Schema::table('relations') . " WHERE kind <> 'inheritance'"
+    'SELECT DISTINCT from_node_id FROM ' . Schema::table('relations') . " WHERE kind <> 'inheritance'"
 ) ?: []);
 
 $mitSymbol = [];
@@ -210,8 +210,8 @@ echo "\n== Woher die Auskunft kommt ==\n";
 
         check(
             'und zeigt auf den Behaelter der Rollen',
-            $behaelter !== null && $feld->toId === $behaelter,
-            $feld->toId . ' statt ' . ($behaelter ?? 'nichts')
+            $behaelter !== null && $feld->toNodeId === $behaelter,
+            $feld->toNodeId . ' statt ' . ($behaelter ?? 'nichts')
         );
     }
 }

@@ -178,7 +178,7 @@ final class DataEntry
                 continue;
             }
 
-            $ziel = $this->nodes->find($edge->toId);
+            $ziel = $this->nodes->find($edge->toNodeId);
 
             if ($ziel === null || ! $this->ownsItsRecord($edge, $ziel)) {
                 continue;
@@ -316,7 +316,7 @@ final class DataEntry
             }
 
             $kette[]  = $gefunden;
-            $besitzer = $this->nodes->byId($gefunden->toId);
+            $besitzer = $this->nodes->byId($gefunden->toNodeId);
         }
 
         return $kette;
@@ -465,7 +465,7 @@ final class DataEntry
     private function hasOwnFields(Node $target): bool
     {
         foreach ($this->relations->fieldEdgesOf([$target->id]) as $edge) {
-            if ($edge->fromId === $target->id) {
+            if ($edge->fromNodeId === $target->id) {
                 return true;
             }
         }
@@ -475,7 +475,7 @@ final class DataEntry
 
     private function refuseUnwritable(Relation $edge, RecordKind $kind = RecordKind::User): void
     {
-        $target = $this->nodes->byId($edge->toId);
+        $target = $this->nodes->byId($edge->toNodeId);
         $branch = $this->framework->branchOf($target);
 
         if ($branch === null) {
@@ -735,7 +735,7 @@ final class DataEntry
      *
      * ⚠️ *Der Satz ist der **`default`** des Besitzers, wie bei jeder Angabe des Modells
      * ([D-026](../../../docs/NewConcept/90-decision-log.md): «at model level there are no values, only
-     * defaults»). Der Besitzer ist `fromId` und nicht das Ziel — sonst stünde die Angabe am Typ und
+     * defaults»). Der Besitzer ist `fromNodeId` und nicht das Ziel — sonst stünde die Angabe am Typ und
      * gälte für alle, die ihn verwenden, was genau die Unterscheidung ist, um die es hier geht.*
      *
      * ```mermaid
@@ -762,7 +762,7 @@ final class DataEntry
      */
     public function settingEdgeAtUseSite(Relation $useSite, string $key): ?Relation
     {
-        $besitzer = $this->nodes->find($useSite->fromId);
+        $besitzer = $this->nodes->find($useSite->fromNodeId);
 
         if ($besitzer === null) {
             return null;
@@ -787,7 +787,7 @@ final class DataEntry
         // an einem seiner Vorfahren erklärt, und genau dort sucht sie der Leser wieder
         // ({@see ModelValues::settingEdge()}). **Durch `putAt()` gelegt wurde jede Angabe abgewiesen,
         // die der Besitzer erklärt hat** — also die, um die es hier geht.*
-        $satzId    = $this->defaultRecordOf($stelle->fromId);
+        $satzId    = $this->defaultRecordOf($stelle->fromNodeId);
         $kante     = $this->useSiteSettingEdge($stelle, $settingEdgeId);
         $pfad      = $edgeId . '.' . $kante->id;
         $vorhanden = $this->valuesAtPath($satzId, $pfad, $locale);
@@ -813,7 +813,7 @@ final class DataEntry
      */
     private function useSiteSettingEdge(Relation $useSite, int $settingEdgeId): Relation
     {
-        $besitzer = $this->nodes->byId($useSite->fromId);
+        $besitzer = $this->nodes->byId($useSite->fromNodeId);
 
         foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
             if ($kante->id === $settingEdgeId && $kante->kind->isSetting()) {
@@ -839,7 +839,7 @@ final class DataEntry
     {
         $stelle = $this->relations->byId($edgeId) ?? throw NotYetStorable::noSuchUseSite($edgeId);
 
-        foreach ($this->records->ofNode($stelle->fromId) as $satz) {
+        foreach ($this->records->ofNode($stelle->fromNodeId) as $satz) {
             if ($satz->kind === RecordKind::Default) {
                 $this->clearPath($satz->id, $edgeId . '.' . $settingEdgeId, $locale);
             }
@@ -1115,7 +1115,7 @@ final class DataEntry
     {
         $edge = $this->fieldEdgeOf($nodeId, $edgeId);
 
-        return $this->ownsItsRecord($edge, $this->nodes->byId($edge->toId));
+        return $this->ownsItsRecord($edge, $this->nodes->byId($edge->toNodeId));
     }
 
     /**
@@ -1191,7 +1191,7 @@ final class DataEntry
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $edge   = $this->edgeOf($record, $edgeId);
-        $target = $this->nodes->byId($edge->toId);
+        $target = $this->nodes->byId($edge->toNodeId);
         $branch = $this->framework->branchOf($target);
 
         // ⚠️ Refused rather than accommodated: a part is only a part where the branch says the value
@@ -1265,7 +1265,7 @@ final class DataEntry
         $owned = [];
 
         foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model)) as $edge) {
-            $target = $this->nodes->byId($edge->toId);
+            $target = $this->nodes->byId($edge->toNodeId);
             $branch = $this->framework->branchOf($target);
 
             if ($this->ownsItsRecord($edge, $target)) {

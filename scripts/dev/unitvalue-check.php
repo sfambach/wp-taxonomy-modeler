@@ -494,11 +494,11 @@ foreach ($saetze as $satzId) {
     $weggeraeumt += $satzWeg((int) $satzId);
 }
 
-\Taxmod\WordPress\Persistence\Shadow::keep('relations', 'from_id = %d OR to_id = %d', [$thing->id, $thing->id], true);
+\Taxmod\WordPress\Persistence\Shadow::keep('relations', 'from_node_id = %d OR to_node_id = %d', [$thing->id, $thing->id], true);
 \Taxmod\WordPress\Persistence\Shadow::keep('nodes', 'id = %d', [$thing->id], true);
 
 $wpdb->query($wpdb->prepare(
-    'DELETE FROM ' . $tabelle('relations') . ' WHERE from_id = %d OR to_id = %d',
+    'DELETE FROM ' . $tabelle('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
     $thing->id,
     $thing->id
 ));

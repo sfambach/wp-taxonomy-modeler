@@ -124,11 +124,11 @@ echo "\n== 2. Ein Feld auf einen einfachen Typ, an echten Daten ==\n";
 $kandidat = null;
 
 foreach ($wpdb->get_results(
-    'SELECT id, from_id, to_id, name FROM ' . Schema::table('relations') . "
+    'SELECT id, from_node_id, to_node_id, name FROM ' . Schema::table('relations') . "
      WHERE kind <> 'inheritance' AND parked_by_group_id IS NULL"
 ) as $zeile) {
-    $ziel     = $nodes->find((int) $zeile->to_id);
-    $besitzer = $nodes->find((int) $zeile->from_id);
+    $ziel     = $nodes->find((int) $zeile->to_node_id);
+    $besitzer = $nodes->find((int) $zeile->from_node_id);
 
     if ($ziel === null || $besitzer === null) {
         continue;
@@ -159,7 +159,7 @@ if ($kandidat === null) {
 
 check('eine Kante auf einen einfachen Typ gefunden', true, (string) $kandidat->name);
 
-$satz    = $data->create((int) $kandidat->from_id);
+$satz    = $data->create((int) $kandidat->from_node_id);
 $meine[] = $satz->id;
 
 $data->appendValue($satz->id, (int) $kandidat->id, TypedValue::ofText('erster'));
@@ -236,7 +236,7 @@ echo "\n== 6. Die Multiplizitaet liegt an der Kante ==\n";
 // Umweg zeigt zugleich, dass die Spalte auch auf dem gewöhnlichen Leseweg ankommt.*
 $kante = null;
 
-foreach ($edges->fieldEdgesOf([(int) $kandidat->from_id]) as $eine) {
+foreach ($edges->fieldEdgesOf([(int) $kandidat->from_node_id]) as $eine) {
     if ($eine->id === (int) $kandidat->id) {
         $kante = $eine;
     }

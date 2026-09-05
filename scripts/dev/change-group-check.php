@@ -119,7 +119,7 @@ $say(count($ohne) === 2, sprintf('zwei Schreibvorgänge, zwei Gruppen (gefunden:
 
 // aufraeumen
 foreach ([$allein->id, $enkel->id, $kind->id, $feld->id, $typ->id, $ast->id] as $id) {
-    $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$id} OR to_id = {$id}"));
+    $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$id} OR to_node_id = {$id}"));
     $own = $e === [] ? (string) $id : $id . ',' . implode(',', $e);
 
     $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");

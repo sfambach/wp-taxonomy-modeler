@@ -101,7 +101,7 @@ global $wpdb;
 $p = $wpdb->prefix . 'taxmod_';
 
 foreach ([$enkel->id, $kind->id, $ast->id] as $id) {
-    $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$id} OR to_id = {$id}"));
+    $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$id} OR to_node_id = {$id}"));
     $own = $e === [] ? (string) $id : $id . ',' . implode(',', $e);
 
     $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");

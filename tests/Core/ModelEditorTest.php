@@ -221,8 +221,8 @@ final class ModelEditorTest extends TestCase
         $edge = $this->edges->inheritanceEdgeTo($node->id);
 
         self::assertNotNull($edge);
-        self::assertSame($this->root->id, $edge->fromId);
-        self::assertSame($node->id, $edge->toId);
+        self::assertSame($this->root->id, $edge->fromNodeId);
+        self::assertSame($node->id, $edge->toNodeId);
         self::assertSame('', $edge->name, 'a tree edge has no name of its own');
     }
 
@@ -245,7 +245,7 @@ final class ModelEditorTest extends TestCase
 
         $moved = $this->editor->move($x->id, $b->id);
 
-        self::assertSame($b->id, $this->edges->inheritanceEdgeTo($x->id)->fromId);
+        self::assertSame($b->id, $this->edges->inheritanceEdgeTo($x->id)->fromNodeId);
         self::assertSame($b->path . '.' . $x->id, $moved->path);
         self::assertSame(['created', 'moved'], $this->changes->verbsFor($x->id));
     }
@@ -302,7 +302,7 @@ final class ModelEditorTest extends TestCase
         $node = $this->editor->createNode('Board', $this->root->id);
         $this->editor->moveToTrash($node->id);
 
-        self::assertSame($this->trash->id, $this->edges->inheritanceEdgeTo($node->id)->fromId);
+        self::assertSame($this->trash->id, $this->edges->inheritanceEdgeTo($node->id)->fromNodeId);
     }
 
     #[Test]
@@ -353,7 +353,7 @@ final class ModelEditorTest extends TestCase
         $ids = [$id];
 
         while (($edge = $this->edges->inheritanceEdgeTo($id)) !== null) {
-            $id = $edge->fromId;
+            $id = $edge->fromNodeId;
             array_unshift($ids, $id);
         }
 
@@ -419,7 +419,7 @@ final class ModelEditorTest extends TestCase
 
         $this->editor->moveToTrashPromotingChildren($middle->id);
 
-        self::assertSame($grandparent->id, $this->edges->inheritanceEdgeTo($child->id)->fromId);
+        self::assertSame($grandparent->id, $this->edges->inheritanceEdgeTo($child->id)->fromNodeId);
         self::assertSame(
             $grandparent->path . '.' . $child->id,
             $this->nodes->byId($child->id)->path
@@ -499,7 +499,7 @@ final class ModelEditorTest extends TestCase
         $back = $this->editor->restore($node->id)->node;
 
         self::assertSame($was, $back->path);
-        self::assertSame($parent->id, $this->edges->inheritanceEdgeTo($node->id)->fromId);
+        self::assertSame($parent->id, $this->edges->inheritanceEdgeTo($node->id)->fromNodeId);
         self::assertSame(['created', 'parked', 'restored'], $this->changes->verbsFor($node->id));
     }
 
@@ -789,7 +789,7 @@ final class ModelEditorTest extends TestCase
 
         self::assertSame(
             [$part->id, $recipe->id],
-            array_map(static fn (Relation $edge): int => $edge->fromId, $used)
+            array_map(static fn (Relation $edge): int => $edge->fromNodeId, $used)
         );
 
         // ⚠️ *Eine Vererbungskante ist ein **Kind**, und das zeichnet der Baum. Der Knoten `Einheit`

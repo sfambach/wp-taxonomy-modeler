@@ -53,7 +53,7 @@ function elternVon(int $id): ?int
     global $wpdb, $r;
 
     $von = $wpdb->get_var($wpdb->prepare(
-        "SELECT from_id FROM {$r} WHERE to_id = %d AND kind = 'inheritance' LIMIT 1",
+        "SELECT from_node_id FROM {$r} WHERE to_node_id = %d AND kind = 'inheritance' LIMIT 1",
         $id
     ));
 

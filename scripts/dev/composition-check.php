@@ -91,7 +91,7 @@ function membersOf(ModelEditor $editor, \Taxmod\Core\Model\Node $node): array
     $members = [];
 
     foreach ($editor->fieldsOf($node->id) as $edge) {
-        if ($edge->fromId === $node->id) {
+        if ($edge->fromNodeId === $node->id) {
             $members[$edge->name] = $edge;
         }
     }
@@ -164,7 +164,7 @@ check('at least five simple members', count($addressMembers) >= 5, implode(', ',
 $textMembers = [];
 
 foreach ($addressMembers as $mitgliedName => $mitgliedEdge) {
-    $ziel = $nodes->byId($mitgliedEdge->toId);
+    $ziel = $nodes->byId($mitgliedEdge->toNodeId);
 
     if (SimpleType::fromNodeName($ziel->name) === SimpleType::Text) {
         $textMembers[$mitgliedName] = $mitgliedEdge;
@@ -233,7 +233,7 @@ $dimensionMembers = membersOf($editor, $dimension);
 check('three members', count($dimensionMembers) === 3, implode(', ', array_keys($dimensionMembers)));
 
 foreach ($dimensionMembers as $name => $edge) {
-    check("  · {$name} points at Einheitenwert", $edge->toId === $unitValue->id);
+    check("  · {$name} points at Einheitenwert", $edge->toNodeId === $unitValue->id);
 }
 
 // ⚠️ **The measurement, and its outcome is not assumed.** A member that is itself a composed type
@@ -282,7 +282,7 @@ foreach (['titel', 'backzeit', 'ofentemperatur', 'zutat'] as $member) {
     check("  · {$member}", isset($recipeMembers[$member]));
 }
 
-check('zutat points at Zutat', ($recipeMembers['zutat'] ?? null)?->toId === $ingredient->id);
+check('zutat points at Zutat', ($recipeMembers['zutat'] ?? null)?->toNodeId === $ingredient->id);
 
 $resolved = $rendering->settingsForUseSites(array_values($recipeMembers));
 $many     = ($resolved[$recipeMembers['zutat']->id][SettingKey::Multiplicity->value] ?? null)?->value->text;
@@ -292,7 +292,7 @@ check('zutat is 1..*, because a recipe with no ingredient is not one', $many ===
 $ingredientMembers = membersOf($editor, $ingredient);
 
 check('Zutat is an amount plus a name', count($ingredientMembers) === 2, implode(', ', array_keys($ingredientMembers)));
-check('  · menge points at Einheitenwert', ($ingredientMembers['menge'] ?? null)?->toId === $unitValue->id);
+check('  · menge points at Einheitenwert', ($ingredientMembers['menge'] ?? null)?->toNodeId === $unitValue->id);
 
 $drawnRecipe = [];
 

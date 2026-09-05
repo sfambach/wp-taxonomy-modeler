@@ -50,7 +50,7 @@ final class InMemoryRelations implements RelationRepository
     public function inheritanceEdgeTo(int $childId): ?Relation
     {
         foreach ($this->rows as $edge) {
-            if ($edge->toId === $childId && $edge->kind === RelationKind::Inheritance) {
+            if ($edge->toNodeId === $childId && $edge->kind === RelationKind::Inheritance) {
                 return $edge;
             }
         }
@@ -63,7 +63,7 @@ final class InMemoryRelations implements RelationRepository
         $edges = [];
 
         foreach ($this->rows as $edge) {
-            if ($edge->fromId === $parentId && $edge->kind === RelationKind::Inheritance) {
+            if ($edge->fromNodeId === $parentId && $edge->kind === RelationKind::Inheritance) {
                 $edges[] = $edge;
             }
         }
@@ -91,7 +91,7 @@ final class InMemoryRelations implements RelationRepository
         }
 
         usort($edges, static fn (Relation $a, Relation $b): int =>
-            [$a->fromId, $a->sortOrder, $a->id] <=> [$b->fromId, $b->sortOrder, $b->id]);
+            [$a->fromNodeId, $a->sortOrder, $a->id] <=> [$b->fromNodeId, $b->sortOrder, $b->id]);
 
         return $edges;
     }
@@ -100,7 +100,7 @@ final class InMemoryRelations implements RelationRepository
     public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void
     {
         foreach ($this->rows as $id => $edge) {
-            if ($edge->fromId === $fromParentId && $edge->kind === RelationKind::Inheritance) {
+            if ($edge->fromNodeId === $fromParentId && $edge->kind === RelationKind::Inheritance) {
                 $this->rows[$id] = $edge->reparentedTo($toParentId, $edge->sortOrder + $startPosition);
             }
         }
@@ -132,7 +132,7 @@ final class InMemoryRelations implements RelationRepository
         $edges = [];
 
         foreach ($this->rows as $edge) {
-            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->toId, $targetIds, true)) {
+            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->toNodeId, $targetIds, true)) {
                 continue;
             }
 
@@ -141,7 +141,7 @@ final class InMemoryRelations implements RelationRepository
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => [$a->fromId, $a->sortOrder, $a->id] <=> [$b->fromId, $b->sortOrder, $b->id]);
+        usort($edges, static fn (Relation $a, Relation $b): int => [$a->fromNodeId, $a->sortOrder, $a->id] <=> [$b->fromNodeId, $b->sortOrder, $b->id]);
 
         return $edges;
     }
@@ -155,7 +155,7 @@ final class InMemoryRelations implements RelationRepository
         $edges = [];
 
         foreach ($this->rows as $edge) {
-            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->fromId, $ownerIds, true)) {
+            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->fromNodeId, $ownerIds, true)) {
                 continue;
             }
 
@@ -172,7 +172,7 @@ final class InMemoryRelations implements RelationRepository
     public function purgeEdgesTouching(int $nodeId): void
     {
         foreach ($this->rows as $id => $edge) {
-            if ($edge->fromId === $nodeId || $edge->toId === $nodeId) {
+            if ($edge->fromNodeId === $nodeId || $edge->toNodeId === $nodeId) {
                 unset($this->rows[$id]);
             }
         }
@@ -188,7 +188,7 @@ final class InMemoryRelations implements RelationRepository
         $found = [];
 
         foreach ($this->rows as $edge) {
-            if (in_array($edge->fromId, $nodeIds, true) || in_array($edge->toId, $nodeIds, true)) {
+            if (in_array($edge->fromNodeId, $nodeIds, true) || in_array($edge->toNodeId, $nodeIds, true)) {
                 $found[] = $edge;
             }
         }

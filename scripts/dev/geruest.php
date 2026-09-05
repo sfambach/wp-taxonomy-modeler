@@ -167,7 +167,7 @@ final class Geruest
                 }
 
                 $wpdb->query($wpdb->prepare(
-                    'DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d',
+                    'DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
                     $weggehend,
                     $weggehend
                 ));
@@ -348,7 +348,7 @@ final class Geruest
             }
 
             $wpdb->query($wpdb->prepare(
-                'DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d',
+                'DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
                 $id,
                 $id
             ));

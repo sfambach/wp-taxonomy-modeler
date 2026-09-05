@@ -99,7 +99,7 @@ foreach ( $all_terms as $host ) {
 		if ( ! \WTT\Attribute::is_attribute_binding( $key ) ) {
 			continue;
 		}
-		$to = (int) ( $edge['toId'] ?? 0 );
+		$to = (int) ( $edge['toNodeId'] ?? 0 );
 		if ( $to <= 0 || isset( $referenced[ $to ] ) ) {
 			continue;
 		}

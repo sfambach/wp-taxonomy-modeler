@@ -463,14 +463,14 @@ final class ModelEditor
         $newEdges = [];
 
         foreach ($this->fieldsOf($node->id) as $edge) {
-            // ⚠️ **`fromId` is what «own» means** — the same test {@see ownAttribute()} makes. An
+            // ⚠️ **`fromNodeId` is what «own» means** — the same test {@see ownAttribute()} makes. An
             // inherited edge belongs to an ancestor, and the copy inherits it by sitting where it
             // sits; declaring it again would give the subtree the same attribute twice.
-            if ($edge->fromId !== $node->id) {
+            if ($edge->fromNodeId !== $node->id) {
                 continue;
             }
 
-            $newEdges[$edge->id] = $this->addField($copy->id, $edge->toId, $edge->name)->id;
+            $newEdges[$edge->id] = $this->addField($copy->id, $edge->toNodeId, $edge->name)->id;
         }
 
         $this->copyLabels($node->id, $copy->id, $newEdges);
@@ -522,7 +522,7 @@ final class ModelEditor
         // refuses renaming for the same reason).
         $edge = $this->ownAttribute($ownerId, $edgeId);
 
-        $copy = $this->addField($ownerId, $edge->toId, $name);
+        $copy = $this->addField($ownerId, $edge->toNodeId, $name);
 
         return $copy;
     }
@@ -571,15 +571,15 @@ final class ModelEditor
      *
      * @param array<int, int> $edgeMap Original edge id ⇒ the copy's own new edge id.
      */
-    private function copyLabels(int $fromId, int $toId, array $edgeMap = []): void
+    private function copyLabels(int $fromNodeId, int $toNodeId, array $edgeMap = []): void
     {
         if ($this->labels === null) {
             return;
         }
 
-        foreach ($this->labels->forOwners([$fromId]) as $one) {
+        foreach ($this->labels->forOwners([$fromNodeId]) as $one) {
             $this->labels->put(new Label(
-                $toId,
+                $toNodeId,
                 $this->remapPath($one->path, $edgeMap),
                 $one->roleId,
                 $one->number,
@@ -875,7 +875,7 @@ final class ModelEditor
         }
 
         $edge        = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
-        $grandparent = $this->nodes->byId($edge->fromId);
+        $grandparent = $this->nodes->byId($edge->fromNodeId);
 
         // ⚠️ **One row per promoted child, not one row saying *the children moved*** (D-348).
         // A restore has to know **which** child went **where** to put it back, and *these
@@ -883,7 +883,7 @@ final class ModelEditor
         $promoted = [];
 
         foreach ($this->relations->childEdgesOf($id) as $childEdge) {
-            $child = $this->nodes->find($childEdge->toId);
+            $child = $this->nodes->find($childEdge->toNodeId);
 
             if ($child === null) {
                 continue;
@@ -1043,7 +1043,7 @@ final class ModelEditor
         $own = [];
 
         foreach ($this->relations->fieldEdgesOf([$ownerId]) as $edge) {
-            if ($edge->fromId === $ownerId) {
+            if ($edge->fromNodeId === $ownerId) {
                 $own[] = $edge;
             }
         }
@@ -1067,7 +1067,7 @@ final class ModelEditor
      */
     public function targetsOf(array $edges): array
     {
-        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->toId, $edges));
+        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->toNodeId, $edges));
     }
 
     /**
@@ -1081,7 +1081,7 @@ final class ModelEditor
      */
     public function ownersOf(array $edges): array
     {
-        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->fromId, $edges));
+        return $this->nodes->byIds(array_map(static fn (Relation $edge): int => $edge->fromNodeId, $edges));
     }
 
     /**
@@ -1095,7 +1095,7 @@ final class ModelEditor
     public function ownAttribute(int $ownerId, int $edgeId): Relation
     {
         foreach ($this->fieldsOf($ownerId) as $edge) {
-            if ($edge->id === $edgeId && $edge->fromId === $ownerId) {
+            if ($edge->id === $edgeId && $edge->fromNodeId === $ownerId) {
                 return $edge;
             }
         }
@@ -1224,7 +1224,7 @@ final class ModelEditor
         if ($isSetting) {
             $art = RelationKind::Setting;
         } else {
-            $target = $this->nodes->byId($edge->toId);
+            $target = $this->nodes->byId($edge->toNodeId);
             $branch = $this->framework->branchOf($target)
                 ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
 
@@ -1331,12 +1331,12 @@ final class ModelEditor
             return [];
         }
 
-        $sorten = $this->nodes->resolvedFieldTypes(array_map(static fn (Relation $e): int => $e->toId, $edges));
+        $sorten = $this->nodes->resolvedFieldTypes(array_map(static fn (Relation $e): int => $e->toNodeId, $edges));
 
         $je = [];
 
         foreach ($edges as $edge) {
-            $je[$edge->id] = $sorten[$edge->toId] ?? FieldType::standard();
+            $je[$edge->id] = $sorten[$edge->toNodeId] ?? FieldType::standard();
         }
 
         return $je;
@@ -1357,7 +1357,7 @@ final class ModelEditor
     private function edgeState(Relation $edge): string
     {
         return FrozenState::of([
-            'to'     => $edge->toId,
+            'to'     => $edge->toNodeId,
             'kind'   => $edge->kind->value,
             'parked' => $edge->parkedByGroup ?? 0,
             'name'   => $edge->name,
@@ -1385,7 +1385,7 @@ final class ModelEditor
     private function swapWithNeighbour(int $id, int $direction): void
     {
         $edge     = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
-        $siblings = $this->relations->childEdgesOf($edge->fromId);
+        $siblings = $this->relations->childEdgesOf($edge->fromNodeId);
 
         $this->swapAmong($edge, $siblings, $direction, $id, 'node');
     }
@@ -1430,7 +1430,7 @@ final class ModelEditor
             $yours = $there;
         }
 
-        // ⚠️ **Über eine freie Stelle und nicht direkt, seit `(from_id, kind, sort_order)` eindeutig
+        // ⚠️ **Über eine freie Stelle und nicht direkt, seit `(from_node_id, kind, sort_order)` eindeutig
         // ist** (TASK-012). *Ein Tausch schreibt zwangsläufig einmal auf eine Stelle, die noch besetzt
         // ist — **MySQL weist das zurück, und `$wpdb` sagt darüber nichts**: `package2-check` meldete
         // «moving up swaps them» als rot, ohne dass irgendwo ein Fehler stand. Also erst zur Seite,

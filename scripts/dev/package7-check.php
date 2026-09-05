@@ -135,7 +135,7 @@ $kanteFuer = static function (int $traegerId, string $key) use ($edges, $framewo
 
 /** Eine Angabe an einem Knoten oder an einer Verwendungsstelle. */
 $angabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key, \Taxmod\Core\Model\TypedValue $wert) use ($satzVon, $kanteFuer, $data): void {
-    $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromId;
+    $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromNodeId;
     $kante     = $kanteFuer($traegerId, $key);
 
     // ⚠️ **An einer Verwendungsstelle geht es jetzt ueber den Kern.** *Hier stand ein **Behelf** —
@@ -160,7 +160,7 @@ $angabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $
 
 /** Dieselbe Angabe wieder wegnehmen. */
 $ohneAngabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $wer, string $key) use ($satzVon, $kanteFuer, $data): void {
-    $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromId;
+    $traegerId = $wer instanceof \Taxmod\Core\Model\Node ? $wer->id : $wer->fromNodeId;
     $kante     = $kanteFuer($traegerId, $key);
 
     if ($wer instanceof \Taxmod\Core\Model\Relation) {
@@ -729,7 +729,7 @@ try {
     // Zeile darunter sagt es dann statt still durchzulaufen.*
     foreach ($editor->childrenOf($framework->rootOf(Branch::Compositions)->id) as $candidate) {
         foreach ($editor->fieldsOf($candidate->id) as $edge) {
-            if ($edge->fromId === $candidate->id) {
+            if ($edge->fromNodeId === $candidate->id) {
                 $withAttributes = $candidate;
 
                 break;

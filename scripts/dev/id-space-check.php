@@ -19,9 +19,12 @@
  * Raum beim höchsten **lebenden** Wert, hinge die Geschichte einer alten Sache an einer neuen —
  * [D-340](../../docs/NewConcept/90-decision-log.md).*
  *
- * ⚠️ **Die Fremdschlüssel selbst sind seit Fassung 21 nicht mehr in der Datenbank**, sondern werden
- * hier gelesen — *die Bedingungen auf `nodes.id` setzt TASK-010; bis dahin ist dieser Lauf die
- * Stelle, die es merkt. Gemessen vor dem Umbau: **null Waisen in allen sieben Spalten.***
+ * ⚠️ **Die Bedingungen auf `nodes.id` stehen seit Fassung 26 wieder in der Datenbank** (TASK-010,
+ * der Eigentümer: *«das ist eine Knoten-Id, da ist ein Constraint»*). *Von Fassung 21 bis dahin hielt
+ * **dieser Lauf** dieselbe Zusage lesend, und er tut es weiter — für die fünf Verweise, die bewusst
+ * keine Bedingung tragen. **Für die beiden Kantenspalten prüft er jetzt zusätzlich, dass die
+ * Bedingung wirklich dasteht**: eine, die MySQL still nicht angelegt hat, sähe sonst aus wie eine,
+ * die hält.*
  *
  * ⚠️ **Der eine offene Punkt war `settings.owner_id` — sie nannte ihren Raum nicht und zeigte
  * gemessen auf Knoten (3) und Kanten (10).** *Die Tabelle ist mit
@@ -145,8 +148,8 @@ echo "\n3 · Kein Fremdschluessel zeigt ins Leere\n";
 // immer ihre Zieltabelle im Namen trugen. **Was hier steht, ist der Soll-Zustand von `package.md` §6**,
 // und `settings.owner_id` stand hier bewusst nicht — die Tabelle ist seit D-579 fort.*
 $verweise = [
-    ['relations', 'from_id', 'nodes'],
-    ['relations', 'to_id', 'nodes'],
+    ['relations', 'from_node_id', 'nodes'],
+    ['relations', 'to_node_id', 'nodes'],
     ['labels', 'owner_id', 'nodes'],
     ['labels', 'role_id', 'nodes'],
     ['records', 'node_id', 'nodes'],
@@ -167,13 +170,34 @@ foreach ($verweise as [$name, $spalte, $ziel]) {
     check("{$name}.{$spalte} findet seinen Eintrag in {$ziel}", $waisen === 0, "$waisen Waisen");
 }
 
+// ⚠️ **Umgeschrieben am 2026-09-05, weil TASK-010 gebaut ist** (`PR-9`). *Der Kopf dieses Laufs sagte
+// «bis dahin hält dieser Lauf dieselbe Zusage **lesend**» — jetzt hält sie die Datenbank, und dieser
+// Lauf prüft, **dass sie es tut**. Eine Bedingung, die MySQL still nicht angelegt hat, sähe sonst
+// genauso aus wie eine, die steht.*
+//
+// ⚠️ *Nur die beiden Kantenspalten. Die anderen fünf Verweise oben haben bewusst keine Bedingung:
+// `record_values.edge_id` zeigt auf eine Kante, die geparkt werden kann (TASK-013), und die
+// Schattentabellen führen ihre Verweise als **Datum** und nicht als Zwang.*
+foreach ([['from_node_id', 'nodes'], ['to_node_id', 'nodes']] as [$spalte, $ziel]) {
+    $steht = (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE
+         WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s
+           AND REFERENCED_TABLE_NAME = %s',
+        Schema::table('relations'),
+        $spalte,
+        Schema::table($ziel)
+    ));
+
+    check("und relations.{$spalte} ist an nodes.id gebunden", $steht === 1, 'die Bedingung fehlt');
+}
+
 echo "\n4 · Keine neue Zeile bekommt eine Nummer, die schon vergeben war\n";
 
 // ⚠️ **Der Schatten und das Änderungsbuch gehören dazu, und das ist der Punkt des Abschnitts.**
 // *Sie überleben, was sie beschreiben; eine Nummer, die dort steht, ist verbraucht, auch wenn keine
 // lebende Zeile sie mehr trägt ([D-340], [D-065]).*
 $verbraucht = [
-    'nodes'     => [['nodes', 'id'], ['nodes_history', 'id'], ['relations', 'from_id'], ['relations', 'to_id']],
+    'nodes'     => [['nodes', 'id'], ['nodes_history', 'id'], ['relations', 'from_node_id'], ['relations', 'to_node_id']],
     'relations' => [['relations', 'id'], ['relations_history', 'id']],
     'records'   => [['records', 'id'], ['records_history', 'id'], ['record_values', 'record_id']],
 ];

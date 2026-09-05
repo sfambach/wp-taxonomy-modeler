@@ -220,7 +220,7 @@ final class CompositionScaffold
      */
     private function widen(Relation $edge, Multiplicity $multiplicity): void
     {
-        $this->editor->setMultiplicity($edge->fromId, $edge->id, $multiplicity);
+        $this->editor->setMultiplicity($edge->fromNodeId, $edge->id, $multiplicity);
     }
 
     /**
@@ -278,7 +278,7 @@ final class CompositionScaffold
     private function field(Node $owner, string $name, string $typeName): Relation
     {
         foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromId === $owner->id) {
+            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
                 return $edge;
             }
         }
@@ -304,7 +304,7 @@ final class CompositionScaffold
     private function fieldTo(Node $owner, string $name, Node $target): Relation
     {
         foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromId === $owner->id) {
+            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
                 return $edge;
             }
         }

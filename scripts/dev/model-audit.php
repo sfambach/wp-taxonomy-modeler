@@ -93,7 +93,7 @@ say(
 
 say(
     'Kanten, die auf einen fehlenden Knoten zeigen',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relations r WHERE NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = r.to_id) OR NOT EXISTS (SELECT 1 FROM {$prefix}nodes n2 WHERE n2.id = r.from_id)")
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relations r WHERE NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = r.to_node_id) OR NOT EXISTS (SELECT 1 FROM {$prefix}nodes n2 WHERE n2.id = r.from_node_id)")
 );
 
 $parked = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$prefix}nodes WHERE path LIKE %s", $trash->path . '.%'));

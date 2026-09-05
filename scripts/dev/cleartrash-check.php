@@ -241,7 +241,7 @@ echo "\n== tidying up ==\n";
 // run.*
 $mine  = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes WHERE name LIKE '\\_\\_ct %'"));
 $in    = $mine === [] ? (string) $target->id : implode(',', $mine);
-$stray = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id IN ({$in}) OR to_id IN ({$in})"));
+$stray = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id IN ({$in}) OR to_node_id IN ({$in})"));
 $own   = $stray === [] ? $in : $in . ',' . implode(',', $stray);
 
 $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");

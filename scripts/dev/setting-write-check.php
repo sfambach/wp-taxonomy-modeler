@@ -119,7 +119,7 @@ register_shutdown_function(static function () use (&$meineKnoten, &$meineSaetze)
             $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
         }
 
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d', $id, $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d', $id, $id));
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
     }
 });
@@ -205,8 +205,8 @@ if ($knoten === null) {
 // Ein echter Renderer-Knoten als Wert — der Wert ist ein **Verweis**, nicht ein Name.
 $rendererKnoten = $wpdb->get_row($wpdb->prepare(
     'SELECT k.id, k.name FROM ' . Schema::table('relations') . ' e
-     INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = e.to_id
-     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = e.from_id
+     INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = e.to_node_id
+     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = e.from_node_id
      WHERE v.name = %s AND e.kind = %s AND k.name = %s LIMIT 1',
     'Renderer',
     'inheritance',
@@ -318,8 +318,8 @@ echo "\n== Ein anderer Renderer ersetzt den Satz, er kommt nicht dazu ==\n";
 // existiert nicht. Das ist eine Luecke des Umbaus und gehoert ins Eingangsblatt.
 $zweiter = $wpdb->get_row($wpdb->prepare(
     'SELECT k.id, k.name FROM ' . Schema::table('relations') . ' e
-     INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = e.to_id
-     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = e.from_id
+     INNER JOIN ' . Schema::table('nodes') . ' k ON k.id = e.to_node_id
+     INNER JOIN ' . Schema::table('nodes') . ' v ON v.id = e.from_node_id
      WHERE v.name = %s AND e.kind = %s AND k.name = %s LIMIT 1',
     'Renderer',
     'inheritance',

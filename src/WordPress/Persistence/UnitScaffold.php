@@ -235,7 +235,7 @@ final class UnitScaffold
     private function field(Node $owner, string $name, string $typeName): Relation
     {
         foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromId === $owner->id) {
+            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
                 return $edge;
             }
         }
@@ -275,7 +275,7 @@ final class UnitScaffold
     private function fieldTo(Node $owner, string $name, Node $target): Relation
     {
         foreach ($this->editor->fieldsOf($owner->id) as $edge) {
-            if ($edge->name === $name && $edge->fromId === $owner->id) {
+            if ($edge->name === $name && $edge->fromNodeId === $owner->id) {
                 return $edge;
             }
         }
@@ -331,7 +331,7 @@ final class UnitScaffold
 
         // ⚠️ *Die Multiplizität liegt an der Kante ([D-528](../../../docs/NewConcept/90-decision-log.md)).
         // Der Präfix ist optional, weil «10 Ohm» keinen hat.*
-        $this->editor->setMultiplicity($prefix->fromId, $prefix->id, Multiplicity::ZeroToOne);
+        $this->editor->setMultiplicity($prefix->fromNodeId, $prefix->id, Multiplicity::ZeroToOne);
 
         // ⚠️ **Hier stand `label_role = symbol` fuer `prefix` und `einheit`, und das sind genau die
         // drei Zeilen, die [D-579](../../../docs/NewConcept/90-decision-log.md) aufgibt.** *Der

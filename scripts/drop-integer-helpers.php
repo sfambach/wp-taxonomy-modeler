@@ -86,9 +86,9 @@ $plan = [];
 
 foreach ($kinder as $k) {
     $felder = $wpdb->get_results($wpdb->prepare(
-        "SELECT rel.id, rel.name, rel.kind, rel.from_id, von.name AS von
-         FROM {$r} rel JOIN {$n} von ON von.id = rel.from_id
-         WHERE rel.to_id = %d AND rel.kind <> 'inheritance'",
+        "SELECT rel.id, rel.name, rel.kind, rel.from_node_id, von.name AS von
+         FROM {$r} rel JOIN {$n} von ON von.id = rel.from_node_id
+         WHERE rel.to_node_id = %d AND rel.kind <> 'inheritance'",
         (int) $k['id']
     ), ARRAY_A) ?: [];
 
@@ -127,7 +127,7 @@ echo "\n";
 
 foreach ($plan as $p) {
     $feldId  = (int) $p['feld']['id'];
-    $ownerId = (int) $p['feld']['from_id'];
+    $ownerId = (int) $p['feld']['from_node_id'];
 
     if ($p['werte'] > 0) {
         $editor->retargetField($ownerId, $feldId, $integer);

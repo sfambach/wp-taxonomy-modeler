@@ -103,7 +103,7 @@ $roh("DELETE FROM {$p}relations WHERE id = {$feld->id}");
 
 // Quelle 3: ein Knoten, dessen Kante verschwindet — er selbst bleibt stehen.
 $allein = $editor->createNode('__cl Alleinstehend', $fw->rootOf(Branch::Model)->id);
-$roh("DELETE FROM {$p}relations WHERE to_id = {$allein->id} OR from_id = {$allein->id}");
+$roh("DELETE FROM {$p}relations WHERE to_node_id = {$allein->id} OR from_node_id = {$allein->id}");
 
 // ⚠️ *Quelle 4: ein Datensatz, dessen **Knoten** verschwindet. Seine Settings gehen mit, damit
 // diese Wiese **nur** die vierte Quelle füttert und nicht nebenbei die erste — sonst misst der
@@ -113,10 +113,10 @@ $leichfeld  = $editor->addField($leiche->id, $typ->id, '__cl zahl');
 $leichsatz  = $data->create($leiche->id);
 $data->put($leichsatz->id, $leichfeld->id, TypedValue::ofText('__cl ohne Knoten'));
 $leichkanten = array_map('intval', $wpdb->get_col(
-    "SELECT id FROM {$p}relations WHERE from_id = {$leiche->id} OR to_id = {$leiche->id}"
+    "SELECT id FROM {$p}relations WHERE from_node_id = {$leiche->id} OR to_node_id = {$leiche->id}"
 ));
 $leichbesitz = implode(',', array_merge([$leiche->id], $leichkanten));
-$roh("DELETE FROM {$p}relations WHERE from_id = {$leiche->id} OR to_id = {$leiche->id}");
+$roh("DELETE FROM {$p}relations WHERE from_node_id = {$leiche->id} OR to_node_id = {$leiche->id}");
 $roh("DELETE FROM {$p}nodes WHERE id = {$leiche->id}");
 
 echo "\n== 1. gemessen: alle drei Quellen sehen ihren eigenen Rückstand ==\n";
@@ -253,7 +253,7 @@ foreach ([$satz->id] as $id) {
 }
 
 foreach ([$modell->id, $typ->id] as $id) {
-    $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_id = {$id} OR to_id = {$id}"));
+    $e   = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$id} OR to_node_id = {$id}"));
     $own = $e === [] ? (string) $id : $id . ',' . implode(',', $e);
 
     $roh("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");

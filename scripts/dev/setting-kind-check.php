@@ -109,11 +109,11 @@ foreach ($rows as $row) {
     // haelt. Zaehlt nicht als Fehler, wird aber genannt.
     if (substr_count((string) $row['path'], '.') + 1 === $depth) {
         $incoming = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$edgesTable} WHERE to_id = %d AND kind <> 'inheritance'",
+            "SELECT COUNT(*) FROM {$edgesTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
             $id
         ));
         $outgoing = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$edgesTable} WHERE from_id = %d",
+            "SELECT COUNT(*) FROM {$edgesTable} WHERE from_node_id = %d",
             $id
         ));
 

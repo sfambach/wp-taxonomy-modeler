@@ -100,7 +100,7 @@ function abweichungen(
     global $wpdb;
 
     $zeilen = $wpdb->get_results(
-        'SELECT id, from_id, to_id, kind, name FROM ' . Schema::table('relations')
+        'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations')
     );
 
     $treffer = [];
@@ -112,7 +112,7 @@ function abweichungen(
             continue;
         }
 
-        $ziel = $nodes->find((int) $zeile->to_id);
+        $ziel = $nodes->find((int) $zeile->to_node_id);
 
         if (! $ziel instanceof Node || $framework->branchOf($ziel) !== Branch::Settings) {
             continue;
@@ -124,8 +124,8 @@ function abweichungen(
             $treffer[] = [
                 'id'   => (int) $zeile->id,
                 'name' => (string) $zeile->name,
-                'from' => (int) $zeile->from_id,
-                'to'   => (int) $zeile->to_id,
+                'from' => (int) $zeile->from_node_id,
+                'to'   => (int) $zeile->to_node_id,
                 'kind' => (string) $zeile->kind,
                 'ziel' => $ziel->name,
             ];
@@ -169,7 +169,7 @@ $gebaut = [];
 $abbauen = function () use (&$gebaut, $wpdb): void {
     foreach (array_reverse($gebaut) as $id) {
         $wpdb->query($wpdb->prepare(
-            'DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d',
+            'DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
             $id,
             $id
         ));

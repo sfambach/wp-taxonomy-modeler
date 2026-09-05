@@ -89,7 +89,7 @@ foreach ($rows as $row) {
     }
 
     $incoming = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('relations') . " WHERE to_id = %d AND kind <> 'inheritance'",
+        'SELECT COUNT(*) FROM ' . Schema::table('relations') . " WHERE to_node_id = %d AND kind <> 'inheritance'",
         (int) $row['id']
     ));
 
@@ -97,7 +97,7 @@ foreach ($rows as $row) {
     // die Einstellung `converter` und alle Renderer als Kinder**. Rest ist, was weder jemandem
     // dient noch etwas haelt.*
     $outgoing = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE from_id = %d',
+        'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d',
         (int) $row['id']
     ));
 

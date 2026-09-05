@@ -140,7 +140,7 @@ final class Residue
             'SELECT n.id, n.version, n.name, n.path FROM ' . Schema::table('nodes') . ' n
              WHERE NOT EXISTS (
                  SELECT 1 FROM ' . Schema::table('relations') . ' r
-                 WHERE r.from_id = n.id OR r.to_id = n.id
+                 WHERE r.from_node_id = n.id OR r.to_node_id = n.id
              )
              ORDER BY n.id ASC'
         );

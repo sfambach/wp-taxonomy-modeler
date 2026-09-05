@@ -78,7 +78,7 @@ foreach ( (array) $wp as $w ) {
 	$edges = array();
 	foreach ( array( 'besteht_aus', 'aggregation' ) as $bk ) {
 		foreach ( WTT\Relation::list_outgoing_by_type_key( $tax, (int) $w->term_id, $bk ) as $e ) {
-			$edges[] = ( $e['name'] ?? '' ) . '→' . (int) ( $e['toId'] ?? 0 );
+			$edges[] = ( $e['name'] ?? '' ) . '→' . (int) ( $e['toNodeId'] ?? 0 );
 		}
 	}
 	echo '  edges: ' . implode( ', ', $edges ) . "\n";

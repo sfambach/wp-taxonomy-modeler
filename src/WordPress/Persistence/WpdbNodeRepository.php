@@ -195,11 +195,11 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT r.from_id, n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
+                'SELECT r.from_node_id, n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
                  FROM ' . Schema::table('relations') . ' r
-                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
-                 WHERE r.kind = %s AND r.hide = 0 AND r.from_id IN (' . $platzhalter . ')
-                 ORDER BY r.from_id ASC, r.sort_order ASC, r.id ASC',
+                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
+                 WHERE r.kind = %s AND r.hide = 0 AND r.from_node_id IN (' . $platzhalter . ')
+                 ORDER BY r.from_node_id ASC, r.sort_order ASC, r.id ASC',
                 RelationKind::Inheritance->value,
                 ...$ids
             ),
@@ -207,7 +207,7 @@ final class WpdbNodeRepository implements NodeRepository
         );
 
         foreach ($rows ?: [] as $row) {
-            $kinder[(int) $row['from_id']][] = $this->hydrate($row);
+            $kinder[(int) $row['from_node_id']][] = $this->hydrate($row);
         }
 
         return $kinder;
@@ -225,8 +225,8 @@ final class WpdbNodeRepository implements NodeRepository
             $wpdb->prepare(
                 'SELECT n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
                  FROM ' . Schema::table('relations') . ' r
-                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
-                 WHERE r.from_id = %d AND r.kind = %s
+                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
+                 WHERE r.from_node_id = %d AND r.kind = %s
                  ORDER BY r.sort_order ASC, r.id ASC',
                 $parent->id,
                 RelationKind::Inheritance->value
@@ -299,7 +299,7 @@ final class WpdbNodeRepository implements NodeRepository
         Shadow::keep(
             'relations',
             "id IN (SELECT x.id FROM {$relations} x
-                    INNER JOIN {$nodes} n ON n.id = x.to_id OR n.id = x.from_id
+                    INNER JOIN {$nodes} n ON n.id = x.to_node_id OR n.id = x.from_node_id
                     WHERE n.id = %d OR n.path LIKE %s)",
             [$node->id, $under],
             true
@@ -311,7 +311,7 @@ final class WpdbNodeRepository implements NodeRepository
         // reference the whole two-stage deletion exists to avoid. Both are one statement.
         $wpdb->query($wpdb->prepare(
             "DELETE r FROM {$relations} r
-             INNER JOIN {$nodes} n ON n.id = r.to_id OR n.id = r.from_id
+             INNER JOIN {$nodes} n ON n.id = r.to_node_id OR n.id = r.from_node_id
              WHERE n.id = %d OR n.path LIKE %s",
             $node->id,
             $under

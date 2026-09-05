@@ -87,7 +87,7 @@ foreach ($umziehen as $name) {
         ));
 
         $felder = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$r} WHERE to_id = %d AND kind <> 'inheritance'",
+            "SELECT COUNT(*) FROM {$r} WHERE to_node_id = %d AND kind <> 'inheritance'",
             (int) $t['id']
         ));
 

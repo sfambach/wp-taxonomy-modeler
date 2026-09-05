@@ -87,7 +87,7 @@ final class ModelValues
      * am 2026-09-04 zwei von elf: `Root --validator--> Validator` und `Root --read_only--> read_only`.
      * `Renderer --converter--> Converter` ist nicht darunter, wenn `compact` fragt.*
      *
-     * ⚠️ **Es geht ums Erben, nicht ums Haben.** *`fromId !== $heirId`: eine Kante, die jemand
+     * ⚠️ **Es geht ums Erben, nicht ums Haben.** *`fromNodeId !== $heirId`: eine Kante, die jemand
      * absichtlich von einem Knoten auf sich selbst legt, steht da, weil er sie hingeschrieben hat, und
      * bleibt erlaubt ([D-608](../../../docs/NewConcept/90-decision-log.md) nennt genau das als Ausweg).*
      *
@@ -98,8 +98,8 @@ final class ModelValues
     public static function inheritanceBlocked(Relation $edge, int $heirId): bool
     {
         return $edge->kind->isSetting()
-            && $edge->toId === $heirId
-            && $edge->fromId !== $heirId;
+            && $edge->toNodeId === $heirId
+            && $edge->fromNodeId !== $heirId;
     }
 
     /**
@@ -423,7 +423,7 @@ final class ModelValues
      */
     private function erbkette(Node|Relation $subject): array
     {
-        $traeger = $subject instanceof Node ? $subject->id : $subject->fromId;
+        $traeger = $subject instanceof Node ? $subject->id : $subject->fromNodeId;
 
         if (isset($this->ketteGedaechtnis[$traeger])) {
             return $this->ketteGedaechtnis[$traeger];
@@ -459,7 +459,7 @@ final class ModelValues
         }
 
         foreach ($this->relations->fieldEdgesOf($offen) as $eine) {
-            $this->kantenNachBesitzer[$eine->fromId][$eine->id] = $eine;
+            $this->kantenNachBesitzer[$eine->fromNodeId][$eine->id] = $eine;
         }
     }
 
@@ -504,8 +504,8 @@ final class ModelValues
                 continue;
             }
 
-            $ziele[]   = $subject->toId;
-            $traeger[] = $subject->fromId;
+            $ziele[]   = $subject->toNodeId;
+            $traeger[] = $subject->fromNodeId;
         }
 
         $unbekannt = array_values(array_filter(
@@ -549,13 +549,13 @@ final class ModelValues
      */
     public function forUseSite(Relation $edge): array
     {
-        $aus = $this->settingsAt($edge, $this->recordsOf($edge->fromId), $edge->id, [$edge->id]);
+        $aus = $this->settingsAt($edge, $this->recordsOf($edge->fromNodeId), $edge->id, [$edge->id]);
 
         // ⚠️ **Auch hier zuerst die Spalte** ([D-586](../../../docs/NewConcept/90-decision-log.md)):
         // *`relations.settings_record_id` trägt den eigenen Renderer der Kante. Der zweistufige Pfad
         // am Datensatz des Besitzers bleibt als Rückfall.*
         $name = $this->rendererNameOfEdge($edge->id)
-            ?? $this->rendererNameAt($this->recordsOf($edge->fromId), [$edge->id]);
+            ?? $this->rendererNameAt($this->recordsOf($edge->fromNodeId), [$edge->id]);
 
         if ($name !== null) {
             $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $edge->id, true);
@@ -564,7 +564,7 @@ final class ModelValues
         // ⚠️ **Stufe 2 und 3 der Kette** ([D-602](../../../docs/NewConcept/90-decision-log.md)): *was
         // die Kante nicht selbst sagt, sagt der **Zielknoten**, und was der nicht sagt, seine
         // Vorfahren. Vom Standpunkt der Kante ist beides geerbt — deshalb `false`.*
-        $ziel = $this->knoten($edge->toId);
+        $ziel = $this->knoten($edge->toNodeId);
 
         if ($ziel === null) {
             return $aus;
@@ -864,11 +864,11 @@ final class ModelValues
             return null;
         }
 
-        $ziele = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $kanten));
+        $ziele = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $kanten));
 
         foreach ($kanten as $kante) {
-            if (($ziele[$kante->toId] ?? null)?->name === $zielName) {
-                return [$kante->id, $kante->toId];
+            if (($ziele[$kante->toNodeId] ?? null)?->name === $zielName) {
+                return [$kante->id, $kante->toNodeId];
             }
         }
 

@@ -89,11 +89,11 @@ check('Constants → aggregation', $byConstant->kind === RelationKind::Aggregati
 
 echo "\n== 3. It is a row in relations, with an identity of its own ==\n";
 $row = $wpdb->get_row($wpdb->prepare(
-    'SELECT id, from_id, to_id, kind, name FROM ' . Schema::table('relations') . ' WHERE id = %d',
+    'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations') . ' WHERE id = %d',
     $byModel->id
 ), ARRAY_A);
 check('the edge is stored', $row !== null);
-check('it points from the owner to the target', (int) $row['from_id'] === $order->id && (int) $row['to_id'] === $supplier->id);
+check('it points from the owner to the target', (int) $row['from_node_id'] === $order->id && (int) $row['to_node_id'] === $supplier->id);
 check('it carries its name', $row['name'] === 'supplied by', (string) $row['name']);
 // ⚠️ *Bis Fassung 20 hiess die Zusage «die Id kam aus dem geteilten Raum». **Seit TASK-004 gibt es
 // den nicht mehr** — geprüft wird jetzt, dass die Nummer aus dem Raum der eigenen Tabelle kommt
@@ -170,7 +170,7 @@ $left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . 
 check('scratch nodes are gone', $left === 0, "$left left");
 $dangling = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' r
-     LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
+     LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
      WHERE n.id IS NULL'
 );
 check('no edge points at a node that is gone', $dangling === 0, "$dangling dangling");

@@ -148,7 +148,7 @@ $aufConstants = [];
 
 if ($constants !== 0) {
     $aufConstants = $wpdb->get_results($wpdb->prepare(
-        'SELECT * FROM ' . Schema::table('relations') . " WHERE to_id = %d AND kind <> 'inheritance'",
+        'SELECT * FROM ' . Schema::table('relations') . " WHERE to_node_id = %d AND kind <> 'inheritance'",
         $constants
     ), ARRAY_A) ?: [];
 }
@@ -158,7 +158,7 @@ echo "\n" . count($aufConstants) . " Kante(n) zeigen auf den Zweigkopf «Constan
 foreach ($aufConstants as $k) {
     $von = $wpdb->get_var($wpdb->prepare(
         'SELECT name FROM ' . Schema::table('nodes') . ' WHERE id = %d',
-        (int) $k['from_id']
+        (int) $k['from_node_id']
     ));
 
     echo "  Kante {$k['id']} · " . ($von ?? '?') . " --{$k['name']}--> Constants ({$k['kind']})\n";
@@ -224,7 +224,7 @@ foreach ($loeschbar as $r) {
 
 foreach ($aufConstants as $k) {
     $schatten('relations', $k, [
-        'id', 'version', 'from_id', 'to_id', 'kind', 'name', 'position', 'multiplicity',
+        'id', 'version', 'from_node_id', 'to_node_id', 'kind', 'name', 'position', 'multiplicity',
         'parked_by_group_id', 'hide', 'settings_record_id', 'target_settings_record_id',
     ]);
 

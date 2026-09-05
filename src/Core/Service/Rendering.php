@@ -1322,7 +1322,7 @@ final class Rendering
 
         $renderer = $this->renderers->byName(FieldRowRenderer::NAME);
         $resolved = $this->vonDenKanten($edges);
-        $targets  = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $edges));
+        $targets  = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $edges));
 
         // ⚠️ One query for the whole table, not one per row (`CD-7`) — and through the ordinary
         // label walk, so an attribute's target reads the same here as it does anywhere else.
@@ -1355,7 +1355,7 @@ final class Rendering
             $rowSettings = $settingPrefix === '' ? '' : $settingPrefix . '[' . $edge->id . ']';
             $rowForm     = $pageForm === '' ? FieldRowRenderer::formFor($edge) : $pageForm;
 
-            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $rowSettings, $locale, $level, [], $rowForm, $edge->fromId === $declaredBy) as $drawn) {
+            foreach ($this->settingsFor($edge, $settings, Purpose::Edit, $rowSettings, $locale, $level, [], $rowForm, $edge->fromNodeId === $declaredBy) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
 
@@ -1397,10 +1397,10 @@ final class Rendering
                 settings: $settings,
                 locale: $locale,
                 level: $level,
-                editable: $edge->fromId === $declaredBy,
+                editable: $edge->fromNodeId === $declaredBy,
                 fieldName: $namePrefix === '' ? '' : $namePrefix . '[' . $edge->id . ']',
                 surroundings: new Surroundings(
-                    refersTo: $names[$edge->toId] ?? null,
+                    refersTo: $names[$edge->toNodeId] ?? null,
                     actions: $actions[$edge->id] ?? [],
                     // ⚠️ **The target's address, so the row can be a way *to* it.** The owner,
                     // 2026-08-26: *should have a jump link to the node.* Reading a model meant
@@ -1409,7 +1409,7 @@ final class Rendering
                     // ⚠️ *Keyed by the **target's** id and handed in, because a URL is a boundary
                     // fact (`CD-1`) and one lookup per row would be `CD-7`'s loop. The screen
                     // builds it from the same method the tree rows use.*
-                    href: $targetHrefs[$edge->toId] ?? null,
+                    href: $targetHrefs[$edge->toNodeId] ?? null,
                     // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
                     // Rand, weil er URL und Nonce braucht, und wird nur durchgereicht.
 
@@ -2486,13 +2486,13 @@ final class Rendering
      */
     private function typesOf(array $edges): array
     {
-        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toId, $edges));
+        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $edges));
 
         $types = [];
         $offen = [];
 
         foreach ($edges as $edge) {
-            $target           = $targets[$edge->toId] ?? null;
+            $target           = $targets[$edge->toNodeId] ?? null;
             $types[$edge->id] = $target === null ? null : $this->typeOf($target);
 
             if ($target !== null && $types[$edge->id] === null) {
@@ -2545,7 +2545,7 @@ final class Rendering
             $mitFeldern = [];
 
             foreach ($this->relations->fieldEdgesOf(array_values(array_unique($offen))) as $eine) {
-                $mitFeldern[$eine->fromId] = true;
+                $mitFeldern[$eine->fromNodeId] = true;
             }
 
             foreach ($offen as $edgeId => $targetId) {
@@ -2634,7 +2634,7 @@ final class Rendering
         }
 
         $unterbau = [];
-        $offen    = array_values(array_unique(array_map(static fn (Relation $e): int => $e->toId, $edges)));
+        $offen    = array_values(array_unique(array_map(static fn (Relation $e): int => $e->toNodeId, $edges)));
 
         for ($stufe = 0; $stufe < $tiefstens && $offen !== []; $stufe++) {
             // ⚠️ *Nur Ziele, die überhaupt eigene Felder haben könnten — ein `Text` hat keine, und ihn
@@ -2671,8 +2671,8 @@ final class Rendering
             $weiter = [];
 
             foreach ($this->relations->fieldEdgesOf($fragen) as $kante) {
-                $unterbau[$kante->fromId][] = $kante;
-                $weiter[]                   = $kante->toId;
+                $unterbau[$kante->fromNodeId][] = $kante;
+                $weiter[]                   = $kante->toNodeId;
             }
 
             // ⚠️ *Ein Besitzer ohne Kanten bekommt einen leeren Eintrag — sonst würde die nächste Runde
@@ -2730,11 +2730,11 @@ final class Rendering
         // ⚠️ **Ein Ziel, in dem der Lauf schon war, wird nicht wieder aufgeklappt.** *`DisplayOption`
         // erbt `Display Option` mit **sich selbst** als Ziel ([OQ-133](../../../docs/NewConcept/91-open-questions.md)),
         // und ohne diese Zeile stand `render` in jedem seiner Datensätze doppelt.*
-        if (isset($gesehen[$edge->toId])) {
+        if (isset($gesehen[$edge->toNodeId])) {
             return null;
         }
 
-        $innen = $unterbau[$edge->toId] ?? [];
+        $innen = $unterbau[$edge->toNodeId] ?? [];
 
         // ⚠️ **Was aus einem Teil gezeichnet wird, hängt daran, was der Teil ist.**
         //
@@ -2757,7 +2757,7 @@ final class Rendering
             return null;
         }
 
-        $ziel = $this->nodes->find($edge->toId);
+        $ziel = $this->nodes->find($edge->toNodeId);
 
         if ($ziel === null) {
             return null;
@@ -2782,7 +2782,7 @@ final class Rendering
             // WICHTIG: Die Felder des *gewaehlten* Knotens, nicht die des Kantenziels (D-584).
             // Die Kante zeigt auf den Basisknoten «Renderer»; im Datensatz steht «compact», und
             // gezeichnet gehoeren dessen Felder. Ohne das endet der Abstieg an der Auswahl.
-            $dieseFelder = $teil === null ? $innen : $this->fieldsOfChosen($teil, $edge->toId, $innen);
+            $dieseFelder = $teil === null ? $innen : $this->fieldsOfChosen($teil, $edge->toNodeId, $innen);
 
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
@@ -2795,7 +2795,7 @@ final class Rendering
                 $formId,
                 $tiefe + 1,
                 $unterbau,
-                [...$gesehen, $edge->toId => true],
+                [...$gesehen, $edge->toNodeId => true],
                 // WICHTIG: Hier stand eine leere Liste, und daran endete der Abstieg. Die Teile
                 // *dieses* Teils sind der gewaehlte Renderer und was unter ihm haengt (D-583).
                 $teil['teile'] ?? [],
@@ -3054,7 +3054,7 @@ final class Rendering
         $ziele = [];
 
         foreach ($edges as $edge) {
-            $ziele[$edge->id] = $edge->toId;
+            $ziele[$edge->id] = $edge->toNodeId;
         }
 
         if ($ziele === []) {

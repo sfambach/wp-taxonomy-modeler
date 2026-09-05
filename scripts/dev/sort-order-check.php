@@ -10,14 +10,14 @@
  * ⚠️ **Die dritte Spalte im Schlüssel ist der ganze Befund.** *Meine gemeldeten «17 doppelten
  * Reihenfolgen» waren keine: alle Gruppen mischen Kantenarten — Kind im Baum gegen Feld des Knotens
  * —, und nicht eine Doppelung lag innerhalb derselben Art. **Ein Schlüssel auf
- * `(from_id, sort_order)` hätte 17 gültige Zeilen abgelehnt.** Dieser Lauf misst beides und zeigt den
+ * `(from_node_id, sort_order)` hätte 17 gültige Zeilen abgelehnt.** Dieser Lauf misst beides und zeigt den
  * Unterschied, damit die Begründung nachprüfbar bleibt und nicht nur behauptet ist.*
  *
  * Geprüft wird viererlei:
  *
  * 1. **Die Spalte heisst `sort_order`**, lebend und im Schatten, und `position` gibt es nicht mehr.
- * 2. **Der Schlüssel steht** — eindeutig über `(from_id, kind, sort_order)` — **und der alte
- *    Einzelindex auf `from_id` ist fort.**
+ * 2. **Der Schlüssel steht** — eindeutig über `(from_node_id, kind, sort_order)` — **und der alte
+ *    Einzelindex auf `from_node_id` ist fort.**
  * 3. **Keine Stelle ist zweimal vergeben.** *Dass die erste jeder Liste `0` ist, wird **gezählt und
  *    nicht verlangt** — siehe `INF-022`.*
  * 4. **Ein Tausch tauscht wirklich** — der Fall, an dem der Schlüssel den Schreibweg brach, ohne
@@ -122,13 +122,13 @@ $gefunden = false;
 foreach ($dreier as $spaltenFolge) {
     ksort($spaltenFolge);
 
-    if (array_values($spaltenFolge) === ['from_id', 'kind', 'sort_order']) {
+    if (array_values($spaltenFolge) === ['from_node_id', 'kind', 'sort_order']) {
         $gefunden = true;
     }
 }
 
 check(
-    'eindeutig über (from_id, kind, sort_order)',
+    'eindeutig über (from_node_id, kind, sort_order)',
     $gefunden,
     implode(' · ', array_map(
         static fn (array $s): string => implode('+', $s),
@@ -136,36 +136,36 @@ check(
     ))
 );
 
-// ⚠️ *Der neue Schlüssel beginnt mit `from_id` und dient damit als Suchindex. **Zwei Indizes über
+// ⚠️ *Der neue Schlüssel beginnt mit `from_node_id` und dient damit als Suchindex. **Zwei Indizes über
 // dieselbe führende Spalte sind Doppelung**, und `dbDelta` räumt einen bestehenden nie von selbst ab.*
 $einzeln = false;
 
 foreach ($indizes as $eintrag) {
-    if ($eintrag['Key_name'] === 'from_id') {
+    if ($eintrag['Key_name'] === 'from_node_id') {
         $einzeln = true;
     }
 }
 
-check('und der alte Einzelindex auf from_id ist fort', ! $einzeln);
+check('und der alte Einzelindex auf from_node_id ist fort', ! $einzeln);
 
 echo "\n3 · Keine Stelle ist zweimal vergeben, und die erste ist 0\n";
 
 $mitArt = $wpdb->get_results(
-    "SELECT from_id, kind, sort_order, COUNT(*) c FROM {$relations}
-     GROUP BY from_id, kind, sort_order HAVING c > 1",
+    "SELECT from_node_id, kind, sort_order, COUNT(*) c FROM {$relations}
+     GROUP BY from_node_id, kind, sort_order HAVING c > 1",
     ARRAY_A
 ) ?: [];
 
 $ohneArt = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM (SELECT from_id, sort_order FROM {$relations}
-     GROUP BY from_id, sort_order HAVING COUNT(*) > 1) x"
+    "SELECT COUNT(*) FROM (SELECT from_node_id, sort_order FROM {$relations}
+     GROUP BY from_node_id, sort_order HAVING COUNT(*) > 1) x"
 );
 
 check(
     'keine Doppelung innerhalb einer Kantenart',
     $mitArt === [],
     implode(' · ', array_map(
-        static fn (array $z): string => $z['from_id'] . '/' . $z['kind'] . '@' . $z['sort_order'],
+        static fn (array $z): string => $z['from_node_id'] . '/' . $z['kind'] . '@' . $z['sort_order'],
         array_slice($mitArt, 0, 5)
     ))
 );
@@ -177,8 +177,8 @@ printf(
 );
 
 $ohneNull = $wpdb->get_results(
-    "SELECT from_id, kind, MIN(sort_order) erste FROM {$relations}
-     GROUP BY from_id, kind HAVING erste <> 0",
+    "SELECT from_node_id, kind, MIN(sort_order) erste FROM {$relations}
+     GROUP BY from_node_id, kind HAVING erste <> 0",
     ARRAY_A
 ) ?: [];
 
@@ -204,15 +204,15 @@ $framework = new SeededFrameworkNodes($nodes, $edges, $log);
 $editor    = new ModelEditor($nodes, $edges, $framework, $log);
 
 $paar = $wpdb->get_results(
-    "SELECT from_id FROM {$relations} WHERE kind = 'inheritance'
-     GROUP BY from_id HAVING COUNT(*) > 1 ORDER BY from_id LIMIT 1",
+    "SELECT from_node_id FROM {$relations} WHERE kind = 'inheritance'
+     GROUP BY from_node_id HAVING COUNT(*) > 1 ORDER BY from_node_id LIMIT 1",
     ARRAY_A
 ) ?: [];
 
 if ($paar === []) {
     check('ein Elternknoten mit zwei Kindern war zu finden', false);
 } else {
-    $eltern = (int) $paar[0]['from_id'];
+    $eltern = (int) $paar[0]['from_node_id'];
     $kinder = array_map(
         static fn ($n): int => $n->id,
         $editor->childrenOf($eltern)

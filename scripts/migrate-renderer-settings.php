@@ -63,13 +63,13 @@ $data      = new DataEntry($records, $edges, $nodes, $framework, new SystemClock
 /** Die zwei Kanten, ohne die nichts geht. */
 $rendererFeld = (int) $wpdb->get_var(
     "SELECT r.id FROM " . Schema::table('relations') . " r
-     JOIN " . Schema::table('nodes') . " n ON n.id = r.from_id
+     JOIN " . Schema::table('nodes') . " n ON n.id = r.from_node_id
      WHERE n.name = 'Root' AND r.name = 'renderer' LIMIT 1"
 );
 
 $renderFeld = (int) $wpdb->get_var(
     "SELECT r.id FROM " . Schema::table('relations') . " r
-     JOIN " . Schema::table('nodes') . " n ON n.id = r.from_id
+     JOIN " . Schema::table('nodes') . " n ON n.id = r.from_node_id
      WHERE n.name = 'DisplayOption' AND r.name = 'render' LIMIT 1"
 );
 
@@ -123,7 +123,7 @@ foreach ($zeilen as $z) {
 
     // Eine Kante: der Datensatz gehört ihrem Besitzerknoten, die Adresse nennt die Kante.
     $kante = $wpdb->get_row($wpdb->prepare(
-        'SELECT from_id, name FROM ' . Schema::table('relations') . ' WHERE id = %d',
+        'SELECT from_node_id, name FROM ' . Schema::table('relations') . ' WHERE id = %d',
         $ownerId
     ));
 
@@ -133,11 +133,11 @@ foreach ($zeilen as $z) {
         continue;
     }
 
-    $von = $nodes->find((int) $kante->from_id);
+    $von = $nodes->find((int) $kante->from_node_id);
 
     $plan[] = [
         'settingId' => (int) $z['id'],
-        'besitzer'  => (int) $kante->from_id,
+        'besitzer'  => (int) $kante->from_node_id,
         'kette'     => [$ownerId, $rendererFeld],
         'renderer'  => $nachName[$name],
         'name'      => $name,

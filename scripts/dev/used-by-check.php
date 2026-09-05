@@ -136,7 +136,7 @@ try {
     // Aufräumen, auch nach einer gefallenen Zusage.
     foreach ([$teil->id, $einheit->id] as $id) {
         $e   = array_map('intval', $wpdb->get_col($wpdb->prepare(
-            "SELECT id FROM {$prefix}relations WHERE from_id = %d OR to_id = %d",
+            "SELECT id FROM {$prefix}relations WHERE from_node_id = %d OR to_node_id = %d",
             $id,
             $id
         )));

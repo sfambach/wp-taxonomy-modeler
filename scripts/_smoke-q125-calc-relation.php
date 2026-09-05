@@ -36,7 +36,7 @@ $link_ok = 'no';
 $op_ok   = 'no';
 foreach ( Relation::list_outgoing_by_type_key( $tax, $pos_id, Relation::TYPE_CALC ) as $edge ) {
 	$name = strtolower( trim( (string) ( $edge['name'] ?? '' ) ) );
-	$to   = (int) ( $edge['toId'] ?? 0 );
+	$to   = (int) ( $edge['toNodeId'] ?? 0 );
 	if ( 'bauart' !== $name || $to !== $list_id ) {
 		continue;
 	}

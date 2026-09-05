@@ -298,10 +298,10 @@ foreach ([$thing->id, $text->id] as $meiner) {
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
     }
 
-    Shadow::keep('relations', 'from_id = %d OR to_id = %d', [$meiner, $meiner], true);
+    Shadow::keep('relations', 'from_node_id = %d OR to_node_id = %d', [$meiner, $meiner], true);
     Shadow::keep('nodes', 'id = %d', [$meiner], true);
 
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_id = %d OR to_id = %d', $meiner, $meiner));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d', $meiner, $meiner));
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $meiner));
 }
 

@@ -89,14 +89,14 @@ final class Tree
         $hidden           = [];
 
         foreach ($this->relations->allInheritanceEdges() as $edge) {
-            if (! isset($byId[$edge->toId])) {
+            if (! isset($byId[$edge->toNodeId])) {
                 continue;
             }
 
-            $childIdsByParent[$edge->fromId][] = $edge->toId;
+            $childIdsByParent[$edge->fromNodeId][] = $edge->toNodeId;
 
             if ($edge->hide) {
-                $hidden[$edge->toId] = true;
+                $hidden[$edge->toNodeId] = true;
             }
         }
 
@@ -186,7 +186,7 @@ final class Tree
         $fold = [];
 
         foreach ($this->relations->allInheritanceEdges() as $edge) {
-            $fold[$edge->fromId] = true;
+            $fold[$edge->fromNodeId] = true;
         }
 
         // ⚠️ *`ancestorIds()` und nicht die Scheibe aus dem `path` von Hand — dieselbe Tatsache, und
