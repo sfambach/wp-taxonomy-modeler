@@ -627,7 +627,7 @@ Unterscheidung Komposition/Aggregation. Was von `setting` übrig ist, trägt `re
 
 ```text
 [ ] TASK-033  Ein Auswahl-Renderer statt zwei — dialog/inline wird eine
-              Einstellung an ihm
+              Einstellung an ihm                       (geparkt, INF-033)
 [x] TASK-034  Das Suchfeld gehoert als Einstellung an den Auswahl-Renderer,
               nicht fest in den Dialog gebaut
 ```

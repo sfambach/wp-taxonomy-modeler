@@ -903,3 +903,27 @@ Unterscheider steht in `implemented_by` oder es gibt keinen.*
 ⚠️ *Notiert, weil es eine **Auslegung** ist und keine Messung: D-620 sagt, welche Knoten eine Klasse
 bekommen, und nicht ausdrücklich, dass ein Untertyp als sein Obertyp ankommen soll. Falls er das doch
 will, ist der Vorfahrenlauf wieder fällig — und dann an einer Stelle, die je Zeile läuft (`CD-7`).*
+
+## INF-033 · TASK-033 liegt zur Hälfte in gesperrtem Gebiet — der Renderer ist Code, die zwei Knoten sind Modell
+
+**2026-09-05, beim Anlauf auf TASK-033 gemessen und nicht gebaut.**
+
+Sein Wort: *«ich würde auch sagen, der Renderer hat ein Setting dialog/inline.»* Der **Code**-Teil ist
+klein — die zwei Klassen unterscheiden sich in genau einem Punkt, dem Aufklappen; die eine ist 69
+Zeilen und liest denselben Zeilenvorrat wie die andere. **Der Rest ist Modellarbeit:**
+
+| Was | Wo | |
+|---|---|---|
+| Die zwei Knoten `chooser-dialog` (43499) und `chooser-inline` (43501) werden einer | Saat und Wegräumen | Persistenz |
+| `dialog`/`inline` wird eine Angabe | ein Einstellungsknoten plus Kante | Modell |
+| Wer heute auf den entfallenden Knoten zeigt | Umzug der Werte | Modell |
+
+⚠️ **Gemessen ist der gute Teil: null Wertzeilen zeigen auf einen der beiden Knoten.** *Es hängt
+nichts daran, der Umzug wäre also leer — aber die Saat und ihr Fassungszähler liegen in der
+Persistenz, und wer die Klasse zusammenlegt, ohne den Knoten mitzunehmen, hinterlässt einen Namen,
+den nichts mehr einlöst.*
+
+⚠️ **Offen und ausdrücklich nicht geraten** (`PR-4`): *ob die Angabe `inline` eine eigene
+Einstellungsart wird (dann gehört sie in die Aufzählung der Schlüssel) oder eine gewöhnliche
+Einstellungskante auf einen Ja/Nein-Knoten. **Beides ist vertretbar, und die Wahl bestimmt, wie die
+Saat aussieht** — deshalb wird sie nicht nebenbei getroffen.*
