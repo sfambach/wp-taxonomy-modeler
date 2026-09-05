@@ -581,7 +581,7 @@ entsteht erst beim Schreiben) und der Grenzwächter
 sobald jemand einen Einstellungsknoten ausserhalb des Astes anlegt.*
 
 ```text
-[ ] TASK-041  Die Marke «ist eine Einstellung» einmalig aus dem Ast fuellen —
+[x] TASK-041  Die Marke «ist eine Einstellung» einmalig aus dem Ast fuellen —
               36 von 38 Knoten fehlen (D-606), mit Waechter, dass sie
               gepflegt bleibt
 ```
@@ -592,6 +592,16 @@ und **keine Kante zeigt auf sie**. Vermutlich sind sie kein Einstellungsknoten m
 
 ⚠️ *Danach kann [D-605](../../NewConcept/90-decision-log.md) greifen (ein markierter Knoten erbt
 keine Einstellungskanten) — heute griffe die Regel an drei Knoten statt an achtunddreissig.*
+
+**Gelaufen und nachgemessen am 2026-09-05.** *Der Ast trägt **37** Knoten unter der Wurzel, **36
+tragen die Marke**, und `setting-kind-check` ist grün. **Zu markieren blieb nichts** — die Wanderung
+[`setting-kind-migrate.php`](../../../scripts/dev/setting-kind-migrate.php) meldet im Probelauf
+«Bekommen die Marke `setting`: 0».*
+
+⚠️ **`min` und `max` sind gar nicht mehr im Ast** — die genannte Sonderprüfung ging ins Leere.
+*An ihrer Stelle steht **ein anderer Rest**, auf den nichts zeigt: der Knoten `__Test`
+(`149000087094`) aus einem abgestürzten Gerüstlauf. **Nicht angefasst**, weil er nicht mir gehört —
+im Eingang als `INF-020` und ein Beleg für TASK-050.*
 
 ⚠️ **TASK-040 neu gefasst am 2026-09-04.** *Die erste Fassung (`kind = setting` erbt nichts,
 [D-605](../../NewConcept/90-decision-log.md)) war zu breit — sie hätte `render with label` den
@@ -808,5 +818,22 @@ Drei Teile, aus [D-618](../../NewConcept/90-decision-log.md):
    target sits in the tree»* war nie wahr; an seine Stelle tritt eine Wahl.
 3. **Ein Wächter:** jede Kante, die in den Einstellungsast zeigt, ist eine Einstellungskante.
    *Gemessen am 2026-09-04 stimmt das — der Wächter hält fest, er stellt nicht her.*
+
+**Teil 3 gebaut am 2026-09-05:**
+[`setting-branch-edge-check.php`](../../../scripts/dev/setting-branch-edge-check.php). *Er meldet und
+ändert nichts. **Nachgemessen: 4 Kanten zeigen in den Ast, alle vier tragen `setting`** — null
+Abweichungen. Vererbungskanten sind ausgenommen, weil sie **der Ast selbst** sind.*
+
+⚠️ **Vier ist wenig, und das gehört dazugesagt:** *die meisten Einstellungskanten zeigen gar nicht in
+den Ast, sondern auf einen Typ (`read_only` → `Boolean`). **Der Wächter deckt darum eine Richtung ab,
+nicht die Einstellungskanten insgesamt** — die Umkehrung («markiert heisst im Ast») wäre falsch, aus
+demselben Grund wie bei [D-606](../../NewConcept/90-decision-log.md).*
+
+⚠️ *Der Gegenfall steht im Lauf: ein eigener `__astkante`-Knoten im Ast plus ein Feld darauf muss
+**rot** werden, und dieselbe Kante als Einstellungskante wieder grün. **Ohne ihn wäre «null
+Abweichungen» auch dann wahr, wenn die Regel gar nichts prüft.** `addField()` erzeugt den Gegenfall
+auf dem gewöhnlichen Weg — genau die Ableitung, die Teil 1 ablösen soll.*
+
+⚠️ *Teil 1 und Teil 2 sind **nicht** gebaut.*
 
 ⚠️ *Ableiten ist damit nicht verboten, sondern vertagt: «später, aber auch nur vielleicht».*

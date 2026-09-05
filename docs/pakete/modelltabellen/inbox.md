@@ -493,3 +493,22 @@ Spalte auf `0` setzt oder den Satz wegräumt — sagt keine Entscheidung.*
 {@see \Taxmod\Core\Service\ModelValues} genau **einen** Schlüssel aus der Spalte. Jede weitere
 Einstellung dort zu zeichnen hiesse, ein Steuerelement anzubieten, dessen Wert niemand wieder
 anzeigt — derselbe Mangel, nur andersherum.*
+
+---
+
+## INF-020 · Ein `__Test`-Knoten liegt seit einem abgestürzten Lauf im Einstellungsast
+
+**2026-09-05, beim Abschluss von TASK-041. Nicht angefasst (`PR-4`, D-613).**
+
+**Gemessen:** *der Einstellungsast trägt 37 Knoten unter seiner Wurzel; 36 tragen die Marke, der
+siebenunddreissigste ist `__Test` (`149000087094`). **Auf ihn zeigt keine Kante ausser Vererbung**,
+er hält nichts, und er stammt nicht vom Eigentümer: den Namen vergibt
+[`geruest.php`](../../../scripts/dev/geruest.php) für seinen Testbehälter.*
+
+⚠️ **Er ist nicht markiert, und das ist richtig so** — *er ist keine Einstellung. `setting-kind-check`
+meldet ihn als Hinweis, nicht als Fehler; die Wanderung lässt ihn stehen. **Weggeräumt habe ich ihn
+nicht**: er gehört einem anderen Wächter, und einen fremden Knoten zu löschen ist genau der Fehler
+aus TASK-025, TASK-039 und TASK-047.*
+
+⚠️ *Er ist ein Beleg für **TASK-050** (D-614): ein Testast, in dem solche Reste liegen dürfen, statt
+im Arbeitsbaum des Eigentümers. Bis dahin bleibt die Frage offen, **wer** ihn wegräumen darf.*
