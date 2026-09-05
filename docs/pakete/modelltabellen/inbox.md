@@ -832,3 +832,34 @@ gesehen hat, und drei Zeilen mehr in einer Liste sind eine Änderung, die nieman
 ⚠️ *Gebaut ist heute die erste Lesart — **sie erscheinen** —, weil die Regel «geparkt heisst: im
 Schatten, lebend fort» genau das sagt und eine Ausnahme davon eine zweite Regel wäre. Sie ist mit
 einer Zeile im Leseweg umkehrbar, sobald er das Gegenteil sagt.*
+
+## INF-029 · Der Kern baut HTML, und darum steht das Framework draussen vor der Tür
+
+**2026-09-05, vom Eigentümer aufgeworfen:** *«wir haben aktuell das Problem, dass wir Core-HTML
+erzeugen und dadurch nicht alle Fähigkeiten des Frameworks nutzen können.»*
+
+**Gemessen am selben Tag:** *`src/Core/Renderer/` hat 53 Dateien und 6684 Zeilen; **36 davon bauen
+HTML**. Der Kern hat sich seine eigene Fluchthilfe geschrieben, mit einem Kommentar, der den Grund
+nennt: «Plain PHP, because the core may not reach for `esc_html()`». **Genau eine** WordPress-nahe
+Stelle gibt es im ganzen Kern, und das ist dieser Kommentar.*
+
+⚠️ **Das ist kein Fehler, sondern der Preis von `CD-1`** — der Kern ruft kein WordPress auf und ist
+darum ohne WordPress prüfbar. **Der Preis ist nur nie beziffert worden**, und er heisst: alles, was
+das Framework an Bedienung mitbringt, ist unerreichbar. *Maskierung und `wp_kses`, `wp_nonce_field`,
+die Helfer `selected()`/`checked()`, der Editor, die Medienauswahl — und, das ist der grosse,
+**Gutenberg**: ein Block zeichnet sich aus Bausteinen im Browser und nicht aus einer Zeichenkette
+vom Server.*
+
+**Drei Wege, keiner gewählt (`PR-4`):**
+
+| | | dafür | dagegen |
+|---|---|---|---|
+| **A** | Der Kern gibt eine **Beschreibung** zurück — was zu zeichnen ist, nicht wie —, der Rand zeichnet | trennt sauber, macht Gutenberg möglich, `CD-1` bleibt unangetastet | **36 Dateien** ziehen um; die Beschreibung muss so genau sein, dass zwei Ränder dasselbe daraus machen |
+| **B** | Der Kern behält das HTML, bekommt aber eine **Naht zum Framework** gereicht (Maskierung, Nonce, Editor) | wenig Umbau, der Kern bleibt ohne WordPress prüfbar | die Naht wächst mit jedem Bedürfnis; Gutenberg löst sie nicht |
+| **C** | Es bleibt, wie es ist | nichts kostet etwas | die Grenze, die er benennt, bleibt bestehen |
+
+⚠️ **Was zuerst zu klären ist, vor der Wahl:** *für welche Oberfläche das gilt. Für die Admin-Seite
+reicht **B** vermutlich; für einen Block reicht **nur A**. Und was ein Block überhaupt ist, liegt
+selbst noch quer — [D-253](../../NewConcept/90-decision-log.md) teilt drei Oberflächen,
+[D-278](../../NewConcept/90-decision-log.md) schafft die Ebene ab, und
+[D-547](../../NewConcept/90-decision-log.md) führt später doch wieder eine ein.*
