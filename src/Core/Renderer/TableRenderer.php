@@ -32,7 +32,7 @@ use Taxmod\Core\Model\Node;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class TableRenderer implements Renderer
+final class TableRenderer extends RendererNode
 {
     public const NAME = 'table';
 

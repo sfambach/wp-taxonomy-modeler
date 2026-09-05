@@ -48,7 +48,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class ChoiceRenderer implements Renderer
+final class ChoiceRenderer extends RendererNode
 {
     public const NAME = 'choice';
 

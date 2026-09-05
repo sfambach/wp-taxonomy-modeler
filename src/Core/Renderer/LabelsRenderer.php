@@ -48,7 +48,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/40-i18n.md
  */
-final class LabelsRenderer implements Renderer
+final class LabelsRenderer extends RendererNode
 {
     public const NAME = 'labels';
 

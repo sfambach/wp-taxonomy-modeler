@@ -43,7 +43,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class FieldRowRenderer implements Renderer
+final class FieldRowRenderer extends RendererNode
 {
     public const NAME = 'field-row';
 

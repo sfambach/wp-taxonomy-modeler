@@ -23,7 +23,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class InlineChooserRenderer implements Renderer
+final class InlineChooserRenderer extends RendererNode
 {
     public const NAME = 'chooser-inline';
 

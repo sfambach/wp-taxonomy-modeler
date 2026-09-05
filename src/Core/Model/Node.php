@@ -13,9 +13,24 @@ use Taxmod\Core\Exception\InvalidName;
  * else a node appears to have is a **relation** seen from the node that owns it (D-031), and a
  * node's **type** is its position in the inheritance tree, not a column (D-041, D-042).
  *
+ * ⚠️ **Nicht mehr `final`, und das ist [D-620](../../../docs/NewConcept/90-decision-log.md).** *Der
+ * Eigentümer: «einen int-Knoten und eine int-Klasse zusätzlich zu führen, reisst was auseinander, das
+ * eigentlich zusammengehört.» **Die spezialisierte Klasse ist die Klasse des Knotens** — also erbt
+ * {@see Type\SpecialisedType} von hier, und ebenso {@see \Taxmod\Core\Renderer\RendererNode}, «weil
+ * wir sie ja auch einfach zuweisen».*
+ *
+ * ⚠️ **Der Preis stand schon in [D-484](../../../docs/NewConcept/90-decision-log.md) und ist hier
+ * bezahlt:** *die Endgültigkeit fällt, das feste `self` wird zur späten statischen Bindung — ein
+ * umbenannter `IntType` bleibt ein `IntType` —, und die Hydrierung braucht ihren Unterscheider. **Er
+ * steht in der Zeile**: `implemented_by` nennt die Klasse ({@see fromStorage()}).*
+ *
+ * ⚠️ **Nicht jeder Knoten bekommt eine Klasse** (D-620 in eigenen Worten). *Es sind die **gesäten**
+ * Typ- und Renderer-Knoten; alles andere ist ein schlichtes `Node`, und das ist die überwiegende
+ * Mehrheit — Inhalt des Eigentümers, den kein Code umsetzt.*
+ *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Node extends Identity implements Renderable
+class Node extends Identity implements Renderable
 {
     /**
      * @param int    $id      From the model identity space, shared with relations (C11).
@@ -25,7 +40,7 @@ final class Node extends Identity implements Renderable
      * @param string $path    Materialised ancestor path, ids separated by `.`, own id last.
      *                        **Derived** and rebuildable — never a second truth (D-014).
      */
-    private function __construct(
+    protected function __construct(
         int $id,
         int $version,
         string $name,
@@ -66,6 +81,17 @@ final class Node extends Identity implements Renderable
     /**
      * Rebuild a node from what storage holds. No validation beyond the name — storage is
      * trusted, input is not.
+     *
+     * ⚠️ **Und hier steht der Unterscheider** ([D-620](../../../docs/NewConcept/90-decision-log.md),
+     * angekündigt von [D-484](../../../docs/NewConcept/90-decision-log.md)). *Nennt die Zeile eine
+     * Klasse, die selbst ein `Node` ist, kommt der Knoten **als diese Klasse** an — ein Typknoten als
+     * {@see Type\IntType}, ein Renderer-Knoten als seine Renderer-Klasse. **Es braucht keinen
+     * Vorfahrenlauf**: die Klasse steht in der Zeile, weil nur die gesäten Typ- und Renderer-Knoten
+     * eine tragen.*
+     *
+     * ⚠️ *Nennt sie etwas anderes — einen Konverter, einen Validator, oder eine Klasse, die es nicht
+     * mehr gibt —, bleibt es ein schlichtes `Node`. **Ein fehlender Klassenname darf keinen Absturz
+     * geben**, dafür ist `implemented-by-check.php` der Wächter und nicht die Hydrierung.*
      */
     public static function fromStorage(
         int $id,
@@ -75,7 +101,34 @@ final class Node extends Identity implements Renderable
         ?FieldType $fieldType = null,
         ?string $implementedBy = null,
     ): self {
-        return new self($id, $version, $name, $path, $fieldType, $implementedBy);
+        $class = self::classHydrating($implementedBy) ?? static::class;
+
+        return new $class($id, $version, $name, $path, $fieldType, $implementedBy);
+    }
+
+    /** @var array<string, class-string<self>|null> Einmal je Klassenname gefragt, nicht je Zeile. */
+    private static array $hydrators = [];
+
+    /**
+     * Die Klasse, als die eine Zeile mit diesem `implemented_by` ankommt — oder `null`.
+     *
+     * @return class-string<self>|null
+     */
+    private static function classHydrating(?string $implementedBy): ?string
+    {
+        if ($implementedBy === null || $implementedBy === '') {
+            return null;
+        }
+
+        if (array_key_exists($implementedBy, self::$hydrators)) {
+            return self::$hydrators[$implementedBy];
+        }
+
+        $passt = class_exists($implementedBy)
+            && is_subclass_of($implementedBy, self::class)
+            && ! (new \ReflectionClass($implementedBy))->isAbstract();
+
+        return self::$hydrators[$implementedBy] = $passt ? $implementedBy : null;
     }
 
     /**
@@ -87,7 +140,7 @@ final class Node extends Identity implements Renderable
     {
         $name = self::cleanName($name);
 
-        return new self(
+        return new static(
             $id,
             1,
             $name,
@@ -109,7 +162,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $name, $this->path, $this->fieldType, $this->implementedBy);
+        return new static($this->id, $this->version + 1, $name, $this->path, $this->fieldType, $this->implementedBy);
     }
 
     /**
@@ -126,7 +179,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $path, $this->fieldType, $this->implementedBy);
+        return new static($this->id, $this->version + 1, $this->name, $path, $this->fieldType, $this->implementedBy);
     }
 
     /**
@@ -142,7 +195,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $this->path, $fieldType, $this->implementedBy);
+        return new static($this->id, $this->version + 1, $this->name, $this->path, $fieldType, $this->implementedBy);
     }
 
     /**
@@ -161,7 +214,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $this->path, $this->fieldType, $className);
+        return new static($this->id, $this->version + 1, $this->name, $this->path, $this->fieldType, $className);
     }
 
     // ⚠️ *`withHide()` stood here and is gone to {@see Relation::withHide()} alone
@@ -193,7 +246,7 @@ final class Node extends Identity implements Renderable
         array_pop($segmente);
         $segmente[] = (string) $id;
 
-        return new self($id, $this->version, $this->name, implode('.', $segmente), $this->fieldType, $this->implementedBy);
+        return new static($id, $this->version, $this->name, implode('.', $segmente), $this->fieldType, $this->implementedBy);
     }
 
     /**

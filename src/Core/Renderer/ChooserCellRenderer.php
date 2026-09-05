@@ -37,7 +37,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class ChooserCellRenderer implements Renderer
+final class ChooserCellRenderer extends RendererNode
 {
     public const NAME = 'chooser-node';
 

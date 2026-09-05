@@ -863,3 +863,43 @@ reicht **B** vermutlich; für einen Block reicht **nur A**. Und was ein Block ü
 selbst noch quer — [D-253](../../NewConcept/90-decision-log.md) teilt drei Oberflächen,
 [D-278](../../NewConcept/90-decision-log.md) schafft die Ebene ab, und
 [D-547](../../NewConcept/90-decision-log.md) führt später doch wieder eine ein.*
+
+## INF-030 · Konverter und Validatoren sind Knoten und kommen nicht als ihre Klasse an
+
+**2026-09-05, beim Bau von [D-620](../../NewConcept/90-decision-log.md) gemessen.** *D-620 nennt die
+**Typ- und Renderer-Knoten**: sie erben jetzt von `Node` und eine geladene Zeile kommt als ihre Klasse
+an. **Die beiden anderen gesäten Familien tun das nicht** — `Settings > Converter` (`binary`,
+`hexadecimal`, `octal`, `roman`) und `Settings > Validator` (`range`, `shape`) tragen ihre Klasse
+genauso in `nodes.implemented_by`, aber diese Klassen sind keine Knotenklassen, also lädt die
+Hydrierung sie als schlichtes `Node`.*
+
+⚠️ **Nicht erfunden und nicht mitgebaut** (`PR-4`): *sein Satz war «die Renderer werden Knoten», und
+die Entscheidung sagt «die gesäten Typ- und Renderer-Knoten». **Konverter und Validatoren einfach
+mitzuziehen wäre die Entscheidung zu erweitern, während man sie vollzieht.*** Der Umbau ist derselbe
+wie bei den Renderern (eine gemeinsame Elternklasse), also klein — offen ist nur, ob er gewollt ist.
+
+## INF-031 · Ein Renderer ohne Knoten erbt trotzdem von Node
+
+**2026-09-05, dieselbe Messung.** *Die Oberflächen-Renderer (`RendererRegistry::addForSurfaces()` —
+die Baumzelle, die Auswahlzelle) werden **nicht** gesät: es gibt keinen Knoten zu ihnen. Sie erben
+dennoch von `RendererNode`, weil sie in derselben Klassenfamilie liegen wie die gesäten.*
+
+⚠️ **Die Alternative wäre, die Familie zu spalten** — und dann stünde die Antwort auf «wird dieser
+gesät» an zwei Stellen: in der Registratur, die sie schon trifft, und in der Vererbung. *Gebaut ist
+darum die ungespaltene Familie; ein Steckbrief ohne Id ist ohnehin kein Knoten, sondern das Ding, das
+zeichnet.* **Falls das stört, ist es eine Zwischenklasse und keine Umstellung.**
+
+## INF-032 · Der Vorfahrenlauf für Untertypen wurde nicht gebraucht
+
+**2026-09-05.** *[D-484](../../NewConcept/90-decision-log.md) hat als Preis genannt, dass die
+Hydrierung für einen **Untertyp** ihren Unterscheider erst aus dem Lauf die Vorfahren hoch bekommt —
+«dass `Description` unter `text` ein Text ist, ergibt erst der Lauf die Vorfahren hoch».*
+
+⚠️ **Der Preis ist nicht angefallen, weil D-620 den Umfang enger zieht:** *«das heisst nicht, dass
+jeder Knoten eine eigene Klasse bekommt — es sind die gesäten Typ- und Renderer-Knoten.» **Ein
+Untertyp bekommt also keine Klasse**, und damit braucht die Hydrierung keinen Vorfahrenlauf: der
+Unterscheider steht in `implemented_by` oder es gibt keinen.*
+
+⚠️ *Notiert, weil es eine **Auslegung** ist und keine Messung: D-620 sagt, welche Knoten eine Klasse
+bekommen, und nicht ausdrücklich, dass ein Untertyp als sein Obertyp ankommen soll. Falls er das doch
+will, ist der Vorfahrenlauf wieder fällig — und dann an einer Stelle, die je Zeile läuft (`CD-7`).*

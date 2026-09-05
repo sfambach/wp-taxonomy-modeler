@@ -3,11 +3,13 @@
 namespace Taxmod\Core\Model\Type;
 
 use Taxmod\Core\Exception\NotAValueOfThatType;
+use Taxmod\Core\Model\FieldType;
+use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 
 /**
- * Ein einfacher Datentyp als **eigene Klasse** — eine je Typ.
+ * Ein einfacher Datentyp als **die Klasse seines Knotens** — eine je Typ.
  *
  * ⚠️ **Auf sein Wort** ([D-484](../../../../docs/NewConcept/90-decision-log.md)): *«ich hätte gerne
  * spezialisierte Klassen, weil dann auch klar ist, wie viele spezialisierte Typen wir haben.»* **Sein
@@ -35,10 +37,49 @@ use Taxmod\Core\Model\TypedValue;
  * hat das verworfen — «wenn ich einen neuen Renderer hinzufüge, weiss der Knoten das gar nicht». Der
  * Anspruch bleibt beim Renderer ([D-481](../../../../docs/NewConcept/90-decision-log.md)).*
  *
+ * ⚠️ **Sie erbt von {@see Node}, und das ist [D-620](../../../../docs/NewConcept/90-decision-log.md).**
+ * *Bis zum 2026-09-05 stand hier eine Hierarchie **neben** dem Knoten — ein Typbeschreiber, während der
+ * `int`-Knoten daneben ein schlichtes `Node` war. Der Eigentümer: «einen int-Knoten und eine
+ * int-Klasse zusätzlich zu führen, reisst was auseinander, das eigentlich zusammengehört.» **Jetzt ist
+ * der aus der Datenbank geladene `Integer`-Knoten ein {@see IntType}** — dieselbe Sache, ein Ort.*
+ *
+ * ⚠️ **Ein Exemplar ohne Id ist der Steckbrief des Typs, kein Knoten.** *{@see SpecialisedTypes::for()}
+ * baut es, um zu fragen, was der Typ kann — Spalte, Muster, Grenzen. Diese Antworten hängen an der
+ * **Klasse** und nicht an der Zeile, also antwortet der Steckbrief genauso wie der geladene Knoten.
+ * **Zwei Wege, eine Wahrheit** — und darum steht sie nur hier.*
+ *
  * @see docs/NewConcept/10-domain-core.md
  */
-abstract class SpecialisedType
+abstract class SpecialisedType extends Node
 {
+    /**
+     * ⚠️ **Alles hat eine Voreinstellung, damit `new IntType()` weiter der Steckbrief ist** — und alles
+     * steht in der Reihenfolge von {@see Node::fromStorage()}, damit eine geladene Zeile hier ankommt.
+     *
+     * ⚠️ *`implemented_by` wird **durchgereicht und nicht ergänzt**. Der Steckbrief trägt darum `null`,
+     * und das ist richtig: die Spalte gehört einer Zeile, und ein Steckbrief ist keine. **Sie hier zu
+     * erfinden hiesse auch, sie nicht mehr löschen zu können** — und der Notnagel in
+     * {@see \Taxmod\WordPress\Persistence\SeededTypeNodes} lebt genau von einem Typknoten, an dem sie
+     * fehlt.*
+     */
+    public function __construct(
+        int $id = 0,
+        int $version = 0,
+        ?string $name = null,
+        string $path = '',
+        ?FieldType $fieldType = null,
+        ?string $implementedBy = null,
+    ) {
+        parent::__construct(
+            $id,
+            $version,
+            $name ?? $this->nodeName(),
+            $path,
+            $fieldType,
+            $implementedBy,
+        );
+    }
+
     /** Der Aufzählungsfall, den diese Klasse ausmacht. */
     abstract public function type(): SimpleType;
 

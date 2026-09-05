@@ -35,7 +35,7 @@ use Taxmod\Core\Model\Relation;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class RepeatableRenderer implements Renderer
+final class RepeatableRenderer extends RendererNode
 {
     public const NAME = 'repeatable';
 

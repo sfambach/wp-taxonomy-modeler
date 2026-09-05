@@ -54,7 +54,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class DialogChooserRenderer implements Renderer
+final class DialogChooserRenderer extends RendererNode
 {
     public const NAME = 'chooser-dialog';
 

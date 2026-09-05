@@ -15,6 +15,13 @@
  * [D-483](../../docs/NewConcept/90-decision-log.md)) und ausdrücklich nicht die der Typklasse. Was
  * D-484 verlangt, ist die **Sichtbarkeit** — und die ist jetzt eine Zeile.*
  *
+ * ⚠️ **Abschnitt 8 kam mit [D-620](../../docs/NewConcept/90-decision-log.md) dazu, und er misst die
+ * eigentliche Sache.** *Das Inventar zählt, wie viele Klassen es gibt; D-620 sagt, **wessen** Klassen
+ * das sind — «einen int-Knoten und eine int-Klasse zusätzlich zu führen, reisst was auseinander, das
+ * eigentlich zusammengehört». Also wird geladen und gefragt: kommt der Typknoten als sein Typ an, der
+ * Renderer-Knoten als sein Renderer, und bleibt ein gewöhnlicher Knoten ein `Node`? **Kein zweiter
+ * Wächter, sondern derselbe** — das Inventar und seine Bindung an den Knoten gehören zusammen.*
+ *
  * @see docs/pakete/modelltabellen/tasks.md
  */
 
@@ -39,9 +46,11 @@ require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\Type\SpecialisedType;
 use Taxmod\Core\Model\Type\SpecialisedTypes;
+use Taxmod\Core\Renderer\RendererNode;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Validator\RangeValidator;
 use Taxmod\Core\Validator\ShapeValidator;
@@ -233,6 +242,73 @@ foreach ($faelle as $fall) {
 }
 
 printf("       %d von %d Typen ohne eigenen Vorgaberenderer: %s\n", count($ohne), count($faelle), implode(', ', $ohne) ?: '—');
+
+echo "\n== 8. Der geladene Knoten *ist* seine Klasse (D-620) ==\n";
+
+// ⚠️ **Der Kern der Entscheidung, und darum steht er in diesem Wächter und nicht in einem zweiten.**
+// *Der Eigentümer: «einen int-Knoten und eine int-Klasse zusätzlich zu führen, reisst was auseinander,
+// das eigentlich zusammengehört.» Die Frage, die das misst, ist: **kommt eine Zeile aus der Datenbank
+// als ihre Klasse an?** Das Inventar oben sagt, wie viele Klassen es gibt — hier steht, dass sie am
+// Knoten hängen.*
+
+foreach ($faelle as $fall) {
+    $id      = $types->nodeId($fall);
+    $geladen = $id === null ? null : $nodes->find($id);
+    $erwartet = SeededTypeNodes::classFor($fall);
+
+    check(
+        $fall->value . ' kommt als ' . substr(strrchr($erwartet, '\\') ?: $erwartet, 1),
+        $geladen instanceof SpecialisedType && $geladen::class === $erwartet && $geladen->type() === $fall,
+        $geladen === null ? 'kein Knoten' : $geladen::class
+    );
+}
+
+// ⚠️ *«die Renderer werden Knoten, deswegen hätte ich eigentlich erwartet, dass die Renderer selbst
+// Knoten sind, weil wir sie ja auch einfach zuweisen» — dieselbe Messung für sie. **Gefragt wird über
+// `implemented_by`**, nicht über den Namen: die Bindung liegt in der Spalte (TASK-008).*
+$rendererKlassen = [];
+
+foreach ($renderer->namesForNodes() as $name) {
+    $klasse = $renderer->classFor($name);
+
+    if ($klasse !== null) {
+        $rendererKlassen[$name] = $klasse;
+    }
+}
+
+$rendererKnoten = $nodes->byImplementations(array_values($rendererKlassen));
+
+foreach ($rendererKlassen as $name => $klasse) {
+    $geladen = $rendererKnoten[$klasse] ?? null;
+
+    check(
+        'Renderer-Knoten ' . $name . ' kommt als seine Klasse',
+        $geladen instanceof RendererNode && $geladen::class === $klasse && $geladen->name() === $name,
+        $geladen === null ? 'kein Knoten mit dieser Klasse — ist die Saat gelaufen?' : $geladen::class
+    );
+}
+
+// ⚠️ **Und die Gegenprobe, die D-620 ausdrücklich verlangt:** *«das heisst nicht, dass jeder Knoten
+// eine eigene Klasse bekommt.» Ein Knoten ohne Klassenangabe muss ein schlichtes `Node` bleiben —
+// ohne sie wäre die Hydrierung eine Maschine, die für jede Zeile eine Klasse erfindet.*
+$schlicht = null;
+
+foreach ($nodes->childrenOf($framework->rootOf(Branch::Model)) as $kind) {
+    if ($kind->implementedBy === null) {
+        $schlicht = $kind;
+        break;
+    }
+}
+
+check(
+    'ein gewöhnlicher Knoten bleibt ein Node',
+    $schlicht === null || $schlicht::class === Node::class,
+    $schlicht === null ? '' : $schlicht::class
+);
+
+if ($schlicht === null) {
+    echo "       kein klassenloser Knoten unter Model gefunden — die Gegenprobe lief ins Leere.\n";
+}
 
 echo "\n" . ($bad === 0 ? "Alles grün: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

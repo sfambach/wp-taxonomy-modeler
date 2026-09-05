@@ -20,7 +20,7 @@ use Taxmod\Core\Model\SettingKey;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-abstract class TypedFieldRenderer implements Renderer
+abstract class TypedFieldRenderer extends RendererNode
 {
     /**
      * @return list<Purpose>

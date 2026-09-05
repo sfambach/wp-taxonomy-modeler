@@ -34,7 +34,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class NodeRenderer implements Renderer
+final class NodeRenderer extends RendererNode
 {
     public const NAME = 'node';
 
