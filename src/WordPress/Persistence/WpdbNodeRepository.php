@@ -30,7 +30,7 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $row = $wpdb->get_row(
-            $wpdb->prepare('SELECT id, version, name, path, kind FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
+            $wpdb->prepare('SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
             ARRAY_A
         );
 
@@ -53,7 +53,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path, kind FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+                'SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
                 ...array_map(intval(...), $ids)
             ),
             ARRAY_A
@@ -79,12 +79,13 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $spalten = [
-            'version' => $node->version,
-            'name'    => $node->name,
-            'path'    => $node->path,
-            'kind'    => $node->kind?->value,
+            'version'        => $node->version,
+            'name'           => $node->name,
+            'path'           => $node->path,
+            'kind'           => $node->kind?->value,
+            'implemented_by' => $node->implementedBy,
         ];
-        $formate = ['%d', '%s', '%s', '%s'];
+        $formate = ['%d', '%s', '%s', '%s', '%s'];
 
         if ($node->id !== 0) {
             $spalten = ['id' => $node->id, ...$spalten];
@@ -137,16 +138,19 @@ final class WpdbNodeRepository implements NodeRepository
         $written = $wpdb->update(
             Schema::table('nodes'),
             [
-                'version' => $node->version,
-                'name'    => $node->name,
-                'path'    => $node->path,
-                'kind'    => $node->kind?->value,
+                'version'        => $node->version,
+                'name'           => $node->name,
+                'path'           => $node->path,
+                'kind'           => $node->kind?->value,
+                // ⚠️ *Fährt mit, aus demselben Grund wie `kind`: ein Umbenennen hätte sonst die
+                // Klassenangabe gelöscht (TASK-008).*
+                'implemented_by' => $node->implementedBy,
             ],
             [
                 'id'      => $node->id,
                 'version' => $expectedVersion,
             ],
-            ['%d', '%s', '%s', '%s'],
+            ['%d', '%s', '%s', '%s', '%s'],
             ['%d', '%d']
         );
 
@@ -191,7 +195,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT r.from_id, n.id, n.version, n.name, n.path, n.kind
+                'SELECT r.from_id, n.id, n.version, n.name, n.path, n.kind, n.implemented_by
                  FROM ' . Schema::table('relations') . ' r
                  INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
                  WHERE r.kind = %s AND r.hide = 0 AND r.from_id IN (' . $platzhalter . ')
@@ -219,7 +223,7 @@ final class WpdbNodeRepository implements NodeRepository
         // and first under the other. One statement, one join, no walking (`CD-7`).
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT n.id, n.version, n.name, n.path, n.kind
+                'SELECT n.id, n.version, n.name, n.path, n.kind, n.implemented_by
                  FROM ' . Schema::table('relations') . ' r
                  INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
                  WHERE r.from_id = %d AND r.kind = %s
@@ -241,7 +245,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path, kind FROM ' . Schema::table('nodes') . '
+                'SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes') . '
                  WHERE path LIKE %s
                  ORDER BY path ASC',
                 $wpdb->esc_like($root->path . '.') . '%'
@@ -463,6 +467,43 @@ final class WpdbNodeRepository implements NodeRepository
         ));
     }
 
+    public function byImplementations(array $classNames): array
+    {
+        global $wpdb;
+
+        $classNames = array_values(array_unique(array_filter(
+            array_map(static fn (string $n): string => trim($n), $classNames),
+            static fn (string $n): bool => $n !== ''
+        )));
+
+        if ($classNames === []) {
+            return [];
+        }
+
+        $slots = implode(',', array_fill(0, count($classNames), '%s'));
+
+        // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
+        // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes')
+                    . " WHERE implemented_by IN ($slots) ORDER BY id",
+                ...$classNames
+            ),
+            ARRAY_A
+        );
+
+        $aus = [];
+
+        foreach ($rows ?: [] as $row) {
+            $klasse = (string) $row['implemented_by'];
+
+            $aus[$klasse] ??= $this->hydrate($row);
+        }
+
+        return $aus;
+    }
+
     /** @param array<string,mixed> $row */
     private function hydrate(array $row): Node
     {
@@ -474,6 +515,11 @@ final class WpdbNodeRepository implements NodeRepository
             // ⚠️ *`??` und nicht `[...]`: eine Abfrage, die nur `id` und `path` holt, hat die Spalte
             // nicht dabei, und das ist kein Fehler — sie soll dann «niemand hat etwas gesagt» heissen.*
             NodeKind::fromStorage(isset($row['kind']) ? (string) $row['kind'] : null),
+            // ⚠️ *Dieselbe Vorsicht, und dazu: eine leere Zeichenkette ist `null`. **Zwei
+            // Schreibweisen für «nichts» sind der Fehler, den `kind` schon einmal hatte.***
+            isset($row['implemented_by']) && (string) $row['implemented_by'] !== ''
+                ? (string) $row['implemented_by']
+                : null,
         );
     }
 }

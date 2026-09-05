@@ -176,6 +176,44 @@ final class ModelEditor
     }
 
     /**
+     * Sagen, welche PHP-Klasse diesen Knoten umsetzt — oder dass es keine gibt (TASK-008).
+     *
+     * ⚠️ **Der Klassenname steht im Knoten, auf sein Wort:** *«wenn das ohne Factory geht, weil der
+     * Klassenname da drinsteht, perfekt.»* *Damit sagt der Knoten selbst, dass er der
+     * Schieber-Renderer ist — statt einer WordPress-Option ausserhalb des Modells (`AR-1`,
+     * TASK-009).*
+     *
+     * ⚠️ *Journalisiert wie {@see setKind()}, und aus demselben Grund: es ist eine Modelländerung.
+     * Ein Setzen, das nichts ändert, schreibt nichts und hebt keine Fassung
+     * ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Geprüft wird hier nicht, ob es die Klasse gibt** — *das täte der Kern zur Ladezeit des
+     * Aufrufers und würde eine Saat abbrechen lassen, weil eine Klasse gerade umbenannt wurde. **Der
+     * Ausgleich ist der Wächter**, `implemented-by-check.php`, der genau diese Frage stellt, ohne
+     * jemandem die Arbeit zu blockieren.*
+     */
+    public function setImplementedBy(int $id, ?string $className): Node
+    {
+        $node   = $this->nodes->byId($id);
+        $marked = $node->implementedBy($className);
+
+        if ($marked === $node) {
+            return $node;
+        }
+
+        $this->nodes->save($marked, $node->version);
+        $this->changelog->record(
+            $id,
+            'node',
+            'implemented by',
+            $node->implementedBy,
+            $marked->implementedBy
+        );
+
+        return $marked;
+    }
+
+    /**
      * Hide a node, or show it again.
      *
      * ⚠️ **A column and not a setting** ([D-426](../../../docs/NewConcept/90-decision-log.md),

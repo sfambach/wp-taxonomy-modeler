@@ -70,6 +70,20 @@ final class ConverterRegistry
      * fault the settings side has to see — the same call `CD-10` makes everywhere: never a bare
      * `false` to signal failure.
      */
+    /**
+     * Die PHP-Klasse hinter diesem Namen, oder `null` (TASK-008).
+     *
+     * ⚠️ *Gegenstück zu {@see \Taxmod\Core\Renderer\RendererRegistry::classFor()} — und hier ohne
+     * Ausnahme statt ohne Rückfall: **die Frage «gibt es dazu eine Klasse» ist keine Störung**, sie
+     * wird beim Säen an jedem Namen gestellt.*
+     */
+    public function classFor(string $name): ?string
+    {
+        $converter = $this->byName[$name] ?? null;
+
+        return $converter === null ? null : $converter::class;
+    }
+
     public function byName(string $name): Converter
     {
         return $this->byName[$name] ?? throw NotAPossibleTarget::noConverterNamed($name);

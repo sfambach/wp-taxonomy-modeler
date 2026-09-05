@@ -39,6 +39,24 @@ final class Node extends Identity implements Renderable
          * Vorfahrenlauf gibt Vererbung ohne die Settings-Maschinerie.***
          */
         public readonly ?NodeKind $kind = null,
+        /**
+         * Die PHP-Klasse, die diesen Knoten umsetzt — voll qualifiziert, oder `null`.
+         *
+         * ⚠️ **Der Klassenname und keine Marke** (TASK-008,
+         * [`package.md` §3.2](../../../docs/pakete/modelltabellen/package.md)). *Der Eigentümer:
+         * «wenn das ohne Factory geht, weil der Klassenname da drinsteht, perfekt.» Damit sagt der
+         * **Knoten**, welcher Renderer, Konverter oder Validator er ist — statt einer WordPress-Option
+         * ausserhalb des Modells (`AR-1`, TASK-009).*
+         *
+         * ⚠️ **`null` heisst «keine Klasse setzt ihn um», nicht «unbekannt».** *Die überwiegende
+         * Mehrheit der Knoten ist Inhalt des Eigentümers und hat keine Entsprechung im Code — ein
+         * Vorfahrenlauf wie bei {@see $kind} wäre hier falsch: **eine Klasse erbt sich nicht.***
+         *
+         * ⚠️ *Ein Klassenname in den Daten bindet die Zeile an den Code, und das ist der Preis. Der
+         * Ausgleich steht als Wächter daneben: `implemented-by-check.php` wird rot, sobald eine Zeile
+         * eine Klasse nennt, die es nicht gibt.*
+         */
+        public readonly ?string $implementedBy = null,
     ) {
         // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
         // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
@@ -55,8 +73,9 @@ final class Node extends Identity implements Renderable
         string $name,
         string $path,
         ?NodeKind $kind = null,
+        ?string $implementedBy = null,
     ): self {
-        return new self($id, $version, $name, $path, $kind);
+        return new self($id, $version, $name, $path, $kind, $implementedBy);
     }
 
     /**
@@ -90,7 +109,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $name, $this->path, $this->kind);
+        return new self($this->id, $this->version + 1, $name, $this->path, $this->kind, $this->implementedBy);
     }
 
     /**
@@ -107,7 +126,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $path, $this->kind);
+        return new self($this->id, $this->version + 1, $this->name, $path, $this->kind, $this->implementedBy);
     }
 
     /**
@@ -123,7 +142,26 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $this->path, $kind);
+        return new self($this->id, $this->version + 1, $this->name, $this->path, $kind, $this->implementedBy);
+    }
+
+    /**
+     * Derselbe Knoten, der eine andere PHP-Klasse nennt — eine Fassung weiter.
+     *
+     * ⚠️ *Dieselbe Form wie {@see withKind()}: **dasselbe Exemplar zurück**, wenn sich nichts ändert
+     * ([D-282](../../../docs/NewConcept/90-decision-log.md)). Ein leerer Name wird zu `null`, damit
+     * «nichts» genau eine Schreibweise hat — sonst stünden `''` und `NULL` nebeneinander und sagten
+     * dasselbe, die Falle aus {@see \Taxmod\WordPress\Persistence\WpdbNodeRepository}.*
+     */
+    public function implementedBy(?string $className): self
+    {
+        $className = $className === null || trim($className) === '' ? null : trim($className);
+
+        if ($className === $this->implementedBy) {
+            return $this;
+        }
+
+        return new self($this->id, $this->version + 1, $this->name, $this->path, $this->kind, $className);
     }
 
     // ⚠️ *`withHide()` stood here and is gone to {@see Relation::withHide()} alone
@@ -155,7 +193,7 @@ final class Node extends Identity implements Renderable
         array_pop($segmente);
         $segmente[] = (string) $id;
 
-        return new self($id, $this->version, $this->name, implode('.', $segmente), $this->kind);
+        return new self($id, $this->version, $this->name, implode('.', $segmente), $this->kind, $this->implementedBy);
     }
 
     /**

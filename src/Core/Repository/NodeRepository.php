@@ -147,4 +147,25 @@ interface NodeRepository
      * jeden gemacht, der den Knoten offen hat.*
      */
     public function rememberSettingsRecord(int $nodeId, int $recordId): void;
+
+    /**
+     * Die Knoten, die diese PHP-Klassen umsetzen (TASK-008).
+     *
+     * ⚠️ **Das ist die Ablösung der WordPress-Optionen** (TASK-009,
+     * [`package.md` §3.2](../../../docs/pakete/modelltabellen/package.md)): *bisher hielt
+     * `taxmod_render_renderer_slider_id` ausserhalb des Modells fest, welcher Knoten der
+     * Schieber-Renderer ist — gegen `AR-1`. **Jetzt sagt es der Knoten selbst.***
+     *
+     * ⚠️ *Alle Klassen in einem Zug, weil die Saat über zwanzig auf einmal fragt und eine Abfrage je
+     * Name das N+1 wäre, das `CD-7` verbietet.*
+     *
+     * ⚠️ **Zwei Knoten, die dieselbe Klasse nennen, sind ein Fehler und keine Auswahl** — der
+     * Wächter [`implemented-by-check.php`](../../../scripts/dev/implemented-by-check.php) hält es
+     * fest. *Hier gewinnt darum die kleinste Id, damit die Antwort wenigstens stabil ist, statt von
+     * der Sortierung der Datenbank abzuhängen.*
+     *
+     * @param  list<string>            $classNames Voll qualifiziert.
+     * @return array<string, Node>     Klassenname => Knoten. Wen niemand umsetzt, fehlt.
+     */
+    public function byImplementations(array $classNames): array;
 }

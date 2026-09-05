@@ -49,6 +49,18 @@ final class ValidatorRegistry
      * ⚠️ *Ein unbekannter Name ist ein Fehler und kein leeres Ergebnis — `CD-10`. **Ein Validator, der
      * still nicht läuft, ist schlimmer als keiner**: die Zeile sieht geprüft aus.*
      */
+    /**
+     * Die PHP-Klasse hinter diesem Namen, oder `null` (TASK-008).
+     *
+     * ⚠️ *Gegenstück zu {@see \Taxmod\Core\Renderer\RendererRegistry::classFor()}.*
+     */
+    public function classFor(string $name): ?string
+    {
+        $validator = $this->byName[$name] ?? null;
+
+        return $validator === null ? null : $validator::class;
+    }
+
     public function byName(string $name): Validator
     {
         return $this->byName[$name] ?? throw NotAPossibleTarget::thereIsNoSuchValidator($name);

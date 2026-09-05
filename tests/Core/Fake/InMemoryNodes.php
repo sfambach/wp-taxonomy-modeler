@@ -230,4 +230,22 @@ final class InMemoryNodes implements NodeRepository
 
         $this->settingsRecords[$nodeId] = $recordId;
     }
+
+    public function byImplementations(array $classNames): array
+    {
+        $gesucht = array_flip($classNames);
+        $aus     = [];
+        $zeilen  = $this->rows;
+
+        // ⚠️ *Dieselbe Zusage wie am Rand: die kleinste Id gewinnt.*
+        ksort($zeilen);
+
+        foreach ($zeilen as $node) {
+            if ($node->implementedBy !== null && isset($gesucht[$node->implementedBy])) {
+                $aus[$node->implementedBy] ??= $node;
+            }
+        }
+
+        return $aus;
+    }
 }

@@ -175,7 +175,23 @@ final class Schema
      * `nodes` wie `relations` beginnen dort bei `2`. **Wo sie künftig wohnen soll, ist eine Frage an
      * den Eigentümer** ([`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md) `INF-008`).*
      */
-    public const VERSION = 22;
+    /**
+     * Fassung 23: `nodes.implemented_by` — **der Knoten nennt die PHP-Klasse, die ihn umsetzt**
+     * (TASK-008, [`package.md` §3.2](../../../docs/pakete/modelltabellen/package.md)).
+     *
+     * ⚠️ **Der Klassenname und keine Marke, auf sein Wort:** *«wenn das ohne Factory geht, weil der
+     * Klassenname da drinsteht, perfekt.»* *Eine Marke hätte eine zweite Tabelle Marke → Klasse
+     * gebraucht; der Klassenname bindet die Zeile an den Code — **und genau dafür gibt es den
+     * Wächter**, [`implemented-by-check.php`](../../../scripts/dev/implemented-by-check.php): eine
+     * Zeile, die eine Klasse nennt, die es nicht gibt, wird rot.*
+     *
+     * ⚠️ **Keine Wanderung im `dbDelta`-Schritt, und das ist gemessen.** *Die Spalte ist nullbar und
+     * `null` heisst «keine Klasse setzt diesen Knoten um» — für 128 von 128 bestehenden Knoten die
+     * richtige Antwort, bis die Saat sie füllt. Gefüllt wird sie einmalig von
+     * [`implemented-by-migrate.php`](../../../scripts/dev/implemented-by-migrate.php) aus den
+     * Optionen, die sie ablöst (TASK-009).*
+     */
+    public const VERSION = 23;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -992,10 +1008,12 @@ final class Schema
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
                 kind varchar(20) DEFAULT NULL,
+                implemented_by varchar(191) DEFAULT NULL,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY path (path),
                 KEY name (name),
+                KEY implemented_by (implemented_by),
                 KEY settings_record_id (settings_record_id)
             ) {$charset};",
 
@@ -1121,6 +1139,7 @@ final class Schema
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
                 kind varchar(20) DEFAULT NULL,
+                implemented_by varchar(191) DEFAULT NULL,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,

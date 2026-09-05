@@ -122,7 +122,7 @@ Betroffen sind `NodeKind`, `Node`, `NodeRepository`, `Schema` und `node-kind-che
 dastehen?
 
 ```text
-[ ] TASK-008  Spalte: welche PHP-Klasse setzt diesen Knoten um
+[x] TASK-008  Spalte: welche PHP-Klasse setzt diesen Knoten um
 ```
 
 **Entschieden am 2026-09-01: die Spalte trägt den Klassennamen, keine Factory.**
@@ -131,6 +131,25 @@ dastehen?
 **Dazu gehört der Wächter, und er ist Teil derselben Aufgabe:** eine Zeile, die eine Klasse nennt,
 die es nicht gibt, wird rot. *Das ist der Ausgleich dafür, dass ein Klassenname die Daten an den
 Code bindet — und es ist der eine Vorteil, den eine Marke nicht hätte.*
+
+**Gebaut am 2026-09-05, Schema 23.** Die Spalte heisst `nodes.implemented_by` und trägt den voll
+qualifizierten Klassennamen; im Kern sagt es `Node::implementedBy`, geschrieben wird über
+`ModelEditor::setImplementedBy()` — journalisiert wie ein Umbenennen, mit Schattenzeile. **Die Saat
+schreibt die Angabe selbst**, und zwar auch an Knoten, die schon dastanden: `RenderingScaffold`
+fragt die Registratur nach der Klasse (`classFor()`), statt eine zweite Liste zu führen.
+
+⚠️ **`null` heisst «keine Klasse setzt ihn um» und **nicht** «frag die Vorfahren».** *Anders als
+`kind`: **eine Klasse erbt sich nicht.** Die drei Behälter `Renderer`, `Converter`, `Validator`
+tragen darum nichts — sie sind ein Ort, kein Renderer.*
+
+**Gemessen und gewandert: 23 Knoten** — 17 Renderer, 4 Konverter, 2 Validatoren, über die
+aufgeschriebenen Ids und nie über Namen ([D-022](../../NewConcept/90-decision-log.md)).
+[`implemented-by-migrate.php`](../../../scripts/dev/implemented-by-migrate.php) ist der Lauf,
+[`implemented-by-check.php`](../../../scripts/dev/implemented-by-check.php) der Wächter: er prüft die
+Spalte an lebender Tabelle **und Schatten**, dass jede Angabe eine vorhandene Klasse nennt, dass
+**keine Klasse an zwei Knoten** steht, und dass jede registrierte Klasse ihren Knoten hat. *Den
+Schatten **zählt** er nur — Geschichte ist eingefroren ([D-065](../../NewConcept/90-decision-log.md)),
+und eine Fassung darf eine Klasse nennen, die es heute nicht mehr gibt.*
 
 ```text
 [ ] TASK-009  Die 56 Optionen ablösen, die sich Knoten-Ids merken

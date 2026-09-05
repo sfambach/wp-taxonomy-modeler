@@ -112,6 +112,21 @@ final class RendererRegistry
         return $names;
     }
 
+    /**
+     * Die PHP-Klasse hinter diesem Namen, oder `null`, wenn ihn niemand registriert hat.
+     *
+     * ⚠️ **Ohne Rückfall, und das ist der Unterschied zu {@see byName()}** (TASK-008). *Der Rückfall
+     * ist beim Zeichnen richtig — «hier zeichnet noch nichts» ist besser als ein Absturz. **Als
+     * Antwort auf «welche Klasse setzt diesen Knoten um» wäre er eine Lüge**: der Knoten bekäme
+     * `PlainRenderer` eingetragen und niemand sähe, dass der eigentliche Renderer fehlt.*
+     */
+    public function classFor(string $name): ?string
+    {
+        $renderer = $this->byName[$name] ?? null;
+
+        return $renderer === null ? null : $renderer::class;
+    }
+
     /** Render time: by name, or the fallback when the name is unknown. */
     public function byName(string $name): Renderer
     {

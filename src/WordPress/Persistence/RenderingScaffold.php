@@ -154,10 +154,18 @@ final class RenderingScaffold
         $created = [];
 
         foreach (self::CONTAINERS as $container) {
-            $node = $this->ensure($heimat, $container, self::optionForContainer($container), $created);
+            // ⚠️ *Der Behälter selbst wird von keiner Klasse umgesetzt — er ist ein Ort, kein
+            // Renderer. `null` heisst hier genau das (TASK-008).*
+            $node = $this->ensure($heimat, $container, self::optionForContainer($container), null, $created);
 
             foreach ($this->namesFor($container) as $name) {
-                $this->ensure($node, $name, self::optionFor($container, $name), $created);
+                $this->ensure(
+                    $node,
+                    $name,
+                    self::optionFor($container, $name),
+                    $this->classFor($container, $name),
+                    $created
+                );
             }
         }
 
@@ -181,6 +189,22 @@ final class RenderingScaffold
     }
 
     /**
+     * Die PHP-Klasse hinter diesem Namen — gelesen, nicht aufgezählt (TASK-008).
+     *
+     * ⚠️ *Aus derselben Naht wie {@see namesFor()}: die Registratur weiss, was sie registriert hat.
+     * **Eine eigene Zuordnung Name → Klasse wäre die Doppelung, die auseinanderläuft**, ohne dass
+     * etwas rot wird — genau die, vor der der Kommentar am Kopf dieser Klasse warnt.*
+     */
+    private function classFor(string $container, string $name): ?string
+    {
+        return match ($container) {
+            'Renderer'  => $this->renderers->classFor($name),
+            'Converter' => $this->converters->classFor($name),
+            'Validator' => $this->validators?->classFor($name),
+        };
+    }
+
+    /**
      * Der Knoten dieses Namens — über die gemerkte Id gefunden, sonst gemacht.
      *
      * ⚠️ **Die Reihenfolge ist Id, dann Name, dann anlegen** ([D-510](../../../docs/NewConcept/90-decision-log.md)).
@@ -199,8 +223,13 @@ final class RenderingScaffold
      *
      * @param list<string> $created
      */
-    private function ensure(Node $parent, string $name, string $option, array &$created): Node
-    {
+    private function ensure(
+        Node $parent,
+        string $name,
+        string $option,
+        ?string $className,
+        array &$created
+    ): Node {
         $children = $this->editor->childrenOf($parent->id);
         $known    = (int) get_option($option, 0);
 
@@ -212,7 +241,7 @@ final class RenderingScaffold
             // ⚠️ *Der Mülleimer **selbst** zählt mit: `isDescendantOf()` ist streng, und eine Option, die
             // auf den Eimer zeigt, wäre sonst geglaubt. Genau darauf zeigt die Gegenprüfung.*
             if ($gemerkt !== null && $gemerkt->id !== $muell->id && ! $gemerkt->isDescendantOf($muell)) {
-                return $gemerkt;
+                return $this->sagtSeineKlasse($gemerkt, $className);
             }
         }
 
@@ -221,7 +250,7 @@ final class RenderingScaffold
                 // ⚠️ *Der Notnagel macht sich selbst unnötig.*
                 update_option($option, $child->id, true);
 
-                return $child;
+                return $this->sagtSeineKlasse($child, $className);
             }
         }
 
@@ -230,6 +259,26 @@ final class RenderingScaffold
 
         update_option($option, $made->id, true);
 
-        return $made;
+        return $this->sagtSeineKlasse($made, $className);
+    }
+
+    /**
+     * Den Klassennamen in den Knoten schreiben, wenn er noch nicht dasteht (TASK-008).
+     *
+     * ⚠️ **Auch an einem Knoten, den es schon gab** — *sonst bekäme nur eine frische Installation die
+     * Angabe, und die bestehende bliebe für immer auf den Optionen angewiesen. {@see
+     * \Taxmod\Core\Service\ModelEditor::setImplementedBy()} ist von sich aus still, wenn nichts anders
+     * ist, also kostet das an einer gefüllten Zeile nichts.*
+     *
+     * ⚠️ *`null` schreibt **nichts** und löscht auch nichts: die Behälter fragen mit `null`, und eine
+     * Registratur, die gerade fehlt, soll keine Angabe wegräumen, die sie nicht kennt.*
+     */
+    private function sagtSeineKlasse(Node $node, ?string $className): Node
+    {
+        if ($className === null || $node->implementedBy === $className) {
+            return $node;
+        }
+
+        return $this->editor->setImplementedBy($node->id, $className);
     }
 }
