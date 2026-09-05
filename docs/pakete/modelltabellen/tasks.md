@@ -1253,8 +1253,7 @@ gewesen, an dem er nicht verschieben konnte.*
 
 [ ] TASK-056  Die Fassung wird beim Melden mitgeschrieben
 
-**2026-09-05.** *Das Aenderungsbuch ist auf sein Wort geleert worden — «alte ohne Fassung
-wegschmeissen» —, 35 524 von 35 684 Zeilen. **Damit ist der Zustand aufgeraeumt, die Ursache
+**2026-09-05.** *Das Aenderungsbuch ist auf sein Wort **vollstaendig** geleert worden — erst «alte ohne Fassung wegschmeissen» (35 524 Zeilen), dann «einmal komplett leeren, nicht selektiv» (die restlichen 162). Es steht jetzt auf null. **Damit ist der Zustand aufgeraeumt, die Ursache
 nicht:** die Fassung wird beim Melden nicht mitgeschrieben, und ohne diese Aufgabe steht in einer
 Woche derselbe Befund da.*
 
@@ -1267,6 +1266,12 @@ Zeile ohne Fassung war vom Tag des Loeschens, 15:51 Uhr.*
 null Chronikzeilen. **Wertaenderungen melden heute nichts**, und `§7` des Ereigniskonzepts verlangt
 die Fassung im Kontext jedes Ereignisses.*
 
-⚠️ *Die geloeschten Zeilen liegen als Sicherung im Arbeitsordner der Sitzung
-(`changelog-ohne-fassung.jsonl`, 8,9 MB, 35 524 Zeilen) — **nicht im Projekt**, weil sie dorthin
-nicht gehoeren, aber bis zum Sitzungsende zurueckholbar.*
+⚠️ *Die geloeschten Zeilen liegen als Sicherung im Arbeitsordner der Sitzung — beide Schritte
+einzeln (`changelog-ohne-fassung.jsonl`, 35 524 Zeilen, 8,9 MB; `changelog-rest.jsonl`, 162
+Zeilen) —, **nicht im Projekt**, weil sie dorthin nicht gehoeren, aber bis zum Sitzungsende
+zurueckholbar.*
+
+⚠️ **Nach dem Leeren nachgemessen, damit «es hat nichts gekostet» kein Eindruck bleibt:** *439
+Kerntests gruen, `cleanup-screen`, `used-by`, `package5`, `package7` und `inheritance-column`
+gruen. **Der Aufraeum-Bildschirm holt seine entfernten Felder also nicht allein aus dem Journal** —
+sonst waere er der erste gewesen, der rot wird.*
