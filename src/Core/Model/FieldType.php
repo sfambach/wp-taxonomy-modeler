@@ -29,16 +29,25 @@ namespace Taxmod\Core\Model;
  *
  * @see docs/NewConcept/02-field-and-setting.md
  */
-enum NodeKind: string
+enum FieldType: string
 {
     /**
      * Der Benutzer trägt den Wert ein; er liegt in einem Datensatz.
      *
-     * ⚠️ *Der Fall ohne Markierung. **Nicht weil er der wichtigere ist**, sondern weil 124 von 124
+     * ⚠️ *Der Fall ohne Markierung. **Nicht weil er der wichtigere ist**, sondern weil 97 von 136
      * Knoten ihn heute erfüllen und eine Vorgabe, die für alles Bestehende stimmt, keine Wanderung
      * braucht.*
+     *
+     * ⚠️ **Hiess `Field` mit dem Wert `field` und heisst seit TASK-007 `Model` mit dem Wert
+     * `model`** — *nach seiner Selbstkorrektur: «Entschuldigung, Model und Settings, richtig.»
+     * **Gewandert ist dabei nichts, gemessen: der Wert `field` stand in keiner einzigen Zeile**,
+     * weder lebend (97 leer, 39 `setting`) noch im Schatten (17 202 leer, 190 `setting`).*
+     *
+     * ⚠️ **Offen bleibt, ob «nichts» dasselbe ist wie `model`** — *124 von 128 Knoten sagten nichts,
+     * und der Vorfahrenlauf antwortet mit {@see standard()}. Ob das dastehen **muss**, ist nicht
+     * entschieden (`PR-4`) und wird hier nicht beiläufig beantwortet.*
      */
-    case Field = 'field';
+    case Model = 'model';
 
     /**
      * Der Autor trägt den Wert ein; er gehört zum Modell.
@@ -52,7 +61,7 @@ enum NodeKind: string
     /** Was gilt, wenn niemand etwas gesagt hat — auch am Ende des Vorfahrenlaufs. */
     public static function standard(): self
     {
-        return self::Field;
+        return self::Model;
     }
 
     /**
@@ -71,7 +80,7 @@ enum NodeKind: string
     public function headingKey(): string
     {
         return match ($this) {
-            self::Field   => 'fields',
+            self::Model   => 'fields',
             self::Setting => 'settings',
         };
     }

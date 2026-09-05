@@ -3,7 +3,7 @@
 namespace Taxmod\Core\Repository;
 
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 
 /**
  * Storage for nodes, stated as the core needs it rather than as a database offers it.
@@ -92,10 +92,10 @@ interface NodeRepository
      * Abfrage je Stufe.*
      *
      * @param  list<int>              $ids
-     * @return array<int, NodeKind>   Je angefragte Id genau ein Eintrag — nie `null`, weil
-     *                                {@see NodeKind::standard()} das Ende des Laufs beantwortet.
+     * @return array<int, FieldType>   Je angefragte Id genau ein Eintrag — nie `null`, weil
+     *                                {@see FieldType::standard()} das Ende des Laufs beantwortet.
      */
-    public function resolvedKinds(array $ids): array;
+    public function resolvedFieldTypes(array $ids): array;
 
     /**
      * Wie viele Kinder ein Knoten zu zeigen hat.

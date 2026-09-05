@@ -196,6 +196,99 @@ $say(! in_array($kind->id, $mitPfad, true), '… und das Kind auch');
 // (`collect()` beginnt **unter** ihr), ändert nichts daran, dass sie in der Menge steht.*
 $say(count($gefaltet) - count($mitPfad) === 4, sprintf('genau die vier Vorfahren fielen heraus (Wurzel, Model, Ast, Kind) — %d gegen %d', count($gefaltet), count($mitPfad)));
 
+// ── Der Dialog hat seinen eigenen Faltzustand ─────────────────────────────
+//
+// ⚠️ **Der Eigentümer, 2026-09-05:** *«der baum im dialog … hat noch die einstellungen bezüglich
+// elapsed und collapsed von der baumansicht auf der einstellungsseite, dies muss unabhängig
+// voneinander sein»* — und *«im dialog muss alles collapsed sein bis auf den default ast … und das
+// gilt nicht nur für die oberste ebene sondern auch für alle darunter.»*
+//
+// ⚠️ *Der Fehler war eine Übergabe: der Verschiebe-Dialog bekam **die Zeilen der Seitenansicht**,
+// mitsamt deren Faltzustand und, bei gesetztem Filter, nur den Treffern. Deshalb sieht diese
+// Prüfung nicht in den Kern, sondern in das Markup **des Dialogs auf der gezeichneten Seite**.*
+echo "\n== der Auswahldialog faengt zu an, gleich wie die Seite steht ==\n";
+
+/** Die Zeilen genau eines Dialogs, an seinem Feldnamen erkannt: Id => [sichtbar, Klappmarke]. */
+$dialogZeilen = static function (string $markup, string $feld): array {
+    $ab = strpos($markup, '-' . $feld . '"');
+
+    if ($ab === false) {
+        return [];
+    }
+
+    $baum = strpos($markup, '<span class="taxmod-chooser-tree">', $ab);
+
+    if ($baum === false) {
+        return [];
+    }
+
+    $bis    = strpos($markup, 'class="taxmod-dialog-switch"', $baum);
+    $stueck = substr($markup, $baum, $bis === false ? null : $bis - $baum);
+    $zeilen = [];
+
+    foreach (explode('<div class="taxmod-tree-row"', $stueck) as $zeile) {
+        if (! preg_match('/taxmod-choice-' . preg_quote($feld, '/') . '-(\d+)/', $zeile, $wer)) {
+            continue;
+        }
+
+        // ⚠️ *Am **Anfang** der Zeile und nicht irgendwo darin: die innere Zelle traegt selbst ein
+        // `display:flex`, und die erste Fassung dieser Prueferei las genau die — jede Zeile war
+        // damit «sichtbar», auch die ausgeblendete.*
+        $zeilen[(int) $wer[1]] = [
+            'sichtbar' => preg_match('/^ data-depth="\d+" style="display:flex;/', $zeile) === 1,
+            'klapp'    => preg_match('/data-fold="(auf|zu)"/', $zeile, $k) === 1 ? $k[1] : '',
+        ];
+    }
+
+    return $zeilen;
+};
+
+// Die Seite steht so weit offen, wie sie nur kann — und der Dialog darf davon nichts uebernehmen.
+$_GET['taxmod_collapsed'] = 'none';
+$_GET['taxmod_node']      = (string) $ast->id;
+
+$weit = $dialogZeilen($plugin->screen()->render(), 'target');
+
+printf("       %d Zeilen im Verschiebe-Dialog\n", count($weit));
+
+$say($weit !== [], 'der Verschiebe-Dialog ist auf der Seite und seine Zeilen sind lesbar');
+
+// ⚠️ *Alle Zeilen stehen im Dokument — der Dialog klappt im Browser und kann nichts nachladen.
+// Geprueft wird also die **Anzeige**, nicht das Vorhandensein.*
+$say(isset($weit[$enkel->id]), 'der Enkel steht im Dokument des Dialogs (er klappt ohne Neuaufbau)');
+$say(($weit[$ast->id]['sichtbar'] ?? false) === true, 'der Ast ist sichtbar — er liegt im Einstiegsast «Model»');
+$say(($weit[$kind->id]['sichtbar'] ?? true) === false, 'das Kind ist zu, obwohl die Seite alles offen hat');
+$say(($weit[$enkel->id]['sichtbar'] ?? true) === false, 'der Enkel ebenso — «alle darunter», nicht nur die oberste Ebene');
+
+// ⚠️ **Der Kern der Ast-Angabe ([D-615](../../docs/NewConcept/90-decision-log.md)): sie ist
+// ausschliessend.** *Unterhalb des offenen Astes darf kein zweiter offenstehen — sonst waere «alles
+// zu ausser einem» nur fuer die oberste Ebene wahr.*
+$offeneAeste = [];
+
+foreach ($weit as $id => $z) {
+    if ($z['klapp'] === 'auf') {
+        $offeneAeste[] = $id;
+    }
+}
+
+printf("       %d offene Aeste im Dialog: %s\n", count($offeneAeste), implode(',', $offeneAeste));
+
+$say(count($offeneAeste) === 1, 'genau ein Ast steht offen — kein zweiter unterhalb');
+$say(($weit[$ast->id]['klapp'] ?? '') === 'zu', 'der Ast selbst ist zugeklappt, obwohl er sichtbar ist');
+
+// ── Und dieselbe Seite ohne jeden Faltzustand gibt denselben Dialog ────────
+//
+// ⚠️ *Das ist die eigentliche Zusage: **zwei Seitenzustaende, ein Dialog.** Ohne diesen Vergleich
+// waere «zu» oben auch dann gruen, wenn der Dialog schlicht immer der Seite folgt und die Seite
+// zufaellig zu ist.*
+unset($_GET['taxmod_collapsed']);
+
+$frischerDialog = $dialogZeilen($plugin->screen()->render(), 'target');
+
+$say($frischerDialog === $weit, 'der Dialog sieht gleich aus, ob die Seite offen oder zu ist');
+
+unset($_GET['taxmod_node']);
+
 // aufraeumen
 global $wpdb;
 

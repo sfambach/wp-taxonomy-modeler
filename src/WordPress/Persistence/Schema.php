@@ -191,7 +191,26 @@ final class Schema
      * [`implemented-by-migrate.php`](../../../scripts/dev/implemented-by-migrate.php) aus den
      * Optionen, die sie ablöst (TASK-009).*
      */
-    public const VERSION = 23;
+    /**
+     * Fassung 24: `nodes.kind` heisst `field_type` (TASK-007,
+     * [`package.md` §3.1](../../../docs/pakete/modelltabellen/package.md)).
+     *
+     * ⚠️ **Eine Umbenennung und sonst nichts.** *Der Wert `field` wird zu `model` — nach seiner
+     * Selbstkorrektur «Entschuldigung, Model und Settings, richtig». **Gemessen vor dem Umbau: der
+     * Wert `field` stand in keiner einzigen Zeile**, lebend 97 leer und 39 `setting`, im Schatten
+     * 17 202 leer und 190 `setting`. **Der Schritt schreibt ihn trotzdem um**, weil eine Wanderung,
+     * die nur den gemessenen Fall kann, auf der nächsten Installation falsch ist — dieselbe Regel
+     * wie in Fassung 15.*
+     *
+     * ⚠️ *Der Schatten zieht mit, sonst wird `shadow-shape-check.php` rot — und das zu Recht: eine
+     * Spalte, die nur eine der beiden Tabellen hat, kann `Shadow::keep()` nicht kopieren.*
+     *
+     * ⚠️ **Der Grund ist `CD-9`, nicht Geschmack:** *drei Spalten hiessen `kind` und meinten drei
+     * verschiedene Dinge. **Diese eine sagt jetzt, was sie ist**; `relations.kind` fällt ohnehin
+     * ([D-587](../../../docs/NewConcept/90-decision-log.md)), und `records.kind` wird `record_type`
+     * (TASK-015).*
+     */
+    public const VERSION = 24;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -297,6 +316,10 @@ final class Schema
         // afterwards, it would create `node_id` beside `model_id` and leave both, with the data in
         // the one nothing reads any more.*
         self::renameRecordColumns();
+
+        // ⚠️ *Ebenfalls vor `dbDelta`, aus demselben Grund: es kennt keine Umbenennung und legte
+        // `field_type` neben `kind`, mit den Daten in der Spalte, die niemand mehr liest (TASK-007).*
+        self::renameNodeKindColumn();
 
         // ⚠️ **Ebenfalls vor `dbDelta`, und aus demselben Grund wie die Umbenennung darüber**
         // (TASK-004): *solange die Bedingungen auf `identities` stehen, kann keine der beiden
@@ -505,6 +528,51 @@ final class Schema
      * time — and on a fresh install the table does not exist at all yet, which is the first thing
      * checked.*
      */
+    /**
+     * `nodes.kind` heisst `field_type`, und der Wert `field` heisst `model` — Fassung 24 (TASK-007).
+     *
+     * ⚠️ **Beide Tabellen, lebend und Schatten.** *`Shadow::keep()` kopiert die Spalten, die beide
+     * haben; bliebe eine zurück, verlöre die Geschichte still die Angabe — und
+     * `shadow-shape-check.php` wäre rot, mit Recht.*
+     *
+     * ⚠️ *`CHANGE` und nicht `RENAME COLUMN`, aus demselben Portabilitätsgrund wie in
+     * {@see renameRecordColumns()}. Und jeder Schritt fragt zuerst: dieser Lauf läuft bei jeder
+     * Aktivierung und muss beim zweiten Mal nichts tun.*
+     */
+    private static function renameNodeKindColumn(): void
+    {
+        global $wpdb;
+
+        foreach (['nodes', 'nodes_history'] as $name) {
+            $table = self::table($name);
+
+            // Eine frische Installation: `dbDelta` legt sie gleich mit dem neuen Namen an.
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+                continue;
+            }
+
+            $vorhanden = $wpdb->get_col($wpdb->prepare(
+                'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+                $table,
+                'kind'
+            ));
+
+            if ($vorhanden === []) {
+                continue;
+            }
+
+            $wpdb->query("ALTER TABLE {$table} CHANGE kind field_type varchar(20) DEFAULT NULL");
+
+            // ⚠️ *Gemessen null Zeilen — geschrieben trotzdem, siehe die Begründung an `VERSION`.*
+            $wpdb->query($wpdb->prepare(
+                "UPDATE {$table} SET field_type = %s WHERE field_type = %s",
+                'model',
+                'field'
+            ));
+        }
+    }
+
     private static function renameRecordColumns(): void
     {
         global $wpdb;
@@ -1007,7 +1075,7 @@ final class Schema
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
-                kind varchar(20) DEFAULT NULL,
+                field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
@@ -1138,7 +1206,7 @@ final class Schema
                 version int(10) unsigned NOT NULL,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
-                kind varchar(20) DEFAULT NULL,
+                field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,

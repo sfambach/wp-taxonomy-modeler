@@ -100,7 +100,7 @@ geholt, bevor feststeht, dass eine Zeile entsteht, und ein Fehlschlag gibt sie n
 ## Wartet auf eine Entscheidung des Eigentümers
 
 ```text
-[?] nodes.kind  — zweite Heimat neben relations.kind = setting?
+[?] nodes.field_type  — zweite Heimat neben relations.kind = setting?
 [?] kind        — drei Spalten dieses Namens, drei Bedeutungen (CD-9)
 [?] label_role  — OQ-134; solange offen, kann settings nicht fallen
 ```
@@ -120,6 +120,31 @@ gefüllt sind vier, alle `setting`.
 Betroffen sind `NodeKind`, `Node`, `NodeRepository`, `Schema` und `node-kind-check`.
 **Offen dabei:** 124 von 128 Knoten sagen heute nichts — ist «nichts» gleich `field`, oder muss es
 dastehen?
+
+**Gebaut am 2026-09-05, Schema 24.** Die Spalte heisst `nodes.field_type`, der Wert `model`. **Und
+die Umbenennung geht durch den ganzen Code, weil sonst der Name weiter lügt** (`CD-9`):
+`NodeKind` → **`FieldType`**, `FieldType::Field` → **`FieldType::Model`**, `Node::$kind` →
+`$fieldType`, `withKind()` → `withFieldType()`, `ModelEditor::setKind()` → `setFieldType()`,
+`kindsOfNodes()` → `fieldTypesOfNodes()`, `NodeRepository::resolvedKinds()` →
+`resolvedFieldTypes()`, das Formularfeld `node_kind` → `node_field_type`, und der Wächter heisst
+[`field-type-check.php`](../../../scripts/dev/field-type-check.php).
+
+⚠️ **Gemessen vor dem Umbau, und darum keine Datenwanderung: der Wert `field` stand in keiner
+einzigen Zeile** — lebend 97 ohne Angabe und 39 `setting`, im Schatten 17 202 ohne und 190
+`setting`. *Der Wanderungsschritt schreibt `field` → `model` **trotzdem**, weil eine Wanderung, die
+nur den gemessenen Fall kann, auf der nächsten Installation falsch ist (dieselbe Regel wie Fassung
+15). Der Schatten zieht mit, sonst kann `Shadow::keep()` die Spalte nicht kopieren.*
+
+⚠️ **Der Eintrag im Änderungsbuch heisst jetzt `field type set`; die alten behalten `kind set`** —
+*Geschichte ist eingefroren ([D-065](../../NewConcept/90-decision-log.md)).*
+
+⚠️ **Die offene Frage oben ist offen geblieben** (`PR-4`): *ob «nichts» dasselbe ist wie `model`,
+sagt keine Entscheidung. Der Vorfahrenlauf antwortet unverändert mit `FieldType::standard()`, und
+der Wähler auf der Seite zeigt weiter drei Zustände — «erbt», `model`, `setting`.*
+
+⚠️ *Mitgezogen, weil sie die Spalte roh abfragten: `setting-kind-check`, `setting-kind-migrate` und
+`minmax-specialize`. **`setting-kind-check` war dadurch bereits rot** und meldete «der Ast trägt 0
+Knoten» — die Abfrage schlug fehl, und `$wpdb` sagt darüber nichts.*
 
 ```text
 [x] TASK-008  Spalte: welche PHP-Klasse setzt diesen Knoten um

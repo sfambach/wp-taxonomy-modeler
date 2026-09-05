@@ -35,7 +35,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\WordPress\Persistence\Schema;
@@ -116,7 +116,7 @@ foreach ($ziele as $name => $z) {
         $name,
         (int) $z['node']->id,
         $z['node']->path,
-        $z['node']->kind ?? '(keine)'
+        $z['node']->fieldType ?? '(keine)'
     );
     printf("       → zieht unter `Integer`; Marke `setting`; Feld `Integer --%s--> %s`%s\n",
         $name,
@@ -180,7 +180,7 @@ try {
         $id = (int) $z['node']->id;
 
         $editor->move($id, (int) $integer->id);
-        $editor->setKind($id, NodeKind::Setting);
+        $editor->setFieldType($id, FieldType::Setting);
 
         if (! $z['feldSchonDa']) {
             $kante = $editor->addField((int) $integer->id, $id, $name);
@@ -209,5 +209,5 @@ foreach ($ziele as $name => $z) {
         (int) $z['node']->id
     ));
 
-    printf("  %-4s liegt jetzt %s, Marke %s\n", $name, $row->path, $row->kind ?? '(keine)');
+    printf("  %-4s liegt jetzt %s, Marke %s\n", $name, $row->path, $row->field_type ?? '(keine)');
 }

@@ -9,7 +9,7 @@ use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\Changelog;
@@ -154,22 +154,25 @@ final class ModelEditor
      * andere Kante**, weil [D-516](../../../docs/NewConcept/90-decision-log.md) jeder Angabe ihren
      * eigenen Knoten gibt.*
      */
-    public function setKind(int $id, ?NodeKind $kind): Node
+    public function setFieldType(int $id, ?FieldType $fieldType): Node
     {
         $node   = $this->nodes->byId($id);
-        $marked = $node->withKind($kind);
+        $marked = $node->withFieldType($fieldType);
 
         if ($marked === $node) {
             return $node;
         }
 
         $this->nodes->save($marked, $node->version);
+        // ⚠️ *Der Eintrag heisst seit TASK-007 `field type set`. **Alte Einträge behalten
+        // `kind set`** — Geschichte ist eingefroren ([D-065](../../../docs/NewConcept/90-decision-log.md)),
+        // und ein Änderungsbuch, das man umschreibt, ist keins mehr.*
         $this->changelog->record(
             $id,
             'node',
-            'kind set',
-            $node->kind?->value,
-            $marked->kind?->value
+            'field type set',
+            $node->fieldType?->value,
+            $marked->fieldType?->value
         );
 
         return $marked;
@@ -183,7 +186,7 @@ final class ModelEditor
      * Schieber-Renderer ist — statt einer WordPress-Option ausserhalb des Modells (`AR-1`,
      * TASK-009).*
      *
-     * ⚠️ *Journalisiert wie {@see setKind()}, und aus demselben Grund: es ist eine Modelländerung.
+     * ⚠️ *Journalisiert wie {@see setFieldType()}, und aus demselben Grund: es ist eine Modelländerung.
      * Ein Setzen, das nichts ändert, schreibt nichts und hebt keine Fassung
      * ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
      *
@@ -1309,17 +1312,17 @@ final class ModelEditor
      * ihren eigenen Zielknoten, also trifft die Markierung nichts anderes mit.*
      *
      * @param  list<Relation>          $edges
-     * @return array<int, NodeKind>    Je Kanten-Id genau ein Eintrag.
+     * @return array<int, FieldType>    Je Kanten-Id genau ein Eintrag.
      */
     /**
      * Die aufgelöste Sorte je Knoten — für den Wähler, der zeigen muss, **was geerbt würde**.
      *
      * @param  list<int>            $ids
-     * @return array<int, NodeKind>
+     * @return array<int, FieldType>
      */
-    public function kindsOfNodes(array $ids): array
+    public function fieldTypesOfNodes(array $ids): array
     {
-        return $this->nodes->resolvedKinds($ids);
+        return $this->nodes->resolvedFieldTypes($ids);
     }
 
     public function kindsOfTargets(array $edges): array
@@ -1328,12 +1331,12 @@ final class ModelEditor
             return [];
         }
 
-        $sorten = $this->nodes->resolvedKinds(array_map(static fn (Relation $e): int => $e->toId, $edges));
+        $sorten = $this->nodes->resolvedFieldTypes(array_map(static fn (Relation $e): int => $e->toId, $edges));
 
         $je = [];
 
         foreach ($edges as $edge) {
-            $je[$edge->id] = $sorten[$edge->toId] ?? NodeKind::standard();
+            $je[$edge->id] = $sorten[$edge->toId] ?? FieldType::standard();
         }
 
         return $je;

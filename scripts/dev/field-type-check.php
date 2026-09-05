@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 /**
- * `nodes.kind` — was Felder halten, die auf einen Knoten zeigen, und die zwei Blöcke daraus.
+ * `nodes.field_type` — was Felder halten, die auf einen Knoten zeigen, und die zwei Blöcke daraus.
  *
- *     php scripts/dev/node-kind-check.php [path/to/wordpress]
+ *     php scripts/dev/field-type-check.php [path/to/wordpress]
  *
  * ⚠️ **[D-518](../../docs/NewConcept/90-decision-log.md), sein Entwurf:** *«eine Option erfinden, die
  * sagt: ist Field oder ist Setting? … und dass wir praktisch den Renderer zweimal aufrufen, einmal für
@@ -45,7 +45,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 require __DIR__ . '/geruest.php';
 
 use Taxmod\Core\Model\Branch;
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -83,7 +83,7 @@ echo "\n== 1. Die Spalte ist da und die Fassung sagt es ==\n";
 
 $spalten = array_column($wpdb->get_results('SHOW COLUMNS FROM ' . Schema::table('nodes'), ARRAY_A), 'Field');
 
-check('nodes hat die Spalte kind', in_array('kind', $spalten, true), implode(', ', $spalten));
+check('nodes hat die Spalte field_type', in_array('field_type', $spalten, true), implode(', ', $spalten));
 check('Schemafassung ist mindestens 14', Schema::VERSION >= 14, (string) Schema::VERSION);
 check(
     'und die Installation ist auf dieser Fassung',
@@ -105,7 +105,7 @@ $markiert = [$gebaut['einstellung'] => '__nk Schwelle'];
 check('der gebaute Knoten ist als Einstellung markiert', count($markiert) === 1, (string) count($markiert));
 
 foreach ($markiert as $id => $name) {
-    check($name . ' trägt kind = setting', $nodes->find($id)?->kind === NodeKind::Setting);
+    check($name . ' trägt field_type = setting', $nodes->find($id)?->fieldType === FieldType::Setting);
 }
 
 // ⚠️ **Zwei Darstellungen desselben Zustands sind eine Doppelung, und diese ist eingetreten.** *`%s`
@@ -113,14 +113,14 @@ foreach ($markiert as $id => $name) {
 // als «niemand hat etwas gesagt», aber `WHERE kind IS NOT NULL` findet nur eine. **Ein Knoten war so
 // gleichzeitig markiert und nicht markiert**, je nachdem wer fragt.
 $leer = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . " WHERE kind = ''"
+    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . " WHERE field_type = ''"
 );
 
 check('kein Knoten trägt eine leere Sorte statt NULL', $leer === 0, $leer . ' Zeile(n)');
 
 $fremd = array_values(array_filter(
-    $wpdb->get_col('SELECT DISTINCT kind FROM ' . Schema::table('nodes') . ' WHERE kind IS NOT NULL'),
-    static fn ($v): bool => NodeKind::tryFrom((string) $v) === null
+    $wpdb->get_col('SELECT DISTINCT field_type FROM ' . Schema::table('nodes') . ' WHERE field_type IS NOT NULL'),
+    static fn ($v): bool => FieldType::tryFrom((string) $v) === null
 ));
 
 check('und keine Sorte, die der Code nicht kennt', $fremd === [], implode(', ', $fremd));
@@ -146,7 +146,7 @@ if ($text === null) {
     // **schrieb nichts, und `Data Types` blieb markiert stehen**. **Eine Prüfung, deren Aufräumung am
     // geprüften Code hängt, räumt genau dann nicht auf, wenn es nötig wäre.***
     $vorherRoh = $wpdb->get_var($wpdb->prepare(
-        'SELECT kind FROM ' . Schema::table('nodes') . ' WHERE id = %d',
+        'SELECT field_type FROM ' . Schema::table('nodes') . ' WHERE id = %d',
         $dataTypes->id
     ));
 
@@ -157,32 +157,32 @@ if ($text === null) {
 
         $wpdb->update(
             Schema::table('nodes'),
-            ['kind' => $vorherRoh],
+            ['field_type' => $vorherRoh],
             ['id' => $dataTypes->id],
             ['%s'],
             ['%d']
         );
     });
 
-    $vorher = NodeKind::fromStorage($vorherRoh === null ? null : (string) $vorherRoh);
+    $vorher = FieldType::fromStorage($vorherRoh === null ? null : (string) $vorherRoh);
 
-    check('Text hat keine eigene Sorte', $nodes->find($text->id)?->kind === null);
-    check('und löst darum auf field auf', $nodes->resolvedKinds([$text->id])[$text->id] === NodeKind::Field);
+    check('Text hat keine eigene Sorte', $nodes->find($text->id)?->fieldType === null);
+    check('und löst darum auf model auf', $nodes->resolvedFieldTypes([$text->id])[$text->id] === FieldType::Model);
 
-    $editor->setKind($dataTypes->id, NodeKind::Setting);
+    $editor->setFieldType($dataTypes->id, FieldType::Setting);
 
     check(
         'markiert man Data Types, erbt Text die Sorte',
-        $nodes->resolvedKinds([$text->id])[$text->id] === NodeKind::Setting,
-        $nodes->resolvedKinds([$text->id])[$text->id]->value
+        $nodes->resolvedFieldTypes([$text->id])[$text->id] === FieldType::Setting,
+        $nodes->resolvedFieldTypes([$text->id])[$text->id]->value
     );
-    check('ohne eine eigene bekommen zu haben', $nodes->find($text->id)?->kind === null);
+    check('ohne eine eigene bekommen zu haben', $nodes->find($text->id)?->fieldType === null);
 
-    $editor->setKind($dataTypes->id, $vorher);
+    $editor->setFieldType($dataTypes->id, $vorher);
 
     check(
-        'und zurückgenommen erbt es wieder field',
-        $nodes->resolvedKinds([$text->id])[$text->id] === NodeKind::Field
+        'und zurückgenommen erbt es wieder model',
+        $nodes->resolvedFieldTypes([$text->id])[$text->id] === FieldType::Model
     );
 }
 
@@ -192,7 +192,7 @@ $viele = array_map(static fn ($n): int => $n->id, $nodes->childrenOf($dataTypes)
 $viele[] = $framework->root()->id;
 
 $vor = $wpdb->num_queries;
-$nodes->resolvedKinds($viele);
+$nodes->resolvedFieldTypes($viele);
 $gebraucht = $wpdb->num_queries - $vor;
 
 check(
@@ -279,12 +279,12 @@ check(
 
 echo "\n== 6. Der Wähler zeigt drei Zustände, und «erbt» nennt die Antwort ==\n";
 
-check('der Wähler steht auf der Seite', (bool) preg_match('#<select name="node_kind"#', $markup));
-check('er nennt das Formular der Seite', (bool) preg_match('#<select name="node_kind"[^>]*form="taxmod-page-\d+"#', $markup));
+check('der Wähler steht auf der Seite', (bool) preg_match('#<select name="node_field_type"#', $markup));
+check('er nennt das Formular der Seite', (bool) preg_match('#<select name="node_field_type"[^>]*form="taxmod-page-\d+"#', $markup));
 
-preg_match_all('#<option value="([a-z]*)"#', (string) (preg_match('#<select name="node_kind".*?</select>#s', $markup, $s) ? $s[0] : ''), $optionen);
+preg_match_all('#<option value="([a-z]*)"#', (string) (preg_match('#<select name="node_field_type".*?</select>#s', $markup, $s) ? $s[0] : ''), $optionen);
 
-check('drei Einträge: erbt, field, setting', $optionen[1] === ['', 'field', 'setting'], implode('|', $optionen[1]));
+check('drei Einträge: erbt, model, setting', $optionen[1] === ['', 'model', 'setting'], implode('|', $optionen[1]));
 
 // ⚠️ *«erbt» ohne die geerbte Antwort daneben wäre eine Wahl, die nichts sagt — [R14b](../../docs/NewConcept/30-renderer.md)s
 // Regel, dass «nichts» eine Entscheidung sein muss und kein stiller Boden.*

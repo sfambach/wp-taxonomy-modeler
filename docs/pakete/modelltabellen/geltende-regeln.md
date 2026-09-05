@@ -99,7 +99,7 @@ ich darauf bestehen, dass es extern ist.» **Die Angabe dafür gibt es seit heut
 | | | |
 |---|---|---|
 | **die Typbindung** | 11 WordPress-Optionen halten «welcher Knoten ist `int`» | gegen `AR-1`; die Spalte ist beschlossen (§3.2, TASK-008) |
-| **die Einstellungsmarke** | `nodes.kind` an 3 Knoten, `relations.kind` an 11 Kanten | zwei Zählungen derselben Sache ([D-606](../../NewConcept/90-decision-log.md)) |
+| **die Einstellungsmarke** | `nodes.field_type` an 3 Knoten, `relations.kind` an 11 Kanten | zwei Zählungen derselben Sache ([D-606](../../NewConcept/90-decision-log.md)) |
 | **`relation_type`** | sagt, was der Ast des Ziels auch sagt | fällt ([D-587](../../NewConcept/90-decision-log.md)) |
 | **`before_state`** | trägt als Text, was die Schattenzeile in Spalten hat | fällt ([D-601](../../NewConcept/90-decision-log.md)) |
 

@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * Dass die Marke gepflegt bleibt — ein Knoten im Settings-Ast ohne `kind = setting` faellt auf.
+ * Dass die Marke gepflegt bleibt — ein Knoten im Settings-Ast ohne `field_type = setting` faellt auf.
  *
  *     php scripts/dev/setting-kind-check.php [path/to/wordpress]
  *
@@ -44,7 +44,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\WordPress\Persistence\Schema;
 
 global $wpdb;
@@ -85,7 +85,7 @@ if ($branch === null) {
 }
 
 $rows = $wpdb->get_results($wpdb->prepare(
-    "SELECT id, name, path, kind FROM {$nodesTable} WHERE path LIKE %s ORDER BY path",
+    "SELECT id, name, path, field_type FROM {$nodesTable} WHERE path LIKE %s ORDER BY path",
     $wpdb->esc_like($branch->path . '.') . '%'
 ), ARRAY_A);
 
@@ -99,9 +99,9 @@ $rest    = [];
 
 foreach ($rows as $row) {
     $id   = (int) $row['id'];
-    $kind = $row['kind'];
+    $kind = $row['field_type'];
 
-    if ($kind === NodeKind::Setting->value) {
+    if ($kind === FieldType::Setting->value) {
         continue;
     }
 
@@ -129,7 +129,7 @@ foreach ($rows as $row) {
 }
 
 check(
-    'kein Knoten im Ast ohne `kind = setting`',
+    'kein Knoten im Ast ohne `field_type = setting`',
     $fehlend === [],
     implode('; ', $fehlend)
 );
@@ -143,13 +143,13 @@ echo "\n== 3. Und die Marke ist ein echtes NULL, wo sie fehlt ==\n";
 // ⚠️ *`$wpdb->prepare('%s', null)` schreibt eine **leere Zeichenkette**. `fromStorage()` liest beide
 // als «niemand hat etwas gesagt», `WHERE kind IS NOT NULL` findet nur eine — ein Knoten waere
 // gleichzeitig markiert und nicht markiert ([D-519](../../docs/NewConcept/90-decision-log.md)).*
-$leer = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$nodesTable} WHERE kind = ''");
+$leer = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$nodesTable} WHERE field_type = ''");
 
 check('kein Knoten traegt eine leere Sorte statt NULL', $leer === 0, $leer . ' Zeile(n)');
 
 $fremd = array_values(array_filter(
-    $wpdb->get_col("SELECT DISTINCT kind FROM {$nodesTable} WHERE kind IS NOT NULL"),
-    static fn ($v): bool => NodeKind::tryFrom((string) $v) === null
+    $wpdb->get_col("SELECT DISTINCT field_type FROM {$nodesTable} WHERE field_type IS NOT NULL"),
+    static fn ($v): bool => FieldType::tryFrom((string) $v) === null
 ));
 
 check('und keine Sorte, die der Code nicht kennt', $fremd === [], implode(', ', $fremd));

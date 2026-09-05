@@ -37,7 +37,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -65,7 +65,7 @@ if ($branch === null) {
 }
 
 $rows = $wpdb->get_results($wpdb->prepare(
-    "SELECT id, name, path, kind FROM {$nodesTable} WHERE path LIKE %s ORDER BY path",
+    "SELECT id, name, path, field_type FROM {$nodesTable} WHERE path LIKE %s ORDER BY path",
     $wpdb->esc_like($branch->path . '.') . '%'
 ), ARRAY_A);
 
@@ -112,10 +112,10 @@ $foreign = [];
 
 foreach ($rows as $row) {
     $id   = (int) $row['id'];
-    $kind = $row['kind'];
+    $kind = $row['field_type'];
 
     if ($kind !== null && $kind !== '') {
-        if ($kind === NodeKind::Setting->value) {
+        if ($kind === FieldType::Setting->value) {
             $already[$id] = $row['name'];
         } else {
             $foreign[$id] = $row['name'] . ' (' . $kind . ')';
@@ -212,7 +212,7 @@ $failed = null;
 
 foreach ($toMark as $id => $name) {
     try {
-        $editor->setKind($id, NodeKind::Setting);
+        $editor->setFieldType($id, FieldType::Setting);
     } catch (\Throwable $e) {
         $failed = "Knoten {$id} ({$name}): " . $e->getMessage();
 
@@ -231,7 +231,7 @@ if ($failed !== null) {
 $wpdb->query('COMMIT');
 
 $marked = (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(*) FROM {$nodesTable} WHERE path LIKE %s AND kind = 'setting'",
+    "SELECT COUNT(*) FROM {$nodesTable} WHERE path LIKE %s AND field_type = 'setting'",
     $wpdb->esc_like($branch->path . '.') . '%'
 ));
 

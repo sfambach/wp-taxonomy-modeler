@@ -38,7 +38,7 @@ final class Node extends Identity implements Renderable
          * [D-516](../../../docs/NewConcept/90-decision-log.md) gemessen hat — **eine Spalte plus
          * Vorfahrenlauf gibt Vererbung ohne die Settings-Maschinerie.***
          */
-        public readonly ?NodeKind $kind = null,
+        public readonly ?FieldType $fieldType = null,
         /**
          * Die PHP-Klasse, die diesen Knoten umsetzt — voll qualifiziert, oder `null`.
          *
@@ -50,7 +50,7 @@ final class Node extends Identity implements Renderable
          *
          * ⚠️ **`null` heisst «keine Klasse setzt ihn um», nicht «unbekannt».** *Die überwiegende
          * Mehrheit der Knoten ist Inhalt des Eigentümers und hat keine Entsprechung im Code — ein
-         * Vorfahrenlauf wie bei {@see $kind} wäre hier falsch: **eine Klasse erbt sich nicht.***
+         * Vorfahrenlauf wie bei {@see $fieldType} wäre hier falsch: **eine Klasse erbt sich nicht.***
          *
          * ⚠️ *Ein Klassenname in den Daten bindet die Zeile an den Code, und das ist der Preis. Der
          * Ausgleich steht als Wächter daneben: `implemented-by-check.php` wird rot, sobald eine Zeile
@@ -72,10 +72,10 @@ final class Node extends Identity implements Renderable
         int $version,
         string $name,
         string $path,
-        ?NodeKind $kind = null,
+        ?FieldType $fieldType = null,
         ?string $implementedBy = null,
     ): self {
-        return new self($id, $version, $name, $path, $kind, $implementedBy);
+        return new self($id, $version, $name, $path, $fieldType, $implementedBy);
     }
 
     /**
@@ -109,7 +109,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $name, $this->path, $this->kind, $this->implementedBy);
+        return new self($this->id, $this->version + 1, $name, $this->path, $this->fieldType, $this->implementedBy);
     }
 
     /**
@@ -126,7 +126,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $path, $this->kind, $this->implementedBy);
+        return new self($this->id, $this->version + 1, $this->name, $path, $this->fieldType, $this->implementedBy);
     }
 
     /**
@@ -136,19 +136,19 @@ final class Node extends Identity implements Renderable
      * ein Speichern, das nichts ändert, darf die Fassung nicht heben. Dieselbe Form wie
      * {@see renamedTo()}.*
      */
-    public function withKind(?NodeKind $kind): self
+    public function withFieldType(?FieldType $fieldType): self
     {
-        if ($kind === $this->kind) {
+        if ($fieldType === $this->fieldType) {
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $this->path, $kind, $this->implementedBy);
+        return new self($this->id, $this->version + 1, $this->name, $this->path, $fieldType, $this->implementedBy);
     }
 
     /**
      * Derselbe Knoten, der eine andere PHP-Klasse nennt — eine Fassung weiter.
      *
-     * ⚠️ *Dieselbe Form wie {@see withKind()}: **dasselbe Exemplar zurück**, wenn sich nichts ändert
+     * ⚠️ *Dieselbe Form wie {@see withFieldType()}: **dasselbe Exemplar zurück**, wenn sich nichts ändert
      * ([D-282](../../../docs/NewConcept/90-decision-log.md)). Ein leerer Name wird zu `null`, damit
      * «nichts» genau eine Schreibweise hat — sonst stünden `''` und `NULL` nebeneinander und sagten
      * dasselbe, die Falle aus {@see \Taxmod\WordPress\Persistence\WpdbNodeRepository}.*
@@ -161,7 +161,7 @@ final class Node extends Identity implements Renderable
             return $this;
         }
 
-        return new self($this->id, $this->version + 1, $this->name, $this->path, $this->kind, $className);
+        return new self($this->id, $this->version + 1, $this->name, $this->path, $this->fieldType, $className);
     }
 
     // ⚠️ *`withHide()` stood here and is gone to {@see Relation::withHide()} alone
@@ -193,7 +193,7 @@ final class Node extends Identity implements Renderable
         array_pop($segmente);
         $segmente[] = (string) $id;
 
-        return new self($id, $this->version, $this->name, implode('.', $segmente), $this->kind, $this->implementedBy);
+        return new self($id, $this->version, $this->name, implode('.', $segmente), $this->fieldType, $this->implementedBy);
     }
 
     /**

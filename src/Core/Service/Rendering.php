@@ -48,7 +48,7 @@ use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\Renderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RelationRepository;
 use Taxmod\Core\Repository\TypeNodes;
@@ -1995,7 +1995,7 @@ final class Rendering
         // von aussen betrachtet. **Und er hat keine Renderer-Einstellung** — seit
         // [D-545](../../../docs/NewConcept/90-decision-log.md) erbt nichts im Settings-Ast von der
         // Wurzel, also gäbe es unten nichts zu lesen und `form` käme als stille Vorgabe heraus.*
-        if ($node->kind === NodeKind::Setting) {
+        if ($node->fieldType === FieldType::Setting) {
             return $this->renderers->byName(TableRenderer::NAME);
         }
 
@@ -2978,7 +2978,7 @@ final class Rendering
             return RenderResult::of('');
         }
 
-        $walked = $this->closedApartFrom($laeufer->rowsUnder($root, $skip), $expanded);
+        $walked = $this->closedApartFrom($laeufer->rowsUnder($root, $skip), $expanded, $preselected);
 
         return $this->chooserFor(
             $walked,
@@ -3002,10 +3002,19 @@ final class Rendering
      * ⚠️ *Der offene Ast schliesst seinen Weg mit ein: liegt er zwei Ebenen tief, muessen seine
      * Vorfahren offen sein, sonst waere «offen» eine Angabe ueber etwas, das niemand sieht.*
      *
+     * ⚠️ **Und der Weg zum vorgewaehlten Knoten kommt dazu — additiv, nicht ausschliessend.**
+     * *[D-615](../../../docs/NewConcept/90-decision-log.md) trennt die beiden Angaben: der **Ast**
+     * oeffnet einen Ast und schliesst den Rest, der **Knoten** oeffnet nur seinen Weg. Beides hier,
+     * damit der Dialog den vorgewaehlten Knoten auch sieht, wenn er in einem anderen Ast liegt.*
+     *
+     * ⚠️ *Der vorgewaehlte Knoten selbst bleibt zu — seine Vorfahren machen ihn sichtbar, ihn
+     * aufzuklappen oeffnete einen Ast, den niemand sehen wollte (dieselbe Regel wie in
+     * {@see Tree::collapsedByDefault()}).*
+     *
      * @param  list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}> $walked
      * @return list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool, hidden: bool}>
      */
-    private function closedApartFrom(array $walked, ?Node $expanded): array
+    private function closedApartFrom(array $walked, ?Node $expanded, ?int $preselected = null): array
     {
         // WICHTIG: Ohne genannten Ast ist ALLES zu, nicht alles offen. Auf sein Wort: "der
         // gewaehlte Ast im Dialog entscheidet nur, welcher Ast expanded ist, die anderen sollten
@@ -3018,6 +3027,18 @@ final class Rendering
 
             foreach ($expanded->ancestorIds() as $id) {
                 $offen[$id] = true;
+            }
+        }
+
+        if ($preselected !== null) {
+            foreach ($walked as $row) {
+                if ($row['node']->id === $preselected) {
+                    foreach ($row['node']->ancestorIds() as $id) {
+                        $offen[$id] = true;
+                    }
+
+                    break;
+                }
             }
         }
 
@@ -3071,7 +3092,7 @@ final class Rendering
      * Struktur» — also ist ein markierter Knoten **keine** Möglichkeit und die Auswahl sieht durch ihn
      * hindurch. Ein unmarkierter ist eine Möglichkeit und wird nicht weiter aufgeklappt.*
      *
-     * ⚠️ **Die **eigene** Sorte entscheidet, nicht die aufgelöste.** *`resolvedKinds()` erbt nach unten:
+     * ⚠️ **Die **eigene** Sorte entscheidet, nicht die aufgelöste.** *`resolvedFieldTypes()` erbt nach unten:
      * wäre sie gefragt, gälten `form`, `table`, `compact` als markiert, weil ihr Elternteil es ist —
      * und die Auswahl wäre leer statt vollständig.*
      *
@@ -3145,7 +3166,7 @@ final class Rendering
             foreach ($offen as $wurzel => $ids) {
                 foreach ($ids as $id) {
                     foreach ($kinder[$id] ?? [] as $kind) {
-                        if ($kind->kind === NodeKind::Setting) {
+                        if ($kind->fieldType === FieldType::Setting) {
                             $weiter[$wurzel][] = $kind->id;
 
                             continue;

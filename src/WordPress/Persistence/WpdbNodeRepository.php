@@ -5,7 +5,7 @@ namespace Taxmod\WordPress\Persistence;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\NodeRepository;
 
@@ -30,7 +30,7 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $row = $wpdb->get_row(
-            $wpdb->prepare('SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
+            $wpdb->prepare('SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
             ARRAY_A
         );
 
@@ -53,7 +53,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+                'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
                 ...array_map(intval(...), $ids)
             ),
             ARRAY_A
@@ -82,7 +82,7 @@ final class WpdbNodeRepository implements NodeRepository
             'version'        => $node->version,
             'name'           => $node->name,
             'path'           => $node->path,
-            'kind'           => $node->kind?->value,
+            'field_type'     => $node->fieldType?->value,
             'implemented_by' => $node->implementedBy,
         ];
         $formate = ['%d', '%s', '%s', '%s', '%s'];
@@ -141,7 +141,7 @@ final class WpdbNodeRepository implements NodeRepository
                 'version'        => $node->version,
                 'name'           => $node->name,
                 'path'           => $node->path,
-                'kind'           => $node->kind?->value,
+                'field_type'     => $node->fieldType?->value,
                 // ⚠️ *Fährt mit, aus demselben Grund wie `kind`: ein Umbenennen hätte sonst die
                 // Klassenangabe gelöscht (TASK-008).*
                 'implemented_by' => $node->implementedBy,
@@ -195,7 +195,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT r.from_id, n.id, n.version, n.name, n.path, n.kind, n.implemented_by
+                'SELECT r.from_id, n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
                  FROM ' . Schema::table('relations') . ' r
                  INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
                  WHERE r.kind = %s AND r.hide = 0 AND r.from_id IN (' . $platzhalter . ')
@@ -223,7 +223,7 @@ final class WpdbNodeRepository implements NodeRepository
         // and first under the other. One statement, one join, no walking (`CD-7`).
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT n.id, n.version, n.name, n.path, n.kind, n.implemented_by
+                'SELECT n.id, n.version, n.name, n.path, n.field_type, n.implemented_by
                  FROM ' . Schema::table('relations') . ' r
                  INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
                  WHERE r.from_id = %d AND r.kind = %s
@@ -245,7 +245,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes') . '
+                'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes') . '
                  WHERE path LIKE %s
                  ORDER BY path ASC',
                 $wpdb->esc_like($root->path . '.') . '%'
@@ -331,7 +331,7 @@ final class WpdbNodeRepository implements NodeRepository
      * überhaupt eine Sorte tragen — eine Abfrage, nicht eine je Stufe (`CD-7`). Danach läuft die
      * Auflösung in PHP über den Pfad von hinten nach vorn.*
      */
-    public function resolvedKinds(array $ids): array
+    public function resolvedFieldTypes(array $ids): array
     {
         global $wpdb;
 
@@ -345,7 +345,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, path, kind FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+                'SELECT id, path, field_type FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
                 ...$ids
             ),
             ARRAY_A
@@ -369,14 +369,14 @@ final class WpdbNodeRepository implements NodeRepository
             foreach (
                 $wpdb->get_results(
                     $wpdb->prepare(
-                        'SELECT id, kind FROM ' . Schema::table('nodes')
-                            . " WHERE id IN ($slots) AND kind IS NOT NULL",
+                        'SELECT id, field_type FROM ' . Schema::table('nodes')
+                            . " WHERE id IN ($slots) AND field_type IS NOT NULL",
                         ...$wo
                     ),
                     ARRAY_A
                 ) ?: [] as $row
             ) {
-                $sorte = NodeKind::fromStorage((string) $row['kind']);
+                $sorte = FieldType::fromStorage((string) $row['field_type']);
 
                 if ($sorte !== null) {
                     $sorten[(int) $row['id']] = $sorte;
@@ -388,7 +388,7 @@ final class WpdbNodeRepository implements NodeRepository
 
         foreach ($rows as $row) {
             $stufen = array_reverse(explode('.', (string) $row['path']));
-            $gefunden = NodeKind::standard();
+            $gefunden = FieldType::standard();
 
             foreach ($stufen as $stufe) {
                 if (isset($sorten[(int) $stufe])) {
@@ -404,7 +404,7 @@ final class WpdbNodeRepository implements NodeRepository
         // ⚠️ *Eine Id, die es nicht gibt, bekommt trotzdem eine Antwort — der Aufrufer soll nicht
         // zwischen «kein Knoten» und «keine Sorte» unterscheiden müssen, um eine Zeile einzuordnen.*
         foreach ($ids as $id) {
-            $aufgeloest[$id] ??= NodeKind::standard();
+            $aufgeloest[$id] ??= FieldType::standard();
         }
 
         return $aufgeloest;
@@ -486,7 +486,7 @@ final class WpdbNodeRepository implements NodeRepository
         // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                'SELECT id, version, name, path, kind, implemented_by FROM ' . Schema::table('nodes')
+                'SELECT id, version, name, path, field_type, implemented_by FROM ' . Schema::table('nodes')
                     . " WHERE implemented_by IN ($slots) ORDER BY id",
                 ...$classNames
             ),
@@ -514,7 +514,7 @@ final class WpdbNodeRepository implements NodeRepository
             (string) $row['path'],
             // ⚠️ *`??` und nicht `[...]`: eine Abfrage, die nur `id` und `path` holt, hat die Spalte
             // nicht dabei, und das ist kein Fehler — sie soll dann «niemand hat etwas gesagt» heissen.*
-            NodeKind::fromStorage(isset($row['kind']) ? (string) $row['kind'] : null),
+            FieldType::fromStorage(isset($row['field_type']) ? (string) $row['field_type'] : null),
             // ⚠️ *Dieselbe Vorsicht, und dazu: eine leere Zeichenkette ist `null`. **Zwei
             // Schreibweisen für «nichts» sind der Fehler, den `kind` schon einmal hatte.***
             isset($row['implemented_by']) && (string) $row['implemented_by'] !== ''

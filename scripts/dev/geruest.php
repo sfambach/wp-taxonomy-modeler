@@ -289,7 +289,7 @@ final class Geruest
         $this->gebaut[] = $einstellung->id;
 
         // Der Ast allein markiert nicht -- D-518 hat die Spalte gesetzt, nicht abgeleitet.
-        $this->editor->setKind($einstellung->id, \Taxmod\Core\Model\NodeKind::Setting);
+        $this->editor->setFieldType($einstellung->id, \Taxmod\Core\Model\FieldType::Setting);
 
         $traeger = $this->editor->createNode($this->vorsatz . ' Nutzer', $this->testast(Branch::Model));
         $this->gebaut[] = $traeger->id;

@@ -7,7 +7,7 @@ use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\NodeKind;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RecordKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\Label;
@@ -744,7 +744,7 @@ final class NodesScreen
             // honestly about derived facts.*
             PageSlot::Acts->value => new Section(
                 '',
-                $this->head($selected, $rows, $root)
+                $this->head($selected, $root)
             ),
 
             // ⚠️ **Labels sit in `display` and R20a names no slot for them** — an assumption, and
@@ -1232,7 +1232,7 @@ final class NodesScreen
         return 'taxmod-page-' . $selected->id;
     }
 
-    private function head(Node $selected, array $rows, Node $root): string
+    private function head(Node $selected, Node $root): string
     {
         // ⚠️ **Das Formular der Seite, mit nichts als seinen versteckten Feldern.** *Alles, was dazu
         // gehört — Name, Labels, der Speicherknopf — nennt es über `form="…"` und steht ausserhalb.
@@ -1260,20 +1260,20 @@ final class NodesScreen
         // Antwort.** *`null` heisst «frag meine Vorfahren», und was dabei herauskommt, steht im
         // Eintrag: ein Kind von `Integer › min` erbt «Einstellung», ohne dass jemand es nochmal sagt.
         // **Ohne diesen dritten Eintrag könnte man eine geerbte Antwort nicht zurücknehmen.***
-        $sorte  = $selected->kind;
-        $erbt   = $this->editor->kindsOfNodes([$selected->id])[$selected->id] ?? NodeKind::standard();
-        $wahl   = '<select name="node_kind" form="' . esc_attr(self::pageForm($selected)) . '"'
+        $sorte  = $selected->fieldType;
+        $erbt   = $this->editor->fieldTypesOfNodes([$selected->id])[$selected->id] ?? FieldType::standard();
+        $wahl   = '<select name="node_field_type" form="' . esc_attr(self::pageForm($selected)) . '"'
             . ' class="taxmod-choice" title="' . esc_attr__('What values of fields pointing at this node are', 'taxmod') . '">'
             . '<option value=""' . ($sorte === null ? ' selected' : '') . '>'
             . esc_html(sprintf(
                 /* translators: %s is the inherited answer, «field» or «setting». */
                 __('inherited — %s', 'taxmod'),
-                $erbt === NodeKind::Setting ? __('setting', 'taxmod') : __('field', 'taxmod')
+                $erbt === FieldType::Setting ? __('setting', 'taxmod') : __('field', 'taxmod')
             ))
             . '</option>'
-            . '<option value="field"' . ($sorte === NodeKind::Field ? ' selected' : '') . '>'
+            . '<option value="model"' . ($sorte === FieldType::Model ? ' selected' : '') . '>'
             . esc_html__('field — a person enters it', 'taxmod') . '</option>'
-            . '<option value="setting"' . ($sorte === NodeKind::Setting ? ' selected' : '') . '>'
+            . '<option value="setting"' . ($sorte === FieldType::Setting ? ' selected' : '') . '>'
             . esc_html__('setting — it belongs to the model', 'taxmod') . '</option>'
             . '</select>';
 
@@ -1319,7 +1319,7 @@ final class NodesScreen
                 // ⚠️ **The move button *is* the dialog's opener** — the owner: *button move with dialog
                 // tree chooser*, and then *nicht inline*. So the chooser no longer sits beside a move
                 // button; it is behind it, and its own confirm lives inside the overlay.
-                $this->parentChooser($selected, $rows, $root)
+                $this->parentChooser($selected, $root)
             );
 
         return $this->rendering->headFor($selected, [
@@ -1425,10 +1425,17 @@ final class NodesScreen
      * them, because a screen is not a guarantee; but offering a choice that always fails is a
      * trap laid for the person using it.
      *
-     * @param list<array{node: Node, depth: int, hasChildren: bool, collapsed: bool, isFirst: bool, isLast: bool}> $rows
+     * ⚠️ **Er holt seine Zeilen selbst, und das ist der Punkt von TASK-054.** *Vorher bekam er die
+     * Zeilen der Seitenansicht — mit deren Faltzustand und, wenn gefiltert war, nur den Treffern.
+     * **Damit war der Faltzustand der Seite der des Dialogs**, obwohl beide verschiedene Fragen
+     * stellen. Jetzt geht er ueber {@see \Taxmod\Core\Service\Rendering::nodeChooser()} wie jeder
+     * andere Dialog und beginnt jedes Mal an derselben Stelle: alles zu ausser dem Einstiegsast und
+     * dem Weg zum heutigen Elternknoten ([D-615](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private function parentChooser(Node $node, array $rows, Node $root): string
+    private function parentChooser(Node $node, Node $root): string
     {
+        $rows = $this->tree->rowsUnder($root, [$this->framework->trash()->id]);
+
         // ⚠️ **A tree chooser and no longer a flat `<select>`** ([D-395](../../../docs/NewConcept/90-decision-log.md)).
         // The owner, looking at eighty entries prefixed with middle dots: *the select would have to be
         // the tree chooser.* **It also could not say no:** every branch root was in the list, and
@@ -1470,10 +1477,16 @@ final class NodesScreen
             true
         ));
 
-        return $this->rendering->chooserFor(
-            $rows,
+        $ast = $this->framework->branchOf($node);
+
+        return $this->rendering->nodeChooser(
+            $root,
             'target',
+            // Der Einstiegsast: der, in dem der Knoten heute liegt — wer verschiebt, bleibt
+            // meistens in der Naehe, und alles andere macht der Benutzer selbst auf.
+            $ast === null ? null : $this->framework->rootOf($ast),
             $node->parentId(),
+            [$this->framework->trash()->id],
             $barred,
             $this->labels->of($node, SeededRole::Form, $this->localeFromRequest()),
             __('Nothing here can be a parent.', 'taxmod'),
@@ -1709,7 +1722,7 @@ final class NodesScreen
                 static fn (Relation $edge): bool => $edge->kind->isSetting() === $istEinstellung
             ));
 
-            $sorte = $istEinstellung ? NodeKind::Setting : NodeKind::Field;
+            $sorte = $istEinstellung ? FieldType::Setting : FieldType::Model;
 
             $body = '';
 
@@ -1785,7 +1798,7 @@ final class NodesScreen
             // [D-506](../../../docs/NewConcept/90-decision-log.md) ist alles ein Feld. **Was daraus
             // wird, entscheidet das Ziel** — zeigt das neue Feld auf einen Knoten, der eine Einstellung
             // ist, erscheint die Zeile danach im Settings-Block.*
-            if ($sorte === NodeKind::Field) {
+            if ($sorte === FieldType::Model) {
                 $html .= $this->removedFields($selected) . $this->fieldForm($selected);
             }
         }
@@ -1970,17 +1983,17 @@ final class NodesScreen
      *
      * @return array{0:string,1:string}
      */
-    private function fieldBlockHeading(NodeKind $kind): array
+    private function fieldBlockHeading(FieldType $kind): array
     {
         // ⚠️ *Der Satz über «Kind» und «own/inherited» gilt für beide Blöcke — es ist dieselbe Tabelle.*
         $gemeinsam = __('«Kind» is not a choice — it follows from where the target sits in the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod');
 
         return match ($kind) {
-            NodeKind::Field => [
+            FieldType::Model => [
                 __('Fields', 'taxmod'),
                 __('What this node has, and what a person enters.', 'taxmod') . ' ' . $gemeinsam,
             ],
-            NodeKind::Setting => [
+            FieldType::Setting => [
                 __('Settings', 'taxmod'),
                 // ⚠️ *«der Autor» und nicht «hier stehen Einstellungen»: nach
                 // [D-508](../../../docs/NewConcept/90-decision-log.md) ist der Unterschied genau, **wo
@@ -3339,13 +3352,13 @@ final class NodesScreen
      */
     private function saveKind(int $nodeId, int $edgeId): void
     {
-        if ($edgeId !== 0 || ! array_key_exists('node_kind', $_POST)) {
+        if ($edgeId !== 0 || ! array_key_exists('node_field_type', $_POST)) {
             return;
         }
 
-        $sent = sanitize_text_field(wp_unslash((string) $_POST['node_kind']));
+        $sent = sanitize_text_field(wp_unslash((string) $_POST['node_field_type']));
 
-        $this->editor->setKind($nodeId, $sent === '' ? null : NodeKind::tryFrom($sent));
+        $this->editor->setFieldType($nodeId, $sent === '' ? null : FieldType::tryFrom($sent));
     }
 
     /**
