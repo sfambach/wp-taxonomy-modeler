@@ -1494,3 +1494,7 @@ Dazu steht sie quer zu [D-621](../../NewConcept/90-decision-log.md) («die Kante
 hier ist») und zu [D-639](../../NewConcept/90-decision-log.md) (drei Kantenarten, drei Klassen).*
 
 ⚠️ **Offen ist nur der Zeitpunkt:** *jetzt oder mit dem Renderer-Umbau. Beruehrt 17 Dateien.*
+
+⚠️ **Auf sein Wort vertagt (2026-09-05): «nicht gleich bauen».** *Die Aufgabe steht, der Zeitpunkt
+ist offen. **Bis dahin bleibt die Spalte in Betrieb** — sie ist gemessen tragfaehig (29 Traeger,
+`renderer-choice-mask-check` gruen), sie ist nur nicht die Form, die er gemeint hat.*
