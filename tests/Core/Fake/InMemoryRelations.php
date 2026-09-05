@@ -68,7 +68,7 @@ final class InMemoryRelations implements RelationRepository
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => $a->position <=> $b->position ?: $a->id <=> $b->id);
+        usort($edges, static fn (Relation $a, Relation $b): int => $a->sortOrder <=> $b->sortOrder ?: $a->id <=> $b->id);
 
         return $edges;
     }
@@ -77,7 +77,7 @@ final class InMemoryRelations implements RelationRepository
     {
         $edges = $this->childEdgesOf($parentId);
 
-        return $edges === [] ? 0 : end($edges)->position + 1;
+        return $edges === [] ? 0 : end($edges)->sortOrder + 1;
     }
 
     public function allInheritanceEdges(): array
@@ -91,7 +91,7 @@ final class InMemoryRelations implements RelationRepository
         }
 
         usort($edges, static fn (Relation $a, Relation $b): int =>
-            [$a->fromId, $a->position, $a->id] <=> [$b->fromId, $b->position, $b->id]);
+            [$a->fromId, $a->sortOrder, $a->id] <=> [$b->fromId, $b->sortOrder, $b->id]);
 
         return $edges;
     }
@@ -101,7 +101,7 @@ final class InMemoryRelations implements RelationRepository
     {
         foreach ($this->rows as $id => $edge) {
             if ($edge->fromId === $fromParentId && $edge->kind === RelationKind::Inheritance) {
-                $this->rows[$id] = $edge->reparentedTo($toParentId, $edge->position + $startPosition);
+                $this->rows[$id] = $edge->reparentedTo($toParentId, $edge->sortOrder + $startPosition);
             }
         }
     }
@@ -112,7 +112,7 @@ final class InMemoryRelations implements RelationRepository
     {
         $edges = $this->fieldEdgesOf([$ownerId]);
 
-        return $edges === [] ? 0 : end($edges)->position + 1;
+        return $edges === [] ? 0 : end($edges)->sortOrder + 1;
     }
 
     public function fieldEdgesOf(array $ownerIds): array
@@ -141,7 +141,7 @@ final class InMemoryRelations implements RelationRepository
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => [$a->fromId, $a->position, $a->id] <=> [$b->fromId, $b->position, $b->id]);
+        usort($edges, static fn (Relation $a, Relation $b): int => [$a->fromId, $a->sortOrder, $a->id] <=> [$b->fromId, $b->sortOrder, $b->id]);
 
         return $edges;
     }
@@ -164,7 +164,7 @@ final class InMemoryRelations implements RelationRepository
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => [$a->position, $a->id] <=> [$b->position, $b->id]);
+        usort($edges, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
 
         return $edges;
     }

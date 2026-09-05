@@ -114,7 +114,7 @@ final class FormRenderer implements Renderer
             usort(
                 $group,
                 static fn (RenderedField $a, RenderedField $b): int
-                    => [$a->edge->position, $a->edge->id] <=> [$b->edge->position, $b->edge->id]
+                    => [$a->edge->sortOrder, $a->edge->id] <=> [$b->edge->sortOrder, $b->edge->id]
             );
 
             $ordered = [...$ordered, ...$group];

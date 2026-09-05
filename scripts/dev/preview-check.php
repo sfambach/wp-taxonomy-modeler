@@ -133,7 +133,7 @@ $dataTypeRoot = (int) $wpdb->get_var($wpdb->prepare(
 ));
 
 $dataType = $dataTypeRoot === 0 ? 0 : (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT to_id FROM {$prefix}relations WHERE from_id = %d AND kind = %s ORDER BY position ASC LIMIT 1",
+    "SELECT to_id FROM {$prefix}relations WHERE from_id = %d AND kind = %s ORDER BY sort_order ASC LIMIT 1",
     $dataTypeRoot,
     'inheritance'
 ));

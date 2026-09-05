@@ -226,7 +226,7 @@ Stellen auf die Kantenart, **15 davon fragen nur «ist es Vererbung?»** — und
 verschwindet mit TASK-018.*
 
 ```text
-[ ] TASK-012  position in sort_order umbenennen, Schluessel (from_node_id, relation_type, sort_order)
+[x] TASK-012  position in sort_order umbenennen, Schluessel (from_node_id, relation_type, sort_order)
 ```
 
 **Entschieden: die erste Stelle ist `0`, gezählt je `from_node_id` und je `type`.**
@@ -240,6 +240,39 @@ eines Schlüssels auf `(from_node_id, sort_order)` hätte 17 gültige Zeilen abg
 
 **Zu bauen:** die Umbenennung, der eindeutige Schlüssel über drei Spalten — der zugleich als
 Suchindex dient und den heutigen Einzelindex auf `from_id` überflüssig macht.
+
+**Gebaut am 2026-09-05, Schema 25.** Die Spalte heisst `sort_order`, lebend und im Schatten; der
+Schlüssel heisst `one_place` und geht über `(from_id, kind, sort_order)`; der Einzelindex auf
+`from_id` ist gefallen. **Der Schatten bekommt die Umbenennung und nicht den Schlüssel** — dort
+*darf* dieselbe Stelle mehrfach vorkommen. Im Kern heisst es `Relation::$sortOrder`.
+
+⚠️ **Die Spaltennamen sind die von heute, nicht die aus der Überschrift:** *`from_node_id` kommt mit
+TASK-010, und `relation_type` kommt gar nicht mehr — TASK-011 ist gestrichen, die Spalte fällt mit
+TASK-032. **Der Schlüssel muss dabei zweimal angefasst werden**, und das ist der Preis dieser
+Reihenfolge.*
+
+⚠️ **Die eine echte Doppelung ist weg**, wie angekündigt: *`render with label` trug `label_role` und
+`with_label` beide auf Stelle 0; `with_label` steht jetzt auf 1. **Zwischen zwei Kanten, die beide
+auf 0 standen, gab es keine Reihenfolge, die man verlieren könnte.** Umkehrbar, die Zeile steht
+vorher im Schatten. Gemessen nach dem Umbau: mit der Kantenart **0** Verletzungen, ohne sie **12** —
+der Beleg dafür, dass die dritte Spalte nötig ist.*
+
+⚠️ **Zwei Dinge sind dabei kaputtgegangen und stehen im Eingang.** *`INF-023`: **ein Tausch tat
+nichts mehr** — er schreibt zwangsläufig einmal auf eine besetzte Stelle, MySQL weist das zurück,
+und `$wpdb` sagt darüber nichts. Genau **ein** Wächter hat es gemerkt. `ModelEditor` geht seither
+über eine freie Stelle, und **TASK-018 legt denselben Schlüsseltyp an**. `INF-022`: sein Satz «die
+erste Position ist immer null» ist gemessen an 12 Listen nicht erfüllt — gezählt, nicht
+umnummeriert.*
+
+⚠️ **Und eine Warnung aus derselben Stunde:** *`WpdbNodeRepository` sortierte an zwei Stellen nach
+`r.position`. Diese zwei übersehenen Zeilen liessen `childrenOf()` **leer** antworten — und jede
+Saat legte darauf ihre Knoten ein zweites Mal an: **38 Knoten und 54 Kanten Rückstand in einem
+Durchlauf**, drei komplette Sätze der Datentypen. Zurückgenommen. **Der Wächter, der das gefunden
+hat, war keiner** — es fiel an einer Renderer-Auswahl auf, die plötzlich die falsche Liste zeigte.*
+
+**Neu am Netz:** [`sort-order-check.php`](../../../scripts/dev/sort-order-check.php) — Spalte lebend
+und im Schatten, `position` gibt es nicht mehr, der Schlüssel steht über genau diese drei Spalten,
+der alte Einzelindex ist fort, keine Doppelung, und **ein Tausch tauscht wirklich**.
 
 ⚠️ **Und eine echte Doppelung muss vorher weg.** *Gemessen: ohne `type` sind es 8 Verletzungen, **mit
 `relation_type` genau eine** — Knoten 55659 «render with label» hat zwei Einstellungskanten auf Stelle 0,

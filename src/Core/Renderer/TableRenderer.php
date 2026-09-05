@@ -163,7 +163,7 @@ final class TableRenderer implements Renderer
 
         uasort(
             $gesehen,
-            static fn ($a, $b): int => [$a->position, $a->id] <=> [$b->position, $b->id]
+            static fn ($a, $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]
         );
 
         return array_map(static fn ($edge): string => $edge->name, $gesehen);

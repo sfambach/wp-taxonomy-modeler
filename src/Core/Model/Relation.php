@@ -25,7 +25,7 @@ final class Relation extends Identity implements Renderable
      *                         what lets an edge carry settings and labels of its own (C8).
      * @param string $name     Empty for an inheritance edge: the tree edge has no name of its
      *                         own, the child does.
-     * @param int      $position     Order among the siblings of `fromId`, counted from zero.
+     * @param int      $sortOrder     Order among the siblings of `fromId`, counted from zero.
      * @param int|null $parkedByGroup The act that parked it, or null while it is live.
      *
      * ⚠️ **An edge is parked by a column, and a node is not** ([D-371](../../../docs/NewConcept/90-decision-log.md)).
@@ -42,7 +42,7 @@ final class Relation extends Identity implements Renderable
         public readonly int $toId,
         public readonly RelationKind $kind,
         string $name,
-        public readonly int $position,
+        public readonly int $sortOrder,
         public readonly ?int $parkedByGroup = null,
         /**
          * Whether the walk stops at this placement.
@@ -106,7 +106,7 @@ final class Relation extends Identity implements Renderable
         ?int $toId = null,
         ?RelationKind $kind = null,
         ?string $name = null,
-        ?int $position = null,
+        ?int $sortOrder = null,
         ?int $parkedByGroup = null,
         ?bool $hide = null,
         ?Multiplicity $multiplicity = null,
@@ -119,7 +119,7 @@ final class Relation extends Identity implements Renderable
             $toId ?? $this->toId,
             $kind ?? $this->kind,
             $name ?? $this->name,
-            $position ?? $this->position,
+            $sortOrder ?? $this->sortOrder,
             $unpark ? null : ($parkedByGroup ?? $this->parkedByGroup),
             $hide ?? $this->hide,
             $multiplicity ?? $this->multiplicity,
@@ -164,9 +164,9 @@ final class Relation extends Identity implements Renderable
     }
 
     /** The tree edge: parent to child, and the only kind the tree is made of (V3). */
-    public static function inheritance(int $id, int $parentId, int $childId, int $position): self
+    public static function inheritance(int $id, int $parentId, int $childId, int $sortOrder): self
     {
-        return new self($id, 1, $parentId, $childId, RelationKind::Inheritance, '', $position);
+        return new self($id, 1, $parentId, $childId, RelationKind::Inheritance, '', $sortOrder);
     }
 
     /**
@@ -179,7 +179,7 @@ final class Relation extends Identity implements Renderable
         int $targetId,
         RelationKind $kind,
         string $name,
-        int $position,
+        int $sortOrder,
         Multiplicity $multiplicity = Multiplicity::ExactlyOne,
     ): self {
         $name = trim($name);
@@ -188,7 +188,7 @@ final class Relation extends Identity implements Renderable
             throw InvalidName::empty();
         }
 
-        return new self($id, 1, $ownerId, $targetId, $kind, $name, $position, null, false, $multiplicity);
+        return new self($id, 1, $ownerId, $targetId, $kind, $name, $sortOrder, null, false, $multiplicity);
     }
 
     /**
@@ -212,7 +212,7 @@ final class Relation extends Identity implements Renderable
             $this->toId,
             $this->kind,
             $this->name,
-            $this->position,
+            $this->sortOrder,
             $this->parkedByGroup,
             $this->hide,
             $this->multiplicity,
@@ -226,7 +226,7 @@ final class Relation extends Identity implements Renderable
         int $toId,
         string $kind,
         string $name,
-        int $position,
+        int $sortOrder,
         ?int $parkedByGroup = null,
         bool $hide = false,
         string $multiplicity = '1..1',
@@ -238,7 +238,7 @@ final class Relation extends Identity implements Renderable
             $toId,
             RelationKind::from($kind),
             $name,
-            $position,
+            $sortOrder,
             $parkedByGroup,
             $hide,
             // ⚠️ *Ein unbekannter Wert fällt auf die Vorgabe zurück statt zu werfen: die Spalte
@@ -249,13 +249,13 @@ final class Relation extends Identity implements Renderable
     }
 
     /** The same edge pointing at a new parent, one version on. */
-    public function reparentedTo(int $parentId, int $position): self
+    public function reparentedTo(int $parentId, int $sortOrder): self
     {
-        if ($parentId === $this->fromId && $position === $this->position) {
+        if ($parentId === $this->fromId && $sortOrder === $this->sortOrder) {
             return $this;
         }
 
-        return $this->copy(version: $this->version + 1, fromId: $parentId, position: $position, unpark: true);
+        return $this->copy(version: $this->version + 1, fromId: $parentId, sortOrder: $sortOrder, unpark: true);
     }
 
     /**
@@ -326,9 +326,9 @@ final class Relation extends Identity implements Renderable
     }
 
     /** The same edge in a different place among its siblings, one version on. */
-    public function movedTo(int $position): self
+    public function movedTo(int $sortOrder): self
     {
-        return $this->reparentedTo($this->fromId, $position);
+        return $this->reparentedTo($this->fromId, $sortOrder);
     }
 
     /**

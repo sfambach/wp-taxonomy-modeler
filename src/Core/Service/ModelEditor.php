@@ -916,17 +916,17 @@ final class ModelEditor
     }
 
     /** Put a node at a different place among its siblings. Order lives on the edge, not the node. */
-    public function reorder(int $id, int $position): void
+    public function reorder(int $id, int $sortOrder): void
     {
         $edge = $this->relations->inheritanceEdgeTo($id) ?? throw ImpossibleMove::ofTheRoot();
-        $moved = $edge->movedTo(max(0, $position));
+        $moved = $edge->movedTo(max(0, $sortOrder));
 
         if ($moved === $edge) {
             return;
         }
 
         $this->relations->save($moved, $edge->version);
-        $this->changelog->record($id, 'node', 'reordered', (string) $edge->position, (string) $moved->position);
+        $this->changelog->record($id, 'node', 'reordered', (string) $edge->sortOrder, (string) $moved->sortOrder);
     }
 
     /**
@@ -1422,16 +1422,25 @@ final class ModelEditor
 
         // Positions may be equal — nothing forbids it, and the list then falls back to id
         // order. Swapping equal numbers would move nothing, so they are forced apart.
-        $mine  = $edge->position;
-        $yours = $other->position;
+        $mine  = $edge->sortOrder;
+        $yours = $other->sortOrder;
 
         if ($mine === $yours) {
             $mine  = $here;
             $yours = $there;
         }
 
-        $this->relations->save($edge->movedTo($yours), $edge->version);
+        // ⚠️ **Über eine freie Stelle und nicht direkt, seit `(from_id, kind, sort_order)` eindeutig
+        // ist** (TASK-012). *Ein Tausch schreibt zwangsläufig einmal auf eine Stelle, die noch besetzt
+        // ist — **MySQL weist das zurück, und `$wpdb` sagt darüber nichts**: `package2-check` meldete
+        // «moving up swaps them» als rot, ohne dass irgendwo ein Fehler stand. Also erst zur Seite,
+        // dann der andere, dann hin.*
+        $frei = 1 + max(array_map(static fn (Relation $e): int => $e->sortOrder, $siblings));
+
+        $beiseite = $edge->movedTo($frei);
+        $this->relations->save($beiseite, $edge->version);
         $this->relations->save($other->movedTo($mine), $other->version);
+        $this->relations->save($beiseite->movedTo($yours), $beiseite->version);
 
         $this->changelog->record($subject ?? $edge->id, $kind, 'reordered', (string) $here, (string) $there);
     }

@@ -607,3 +607,38 @@ Wenn er einen anderen Anfangspunkt will, ist es je eine Zeile.*
 ⚠️ *Und ein Sonderfall bleibt offen: liegt der Knoten in **keinem** Ast, geht gar nichts auf, und der
 Dialog zeigt nur die Zweigköpfe. Ob das richtig ist oder ob dann der Ast des heutigen Elternknotens
 gelten soll, ist ungeprüft.*
+
+---
+
+## INF-022 · «Die erste Position ist immer null» — gezählt, nicht hergestellt
+
+**2026-09-05, bei TASK-012. Nicht entschieden (`PR-4`).**
+
+**Sein Satz:** *«Position würde ich eher Order nennen. Und die erste Position ist immer null.»*
+
+**Gemessen nach der Umbenennung: 12 Listen beginnen nicht bei `0`, sondern bei `1`** — je Knoten und
+je Kantenart gezählt, darunter der Wurzelknoten selbst. *Der Grund ist harmlos: eine gelöschte Kante
+lässt eine Lücke, und niemand nummeriert danach um.*
+
+⚠️ **Offen ist, was sein Satz verlangt:** *«gezählt wird ab null» — dann ist der Bestand in Ordnung,
+und die Zahl misst nur Lücken. Oder «die Liste ist lückenlos ab null» — dann müssten die zwölf
+Listen umnummeriert werden, und das ist eine Handlung an seinen Daten.* **`sort-order-check.php`
+zählt sie darum und verlangt nichts.**
+
+---
+
+## INF-023 · Zwei Kanten tauschen konnte der eindeutige Schlüssel nicht — still
+
+**2026-09-05, bei TASK-012. Behoben, hier als Warnung notiert.**
+
+**Gemessen:** *sobald `(from_id, kind, sort_order)` eindeutig war, tat `moveUp()` **nichts mehr**.
+Ein Tausch schreibt zwangsläufig einmal auf eine Stelle, die noch besetzt ist; MySQL weist das
+zurück, und `$wpdb` sagt darüber nichts. **Genau ein Wächter hat es gemerkt** — `package2-check`,
+«moving up swaps them» —, und ohne ihn wäre es an der Oberfläche als «der Knopf tut manchmal nichts»
+aufgetaucht.*
+
+**`ModelEditor` geht seither über eine freie Stelle: erst zur Seite, dann der andere, dann hin.**
+
+⚠️ **Die Lehre gehört zu den nächsten Aufgaben:** *jeder eindeutige Schlüssel, der über eine Spalte
+geht, die jemand tauschen kann, braucht diesen Umweg. **TASK-018 legt genau so einen an**
+(`(parent_node_id, sort_order)`).*

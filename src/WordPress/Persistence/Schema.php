@@ -210,7 +210,18 @@ final class Schema
      * ([D-587](../../../docs/NewConcept/90-decision-log.md)), und `records.kind` wird `record_type`
      * (TASK-015).*
      */
-    public const VERSION = 24;
+    /**
+     * Fassung 25: `relations.position` heisst `sort_order`, und `(from_id, kind, sort_order)` wird
+     * eindeutig (TASK-012).
+     *
+     * ⚠️ **Der Schlüssel geht über drei Spalten, und die dritte ist der ganze Befund** — die
+     * Begründung steht bei {@see renameRelationPositionColumn()}. *Der Einzelindex auf `from_id`
+     * fällt dabei, weil der neue Schlüssel mit derselben Spalte beginnt.*
+     *
+     * ⚠️ *Der Schatten bekommt die Umbenennung, aber **nicht** den Schlüssel: dort darf dieselbe
+     * Stelle mehrfach vorkommen.*
+     */
+    public const VERSION = 25;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -320,6 +331,12 @@ final class Schema
         // ⚠️ *Ebenfalls vor `dbDelta`, aus demselben Grund: es kennt keine Umbenennung und legte
         // `field_type` neben `kind`, mit den Daten in der Spalte, die niemand mehr liest (TASK-007).*
         self::renameNodeKindColumn();
+
+        // ⚠️ **Vor `dbDelta`, und dazu der Grund für die Reihenfolge *innerhalb* des Schritts:** *er
+        // benennt um **und räumt die eine echte Doppelung weg**, bevor `dbDelta` den eindeutigen
+        // Schlüssel `(from_id, kind, sort_order)` anlegt. Umgekehrt wiese MySQL den Schlüssel zurück
+        // — still, wie `$wpdb` es tut (TASK-012).*
+        self::renameRelationPositionColumn();
 
         // ⚠️ **Ebenfalls vor `dbDelta`, und aus demselben Grund wie die Umbenennung darüber**
         // (TASK-004): *solange die Bedingungen auf `identities` stehen, kann keine der beiden
@@ -573,6 +590,134 @@ final class Schema
         }
     }
 
+    /**
+     * `relations.position` heisst `sort_order`, und `(from_id, kind, sort_order)` wird eindeutig —
+     * Fassung 25 (TASK-012).
+     *
+     * ⚠️ **Der Eigentümer:** *«Position würde ich eher Order nennen. Und die erste Position ist immer
+     * null … die Sort Order entsteht pro Knoten, und zwar dem From-Knoten.»*
+     *
+     * ⚠️ **Der Schlüssel geht über **drei** Spalten, und die dritte ist der Befund.** *Meine
+     * gemeldeten «17 doppelten Reihenfolgen» waren keine: alle 8 Gruppen mischen Kantenarten — Kind
+     * im Baum gegen Feld des Knotens —, und **nicht eine Doppelung liegt innerhalb derselben Art**.
+     * **Ein Schlüssel auf `(from_id, sort_order)` hätte 17 gültige Zeilen abgelehnt.** Gemessen am
+     * 2026-09-05: ohne die Art 11 Verletzungen, mit ihr genau eine.*
+     *
+     * ⚠️ **Diese eine wird hier weggeräumt, und das ist eine Änderung an seinen Daten:** *der Knoten
+     * `render with label` trug zwei Einstellungskanten auf Stelle 0, `label_role` und `with_label`.
+     * **Die jüngere rückt ans Ende ihrer Liste** — die Reihenfolge zweier Einstellungen, von denen
+     * beide auf 0 standen, war ohnehin nicht festgelegt. *Umkehrbar: die Zeile steht vorher im
+     * Schatten ({@see Shadow::keep()}).*
+     *
+     * ⚠️ *Der Einzelindex auf `from_id` fällt: der neue Schlüssel beginnt mit derselben Spalte und
+     * dient damit als Suchindex. **Zwei Indizes über dieselbe führende Spalte sind Doppelung**, und
+     * `dbDelta` räumt einen bestehenden nie von selbst ab.*
+     *
+     * ⚠️ **Der Schlüssel steht an der lebenden Tabelle allein.** *Im Schatten **darf** dieselbe
+     * Stelle mehrfach vorkommen — dort ist `(id, version)` der Schlüssel, und eine Kante, die zweimal
+     * an Stelle 0 stand, ist genau das, was Geschichte aufhebt.*
+     */
+    private static function renameRelationPositionColumn(): void
+    {
+        global $wpdb;
+
+        foreach (['relations', 'relations_history'] as $name) {
+            $table = self::table($name);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+                continue;
+            }
+
+            $vorhanden = $wpdb->get_col($wpdb->prepare(
+                'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+                $table,
+                'position'
+            ));
+
+            if ($vorhanden !== []) {
+                $wpdb->query(
+                    "ALTER TABLE {$table} CHANGE position sort_order int(10) unsigned NOT NULL DEFAULT 0"
+                );
+            }
+        }
+
+        self::freeTheDoubledPlaces();
+
+        $relations = self::table('relations');
+
+        $alterIndex = $wpdb->get_col($wpdb->prepare(
+            'SELECT INDEX_NAME FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+            $relations,
+            'from_id'
+        ));
+
+        if ($alterIndex !== []) {
+            $wpdb->query("ALTER TABLE {$relations} DROP INDEX from_id");
+        }
+    }
+
+    /**
+     * Jede Stelle, die unter demselben Knoten und derselben Kantenart zweimal vergeben ist, ans Ende
+     * schieben — damit der eindeutige Schlüssel gelegt werden kann (TASK-012).
+     *
+     * ⚠️ *Gemessen genau **eine** Gruppe. Der Schritt zählt trotzdem allgemein durch, weil eine
+     * Wanderung, die nur den gemessenen Fall kann, auf der nächsten Installation falsch ist.*
+     *
+     * ⚠️ **Die kleinste Id behält ihre Stelle**, jede weitere bekommt die nächste freie ihrer Liste.
+     * *Das ist willkürlich und darf es sein: zwischen zwei Kanten, die beide auf `0` standen, gab es
+     * keine Reihenfolge, die man verlieren könnte.*
+     */
+    private static function freeTheDoubledPlaces(): void
+    {
+        global $wpdb;
+
+        $relations = self::table('relations');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $relations)) !== $relations) {
+            return;
+        }
+
+        /** @var list<array{from_id: string, kind: string, sort_order: string}> $gruppen */
+        $gruppen = $wpdb->get_results(
+            "SELECT from_id, kind, sort_order FROM {$relations}
+             GROUP BY from_id, kind, sort_order HAVING COUNT(*) > 1",
+            ARRAY_A
+        ) ?: [];
+
+        foreach ($gruppen as $gruppe) {
+            $ids = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+                "SELECT id FROM {$relations}
+                 WHERE from_id = %d AND kind = %s AND sort_order = %d ORDER BY id",
+                (int) $gruppe['from_id'],
+                (string) $gruppe['kind'],
+                (int) $gruppe['sort_order']
+            )));
+
+            // Die erste behält ihre Stelle.
+            array_shift($ids);
+
+            foreach ($ids as $id) {
+                $frei = 1 + (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COALESCE(MAX(sort_order), 0) FROM {$relations} WHERE from_id = %d AND kind = %s",
+                    (int) $gruppe['from_id'],
+                    (string) $gruppe['kind']
+                ));
+
+                // ⚠️ *Umkehrbar ([D-535](../../../docs/NewConcept/90-decision-log.md)): erst
+                // aufheben, dann schreiben.*
+                Shadow::keepOne('relations', $id);
+
+                $wpdb->query($wpdb->prepare(
+                    "UPDATE {$relations} SET sort_order = %d, version = version + 1 WHERE id = %d",
+                    $frei,
+                    $id
+                ));
+            }
+        }
+    }
+
     private static function renameRecordColumns(): void
     {
         global $wpdb;
@@ -709,7 +854,7 @@ final class Schema
             $parentId = (int) end($segments);
 
             $position = $wpdb->get_var($wpdb->prepare(
-                "SELECT MAX(position) FROM {$relations} WHERE from_id = %d AND kind = %s",
+                "SELECT MAX(sort_order) FROM {$relations} WHERE from_id = %d AND kind = %s",
                 $parentId,
                 RelationKind::Inheritance->value
             ));
@@ -723,7 +868,7 @@ final class Schema
                     'to_id'    => (int) $row['id'],
                     'kind'     => RelationKind::Inheritance->value,
                     'name'     => '',
-                    'position' => $position === null ? 0 : (int) $position + 1,
+                    'sort_order' => $position === null ? 0 : (int) $position + 1,
                 ],
                 ['%d', '%d', '%d', '%s', '%s', '%d']
             );
@@ -1098,14 +1243,14 @@ final class Schema
                 to_id bigint(20) unsigned NOT NULL,
                 kind varchar(20) NOT NULL,
                 name varchar(191) NOT NULL DEFAULT '',
-                position int(10) unsigned NOT NULL DEFAULT 0,
+                sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
                 target_settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
-                KEY from_id (from_id),
+                UNIQUE KEY one_place (from_id,kind,sort_order),
                 KEY to_id (to_id),
                 KEY parked_by_group_id (parked_by_group_id),
                 KEY settings_record_id (settings_record_id),
@@ -1222,7 +1367,7 @@ final class Schema
                 to_id bigint(20) unsigned NOT NULL,
                 kind varchar(20) NOT NULL,
                 name varchar(191) NOT NULL DEFAULT '',
-                position int(10) unsigned NOT NULL DEFAULT 0,
+                sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,

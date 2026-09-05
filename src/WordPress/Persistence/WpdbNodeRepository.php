@@ -199,7 +199,7 @@ final class WpdbNodeRepository implements NodeRepository
                  FROM ' . Schema::table('relations') . ' r
                  INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
                  WHERE r.kind = %s AND r.hide = 0 AND r.from_id IN (' . $platzhalter . ')
-                 ORDER BY r.from_id ASC, r.position ASC, r.id ASC',
+                 ORDER BY r.from_id ASC, r.sort_order ASC, r.id ASC',
                 RelationKind::Inheritance->value,
                 ...$ids
             ),
@@ -227,7 +227,7 @@ final class WpdbNodeRepository implements NodeRepository
                  FROM ' . Schema::table('relations') . ' r
                  INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
                  WHERE r.from_id = %d AND r.kind = %s
-                 ORDER BY r.position ASC, r.id ASC',
+                 ORDER BY r.sort_order ASC, r.id ASC',
                 $parent->id,
                 RelationKind::Inheritance->value
             ),
