@@ -127,6 +127,25 @@ final class NodesScreen
      */
     private ?string $foldStateForLinks = null;
 
+    /**
+     * Für welchen Knoten der Weg schon einmal geöffnet wurde.
+     *
+     * ⚠️ **Er trennt «ich habe den Knoten gerade gewählt» von «ich sehe ihn schon die ganze Zeit an»**
+     * — und ohne diese Trennung gewinnt die Vorgabe gegen eine ausdrückliche Handlung: der Benutzer
+     * klappt einen Ast zu, in dem der gewählte Knoten liegt, und {@see render()} macht ihn im selben
+     * Aufruf wieder auf ([D-612](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Die Zeile, die ihn aufmacht, bleibt richtig ([D-480](../../../docs/NewConcept/90-decision-log.md),
+     * [D-615](../../../docs/NewConcept/90-decision-log.md): die **Knoten**-Angabe öffnet einen Weg).
+     * Sie greift nur noch beim **Wechsel** der Auswahl, denn genau dann ist der Weg neu.*
+     *
+     * ⚠️ *`null` heisst «keine Auswahl» — dann gibt es auch nichts zu öffnen.*
+     */
+    private ?string $openedPathForLinks = null;
+
+    /** Der Name des Merkers in der Adresse. */
+    private const OPENED_FOR = 'taxmod_open_for';
+
     /** Stands in for the chosen locale until the browser puts the real one in its place. */
     private const LOCALE_MARKER = '__taxmod_locale__';
 
@@ -208,9 +227,18 @@ final class NodesScreen
         //
         // ⚠️ *`collapsedByDefault()` tut dasselbe für den Fall ohne Parameter, deshalb steht es hier
         // nur für den mitgeführten.*
-        if ($carried !== null && $selected !== null) {
+        //
+        // ⚠️ **Und sie greift nur beim *Wechsel* der Auswahl** ([D-612](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sonst gewinnt die Vorgabe gegen die Hand: der Benutzer klappt einen Ast zu, in dem der
+        // gewählte Knoten liegt, und derselbe Aufruf macht ihn wieder auf — der Klick tat sichtbar
+        // nichts. **Was der Benutzer tut, schlägt, was die Seite vorschlägt.*** {@see $openedPathForLinks}
+        $openedFor = $this->circumstance(self::OPENED_FOR);
+
+        if ($carried !== null && $selected !== null && $openedFor !== (string) $selected->id) {
             $collapsed = array_values(array_diff($collapsed, $selected->ancestorIds()));
         }
+
+        $this->openedPathForLinks = $selected === null ? null : (string) $selected->id;
 
         // ⚠️ **Ab hier trägt jeder Link den Zustand**, auch der einer frischen Seite — das ist das
         // «Fortschreiben». *Ein Klick auf den Menüpunkt hat keinen Parameter und setzt damit zurück,
@@ -277,6 +305,8 @@ final class NodesScreen
             . esc_attr(isset($_GET['taxmod_node']) ? (string) absint($_GET['taxmod_node']) : '') . '">'
             . '<input type="hidden" name="taxmod_collapsed" value="'
             . esc_attr((string) ($this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks)) . '">'
+            . '<input type="hidden" name="' . self::OPENED_FOR . '" value="'
+            . esc_attr((string) $this->openedPathForLinks) . '">'
             . $this->table($rows, 'tree', $collapsed, $selected, $gesucht)
             . '</form>';
         $left .= $this->heading(
@@ -590,6 +620,9 @@ final class NodesScreen
                 'taxmod_hidden' => isset($_GET['taxmod_hidden'])
                     ? sanitize_text_field(wp_unslash($_GET['taxmod_hidden']))
                     : null,
+                // Derselbe Grund wie beim Faltzustand: eine POST hat keine Adresse, aus der
+                // {@see backTo()} ihn lesen könnte ({@see $openedPathForLinks}).
+                self::OPENED_FOR => $this->openedPathForLinks,
             ])
         );
     }
@@ -686,6 +719,9 @@ final class NodesScreen
                 // which is now folded. So the empty set says so in a word ({@see self::ALL_EXPANDED}).*
                 'taxmod_collapsed' => $next === [] ? self::ALL_EXPANDED : implode(',', $next),
                 'taxmod_node'      => isset($_GET['taxmod_node']) ? absint($_GET['taxmod_node']) : null,
+                // ⚠️ *Der Merker reist mit, sonst wäre der nächste Aufruf wieder «neu gewählt» und
+                // machte den eben zugeklappten Ast auf ({@see $openedPathForLinks}).*
+                self::OPENED_FOR   => $this->openedPathForLinks,
             ]),
             admin_url('admin.php')
         );
@@ -3960,6 +3996,16 @@ final class NodesScreen
                 // aufgeklappt wurde. {@see $foldStateForLinks}*
                 'taxmod_collapsed' => $this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks,
                 'taxmod_hidden'    => $this->circumstance('taxmod_hidden'),
+                // ⚠️ **Nur, wenn das Ziel dasselbe ist.** *Der Merker sagt «für diesen Knoten ist der
+                // Weg schon offen» — führt der Link auf einen **anderen** Knoten, ist das nicht mehr
+                // wahr, und ihn trotzdem mitzunehmen hiesse, dessen Weg zugeklappt zu lassen.*
+                //
+                // ⚠️ *Auf dem POST-Weg lief {@see render()} nicht — dort bringt ihn das Formular mit
+                // ({@see submissionFor()}), genauso wie den Faltzustand.*
+                self::OPENED_FOR   => $nodeId !== null
+                    && (string) $nodeId === ($this->openedPathForLinks ?? $this->circumstance(self::OPENED_FOR))
+                        ? (string) $nodeId
+                        : null,
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for
                 // `taxmod_hidden` replaces the ambient value and `array_filter` then drops the key —

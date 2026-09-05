@@ -903,7 +903,7 @@ Fehlschläge von `setting-write`, `page-blocks`, `multiplicity` und `renderer-ch
 alten Form.** Das umzuschreiben ist eine sichtbare Konzeptänderung (`PR-9`) und gehört benannt.*
 
 ```text
-[ ] TASK-048  Ein Klick auf den Klapp-Pfeil gewinnt gegen den Vorrang der
+[x] TASK-048  Ein Klick auf den Klapp-Pfeil gewinnt gegen den Vorrang der
               Auswahl (D-612) — heute tut er sichtbar nichts, wenn der
               gewaehlte Knoten in diesem Ast liegt
 ```
@@ -911,6 +911,20 @@ alten Form.** Das umzuschreiben ist eine sichtbare Konzeptänderung (`PR-9`) und
 ⚠️ *Die Stelle ist eine Zeile in `NodesScreen`: `$collapsed = array_diff($collapsed,
 $selected->ancestorIds())`. **Sie stammt aus [D-480](../../NewConcept/90-decision-log.md) und ist
 richtig** — sie darf nur nicht gegen eine ausdrückliche Handlung gewinnen.*
+
+**Gebaut am 2026-09-05, und die Zeile steht noch da.** *Sie greift nur noch beim **Wechsel** der
+Auswahl: die Seite merkt sich in ihrer Adresse, für welchen Knoten sie den Weg schon geöffnet hat.
+Ist es derselbe, hat die Hand recht und das Zuklappen hält; ist es ein anderer, ist der Weg neu und
+wird geöffnet. **Damit bleibt [D-615](../../NewConcept/90-decision-log.md) unangetastet** — die
+Knoten-Angabe öffnet weiterhin einen Weg und fasst keinen anderen Ast an.*
+
+⚠️ *Der Merker reist wie der Faltzustand: in den Links **und** in den Formularen, weil ein Akt eine
+POST ohne Adresse ist. Ohne die zweite Hälfte hielte das Zuklappen genau einen Klick lang — derselbe
+Fehler wie in [D-480](../../NewConcept/90-decision-log.md).*
+
+**Am Netz:** `collapsed-default-check` bekam einen Abschnitt statt eines zweiten Wächters — zuklappen
+mit gewähltem Knoten im Ast, **und** die Gegenprobe, dass ein frisch gewählter Knoten seinen Weg
+weiterhin öffnet. *Ohne die Gegenprobe wäre auch grün, was das Öffnen ganz abgeschafft hätte.*
 
 ```text
 [ ] TASK-049  Zehn Waechter von seinen Knotennamen loesen (D-613)

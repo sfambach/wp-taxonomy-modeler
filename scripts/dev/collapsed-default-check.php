@@ -174,7 +174,48 @@ $say(
     'und der Ast des neuen Knotens ist auch offen'
 );
 
-unset($_GET['taxmod_node'], $_GET['taxmod_collapsed']);
+unset($_GET['taxmod_node'], $_GET['taxmod_collapsed'], $_GET['taxmod_open_for']);
+
+// ── Ein Klick auf den Klapp-Pfeil gewinnt gegen den Vorrang der Auswahl ────
+//
+// ⚠️ **[D-612](../../docs/NewConcept/90-decision-log.md), und heute tat der Klick sichtbar nichts:**
+// *lag der gewählte Knoten in dem Ast, den man zuklappte, machte derselbe Aufruf ihn wieder auf.*
+//
+// ⚠️ *Die Zeile, die ihn aufmacht, bleibt richtig — sie greift nur noch beim **Wechsel** der
+// Auswahl. Deshalb prüft dieser Abschnitt beides: das Zuklappen hält, und der Sprung auf einen
+// anderen Knoten öffnet dessen Weg trotzdem.*
+echo "\n== der Klapp-Pfeil gewinnt gegen den Vorrang der Auswahl ==\n";
+
+$_GET['taxmod_node']      = (string) $enkel->id;
+$_GET['taxmod_collapsed'] = (string) $kind->id;
+$_GET['taxmod_open_for']  = (string) $enkel->id;
+
+$zugeklappt = $sichtbar($plugin->screen(), $wiese);
+
+$say($zugeklappt['Kind'], 'das Kind steht noch da — nur sein Ast ist zu');
+$say(! $zugeklappt['Enkel'], 'der Enkel ist weg: das Zuklappen hat gehalten, obwohl er der gewählte Knoten ist');
+
+// ⚠️ *Die Gegenprobe, und ohne sie wäre die Zusage oben auch dann grün, wenn der Weg **nie** mehr
+// aufginge: derselbe Aufruf ohne den Merker ist ein frisch gewählter Knoten, und dort ist das
+// Aufmachen richtig ({@see D-480}, {@see D-615}).*
+unset($_GET['taxmod_open_for']);
+
+$neuGewaehlt = $sichtbar($plugin->screen(), $wiese);
+
+$say($neuGewaehlt['Enkel'], 'frisch gewählt öffnet sein Weg weiterhin — die Vorgabe ist nicht abgeschafft');
+
+// ⚠️ *Und der Merker muss in den Links stehen, sonst hielte das Zuklappen genau einen Klick lang —
+// derselbe Fehler, den [D-480](../../docs/NewConcept/90-decision-log.md) am Faltzustand hatte.*
+$_GET['taxmod_open_for'] = (string) $enkel->id;
+
+$markupZu = $plugin->screen()->render();
+
+$say(
+    substr_count($markupZu, 'taxmod_open_for=' . $enkel->id) > 0,
+    'die Seite schreibt den Merker in ihre Links'
+);
+
+unset($_GET['taxmod_node'], $_GET['taxmod_collapsed'], $_GET['taxmod_open_for']);
 
 // ── Und der Kern sagt dasselbe über sich ──────────────────────────────────
 echo "\n== der Kern: was gefaltet wird, sind die Knoten mit Kindern ==\n";
