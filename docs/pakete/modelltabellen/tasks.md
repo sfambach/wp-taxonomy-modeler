@@ -608,3 +608,18 @@ stehen **26 in `nodes.settings_record_id`** — sie tragen ihre Aussage in der `
 Renderer ist gewählt, nichts daran eingestellt»). **Wer sie als leer wegräumt, löscht 26
 Renderer-Wahlen.** Der Reset braucht deshalb eine Bedingung, keine Zählung: *unbenutzt* heisst
 nirgends referenziert — nicht *ohne Wertzeilen*.
+
+```text
+[ ] TASK-045  Der Schreiber sucht die Einstellungskante an beiden Ketten —
+              Besitzer und Ziel; bei Namensgleichheit gewinnt der Besitzer
+              (D-611). Nur fuer Einstellungen, nicht fuer Modellfelder.
+[ ] TASK-046  Die vier Waechter auf die Spaltenform umschreiben — sie fragen
+              nach den Kanten 44091/44093, die es nicht mehr gibt
+```
+
+⚠️ **Zu TASK-046, gemessen:** *die Optionen `taxmod_setting_edge_renderer` (44093) und
+`taxmod_setting_value_edge_renderer` (44091) zeigen auf **gelöschte Kanten**. Sie hingen am
+Hüllknoten `DisplayOption`; seit [D-584](../../NewConcept/90-decision-log.md) steht der Renderer in
+`nodes.settings_record_id` und nicht mehr an einem Kantenpaar. **Alle zwanzig verbliebenen
+Fehlschläge von `setting-write`, `page-blocks`, `multiplicity` und `renderer-choice` fragen nach der
+alten Form.** Das umzuschreiben ist eine sichtbare Konzeptänderung (`PR-9`) und gehört benannt.*
