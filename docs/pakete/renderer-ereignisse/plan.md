@@ -150,7 +150,7 @@ Schritt 6.
 
 ---
 
-## 4 · Die Reihenfolge — acht Schritte, jeder für sich lauffähig
+## 4 · Die Reihenfolge — acht Schritte
 
 ```mermaid
 flowchart LR
@@ -158,8 +158,17 @@ flowchart LR
   S4 --> S5["5 Fehler<br/>sammeln"] --> S6["6 Beschreibung<br/>eine Seite"] --> S7["7 die übrigen<br/>33 Dateien"] --> S8["8 Browser<br/>+ Protokoll"]
 ```
 
-**Nach jedem Schritt sind beide Läufe grün und die Oberfläche bedienbar** (`PR-2`, `PR-9`). Kein
-Schritt braucht den nächsten, um zu funktionieren.
+⚠️ **Nachgetragen: der Eigentümer hat diese Auflage abgeräumt** ([D-635](../../NewConcept/90-decision-log.md)).
+*Sein Wort: «jeder Schritt in sich muss lauffähig sein — brauch ich eigentlich nicht. Und auch die
+Zusage, die ihn bewacht, auch nicht.» **Die acht Schritte bleiben als Reihenfolge stehen, aber nicht
+als Zwang:** wo ein Schritt nur zusammen mit dem nächsten läuft, ist das erlaubt, und wo eine
+Zwischenstufe die Oberfläche kurz unvollständig lässt, wird sie nicht kunstvoll umgangen. **Der
+Grund ist seiner: die Naht läuft mitten durch 33 Dateien, und sie einzeln lauffähig zu schneiden
+hiesse, jeden Zwischenstand doppelt zu bauen.***
+
+**`PR-9` bleibt: beide Läufe sind vor jedem Commit grün.** *Was fällt, ist die Stückelung, nicht das
+Netz — und die eine Zusage aus [D-623](../../NewConcept/90-decision-log.md) gehört ans Ergebnis
+statt an jeden Schritt.*
 
 ### Schritt 1 · Die Adresse
 
