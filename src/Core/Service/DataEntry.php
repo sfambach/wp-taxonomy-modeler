@@ -144,7 +144,7 @@ final class DataEntry
         // Settings, weil die Settings Eigenschaften des Modells sind.» **Damit können «nicht
         // speichernd» und «ist eine Einstellung» nie auseinanderfallen** — und zwei Angaben, die nie
         // widersprechen können, sind eine.*
-        if ($edge->kind->isSetting()) {
+        if ($edge->isSetting()) {
             return false;
         }
 
@@ -331,7 +331,7 @@ final class DataEntry
      * Besitzers, adressiert über die Kette der Kanten.*
      *
      * ⚠️ *Gemessen benutzen 21 Zeilen der alten Settings-Tabelle diese Adresse längst — 20 davon sind
-     * die Exponenten von `Prefixes.exponent`. **Nur gelesen hat sie in `record_values` nie jemand.***
+     * die Exponenten von `Prefixes.exponent`. **Nur gelesen hat sie in `relation_records` nie jemand.***
      *
      * @param list<int> $edgeIds Von aussen nach innen.
      */
@@ -457,7 +457,7 @@ final class DataEntry
      *
      * ⚠️ **Mehrere Werte sind mehrere Pfade, keine mehreren Kanten** — *`DataEntry`s eigener Docblock
      * sagt das seit langem («five integers are five **paths** in one record»), und der eindeutige
-     * Schlüssel `(record_id, path, locale)` sah es immer vor. **Gemessen am 2026-08-30 hatte es
+     * Schlüssel `(node_record_id, path, locale)` sah es immer vor. **Gemessen am 2026-08-30 hatte es
      * niemand je benutzt:** alle 43 Wertzeilen trugen einen Pfad, der schlicht die Kanten-Id war.*
      *
      * ⚠️ **Die neue Zeile hängt sich hinten an** — `position` eins über der höchsten. *Die Zeilen-Id
@@ -556,7 +556,7 @@ final class DataEntry
      */
     private function ownsItsRecord(Relation $edge, Node $target): bool
     {
-        if ($edge->kind->isSetting()) {
+        if ($edge->isSetting()) {
             return $this->hasOwnFields($target);
         }
 
@@ -879,7 +879,7 @@ final class DataEntry
         }
 
         foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
-            if ($kante->kind->isSetting() && $kante->name === $key) {
+            if ($kante->isSetting() && $kante->name === $key) {
                 return $kante;
             }
         }
@@ -935,7 +935,7 @@ final class DataEntry
         $besitzer = $this->nodes->byId($useSite->fromNodeId);
 
         foreach ($this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($besitzer)) as $kante) {
-            if ($kante->id === $settingEdgeId && $kante->kind->isSetting()) {
+            if ($kante->id === $settingEdgeId && $kante->isSetting()) {
                 return $kante;
             }
         }

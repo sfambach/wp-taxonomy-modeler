@@ -302,12 +302,12 @@ foreach ([$thing->id, $text->id, $first->id] as $id) {
 // ⚠️ *Nur die eigenen Ids und **nie** `clearTrash()`: das räumt auch weg, was ein Mensch dort
 // geparkt hat und zurückholen wollte.*
 foreach ([$thing->id, $text->id] as $meiner) {
-    foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('records') . ' WHERE node_id = %d', $meiner)) ?: [] as $satzId) {
-        Shadow::keep('record_values', 'record_id = %d', [(int) $satzId], true);
-        Shadow::keep('records', 'id = %d', [(int) $satzId], true);
+    foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d', $meiner)) ?: [] as $satzId) {
+        Shadow::keep('relation_records', 'node_record_id = %d', [(int) $satzId], true);
+        Shadow::keep('node_records', 'id = %d', [(int) $satzId], true);
 
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $satzId));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', (int) $satzId));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', (int) $satzId));
     }
 
     Shadow::keep('relations', 'from_node_id = %d OR to_node_id = %d', [$meiner, $meiner], true);

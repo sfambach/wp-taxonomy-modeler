@@ -9,17 +9,108 @@ use Taxmod\Core\Exception\InvalidName;
 /**
  * An edge — and seen from the node that owns it, an **attribute** (D-031). Two names, one thing.
  *
+ * ⚠️ **Nicht mehr `final`, und das ist [D-639](../../../docs/NewConcept/90-decision-log.md)** —
+ * dieselbe Bewegung wie beim Knoten ([D-620](../../../docs/NewConcept/90-decision-log.md)). *Sein
+ * Wort: «dann haben wir **ein Mittel**, das bestimmt, was für eine Verbindung es ist, und nicht noch
+ * einen Schalter.» **Drei Werte, drei Klassen** — {@see Edge\SettingEdge}, {@see Edge\AggregationEdge},
+ * {@see Edge\CompositionEdge} —, und `abstract` steht hier, damit keine vierte, kindlose Kante
+ * entstehen kann.*
+ *
+ * ⚠️ **Der Unterschied zum Knoten ist der Unterscheider**, und er ist Absicht: *ein Knoten trägt
+ * seinen Klassennamen in `implemented_by`, eine Kante nicht. **Die Menge der Kantenarten ist
+ * geschlossen und hat drei Elemente**, also baut {@see classFor()} die Klasse aus dem Wert der
+ * Spalte — an einer Stelle.*
+ *
  * ⚠️ **The kind is never chosen.** It is read off the branch the target sits in (sentence 5 of
- * the core on one page), which is why {@see inheritance()} is a named constructor and there is
- * no way to hand this class an arbitrary kind from a form.
+ * the core on one page), which is why there is no way to hand this class an arbitrary kind from a
+ * form. *Was davon fällt, sobald der Benutzer die Art selbst wählt, steht in
+ * [D-621](../../../docs/NewConcept/90-decision-log.md) und als `INF-038` im Eingang.*
  *
  * ⚠️ **`position` belongs here and not on the node**, because order is per parent: the same
  * node reached from two parents may sit third under one and first under the other.
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-final class Relation extends Identity implements Renderable
+abstract class Relation extends Identity implements Renderable
 {
+    /**
+     * **Die eine Stelle, an der aus dem Wert die Klasse wird**
+     * ([D-639](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Der Klassenname steht ausdruecklich *nicht* in der Zeile** — anders als beim Knoten, wo
+     * `implemented_by` ihn traegt ([D-620](../../../docs/NewConcept/90-decision-log.md)). *Die Menge
+     * ist geschlossen und hat drei Elemente; ein Klassenname je Zeile waere dieselbe Auskunft ein
+     * zweites Mal, und zwar an jeder der 57 lebenden Zeilen statt einmal.*
+     *
+     * @var array<string, class-string<Relation>>
+     */
+    private const KLASSEN = [
+        'setting'     => Edge\SettingEdge::class,
+        'aggregation' => Edge\AggregationEdge::class,
+        'composition' => Edge\CompositionEdge::class,
+    ];
+
+    /**
+     * Die Klasse, die diese Kantenart ausmacht.
+     *
+     * ⚠️ *Oeffentlich, damit ein Waechter die Ableitung gegen die Aufzaehlung halten kann — nicht,
+     * damit jemand sie umgeht.*
+     *
+     * @return class-string<Relation>
+     */
+    public static function classFor(RelationKind $kind): string
+    {
+        return self::KLASSEN[$kind->value]
+            ?? throw new \LogicException("Keine Kantenklasse für «{$kind->value}».");
+    }
+
+    /** Der einzige Weg, eine Kante zu bauen — jede andere Stelle geht hier durch. */
+    private static function make(
+        int $id,
+        int $version,
+        int $fromNodeId,
+        int $toNodeId,
+        RelationKind $kind,
+        string $name,
+        int $sortOrder,
+        ?int $parkedByGroup,
+        bool $hide,
+        Multiplicity $multiplicity,
+    ): self {
+        $klasse = self::classFor($kind);
+
+        return new $klasse(
+            $id,
+            $version,
+            $fromNodeId,
+            $toNodeId,
+            $kind,
+            $name,
+            $sortOrder,
+            $parkedByGroup,
+            $hide,
+            $multiplicity
+        );
+    }
+
+    /**
+     * Ob diese Kante eine Einstellung erklaert statt eines Feldes.
+     *
+     * ⚠️ **Stand als `$this === self::Setting` in der Aufzaehlung und ist jetzt Verhalten**
+     * ([D-639](../../../docs/NewConcept/90-decision-log.md)): *«je Wert eine Klasse, wie bei den
+     * Knoten.» Die 14 Stellen im Quelltext, die danach fragten, verzweigen nicht mehr.*
+     */
+    abstract public function isSetting(): bool;
+
+    /**
+     * Ob der **Datensatz** am Ziel mit dem Datensatz des Besitzers stirbt.
+     *
+     * ⚠️ **Das ist, was «Komposition» aussagt, und es ist eine Aussage ueber Daten und nicht ueber
+     * Knoten** ([D-639](../../../docs/NewConcept/90-decision-log.md)). *Der Zielknoten bleibt
+     * selbstverstaendlich stehen.*
+     */
+    abstract public function deletesRecordWithOwner(): bool;
+
     /**
      * @param int    $id       From the model identity space, shared with nodes (C11) — which is
      *                         what lets an edge carry settings and labels of its own (C8).
@@ -35,7 +126,7 @@ final class Relation extends Identity implements Renderable
      * wants a parked attribute labelled *deleted with «X»*, and the group is where that act is
      * written down ([D-348](../../../docs/NewConcept/90-decision-log.md)).
      */
-    private function __construct(
+    protected function __construct(
         int $id,
         int $version,
         public readonly int $fromNodeId,
@@ -112,7 +203,7 @@ final class Relation extends Identity implements Renderable
         ?Multiplicity $multiplicity = null,
         bool $unpark = false,
     ): self {
-        return new self(
+        return self::make(
             $this->id,
             $version ?? $this->version,
             $fromNodeId ?? $this->fromNodeId,
@@ -187,7 +278,7 @@ final class Relation extends Identity implements Renderable
             throw InvalidName::empty();
         }
 
-        return new self($id, 1, $ownerId, $targetId, $kind, $name, $sortOrder, null, false, $multiplicity);
+        return self::make($id, 1, $ownerId, $targetId, $kind, $name, $sortOrder, null, false, $multiplicity);
     }
 
     /**
@@ -204,7 +295,7 @@ final class Relation extends Identity implements Renderable
             return $this;
         }
 
-        return new self(
+        return self::make(
             $id,
             $this->version,
             $this->fromNodeId,
@@ -230,7 +321,7 @@ final class Relation extends Identity implements Renderable
         bool $hide = false,
         string $multiplicity = '1..1',
     ): self {
-        return new self(
+        return self::make(
             $id,
             $version,
             $fromNodeId,

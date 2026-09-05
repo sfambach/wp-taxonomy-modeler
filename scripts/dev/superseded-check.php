@@ -14,12 +14,12 @@
  *
  * | | |
  * |---|---|
- * | **D-134** (22.08.) | *«`record_values` keys on a **path** … **Required by D-133's flattening**»* |
+ * | **D-134** (22.08.) | *«`relation_records` keys on a **path** … **Required by D-133's flattening**»* |
  * | **D-133** | trägt oben *«Überholt durch D-232»* |
  * | **D-232** (23.08.) | *«The branch decides where a value is stored, **not** the multiplicity. Supersedes D-133.»* |
  *
  * *Der Grund für die Spalte fiel am Tag nach ihrer Einführung. Die Spalte blieb. Gemessen am 2026-09-01
- * haben **183 von 183** Wertzeilen `path === edge_id` — die zusammengesetzte Form hat **keinen einzigen
+ * haben **183 von 183** Wertzeilen `path === relation_id` — die zusammengesetzte Form hat **keinen einzigen
  * Bestand**. Und dieselbe Bewegung noch einmal: [D-527](../../docs/NewConcept/90-decision-log.md) sagte
  * «mehrere Werte sind mehrere **Pfade**», [D-530](../../docs/NewConcept/90-decision-log.md) ersetzte es
  * durch «mehrere **Zeilen**, geordnet durch `position`».*

@@ -66,15 +66,15 @@ if ($traeger === 0) {
     exit(1);
 }
 
-$v = Schema::table('record_values');
-$s = Schema::table('records');
+$v = Schema::table('relation_records');
+$s = Schema::table('node_records');
 $n = Schema::table('nodes');
 $r = Schema::table('relations');
 
 // ⚠️ *Nur die zweistufigen: `path` mit einem Punkt. Die einstufigen gehören dem Knoten und bleiben.*
 $zeilen = $wpdb->get_results($wpdb->prepare(
-    "SELECT w.id, w.path, w.record_id, w.value_ref FROM {$v} w
-     WHERE w.edge_id = %d AND w.path LIKE %s",
+    "SELECT w.id, w.path, w.node_record_id, w.value_ref FROM {$v} w
+     WHERE w.relation_id = %d AND w.path LIKE %s",
     $traeger,
     '%.%'
 ), ARRAY_A) ?: [];
@@ -84,13 +84,13 @@ echo count($zeilen) . " Renderer an Verwendungsstellen:\n";
 foreach ($zeilen as $z) {
     $besitzer = (string) $wpdb->get_var($wpdb->prepare(
         "SELECT n.name FROM {$s} s INNER JOIN {$n} n ON n.id = s.node_id WHERE s.id = %d",
-        (int) $z['record_id']
+        (int) $z['node_record_id']
     ));
 
     $stufen = explode('.', (string) $z['path']);
     $kante  = (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$r} WHERE id = %d", (int) $stufen[0]));
     $wert   = (string) $wpdb->get_var($wpdb->prepare(
-        "SELECT n.name FROM {$v} w INNER JOIN {$n} n ON n.id = w.value_ref WHERE w.record_id = %d LIMIT 1",
+        "SELECT n.name FROM {$v} w INNER JOIN {$n} n ON n.id = w.value_ref WHERE w.node_record_id = %d LIMIT 1",
         (int) $z['value_ref']
     ));
 
@@ -117,7 +117,7 @@ foreach ($zeilen as $z) {
     // ⚠️ *Erst der Inhalt des Teils, dann der Teil, dann der Kanten-Datensatz, der auf ihn zeigte —
     // andernfalls bliebe für einen Augenblick ein Verweis auf einen Satz, den es nicht mehr gibt.*
     foreach ([
-        "DELETE FROM {$v} WHERE record_id = %d",
+        "DELETE FROM {$v} WHERE node_record_id = %d",
         "DELETE FROM {$s} WHERE id = %d",
     ] as $sql) {
         $ok = $wpdb->query($wpdb->prepare($sql, $teil));
@@ -141,7 +141,7 @@ foreach ($zeilen as $z) {
 }
 
 $rest = (int) $wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(*) FROM {$v} WHERE edge_id = %d AND path LIKE %s",
+    "SELECT COUNT(*) FROM {$v} WHERE relation_id = %d AND path LIKE %s",
     $traeger,
     '%.%'
 ));

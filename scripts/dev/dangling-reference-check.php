@@ -100,7 +100,7 @@ $eingabe   = new DataEntry($records, $kanten, $nodes, $framework, new SystemCloc
 
 echo "\n== 1. Der Bestand — nur gezaehlt, nicht bewertet ==\n";
 
-$werte = Schema::table('record_values');
+$werte = Schema::table('relation_records');
 $tab   = Schema::table('nodes');
 
 $leichen = (int) $wpdb->get_var(

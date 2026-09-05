@@ -11,7 +11,7 @@ namespace Taxmod\Core\Model;
  *
  * ⚠️ *Ich hatte diese Aufzählung am 2026-08-29 schon einmal gebaut und dann **zurückgedreht**, weil
  * ich sein «keine Parallelwelten erzeugen» als «keine Marke am Datensatz» gelesen habe. Er meinte
- * **keinen zweiten Speicher** — keine zweite Tabelle neben `records`. **Die Marke war nie das
+ * **keinen zweiten Speicher** — keine zweite Tabelle neben `node_records`. **Die Marke war nie das
  * Problem**, und sie stand seit dem 2026-08-23 im Konzept.*
  *
  * ⚠️ **Was hier *nicht* steht, ist der Unterschied zwischen Vorgabe und Einstellung.** *Der kommt

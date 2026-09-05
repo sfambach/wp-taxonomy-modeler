@@ -10,7 +10,7 @@ namespace Taxmod\Core\Model;
  * so wie `changelog.owner_kind` es seit jeher tut. *Solange alle Tabellen aus `identities` zogen,
  * war eine Id für sich eindeutig; sobald jede Tabelle ihren eigenen Id-Raum hat
  * ([D-164](../../../docs/NewConcept/90-decision-log.md), TASK-004), gibt es Knoten 5 **und**
- * Datensatz 5 — und `record_values.value_ref` allein sagt dann nicht mehr, welchen es meint.*
+ * Datensatz 5 — und `relation_records.value_ref` allein sagt dann nicht mehr, welchen es meint.*
  *
  * @see docs/pakete/modelltabellen/package.md
  */

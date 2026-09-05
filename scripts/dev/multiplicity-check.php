@@ -278,7 +278,7 @@ check('und Knoten tragen ihre Wahl in der Spalte', $mitSpalte >= 20, (string) $m
 
 $insLeere = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
-       LEFT JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+       LEFT JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
       WHERE n.settings_record_id IS NOT NULL AND r.id IS NULL'
 );
 
@@ -395,9 +395,9 @@ if ($verwalter === []) {
     $editor->moveToTrash($text->id);
 
     foreach ([$traeger->id, $text->id] as $meinerId) {
-        foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('records') . ' WHERE node_id = %d', $meinerId)) ?: [] as $satzId) {
-            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $satzId));
-            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
+        foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d', $meinerId)) ?: [] as $satzId) {
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', (int) $satzId));
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', (int) $satzId));
         }
 
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d', $meinerId, $meinerId));

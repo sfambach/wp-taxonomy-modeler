@@ -182,7 +182,7 @@ check('its labels went with it', rowsFor('labels', $owners) === 0, (string) rows
 check('its edges went with it', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relations WHERE id = {$edge->id}") === 0);
 check(
     'its records went with it',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}records WHERE node_id = {$doomed->id}") === 0
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE node_id = {$doomed->id}") === 0
 );
 
 echo "\n== and what must survive ==\n";
@@ -255,13 +255,13 @@ if ($stray !== []) {
 // `id-space-check` und `package6-check` rot — «records.node_id findet seinen Eintrag in nodes».
 // **Nicht die Daten des Eigentuemers, sondern dieser Aufraeumweg.** Zuerst die Wertzeilen, dann die
 // Saetze: umgekehrt haette die zweite Anweisung ihre Zeilen nicht mehr finden koennen.*
-$meineSaetze = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}records WHERE node_id IN ({$in})"));
+$meineSaetze = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}node_records WHERE node_id IN ({$in})"));
 
 if ($meineSaetze !== []) {
-    $wpdb->query('DELETE FROM ' . $p . 'record_values WHERE record_id IN (' . implode(',', $meineSaetze) . ')');
+    $wpdb->query('DELETE FROM ' . $p . 'relation_records WHERE node_record_id IN (' . implode(',', $meineSaetze) . ')');
 }
 
-$wpdb->query("DELETE FROM {$p}records WHERE node_id IN ({$in})");
+$wpdb->query("DELETE FROM {$p}node_records WHERE node_id IN ({$in})");
 
 $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
@@ -276,7 +276,7 @@ check(
 check(
     'und kein Datensatz steht ohne seinen Knoten da',
     (int) $wpdb->get_var(
-        "SELECT COUNT(*) FROM {$p}records s LEFT JOIN {$p}nodes k ON k.id = s.node_id WHERE k.id IS NULL"
+        "SELECT COUNT(*) FROM {$p}node_records s LEFT JOIN {$p}nodes k ON k.id = s.node_id WHERE k.id IS NULL"
     ) === 0
 );
 

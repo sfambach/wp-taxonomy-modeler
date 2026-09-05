@@ -65,7 +65,7 @@ final class NodesScreen
      * The form field the record's values arrive under, as `taxmod_value[<edge id>]`.
      *
      * ⚠️ **Keyed by the edge, never by position.** A checkbox does not submit when it is unticked,
-     * so parallel `edge_id[]` / `value[]` arrays would shift every later value onto the wrong
+     * so parallel `relation_id[]` / `value[]` arrays would shift every later value onto the wrong
      * attribute — silently, and only in the rows somebody unticked.
      */
     private const VALUE_FIELD = 'taxmod_value';
@@ -1003,7 +1003,7 @@ final class NodesScreen
         // Einstellungen. Jede Seite bekommt genau die Kanten, die zu ihr gehören.*
         $einstellungen = array_values(array_filter(
             $edges,
-            static fn (Relation $edge): bool => $edge->kind->isSetting() && ! $edge->hide
+            static fn (Relation $edge): bool => $edge->isSetting() && ! $edge->hide
         ));
 
         // ⚠️ **`Settings` bekommt eine eigene Zeile über die ganze Breite** — *auf sein Wort: «ich würde
@@ -1747,7 +1747,7 @@ final class NodesScreen
         foreach ([false, true] as $istEinstellung) {
             $dieser = array_values(array_filter(
                 $edges,
-                static fn (Relation $edge): bool => $edge->kind->isSetting() === $istEinstellung
+                static fn (Relation $edge): bool => $edge->isSetting() === $istEinstellung
             ));
 
             $sorte = $istEinstellung ? FieldType::Setting : FieldType::Model;
@@ -2397,7 +2397,7 @@ final class NodesScreen
      */
     private function saveRecord(int $nodeId): void
     {
-        $recordId  = isset($_POST['record_id']) ? absint($_POST['record_id']) : 0;
+        $recordId  = isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0;
         $submitted = isset($_POST[self::VALUE_FIELD]) && is_array($_POST[self::VALUE_FIELD])
             ? $_POST[self::VALUE_FIELD]
             : [];
@@ -2535,7 +2535,7 @@ final class NodesScreen
         $attributes = [];
 
         foreach ($this->editor->fieldsOf($selected->id) as $edge) {
-            if (! $edge->kind->isSetting()) {
+            if (! $edge->isSetting()) {
                 $attributes[] = $edge;
             }
         }
@@ -2611,7 +2611,7 @@ final class NodesScreen
                     [
                         'action'        => self::ACTION,
                         'id'            => (string) $selected->id,
-                        'record_id'     => (string) $record->id,
+                        'node_record_id'     => (string) $record->id,
                         '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
                         ...array_filter($this->circumstances()),
                     ]

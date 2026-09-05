@@ -26,7 +26,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $wpdb->insert(
-            Schema::table('records'),
+            Schema::table('node_records'),
             [
                 'node_id'      => $record->nodeId,
                 'node_version' => $record->nodeVersion,
@@ -47,7 +47,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $row = Query::row('Datensatz lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records')
+            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('node_records')
                 . ' WHERE id = %d',
             $id
         ));
@@ -60,7 +60,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $rows = Query::rows('Datensaetze des Knotens lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
+            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('node_records') . '
              WHERE node_id = %d ORDER BY id ASC',
             $nodeId
         ));
@@ -91,7 +91,7 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Datensaetze der Knoten lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('records') . '
+            'SELECT id, node_id, node_version, created_at, kind FROM ' . Schema::table('node_records') . '
              WHERE node_id IN (' . $platzhalter . ') ORDER BY id ASC',
             ...$ids
         ));
@@ -126,17 +126,17 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Wertzeilen mehrerer Datensaetze lesen', $wpdb->prepare(
-            'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
-             FROM ' . Schema::table('record_values') . '
-             WHERE record_id IN (' . $platzhalter . ') ORDER BY record_id ASC, position ASC, id ASC',
+            'SELECT id, node_record_id, path, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('relation_records') . '
+             WHERE node_record_id IN (' . $platzhalter . ') ORDER BY node_record_id ASC, position ASC, id ASC',
             ...$ids
         ));
 
         foreach ($rows ?: [] as $r) {
-            $nachSatz[(int) $r['record_id']][] = new EdgeRecord(
-                (int) $r['record_id'],
+            $nachSatz[(int) $r['node_record_id']][] = new EdgeRecord(
+                (int) $r['node_record_id'],
                 (string) $r['path'],
-                (int) $r['edge_id'],
+                (int) $r['relation_id'],
                 (string) $r['locale'],
                 TypedValue::fromStorage(
                     $r['value_int'] === null ? null : (int) $r['value_int'],
@@ -162,17 +162,17 @@ final class WpdbRecordRepository implements RecordRepository
             // ⚠️ *Nach `position` geordnet und **bei Gleichstand nach der Id**
             // ([D-530](../../../docs/NewConcept/90-decision-log.md)): so hat auch ein Feld, dem
             // niemand eine Reihenfolge gegeben hat, eine stabile — die des Eintragens.*
-            'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
-             FROM ' . Schema::table('record_values') . '
-             WHERE record_id = %d ORDER BY position ASC, id ASC',
+            'SELECT id, node_record_id, path, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('relation_records') . '
+             WHERE node_record_id = %d ORDER BY position ASC, id ASC',
             $recordId
         ));
 
         return array_map(
             static fn (array $r): EdgeRecord => new EdgeRecord(
-                (int) $r['record_id'],
+                (int) $r['node_record_id'],
                 (string) $r['path'],
-                (int) $r['edge_id'],
+                (int) $r['relation_id'],
                 (string) $r['locale'],
                 TypedValue::fromStorage(
                     $r['value_int'] === null ? null : (int) $r['value_int'],
@@ -193,7 +193,7 @@ final class WpdbRecordRepository implements RecordRepository
     /**
      * Einen Wert schreiben — **einfügen, wenn er keine Id hat, sonst genau diese Zeile ändern**.
      *
-     * ⚠️ **Hier stand `$wpdb->replace()` auf dem Schlüssel `(record_id, path, locale)`, und das war
+     * ⚠️ **Hier stand `$wpdb->replace()` auf dem Schlüssel `(node_record_id, path, locale)`, und das war
      * der ganze Grund für eine erfundene laufende Nummer** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
      * *Drei Werte eines Feldes teilen sich eine Kante und damit einen Pfad — `replace()` behielt einen
      * davon. **Der Eigentümer sah es sofort:** «warum führen wir jetzt eine neue Zahl ein, wo wir doch
@@ -213,9 +213,9 @@ final class WpdbRecordRepository implements RecordRepository
     private function valueFromRow(array $r): EdgeRecord
     {
         return new EdgeRecord(
-            (int) $r['record_id'],
+            (int) $r['node_record_id'],
             (string) $r['path'],
-            (int) $r['edge_id'],
+            (int) $r['relation_id'],
             (string) $r['locale'],
             TypedValue::fromStorage(
                 $r['value_int'] === null ? null : (int) $r['value_int'],
@@ -246,8 +246,8 @@ final class WpdbRecordRepository implements RecordRepository
         // und die Abfrage fragt nur noch die Datensatzverweise. Vorher hätte ein Knoten mit der Nummer
         // eines Datensatzes hier mitgeliefert; heute nicht mehr.*
         $rows = Query::rows('Halter der Datensaetze lesen', $wpdb->prepare(
-            'SELECT id, record_id, path, edge_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
-             FROM ' . Schema::table('record_values') . '
+            'SELECT id, node_record_id, path, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('relation_records') . '
              WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
              ORDER BY value_ref ASC, id ASC',
             ...$ids
@@ -275,9 +275,9 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $spalten = [
-            'record_id'     => $value->recordId,
+            'node_record_id'     => $value->recordId,
             'path'          => $value->path,
-            'edge_id'       => $value->edgeId,
+            'relation_id'       => $value->edgeId,
             'locale'        => $value->locale,
             'position'      => $value->position,
             'value_int'     => $value->value->int,
@@ -293,7 +293,7 @@ final class WpdbRecordRepository implements RecordRepository
         $formate = ['%d', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s'];
 
         if ($value->id === null) {
-            $wpdb->insert(Schema::table('record_values'), $spalten, $formate);
+            $wpdb->insert(Schema::table('relation_records'), $spalten, $formate);
 
             // ⚠️ *Die Spalte hat die Vorgabe `1`, also ist das die Version der neuen Zeile — gelesen
             // aus dem Schema und nicht geraten ({@see Schema}).*
@@ -302,19 +302,19 @@ final class WpdbRecordRepository implements RecordRepository
 
         // ⚠️ **Zuerst die alte Zeile in den Schatten, dann schreiben** ([D-536](../../../docs/NewConcept/90-decision-log.md)).
         // *Umgekehrt hielte der Schatten zweimal den neuen Wert.*
-        Shadow::keepOne('record_values', $value->id);
+        Shadow::keepOne('relation_records', $value->id);
 
         // ⚠️ *Die Version wird hier gezählt und nicht im Kern: **`EdgeRecord` trägt sie nicht**, weil
         // eine Version eine Aussage über die Zeile im Speicher ist und nicht über den Wert. Ohne das
         // Hochzählen träfe jedes Aufheben denselben Schlüssel `(id, 1)` und der Schatten hielte nur
         // den ersten Zustand.*
         $spalten['version'] = 1 + (int) Query::value('Version der Wertzeile lesen', $wpdb->prepare(
-            'SELECT version FROM ' . Schema::table('record_values') . ' WHERE id = %d',
+            'SELECT version FROM ' . Schema::table('relation_records') . ' WHERE id = %d',
             $value->id
         ));
 
         $wpdb->update(
-            Schema::table('record_values'),
+            Schema::table('relation_records'),
             $spalten,
             ['id' => $value->id],
             [...$formate, '%d'],
@@ -338,15 +338,15 @@ final class WpdbRecordRepository implements RecordRepository
         // die Zeile in den Schatten geht — das Aufheben zählt sie nicht hoch.*
         $version = $this->versionOfValues('id = %d', [$id]);
 
-        Shadow::keepOne('record_values', $id, true);
+        Shadow::keepOne('relation_records', $id, true);
 
-        $wpdb->delete(Schema::table('record_values'), ['id' => $id], ['%d']);
+        $wpdb->delete(Schema::table('relation_records'), ['id' => $id], ['%d']);
 
         return $version;
     }
 
     /**
-     * Die höchste Version, die unter dieser Bedingung in `record_values` steht — oder `null`.
+     * Die höchste Version, die unter dieser Bedingung in `relation_records` steht — oder `null`.
      *
      * @param list<int|string> $args
      */
@@ -355,7 +355,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $wert = Query::value('Version der Wertzeile vor dem Entfernen lesen', $wpdb->prepare(
-            'SELECT MAX(version) FROM ' . Schema::table('record_values') . ' WHERE ' . $where,
+            'SELECT MAX(version) FROM ' . Schema::table('relation_records') . ' WHERE ' . $where,
             ...$args
         ));
 
@@ -373,15 +373,15 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $version = Query::value('Version des Datensatzes vor dem Entfernen lesen', $wpdb->prepare(
-            'SELECT version FROM ' . Schema::table('records') . ' WHERE id = %d',
+            'SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d',
             $id
         ));
 
-        Shadow::keep('record_values', 'record_id = %d', [$id], true);
-        $wpdb->delete(Schema::table('record_values'), ['record_id' => $id], ['%d']);
+        Shadow::keep('relation_records', 'node_record_id = %d', [$id], true);
+        $wpdb->delete(Schema::table('relation_records'), ['node_record_id' => $id], ['%d']);
 
-        Shadow::keepOne('records', $id, true);
-        $wpdb->delete(Schema::table('records'), ['id' => $id], ['%d']);
+        Shadow::keepOne('node_records', $id, true);
+        $wpdb->delete(Schema::table('node_records'), ['id' => $id], ['%d']);
 
         return $version === null ? null : (int) $version;
     }
@@ -391,7 +391,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $version = $this->versionOfValues(
-            'record_id = %d AND path = %s AND locale = %s',
+            'node_record_id = %d AND path = %s AND locale = %s',
             [$recordId, $path, $locale]
         );
 
@@ -399,13 +399,13 @@ final class WpdbRecordRepository implements RecordRepository
         // ([D-536](../../../docs/NewConcept/90-decision-log.md), [D-537](../../../docs/NewConcept/90-decision-log.md)).
         // *Der Eigentümer: «auch wenn es gelöscht ist, nur mit Löschkennzeichen versehen». **In der
         // lebenden Tabelle gibt es kein Kennzeichen** — ein Wert ist da oder er ist nicht da.*
-        Shadow::keep('record_values', 'record_id = %d AND path = %s AND locale = %s', [$recordId, $path, $locale], true);
+        Shadow::keep('relation_records', 'node_record_id = %d AND path = %s AND locale = %s', [$recordId, $path, $locale], true);
 
         // ⚠️ The row disappears, and the attribute is **unanswered** — which is a third state
         // beside a value and an explicit nothing, and collapsing it would lose it for good.
         $wpdb->delete(
-            Schema::table('record_values'),
-            ['record_id' => $recordId, 'path' => $path, 'locale' => $locale],
+            Schema::table('relation_records'),
+            ['node_record_id' => $recordId, 'path' => $path, 'locale' => $locale],
             ['%d', '%s', '%s']
         );
 
@@ -427,8 +427,8 @@ final class WpdbRecordRepository implements RecordRepository
         };
 
         $ids = Query::column('Datensaetze zu einem Kantenwert lesen', $wpdb->prepare(
-            'SELECT DISTINCT record_id FROM ' . Schema::table('record_values') . "
-             WHERE edge_id = %d AND {$column} = %s",
+            'SELECT DISTINCT node_record_id FROM ' . Schema::table('relation_records') . "
+             WHERE relation_id = %d AND {$column} = %s",
             $edgeId,
             $bound
         ));
@@ -472,25 +472,25 @@ final class WpdbRecordRepository implements RecordRepository
         }
 
         $places  = implode(',', array_fill(0, count($ids), '%d'));
-        $records = Schema::table('records');
-        $values  = Schema::table('record_values');
+        $records = Schema::table('node_records');
+        $values  = Schema::table('relation_records');
 
         // ⚠️ **Auch die Massenlöschung hebt auf** ([D-535](../../../docs/NewConcept/90-decision-log.md)).
         // *Gemessen am 2026-08-30, bevor es das gab: **8 Datensätze hatten einen Knoten, den es nicht
         // mehr gibt**, und niemand konnte mehr sagen, was sie bedeuteten — genau sein Argument
         // («sonst weiss man ja auch gar nicht, wie dieser Record interpretiert werden soll»).*
         Shadow::keep(
-            'record_values',
-            "record_id IN (SELECT id FROM {$records} WHERE node_id IN ({$places}))",
+            'relation_records',
+            "node_record_id IN (SELECT id FROM {$records} WHERE node_id IN ({$places}))",
             $ids,
             true
         );
 
-        Shadow::keep('records', "node_id IN ({$places})", $ids, true);
+        Shadow::keep('node_records', "node_id IN ({$places})", $ids, true);
 
         $goneValues = (int) $wpdb->query($wpdb->prepare(
             "DELETE v FROM {$values} v
-             INNER JOIN {$records} r ON r.id = v.record_id
+             INNER JOIN {$records} r ON r.id = v.node_record_id
              WHERE r.node_id IN ({$places})",
             ...$ids
         ));

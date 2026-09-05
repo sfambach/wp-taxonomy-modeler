@@ -106,7 +106,7 @@ interface RecordRepository
     /**
      * Records whose value at one edge equals this one, wherever in the record it sits.
      *
-     * ⚠️ **This is what `edge_id` is for** (D-134) — the question *which parts are 4k7* asked
+     * ⚠️ **This is what `relation_id` is for** (D-134) — the question *which parts are 4k7* asked
      * once, over an index, rather than by unpacking every record. A range asks the same way with
      * a comparison instead of an equality; the shape is the same and only the operator differs.
      *

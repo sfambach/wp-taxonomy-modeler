@@ -144,10 +144,10 @@ register_shutdown_function(static function () use (&$meine): void {
     global $wpdb;
 
     foreach ($meine as $id) {
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values_history') . ' WHERE record_id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records_history') . ' WHERE id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records_history') . ' WHERE node_record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records_history') . ' WHERE id = %d', $id));
     }
 });
 
@@ -292,7 +292,7 @@ foreach ($vorschauKnoten as $id) {
     $einstellungen = 0;
 
     foreach ($sicht['shown'] as $kante) {
-        if ($kante->kind->isSetting()) {
+        if ($kante->isSetting()) {
             ++$einstellungen;
         }
     }
@@ -308,7 +308,7 @@ foreach ($vorschauKnoten as $id) {
     $eigene = 0;
 
     foreach ($kanten as $kante) {
-        if (! $kante->kind->isSetting() && ! $kante->hide) {
+        if (! $kante->isSetting() && ! $kante->hide) {
             ++$eigene;
         }
     }
@@ -333,9 +333,11 @@ echo "\n== Woher die Auskunft kommt ==\n";
         $exponent?->kind->value ?? 'keine Kante'
     );
 
+    // ⚠️ *Seit [D-639](../../docs/NewConcept/90-decision-log.md) ist das kein Satz ueber die
+    // Aufzaehlung mehr, sondern Verhalten der Kante — und die Aussage gilt den **Datensaetzen**.*
     check(
-        'und eine Einstellung ist eine Komposition (D-526)',
-        RelationKind::Setting->isComposition()
+        'und eine Einstellung nimmt ihren Datensatz mit (D-526, D-639)',
+        $exponent !== null && $exponent->deletesRecordWithOwner()
     );
 }
 

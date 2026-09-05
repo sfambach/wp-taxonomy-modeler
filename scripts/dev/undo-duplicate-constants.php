@@ -55,8 +55,8 @@ global $wpdb;
 
 $knotenTabelle = Schema::table('nodes');
 $kantenTabelle = Schema::table('relations');
-$werteTabelle  = Schema::table('record_values');
-$saetzeTabelle = Schema::table('records');
+$werteTabelle  = Schema::table('relation_records');
+$saetzeTabelle = Schema::table('node_records');
 $texteTabelle  = Schema::table('labels');
 
 /**

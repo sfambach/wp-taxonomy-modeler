@@ -55,10 +55,10 @@ use Taxmod\WordPress\Persistence\Schema;
 global $wpdb;
 
 $zeilen = $wpdb->get_results(
-    'SELECT w.id, w.record_id, w.edge_id, w.path, w.value_ref, w.value_ref_kind
-       FROM ' . Schema::table('record_values') . ' w
-       LEFT JOIN ' . Schema::table('relations') . ' e ON e.id = w.edge_id
-      WHERE w.edge_id <> 0 AND e.id IS NULL
+    'SELECT w.id, w.node_record_id, w.relation_id, w.path, w.value_ref, w.value_ref_kind
+       FROM ' . Schema::table('relation_records') . ' w
+       LEFT JOIN ' . Schema::table('relations') . ' e ON e.id = w.relation_id
+      WHERE w.relation_id <> 0 AND e.id IS NULL
       ORDER BY w.id',
     ARRAY_A
 ) ?: [];
@@ -73,14 +73,14 @@ echo count($zeilen) . " Wertzeile(n) an verschwundenen Kanten:\n";
 
 foreach ($zeilen as $z) {
     $besitzer = $wpdb->get_var($wpdb->prepare(
-        'SELECT n.name FROM ' . Schema::table('records') . ' r
+        'SELECT n.name FROM ' . Schema::table('node_records') . ' r
          INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.node_id
          WHERE r.id = %d',
-        (int) $z['record_id']
+        (int) $z['node_record_id']
     ));
 
-    echo "  Zeile {$z['id']} · Satz {$z['record_id']} (" . ($besitzer ?? 'ohne Knoten')
-        . ") · Kante {$z['edge_id']} · Verweis {$z['value_ref']} ({$z['value_ref_kind']})\n";
+    echo "  Zeile {$z['id']} · Satz {$z['node_record_id']} (" . ($besitzer ?? 'ohne Knoten')
+        . ") · Kante {$z['relation_id']} · Verweis {$z['value_ref']} ({$z['value_ref_kind']})\n";
 }
 
 if (! $apply) {
@@ -95,12 +95,12 @@ $weg = 0;
 
 foreach ($zeilen as $z) {
     $wpdb->query($wpdb->prepare(
-        'DELETE FROM ' . Schema::table('record_values') . ' WHERE id = %d',
+        'DELETE FROM ' . Schema::table('relation_records') . ' WHERE id = %d',
         (int) $z['id']
     ));
 
     $wpdb->query($wpdb->prepare(
-        'DELETE FROM ' . Schema::table('record_values_history') . ' WHERE id = %d',
+        'DELETE FROM ' . Schema::table('relation_records_history') . ' WHERE id = %d',
         (int) $z['id']
     ));
 

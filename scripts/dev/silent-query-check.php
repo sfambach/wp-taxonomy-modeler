@@ -166,7 +166,7 @@ check(
 
 echo "\n5 · relations.position ist fort\n";
 
-// ⚠️ *`record_values.position` gibt es weiterhin und zu Recht — gesucht wird die Spalte auf `relations`.*
+// ⚠️ *`relation_records.position` gibt es weiterhin und zu Recht — gesucht wird die Spalte auf `relations`.*
 $reste = [];
 
 foreach (['src', 'scripts', 'tests'] as $ordner) {

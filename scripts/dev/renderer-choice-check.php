@@ -145,7 +145,7 @@ foreach (['Base units', 'Passiv', 'Integer', 'Dimension', 'Prefixes', 'Parts Lis
     $erwartet[$name] = $wpdb->get_var($wpdb->prepare(
         'SELECT ziel.name
            FROM ' . Schema::table('nodes') . ' k
-           JOIN ' . Schema::table('records') . ' satz ON satz.id = k.settings_record_id
+           JOIN ' . Schema::table('node_records') . ' satz ON satz.id = k.settings_record_id
            JOIN ' . Schema::table('nodes') . ' ziel ON ziel.id = satz.node_id
           WHERE k.id = %d
           LIMIT 1',
@@ -222,14 +222,14 @@ echo "\n== Und an einer Verwendungsstelle ==\n";
 // Notation im Bestand unbenutzt ist. Kommt eine Verwendungsstelle wieder, weil jemand sie einstellt,
 // wird sie rot und verlangt eine Entscheidung.*
 $mitPunkt = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('record_values') . " WHERE path LIKE '%.%'"
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE path LIKE '%.%'"
 );
 
 check('kein Kanten-Datensatz mit zweistufigem Pfad', $mitPunkt === 0, (string) $mitPunkt);
 
 // ⚠️ *Der Gegenfall: es gibt überhaupt Kanten-Datensätze. Sonst wäre «keine zweistufigen» auch dann
 // grün, wenn die Tabelle leer wäre.*
-$alle = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('record_values'));
+$alle = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('relation_records'));
 
 check('und es gibt Kanten-Datensaetze', $alle > 50, (string) $alle);
 

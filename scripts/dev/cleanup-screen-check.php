@@ -230,7 +230,7 @@ $say(! in_array($allein->id, array_map(static fn (object $n): int => $n->id, $re
 $say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE id = {$allein->id}") === 0, 'seine Zeile in nodes auch');
 $say(! array_key_exists($leiche->id, $residue->recordsWithoutNode()), 'die Daten ohne Knoten sind weg');
 $say(
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}record_values WHERE record_id = {$leichsatz->id}") === 0,
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$leichsatz->id}") === 0,
     'und ihre Werte mit ihnen — kein Wert ohne Datensatz zurückgelassen'
 );
 
@@ -252,8 +252,8 @@ $say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE id = {$modell->i
 
 // aufraeumen
 foreach ([$satz->id] as $id) {
-    $roh("DELETE FROM {$p}record_values WHERE record_id = {$id}");
-    $roh("DELETE FROM {$p}records WHERE id = {$id}");
+    $roh("DELETE FROM {$p}relation_records WHERE node_record_id = {$id}");
+    $roh("DELETE FROM {$p}node_records WHERE id = {$id}");
 }
 
 foreach ([$modell->id, $typ->id] as $id) {

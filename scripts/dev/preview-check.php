@@ -90,7 +90,7 @@ echo "== the preview appears where records are possible, and not elsewhere ==\n"
 // Zeile als «versteckt» gezählt, und die `read_only`-Zusagen darunter prüften an einer Zeile, die gar
 // nicht gezeichnet wird. **Die Prüfung war rot, ohne dass am Schirm etwas falsch war.***
 $model = (int) $wpdb->get_var(
-    "SELECT r.node_id FROM {$prefix}records r
+    "SELECT r.node_id FROM {$prefix}node_records r
      INNER JOIN {$prefix}relations e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
      GROUP BY r.node_id ORDER BY COUNT(*) DESC LIMIT 1"
 );
@@ -186,7 +186,7 @@ if ($edge === null) {
     );
 
     $ownerRecord = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$prefix}records WHERE node_id = %d AND kind = 'default' ORDER BY id LIMIT 1",
+        "SELECT id FROM {$prefix}node_records WHERE node_id = %d AND kind = 'default' ORDER BY id LIMIT 1",
         $model
     ));
 
@@ -204,7 +204,7 @@ if ($edge === null) {
         $pfad = $edgeId . '.' . $readOnlyEdge;
 
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$prefix}record_values WHERE record_id = %d AND path = %s",
+            "DELETE FROM {$prefix}relation_records WHERE node_record_id = %d AND path = %s",
             $ownerRecord,
             $pfad
         ));
@@ -224,7 +224,7 @@ if ($edge === null) {
 
         if ($key !== null) {
             $wpdb->query($wpdb->prepare(
-                "INSERT INTO {$prefix}record_values (record_id, edge_id, path, locale, value_int, position, version)
+                "INSERT INTO {$prefix}relation_records (node_record_id, relation_id, path, locale, value_int, position, version)
                  VALUES (%d, %d, %s, '', 1, 0, 1)",
                 $ownerRecord,
                 $readOnlyEdge,
@@ -339,7 +339,7 @@ $clean = (int) $wpdb->get_var(
     "SELECT n.id
        FROM {$prefix}nodes n
        JOIN {$prefix}relations r ON r.from_node_id = n.id AND r.name <> ''
-      WHERE n.id NOT IN (SELECT node_id FROM {$prefix}records)
+      WHERE n.id NOT IN (SELECT node_id FROM {$prefix}node_records)
       GROUP BY n.id
       ORDER BY COUNT(r.id) DESC
       LIMIT 1"
@@ -348,7 +348,7 @@ $clean = (int) $wpdb->get_var(
 /** Writes one record against a node and hands back its id, so the cleanup has something to name. */
 $record = static function (int $node, bool $isTest) use ($wpdb, $prefix): int {
     $wpdb->insert(
-        $prefix . 'records',
+        $prefix . 'node_records',
         [
             'node_id'      => $node,
             'node_version' => (int) $wpdb->get_var($wpdb->prepare("SELECT version FROM {$prefix}nodes WHERE id = %d", $node)),
@@ -402,16 +402,16 @@ try {
     echo "\n== drawing a preview writes nothing ==\n";
 
     $before = [
-        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records"),
-        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}record_values"),
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}node_records"),
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relation_records"),
     ];
 
     previewOf($screen, $clean);
     previewOf($screen, $model);
 
     $after = [
-        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records"),
-        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}record_values"),
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}node_records"),
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relation_records"),
     ];
 
     // ⚠️ **Die Vorschau zeichnet über *markierten* Zeilen, sie legt keine an.** *Ein Entwurf, der
@@ -423,8 +423,8 @@ try {
     // ⚠️ Läuft auch nach einer gefallenen Zusage: eine Prüfung, die Datensätze liegen lässt,
     // verändert, was der nächste Lauf misst.
     foreach ($written as $id) {
-        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}records WHERE id = %d", $id));
-        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}record_values WHERE record_id = %d", $id));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}node_records WHERE id = %d", $id));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$prefix}relation_records WHERE node_record_id = %d", $id));
     }
 }
 

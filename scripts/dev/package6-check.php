@@ -100,7 +100,7 @@ check('the last edge sits beside the path (D-134)', $values[0]->edgeId === $desc
 echo "\n== 3. Typed columns, not one stringly value ==\n";
 $data->put($record->id, $unit->id, TypedValue::ofReference($gram->id));
 $row = $wpdb->get_row($wpdb->prepare(
-    'SELECT value_text, value_ref FROM ' . Schema::table('record_values') . ' WHERE record_id = %d AND edge_id = %d',
+    'SELECT value_text, value_ref FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d AND relation_id = %d',
     $record->id, $unit->id), ARRAY_A);
 check('a constant lands in value_ref', (int) $row['value_ref'] === $gram->id && $row['value_text'] === null, json_encode($row));
 
@@ -157,15 +157,15 @@ foreach ($data->valuesOf($child->id) as $wert) {
 check('the child record answers what the parent declared', $geerbt === '__p6 inherited', (string) ($geerbt ?? 'nichts'));
 
 // ⚠️ **Die Zusage ist mit TASK-004 breiter geworden, nicht schmaler** (`PR-9`): *sie verglich zwei
-// Räume, weil es zwei gab — `records` gegen `identities`. **Jetzt hat jede Tabelle ihren eigenen**,
+// Räume, weil es zwei gab — `node_records` gegen `identities`. **Jetzt hat jede Tabelle ihren eigenen**,
 // und dass sie es tut, prüft [`id-space-check.php`](id-space-check.php) für alle. Hier bleibt der
 // Punkt, um den es dem Abschnitt ging: eine Datensatz-Nummer ist keine Knoten-Nummer.*
 echo "\n== 8. The two id spaces are separate ==\n";
-$maxRecord = (int) $wpdb->get_var('SELECT MAX(id) FROM ' . Schema::table('records'));
+$maxRecord = (int) $wpdb->get_var('SELECT MAX(id) FROM ' . Schema::table('node_records'));
 $maxNode   = (int) $wpdb->get_var('SELECT MAX(id) FROM ' . Schema::table('nodes'));
 check('records number from their own sequence', $maxRecord !== $maxNode, "records $maxRecord, nodes $maxNode");
 check('and a record id is not a model identity', (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('records') . ' r
+    'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' r
      INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.id
      WHERE r.id = %d', $record->id)) >= 0);
 
@@ -181,11 +181,11 @@ echo "\n== 9. The check cleans up after itself ==\n";
 // auch beim eigenen Müll.*
 foreach ([$part->id, $resistor->id, $text->id, $gram->id, $line->id, $supplier->id] as $scratchId) {
     foreach ($data->recordsOf($scratchId) as $r) {
-        Shadow::keep('record_values', 'record_id = %d', [$r->id], true);
-        Shadow::keep('records', 'id = %d', [$r->id], true);
+        Shadow::keep('relation_records', 'node_record_id = %d', [$r->id], true);
+        Shadow::keep('node_records', 'id = %d', [$r->id], true);
 
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $r->id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $r->id));
     }
 }
 foreach ([$part->id, $text->id, $gram->id, $line->id, $supplier->id] as $scratch) {
@@ -197,8 +197,8 @@ $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state L
 $left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p6%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 $orphanValues = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' v
-     LEFT JOIN ' . Schema::table('records') . ' r ON r.id = v.record_id
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+     LEFT JOIN ' . Schema::table('node_records') . ' r ON r.id = v.node_record_id
      WHERE r.id IS NULL'
 );
 check('no value belongs to a record that is gone', $orphanValues === 0, "$orphanValues orphans");
@@ -208,7 +208,7 @@ check('no value belongs to a record that is gone', $orphanValues === 0, "$orphan
 // dieser Lauf: «ein Record ohne Knoten wäre undenkbar … sonst weiss man ja auch gar nicht, wie dieser
 // Record interpretiert werden soll».*
 $orphanRecords = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('records') . ' r
+    'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' r
      WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = r.node_id)'
 );
 check('no record belongs to a node that is gone', $orphanRecords === 0, "$orphanRecords orphans");

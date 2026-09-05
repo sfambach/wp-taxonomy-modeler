@@ -56,17 +56,17 @@ $inheritedConverterEdgeId = 65595;
 
 $renderRows = $wpdb->get_results(
     $wpdb->prepare(
-        "SELECT v.id, v.record_id, v.value_ref, v.value_ref_kind
-           FROM {$p}record_values v
-           JOIN {$p}records r ON r.id = v.record_id
-          WHERE r.node_id = %d AND v.edge_id = %d",
+        "SELECT v.id, v.node_record_id, v.value_ref, v.value_ref_kind
+           FROM {$p}relation_records v
+           JOIN {$p}node_records r ON r.id = v.node_record_id
+          WHERE r.node_id = %d AND v.relation_id = %d",
         $hullNodeId,
         $renderEdgeId
     ),
     ARRAY_A
 );
 
-$moves      = [];   // record_id => [value_row_id, ziel_node_id]
+$moves      = [];   // node_record_id => [value_row_id, ziel_node_id]
 $leftStanding = []; // Zeilen, die nicht in D-594 stehen
 
 foreach ($renderRows as $row) {
@@ -76,7 +76,7 @@ foreach ($renderRows as $row) {
         continue;
     }
 
-    $recordId = (int) $row['record_id'];
+    $recordId = (int) $row['node_record_id'];
 
     // Zwei Knotenverweise an einem Satz waeren nicht mechanisch aufloesbar. Gemessen gibt es das
     // nicht — aber ein Abbruch ist besser als eine stille Wahl.
@@ -109,10 +109,10 @@ if ($missing !== []) {
 // nichts, und was nichts traegt, wird nicht an eine neue Kante gehaengt.
 $converterRows = $wpdb->get_results(
     $wpdb->prepare(
-        "SELECT v.id, v.record_id, v.value_ref, v.value_ref_kind
-           FROM {$p}record_values v
-           JOIN {$p}records r ON r.id = v.record_id
-          WHERE r.node_id = %d AND v.edge_id = %d",
+        "SELECT v.id, v.node_record_id, v.value_ref, v.value_ref_kind
+           FROM {$p}relation_records v
+           JOIN {$p}node_records r ON r.id = v.node_record_id
+          WHERE r.node_id = %d AND v.relation_id = %d",
         $hullNodeId,
         $converterEdgeId
     ),
@@ -139,7 +139,7 @@ $keptIn = $kept === [] ? '0' : implode(',', array_map('intval', $kept));
 
 $emptyRecords = array_map('intval', $wpdb->get_col(
     $wpdb->prepare(
-        "SELECT id FROM {$p}records WHERE node_id = %d AND id NOT IN ({$keptIn})",
+        "SELECT id FROM {$p}node_records WHERE node_id = %d AND id NOT IN ({$keptIn})",
         $hullNodeId
     )
 ));
@@ -147,7 +147,7 @@ $emptyRecords = array_map('intval', $wpdb->get_col(
 $emptyIn = $emptyRecords === [] ? '0' : implode(',', $emptyRecords);
 
 $emptyWithValues = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$p}record_values WHERE record_id IN ({$emptyIn})"
+    "SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id IN ({$emptyIn})"
 );
 
 if ($emptyWithValues > 0) {
@@ -157,12 +157,12 @@ if ($emptyWithValues > 0) {
 }
 
 $danglingHolders = array_map('intval', $wpdb->get_col(
-    "SELECT id FROM {$p}record_values
+    "SELECT id FROM {$p}relation_records
       WHERE value_ref_kind = 'record' AND value_ref IN ({$emptyIn})"
 ));
 
 $orphansBefore = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$p}records r
+    "SELECT COUNT(*) FROM {$p}node_records r
        LEFT JOIN {$p}nodes n ON n.id = r.node_id
       WHERE n.id IS NULL"
 );
@@ -196,7 +196,7 @@ foreach ($leftStanding as $row) {
     printf(
         "   Wertzeile %d an Satz %d — kind=%s ref=%s\n",
         $row['id'],
-        $row['record_id'],
+        $row['node_record_id'],
         $row['value_ref_kind'] === '' ? '(leer)' : $row['value_ref_kind'],
         $row['value_ref']
     );
@@ -222,7 +222,7 @@ foreach ($moves as $recordId => [$valueRowId, $target]) {
     // `node_version` sagt, von welchem Stand des Knotens der Satz ist. Wechselt der Knoten,
     // wechselt sie mit — sonst zeigte sie in die Geschichte eines anderen Knotens.
     $ok = $wpdb->query($wpdb->prepare(
-        "UPDATE {$p}records SET node_id = %d, node_version = %d WHERE id = %d",
+        "UPDATE {$p}node_records SET node_id = %d, node_version = %d WHERE id = %d",
         $target,
         (int) $known[$target]->version,
         $recordId
@@ -234,7 +234,7 @@ foreach ($moves as $recordId => [$valueRowId, $target]) {
         break;
     }
 
-    if ($wpdb->query($wpdb->prepare("DELETE FROM {$p}record_values WHERE id = %d", $valueRowId)) === false) {
+    if ($wpdb->query($wpdb->prepare("DELETE FROM {$p}relation_records WHERE id = %d", $valueRowId)) === false) {
         $failed = "Wegfall der render-Zeile {$valueRowId}";
 
         break;
@@ -244,7 +244,7 @@ foreach ($moves as $recordId => [$valueRowId, $target]) {
 if ($failed === null) {
     foreach ($converterMoves as $valueRowId) {
         $ok = $wpdb->query($wpdb->prepare(
-            "UPDATE {$p}record_values SET edge_id = %d WHERE id = %d",
+            "UPDATE {$p}relation_records SET relation_id = %d WHERE id = %d",
             $inheritedConverterEdgeId,
             $valueRowId
         ));
@@ -258,7 +258,7 @@ if ($failed === null) {
 }
 
 if ($failed === null && $danglingHolders !== []) {
-    if ($wpdb->query('DELETE FROM ' . $p . 'record_values WHERE id IN (' . implode(',', $danglingHolders) . ')') === false) {
+    if ($wpdb->query('DELETE FROM ' . $p . 'relation_records WHERE id IN (' . implode(',', $danglingHolders) . ')') === false) {
         $failed = 'Halterzeilen der leeren Behaelter';
     }
 }
@@ -280,7 +280,7 @@ if ($failed !== null) {
 $wpdb->query('COMMIT');
 
 $orphansAfter = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$p}records r
+    "SELECT COUNT(*) FROM {$p}node_records r
        LEFT JOIN {$p}nodes n ON n.id = r.node_id
       WHERE n.id IS NULL"
 );

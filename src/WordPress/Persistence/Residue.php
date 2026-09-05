@@ -100,7 +100,7 @@ final class Residue
      * Record values whose edge is gone — [D-159](../../../docs/NewConcept/90-decision-log.md).
      *
      * ⚠️ **D-159 is the decision *not* to touch these while drawing**: *«those are simply not drawn,
-     * and **not touched**: they stay in `record_values` … because removing them is a migration
+     * and **not touched**: they stay in `relation_records` … because removing them is a migration
      * ([D-061](../../../docs/NewConcept/90-decision-log.md)) and migrating is not the job of
      * drawing.»* *This class is not drawing. It is the surface D-247 asks for, where the same rows are
      * removed **deliberately** — which is the only place that sentence leaves open.*
@@ -110,10 +110,10 @@ final class Residue
     public function valuesWithoutEdge(): array
     {
         $rows = $this->rows(
-            'SELECT v.edge_id AS owner, COUNT(*) AS rows_held FROM ' . Schema::table('record_values') . ' v
-             WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = v.edge_id)
-             GROUP BY v.edge_id
-             ORDER BY v.edge_id ASC'
+            'SELECT v.relation_id AS owner, COUNT(*) AS rows_held FROM ' . Schema::table('relation_records') . ' v
+             WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.id = v.relation_id)
+             GROUP BY v.relation_id
+             ORDER BY v.relation_id ASC'
         );
 
         return $this->countsByOwner($rows);
@@ -192,16 +192,16 @@ final class Residue
         }
 
         // ⚠️ *Vor dem Löschen gelesen — danach wäre die Version nicht mehr feststellbar.*
-        $version = $this->hoechsteVersion('record_values', 'edge_id = %d', [$edgeId]);
+        $version = $this->hoechsteVersion('relation_records', 'relation_id = %d', [$edgeId]);
 
         $gone = (int) $wpdb->query($wpdb->prepare(
-            'DELETE FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d',
+            'DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
             $edgeId
         ));
 
-        $this->refuseBrokenQuery('record_values wegräumen');
+        $this->refuseBrokenQuery('relation_records wegräumen');
 
-        // ⚠️ *`relation` and not {@see self::KIND_GONE}: the id came out of `record_values.edge_id`, so
+        // ⚠️ *`relation` and not {@see self::KIND_GONE}: the id came out of `relation_records.relation_id`, so
         // what it **was** is known even though the row it named is not there any more.*
         $this->record($edgeId, 'relation', 'values removed', $gone, $version);
 
@@ -285,9 +285,9 @@ final class Residue
         $rows = $this->rows(
             'SELECT r.node_id AS owner,
                     COUNT(DISTINCT r.id) AS records_held,
-                    COUNT(v.record_id)   AS values_held
-               FROM ' . Schema::table('records') . ' r
-               LEFT JOIN ' . Schema::table('record_values') . ' v ON v.record_id = r.id
+                    COUNT(v.node_record_id)   AS values_held
+               FROM ' . Schema::table('node_records') . ' r
+               LEFT JOIN ' . Schema::table('relation_records') . ' v ON v.node_record_id = r.id
               WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.id = r.node_id)
            GROUP BY r.node_id
            ORDER BY r.node_id ASC'
@@ -325,7 +325,7 @@ final class Residue
         }
 
         // ⚠️ *Vor dem Entfernen gelesen, sonst gäbe es die Zeilen nicht mehr, deren Version gemeint ist.*
-        $version = $this->hoechsteVersion('records', 'node_id = %d', [$nodeId]);
+        $version = $this->hoechsteVersion('node_records', 'node_id = %d', [$nodeId]);
 
         $gone = $this->records->forgetNodes([$nodeId]);
 

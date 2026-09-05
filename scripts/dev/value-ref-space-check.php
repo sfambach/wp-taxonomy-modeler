@@ -4,7 +4,7 @@
  *
  *     php scripts/dev/value-ref-space-check.php [path/to/wordpress]
  *
- * ⚠️ **Die Zusage von TASK-005.** *`record_values.value_ref` zeigt auf **Knoten und Datensätze**
+ * ⚠️ **Die Zusage von TASK-005.** *`relation_records.value_ref` zeigt auf **Knoten und Datensätze**
  * (gemessen am 2026-09-04: 50 gegen 93), und bis Schema 20 sagte nichts, auf welches von beiden.
  * Solange jede Tabelle ihre Ids aus `identities` zieht, ist das schadlos — eine Nummer gehört genau
  * einem Ding. **Nach TASK-004 hat jede Tabelle ihren eigenen Id-Raum**, dann gibt es Knoten 5 und
@@ -72,10 +72,10 @@ function check(string $what, bool $passed, string $detail = ''): void
     echo "  FAIL $what" . ($detail !== '' ? " — $detail" : '') . "\n";
 }
 
-$werte   = Schema::table('record_values');
-$schatten = Schema::table('record_values_history');
+$werte   = Schema::table('relation_records');
+$schatten = Schema::table('relation_records_history');
 $knoten  = Schema::table('nodes');
-$saetze  = Schema::table('records');
+$saetze  = Schema::table('node_records');
 
 echo "Die Spalte ist da\n";
 
@@ -86,7 +86,7 @@ $spalte = (int) $wpdb->get_var($wpdb->prepare(
     'value_ref_kind'
 ));
 
-check('record_values nennt den Raum', $spalte === 1);
+check('relation_records nennt den Raum', $spalte === 1);
 
 if ($spalte !== 1) {
     echo "\n$bad fehlgeschlagen, $ok in Ordnung\n";
@@ -155,7 +155,7 @@ $schattenSpalte = (int) $wpdb->get_var($wpdb->prepare(
     'value_ref_kind'
 ));
 
-check('record_values_history hat sie auch', $schattenSpalte === 1);
+check('relation_records_history hat sie auch', $schattenSpalte === 1);
 
 $schattenOffen = (int) $wpdb->get_var(
     "SELECT COUNT(*) FROM {$schatten} WHERE value_ref IS NOT NULL AND value_ref_kind IS NULL"

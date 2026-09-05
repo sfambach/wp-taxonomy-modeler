@@ -92,7 +92,7 @@ abstract class SpecialisedType extends Node
     /** Wie der gesäte Knoten heisst, den dieser Typ bekommt ([D-428](../../../../docs/NewConcept/90-decision-log.md)). */
     abstract public function nodeName(): string;
 
-    /** Die Spalte in `record_values`, in der ein Wert dieses Typs liegt. */
+    /** Die Spalte in `relation_records`, in der ein Wert dieses Typs liegt. */
     abstract public function column(): string;
 
     /**

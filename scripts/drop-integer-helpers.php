@@ -94,7 +94,7 @@ foreach ($kinder as $k) {
 
     foreach ($felder as $f) {
         $werte = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d',
+            'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
             (int) $f['id']
         ));
 

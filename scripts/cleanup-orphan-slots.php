@@ -112,9 +112,9 @@ foreach ( $all_terms as $host ) {
 			++$pruned_edges;
 			continue;
 		}
-		$edge_id = (string) ( $edge['id'] ?? '' );
+		$relation_id = (string) ( $edge['id'] ?? '' );
 		$type_id = (int) ( $edge['typeId'] ?? 0 );
-		$result  = \WTT\Relation::remove( $taxonomy, $host_id, $type_id, $to, $edge_id );
+		$result  = \WTT\Relation::remove( $taxonomy, $host_id, $type_id, $to, $relation_id );
 		if ( is_wp_error( $result ) ) {
 			$edge_errors[] = "{$host->name}→{$target->name}: " . $result->get_error_message();
 		} else {

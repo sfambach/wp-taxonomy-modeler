@@ -200,9 +200,37 @@ final class FieldTest extends TestCase
      */
     public function a_setting_is_a_composition(): void
     {
-        self::assertTrue(RelationKind::Setting->isComposition());
-        self::assertTrue(RelationKind::Composition->isComposition());
-        self::assertFalse(RelationKind::Aggregation->isComposition());
+        // ⚠️ *Seit [D-639](../../../docs/NewConcept/90-decision-log.md) ist «erbt von» kein Ausdruck
+        // in einer Aufzählung mehr, sondern eine Antwort je Klasse — **und sie gilt dem Datensatz,
+        // nicht dem Knoten**: «wenn ich den Datensatz von Kunde A lösche, muss auch die Adresse von
+        // Kunde A gelöscht werden».*
+        self::assertTrue($this->kante(RelationKind::Setting)->deletesRecordWithOwner());
+        self::assertTrue($this->kante(RelationKind::Composition)->deletesRecordWithOwner());
+        self::assertFalse($this->kante(RelationKind::Aggregation)->deletesRecordWithOwner());
+    }
+
+    /**
+     * ⚠️ **Die Ableitung Wert → Klasse steht an einer Stelle und ist vollständig**
+     * ([D-639](../../../docs/NewConcept/90-decision-log.md)). *Fiele ein Fall heraus, bekäme eine
+     * Kante still die Basisklasse — und `abstract` verhindert genau das laut.*
+     */
+    #[Test]
+    public function every_kind_has_its_own_class(): void
+    {
+        $klassen = [];
+
+        foreach (RelationKind::cases() as $art) {
+            $klasse = Relation::classFor($art);
+            self::assertSame($klasse, $this->kante($art)::class, $art->value);
+            $klassen[$klasse] = true;
+        }
+
+        self::assertCount(count(RelationKind::cases()), $klassen);
+    }
+
+    private function kante(RelationKind $art): Relation
+    {
+        return Relation::attribute(7, 1, 2, $art, 'feld', 0);
     }
 
     /**
@@ -218,8 +246,8 @@ final class FieldTest extends TestCase
             self::assertNotSame(RelationKind::Setting, $branch->relationKind(), $branch->value);
         }
 
-        self::assertTrue(RelationKind::Setting->isSetting());
-        self::assertFalse(RelationKind::Composition->isSetting());
+        self::assertTrue($this->kante(RelationKind::Setting)->isSetting());
+        self::assertFalse($this->kante(RelationKind::Composition)->isSetting());
     }
 
     #[Test]

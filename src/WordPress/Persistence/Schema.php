@@ -16,7 +16,7 @@ namespace Taxmod\WordPress\Persistence;
  *   N[(nodes)] --> L[(labels)]
  *   N --> R[(relations)]
  *   N --> RC[(records)]
- *   R --> RV[(record_values)]
+ *   R --> RV[(relation_records)]
  *   RC --> RV
  * ```
  *
@@ -24,7 +24,7 @@ namespace Taxmod\WordPress\Persistence;
  * [`package.md` §6](../../../docs/pakete/modelltabellen/package.md)). *`identities` ist gestrichen;
  * eine Nummer ist nur noch innerhalb ihrer Tabelle eindeutig, und wo eine Spalte auf mehr als eine
  * Tabelle zeigen kann, nennt eine zweite Spalte den Raum — `changelog.owner_kind`,
- * `record_values.value_ref_kind`.*
+ * `relation_records.value_ref_kind`.*
  *
  * `labels` und `changelog` hängen an einer **Nummer**, nicht an einem Knoten — das ist es, was
  * eine *Kante* eigene Labels tragen lässt (C8). Darum ist `owner_id` eine Spalte und nicht eine Art
@@ -124,7 +124,7 @@ final class Schema
      * nächsten Installation falsch ist.*
      */
     /**
-     * Schema 20: `record_values.value_ref_kind` — der Verweis nennt seinen Raum (TASK-005,
+     * Schema 20: `relation_records.value_ref_kind` — der Verweis nennt seinen Raum (TASK-005,
      * [D-164](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ **Der Grund ist TASK-004 und nicht ein Fehler von heute.** *Solange jede Id aus `identities`
@@ -272,7 +272,30 @@ final class Schema
      * ist** — Spalte oder Einstellung — hat der Eigentümer ausdrücklich vertagt, und dieser Umzug
      * beantwortet die Frage nicht.*
      */
-    public const VERSION = 28;
+    /**
+     * Fassung 29: die vier Datensatztabellen heissen nach dem, woran sie hängen (TASK-014).
+     *
+     * ⚠️ **Der Eigentümer:** *«records → node_records, record_values → relation_records».* **Die
+     * Zuordnung ist gemessen und ausnahmslos** — jede Zeile in `records` hängt an einem Knoten, jede
+     * Zeile in `record_values` an einer Kante. *Die Schatten ziehen mit, sonst findet
+     * {@see Shadow::shadowFor()} sie nicht mehr: er liest die beiden Listen nach Stelle.*
+     *
+     * ⚠️ **Und zwei Spalten nach derselben Regel wie `from_node_id`:** *`record_id` wird
+     * `node_record_id`, `edge_id` wird `relation_id` — ein Fremdschlüssel nennt seine Zieltabelle
+     * ([D-164](../../../docs/NewConcept/90-decision-log.md)). **Das Wort ist `relation` und nicht
+     * `edge`** ([D-576](../../../docs/NewConcept/90-decision-log.md)); die Frage, die in TASK-014
+     * offen stand, hat diese Entscheidung schon beantwortet.*
+     *
+     * ⚠️ **Der Index hiess `edge_id` und musste von Hand fallen**, wie schon bei `from_id`: *eine
+     * umbenannte Spalte behält den **Namen** ihres Indexes, und `dbDelta` legte daneben einen
+     * zweiten mit dem neuen Namen. Der zusammengesetzte `of_field` folgt der Umbenennung von selbst
+     * — sein Name ändert sich nicht.*
+     *
+     * ⚠️ *Umkehrbar ohne Schattenzeile, und das ist hier kein Versäumnis: **eine Umbenennung bewegt
+     * keine Zeile.** `RENAME TABLE` zurück und `CHANGE` zurück stellen denselben Stand her; es gibt
+     * keinen Inhalt, den ein Schatten aufheben könnte.*
+     */
+    public const VERSION = 29;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -311,7 +334,7 @@ final class Schema
      * Die Tabellen, die ihre Ids seit Fassung 21 aus ihrem eigenen `AUTO_INCREMENT` vergeben und
      * es bis dahin nicht taten.
      *
-     * ⚠️ *`records`, `record_values`, `labels`, `settings` und `changelog` hatten immer schon ihr
+     * ⚠️ *`node_records`, `relation_records`, `labels`, `settings` und `changelog` hatten immer schon ihr
      * eigenes; nur diese beiden zogen aus `identities`.*
      */
     private const OWN_ID_SPACE = ['nodes', 'relations'];
@@ -347,10 +370,10 @@ final class Schema
      * Spalte an einer lebenden Tabelle hinzufügt und den Schatten vergisst, wird beim nächsten Prüflauf
      * rot** — das war der Preis, den zwei Tabellen derselben Form kosten, und das ist sein Wächter.*
      */
-    public const LIVE_TABLES = ['nodes', 'relations', 'records', 'record_values'];
+    public const LIVE_TABLES = ['nodes', 'relations', 'node_records', 'relation_records'];
 
     /** Ihre Schatten, **in derselben Reihenfolge** — darauf verlässt sich die Prüfung. */
-    public const SHADOW_TABLES = ['nodes_history', 'relations_history', 'records_history', 'record_values_history'];
+    public const SHADOW_TABLES = ['nodes_history', 'relations_history', 'node_records_history', 'relation_records_history'];
 
     /** Spalten, die **nur** der Schatten hat und die die Prüfung deshalb übergeht. */
     public const SHADOW_ONLY = ['deleted', 'archived_at'];
@@ -401,7 +424,17 @@ final class Schema
         // against a `CREATE TABLE` and **adds** what is missing — it has no notion of a rename. Run
         // afterwards, it would create `node_id` beside `model_id` and leave both, with the data in
         // the one nothing reads any more.*
+        // ⚠️ **Ganz vorn, und die Reihenfolge ist zwingend:** *jeder Schritt darunter fragt seine
+        // Tabelle über {@see self::table()}, und der Name dort ist seit Fassung 29 der neue. Liefe
+        // die Umbenennung später, suchte `renameRecordColumns()` eine Tabelle, die noch anders
+        // heisst, fände sie nicht und kehrte still um (TASK-014).
+        self::renameRecordTables();
+
         self::renameRecordColumns();
+
+        // ⚠️ *Vor `dbDelta`, wie jede Umbenennung hier: es kennt keine und legte `node_record_id`
+        // neben `record_id`, mit den Daten in der Spalte, die niemand mehr liest (TASK-014).*
+        self::renameRelationRecordColumns();
 
         // ⚠️ *Ebenfalls vor `dbDelta`, aus demselben Grund: es kennt keine Umbenennung und legte
         // `field_type` neben `kind`, mit den Daten in der Spalte, die niemand mehr liest (TASK-007).*
@@ -515,10 +548,10 @@ final class Schema
         foreach ($geparkt as $zeile) {
             Shadow::keepOne('relations', (int) $zeile['id'], true);
 
-            Shadow::keep('record_values', 'edge_id = %d', [(int) $zeile['id']], true);
+            Shadow::keep('relation_records', 'relation_id = %d', [(int) $zeile['id']], true);
 
             $wpdb->query($wpdb->prepare(
-                'DELETE FROM ' . self::table('record_values') . ' WHERE edge_id = %d',
+                'DELETE FROM ' . self::table('relation_records') . ' WHERE relation_id = %d',
                 (int) $zeile['id']
             ));
 
@@ -957,11 +990,106 @@ final class Schema
         }
     }
 
+    /**
+     * Die vier Datensatztabellen heissen nach dem, woran sie hängen — Fassung 29 (TASK-014).
+     *
+     * ⚠️ **`records` → `node_records`, `record_values` → `relation_records`, samt Schatten.** *Der
+     * Eigentümer: «records → node_records, record_values → relation_records».*
+     *
+     * ⚠️ *Sie läuft vor allem anderen und prüft jede Tabelle einzeln: eine frische Installation hat
+     * keine der alten, eine halb gewanderte hat einige. **Umbenannt wird nur, was unter dem alten
+     * Namen dasteht und unter dem neuen noch nicht** — sonst überschriebe ein zweiter Lauf eine
+     * bereits gefüllte Tabelle.*
+     */
+    private static function renameRecordTables(): void
+    {
+        global $wpdb;
+
+        $umzuege = [
+            ['records', 'node_records'],
+            ['record_values', 'relation_records'],
+            ['records_history', 'node_records_history'],
+            ['record_values_history', 'relation_records_history'],
+        ];
+
+        foreach ($umzuege as [$von, $nach]) {
+            $alt = $wpdb->prefix . 'taxmod_' . $von;
+            $neu = $wpdb->prefix . 'taxmod_' . $nach;
+
+            $altDa = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $alt)) === $alt;
+            $neuDa = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $neu)) === $neu;
+
+            if (! $altDa || $neuDa) {
+                continue;
+            }
+
+            $wpdb->query("RENAME TABLE {$alt} TO {$neu}");
+        }
+    }
+
+    /**
+     * `relation_records.record_id` heisst `node_record_id`, `edge_id` heisst `relation_id` —
+     * Fassung 29 (TASK-014).
+     *
+     * ⚠️ **Ein Fremdschlüssel nennt seine Zieltabelle** ([D-164](../../../docs/NewConcept/90-decision-log.md)),
+     * dieselbe Regel, die aus `from_id` `from_node_id` gemacht hat. *Und das Wort ist `relation`,
+     * nicht `edge` ([D-576](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Der Einzelindex `edge_id` muss von Hand fallen:** *eine umbenannte Spalte behält den
+     * **Namen** ihres Indexes, und `dbDelta` legte daneben einen zweiten `relation_id`. Der
+     * zusammengesetzte `of_field` behält seinen Namen und folgt der Umbenennung von selbst.*
+     */
+    private static function renameRelationRecordColumns(): void
+    {
+        global $wpdb;
+
+        $umzuege = [
+            ['record_id', 'node_record_id'],
+            ['edge_id', 'relation_id'],
+        ];
+
+        foreach (['relation_records', 'relation_records_history'] as $name) {
+            $table = self::table($name);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+                continue;
+            }
+
+            foreach ($umzuege as [$von, $nach]) {
+                $vorhanden = $wpdb->get_col($wpdb->prepare(
+                    'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+                    $table,
+                    $von
+                ));
+
+                if ($vorhanden === []) {
+                    continue;
+                }
+
+                // ⚠️ `CHANGE` und nicht `RENAME COLUMN`: das will MySQL 8, und dieser Plugin sucht
+                // sich den Server nicht aus.
+                $wpdb->query("ALTER TABLE {$table} CHANGE {$von} {$nach} bigint(20) unsigned NOT NULL");
+            }
+
+            $alterIndex = $wpdb->get_col($wpdb->prepare(
+                'SELECT INDEX_NAME FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+                $table,
+                'edge_id'
+            ));
+
+            if ($alterIndex !== []) {
+                $wpdb->query("ALTER TABLE {$table} DROP INDEX edge_id");
+            }
+        }
+    }
+
     private static function renameRecordColumns(): void
     {
         global $wpdb;
 
-        $table = self::table('records');
+        $table = self::table('node_records');
 
         // A fresh install: `dbDelta` will create the table with the new names in a moment.
         if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
@@ -1083,7 +1211,7 @@ final class Schema
     {
         global $wpdb;
 
-        $records = self::table('records');
+        $records = self::table('node_records');
 
         $hatAlt = (int) $wpdb->get_var($wpdb->prepare(
             'SELECT COUNT(*) FROM information_schema.COLUMNS
@@ -1105,21 +1233,21 @@ final class Schema
     }
 
     /**
-     * Der eindeutige Schlüssel `(record_id, path, locale)` fällt — Schema 16,
+     * Der eindeutige Schlüssel `(node_record_id, path, locale)` fällt — Schema 16,
      * [D-530](../../../docs/NewConcept/90-decision-log.md).
      *
      * ⚠️ **`dbDelta` kann einen Schlüssel nicht entfernen**, nur hinzufügen — also ausdrücklich, und
      * geprüft, ob es ihn überhaupt noch gibt. *Ohne diesen Schritt bliebe er auf jeder bestehenden
      * Installation stehen und verböte weiterhin, was D-530 gerade erlaubt.*
      *
-     * ⚠️ *An seine Stelle tritt `of_field (record_id, edge_id, locale)` — **kein eindeutiger**, sondern
+     * ⚠️ *An seine Stelle tritt `of_field (node_record_id, relation_id, locale)` — **kein eindeutiger**, sondern
      * der Index für die Frage, die es jetzt gibt: «alle Werte dieses Feldes in diesem Datensatz».*
      */
     private static function dropTheOneValueKey(): void
     {
         global $wpdb;
 
-        $tabelle = self::table('record_values');
+        $tabelle = self::table('relation_records');
 
         $vorhanden = (int) $wpdb->get_var($wpdb->prepare(
             'SELECT COUNT(*) FROM information_schema.STATISTICS
@@ -1197,7 +1325,7 @@ final class Schema
      *
      * ⚠️ **Das geht heute noch und nach TASK-004 nicht mehr** — genau deshalb steht dieser Schritt
      * jetzt: *solange alle Tabellen aus `identities` ziehen, ist eine Id für sich eindeutig, und ein
-     * Blick in `nodes` und `records` entscheidet die Frage. Mit eigenen Id-Räumen wäre dieselbe
+     * Blick in `nodes` und `node_records` entscheidet die Frage. Mit eigenen Id-Räumen wäre dieselbe
      * Wanderung nicht mehr möglich.*
      *
      * ⚠️ *Nur wo genau **eine** der beiden Tabellen die Nummer kennt, wird geschrieben. Mehrdeutiges
@@ -1209,9 +1337,9 @@ final class Schema
         global $wpdb;
 
         $nodes   = self::table('nodes');
-        $records = self::table('records');
+        $records = self::table('node_records');
 
-        foreach (['record_values', 'record_values_history'] as $name) {
+        foreach (['relation_records', 'relation_records_history'] as $name) {
             $tabelle = self::table($name);
 
             $wpdb->query(
@@ -1673,7 +1801,7 @@ final class Schema
 
             // ⚠️ *Hier stand `settings` samt der Begruendung ihrer `path`-Spalte. **Die Tabelle ist mit
             // D-579 gestrichen** — eine Einstellung ist eine Kante (D-529), und ihr Wert steht in
-            // `record_values`. Die Adressfrage, die `settings.path` beantwortete, beantwortet dort der
+            // `relation_records`. Die Adressfrage, die `settings.path` beantwortete, beantwortet dort der
             // Pfad.*
 
             "CREATE TABLE {$t('labels')} (
@@ -1712,7 +1840,7 @@ final class Schema
             ) {$charset};",
 
             // The record identity space is its own (D-164), so AUTO_INCREMENT serves it.
-            "CREATE TABLE {$t('records')} (
+            "CREATE TABLE {$t('node_records')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 node_id bigint(20) unsigned NOT NULL,
                 node_version int(10) unsigned NOT NULL,
@@ -1724,13 +1852,13 @@ final class Schema
                 KEY kind (kind)
             ) {$charset};",
 
-            // Keyed on a path with the last edge repeated in edge_id, so that
-            // `WHERE edge_id = ... AND value_decimal > 1000` finds every occurrence
+            // Keyed on a path with the last edge repeated in relation_id, so that
+            // `WHERE relation_id = ... AND value_decimal > 1000` finds every occurrence
             // regardless of how deep it sits (D-134).
-            "CREATE TABLE {$t('record_values')} (
+            "CREATE TABLE {$t('relation_records')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-                record_id bigint(20) unsigned NOT NULL,
-                edge_id bigint(20) unsigned NOT NULL,
+                node_record_id bigint(20) unsigned NOT NULL,
+                relation_id bigint(20) unsigned NOT NULL,
                 path varchar(255) NOT NULL,
                 locale varchar(20) NOT NULL DEFAULT '',
                 position int(10) unsigned NOT NULL DEFAULT 0,
@@ -1742,8 +1870,8 @@ final class Schema
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 value_ref_kind varchar(20) DEFAULT NULL,
                 PRIMARY KEY  (id),
-                KEY of_field (record_id,edge_id,locale),
-                KEY edge_id (edge_id),
+                KEY of_field (node_record_id,relation_id,locale),
+                KEY relation_id (relation_id),
                 KEY value_ref (value_ref)
             ) {$charset};",
 
@@ -1796,7 +1924,7 @@ final class Schema
                 KEY archived_at (archived_at)
             ) {$charset};",
 
-            "CREATE TABLE {$t('records_history')} (
+            "CREATE TABLE {$t('node_records_history')} (
                 id bigint(20) unsigned NOT NULL,
                 node_id bigint(20) unsigned NOT NULL,
                 node_version int(10) unsigned NOT NULL,
@@ -1809,10 +1937,10 @@ final class Schema
                 KEY archived_at (archived_at)
             ) {$charset};",
 
-            "CREATE TABLE {$t('record_values_history')} (
+            "CREATE TABLE {$t('relation_records_history')} (
                 id bigint(20) unsigned NOT NULL,
-                record_id bigint(20) unsigned NOT NULL,
-                edge_id bigint(20) unsigned NOT NULL,
+                node_record_id bigint(20) unsigned NOT NULL,
+                relation_id bigint(20) unsigned NOT NULL,
                 path varchar(255) NOT NULL,
                 locale varchar(20) NOT NULL DEFAULT '',
                 position int(10) unsigned NOT NULL DEFAULT 0,
@@ -1827,7 +1955,7 @@ final class Schema
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),
                 KEY archived_at (archived_at),
-                KEY of_record (record_id)
+                KEY of_record (node_record_id)
             ) {$charset};",
         ];
     }

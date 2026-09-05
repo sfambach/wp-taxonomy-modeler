@@ -86,8 +86,8 @@ register_shutdown_function(static function () use (&$meine): void {
     global $wpdb;
 
     foreach ($meine as $id) {
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $id));
     }
 });
 
@@ -97,7 +97,7 @@ echo "\n== 1. Der eindeutige Schluessel ist weg ==\n";
 // zweiten Wert — und alles darunter wäre grün aus dem falschen Grund.*
 $eindeutige = $wpdb->get_col(
     "SELECT INDEX_NAME FROM information_schema.STATISTICS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" . Schema::table('record_values') . "'
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" . Schema::table('relation_records') . "'
        AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'"
 );
 
@@ -105,14 +105,14 @@ check('kein eindeutiger Schluessel mehr neben PRIMARY', $eindeutige === [], impl
 
 check(
     'position ist eine Spalte',
-    $wpdb->get_var('SHOW COLUMNS FROM ' . Schema::table('record_values') . " LIKE 'position'") !== null
+    $wpdb->get_var('SHOW COLUMNS FROM ' . Schema::table('relation_records') . " LIKE 'position'") !== null
 );
 
 check(
     'und of_field indiziert die Frage, die es jetzt gibt',
     in_array('of_field', $wpdb->get_col(
         "SELECT DISTINCT INDEX_NAME FROM information_schema.STATISTICS
-         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" . Schema::table('record_values') . "'"
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" . Schema::table('relation_records') . "'"
     ), true)
 );
 
@@ -278,7 +278,7 @@ echo "\n== 7. Jedes Stueck eines Pfades ist eine Kanten-Id ==\n";
 // zwei Punkten ist eine **Kanten-Id**. `ModelEditor::remapPath()` verlässt sich darauf — es schickt
 // jedes Segment durch die Kantenabbildung, und eine laufende Nummer dort wäre eine Kante, die niemand
 // gemeint hat.*
-foreach (['record_values', 'settings', 'labels'] as $tabelle) {
+foreach (['relation_records', 'settings', 'labels'] as $tabelle) {
     $pfade = $wpdb->get_col(
         'SELECT DISTINCT path FROM ' . Schema::table($tabelle) . " WHERE path <> ''"
     ) ?: [];

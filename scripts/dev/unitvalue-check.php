@@ -398,7 +398,7 @@ check('and both are reachable', count($data->partsOf($owner->id)) === $before + 
 // the reference back with `put()`, which refuses a composed target on purpose. *The reference is
 // written by `createPart()` and by nothing else, so undoing it means removing the row it wrote.*
 $data->clearPath($owner->id, $has->id . '.1');
-$GLOBALS['wpdb']->query('DELETE FROM ' . $GLOBALS['wpdb']->prefix . 'taxmod_records WHERE id = ' . (int) $second->id);
+$GLOBALS['wpdb']->query('DELETE FROM ' . $GLOBALS['wpdb']->prefix . 'taxmod_node_records WHERE id = ' . (int) $second->id);
 
 $data->put($part->id, $members['wert']->id, TypedValue::ofDecimal('4.7'));
 check('a part holds its own values', count($data->valuesOf($part->id)) === 1);
@@ -444,7 +444,7 @@ $satzWeg = static function (int $satzId) use ($wpdb, $tabelle, &$satzWeg): int {
     $weg = 0;
 
     $verweise = $wpdb->get_col($wpdb->prepare(
-        'SELECT value_ref FROM ' . $tabelle('record_values') . ' WHERE record_id = %d AND value_ref IS NOT NULL',
+        'SELECT value_ref FROM ' . $tabelle('relation_records') . ' WHERE node_record_id = %d AND value_ref IS NOT NULL',
         $satzId
     ));
 
@@ -456,7 +456,7 @@ $satzWeg = static function (int $satzId) use ($wpdb, $tabelle, &$satzWeg): int {
 
     foreach ($verweise as $ref) {
         $istSatz = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT COUNT(*) FROM ' . $tabelle('records') . ' WHERE id = %d',
+            'SELECT COUNT(*) FROM ' . $tabelle('node_records') . ' WHERE id = %d',
             (int) $ref
         ));
 
@@ -469,17 +469,17 @@ $satzWeg = static function (int $satzId) use ($wpdb, $tabelle, &$satzWeg): int {
     // Wort: «löschen tun wir ja eh nicht, wir schieben es in die Schattentabelle.» Auch der eigene
     // Müll einer Prüfung geht diesen Weg — sonst gibt es zwei Arten, etwas wegzunehmen, und die
     // zweite ist die, die niemand nachlesen kann.*
-    \Taxmod\WordPress\Persistence\Shadow::keep('record_values', 'record_id = %d', [$satzId], true);
-    \Taxmod\WordPress\Persistence\Shadow::keep('records', 'id = %d', [$satzId], true);
+    \Taxmod\WordPress\Persistence\Shadow::keep('relation_records', 'node_record_id = %d', [$satzId], true);
+    \Taxmod\WordPress\Persistence\Shadow::keep('node_records', 'id = %d', [$satzId], true);
 
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . $tabelle('record_values') . ' WHERE record_id = %d', $satzId));
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . $tabelle('records') . ' WHERE id = %d', $satzId));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . $tabelle('relation_records') . ' WHERE node_record_id = %d', $satzId));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . $tabelle('node_records') . ' WHERE id = %d', $satzId));
 
     return $weg + 1;
 };
 
 $saetze = $wpdb->get_col($wpdb->prepare(
-    'SELECT id FROM ' . $tabelle('records') . ' WHERE node_id = %d',
+    'SELECT id FROM ' . $tabelle('node_records') . ' WHERE node_id = %d',
     $thing->id
 ));
 
@@ -514,7 +514,7 @@ check(
 // ⚠️ *Der Gegenfall: keine Waise zurück. Ein Teil trägt die Id des **Zielknotens**, also findet man ihn
 // nicht über den Schmierknoten — sondern daran, dass niemand mehr auf ihn zeigt.*
 $waisen = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . $tabelle('records') . ' r
+    'SELECT COUNT(*) FROM ' . $tabelle('node_records') . ' r
      WHERE NOT EXISTS (SELECT 1 FROM ' . $tabelle('nodes') . ' n WHERE n.id = r.node_id)'
 );
 

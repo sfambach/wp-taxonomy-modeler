@@ -198,10 +198,10 @@ $say(
 );
 
 // ── aufraeumen ─────────────────────────────────────────────────────────────
-$wpdb->query($wpdb->prepare("DELETE FROM {$p}record_values WHERE record_id = %d", $satz->id));
-$wpdb->query($wpdb->prepare("DELETE FROM {$p}record_values_history WHERE record_id = %d", $satz->id));
-$wpdb->query($wpdb->prepare("DELETE FROM {$p}records WHERE id = %d", $satz->id));
-$wpdb->query($wpdb->prepare("DELETE FROM {$p}records_history WHERE id = %d", $satz->id));
+$wpdb->query($wpdb->prepare("DELETE FROM {$p}relation_records WHERE node_record_id = %d", $satz->id));
+$wpdb->query($wpdb->prepare("DELETE FROM {$p}relation_records_history WHERE node_record_id = %d", $satz->id));
+$wpdb->query($wpdb->prepare("DELETE FROM {$p}node_records WHERE id = %d", $satz->id));
+$wpdb->query($wpdb->prepare("DELETE FROM {$p}node_records_history WHERE id = %d", $satz->id));
 
 foreach ([$feld->id, $knoten->id, $typ->id, $satz->id] as $id) {
     $wpdb->query($wpdb->prepare("DELETE FROM {$p}changelog WHERE owner_id = %d", $id));

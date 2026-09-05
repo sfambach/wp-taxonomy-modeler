@@ -20,10 +20,10 @@
  *    dieser Datei, sondern fragt die Kanten, die auf den Zweigkopf `Constants` **zeigen**.
  *
  * Dazu ein vierter Posten, der **nichts loescht**: zwei Wertzeilen tragen im `path` die Kante `44092`,
- * waehrend ihr eigenes `edge_id` die lebende Kante `65595` nennt. `path` ist der **Spiegel** von
- * `edge_id` (TASK-002), also traegt die Spalte keine eigene Aussage — der Spiegel wird auf seinen
+ * waehrend ihr eigenes `relation_id` die lebende Kante `65595` nennt. `path` ist der **Spiegel** von
+ * `relation_id` (TASK-002), also traegt die Spalte keine eigene Aussage — der Spiegel wird auf seinen
  * Herrn gestellt. *Herkunft: `44092` war die `converter`-Kante des Huellknotens `DisplayOption`, den
- * [D-585](../docs/NewConcept/90-decision-log.md) gestrichen hat; die Wanderung hat `edge_id`
+ * [D-585](../docs/NewConcept/90-decision-log.md) gestrichen hat; die Wanderung hat `relation_id`
  * nachgezogen und den Spiegel stehen lassen.*
  *
  * ⚠️ **Alles ist umkehrbar.** *Jede geloeschte Zeile steht vorher als Schattenzeile mit `deleted = 1`
@@ -72,20 +72,20 @@ $jetzt = current_time('mysql');
 /* ---------------------------------------------------------------- 1 · value_ref = 0 */
 
 $nullVerweise = $wpdb->get_results(
-    'SELECT * FROM ' . Schema::table('record_values') . ' WHERE value_ref = 0 ORDER BY id',
+    'SELECT * FROM ' . Schema::table('relation_records') . ' WHERE value_ref = 0 ORDER BY id',
     ARRAY_A
 ) ?: [];
 
 echo count($nullVerweise) . " Wertzeile(n) mit value_ref = 0 (TASK-044):\n";
 
 foreach ($nullVerweise as $z) {
-    echo "  Zeile {$z['id']} · Satz {$z['record_id']} · Kante {$z['edge_id']}\n";
+    echo "  Zeile {$z['id']} · Satz {$z['node_record_id']} · Kante {$z['relation_id']}\n";
 }
 
 /* ------------------------------------------------- 2 · Datensaetze ohne Knoten, ohne Verweis */
 
 $waisen = $wpdb->get_results(
-    'SELECT r.* FROM ' . Schema::table('records') . ' r
+    'SELECT r.* FROM ' . Schema::table('node_records') . ' r
       LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = r.node_id
      WHERE n.id IS NULL
      ORDER BY r.id',
@@ -101,11 +101,11 @@ foreach ($waisen as $r) {
     // ⚠️ **Die Grenze aus TASK-044, jede Richtung einzeln gefragt.** *Wer eine dieser Fragen
     // ueberspringt, loescht eine Renderer-Wahl, die ihre Aussage in der `node_id` traegt.*
     $benutzt = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' WHERE record_id = %d',
+        'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d',
         $id
     ))
         + (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT COUNT(*) FROM ' . Schema::table('record_values')
+            'SELECT COUNT(*) FROM ' . Schema::table('relation_records')
             . " WHERE value_ref_kind = 'record' AND value_ref = %d",
             $id
         ))
@@ -164,17 +164,17 @@ foreach ($aufConstants as $k) {
     echo "  Kante {$k['id']} · " . ($von ?? '?') . " --{$k['name']}--> Constants ({$k['kind']})\n";
 }
 
-/* --------------------------------------------------------- 4 · Der Spiegel path = edge_id */
+/* --------------------------------------------------------- 4 · Der Spiegel path = relation_id */
 
 $spiegel = $wpdb->get_results(
-    'SELECT * FROM ' . Schema::table('record_values') . ' WHERE path <> CAST(edge_id AS CHAR) ORDER BY id',
+    'SELECT * FROM ' . Schema::table('relation_records') . ' WHERE path <> CAST(relation_id AS CHAR) ORDER BY id',
     ARRAY_A
 ) ?: [];
 
-echo "\n" . count($spiegel) . " Wertzeile(n), deren path nicht ihr eigenes edge_id nennt:\n";
+echo "\n" . count($spiegel) . " Wertzeile(n), deren path nicht ihr eigenes relation_id nennt:\n";
 
 foreach ($spiegel as $z) {
-    echo "  Zeile {$z['id']} · path {$z['path']} · edge_id {$z['edge_id']}\n";
+    echo "  Zeile {$z['id']} · path {$z['path']} · relation_id {$z['relation_id']}\n";
 }
 
 if (! $apply) {
@@ -202,22 +202,22 @@ $schatten = static function (string $tabelle, array $zeile, array $spalten, bool
 };
 
 $wertSpalten = [
-    'id', 'record_id', 'edge_id', 'path', 'locale', 'position', 'version',
+    'id', 'node_record_id', 'relation_id', 'path', 'locale', 'position', 'version',
     'value_int', 'value_decimal', 'value_text', 'value_date', 'value_ref', 'value_ref_kind',
 ];
 
 foreach ($nullVerweise as $z) {
-    $schatten('record_values', $z, $wertSpalten);
+    $schatten('relation_records', $z, $wertSpalten);
     $wpdb->query($wpdb->prepare(
-        'DELETE FROM ' . Schema::table('record_values') . ' WHERE id = %d',
+        'DELETE FROM ' . Schema::table('relation_records') . ' WHERE id = %d',
         (int) $z['id']
     ));
 }
 
 foreach ($loeschbar as $r) {
-    $schatten('records', $r, ['id', 'node_id', 'node_version', 'version', 'created_at', 'kind']);
+    $schatten('node_records', $r, ['id', 'node_id', 'node_version', 'version', 'created_at', 'kind']);
     $wpdb->query($wpdb->prepare(
-        'DELETE FROM ' . Schema::table('records') . ' WHERE id = %d',
+        'DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d',
         (int) $r['id']
     ));
 }
@@ -248,10 +248,10 @@ foreach ($aufConstants as $k) {
 
 foreach ($spiegel as $z) {
     // ⚠️ *Hier faellt nichts, also `deleted = 0` — die Schattenzeile ist die alte Fassung, nicht ein Grab.*
-    $schatten('record_values', $z, $wertSpalten, false);
+    $schatten('relation_records', $z, $wertSpalten, false);
     $wpdb->query($wpdb->prepare(
-        'UPDATE ' . Schema::table('record_values') . ' SET path = %s WHERE id = %d',
-        (string) $z['edge_id'],
+        'UPDATE ' . Schema::table('relation_records') . ' SET path = %s WHERE id = %d',
+        (string) $z['relation_id'],
         (int) $z['id']
     ));
 }

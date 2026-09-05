@@ -74,8 +74,8 @@ echo "\n== Keine Wertzeile haengt an einer Kante, die es nicht gibt ==\n";
 $bekannteReste = 4;
 
 $tote = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' v
-       LEFT JOIN ' . Schema::table('relations') . ' r ON r.id = v.edge_id
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+       LEFT JOIN ' . Schema::table('relations') . ' r ON r.id = v.relation_id
       WHERE r.id IS NULL'
 );
 
@@ -86,13 +86,13 @@ check(
 );
 
 $listeTot = $wpdb->get_results(
-    'SELECT v.edge_id, COUNT(*) AS wieviele FROM ' . Schema::table('record_values') . ' v
-       LEFT JOIN ' . Schema::table('relations') . ' r ON r.id = v.edge_id
-      WHERE r.id IS NULL GROUP BY v.edge_id'
+    'SELECT v.relation_id, COUNT(*) AS wieviele FROM ' . Schema::table('relation_records') . ' v
+       LEFT JOIN ' . Schema::table('relations') . ' r ON r.id = v.relation_id
+      WHERE r.id IS NULL GROUP BY v.relation_id'
 );
 
 foreach ($listeTot as $zeile) {
-    printf("  --   Kante %d traegt noch %d Zeile(n)\n", (int) $zeile->edge_id, (int) $zeile->wieviele);
+    printf("  --   Kante %d traegt noch %d Zeile(n)\n", (int) $zeile->relation_id, (int) $zeile->wieviele);
 }
 
 echo "\n== Ein gefuellter Zeiger zeigt auf einen Datensatz, den es gibt ==\n";
@@ -109,7 +109,7 @@ printf("  --   %d Knoten tragen einen Einstellungszeiger\n", $gefuelltAmKnoten);
 
 $insLeereAmKnoten = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
-       LEFT JOIN ' . Schema::table('records') . ' s ON s.id = n.settings_record_id
+       LEFT JOIN ' . Schema::table('node_records') . ' s ON s.id = n.settings_record_id
       WHERE n.settings_record_id IS NOT NULL AND s.id IS NULL'
 );
 
@@ -118,7 +118,7 @@ check('kein Knotenzeiger ins Leere', $insLeereAmKnoten === 0, (string) $insLeere
 foreach (['settings_record_id', 'target_settings_record_id'] as $spalte) {
     $insLeere = (int) $wpdb->get_var(
         'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' k
-           LEFT JOIN ' . Schema::table('records') . ' s ON s.id = k.' . $spalte . '
+           LEFT JOIN ' . Schema::table('node_records') . ' s ON s.id = k.' . $spalte . '
           WHERE k.' . $spalte . ' IS NOT NULL AND s.id IS NULL'
     );
 
@@ -132,7 +132,7 @@ echo "\n== Und der Zeiger nennt einen Knoten, den es gibt ==\n";
 // TASK-020 waren**, nur eine Stufe später.*
 $ohneKnoten = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
-       JOIN ' . Schema::table('records') . ' s ON s.id = n.settings_record_id
+       JOIN ' . Schema::table('node_records') . ' s ON s.id = n.settings_record_id
        LEFT JOIN ' . Schema::table('nodes') . ' z ON z.id = s.node_id
       WHERE n.settings_record_id IS NOT NULL AND z.id IS NULL'
 );

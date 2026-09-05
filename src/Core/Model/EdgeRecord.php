@@ -8,11 +8,11 @@ namespace Taxmod\Core\Model;
  * ```mermaid
  * flowchart LR
  *   R["record"] --> P["path · 100.101"] --> V["value"]
- *   P --> E["edge_id · 101 · the last step"]
+ *   P --> E["relation_id · 101 · the last step"]
  * ```
  *
  * ⚠️ **The last edge is kept alongside the path** (D-134), and that is what makes the data
- * searchable at all: `WHERE edge_id = … AND value_decimal > 1000` finds every price over a
+ * searchable at all: `WHERE relation_id = … AND value_decimal > 1000` finds every price over a
  * thousand **wherever it sits**, and adding the path narrows it to one attribute. Without the
  * separate column the same question would need a `LIKE` over a text path.
  *
@@ -69,7 +69,7 @@ final class EdgeRecord
      *
      * ⚠️ **Das ist die Form, die der Docblock oben immer beschrieben hat und die niemand benutzt
      * hat:** *«Kanten-Ids vom Modell des Datensatzes hinunter zu diesem Wert». Gemessen am 2026-08-30
-     * trug **kein einziger** Pfad in `record_values` einen Punkt — die Möglichkeit stand seit Paket 1
+     * trug **kein einziger** Pfad in `relation_records` einen Punkt — die Möglichkeit stand seit Paket 1
      * da und blieb leer.*
      *
      * ⚠️ **Und sie ist es, die eine Einstellung an einer Verwendungsstelle möglich macht.** *Der
@@ -78,7 +78,7 @@ final class EdgeRecord
      * ein zusätzliches Mittel?**» Er hatte recht: **es ist kein Datensatz an der Kante, sondern ein
      * Wert im Datensatz des Besitzers, adressiert über die Kante.***
      *
-     * ⚠️ *`edge_id` bleibt die **letzte** Stufe, damit die Suche «alle Renderer, wo auch immer sie
+     * ⚠️ *`relation_id` bleibt die **letzte** Stufe, damit die Suche «alle Renderer, wo auch immer sie
      * sitzen» ein indizierter Zugriff bleibt ([D-134](../../../docs/NewConcept/90-decision-log.md)).*
      *
      * @param list<int> $edgeIds Von aussen nach innen, mindestens eine.

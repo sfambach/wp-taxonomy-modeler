@@ -29,7 +29,7 @@
  * sagt das Fehlen fast nichts über eine einzelne Zeile. **Was es sagt, ist, wo man nachfragen muss**, und
  * in welcher Reihenfolge: nach Gewicht, nicht nach Nummer.*
  *
- * ⚠️ *Der Fall, der es ausgelöst hat: `record_values.path` steht wegen [D-134](../../docs/NewConcept/90-decision-log.md)
+ * ⚠️ *Der Fall, der es ausgelöst hat: `relation_records.path` steht wegen [D-134](../../docs/NewConcept/90-decision-log.md)
  * da — «required by [D-133](../../docs/NewConcept/90-decision-log.md)'s flattening» —, D-133 wurde am Tag
  * danach von [D-232](../../docs/NewConcept/90-decision-log.md) abgelöst, und der Eigentümer sagt seit
  * Tagen, dass ein Pfad nicht zu seinem Wortschatz gehört. **Er hatte recht, und niemand konnte es sehen,

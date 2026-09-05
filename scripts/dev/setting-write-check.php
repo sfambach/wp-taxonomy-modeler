@@ -96,27 +96,27 @@ register_shutdown_function(static function () use (&$meineKnoten, &$meineSaetze)
     global $wpdb;
 
     foreach ($meineSaetze as $id) {
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values_history') . ' WHERE record_id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records_history') . ' WHERE id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records_history') . ' WHERE node_record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records_history') . ' WHERE id = %d', $id));
     }
 
     foreach ($meineKnoten as $id) {
         // ⚠️ *Auch die Datensätze, die der Lauf nicht selbst notiert hat — ein Teil entsteht innen
         // drin, und ein Teil ohne Besitzer wäre genau der Müll, den diese Prüfung nicht machen darf.*
-        foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('records') . ' WHERE node_id = %d', $id)) ?: [] as $satzId) {
+        foreach ($wpdb->get_col($wpdb->prepare('SELECT id FROM ' . Schema::table('node_records') . ' WHERE node_id = %d', $id)) ?: [] as $satzId) {
             // ⚠️ **Und die Teile mit, denn sie gehören einem **anderen** Knoten.** *Gemessen: nach den
             // Läufen dieses Abends standen **36** Teil-Sätze von `DisplayOption` ohne Besitzer da. Der
             // Aufräumer löschte nur, was `node_id = <mein Knoten>` trug — ein Teil trägt aber die Id
             // des Zielknotens. **Der Verweis verschwand, der Satz blieb.***
-            foreach ($wpdb->get_col($wpdb->prepare('SELECT value_ref FROM ' . Schema::table('record_values') . ' WHERE record_id = %d AND value_ref IS NOT NULL', (int) $satzId)) ?: [] as $teilId) {
-                $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $teilId));
-                $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $teilId));
+            foreach ($wpdb->get_col($wpdb->prepare('SELECT value_ref FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d AND value_ref IS NOT NULL', (int) $satzId)) ?: [] as $teilId) {
+                $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', (int) $teilId));
+                $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', (int) $teilId));
             }
 
-            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', (int) $satzId));
-            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', (int) $satzId));
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', (int) $satzId));
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', (int) $satzId));
         }
 
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d', $id, $id));
@@ -167,7 +167,7 @@ $gesamt = (int) $wpdb->get_var(
 
 $daneben = (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
-       INNER JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+       INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
        LEFT JOIN ' . Schema::table('nodes') . ' z ON z.id = r.node_id
       WHERE COALESCE(z.path, %s) NOT LIKE %s',
     '',
@@ -253,7 +253,7 @@ if ($rendererKnoten === null) {
         // nichts gefunden.
         $satz = $wpdb->get_row($wpdb->prepare(
             'SELECT r.kind, r.node_id FROM ' . Schema::table('nodes') . ' n
-             INNER JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+             INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
              WHERE n.id = %d',
             $knotenId
         ), ARRAY_A);
@@ -357,7 +357,7 @@ if ($zweiter === null || $rendererKnoten === null) {
     // er, stuenden zwei Antworten auf eine Frage da, und die Felder des alten Renderers waeren
     // Werte, die niemand mehr lesen kann.
     $altNochDa = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('records') . ' WHERE id = %d',
+        'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' WHERE id = %d',
         $alt
     ));
 
@@ -430,8 +430,8 @@ if ($einstellung === null) {
     // unter `<Verwendungsstelle>.<Einstellungskante>`. *Ohne diese Zusage koennte der Wert im Satz des
     // Ziels landen und truege dort fuer alle, die es verwenden.*
     $zeilen = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('record_values') . ' w
-         INNER JOIN ' . Schema::table('records') . ' r ON r.id = w.record_id
+        'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' w
+         INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = w.node_record_id
          WHERE r.node_id = %d AND w.path = %s',
         $knotenId,
         $stelle->id . '.' . $einstellung->id
@@ -525,7 +525,7 @@ check('der Pruefknoten haelt genau eine Wahl', $spalten === 1, (string) $spalten
 // dazwischen, keine zweite Zeile daneben.
 $stufen = $wpdb->get_row($wpdb->prepare(
     'SELECT z.name FROM ' . Schema::table('nodes') . ' n
-     INNER JOIN ' . Schema::table('records') . ' r ON r.id = n.settings_record_id
+     INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
      INNER JOIN ' . Schema::table('nodes') . ' z ON z.id = r.node_id
      WHERE n.id = %d',
     $knotenId

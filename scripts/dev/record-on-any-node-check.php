@@ -87,8 +87,8 @@ register_shutdown_function(static function () use (&$meine): void {
     global $wpdb;
 
     foreach ($meine as $id) {
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $id));
     }
 });
 
@@ -178,7 +178,7 @@ if ($kilo === null) {
         );
 
         $roh = $record === null ? null : $wpdb->get_row($wpdb->prepare(
-            'SELECT edge_id, path, value_int FROM ' . Schema::table('record_values') . ' WHERE record_id = %d',
+            'SELECT relation_id, path, value_int FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d',
             $record->id
         ), ARRAY_A);
 
@@ -254,13 +254,13 @@ echo "\n== 3b. Die Marke am Datensatz — drei Zustände, nicht zwei ==\n";
 
 // ⚠️ **[C65](../../docs/NewConcept/10-domain-core.md) hatte es seit dem 2026-08-23:** *«a checkbox
 // «is test data» / «is default value» would do it»* — **drei Zustände**, und `is_test` konnte zwei.
-$spalten = array_column($wpdb->get_results('SHOW COLUMNS FROM ' . Schema::table('records'), ARRAY_A), 'Field');
+$spalten = array_column($wpdb->get_results('SHOW COLUMNS FROM ' . Schema::table('node_records'), ARRAY_A), 'Field');
 
 check('records hat die Spalte kind', in_array('kind', $spalten, true), implode(', ', $spalten));
 check('und is_test ist weg — nicht danebengestellt', ! in_array('is_test', $spalten, true));
 
 $fremd = array_values(array_filter(
-    $wpdb->get_col('SELECT DISTINCT kind FROM ' . Schema::table('records')),
+    $wpdb->get_col('SELECT DISTINCT kind FROM ' . Schema::table('node_records')),
     static fn ($v): bool => RecordKind::tryFrom((string) $v) === null
 ));
 
@@ -280,7 +280,7 @@ if ($kilo !== null) {
     check('und die Marke liest sich zurück', $zurueck?->kind === RecordKind::Default, $zurueck?->kind->value ?? 'null');
 
     $roh = $wpdb->get_var($wpdb->prepare(
-        'SELECT kind FROM ' . Schema::table('records') . ' WHERE id = %d',
+        'SELECT kind FROM ' . Schema::table('node_records') . ' WHERE id = %d',
         $alsAutor->id
     ));
 
@@ -292,12 +292,12 @@ echo "\n== 4. Die Prüfung lässt nichts liegen ==\n";
 $vorher = count($meine);
 
 foreach ($meine as $id) {
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $id));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $id));
 }
 
 $uebrig = $meine === [] ? 0 : (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('records') . ' WHERE id IN (' . implode(',', array_map('intval', $meine)) . ')'
+    'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' WHERE id IN (' . implode(',', array_map('intval', $meine)) . ')'
 );
 
 $meine = [];

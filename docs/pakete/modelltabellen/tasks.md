@@ -380,7 +380,7 @@ Wertzeile — **also verliert man nichts und entscheidet trotzdem etwas, und daz
 Entscheidung etwas** (`PR-4`).*
 
 ```text
-[ ] TASK-014  records -> node_records, record_values -> relation_records
+[x] TASK-014  records -> node_records, record_values -> relation_records
 ```
 
 *Der Eigentümer: «records → node_records, record_values → relation_records».* **Die Zuordnung ist
@@ -393,6 +393,37 @@ gemessen und ausnahmslos** — 209 von 209, 183 von 183.
 relation 407-mal.** Die Tabelle heisst `relations`, der Code sagt überwiegend `edge`, und sein
 deutsches Wort ist **Kante** — was näher an «edge» liegt. **Zwei Wörter für eine Sache verbietet
 `CD-9`; welches bleibt, ist offen.** Erst die Wortwahl, dann die Spaltennamen.*
+
+**Gebaut am 2026-09-05, Schema 29.** Die vier Tabellen heissen `node_records`, `relation_records`
+und ihre beiden Schatten; die Spalten heissen `node_record_id` und `relation_id`.
+
+⚠️ **Die offene Frage war schon beantwortet und musste nicht neu entschieden werden:**
+*[D-576](../../NewConcept/90-decision-log.md) legt «relation» fest — es ist der Gegenstand von
+TASK-016. **Die Spalte heisst darum `relation_id`, nicht `edge_id`**, und die Messung «edge
+1080-mal» ist keine Gegenstimme, sondern der Umfang von TASK-016.*
+
+⚠️ **Gezählt vor und nach der Wanderung, und es ist dieselbe Zahl:** *node_records **413 → 413**,
+relation_records **73 → 73**, node_records_history **1596 → 1596**, relation_records_history
+**4439 → 4439**. Keine der vier alten Tabellen steht noch da. *Eine Umbenennung bewegt keine Zeile —
+darum **keine Schattenzeile**: `RENAME TABLE` und `CHANGE` sind für sich umkehrbar, und es gibt
+keinen Inhalt, den ein Schatten aufheben könnte.*
+
+⚠️ **Der Index musste von Hand fallen, wie schon bei `from_id`:** *eine umbenannte Spalte behält den
+**Namen** ihres Indexes — `dbDelta` hätte neben `edge_id` einen zweiten `relation_id` gelegt. Der
+zusammengesetzte `of_field` behält seinen Namen und folgt der Umbenennung von selbst. **Gemessen
+nachher:** `of_field(node_record_id,relation_id,locale)`, `relation_id(relation_id)`,
+`value_ref(value_ref)` — und kein `edge_id` mehr.*
+
+⚠️ **Mitgezogen, jeder mit dem Grund im Text und keiner entschärft (`PR-9`): 54 Dateien.** *Rot
+geworden ist genau einer, und er zeigt, warum ein Name mehr ist als Kosmetik:
+[`id-space-check.php`](../../../scripts/dev/id-space-check.php) hielt `records` als **Schlüssel**
+einer Liste, gab ihn an `Schema::table()` weiter, fand die Tabelle nicht — und las den Zähler als
+`0`. **Der Wächter meldete «0 gegen 7634» statt einer stillen Null.***
+
+⚠️ *Zwei Formularfelder sind mitgekommen, weil sie dieselbe Spalte meinen: das versteckte Feld und
+sein Leser in `NodesScreen` heissen `node_record_id`. **Nicht mitgekommen** ist `settings_record_id`
+an `nodes` und `relations` — sie steht nicht in der Aufgabe, und sie umzubenennen wäre eine
+Entscheidung gewesen, die niemand getroffen hat (`PR-4`).*
 
 ```text
 [ ] TASK-015  node_records: kind -> record_type, version unter id, created_at faellt
@@ -665,9 +696,56 @@ nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten
 [x] TASK-030  TreeChooser heisst NodeChooser — er waehlt einen Knoten, keinen
               Baum
 [x] TASK-031  NodeChooser bekommt oben ein Such-/Filterfeld
-[ ] TASK-032  Komposition und Aggregation werden dieselbe Ablage; ein Schalter
-              am Feld sagt nur, ob die Daten mitgeloescht werden
+[x] TASK-032  Drei Werte, drei Klassen — und Komposition ist eine Aussage
+              ueber Datensaetze                                    (D-639)
 ```
+
+**Gebaut am 2026-09-05, und die Aufgabenzeile heisst anders als vorher.** *Sie versprach «ein
+Schalter am Feld»; [D-639](../../NewConcept/90-decision-log.md) hat den Schalter wieder abgeschafft,
+bevor er gebaut war. Sein Wort: «dann haben wir **ein Mittel**, das bestimmt, was für eine Verbindung
+es ist, und nicht noch einen Schalter.» **Ein Schalter neben der Art wäre orthogonal — dann müsste
+«Einstellung und mitlöschen» eine Bedeutung haben. Hat sie nicht.***
+
+**Was steht:** `RelationKind` bleibt eine Spalte mit drei Werten, und hinter jedem Wert steht eine
+Klasse — `SettingEdge`, `AggregationEdge`, `CompositionEdge`, alle drei `final` unter `Relation`, die
+dafür `abstract` geworden ist. **Der Klassenname steht ausdrücklich nicht in der Zeile**, anders als
+beim Knoten ([D-620](../../NewConcept/90-decision-log.md), `nodes.implemented_by`): *die Menge ist
+geschlossen und hat drei Elemente; ein Name je Zeile wäre dieselbe Auskunft 57 mal statt einmal.*
+Die Ableitung Wert → Klasse steht in `Relation::classFor()`, und **jeder Bauweg geht durch
+`Relation::make()`** — auch `withKind()`, weshalb eine Kante beim Artwechsel ihre Klasse wechselt.
+
+**Was verschwunden ist, gezählt:** *`RelationKind::isSetting()` und `isComposition()` waren die
+einzigen beiden Stellen, die auf die Kantenart verzweigten (`$this === self::Setting`); sie sind
+Verhalten geworden. Die **14 Aufrufer** im Quelltext fragen jetzt die Kante statt ihre Art und
+verzweigen nicht mehr. **Gemessen nach dem Umbau: keine einzige Verzweigung auf `RelationKind` mehr
+im Kern oder am Rand** — geblieben sind zwei Stellen, die eine Art **bauen** (`Branch::relationKind()`
+und `ModelEditor::markAsSetting()`), und das ist keine Verzweigung.*
+
+⚠️ **Und «erbt von» heisst jetzt, was es meint.** *`isComposition()` gab es nur, um zu sagen, dass
+eine Einstellung eine Komposition ist. An ihrer Stelle steht `deletesRecordWithOwner()` — **eine
+Aussage über Datensätze**, wie er sie berichtigt hat: «wenn ich einen Datensatz lösche — also den
+Datensatz von Kunde A —, dann muss auch die Adresse von Kunde A gelöscht werden.» Der Zielknoten
+bleibt selbstverständlich stehen.*
+
+**Neu am Netz:** [`edge-class-check.php`](../../../scripts/dev/edge-class-check.php) — jede lebende
+Kante trägt einen der drei Werte, die Ableitung ist vollständig und eindeutig, eine **geladene** Kante
+kommt als ihre Klasse an, und **kein Datensatz hängt an zwei Besitzern**. *Gemessen im Bestand: 57
+Kanten (composition 42, setting 11, aggregation 4), 415 Datensätze, 29 gehalten, **null Verstösse**.
+Den Verstoss legt sich der Wächter selbst an und räumt ihn weg — sonst wäre er auch grün, wenn die
+Abfrage gar nichts fände.*
+
+⚠️ **Der Wächter, der hier fast gestanden hätte, und er steht als Warnung im Kopf der Datei:** *«eine
+Komposition darf nicht auf ein geteiltes Ziel zeigen». **Gemessen zeigen 36 von 42
+Kompositionskanten auf Typknoten** — `Text` 26 mal, `Einheitenwert` 6 mal. Ein Typ ist im Modell
+geteilt; **die Prüfung hätte 36 richtige Zeilen berichtigt.** Modell und Daten vermischt, denselben
+Fehler zum zweiten Mal.*
+
+⚠️ **Nicht mitgebaut, `PR-4`:** *`Branch::relationKind()`, `holdsData()` und `storage()` fragen
+weiter den Ast. [D-621](../../NewConcept/90-decision-log.md) parkt die beiden letzten ausdrücklich
+(«wird nicht geraten»), und [D-622](../../NewConcept/90-decision-log.md) sagt zwar, dass die Ablage
+eine Angabe mit zwei Fällen ist — **wer sie heute an `DataEntry::ownsItsRecord()` umhängt, ändert für
+`Model` und `Constants`, welche Ziele einen eigenen Satz bekommen.** Das hat niemand entschieden.
+Steht als `INF-038` im Eingang.*
 
 ⚠️ **Am 2026-09-05 nach TASK-018 angesehen und bewusst nicht angefangen, `PR-4`.** *Es fehlt eine
 Entscheidung mitten im Weg: **woran erkennt man eine Einstellungskante, wenn `relation_type`

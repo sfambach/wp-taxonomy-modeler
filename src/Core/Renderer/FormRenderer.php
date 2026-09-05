@@ -138,10 +138,10 @@ final class FormRenderer extends RendererNode
             // ⚠️ *`position` ordnet weiterhin **innerhalb** der Gruppe
             // ([D-407](../../../docs/NewConcept/90-decision-log.md)) — sie sagt die Reihenfolge unter
             // Geschwistern, nicht den Rang zwischen Feld und Einstellung.*
-            $part->edge->kind->isSetting()       => 4,
-            $part->readOnly                      => 1,
-            $part->type === SimpleType::Bool     => 3,
-            default                              => 2,
+            $part->edge->isSetting()         => 4,
+            $part->readOnly                  => 1,
+            $part->type === SimpleType::Bool => 3,
+            default                          => 2,
         };
     }
 

@@ -126,7 +126,7 @@ echo "\n2 · Jede Tabelle vergibt ihre Ids selbst\n";
 
 // ⚠️ *Eine Abfrage über `information_schema` und keine je Tabelle (`CD-7`).*
 // WICHTIG: settings stand hier und ist mit D-579 gestrichen.
-$eigene = ['nodes', 'relations', 'records', 'record_values', 'labels', 'changelog'];
+$eigene = ['nodes', 'relations', 'node_records', 'relation_records', 'labels', 'changelog'];
 
 foreach ($eigene as $name) {
     $tabelle = Schema::table($name);
@@ -152,9 +152,9 @@ $verweise = [
     ['relations', 'to_node_id', 'nodes'],
     ['labels', 'owner_id', 'nodes'],
     ['labels', 'role_id', 'nodes'],
-    ['records', 'node_id', 'nodes'],
-    ['record_values', 'record_id', 'records'],
-    ['record_values', 'edge_id', 'relations'],
+    ['node_records', 'node_id', 'nodes'],
+    ['relation_records', 'node_record_id', 'records'],
+    ['relation_records', 'relation_id', 'relations'],
 ];
 
 foreach ($verweise as [$name, $spalte, $ziel]) {
@@ -176,7 +176,7 @@ foreach ($verweise as [$name, $spalte, $ziel]) {
 // genauso aus wie eine, die steht.*
 //
 // ⚠️ *Nur die beiden Kantenspalten. Die anderen fünf Verweise oben haben bewusst keine Bedingung:
-// `record_values.edge_id` zeigt auf eine Kante, die geparkt werden kann (TASK-013), und die
+// `relation_records.relation_id` zeigt auf eine Kante, die geparkt werden kann (TASK-013), und die
 // Schattentabellen führen ihre Verweise als **Datum** und nicht als Zwang.*
 foreach ([['from_node_id', 'nodes'], ['to_node_id', 'nodes']] as [$spalte, $ziel]) {
     $steht = (int) $wpdb->get_var($wpdb->prepare(
@@ -199,7 +199,9 @@ echo "\n4 · Keine neue Zeile bekommt eine Nummer, die schon vergeben war\n";
 $verbraucht = [
     'nodes'     => [['nodes', 'id'], ['nodes_history', 'id'], ['relations', 'from_node_id'], ['relations', 'to_node_id']],
     'relations' => [['relations', 'id'], ['relations_history', 'id']],
-    'records'   => [['records', 'id'], ['records_history', 'id'], ['record_values', 'record_id']],
+    // ⚠️ *Der Schlüssel ist der **Tabellenname** und seit TASK-014 `node_records` — er geht durch
+    // {@see Schema::table()}. Als `records` fand er nichts und der Zähler las sich als `0`.*
+    'node_records' => [['node_records', 'id'], ['node_records_history', 'id'], ['relation_records', 'node_record_id']],
 ];
 
 foreach ($verbraucht as $name => $quellen) {
@@ -251,7 +253,7 @@ echo "
 // Kante 5 und Datensatz 5».
 //
 // Was bleibt, ist die Gegenprobe, dass niemand mehr ohne Raum fragt: keine Tabelle mit einer
-// mehrdeutigen Besitzerspalte. changelog nennt owner_kind, record_values nennt value_ref_kind, und
+// mehrdeutigen Besitzerspalte. changelog nennt owner_kind, relation_records nennt value_ref_kind, und
 // labels.owner_id zeigt gemessen nur auf Knoten — das steht in Abschnitt 3.
 $settingsTabelle = Schema::table('settings');
 

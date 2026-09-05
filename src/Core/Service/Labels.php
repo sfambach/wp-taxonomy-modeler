@@ -301,7 +301,7 @@ final class Labels
             $state($was),
             $state($now),
             // ⚠️ **Ein Label hat keine Version, und zwar gemessen: `labels` trägt keine solche
-            // Spalte** — anders als `nodes`, `relations`, `records` und `record_values`. *Seit
+            // Spalte** — anders als `nodes`, `relations`, `node_records` und `relation_records`. *Seit
             // [D-634](../../../docs/NewConcept/90-decision-log.md) muss der Melder das hinschreiben
             // statt es wegzulassen; `null` ist hier die richtige Antwort und zugleich der Befund
             // (`PR-4`): ob Labels versioniert werden, ist nicht entschieden.*

@@ -97,7 +97,7 @@ final class ModelValues
      */
     public static function inheritanceBlocked(Relation $edge, int $heirId): bool
     {
-        return $edge->kind->isSetting()
+        return $edge->isSetting()
             && $edge->toNodeId === $heirId
             && $edge->fromNodeId !== $heirId;
     }
@@ -404,7 +404,7 @@ final class ModelValues
             $kante = $this->kantenNachBesitzer[$besitzer][$edgeId] ?? null;
 
             if ($kante !== null) {
-                return $kante->kind->isSetting() ? $kante : null;
+                return $kante->isSetting() ? $kante : null;
             }
         }
 

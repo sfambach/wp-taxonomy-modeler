@@ -419,7 +419,7 @@ final class DataEntryTest extends TestCase
 
     /**
      * ⚠️ **Die Adresse, die der Speicher seit Paket 1 kann und die niemand benutzt hat.**
-     * *Gemessen am 2026-08-30 trug **kein einziger** Pfad in `record_values` einen Punkt — während 21
+     * *Gemessen am 2026-08-30 trug **kein einziger** Pfad in `relation_records` einen Punkt — während 21
      * Zeilen der alten Settings-Tabelle genau diese Form längst benutzten.*
      *
      * ⚠️ **Der Eigentümer hat den Umweg abgeschnitten, den ich bauen wollte:** *«wir haben alle
@@ -441,7 +441,7 @@ final class DataEntryTest extends TestCase
         self::assertSame('kompakt', $werte[0]->value->text);
         self::assertSame($this->description->id . '.' . $renderer->id, $werte[0]->path);
 
-        // ⚠️ *Die **letzte** Stufe steht in `edge_id`, damit «alle Renderer, wo auch immer sie sitzen»
+        // ⚠️ *Die **letzte** Stufe steht in `relation_id`, damit «alle Renderer, wo auch immer sie sitzen»
         // ein indizierter Zugriff bleibt (D-134).*
         self::assertSame($renderer->id, $werte[0]->edgeId);
     }

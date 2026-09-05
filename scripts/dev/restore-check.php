@@ -65,10 +65,10 @@ function check(string $what, bool $passed, string $detail = ''): void
     echo "  FAIL $what" . ($detail !== '' ? " — $detail" : '') . "\n";
 }
 
-$vorlage = $wpdb->get_row('SELECT record_id, edge_id FROM ' . Schema::table('record_values') . ' LIMIT 1');
+$vorlage = $wpdb->get_row('SELECT node_record_id, relation_id FROM ' . Schema::table('relation_records') . ' LIMIT 1');
 
 if ($vorlage === null) {
-    check('eine Wertzeile als Vorlage gefunden', false, 'record_values ist leer');
+    check('eine Wertzeile als Vorlage gefunden', false, 'relation_records ist leer');
 
     echo "\n1 fehlgeschlagen, 0 in Ordnung\n";
 
@@ -76,8 +76,8 @@ if ($vorlage === null) {
 }
 
 $knotenId = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT node_id FROM ' . Schema::table('records') . ' WHERE id = %d',
-    (int) $vorlage->record_id
+    'SELECT node_id FROM ' . Schema::table('node_records') . ' WHERE id = %d',
+    (int) $vorlage->node_record_id
 ));
 
 $records = new WpdbRecordRepository();
@@ -86,8 +86,8 @@ $satzId  = $records->add(new NodeRecord(0, $knotenId, 1, '2026-08-30 00:00:00'))
 register_shutdown_function(static function () use ($satzId): void {
     global $wpdb;
 
-    foreach (['record_values', 'records'] as $t) {
-        $spalte = $t === 'records' ? 'id' : 'record_id';
+    foreach (['relation_records', 'records'] as $t) {
+        $spalte = $t === 'node_records' ? 'id' : 'node_record_id';
         $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table($t) . " WHERE {$spalte} = %d", $satzId));
         $wpdb->query($wpdb->prepare(
             'DELETE FROM ' . Schema::table($t . '_history') . " WHERE {$spalte} = %d",
@@ -102,7 +102,7 @@ function jetzt(int $satzId): ?array
     global $wpdb;
 
     $z = $wpdb->get_row($wpdb->prepare(
-        'SELECT value_text, version FROM ' . Schema::table('record_values') . ' WHERE record_id = %d',
+        'SELECT value_text, version FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d',
         $satzId
     ), ARRAY_A);
 
@@ -111,14 +111,14 @@ function jetzt(int $satzId): ?array
 
 echo "\n== 1. Drei Staende schreiben ==\n";
 
-$records->putValue(EdgeRecord::direct($satzId, (int) $vorlage->edge_id, TypedValue::ofText('erster')));
+$records->putValue(EdgeRecord::direct($satzId, (int) $vorlage->relation_id, TypedValue::ofText('erster')));
 $zeile = $records->valuesOf($satzId)[0];
 
 foreach (['zweiter', 'dritter'] as $text) {
     $records->putValue(new EdgeRecord(
         $satzId,
         $zeile->path,
-        (int) $vorlage->edge_id,
+        (int) $vorlage->relation_id,
         '',
         TypedValue::ofText($text),
         $zeile->id,
@@ -132,8 +132,8 @@ check('lebend steht der dritte', ($stand['text'] ?? null) === 'dritter', $stand[
 check('und die Version ist gewachsen', ($stand['version'] ?? 0) === 3, (string) ($stand['version'] ?? 0));
 
 $verlauf = $wpdb->get_col($wpdb->prepare(
-    'SELECT value_text FROM ' . Schema::table('record_values_history') . '
-     WHERE record_id = %d ORDER BY version ASC',
+    'SELECT value_text FROM ' . Schema::table('relation_records_history') . '
+     WHERE node_record_id = %d ORDER BY version ASC',
     $satzId
 ));
 
@@ -141,7 +141,7 @@ check('der Schatten hält beide Vorgänger', $verlauf === ['erster', 'zweiter'],
 
 echo "\n== 2. Einmal zurueck ==\n";
 
-check('es gab etwas zurueckzusetzen', Restore::previous('record_values', (int) $zeile->id));
+check('es gab etwas zurueckzusetzen', Restore::previous('relation_records', (int) $zeile->id));
 
 $stand = jetzt($satzId);
 
@@ -154,7 +154,7 @@ check('und die Version ist weitergezaehlt, nicht zurueckgedreht', ($stand['versi
 
 echo "\n== 3. Und das Zurueck ist selbst umkehrbar ==\n";
 
-check('noch einmal zurueck geht', Restore::previous('record_values', (int) $zeile->id));
+check('noch einmal zurueck geht', Restore::previous('relation_records', (int) $zeile->id));
 
 $stand = jetzt($satzId);
 
@@ -169,7 +169,7 @@ echo "\n== 4. Ein geloeschter Stand kommt zurueck ==\n";
 $records->forgetValueById((int) $zeile->id);
 
 check('lebend ist nichts mehr', jetzt($satzId) === null);
-check('zuruecksetzen holt ihn', Restore::previous('record_values', (int) $zeile->id));
+check('zuruecksetzen holt ihn', Restore::previous('relation_records', (int) $zeile->id));
 
 $stand = jetzt($satzId);
 
@@ -182,17 +182,17 @@ $frisch = $records->add(new NodeRecord(0, $knotenId, 1, '2026-08-30 00:00:00'));
 register_shutdown_function(static function () use ($frisch): void {
     global $wpdb;
 
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $frisch));
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records_history') . ' WHERE id = %d', $frisch));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $frisch));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records_history') . ' WHERE id = %d', $frisch));
 });
 
 // ⚠️ *`false` und keine Ausnahme: «diese Zeile hatte nie einen Vorgänger» ist eine Antwort, kein
 // Fehler. Eine Ausnahme hier zwänge jeden Aufrufer, den Normalfall abzufangen.*
-check('ein frischer Datensatz meldet «nichts zurueckzusetzen»', Restore::previous('records', $frisch) === false);
+check('ein frischer Datensatz meldet «nichts zurueckzusetzen»', Restore::previous('node_records', $frisch) === false);
 
 check(
     'und er steht unveraendert da',
-    (int) $wpdb->get_var($wpdb->prepare('SELECT version FROM ' . Schema::table('records') . ' WHERE id = %d', $frisch)) === 1
+    (int) $wpdb->get_var($wpdb->prepare('SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d', $frisch)) === 1
 );
 
 echo "\n== 6. Eine ganze Gruppe, und der Waechter davor ==\n";

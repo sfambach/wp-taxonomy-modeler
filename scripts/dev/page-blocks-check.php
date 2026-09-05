@@ -530,7 +530,7 @@ echo "\n== Der Datensatz-Block ist eine Tabelle, mit Aktionen rechts ==\n";
 // eine Tabelle gezeichnet, und der Unterschied zwischen «eine Tabelle» und «23 Tabellen» ist genau die
 // Zusage, die hier fehlte.*
 $mitSaetzen = (int) $wpdb->get_var(
-    'SELECT r.node_id FROM ' . Schema::table('records') . ' r
+    'SELECT r.node_id FROM ' . Schema::table('node_records') . ' r
      INNER JOIN ' . Schema::table('relations') . " e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
      GROUP BY r.node_id HAVING COUNT(DISTINCT r.id) > 2 ORDER BY COUNT(DISTINCT r.id) DESC LIMIT 1"
 );
@@ -545,7 +545,7 @@ if ($mitSaetzen === 0) {
     $block = $at === false ? '' : substr($seite, $at);
 
     $saetze = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('records') . ' WHERE node_id = %d',
+        'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' WHERE node_id = %d',
         $mitSaetzen
     ));
 

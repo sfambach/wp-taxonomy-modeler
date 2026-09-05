@@ -54,7 +54,7 @@ printf("  Knoten        %s\n", $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}nod
 printf("  Kanten        %s\n", $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relations"));
 printf("  Settings      %s\n", $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}settings"));
 printf("  Labels        %s\n", $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}labels"));
-printf("  Datensaetze   %s\n", $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records"));
+printf("  Datensaetze   %s\n", $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}node_records"));
 printf("  Changelog     %s\n", $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}changelog"));
 
 echo "\n== Settings ==\n";
@@ -104,17 +104,17 @@ echo "\n== Datensaetze ==\n";
 
 say(
     'Datensaetze, deren Modell fehlt',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}records rc WHERE NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = rc.node_id)")
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}node_records rc WHERE NOT EXISTS (SELECT 1 FROM {$prefix}nodes n WHERE n.id = rc.node_id)")
 );
 
 say(
     'Werte, deren Datensatz fehlt',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}record_values v WHERE NOT EXISTS (SELECT 1 FROM {$prefix}records rc WHERE rc.id = v.record_id)")
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relation_records v WHERE NOT EXISTS (SELECT 1 FROM {$prefix}node_records rc WHERE rc.id = v.node_record_id)")
 );
 
 say(
     'Werte, deren Kante fehlt',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}record_values v WHERE NOT EXISTS (SELECT 1 FROM {$prefix}relations r WHERE r.id = v.edge_id)")
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}relation_records v WHERE NOT EXISTS (SELECT 1 FROM {$prefix}relations r WHERE r.id = v.relation_id)")
 );
 
 echo "\n== Changelog ==\n";

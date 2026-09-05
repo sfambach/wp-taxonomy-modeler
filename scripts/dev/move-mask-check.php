@@ -263,8 +263,8 @@ echo "\n== aufraeumen ==\n";
 $meine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes WHERE name LIKE '\\_\\_mv %'"));
 $in    = $meine === [] ? '0' : implode(',', $meine);
 
-$wpdb->query("DELETE FROM {$p}record_values WHERE record_id IN (SELECT id FROM {$p}records WHERE node_id IN ({$in}))");
-$wpdb->query("DELETE FROM {$p}records WHERE node_id IN ({$in})");
+$wpdb->query("DELETE FROM {$p}relation_records WHERE node_record_id IN (SELECT id FROM {$p}node_records WHERE node_id IN ({$in}))");
+$wpdb->query("DELETE FROM {$p}node_records WHERE node_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}relations WHERE from_node_id IN ({$in}) OR to_node_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");

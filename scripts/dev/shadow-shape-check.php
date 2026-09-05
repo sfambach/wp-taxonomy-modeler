@@ -194,17 +194,17 @@ echo "\n== Und er schreibt wirklich ==\n";
 // `false`, und das wurde als «null Zeilen» gelesen. **Eine Prüfung, die nur die Form vergleicht, ist
 // mit einem leeren Schatten zufrieden.**
 $vorlage = $wpdb->get_row(
-    'SELECT record_id, edge_id, locale FROM ' . Schema::table('record_values') . ' LIMIT 1'
+    'SELECT node_record_id, relation_id, locale FROM ' . Schema::table('relation_records') . ' LIMIT 1'
 );
 
 if ($vorlage === null) {
-    check('eine Wertzeile als Vorlage gefunden', false, 'record_values ist leer');
+    check('eine Wertzeile als Vorlage gefunden', false, 'relation_records ist leer');
 } else {
     check('eine Wertzeile als Vorlage gefunden', true);
 
     $knotenId = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT node_id FROM ' . Schema::table('records') . ' WHERE id = %d',
-        (int) $vorlage->record_id
+        'SELECT node_id FROM ' . Schema::table('node_records') . ' WHERE id = %d',
+        (int) $vorlage->node_record_id
     ));
 
     $records = new WpdbRecordRepository();
@@ -214,8 +214,8 @@ if ($vorlage === null) {
     register_shutdown_function(static function () use ($satzId): void {
         global $wpdb;
 
-        foreach (['record_values', 'records'] as $t) {
-            $spalte = $t === 'records' ? 'id' : 'record_id';
+        foreach (['relation_records', 'records'] as $t) {
+            $spalte = $t === 'node_records' ? 'id' : 'node_record_id';
             $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table($t) . " WHERE {$spalte} = %d", $satzId));
             $wpdb->query($wpdb->prepare(
                 'DELETE FROM ' . Schema::table($t . '_history') . " WHERE {$spalte} = %d",
@@ -224,14 +224,14 @@ if ($vorlage === null) {
         }
     });
 
-    $records->putValue(EdgeRecord::direct($satzId, (int) $vorlage->edge_id, TypedValue::ofText('erster Stand')));
+    $records->putValue(EdgeRecord::direct($satzId, (int) $vorlage->relation_id, TypedValue::ofText('erster Stand')));
 
     $geschrieben = $records->valuesOf($satzId);
 
     check('der erste Wert steht lebend', count($geschrieben) === 1, 'es sind ' . count($geschrieben));
 
     $imSchatten = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('record_values_history') . ' WHERE record_id = %d',
+        'SELECT COUNT(*) FROM ' . Schema::table('relation_records_history') . ' WHERE node_record_id = %d',
         $satzId
     ));
 
@@ -242,7 +242,7 @@ if ($vorlage === null) {
     $records->putValue(new EdgeRecord(
         $satzId,
         $geschrieben[0]->path,
-        (int) $vorlage->edge_id,
+        (int) $vorlage->relation_id,
         '',
         TypedValue::ofText('zweiter Stand'),
         $geschrieben[0]->id,
@@ -255,8 +255,8 @@ if ($vorlage === null) {
     check('und die Version ist hochgezählt', count($jetzt) === 1, 'es sind ' . count($jetzt));
 
     $alt = $wpdb->get_row($wpdb->prepare(
-        'SELECT value_text, version, deleted FROM ' . Schema::table('record_values_history') . '
-         WHERE record_id = %d ORDER BY version ASC',
+        'SELECT value_text, version, deleted FROM ' . Schema::table('relation_records_history') . '
+         WHERE node_record_id = %d ORDER BY version ASC',
         $satzId
     ));
 
@@ -271,8 +271,8 @@ if ($vorlage === null) {
     );
 
     $geloescht = (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT COUNT(*) FROM ' . Schema::table('record_values_history') . '
-         WHERE record_id = %d AND deleted = 1',
+        'SELECT COUNT(*) FROM ' . Schema::table('relation_records_history') . '
+         WHERE node_record_id = %d AND deleted = 1',
         $satzId
     ));
 

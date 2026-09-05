@@ -412,8 +412,8 @@ foreach ($typed as [$edge, $characters, $expected]) {
 
 echo "\n== 6. Each value is in the column its type says (D-071) ==\n";
 $row = $wpdb->get_row($wpdb->prepare(
-    'SELECT value_int, value_decimal, value_text, value_date FROM ' . Schema::table('record_values')
-    . ' WHERE record_id = %d AND edge_id = %d',
+    'SELECT value_int, value_decimal, value_text, value_date FROM ' . Schema::table('relation_records')
+    . ' WHERE node_record_id = %d AND relation_id = %d',
     $record->id,
     $when->id
 ), ARRAY_A);
@@ -422,8 +422,8 @@ check('a datetime lands in value_date and nowhere else',
     json_encode($row));
 
 $row = $wpdb->get_row($wpdb->prepare(
-    'SELECT value_int, value_text FROM ' . Schema::table('record_values')
-    . ' WHERE record_id = %d AND edge_id = %d',
+    'SELECT value_int, value_text FROM ' . Schema::table('relation_records')
+    . ' WHERE node_record_id = %d AND relation_id = %d',
     $record->id,
     $stock->id
 ), ARRAY_A);
@@ -864,8 +864,8 @@ if ($style !== null) {
 
 echo "\n== 18. Clearing up ==\n";
 foreach ($data->recordsOf($part->id) as $r) {
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $r->id));
-    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $r->id));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $r->id));
+    $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $r->id));
 }
 
 // ⚠️ The settings written onto the seeded types must go too, or the next run inherits a slider
@@ -881,7 +881,7 @@ if ($selbstGelegteKanten !== []) {
 
     \Taxmod\WordPress\Persistence\Shadow::keep('relations', 'id IN (' . $liste . ')', [], true);
 
-    $wpdb->query('DELETE FROM ' . Schema::table('record_values') . ' WHERE edge_id IN (' . $liste . ')');
+    $wpdb->query('DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id IN (' . $liste . ')');
     $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (' . $liste . ')');
 }
 

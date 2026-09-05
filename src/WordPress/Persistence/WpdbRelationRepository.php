@@ -269,7 +269,7 @@ final class WpdbRelationRepository implements RelationRepository
      * ```mermaid
      * flowchart LR
      *   K["relations · die Kante"] --> H[("relations_history · mit Gruppe")]
-     *   W["record_values · ihre Werte"] --> V[("record_values_history")]
+     *   W["relation_records · ihre Werte"] --> V[("relation_records_history")]
      *   H --> Z["lebend gelöscht — eine Gruppe, ein Akt"]
      * ```
      *
@@ -294,10 +294,10 @@ final class WpdbRelationRepository implements RelationRepository
         ));
 
         // 2 · Die Wertzeilen der Kante gehen denselben Weg — **eine Gruppe, ein Akt**.
-        Shadow::keep('record_values', 'edge_id = %d', [$edgeId], true);
+        Shadow::keep('relation_records', 'relation_id = %d', [$edgeId], true);
 
         Query::run('Wertzeilen der geparkten Kante entfernen', $wpdb->prepare(
-            'DELETE FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d',
+            'DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
             $edgeId
         ));
 
@@ -378,15 +378,15 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $schatten = Schema::table('record_values_history');
-        $lebend   = Schema::table('record_values');
+        $schatten = Schema::table('relation_records_history');
+        $lebend   = Schema::table('relation_records');
 
         $zeilen = Query::rows('Wertzeilen der geparkten Kante suchen', $wpdb->prepare(
             "SELECT h.* FROM {$schatten} h
              INNER JOIN (
-                 SELECT id, MAX(version) AS version FROM {$schatten} WHERE edge_id = %d GROUP BY id
+                 SELECT id, MAX(version) AS version FROM {$schatten} WHERE relation_id = %d GROUP BY id
              ) neuste ON neuste.id = h.id AND neuste.version = h.version
-             WHERE h.edge_id = %d AND h.deleted = 1
+             WHERE h.relation_id = %d AND h.deleted = 1
                AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)",
             $edgeId,
             $edgeId

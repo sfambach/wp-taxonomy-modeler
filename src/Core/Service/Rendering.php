@@ -724,7 +724,7 @@ final class Rendering
             // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
             // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
-            $tiefer = $onlySettingParts && ! $edge->kind->isSetting()
+            $tiefer = $onlySettingParts && ! $edge->isSetting()
                 ? null
                 : $this->partBelow($edge, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$edge->id] ?? [], $forNode);
 
@@ -1822,7 +1822,7 @@ final class Rendering
             // jedem Knoten «Left out by hide: Display Option, validator, read_only», obwohl niemand etwas
             // versteckt hatte. **Ein Etikett, das den falschen Grund nennt, ist schlimmer als keines**,
             // und `preview-check.php` hat genau daran drei Zusagen verloren.*
-            if ($edge->kind->isSetting()) {
+            if ($edge->isSetting()) {
                 $settings[] = $edge;
 
                 continue;
@@ -2746,11 +2746,11 @@ final class Rendering
         // `render` und `converter` auf sein Wort zu Einstellungskanten wurden — «warum sehe ich hier
         // wieder die Einstellungen als Fields, nur damit du rendern kannst, das ist falsch»: die Zelle
         // von `Display Option` wurde im selben Zug leer, weil dieser Filter sie wegnahm.***
-        $nurEchte = ! $edge->kind->isSetting();
+        $nurEchte = ! $edge->isSetting();
 
         $innen = array_values(array_filter(
             $innen,
-            static fn (Relation $e): bool => ! $e->hide && ($nurEchte === false || ! $e->kind->isSetting())
+            static fn (Relation $e): bool => ! $e->hide && ($nurEchte === false || ! $e->isSetting())
         ));
 
         if ($innen === []) {
@@ -2820,7 +2820,7 @@ final class Rendering
         //
         // ⚠️ *Kein `Level`-Vorbehalt: eine Einstellung wird nur im Modell bearbeitet, nie im Frontend
         // gezeichnet — eine Bedingung darauf hätte einen Fall unterschieden, den es nicht gibt.*
-        $behaelter = $edge->kind->isSetting()
+        $behaelter = $edge->isSetting()
             ? $this->renderers->byName(TableRenderer::NAME)
             : $this->containerFor($ziel, $purpose);
 
@@ -2834,7 +2834,7 @@ final class Rendering
                     locale: $locale,
                     level: $level,
                     editable: $editable,
-                    // ⚠️ **`records` ist der Platz, den der Table-Renderer für mehrere Zeilen hat, und
+                    // ⚠️ **`node_records` ist der Platz, den der Table-Renderer für mehrere Zeilen hat, und
                     // er stand leer** — *der Grund, warum eine Einstellung mit `1..*` trotzdem nur eine
                     // Zeile zeigte. `parts` bleibt daneben für die Behälter, die nur einen Satz kennen.*
                     surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId),

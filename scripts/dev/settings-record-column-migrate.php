@@ -41,10 +41,10 @@ $deadCarrierEdgeId = 44093;
 
 $rows = $wpdb->get_results(
     $wpdb->prepare(
-        "SELECT v.id, v.record_id, v.value_ref, v.value_ref_kind, r.node_id AS owner_node
-           FROM {$p}record_values v
-           JOIN {$p}records r ON r.id = v.record_id
-          WHERE v.edge_id = %d",
+        "SELECT v.id, v.node_record_id, v.value_ref, v.value_ref_kind, r.node_id AS owner_node
+           FROM {$p}relation_records v
+           JOIN {$p}node_records r ON r.id = v.node_record_id
+          WHERE v.relation_id = %d",
         $deadCarrierEdgeId
     ),
     ARRAY_A
@@ -106,7 +106,7 @@ if ($missingOwner !== []) {
 $targets = array_values(array_unique(array_map(static fn (array $m): int => $m[1], $moves)));
 $targetIn = $targets === [] ? '0' : implode(',', array_map('intval', $targets));
 
-$knownTargets = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}records WHERE id IN ({$targetIn})"));
+$knownTargets = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}node_records WHERE id IN ({$targetIn})"));
 $missingTarget = array_diff($targets, $knownTargets);
 
 if ($missingTarget !== []) {
@@ -130,8 +130,8 @@ if ($alreadySet > 0) {
 
 $filledBefore = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE settings_record_id IS NOT NULL");
 $deadBefore   = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$p}record_values v
-       LEFT JOIN {$p}relations r ON r.id = v.edge_id
+    "SELECT COUNT(*) FROM {$p}relation_records v
+       LEFT JOIN {$p}relations r ON r.id = v.relation_id
       WHERE r.id IS NULL"
 );
 
@@ -154,7 +154,7 @@ foreach ($leftStanding as $row) {
     printf(
         "   Wertzeile %d an Satz %d — kind=%s ref=%s%s\n",
         $row['id'],
-        $row['record_id'],
+        $row['node_record_id'],
         $row['value_ref_kind'],
         $row['value_ref'],
         isset($row['grund']) ? ' — ' . $row['grund'] : ''
@@ -191,7 +191,7 @@ foreach ($moves as $owner => [$valueRowId, $recordId]) {
         break;
     }
 
-    if ($wpdb->query($wpdb->prepare("DELETE FROM {$p}record_values WHERE id = %d", $valueRowId)) === false) {
+    if ($wpdb->query($wpdb->prepare("DELETE FROM {$p}relation_records WHERE id = %d", $valueRowId)) === false) {
         $failed = "Wegfall der Halterzeile {$valueRowId}";
 
         break;
@@ -210,8 +210,8 @@ $wpdb->query('COMMIT');
 
 $filledAfter = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE settings_record_id IS NOT NULL");
 $deadAfter   = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$p}record_values v
-       LEFT JOIN {$p}relations r ON r.id = v.edge_id
+    "SELECT COUNT(*) FROM {$p}relation_records v
+       LEFT JOIN {$p}relations r ON r.id = v.relation_id
       WHERE r.id IS NULL"
 );
 

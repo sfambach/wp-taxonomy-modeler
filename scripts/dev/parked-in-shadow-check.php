@@ -13,7 +13,7 @@
  * ```mermaid
  * flowchart LR
  *   K["Kante lebend"] -->|parken| H[("relations_history · mit Gruppe")]
- *   W["ihre Wertzeilen"] -->|mit ihr| V[("record_values_history")]
+ *   W["ihre Wertzeilen"] -->|mit ihr| V[("relation_records_history")]
  *   H -->|zurueckholen| K
  *   V -->|mit ihr| W
  * ```
@@ -103,13 +103,13 @@ register_shutdown_function(static function () use (&$meines): void {
     global $wpdb;
 
     foreach ($meines['saetze'] as $id) {
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('record_values') . ' WHERE record_id = %d', $id));
-        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('records') . ' WHERE id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $id));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $id));
     }
 
     foreach ($meines['knoten'] as $id) {
         $wpdb->query($wpdb->prepare(
-            'DELETE FROM ' . Schema::table('record_values') . ' WHERE edge_id IN
+            'DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id IN
              (SELECT id FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d)',
             $id,
             $id
@@ -180,7 +180,7 @@ $meines['saetze'][] = $satz->id;
 $data->put($satz->id, $kante->id, TypedValue::ofText('haengt an der Kante'));
 
 $wertzeilen = Query::rows('Wertzeilen der Probekante zählen', $wpdb->prepare(
-    'SELECT id FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d',
+    'SELECT id FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
     $kante->id
 ));
 
@@ -214,14 +214,14 @@ check(
 );
 
 $lebendeWerte = Query::rows('lebende Wertzeilen suchen', $wpdb->prepare(
-    'SELECT id FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d',
+    'SELECT id FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
     $kante->id
 ));
 
 check('die Wertzeile ist lebend fort', $lebendeWerte === [], count($lebendeWerte) . ' geblieben');
 
 $werteImSchatten = Query::rows('Wertzeilen im Schatten suchen', $wpdb->prepare(
-    'SELECT id FROM ' . Schema::table('record_values_history') . ' WHERE edge_id = %d AND deleted = 1',
+    'SELECT id FROM ' . Schema::table('relation_records_history') . ' WHERE relation_id = %d AND deleted = 1',
     $kante->id
 ));
 
@@ -251,7 +251,7 @@ $wiederDa = Query::value('zurueckgeholte Kante suchen', $wpdb->prepare(
 check('die Kante steht wieder lebend da', $wiederDa !== null, 'unter derselben Id ' . $kante->id);
 
 $wiederWerte = Query::rows('zurueckgeholte Wertzeilen suchen', $wpdb->prepare(
-    'SELECT id FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d ORDER BY id',
+    'SELECT id FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d ORDER BY id',
     $kante->id
 ));
 

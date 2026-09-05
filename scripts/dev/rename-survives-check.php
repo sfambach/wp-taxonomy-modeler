@@ -147,7 +147,7 @@ $traeger = array_map(intval(...), $wpdb->get_col(
 check('es gibt Traeger in der Spaltenform', count($traeger) >= 4, count($traeger) . ' Knoten');
 
 $haltlos = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$n} k LEFT JOIN " . Schema::table('records')
+    "SELECT COUNT(*) FROM {$n} k LEFT JOIN " . Schema::table('node_records')
         . ' s ON s.id = k.settings_record_id'
         . ' WHERE k.settings_record_id IS NOT NULL AND s.id IS NULL'
 );

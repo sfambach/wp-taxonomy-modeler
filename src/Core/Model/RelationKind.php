@@ -55,23 +55,16 @@ enum RelationKind: string
      */
     case Setting = 'setting';
 
-    /**
-     * Ob der Wert dem Besitzer gehört — für `Setting` ebenso wie für `Composition`.
-     *
-     * ⚠️ **Das ist das «erbt von», das eine Aufzählung in PHP nicht ausdrücken kann.** *Jede Stelle,
-     * die «ist das eine Komposition» fragt, muss diese Methode nehmen und nicht `=== Composition` —
-     * sonst fällt eine Einstellung stillschweigend durch. **Gemessen vergleicht heute keine Stelle im
-     * Kern so**, nur Prüfungen über einzelne Kanten; die Methode steht hier für die erste, die es tun
-     * will.*
-     */
-    public function isComposition(): bool
-    {
-        return $this === self::Composition || $this === self::Setting;
-    }
-
-    /** Ob diese Kante eine Einstellung erklärt statt eines Feldes. */
-    public function isSetting(): bool
-    {
-        return $this === self::Setting;
-    }
+    // ⚠️ **Hier standen `isComposition()` und `isSetting()`, und sie sind Verhalten geworden**
+    // ([D-639](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «je Wert eine Klasse, wie
+    // bei den Knoten.» Was hier als `$this === self::Setting` stand, steht jetzt in
+    // {@see \Taxmod\Core\Model\Edge\SettingEdge}, {@see \Taxmod\Core\Model\Edge\AggregationEdge} und
+    // {@see \Taxmod\Core\Model\Edge\CompositionEdge} — und das «erbt von», das eine Aufzählung in PHP
+    // nicht ausdrücken konnte, braucht keinen Ausdruck mehr: es heisst
+    // {@see \Taxmod\Core\Model\Relation::deletesRecordWithOwner()} und ist an zwei der drei Klassen
+    // wahr.*
+    //
+    // ⚠️ *Die Aufzählung bleibt, weil die **Spalte** bleibt: sie ist der Wert in der Zeile, aus dem
+    // {@see \Taxmod\Core\Model\Relation::classFor()} an genau einer Stelle die Klasse baut. **Der
+    // Klassenname steht nicht in der Zeile** — die Menge ist geschlossen und hat drei Elemente.*
 }

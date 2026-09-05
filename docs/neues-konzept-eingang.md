@@ -167,6 +167,31 @@ entschieden, fällt die Ausnahme aus dem Wächter** — das ist der Ort, an dem 
 
 ---
 
+## INF-038 · Der Ast bestimmt weiter die Ablage — und D-622 sagt, dass er es nicht mehr sollte
+
+**Typ:** `QUESTION` · **Status:** `OPEN` — beim Bau von TASK-032 gefunden, 2026-09-05
+
+⚠️ **[D-622](NewConcept/90-decision-log.md), sein Wort:** *«Datensatz wird immer wie Aggregation
+gespeichert (ausser simple Typen), aber beim Löschen wird auf das Flag geschaut.»* Also **eine
+Angabe mit zwei Fällen** — einfacher Typ oder nicht — **an der Kante**.
+
+⚠️ **Gebaut ist das nicht, und zwar mit Absicht.** *Die Frage stellt heute
+`DataEntry::ownsItsRecord()`, und sie stellt sie über `Branch::storage()`: **`Compositions` bekommt
+einen eigenen Satz, `Model` und `Constants` nicht.** Hängt man das auf «alles ausser einfachen
+Typen» um, bekommen Ziele in `Model` und `Constants` plötzlich eigene Sätze — **eine Änderung an den
+Daten, nicht am Code.** Wie viele Zeilen das trifft, ist nicht gemessen, und wer sie will, hat es
+nicht gesagt.*
+
+⚠️ **[D-621](NewConcept/90-decision-log.md) hat genau diese beiden schon einmal geparkt:** *«ob die
+beiden anderen denselben Weg gehen, hat er nicht gesagt und wird nicht geraten (`PR-4`)» — gemessen
+an 9 Stellen in vier Dateien. **D-622 beantwortet die Frage im Grundsatz, aber nicht den Umzug.***
+
+⚠️ *Dazu gehört die dritte Ast-Auskunft, die D-621 ausdrücklich streicht:
+`Branch::relationKind()` bestimmt weiter die Art aus dem Ort des Ziels. **Sie fällt erst, wenn der
+Benutzer die Art an der Kante wählen kann** — und das ist eine Maske, keine Tabellenarbeit.*
+
+---
+
 ## Erledigte Eingänge
 
 *(noch keine)*

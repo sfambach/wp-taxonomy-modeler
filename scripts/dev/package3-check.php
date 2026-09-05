@@ -225,7 +225,7 @@ if (isset($underConstants['Prefixes'])) {
         // *Diese Zusage las den Schluessel `persistent` und stuerzte, als seine 148 Zeilen fielen — zu
         // Recht: **sie ist der Waechter dafuer, dass die Auskunft nicht verlorengeht**, nur nicht dafuer,
         // woher sie kommt.*
-        $notKept[$edge->name] = $edge->kind->isSetting();
+        $notKept[$edge->name] = $edge->isSetting();
     }
 
     check('and declares it non-persistent, so nothing tries to store it', ($notKept['exponent'] ?? false) === true);

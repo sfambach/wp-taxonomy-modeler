@@ -77,7 +77,7 @@ $pages = [
         "SELECT from_node_id FROM {$prefix}relations WHERE kind <> 'inheritance' GROUP BY from_node_id ORDER BY COUNT(*) DESC LIMIT 1"
     ),
     'a node that holds records' => (int) $wpdb->get_var(
-        "SELECT node_id FROM {$prefix}records GROUP BY node_id ORDER BY COUNT(*) DESC LIMIT 1"
+        "SELECT node_id FROM {$prefix}node_records GROUP BY node_id ORDER BY COUNT(*) DESC LIMIT 1"
     ),
 ];
 
