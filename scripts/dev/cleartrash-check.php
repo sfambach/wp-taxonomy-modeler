@@ -250,11 +250,34 @@ if ($stray !== []) {
     $wpdb->query("DELETE FROM {$p}relations WHERE id IN (" . implode(',', $stray) . ')');
 }
 
+// ⚠️ **Und die Datensaetze dazu — sie fehlten hier, und der Waechter liess bei jedem Lauf einen
+// Waisen zurueck.** *Gemessen am 2026-09-05: zwei Laeufe, zwei Waisen, und davon waren
+// `id-space-check` und `package6-check` rot — «records.node_id findet seinen Eintrag in nodes».
+// **Nicht die Daten des Eigentuemers, sondern dieser Aufraeumweg.** Zuerst die Wertzeilen, dann die
+// Saetze: umgekehrt haette die zweite Anweisung ihre Zeilen nicht mehr finden koennen.*
+$meineSaetze = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}records WHERE node_id IN ({$in})"));
+
+if ($meineSaetze !== []) {
+    $wpdb->query('DELETE FROM ' . $p . 'record_values WHERE record_id IN (' . implode(',', $meineSaetze) . ')');
+}
+
+$wpdb->query("DELETE FROM {$p}records WHERE node_id IN ({$in})");
+
 $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
 check(
     'the check leaves nothing behind',
     (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes WHERE name LIKE '\\_\\_ct %'") === 0
+);
+
+// ⚠️ *Die Zusage dazu, damit derselbe Rest nicht ein zweites Mal unbemerkt bleibt: **kein Datensatz
+// ohne Knoten**, gefragt ueber den ganzen Bestand und nicht nur ueber die eigenen Ids — ein Waisen
+// aus einem abgestuerzten Lauf ist derselbe Schaden wie einer aus diesem.*
+check(
+    'und kein Datensatz steht ohne seinen Knoten da',
+    (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$p}records s LEFT JOIN {$p}nodes k ON k.id = s.node_id WHERE k.id IS NULL"
+    ) === 0
 );
 
 printf("\n%d ok, %d failed\n", $passed, $failed);
