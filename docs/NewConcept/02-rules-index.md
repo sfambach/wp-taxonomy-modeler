@@ -45,7 +45,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 13 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 6 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 14 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 49 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 50 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
@@ -93,7 +93,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 |---|---|---|---|
 | **V1** | The model consists of nodes and edges. | [00-vision-and-scope.md:26](00-vision-and-scope.md) | 16 |
 | **V2** | The nodes sit in a tree. | [00-vision-and-scope.md:27](00-vision-and-scope.md) | 1 |
-| **V3** | The tree represents the inheritance hierarchy only — nothing else. | [00-vision-and-scope.md:28](00-vision-and-scope.md) | 9 |
+| **V3** | The tree represents the inheritance hierarchy only — nothing else. | [00-vision-and-scope.md:28](00-vision-and-scope.md) | 8 |
 | **V4** | The root node has no parent. Every other node inherits from its ancestors. | [00-vision-and-scope.md:29](00-vision-and-scope.md) | 1 |
 | **V5** | Fundamentally all nodes are the same. Confirmed 2026-08-23 with a nuance from the owner: there are specialisations, but that statement was about th… | [00-vision-and-scope.md:30](00-vision-and-scope.md) | 23 |
 | **V6** | There are a few special nodes, for data types and for calculations. | [00-vision-and-scope.md:31](00-vision-and-scope.md) | 6 |
