@@ -146,10 +146,12 @@ if (! is_array($gemerkt)) {
     // ⚠️ **Was gemeint war, ist enger und haelt bei jedem Bestand:** *kein **lebender** Knoten steht
     // ohne Namen da. Ein Name geht dann verloren, wenn sein Knoten bleibt und die Beschriftung
     // fehlt — nicht, wenn beide zusammen gehen.*
+    $lebende = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes'));
+
     $check(
         'kein lebender Knoten steht ohne Namen da',
-        $mitNamen($nodes) === count($nodes),
-        $mitNamen($nodes) . ' von ' . count($nodes) . ' (bei der Wanderung: ' . (int) ($gemerkt['nodes'] ?? 0) . ')'
+        $mitNamen($nodes) === $lebende,
+        $mitNamen($nodes) . ' von ' . $lebende . ' (bei der Wanderung: ' . (int) ($gemerkt['nodes'] ?? 0) . ')'
     );
 
     $check(
