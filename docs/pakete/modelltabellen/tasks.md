@@ -628,7 +628,7 @@ ihr Wegräumen nichts — aber es ist eine Handlung an seinen Daten und gehört 
 nebenbei erledigt.*
 
 ```text
-[ ] TASK-044  Einmaliger Reset: die 2 Zeilen mit value_ref = 0 und die
+[x] TASK-044  Einmaliger Reset: die 2 Zeilen mit value_ref = 0 und die
               wirklich unbenutzten leeren Datensaetze (D-610)
 ```
 
@@ -638,15 +638,47 @@ Renderer ist gewählt, nichts daran eingestellt»). **Wer sie als leer wegräumt
 Renderer-Wahlen.** Der Reset braucht deshalb eine Bedingung, keine Zählung: *unbenutzt* heisst
 nirgends referenziert — nicht *ohne Wertzeilen*.
 
+**Gelaufen am 2026-09-05**, [`scripts/task044-047-reset.php`](../../../scripts/task044-047-reset.php).
+*Die Bedingung steht im Lauf und nicht in einer Liste: **jede der vier Richtungen einzeln gefragt** —
+eigene Wertzeilen, fremde Verweise, `nodes.settings_record_id`, die beiden Spalten an `relations`.*
+
+⚠️ **Gefallen ist die Teilmenge, bei der zusätzlich der Knoten selbst fort ist:** ***eine** Zeile mit
+`value_ref = 0` (von den zweien aus D-610 stand noch eine, in Satz `2233`) und **29 Datensätze ohne
+Knoten** — Rückstand der drei abgestürzten Gerüstläufe vom 2026-09-04, alle ohne eine einzige
+Wertzeile und von nichts referenziert. **Die 26 Renderer-Wahlen sind nicht angefasst**, und die
+übrigen leeren Datensätze an lebenden Knoten stehen weiter (`INF-017`).*
+
+⚠️ *Umkehrbar: jede Zeile steht vorher als Schattenzeile mit `deleted = 1` in ihrer `_history`
+([D-535](../../NewConcept/90-decision-log.md)).*
+
+⚠️ **Ein vierter Posten ging mit und hat nichts gelöscht:** *zwei Wertzeilen nannten im `path` die
+Kante `44092`, während ihr eigenes `edge_id` die lebende `65595` nennt. **`path` ist der Spiegel von
+`edge_id`** (TASK-002) und trägt keine eigene Aussage — der Spiegel wurde auf seinen Herrn gestellt.
+Herkunft: `44092` war die `converter`-Kante des gestrichenen Hüllknotens `DisplayOption`
+([D-585](../../NewConcept/90-decision-log.md)); die Wanderung zog `edge_id` nach und liess den
+Spiegel stehen. **Gemessen: es waren die einzigen zwei Zeilen im Bestand, bei denen die Spalten
+auseinandergingen.***
+
 ```text
 [ ] TASK-045  Der Schreiber sucht die Einstellungskante an beiden Ketten —
               Besitzer und Ziel (D-611). Nur fuer Einstellungen, nicht fuer
               Modellfelder.
-[ ] TASK-047  Zwei Kanten auf den Zweigkopf «Constants» entfernen —
+[x] TASK-047  Zwei Kanten auf den Zweigkopf «Constants» entfernen —
               Rueckstand aus Waechterlaeufen, ohne Eintrag im Aenderungsbuch
 [ ] TASK-046  Die vier Waechter auf die Spaltenform umschreiben — sie fragen
               nach den Kanten 44091/44093, die es nicht mehr gibt
 ```
+
+⚠️ **TASK-047 erledigt am 2026-09-05 — und die Quelle mit, sonst wäre es in einer Woche wieder da.**
+*Die zwei Kanten `Decimal --renderer--> Constants` und `Integer --read_only--> Constants` legt
+**`package7-check` selbst** an: sein Behelf `$kanteFuer()` erzeugt eine fehlende Einstellungskante mit
+dem **Zweigkopf `Constants` als Platzhalterziel** und räumte sie nie weg. **Gemessen: sie standen nach
+jedem einzelnen Lauf wieder da**, und weil sie an **gesäten** Knoten hängen, greift die
+`__p7%`-Aufräumung nicht an sie heran. Jetzt merkt sich der Lauf, was er selbst gelegt hat, und nimmt
+es am Ende zurück — aufheben, dann löschen.*
+
+⚠️ *Derselbe Fehler wie in TASK-025 und TASK-039: **ein Wächter, der mehr anfasst als seine eigenen
+Knoten.** Der Eigentümer hat den Rückstand in seinem Modell gefunden, nicht der Wächter.*
 
 ⚠️ **Zu TASK-046, gemessen:** *die Optionen `taxmod_setting_edge_renderer` (44093) und
 `taxmod_setting_value_edge_renderer` (44091) zeigen auf **gelöschte Kanten**. Sie hingen am

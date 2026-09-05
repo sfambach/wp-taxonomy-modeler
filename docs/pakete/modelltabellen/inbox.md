@@ -436,3 +436,31 @@ sie ist offen.
 Variablen, die es nie gab — der Akt bekam **kein** Record-Repository und nahm in diesem Lauf die
 Datensätze gar nicht mit. **Die Zusage «its records went with it» gab es nicht**, sie ist jetzt da
 und grün.*
+
+---
+
+## INF-018 · Ein Strukturrenderer am Typ blendet jedes Feld aus, das auf ihn zeigt
+
+**2026-09-05, beim Grünmachen von `unitvalue-check`. Nicht entschieden (`PR-4`) — und ausdrücklich
+nicht angefasst, weil [D-610](../../NewConcept/90-decision-log.md) genau diese Sätze schützt.**
+
+**Gemessen:** *der Knoten `Base units` trägt in `nodes.settings_record_id` die Renderer-Wahl `table`.
+`TableRenderer::fits()` verlangt einen **Knoten** als Gegenstand; ein **Wert**, der auf einen Knoten
+verweist, ist keiner. **Ergebnis: das Feld `einheit` zeichnet sich als leerer Text** — `2.7 kilo `
+statt `2.7 kilo Ohm`. Der Nachbarfall belegt es: `Prefixes` hat `chooser-dialog` gewählt, und
+`prefix` zeichnet sich einwandfrei als «kilo».*
+
+⚠️ **Zwei Zusagen in `unitvalue-check` bleiben deshalb rot, und das ist der ehrliche Zustand.** *Ihr
+Kommentar nennt heute [D-579](../../NewConcept/90-decision-log.md) als Ursache — **das stimmt nur
+noch für den Prefix.** Für die Einheit ist die Ursache diese hier, und sie umzuschreiben hiesse, eine
+Zusage zu entschärfen, statt einen Befund zu melden (`PR-9`).*
+
+⚠️ **Die offene Frage ist nicht «welcher Renderer», sondern wer gefragt wird:** *zieht ein
+**Verweis** den Renderer des Zielknotens, oder den seines eigenen Feldes? Heute zieht er den des
+Ziels — und dort steht eine Wahl, die für die **Ansicht des Knotens** getroffen wurde, nicht für
+seine Erwähnung in einem fremden Feld. Gehört zu TASK-052 und
+[D-617](../../NewConcept/90-decision-log.md) («ein Knoten ohne eigene Aussage soll seinen Renderer
+aus seinem Typ nehmen»).*
+
+⚠️ *Der Weg ohne Entscheidung wäre gewesen, die Wahl an `Base units` wegzunehmen. **Das sind die 26
+Sätze, vor denen D-610 warnt** — «wer sie als leer wegräumt, löscht 26 Renderer-Wahlen».*

@@ -105,14 +105,21 @@ $satzVon = static function (int $knotenId) use ($nodes): int {
     return $records->add(new \Taxmod\Core\Model\NodeRecord(0, $knotenId, $nodes->byId($knotenId)->version, gmdate('Y-m-d H:i:s')));
 };
 
-$kanteFuer = static function (int $traegerId, string $key) use ($edges, $framework): \Taxmod\Core\Model\Relation {
+// ⚠️ **Was diese Pruefung selbst anlegt, raeumt sie am Ende weg** (TASK-047). *Gemessen am
+// 2026-09-05: jeder Lauf liess zwei Einstellungskanten auf den **Zweigkopf «Constants»** stehen —
+// `Decimal --renderer--> Constants` und `Integer --read_only--> Constants`. Der Eigentuemer fand sie
+// in seinem Modell, ohne Eintrag im Aenderungsbuch. **Der Zweigkopf ist hier nur ein Platzhalter fuer
+// ein Ziel, das der Schluessel gar nicht braucht** — er darf nur nicht liegenbleiben.*
+$selbstGelegteKanten = [];
+
+$kanteFuer = static function (int $traegerId, string $key) use ($edges, $framework, &$selbstGelegteKanten): \Taxmod\Core\Model\Relation {
     foreach ($edges->fieldEdgesOf([$traegerId]) as $eine) {
         if ($eine->kind === \Taxmod\Core\Model\RelationKind::Setting && $eine->name === $key) {
             return $eine;
         }
     }
 
-    return $edges->add(\Taxmod\Core\Model\Relation::attribute(
+    $neu = $edges->add(\Taxmod\Core\Model\Relation::attribute(
         0,
         $traegerId,
         $framework->rootOf(Branch::Constants)->id,
@@ -120,6 +127,10 @@ $kanteFuer = static function (int $traegerId, string $key) use ($edges, $framewo
         $key,
         $edges->nextFieldPositionUnder($traegerId)
     ));
+
+    $selbstGelegteKanten[$neu->id] = $neu->id;
+
+    return $neu;
 };
 
 /** Eine Angabe an einem Knoten oder an einer Verwendungsstelle. */
@@ -706,14 +717,28 @@ try {
     // smoke check for the empty state.*
     $withAttributes = null;
 
+    // ⚠️ **Gesucht wird ein Knoten mit einem *eigenen* Feld, nicht mit irgendeinem.** *Bis zum
+    // 2026-09-05 nahm diese Schleife den **letzten** Knoten unter `Compositions`, der überhaupt
+    // Felder zeigt — und das war ein `__Test` aus einem abgestürzten Geruestlauf, der **nur geerbte**
+    // trug. Die Zusage darunter heisst «an own attribute's name is editable»; ein geerbtes Feld hat
+    // dort **richtigerweise** kein Eingabefeld ([D-376](../../docs/NewConcept/90-decision-log.md)),
+    // also mass die Auswahl das Gegenteil ihrer eigenen Zusage.*
+    //
+    // ⚠️ *Das ist keine Abschwächung: die Zusage bleibt Wort für Wort dieselbe, sie bekommt nur den
+    // Gegenstand, von dem sie redet. **Findet sich kein Knoten mit eigenem Feld, wird sie rot** — die
+    // Zeile darunter sagt es dann statt still durchzulaufen.*
     foreach ($editor->childrenOf($framework->rootOf(Branch::Compositions)->id) as $candidate) {
-        if ($editor->fieldsOf($candidate->id) !== []) {
-            $withAttributes = $candidate;
+        foreach ($editor->fieldsOf($candidate->id) as $edge) {
+            if ($edge->fromId === $candidate->id) {
+                $withAttributes = $candidate;
+
+                break;
+            }
         }
     }
 
     if ($withAttributes === null) {
-        check('a node with attributes exists to select', false, 'nothing under Compositions has any');
+        check('a node with an own attribute exists to select', false, 'nothing under Compositions declares one');
     } else {
         $_GET['taxmod_node'] = (string) $withAttributes->id;
 
@@ -846,6 +871,19 @@ foreach ($data->recordsOf($part->id) as $r) {
 // ⚠️ The settings written onto the seeded types must go too, or the next run inherits a slider
 // on every decimal in the installation.
 $ohneAngabe($nodes->byId($seeded['decimal']->id), SettingKey::Renderer->value);
+
+// ⚠️ **Und die Einstellungskanten, die dieser Lauf selbst gelegt hat** (TASK-047). *Sie stehen an
+// **gesaeten** Knoten — `Decimal`, `Integer` — und lassen sich darum nicht ueber `__p7%` finden; die
+// Aufraeumung unten geht an ihnen vorbei. **Aufheben, dann loeschen**
+// ([D-535](../../docs/NewConcept/90-decision-log.md)): die Schattenzeile ist der Rueckweg.*
+if ($selbstGelegteKanten !== []) {
+    $liste = implode(',', array_map('intval', $selbstGelegteKanten));
+
+    \Taxmod\WordPress\Persistence\Shadow::keep('relations', 'id IN (' . $liste . ')', [], true);
+
+    $wpdb->query('DELETE FROM ' . Schema::table('record_values') . ' WHERE edge_id IN (' . $liste . ')');
+    $wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (' . $liste . ')');
+}
 
 // ⚠️ **By name, not by the ids of this run.** A run that dies before this point — one did, on a
 // `range_min` the owner had set by hand — leaves its scratch nodes behind, and the next run then
