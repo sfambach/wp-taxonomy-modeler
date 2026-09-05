@@ -3,7 +3,6 @@
 namespace Taxmod\Core\Model\Type;
 
 use Taxmod\Core\Exception\NotAValueOfThatType;
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
@@ -67,7 +66,6 @@ abstract class SpecialisedType extends Node
         int $version = 0,
         ?string $name = null,
         string $path = '',
-        ?FieldType $fieldType = null,
         ?string $implementedBy = null,
         ?int $parentNodeId = null,
         int $sortOrder = 0,
@@ -78,7 +76,6 @@ abstract class SpecialisedType extends Node
             $version,
             $name ?? $this->nodeName(),
             $path,
-            $fieldType,
             $implementedBy,
             $parentNodeId,
             $sortOrder,

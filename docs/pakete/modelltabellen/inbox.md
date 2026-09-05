@@ -1172,3 +1172,92 @@ ist keine Ruhelage.*
    Modell stehen. *Ehrlich, aber der Block braucht dann eine Erklärung, die nicht «Rest» heisst.*
 
 ⚠️ *Zusammen mit `INF-019` zu lesen: was «kein Renderer» heissen soll, ist ebenfalls offen.*
+
+⚠️ **Nachtrag 2026-09-05: Antwort 1 ist eingetreten, ohne dass jemand sie gewählt hat.** *Mit dem
+Rückbau von `nodes.field_type` ([D-621](../../NewConcept/90-decision-log.md), TASK-059) tragen die
+neunzehn Renderer keine Marke mehr — **die Zeile zeichnet ihren Wähler jetzt selbst, 12 statt 0
+Möglichkeiten.** Offen bleibt der Rest: sechs Renderer hängen unter einem Zwischenknoten und fehlen
+darum, siehe `INF-043`.*
+
+---
+
+## INF-043 · Der Zwischenknoten `render with label` verliert seine Durchlässigkeit
+
+**2026-09-05, beim Rückbau von `nodes.field_type`** ([D-621](../../NewConcept/90-decision-log.md)).
+*Nicht entschieden, nicht erfunden (`PR-4`).*
+
+**`INF-042`, Antwort 1 ist gebaut, und sie wirkt: der Wähler ist zurück.** *Gemessen vorher und
+nachher — `Renderer` bot **0** Möglichkeiten an und bietet jetzt **12**, `Label roles` 0 → 5,
+`Converter` 0 → 4, `Validator` 0 → 2, `Orientation` 0 → 2. Und was der Eigentümer sieht, hat sich
+sonst nirgends verschoben: **der Renderername je Knoten ist über alle 137 Knoten Zeile für Zeile
+derselbe.***
+
+⚠️ **Was aus den 12 fehlt, sind 6, und sie sind die wichtigen:** *`form`, `table`, `compact`,
+`reference`, `chooser-dialog`, `chooser-inline` hängen unter dem Zwischenknoten `render with label`.
+**[D-544](../../NewConcept/90-decision-log.md) hat sie sichtbar gemacht, und zwar über die Marke** —
+auf sein Wort «table, form, compact muss wählbar bleiben, warum auch nicht?». Die Auswahl stieg durch
+den markierten Zwischenknoten hindurch. **Ohne Spalte trägt er keine Marke mehr, weil keine Kante auf
+ihn zeigt** — also gilt er als Möglichkeit, und seine Kinder werden nicht mehr angeboten.*
+
+⚠️ **Was ihn heute rettet und warum das keine Ruhelage ist:** *der eigene Renderer-Block auf der
+Knotenseite holt die Möglichkeiten aus der **Registratur** (`R14a`) und kennt alle neunzehn.
+`render with label` fällt dort heraus, weil es keinen Renderer dieses Namens gibt. **Die Wahl
+funktioniert also — aber über den Block, nicht über die Zeile**, und damit ist `INF-042` nur halb
+beantwortet.*
+
+**Drei mögliche Antworten, keine davon hier gewählt:**
+
+1. **«Durchlässig» heisst künftig «hat sichtbare Kinder».** *Gemessen ist das falsch: `Base units`
+   böte dann 14 statt 2 Möglichkeiten und `Electronic Parts` 4 statt 2 — man könnte `With prefix`
+   und `Passiv` nicht mehr wählen.*
+2. **Der Zwischenknoten fällt**, die sechs hängen direkt unter `Renderer`. *Dann stimmt alles von
+   selbst — aber «mit Beschriftung» ist eine Aussage, die dann nirgends mehr steht.*
+3. **Es bleibt beim eigenen Block**, und die Zeile im Einstellungsblock zeigt weiter nur die Felder
+   des Gewählten. *Ehrlich, und `INF-042` bleibt offen.*
+
+---
+
+## INF-044 · `Boolean` ist heute nur noch Ziel einer Einstellungskante
+
+**2026-09-05, beim Rückbau von `nodes.field_type`.** *Ein Befund, keine Entscheidung (`PR-4`).*
+
+**Gemessen: von 137 Knoten geben Spalte und Kante an 136 dieselbe Antwort — und an einem nicht.**
+*`Boolean` hat genau **eine** eingehende Kante, `render with label --with_label--> Boolean`, und die
+ist eine Einstellungskante. Nach der Regel «jede eingehende Kante ist eine Einstellungskante» ist
+`Boolean` damit selbst eine Einstellung; die Spalte sagte «nichts».*
+
+⚠️ **[D-621](../../NewConcept/90-decision-log.md) hat für `Boolean` etwas anderes gemessen:** *«`Integer`,
+`Decimal` und `Boolean` sind Ziel einer Kompositions- **und** einer Einstellungskante.» **Für `Integer`
+und `Decimal` stimmt das heute noch, für `Boolean` nicht mehr** — die Kompositionskante ist seither
+weg. Die Entscheidung ist davon nicht berührt; die Zahl darin ist es.*
+
+⚠️ **Was daran unruhig ist, und es ist der eigentliche Punkt:** *der Charakter eines Knotens kippt,
+wenn irgendwo im Modell eine **fremde** Kante entsteht oder verschwindet. Hängt jemand morgen ein
+Boolean-Feld an einen Modellknoten, ist `Boolean` wieder «Modell». **Das ist die Kehrseite von «die
+Kante sagt, was etwas hier ist»**: eine Frage nach dem Knoten allein hat streng genommen keine
+Antwort, und die Stellen, die sie trotzdem stellen — heute genau eine, der Behälter aus
+[D-546](../../NewConcept/90-decision-log.md) — bekommen eine, die sich bewegen kann.*
+
+⚠️ *Ausgewirkt hat es sich nicht: der Renderername je Knoten ist über alle 137 unverändert.*
+
+---
+
+## INF-045 · Eine Wanderung kann die Schemafassung nicht überholen
+
+**2026-09-05, beim Rückbau von `nodes.field_type`. Ein Werkzeugbefund, teuer bezahlt.**
+
+**Der erste Entwurf sicherte die 39 Marken in einem Skript daneben — Schattenzeile, Änderungsgruppe,
+Version — und kam nie zum Zug.** *Ein Wanderungsskript beginnt mit `require wp-load.php`, und **das
+Laden von WordPress hebt die Schemafassung**. Als die erste eigene Zeile lief, war die Spalte schon
+gelöscht. Das Skript meldete «die Spalte ist schon weg — nichts zu tun», und das war die Wahrheit.*
+
+⚠️ **Der Schaden ist begrenzt und wird nicht beschönigt** (`PR-7`): *die lebenden Marken liessen sich
+aus den Kanten wiederherstellen — 39 von 39, weil die Ableitung genau sie reproduziert. **Was
+endgültig weg ist, sind die 190 `field_type`-Werte in `nodes_history`**, weil die Spalte dort im
+selben Zug fiel. Sie sind gegenstandslos, seit ein Knoten die Angabe nicht mehr trägt; aufgeschrieben
+steht es trotzdem, weil ein Verlust, den niemand nennt, ein Verlust ist, den niemand findet.*
+
+⚠️ **Die Lehre ist allgemein und gilt für jede weitere Spalte, die fällt:** *was gesichert werden
+muss, gehört **in den Fassungsschritt selbst** und nicht in ein Skript daneben. Ein Skript läuft auf
+dieser einen Installation, die Fassung läuft auf jeder — und ein Sichern, das die Wanderung überholen
+kann, ist keines. Fassung 33 macht es jetzt so.*

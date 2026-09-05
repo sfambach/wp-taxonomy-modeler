@@ -10,7 +10,6 @@ use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\Changelog;
@@ -139,49 +138,6 @@ final class ModelEditor
         return $renamed;
     }
 
-    /**
-     * Sagen, was Felder halten, die auf diesen Knoten zeigen — oder es wieder offenlassen.
-     *
-     * ⚠️ **[D-518](../../../docs/NewConcept/90-decision-log.md), seine Frage:** *«eine Option
-     * erfinden, die sagt: ist Field oder ist Setting?»* — und **`null` ist der dritte Zustand**, nicht
-     * das Fehlen einer Antwort: *«frag meine Vorfahren»*, derselbe Vorfahrenlauf, den
-     * [D-516](../../../docs/NewConcept/90-decision-log.md) für den Typ gemessen hat.
-     *
-     * ⚠️ *Journalisiert wie ein Umbenennen, weil es eine Modelländerung ist: sie überlebt eine
-     * Wanderung ([D-061](../../../docs/NewConcept/90-decision-log.md)) und jeder Bearbeiter sieht sie.
-     * Ein Setzen, das nichts ändert, schreibt nichts und hebt keine Fassung
-     * ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
-     *
-     * ⚠️ **Kein Wächter darüber, welcher Knoten das sein darf, und das ist Absicht.** *Die Frage «darf
-     * ein Zweigwurzel eine Einstellung sein» ist nicht entschieden, und `PR-4` verbietet, sie hier
-     * beiläufig zu beantworten. **Was gemessen schon feststeht: der Wert an einem Knoten trifft keine
-     * andere Kante**, weil [D-516](../../../docs/NewConcept/90-decision-log.md) jeder Angabe ihren
-     * eigenen Knoten gibt.*
-     */
-    public function setFieldType(int $id, ?FieldType $fieldType): Node
-    {
-        $node   = $this->nodes->byId($id);
-        $marked = $node->withFieldType($fieldType);
-
-        if ($marked === $node) {
-            return $node;
-        }
-
-        $this->nodes->save($marked, $node->version);
-        // ⚠️ *Der Eintrag heisst seit TASK-007 `field type set`. **Alte Einträge behalten
-        // `kind set`** — Geschichte ist eingefroren ([D-065](../../../docs/NewConcept/90-decision-log.md)),
-        // und ein Änderungsbuch, das man umschreibt, ist keins mehr.*
-        $this->changelog->record(
-            $id,
-            'node',
-            'field type set',
-            $node->fieldType?->value,
-            $marked->fieldType?->value,
-            $marked->version
-        );
-
-        return $marked;
-    }
 
     /**
      * Sagen, welche PHP-Klasse diesen Knoten umsetzt — oder dass es keine gibt (TASK-008).
@@ -191,7 +147,7 @@ final class ModelEditor
      * Schieber-Renderer ist — statt einer WordPress-Option ausserhalb des Modells (`AR-1`,
      * TASK-009).*
      *
-     * ⚠️ *Journalisiert wie {@see setFieldType()}, und aus demselben Grund: es ist eine Modelländerung.
+     * ⚠️ *Journalisiert wie ein Umbenennen, und aus demselben Grund: es ist eine Modelländerung.
      * Ein Setzen, das nichts ändert, schreibt nichts und hebt keine Fassung
      * ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
      *
@@ -1367,44 +1323,6 @@ final class ModelEditor
         return $renamed;
     }
 
-    /**
-     * Die aufgelöste Sorte des **Ziels** je Kante — womit ein Feld in seinen Block gehört.
-     *
-     * ⚠️ *Am Ziel und nicht an der Kante, auf sein Wort ([D-518](../../../docs/NewConcept/90-decision-log.md)):
-     * «der Knoten bekommt eine zusätzliche Spalte». **Ein Feld ist eine Einstellung, weil das, worauf es
-     * zeigt, eine ist** — und seit [D-516](../../../docs/NewConcept/90-decision-log.md) hat jede Angabe
-     * ihren eigenen Zielknoten, also trifft die Markierung nichts anderes mit.*
-     *
-     * @param  list<Relation>          $relations
-     * @return array<int, FieldType>    Je Kanten-Id genau ein Eintrag.
-     */
-    /**
-     * Die aufgelöste Sorte je Knoten — für den Wähler, der zeigen muss, **was geerbt würde**.
-     *
-     * @param  list<int>            $ids
-     * @return array<int, FieldType>
-     */
-    public function fieldTypesOfNodes(array $ids): array
-    {
-        return $this->nodes->resolvedFieldTypes($ids);
-    }
-
-    public function kindsOfTargets(array $relations): array
-    {
-        if ($relations === []) {
-            return [];
-        }
-
-        $sorten = $this->nodes->resolvedFieldTypes(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
-
-        $je = [];
-
-        foreach ($relations as $relation) {
-            $je[$relation->id] = $sorten[$relation->toNodeId] ?? FieldType::standard();
-        }
-
-        return $je;
-    }
 
     /** @return list<Relation> The removed attributes of one node — D-128's *show deleted*. */
     public function removedFieldsOf(int $ownerId): array

@@ -288,9 +288,8 @@ final class Geruest
         $einstellung = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->testast(Branch::Settings));
         $this->gebaut[] = $einstellung->id;
 
-        // Der Ast allein markiert nicht -- D-518 hat die Spalte gesetzt, nicht abgeleitet.
-        $this->editor->setFieldType($einstellung->id, \Taxmod\Core\Model\FieldType::Setting);
-
+        // ⚠️ *Hier stand ein Markieren des Knotens. Es ist mit `nodes.field_type` gefallen
+        // (D-621) -- **die Kante unten sagt es jetzt**, und sie sagte es schon vorher auch.*
         $traeger = $this->editor->createNode($this->vorsatz . ' Nutzer', $this->testast(Branch::Model));
         $this->gebaut[] = $traeger->id;
 

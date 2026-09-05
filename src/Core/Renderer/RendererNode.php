@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Renderer;
 
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\Node;
 
 /**
@@ -48,7 +47,6 @@ abstract class RendererNode extends Node implements Renderer
         int $version = 0,
         ?string $name = null,
         string $path = '',
-        ?FieldType $fieldType = null,
         ?string $implementedBy = null,
         ?int $parentNodeId = null,
         int $sortOrder = 0,
@@ -59,7 +57,6 @@ abstract class RendererNode extends Node implements Renderer
             $version,
             $name ?? $this->name(),
             $path,
-            $fieldType,
             $implementedBy,
             $parentNodeId,
             $sortOrder,

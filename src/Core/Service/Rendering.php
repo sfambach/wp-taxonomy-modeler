@@ -2001,7 +2001,11 @@ final class Rendering
         // von aussen betrachtet. **Und er hat keine Renderer-Einstellung** — seit
         // [D-545](../../../docs/NewConcept/90-decision-log.md) erbt nichts im Settings-Ast von der
         // Wurzel, also gäbe es unten nichts zu lesen und `form` käme als stille Vorgabe heraus.*
-        if ($node->fieldType === FieldType::Setting) {
+        // ⚠️ **Die Auskunft kommt aus der Kante, nicht mehr aus einer Spalte am Knoten**
+        // ([D-621](../../../docs/NewConcept/90-decision-log.md)): *«die Kante sagt, was etwas hier
+        // ist.» Ein Knoten, den nur Vererbung erreicht — die neunzehn Renderer unter `Renderer` —,
+        // bekommt seinen Charakter von der Kante über seinem nächsten Vorfahren.*
+        if (($this->nodes->resolvedFieldTypes([$node->id])[$node->id] ?? null) === FieldType::Setting) {
             return $this->renderers->byName(TableRenderer::NAME);
         }
 
@@ -3169,10 +3173,24 @@ final class Rendering
             $kinder = $this->nodes->visibleChildrenOf(array_keys($alle));
             $weiter = [];
 
+            // ⚠️ **Die eigene Sorte kommt jetzt aus den eingehenden Kanten**
+            // ([D-621](../../../docs/NewConcept/90-decision-log.md)). *Eine Abfrage je Stufe für alle
+            // Kinder zusammen (`CD-7`) — und weiter die **eigene**, nicht die aufgelöste, sonst gälte
+            // alles unter `Renderer` als markiert und die Auswahl wäre leer.*
+            $eigene = [];
+
+            foreach ($kinder as $reihe) {
+                foreach ($reihe as $kind) {
+                    $eigene[$kind->id] = true;
+                }
+            }
+
+            $eigene = $this->nodes->ownFieldTypes(array_keys($eigene));
+
             foreach ($offen as $wurzel => $ids) {
                 foreach ($ids as $id) {
                     foreach ($kinder[$id] ?? [] as $kind) {
-                        if ($kind->fieldType === FieldType::Setting) {
+                        if (($eigene[$kind->id] ?? null) === FieldType::Setting) {
                             $weiter[$wurzel][] = $kind->id;
 
                             continue;

@@ -1280,34 +1280,13 @@ final class NodesScreen
         // after seeing it: *name into the first row, actions not their own row but behind the name
         // field.* It names the settings form with `form="…"`, so the page save writes it
         // ([D-392](../../../docs/NewConcept/90-decision-log.md)) and `Rename` is gone.
-        // ⚠️ **Der Wähler für die Sorte** ([D-518](../../../docs/NewConcept/90-decision-log.md)),
-        // neben dem Namen, weil er dasselbe ist wie ein Name: eine Aussage über **diesen Knoten** und
-        // nicht über eine seiner Verwendungsstellen.
-        //
-        // ⚠️ **Drei Einträge, nicht zwei — «erbt» ist ein eigener Zustand und nicht das Fehlen einer
-        // Antwort.** *`null` heisst «frag meine Vorfahren», und was dabei herauskommt, steht im
-        // Eintrag: ein Kind von `Integer › min` erbt «Einstellung», ohne dass jemand es nochmal sagt.
-        // **Ohne diesen dritten Eintrag könnte man eine geerbte Antwort nicht zurücknehmen.***
-        $sorte  = $selected->fieldType;
-        $erbt   = $this->editor->fieldTypesOfNodes([$selected->id])[$selected->id] ?? FieldType::standard();
-        $wahl   = '<select name="node_field_type" form="' . esc_attr(self::pageForm($selected)) . '"'
-            . ' class="taxmod-choice" title="' . esc_attr__('What values of fields pointing at this node are', 'taxmod') . '">'
-            . '<option value=""' . ($sorte === null ? ' selected' : '') . '>'
-            . esc_html(sprintf(
-                /* translators: %s is the inherited answer, «field» or «setting». */
-                __('inherited — %s', 'taxmod'),
-                $erbt === FieldType::Setting ? __('setting', 'taxmod') : __('field', 'taxmod')
-            ))
-            . '</option>'
-            . '<option value="model"' . ($sorte === FieldType::Model ? ' selected' : '') . '>'
-            . esc_html__('field — a person enters it', 'taxmod') . '</option>'
-            . '<option value="setting"' . ($sorte === FieldType::Setting ? ' selected' : '') . '>'
-            . esc_html__('setting — it belongs to the model', 'taxmod') . '</option>'
-            . '</select>';
-
+        // ⚠️ **Hier stand der Wähler für die Sorte, und er ist mit `nodes.field_type` gefallen**
+        // ([D-621](../../../docs/NewConcept/90-decision-log.md)): *«die Kante sagt, was etwas hier ist
+        // — nicht der Knoten und nicht der Ast.» **Wer eine Einstellung will, gibt der Kante die Art**
+        // (TASK-053, [D-618](../../../docs/NewConcept/90-decision-log.md)); ein zweiter Ort für
+        // dieselbe Aussage wäre die Doppelung, die diese Entscheidung beseitigt hat.*
         $node = $pageForm . '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
             . ' form="' . esc_attr(self::pageForm($selected)) . '">'
-            . $wahl
             . $this->form(
                 $selected->id,
                 [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
@@ -1844,17 +1823,18 @@ final class NodesScreen
      * Einstellungsblock. **Sie zeigt dort die Felder des gewählten Renderers — `converter` —, aber
      * keinen Wähler dafür, welcher es ist.***
      *
-     * ⚠️ **Warum ihre Wertspalte das nicht kann, und es ist gemessen:** *ein Wähler entsteht dort aus
-     * den **unmarkierten** Kindern des Kantenziels ([D-540](../../../docs/NewConcept/90-decision-log.md)).
-     * **Alle neunzehn Knoten unter `Renderer` tragen `field_type = setting`**, sind also markiert — die
-     * Auswahl sieht durch jeden einzelnen hindurch und bietet null Möglichkeiten an. Die Möglichkeiten
-     * des Renderers stehen nicht im Modell, sondern in der **Registratur** (`R14a`), und dorthin
-     * greift nur {@see Rendering::settingsFor()}.*
+     * ⚠️ **Der Grund, warum ihre Wertspalte das nicht konnte, ist mit `nodes.field_type` gefallen**
+     * ([D-621](../../../docs/NewConcept/90-decision-log.md)). *Ein Wähler entsteht dort aus den
+     * **unmarkierten** Kindern des Kantenziels ([D-540](../../../docs/NewConcept/90-decision-log.md)),
+     * und alle neunzehn Knoten unter `Renderer` trugen die Marke — die Auswahl sah durch jeden
+     * hindurch und bot null Möglichkeiten an (`INF-042`, Antwort 1). **Ohne Spalte tragen sie keine
+     * Marke mehr, weil keine Kante auf sie zeigt: die Zeile zeichnet ihren Wähler jetzt selbst.***
      *
-     * ⚠️ **Es ist deshalb kein zweites Steuerelement für dieselbe Angabe** (`R1`): *die Zeile im
-     * Einstellungsblock bedient die Felder **des gewählten** Renderers, dieser Wähler bedient die
-     * Wahl selbst. **Dass beides an zwei Orten steht, ist trotzdem nicht der Endzustand** und liegt
-     * als `INF-042` im Eingang (`PR-4`).*
+     * ⚠️ **Was den Wähler hier trotzdem stehen lässt:** *die Möglichkeiten des Renderers stehen auch
+     * in der **Registratur** (`R14a`), die sie auf die für den Typ tauglichen verengt — und die sechs
+     * unter dem Zwischenknoten `render with label` erreicht der Weg über das Modell seit dem Rückbau
+     * nicht mehr. **Ob dieser Wähler damit entbehrlich wird, ist nicht entschieden** und liegt als
+     * `INF-042` und `INF-043` im Eingang (`PR-4`).*
      *
      * ⚠️ *Geschrieben wird über die Kante und nicht mehr in eine Spalte* — {@see self::saveRendererChoice()}.
      */
@@ -2998,7 +2978,6 @@ final class NodesScreen
         $this->saveSettingValues($nodeId);
         $this->savePartValues($nodeId);
         $this->saveLabels($nodeId, $locale);
-        $this->saveKind($nodeId, $relationId);
     }
 
     /**
@@ -3363,28 +3342,6 @@ final class NodesScreen
         }
 
         $this->data->putSettingAt($nodeId, $carrier->id, $innerId, $value);
-    }
-
-    /**
-     * Die Sorte des Knotens, wie der Wähler sie gesendet hat.
-     *
-     * ⚠️ **Nur wenn das Feld überhaupt dabei ist**, und das ist dieselbe Regel, die
-     * {@see saveSettings()} für die Einstellungen hat: *ein abwesendes Feld ist nicht ein leeres.* Der
-     * Wähler steht nur auf der Knotenseite; ein Speichern von einer Verwendungsstelle darf die Sorte
-     * des Knotens nicht anfassen.
-     *
-     * ⚠️ *Ein leerer Wert ist hier **kein** «nicht gesendet», sondern die dritte Wahl: «erbt». Darum
-     * `array_key_exists` und nicht `!== ''`.*
-     */
-    private function saveKind(int $nodeId, int $relationId): void
-    {
-        if ($relationId !== 0 || ! array_key_exists('node_field_type', $_POST)) {
-            return;
-        }
-
-        $sent = sanitize_text_field(wp_unslash((string) $_POST['node_field_type']));
-
-        $this->editor->setFieldType($nodeId, $sent === '' ? null : FieldType::tryFrom($sent));
     }
 
     /**

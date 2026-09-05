@@ -1,25 +1,26 @@
 <?php declare(strict_types=1);
 /**
- * Dass die Marke gepflegt bleibt — ein Knoten im Settings-Ast ohne `field_type = setting` faellt auf.
+ * Dass jeder Knoten im Settings-Ast weiter als Einstellung erkannt wird — **jetzt aus der Kante**.
  *
  *     php scripts/dev/setting-kind-check.php [path/to/wordpress]
  *
- * ⚠️ **[D-606](../../docs/NewConcept/90-decision-log.md):** *«Was eine Einstellung ist, sagt die Marke
- * am Knoten, nicht der Ast und nicht die Kante.»* Sein Wort dazu: *«also dass die Settings-Knoten kein
- * Settings haben, ist Altlast.»* **Die Altlast ist mit {@see setting-kind-migrate.php} bereinigt; diese
- * Pruefung sorgt dafuer, dass sie nicht zurueckkommt** — ein neu angelegter Knoten im Ast ohne Marke
- * ist genau der Fall, der die Marke wieder unbrauchbar machen wuerde.
+ * ⚠️ **Die Pruefung ist mit [D-621](../../docs/NewConcept/90-decision-log.md) umgezogen und nicht
+ * entschaerft** (`PR-9`). *Sie fragte `nodes.field_type` ab — die Spalte ist gefallen, weil «die Kante
+ * sagt, was etwas hier ist — nicht der Knoten und nicht der Ast». **Die Zusage bleibt Wort fuer Wort
+ * dieselbe** und wird nur anders beantwortet: ueber {@see \Taxmod\Core\Repository\NodeRepository::resolvedFieldTypes()},
+ * also die eingehenden Kanten und, wo keine ist, die Kante ueber dem naechsten Vorfahren.*
  *
- * ⚠️ **Sie prueft nicht das Umgekehrte.** *Ein markierter Knoten **ausserhalb** des Astes ist richtig
- * und nicht falsch — `read_only` liegt unter `Boolean`, weil es ein Boolean ist. Der Ast ist die
- * Herkunft der Marke, nicht ihre Grenze; eine Pruefung «markiert heisst im Ast» wuerde genau das
- * verbieten, was [D-606](../../docs/NewConcept/90-decision-log.md) moeglich machen wollte.*
+ * ⚠️ **Der Ast bestimmt nichts mehr, und diese Pruefung behauptet es auch nicht.**
+ * *[D-621](../../docs/NewConcept/90-decision-log.md): er bleibt «Ordnung und Sprungziel», er verliert
+ * das Bestimmen. **Hier steht darum eine Beobachtung und keine Regel:** die Knoten im Ast werden heute
+ * ueber die Kanten erreicht, und wenn eine Kante wegfaellt, faellt genau das auf.*
  *
- * ⚠️ **Die zwei bekannten Ausnahmen sind gemessen, nicht gesetzt:** *`min` und `max` liegen im Ast,
- * tragen nichts, und **keine einzige Kante zeigt auf sie**. Sie gehoeren nach
- * [D-516](../../docs/NewConcept/90-decision-log.md) als Spezialisierungen unter `Integer`. Die Pruefung
- * laesst darum jeden **direkten** Astkind-Knoten durch, der weder Kantenziel ist noch selbst etwas
- * haelt — und meldet ihn, damit er nicht unbemerkt liegen bleibt.*
+ * ⚠️ **Sie prueft nicht das Umgekehrte.** *Ein Einstellungsknoten **ausserhalb** des Astes ist richtig
+ * und nicht falsch — `read_only` liegt unter `Boolean`, weil es ein Boolean ist.*
+ *
+ * ⚠️ **Die bekannten Ausnahmen sind gemessen, nicht gesetzt:** *ein **direktes** Astkind, auf das keine
+ * Kante zeigt und das selbst keine haelt, ist Rest im Sinne von
+ * [D-606](../../docs/NewConcept/90-decision-log.md) — er wird genannt, nicht gezaehlt.*
  *
  * @see docs/NewConcept/90-decision-log.md
  */
@@ -85,13 +86,17 @@ if ($branch === null) {
 }
 
 $rows = $wpdb->get_results($wpdb->prepare(
-    "SELECT id, name, path, field_type FROM {$nodesTable} WHERE path LIKE %s ORDER BY path",
+    "SELECT id, name, path FROM {$nodesTable} WHERE path LIKE %s ORDER BY path",
     $wpdb->esc_like($branch->path . '.') . '%'
 ), ARRAY_A);
 
 check('und traegt Knoten', $rows !== [], (string) count($rows));
 
-echo "\n== 2. Jeder Knoten im Ast traegt die Marke ==\n";
+echo "\n== 2. Jeder Knoten im Ast wird als Einstellung erkannt ==\n";
+
+// ⚠️ *Eine Abfrage fuer alle zusammen (`CD-7`) — der Lauf ueber die Kanten ist gebuendelt.*
+$sorten = (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())
+    ->resolvedFieldTypes(array_map(static fn (array $r): int => (int) $r['id'], $rows));
 
 $depth   = substr_count((string) $branch->path, '.') + 2;
 $fehlend = [];
@@ -99,7 +104,7 @@ $rest    = [];
 
 foreach ($rows as $row) {
     $id   = (int) $row['id'];
-    $kind = $row['field_type'];
+    $kind = ($sorten[$id] ?? null)?->value;
 
     if ($kind === FieldType::Setting->value) {
         continue;
@@ -129,7 +134,7 @@ foreach ($rows as $row) {
 }
 
 check(
-    'kein Knoten im Ast ohne `field_type = setting`',
+    'kein Knoten im Ast, den die Kante nicht als Einstellung ausweist',
     $fehlend === [],
     implode('; ', $fehlend)
 );
@@ -138,21 +143,13 @@ if ($rest !== []) {
     printf("  HINWEIS Rest im Ast, auf den nichts zeigt: %s\n", implode('; ', $rest));
 }
 
-echo "\n== 3. Und die Marke ist ein echtes NULL, wo sie fehlt ==\n";
-
-// ⚠️ *`$wpdb->prepare('%s', null)` schreibt eine **leere Zeichenkette**. `fromStorage()` liest beide
-// als «niemand hat etwas gesagt», `WHERE kind IS NOT NULL` findet nur eine — ein Knoten waere
-// gleichzeitig markiert und nicht markiert ([D-519](../../docs/NewConcept/90-decision-log.md)).*
-$leer = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$nodesTable} WHERE field_type = ''");
-
-check('kein Knoten traegt eine leere Sorte statt NULL', $leer === 0, $leer . ' Zeile(n)');
-
-$fremd = array_values(array_filter(
-    $wpdb->get_col("SELECT DISTINCT field_type FROM {$nodesTable} WHERE field_type IS NOT NULL"),
-    static fn ($v): bool => FieldType::tryFrom((string) $v) === null
-));
-
-check('und keine Sorte, die der Code nicht kennt', $fremd === [], implode(', ', $fremd));
+// ⚠️ **Der dritte Abschnitt ist mit der Spalte gefallen** ([D-621](../../docs/NewConcept/90-decision-log.md)).
+// *Er hielt fest, dass `field_type` ein echtes `NULL` traegt und keine leere Zeichenkette
+// ([D-519](../../docs/NewConcept/90-decision-log.md)) und keinen Wert, den der Code nicht kennt.
+// **Beides ist gegenstandslos, weil es die Spalte nicht mehr gibt** — und was an ihre Stelle tritt,
+// bewacht `field-type-gone-check.php`: dass sie nicht zurueckkommt, und dass die Kantenart nur die
+// drei bekannten Werte traegt ([D-639](../../docs/NewConcept/90-decision-log.md)). **Entschaerft ist
+// hier nichts; die Frage hat einen anderen Ort.**
 
 printf("\n%d ok, %d fehlgeschlagen\n", $ok, $bad);
 

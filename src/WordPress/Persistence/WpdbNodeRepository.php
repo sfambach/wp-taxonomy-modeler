@@ -6,6 +6,7 @@ use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\FieldType;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\NodeRepository;
 
 /**
@@ -28,7 +29,7 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        $row = Query::row('Knoten lesen', $wpdb->prepare('SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
+        $row = Query::row('Knoten lesen', $wpdb->prepare('SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -48,7 +49,7 @@ final class WpdbNodeRepository implements NodeRepository
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Knoten nach Ids lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
             ...array_map(intval(...), $ids)
         ));
 
@@ -75,7 +76,6 @@ final class WpdbNodeRepository implements NodeRepository
             'version'        => $node->version,
             'name'           => $node->name,
             'path'           => $node->path,
-            'field_type'     => $node->fieldType?->value,
             'implemented_by' => $node->implementedBy,
             // ⚠️ *Seit TASK-018 kommt die Einordnung mit der Zeile* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
             // *`null` ist die Wurzel und nicht «weiss nicht» — `$wpdb->insert()` schreibt dafür ein
@@ -84,7 +84,7 @@ final class WpdbNodeRepository implements NodeRepository
             'sort_order'     => $node->sortOrder,
             'hide'           => $node->hide ? 1 : 0,
         ];
-        $formate = ['%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d'];
+        $formate = ['%d', '%s', '%s', '%s', '%d', '%d', '%d'];
 
         if ($node->id !== 0) {
             $spalten = ['id' => $node->id, ...$spalten];
@@ -140,11 +140,10 @@ final class WpdbNodeRepository implements NodeRepository
                 'version'        => $node->version,
                 'name'           => $node->name,
                 'path'           => $node->path,
-                'field_type'     => $node->fieldType?->value,
                 // ⚠️ *Fährt mit, aus demselben Grund wie `kind`: ein Umbenennen hätte sonst die
                 // Klassenangabe gelöscht (TASK-008).*
                 'implemented_by' => $node->implementedBy,
-                // ⚠️ *Fahren mit, aus demselben Grund wie `field_type` und `implemented_by`: ein
+                // ⚠️ *Fahren mit, aus demselben Grund wie `implemented_by`: ein
                 // Umbenennen hätte den Knoten sonst aus dem Baum geschrieben (TASK-018).*
                 'parent_node_id' => $node->parentNodeId,
                 'sort_order'     => $node->sortOrder,
@@ -154,8 +153,8 @@ final class WpdbNodeRepository implements NodeRepository
                 'id'      => $node->id,
                 'version' => $expectedVersion,
             ],
-            ['%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d'],
-            ['%d', '%d']
+            ['%d', '%s', '%s', '%s', '%d', '%d', '%d'],
+
         );
 
         if ($written === 1) {
@@ -201,7 +200,7 @@ final class WpdbNodeRepository implements NodeRepository
         // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort dazu: «wäre
         // selektionstechnisch billiger».*
         $rows = Query::rows('sichtbare Kinder lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide
+            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide
              FROM ' . Schema::table('nodes') . '
              WHERE hide = 0 AND parent_node_id IN (' . $platzhalter . ')
              ORDER BY parent_node_id ASC, sort_order ASC, id ASC',
@@ -225,7 +224,7 @@ final class WpdbNodeRepository implements NodeRepository
         // und bleibt es. Bis TASK-018 stand die Wahrheit in den Vererbungskanten und dieser Leser
         // war ein Join.*
         $rows = Query::rows('Kinder lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide
+            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide
              FROM ' . Schema::table('nodes') . '
              WHERE parent_node_id = %d
              ORDER BY sort_order ASC, id ASC',
@@ -300,7 +299,7 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . '
+            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes') . '
              WHERE path LIKE %s
              ORDER BY path ASC',
             $wpdb->esc_like($root->path . '.') . '%'
@@ -378,11 +377,70 @@ final class WpdbNodeRepository implements NodeRepository
     }
 
     /**
+     * Die eigene Sorte je Knoten — aus den **eingehenden Kanten**, sonst `null`.
+     *
+     * ⚠️ **[D-621](../../../docs/NewConcept/90-decision-log.md):** *«die Kante sagt, was etwas hier
+     * ist — nicht der Knoten und nicht der Ast.» **Damit gibt es keine Spalte mehr zu lesen**: was
+     * ein Knoten ist, steht in den Kanten, die auf ihn zeigen.*
+     *
+     * ⚠️ **Alle oder keine, und das ist die Berichtigung, die [D-621](../../../docs/NewConcept/90-decision-log.md)
+     * gemessen hat.** *Ein Knoten kann beides sein — `Integer` und `Decimal` sind Ziel einer
+     * Kompositions- **und** einer Einstellungskante. **Wer beides ist, ist an dieser Stelle nichts
+     * Besonderes**: nur wo jede eingehende Kante eine Einstellungskante ist, ist der Knoten selbst
+     * eine Einstellung. Sonst entscheidet die Kante, über die man kommt, und nicht der Knoten.*
+     *
+     * ⚠️ *Kein eingehender Kantensatz heisst `null` — «hier hat niemand etwas gesagt», also fragt
+     * {@see resolvedFieldTypes()} weiter oben.*
+     *
+     * @param  list<int>              $ids
+     * @return array<int, ?FieldType>
+     */
+    public function ownFieldTypes(array $ids): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $slots = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = Query::rows('Kantenarten der eingehenden Kanten lesen', $wpdb->prepare(
+            'SELECT to_node_id, kind FROM ' . Schema::table('relations') . " WHERE to_node_id IN ($slots)",
+            ...$ids
+        )) ?: [];
+
+        $sorten = [];
+
+        foreach ($rows as $row) {
+            $ziel = (int) $row['to_node_id'];
+
+            $sorten[$ziel] = ($sorten[$ziel] ?? FieldType::Setting) === FieldType::Setting
+                && (string) $row['kind'] === RelationKind::Setting->value
+                    ? FieldType::Setting
+                    : FieldType::Model;
+        }
+
+        foreach ($ids as $id) {
+            $sorten[$id] ??= null;
+        }
+
+        return $sorten;
+    }
+
+    /**
      * Zwei Abfragen für beliebig viele Knoten und beliebige Tiefe.
      *
-     * ⚠️ *Erst die angefragten Knoten mit ihrem Pfad, dann **alle** darin genannten Vorfahren, die
-     * überhaupt eine Sorte tragen — eine Abfrage, nicht eine je Stufe (`CD-7`). Danach läuft die
+     * ⚠️ *Erst die angefragten Knoten mit ihrem Pfad, dann **alle** darin genannten Vorfahren mit
+     * ihren eingehenden Kanten — eine Abfrage, nicht eine je Stufe (`CD-7`). Danach läuft die
      * Auflösung in PHP über den Pfad von hinten nach vorn.*
+     *
+     * ⚠️ **Der Lauf ist [D-621](../../../docs/NewConcept/90-decision-log.md)s eigener Satz:** *«wenn
+     * man am Vater irgendwas anhaengt, ist es genauso in den Kindern verfuegbar; da bestimmt auch die
+     * Kante darueber, wie's beim Vater angehaengt ist.» **Ein Knoten, den nur Vererbung erreicht,
+     * bekommt seinen Charakter von der Kante über seinem nächsten Vorfahren, der eine hat.***
      */
     public function resolvedFieldTypes(array $ids): array
     {
@@ -396,8 +454,8 @@ final class WpdbNodeRepository implements NodeRepository
 
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
-        $rows = Query::rows('Feldsorten am Pfad lesen', $wpdb->prepare(
-            'SELECT id, path, field_type FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
+        $rows = Query::rows('Pfade für den Sortenlauf lesen', $wpdb->prepare(
+            'SELECT id, path FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
             ...$ids
         )) ?: [];
 
@@ -410,26 +468,7 @@ final class WpdbNodeRepository implements NodeRepository
             }
         }
 
-        $sorten = [];
-
-        if ($entlang !== []) {
-            $wo    = array_keys($entlang);
-            $slots = implode(',', array_fill(0, count($wo), '%d'));
-
-            foreach (
-                Query::rows('Feldsorten entlang des Pfades lesen', $wpdb->prepare(
-                    'SELECT id, field_type FROM ' . Schema::table('nodes')
-                        . " WHERE id IN ($slots) AND field_type IS NOT NULL",
-                    ...$wo
-                )) ?: [] as $row
-            ) {
-                $sorte = FieldType::fromStorage((string) $row['field_type']);
-
-                if ($sorte !== null) {
-                    $sorten[(int) $row['id']] = $sorte;
-                }
-            }
-        }
+        $sorten = array_filter($this->ownFieldTypes(array_keys($entlang)));
 
         $aufgeloest = [];
 
@@ -475,7 +514,7 @@ final class WpdbNodeRepository implements NodeRepository
         // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
         // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
         $rows = Query::rows('Knoten nach Klasse lesen', $wpdb->prepare(
-            'SELECT id, version, name, path, field_type, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes')
+            'SELECT id, version, name, path, implemented_by, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes')
                 . " WHERE implemented_by IN ($slots) ORDER BY id",
             ...$classNames
         ));
@@ -499,10 +538,7 @@ final class WpdbNodeRepository implements NodeRepository
             (int) $row['version'],
             (string) $row['name'],
             (string) $row['path'],
-            // ⚠️ *`??` und nicht `[...]`: eine Abfrage, die nur `id` und `path` holt, hat die Spalte
-            // nicht dabei, und das ist kein Fehler — sie soll dann «niemand hat etwas gesagt» heissen.*
-            FieldType::fromStorage(isset($row['field_type']) ? (string) $row['field_type'] : null),
-            // ⚠️ *Dieselbe Vorsicht, und dazu: eine leere Zeichenkette ist `null`. **Zwei
+            // ⚠️ *Eine leere Zeichenkette ist `null`. **Zwei
             // Schreibweisen für «nichts» sind der Fehler, den `kind` schon einmal hatte.***
             isset($row['implemented_by']) && (string) $row['implemented_by'] !== ''
                 ? (string) $row['implemented_by']

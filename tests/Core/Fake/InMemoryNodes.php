@@ -191,7 +191,6 @@ final class InMemoryNodes implements NodeRepository
                     $node->version + 1,
                     $node->name,
                     $newPath . substr($node->path, strlen($oldPath)),
-                    $node->fieldType,
                     $node->implementedBy,
                     $node->parentNodeId,
                     $node->sortOrder,
@@ -210,6 +209,27 @@ final class InMemoryNodes implements NodeRepository
         }
     }
 
+    /** Dieselbe Antwort aus den Kanten wie am Rand ([D-621](../../../docs/NewConcept/90-decision-log.md)). */
+    public function ownFieldTypes(array $ids): array
+    {
+        $sorten = [];
+
+        foreach ($ids as $id) {
+            $id      = (int) $id;
+            $treffer = null;
+
+            foreach ($this->relations?->fieldRelationsTo([$id]) ?? [] as $relation) {
+                $treffer = $treffer === null || $treffer === FieldType::Setting
+                    ? ($relation->isSetting() ? FieldType::Setting : FieldType::Model)
+                    : FieldType::Model;
+            }
+
+            $sorten[$id] = $treffer;
+        }
+
+        return $sorten;
+    }
+
     /** Derselbe Lauf, ohne Abfragen — der Pfad steht im Knoten. */
     public function resolvedFieldTypes(array $ids): array
     {
@@ -220,11 +240,12 @@ final class InMemoryNodes implements NodeRepository
             $sorte = FieldType::standard();
 
             if ($node !== null) {
-                foreach (array_reverse(explode('.', $node->path)) as $stufe) {
-                    $vorfahr = $this->rows[(int) $stufe] ?? null;
+                $entlang = array_reverse(explode('.', $node->path));
+                $eigene  = $this->ownFieldTypes(array_map(intval(...), $entlang));
 
-                    if ($vorfahr?->fieldType !== null) {
-                        $sorte = $vorfahr->fieldType;
+                foreach ($entlang as $stufe) {
+                    if (($eigene[(int) $stufe] ?? null) !== null) {
+                        $sorte = $eigene[(int) $stufe];
 
                         break;
                     }

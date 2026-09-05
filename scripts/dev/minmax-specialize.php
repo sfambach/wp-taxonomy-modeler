@@ -35,7 +35,6 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\ModelValues;
 use Taxmod\WordPress\Persistence\Schema;
@@ -112,11 +111,10 @@ printf("Ziel: `Integer` (%d, %s)\n\n", (int) $integer->id, $integer->path);
 
 foreach ($ziele as $name => $z) {
     printf(
-        "  %-4s Knoten %-7d liegt %s, Marke %s\n",
+        "  %-4s Knoten %-7d liegt %s\n",
         $name,
         (int) $z['node']->id,
-        $z['node']->path,
-        $z['node']->fieldType ?? '(keine)'
+        $z['node']->path
     );
     printf("       → zieht unter `Integer`; Marke `setting`; Feld `Integer --%s--> %s`%s\n",
         $name,
@@ -180,7 +178,6 @@ try {
         $id = (int) $z['node']->id;
 
         $editor->move($id, (int) $integer->id);
-        $editor->setFieldType($id, FieldType::Setting);
 
         if (! $z['feldSchonDa']) {
             $kante = $editor->addField((int) $integer->id, $id, $name);
@@ -205,9 +202,11 @@ echo "\nGeschrieben.\n";
 
 foreach ($ziele as $name => $z) {
     $row = $wpdb->get_row($wpdb->prepare(
-        "SELECT path, kind FROM {$nodesTable} WHERE id = %d",
+        "SELECT path FROM {$nodesTable} WHERE id = %d",
         (int) $z['node']->id
     ));
 
-    printf("  %-4s liegt jetzt %s, Marke %s\n", $name, $row->path, $row->field_type ?? '(keine)');
+    // ⚠️ *Die Marke stand hier daneben und ist mit `nodes.field_type` gefallen
+    // ([D-621](../../docs/NewConcept/90-decision-log.md)) — sie kommt jetzt aus der Kante.*
+    printf("  %-4s liegt jetzt %s\n", $name, $row->path);
 }

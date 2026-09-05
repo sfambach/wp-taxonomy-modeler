@@ -1553,3 +1553,59 @@ sondern **der gewaehlte**.*
 ⚠️ *Sein Satz endete mit «das klappt naemlich aktuell» — ob «klappt» oder «klappt nicht» gemeint
 war, ist nicht sicher. **Die Zusage deckt beide Lesarten ab:** sie haelt fest, was funktioniert, und
 faellt rot, wo es nicht funktioniert.*
+
+---
+
+[x] TASK-059  Die zweite Haelfte von D-621: `nodes.field_type` faellt
+
+**2026-09-05, auf seine Rueckfrage:** *«aber der Rueckbau am Knoten gehoert doch fachlich dazu, wie
+kannst du das dann stehen lassen?»* **Er hat recht: TASK-032 hat nur die Kantenseite gebaut.**
+
+⚠️ **Was an die Stelle der Spalte tritt, steht in [D-621](../../NewConcept/90-decision-log.md) selbst:**
+*«die Kante sagt, was etwas hier ist — nicht der Knoten und nicht der Ast.» **Ein Knoten ist selbst
+eine Einstellung, wenn jede eingehende Kante eine Einstellungskante ist**; wen nur Vererbung erreicht,
+beantwortet die Kante ueber seinem naechsten Vorfahren — *«wenn man am Vater irgendwas anhaengt, ist
+es genauso in den Kindern verfuegbar»*.*
+
+⚠️ **Gemessen, bevor gebaut wurde:** *39 Knoten trugen die Marke, 98 nicht. **Die Ableitung
+reproduziert 136 von 137**; die eine Abweichung ist `Boolean` und liegt als `INF-044` im Eingang
+(`PR-4`).*
+
+⚠️ **Der Massstab war, was jeder Knoten zeichnet, und er ist gehalten:** *`renderer-per-node.php`
+nimmt je Knoten den Renderernamen ueber die echte Aufloesung ab. **Vorher und nachher Zeile fuer
+Zeile identisch — 130 von 137.***
+
+⚠️ **Die gewollte Nebenwirkung ist eingetreten** (`INF-042`, Antwort 1): *ein Waehler entsteht aus den
+**unmarkierten** Kindern des Kantenziels ([D-540](../../NewConcept/90-decision-log.md)). Die neunzehn
+Renderer trugen alle die Marke, also bot die Auswahl **null** Moeglichkeiten an. **Jetzt bietet sie
+12 an** — `Label roles` 0 → 5, `Converter` 0 → 4, `Validator` 0 → 2, `Orientation` 0 → 2. *Was noch
+fehlt, sind die sechs unter dem Zwischenknoten `render with label`: `INF-043`.*
+
+**Was gebaut ist:**
+- `nodes.field_type` faellt, lebend und im Schatten; **Schemafassung 33**.
+- **Gesichert wird im Fassungsschritt selbst**, nicht in einem Skript daneben — 39 Schattenzeilen und
+  39 Journalzeilen unter **einer** Aenderungsgruppe, jede mit Version
+  ([D-634](../../NewConcept/90-decision-log.md)). *Warum das dort und nicht daneben gehoert: `INF-045`.*
+- `Node::$fieldType`, `Node::withFieldType()`, `ModelEditor::setFieldType()` und der Waehler auf der
+  Knotenseite sind weg. *`ModelEditor::kindsOfTargets()` und `fieldTypesOfNodes()` ebenfalls — beide
+  hatten ausser dem Waehler keinen Aufrufer.*
+- Die Auskunft kommt aus `NodeRepository::ownFieldTypes()` (eigene Sorte, aus den eingehenden Kanten)
+  und `resolvedFieldTypes()` (Lauf ueber die Vorfahren). **Die eigene entscheidet die Waehlbarkeit,
+  die aufgeloeste den Behaelter** — dieselbe Trennung wie in [D-544](../../NewConcept/90-decision-log.md).
+
+**Waechter** (`PR-9`, keiner entschaerft):
+- **Neu** `field-type-gone-check` — die Spalte kommt nicht zurueck (lebend, im Schatten und im
+  `CREATE TABLE`); jede gefallene Marke hat Schatten, Gruppe und Version; **so viele
+  Einstellungskanten wie die Spalte sagt** (heute 12) und keine fremde Kantenart; **die Renderer-Zeile
+  bietet Moeglichkeiten an, nicht null**.
+- **Umgezogen** `setting-kind-check` — dieselbe Zusage, jetzt ueber die Kante beantwortet. *Sein
+  dritter Abschnitt ist mit der Spalte gegenstandslos geworden und in `field-type-gone-check`
+  aufgehoben, nicht gestrichen.*
+- **Gefallen** `field-type-check` — es bewachte die Spalte. *`PR-9`: ein Waechter bewacht den
+  **aktuellen** Zielzustand, nie einen vergangenen.* Mit ihm `setting-kind-migrate`, die Wanderung,
+  die die Spalte gefuellt hat.
+- `minmax-specialize` und `geruest` zeigen bzw. setzen die Marke nicht mehr; die Kante sagt es.
+
+⚠️ *Alle beruehrten Waechter gruen, `vendor/bin/phpunit` 445 gruen. **Zwei Waechter bleiben rot und
+waren es vorher schon:** `unitvalue-check` (dokumentiert im Eingang, `OQ-134` und der Befund darunter)
+und `always-on-check` (Groesse des Immer-Gelesenen).*

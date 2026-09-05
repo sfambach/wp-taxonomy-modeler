@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\WordPress\SystemClock;
+
 
 /**
  * Die Tabellen des Modells (D-083), auf der Aktivierung angelegt und von einer gespeicherten
@@ -339,8 +341,14 @@ final class Schema
      * *`nodes.settings_record_id`, `relations.settings_record_id`, `relations.target_settings_record_id`
      * und ihre beiden Schatten. **Am Knoten wandern 29 Träger auf eine Einstellungskante `1..1`; an
      * der Kante fällt der Renderer ersatzlos**, weil beide Spalten dort je 0 Zeilen hatten.*
+     *
+     * ⚠️ **Fassung 33 nimmt `nodes.field_type` weg — die zweite Hälfte von
+     * [D-621](../../../docs/NewConcept/90-decision-log.md)** (TASK-059). *«Die Kante sagt, was etwas
+     * hier ist — nicht der Knoten und nicht der Ast.» **39 Knoten trugen die Marke; die Auskunft kommt
+     * jetzt aus den eingehenden Kanten**, und wo keine ist, von der Kante über dem nächsten Vorfahren.
+     * Der Schatten geht mit, aus demselben Grund wie in Fassung 32.*
      */
-    public const VERSION = 32;
+    public const VERSION = 33;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -544,6 +552,10 @@ final class Schema
         // ⚠️ **Nach `dbDelta` und aus demselben Grund wie {@see self::moveParkingIntoTheShadow()}:**
         // *`dbDelta` legt eine fehlende Spalte wieder an, es entfernt keine (Fassung 32, TASK-057).*
         self::dropSettingsRecordColumns();
+
+        // ⚠️ **Nach `dbDelta`, aus demselben Grund** (Fassung 33, TASK-059,
+        // [D-621](../../../docs/NewConcept/90-decision-log.md)).
+        self::dropNodeFieldTypeColumn();
 
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
@@ -844,6 +856,113 @@ final class Schema
         // ⚠️ *Der Spaltenplan von {@see Shadow} ist je Tabelle gemerkt — sonst kopierte der nächste
         // Aufruf eine Spalte, die es nicht mehr gibt.*
         Shadow::forgetColumnPlan();
+    }
+
+    /**
+     * `nodes.field_type` fällt — am Knoten und im Schatten (Fassung 33, TASK-059).
+     *
+     * ⚠️ **Die zweite Hälfte von [D-621](../../../docs/NewConcept/90-decision-log.md), und er hat sie
+     * eingefordert:** *«aber der Rueckbau am Knoten gehoert doch fachlich dazu, wie kannst du das dann
+     * stehen lassen?»* *TASK-032 hatte nur die Kantenseite gebaut.*
+     *
+     * ⚠️ **Was an ihre Stelle tritt, steht schon da:** *die eingehenden Kanten. Ein Knoten ist selbst
+     * eine Einstellung, wenn jede Kante auf ihn eine Einstellungskante ist; wen nur Vererbung
+     * erreicht, beantwortet die Kante über seinem nächsten Vorfahren
+     * ({@see WpdbNodeRepository::resolvedFieldTypes()}). **Es wird nichts umgerechnet und nichts
+     * gefüllt** — die Antwort war die ganze Zeit ableitbar, und die Spalte war die Doppelung.*
+     *
+     * ⚠️ **Umkehrbar, und darum sichert dieser Schritt selbst, bevor er löscht** (`PR-9`): *jede
+     * markierte Zeile geht als Schattenzeile fort, und jede bekommt eine Journalzeile mit **Version**
+     * ([D-634](../../../docs/NewConcept/90-decision-log.md)) unter **einer** Änderungsgruppe
+     * ([D-348](../../../docs/NewConcept/90-decision-log.md)). **Das Sichern gehört hierher und nicht
+     * in ein Skript daneben:** *ein Skript läuft auf dieser einen Installation, die Fassung läuft auf
+     * jeder — und ein Sichern, das die Wanderung überholen kann, ist keines. **Genau das ist am
+     * 2026-09-05 passiert**, weil das Laden von WordPress die Fassung hebt, bevor ein Skript zum
+     * Schreiben kommt.*
+     *
+     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine Spalte mehr.*
+     */
+    private static function dropNodeFieldTypeColumn(): void
+    {
+        global $wpdb;
+
+        $nodes = self::table('nodes');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $nodes)) !== $nodes) {
+            return;
+        }
+
+        if ($wpdb->get_var("SHOW COLUMNS FROM {$nodes} LIKE 'field_type'") === null) {
+            return;
+        }
+
+        self::keepFieldTypesBeforeDropping($nodes);
+
+        $gefallen = false;
+
+        foreach (['nodes', 'nodes_history'] as $tabelle) {
+            $name = self::table($tabelle);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $name)) !== $name) {
+                continue;
+            }
+
+            if ($wpdb->get_var("SHOW COLUMNS FROM {$name} LIKE 'field_type'") === null) {
+                continue;
+            }
+
+            $wpdb->query("ALTER TABLE {$name} DROP COLUMN field_type");
+            $gefallen = true;
+        }
+
+        if ($gefallen) {
+            // ⚠️ *Der Spaltenplan von {@see Shadow} ist je Tabelle gemerkt — sonst kopierte der
+            // nächste Aufruf eine Spalte, die es nicht mehr gibt.*
+            Shadow::forgetColumnPlan();
+        }
+    }
+
+    /**
+     * Die Marken in den Schatten und ins Journal, bevor die Spalte fällt (Fassung 33).
+     *
+     * ⚠️ **Erst der Schatten, dann das Journal**, und die Reihenfolge ist überall dieselbe: *die
+     * Schattenzeile ist das, woraus man zurückkommt; die Journalzeile ist nur der Hinweis darauf.*
+     *
+     * ⚠️ *Eine Änderungsgruppe für alle Zeilen — es ist **ein** Akt
+     * ([D-348](../../../docs/NewConcept/90-decision-log.md)), und ein Rückgängig, das nur eine der 39
+     * Marken zurückholte, wäre kein Rückgängig dieses Schritts.*
+     */
+    private static function keepFieldTypesBeforeDropping(string $nodes): void
+    {
+        global $wpdb;
+
+        $markiert = $wpdb->get_results(
+            "SELECT id, version, field_type FROM {$nodes} WHERE field_type IS NOT NULL AND field_type <> ''",
+            ARRAY_A
+        ) ?: [];
+
+        if ($markiert === []) {
+            return;
+        }
+
+        $log    = new WpdbChangelog(new SystemClock());
+        $gruppe = null;
+
+        foreach ($markiert as $zeile) {
+            $id = (int) $zeile['id'];
+
+            Shadow::keepOne('nodes', $id);
+
+            $gruppe = $log->record(
+                $id,
+                'node',
+                'field type dropped',
+                (string) $zeile['field_type'],
+                null,
+                (int) $zeile['version'],
+                $gruppe
+            );
+        }
     }
 
     private static function dropSettingsTable(): void
@@ -2134,7 +2253,6 @@ final class Schema
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
-                field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
@@ -2272,7 +2390,6 @@ final class Schema
                 version int(10) unsigned NOT NULL,
                 name varchar(191) NOT NULL,
                 path varchar(255) NOT NULL,
-                field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,

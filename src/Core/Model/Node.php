@@ -46,15 +46,6 @@ class Node extends Identity implements Renderable
         string $name,
         public readonly string $path,
         /**
-         * Was Felder halten, die hierauf zeigen ([D-518](../../../docs/NewConcept/90-decision-log.md)).
-         *
-         * ⚠️ **`null` heisst «frag meine Vorfahren», nicht «unbekannt».** *Die Auflösung ist derselbe
-         * Vorfahrenlauf, den {@see \Taxmod\Core\Service\Rendering} für den Typ schon fährt und den
-         * [D-516](../../../docs/NewConcept/90-decision-log.md) gemessen hat — **eine Spalte plus
-         * Vorfahrenlauf gibt Vererbung ohne die Settings-Maschinerie.***
-         */
-        public readonly ?FieldType $fieldType = null,
-        /**
          * Die PHP-Klasse, die diesen Knoten umsetzt — voll qualifiziert, oder `null`.
          *
          * ⚠️ **Der Klassenname und keine Marke** (TASK-008,
@@ -65,7 +56,7 @@ class Node extends Identity implements Renderable
          *
          * ⚠️ **`null` heisst «keine Klasse setzt ihn um», nicht «unbekannt».** *Die überwiegende
          * Mehrheit der Knoten ist Inhalt des Eigentümers und hat keine Entsprechung im Code — ein
-         * Vorfahrenlauf wie bei {@see $fieldType} wäre hier falsch: **eine Klasse erbt sich nicht.***
+         * Vorfahrenlauf wie bei der Feldsorte wäre hier falsch: **eine Klasse erbt sich nicht.***
          *
          * ⚠️ *Ein Klassenname in den Daten bindet die Zeile an den Code, und das ist der Preis. Der
          * Ausgleich steht als Wächter daneben: `implemented-by-check.php` wird rot, sobald eine Zeile
@@ -132,7 +123,6 @@ class Node extends Identity implements Renderable
         int $version,
         string $name,
         string $path,
-        ?FieldType $fieldType = null,
         ?string $implementedBy = null,
         ?int $parentNodeId = null,
         int $sortOrder = 0,
@@ -140,7 +130,7 @@ class Node extends Identity implements Renderable
     ): self {
         $class = self::classHydrating($implementedBy) ?? static::class;
 
-        return new $class($id, $version, $name, $path, $fieldType, $implementedBy, $parentNodeId, $sortOrder, $hide);
+        return new $class($id, $version, $name, $path, $implementedBy, $parentNodeId, $sortOrder, $hide);
     }
 
     /**
@@ -157,8 +147,6 @@ class Node extends Identity implements Renderable
         ?int $version = null,
         ?string $name = null,
         ?string $path = null,
-        bool $clearFieldType = false,
-        ?FieldType $fieldType = null,
         bool $clearImplementedBy = false,
         ?string $implementedBy = null,
         bool $clearParent = false,
@@ -171,7 +159,6 @@ class Node extends Identity implements Renderable
             $version ?? $this->version,
             $name ?? $this->name,
             $path ?? $this->path,
-            $clearFieldType ? null : ($fieldType ?? $this->fieldType),
             $clearImplementedBy ? null : ($implementedBy ?? $this->implementedBy),
             $clearParent ? null : ($parentNodeId ?? $this->parentNodeId),
             $sortOrder ?? $this->sortOrder,
@@ -223,7 +210,6 @@ class Node extends Identity implements Renderable
             1,
             $name,
             $parentPath === null ? (string) $id : $parentPath . '.' . $id,
-            null,
             null,
             $parentNodeId,
             $sortOrder,
@@ -307,25 +293,9 @@ class Node extends Identity implements Renderable
     }
 
     /**
-     * Dieselbe Sorte anders gesagt, eine Fassung weiter.
-     *
-     * ⚠️ *Gibt **dasselbe** Exemplar zurück, wenn sich nichts ändert — [D-282](../../../docs/NewConcept/90-decision-log.md):
-     * ein Speichern, das nichts ändert, darf die Fassung nicht heben. Dieselbe Form wie
-     * {@see renamedTo()}.*
-     */
-    public function withFieldType(?FieldType $fieldType): self
-    {
-        if ($fieldType === $this->fieldType) {
-            return $this;
-        }
-
-        return $this->copy(version: $this->version + 1, clearFieldType: $fieldType === null, fieldType: $fieldType);
-    }
-
-    /**
      * Derselbe Knoten, der eine andere PHP-Klasse nennt — eine Fassung weiter.
      *
-     * ⚠️ *Dieselbe Form wie {@see withFieldType()}: **dasselbe Exemplar zurück**, wenn sich nichts ändert
+     * ⚠️ *Gibt **dasselbe** Exemplar zurück, wenn sich nichts ändert
      * ([D-282](../../../docs/NewConcept/90-decision-log.md)). Ein leerer Name wird zu `null`, damit
      * «nichts» genau eine Schreibweise hat — sonst stünden `''` und `NULL` nebeneinander und sagten
      * dasselbe, die Falle aus {@see \Taxmod\WordPress\Persistence\WpdbNodeRepository}.*

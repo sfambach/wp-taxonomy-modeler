@@ -108,7 +108,7 @@ final class SpecialisedTypeTest extends TestCase
     public function eine_zeile_mit_typklasse_kommt_als_diese_klasse_an(): void
     {
         foreach (SpecialisedTypes::all() as $steckbrief) {
-            $knoten = Node::fromStorage(7, 3, $steckbrief->nodeName(), '1.7', null, $steckbrief::class);
+            $knoten = Node::fromStorage(7, 3, $steckbrief->nodeName(), '1.7', $steckbrief::class);
 
             self::assertInstanceOf($steckbrief::class, $knoten);
             self::assertSame(7, $knoten->id);
@@ -120,7 +120,7 @@ final class SpecialisedTypeTest extends TestCase
     #[Test]
     public function eine_zeile_mit_rendererklasse_kommt_als_diese_klasse_an(): void
     {
-        $knoten = Node::fromStorage(9, 1, 'checkbox', '1.9', null, CheckboxRenderer::class);
+        $knoten = Node::fromStorage(9, 1, 'checkbox', '1.9', CheckboxRenderer::class);
 
         self::assertInstanceOf(CheckboxRenderer::class, $knoten);
         self::assertSame('checkbox', $knoten->name());
@@ -138,7 +138,7 @@ final class SpecialisedTypeTest extends TestCase
     public function alles_andere_bleibt_ein_schlichtes_node(): void
     {
         foreach ([null, '', BinaryConverter::class, 'Taxmod\\Nicht\\Vorhanden'] as $spalte) {
-            $knoten = Node::fromStorage(11, 1, 'Kunde', '1.11', null, $spalte);
+            $knoten = Node::fromStorage(11, 1, 'Kunde', '1.11', $spalte);
 
             self::assertSame(Node::class, $knoten::class, var_export($spalte, true));
         }
@@ -148,7 +148,7 @@ final class SpecialisedTypeTest extends TestCase
     #[Test]
     public function eine_aenderung_behaelt_die_klasse(): void
     {
-        $knoten = Node::fromStorage(7, 3, 'Integer', '1.7', null, IntType::class);
+        $knoten = Node::fromStorage(7, 3, 'Integer', '1.7', IntType::class);
 
         self::assertInstanceOf(IntType::class, $knoten->renamedTo('Ganzzahl'));
         self::assertInstanceOf(IntType::class, $knoten->movedUnder('1.2'));
