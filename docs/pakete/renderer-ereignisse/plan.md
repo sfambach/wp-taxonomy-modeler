@@ -13,7 +13,7 @@ Soll/Ist-Abgleich, Ereignistypen, Form der Beschreibung und die Reihenfolge.
 
 | | |
 |---|---|
-| **Schritte** | **8**, jeder für sich lauffähig |
+| **Schritte** | **8** — als Reihenfolge, nicht als Zwang ([D-635](../../NewConcept/90-decision-log.md)) |
 | **Der erste** | die **Adresse** — ein Wertobjekt, das sagt *welcher Knoten, welche Kante, welcher Datensatz, welches Feld*. Ohne sie kann sich kein Listener eng anmelden und kein Fehler ans richtige Feld ([D-632](../../NewConcept/90-decision-log.md), [D-633](../../NewConcept/90-decision-log.md)) |
 | **Ereignistypen** | **7** — drei Auslöser (Wert geändert, Verweis gewählt, Bedienelement betätigt) und vier Eingetretene (Knoten, Kante, Knoten-Datensatz, Kanten-Datensatz) |
 | **Die Beschreibung** | **eine getippte Objektstruktur je Seite**, verlustfrei nach JSON schreibbar ([D-628](../../NewConcept/90-decision-log.md), [D-629](../../NewConcept/90-decision-log.md)) |
