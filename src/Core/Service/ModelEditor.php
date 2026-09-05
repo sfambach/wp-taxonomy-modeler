@@ -214,6 +214,32 @@ final class ModelEditor
     }
 
     /**
+     * Der Knoten, den diese PHP-Klasse umsetzt — oder `null` (TASK-009).
+     *
+     * ⚠️ **Das ist der Weg, der die WordPress-Optionen ablöst.** *`taxmod_render_renderer_slider_id`
+     * hielt die Bindung «welcher Knoten ist der Schieber-Renderer» **ausserhalb** des Modells, gegen
+     * [`AR-1`](../../../CLAUDE.md). Jetzt steht sie im Knoten, und dies ist die Frage danach.*
+     *
+     * ⚠️ *Ein Knoten im Müll zählt nicht: eine Saat ist danach gewöhnlicher Inhalt
+     * ([D-119](../../../docs/NewConcept/90-decision-log.md)), und wer den Schieber weggeworfen hat,
+     * soll ihn nicht durch die Hintertür zurückbekommen. **Ein Umzug innerhalb des Modells gilt** —
+     * genau die Unterscheidung, an der die Saat am 2026-08-31 vierundzwanzig Knoten doppelt angelegt
+     * hat.*
+     */
+    public function nodeImplementing(string $className): ?Node
+    {
+        $node = $this->nodes->byImplementations([$className])[$className] ?? null;
+
+        if ($node === null) {
+            return null;
+        }
+
+        $muell = $this->framework->trash();
+
+        return $node->id === $muell->id || $node->isDescendantOf($muell) ? null : $node;
+    }
+
+    /**
      * Hide a node, or show it again.
      *
      * ⚠️ **A column and not a setting** ([D-426](../../../docs/NewConcept/90-decision-log.md),

@@ -230,6 +230,19 @@ final class RenderingScaffold
         ?string $className,
         array &$created
     ): Node {
+        // ⚠️ **Zuerst der Knoten selbst** (TASK-009). *Er sagt, welche Klasse ihn umsetzt, und damit
+        // braucht diese Saat keine WordPress-Option mehr, um ihn wiederzufinden — die Bindung liegt
+        // im Modell, wo `AR-1` sie haben will. **Der Weg über die Option bleibt als Notnagel
+        // darunter**, für eine Installation, die vor Fassung 23 gesät wurde; er schreibt die Klasse
+        // nach und macht sich damit selbst unnötig.*
+        if ($className !== null) {
+            $ausDerSpalte = $this->editor->nodeImplementing($className);
+
+            if ($ausDerSpalte !== null) {
+                return $ausDerSpalte;
+            }
+        }
+
         $children = $this->editor->childrenOf($parent->id);
         $known    = (int) get_option($option, 0);
 
@@ -248,7 +261,7 @@ final class RenderingScaffold
         foreach ($children as $child) {
             if ($child->name === $name) {
                 // ⚠️ *Der Notnagel macht sich selbst unnötig.*
-                update_option($option, $child->id, true);
+                $this->merken($option, $child->id, $className);
 
                 return $this->sagtSeineKlasse($child, $className);
             }
@@ -257,9 +270,26 @@ final class RenderingScaffold
         $made      = $this->editor->createNode($name, $parent->id);
         $created[] = $parent->name . ' > ' . $name;
 
-        update_option($option, $made->id, true);
+        $this->merken($option, $made->id, $className);
 
         return $this->sagtSeineKlasse($made, $className);
+    }
+
+    /**
+     * Die Id in die Option schreiben — **nur noch für die drei Behälter** (TASK-009).
+     *
+     * ⚠️ **Wer eine Klasse nennt, braucht keine Option mehr**, und zwei Orte für dieselbe Auskunft
+     * sind die Doppelung, die `CLAUDE.md` verbietet. *Die Behälter `Renderer`, `Converter` und
+     * `Validator` sind ein **Ort** und keine Klasse — sie behalten ihre Option, bis entschieden ist,
+     * woran ein Behälter sonst zu erkennen wäre (`INF-020`).*
+     */
+    private function merken(string $option, int $id, ?string $className): void
+    {
+        if ($className !== null) {
+            return;
+        }
+
+        update_option($option, $id, true);
     }
 
     /**

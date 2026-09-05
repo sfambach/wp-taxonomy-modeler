@@ -152,7 +152,7 @@ Schatten **zählt** er nur — Geschichte ist eingefroren ([D-065](../../NewConc
 und eine Fassung darf eine Klasse nennen, die es heute nicht mehr gibt.*
 
 ```text
-[ ] TASK-009  Die 56 Optionen ablösen, die sich Knoten-Ids merken
+[~] TASK-009  Die 56 Optionen ablösen, die sich Knoten-Ids merken
 ```
 
 Folgt aus TASK-008. **Gemessen: 56 WordPress-Optionen** halten heute die Bindung «welcher Knoten ist
@@ -161,6 +161,24 @@ und vierundfünfzig weitere. **Sagt der Knoten es selbst, können sie fallen.**
 
 ⚠️ *Das ist eine eigene Aufgabe und kein Nebenbei: 56 Optionen zu entfernen heisst, jeden Leser
 vorher umzuziehen — Reihenfolge Wächter, Leser, Daten.*
+
+**Zur Hälfte erledigt am 2026-09-05, und die andere Hälfte ist eine Frage, keine Arbeit.**
+
+⚠️ **Gemessen: es sind 46 Optionen, nicht 56** — die Zahl oben stammt von einem früheren Stand.
+**23 sind gefallen**, alle Renderer, Konverter und Validatoren: die Saat findet ihren Knoten jetzt
+über `nodes.implemented_by` ({@see ModelEditor::nodeImplementing()}), der Schreiber der Renderer-Wahl
+in `NodesScreen` ebenso, und die Option wird nicht mehr geschrieben. *Reihenfolge Wächter, Leser,
+Daten: `rendering-scaffold-check` §2, §6 und §7 sind auf die Spalte umgeschrieben — **nicht
+entschärft** (`PR-9`), die Zusagen sind wortgleich —, dann die beiden Leser, dann der Lauf, der die
+Optionen löscht.*
+
+⚠️ **23 stehen weiter, und warum, steht als `INF-020` im Eingang:** *elf Typoptionen, weil ein
+einfacher Typ ein **Aufzählungsfall** ist und keine Klasse — alle elf antworteten mit demselben
+Klassennamen; drei Behälteroptionen, weil `Renderer` ein Ort ist und keine Klasse; neun Optionen
+für Oberflächenrenderer, die niemand mehr liest und die trotzdem nicht wegzuwerfen sind. **Der Fall
+der elf ist der, der in der Aufgabe wörtlich steht** — «welcher Knoten ist der Int-Typ» —, und er
+lässt sich mit dieser Spalte nicht beantworten, ohne die Entscheidung zu brechen. Nicht erfunden
+(`PR-4`); `type-binding-check` bewacht die alte Form unverändert und ist grün.*
 
 ```text
 [ ] TASK-010  from_id/to_id in from_node_id/to_node_id, Constraint auf nodes.id

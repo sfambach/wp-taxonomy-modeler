@@ -39,7 +39,6 @@ use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Tree;
-use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -3419,11 +3418,13 @@ final class NodesScreen
      * was dort gezeichnet wurde: die Liste kommt aus derselben Methode, damit ein verändertes Formular
      * keinen Schlüssel unterschieben kann, den niemand angeboten hat (`CD-5`).*
      *
-     * ⚠️ **Der Name wird zu einer Knoten-Id, und zwar über die aufgeschriebene Id** — nicht über einen
-     * Knotennamen. *Die Saat merkt sich `taxmod_render_renderer_<name>_id`
-     * ({@see \Taxmod\WordPress\Persistence\RenderingScaffold::optionFor()}), und
+     * ⚠️ **Der Name wird zu einer Knoten-Id, und zwar über die Klasse** (TASK-009) — nicht über einen
+     * Knotennamen. *Die Registratur sagt, welche Klasse hinter dem gewählten Namen steht, und
+     * `nodes.implemented_by` sagt, welcher Knoten sie umsetzt.
      * [D-022](../../../docs/NewConcept/90-decision-log.md) verbietet, einen Knoten über seinen Namen
-     * aufzulösen. **Steht die Id nicht da, wird nichts geschrieben** statt geraten (`PR-4`).*
+     * aufzulösen; **hier stand bis 2026-09-05 eine WordPress-Option**, die dieselbe Bindung
+     * ausserhalb des Modells hielt. **Steht nichts da, wird nichts geschrieben** statt geraten
+     * (`PR-4`).*
      *
      * ⚠️ *Ein leerer Wert schreibt nichts: die Auswahl des Renderers hat keine leere Wahl, ein leeres
      * Feld kann also nur von einem gesperrten oder veränderten Formular kommen. **Was «keinen Renderer»
@@ -3456,10 +3457,15 @@ final class NodesScreen
                 continue;
             }
 
-            $rendererId = (int) get_option(
-                RenderingScaffold::optionFor('Renderer', $gewaehlt),
-                0
-            );
+            // ⚠️ **Der Knoten sagt selbst, welcher Renderer er ist** (TASK-008, TASK-009). *Hier
+            // stand `get_option('taxmod_render_renderer_' . $name . '_id')` — eine Bindung zwischen
+            // Modell und Code **ausserhalb** des Modells, gegen `AR-1`. **Steht nichts da, wird
+            // nichts geschrieben** statt geraten (`PR-4`), genau wie vorher.*
+            $klasse = $this->rendering->rendererClassFor($gewaehlt);
+
+            $rendererId = $klasse === null
+                ? 0
+                : ($this->editor->nodeImplementing($klasse)?->id ?? 0);
 
             if ($rendererId === 0) {
                 continue;

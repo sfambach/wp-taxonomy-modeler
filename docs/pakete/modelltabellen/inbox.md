@@ -533,3 +533,59 @@ hineingeschrieben hat.*
 Der Kern darf keinen erfinden (`AR-2`, `CD-1`); er müsste als Wort vom Rand kommen, wie
 `word:locked-reason` in der Feldzeile. **Das ist eine Zeile Arbeit und eine Entscheidung**, welchen
 Satz sie trägt — und die gehört ihm.*
+
+---
+
+## INF-020 · Was die Klassenspalte nicht ablösen kann — 23 von 46 Optionen bleiben
+
+**2026-09-05, bei TASK-009. Nicht entschieden (`PR-4`) — und ausdrücklich nicht erfunden.**
+
+**Gemessen vor dem Umbau: 46 Optionen, nicht 56** (die Zahl in TASK-009 stammt von einem früheren
+Stand). **23 sind gefallen**, weil ihr Knoten seit TASK-008 selbst sagt, welche PHP-Klasse ihn
+umsetzt. **23 stehen weiter, aus drei verschiedenen Gründen:**
+
+```text
+11  taxmod_type_<name>_id       int, text, bool, …  — es gibt keine Klasse je Typ
+ 3  taxmod_render_<behaelter>_id Renderer, Converter, Validator — ein Ort, keine Klasse
+ 9  taxmod_render_renderer_…_id  tree, head, settings, choice, …  — Oberflaechenrenderer
+```
+
+⚠️ **Die elf Typoptionen sind der eigentliche Befund, und sie stehen wörtlich in der Aufgabe** —
+*«welcher Knoten ist der Int-Typ»*, und `geltende-regeln.md` §5 nennt sie als das, was die Spalte
+aus §3.2 ablösen soll. **Gemessen geht das nicht:** ein einfacher Typ ist in diesem Code ein
+**Aufzählungsfall** ({@see \Taxmod\Core\Model\SimpleType}), keine Klasse. Alle elf Typen antworteten
+mit demselben Klassennamen, und die Spalte könnte `int` nicht von `text` unterscheiden. **Eine
+Marke statt des Klassennamens ist genau das, was die Entscheidung ausschliesst** — *«die Spalte
+trägt den Klassennamen, keine Factory»*.
+
+⚠️ **Drei Wege, keiner davon gewählt:** *(a) je Typ eine Klasse, dann greift die Spalte unverändert;
+(b) die Spalte darf auch einen Aufzählungsfall nennen (`…\SimpleType::Int`), dann prüft der Wächter
+`defined()` statt `class_exists()`; (c) die elf Optionen bleiben, bis `labels` steht (TASK-019) und
+ein Typ über etwas anderes zu finden ist. **Heute gilt (c), weil nichts entschieden wurde** —
+`type-binding-check.php` bewacht die alte Form unverändert und ist grün.*
+
+⚠️ **Die neun Oberflächen-Optionen sind Rückstand und werden nicht angefasst.** *Sie zeigen auf
+Knoten, die eine ältere Fassung der Saat angelegt hat; `rendering-scaffold-check` sichert
+ausdrücklich zu, dass **keiner der neun heute gesät wird**. Die Optionen liest niemand mehr — aber
+sie zu löschen hiesse, eine Bindung zu Daten des Eigentümers wegzuwerfen, für die es keinen Ersatz
+gibt. **Gemeldet, nicht aufgeräumt.***
+
+---
+
+## INF-021 · `cleartrash-check` lässt bei jedem Lauf einen Datensatz ohne Knoten zurück
+
+**2026-09-05, beim Wächterdurchlauf zu TASK-009. Nicht behoben — es ist nicht diese Aufgabe.**
+
+**Gemessen, und zwar reproduzierbar:** *vor dem Lauf 2 Waisen, danach 3; jeder weitere Lauf legt
+eine dazu. Die Waise trägt eine `node_id` aus dem Zahlenraum der Wegwerfknoten
+(`149000088283`) und **keine einzige Wertzeile**. Von den anderen zehn Wächtern im Durchlauf legt
+keiner eine dazu.*
+
+⚠️ **Es ist derselbe Fehler wie in TASK-025, TASK-039 und TASK-047** — *ein Wächter, der mehr
+hinterlässt, als er anfasst.* **Und er ist teurer als er aussieht:** *`package6-check` und
+`id-space-check` sind **wegen dieser Waisen rot**, und zwar seit dem 2026-09-05 — die beiden roten
+Zusagen «kein Datensatz gehört einem Knoten, den es nicht gibt» stimmen, es sind bloss nicht die
+Daten des Eigentümers.*
+
+⚠️ *`clearTrash()` selbst ist seit TASK-039 richtig — es nimmt die Datensätze mit. Zu finden ist,
+welcher Schritt des Wächters einen Datensatz **nach** dem Wegräumen anlegt.*

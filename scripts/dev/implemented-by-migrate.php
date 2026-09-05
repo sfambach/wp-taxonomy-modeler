@@ -77,6 +77,7 @@ $registraturen = [
 
 $geschrieben = 0;
 $standSchon  = 0;
+$gefallen    = 0;
 $ohneOption  = [];
 
 foreach ($registraturen as $behaelter => $registratur) {
@@ -87,7 +88,8 @@ foreach ($registraturen as $behaelter => $registratur) {
             continue;
         }
 
-        $id = (int) get_option(RenderingScaffold::optionFor($behaelter, $name), 0);
+        $option = RenderingScaffold::optionFor($behaelter, $name);
+        $id     = (int) get_option($option, 0);
 
         if ($id === 0) {
             // ⚠️ *Nicht raten (`PR-4`). Ohne Option ist der Knoten dieser Klasse unbekannt — die Saat
@@ -107,25 +109,32 @@ foreach ($registraturen as $behaelter => $registratur) {
 
         if ($node->implementedBy === $klasse) {
             $standSchon++;
+        } else {
+            echo ($trocken ? '  [trocken] ' : '  ') . $node->id . ' «' . $node->name . '» → ' . $klasse . "\n";
 
-            continue;
+            if (! $trocken) {
+                $editor->setImplementedBy($node->id, $klasse);
+            }
+
+            $geschrieben++;
         }
 
-        echo ($trocken ? '  [trocken] ' : '  ') . $node->id . ' «' . $node->name . '» → ' . $klasse . "\n";
-
-        if (! $trocken) {
-            $editor->setImplementedBy($node->id, $klasse);
+        // ⚠️ **Erst wenn die Angabe steht, fällt die Option** (TASK-009, Reihenfolge Wächter, Leser,
+        // Daten). *Zwei Orte für dieselbe Auskunft sind die Doppelung, die `CLAUDE.md` verbietet —
+        // und die Option war der Ort **ausserhalb** des Modells, gegen `AR-1`.*
+        if (! $trocken && get_option($option, false) !== false) {
+            delete_option($option);
+            $gefallen++;
         }
-
-        $geschrieben++;
     }
 }
 
 printf(
-    "\n%d %s, %d standen schon, %d ohne Option\n",
+    "\n%d %s, %d standen schon, %d Optionen gefallen, %d ohne Option\n",
     $geschrieben,
     $trocken ? 'wären zu schreiben' : 'geschrieben',
     $standSchon,
+    $gefallen,
     count($ohneOption)
 );
 

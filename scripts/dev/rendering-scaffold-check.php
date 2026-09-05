@@ -256,7 +256,18 @@ foreach (RenderingScaffold::CONTAINERS as $name) {
     }
 }
 
-echo "\n== 2. Jeder Name des Codes liegt als Knoten, über seine Id gefunden ==\n";
+echo "\n== 2. Jeder Name des Codes liegt als Knoten, über seine Klasse gefunden ==\n";
+
+// ⚠️ **Umgeschrieben am 2026-09-05 auf die Spalte** (TASK-009, `PR-9`). *Hier stand
+// `get_option(RenderingScaffold::optionFor(…))` — die Option, die diese Aufgabe abschafft. **Ein
+// Wächter, der nach der alten Form fragt, wird nicht entschärft, sondern auf die neue umgeschrieben**;
+// die Zusage bleibt dieselbe: jeder Name des Codes liegt als Knoten unter seinem Behälter, gefunden
+// über eine Angabe im Modell und nicht über seinen Namen ([D-022](../../docs/NewConcept/90-decision-log.md)).*
+$klasseVon = [
+    'Renderer'  => static fn (string $n): ?string => $renderers->classFor($n),
+    'Converter' => static fn (string $n): ?string => $converters->classFor($n),
+    'Validator' => static fn (string $n): ?string => $validators->classFor($n),
+];
 
 $erwartet = [
     'Renderer'  => $renderers->namesForNodes(),
@@ -289,10 +300,13 @@ foreach ($erwartet as $behaelterName => $namen) {
     $fehlend = [];
 
     foreach ($namen as $name) {
-        $id = (int) get_option(RenderingScaffold::optionFor($behaelterName, $name), 0);
+        $klasse = $klasseVon[$behaelterName]($name);
+        $node   = $klasse === null ? null : $editor->nodeImplementing($klasse);
 
-        if ($id === 0 || ! isset($kinder[$id]) || $kinder[$id]->name !== $name) {
-            $fehlend[] = $name . ($id === 0 ? ' (keine Option)' : " (Id $id)");
+        if ($node === null || ! isset($kinder[$node->id])) {
+            $fehlend[] = $name . ($klasse === null
+                ? ' (keine Klasse registriert)'
+                : ($node === null ? ' (kein Knoten nennt ' . $klasse . ')' : " (Id {$node->id} liegt woanders)"));
         }
     }
 
@@ -362,78 +376,93 @@ $zweiter = $scaffold->import();
 
 check('zweiter Lauf ist leer', $zweiter === [], implode(', ', $zweiter));
 
-echo "\n== 6. Der Notnagel trägt eine verlorene Option nach, ohne einen zweiten Knoten zu machen ==\n";
+// ⚠️ **Abschnitte 6 und 7 sind am 2026-09-05 auf die Spalte umgeschrieben** (TASK-009, `PR-9`).
+// *Sie prüften den Notnagel über `taxmod_render_converter_roman_id` — **die Option gibt es nicht
+// mehr**, seit der Knoten selbst sagt, welche Klasse ihn umsetzt. Die beiden Zusagen bleiben
+// wortgleich, nur ihr Gegenstand ist der neue: **eine verlorene Angabe wird nachgetragen, ohne einen
+// zweiten Knoten zu machen**, und **eine Angabe im Müll wird nicht geglaubt**.
+echo "\n== 6. Der Notnagel trägt eine verlorene Klassenangabe nach, ohne einen zweiten Knoten zu machen ==\n";
 
-if (isset($behaelter['Converter'])) {
-    $option = RenderingScaffold::optionFor('Converter', 'roman');
-    // ⚠️ *`$alteId` und nicht `$vorher`. **Der erste Entwurf hiess hier auch `$vorher`, und
-    // weil die Abschaltfunktion die Momentaufnahme **per Referenz** hält, machte diese eine Zeile
-    // sie zu einer Zahl** — die Rücknahme lief in ein `foreach` über einen `int` und liess neun
-    // Knoten stehen. *Eine Prüfung, die aufräumen soll, hatte einen Namenskonflikt mit sich
-    // selbst.*
-    $alteId = (int) get_option($option, 0);
+$romanKlasse = $converters->classFor('roman');
 
-    delete_option($option);
-
-    $scaffold->import();
-
-    $nachher = (int) get_option($option, 0);
-
-    check('die Option ist wieder da und zeigt auf denselben Knoten', $nachher === $alteId, "$alteId → $nachher");
-
-    $romanNodes = 0;
+/** Wie oft `roman` unter `Converter` liegt — die eigentliche Frage beider Abschnitte. */
+$romanZaehlen = static function () use ($editor, $behaelter): int {
+    $wieviele = 0;
 
     foreach ($editor->childrenOf($behaelter['Converter']->id) as $child) {
         if ($child->name === 'roman') {
-            $romanNodes++;
+            $wieviele++;
         }
     }
 
-    check('und `roman` liegt weiterhin genau einmal', $romanNodes === 1, (string) $romanNodes);
+    return $wieviele;
+};
+
+if (isset($behaelter['Converter']) && $romanKlasse !== null) {
+    $echt = $editor->nodeImplementing($romanKlasse);
+
+    if ($echt === null) {
+        check('roman nennt seine Klasse', false, 'kein Knoten nennt ' . $romanKlasse);
+    } else {
+        $editor->setImplementedBy($echt->id, null);
+
+        $scaffold->import();
+
+        $wieder = $editor->nodeImplementing($romanKlasse);
+
+        check(
+            'die Angabe ist wieder da und steht an demselben Knoten',
+            $wieder !== null && $wieder->id === $echt->id,
+            $echt->id . ' erwartet, ' . ($wieder?->id ?? 0) . ' gefunden'
+        );
+
+        check('und `roman` liegt weiterhin genau einmal', $romanZaehlen() === 1, (string) $romanZaehlen());
+    }
 }
 
-echo "\n== 7. Eine Id, die nicht mehr unter ihrem Behälter hängt, wird nicht geglaubt ==\n";
+echo "\n== 7. Eine Angabe an einem Knoten im Müll wird nicht geglaubt ==\n";
 
 // ⚠️ **Das ist der Fall, den [D-119](../../docs/NewConcept/90-decision-log.md) erzwingt**: eine Saat
 // ist danach gewöhnlicher Inhalt, also kann jemand einen Knoten in den Müll ziehen. *Ohne diese
 // Prüfung meldete die Saat ihn als «vorhanden», und die Auswahl zeigte auf etwas, das dort nicht
 // mehr hängt.*
-if (isset($behaelter['Converter'])) {
-    $option = RenderingScaffold::optionFor('Converter', 'roman');
-    $echt   = (int) get_option($option, 0);
+//
+// ⚠️ **Der Mülleimer selbst statt eines Schmierknotens** — *er ist ein echter, lebender Knoten und
+// ganz sicher kein Konverter. **Ein Knoten, den man nicht anlegt, ist der einzige, den man nicht
+// wieder loswerden muss** (TASK-039, TASK-047): angefasst wird nur seine Klassenangabe, und die
+// wird am Ende dieses Abschnitts zurückgenommen.*
+if (isset($behaelter['Converter']) && $romanKlasse !== null) {
+    $echt  = $editor->nodeImplementing($romanKlasse);
+    $muell = $framework->trash();
 
-    // ⚠️ **Die Id des Mülleimers selbst, statt eines Schmierknotens** — sie ist ein echter,
-    // lebender Knoten und ist ganz sicher kein Kind von `Converter`. *Genau das ist die Frage.*
-    //
-    // ⚠️ **Der erste Entwurf legte hier einen Wegwerfknoten an, und das war falsch herum gedacht.**
-    // *Er musste danach weg, weggeräumt wird über `clearTrash()`, und `clearTrash()` nimmt **alles**
-    // mit, was im Müll liegt. Gemessen lagen dort vier Knoten aus `journal-address-check` und
-    // `path-check` — also verweigerte die Aufräumung den Dienst, richtigerweise, und meine
-    // Wegwerfknoten häuften sich statt zu verschwinden.* **Ein Knoten, den man nicht anlegt, ist der
-    // einzige, den man nicht wieder loswerden muss.**
-    $fremd = $framework->trash()->id;
+    if ($echt !== null) {
+        $editor->setImplementedBy($echt->id, null);
+        $editor->setImplementedBy($muell->id, $romanKlasse);
 
-    $verbogen[$option] = $echt;
+        $scaffold->import();
 
-    update_option($option, $fremd, true);
+        // ⚠️ **Am Knoten gefragt und nicht über {@see ModelEditor::nodeImplementing()}, und der
+        // Unterschied ist der Befund selbst:** *solange die Angabe **auch** im Müll steht, nennen
+        // zwei Knoten dieselbe Klasse, und der Nachschlag antwortet mit dem kleineren — dem
+        // Mülleimer, den er zu Recht verschweigt. **Was hier zu prüfen ist, ist der echte Knoten:
+        // hat er seine Angabe zurückbekommen?** Dass zwei sie gleichzeitig tragen, meldet
+        // [`implemented-by-check.php`](implemented-by-check.php); dieser Lauf räumt sie gleich
+        // wieder weg.*
+        $wieder = $editor->find($echt->id);
 
-    $scaffold->import();
+        check(
+            'die Angabe steht wieder am echten Knoten',
+            $wieder !== null && $wieder->implementedBy === $romanKlasse,
+            $romanKlasse . ' erwartet, ' . ($wieder?->implementedBy ?? 'nichts') . ' gefunden'
+        );
 
-    check(
-        'die Option zeigt wieder auf den echten Knoten',
-        (int) get_option($option, 0) === $echt,
-        $echt . ' erwartet, ' . get_option($option, 0) . ' gefunden'
-    );
+        check('und es wurde kein zweiter `roman` angelegt', $romanZaehlen() === 1, (string) $romanZaehlen());
 
-    $romanNodes = 0;
-
-    foreach ($editor->childrenOf($behaelter['Converter']->id) as $child) {
-        if ($child->name === 'roman') {
-            $romanNodes++;
-        }
+        // ⚠️ *Zurückgenommen, auch wenn oben etwas rot war — dieser Lauf lässt das Modell, wie er
+        // es fand.*
+        $editor->setImplementedBy($muell->id, null);
+        $editor->setImplementedBy($echt->id, $romanKlasse);
     }
-
-    check('und es wurde kein zweiter `roman` angelegt', $romanNodes === 1, (string) $romanNodes);
 }
 
 echo "\n" . ($created === [] ? "Nichts neu angelegt.\n" : 'Angelegt: ' . implode(', ', $created) . "\n");

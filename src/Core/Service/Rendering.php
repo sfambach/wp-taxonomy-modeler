@@ -921,6 +921,18 @@ final class Rendering
      * @param list<int>  $unpickable Node ids that may not be chosen — its own subtree, the protected.
      * @param string     $chooser    Which of the two to draw it with.
      */
+    /**
+     * Die PHP-Klasse hinter einem Renderer-Namen, oder `null` (TASK-009).
+     *
+     * ⚠️ *Die Oberfläche kennt den **Namen**, den der Benutzer gewählt hat, und die Spalte am Knoten
+     * kennt die **Klasse**. Dies ist das Stück dazwischen — durchgereicht statt der Registratur
+     * selbst, damit der Rand nicht anfängt, sich Renderer zu bauen.*
+     */
+    public function rendererClassFor(string $name): ?string
+    {
+        return $this->renderers->classFor($name);
+    }
+
     public function chooserFor(
         array $walked,
         string $fieldName,
