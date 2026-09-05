@@ -239,8 +239,20 @@ printf(
 );
 
 check('every stored state was readable', $disagreed === [], implode(' | ', array_slice($disagreed, 0, 5)));
-check('and the table is big enough for that to mean something', $parsed > 1000, (string) $parsed);
-check('thousands of rows in the old order were actually compared', $oldOrder > 1000, (string) $oldOrder);
+// ⚠️ **Die zwei Deckel standen auf tausend, und das Aenderungsbuch ist am 2026-09-05 auf sein Wort
+// geleert worden** («einmal komplett leeren, nicht selektiv», [D-634](../../docs/NewConcept/90-decision-log.md)).
+// *Eine Zusage auf **tausende alte Zeilen** bewacht damit einen vergangenen Zustand und keinen
+// gewollten — `PR-9` sagt, dann wird sie auf den heutigen umgeschrieben, sichtbar und mit Grund,
+// **und niemals entschaerft.** Der Gegenfall bleibt deshalb erhalten: es muss **ueberhaupt** etwas
+// gelesen worden sein, sonst waere «alle lesbar» auch wahr, wenn nichts da ist. Nur die Zahl ist
+// die von heute statt die von gestern.*
+check('and something was actually read', $parsed > 0, (string) $parsed);
+
+// ⚠️ *Die alte Ordnung kommt in einem frisch geleerten Buch gar nicht mehr vor — sie ist die Form
+// von **vor** der Berichtigung. Ihre Zahl wird darum **gemeldet und nicht verlangt**; verlangt wird
+// weiter, dass die alte Regel dort, wo sie noch vorkommt, nachweislich falsch antwortet (die
+// naechste Zusage), denn das ist der Satz, um dessentwillen es diese Pruefung gibt.*
+printf("       (alte Ordnung: %d Zeilen — gemeldet, nicht verlangt)\n", $oldOrder);
 // ⚠️ *Not a nicety: it says the old reader **could not have been kept**. Any row whose `path` is not
 // the last field — every setting entry now, and every node state written since — makes
 // `strrpos(' path=')` answer the path with the rest of the row glued to it.*
