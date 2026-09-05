@@ -669,6 +669,15 @@ nicht mitgegeben, und die Felder wurden am Kantenziel statt am gewählten Knoten
               am Feld sagt nur, ob die Daten mitgeloescht werden
 ```
 
+⚠️ **Am 2026-09-05 nach TASK-018 angesehen und bewusst nicht angefangen, `PR-4`.** *Es fehlt eine
+Entscheidung mitten im Weg: **woran erkennt man eine Einstellungskante, wenn `relation_type`
+gefallen ist?** [D-587](../../NewConcept/90-decision-log.md) sagt «der Ast des Zielknotens»,
+[D-622](../../NewConcept/90-decision-log.md) erklärt genau diese Hälfte für überholt und
+[D-621](../../NewConcept/90-decision-log.md) streicht den Ast-Automatismus — **und keine Entscheidung
+sagt, was an ihre Stelle tritt.** Gemessen hängen daran **16 Stellen** mit `isSetting()` und
+**26 Verzweigungen** auf die Kantenart; sie entscheiden, ob ein Feld gezeichnet wird, ob ein Wert
+geschrieben werden darf und welche Liste die Knotenseite zeigt. Steht als `INF-037` im Eingang.*
+
 **INF-005 · Er hat `city` und `street` von Simple nach Combined verschoben** (2026-09-04). *Kein
 Auftrag, sondern der Stand — wird hier vermerkt, weil Wächter daran hängen können (TASK-025).*
 

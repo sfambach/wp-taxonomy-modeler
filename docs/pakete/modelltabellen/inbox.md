@@ -971,3 +971,43 @@ mit 44 761 Bytes **1 591 Bytes über der Decke** von 43 170.
 
 ⚠️ *Hier nur festgehalten, nicht behoben: **alle drei Dateien sind für diesen Auftrag gesperrt.** Der
 Lauf war schon rot, bevor TASK-018 anfing, und keine seiner Zeilen berührt eine der drei.*
+
+## INF-037 · TASK-032 hat eine unentschiedene Stelle: **woran erkennt man eine Einstellungskante, wenn `relation_type` gefallen ist?**
+
+**2026-09-05, unmittelbar nach TASK-018 gemessen und deshalb nicht gebaut** (`PR-4`).
+
+[D-587](../../NewConcept/90-decision-log.md) streicht `relation_type` und ersetzt es durch **eine**
+Angabe — «wird mit dem Knoten gelöscht». Für die Frage, welche Kante eine **Einstellung** ist, sagt
+D-587: *«ob eine Kante eine Einstellung trägt, sagt der Ast des Zielknotens und keine Spalte»*.
+**Genau diese Hälfte ist überholt:** [D-622](../../NewConcept/90-decision-log.md) hält fest, *«und
+eine Hälfte von D-587 ist überholt … **das sagt seit heute die Kante** ([D-621](#))»*, und
+[D-621](../../NewConcept/90-decision-log.md) streicht den Ast-Automatismus.
+
+⚠️ **Damit sagt keine Entscheidung, *woran* man es der Kante ansieht.** *Der Ast darf es nicht mehr
+sein, `relation_type` gibt es nicht mehr, und `record_type` trägt nach
+[D-583](../../NewConcept/90-decision-log.md) etwas anderes — wer den Wert geschrieben hat, nicht was
+die Kante erklärt.*
+
+**Warum das ein Halt ist und keine Kleinigkeit — gemessen am 2026-09-05:**
+
+| | |
+|---|---|
+| `kind->isSetting()` im Kern und am Rand | **16 Stellen** |
+| Verzweigungen auf `$edge->kind` überhaupt | **26 Stellen** |
+| Lebende Zeilen: `setting` / `composition` / `aggregation` | **11 / 42 / 4** |
+| `nodes.field_type` gesetzt (fällt mit D-621) | **39** |
+
+⚠️ *`isSetting()` entscheidet unter anderem, **ob ein Feld im Formular gezeichnet wird**
+(`Rendering`, `FormRenderer`), **ob ein Wert überhaupt geschrieben werden darf** (`DataEntry`) und
+**welche Liste die Knotenseite zeigt** (`NodesScreen`). Die Frage stillschweigend durch «der Ast des
+Ziels» zu ersetzen hiesse, D-621 zurückzunehmen; sie durch «Zielknoten trägt `field_type`» zu
+ersetzen hiesse, eine Spalte zu benutzen, die dieselbe Entscheidung gerade streicht.*
+
+⚠️ **Was zu entscheiden ist, in seinen Worten formuliert:** *soll die Kante eine zweite Angabe
+bekommen — «diese Kante ist eine Einstellung» — neben «wird mit dem Knoten gelöscht»? Dann sind es
+**zwei** Schalter an der Kante und nicht einer, und `relation_type` ist nicht wirklich gefallen,
+sondern in zwei Ja/Nein-Angaben zerlegt. **Das ist eine vertretbare Antwort und braucht sein Wort**,
+weil D-587 ausdrücklich von *einer* neuen Angabe spricht.*
+
+**TASK-018 ist davon nicht berührt und steht** — die Vererbung ist eine Spalte, und die Kantentabelle
+trägt nur noch Komposition, Aggregation und Einstellung.
