@@ -41,7 +41,13 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\ModelValues;
+use Taxmod\Core\Model\Type\SpecialisedTypes;
+use Taxmod\Core\Model\Type\UserRefType;
+use Taxmod\Core\Renderer\UserRefRenderer;
+use Taxmod\Core\Service\DataEntry;
 use Taxmod\Tests\Core\Fake\CountingIdentities;
+use Taxmod\Tests\Core\Fake\FixedClock;
+use Taxmod\Tests\Core\Fake\FixedUsers;
 use Taxmod\Tests\Core\Fake\FixedFramework;
 use Taxmod\Tests\Core\Fake\InMemoryLabels;
 use Taxmod\Tests\Core\Fake\InMemoryNodes;
@@ -1698,5 +1704,222 @@ final class RenderingTest extends TestCase
 
         self::assertSame($first, $this->rendering->previewRecordAmong([$first, $second]));
         self::assertNull($this->rendering->previewRecordAmong([]));
+    }
+
+    // ================================================================================
+    // `user_ref` — D-649 und D-650
+    // ================================================================================
+
+    /** Derselbe Zeichenlauf, nur mit einem Rand, der über Benutzer Auskunft gibt. */
+    private function mitBenutzern(FixedUsers $users): Rendering
+    {
+        return new Rendering(
+            $this->nodes,
+            $this->framework,
+            ShippedRenderers::registry(),
+            $this->typeNodes,
+            new Labels($this->labelStore, 'en_US'),
+            ShippedConverters::registry(),
+            model: new ModelValues($this->records, $this->relations, $this->nodes, $this->framework),
+            users: $users
+        );
+    }
+
+    /**
+     * Ein Träger mit einem gesperrten Benutzerverweis — die Lage, für die es
+     * [D-649](../../docs/NewConcept/90-decision-log.md) gibt.
+     *
+     * @return array{0: Node, 1: Relation}
+     */
+    private function benutzerfeld(bool $readOnly): array
+    {
+        $traeger = $this->thing('Ticket');
+        $user    = $this->type('User reference');
+        $feld    = $this->editor->addField($traeger->id, $user->id, 'angelegt von');
+
+        if ($readOnly) {
+            $this->einstellung($feld, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+        }
+
+        return [$traeger, $feld];
+    }
+
+    #[Test]
+    public function a_locked_user_field_is_preset_with_the_id_the_boundary_handed_in(): void
+    {
+        // ⚠️ **Sein Wort** ([D-649](../../docs/NewConcept/90-decision-log.md)): *«bei Anlegen gibt es
+        // noch keinen Datensatz — dann muss hier automatisch die Benutzer-Id hinterlegt werden, damit
+        // sie beim Speichern in den Datensatz kommt.»*
+        [, $feld] = $this->benutzerfeld(readOnly: true);
+
+        $presets = $this->mitBenutzern(new FixedUsers('17'))->presetsFor([$feld]);
+
+        // ⚠️ *Text und nicht Zahl — der Kern weiss nicht, dass WordPress ganzzahlige Ids hat
+        // ([D-171](../../docs/NewConcept/90-decision-log.md), `P4d`).*
+        self::assertSame('17', $presets[$feld->id]->text);
+        self::assertNull($presets[$feld->id]->int, 'die Id ist Text, kein Zahlenwert');
+    }
+
+    #[Test]
+    public function the_preset_stands_in_the_record_after_the_first_write(): void
+    {
+        // ⚠️ **Der ganze Weg, denn nur er ist die Zusage:** *der Datensatz entsteht beim ersten
+        // Schreiben ([D-609](../../docs/NewConcept/90-decision-log.md)), und **dabei** muss die Id
+        // hineinkommen — ein gesperrtes Feld schickt beim Speichern nichts.*
+        [$traeger, $feld] = $this->benutzerfeld(readOnly: true);
+
+        $data = new DataEntry(
+            $this->records,
+            $this->relations,
+            $this->nodes,
+            $this->framework,
+            new FixedClock(),
+            null,
+            $this->mitBenutzern(new FixedUsers('17'))
+        );
+
+        $satz = $data->create($traeger->id);
+
+        $geschrieben = null;
+
+        foreach ($data->valuesOf($satz->id) as $zeile) {
+            if ($zeile->relationId === $feld->id) {
+                $geschrieben = $zeile->value->text;
+            }
+        }
+
+        self::assertSame('17', $geschrieben);
+    }
+
+    #[Test]
+    public function the_core_needs_no_wordpress_call_for_any_of_it(): void
+    {
+        // ⚠️ **Die Zusage, die dieser ganze Lauf schon ist** (`CD-1`, [D-649](../../docs/NewConcept/90-decision-log.md)):
+        // *er lädt kein WordPress, und die Vorbelegung kam trotzdem an — **weil sie gereicht wurde**.
+        // Der Rest ist die Gegenprobe am Quelltext, damit niemand den kurzen Weg nachträglich einbaut.*
+        self::assertFalse(function_exists('get_userdata'), 'dieser Lauf hat kein WordPress');
+
+        $kern = [
+            'src/Core/Model/Type/UserRefType.php',
+            'src/Core/Renderer/UserRefRenderer.php',
+            'src/Core/Service/Rendering.php',
+            'src/Core/Service/DataEntry.php',
+            'src/Core/Port/Users.php',
+        ];
+
+        foreach ($kern as $datei) {
+            // ⚠️ **Ohne die Kommentare gelesen, und das ist kein Nachlassen:** *die Regel wird in
+            // diesen Dateien gerade **erklärt** — «dieser Renderer ruft `get_userdata()` nicht».
+            // Ein Wächter, der den erklärenden Satz mit dem Aufruf verwechselt, zwingt dazu, die
+            // Erklärung wegzulassen.*
+            $kode = '';
+
+            foreach (token_get_all((string) file_get_contents(dirname(__DIR__, 2) . '/' . $datei)) as $token) {
+                if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+                    continue;
+                }
+
+                $kode .= is_array($token) ? $token[1] : $token;
+            }
+
+            foreach (['get_userdata', 'get_current_user_id', 'wp_get_current_user', 'get_user_by'] as $ruf) {
+                self::assertStringNotContainsString($ruf, $kode, $datei . ' ruft ' . $ruf);
+            }
+        }
+    }
+
+    #[Test]
+    public function an_operable_user_field_gets_no_preset_because_it_is_picked(): void
+    {
+        // ⚠️ **[D-650](../../docs/NewConcept/90-decision-log.md):** *gesperrt heisst «der angemeldete
+        // Benutzer», bedienbar heisst «aus einer Liste wählen». **Eine stille Vorbelegung wäre dort
+        // eine Antwort, die niemand gegeben hat.***
+        [, $feld] = $this->benutzerfeld(readOnly: false);
+
+        self::assertSame([], $this->mitBenutzern(new FixedUsers('17'))->presetsFor([$feld]));
+    }
+
+    #[Test]
+    public function the_rule_lives_in_the_type_and_nowhere_else(): void
+    {
+        // ⚠️ **Seine Frage** ([D-650](../../docs/NewConcept/90-decision-log.md)): *«soll nur an
+        // `user_ref` so sein, müsste ja auch eine eigene Klasse sein, stimmts?»* — *und die Zusage
+        // hält beides: die Regel antwortet dort, und **kein anderer Typ erfährt davon**.*
+        $user = new UserRefType();
+
+        self::assertTrue($user->takesTheSignedInUser(true));
+        self::assertFalse($user->isPickedFromAList(true));
+        self::assertFalse($user->takesTheSignedInUser(false));
+        self::assertTrue($user->isPickedFromAList(false));
+
+        foreach (SpecialisedTypes::all() as $typ) {
+            if ($typ instanceof UserRefType) {
+                continue;
+            }
+
+            self::assertNull($typ->presetFor(true, '17'), $typ->type()->value);
+            self::assertNull($typ->presetFor(false, '17'), $typ->type()->value);
+        }
+    }
+
+    #[Test]
+    public function a_user_field_draws_the_name_the_boundary_resolved(): void
+    {
+        // ⚠️ **[D-649](../../docs/NewConcept/90-decision-log.md):** *im Datensatz die Id, gezeichnet
+        // der Name — aufgelöst am Rand.*
+        [, $feld] = $this->benutzerfeld(readOnly: true);
+
+        $gezeichnet = $this->mitBenutzern(new FixedUsers('17', ['17' => 'Stefan F.']))->fieldsFor(
+            [$feld],
+            [$feld->id => TypedValue::ofText('17')],
+            Purpose::Display
+        )[0];
+
+        self::assertSame(UserRefRenderer::NAME, $gezeichnet->rendererName);
+        self::assertStringContainsString('Stefan F.', $gezeichnet->result->markup);
+        self::assertStringNotContainsString('>17<', $gezeichnet->result->markup, 'die rohe Id gehört nicht auf den Schirm');
+    }
+
+    #[Test]
+    public function a_user_id_with_no_name_shows_as_unresolved_and_never_as_a_bare_number(): void
+    {
+        // ⚠️ *Dieselbe Entscheidung wie beim hängenden Knotenverweis
+        // ([D-363](../../docs/NewConcept/90-decision-log.md)): **ein roher Schlüssel auf dem Schirm ist
+        // das, was jemand für eine Bedeutung hält.***
+        [, $feld] = $this->benutzerfeld(readOnly: true);
+
+        $gezeichnet = $this->mitBenutzern(new FixedUsers('17'))->fieldsFor(
+            [$feld],
+            [$feld->id => TypedValue::ofText('99')],
+            Purpose::Display
+        )[0];
+
+        self::assertStringContainsString('taxmod-dangling', $gezeichnet->result->markup);
+    }
+
+    #[Test]
+    public function the_half_that_would_pick_from_a_list_is_visibly_locked_with_a_reason(): void
+    {
+        // ⚠️ **Sein eigener Vorbehalt** ([D-650](../../docs/NewConcept/90-decision-log.md)): *«die
+        // Liste müsste aber auch aus dem Frontend kommen»* — *also wird sie nicht erfunden, sondern
+        // gesperrt gezeigt. Und [D-608](../../docs/NewConcept/90-decision-log.md) verlangt beides:
+        // «‹gesperrt› muss sichtbar sein» **und** «muss ne Tooltip-Begründung da sein».*
+        [, $feld] = $this->benutzerfeld(readOnly: false);
+
+        $gezeichnet = $this->mitBenutzern(new FixedUsers('17', ['17' => 'Stefan F.']))->fieldsFor(
+            [$feld],
+            [$feld->id => TypedValue::ofText('17')],
+            Purpose::Edit,
+            'taxmod_value'
+        )[0];
+
+        self::assertStringContainsString('disabled', $gezeichnet->result->markup);
+        self::assertStringContainsString('taxmod-locked', $gezeichnet->result->markup);
+        self::assertStringContainsString('user-ref-picker-missing', $gezeichnet->result->markup);
+
+        // ⚠️ *Und der gespeicherte Wert geht nicht verloren, weil das Steuerelement nichts schickt —
+        // derselbe Verlust, den {@see \Taxmod\Core\Renderer\ColorRenderer} für den Farbwähler beschreibt.*
+        self::assertStringContainsString('type="hidden"', $gezeichnet->result->markup);
+        self::assertStringContainsString('value="17"', $gezeichnet->result->markup);
     }
 }

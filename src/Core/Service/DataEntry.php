@@ -13,6 +13,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\Storage;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Port\Presets;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\Clock;
 use Taxmod\Core\Repository\FrameworkNodes;
@@ -66,6 +67,20 @@ final class DataEntry
          * weiterlaufen; der Rand ({@see \Taxmod\WordPress\Plugin}) reicht es durch.*
          */
         private readonly ?Changelog $changelog = null,
+        /**
+         * Was ein Feld schon trägt, bevor jemand etwas eingetragen hat — {@see Presets}.
+         *
+         * ⚠️ **Es gibt sie, weil der Datensatz beim **ersten Schreiben** entsteht**
+         * ([D-609](../../../docs/NewConcept/90-decision-log.md), sein Wort: *«ein Datensatz entsteht
+         * beim ersten Schreiben, nicht beim Ansehen? ja bitte»*). *Genau dort muss die Id des
+         * angemeldeten Benutzers hinein — sein Wort zu `user_ref`: «bei Anlegen gibt es noch keinen
+         * Datensatz, dann muss hier automatisch die Benutzer-Id hinterlegt werden, damit sie beim
+         * Speichern in den Datensatz kommt» ([D-649](../../../docs/NewConcept/90-decision-log.md)).*
+         *
+         * ⚠️ *Nachgestellt und nullbar wie das Änderungsbuch: ohne die Naht entsteht der Satz wie
+         * bisher, nur ohne Vorbelegung.*
+         */
+        private readonly ?Presets $presets = null,
     ) {
     }
 
@@ -223,6 +238,7 @@ final class DataEntry
             $this->melden($id, 'record', 'record created', null, $this->satzZustand($record), 1);
 
             $this->ensureRequiredParts($id, $model, $kind);
+            $this->ensurePresets($id, $model, $kind);
         } finally {
             $this->changelog?->endAct();
         }
@@ -278,6 +294,48 @@ final class DataEntry
             }
 
             $this->createPart($recordId, $relation->id);
+        }
+    }
+
+    /**
+     * Was ein Feld schon trägt, sobald der Datensatz entsteht — heute genau `user_ref`.
+     *
+     * ⚠️ **Hier und nicht beim Speichern des Formulars, und der Unterschied ist Datenverlust.**
+     * *Beim Anlegen gibt es noch keinen Wert; ein gesperrtes Feld schickt nichts, also käme über den
+     * Formularweg nie etwas an. **Und würde die Id bei jedem Speichern nachgetragen, überschriebe der
+     * nächste Bearbeiter den, der angelegt hat** — genau die Auskunft, für die das Feld da ist
+     * ([D-649](../../../docs/NewConcept/90-decision-log.md): «schreibgeschützt deckt den Fall ‹wer hat
+     * das angelegt›»).*
+     *
+     * ⚠️ **Dieselben Ausschlüsse wie bei {@see self::ensureRequiredParts()}**, aus denselben Gründen:
+     * *eine versteckte Kante wird nicht gezeichnet, und was in einem Benutzersatz nichts hält, bekommt
+     * dort auch keine Vorbelegung ([D-538](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ *Welche Felder eine Vorbelegung haben, entscheidet **die Typklasse** und nicht dieser Dienst
+     * ([D-650](../../../docs/NewConcept/90-decision-log.md)). Er fragt und schreibt.*
+     */
+    private function ensurePresets(int $recordId, Node $model, RecordType $kind): void
+    {
+        if ($this->presets === null) {
+            return;
+        }
+
+        $kanten = [];
+
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($model)) as $relation) {
+            if ($relation->hide) {
+                continue;
+            }
+
+            if ($kind === RecordType::User && ! $this->keepsValues($relation)) {
+                continue;
+            }
+
+            $kanten[$relation->id] = $relation;
+        }
+
+        foreach ($this->presets->presetsFor(array_values($kanten)) as $relationId => $value) {
+            $this->put($recordId, $relationId, $value);
         }
     }
 

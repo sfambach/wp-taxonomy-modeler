@@ -479,6 +479,13 @@ final class Plugin
         // damit eine Labelaenderung in derselben Aenderungsgruppe landet wie der Akt, der sie ausloeste.*
         $labels   = new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale(), $this->changelog());
 
+        // ⚠️ **Der Zeichenlauf wird zuerst gebaut, weil der Schreibweg ihn braucht**
+        // ([D-649](../../docs/NewConcept/90-decision-log.md)): *{@see DataEntry} fragt ihn nach der
+        // Vorbelegung eines Feldes ({@see \Taxmod\Core\Port\Presets}) — «beim Anlegen gibt es noch
+        // keinen Datensatz, dann muss hier automatisch die Benutzer-Id hinterlegt werden». **Dasselbe
+        // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
+        $rendering = $this->rendering($labels);
+
         return new NodesScreen(
             $this->editor(),
             new Tree(new WpdbNodeRepository()),
@@ -492,37 +499,58 @@ final class Plugin
                 new WpdbNodeRepository(),
                 $this->frameworkNodes(),
                 new SystemClock(),
-                $this->changelog()
+                $this->changelog(),
+                // ⚠️ *Die Vorbelegung eines Feldes, gefragt beim **ersten Schreiben**
+                // ([D-609](../../docs/NewConcept/90-decision-log.md), [D-649](../../docs/NewConcept/90-decision-log.md)).
+                // Derselbe Zeichenlauf, damit Typ und Kette nicht zweimal aufgelöst werden.*
+                $rendering
             ),
             $this->frameworkNodes(),
-            // ⚠️ **The renderers are wired in one place.** Nothing on a surface may construct its
-            // own registry — two registries would mean two answers to *what draws an integer*,
-            // which is the drift R20a warns about, arrived at through the back door.
-            new Rendering(
-                new WpdbNodeRepository(),
-                $this->frameworkNodes(),
-                ShippedRenderers::registry(),
-                // ⚠️ **Which node is which type, by id** ([D-510](../../docs/NewConcept/90-decision-log.md)).
-                // *The same instance as the scaffolds', so the eleven options are read once a request.*
-                $this->typeNodes(),
-                // ⚠️ Without this a reference has no name to draw, and every constant on the
-                // screen falls back to its id (D-105, D-159).
-                $labels,
-                // ⚠️ **Wired in the same one place, for the same reason.** *Two converter registries
-                // would mean two answers to «which mappings may this type be given» — and the
-                // `converter` setting drew as a **dead** control until there was one to ask
-                // (D-219, list row 7).*
-                ShippedConverters::registry(),
-                // ⚠️ **Und die Kanten, damit der Abstieg durch die Knoten gehen kann.** *Seine
-                // Diagnose: «heisst wohl Renderkette ist unterbrochen». Ohne dies endete der Gang am
-                // ersten zusammengesetzten Feld — `Kontakt.Address` zeigte ein Kästchen, `Adresse` hat
-                // fünf Felder.*
-                relations: new WpdbRelationRepository(),
-                model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes())
-            ),
+            $rendering,
             // ⚠️ *The same object the editor and the settings hold — that is the whole point of it
             // being memoised. A second one would open a bracket nobody writes into.*
             $this->changelog()
+        );
+    }
+
+    /**
+     * Der Zeichenlauf, an einer Stelle gebaut.
+     *
+     * ⚠️ **The renderers are wired in one place.** *Nothing on a surface may construct its own
+     * registry — two registries would mean two answers to «what draws an integer», which is the
+     * drift R20a warns about, arrived at through the back door.*
+     *
+     * ⚠️ *Herausgezogen, weil ihn seit [D-649](../../docs/NewConcept/90-decision-log.md) zwei
+     * bekommen: der Bildschirm zum Zeichnen und {@see DataEntry} für die Vorbelegung.*
+     */
+    private function rendering(Labels $labels): Rendering
+    {
+        return new Rendering(
+            new WpdbNodeRepository(),
+            $this->frameworkNodes(),
+            ShippedRenderers::registry(),
+            // ⚠️ **Which node is which type, by id** ([D-510](../../docs/NewConcept/90-decision-log.md)).
+            // *The same instance as the scaffolds', so the eleven options are read once a request.*
+            $this->typeNodes(),
+            // ⚠️ Without this a reference has no name to draw, and every constant on the
+            // screen falls back to its id (D-105, D-159).
+            $labels,
+            // ⚠️ **Wired in the same one place, for the same reason.** *Two converter registries
+            // would mean two answers to «which mappings may this type be given» — and the
+            // `converter` setting drew as a **dead** control until there was one to ask
+            // (D-219, list row 7).*
+            ShippedConverters::registry(),
+            // ⚠️ **Und die Kanten, damit der Abstieg durch die Knoten gehen kann.** *Seine
+            // Diagnose: «heisst wohl Renderkette ist unterbrochen». Ohne dies endete der Gang am
+            // ersten zusammengesetzten Feld — `Kontakt.Address` zeigte ein Kästchen, `Adresse` hat
+            // fünf Felder.*
+            relations: new WpdbRelationRepository(),
+            model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes()),
+            // ⚠️ **Die einzige Stelle, an der wegen `user_ref` nach WordPress gefragt wird**
+            // ([D-649](../../docs/NewConcept/90-decision-log.md), `CD-1`): *der Name zum Zeichnen und
+            // die Id des Angemeldeten zum Anlegen. **Der Kern nimmt beides entgegen und beschafft
+            // keines.***
+            users: new WpUsers()
         );
     }
 }

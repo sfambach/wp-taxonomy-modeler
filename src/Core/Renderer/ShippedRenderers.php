@@ -13,10 +13,11 @@ use Taxmod\Core\Model\SimpleType;
  * territory, and *which of the three ways to draw a number is the ordinary one* is not a property
  * of the spinner.
  *
- * ⚠️ **One type is still deliberately without one** and shows the fault marker until it gets
- * hers: `user_ref` wants a renderer that resolves a WordPress user, which is a boundary concern
- * reaching into the core's hands. *A quiet plain field pretending otherwise would be the worse
- * outcome* (R14b). `node_ref` got its **reference renderer** ([D-105](90-decision-log.md)).
+ * ⚠️ **Seit dem 2026-09-05 hat jeder Typ einen** ([D-649](90-decision-log.md)). *Hier stand: «one
+ * type is still deliberately without one … `user_ref` wants a renderer that resolves a WordPress
+ * user, which is a boundary concern reaching into the core's hands.» **Die Diagnose war richtig und
+ * die Folgerung falsch:** der Rand greift nicht in den Kern, er **reicht den Namen herein** — dieselbe
+ * Naht, über die ein Knotenverweis seine Beschriftung bekommt ([D-159](90-decision-log.md)).*
  *
  * ```mermaid
  * flowchart LR
@@ -53,6 +54,12 @@ final class ShippedRenderers
         // ⚠️ **The default for a reference, which is what D-105 asks for** — and it bounds the
         // load as well as the display (R58): one label per row, not a whole target.
         $registry->add(new ReferenceRenderer(), SimpleType::NodeRef);
+
+        // ⚠️ **Der Benutzerverweis** ([D-649](../../../docs/NewConcept/90-decision-log.md)): *er
+        // zeichnet den **Namen**, den der Rand hereinreicht, und speichert die **Id als Text**. Voreinstellung
+        // für seinen Typ, weil es keinen zweiten Weg gibt, einen Benutzer zu zeigen — und der Rückfall
+        // hätte die Id nackt hingeschrieben ([R14b](../../../docs/NewConcept/30-renderer.md)).*
+        $registry->add(new UserRefRenderer(), SimpleType::UserRef);
 
         $registry->add(new MailtoRenderer(), SimpleType::Email);
         $registry->add(new DateTimeRenderer(), SimpleType::DateTime);

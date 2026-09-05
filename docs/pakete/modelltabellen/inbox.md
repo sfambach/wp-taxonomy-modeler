@@ -1503,3 +1503,50 @@ Benutzer legt fest»; ein Wächter ist kein Benutzer, ein Saatgutlauf auch nicht
 diese ~140 Stellen ihre Art nennen sollen** — dann fällt die Ableitung ganz — **oder ob der Rückfall
 für Nicht-Benutzer bleibt.** Das ist eine Aufgabe und keine Nebenbemerkung; geraten wird sie nicht
 (`PR-4`).*
+
+---
+
+## INF-053 · Der neue Renderer-Knoten kommt auf keiner zweiten Anlage an
+
+**Aufgefallen beim Bauen von [D-649](../../NewConcept/90-decision-log.md).**
+
+⚠️ **Der Renderer `user` ist registriert, und die Saat legt seinen Knoten deshalb von selbst an —
+aber nur, wenn sie überhaupt noch einmal läuft.** *`RenderingScaffold` merkt sich eine Fassung und
+kehrt nicht zurück, solange die Zahl gleich bleibt. **Auf diesem Rechner ist der Knoten da**, weil
+`rendering-scaffold-check` `import()` direkt ruft; **eine frische Anlage bekäme ihn nicht**, und der
+Wähler zeigte einen Renderer, den niemand speichern kann.*
+
+⚠️ **Die Zahl steht in einer Datei, die während dieser Arbeit einem anderen Agenten gehört**
+(`src/WordPress/Persistence/`). *Sie ist nicht geraten und nicht angefasst; **es ist eine Zahl, kein
+Entwurf** — sie muss um eins steigen, sobald die Datei frei ist. Ein Wächter sähe es nicht: er läuft
+gegen eine Datenbank, in der der Knoten schon liegt.*
+
+---
+
+## INF-054 · `read_only` hat an einer Verwendungsstelle noch keine Kante
+
+**Gemessen am 2026-09-05, beim Bauen von [D-650](../../NewConcept/90-decision-log.md).**
+
+⚠️ **Die Regel «gesperrt heisst: der angemeldete Benutzer» ist gebaut und wird von der Kette
+beantwortet — aber der Weg, `read_only` an einer Verwendungsstelle **zu setzen**, ist noch nicht
+derselbe wie beim Renderer.** *Gemessen: `settingRelationId(read_only)` antwortet **0**, während
+dieselbe Frage für `renderer` eine Kante nennt. Der Auflösungsweg liest die Angabe also, wo sie
+steht; die Naht, über die die Maske sie schreibt, ist für diesen Schlüssel nicht aufgeschrieben.*
+
+⚠️ *Damit ist die eine Hälfte von D-650 heute nur über eine von Hand gesetzte Angabe zu erreichen.
+**Nicht erfunden und nicht nachgezogen** (`PR-4`) — es ist dieselbe Frage, die TASK-052 für den
+Renderer beantwortet hat, einen Schlüssel weiter.*
+
+---
+
+## INF-055 · Das Wort für die gesperrte Benutzerwahl fehlt am Rand
+
+**Beim Bauen von [D-650](../../NewConcept/90-decision-log.md).**
+
+⚠️ **Der Kern sagt, *dass* gesperrt ist und *warum* — mit einem Schlüssel, nicht mit einem Satz**
+(`AR-2`): `user-ref-picker-missing`. *Bis der Rand ihn übersetzt, steht der Schlüssel selbst im
+Hinweistext — sichtbar falsch statt geraten, dieselbe Haltung wie bei «own» und «inherited»
+([OQ-087](../../NewConcept/91-open-questions.md)).*
+
+⚠️ *Es ist dieselbe offene Naht wie dort und keine neue; hier steht sie, damit sie beim Sammeln nicht
+untergeht.*

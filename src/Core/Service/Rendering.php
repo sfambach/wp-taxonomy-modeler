@@ -53,6 +53,9 @@ use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RelationRepository;
 use Taxmod\Core\Repository\TypeNodes;
+use Taxmod\Core\Model\Type\SpecialisedTypes;
+use Taxmod\Core\Port\Presets;
+use Taxmod\Core\Port\Users;
 
 /**
  * The descent, for the attributes of one node.
@@ -76,7 +79,7 @@ use Taxmod\Core\Repository\TypeNodes;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class Rendering
+final class Rendering implements Presets
 {
     public function __construct(
         private readonly NodeRepository $nodes,
@@ -124,7 +127,124 @@ final class Rendering
          * bleiben — dieselbe Form, in der `$model` dazukam.*
          */
         private readonly ?RelationRepository $relations = null,
+
+        /**
+         * Der Rand, soweit er über **Benutzer** Auskunft gibt — der Name und der Angemeldete.
+         *
+         * ⚠️ **Gereicht, nie geholt** (`CD-1`, [D-649](../../../docs/NewConcept/90-decision-log.md)):
+         * *«wer ist gerade angemeldet» ist eine Frage an WordPress. Der Kern **nimmt eine Vorbelegung
+         * entgegen, er beschafft sie nicht.** Dieselbe Bauart wie `$labels`: ohne die Naht antwortet
+         * der Zeichenlauf «kein Name» und die Id zeigt sich als ungelöst — nicht als Zahl.*
+         */
+        private readonly ?Users $users = null,
     ) {
+    }
+
+    /**
+     * Was in einem Feld stehen soll, bevor jemand etwas eingetragen hat — {@see Presets}.
+     *
+     * ⚠️ **Hier, weil hier schon aufgelöst wird, was die Frage braucht:** *welcher Typ hinter der
+     * Kante steht und was `read_only` an dieser Verwendungsstelle sagt. **Der Schreibweg fragt und
+     * rechnet nicht selbst** — eine zweite Auflösung wäre die Doppelung, die auseinanderläuft.*
+     *
+     * ⚠️ **Und die Entscheidung selbst fällt hier nicht.** *Es gibt keine Abfrage «wenn der Typ
+     * `user_ref` ist» ([D-650](../../../docs/NewConcept/90-decision-log.md): «die Regel wohnt in
+     * `UserRefType`»); gefragt wird **die Typklasse**, und alle übrigen antworten `null`.*
+     *
+     * @param  list<Relation>         $relations
+     * @return array<int, TypedValue>
+     */
+    public function presetsFor(array $relations): array
+    {
+        if ($relations === [] || $this->users === null) {
+            return [];
+        }
+
+        $signedIn = $this->users->signedIn();
+        $types    = $this->typesOf($relations);
+        $resolved = $this->settingsForUseSites($relations);
+        $presets  = [];
+
+        foreach ($relations as $relation) {
+            $type = $types[$relation->id] ?? null;
+
+            if ($type === null) {
+                continue;
+            }
+
+            // ⚠️ *Der Schlüssel und seine eigene Vorgabe, nie ein `?? false` daneben — dieselbe Zeile
+            // wie in {@see \Taxmod\Core\Renderer\RenderContext::mayEdit()}
+            // ([D-401](../../../docs/NewConcept/90-decision-log.md)).*
+            $readOnly = ($resolved[$relation->id][SettingKey::ReadOnly->value] ?? null)?->value->asBool()
+                ?? SettingKey::ReadOnly->defaultSwitch();
+
+            $preset = SpecialisedTypes::for($type)->presetFor($readOnly, $signedIn);
+
+            if ($preset !== null) {
+                $presets[$relation->id] = $preset;
+            }
+        }
+
+        return $presets;
+    }
+
+    /**
+     * Die Namen der Benutzer, auf die diese Werte zeigen — in **einem** Zug, wie bei den Verweisen.
+     *
+     * ⚠️ **Der Kern deutet die Id nicht** ([D-171](../../../docs/NewConcept/90-decision-log.md)): *er
+     * beschreibt «Benutzerverweis, Wert 17» und der Rand macht den Namen daraus
+     * ([D-649](../../../docs/NewConcept/90-decision-log.md)). **Er ist der Einzige, der WordPress
+     * fragen darf** (`CD-1`).*
+     *
+     * ⚠️ *Eine Abfrage für alle Zeilen und nicht eine je Zeile — `CD-7`, genau wie
+     * {@see self::namesOfReferences()}.*
+     *
+     * @param  list<Relation>            $relations
+     * @param  array<int, TypedValue>    $values
+     * @param  array<int, SimpleType|null> $types
+     * @return array<int, string>        Nach Kanten-Id.
+     */
+    private function namesOfUsers(array $relations, array $values, array $types): array
+    {
+        if ($this->users === null) {
+            return [];
+        }
+
+        $wanted = [];
+
+        foreach ($relations as $relation) {
+            if (($types[$relation->id] ?? null) !== SimpleType::UserRef) {
+                continue;
+            }
+
+            $value = $values[$relation->id] ?? null;
+
+            if ($value === null || $value->isNothing()) {
+                continue;
+            }
+
+            $wanted[$value->describe()][] = $relation->id;
+        }
+
+        if ($wanted === []) {
+            return [];
+        }
+
+        $names = [];
+
+        // ⚠️ **`array_map('strval', …)`, und das ist keine Formsache — es war ein Fehler.** *PHP macht
+        // aus dem Schlüssel `'17'` beim Ablegen wortlos die **Zahl** 17. Der Rand bekam also Zahlen,
+        // wo die Naht Zeichenketten verspricht ([D-171](../../../docs/NewConcept/90-decision-log.md)),
+        // und `ctype_digit(17)` ist `false` — **jeder Name fiel heraus und jeder Benutzer zeichnete
+        // sich als ungelöst.** Am Rand gemessen, nachdem der Kerntest grün war: seine Doppelgängerin
+        // verglich Schlüssel mit Schlüsseln und sah denselben Wandel auf beiden Seiten.*
+        foreach ($this->users->namesFor(array_map('strval', array_keys($wanted))) as $id => $name) {
+            foreach ($wanted[$id] ?? [] as $relationId) {
+                $names[$relationId] = $name;
+            }
+        }
+
+        return $names;
     }
 
     /**
@@ -564,6 +684,9 @@ final class Rendering
         $types    = $this->typesOf($relations);
         $resolved = $this->settingsForUseSites($relations);
         $names    = $this->namesOfReferences($relations, $values, $resolved, $locale);
+        // ⚠️ *Dieselbe Naht, ein anderes fremdes System: `refersTo` heisst «wie heisst das, worauf
+        // dieser Wert zeigt» ([D-649](../../../docs/NewConcept/90-decision-log.md)).*
+        $userNames = $this->namesOfUsers($relations, $values, $types);
         $wahl     = $this->optionsFor($relations);
         $fields   = [];
 
@@ -773,7 +896,12 @@ final class Rendering
                 surroundings: new Surroundings(
                     // ⚠️ By **relation**, not by target: the role that decided this text belongs to the
                     // relation, so two attributes pointing at one node can show `k` and `kilo`.
-                    refersTo: $value->reference === null ? null : ($names[$relation->id] ?? null),
+                    // ⚠️ *Ein Benutzerverweis ist kein Knotenverweis — sein Wert ist Text
+                    // ([D-171](../../../docs/NewConcept/90-decision-log.md)), also kommt sein Name aus
+                    // der anderen Naht. **Dasselbe Feld**, weil es dieselbe Aussage ist.*
+                    refersTo: $value->reference === null
+                        ? ($userNames[$relation->id] ?? null)
+                        : ($names[$relation->id] ?? null),
                     // ⚠️ **Already known, so it is handed over rather than looked up** (D-445). A
                     // reference with no simple type behind it is a reference to a record: `typeOf()`
                     // answers `node_ref` for a constant and a real type for a data type, so `null`

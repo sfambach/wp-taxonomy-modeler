@@ -34,6 +34,7 @@ use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\CheckboxRenderer;
 use Taxmod\Core\Renderer\TextareaRenderer;
 use Taxmod\Core\Renderer\ToggleRenderer;
+use Taxmod\Core\Renderer\UserRefRenderer;
 
 /**
  * The renderers that draw one typed value, and the reading back that pairs with them.
@@ -92,15 +93,22 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
-    public function a_reference_is_drawn_by_the_reference_renderer_and_a_user_key_by_nothing(): void
+    public function both_kinds_of_reference_have_their_own_renderer(): void
     {
-        // ⚠️ `node_ref` has its renderer now (D-105). `user_ref` still has none, deliberately: it
-        // resolves a WordPress user, which is a boundary concern reaching into the core's hands,
-        // and a quiet plain field pretending otherwise is what R14b forbids.
+        // ⚠️ **Hier stand «und ein Benutzerschlüssel von nichts»**, mit der Begründung, `user_ref`
+        // greife vom Rand in den Kern hinein und ein stilles `plain` wäre schlimmer (R14b).
+        // **Die Begründung war richtig und die Folgerung falsch** ([D-649](../../docs/NewConcept/90-decision-log.md)):
+        // der Rand greift nicht hinein, er **reicht den Namen herein** — dieselbe Naht, über die ein
+        // Knotenverweis seine Beschriftung bekommt (D-159). *Die Zusage wandert also mit dem Modell
+        // mit, statt einen vergangenen Zustand zu bewachen (`PR-9`).*
         $registry = ShippedRenderers::registry();
 
         self::assertSame(ReferenceRenderer::NAME, $registry->defaultFor(SimpleType::NodeRef)->name());
-        self::assertSame(PlainRenderer::NAME, $registry->defaultFor(SimpleType::UserRef)->name());
+        self::assertSame(UserRefRenderer::NAME, $registry->defaultFor(SimpleType::UserRef)->name());
+
+        // ⚠️ *Und keiner der beiden ist der Rückfall — sonst wäre die Zusage oben auch dann grün,
+        // wenn wieder nichts zeichnete.*
+        self::assertNotSame(PlainRenderer::NAME, $registry->defaultFor(SimpleType::UserRef)->name());
     }
 
     #[Test]

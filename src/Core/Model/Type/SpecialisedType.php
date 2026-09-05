@@ -141,6 +141,24 @@ abstract class SpecialisedType extends Node
     }
 
     /**
+     * Was in einem **leeren** Feld dieses Typs stehen soll, bevor jemand etwas eingetragen hat.
+     *
+     * ⚠️ **Kein Typ hat eine, ausser {@see UserRefType}** ([D-649](../../../../docs/NewConcept/90-decision-log.md)).
+     * *Deshalb steht hier `null` und nicht eine Verzweigung über die elf Fälle: **wer eine
+     * Vorbelegung hat, sagt es selbst.** Eine Abfrage «wenn der Typ `user_ref` ist» im Zeichenlauf
+     * oder im Schreibweg wäre genau die allgemeine Verzweigung, die
+     * [D-650](../../../../docs/NewConcept/90-decision-log.md) an dieser Stelle verbietet — «die Regel
+     * wohnt in `UserRefType`».*
+     *
+     * @param bool        $readOnly     Was die Kette für `read_only` aufgelöst hat.
+     * @param string|null $signedInUser Die Id, die der Rand vorlegt — `null`, wenn keine kam.
+     */
+    public function presetFor(bool $readOnly, ?string $signedInUser): ?TypedValue
+    {
+        return null;
+    }
+
+    /**
      * Die Zeichen als Wert dieses Typs lesen — oder verweigern.
      *
      * ⚠️ *Leer heisst nichts, und das entscheidet niemand typspezifisch:* {@see SimpleType::valueFrom()}
