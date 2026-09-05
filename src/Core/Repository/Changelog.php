@@ -59,9 +59,11 @@ interface Changelog
      * @param string|null $before        The previous state as {@see \Taxmod\Core\Model\FrozenState}
      *                                  writes it, or null when there was none.
      * @param string|null $after         The new state, or null when the object is gone.
-     * @param int|null    $changeGroupId The act this row belongs to; null starts a new one.
+     * @param int|null    $version       Die Version der Zeile, die diese Änderung erzeugt hat.
+     * @param int|null    $changeGroupId Die Änderungsgruppe, zu der diese Zeile gehört; null
+     *                                   beginnt eine neue.
      *
-     * @return int The change group — pass it to every further row of the same act (D-348).
+     * @return int Die Änderungsgruppe — an jede weitere Zeile desselben Akts weitergeben (D-348).
      */
     public function record(
         int $ownerId,
@@ -69,9 +71,23 @@ interface Changelog
         string $what,
         ?string $before,
         ?string $after,
+        /**
+         * Die **Version** — die Zeilennummer, die diese Änderung erzeugt hat
+         * ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * ⚠️ **Ohne Vorgabewert, seit [D-634](../../../docs/NewConcept/90-decision-log.md), und das
+         * ist der ganze Punkt.** *Gemessen: `ModelEditor` meldete 17 mal und nannte sie kein
+         * einziges Mal — nicht aus Streit, sondern weil das Weglassen erlaubt war. **Eine Regel, die
+         * man vergessen kann, ist die Regel, die hier vergessen wurde.** Jetzt muss jeder Melder sie
+         * hinschreiben, auch wenn die Antwort `null` lautet.*
+         *
+         * ⚠️ *`null` bleibt möglich und ist kein Schlupfloch, sondern ein Befund: **Labels tragen
+         * keine Versionsspalte**, und ein Sammelakt wie das Leeren des Papierkorbs erzeugt keine
+         * einzelne Zeile. Wer `null` übergibt, sagt das ausdrücklich; `scripts/dev/version-check.php`
+         * kennt genau diese Verben und wird rot, sobald ein anderes dazukommt (`PR-4`).*
+         */
+        ?int $version,
         ?int $changeGroupId = null,
-        /** Die Version, die diese Änderung erzeugt hat — der Wächter für «seither» ([D-536](../../../docs/NewConcept/90-decision-log.md)). */
-        ?int $version = null,
     ): int;
 
     /**
@@ -81,7 +97,10 @@ interface Changelog
      * *this child moved from here to there* is. Writing them one at a time would be the loop
      * `CD-7` forbids, so they go together.
      *
-     * @param list<array{ownerId: int, ownerKind: string, what: string, before: ?string, after: ?string}> $rows
+     * ⚠️ *`version` gehört seit [D-634](../../../docs/NewConcept/90-decision-log.md) in **jede** Zeile
+     * und ist darum kein wahlfreier Schlüssel mehr.*
+     *
+     * @param list<array{ownerId: int, ownerKind: string, what: string, before: ?string, after: ?string, version: ?int}> $rows
      *
      * @return int The change group they were written under.
      */

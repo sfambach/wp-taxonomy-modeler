@@ -20,11 +20,28 @@ final class InMemoryRecords implements RecordRepository
 
     private int $lastValueId = 0;
 
+    /**
+     * Die Version je Wertzeile und je Datensatz.
+     *
+     * ⚠️ *Der Doppelgänger zählt sie mit, weil der echte Speicher es tut
+     * ([D-536](../../../docs/NewConcept/90-decision-log.md)) und weil ein Kerntest sonst nicht zeigen
+     * könnte, dass eine Wertänderung die **richtige** Version meldet
+     * ([D-634](../../../docs/NewConcept/90-decision-log.md)). **Ein Doppelgänger, der die Version
+     * erfindet, kann für sie nicht rot werden.**
+     *
+     * @var array<int,int>
+     */
+    private array $valueVersions = [];
+
+    /** @var array<int,int> */
+    private array $recordVersions = [];
+
     public function add(NodeRecord $record): int
     {
         $id = ++$this->lastId;
 
-        $this->records[$id] = new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt);
+        $this->records[$id]        = new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt);
+        $this->recordVersions[$id] = 1;
 
         return $id;
     }
@@ -121,36 +138,55 @@ final class InMemoryRecords implements RecordRepository
      * Schlüssel `(recordId, path, locale)`, könnte kein Kerntest zeigen, dass drei Werte eines Feldes
      * nebeneinander stehen.*
      */
-    public function putValue(EdgeRecord $value): void
+    public function putValue(EdgeRecord $value): int
     {
         $id = $value->id ?? ++$this->lastValueId;
 
         $this->values[$id] = $value->id === null ? $value->stored($id) : $value;
+
+        // ⚠️ *Wie im echten Speicher: eine neue Zeile beginnt bei 1, jedes Überschreiben zählt hoch.*
+        $this->valueVersions[$id] = $value->id === null ? 1 : 1 + ($this->valueVersions[$id] ?? 1);
+
+        return $this->valueVersions[$id];
     }
 
-    public function forgetValue(int $recordId, string $path, string $locale): void
+    public function forgetValue(int $recordId, string $path, string $locale): ?int
     {
+        $version = null;
+
         foreach ($this->values as $id => $stored) {
             if ($stored->recordId === $recordId && $stored->path === $path && $stored->locale === $locale) {
-                unset($this->values[$id]);
+                $version = max($version ?? 0, $this->valueVersions[$id] ?? 1);
+
+                unset($this->values[$id], $this->valueVersions[$id]);
             }
         }
+
+        return $version;
     }
 
-    public function forgetValueById(int $id): void
+    public function forgetValueById(int $id): ?int
     {
-        unset($this->values[$id]);
+        $version = array_key_exists($id, $this->values) ? ($this->valueVersions[$id] ?? 1) : null;
+
+        unset($this->values[$id], $this->valueVersions[$id]);
+
+        return $version;
     }
 
-    public function forgetRecord(int $id): void
+    public function forgetRecord(int $id): ?int
     {
+        $version = $this->recordVersions[$id] ?? null;
+
         foreach ($this->values as $vid => $wert) {
             if ($wert->recordId === $id) {
-                unset($this->values[$vid]);
+                unset($this->values[$vid], $this->valueVersions[$vid]);
             }
         }
 
-        unset($this->records[$id]);
+        unset($this->records[$id], $this->recordVersions[$id]);
+
+        return $version;
     }
 
     public function findByEdgeValue(int $edgeId, TypedValue $value): array

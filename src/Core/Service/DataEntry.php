@@ -4,6 +4,7 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordKind;
@@ -12,6 +13,7 @@ use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\EdgeRecord;
 use Taxmod\Core\Model\Storage;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\Clock;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
@@ -53,7 +55,73 @@ final class DataEntry
         private readonly NodeRepository $nodes,
         private readonly FrameworkNodes $framework,
         private readonly Clock $clock,
+        /**
+         * Das Änderungsbuch dieses Dienstes — **es gab keines, und das war die gröbere Hälfte der
+         * Lücke** ([D-634](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * ⚠️ *Gemessen: **4 354 Schattenzeilen bei Datensatzwerten und null Chronikzeilen** — wer
+         * einen Wert änderte, erzeugte keine Chronik. Der Schatten wusste alles, das Buch nichts.*
+         *
+         * ⚠️ *Nachgestellt und nullbar wie bei {@see Labels}, damit die vorhandenen Aufrufer
+         * weiterlaufen; der Rand ({@see \Taxmod\WordPress\Plugin}) reicht es durch.*
+         */
+        private readonly ?Changelog $changelog = null,
     ) {
+    }
+
+    /**
+     * Eine Zeile ins Änderungsbuch — der einzige Weg dieses Dienstes dorthin.
+     *
+     * ⚠️ **Die Version ist Pflicht und wird an jeder Stelle vom Speicher erfragt**
+     * ([D-634](../../../docs/NewConcept/90-decision-log.md)): *{@see RecordRepository::putValue()} und
+     * die drei Vergess-Wege geben sie zurück, weil `EdgeRecord` sie nicht trägt. **Geraten wird sie
+     * nirgends.***
+     *
+     * ⚠️ *Der Betreff ist der **Datensatz**, nicht die Wertzeile: so steht die Geschichte eines Satzes
+     * an einer Stelle beieinander, und die Adresse innerhalb des Satzes trägt der Zustand als `path`.
+     * Die Version bleibt die der geänderten Zeile.*
+     */
+    private function melden(
+        int $ownerId,
+        string $ownerKind,
+        string $what,
+        ?string $before,
+        ?string $after,
+        ?int $version,
+    ): void {
+        $this->changelog?->record($ownerId, $ownerKind, $what, $before, $after, $version);
+    }
+
+    /**
+     * Was eine Wertzeile für die Chronik einfriert — Adresse und Wert, im Format aller anderen
+     * Melder ({@see FrozenState}).
+     *
+     * ⚠️ *`value` steht zuletzt, weil es das einzige Feld ist, das Leerzeichen enthalten darf; jede
+     * andere Reihenfolge wird von {@see FrozenState::of()} abgewiesen.*
+     */
+    private function wertZustand(int $recordId, string $path, string $locale, ?TypedValue $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return FrozenState::of([
+            'record' => $recordId,
+            'path'   => $path,
+            'locale' => $locale,
+            'type'   => $value->typeName(),
+            'value'  => $value->rawValue(),
+        ])->write();
+    }
+
+    /** Was ein Datensatz für die Chronik einfriert. */
+    private function satzZustand(NodeRecord $record): string
+    {
+        return FrozenState::of([
+            'node'          => $record->nodeId,
+            'node_version'  => $record->nodeVersion,
+            'kind'          => $record->kind->value,
+        ])->write();
     }
 
     /**
@@ -139,9 +207,21 @@ final class DataEntry
             $kind
         );
 
-        $id = $this->records->add($record);
+        // ⚠️ *Eine Änderungsgruppe um den ganzen Akt: der Satz und die Teile, die seine Multiplizität
+        // verlangt, sind **eine** Änderung ([D-348](../../../docs/NewConcept/90-decision-log.md)).*
+        $this->changelog?->beginAct();
 
-        $this->ensureRequiredParts($id, $model, $kind);
+        try {
+            $id = $this->records->add($record);
+
+            // ⚠️ *Version 1: die Spalte `records.version` hat genau diese Vorgabe — abgelesen, nicht
+            // angenommen.*
+            $this->melden($id, 'record', 'record created', null, $this->satzZustand($record), 1);
+
+            $this->ensureRequiredParts($id, $model, $kind);
+        } finally {
+            $this->changelog?->endAct();
+        }
 
         // ⚠️ *Die Marke faehrt mit, sonst gibt die Methode etwas zurueck, das anders aussieht als das,
         // was sie geschrieben hat. **Gemessen war genau das der Fall**: die Spalte trug `default`, das
@@ -226,10 +306,19 @@ final class DataEntry
             throw NotYetStorable::thatFieldHasSeveralValues($edge->name, count($vorhanden));
         }
 
-        $this->records->putValue(
-            $vorhanden === []
-                ? EdgeRecord::direct($recordId, $edge->id, $value, $locale)
-                : new EdgeRecord($recordId, $vorhanden[0]->path, $edge->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+        $neu = $vorhanden === []
+            ? EdgeRecord::direct($recordId, $edge->id, $value, $locale)
+            : new EdgeRecord($recordId, $vorhanden[0]->path, $edge->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
+
+        $version = $this->records->putValue($neu);
+
+        $this->melden(
+            $recordId,
+            'record_value',
+            'value set',
+            $this->wertZustand($recordId, $neu->path, $locale, $vorhanden[0]->value ?? null),
+            $this->wertZustand($recordId, $neu->path, $locale, $value),
+            $version
         );
     }
 
@@ -261,10 +350,19 @@ final class DataEntry
             throw NotYetStorable::thatFieldHasSeveralValues($letzte->name, count($vorhanden));
         }
 
-        $this->records->putValue(
+        $version = $this->records->putValue(
             $vorhanden === []
                 ? EdgeRecord::at($recordId, $edgeIds, $value, $locale)
                 : new EdgeRecord($recordId, $pfad, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+        );
+
+        $this->melden(
+            $recordId,
+            'record_value',
+            'value set',
+            $this->wertZustand($recordId, $pfad, $locale, $vorhanden[0]->value ?? null),
+            $this->wertZustand($recordId, $pfad, $locale, $value),
+            $version
         );
     }
 
@@ -381,7 +479,19 @@ final class DataEntry
             $hinterste = max($hinterste, $vorhanden->position);
         }
 
-        $this->records->putValue(EdgeRecord::direct($recordId, $edge->id, $value, $locale, $hinterste + 1));
+        $neu     = EdgeRecord::direct($recordId, $edge->id, $value, $locale, $hinterste + 1);
+        $version = $this->records->putValue($neu);
+
+        // ⚠️ *Ein eigenes Verb: ein angehängter Wert **ersetzt** keinen, er stellt sich daneben — ein
+        // «value set» ohne Vorher liesse beides gleich aussehen.*
+        $this->melden(
+            $recordId,
+            'record_value',
+            'value appended',
+            null,
+            $this->wertZustand($recordId, $neu->path, $locale, $value),
+            $version
+        );
     }
 
     /**
@@ -691,7 +801,7 @@ final class DataEntry
 
                 if ($bisher !== 0) {
                     $this->nodes->rememberSettingsRecord($nodeId, 0);
-                    $this->records->forgetRecord($bisher);
+                    $this->satzEntfernen($bisher);
                 }
             }
 
@@ -798,10 +908,19 @@ final class DataEntry
             throw NotYetStorable::thatFieldHasSeveralValues($kante->name, count($vorhanden));
         }
 
-        $this->records->putValue(
+        $version = $this->records->putValue(
             $vorhanden === []
                 ? EdgeRecord::at($satzId, [$edgeId, $kante->id], $value, $locale)
                 : new EdgeRecord($satzId, $pfad, $kante->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+        );
+
+        $this->melden(
+            $satzId,
+            'record_value',
+            'value set',
+            $this->wertZustand($satzId, $pfad, $locale, $vorhanden[0]->value ?? null),
+            $this->wertZustand($satzId, $pfad, $locale, $value),
+            $version
         );
     }
 
@@ -1160,7 +1279,7 @@ final class DataEntry
             $this->nodes->rememberSettingsRecord($nodeId, 0);
 
             if ($satz !== null) {
-                $this->records->forgetRecord($bisher);
+                $this->satzEntfernen($bisher);
             }
         }
 
@@ -1181,7 +1300,7 @@ final class DataEntry
                 return;
             }
 
-            $this->records->forgetRecord($teilId);
+            $this->satzEntfernen($teilId);
         }
 
         $this->createPart($recordId, $edgeId, '', $chosenNodeId);
@@ -1228,18 +1347,39 @@ final class DataEntry
             }
         }
 
-        $part = $this->create($gewaehlt->id, $record->kind);
+        // ⚠️ *Der Teil und der Verweis auf ihn sind **ein** Akt: ohne die Klammer stünde der Satz in
+        // einer Änderungsgruppe und der Verweis, der ihn hält, in einer anderen.*
+        $this->changelog?->beginAct();
+
+        try {
+            return $this->teilAnlegen($recordId, $edgeId, $path, $gewaehlt, $record->kind);
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
+    /** Der Teil selbst und der Verweis, der ihn hält — innerhalb der Klammer von {@see createPart()}. */
+    private function teilAnlegen(int $recordId, int $edgeId, string $path, Node $gewaehlt, RecordKind $kind): NodeRecord
+    {
+        $part = $this->create($gewaehlt->id, $kind);
+
+        $pfad = $path === '' ? (string) $edgeId : $path;
 
         // The holder points at it, which is the whole of the relationship.
-        $this->records->putValue(new EdgeRecord(
+        // ⚠️ *Ein **Datensatz**verweis und kein Knotenverweis — die einzige Stelle im Kern, die
+        // einen schreibt. Der Raum wandert seit TASK-005 mit in die Spalte `value_ref_kind`.*
+        $verweis = TypedValue::ofRecordReference($part->id);
+
+        $version = $this->records->putValue(new EdgeRecord($recordId, $pfad, $edgeId, '', $verweis));
+
+        $this->melden(
             $recordId,
-            $path === '' ? (string) $edgeId : $path,
-            $edgeId,
-            '',
-            // ⚠️ *Ein **Datensatz**verweis und kein Knotenverweis — die einzige Stelle im Kern, die
-            // einen schreibt. Der Raum wandert seit TASK-005 mit in die Spalte `value_ref_kind`.*
-            TypedValue::ofRecordReference($part->id)
-        ));
+            'record_value',
+            'part linked',
+            null,
+            $this->wertZustand($recordId, $pfad, '', $verweis),
+            $version
+        );
 
         return $part;
     }
@@ -1287,7 +1427,7 @@ final class DataEntry
     /** Take a value out again, so the attribute is simply unanswered (D-232's three states). */
     public function clear(int $recordId, int $edgeId, string $locale = ''): void
     {
-        $this->records->forgetValue($recordId, (string) $edgeId, $locale);
+        $this->wertLeeren($recordId, (string) $edgeId, $locale);
     }
 
     /**
@@ -1300,7 +1440,49 @@ final class DataEntry
      */
     public function clearPath(int $recordId, string $path, string $locale = ''): void
     {
-        $this->records->forgetValue($recordId, $path, $locale);
+        $this->wertLeeren($recordId, $path, $locale);
+    }
+
+    /**
+     * Eine Wertzeile herausnehmen **und es melden**.
+     *
+     * ⚠️ *Der Vorher-Zustand wird vor dem Entfernen gelesen — danach gäbe es ihn nicht mehr, und ein
+     * «gelöscht, aber was?» ist keine Chronik. Die Version, die diese Änderung erzeugt hat, gibt der
+     * Speicher zurück: es ist die, mit der die Zeile in den Schatten geht.*
+     */
+    private function wertLeeren(int $recordId, string $path, string $locale): void
+    {
+        $vorher = null;
+
+        foreach ($this->records->valuesOf($recordId) as $stand) {
+            if ($stand->path === $path && $stand->locale === $locale) {
+                $vorher = $this->wertZustand($recordId, $path, $locale, $stand->value);
+                break;
+            }
+        }
+
+        $version = $this->records->forgetValue($recordId, $path, $locale);
+
+        // ⚠️ *Nichts zu löschen ist kein Ereignis — ein Buch, das Nicht-Ereignisse aufschreibt, liest
+        // niemand (dieselbe Regel wie bei {@see Labels}).*
+        if ($vorher === null && $version === null) {
+            return;
+        }
+
+        $this->melden($recordId, 'record_value', 'value cleared', $vorher, null, $version);
+    }
+
+    /** Einen Datensatz entfernen **und es melden** — mit dem Zustand, den er zuletzt hatte. */
+    private function satzEntfernen(int $recordId): void
+    {
+        $satz    = $this->records->find($recordId);
+        $version = $this->records->forgetRecord($recordId);
+
+        if ($satz === null) {
+            return;
+        }
+
+        $this->melden($recordId, 'record', 'record removed', $this->satzZustand($satz), null, $version);
     }
 
     /** @return list<EdgeRecord> */

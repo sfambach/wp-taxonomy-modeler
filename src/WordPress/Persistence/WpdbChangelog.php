@@ -61,10 +61,11 @@ final class WpdbChangelog implements Changelog
         string $what,
         ?string $before,
         ?string $after,
-        ?int $changeGroupId = null,
         /**
-         * Die Version, die diese Änderung **erzeugt** hat — nullbar, weil sie erst
-         * [Schema 18](Schema.php) gibt und die bestehenden 19 968 Zeilen keine haben.
+         * Die Version, die diese Änderung **erzeugt** hat — **ohne Vorgabewert**, seit
+         * [D-634](../../../docs/NewConcept/90-decision-log.md): ein Melder darf sie nicht mehr
+         * weglassen können. Nullbar bleibt sie nur dort, wo es keine Zeilennummer gibt (Labels,
+         * Sammelakte) — und `scripts/dev/version-check.php` kennt diese Fälle namentlich.
          *
          * ⚠️ **Sie ist kein Schlüssel zum Zurücksetzen, sondern ein Wächter**
          * ([D-536](../../../docs/NewConcept/90-decision-log.md)): *{@see Restore::previous()} findet
@@ -73,7 +74,8 @@ final class WpdbChangelog implements Changelog
          * Gruppen-Rückgängig **dessen** Arbeit zurück und nicht die eigene. Genau diese Frage hatte in
          * [OQ-137](../../../docs/NewConcept/91-open-questions.md) keine Antwort.*
          */
-        ?int $version = null,
+        ?int $version,
+        ?int $changeGroupId = null,
     ): int {
         global $wpdb;
 
@@ -151,7 +153,13 @@ final class WpdbChangelog implements Changelog
         $user  = $by === null ? 'NULL' : '%d';
 
         foreach ($rows as $row) {
-            $placeholders[] = "({$group}, %d, %s, %s, {$user}, %s, %s, %s)";
+            // ⚠️ **Die Version stand hier nicht** — der Stapelweg schrieb die Spalte gar nicht erst,
+            // und keine Zeile aus `recordMany()` trug je eine. *Sie kann je Zeile fehlen, also
+            // dieselbe `NULL`-Behandlung wie bei der Gruppe: `%d` machte aus `null` eine `0`, und
+            // «Version 0» wäre eine Zahl, die niemand geschrieben hat.*
+            $fassung = $row['version'] ?? null;
+
+            $placeholders[] = "({$group}, %d, %s, %s, {$user}, %s, " . ($fassung === null ? 'NULL' : '%d') . ', %s, %s)';
 
             if ($changeGroupId !== null) {
                 $values[] = $changeGroupId;
@@ -163,12 +171,18 @@ final class WpdbChangelog implements Changelog
                 $values[] = $by;
             }
 
-            array_push($values, $row['what'], $row['before'], $row['after']);
+            $values[] = $row['what'];
+
+            if ($fassung !== null) {
+                $values[] = $fassung;
+            }
+
+            array_push($values, $row['before'], $row['after']);
         }
 
         $wpdb->query($wpdb->prepare(
             "INSERT INTO {$table}
-             (change_group_id, owner_id, owner_kind, at, by_user_id, what, before_state, after_state)
+             (change_group_id, owner_id, owner_kind, at, by_user_id, what, version, before_state, after_state)
              VALUES " . implode(',', $placeholders),
             $values
         ));

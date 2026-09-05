@@ -270,7 +270,7 @@ final class WpdbRecordRepository implements RecordRepository
 
         return $aus;
     }
-    public function putValue(EdgeRecord $value): void
+    public function putValue(EdgeRecord $value): int
     {
         global $wpdb;
 
@@ -295,7 +295,9 @@ final class WpdbRecordRepository implements RecordRepository
         if ($value->id === null) {
             $wpdb->insert(Schema::table('record_values'), $spalten, $formate);
 
-            return;
+            // ⚠️ *Die Spalte hat die Vorgabe `1`, also ist das die Version der neuen Zeile — gelesen
+            // aus dem Schema und nicht geraten ({@see Schema}).*
+            return 1;
         }
 
         // ⚠️ **Zuerst die alte Zeile in den Schatten, dann schreiben** ([D-536](../../../docs/NewConcept/90-decision-log.md)).
@@ -318,6 +320,8 @@ final class WpdbRecordRepository implements RecordRepository
             [...$formate, '%d'],
             ['%d']
         );
+
+        return $spalten['version'];
     }
 
     /**
@@ -326,13 +330,36 @@ final class WpdbRecordRepository implements RecordRepository
      * ⚠️ *Über die Id, weil mehrere Werte eines Feldes denselben Pfad tragen
      * ([D-530](../../../docs/NewConcept/90-decision-log.md)) — über den Pfad träfe es alle.*
      */
-    public function forgetValueById(int $id): void
+    public function forgetValueById(int $id): ?int
     {
         global $wpdb;
+
+        // ⚠️ *Vor dem Löschen gelesen: die Version, die diese Änderung erzeugt hat, ist die, mit der
+        // die Zeile in den Schatten geht — das Aufheben zählt sie nicht hoch.*
+        $version = $this->versionOfValues('id = %d', [$id]);
 
         Shadow::keepOne('record_values', $id, true);
 
         $wpdb->delete(Schema::table('record_values'), ['id' => $id], ['%d']);
+
+        return $version;
+    }
+
+    /**
+     * Die höchste Version, die unter dieser Bedingung in `record_values` steht — oder `null`.
+     *
+     * @param list<int|string> $args
+     */
+    private function versionOfValues(string $where, array $args): ?int
+    {
+        global $wpdb;
+
+        $wert = Query::value('Version der Wertzeile vor dem Entfernen lesen', $wpdb->prepare(
+            'SELECT MAX(version) FROM ' . Schema::table('record_values') . ' WHERE ' . $where,
+            ...$args
+        ));
+
+        return $wert === null ? null : (int) $wert;
     }
 
     /**
@@ -341,20 +368,32 @@ final class WpdbRecordRepository implements RecordRepository
      * WICHTIG: In dieser Reihenfolge, sonst zeigen die Werte auf nichts mehr und die
      * Schattenzeile haette keinen Datensatz, zu dem sie gehoert.
      */
-    public function forgetRecord(int $id): void
+    public function forgetRecord(int $id): ?int
     {
         global $wpdb;
+
+        $version = Query::value('Version des Datensatzes vor dem Entfernen lesen', $wpdb->prepare(
+            'SELECT version FROM ' . Schema::table('records') . ' WHERE id = %d',
+            $id
+        ));
 
         Shadow::keep('record_values', 'record_id = %d', [$id], true);
         $wpdb->delete(Schema::table('record_values'), ['record_id' => $id], ['%d']);
 
         Shadow::keepOne('records', $id, true);
         $wpdb->delete(Schema::table('records'), ['id' => $id], ['%d']);
+
+        return $version === null ? null : (int) $version;
     }
 
-    public function forgetValue(int $recordId, string $path, string $locale): void
+    public function forgetValue(int $recordId, string $path, string $locale): ?int
     {
         global $wpdb;
+
+        $version = $this->versionOfValues(
+            'record_id = %d AND path = %s AND locale = %s',
+            [$recordId, $path, $locale]
+        );
 
         // ⚠️ **Sie verschwindet aus der lebenden Tabelle und bleibt im Schatten**
         // ([D-536](../../../docs/NewConcept/90-decision-log.md), [D-537](../../../docs/NewConcept/90-decision-log.md)).
@@ -369,6 +408,8 @@ final class WpdbRecordRepository implements RecordRepository
             ['record_id' => $recordId, 'path' => $path, 'locale' => $locale],
             ['%d', '%s', '%s']
         );
+
+        return $version;
     }
 
     public function findByEdgeValue(int $edgeId, TypedValue $value): array

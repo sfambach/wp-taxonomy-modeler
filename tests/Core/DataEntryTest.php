@@ -31,6 +31,9 @@ final class DataEntryTest extends TestCase
     private InMemoryRecords $records;
     private ModelEditor $editor;
     private DataEntry $data;
+
+    /** Das Änderungsbuch dieses Dienstes — er hatte lange keines ([D-634](../../docs/NewConcept/90-decision-log.md)). */
+    private RecordedChanges $buch;
     /** @var array<string,Node> */
     private array $branchRoot = [];
     private Node $part;
@@ -82,7 +85,8 @@ final class DataEntryTest extends TestCase
             new RecordedChanges(),
             records: $this->records
         );
-        $this->data   = new DataEntry($this->records, $this->edges, $this->nodes, $framework, new FixedClock());
+        $this->buch   = new RecordedChanges();
+        $this->data   = new DataEntry($this->records, $this->edges, $this->nodes, $framework, new FixedClock(), $this->buch);
 
         $this->part = $this->editor->createNode('Part', $this->branchRoot['model']->id);
         $this->text = $this->editor->createNode('Text', $this->branchRoot['data-types']->id);
@@ -521,5 +525,75 @@ final class DataEntryTest extends TestCase
 
         self::assertNotSame($satzId, $neu);
         self::assertSame($table->id, $this->records->find($neu)?->nodeId);
+    }
+
+    /**
+     * ⚠️ **Der Dienst meldete überhaupt nicht** ([D-634](../../docs/NewConcept/90-decision-log.md)):
+     * *4 354 Schattenzeilen bei Datensatzwerten gegen **null** Chronikzeilen. Wer einen Wert änderte,
+     * erzeugte keine Chronik.*
+     */
+    #[Test]
+    public function eine_wertaenderung_kommt_ins_aenderungsbuch(): void
+    {
+        $satz = $this->data->create($this->part->id);
+
+        $this->data->put($satz->id, $this->description->id, TypedValue::ofText('rot'));
+        $this->data->put($satz->id, $this->description->id, TypedValue::ofText('blau'));
+        $this->data->clear($satz->id, $this->description->id);
+
+        $verben = array_map(static fn (array $z): string => $z[2], $this->buch->entries);
+
+        self::assertContains('record created', $verben, 'das Anlegen meldet');
+        self::assertContains('value set', $verben, 'das Schreiben meldet');
+        self::assertContains('value cleared', $verben, 'das Leeren meldet');
+    }
+
+    /**
+     * ⚠️ *Die Version ist Pflicht, und «irgendeine Zahl» genügt nicht: die zweite Schreibung trifft
+     * dieselbe Zeile, also muss ihre Version höher sein als die der ersten. **Eine fest verdrahtete 1
+     * bestünde die erste Zusage und nicht diese.***
+     */
+    #[Test]
+    public function jede_gemeldete_wertaenderung_traegt_ihre_version(): void
+    {
+        $satz = $this->data->create($this->part->id);
+
+        $this->data->put($satz->id, $this->description->id, TypedValue::ofText('rot'));
+        $this->data->put($satz->id, $this->description->id, TypedValue::ofText('blau'));
+
+        foreach ($this->buch->entries as $zeile) {
+            self::assertNotNull($zeile[6], sprintf('«%s» steht ohne Version im Buch', $zeile[2]));
+        }
+
+        $gesetzt = array_values(array_filter(
+            $this->buch->entries,
+            static fn (array $z): bool => $z[2] === 'value set'
+        ));
+
+        self::assertCount(2, $gesetzt);
+        self::assertGreaterThan($gesetzt[0][6], $gesetzt[1][6], 'die zweite Schreibung zählt die Version hoch');
+    }
+
+    /**
+     * ⚠️ *Ein Teil und der Verweis, der ihn hält, sind **ein** Akt
+     * ([D-348](../../docs/NewConcept/90-decision-log.md)) — sonst stünde der Satz in einer
+     * Änderungsgruppe und der Verweis auf ihn in einer anderen.*
+     */
+    #[Test]
+    public function ein_teil_und_sein_verweis_liegen_in_einer_aenderungsgruppe(): void
+    {
+        $stueck = $this->editor->createNode('Stueck', $this->branchRoot['compositions']->id);
+        $kante  = $this->editor->addField($this->part->id, $stueck->id, 'stueck');
+
+        $satz = $this->data->create($this->part->id);
+
+        $this->buch->entries = [];
+
+        $this->data->createPart($satz->id, $kante->id);
+
+        $gruppen = array_unique(array_map(static fn (array $z): int => $z[5], $this->buch->entries));
+
+        self::assertNotSame([], $this->buch->entries, 'der Akt hat gemeldet');
+        self::assertCount(1, $gruppen, 'und alles liegt in einer Aenderungsgruppe');
     }
 }

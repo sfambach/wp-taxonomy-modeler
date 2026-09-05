@@ -464,7 +464,17 @@ final class Plugin
             $this->editor(),
             new Tree(new WpdbNodeRepository()),
             $labels,
-            new DataEntry(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes(), new SystemClock()),
+            // ⚠️ *Dasselbe Exemplar des Aenderungsbuchs wie oben, seit auch Wertaenderungen melden
+            // ([D-634](../../docs/NewConcept/90-decision-log.md)): sonst faende ein Wert, der in
+            // derselben Handlung geschrieben wird wie ein Label, eine andere Aenderungsgruppe vor.*
+            new DataEntry(
+                new WpdbRecordRepository(),
+                new WpdbRelationRepository(),
+                new WpdbNodeRepository(),
+                $this->frameworkNodes(),
+                new SystemClock(),
+                $this->changelog()
+            ),
             $this->frameworkNodes(),
             // ⚠️ **The renderers are wired in one place.** Nothing on a surface may construct its
             // own registry — two registries would mean two answers to *what draws an integer*,

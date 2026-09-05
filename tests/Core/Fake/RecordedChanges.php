@@ -46,13 +46,15 @@ final class RecordedChanges implements Changelog
         string $what,
         ?string $before,
         ?string $after,
-        ?int $changeGroupId = null,
         /**
          * ⚠️ *Der Doppelgänger nimmt sie entgegen und **behält sie**, statt sie zu schlucken: sonst
          * könnte ein Kerntest nicht zeigen, dass ein Schreibweg sie überhaupt mitgibt
-         * ([D-536](../../../docs/NewConcept/90-decision-log.md)).*
+         * ([D-536](../../../docs/NewConcept/90-decision-log.md)). **Ohne Vorgabewert wie das
+         * Original** ([D-634](../../../docs/NewConcept/90-decision-log.md)) — ein Doppelgänger, der
+         * das Weglassen erlaubt, verdeckt genau den Fehler, um den es geht.*
          */
-        ?int $version = null,
+        ?int $version,
+        ?int $changeGroupId = null,
     ): int {
         $changeGroupId ??= $this->openAct;
 
@@ -83,8 +85,8 @@ final class RecordedChanges implements Changelog
                 $row['what'],
                 $row['before'],
                 $row['after'],
-                $group,
-                $row['version'] ?? null
+                $row['version'] ?? null,
+                $group
             );
         }
 

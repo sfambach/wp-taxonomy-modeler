@@ -70,12 +70,27 @@ interface RecordRepository
      * @return array<int, EdgeRecord> Satz-Id => die Wertzeile, die ihn hält; fehlt sie, ist er eigenständig.
      */
     public function holdersOf(array $recordIds): array;
-    public function putValue(EdgeRecord $value): void;
+    /**
+     * Eine Wertzeile schreiben — und **sagen, welche Version dabei entstanden ist**.
+     *
+     * ⚠️ **Der Rückgabewert ist neu und er ist der Grund, warum Wertänderungen überhaupt melden
+     * können** ([D-634](../../../docs/NewConcept/90-decision-log.md)): *die Version wird im Speicher
+     * gezählt, weil `EdgeRecord` sie nicht trägt. Ohne diese Antwort wüsste der Kern die Nummer nicht,
+     * die er ins Änderungsbuch schreiben muss — und genau daran lag es, dass er es nicht tat.*
+     *
+     * @return int Die Version der geschriebenen Zeile; bei einer neuen Zeile die erste.
+     */
+    public function putValue(EdgeRecord $value): int;
 
-    public function forgetValue(int $recordId, string $path, string $locale): void;
+    /** @return int|null Die Version der entfernten Zeile, oder null, wenn keine da war. */
+    public function forgetValue(int $recordId, string $path, string $locale): ?int;
 
-    /** Genau eine Wertzeile — mehrere Werte eines Feldes teilen sich einen Pfad ([D-530](../../../docs/NewConcept/90-decision-log.md)). */
-    public function forgetValueById(int $id): void;
+    /**
+     * Genau eine Wertzeile — mehrere Werte eines Feldes teilen sich einen Pfad ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return int|null Die Version der entfernten Zeile, oder null, wenn keine da war.
+     */
+    public function forgetValueById(int $id): ?int;
 
     /**
      * Einen ganzen Datensatz entfernen, mitsamt seinen Werten.
@@ -83,8 +98,10 @@ interface RecordRepository
      * WICHTIG: Gebraucht, seit die Wahl eines Renderers einen Datensatz anlegt (D-583). Waehlt
      * jemand einen anderen, sind die Felder des alten sinnlos -- sie gehoeren einem Knoten, der
      * hier nicht mehr steht. Stehen zu lassen hiesse, Waisen zu erzeugen.
+     *
+     * @return int|null Die Version des entfernten Datensatzes, oder null, wenn es ihn nicht gab.
      */
-    public function forgetRecord(int $id): void;
+    public function forgetRecord(int $id): ?int;
 
     /**
      * Records whose value at one edge equals this one, wherever in the record it sits.

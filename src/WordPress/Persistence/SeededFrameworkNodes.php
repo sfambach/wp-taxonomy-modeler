@@ -329,7 +329,7 @@ final class SeededFrameworkNodes implements FrameworkNodes
             $parent === null ? 0 : $this->nodes->nextPositionUnder($parent->id)
         ));
 
-        $this->changelog->record($node->id, 'node', 'created', null, 'framework: ' . $name);
+        $this->changelog->record($node->id, 'node', 'created', null, 'framework: ' . $name, $node->version);
         update_option($option, $node->id, true);
 
         return $node;

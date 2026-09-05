@@ -139,6 +139,34 @@ nicht gibt.*
 
 ---
 
+
+## INF-006 · Labels tragen keine Version — und die Chronik merkt es
+
+**Typ:** `QUESTION` · **Status:** `OPEN` — beim Bau von TASK-056 gefunden, 2026-09-05
+
+⚠️ **Gemessen am Schema, nicht vermutet:** *`nodes`, `relations`, `records` und `record_values`
+haben je eine Spalte `version`; **`labels` hat keine.** Damit ist eine Beschriftungsänderung die
+einzige Modelländerung, die im Änderungsbuch **ohne** Version steht — seit
+[D-634](NewConcept/90-decision-log.md) nicht mehr aus Versehen, sondern sichtbar als `null`.*
+
+**Die Frage, und sie ist nicht hier zu beantworten:** *werden Labels versioniert wie alles andere —
+mit Schattentabelle, `(id, version)` und Rückgängig ([D-536](NewConcept/90-decision-log.md),
+[D-537](NewConcept/90-decision-log.md)) — oder sind sie ausdrücklich etwas anderes?*
+
+⚠️ **Was für «versionieren» spricht:** *Eine Umbenennung ist für den Benutzer dasselbe Ereignis,
+egal ob sie den Knotennamen oder seinen Text in einer Sprache trifft. Heute ist das eine
+zurückholbar und das andere nicht.*
+
+⚠️ **Was dagegen spricht und ehrlich benannt gehört:** *Labels sind die einzige Tabelle, in die ein
+Seitenspeichern **viele** Zeilen schreibt — vier Rollen mal Sprachen. Eine Schattentabelle wächst
+dort schneller als überall sonst.*
+
+*Solange es unentschieden ist, steht `null` in der Spalte und
+[`version-check.php`](../scripts/dev/version-check.php) kennt die drei Verben namentlich. **Wird
+entschieden, fällt die Ausnahme aus dem Wächter** — das ist der Ort, an dem es auffällt.*
+
+---
+
 ## Erledigte Eingänge
 
 *(noch keine)*

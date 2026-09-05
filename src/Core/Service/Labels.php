@@ -299,7 +299,13 @@ final class Labels
             $this->nodes === null || $this->nodes->find($label->ownerId) !== null ? 'node' : 'relation',
             $now === null ? 'label cleared' : 'label set',
             $state($was),
-            $state($now)
+            $state($now),
+            // ⚠️ **Ein Label hat keine Version, und zwar gemessen: `labels` trägt keine solche
+            // Spalte** — anders als `nodes`, `relations`, `records` und `record_values`. *Seit
+            // [D-634](../../../docs/NewConcept/90-decision-log.md) muss der Melder das hinschreiben
+            // statt es wegzulassen; `null` ist hier die richtige Antwort und zugleich der Befund
+            // (`PR-4`): ob Labels versioniert werden, ist nicht entschieden.*
+            null
         );
     }
 

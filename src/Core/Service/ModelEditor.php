@@ -112,7 +112,7 @@ final class ModelEditor
             $parent->id,
             $this->nodes->nextPositionUnder($parent->id)
         ));
-        $this->changelog->record($node->id, 'node', 'created', null, $this->state($node));
+        $this->changelog->record($node->id, 'node', 'created', null, $this->state($node), $node->version);
 
         // ⚠️ *Hier stand `materialise($parent, $node)` — [D-423](../../../docs/NewConcept/90-decision-log.md)s
         // Kopie dessen, was das Elternteil in der `settings`-Tabelle **auflöste**. Die Tabelle ist
@@ -133,7 +133,7 @@ final class ModelEditor
         }
 
         $this->nodes->save($renamed, $node->version);
-        $this->changelog->record($id, 'node', 'renamed', $this->state($node), $this->state($renamed));
+        $this->changelog->record($id, 'node', 'renamed', $this->state($node), $this->state($renamed), $renamed->version);
 
         return $renamed;
     }
@@ -175,7 +175,8 @@ final class ModelEditor
             'node',
             'field type set',
             $node->fieldType?->value,
-            $marked->fieldType?->value
+            $marked->fieldType?->value,
+            $marked->version
         );
 
         return $marked;
@@ -213,7 +214,8 @@ final class ModelEditor
             'node',
             'implemented by',
             $node->implementedBy,
-            $marked->implementedBy
+            $marked->implementedBy,
+            $marked->version
         );
 
         return $marked;
@@ -302,7 +304,6 @@ final class ModelEditor
             'multiplicity set',
             $this->edgeState($edge),
             $this->edgeState($geaendert),
-            null,
             $geaendert->version
         );
 
@@ -326,7 +327,8 @@ final class ModelEditor
             'relation',
             $wanted ? 'field hidden' : 'field shown',
             $this->edgeState($edge),
-            $this->edgeState($hidden)
+            $this->edgeState($hidden),
+            $hidden->version
         );
 
         $this->relations->save($hidden, $edge->version);
@@ -365,7 +367,8 @@ final class ModelEditor
             'node',
             $wanted ? 'hidden' : 'shown',
             $node->hide ? '1' : '0',
-            $wanted ? '1' : '0'
+            $wanted ? '1' : '0',
+            $versteckt->version
         );
 
         return $versteckt;
@@ -644,7 +647,8 @@ final class ModelEditor
             'relation',
             'attribute added',
             null,
-            sprintf('%s: %s → %s (%s)', $owner->name, $edge->name, $target->name, $edge->kind->value)
+            sprintf('%s: %s → %s (%s)', $owner->name, $edge->name, $target->name, $edge->kind->value),
+            $edge->version
         );
 
         // ⚠️ *Hier wurden dem neuen Feld die Angaben seines **Ziels** als eigene Zeilen
@@ -842,7 +846,13 @@ final class ModelEditor
                 $gone['labels'],
                 $gone['records'],
                 $gone['values']
-            )
+            ),
+            // ⚠️ **Hier gibt es keine Version, und das ist ein Befund, keine Bequemlichkeit**
+            // ([D-634](../../../docs/NewConcept/90-decision-log.md), `PR-4`): *dieser Eintrag steht
+            // gegen den Papierkorb, der sich selbst gar nicht ändert; die Änderung besteht aus
+            // hunderten entfernten Zeilen mit je eigener Version. Eine davon auszusuchen wäre eine
+            // erfundene Zahl. `scripts/dev/version-check.php` kennt dieses Verb namentlich.*
+            null
         );
 
         return $gone;
@@ -896,6 +906,10 @@ final class ModelEditor
                 'what'      => 'promoted',
                 'before'    => $child->path,
                 'after'     => $grandparent->path . '.' . $child->id,
+                // ⚠️ *Die Zeile wird gleich umgehängt, und {@see NodeRepository::reparentChildren()}
+                // zählt dabei `version = version + 1` — die Version, die diese Änderung erzeugt, ist
+                // also die nächste. Gelesen wird vorher, weil danach der alte Pfad weg wäre.*
+                'version'   => $child->version + 1,
             ];
         }
 
@@ -942,7 +956,7 @@ final class ModelEditor
         }
 
         $this->nodes->save($moved, $node->version);
-        $this->changelog->record($id, 'node', 'reordered', (string) $node->sortOrder, (string) $moved->sortOrder);
+        $this->changelog->record($id, 'node', 'reordered', (string) $node->sortOrder, (string) $moved->sortOrder, $moved->version);
     }
 
     /**
@@ -1166,7 +1180,11 @@ final class ModelEditor
             'relation',
             'attribute removed',
             $this->edgeState($edge),
-            $this->edgeState($edge->parkedBy(0))
+            $this->edgeState($edge->parkedBy(0)),
+            // ⚠️ *Das Parken hebt die Version **nicht**: die Zeile wandert unverändert in den
+            // Schatten ({@see \Taxmod\WordPress\Persistence\Shadow::keepOne()}) und verschwindet
+            // lebend. Die Version, die diese Änderung erzeugt hat, ist also die der gelesenen Zeile.*
+            $edge->version
         );
 
         // ⚠️ **Seit [D-619](../../../docs/NewConcept/90-decision-log.md) ein Umzug und kein
@@ -1193,18 +1211,26 @@ final class ModelEditor
 
             $revived = $edge->revived();
 
+            // ⚠️ *Die Umkehrung des Umzugs, **mit den Wertzeilen**
+            // ([D-619](../../../docs/NewConcept/90-decision-log.md), TASK-013) — und nicht ein
+            // zweiter Weg, der dasselbe noch einmal beschreibt.*
+            //
+            // ⚠️ **Zuerst zurückholen, dann melden, seit die Version Pflicht ist**
+            // ([D-634](../../../docs/NewConcept/90-decision-log.md)): *das Zurückholen schreibt die
+            // Zeile mit einer **neuen** Version, und die kennt erst der Speicher. Vorher gemeldet
+            // hätte die Zeile die Version von gestern getragen.*
+            $zurueck = $this->relations->unpark($edge->id) ?? $revived;
+
             $this->changelog->record(
                 $edge->id,
                 'relation',
                 'attribute restored',
                 $this->edgeState($edge),
-                $this->edgeState($revived)
+                $this->edgeState($zurueck),
+                $zurueck->version
             );
 
-            // ⚠️ *Die Umkehrung des Umzugs, **mit den Wertzeilen**
-            // ([D-619](../../../docs/NewConcept/90-decision-log.md), TASK-013) — und nicht ein
-            // zweiter Weg, der dasselbe noch einmal beschreibt.*
-            return $this->relations->unpark($edge->id) ?? $revived;
+            return $zurueck;
         }
 
         throw NotAPossibleTarget::notAnOwnField($edgeId);
@@ -1268,7 +1294,8 @@ final class ModelEditor
             'relation',
             $isSetting ? 'field became a setting' : 'setting became a field',
             $this->edgeState($edge),
-            $this->edgeState($marked)
+            $this->edgeState($marked),
+            $marked->version
         );
 
         $this->relations->save($marked, $edge->version);
@@ -1303,7 +1330,8 @@ final class ModelEditor
             'relation',
             'field retargeted',
             $this->edgeState($edge),
-            $this->edgeState($moved)
+            $this->edgeState($moved),
+            $moved->version
         );
 
         $this->relations->save($moved, $edge->version);
@@ -1321,7 +1349,8 @@ final class ModelEditor
             'relation',
             'attribute renamed',
             $this->edgeState($edge),
-            $this->edgeState($renamed)
+            $this->edgeState($renamed),
+            $renamed->version
         );
 
         $this->relations->save($renamed, $edge->version);
@@ -1496,9 +1525,11 @@ final class ModelEditor
 
         $fassung = $move($subjectId, $frei, $mir['version']);
         $move($other['id'], $mine, $other['version']);
-        $move($subjectId, $yours, $fassung);
+        $letzte = $move($subjectId, $yours, $fassung);
 
-        $this->changelog->record($subjectId, $kind, 'reordered', (string) $here, (string) $there);
+        // ⚠️ *Die Version des **letzten** Schreibvorgangs, nicht die des Zwischenschritts auf die
+        // freie Stelle: die Änderung, die hier gemeldet wird, ist der fertige Tausch.*
+        $this->changelog->record($subjectId, $kind, 'reordered', (string) $here, (string) $there, $letzte);
     }
 
     /**
@@ -1541,7 +1572,7 @@ final class ModelEditor
 
         $this->nodes->save($moved, $node->version);
         $this->nodes->moveSubtree($node->path, $moved->path);
-        $this->changelog->record($id, 'node', $verb, $this->state($node), $this->state($moved), $changeGroup);
+        $this->changelog->record($id, 'node', $verb, $this->state($node), $this->state($moved), $moved->version, $changeGroup);
 
         return $moved;
     }

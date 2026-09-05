@@ -175,7 +175,9 @@ final class Residue
 
         $gone = $this->labels->forgetOwners([$ownerId]);
 
-        $this->record($ownerId, self::KIND_GONE, 'labels removed', $gone);
+        // ⚠️ *Ohne Version, und das ist derselbe Befund wie in {@see \Taxmod\Core\Service\Labels}:
+        // **`labels` hat keine Versionsspalte.** Erfunden wird hier nichts (`PR-4`).*
+        $this->record($ownerId, self::KIND_GONE, 'labels removed', $gone, null);
 
         return $gone;
     }
@@ -189,6 +191,9 @@ final class Residue
             return 0;
         }
 
+        // ⚠️ *Vor dem Löschen gelesen — danach wäre die Version nicht mehr feststellbar.*
+        $version = $this->hoechsteVersion('record_values', 'edge_id = %d', [$edgeId]);
+
         $gone = (int) $wpdb->query($wpdb->prepare(
             'DELETE FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d',
             $edgeId
@@ -198,7 +203,7 @@ final class Residue
 
         // ⚠️ *`relation` and not {@see self::KIND_GONE}: the id came out of `record_values.edge_id`, so
         // what it **was** is known even though the row it named is not there any more.*
-        $this->record($edgeId, 'relation', 'values removed', $gone);
+        $this->record($edgeId, 'relation', 'values removed', $gone, $version);
 
         return $gone;
     }
@@ -246,7 +251,11 @@ final class Residue
             'node',
             'purged',
             'no connections',
-            sprintf('%d labels', $gone['labels'])
+            sprintf('%d labels', $gone['labels']),
+            // ⚠️ *Die Version der Knotenzeile, die hier verschwindet — sie steht in
+            // {@see self::nodesWithoutConnections()} und wandert mit derselben Nummer in den
+            // Schatten.*
+            $standing[array_key_first($standing)]->version
         );
 
         return $gone;
@@ -315,6 +324,9 @@ final class Residue
             return null;
         }
 
+        // ⚠️ *Vor dem Entfernen gelesen, sonst gäbe es die Zeilen nicht mehr, deren Version gemeint ist.*
+        $version = $this->hoechsteVersion('records', 'node_id = %d', [$nodeId]);
+
         $gone = $this->records->forgetNodes([$nodeId]);
 
         // ⚠️ *`node` und nicht {@see self::KIND_GONE}: die Id kam aus `records.node_id`, es ist also
@@ -324,7 +336,8 @@ final class Residue
             'node',
             'records removed',
             sprintf('%d records, %d values', $gone['records'], $gone['values']),
-            null
+            null,
+            $version
         );
 
         return $gone;
@@ -405,14 +418,37 @@ final class Residue
      * it refers to — so removing residue is recorded **against the owner that is already gone**, which
      * is the only place the act can be described.*
      */
-    private function record(int $ownerId, string $kind, string $what, int $gone): void
+    private function record(int $ownerId, string $kind, string $what, int $gone, ?int $version): void
     {
         $this->changelog->record(
             $ownerId,
             $kind,
             $what,
             sprintf('%d rows', $gone),
-            null
+            null,
+            $version
         );
+    }
+
+    /**
+     * Die höchste Version, die in dieser Tabelle unter dieser Bedingung steht — oder `null`.
+     *
+     * ⚠️ *Vor dem Löschen zu lesen ist der ganze Zweck: danach gibt es die Zeilen nicht mehr, und die
+     * Version, die diese Änderung erzeugt hat ([D-634](../../../docs/NewConcept/90-decision-log.md)),
+     * wäre nicht mehr feststellbar. **Die Zeile steht dann im Schatten, und dort trägt sie genau
+     * diese Nummer** — das Aufheben zählt nicht hoch.*
+     *
+     * @param list<int|string> $args
+     */
+    private function hoechsteVersion(string $table, string $where, array $args): ?int
+    {
+        global $wpdb;
+
+        $wert = Query::value('höchste Version vor dem Entfernen lesen', $wpdb->prepare(
+            'SELECT MAX(version) FROM ' . Schema::table($table) . ' WHERE ' . $where,
+            ...$args
+        ));
+
+        return $wert === null ? null : (int) $wert;
     }
 }

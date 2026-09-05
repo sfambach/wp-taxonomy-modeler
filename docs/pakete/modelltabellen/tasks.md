@@ -1251,7 +1251,7 @@ gewesen, an dem er nicht verschieben konnte.*
 
 ---
 
-[ ] TASK-056  Die Version wird beim Melden mitgeschrieben
+[x] TASK-056  Die Version wird beim Melden mitgeschrieben
 
 **2026-09-05.** *Das Aenderungsbuch ist auf sein Wort **vollstaendig** geleert worden — erst «alte ohne Version wegschmeissen» (35 524 Zeilen), dann «einmal komplett leeren, nicht selektiv» (die restlichen 162). Es steht jetzt auf null. **Damit ist der Zustand aufgeraeumt, die Ursache
 nicht:** die Version wird beim Melden nicht mitgeschrieben, und ohne diese Aufgabe steht in einer
@@ -1275,3 +1275,47 @@ zurueckholbar.*
 Kerntests gruen, `cleanup-screen`, `used-by`, `package5`, `package7` und `inheritance-column`
 gruen. **Der Aufraeum-Bildschirm holt seine entfernten Felder also nicht allein aus dem Journal** —
 sonst waere er der erste gewesen, der rot wird.*
+
+**Gebaut 2026-09-05.**
+
+⚠️ **Der Vorgabewert ist weg, und das ist der ganze Punkt.** *`Changelog::record()` nimmt die
+Version jetzt **vor** der Aenderungsgruppe und **ohne** Vorgabe entgegen; wer meldet, muss sie
+hinschreiben. Beide Umsetzungen und der Doppelgaenger im Test tragen dieselbe Signatur, damit ein
+Kerntest nicht gruen sein kann, wo der Rand schweigt.*
+
+⚠️ **Und der Stapelweg schrieb die Spalte gar nicht erst.** *`recordMany()` fuellte `version` in
+keiner einzigen Zeile — nicht «vergessen zu uebergeben», sondern **im `INSERT` nicht vorhanden**.
+Gefunden beim Umbau, nicht gesucht.*
+
+**Angefasst: 25 Meldestellen** — 17 in `ModelEditor`, 6 in `Residue`, je eine in `Labels` und
+`SeededFrameworkNodes`. *Alle nennen die Version der Zeile, die die Aenderung erzeugt hat.*
+
+⚠️ **Drei Stellen kennen sie nicht, und das steht hier statt einer erfundenen Zahl** (`PR-4`):
+
+| Wo | Warum es keine gibt |
+|---|---|
+| `label set` / `label cleared` / `labels removed` | **`labels` hat keine Versionsspalte** — gemessen am Schema, anders als `nodes`, `relations`, `records` und `record_values`. Ob Labels versioniert werden, ist nicht entschieden: [`neues-konzept-eingang.md`](../../neues-konzept-eingang.md). |
+| `trash cleared` | Ein Sammelakt ueber hunderte Zeilen mit je eigener Version; der Papierkorb selbst aendert sich nicht. Eine davon auszusuchen waere geraten. |
+
+*Der Waechter kennt genau diese Verben namentlich — kommt ein anderes ohne Version dazu, wird er
+rot.*
+
+**`DataEntry` hat sein Aenderungsbuch.** *Es meldet `record created`, `record removed`,
+`value set`, `value appended`, `value cleared` und `part linked` — im Format aller anderen Melder
+(`FrozenState`, Adresse als `path`, Wert zuletzt) und in der **vorhandenen** Akt-Klammer, nicht in
+einer zweiten. Der Betreff ist der Datensatz, die Version die der geaenderten Zeile.*
+
+⚠️ **Damit das ueberhaupt gehen konnte, gibt der Speicher die Version jetzt zurueck**:
+`putValue()` liefert sie, die drei Vergess-Wege die der entfernten Zeile. *`EdgeRecord` traegt
+keine Version — die Nummer entsteht im Speicher, und **genau deshalb konnte der Kern sie bisher
+nicht melden**. Kein Raten an keiner Stelle.*
+
+**Neu am Netz:** [`version-check.php`](../../../scripts/dev/version-check.php) — eigene Knoten
+(`__ver `), Modellaenderung und Wertaenderung ueber die **echte Verdrahtung**, dann die Frage
+**ueber den ganzen Bestand** statt nur ueber die eigenen Ids. *Beide Zusagen beissen, testweise
+geprueft: Version weglassen faerbt sie rot, Meldung herausnehmen ebenso.* Dazu drei Kerntests in
+`DataEntryTest`.
+
+⚠️ *Nebenbefund, nicht behoben: `unitvalue-check` raeumt seine `__uv`-Knoten weg, **seine
+Chronikzeilen aber nicht** — zwei Waisen lagen im Buch und liessen den neuen Waechter zu Recht rot
+werden. Sie sind entfernt; die Luecke im Waechter selbst ist es nicht.*
