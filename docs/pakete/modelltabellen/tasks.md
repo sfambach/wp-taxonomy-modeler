@@ -659,3 +659,28 @@ name». **Gemessen kommen fünf Namen doppelt vor, darunter `Adresse`.** Ein Wä
 nicht, wenn ein Lauf **mitten in der Arbeit abstürzt.** Genau das ist am 2026-09-04 dreimal
 passiert: 60, dann 12, dann 8 Probeknoten in seinem Arbeitsbaum. **Wer abstürzt, räumt nicht auf.**
 Ein eigener Ast hält den Rückstand dort, wo er niemanden stört.*
+
+```text
+[ ] TASK-051  Die Konfigurationsseite haelt den Faltzustand — «alles zu»
+              gilt nur beim ersten Aufruf, nicht bei jedem Link, der ihn
+              vergessen hat (D-615, D-480)
+```
+
+**Gemessen an `NodesScreen`:**
+
+```text
+Zeile 202   $collapsed = $carried ?? collapsedByDefault($selected)
+               ↑ klappt ALLES zu — das ist die Ast-Angabe, ausschliessend
+Zeile 212   $collapsed = diff($collapsed, $selected->ancestorIds())
+               ↑ oeffnet nur den Weg — das ist die Knoten-Angabe, richtig
+```
+
+⚠️ **Der Fehler ist Zeile 202, und er ist derselbe, den [D-480](../../NewConcept/90-decision-log.md)
+schon einmal behoben hat:** *«der Zustand lag in der URL und niemand schrieb ihn hinein.» **Wo ein
+Link ihn heute noch verliert, fällt die Seite auf «alles zu» zurück** — und der Benutzer verliert
+einen Zustand, den er nicht angefasst hat. Sein Satz von damals: «wenn ich zwischen zwei Knoten
+arbeite und dauernd die Äste zugehen, das ist ziemlich nervig».*
+
+⚠️ *Nach [D-615](../../NewConcept/90-decision-log.md) ist «alles zu» ausserdem die **Ast**-Angabe —
+und die Konfigurationsseite darf nur den **Wurzelknoten** übergeben. Sie wendet damit eine Angabe an,
+die sie gar nicht bekommen hat.*
