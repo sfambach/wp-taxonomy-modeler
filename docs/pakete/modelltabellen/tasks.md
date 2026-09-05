@@ -1251,20 +1251,20 @@ gewesen, an dem er nicht verschieben konnte.*
 
 ---
 
-[ ] TASK-056  Die Fassung wird beim Melden mitgeschrieben
+[ ] TASK-056  Die Version wird beim Melden mitgeschrieben
 
-**2026-09-05.** *Das Aenderungsbuch ist auf sein Wort **vollstaendig** geleert worden — erst «alte ohne Fassung wegschmeissen» (35 524 Zeilen), dann «einmal komplett leeren, nicht selektiv» (die restlichen 162). Es steht jetzt auf null. **Damit ist der Zustand aufgeraeumt, die Ursache
-nicht:** die Fassung wird beim Melden nicht mitgeschrieben, und ohne diese Aufgabe steht in einer
+**2026-09-05.** *Das Aenderungsbuch ist auf sein Wort **vollstaendig** geleert worden — erst «alte ohne Version wegschmeissen» (35 524 Zeilen), dann «einmal komplett leeren, nicht selektiv» (die restlichen 162). Es steht jetzt auf null. **Damit ist der Zustand aufgeraeumt, die Ursache
+nicht:** die Version wird beim Melden nicht mitgeschrieben, und ohne diese Aufgabe steht in einer
 Woche derselbe Befund da.*
 
-⚠️ **Gemessen vor dem Loeschen:** *160 Zeilen trugen eine Fassung, die aelteste vom 31. August —
+⚠️ **Gemessen vor dem Loeschen:** *160 Zeilen trugen eine Version, die aelteste vom 31. August —
 **es war also nie eine Frage von alt und neu**, sondern von *welcher Weg schreibt*. Die juengste
-Zeile ohne Fassung war vom Tag des Loeschens, 15:51 Uhr.*
+Zeile ohne Version war vom Tag des Loeschens, 15:51 Uhr.*
 
 ⚠️ **Die zweite Haelfte derselben Luecke** ([D-631](../../NewConcept/90-decision-log.md)):
 *`DataEntry` haelt ueberhaupt kein Aenderungsbuch — 4 354 Schattenzeilen bei Datensatzwerten und
 null Chronikzeilen. **Wertaenderungen melden heute nichts**, und `§7` des Ereigniskonzepts verlangt
-die Fassung im Kontext jedes Ereignisses.*
+die Version im Kontext jedes Ereignisses.*
 
 ⚠️ *Die geloeschten Zeilen liegen als Sicherung im Arbeitsordner der Sitzung — beide Schritte
 einzeln (`changelog-ohne-fassung.jsonl`, 35 524 Zeilen, 8,9 MB; `changelog-rest.jsonl`, 162

@@ -118,7 +118,7 @@ flowchart LR
 | `before_state`, `after_state` | **Payload** (§6) |
 | `at`, `by_user_id` | Kontext |
 | `change_group_id` | **die Klammer eines Akts** — hat im Konzept **kein Gegenstück** |
-| `version` | **Fassung** (§7) |
+| `version` | **Version** (§7) |
 
 **Gemessen an 35 422 Zeilen:**
 
@@ -169,7 +169,7 @@ Was **dagegen** spricht, ebenfalls gemessen:
    verbietet genau das («The address belongs in the state, never in `what`»), und die Tabelle tut
    es trotzdem 19-fach. Weitere Werte sind Sätze: `field became a setting`, `children promoted`,
    `import reverted`, `trash cleared`. **Als Eventtyp-Liste ist das unbrauchbar.**
-3. **Die Fassung fehlt praktisch.** §7 verlangt sie im Kontext; die Spalte existiert und ist zu
+3. **Die Version fehlt praktisch.** §7 verlangt sie im Kontext; die Spalte existiert und ist zu
    **99,6 %** leer.
 4. **Es sieht Datensätze nicht.** Siehe §3.2 und §8 — der wichtigste Ereignistyp des Konzepts
    (*Änderung eines Node Records*, §3) hinterlässt **keine einzige** Zeile: `owner_kind` kennt kein
@@ -309,9 +309,9 @@ flowchart LR
   I["Id"] --> E[Event]
   T["Typ"] --> E
   S["Betreff · Id + Art"] --> E
-  V["Fassung"] --> E
+  V["Version"] --> E
   P["Nutzlast · nur das Geänderte"] --> E
-  E -.->|"gehört NICHT dazu §7"| C["Fassungsprüfung"]
+  E -.->|"gehört NICHT dazu §7"| C["Versionsprüfung"]
 ```
 
 **Gemessen, was der Bestand heute schon je Angabe hat:**
@@ -321,7 +321,7 @@ flowchart LR
 | Event-Id | `changelog.id` | 35 422 vergeben |
 | Typ | `changelog.what` | vorhanden, aber 48 Werte, 19 mit Adresse im Verb |
 | Betreff-Id + Art | `owner_id` + `owner_kind` | vollständig |
-| **Fassung** | `changelog.version` | **158 von 35 422** — praktisch nicht vorhanden |
+| **Version** | `changelog.version` | **158 von 35 422** — praktisch nicht vorhanden |
 | Nutzlast vorher/nachher | `before_state`/`after_state` via `FrozenState` | Format seit [D-427](../../NewConcept/90-decision-log.md) vertraglich |
 | Akt-Klammer | `change_group_id` | 29 301 Gruppen; **im Konzept nicht vorgesehen** |
 
@@ -331,7 +331,7 @@ Leerzeichen enthalten — *«Measured: **844** existing rows carry a node name w
 Der Docblock nennt den Grund, aus dem die Klasse überhaupt entstand: *«a journal entry carried a
 value and no address»*.
 
-⚠️ **§7 sagt, die Fassungs*prüfung* gehöre nicht zum Ereignissystem — und der Bestand hält das
+⚠️ **§7 sagt, die Versions*prüfung* gehöre nicht zum Ereignissystem — und der Bestand hält das
 bereits ein.** Gemessen: `ConcurrentChange` wird an genau **zwei** Stellen geworfen, beide in
 `src/WordPress/Persistence/` (`WpdbNodeRepository.php:174`, `WpdbRelationRepository.php:116`), also
 in der Datenhaltung. **Hier ist nichts zu ändern.**
@@ -417,8 +417,8 @@ flowchart LR
 | 4 | Event beschreibt den Auslöser, Listener entscheidet | `match` **ist** die Entscheidung, 26 Zweige | **vollständig offen** |
 | 5 | Change-Familie | 48 gewachsene `what`-Werte, 19 mit Adresse im Verb | **Typen unsortiert** |
 | 6 | Nutzlast trägt das Geänderte | `FrozenState`, mit Vertrag | **erfüllt** |
-| 7 | Fassung im Kontext | `version` zu 99,6 % leer | **offen** |
-| 7 | Fassungsprüfung **nicht** im Ereignissystem | `ConcurrentChange` in 2 Persistenzdateien | **erfüllt** |
+| 7 | Version im Kontext | `version` zu 99,6 % leer | **offen** |
+| 7 | Versionsprüfung **nicht** im Ereignissystem | `ConcurrentChange` in 2 Persistenzdateien | **erfüllt** |
 | 8 | Event-Id | `changelog.id` | **erfüllt** |
 | 9 | Dispatcher + Listener Provider | nichts davon; Registries als Muster vorhanden | **vollständig offen** |
 | 10 | mehrere Listener je Event | ein `match`-Zweig, ein Ergebnis | **vollständig offen** |
@@ -513,7 +513,7 @@ mitbringt).
 | 9 | Abschnitt «Event» auf der Installationsseite (§16) | `SettingsScreen` vorhanden |
 | 10 | Wächter: kein Hook-Aufruf unterhalb `src/Core/` | neu, klein |
 
-**Was ausdrücklich *nicht* zu ändern ist,** weil es dem Konzept schon entspricht: die Fassungsprüfung
+**Was ausdrücklich *nicht* zu ändern ist,** weil es dem Konzept schon entspricht: die Versionsprüfung
 in der Persistenz (§7), das Fehlen einer Action-Schicht (§11), das Fehlen eines Retry (§13), die
 Schichtung Kern/Rand (§17, `CD-1`), `FrozenState` als Nutzlastform (§6).
 
@@ -564,8 +564,8 @@ Aufzeichnung, oder trägt jedes Event die Akt-Nummer als Teil seines Kontexts mi
 ```
 
 ```text
-F-6 · Bleiben die 35 264 Zeilen ohne Fassung, wie sie sind?
-§7 verlangt die Fassung im Event-Kontext; die Spalte ist zu 99,6 % leer und lässt
+F-6 · Bleiben die 35 264 Zeilen ohne Version, wie sie sind?
+§7 verlangt die Version im Event-Kontext; die Spalte ist zu 99,6 % leer und lässt
 sich rückwirkend nicht füllen. Neue Ereignisse tragen sie — und die alten Zeilen
 bleiben, wie sie sind (so wie D-476 es für die alten Zustandsformate hält)?
 ```
