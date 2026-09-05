@@ -177,8 +177,19 @@ final class ModelValues
     {
         $saetze = $this->recordsOf($traeger);
 
+        // ⚠️ **Die Spalte wird auch dann gefragt, wenn der Knoten keine eigenen Sätze hat** —
+        // *gefunden vom umgeschriebenen `setting-write-check.php` am 2026-09-05. Der frühe Ausstieg
+        // stammt aus der Zeit, in der **jede** Angabe in einem Satz des Knotens lag; seit
+        // [D-584](../../../docs/NewConcept/90-decision-log.md) liegt der Renderer in
+        // `nodes.settings_record_id`, und der Satz dahinter gehört dem **Renderer**, nicht diesem
+        // Knoten. **Ein frisch eingestellter Knoten hat darum keinen eigenen Satz** — und verlor
+        // seinen Renderer beim Lesen, obwohl die Spalte richtig stand.*
+        $ausSpalte = $this->rendererNameOfNode($traeger);
+
         if ($saetze === []) {
-            return [];
+            return $ausSpalte === null
+                ? []
+                : ['renderer' => new ResolvedSetting('renderer', TypedValue::ofText($ausSpalte), $traeger, $gesetzt)];
         }
 
         $aus = $this->settingsAt($subject, $saetze, $traeger, []);
@@ -188,7 +199,7 @@ final class ModelValues
         // `node_id` sagt, welcher Renderer es ist. **Der alte Weg über die Trägerkante bleibt als
         // Rückfall stehen**, solange Daten ihn noch benutzen — ein Leser, der die Altform nicht mehr
         // kennt, macht bestehende Einstellungen unsichtbar, ohne dass jemand etwas geändert hätte.*
-        $name = $this->rendererNameOfNode($traeger) ?? $this->rendererNameAt($saetze, []);
+        $name = $ausSpalte ?? $this->rendererNameAt($saetze, []);
 
         if ($name !== null) {
             $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $traeger, true);
