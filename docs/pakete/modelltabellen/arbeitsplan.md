@@ -28,15 +28,16 @@ was in die Inbox ging.
 
 ## T0 · Was jetzt entschieden werden muss
 
-Vier Fragen, alle vier halten Arbeit auf:
+**T0 ist am 2026-09-05 gehalten worden.** Von vier Fragen blieb eine.
 
-1. **`INF-014`** — an der Modellwurzel steht ein Renderer, und seit [D-602](../../NewConcept/90-decision-log.md)
-   gilt er für alles. Gewollt oder Versehen? *Hält `composition-check` und `package7-check`.*
-2. **Wie entsteht eine Einstellungskante?** Der Leser kommt ohne sie aus, der Schreiber nicht.
-   *Hält `TASK-045`, den Renderer-Wähler auf der Knotenseite und vier Wächter.*
-3. **`INF-011`/`INF-013`** — Schreiber an der Verwendungsstelle, und `addField()` leitet die
-   Kantenart nicht aus dem Ast ab. *Beides hängt an Frage 2 und wird mit ihr entschieden.*
-4. **`INF-004`** — der Einstellungsbaum zeigt nur Kanten. *Er wollte darüber nachdenken.*
+1. **`INF-014` — entschieden** ([D-617](../../NewConcept/90-decision-log.md)): an der Wurzel hängt
+   der **Rückfall**, nicht die Regel für alles; jeder Knoten bestimmt seinen Vorgabe-Renderer selbst.
+2. **«Wie entsteht eine Einstellungskante?» — die Frage war falsch gestellt.** *Er: «Wir haben ein
+   Setting im Knoten, das den Renderer wählt.» Gemessen: die vier Wächter sind grün, geschrieben
+   wird über die Spalte. Ich hatte einen Befund von vor TASK-020 weitergetragen.*
+3. **`INF-013`** — `addField()` leitet die Kantenart nicht aus dem Ast ab. **Bleibt offen**, er sieht
+   es sich an. *Hält nichts auf: die Wanderung baut nicht darauf.*
+4. **`INF-004`** — war am 2026-09-04 schon entschieden («erstmal alles zeigen»). Mein Fehler.
 
 ---
 

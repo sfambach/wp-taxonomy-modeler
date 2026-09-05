@@ -401,7 +401,14 @@ Knoten des Modells.** Beim ersten Lauf, der ihn mitnahm, wurden `composition-che
 **Nichts davon steht in TASK-020**, und der Wächter deckelt sie bei vier statt sie wegzuschauen: die
 Zahl darf fallen und nie steigen.*
 
-⚠️ **3 · Was die Spalte nicht heilt: es gibt keine Einstellungskante für den Renderer mehr.** *Sie
+⚠️ **3 · ERLEDIGT am 2026-09-05 — der Befund darunter war überholt.** *Gemessen: `renderer-choice-check` 14,
+`setting-write-check` 27, `page-blocks-check` 33, `multiplicity-check` 22 — **alle vier grün**. Die
+Einstellung wird über `nodes.settings_record_id` geschrieben und gelesen; eine Einstellungskante für
+den Renderer braucht niemand dafür. **Sein Satz, der das richtigstellte:** «Wir haben ein Setting im
+Knoten, das den Renderer wählt.» Er hat recht — ich hatte einen Befund von vor TASK-020
+weitergetragen, ohne ihn nachzumessen (`erst messen, dann behaupten`).*
+
+⚠️ *Der überholte Wortlaut, als Beleg:* **Was die Spalte nicht heilt: es gibt keine Einstellungskante für den Renderer mehr.** *Sie
 ging mit dem Hüllknoten. Der **Leser** kommt ohne sie aus — die sechs beobachteten Knoten zeichnen
 wieder mit `table`, `form`, `slider`, `node`, `chooser-dialog`, `form` statt sechsmal `plain`. **Der
 Schreiber am Rand kommt nicht ohne sie aus:** die Einstellungsmaske sucht ihre Zeilen über die
