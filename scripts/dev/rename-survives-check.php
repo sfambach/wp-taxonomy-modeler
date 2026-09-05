@@ -134,8 +134,25 @@ $vorher = gezeichnet($beobachtet);
 $aussenId = $framework->settingEdgeId(SettingKey::Renderer);
 $innenId  = $framework->settingValueEdgeId(SettingKey::Renderer);
 
-check('die Id der Traegerkante steht da', $aussenId !== 0, (string) $aussenId);
-check('die Id der Wertkante steht da', $innenId !== 0, (string) $innenId);
+// ⚠️ **Hier standen zwei Zusagen auf aufgeschriebene Kanten-Ids, und beide waren rot.** *Der
+// Renderer haengt seit TASK-020 an `nodes.settings_record_id` ([D-584](../../docs/NewConcept/90-decision-log.md));
+// die beiden Optionen trugen Ids geloeschter Kanten und sind mit dem Huellknoten `DisplayOption`
+// gegangen ([D-604](../../docs/NewConcept/90-decision-log.md)). **Eine Zusage auf eine Form, die es
+// nicht mehr gibt, prueft nichts** — also fragt sie jetzt die Spalte (`PR-9`: eine Pruefung
+// bewacht den heutigen Zielzustand, und die Aenderung ist sichtbar).*
+$traeger = array_map(intval(...), $wpdb->get_col(
+    "SELECT id FROM {$n} WHERE settings_record_id IS NOT NULL ORDER BY id"
+));
+
+check('es gibt Traeger in der Spaltenform', count($traeger) >= 4, count($traeger) . ' Knoten');
+
+$haltlos = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$n} k LEFT JOIN " . Schema::table('records')
+        . ' s ON s.id = k.settings_record_id'
+        . ' WHERE k.settings_record_id IS NOT NULL AND s.id IS NULL'
+);
+
+check('und kein Traeger zeigt ins Leere', $haltlos === 0, "{$haltlos} haltlos");
 
 // ⚠️ **Der Gegenfall.** *Ohne ihn wäre «vorher wie nachher» auch dann wahr, wenn beide Male nichts
 // herauskäme — und genau das war der Ausfall, den es zu fangen gilt.*
@@ -148,6 +165,27 @@ check(
 );
 
 echo "\n== Jetzt beide Kanten umbenennen ==\n";
+
+// ⚠️ **Und die Traegerknoten dazu.** *Der Weg zum Renderer laeuft heute ueber die Spalte, also
+// gehoert der Name des Traegers in denselben Gegenfall: er darf an dem, was gezeichnet wird,
+// nichts aendern.*
+$knotenNamenVorher = [];
+
+foreach ($traeger as $id) {
+    $knotenNamenVorher[$id] = (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$n} WHERE id = %d", $id));
+}
+
+register_shutdown_function(static function () use ($knotenNamenVorher, $n): void {
+    global $wpdb;
+
+    foreach ($knotenNamenVorher as $id => $name) {
+        $wpdb->query($wpdb->prepare("UPDATE {$n} SET name = %s WHERE id = %d", $name, $id));
+    }
+});
+
+foreach ($knotenNamenVorher as $id => $name) {
+    $wpdb->query($wpdb->prepare("UPDATE {$n} SET name = %s WHERE id = %d", 'Etwas ganz anderes', $id));
+}
 
 $namenVorher = [];
 
@@ -222,6 +260,22 @@ echo "\n== Und die Namen sind zurueck ==\n";
 foreach ($namenVorher as $id => $name) {
     $wpdb->query($wpdb->prepare("UPDATE {$r} SET name = %s WHERE id = %d", $name, $id));
 }
+
+foreach ($knotenNamenVorher as $id => $name) {
+    $wpdb->query($wpdb->prepare("UPDATE {$n} SET name = %s WHERE id = %d", $name, $id));
+}
+
+$knotenZurueck = 0;
+
+foreach ($knotenNamenVorher as $id => $name) {
+    $knotenZurueck += (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$n} WHERE id = %d", $id)) === $name ? 1 : 0;
+}
+
+check(
+    'die Namen der Traegerknoten stehen wieder da',
+    $knotenZurueck === count($knotenNamenVorher),
+    "{$knotenZurueck} von " . count($knotenNamenVorher)
+);
 
 $zurueck = (int) $wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$r} WHERE (id = %d AND name = %s) OR (id = %d AND name = %s)",
