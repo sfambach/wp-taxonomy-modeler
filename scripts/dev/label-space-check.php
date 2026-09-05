@@ -136,12 +136,20 @@ if (! is_array($gemerkt)) {
         (string) ($gemerkt['locale'] ?? '?')
     );
 
-    // ⚠️ *Wachsen darf die Zahl — dieser Baum wird bearbeitet. **Unter den Stand der Wanderung darf
-    // sie nicht fallen**, denn dann waere ein Name verlorengegangen statt geloescht worden.*
+    // ⚠️ **Die Zusage stand auf «nie weniger als bei der Wanderung» und war damit falsch**
+    // (umgeschrieben am 2026-09-05, `PR-9`). *Sie las die Zahl der Knoten **mit Namen** als Mass
+    // dafuer, dass keiner verlorenging — aber **ein geloeschter Knoten nimmt seinen Namen
+    // mit, und das ist richtig so.** An diesem Abend wurden drei liegengebliebene Waechterknoten
+    // weggeraeumt; danach meldete sie «135 gegen 137» als Ausfall, obwohl genau das Gewollte
+    // geschehen war.*
+    //
+    // ⚠️ **Was gemeint war, ist enger und haelt bei jedem Bestand:** *kein **lebender** Knoten steht
+    // ohne Namen da. Ein Name geht dann verloren, wenn sein Knoten bleibt und die Beschriftung
+    // fehlt — nicht, wenn beide zusammen gehen.*
     $check(
-        'kein Knotenname ist seit der Wanderung verschwunden',
-        $mitNamen($nodes) >= (int) ($gemerkt['nodes'] ?? 0),
-        $mitNamen($nodes) . ' heute gegen ' . (int) ($gemerkt['nodes'] ?? 0)
+        'kein lebender Knoten steht ohne Namen da',
+        $mitNamen($nodes) === count($nodes),
+        $mitNamen($nodes) . ' von ' . count($nodes) . ' (bei der Wanderung: ' . (int) ($gemerkt['nodes'] ?? 0) . ')'
     );
 
     $check(
