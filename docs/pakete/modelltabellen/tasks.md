@@ -684,3 +684,26 @@ arbeite und dauernd die Äste zugehen, das ist ziemlich nervig».*
 ⚠️ *Nach [D-615](../../NewConcept/90-decision-log.md) ist «alles zu» ausserdem die **Ast**-Angabe —
 und die Konfigurationsseite darf nur den **Wurzelknoten** übergeben. Sie wendet damit eine Angabe an,
 die sie gar nicht bekommen hat.*
+
+---
+
+[ ] TASK-052  Die Renderer-Wahl wird nicht beruecksichtigt und nicht gespeichert
+
+**2026-09-05, vom Eigentümer gefunden:** *«der wird irgendwie aktuell nicht berücksichtigt und auch
+nicht gespeichert».*
+
+⚠️ **Seine Aussage ist der Befund, und sie widerlegt vier grüne Wächter.** *`renderer-choice-check`,
+`setting-write-check`, `page-blocks-check` und `multiplicity-check` sind alle grün — sie prüfen
+also **nicht das, was er tut**. Vermutung, ungemessen: sie schreiben über den Kern und er über die
+Maske, und dazwischen liegt der Rand. **Zu messen ist der Weg vom Klick bis in die Zeile**, nicht
+noch einmal der Kern.*
+
+⚠️ **Zwei Enden, und beide müssen geprüft werden:** *«nicht gespeichert» ist der Schreiber am Rand,
+«nicht berücksichtigt» der Leser beim Zeichnen. **Es können zwei Fehler sein oder einer** — wenn
+nichts ankommt, sieht der Leser genauso aus, als hätte er nicht hingesehen.
+
+⚠️ **Und ein Wächter fehlt hier, gleich welcher Fehler es ist:** *keiner der vier geht den Weg über
+die Maske. Der neue muss genau das tun — wählen, speichern, neu laden, nachsehen —, sonst ist es
+derselbe blinde Fleck beim nächsten Mal.*
+
+Gehört zu [D-617](../../NewConcept/90-decision-log.md) und `INF-014`. **Block A.**
