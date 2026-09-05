@@ -669,16 +669,24 @@ final class DataEntry
      * ⚠️ **Kein Teil wird angelegt, um in ihm zu löschen.** *Gibt es ihn nicht, ist die Angabe schon
      * unbeantwortet, und ein Satz, der nur entsteht, um leer zu sein, wäre ein Datensatz aus einem
      * Nicht-Ereignis.*
+     *
+     * ⚠️ **Und seit [D-609](../../../docs/NewConcept/90-decision-log.md) gilt derselbe Satz eine Ebene
+     * höher, für den Datensatz selbst** (TASK-043, BUG-004). *Er stand hier im Kommentar und wurde eine
+     * Zeile darunter gebrochen: `defaultRecordOf()` **legte an**, bevor geprüft war, ob es überhaupt
+     * etwas zu löschen gibt. **Eine Seite zu speichern, auf der ein Einstellungsfeld leer ist, legte
+     * damit einen Datensatz an** — gemessen waren 324 von 377 Datensätzen ohne eine einzige Wertzeile.
+     * Der Eigentümer: «ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen? ja bitte.»*
      */
     public function clearSettingAt(int $nodeId, int $aussen, int $innen, string $locale = ''): void
     {
-        $satzId = $this->defaultRecordOf($nodeId);
-
         if ($innen === 0) {
             // WICHTIG: Was ueber die Spalte geschrieben wurde, muss auch ueber die Spalte
             // herausgenommen werden -- sonst waere «nichts» wieder die einzige Wahl, die sich nicht
             // speichern laesst, genau der Fall, den der Eigentuemer an `converter` gefunden hat.
-            if ($this->targetOwnsItsRecord($satzId, $aussen)) {
+            //
+            // ⚠️ *Am Knoten gefragt und nicht am Datensatz: ob das Ziel einen eigenen Satz braucht,
+            // haengt an der Kante, nicht daran, ob dieser Knoten schon einen Datensatz hat (D-609).*
+            if ($this->targetOwnsItsRecordAtNode($nodeId, $aussen)) {
                 $bisher = $this->nodes->settingsRecordIdsOf([$nodeId])[$nodeId] ?? 0;
 
                 if ($bisher !== 0) {
@@ -687,8 +695,18 @@ final class DataEntry
                 }
             }
 
-            $this->clear($satzId, $aussen, $locale);
+            $satzId = $this->findDefaultRecord($nodeId);
 
+            if ($satzId !== 0) {
+                $this->clear($satzId, $aussen, $locale);
+            }
+
+            return;
+        }
+
+        $satzId = $this->findDefaultRecord($nodeId);
+
+        if ($satzId === 0) {
             return;
         }
 
@@ -1048,13 +1066,28 @@ final class DataEntry
      */
     private function defaultRecordOf(int $nodeId): int
     {
+        $vorhanden = $this->findDefaultRecord($nodeId);
+
+        return $vorhanden !== 0 ? $vorhanden : $this->create($nodeId, RecordKind::Default)->id;
+    }
+
+    /**
+     * Derselbe Satz, aber **nur gesucht** — `0`, wenn es ihn nicht gibt.
+     *
+     * ⚠️ **[D-609](../../../docs/NewConcept/90-decision-log.md): ein Datensatz entsteht beim ersten
+     * Schreiben, nicht beim Ansehen.** *Wer liest oder löscht, fragt hier; nur wer schreibt, ruft
+     * {@see self::defaultRecordOf()} und nimmt das Anlegen in Kauf. **Die beiden Wege getrennt zu
+     * haben ist der ganze Fix von BUG-004** — vorher gab es nur den anlegenden.*
+     */
+    private function findDefaultRecord(int $nodeId): int
+    {
         foreach ($this->records->ofNode($nodeId) as $satz) {
             if ($satz->kind === RecordKind::Default) {
                 return $satz->id;
             }
         }
 
-        return $this->create($nodeId, RecordKind::Default)->id;
+        return 0;
     }
 
     /**
@@ -1068,7 +1101,19 @@ final class DataEntry
             return false;
         }
 
-        $edge = $this->edgeOf($record, $edgeId);
+        return $this->targetOwnsItsRecordAtNode($record->nodeId, $edgeId);
+    }
+
+    /**
+     * Dieselbe Frage, **ohne** dass es einen Datensatz geben muss.
+     *
+     * ⚠️ *Die Antwort hängt an der Kante und am Zielknoten — der Datensatz war nur der Umweg, über den
+     * der Knoten gefunden wurde. Ihn dafür anzulegen wäre genau das, was
+     * [D-609](../../../docs/NewConcept/90-decision-log.md) verbietet.*
+     */
+    private function targetOwnsItsRecordAtNode(int $nodeId, int $edgeId): bool
+    {
+        $edge = $this->fieldEdgeOf($nodeId, $edgeId);
 
         return $this->ownsItsRecord($edge, $this->nodes->byId($edge->toId));
     }
@@ -1316,7 +1361,15 @@ final class DataEntry
      */
     private function edgeOf(NodeRecord $record, int $edgeId): \Taxmod\Core\Model\Relation
     {
-        $model = $this->nodes->byId($record->nodeId);
+        return $this->fieldEdgeOf($record->nodeId, $edgeId);
+    }
+
+    /**
+     * Dieselbe Suche am Knoten statt am Datensatz — die Kette ist ohnehin die des Knotens.
+     */
+    private function fieldEdgeOf(int $nodeId, int $edgeId): \Taxmod\Core\Model\Relation
+    {
+        $model = $this->nodes->byId($nodeId);
         $owned = $this->relations->fieldEdgesOf($this->framework->inheritanceOwnersOf($model));
 
         foreach ($owned as $edge) {

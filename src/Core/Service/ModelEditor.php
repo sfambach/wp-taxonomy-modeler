@@ -651,12 +651,44 @@ final class ModelEditor
      *   P --> K["changelog<br/>bleibt"]
      * ```
      *
+     * ⚠️ **Und es geht auch für eine Auswahl** (TASK-039). *`$nur` nennt die Knoten, die geräumt werden
+     * sollen — samt allem, was unter ihnen liegt; alles andere im Papierkorb bleibt unberührt. **Der
+     * Grund ist gemessener Schaden:** ein Wächterlauf rief diese Methode ohne Auswahl und löschte
+     * `DisplayOption` des Eigentümers endgültig, den er selbst geparkt hatte — 190 Datensätze standen
+     * danach ohne Knoten da. Die Zusage des Papierkorbs lautet «geparkt, nicht gelöscht»; **wer nur
+     * seinen eigenen Unrat wegräumen will, muss das sagen können, statt den ganzen Korb zu leeren.**
+     * *Ohne Angabe bleibt es der Akt hinter dem Knopf: der Papierkorb wird ganz geleert.*
+     *
+     * @param  list<int>|null    $nur Nur diese geparkten Knoten (mit ihren Unterbäumen); `null` = alles.
      * @return array<string, int> What went, keyed for a surface to report.
      */
-    public function clearTrash(): array
+    public function clearTrash(?array $nur = null): array
     {
         $trash  = $this->framework->trash();
         $parked = $this->nodes->subtreeOf($trash);
+
+        if ($nur !== null) {
+            $gewaehlt = array_values(array_filter(
+                $parked,
+                static fn (Node $one): bool => in_array($one->id, $nur, true)
+            ));
+
+            // ⚠️ *Ein gewählter Knoten nimmt mit, was unter ihm liegt — sonst bliebe ein Kind stehen,
+            // dessen Elternteil weg ist. Über den Pfad, nicht über die Kanten: `purgeSubtree()` löscht
+            // ohnehin nach Pfad-Präfix, und die beiden dürfen nicht auseinanderlaufen.*
+            $parked = array_values(array_filter(
+                $parked,
+                static function (Node $one) use ($gewaehlt): bool {
+                    foreach ($gewaehlt as $eigen) {
+                        if ($one->id === $eigen->id || str_starts_with($one->path, $eigen->path . '.')) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+            ));
+        }
 
         if ($parked === []) {
             return ['nodes' => 0, 'edges' => 0, 'labels' => 0, 'records' => 0, 'values' => 0];

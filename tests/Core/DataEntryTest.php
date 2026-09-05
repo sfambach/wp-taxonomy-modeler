@@ -372,6 +372,47 @@ final class DataEntryTest extends TestCase
         self::assertCount(1, $this->data->recordsOf($other->id));
         self::assertNotNull($this->records->find($otherRecord->id));
     }
+
+    /**
+     * ⚠️ **Der Akt raeumt auch nur eine Auswahl** (TASK-039). *Der Grund ist gemessener Schaden: ein
+     * Waechterlauf leerte den ganzen Papierkorb und nahm mit, was der Eigentuemer selbst geparkt hatte.
+     * **Wer nur seinen eigenen Unrat wegraeumen will, muss das sagen koennen.***
+     */
+    #[Test]
+    public function it_clears_only_the_parked_nodes_it_was_given(): void
+    {
+        $seiner = $this->editor->createNode('Sein Geparktes', $this->branchRoot['model']->id);
+
+        $this->editor->moveToTrash($seiner->id);
+        $this->editor->moveToTrash($this->part->id);
+
+        $gone = $this->editor->clearTrash([$this->part->id]);
+
+        self::assertSame(1, $gone['nodes']);
+        self::assertNull($this->nodes->find($this->part->id));
+        self::assertNotNull($this->nodes->find($seiner->id));
+    }
+
+    /**
+     * ⚠️ **[D-609](../../docs/NewConcept/90-decision-log.md), und es ist BUG-004:** *Loeschen legte an.
+     * Der Eigentuemer: «ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen? ja bitte.»*
+     */
+    #[Test]
+    public function clearing_a_setting_that_was_never_set_creates_no_record(): void
+    {
+        $this->data->clearSettingAt($this->part->id, $this->description->id, 0);
+
+        self::assertSame([], $this->data->recordsOf($this->part->id));
+    }
+
+    /** ⚠️ *Die Gegenprobe: das erste **Schreiben** legt den Satz sehr wohl an.* */
+    #[Test]
+    public function the_first_write_does_create_the_record(): void
+    {
+        $this->data->putSettingAt($this->part->id, $this->description->id, 0, TypedValue::ofText('kompakt'));
+
+        self::assertCount(1, $this->data->recordsOf($this->part->id));
+    }
     // ------------------------------------- ein Wert an einer Verwendungsstelle
 
     /**

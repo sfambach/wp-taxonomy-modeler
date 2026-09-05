@@ -541,7 +541,7 @@ umbenannt, die TASK-032 streicht — sie ist deshalb gestrichen. **TASK-018 nimm
               wandern sie mit in den Papierkorb        (D-604)
 [ ] TASK-038  Ein Verweis auf einen verschwundenen Knoten ist am Feld
               sichtbar, nicht in einer Liste woanders  (D-604)
-[ ] TASK-039  cleartrash-check leert den ganzen Papierkorb, nicht seinen
+[x] TASK-039  cleartrash-check leert den ganzen Papierkorb, nicht seinen
               Teil — er darf nur wegraeumen, was er selbst angelegt hat
 ```
 
@@ -549,6 +549,24 @@ umbenannt, die TASK-032 streicht — sie ist deshalb gestrichen. **TASK-018 nimm
 mehr anfasst als seine eigenen Knoten. **«Geparkt, nicht gelöscht» gilt nicht, solange ein
 Wächterlauf dazwischenkommt** — gemessen an `DisplayOption`, den der Eigentümer selbst geparkt
 hatte und der beim nächsten Lauf endgültig fiel.*
+
+**Gebaut am 2026-09-05.** `ModelEditor::clearTrash()` nimmt jetzt eine **Auswahl** entgegen: genannte
+Knoten samt ihren Unterbäumen, alles andere im Papierkorb bleibt liegen. Ohne Angabe bleibt es der
+Akt hinter dem Knopf und leert ganz. *Der Wächter nennt seinen eigenen Knoten und weist danach Knoten
+für Knoten nach, dass das Fremde noch dasteht.*
+
+⚠️ **Die vorige Fassung wich aus, statt zu lösen:** *sie räumte gar nicht, sobald Fremdes im
+Papierkorb lag — auf einem Arbeitsstand mit geparkter Arbeit hätte sie den Akt also **nie** geprüft.
+Die neue prüft ihn bei jedem Lauf.*
+
+⚠️ **Und ein zweiter Befund fiel dabei an, gemessen:** *der Wächter baute seinen `ModelEditor` mit
+einer Variablen, die es nie gab — **ohne Record-Repository**, also nahm der Akt in diesem Lauf die
+Datensätze gar nicht mit. Die Zusage «its records went with it» stand nirgends und steht jetzt da
+(`PR-9`). Im Eingang als `INF-017`.*
+
+**Neu am Netz:** zwei Kernprüfungen (`clearTrash` räumt nur die genannten Knoten; ein Datensatz
+entsteht erst beim Schreiben) und der Grenzwächter
+[`record-on-first-write-check.php`](../../../scripts/dev/record-on-first-write-check.php).
 
 ```text
 [x] TASK-040  Ein Knoten erbt keine Einstellungskante, die auf ihn selbst
@@ -586,9 +604,20 @@ hat, erben `min`/`max` diese wieder». **Mit [D-607](../../NewConcept/90-decisio
 Grund weg**, sie können zurück unter `Integer`.*
 
 ```text
-[ ] TASK-043  Ein Datensatz entsteht beim ersten Schreiben, nicht beim
+[x] TASK-043  Ein Datensatz entsteht beim ersten Schreiben, nicht beim
               Ansehen (D-609) — behebt BUG-004
 ```
+
+**Gebaut am 2026-09-05.** *`DataEntry` hat jetzt zwei Wege statt einem: `findDefaultRecord()` **sucht**
+und gibt `0` zurück, `defaultRecordOf()` **legt an**. Wer liest oder löscht, fragt den ersten — nur
+das Schreiben nimmt das Anlegen in Kauf.* **Damit legt `clearSettingAt()` nichts mehr an**, und die
+Frage «ist das Ziel ein eigener Datensatz?» wird am **Knoten** beantwortet statt am Datensatz, der
+dafür erst entstehen musste.
+
+⚠️ **Was noch dasteht, bleibt stehen** (`INF-017`): *die 324 vorhandenen leeren Datensätze rührt
+dieser Umbau nicht an — das ist TASK-044, und die Grenze aus
+[D-610](../../NewConcept/90-decision-log.md) gilt: unbenutzt heisst nirgends referenziert, nicht ohne
+Wertzeilen.*
 
 **Gemessen: 324 von 377 Datensätzen tragen keine einzige Wertzeile, 287 davon `default`.**
 *Sie entstehen in `DataEntry::defaultRecordOf()`, gerufen auch aus `clearSettingAt()` — **Löschen

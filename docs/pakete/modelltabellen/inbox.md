@@ -416,3 +416,23 @@ Feldkanten des Knotens, und ohne Kante gibt es keine Zeile, in der man wählen k
 `setting-write-check`, `page-blocks-check`, `multiplicity-check` und der Auswahl-Teil von
 `renderer-choice-check` weiter rot. **Wie eine Einstellungskante entsteht, ist offen** — dieselbe
 Frage, die seit dem Umbau `settings` → Felder offensteht.*
+
+---
+
+## INF-017 · Die 324 leeren Datensätze stehen weiter da
+
+**2026-09-05, beim Bau von TASK-043. Nicht entschieden (`PR-4`).**
+
+**Der Schreiber ist umgestellt:** ein Datensatz entsteht jetzt beim ersten Schreiben, nicht beim
+Ansehen oder Löschen ([D-609](../../NewConcept/90-decision-log.md)). **Was schon dasteht, ist damit
+nicht weg** — und es wegzuräumen ist eine Handlung an seinen Daten, keine Folge dieses Umbaus.
+
+⚠️ **Die Grenze steht schon in [D-610](../../NewConcept/90-decision-log.md) und ist das Wichtige:**
+*«unbenutzt» heisst **nirgends referenziert**, nicht «ohne Wertzeilen» — 26 der leeren Sätze stehen
+in `nodes.settings_record_id` und tragen ihre Aussage in ihrer `node_id`. **Das ist TASK-044**, und
+sie ist offen.
+
+⚠️ **Nebenbefund, gemessen und behoben:** *`cleartrash-check` baute seinen `ModelEditor` mit einer
+Variablen, die es nie gab — der Akt bekam **kein** Record-Repository und nahm in diesem Lauf die
+Datensätze gar nicht mit. **Die Zusage «its records went with it» gab es nicht**, sie ist jetzt da
+und grün.*

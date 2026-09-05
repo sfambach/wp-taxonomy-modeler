@@ -15,10 +15,11 @@
  * touch data a person is editing.* **Nothing here goes near the owner's own trash** — it makes two
  * nodes, an attribute, a setting and a label, parks them, clears, and then asserts.
  *
- * ⚠️ **Und er raeumt nur, wenn der Papierkorb ausser seinem eigenen Unrat leer ist** (TASK-039).
- * *`clearTrash()` leert immer den ganzen Papierkorb; einmal hat dieser Waechter damit `DisplayOption`
- * des Eigentuemers endgueltig geloescht und 190 Datensaetze ohne Knoten zurueckgelassen. Liegt Fremdes
- * darin, wird nicht geraeumt, sondern gesagt.*
+ * ⚠️ **Und er raeumt nur seinen eigenen Teil** (TASK-039). *`clearTrash()` leerte immer den ganzen
+ * Papierkorb; einmal hat dieser Waechter damit `DisplayOption` des Eigentuemers endgueltig geloescht
+ * und 190 Datensaetze ohne Knoten zurueckgelassen. **Jetzt nimmt der Akt eine Auswahl entgegen**, und
+ * dieser Lauf nennt genau die Knoten, die er selbst angelegt hat. Fremdes Geparktes wird danach Knoten
+ * fuer Knoten nachgezaehlt, nicht ueber eine Gesamtzahl.*
  *
  * Usage: php scripts/dev/cleartrash-check.php C:/Devel/Wordpress
  *
@@ -37,11 +38,13 @@ use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
@@ -70,6 +73,10 @@ $nodes     = new WpdbNodeRepository();
 $edges     = new WpdbRelationRepository();
 $labelRows = new WpdbLabelRepository();
 $framework = new SeededFrameworkNodes($nodes, $edges, $log);
+
+// ⚠️ *Das Record-Repository geht mit hinein — hier stand ein `$rows`, das es nie gab, und damit nahm
+// der Akt in diesem Lauf die Datensaetze **nicht** mit.*
+$rows = new WpdbRecordRepository();
 
 $editor = new ModelEditor($nodes, $edges, $framework, $log, $labelRows, $rows);
 
@@ -114,6 +121,13 @@ if ($roleId === 0) {
 
 $labelRows->put(new Label($doomed->id, '', $roleId, '', 'de_DE', 'Weg damit'));
 
+// ⚠️ *Ein eigener Datensatz, damit die Zusage «its records went with it» etwas zu pruefen hat —
+// [C102](../../docs/NewConcept/10-domain-core.md): einen Datensatz ohne seinen Knoten darf es nicht
+// geben.*
+$data = new DataEntry($rows, $edges, $nodes, $framework, new SystemClock());
+
+$data->create($doomed->id);
+
 $owners = [$doomed->id, $edge->id];
 
 // ⚠️ **Was schon im Papierkorb liegt, gehoert nicht dem Waechter — und wird von ihm nicht angefasst.**
@@ -123,11 +137,9 @@ $owners = [$doomed->id, $edge->id];
 // geloescht»; ein Pruefprogramm darf sie nicht brechen ([Zeile 23](../../docs/NewConcept/97-implementation-plan.md#the-working-list):
 // ein Pruefer fasst keine Daten an, an denen jemand arbeitet).*
 //
-// ⚠️ **Warum gemessen statt selektiv geloescht:** `ModelEditor::clearTrash()` nimmt keine Auswahl
-// entgegen — es gibt heute keinen Weg, nur die eigenen Knoten zu leeren, ohne den Dienst selbst zu
-// aendern. Die ehrliche Antwort ist deshalb: **liegt Fremdes im Papierkorb, ruft der Waechter
-// `clearTrash()` gar nicht**, sagt es laut und prueft stattdessen, dass das Fremde noch da ist
-// (`PR-4`: keine erfundene Auswahl, keine stille Loeschung).
+// ⚠️ **Seit TASK-039 nimmt `clearTrash()` eine Auswahl entgegen** — der Waechter nennt seinen eigenen
+// Knoten und raeumt nur ihn. *Das Fremde wird vorher gezaehlt, damit hinterher Knoten fuer Knoten
+// nachgewiesen werden kann, dass es noch dasteht.*
 $fremdImPapierkorb = array_values(array_filter(
     $nodes->subtreeOf($framework->trash()),
     static fn ($one): bool => !str_starts_with($one->name, '__ct ')
@@ -148,47 +160,30 @@ check('it sits in the trash', $parked > 0, (string) $parked);
 
 echo "\n== clearing it ==\n";
 
-// ⚠️ **Der Waechter raeumt nur, wenn nichts Fremdes im Papierkorb liegt.** *Sonst wuerde ein
-// Pruefprogramm endgueltig loeschen, was ein Mensch bewusst geparkt hat.*
-$darfRaeumen = $fremdeIds === [];
+// ⚠️ **Nur der eigene Knoten wird genannt** (TASK-039). *Der Akt raeumt eine Auswahl; was der
+// Eigentuemer geparkt hat, steht nicht darin und bleibt liegen.*
+$gone = $editor->clearTrash([$doomed->id]);
 
-if ($darfRaeumen) {
-    $gone = $editor->clearTrash();
+printf("  %d Knoten, %d Kanten, %d Labels\n", $gone['nodes'], $gone['edges'], $gone['labels']);
 
-    printf("  %d Knoten, %d Kanten, %d Labels\n", $gone['nodes'], $gone['edges'], $gone['labels']);
+// ⚠️ **Geaenderte Zusage (`PR-9`).** *Hier stand «the trash is empty». Das war die Zusage, die den
+// Schaden festschrieb: sie ist nur wahr, wenn der Waechter auch fremdes Geparktes mitnimmt. Was
+// gemeint war, ist enger — **vom Waechter selbst bleibt nichts im Papierkorb** —, und genau das
+// wird geprueft.*
+$reste = array_values(array_filter(
+    $nodes->subtreeOf($trash),
+    static fn ($one): bool => str_starts_with($one->name, '__ct ')
+));
 
-    // ⚠️ **Geaenderte Zusage (`PR-9`).** *Hier stand «the trash is empty». Das war die Zusage, die den
-    // Schaden festschrieb: sie ist nur wahr, wenn der Waechter auch fremdes Geparktes mitnimmt. Was
-    // gemeint war, ist enger — **vom Waechter selbst bleibt nichts im Papierkorb** —, und genau das
-    // wird jetzt geprueft. Die eigentliche Zusage des Akts (`clearTrash()` leert den Papierkorb) gehoert
-    // in eine Pruefung, die keinen fremden Papierkorb vorfindet.*
-    $reste = array_values(array_filter(
-        $nodes->subtreeOf($trash),
-        static fn ($one): bool => str_starts_with($one->name, '__ct ')
-    ));
-
-    check('vom Waechter bleibt nichts im Papierkorb', $reste === [], (string) count($reste));
-    check('the node is gone', $nodes->find($doomed->id) === null);
-    check('its labels went with it', rowsFor('labels', $owners) === 0, (string) rowsFor('labels', $owners));
-    check('its edges went with it', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relations WHERE id = {$edge->id}") === 0);
-} else {
-    printf(
-        "  Uebersprungen: %d fremde Knoten liegen im Papierkorb (%s) — es wird nicht geraeumt.\n",
-        count($fremdeIds),
-        implode(', ', $fremdeIds)
-    );
-    echo "  Der Eigentuemer entscheidet selbst, ob sein Geparktes weg soll; danach prueft dieser Lauf wieder alles.\n";
-
-    // ⚠️ *Der eigene Probeknoten wird trotzdem entfernt — nicht ueber `clearTrash()`, sondern unten im
-    // Abschnitt «tidying up», der nur nach dem eigenen Namensmuster loescht.*
-    check(
-        'nichts Fremdes wurde geraeumt (Papierkorb unangetastet)',
-        count(array_diff(
-            $fremdeIds,
-            array_map(static fn ($one): int => $one->id, $nodes->subtreeOf($trash))
-        )) === 0
-    );
-}
+check('vom Waechter bleibt nichts im Papierkorb', $reste === [], (string) count($reste));
+check('nur der eigene Knoten wurde geraeumt', $gone['nodes'] === 1, (string) $gone['nodes']);
+check('the node is gone', $nodes->find($doomed->id) === null);
+check('its labels went with it', rowsFor('labels', $owners) === 0, (string) rowsFor('labels', $owners));
+check('its edges went with it', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relations WHERE id = {$edge->id}") === 0);
+check(
+    'its records went with it',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}records WHERE node_id = {$doomed->id}") === 0
+);
 
 echo "\n== and what must survive ==\n";
 
@@ -216,13 +211,10 @@ check(
     (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}changelog WHERE owner_id = {$doomed->id}") > 0
 );
 
-// ⚠️ *Nur wenn geraeumt wurde — ohne Akt gibt es keinen Eintrag, und das Fehlen waere dann richtig.*
-if ($darfRaeumen) {
-    check(
-        'and the act itself is journalled',
-        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}changelog WHERE owner_id = {$trash->id} AND what = 'trash cleared'") > 0
-    );
-}
+check(
+    'and the act itself is journalled',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}changelog WHERE owner_id = {$trash->id} AND what = 'trash cleared'") > 0
+);
 
 // ⚠️ **The counter-check that gives the whole file its meaning**: the attribute's **target** was never
 // parked, so it must still be there. *Without this, a purge that followed edges outward would pass
