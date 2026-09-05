@@ -1469,3 +1469,28 @@ geprueft: Version weglassen faerbt sie rot, Meldung herausnehmen ebenso.* Dazu d
 ⚠️ *Nebenbefund, nicht behoben: `unitvalue-check` raeumt seine `__uv`-Knoten weg, **seine
 Chronikzeilen aber nicht** — zwei Waisen lagen im Buch und liessen den neuen Waechter zu Recht rot
 werden. Sie sind entfernt; die Luecke im Waechter selbst ist es nicht.*
+
+---
+
+[ ] TASK-057  Die Renderer-Einstellung zieht von der Spalte auf eine Kante 1..1 zurueck
+
+**2026-09-05, [D-642](../../NewConcept/90-decision-log.md).** *Er hat berichtigt, was ich aus
+[D-584](../../NewConcept/90-decision-log.md) gemacht hatte: «ich meinte einfach eine Multiplizitaet
+von 1» — **am Knoten**, an einer gewoehnlichen Einstellungskante. Nicht an einer Spalte.*
+
+**Was zurueckzubauen ist, gemessen:** *`nodes.settings_record_id` (29 Traegerzeilen),
+`relations.settings_record_id` und `relations.target_settings_record_id` (**je 0 Zeilen — sie waren
+nie belegt**), dazu die Schattenspalten. **17 Quelltextdateien** kennen die Spalte.*
+
+⚠️ **Die Wanderung ist keine Erfindung, sondern eine Umkehrung:** *jeder Traeger wird eine
+Einstellungskante `renderer` mit `1..1` auf den Renderer-Knoten, und der Satz haengt daran wie bei
+jeder anderen Einstellung. **Der Zielzustand ist der, den es vor TASK-020 gab** — nur mit der
+Mehrfachheit, die er gemeint hat.*
+
+⚠️ **Warum es nicht nur Kosmetik ist:** *die Sonderform hatte einen Sonderfehler. Als der
+Eigentuemer `DisplayOption` loeschte, fiel die Traegerkante — **der Leser kam ueber die Spalte
+weiter, der Schreiber in der Maske nicht**, und vier gruene Waechter merkten nichts (TASK-052).
+Dazu steht sie quer zu [D-621](../../NewConcept/90-decision-log.md) («die Kante sagt, was etwas
+hier ist») und zu [D-639](../../NewConcept/90-decision-log.md) (drei Kantenarten, drei Klassen).*
+
+⚠️ **Offen ist nur der Zeitpunkt:** *jetzt oder mit dem Renderer-Umbau. Beruehrt 17 Dateien.*
