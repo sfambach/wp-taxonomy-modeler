@@ -611,8 +611,10 @@ nirgends referenziert — nicht *ohne Wertzeilen*.
 
 ```text
 [ ] TASK-045  Der Schreiber sucht die Einstellungskante an beiden Ketten —
-              Besitzer und Ziel; bei Namensgleichheit gewinnt der Besitzer
-              (D-611). Nur fuer Einstellungen, nicht fuer Modellfelder.
+              Besitzer und Ziel (D-611). Nur fuer Einstellungen, nicht fuer
+              Modellfelder.
+[ ] TASK-047  Zwei Kanten auf den Zweigkopf «Constants» entfernen —
+              Rueckstand aus Waechterlaeufen, ohne Eintrag im Aenderungsbuch
 [ ] TASK-046  Die vier Waechter auf die Spaltenform umschreiben — sie fragen
               nach den Kanten 44091/44093, die es nicht mehr gibt
 ```
