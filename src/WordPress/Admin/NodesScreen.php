@@ -39,6 +39,7 @@ use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Tree;
+use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -1790,7 +1791,97 @@ final class NodesScreen
             }
         }
 
-        return $html;
+        return $html . $this->columnSettings($selected);
+    }
+
+    /**
+     * Die Einstellungen, deren Träger eine **Spalte** ist und keine Kante — heute genau der Renderer.
+     *
+     * ⚠️ **Sein Befund, und er war richtig gegen vier grüne Wächter:** *«der wird irgendwie aktuell
+     * nicht berücksichtigt und auch nicht gespeichert»* (TASK-052). *Gemessen am 2026-09-05 auf der
+     * Seite von `Integer`: **kein einziges Steuerelement mit `renderer` im Namen.** Die vier Prüfungen
+     * schreiben über den Kern und waren deshalb blind — es gab nichts zu speichern, weil es nichts zu
+     * bedienen gab.*
+     *
+     * ⚠️ **Warum es verschwand, ohne dass etwas rot wurde:** *der Wähler stand in der **Wertspalte des
+     * Einstellungsblocks**, und dieser Block zeichnet **Kanten**. Seit
+     * [D-584](../../../docs/NewConcept/90-decision-log.md) steht der Renderer in
+     * `nodes.settings_record_id` — «bei genau einem Renderer ist ein einzelner Zeiger auf einen
+     * einzelnen Datensatz genau richtig» —, und als der Hüllknoten `DisplayOption` fiel
+     * ([D-594](../../../docs/NewConcept/90-decision-log.md)), fiel die Trägerkante mit ihm. **Eine
+     * Zeile ohne Kante hat der Kantenblock nicht.**
+     *
+     * ⚠️ **Kein zweites Steuerelement für dieselbe Angabe** (`R1`): *gezeichnet wird nur, was **keine**
+     * Trägerkante hat. Was eine hat, steht als Zeile im Einstellungsblock und wird dort bedient.*
+     *
+     * ⚠️ *Die Zeichnung selbst ist die vorhandene — {@see Rendering::settingsFor()} liefert die Zeile
+     * samt Auswahlrenderer längst; hier wird nichts Neues gezeichnet, nur abgeholt und ins
+     * Seitenformular gehängt. **Wo so eine Zeile auf Dauer hingehört — eigener Block oder Zeile im
+     * Einstellungsblock — ist offen** und steht als `INF-019` im Eingang (`PR-4`).*
+     */
+    private function columnSettings(Node $selected): string
+    {
+        $body = '';
+
+        foreach ($this->columnSettingRows($selected) as $drawn) {
+            if ($drawn->result === null) {
+                continue;
+            }
+
+            $body .= '<tr><td>' . esc_html($drawn->key) . '</td>'
+                . '<td>' . $drawn->result->markup . '</td></tr>';
+        }
+
+        if ($body === '') {
+            return '';
+        }
+
+        return $this->heading(
+            __('Settings without an edge', 'taxmod'),
+            __('Settings whose carrier is a column on the node rather than an edge — today the renderer. They are saved with the page like everything else.', 'taxmod')
+        ) . '<table class="wp-list-table widefat striped"><tbody>' . $body . '</tbody></table>';
+    }
+
+    /**
+     * Dieselbe Auswahl für den Zeichner und für den Schreiber — **eine** Stelle sagt, welche Schlüssel
+     * über die Spalte gehen.
+     *
+     * ⚠️ *Zwei Listen wären zwei Gelegenheiten, verschieden zu antworten: ein Steuerelement, das
+     * gezeichnet, aber nicht angenommen wird, ist genau der Mangel, den TASK-052 behebt.*
+     *
+     * @return list<RenderedSetting>
+     */
+    private function columnSettingRows(Node $selected): array
+    {
+        $ohneKante = [];
+
+        foreach ($this->rendering->settingsFor(
+            $selected,
+            $this->rendering->settingsForNode($selected),
+            Purpose::Edit,
+            self::SETTING_FIELD,
+            '',
+            Level::Settings,
+            [],
+            self::pageForm($selected)
+        ) as $drawn) {
+            $key = SettingKey::tryFrom($drawn->key);
+
+            if ($key === null || $this->framework->settingEdgeId($key) !== 0) {
+                continue;
+            }
+
+            // ⚠️ *Nur der Renderer, und das ist gemessen und nicht gewählt: er ist die einzige Angabe,
+            // die {@see \Taxmod\Core\Service\ModelValues} aus der Spalte liest. Für jede andere gäbe es
+            // hier ein Steuerelement, dessen Wert niemand wieder anzeigt.*
+            if ($key !== SettingKey::Renderer) {
+                continue;
+            }
+
+            $ohneKante[] = $drawn;
+        }
+
+        return $ohneKante;
     }
 
     /**
@@ -3300,6 +3391,18 @@ final class NodesScreen
             }
         }
 
+        // ⚠️ **Der Weg von der Maske bis in die Spalte** (TASK-052). *Adressiert wird über den
+        // **Schlüssel** und nicht über eine Kanten-Id — es gibt keine Kante, seit der Renderer in
+        // `nodes.settings_record_id` steht ([D-584](../../../docs/NewConcept/90-decision-log.md)).
+        // **{@see self::saveSettingValues()} kann das nicht**: es schlüsselt über `fieldsOf()`, also
+        // über Kanten, und übergeht einen Schlüssel ohne Kante mit `continue`.*
+        //
+        // ⚠️ *Nur an einem Knoten. An einer Verwendungsstelle ist die Spalte eine andere, und was dort
+        // gilt, schreibt {@see self::saveUseSiteSettings()}.*
+        if ($edgeId === 0) {
+            $this->saveColumnSettings($nodeId);
+        }
+
         // ⚠️ **Hier stand der Schreiber der `settings`-Tabelle**, der jeden geaenderten Wert der
         // Tafel in eine Zeile schrieb. *Die Tabelle ist mit [D-579](../../../docs/NewConcept/90-decision-log.md)
         // gestrichen. **Der Schreiber war schon vorher wirkungslos**: seit
@@ -3307,6 +3410,67 @@ final class NodesScreen
         // aus Datensaetzen und **gewinnt** — der Eigentuemer hat es an der Oberflaeche gesehen («den
         // Render kann ich noch nicht setzen»), und `setting-write-check.php` bewacht seither, dass
         // geschrieben wird, wo gelesen wird. **Was hier fiel, war ein Schreiber ohne Leser.***
+    }
+
+    /**
+     * Die eingereichten Einstellungen, deren Träger eine Spalte ist — heute der Renderer.
+     *
+     * ⚠️ **Das fehlende Gegenstück zum Zeichner** ({@see self::columnSettings()}). *Erlaubt ist genau,
+     * was dort gezeichnet wurde: die Liste kommt aus derselben Methode, damit ein verändertes Formular
+     * keinen Schlüssel unterschieben kann, den niemand angeboten hat (`CD-5`).*
+     *
+     * ⚠️ **Der Name wird zu einer Knoten-Id, und zwar über die aufgeschriebene Id** — nicht über einen
+     * Knotennamen. *Die Saat merkt sich `taxmod_render_renderer_<name>_id`
+     * ({@see \Taxmod\WordPress\Persistence\RenderingScaffold::optionFor()}), und
+     * [D-022](../../../docs/NewConcept/90-decision-log.md) verbietet, einen Knoten über seinen Namen
+     * aufzulösen. **Steht die Id nicht da, wird nichts geschrieben** statt geraten (`PR-4`).*
+     *
+     * ⚠️ *Ein leerer Wert schreibt nichts: die Auswahl des Renderers hat keine leere Wahl, ein leeres
+     * Feld kann also nur von einem gesperrten oder veränderten Formular kommen. **Was «keinen Renderer»
+     * heissen soll, ist nicht entschieden** und steht als `INF-019` im Eingang.*
+     */
+    private function saveColumnSettings(int $nodeId): void
+    {
+        $eingereicht = isset($_POST[self::SETTING_FIELD]) && is_array($_POST[self::SETTING_FIELD])
+            ? wp_unslash($_POST[self::SETTING_FIELD])
+            : [];
+
+        if ($eingereicht === []) {
+            return;
+        }
+
+        $node = $this->editor->find($nodeId);
+
+        if ($node === null) {
+            return;
+        }
+
+        foreach ($this->columnSettingRows($node) as $drawn) {
+            if (! array_key_exists($drawn->key, $eingereicht) || is_array($eingereicht[$drawn->key])) {
+                continue;
+            }
+
+            $gewaehlt = sanitize_text_field((string) $eingereicht[$drawn->key]);
+
+            if ($gewaehlt === '' || $drawn->key !== SettingKey::Renderer->value) {
+                continue;
+            }
+
+            $rendererId = (int) get_option(
+                RenderingScaffold::optionFor('Renderer', $gewaehlt),
+                0
+            );
+
+            if ($rendererId === 0) {
+                continue;
+            }
+
+            // ⚠️ *Der Kernweg aus [D-584](../../../docs/NewConcept/90-decision-log.md), und er ist
+            // schon da: er schreibt den Zeiger und vergisst den alten Satz. **Er ist von sich aus
+            // still, wenn nichts anders ist** — also landet ein Speichern ohne Änderung nicht als
+            // Eintrag im Änderungsbuch.*
+            $this->data->chooseSettingRecordAtNode($nodeId, $rendererId);
+        }
     }
 
     /**

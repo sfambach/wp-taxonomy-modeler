@@ -464,3 +464,32 @@ aus seinem Typ nehmen»).*
 
 ⚠️ *Der Weg ohne Entscheidung wäre gewesen, die Wahl an `Base units` wegzunehmen. **Das sind die 26
 Sätze, vor denen D-610 warnt** — «wer sie als leer wegräumt, löscht 26 Renderer-Wahlen».*
+
+---
+
+## INF-019 · Wo eine Einstellung ohne Trägerkante hingehört, und was «keiner» dort heisst
+
+**2026-09-05, beim Beheben von TASK-052. Nicht entschieden (`PR-4`).**
+
+**Gemessen:** *auf der Seite von `Integer` stand **kein einziges Steuerelement mit `renderer` im
+Namen**. Der Wähler hatte in der **Wertspalte des Einstellungsblocks** gestanden, und dieser Block
+zeichnet **Kanten**; seit [D-584](../../NewConcept/90-decision-log.md) steht der Renderer in
+`nodes.settings_record_id`, und mit dem Hüllknoten `DisplayOption`
+([D-594](../../NewConcept/90-decision-log.md)) fiel seine Trägerkante. **Eine Zeile ohne Kante hat
+der Kantenblock nicht** — der Wähler verschwand, ohne dass etwas rot wurde.*
+
+⚠️ **Gebaut ist der Weg, nicht der Ort.** *Die Wahl steht jetzt als eigener kleiner Block unter den
+zwei Tabellen, hängt über `form="…"` am Seitenformular und wird über den **Schlüssel** angenommen.
+**Ob das ihr Platz ist, ist offen:** eigener Block, oder eine Zeile im Einstellungsblock, die keine
+Kante hat? Das Zweite wäre näher an [D-518](../../NewConcept/90-decision-log.md) («Felder und
+Einstellungen sind zweimal dieselbe Tabelle») und kostet eine Zeile ohne Kanten-Id in einem
+Zeilenrenderer, der heute überall eine hat.*
+
+⚠️ **Zweite offene Frage: was «kein Renderer» heisst.** *Die Auswahl hat keine leere Wahl, ein leerer
+Wert schreibt deshalb nichts. Ob es «keinen Renderer wählen» überhaupt geben soll — und ob das die
+Spalte auf `0` setzt oder den Satz wegräumt — sagt keine Entscheidung.*
+
+⚠️ **Und die Liste ist bewusst auf den Renderer beschränkt.** *Gemessen liest
+{@see \Taxmod\Core\Service\ModelValues} genau **einen** Schlüssel aus der Spalte. Jede weitere
+Einstellung dort zu zeichnen hiesse, ein Steuerelement anzubieten, dessen Wert niemand wieder
+anzeigt — derselbe Mangel, nur andersherum.*

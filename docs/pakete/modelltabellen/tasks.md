@@ -748,7 +748,7 @@ die sie gar nicht bekommen hat.*
 
 ---
 
-[ ] TASK-052  Die Renderer-Wahl wird nicht beruecksichtigt und nicht gespeichert
+[x] TASK-052  Die Renderer-Wahl wird nicht beruecksichtigt und nicht gespeichert
 
 **2026-09-05, vom Eigentümer gefunden:** *«der wird irgendwie aktuell nicht berücksichtigt und auch
 nicht gespeichert».*
@@ -768,6 +768,34 @@ die Maske. Der neue muss genau das tun — wählen, speichern, neu laden, nachse
 derselbe blinde Fleck beim nächsten Mal.*
 
 Gehört zu [D-617](../../NewConcept/90-decision-log.md) und `INF-014`. **Block A.**
+
+**Gebaut am 2026-09-05. Es war *ein* Fehler, nicht zwei — und ein anderer als vermutet.**
+
+⚠️ **Gemessen am Markup der Seite von `Integer`: kein einziges Steuerelement mit `renderer` im
+Namen.** *Nicht «der Schreiber findet die Kante nicht», sondern **es gab nichts zu speichern**. Der
+Wähler stand in der **Wertspalte des Einstellungsblocks**, und dieser Block zeichnet **Kanten**; seit
+[D-584](../../NewConcept/90-decision-log.md) steht der Renderer in `nodes.settings_record_id`, und
+mit dem Hüllknoten `DisplayOption` ([D-594](../../NewConcept/90-decision-log.md)) fiel seine
+Trägerkante. **Der Wähler ging mit ihr, und kein Wächter merkte es.***
+
+⚠️ **«Nicht berücksichtigt» ist der Schatten desselben Fehlers, gemessen:** *was gespeichert **ist**,
+wird gezeichnet — die Vorschau von `Integer` zeigt den Schieber, den die Spalte nennt. Es sah nur
+aus wie zwei Fehler, weil nie etwas ankam.*
+
+**Was durchgeht:** die Zeile zeichnet {@see Rendering::settingsFor()} längst; sie hängt jetzt über
+`form="…"` am Seitenformular und wird über den **Schlüssel** angenommen — nicht über eine Kanten-Id,
+denn es gibt keine Kante. Von dort in `nodes.settings_record_id` über den vorhandenen Kernweg
+`DataEntry::chooseSettingRecordAtNode()`.
+
+**Neu am Netz:** [`renderer-choice-mask-check.php`](../../../scripts/dev/renderer-choice-mask-check.php)
+— **der erste Wächter, der den Weg über die Maske geht**: eigener Knoten, Seite zeichnen, Markup
+lesen, `handlePost()` mit einem echten Nonce rufen, frisch auflösen, nachsehen, wegräumen. *Die vier
+grünen gehen über den Kern und waren genau deshalb blind.*
+
+⚠️ **Offen und im Eingang als `INF-019`:** *wo so eine Zeile auf Dauer hingehört (eigener Block oder
+kantenlose Zeile im Einstellungsblock) und was «kein Renderer» heissen soll. **Gezeichnet wird
+bewusst nur der Renderer** — gemessen ist er der einzige Schlüssel, den der Leser aus der Spalte
+holt.*
 
 ---
 
