@@ -165,3 +165,21 @@ the deliberate rules reorganisation. **But git only sees commits** — a file br
 before the next one leaves no trace, and that is exactly what *the assistant is hallucinating and
 we keep going in circles* would feel like from the outside. Recorded as a possibility, not a
 finding.
+
+### ⚠️ 2026-09-05 — mehrere Agenten in einem Arbeitsbaum
+
+**Fremde Änderungen mit einzuchecken ist nicht das Problem. Sie ungesehen einzuchecken schon.**
+Auf sein Wort: *«einchecken ist nicht schlimm, es müssen nur die Regeln beachtet werden —
+Änderungen vergleichen und dann einchecken, damit nicht überbügelt wird.»*
+
+Also, vor jedem Commit, ohne Ausnahme:
+
+1. **Ansehen, was im Baum liegt** — `git status` und `git diff` über *alles*, nicht nur über die
+   eigenen Dateien. Wer nur seine eigenen kennt, weiss nicht, was er mitnimmt.
+2. **Vergleichen statt überschreiben.** Eine fremde Änderung an derselben Stelle wird gelesen und
+   zusammengeführt. Sie wegzunehmen, weil sie im Weg steht, ist der Schaden, den diese Regel
+   verhindert.
+3. **Kein `git stash`**, kein `git checkout`/`reset` auf fremde Dateien. *Ein Stash hat den
+   gemeinsamen Baum schon einmal verschluckt.*
+4. **Die Nachricht sagt, was drin ist.** Nimmt ein Commit fremde Arbeit mit, steht das darin — sonst
+   erzählt die Geschichte es falsch, und das ist der einzige bleibende Schaden.
