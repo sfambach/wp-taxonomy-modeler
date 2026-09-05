@@ -692,8 +692,7 @@ final class DataEntry
      * ```mermaid
      * flowchart LR
      *   K["Knoten"] --> D["sein default-Satz"]
-     *   D -->|"Traegerkante"| T["Teil: DisplayOption"]
-     *   T -->|"Wertkante"| W["Verweis auf den Renderer-Knoten"]
+     *   D -->|"Einstellungskante 1..1"| T["Teil: der gewählte Renderer"]
      * ```
      */
     public function putSettingValue(int $nodeId, SettingKey $key, TypedValue $value, string $locale = ''): void
@@ -734,12 +733,16 @@ final class DataEntry
             // feldlos war, griff das nie -- seit D-585 traegt er «converter», und damit
             // braucht jeder gewaehlte Renderer seinen eigenen Satz.
             if ($value->isAReference() && $this->targetOwnsItsRecord($satzId, $aussen)) {
-                // WICHTIG: Der Halter steht seit TASK-020 in `nodes.settings_record_id` und nicht
-                // mehr als Wertzeile an einer Traegerkante (D-584: «bei genau einem Renderer ist ein
-                // einzelner Zeiger auf einen einzelnen Datensatz genau richtig»). Der alte Weg hing
-                // an einer Kante -- und als der Eigentuemer den Huellknoten loeschte, hing er an
-                // einer Kante, die es nicht mehr gab.
-                $this->chooseSettingRecordAtNode($nodeId, (int) $value->reference);
+                // ⚠️ **Der Halter ist wieder eine Wertzeile an der Kante** (TASK-057,
+                // [D-642](../../../docs/NewConcept/90-decision-log.md)). *TASK-020 hatte ihn in
+                // `nodes.settings_record_id` gelegt, weil ich «genau ein Renderer» als «also keine
+                // Kante» gelesen hatte. **Der Schluss war meiner:** er meinte eine Mehrfachheit von
+                // `1..1` an einer Kante am Knoten — «das hast du leider falsch verstanden, ich
+                // meinte einfach eine Multiplizität von 1».*
+                //
+                // ⚠️ *Damit ist es **kein** Sonderfall mehr: dieselbe Wahl wie eine Stufe tiefer,
+                // nur am Datensatz des Knotens statt an einem Teil.*
+                $this->chooseSettingRecord($satzId, $aussen, (int) $value->reference);
 
                 return;
             }
@@ -800,20 +803,24 @@ final class DataEntry
             //
             // ⚠️ *Am Knoten gefragt und nicht am Datensatz: ob das Ziel einen eigenen Satz braucht,
             // haengt an der Kante, nicht daran, ob dieser Knoten schon einen Datensatz hat (D-609).*
-            if ($this->targetOwnsItsRecordAtNode($nodeId, $aussen)) {
-                $bisher = $this->nodes->settingsRecordIdsOf([$nodeId])[$nodeId] ?? 0;
+            $satzId = $this->findDefaultRecord($nodeId);
 
-                if ($bisher !== 0) {
-                    $this->nodes->rememberSettingsRecord($nodeId, 0);
-                    $this->satzEntfernen($bisher);
+            if ($satzId === 0) {
+                return;
+            }
+
+            // ⚠️ **Der Teil geht mit, nicht nur die Zeile, die ihn hält** (TASK-057). *Sonst bliebe
+            // ein Datensatz ohne Besitzer stehen — bei einer Wahl, die ihren eigenen Satz besitzt,
+            // ist das Wegnehmen des Verweises nur die halbe Rücknahme.*
+            if ($this->targetOwnsItsRecordAtNode($nodeId, $aussen)) {
+                $teilId = $this->partsOf($satzId)[(string) $aussen] ?? null;
+
+                if ($teilId !== null) {
+                    $this->satzEntfernen($teilId);
                 }
             }
 
-            $satzId = $this->findDefaultRecord($nodeId);
-
-            if ($satzId !== 0) {
-                $this->clear($satzId, $aussen, $locale);
-            }
+            $this->clear($satzId, $aussen, $locale);
 
             return;
         }
@@ -1252,47 +1259,6 @@ final class DataEntry
      * Felder sind die des alten Knotens und sagen ueber den neuen nichts. Stehen zu lassen hiesse,
      * Werte zu behalten, die niemand mehr lesen kann.
      */
-    /**
-     * Dieselbe Wahl, aber am **Knoten** statt an einer Kante — der Ort aus TASK-020.
-     *
-     * ⚠️ **Eine Spalte, keine Kante** ([D-584](../../../docs/NewConcept/90-decision-log.md)). *Der
-     * Zeiger steht in `nodes.settings_record_id`, der Satz ist ein `default`-Satz des gewaehlten
-     * Knotens, und seine `node_id` sagt, welcher Renderer es ist.*
-     *
-     * ⚠️ *Der alte Satz wird vergessen, wenn ein anderer Renderer gewaehlt wird — seine Felder sind
-     * die des alten Knotens und sagen ueber den neuen nichts. Dieselbe Begruendung wie bei
-     * {@see self::chooseSettingRecord()}, nur eine Ebene hoeher.*
-     *
-     * ```mermaid
-     * flowchart LR
-     *   K["Knoten"] -->|"settings_record_id"| S["Satz"]
-     *   S -->|"node_id"| R["Renderer"]
-     * ```
-     */
-    public function chooseSettingRecordAtNode(int $nodeId, int $chosenNodeId): void
-    {
-        $bisher = $this->nodes->settingsRecordIdsOf([$nodeId])[$nodeId] ?? 0;
-
-        if ($bisher !== 0) {
-            $satz = $this->records->find($bisher);
-
-            if ($satz !== null && $satz->nodeId === $chosenNodeId) {
-                return;
-            }
-
-            $this->nodes->rememberSettingsRecord($nodeId, 0);
-
-            if ($satz !== null) {
-                $this->satzEntfernen($bisher);
-            }
-        }
-
-        $this->nodes->rememberSettingsRecord(
-            $nodeId,
-            $this->create($chosenNodeId, RecordType::Default)->id
-        );
-    }
-
     private function chooseSettingRecord(int $recordId, int $relationId, int $chosenNodeId): void
     {
         $teilId = $this->partsOf($recordId)[(string) $relationId] ?? null;
@@ -1303,6 +1269,18 @@ final class DataEntry
             if ($teil !== null && $teil->nodeId === $chosenNodeId) {
                 return;
             }
+
+            // ⚠️ **Erst der Verweis, dann der Teil — und ohne die erste Zeile blieb ein Zeiger auf
+            // einen Satz stehen, den es nicht mehr gibt.** *{@see RecordRepository::forgetRecord()}
+            // raeumt die Werte **des Teils** weg und den Teil selbst; die Zeile im Besitzer, die auf
+            // ihn zeigt, gehoert ihm nicht und blieb liegen. {@see self::createPart()} legt danach
+            // eine **zweite** an, weil eine Wertzeile ohne Id immer eingefuegt wird.*
+            //
+            // ⚠️ *Gemessen am 2026-09-05, als der Renderer mit TASK-057 auf seine Kante zurueckzog:
+            // **drei Zeilen an einer Kante mit `1..1`** nach drei Wahlen, und die Aufloesung nahm die
+            // erste — also die aelteste. **Der Fehler war schon da; die Spalte hatte ihn nur
+            // zugedeckt**, weil sie eine Zahl haelt und keine Zeilen.*
+            $this->records->forgetValue($recordId, (string) $relationId, '');
 
             $this->satzEntfernen($teilId);
         }

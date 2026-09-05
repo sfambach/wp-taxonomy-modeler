@@ -243,46 +243,47 @@ if ($gefunden !== []) {
     );
 }
 
-echo "\n== Und «wie oft» beim Renderer: genau einmal, und das sagt die Spalte ==\n";
+echo "\n== Und «wie oft» beim Renderer: genau einmal, und das sagt die Kante ==\n";
 
-// WICHTIG: Hier stand die Einstellungskante `renderer` an der Wurzel mit «1..*», gesucht ueber
-// `settingRelationId(SettingKey::Renderer)` -- und beides ist weg. Das ist eine sichtbare Aenderung
-// dieser Zusage (PR-9), und sie hat zwei Gruende, keinen davon technisch:
+// ⚠️ **Diese Zusage ist zum zweiten Mal umgezogen, und der zweite Umzug nimmt den ersten zurueck**
+// (TASK-057, [D-642](../../docs/NewConcept/90-decision-log.md)).
 //
-// ⚠️ **Erstens hat D-584 die Vielzahl abgeschafft.** *Sein Wort: «eine Kante und ein Knoten haben
-// genau einen Renderer.» Und ausdruecklich: «was dadurch wegfaellt: die geordnete Liste von
-// Renderern an einem Knoten, **die Multiplizitaet `1..*` an `DisplayOption`**, und `sort_order` auf
-// dieser Ebene.» Eine Zusage, die weiter `1..*` verlangt, haelt einen vergangenen Zielzustand fest.*
+// ⚠️ *Sie verlangte einmal `1..*` an `DisplayOption`. Dann sagte [D-584](../../docs/NewConcept/90-decision-log.md)
+// «eine Kante und ein Knoten haben genau einen Renderer», und **ich las daraus «also keine Kante,
+// sondern eine Spalte»** — die Zusage fragte danach, dass es die Kante **nicht** gibt.*
 //
-// ⚠️ **Zweitens gibt es die Kante nicht mehr.** *Der Eigentuemer hat den Huellknoten `DisplayOption`
-// geloescht (D-604), die Kanten 44091/44093 sind mit ihm gefallen, und die zwei WordPress-Optionen,
-// die ihre Ids hielten, zeigten seither ins Leere -- sie sind mit dieser Aenderung geloescht.
-// Gemessen am 2026-09-05: an `Root` stehen `validator` und `read_only`, keine Kante `renderer`.*
-//
-// **Die Frage bleibt dieselbe, nur beantwortet sie heute die Spalte:** ein Zeiger kann auf genau
-// einen Satz zeigen, also ist «genau ein Renderer» keine Multiplizitaet mehr, sondern die Form der
-// Ablage. Geprueft wird, dass diese Form haelt -- kein Zeiger ins Leere.
-check(
-    'die alte Traegerkante ist nicht mehr aufgeschrieben',
-    $framework->settingRelationId(SettingKey::Renderer) === 0,
-    (string) $framework->settingRelationId(SettingKey::Renderer)
-);
+// ⚠️ **Der Schluss war meiner, nicht seiner:** *«das hast du leider falsch verstanden, ich meinte
+// einfach eine Multiplizitaet von 1» — und auf die Rueckfrage, wo: «am Knoten». **Eine Kante mit
+// `1..1` sagt dasselbe und bleibt eine Kante.** Also fragt diese Zusage jetzt genau das ab: die
+// Kante gibt es, und sie traegt `1..1`.*
+$kante = $framework->settingRelationId(SettingKey::Renderer);
 
-$mitSpalte = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE settings_record_id IS NOT NULL'
-);
+check('die Einstellungskante `renderer` ist aufgeschrieben', $kante !== 0, (string) $kante);
 
-// ⚠️ *Der Gegenfall: es gibt ueberhaupt Wahlen. Sonst waere «kein Zeiger ins Leere» auch dann gruen,
-// wenn keine einzige Spalte gefuellt ist. Gemessen am 2026-09-05: 28.*
-check('und Knoten tragen ihre Wahl in der Spalte', $mitSpalte >= 20, (string) $mitSpalte);
+$wieOft = (string) $wpdb->get_var($wpdb->prepare(
+    'SELECT multiplicity FROM ' . Schema::table('relations') . ' WHERE id = %d',
+    $kante
+));
 
-$insLeere = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
-       LEFT JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
-      WHERE n.settings_record_id IS NOT NULL AND r.id IS NULL'
-);
+check('und sie traegt genau die Mehrfachheit, die er gemeint hat', $wieOft === '1..1', $wieOft);
 
-check('kein Zeiger ins Leere — genau ein Satz je Knoten', $insLeere === 0, (string) $insLeere);
+$mitWahl = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'record'",
+    $kante
+));
+
+// ⚠️ *Der Gegenfall: es gibt ueberhaupt Wahlen. Sonst waere «kein Traeger ins Leere» auch dann
+// gruen, wenn keine einzige Zeile dasteht. Gemessen am 2026-09-05: 29.*
+check('und Knoten tragen ihre Wahl an dieser Kante', $mitWahl >= 20, (string) $mitWahl);
+
+$insLeere = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+       LEFT JOIN ' . Schema::table('node_records') . " r ON r.id = v.value_ref
+      WHERE v.relation_id = %d AND v.value_ref_kind = 'record' AND r.id IS NULL",
+    $kante
+));
+
+check('kein Traeger ins Leere — genau ein Satz je Knoten', $insLeere === 0, (string) $insLeere);
 
 echo "\n== Der Speichern-Knopf der Seite schreibt «wie oft» ==\n";
 

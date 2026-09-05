@@ -215,11 +215,43 @@ check(
     "gewaehlt {$wahl}, gelesen «{$nachher}», vorher «{$vorher}»"
 );
 
-// ⚠️ **Die Spalte ist der Ort** ([D-584](../../docs/NewConcept/90-decision-log.md)) — *und ohne diese
-// Zusage waere «gelesen» auch dann gruen, wenn der Wert an einer Kante laege, die niemand mehr hat.*
-$spalte = (int) $wpdb->get_var("SELECT settings_record_id FROM {$p}nodes WHERE id = {$probe->id}");
+// ⚠️ **Die Einstellungskante ist der Ort, und nicht mehr eine Spalte** (TASK-057,
+// [D-642](../../docs/NewConcept/90-decision-log.md)). *Hier stand «sie steht in
+// `nodes.settings_record_id`». **Die Zusage ist nicht entschaerft, sie ist umgezogen**: sie prueft
+// jetzt dieselbe Sache an der Form, die der Eigentuemer gemeint hat — «ich meinte einfach eine
+// Multiplizitaet von 1», am Knoten, an einer gewoehnlichen Kante.*
+//
+// ⚠️ *Ohne sie waere «gelesen» auch dann gruen, wenn der Wert irgendwo laege, wo ihn niemand
+// wiederfindet — genau der Zustand, aus dem TASK-052 entstanden ist.*
+$kante = $framework->settingRelationId(SettingKey::Renderer);
 
-check('sie steht in nodes.settings_record_id', $spalte !== 0, (string) $spalte);
+check('die Einstellungskante `renderer` ist aufgeschrieben', $kante !== 0, (string) $kante);
+
+$satz = (int) $wpdb->get_var(
+    "SELECT v.value_ref
+       FROM {$p}relation_records v
+       JOIN {$p}node_records r ON r.id = v.node_record_id
+      WHERE r.node_id = {$probe->id} AND r.record_type = 'default'
+        AND v.relation_id = {$kante} AND v.value_ref_kind = 'record'"
+);
+
+check('die Wahl haengt als Datensatz an dieser Kante', $satz !== 0, (string) $satz);
+
+// ⚠️ *Und der Satz **ist** der gewaehlte Renderer — seine `node_id` sagt es
+// ([D-583](../../docs/NewConcept/90-decision-log.md)). Eine Zeile, die auf irgendeinen Satz zeigt,
+// waere keine Zusage.*
+$gewaehlterKnoten = $satz === 0 ? '' : (string) $wpdb->get_var(
+    "SELECT z.name FROM {$p}node_records s JOIN {$p}nodes z ON z.id = s.node_id WHERE s.id = {$satz}"
+);
+
+check('und der Satz ist ein Satz des gewaehlten Renderers', $gewaehlterKnoten === $wahl, "«{$gewaehlterKnoten}» statt «{$wahl}»");
+
+// ⚠️ **Die Spalte ist weg und darf nicht wiederkommen** (Fassung 32). *`dbDelta` legt eine fehlende
+// Spalte wieder an; kaeme sie zurueck, haette der Renderer wieder zwei Orte.*
+check(
+    'und `nodes.settings_record_id` gibt es nicht mehr',
+    $wpdb->get_var("SHOW COLUMNS FROM {$p}nodes LIKE 'settings_record_id'") === null
+);
 
 echo "\n== und die Maske zeigt danach, was dasteht ==\n";
 

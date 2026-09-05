@@ -93,33 +93,28 @@ function check(string $what, bool $passed, string $detail = ''): void
 /**
  * Die eine Abfrage, die «zwei Besitzer» ausdrueckt.
  *
- * ⚠️ **Ein Datensatz wird an vier Stellen gehalten**, und alle vier gehoeren in dieselbe Frage:
- * `nodes.settings_record_id` (TASK-020), die beiden Halter an der Kante, und ein `value_ref`, das
- * auf einen Datensatz statt auf einen Knoten zeigt — der zusammengesetzte Teil
- * ([D-232](../../docs/NewConcept/90-decision-log.md)). *Nur drei zu fragen hiesse, die vierte Tuer
- * offen zu lassen.*
+ * ⚠️ **Ein Datensatz wurde an vier Stellen gehalten; seit TASK-057 ist es *eine*.** *Drei davon
+ * waren die Spalten aus TASK-020 — `nodes.settings_record_id` und die beiden an der Kante —, und
+ * sie sind gefallen ([D-642](../../docs/NewConcept/90-decision-log.md),
+ * [D-643](../../docs/NewConcept/90-decision-log.md)). **Uebrig bleibt die Tuer, die es immer schon
+ * gab:** ein `value_ref`, das auf einen Datensatz statt auf einen Knoten zeigt — der
+ * zusammengesetzte Teil ([D-232](../../docs/NewConcept/90-decision-log.md)). *Der Renderer geht
+ * jetzt durch dieselbe.*
+ *
+ * ⚠️ **Die Frage ist nicht kleiner geworden, ihre Antwortmenge ist es.** *Vier Quellen zu fragen,
+ * von denen drei nicht mehr existieren koennen, waere eine Pruefung auf einen Zustand von gestern
+ * (`PR-9`). **Dass die Spalten weg bleiben, bewacht `settings-record-carrier-check.php`.***
  *
  * @return list<array<string, string|null>>
  */
 function zweiBesitzer(): array
 {
-    $nodes     = Schema::table(Schema::LIVE_TABLES[0]);
-    $relations = Schema::table(Schema::LIVE_TABLES[1]);
-    $values    = Schema::table(Schema::LIVE_TABLES[3]);
+    $values = Schema::table(Schema::LIVE_TABLES[3]);
 
     return Query::rows(
         'Datensaetze mit mehr als einem Besitzer suchen',
         "SELECT rid, COUNT(*) anzahl, GROUP_CONCAT(quelle) besitzer FROM (
-             SELECT settings_record_id rid, CONCAT('knoten:', id) quelle
-                 FROM {$nodes} WHERE settings_record_id IS NOT NULL
-             UNION ALL
-             SELECT settings_record_id, CONCAT('kante:', id)
-                 FROM {$relations} WHERE settings_record_id IS NOT NULL
-             UNION ALL
-             SELECT target_settings_record_id, CONCAT('kante-ziel:', id)
-                 FROM {$relations} WHERE target_settings_record_id IS NOT NULL
-             UNION ALL
-             SELECT value_ref, CONCAT('wertzeile:', id)
+             SELECT value_ref rid, CONCAT('wertzeile:', id) quelle
                  FROM {$values} WHERE value_ref_kind = 'record'
          ) halter GROUP BY rid HAVING anzahl > 1"
     );
@@ -241,9 +236,23 @@ echo '       geprueft gegen ' . Query::value('Datensaetze zaehlen', 'SELECT COUN
 // ⚠️ *Und jetzt der Gegenbeweis: der Waechter legt den Verstoss selbst an, sieht ihn, und raeumt ihn
 // weg. **Ohne ihn waere Punkt 4 auch dann gruen, wenn die Abfrage gar nichts findet.*** Alles unter
 // dem Vorsatz `__`, und es faellt auch bei einem Abbruch (siehe unten).
-$meine = ['knoten' => [], 'satz' => null];
+$meine = ['knoten' => [], 'satz' => null, 'halter' => null];
 
 register_shutdown_function(static function () use (&$meine): void {
+    // ⚠️ *Der Notausgang raeumt auch die Probezeilen — sie sind seit TASK-057 der Weg, auf dem der
+    // Gegenfall gebaut wird, und ein Abbruch mittendrin liesse sie sonst stehen.*
+    if ($meine['halter'] !== null) {
+        Query::run('Probezeilen wegraeumen', $GLOBALS['wpdb']->prepare(
+            'DELETE FROM ' . Schema::table(Schema::LIVE_TABLES[3]) . ' WHERE node_record_id = %d',
+            $meine['halter']
+        ));
+
+        Query::run('Halter wegraeumen', $GLOBALS['wpdb']->prepare(
+            'DELETE FROM ' . Schema::table(Schema::LIVE_TABLES[2]) . ' WHERE id = %d',
+            $meine['halter']
+        ));
+    }
+
     if ($meine['satz'] !== null) {
         Query::run('Probesatz wegraeumen', $GLOBALS['wpdb']->prepare(
             'DELETE FROM ' . Schema::table(Schema::LIVE_TABLES[2]) . ' WHERE id = %d',
@@ -295,11 +304,27 @@ Query::run('Probesatz anlegen', $wpdb->prepare(
 ));
 $meine['satz'] = (int) $wpdb->insert_id;
 
-foreach ($meine['knoten'] as $id) {
-    Query::run('beide Probeknoten auf denselben Satz zeigen lassen', $wpdb->prepare(
-        'UPDATE ' . Schema::table(Schema::LIVE_TABLES[0]) . ' SET settings_record_id = %d WHERE id = %d',
-        $meine['satz'],
-        $id
+// ⚠️ **Der Verstoss wird jetzt an Wertzeilen gebaut und nicht mehr an zwei Spalten** (TASK-057).
+// *Die Spalten gibt es nicht mehr; die Tuer, die bleibt, ist der Satzverweis
+// ([D-232](../../docs/NewConcept/90-decision-log.md)). **Der Gegenfall muss durch dieselbe Tuer wie
+// der echte Fall** — sonst prueft er einen Weg, den niemand mehr gehen kann.*
+Query::run('Halter fuer die Probezeilen anlegen', $wpdb->prepare(
+    'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[2]) . ' (node_id, node_version, created_at, record_type)
+     VALUES (%d, 1, %s, %s)',
+    $meine['knoten'][1],
+    gmdate('Y-m-d H:i:s'),
+    'default'
+));
+$meine['halter'] = (int) $wpdb->insert_id;
+
+foreach (['__a', '__b'] as $pfad) {
+    Query::run('zwei Wertzeilen auf denselben Satz zeigen lassen', $wpdb->prepare(
+        'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[3])
+            . " (node_record_id, relation_id, path, locale, value_ref, value_ref_kind, position, version)
+               VALUES (%d, 0, %s, '', %d, 'record', 0, 1)",
+        $meine['halter'],
+        $pfad,
+        $meine['satz']
     ));
 }
 
@@ -314,13 +339,20 @@ check(
     $gesehen === [] ? 'der angelegte Verstoss blieb unbemerkt' : (string) $gesehen[0]['anzahl']
 );
 
+Query::run('Probezeilen wegraeumen', $wpdb->prepare(
+    'DELETE FROM ' . Schema::table(Schema::LIVE_TABLES[3]) . ' WHERE node_record_id = %d',
+    $meine['halter']
+));
+
+Query::run('Halter wegraeumen', $wpdb->prepare('DELETE FROM ' . Schema::table(Schema::LIVE_TABLES[2]) . ' WHERE id = %d', $meine['halter']));
+
 foreach ($meine['knoten'] as $id) {
     Query::run('Probeknoten wegraeumen', $wpdb->prepare('DELETE FROM ' . Schema::table(Schema::LIVE_TABLES[0]) . ' WHERE id = %d', $id));
 }
 
 Query::run('Probesatz wegraeumen', $wpdb->prepare('DELETE FROM ' . Schema::table(Schema::LIVE_TABLES[2]) . ' WHERE id = %d', $meine['satz']));
 
-$meine = ['knoten' => [], 'satz' => null];
+$meine = ['knoten' => [], 'satz' => null, 'halter' => null];
 
 check(
     'und nach dem Wegraeumen ist der Bestand wieder wie vorher',

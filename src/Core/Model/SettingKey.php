@@ -212,6 +212,28 @@ enum SettingKey: string
     {
         return $this === self::Multiplicity;
     }
+
+    /**
+     * Whether a key says something only a **node** can have.
+     *
+     * ⚠️ **Der Gegenpfeil zu {@see self::isRelationOnly()}, und heute trägt ihn genau der Renderer**
+     * ([D-643](../../../docs/NewConcept/90-decision-log.md)). *Seine Worte: «ich bin mir noch nicht
+     * sicher, ob wir an der Kante einen Renderer brauchen, deshalb würde er da wegfallen» — und «es
+     * gibt keine Einstellungsmöglichkeit in der GUI, der Benutzer könnte nicht, selbst wenn er
+     * wollte.»*
+     *
+     * ⚠️ **Sachlich, nicht bequem:** *eine Kante ist eine **Verwendungsstelle**, kein Ding. Gezeichnet
+     * wird der Knoten dahinter, und dessen Renderer hängt an ihm. Zwei Renderer an einer Verwendung
+     * wären zwei Antworten auf dieselbe Frage.*
+     *
+     * ⚠️ *Gemessen am 2026-09-05, bevor der Schlüssel fiel: **je 0 Zeilen** in
+     * `relations.settings_record_id` und `relations.target_settings_record_id` — nie belegt, seit es
+     * sie gab. Die Maske bot ihn trotzdem an.*
+     */
+    public function isNodeOnly(): bool
+    {
+        return $this === self::Renderer;
+    }
     public function isBounding(): bool
     {
         return $this->direction() !== Narrowing::Free;
@@ -352,6 +374,12 @@ enum SettingKey: string
         foreach (self::cases() as $key) {
             // ⚠️ A node describes a thing, and a thing has no multiplicity (D-351).
             if ($key->isRelationOnly() && ! $isRelation) {
+                continue;
+            }
+
+            // ⚠️ *Und die Gegenrichtung: der Renderer gehört dem Knoten, nicht der Verwendungsstelle
+            // ([D-643](../../../docs/NewConcept/90-decision-log.md)).*
+            if ($key->isNodeOnly() && $isRelation) {
                 continue;
             }
 

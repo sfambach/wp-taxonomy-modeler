@@ -5,6 +5,7 @@ namespace Taxmod\Tests\Core;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NotYetStorable;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationRecord;
@@ -484,47 +485,69 @@ final class DataEntryTest extends TestCase
         self::assertCount(2, $this->data->valuesOf($record->id));
         self::assertSame('4k7', $this->data->valuesAt($record->id, [$this->description->id])[0]->value->text);
         self::assertSame('kompakt', $this->data->valuesAt($record->id, [$this->description->id, $renderer->id])[0]->value->text);
-    }
 
+    }
     /**
-     * Die Wahl eines Einstellungsdatensatzes steht in der **Spalte** und nicht an einer Kante.
+     * Die Wahl eines Einstellungsdatensatzes hängt an einer **Kante** und nicht an einer Spalte.
      *
-     * ⚠️ **Das ist [D-584](../../docs/NewConcept/90-decision-log.md), und es ist die Zusage von
-     * TASK-020:** *«bei genau einem Renderer ist ein einzelner Zeiger auf einen einzelnen Datensatz
-     * genau richtig, und dessen `node_id` sagt schon, welcher Renderer es ist».*
+     * ⚠️ **Das ist [D-642](../../docs/NewConcept/90-decision-log.md), die Berichtigung zu
+     * [D-584](../../docs/NewConcept/90-decision-log.md):** *«das hast du leider falsch verstanden, ich
+     * meinte einfach eine Multiplizität von 1» — **am Knoten**, an einer gewöhnlichen
+     * Einstellungskante. **Der Schluss «also braucht es keine Kante» war meiner, nicht seiner.***
      *
-     * ⚠️ **Warum es überhaupt eine Zusage braucht:** *solange der Halter eine Wertzeile an einer
-     * Trägerkante war, hing er von dieser Kante ab — und als der Eigentümer den Hüllknoten löschte,
-     * standen **29 Renderer-Wahlen an einer Kante, die es nicht mehr gab**
-     * ([D-604](../../docs/NewConcept/90-decision-log.md)). Eine Spalte kann das nicht.*
+     * ⚠️ **Und die Spalte hatte einen Sonderfehler, weil sie eine Sonderform war:** *als der
+     * Eigentümer den Hüllknoten löschte, fiel die Trägerkante — **der Leser kam über die Spalte
+     * weiter, der Schreiber in der Maske nicht**, und vier grüne Wächter merkten nichts (TASK-052).*
+     *
+     * ⚠️ *Zugesagt ist hier dreierlei: die Wahl legt einen Satz des **gewählten** Knotens an
+     * ([D-583](../../docs/NewConcept/90-decision-log.md)), dieselbe Wahl noch einmal legt nichts
+     * Zweites an, und eine andere Wahl hängt um statt danebenzustellen.*
      */
     #[Test]
-    public function a_chosen_setting_record_lives_in_the_column(): void
+    public function eine_gewaehlte_einstellung_haengt_an_ihrer_kante(): void
     {
-        // ⚠️ *Zwei waehlbare Knoten, und beide muessen eigene Datensaetze haben koennen — der
-        // Einstellungssatz ist ein Satz des **gewaehlten** Knotens (D-583).*
-        $compact = $this->editor->createNode('compact', $this->branchRoot['model']->id);
-        $table   = $this->editor->createNode('table', $this->branchRoot['model']->id);
+        // ⚠️ *Ein Zielknoten mit **eigenen** Feldern — nur dann besitzt die Wahl einen eigenen Satz,
+        // und genau das unterscheidet den Renderer von `read_only`.*
+        $auswahl = $this->editor->createNode('Renderer', $this->branchRoot['model']->id);
+        $this->editor->addField($auswahl->id, $this->text->id, 'converter');
 
-        $this->data->chooseSettingRecordAtNode($this->gram->id, $compact->id);
+        $compact = $this->editor->createNode('compact', $auswahl->id);
+        $table   = $this->editor->createNode('table', $auswahl->id);
 
-        $satzId = $this->nodes->settingsRecordIdsOf([$this->gram->id])[$this->gram->id] ?? 0;
+        $kante = $this->editor->addField($this->gram->id, $auswahl->id, 'renderer');
+        $this->editor->markAsSetting($this->gram->id, $kante->id, true);
 
-        self::assertNotSame(0, $satzId, 'der Zeiger steht in der Spalte');
-        self::assertSame($compact->id, $this->records->find($satzId)?->nodeId, 'und der Satz ist einer des gewaehlten Knotens');
+        $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
+
+        $satzId = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[(string) $kante->id] ?? 0;
+
+        self::assertNotSame(0, $satzId, 'der Teil hängt an der Einstellungskante');
+        self::assertSame($compact->id, $this->records->find($satzId)?->nodeId, 'und er ist ein Satz des gewaehlten Knotens');
 
         // Dieselbe Wahl noch einmal legt nichts Zweites an — die Zeile *ist* der Datensatz (D-583).
-        $this->data->chooseSettingRecordAtNode($this->gram->id, $compact->id);
+        $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
 
-        self::assertSame($satzId, $this->nodes->settingsRecordIdsOf([$this->gram->id])[$this->gram->id] ?? 0);
+        self::assertSame($satzId, $this->data->partsOf($this->defaultRecordOf($this->gram->id))[(string) $kante->id] ?? 0);
 
         // Eine andere Wahl haengt um, statt einen zweiten Halter danebenzustellen.
-        $this->data->chooseSettingRecordAtNode($this->gram->id, $table->id);
+        $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($table->id));
 
-        $neu = $this->nodes->settingsRecordIdsOf([$this->gram->id])[$this->gram->id] ?? 0;
+        $neu = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[(string) $kante->id] ?? 0;
 
         self::assertNotSame($satzId, $neu);
         self::assertSame($table->id, $this->records->find($neu)?->nodeId);
+
+        // ⚠️ **Und es steht genau **eine** Zeile da, nicht drei.** *Der Fehler war schon da und die
+        // Spalte hatte ihn zugedeckt: {@see DataEntry::chooseSettingRecord()} warf den alten Teil weg
+        // und liess **den Verweis auf ihn stehen** — die naechste Wahl legte eine zweite Zeile daneben.
+        // **Gemessen am 2026-09-05 an `setting-write-check.php`: drei Zeilen an einer Kante mit
+        // `1..1`**, und die Aufloesung nahm die aelteste.*
+        $zeilen = array_filter(
+            $this->data->valuesOf($this->defaultRecordOf($this->gram->id)),
+            static fn (RelationRecord $wert): bool => $wert->relationId === $kante->id
+        );
+
+        self::assertCount(1, $zeilen, 'eine Kante mit 1..1 traegt eine Zeile, nicht eine je Wahl');
     }
 
     /**
@@ -595,5 +618,17 @@ final class DataEntryTest extends TestCase
 
         self::assertNotSame([], $this->buch->entries, 'der Akt hat gemeldet');
         self::assertCount(1, $gruppen, 'und alles liegt in einer Aenderungsgruppe');
+    }
+
+    /** Der `default`-Satz dieses Knotens — die Adresse, an der eine Einstellung hängt. */
+    private function defaultRecordOf(int $nodeId): int
+    {
+        foreach ($this->records->ofNode($nodeId) as $satz) {
+            if ($satz->recordType === RecordType::Default) {
+                return $satz->id;
+            }
+        }
+
+        return 0;
     }
 }

@@ -12,10 +12,9 @@ steht es hier als Widerspruch und nicht als Absicht.
 ## 1 · Die vier Tabellen, wie sie heute wirklich aussehen
 
 ```text
-nodes           id · version · name · path · kind · settings_record_id
+nodes           id · version · name · path · kind
 relations       id · version · from_id · to_id · kind · name · position
                 parked_by_group_id · hide · multiplicity
-                settings_record_id · target_settings_record_id
 records         id · node_id · node_version · created_at · kind · version
 record_values   id · record_id · edge_id · path · locale
                 value_int · value_decimal · value_text · value_date
@@ -27,6 +26,11 @@ record_values   id · record_id · edge_id · path · locale
 ⚠️ *`identities` und `settings` sind heute gestrichen ([D-579](../../NewConcept/90-decision-log.md),
 TASK-004). Die Namen im Soll — `node_records`, `relation_records`, `field_type`, `sort_order`,
 `relation_type` — **gibt es noch nicht**; die Umbenennungen stehen als TASK-007, 012, 014, 015.*
+
+⚠️ **`settings_record_id` steht hier nicht mehr, an keiner der beiden Tabellen** (TASK-057,
+Schemafassung 32). *Der Renderer hängt an einer gewöhnlichen Einstellungskante `1..1` am Knoten
+([D-642](../../NewConcept/90-decision-log.md)); an der Kante ist er ersatzlos gefallen
+([D-643](../../NewConcept/90-decision-log.md)), weil beide Spalten dort je 0 Zeilen trugen.*
 
 ---
 

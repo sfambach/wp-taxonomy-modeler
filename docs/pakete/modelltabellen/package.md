@@ -55,7 +55,7 @@ berührt.
 | `sort_order` | **an welcher Stelle unter dem Elternknoten** | §3.3 |
 | `field_type` | **`model`** oder **`setting`** | war `kind` |
 | `label_id` | → `labels.id`, **verpflichtend** — hier steht der Name | §3.4 |
-| `settings_record_id` | → `node_records.id`, optional — eigene Einstellungen | §3.6 |
+| ~~`settings_record_id`~~ | **gestrichen** (TASK-057, [D-642](../../NewConcept/90-decision-log.md)) — der Renderer hängt an einer Einstellungskante `1..1` | war 29 gefüllt |
 | `hide` | **im Baum nicht anzeigen** ([D-590](../../NewConcept/90-decision-log.md)) — dass ein *Feld* nicht gezeichnet wird, sagt ein Renderer, der nichts ausgibt | 6, von den Kanten übernommen |
 | *(neu)* | die **PHP-Klasse**, die diesen Knoten umsetzt | §3.2 |
 
@@ -132,21 +132,34 @@ Suchen von Hand und beim Prüfen.*
 
 ---
 
-### 3.6 · Eigene Einstellungen an Knoten **und** Kante
+### 3.6 · Eigene Einstellungen — an einer **Kante**, nicht an einer Spalte
 
-**`settings_record_id` steht an beiden** ([D-582](../../NewConcept/90-decision-log.md)) und zeigt auf
-den eigenen Einstellungsdatensatz. **Ein Knoten und eine Kante haben genau *einen* Renderer**
-([D-584](../../NewConcept/90-decision-log.md)) — deshalb genügt ein einzelner Zeiger, und die
-`node_id` des Datensatzes sagt schon, *welcher* Renderer es ist.
+⚠️ **Hier stand `settings_record_id` an Knoten und Kante. Beides ist zurückgebaut** (TASK-057,
+Schemafassung 32).
+
+**Der Renderer hängt an einer gewöhnlichen Einstellungskante `renderer` mit `1..1` am Knoten**
+([D-642](../../NewConcept/90-decision-log.md)). *Der Eigentümer hat berichtigt, was ich aus
+[D-584](../../NewConcept/90-decision-log.md) gemacht hatte: «das hast du leider falsch verstanden,
+ich meinte einfach eine Multiplizität von 1» — und auf die Rückfrage, wo: «am Knoten». **Der Schluss
+«also braucht es keine Kante, sondern nur einen Zeiger» war meiner, nicht seiner.***
+
+**An der Kante fällt der Renderer ersatzlos** ([D-643](../../NewConcept/90-decision-log.md)): *eine
+Kante ist eine Verwendungsstelle, kein Ding. Gemessen trugen beide Spalten dort **je 0 Zeilen**.
+[D-582](../../NewConcept/90-decision-log.md) und [D-586](../../NewConcept/90-decision-log.md) sind
+damit zurückgenommen.*
 
 ```text
-node_record  #40   node_id = Code-Editor
-   #40 · converter · → «keiner»      geerbt vom Basisknoten «Renderer»
-   #40 · sprache   · c#
-   #40 · theme     · dunkel
+nodes        «Integer»
+node_record  #2282  node_id = Integer, record_type = default
+   #2282 · renderer · → node_record #7978          die Wahl, an der Kante «renderer»
 
-relations    «vorname»  settings_record_id = #40
+node_record  #7978  node_id = slider               der Satz ist der gewaehlte Renderer
+   #7978 · converter · → «keiner»                  geerbt vom Basisknoten «Renderer»
 ```
+
+⚠️ *Eine Stufe und nicht zwei: der Teil hinter der Einstellungskante **ist** der gewählte Renderer,
+und seine `node_id` sagt, welcher ([D-583](../../NewConcept/90-decision-log.md)). Der Hüllknoten
+`DisplayOption` dazwischen ist gefallen ([D-604](../../NewConcept/90-decision-log.md)).*
 
 **Es gibt kein Überschreiben-Konstrukt, nur eine Reihenfolge:**
 
@@ -183,8 +196,8 @@ Felder **im** Behälter und Einstellungen direkt am Knoten bleiben Kanten.*
 | ~~`relation_type`~~ | **gestrichen** ([D-587](../../NewConcept/90-decision-log.md)) | war `composition` 23 · `setting` 11 · `aggregation` 5 |
 | `deletes_with_node` | **wird mit dem Knoten gelöscht** — Spalte, nicht Einstellung ([D-591](../../NewConcept/90-decision-log.md)); bei einem einfachen Typ immer an und nicht wählbar ([D-588](../../NewConcept/90-decision-log.md)) | aus `relation_type`: `composition` 48 und `setting` 11 → **1**, `aggregation` 6 → **0** |
 | `label_id` | → `labels.id`, **optional** — hier steht der Name | §3.4 |
-| `settings_record_id` | → `node_records.id`, optional — **der eigene Form-Renderer der Kante** | §3.6 |
-| `target_settings_record_id` | → `node_records.id`, optional — **überschreibt den Zielknoten** ([D-586](../../NewConcept/90-decision-log.md)) | §3.6 |
+| ~~`settings_record_id`~~ | **ersatzlos gestrichen** ([D-643](../../NewConcept/90-decision-log.md)) — eine Kante ist eine Verwendungsstelle und zeichnet nicht selbst | war **0** gefüllt, nie belegt |
+| ~~`target_settings_record_id`~~ | **ersatzlos gestrichen** ([D-643](../../NewConcept/90-decision-log.md)); [D-586](../../NewConcept/90-decision-log.md) ist damit zurückgenommen | war **0** gefüllt, nie belegt |
 | `sort_order` | Reihenfolge unter dem Elternknoten, **erste ist `0`** | war `position` |
 | `multiplicity` | | `1..1` 156 · `0..1` 5 · `1..*` 3 · `0..*` 2 |
 | ~~`hide`~~ | **gestrichen** ([D-590](../../NewConcept/90-decision-log.md)) — zieht als `nodes.hide` an den Knoten | war 6, alle auf Vererbungskanten |

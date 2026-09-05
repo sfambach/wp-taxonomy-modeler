@@ -1489,32 +1489,50 @@ werden. Sie sind entfernt; die Luecke im Waechter selbst ist es nicht.*
 
 ---
 
-[ ] TASK-057  Die Renderer-Einstellung zieht von der Spalte auf eine Kante 1..1 zurueck
+[x] TASK-057  Die Renderer-Einstellung zieht von der Spalte auf eine Kante 1..1 zurueck
+
+**Gebaut am 2026-09-05** auf sein Wort: *«settings an Knoten bitte wieder mit Settings-Relation,
+kannst du jetzt bauen.»*
 
 **2026-09-05, [D-642](../../NewConcept/90-decision-log.md).** *Er hat berichtigt, was ich aus
 [D-584](../../NewConcept/90-decision-log.md) gemacht hatte: «ich meinte einfach eine Multiplizitaet
 von 1» — **am Knoten**, an einer gewoehnlichen Einstellungskante. Nicht an einer Spalte.*
 
-**Was zurueckzubauen ist, gemessen:** *`nodes.settings_record_id` (29 Traegerzeilen),
-`relations.settings_record_id` und `relations.target_settings_record_id` (**je 0 Zeilen — sie waren
-nie belegt**), dazu die Schattenspalten. **17 Quelltextdateien** kennen die Spalte.*
+**Die Wanderung, gemessen vorher und nachher** ([`renderer-relation-migrate.php`](../../../scripts/dev/renderer-relation-migrate.php)):
 
-⚠️ **Die Wanderung ist keine Erfindung, sondern eine Umkehrung:** *jeder Traeger wird eine
-Einstellungskante `renderer` mit `1..1` auf den Renderer-Knoten, und der Satz haengt daran wie bei
-jeder anderen Einstellung. **Der Zielzustand ist der, den es vor TASK-020 gab** — nur mit der
-Mehrfachheit, die er gemeint hat.*
+| | vorher | nachher |
+|---|---|---|
+| Traeger am Knoten | 29 (Spalte) | 29 (Kante `renderer`, `1..1`) |
+| Traeger an Kanten | 0 | — die Spalten sind weg |
+| Knoten, die einen Renderer aufloesen | **59** von 139 | **59** von 139 |
+| Knoten, die etwas anderes zeichnen | — | **0** |
 
-⚠️ **Warum es nicht nur Kosmetik ist:** *die Sonderform hatte einen Sonderfehler. Als der
-Eigentuemer `DisplayOption` loeschte, fiel die Traegerkante — **der Leser kam ueber die Spalte
-weiter, der Schreiber in der Maske nicht**, und vier gruene Waechter merkten nichts (TASK-052).
-Dazu steht sie quer zu [D-621](../../NewConcept/90-decision-log.md) («die Kante sagt, was etwas
-hier ist») und zu [D-639](../../NewConcept/90-decision-log.md) (drei Kantenarten, drei Klassen).*
+⚠️ **Der Massstab war nicht die Zahl der Zeilen, sondern was jeder Knoten zeichnet.** *Vorher und
+nachher wurde je Knoten der Renderername ueber die echte Aufloesung abgenommen. Das Skript nimmt
+alles zurueck, wenn ein einziger abweicht; **es musste nicht.** Die Datensaetze wurden
+**weitergereicht** und nicht neu angelegt — zwei der 29 trugen eigene Wertzeilen (`Integer → slider`,
+`Base units → table`), ein neuer Satz haette sie verloren.*
 
-⚠️ **Offen ist nur der Zeitpunkt:** *jetzt oder mit dem Renderer-Umbau. Beruehrt 17 Dateien.*
+**Schemafassung 32:** *`nodes.settings_record_id`, `relations.settings_record_id`,
+`relations.target_settings_record_id` und ihre beiden Schatten sind gefallen. An der Kante ersatzlos
+([D-643](../../NewConcept/90-decision-log.md)) — je 0 Zeilen —, und `SettingKey::applyingTo(…,
+isRelation: true)` bietet den Schluessel dort nicht mehr an.*
 
-⚠️ **Auf sein Wort vertagt (2026-09-05): «nicht gleich bauen».** *Die Aufgabe steht, der Zeitpunkt
-ist offen. **Bis dahin bleibt die Spalte in Betrieb** — sie ist gemessen tragfaehig (29 Traeger,
-`renderer-choice-mask-check` gruen), sie ist nur nicht die Form, die er gemeint hat.*
+**Was dabei aufgefallen ist, und es war schon da:** *{@see DataEntry::chooseSettingRecord()} warf den
+alten Teil weg und **liess den Verweis auf ihn stehen** — die naechste Wahl legte eine zweite Zeile
+daneben. Gemessen **drei Zeilen an einer Kante mit `1..1`** nach drei Wahlen, und die Aufloesung nahm
+die aelteste. **Die Spalte hatte den Fehler zugedeckt**, weil sie eine Zahl haelt und keine Zeilen.
+Behoben, mit einem Kerntest und einer Zusage in `setting-write-check.php`.*
+
+**Waechter, die mitgezogen sind** (`PR-9`, keiner entschaerft):
+`renderer-choice-mask-check` (der einzige, der den Schreibweg des Benutzers geht — **gruen**),
+`rename-survives-check`, `settings-record-column-check` → **umbenannt** zu
+`settings-record-carrier-check`, `renderer-choice-check`, `setting-write-check`,
+`multiplicity-check`, `edge-class-check`. *`settings-record-column-migrate.php` ist zurueckgezogen —
+sie war die Wanderung in die Gegenrichtung.*
+
+⚠️ **Offen geblieben und im Eingang:** *`INF-042` — dass die Renderer-Wahl in einem eigenen Block
+steht und nicht in der Wertspalte ihrer eigenen Zeile.*
 
 ---
 

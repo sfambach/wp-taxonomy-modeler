@@ -1139,3 +1139,36 @@ den Namen **behalten** — als eingefrorene Geschichte, wie `changelog` es tut
 ⚠️ **Was nicht der Grund ist:** *`INF-003` — sein Vorschlag, Beschriftungen als Kanten-Datensätze zu
 führen — ist hier nicht angerührt und nicht vorweggenommen. **Er denkt darüber nach**, und der Umbau
 von heute steht ihm nicht im Weg: er hat der Tabelle eine Spalte gegeben, keine Struktur festgezurrt.*
+
+---
+
+## INF-042 · Wo die Renderer-Wahl auf Dauer hingehört
+
+**2026-09-05, aufgefallen beim Bauen von TASK-057** ([D-642](../../NewConcept/90-decision-log.md)).
+*Nicht entschieden, nicht erfunden (`PR-4`).*
+
+**Der Renderer hat jetzt eine Kante wie jede andere Einstellung, und seine Zeile steht im
+Einstellungsblock.** *Sie zeigt dort die Felder **des gewählten** Renderers — `converter` —, aber
+**keinen Wähler dafür, welcher es ist**. Der Wähler steht weiterhin in einem eigenen Block darunter.*
+
+⚠️ **Warum die Zeile ihren eigenen Wähler nicht zeichnen kann, und das ist gemessen:** *ein Wähler
+entsteht in der Wertspalte aus den **unmarkierten** Kindern des Kantenziels
+([D-540](../../NewConcept/90-decision-log.md)). **Alle neunzehn Knoten unter `Renderer` tragen
+`field_type = setting`**, sind also markiert — die Auswahl sieht durch jeden hindurch und bietet null
+Möglichkeiten an. **Die Möglichkeiten des Renderers stehen nicht im Modell, sondern in der
+Registratur** (`R14a`), und dorthin greift nur der Weg über den Schlüssel.*
+
+⚠️ **Es sind heute keine zwei Steuerelemente für dieselbe Angabe** (`R1`): *der Block bedient die
+Wahl, die Zeile bedient die Felder des Gewählten. **Aber es sind zwei Orte für eine Sache**, und das
+ist keine Ruhelage.*
+
+**Die Frage an den Eigentümer, und es sind drei mögliche Antworten:**
+
+1. **Die Renderer-Knoten hören auf, markiert zu sein** — dann zeichnet die Wertspalte den Wähler von
+   selbst, und der eigene Block fällt weg. *Berührt `field_type` an neunzehn Knoten.*
+2. **Die Wertspalte lernt, ihre Möglichkeiten aus der Registratur zu holen**, wenn das Kantenziel
+   `Renderer` ist. *Eine Sonderregel für einen Knoten — genau das, was `CD` verbietet.*
+3. **Es bleibt, wie es ist** — ein eigener Block für die eine Angabe, deren Möglichkeiten nicht im
+   Modell stehen. *Ehrlich, aber der Block braucht dann eine Erklärung, die nicht «Rest» heisst.*
+
+⚠️ *Zusammen mit `INF-019` zu lesen: was «kein Renderer» heissen soll, ist ebenfalls offen.*

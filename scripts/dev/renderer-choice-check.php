@@ -40,6 +40,7 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
@@ -135,20 +136,24 @@ foreach (['Base units', 'Passiv', 'Integer', 'Dimension', 'Prefixes', 'Parts Lis
         $erwartet[$name] = null;
 
         continue;
-    }
 
+    }
     // Der gespeicherte Renderer, unabhängig von der Registratur gelesen.
-    // ⚠️ **Seit TASK-020 steht der Halter in der Spalte** ([D-584](../../docs/NewConcept/90-decision-log.md)):
-    // *`Knoten.settings_record_id → Satz`, und die `node_id` des Satzes ist der Renderer. Der Weg
-    // über die Trägerkante `render` ist damit weg — und ihn hier stehenzulassen hiesse, die Prüfung
-    // gegen einen vergangenen Zielzustand zu halten (`PR-9`).*
+    // ⚠️ **Diese Abfrage ist mit TASK-057 auf die Kante zurueckgezogen**
+    // ([D-642](../../docs/NewConcept/90-decision-log.md)): *`Knoten → default-Satz → Wertzeile an
+    // der Einstellungskante `renderer` → Satz`, und die `node_id` dieses Satzes ist der Renderer.
+    // Der Umweg ueber `nodes.settings_record_id` ist gefallen — er war die Form, die ich aus seinem
+    // Satz gemacht hatte, nicht die, die er gemeint hat.*
     $erwartet[$name] = $wpdb->get_var($wpdb->prepare(
         'SELECT ziel.name
-           FROM ' . Schema::table('nodes') . ' k
-           JOIN ' . Schema::table('node_records') . ' satz ON satz.id = k.settings_record_id
-           JOIN ' . Schema::table('nodes') . ' ziel ON ziel.id = satz.node_id
-          WHERE k.id = %d
-          LIMIT 1',
+           FROM ' . Schema::table('node_records') . ' halter
+           JOIN ' . Schema::table('relation_records') . " wert ON wert.node_record_id = halter.id
+                AND wert.relation_id = %d AND wert.value_ref_kind = 'record'
+           JOIN " . Schema::table('node_records') . ' satz ON satz.id = wert.value_ref
+           JOIN ' . Schema::table('nodes') . " ziel ON ziel.id = satz.node_id
+          WHERE halter.node_id = %d AND halter.record_type = 'default'
+          LIMIT 1",
+        $framework->settingRelationId(SettingKey::Renderer),
         $k->id
     ));
 }
@@ -305,10 +310,17 @@ $mitNamen = 0;
 $daneben  = [];
 
 foreach ($wpdb->get_results(
-    // ⚠️ **Die Kandidaten sind seit TASK-020 die Knoten mit gefüllter Spalte.** *Vorher wurden sie
-    // über Wertzeilen mit Verweis gesucht — der Halter war eine Wertzeile. **Jetzt ist er eine
-    // Spalte**, und die alte Suche fand darum null Knoten mit Renderer, obwohl 28 einen haben.*
-    'SELECT id AS node_id FROM ' . Schema::table('nodes') . ' WHERE settings_record_id IS NOT NULL',
+    // ⚠️ **Die Kandidaten sind seit TASK-057 wieder die Knoten mit einer Wertzeile an der
+    // Einstellungskante `renderer`** ([D-642](../../docs/NewConcept/90-decision-log.md)). *Sie waren
+    // es schon einmal; TASK-020 hatte sie auf «gefuellte Spalte» umgestellt, und die Spalte ist
+    // gefallen. **Der Traeger ist wieder eine Wertzeile, weil er das immer sein sollte.***
+    $wpdb->prepare(
+        'SELECT DISTINCT halter.node_id
+           FROM ' . Schema::table('node_records') . ' halter
+           JOIN ' . Schema::table('relation_records') . " wert ON wert.node_record_id = halter.id
+          WHERE wert.relation_id = %d AND wert.value_ref_kind = 'record'",
+        $framework->settingRelationId(SettingKey::Renderer)
+    ),
     ARRAY_A
 ) ?: [] as $z) {
     $node = $nodes->find((int) $z['node_id']);
@@ -358,7 +370,7 @@ check('die Zeichnung traegt das Merkmal des gesetzten Renderers', $daneben === [
 //
 // Die schaerfere Frage ist die, auf die es ankommt: **loest jede Spalte zu einem Renderer
 // auf?** Faellt eine Wahl bei einem Umzug weg, faellt diese Zahl sofort.
-check('jede gefuellte Spalte loest zu einem Renderer auf', $mitNamen >= 20, (string) $mitNamen . ' von 28');
+check('jeder Traeger an der Kante loest zu einem Renderer auf', $mitNamen >= 20, (string) $mitNamen . ' von 28');
 
 check('und mindestens eine Zeichnung war darunter', $geprueft >= 1, (string) $geprueft);
 

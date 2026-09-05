@@ -40,7 +40,10 @@ final class InMemoryRecords implements RecordRepository
     {
         $id = ++$this->lastId;
 
-        $this->records[$id]        = new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt);
+        // ⚠️ **Die Art muss mit, sonst ist jeder Satz hier ein Benutzersatz** (TASK-057). *Der Fake
+        // liess sie fallen, und niemand merkte es: solange der Renderer in einer **Spalte** stand,
+        // fragte kein Kerntest nach dem `default`-Satz eines Knotens. Die Kantenform tut es.*
+        $this->records[$id]        = new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt, $record->recordType);
         $this->recordVersions[$id] = 1;
 
         return $id;

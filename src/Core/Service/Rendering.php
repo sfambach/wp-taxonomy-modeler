@@ -593,6 +593,8 @@ final class Rendering
             // Möglichkeiten längst als Kinder im Modell stehen.*
             $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef;
 
+            $gewaehlt = $values[$relation->id] ?? null;
+
             // ⚠️ **Die Wahl wird gebaut und nicht stückweise ausgerechnet** ({@see Choice}). *Der
             // Eigentümer hat den Grund benannt: «von der Multiplizität zum Choice ist ein Weg … und es
             // kann sein, dass du den mehrfach erfindest». **Gemessen stand der Weg viermal**, und ein
@@ -600,7 +602,7 @@ final class Rendering
             $dieWahl = Choice::atUseSite(
                 $relation->multiplicity,
                 $istWahl ? ($wahl[$relation->id] ?? []) : [],
-                $values[$relation->id] ?? null,
+                $gewaehlt,
                 $editable
             );
 
@@ -617,7 +619,7 @@ final class Rendering
             // alle Zeilen (`CD-7`). Löst er **nicht** auf, hängt der Verweis ins Leere, und dann wird kein
             // Eintrag erfunden: [D-363](../../../docs/NewConcept/90-decision-log.md) will einen
             // markierten Fehler sehen und nicht eine Id, die wie ein Name aussieht.*
-            $verweis = ($values[$relation->id] ?? null)?->reference;
+            $verweis = $gewaehlt?->reference;
 
             if ($istWahl && $verweis !== null && isset($names[$relation->id])) {
                 $dieWahl = $dieWahl->including($verweis, $names[$relation->id]);
@@ -637,8 +639,12 @@ final class Rendering
             // ⚠️ **Ein Angebot, kein Zaun** ([D-360](../../../docs/NewConcept/90-decision-log.md)): *was
             // schon gespeichert ist, bleibt stehen, auch wenn es heute nicht mehr angeboten würde —
             // sonst verschwände eine Wahl, die jemand bewusst getroffen hat.*
-            if ($angebot !== [] && $forNode !== 0 && $relation->id === $this->framework->settingValueRelationId(SettingKey::Renderer)) {
-                $angebot = $this->onlyUsableRenderers($angebot, $forNode, $values[$relation->id] ?? null);
+            // ⚠️ **Die Kante selbst und nicht mehr eine Wertkante darin** (TASK-057,
+            // [D-642](../../../docs/NewConcept/90-decision-log.md)): *der Renderer hängt an einer
+            // gewöhnlichen Einstellungskante `1..1`, und die innere Kante, die den Hüllknoten
+            // durchstieg, ist mit ihm gefallen.*
+            if ($angebot !== [] && $forNode !== 0 && $relation->id === $this->framework->settingRelationId(SettingKey::Renderer)) {
+                $angebot = $this->onlyUsableRenderers($angebot, $forNode, $gewaehlt);
             }
 
             // ⚠️ **Eine Auswahl bleibt eine Auswahl, auch wenn nichts zu wählen ist** —
@@ -678,7 +684,7 @@ final class Rendering
                 $renderer = $this->renderers->fallback();
             }
 
-            $value = $values[$relation->id] ?? TypedValue::nothing();
+            $value = $gewaehlt ?? TypedValue::nothing();
 
             $context = new RenderContext(
                 purpose: $purpose,

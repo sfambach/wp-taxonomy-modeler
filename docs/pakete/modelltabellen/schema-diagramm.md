@@ -12,7 +12,6 @@ erDiagram
         int  sort_order     "Stelle unter dem Vater"
         enum field_type     "model | setting"
         int  label_id       FK "verpflichtend"
-        int  settings_record_id FK "auf node_records — optional"
         text php_klasse
         bool hide "D-590: nur im Baum verstecken"
     }
@@ -24,8 +23,6 @@ erDiagram
         int  to_node_id   FK
         bool deletes_with_node "D-591: aus relation_type abgebildet"
         int  label_id      FK "optional"
-        int  settings_record_id FK "der eigene Form-Renderer der Kante"
-        int  target_settings_record_id FK "ueberschreibt den Zielknoten"
         int  sort_order    "je Knoten und Kantenart, erste ist 0"
         text multiplicity  "1..1 | 0..1 | 1..* | 0..*"
     }
@@ -77,9 +74,6 @@ erDiagram
     labels           ||--o{ label_texts      : "label_id"
     node_records     ||--o{ relation_records : "node_record_id"
     relations        ||--o{ relation_records : "relation_id"
-    node_records     ||--o| nodes            : "settings_record_id"
-    node_records     ||--o| relations        : "settings_record_id"
-    node_records     ||--o| relations        : "target_settings_record_id"
     node_records     ||--o{ relation_records : "value_node_record_id"
     nodes            ||--o{ relation_records : "value_node_id"
 ```
@@ -97,11 +91,14 @@ node_record_id · relation_id · sort_order      Reihenfolge der Werte in einem 
 
 ## Was seit dem 2026-09-02 beantwortet ist
 
-**Ob `settings_record_id` ein zweiter Mechanismus ist** — nein. *Der Verdacht kam daher, dass
-[D-529](../../NewConcept/90-decision-log.md) sagt «eine Einstellung ist ein Feld, also eine Kante».
-**Mit genau einem Renderer je Knoten und Kante** ([D-584](../../NewConcept/90-decision-log.md)) ist
-ein einzelner Zeiger auf einen einzelnen Datensatz genau richtig, und dessen `node_id` sagt schon,
-welcher Renderer es ist.*
+**Ob `settings_record_id` ein zweiter Mechanismus ist** — ⚠️ **doch, und die Antwort von damals ist
+am 2026-09-05 zurückgenommen.** *Der Verdacht kam daher, dass
+[D-529](../../NewConcept/90-decision-log.md) sagt «eine Einstellung ist ein Feld, also eine Kante»,
+und **er war richtig.** Ich hatte aus «genau ein Renderer» ([D-584](../../NewConcept/90-decision-log.md))
+geschlossen, ein einzelner Zeiger sei genau richtig; der Eigentümer hat berichtigt: «das hast du
+leider falsch verstanden, ich meinte einfach eine Multiplizität von 1» — **am Knoten, an einer
+gewöhnlichen Kante** ([D-642](../../NewConcept/90-decision-log.md)). **Die drei Spalten sind mit
+Schemafassung 32 gefallen**, an der Kante ersatzlos ([D-643](../../NewConcept/90-decision-log.md)).*
 
 **Wo der Konverter hängt** — am Basisknoten `Renderer`, vererbt an alle 18
 ([D-585](../../NewConcept/90-decision-log.md)). *Der Hüllknoten `DisplayOption` entfällt: er sah

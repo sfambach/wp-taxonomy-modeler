@@ -139,21 +139,4 @@ interface RelationRepository
      * einer Kante eine aufgeschriebene Angabe, und dann muss man von ihr aus auch zurückkommen.*
      */
     public function byId(int $relationId): ?Relation;
-
-    /**
-     * Die beiden Einstellungszeiger dieser Kanten ([D-586](../../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ **Zwei, und beide werden gleichzeitig gebraucht:** *«den brauchen wir, um zu sagen: Kante ist
-     * Form-Renderer, und darin werden in den Feldern die eigenen Renderer verwendet».*
-     * `settings_record_id` trägt den Renderer der Kante selbst, `target_settings_record_id` die
-     * Überschreibungen am Zielknoten.
-     *
-     * @param  list<int>                               $relationIds
-     * @return array<int, array{own: int, target: int}> Kanten-Id => beide Zeiger; `0` heisst «hier
-     *                                                  nichts gesagt».
-     */
-    public function settingsRecordIdsOfRelations(array $relationIds): array;
-
-    /** Den eigenen Einstellungszeiger dieser Kante setzen; `0` nimmt ihn weg. */
-    public function rememberSettingsRecord(int $relationId, int $recordId): void;
 }

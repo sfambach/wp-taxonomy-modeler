@@ -187,34 +187,4 @@ final class InMemoryRelations implements RelationRepository
 
         return $found;
     }
-
-    /** @var array<int,int> Kanten-Id => Satz-Id */
-    private array $settingsRecords = [];
-
-    public function settingsRecordIdsOfRelations(array $relationIds): array
-    {
-        $aus = [];
-
-        foreach ($relationIds as $id) {
-            if (isset($this->rows[(int) $id])) {
-                $aus[(int) $id] = [
-                    'own'    => $this->settingsRecords[(int) $id] ?? 0,
-                    'target' => 0,
-                ];
-            }
-        }
-
-        return $aus;
-    }
-
-    public function rememberSettingsRecord(int $relationId, int $recordId): void
-    {
-        if ($recordId === 0) {
-            unset($this->settingsRecords[$relationId]);
-
-            return;
-        }
-
-        $this->settingsRecords[$relationId] = $recordId;
-    }
 }

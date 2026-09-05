@@ -1832,7 +1832,87 @@ final class NodesScreen
             }
         }
 
-        return $html;
+        return $html . $this->rendererPanel($selected);
+    }
+
+    /**
+     * Der Wähler für den Renderer des Knotens — die eine Einstellung, die ihre eigene Zeile nicht
+     * bedienen kann.
+     *
+     * ⚠️ **Seit TASK-057 hat der Renderer eine Kante wie jede andere Einstellung**
+     * ([D-642](../../../docs/NewConcept/90-decision-log.md)), *und seine Zeile steht im
+     * Einstellungsblock. **Sie zeigt dort die Felder des gewählten Renderers — `converter` —, aber
+     * keinen Wähler dafür, welcher es ist.***
+     *
+     * ⚠️ **Warum ihre Wertspalte das nicht kann, und es ist gemessen:** *ein Wähler entsteht dort aus
+     * den **unmarkierten** Kindern des Kantenziels ([D-540](../../../docs/NewConcept/90-decision-log.md)).
+     * **Alle neunzehn Knoten unter `Renderer` tragen `field_type = setting`**, sind also markiert — die
+     * Auswahl sieht durch jeden einzelnen hindurch und bietet null Möglichkeiten an. Die Möglichkeiten
+     * des Renderers stehen nicht im Modell, sondern in der **Registratur** (`R14a`), und dorthin
+     * greift nur {@see Rendering::settingsFor()}.*
+     *
+     * ⚠️ **Es ist deshalb kein zweites Steuerelement für dieselbe Angabe** (`R1`): *die Zeile im
+     * Einstellungsblock bedient die Felder **des gewählten** Renderers, dieser Wähler bedient die
+     * Wahl selbst. **Dass beides an zwei Orten steht, ist trotzdem nicht der Endzustand** und liegt
+     * als `INF-042` im Eingang (`PR-4`).*
+     *
+     * ⚠️ *Geschrieben wird über die Kante und nicht mehr in eine Spalte* — {@see self::saveRendererChoice()}.
+     */
+    private function rendererPanel(Node $selected): string
+    {
+        $body = '';
+
+        foreach ($this->rendererChoiceRows($selected) as $drawn) {
+            if ($drawn->result === null) {
+                continue;
+            }
+
+            $body .= '<tr><td>' . esc_html($drawn->key) . '</td>'
+                . '<td>' . $drawn->result->markup . '</td></tr>';
+        }
+
+        if ($body === '') {
+            return '';
+        }
+
+        return $this->heading(
+            __('Renderer', 'taxmod'),
+            __('Which renderer draws this node. It is saved with the page like everything else.', 'taxmod')
+        ) . '<table class="wp-list-table widefat striped"><tbody>' . $body . '</tbody></table>';
+    }
+
+    /**
+     * Dieselbe Auswahl für den Zeichner und für den Schreiber — **eine** Stelle sagt, was angeboten wird.
+     *
+     * ⚠️ *Zwei Listen wären zwei Gelegenheiten, verschieden zu antworten: ein Steuerelement, das
+     * gezeichnet, aber nicht angenommen wird, ist genau der Mangel, den TASK-052 behoben hat.*
+     *
+     * @return list<RenderedSetting>
+     */
+    private function rendererChoiceRows(Node $selected): array
+    {
+        $aus = [];
+
+        foreach ($this->rendering->settingsFor(
+            $selected,
+            $this->rendering->settingsForNode($selected),
+            Purpose::Edit,
+            self::SETTING_FIELD,
+            '',
+            Level::Settings,
+            [],
+            self::pageForm($selected)
+        ) as $drawn) {
+            // ⚠️ *Nur der Renderer. Jede andere Angabe hat eine Zeile im Einstellungsblock, die ihren
+            // Wert auch **annimmt**; hier ein zweites Steuerelement dafür zu zeichnen wäre `R1`.*
+            if ($drawn->key !== SettingKey::Renderer->value) {
+                continue;
+            }
+
+            $aus[] = $drawn;
+        }
+
+        return $aus;
     }
 
     /**
@@ -3349,6 +3429,18 @@ final class NodesScreen
             }
         }
 
+        // ⚠️ **Der Weg vom Wähler bis in die Kante** (TASK-052, TASK-057). *Adressiert wird über den
+        // **Schlüssel** und nicht über eine Kanten-Id — {@see self::rendererPanel()} zeichnet ihn so,
+        // weil seine Möglichkeiten aus der Registratur kommen und nicht aus dem Modell.
+        // **{@see self::saveSettingValues()} kann das nicht**: es schlüsselt über `fieldsOf()`, also
+        // über Kanten, und übergeht einen Schlüssel ohne Kanten-Id mit `continue`.*
+        //
+        // ⚠️ *Nur an einem Knoten. An einer Verwendungsstelle gibt es den Renderer nicht mehr
+        // ([D-643](../../../docs/NewConcept/90-decision-log.md)).*
+        if ($relationId === 0) {
+            $this->saveRendererChoice($nodeId);
+        }
+
         // ⚠️ **Hier stand der Schreiber der `settings`-Tabelle**, der jeden geaenderten Wert der
         // Tafel in eine Zeile schrieb. *Die Tabelle ist mit [D-579](../../../docs/NewConcept/90-decision-log.md)
         // gestrichen. **Der Schreiber war schon vorher wirkungslos**: seit
@@ -3356,6 +3448,70 @@ final class NodesScreen
         // aus Datensaetzen und **gewinnt** — der Eigentuemer hat es an der Oberflaeche gesehen («den
         // Render kann ich noch nicht setzen»), und `setting-write-check.php` bewacht seither, dass
         // geschrieben wird, wo gelesen wird. **Was hier fiel, war ein Schreiber ohne Leser.***
+    }
+
+    /**
+     * Die eingereichte Renderer-Wahl festschreiben.
+     *
+     * ⚠️ **Das Gegenstück zum Zeichner** ({@see self::rendererPanel()}). *Erlaubt ist genau, was dort
+     * gezeichnet wurde: die Liste kommt aus derselben Methode, damit ein verändertes Formular keinen
+     * Schlüssel unterschieben kann, den niemand angeboten hat (`CD-5`).*
+     *
+     * ⚠️ **Der Knoten sagt selbst, welcher Renderer er ist** (TASK-008, TASK-009). *Hier stand einmal
+     * `get_option('taxmod_render_renderer_' . $name . '_id')` — eine Bindung zwischen Modell und Kode
+     * **ausserhalb** des Modells, gegen `AR-1`. **Steht nichts da, wird nichts geschrieben** statt
+     * geraten (`PR-4`).*
+     *
+     * ⚠️ **Und geschrieben wird über die Kante** (TASK-057, [D-642](../../../docs/NewConcept/90-decision-log.md)):
+     * *{@see \Taxmod\Core\Service\DataEntry::putSettingValue()} legt den Datensatz an die
+     * Einstellungskante `renderer`, wie bei jeder anderen Einstellung. **Der Zeiger in
+     * `nodes.settings_record_id` ist mit dieser Aufgabe gefallen.***
+     *
+     * ⚠️ *Ein leerer Wert schreibt nichts: die Auswahl des Renderers hat keine leere Wahl, ein leeres
+     * Feld kann also nur von einem gesperrten oder veränderten Formular kommen. **Was «keinen
+     * Renderer» heissen soll, ist nicht entschieden** und steht als `INF-019` im Eingang.*
+     */
+    private function saveRendererChoice(int $nodeId): void
+    {
+        $eingereicht = isset($_POST[self::SETTING_FIELD]) && is_array($_POST[self::SETTING_FIELD])
+            ? wp_unslash($_POST[self::SETTING_FIELD])
+            : [];
+
+        if ($eingereicht === []) {
+            return;
+        }
+
+        $node = $this->editor->find($nodeId);
+
+        if ($node === null) {
+            return;
+        }
+
+        foreach ($this->rendererChoiceRows($node) as $drawn) {
+            if (! array_key_exists($drawn->key, $eingereicht) || is_array($eingereicht[$drawn->key])) {
+                continue;
+            }
+
+            $gewaehlt = sanitize_text_field((string) $eingereicht[$drawn->key]);
+
+            if ($gewaehlt === '') {
+                continue;
+            }
+
+            $klasse = $this->rendering->rendererClassFor($gewaehlt);
+
+            $rendererId = $klasse === null
+                ? 0
+                : ($this->editor->nodeImplementing($klasse)?->id ?? 0);
+
+            if ($rendererId === 0) {
+                continue;
+            }
+
+            // ⚠️ *Der Kernweg, und er ist von sich aus still, wenn nichts anders ist — ein Speichern
+            // ohne Änderung landet also nicht als Eintrag im Änderungsbuch.*
+            $this->data->putSettingValue($nodeId, SettingKey::Renderer, TypedValue::ofReference($rendererId));
+        }
     }
 
     /**

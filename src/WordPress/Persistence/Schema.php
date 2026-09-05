@@ -333,8 +333,14 @@ final class Schema
      * ⚠️ *Was hier ausdrücklich **nicht** geschieht: die Teilung in `labels` und `label_texts` und der
      * Umzug von `name` ([D-580](../../../docs/NewConcept/90-decision-log.md), TASK-019). Die beiden
      * sind ein Stück und stehen weiter offen — siehe `INF-040` im Eingang.*
+     *
+     * ⚠️ **Fassung 32 nimmt die drei Spalten aus TASK-020 wieder weg** (TASK-057,
+     * [D-642](../../../docs/NewConcept/90-decision-log.md), [D-643](../../../docs/NewConcept/90-decision-log.md)).
+     * *`nodes.settings_record_id`, `relations.settings_record_id`, `relations.target_settings_record_id`
+     * und ihre beiden Schatten. **Am Knoten wandern 29 Träger auf eine Einstellungskante `1..1`; an
+     * der Kante fällt der Renderer ersatzlos**, weil beide Spalten dort je 0 Zeilen hatten.*
      */
-    public const VERSION = 31;
+    public const VERSION = 32;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -534,6 +540,10 @@ final class Schema
         // und nach {@see self::moveInheritanceOntoTheNode()}, weil erst danach feststeht, welche
         // Kanten es überhaupt noch gibt (Fassung 31, `INF-035`).
         self::nameTheLabelSpace();
+
+        // ⚠️ **Nach `dbDelta` und aus demselben Grund wie {@see self::moveParkingIntoTheShadow()}:**
+        // *`dbDelta` legt eine fehlende Spalte wieder an, es entfernt keine (Fassung 32, TASK-057).*
+        self::dropSettingsRecordColumns();
 
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
@@ -760,6 +770,79 @@ final class Schema
 
         $wpdb->query("ALTER TABLE {$relations} DROP COLUMN parked_by_group_id");
 
+        Shadow::forgetColumnPlan();
+    }
+
+    /**
+     * Die drei Spalten aus TASK-020 fallen — am Knoten, an der Kante, und in beiden Schatten.
+     *
+     * ⚠️ **Sie waren nie die Form, die der Eigentümer gemeint hat** ([D-642](../../../docs/NewConcept/90-decision-log.md)).
+     * *«das hast du leider falsch verstanden, ich meinte einfach eine Multiplizität von 1» — **am
+     * Knoten**, an einer gewöhnlichen Einstellungskante. Der Renderer hängt seit TASK-057 dort, und
+     * die 29 Träger sind über [`renderer-relation-migrate.php`](../../../scripts/dev/renderer-relation-migrate.php)
+     * gewandert.*
+     *
+     * ⚠️ **An der Kante fällt der Renderer ersatzlos** ([D-643](../../../docs/NewConcept/90-decision-log.md)):
+     * *`relations.settings_record_id` und `relations.target_settings_record_id` hatten **je 0
+     * Zeilen** — nie belegt, seit es sie gab. Eine Kante ist eine Verwendungsstelle und zeichnet
+     * nicht selbst.*
+     *
+     * ⚠️ **Die Schattenspalten gehen mit, und das ist kein Datenverlust an der Geschichte, sondern
+     * die Bedingung dafür, dass sie weiter funktioniert:** *{@see Shadow::keep()} kopiert nach dem
+     * Spaltenplan der lebenden Tabelle. Bliebe die Spalte nur im Schatten stehen, fehlte ihr jeder
+     * Schreiber — und `NOT NULL` ist sie nicht, also stünde dort auf Dauer eine Spalte voll `NULL`.*
+     *
+     * ⚠️ **Wer noch eine gefüllte Spalte findet, hält an**, statt sie wegzuwerfen: *eine Installation,
+     * die die Wanderung nicht gelaufen hat, verlöre hier still ihre 29 Renderer-Wahlen. Der Abbruch
+     * ist die einzige Stelle, an der das noch auffallen kann.*
+     */
+    private static function dropSettingsRecordColumns(): void
+    {
+        global $wpdb;
+
+        $offen = 0;
+
+        foreach ([['nodes', ['settings_record_id']], ['relations', ['settings_record_id', 'target_settings_record_id']]] as [$tabelle, $spalten]) {
+            $name = self::table($tabelle);
+
+            foreach ($spalten as $spalte) {
+                if ($wpdb->get_var("SHOW COLUMNS FROM {$name} LIKE '{$spalte}'") === null) {
+                    continue;
+                }
+
+                $offen += (int) $wpdb->get_var("SELECT COUNT(*) FROM {$name} WHERE {$spalte} IS NOT NULL");
+            }
+        }
+
+        if ($offen > 0) {
+            // ⚠️ *Still umkehren und nicht werfen: eine Aktivierung darf nicht mit einem Fatal enden.
+            // Der Wächter `settings-record-column-check.php` meldet denselben Befund laut.*
+            return;
+        }
+
+        foreach ([
+            ['nodes', ['settings_record_id']],
+            ['nodes_history', ['settings_record_id']],
+            ['relations', ['settings_record_id', 'target_settings_record_id']],
+            ['relations_history', ['settings_record_id', 'target_settings_record_id']],
+        ] as [$tabelle, $spalten]) {
+            $name = self::table($tabelle);
+
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $name)) !== $name) {
+                continue;
+            }
+
+            foreach ($spalten as $spalte) {
+                if ($wpdb->get_var("SHOW COLUMNS FROM {$name} LIKE '{$spalte}'") === null) {
+                    continue;
+                }
+
+                $wpdb->query("ALTER TABLE {$name} DROP COLUMN {$spalte}");
+            }
+        }
+
+        // ⚠️ *Der Spaltenplan von {@see Shadow} ist je Tabelle gemerkt — sonst kopierte der nächste
+        // Aufruf eine Spalte, die es nicht mehr gibt.*
         Shadow::forgetColumnPlan();
     }
 
@@ -2053,7 +2136,6 @@ final class Schema
                 path varchar(255) NOT NULL,
                 field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
-                settings_record_id bigint(20) unsigned DEFAULT NULL,
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
@@ -2061,7 +2143,6 @@ final class Schema
                 KEY path (path),
                 KEY name (name),
                 KEY implemented_by (implemented_by),
-                KEY settings_record_id (settings_record_id),
                 UNIQUE KEY one_place (parent_node_id,sort_order)
             ) {$charset};",
 
@@ -2081,13 +2162,9 @@ final class Schema
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
-                settings_record_id bigint(20) unsigned DEFAULT NULL,
-                target_settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 UNIQUE KEY one_place (from_node_id,kind,sort_order),
-                KEY to_node_id (to_node_id),
-                KEY settings_record_id (settings_record_id),
-                KEY target_settings_record_id (target_settings_record_id)
+                KEY to_node_id (to_node_id)
             ) {$charset};",
 
             // ⚠️ *Hier stand `settings` samt der Begruendung ihrer `path`-Spalte. **Die Tabelle ist mit
@@ -2197,7 +2274,6 @@ final class Schema
                 path varchar(255) NOT NULL,
                 field_type varchar(20) DEFAULT NULL,
                 implemented_by varchar(191) DEFAULT NULL,
-                settings_record_id bigint(20) unsigned DEFAULT NULL,
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
@@ -2218,8 +2294,6 @@ final class Schema
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
-                settings_record_id bigint(20) unsigned DEFAULT NULL,
-                target_settings_record_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

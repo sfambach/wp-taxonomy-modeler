@@ -124,31 +124,53 @@ register_shutdown_function(static function () use (&$meineKnoten, &$meineSaetze)
     }
 });
 
-echo "\n== Der Renderer haengt an der Spalte, nicht an einem Kantenpaar ==\n";
 
-// WICHTIG: Hier stand «die Saat hat die zwei Kanten aufgeschrieben», und die zwei Kanten gibt es
-// nicht mehr. Das ist eine sichtbare Aenderung dieser Zusage (PR-9), und sie ist die Umschrift des
-// ganzen Waechters auf die heutige Form.
+/**
+ * Der Einstellungsdatensatz, der an der Kante `renderer` dieses Knotens haengt — oder `0`.
+ *
+ * ⚠️ **Eine Stelle statt sechs** (TASK-057). *Vorher stand hier sechsmal
+ * `SELECT settings_record_id FROM nodes`; die Spalte ist gefallen
+ * ([D-642](../../docs/NewConcept/90-decision-log.md)), und die Kantenform ist zu lang, um sie
+ * sechsmal hinzuschreiben. **Sechs Abschriften einer Adresse sind sechs Gelegenheiten, sie
+ * verschieden zu schreiben.***
+ */
+function traegersatz(int $knotenId): int
+{
+    global $wpdb, $framework;
+
+    return (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT v.value_ref FROM ' . Schema::table('node_records') . ' r
+           INNER JOIN ' . Schema::table('relation_records') . " v ON v.node_record_id = r.id
+          WHERE r.node_id = %d AND r.record_type = 'default'
+            AND v.relation_id = %d AND v.value_ref_kind = 'record'
+          LIMIT 1",
+        $knotenId,
+        $framework->settingRelationId(SettingKey::Renderer)
+    ));
+}
+echo "\n== Der Renderer haengt an der Spalte, nicht an einem Kantenpaar ==\n";
+// ⚠️ **Diese Zusage ist zweimal umgezogen, und der zweite Umzug nimmt den ersten zurueck.**
 //
-// ⚠️ **D-584, sein Wort:** *«eine Kante und ein Knoten haben genau einen Renderer.»* Und die Folge,
-// die er selbst zieht: *«`settings_record_id` hoert auf, ein zweiter Mechanismus zu sein -- bei
-// genau einem Renderer ist ein einzelner Zeiger auf einen einzelnen Datensatz genau richtig, und
-// **dessen `node_id` sagt schon, welcher Renderer es ist**.»*
+// ⚠️ *Sie hiess einmal «die Saat hat die zwei Kanten aufgeschrieben». Dann fielen beide mit dem
+// Huellknoten `DisplayOption` ([D-604](../../docs/NewConcept/90-decision-log.md)), der Renderer zog
+// in `nodes.settings_record_id`, und sie hiess «die alte Traegerkante ist **nicht** mehr
+// aufgeschrieben».*
 //
-// ⚠️ **Und die alte Adresse ist nicht nur ueberholt, sie ist weg.** *Der Eigentuemer hat den
-// Huellknoten `DisplayOption` geloescht (D-604); die Kanten 44091 (`render`) und 44093 (Traeger)
-// sind mit ihm gefallen. Die zwei WordPress-Optionen, die ihre Ids hielten, zeigten seither auf
-// nichts -- **sie sind mit dieser Aenderung geloescht**, weil eine gemerkte Id, die es nicht mehr
-// gibt, schlimmer ist als keine: sie kann einer spaeteren Kante wieder gehoeren. `0` heisst
-// «nicht aufgeschrieben», und das ist die Wahrheit.*
+// ⚠️ **Mit TASK-057 fragt sie wieder nach der Kante** ([D-642](../../docs/NewConcept/90-decision-log.md)):
+// *«das hast du leider falsch verstanden, ich meinte einfach eine Multiplizitaet von 1» — **am
+// Knoten**. Aus «genau einer» hatte ich «also keine Kante» gemacht; **der Schluss war meiner.***
+//
+// ⚠️ *Die **innere** Wertkante bleibt bei `0`, und das ist keine Nachlaessigkeit: sie gehoerte dem
+// Huellknoten und ist mit ihm gefallen. Der Teil hinter der Einstellungskante **ist** jetzt der
+// gewaehlte Renderer — eine Stufe, nicht zwei.*
 check(
-    'die alte Traegerkante ist nicht mehr aufgeschrieben',
-    $framework->settingRelationId(SettingKey::Renderer) === 0,
+    'die Einstellungskante `renderer` ist aufgeschrieben',
+    $framework->settingRelationId(SettingKey::Renderer) !== 0,
     (string) $framework->settingRelationId(SettingKey::Renderer)
 );
 
 check(
-    'und die alte Wertkante auch nicht',
+    'und die innere Wertkante gibt es nicht mehr',
     $framework->settingValueRelationId(SettingKey::Renderer) === 0,
     (string) $framework->settingValueRelationId(SettingKey::Renderer)
 );
@@ -156,27 +178,36 @@ check(
 $rendererPfad = (string) $wpdb->get_var(
     'SELECT path FROM ' . Schema::table('nodes') . " WHERE name = 'Renderer' LIMIT 1"
 );
-
 // ⚠️ **Dieselbe Zusage wie frueher «jeder gespeicherte Renderer zeigt in den Renderer-Ast», nur an
 // der neuen Adresse.** *Sie ist am eigenen Fehler gelernt: es gibt zwei Knoten namens `form` -- die
 // Label-Rolle und den Renderer (D-022: Knotennamen sind absichtlich nicht eindeutig). Ein Wert, der
 // richtig heisst und falsch zeigt, ist schlimmer als ein leerer.*
-$gesamt = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE settings_record_id IS NOT NULL'
-);
+//
+// ⚠️ **Die Adresse ist mit TASK-057 wieder die Kante** ([D-642](../../docs/NewConcept/90-decision-log.md)):
+// *sie war es schon einmal, wanderte mit TASK-020 in `nodes.settings_record_id`, und die Spalte ist
+// gefallen — «ich meinte einfach eine Multiplizitaet von 1», am Knoten.*
+$rendererKante = $framework->settingRelationId(SettingKey::Renderer);
+
+$gesamt = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'record'",
+    $rendererKante
+));
 
 $daneben = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' n
-       INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
-       LEFT JOIN ' . Schema::table('nodes') . ' z ON z.id = r.node_id
-      WHERE COALESCE(z.path, %s) NOT LIKE %s',
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+       INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = v.value_ref
+       LEFT JOIN ' . Schema::table('nodes') . " z ON z.id = r.node_id
+      WHERE v.relation_id = %d AND v.value_ref_kind = 'record'
+        AND COALESCE(z.path, %s) NOT LIKE %s",
+    $rendererKante,
     '',
     $wpdb->esc_like($rendererPfad . '.') . '%'
 ));
 
-check('jede Spalte zeigt auf einen Satz im Renderer-Ast', $daneben === 0, "{$daneben} von {$gesamt} daneben");
+check('jeder Traeger zeigt auf einen Satz im Renderer-Ast', $daneben === 0, "{$daneben} von {$gesamt} daneben");
 
-// ⚠️ *Der Gegenfall: es gibt ueberhaupt gespeicherte Renderer. Gemessen am 2026-09-05: 28.*
+// ⚠️ *Der Gegenfall: es gibt ueberhaupt gespeicherte Renderer. Gemessen am 2026-09-05: 29.*
+check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
 check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
 
 echo "\n== Ein Renderer wird geschrieben und wieder gelesen ==\n";
@@ -225,7 +256,7 @@ if ($rendererKnoten === null) {
     $geschrieben = true;
 
     try {
-        $data->chooseSettingRecordAtNode($knotenId, (int) $rendererKnoten['id']);
+        $data->putSettingValue($knotenId, SettingKey::Renderer, TypedValue::ofReference((int) $rendererKnoten["id"]));
     } catch (NotYetStorable $e) {
         $geschrieben = false;
         check('der Renderer laesst sich schreiben', false, $e->getMessage());
@@ -251,11 +282,12 @@ if ($rendererKnoten === null) {
         // nicht dem eingestellten Knoten (D-584: «dessen `node_id` sagt schon, welcher Renderer es
         // ist»). Die alte Fassung suchte Saetze mit `node_id = <mein Knoten>` und haette hier
         // nichts gefunden.
+        // ⚠️ *Gefragt wird der Satz, der an der Einstellungskante haengt — er gehoert dem
+        // **Renderer**, nicht dem eingestellten Knoten ([D-583](../../docs/NewConcept/90-decision-log.md):
+        // «dessen `node_id` sagt schon, welcher Renderer es ist»).*
         $satz = $wpdb->get_row($wpdb->prepare(
-            'SELECT r.record_type, r.node_id FROM ' . Schema::table('nodes') . ' n
-             INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
-             WHERE n.id = %d',
-            $knotenId
+            'SELECT record_type, node_id FROM ' . Schema::table('node_records') . ' WHERE id = %d',
+            traegersatz($knotenId)
         ), ARRAY_A);
 
         check(
@@ -274,18 +306,12 @@ if ($rendererKnoten === null) {
         // Zaehlung: «genau ein Renderer» ist keine Regel mehr, die eingehalten werden muss,
         // sondern die Form der Ablage. Geprueft wird, dass der zweite Schreibakt den vorhandenen
         // Satz *behaelt* und keinen neuen anlegt.
-        $vorher = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT settings_record_id FROM ' . Schema::table('nodes') . ' WHERE id = %d',
-            $knotenId
-        ));
+        $vorher = traegersatz($knotenId);
 
-        $data->chooseSettingRecordAtNode($knotenId, (int) $rendererKnoten['id']);
+        $data->putSettingValue($knotenId, SettingKey::Renderer, TypedValue::ofReference((int) $rendererKnoten["id"]));
 
-        $nachher = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT settings_record_id FROM ' . Schema::table('nodes') . ' WHERE id = %d',
-            $knotenId
-        ));
 
+        $nachher = traegersatz($knotenId);
         check('zweimal geschrieben, derselbe Satz', $vorher !== 0 && $vorher === $nachher, "{$vorher} → {$nachher}");
     }
 }
@@ -323,25 +349,21 @@ $zweiter = $wpdb->get_row($wpdb->prepare(
     'slider'
 ), ARRAY_A);
 
-$spalte = static function () use ($wpdb, $knotenId): int {
-    return (int) $wpdb->get_var($wpdb->prepare(
-        'SELECT settings_record_id FROM ' . Schema::table('nodes') . ' WHERE id = %d',
-        $knotenId
-    ));
-};
-
+// ⚠️ *Hiess `$spalte` und fragte `nodes.settings_record_id`. **Die Spalte ist gefallen** (TASK-057);
+// dieselbe Frage stellt jetzt {@see traegersatz()} an der Einstellungskante.*
+$traeger = static fn (): int => traegersatz($knotenId);
 if ($zweiter === null || $rendererKnoten === null) {
     check('«slider» steht als Knoten unter «Renderer»', false);
 } else {
     check('«slider» steht als Knoten unter «Renderer»', true);
 
-    $alt = $spalte();
+    $alt = $traeger();
 
     check('vorher steht ein Renderer da', $alt !== 0, (string) $alt);
 
-    $data->chooseSettingRecordAtNode($knotenId, (int) $zweiter['id']);
+    $data->putSettingValue($knotenId, SettingKey::Renderer, TypedValue::ofReference((int) $zweiter["id"]));
 
-    $neu = $spalte();
+    $neu = $traeger();
 
     check('nach der Wahl steht ein anderer Satz da', $neu !== 0 && $neu !== $alt, "{$alt} -> {$neu}");
 
@@ -365,7 +387,7 @@ if ($zweiter === null || $rendererKnoten === null) {
 
     // Zurueckgelegt: ein Lauf, der etwas veraendert und nicht zuruecklegt, veraendert das Modell
     // des Eigentuemers -- hier der eigene Pruefknoten, aber die Gewohnheit zaehlt.
-    $data->chooseSettingRecordAtNode($knotenId, (int) $rendererKnoten['id']);
+    $data->putSettingValue($knotenId, SettingKey::Renderer, TypedValue::ofReference((int) $rendererKnoten["id"]));
 
     $zurueck = (new ModelValues($records, $relations, $nodes, $framework))->forNode($knoten);
 
@@ -511,24 +533,29 @@ echo "\n== Genau ein Renderer, und die zweite Zeile ist abgeschafft ==\n";
 // hat `DisplayOption` geloescht (D-604), und `settingPartsOf()` wurde hier mit der toten Kante
 // 44093 gerufen -- sie fand null Teile und meldete «der Pruefknoten hat einen Teil - 0».
 //
-// Geprueft wird jetzt das Gegenteil, und es ist die staerkere Aussage: ein Knoten haelt genau eine
-// Wahl, weil eine Spalte eine Zahl haelt.
-$spalten = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('nodes')
-        . ' WHERE id = %d AND settings_record_id IS NOT NULL',
-    $knotenId
+// ⚠️ **Geprueft wird, dass ein Knoten genau **eine** Wahl haelt** — und seit TASK-057 ist das keine
+// Eigenschaft der Ablage mehr, sondern eine Zusage: *eine Spalte konnte nur eine Zahl halten; eine
+// Kante koennte mehrere Zeilen tragen, und `1..1` sagt, dass sie es nicht darf
+// ([D-642](../../docs/NewConcept/90-decision-log.md)). **Die Zusage ist damit staerker geworden,
+// nicht schwaecher.***
+$wahlen = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' r
+       INNER JOIN ' . Schema::table('relation_records') . " v ON v.node_record_id = r.id
+      WHERE r.node_id = %d AND r.record_type = 'default'
+        AND v.relation_id = %d AND v.value_ref_kind = 'record'",
+    $knotenId,
+    $framework->settingRelationId(SettingKey::Renderer)
 ));
 
-check('der Pruefknoten haelt genau eine Wahl', $spalten === 1, (string) $spalten);
+check('der Pruefknoten haelt genau eine Wahl', $wahlen === 1, (string) $wahlen);
 
 // Und sie ist ein Verweis auf einen Satz, dessen Knoten den Renderer nennt -- kein Behaelter
 // dazwischen, keine zweite Zeile daneben.
 $stufen = $wpdb->get_row($wpdb->prepare(
-    'SELECT z.name FROM ' . Schema::table('nodes') . ' n
-     INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = n.settings_record_id
+    'SELECT z.name FROM ' . Schema::table('node_records') . ' r
      INNER JOIN ' . Schema::table('nodes') . ' z ON z.id = r.node_id
-     WHERE n.id = %d',
-    $knotenId
+     WHERE r.id = %d',
+    traegersatz($knotenId)
 ), ARRAY_A);
 
 check(

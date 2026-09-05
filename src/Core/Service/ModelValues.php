@@ -41,9 +41,8 @@ use Taxmod\Core\Repository\RelationRepository;
  * ```mermaid
  * flowchart LR
  *   N["Knoten"] --> R["sein Datensatz"]
- *   R -->|"Pfad = renderer-Kante"| T["Teil: DisplayOption"]
- *   T -->|"Feld render"| K["Knoten unter Renderer"]
- *   K --> M["sein Name ist die Antwort"]
+ *   R -->|"Pfad = renderer-Kante"| T["Teil: der gewählte Renderer"]
+ *   T -->|"node_id"| M["sein Name ist die Antwort"]
  * ```
  *
  * @see docs/NewConcept/02-field-and-setting.md
@@ -51,20 +50,21 @@ use Taxmod\Core\Repository\RelationRepository;
 final class ModelValues
 {
     /**
-     * Die Zielknoten der zwei Kanten — **nur** für den ersten Lauf.
+     * Der Zielknoten der Einstellungskante — **nur** für den ersten Lauf.
      *
-     * ⚠️ **Sie sind kein Schlüssel mehr** ([D-543](../../../docs/NewConcept/90-decision-log.md)), auf sein
-     * Wort: *«ja, Id — Name war nie erlaubt.»* *Hier stehen sie, damit der Notnagel überhaupt etwas zu
+     * ⚠️ **Er ist kein Schlüssel** ([D-543](../../../docs/NewConcept/90-decision-log.md)), auf sein
+     * Wort: *«ja, Id — Name war nie erlaubt.»* *Hier steht er, damit der Notnagel überhaupt etwas zu
      * suchen hat, wenn noch keine Id aufgeschrieben ist. **Sobald sie dasteht, sieht niemand mehr auf
      * einen Namen**, und eine Umbenennung ist wieder das, was sie sein soll: eine Beschriftung.*
+     *
+     * ⚠️ **Der Hüllknoten dazwischen ist gefallen** ([D-604](../../../docs/NewConcept/90-decision-log.md)),
+     * *und mit TASK-057 auch die Spalte, die ihn ersetzt hatte: der Renderer hängt an einer
+     * gewöhnlichen Einstellungskante `1..1`, und der Teil dahinter **ist** der gewählte Renderer
+     * ([D-642](../../../docs/NewConcept/90-decision-log.md)). **Eine Stufe, nicht zwei.***
      */
-    private const CARRIER_NODE = 'DisplayOption';
-
     private const VALUE_NODE = 'Renderer';
 
     private ?int $rendererRelation = null;
-
-    private ?int $renderRelation = null;
 
     private bool $gesucht = false;
 
@@ -177,29 +177,18 @@ final class ModelValues
     {
         $saetze = $this->recordsOf($traeger);
 
-        // ⚠️ **Die Spalte wird auch dann gefragt, wenn der Knoten keine eigenen Sätze hat** —
-        // *gefunden vom umgeschriebenen `setting-write-check.php` am 2026-09-05. Der frühe Ausstieg
-        // stammt aus der Zeit, in der **jede** Angabe in einem Satz des Knotens lag; seit
-        // [D-584](../../../docs/NewConcept/90-decision-log.md) liegt der Renderer in
-        // `nodes.settings_record_id`, und der Satz dahinter gehört dem **Renderer**, nicht diesem
-        // Knoten. **Ein frisch eingestellter Knoten hat darum keinen eigenen Satz** — und verlor
-        // seinen Renderer beim Lesen, obwohl die Spalte richtig stand.*
-        $ausSpalte = $this->rendererNameOfNode($traeger);
-
+        // ⚠️ **Kein Satz, keine Angabe** — *und seit TASK-057 stimmt das wieder. Solange der Renderer
+        // in `nodes.settings_record_id` stand, hing er **neben** den Sätzen und musste auch dann
+        // gefragt werden, wenn der Knoten keinen eigenen hatte. Jetzt ist er eine gewöhnliche
+        // Einstellung und liegt im `default`-Satz wie jede andere
+        // ([D-642](../../../docs/NewConcept/90-decision-log.md)).*
         if ($saetze === []) {
-            return $ausSpalte === null
-                ? []
-                : ['renderer' => new ResolvedSetting('renderer', TypedValue::ofText($ausSpalte), $traeger, $gesetzt)];
+            return [];
         }
 
         $aus = $this->settingsAt($subject, $saetze, $traeger, []);
 
-        // ⚠️ **Zuerst die Spalte** ([D-584](../../../docs/NewConcept/90-decision-log.md), TASK-020):
-        // *der Einstellungsdatensatz eines Knotens hängt an `nodes.settings_record_id`, und seine
-        // `node_id` sagt, welcher Renderer es ist. **Der alte Weg über die Trägerkante bleibt als
-        // Rückfall stehen**, solange Daten ihn noch benutzen — ein Leser, der die Altform nicht mehr
-        // kennt, macht bestehende Einstellungen unsichtbar, ohne dass jemand etwas geändert hätte.*
-        $name = $ausSpalte ?? $this->rendererNameAt($saetze, []);
+        $name = $this->rendererNameAt($saetze, []);
 
         if ($name !== null) {
             $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $traeger, true);
@@ -250,15 +239,6 @@ final class ModelValues
             $this->satzGedaechtnis[$id] ??= [];
         }
 
-        // ⚠️ **Die Spalte für die ganze Kette in einem Zug** (`CD-7`, TASK-020). *Sonst wäre der
-        // Renderer wieder eine Abfrage je Vorfahrenstufe — dasselbe N+1, das dieser Vorladelauf
-        // überhaupt erst beseitigt hat.*
-        $spalten = $this->nodes->settingsRecordIdsOf($offen);
-
-        foreach ($offen as $id) {
-            $this->spalteAmKnoten[$id] = $spalten[$id] ?? 0;
-        }
-
         $fehlend = array_values(array_filter(
             $saetze,
             fn (int $id): bool => ! isset($this->wertGedaechtnis[$id])
@@ -268,33 +248,12 @@ final class ModelValues
             $this->wertGedaechtnis[$satzId] = $werte;
         }
 
-        // ⚠️ **Und die Teile gleich mit** (`CD-7`). *Der Renderer steht eine Stufe tiefer: die
-        // Trägerkante zeigt auf einen **Teil**, und dessen Feld `render` nennt den Knoten
-        // ([D-511](../../../docs/NewConcept/90-decision-log.md)). {@see self::rendererNameAt()} steigt
-        // dort hinein — je Glied der Kette einmal. **Gemessen, was das kostet: 31 Abfragen für 7
-        // Felder und 59 für 14**, also linear, weil jeder Vorfahr seinen eigenen Teil hat.*
-        $this->findRelations();
-
-        $teile = [];
-
-        foreach ($fehlend as $satzId) {
-            foreach ($this->wertGedaechtnis[$satzId] ?? [] as $wert) {
-                if ($wert->relationId === $this->rendererRelation
-                    && $wert->value->reference !== null
-                    && ! isset($this->wertGedaechtnis[$wert->value->reference])
-                ) {
-                    $teile[] = $wert->value->reference;
-                }
-            }
-        }
-
-        if ($teile === []) {
-            return;
-        }
-
-        foreach ($this->records->valuesOfMany(array_values(array_unique($teile))) as $satzId => $werte) {
-            $this->wertGedaechtnis[$satzId] = $werte;
-        }
+        // ⚠️ **Hier wurden die Teile hinter der Renderer-Kante mitgeladen, und das ist mit TASK-057
+        // weggefallen.** *Es kostete einen zweiten Zug, weil {@see self::rendererNameAt()} in den Teil
+        // **hineinsteigen** musste: die Trägerkante zeigte auf einen `DisplayOption`-Teil, und erst
+        // dessen Feld `render` nannte den Knoten. Seit der Teil **selbst** der gewählte Renderer ist
+        // ([D-642](../../../docs/NewConcept/90-decision-log.md)), genügt seine `node_id` — und die
+        // holt {@see self::rendererNodeBehind()} gemerkt, für eine kleine, feste Menge von Renderern.*
     }
 
     /**
@@ -551,15 +510,13 @@ final class ModelValues
     {
         $aus = $this->settingsAt($relation, $this->recordsOf($relation->fromNodeId), $relation->id, [$relation->id]);
 
-        // ⚠️ **Auch hier zuerst die Spalte** ([D-586](../../../docs/NewConcept/90-decision-log.md)):
-        // *`relations.settings_record_id` trägt den eigenen Renderer der Kante. Der zweistufige Pfad
-        // am Datensatz des Besitzers bleibt als Rückfall.*
-        $name = $this->rendererNameOfRelation($relation->id)
-            ?? $this->rendererNameAt($this->recordsOf($relation->fromNodeId), [$relation->id]);
-
-        if ($name !== null) {
-            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $relation->id, true);
-        }
+        // ⚠️ **Hier stand der eigene Renderer der Verwendungsstelle, und er ist ersatzlos gefallen**
+        // ([D-643](../../../docs/NewConcept/90-decision-log.md)). *Seine Worte: «ich bin mir noch
+        // nicht sicher, ob wir an der Kante einen Renderer brauchen, deshalb würde er da wegfallen».
+        // **Gemessen, und die Aussage trägt:** `relations.settings_record_id` und
+        // `relations.target_settings_record_id` hatten **je 0 Zeilen** — nie belegt, seit es sie gab.
+        // Eine Kante ist eine **Verwendungsstelle**, kein Ding; gezeichnet wird der Knoten dahinter,
+        // und dessen Renderer kommt eine Zeile weiter unten aus der Kette.*
 
         // ⚠️ **Stufe 2 und 3 der Kette** ([D-602](../../../docs/NewConcept/90-decision-log.md)): *was
         // die Kante nicht selbst sagt, sagt der **Zielknoten**, und was der nicht sagt, seine
@@ -608,56 +565,6 @@ final class ModelValues
     /** @var array<int,?Node> Verweis => der Knoten des Renderers dahinter */
     private array $rendererGedaechtnis = [];
 
-    /** @var array<int,int> Knoten-Id => Satz-Id aus der Spalte; `0` heisst «gefragt, nichts da» */
-    private array $spalteAmKnoten = [];
-
-    /** @var array<int,int> Kanten-Id => Satz-Id aus der Spalte */
-    private array $spalteAnDerKante = [];
-
-    /**
-     * Der Renderer, den die **Spalte** dieses Knotens nennt — oder `null`.
-     *
-     * ⚠️ **Das ist die Form aus [D-584](../../../docs/NewConcept/90-decision-log.md)** und der Ort,
-     * an den TASK-020 die 29 Halter gebracht hat: *`Knoten.settings_record_id → Satz`, und die
-     * `node_id` des Satzes ist der Renderer.* **Eine Stufe weniger als vorher** — die Trägerkante
-     * «Display Option» dazwischen ist mit ihrem Hüllknoten gefallen.
-     *
-     * ⚠️ *Gemerkt, weil die Kette aus [D-602](../../../docs/NewConcept/90-decision-log.md) jeden
-     * Vorfahren fragt und dieselbe Antwort mehrfach braucht (`CD-7`).*
-     */
-    private function rendererNameOfNode(int $nodeId): ?string
-    {
-        if (! array_key_exists($nodeId, $this->spalteAmKnoten)) {
-            $this->spalteAmKnoten[$nodeId] = $this->nodes->settingsRecordIdsOf([$nodeId])[$nodeId] ?? 0;
-        }
-
-        return $this->rendererNameOfRecord($this->spalteAmKnoten[$nodeId]);
-    }
-
-    /** Dasselbe an einer Kante ([D-586](../../../docs/NewConcept/90-decision-log.md)). */
-    private function rendererNameOfRelation(int $relationId): ?string
-    {
-        if (! array_key_exists($relationId, $this->spalteAnDerKante)) {
-            $this->spalteAnDerKante[$relationId] = $this->relations->settingsRecordIdsOfRelations([$relationId])[$relationId]['own'] ?? 0;
-        }
-
-        return $this->rendererNameOfRecord($this->spalteAnDerKante[$relationId]);
-    }
-
-    /**
-     * Welcher Renderer ist dieser Einstellungsdatensatz?
-     *
-     * ⚠️ *Ein Zeiger auf einen Satz, den es nicht mehr gibt, heisst «nichts» und nicht «Absturz» —
-     * genau der Fall, den [D-604](../../../docs/NewConcept/90-decision-log.md) beschreibt.*
-     */
-    private function rendererNameOfRecord(int $recordId): ?string
-    {
-        if ($recordId === 0) {
-            return null;
-        }
-
-        return $this->rendererNodeBehind($recordId)?->name;
-    }
 
     /**
      * Der Name des Renderers unter dieser Adresse, oder `null`.
@@ -668,7 +575,7 @@ final class ModelValues
     {
         $this->findRelations();
 
-        if ($this->rendererRelation === null || $this->renderRelation === null || $recordIds === []) {
+        if ($this->rendererRelation === null || $recordIds === []) {
             return null;
         }
 
@@ -680,18 +587,15 @@ final class ModelValues
                     continue;
                 }
 
-                // ⚠️ *Eine Stufe tiefer: der Teil trägt das Feld `render`, und dessen Verweis ist ein
-                // **Knoten** unter `Renderer` — sein Name ist der Renderer ([D-511](../../../docs/NewConcept/90-decision-log.md)).*
-                foreach ($this->valuesOf($wert->value->reference) as $imTeil) {
-                    if ($imTeil->relationId !== $this->renderRelation || $imTeil->value->reference === null) {
-                        continue;
-                    }
+                // ⚠️ **Eine Stufe und nicht zwei** (TASK-057, [D-642](../../../docs/NewConcept/90-decision-log.md)).
+                // *Der Teil hinter der Einstellungskante **ist** der gewählte Renderer: seine
+                // `node_id` sagt, welcher ([D-583](../../../docs/NewConcept/90-decision-log.md)).
+                // Der Umweg über den Hüllknoten `DisplayOption` und dessen Feld `render` ist mit dem
+                // Hüllknoten gefallen ([D-604](../../../docs/NewConcept/90-decision-log.md)).*
+                $knoten = $this->rendererNodeBehind($wert->value->reference);
 
-                    $knoten = $this->rendererNodeBehind($imTeil->value->reference);
-
-                    if ($knoten !== null) {
-                        return $knoten->name;
-                    }
+                if ($knoten !== null) {
+                    return $knoten->name;
                 }
             }
         }
@@ -770,7 +674,8 @@ final class ModelValues
     }
 
     /**
-     * Die zwei Kanten finden — über die **Feldnamen** ab der Wurzel, nicht über Knotennamen.
+     * Die Einstellungskante `renderer` finden — über die **Feldnamen** ab der Wurzel, nicht über
+     * Knotennamen.
      *
      * ⚠️ **Der Unterschied ist wichtig:** *die Saat findet rund 80 Knoten über ihren Namen, und das
      * steht als [Zeile 80](../../../docs/NewConcept/97-implementation-plan.md#the-working-list) auf
@@ -779,8 +684,13 @@ final class ModelValues
      * andere Angabe zu meinen.*
      *
      * ⚠️ *Genau **einmal** gesucht, weil sonst jede gezeichnete Zeile zwei Abfragen kostete (`CD-7`).
-     * Fehlt eine der beiden Kanten, antwortet diese Klasse «nichts» und der alte Weg trägt weiter —
-     * **kein Absturz, solange der Umzug läuft**.*
+     * Fehlt die Kante, antwortet diese Klasse «nichts» statt abzustürzen.*
+     *
+     * ⚠️ **Seit TASK-057 ist es **eine** Kante und keine zwei** ([D-642](../../../docs/NewConcept/90-decision-log.md)).
+     * *Die innere Wertkante gehörte dem Hüllknoten `DisplayOption`, und der ist gefallen
+     * ([D-604](../../../docs/NewConcept/90-decision-log.md)). Der Teil hinter der Einstellungskante
+     * **ist** jetzt der gewählte Renderer — seine `node_id` sagt es, wie bei jeder anderen Wahl eines
+     * Datensatzes ([D-583](../../../docs/NewConcept/90-decision-log.md)).*
      */
     private function findRelations(): void
     {
@@ -793,11 +703,9 @@ final class ModelValues
         // ⚠️ **Zuerst die aufgeschriebenen Ids** ([D-543](../../../docs/NewConcept/90-decision-log.md)).
         // *Stehen sie da, wird kein Name mehr angesehen, und Umbenennen ist frei.*
         $aussen = $this->framework->settingRelationId(SettingKey::Renderer);
-        $innen  = $this->framework->settingValueRelationId(SettingKey::Renderer);
 
-        if ($aussen !== 0 && $innen !== 0) {
+        if ($aussen !== 0) {
             $this->rendererRelation = $aussen;
-            $this->renderRelation   = $innen;
 
             return;
         }
@@ -817,36 +725,19 @@ final class ModelValues
         // und Knoten so zu finden ist der Weg, den die Saat an rund achtzig Stellen ohnehin geht
         // ([Zeile 80](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)) — also keine
         // neue Art von Brüchigkeit, sondern die vorhandene, einmal.*
-        $traeger = $this->carrierAmong($kanten, self::CARRIER_NODE);
+        $traeger = $this->carrierAmong($kanten, self::VALUE_NODE);
 
         if ($traeger === null) {
             return;
         }
 
-        [$this->rendererRelation, $ziel] = $traeger;
+        $this->rendererRelation = $traeger[0];
 
-        $tragender = $this->nodes->find($ziel);
-
-        if ($tragender === null) {
-            return;
-        }
-
-        $innen = $this->carrierAmong(
-            $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($tragender)),
-            self::VALUE_NODE
-        );
-
-        if ($innen !== null) {
-            $this->renderRelation = $innen[0];
-        }
-
-        if ($this->rendererRelation !== null && $this->renderRelation !== null) {
-            $this->framework->rememberSettingRelations(
-                SettingKey::Renderer,
-                $this->rendererRelation,
-                $this->renderRelation
-            );
-        }
+        // ⚠️ *Die innere Kante ist `0` und bleibt es: der Renderer liegt eine Stufe tief, nicht zwei
+        // ([D-642](../../../docs/NewConcept/90-decision-log.md)). `0` heisst für
+        // {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} genau das — «der Wert liegt direkt an
+        // der Kante».*
+        $this->framework->rememberSettingRelations(SettingKey::Renderer, $this->rendererRelation, 0);
     }
 
     /**

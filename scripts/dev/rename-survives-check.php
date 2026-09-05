@@ -134,23 +134,32 @@ $vorher = gezeichnet($beobachtet);
 $aussenId = $framework->settingRelationId(SettingKey::Renderer);
 $innenId  = $framework->settingValueRelationId(SettingKey::Renderer);
 
-// ⚠️ **Hier standen zwei Zusagen auf aufgeschriebene Kanten-Ids, und beide waren rot.** *Der
-// Renderer haengt seit TASK-020 an `nodes.settings_record_id` ([D-584](../../docs/NewConcept/90-decision-log.md));
-// die beiden Optionen trugen Ids geloeschter Kanten und sind mit dem Huellknoten `DisplayOption`
-// gegangen ([D-604](../../docs/NewConcept/90-decision-log.md)). **Eine Zusage auf eine Form, die es
-// nicht mehr gibt, prueft nichts** — also fragt sie jetzt die Spalte (`PR-9`: eine Pruefung
-// bewacht den heutigen Zielzustand, und die Aenderung ist sichtbar).*
-$traeger = array_map(intval(...), $wpdb->get_col(
-    "SELECT id FROM {$n} WHERE settings_record_id IS NOT NULL ORDER BY id"
+// ⚠️ **Diese Zusage ist zum zweiten Mal umgezogen, und beide Umzuege stehen hier, weil der zweite
+// den ersten zurücknimmt.** *Sie fragte einmal zwei aufgeschriebene Kanten-Ids ab; als der Renderer
+// mit TASK-020 in `nodes.settings_record_id` zog, fragte sie die **Spalte**; und mit TASK-057 fragt
+// sie wieder die **Kante** — weil der Eigentuemer berichtigt hat, was ich aus seinem Satz gemacht
+// hatte: «ich meinte einfach eine Multiplizitaet von 1», am Knoten
+// ([D-642](../../docs/NewConcept/90-decision-log.md)).*
+//
+// ⚠️ **Nicht entschaerft, umgezogen** (`PR-9`): *dieselbe Zahl, dieselbe Aussage — es gibt Traeger,
+// und keiner zeigt ins Leere —, nur an der Form, die heute gilt.*
+$kante = $framework->settingRelationId(SettingKey::Renderer);
+
+$traeger = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+    'SELECT DISTINCT r.node_id FROM ' . Schema::table('relation_records') . ' v'
+        . ' JOIN ' . Schema::table('node_records') . ' r ON r.id = v.node_record_id'
+        . " WHERE v.relation_id = %d AND v.value_ref_kind = 'record' ORDER BY r.node_id",
+    $kante
+)));
+
+check('es gibt Traeger an der Einstellungskante', count($traeger) >= 4, count($traeger) . ' Knoten');
+
+$haltlos = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v'
+        . ' LEFT JOIN ' . Schema::table('node_records') . ' s ON s.id = v.value_ref'
+        . " WHERE v.relation_id = %d AND v.value_ref_kind = 'record' AND s.id IS NULL",
+    $kante
 ));
-
-check('es gibt Traeger in der Spaltenform', count($traeger) >= 4, count($traeger) . ' Knoten');
-
-$haltlos = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$n} k LEFT JOIN " . Schema::table('node_records')
-        . ' s ON s.id = k.settings_record_id'
-        . ' WHERE k.settings_record_id IS NOT NULL AND s.id IS NULL'
-);
 
 check('und kein Traeger zeigt ins Leere', $haltlos === 0, "{$haltlos} haltlos");
 
