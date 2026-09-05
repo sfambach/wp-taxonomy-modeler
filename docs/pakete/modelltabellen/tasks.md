@@ -925,7 +925,7 @@ auf dem gewöhnlichen Weg — genau die Ableitung, die Teil 1 ablösen soll.*
 
 ---
 
-[ ] TASK-054  Der Faltzustand des Dialogs ist der des Dialogs, nicht der der Seite
+[x] TASK-054  Der Faltzustand des Dialogs ist der des Dialogs, nicht der der Seite
 
 **2026-09-05, vom Eigentümer gemeldet:** *«der baum im dialog funktioniert noch nicht so wie er
 soll, er hat noch die einstellungen bezüglich elapsed und collapsed von der baumansicht auf der
@@ -945,6 +945,33 @@ schliessen, und die Tiefe bleibt offen. Verlangt ist **zu bis auf einen Weg** �
 Einstiegsastes und den des vorgewählten Knotens, und sonst nichts.*
 
 Gehört zu [D-615](../../NewConcept/90-decision-log.md) und TASK-036, TASK-048, TASK-051.
+
+**Gebaut am 2026-09-05. Es war eine einzige Übergabe, und sie stand seit dem Verschiebe-Dialog da.**
+
+⚠️ **Gemessen: `parentChooser()` bekam die Zeilen der Seitenansicht gereicht** — dieselben, die die
+Seite gerade zeichnete, **mit ihrem Faltzustand und, bei gesetztem Filter, nur den Treffern**. Der
+Dialog war damit nicht «vom Faltzustand der Seite beeinflusst», sondern **war** die Seitenansicht in
+einem Überlagerungsfenster. *Die anderen drei Dialoge gingen längst über `Rendering::nodeChooser()`
+und waren richtig; dieser eine war der Rest von vorher.*
+
+⚠️ **Und die zweite Hälfte fehlte auch dort:** *`closedApartFrom()` öffnete nur den Weg des
+Einstiegsastes, nicht den des **vorgewählten** Knotens. Nach [D-615](../../NewConcept/90-decision-log.md)
+sind das zwei Angaben — der Ast schliesst den Rest, der Knoten öffnet nur seinen Weg — und der
+Dialog wandte bisher nur die erste an. Liegt die Vorauswahl in einem anderen Ast, sah man sie nicht.*
+
+⚠️ *«Alle darunter» war dagegen schon richtig und ist jetzt bloss geprüft: geschlossen wird jede
+Zeile, die nicht auf einem der beiden Wege liegt, auf jeder Tiefe.*
+
+**Neu am Netz:** [`collapsed-default-check`](../../../scripts/dev/collapsed-default-check.php) prüft
+jetzt auch den Dialog — erweitert statt ein zweiter Wächter, weil dort schon der Faltzustand der
+Seite steht und die beiden nur nebeneinander etwas heissen. Er zeichnet die echte Seite **einmal
+weit offen und einmal frisch** und liest das Markup des Verschiebe-Dialogs: der Enkel steht im
+Dokument (der Dialog klappt ohne Neuaufbau), ist aber ausgeblendet; **genau ein Ast trägt eine
+offene Klappmarke**, also steht unterhalb kein zweiter offen; und **beide Seitenzustände ergeben
+denselben Dialog**.
+
+⚠️ **Gegengeprobt, sonst wäre «grün» nichts wert:** *mit der alten Übergabe fallen 5 der 9 Zusagen,
+darunter die Unabhängigkeit; mit abgeschaltetem Schliessen im Kern fallen 4.*
 
 ---
 
