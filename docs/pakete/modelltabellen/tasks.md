@@ -951,7 +951,7 @@ passiert: 60, dann 12, dann 8 Probeknoten in seinem Arbeitsbaum. **Wer abstürzt
 Ein eigener Ast hält den Rückstand dort, wo er niemanden stört.*
 
 ```text
-[ ] TASK-051  Die Konfigurationsseite haelt den Faltzustand — «alles zu»
+[x] TASK-051  Die Konfigurationsseite haelt den Faltzustand — «alles zu»
               gilt nur beim ersten Aufruf, nicht bei jedem Link, der ihn
               vergessen hat (D-615, D-480)
 ```
@@ -974,6 +974,26 @@ arbeite und dauernd die Äste zugehen, das ist ziemlich nervig».*
 ⚠️ *Nach [D-615](../../NewConcept/90-decision-log.md) ist «alles zu» ausserdem die **Ast**-Angabe —
 und die Konfigurationsseite darf nur den **Wurzelknoten** übergeben. Sie wendet damit eine Angabe an,
 die sie gar nicht bekommen hat.*
+
+**Gebaut am 2026-09-05, und Zeile 202 blieb stehen — sie war nicht der Fehler.** *Sie berechnet die
+Vorgabe **für den ersten Aufruf**, und das ist sein Wunsch von 2026-08-28. Falsch war, wie oft ein
+Aufruf als «der erste» ankam.*
+
+⚠️ **Gemessen an der Seite von `Adresse`: 10 von 17 Formularen trugen den Faltzustand nicht** —
+jeder Akt aus einem von ihnen kam ohne Angabe zurück, und dann greift die Ast-Angabe, die niemand
+übergeben hat. *Die Sprachwahl baute ihre Adresse ausserdem selbst und verlor ihn ebenfalls.*
+
+⚠️ **Der Grund war nicht Vergesslichkeit, sondern fünf Stellen, die dasselbe verschieden bauten:**
+*die verborgenen Felder hatten den Rückfall auf den gemerkten Zustand, die Formulare der Baumzeilen
+lasen nur die Adresse — und auf einer frischen Seite steht dort nichts. **Jetzt gibt es eine
+Stelle**, und alle fünf nehmen von dort.*
+
+⚠️ *Der Dialogbaum aus TASK-054 ist nicht angefasst: er geht über `Rendering::nodeChooser()` und
+bekommt vom Faltzustand der Seite ohnehin nichts mehr.*
+
+**Am Netz:** `collapsed-default-check` zählt jetzt die Formulare der gezeichneten Seite und verlangt
+null ohne Faltzustand — *mit der Bedingung, dass es überhaupt Formulare gibt, sonst wäre eine leere
+Zählung grün.*
 
 ---
 

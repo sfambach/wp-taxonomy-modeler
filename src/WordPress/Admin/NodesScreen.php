@@ -303,10 +303,7 @@ final class NodesScreen
             . '<input type="hidden" name="page" value="taxmod">'
             . '<input type="hidden" name="taxmod_node" value="'
             . esc_attr(isset($_GET['taxmod_node']) ? (string) absint($_GET['taxmod_node']) : '') . '">'
-            . '<input type="hidden" name="taxmod_collapsed" value="'
-            . esc_attr((string) ($this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks)) . '">'
-            . '<input type="hidden" name="' . self::OPENED_FOR . '" value="'
-            . esc_attr((string) $this->openedPathForLinks) . '">'
+            . $this->circumstanceFields()
             . $this->table($rows, 'tree', $collapsed, $selected, $gesucht)
             . '</form>';
         $left .= $this->heading(
@@ -613,16 +610,7 @@ final class NodesScreen
                 'action'        => self::ACTION,
                 'id'            => (string) $id,
                 '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $id),
-                // Exactly as they arrived, so the act can hand them straight back.
-                'taxmod_collapsed' => isset($_GET['taxmod_collapsed'])
-                    ? sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']))
-                    : null,
-                'taxmod_hidden' => isset($_GET['taxmod_hidden'])
-                    ? sanitize_text_field(wp_unslash($_GET['taxmod_hidden']))
-                    : null,
-                // Derselbe Grund wie beim Faltzustand: eine POST hat keine Adresse, aus der
-                // {@see backTo()} ihn lesen könnte ({@see $openedPathForLinks}).
-                self::OPENED_FOR => $this->openedPathForLinks,
+                ...$this->circumstances(),
             ])
         );
     }
@@ -1283,6 +1271,9 @@ final class NodesScreen
             . '<input type="hidden" name="edge" value="0">'
             . '<input type="hidden" name="_taxmod_nonce" value="'
             . esc_attr(wp_create_nonce(self::ACTION . '_' . $selected->id)) . '">'
+            // ⚠️ *Auch hier, und es ist dasselbe Versäumnis: das Seitenformular ist der Knopf, den man
+            // am häufigsten drückt — ohne die Umstände klappte der Baum bei jedem Speichern zu.*
+            . $this->circumstanceFields()
             . '</form>';
         // ⚠️ **The name field first, and the acts behind it** — the owner, correcting his own sketch
         // after seeing it: *name into the first row, actions not their own row but behind the name
@@ -1708,6 +1699,7 @@ final class NodesScreen
                     'edge'           => (string) $edge->id,
                     'setting_key'    => SettingKey::Multiplicity->value,
                     '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                    ...array_filter($this->circumstances()),
                 ]
             );
         }
@@ -2300,7 +2292,7 @@ final class NodesScreen
             // Verschachtelung. Ein Knopf, der ein anderes Formular abschickt, hätte die Einstellungen
             // daneben **stillschweigend weggeworfen**.*
             [],
-            new Submission(admin_url('admin-post.php'), ['label_locale' => $locale]),
+            new Submission(admin_url('admin-post.php'), ['label_locale' => $locale, ...array_filter($this->circumstances())]),
             ['locale' => new Section(__('Locale', 'taxmod'), $this->localePicker($locale, $selected->id))],
             Purpose::Edit,
             $locale,
@@ -2374,7 +2366,11 @@ final class NodesScreen
         // reachable only through the URL. The admin screen already depends on scripting for the
         // Dashicon glyphs and the fold state; a hidden submit button beside it would be a second way
         // to do one thing, which is what `R1` argues against everywhere else.*
-        $base = add_query_arg(['page' => 'taxmod', 'taxmod_node' => (int) $nodeId], admin_url('admin.php'));
+        // ⚠️ *Über {@see backTo()} und nicht mit einer eigenen Adresse: die eigene liess den
+        // Faltzustand fallen, und ein Sprachwechsel klappte den Baum zu — genau der Fall, den
+        // [D-480](../../../docs/NewConcept/90-decision-log.md) beschreibt, an der letzten Stelle, die
+        // ihre Adresse noch selbst baute.*
+        $base = $this->backTo((int) $nodeId);
 
         // ⚠️ The address is built with a marker and the marker is replaced in the browser, so the
         // locale never has to be spliced into a URL by string arithmetic on either side.
@@ -2617,6 +2613,7 @@ final class NodesScreen
                         'id'            => (string) $selected->id,
                         'record_id'     => (string) $record->id,
                         '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                        ...array_filter($this->circumstances()),
                     ]
                 ),
             ];
@@ -3725,10 +3722,20 @@ final class NodesScreen
             // fehlte in allen. {@see self::backTo()} sucht ihn in `$_POST` — und fand nichts, weil ihn
             // niemand hineinlegte. Ihm ist es am Papierkorb aufgefallen, weil man dort einen tief
             // geöffneten Baum vor sich hat.*
-            . '<input type="hidden" name="taxmod_collapsed" value="'
-                . esc_attr((string) ($this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks)) . '">'
-            . '<input type="hidden" name="taxmod_hidden" value="'
-                . esc_attr((string) $this->circumstance('taxmod_hidden')) . '">';
+            . $this->circumstanceFields();
+    }
+
+    /** Dieselben Umstände wie {@see circumstances()}, nur als verborgene Felder statt als Paare. */
+    private function circumstanceFields(): string
+    {
+        $felder = '';
+
+        foreach ($this->circumstances() as $name => $wert) {
+            $felder .= '<input type="hidden" name="' . esc_attr($name) . '" value="'
+                . esc_attr((string) $wert) . '">';
+        }
+
+        return $felder;
     }
 
     /**
@@ -3977,6 +3984,31 @@ final class NodesScreen
         }
 
         return sanitize_text_field(wp_unslash((string) $raw));
+    }
+
+    /**
+     * Alle Umstände dieser Seite, wie ein Formular sie mitschicken muss.
+     *
+     * ⚠️ **Eine Stelle, weil es vorher fünf waren und sie sich unterschieden.** *{@see hidden()}
+     * legte den Faltzustand samt Rückfall hinein, {@see submissionFor()} las nur `$_GET` — und drei
+     * von Hand gebaute {@see Submission} legten gar nichts hinein. **Gemessen an der Seite von
+     * `Adresse`: 10 von 17 Formularen trugen den Faltzustand nicht**, und jeder Akt aus einem von
+     * ihnen liess die Seite auf «alles zu» zurückfallen.*
+     *
+     * ⚠️ **Der Rückfall auf den gemerkten Zustand ist der Kern** ({@see $foldStateForLinks}): eine
+     * frische Seite bringt keinen Parameter mit, hat aber eine berechnete Vorgabe. Wer nur `$_GET`
+     * liest, schickt dort nichts — und «nichts» heisst beim nächsten Aufruf «alles zu»
+     * ([D-480](../../../docs/NewConcept/90-decision-log.md), [D-615](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return array<string, string|null> leere Werte fallen im `array_filter` des Aufrufers heraus
+     */
+    private function circumstances(): array
+    {
+        return [
+            'taxmod_collapsed' => $this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks,
+            'taxmod_hidden'    => $this->circumstance('taxmod_hidden'),
+            self::OPENED_FOR   => $this->openedPathForLinks,
+        ];
     }
 
     private function backTo(?int $nodeId, array $extra = []): string

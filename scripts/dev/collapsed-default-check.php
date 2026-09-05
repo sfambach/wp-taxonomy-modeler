@@ -217,6 +217,47 @@ $say(
 
 unset($_GET['taxmod_node'], $_GET['taxmod_collapsed'], $_GET['taxmod_open_for']);
 
+// ── Kein Formular und kein Link verliert den Faltzustand ──────────────────
+//
+// ⚠️ **«Alles zu» gilt beim ersten Aufruf, nicht bei jedem Link, der ihn vergessen hat**
+// ([D-480](../../docs/NewConcept/90-decision-log.md), [D-615](../../docs/NewConcept/90-decision-log.md)).
+// *Gemessen vor der Reparatur: **10 von 17 Formularen** der Seite trugen den Zustand nicht — jeder
+// Akt aus einem von ihnen fiel auf «alles zu» zurück, ohne dass der Benutzer etwas zugeklappt hätte.*
+//
+// ⚠️ *Der Fehler war nicht «keiner trägt ihn», sondern «fünf Stellen bauten ihn verschieden»: die
+// verborgenen Felder hatten den Rückfall auf den gemerkten Zustand, die Formulare der Zeilen lasen
+// nur `$_GET` — und auf einer frischen Seite steht dort nichts.*
+echo "\n== kein Formular auf der Seite verliert den Faltzustand ==\n";
+
+$_GET['taxmod_node'] = (string) $enkel->id;
+
+$seite = $plugin->screen()->render();
+
+preg_match_all('#<form\b.*?</form>#s', $seite, $formulare);
+
+$ohne = 0;
+
+foreach ($formulare[0] as $eines) {
+    if (! str_contains($eines, 'taxmod_collapsed')) {
+        ++$ohne;
+    }
+}
+
+printf("       %d Formulare, davon %d ohne Faltzustand\n", count($formulare[0]), $ohne);
+
+$say(count($formulare[0]) > 5, 'die Seite hat ueberhaupt Formulare — sonst waere die Zaehlung leer und gruen');
+$say($ohne === 0, 'jedes Formular schickt den Faltzustand mit');
+
+// ⚠️ *Und die Sprachwahl war die letzte Stelle, die sich ihre Adresse selbst baute — ein
+// Sprachwechsel klappte den Baum zu.*
+$say(
+    ! str_contains($seite, 'taxmod-locale')
+        || preg_match('/class="taxmod-locale".{0,600}?taxmod_collapsed=/s', $seite) === 1,
+    'auch die Sprachwahl traegt ihn in ihrer Adresse'
+);
+
+unset($_GET['taxmod_node']);
+
 // ── Und der Kern sagt dasselbe über sich ──────────────────────────────────
 echo "\n== der Kern: was gefaltet wird, sind die Knoten mit Kindern ==\n";
 
