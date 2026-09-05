@@ -1248,3 +1248,25 @@ jeder hat seine Vererbungskante, keiner enthält das Ziel.*
 schliesst das Ziel ein**: nicht nur *irgendein* `target`, sondern *dieser Zielknoten steht als
 wählbare Zeile darunter*. *Ohne diesen einen Punkt wäre der Wächter an genau dem Abend grün
 gewesen, an dem er nicht verschieben konnte.*
+
+---
+
+[ ] TASK-056  Die Fassung wird beim Melden mitgeschrieben
+
+**2026-09-05.** *Das Aenderungsbuch ist auf sein Wort geleert worden — «alte ohne Fassung
+wegschmeissen» —, 35 524 von 35 684 Zeilen. **Damit ist der Zustand aufgeraeumt, die Ursache
+nicht:** die Fassung wird beim Melden nicht mitgeschrieben, und ohne diese Aufgabe steht in einer
+Woche derselbe Befund da.*
+
+⚠️ **Gemessen vor dem Loeschen:** *160 Zeilen trugen eine Fassung, die aelteste vom 31. August —
+**es war also nie eine Frage von alt und neu**, sondern von *welcher Weg schreibt*. Die juengste
+Zeile ohne Fassung war vom Tag des Loeschens, 15:51 Uhr.*
+
+⚠️ **Die zweite Haelfte derselben Luecke** ([D-631](../../NewConcept/90-decision-log.md)):
+*`DataEntry` haelt ueberhaupt kein Aenderungsbuch — 4 354 Schattenzeilen bei Datensatzwerten und
+null Chronikzeilen. **Wertaenderungen melden heute nichts**, und `§7` des Ereigniskonzepts verlangt
+die Fassung im Kontext jedes Ereignisses.*
+
+⚠️ *Die geloeschten Zeilen liegen als Sicherung im Arbeitsordner der Sitzung
+(`changelog-ohne-fassung.jsonl`, 8,9 MB, 35 524 Zeilen) — **nicht im Projekt**, weil sie dorthin
+nicht gehoeren, aber bis zum Sitzungsende zurueckholbar.*
