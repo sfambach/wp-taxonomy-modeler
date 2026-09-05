@@ -103,6 +103,28 @@ interface RelationRepository
     public function parkedFieldEdgesOf(array $ownerIds): array;
 
     /**
+     * Eine Kante parken — **sie und alles, was zu ihr gehört**.
+     *
+     * ⚠️ **[D-619](../../../docs/NewConcept/90-decision-log.md), auf sein Wort:** *«1»*, auf drei
+     * vorgelegte Wege — mitwandern, stehenbleiben, oder Parken verbieten, solange Werte dranhängen.
+     * **Die Wertzeilen der Kante wandern mit**, und beim Zurückholen wieder heraus: eine Gruppe, ein
+     * Akt, umkehrbar. *«Stehenbleiben» hiesse Wertzeilen ohne ihre Kante — ein Rest, der niemandem
+     * gehört, und Parken ist kein Löschen ([D-604](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Warum das hier steht und nicht bei {@see self::save()}:** *seit TASK-013 ist Parken kein
+     * Schreiben einer Spalte mehr, sondern ein **Umzug**. Wer es als `save()` einer veränderten Kante
+     * schriebe, müsste die Wertzeilen selbst mitnehmen — und würde es beim nächsten Mal vergessen.*
+     */
+    public function park(int $edgeId, int $changeGroupId): void;
+
+    /**
+     * Die Umkehrung von {@see self::park()} — und ausdrücklich keine zweite Mechanik.
+     *
+     * @return Relation|null Die zurückgeholte Kante, oder `null`, wenn dort nichts geparkt liegt.
+     */
+    public function unpark(int $edgeId): ?Relation;
+
+    /**
      * The mirror of {@see self::fieldEdgesOf()} — every attribute **pointing at** these nodes.
      *
      * ⚠️ **This is the one direction that appears nowhere else** ([D-199](../../../docs/NewConcept/90-decision-log.md)):

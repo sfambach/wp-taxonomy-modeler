@@ -1145,11 +1145,12 @@ final class ModelEditor
             $this->edgeState($edge->parkedBy(0))
         );
 
-        $parked = $edge->parkedBy($group);
+        // ⚠️ **Seit [D-619](../../../docs/NewConcept/90-decision-log.md) ein Umzug und kein
+        // Spaltenschreiben** (TASK-013): die Kante wandert in den Schatten, **und ihre Wertzeilen
+        // wandern mit**. Eine Gruppe, ein Akt, umkehrbar.
+        $this->relations->park($edge->id, $group);
 
-        $this->relations->save($parked, $edge->version);
-
-        return $parked;
+        return $edge->parkedBy($group);
     }
 
     /**
@@ -1176,9 +1177,10 @@ final class ModelEditor
                 $this->edgeState($revived)
             );
 
-            $this->relations->save($revived, $edge->version);
-
-            return $revived;
+            // ⚠️ *Die Umkehrung des Umzugs, **mit den Wertzeilen**
+            // ([D-619](../../../docs/NewConcept/90-decision-log.md), TASK-013) — und nicht ein
+            // zweiter Weg, der dasselbe noch einmal beschreibt.*
+            return $this->relations->unpark($edge->id) ?? $revived;
         }
 
         throw NotAPossibleTarget::notAnOwnField($edgeId);

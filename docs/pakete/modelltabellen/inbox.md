@@ -801,3 +801,34 @@ und niemand muss dafür eine Klasse erfinden.*
 eigene Spalte bekommt. **Dafür, dass sie es nicht tut:** `field_type` sagt heute, ob ein Knoten eine
 Einstellung ist — «ist ein Astkopf» ist eine andere Frage, und zwei Fragen in einer Spalte war schon
 einmal der Fehler ([`geltende-regeln.md`](geltende-regeln.md)).*
+
+---
+
+## INF-028 · Nach TASK-013 lesen sich 16 Kanten als geparkt, nicht 14 — und die drei zusätzlichen waren es schon
+
+**2026-09-05, beim Bauen von TASK-013. Gemessen, nicht geschätzt.**
+
+Seit [D-619](../../NewConcept/90-decision-log.md) heisst geparkt: **die Zeile steht im Schatten mit
+einer Änderungsgruppe, und lebend gibt es sie nicht.** Vorher hiess es: **die lebende Zeile trägt
+eine Gruppe.** Die beiden Sätze decken sich fast, aber nicht ganz.
+
+```text
+14  trugen die Gruppe an der lebenden Zeile  — sie sind gewandert
+16  lesen sich nach der Wanderung als geparkt
+ 3  davon hatten lebend gar keine Zeile mehr  (min, max auf Integer; persistent auf Root)
+```
+
+**Was von den dreien gemessen bekannt ist:** *ihr Schattenstand trägt eine Änderungsgruppe, ihre
+lebende Zeile ist seit dem 2026-08-30 fort, und **ihr letzter Journaleintrag lautet bei allen dreien
+«attribute removed»**. Sie waren also geparkt und sind nie wieder aufgetaucht — die alte Lesart hat
+sie schlicht nicht gefunden, weil sie eine lebende Zeile verlangte, die es nicht mehr gab.*
+
+⚠️ **Nicht entschieden und deshalb nicht entschieden gebaut** (`PR-4`): *ob diese drei in der Liste
+«entfernte Felder» ihres Besitzers erscheinen sollen. **Dafür:** sie sind entfernte Felder, und sie
+lassen sich zurückholen — die neue Lesart macht sichtbar, was vorher unauffindbar war. **Dagegen:**
+sie erscheinen an Knoten (`Integer`, `Root`), an denen der Eigentümer sie seit einer Woche nicht
+gesehen hat, und drei Zeilen mehr in einer Liste sind eine Änderung, die niemand bestellt hat.*
+
+⚠️ *Gebaut ist heute die erste Lesart — **sie erscheinen** —, weil die Regel «geparkt heisst: im
+Schatten, lebend fort» genau das sagt und eine Ausnahme davon eine zweite Regel wäre. Sie ist mit
+einer Zeile im Leseweg umkehrbar, sobald er das Gegenteil sagt.*

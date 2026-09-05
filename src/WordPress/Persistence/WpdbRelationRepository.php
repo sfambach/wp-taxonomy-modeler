@@ -67,7 +67,6 @@ final class WpdbRelationRepository implements RelationRepository
     {
         global $wpdb;
 
-        $parked    = $relation->parkedByGroup === null ? 'NULL' : '%d';
         $arguments = [
             $relation->version,
             $relation->fromNodeId,
@@ -75,19 +74,11 @@ final class WpdbRelationRepository implements RelationRepository
             $relation->kind->value,
             $relation->name,
             $relation->sortOrder,
-            // ⚠️ *Order matters and is not obvious: `hide = %d` sits **before**
-            // `parked_by_group_id` in the SQL above, so its argument goes here and not after the
-            // conditional one. Placeholders are positional; a swap would write the change group
-            // into `hide` and nothing would complain.*
             $relation->hide ? 1 : 0,
             // ⚠️ *Aus demselben Grund direkt hinter `hide`: `multiplicity = %s` steht dort im SQL
             // ([D-528](../../../docs/NewConcept/90-decision-log.md)).*
             $relation->multiplicity->value,
         ];
-
-        if ($relation->parkedByGroup !== null) {
-            $arguments[] = $relation->parkedByGroup;
-        }
 
         $arguments[] = $relation->id;
         $arguments[] = $expectedVersion;
@@ -99,15 +90,13 @@ final class WpdbRelationRepository implements RelationRepository
 
         $written = $wpdb->query(
             $wpdb->prepare(
-                // ⚠️ **A literal `NULL`, not a placeholder.** `$wpdb->prepare()` turns a null into
-                // an **empty string**, which a `bigint` column stores as **0** — and a zero change
-                // group reads as *parked by an act that never happened*. Found by a boundary check:
-                // restoring an attribute left it parked.
+                // ⚠️ *Das Parken steht hier nicht mehr* ([D-619](../../../docs/NewConcept/90-decision-log.md),
+                // TASK-013): **eine geparkte Kante hat gar keine lebende Zeile** — sie steht im
+                // Schatten. Siehe {@see self::park()}.
                 'UPDATE ' . Schema::table('relations') . '
                  SET version = %d, from_node_id = %d, to_node_id = %d, kind = %s, name = %s, sort_order = %d,
                      hide = %d,
-                     multiplicity = %s,
-                     parked_by_group_id = ' . $parked . '
+                     multiplicity = %s
                  WHERE id = %d AND version = %d',
                 ...$arguments
             )
@@ -247,10 +236,14 @@ final class WpdbRelationRepository implements RelationRepository
         // default in its owning node — a model full of ghost attributes is unreadable*. Whoever
         // wants to see them asks {@see parkedFieldEdgesOf()} instead, which is the *show
         // deleted* toggle rather than a second reading of the same query.
+        //
+        // ⚠️ *Seit [D-619](../../../docs/NewConcept/90-decision-log.md) braucht das keine Bedingung
+        // mehr: **eine geparkte Kante steht im Schatten und nicht hier**. Die Auslassung ist die
+        // Tabelle selbst.*
         $rows = Query::rows('Feldkanten des Knotens lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity
              FROM ' . Schema::table('relations') . "
-             WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+             WHERE from_node_id IN ({$places}) AND kind <> %s
              ORDER BY sort_order ASC, id ASC",
             [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
         ));
@@ -272,9 +265,9 @@ final class WpdbRelationRepository implements RelationRepository
         // the owning node so the section reads as «who uses me», grouped, rather than as a pile of
         // edge ids.*
         $rows = Query::rows('Feldkanten auf das Ziel lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
+            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, hide, multiplicity
              FROM ' . Schema::table('relations') . "
-             WHERE to_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NULL
+             WHERE to_node_id IN ({$places}) AND kind <> %s
              ORDER BY from_node_id ASC, sort_order ASC, id ASC",
             [...array_map(intval(...), $targetIds), RelationKind::Inheritance->value]
         ));
@@ -282,7 +275,14 @@ final class WpdbRelationRepository implements RelationRepository
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
-    /** @return list<Relation> The removed ones, for D-128's *show deleted*. */
+    /**
+     * @return list<Relation> The removed ones, for D-128's *show deleted*.
+     *
+     * ⚠️ **Aus dem Schatten gelesen, seit [D-619](../../../docs/NewConcept/90-decision-log.md).**
+     * *Geparkt heisst jetzt: die Zeile steht in `relations_history` mit einer Änderungsgruppe und
+     * hat lebend keine Entsprechung mehr. **Beide Hälften werden gebraucht** — ohne die zweite käme
+     * eine zurückgeholte Kante doppelt zurück, einmal lebend und einmal als Geist.*
+     */
     public function parkedFieldEdgesOf(array $ownerIds): array
     {
         global $wpdb;
@@ -291,17 +291,182 @@ final class WpdbRelationRepository implements RelationRepository
             return [];
         }
 
-        $places = implode(',', array_fill(0, count($ownerIds), '%d'));
+        $places   = implode(',', array_fill(0, count($ownerIds), '%d'));
+        $schatten = Schema::table('relations_history');
+        $lebend   = Schema::table('relations');
 
-        $rows = Query::rows('geparkte Feldkanten lesen', $wpdb->prepare(
-            'SELECT id, version, from_node_id, to_node_id, kind, name, sort_order, parked_by_group_id, hide, multiplicity
-             FROM ' . Schema::table('relations') . "
-             WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
-             ORDER BY sort_order ASC, id ASC",
+        // ⚠️ *Der jüngste Schattenstand je Id — beim Parken wächst die Version nicht, aber eine Kante,
+        // die schon einmal geparkt und zurückgeholt wurde, hat mehrere.*
+        $rows = Query::rows('geparkte Feldkanten aus dem Schatten lesen', $wpdb->prepare(
+            "SELECT h.id, h.version, h.from_node_id, h.to_node_id, h.kind, h.name, h.sort_order,
+                    h.parked_by_group_id, h.hide, h.multiplicity
+             FROM {$schatten} h
+             INNER JOIN (
+                 SELECT id, MAX(version) AS version FROM {$schatten}
+                 WHERE from_node_id IN ({$places}) AND kind <> %s AND parked_by_group_id IS NOT NULL
+                 GROUP BY id
+             ) neuste ON neuste.id = h.id AND neuste.version = h.version
+             WHERE h.parked_by_group_id IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)
+             ORDER BY h.sort_order ASC, h.id ASC",
             [...array_map(intval(...), $ownerIds), RelationKind::Inheritance->value]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
+    }
+
+    /**
+     * Eine Kante parken — **sie und ihre Wertzeilen wandern in den Schatten**.
+     *
+     * ⚠️ **[D-619](../../../docs/NewConcept/90-decision-log.md), sein Wort auf drei vorgelegte Wege:**
+     * *«1»* — mitwandern. *«Stehenbleiben» hiesse Wertzeilen ohne ihre Kante, und das ist derselbe
+     * Schaden, den `id-space-check` seit Wochen als «Datensatz ohne Knoten» meldet.*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   K["relations · die Kante"] --> H[("relations_history · mit Gruppe")]
+     *   W["record_values · ihre Werte"] --> V[("record_values_history")]
+     *   H --> Z["lebend gelöscht — eine Gruppe, ein Akt"]
+     * ```
+     *
+     * ⚠️ **Parken ist kein Löschen** ([D-604](../../../docs/NewConcept/90-decision-log.md)): der
+     * Schatten hält alles, und {@see self::unpark()} ist die Umkehrung und keine zweite Mechanik.
+     */
+    public function park(int $edgeId, int $changeGroupId): void
+    {
+        global $wpdb;
+
+        // 1 · Die Kante in den Schatten, dort mit der Gruppe gestempelt.
+        Shadow::keepOne('relations', $edgeId, true);
+
+        Query::run('Parkgruppe im Schatten vermerken', $wpdb->prepare(
+            'UPDATE ' . Schema::table('relations_history') . '
+             SET parked_by_group_id = %d
+             WHERE id = %d AND version = (SELECT * FROM (SELECT MAX(version) FROM '
+                . Schema::table('relations_history') . ' WHERE id = %d) AS neuste)',
+            $changeGroupId,
+            $edgeId,
+            $edgeId
+        ));
+
+        // 2 · Die Wertzeilen der Kante gehen denselben Weg — **eine Gruppe, ein Akt**.
+        Shadow::keep('record_values', 'edge_id = %d', [$edgeId], true);
+
+        Query::run('Wertzeilen der geparkten Kante entfernen', $wpdb->prepare(
+            'DELETE FROM ' . Schema::table('record_values') . ' WHERE edge_id = %d',
+            $edgeId
+        ));
+
+        // 3 · Und erst jetzt die lebende Zeile.
+        Query::run('geparkte Kante lebend entfernen', $wpdb->prepare(
+            'DELETE FROM ' . Schema::table('relations') . ' WHERE id = %d',
+            $edgeId
+        ));
+    }
+
+    /**
+     * Eine geparkte Kante zurückholen — **mit ihren Wertzeilen**, in umgekehrter Reihenfolge.
+     *
+     * ⚠️ *Vorwärts geschrieben und nicht zurückgespult ([D-172](../../../docs/NewConcept/90-decision-log.md)):
+     * die Version zählt weiter, der Schatten wird nicht kürzer.*
+     *
+     * @return Relation|null `null`, wenn dort nichts geparkt liegt.
+     */
+    public function unpark(int $edgeId): ?Relation
+    {
+        global $wpdb;
+
+        $schatten = Schema::table('relations_history');
+
+        $zeile = Query::row('geparkte Kante im Schatten suchen', $wpdb->prepare(
+            "SELECT * FROM {$schatten}
+             WHERE id = %d AND parked_by_group_id IS NOT NULL
+             ORDER BY version DESC LIMIT 1",
+            $edgeId
+        ));
+
+        if ($zeile === null) {
+            return null;
+        }
+
+        $lebt = Query::value('lebt die Kante schon wieder', $wpdb->prepare(
+            'SELECT id FROM ' . Schema::table('relations') . ' WHERE id = %d',
+            $edgeId
+        ));
+
+        if ($lebt !== null) {
+            return $this->byId($edgeId);
+        }
+
+        $spalten = [];
+
+        foreach ($zeile as $name => $wert) {
+            // ⚠️ *`parked_by_group_id` bleibt im Schatten stehen — dort ist sie die Aussage «hier
+            // wurde geparkt». Lebend gibt es die Spalte seit TASK-013 nicht mehr, und
+            // {@see Schema::SHADOW_ONLY_IN} ist die eine Stelle, die das sagt.*
+            if (in_array($name, [...Schema::SHADOW_ONLY, ...(Schema::SHADOW_ONLY_IN['relations_history'] ?? [])], true)) {
+                continue;
+            }
+
+            $spalten[$name] = $wert;
+        }
+
+        $spalten['version'] = (int) $zeile['version'] + 1;
+
+        $wpdb->insert(Schema::table('relations'), $spalten, array_fill(0, count($spalten), '%s'));
+
+        if ($wpdb->last_error !== '') {
+            throw new \RuntimeException('Die geparkte Kante liess sich nicht zurückholen: ' . $wpdb->last_error);
+        }
+
+        $this->unparkValues($edgeId);
+
+        return $this->byId($edgeId);
+    }
+
+    /**
+     * Die Wertzeilen einer zurückgeholten Kante wieder lebend hinstellen.
+     *
+     * ⚠️ *Der jüngste Schattenstand je Wertzeile, und nur der als gelöscht markierte — eine Zeile,
+     * die es lebend noch gibt, wird nicht ein zweites Mal eingefügt.*
+     */
+    private function unparkValues(int $edgeId): void
+    {
+        global $wpdb;
+
+        $schatten = Schema::table('record_values_history');
+        $lebend   = Schema::table('record_values');
+
+        $zeilen = Query::rows('Wertzeilen der geparkten Kante suchen', $wpdb->prepare(
+            "SELECT h.* FROM {$schatten} h
+             INNER JOIN (
+                 SELECT id, MAX(version) AS version FROM {$schatten} WHERE edge_id = %d GROUP BY id
+             ) neuste ON neuste.id = h.id AND neuste.version = h.version
+             WHERE h.edge_id = %d AND h.deleted = 1
+               AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)",
+            $edgeId,
+            $edgeId
+        ));
+
+        foreach ($zeilen as $zeile) {
+            $spalten = [];
+
+            foreach ($zeile as $name => $wert) {
+                if (! in_array($name, Schema::SHADOW_ONLY, true)) {
+                    $spalten[$name] = $wert;
+                }
+            }
+
+            $spalten['version'] = (int) $zeile['version'] + 1;
+
+            $wpdb->insert($lebend, $spalten, array_fill(0, count($spalten), '%s'));
+
+            if ($wpdb->last_error !== '') {
+                throw new \RuntimeException(
+                    'Eine Wertzeile der geparkten Kante liess sich nicht zurückholen: ' . $wpdb->last_error
+                );
+            }
+        }
     }
 
     /**

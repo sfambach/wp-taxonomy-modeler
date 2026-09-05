@@ -225,7 +225,7 @@ foreach ($loeschbar as $r) {
 foreach ($aufConstants as $k) {
     $schatten('relations', $k, [
         'id', 'version', 'from_node_id', 'to_node_id', 'kind', 'name', 'sort_order', 'multiplicity',
-        'parked_by_group_id', 'hide', 'settings_record_id', 'target_settings_record_id',
+        'hide', 'settings_record_id', 'target_settings_record_id',
     ]);
 
     // ⚠️ *Der Eintrag, den die Aufgabe vermisst — «ohne Eintrag im Aenderungsbuch» war der Befund.*

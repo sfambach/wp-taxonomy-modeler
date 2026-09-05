@@ -13,6 +13,17 @@ final class InMemoryRelations implements RelationRepository
     /** @var array<int,Relation> */
     private array $rows = [];
 
+    /**
+     * Der Schatten — geparkte Kanten stehen hier und **nicht** mehr bei den lebenden.
+     *
+     * ⚠️ *Dieselbe Form wie in der Datenbank seit [D-619](../../../docs/NewConcept/90-decision-log.md):
+     * geparkt ist kein Merkmal einer lebenden Zeile, sondern ein anderer Ort. **Ein Doppel wäre die
+     * Sorte Fälschung, die eine Zusage grün hält, die in Wahrheit rot ist.***
+     *
+     * @var array<int,Relation>
+     */
+    private array $geparkt = [];
+
     /** ⚠️ *Eigener Id-Raum, genau wie {@see InMemoryNodes::add()} — `0` heisst «vergib eine».* */
     public function add(Relation $relation): Relation
     {
@@ -124,7 +135,47 @@ final class InMemoryRelations implements RelationRepository
 
     public function parkedFieldEdgesOf(array $ownerIds): array
     {
-        return $this->fieldsOf($ownerIds, true);
+        $edges = [];
+
+        foreach ($this->geparkt as $edge) {
+            if ($edge->kind !== RelationKind::Inheritance && in_array($edge->fromNodeId, $ownerIds, true)) {
+                $edges[] = $edge;
+            }
+        }
+
+        usort($edges, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
+
+        return $edges;
+    }
+
+    public function park(int $edgeId, int $changeGroupId): void
+    {
+        $edge = $this->rows[$edgeId] ?? null;
+
+        if ($edge === null) {
+            return;
+        }
+
+        $this->geparkt[$edgeId] = $edge->parkedBy($changeGroupId);
+
+        unset($this->rows[$edgeId]);
+    }
+
+    public function unpark(int $edgeId): ?Relation
+    {
+        $edge = $this->geparkt[$edgeId] ?? null;
+
+        if ($edge === null) {
+            return $this->rows[$edgeId] ?? null;
+        }
+
+        $revived = $edge->revived();
+
+        $this->rows[$edgeId] = $revived;
+
+        unset($this->geparkt[$edgeId]);
+
+        return $revived;
     }
 
     public function fieldEdgesTo(array $targetIds): array
@@ -150,7 +201,7 @@ final class InMemoryRelations implements RelationRepository
      * @param  list<int>      $ownerIds
      * @return list<Relation>
      */
-    private function fieldsOf(array $ownerIds, bool $parked): array
+    private function fieldsOf(array $ownerIds, bool $parked = false): array
     {
         $edges = [];
 

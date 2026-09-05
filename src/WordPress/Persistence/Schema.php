@@ -61,6 +61,8 @@ final class Schema
      * 6 — the label roles are seeded as nodes under their own container (D-151); again no
      *     table changed, and again the version is what carries them to an installed copy.
      * 7 — `relations.parked_by_group_id`, so an attribute can be removed at all (D-371).
+     *     ⚠️ *Die Spalte ist mit Fassung 27 wieder fort: das Parken steht seither im Schatten
+     *     ([D-619](../../../docs/NewConcept/90-decision-log.md), TASK-013).*
      * 8 — `settings.path`, the address a setting needs to say **which** place it answers for
      *     (OQ-092). The unique key becomes `(owner_id, setting_key, path)`; an empty path means
      *     the owner itself, so every existing row keeps its meaning untouched. **Four decisions
@@ -235,7 +237,22 @@ final class Schema
      * Verweise als Datum mit, nicht als Zwang — sonst hielte die Geschichte einen Knoten am Leben,
      * den jemand weggeräumt hat.*
      */
-    public const VERSION = 26;
+    /**
+     * Fassung 27: `relations.parked_by_group_id` fällt — **das Parken steht im Schatten** (TASK-013).
+     *
+     * ⚠️ **[D-619](../../../docs/NewConcept/90-decision-log.md), und [D-575](../../../docs/NewConcept/90-decision-log.md)
+     * wörtlich von ihm:** *«Parken heisst: in die Schattentabelle wandern, mit der Änderungsgruppe im
+     * Gepäck.»* **Und die Wertzeilen einer geparkten Kante wandern mit** — auf sein *«1»* gegen
+     * «stehenbleiben» und «verbieten».
+     *
+     * ⚠️ **Die Wanderung ist umkehrbar, und sie verliert nichts**: jede heute geparkte Zeile geht mit
+     * ihrer Gruppe in `relations_history`, bevor die Spalte fällt. *Die Spalte wieder anzulegen und
+     * die Zeilen zurückzuschreiben ist möglich, weil der Schatten beides hält — Gruppe und Inhalt.*
+     *
+     * ⚠️ *Gemessen am 2026-09-05: **14 geparkte Kanten, keine einzige mit einer Wertzeile.** Es geht
+     * nichts verloren, und die Regel steht, bevor der erste Fall sie erzwingt.*
+     */
+    public const VERSION = 27;
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
@@ -307,6 +324,20 @@ final class Schema
 
     /** Spalten, die **nur** der Schatten hat und die die Prüfung deshalb übergeht. */
     public const SHADOW_ONLY = ['deleted', 'archived_at'];
+
+    /**
+     * Spalten, die **nur eine bestimmte** Schattentabelle hat — Tabellenname => Spalten.
+     *
+     * ⚠️ **Eine Ausnahme mit Namen statt einer stillen** ([D-619](../../../docs/NewConcept/90-decision-log.md),
+     * TASK-013): *`parked_by_group_id` ist seit Fassung 27 keine lebende Spalte mehr — geparkt heisst,
+     * **es gibt keine lebende Zeile**. Im Schatten bleibt sie und trägt die Änderungsgruppe, mit der
+     * geparkt wurde ([D-575](../../../docs/NewConcept/90-decision-log.md): «mit der Änderungsgruppe im
+     * Gepäck»).*
+     *
+     * ⚠️ *Sie steht hier und nicht in {@see self::SHADOW_ONLY}, weil die dort genannten Spalten in
+     * **jedem** Schatten stehen müssen — `nodes_history` hat kein Parken und soll auch keins bekommen.*
+     */
+    public const SHADOW_ONLY_IN = ['relations_history' => ['parked_by_group_id']];
 
     /** @return list<string> The table names, without the WordPress prefix. */
     public static function tableNames(): array
@@ -380,6 +411,11 @@ final class Schema
         self::dropIdentitiesTable();
         self::dropSettingsTable();
 
+        // ⚠️ **Nach `dbDelta`, und das ist hier zwingend:** *`dbDelta` legt eine fehlende Spalte
+        // wieder an, es entfernt keine. Die Wanderung muss also laufen, wenn die Tabelle steht — und
+        // sie räumt die Zeilen weg, bevor sie die Spalte fallen lässt (TASK-013).*
+        self::moveParkingIntoTheShadow();
+
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
         self::constrainRelationsToNodes();
@@ -400,6 +436,70 @@ final class Schema
      * `SHOW TABLES`, ob es sie gibt. **Eine Installation, die von Fassung 9 kommt, wandert also
      * vollständig, bevor hier gelöscht wird.***
      */
+    /**
+     * Fassung 27: die heute geparkten Kanten wandern in den Schatten, dann fällt die Spalte.
+     *
+     * ⚠️ **Die Reihenfolge ist die ganze Sicherheit** ([D-619](../../../docs/NewConcept/90-decision-log.md)):
+     * *erst der Schatten, dann die Wertzeilen, dann die lebende Zeile, und zuletzt die Spalte. Wer die
+     * Spalte zuerst fallen liesse, hätte 14 Kanten, die lebend und unauffällig dastehen und von denen
+     * niemand mehr weiss, dass sie entfernt waren.*
+     *
+     * ⚠️ *Sie läuft nur, solange es die Spalte gibt — ein zweiter Aufruf findet nichts zu tun und
+     * kehrt um. **Umkehrbar bleibt sie über den Schatten**, der Gruppe und Inhalt beide hält.*
+     */
+    private static function moveParkingIntoTheShadow(): void
+    {
+        global $wpdb;
+
+        $relations = self::table('relations');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $relations)) !== $relations) {
+            return;
+        }
+
+        $vorhanden = $wpdb->get_col($wpdb->prepare(
+            'SELECT COLUMN_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+            $relations,
+            'parked_by_group_id'
+        ));
+
+        if ($vorhanden === []) {
+            return;
+        }
+
+        /** @var list<array{id: string, parked_by_group_id: string}> $geparkt */
+        $geparkt = $wpdb->get_results(
+            "SELECT id, parked_by_group_id FROM {$relations} WHERE parked_by_group_id IS NOT NULL",
+            ARRAY_A
+        ) ?: [];
+
+        // ⚠️ *Der Spaltenplan von `Shadow` ist je Tabelle gemerkt, und `parked_by_group_id` fällt
+        // gleich aus ihm heraus — sonst kopierte der nächste Aufruf eine Spalte, die es nicht mehr
+        // gibt, und `Shadow::keep()` würde zu Recht scheitern.*
+        Shadow::forgetColumnPlan();
+
+        foreach ($geparkt as $zeile) {
+            Shadow::keepOne('relations', (int) $zeile['id'], true);
+
+            Shadow::keep('record_values', 'edge_id = %d', [(int) $zeile['id']], true);
+
+            $wpdb->query($wpdb->prepare(
+                'DELETE FROM ' . self::table('record_values') . ' WHERE edge_id = %d',
+                (int) $zeile['id']
+            ));
+
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$relations} WHERE id = %d",
+                (int) $zeile['id']
+            ));
+        }
+
+        $wpdb->query("ALTER TABLE {$relations} DROP COLUMN parked_by_group_id");
+
+        Shadow::forgetColumnPlan();
+    }
+
     private static function dropSettingsTable(): void
     {
         global $wpdb;
@@ -1379,12 +1479,12 @@ final class Schema
                 KEY settings_record_id (settings_record_id)
             ) {$charset};",
 
-            // ⚠️ `parked_by_group_id` is the one place an edge can be parked (D-371). A node needs
-            // no such column, because its **position** is the mark — it sits under the trash
-            // (Package 1) — and an edge has no position in the tree, so there is no first truth to
-            // duplicate. It holds the **change group** that parked it rather than a bare flag,
-            // because D-128 wants a parked attribute labelled *deleted with «X»* and the group is
-            // where that act is described (D-348). One column, two facts, neither of them a copy.
+            // ⚠️ **`parked_by_group_id` steht hier nicht mehr** ([D-619](../../../docs/NewConcept/90-decision-log.md),
+            // TASK-013). *Sie war die eine Stelle, an der eine Kante geparkt werden konnte (D-371);
+            // seit D-575 heisst Parken «in die Schattentabelle wandern, mit der Änderungsgruppe im
+            // Gepäck», und **eine geparkte Kante hat gar keine lebende Zeile mehr**. Die Spalte steht
+            // weiter in `relations_history` — dort ist sie die Aussage, hier war sie ein Merkmal an
+            // einer Zeile, die es nicht geben dürfte.*
             "CREATE TABLE {$t('relations')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
@@ -1394,14 +1494,12 @@ final class Schema
                 name varchar(191) NOT NULL DEFAULT '',
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
-                parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 settings_record_id bigint(20) unsigned DEFAULT NULL,
                 target_settings_record_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 UNIQUE KEY one_place (from_node_id,kind,sort_order),
                 KEY to_node_id (to_node_id),
-                KEY parked_by_group_id (parked_by_group_id),
                 KEY settings_record_id (settings_record_id),
                 KEY target_settings_record_id (target_settings_record_id)
             ) {$charset};",

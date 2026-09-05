@@ -75,8 +75,14 @@ final class Restore
 
         $spalten = [];
 
+        // ⚠️ *Und die benannten Nur-im-Schatten-Spalten dieser einen Tabelle*
+        // ([D-619](../../../docs/NewConcept/90-decision-log.md), TASK-013): **`parked_by_group_id`
+        // gibt es lebend nicht mehr**, und sie mitzuschreiben liesse das Einfügen scheitern — an einer
+        // Stelle, an der der Benutzer «zurückholen» geklickt hat.
+        $nurImSchatten = [...Schema::SHADOW_ONLY, ...(Schema::SHADOW_ONLY_IN[$schatten] ?? [])];
+
         foreach ($ziel as $name => $wert) {
-            if (! in_array($name, Schema::SHADOW_ONLY, true)) {
+            if (! in_array($name, $nurImSchatten, true)) {
                 $spalten[$name] = $wert;
             }
         }

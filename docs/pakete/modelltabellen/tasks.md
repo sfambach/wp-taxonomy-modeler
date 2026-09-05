@@ -341,7 +341,7 @@ der alte Einzelindex ist fort, keine Doppelung, und **ein Tausch tauscht wirklic
 `label_role` und `with_label`. **Meine Zusage «zu bereinigen gibt es nichts» war vorschnell.***
 
 ```text
-[?] TASK-013  parked_by_group_id aus relations entfernen; Parken wandert in den Schatten
+[x] TASK-013  parked_by_group_id aus relations entfernen; Parken wandert in den Schatten
 ```
 
 [D-575](../../NewConcept/90-decision-log.md), wörtlich von ihm: *«Parken heisst: in die
@@ -354,7 +354,24 @@ erwähnen «geparkt», darunter `ModelEditor` 18, `WpdbRelationRepository` 12, `
 ([D-128](../../NewConcept/90-decision-log.md)s Umschalter). **Das ist der genannte Preis** — gegen
 23 Stellen, die heute etwas vergessen können.*
 
-⚠️ **Am 2026-09-05 bewusst nicht angefangen, und der Grund steht als `INF-024` im Eingang.** *Das
+**Gebaut am 2026-09-05, entschieden durch [D-619](../../NewConcept/90-decision-log.md).** Die
+offene Frage ist beantwortet: **die Wertzeilen wandern mit**, auf sein «1» gegen
+«stehenbleiben» und «verbieten». Schema 27 nimmt `relations.parked_by_group_id` weg und schiebt
+die 14 geparkten Kanten mit ihrer Gruppe in `relations_history`; `parkedFieldEdgesOf()` liest
+seither aus dem Schatten, und `park()`/`unpark()` sind ein Paar, keine zwei Mechaniken.
+
+**Neu am Netz:** [`parked-in-shadow-check.php`](../../../scripts/dev/parked-in-shadow-check.php)
+— er legt sich seinen eigenen Fall an (Knoten, Kante, Wertzeile, Präfix `__`), parkt, prüft
+beide Wanderungen und holt zurück. *Nötig, weil heute keine der 14 geparkten Kanten eine
+Wertzeile trägt — die Zusage prüfte sonst nur, was zufällig dasteht.*
+
+⚠️ **Ein gemessener Nebenbefund, nicht entschieden:** *nach dem Umzug lesen sich **16** Kanten
+als geparkt, nicht 14. Die drei zusätzlichen wurden am 2026-08-30 geparkt und haben seither
+keine lebende Zeile mehr — ihr letzter Journaleintrag lautet bei allen dreien «attribute
+removed». **Sie waren schon geparkt und wurden nur nie angezeigt.** Ob sie in der Liste
+«entfernte Felder» auftauchen sollen, steht als `INF-028` im Eingang.*
+
+⚠️ *Der Stand vom Vormittag, zur Nachvollziehbarkeit:* **Am 2026-09-05 bewusst nicht angefangen, und der Grund steht als `INF-024` im Eingang.** *Das
 Handwerk ist überschaubar und der Platz für die Änderungsgruppe existiert schon —
 `relations_history` **hat** die Spalte `parked_by_group_id`. **Offen ist, was aus den Wertzeilen
 einer geparkten Kante wird**, sobald ihre Zeile aus `relations` verschwindet: mitwandern,

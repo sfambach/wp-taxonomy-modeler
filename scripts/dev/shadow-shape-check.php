@@ -135,7 +135,16 @@ foreach (Schema::LIVE_TABLES as $i => $lebend) {
         'fehlt im Schatten: ' . implode(', ', $fehlend)
     );
 
-    $zuviel = array_diff(array_keys($s), array_keys($l), Schema::SHADOW_ONLY);
+    // ⚠️ *Und die benannten Ausnahmen dieser einen Tabelle* ([D-619](../../docs/NewConcept/90-decision-log.md),
+    // TASK-013): **`relations_history.parked_by_group_id` hat lebend absichtlich keine Entsprechung**
+    // — eine geparkte Kante hat keine lebende Zeile. Benannt in {@see Schema::SHADOW_ONLY_IN}, damit
+    // die Ausnahme im Quelltext steht und nicht in der Nachsicht dieser Prüfung.
+    $zuviel = array_diff(
+        array_keys($s),
+        array_keys($l),
+        Schema::SHADOW_ONLY,
+        Schema::SHADOW_ONLY_IN[$schatten] ?? []
+    );
 
     check(
         'der Schatten hat keine Spalte, die es lebend nicht gibt',

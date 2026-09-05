@@ -125,7 +125,7 @@ $kandidat = null;
 
 foreach ($wpdb->get_results(
     'SELECT id, from_node_id, to_node_id, name FROM ' . Schema::table('relations') . "
-     WHERE kind <> 'inheritance' AND parked_by_group_id IS NULL"
+     WHERE kind <> 'inheritance'"
 ) as $zeile) {
     $ziel     = $nodes->find((int) $zeile->to_node_id);
     $besitzer = $nodes->find((int) $zeile->from_node_id);

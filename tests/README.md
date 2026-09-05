@@ -42,6 +42,7 @@ as the whole net.*
 | `always-on` | that what must be read **before every task** — `CLAUDE.md`, the working model, `AGENTS.md` — stays under its measured ceiling ([D-573](../docs/NewConcept/90-decision-log.md)). *The previous rule set died at 82 KB, «most of it always-on». Today: 42 KB.* |
 | `silent-query` | dass eine **kaputte Abfrage wirft, statt leer zu antworten** — alle vier Lesewege, dazu die leere `prepare()`-Anweisung, der Gegenbeweis, dass ein wirklich leeres Ergebnis leer bleibt, und die Messung, dass die Speicher kein `$wpdb->get_*` mehr direkt aufrufen |
 | `seed-twice` | dass **eine Saat, die zweimal läuft, nichts verdoppelt** — Saat und alle vier Gerüste ein zweites Mal, an `importOnce()` vorbei, Knoten und Kanten vorher und nachher gezählt |
+| `parked-in-shadow` | dass **Parken wandern heisst** ([D-575](../docs/NewConcept/90-decision-log.md), [D-619](../docs/NewConcept/90-decision-log.md), TASK-013) — die Kante mit ihrer Änderungsgruppe in den Schatten, **ihre Wertzeilen mit ihr**, und Zurückholen als Umkehrung. *Er legt sich seinen eigenen Fall an (Präfix `__`) und räumt ihn weg, weil heute keine geparkte Kante eine Wertzeile trägt* |
 
 ⚠️ **`doc-reach-check` ist am 2026-09-01 stillgelegt** ([D-574](../docs/NewConcept/90-decision-log.md))
 und heisst jetzt `doc-reach-stillgelegt.php` — damit ist es aus dem Muster oben heraus. *Es mass, ob
