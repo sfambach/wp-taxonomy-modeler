@@ -707,3 +707,17 @@ die Maske. Der neue muss genau das tun — wählen, speichern, neu laden, nachse
 derselbe blinde Fleck beim nächsten Mal.*
 
 Gehört zu [D-617](../../NewConcept/90-decision-log.md) und `INF-014`. **Block A.**
+
+---
+
+[ ] TASK-053  Die Kantenart wird angegeben, nicht geraten (D-618)
+
+Drei Teile, aus [D-618](../../NewConcept/90-decision-log.md):
+
+1. **`addField()` bekommt die Art als Angabe** statt sie aus dem Zielast abzuleiten.
+2. **Der Satz auf der Oberfläche fällt** — *«‹Kind› is not a choice — it follows from where the
+   target sits in the tree»* war nie wahr; an seine Stelle tritt eine Wahl.
+3. **Ein Wächter:** jede Kante, die in den Einstellungsast zeigt, ist eine Einstellungskante.
+   *Gemessen am 2026-09-04 stimmt das — der Wächter hält fest, er stellt nicht her.*
+
+⚠️ *Ableiten ist damit nicht verboten, sondern vertagt: «später, aber auch nur vielleicht».*

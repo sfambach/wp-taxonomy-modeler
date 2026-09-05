@@ -35,8 +35,8 @@ was in die Inbox ging.
 2. **«Wie entsteht eine Einstellungskante?» — die Frage war falsch gestellt.** *Er: «Wir haben ein
    Setting im Knoten, das den Renderer wählt.» Gemessen: die vier Wächter sind grün, geschrieben
    wird über die Spalte. Ich hatte einen Befund von vor TASK-020 weitergetragen.*
-3. **`INF-013`** — `addField()` leitet die Kantenart nicht aus dem Ast ab. **Bleibt offen**, er sieht
-   es sich an. *Hält nichts auf: die Wanderung baut nicht darauf.*
+3. **`INF-013` — entschieden** ([D-618](../../NewConcept/90-decision-log.md)): der Benutzer legt die
+   Kantenart fest, geraten wird nicht. *Ableiten später, «aber auch nur vielleicht».* → `TASK-053`.
 4. **`INF-004`** — war am 2026-09-04 schon entschieden («erstmal alles zeigen»). Mein Fehler.
 
 ---
