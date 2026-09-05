@@ -108,7 +108,7 @@ geholt, bevor feststeht, dass eine Zeile entsteht, und ein Fehlschlag gibt sie n
 ---
 
 ```text
-[ ] TASK-007  nodes.kind in field_type umbenennen
+[x] TASK-007  nodes.kind in field_type umbenennen
 ```
 
 **Spalte `kind` → `field_type`, Wert `field` → `model`.** *Nach seiner Selbstkorrektur: «Entschuldigung,
@@ -936,3 +936,27 @@ hängt.*
 ⚠️ *Der Fall ist der begründete: ein Typ aus zwei Feldern gehört unter `Combined` und nicht dort,
 wo er heute liegt. Das ist keine Aufräumlaune, sondern seine Einordnung — **und dass sie sich nicht
 vollziehen lässt, ist der Fehler**, nicht die Einordnung.*
+
+**Gemessen am 2026-09-05. Es war keiner der drei Fälle sauber — es war der dritte in seiner
+leisesten Form: der Akt tut nichts, weil das Ziel nicht anzuklicken ist.**
+
+⚠️ **Der Akt ist vollständig da und er hält.** *Kern, Rand und Maske: die Seite zeichnet den
+Knopf, die Zeilen tragen `target`, beide stecken im selben Formular, das Abschicken läuft durch,
+der Knoten hängt danach unter dem Ziel, sein Pfad sagt dasselbe wie seine Kante, das Kind wandert
+mit, eine Schattenzeile steht da und das Änderungsbuch trägt «moved» mit Vorher und Nachher.
+**Nichts davon musste gebaut werden.***
+
+⚠️ **Woran es hing, gemessen an derselben Seite zweimal am selben Abend:** *der Wähler im
+Verschiebe-Dialog bot **nur die aufgeklappten Zeilen** an — 12 Ziele, und `Combined` war keines
+davon. Ein geschlossener Ast war schlicht kein möglicher Ort. **Nach dem Umbau des Dialogs
+(TASK-054) sind es 123 Ziele**, und für seine vier Knoten — `Street / H#`, `Zip/City` in zwei
+Ästen — ist `Combined` jetzt wählbar. Nichts weiter verweigert: keiner der vier ist geschützt,
+jeder hat seine Vererbungskante, keiner enthält das Ziel.*
+
+⚠️ *Seine Knoten sind **nicht** verschoben worden. Das ist seine Einordnung und sein Klick.*
+
+**Neu am Netz:** [`move-mask-check.php`](../../../scripts/dev/move-mask-check.php) — eigene Knoten
+(`__mv `), Seite zeichnen, Markup lesen, abschicken, frisch nachlesen, wegräumen. **Die Zusage
+schliesst das Ziel ein**: nicht nur *irgendein* `target`, sondern *dieser Zielknoten steht als
+wählbare Zeile darunter*. *Ohne diesen einen Punkt wäre der Wächter an genau dem Abend grün
+gewesen, an dem er nicht verschieben konnte.*
