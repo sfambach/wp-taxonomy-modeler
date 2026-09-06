@@ -232,11 +232,23 @@ echo "\n== Und an einer Verwendungsstelle ==\n";
 // ⚠️ *Also hält diese Zusage jetzt fest, **dass keine da sind** — und mit ihr, dass die zweistufige
 // Notation im Bestand unbenutzt ist. Kommt eine Verwendungsstelle wieder, weil jemand sie einstellt,
 // wird sie rot und verlangt eine Entscheidung.*
-$mitPunkt = (int) $wpdb->get_var(
-    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE path LIKE '%.%'"
-);
+//
+// ⚠️ **Die Zusage ist am 2026-09-06 enger gefasst worden, und die Aenderung ist ein sichtbarer Teil
+// von [D-659](../../docs/NewConcept/90-decision-log.md)** (`PR-9`). *Sie zaehlte **jeden**
+// zweistufigen Pfad und meinte den Renderer. **Seit [D-611](../../docs/NewConcept/90-decision-log.md)
+// darf eine Verwendungsstelle eine Einstellung ueberschreiben** — sein Wort: «a, aber aktuell nur
+// fuer Settings» —, und `display_size` ist genau der Fall, fuer den das gebaut wurde: `Street Name`
+// breit, `House Number` schmal, beide auf `Text` zeigend. **Die alte Fassung waere rot geworden, weil
+// eine Entscheidung gebaut wurde**, und haette dabei ausgesehen wie ein Rueckfall.*
+//
+// ⚠️ *Was sie festhaelt, bleibt unveraendert: **keine Renderer-Wahl an einer Kante**. Genau das waren
+// die vier Altlasten, und genau das ist weiter verboten.*
+$mitPunkt = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE path LIKE '%.%' AND relation_id = %d",
+    $framework->settingRelationId(SettingKey::Renderer)
+));
 
-check('kein Kanten-Datensatz mit zweistufigem Pfad', $mitPunkt === 0, (string) $mitPunkt);
+check('keine Renderer-Wahl an einer Verwendungsstelle', $mitPunkt === 0, (string) $mitPunkt);
 
 // ⚠️ *Der Gegenfall: es gibt überhaupt Kanten-Datensätze. Sonst wäre «keine zweistufigen» auch dann
 // grün, wenn die Tabelle leer wäre.*

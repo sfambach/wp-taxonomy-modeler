@@ -9,12 +9,14 @@ use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Renderer\RenderResult;
+use Taxmod\Core\Renderer\TextareaRenderer;
 
 /**
  * The render contract, the fallback and the registry's two jobs.
@@ -232,5 +234,110 @@ final class RendererTest extends TestCase
 
         self::assertSame('<b>40</b><span class="rings"></span>', $both->markup);
         self::assertSame([7, 9], $both->usedRelations);
+    }
+
+    // ------------------------------------------------------- die Anzeigebreite (D-659)
+
+    /**
+     * ⚠️ **Sein Anlass, gemessen:** *`Street / H#` zeichnet waagerecht und ohne Umbruch, **aber beide
+     * Felder sind gleich breit** — ein Textfeld ohne Angabe nimmt die Vorgabe des Rahmenwerks.*
+     */
+    #[Test]
+    public function the_display_size_reaches_the_drawn_field(): void
+    {
+        $markup = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(
+                Purpose::Edit,
+                TypedValue::ofText('Bahnhofstrasse'),
+                [SettingKey::DisplaySize->value => TypedValue::ofInt(40)],
+                'v'
+            )
+        )->markup;
+
+        self::assertStringContainsString('size="40"', $markup);
+
+        // ⚠️ **Keine Längenbegrenzung** ([D-659](../../../docs/NewConcept/90-decision-log.md)):
+        // *«sie beschneidet nichts und weist nichts zurück; wer eine Grenze will, braucht einen
+        // Validator».* **Die Verwechslung mit `maxlength` ist der eine Fehler, den sie benennt.**
+        self::assertStringNotContainsString('maxlength', $markup);
+    }
+
+    /** Zwei Angaben, zwei Breiten — sonst zeichnete nicht die Angabe, sondern etwas hinter ihr. */
+    #[Test]
+    public function two_widths_draw_two_widths(): void
+    {
+        $breit = (new FieldRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('Bahnhofstrasse'),
+            [SettingKey::DisplaySize->value => TypedValue::ofInt(40)],
+            'v'
+        ))->markup;
+
+        $schmal = (new FieldRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('12a'),
+            [SettingKey::DisplaySize->value => TypedValue::ofInt(4)],
+            'v'
+        ))->markup;
+
+        self::assertStringContainsString('size="4"', $schmal);
+        self::assertNotSame($breit, $schmal);
+    }
+
+    /**
+     * ⚠️ **Ohne Angabe bleibt es, wie es war.** *Sie ist ein **Wunsch, kein Befehl** — ein Rand, der
+     * sie nicht umsetzen kann oder keine bekommt, ignoriert sie, statt zu scheitern.*
+     */
+    #[Test]
+    public function without_a_display_size_nothing_changes(): void
+    {
+        $markup = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(Purpose::Edit, TypedValue::ofText('Bahnhofstrasse'), [], 'v')
+        )->markup;
+
+        self::assertStringNotContainsString('size=', $markup);
+        self::assertStringContainsString('value="Bahnhofstrasse"', $markup);
+    }
+
+    /**
+     * ⚠️ *Der mehrzeilige Textrenderer zählt in derselben Einheit und nimmt die Angabe darum auch —
+     * seine eigene `cols` bleibt die nähere Aussage und gewinnt.*
+     */
+    #[Test]
+    public function the_textarea_takes_it_too_and_its_own_cols_wins(): void
+    {
+        $nurBreite = (new TextareaRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('x'),
+            [SettingKey::DisplaySize->value => TypedValue::ofInt(40)],
+            'v'
+        ))->markup;
+
+        self::assertStringContainsString('cols="40"', $nurBreite);
+
+        $mitCols = (new TextareaRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('x'),
+            [
+                SettingKey::DisplaySize->value => TypedValue::ofInt(40),
+                'cols'                         => TypedValue::ofInt(12),
+            ],
+            'v'
+        ))->markup;
+
+        self::assertStringContainsString('cols="12"', $mitCols);
+    }
+
+    /**
+     * ⚠️ **Die Angabe ist dem Rahmenwerk vorbehalten** (`D-084`): *ein Autor darf keinen eigenen
+     * Schlüssel `display_size` erfinden, sonst hiesse derselbe Name an zwei Stellen Verschiedenes.*
+     */
+    #[Test]
+    public function the_display_size_is_the_engines_own_key(): void
+    {
+        self::assertTrue(SettingKey::isReserved('display_size'));
+        self::assertSame(SettingKey::DisplaySize, SettingKey::tryFrom('display_size'));
     }
 }

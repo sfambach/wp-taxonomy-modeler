@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -53,7 +54,16 @@ final class TextareaRenderer extends TypedFieldRenderer
             // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
             // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
             . ($context->surroundings->mayBeNothing ? '' : ' aria-required="true"')
-            . $this->createHtmlAttribute('cols', $this->numberSetting($context, 'cols'))
+            // ⚠️ **`cols` zuerst, `display_size` als Rückfall** ([D-659](../../../docs/NewConcept/90-decision-log.md)).
+            // *Beide sagen dasselbe in derselben Einheit — eine Breite in Zeichen —, und `cols` ist die
+            // Angabe, die **diesen** Rand meint. **Die Anzeigebreite ist der Wunsch, den jeder Rand
+            // berücksichtigt, der kann**; ihn hier zu übergehen hiesse, dass die Breite eines Feldes
+            // davon abhinge, welchen Renderer der Knoten gewählt hat.*
+            . $this->createHtmlAttribute(
+                'cols',
+                $this->numberSetting($context, 'cols')
+                    ?? $this->numberSetting($context, SettingKey::DisplaySize->value)
+            )
             . $this->createHtmlAttribute('rows', $this->numberSetting($context, 'rows'))
             . '>' . RenderResult::escape($this->outputValue($context)) . '</textarea>';
     }

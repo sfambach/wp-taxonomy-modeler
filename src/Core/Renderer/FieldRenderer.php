@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -71,6 +72,15 @@ final class FieldRenderer extends TypedFieldRenderer
             // Vorgabe ist `true`, also bleibt jede Zeichnung ohne diese Angabe unverändert.*
             'aria-required'  => $context->surroundings->mayBeNothing ? null : 'true',
             'value'     => $this->outputValue($context),
+            // ⚠️ **Die Anzeigebreite in Zeichen** ([D-659](../../../docs/NewConcept/90-decision-log.md)),
+            // *und `size` ist genau das: die Breite in Zeichen, nicht `maxlength`. **Die Verwechslung
+            // wäre der Fehler, vor dem die Entscheidung ausdrücklich warnt** — sie beschneidet nichts
+            // und weist nichts zurück.*
+            //
+            // ⚠️ *Fehlt die Angabe, fehlt das Attribut, und der Rand nimmt seine eigene Vorgabe — genau
+            // wie bisher. **Das ist die andere Hälfte des Beschlusses**: sie ist ein Wunsch, kein
+            // Befehl.*
+            'size'      => $this->numberSetting($context, SettingKey::DisplaySize->value),
             'pattern'   => $context->type?->pattern(),
             'inputmode' => $context->type?->inputMode(),
         ]);

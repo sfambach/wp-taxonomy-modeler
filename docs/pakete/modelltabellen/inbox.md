@@ -1702,3 +1702,26 @@ ohne jede Annahme ueber seinen Bestand auskommt.*
 
 ⚠️ *Nicht angefasst, weil ein fremder roter Waechter mitten in einer anderen Arbeit stillgestellt zu
 werden das ist, was `PR-9` verhindert.*
+
+---
+
+## INF-059 · `display_size` wird an **jedem** Knoten angeboten, nicht nur an `text`
+
+[D-659](../../NewConcept/90-decision-log.md) erklaert die Anzeigebreite **am Typ `text`**. Gebaut ist
+sie als gewoehnlicher Schluessel des Rahmenwerks mit fester Form (eine ganze Zahl), und
+`SettingKey::applyingTo()` bietet damit **jedem** Gegenstand eine Zeile an — auch einem `int`, einem
+`bool`, einem Knoten ohne eigenen Typ.
+
+**Das ist kein Versehen, sondern der bestehende Zustand:** *`factor` und `offset` verhalten sich
+genauso, und `SettingCategory` benennt das ausdruecklich als «den ehrlichen Rest von
+[OQ-093](../../NewConcept/91-open-questions.md)» — die Frage, wie ein Schluessel sagt, fuer welche
+Gegenstaende er gilt, ist offen.* **Eine Verengung waere hier erfunden worden** (`PR-4`), darum steht
+sie nicht im Kode.
+
+⚠️ *Im Modell ist der Ort dagegen genau einer: die Einstellungskante haengt an `Text`
+(`Text --display_size--> display size`), also sieht die Zeile im Einstellungsblock nur, wer auf `Text`
+zeigt. **Der breite Fall betrifft allein die abgeleitete Liste `applyingTo()`**, die der
+Datensatzweg nicht benutzt.*
+
+**ENTSCHEIDUNG ERFORDERLICH: NEIN** — aber wenn OQ-093 einmal beantwortet wird, gehoert
+`display_size` in dieselbe Antwort wie `factor` und `offset`.

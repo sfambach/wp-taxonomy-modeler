@@ -120,6 +120,30 @@ enum SettingKey: string
     case Icon = 'icon';
 
     /**
+     * Wie breit ein Feld **in Zeichen** gezeichnet werden soll
+     * ([D-659](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Sein Wort, am Typ `text` erklärt:** *«an Text-Typ ein Setting `display size` in Zeichen
+     * einführen, damit Strasse die gross ist und Hausnummer die klein ist — eher wie ihr Inhalt
+     * dargestellt werden — und der Text-Renderer müsste das berücksichtigen.»*
+     *
+     * ⚠️ **Zwei Dinge, die sie nicht ist, und beide stehen ausdrücklich in der Entscheidung:**
+     * *(1) **keine Längenbegrenzung** — sie beschneidet nichts und weist nichts zurück; wer eine
+     * Grenze will, braucht einen Validator. (2) **ein Wunsch, kein Befehl** — ein Rand, der sie
+     * nicht umsetzen kann, ignoriert sie, statt zu scheitern. Genau darum steht sie hier und nicht
+     * bei den begrenzenden Schlüsseln: sie sagt nichts darüber, was erlaubt ist.*
+     *
+     * ⚠️ **Eine ganze Zahl von sich aus, nicht die des Gegenstands.** *Eine Anzahl Zeichen ist eine
+     * Anzahl, gleichgültig ob ein Text oder eine Zahl darunter steht — dieselbe Begründung, mit der
+     * `factor` ein Dezimalwert bleibt, was die Einheit auch misst. `LikeTheSubject` hiesse «die
+     * Breite eines Textes ist ein Text».*
+     *
+     * ⚠️ *Sie erbt die Auflösungskette wie `min` und `max` ([D-602](../../../docs/NewConcept/90-decision-log.md)):
+     * am Typ erklärt, an der Verwendungsstelle überschreibbar ([D-611](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    case DisplaySize = 'display_size';
+
+    /**
      * How much of the parent's reference unit this one is
      * ([D-274](../../../docs/NewConcept/90-decision-log.md)).
      *
@@ -277,6 +301,8 @@ enum SettingKey: string
         return match ($this) {
             self::ReadOnly                             => SettingShape::Switch,
             self::Factor, self::Offset                 => SettingShape::Exact,
+            // ⚠️ *Eine Anzahl Zeichen — siehe {@see self::DisplaySize}.*
+            self::DisplaySize                          => SettingShape::Whole,
             self::Multiplicity                         => SettingShape::OneOfFour,
             self::Renderer, self::Converter,
             self::Validator                            => SettingShape::ARegisteredName,
