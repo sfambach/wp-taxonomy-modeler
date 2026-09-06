@@ -2780,10 +2780,16 @@ final class NodesScreen
      */
     private function recordTypeChoice(?RecordType $gewaehlt = null, string $formId = ''): string
     {
+        // ⚠️ **Ein Wort je Art, und die Erklaerung steht am Fragezeichen** — *sein Wort am
+        // 2026-09-06: «hier nur noch Example / Default / Record, Feld ist sonst zu breit». Der
+        // erklaerende Nachsatz machte das Auswahlfeld breiter als die Spalte, die es beschreibt,
+        // und er stand dreimal fast gleich da. **Er ist nicht verschwunden, sondern umgezogen**
+        // ([D-661](../../../docs/NewConcept/90-decision-log.md)): der Hinweis unter dem Feld sagt
+        // weiter, was die Arten unterscheidet.*
         $worte = [
-            RecordType::User->value    => __('Entry — ordinary data somebody enters', 'taxmod'),
-            RecordType::Default->value => __('Default — a preset every new record starts with', 'taxmod'),
-            RecordType::Example->value => __('Example — shown only, it presets nothing', 'taxmod'),
+            RecordType::User->value    => __('Entry', 'taxmod'),
+            RecordType::Default->value => __('Default', 'taxmod'),
+            RecordType::Example->value => __('Example', 'taxmod'),
         ];
 
         $steht    = $gewaehlt ?? RecordType::standard();
