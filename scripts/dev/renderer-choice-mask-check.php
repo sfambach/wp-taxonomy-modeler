@@ -319,9 +319,13 @@ echo "\n== die sechs unter dem Zwischenknoten sind wieder zu erreichen ==\n";
 // bekommt die Behaelter, ein Knotenverweis die Waehler. `reference` ist nicht darunter, und das ist
 // keine Luecke dieses Umbaus — **er unterstuetzt nur `Purpose::Display`**, wird also beim Bearbeiten
 // nirgends angeboten und wurde es auch vom eigenen Block nie.*
+// ⚠️ **Seit dem 2026-09-06 haengt es auch daran, ob es etwas zu waehlen gibt** — *sein Befund an
+// `Ampere`: «das kann aber nicht richig sein weil der knoten keine kinder hat». Ein Blatt bekommt
+// keine Auswahlliste angeboten, ein Knoten mit Kindern schon. Und `reference` ist jetzt dabei: die
+// Frage ist «was kann diesen Knoten zeichnen», nicht «was kann ihn bearbeiten».*
 $faelle = [
     'model'     => ['form', 'table', 'compact'],
-    'constants' => ['chooser-dialog', 'chooser-inline'],
+    'constants' => ['reference'],
 ];
 
 foreach ($faelle as $ast => $erwartet) {
@@ -335,6 +339,19 @@ foreach ($faelle as $ast => $erwartet) {
         'angeboten: ' . (implode(',', $namen) ?: '—')
     );
 }
+
+// ⚠️ **Die Gegenprobe, und sie ist der eigentliche Beleg:** *derselbe Knoten, sobald er ein Kind hat,
+// bekommt die Waehler — die Regel haengt an der Menge und nicht am Ast.*
+$mitKind = $editor->createNode('__rcm mit Kind', $framework->rootOf(Branch::from('constants'))->id);
+$editor->createNode('__rcm ein Kind', $mitKind->id);
+
+$namenMitKind = array_values(angebotDerZeile(seite($mitKind->id), $kante));
+
+check(
+    'mit einem Kind stehen die Waehler wieder zur Wahl',
+    array_values(array_diff(['chooser-dialog', 'chooser-inline'], $namenMitKind)) === [],
+    'angeboten: ' . (implode(',', $namenMitKind) ?: '—')
+);
 
 echo "\n== was die Registratur nicht kennt, ist keine Moeglichkeit ==\n";
 

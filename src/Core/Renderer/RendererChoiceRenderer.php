@@ -112,10 +112,25 @@ final class RendererChoiceRenderer extends RendererNode
         array $candidates,
         array $labels = [],
         ?Node $trash = null,
+        /**
+         * Ob es an diesem Gegenstand etwas zu wählen gibt — für die Renderer, die eine Menge brauchen.
+         *
+         * ⚠️ **Sein Befund am 2026-09-06, zweimal gemeldet:** *«aktuell werden die beiden chooser
+         * angeboten das kann aber nicht richig sein weil der knoten keine kinder hat»* — an `Ampere`,
+         * einem Blatt. **Ich hatte es zuvor an der falschen Stelle repariert und «gemessen» gemeldet,
+         * was auf seinem Schirm nie stand.** Diese Liste hier ist die, die er sieht.
+         */
+        bool $thereIsAChoice = true,
     ): array {
         $sieve = [];
 
-        foreach ($registry->eligibleFor($subject, $type, Purpose::Edit) as $one) {
+        // ⚠️ **Ohne Zweck gefragt, und das ist der zweite Teil desselben Befunds.** *Hier stand
+        // `Purpose::Edit` fest. Für einen **Konstantenknoten** wie `Ampere` beantwortet das die
+        // falsche Frage: er wird angezeigt und nicht eingegeben, also blieben nur die zwei Chooser
+        // übrig — die einzigen, die einen Knotenverweis **bearbeiten** können. Gefragt gehört, was
+        // ihn überhaupt zeichnen kann; welcher Zweck gerade dran ist, entscheidet später die
+        // Auflösung ([R33c](../../../docs/NewConcept/30-renderer.md)).*
+        foreach ($registry->eligibleFor($subject, $type, null, $thereIsAChoice) as $one) {
             $sieve[$one::class] = true;
         }
 

@@ -821,6 +821,9 @@ final class Rendering implements Presets
                         // Sprache ([D-646](../../../docs/NewConcept/90-decision-log.md)).*
                         $this->labels?->forNodes(array_values($kandidaten), SeededRole::Select, $locale) ?? [],
                         $this->framework->trash(),
+                        // ⚠️ *Die eine Tatsache, die die Registratur nicht selbst messen kann — ein
+                        // Knoten trägt seine Kinder nicht mit sich ({@see self::hatEtwasZurAuswahl()}).*
+                        $this->hatEtwasZurAuswahl($knoten->id),
                     );
 
                     // ⚠️ **Und die Zeile muss zeigen, was gilt — sonst wäre sie eine Falle.** *Eine
