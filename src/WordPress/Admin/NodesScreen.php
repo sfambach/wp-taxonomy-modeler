@@ -2723,11 +2723,16 @@ final class NodesScreen
                     // ⚠️ *Am Formular **dieser Zeile**, also wird sie mit ihrem «Speichern»
                     // geschrieben — zwei Datensaetze sind zwei Dinge, und ein Speichern darf nicht
                     // beide umstellen.*
+                    // ⚠️ **Die Auskunft steht vorn, das Bedienbare bei den anderen Feldern** — *sein
+                    // Wort am 2026-09-06: «schieb mal die Version vor die Eingabefelder; im Grunde
+                    // brauchen wir die Informationen nicht, kann aber auch nichts schaden.» Nummer
+                    // und Version sind zum **Lesen**, der Wähler ist zum **Tun**; er gehört neben
+                    // die Werte und nicht zwischen zwei Angaben, die niemand anfasst.*
+                    __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
                     __('Kind', 'taxmod')       => $this->recordTypeChoice(
                         $record->recordType,
                         'taxmod-record-' . $record->id
                     ),
-                    __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
                 ],
                 'acts'   => [
                     Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')),
