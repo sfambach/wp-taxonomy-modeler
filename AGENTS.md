@@ -189,3 +189,31 @@ gebaut worden; es löst sie über **getrennte Bäume**. Die vier Punkte oben sin
 Stelle, an der Werkzeug gehörte.* Wo mehrere Agenten gleichzeitig bauen, ist der saubere Weg **ein
 eigener Arbeitsbaum je Agent** (`git worktree`), zusammengeführt am Ende. Die Regeln oben gelten
 für den Fall, dass es dennoch ein gemeinsamer Baum ist — **nicht als Ersatz für den getrennten.**
+
+### ⚠️ 2026-09-06 — wo die Zeit verlorengeht
+
+**Gemessen, auf seinen Hinweis «der Agent laeuft schon wieder fuenf Minuten fuer einen kleinen
+Schritt»:**
+
+| was ein Agent liest oder tut | Kosten |
+|---|---|
+| `docs/NewConcept/90-decision-log.md` | **1052 KB** |
+| `src/WordPress/Admin/NodesScreen.php` | 232 KB |
+| `src/Core/Service/Rendering.php` | 171 KB |
+| ein **voller** Waechterlauf | ~60 s, und er wird oft mehrfach gefahren |
+
+**Drei Regeln folgen daraus. Sie gelten fuer jeden Auftrag an einen Agenten:**
+
+1. **Zuerst das Verzeichnis, nicht das Protokoll.**
+   [`03-entscheidungsverzeichnis.md`](docs/NewConcept/03-entscheidungsverzeichnis.md) sagt auf 150
+   Zeilen, **was gilt** — das Protokoll sagt auf 1 MB, was je entschieden wurde. *Der Wortlaut einer
+   Entscheidung wird nur dort verlangt, wo es auf ihn ankommt (`PR-10`), und dann mit Nummer.*
+2. **Nur die berührten Waechter, der volle Lauf zum Schluss.**
+   Vor jedem Commit: Kernlauf (0,5 s) **und** die Waechter, die die geaenderte Stelle betreffen.
+   Der volle Randlauf gehoert **an das Ende des Auftrags** und vor jede Wanderung an den Daten —
+   nicht nach jedem Zwischenschritt. *Wird einer rot, laeuft sofort der volle Lauf: ein roter
+   Waechter kommt selten allein.*
+3. **Grosse Dateien werden geteilt, bevor drei Agenten sie gleichzeitig brauchen.**
+   `NodesScreen.php` (63 Methoden) und `Rendering.php` (56) sind die zwei, an denen gestern drei
+   Baustellen kollidierten. **Eine Datei, die drei Auftraege gleichzeitig anfasst, ist zu gross** —
+   das ist die Regel, nicht die Zeilenzahl.
