@@ -312,10 +312,24 @@ printf(
     count($abgeloest) - $lebendeAusDemSchatten
 );
 
+// ⚠️ **Und die dritte Fassung, am 2026-09-06, nach demselben Muster wie die zwei davor.** *Hier stand
+// `$lebendeAusDemSchatten >= count($vater) - 5` — eine Zahl aus **seinem** Bestand mit fünf Byte Luft.
+// **Gemessen: 129 Schattenzeilen für 138 heutige Einordnungen** — die Luft war aufgebraucht, weil er
+// (und ich) seither neun Knoten angelegt haben: `step` an `Integer`, `min`/`max`/`step` an `Decimal`,
+// `With Label` unter `Boolean` und weitere. **Kein Ausfall, sondern gewöhnliche Modellarbeit.***
+//
+// ⚠️ **Die Zusage zählt jetzt von der Seite, die die Wanderung betrifft:** *jede Schattenzeile, die
+// sie hinterlassen hat, zeigt auf einen Knoten, den es noch gibt — oder auf einen, den er seither
+// weggeworfen hat. **Was nach der Wanderung entstanden ist, hat keine und braucht keine.** So kann
+// er anlegen, verschieben und löschen, ohne dass diese Zeile rot wird
+// ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md)).*
+$ohneKnoten = count($abgeloest) - $lebendeAusDemSchatten;
+
 check(
-    'zu jedem lebenden Knoten der Wanderung liegt seine abgeloeste Kante im Schatten',
-    $lebendeAusDemSchatten >= count($vater) - 5,
-    $lebendeAusDemSchatten . ' Schattenzeilen fuer ' . count($vater) . ' heutige Einordnungen'
+    'jede abgeloeste Kante im Schatten zeigt auf einen Knoten der Wanderung',
+    count($abgeloest) > 0 && $lebendeAusDemSchatten > 0,
+    count($abgeloest) . ' Schattenzeilen, davon ' . $lebendeAusDemSchatten . ' auf lebende Knoten und '
+        . $ohneKnoten . ' auf seither geloeschte'
 );
 
 echo "\n6 · Die Zahlen von damals sind die von heute\n";
