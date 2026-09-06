@@ -46,8 +46,19 @@ const IMMER_GELESEN = [
  * Die Decke in Bytes.
  *
  * ⚠️ *43170 Bytes = 42.2 KB, gemessen am 2026-09-01. Die tödliche Dosis des vorigen Anlaufs war 82 KB.*
+ *
+ * ⚠️ **Am 2026-09-06 auf 47652 Bytes (46.5 KB) angehoben — seine Entscheidung, sein Wort: «anheben».**
+ * *Was dazwischen dazukam, sind keine neuen Regeln, sondern zwei Dinge, die aus Schaden gelernt sind:
+ * `PR-10`s Gegenstück in `CLAUDE.md` («eine Messung am Kode ist keine Antwort auf eine Konzeptfrage»,
+ * [D-645](../../docs/NewConcept/90-decision-log.md)) und in `AGENTS.md` die Regeln für nebenläufige
+ * Agenten — **vergleichen vor dem Einchecken, kein `stash`, kein `--amend`** —, nachdem zwei fremde
+ * Commits überschrieben worden waren.*
+ *
+ * ⚠️ **Die Decke steht bewusst genau auf dem heutigen Stand und nicht darüber.** *Sie ist kein
+ * Vorrat, sondern ein Widerstand: die nächste Zeile, die dazukommt, macht diesen Lauf wieder rot und
+ * verlangt dieselbe Frage wie vorher — **was kommt dafür weg?** Eine Decke mit Luft darin wäre keine.*
  */
-const DECKE = 43170;
+const DECKE = 47652;
 
 $wurzel = dirname(__DIR__, 2);
 
