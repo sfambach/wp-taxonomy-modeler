@@ -3594,6 +3594,9 @@ final class NodesScreen
             $aussen[$relation->id] = $relation;
         }
 
+        // ⚠️ *Die vorhandenen Teile in **einem** Zug, nicht je Trägerkante (`CD-7`).*
+        $teileJeKante = $this->data->settingPartsOf($nodeId, array_keys($aussen));
+
         foreach ($eingereicht as $rohAussen => $roh) {
             $aussenId = absint($rohAussen);
             $kante    = $aussen[$aussenId] ?? null;
@@ -3608,10 +3611,37 @@ final class NodesScreen
                 continue;
             }
 
+            // ⚠️ **Wessen Kanten hier gelten dürfen, hängt daran, wessen Satz der Teil ist** (`CD-5`).
+            //
+            // ⚠️ *Hier stand `fieldsOf($kante->toNodeId)`, also die Kanten des **Basisknotens**
+            // `Renderer`. **Gemessen am 2026-09-06: das sind `converter` und `label_role`** — `with_label`
+            // hängt an `render with label`, und ein gewählter Renderer erbt alle drei. **Zwei von drei
+            // Werten wären lautlos verworfen worden.***
+            //
+            // ⚠️ *Und wenn es noch keinen eigenen Teil gibt, ist der geerbte Renderer der Massstab: an
+            // ihm hängen die Kanten, die die Maske gerade gezeichnet hat. **Der Teil entsteht dann beim
+            // Schreiben** ([D-609](../../../docs/NewConcept/90-decision-log.md)) — und als Satz genau
+            // dieses Knotens, sonst verlöre der Knoten den Renderer, dessen Einstellung er schreibt.*
+            $vorhanden  = $teileJeKante[$kante->id][0] ?? null;
+            $teilKnoten = $kante->toNodeId;
+            $gewaehlt   = 0;
+            $geliehen   = null;
+
+            if ($vorhanden !== null && ($vorhanden['nodeId'] ?? 0) !== 0) {
+                $teilKnoten = (int) $vorhanden['nodeId'];
+            } else {
+                $geliehen = $this->rendering->inheritedRendererPart($nodeId, $kante->id);
+
+                if ($geliehen !== null) {
+                    $teilKnoten = $geliehen['nodeId'];
+                    $gewaehlt   = $geliehen['nodeId'];
+                }
+            }
+
             // ⚠️ *Die Felder des Teils, einmal geholt — nicht je Wert (`CD-7`).*
             $innen = [];
 
-            foreach ($this->editor->fieldsOf($kante->toNodeId) as $feld) {
+            foreach ($this->editor->fieldsOf($teilKnoten) as $feld) {
                 $innen[$feld->id] = $feld;
             }
 
@@ -3623,9 +3653,52 @@ final class NodesScreen
                     continue;
                 }
 
-                $this->putOneSettingValue($nodeId, $kante, $innenId, $innenKante, (string) $wert);
+                // ⚠️ **Erst eine Änderung legt den Teil an, nicht schon das Absenden der Seite.**
+                //
+                // ⚠️ *Am geliehenen Teil hängt jedes Steuerelement am Seitenformular und schickt bei
+                // **jedem** Speichern mit — ein Schalter schickt sogar dann etwas, wenn er aus ist
+                // ({@see \Taxmod\Core\Renderer\ToggleRenderer}: das verborgene Feld ist es, was «aus»
+                // von «abwesend» unterscheidet). **Ohne diesen Vergleich machte das erste Speichern
+                // irgendeiner anderen Angabe den geerbten Renderer still zu einem eigenen** — genau
+                // der Datensatz aus einem Nicht-Ereignis, den
+                // [D-609](../../../docs/NewConcept/90-decision-log.md) verbietet.*
+                if ($geliehen !== null && $this->wieGezeichnet($geliehen['werte'][$innenId] ?? null, $innenKante, (string) $wert)) {
+                    continue;
+                }
+
+                $this->putOneSettingValue($nodeId, $kante, $innenId, $innenKante, (string) $wert, 0, $gewaehlt);
             }
         }
+    }
+
+    /**
+     * Kommt aus einem geliehenen Steuerelement genau das zurück, was hineingezeichnet wurde?
+     *
+     * ⚠️ **Der Vergleich ist gegen das **Gezeichnete**, nicht gegen «hat einen Wert».** *Ein Schalter
+     * ohne geerbten Wert steht aus und schickt `0` zurück — das ist keine Änderung, sondern die
+     * Rückmeldung des Bildes. Verglichen mit «kein Wert» wäre es eine, und jedes Speichern der Seite
+     * legte einen eigenen Teil an.*
+     *
+     * ⚠️ *`null` heisst «nichts geerbt»: dann ist unverändert, was leer ankommt — und beim Schalter
+     * zusätzlich die ausdrückliche Null, weil genau die gezeichnet stand.*
+     */
+    private function wieGezeichnet(?TypedValue $geerbt, Relation $ofValue, string $submitted): bool
+    {
+        $characters = trim(sanitize_text_field($submitted));
+
+        if ($geerbt === null) {
+            return $characters === ''
+                || ($this->rendering->valuesFrom([$ofValue], [$ofValue->id => $characters])[$ofValue->id] ?? TypedValue::nothing())
+                    ->equals(TypedValue::ofBool(false));
+        }
+
+        if ($characters === '') {
+            return false;
+        }
+
+        $neu = $this->rendering->valuesFrom([$ofValue], [$ofValue->id => $characters])[$ofValue->id] ?? null;
+
+        return $neu !== null && $neu->equals($geerbt);
     }
 
     /**
@@ -3661,7 +3734,12 @@ final class NodesScreen
          * direkt in ihn geschrieben. Dann muss niemand ihn über die Trägerkante suchen, und bei mehreren
          * Teilen ([D-548](../../../docs/NewConcept/90-decision-log.md)) trifft es den richtigen.*
          */
-        int $partId = 0
+        int $partId = 0,
+        /**
+         * ⚠️ *Welcher Knoten der Teil ist, falls er beim Schreiben **entsteht** — der geerbte Renderer.
+         * `0` heisst «das Ziel der Trägerkante», also der gewöhnliche Fall.*
+         */
+        int $chosenNodeId = 0
     ): void {
         $characters = trim(sanitize_text_field($submitted));
 
@@ -3691,7 +3769,7 @@ final class NodesScreen
             return;
         }
 
-        $this->data->putSettingAt($nodeId, $carrier->id, $innerId, $value);
+        $this->data->putSettingAt($nodeId, $carrier->id, $innerId, $value, '', $chosenNodeId);
     }
 
     /**

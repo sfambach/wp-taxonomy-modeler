@@ -279,8 +279,15 @@ check('die Einstellungskante `renderer` ist aufgeschrieben (umgezogen)', $render
 // **Seither haelt diese Zusage fest, dass keine da sind.** Seit [D-611](../../docs/NewConcept/90-decision-log.md)
 // darf eine Verwendungsstelle andere Einstellungen ueberschreiben — der Renderer ist ausgenommen
 // ([D-643](../../docs/NewConcept/90-decision-log.md)), darum zaehlt sie nur diese eine Kante.*
+// ⚠️ **Die Frage ist dieselbe, die Adresse eine andere — seit Fassung 39 ist `path` gefallen**
+// ([D-667](../../docs/NewConcept/90-decision-log.md), TASK-002). *Sie lautete «eine Wertzeile mit
+// zweiteiligem Pfad an dieser Kante»; eine Wahl an einer **Verwendungsstelle** steht heute im Satz
+// dieser Kante — `node_records.relation_id`. **Ohne das Nachziehen antwortete `$wpdb` auf die kaputte
+// Abfrage wie auf ein leeres Ergebnis, und die Zusage wäre still-falsch grün geblieben.***
 $anStelle = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE path LIKE '%.%' AND relation_id = %d",
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+       JOIN ' . Schema::table('node_records') . ' s ON s.id = v.node_record_id
+      WHERE s.relation_id > 0 AND v.relation_id = %d',
     $renderKante
 ));
 
@@ -512,7 +519,7 @@ if ($mgIntId === null || $mgForm === null) {
         "SELECT v.id
            FROM {$p}relation_records v
            JOIN {$p}node_records r ON r.id = v.node_record_id
-          WHERE r.node_id = {$mgProbe->id} AND v.path = '{$renderKante}'"
+          WHERE r.node_id = {$mgProbe->id} AND v.relation_id = {$renderKante}"
     );
 
     check('die unzulaessige Wahl steht als Wertzeile da', $mgZeile !== 0, (string) $mgZeile);
@@ -1769,6 +1776,290 @@ check(
     gezeichnet($feld->id)[0] === $eigen,
     'gezeichnet «' . gezeichnet($feld->id)[0] . "», eigen «{$eigen}»"
 );
+
+echo "\n== die Einstellungen des Renderers stehen auch, wo er nur geerbt ist ==\n";
+
+// ⚠️ **Seine Regel, woertlich (2026-09-06):** *«jeder knoten hat einen renderer vater knoten kann ihn
+// vorgeben aber nicht definieren»* — *und der Fall dazu: «wenn ich ein bool haben und darunter ein
+// read_only kann ich am readonly sagen das er als checkbox dargestellt wird».*
+//
+// ⚠️ **Der Befund, der es gekostet hat, gemessen am 2026-09-06:** *an `Base units` (eigene Wahl,
+// Teil #11691, `chooser-dialog`) standen `converter`, `label_role` und `with_label` als
+// `taxmod_part[11691][…]` da. **An `Gramm` keine der drei** — sein Renderer ist nur geerbt (Satz
+// #11693 am Elternknoten #4032, `reference`), und die Werte wohnen im Satz des Renderers, den nur der
+// Knoten hat, an dem die Wahl **steht**. **Und heran kam er auch nicht**: die Renderer-Liste an
+// `Gramm` hat genau einen Eintrag und ist deshalb ausgegraut.*
+//
+// ⚠️ *Eigene Wiese unter `__rcm `, damit die Zusage nicht davon abhaengt, was heute an seinem Modell
+// steht — aufgeraeumt vom Block darunter, und die Klammer aus `lib/no-write.php` dreht ohnehin alles
+// zurueck.*
+
+$vater = $editor->createNode('__rcm vater', $framework->rootOf(Branch::Model)->id);
+
+$angebotVater = angebotDerZeile(seite($vater->id), $kante);
+
+/**
+ * Die Feldkanten, die ein gewaehlter Renderer traegt — **mit Vererbung**.
+ *
+ * ⚠️ *`with_label` haengt nicht am Basisknoten `Renderer`, sondern an `render with label`; ohne die
+ * Vererbung faende dieser Lauf nur zwei der drei und pruefte genau die Luecke nicht, um die es geht.*
+ *
+ * @return array<string, int> Name der Kante => ihre Id
+ */
+function innereKanten(int $rendererKnotenId): array
+{
+    $nodes     = new WpdbNodeRepository();
+    $relations = new WpdbRelationRepository();
+    $fw        = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
+
+    $knoten = $nodes->find($rendererKnotenId);
+
+    if ($knoten === null) {
+        return [];
+    }
+
+    $aus = [];
+
+    foreach ($relations->fieldRelationsOf($fw->inheritanceOwnersOf($knoten)) as $e) {
+        $aus[$e->name] = $e->id;
+    }
+
+    return $aus;
+}
+
+// ⚠️ *Genommen wird der erste angebotene Renderer, der alle drei traegt — **kein Name aus seinem
+// Modell** ([D-613](../../docs/NewConcept/90-decision-log.md)).*
+$vaterWahlId = 0;
+$vaterKanten = [];
+
+foreach (array_keys($angebotVater) as $einer) {
+    $kanten = innereKanten($einer);
+
+    if (isset($kanten['with_label'], $kanten['label_role'], $kanten['converter'])) {
+        $vaterWahlId = $einer;
+        $vaterKanten = $kanten;
+
+        break;
+    }
+}
+
+check(
+    'ein angebotener Renderer traegt converter, label_role und with_label',
+    $vaterWahlId !== 0,
+    'angeboten: ' . (implode(',', $angebotVater) ?: '—')
+);
+
+if ($vaterWahlId !== 0) {
+    abschicken([
+        'do'            => 'put_setting',
+        'id'            => (string) $vater->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $vater->id),
+        'taxmod_value'  => [(string) $kante => (string) $vaterWahlId],
+    ]);
+
+    check(
+        'der Vater traegt jetzt seine eigene Wahl',
+        gespeicherterRenderer($vater->id) === $angebotVater[$vaterWahlId],
+        'gelesen «' . gespeicherterRenderer($vater->id) . '», gewaehlt «' . $angebotVater[$vaterWahlId] . '»'
+    );
+
+    // ⚠️ **`with_label` auf «an», und das ist die Zusage «der Schalter darf nicht luegen».** *Der
+    // Fehler ist am 2026-09-06 schon einmal aufgefallen — «with label soll normal an sein ist aber
+    // wieder aus» —, und **beim Speichern schreibt ein falsch gezeichneter Schalter seinen falschen
+    // Zustand fest**.*
+    abschicken([
+        'do'            => 'put_setting',
+        'id'            => (string) $vater->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $vater->id),
+        'taxmod_value'  => [(string) $kante => [(string) $vaterKanten['with_label'] => '1']],
+    ]);
+
+    $vaterSatz = (int) $wpdb->get_var(
+        "SELECT v.value_ref FROM {$p}relation_records v
+           JOIN {$p}node_records r ON r.id = v.node_record_id
+          WHERE r.node_id = {$vater->id} AND r.record_type = 'default'
+            AND v.relation_id = {$kante} AND v.value_ref_kind = 'record'"
+    );
+
+    $vaterAn = (int) $wpdb->get_var(
+        "SELECT value_int FROM {$p}relation_records
+          WHERE node_record_id = {$vaterSatz} AND relation_id = {$vaterKanten['with_label']}"
+    );
+
+    check('`with_label` steht am Vater auf «an»', $vaterAn === 1, "gelesen «{$vaterAn}»");
+
+    $kind = $editor->createNode('__rcm kind', $vater->id);
+
+    check(
+        'das Kind erbt den Renderer des Vaters',
+        gespeicherterRenderer($kind->id) === $angebotVater[$vaterWahlId],
+        'gelesen «' . gespeicherterRenderer($kind->id) . '»'
+    );
+
+    $markupKind = seite($kind->id, (string) $kante);
+
+    // ⚠️ **Die drei stehen da, und sie tragen die zweistufige Adresse** —
+    // *`taxmod_value[<Traegerkante>][<innere Kante>]`, die Form, die
+    // {@see \Taxmod\WordPress\Admin\NodesScreen::saveSettingValues()} versteht und ueber die
+    // {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} den eigenen Teil anlegt. **Ein
+    // `taxmod_part[…]` waere hier falsch: es gibt keinen Satz, dessen Id davorstehen koennte.***
+    foreach (['converter', 'label_role', 'with_label'] as $welche) {
+        check(
+            "die Einstellung `{$welche}` steht am geerbten Renderer im Markup",
+            str_contains($markupKind, 'name="taxmod_value[' . $kante . '][' . $vaterKanten[$welche] . ']"'),
+            'kein Steuerelement mit diesem Namen'
+        );
+    }
+
+    // ⚠️ *Der Gegenfall: kein `taxmod_part[…]`, denn es gibt hier keinen eigenen Satz. Ohne ihn waere
+    // die Zusage oben auch dann gruen, wenn beide Formen nebeneinander stuenden.*
+    check(
+        'und kein `taxmod_part` daneben, weil es keinen eigenen Satz gibt',
+        ! preg_match('/name="taxmod_part\[\d+\]\[' . $vaterKanten['with_label'] . '\]"/', $markupKind),
+        'die Maske adressiert einen Satz, den dieser Knoten nicht hat'
+    );
+
+    check(
+        'die geliehene Zeile ist als geerbt gekennzeichnet',
+        str_contains($markupKind, 'taxmod-inherited'),
+        'keine Kennzeichnung im Markup'
+    );
+
+    // ⚠️ **«Der Schalter darf nicht luegen»** — *steht `with_label` geerbt auf «an», muss die Maske
+    // «an» zeigen. **Der Fehler ist am 2026-09-06 schon einmal aufgefallen** («with label soll normal
+    // an sein ist aber wieder aus»), und **beim Speichern schreibt ein falsch gezeichnetes
+    // Steuerelement seinen falschen Zustand fest**.*
+    //
+    // ⚠️ **Verglichen wird die Zelle des Vaters mit der des Kindes**, nicht auf ein `checked`
+    // abgefragt. *Welcher Renderer die Zelle zeichnet, haengt an der Kette des Zielknotens `Boolean` —
+    // **gemessen zeichnet dieser Lauf sie als Textfeld**, weil eine seiner frueheren Zusagen an der
+    // Wurzel eine Wahl setzt, die bis dorthin durchschlaegt. Eine Zusage, die `checked` verlangt, misst
+    // dann den Renderer statt den Wert. **Gleich gezeichnet ist die Aussage**, um die es geht.*
+    $zelle = static function (string $markup, string $name): string {
+        foreach (explode('<td class="taxmod-table-cell">', $markup) as $stueck) {
+            if (! str_contains($stueck, 'name="' . $name . '"')) {
+                continue;
+            }
+
+            $inhalt = explode('</td>', $stueck)[0];
+
+            // ⚠️ *Der Name und das Formular sind an Vater und Kind zwangslaeufig verschieden — sie
+            // sind die Adresse und nicht der Zustand.*
+            $inhalt = preg_replace('/name="taxmod_(?:value|part)\[[^"]*\]"/', 'name="X"', $inhalt);
+
+            return (string) preg_replace('/form="taxmod-page-\d+"/', 'form="F"', (string) $inhalt);
+        }
+
+        return '';
+    };
+
+    $markupVater = seite($vater->id, (string) $kante);
+
+    $amVater = $zelle($markupVater, 'taxmod_part[' . $vaterSatz . '][' . $vaterKanten['with_label'] . ']');
+    $amKind  = $zelle($markupKind, 'taxmod_value[' . $kante . '][' . $vaterKanten['with_label'] . ']');
+
+    check('die Zelle des Vaters ist ueberhaupt gefunden', $amVater !== '', 'keine Zelle mit diesem Namen');
+
+    check(
+        'und das Kind zeichnet den geerbten Wert genauso wie der Vater seinen eigenen',
+        $amVater !== '' && $amVater === $amKind,
+        'Vater: ' . $amVater . ' — Kind: ' . $amKind
+    );
+
+    // ⚠️ *Und die Gegenprobe, damit «gleich» nicht «beide leer» heissen kann: der geerbte Wert steht
+    // sichtbar im Steuerelement.*
+    check(
+        'und der geerbte Wert «an» steht im Steuerelement',
+        str_contains($amKind, 'checked') || str_contains($amKind, 'value="1"'),
+        $amKind
+    );
+
+    /** Der eigene Renderer-Teil dieses Knotens — `0`, wenn er keinen hat. */
+    $eigenerTeil = static function (int $nodeId) use ($wpdb, $p, $kante): int {
+        return (int) $wpdb->get_var(
+            "SELECT v.value_ref FROM {$p}relation_records v
+               JOIN {$p}node_records r ON r.id = v.node_record_id
+              WHERE r.node_id = {$nodeId} AND r.record_type = 'default'
+                AND v.relation_id = {$kante} AND v.value_ref_kind = 'record'"
+        );
+    };
+
+    // ⚠️ **Angesehen wird nichts geschrieben** ([D-609](../../docs/NewConcept/90-decision-log.md),
+    // sein Wort: *«ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen? ja bitte»*).
+    check('das Ansehen hat keinen Teil angelegt', $eigenerTeil($kind->id) === 0, (string) $eigenerTeil($kind->id));
+
+    // ⚠️ **Und ein Speichern ohne Aenderung auch nicht.** *Jedes geliehene Steuerelement haengt am
+    // Seitenformular und schickt bei jedem Speichern mit — ein Schalter sogar dann, wenn er aus ist.
+    // **Ohne den Vergleich gegen das Gezeichnete machte das erste beliebige Speichern den geerbten
+    // Renderer still zu einem eigenen.***
+    abschicken([
+        'do'            => 'put_setting',
+        'id'            => (string) $kind->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id),
+        'taxmod_value'  => [(string) $kante => [(string) $vaterKanten['with_label'] => '1']],
+    ]);
+
+    check(
+        'ein Speichern ohne Aenderung legt keinen Teil an',
+        $eigenerTeil($kind->id) === 0,
+        (string) $eigenerTeil($kind->id)
+    );
+
+    // ⚠️ **Und jetzt die Aenderung: sie legt den Teil an — und zwar als Satz des *aufgeloesten*
+    // Renderers** ([D-584](../../docs/NewConcept/90-decision-log.md)). *Waere er ein Satz des
+    // Basisknotens `Renderer`, verloere der Knoten mit dem ersten Schreiben genau den Renderer, dessen
+    // Einstellung er schrieb.*
+    abschicken([
+        'do'            => 'put_setting',
+        'id'            => (string) $kind->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id),
+        'taxmod_value'  => [(string) $kante => [(string) $vaterKanten['with_label'] => '0']],
+    ]);
+
+    $kindTeil = $eigenerTeil($kind->id);
+
+    check('die Aenderung hat den eigenen Teil angelegt', $kindTeil !== 0, (string) $kindTeil);
+
+    $kindRenderer = $kindTeil === 0 ? '' : (string) $wpdb->get_var(
+        "SELECT z.name FROM {$p}node_records s JOIN {$p}nodes_named z ON z.id = s.node_id WHERE s.id = {$kindTeil}"
+    );
+
+    check(
+        'und der Teil ist ein Satz des geerbten Renderers',
+        $kindRenderer === $angebotVater[$vaterWahlId],
+        "«{$kindRenderer}» statt «" . $angebotVater[$vaterWahlId] . '»'
+    );
+
+    $kindAus = $kindTeil === 0 ? null : $wpdb->get_var(
+        "SELECT value_int FROM {$p}relation_records
+          WHERE node_record_id = {$kindTeil} AND relation_id = {$vaterKanten['with_label']}"
+    );
+
+    check('der geaenderte Wert steht am Knoten selbst', (int) $kindAus === 0 && $kindAus !== null, var_export($kindAus, true));
+
+    // ⚠️ *Und der Vater bleibt, wie er war — sonst haette das Kind in seinen Satz geschrieben statt in
+    // einen eigenen, und «eigener Teil» waere ein Name fuer dieselbe Zeile.*
+    check(
+        'und der Vater steht unveraendert auf «an»',
+        (int) $wpdb->get_var(
+            "SELECT value_int FROM {$p}relation_records
+              WHERE node_record_id = {$vaterSatz} AND relation_id = {$vaterKanten['with_label']}"
+        ) === 1,
+        'der Wert des Vaters hat sich mitbewegt'
+    );
+
+    // ⚠️ *Und die Maske zeigt danach den eigenen Wert — ohne die Kennzeichnung «geerbt», denn geerbt
+    // ist er nicht mehr.*
+    $markupDanach = seite($kind->id, (string) $kante);
+
+    $danach = $zelle($markupDanach, 'taxmod_part[' . $kindTeil . '][' . $vaterKanten['with_label'] . ']');
+
+    check(
+        'die Maske zeichnet danach den eigenen Wert und nicht mehr den des Vaters',
+        $danach !== '' && $danach !== $amVater,
+        $danach === '' ? 'keine Zelle unter der eigenen Satz-Id' : 'gezeichnet wie der Vater: ' . $danach
+    );
+}
 
 echo "\n== aufraeumen ==\n";
 

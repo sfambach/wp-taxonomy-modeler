@@ -1750,6 +1750,31 @@ final class Rendering implements Presets
             // ⚠️ *Ein Aufruf je Zeile, und er kostet keine Abfrage: die Kanten des Unterbaus holt
             // {@see self::subgraph()} in einer festen Zahl von Abfragen
             // ([D-159](../../../docs/NewConcept/90-decision-log.md)).*
+            // ⚠️ **Die drei Einstellungen des aufgelösten Renderers stehen an *jedem* Knoten** — seine
+            // Regel, wörtlich: *«jeder knoten hat einen renderer vater knoten kann ihn vorgeben aber
+            // nicht definieren»*, und der Fall dazu: *«wenn ich ein bool haben und darunter ein
+            // read_only kann ich am readonly sagen das er als checkbox dargestellt wird»*.
+            //
+            // ⚠️ **Gemessen am 2026-09-06:** *an `Base units` (eigene Wahl, Teil #11691, `chooser-dialog`)
+            // standen `converter`, `label_role` und `with_label` da; an `Gramm` **keine der drei**, weil
+            // sein Renderer nur geerbt ist (Satz #11693 am Elternknoten #4032, `reference`) und die Werte
+            // im Satz des Renderers wohnen. **Und heran kam er auch nicht**: die Renderer-Liste an `Gramm`
+            // hat einen Eintrag und ist ausgegraut.*
+            //
+            // ⚠️ *Der geliehene Teil trägt die Satz-Id `0`; {@see self::partBelow()} macht daraus die
+            // Adresse des **Knotens**, und der eigene Teil entsteht beim ersten Schreiben
+            // ([D-609](../../../docs/NewConcept/90-decision-log.md)).*
+            $dieseTeile = $parts;
+
+            if ($showValue && $declaredBy !== 0 && ($parts[$relation->id] ?? []) === []) {
+                $geliehen = $this->inheritedRendererPart($declaredBy, $relation->id);
+
+                if ($geliehen !== null) {
+                    $geliehen['geerbt']        = $this->wortAus($settingsWords, 'inherited');
+                    $dieseTeile[$relation->id] = [$geliehen];
+                }
+            }
+
             $gezeichneterWert = ! $showValue ? [] : $this->fieldsFor(
                 [$relation],
                 $values,
@@ -1764,7 +1789,7 @@ final class Rendering implements Presets
                 // ⚠️ *Der Knoten dieser Seite gilt als «schon besucht» — sonst klappt eine Einstellung,
                 // die auf ihn selbst zeigt, ihn ein zweites Mal auf ([OQ-133](../../../docs/NewConcept/91-open-questions.md)).*
                 [$declaredBy => true],
-                $parts,
+                $dieseTeile,
                 // ⚠️ *Wessen Angaben hier stehen — damit die Renderer-Auswahl auf das eingeschränkt
                 // werden kann, was **dieser** Knoten verträgt ([Zeile 92](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).*
                 $declaredBy,
@@ -1874,6 +1899,26 @@ final class Rendering implements Presets
         }
 
         return $rows;
+    }
+
+    /**
+     * Ein Wort, das der Rand übersetzt hat — leer, wenn er keins geschickt hat.
+     *
+     * ⚠️ *Der Kern kann kein Wort machen (`AR-2`), also reisen sie als `word:<key>`, wie «own» und
+     * «inherited» in der Feldzeile längst. **Leer statt Schlüssel:** ein `title`, in dem der Schlüssel
+     * steht, ist eine Programmierausgabe an einem Ort, an dem ein Satz stehen sollte.*
+     *
+     * @param list<Control> $woerter
+     */
+    private function wortAus(array $woerter, string $schluessel): string
+    {
+        foreach ($woerter as $control) {
+            if ($control->name === 'word:' . $schluessel) {
+                return $control->label;
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -3138,6 +3183,27 @@ final class Rendering implements Presets
     }
 
     /**
+     * Der **geerbte** Renderer dieses Knotens als Teil — oder `null`, wenn er selbst wählt.
+     *
+     * ⚠️ *Der Rand fragt hier und nicht bei {@see ModelValues}: die Auflösung des Renderers ist eine
+     * Sache des Kerns, und der Bildschirm hat den Zeichner ohnehin schon (`CD-1`). **Nur an der
+     * Trägerkante `renderer`** — jede andere Einstellung hat keinen geerbten Satz, aus dem geliehen
+     * werden könnte.*
+     *
+     * @return array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array<int, list<array{}>>}|null
+     */
+    public function inheritedRendererPart(int $nodeId, int $carrierRelationId): ?array
+    {
+        if ($this->model === null || $carrierRelationId !== $this->framework->settingRelationId(SettingKey::Renderer)) {
+            return null;
+        }
+
+        $knoten = $this->nodes->find($nodeId);
+
+        return $knoten === null ? null : $this->model->inheritedRendererPart($knoten);
+    }
+
+    /**
      * The simple type a node **is**, rather than the one an attribute points at.
      *
      * ⚠️ *It used to load every ancestor to read their names. Since the binding is by id
@@ -3462,7 +3528,26 @@ final class Rendering implements Presets
         // kann nichts abschicken, und das ist richtig — es gibt nichts, worin sie schreiben könnte.*
         $zeilen = [];
 
+        // ⚠️ **Die Zeile sagt, dass sie geliehen ist**, so wie die Einstellungstafel es tut
+        // ({@see SettingsRenderer::whereFrom()}: der Pfeil, das Wort im `title`). *Ohne die Kennzeichnung
+        // sähe ein geerbter Wert aus wie ein hier gesetzter — und genau davor warnt jene Spalte: einen
+        // Wert des Vorfahren zu überschreiben im Glauben, das Feld sei leer.*
+        //
+        // ⚠️ *Das Wort kommt vom Rand mit dem Teil (`AR-2`); ohne Wort bleibt die Vorspalte weg.*
+        $vorspalten = [];
+
         foreach ($teile === [] ? [null] : $teile as $teil) {
+            // ⚠️ *Erkannt an der **Satz-Id `0`** und nicht am Wort: fehlt dem Rand die Übersetzung, wäre
+            // die Zeile sonst still ungekennzeichnet — und ungekennzeichnet ist genau der Zustand, den
+            // diese Vorspalte verhindern soll.*
+            $wort = (string) ($teil['geerbt'] ?? '');
+
+            $vorspalten[] = $teil === null || ($teil['id'] ?? 0) !== 0
+                ? []
+                : ['' => '<em class="taxmod-inherited"'
+                    . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"')
+                    . '>↑</em>'];
+
             // WICHTIG: Die Felder des *gewaehlten* Knotens, nicht die des Kantenziels (D-584).
             // Die Kante zeigt auf den Basisknoten «Renderer»; im Datensatz steht «compact», und
             // gezeichnet gehoeren dessen Felder. Ohne das endet der Abstieg an der Auswahl.
@@ -3472,7 +3557,17 @@ final class Rendering implements Presets
                 $dieseFelder,
                 $teil === null ? [] : $teil['werte'],
                 $purpose,
-                $teil === null || $fieldPrefix === '' ? '' : self::PART_FIELD . '[' . $teil['id'] . ']',
+                // ⚠️ **Ein geliehener Teil hat keine Satz-Id, also nimmt er die Adresse des Knotens.**
+                // *`taxmod_value[<Trägerkante>][<innere Kante>]` ist die zweistufige Form, die
+                // {@see \Taxmod\WordPress\Admin\NodesScreen::saveSettingValues()} längst versteht — und
+                // über sie legt {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} beim **ersten
+                // Schreiben** den eigenen Teil an ([D-609](../../../docs/NewConcept/90-decision-log.md)).
+                // **Angesehen wird dabei nichts geschrieben.***
+                $teil === null || $fieldPrefix === ''
+                    ? ''
+                    : (($teil['id'] ?? 0) === 0
+                        ? $fieldPrefix . '[' . $relation->id . ']'
+                        : self::PART_FIELD . '[' . $teil['id'] . ']'),
                 $locale,
                 $level,
                 $editable,
@@ -3524,7 +3619,7 @@ final class Rendering implements Presets
                     // ⚠️ **`node_records` ist der Platz, den der Table-Renderer für mehrere Zeilen hat, und
                     // er stand leer** — *der Grund, warum eine Einstellung mit `1..*` trotzdem nur eine
                     // Zeile zeigte. `parts` bleibt daneben für die Behälter, die nur einen Satz kennen.*
-                    surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId),
+                    surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId, rowLead: $vorspalten),
                 )
             ),
         ];
