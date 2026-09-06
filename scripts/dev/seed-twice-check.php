@@ -31,9 +31,12 @@
  * 4. **Die gemerkten Rahmenknoten zeigen noch auf dieselben Nummern** — eine zweite Saat hätte die
  *    Optionen auf neue Knoten umgebogen.
  *
- * ⚠️ *Er legt nichts an und räumt nichts weg — **das ist die ganze Zusage**. Bewegt sich doch etwas,
- * dann hat der Lauf den Rückstand erzeugt, den er misst, und meldet ihn mit Namen und Nummer,
- * damit er von Hand wegkann.*
+ * ⚠️ **Der Lauf schreibt — und dreht am Ende alles zurück.** *Bis zum 2026-09-06 stand hier «er legt
+ * nichts an und räumt nichts weg», und gemeint war: **die Saat** legt nichts an. Legte sie doch etwas
+ * an, blieb es liegen. **Und sie legte an:** der Eigentümer hatte `Adresse` in `Address` umbenannt,
+ * die Saat sucht am Namen, fand keinen — und legte die deutsche `Adresse` jedes Mal neu. Drei Stück
+ * in seinem Bestand. Seitdem läuft der zweite Durchgang in einer Umklammerung, die zurückgedreht
+ * wird: gezählt und gemeldet wird alles, behalten nichts.*
  *
  * @see docs/pakete/modelltabellen/package.md
  */
@@ -107,16 +110,23 @@ function zaehle(string $tabelle): int
     return (int) Query::value("{$tabelle} zählen", 'SELECT COUNT(*) FROM ' . Schema::table($tabelle));
 }
 
-/** Elternknoten mit zwei gleichnamigen Kindern — der Abdruck einer doppelten Saat. */
+/**
+ * Elternknoten mit zwei gleichnamigen Kindern — der Abdruck einer doppelten Saat.
+ *
+ * ⚠️ **Diese Abfrage war blind, und sie war es seit [D-581](../../docs/NewConcept/90-decision-log.md).**
+ * *Sie suchte Geschwister über `relations.kind = 'inheritance'` — gemessen am 2026-09-06 gibt es
+ * davon **null Zeilen**: die Vererbung liegt seit jenem Beschluss in `nodes.parent_node_id`. Der
+ * Wächter hat also drei gleichnamige `Adresse` im Bestand des Eigentümers nicht gemeldet, die er
+ * selbst angelegt hatte. **Ein Wächter, der seinen eigenen Rückstand übersieht.***
+ */
 function doppelteGeschwister(): array
 {
     return Query::rows(
         'doppelte Geschwister suchen',
-        'SELECT r.from_node_id, k.name, COUNT(*) AS wie_oft
-         FROM ' . Schema::table('relations') . ' r
-         INNER JOIN ' . Schema::table('nodes_named') . ' k ON k.id = r.to_node_id
-         WHERE r.kind = \'inheritance\'
-         GROUP BY r.from_node_id, k.name
+        'SELECT k.parent_node_id AS from_node_id, k.name, COUNT(*) AS wie_oft
+         FROM ' . Schema::table('nodes_named') . ' k
+         WHERE k.parent_node_id IS NOT NULL
+         GROUP BY k.parent_node_id, k.name
          HAVING wie_oft > 1'
     );
 }
@@ -182,6 +192,26 @@ check(
 );
 
 echo "\n1 · Saat und Gerüste ein zweites Mal\n";
+
+// ⚠️ **Ab hier schreibt der Lauf, und ab hier wird alles wieder zurückgedreht.**
+//
+// ⚠️ *Der Kopf dieser Datei versprach bis zum 2026-09-06 das Gegenteil — «er legt nichts an und
+// räumt nichts weg» — und meinte damit: **die Saat** legt nichts an. Tut sie es doch, blieb es
+// liegen. **Genau das ist passiert.** Der Eigentümer hat `Adresse` in `Address` umbenannt und
+// anders zusammengesetzt; `CompositionScaffold::ensure()` sucht am **Namen**, fand keinen — und
+// legte die deutsche `Adresse` neu an. **Bei jedem Lauf eine.** Gemessen an seinem Bestand:
+// **drei** Stück, dazu zehn Knoten aus anderen Prüfläufen.
+//
+// ⚠️ **Die Zusage bleibt dieselbe, der Preis fällt weg:** geprüft wird weiter der **Lauf** und nicht
+// die Sperre, aber innerhalb einer Umklammerung, die am Ende zurückgedreht wird. *Was der zweite
+// Lauf anlegt, wird gezählt, gemeldet — und nicht behalten.*
+$wpdb->query('START TRANSACTION');
+
+$zurueckdrehen = static function () use ($wpdb): void {
+    $wpdb->query('ROLLBACK');
+};
+
+register_shutdown_function($zurueckdrehen);
 
 // ⚠️ **An `importOnce()` vorbei und mit Absicht.** *Die Sperre über die Fassungsnummer ist genau das,
 // was den Fehler im September **nicht** verhindert hat: ein Schemaschritt hebt die Fassung, und dann
