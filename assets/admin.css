@@ -1215,9 +1215,18 @@ a.taxmod-chosen:hover {
     flex: 0 0 auto;
 }
 
+/*
+ * ⚠️ **Hier stand `min-width: 0` und `max-width: 100%`, und beides zusammen loeschte die Breite,
+ * die `display_size` gerade erst gesetzt hatte.** *Gemessen am 2026-09-06: das Markup traegt
+ * `size="40"` und `size="5"` — auf dem Schirm waren beide Felder gleich breit. **Meine eigene Regel
+ * von einer Stunde vorher hat sie plattgedrueckt**, und sein Verdacht galt darum dem Modell, wo
+ * nichts fehlte.*
+ *
+ * Ein Feld behaelt seine Breite. Schrumpfen darf es nur, wenn die Zeile sonst ueberliefe — das
+ * besorgt `min-width: 0` an der **Huelle** (oben), nicht am Feld selbst.
+ */
 .taxmod-compact-horizontal input,
 .taxmod-compact-horizontal select {
-    min-width: 0;
     max-width: 100%;
 }
 
