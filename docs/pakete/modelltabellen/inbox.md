@@ -1789,3 +1789,19 @@ Blick in die Einstellungen ein Schreibvorgang sein darf, ist nicht meine Entsche
 einfachen Datentypen kann es nur `default`- oder `example`-Datensätze geben». Entweder bekommt
 `record_type` einen vierten Wert, oder der Satz zählt als `default` und wird allein dadurch
 unterschieden, dass jemand auf ihn zeigt.*
+
+**⚠️ Berichtigung am 2026-09-06, und sie ist seine:** *«D-577 scheint nicht dazu zu passen?»* —
+**er hat recht, und die Zeile oben war zu stark.** D-577 handelt von **Daten**: ein Kunde, seine
+Adresse, zwei Adressen. Es sagt, wo ein **eingebetteter Wert** liegt, und es sagt «kein Pfad». Über
+die **Einstellungen einer Verwendungsstelle** sagt es *nichts*. Was ich oben gemacht habe, ist eine
+**Übertragung der Form**, kein Zitat — und der Unterschied ist genau der, den `PR-10` meint.
+
+**Wo die Übertragung klemmt:** die Wertzeile einer Verwendungsstelle im Satz des Besitzers trägt
+den **Datenwert** («Bahnhofstrasse»). Ihr `value_ref` für einen Einstellungssatz zu benutzen legte
+Daten und Einstellungen in **eine** Zeile. *Das ist keine Kleinigkeit: ein Feld, das schon einen
+Wert trägt, hätte dann keinen Platz mehr für seine Einstellungen, und ein Feld ohne Wert bekäme
+eine Zeile, nur weil jemand `min` gesetzt hat.*
+
+**Also bleibt offen, und ausdrücklich unbeantwortet (`PR-4`):** wo die Einstellungen einer
+Verwendungsstelle liegen, wenn kein Pfad und keine Spalte an `relations` sie trägt. Die zwei Ids
+stehen fest — **Verwendungsstelle** und **Einstellungskante** —, die Ablage nicht.
