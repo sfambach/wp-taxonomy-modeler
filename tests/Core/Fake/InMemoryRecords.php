@@ -44,7 +44,11 @@ final class InMemoryRecords implements RecordRepository
         // ⚠️ **Die Art muss mit, sonst ist jeder Satz hier ein Benutzersatz** (TASK-057). *Der Fake
         // liess sie fallen, und niemand merkte es: solange der Renderer in einer **Spalte** stand,
         // fragte kein Kerntest nach dem `default`-Satz eines Knotens. Die Kantenform tut es.*
-        $this->records[$id]        = new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt, $record->recordType);
+        // ⚠️ *Und die Kante mit, aus demselben Grund und seit
+        // [D-667](../../../docs/NewConcept/90-decision-log.md): ein Satz, der seine
+        // Verwendungsstelle unterwegs verliert, gehört danach dem Knoten — und die Überschreibung
+        // wäre still zur Knoteneinstellung geworden.*
+        $this->records[$id]        = new NodeRecord($id, $record->nodeId, $record->nodeVersion, $record->createdAt, $record->recordType, $record->relationId);
         $this->recordVersions[$id] = 1;
 
         return $id;
@@ -57,10 +61,47 @@ final class InMemoryRecords implements RecordRepository
 
     public function ofNode(int $nodeId): array
     {
+        // ⚠️ *Und nicht die Sätze seiner Verwendungsstellen — dieselbe Bedingung wie im Speicher
+        // ({@see \Taxmod\WordPress\Persistence\WpdbRecordRepository::ofNode()}), seit
+        // [D-667](../../../docs/NewConcept/90-decision-log.md).*
         return array_values(array_filter(
             $this->records,
-            static fn (NodeRecord $r): bool => $r->nodeId === $nodeId
+            static fn (NodeRecord $r): bool => $r->nodeId === $nodeId && $r->relationId === 0
         ));
+    }
+
+    /**
+     * @param  list<int>              $relationIds
+     * @return array<int, NodeRecord>
+     */
+    public function ofRelations(array $relationIds): array
+    {
+        $aus = [];
+
+        foreach ($relationIds as $id) {
+            $satz = $this->ofRelation((int) $id);
+
+            if ($satz !== null) {
+                $aus[(int) $id] = $satz;
+            }
+        }
+
+        return $aus;
+    }
+
+    public function ofRelation(int $relationId): ?NodeRecord
+    {
+        if ($relationId === 0) {
+            return null;
+        }
+
+        foreach ($this->records as $satz) {
+            if ($satz->relationId === $relationId) {
+                return $satz;
+            }
+        }
+
+        return null;
     }
 
     /**

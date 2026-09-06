@@ -183,53 +183,55 @@ check(
     $treffer === [],
     implode(', ', $treffer)
 );
+echo "\n2 · TASK-002 · die Adresse steht am Satz, nicht mehr im Pfad\n";
 
-echo "\n2 · TASK-002 · relation_records.path bleibt stehen — und warum\n";
-
-// ⚠️ **Die umgekehrte Zusage, und sie ist Absicht** (`INF-051`,
-// [`inbox.md`](../../docs/pakete/modelltabellen/inbox.md)). *TASK-002 nennt die Spalte einen «reinen
-// Spiegel von `relation_id`». **Gemessen am 2026-09-05 ist sie das nur in der lebenden Tabelle** —
-// 0 von 103 Abweichungen dort, aber **1119 von 5569 im Schatten**, davon 1117 mit mehrteiligem Pfad.
-// Der Spiegel ist der augenblickliche Zustand einer Tabelle, in der gerade keine Einstellung an einer
-// Verwendungsstelle steht.*
+// ⚠️ **Hier stand bis zum 2026-09-06 die umgekehrte Zusage** (`INF-051`): *die Spalte `path` bleibe
+// stehen, weil «diese Einstellung ueberall» und «diese Einstellung nur hier» sonst auf dieselbe
+// Zeile fielen. **Der Grund war richtig und die Loesung ist jetzt eine andere**: der Satz sagt, zu
+// wem er gehoert ([D-667](../../docs/NewConcept/90-decision-log.md)) — `node_records.relation_id`.*
 //
-// ⚠️ **Was ein Streichen kostete, ist kein Aufraeumen, sondern ein stiller Verlust:** *«diese
-// Einstellung, ueberall» und «diese Einstellung, nur an dieser Verwendungsstelle» fielen auf
-// **dieselbe** Zeile — gleiche `node_record_id`, gleiche `relation_id`, gleicher `locale`. Die
-// zweite ueberschriebe die erste, ohne dass irgendetwas rot wuerde.*
-//
-// ⚠️ *Bis er entscheidet, haelt dieser Abschnitt den Zustand fest, statt ihn vorwegzunehmen (`PR-4`).
-// **Den Rundlauf selbst prueft `setting-write-check`** — «und zwar im Satz des Besitzers, unter der
-// zweistufigen Adresse». Hier steht nur, dass der Traeger dieser Adresse noch da ist.*
-$werte = Schema::table('relation_records');
+// ⚠️ **Sein Wort dazu, und es hat den Zwischenschritt gekippt:** *«also verklausulierst du path als
+// Text» — eine zweite Zahlenspalte an der Wertzeile waere derselbe Pfad im besseren Mantel gewesen.*
+$werte  = Schema::table('relation_records');
+$saetze = Schema::table('node_records');
 
-check('relation_records traegt weiter die Spalte path', hatSpalte($werte, 'path'));
+check('node_records nennt die Verwendungsstelle', hatSpalte($saetze, 'relation_id'));
 
-// ⚠️ **Und der Kern schreibt die zweistufige Adresse wirklich** — sonst waere die Spalte oben ein
-// Denkmal. *Gesucht im Quelltext **ohne Kommentare**: die drei Stellen, die einen Pfad aus mehr als
-// einem Abschnitt bauen.*
+// ⚠️ *Die Spalte steht noch, solange Leser sie lesen — dass sie faellt, ist entschieden. **Was hier
+// geprueft wird, ist der Zustand, der das Streichen erlaubt:** keine lebende Zeile sagt darin etwas,
+// was ihre eigene `relation_id` nicht schon sagt.*
+$mehrteilig = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$werte} WHERE path LIKE '%.%'");
+
+check('keine lebende Wertzeile traegt noch eine zweiteilige Adresse', $mehrteilig === 0, (string) $mehrteilig);
+
+$abweichend = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$werte} WHERE path <> '' AND path <> CAST(relation_id AS CHAR)"
+);
+
+check('und keine sagt im Pfad etwas anderes als in ihrer Spalte', $abweichend === 0, (string) $abweichend);
+
+// ⚠️ **Und der Kern schreibt wirklich an den Satz der Stelle** — sonst waere die Spalte oben ein
+// Denkmal. *Gesucht im Quelltext **ohne Kommentare**.*
 $eintrag = ohneKommentare(dirname(__DIR__, 2) . '/src/Core/Service/DataEntry.php');
 
 check(
-    'putSettingAtUseSite baut Verwendungsstelle . Einstellungskante',
-    preg_match('/\$pfad\s*=\s*\$relationId\s*\.\s*\'\.\'\s*\.\s*\$kante->id/', $eintrag) === 1
+    'putSettingAtUseSite schreibt in den Satz der Verwendungsstelle',
+    preg_match('/\$satzId\s*=\s*\$this->recordOfUseSite\(\$stelle\)/', $eintrag) === 1
 );
 
 check(
-    'clearSettingAtUseSite loescht unter derselben Adresse',
-    preg_match('/clearPath\(\s*\$satz->id,\s*\$relationId\s*\.\s*\'\.\'\s*\.\s*\$settingRelationId/', $eintrag) === 1
+    'clearSettingAtUseSite nimmt aus demselben Satz heraus',
+    preg_match('/ofRelation\(\$stelle->id\)/', $eintrag) === 1
+);
+
+check(
+    'und niemand baut mehr Verwendungsstelle . Einstellungskante',
+    preg_match('/\$relationId\s*\.\s*\'\.\'\s*\.\s*\$kante->id/', $eintrag) !== 1
 );
 
 check(
     'createPartAt setzt die ganze Kette zusammen',
     preg_match('/implode\(\'\.\',\s*\$relationIds\)/', $eintrag) === 1
-);
-
-// ⚠️ *Und die Leser entscheiden **am Pfad** und nicht an `relation_id` — genau die Unterscheidung,
-// die mit der Spalte fiele.*
-check(
-    'die Leser schlagen ueber den Pfad nach',
-    substr_count($eintrag, '$gesucht[$wert->path]') >= 2
 );
 
 echo "\n3 · TASK-001 · nodes traegt keinen Pfad mehr — und die Vorfahren sind dieselben\n";

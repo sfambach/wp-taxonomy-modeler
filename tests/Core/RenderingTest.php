@@ -187,16 +187,25 @@ final class RenderingTest extends TestCase
             $this->relations->add($kante);
         }
 
-        $satzId = $this->records->add(new NodeRecord(
-            0,
-            $traegerId,
-            $traeger?->version ?? 1,
-            '2026-09-04 00:00:00'
-        ));
+        // ⚠️ **Eine Angabe an einer Verwendungsstelle liegt im Satz **dieser Kante**
+        // ([D-667](../../docs/NewConcept/90-decision-log.md), 2026-09-06).** *Hier stand ein Satz des
+        // Halters und ein zweiteiliger Pfad `<Stelle>.<Einstellung>` — zwei Nummern als Text. Der
+        // Leser sucht sie jetzt am Satz, und der Pfad ist wieder einstufig.*
+        $stelle = $wer instanceof Relation ? $wer->id : 0;
+        $satzId = $stelle === 0 ? 0 : ($this->records->ofRelation($stelle)?->id ?? 0);
 
-        $pfad = $wer instanceof Node ? (string) $kante->id : $wer->id . '.' . $kante->id;
+        if ($satzId === 0) {
+            $satzId = $this->records->add(new NodeRecord(
+                0,
+                $traegerId,
+                $traeger?->version ?? 1,
+                '2026-09-04 00:00:00',
+                $stelle === 0 ? RecordType::User : RecordType::Default,
+                $stelle
+            ));
+        }
 
-        $this->records->putValue(new RelationRecord($satzId, $pfad, $kante->id, '', $wert));
+        $this->records->putValue(new RelationRecord($satzId, (string) $kante->id, $kante->id, '', $wert));
 
         $this->neuZeichnen();
     }

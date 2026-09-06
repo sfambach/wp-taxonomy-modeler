@@ -35,8 +35,11 @@ final class WpdbRecordRepository implements RecordRepository
                 // anders als bei `nodes.kind`, wo `$wpdb->prepare('%s', null)` eine leere
                 // Zeichenkette schrieb ([D-519](../../../docs/NewConcept/90-decision-log.md)).*
                 'record_type'  => $record->recordType->value,
+                // ⚠️ *`0` heisst «gehört dem Knoten» — der Normalfall und jeder Satz vor Fassung 37
+                // ([D-667](../../../docs/NewConcept/90-decision-log.md)).*
+                'relation_id'  => $record->relationId,
             ],
-            ['%d', '%d', '%s', '%s']
+            ['%d', '%d', '%s', '%s', '%d']
         );
 
         return (int) $wpdb->insert_id;
@@ -47,7 +50,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $row = Query::row('Datensatz lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type FROM ' . Schema::table('node_records')
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records')
                 . ' WHERE id = %d',
             $id
         ));
@@ -55,13 +58,21 @@ final class WpdbRecordRepository implements RecordRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
+    /**
+     * ⚠️ **`AND relation_id = 0`, seit Fassung 37** ([D-667](../../../docs/NewConcept/90-decision-log.md)):
+     * *die Sätze **des Knotens**, nicht die seiner Verwendungsstellen. Ein Satz einer Kante trägt in
+     * `node_id` weiter ihren **Halter** — sonst wüsste niemand, wohin er gehört —, und ohne diese
+     * Bedingung läse die Kette des Knotens die Überschreibung **einer** Stelle als seine eigene
+     * Angabe. **Gemessen, als sie fehlte: `renderer-choice-check` meldete an sechs Knoten
+     * «gespeichert `table`, gezeichnet `plain`».*** Zu ihnen führt {@see self::ofRelation()}.
+     */
     public function ofNode(int $nodeId): array
     {
         global $wpdb;
 
         $rows = Query::rows('Datensaetze des Knotens lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type FROM ' . Schema::table('node_records') . '
-             WHERE node_id = %d ORDER BY id ASC',
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records') . '
+             WHERE node_id = %d AND relation_id = 0 ORDER BY id ASC',
             $nodeId
         ));
 
@@ -91,8 +102,8 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Datensaetze der Knoten lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type FROM ' . Schema::table('node_records') . '
-             WHERE node_id IN (' . $platzhalter . ') ORDER BY id ASC',
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records') . '
+             WHERE node_id IN (' . $platzhalter . ') AND relation_id = 0 ORDER BY id ASC',
             ...$ids
         ));
 
@@ -484,7 +495,66 @@ final class WpdbRecordRepository implements RecordRepository
             // und danach stillschweigend die Vorgabe. **So ist es dieselbe Vorgabe, aber ausgesprochen.**
             // *
             RecordType::fromStorage(isset($row['record_type']) ? (string) $row['record_type'] : null),
+            // ⚠️ *Aus demselben Grund abgesichert wie die Zeile darüber, und mit derselben Vorgabe:
+            // «gehört dem Knoten» ([D-667](../../../docs/NewConcept/90-decision-log.md)).*
+            (int) ($row['relation_id'] ?? 0),
         );
+    }
+
+    /**
+     * Der Satz **dieser Verwendungsstelle** — die Einstellungen, die hier und nur hier gelten.
+     *
+     * ⚠️ **Einer, nicht mehrere** ([D-667](../../../docs/NewConcept/90-decision-log.md)): *eine Kante
+     * ist eine Stelle und keine Sammlung. Wo ein Knoten mehrere Sätze hat — Vorgabe, Beispiel,
+     * Eingaben —, hat eine Verwendungsstelle genau die Einstellungen, die an ihr gesetzt sind.*
+     */
+    public function ofRelation(int $relationId): ?NodeRecord
+    {
+        global $wpdb;
+
+        if ($relationId === 0) {
+            return null;
+        }
+
+        $row = Query::row('Satz der Verwendungsstelle lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+                . Schema::table('node_records') . ' WHERE relation_id = %d ORDER BY id ASC LIMIT 1',
+            $relationId
+        ));
+
+        return $row === null ? null : $this->hydrate($row);
+    }
+
+    /**
+     * @param  list<int>              $relationIds
+     * @return array<int, NodeRecord>
+     */
+    public function ofRelations(array $relationIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $relationIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = Query::rows('Saetze der Verwendungsstellen lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+                . Schema::table('node_records') . '
+             WHERE relation_id IN (' . $platzhalter . ') ORDER BY id ASC',
+            ...$ids
+        ));
+
+        $nachKante = [];
+
+        foreach ($rows ?: [] as $row) {
+            $nachKante[(int) $row['relation_id']] ??= $this->hydrate($row);
+        }
+
+        return $nachKante;
     }
 
     /**

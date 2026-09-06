@@ -26,6 +26,27 @@ interface RecordRepository
     public function ofNode(int $nodeId): array;
 
     /**
+     * Der Satz dieser Verwendungsstelle, falls einer angelegt ist.
+     *
+     * ⚠️ *Seit [D-667](../../../docs/NewConcept/90-decision-log.md): ein Satz **ohne** Kante gehört
+     * dem Knoten, einer **mit** gehört dieser Stelle. Vorher stand diese Zugehörigkeit als Text im
+     * Pfad einer Wertzeile.*
+     */
+    public function ofRelation(int $relationId): ?NodeRecord;
+
+    /**
+     * Dieselbe Frage für viele Stellen auf einmal (`CD-7`).
+     *
+     * ⚠️ *Ein Formular fragt alle seine Felder nacheinander. Einzeln gefragt kostet das eine Abfrage
+     * je Feld — genau das misst `package7-check.php`, und genau das hat es gemeldet, als es diese
+     * Methode noch nicht gab: **18 Abfragen für 7 Felder**.*
+     *
+     * @param  list<int>              $relationIds
+     * @return array<int, NodeRecord> Kanten-Id => ihr Satz; ohne Eintrag, wo keiner steht.
+     */
+    public function ofRelations(array $relationIds): array;
+
+    /**
      * Die Datensätze **mehrerer** Knoten — in einer Abfrage.
      *
      * ⚠️ **Gebraucht seit [D-602](../../../docs/NewConcept/90-decision-log.md).** *Die Auflösungskette

@@ -375,7 +375,7 @@ final class Schema
      * entschieden, nur bestehen die alten weiter. Umkehrbar: Schattenzeilen, **eine**
      * Änderungsgruppe, gezählt davor und danach, und bei Abweichung bleibt alles stehen.*
      */
-    public const VERSION = 36;
+    public const VERSION = 37;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -626,6 +626,11 @@ final class Schema
         // ⚠️ **Nach `dbDelta`, weil er Zeilen liest und keine Spalten anfasst** (Fassung 36,
         // [D-653](../../../docs/NewConcept/90-decision-log.md)).
         self::dropEmptyDefaultRecords();
+
+        // ⚠️ **Nach `dbDelta`, weil `node_records.relation_id` dastehen muss, bevor etwas
+        // hineinwandert — und *vor* dem Abbau der Pfadspalte, aus der gelesen wird** (Fassung 37,
+        // [D-667](../../../docs/NewConcept/90-decision-log.md), TASK-002).
+        self::moveUseSiteSettingsIntoTheirOwnRecord();
 
         // ⚠️ **Nach der Wanderung, weil sie auf `label_texts` steht** (Fassung 34, TASK-019).
         self::buildTheReadableViews();
@@ -1194,6 +1199,105 @@ final class Schema
      *
      * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine Spalte mehr.*
      */
+    /**
+     * Fassung 37: **die Einstellungen einer Verwendungsstelle bekommen ihren eigenen Satz**
+     * ([D-667](../../../docs/NewConcept/90-decision-log.md), TASK-002).
+     *
+     * ⚠️ **Was hier wandert, ist gemessen und klein:** *118 Wertzeilen tragen einen Pfad, **116 davon
+     * einteilig** — und bei allen 116 ist er die blosse Wiederholung von `relation_id` (gezählt am
+     * 2026-09-06: null Abweichungen). **Zwei Zeilen sind zweiteilig**, und nur sie sagen etwas, was
+     * sonst nirgends steht: die zwei Feldbreiten an `Street Name` und `House Number`.*
+     *
+     * ⚠️ **Der Satz gehört danach der Kante, und `node_id` bleibt der Halter.** *Ein Satz ohne
+     * `relation_id` ist der eines Knotens, wie bisher; einer mit ihr gehört dieser
+     * Verwendungsstelle. **Beides in einer Tabelle, weil es dasselbe Ding ist** — ein Datensatz.*
+     *
+     * ⚠️ **Umkehrbar, solange die Spalte steht, und danach steht die Geschichte.** *Die Schattenzeilen
+     * behalten ihren `path`; Geschichte wird nicht umgeschrieben
+     * ([D-065](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   A["Wertzeile · Pfad «812.97»"] --> B["Satz der Kante 812"]
+     *   B --> C["Wertzeile · relation_id 97, kein Pfad"]
+     * ```
+     */
+    private static function moveUseSiteSettingsIntoTheirOwnRecord(): void
+    {
+        global $wpdb;
+
+        $saetze = self::table('node_records');
+        $werte  = self::table('relation_records');
+
+        if (self::tableMissing($saetze) || self::tableMissing($werte)) {
+            return;
+        }
+
+        // ⚠️ *Beide Spalten müssen dastehen: die neue, in die geschrieben wird, und die alte, aus der
+        // gelesen wird. Fehlt eine, ist der Schritt entweder schon gelaufen oder noch nicht dran.*
+        if (! self::hasColumn($saetze, 'relation_id') || ! self::hasColumn($werte, 'path')) {
+            return;
+        }
+
+        /** @var list<array{id: string, node_record_id: string, relation_id: string, path: string}> $zweiteilig */
+        $zweiteilig = $wpdb->get_results(
+            "SELECT id, node_record_id, relation_id, path FROM {$werte} WHERE path LIKE '%.%'",
+            ARRAY_A
+        );
+
+        foreach ($zweiteilig as $zeile) {
+            $teile = explode('.', (string) $zeile['path']);
+
+            // ⚠️ *Mehr als zwei Teile gibt es gemessen nirgends — und eine Zeile, die sich nicht
+            // sicher lesen lässt, bleibt liegen, statt an einer geratenen Adresse zu landen (`PR-4`).*
+            if (count($teile) !== 2) {
+                continue;
+            }
+
+            $stelle = (int) $teile[0];
+
+            if ($stelle === 0) {
+                continue;
+            }
+
+            $satz = $wpdb->get_row(
+                $wpdb->prepare("SELECT id, node_id, node_version, record_type FROM {$saetze} WHERE id = %d", (int) $zeile['node_record_id']),
+                ARRAY_A
+            );
+
+            if ($satz === null) {
+                continue;
+            }
+
+            $ziel = (int) $wpdb->get_var(
+                $wpdb->prepare("SELECT id FROM {$saetze} WHERE relation_id = %d LIMIT 1", $stelle)
+            );
+
+            if ($ziel === 0) {
+                $wpdb->insert($saetze, [
+                    'version'      => 1,
+                    'node_id'      => (int) $satz['node_id'],
+                    'node_version' => (int) $satz['node_version'],
+                    'created_at'   => current_time('mysql'),
+                    'record_type'  => (string) $satz['record_type'],
+                    'relation_id'  => $stelle,
+                ]);
+
+                $ziel = (int) $wpdb->insert_id;
+            }
+
+            if ($ziel === 0) {
+                continue;
+            }
+
+            $wpdb->update(
+                $werte,
+                ['node_record_id' => $ziel, 'path' => ''],
+                ['id' => (int) $zeile['id']]
+            );
+        }
+    }
+
     private static function dropNodePathColumn(): void
     {
         global $wpdb;
@@ -3394,14 +3498,20 @@ final class Schema
                 node_version int(10) unsigned NOT NULL,
                 created_at datetime NOT NULL,
                 record_type varchar(20) NOT NULL DEFAULT 'user',
+                relation_id bigint(20) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 KEY node_id (node_id),
+                KEY relation_id (relation_id),
                 KEY record_type (record_type)
             ) {$charset};",
 
-            // Keyed on a path with the last relation repeated in relation_id, so that
-            // `WHERE relation_id = ... AND value_decimal > 1000` finds every occurrence
-            // regardless of how deep it sits (D-134).
+            // ⚠️ **Der Pfad trägt seit Fassung 37 nichts mehr, was nicht anderswo steht**
+            // ([D-667](../../../docs/NewConcept/90-decision-log.md), TASK-002). *Wo er zwei Nummern
+            // trug, sagt sie jetzt der **Satz** — `node_records.relation_id` nennt die
+            // Verwendungsstelle, `relation_id` hier die Einstellung. **Er steht noch da, solange ihn
+            // Leser lesen; gestrichen wird er, wenn keiner mehr hinschaut** — und dass er fällt, ist
+            // entschieden. Sein Wort zum Zwischenschritt, den er verworfen hat: «also verklausulierst
+            // du path als Text».*
             "CREATE TABLE {$t('relation_records')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 node_record_id bigint(20) unsigned NOT NULL,
@@ -3476,6 +3586,7 @@ final class Schema
                 node_version int(10) unsigned NOT NULL,
                 created_at datetime NOT NULL,
                 record_type varchar(20) NOT NULL DEFAULT 'user',
+                relation_id bigint(20) unsigned NOT NULL DEFAULT 0,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

@@ -1029,9 +1029,9 @@ final class DataEntry
         // an einem seiner Vorfahren erklärt, und genau dort sucht sie der Leser wieder
         // ({@see ModelValues::settingRelation()}). **Durch `putAt()` gelegt wurde jede Angabe abgewiesen,
         // die der Besitzer erklärt hat** — also die, um die es hier geht.*
-        $satzId    = $this->defaultRecordOf($stelle->fromNodeId);
         $kante     = $this->useSiteSettingRelation($stelle, $settingRelationId);
-        $pfad      = $relationId . '.' . $kante->id;
+        $satzId    = $this->recordOfUseSite($stelle);
+        $pfad      = (string) $kante->id;
         $vorhanden = $this->valuesAtPath($satzId, $pfad, $locale);
 
         // ⚠️ *Zwei Zeilen auf einem Pfad liessen die erste gewinnen, und das Ändern ginge ins Leere —
@@ -1042,7 +1042,9 @@ final class DataEntry
 
         $version = $this->records->putValue(
             $vorhanden === []
-                ? RelationRecord::at($satzId, [$relationId, $kante->id], $value, $locale)
+                // ⚠️ *Eine Stufe, nicht zwei: die Verwendungsstelle steht am **Satz**
+                // ([D-667](../../../docs/NewConcept/90-decision-log.md)), nicht im Pfad.*
+                ? RelationRecord::at($satzId, [$kante->id], $value, $locale)
                 : new RelationRecord($satzId, $pfad, $kante->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
         );
 
@@ -1095,11 +1097,22 @@ final class DataEntry
     {
         $stelle = $this->relations->byId($relationId) ?? throw NotYetStorable::noSuchUseSite($relationId);
 
-        foreach ($this->records->ofNode($stelle->fromNodeId) as $satz) {
-            if ($satz->recordType === RecordType::Default) {
-                $this->clearPath($satz->id, $relationId . '.' . $settingRelationId, $locale);
-            }
+        // ⚠️ **Aus dem Satz **dieser Kante**, nicht mehr aus dem des Halters**
+        // ([D-667](../../../docs/NewConcept/90-decision-log.md), Fassung 37). *Der Ort, an dem
+        // geschrieben wird, und der, an dem gelöscht wird, sind dieselbe Stelle — **das war schon
+        // einmal auseinandergelaufen**, und ein Löschen, das ins Leere greift, sieht aus wie ein
+        // Wert, der sich nicht wegnehmen lässt.*
+        //
+        // ⚠️ *Kein Satz heisst: hier war nie etwas überschrieben. Dann gibt es auch nichts
+        // wegzunehmen — und angelegt wird dafür nichts
+        // ([D-609](../../../docs/NewConcept/90-decision-log.md)).*
+        $satz = $this->records->ofRelation($stelle->id);
+
+        if ($satz === null) {
+            return;
         }
+
+        $this->clearPath($satz->id, (string) $settingRelationId, $locale);
     }
 
     /**
@@ -1320,6 +1333,52 @@ final class DataEntry
      * und der Leser nimmt den ersten. Gibt es schon einen, wird er benutzt und nicht ein zweiter
      * daneben gestellt.*
      */
+    /**
+     * Der Satz **dieser Verwendungsstelle** — gesucht, und beim ersten Schreiben angelegt.
+     *
+     * ⚠️ **Sein Wort, und es war schon vorgesehen:** *«aber wir hatten die relation id schon
+     * vorgesehen im record»* ([D-667](../../../docs/NewConcept/90-decision-log.md)). *Vorher lag eine
+     * Überschreibung im Default-Satz des **Besitzers**, adressiert mit der Zeichenkette
+     * `<Verwendungsstelle>.<Einstellungskante>` — zwei Nummern in einem Textfeld.*
+     *
+     * ⚠️ **Nicht über {@see self::create()}, und der Grund ist derselbe wie eine Methode weiter oben.**
+     * *Jener legt die Teile an, die die Multiplizität eines **Knotens** verlangt, und prüft, ob der
+     * Zweig Daten hält. Beides gilt hier nicht: **dieser Satz hält keine Daten, sondern die
+     * Einstellungen einer Stelle**, und die Stelle kann auf einen einfachen Typ zeigen, der selbst
+     * nichts aufzuzeichnen hat.*
+     *
+     * ⚠️ **Angelegt erst beim Schreiben** ([D-609](../../../docs/NewConcept/90-decision-log.md)) —
+     * *dieselbe Regel, an der [D-653](../../../docs/NewConcept/90-decision-log.md) 368 leere Sätze
+     * gekostet hat: wer nur hinsieht, legt nichts an.*
+     */
+    private function recordOfUseSite(Relation $stelle): int
+    {
+        $vorhanden = $this->records->ofRelation($stelle->id);
+
+        if ($vorhanden !== null) {
+            return $vorhanden->id;
+        }
+
+        $traeger = $this->nodes->byId($stelle->fromNodeId);
+
+        $satz = new NodeRecord(
+            0,
+            $stelle->fromNodeId,
+            $traeger->version,
+            $this->clock->now()->format('Y-m-d H:i:s'),
+            // ⚠️ *`default`, weil es eine **Vorgabe** ist und keine Eingabe: was hier steht, gilt für
+            // jede Eingabe an dieser Stelle, bis jemand sie überschreibt.*
+            RecordType::Default,
+            $stelle->id
+        );
+
+        $id = $this->records->add($satz);
+
+        $this->melden($id, 'record', 'record created', null, $this->satzZustand($satz), 1);
+
+        return $id;
+    }
+
     private function defaultRecordOf(int $nodeId): int
     {
         $vorhanden = $this->findDefaultRecord($nodeId);

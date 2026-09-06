@@ -40,6 +40,22 @@ final class NodeRecord
          * der Tabelle für die vorhandenen Zeilen tut.*
          */
         public readonly RecordType $recordType = RecordType::User,
+        /**
+         * Die Verwendungsstelle, der dieser Satz gehört — `0`, wenn er dem Knoten gehört.
+         *
+         * ⚠️ **Sein Wort, und es war schon einmal vorgesehen:** *«aber wir hatten die relation id
+         * schon vorgesehen im record»* ([D-667](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * ⚠️ **Damit fällt `relation_records.path`.** *Dort standen zwei Nummern als **Text**
+         * (`<Verwendungsstelle>.<Einstellungskante>`), weil es keine Stelle gab, an der die erste
+         * hingehörte. Jetzt gibt es sie: **der Satz sagt, zu wem er gehört**, und die Wertzeile sagt
+         * nur noch, welche Einstellung sie meint. Sein Bild vom Zwischenschritt, den er verworfen
+         * hat: «also verklausulierst du path als Text».*
+         *
+         * ⚠️ *`0` und nicht `null`: «gehört keiner Kante» ist kein Sonderfall, sondern der
+         * Normalfall — jeder Satz, den es vor Fassung 37 gab.*
+         */
+        public readonly int $relationId = 0,
     ) {
     }
 }

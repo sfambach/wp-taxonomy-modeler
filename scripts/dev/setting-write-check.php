@@ -460,18 +460,20 @@ if ($einstellung === null) {
 
     check('geschrieben, und der Leser findet sie an der Stelle', $anDerStelle() === true);
 
-    // ⚠️ **Und sie liegt unter der Adresse, an der der Leser sie sucht** — im Satz des **Besitzers**
-    // unter `<Verwendungsstelle>.<Einstellungskante>`. *Ohne diese Zusage koennte der Wert im Satz des
-    // Ziels landen und truege dort fuer alle, die es verwenden.*
+    // ⚠️ **Und sie liegt in dem Satz, den der Leser fragt** — im Satz **dieser Verwendungsstelle**
+    // ([D-667](../../docs/NewConcept/90-decision-log.md), Fassung 37). *Hier stand bis zum 2026-09-06
+    // der Satz des Halters und die zweistufige Adresse `<Stelle>.<Einstellung>`. Die Zusage ist
+    // dieselbe geblieben: der Wert darf **nicht** im Satz des Ziels landen, sonst truege er fuer
+    // alle, die den Typ verwenden.*
     $zeilen = (int) $wpdb->get_var($wpdb->prepare(
         'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' w
          INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = w.node_record_id
-         WHERE r.node_id = %d AND w.path = %s',
-        $knotenId,
-        $stelle->id . '.' . $einstellung->id
+         WHERE r.relation_id = %d AND w.relation_id = %d',
+        $stelle->id,
+        $einstellung->id
     ));
 
-    check('und zwar im Satz des Besitzers, unter der zweistufigen Adresse', $zeilen === 1, (string) $zeilen);
+    check('und zwar im Satz der Verwendungsstelle', $zeilen === 1, (string) $zeilen);
 
     // ⚠️ *«Nichts» ist auch hier eine Wahl und sie loescht — derselbe dritte Zustand wie am Knoten.*
     $data->clearSettingAtUseSite($stelle->id, $einstellung->id);
@@ -600,17 +602,17 @@ if ($gefunden !== null) {
     // die Kante nicht fand.*
     check('geschrieben, und der Leser findet den Wert an der Stelle', $anDerStelle2() === 120, (string) $anDerStelle2());
 
-    // ⚠️ *Und im Satz des **Besitzers**, nicht im Satz des Ziels — sonst truege die Angabe fuer alle,
+    // ⚠️ *Im Satz **dieser Stelle**, nicht im Satz des Ziels — sonst truege die Angabe fuer alle,
     // die den Typ verwenden, und genau die Unterscheidung ist der Sinn von D-611.*
     $zeilen2 = (int) $wpdb->get_var($wpdb->prepare(
         'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' w
          INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = w.node_record_id
-         WHERE r.node_id = %d AND w.path = %s',
-        $knotenId,
-        $stelle2->id . '.' . $nurAmZiel->id
+         WHERE r.relation_id = %d AND w.relation_id = %d',
+        $stelle2->id,
+        $nurAmZiel->id
     ));
 
-    check('und zwar im Satz des Besitzers, unter der zweistufigen Adresse', $zeilen2 === 1, (string) $zeilen2);
+    check('und zwar im Satz der Verwendungsstelle', $zeilen2 === 1, (string) $zeilen2);
 
     $data->clearSettingAtUseSite($stelle2->id, $gefunden->id);
 

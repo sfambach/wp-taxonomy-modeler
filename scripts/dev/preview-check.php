@@ -251,11 +251,32 @@ if ($relation === null) {
      * [D-529](../../docs/NewConcept/90-decision-log.md) eine **Kante mit einem Wert im Datensatz**.*
      */
     $flag = static function (?string $key) use ($wpdb, $prefix, $relationId, $readOnlyRelation, $ownerRecord): void {
-        $pfad = $relationId . '.' . $readOnlyRelation;
+        // ⚠️ **Der Satz **dieser Verwendungsstelle**, seit Fassung 37**
+        // ([D-667](../../docs/NewConcept/90-decision-log.md)). *Hier stand der Satz des Halters und
+        // ein zweiteiliger Pfad `<Stelle>.<Einstellung>`. Jetzt sagt der Satz, zu wem er gehört —
+        // der Wächter schreibt an dieselbe Stelle, an der der Kern liest, sonst misst er seinen
+        // eigenen Behelf.*
+        $stellenSatz = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$prefix}node_records WHERE relation_id = %d LIMIT 1",
+            $relationId
+        ));
+
+        if ($stellenSatz === 0) {
+            $wpdb->query($wpdb->prepare(
+                "INSERT INTO {$prefix}node_records (version, node_id, node_version, created_at, record_type, relation_id)
+                 SELECT 1, node_id, node_version, created_at, 'default', %d FROM {$prefix}node_records WHERE id = %d",
+                $relationId,
+                $ownerRecord
+            ));
+
+            $stellenSatz = (int) $wpdb->insert_id;
+        }
+
+        $pfad = (string) $readOnlyRelation;
 
         $wpdb->query($wpdb->prepare(
             "DELETE FROM {$prefix}relation_records WHERE node_record_id = %d AND path = %s",
-            $ownerRecord,
+            $stellenSatz,
             $pfad
         ));
         $wpdb->query($wpdb->prepare(
@@ -276,7 +297,7 @@ if ($relation === null) {
             $wpdb->query($wpdb->prepare(
                 "INSERT INTO {$prefix}relation_records (node_record_id, relation_id, path, locale, value_int, position, version)
                  VALUES (%d, %d, %s, '', 1, 0, 1)",
-                $ownerRecord,
+                $stellenSatz,
                 $readOnlyRelation,
                 $pfad
             ));

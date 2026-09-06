@@ -494,6 +494,35 @@ final class ModelValues
         }
     }
 
+    /** @var array<int,?NodeRecord> Kanten-Id => ihr Satz, oder null, wenn keiner steht */
+    private array $satzNachStelle = [];
+
+    /**
+     * Die Sätze dieser Verwendungsstellen — einmal geholt, auch die leeren Antworten gemerkt.
+     *
+     * ⚠️ *«Kein Satz» ist eine Antwort und wird als solche behalten. Ohne das fragte jedes Zeichnen
+     * einer Zeile ohne Überschreibung erneut nach — und das ist der häufige Fall, nicht der seltene.*
+     *
+     * @param list<int> $stellen
+     */
+    private function stellenVorladen(array $stellen): void
+    {
+        $offen = array_values(array_filter(
+            array_unique(array_filter(array_map('intval', $stellen))),
+            fn (int $id): bool => ! array_key_exists($id, $this->satzNachStelle)
+        ));
+
+        if ($offen === []) {
+            return;
+        }
+
+        $gefunden = $this->records->ofRelations($offen);
+
+        foreach ($offen as $id) {
+            $this->satzNachStelle[$id] = $gefunden[$id] ?? null;
+        }
+    }
+
     /** @var array<int,array<int,Relation>> Besitzer-Id => seine **eigenen** Feldkanten */
     private array $kantenNachBesitzer = [];
 
@@ -526,6 +555,7 @@ final class ModelValues
     {
         $ziele   = [];
         $traeger = [];
+        $stellen = [];
 
         foreach ($subjects as $subject) {
             if ($subject instanceof Node) {
@@ -537,7 +567,14 @@ final class ModelValues
 
             $ziele[]   = $subject->toNodeId;
             $traeger[] = $subject->fromNodeId;
+            $stellen[] = $subject->id;
         }
+
+        // ⚠️ **Die Sätze der Verwendungsstellen in *einer* Abfrage** (`CD-7`,
+        // [D-667](../../../docs/NewConcept/90-decision-log.md)). *Einzeln gefragt kostet Stufe 1 der
+        // Kette eine Abfrage je Feld — **gemessen 18 für 7 Felder**, gemeldet von
+        // `package7-check.php`, das genau dafür da ist.*
+        $this->stellenVorladen($stellen);
 
         $unbekannt = array_values(array_filter(
             array_unique([...$ziele, ...$traeger]),
@@ -580,7 +617,22 @@ final class ModelValues
      */
     public function forUseSite(Relation $relation): array
     {
-        $aus = $this->settingsAt($relation, $this->recordsOf($relation->fromNodeId), $relation->id, [$relation->id]);
+        // ⚠️ **Stufe 1 der Kette liest jetzt den Satz **dieser Kante**
+        // ([D-667](../../../docs/NewConcept/90-decision-log.md), Fassung 37).** *Vorher stand hier der
+        // Satz des **Besitzers**, und welche seiner Wertzeilen zu dieser Stelle gehörten, sagte eine
+        // Zeichenkette: `<Verwendungsstelle>.<Einstellungskante>`. Sein Wort dazu: «sollte alles über
+        // die Ids abgelegt sein». **Jetzt sagt es der Satz, und die Wertzeile sagt nur noch, welche
+        // Einstellung sie meint** — deshalb ist der Vorlauf leer.*
+        //
+        // ⚠️ *Kein Satz heisst: an dieser Stelle ist nichts überschrieben. Die Stufen 2 und 3 unten
+        // antworten dann allein — genau wie vorher, als es keine passende Wertzeile gab.*
+        $this->stellenVorladen([$relation->id]);
+
+        $eigener = $this->satzNachStelle[$relation->id];
+
+        $aus = $eigener === null
+            ? []
+            : $this->settingsAt($relation, [$eigener->id], $relation->id, []);
 
         // ⚠️ **Hier stand der eigene Renderer der Verwendungsstelle, und er ist ersatzlos gefallen**
         // ([D-643](../../../docs/NewConcept/90-decision-log.md)). *Seine Worte: «ich bin mir noch
