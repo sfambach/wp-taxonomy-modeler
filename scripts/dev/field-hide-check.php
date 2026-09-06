@@ -13,8 +13,20 @@
  * weil niemand wollte, sondern weil es nichts zu drücken gab — genau die Sorte «geschrieben und nicht
  * gebaut», die dieses Projekt schon mehrfach gefunden hat.*
  *
- * ⚠️ *Sie schaltet ein echtes Feld um und wieder zurück — über die **Id** der Kante, samt
- * `register_shutdown_function`, damit auch ein Absturz zurückschaltet.*
+ * ⚠️ **Diese Prüfung hat zwei Tage lang das Falsche gemessen, und sie hat den Schaden selbst
+ * angerichtet.** *Sie schaltete eine **echte** Kante seines Modells um — `Prefixes.exponent` — und
+ * behauptete dabei `hide = 0` als Ausgangslage. Am 2026-09-05 um 21:46:39 hat der Eigentümer genau
+ * dieses Feld im Schirm versteckt, drei Sekunden nach einem Prüflauf; das Änderungsprotokoll zeigt
+ * den einzelnen «field hidden» ohne Gegenstück. **Von da an war die Prüfung rot** — und schlimmer:
+ * ihr rohes Zurückschreiben (`register_shutdown_function` auf den *gelesenen* Wert) hat seinen
+ * Zustand seither in jedem Lauf festgenagelt, an 25 Läufen gezählt. *Der Knopf war nie kaputt.*
+ *
+ * **Zwei Regeln folgen daraus, und die Prüfung hält sie jetzt beide:**
+ *
+ * 1. **Ein Wächter fasst das Modell des Eigentümers nicht an.** Er baut seine eigene Wiese
+ *    (Präfix `__fh `) und räumt sie im `finally` weg, auch wenn eine Zusage fehlschlägt.
+ * 2. **Keine Momentaufnahme seines Bestands als Zusage.** Nicht «das Feld ist sichtbar», sondern
+ *    «umgeschaltet ändert sich Spalte und Zeichen, und zurück ist es wieder wie vorher».
  *
  * @see docs/NewConcept/20-interaction.md
  */
@@ -68,58 +80,19 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 $nodes     = new WpdbNodeRepository();
-$relations     = new WpdbRelationRepository();
+$relations = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 
-// ── Ein Knoten, der ein eigenes Feld erklärt und zwei erbt ──────────────────
-$prefixes = null;
+$prefix = $wpdb->prefix . 'taxmod_';
 
-foreach ($nodes->childrenOf($framework->rootOf(Branch::Constants)) as $child) {
-    if ($child->name === 'Prefixes') {
-        $prefixes = $child;
-    }
-}
-
-if ($prefixes === null) {
-    check('ein Knoten Prefixes unter Constants', false);
-
-    echo "\n1 fehlgeschlagen\n";
-
-    exit(1);
-}
-
-$eigenes = null;
-
-foreach ($editor->fieldsOf($prefixes->id) as $relation) {
-    if ($relation->fromNodeId === $prefixes->id) {
-        $eigenes = $relation;
-    }
-}
-
-if ($eigenes === null) {
-    check('Prefixes erklärt ein eigenes Feld', false);
-
-    echo "\n1 fehlgeschlagen\n";
-
-    exit(1);
-}
-
-$vorher = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT hide FROM ' . Schema::table('relations') . ' WHERE id = %d',
-    $eigenes->id
-));
-
-// ⚠️ *Roh zurückgeschrieben und nicht über den Akt — eine Aufräumung, die am geprüften Code hängt,
-// räumt genau dann nicht auf, wenn es nötig wäre ([D-519](../../docs/NewConcept/90-decision-log.md)).*
-register_shutdown_function(static function () use ($eigenes, $vorher): void {
-    global $wpdb;
-
-    $wpdb->update(Schema::table('relations'), ['hide' => $vorher], ['id' => $eigenes->id], ['%d'], ['%d']);
-});
-
-$seite = static function (int $nodeId): string {
+/**
+ * Die Feldzeilen einer Maske, so wie der Schirm sie zeichnet.
+ *
+ * @return list<string> das Markup je Verstecken-Knopf
+ */
+$knoepfeAuf = static function (int $nodeId): array {
     $_GET['page']        = 'taxmod';
     $_GET['taxmod_node'] = (string) $nodeId;
 
@@ -131,68 +104,123 @@ $seite = static function (int $nodeId): string {
     $plugin = $rc->newInstanceWithoutConstructor();
     $ctor->invoke($plugin, __FILE__);
 
-    return $plugin->screen()->render();
+    preg_match_all(
+        '#<button[^>]*value="toggle_field_hide"[^>]*>.*?</button>#s',
+        $plugin->screen()->render(),
+        $treffer
+    );
+
+    return $treffer[0];
 };
 
-echo "\n== 1. Der Schalter steht in jeder Feldzeile ==\n";
+$hide = static fn (int $relationId): int => (int) $GLOBALS['wpdb']->get_var($GLOBALS['wpdb']->prepare(
+    'SELECT hide FROM ' . Schema::table('relations') . ' WHERE id = %d',
+    $relationId
+));
 
-$markup = $seite($prefixes->id);
+// ── Eine eigene Wiese: ein Vater mit einem Feld, ein Kind mit einem eigenen ─
+// ⚠️ *Beides wird gebraucht — der Vater liefert das **geerbte** Feld, an dem der Schalter stumm sein
+// muss, das Kind das eigene, an dem er wirkt. Aus seinem Bestand genommen wäre beides eine Annahme
+// über Zeilen, die er jederzeit ändern darf.*
+$gebaut = [];
 
-preg_match_all('#<button[^>]*value="toggle_field_hide"[^>]*>#', $markup, $knoepfe);
+try {
+    $typ   = $editor->createNode('__fh Typ', $framework->rootOf(Branch::DataTypes)->id);
+    $gebaut[] = $typ->id;
+    $vater = $editor->createNode('__fh Vater', $framework->rootOf(Branch::Model)->id);
+    $gebaut[] = $vater->id;
+    $kind  = $editor->createNode('__fh Kind', $vater->id);
+    $gebaut[] = $kind->id;
 
-check('der Schalter wird gezeichnet', $knoepfe[0] !== [], count($knoepfe[0]) . ' gefunden');
+    $editor->addField($vater->id, $typ->id, '__fh geerbt');
+    $eigenes = $editor->addField($kind->id, $typ->id, '__fh eigen');
 
-$bedienbar = array_values(array_filter($knoepfe[0], static fn (string $b): bool => ! str_contains($b, 'disabled')));
+    echo "\n== 1. Der Schalter steht in jeder Feldzeile ==\n";
 
-// ⚠️ **Nur an der eigenen Deklaration.** *Ein geerbtes Feld ist **dieselbe Kante** — gemessen sehen
-// fünf Knoten die Kante `44093` als ihr `renderer`-Feld. Es hier zu verstecken hiesse, es überall zu
-// verstecken; wer das will, sagt es dort, wo das Feld erklärt ist.*
+    $sichtbar = $knoepfeAuf($kind->id);
+
+    check('der Schalter wird gezeichnet', $sichtbar !== [], count($sichtbar) . ' gefunden');
+
+    $bedienbar = array_values(array_filter($sichtbar, static fn (string $b): bool => ! str_contains($b, 'disabled')));
+
+    // ⚠️ **Nur an der eigenen Deklaration.** *Ein geerbtes Feld ist **dieselbe Kante** — es hier zu
+    // verstecken hiesse, es überall zu verstecken; wer das will, sagt es dort, wo das Feld erklärt
+    // ist. Die Wiese garantiert mindestens ein geerbtes, also ist die Zusage nie leer wahr.*
+    check(
+        'nur das eigene Feld ist bedienbar, die geerbten nicht',
+        count($bedienbar) === 1 && count($sichtbar) >= 2,
+        count($bedienbar) . ' bedienbar von ' . count($sichtbar)
+    );
+
+    echo "\n== 2. Er schaltet wirklich, und das Symbol dreht sich mit ==\n";
+
+    check('ein frisch erklärtes Feld ist sichtbar', $hide($eigenes->id) === 0, (string) $hide($eigenes->id));
+
+    // ⚠️ *Das Auge sagt, was der **Klick** tut. Ein sichtbares Feld bietet ein durchgestrichenes Auge
+    // — «versteck es» — ein verstecktes ein offenes. **Ohne diesen Unterschied sähe ein verstecktes
+    // Feld in der Liste aus wie ein sichtbares**, und die Liste ist der einzige Ort, an dem man es
+    // zurückholen kann. Geprüft wird der **bedienbare** Knopf, nicht eine Summe über die Seite:
+    // eine Zählung über das ganze Markup hängt an jedem anderen Auge, das der Schirm sonst noch zeigt.*
+    check(
+        'sichtbar zeigt er das durchgestrichene Auge',
+        str_contains($bedienbar[0] ?? '', 'dashicons-hidden')
+    );
+
+    $editor->hideField($kind->id, $eigenes->id, true);
+
+    check('nach dem Verstecken steht es so in der Spalte', $hide($eigenes->id) === 1);
+
+    $versteckteKnoepfe = array_values(array_filter(
+        $knoepfeAuf($kind->id),
+        static fn (string $b): bool => ! str_contains($b, 'disabled')
+    ));
+
+    check(
+        'das Symbol wechselt von «hidden» auf «visibility»',
+        str_contains($versteckteKnoepfe[0] ?? '', 'dashicons-visibility')
+            && ! str_contains($versteckteKnoepfe[0] ?? '', 'dashicons-hidden')
+    );
+
+    echo "\n== 3. Und es wird beim Zeichnen wirklich gelesen ==\n";
+
+    // ⚠️ **Die Zusage, um die es geht.** *`Rendering` filtert versteckte Kanten aus dem Formular
+    // (`array_filter(… ! $relation->hide)`). **Ohne diese Zeile wäre der Schalter ein Knopf ohne
+    // Wirkung** — und genau so war es, solange er fehlte: die Spalte konnte es, niemand las sie für
+    // Felder.*
+    $roh = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Service/Rendering.php');
+
+    check(
+        'das Zeichnen filtert versteckte Kanten heraus',
+        str_contains($roh, 'static fn (Relation $relation): bool => ! $relation->hide')
+    );
+
+    $editor->hideField($kind->id, $eigenes->id, false);
+
+    check('und zurückgeschaltet ist es wieder sichtbar', $hide($eigenes->id) === 0);
+} finally {
+    // ⚠️ *Im `finally`, nicht am Ende — eine Aufräumung, die an der letzten Zusage hängt, räumt genau
+    // dann nicht auf, wenn es nötig wäre ([D-519](../../docs/NewConcept/90-decision-log.md)).*
+    foreach (array_reverse($gebaut) as $id) {
+        $kanten = array_map('intval', $wpdb->get_col(
+            "SELECT id FROM {$prefix}relations WHERE from_node_id = {$id} OR to_node_id = {$id}"
+        ));
+        $eigner = $kanten === [] ? (string) $id : $id . ',' . implode(',', $kanten);
+
+        $wpdb->query("DELETE FROM {$prefix}labels WHERE owner_id IN ({$eigner})");
+        $wpdb->query("DELETE FROM {$prefix}changelog WHERE owner_id IN ({$eigner})");
+
+        if ($kanten !== []) {
+            $wpdb->query("DELETE FROM {$prefix}relations WHERE id IN (" . implode(',', $kanten) . ')');
+        }
+
+        $wpdb->query("DELETE FROM {$prefix}nodes WHERE id = {$id}");
+    }
+}
+
+echo "\n";
 check(
-    'nur das eigene Feld ist bedienbar, die geerbten nicht',
-    count($bedienbar) === 1 && count($knoepfe[0]) >= 2,
-    count($bedienbar) . ' bedienbar von ' . count($knoepfe[0])
-);
-
-echo "\n== 2. Er schaltet wirklich, und das Symbol dreht sich mit ==\n";
-
-check('das Feld ist zunächst sichtbar', $vorher === 0, (string) $vorher);
-
-$editor->hideField($prefixes->id, $eigenes->id, true);
-
-check(
-    'nach dem Verstecken steht es so in der Spalte',
-    (int) $wpdb->get_var($wpdb->prepare('SELECT hide FROM ' . Schema::table('relations') . ' WHERE id = %d', $eigenes->id)) === 1
-);
-
-$versteckt = $seite($prefixes->id);
-
-// ⚠️ *Das Auge sagt, was der **Klick** tut. Ein verstecktes Feld bietet ein offenes Auge — «zeig es
-// wieder» — und ein sichtbares ein durchgestrichenes. **Ohne diesen Unterschied sähe ein verstecktes
-// Feld in der Liste aus wie ein sichtbares**, und die Liste ist der einzige Ort, an dem man es
-// zurückholen kann.*
-check(
-    'das Symbol wechselt von «hidden» auf «visibility»',
-    substr_count($versteckt, 'dashicons-visibility') > substr_count($markup, 'dashicons-visibility'),
-    substr_count($markup, 'dashicons-visibility') . ' → ' . substr_count($versteckt, 'dashicons-visibility')
-);
-
-echo "\n== 3. Und es wird beim Zeichnen wirklich gelesen ==\n";
-
-// ⚠️ **Die Zusage, um die es geht.** *`Rendering` filtert versteckte Kanten aus dem Formular
-// (`array_filter(… ! $relation->hide)`). **Ohne diese Zeile wäre der Schalter ein Knopf ohne Wirkung** —
-// und genau so war es, solange er fehlte: die Spalte konnte es, niemand las sie für Felder.*
-$roh = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Service/Rendering.php');
-
-check(
-    'das Zeichnen filtert versteckte Kanten heraus',
-    str_contains($roh, 'static fn (Relation $relation): bool => ! $relation->hide')
-);
-
-$editor->hideField($prefixes->id, $eigenes->id, false);
-
-check(
-    'und zurückgeschaltet ist es wieder sichtbar',
-    (int) $wpdb->get_var($wpdb->prepare('SELECT hide FROM ' . Schema::table('relations') . ' WHERE id = %d', $eigenes->id)) === 0
+    'die Wiese ist wieder weg',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$prefix}nodes_named WHERE name LIKE '__fh %'") === 0
 );
 
 echo "\n" . ($bad === 0 ? "Alles grün: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

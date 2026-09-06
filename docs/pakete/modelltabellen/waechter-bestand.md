@@ -9,7 +9,7 @@ wir machen uns immer mehr Arbeit und werden immer langsamer beim Voranschreiten.
 |---|---|
 | **57 von 71 sind sauber** | Sie bauen sich ihre Knoten selbst und räumen sie weg, oder sie lesen nur Dateien, das Schema und den Bestand als Ganzes. Kein Name aus seinem Modell, keine feste Zahl darauf. |
 | **2 habe ich gelöst** | `setting-kind` und `preview` holten einen **Astwurzelknoten über seinen Namen** (`Settings`, `Data Types`). Sie holen ihn jetzt über seine Rolle — so, wie der Kode es ohnehin tut ([D-613](../../NewConcept/90-decision-log.md)). Beide grün. |
-| **12 bleiben offen** | 10 hängen über einen Namen an einem Knoten, 1 schreibt Werte an den Datensatz **seines** Knotens statt an einen eigenen, 4 tragen zusätzlich eine feste Zahl auf seinen Bestand (Überschneidungen). Jede einzelne ist eine halbe bis ganze Umschreibung des Laufs — zu gross für diesen Durchgang, darum aufgeschrieben statt angefangen. |
+| **12 blieben offen, heute 11** | 10 hängen über einen Namen an einem Knoten, 1 schreibt Werte an den Datensatz **seines** Knotens statt an einen eigenen, 4 tragen zusätzlich eine feste Zahl auf seinen Bestand (Überschneidungen). Jede einzelne ist eine halbe bis ganze Umschreibung des Laufs — zu gross für diesen Durchgang, darum aufgeschrieben statt angefangen. ⚠️ *`field-hide` ist am 2026-09-06 dazwischengekommen, weil er rot wurde; siehe unten.* |
 
 ⚠️ **Die gemessene Rangfolge ist nicht die vermutete.** *Die Sorge war, der Bestand hänge breit an
 seinem Modell. Er tut es nicht: **vier Fünftel der Wächter sind bereits gelöst**, und der Rückstand
@@ -94,7 +94,22 @@ Keiner davon trägt einen Namen oder eine Zahl aus seinem Modell. `composition`,
 | **setting-kind** | 0,60 | `WHERE name = 'Settings'` — der Ast über seinen Namen. | `rootOf(Branch::Settings)`. **Die Zusage ist wörtlich dieselbe**: der Ast steht direkt unter der Wurzel und trägt Knoten. Grün. |
 | **preview** | 3,07 | `WHERE name = 'Data Types'` — und der Kommentar daneben behauptete bereits, der Knoten werde *«über seinen Ast gesucht und nicht über einen Namen»*. Er wurde es nicht. | `rootOf(Branch::DataTypes)`. Grün. ⚠️ *Der zweite Name in derselben Datei — `yotta` — steht noch, siehe unten.* |
 
-### Offen — und warum (12)
+### Gelöst am 2026-09-06 (1) — und es war teurer als eine Umstellung
+
+| Wächter | s | Was daran hing | Was jetzt dasteht |
+|---|---|---|---|
+| **field-hide** | 0,99 | `Prefixes`, `count($bedienbar) === 1` — **und eine dritte, die in der Tabelle unten fehlte**: `$vorher === 0`, also *«sein Feld `exponent` ist sichtbar»*. | Eine eigene Wiese (`__fh Vater` / `__fh Kind` / `__fh Typ`), aufgeräumt im `finally`. Die Zusagen sind Invarianten: *ein frisch erklärtes Feld ist sichtbar*, *umgeschaltet ändern sich Spalte und Zeichen*, *zurück ist es wieder wie vorher*. Neun grün. |
+
+⚠️ **Diese Zeile ist der Beleg dafür, wofür diese Liste da ist.** *Am 2026-09-05 um 21:46:39 hat der
+Eigentümer `Prefixes.exponent` im Schirm versteckt — der Fall, für den
+[D-467](../../NewConcept/90-decision-log.md) die Spalte an die Kante gelegt hat. **Von diesem Klick
+an war der Wächter rot**, und sein rohes Zurückschreiben hat den Zustand seither in jedem Lauf
+festgenagelt: im Änderungsbuch stehen 26 «field hidden» gegen 51 «field shown», die 25 überzähligen
+sind Läufe, in denen das Verstecken schon nichts mehr zu tun hatte. **Der Knopf war nie kaputt.**
+Eine Momentaufnahme seines Bestands als Zusage ist nicht nur zerbrechlich — sie meldet seine
+richtige Bedienung als Fehler.*
+
+### Offen — und warum (11)
 
 | Wächter | s | Woran es hängt | Warum liegengelassen |
 |---|---|---|---|
@@ -106,7 +121,6 @@ Keiner davon trägt einen Namen oder eine Zahl aus seinem Modell. `composition`,
 | **record-on-any-node** | 0,72 | `Prefixes`, `exponent` — **und schreibt Datensätze an `kilo`**, also an einen seiner Knoten. | Der Schreibfall gehört auf einen eigenen Knoten. Mittelgross, weil die Erbungskette mitgebaut werden muss. |
 | **several-values** | 0,68 | Kein Name — sucht sich irgendeine passende Kante — **schreibt aber drei Werte an den Datensatz eines seiner Knoten**. | Räumt hinterher auf. Nach [D-614](../../NewConcept/90-decision-log.md) gehört das in den Testast: *«nicht sichtbar, den Arbeitsbaum nicht beschädigend»*. |
 | **setting-relation** | 0,83 | `feldVon('Prefixes', 'exponent')`. | Benutzt bereits das Gerüst — der eine Namensgriff steht daneben. Kleinste der offenen; nur nicht mehr in dieses Zeitfenster gefallen. |
-| **field-hide** | 0,99 | `Prefixes`, und `count($bedienbar) === 1`. | Prüft geerbte gegen eigene Felder an einem gewachsenen Knoten. |
 | **field-type-gone** | 0,62 | `WHERE name = 'Renderer'`. | Wie `setting-write`. |
 | **rendering-scaffold** | 0,73 | `Converter`, `roman`. | Rahmenwerk — nach [D-613](../../NewConcept/90-decision-log.md) erlaubt (*«wer es umbenennt, ändert das Plugin»*), aber die Namen stehen im Wächter statt im Kode. |
 | **rename-survives** | 1,33 | `count($traeger) >= 4` — eine feste Zahl auf seine Einstellungsträger. | Untergrenze; wird rot, wenn er drei davon löscht. |

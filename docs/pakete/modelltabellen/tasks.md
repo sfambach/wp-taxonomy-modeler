@@ -1606,7 +1606,7 @@ darunter die Unabhängigkeit; mit abgeschaltetem Schliessen im Kern fallen 4.*
 
 ---
 
-[ ] TASK-055  Warum sich ein Knoten nicht verschieben laesst
+[x] TASK-055  Warum sich ein Knoten nicht verschieben laesst
 
 **2026-09-05, vom Eigentümer gemeldet:** *«schau warum ich knoten nicht verschieben kann — wollte
 `stree/…` und `zip/…` nach `combined` verschieben, weil es dort besser hinpasst; ist ein typ der
@@ -1643,6 +1643,16 @@ jeder hat seine Vererbungskante, keiner enthält das Ziel.*
 schliesst das Ziel ein**: nicht nur *irgendein* `target`, sondern *dieser Zielknoten steht als
 wählbare Zeile darunter*. *Ohne diesen einen Punkt wäre der Wächter an genau dem Abend grün
 gewesen, an dem er nicht verschieben konnte.*
+
+**Geschlossen am 2026-09-06, an seinen eigenen Knoten nachgemessen — nicht an einer Ersatzlage.**
+*Die Maske für `Street / H#` (75473) und für `Zip/City` (75477) bietet heute je **127 Ziele**, und
+`Combined` (3984) steht in beiden als anklickbares `<input type="radio" name="target" value="3984">`.
+**Das war der ganze Fehler** — der Akt hielt schon vorher, das Ziel war nur nicht anzukommen.
+`move-mask-check.php` läuft grün, 14 Zusagen.*
+
+⚠️ *Verschoben ist weiterhin nichts. **Das ist seine Einordnung und sein Klick**, und ein Wächter,
+der ihm die Arbeit abnimmt, schreibt in sein Modell — genau das, was am selben Tag an
+`field-hide-check.php` schiefging.*
 
 ---
 
