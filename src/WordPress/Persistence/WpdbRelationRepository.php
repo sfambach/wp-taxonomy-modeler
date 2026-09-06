@@ -249,10 +249,34 @@ final class WpdbRelationRepository implements RelationRepository
         // ⚠️ *Seit [D-619](../../../docs/NewConcept/90-decision-log.md) braucht das keine Bedingung
         // mehr: **eine geparkte Kante steht im Schatten und nicht hier**. Die Auslassung ist die
         // Tabelle selbst.*
+        // ⚠️ **Erst der Besitzer, dann seine Reihenfolge — und das war ein Fehler, den er gesehen hat**
+        // (2026-09-06: *«auch scheint order nicht richtig zu funktionieren»*). *`sort_order` zählt **je
+        // Besitzer** ab eins. Wer über mehrere Besitzer hinweg allein danach sortiert, **verzahnt sie**:
+        // gemessen an seinem `Integer` trägt `Root` die Reihen 1, 2, 3 (`validator`, `read_only`,
+        // `renderer`) und `Integer` ebenfalls 1, 2, 3 (`max`, `min`, `step`) — auf dem Schirm stand
+        // abwechselnd eine geerbte und eine eigene Zeile.*
+        //
+        // ⚠️ **Die Reihenfolge der Besitzer ist die, in der der Aufrufer sie hereingibt** — bei der
+        // Vererbungskette von fern nach nah ({@see FrameworkNodes::inheritanceOwnersOf()}). *Damit
+        // steht jede Angabe dort, wo sie **erklärt** wurde
+        // ([D-376](../../../docs/NewConcept/90-decision-log.md)): die geerbten zuerst, in der
+        // Reihenfolge ihres Erklärers, die eigenen zuletzt.*
+        $ids     = array_map(intval(...), $ownerIds);
+        $rang    = 'CASE r.from_node_id';
+        $ranglos = [];
+
+        foreach ($ids as $stelle => $id) {
+            $rang     .= ' WHEN %d THEN %d';
+            $ranglos[] = $id;
+            $ranglos[] = $stelle;
+        }
+
+        $rang .= ' ELSE ' . count($ids) . ' END';
+
         $rows = Query::rows('Feldkanten des Knotens lesen', $wpdb->prepare(
             'SELECT ' . self::COLUMNS . self::fromRelations() . "WHERE r.from_node_id IN ({$places})
-             ORDER BY r.sort_order ASC, r.id ASC",
-            [...self::nameArgs(), ...array_map(intval(...), $ownerIds)]
+             ORDER BY {$rang} ASC, r.sort_order ASC, r.id ASC",
+            [...self::nameArgs(), ...$ids, ...$ranglos]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
