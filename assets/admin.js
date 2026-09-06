@@ -549,6 +549,43 @@
 		}
 	}
 
+	/**
+	 * Eine geaenderte Einstellung wird sofort uebernommen -- die Seite zeichnet sich mit ihr neu.
+	 *
+	 * Auf sein Wort am 2026-09-06: "koennen wir einfuegen, dass bei Einstellungswechsel der Wert
+	 * gleich uebernommen wird? (neu gezeichnet mit neuen Einstellungen)".
+	 *
+	 * WICHTIG: Nur Auswahlfelder und Schalter, nicht Textfelder. Ein Textfeld meldet seine
+	 * Aenderung beim Verlassen, und ein Absenden mitten im Tippen naehme dem Benutzer die Zeile
+	 * unter den Fingern weg.
+	 *
+	 * WICHTIG: Ohne Skript aendert sich nichts -- die Seite bleibt bedienbar, es kostet nur einen
+	 * Klick auf Speichern mehr. Genau die Linie, die die Seitenansicht seit je haelt.
+	 */
+	document.addEventListener( 'change', function ( event ) {
+		var feld = event.target;
+
+		if ( ! feld || ! feld.matches ) {
+			return;
+		}
+
+		if ( ! feld.matches( '.taxmod-setting-value select, .taxmod-setting-value input[type="checkbox"]' ) ) {
+			return;
+		}
+
+		var form = feld.form || feld.closest( 'form' );
+
+		if ( ! form ) {
+			return;
+		}
+
+		if ( typeof form.requestSubmit === 'function' ) {
+			form.requestSubmit();
+		} else {
+			form.submit();
+		}
+	} );
+
 	if ( document.readyState === 'loading' ) {
 		document.addEventListener( 'DOMContentLoaded', function () {
 			klappzustandAnwenden( document );
