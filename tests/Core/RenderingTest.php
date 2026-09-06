@@ -1830,6 +1830,41 @@ final class RenderingTest extends TestCase
         self::assertSame($first, $this->rendering->previewRecordAmong([$first, $second]));
     }
 
+    /**
+     * ⚠️ **[D-653](../../docs/NewConcept/90-decision-log.md):** *«Wenn es ein default gibt und der
+     * gefuellt ist, soll er den zum Rendern verwenden, ansonsten einen example-Satz.»*
+     *
+     * ⚠️ **Der Anlass steht auf seinem Bildschirm:** *die Vorschau sagte «Filled from record #4756»
+     * und zog aus dem `default` — **ein leerer Satz gewann gegen ein gefuelltes Beispiel und zeigte
+     * nichts.** Gemessen waren 390 von 454 `default`-Saetzen leer.*
+     */
+    #[Test]
+    public function an_empty_default_does_not_count_as_present(): void
+    {
+        $leer   = new NodeRecord(1, 7, 1, '2026-09-06 10:00:00', RecordType::Default);
+        $muster = new NodeRecord(2, 7, 1, '2026-09-06 10:01:00', RecordType::Example);
+
+        // Der leere `default` steht **vorn** — es entscheidet die Regel und nicht die Reihenfolge.
+        self::assertSame($muster, $this->rendering->previewRecordAmong([$leer, $muster], []));
+
+        // ⚠️ *Und die Gegenprobe: traegt er etwas, gewinnt er wieder. Ohne sie waere die Zusage auch
+        // von einem Leser zu erfuellen, der `default` gar nicht mehr kennt.*
+        self::assertSame($leer, $this->rendering->previewRecordAmong([$leer, $muster], [$leer->id]));
+    }
+
+    /**
+     * ⚠️ *Ein leerer **`user`**-Satz ist eine Eingabe, die noch leer ist, und wird gezeichnet — nur
+     * die **Vorgabe**, die nichts vorgibt, faellt weg ([D-654](../../docs/NewConcept/90-decision-log.md)).*
+     */
+    #[Test]
+    public function an_empty_entry_is_still_an_entry(): void
+    {
+        $leer   = new NodeRecord(1, 7, 1, '2026-09-06 10:00:00', RecordType::User);
+        $muster = new NodeRecord(2, 7, 1, '2026-09-06 10:01:00', RecordType::Example);
+
+        self::assertSame($leer, $this->rendering->previewRecordAmong([$leer, $muster], []));
+    }
+
     #[Test]
     public function within_one_rung_the_first_record_still_wins(): void
     {

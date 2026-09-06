@@ -1935,9 +1935,22 @@ final class Rendering implements Presets
      * ⚠️ **Order within a rung is left as it arrives**, so *which* real record is still the caller's
      * first — the unanswered half of the same question, and this method does not pretend to close it.
      *
+     * ⚠️ **Ein *leerer* `default` zählt seit [D-653](../../../docs/NewConcept/90-decision-log.md)
+     * nicht mehr als vorhanden.** *Sein Beschluss: «Wenn es ein default gibt und der gefuellt ist,
+     * soll er den zum Rendern verwenden, ansonsten einen example-Satz.» **Und der Anlass ist gemessen:**
+     * die Vorschau sagte «Filled from record #4756» und zog ihre Anzeige aus dem `default`-Satz —
+     * **ein leerer Satz gewann also gegen ein gefülltes Beispiel und zeigte nichts.** Von 454
+     * `default`-Sätzen waren 390 leer.*
+     *
+     * ⚠️ *Nur der `default` wird so geprüft, und das ist Absicht: ein leerer `user`-Satz ist eine
+     * **Eingabe, die noch leer ist**, und die darf gezeichnet werden. Ein leerer `default` ist eine
+     * Vorgabe, die nichts vorgibt.*
+     *
      * @param  list<NodeRecord> $records
+     * @param  list<int>        $filled Ids der Sätze, die mindestens eine Wertzeile tragen
+     *                                  ({@see \Taxmod\Core\Service\DataEntry::filledAmong()}).
      */
-    public function previewRecordAmong(array $records): ?NodeRecord
+    public function previewRecordAmong(array $records, array $filled = []): ?NodeRecord
     {
         $marked = null;
 
@@ -1946,11 +1959,17 @@ final class Rendering implements Presets
             // **Wo ein Autoren-Datensatz einzuordnen ist, ist nicht entschieden**
             // ([D-521](../../../docs/NewConcept/90-decision-log.md)) — er zählt darum vorerst wie eine
             // gewöhnliche Eingabe, was genau das ist, was `is_test = 0` bisher tat.*
-            if ($record->recordType !== RecordType::Example) {
-                return $record;
+            if ($record->recordType === RecordType::Example) {
+                $marked ??= $record;
+
+                continue;
             }
 
-            $marked ??= $record;
+            if ($record->recordType === RecordType::Default && ! in_array($record->id, $filled, true)) {
+                continue;
+            }
+
+            return $record;
         }
 
         return $marked;

@@ -1115,7 +1115,16 @@ final class NodesScreen
         // ({@see Rendering::previewRecordAmong()}): *real data → rows marked as test data → the
         // type's sample.* Before schema 13 there was no column to ask, so this took `records[0]`
         // and a marked row could outrank real data purely by having the lower id.
-        $chosen = $this->rendering->previewRecordAmong($records);
+        // ⚠️ **Und welche davon überhaupt etwas tragen** ([D-653](../../../docs/NewConcept/90-decision-log.md)):
+        // *ein leerer `default` zählt nicht als vorhanden. In **einer** Abfrage für alle (`CD-7`) —
+        // je Satz nachzusehen wäre ein Lauf je Datensatz.*
+        $chosen = $this->rendering->previewRecordAmong(
+            $records,
+            $this->data->filledAmong(array_map(
+                static fn (\Taxmod\Core\Model\NodeRecord $satz): int => $satz->id,
+                $records
+            ))
+        );
 
         if ($chosen === null) {
             return [

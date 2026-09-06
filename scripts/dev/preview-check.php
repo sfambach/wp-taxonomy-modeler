@@ -200,8 +200,48 @@ if ($relation === null) {
         $model
     ));
 
+    // ⚠️ **Hier stand «und das Modell **hat** einen default-Satz», und die Zusage ist mit Fassung 36
+    // hinfaellig geworden** ([D-653](../../docs/NewConcept/90-decision-log.md), `PR-9`). *Sie stimmte
+    // nur, solange **jeder** Knoten einen leeren `default` mit sich herumtrug — gemessen 390 von 454.
+    // **Seit die leeren gefallen sind, hat ein Modell erst dann einen, wenn jemand etwas
+    // geschrieben hat** ([D-609](../../docs/NewConcept/90-decision-log.md)). Diese Pruefung will
+    // gleich hineinschreiben, also legt sie ihn an — statt sich darauf zu verlassen, dass ein
+    // Nebeneffekt ihn schon hingestellt hat.*
+    if ($ownerRecord === 0) {
+        $ownerRecord = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT version FROM {$prefix}nodes WHERE id = %d",
+            $model
+        ));
+
+        $wpdb->insert(
+            "{$prefix}node_records",
+            [
+                'node_id'      => $model,
+                'node_version' => $ownerRecord,
+                'created_at'   => current_time('mysql'),
+                'record_type'  => 'default',
+            ],
+            ['%d', '%d', '%s', '%s']
+        );
+
+        $ownerRecord = (int) $wpdb->insert_id;
+
+        // ⚠️ *Und er geht wieder, sonst liesse dieser Lauf genau das zurueck, was Fassung 36
+        // weggeraeumt hat — `record-on-first-write-check` misst es und wuerde zu Recht rot.*
+        register_shutdown_function(static function () use ($wpdb, $prefix, $ownerRecord): void {
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$prefix}relation_records WHERE node_record_id = %d",
+                $ownerRecord
+            ));
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$prefix}node_records WHERE id = %d",
+                $ownerRecord
+            ));
+        });
+    }
+
     check('die read_only-Kante steht im Modell', $readOnlyRelation > 0, (string) $readOnlyRelation);
-    check('und das Modell hat einen default-Satz', $ownerRecord > 0, (string) $ownerRecord);
+    check('und ein default-Satz steht zum Hineinschreiben bereit', $ownerRecord > 0, (string) $ownerRecord);
 
     /**
      * Puts one flag on the relation, or clears both.

@@ -779,6 +779,21 @@ final class DataEntry
      */
     public function putSettingAt(int $nodeId, int $aussen, int $innen, TypedValue $value, string $locale = ''): void
     {
+        // ⚠️ **Erst prüfen, dann anlegen — und hier war [D-609](../../../docs/NewConcept/90-decision-log.md)
+        // noch gebrochen** ([D-653](../../../docs/NewConcept/90-decision-log.md): *«der default-Satz
+        // sollte nicht leer bestehen»*). *Der Satz entstand in der Zeile darunter, und **erst danach**
+        // wies {@see self::refuseUnwritable()} die Angabe zurück — über {@see self::put()}. **Eine
+        // abgewiesene Einstellung liess also einen leeren `default` stehen**: dieselbe Krankheit wie
+        // beim Löschen, die BUG-004 eine Ebene höher schon behoben hat. Alles, was die Zurückweisung
+        // braucht, ist vorher bekannt — der Knoten und die Art —, es wurde nur zu spät gefragt.*
+        //
+        // ⚠️ *Nur der einstufige Fall ohne Verweis: die anderen beiden schreiben in einen **Teil**,
+        // dessen Knoten ein anderer ist, und dessen Prüfung liegt in {@see self::createPart()}. Sie
+        // hier vorwegzunehmen hiesse, dieselbe Regel zweimal zu haben (`CD`).*
+        if ($innen === 0 && ! $value->isAReference()) {
+            $this->refuseUnwritable($this->fieldRelationOf($nodeId, $aussen), RecordType::Default);
+        }
+
         $satzId = $this->defaultRecordOf($nodeId);
 
         // ⚠️ *Keine eigene Wertkante heisst: die Angabe **ist** der Verweis, und sie steht direkt an der
@@ -1620,6 +1635,34 @@ final class DataEntry
     public function valuesOf(int $recordId): array
     {
         return $this->records->valuesOf($recordId);
+    }
+
+    /**
+     * Welche dieser Datensätze überhaupt eine Wertzeile tragen — **in einer Abfrage** (`CD-7`).
+     *
+     * ⚠️ **Gebraucht, seit ein leerer `default` nicht mehr als vorhanden zählt**
+     * ([D-653](../../../docs/NewConcept/90-decision-log.md)): *«ist ein `default`-Satz da **und
+     * gefuellt**, zeichnet er; sonst der `example`-Satz».* **Ohne diese Frage kann der Zeichenweg
+     * «gefüllt» nicht von «da» unterscheiden** — und gemessen sind 390 von 454 `default`-Sätzen leer.
+     *
+     * @param  list<int> $recordIds
+     * @return list<int> Die Ids derer, die mindestens eine Wertzeile haben.
+     */
+    public function filledAmong(array $recordIds): array
+    {
+        if ($recordIds === []) {
+            return [];
+        }
+
+        $aus = [];
+
+        foreach ($this->records->valuesOfMany($recordIds) as $recordId => $werte) {
+            if ($werte !== []) {
+                $aus[] = $recordId;
+            }
+        }
+
+        return $aus;
     }
 
     /** @return list<NodeRecord> */

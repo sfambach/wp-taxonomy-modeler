@@ -1672,3 +1672,28 @@ und die naheliegendste Erklaerung — meine eigene Zeile ist falsch gesetzt — 
 
 ⚠️ *Gehoert zu [D-658](../../NewConcept/90-decision-log.md) (jeder einfache Typ hat seine eigenen
 Renderer) und [D-603](../../NewConcept/90-decision-log.md) (die Registratur sagt, was taugt).*
+
+---
+
+## INF-056 · `field-hide-check` nagelt einen Wert fest, den er selbst aendern darf
+
+**Gemessen am 2026-09-06, und nicht von dieser Arbeit verursacht** — *nichts an den Datensaetzen
+ruehrt an `relations.hide`.*
+
+Der Waechter liest die **letzte** eigene Kante von `Prefixes`, merkt sich ihr `hide` und behauptet
+dann: *«das Feld ist zunaechst sichtbar»*. **Heute steht dort `1`**, also faellt die Zusage — und mit
+ihr die zweite, die den Symbolwechsel `hidden → visibility` prueft, weil sie von `0` ausgeht.
+
+⚠️ **Es ist genau die Fehlerform, die `renderer-choice-check` schon einmal an sich selbst gefunden
+hat:** *«eine Pruefung, die einen benutzerveraenderlichen Wert festnagelt, wird rot, sobald jemand
+die Funktion benutzt»* — dort waren es die Renderer-Namen, hier ist es ein Schalter, den der
+Eigentuemer umgelegt haben kann. **Der Waechter kann «jemand hat versteckt» nicht von «das Verstecken
+ist kaputt» unterscheiden.**
+
+**ENTSCHEIDUNG ERFORDERLICH: NEIN, aber eine Wahl:** *entweder setzt der Waechter den Ausgangszustand
+selbst (`hide = 0`) und stellt ihn danach wieder her — er tut das Zurueckstellen ohnehin schon —,
+oder er prueft den **Wechsel** statt des Anfangs. **Das Zweite ist die staerkere Zusage**, weil sie
+ohne jede Annahme ueber seinen Bestand auskommt.*
+
+⚠️ *Nicht angefasst, weil ein fremder roter Waechter mitten in einer anderen Arbeit stillgestellt zu
+werden das ist, was `PR-9` verhindert.*

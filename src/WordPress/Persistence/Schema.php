@@ -367,8 +367,15 @@ final class Schema
      * ⚠️ *Der Schatten behält seine Spalte, aus demselben Grund wie `name`
      * ([D-065](../../../docs/NewConcept/90-decision-log.md)): eine alte Zeile führt ihre Angaben als
      * **Datum** mit. Sie steht deshalb in {@see self::SHADOW_ONLY_IN}.*
+     *
+     * ⚠️ **Fassung 36 räumt die leeren `default`-Sätze weg** ([D-653](../../../docs/NewConcept/90-decision-log.md)).
+     * *Sein Beschluss: «der default-Satz sollte nicht leer bestehen.» **Gemessen am 2026-09-06: 390 von
+     * 454 sind leer, 64 gefüllt.** Ein leerer `default` sagt nichts und kostet eine Zeile je Knoten —
+     * [D-609](../../../docs/NewConcept/90-decision-log.md) hat dasselbe für das **Anlegen** schon
+     * entschieden, nur bestehen die alten weiter. Umkehrbar: Schattenzeilen, **eine**
+     * Änderungsgruppe, gezählt davor und danach, und bei Abweichung bleibt alles stehen.*
      */
-    public const VERSION = 35;
+    public const VERSION = 36;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -616,6 +623,10 @@ final class Schema
         // die Spaltenliste beim Anlegen ein und trüge sonst eine Spalte weiter, die es nicht gibt.*
         self::dropNodePathColumn();
 
+        // ⚠️ **Nach `dbDelta`, weil er Zeilen liest und keine Spalten anfasst** (Fassung 36,
+        // [D-653](../../../docs/NewConcept/90-decision-log.md)).
+        self::dropEmptyDefaultRecords();
+
         // ⚠️ **Nach der Wanderung, weil sie auf `label_texts` steht** (Fassung 34, TASK-019).
         self::buildTheReadableViews();
 
@@ -800,6 +811,119 @@ final class Schema
      * ⚠️ *Sie läuft nur, solange es die Spalte gibt — ein zweiter Aufruf findet nichts zu tun und
      * kehrt um. **Umkehrbar bleibt sie über den Schatten**, der Gruppe und Inhalt beide hält.*
      */
+    /**
+     * Fassung 36: **die leeren `default`-Sätze fallen** ([D-653](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   Z["zaehlen"] --> S["Schatten"] --> L["loeschen"] --> N["nachzaehlen"] --> P{"stimmt?"}
+     *   P -- nein --> A["Ausnahme · die Fassung bleibt stehen"]
+     * ```
+     *
+     * ⚠️ **Sein Wort:** *«der default-Satz sollte nicht leer bestehen».* **Gemessen am 2026-09-06:
+     * 390 von 454 `default`-Sätzen tragen keine einzige Wertzeile, 64 tragen etwas** (dazu 95 `user`).
+     * *[D-609](../../../docs/NewConcept/90-decision-log.md) hat dasselbe für das **Anlegen** schon
+     * entschieden — «ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen» —, nur bestehen
+     * die alten weiter.*
+     *
+     * ⚠️ **Nur `default`, und das ist keine Vorsicht, sondern die Entscheidung.** *Ein leerer
+     * `user`-Satz ist eine **Eingabe, die noch leer ist**; ein leerer `default` ist eine Vorgabe, die
+     * nichts vorgibt ([D-654](../../../docs/NewConcept/90-decision-log.md): «der default macht eine
+     * Vorgabe, die auch bei der Eingabe verwendet werden soll»).*
+     *
+     * ⚠️ **Ein Satz, auf den eine Wertzeile zeigt, bleibt stehen — auch wenn er leer ist.**
+     * *[D-610](../../../docs/NewConcept/90-decision-log.md) hat genau davor gewarnt und die Zahl
+     * genannt: **26 leere Sätze waren die Renderer-Wahl** — «compact ist gewählt, nichts daran
+     * eingestellt», und die Aussage steckt in ihrer `node_id`. **Wer sie als leer wegräumt, löscht 26
+     * Renderer-Wahlen.** Seit TASK-057 hängt der Zeiger in einer Wertzeile, also ist die Bedingung
+     * hier `value_ref` und nicht mehr eine Spalte am Knoten.*
+     *
+     * ⚠️ **Gezählt davor, gezählt danach, und bei Abweichung eine Ausnahme** (`PR-9`): *«so viele
+     * sollten fallen» ist eine Vermutung; **hier ist es die Bedingung dafür, dass es geschieht.**
+     * Bricht der Schritt ab, bleibt die Fassungsnummer stehen und der nächste Lauf beginnt von vorn.*
+     *
+     * ⚠️ **Und er sichert im Fassungsschritt selbst, nicht in einem Skript daneben.** *`require
+     * wp-load.php` lässt den Rand die Fassung heben, **bevor** ein Skript daneben seine erste Zeile
+     * sichern könnte — dann liest es «vorher» und misst «nachher». Diese Falle hat am 2026-09-06
+     * dreimal zugeschnappt; hier kann sie es nicht.*
+     *
+     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet nichts mehr und tut nichts.*
+     */
+    private static function dropEmptyDefaultRecords(): void
+    {
+        global $wpdb;
+
+        $saetze = self::table('node_records');
+        $werte  = self::table('relation_records');
+
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $saetze)) !== $saetze) {
+            return;
+        }
+
+        if (! self::hasColumn($saetze, 'record_type')) {
+            return;
+        }
+
+        $bedingung = "s.record_type = 'default'
+             AND NOT EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)
+             AND NOT EXISTS (SELECT 1 FROM {$werte} h WHERE h.value_ref = s.id AND h.value_ref_kind = 'record')";
+
+        /** @var list<array{id: string, version: string, node_id: string}> $leer */
+        $leer = $wpdb->get_results(
+            "SELECT s.id, s.version, s.node_id FROM {$saetze} s WHERE {$bedingung}",
+            ARRAY_A
+        ) ?: [];
+
+        if ($leer === []) {
+            return;
+        }
+
+        $vorher = count($leer);
+        $log    = new WpdbChangelog(new SystemClock());
+        $gruppe = null;
+
+        foreach ($leer as $zeile) {
+            $id = (int) $zeile['id'];
+
+            Shadow::keepOne('node_records', $id, true);
+
+            $wpdb->delete($saetze, ['id' => $id], ['%d']);
+
+            // ⚠️ *Eine Gruppe für die ganze Wanderung: sie ist **eine** Handlung an seinen Daten, und
+            // ein Rückgängig, das 390 Einzelschritte wäre, ist keines
+            // ([D-348](../../../docs/NewConcept/90-decision-log.md)).*
+            $gruppe = $log->record(
+                $id,
+                'record',
+                'empty default record dropped',
+                'node ' . (int) $zeile['node_id'],
+                null,
+                (int) $zeile['version'],
+                $gruppe
+            );
+        }
+
+        // ⚠️ **Nachgezählt, und die Abweichung ist ein Abbruch und keine Meldung.** *Bleibt auch nur
+        // einer stehen, hat `$wpdb` still versagt ({@see Query}) — und eine halb gelaufene Wanderung,
+        // die sich als fertig einträgt, ist schlimmer als eine, die gar nicht lief.*
+        $geblieben = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$saetze} s WHERE {$bedingung}");
+
+        // ⚠️ *Die Ids kommen aus einer `(int)`-Umwandlung und nicht aus der Eingabe — nichts wird
+        // interpoliert, was ein Zeichen sein könnte (`CD-6`).*
+        $ids        = implode(',', array_map(static fn (array $z): int => (int) $z['id'], $leer));
+        $imSchatten = (int) $wpdb->get_var(
+            'SELECT COUNT(DISTINCT id) FROM ' . self::table('node_records_history') . " WHERE id IN ({$ids})"
+        );
+
+        if ($geblieben !== 0 || $imSchatten !== $vorher) {
+            throw new \RuntimeException(
+                'Fassung 36: ' . $vorher . ' leere default-Saetze sollten fallen, '
+                . $geblieben . ' stehen noch, ' . $imSchatten . ' liegen im Schatten. '
+                . 'Die Fassungsnummer bleibt stehen.'
+            );
+        }
+    }
+
     private static function moveParkingIntoTheShadow(): void
     {
         global $wpdb;
