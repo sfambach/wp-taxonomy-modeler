@@ -205,7 +205,7 @@ final class RenderingTest extends TestCase
             ));
         }
 
-        $this->records->putValue(new RelationRecord($satzId, (string) $kante->id, $kante->id, '', $wert));
+        $this->records->putValue(new RelationRecord($satzId, $kante->id, '', $wert));
 
         $this->neuZeichnen();
     }
@@ -1815,7 +1815,6 @@ final class RenderingTest extends TestCase
 
         $this->records->putValue(new RelationRecord(
             $rendererSatz,
-            (string) $orientation->id,
             $orientation->id,
             '',
             TypedValue::ofReference($senkrecht->id)
@@ -1831,7 +1830,6 @@ final class RenderingTest extends TestCase
 
         $this->records->putValue(new RelationRecord(
             $satz,
-            (string) $rendererKante->id,
             $rendererKante->id,
             '',
             TypedValue::ofRecordReference($rendererSatz)
@@ -1847,10 +1845,9 @@ final class RenderingTest extends TestCase
         // ⚠️ **Die Gegenprobe, und sie ist die eigentliche Zusage.** *`vertical` allein könnte auch
         // die Vorgabe eines kaputten Lesers sein — erst dass die **andere** Wahl die andere Achse
         // zeichnet, zeigt, dass der gesetzte Wert ankommt.*
-        $this->records->forgetValue($rendererSatz, (string) $orientation->id, '');
+        $this->records->forgetValue($rendererSatz, $orientation->id, '');
         $this->records->putValue(new RelationRecord(
             $rendererSatz,
-            (string) $orientation->id,
             $orientation->id,
             '',
             TypedValue::ofReference($waagerecht->id)
@@ -1869,7 +1866,6 @@ final class RenderingTest extends TestCase
 
         $this->records->putValue(new RelationRecord(
             $rendererSatz,
-            (string) $mitLabel->id,
             $mitLabel->id,
             '',
             TypedValue::ofBool(false)

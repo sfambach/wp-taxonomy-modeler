@@ -287,7 +287,7 @@ foreach ($zurueck as $knotenId => $satzId) {
     }
 
     if ($default !== 0) {
-        $records->forgetValue($default, (string) $kanteId, '');
+        $records->forgetValue($default, $kanteId, '');
     }
 }
 

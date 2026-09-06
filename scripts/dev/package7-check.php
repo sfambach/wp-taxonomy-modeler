@@ -165,8 +165,8 @@ $angabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relation $
 
     // ⚠️ *Erst die alte Zeile weg — `putValue()` ohne Id legt **an** statt zu ersetzen, und zwei
     // Zeilen auf demselben Pfad liessen die erste gewinnen.*
-    $records->forgetValue($satzId, (string) $kante->id, '');
-    $records->putValue(new \Taxmod\Core\Model\RelationRecord($satzId, (string) $kante->id, $kante->id, '', $wert));
+    $records->forgetValue($satzId, $kante->id, '');
+    $records->putValue(new \Taxmod\Core\Model\RelationRecord($satzId, $kante->id, '', $wert));
 };
 
 /** Dieselbe Angabe wieder wegnehmen. */
@@ -180,7 +180,7 @@ $ohneAngabe = static function (\Taxmod\Core\Model\Node|\Taxmod\Core\Model\Relati
         return;
     }
 
-    (new WpdbRecordRepository())->forgetValue($satzVon($traegerId), (string) $kante->id, '');
+    (new WpdbRecordRepository())->forgetValue($satzVon($traegerId), $kante->id, '');
 };
 
 /** Der Zeichner neu — {@see \Taxmod\Core\Service\ModelValues} merkt sich die Saetze beim ersten Lesen. */

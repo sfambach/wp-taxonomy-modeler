@@ -113,19 +113,25 @@ final class DataEntry
      *
      * ⚠️ *`value` steht zuletzt, weil es das einzige Feld ist, das Leerzeichen enthalten darf; jede
      * andere Reihenfolge wird von {@see FrozenState::of()} abgewiesen.*
+     *
+     * ⚠️ **Das Feld heisst `relation`, seit die Adresse eine Kante ist** (Fassung 39, TASK-002,
+     * [D-667](../../../docs/NewConcept/90-decision-log.md)). *Die alten Einträge behalten `path` —
+     * Geschichte wird nicht umgeschrieben ([D-065](../../../docs/NewConcept/90-decision-log.md)),
+     * dieselbe Regel wie beim Umbenennen von `kind` zu `record_type` (TASK-015). **Sie tragen
+     * dieselbe Zahl**: jeder gemessene Pfad war die Kanten-Id.*
      */
-    private function wertZustand(int $recordId, string $path, string $locale, ?TypedValue $value): ?string
+    private function wertZustand(int $recordId, int $relationId, string $locale, ?TypedValue $value): ?string
     {
         if ($value === null) {
             return null;
         }
 
         return FrozenState::of([
-            'record' => $recordId,
-            'path'   => $path,
-            'locale' => $locale,
-            'type'   => $value->typeName(),
-            'value'  => $value->rawValue(),
+            'record'   => $recordId,
+            'relation' => $relationId,
+            'locale'   => $locale,
+            'type'     => $value->typeName(),
+            'value'    => $value->rawValue(),
         ])->write();
     }
 
@@ -370,7 +376,7 @@ final class DataEntry
 
         $neu = $vorhanden === []
             ? RelationRecord::direct($recordId, $relation->id, $value, $locale)
-            : new RelationRecord($recordId, $vorhanden[0]->path, $relation->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
+            : new RelationRecord($recordId, $relation->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
 
         $version = $this->records->putValue($neu);
 
@@ -378,8 +384,8 @@ final class DataEntry
             $recordId,
             'record_value',
             'value set',
-            $this->wertZustand($recordId, $neu->path, $locale, $vorhanden[0]->value ?? null),
-            $this->wertZustand($recordId, $neu->path, $locale, $value),
+            $this->wertZustand($recordId, $neu->relationId, $locale, $vorhanden[0]->value ?? null),
+            $this->wertZustand($recordId, $neu->relationId, $locale, $value),
             $version
         );
     }
@@ -392,8 +398,10 @@ final class DataEntry
      * brauche ich hier ein zusätzliches?» **Das ist die Antwort:** ein Wert im Datensatz des
      * Besitzers, adressiert über die Kette der Kanten.*
      *
-     * ⚠️ *Gemessen benutzen 21 Zeilen der alten Settings-Tabelle diese Adresse längst — 20 davon sind
-     * die Exponenten von `Prefixes.exponent`. **Nur gelesen hat sie in `relation_records` nie jemand.***
+     * ⚠️ **Die Kette wird abgegangen und geprüft, aber nicht mehr aufgeschrieben** (Fassung 39,
+     * TASK-002). *Adressiert wird über die **letzte** Kante — sie allein sagt, welches Feld gemeint
+     * ist, und der Satz sagt, wem er gehört ([D-667](../../../docs/NewConcept/90-decision-log.md)).
+     * **Der Wert der Kette bleibt die Prüfung** ({@see self::walkedRelations()}), nicht die Adresse.*
      *
      * @param list<int> $relationIds Von aussen nach innen.
      */
@@ -405,8 +413,7 @@ final class DataEntry
 
         $this->refuseUnwritable($letzte, $satz->recordType);
 
-        $pfad      = implode('.', $relationIds);
-        $vorhanden = $this->valuesAtPath($recordId, $pfad, $locale);
+        $vorhanden = $this->valuesOn($recordId, $letzte->id, $locale);
 
         if (count($vorhanden) > 1) {
             throw NotYetStorable::thatFieldHasSeveralValues($letzte->name, count($vorhanden));
@@ -414,16 +421,16 @@ final class DataEntry
 
         $version = $this->records->putValue(
             $vorhanden === []
-                ? RelationRecord::at($recordId, $relationIds, $value, $locale)
-                : new RelationRecord($recordId, $pfad, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+                ? RelationRecord::direct($recordId, $letzte->id, $value, $locale)
+                : new RelationRecord($recordId, $letzte->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
         );
 
         $this->melden(
             $recordId,
             'record_value',
             'value set',
-            $this->wertZustand($recordId, $pfad, $locale, $vorhanden[0]->value ?? null),
-            $this->wertZustand($recordId, $pfad, $locale, $value),
+            $this->wertZustand($recordId, $letzte->id, $locale, $vorhanden[0]->value ?? null),
+            $this->wertZustand($recordId, $letzte->id, $locale, $value),
             $version
         );
     }
@@ -436,18 +443,19 @@ final class DataEntry
      */
     public function valuesAt(int $recordId, array $relationIds, string $locale = ''): array
     {
-        $this->walkedRelations($recordId, $relationIds);
+        $kette = $this->walkedRelations($recordId, $relationIds);
 
-        return $this->valuesAtPath($recordId, implode('.', $relationIds), $locale);
+        return $this->valuesOn($recordId, $kette[array_key_last($kette)]->id, $locale);
     }
 
     /**
      * Die Kette abgehen und dabei jede Stufe prüfen.
      *
-     * ⚠️ **Das ist der Wert dieser Methode, nicht das Zusammensetzen des Pfades.** *Eine Adresse wie
-     * «Feld 4654, darin Feld 7788» ist nur dann etwas wert, wenn 7788 wirklich ein Feld des Zieles von
-     * 4654 ist. **Ohne die Prüfung könnte man an jede erfundene Stelle schreiben**, und es fiele erst
-     * auf, wenn jemand dort etwas sucht.*
+     * ⚠️ **Das ist inzwischen der ganze Wert dieser Methode.** *Sie setzte einmal auch den Pfad
+     * zusammen; **die Spalte ist mit Fassung 39 gefallen** (TASK-002), die Prüfung nicht. Eine Kette
+     * wie «Feld 4654, darin Feld 7788» ist nur dann etwas wert, wenn 7788 wirklich ein Feld des
+     * Zieles von 4654 ist. **Ohne sie könnte man an jede erfundene Stelle schreiben**, und es fiele
+     * erst auf, wenn jemand dort etwas sucht.*
      *
      * @param  list<int>      $relationIds
      * @return list<Relation>
@@ -455,7 +463,7 @@ final class DataEntry
     private function walkedRelations(int $recordId, array $relationIds): array
     {
         if ($relationIds === []) {
-            throw new \InvalidArgumentException('Ein Pfad ohne Kante adressiert nichts.');
+            throw new \InvalidArgumentException('Eine Kette ohne Kante adressiert nichts.');
         }
 
         $record   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
@@ -482,20 +490,6 @@ final class DataEntry
         return $kette;
     }
 
-    /** Die Zeilen unter genau diesem Pfad. @return list<RelationRecord> */
-    private function valuesAtPath(int $recordId, string $path, string $locale): array
-    {
-        $meine = [];
-
-        foreach ($this->records->valuesOf($recordId) as $wert) {
-            if ($wert->path === $path && $wert->locale === $locale) {
-                $meine[] = $wert;
-            }
-        }
-
-        return $meine;
-    }
-
     /**
      * Die Zeilen, die ein Feld in diesem Datensatz belegt — in ihrer Reihenfolge.
      *
@@ -517,10 +511,11 @@ final class DataEntry
     /**
      * Einen **weiteren** Wert an ein Feld hängen — die Mehrfachheit von der Werteseite.
      *
-     * ⚠️ **Mehrere Werte sind mehrere Pfade, keine mehreren Kanten** — *`DataEntry`s eigener Docblock
-     * sagt das seit langem («five integers are five **paths** in one record»), und der eindeutige
-     * Schlüssel `(node_record_id, path, locale)` sah es immer vor. **Gemessen am 2026-08-30 hatte es
-     * niemand je benutzt:** alle 43 Wertzeilen trugen einen Pfad, der schlicht die Kanten-Id war.*
+     * ⚠️ **Mehrere Werte sind mehrere Zeilen auf derselben Kante** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+     * *Hier stand «mehrere Pfade» — der eindeutige Schlüssel `(node_record_id, path, locale)` sah das
+     * einmal vor, und **gemessen am 2026-08-30 hatte es niemand je benutzt:** alle 43 Wertzeilen
+     * trugen einen Pfad, der schlicht die Kanten-Id war. **Die Spalte ist mit Fassung 39 gefallen**
+     * (TASK-002); getrennt werden die Zeilen durch ihre Id, geordnet durch `position`.*
      *
      * ⚠️ **Die neue Zeile hängt sich hinten an** — `position` eins über der höchsten. *Die Zeilen-Id
      * trennt sie von ihren Geschwistern, `position` ordnet sie, und beide sind Spalten, die es schon
@@ -551,7 +546,7 @@ final class DataEntry
             'record_value',
             'value appended',
             null,
-            $this->wertZustand($recordId, $neu->path, $locale, $value),
+            $this->wertZustand($recordId, $neu->relationId, $locale, $value),
             $version
         );
     }
@@ -559,8 +554,8 @@ final class DataEntry
     /**
      * Wie viele Werte ein Feld in diesem Datensatz trägt.
      *
-     * ⚠️ *Über die **Kanten-Id**: alle Werte eines Feldes teilen sich eine Kante, und seit
-     * [D-530](../../../docs/NewConcept/90-decision-log.md) auch einen Pfad.*
+     * ⚠️ *Über die **Kanten-Id**: alle Werte eines Feldes teilen sich eine Kante
+     * ([D-530](../../../docs/NewConcept/90-decision-log.md)).*
      */
     public function countValues(int $recordId, int $relationId): int
     {
@@ -698,18 +693,21 @@ final class DataEntry
      *
      * ⚠️ **One part per occurrence, and asking twice makes a second one.** *That is the point of it
      * having an identity* — two positions on an order are two positions, and a method that quietly
-     * reused the first would make them one thing wearing two names.
-     *
-     * @param string $path Where under the holder it sits. Empty for a direct attribute, so the relation
-     *                     id is the whole path; an index like `2` for the third of several.
+     * reused the first would make them one thing wearing two names. **Zwei Teile an derselben Kante
+     * sind zwei Zeilen** ([D-530](../../../docs/NewConcept/90-decision-log.md)), unterschieden durch
+     * ihre Id; der Pfad, der sie einmal unterschied, ist mit Fassung 39 gefallen (TASK-002).
      */
     /**
      * Einen zusammengesetzten Teil **an einer Verwendungsstelle** anlegen.
      *
-     * ⚠️ **Derselbe Akt wie {@see createPart()}, nur mit geprüfter Adresse.** *Jener nimmt einen Pfad
-     * als **Zeichenkette** entgegen und schreibt ihn ungeprüft — solange nur eine Stufe darin stand,
-     * fiel das nicht auf. **Sobald echte Daten an mehrstufige Adressen wandern, ist eine ungeprüfte
-     * Adresse eine, die auf nichts zeigt**, und man merkt es erst beim Suchen.*
+     * ⚠️ **Derselbe Akt wie {@see createPart()}, nur mit geprüfter Kette.** *Jener glaubt die Kante,
+     * die man ihm nennt; dieser geht die Kette ab und weist eine Stufe ab, die am Ziel der vorigen
+     * kein Feld ist ({@see self::walkedRelations()}). **Ohne die Prüfung könnte man an jede erfundene
+     * Stelle schreiben**, und es fiele erst auf, wenn jemand dort etwas sucht.*
+     *
+     * ⚠️ *Die Kette wird nicht mehr zu einem Pfad zusammengesetzt (Fassung 39, TASK-002): angelegt
+     * wird der Teil an der **letzten** Kante, und wem er gehört, sagt sein Satz
+     * ([D-667](../../../docs/NewConcept/90-decision-log.md)).*
      *
      * @param list<int> $relationIds Von aussen nach innen; die **letzte** ist die zusammengesetzte Kante.
      */
@@ -717,11 +715,7 @@ final class DataEntry
     {
         $kette = $this->walkedRelations($recordId, $relationIds);
 
-        return $this->createPart(
-            $recordId,
-            $kette[array_key_last($kette)]->id,
-            implode('.', $relationIds)
-        );
+        return $this->createPart($recordId, $kette[array_key_last($kette)]->id);
     }
 
     /**
@@ -777,8 +771,27 @@ final class DataEntry
      * Ziel mit eigenen Feldern, sagt {@see self::refuseUnwritable()} Nein — **die Entscheidung fällt
      * dort und wird hier nicht geraten.***
      */
-    public function putSettingAt(int $nodeId, int $aussen, int $innen, TypedValue $value, string $locale = ''): void
-    {
+    public function putSettingAt(
+        int $nodeId,
+        int $aussen,
+        int $innen,
+        TypedValue $value,
+        string $locale = '',
+        /**
+         * Welcher Knoten der Teil ist, falls er hier **entsteht** — `0` heisst «das Ziel der Kante».
+         *
+         * ⚠️ **Der Fall, für den es ihn gibt:** *ein Knoten erbt seinen Renderer und schreibt zum ersten
+         * Mal eine von dessen Einstellungen. Der Teil entsteht dabei ([D-609](../../../docs/NewConcept/90-decision-log.md)),
+         * und er muss ein Satz des **aufgelösten** Renderers sein — nicht des Basisknotens `Renderer`,
+         * auf den die Kante zeigt ([D-584](../../../docs/NewConcept/90-decision-log.md)). **Ohne das
+         * verlöre der Knoten mit dem ersten Schreiben genau den Renderer, dessen Einstellung er
+         * schrieb.***
+         *
+         * ⚠️ *Geglaubt wird er nicht: {@see self::createPart()} verlangt, dass der Knoten unter dem
+         * Kantenziel liegt.*
+         */
+        int $chosenNodeId = 0
+    ): void {
         // ⚠️ **Erst prüfen, dann anlegen — und hier war [D-609](../../../docs/NewConcept/90-decision-log.md)
         // noch gebrochen** ([D-653](../../../docs/NewConcept/90-decision-log.md): *«der default-Satz
         // sollte nicht leer bestehen»*). *Der Satz entstand in der Zeile darunter, und **erst danach**
@@ -829,7 +842,7 @@ final class DataEntry
         $teilId = $teile[(string) $aussen] ?? null;
 
         if ($teilId === null) {
-            $teilId = $this->createPart($satzId, $aussen)->id;
+            $teilId = $this->createPart($satzId, $aussen, $chosenNodeId)->id;
         }
 
         // WICHTIG: Dieselbe Wahl eine Ebene tiefer. Die aeussere Kante fuehrt in den Behaelter,
@@ -886,7 +899,7 @@ final class DataEntry
             // ein Datensatz ohne Besitzer stehen — bei einer Wahl, die ihren eigenen Satz besitzt,
             // ist das Wegnehmen des Verweises nur die halbe Rücknahme.*
             if ($this->targetOwnsItsRecordAtNode($nodeId, $aussen)) {
-                $teilId = $this->partsOf($satzId)[(string) $aussen] ?? null;
+                $teilId = $this->partsOf($satzId)[$aussen] ?? null;
 
                 if ($teilId !== null) {
                     $this->satzEntfernen($teilId);
@@ -904,7 +917,7 @@ final class DataEntry
             return;
         }
 
-        $teilId = $this->partsOf($satzId)[(string) $aussen] ?? null;
+        $teilId = $this->partsOf($satzId)[$aussen] ?? null;
 
         if ($teilId === null) {
             return;
@@ -1031,10 +1044,9 @@ final class DataEntry
         // die der Besitzer erklärt hat** — also die, um die es hier geht.*
         $kante     = $this->useSiteSettingRelation($stelle, $settingRelationId);
         $satzId    = $this->recordOfUseSite($stelle);
-        $pfad      = (string) $kante->id;
-        $vorhanden = $this->valuesAtPath($satzId, $pfad, $locale);
+        $vorhanden = $this->valuesOn($satzId, $kante->id, $locale);
 
-        // ⚠️ *Zwei Zeilen auf einem Pfad liessen die erste gewinnen, und das Ändern ginge ins Leere —
+        // ⚠️ *Zwei Zeilen an einer Kante liessen die erste gewinnen, und das Ändern ginge ins Leere —
         // dieselbe Verweigerung wie in {@see self::put()}.*
         if (count($vorhanden) > 1) {
             throw NotYetStorable::thatFieldHasSeveralValues($kante->name, count($vorhanden));
@@ -1042,18 +1054,18 @@ final class DataEntry
 
         $version = $this->records->putValue(
             $vorhanden === []
-                // ⚠️ *Eine Stufe, nicht zwei: die Verwendungsstelle steht am **Satz**
-                // ([D-667](../../../docs/NewConcept/90-decision-log.md)), nicht im Pfad.*
-                ? RelationRecord::at($satzId, [$kante->id], $value, $locale)
-                : new RelationRecord($satzId, $pfad, $kante->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
+                // ⚠️ *Eine Zahl, nicht zwei: die Verwendungsstelle steht am **Satz**
+                // ([D-667](../../../docs/NewConcept/90-decision-log.md)), nicht an der Wertzeile.*
+                ? RelationRecord::direct($satzId, $kante->id, $value, $locale)
+                : new RelationRecord($satzId, $kante->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position)
         );
 
         $this->melden(
             $satzId,
             'record_value',
             'value set',
-            $this->wertZustand($satzId, $pfad, $locale, $vorhanden[0]->value ?? null),
-            $this->wertZustand($satzId, $pfad, $locale, $value),
+            $this->wertZustand($satzId, $kante->id, $locale, $vorhanden[0]->value ?? null),
+            $this->wertZustand($satzId, $kante->id, $locale, $value),
             $version
         );
     }
@@ -1112,7 +1124,7 @@ final class DataEntry
             return;
         }
 
-        $this->clearPath($satz->id, (string) $settingRelationId, $locale);
+        $this->clear($satz->id, $settingRelationId, $locale);
     }
 
     /**
@@ -1137,7 +1149,7 @@ final class DataEntry
         $gesucht = [];
 
         foreach ($relationIds as $id) {
-            $gesucht[(string) $id] = $id;
+            $gesucht[$id] = $id;
         }
 
         $werte = [];
@@ -1148,7 +1160,7 @@ final class DataEntry
             }
 
             foreach ($this->records->valuesOf($satz->id) as $wert) {
-                $kante = $gesucht[$wert->path] ?? null;
+                $kante = $gesucht[$wert->relationId] ?? null;
 
                 if ($kante !== null && ! $wert->value->isNothing()) {
                     $werte[$kante] = $wert->value;
@@ -1209,7 +1221,7 @@ final class DataEntry
         $gesucht = [];
 
         foreach ($relationIds as $id) {
-            $gesucht[(string) $id] = $id;
+            $gesucht[$id] = $id;
         }
 
         // ⚠️ *Auf Modellebene gibt es keine Werte, nur Vorgaben ([D-026](../../../docs/NewConcept/90-decision-log.md)).*
@@ -1231,7 +1243,7 @@ final class DataEntry
 
         foreach ($this->records->valuesOfMany($satzIds) as $werte) {
             foreach ($werte as $wert) {
-                $kante = $gesucht[$wert->path] ?? null;
+                $kante = $gesucht[$wert->relationId] ?? null;
 
                 if ($kante === null || $wert->value->reference === null) {
                     continue;
@@ -1446,7 +1458,7 @@ final class DataEntry
      */
     private function chooseSettingRecord(int $recordId, int $relationId, int $chosenNodeId): void
     {
-        $teilId = $this->partsOf($recordId)[(string) $relationId] ?? null;
+        $teilId = $this->partsOf($recordId)[$relationId] ?? null;
 
         if ($teilId !== null) {
             $teil = $this->records->find($teilId);
@@ -1465,15 +1477,15 @@ final class DataEntry
             // **drei Zeilen an einer Kante mit `1..1`** nach drei Wahlen, und die Aufloesung nahm die
             // erste — also die aelteste. **Der Fehler war schon da; die Spalte hatte ihn nur
             // zugedeckt**, weil sie eine Zahl haelt und keine Zeilen.*
-            $this->records->forgetValue($recordId, (string) $relationId, '');
+            $this->records->forgetValue($recordId, $relationId, '');
 
             $this->satzEntfernen($teilId);
         }
 
-        $this->createPart($recordId, $relationId, '', $chosenNodeId);
+        $this->createPart($recordId, $relationId, $chosenNodeId);
     }
 
-    public function createPart(int $recordId, int $relationId, string $path = '', int $chosenNodeId = 0): NodeRecord
+    public function createPart(int $recordId, int $relationId, int $chosenNodeId = 0): NodeRecord
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $relation   = $this->relationOf($record, $relationId);
@@ -1519,32 +1531,30 @@ final class DataEntry
         $this->changelog?->beginAct();
 
         try {
-            return $this->teilAnlegen($recordId, $relationId, $path, $gewaehlt, $record->recordType);
+            return $this->teilAnlegen($recordId, $relationId, $gewaehlt, $record->recordType);
         } finally {
             $this->changelog?->endAct();
         }
     }
 
     /** Der Teil selbst und der Verweis, der ihn hält — innerhalb der Klammer von {@see createPart()}. */
-    private function teilAnlegen(int $recordId, int $relationId, string $path, Node $gewaehlt, RecordType $kind): NodeRecord
+    private function teilAnlegen(int $recordId, int $relationId, Node $gewaehlt, RecordType $kind): NodeRecord
     {
         $part = $this->create($gewaehlt->id, $kind);
-
-        $pfad = $path === '' ? (string) $relationId : $path;
 
         // The holder points at it, which is the whole of the relationship.
         // ⚠️ *Ein **Datensatz**verweis und kein Knotenverweis — die einzige Stelle im Kern, die
         // einen schreibt. Der Raum wandert seit TASK-005 mit in die Spalte `value_ref_kind`.*
         $verweis = TypedValue::ofRecordReference($part->id);
 
-        $version = $this->records->putValue(new RelationRecord($recordId, $pfad, $relationId, '', $verweis));
+        $version = $this->records->putValue(RelationRecord::direct($recordId, $relationId, $verweis));
 
         $this->melden(
             $recordId,
             'record_value',
             'part linked',
             null,
-            $this->wertZustand($recordId, $pfad, '', $verweis),
+            $this->wertZustand($recordId, $relationId, '', $verweis),
             $version
         );
 
@@ -1552,13 +1562,18 @@ final class DataEntry
     }
 
     /**
-     * Every part a record owns, by the path that reaches it.
+     * Every part a record owns, by the relation that reaches it.
      *
      * ⚠️ **Read from the holder's own values**, because that is the only place the link lives. *One
      * query per level rather than one per value: a parts list of thirty rows asks once, which is what
      * `CD-7` is about.*
      *
-     * @return array<string, int> path ⇒ the part record's id
+     * ⚠️ *Geschlüsselt über die **Kante** und nicht mehr über einen Pfad (Fassung 39, TASK-002).
+     * **Trägt eine Kante mehrere Teile** ([D-548](../../../docs/NewConcept/90-decision-log.md)),
+     * nennt diese Liste den ersten — sie beantwortet «welcher Teil hängt an dieser Kante», und wer
+     * alle braucht, fragt {@see self::settingPartsOf()}.*
+     *
+     * @return array<int, int> Kanten-Id ⇒ the part record's id
      */
     public function partsOf(int $recordId): array
     {
@@ -1584,30 +1599,26 @@ final class DataEntry
 
         foreach ($this->records->valuesOf($recordId) as $value) {
             if (isset($owned[$value->relationId]) && $value->value->reference !== null) {
-                $parts[$value->path] = $value->value->reference;
+                $parts[$value->relationId] ??= $value->value->reference;
             }
         }
 
         return $parts;
     }
 
-    /** Take a value out again, so the attribute is simply unanswered (D-232's three states). */
+    /**
+     * Take a value out again, so the attribute is simply unanswered (D-232's three states).
+     *
+     * ⚠️ **Hier stand ein zweiter Weg `clearPath()` daneben, und er ist mit der Spalte gefallen**
+     * (Fassung 39, TASK-002). *Er nahm eine Adresse als Text entgegen, weil der zweite Wert eines
+     * Feldes einmal `<Kante>.1` hiess — **gemessen hat so keine lebende Zeile je geheissen**, und
+     * mehrere Werte sind seit [D-530](../../../docs/NewConcept/90-decision-log.md) mehrere Zeilen auf
+     * derselben Kante. **Wer genau eine davon meint, nimmt ihre Id** ({@see self::removeRecord()},
+     * {@see \Taxmod\Core\Repository\RecordRepository::forgetValueById()}), nicht einen längeren Text.*
+     */
     public function clear(int $recordId, int $relationId, string $locale = ''): void
     {
-        $this->wertLeeren($recordId, (string) $relationId, $locale);
-    }
-
-    /**
-     * Take a value out again, addressed by its **path** rather than by its relation.
-     *
-     * ⚠️ **The two are not the same and confusing them removed the wrong row.** A direct attribute's
-     * path *is* its relation id, so {@see clear()} reads as if it covered everything — but the second
-     * occurrence of a multi-valued member is `<relation>.1`, and clearing by relation silently took out the
-     * **first** one. *Found while making a check idempotent: it cleared what it meant to keep.*
-     */
-    public function clearPath(int $recordId, string $path, string $locale = ''): void
-    {
-        $this->wertLeeren($recordId, $path, $locale);
+        $this->wertLeeren($recordId, $relationId, $locale);
     }
 
     /**
@@ -1617,18 +1628,18 @@ final class DataEntry
      * «gelöscht, aber was?» ist keine Chronik. Die Version, die diese Änderung erzeugt hat, gibt der
      * Speicher zurück: es ist die, mit der die Zeile in den Schatten geht.*
      */
-    private function wertLeeren(int $recordId, string $path, string $locale): void
+    private function wertLeeren(int $recordId, int $relationId, string $locale): void
     {
         $vorher = null;
 
         foreach ($this->records->valuesOf($recordId) as $stand) {
-            if ($stand->path === $path && $stand->locale === $locale) {
-                $vorher = $this->wertZustand($recordId, $path, $locale, $stand->value);
+            if ($stand->relationId === $relationId && $stand->locale === $locale) {
+                $vorher = $this->wertZustand($recordId, $relationId, $locale, $stand->value);
                 break;
             }
         }
 
-        $version = $this->records->forgetValue($recordId, $path, $locale);
+        $version = $this->records->forgetValue($recordId, $relationId, $locale);
 
         // ⚠️ *Nichts zu löschen ist kein Ereignis — ein Buch, das Nicht-Ereignisse aufschreibt, liest
         // niemand (dieselbe Regel wie bei {@see Labels}).*
@@ -1637,6 +1648,32 @@ final class DataEntry
         }
 
         $this->melden($recordId, 'record_value', 'value cleared', $vorher, null, $version);
+    }
+
+    /**
+     * **Genau die** Zeile, die einen Teil hält — über ihre Id, nicht über ihre Kante.
+     *
+     * ⚠️ **Der Unterschied zählt, seit die Adresse eine Kante ist** (Fassung 39, TASK-002). *Eine
+     * Kante mit `1..*` trägt mehrere Teile ([D-548](../../../docs/NewConcept/90-decision-log.md)),
+     * und die sind mehrere **Zeilen** auf derselben Kante
+     * ([D-530](../../../docs/NewConcept/90-decision-log.md)). Über die Kante geleert fielen **alle** —
+     * also über die Id. **Vorher unterschied der Pfad sie**, und genau diese Unterscheidung darf mit
+     * ihm nicht verlorengehen.*
+     */
+    private function halterZeileLeeren(RelationRecord $halter): void
+    {
+        if ($halter->id === null) {
+            return;
+        }
+
+        $vorher  = $this->wertZustand($halter->recordId, $halter->relationId, $halter->locale, $halter->value);
+        $version = $this->records->forgetValueById($halter->id);
+
+        if ($version === null) {
+            return;
+        }
+
+        $this->melden($halter->recordId, 'record_value', 'value cleared', $vorher, null, $version);
     }
 
     /**
@@ -1668,7 +1705,7 @@ final class DataEntry
 
         try {
             if ($halter !== null) {
-                $this->wertLeeren($halter->recordId, $halter->path, $halter->locale);
+                $this->halterZeileLeeren($halter);
             }
 
             $this->satzEntfernen($recordId);

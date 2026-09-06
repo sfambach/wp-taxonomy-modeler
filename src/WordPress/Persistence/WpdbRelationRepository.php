@@ -495,9 +495,14 @@ final class WpdbRelationRepository implements RelationRepository
             $spalten = [];
 
             foreach ($zeile as $name => $wert) {
-                if (! in_array($name, Schema::SHADOW_ONLY, true)) {
-                    $spalten[$name] = $wert;
+                // ⚠️ *`path` bleibt im Schatten stehen — lebend gibt es die Spalte seit Fassung 39
+                // nicht mehr (TASK-002), und {@see Schema::SHADOW_ONLY_IN} ist die eine Stelle, die
+                // das sagt. **Dieselbe Auslassung wie eine Ebene höher bei `parked_by_group_id`.***
+                if (in_array($name, [...Schema::SHADOW_ONLY, ...(Schema::SHADOW_ONLY_IN['relation_records_history'] ?? [])], true)) {
+                    continue;
                 }
+
+                $spalten[$name] = $wert;
             }
 
             $spalten['version'] = (int) $zeile['version'] + 1;

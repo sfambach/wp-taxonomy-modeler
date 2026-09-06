@@ -42,7 +42,7 @@ use Taxmod\Core\Repository\RelationRepository;
  * ```mermaid
  * flowchart LR
  *   N["Knoten"] --> R["sein Datensatz"]
- *   R -->|"Pfad = renderer-Kante"| T["Teil: der gewählte Renderer"]
+ *   R -->|"relation_id = renderer-Kante"| T["Teil: der gewählte Renderer"]
  *   T -->|"node_id"| M["sein Name ist die Antwort"]
  * ```
  *
@@ -187,9 +187,9 @@ final class ModelValues
             return [];
         }
 
-        $aus = $this->settingsAt($subject, $saetze, $traeger, []);
+        $aus = $this->settingsAt($subject, $saetze, $traeger);
 
-        $name = $this->rendererNameAt($saetze, []);
+        $name = $this->rendererNameAt($saetze);
 
         if ($name !== null) {
             $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($name), $traeger, true);
@@ -286,18 +286,18 @@ final class ModelValues
      * baut {@see self::kette()} ([D-602](../../../docs/NewConcept/90-decision-log.md)); hier steht
      * bewusst keine zweite Fassung derselben Regel (`CD`).*
      *
-     * ⚠️ **Die Adresse einer Verwendungsstelle ist eine andere als die des Knotens, und das habe ich im
-     * ersten Zug falsch gemacht.** *Am Knoten ist der Pfad die Einstellungskante allein; an einer
-     * Verwendungsstelle steht die Kante der Stelle davor — `<Stelle>.<Einstellung>`, genau die Form, die
-     * {@see self::rendererNameAt()} baut. **Ohne den Vorlauf hätte `forUseSite()` die Angabe des Knotens
-     * als die der Stelle gemeldet** — und dann wäre `read_only` an einem Feld die Antwort seines
-     * Besitzers, was der ganzen Unterscheidung widerspricht.*
+     * ⚠️ **Die Adresse einer Verwendungsstelle ist eine andere als die des Knotens — und sie steht
+     * nicht mehr in der Wertzeile.** *Hier stand ein «Vorlauf»: die Kante der Stelle wurde der
+     * Einstellungskante vorangestellt, `<Stelle>.<Einstellung>`. **Seit
+     * [D-667](../../../docs/NewConcept/90-decision-log.md) sagt der Satz, wem er gehört**
+     * (`node_records.relation_id`), und die Stelle ist gefunden, bevor diese Methode ihre Sätze
+     * bekommt — jeder Aufrufer gab den Vorlauf schon leer mit. **Mit der Spalte `path` ist er
+     * gefallen** (Fassung 39, TASK-002).*
      *
      * @param  list<int> $recordIds
-     * @param  list<int> $vorlauf   Kanten vor der Einstellungskante — leer für den Knoten selbst.
      * @return array<string,ResolvedSetting>
      */
-    private function settingsAt(Node|Relation $subject, array $recordIds, int $owner, array $vorlauf): array
+    private function settingsAt(Node|Relation $subject, array $recordIds, int $owner): array
     {
         if ($recordIds === []) {
             return [];
@@ -305,14 +305,11 @@ final class ModelValues
 
         $this->findRelations();
 
-        $aus    = [];
-        $anfang = $vorlauf === [] ? '' : implode('.', $vorlauf) . '.';
+        $aus = [];
 
         foreach ($recordIds as $recordId) {
             foreach ($this->valuesOf($recordId) as $wert) {
-                // ⚠️ *Genau diese Adresse und keine tiefere: ein Pfad, der weitergeht, liegt in einem
-                // Teil, und dessen Werte gehören der Kante des Teils, nicht dieser hier.*
-                if ($wert->path !== $anfang . $wert->relationId || $wert->value->isNothing()) {
+                if ($wert->value->isNothing()) {
                     continue;
                 }
 
@@ -645,7 +642,7 @@ final class ModelValues
 
         $aus = $eigener === null
             ? []
-            : $this->settingsAt($relation, [$eigener->id], $relation->id, []);
+            : $this->settingsAt($relation, [$eigener->id], $relation->id);
 
         // ⚠️ **Hier stand der eigene Renderer der Verwendungsstelle, und er ist ersatzlos gefallen**
         // ([D-643](../../../docs/NewConcept/90-decision-log.md)). *Seine Worte: «ich bin mir noch
@@ -724,13 +721,13 @@ final class ModelValues
 
 
     /**
-     * Der Name des Renderers unter dieser Adresse, oder `null`.
+     * Der Name des Renderers in diesen Sätzen, oder `null`.
      *
-     * @param list<int> $vorlauf Kanten vor der Renderer-Kante — leer für den Knoten selbst.
+     * @param list<int> $recordIds
      */
-    private function rendererNameAt(array $recordIds, array $vorlauf): ?string
+    private function rendererNameAt(array $recordIds): ?string
     {
-        return $this->rendererAt($recordIds, $vorlauf)['node']?->name;
+        return $this->rendererAt($recordIds)['node']?->name;
     }
 
     /**
@@ -741,10 +738,15 @@ final class ModelValues
      * könnten auseinanderlaufen**, und der Unterschied wäre «der Name sagt `compact`, die
      * Einstellungen kommen von einem anderen».*
      *
-     * @param  list<int> $vorlauf Kanten vor der Renderer-Kante — leer für den Knoten selbst.
+     * ⚠️ *Die Adresse ist die Renderer-Kante allein. **Ein Vorlauf für die Verwendungsstelle stand
+     * hier bis Fassung 39** (TASK-002) und wurde von keinem Aufrufer mehr gefüllt: eine Wahl an
+     * einer Verwendungsstelle gibt es nicht ([D-643](../../../docs/NewConcept/90-decision-log.md)),
+     * und wem ein Satz gehört, sagt der Satz ([D-667](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param  list<int> $recordIds
      * @return array{record: ?int, node: ?Node}
      */
-    private function rendererAt(array $recordIds, array $vorlauf): array
+    private function rendererAt(array $recordIds): array
     {
         $this->findRelations();
 
@@ -754,11 +756,9 @@ final class ModelValues
             return $nichts;
         }
 
-        $pfad = implode('.', [...$vorlauf, $this->rendererRelation]);
-
         foreach ($recordIds as $recordId) {
             foreach ($this->valuesOf($recordId) as $wert) {
-                if ($wert->path !== $pfad || $wert->value->reference === null) {
+                if ($wert->relationId !== $this->rendererRelation || $wert->value->reference === null) {
                     continue;
                 }
 
@@ -823,7 +823,7 @@ final class ModelValues
         // ⚠️ *Gelesen mit dem **Renderer** als Subjekt: `orientation` ist an `compact` erklärt,
         // `with_label` und `label_role` an dessen Vorfahren. {@see self::settingRelation()} geht
         // genau diese Kette — mit dem gezeichneten Knoten als Subjekt fände sie keine der drei.*
-        foreach ($this->settingsAt($renderer, [$gewaehlt['record']], $renderer->id, []) as $schluessel => $angabe) {
+        foreach ($this->settingsAt($renderer, [$gewaehlt['record']], $renderer->id) as $schluessel => $angabe) {
             $aus[$schluessel] = new ResolvedSetting(
                 $angabe->key,
                 $this->alsWort($angabe->value),
@@ -853,6 +853,64 @@ final class ModelValues
     }
 
     /**
+     * Der **geerbte** Renderer, in der Gestalt eines Teils — oder `null`, wenn der Knoten selbst wählt.
+     *
+     * ⚠️ **Seine Regel, wörtlich:** *«jeder knoten hat einen renderer vater knoten kann ihn vorgeben
+     * aber nicht definieren»* — und der Fall, den er beschreibt: *«wenn ich ein bool haben und darunter
+     * ein read_only kann ich am readonly sagen das er als checkbox dargestellt wird»*.
+     *
+     * ⚠️ **Gemessen am 2026-09-06, und das ist der Anlass:** *an `Base units` steht eine eigene Wahl,
+     * und die drei Einstellungen des gewählten Renderers — `converter`, `label_role`, `with_label` —
+     * stehen da. **An `Gramm` fehlen alle drei**, weil sie im Satz des Renderers wohnen und den nur der
+     * Knoten hat, an dem die Wahl **steht**. Er kommt dort auch nicht heran: die Renderer-Liste an
+     * `Gramm` hat genau einen Eintrag und ist deshalb ausgegraut.*
+     *
+     * ⚠️ **Angesehen wird nichts geschrieben** ([D-609](../../../docs/NewConcept/90-decision-log.md):
+     * *«ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen»*). *Deshalb trägt der Teil
+     * die Satz-Id **0**: er ist geliehen, und wer in ihn schreibt, adressiert nicht ihn, sondern den
+     * **Knoten** — `taxmod_value[<Trägerkante>][<innere Kante>]`, worüber
+     * {@see DataEntry::putSettingAt()} den eigenen Teil anlegt.*
+     *
+     * ⚠️ *Die Werte kommen **roh aus dem Satz** des geerbten Renderers, genau wie im eigenen Fall
+     * ({@see DataEntry::settingPartsOf()}) — eine zweite Auflösung wäre eine zweite Gelegenheit, anders
+     * zu antworten. **Ein Verweis auf einen Satz fällt heraus**: das wäre ein Teil und kein Wert, und
+     * geliehene Teile eines geliehenen Teils zeichnet dieser Weg nicht.*
+     *
+     * @return array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array<int, list<array{}>>}|null
+     */
+    public function inheritedRendererPart(Node $subject): ?array
+    {
+        // ⚠️ *Trägt der Knoten selbst eine Wahl, ist nichts geerbt — dann steht sein eigener Teil schon
+        // in der gewöhnlichen Liste, und ein zweiter daneben wäre dieselbe Zeile zweimal.*
+        if ($this->rendererAt($this->recordsOf($subject->id))['node'] !== null) {
+            return null;
+        }
+
+        $gewaehlt = $this->chosenRendererOf($subject);
+
+        if ($gewaehlt['record'] === null || $gewaehlt['node'] === null) {
+            return null;
+        }
+
+        $werte = [];
+
+        foreach ($this->valuesOf($gewaehlt['record']) as $wert) {
+            if ($wert->value->isNothing() || $wert->value->referenceSpace === ReferenceSpace::Record) {
+                continue;
+            }
+
+            $werte[$wert->relationId] = $wert->value;
+        }
+
+        return [
+            'id'     => 0,
+            'nodeId' => $gewaehlt['node']->id,
+            'werte'  => $werte,
+            'teile'  => [],
+        ];
+    }
+
+    /**
      * Wo die Renderer-Wahl dieses Subjekts steht — dieselbe Reihenfolge, in der auch der **Name**
      * gefunden wird.
      *
@@ -866,7 +924,7 @@ final class ModelValues
 
         // ⚠️ *Von nah nach fern, wie {@see self::kette()}: der Knoten selbst, dann seine Vorfahren.*
         foreach ([$subject->id, ...array_values(array_diff(array_reverse($kette), [$subject->id]))] as $traeger) {
-            $gefunden = $this->rendererAt($this->recordsOf($traeger), []);
+            $gefunden = $this->rendererAt($this->recordsOf($traeger));
 
             if ($gefunden['node'] !== null) {
                 return $gefunden;
@@ -884,14 +942,12 @@ final class ModelValues
      * [D-026](../../../docs/NewConcept/90-decision-log.md) sagt es scharf: «at model level there are
      * no values, only defaults».*
      *
-     * ⚠️ *Die Adresse ist der Pfad der Kante am Datensatz des **Knotens** — genau die Form, die
-     * `settings.path` schon benutzte: 20 Exponenten lagen dort unter der Id des Feldes
+     * ⚠️ *Die Adresse ist die Kante am Datensatz des **Knotens** — dieselbe Frage, die
+     * `settings.path` einmal beantwortete: 20 Exponenten lagen dort unter der Id des Feldes
      * `Prefixes.exponent`.*
      */
     public function defaultFor(Node $node, Relation $relation): ?TypedValue
     {
-        $pfad = (string) $relation->id;
-
         // ⚠️ *Auch hier über das Gedächtnis: `nonPersistentValue()` wird je Feld gefragt, und ohne
         // das wäre es dasselbe N+1, das `package7-check.php` eben gemeldet hat.*
         foreach ($this->saetzeVon($node->id) as $record) {
@@ -900,7 +956,7 @@ final class ModelValues
             }
 
             foreach ($this->valuesOf($record->id) as $wert) {
-                if ($wert->path === $pfad && ! $wert->value->isNothing()) {
+                if ($wert->relationId === $relation->id && ! $wert->value->isNothing()) {
                     return $wert->value;
                 }
             }

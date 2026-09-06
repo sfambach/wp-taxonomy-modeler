@@ -348,14 +348,17 @@ Query::run('Halter fuer die Probezeilen anlegen', $wpdb->prepare(
 ));
 $meine['halter'] = (int) $wpdb->insert_id;
 
-foreach (['__a', '__b'] as $pfad) {
+// ⚠️ *Zwei Zeilen, unterschieden durch ihre **Stelle** und ihre Id. **Hier standen zwei erfundene
+// Pfade `__a`/`__b`**; die Spalte ist mit Fassung 39 gefallen (TASK-002), und mehrere Zeilen an einer
+// Kante sind seit [D-530](../../docs/NewConcept/90-decision-log.md) genau das: mehrere Zeilen.*
+foreach ([0, 1] as $stelle) {
     Query::run('zwei Wertzeilen auf denselben Satz zeigen lassen', $wpdb->prepare(
         'INSERT INTO ' . Schema::table(Schema::LIVE_TABLES[3])
-            . " (node_record_id, relation_id, path, locale, value_ref, value_ref_kind, position, version)
-               VALUES (%d, 0, %s, '', %d, 'record', 0, 1)",
+            . " (node_record_id, relation_id, locale, value_ref, value_ref_kind, position, version)
+               VALUES (%d, 0, '', %d, 'record', %d, 1)",
         $meine['halter'],
-        $pfad,
-        $meine['satz']
+        $meine['satz'],
+        $stelle
     ));
 }
 

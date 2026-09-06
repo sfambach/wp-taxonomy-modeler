@@ -176,7 +176,7 @@ check('drei angehaengte Werte stehen nebeneinander', count($werte) === 3, 'es si
 
 check(
     'alle drei teilen sich einen Pfad',
-    count(array_unique(array_map(static fn ($w): string => $w->path, $werte))) === 1
+    count(array_unique(array_map(static fn ($w): int => $w->relationId, $werte))) === 1
 );
 
 check(

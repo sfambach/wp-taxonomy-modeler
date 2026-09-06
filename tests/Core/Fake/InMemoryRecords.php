@@ -195,12 +195,12 @@ final class InMemoryRecords implements RecordRepository
         return $this->valueVersions[$id];
     }
 
-    public function forgetValue(int $recordId, string $path, string $locale): ?int
+    public function forgetValue(int $recordId, int $relationId, string $locale): ?int
     {
         $version = null;
 
         foreach ($this->values as $id => $stored) {
-            if ($stored->recordId === $recordId && $stored->path === $path && $stored->locale === $locale) {
+            if ($stored->recordId === $recordId && $stored->relationId === $relationId && $stored->locale === $locale) {
                 $version = max($version ?? 0, $this->valueVersions[$id] ?? 1);
 
                 unset($this->values[$id], $this->valueVersions[$id]);

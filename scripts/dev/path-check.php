@@ -191,35 +191,74 @@ check(
     $treffer === [],
     implode(', ', $treffer)
 );
-echo "\n2 · TASK-002 · die Adresse steht am Satz, nicht mehr im Pfad\n";
+echo "\n2 · TASK-002 · relation_records traegt keinen Pfad mehr\n";
 
 // ⚠️ **Hier stand bis zum 2026-09-06 die umgekehrte Zusage** (`INF-051`): *die Spalte `path` bleibe
 // stehen, weil «diese Einstellung ueberall» und «diese Einstellung nur hier» sonst auf dieselbe
-// Zeile fielen. **Der Grund war richtig und die Loesung ist jetzt eine andere**: der Satz sagt, zu
-// wem er gehoert ([D-667](../../docs/NewConcept/90-decision-log.md)) — `node_records.relation_id`.*
+// Zeile fielen. **Der Grund war richtig und die Loesung ist eine andere**: der Satz sagt, zu wem er
+// gehoert ([D-667](../../docs/NewConcept/90-decision-log.md)) — `node_records.relation_id`.*
 //
 // ⚠️ **Sein Wort dazu, und es hat den Zwischenschritt gekippt:** *«also verklausulierst du path als
 // Text» — eine zweite Zahlenspalte an der Wertzeile waere derselbe Pfad im besseren Mantel gewesen.*
+//
+// ⚠️ **Und die Zusage ist seit Fassung 39 die endgueltige:** *die Spalte ist weg. Vorher stand hier
+// «keine lebende Zeile sagt darin etwas, was ihre `relation_id` nicht schon sagt» — der Zustand, der
+// das Streichen erlaubte. **Er ist erfuellt worden und deshalb nicht mehr die Frage.***
 $werte  = Schema::table('relation_records');
 $saetze = Schema::table('node_records');
 
 check('node_records nennt die Verwendungsstelle', hatSpalte($saetze, 'relation_id'));
 
-// ⚠️ *Die Spalte steht noch, solange Leser sie lesen — dass sie faellt, ist entschieden. **Was hier
-// geprueft wird, ist der Zustand, der das Streichen erlaubt:** keine lebende Zeile sagt darin etwas,
-// was ihre eigene `relation_id` nicht schon sagt.*
-$mehrteilig = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$werte} WHERE path LIKE '%.%'");
+check('relation_records hat keine Spalte path', tabelleDa($werte) && ! hatSpalte($werte, 'path'));
+check('die Anweisung fuer relation_records nennt keinen Pfad', anweisungOhnePfad($anweisungen, $werte));
 
-check('keine lebende Wertzeile traegt noch eine zweiteilige Adresse', $mehrteilig === 0, (string) $mehrteilig);
+// ⚠️ **Der Schatten behaelt seinen Pfad, und das ist keine Nachlaessigkeit** — *dieselbe Begruendung
+// wie bei `nodes_history` ([D-065](../../docs/NewConcept/90-decision-log.md)): eine alte Zeile fuehrt
+// ihre Angaben als **Datum** mit. **Die zwei zweiteiligen Adressen, die Fassung 37 umgehaengt hat,
+// stehen dort und nirgends sonst.** Damit `shadow-shape-check` das nicht als Bruch liest, steht sie
+// in {@see Schema::SHADOW_ONLY_IN} — hier wird nachgesehen, dass sie wirklich beides tut.*
+$schattenWerte = Schema::table('relation_records_history');
 
-$abweichend = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$werte} WHERE path <> '' AND path <> CAST(relation_id AS CHAR)"
+check('der Schatten behaelt ihn', hatSpalte($schattenWerte, 'path'));
+
+check(
+    'und die Ausnahme ist benannt, nicht still',
+    in_array('path', Schema::SHADOW_ONLY_IN['relation_records_history'] ?? [], true)
 );
 
-check('und keine sagt im Pfad etwas anderes als in ihrer Spalte', $abweichend === 0, (string) $abweichend);
+// ⚠️ *Die Zahlen der Wanderung bleiben stehen, damit ein spaeterer Lauf sie **vergleichen** kann —
+// dieselbe Vorsorge wie `taxmod_nodepath_shape` in Fassung 35.*
+$standWerte = get_option('taxmod_relationpath_shape', []);
 
-// ⚠️ **Und der Kern schreibt wirklich an den Satz der Stelle** — sonst waere die Spalte oben ein
-// Denkmal. *Gesucht im Quelltext **ohne Kommentare**.*
+check(
+    'die Fassung hat ihre Zahlen hinterlassen',
+    is_array($standWerte) && isset($standWerte['rows'], $standWerte['relations'], $standWerte['sum'])
+);
+
+printf(
+    "       gemessen: %s Wertzeilen an %s Kanten, als die Spalte fiel\n",
+    (string) ($standWerte['rows'] ?? '?'),
+    (string) ($standWerte['relations'] ?? '?')
+);
+
+// ⚠️ **Und keine Wertzeile ist dabei ohne Adresse geblieben.** *Genau das ist an dieser Spalte am
+// 2026-09-06 schon einmal passiert: sie war kurz weg und kam **leer** zurueck, 118 Zeilen ohne
+// Adresse, und sechs Knoten zeichneten ploetzlich mit dem Rueckfall.*
+//
+// ⚠️ **Gefragt ist nicht «keine Null», und das waere seit heute abend falsch:** *`relation_id = 0`
+// heisst nach [D-673](../../docs/NewConcept/90-decision-log.md) «der Wert des Knotens selbst, nicht
+// der eines seiner Felder». **Gefragt ist, dass jede Zahl, die keine Null ist, eine Kante trifft** —
+// eine Nummer, zu der es keine Kante gibt, ist eine Adresse, die auf nichts zeigt.*
+$insLeere = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$werte} v
+     WHERE v.relation_id <> 0
+       AND NOT EXISTS (SELECT 1 FROM " . Schema::table('relations') . ' r WHERE r.id = v.relation_id)'
+);
+
+check('jede Adresse trifft eine Kante, oder sie ist die Null des Knotens', $insLeere === 0, "{$insLeere} ins Leere");
+
+// ⚠️ **Und der Kern schreibt wirklich an den Satz der Stelle** — sonst waere `node_records.relation_id`
+// ein Denkmal. *Gesucht im Quelltext **ohne Kommentare**.*
 $eintrag = ohneKommentare(dirname(__DIR__, 2) . '/src/Core/Service/DataEntry.php');
 
 check(
@@ -237,9 +276,27 @@ check(
     preg_match('/\$relationId\s*\.\s*\'\.\'\s*\.\s*\$kante->id/', $eintrag) !== 1
 );
 
+// ⚠️ **Und der Kern kennt die Spalte nicht mehr** — *dieselbe Suche wie bei `labels.path` oben:
+// gesucht wird der **Zugriff**, nicht das Wort. Ein Fliesstext, der die gefallene Spalte erklaert,
+// ist der Grund, aus dem sie fiel, und kein Verstoss.*
+$trefferWert = [];
+
+foreach (quelltexte() as $datei) {
+    $roh = ohneKommentare($datei);
+
+    if (str_contains($datei, 'Schema.php')) {
+        continue;
+    }
+
+    if (preg_match('/\$(wert|value|zeile|stand|halter|geschrieben\[0\])(\w*)?->path\b/', $roh) === 1) {
+        $trefferWert[] = basename($datei);
+    }
+}
+
 check(
-    'createPartAt setzt die ganze Kette zusammen',
-    preg_match('/implode\(\'\.\',\s*\$relationIds\)/', $eintrag) === 1
+    'kein Quelltext liest den Pfad einer Wertzeile',
+    $trefferWert === [],
+    implode(', ', $trefferWert)
 );
 
 echo "\n3 · TASK-001 · nodes traegt keinen Pfad mehr — und die Vorfahren sind dieselben\n";

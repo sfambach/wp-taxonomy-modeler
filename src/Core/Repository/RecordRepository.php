@@ -104,11 +104,19 @@ interface RecordRepository
      */
     public function putValue(RelationRecord $value): int;
 
-    /** @return int|null Die Version der entfernten Zeile, oder null, wenn keine da war. */
-    public function forgetValue(int $recordId, string $path, string $locale): ?int;
+    /**
+     * Jede Wertzeile dieses Feldes in diesem Datensatz.
+     *
+     * ⚠️ *Adressiert über die **Kante** und nicht mehr über einen Pfad (Fassung 39, TASK-002,
+     * [D-667](../../../docs/NewConcept/90-decision-log.md)) — die Spalte sagte ohnehin nichts, was
+     * `relation_id` nicht schon sagte.*
+     *
+     * @return int|null Die Version der entfernten Zeile, oder null, wenn keine da war.
+     */
+    public function forgetValue(int $recordId, int $relationId, string $locale): ?int;
 
     /**
-     * Genau eine Wertzeile — mehrere Werte eines Feldes teilen sich einen Pfad ([D-530](../../../docs/NewConcept/90-decision-log.md)).
+     * Genau eine Wertzeile — mehrere Werte eines Feldes teilen sich eine Kante ([D-530](../../../docs/NewConcept/90-decision-log.md)).
      *
      * @return int|null Die Version der entfernten Zeile, oder null, wenn keine da war.
      */

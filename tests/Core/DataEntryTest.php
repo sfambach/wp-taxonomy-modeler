@@ -143,10 +143,13 @@ final class DataEntryTest extends TestCase
     }
 
     #[Test]
-    public function the_last_relation_is_kept_beside_the_path(): void
+    public function the_relation_is_the_whole_address(): void
     {
-        // ⚠️ D-134, and it is what makes the data searchable: the relation is indexed, the path
-        // narrows.
+        // ⚠️ D-134, and it is what makes the data searchable: the relation is indexed.
+        //
+        // ⚠️ *Hier stand daneben noch der Pfad. **Er ist mit Fassung 39 gefallen** (TASK-002,
+        // [D-667](../../docs/NewConcept/90-decision-log.md)): gemessen trug jede lebende Zeile darin
+        // ihre eigene `relation_id` und sonst nichts.*
         $record = $this->data->create($this->part->id);
 
         $this->data->put($record->id, $this->description->id, TypedValue::ofText('x'));
@@ -154,7 +157,6 @@ final class DataEntryTest extends TestCase
         $value = $this->data->valuesOf($record->id)[0];
 
         self::assertSame($this->description->id, $value->relationId);
-        self::assertSame((string) $this->description->id, $value->path);
     }
 
     #[Test]
@@ -279,8 +281,8 @@ final class DataEntryTest extends TestCase
      * ⚠️ **[D-232](../../docs/NewConcept/90-decision-log.md): Mehrfachheit spielt für die Speicherung
      * keine Rolle** — fünf Ganzzahlen sind fünf **Zeilen** in einem Datensatz, nicht fünf Datensätze.
      *
-     * ⚠️ *Und sie sind **Zeilen**, nicht Pfade ([D-530](../../docs/NewConcept/90-decision-log.md)):
-     * alle drei tragen denselben Pfad, weil sie sich eine Kante teilen. **Was sie trennt, ist die Id,
+     * ⚠️ *Und sie sind **Zeilen**, nicht Adressen ([D-530](../../docs/NewConcept/90-decision-log.md)):
+     * alle drei stehen an derselben Kante. **Was sie trennt, ist die Id,
      * die jede Zeile immer schon hatte** — der Eigentümer: «warum führen wir jetzt eine neue Zahl ein,
      * wo wir doch die Id des Records haben?»*
      */
@@ -298,9 +300,9 @@ final class DataEntryTest extends TestCase
         self::assertCount(1, $this->data->recordsOf($this->part->id), 'und trotzdem nur ein Datensatz');
 
         self::assertSame(
-            $werte[0]->path,
-            $werte[1]->path,
-            'beide teilen sich eine Kante, also auch einen Pfad'
+            $werte[0]->relationId,
+            $werte[1]->relationId,
+            'beide teilen sich eine Kante'
         );
 
         self::assertNotSame($werte[0]->id, $werte[1]->id, 'die Zeilen-Id trennt sie');
@@ -419,9 +421,10 @@ final class DataEntryTest extends TestCase
     // ------------------------------------- ein Wert an einer Verwendungsstelle
 
     /**
-     * ⚠️ **Die Adresse, die der Speicher seit Paket 1 kann und die niemand benutzt hat.**
-     * *Gemessen am 2026-08-30 trug **kein einziger** Pfad in `relation_records` einen Punkt — während 21
-     * Zeilen der alten Settings-Tabelle genau diese Form längst benutzten.*
+     * ⚠️ **Die Kette wird geprüft, aber nicht aufgeschrieben** (Fassung 39, TASK-002).
+     * *Der Speicher konnte seit Paket 1 eine mehrstufige Adresse, und **gemessen am 2026-08-30 trug
+     * kein einziger Pfad in `relation_records` einen Punkt**. Die Frage, die sie beantworten sollte,
+     * beantwortet seit [D-667](../../docs/NewConcept/90-decision-log.md) der Satz.*
      *
      * ⚠️ **Der Eigentümer hat den Umweg abgeschnitten, den ich bauen wollte:** *«wir haben alle
      * Mittel, einer Kanten-Knoten-Kombination in jeglicher Schachtelung Daten zuzuweisen — **warum
@@ -440,10 +443,10 @@ final class DataEntryTest extends TestCase
 
         self::assertCount(1, $werte);
         self::assertSame('kompakt', $werte[0]->value->text);
-        self::assertSame($this->description->id . '.' . $renderer->id, $werte[0]->path);
 
         // ⚠️ *Die **letzte** Stufe steht in `relation_id`, damit «alle Renderer, wo auch immer sie sitzen»
-        // ein indizierter Zugriff bleibt (D-134).*
+        // ein indizierter Zugriff bleibt (D-134). **Sie ist seit Fassung 39 die ganze Adresse**
+        // (TASK-002); die Kette davor wird abgegangen und geprüft, aber nicht aufgeschrieben.*
         self::assertSame($renderer->id, $werte[0]->relationId);
     }
 
@@ -471,7 +474,7 @@ final class DataEntryTest extends TestCase
 
     /**
      * ⚠️ *Der Wert **des Feldes** und der Wert **an der Verwendungsstelle** sind zwei Stellen und
-     * überschreiben einander nicht — sie unterscheiden sich im Pfad, nicht in der Kante.*
+     * überschreiben einander nicht — sie stehen an zwei verschiedenen Kanten.*
      */
     #[Test]
     public function the_field_and_its_use_site_are_two_places(): void
@@ -519,7 +522,7 @@ final class DataEntryTest extends TestCase
 
         $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
 
-        $satzId = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[(string) $kante->id] ?? 0;
+        $satzId = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[$kante->id] ?? 0;
 
         self::assertNotSame(0, $satzId, 'der Teil hängt an der Einstellungskante');
         self::assertSame($compact->id, $this->records->find($satzId)?->nodeId, 'und er ist ein Satz des gewaehlten Knotens');
@@ -527,12 +530,12 @@ final class DataEntryTest extends TestCase
         // Dieselbe Wahl noch einmal legt nichts Zweites an — die Zeile *ist* der Datensatz (D-583).
         $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
 
-        self::assertSame($satzId, $this->data->partsOf($this->defaultRecordOf($this->gram->id))[(string) $kante->id] ?? 0);
+        self::assertSame($satzId, $this->data->partsOf($this->defaultRecordOf($this->gram->id))[$kante->id] ?? 0);
 
         // Eine andere Wahl haengt um, statt einen zweiten Halter danebenzustellen.
         $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($table->id));
 
-        $neu = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[(string) $kante->id] ?? 0;
+        $neu = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[$kante->id] ?? 0;
 
         self::assertNotSame($satzId, $neu);
         self::assertSame($table->id, $this->records->find($neu)?->nodeId);

@@ -137,7 +137,7 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Wertzeilen mehrerer Datensaetze lesen', $wpdb->prepare(
-            'SELECT id, node_record_id, path, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
              FROM ' . Schema::table('relation_records') . '
              WHERE node_record_id IN (' . $platzhalter . ') ORDER BY node_record_id ASC, position ASC, id ASC',
             ...$ids
@@ -146,7 +146,6 @@ final class WpdbRecordRepository implements RecordRepository
         foreach ($rows ?: [] as $r) {
             $nachSatz[(int) $r['node_record_id']][] = new RelationRecord(
                 (int) $r['node_record_id'],
-                (string) $r['path'],
                 (int) $r['relation_id'],
                 (string) $r['locale'],
                 TypedValue::fromStorage(
@@ -173,7 +172,7 @@ final class WpdbRecordRepository implements RecordRepository
             // ⚠️ *Nach `position` geordnet und **bei Gleichstand nach der Id**
             // ([D-530](../../../docs/NewConcept/90-decision-log.md)): so hat auch ein Feld, dem
             // niemand eine Reihenfolge gegeben hat, eine stabile — die des Eintragens.*
-            'SELECT id, node_record_id, path, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
              FROM ' . Schema::table('relation_records') . '
              WHERE node_record_id = %d ORDER BY position ASC, id ASC',
             $recordId
@@ -182,7 +181,6 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(
             static fn (array $r): RelationRecord => new RelationRecord(
                 (int) $r['node_record_id'],
-                (string) $r['path'],
                 (int) $r['relation_id'],
                 (string) $r['locale'],
                 TypedValue::fromStorage(
@@ -225,7 +223,6 @@ final class WpdbRecordRepository implements RecordRepository
     {
         return new RelationRecord(
             (int) $r['node_record_id'],
-            (string) $r['path'],
             (int) $r['relation_id'],
             (string) $r['locale'],
             TypedValue::fromStorage(
@@ -257,7 +254,7 @@ final class WpdbRecordRepository implements RecordRepository
         // und die Abfrage fragt nur noch die Datensatzverweise. Vorher hätte ein Knoten mit der Nummer
         // eines Datensatzes hier mitgeliefert; heute nicht mehr.*
         $rows = Query::rows('Halter der Datensaetze lesen', $wpdb->prepare(
-            'SELECT id, node_record_id, path, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
              FROM ' . Schema::table('relation_records') . '
              WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
              ORDER BY value_ref ASC, id ASC',
@@ -287,7 +284,6 @@ final class WpdbRecordRepository implements RecordRepository
 
         $spalten = [
             'node_record_id'     => $value->recordId,
-            'path'          => $value->path,
             'relation_id'       => $value->relationId,
             'locale'        => $value->locale,
             'position'      => $value->position,
@@ -301,7 +297,7 @@ final class WpdbRecordRepository implements RecordRepository
             'value_ref_kind' => $value->value->referenceSpace?->value,
         ];
 
-        $formate = ['%d', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s'];
+        $formate = ['%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s'];
 
         if ($value->id === null) {
             $wpdb->insert(Schema::table('relation_records'), $spalten, $formate);
@@ -432,27 +428,27 @@ final class WpdbRecordRepository implements RecordRepository
         return $neu;
     }
 
-    public function forgetValue(int $recordId, string $path, string $locale): ?int
+    public function forgetValue(int $recordId, int $relationId, string $locale): ?int
     {
         global $wpdb;
 
         $version = $this->versionOfValues(
-            'node_record_id = %d AND path = %s AND locale = %s',
-            [$recordId, $path, $locale]
+            'node_record_id = %d AND relation_id = %d AND locale = %s',
+            [$recordId, $relationId, $locale]
         );
 
         // ⚠️ **Sie verschwindet aus der lebenden Tabelle und bleibt im Schatten**
         // ([D-536](../../../docs/NewConcept/90-decision-log.md), [D-537](../../../docs/NewConcept/90-decision-log.md)).
         // *Der Eigentümer: «auch wenn es gelöscht ist, nur mit Löschkennzeichen versehen». **In der
         // lebenden Tabelle gibt es kein Kennzeichen** — ein Wert ist da oder er ist nicht da.*
-        Shadow::keep('relation_records', 'node_record_id = %d AND path = %s AND locale = %s', [$recordId, $path, $locale], true);
+        Shadow::keep('relation_records', 'node_record_id = %d AND relation_id = %d AND locale = %s', [$recordId, $relationId, $locale], true);
 
         // ⚠️ The row disappears, and the attribute is **unanswered** — which is a third state
         // beside a value and an explicit nothing, and collapsing it would lose it for good.
         $wpdb->delete(
             Schema::table('relation_records'),
-            ['node_record_id' => $recordId, 'path' => $path, 'locale' => $locale],
-            ['%d', '%s', '%s']
+            ['node_record_id' => $recordId, 'relation_id' => $relationId, 'locale' => $locale],
+            ['%d', '%d', '%s']
         );
 
         return $version;

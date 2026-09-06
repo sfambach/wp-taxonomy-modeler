@@ -264,7 +264,7 @@ if ($exponent !== null && ($eltern = $nodes->find($exponent->fromNodeId)) !== nu
             }
 
             foreach ($records->valuesOf($satz->id) as $wert) {
-                if ($wert->path === (string) $exponent->id && $wert->value->int !== null) {
+                if ($wert->relationId === $exponent->id && $wert->value->int !== null) {
                     ++$mitVorgabe;
                 }
             }

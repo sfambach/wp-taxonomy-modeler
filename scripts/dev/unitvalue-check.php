@@ -397,18 +397,23 @@ check('and the holder points at it', in_array($part->id, $data->partsOf($owner->
 // ⚠️ **Asking again makes another part**, which is the point of it having an identity: two positions
 // on an order are two positions. *Checked without keeping the second one — the act is what is being
 // checked, not the state, and the state would pile up.*
-$before = count($data->partsOf($owner->id));
-$second = $data->createPart($owner->id, $has->id, $has->id . '.1');
+//
+// ⚠️ **Zwei Teile an einer Kante sind zwei Zeilen, nicht zwei Pfade** ([D-530](../../docs/NewConcept/90-decision-log.md),
+// Fassung 39, TASK-002). *Hier stand `<Kante>.1` als zweite Adresse — die einzige Stelle im ganzen
+// Bestand, die den Pfad je mehrteilig benutzt hat, und sie tat es nur innerhalb dieses Laufes.
+// **Gezählt wird deshalb an den Wertzeilen des Halters** und nicht mehr an einer Liste, die je Kante
+// einen Eintrag hat.*
+$before = count($data->valuesOf($owner->id));
+$second = $data->createPart($owner->id, $has->id);
 
 check('asking again makes another one', $second->id !== $part->id);
-check('and both are reachable', count($data->partsOf($owner->id)) === $before + 1);
+check('and both are reachable', count($data->valuesOf($owner->id)) === $before + 1);
 
 // ⚠️ **Only the second one goes back, and the first is left alone.** My first attempt cleared the
-// holder by **relation** — which removes the *first* part's row, path `<relation>` — and then tried to write
-// the reference back with `put()`, which refuses a composed target on purpose. *The reference is
-// written by `createPart()` and by nothing else, so undoing it means removing the row it wrote.*
-$data->clearPath($owner->id, $has->id . '.1');
-$GLOBALS['wpdb']->query('DELETE FROM ' . $GLOBALS['wpdb']->prefix . 'taxmod_node_records WHERE id = ' . (int) $second->id);
+// holder by **relation** — which removes *both* rows — and then tried to write the reference back
+// with `put()`, which refuses a composed target on purpose. *{@see \Taxmod\Core\Service\DataEntry::removeRecord()}
+// nimmt den Teil **und genau die Zeile, die ihn hält**, über deren Id — der Weg, den es dafür gibt.*
+$data->removeRecord($second->id);
 
 $data->put($part->id, $members['wert']->id, TypedValue::ofDecimal('4.7'));
 check('a part holds its own values', count($data->valuesOf($part->id)) === 1);

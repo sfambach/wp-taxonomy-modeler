@@ -70,7 +70,7 @@ dasselbe: `WpdbNodeRepository::subtreeIds()` — **ein Ort für die Frage «was 
 Knoten», nicht zwölf**, und dieselbe Antwort wie im Kode, den sie prüfen.
 
 ```text
-[ ] TASK-002  path aus record_values entfernen
+[x] TASK-002  path aus record_values entfernen
 ```
 
 **Spiegel von `edge_id`**: 183 Zeilen, und beide Spalten haben dieselben 12 verschiedenen Werte.
@@ -93,6 +93,47 @@ geplant: `putSettingAtUseSite()` schreibt `Verwendungsstelle.Einstellungskante`,
 (`PR-4`). *Die Vorlage dafür liegt im Eingang; bis dahin steht die Spalte unverändert, und
 [`path-check.php`](../../../scripts/dev/path-check.php) hält den Zustand fest, statt ihn
 vorwegzunehmen.*
+
+⚠️ **Erledigt am 2026-09-06, und der Eigentümer hat die Frage entschieden, nicht ich**
+([D-667](../../NewConcept/90-decision-log.md)): *«aber wir hatten die relation id schon vorgesehen im
+record».* **Die Adresse einer Verwendungsstelle steht seither am Satz** — `node_records.relation_id`
+—, nicht als Text an der Wertzeile. *Sein Wort zu dem Zwischenschritt, den ich vorschlug und den er
+gekippt hat: «also verklausulierst du path als Text» — eine zweite Zahlenspalte an der Wertzeile wäre
+derselbe Pfad im besseren Mantel gewesen.*
+
+**In zwei Schritten, und die Reihenfolge war Wächter, Leser, Daten:**
+
+| | Fassung | Was geschah |
+|---|---|---|
+| **Hälfte 1** | 37 | `node_records.relation_id` kommt dazu; die drei mehrteiligen Wertzeilen hängen an ihren eigenen Satz um und lassen ihren Pfad leer. |
+| **Hälfte 2** | 39 | **Die Spalte fällt.** Bedingung geprüft, vorher und nachher gezählt, bei Abweichung wirft der Schritt. |
+
+**Die Zahlen, gemessen am 2026-09-06:**
+
+| | |
+|---|---|
+| Wertzeilen vorher / nachher | **89 / 89**, an 17 Kanten, 72 Datensätzen, alle 89 mit einem Wert |
+| mehrteilige Pfade | **0** |
+| Pfade, die etwas anderes sagen als ihre `relation_id` | **0** — bis auf **drei leere**, und die hat Fassung 37 selbst so hinterlassen |
+| Wertzeilen ohne Adresse danach | **0** |
+| Prüfsumme über `id · Satz · Kante · Sprache · Stelle` | vorher = nachher (`taxmod_relationpath_shape`) |
+
+⚠️ **Der Schatten behält seinen Pfad** ([D-065](../../NewConcept/90-decision-log.md), benannt in
+`Schema::SHADOW_ONLY_IN`): *Geschichte wird nicht umgeschrieben — und **die drei zweiteiligen
+Adressen, die Fassung 37 umgehängt hat, stehen dort und nirgends sonst.***
+
+⚠️ **Gezählt: 67 Zeilen in 16 Dateien nannten die Spalte, 21 Dateien sind angefasst** (`PR-9`) —
+*Kern, Speicher, Kernlauf und neun Randprüfungen.* Darunter sind zwei Stellen, die die Spalte als
+*Mechanismus* benutzten und nicht nur als Adresse: *`DataEntry::clearPath()` — der Weg, eine Zeile
+über einen Text statt über ihre Id zu meinen — ist **ersatzlos gefallen**, und
+`ModelValues::settingsAt()` hat seinen «Vorlauf» verloren, den kein Aufrufer mehr füllte. `partsOf()`
+schlüsselt jetzt über die Kante; wo zwei Teile an einer Kante hängen
+([D-548](../../NewConcept/90-decision-log.md)), trennt sie **ihre Zeile**
+([D-530](../../NewConcept/90-decision-log.md)) und nicht mehr ein erfundenes `<Kante>.1`.*
+
+⚠️ **Der Wächter hat mitgezogen und sagt jetzt das Gegenteil von vorher:** *aus «die Spalte steht,
+und kein Pfad sagt etwas anderes als seine Spalte» wurde «die Spalte ist weg, der Schatten behält
+sie, und die Ausnahme ist benannt».*
 
 ```text
 [x] TASK-003  path aus labels und settings entfernen
@@ -1889,7 +1930,7 @@ Versaeumnis und keine Unklarheit.*
    falsch: sie machte `Base units` von 2 auf 14 waehlbar). `eligibleFor()` schraenkt weiter auf den
    Typ ein — am Knoten der Knoten, an der Kante der Zielknoten ([D-603](../../NewConcept/90-decision-log.md)).*
 2. **`TASK-003`** — `path` aus `labels`. *Nachweislich leer, der billigste Durchgang.*
-3. **`TASK-002`** — `path` aus `relation_records`. *Reiner Spiegel von `relation_id`.*
+3. **`TASK-002`** — `path` aus `relation_records`. *Erledigt am 2026-09-06, Fassung 37 und 39.*
 4. **`TASK-001`** — `path` aus `nodes`. *Die teuerste, aber **billiger als beschlossen**: die
    Aufgabe verlangt noch, der Vorfahrenweg muesse danach «aus `relations` kommen» — das war vor
    TASK-018. **Seit dem 2026-09-05 ist `parent_node_id` der Baum**, die Vorfahren laufen darueber,
@@ -2008,7 +2049,7 @@ gleichzeitig aufschlagen — und ohne dass eine Zusage sich aendert (`PR-9`).*
 
 ---
 
-[ ] TASK-002 (neu zugeschnitten)  `relation_records.path` faellt — die Adresse steht in Ids
+[x] TASK-002 (neu zugeschnitten)  `relation_records.path` faellt — die Adresse steht in Ids
 
 **2026-09-06, auf sein Wort:** *«das hoert sich so an, als wolltest du den Pfad behalten, und das
 will ich nicht — sollte alles ueber die Ids abgelegt sein»* und *«es sollte schon mit den
@@ -2049,5 +2090,16 @@ umgeschrieben ([D-065](../../NewConcept/90-decision-log.md)).*
 ⚠️ **Und die Tabelle heisst danach falsch:** *`node_records` haelt dann auch Kanten-Saetze. Der Name
 zieht mit oder wird als Befund vermerkt — nicht stillschweigend stehengelassen.*
 
-⚠️ *Beide Leser entscheiden heute **am Pfad** (`$gesucht[$wert->path]`); sie fragen danach die zwei
-Ids. Das ist der eigentliche Umbau, nicht die Spalte.*
+⚠️ *Beide Leser entschieden **am Pfad** (`$gesucht[$wert->path]`); sie fragen jetzt die Kante. Das
+war der eigentliche Umbau, nicht die Spalte.*
+
+⚠️ **Erledigt am 2026-09-06, in zwei Fassungen — und der Weg war ein anderer als der hier
+entworfene.** *Entworfen war ein `owner_id` + `owner_kind` am Satz, nach dem Vorbild von `labels`.
+**Der Eigentuemer hat es kuerzer gemacht** ([D-667](../../NewConcept/90-decision-log.md)): «aber wir
+hatten die relation id schon vorgesehen im record» — **eine Spalte statt zweier**, weil der Knoten
+schon am Satz steht (`node_id`) und nur die Kante fehlte. Fassung 37 hat sie gefuellt, Fassung 39 hat
+die Pfadspalte gestrichen. **Die zwei Feldbreiten aus dem Beispiel oben liegen seither in zwei
+Saetzen**, einer je Verwendungsstelle, und ueberschreiben einander nicht.*
+
+⚠️ *Und der Befund oben ueber den Namen steht weiter: **`node_records` haelt jetzt auch
+Kanten-Saetze.** Er ist damit faellig und nicht erledigt.*

@@ -276,12 +276,10 @@ if ($relation === null) {
             $stellenSatz = (int) $wpdb->insert_id;
         }
 
-        $pfad = (string) $readOnlyRelation;
-
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$prefix}relation_records WHERE node_record_id = %d AND path = %s",
+            "DELETE FROM {$prefix}relation_records WHERE node_record_id = %d AND relation_id = %d",
             $stellenSatz,
-            $pfad
+            $readOnlyRelation
         ));
         $wpdb->query($wpdb->prepare(
             "UPDATE {$prefix}relations SET hide = 0 WHERE id = %d",
@@ -299,11 +297,10 @@ if ($relation === null) {
 
         if ($key !== null) {
             $wpdb->query($wpdb->prepare(
-                "INSERT INTO {$prefix}relation_records (node_record_id, relation_id, path, locale, value_int, position, version)
-                 VALUES (%d, %d, %s, '', 1, 0, 1)",
+                "INSERT INTO {$prefix}relation_records (node_record_id, relation_id, locale, value_int, position, version)
+                 VALUES (%d, %d, '', 1, 0, 1)",
                 $stellenSatz,
-                $readOnlyRelation,
-                $pfad
+                $readOnlyRelation
             ));
         }
     };

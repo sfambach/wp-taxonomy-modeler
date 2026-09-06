@@ -388,8 +388,17 @@ final class Schema
      * (`PR-4`). **Auf einer Installation, auf der nichts unzulässig ist, tut sie nichts** — gemessen
      * am 2026-09-06 sind alle 12 Wahlen zulässig, also ist sie an einem **gebauten** Fall geprüft
      * und nicht am Bestand.*
+     *
+     * ⚠️ **Fassung 39 nimmt `relation_records.path` weg — die letzte Pfadspalte überhaupt**
+     * (TASK-002, [D-667](../../../docs/NewConcept/90-decision-log.md): *«aber wir hatten die relation
+     * id schon vorgesehen im record»*). *Die Hälfte stand seit Fassung 37: `node_records.relation_id`
+     * nennt die Verwendungsstelle, und die zwei zweiteiligen Zeilen sind dorthin gewandert.
+     * **Gemessen am 2026-09-06 trägt seither jede lebende Wertzeile in ihrem Pfad genau ihre eigene
+     * `relation_id`** — null Abweichungen, null mehrteilige —, also sagt die Spalte nichts mehr, was
+     * nicht daneben steht. *Der Schatten behält sie ({@see self::SHADOW_ONLY_IN}); Geschichte wird
+     * nicht umgeschrieben ([D-065](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    public const VERSION = 38;
+    public const VERSION = 39;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -507,6 +516,14 @@ final class Schema
         // Wege wegzuwerfen, um eine Spaltenliste symmetrisch zu machen, wäre der teuerste denkbare
         // Aufräumschritt, und eine alte Zeile führt ihre Angaben als **Datum** mit.*
         'nodes_history'     => ['name', 'path'],
+        // ⚠️ **`path` steht hier seit Fassung 39** (TASK-002): *die lebende Wertzeile hat keine
+        // zweite Adresse mehr — ihre `relation_id` **ist** die Adresse, und wem der Satz gehört,
+        // sagt `node_records.relation_id` ([D-667](../../../docs/NewConcept/90-decision-log.md)).
+        // **Der Schatten behält den Pfad**, aus demselben Grund wie oben
+        // ([D-065](../../../docs/NewConcept/90-decision-log.md)): eine alte Zeile führt ihre Angaben
+        // als **Datum** mit — auch die zwei zweiteiligen, die Fassung 37 umgehängt hat, und die
+        // nirgends sonst mehr stehen.*
+        'relation_records_history' => ['path'],
     ];
 
     /** @return list<string> The table names, without the WordPress prefix. */
@@ -645,6 +662,14 @@ final class Schema
         // hineinwandert — und *vor* dem Abbau der Pfadspalte, aus der gelesen wird** (Fassung 37,
         // [D-667](../../../docs/NewConcept/90-decision-log.md), TASK-002).
         self::moveUseSiteSettingsIntoTheirOwnRecord();
+
+        // ⚠️ **Unmittelbar danach, und die Reihenfolge ist die ganze Vorsicht** (Fassung 39,
+        // TASK-002): *der Schritt darüber ist der **einzige**, der die Spalte noch liest — er hängt
+        // die zweiteiligen Zeilen an ihren eigenen Satz. Erst wenn er gelaufen ist, sagt der Pfad
+        // nichts mehr, was nicht daneben steht, und **genau das prüft dieser Schritt nach**, bevor er
+        // löscht. **Vor `buildTheReadableViews()`**, aus demselben Grund wie Fassung 35: eine Sicht
+        // auf `q.*` friert die Spaltenliste beim Anlegen ein.*
+        self::dropRelationRecordPathColumn();
 
         // ⚠️ **Nach der Wanderung, weil sie auf `label_texts` steht** (Fassung 34, TASK-019).
         self::buildTheReadableViews();
@@ -1370,7 +1395,7 @@ final class Schema
         $werte  = self::table('relation_records');
         $saetze = self::table('node_records');
 
-        if (self::tableMissing($werte) || self::tableMissing($saetze) || ! self::hasColumn($werte, 'path')) {
+        if (self::tableMissing($werte) || self::tableMissing($saetze)) {
             return [];
         }
 
@@ -1401,19 +1426,23 @@ final class Schema
             $relations
         );
 
-        // ⚠️ *Die Adresse ist der Pfad, nach dem die Auflösung selbst sucht
-        // ({@see \Taxmod\Core\Service\ModelValues::rendererAt()}) — die Id der Einstellungskante,
-        // einstufig. Eine Wahl an einer **Verwendungsstelle** gibt es nicht
+        // ⚠️ *Die Adresse ist die, nach der die Auflösung selbst sucht
+        // ({@see \Taxmod\Core\Service\ModelValues::rendererAt()}) — die Id der Einstellungskante.
+        // Eine Wahl an einer **Verwendungsstelle** gibt es nicht
         // ([D-643](../../../docs/NewConcept/90-decision-log.md)), und diese Wanderung erfindet sie
         // nicht dadurch, dass sie danach suchte.*
+        //
+        // ⚠️ *Gefragt wird `relation_id` und nicht mehr die Pfadspalte (Fassung 39, TASK-002) —
+        // **dieselbe Zeilenmenge**, weil jede lebende Zeile in ihrem Pfad genau ihre `relation_id`
+        // trug (gemessen am 2026-09-06: null Abweichungen).*
         /** @var list<array{id: string, value_ref: string, value_ref_kind: string, node_id: string}> $gespeichert */
         $gespeichert = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT v.id, v.value_ref, v.value_ref_kind, s.node_id
                    FROM {$werte} v
                    INNER JOIN {$saetze} s ON s.id = v.node_record_id
-                  WHERE v.path = %s AND v.value_ref IS NOT NULL",
-                (string) $kante
+                  WHERE v.relation_id = %d AND v.value_ref IS NOT NULL",
+                $kante
             ),
             ARRAY_A
         ) ?: [];
@@ -1506,6 +1535,124 @@ final class Schema
         );
 
         return $gefallen;
+    }
+
+    /**
+     * Fassung 39: **`relation_records.path` fällt — die letzte Pfadspalte** (TASK-002).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   P["path"] -.ist gleich.-> R["relation_id"]
+     *   R --> D["Spalte faellt"]
+     *   P --> S["Schatten behaelt sie"]
+     * ```
+     *
+     * ⚠️ **Der Beschluss ist [D-667](../../../docs/NewConcept/90-decision-log.md)**, sein Wort:
+     * *«aber wir hatten die relation id schon vorgesehen im record»*. **Fassung 37 hat die Hälfte
+     * gebaut** — die Einstellungen einer Verwendungsstelle liegen in **ihrem** Satz, und keine
+     * lebende Wertzeile trägt mehr eine zweiteilige Adresse. *Was blieb, ist die Spalte, und sie
+     * sagt nichts, was `relation_id` nicht schon sagt.*
+     *
+     * ⚠️ **Geprüft, bevor gelöscht wird, und bei der ersten Abweichung bleibt sie stehen** —
+     * dieselbe Ordnung wie bei {@see self::dropNodePathColumn()}: *«jede Zeile sagt in ihrem Pfad
+     * genau ihre `relation_id`» ist keine Vermutung, die man hinterher nicht mehr prüfen kann,
+     * sondern **hier die Bedingung dafür, dass gelöscht wird.***
+     *
+     * ⚠️ **Der Schatten behält seinen Pfad** ({@see self::SHADOW_ONLY_IN}): *Geschichte wird nicht
+     * umgeschrieben ([D-065](../../../docs/NewConcept/90-decision-log.md)). **Die zwei zweiteiligen
+     * Zeilen, die Fassung 37 umgehängt hat, stehen dort und nirgends sonst.***
+     *
+     * ⚠️ *Gezählt davor und danach, und bei einer Abweichung wirft der Schritt — **an dieser Spalte
+     * ist am 2026-09-06 schon einmal etwas verlorengegangen**: sie war kurz weg und kam **leer**
+     * zurück, 118 Zeilen ohne Adresse, und sechs Knoten zeichneten mit dem Rückfall.*
+     *
+     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine Spalte mehr.*
+     */
+    private static function dropRelationRecordPathColumn(): void
+    {
+        global $wpdb;
+
+        $werte = self::table('relation_records');
+
+        if (self::tableMissing($werte) || ! self::hasColumn($werte, 'path')) {
+            return;
+        }
+
+        // ⚠️ **Die eine Abfrage, die den Schritt rechtfertigt.** *Sie stellt den gespeicherten Pfad
+        // neben die Kanten-Id derselben Zeile. **Null Abweichungen ist die Bedingung**, nicht das
+        // erwartete Ergebnis.*
+        //
+        // ⚠️ **Ein *leerer* Pfad ist keine Abweichung, und das ist gemessen und nicht nachgegeben:**
+        // *drei Zeilen tragen ihn, und alle drei hat {@see self::moveUseSiteSettingsIntoTheirOwnRecord()}
+        // selbst so hinterlassen — sie schreibt `path = ''`, nachdem sie die Zeile an den Satz ihrer
+        // Verwendungsstelle gehängt hat. **Ein leerer Pfad sagt nichts**, also kann er auch nichts
+        // sagen, was verlorenginge.*
+        $abweichend = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$werte} WHERE path <> '' AND path <> CAST(relation_id AS CHAR)"
+        );
+
+        if ($abweichend > 0) {
+            // ⚠️ *Still umkehren und nicht werfen — eine Aktivierung darf nicht mit einem Fatal
+            // enden. `path-check.php` meldet denselben Befund laut, und die Spalte steht so lange
+            // weiter.*
+            return;
+        }
+
+        $vorher = self::countedValues($werte);
+
+        $wpdb->query("ALTER TABLE {$werte} DROP COLUMN path");
+
+        if ($wpdb->last_error !== '') {
+            return;
+        }
+
+        $nachher = self::countedValues($werte);
+
+        if ($vorher !== $nachher) {
+            throw new \RuntimeException(
+                'Fassung 39: die Wertzeilen nach dem Streichen von relation_records.path sind nicht die '
+                . 'von vorher. Vorher ' . wp_json_encode($vorher) . ', nachher ' . wp_json_encode($nachher)
+                . '. Die Fassungsnummer bleibt stehen.'
+            );
+        }
+
+        update_option('taxmod_relationpath_shape', $nachher, false);
+
+        // ⚠️ *Der Spaltenplan von {@see Shadow} ist je Tabelle gemerkt — sonst kopierte der nächste
+        // Aufruf eine Spalte, die es nicht mehr gibt.*
+        Shadow::forgetColumnPlan();
+    }
+
+    /**
+     * Was an den Wertzeilen gezählt wird, bevor und nachdem die Spalte fällt.
+     *
+     * ⚠️ **Die Prüfsumme nennt den Pfad bewusst nicht** — *sie soll gleich bleiben, während genau
+     * diese Spalte verschwindet. Gezählt wird die **Adresse ohne ihn**: Satz, Kante, Sprache,
+     * Stelle, und je Zeile, ob überhaupt ein Wert dasteht.*
+     *
+     * @return array{rows: int, records: int, relations: int, filled: int, sum: string}
+     */
+    private static function countedValues(string $werte): array
+    {
+        global $wpdb;
+
+        return [
+            'rows'      => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$werte}"),
+            'records'   => (int) $wpdb->get_var("SELECT COUNT(DISTINCT node_record_id) FROM {$werte}"),
+            'relations' => (int) $wpdb->get_var("SELECT COUNT(DISTINCT relation_id) FROM {$werte}"),
+            'filled'    => (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$werte}
+                 WHERE value_int IS NOT NULL OR value_decimal IS NOT NULL OR value_text IS NOT NULL
+                    OR value_date IS NOT NULL OR value_ref IS NOT NULL"
+            ),
+            // ⚠️ *Eine Summe und kein `GROUP_CONCAT`: dessen Länge ist auf 1024 Zeichen begrenzt, und
+            // eine Prüfsumme, die stillschweigend nur den Anfang sieht, ist keine.*
+            'sum'       => (string) $wpdb->get_var(
+                "SELECT COALESCE(SUM(CRC32(
+                     CONCAT_WS(':', id, node_record_id, relation_id, locale, position)
+                 )), 0) FROM {$werte}"
+            ),
+        ];
     }
 
     private static function dropNodePathColumn(): void
@@ -3715,18 +3862,16 @@ final class Schema
                 KEY record_type (record_type)
             ) {$charset};",
 
-            // ⚠️ **Der Pfad trägt seit Fassung 37 nichts mehr, was nicht anderswo steht**
-            // ([D-667](../../../docs/NewConcept/90-decision-log.md), TASK-002). *Wo er zwei Nummern
-            // trug, sagt sie jetzt der **Satz** — `node_records.relation_id` nennt die
-            // Verwendungsstelle, `relation_id` hier die Einstellung. **Er steht noch da, solange ihn
-            // Leser lesen; gestrichen wird er, wenn keiner mehr hinschaut** — und dass er fällt, ist
-            // entschieden. Sein Wort zum Zwischenschritt, den er verworfen hat: «also verklausulierst
-            // du path als Text».*
+            // ⚠️ **Der Pfad ist mit Fassung 39 gefallen** ([D-667](../../../docs/NewConcept/90-decision-log.md),
+            // TASK-002). *Wo er zwei Nummern trug, sagt sie der **Satz** — `node_records.relation_id`
+            // nennt die Verwendungsstelle, `relation_id` hier die Einstellung. **Er darf hier nicht
+            // wieder auftauchen**: `dbDelta` legt eine fehlende Spalte klaglos wieder an, und
+            // `path-check.php` sieht genau darauf. Sein Wort zum Zwischenschritt, den er verworfen
+            // hat: «also verklausulierst du path als Text».*
             "CREATE TABLE {$t('relation_records')} (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 node_record_id bigint(20) unsigned NOT NULL,
                 relation_id bigint(20) unsigned NOT NULL,
-                path varchar(255) NOT NULL,
                 locale varchar(20) NOT NULL DEFAULT '',
                 position int(10) unsigned NOT NULL DEFAULT 0,
                 version int(10) unsigned NOT NULL DEFAULT 1,

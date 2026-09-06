@@ -245,7 +245,6 @@ if ($vorlage === null) {
 
     $records->putValue(new RelationRecord(
         $satzId,
-        $geschrieben[0]->path,
         (int) $vorlage->relation_id,
         '',
         TypedValue::ofText('zweiter Stand'),

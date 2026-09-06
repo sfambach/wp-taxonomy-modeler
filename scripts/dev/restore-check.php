@@ -121,7 +121,6 @@ $zeile = $records->valuesOf($satzId)[0];
 foreach (['zweiter', 'dritter'] as $text) {
     $records->putValue(new RelationRecord(
         $satzId,
-        $zeile->path,
         (int) $vorlage->relation_id,
         '',
         TypedValue::ofText($text),

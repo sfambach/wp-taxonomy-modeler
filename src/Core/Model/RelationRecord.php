@@ -3,31 +3,35 @@
 namespace Taxmod\Core\Model;
 
 /**
- * One value inside a record, addressed by the path that reaches it.
+ * One value inside a record, addressed by the relation that reaches it.
  *
  * ```mermaid
  * flowchart LR
- *   R["record"] --> P["path · 100.101"] --> V["value"]
- *   P --> E["relation_id · 101 · the last step"]
+ *   R["record · node_record_id"] --> E["relation_id · 101"] --> V["value"]
  * ```
  *
- * ⚠️ **The last relation is kept alongside the path** (D-134), and that is what makes the data
- * searchable at all: `WHERE relation_id = … AND value_decimal > 1000` finds every price over a
- * thousand **wherever it sits**, and adding the path narrows it to one attribute. Without the
- * separate column the same question would need a `LIKE` over a text path.
+ * ⚠️ **Die Adresse ist **eine** Zahl, seit der Satz sagt, wem er gehört**
+ * ([D-667](../../../docs/NewConcept/90-decision-log.md), TASK-002). *Daneben stand bis Fassung 39
+ * eine Spalte `path`, die die Kette der Kanten als Text führte — **gemessen am 2026-09-06 trug jede
+ * lebende Zeile darin ihre eigene `relation_id` und sonst nichts**: null Abweichungen, null
+ * mehrteilige. Wo der Pfad wirklich zwei Nummern trug, sagt die äussere jetzt der Satz
+ * (`node_records.relation_id`). **Sein Wort zu dem Zwischenschritt, den er verworfen hat:** «also
+ * verklausulierst du path als Text».*
+ *
+ * ⚠️ **`relation_id` ist indiziert, und das war schon [D-134](../../../docs/NewConcept/90-decision-log.md)s
+ * Grund:** *`WHERE relation_id = … AND value_decimal > 1000` findet jeden Preis über tausend, **wo
+ * immer er sitzt** — ein indizierter Zugriff und kein `LIKE` über einen Text.*
  *
  * @see docs/NewConcept/50-wordpress-persistence.md
  */
 final class RelationRecord
 {
     /**
-     * @param string $path   Relation ids from the record's model down to this value, `.`-separated.
-     * @param int    $relationId The last step of that path, kept apart so it can be indexed.
+     * @param int    $relationId Die Kante, die diesen Wert im Modell des Datensatzes erreicht.
      * @param string $locale Empty unless the attribute is declared translatable (D-317).
      */
     public function __construct(
         public readonly int $recordId,
-        public readonly string $path,
         public readonly int $relationId,
         public readonly string $locale,
         public readonly TypedValue $value,
@@ -55,60 +59,27 @@ final class RelationRecord
      * Ein Wert, den **eine** Kante vom Modell des Datensatzes aus erreicht.
      *
      * ⚠️ **Auch der zweite und dritte Wert desselben Feldes gehen hier durch** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
-     * *Mehrere Werte sind mehrere **Zeilen** auf derselben Kante, nicht mehrere Pfade — sie werden
-     * durch ihre eigene Id unterschieden und durch `position` geordnet. **Der Pfad bleibt, was der
-     * Docblock oben sagt: Kanten-Ids.***
+     * *Mehrere Werte sind mehrere **Zeilen** auf derselben Kante — sie werden durch ihre eigene Id
+     * unterschieden und durch `position` geordnet.*
+     *
+     * ⚠️ *Hier stand daneben ein `at()`, das eine Kette von Kanten zu einem Pfad zusammensetzte. **Es
+     * ist mit der Spalte gefallen** (Fassung 39, TASK-002): eine Verwendungsstelle steht am Satz
+     * ([D-667](../../../docs/NewConcept/90-decision-log.md)), nicht in der Adresse des Wertes.*
      */
     public static function direct(int $recordId, int $relationId, TypedValue $value, string $locale = '', int $position = 0): self
     {
-        return new self($recordId, (string) $relationId, $relationId, $locale, $value, null, $position);
-    }
-
-    /**
-     * Ein Wert **tiefer im Modell** — die Kette der Kanten, die ihn erreicht.
-     *
-     * ⚠️ **Das ist die Form, die der Docblock oben immer beschrieben hat und die niemand benutzt
-     * hat:** *«Kanten-Ids vom Modell des Datensatzes hinunter zu diesem Wert». Gemessen am 2026-08-30
-     * trug **kein einziger** Pfad in `relation_records` einen Punkt — die Möglichkeit stand seit Paket 1
-     * da und blieb leer.*
-     *
-     * ⚠️ **Und sie ist es, die eine Einstellung an einer Verwendungsstelle möglich macht.** *Der
-     * Eigentümer, als ich einen neuen Behälter dafür bauen wollte: «wir haben alle Mittel, einer
-     * Kanten-Knoten-Kombination in jeglicher Schachtelung Daten zuzuweisen — **warum brauche ich hier
-     * ein zusätzliches Mittel?**» Er hatte recht: **es ist kein Datensatz an der Kante, sondern ein
-     * Wert im Datensatz des Besitzers, adressiert über die Kante.***
-     *
-     * ⚠️ *`relation_id` bleibt die **letzte** Stufe, damit die Suche «alle Renderer, wo auch immer sie
-     * sitzen» ein indizierter Zugriff bleibt ([D-134](../../../docs/NewConcept/90-decision-log.md)).*
-     *
-     * @param list<int> $relationIds Von aussen nach innen, mindestens eine.
-     */
-    public static function at(int $recordId, array $relationIds, TypedValue $value, string $locale = '', int $position = 0): self
-    {
-        if ($relationIds === []) {
-            throw new \InvalidArgumentException('Ein Pfad ohne Kante adressiert nichts.');
-        }
-
-        return new self(
-            $recordId,
-            implode('.', $relationIds),
-            $relationIds[array_key_last($relationIds)],
-            $locale,
-            $value,
-            null,
-            $position
-        );
+        return new self($recordId, $relationId, $locale, $value, null, $position);
     }
 
     /** Dieselbe Zeile, nachdem der Speicher ihr eine Id gegeben hat. */
     public function stored(int $id): self
     {
-        return new self($this->recordId, $this->path, $this->relationId, $this->locale, $this->value, $id, $this->position);
+        return new self($this->recordId, $this->relationId, $this->locale, $this->value, $id, $this->position);
     }
 
     /** Derselbe Wert an einer anderen Stelle unter seinen Geschwistern. */
     public function movedTo(int $position): self
     {
-        return new self($this->recordId, $this->path, $this->relationId, $this->locale, $this->value, $this->id, $position);
+        return new self($this->recordId, $this->relationId, $this->locale, $this->value, $this->id, $position);
     }
 }

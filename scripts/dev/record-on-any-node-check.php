@@ -182,7 +182,7 @@ if ($kilo === null) {
         );
 
         $roh = $record === null ? null : $wpdb->get_row($wpdb->prepare(
-            'SELECT relation_id, path, value_int FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d',
+            'SELECT relation_id, value_int FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d',
             $record->id
         ), ARRAY_A);
 
