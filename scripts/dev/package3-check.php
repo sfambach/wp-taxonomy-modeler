@@ -217,7 +217,20 @@ if (isset($underConstants['Prefixes'])) {
     $prefixModel    = new \Taxmod\Core\Service\ModelValues(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $relations, $nodes, $framework);
     $prefixNodes    = $nodes->childrenOf($underConstants['Prefixes']);
 
-    check('twenty prefixes', count($prefixNodes) === 20, (string) count($prefixNodes));
+    // ⚠️ **Hier stand `=== 20`.** *Zwanzig war nie die Zusage, sondern die Laenge der Liste, die die
+    // Saat mitbringt — eine Zahl aus dem Bestand, in einen Waechter geschrieben. **Gefragt wird
+    // jetzt die Saat selbst**: was sie aussaet, muss unten ankommen, und wenn sie einen Praefix
+    // dazubekommt, zieht die Zusage mit, statt rot zu werden. (`PR-9`: sichtbar geaendert, nicht
+    // entschaerft — die Aussage «die Saat ist vollstaendig angekommen» ist unberuehrt.)*
+    $ausDerSaat = (new ReflectionClass(\Taxmod\WordPress\Persistence\UnitScaffold::class))
+        ->getConstants()['PREFIXES'] ?? [];
+
+    check(
+        'as many prefixes as the seed ships',
+        count($prefixNodes) === count($ausDerSaat),
+        count($prefixNodes) . ' von ' . count($ausDerSaat)
+    );
+
 
     // ⚠️ **An attribute declared *not persistent*** (D-378). The owner brought the distinction
     // from object orientation — *there are attributes that get persisted and ones that do not; a
@@ -269,6 +282,12 @@ if (isset($underConstants['Prefixes'])) {
     // `settings`-Tabelle ist mit D-579 gestrichen**, es kann keine geben.*
 
     check('every prefix carries its power of ten as a default', ! in_array(null, $exponents, true));
+    // ⚠️ *Die Invariante, die die gestrichene Zahl `=== 20` ersetzt und keine eigene braucht: **kein
+    // Exponent zweimal**. Zwei Praefixe mit derselben Zehnerpotenz waeren zwei Namen fuer dasselbe,
+    // und die Umrechnung haette die Wahl — genau das faengt die blosse Anzahl nicht.*
+    check('and no two prefixes share an exponent',
+        count(array_unique($exponents)) === count($exponents),
+        count($exponents) . ' Praefixe, ' . count(array_unique($exponents)) . ' verschiedene Exponenten');
     // ⚠️ The whole reason it is an exponent: decimal(30,10) cannot hold 10^-24 or 10^24.
     check('and the range reaches both ends', max($exponents) === 24 && min($exponents) === -24,
         max($exponents) . ' … ' . min($exponents));

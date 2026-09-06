@@ -886,6 +886,98 @@ check('das Formular setzt das Zeichen je Feld', str_contains($form, 'HintMarkup:
 check('der kompakte Behaelter sammelt waagerecht', str_contains($compact, 'HintMarkup::combined('));
 check('und setzt senkrecht je Feld', str_contains($compact, 'HintMarkup::icon('));
 
+echo "\n== Geerbte und eigene Felder stehen gruppiert, nicht verzahnt ==\n";
+
+// ⚠️ **Sein Befund am 2026-09-06:** *«order scheint nicht richtig zu funktionieren».* *Gemessen an
+// `Integer`: `Root` traegt die Reihen 1,2,3 und `Integer` ebenfalls 1,2,3 — wer ueber mehrere
+// Besitzer hinweg allein nach `sort_order` sortiert, **verzahnt sie**, und auf dem Schirm stand
+// abwechselnd eine geerbte und eine eigene Zeile. Behoben in `1de58d5`.*
+//
+// ⚠️ **Und kein Waechter haette es gesehen.** *Die Reihenfolge entsteht im Speicher und wird auf der
+// **Seite** sichtbar; jede Zusage am Kern haette gefragt, ob `sort_order` stimmt — sie stimmte.
+// Darum wird hier die Spalte «From» der gezeichneten Tabelle gelesen und sonst nichts.*
+//
+// ⚠️ *Der Rang des Besitzers steht **vor** `sort_order`, von fern nach nah — damit jede Angabe dort
+// steht, wo sie erklaert wurde ([D-376](../../docs/NewConcept/90-decision-log.md)). Geerbtes zuerst.*
+$typenPB = new \Taxmod\WordPress\Persistence\SeededTypeNodes(
+    $nodesFuerRang = new \Taxmod\WordPress\Persistence\WpdbNodeRepository(),
+    $rahmenFuerRang = new \Taxmod\WordPress\Persistence\SeededFrameworkNodes(
+        $nodesFuerRang,
+        $kantenFuerRang = new \Taxmod\WordPress\Persistence\WpdbRelationRepository(),
+        new \Taxmod\WordPress\Persistence\WpdbChangelog(new \Taxmod\WordPress\SystemClock())
+    )
+);
+
+$textId = $typenPB->nodeId(\Taxmod\Core\Model\SimpleType::Text);
+
+if ($textId === null) {
+    check('der Text-Typ steht im Modell', false);
+} else {
+    $editorPB = new \Taxmod\Core\Service\ModelEditor(
+        $nodesFuerRang,
+        $kantenFuerRang,
+        $rahmenFuerRang,
+        new \Taxmod\WordPress\Persistence\WpdbChangelog(new \Taxmod\WordPress\SystemClock()),
+        new \Taxmod\WordPress\Persistence\WpdbLabelRepository(),
+        new \Taxmod\WordPress\Persistence\WpdbRecordRepository()
+    );
+
+    // ⚠️ *Eigenes Geruest, kein Knoten des Eigentuemers (TASK-025): drei geerbte Zeilen, drei
+    // eigene — und beide Besitzer zaehlen ihre `sort_order` ab derselben Zahl. **Genau daran
+    // entstand die Verzahnung.***
+    $eltern = $geruest->kompositionMit('Rang Eltern', ['E1' => [], 'E2' => [], 'E3' => []]);
+    $kindId = $geruest->kindVon($eltern->id, 'Rang Kind');
+
+    foreach (['K1', 'K2', 'K3'] as $eigenerName) {
+        $editorPB->addField($kindId, $textId, $eigenerName);
+    }
+
+    $zeilen = tabelleUnter(seiteVon($kindId), 'Fields', 'Settings');
+
+    // Spalten: Name, Points at, Kind, From, How many, Akte — die Kopfzeile traegt kein «own».
+    $herkunft = [];
+
+    foreach ($zeilen as $zeile) {
+        $woher = $zeile[3] ?? '';
+
+        if ($woher === 'own' || $woher === 'inherited') {
+            $herkunft[] = $woher;
+        }
+    }
+
+    $geerbte = count(array_filter($herkunft, static fn (string $w): bool => $w === 'inherited'));
+    $eigene  = count(array_filter($herkunft, static fn (string $w): bool => $w === 'own'));
+
+    // ⚠️ **Die Gegenfaelle zuerst.** *Ohne sie waere «nicht verzahnt» auch dann gruen, wenn eine der
+    // beiden Sorten gar nicht gezeichnet wuerde — und das waere schlimmer als die Verzahnung.*
+    check('die Zeile zeigt drei geerbte Felder', $geerbte === 3, (string) $geerbte);
+    check('und drei eigene', $eigene === 3, (string) $eigene);
+
+    // ⚠️ *«Gruppiert» heisst messbar: **genau ein Wechsel** in der Spalte. Zwei Wechsel sind eine
+    // Verzahnung, null Wechsel hiesse, eine Sorte fehlt — das faengt der Gegenfall oben.*
+    $wechsel = 0;
+
+    for ($i = 1, $n = count($herkunft); $i < $n; $i++) {
+        if ($herkunft[$i] !== $herkunft[$i - 1]) {
+            ++$wechsel;
+        }
+    }
+
+    check(
+        'geerbte und eigene stehen in je einem Block',
+        $wechsel === 1,
+        $wechsel . ' Wechsel: ' . implode(' ', $herkunft)
+    );
+
+    // ⚠️ *Und zwar von fern nach nah: **der Vorfahre erklaert zuerst**
+    // ([D-376](../../docs/NewConcept/90-decision-log.md)).*
+    check(
+        'und das Geerbte steht vorn',
+        ($herkunft[0] ?? '') === 'inherited',
+        implode(' ', $herkunft)
+    );
+}
+
 $geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

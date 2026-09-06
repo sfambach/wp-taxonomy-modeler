@@ -1091,6 +1091,159 @@ check(
     'der Wert steht nicht im Steuerelement'
 );
 
+echo "\n== die Tafel bietet nur an, was die Kette erklaert (D-529, D-668) ==\n";
+
+// ⚠️ **Sein Befund am 2026-09-06:** *«es scheinen einfach alle Einstellungen zu sein, nicht nur die
+// vom Typ Text».* *Gemessen stimmte das: die Tafel ging eine **Aufzaehlung im Kode** durch und nahm
+// jeden Schluessel, fuer den sich ein Steuerelement zeichnen laesst. Behoben in `688798e`, verschaerft
+// durch [D-668](../../docs/NewConcept/90-decision-log.md) in `b32b491`.*
+//
+// ⚠️ **Und gemessen wird am Markup der aufgeklappten Zeile, nicht an `ModelValues`.** *Die vorhandene
+// Zusage in `setting-relation-check` fragt den Kern — sie waere gruen geblieben, solange die Tafel
+// ihre Schluessel woanders herholt. **Genau dieser Unterschied hat den Fehler verdeckt.***
+preg_match_all(
+    '/name="taxmod_field_setting\[' . $feld->id . '\]\[([a-z_]+)\]"/',
+    $auf,
+    $tafelTreffer
+);
+
+$angeboteneSchluessel = array_values(array_unique($tafelTreffer[1]));
+
+// ⚠️ *«Erklaert» heisst: eine Einstellungs**kante** an einem Knoten der Kette des **Ziels**
+// ([D-529](../../docs/NewConcept/90-decision-log.md)). Die Kette wird aus der Datenbank gelaufen und
+// nicht bei einem Dienst erfragt — sonst pruefte der Waechter denselben Kode zweimal.*
+$kette = [];
+$lauf  = $probe->id;
+
+while ($lauf !== 0) {
+    $kette[] = $lauf;
+    $lauf    = $nodes->find($lauf)?->parentId() ?? 0;
+}
+
+$erklaert = $wpdb->get_col(
+    "SELECT DISTINCT name FROM {$p}relations_named
+      WHERE kind = 'setting' AND name <> '' AND from_node_id IN (" . implode(',', $kette) . ')'
+) ?: [];
+
+// ⚠️ **Eine Ausnahme, und sie steht mit Grund da:** *`multiplicity` ist **eine Spalte an der Kante**
+// ([D-351](../../docs/NewConcept/90-decision-log.md): *«one key with four constants»*) und keine
+// Einstellungskante. Sie kann an keiner Kette erklaert sein — und sie gehoert trotzdem in die Tafel,
+// weil sie zur Verwendungsstelle gehoert und nur dort zu aendern ist.*
+$erklaert[] = SettingKey::Multiplicity->value;
+
+$ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
+
+// ⚠️ *Der Gegenfall zuerst: **eine leere Tafel waere sonst gruen** — und «bietet nur Erklaertes an»
+// ist am billigsten dadurch erfuellt, dass gar nichts angeboten wird.*
+check(
+    'die Tafel bietet ueberhaupt Schluessel an',
+    count($angeboteneSchluessel) >= 3,
+    implode(',', $angeboteneSchluessel) ?: '—'
+);
+
+check(
+    'und jeder von ihnen ist an der Kette des Ziels erklaert',
+    $ueberzaehlig === [],
+    'nicht erklaert: ' . implode(',', $ueberzaehlig) . ' — erklaert: ' . implode(',', $erklaert)
+);
+
+// ⚠️ **Der benannte Gegenfall, und er ist der Fall, den er gemeldet hat.** *`display_size` ist ein
+// zeichenbarer Schluessel ([D-659](../../docs/NewConcept/90-decision-log.md)) und steht **nicht** an
+// der Kette dieses Ziels. Die alte Tafel bot ihn trotzdem an, weil sie fragte, was sich zeichnen
+// laesst. **Ohne diese Zeile bliebe die Zusage oben abstrakt** — sie faellt weg, sobald `display_size`
+// hier wirklich erklaert wird, und dann ist sie zu ersetzen und nicht zu entschaerfen.*
+check(
+    'und ein zeichenbarer, aber nicht erklaerter Schluessel fehlt in der Tafel',
+    in_array(SettingKey::DisplaySize->value, $erklaert, true)
+        || ! in_array(SettingKey::DisplaySize->value, $angeboteneSchluessel, true),
+    'die Tafel bietet `' . SettingKey::DisplaySize->value . '` an, ohne dass die Kette ihn erklaert'
+);
+
+echo "\n== die Wurzel ist der letzte Halt, nicht die Regel fuer alles (D-617) ==\n";
+
+// ⚠️ **[D-617](../../docs/NewConcept/90-decision-log.md), sein Wort:** *«Am Modellwurzel sollte der
+// Rueckfallknoten haengen eigentlich, ne. Und die anderen Knoten bestimmen selbst, was ihr Default
+// Renderer ist.»* **Ein Wert an der Wurzel ist gewollt** ([D-616](../../docs/NewConcept/90-decision-log.md)),
+// *er hat nur den **letzten** Rang.*
+//
+// ⚠️ **Der Fall, den es wirklich gab** ([D-616](../../docs/NewConcept/90-decision-log.md)): *der
+// `default`-Satz der Wurzel trug `render = checkbox`, **womit jedes Feld des Modells als Ankreuzfeld
+// gezeichnet worden waere**. Kein Journaleintrag, keine Schattenzeile — nie ueber die Oberflaeche
+// geschrieben, und kein Waechter sah es. Gefunden hat es der Eigentuemer.*
+//
+// ⚠️ *Der Waechter setzt den Wert selbst, ueber die Maske, und die Klammer aus `lib/no-write.php`
+// dreht ihn zurueck. **Nur so ist die Zusage nicht davon abhaengig, was heute zufaellig an seiner
+// Wurzel steht.***
+$wurzelId = $kette === [] ? 0 : (int) end($kette);
+
+check('die Kette endet an einer Wurzel ohne Elternknoten', $wurzelId !== 0, (string) $wurzelId);
+
+$wurzelWahlId = $ids[0];
+$wurzelWahl   = $angebot[$wurzelWahlId];
+$eigenId      = $ids[1] ?? $ids[0];
+$eigen        = $angebot[$eigenId];
+
+check('die Wahl der Wurzel und die eigene sind zwei verschiedene', $wurzelWahlId !== $eigenId);
+
+abschicken([
+    'do'            => 'put_setting',
+    'id'            => (string) $wurzelId,
+    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $wurzelId),
+    'taxmod_value'  => [(string) $kante => (string) $wurzelWahlId],
+]);
+
+// ⚠️ **Die Gegenprobe zuerst, und ohne sie ist der Rest wertlos:** *ein Knoten, der **nichts** sagt,
+// bekommt die Wahl der Wurzel. Waere das nicht so, hiesse «die Wurzel zwingt nichts auf» bloss, dass
+// der Wert nirgends angekommen ist — und die Zusage waere gruen, weil das Setzen misslang.*
+//
+// ⚠️ *Er haengt **unmittelbar** an der Wurzel, und das ist nicht willkuerlich: unter `Integer` steht
+// der Waechter gemessen bei `slider` — **weil `Integer` selbst eine Wahl traegt und naeher ist**
+// ([D-602](../../docs/NewConcept/90-decision-log.md)). Ein Zwischenhalt in der Kette macht die
+// Gegenprobe zu einer Aussage ueber ihn statt ueber die Wurzel.*
+$stumm = $editor->createNode('__rcm stumm', $wurzelId);
+
+check(
+    'ein Knoten ohne eigene Aussage bekommt die Wahl der Wurzel',
+    gespeicherterRenderer($stumm->id) === $wurzelWahl,
+    'gelesen «' . gespeicherterRenderer($stumm->id) . "», an der Wurzel «{$wurzelWahl}»"
+);
+
+abschicken([
+    'do'            => 'put_setting',
+    'id'            => (string) $probe->id,
+    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $probe->id),
+    'taxmod_value'  => [(string) $kante => (string) $eigenId],
+]);
+
+// ⚠️ **Und jetzt die Zusage:** *derselbe Knoten mit eigener Aussage behaelt sie. **Naeher schlaegt
+// ferner** ([D-602](../../docs/NewConcept/90-decision-log.md)), und die Wurzel ist der fernste Punkt.*
+check(
+    'ein Knoten mit eigener Aussage behaelt sie gegen die Wurzel',
+    gespeicherterRenderer($probe->id) === $eigen,
+    'gelesen «' . gespeicherterRenderer($probe->id) . "», eigen «{$eigen}», Wurzel «{$wurzelWahl}»"
+);
+
+// ⚠️ *Am Markup, nicht an der Aufloesung: **der Waehler steht auf der eigenen Wahl** und nicht auf
+// der der Wurzel. Ein Schirm, der die geerbte Wahl vormarkiert, meldet beim naechsten Speichern eine
+// Aenderung, die niemand gemacht hat.*
+$markup = seite($probe->id);
+
+check(
+    'und die Maske markiert die eigene Wahl, nicht die der Wurzel',
+    (bool) preg_match('/<option value="' . $eigenId . '" selected/', $markup)
+        && ! preg_match('/<option value="' . $wurzelWahlId . '" selected/', $markup),
+    "«{$eigen}» sollte markiert sein, «{$wurzelWahl}» nicht"
+);
+
+// ⚠️ **Und gezeichnet wird auch mit der eigenen.** *Gespeichert und gezeichnet sind zwei Dinge — die
+// Aufloesungskette dazwischen hat schon zweimal etwas verloren
+// ([D-543](../../docs/NewConcept/90-decision-log.md), [D-604](../../docs/NewConcept/90-decision-log.md)).*
+check(
+    'und gezeichnet wird der Knoten mit seiner eigenen Wahl',
+    gezeichnet($feld->id)[0] === $eigen,
+    'gezeichnet «' . gezeichnet($feld->id)[0] . "», eigen «{$eigen}»"
+);
+
 echo "\n== aufraeumen ==\n";
 
 // ⚠️ *Nach dem eigenen Namensmuster und nie ueber `clearTrash()` — dort liegt seine geparkte Arbeit

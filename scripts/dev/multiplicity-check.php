@@ -283,8 +283,14 @@ $mitWahl = (int) $wpdb->get_var($wpdb->prepare(
 ));
 
 // ⚠️ *Der Gegenfall: es gibt ueberhaupt Wahlen. Sonst waere «kein Traeger ins Leere» auch dann
-// gruen, wenn keine einzige Zeile dasteht. Gemessen am 2026-09-05: 29.*
-check('und Knoten tragen ihre Wahl an dieser Kante', $mitWahl >= 20, (string) $mitWahl);
+// gruen, wenn keine einzige Zeile dasteht.*
+//
+// ⚠️ **Hier stand `>= 20`, und der Waechter war rot** — *gemessen am 2026-09-06 tragen 10 Knoten
+// eine Wahl, weil der Eigentuemer seither aufgeraeumt hat. **Nichts war kaputt; eine Zahl aus seinem
+// Bestand von vorgestern stand in einer Zusage.** Die Zusage sagt in ihrem eigenen Satz, was sie
+// meint — «es gibt ueberhaupt Wahlen» —, und genau das steht jetzt da (`PR-9`: sichtbar geaendert,
+// nicht entschaerft).*
+check('und Knoten tragen ihre Wahl an dieser Kante', $mitWahl >= 1, (string) $mitWahl);
 
 $insLeere = (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v

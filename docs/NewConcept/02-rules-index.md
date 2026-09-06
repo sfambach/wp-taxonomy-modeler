@@ -45,7 +45,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 14 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 11 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 16 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 63 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 67 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
@@ -261,7 +261,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R9** | A renderer — an integer renderer, say — must carry options for these different circumstances. | [30-renderer.md:96](30-renderer.md) | 3 |
 | **R10** | Every renderer must support editable / not editable. | [30-renderer.md:97](30-renderer.md) | 3 |
 | **R11** | A renderer must honour whether a node is visible (hide), as set on the attributes. Held, and by a mechanism that makes the renderer's part of it em… | [30-renderer.md:98](30-renderer.md) | 9 |
-| **R12** | The registry is the one place where all renderers are registered. | [30-renderer.md:295](30-renderer.md) | 6 |
+| **R12** | The registry is the one place where all renderers are registered. | [30-renderer.md:295](30-renderer.md) | 8 |
 | **R13** | A node carries only the name of its renderer. Handing the node to the registry means: look up that name, fetch the renderer. | [30-renderer.md:296](30-renderer.md) | 1 |
 | **R14** | Every renderer records which node types it is responsible for when it registers — so the settings UI can offer a choice. | [30-renderer.md:297](30-renderer.md) | 17 |
 | **R15** | One renderer per presentation variant. An integer node can be shown as a plain field, a spinner, or a slider: three renderers, not one renderer wit… | [30-renderer.md:298](30-renderer.md) | 17 |

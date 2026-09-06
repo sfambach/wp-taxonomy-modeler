@@ -222,9 +222,13 @@ $daneben = $rendererAst === [] ? $gesamt : (int) $wpdb->get_var($wpdb->prepare(
 
 check('jeder Traeger zeigt auf einen Satz im Renderer-Ast', $daneben === 0, "{$daneben} von {$gesamt} daneben");
 
-// ⚠️ *Der Gegenfall: es gibt ueberhaupt gespeicherte Renderer. Gemessen am 2026-09-05: 29.*
-check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
-check('und es gibt gespeicherte Renderer', $gesamt > 20, (string) $gesamt);
+// ⚠️ *Der Gegenfall: es gibt ueberhaupt gespeicherte Renderer.*
+//
+// ⚠️ **Hier stand `> 20` und die Zeile stand zweimal da** — *gemessen am 2026-09-06 sind es 10, also
+// meldete ein Abschreibfehler denselben Nicht-Fehler doppelt. **Die Zahl war sein Arbeitsstand vom
+// 2026-09-05**, nicht die Zusage; die Zusage sagt in ihrem eigenen Satz «es gibt ueberhaupt
+// gespeicherte Renderer» (`PR-9`: sichtbar geaendert, nicht entschaerft).*
+check('und es gibt gespeicherte Renderer', $gesamt >= 1, (string) $gesamt);
 
 echo "\n== Ein Renderer wird geschrieben und wieder gelesen ==\n";
 

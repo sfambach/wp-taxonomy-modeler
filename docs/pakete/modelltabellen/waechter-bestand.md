@@ -210,3 +210,184 @@ welcher Lauf abgestürzt ist.*
 
 *Gemessen 2026-09-05 auf Laragon/MySQL, PHP 8.3.30. Die Laufzeiten sind Einzelläufe, kalt, ein
 Durchgang.*
+
+---
+
+# Nachtrag 2026-09-06 — welcher Wächter hat je einen Fehler gefunden?
+
+**Sein Auftrag, wörtlich:** *«hast so viel checks aber trotzdem läuft dauernd etwas schief, ich fände
+es besser weniger check dafür aber richtige zu haben.»*
+
+**Die Antwort in einer Zeile: von 73 Läufen sehen 14 die Seite an, die er bedient — und alle vier
+Fehler dieses Tages standen auf der Seite.**
+
+## Der Befund, mit Zahlen
+
+| gemessen am 2026-09-06 | |
+|---|---|
+| Wächterläufe insgesamt | **73** |
+| davon **zeichnen eine Seite** (`screen()->render()`) | **14** |
+| davon **gehen einen Akt** (`handlePost()`) | **8** |
+| davon **ohne WordPress** — Dateien, Kode, Dokumente | **12** |
+| Rest: Aussagen über den Bestand und über den Kern | **47** |
+| Zeilen Wächter gegen Zeilen `src/` | **23 064 gegen 38 635** |
+| Commits, die einen Wächter anfassen | **219** |
+| davon **ohne jede Änderung an `src/`** | **64** — der Wächter wurde der Wirklichkeit nachgezogen, nicht umgekehrt |
+
+⚠️ **Die vier Fehler dieses Tages sind alle an 73 grünen Läufen vorbeigekommen**, und alle vier
+standen auf seinem Schirm: die Modellwurzel zwang jedem Knoten einen Renderer auf, die Feldreihenfolge
+verzahnte Geerbtes mit Eigenem, die Einstellungstafel bot Schlüssel an, die der Typ nicht kennt, und
+der Renderer-Kasten stellte die falsche Frage. **Jeder einzelne wäre einer Zusage an der Maske
+aufgefallen** — und keiner einer Zusage am Kern.
+
+## Belegte Funde — und belegte Fehlalarme
+
+**Gesucht wurde nicht, was ein Wächter *bewacht*, sondern was er *gefunden* hat.** Quelle sind die
+Commit-Nachrichten und die Kommentare in den Läufen selbst; wo nichts steht, steht hier «kein Fund
+belegt» — und das ist kein Vorwurf an den Lauf, sondern die ehrliche Auskunft.
+
+| Lauf | belegter **Fund** |
+|---|---|
+| `package7` | *«package7-check hat danach doppelte HTML-Ids gemeldet, erst elf zwischen Baum …»* |
+| `package3` | *«nicht-persistent. package3-check hat es sofort gemeldet, wiederhergestellt.»* |
+| `unitvalue` | *«unitvalue-check fand fuenf Glieder statt der drei aus …»* — und heute der Befund `2.7 kilo ` statt `2.7 kilo Ohm` |
+| `labels-page-save` | das fehlende `form="…"` an einem Steuerelement; zweimal in `renderer-choice-mask` als *«den Regress, den `labels-page-save-check` einmal gefangen hat»* zitiert |
+| `page-blocks` | das Dreieck in der Namenszelle, das aus `with_label` ein *mit-Dreieck-with_label* machte (`688798e`) |
+
+| Lauf | belegter **Fehlalarm** — rot bei richtiger Arbeit |
+|---|---|
+| `package7` | rot, als der Eigentümer am `Integer`-Knoten eine Einstellung änderte (zweimal, Zeilen 246 und 281) |
+| `page-blocks` | rot, als er `Adresse` um eine Schachtelung erweiterte, *«ohne dass etwas kaputt war»* |
+| `page-blocks` | meldete *«null Felder, wo drei sind»*, weil «Settings» als Knotenname in der Zeile stand |
+| `record-on-first-write` | rot, sobald ein anderer Wächter im selben Durchgang gelaufen war |
+| `field-hide` | rot ab dem Klick, mit dem er `Prefixes.exponent` versteckte — **25 Läufe lang** |
+| `renderer-choice-mask` | meldete einen Fehler, den der Lauf sich selbst gemacht hatte (`check_admin_referer`) |
+
+⚠️ **Fünf Läufe mit belegtem Fund, sechs mit belegtem Fehlalarm.** *Das ist die Messung hinter seinem
+Satz. **Ein Wächter, der bei richtiger Arbeit rot wird, erzieht dazu, rote Wächter zu übersehen** —
+und dann sieht man auch den einen nicht, der recht hat.*
+
+## Die drei Arten
+
+```mermaid
+flowchart LR
+    M[Zusage an der Maske] -->|misst| S[Markup der Seite]
+    I[Invariante am Bestand] -->|misst| D[alle Zeilen, ohne Namen]
+    U[alles Uebrige] -->|misst| K[Kode gegen Kode, Zahl aus dem Bestand]
+```
+
+**Maske** heisst: `seite($id)` zeichnen und im Markup nachsehen. **Invariante** heisst: eine Aussage,
+die über *jeder* Zeile gilt und keinen Namen und keine Zahl aus seinem Bestand kennt. **Übrig** ist,
+was Kode gegen Kode prüft oder eine Momentaufnahme festhält.
+
+### Maske — bleiben, alle 14
+
+`cleanup-screen`, `collapsed-default`, `field-hide`, `hide-abort`, `icon-button`, `labels-page-save`,
+`move-mask`, `package7`, `page-blocks`, `preview`, `renderer-choice-mask`, `setting-branch-relation`,
+`target-link`, `used-by`.
+
+⚠️ *Hier gehört die Arbeit hin, nicht das Streichen. **Vier Zusagen sind heute dazugekommen** —
+siehe unten.*
+
+### Invarianten — bleiben, 13
+
+| Lauf | die Aussage |
+|---|---|
+| `orphans` | kein Besitzer einer Einstellung oder Beschriftung ist verschwunden |
+| `dangling-reference` | ein Verweis auf einen verschwundenen Knoten ist **am Feld** sichtbar |
+| `value-ref-space` | kein Verweis ohne Raumangabe, und die Angabe stimmt |
+| `id-space` | jede Tabelle vergibt ihre Ids selbst, keine Nummer zweimal |
+| `silent-query` | eine kaputte Abfrage wirft, statt leer zu antworten |
+| `no-model-write` | kein Wächter schreibt in sein Modell |
+| `shadow-shape` | lebende Tabelle und Schatten haben dieselbe Form |
+| `change-group` | ein Akt, eine Änderungsnummer |
+| `version` | die Version wird immer mitgeschrieben |
+| `sort-order` | eine Stelle je Knoten und Kantenart, und die erste ist `0` |
+| `edge-class` | drei Werte, drei Klassen — und kein Datensatz hängt an zwei Besitzern |
+| `seed-twice` | eine Saat, die zweimal läuft, verdoppelt nichts |
+| `references` | kein Dokument beruft sich auf eine Nummer, die es nie gab |
+
+⚠️ *Dazu die vier, die `CLAUDE.md` namentlich als Ersatz für die verbotenen Zählungen nennt und die
+darum nicht zur Debatte stehen: `rules-index`, `concept-drift`, `confirmed-quote`, `superseded`.*
+
+## Die Streichliste — vorgelegt, nicht ausgeführt
+
+⚠️ **In diesem Auftrag ist kein Lauf gelöscht worden.** *Er wollte die Liste sehen, bevor etwas
+fällt. Jede Zeile trägt ihren Grund; wo der Grund «geht in X auf» heisst, muss X die Zusage
+vorher wirklich tragen — und das ist je Zeile nachzusehen, nicht zu glauben.*
+
+| Lauf | Grund |
+|---|---|
+| `renderer-choice` | **Vollständig in `renderer-choice-mask` enthalten**, und er ist einer der vier grünen, die ihm am 2026-09-05 widersprachen: er schreibt über den Kern und hat nie gesehen, dass auf der Seite gar kein Wähler stand. |
+| `rename-survives` | Dieselbe Aussage — «eine Umbenennung ändert nichts am Gezeichneten» — misst `renderer-choice-mask` am Markup, für **jede** angebotene Wahl. |
+| `settings-record-carrier` | Der Träger des Einstellungsdatensatzes; `renderer-choice-mask` prüft ihn am Datensatz **und** an der Kante, nach dem Speichern über die Maske. |
+| `setting-kind` | Geht in `setting-relation` auf: beide fragen, was eine Einstellungskante ist, seit `nodes.field_type` gefallen ist, aus derselben Quelle. |
+| `setting-self-inherit` | Zwei Zusagen über dieselbe Kante wie `setting-relation`; sie gehören in einen Lauf. |
+| `anchor` | Bewacht Verweise **innerhalb** von `docs/NewConcept/` — einem Steinbruch (`PR-1`, [D-568](../../NewConcept/90-decision-log.md)). Ein Wächter auf einem Dokument, das nicht mehr fortgeschrieben wird, hält einen Zustand fest, den niemand mehr ändert. |
+| `question-symmetry` | Bewacht `91-open-questions.md` — das Fragenblatt ist mit seinem Konzept **geschlossen** (`PR-4`). |
+| `supersession` | Dieselbe Aussage wie `superseded`, von der anderen Seite gelesen. |
+| `settings-are-gone` | Bewacht **eine** Entscheidung ([D-506](../../NewConcept/90-decision-log.md)); das war eine einmalige Aufräumarbeit. |
+| `icon-markup` | Prüft **Kode gegen Kode**. Dieselbe Sache misst `icon-button` an der gezeichneten Seite — und nur die Messung am Markup hat den Fehler je gefunden. |
+| `dialog-script` | Prüft Kode gegen Kode und sagt in seinem eigenen Docblock, dass er das Verhalten **nicht** prüfen kann. |
+| `package1` | «Anlegen, umbenennen, Papierkorb» — im Kernlauf (485 Tests) und in `cleartrash` enthalten. |
+| `package2` | «Baum und Reihenfolge» — in `sort-order` und `collapsed-default` enthalten. |
+| `package5` | «Beschriftungen, Rollen, Sprachen» — in `label-space` und `labels-page-save` enthalten. |
+| `package6` | «Datensätze» — in `record-on-first-write` und `renderer-choice-mask` enthalten. |
+| `path` + `field-type-gone` | **Zwei Läufe, eine Aussage**: «eine gefallene Spalte kommt nicht zurück, und `dbDelta` legt sie nicht wieder an». Zusammenlegen zu einem. |
+
+**Wirkung, wenn er alles annimmt: 73 → 57 Läufe.** *Und die 14 Zusagen an der Maske bleiben
+vollständig — gestrichen wird nur, wo eine zweite Stimme dasselbe sagt oder ein Steinbruch bewacht
+wird.*
+
+⚠️ **Was ausdrücklich *nicht* auf der Liste steht, obwohl es lang ist:** *`package7` (997 Zeilen) und
+`page-blocks` (893) sind die beiden grössten und stehen beide unter «bleiben». **Sie zeichnen die
+Seite** — und sie sind zugleich die beiden mit den meisten Fehlalarmen. Der richtige Griff ist dort
+das Gerüst (`geruest.php`), nicht das Löschen.*
+
+## Was gebaut wurde — vier Zusagen an der Maske
+
+**Alle vier messen am Markup der Seite (`seite($id)` → Markup → suchen), nicht an einer
+Dienstmethode.** *Genau dieser Unterschied hat am 2026-09-06 zweimal zu einer falschen Meldung
+geführt.*
+
+| Zusage | wo | Nachweis, dass sie beisst |
+|---|---|---|
+| Die Wurzel zwingt keinem Knoten einen Renderer auf ([D-617](../../NewConcept/90-decision-log.md)) | `renderer-choice-mask` | Der Lauf **setzt den Wert an der Wurzel selbst**, über die Maske, und die Klammer dreht ihn zurück. Gegenprobe: ein Knoten unmittelbar an der Wurzel *bekommt* ihn — sonst wäre die Zusage grün, weil das Setzen misslang. |
+| Geerbte und eigene Felder stehen in je einem Block, Geerbtes vorn ([D-376](../../NewConcept/90-decision-log.md)) | `page-blocks` | **Nachgewiesen:** mit dem alten `ORDER BY r.sort_order` meldet der Lauf *«5 Wechsel: inherited own inherited own inherited own»* — genau das Bild, das er gemeldet hat. |
+| Die Einstellungstafel bietet nur an, was die Kette des **Ziels** erklärt ([D-529](../../NewConcept/90-decision-log.md), [D-668](../../NewConcept/90-decision-log.md)) | `renderer-choice-mask` | Die erklärten Schlüssel kommen aus der Datenbank, die angebotenen aus dem Markup der aufgeklappten Zeile. Dazu der benannte Gegenfall `display_size`: zeichenbar, an dieser Kette nicht erklärt, darf nicht dastehen. |
+| Der Renderer-Kasten bietet an, was den Knoten zeichnen kann | `renderer-choice-mask` | **Stand schon da** (`23e7531`) und wird am Markup gemessen: `Integer` genau `field, spinner, slider`, ein Blatt unter `constants` `reference`, derselbe Knoten mit einem Kind die zwei Wähler. |
+
+⚠️ *Eine Ausnahme steht mit Grund in der dritten Zusage: **`multiplicity` ist eine Spalte an der
+Kante** ([D-351](../../NewConcept/90-decision-log.md)) und kann an keiner Kette erklärt sein — sie
+gehört trotzdem in die Tafel, weil sie zur Verwendungsstelle gehört.*
+
+## Die festen Zahlen — was umgestellt ist
+
+⚠️ **Keine davon war eine Zusage; alle fünf waren der Stand seines Modells am Tag, an dem die Zeile
+geschrieben wurde.** *Das steht in den Kommentaren daneben wörtlich: «es gibt **überhaupt** Wahlen»,
+«es gibt **überhaupt** Kanten-Datensätze». **Die Zahl war nie die Aussage** — darum ist keine dieser
+Umstellungen eine Entschärfung (`PR-9`), und jede ist im Lauf selbst begründet.*
+
+| Lauf | vorher | jetzt |
+|---|---|---|
+| `multiplicity` | `>= 20` — **rot**, weil heute 10 Knoten eine Wahl tragen | `>= 1` — «es gibt überhaupt Wahlen» |
+| `setting-write` | `> 20` — **rot**, und die Zeile stand **zweimal** da (Abschreibfehler, derselbe Nicht-Fehler doppelt gemeldet) | `>= 1`, einmal |
+| `renderer-choice` | `> 50` | `>= 1` |
+| `rename-survives` | `>= 4` (zweimal) | `>= 1` |
+| `package3` | `=== 20` Präfixe | **so viele, wie die Saat mitbringt** — gelesen aus `UnitScaffold::PREFIXES`, plus die neue Invariante *kein Exponent zweimal* |
+
+**`multiplicity` und `setting-write` sind damit grün, ohne dass eine Zusage weicher wurde.**
+
+## Was für ihn offen bleibt
+
+1. **Die Streichliste oben ist eine Vorlage.** Sie wird erst ausgeführt, wenn er sie durchgesehen hat.
+2. **Bei `package3` kann die neue Form rot werden, ohne dass etwas kaputt ist** — nämlich wenn er
+   einen Präfix **löscht**. [D-119](../../NewConcept/90-decision-log.md) gibt ihm das Recht, Gesätes
+   umzubenennen; ob es auch das Recht einschliesst, Gesätes wegzunehmen, ohne dass ein Wächter rot
+   wird, ist **nicht entschieden**. → Eingangsblatt.
+3. **Der Gegenfall «es gibt überhaupt welche» hängt weiter an seinem Bestand**, nur nicht mehr an
+   einer Zahl. Der saubere Weg wäre, dass der Lauf sich seine eine Zeile **selbst anlegt** — wie
+   `renderer-choice-mask` es tut. Das sind vier Umschreibungen; soll ich sie machen?
+4. **Drei Läufe sind rot und gehören nicht zu diesem Auftrag:** `inheritance-column` (130
+   Schattenzeilen für 139 Einordnungen), `unitvalue` (wartet auf `OQ-134`), `cleartrash` (*«its
+   labels went with it»*). Der dritte ist **neu** und stand in keiner der Vorwarnungen.

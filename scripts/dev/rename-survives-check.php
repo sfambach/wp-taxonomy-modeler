@@ -175,7 +175,10 @@ $traeger = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
     $kante
 )));
 
-check('es gibt Traeger an der Einstellungskante', count($traeger) >= 4, count($traeger) . ' Knoten');
+// ⚠️ *Hier stand `>= 4` — **eine Zahl aus seinem Bestand**. Die Zusage darunter ist «kein Traeger
+// zeigt ins Leere», und dieser Gegenfall sorgt nur dafuer, dass sie nicht ueber einer leeren Menge
+// gruen wird. **Vier war nie die Aussage** (`PR-9`: sichtbar geaendert, nicht entschaerft).*
+check('es gibt Traeger an der Einstellungskante', count($traeger) >= 1, count($traeger) . ' Knoten');
 
 $haltlos = (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v'
@@ -192,7 +195,8 @@ $etwas = count(array_filter($vorher, static fn (string $w): bool => $w !== 'nich
 
 check(
     'und die Aufloesung liefert ueberhaupt etwas',
-    $etwas >= 4,
+    // ⚠️ *Auch hier stand `>= 4`. **«Ueberhaupt etwas» ist die Aussage**, nicht «mindestens vier».*
+    $etwas >= 1,
     "{$etwas} von " . count($vorher) . ': ' . implode(', ', $vorher)
 );
 

@@ -258,7 +258,11 @@ check('keine Renderer-Wahl an einer Verwendungsstelle', $mitPunkt === 0, (string
 // grün, wenn die Tabelle leer wäre.*
 $alle = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('relation_records'));
 
-check('und es gibt Kanten-Datensaetze', $alle > 50, (string) $alle);
+// ⚠️ *Hier stand `> 50` — **eine Zahl aus seinem Arbeitsstand**, und die Zusage darueber sagt in
+// ihren eigenen Worten, was sie meint: «es gibt ueberhaupt Kanten-Datensaetze». **Fuenfzig war nie
+// die Aussage**, sondern der Stand des Tages, an dem die Zeile geschrieben wurde. `PR-9`: sichtbar
+// geaendert, und die Aussage ist unberuehrt.*
+check('und es gibt Kanten-Datensaetze', $alle >= 1, (string) $alle);
 
 $stellen = [];
 
