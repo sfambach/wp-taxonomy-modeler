@@ -1937,3 +1937,34 @@ Renderer sind wieder zu erreichen** — `form`, `table`, `compact` an einem Knot
 *Der Waechter `renderer-choice-mask-check` haelt es fest: die Zeile bietet an, der Block kommt im
 Markup nicht mehr vor, ein Knoten neben den Renderern ohne Klasse ist keine Moeglichkeit, und die
 Wahl laesst sich ueber die Zeile speichern und wiederfinden — 19 Zusagen, alle gruen.*
+
+---
+
+[ ] TASK-061  Der Knotenname wird in der gewaehlten Sprache gelesen und geschrieben
+
+**2026-09-06, von ihm gefunden:** *«node name ist noch nicht sprachabhaengig, obwohl du geschrieben
+hast, dass label gebaut wurde».* **Er hat recht, und beides stimmt:** *gespeichert ist der Name
+sprachabhaengig — `label_texts` traegt `locale` und `text_name`, gemessen 195 Zeilen `en_US` und 2
+`de_DE`. **Der Weg dorthin fehlt.***
+
+⚠️ **Gemessen, wo es haengt — zwei Stellen, beide am Rand:**
+
+1. **Gelesen wird immer die Standardsprache.** *`WpdbNodeRepository::nameArgs()` gibt fest
+   `SettingsScreen::neutralLocale()` in den Verbund: `t.locale = 'en_US'`. **Welche Sprache die
+   Seite gewaehlt hat, erreicht den Leser nicht.** Darum steht sein deutscher Text «Straße /Haus
+   Nr.» in der **englischen** Zeile — er hat ihn eingetragen, und der Schreiber kannte keine andere.*
+2. **Geschrieben wird ohne Sprache.** *`ModelEditor::rename()` nimmt einen Namen entgegen und keine
+   Locale; `Node::renamedTo()` ebenso. **Jede Umbenennung trifft dieselbe Zeile**, gleich was oben
+   gewaehlt ist.*
+
+**Zu bauen:** *der Leser bekommt die gewaehlte Sprache mit Rueckfall auf die Standardsprache
+([D-645](../../NewConcept/90-decision-log.md), [D-387](../../NewConcept/90-decision-log.md)), der
+Schreiber gibt sie mit. **Der Rueckfall ist der heikle Teil:** ein Knoten ohne deutschen Namen muss
+den englischen zeigen und darf ihn beim naechsten Speichern **nicht** als deutschen festschreiben —
+sonst wandert die englische Beschriftung stillschweigend in jede Sprache.*
+
+⚠️ **Waechter:** *ein Knoten mit zwei Sprachen liefert je Sprache seinen Text; wo eine fehlt, kommt
+die Standardsprache; und ein Speichern in Sprache A laesst Sprache B unangetastet. **Der letzte
+Punkt ist der, der ohne Zusage still kaputtgeht.***
+
+Rest von TASK-019 — die Tabellen stehen, der Weg dorthin nicht.
