@@ -2869,9 +2869,7 @@ final class Rendering implements Presets
         }
 
         if ($shape === SettingShape::ARegisteredName && $key === SettingKey::Renderer) {
-            $eligible = $subject instanceof Relation
-                ? $this->choicesFor($subject, $purpose)
-                : $this->choicesForNode($subject, $purpose);
+            $eligible = $this->choicesForWhatIsDrawn($subject);
 
             foreach ($eligible as $one) {
                 $options[$one->name()] = $one->name();
@@ -3002,6 +3000,42 @@ final class Rendering implements Presets
      *
      * @return list<Renderer>
      */
+    /**
+     * Welche Renderer für **das** in Frage kommen, was hier gezeichnet wird.
+     *
+     * ⚠️ **Sein Befund am 2026-09-06, mit Bild:** *am Knoten `Ampere` bot die Renderer-Zeile
+     * `chooser-dialog` und `chooser-inline` an. **Gemessen war der Gegenstand der Frage falsch:** die
+     * Zeile fragte die **Einstellungskante** `renderer` — deren Ziel ist der Knoten `Renderer`, und
+     * die Frage «was zeichnet einen Verweis auf einen Renderer» beantworten genau die zwei Chooser.
+     * **Gefragt gehört, was `Ampere` zeichnet.***
+     *
+     * ⚠️ **Die Unterscheidung, auf die es ankommt:**
+     * *eine **Einstellungskante** beschreibt nicht, was gezeichnet wird — sie hängt an dem, was
+     * gezeichnet wird. Also ist der Gegenstand ihr **Besitzer**. Eine **Feldkante** dagegen ist die
+     * Verwendungsstelle selbst; dort wird ihr Ziel gezeichnet, und danach fragt {@see self::choicesFor()}.*
+     *
+     * ⚠️ **Ohne Zweck gefragt, und das ist kein Versehen.** *Der Zweck des **Schirms** ist «bearbeiten»
+     * — der Zweck der **Zeichnung** ist damit nicht festgelegt. Ein Konstantenknoten wie `Ampere` wird
+     * angezeigt und nicht eingegeben; fragte man mit `Edit`, bliebe die Liste leer, und die Wahl, die
+     * gilt, wäre nicht mehr sichtbar ([R33c](../../../docs/NewConcept/30-renderer.md)).*
+     *
+     * @return list<Renderer>
+     */
+    private function choicesForWhatIsDrawn(Node|Relation $subject): array
+    {
+        if ($subject instanceof Node) {
+            return $this->choicesForNode($subject);
+        }
+
+        if (! $subject->isSetting()) {
+            return $this->choicesFor($subject);
+        }
+
+        $besitzer = $this->nodes->find($subject->fromNodeId);
+
+        return $besitzer === null ? [] : $this->choicesForNode($besitzer);
+    }
+
     public function choicesForNode(Node $node, ?Purpose $purpose = null): array
     {
         return $this->renderers->eligibleFor(
