@@ -47,6 +47,9 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Braucht es einen Zyklenwächter? | [D-497](90-decision-log.md) — nein: ein Feld auf ein Modell ist eine Aggregation, und die verweist, statt abzusteigen | ~~D-100~~ *(nur seine Kompositions-Hälfte)* |
 | Erbt ein Einstellungsknoten sich selbst? | [D-607](90-decision-log.md) — nur die Kante, die auf ihn selbst zeigt, ist gesperrt; sichtbar gekennzeichnet ([D-608](90-decision-log.md)) | ~~D-605~~ |
 | Wann entsteht ein Datensatz? | [D-609](90-decision-log.md) — beim ersten Schreiben; eine leere Wertzeile wird nicht geschrieben ([D-610](90-decision-log.md)) | — |
+| Welche Arten von Datensatz gibt es? | [D-653](90-decision-log.md) — drei: `default`, `user`, `example`; die Art wird beim Anlegen gewählt ([D-651](90-decision-log.md)), ein leerer `default` besteht nicht |
+| Was unterscheidet `default` und `example`? | [D-654](90-decision-log.md) — der `default` ist eine **Vorbelegung** und greift in jede Eingabe ein, das `example` wird nur gezeigt |
+| Kann man in der Vorschau eingeben? | [D-652](90-decision-log.md) — nein, sie bleibt Vorschau; ~~[D-651](90-decision-log.md) wollte sie umbauen~~ |
 | Was wird beim Anlegen aus den Vorgaben? | [D-533](90-decision-log.md), [D-534](90-decision-log.md) — echte Kopien, zwei Rückfragen über den Wert | ~~D-531~~ ~~D-532~~ |
 | Wie steht ein Verweis auf ein anderes Ding? | [D-597](90-decision-log.md) — **eine** Spalte plus Raum, kein echter Fremdschlüssel; ebenso `labels.owner_id` ([D-641](90-decision-log.md)) | — |
 | Wo liegt die Geschichte? | [D-537](90-decision-log.md) Schattentabellen · [D-536](90-decision-log.md) Version je Zeile · [D-601](90-decision-log.md) Rückgängig über die Änderungsgruppe | ~~D-427~~ (Journal als Heimat) |
