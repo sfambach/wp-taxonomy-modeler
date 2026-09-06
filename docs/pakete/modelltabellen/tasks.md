@@ -1968,3 +1968,30 @@ die Standardsprache; und ein Speichern in Sprache A laesst Sprache B unangetaste
 Punkt ist der, der ohne Zusage still kaputtgeht.***
 
 Rest von TASK-019 — die Tabellen stehen, der Weg dorthin nicht.
+
+---
+
+[ ] TASK-062  Die zwei Riesendateien werden geteilt
+
+**2026-09-06, auf seinen Hinweis, dass ein kleiner Schritt fuenf Minuten dauert.** *Gemessen:*
+
+| Datei | Groesse | Methoden |
+|---|---|---|
+| `src/WordPress/Admin/NodesScreen.php` | **232 KB** | 63 |
+| `src/Core/Service/Rendering.php` | **171 KB** | 56 |
+
+⚠️ **Der Schaden ist nicht die Groesse, sondern die Kollision.** *Gestern wollten drei Baustellen
+gleichzeitig in `NodesScreen.php` — Renderer-Waehler, Satzarten, Loeschdialog. Zweimal ist dabei
+fremde Arbeit in einen fremden Commit gerutscht, einmal musste ein Agent auf einen anderen warten.
+**Eine Datei, die drei Auftraege gleichzeitig anfasst, ist zu gross** — das ist der Massstab, nicht
+die Zeilenzahl.*
+
+⚠️ **Und der zweite Schaden ist die Lesezeit:** *wer eine Zeile darin aendert, liest 232 KB.*
+
+**Wonach geteilt wird — nach dem, was ein Auftrag anfasst, nicht nach Zeilenzahl:** *die Bloecke
+der Knotenseite sind schon heute getrennte Methoden (Baum, Felder, Einstellungen, Vorschau,
+Datensaetze, Beschriftungen, Aufraeumen). **Sie sind der natuerliche Schnitt** — jeder Block eine
+Klasse, die Seite setzt sie zusammen.*
+
+⚠️ *Kein Umbau um des Umbaus willen: geteilt wird, **bevor** die naechsten drei Baustellen dort
+gleichzeitig aufschlagen — und ohne dass eine Zusage sich aendert (`PR-9`).*
