@@ -120,7 +120,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie entsteht eine Neuinstallation? | [D-600](90-decision-log.md) — künftig aus einem Abbild des gewachsenen Baums; bis dahin wird die laufende Installation angepasst | ~~D-119~~ (Saatgerüst als Weg) |
 | Was steht im Datensatzblock? | [D-553](90-decision-log.md) — eine Zeile je Satz, «wovon · Record · Version»; keine Einstellungsspalten ([D-554](90-decision-log.md)) | — |
 | Was räumt die Aufräumseite? | [D-247](90-decision-log.md) und [D-494](90-decision-log.md) — vier Quellen, darunter der Datensatz ohne Knoten ([D-485](90-decision-log.md)) | — |
-| Gibt es eine Einstellungstafel unter der Feldzeile? | [D-520](90-decision-log.md) — nein, sie ist weg; Felder und Einstellungen sind zweimal dieselbe Tabelle ([D-518](90-decision-log.md)) | ~~D-381~~ ~~D-385~~ ~~D-390~~ ~~D-517~~ |
+| Gibt es eine Einstellungstafel unter der Feldzeile? | [D-666](90-decision-log.md) — ja, seit 2026-09-06: unter der Zeile, zugeklappt, und erst beim Aufklappen gelesen | ~~D-381~~ ~~D-385~~ ~~D-390~~ ~~D-517~~ ~~D-520~~ |
 | Wann wird eine Liste von Häkchen geschrieben? | [D-299](90-decision-log.md), [D-300](90-decision-log.md) — eine Erlaubnisliste ist **ein** Wert und wird als Gruppe gespeichert | ~~D-298~~ |
 | Wer darf was? | [D-292](90-decision-log.md) — Rollen sind eingebaut, der Administrator darf praktisch alles; Laufzeit-Erweiterung je Ast ([D-204](90-decision-log.md)) | — |
 
