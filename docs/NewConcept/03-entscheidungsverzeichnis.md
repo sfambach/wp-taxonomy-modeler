@@ -25,6 +25,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wo liegt das Modell? | [D-007](90-decision-log.md) — eigene Tabellen dieses Plugins | ~~D-567~~ *(Vorschlag, die Basistabellen zu benennen — verworfen)* |
 | Wie liegt ein Datensatz in den Tabellen? | [D-577](90-decision-log.md), [D-578](90-decision-log.md) — `node_record` / `relation_record`, kein Pfad, gilt für alle Kantenarten | ~~D-083~~ ~~D-133~~ ~~D-232~~ ~~D-527~~ ~~D-530~~ |
 | Wem gehört ein Datensatz? | [D-667](90-decision-log.md) — dem Knoten, und wo er einer Verwendungsstelle gehört, nennt er ihre `relation_id`; `path` fällt | — |
+| Wem gehört eine Wertzeile? | [D-673](90-decision-log.md) — einem Feld; mit `relation_id = 0` dem **Knoten selbst**, und das ist das Fach für die Vorgabe eines einfachen Typs | — |
 | Wo liegen die Einstellungen einer Verwendungsstelle? | [D-667](90-decision-log.md) — im Satz dieser Kante; [D-611](90-decision-log.md) hat damit wieder einen Träger | ~~D-643~~ (als Ende der Zusage gelesen) |
 | Welche Kantenarten gibt es? | [D-639](90-decision-log.md) — drei Werte, drei Klassen: `setting`, `aggregation`, `composition` | ~~D-161~~ ~~D-193~~ ~~D-526~~ ~~D-587~~ ~~D-591~~ ~~D-592~~ |
 | Wer bestimmt die Kantenart? | [D-618](90-decision-log.md), [D-621](90-decision-log.md) — der Benutzer; `nodes.field_type` fällt, kein Ast-Automatismus | ~~D-161~~ ~~D-606~~ |
