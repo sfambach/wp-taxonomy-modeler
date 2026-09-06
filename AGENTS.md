@@ -217,3 +217,11 @@ Schritt»:**
    `NodesScreen.php` (63 Methoden) und `Rendering.php` (56) sind die zwei, an denen gestern drei
    Baustellen kollidierten. **Eine Datei, die drei Auftraege gleichzeitig anfasst, ist zu gross** —
    das ist die Regel, nicht die Zeilenzahl.
+
+⚠️ **Und nie `git commit --amend` in einem gemeinsamen Baum.** *Am 2026-09-06 hat ein Agent seine
+eigene Commit-Nachricht nachgebessert, waehrend ein zweiter committete — `--amend` greift auf
+**HEAD**, und HEAD gehoerte in dem Moment dem anderen. **Zweimal hintereinander wurde so ein fremder
+Commit umgeschrieben:** einer verlor seine `Co-Authored-By`-Zeile, einer traegt seither die Nachricht
+eines anderen. Kein Inhalt ging verloren, die Geschichte erzaehlt es aber falsch, und repariert wird
+es nicht, weil darauf schon weitergebaut wurde. **Eine unschoene Nachricht ist billiger als eine
+umgeschriebene Geschichte.**
