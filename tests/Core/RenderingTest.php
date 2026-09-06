@@ -71,6 +71,9 @@ final class RenderingTest extends TestCase
     private CountingIdentities $zaehler;
     private ModelValues $model;
     private FixedFramework $framework;
+
+    /** Die Wurzel — hier werden die Einstellungen erklärt, die für alles gelten. */
+    private Node $wurzel;
     private ModelEditor $editor;
     private Rendering $rendering;
     private RememberedTypeNodes $typeNodes;
@@ -110,6 +113,7 @@ final class RenderingTest extends TestCase
         };
 
         $root  = $make('Root', null);
+        $this->wurzel = $root;
         $trash = $make('Trash', $root);
 
         $this->branchRoot['model']        = $make('Model', $root);
@@ -193,6 +197,33 @@ final class RenderingTest extends TestCase
         $pfad = $wer instanceof Node ? (string) $kante->id : $wer->id . '.' . $kante->id;
 
         $this->records->putValue(new RelationRecord($satzId, $pfad, $kante->id, '', $wert));
+
+        $this->neuZeichnen();
+    }
+
+    /**
+     * Die Einstellungskante **erklären**, ohne einen Wert zu schreiben.
+     *
+     * ⚠️ *Seit dem 2026-09-06 ist das der Unterschied, auf den es ankommt: **erklärt** heisst, die
+     * Tafel bietet den Schlüssel an; **geschrieben** heisst, es steht ein Wert darin
+     * ([D-529](../../docs/NewConcept/90-decision-log.md)). Vorher gab es diesen Unterschied nicht —
+     * die Tafel bot jeden Schlüssel an, für den sich ein Steuerelement zeichnen liess, und zeigte
+     * darum `min` an einem Textfeld.*
+     */
+    private function erklaert(Node $wer, string $key): void
+    {
+        if ($this->kanteFuer($wer->id, $key) !== null) {
+            return;
+        }
+
+        $this->relations->add(Relation::attribute(
+            $this->zaehler->next(),
+            $wer->id,
+            $this->branchRoot['constants']->id,
+            RelationKind::Setting,
+            $key,
+            $this->relations->nextFieldPositionUnder($wer->id)
+        ));
 
         $this->neuZeichnen();
     }
@@ -1275,7 +1306,22 @@ final class RenderingTest extends TestCase
         // ⚠️ The owner, looking at an `int` node whose chain was empty: *the settings that belong
         // firmly to the data type — min, max, step — should be shown as such.* A panel listing only
         // what somebody wrote cannot say what could be written, and R33c wants the opposite.
-        $rows = $this->drawnSettings($this->type('int'));
+        //
+        // ⚠️ **Was sich am 2026-09-06 geändert hat, ist woher «gehört dazu» kommt** — *nicht mehr
+        // aus einer Aufzählung im Kode, sondern aus den **Einstellungskanten** der Kette
+        // ([D-529](../../docs/NewConcept/90-decision-log.md)). Sein Befund war der Anlass: «auch
+        // scheinen es einfach alle Einstellungen zu sein, nicht nur die vom Typ Text.» **Die Zusage
+        // bleibt dieselbe** — erklärt und ungeschrieben ist eine Zeile, nicht ein Nichts —, nur
+        // steht «erklärt» jetzt im Modell und nicht im Kode.*
+        $int = $this->type('int');
+
+        foreach (['min', 'max', 'step', 'default'] as $key) {
+            $this->erklaert($int, $key);
+        }
+
+        $this->erklaert($this->wurzel, 'read_only');
+
+        $rows = $this->drawnSettings($int);
 
         // ⚠️ `mandatory` was in this list until [D-405]: the multiplicity says it, so the key is gone.
         // ⚠️ *`hide` verliess diese Liste 2026-08-28 — es ist eine Spalte und kein Setting mehr
@@ -1304,7 +1350,14 @@ final class RenderingTest extends TestCase
     {
         // ⚠️ A supplier has no type to borrow, so `range_min` has no shape to be drawn in — it is
         // left out rather than offered as an empty box that could never be filled sensibly.
-        $rows = $this->drawnSettings($this->thing('Supplier'));
+        $lieferant = $this->thing('Supplier');
+
+        // ⚠️ *`min` steht an `int` und nicht an der Wurzel — ein Lieferant ist kein Nachfahr von
+        // `int`, also erreicht ihn die Kante nicht. `read_only` gilt für alles und steht oben.*
+        $this->erklaert($this->type('int'), 'min');
+        $this->erklaert($this->wurzel, 'read_only');
+
+        $rows = $this->drawnSettings($lieferant);
 
         self::assertArrayNotHasKey('min', $rows);
         // ⚠️ A key that applies to **anything** still appears — `hide` stands in for what `mandatory`
@@ -1390,7 +1443,15 @@ final class RenderingTest extends TestCase
         // control on an `int`. The rule did not change — its example had to.* **`text` is the honest
         // one now**: neither shipped converter maps characters, so an attribute of that type has an
         // empty set and the row is dead for the reason R31 describes.
-        $row = $this->drawnSettings($this->type('text'), Purpose::Edit)[SettingKey::Converter->value];
+        // ⚠️ **Hier erklärt, damit die Regel prüfbar bleibt — nicht als Aussage darüber, wo ein
+        // Konverter hängt.** *Das sagt [D-585](../../docs/NewConcept/90-decision-log.md): am
+        // Basisknoten `Renderer`, an jeden Renderer vererbt. Geprüft wird an dieser Stelle aber
+        // `R31` — eine Auswahl ohne Auswahl ist tot —, und die Regel gilt für jeden Schlüssel, der
+        // eine Auswahl ist. Seit dem 2026-09-06 muss ein Schlüssel dafür **erklärt** sein.*
+        $text = $this->type('text');
+        $this->erklaert($text, SettingKey::Converter->value);
+
+        $row = $this->drawnSettings($text, Purpose::Edit)[SettingKey::Converter->value];
 
         self::assertTrue($row->wasDrawn());
         self::assertStringContainsString('disabled', $row->result->markup);
@@ -1401,7 +1462,11 @@ final class RenderingTest extends TestCase
     {
         // The other half of the rule above, and the point of list row 7: a set that is **not** empty
         // draws a live control offering exactly the eligible names.
-        $row = $this->drawnSettings($this->type('int'), Purpose::Edit)[SettingKey::Converter->value];
+        // ⚠️ *Erklärt wie in der Gegenprobe darüber, und aus demselben Grund.*
+        $int = $this->type('int');
+        $this->erklaert($int, SettingKey::Converter->value);
+
+        $row = $this->drawnSettings($int, Purpose::Edit)[SettingKey::Converter->value];
 
         self::assertStringNotContainsString('disabled', $row->result->markup);
 

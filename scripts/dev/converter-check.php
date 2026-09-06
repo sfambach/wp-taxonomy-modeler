@@ -79,6 +79,18 @@ if ($integerId === null) {
 
 $relation = $editor->addField($holder->id, $integerId, 'zaehler');
 
+// ⚠️ **Erklaert statt vorausgesetzt, seit dem 2026-09-06.** *Die Tafel bietet nur noch an, was an
+// der Kette als **Kante** erklaert ist ([D-529](../../docs/NewConcept/90-decision-log.md)) — sein
+// Befund war: «auch scheinen es einfach alle Einstellungen zu sein, nicht nur die vom Typ Text».
+// `converter` haengt nach [D-585](../../docs/NewConcept/90-decision-log.md) am Basisknoten
+// `Renderer` und steht damit **nicht** an der Kette von `Integer`.*
+//
+// ⚠️ **Am Besitzer erklaert, und das ist der Punkt dieses Laufs:** *eine Verwendungsstelle sucht an
+// **zwei** Ketten, der ihres Besitzers zuerst ([D-611](../../docs/NewConcept/90-decision-log.md)).
+// Die Gestalt des Steuerelements kommt trotzdem vom **Ziel** — deshalb bietet es die vier
+// Zahlenabbildungen an, obwohl der Besitzer selbst kein Zahlentyp ist.*
+$editor->addField($holder->id, $integerId, 'converter', \Taxmod\Core\Model\RelationKind::Setting);
+
 // ⚠️ **Eine Angabe an einer Verwendungsstelle setzen — jetzt ueber den Kern.**
 // *Hier stand `$settings->put($settings->chainForUseSite($relation), …)`, und danach stand hier ein
 // **Behelf**: der Waechter legte die Zeile selbst ueber die Speicher an, weil

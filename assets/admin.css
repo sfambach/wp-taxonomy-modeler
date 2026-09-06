@@ -1282,3 +1282,18 @@ a.taxmod-chosen:hover {
 .taxmod-field-settings-row[hidden] {
     display: none;
 }
+
+/* Die Klappleiste unter einer Feldzeile -- ein schmaler Balken ueber die volle Breite, der Knopf
+   am rechten Ende. So sah die Oberflaeche aus, die er als Vorbild geschickt hat (2026-09-06). */
+.taxmod-field-fold > td {
+    padding: 0 .5em;
+    text-align: right;
+    border-top: 1px solid #dcdcde;
+    background: #fbfbfc;
+}
+
+.taxmod-field-fold button {
+    line-height: 1.2;
+    min-height: 0;
+    padding: 0 .4em;
+}

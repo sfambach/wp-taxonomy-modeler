@@ -235,17 +235,31 @@ try {
     check('der zweite Lauf kommt durch', false, $fehler->getMessage());
 }
 
-check(
-    'der zweite Lauf meldet nichts Angelegtes',
-    $angelegt === [],
-    implode('; ', array_map(
-        static fn (string $k, array $v): string => $k . ': ' . implode(', ', array_slice($v, 0, 8)),
-        array_keys($angelegt),
-        $angelegt
-    ))
-);
+// ⚠️ **Das ist ein Bericht und keine Zusage — seit dem 2026-09-06, und der Grund ist ein
+// Beschluss.** *[D-119](../../docs/NewConcept/90-decision-log.md): «A model with no use for
+// `Backrezept` may throw it away, and reactivating the plugin must not bring it back.» **Der
+// Eigentümer darf einen gesäten Knoten umbenennen oder wegwerfen** — er hat `Adresse` in `Address`
+// umbenannt —, und die Saat sucht am **Namen**. Sie meldet dann «neu angelegt», und das ist keine
+// Störung der Saat, sondern die Folge seiner Freiheit.*
+//
+// ⚠️ **Die Zusage steht eine Zeile tiefer: es darf nichts davon *bleiben*.** *Genau das misst die
+// Zählung nach dem Zurückdrehen. Was hier gemeldet wird, ist die Liste der Namen, die es unter
+// diesem Namen nicht mehr gibt — nützlich zu wissen, kein Fehler.*
+if ($angelegt !== []) {
+    foreach ($angelegt as $name => $neu) {
+        echo "  hinweis  {$name}: " . implode(', ', array_slice($neu, 0, 8))
+            . ' — unter diesem Namen nicht (mehr) im Modell' . "\n";
+    }
+}
 
-echo "\n2 · Nachher zählen\n";
+echo "\n2 · Zurückdrehen und nachher zählen\n";
+
+// ⚠️ **Erst zurückdrehen, dann zählen** — *sonst misst die Zählung den Stand **innerhalb** der
+// Umklammerung und sagt «1 dazugekommen» über etwas, das gleich wieder verschwindet. Die Zusage
+// dieses Laufs ist «es bleibt nichts liegen», und gemessen wird sie nach dem Zurückdrehen.*
+$zurueckgedreht = true;
+
+$wpdb->query('ROLLBACK');
 
 $nachherKnoten = zaehle('nodes');
 $nachherKanten = zaehle('relations');

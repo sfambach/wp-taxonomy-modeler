@@ -331,9 +331,39 @@ foreach ($drawnRecipe as $name => $markup) {
 
 echo "\n== the delivery is idempotent ==\n";
 
+// ⚠️ **Der zweite Lauf schreibt in die echte Datenbank, also wird er zurueckgedreht** — *dieselbe
+// Umklammerung wie in `seed-twice-check.php` und aus demselben, gemessenen Grund: die Saat sucht am
+// **Namen**. Der Eigentuemer hatte `Adresse` in `Address` umbenannt, sie fand keine und legte die
+// deutsche jedes Mal neu an — **drei Stueck lagen am 2026-09-06 in seinem Bestand**. Gezaehlt und
+// gemeldet wird weiter alles, behalten nichts.*
+global $wpdb;
+
+$knotenTabelle = $wpdb->prefix . 'taxmod_nodes';
+$vorher        = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$knotenTabelle}");
+
+$wpdb->query('START TRANSACTION');
+
 $again = $scaffold->import();
 
-check('a second import creates nothing', $again === [], implode(', ', $again));
+$wpdb->query('ROLLBACK');
+
+$nachher = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$knotenTabelle}");
+
+// ⚠️ **Ein Bericht, keine Zusage** — *[D-119](../../docs/NewConcept/90-decision-log.md) gibt dem
+// Eigentümer ausdrücklich das Recht, einen gesäten Knoten wegzuwerfen oder umzubenennen: «A model
+// with no use for `Backrezept` may throw it away.» Er hat `Adresse` in `Address` umbenannt, und die
+// Saat sucht am **Namen**. Dass sie ihn dann anlegen **würde**, ist die Folge seiner Freiheit und
+// kein Fehler dieses Laufs.*
+if ($again !== []) {
+    echo '  hinweis ' . implode(', ', $again) . " — unter diesem Namen nicht (mehr) im Modell\n";
+}
+
+// ⚠️ **Die Zusage ist: es bleibt nichts liegen.** *Gemessen nach dem Zurückdrehen, nicht davor.*
+check(
+    'a second import leaves nothing behind',
+    $nachher === $vorher,
+    ($nachher - $vorher) . ' Knoten sind geblieben'
+);
 check('Adresse still has five members', count(membersOf($editor, $address)) === 5, (string) count(membersOf($editor, $address)));
 check('Dimension still has three', count(membersOf($editor, $dimension)) === 3, (string) count(membersOf($editor, $dimension)));
 

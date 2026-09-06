@@ -393,6 +393,56 @@ final class ModelValues
     }
 
     /**
+     * Welche Einstellungen an dieser Stelle überhaupt **erklärt** sind — die Namen ihrer Kanten.
+     *
+     * ⚠️ **Das Modell sagt es, nicht eine Aufzählung im Kode**, und das ist der Beschluss:
+     * [D-529](../../../docs/NewConcept/90-decision-log.md) — *«`min` (7), `max` (6) und `step` (5)
+     * Felder auf Spezialisierungen; `factor` (2) und `offset` (2) Felder am Knoten»* — und
+     * [D-602](../../../docs/NewConcept/90-decision-log.md) für die Kette, an der gesucht wird.
+     *
+     * ⚠️ **Der Eigentümer hat den Fehler an seiner Seite gesehen:** *«auch scheinen es einfach alle
+     * Einstellungen zu sein, nicht nur die vom Typ Text (inklusive geerbte)».* *An einem Textfeld
+     * standen `min`, `max`, `step`, `factor` und `offset` — gemessen erklärt `Text` genau
+     * `display_size` und erbt `validator`, `read_only`, `renderer`; `min` und `max` stehen an
+     * `Integer`, `factor` und `offset` an `Without prefix`. **Die Tafel fragte statt dessen, für
+     * welchen Schlüssel sich ein Steuerelement zeichnen lässt** — und das lässt sich für fast jeden.*
+     *
+     * ⚠️ **Zwei Ketten bei einer Verwendungsstelle, Besitzer zuerst** — dieselbe Regel und derselbe
+     * Grund wie in {@see self::settingRelation()}: `max` ist an `Integer` erklärt, und «an
+     * `Kunde.alter` ist max = 120» soll gehen ([D-611](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return list<string>
+     */
+    public function declaredSettingKeys(Node|Relation $subject): array
+    {
+        $ketten = [$this->erbkette($subject)];
+
+        if ($subject instanceof Relation) {
+            $ziel = $this->knoten($subject->toNodeId);
+
+            if ($ziel !== null) {
+                $ketten[] = $this->framework->inheritanceOwnersOf($ziel);
+            }
+        }
+
+        $aus = [];
+
+        foreach ($ketten as $kette) {
+            $this->kantenVorladen($kette);
+
+            foreach ($kette as $besitzer) {
+                foreach ($this->kantenNachBesitzer[$besitzer] ?? [] as $kante) {
+                    if ($kante->isSetting()) {
+                        $aus[$kante->name] = true;
+                    }
+                }
+            }
+        }
+
+        return array_keys($aus);
+    }
+
+    /**
      * Wer für diesen Träger vererbt — die eine Stelle, an der [D-545](../../../docs/NewConcept/90-decision-log.md)
      * wohnt.
      *

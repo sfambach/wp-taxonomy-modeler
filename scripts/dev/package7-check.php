@@ -621,10 +621,33 @@ check('a choice is drawn as a set of real possibilities',
     isset($editRows['renderer']) ? substr($editRows['renderer']->result->markup ?? 'undrawn', 0, 90) : 'missing');
 
 // ⚠️ **R31**: nothing to choose means the control is disabled rather than an empty box that looks
-// fillable. `converter` is the honest live case - D-219 decided them and none is built.
+// fillable. `converter` is the honest live case - dieser Lauf reicht keine Konverter herein, also
+// ist die Menge leer.
+//
+// ⚠️ **Erklaert statt vorausgesetzt, seit dem 2026-09-06.** *Die Tafel bietet nur noch an, was an
+// der Kette als **Kante** erklaert ist (D-529) — sein Befund: «auch scheinen es einfach alle
+// Einstellungen zu sein, nicht nur die vom Typ Text». `converter` haengt nach D-585 am Basisknoten
+// `Renderer` und damit **nicht** an der Kette von `int`. **Also erklaert dieser Lauf ihn auf seiner
+// eigenen Wiese** — die Regel, die hier geprueft wird, ist R31 und nicht, wo ein Konverter wohnt.*
+// ⚠️ *Das Ziel ist ein eigener Knoten dieses Laufs und nicht die Astwurzel — die ist nach
+// [D-238](../../docs/NewConcept/90-decision-log.md) kein waehlbares Ziel.*
+$eigenerKonverter = $editor->addField(
+    $eigenerTyp->id,
+    $gram->id,
+    'converter',
+    \Taxmod\Core\Model\RelationKind::Setting
+);
+
+$rendering = $zeichnerNeu();
+
+$eigeneZeilen = [];
+foreach ($rendering->settingsFor($eigenerTyp, $rendering->settingsForNode($eigenerTyp), Purpose::Edit) as $row) {
+    $eigeneZeilen[$row->key] = $row;
+}
+
 check('a choice with nothing in it is a dead control, not an empty one',
-    isset($editRows['converter']) && str_contains($editRows['converter']->result->markup ?? '', 'disabled'),
-    isset($editRows['converter']) ? substr($editRows['converter']->result->markup ?? 'undrawn', 0, 90) : 'missing');
+    isset($eigeneZeilen['converter']) && str_contains($eigeneZeilen['converter']->result->markup ?? '', 'disabled'),
+    isset($eigeneZeilen['converter']) ? substr($eigeneZeilen['converter']->result->markup ?? 'undrawn', 0, 90) : 'missing');
 
 // ⚠️ The last guesser: a setting now reads back as the type its key declares, not by regex.
 //

@@ -1739,28 +1739,27 @@ final class NodesScreen
                 // Zeile aufgeklappt neu. **Das ist der skriptfreie Weg**, und es ist genau der
                 // Seitenaufruf, den der Beschluss ausdrücklich erlaubt.*
                 //
-                // ⚠️ **Ein Dreieck links vor dem Namen, nicht ein Zahnrad rechts in der Icon-Reihe** —
-                // *sein Wort am 2026-09-06: «kleiner Pfeil links unter der Zeile aufklappen wie beim
-                // Baum, das würde ich bevorzugen». **Und er hatte den Knopf zuvor nicht gefunden**:
-                // «ich sehe die Einstellung am Feld nicht» — das Zahnrad stand als siebtes Icon am
-                // rechten Rand, während der Bereich links unten aufgeht.*
+                // ⚠️ **Eine Klappleiste unter der Zeile, nicht ein Zahnrad rechts in der Icon-Reihe** —
+                // *er hatte den Knopf dort nicht gefunden («ich sehe die Einstellung am Feld nicht»),
+                // und am 2026-09-06 ein Bild aus einer früheren Oberfläche mitgeschickt: «zum
+                // Ausklappen von Settings — das fand ich ganz gut, wie es aussehen sollte.» **Ein
+                // Balken über die volle Breite, der Knopf am rechten Ende.***
                 //
-                // ⚠️ *Dasselbe Zeichenpaar wie die Baumzeile ({@see \Taxmod\Core\Renderer\TreeRenderer::fold()}),
-                // damit ein Aufklapper überall gleich aussieht — `▸` zu, `▾` offen.*
+                // ⚠️ **Das Wort «Settings» bleibt der Name des Knopfes, auch wo nur das Zeichen steht.**
+                // *Ein Knopf ohne Namen ist im Screenreader eine Form ohne Bedeutung
+                // ({@see \Taxmod\Core\Renderer\IconMarkup::glyph()}), und ein Balken voller namenloser
+                // Dreiecke wäre genau das. Sichtbar ist das Zeichen, gesagt wird das Wort.*
                 //
-                // ⚠️ *Das Auge sagt hier den **Zustand**, nicht den Klick — beim Baum ist es ebenso,
-                // und ein Dreieck, das in die Gegenrichtung zeigt, wäre in einer Tabelle voller
-                // Dreiecke nicht zu lesen.*
+                // ⚠️ *Das Auge sagt den **Zustand**, nicht den Klick — dieselbe Regel wie in der
+                // Baumzeile, und dieselben zwei Zeichen ({@see \Taxmod\Core\Renderer\TreeRenderer::fold()}).*
                 new Control(
                     'do',
                     self::TOGGLE_ROW_SETTINGS,
-                    isset($offeneZeilen[$relation->id])
-                        ? __('Hide the settings of this use site', 'taxmod')
-                        : __('Show the settings of this use site', 'taxmod'),
+                    __('Settings', 'taxmod'),
                     __('The settings that apply to this field here — resolved only when it is open', 'taxmod'),
                     true,
-                    // ⚠️ *Der Knopf steht in der Namenszelle und damit **ausserhalb** des Formulars
-                    // der Zeile; `form` hängt ihn wieder daran. Ohne das schickt er nichts ab —
+                    // ⚠️ *Der Knopf steht in einer eigenen Zeile und damit **ausserhalb** des Formulars
+                    // der Feldzeile; `form` hängt ihn wieder daran. Ohne das schickt er nichts ab —
                     // derselbe Fehler wie beim Umbenennen-Feld eine Zelle weiter.*
                     form: FieldRowRenderer::formFor($relation),
                     glyph: isset($offeneZeilen[$relation->id]) ? '▾' : '▸'

@@ -617,8 +617,39 @@
 	var AKT = 'toggle_field_settings';
 	var HOL = 'taxmod_field_settings';
 
+	/**
+	 * Die Feldzeile, zu der dieser Knopf gehört.
+	 *
+	 * ⚠️ *Seit dem 2026-09-06 steht der Knopf in einer **eigenen** Zeile unter der Feldzeile — der
+	 * Klappleiste, so wie im Bild, das er geschickt hat. Sie trägt selbst keine Kanten-Nummer, also
+	 * ist die gesuchte Zeile die davor. `closest()` allein fände gar nichts mehr.*
+	 */
 	function zeileVon( knopf ) {
-		return knopf.closest( 'tr[data-taxmod-relation]' );
+		var eigene = knopf.closest( 'tr' );
+
+		if ( ! eigene ) {
+			return null;
+		}
+
+		if ( eigene.hasAttribute( 'data-taxmod-relation' ) ) {
+			return eigene;
+		}
+
+		var davor = eigene.previousElementSibling;
+
+		return davor && davor.hasAttribute( 'data-taxmod-relation' ) ? davor : null;
+	}
+
+	/** Der Einstellungsbereich dieser Feldzeile, falls er schon geholt wurde. */
+	function bereichVon( zeile ) {
+		var naechste = zeile.nextElementSibling;
+
+		// ⚠️ *Die Klappleiste steht dazwischen — eine Zeile weiter, und dann erst der Bereich.*
+		while ( naechste && naechste.classList.contains( 'taxmod-field-fold' ) ) {
+			naechste = naechste.nextElementSibling;
+		}
+
+		return naechste && naechste.classList.contains( 'taxmod-field-settings-row' ) ? naechste : null;
 	}
 
 	/**
@@ -670,7 +701,7 @@
 		}
 
 		var kante = zeile.getAttribute( 'data-taxmod-relation' );
-		var offen = zeile.nextElementSibling;
+		var offen = bereichVon( zeile );
 
 		// ⚠️ **Zuklappen versteckt, es wirft nicht weg** — sein Wort am 2026-09-06: «beim
 		// Wiederzuklappen müssen der geladene Abschnitt nicht zerstört werden, einmal geladen
@@ -711,7 +742,11 @@
 				neu.className = 'taxmod-field-settings-row';
 				neu.innerHTML = '<td colspan="' + spalten + '">' + markup + '</td>';
 
-				zeile.parentNode.insertBefore( neu, zeile.nextSibling );
+				// ⚠️ *Hinter die Klappleiste, nicht davor — sonst stünde der Bereich über seinem
+				// eigenen Knopf.*
+				var leiste = knopf.closest( 'tr' ) || zeile;
+
+				leiste.parentNode.insertBefore( neu, leiste.nextSibling );
 				zeichen( knopf, true );
 			} )
 			.catch( function () {

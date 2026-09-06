@@ -1873,6 +1873,49 @@ final class Rendering implements Presets
     }
 
     /**
+     * Welche Einstellungsschlüssel an dieser Stelle zutreffen — **aus dem Modell, nicht aus dem Kode**.
+     *
+     * ⚠️ *Die Kette liefert **Namen**; welchen Schlüssel ein Name meint und wie sein Steuerelement
+     * aussieht, bleibt Sache von {@see SettingKey}. Ein Name ohne Schlüssel fällt heraus — der Kern
+     * zeichnet nichts, wofür er keine Gestalt kennt, und erfindet auch keine.*
+     *
+     * ⚠️ **Die beiden Richtungsregeln gelten weiter:** *`multiplicity` nur an einer Kante
+     * ([D-351](../../../docs/NewConcept/90-decision-log.md)), der Renderer nur an einem Knoten
+     * ([D-643](../../../docs/NewConcept/90-decision-log.md)). **`renderer` ist an `Root` erklärt und
+     * käme über die Kette an jeder Verwendungsstelle wieder** — genau das nimmt D-643 zurück.*
+     *
+     * @return list<SettingKey>
+     */
+    private function zutreffendeSchluessel(Node|Relation $node, ?SimpleType $subject): array
+    {
+        $istKante = $node instanceof Relation;
+
+        if ($this->model === null) {
+            return SettingKey::applyingTo($subject, $istKante);
+        }
+
+        $aus = [];
+
+        // ⚠️ *Sie hängt als Spalte an der Kante und ist nirgends als Kante erklärt — aus dem Modell
+        // käme sie nie zurück, und die zugeklappte Feldzeile fragt genau nach ihr.*
+        if ($istKante) {
+            $aus[] = SettingKey::Multiplicity;
+        }
+
+        foreach ($this->model->declaredSettingKeys($node) as $name) {
+            $key = SettingKey::tryFrom($name);
+
+            if ($key === null || $key->isRelationOnly() || ($key->isNodeOnly() && $istKante)) {
+                continue;
+            }
+
+            $aus[] = $key;
+        }
+
+        return $aus;
+    }
+
+    /**
      * Die Tafel selbst — **eine Stelle, damit es eine Machart bleibt** (`R1`).
      *
      * ⚠️ *«wie oft» bleibt draussen: es hat seine eigene Spalte in der Zeile
@@ -1974,9 +2017,21 @@ final class Rendering implements Presets
         // max, step — should be shown as such.* An unset key becomes a row with an empty control
         // and `setHere = false`, which is the truth about it: nothing along the chain has said.
         //
+        // ⚠️ **Aber «zutreffend» sagt das Modell und nicht der Kode** — *sein Befund am 2026-09-06:
+        // «auch scheinen es einfach alle Einstellungen zu sein, nicht nur die vom Typ Text».
+        // {@see SettingKey::applyingTo()} beantwortet die Frage «lässt sich dafür ein Steuerelement
+        // zeichnen», und das lässt sich für fast jeden Schlüssel — deshalb standen `min`, `max`,
+        // `step`, `factor` und `offset` an einem Textfeld. **Zutreffend ist, was an der Kette als
+        // Kante erklärt ist** ({@see ModelValues::declaredSettingKeys()}), und das ist der Weg, den
+        // [D-529](../../../docs/NewConcept/90-decision-log.md) vorschreibt.*
+        //
+        // ⚠️ *Ohne `ModelValues` bleibt es bei der alten Auskunft: eine Vorschau ohne Modellzugang
+        // hat keine Kette zu fragen, und eine leere Tafel wäre dort die falschere Antwort.*
+        //
         // ⚠️ **`multiplicity` applies only to an relation** and is the one key that does (D-351) — a
-        // node describes a thing, and a thing has no multiplicity.
-        foreach (SettingKey::applyingTo($subject, $node instanceof Relation) as $key) {
+        // node describes a thing, and a thing has no multiplicity. *Sie hängt als **Spalte** an der
+        // Kante und ist deshalb nirgends als Kante erklärt — sie käme aus dem Modell nie zurück.*
+        foreach ($this->zutreffendeSchluessel($node, $subject) as $key) {
             $resolved[$key->value] ??= new ResolvedSetting(
                 $key->value,
                 TypedValue::nothing(),

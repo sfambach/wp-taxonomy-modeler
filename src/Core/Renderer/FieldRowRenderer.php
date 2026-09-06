@@ -178,9 +178,10 @@ final class FieldRowRenderer extends RendererNode
         $zeile = '<tr class="' . $klasse . '" data-taxmod-relation="' . $subject->id . '">' . $cells . '</tr>';
 
         $bereich = $context->surroundings->sections[self::SETTINGS] ?? null;
+        $leiste  = $this->fold($context, $spalten);
 
         if ($bereich === null || trim($bereich->body) === '') {
-            return RenderResult::of($zeile);
+            return RenderResult::of($zeile . $leiste);
         }
 
         // ⚠️ *Eine eigene Zeile über die volle Breite und **unter** der ersten — sein Wort: «die
@@ -188,6 +189,7 @@ final class FieldRowRenderer extends RendererNode
         // einem `<td>` stecken, also ist es eine Schwesterzeile und keine Verschachtelung.*
         return RenderResult::of(
             $zeile
+            . $leiste
             . '<tr class="taxmod-field-settings-row" id="' . RenderResult::escape(self::settingsRowFor($subject)) . '">'
             . '<td colspan="' . $spalten . '">' . $bereich->body . '</td>'
             . '</tr>'
@@ -234,11 +236,9 @@ final class FieldRowRenderer extends RendererNode
      */
     private function nameCell(Relation $subject, RenderContext $context): string
     {
-        $klapper = $this->fold($context);
-
         if ($context->purpose !== Purpose::Edit || ! $context->editable) {
             return $this->cell(
-                $klapper . '<strong>' . RenderResult::escape($subject->name) . '</strong>',
+                '<strong>' . RenderResult::escape($subject->name) . '</strong>',
                 'taxmod-field-name',
                 false,
                 true
@@ -273,35 +273,38 @@ final class FieldRowRenderer extends RendererNode
             'form'     => $context->surroundings->formId === '' ? self::formFor($subject) : $context->surroundings->formId,
         ]);
 
-        return $this->cell(
-            '<span style="display:flex;align-items:center;gap:.25em">' . $klapper . $field . '</span>',
-            'taxmod-field-name',
-            false,
-            true
-        );
+        return $this->cell($field, 'taxmod-field-name', false, true);
     }
 
     /**
-     * Das Dreieck vor dem Namen — auf, zu, oder der Platz, den es einnähme.
+     * Die Klappleiste unter der Feldzeile — eine schmale Zeile über die volle Breite.
      *
-     * ⚠️ **Der Platz bleibt, wo es keinen Klapper gibt** — *dieselbe Regel wie in der Baumzeile
-     * ({@see TreeRenderer::fold()}): ohne ihn stünden die Namen zweier Nachbarzeilen unterschiedlich
-     * weit links, und die Spalte wäre nicht mehr zu lesen.*
+     * ⚠️ **So wollte er es, und er hat ein Bild davon mitgeschickt** *(2026-09-06, aus einer früheren
+     * Oberfläche): «zum Ausklappen von Settings — das fand ich ganz gut, wie es aussehen sollte.» **Ein
+     * Balken unter der Zeile, der Knopf am rechten Ende**, zugeklappt nur das Zeichen, aufgeklappt das
+     * Wort daneben.*
      *
-     * ⚠️ *Gezeichnet wird der Knopf, den der Rand geliefert hat — hier wird nur entschieden, **wo**
-     * er steht. Ihn hier zu bauen hiesse, seine Beschriftung ein zweites Mal zu erfinden (`AR-2`).*
+     * ⚠️ **Ein Dreieck in der Namenszelle war der Versuch davor und hatte einen messbaren Nachteil:**
+     * *es stand **im** Namen. `page-blocks-check` las die Namensspalte und bekam `▸with_label` statt
+     * `with_label` — ein Zeichen, das die Gestaltung setzt, wanderte in die Angabe. **Die Leiste hat
+     * eine eigene Zeile und berührt keine Spalte.***
+     *
+     * ⚠️ *Gezeichnet wird der Knopf, den der Rand geliefert hat — hier wird nur entschieden, **wo** er
+     * steht. Ihn hier zu bauen hiesse, seine Beschriftung ein zweites Mal zu erfinden (`AR-2`).*
      */
-    private function fold(RenderContext $context): string
+    private function fold(RenderContext $context, int $spalten): string
     {
-        $kasten = 'display:inline-block;width:1.4em;flex:none;text-align:center';
-
         foreach ($context->surroundings->actions as $control) {
-            if ($control->value === self::FOLD) {
-                return '<span style="' . $kasten . '">' . ControlMarkup::button($control) . '</span>';
+            if ($control->value !== self::FOLD) {
+                continue;
             }
+
+            return '<tr class="taxmod-field-fold"><td colspan="' . $spalten . '">'
+                . ControlMarkup::button($control)
+                . '</td></tr>';
         }
 
-        return '<span style="' . $kasten . '"></span>';
+        return '';
     }
 
     /**
