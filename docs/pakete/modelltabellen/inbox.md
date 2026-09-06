@@ -1638,3 +1638,30 @@ Befund («compact mit horizontal gewaehlt, gerendert wird vertikal») und entsch
 sind die zwei gemessenen Zeilen an `slider` und `checkbox` an der falschen Stelle und gehoeren
 weggeraeumt —, oder er ist eine des **Renderers**, dann gilt er fuer alles, was ihn waehlt, und die
 zwei Zeilen sind eine Aussage ueber jede Ganzzahl mit Schieber.*
+
+## INF-056 · «date/time kann nicht als color dargestellt werden» — sein Befund, von mir nicht nachvollzogen
+
+**2026-09-06, von ihm gemeldet und ausdruecklich als `<<falsch>>` markiert.** *Er hat gesehen, dass
+an einem `date/time` der Renderer `color` angeboten oder verwendet wurde — beides waere falsch.*
+
+⚠️ **Vier Messungen, und keine reproduziert es:**
+
+| gemessen | Ergebnis |
+|---|---|
+| `ColorRenderer::handles()` | `color` — sonst nichts |
+| `DateTimeRenderer::handles()` | `datetime` — sonst nichts |
+| alle elf Typen × beide Zwecke | **kein Fall**, in dem `color` oder `datetime` bei einem fremden Typ steht |
+| Typknoten `Email` | angeboten wird `mailto` |
+
+⚠️ **Die Stelle, an der es trotzdem schiefgehen kann, und sie ist gefunden:** *`RendererRegistry::eligibleFor()`
+antwortet **ohne** Typangabe mit den Rahmen (`form`, `table`, `compact`, `node`) statt mit nichts.
+Und der Waehler wird in `Rendering` mit `typeOfNode($knoten)` gerufen — **dem Typ des Knotens, auf
+dessen Seite man steht**, nicht dem des Feldes, um das es geht. **Wo eine Zeile fuer ein Feld
+gezeichnet wird, waere das der falsche Typ.***
+
+⚠️ **Was fehlt, um es zu schliessen:** *die Stelle, an der er es gesehen hat — welcher Knoten,
+welches Feld, welche Seite. **Ohne sie waere jede Reparatur geraten** (`PR-4`), und die Messung
+sagt bisher, dass der Kode es nicht hergibt.*
+
+⚠️ *Gehoert zu [D-658](../../NewConcept/90-decision-log.md) (jeder einfache Typ hat seine eigenen
+Renderer) und [D-603](../../NewConcept/90-decision-log.md) (die Registratur sagt, was taugt).*
