@@ -1266,11 +1266,19 @@ a.taxmod-chosen:hover {
  *
  * Er ist eine eigene Zeile ueber die volle Breite, weil ein <tr> nicht in einem <td> stecken kann.
  * Eingerueckt, damit man sieht, zu welcher Zeile er gehoert; abgesetzt, damit die Tabelle nicht
- * auseinanderfaellt. Nichts hier versteckt etwas: wer ihn nicht aufgeklappt hat, bekommt ihn gar
- * nicht geschickt.
+ * auseinanderfaellt. Wer ihn noch nie aufgeklappt hat, bekommt ihn gar nicht geschickt -- das ist
+ * der Beschluss. Wer ihn einmal offen hatte, behaelt ihn: zugeklappt wird er nur versteckt, damit
+ * eine noch nicht gespeicherte Eingabe beim Speichern der Seite mitgeht. Sein Wort am 2026-09-06:
+ * "einmal geladen bleibt erstmal bis die Seite geschlossen wird".
  */
 .taxmod-field-settings-row > td {
     background: #f6f7f7;
     border-left: 3px solid #c3c4c7;
     padding: .6em 1em .8em 2em;
+}
+
+/* Ein <tr hidden> zeigt WordPress sonst weiter an -- die Tabellenregeln der Oberflaeche setzen
+   display auf table-row und stechen den Vorgabewert des Browsers aus. */
+.taxmod-field-settings-row[hidden] {
+    display: none;
 }

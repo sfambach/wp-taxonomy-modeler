@@ -621,6 +621,21 @@
 		return knopf.closest( 'tr[data-taxmod-relation]' );
 	}
 
+	/**
+	 * Das Dreieck sagt den Zustand — dieselben zwei Zeichen wie in der Baumzeile.
+	 *
+	 * ⚠️ *Der Server schreibt sie beim Zeichnen hin; hier werden sie umgestellt, weil ohne
+	 * Seitenaufruf niemand sonst es tut. **Zwei Stellen für zwei Zeichen** — sie stehen im
+	 * Kern (`FieldRowRenderer`) und hier, und mehr Stellen darf es nicht geben.*
+	 */
+	function zeichen( knopf, offen ) {
+		var glyphe = knopf.querySelector( '.taxmod-icon-glyph' );
+
+		if ( glyphe ) {
+			glyphe.textContent = offen ? '▾' : '▸';
+		}
+	}
+
 	/** Die Adresse des Nachschlags, gebaut aus dem, was das Formular der Zeile ohnehin trägt. */
 	function adresse( form, kante ) {
 		var id = form.querySelector( 'input[name="id"]' );
@@ -657,11 +672,18 @@
 		var kante = zeile.getAttribute( 'data-taxmod-relation' );
 		var offen = zeile.nextElementSibling;
 
-		// Zuklappen kostet keinen Nachschlag: die Zeile wird entfernt, und der nächste
-		// Seitenaufruf zeichnet sie ohnehin nicht mehr.
+		// ⚠️ **Zuklappen versteckt, es wirft nicht weg** — sein Wort am 2026-09-06: «beim
+		// Wiederzuklappen müssen der geladene Abschnitt nicht zerstört werden, einmal geladen
+		// bleibt erstmal bis die Seite geschlossen wird, damit es mit gespeichert werden kann.»
+		//
+		// ⚠️ *Und das ist kein Widerspruch zu D-666: der Beschluss sagt «nicht gelesen» über eine
+		// Zeile, die **noch nie** offen war. Eine einmal geöffnete ist längst aufgelöst — sie
+		// wieder wegzuwerfen kostete beim nächsten Aufklappen einen zweiten Nachschlag und
+		// verlöre auf dem Weg dahin jede Eingabe, die noch nicht gespeichert ist.*
 		if ( offen && offen.classList.contains( 'taxmod-field-settings-row' ) ) {
 			ereignis.preventDefault();
-			offen.parentNode.removeChild( offen );
+			offen.hidden = ! offen.hidden;
+			zeichen( knopf, ! offen.hidden );
 
 			return;
 		}
@@ -690,6 +712,7 @@
 				neu.innerHTML = '<td colspan="' + spalten + '">' + markup + '</td>';
 
 				zeile.parentNode.insertBefore( neu, zeile.nextSibling );
+				zeichen( knopf, true );
 			} )
 			.catch( function () {
 				// ⚠️ *Der alte Weg bleibt der Rückfall: das Formular abschicken, Seite neu.*
