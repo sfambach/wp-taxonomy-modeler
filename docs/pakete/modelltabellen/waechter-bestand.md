@@ -18,6 +18,39 @@ seine Rolle statt über seinen Namen holen.*
 
 ---
 
+## Nachtrag 2026-09-06 — «sauber» war gelesen, nicht gemessen
+
+⚠️ **Die Spalte «Sauber — eigene Knoten, gebaut und weggeräumt» oben ist am Kode abgelesen, und
+gemessen stimmt sie nicht.** *Am 2026-09-06 wurde jeder Lauf einzeln gefahren, mit einem Abzug aller
+dreizehn Tabellen davor und danach. **Von 73 Läufen veränderten 42 den Bestand; 17 davon an Knoten,
+Kanten, Sätzen, Wertzeilen oder Beschriftungen.** Darunter `composition`, `converter`,
+`journal-address`, `package7`, `scaffold` und `restore` — alle sechs stehen oben unter «sauber».*
+
+**Warum das Ablesen es nicht sehen konnte:** die Läufe räumen wirklich auf, nur **am Ende**. Ein
+Lauf, der in Zeile 200 rot wird, erreicht seine Zeile 400 nie, und ein `finally` läuft an einem
+`exit(1)` vorbei. *Der Eigentümer hat den Preis auf seinem Bildschirm gesehen: `read_only`
+**zweimal** an seinem `Integer` — die zweite Kante `Integer --read_only--> Constants` aus
+`package7-check.php`; dazu drei Knoten `__cv Zahl` aus `converter-check.php` unter demselben
+`Integer` und dreimal eine deutsche `Adresse` aus `seed-twice-check.php`. Drei Läufe, ein Tag.*
+
+**Die Antwort ist keine bessere Aufräumroutine, sondern eine Klammer:** jeder Wächter mit `wp-load`
+lädt unmittelbar danach [`scripts/dev/lib/no-write.php`](../../../scripts/dev/lib/no-write.php) —
+`START TRANSACTION`, und ein `ROLLBACK` am Herunterfahren des Prozesses, das auch nach einem
+Abbruch greift. **Nachgemessen: kein Lauf schreibt mehr ins Modell.** Bewacht von
+`no-model-write-check.php`; die einzige Ausnahme ist `labels-page-save`, dessen Kindprozess eine
+eigene Verbindung hat und darum von einer offenen Umklammerung nichts sähe.
+
+⚠️ **Aufräumen bleibt im Kode und wird nicht entfernt** — *es ist nur nicht mehr das, worauf der
+Bestand sich verlässt.*
+
+⚠️ **Was dieser Nachtrag ausdrücklich nicht anfasst: die festen Zahlen in den Zusagen.**
+*`package3` (`=== 20` Präfixe), `renderer-choice` (`> 50`, `>= 20 von 28`) und `rename-survives`
+(`>= 4`) tragen weiter eine Momentaufnahme seines Bestandes als Vertrag. Die Tabelle unten sagt
+selbst, dass aus `=== 20` ein `>= 20` zu machen eine **Entschärfung** wäre und seinen Grund braucht
+(`PR-9`) — also steht es hier als Befund und nicht als Reparatur.*
+
+---
+
 ## Was «hängt an seinen Daten» heisst
 
 ```mermaid

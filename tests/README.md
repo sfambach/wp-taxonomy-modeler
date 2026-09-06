@@ -34,7 +34,7 @@ as the whole net.*
 | `preview` | the preview, and that `hide` and `read_only` actually **do** something ([D-160](../docs/NewConcept/90-decision-log.md), [D-399](../docs/NewConcept/90-decision-log.md)) |
 | `path` | dass **`path` gefallen ist und nicht wiederkommt** — an `labels` (TASK-003) und an `nodes` (TASK-001), in der Datenbank **und** in der `CREATE TABLE`-Anweisung, aus der `dbDelta` sie sonst klaglos wieder anlegte. **Und dass die Vorfahren ohne sie dieselbe Kette liefern:** der gerechnete Weg und der Aufstieg über `parent_node_id` sind zwei Rechnungen mit einem Ergebnis, und die Wanderung hat ihren Rückweg hinterlassen — je Zeile ihr alter Weg, ihre Version, eine Änderungsgruppe. ⚠️ *An `relation_records` steht die Spalte weiter, mit Grund: sie trägt die Adresse einer Einstellung an einer Verwendungsstelle und ist **kein** Spiegel von `relation_id` (`INF-051`). Er hiess einmal umgekehrt herum: er prüfte `settings.path` ([D-413](../docs/NewConcept/90-decision-log.md)) und ist mit der Tabelle gefallen ([D-579](../docs/NewConcept/90-decision-log.md)), ohne Ersatz* |
 | `labels-page-save` | that the texts travel with the page save — the fields name the page's form, an unchanged one writes nothing, an emptied one loses its row ([D-384](../docs/NewConcept/90-decision-log.md), [D-392](../docs/NewConcept/90-decision-log.md)) |
-| `journal-address` | that a journal entry carries its **address** and not only its value — key, path, type and value, readable back out of the column ([D-427](../docs/NewConcept/90-decision-log.md)) — **and that all 10918 rows already in the table still parse**, with the reader it replaced compared against on every one of the 2904 in the old order |
+| `journal-address` | that a journal entry carries its **address** and not only its value — key, path, type and value, readable back out of the column ([D-427](../docs/NewConcept/90-decision-log.md)) — **and that *every* row already in the table still parses**, with the reader it replaced compared against on every one written in the old order. ⚠️ *Hier standen bis zum 2026-09-06 zwei feste Zahlen aus seinem Bestand — «10918 Zeilen», «2904 in der alten Reihenfolge». Der Wächter selbst trägt sie nicht, er zählt sie; die Zusage tat so, als wäre der Bestand von damals der Vertrag.* |
 | `references` | that no file cites a `D-` or `OQ-` id that was never written ([`PR-3`](../CLAUDE.md)) |
 | `rules-index` | that [`02-rules-index.md`](../docs/NewConcept/02-rules-index.md) still lists **every** rule the project has — it goes red the moment a rule is introduced without appearing there |
 | `concept-drift` | that a **model document** never changes without a reason standing as a decision ([`PR-2`](../CLAUDE.md), [D-565](../docs/NewConcept/90-decision-log.md)) — either the decision log changes with it, or the new lines name an existing decision |
@@ -43,6 +43,7 @@ as the whole net.*
 | `silent-query` | dass eine **kaputte Abfrage wirft, statt leer zu antworten** — alle vier Lesewege, dazu die leere `prepare()`-Anweisung, der Gegenbeweis, dass ein wirklich leeres Ergebnis leer bleibt, und die Messung, dass die Speicher kein `$wpdb->get_*` mehr direkt aufrufen |
 | `seed-twice` | dass **eine Saat, die zweimal läuft, nichts verdoppelt** — Saat und alle vier Gerüste ein zweites Mal, an `importOnce()` vorbei, Knoten und Kanten vorher und nachher gezählt |
 | `parked-in-shadow` | dass **Parken wandern heisst** ([D-575](../docs/NewConcept/90-decision-log.md), [D-619](../docs/NewConcept/90-decision-log.md), TASK-013) — die Kante mit ihrer Änderungsgruppe in den Schatten, **ihre Wertzeilen mit ihr**, und Zurückholen als Umkehrung. *Er legt sich seinen eigenen Fall an (Präfix `__`) und räumt ihn weg, weil heute keine geparkte Kante eine Wertzeile trägt* |
+| `no-model-write` | dass **kein Wächter in das Modell des Eigentümers schreibt** — jeder Lauf mit `wp-load` trägt unmittelbar danach die Klammer aus [`lib/no-write.php`](../scripts/dev/lib/no-write.php), keiner beginnt eine eigene Umklammerung, und jede Ausnahme steht mit Grund. *Siehe die Regel am Fuss dieser Datei* |
 | `edge-class` | **drei Werte, drei Klassen** ([D-639](../docs/NewConcept/90-decision-log.md), TASK-032) — jede lebende Kante trägt einen der drei, die Ableitung Wert → Klasse ist vollständig und eindeutig, eine **geladene** Kante kommt als ihre Klasse an, und **kein Datensatz hängt an zwei Besitzern**. *Die Aussage gilt den Daten, nicht dem Modell: ein Kompositionsziel **darf** geteilt sein — 36 von 42 zeigen auf Typknoten, und der Wächter, der das verboten hätte, hätte 36 richtige Zeilen berichtigt. Den Verstoss legt er sich selbst an (Präfix `__`) und räumt ihn weg* |
 
 ⚠️ **`doc-reach-check` ist am 2026-09-01 stillgelegt** ([D-574](../docs/NewConcept/90-decision-log.md))
@@ -79,6 +80,29 @@ the whole boundary run.
 
 ⚠️ **A WordPress call that drifts into `Taxmod\Core` fails on the first run**, immediately,
 because nothing is there to answer it. That is a mechanical check on `CD-1`, not a promise.
+
+## Ein Wächter schreibt nicht in das Modell des Eigentümers
+
+⚠️ **Ein Wächter darf lesen, so viel er will; was er schreibt, überlebt ihn nicht.** Jeder Lauf, der
+WordPress lädt, lädt unmittelbar danach [`scripts/dev/lib/no-write.php`](../scripts/dev/lib/no-write.php):
+`START TRANSACTION`, und ein `ROLLBACK` am Herunterfahren des Prozesses. Wer innerhalb eines Laufs
+selbst zurückdrehen will, nimmt einen `SAVEPOINT` — ein zweites `START TRANSACTION` **bestätigt** in
+MySQL stillschweigend alles Bisherige und schriebe genau den Rückstand fest, den die Klammer
+verhindert. Bewacht von `no-model-write-check.php`.
+
+⚠️ **Der Befund, der die Regel gekostet hat — gemessen am 2026-09-06, alle drei am selben Tag:** *der
+Eigentümer sah die Einstellung `read_only` **zweimal** an seinem `Integer`; die zweite Kante
+`Integer --read_only--> Constants` stammte aus `package7-check.php`. Drei Knoten `__cv Zahl` aus
+`converter-check.php` lagen unter demselben `Integer`. `seed-twice-check.php` hatte dreimal eine
+deutsche `Adresse` gesät, weil er sie in `Address` umbenannt hatte und die Saat am Namen sucht.*
+
+⚠️ **Und die Zahl, die zeigt, dass es kein Einzelfall war: von 73 Wächterläufen veränderten
+**42** den Bestand, 17 davon an Knoten, Kanten, Sätzen, Wertzeilen oder Beschriftungen. Nach der
+Klammer schreibt kein Lauf mehr ins Modell.**
+
+⚠️ **Aufräumen am Ende bleibt richtig und wird nicht entfernt — es ist nur nicht mehr das, worauf
+der Bestand sich verlässt.** *Genau daran sind alle drei Funde entstanden: ein Lauf, der in Zeile 200
+rot wird, erreicht seine Zeile 400 nie, und ein `finally` läuft an einem `exit(1)` vorbei.*
 
 ## Fakes, not mocks
 

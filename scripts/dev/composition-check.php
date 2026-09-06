@@ -28,6 +28,10 @@ $wordpress = $argv[1] ?? 'C:/Devel/Wordpress';
 define('WP_USE_THEMES', false);
 
 require rtrim($wordpress, '/') . '/wp-load.php';
+
+// ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
+// alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
+require __DIR__ . '/lib/no-write.php';
 require __DIR__ . '/../../vendor/autoload.php';
 require __DIR__ . '/geruest.php';
 
@@ -341,11 +345,15 @@ global $wpdb;
 $knotenTabelle = $wpdb->prefix . 'taxmod_nodes';
 $vorher        = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$knotenTabelle}");
 
-$wpdb->query('START TRANSACTION');
+// ⚠️ **Ein `SAVEPOINT` und kein zweites `START TRANSACTION`** — *seit die Klammer aus
+// `lib/no-write.php` den ganzen Lauf umfasst. Ein zweites `START TRANSACTION` **bestätigt** in MySQL
+// stillschweigend alles Bisherige: es hätte genau den Rückstand festgeschrieben, den die Klammer
+// verhindert. Gemessen am 2026-09-06 waren das 21 Journalzeilen aus diesem Lauf.*
+$wpdb->query('SAVEPOINT vor_der_zweiten_saat');
 
 $again = $scaffold->import();
 
-$wpdb->query('ROLLBACK');
+$wpdb->query('ROLLBACK TO SAVEPOINT vor_der_zweiten_saat');
 
 $nachher = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$knotenTabelle}");
 

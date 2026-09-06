@@ -49,6 +49,10 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
+
+// ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
+// alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
+require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\Persistence\Query;

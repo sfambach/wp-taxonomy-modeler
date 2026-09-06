@@ -22,6 +22,10 @@ $wordpress = $argv[1] ?? 'C:/Devel/Wordpress';
 define('WP_USE_THEMES', false);
 
 require rtrim($wordpress, '/') . '/wp-load.php';
+
+// ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
+// alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
+require __DIR__ . '/lib/no-write.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\WordPress\Admin\SettingsScreen;

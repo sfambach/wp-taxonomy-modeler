@@ -59,6 +59,10 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
+
+// ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
+// alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
+require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\Admin\SettingsScreen;
@@ -205,10 +209,13 @@ echo "\n1 · Saat und Gerüste ein zweites Mal\n";
 // ⚠️ **Die Zusage bleibt dieselbe, der Preis fällt weg:** geprüft wird weiter der **Lauf** und nicht
 // die Sperre, aber innerhalb einer Umklammerung, die am Ende zurückgedreht wird. *Was der zweite
 // Lauf anlegt, wird gezählt, gemeldet — und nicht behalten.*
-$wpdb->query('START TRANSACTION');
+// ⚠️ **Ein `SAVEPOINT` und kein zweites `START TRANSACTION`** — *seit die Klammer aus
+// `lib/no-write.php` den ganzen Lauf umfasst. Ein zweites `START TRANSACTION` **bestätigt** in MySQL
+// stillschweigend alles Bisherige und wäre damit das Gegenteil dessen, was hier stehen soll.*
+$wpdb->query('SAVEPOINT vor_der_zweiten_saat');
 
 $zurueckdrehen = static function () use ($wpdb): void {
-    $wpdb->query('ROLLBACK');
+    $wpdb->query('ROLLBACK TO SAVEPOINT vor_der_zweiten_saat');
 };
 
 register_shutdown_function($zurueckdrehen);
@@ -259,7 +266,7 @@ echo "\n2 · Zurückdrehen und nachher zählen\n";
 // dieses Laufs ist «es bleibt nichts liegen», und gemessen wird sie nach dem Zurückdrehen.*
 $zurueckgedreht = true;
 
-$wpdb->query('ROLLBACK');
+$wpdb->query('ROLLBACK TO SAVEPOINT vor_der_zweiten_saat');
 
 $nachherKnoten = zaehle('nodes');
 $nachherKanten = zaehle('relations');
