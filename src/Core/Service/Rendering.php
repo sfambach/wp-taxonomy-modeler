@@ -1081,10 +1081,34 @@ final class Rendering implements Presets
         //
         // ⚠️ **Sechster Fall derselben Sache an einem Tag:** *Daten umgezogen, ein Leser
         // stehengeblieben. Dieselbe Zeile wie in {@see self::containerFor()} und aus demselben Grund.*
-        $settings = $this->withModelValues([], $node);
+        // ⚠️ **Auch die Angaben des gewählten Renderers, seit dem 2026-09-06** — *hier stand nur
+        // `withModelValues()`, und damit fehlten genau die drei, die am Renderer selbst hängen:
+        // `converter`, `with_label`, `label_role`. **Gemessen an `Gramm`:** *mit `label_role = symbol`
+        // an `Base units` zeichnete die Vorschau weiter «Gramm» statt «g» — die Rolle lag im Satz des
+        // Renderers, und dieser Leser sah nur die Kette des Knotens.*
+        //
+        // ⚠️ *Dieselbe Naht wie in {@see self::containerFor()}, die es schon macht — **der Gezeichnete
+        // gewinnt, wo beide sprechen** ({@see self::withRendererValues()}).*
+        $settings = $this->withRendererValues($node);
 
         if ($value === null || $value->isNothing()) {
             $value = ($settings[SettingKey::DefaultValue->value] ?? null)?->value ?? TypedValue::nothing();
+        }
+
+        // ⚠️ **Eine Konstante ist ihr eigener Wert** — *sein Wort am 2026-09-06 zu `Gramm`: «Preview
+        // geht nicht — du hast Knoten, du hast Renderer, Daten gibts hier keine, sollte aber
+        // ausreichend sein.» **Er hat recht:** ein Knoten unter `Constants` hält keinen Wert, er
+        // **ist** einer. Ohne diese Zeilen zeichnete die Vorschau einen leeren Kasten oder — mit
+        // `reference` — den roten Hinweis «Verweis zeigt ins Leere», weil niemand einen Wert
+        // hineingab.*
+        //
+        // ⚠️ *Die Beschriftung kommt in der aufgelösten **Rolle** ([D-539](../../../docs/NewConcept/90-decision-log.md)):
+        // steht `label_role = symbol`, zeigt die Vorschau «g» und nicht «Gramm» — genau das, was auf
+        // der Seite später herauskommt.*
+        $eigenerVerweis = $type === SimpleType::NodeRef && $value->isNothing();
+
+        if ($eigenerVerweis) {
+            $value = TypedValue::ofReference($node->id);
         }
 
         // ⚠️ *The fallback rather than nothing, for the same reason a field falls back: a value must
@@ -1103,7 +1127,13 @@ final class Rendering implements Presets
             // form would be submitted as if somebody had filled it in.
             fieldName: '',
             type: $type,
-            surroundings: new Surroundings(),
+            surroundings: new Surroundings(
+                // ⚠️ *Aufgelöst hereingegeben und nicht im Renderer nachgeschlagen — dieselbe Naht wie
+                // im Formular ({@see self::fieldsOf()}): der Kern löst, der Renderer zeichnet.*
+                refersTo: $eigenerVerweis
+                    ? ($this->labels?->forNodes([$node], $this->roleOf($settings), $locale)[$node->id] ?? $node->name)
+                    : null,
+            ),
         ));
     }
 

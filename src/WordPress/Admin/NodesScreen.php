@@ -921,7 +921,15 @@ final class NodesScreen
         // ⚠️ *And it is the scope the owner asked about: «why no preview on the simple **data
         // types**». A constant previewed as a reference needs its candidates walked and handed in,
         // which is a different job.*
-        if ($this->framework->branchOf($selected) !== Branch::DataTypes) {
+        // ⚠️ **Konstanten sind seit dem 2026-09-06 dabei** — *sein Wort zu `Gramm`: «Preview geht
+        // nicht — du hast Knoten, du hast Renderer, Daten gibts hier keine, sollte aber ausreichend
+        // sein.» **Der Grund, der sie ausschloss, ist mit demselben Tag weggefallen:** *hier stand,
+        // eine Konstante würde «als Wähler ohne übergebene Kandidaten» gezeichnet und bekäme den roten
+        // «nichts zeichnet das»-Hinweis. Seit die Basiseinheiten `reference` tragen und ein Verweis
+        // sich selbst auflöst, zeichnet sie ihre Beschriftung — «g», wenn die Rolle `symbol` gilt.*
+        $ast = $this->framework->branchOf($selected);
+
+        if ($ast !== Branch::DataTypes && $ast !== Branch::Constants) {
             return '';
         }
 
