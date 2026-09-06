@@ -1995,3 +1995,49 @@ Klasse, die Seite setzt sie zusammen.*
 
 ⚠️ *Kein Umbau um des Umbaus willen: geteilt wird, **bevor** die naechsten drei Baustellen dort
 gleichzeitig aufschlagen — und ohne dass eine Zusage sich aendert (`PR-9`).*
+
+---
+
+[ ] TASK-002 (neu zugeschnitten)  `relation_records.path` faellt — die Adresse steht in Ids
+
+**2026-09-06, auf sein Wort:** *«das hoert sich so an, als wolltest du den Pfad behalten, und das
+will ich nicht — sollte alles ueber die Ids abgelegt sein»* und *«es sollte schon mit den
+vorhandenen Ids gehen».* **Er hat recht, und meine Zwischenfolgerung war falsch:** *aus «der Wert
+liegt im Satz des Halters» hatte ich geschlossen, die **Spalte** muesse bleiben. Bleiben muss die
+**Adresse** — nicht ihre Schreibweise.*
+
+**Was der Pfad heute traegt, gemessen:**
+
+| | ein Teil | zwei Teile |
+|---|---|---|
+| lebend | 116 | **2** |
+| Schatten | 5062 | **1280** |
+
+*Mehr als zwei Teile gibt es nirgends. Der zweiteilige ist `<Kante der Verwendungsstelle>.<Einstellungskante>` — **zwei Ids, in einen Text geschrieben**.*
+
+**Das Beispiel aus seinem Modell** (die zwei Feldbreiten von heute):
+
+| | Wertzeile 15276 | Wertzeile 15277 |
+|---|---|---|
+| Satz | 4756 (`Street / H#`) | 4756 (derselbe) |
+| Kante | `display_size` | `display_size` |
+| Pfad | `75476.…` (House Number) | `75475.…` (Street Name) |
+| Wert | 5 | 40 |
+
+*Beide Zeilen haengen im **selben Satz** an **derselben Kante** und unterscheiden sich nur im Pfad.
+Nimmt man ihn weg, sind es zwei gleiche Zeilen, und die zweite ueberschreibt die erste.*
+
+**Der Weg, den er meint, und er ist schon einmal gegangen worden:** *der Satz bekommt einen
+**Besitzer mit Raum** — `owner_id` + `owner_kind` (Knoten oder Kante), genau wie `labels` es seit
+Fassung 31 hat ([D-641](../../NewConcept/90-decision-log.md)). Dann gehoert die Ueberschreibung dem
+Satz **der Kante**, `node_record_id` und `relation_id` sagen alles, und der Pfad faellt ersatzlos.*
+
+⚠️ **Was es kostet, benannt:** *je Verwendungsstelle mit eigenen Einstellungen entsteht ein Satz —
+**heute genau zwei**. Die 1280 Schattenzeilen bleiben unveraendert; Geschichte wird nicht
+umgeschrieben ([D-065](../../NewConcept/90-decision-log.md)).*
+
+⚠️ **Und die Tabelle heisst danach falsch:** *`node_records` haelt dann auch Kanten-Saetze. Der Name
+zieht mit oder wird als Befund vermerkt — nicht stillschweigend stehengelassen.*
+
+⚠️ *Beide Leser entscheiden heute **am Pfad** (`$gesucht[$wert->path]`); sie fragen danach die zwei
+Ids. Das ist der eigentliche Umbau, nicht die Spalte.*
