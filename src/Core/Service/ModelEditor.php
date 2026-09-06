@@ -1326,7 +1326,21 @@ final class ModelEditor
             throw NotAPossibleTarget::itIsInTheTrash($target->name);
         }
 
-        $moved = $relation->retargetedTo($targetId, $branch->relationKind());
+        // ⚠️ **Eine Einstellungskante bleibt eine Einstellungskante** — *sein Befund am 2026-09-06:
+        // «die Typzuordnung am Knoten `render with label` kann ich nicht auf diesen Typ ändern,
+        // auswählen geht, er übernimmt ihn aber nicht».* **Gemessen war es kein verweigertes
+        // Speichern, sondern ein stiller Artwechsel:** *das Ziel wurde übernommen, und mit ihm die Art
+        // des Astes — aus `setting` wurde `composition`. Danach steht die Zeile nicht mehr im
+        // Einstellungsblock, und von aussen sieht das aus wie «nichts passiert».*
+        //
+        // ⚠️ **Und die Art gehört ohnehin nicht dem Ast** ([D-618](../../../docs/NewConcept/90-decision-log.md),
+        // [D-621](../../../docs/NewConcept/90-decision-log.md)): *«der Benutzer bestimmt die Kantenart,
+        // kein Ast-Automatismus». Für eine Einstellung ist das hier nachgezogen; für die übrigen Arten
+        // steht der Rückbau noch aus und wird nicht nebenbei entschieden (`PR-4`).*
+        $moved = $relation->retargetedTo(
+            $targetId,
+            $relation->isSetting() ? $relation->kind : $branch->relationKind()
+        );
 
         if ($moved === $relation) {
             return $relation;

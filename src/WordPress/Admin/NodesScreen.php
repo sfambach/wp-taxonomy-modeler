@@ -2762,6 +2762,25 @@ final class NodesScreen
         // nichts konnte — aber aus einem Grund, der am Knoten steht statt an seinem Zweig.*
         $branch = $this->framework->branchOf($selected);
 
+        // ⚠️ **Eine Einstellungskante zählt mit, und dass sie es nicht tat, war ein Fehler**
+        // *(sein Befund am 2026-09-06: «ich habe doch schon einen Knoten `With Label` unter `Bool`
+        // angelegt, hier muss ich einen Default-Wert eingeben können»).* **Gemessen war der Schirm
+        // enger als der Kern:** *{@see \Taxmod\Core\Service\DataEntry::create()} legte denselben Satz
+        // anstandslos an, während dieser Kasten «hier kann nichts eingetragen werden» sagte — und den
+        // **einen Satz, der schon dastand, nicht einmal zeigte**.*
+        //
+        // ⚠️ **Der Wert einer Einstellung wohnt genau hier** ([D-026](../../../docs/NewConcept/90-decision-log.md):
+        // «at model level there are no values, only defaults»). *Ein Knoten, dessen einzige Felder
+        // Einstellungen sind, konnte über den Schirm nie einen `default`-Satz bekommen — also war die
+        // Vorgabe einer Einstellung nur über den Kode zu setzen.*
+        $eigeneKanten = $this->editor->fieldsOf($selected->id);
+
+        foreach ($eigeneKanten as $relation) {
+            if ($relation->isSetting() && $relation->fromNodeId === $selected->id) {
+                $attributes[] = $relation;
+            }
+        }
+
         if ($attributes === [] && ($branch === null || ! $branch->holdsData())) {
             return $this->heading(
                 __('Records', 'taxmod'),
