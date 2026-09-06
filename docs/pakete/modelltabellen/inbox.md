@@ -1751,3 +1751,41 @@ Unterschied, die [D-665](../../NewConcept/90-decision-log.md) an anderer Stelle 
 **Seitenformular** zu haengen (`form="taxmod-page-<id>"`), damit der Seitenaufruf die Eingaben
 mitnimmt und speichert. Dann klappt Aufklappen aber jedes Mal auch **Speichern** aus — und ob ein
 Blick in die Einstellungen ein Schreibvorgang sein darf, ist nicht meine Entscheidung.*
+
+---
+
+## INF-061 · Das Überschreiben an der Verwendungsstelle — Strategie ohne Pfad
+
+**Was das Konzept dazu schon sagt** (nachgelesen, nicht erinnert — `PR-10`):
+
+| Beschluss | Satz |
+|---|---|
+| [D-611](../../NewConcept/90-decision-log.md) | Eine Verwendungsstelle **darf** eine Einstellung des Zielknotens überschreiben — «aktuell nur für Settings» |
+| [D-643](../../NewConcept/90-decision-log.md) | Ihr bisheriger Träger `relations.target_settings_record_id` fällt **ersatzlos** — 0 Zeilen, nie belegt |
+| [D-529](../../NewConcept/90-decision-log.md) | Eine Einstellung ist ein Feld, also eine Kante |
+| [D-578](../../NewConcept/90-decision-log.md) | Ein Wert an einer Kante ist eine Zeile in `relation_records` — keine zweite Ablage für eine Kantenart |
+| [D-577](../../NewConcept/90-decision-log.md) | «Eine Adresse — sie bekommt ihren **eigenen `node_record`**, der Kunde verweist darauf.» **Kein Pfad.** |
+| [D-522](../../NewConcept/90-decision-log.md) | Datensätze trägt der Knoten, **der Felder hat** — ein einfacher Typ hat welche, denn seine Einstellungen sind Kanten (D-529) |
+| [D-602](../../NewConcept/90-decision-log.md) | Aufgelöst wird: Kante → Zielknoten → Vorfahren → Rückfall im Kode |
+
+**Was heute wirklich passiert** (gemessen an `DataEntry::putSettingAtUseSite()`): der Wert landet im
+**Default-Satz des Besitzers**, adressiert mit der Zeichenkette `<Verwendungsstelle>.<Einstellungskante>`.
+⚠️ **Es sind schon genau zwei Ids** — sie stecken nur in einer Textspalte statt in der Ablage.
+
+**Vorschlag, und er ist wörtlich die Form aus D-577:**
+
+1. Die Wertzeile der Verwendungsstelle im Satz des Besitzers bekommt einen `value_ref` auf einen
+   **eigenen Satz des Zielknotens**.
+2. Die Überschreibungen sind gewöhnliche Wertzeilen **in diesem Satz** — `relation_id` = die
+   Einstellungskante. Keine neue Spalte, keine neue Tabelle.
+3. Der Leser folgt in Schritt 1 der Kette (D-602) diesem Verweis statt einem Pfad.
+4. Der Schreiber legt den Satz beim ersten Überschreiben an und räumt ihn weg, wenn die letzte
+   Überschreibung fällt.
+5. Umzug: jede Zeile mit Pfad `A.B` wandert in den Satz hinter `A`. Zwei Ids, kein Zerlegen von Text.
+6. Danach fällt die Spalte `relation_records.path`.
+
+**ENTSCHEIDUNG ERFORDERLICH: JA, an genau einer Stelle.** *Dieser Satz ist weder `default` noch
+`example` noch `user` — er ist die Einstellung **dieser** Verwendungsstelle. Sein Wort war: «an den
+einfachen Datentypen kann es nur `default`- oder `example`-Datensätze geben». Entweder bekommt
+`record_type` einen vierten Wert, oder der Satz zählt als `default` und wird allein dadurch
+unterschieden, dass jemand auf ihn zeigt.*
