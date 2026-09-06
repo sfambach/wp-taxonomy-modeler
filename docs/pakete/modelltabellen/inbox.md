@@ -1613,7 +1613,10 @@ kein Aufräumen (`PR-4`): **es ist der Beleg dafür, wie die Daten dorthin kamen
 
 ---
 
-## INF-055 · Gehoert eine Abbildung dem Renderer oder dem Feld?
+## INF-057 · Gehoert eine Abbildung dem Renderer oder dem Feld?
+
+⚠️ *Hiess beim Schreiben INF-055 und traegt seit dem Zusammenfuehren die 057: waehrend dieser Arbeit
+sind INF-055 und INF-056 parallel vergeben worden. Die Commit-Nachricht nennt noch die alte Nummer.*
 
 **Aufgefallen beim Bauen der Renderer-Einstellungen.** *Seit der Satz des gewaehlten Renderers seine
 Einstellungen liefert, stellt sich die Frage, fuer **welche** Schluessel das gelten soll.*
@@ -1675,7 +1678,9 @@ Renderer) und [D-603](../../NewConcept/90-decision-log.md) (die Registratur sagt
 
 ---
 
-## INF-056 · `field-hide-check` nagelt einen Wert fest, den er selbst aendern darf
+## INF-058 · `field-hide-check` nagelt einen Wert fest, den er selbst aendern darf
+
+⚠️ *Hiess beim Schreiben INF-056, aus demselben Grund wie INF-057.*
 
 **Gemessen am 2026-09-06, und nicht von dieser Arbeit verursacht** — *nichts an den Datensaetzen
 ruehrt an `relations.hide`.*
