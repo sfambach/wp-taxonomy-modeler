@@ -47,6 +47,7 @@ use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
+use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -346,6 +347,90 @@ echo "\n== Woher die Auskunft kommt ==\n";
         'und eine Einstellung nimmt ihren Datensatz mit (D-526, D-639)',
         $exponent !== null && $exponent->deletesRecordWithOwner()
     );
+}
+
+echo "\n== Die Tafel einer Stelle fragt das Ziel, nicht den Besitzer (D-668) ==\n";
+
+// ⚠️ **Sein Befund am 2026-09-06, mit Bild:** *«zu viel oder display size in display size?»* — an
+// `Text --display_size--> display size` bot die aufgeklappte Tafel `display_size` selbst an. Der
+// Grund war, dass {@see ModelValues::declaredSettingKeys()} **zwei** Ketten fragte, die des Ziels
+// und die des Besitzers; die Kante bot sich damit selbst als eigene Einstellung an
+// ([D-668](../../docs/NewConcept/90-decision-log.md)).
+//
+// ⚠️ **Gebaut statt gesucht** ([D-613](../../docs/NewConcept/90-decision-log.md)): `display_size`
+// ist sein Inhalt und darf sich ändern — die Zusage gilt der **Gestalt** «eine Einstellungskante
+// zeigt auf einen Einstellungsknoten».
+{
+    $modell = new ModelValues($records, $relations, $nodes, $framework);
+
+    $gebaut  = $geruest->einstellung('Tafel Ziel', 'tafelmass');
+    $eigene  = null;
+
+    foreach ($relations->fieldRelationsOf([$gebaut['traeger']]) as $eine) {
+        if ($eine->name === $gebaut['feld']) {
+            $eigene = $eine;
+        }
+    }
+
+    if ($eigene === null || ! $eigene->isSetting()) {
+        check('die gebaute Einstellungskante steht', false, $eigene === null ? 'nicht gefunden' : 'keine Einstellung');
+    } else {
+        check('die gebaute Einstellungskante steht', true, '#' . $eigene->id);
+
+        $ihre = $modell->declaredSettingKeys($eigene);
+
+        // ⚠️ **Der Fall aus dem Bild.** *Die Kante darf sich nicht selbst anbieten.*
+        check(
+            'eine Einstellungskante bietet sich selbst nicht an',
+            ! in_array($gebaut['feld'], $ihre, true),
+            implode(', ', $ihre)
+        );
+
+        // ⚠️ **Der Gegenfall, und ohne ihn wäre die Zusage auch dann grün, wenn die Tafel gar
+        // nichts mehr anböte.** *Eine gewöhnliche Verwendungsstelle, deren **Ziel** die Einstellung
+        // erklärt — die Gestalt von `Address --Country--> Text`: `Text` erklärt `display_size`,
+        // also steht sie an der Stelle. Genau das darf die Verengung nicht mitnehmen.*
+        $stelle = $geruest->feldMit('Tafel Nutzer', 'zeigtauf', '1', $gebaut['traeger']);
+        $nutzt  = null;
+
+        foreach ($relations->fieldRelationsOf([$stelle['von']]) as $eine) {
+            if ($eine->id === $stelle['kante']) {
+                $nutzt = $eine;
+            }
+        }
+
+        $seine = $nutzt === null ? [] : $modell->declaredSettingKeys($nutzt);
+
+        check(
+            'eine Stelle, deren Ziel die Einstellung erklärt, bietet sie weiter an',
+            in_array($gebaut['feld'], $seine, true),
+            implode(', ', $seine)
+        );
+
+        // ⚠️ **Die beiden Richtungsregeln bleiben, wie sie sind** — sie hängen nicht an der Kette:
+        // *«wie oft» ist eine **Spalte** an der Kante ([D-351](../../docs/NewConcept/90-decision-log.md))
+        // und käme aus dem Modell nie zurück; der Renderer gehört dem **Knoten** und nicht der
+        // Verwendungsstelle ([D-643](../../docs/NewConcept/90-decision-log.md)).*
+        $gezeichnet = [];
+
+        if ($nutzt !== null) {
+            foreach ($rendering->settingsFor($nutzt, []) as $eine) {
+                $gezeichnet[] = $eine->key;
+            }
+        }
+
+        check(
+            'die Tafel einer Kante zeigt «wie oft» (D-351)',
+            in_array(SettingKey::Multiplicity->value, $gezeichnet, true),
+            implode(', ', $gezeichnet)
+        );
+
+        check(
+            'und keinen Renderer (D-643)',
+            ! in_array(SettingKey::Renderer->value, $gezeichnet, true),
+            implode(', ', $gezeichnet)
+        );
+    }
 }
 
 $geruest->abbauen();

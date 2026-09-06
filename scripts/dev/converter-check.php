@@ -77,7 +77,15 @@ if ($integerId === null) {
     exit(2);
 }
 
-$relation = $editor->addField($holder->id, $integerId, 'zaehler');
+// ⚠️ **Das Ziel ist eine eigene Spezialisierung von `Integer`, seit dem 2026-09-06.** *Vorher zeigte
+// die Kante unmittelbar auf `Integer` und `converter` war am **Besitzer** erklaert. **Das zaehlt fuer
+// die Tafel nicht mehr** ([D-668](../../docs/NewConcept/90-decision-log.md)): welche Einstellungen an
+// einer Verwendungsstelle angeboten werden, sagt allein die Kette ihres **Ziels**. Also bekommt der
+// Lauf ein eigenes Ziel, an dem er die Einstellung erklaeren darf — `Integer` gehoert dem Eigentuemer
+// und wird nicht angefasst.*
+$zielKnoten = $editor->createNode('__cv Zahl', $integerId);
+
+$relation = $editor->addField($holder->id, $zielKnoten->id, 'zaehler');
 
 // ⚠️ **Erklaert statt vorausgesetzt, seit dem 2026-09-06.** *Die Tafel bietet nur noch an, was an
 // der Kette als **Kante** erklaert ist ([D-529](../../docs/NewConcept/90-decision-log.md)) — sein
@@ -85,11 +93,11 @@ $relation = $editor->addField($holder->id, $integerId, 'zaehler');
 // `converter` haengt nach [D-585](../../docs/NewConcept/90-decision-log.md) am Basisknoten
 // `Renderer` und steht damit **nicht** an der Kette von `Integer`.*
 //
-// ⚠️ **Am Besitzer erklaert, und das ist der Punkt dieses Laufs:** *eine Verwendungsstelle sucht an
-// **zwei** Ketten, der ihres Besitzers zuerst ([D-611](../../docs/NewConcept/90-decision-log.md)).
-// Die Gestalt des Steuerelements kommt trotzdem vom **Ziel** — deshalb bietet es die vier
-// Zahlenabbildungen an, obwohl der Besitzer selbst kein Zahlentyp ist.*
-$editor->addField($holder->id, $integerId, 'converter', \Taxmod\Core\Model\RelationKind::Setting);
+// ⚠️ **Am Ziel erklaert, und das ist der Punkt dieses Laufs**
+// ([D-668](../../docs/NewConcept/90-decision-log.md)). *Die Gestalt des Steuerelements kommt
+// ohnehin vom Ziel — deshalb bietet es die vier Zahlenabbildungen an, obwohl der Besitzer selbst
+// kein Zahlentyp ist.*
+$editor->addField($zielKnoten->id, $integerId, 'converter', \Taxmod\Core\Model\RelationKind::Setting);
 
 // ⚠️ **Eine Angabe an einer Verwendungsstelle setzen — jetzt ueber den Kern.**
 // *Hier stand `$settings->put($settings->chainForUseSite($relation), …)`, und danach stand hier ein
@@ -250,18 +258,21 @@ $stale = $rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(
 $say(str_contains($stale->result->markup, '12'), 'der Wert steht gespeichert da');
 
 // aufraeumen
-$in  = (string) $holder->id;
-$all = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id = {$in} OR to_node_id = {$in}"));
+// ⚠️ *Zwei Knoten seit [D-668](../../docs/NewConcept/90-decision-log.md) — der Traeger und sein
+// eigenes Ziel. **Beide, sonst bleibt die Spielwiese stehen** und der letzte Satz dieses Laufs
+// sagt es auch.*
+$in  = $holder->id . ',' . $zielKnoten->id;
+$all = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}relations WHERE from_node_id IN ({$in}) OR to_node_id IN ({$in})"));
 $own = $all === [] ? $in : $in . ',' . implode(',', $all);
 
-(new WpdbRecordRepository())->forgetNodes([$holder->id]);
+(new WpdbRecordRepository())->forgetNodes([$holder->id, $zielKnoten->id]);
 $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$own})");
 
 if ($all) {
     $wpdb->query('DELETE FROM ' . $p . 'relations WHERE id IN (' . implode(',', $all) . ')');
 }
 
-$wpdb->query("DELETE FROM {$p}nodes WHERE id = {$in}");
+$wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
 $left = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '__cv %'");
 

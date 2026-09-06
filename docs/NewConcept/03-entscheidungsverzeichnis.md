@@ -33,6 +33,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie hängt eine Einstellung am Knoten? | [D-642](90-decision-log.md) — gewöhnliche Einstellungskante `1..1`, keine Spalte | ~~D-582~~ ~~D-583~~ ~~D-584~~ (Zeiger-Lesart) ~~D-586~~ |
 | Hat eine Kante eigene Einstellungen? | [D-643](90-decision-log.md) — nein; beide Zeigerspalten an `relations` fallen ersatzlos | ~~D-586~~ |
 | Wie wird eine Einstellung aufgelöst? | [D-602](90-decision-log.md) — Kante → Zielknoten → Vorfahren → Rückfall im Kode; die Wurzel ist der **letzte** Halt ([D-617](90-decision-log.md)) | ~~D-079~~ (Installationsstufe) ~~D-401~~ ~~D-404~~ ~~D-616~~ (als Regel für alles) |
+| Welche Einstellungen bietet eine Verwendungsstelle an? | [D-668](90-decision-log.md) — die Kette ihres **Ziels**, nicht die des Besitzers; der **Schreiber** sucht weiter an beiden ([D-611](90-decision-log.md)) | — |
 | Wie heissen die Äste? | [D-188](90-decision-log.md) — `Model`, `Compositions`, `Primitives`; Begriffe englisch ([D-187](90-decision-log.md)) | ~~D-185~~ |
 | Welcher Knoten trägt Datensätze? | [D-522](90-decision-log.md) — der, der Felder hat; nicht sein Ast | ~~D-139~~ ~~D-183~~ |
 | Was unterscheidet Benutzer-, Vorgabe- und Beispieldaten? | [D-524](90-decision-log.md) — `records.kind` mit drei Zuständen; Sichtbarkeit im Frontend regelt [D-241](90-decision-log.md) | ~~D-521~~ *(die Rücknahme)* |

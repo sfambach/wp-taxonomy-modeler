@@ -407,34 +407,47 @@ final class ModelValues
      * `Integer`, `factor` und `offset` an `Without prefix`. **Die Tafel fragte statt dessen, für
      * welchen Schlüssel sich ein Steuerelement zeichnen lässt** — und das lässt sich für fast jeden.*
      *
-     * ⚠️ **Zwei Ketten bei einer Verwendungsstelle, Besitzer zuerst** — dieselbe Regel und derselbe
-     * Grund wie in {@see self::settingRelation()}: `max` ist an `Integer` erklärt, und «an
-     * `Kunde.alter` ist max = 120» soll gehen ([D-611](../../../docs/NewConcept/90-decision-log.md)).
+     * ⚠️ **Bei einer Verwendungsstelle zählt allein die Kette des ZIELS** ([D-668](../../../docs/NewConcept/90-decision-log.md)).
+     * *Was an einer Stelle gilt, sagt der Knoten, auf den sie zeigt. **Sein Befund am 2026-09-06:
+     * «zu viel oder display size in display size?»** — an `Text --display_size--> display size` bot
+     * die Tafel `display_size` selbst an, weil die Kette des **Besitzers** (`Text`) sie erklärt. Die
+     * Kante bot sich damit selbst als eigene Einstellung an. **Gemessen:** die Zielkette liefert
+     * `min`, `max`, `step`, `read_only`, `renderer`, `validator`; die Besitzerkette legte
+     * `display_size` darauf. Nach der Verengung bietet `Address --Country--> Text` `display_size`
+     * weiterhin an — `Text` erklärt sie —, `Text --display_size--> display size` nicht mehr.*
+     *
+     * ⚠️ **Nur der LESER wird enger, der Schreiber nicht.** *{@see self::settingRelation()} und
+     * {@see DataEntry::useSiteSettingRelation()} suchen die Einstellungskante weiter an **beiden**
+     * Ketten — das verlangt [D-611](../../../docs/NewConcept/90-decision-log.md) ausdrücklich:
+     * «der Schreiber sucht die Einstellungskante künftig an beiden Ketten, bei Namensgleichheit
+     * gewinnt die des Besitzers». **Ein an der Besitzerkette geschriebener Wert bleibt also lesbar**;
+     * er wird nur nicht mehr als Angebot der Tafel aufgezählt.*
+     *
+     * ⚠️ *Der Sonderfall, den [D-607](../../../docs/NewConcept/90-decision-log.md) beschreibt, ist
+     * genau dieser: «ein Knoten erbt keine Einstellungskante, die auf **ihn selbst** zeigt» — «ein
+     * `min`, das ein `min` hat, das ein `min` hat». Die Sperre greift dort am **Knoten**; hier
+     * greift dieselbe Einsicht an der **Verwendungsstelle**.*
      *
      * @return list<string>
      */
     public function declaredSettingKeys(Node|Relation $subject): array
     {
-        $ketten = [$this->erbkette($subject)];
+        $ziel = $subject instanceof Relation ? $this->knoten($subject->toNodeId) : null;
 
-        if ($subject instanceof Relation) {
-            $ziel = $this->knoten($subject->toNodeId);
+        // ⚠️ *Die Besitzerkette wird nur noch geholt, wo es keine Stelle mit Ziel gibt — bei einem
+        // **Knoten**, und beim Notfall einer Kante, deren Ziel nicht auffindbar ist.*
+        $kette = $ziel === null
+            ? $this->erbkette($subject)
+            : $this->framework->inheritanceOwnersOf($ziel);
 
-            if ($ziel !== null) {
-                $ketten[] = $this->framework->inheritanceOwnersOf($ziel);
-            }
-        }
+        $this->kantenVorladen($kette);
 
         $aus = [];
 
-        foreach ($ketten as $kette) {
-            $this->kantenVorladen($kette);
-
-            foreach ($kette as $besitzer) {
-                foreach ($this->kantenNachBesitzer[$besitzer] ?? [] as $kante) {
-                    if ($kante->isSetting()) {
-                        $aus[$kante->name] = true;
-                    }
+        foreach ($kette as $besitzer) {
+            foreach ($this->kantenNachBesitzer[$besitzer] ?? [] as $kante) {
+                if ($kante->isSetting()) {
+                    $aus[$kante->name] = true;
                 }
             }
         }
