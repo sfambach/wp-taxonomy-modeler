@@ -760,11 +760,30 @@ a.taxmod-chosen:hover {
  * Two renderings of one descent, side by side (D-160). The owner asked for it
  * to see the flags work: `read_only` is the setting whose whole meaning is
  * that the two sides differ, so they have to be readable at once. */
+/*
+ * Zwei Spalten zu je der Haelfte, und beide gleich hoch.
+ *
+ * Sein Wort am 2026-09-06: «zwei Preview-Felder, Display und Admin, sollten jeweils 50 % der
+ * verfuegbaren Breite belegen und sollten gleich hoch sein, damit es schoener aussieht.»
+ *
+ * Vorher stand hier `auto-fit` mit `minmax(20em, 1fr)`: die Spalten sprangen je nach Fensterbreite
+ * von zwei auf eine und waren nie genau halb. Und `align-items: start` liess jede Spalte nur so
+ * hoch werden, wie ihr Inhalt — darum standen zwei verschieden hohe Kaesten nebeneinander.
+ *
+ * `stretch` gibt beiden die Hoehe der hoeheren; unter 40em fallen sie doch untereinander, weil
+ * zwei Formulare in einer Handbreite nicht lesbar sind.
+ */
 .taxmod-preview {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20em, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 1em;
-    align-items: start;
+    align-items: stretch;
+}
+
+@media (max-width: 40em) {
+    .taxmod-preview {
+        grid-template-columns: 1fr;
+    }
 }
 
 .taxmod-preview-side {
