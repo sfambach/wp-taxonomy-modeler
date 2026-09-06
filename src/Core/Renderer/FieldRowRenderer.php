@@ -101,6 +101,17 @@ final class FieldRowRenderer extends RendererNode
     public const SETTINGS = 'settings';
 
     /**
+     * Der Wert des Knopfes, der die Einstellungen dieser Zeile auf- und zuklappt.
+     *
+     * ⚠️ **Er steht in der Namenszelle und nicht in der Icon-Reihe** — *sein Wort: «kleiner Pfeil
+     * links unter der Zeile aufklappen wie beim Baum». Der Rand baut den Knopf, dieser Renderer
+     * entscheidet, **wo** er steht — und dafür muss er ihn unter den übrigen wiedererkennen. **Der
+     * Wert ist die einzige Angabe, die beide Seiten teilen**, und darum steht er hier und nicht
+     * zweimal als Zeichenkette.*
+     */
+    public const FOLD = 'toggle_field_settings';
+
+    /**
      * Die Kennung der aufgeklappten Zeile, damit der Rand sie wiederfindet.
      *
      * ⚠️ *Der skriptfreie Weg braucht sie nicht — er zeichnet die ganze Seite neu. **Der Weg mit
@@ -223,9 +234,11 @@ final class FieldRowRenderer extends RendererNode
      */
     private function nameCell(Relation $subject, RenderContext $context): string
     {
+        $klapper = $this->fold($context);
+
         if ($context->purpose !== Purpose::Edit || ! $context->editable) {
             return $this->cell(
-                '<strong>' . RenderResult::escape($subject->name) . '</strong>',
+                $klapper . '<strong>' . RenderResult::escape($subject->name) . '</strong>',
                 'taxmod-field-name',
                 false,
                 true
@@ -260,7 +273,35 @@ final class FieldRowRenderer extends RendererNode
             'form'     => $context->surroundings->formId === '' ? self::formFor($subject) : $context->surroundings->formId,
         ]);
 
-        return $this->cell($field, 'taxmod-field-name', false, true);
+        return $this->cell(
+            '<span style="display:flex;align-items:center;gap:.25em">' . $klapper . $field . '</span>',
+            'taxmod-field-name',
+            false,
+            true
+        );
+    }
+
+    /**
+     * Das Dreieck vor dem Namen — auf, zu, oder der Platz, den es einnähme.
+     *
+     * ⚠️ **Der Platz bleibt, wo es keinen Klapper gibt** — *dieselbe Regel wie in der Baumzeile
+     * ({@see TreeRenderer::fold()}): ohne ihn stünden die Namen zweier Nachbarzeilen unterschiedlich
+     * weit links, und die Spalte wäre nicht mehr zu lesen.*
+     *
+     * ⚠️ *Gezeichnet wird der Knopf, den der Rand geliefert hat — hier wird nur entschieden, **wo**
+     * er steht. Ihn hier zu bauen hiesse, seine Beschriftung ein zweites Mal zu erfinden (`AR-2`).*
+     */
+    private function fold(RenderContext $context): string
+    {
+        $kasten = 'display:inline-block;width:1.4em;flex:none;text-align:center';
+
+        foreach ($context->surroundings->actions as $control) {
+            if ($control->value === self::FOLD) {
+                return '<span style="' . $kasten . '">' . ControlMarkup::button($control) . '</span>';
+            }
+        }
+
+        return '<span style="' . $kasten . '"></span>';
     }
 
     /**
@@ -477,7 +518,7 @@ final class FieldRowRenderer extends RendererNode
         $buttons = '';
 
         foreach ($surroundings->actions as $control) {
-            if (ControlMarkup::isAWord($control)) {
+            if (ControlMarkup::isAWord($control) || $control->value === self::FOLD) {
                 continue;
             }
 

@@ -22,6 +22,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\DialogChooserRenderer;
+use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\HintMarkup;
 use Taxmod\Core\Renderer\IconMarkup;
@@ -1738,7 +1739,18 @@ final class NodesScreen
                 // Zeile aufgeklappt neu. **Das ist der skriptfreie Weg**, und es ist genau der
                 // Seitenaufruf, den der Beschluss ausdrücklich erlaubt.*
                 //
-                // ⚠️ *Das Auge sagt, was der Klick tut — dieselbe Regel wie beim Verstecken.*
+                // ⚠️ **Ein Dreieck links vor dem Namen, nicht ein Zahnrad rechts in der Icon-Reihe** —
+                // *sein Wort am 2026-09-06: «kleiner Pfeil links unter der Zeile aufklappen wie beim
+                // Baum, das würde ich bevorzugen». **Und er hatte den Knopf zuvor nicht gefunden**:
+                // «ich sehe die Einstellung am Feld nicht» — das Zahnrad stand als siebtes Icon am
+                // rechten Rand, während der Bereich links unten aufgeht.*
+                //
+                // ⚠️ *Dasselbe Zeichenpaar wie die Baumzeile ({@see \Taxmod\Core\Renderer\TreeRenderer::fold()}),
+                // damit ein Aufklapper überall gleich aussieht — `▸` zu, `▾` offen.*
+                //
+                // ⚠️ *Das Auge sagt hier den **Zustand**, nicht den Klick — beim Baum ist es ebenso,
+                // und ein Dreieck, das in die Gegenrichtung zeigt, wäre in einer Tabelle voller
+                // Dreiecke nicht zu lesen.*
                 new Control(
                     'do',
                     self::TOGGLE_ROW_SETTINGS,
@@ -1747,7 +1759,11 @@ final class NodesScreen
                         : __('Show the settings of this use site', 'taxmod'),
                     __('The settings that apply to this field here — resolved only when it is open', 'taxmod'),
                     true,
-                    icon: isset($offeneZeilen[$relation->id]) ? 'minus' : 'admin-generic'
+                    // ⚠️ *Der Knopf steht in der Namenszelle und damit **ausserhalb** des Formulars
+                    // der Zeile; `form` hängt ihn wieder daran. Ohne das schickt er nichts ab —
+                    // derselbe Fehler wie beim Umbenennen-Feld eine Zelle weiter.*
+                    form: FieldRowRenderer::formFor($relation),
+                    glyph: isset($offeneZeilen[$relation->id]) ? '▾' : '▸'
                 ),
                 // ⚠️ **Der Verstecken-Schalter am Feld** — der Fall, den
                 // [D-467](../../../docs/NewConcept/90-decision-log.md) als Grund nannte und für den es
