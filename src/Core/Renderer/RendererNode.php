@@ -38,6 +38,16 @@ use Taxmod\Core\Model\Node;
 abstract class RendererNode extends Node implements Renderer
 {
     /**
+     * ⚠️ *Die Vorgabe ist «nein», weil sie für achtzehn von einundzwanzig Renderern stimmt: ein
+     * Textfeld, ein Schalter, eine Tabelle brauchen keine Menge. **Wer eine braucht, sagt es** —
+     * heute die drei Auswahl-Renderer ({@see Renderer::needsSomethingToChooseFrom()}).*
+     */
+    public function needsSomethingToChooseFrom(): bool
+    {
+        return false;
+    }
+
+    /**
      * ⚠️ **Alles hat eine Voreinstellung, damit `new CheckboxRenderer()` weiter der Steckbrief ist** —
      * und alles steht in der Reihenfolge von {@see Node::fromStorage()}, damit eine geladene Zeile hier
      * ankommt.

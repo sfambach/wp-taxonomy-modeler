@@ -2963,7 +2963,33 @@ final class Rendering implements Presets
      */
     public function choicesFor(Relation $relation, ?Purpose $purpose = null): array
     {
-        return $this->renderers->eligibleFor($relation, $this->typeAt($relation), $purpose);
+        // ⚠️ *Gewählt wird aus den Kindern des **Ziels** — dorthin zeigt die Kante, und dort liegen
+        // die Möglichkeiten.*
+        return $this->renderers->eligibleFor(
+            $relation,
+            $this->typeAt($relation),
+            $purpose,
+            $this->hatEtwasZurAuswahl($relation->toNodeId)
+        );
+    }
+
+    /**
+     * Ob dieser Knoten Kinder hat — die Menge, aus der eine Auswahlliste wählt.
+     *
+     * ⚠️ **Sein Befund am 2026-09-06:** *«aktuell werden die beiden chooser angeboten das kann aber
+     * nicht richig sein weil der knoten keine kinder hat»* — gemessen an `Ampere`, einem Blatt unter
+     * `Base units`.
+     *
+     * ⚠️ *Gefragt wird der Speicher und nicht ein Feld am Knoten: **Kinder sind kein Zustand, den
+     * ein Knoten mit sich trägt**, sondern eine Beziehung. Wer sie am Exemplar ablesen wollte,
+     * müsste sie beim Laden mitschleppen — und hätte sie in dem Augenblick falsch, in dem jemand
+     * ein Kind anlegt.*
+     */
+    private function hatEtwasZurAuswahl(int $nodeId): bool
+    {
+        $knoten = $this->nodes->find($nodeId);
+
+        return $knoten !== null && $this->nodes->childrenOf($knoten) !== [];
     }
 
     /**
@@ -2978,7 +3004,12 @@ final class Rendering implements Presets
      */
     public function choicesForNode(Node $node, ?Purpose $purpose = null): array
     {
-        return $this->renderers->eligibleFor($node, $this->typeOfNode($node), $purpose);
+        return $this->renderers->eligibleFor(
+            $node,
+            $this->typeOfNode($node),
+            $purpose,
+            $this->nodes->childrenOf($node) !== []
+        );
     }
 
     /**

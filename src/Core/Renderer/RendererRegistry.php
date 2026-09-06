@@ -268,6 +268,19 @@ final class RendererRegistry
         Renderable $subject,
         ?SimpleType $type = null,
         ?Purpose $forPurpose = null,
+        /**
+         * Ob es an dieser Stelle überhaupt etwas zu wählen gibt.
+         *
+         * ⚠️ **Sein Befund am 2026-09-06 an `Ampere`:** *«aktuell werden die beiden chooser
+         * angeboten das kann aber nicht richig sein weil der knoten keine kinder hat».*
+         *
+         * ⚠️ *Die Frage kann {@see Renderer::fits()} nicht beantworten — es bekommt den Gegenstand,
+         * nicht seine Kinder. Also beantwortet sie der Aufrufer, der beides sieht
+         * ({@see \Taxmod\Core\Service\Rendering::choicesForNode()}), und die Registratur fragt nur
+         * noch, wer eine Menge braucht. **Vorgabe `true`, damit jede vorhandene Aufrufstelle
+         * weiterläuft wie bisher.***
+         */
+        bool $thereIsAChoice = true,
     ): array {
         $fitting = [];
 
@@ -280,6 +293,12 @@ final class RendererRegistry
             }
 
             if (! $renderer->fits($subject)) {
+                continue;
+            }
+
+            // ⚠️ *Eine Auswahlliste ohne etwas zur Auswahl ist ein leerer Kasten — angeboten wird
+            // sie nur, wo es eine Menge gibt.*
+            if (! $thereIsAChoice && $renderer->needsSomethingToChooseFrom()) {
                 continue;
             }
 

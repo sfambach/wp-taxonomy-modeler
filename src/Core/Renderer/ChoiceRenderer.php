@@ -68,6 +68,16 @@ final class ChoiceRenderer extends RendererNode
         return [];
     }
 
+    /**
+     * ⚠️ **Ja — und ohne Menge wird er gar nicht erst angeboten**
+     * ([OQ-120](../../../docs/NewConcept/91-open-questions.md), sein Befund an `Ampere`: *«das kann
+     * aber nicht richtig sein, weil der Knoten keine Kinder hat»*).
+     */
+    public function needsSomethingToChooseFrom(): bool
+    {
+        return true;
+    }
+
     public function fits(Renderable $subject): bool
     {
         return true;

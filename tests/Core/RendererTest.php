@@ -185,6 +185,8 @@ final class RendererTest extends TestCase
             /** @return list<\Taxmod\Core\Model\SimpleType> */
             public function handles(): array { return [SimpleType::Text]; }
             public function fits(\Taxmod\Core\Renderer\Renderable $subject): bool { return true; }
+            /** ⚠️ *Er zeichnet nur an — es gibt nichts zu wählen.* */
+            public function needsSomethingToChooseFrom(): bool { return false; }
             public function render(\Taxmod\Core\Renderer\Renderable $subject, RenderContext $context): RenderResult
             {
                 return RenderResult::of('shown');

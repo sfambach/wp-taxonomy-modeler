@@ -68,5 +68,22 @@ interface Renderer
      */
     public function fits(Renderable $subject): bool;
 
+    /**
+     * Ob dieser Renderer eine **Menge zum Auswählen** braucht.
+     *
+     * ⚠️ **Sein Befund am 2026-09-06, an `Ampere`:** *«aktuell werden die beiden Chooser angeboten,
+     * das kann aber nicht richtig sein, weil der Knoten keine Kinder hat».* **Er hat recht:** eine
+     * Auswahlliste ohne etwas zur Auswahl ist ein leerer Kasten, und {@see self::fits()} konnte es
+     * nicht sehen — es bekommt den Gegenstand, aber nicht seine Kinder.
+     *
+     * ⚠️ *Deshalb steht die Angabe hier und nicht als Sonderfall in der Registratur: **der Renderer
+     * sagt selbst, was er braucht** (`CD`, keine Sonderfälle nach Namen). Die Registratur fragt nur
+     * noch, ob es an dieser Stelle etwas zu wählen gibt.*
+     *
+     * ⚠️ *Das ist der erste Teil von [OQ-120](../../../docs/NewConcept/91-open-questions.md) —
+     * «deklariert ein Renderer seine Eigenschaften» — für genau eine Eigenschaft, und nicht mehr.*
+     */
+    public function needsSomethingToChooseFrom(): bool;
+
     public function render(Renderable $subject, RenderContext $context): RenderResult;
 }

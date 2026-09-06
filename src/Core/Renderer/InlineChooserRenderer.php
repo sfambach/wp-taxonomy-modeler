@@ -43,6 +43,16 @@ final class InlineChooserRenderer extends RendererNode
         return [SimpleType::NodeRef];
     }
 
+    /**
+     * ⚠️ **Ja — und ohne Menge wird er gar nicht erst angeboten**
+     * ([OQ-120](../../../docs/NewConcept/91-open-questions.md), sein Befund an `Ampere`: *«das kann
+     * aber nicht richtig sein, weil der Knoten keine Kinder hat»*).
+     */
+    public function needsSomethingToChooseFrom(): bool
+    {
+        return true;
+    }
+
     public function fits(Renderable $subject): bool
     {
         return true;
