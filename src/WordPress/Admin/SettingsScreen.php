@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Renderer\HintMarkup;
 use Taxmod\WordPress\Plugin;
 
 /**

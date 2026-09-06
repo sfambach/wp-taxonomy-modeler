@@ -45,13 +45,16 @@ final class CompactRendererTest extends TestCase
      * One drawn attribute, with markup nothing else in this file produces — so a test that says
      * *the parts come out in this order* is looking at the parts and not at the frame.
      */
-    private function part(int $id, string $name, string $markup): RenderedField
+    private function part(int $id, string $name, string $markup, string $hint = ''): RenderedField
     {
         return new RenderedField(
             Relation::attribute($id, $this->subject->id, 500 + $id, RelationKind::Composition, $name, $id),
             SimpleType::Text,
             FieldRenderer::NAME,
-            new RenderResult($markup, [$id])
+            new RenderResult($markup, [$id]),
+            false,
+            '',
+            $hint
         );
     }
 
@@ -230,6 +233,92 @@ final class CompactRendererTest extends TestCase
         // that wants to know whether anything was drawn should not have to parse a `<div>`.
         self::assertSame('', $this->draw([])->markup);
         self::assertSame('', $this->draw([$this->part(1, 'versteckt', '')])->markup);
+    }
+
+    // -------------------------------------------------------- die Hilfe, D-662
+
+    #[Test]
+    public function a_field_with_a_help_gets_a_mark_and_one_without_gets_none(): void
+    {
+        // ⚠️ **[D-662](../../docs/NewConcept/90-decision-log.md), sein Wort:** *«überall dort, wo help
+        // label ist, sollte auch ein kleines Fragezeichen hinter dem Feld stehen.»*
+        $mit  = $this->draw([$this->part(1, 'Wert', '<i>4k7</i>', 'der Widerstandswert')])->markup;
+        $ohne = $this->draw([$this->part(1, 'Wert', '<i>4k7</i>')])->markup;
+
+        self::assertSame(1, substr_count($mit, 'taxmod-hint-icon'));
+        self::assertStringNotContainsString('taxmod-hint', $ohne);
+    }
+
+    #[Test]
+    public function horizontally_one_mark_at_the_end_carries_every_help_of_the_row(): void
+    {
+        // ⚠️ **Sein Wort:** *«Bei compact horizontal würde ich die Texte sammeln und in ein
+        // Fragezeichen am Ende kombinieren.»* *Der Grund steht in D-662: dort trennt die Felder nur
+        // ein Leerzeichen — **ein Zeichen je Feld wäre ein Zeichen je Leerzeichen**.*
+        $markup = $this->draw([
+            $this->part(1, 'Wert', '<i>A</i>', 'erste Hilfe'),
+            $this->part(2, 'Toleranz', '<i>B</i>'),
+            $this->part(3, 'Bauform', '<i>C</i>', 'dritte Hilfe'),
+        ])->markup;
+
+        self::assertSame(1, substr_count($markup, 'taxmod-hint-icon'));
+        self::assertStringContainsString('erste Hilfe', $markup);
+        self::assertStringContainsString('dritte Hilfe', $markup);
+
+        // Am **Ende**, hinter dem letzten Feld — nicht zwischen den Feldern.
+        self::assertGreaterThan(strpos($markup, '<i>C</i>'), strpos($markup, 'taxmod-hint-icon'));
+    }
+
+    #[Test]
+    public function vertically_every_field_keeps_its_own_mark(): void
+    {
+        // ⚠️ *Senkrecht hat jedes Feld seine eigene Zeile und damit Platz für sein eigenes Zeichen —
+        // gesammelt wird nur, wo ein Leerzeichen trennt.*
+        $markup = $this->draw(
+            [
+                $this->part(1, 'Wert', '<i>A</i>', 'erste Hilfe'),
+                $this->part(2, 'Toleranz', '<i>B</i>', 'zweite Hilfe'),
+            ],
+            [CompactRenderer::ORIENTATION => TypedValue::ofText(CompactRenderer::VERTICAL)]
+        )->markup;
+
+        self::assertSame(2, substr_count($markup, 'taxmod-hint-icon'));
+        self::assertStringContainsString('erste Hilfe', $markup);
+        self::assertStringContainsString('zweite Hilfe', $markup);
+    }
+
+    #[Test]
+    public function the_sentence_stands_in_the_markup_and_not_only_in_the_title(): void
+    {
+        // ⚠️ **Der Preis, den [D-661](../../docs/NewConcept/90-decision-log.md) ausdrücklich nennt:**
+        // *ein Tooltip allein ist auf einem Berührungsbildschirm und für eine Vorlesehilfe nicht
+        // erreichbar. Also steht der Satz im Baum, und die Hülle ist fokussierbar.*
+        $markup = $this->draw([$this->part(1, 'Wert', '<i>A</i>', 'der Widerstandswert')])->markup;
+
+        self::assertStringContainsString('<span class="taxmod-hint-text">der Widerstandswert</span>', $markup);
+        self::assertStringContainsString('tabindex="0"', $markup);
+    }
+
+    #[Test]
+    public function a_hidden_field_takes_its_help_with_it(): void
+    {
+        // ⚠️ *R11: ein verstecktes Feld nimmt keinen Platz ein — und ein Satz zu einem Feld, das
+        // niemand sieht, erklärt nichts.*
+        $markup = $this->draw([
+            $this->part(1, 'sichtbar', '<i>A</i>'),
+            $this->part(2, 'versteckt', '', 'die Hilfe des Versteckten'),
+        ])->markup;
+
+        self::assertStringNotContainsString('taxmod-hint', $markup);
+    }
+
+    #[Test]
+    public function a_help_is_escaped_and_never_placed_as_markup(): void
+    {
+        $markup = $this->draw([$this->part(1, 'Wert', '<i>A</i>', 'a < b & "so"')])->markup;
+
+        self::assertStringContainsString('a &lt; b &amp; &quot;so&quot;', $markup);
+        self::assertStringNotContainsString('a < b &', $markup);
     }
 
     // ------------------------------------------------------- the registration

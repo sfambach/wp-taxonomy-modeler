@@ -1,8 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\WordPress\Admin;
-
-use Taxmod\Core\Renderer\IconMarkup;
+namespace Taxmod\Core\Renderer;
 
 /**
  * Das eine Stück Code, das weiss, wie eine Erklärung hinter ein Fragezeichen kommt.
@@ -38,6 +36,20 @@ use Taxmod\Core\Renderer\IconMarkup;
  * ⚠️ *Kein `$this`: die Klasse hält keinen Zustand und wird nie gebaut — wie {@see IconMarkup},
  * neben der sie steht.*
  *
+ * ⚠️ **Sie stand am Rand und steht seit [D-662](../../../docs/NewConcept/90-decision-log.md) im
+ * Kern, und das war keine Umsortierung, sondern `CD-1`.** *D-662 will ein Fragezeichen **hinter dem
+ * Feld** — und im waagerechten `compact` **eines am Ende der Zeile**, das die Hilfen aller Felder
+ * trägt. Beide Stellen sind Renderer, also Kern, und der Kern darf den Rand nicht rufen. **Es gab
+ * genau zwei Wege**: das Zeichen in den Kern holen, oder den Renderer die Hilfe nur **beschreiben**
+ * lassen und den Rand daraus HTML machen. Der zweite ist der, auf den
+ * [D-623](../../../docs/NewConcept/90-decision-log.md) zuläuft — **heute aber gibt jeder Renderer
+ * HTML zurück**, also hiesse er: eine einzige Ausnahme, die der Rand mitten aus einer fertigen Zeile
+ * wieder herauspulen müsste. **Der Umzug ist eine Fassung, der andere Weg wären zwei.**
+ *
+ * ⚠️ *Nichts an dieser Klasse war je WordPress: `esc_attr`/`esc_html` sind
+ * {@see RenderResult::escape()} mit anderem Namen — dieselbe `htmlspecialchars`-Maske, die jeder
+ * Renderer im Kern schon benutzt. **Der Rand ruft sie weiter genauso**, er darf in den Kern hinein.*
+ *
  * @see docs/NewConcept/30-renderer.md
  */
 final class HintMarkup
@@ -50,6 +62,9 @@ final class HintMarkup
 
     /** Der Satz — im Markup, nicht nur im `title`. */
     public const TEXT = 'taxmod-hint-text';
+
+    /** Was zwei gesammelte Hilfen trennt ([D-662](../../../docs/NewConcept/90-decision-log.md)). */
+    public const JOIN = ' · ';
 
     /**
      * Ein Fragezeichen, hinter dem dieser Satz steht.
@@ -64,12 +79,36 @@ final class HintMarkup
             return '';
         }
 
-        return '<span class="' . self::NAME . '" tabindex="0" title="' . esc_attr($hint) . '">'
+        return '<span class="' . self::NAME . '" tabindex="0" title="' . RenderResult::escape($hint) . '">'
             . '<span class="' . self::ICON . '">'
             . IconMarkup::dashicon('editor-help')
             . '</span>'
-            . '<span class="' . self::TEXT . '">' . esc_html($hint) . '</span>'
+            . '<span class="' . self::TEXT . '">' . RenderResult::escape($hint) . '</span>'
             . '</span>';
+    }
+
+    /**
+     * Mehrere Hilfen als **ein** Satzstück, für **ein** Fragezeichen.
+     *
+     * ⚠️ **[D-662](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«Bei compact
+     * horizontal würde ich die Texte sammeln und in ein Fragezeichen am Ende kombinieren.»* *Der
+     * Grund steht daneben: dort trennt die Felder nur ein Leerzeichen — **ein Fragezeichen je Feld
+     * wäre ein Fragezeichen je Leerzeichen**.*
+     *
+     * ⚠️ *Gesammelt wird der **Satz** und nicht der Name des Feldes dazu. Ob eine gesammelte Hilfe
+     * sagen soll, zu welchem Feld sie gehört, steht so nicht in D-662 und ist darum eine Frage im
+     * Eingangsblatt (`PR-4`), keine Erfindung hier.*
+     *
+     * @param list<string> $hints Schon übersetzte Sätze; leere fallen weg.
+     */
+    public static function combined(array $hints): string
+    {
+        $texts = array_values(array_filter(
+            array_map(static fn (string $one): string => trim($one), $hints),
+            static fn (string $one): bool => $one !== ''
+        ));
+
+        return self::icon(implode(self::JOIN, $texts));
     }
 
     /**

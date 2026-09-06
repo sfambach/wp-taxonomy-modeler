@@ -154,6 +154,66 @@ final class Labels
     }
 
     /**
+     * Die **Hilfe** dieser Knoten — und nur sie, ohne jeden Rückfall auf einen Namen.
+     *
+     * ⚠️ **[D-662](../../../docs/NewConcept/90-decision-log.md):** *«überall dort, wo help label ist,
+     * sollte auch ein kleines Fragezeichen hinter dem Feld stehen.»* **Die Bedingung ist «wo eine
+     * Hilfe steht»**, also darf hier nichts erfunden werden: ein Knoten ohne Hilfe fehlt in der
+     * Antwort und bekommt kein Zeichen.
+     *
+     * ⚠️ **Darum geht das *nicht* über {@see self::forNodes()}, und das ist kein Umweg, sondern der
+     * Unterschied:** *dessen Kette fällt auf die Rolle `name` und zuletzt auf `$node->name` zurück
+     * ([D-020](../../../docs/NewConcept/90-decision-log.md), [D-646](../../../docs/NewConcept/90-decision-log.md)).
+     * **Mit Rückfall trüge jedes Feld ein Fragezeichen, hinter dem sein eigener Name stünde** — ein
+     * Zeichen ohne Erklärung, genau das, was {@see \Taxmod\Core\Renderer\HintMarkup::icon()} für den
+     * leeren Satz ablehnt.*
+     *
+     * ⚠️ *Die **Sprache** fällt weiterhin zurück — angefragte Sprache, dann Standardsprache
+     * ([D-645](../../../docs/NewConcept/90-decision-log.md)). Eine Hilfe, die nur auf Englisch
+     * geschrieben ist, ist besser als keine; eine Hilfe, die es gar nicht gibt, ist keine.*
+     *
+     * @param  list<Node>         $nodes
+     * @return array<int, string> Nach Knoten-Id — **nur** die, die wirklich eine Hilfe tragen.
+     */
+    public function helpFor(array $nodes, string $locale = ''): array
+    {
+        if ($nodes === []) {
+            return [];
+        }
+
+        $stored = [];
+
+        foreach ($this->labels->forOwners(array_map(static fn (Node $n): int => $n->id, $nodes), IdentitySpace::Node) as $label) {
+            if ($label->role !== SeededRole::Help) {
+                continue;
+            }
+
+            $stored[$label->ownerId][$label->locale] = $label->text;
+        }
+
+        $locales = array_values(array_unique(array_filter(
+            [$locale === '' ? $this->defaultLocale : $locale, $this->defaultLocale],
+            static fn (string $one): bool => $one !== ''
+        )));
+
+        $found = [];
+
+        foreach ($nodes as $node) {
+            foreach ($locales as $tryLocale) {
+                $text = $stored[$node->id][$tryLocale] ?? '';
+
+                if ($text !== '') {
+                    $found[$node->id] = $text;
+
+                    break;
+                }
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * The order the chain is tried in.
      *
      * ⚠️ **Der Rückfall geht auf die Standardsprache, nicht mehr auf eine sprachneutrale Zeile**

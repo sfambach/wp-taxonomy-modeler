@@ -192,6 +192,28 @@ Benutzer die Art an der Kante wählen kann** — und das ist eine Maske, keine T
 
 ---
 
+## INF-039 · Sagt eine gesammelte Hilfe, zu welchem Feld sie gehört?
+
+**Typ:** `QUESTION` · **Status:** `OPEN` — beim Bau von [D-662](NewConcept/90-decision-log.md)
+gefunden, 2026-09-06
+
+⚠️ **Sein Wort in [D-662](NewConcept/90-decision-log.md):** *«Bei compact horizontal würde ich die
+Texte sammeln und in ein Fragezeichen am Ende kombinieren.»* **Gebaut ist genau das:** die Sätze der
+Felder einer waagerechten `compact`-Zeile stehen hintereinander in **einem** Fragezeichen am Ende,
+getrennt durch ein Trennzeichen.
+
+⚠️ **Offen ist, was dabei nicht dasteht: der Name des Feldes.** *Bei einem Feld ist das gleichgültig
+— das Zeichen steht neben ihm. **Bei dreien ist es das nicht:** drei Sätze hintereinander sagen
+nicht, welcher zu welchem Feld gehört, und die Zeile zeigt die Namen zwar an, aber der Leser muss
+sie selbst zuordnen. **Der naheliegende Ausweg — «Name: Satz» je Eintrag — steht so nicht in D-662**,
+und ihn hier zu wählen, hiesse eine Entscheidung im Vorbeigehen treffen (`PR-4`).*
+
+⚠️ *Heute betrifft es niemanden: gemessen tragen **4** Beschriftungen im ganzen Modell einen
+`help`-Text, und keine zwei davon stehen in derselben `compact`-Zeile. **Die Frage wird an dem Tag
+akut, an dem er anfängt, Hilfen zu schreiben** — und dann ist sie eine Zeile Code.*
+
+---
+
 ## Erledigte Eingänge
 
 *(noch keine)*

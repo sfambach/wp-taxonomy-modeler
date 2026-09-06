@@ -465,6 +465,45 @@ final class Rendering implements Presets
     }
 
     /**
+     * Die Hilfe je Feld — **die Beschriftung in der Rolle `help` am Ziel der Kante**.
+     *
+     * ⚠️ **[D-662](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«überall dort, wo help
+     * label ist, sollte auch ein kleines Fragezeichen hinter dem Feld stehen.»*
+     *
+     * ⚠️ **Am **Ziel** und nicht an der Kante, weil dort auch die sichtbare Beschriftung herkommt.**
+     * *{@see self::namesOfReferences()} und {@see self::fieldRowsFor()} holen den Namen eines Feldes
+     * genauso — als Beschriftung des Knotens, auf den es zeigt. **Die Hilfe folgt der Beschriftung**,
+     * sonst erklärte das Fragezeichen etwas anderes, als daneben steht.*
+     *
+     * ⚠️ *Zwei Abfragen für die ganze Zeile und keine je Feld (`CD-7`,
+     * [D-159](../../../docs/NewConcept/90-decision-log.md)) — dieselbe Form wie die Nachbarn darüber.*
+     *
+     * @param  list<Relation>     $relations
+     * @return array<int, string> Nach Kanten-Id; **fehlt**, wo keine Hilfe geschrieben ist.
+     */
+    private function hintsOfFields(array $relations, string $locale): array
+    {
+        if ($this->labels === null || $relations === []) {
+            return [];
+        }
+
+        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
+        $hilfen  = $this->labels->helpFor(array_values($targets), $locale);
+
+        $found = [];
+
+        foreach ($relations as $relation) {
+            $text = $hilfen[$relation->toNodeId] ?? '';
+
+            if ($text !== '') {
+                $found[$relation->id] = $text;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * Which label role this relation asked for, or the ordinary one.
      *
      * ⚠️ **An unknown role falls back rather than throwing.** The set is seeded
@@ -687,6 +726,8 @@ final class Rendering implements Presets
         // ⚠️ *Dieselbe Naht, ein anderes fremdes System: `refersTo` heisst «wie heisst das, worauf
         // dieser Wert zeigt» ([D-649](../../../docs/NewConcept/90-decision-log.md)).*
         $userNames = $this->namesOfUsers($relations, $values, $types);
+        // ⚠️ *Die Hilfen der Zeile, in **einem** Zug (`CD-7`) — [D-662](../../../docs/NewConcept/90-decision-log.md).*
+        $hilfen   = $this->hintsOfFields($relations, $locale);
         $wahl     = $this->optionsFor($relations);
         $fields   = [];
 
@@ -958,7 +999,11 @@ final class Rendering implements Presets
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
-                $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch()
+                $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch(),
+                '',
+                // ⚠️ *Aus demselben Grund mitgegeben: der Behälter zeichnet das Fragezeichen und
+                // darf nichts nachschlagen ([D-662](../../../docs/NewConcept/90-decision-log.md)).*
+                $hilfen[$relation->id] ?? ''
             );
         }
 

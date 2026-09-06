@@ -1651,6 +1651,43 @@ final class RenderingTest extends TestCase
     }
 
     /**
+     * Der ganze Weg für [D-662](../../docs/NewConcept/90-decision-log.md): eine `help`-Beschriftung
+     * steht am Ziel eines Feldes — und im Formular steht hinter dem Feld ein Fragezeichen.
+     *
+     * ⚠️ **Sein Wort:** *«überall dort, wo help label ist, sollte auch ein kleines Fragezeichen
+     * hinter dem Feld stehen.»* *Die Gegenprobe steht mit im selben Formular: das zweite Feld trägt
+     * keine Hilfe und bekommt kein Zeichen — **eine Zusage, die nur die eine Hälfte prüft, wäre auch
+     * grün, wenn jedes Feld ein Zeichen bekäme.***
+     */
+    #[Test]
+    public function a_field_whose_target_carries_a_help_label_shows_the_mark_and_the_others_do_not(): void
+    {
+        $ding = $this->thing('Bauteil');
+        $text = $this->type('text');
+        $zahl = $this->type('int');
+
+        $this->labelStore->put(new Label(
+            $text->id,
+            IdentitySpace::Node,
+            SeededRole::Help,
+            Label::BASE_NUMBER,
+            'en_US',
+            'free text of any length'
+        ));
+
+        $mit  = $this->editor->addField($ding->id, $text->id, 'Bezeichnung');
+        $ohne = $this->editor->addField($ding->id, $zahl->id, 'Menge');
+
+        $markup = $this->rendering->nodeAsForm($ding, [$mit, $ohne], [], Purpose::Edit, 'v')->markup;
+
+        self::assertSame(1, substr_count($markup, 'taxmod-hint-icon'));
+        // ⚠️ **Der Satz steht im Markup und nicht bloss im `title`**
+        // ([D-661](../../docs/NewConcept/90-decision-log.md)) — sonst wäre er für jeden fort, der
+        // nicht mit der Maus zeigt.
+        self::assertStringContainsString('<span class="taxmod-hint-text">free text of any length</span>', $markup);
+    }
+
+    /**
      * Der ganze Weg: einen Renderer **wählen**, an seinem Satz die **Achse** setzen, zeichnen — und
      * im Ergebnis steht die gesetzte Achse.
      *

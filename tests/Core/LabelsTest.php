@@ -59,6 +59,58 @@ final class LabelsTest extends TestCase
         self::assertSame([], $this->labels->forNodes([]));
     }
 
+    // ------------------------------------------------------- die Hilfe, D-662
+
+    #[Test]
+    public function only_a_written_help_answers_and_a_node_without_one_is_absent(): void
+    {
+        // ⚠️ **[D-662](../../../docs/NewConcept/90-decision-log.md): «überall dort, wo help label
+        // ist».** *Die Bedingung ist «wo eine Hilfe steht» — wo keine steht, darf keine Antwort
+        // kommen, sonst trüge jedes Feld ein Fragezeichen.*
+        $mit  = Node::create(70, 'Condensator', 'Root');
+        $ohne = Node::create(71, 'Resistor', 'Root');
+
+        $this->stored->put(new Label($mit->id, IdentitySpace::Node, SeededRole::Help, Label::BASE_NUMBER, self::STANDARD, 'stores current'));
+
+        $found = $this->labels->helpFor([$mit, $ohne]);
+
+        self::assertSame('stores current', $found[$mit->id]);
+        self::assertArrayNotHasKey($ohne->id, $found);
+    }
+
+    #[Test]
+    public function the_help_never_falls_back_to_a_name(): void
+    {
+        // ⚠️ **Der teure Fall, und er ist gemessen worden** ([D-386](../../../docs/NewConcept/90-decision-log.md)
+        // andersherum): *`forNodes()` fällt auf die Rolle `name` und zuletzt auf `$node->name`
+        // zurück. **Nähme die Hilfe denselben Weg, hiesse jede Hilfe wie ihr Knoten** — ein
+        // Fragezeichen, hinter dem der Name steht, den man ohnehin sieht.*
+        $node = Node::create(72, 'Resistor', 'Root');
+
+        $this->stored->put(new Label($node->id, IdentitySpace::Node, SeededRole::Form, Label::BASE_NUMBER, self::STANDARD, 'Widerstand'));
+
+        self::assertSame([], $this->labels->helpFor([$node]));
+        self::assertSame('Widerstand', $this->labels->forNodes([$node])[$node->id]);
+    }
+
+    #[Test]
+    public function the_help_falls_back_to_the_default_locale_but_not_to_another_role(): void
+    {
+        // ⚠️ *Die **Sprache** fällt weiter zurück ([D-645](../../../docs/NewConcept/90-decision-log.md)):
+        // eine Hilfe, die nur auf Englisch geschrieben ist, ist besser als keine.*
+        $node = Node::create(73, 'Text', 'Root');
+
+        $this->stored->put(new Label($node->id, IdentitySpace::Node, SeededRole::Help, Label::BASE_NUMBER, self::STANDARD, 'free text'));
+
+        self::assertSame('free text', $this->labels->helpFor([$node], 'de_DE')[$node->id]);
+    }
+
+    #[Test]
+    public function no_nodes_means_no_query_and_no_help(): void
+    {
+        self::assertSame([], $this->labels->helpFor([]));
+    }
+
     private InMemoryLabels $stored;
     private Labels $labels;
     private Node $node;

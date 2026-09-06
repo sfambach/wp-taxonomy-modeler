@@ -151,12 +151,19 @@ final class FormRenderer extends RendererNode
      * seeds one by that name), which means the label has to arrive in the context the way a
      * reference's does (D-363). *Until it does this shows the relation's internal name, which is the
      * same honesty the chain itself ends on — a node's own name, never nothing (D-020).*
+     *
+     * ⚠️ **Und hinter dem Feld das Fragezeichen, wo eine Hilfe geschrieben ist**
+     * ([D-662](../../../docs/NewConcept/90-decision-log.md)). *Hier je Feld und nicht gesammelt: ein
+     * Formular hat je Feld eine **Zeile**, also steht das Zeichen dort, wo es hingehört. Gesammelt
+     * wird nur im waagerechten `compact` ({@see CompactRenderer}), wo die Felder ein Leerzeichen
+     * trennt.*
      */
     private function row(RenderedField $part): string
     {
         return '<div class="taxmod-form-row">'
             . '<span class="taxmod-form-label">' . RenderResult::escape($part->relation->name) . '</span>'
             . '<span class="taxmod-form-field">' . $part->result->markup . '</span>'
+            . HintMarkup::icon($part->hint)
             . '</div>';
     }
 }

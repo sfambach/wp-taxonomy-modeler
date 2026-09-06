@@ -828,6 +828,60 @@ foreach ($quellen as $datei) {
 check('jedes Fragezeichen bekommt einen uebersetzten Satz', $hart === [], implode(', ', $hart));
 check('und es gibt mehr als eine Stelle, die es benutzt', $stellen >= 6, (string) $stellen);
 
+// ── Ein Fragezeichen, eine Fassung, und sie liegt im Kern (D-662) ────────────────────────────────
+
+echo "\n== das Fragezeichen hat genau ein Zuhause, und es ist der Kern ==\n";
+
+// ⚠️ **[D-662](../../docs/NewConcept/90-decision-log.md) verlangt dasselbe Zeichen aus einer zweiten
+// Quelle** — *`help` ist **Modellinhalt**, den der Eigentuemer je Sprache schreibt, waehrend
+// [D-661](../../docs/NewConcept/90-decision-log.md) Software-Texte meinte. **Dasselbe Zeichen, zwei
+// Quellen**, also darf keine zweite Fassung entstehen (`CD · Prohibited`: eine Tatsache, ein Ort).*
+//
+// ⚠️ **Und es liegt im **Kern**, nicht mehr am Rand, weil die Renderer es rufen (`CD-1`).** *Der Kern
+// darf den Rand nicht rufen; also ist das Zeichen umgezogen, statt ein zweites Mal geschrieben zu
+// werden. Der Rand ruft weiterhin dieselbe Klasse — von aussen nach innen ist erlaubt.*
+$fassungen = array_merge(
+    glob(dirname(__DIR__, 2) . '/src/*/HintMarkup.php') ?: [],
+    glob(dirname(__DIR__, 2) . '/src/*/*/HintMarkup.php') ?: []
+);
+
+check('es gibt genau eine HintMarkup-Klasse', count($fassungen) === 1, implode(', ', array_map('basename', $fassungen)));
+check(
+    'und sie liegt im Kern, wo die Renderer sie rufen duerfen',
+    $fassungen !== [] && str_contains(str_replace('\\', '/', $fassungen[0]), '/src/Core/'),
+    $fassungen === [] ? '' : str_replace('\\', '/', $fassungen[0])
+);
+
+// ⚠️ *Kein zweiter Bauplan daneben: wer `taxmod-hint` selbst zusammensetzt, hat die Klasse
+// umgangen — und genau so entsteht die zweite Fassung, die D-662 ausschliesst.*
+$eigenbau = [];
+
+foreach (array_merge(
+    glob(dirname(__DIR__, 2) . '/src/*/*.php') ?: [],
+    glob(dirname(__DIR__, 2) . '/src/*/*/*.php') ?: []
+) as $datei) {
+    if (basename($datei) === 'HintMarkup.php') {
+        continue;
+    }
+
+    foreach (file($datei, FILE_IGNORE_NEW_LINES) ?: [] as $nr => $zeile) {
+        if (preg_match('/[\'"]<span class="taxmod-hint/', $zeile)) {
+            $eigenbau[] = basename($datei) . ':' . ($nr + 1);
+        }
+    }
+}
+
+check('niemand baut das Fragezeichen selbst nach', $eigenbau === [], implode(', ', $eigenbau));
+
+// ⚠️ **Die beiden Behaelter, die D-662 nennt, rufen es auch wirklich** — *das Formular je Feld, der
+// kompakte waagerecht gesammelt am Ende und senkrecht je Feld.*
+$form    = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Renderer/FormRenderer.php') ?: '';
+$compact = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Renderer/CompactRenderer.php') ?: '';
+
+check('das Formular setzt das Zeichen je Feld', str_contains($form, 'HintMarkup::icon('));
+check('der kompakte Behaelter sammelt waagerecht', str_contains($compact, 'HintMarkup::combined('));
+check('und setzt senkrecht je Feld', str_contains($compact, 'HintMarkup::icon('));
+
 $geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

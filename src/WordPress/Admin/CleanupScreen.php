@@ -4,6 +4,7 @@ namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Renderer\Control;
+use Taxmod\Core\Renderer\HintMarkup;
 use Taxmod\Core\Renderer\ResidueEntry;
 use Taxmod\Core\Renderer\ResidueGroup;
 use Taxmod\Core\Renderer\ResidueRenderer;

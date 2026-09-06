@@ -34,7 +34,15 @@ use Taxmod\Core\Model\SimpleType;
  *   O -->|vertical| C["one column"]
  *   L["label"] -.->|on by default| R
  *   L -.-> C
+ *   R --> H1["ein Fragezeichen am Ende · alle Hilfen der Zeile"]
+ *   C --> H2["ein Fragezeichen je Feld"]
  * ```
+ *
+ * ⚠️ **Das Fragezeichen ist nicht überall gleich verteilt, und das ist
+ * [D-662](../../../docs/NewConcept/90-decision-log.md).** *Waagerecht trennt die Felder **ein
+ * Leerzeichen** — ein Zeichen je Feld wäre eines je Leerzeichen, und die Zeile wäre von Zeichen
+ * zerhackt, die niemand braucht, bis er sie sucht. Also **ein** Zeichen am Ende, das alle Hilfen der
+ * Zeile trägt. Senkrecht hat jedes Feld seine Zeile und behält sein eigenes.*
  *
  * ## The two properties, and the open question they hang on
  *
@@ -122,6 +130,9 @@ final class CompactRenderer extends RendererNode
 
         $inner     = '';
         $usedRelations = [];
+        // ⚠️ *Waagerecht wandern die Hilfen hierher und werden am Ende **ein** Zeichen
+        // ([D-662](../../../docs/NewConcept/90-decision-log.md)); senkrecht bleibt jede bei ihrem Feld.*
+        $gesammelt = [];
 
         foreach ($context->surroundings->parts as $part) {
             if ($part->isHidden()) {
@@ -130,8 +141,18 @@ final class CompactRenderer extends RendererNode
                 continue;
             }
 
+            // ⚠️ *Eine versteckte Zeile nimmt auch ihre Hilfe mit — sie steht **über** dem `continue`
+            // nicht, und das ist Absicht: ein Satz zu einem Feld, das niemand sieht, erklärt nichts.*
+            if (! $vertical && $part->hint !== '') {
+                $gesammelt[] = $part->hint;
+            }
+
             $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
-            $inner    .= $this->createHtmlPart($part, $withLabel);
+            $inner    .= $this->createHtmlPart($part, $withLabel, $vertical);
+        }
+
+        if ($inner !== '' && $gesammelt !== []) {
+            $inner .= HintMarkup::combined($gesammelt);
         }
 
         return new RenderResult(
@@ -205,17 +226,25 @@ final class CompactRenderer extends RendererNode
      * it does, this shows the relation's internal name — the same honesty the chain itself ends on: a
      * node's own name, never nothing ([D-020](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private function createHtmlPart(RenderedField $part, bool $withLabel): string
+    private function createHtmlPart(RenderedField $part, bool $withLabel, bool $vertical): string
     {
         $label = $withLabel
             ? RenderResult::htmlTag('span', ['class' => 'taxmod-compact-label'])
                 . RenderResult::escape($part->relation->name) . '</span>'
             : '';
 
+        // ⚠️ **Senkrecht steht die Hilfe bei ihrem Feld, waagerecht nicht**
+        // ([D-662](../../../docs/NewConcept/90-decision-log.md)). *Sein Grund, wörtlich: «bei compact
+        // horizontal würde ich die Texte sammeln und in ein Fragezeichen am Ende kombinieren» — dort
+        // trennt die Felder nur ein Leerzeichen, **ein Zeichen je Feld wäre ein Zeichen je
+        // Leerzeichen**. Senkrecht hat jedes Feld seine eigene Zeile und damit auch Platz für sein
+        // eigenes Zeichen.*
+        $hint = $vertical ? HintMarkup::icon($part->hint) : '';
+
         return RenderResult::htmlTag('span', ['class' => 'taxmod-compact-part'])
             . $label
             . RenderResult::htmlTag('span', ['class' => 'taxmod-compact-field'])
             . $part->result->markup
-            . '</span></span>';
+            . '</span>' . $hint . '</span>';
     }
 }

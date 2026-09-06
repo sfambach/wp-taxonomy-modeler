@@ -22,6 +22,7 @@ use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\DialogChooserRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
+use Taxmod\Core\Renderer\HintMarkup;
 use Taxmod\Core\Renderer\IconMarkup;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PageSlot;

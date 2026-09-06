@@ -492,6 +492,91 @@ try {
     }
 }
 
+// ── Das Fragezeichen am Feld (D-662) ─────────────────────────────────────────────────────────────
+
+echo "\n== eine help-Beschriftung setzt ein Fragezeichen hinter das Feld ==\n";
+
+// ⚠️ **[D-662](../../docs/NewConcept/90-decision-log.md), sein Wort:** *«überall dort, wo help label
+// ist, sollte auch ein kleines Fragezeichen hinter dem Feld stehen.»*
+//
+// ⚠️ **Geprüft wird an der **Vorschau** und nicht an einem Renderer allein**, denn dazwischen liegt
+// die Naht, an der es schiefgehen kann: die Hilfe muss vom Ziel der Kante über
+// {@see \Taxmod\Core\Service\Labels::helpFor()} bis in den Behälter reisen. *Die Kernzusagen in
+// `CompactRendererTest` und `RenderingTest` prüfen die Form; diese hier prüft, dass echte Daten
+// ankommen.*
+//
+// ⚠️ *Die Beschriftung wird **geschrieben und wieder weggenommen**: gemessen tragen heute nur vier
+// Knoten eine Hilfe, und ob einer davon zufällig an diesem Modell hängt, wäre keine wiederholbare
+// Zusage.*
+$feld = $wpdb->get_row($wpdb->prepare(
+    "SELECT id, to_node_id FROM {$prefix}relations_named
+     WHERE from_node_id = %d AND name <> '' AND kind <> 'setting' AND kind <> 'inheritance'
+     ORDER BY id LIMIT 1",
+    $model
+), ARRAY_A);
+
+if ($feld === null) {
+    echo "  --   das Modell hat keine gezeichnete Kante; die Zusage laeuft nicht\n";
+} else {
+    $ziel   = (int) $feld['to_node_id'];
+    $satz   = 'Dieser Satz steht nur waehrend der Pruefung da.';
+    $labels = new \Taxmod\Core\Service\Labels(
+        new \Taxmod\WordPress\Persistence\WpdbLabelRepository(),
+        \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale()
+    );
+    $sprache = \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale();
+
+    $vorher = previewOf($screen, $model);
+
+    // ⚠️ **Die Gegenprobe zuerst, und sie ist die Haelfte, die man vergisst.** *Eine Zusage, die nur
+    // «mit Hilfe steht ein Zeichen da» prueft, waere auch gruen, wenn jedes Feld eines truege.*
+    check(
+        'ohne help-Beschriftung steht kein Fragezeichen an diesem Feld',
+        ! str_contains($vorher, $satz),
+        substr_count($vorher, 'taxmod-hint-icon') . ' Zeichen insgesamt'
+    );
+
+    $zeichenVorher = substr_count($vorher, 'taxmod-hint-icon');
+
+    try {
+        $labels->put(new \Taxmod\Core\Model\Label(
+            $ziel,
+            \Taxmod\Core\Model\IdentitySpace::Node,
+            \Taxmod\Core\Model\SeededRole::Help,
+            \Taxmod\Core\Model\Label::BASE_NUMBER,
+            $sprache,
+            $satz
+        ));
+
+        $nachher = previewOf($screen, $model);
+
+        check('mit help-Beschriftung steht ein Fragezeichen mehr da', substr_count($nachher, 'taxmod-hint-icon') > $zeichenVorher, $zeichenVorher . ' → ' . substr_count($nachher, 'taxmod-hint-icon'));
+
+        // ⚠️ **Der Satz steht **im Markup** und nicht bloss im `title`**
+        // ([D-661](../../docs/NewConcept/90-decision-log.md)) — *sonst ist er fuer jeden fort, der
+        // nicht mit der Maus zeigt.*
+        check(
+            'und der Satz steht im Markup, nicht nur im title',
+            str_contains($nachher, '<span class="taxmod-hint-text">' . esc_html($satz) . '</span>')
+        );
+    } finally {
+        // ⚠️ Laeuft auch nach einer gefallenen Zusage: eine Beschriftung, die liegenbleibt, ist
+        // Modellinhalt, den niemand geschrieben hat.
+        $labels->forget(new \Taxmod\Core\Model\Label(
+            $ziel,
+            \Taxmod\Core\Model\IdentitySpace::Node,
+            \Taxmod\Core\Model\SeededRole::Help,
+            \Taxmod\Core\Model\Label::BASE_NUMBER,
+            $sprache,
+            ''
+        ));
+    }
+
+    $danach = previewOf($screen, $model);
+
+    check('und nach dem Wegnehmen ist das Zeichen wieder fort', ! str_contains($danach, $satz));
+}
+
 echo "\n", $failed === 0 ? "all green\n" : "{$failed} failed\n";
 
 exit($failed === 0 ? 0 : 1);

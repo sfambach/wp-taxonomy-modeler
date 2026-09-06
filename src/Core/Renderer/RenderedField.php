@@ -40,6 +40,22 @@ final class RenderedField
          * verschiebt sich beim Entfernen und der nächste Klick träfe den falschen.*
          */
         public readonly string $valueId = '',
+        /**
+         * Die Hilfe zu diesem Feld — leer heisst: keine, und dann steht kein Fragezeichen da.
+         *
+         * ⚠️ **[D-662](../../../docs/NewConcept/90-decision-log.md):** *«überall dort, wo help label
+         * ist, sollte auch ein kleines Fragezeichen hinter dem Feld stehen.»* *Es ist die
+         * Beschriftung in der Rolle `help` am Ziel der Kante, in dieser Sprache — **Modellinhalt**,
+         * den er selbst schreibt, und darum kein Software-Text
+         * ([D-580](../../../docs/NewConcept/90-decision-log.md), [D-646](../../../docs/NewConcept/90-decision-log.md)).*
+         *
+         * ⚠️ **Sie reist mit dem Teil, aus demselben Grund wie `$readOnly` daneben:** *ein Behälter
+         * legt aus, was er bekommen hat, und darf nichts nachschlagen
+         * ([D-159](../../../docs/NewConcept/90-decision-log.md)). Der waagerechte `compact` braucht
+         * **alle** Hilfen der Zeile auf einmal, um **ein** Zeichen daraus zu machen — die einzige
+         * Stelle, die sie alle sieht, ist der Behälter.*
+         */
+        public readonly string $hint = '',
     ) {
     }
 
