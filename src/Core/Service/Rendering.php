@@ -698,6 +698,14 @@ final class Rendering implements Presets
 
         foreach ($relations as $relation) {
             $type     = $types[$relation->id] ?? null;
+            // ⚠️ **Hier kommen die Werte des gewählten Renderers ausdrücklich *nicht* dazu, und der
+            // Grund ist gemessen** ({@see self::withRendererValues()} tut es für den Behälter).
+            // *Am Satz von `slider` steht `converter = hexadecimal`, am Satz von `checkbox` auch.
+            // Liesse man den Satz des Renderers auch am Feld gelten, stünde **jede** Ganzzahl mit
+            // Schieber als Hexzahl da — `converter-check` sagt genau das («die 12 steht als 12 da»).
+            // **Ob eine Abbildung eine Eigenschaft des Renderers ist oder des Feldes, ist nicht
+            // entschieden** und steht als Frage im Eingangsblatt (`PR-4`); bis dahin bleibt sie da,
+            // wo sie heute wirkt.*
             $settings = $this->withModelValues($resolved[$relation->id] ?? [], $relation);
             $renderer = $this->renderers->chosenFor($relation, $settings, $purpose, $type);
 
@@ -2103,6 +2111,10 @@ final class Rendering implements Presets
             new RenderContext(
                 purpose: $purpose,
                 value: TypedValue::nothing(),
+                // ⚠️ **Hier stand nichts, und das war der ganze Fehler.** *Der Behälter wurde aus dem
+                // Modell **gewählt** und dann ohne eine einzige Angabe gerufen — er konnte seine Achse
+                // nicht kennen, weil ihm niemand etwas sagte.*
+                settings: $this->withRendererValues($node),
                 locale: $locale,
                 level: $level,
                 editable: $editable,
@@ -2182,6 +2194,29 @@ final class Rendering implements Presets
         }
 
         return $aus;
+    }
+
+    /**
+     * Die Angaben, mit denen der **gewählte Renderer** zeichnet — seine eigenen unter denen des
+     * Gezeichneten.
+     *
+     * ⚠️ **Sein Befund, zweimal gemeldet:** *«compact mit horizontal und ohne Label gewählt, aber
+     * gerendert wird vertikal».* **Gemessen war der Zeichenkontext dieser Behälter leer** — hier stand
+     * gar keine Angabe, und {@see \Taxmod\Core\Service\ModelValues::forChosenRenderer()} erklärt, warum
+     * auch die Kette des Knotens die drei nicht kennt: sie hängen am Satz des Renderers.
+     *
+     * ⚠️ **Der Gezeichnete gewinnt, wo beide sprechen.** *Näher schlägt ferner, wie überall in der
+     * Kette — und praktisch kollidiert heute nichts: `orientation` ist an `compact` erklärt, also kann
+     * ein gewöhnlicher Knoten sie gar nicht tragen.*
+     *
+     * @return array<string,\Taxmod\Core\Model\ResolvedSetting>
+     */
+    private function withRendererValues(Node $subject): array
+    {
+        return [
+            ...($this->model?->forChosenRenderer($subject) ?? []),
+            ...$this->withModelValues([], $subject),
+        ];
     }
 
     private function withModelValues(array $resolved, Node|Relation $subject): array
@@ -3044,6 +3079,9 @@ final class Rendering implements Presets
                 new RenderContext(
                     purpose: $purpose,
                     value: TypedValue::nothing(),
+                    // ⚠️ *Dieselbe Naht wie in {@see self::nodeAsForm()}: ein Teil wird von demselben
+                    // gewählten Behälter gezeichnet und muss dieselben Angaben bekommen.*
+                    settings: $relation->isSetting() ? [] : $this->withRendererValues($ziel),
                     locale: $locale,
                     level: $level,
                     editable: $editable,

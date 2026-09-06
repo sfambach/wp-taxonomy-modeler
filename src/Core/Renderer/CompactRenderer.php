@@ -73,8 +73,17 @@ final class CompactRenderer extends RendererNode
     /** The free setting key that flips the axis. See the class docblock on OQ-120. */
     public const ORIENTATION = 'orientation';
 
-    /** The free setting key that switches the labels off. See the class docblock on OQ-120. */
-    public const LABEL = 'label';
+    /**
+     * The free setting key that switches the labels off. See the class docblock on OQ-120.
+     *
+     * ⚠️ **Es hiess hier `label` und im Modell `with_label`, und darum hat der Schalter nie
+     * geschaltet.** *Gemessen am 2026-09-06: **5 Wertzeilen an der Kante `with_label`, null an einer
+     * Kante `label`** — die Kante ist an `render with label` erklärt
+     * ([D-647](../../../docs/NewConcept/90-decision-log.md): «`with_label` und `label_role` an `render
+     * with label`»). **Der Name der Kante ist der Schlüssel**, also war dieser hier schlicht falsch
+     * geschrieben und las lebenslang Schweigen.*
+     */
+    public const LABEL = 'with_label';
 
     public const HORIZONTAL = 'horizontal';
     public const VERTICAL   = 'vertical';

@@ -1650,6 +1650,140 @@ final class RenderingTest extends TestCase
         self::assertNotSame($before, $after);
     }
 
+    /**
+     * Der ganze Weg: einen Renderer **wählen**, an seinem Satz die **Achse** setzen, zeichnen — und
+     * im Ergebnis steht die gesetzte Achse.
+     *
+     * ⚠️ **Sein Befund, zweimal gemeldet:** *«compact mit horizontal und ohne Label gewählt, aber
+     * gerendert wird vertikal».* **Und keine der bestehenden Zusagen konnte das sehen**, weil sie
+     * alle bei «welcher Behälter» aufhören: `a_node_is_laid_out_by_the_container_its_chain_names`
+     * prüft, dass `taxmod-compact` dasteht — *und `taxmod-compact` steht auch da, wenn keine einzige
+     * Einstellung des Renderers angekommen ist.*
+     *
+     * ⚠️ **Gemessen war der Zeichenkontext des Behälters leer:** *{@see Rendering::nodeAsForm()} rief
+     * ihn ohne eine Angabe. Die drei Werte — `orientation`, `with_label`, `label_role` — liegen am
+     * **Satz des Renderers** ([D-647](../../docs/NewConcept/90-decision-log.md): «die Renderer-Knoten
+     * tragen eigene Einstellungen»), und die Kette des gezeichneten Knotens kennt sie nicht.*
+     *
+     * ⚠️ **Die Wahl steht hier als **Satzverweis** und nicht als Text**, anders als in den Zusagen
+     * darüber — *das ist die Form, in der sie in den Daten wirklich liegt
+     * ([D-583](../../docs/NewConcept/90-decision-log.md)), und nur sie hat einen Satz, an dem
+     * Einstellungen hängen können. Mit dem Textweg wäre diese Zusage grün und nutzlos.*
+     */
+    #[Test]
+    public function the_axis_set_on_the_chosen_renderer_is_the_axis_that_is_drawn(): void
+    {
+        $ding  = $this->thing('Anschrift');
+        $text  = $this->type('text');
+        $eins  = $this->editor->addField($ding->id, $text->id, 'Strasse');
+        $zwei  = $this->editor->addField($ding->id, $text->id, 'Hausnummer');
+
+        $achsen     = $this->editor->createNode('Orientations', $this->branchRoot['constants']->id);
+        $senkrecht  = $this->editor->createNode(CompactRenderer::VERTICAL, $achsen->id);
+        $waagerecht = $this->editor->createNode(CompactRenderer::HORIZONTAL, $achsen->id);
+
+        // Der Renderer als Knoten, und seine **eigene** Einstellungskante.
+        $compact     = $this->editor->createNode(CompactRenderer::NAME, $this->branchRoot['constants']->id);
+        $orientation = $this->settingRelation($compact->id, $achsen->id, CompactRenderer::ORIENTATION);
+        $mitLabel    = $this->settingRelation($compact->id, $achsen->id, CompactRenderer::LABEL);
+
+        // Die Renderer-Kante steht an der Wurzel und wird geerbt — wie im Modell.
+        $rendererKante = $this->settingRelation(
+            $this->framework->root()->id,
+            $compact->id,
+            SettingKey::Renderer->value
+        );
+        $this->framework->rememberSettingRelations(SettingKey::Renderer, $rendererKante->id, 0);
+
+        $rendererSatz = $this->records->add(new NodeRecord(0, $compact->id, $compact->version, '2026-09-06 00:00:00'));
+
+        $this->records->putValue(new RelationRecord(
+            $rendererSatz,
+            (string) $orientation->id,
+            $orientation->id,
+            '',
+            TypedValue::ofReference($senkrecht->id)
+        ));
+
+        $satz = $this->records->add(new NodeRecord(
+            0,
+            $ding->id,
+            $ding->version,
+            '2026-09-06 00:00:00',
+            RecordType::Default
+        ));
+
+        $this->records->putValue(new RelationRecord(
+            $satz,
+            (string) $rendererKante->id,
+            $rendererKante->id,
+            '',
+            TypedValue::ofRecordReference($rendererSatz)
+        ));
+
+        $this->neuZeichnen();
+
+        $gewaehlt = $this->rendering->nodeAsForm($ding, [$eins, $zwei], [], Purpose::Display)->markup;
+
+        self::assertStringContainsString('taxmod-compact-vertical', $gewaehlt);
+        self::assertStringNotContainsString('taxmod-compact-horizontal', $gewaehlt);
+
+        // ⚠️ **Die Gegenprobe, und sie ist die eigentliche Zusage.** *`vertical` allein könnte auch
+        // die Vorgabe eines kaputten Lesers sein — erst dass die **andere** Wahl die andere Achse
+        // zeichnet, zeigt, dass der gesetzte Wert ankommt.*
+        $this->records->forgetValue($rendererSatz, (string) $orientation->id, '');
+        $this->records->putValue(new RelationRecord(
+            $rendererSatz,
+            (string) $orientation->id,
+            $orientation->id,
+            '',
+            TypedValue::ofReference($waagerecht->id)
+        ));
+
+        $this->neuZeichnen();
+
+        $umgestellt = $this->rendering->nodeAsForm($ding, [$eins, $zwei], [], Purpose::Display)->markup;
+
+        self::assertStringContainsString('taxmod-compact-horizontal', $umgestellt);
+        self::assertStringNotContainsString('taxmod-compact-vertical', $umgestellt);
+
+        // ⚠️ *Und der Schalter daneben, auf demselben Weg: er hiess im Kode `label` und im Modell
+        // `with_label`, also hat er nie geschaltet.*
+        self::assertStringContainsString('taxmod-compact-label', $umgestellt);
+
+        $this->records->putValue(new RelationRecord(
+            $rendererSatz,
+            (string) $mitLabel->id,
+            $mitLabel->id,
+            '',
+            TypedValue::ofBool(false)
+        ));
+
+        $this->neuZeichnen();
+
+        $ohneLabel = $this->rendering->nodeAsForm($ding, [$eins, $zwei], [], Purpose::Display)->markup;
+
+        self::assertStringNotContainsString('taxmod-compact-label', $ohneLabel);
+        self::assertStringContainsString('taxmod-compact-part', $ohneLabel);
+    }
+
+    /** Eine Einstellungskante von Hand — den Weg, den {@see einstellung()} sonst mitgeht. */
+    private function settingRelation(int $traegerId, int $zielId, string $name): Relation
+    {
+        $kante = Relation::attribute(
+            $this->zaehler->next(),
+            $traegerId,
+            $zielId,
+            RelationKind::Setting,
+            $name,
+            $this->relations->nextFieldPositionUnder($traegerId)
+        );
+
+        $this->relations->add($kante);
+
+        return $kante;
+    }
+
     #[Test]
     public function a_container_name_that_cannot_be_offered_falls_back_to_the_form(): void
     {

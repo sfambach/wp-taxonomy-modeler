@@ -1610,3 +1610,31 @@ sie würden erst beim Aufruf auffallen:*
 
 ⚠️ *Nicht angefasst, weil ein abgelaufenes Wanderungsskript wegzuwerfen eine Entscheidung ist und
 kein Aufräumen (`PR-4`): **es ist der Beleg dafür, wie die Daten dorthin kamen, wo sie sind.***
+
+---
+
+## INF-055 · Gehoert eine Abbildung dem Renderer oder dem Feld?
+
+**Aufgefallen beim Bauen der Renderer-Einstellungen.** *Seit der Satz des gewaehlten Renderers seine
+Einstellungen liefert, stellt sich die Frage, fuer **welche** Schluessel das gelten soll.*
+
+**Gemessen am 2026-09-06** — was heute an Renderer-Saetzen haengt:
+
+| Renderer | Schluessel | Wert |
+|---|---|---|
+| `compact` | `orientation`, `with_label`, `label_role` | `horizontal`, `1`, `form` |
+| `reference`, `table`, `chooser-inline`, `chooser-dialog` | `with_label` | `1` |
+| `slider`, `checkbox` | `converter` | `hexadecimal` |
+
+⚠️ **Die ersten beiden Zeilen sind eindeutig: das ist, *wie* ein Renderer zeichnet.** *Die dritte
+nicht.* **Gaelte der Satz des Renderers auch am Feld, stuende jede Ganzzahl mit Schieber als Hexzahl
+da** — `converter-check` sagt es beim Versuch sofort: *«die 12 steht als 12 da»* wurde rot.
+
+⚠️ *Gebaut ist darum nur die enge Fassung: **der Satz des gewaehlten Renderers gilt fuer den
+Behaelter eines Knotens**, nicht fuer jedes Feld, das denselben Renderer benutzt. Das behebt seinen
+Befund («compact mit horizontal gewaehlt, gerendert wird vertikal») und entscheidet die Frage nicht.*
+
+**ENTSCHEIDUNG ERFORDERLICH: JA.** *Entweder ist `converter` eine Eigenschaft des **Feldes** — dann
+sind die zwei gemessenen Zeilen an `slider` und `checkbox` an der falschen Stelle und gehoeren
+weggeraeumt —, oder er ist eine des **Renderers**, dann gilt er fuer alles, was ihn waehlt, und die
+zwei Zeilen sind eine Aussage ueber jede Ganzzahl mit Schieber.*

@@ -4,6 +4,7 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\TypedValue;
@@ -568,6 +569,26 @@ final class ModelValues
      */
     private function rendererNodeBehind(int $reference): ?Node
     {
+        return $this->rendererBehind($reference)['node'];
+    }
+
+    /**
+     * Beides hinter einem Verweis auf einmal: der **Satz**, wenn es einer ist, und der **Knoten**.
+     *
+     * ⚠️ **Zusammen und nicht zweimal, weil beides aus demselben `find()` fällt** (`CD-7`). *Der
+     * Zeichenweg fragt seit den Renderer-Einstellungen nach beidem — nach dem Knoten, um den Namen
+     * zu melden, und nach dem Satz, um seine Werte zu lesen. **Zwei Methoden mit je eigenem
+     * Gedächtnis wären zwei Abfragen je Feld**, und der Unterschied ist von aussen nicht zu sehen.*
+     *
+     * ⚠️ **Und der Satz wird an der Antwort von `find()` erkannt, nicht an einem Zahlenvergleich.**
+     * *Modell und Daten haben getrennte Nummernräume ([D-164](../../../docs/NewConcept/90-decision-log.md)),
+     * also **dürfen** eine Satz-Id und eine Knoten-Id dieselbe Zahl sein — `$knoten->id !== $verweis`
+     * wäre eine Prüfung, die fast immer stimmt und irgendwann still nicht.*
+     *
+     * @return array{record: ?int, node: ?Node}
+     */
+    private function rendererBehind(int $reference): array
+    {
         // ⚠️ **Gemerkt, weil die Kette dieselbe Antwort mehrfach braucht** (`CD-7`,
         // [D-602](../../../docs/NewConcept/90-decision-log.md)). *Gemessen an drei Feldern:
         // **sechzehn Abfragen, zehn davon hier** — derselbe Renderer viermal nachgeschlagen, einmal je
@@ -579,11 +600,11 @@ final class ModelValues
         $satz = $this->records->find($reference);
 
         return $this->rendererGedaechtnis[$reference] = $satz !== null
-            ? $this->knoten($satz->nodeId)
-            : $this->knoten($reference);
+            ? ['record' => $satz->id, 'node' => $this->knoten($satz->nodeId)]
+            : ['record' => null, 'node' => $this->knoten($reference)];
     }
 
-    /** @var array<int,?Node> Verweis => der Knoten des Renderers dahinter */
+    /** @var array<int,array{record: ?int, node: ?Node}> Verweis => Satz und Knoten des Renderers dahinter */
     private array $rendererGedaechtnis = [];
 
 
@@ -594,10 +615,28 @@ final class ModelValues
      */
     private function rendererNameAt(array $recordIds, array $vorlauf): ?string
     {
+        return $this->rendererAt($recordIds, $vorlauf)['node']?->name;
+    }
+
+    /**
+     * Der gewählte Renderer unter dieser Adresse — **sein Knoten und sein Satz**.
+     *
+     * ⚠️ *Eine Fassung der Suche und nicht zwei (`CD`): {@see self::rendererNameAt()} nimmt den
+     * Namen, {@see self::forChosenRenderer()} den Satz. **Zwei Läufe über dieselben Wertzeilen
+     * könnten auseinanderlaufen**, und der Unterschied wäre «der Name sagt `compact`, die
+     * Einstellungen kommen von einem anderen».*
+     *
+     * @param  list<int> $vorlauf Kanten vor der Renderer-Kante — leer für den Knoten selbst.
+     * @return array{record: ?int, node: ?Node}
+     */
+    private function rendererAt(array $recordIds, array $vorlauf): array
+    {
         $this->findRelations();
 
+        $nichts = ['record' => null, 'node' => null];
+
         if ($this->rendererRelation === null || $recordIds === []) {
-            return null;
+            return $nichts;
         }
 
         $pfad = implode('.', [...$vorlauf, $this->rendererRelation]);
@@ -613,15 +652,113 @@ final class ModelValues
                 // `node_id` sagt, welcher ([D-583](../../../docs/NewConcept/90-decision-log.md)).
                 // Der Umweg über den Hüllknoten `DisplayOption` und dessen Feld `render` ist mit dem
                 // Hüllknoten gefallen ([D-604](../../../docs/NewConcept/90-decision-log.md)).*
-                $knoten = $this->rendererNodeBehind($wert->value->reference);
+                $dahinter = $this->rendererBehind($wert->value->reference);
 
-                if ($knoten !== null) {
-                    return $knoten->name;
+                if ($dahinter['node'] !== null) {
+                    return $dahinter;
                 }
             }
         }
 
-        return null;
+        return $nichts;
+    }
+
+    /**
+     * Die Einstellungen des **gewählten Renderers** — die Werte, die in seinem eigenen Satz stehen.
+     *
+     * ⚠️ **Der Grund, dass es sie braucht, ist sein Befund, zweimal gemeldet:** *«compact mit
+     * horizontal und ohne Label gewählt, aber gerendert wird vertikal».* **Gemessen am 2026-09-06 an
+     * `Straße /Haus Nr.`:** *der `default`-Satz des Knotens zeigt auf den Renderer-Satz, und an dem
+     * hängen `orientation`, `with_label` und `label_role`. **Der Zeichenkontext entstand aber aus der
+     * Kette des Knotens** — dort steht keine dieser drei Angaben, also las
+     * {@see \Taxmod\Core\Renderer\CompactRenderer} dreimal Schweigen und nahm dreimal seine Vorgabe.*
+     *
+     * ⚠️ **Warum die Werte überhaupt dort liegen** ([D-647](../../../docs/NewConcept/90-decision-log.md)):
+     * *«die Renderer-Knoten müssen ohnehin bleiben: **sie tragen eigene Einstellungen** — `converter`
+     * an `Renderer`, `with_label` und `label_role` an `render with label`.» Der Satz hinter der Wahl
+     * ist der Ort dieser Werte; er wurde bisher nur nie gelesen.*
+     *
+     * ⚠️ **Ein Verweis wird zum Namen des Knotens, auf den er zeigt** — *dieselbe Umschrift, die
+     * `renderer` selbst schon macht. **Gemessen liegen genau die Wahl-Einstellungen als Knotenverweis
+     * in der Spalte**: `orientation` → `horizontal`, `label_role` → `form`, `converter` →
+     * `hexadecimal`; ihre Leser fragen alle nach Text. **Ohne die Umschrift kommt der Wert an und
+     * bleibt trotzdem unlesbar** — die Achse stünde da und bewirkte nichts.*
+     *
+     * ⚠️ *Die Umschrift steht **hier** und nicht in {@see self::settingsAt()}: dort ginge sie auch über
+     * `default`, und ein Vorgabewert, der auf einen Knoten zeigt, ist ein **Verweis** und kein Wort.*
+     *
+     * ⚠️ **Nur für den *Behälter* eines Knotens gefragt, nicht für jedes Feld, und das ist gemessen.**
+     * *Am Satz von `slider` steht `converter = hexadecimal` — gälte der Satz des Renderers auch am
+     * Feld, wäre jede Ganzzahl mit Schieber eine Hexzahl. **Ob eine Abbildung dem Renderer gehört
+     * oder dem Feld, ist nicht entschieden** und steht als Frage im Eingangsblatt (`PR-4`).*
+     *
+     * @return array<string,ResolvedSetting>
+     */
+    public function forChosenRenderer(Node $subject): array
+    {
+        $gewaehlt = $this->chosenRendererOf($subject);
+
+        if ($gewaehlt['record'] === null || $gewaehlt['node'] === null) {
+            return [];
+        }
+
+        $renderer = $gewaehlt['node'];
+        $aus      = [];
+
+        // ⚠️ *Gelesen mit dem **Renderer** als Subjekt: `orientation` ist an `compact` erklärt,
+        // `with_label` und `label_role` an dessen Vorfahren. {@see self::settingRelation()} geht
+        // genau diese Kette — mit dem gezeichneten Knoten als Subjekt fände sie keine der drei.*
+        foreach ($this->settingsAt($renderer, [$gewaehlt['record']], $renderer->id, []) as $schluessel => $angabe) {
+            $aus[$schluessel] = new ResolvedSetting(
+                $angabe->key,
+                $this->alsWort($angabe->value),
+                $angabe->fromOwnerId,
+                $angabe->setHere
+            );
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Ein Knotenverweis als das **Wort**, das der Knoten heisst; alles andere unverändert.
+     *
+     * ⚠️ *Nur der Knotenraum: ein Verweis auf einen **Satz** ist ein Teil und kein Wort
+     * ([D-164](../../../docs/NewConcept/90-decision-log.md) hält die beiden Räume auseinander).*
+     */
+    private function alsWort(TypedValue $wert): TypedValue
+    {
+        if ($wert->reference === null || $wert->referenceSpace !== ReferenceSpace::Node) {
+            return $wert;
+        }
+
+        $knoten = $this->knoten($wert->reference);
+
+        return $knoten === null ? $wert : TypedValue::ofText($knoten->name);
+    }
+
+    /**
+     * Wo die Renderer-Wahl dieses Subjekts steht — dieselbe Reihenfolge, in der auch der **Name**
+     * gefunden wird.
+     *
+     * @return array{record: ?int, node: ?Node}
+     */
+    private function chosenRendererOf(Node $subject): array
+    {
+        $kette = $this->erbkette($subject);
+
+        $this->vorladen($kette);
+
+        // ⚠️ *Von nah nach fern, wie {@see self::kette()}: der Knoten selbst, dann seine Vorfahren.*
+        foreach ([$subject->id, ...array_values(array_diff(array_reverse($kette), [$subject->id]))] as $traeger) {
+            $gefunden = $this->rendererAt($this->recordsOf($traeger), []);
+
+            if ($gefunden['node'] !== null) {
+                return $gefunden;
+            }
+        }
+
+        return ['record' => null, 'node' => null];
     }
 
     /**
