@@ -24,6 +24,8 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 |---|---|---|
 | Wo liegt das Modell? | [D-007](90-decision-log.md) — eigene Tabellen dieses Plugins | ~~D-567~~ *(Vorschlag, die Basistabellen zu benennen — verworfen)* |
 | Wie liegt ein Datensatz in den Tabellen? | [D-577](90-decision-log.md), [D-578](90-decision-log.md) — `node_record` / `relation_record`, kein Pfad, gilt für alle Kantenarten | ~~D-083~~ ~~D-133~~ ~~D-232~~ ~~D-527~~ ~~D-530~~ |
+| Wem gehört ein Datensatz? | [D-667](90-decision-log.md) — dem Knoten, und wo er einer Verwendungsstelle gehört, nennt er ihre `relation_id`; `path` fällt | — |
+| Wo liegen die Einstellungen einer Verwendungsstelle? | [D-667](90-decision-log.md) — im Satz dieser Kante; [D-611](90-decision-log.md) hat damit wieder einen Träger | ~~D-643~~ (als Ende der Zusage gelesen) |
 | Welche Kantenarten gibt es? | [D-639](90-decision-log.md) — drei Werte, drei Klassen: `setting`, `aggregation`, `composition` | ~~D-161~~ ~~D-193~~ ~~D-526~~ ~~D-587~~ ~~D-591~~ ~~D-592~~ |
 | Wer bestimmt die Kantenart? | [D-618](90-decision-log.md), [D-621](90-decision-log.md) — der Benutzer; `nodes.field_type` fällt, kein Ast-Automatismus | ~~D-161~~ ~~D-606~~ |
 | Ist Vererbung eine Kante? | [D-581](90-decision-log.md) — nein: `nodes.parent_node_id` mit `nodes.sort_order` | ~~D-012~~ |
@@ -148,6 +150,6 @@ Nachlässigkeit: es gibt zwei Zeilen und keine sagt, welche gewinnt.*
 | Frage | was sich widerspricht |
 |---|---|
 | Erbt der Ast `Settings` von `Root`? | [D-545](90-decision-log.md) blockt es an der Astwurzel. [D-607](90-decision-log.md) sperrt nur noch die Kante auf sich selbst und nimmt [D-605](90-decision-log.md) zurück — ob D-545 daneben weiterhin gilt, sagt **keine** der drei. |
-| Darf eine Verwendungsstelle eine Einstellung des Zielknotens überschreiben? | [D-611](90-decision-log.md) sagt ja. Sein Träger war `relations.target_settings_record_id`, und [D-643](90-decision-log.md) lässt die Spalte «ersatzlos» fallen. Der Weg ist weg, die Zusage steht. |
+| ~~Darf eine Verwendungsstelle eine Einstellung des Zielknotens überschreiben?~~ | **Aufgelöst am 2026-09-06 durch [D-667](90-decision-log.md):** [D-611](90-decision-log.md) sagt ja, [D-643](90-decision-log.md) nahm den Träger, und der neue ist der Satz der Kante. *Steht bis zum Bau hier, damit die Lücke sichtbar bleibt: **entschieden, nicht gebaut** (TASK-002).* |
 | Ist `symbol` übersetzbar? | [D-261](90-decision-log.md)/[D-262](90-decision-log.md): eine Marke, Vorgabe **nicht** übersetzbar. [D-645](90-decision-log.md): `symbol` **wird** sprachabhängig. Ob die Marke bleibt, ist nirgends gesagt. |
 | In welcher Sprache wird dokumentiert? | [D-002](90-decision-log.md) sagt Englisch, [D-187](90-decision-log.md) Englisch für jeden Begriff. Seit dem 2026-08-28 sind Entscheidungen und Paketdokumente deutsch, und **nichts hebt D-002 auf**. |
