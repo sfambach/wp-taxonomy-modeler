@@ -1841,3 +1841,36 @@ Feld sagt das gerade nicht.*
 ⚠️ **Was `pakete-check.php` deshalb tut:** *er leert an einem **zweiten** Feld und parkt am ersten,
 damit Abschnitt 8 die Zusage aus D-619 misst und nicht diese offene Frage. **Der Fall ist damit
 umgangen, nicht bewacht** — wer ihn entscheidet, bekommt dort seine Zusage.*
+
+---
+
+## INF-063 · Gehoeren die Handreparaturen am Modell in die Saat?
+
+**Gefunden am 2026-09-06 beim Bau der Schemafassung 38** ([D-672](../../NewConcept/90-decision-log.md),
+sein dritter Punkt: *«die heutigen Handreparaturen gehoeren in genau so eine Wanderung»*).
+
+**Die Wanderung deckt nur die eine Haelfte ab, und das ist Absicht.** *Sie entfernt jede gespeicherte
+Renderer-Wahl, die ihr Knoten nicht mehr zulaesst — das ist regelgetrieben und faellt aus der
+Aussiebung selbst. **Sie schreibt keine neue Wahl hin** (`PR-4`): welcher Renderer stattdessen gelten
+soll, ist eine Entscheidung und keine Ableitung.*
+
+**Was am 2026-09-06 von Hand an seinem Modell gesetzt wurde — Inhalt, nicht Schema:**
+
+| gesetzt | woran |
+|---|---|
+| `chooser-dialog` | `Base units` |
+| `reference` | `With prefix`, `Without prefix` |
+| `compact` | `Dimension` |
+| die `step`-Kanten | (angelegt) |
+| `label_role` | umgezogen |
+
+**ENTSCHEIDUNG ERFORDERLICH: JA.** *Gehoert das in die **Saat** — also in den Zustand, den eine
+frische Installation mitbringt —, oder ist es seine Einstellung an seinem Bestand, die eine
+Neuinstallation nichts angeht? **Beides ist vertretbar und keines faellt aus einer Regel**: eine
+Wahl, die er heute getroffen hat, ist genau die Sorte Angabe, die [D-026](../../NewConcept/90-decision-log.md)
+als «default» am Modell kennt — und zugleich genau die Sorte, die ein anderer Betreiber vielleicht
+anders will.*
+
+⚠️ **Hier wird sie ausdruecklich nicht beantwortet**, und die Wanderung tut es auch nicht: sie raeumt
+weg, was unzulaessig ist, und laesst den Rueckfall greifen. *Wer sie entscheidet, aendert die Saat —
+und dann ist es wieder eine Fassung mit einer Wanderung, nach genau demselben Muster.*

@@ -463,6 +463,139 @@ check('die Zeichnung traegt das Merkmal des gesetzten Renderers', $daneben === [
 
 check('und mindestens eine Zeichnung war darunter', $gezeichnetZahl >= 1, (string) $gezeichnetZahl);
 
+echo "\n== und die Wanderung raeumt weg, was unzulaessig geworden ist (Fassung 38) ==\n";
+
+// ⚠️ **Die Gegenprobe zu der Zusage darueber, und ohne sie ist die Wanderung ungeprueft**
+// ([D-672](../../docs/NewConcept/90-decision-log.md), sein dritter Punkt: *«die heutigen
+// Handreparaturen gehoeren in genau so eine Wanderung»*).
+//
+// ⚠️ **Der Grund, dass sie sich ihren Fall selbst bauen muss:** *auf einer Installation, auf der
+// nichts unzulaessig ist, tut die Wanderung **nichts** — gemessen am 2026-09-06 sind alle zwoelf
+// gespeicherten Wahlen zulaessig, und die Zusage darueber sagt genau das. **Am Bestand gemessen
+// waere sie also gruen, ohne je gelaufen zu sein.** Also: eine eigene Wiese, Praefix `__mg `, ein
+// gepflanzter Verstoss, und weggeraeumt danach ([D-613](../../docs/NewConcept/90-decision-log.md)).*
+//
+// ⚠️ *Und der Weg hinein ist der des Menschen — `put_setting` ueber die Maske. **Die Maske nimmt
+// eine unzulaessige Wahl gemessen an**, und das ist kein Fehler dieses Laufs, sondern genau der
+// Zustand, den D-672 beschreibt: die Wahl war zulaessig, als sie gesetzt wurde, und die Regel hat
+// sich danach geaendert.*
+$mgIntId = $types->nodeId(SimpleType::Int);
+$mgForm  = $editor->nodeImplementing(FormRenderer::class);
+
+if ($mgIntId === null || $mgForm === null) {
+    check('der Int-Typ und der Form-Renderer stehen als Knoten da', false, 'einer von beiden fehlt');
+} else {
+    $mgProbe = $editor->createNode('__mg probe', $mgIntId);
+
+    $mgErlaubt = [];
+
+    foreach ($bestandZeichnen->choicesForNode($mgProbe) as $einer) {
+        $mgErlaubt[] = $einer->name();
+    }
+
+    // ⚠️ *Der Verstoss muss einer **sein**, sonst pflanzt der Lauf eine zulaessige Wahl und die
+    // Wanderung tut zu Recht nichts — und die Gegenprobe waere gruen aus dem falschen Grund.*
+    check(
+        '`form` zeichnet keinen Int-Knoten, ist also eine unzulaessige Wahl',
+        ! in_array($mgForm->name, $mgErlaubt, true),
+        'erlaubt: ' . implode(',', $mgErlaubt)
+    );
+
+    abschicken([
+        'do'            => 'put_setting',
+        'id'            => (string) $mgProbe->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $mgProbe->id),
+        'taxmod_value'  => [(string) $renderKante => (string) $mgForm->id],
+    ]);
+
+    $mgZeile = (int) $wpdb->get_var(
+        "SELECT v.id
+           FROM {$p}relation_records v
+           JOIN {$p}node_records r ON r.id = v.node_record_id
+          WHERE r.node_id = {$mgProbe->id} AND v.path = '{$renderKante}'"
+    );
+
+    check('die unzulaessige Wahl steht als Wertzeile da', $mgZeile !== 0, (string) $mgZeile);
+
+    // ⚠️ *Und sie **wirkt** — der Knoten zeichnet mit ihr. Ohne diese Zeile pruefte die Gegenprobe
+    // das Wegraeumen einer Zeile, die ohnehin nichts bewirkt hat.*
+    check(
+        'und sie wirkt: der Knoten zeichnet mit `form`',
+        gespeicherterRenderer($mgProbe->id) === $mgForm->name,
+        'gelesen «' . gespeicherterRenderer($mgProbe->id) . '»'
+    );
+
+    $mgGefallen = Schema::dropRendererChoicesOutsideTheEligibleSet();
+
+    check(
+        'die Wanderung meldet den Knoten und den Renderer',
+        in_array($mgProbe->name . ' → ' . $mgForm->name, $mgGefallen, true),
+        'gemeldet: ' . (implode(' · ', $mgGefallen) ?: '—')
+    );
+
+    $mgOption = get_option('taxmod_renderer_choice_drop');
+
+    check(
+        'und dieselbe Meldung steht in der Option',
+        is_array($mgOption)
+            && in_array($mgProbe->name . ' → ' . $mgForm->name, (array) ($mgOption['gefallen'] ?? []), true),
+        (string) wp_json_encode($mgOption)
+    );
+
+    check(
+        'die Wertzeile ist weg',
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE id = {$mgZeile}") === 0
+    );
+
+    // ⚠️ **Und sie liegt im Schatten, nicht im Nichts** ([D-536](../../docs/NewConcept/90-decision-log.md)).
+    // *Das ist der halbe Beschluss: eine Wanderung, die nicht umkehrbar ist, ist ein Datenverlust mit
+    // einer Fassungsnummer davor. **Genau daran ist am 2026-09-06 schon einmal etwas
+    // verlorengegangen.***
+    check(
+        'und sie liegt im Schatten, also ist der Schritt umkehrbar',
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records_history WHERE id = {$mgZeile}") >= 1
+    );
+
+    check(
+        'das Aenderungsbuch nennt Knoten und Renderer',
+        (string) $wpdb->get_var(
+            "SELECT before_state FROM {$p}changelog
+              WHERE owner_kind = 'record_value' AND owner_id = {$mgZeile}
+                AND what = 'renderer choice not eligible dropped'
+              ORDER BY id DESC LIMIT 1"
+        ) === $mgProbe->name . ' → ' . $mgForm->name
+    );
+
+    // ⚠️ **Der Zweck des Ganzen:** *die Wahl faellt, der Rueckfall greift, **der Knoten zeichnet
+    // wieder** — und was stattdessen gelten soll, hat die Wanderung nicht entschieden (`PR-4`).*
+    check(
+        'und der Knoten zeichnet wieder, mit einer zulaessigen Wahl',
+        in_array(gespeicherterRenderer($mgProbe->id), $mgErlaubt, true),
+        'gelesen «' . gespeicherterRenderer($mgProbe->id) . '», erlaubt: ' . implode(',', $mgErlaubt)
+    );
+
+    // ⚠️ *Zweimal ausfuehrbar, und das ist keine Kleinigkeit: eine Wanderung laeuft auf jeder
+    // Aktivierung wieder los, sobald die Fassungsnummer noch einmal steigt.*
+    check('ein zweiter Lauf findet nichts mehr', Schema::dropRendererChoicesOutsideTheEligibleSet() === []);
+
+    // ⚠️ *Die Wiese wieder abraeumen, nach dem eigenen Namensmuster und nie ueber `clearTrash()` —
+    // dieselbe Regel wie am Fuss dieses Laufs. Was ein Abbruch stehen laesst, dreht die Klammer aus
+    // `lib/no-write.php` zurueck.*
+    $mgMeine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes_named WHERE name LIKE '\\_\\_mg %'"));
+    $mgIn    = $mgMeine === [] ? (string) $mgProbe->id : implode(',', $mgMeine);
+
+    $wpdb->query("DELETE FROM {$p}relation_records WHERE node_record_id IN (SELECT id FROM {$p}node_records WHERE node_id IN ({$mgIn}))");
+    $wpdb->query("DELETE FROM {$p}node_records WHERE node_id IN ({$mgIn})");
+    $wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$mgIn})");
+    $wpdb->query("DELETE FROM {$p}relations WHERE from_node_id IN ({$mgIn}) OR to_node_id IN ({$mgIn})");
+    $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$mgIn})");
+
+    check(
+        'und die Wiese ist wieder abgeraeumt',
+        (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_mg %'") === 0
+    );
+}
+
 echo "\n== umgezogen: eine Umbenennung aendert nichts an dem, was gezeichnet wird ==\n";
 
 // ⚠️ **Aus `rename-survives-check`, und das ist die Zusage, um derer willen der Lauf ueberhaupt
@@ -1642,7 +1775,10 @@ echo "\n== aufraeumen ==\n";
 // ⚠️ *Nach dem eigenen Namensmuster und nie ueber `clearTrash()` — dort liegt seine geparkte Arbeit
 // (TASK-039). Nach Namen und nicht nur nach den Ids dieses Laufs: ein abgestuerzter Lauf laesst sonst
 // Reste stehen, die der naechste als eigenen Fehlschlag meldet.*
-$meine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes_named WHERE name LIKE '\\_\\_rcm %'"));
+// ⚠️ *Beide Muster, weil die Gegenprobe zur Fassung 38 sich ihre eigene Wiese unter `__mg ` baut —
+// sie raeumt selbst auf, und **hier steht der zweite Griff fuer den Fall, dass sie es nicht mehr
+// konnte**.*
+$meine = array_map('intval', $wpdb->get_col("SELECT id FROM {$p}nodes_named WHERE name LIKE '\\_\\_rcm %' OR name LIKE '\\_\\_mg %'"));
 $in    = $meine === [] ? (string) $probe->id : implode(',', $meine);
 
 $wpdb->query("DELETE FROM {$p}relation_records WHERE node_record_id IN (SELECT id FROM {$p}node_records WHERE node_id IN ({$in}))");
@@ -1653,7 +1789,7 @@ $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
 check(
     'der Waechter laesst nichts zurueck',
-    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_rcm %'") === 0
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_rcm %' OR name LIKE '\\_\\_mg %'") === 0
 );
 
 

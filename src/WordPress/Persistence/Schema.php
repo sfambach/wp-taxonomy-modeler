@@ -2,6 +2,10 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Renderer\ShippedRenderers;
+use Taxmod\Core\Service\ModelValues;
+use Taxmod\Core\Service\Rendering;
 use Taxmod\WordPress\SystemClock;
 
 
@@ -374,8 +378,18 @@ final class Schema
      * [D-609](../../../docs/NewConcept/90-decision-log.md) hat dasselbe für das **Anlegen** schon
      * entschieden, nur bestehen die alten weiter. Umkehrbar: Schattenzeilen, **eine**
      * Änderungsgruppe, gezählt davor und danach, und bei Abweichung bleibt alles stehen.*
+     *
+     * ⚠️ **Fassung 38 räumt die Renderer-Wahlen weg, die ihr Knoten nicht mehr zulässt**
+     * ([D-672](../../../docs/NewConcept/90-decision-log.md)). *Seine Diagnose: «ich glaube das
+     * problem ist auch produziert weil wir code ändern ohne die db zu ändern». **Ändert sich, was
+     * erlaubt ist, wandert der Bestand im selben Schritt mit** — «was darf gewählt werden» ist
+     * genauso ein Vertrag mit den Daten wie eine Spalte. Sie entfernt und schreibt nichts hin, damit
+     * der Rückfall greift; welcher Renderer stattdessen gelten soll, ist seine Entscheidung
+     * (`PR-4`). **Auf einer Installation, auf der nichts unzulässig ist, tut sie nichts** — gemessen
+     * am 2026-09-06 sind alle 12 Wahlen zulässig, also ist sie an einem **gebauten** Fall geprüft
+     * und nicht am Bestand.*
      */
-    public const VERSION = 37;
+    public const VERSION = 38;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -638,6 +652,13 @@ final class Schema
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
         self::constrainRelationsToNodes();
+
+        // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
+        // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
+        // **Kern** fragt statt eine Spalte zu lesen — {@see \Taxmod\Core\Service\Rendering::choicesForNode()}
+        // will Knoten, Kanten und Sätze so vorfinden, wie sie am Ende dastehen, nicht mitten im
+        // Umbau.*
+        self::dropRendererChoicesOutsideTheEligibleSet();
     }
 
     /**
@@ -1296,6 +1317,195 @@ final class Schema
                 ['id' => (int) $zeile['id']]
             );
         }
+    }
+
+    /**
+     * Fassung 38: **eine gespeicherte Renderer-Wahl, die ihr Knoten nicht mehr zulässt, fällt.**
+     *
+     * ⚠️ **Der Beschluss ist [D-672](../../../docs/NewConcept/90-decision-log.md)**, und seine
+     * Diagnose steht darin: *«ich glaube das problem ist auch produziert weil wir code ändern ohne
+     * die db zu ändern».* **«Was darf gewählt werden» ist genauso ein Vertrag mit den Daten wie eine
+     * Spalte** — nur dass ihn bis heute niemand versioniert hat. *Vier Fälle an einem Tag: eine
+     * Auswahlliste braucht seit dem 2026-09-06 Kinder, die Aussiebung wurde enger, `node` ist keine
+     * Wahl mehr — jedes Mal war die Regel geändert und der Bestand lag still daneben.*
+     *
+     * ⚠️ **Sie entfernt und sie schreibt nichts hin** (`PR-4`). *Fällt die Zeile, greift der
+     * Rückfall und der Knoten zeichnet wieder. **Welcher Renderer stattdessen gelten soll, ist seine
+     * Entscheidung**, nicht die einer Wanderung — «reparieren, wo es eindeutig ist; stehenlassen und
+     * melden, wo es eine Entscheidung wäre» (D-672).*
+     *
+     * ⚠️ **Regelgetrieben und nicht als Liste von Namen** ([D-613](../../../docs/NewConcept/90-decision-log.md)):
+     * *gefragt wird {@see \Taxmod\Core\Service\Rendering::choicesForNode()} — **dieselbe Menge, die
+     * der Bildschirm anbietet**. Eine abgeschriebene Liste wäre in dem Augenblick falsch, in dem
+     * sich die Aussiebung wieder ändert, und genau darum geht es hier.*
+     *
+     * ⚠️ **Über den Schatten und nicht mit rohem `DELETE`** ([D-536](../../../docs/NewConcept/90-decision-log.md)):
+     * *{@see WpdbRecordRepository::forgetValueById()} legt die Zeile ab, bevor sie fällt, also ist
+     * der Schritt umkehrbar. **Genau daran ist am 2026-09-06 schon einmal etwas verlorengegangen.***
+     *
+     * ⚠️ **Eine Zeile, deren Verweis ins Leere zeigt, bleibt stehen** (`PR-4`). *Sie ist ein anderer
+     * Fehler als eine unzulässige Wahl, und ob sie fallen soll, ist nicht entschieden. Sie wird
+     * **gezählt und gemeldet**, wie {@see self::nameTheLabelSpace()} es mit dem tut, was es sich
+     * nicht zutraut — und der Zähler steht in derselben Option.*
+     *
+     * ⚠️ **Gemeldet wird, was fiel: Knotenname und Renderername** — *ins Änderungsbuch als **eine**
+     * Änderungsgruppe ([D-348](../../../docs/NewConcept/90-decision-log.md)) und in die Option
+     * `taxmod_renderer_choice_drop`, dieselbe Form wie `taxmod_nodepath_shape` in Fassung 35.*
+     *
+     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine unzulässige Wahl mehr und tut nichts —
+     * **und auf einer Installation, auf der nichts unzulässig ist, tut sie beim ersten Mal nichts.**
+     * Deshalb ist sie an einem gebauten Fall geprüft und nicht am Bestand
+     * (`renderer-choice-mask-check.php`).*
+     *
+     * ⚠️ *Öffentlich, damit der Wächter sie an seinem eigenen Fall laufen lassen kann — sie ist die
+     * einzige Wanderung mit einer Bedingung, die auf keiner heutigen Installation zutrifft, also
+     * wäre sie sonst ungeprüft.*
+     *
+     * @return list<string> Was fiel, als `Knotenname → Renderername`.
+     */
+    public static function dropRendererChoicesOutsideTheEligibleSet(): array
+    {
+        global $wpdb;
+
+        $werte  = self::table('relation_records');
+        $saetze = self::table('node_records');
+
+        if (self::tableMissing($werte) || self::tableMissing($saetze) || ! self::hasColumn($werte, 'path')) {
+            return [];
+        }
+
+        $nodes     = new WpdbNodeRepository();
+        $relations = new WpdbRelationRepository();
+        $log       = new WpdbChangelog(new SystemClock());
+        $framework = new SeededFrameworkNodes($nodes, $relations, $log);
+        $records   = new WpdbRecordRepository();
+
+        // ⚠️ *Steht die Kante noch nicht aufgeschrieben, ist die Saat noch nicht gelaufen — dann gibt
+        // es keine Wahl, die unzulässig sein könnte, und still umkehren ist die richtige Antwort.*
+        $kante = $framework->settingRelationId(SettingKey::Renderer);
+
+        if ($kante === 0) {
+            return [];
+        }
+
+        // ⚠️ *Dieselbe Verdrahtung, die `renderer-per-node.php` benutzt — ohne Beschriftungen, weil
+        // die zulässige Menge aus der Registratur kommt und keinen Text braucht.*
+        $zeichnen = new Rendering(
+            $nodes,
+            $framework,
+            ShippedRenderers::registry(),
+            new SeededTypeNodes($nodes, $framework),
+            null,
+            null,
+            new ModelValues($records, $relations, $nodes, $framework),
+            $relations
+        );
+
+        // ⚠️ *Die Adresse ist der Pfad, nach dem die Auflösung selbst sucht
+        // ({@see \Taxmod\Core\Service\ModelValues::rendererAt()}) — die Id der Einstellungskante,
+        // einstufig. Eine Wahl an einer **Verwendungsstelle** gibt es nicht
+        // ([D-643](../../../docs/NewConcept/90-decision-log.md)), und diese Wanderung erfindet sie
+        // nicht dadurch, dass sie danach suchte.*
+        /** @var list<array{id: string, value_ref: string, value_ref_kind: string, node_id: string}> $gespeichert */
+        $gespeichert = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT v.id, v.value_ref, v.value_ref_kind, s.node_id
+                   FROM {$werte} v
+                   INNER JOIN {$saetze} s ON s.id = v.node_record_id
+                  WHERE v.path = %s AND v.value_ref IS NOT NULL",
+                (string) $kante
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        $gefallen = [];
+        $ids      = [];
+        $insLeere = 0;
+        $gruppe   = null;
+
+        foreach ($gespeichert as $zeile) {
+            $knoten = $nodes->find((int) $zeile['node_id']);
+
+            if ($knoten === null) {
+                continue;
+            }
+
+            // ⚠️ *Hinter dem Verweis steht entweder ein **Satz** des Renderers oder der Renderknoten
+            // selbst — dieselbe Unterscheidung, die {@see \Taxmod\Core\Service\ModelValues::rendererBehind()}
+            // macht, und aus demselben Grund: Modell und Daten haben getrennte Nummernräume
+            // ([D-164](../../../docs/NewConcept/90-decision-log.md)).*
+            $verweis = (int) $zeile['value_ref'];
+            $satz    = $records->find($verweis);
+            $gewaehlt = $satz !== null ? $nodes->find($satz->nodeId) : $nodes->find($verweis);
+
+            if ($gewaehlt === null) {
+                ++$insLeere;
+
+                continue;
+            }
+
+            $erlaubt = [];
+
+            foreach ($zeichnen->choicesForNode($knoten) as $einer) {
+                $erlaubt[] = $einer->name();
+            }
+
+            if (in_array($gewaehlt->name, $erlaubt, true)) {
+                continue;
+            }
+
+            $version = $records->forgetValueById((int) $zeile['id']);
+
+            $ids[]      = (int) $zeile['id'];
+            $gefallen[] = $knoten->name . ' → ' . $gewaehlt->name;
+
+            // ⚠️ *Eine Gruppe für die ganze Wanderung: sie ist **eine** Handlung an seinen Daten
+            // ([D-348](../../../docs/NewConcept/90-decision-log.md)).*
+            //
+            // ⚠️ *Der Text ist kurz, weil `changelog.what` `varchar(40)` ist — die ausgeschriebene
+            // Fassung war 47 Zeichen lang und **die Zeile fiel still weg**, ohne dass etwas es
+            // meldete. Gemessen und nicht überlegt.*
+            $gruppe = $log->record(
+                (int) $zeile['id'],
+                'record_value',
+                'renderer choice not eligible dropped',
+                $knoten->name . ' → ' . $gewaehlt->name,
+                null,
+                $version,
+                $gruppe
+            );
+        }
+
+        // ⚠️ **Nachgezählt, und die Abweichung ist ein Abbruch und keine Meldung** (`PR-9`). *Steht
+        // eine Zeile noch, hat `$wpdb` still versagt ({@see Query}) — und eine halb gelaufene
+        // Wanderung, die sich als fertig einträgt, ist schlimmer als eine, die gar nicht lief.*
+        if ($ids !== []) {
+            // ⚠️ *Die Ids kommen aus einer `(int)`-Umwandlung und nicht aus der Eingabe — nichts wird
+            // interpoliert, was ein Zeichen sein könnte (`CD-6`).*
+            $in = implode(',', $ids);
+
+            $geblieben = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$werte} WHERE id IN ({$in})");
+
+            $imSchatten = (int) $wpdb->get_var(
+                'SELECT COUNT(DISTINCT id) FROM ' . self::table('relation_records_history') . " WHERE id IN ({$in})"
+            );
+
+            if ($geblieben !== 0 || $imSchatten !== count($ids)) {
+                throw new \RuntimeException(
+                    'Fassung 38: ' . count($ids) . ' unzulaessige Renderer-Wahlen sollten fallen, '
+                    . $geblieben . ' stehen noch, ' . $imSchatten . ' liegen im Schatten. '
+                    . 'Die Fassungsnummer bleibt stehen.'
+                );
+            }
+        }
+
+        update_option(
+            'taxmod_renderer_choice_drop',
+            ['gefallen' => $gefallen, 'ins_leere' => $insLeere, 'geprueft' => count($gespeichert)],
+            false
+        );
+
+        return $gefallen;
     }
 
     private static function dropNodePathColumn(): void
