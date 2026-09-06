@@ -80,10 +80,15 @@ final class ShippedRenderers
         // the kind of thing a modeller decides (D-471: one renderer with a switch, not two).
         $registry->add(new CompactRenderer());
 
-        // ⚠️ **A whole node as a page**, and the page renderer is the same renderer (D-256, D-233).
-        // Offered like any other structural renderer: naming it on a node means *draw this one as a
-        // page*, which is a legitimate thing for an author to want.
-        $registry->add(new NodeRenderer());
+        // ⚠️ **Die Seite selbst, und deshalb keine Wahl** ([D-670](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Wort am 2026-09-06: «dann ist es aber keiner unserer Knoten-Renderer, sondern der der
+        // Seite und sollte nicht Teil der Renderer sein, die der Benutzer auswählen kann.» **Hier
+        // stand `add()` mit der Begründung, «draw this one as a page» sei etwas, was ein Autor wollen
+        // dürfe** — gemessen wollte es niemand: eine einzige Aufrufstelle, der Knotenschirm.*
+        //
+        // ⚠️ *Dieselbe Tür wie für die Baumzelle eine Zeile weiter: registriert, damit `R12` hält,
+        // nicht angeboten, weil die **Oberfläche** ihn ruft und nicht der Autor.*
+        $registry->addForSurfaces(new PageRenderer());
 
         // ⚠️ **The tree's cell** (D-367): registered so R12 holds, not offered because *which* cell
         // a tree draws is the surface's decision — the chooser and the trash want another.

@@ -30,7 +30,7 @@ use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\LabelSlot;
 use Taxmod\Core\Renderer\LabelsRenderer;
-use Taxmod\Core\Renderer\NodeRenderer;
+use Taxmod\Core\Renderer\PageRenderer;
 use Taxmod\Core\Renderer\RecordRenderer;
 use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\SettingsRenderer;
@@ -825,6 +825,31 @@ final class Rendering implements Presets
                         // Knoten trägt seine Kinder nicht mit sich ({@see self::hatEtwasZurAuswahl()}).*
                         $this->hatEtwasZurAuswahl($knoten->id),
                     );
+
+                    // ⚠️ **Ein gespeicherter Renderer steht in der Liste, auch wenn er heute nicht
+                    // mehr angeboten würde** ([D-360](../../../docs/NewConcept/90-decision-log.md)).
+                    //
+                    // ⚠️ **Sein Befund am 2026-09-06, und er ist der Grund für diese Zeilen:** *«in
+                    // Volt steht jetzt als Renderer nicht auswählbar `reference` und das ist auch gut
+                    // so, aber ist das auch der Wert in der DB? das müssen wir sicherstellen.»*
+                    // **Gemessen war es nicht:** *in der Datenbank stand `chooser-dialog`, angezeigt
+                    // und als «ausgewählt» markiert wurde `reference`. **Das nächste Speichern hätte
+                    // den gespeicherten Wert stillschweigend ersetzt** — genau die Falle, die D-360
+                    // eine Ebene tiefer schon einmal geschlossen hat.*
+                    //
+                    // ⚠️ *Nur was **gesetzt** ist, kommt dazu — nicht, was die Registratur als Vorgabe
+                    // liefert. Sonst stünde der Rückfall als Eintrag da, und «nichts gewählt» wäre von
+                    // «`plain` gewählt» nicht mehr zu unterscheiden ([R14b](../../../docs/NewConcept/30-renderer.md)).*
+                    $gesetzt = $this->withModelValues([], $knoten)[SettingKey::Renderer->value] ?? null;
+
+                    if ($gesetzt !== null && ! $gesetzt->value->isNothing()) {
+                        $klasse  = $this->renderers->classFor($this->rendererNameFor($knoten) ?? '');
+                        $geltend = $klasse === null ? null : ($kandidaten[$klasse] ?? null);
+
+                        if ($geltend !== null && ! isset($moeglich[$geltend->id])) {
+                            $moeglich[$geltend->id] = $geltend->name;
+                        }
+                    }
 
                     // ⚠️ **Und die Zeile muss zeigen, was gilt — sonst wäre sie eine Falle.** *Eine
                     // Auswahlliste ohne Vorauswahl zeigt immer den ersten Eintrag, und der nächste
@@ -2738,7 +2763,7 @@ final class Rendering implements Presets
         string $locale = '',
         Level $level = Level::Admin,
     ): RenderResult {
-        return $this->renderers->byName(NodeRenderer::NAME)->render(
+        return $this->renderers->byName(PageRenderer::NAME)->render(
             $node,
             new RenderContext(
                 purpose: $purpose,

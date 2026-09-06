@@ -2781,7 +2781,21 @@ final class NodesScreen
             }
         }
 
-        if ($attributes === [] && ($branch === null || ! $branch->holdsData())) {
+        // ⚠️ **Ein einfacher Datentyp darf Sätze haben, auch ohne eigene Felder**
+        // ([D-671](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «bezüglich default
+        // daten für simple datentypen wozu auch with label zählt hatten wir gesagt default, example
+        // darf sein.» **`With Label` hat null eigene Kanten** — wie `min` und `max` unter `Integer` —
+        // und kam deshalb über die Maske nie an einen Vorgabewert.*
+        //
+        // ⚠️ *Gefragt wird nicht der Name, sondern die **Abstammung**: was unter einem Datentyp
+        // hängt, ist einer. Eine Spezialisierung, die er morgen anlegt, zählt damit von selbst mit,
+        // ohne dass jemand eine Liste pflegt (`CD`, keine Sonderfälle nach Namen).*
+        // ⚠️ *Am **Ast** gemessen und nicht am aufgelösten Typ: `typeOfNode()` antwortet auch für eine
+        // Konstante wie `Ampere` — mit `node_ref` —, und dann bekäme **jeder** Knoten unter
+        // `Constants` Datensätze. Gemeint sind die Datentypen und ihre Spezialisierungen.*
+        $istEinfacherTyp = $branch === Branch::DataTypes;
+
+        if ($attributes === [] && ! $istEinfacherTyp && ($branch === null || ! $branch->holdsData())) {
             return $this->heading(
                 __('Records', 'taxmod'),
                 __('Nothing can be entered here, because this node has no fields. A node records values for its fields — under «Fields» that is what a person enters, under «Settings» what the author set.', 'taxmod')

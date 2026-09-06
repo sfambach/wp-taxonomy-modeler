@@ -569,13 +569,18 @@ check('an int is offered exactly its three ways', $offeredForInt === ['field', '
 // **structural** renderer — chosen for what it is — and now there is one. Offering a spinner for a
 // supplier is still the mistake it always was.
 // All three structural renderers, and all three legitimate for a thing: `form` stacks its attributes
-// (D-098), `compact` puts them on one line or in one column (D-471), `node` draws it as a whole page
-// (D-256). A typed one is still refused.
+// (D-098), `compact` puts them on one line or in one column (D-471), `table` draws them as rows
+// (D-542). A typed one is still refused.
+//
+// ⚠️ **`node` ist seit [D-670](../../docs/NewConcept/90-decision-log.md) nicht mehr dabei und heisst
+// jetzt `page`** — *sein Wort: «keiner unserer Knoten-Renderer, sondern der der Seite … sollte nicht
+// Teil der Renderer sein, die der Benutzer auswählen kann». Er wird wie die Baumzelle nur von der
+// Oberfläche gerufen, nicht vom Autor gewählt.*
 $offeredForThing = array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($part->id)));
 sort($offeredForThing);
 check(
     'a thing under Model is offered the structural renderers only',
-    $offeredForThing === ['compact', 'form', 'node', 'table'],
+    $offeredForThing === ['compact', 'form', 'table'],
     implode(', ', $offeredForThing)
 );
 check(

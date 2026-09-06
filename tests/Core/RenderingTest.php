@@ -595,8 +595,13 @@ final class RenderingTest extends TestCase
         // ⚠️ *`table` ist seit [D-542](../../docs/NewConcept/90-decision-log.md) dabei — ein Behälter
         // ohne Typ, wie `form` und `compact`. **Diese Zusage hat den neuen Renderer gemeldet**, und
         // das ist ihre Aufgabe: sie haelt fest, was einem Knoten angeboten wird.*
+        //
+        // ⚠️ **`page` ist seit [D-670](../../docs/NewConcept/90-decision-log.md) **nicht** mehr dabei**
+        // — *sein Wort: «keiner unserer Knoten-Renderer, sondern der der Seite … sollte nicht Teil der
+        // Renderer sein, die der Benutzer auswählen kann». Er heisst seitdem `page` statt `node` und
+        // wird wie die Baumzelle nur von der Oberfläche gerufen.*
         self::assertSame(
-            [CompactRenderer::NAME, FormRenderer::NAME, NodeRenderer::NAME, TableRenderer::NAME],
+            [CompactRenderer::NAME, FormRenderer::NAME, TableRenderer::NAME],
             $names
         );
     }

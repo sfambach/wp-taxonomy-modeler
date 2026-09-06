@@ -34,9 +34,20 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class NodeRenderer extends RendererNode
+final class PageRenderer extends RendererNode
 {
-    public const NAME = 'node';
+    /**
+     * ⚠️ **Er hiess `node`, und der Name sagte etwas Falsches** — *sein Wort am 2026-09-06:
+     * «dann ist es aber keiner unserer Knoten-Renderer, sondern der der Seite und sollte nicht Teil
+     * der Renderer sein, die der Benutzer auswählen kann; der Name ist auch doof, sollte
+     * Seitenrenderer heissen … und nicht Knoten, das spiegelt was Falsches wieder.»*
+     *
+     * ⚠️ **Gemessen, was er wirklich tut:** *eine einzige Aufrufstelle —
+     * {@see \Taxmod\Core\Service\Rendering::nodeAsPage()}, aus dem Knotenschirm. Er zeichnet **die
+     * Seite**, nicht einen Wert: Kopf, Beschriftungen, Felder, Einstellungen, Vorschau, Datensätze.
+     * Als Wahl stand er trotzdem in der Liste, und an `Dimension` war er auch gewählt.*
+     */
+    public const NAME = 'page';
 
     public function name(): string
     {
