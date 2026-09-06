@@ -1157,12 +1157,16 @@ a.taxmod-chosen:hover {
  * liefen aus der Spalte heraus. Ein Flex-Kind schrumpft nur, wenn es darf: `min-width: 0` hebt die
  * Mindestbreite auf, die ein Eingabefeld sonst von sich aus behaelt.
  *
- * Die Breite je Feld sagt kuenftig `display_size` (D-659); bis dahin teilen sich die Felder den
- * Platz gleichmaessig, statt sich zu ueberlagern.
+ * Die Breite je Feld sagt kuenftig `display_size` (D-659).
+ *
+ * ⚠️ **Und sie strecken sich nicht ueber die Zeile.** *Sein Wort am 2026-09-06: «mit compact meine
+ * ich immer noch, dass die Felder nahe beieinander liegen — fuer Admin und in der Ausgabe trennt
+ * sie im Prinzip nur ein Space.» Ein `flex: 1 1 auto` hatte sie den ganzen Platz teilen lassen;
+ * jetzt nimmt jedes seine eigene Breite und der Rest der Zeile bleibt leer.*
  */
 .taxmod-compact-horizontal > * {
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
 }
 
 .taxmod-compact-horizontal input,

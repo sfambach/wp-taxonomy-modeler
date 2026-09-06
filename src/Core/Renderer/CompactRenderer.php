@@ -190,7 +190,10 @@ final class CompactRenderer extends RendererNode
 
         return RenderResult::htmlTag('div', [
             'class' => 'taxmod-compact taxmod-compact-' . ($vertical ? self::VERTICAL : self::HORIZONTAL),
-            'style' => 'display:flex;gap:.5em;' . $axis,
+            // ⚠️ **Ein Leerzeichen, nicht ein Abstand.** *Sein Wort: «für Admin und in der Ausgabe
+            // trennt sie im Prinzip nur ein Space.» `.25em` ist die Breite eines Leerzeichens in
+            // dieser Schrift; `.5em` sah nach Spalten aus, und genau das ist `compact` nicht.*
+            'style' => 'display:flex;gap:.25em;' . $axis,
         ]) . $inner . '</div>';
     }
 
