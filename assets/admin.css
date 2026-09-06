@@ -1178,3 +1178,26 @@ a.taxmod-chosen:hover {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/*
+ * Waagerecht steht die Beschriftung ueber ihrem Feld.
+ *
+ * Sein Wort am 2026-09-06: «bei kompakt horizontal muesste die Beschriftung ueber den Feldern
+ * liegen». Vorher stand sie davor, in derselben Zeile — bei zwei Feldern nebeneinander liest sich
+ * das als eine lange Zeile aus vier Dingen statt als zwei beschriftete Felder.
+ *
+ * Senkrecht bleibt es, wie es war: dort steht ohnehin jedes Feld in seiner eigenen Zeile, und die
+ * Beschriftung davor ist die kuerzere Form.
+ */
+.taxmod-compact-horizontal .taxmod-compact-part {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .1em;
+}
+
+.taxmod-compact-horizontal .taxmod-compact-label {
+    font-size: .85em;
+    color: #646970;
+    line-height: 1.2;
+}
