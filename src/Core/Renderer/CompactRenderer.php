@@ -180,13 +180,17 @@ final class CompactRenderer extends RendererNode
         // ⚠️ *The cross-axis alignment is not the same fact as the axis.* Along a row the parts share
         // a **text baseline**, which is what makes a compact line read as one line; down a column
         // baseline alignment would align them sideways instead, so the column starts them flush.
+        // ⚠️ **Waagerecht heisst waagerecht — kein Umbruch.** *Sein Befund am 2026-09-06: die Achse
+        // stand richtig auf `row`, und in der schmalen Vorschauspalte brachen zwei Eingabefelder
+        // trotzdem untereinander. **Es sah aus wie der falsche Renderer und war der Umbruch.** Sein
+        // Wort: «und nicht umbrechen». Senkrecht darf weiter umbrechen — dort ist es die Achse selbst.*
         $axis = $vertical
-            ? 'flex-direction:column;align-items:flex-start'
-            : 'flex-direction:row;align-items:baseline';
+            ? 'flex-direction:column;align-items:flex-start;flex-wrap:wrap'
+            : 'flex-direction:row;align-items:baseline;flex-wrap:nowrap';
 
         return RenderResult::htmlTag('div', [
             'class' => 'taxmod-compact taxmod-compact-' . ($vertical ? self::VERTICAL : self::HORIZONTAL),
-            'style' => 'display:flex;flex-wrap:wrap;gap:.5em;' . $axis,
+            'style' => 'display:flex;gap:.5em;' . $axis,
         ]) . $inner . '</div>';
     }
 
