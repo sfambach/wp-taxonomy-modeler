@@ -80,10 +80,15 @@ final class CleanupScreen
         }
 
         return '<div class="wrap">'
-            . '<h1>' . esc_html__('Taxonomy Modeller — cleanup', 'taxmod') . '</h1>'
-            . '<p class="description">'
-            . esc_html__('What deletion left behind. Nothing here is tidied on its own: each of these was deliberately left alone at the moment of the change, because tidying silently would have been worse. Removing one is a decision, and it cannot be undone.', 'taxmod')
-            . '</p>'
+            // ⚠️ *Die Erklärung stand als Absatz unter der Überschrift und wurde nach dem dritten
+            // Besuch nicht mehr gelesen. Seit [D-661](../../../docs/NewConcept/90-decision-log.md)
+            // steht sie hinter dem Fragezeichen — für den, der sie sucht.*
+            . '<h1 style="display:flex;align-items:center;gap:.3em">'
+            . HintMarkup::behind(
+                esc_html__('Taxonomy Modeller — cleanup', 'taxmod'),
+                __('What deletion left behind. Nothing here is tidied on its own: each of these was deliberately left alone at the moment of the change, because tidying silently would have been worse. Removing one is a decision, and it cannot be undone.', 'taxmod')
+            )
+            . '</h1>'
             . $this->notice()
             . $this->renderer->render([
                 $this->valuesWithoutRelation(),

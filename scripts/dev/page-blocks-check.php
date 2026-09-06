@@ -641,6 +641,193 @@ if ($mitSaetzen === 0) {
     }
 }
 
+echo "\n== Erklaerungen stehen hinter dem Fragezeichen, und der Satz bleibt im Markup ==\n";
+
+// ⚠️ **Sein Beschluss** ([D-661](../../docs/NewConcept/90-decision-log.md)): *«nett die Erklaerung,
+// aber bitte dahinter mit Fragezeichen oder als Tooltip; sollte generelle Loesung sein.»*
+//
+// ⚠️ **Der Preis, den die Entscheidung selbst benennt, ist das, was hier wirklich geprueft wird:**
+// *«der Satz muss deshalb im Markup stehen und nicht nur im Titel-Attribut, sonst verschwindet er
+// fuer jeden, der nicht mit der Maus zeigt.» **Ein Fragezeichen, dessen Erklaerung nur im `title`
+// steht, ist auf einem Beruehrungsbildschirm und fuer eine Vorlesehilfe keine Erklaerung** — und
+// von aussen sieht es genauso aus wie eines, das beides hat. Darum wird Titel gegen Markup
+// verglichen und nicht bloss gezaehlt.*
+
+/**
+ * Die Fragezeichen einer Seite: was im `title` steht und was im Markup.
+ *
+ * @return array{titel: list<string>, text: list<string>, huellen: int}
+ */
+function fragezeichen(string $html): array
+{
+    preg_match_all('/<span class="taxmod-hint" tabindex="0" title="([^"]*)"/', $html, $t);
+    preg_match_all('/<span class="taxmod-hint-text">(.*?)<\/span>/s', $html, $x);
+
+    $klartext = static fn (string $roh): string => trim(
+        (string) preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($roh), ENT_QUOTES))
+    );
+
+    return [
+        'titel'   => array_map($klartext, $t[1]),
+        'text'    => array_map($klartext, $x[1]),
+        'huellen' => substr_count($html, 'class="taxmod-hint"'),
+    ];
+}
+
+/** Die drei Verwaltungsbildschirme, gezeichnet wie im Browser. */
+function verwaltungsseiten(): array
+{
+    $admin = get_users(['role' => 'administrator', 'number' => 1]);
+
+    if ($admin === []) {
+        return [];
+    }
+
+    wp_set_current_user($admin[0]->ID);
+
+    // ⚠️ *Der Einstellungsbildschirm ruft `get_submit_button()` — eine Funktion, die erst mit den
+    // Verwaltungsteilen von WordPress da ist. **`wp-load.php` laedt sie nicht**, und ohne sie faellt
+    // dieser Lauf mit einem Fehler, der nach einem Fehler im Plugin aussieht und keiner ist.*
+    require_once ABSPATH . 'wp-admin/includes/template.php';
+
+    $bau    = new ReflectionClass(Plugin::class);
+    $plugin = $bau->newInstanceWithoutConstructor();
+    $bau->getProperty('file')->setValue($plugin, 'taxmod.php');
+
+    $wurzel = (int) $GLOBALS['wpdb']->get_var(
+        'SELECT id FROM ' . Schema::table('nodes_named') . ' ORDER BY id ASC LIMIT 1'
+    );
+
+    return [
+        'Knoten'        => $wurzel === 0 ? '' : seiteVon($wurzel),
+        'Einstellungen' => (new \Taxmod\WordPress\Admin\SettingsScreen())->render(),
+        'Aufraeumen'    => $plugin->cleanupScreen()->render(),
+    ];
+}
+
+$seiten = verwaltungsseiten();
+
+check('die drei Verwaltungsseiten lassen sich zeichnen', count($seiten) === 3 && ! in_array('', $seiten, true));
+
+// ⚠️ *Der Gegenfall zuerst: **ohne eine Untergrenze waere eine Seite ganz ohne Fragezeichen gruen**
+// — und «keine Erklaerung mehr im Fliesstext» waere am billigsten dadurch erfuellt, dass es
+// ueberhaupt keine Erklaerung mehr gibt.*
+$mindestens = ['Knoten' => 3, 'Einstellungen' => 3, 'Aufraeumen' => 1];
+
+foreach ($seiten as $name => $html) {
+    if ($html === '') {
+        continue;
+    }
+
+    $gefunden = fragezeichen($html);
+
+    check(
+        "«{$name}»: Fragezeichen vorhanden",
+        count($gefunden['titel']) >= $mindestens[$name],
+        count($gefunden['titel']) . ' von mindestens ' . $mindestens[$name]
+    );
+
+    // ⚠️ *Die Zahl der Fragezeichen und die Zahl der Erklaerungen im Markup sind dieselbe Zahl.
+    // Ein Zeichen ohne Satz waere ein Versprechen ohne Inhalt.*
+    check(
+        "  · je Fragezeichen ein Satz im Markup",
+        count($gefunden['titel']) === count($gefunden['text'])
+            && $gefunden['huellen'] === count($gefunden['titel']),
+        count($gefunden['titel']) . ' Zeichen, ' . count($gefunden['text']) . ' Saetze, '
+            . $gefunden['huellen'] . ' Huellen'
+    );
+
+    $nurImTitel = [];
+    $leer       = [];
+
+    foreach ($gefunden['titel'] as $i => $titel) {
+        $imMarkup = $gefunden['text'][$i] ?? '';
+
+        if ($imMarkup === '') {
+            $leer[] = substr($titel, 0, 40);
+
+            continue;
+        }
+
+        if ($imMarkup !== $titel) {
+            $nurImTitel[] = substr($titel, 0, 40);
+        }
+    }
+
+    check("  · kein Satz ist leer", $leer === [], implode(' | ', $leer));
+    check("  · keiner steht nur im title", $nurImTitel === [], implode(' | ', $nurImTitel));
+}
+
+echo "\n== Und im Fliesstext steht keine Erklaerung mehr ==\n";
+
+// ⚠️ *Gemessen wird an der Quelle und nicht an einer gezeichneten Seite: eine `description`, die
+// heute auf keinem Knoten auftaucht, ist morgen wieder da. **Was bleiben darf, ist Auskunft** —
+// eine Meldung, ein Befund, eine Zahl —, und Auskunft erkennt man daran, dass etwas **eingesetzt**
+// wird: ein Platzhalter oder eine Veraenderliche. Ein Satz ohne beides ist eine Erklaerung.*
+$stehengeblieben = [];
+$auskunft        = 0;
+
+foreach (glob(dirname(__DIR__, 2) . '/src/WordPress/Admin/*.php') ?: [] as $datei) {
+    $zeilen = file($datei, FILE_IGNORE_NEW_LINES) ?: [];
+
+    foreach ($zeilen as $nr => $zeile) {
+        // ⚠️ *Nur echtes Markup, nicht die Erwaehnung in einem Docblock.*
+        if (! preg_match('/[\'"]<(?:p|span|ul|div) class="description/', $zeile)) {
+            continue;
+        }
+
+        $satz = implode(' ', array_slice($zeilen, $nr, 7));
+
+        if (preg_match('/sprintf\(|_n\(|%[ds]|\$/', $satz)) {
+            ++$auskunft;
+
+            continue;
+        }
+
+        $stehengeblieben[] = basename($datei) . ':' . ($nr + 1);
+    }
+}
+
+check('keine erklaerende «description» mehr uebrig', $stehengeblieben === [], implode(', ', $stehengeblieben));
+
+// ⚠️ *Und der Gegenfall dazu: die Auskunft ist **nicht** mitgegangen. Alles zu loeschen waere oben
+// ebenfalls gruen und waere schlimmer als der Zustand vorher.*
+check('und die Auskunft steht weiterhin da', $auskunft >= 4, (string) $auskunft);
+
+// ⚠️ **`AR-2`: es sind Software-Texte.** *Ein Satz, der hart im Kode steht, ginge nicht durch die
+// Uebersetzung — und das Fragezeichen waere dann ausgerechnet fuer den leer, der eine andere
+// Sprache spricht.*
+$hart = [];
+$stellen = 0;
+
+$quellen = array_merge(
+    glob(dirname(__DIR__, 2) . '/src/WordPress/*.php') ?: [],
+    glob(dirname(__DIR__, 2) . '/src/WordPress/*/*.php') ?: []
+);
+
+foreach ($quellen as $datei) {
+    $zeilen = file($datei, FILE_IGNORE_NEW_LINES) ?: [];
+
+    foreach ($zeilen as $nr => $zeile) {
+        if (! str_contains($zeile, 'HintMarkup::icon(') && ! str_contains($zeile, 'HintMarkup::behind(')) {
+            continue;
+        }
+
+        ++$stellen;
+
+        // ⚠️ *Der Satz steht entweder auf derselben Zeile oder auf einer der naechsten — beides
+        // zaehlt, und beides muss uebersetzt sein oder aus einer Veraenderlichen kommen.*
+        $satz = implode(' ', array_slice($zeilen, $nr, 4));
+
+        if (! preg_match('/__\(|_n\(|\$/', $satz)) {
+            $hart[] = basename($datei) . ':' . ($nr + 1);
+        }
+    }
+}
+
+check('jedes Fragezeichen bekommt einen uebersetzten Satz', $hart === [], implode(', ', $hart));
+check('und es gibt mehr als eine Stelle, die es benutzt', $stellen >= 6, (string) $stellen);
+
 $geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

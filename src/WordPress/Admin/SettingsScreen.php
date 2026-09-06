@@ -106,9 +106,12 @@ final class SettingsScreen
             . checked(self::inDeveloperMode(), true, false) . '> '
             . esc_html__('Show diagnostics and lift the deletion guards', 'taxmod')
             . '</label>'
-            . '<p class="description">'
-            . esc_html__('One mode, not two: the same switch that shows which renderer drew what also lets a protected node be parked.', 'taxmod')
-            . '</p></td></tr>';
+            // ⚠️ *Hinter das Fragezeichen, nicht unter den Schalter
+            // ([D-661](../../../docs/NewConcept/90-decision-log.md)).*
+            . HintMarkup::icon(
+                __('One mode, not two: the same switch that shows which renderer drew what also lets a protected node be parked.', 'taxmod')
+            )
+            . '</td></tr>';
     }
 
     /**
@@ -142,9 +145,11 @@ final class SettingsScreen
 
         return '<tr><th scope="row">' . esc_html__('Default language', 'taxmod') . '</th><td>'
             . '<select name="neutral_locale">' . $options . '</select>'
-            . '<p class="description">'
-            . esc_html__('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
-            . '</p></td></tr>';
+            . ' '
+            . HintMarkup::icon(
+                __('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
+            )
+            . '</td></tr>';
     }
 
     /** One size, chosen from what has been tried rather than typed. */
@@ -159,7 +164,7 @@ final class SettingsScreen
 
         return '<tr><th scope="row">' . esc_html($label) . '</th><td>'
             . '<select name="' . esc_attr(str_replace('taxmod_', '', $option)) . '">' . $options . '</select>'
-            . '<p class="description">' . esc_html($why) . '</p></td></tr>';
+            . ' ' . HintMarkup::icon($why) . '</td></tr>';
     }
 
     /**

@@ -733,10 +733,15 @@ final class NodesScreen
     private function detail(?Node $selected, array $rows, Node $root): string
     {
         if ($selected === null) {
-            return '<h2>' . esc_html__('Nothing selected', 'taxmod') . '</h2>'
-                . '<p class="description">'
-                . esc_html__('Click a name in the tree and it appears here.', 'taxmod')
-                . '</p>';
+            // ⚠️ *«Nothing selected» ist die **Meldung** und bleibt stehen; wie man daran etwas
+            // ändert, ist die **Erklärung** und steht seit
+            // [D-661](../../../docs/NewConcept/90-decision-log.md) hinter dem Fragezeichen.*
+            return '<h2 style="display:flex;align-items:center;gap:.3em">'
+                . HintMarkup::behind(
+                    esc_html__('Nothing selected', 'taxmod'),
+                    __('Click a name in the tree and it appears here.', 'taxmod')
+                )
+                . '</h2>';
         }
 
         // ⚠️ **The frame is the renderer's; this only says what goes in which slot** (R20a, and
@@ -1072,22 +1077,34 @@ final class NodesScreen
                 $namen[] = $relation->name;
             }
 
+            // ⚠️ *Die Namen sind **Auskunft** und bleiben sichtbar; das «warum nicht hier» ist der
+            // erklärende Nebensatz und steht seit
+            // [D-661](../../../docs/NewConcept/90-decision-log.md) hinter dem Fragezeichen.*
             $html .= '<p class="description taxmod-preview-settings">'
-                . esc_html(sprintf(
-                    /* translators: %s: comma-separated setting names. */
-                    __('Settings, not data, so not previewed here: %s', 'taxmod'),
-                    implode(', ', $namen)
-                ))
+                . HintMarkup::behind(
+                    esc_html(sprintf(
+                        /* translators: %s: comma-separated setting names. */
+                        __('Not previewed: %s', 'taxmod'),
+                        implode(', ', $namen)
+                    )),
+                    __('These are settings, not data. A setting is not shown in the preview, because the preview shows what a record holds.', 'taxmod')
+                )
                 . '</p>';
         }
 
         if ($visibility['fixed'] !== []) {
+            // ⚠️ *Die Zahl ist **Auskunft** und bleibt stehen; was «read-only» für die Vorschau
+            // bedeutet, ist die Erklärung und steht hinter dem Fragezeichen
+            // ([D-661](../../../docs/NewConcept/90-decision-log.md)).*
             $html .= '<p class="description">'
-                . esc_html(sprintf(
-                    /* translators: %d: how many attributes are read-only. */
-                    _n('%d field is read-only, so it is drawn on both sides and editable on neither.', '%d fields are read-only, so they are drawn on both sides and editable on neither.', count($visibility['fixed']), 'taxmod'),
-                    count($visibility['fixed'])
-                ))
+                . HintMarkup::behind(
+                    esc_html(sprintf(
+                        /* translators: %d: how many attributes are read-only. */
+                        _n('%d field is read-only.', '%d fields are read-only.', count($visibility['fixed']), 'taxmod'),
+                        count($visibility['fixed'])
+                    )),
+                    __('A read-only field is drawn on both sides of the preview and editable on neither.', 'taxmod')
+                )
                 . '</p>';
         }
 
@@ -2783,11 +2800,14 @@ final class NodesScreen
         // `default` eine Vorgabe macht, die auch bei der Eingabe verwendet werden soll — eine
         // Vorbelegung.»* **Umstellen aendert also, was mit kuenftigen Datensaetzen geschieht**, und
         // wer das an einer Zeile tut, muss es dort lesen koennen und nicht im Entscheidungsprotokoll.
+        // ⚠️ *Der Satz steht nicht mehr **neben** der Auswahl, sondern hinter ihrem Fragezeichen
+        // ([D-661](../../../docs/NewConcept/90-decision-log.md)) — er ist Erklärung und nicht
+        // Auskunft, und in einer Tabellenzeile kostete er jede Zeile Platz.*
         $hinweis = $formId === ''
             ? ''
-            : ' <span class="description taxmod-record-type-note">'
-                . esc_html__('Changing this changes what future records start with: a default presets them, an example does not.', 'taxmod')
-                . '</span>';
+            : ' ' . HintMarkup::icon(
+                __('Changing this changes what future records start with: a default presets them, an example does not.', 'taxmod')
+            );
 
         // ⚠️ *Ohne `form="…"` schickt die Auswahl lautlos nichts, wenn sie ausserhalb ihres Formulars
         // steht — eine Tabellenzelle neben der Zelle mit dem `<form>`. Beim Anlegen steht sie **in**
@@ -3100,15 +3120,11 @@ final class NodesScreen
     private function heading(string $text, string $hint, string $level = 'h3'): string
     {
         return '<' . $level . ' style="display:flex;align-items:center;gap:.3em">'
-            . esc_html($text)
-            // ⚠️ *Hier stand die Grösse als **Inline-Style** und schlug damit jede Regel im
-            // Stylesheet. Was übrig bleibt, ist das wirklich Zusammenhangsabhängige —
-            // durchscheinend, mit Fragezeichen-Zeiger und einem Tooltip — und das trägt jetzt
-            // ein Umschlag statt des Icons selbst. **Das Icon soll nichts über seinen Ort
-            // wissen müssen**, sonst ist die eine Stelle wieder sechs.*
-            . '<span class="taxmod-hint-icon" title="' . esc_attr($hint) . '">'
-            . IconMarkup::dashicon('editor-help', $hint)
-            . '</span>'
+            // ⚠️ *Hier stand das Fragezeichen **von Hand hingeschrieben**, und es war die einzige
+            // Stelle, die es hatte. Seit [D-661](../../../docs/NewConcept/90-decision-log.md) ist es
+            // die allgemeine Lösung, also gehört das Wissen darüber, wie so ein Zeichen aussieht, in
+            // {@see HintMarkup} und nicht in eine Überschriftenmethode.*
+            . HintMarkup::behind(esc_html($text), $hint)
             . '</' . $level . '>';
     }
 
