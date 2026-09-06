@@ -2246,12 +2246,21 @@ final class NodesScreen
             // *gemessen am 2026-09-05 tragen **42** benannte Kanten `composition`, **12** `setting`,
             // **4** `aggregation`. Eine Vorbelegung, die auf dem Schirm steht, ist etwas anderes als
             // eine Ableitung, die niemand sieht — sie ist zu ändern, bevor der Knopf gedrückt wird.*
-            . '<select name="relation_kind" title="'
-            . esc_attr__('What kind of relation this is', 'taxmod') . '">'
-            . '<option value="composition" selected>' . esc_html__('composition — the target belongs to this node', 'taxmod') . '</option>'
-            . '<option value="aggregation">' . esc_html__('aggregation — the target stands on its own', 'taxmod') . '</option>'
-            . '<option value="setting">' . esc_html__('setting — a value the model carries, not an entry', 'taxmod') . '</option>'
+            // ⚠️ **Ein Wort je Eintrag, die Erklärung ans Fragezeichen** — *und das ist keine
+            // Kosmetik, sondern sein Befund am 2026-09-06: «du machst wieder Sonderfälle. Ein
+            // Select-Feld sollte immer gleich gerendert werden, nicht einmal so und einmal so …
+            // das lässt darauf schliessen, dass du die Design-Regeln nicht befolgst.» **Er hat
+            // recht:** die Satzart hatte ich eine Stunde vorher genau so gekürzt
+            // ([D-661](../../../docs/NewConcept/90-decision-log.md)) und diese Liste dabei
+            // übersehen — zwei Auswahlfelder auf einer Seite, zwei Macharten.*
+            . '<select name="relation_kind">'
+            . '<option value="composition" selected>' . esc_html__('composition', 'taxmod') . '</option>'
+            . '<option value="aggregation">' . esc_html__('aggregation', 'taxmod') . '</option>'
+            . '<option value="setting">' . esc_html__('setting', 'taxmod') . '</option>'
             . '</select>'
+            . HintMarkup::icon(
+                __('composition — the target belongs to this node. aggregation — the target stands on its own. setting — a value the model carries, not an entry.', 'taxmod')
+            )
             . ControlMarkup::button(new Control(
                 'do',
                 'add_field',
