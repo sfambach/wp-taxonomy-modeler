@@ -582,10 +582,15 @@ if ($mitSaetzen === 0) {
         substr_count($block, 'id="taxmod-record-') . ' von ' . $saetze
     );
 
+    // ⚠️ **Vier statt drei seit [D-653](../../docs/NewConcept/90-decision-log.md), und die Aenderung
+    // dieser Zusage ist ein sichtbarer Teil der Entscheidung** (`PR-9`). *Die Satzart wird jetzt beim
+    // Anlegen **gewaehlt** — `default`, `user` oder `example` —, und was gewaehlt wird, muss man
+    // danach wiedersehen koennen. **Ohne die Spalte waere die Wahl eine Angabe, die man einmal macht
+    // und nie wieder findet.***
     check(
-        'drei Vorspalten je Zeile',
-        substr_count($block, 'taxmod-table-lead') === $saetze * 3,
-        substr_count($block, 'taxmod-table-lead') . ' bei ' . ($saetze * 3) . ' erwarteten'
+        'vier Vorspalten je Zeile',
+        substr_count($block, 'taxmod-table-lead') === $saetze * 4,
+        substr_count($block, 'taxmod-table-lead') . ' bei ' . ($saetze * 4) . ' erwarteten'
     );
 
     // ⚠️ **Und keine Einstellungsspalte.** *Gemessen: null Werte an Einstellungskanten in

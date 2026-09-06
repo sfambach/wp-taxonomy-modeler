@@ -657,6 +657,119 @@ check(
     implode(',', array_keys($markups))
 );
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// Der Datensatz: anlegen mit gewaehlter Art, Wert eintippen, speichern, nachsehen, loeschen
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+// ⚠️ **Dieser Weg ist bisher von keinem Waechter gegangen worden, und genau dort lag der Fehler vom
+// 2026-09-06.** *Der Datensatzblock schickt `taxmod_value[<Satz>][<Kante>]`, der Leser hielt die
+// erste Ebene fuer die Kante — **kein Wert kam an**. Anlegen ging, weil das ein anderer Akt ist;
+// schreiben nie. Behoben in `7edf1ab` und bis hierher ungewacht.*
+//
+// ⚠️ **Und die Gegenprobe zum Anlegen** ([D-651](../../docs/NewConcept/90-decision-log.md),
+// [D-653](../../docs/NewConcept/90-decision-log.md)): *die **gewaehlte** Art muss ankommen. Der Kern
+// nahm sie bisher als Vorgabewert des Parameters — eine Zusage «es entsteht ein Satz» waere gruen
+// gewesen, waehrend jede Wahl still zu `user` wurde.*
+
+echo "\n== ein Datensatz: anlegen mit gewaehlter Art, schreiben, nachsehen ==\n";
+
+$satzKnoten = $editor->createNode('__rcm satzknoten', $framework->rootOf(Branch::Model)->id);
+$satzFeld   = $editor->addField($satzKnoten->id, $intId, '__rcm zahl');
+
+$vorherSaetze = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE node_id = {$satzKnoten->id}");
+
+abschicken([
+    'do'            => 'add_record',
+    'id'            => (string) $satzKnoten->id,
+    'record_type'   => \Taxmod\Core\Model\RecordType::Example->value,
+    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id),
+]);
+
+$satzId = (int) $wpdb->get_var(
+    "SELECT id FROM {$p}node_records WHERE node_id = {$satzKnoten->id} ORDER BY id DESC LIMIT 1"
+);
+
+check('«New record» legt einen Satz an', $satzId > 0 && $vorherSaetze === 0);
+
+$art = (string) $wpdb->get_var("SELECT record_type FROM {$p}node_records WHERE id = {$satzId}");
+
+// ⚠️ *Nicht `user`, und das ist die ganze Zusage: die Art, die im Formular stand, steht in der Spalte.*
+check(
+    'und die gewaehlte Art kommt an',
+    $art === \Taxmod\Core\Model\RecordType::Example->value,
+    "gespeichert «{$art}», gewaehlt «" . \Taxmod\Core\Model\RecordType::Example->value . '»'
+);
+
+// ⚠️ **Geschachtelt, so wie der Block es schickt** ({@see \Taxmod\Core\Service\Rendering::recordsAsTable()}).
+// *Genau diese Form hat der Leser missverstanden; eine flache Zusage haette den Fehler nicht gesehen.*
+abschicken([
+    'do'             => 'save_record',
+    'id'             => (string) $satzKnoten->id,
+    'node_record_id' => (string) $satzId,
+    'taxmod_value'   => [(string) $satzId => [(string) $satzFeld->id => '42']],
+    '_taxmod_nonce'  => wp_create_nonce('taxmod_node_' . $satzKnoten->id),
+]);
+
+$gespeichert = $wpdb->get_var(
+    "SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$satzId} AND relation_id = {$satzFeld->id}"
+);
+
+check(
+    'ein eingetippter Wert steht danach im Satz',
+    (string) $gespeichert === '42',
+    'gelesen ' . var_export($gespeichert, true)
+);
+
+// ⚠️ *Und er steht auch auf der Seite — geschrieben heisst nichts, wenn der Block ihn nicht zeigt.*
+check(
+    'und die Seite zeigt ihn wieder an',
+    str_contains(seite($satzKnoten->id), 'value="42"'),
+    'nicht im Markup'
+);
+
+echo "\n== und er laesst sich loeschen, umkehrbar ==\n";
+
+$schattenVorher = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id = {$satzId}");
+
+abschicken([
+    'do'             => 'delete_record',
+    'id'             => (string) $satzKnoten->id,
+    'node_record_id' => (string) $satzId,
+    '_taxmod_nonce'  => wp_create_nonce('taxmod_node_' . $satzKnoten->id),
+]);
+
+check(
+    'der Satz ist aus der lebenden Tabelle weg',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE id = {$satzId}") === 0
+);
+
+check(
+    'und seine Werte mit ihm',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$satzId}") === 0
+);
+
+// ⚠️ **Das ist die Umkehrbarkeit, und sie ist der Grund, warum das Loeschen ueberhaupt angeboten
+// werden darf** ([D-536](../../docs/NewConcept/90-decision-log.md), [D-537](../../docs/NewConcept/90-decision-log.md)):
+// *was verschwindet, verschwindet in den Schatten und nicht aus der Welt.*
+check(
+    'der Satz liegt im Schatten',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id = {$satzId}") > $schattenVorher
+);
+
+check(
+    'und seine Werte auch',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records_history WHERE node_record_id = {$satzId}") > 0
+);
+
+// ⚠️ *Eine Aenderungsgruppe ([D-348](../../docs/NewConcept/90-decision-log.md)): ein Rueckgaengig,
+// das nur die Haelfte zurueckholt, waere keines.*
+check(
+    'und das Aenderungsbuch kennt den Akt',
+    (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$p}changelog WHERE owner_id = {$satzId} AND owner_kind = 'record' AND what = 'record removed'"
+    ) > 0
+);
+
 echo "\n== aufraeumen ==\n";
 
 // ⚠️ *Nach dem eigenen Namensmuster und nie ueber `clearTrash()` — dort liegt seine geparkte Arbeit

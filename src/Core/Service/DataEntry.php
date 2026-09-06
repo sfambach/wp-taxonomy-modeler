@@ -1565,6 +1565,44 @@ final class DataEntry
         $this->melden($recordId, 'record_value', 'value cleared', $vorher, null, $version);
     }
 
+    /**
+     * Einen Datensatz entfernen — **umkehrbar**, mit Schattenzeilen, Änderungsgruppe und Version.
+     *
+     * ⚠️ **Sein Beschluss** ([D-653](../../../docs/NewConcept/90-decision-log.md)): *«Baue mal die
+     * Auswahl und das Löschen».* **Der Weg dorthin war schon da und nur nicht erreichbar:**
+     * *{@see self::satzEntfernen()} meldet seit jeher, und {@see \Taxmod\Core\Repository\RecordRepository::forgetRecord()}
+     * legt Satz und Werte in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md),
+     * [D-537](../../../docs/NewConcept/90-decision-log.md)) — es gab nur keinen öffentlichen Weg
+     * dahin, sondern nur den Nebenweg der Renderer-Wahl.*
+     *
+     * ⚠️ **Ist der Satz ein *Teil*, geht die Zeile mit, die auf ihn zeigt** — *sonst bliebe ein
+     * `value_ref` auf einen Satz stehen, den es nicht mehr gibt. **Genau dieser Fehler ist am
+     * 2026-09-05 schon einmal gemacht worden**, als die Renderer-Wahl den Teil wegnahm und den
+     * Zeiger stehenliess ({@see self::chooseSettingRecord()}); `dangling-reference-check` misst ihn.*
+     *
+     * ⚠️ *Beides in **einer** Änderungsgruppe ([D-348](../../../docs/NewConcept/90-decision-log.md)):
+     * der Zeiger und der Satz sind eine Handlung, und ein Rückgängig, das nur die Hälfte zurückholt,
+     * wäre keines.*
+     */
+    public function removeRecord(int $recordId): void
+    {
+        $satz = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+
+        $halter = $this->records->holdersOf([$satz->id])[$satz->id] ?? null;
+
+        $this->changelog?->beginAct();
+
+        try {
+            if ($halter !== null) {
+                $this->wertLeeren($halter->recordId, $halter->path, $halter->locale);
+            }
+
+            $this->satzEntfernen($recordId);
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
     /** Einen Datensatz entfernen **und es melden** — mit dem Zustand, den er zuletzt hatte. */
     private function satzEntfernen(int $recordId): void
     {

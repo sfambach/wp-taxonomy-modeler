@@ -2628,9 +2628,19 @@ final class NodesScreen
             __('Things entered against this node. Each field looks the way its type says it should; a field marked «no renderer» is missing something, not styled oddly.', 'taxmod')
         );
 
+        // ⚠️ **Die Art wird gewaehlt und nicht mehr angenommen** ([D-651](../../../docs/NewConcept/90-decision-log.md),
+        // [D-653](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «bei neuem Record im
+        // Backend wuerde ich gern waehlen koennen, ob default oder user» — und mit D-653 kam die
+        // dritte dazu. **Der Kern nahm bisher `user` als Vorgabewert des Parameters**, also war die
+        // Wahl nicht bloss unbedienbar, sondern unsichtbar.*
+        //
+        // ⚠️ *Was die drei bedeuten, steht in der Beschriftung und nicht in einem Hilfetext:
+        // [D-654](../../../docs/NewConcept/90-decision-log.md) — «der `default` macht eine Vorgabe,
+        // die auch bei der Eingabe verwendet werden soll; ein `example` wird nur gezeigt».*
         $html .= $this->form(
             $selected->id,
-            [['add_record', esc_html__('New record', 'taxmod'), __('Start a record against this node', 'taxmod')]]
+            [['add_record', esc_html__('New record', 'taxmod'), __('Start a record against this node', 'taxmod')]],
+            $this->recordTypeChoice()
         );
 
         if ($records === []) {
@@ -2662,10 +2672,26 @@ final class NodesScreen
                 'lead'   => [
                     __('Belongs to', 'taxmod') => $this->belongsTo($selected, $halter[$record->id] ?? null),
                     __('Record', 'taxmod')     => '<code>#' . esc_html((string) $record->id) . '</code>',
+                    // ⚠️ *Die Art gehoert sichtbar dorthin, wo sie gewaehlt wurde — sonst waere sie
+                    // eine Angabe, die man beim Anlegen macht und danach nie wiedersieht.*
+                    __('Kind', 'taxmod')       => '<code>' . esc_html($record->recordType->value) . '</code>',
                     __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
                 ],
                 'acts'   => [
                     Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')),
+                    // ⚠️ **Das Loeschen aus [D-653](../../../docs/NewConcept/90-decision-log.md)**
+                    // — *«Baue mal die Auswahl und das Loeschen».* Es ist umkehrbar
+                    // ({@see \Taxmod\Core\Service\DataEntry::removeRecord()}), also traegt es die
+                    // rote Marke, aber keine Warnung, die es nicht braucht.
+                    new Control(
+                        'do',
+                        'delete_record',
+                        __('Delete', 'taxmod'),
+                        __('Take this record away — it stays in the shadow and can be brought back', 'taxmod'),
+                        true,
+                        true,
+                        'trash'
+                    ),
                 ],
                 'submits' => new Submission(
                     admin_url('admin-post.php'),
@@ -2688,6 +2714,37 @@ final class NodesScreen
             '',
             $this->inDeveloperMode()
         )->markup;
+    }
+
+    /**
+     * Das Auswahlfeld fuer die **Satzart** beim Anlegen.
+     *
+     * ⚠️ **Die drei Arten kommen aus der Aufzaehlung und nicht aus einer Liste hier**
+     * ({@see RecordType}). *Kaeme eine vierte dazu, stuende sie hier von selbst — eine
+     * abgeschriebene Liste waere die zweite Fassung derselben Menge (`CD`).*
+     *
+     * ⚠️ *Die Beschriftungen gehen durch die Textdomaene (`AR-2`); der **Wert** ist die Kennung der
+     * Aufzaehlung und wird nie uebersetzt.*
+     */
+    private function recordTypeChoice(): string
+    {
+        $worte = [
+            RecordType::User->value    => __('Entry — ordinary data somebody enters', 'taxmod'),
+            RecordType::Default->value => __('Default — a preset every new record starts with', 'taxmod'),
+            RecordType::Example->value => __('Example — shown only, it presets nothing', 'taxmod'),
+        ];
+
+        $optionen = '';
+
+        foreach (RecordType::cases() as $art) {
+            $optionen .= '<option value="' . esc_attr($art->value) . '"'
+                . ($art === RecordType::standard() ? ' selected' : '') . '>'
+                . esc_html($worte[$art->value] ?? $art->value) . '</option>';
+        }
+
+        return '<label class="taxmod-record-type">'
+            . '<span class="screen-reader-text">' . esc_html__('Kind of record', 'taxmod') . '</span>'
+            . '<select name="record_type">' . $optionen . '</select></label> ';
     }
 
     /**
@@ -3750,6 +3807,10 @@ final class NodesScreen
         $relationKind = RelationKind::tryFrom(
             isset($_POST['relation_kind']) ? sanitize_key(wp_unslash((string) $_POST['relation_kind'])) : ''
         );
+        // ⚠️ *Die Satzart, gelesen wie jede andere Eingabe (`CD-5`) — siehe `add_record` unten.*
+        $recordType   = RecordType::fromStorage(
+            isset($_POST['record_type']) ? sanitize_key(wp_unslash((string) $_POST['record_type'])) : ''
+        );
         $relation         = isset($_POST['relation']) ? absint($_POST['relation']) : 0;
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         // Each setting is edited where it sits, under `taxmod_setting[<key>]`.
@@ -3900,8 +3961,17 @@ final class NodesScreen
                     Multiplicity::tryFrom($settingValue)
                         ?? throw new \InvalidArgumentException('Keine solche Multiplizitaet.')
                 ),
-                'add_record'     => $this->data->create($id),
+                // ⚠️ **Die Art kommt vom Benutzer** ([D-651](../../../docs/NewConcept/90-decision-log.md),
+                // [D-653](../../../docs/NewConcept/90-decision-log.md)). *`fromStorage()` und nicht
+                // `from()`: was keine der drei Arten ist, ist keine Angabe — dann raet der Rand nicht,
+                // sondern nimmt den benannten Rueckfall des Kerns. **Ein Ausnahmefehler waere hier
+                // falsch**, weil ein alter Reiter ohne das Feld sonst mit «Unknown action» abbraeche,
+                // statt zu tun, was er bisher tat. Dieselbe Form wie bei `relation_kind`.*
+                'add_record'     => $this->data->create($id, $recordType),
                 'save_record'    => $this->saveRecord($id),
+                'delete_record'  => $this->data->removeRecord(
+                    isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
+                ),
                 default          => throw new \InvalidArgumentException('Unknown action.'),
             };
 
