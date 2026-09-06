@@ -310,11 +310,17 @@ siehe unten.*
 ⚠️ *Dazu die vier, die `CLAUDE.md` namentlich als Ersatz für die verbotenen Zählungen nennt und die
 darum nicht zur Debatte stehen: `rules-index`, `concept-drift`, `confirmed-quote`, `superseded`.*
 
-## Die Streichliste — vorgelegt, nicht ausgeführt
+## Die Streichliste — vorgelegt am 2026-09-06, **ausgeführt am selben Tag**
 
-⚠️ **In diesem Auftrag ist kein Lauf gelöscht worden.** *Er wollte die Liste sehen, bevor etwas
-fällt. Jede Zeile trägt ihren Grund; wo der Grund «geht in X auf» heisst, muss X die Zusage
-vorher wirklich tragen — und das ist je Zeile nachzusehen, nicht zu glauben.*
+⚠️ **Sie ist angenommen: auf die Frage «Die Streichliste: ja?» hat er geantwortet «checks mein ja».**
+*Sein Grund, wörtlich: «hast so viel checks aber trotzdem läuft dauernd etwas schief, ich fände es
+besser weniger check dafür aber richtige zu haben.» **Was jede Zeile hier gekostet und was sie
+eingebracht hat, steht im Abschnitt darunter** — je gestrichenem Lauf eine Zeile mit dem, wohin
+seine Zusagen gegangen sind.*
+
+⚠️ **Vor jeder Streichung ist nachgesehen worden, ob die Zusage anderswo wirklich steht — und in
+sechs Fällen stand sie es nicht.** *Dann ist sie **umgezogen**, bevor die Datei fiel. Die Liste unten
+ist deshalb an mehreren Stellen als Begründung ungenau gewesen; das ist je Zeile vermerkt.*
 
 | Lauf | Grund |
 |---|---|
@@ -338,6 +344,55 @@ vorher wirklich tragen — und das ist je Zeile nachzusehen, nicht zu glauben.*
 **Wirkung, wenn er alles annimmt: 73 → 57 Läufe.** *Und die 14 Zusagen an der Maske bleiben
 vollständig — gestrichen wird nur, wo eine zweite Stimme dasselbe sagt oder ein Steinbruch bewacht
 wird.*
+
+---
+
+## Vollzug am 2026-09-06 — was gefallen ist und wohin die Zusagen gegangen sind
+
+**Die vier Zahlen zuerst, gemessen und nicht geschätzt.**
+
+| | vorher | nachher |
+|---|---|---|
+| **Wächterläufe** (`scripts/dev/*-check.php`) | **74** | **58** |
+| **Zusagen** (einzeln gemeldete Prüfzeilen über alle Läufe) | **1429** | **1277** |
+
+⚠️ **Die 74 sind nicht die 73 der Messung oben.** *`decision-index-check` fehlte dort; gezählt wird
+hier stumpf, was auf `-check.php` endet. **Sechzehn Dateien sind gefallen**, wie die Liste es sagt.*
+
+⚠️ **152 Zusagen weniger, und 127 davon sitzen in einer einzigen Zeile der Liste** — *`package1`,
+`package2`, `package5`, `package6`. Das ist keine Nebenwirkung, sondern **der Kern der Streichung**,
+und es gehört benannt: siehe die Zeile unten.*
+
+| gestrichener Lauf | Zusagen | wohin sie gegangen sind |
+|---|---|---|
+| `renderer-choice` | 15 | **6 umgezogen** nach `renderer-choice-mask`: «keine Renderer-Wahl an einer Verwendungsstelle», «und es gibt Kanten-Datensätze», «jeder Träger löst zu einem Renderer auf», «keine gespeicherte Wahl steht ausserhalb der zulässigen Menge», «die Zeichnung trägt das Merkmal des gesetzten Renderers», «und mindestens eine Zeichnung war darunter». ⚠️ *Die beiden erstgenannten Invarianten waren am selben Tag erst dazugekommen (`cc4960d`, `e995986`) und standen sonst nirgends.* Die übrigen 9 sind die sechs namensgebundenen Knotenzeilen und ihre Momentaufnahmen — sie messen seine Arbeit, nicht die Regel. |
+| `rename-survives` | 7 | **5 umgezogen** nach `renderer-choice-mask`, darunter die tragende: «kein Knoten zeichnet nach der Umbenennung anders» über den ganzen Baum. ⚠️ **Der Grund in der Liste war falsch:** *`renderer-choice-mask` mass das **nicht** — der Lauf benennt nichts um. Ohne den Umzug wäre [D-543](../../NewConcept/90-decision-log.md) unbewacht gewesen.* |
+| `settings-record-carrier` | 8 | **8 umgezogen** nach `renderer-choice-mask`, unverändert — auch die drei gefallenen Spalten, die `dbDelta` sonst klaglos wieder anlegt. ⚠️ *`renderer-choice-mask` trug davon vorher nur eine.* |
+| `setting-kind` | 3 | **3 umgezogen** nach `setting-relation` — der Ast über seine **Rolle**, nicht über den Namen. |
+| `setting-self-inherit` | 14 | **14 umgezogen** nach `setting-relation`, mitsamt der eigenen Wiese `__selbsterbe`. ⚠️ **Auch hier war der Grund ungenau:** *«zwei Zusagen» — es waren vierzehn, und `setting-relation` trug keine davon.* |
+| `field-type-gone` | 12 | **12 umgezogen** nach `path` — die Zusammenlegung, die die Liste verlangt: «eine gefallene Spalte kommt nicht zurück». |
+| `supersession` | 1 | **1 umgezogen** nach `superseded`. ⚠️ *Nicht «dieselbe Aussage», sondern die andere Richtung: dort «wer beruft sich auf eine Zurückgenommene», hier «nennt die Zurückgenommene ihren Nachfolger, und zwar vorn».* |
+| `icon-markup` | 8 | **6 umgezogen** nach `icon-button`, darunter die einzige, die wirklich trägt: «keine Datei ausser `IconMarkup` schreibt ein Icon von Hand». Die 2 übrigen sagt `icon-button` wörtlich selbst. |
+| `anchor` | 0 | **Ersatzlos.** Bewachte Verweise **innerhalb** des Steinbruchs `docs/NewConcept/` (`PR-1`, [D-568](../../NewConcept/90-decision-log.md)). |
+| `question-symmetry` | 2 | **Ersatzlos.** Bewachte `91-open-questions.md` — mit seinem Konzept geschlossen (`PR-4`). |
+| `settings-are-gone` | 1 | **Ersatzlos.** Bewachte **eine** Entscheidung ([D-506](../../NewConcept/90-decision-log.md)); eine einmalige Aufräumarbeit. |
+| `dialog-script` | 9 | **Ersatzlos, und das ist eine Entscheidung.** *Er prüfte Kode gegen Kode und sagte in seinem eigenen Docblock, dass er das Verhalten nicht prüfen kann. **Was der Tastaturweg wirklich tut, weiss weiterhin niemand** — der richtige Ersatz wäre eine Zusage an der gezeichneten Seite, und die gibt es nicht.* |
+| `package1` | 32 | **2 umgezogen** nach `scaffold` («der Papierkorb hängt unter der Wurzel», «die Wurzel ist geschützt») — die einzigen zwei, die sonst nirgends standen. Die Tabellen sagt `shadow-shape`, `label-space` und `id-space`; den Weg sagt `path`; Anlegen/Umbenennen/Parken sagen der Kernlauf und `cleartrash`. |
+| `package2` | 48 | **Ersatzlos gestrichen, weil verteilt vorhanden:** Baum und Ordnung in `sort-order`, Falten in `collapsed-default`, Parken in `parked-in-shadow`, Zurückholen in `restore`, Hochziehen und die eine Änderungsklammer im Kernlauf (`ModelEditorTest`, nachgesehen). |
+| `package5` | 26 | **Ersatzlos gestrichen, weil verteilt vorhanden:** `label-space` (Tabellen, Kette, Sprachrückfall — teils wörtlich dieselbe Zeile), `label-role`, `labels-page-save`, Kernlauf `LabelsTest`. |
+| `package6` | 23 | **Ersatzlos gestrichen, weil verteilt vorhanden:** `record-on-first-write`, `several-values`, `edge-class`, `id-space`, Kernlauf `DataEntryTest`. |
+
+⚠️ **Die Zeile, die benannt gehört: die vier Paketläufe kosten 127 Zusagen und bringen vier Dateien
+weniger.** *Sie sind **verteilt** vorhanden, und «verteilt vorhanden» ist nachgesehen und nicht
+geglaubt — aber es ist nicht dasselbe wie **wörtlich** vorhanden. Was verlorengeht, ist nicht eine
+einzelne Aussage, sondern **die Stelle, an der ein Paket als Ganzes noch einmal durchgespielt wird**.
+Wird eine dieser Aussagen später aus ihrem heutigen Ort entfernt, merkt es niemand mehr an einem
+zweiten Ort. **Das ist der Preis, und er ist genau der, den er bezahlen wollte:** weniger Läufe.*
+
+⚠️ **Was gegen die Liste *nicht* gestrichen wurde: nichts.** *Alle sechzehn sind gefallen. **Was
+gegen die Liste zusätzlich getan wurde, sind die sechs Umzüge** — in vier Fällen (`rename-survives`,
+`setting-self-inherit`, `settings-record-carrier`, `supersession`) trug der genannte Nachfolger die
+Zusage nachweislich **nicht**, und die Liste behauptete es doch.*
 
 ⚠️ **Was ausdrücklich *nicht* auf der Liste steht, obwohl es lang ist:** *`package7` (997 Zeilen) und
 `page-blocks` (893) sind die beiden grössten und stehen beide unter «bleiben». **Sie zeichnen die

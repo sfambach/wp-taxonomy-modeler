@@ -38,11 +38,20 @@ require __DIR__ . '/lib/no-write.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Renderer\FormRenderer;
+use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\ShippedRenderers;
+use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\ModelValues;
+use Taxmod\Core\Service\Rendering;
+use Taxmod\WordPress\Admin\SettingsScreen;
+use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -239,6 +248,390 @@ function beschriftungenDerZeile(string $markup, int $kante): array
     return $aus;
 }
 
+// ============================================================================
+// Umgezogen am 2026-09-06, weil drei Laeufe gestrichen wurden
+// ============================================================================
+//
+// ⚠️ **Die Zusagen hierunter standen bis zum 2026-09-06 in `renderer-choice-check.php`,
+// `rename-survives-check.php` und `settings-record-carrier-check.php`.** *Alle drei sind an diesem
+// Tag gestrichen worden ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md)),
+// auf sein Wort «checks mein ja». **Was hier steht, ist der Teil, den dieser Lauf noch nicht sagte** —
+// er ist umgezogen und nicht weggefallen (`PR-9`: das Aendern eines Waechters ist ein sichtbarer Teil
+// der Aenderung, nie etwas, das nebenbei geschieht).*
+//
+// ⚠️ *Sie stehen **vor** allen eigenen Akten dieses Laufs, und das ist Absicht — es hat einen
+// Fehlalarm gekostet, es andersherum zu versuchen.* **Gemessen am 2026-09-06:** *ans Ende gestellt,
+// meldete «keine gespeicherte Wahl steht ausserhalb der zulaessigen Menge» ein `Root → field`, das
+// **dieser Lauf selbst** kurz zuvor an die Wurzel geschrieben hatte (die Zusage zu
+// [D-617](../../docs/NewConcept/90-decision-log.md) setzt dort eine Wahl aus dem Angebot eines
+// **anderen** Knotens). Diese Zusagen lesen den Bestand des Eigentuemers als Ganzes, also muessen sie
+// ihn sehen, bevor der Lauf ihn anfasst.*
+
+echo "\n== umgezogen: die Wahl haengt am Knoten, nicht an einer Verwendungsstelle ==\n";
+
+$renderKante = $framework->settingRelationId(SettingKey::Renderer);
+
+check('die Einstellungskante `renderer` ist aufgeschrieben (umgezogen)', $renderKante !== 0, (string) $renderKante);
+
+// ⚠️ **Aus `renderer-choice-check`.** *Vier Altlasten aus einem Umzugslauf vom 2026-08-30 trugen eine
+// Renderer-Wahl an einer **Kante** statt am Knoten, und sie wirkten: `Passiv.Tolerance` zeichnete mit
+// `field`, waehrend sein Zielknoten `slider` sagte. Sein Auftrag: «entferne mal die Altlasten.»
+// **Seither haelt diese Zusage fest, dass keine da sind.** Seit [D-611](../../docs/NewConcept/90-decision-log.md)
+// darf eine Verwendungsstelle andere Einstellungen ueberschreiben — der Renderer ist ausgenommen
+// ([D-643](../../docs/NewConcept/90-decision-log.md)), darum zaehlt sie nur diese eine Kante.*
+$anStelle = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE path LIKE '%.%' AND relation_id = %d",
+    $renderKante
+));
+
+check('keine Renderer-Wahl an einer Verwendungsstelle', $anStelle === 0, (string) $anStelle);
+
+// ⚠️ *Der Gegenfall: es gibt ueberhaupt Kanten-Datensaetze. Sonst waere «keine zweistufigen» auch bei
+// leerer Tabelle gruen. **«Ueberhaupt» ist die Aussage, nicht eine Zahl aus seinem Bestand.***
+$alleWertzeilen = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('relation_records'));
+
+check('und es gibt Kanten-Datensaetze', $alleWertzeilen >= 1, (string) $alleWertzeilen);
+
+echo "\n== umgezogen: jeder Traeger der Wahl haelt, worauf er zeigt ==\n";
+
+// ⚠️ **Aus `settings-record-carrier-check`.** *Die vier bekannten Reste sind benannt und gedeckelt,
+// nicht weggeschaut: zwei Neuform-Zeilen, die `displayoption-migrate.php` bei TASK-024 ausdruecklich
+// hat stehenlassen, und der Halter der **Wurzel** (`INF-014`). **Die Zahl darf fallen und nie
+// steigen** — steigt sie, hat wieder etwas seinen Halter verloren.*
+$bekannteReste = 4;
+
+$tote = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+       LEFT JOIN ' . Schema::table('relations') . ' r ON r.id = v.relation_id
+      WHERE r.id IS NULL'
+);
+
+check(
+    "hoechstens die {$bekannteReste} benannten Reste stehen an toten Kanten",
+    $tote <= $bekannteReste,
+    $tote . ' statt hoechstens ' . $bekannteReste
+);
+
+$traegerZahl = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'record'",
+    $renderKante
+));
+
+check('die Einstellungskante ist ueberhaupt in Gebrauch', $traegerZahl > 0, (string) $traegerZahl);
+
+$insLeere = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+       LEFT JOIN ' . Schema::table('node_records') . ' s ON s.id = v.value_ref
+      WHERE v.relation_id = %d AND v.value_ref_kind = \'record\' AND s.id IS NULL',
+    $renderKante
+));
+
+check('kein Traeger zeigt ins Leere', $insLeere === 0, (string) $insLeere);
+
+// ⚠️ *Ein Satz ohne Knoten sagt nicht, welcher Renderer er ist — der Traeger fuehrt dann formal
+// irgendwohin und inhaltlich nirgends. **Genau der Zustand, in dem die Wahlen nach dem Loeschen des
+// Huellknotens waren** ([D-604](../../docs/NewConcept/90-decision-log.md)).*
+$ohneKnoten = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
+       JOIN ' . Schema::table('node_records') . ' s ON s.id = v.value_ref
+       LEFT JOIN ' . Schema::table('nodes') . ' z ON z.id = s.node_id
+      WHERE v.relation_id = %d AND v.value_ref_kind = \'record\' AND z.id IS NULL',
+    $renderKante
+));
+
+check('jeder Einstellungssatz gehoert einem Knoten', $ohneKnoten === 0, (string) $ohneKnoten);
+
+// ⚠️ **Und die drei Spalten duerfen nicht zurueckkommen** (Fassung 32). *`dbDelta` legt eine fehlende
+// Spalte klaglos wieder an; kaeme eine der drei zurueck, haette der Renderer wieder zwei Orte — und
+// das war der Zustand, aus dem TASK-052 und dieser Lauf entstanden sind.*
+foreach ([['nodes', 'settings_record_id'], ['relations', 'settings_record_id'], ['relations', 'target_settings_record_id']] as [$tabelle, $spalte]) {
+    $tabellenName = Schema::table($tabelle);
+
+    check(
+        "die Spalte «{$tabelle}.{$spalte}» ist weg und bleibt weg",
+        $wpdb->get_var("SHOW COLUMNS FROM {$tabellenName} LIKE '{$spalte}'") === null
+    );
+}
+
+echo "\n== umgezogen: jede gespeicherte Wahl ist eine erlaubte, und sie loest auf ==\n";
+
+// ⚠️ **Ein eigener Zeichenweg, weil diese Zusagen den ganzen Bestand lesen und nicht die Wiese dieses
+// Laufs.** *Frisch gebaut: {@see \Taxmod\Core\Service\ModelValues} merkt sich seine Funde je Instanz
+// (`CD-7`), und ein wiederverwendeter Leser gaebe die alte Antwort zurueck.*
+$bestandWerte = new ModelValues($rows, $relations, $nodes, $framework);
+
+$bestandZeichnen = new Rendering(
+    $nodes,
+    $framework,
+    ShippedRenderers::registry(),
+    new SeededTypeNodes($nodes, $framework),
+    new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
+    null,
+    $bestandWerte,
+    $relations
+);
+
+$merkmal = [
+    'slider'   => 'type="range"',
+    'toggle'   => 'taxmod-toggle',
+    'spinner'  => 'type="number"',
+    'field'    => 'type="text"',
+    'checkbox' => 'type="checkbox"',
+];
+
+$traeger    = 0;
+$mitNamen   = 0;
+$gezeichnetZahl = 0;
+$daneben    = [];
+$unerlaubt  = [];
+
+foreach ($wpdb->get_results(
+    $wpdb->prepare(
+        'SELECT DISTINCT halter.node_id
+           FROM ' . Schema::table('node_records') . ' halter
+           JOIN ' . Schema::table('relation_records') . " wert ON wert.node_record_id = halter.id
+          WHERE wert.relation_id = %d AND wert.value_ref_kind = 'record'",
+        $renderKante
+    ),
+    ARRAY_A
+) ?: [] as $zeile) {
+    $knoten = $nodes->find((int) $zeile['node_id']);
+
+    if ($knoten === null) {
+        continue;
+    }
+
+    ++$traeger;
+
+    $name = $bestandZeichnen->rendererNameFor($knoten);
+
+    if ($name !== null) {
+        ++$mitNamen;
+    }
+
+    // ⚠️ **Aus `renderer-choice-check`, seine Anweisung am 2026-09-06:** *«dann bei den mal ueberall
+    // den renderer ueberpruefen dass ein erlaubter gesetzte ist».* **Gemessen war es an drei von neun
+    // nicht so** — `Base units` trug `table`, `Dimension` trug `node`, `Volt` trug `chooser-dialog`,
+    // alle drei ausserhalb der Menge, die ihr eigener Knoten zulaesst, **und niemand hat es
+    // gemeldet**. *Eine Invariante und keine Zahl: was gespeichert ist, muss auch angeboten sein.*
+    if ($name !== null) {
+        $erlaubt = [];
+
+        foreach ($bestandZeichnen->choicesForNode($knoten) as $einer) {
+            $erlaubt[] = $einer->name();
+        }
+
+        if (! in_array($name, $erlaubt, true)) {
+            $unerlaubt[] = $knoten->name . ' → ' . $name;
+        }
+    }
+
+    if ($name === null || ! isset($merkmal[$name])) {
+        continue;
+    }
+
+    $zeichnung = $bestandZeichnen->valueOfType($knoten, Purpose::Edit);
+
+    if ($zeichnung === null) {
+        continue;
+    }
+
+    ++$gezeichnetZahl;
+
+    if (! str_contains($zeichnung->markup, $merkmal[$name])) {
+        $daneben[] = "{$knoten->name}: sagt «{$name}», zeichnet ohne «{$merkmal[$name]}»";
+    }
+}
+
+// ⚠️ **Die Zusage, auf die es ankommt, ist eine Invariante:** *jeder Traeger, den es **gibt**, loest zu
+// einem Renderer auf. Faellt eine Wahl bei einem Umzug weg, bleibt der Traeger stehen und zeigt ins
+// Leere — genau das faellt hier auf, unabhaengig davon, wie viele es sind. **Und null Traeger waere
+// keine gruene Antwort, sondern eine leere Wiese.***
+check(
+    'jeder Traeger an der Kante loest zu einem Renderer auf',
+    $traeger > 0 && $traeger - $mitNamen === 0,
+    $traeger === 0 ? 'kein einziger Traeger' : ($traeger - $mitNamen) . ' von ' . $traeger . ' loesen ins Leere'
+);
+
+check(
+    'keine gespeicherte Wahl steht ausserhalb der zulaessigen Menge',
+    $unerlaubt === [],
+    implode(' · ', array_slice($unerlaubt, 0, 6))
+);
+
+check('die Zeichnung traegt das Merkmal des gesetzten Renderers', $daneben === [], implode(' · ', array_slice($daneben, 0, 4)));
+
+check('und mindestens eine Zeichnung war darunter', $gezeichnetZahl >= 1, (string) $gezeichnetZahl);
+
+echo "\n== umgezogen: eine Umbenennung aendert nichts an dem, was gezeichnet wird ==\n";
+
+// ⚠️ **Aus `rename-survives-check`, und das ist die Zusage, um derer willen der Lauf ueberhaupt
+// bestand.** *Der Eigentuemer hat die Kante `renderer` in «Display Options» umbenannt — sein Recht,
+// ein Name ist eine Beschriftung. **Damit fiel die Renderer-Aufloesung im ganzen Schirm aus**, ohne
+// eine Zeile Fehler ([D-543](../../docs/NewConcept/90-decision-log.md): «ja, Id — Name war nie
+// erlaubt»). Diese Zusage benennt selbst um und verlangt, dass danach dasselbe herauskommt.*
+//
+// ⚠️ *Beobachtet wird jeder Knoten unter der Wurzel ausser dem Muell — **keine Liste seiner Namen**
+// ([D-613](../../docs/NewConcept/90-decision-log.md)). Und der Gegenfall gehoert dazu: die Aufloesung
+// muss vorher ueberhaupt etwas liefern, sonst waere «vorher wie nachher» auch dann wahr, wenn beide
+// Male nichts herauskaeme.*
+$beschriftungen = new WpdbLabelRepository();
+
+$benenne = static function (IdentitySpace $raum, int $id, string $name) use ($beschriftungen): void {
+    $beschriftungen->put(new Label($id, $raum, SeededRole::Name, Label::BASE_NUMBER, SettingsScreen::neutralLocale(), $name));
+};
+
+/**
+ * Was jeder Knoten zeichnet — mit einem **frischen** Leser, damit nichts aus dem Gedaechtnis kommt.
+ *
+ * @param list<int> $ids
+ * @return array<int, string>
+ */
+$zeichnetJetzt = static function (array $ids) use ($nodes, $relations, $framework, $rows): array {
+    $werte   = new ModelValues($rows, $relations, $nodes, $framework);
+    $antwort = [];
+    $reg     = ShippedRenderers::registry();
+
+    foreach ($ids as $id) {
+        $knoten       = $nodes->find($id);
+        $antwort[$id] = $knoten === null
+            ? '(kein Knoten)'
+            : ($reg->chosenFor($knoten, $werte->forNode($knoten), Purpose::Edit)?->name() ?? 'nichts');
+    }
+
+    return $antwort;
+};
+
+$beobachtet = array_values(array_diff(
+    $nodes->subtreeIds($framework->root()->id),
+    $nodes->subtreeIds($framework->trash()->id),
+    [$framework->root()->id]
+));
+
+sort($beobachtet);
+
+$vorher = $zeichnetJetzt($beobachtet);
+
+$etwas = count(array_filter($vorher, static fn (string $w): bool => $w !== 'nichts' && $w !== 'plain'));
+
+check('die Aufloesung liefert vorher ueberhaupt etwas', $etwas >= 1, "{$etwas} von " . count($beobachtet));
+
+$aussenId = $framework->settingRelationId(SettingKey::Renderer);
+$innenId  = $framework->settingValueRelationId(SettingKey::Renderer);
+
+$r = Schema::table('relations_named');
+$n = Schema::table('nodes_named');
+
+$traegerIds = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+    'SELECT DISTINCT r.node_id FROM ' . Schema::table('relation_records') . ' v'
+        . ' JOIN ' . Schema::table('node_records') . ' r ON r.id = v.node_record_id'
+        . " WHERE v.relation_id = %d AND v.value_ref_kind = 'record' ORDER BY r.node_id",
+    $renderKante
+)));
+
+$knotenNamenVorher = [];
+
+foreach ($traegerIds as $id) {
+    $knotenNamenVorher[$id] = (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$n} WHERE id = %d", $id));
+}
+
+$kantenNamenVorher = [];
+
+foreach ([$aussenId, $innenId] as $id) {
+    if ($id === 0) {
+        continue;
+    }
+
+    $kantenNamenVorher[$id] = (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$r} WHERE id = %d", $id));
+}
+
+// ⚠️ **Vor der ersten Aenderung angemeldet, nicht danach.** *Ein Absturz zwischen Umbenennen und
+// Zurueckbenennen liesse den Schirm kaputt zurueck — und der naechste Lauf hielte den Schaden fuer
+// den Zustand. Die Klammer aus `lib/no-write.php` dreht ohnehin alles zurueck; dies ist der Guertel
+// zum Hosentraeger.*
+register_shutdown_function(static function () use ($knotenNamenVorher, $kantenNamenVorher, $benenne): void {
+    foreach ($knotenNamenVorher as $id => $name) {
+        $benenne(IdentitySpace::Node, (int) $id, $name);
+    }
+
+    foreach ($kantenNamenVorher as $id => $name) {
+        $benenne(IdentitySpace::Relation, (int) $id, $name);
+    }
+});
+
+foreach ($knotenNamenVorher as $id => $name) {
+    $benenne(IdentitySpace::Node, (int) $id, 'Etwas ganz anderes');
+}
+
+foreach ($kantenNamenVorher as $id => $name) {
+    $benenne(IdentitySpace::Relation, (int) $id, 'Etwas ganz anderes');
+}
+
+$umbenannt = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$r} WHERE id IN (%d, %d) AND name = 'Etwas ganz anderes'",
+    $aussenId,
+    $innenId
+));
+
+$vorhanden = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$r} WHERE id IN (%d, %d)",
+    $aussenId,
+    $innenId
+));
+
+check(
+    "die noch vorhandenen der beiden Kanten heissen jetzt anders ({$vorhanden} von 2 gibt es)",
+    $umbenannt === $vorhanden,
+    "{$umbenannt} von {$vorhanden}"
+);
+
+$nachher = $zeichnetJetzt($beobachtet);
+
+$abweichend = [];
+
+foreach ($beobachtet as $id) {
+    if (($nachher[$id] ?? null) !== $vorher[$id]) {
+        $abweichend[] = "#{$id}: " . ($nachher[$id] ?? 'nichts') . ' statt ' . $vorher[$id];
+    }
+}
+
+check(
+    'kein Knoten zeichnet nach der Umbenennung anders (' . count($beobachtet) . ' beobachtet)',
+    $abweichend === [],
+    implode(', ', array_slice($abweichend, 0, 10))
+);
+
+foreach ($kantenNamenVorher as $id => $name) {
+    $benenne(IdentitySpace::Relation, (int) $id, $name);
+}
+
+foreach ($knotenNamenVorher as $id => $name) {
+    $benenne(IdentitySpace::Node, (int) $id, $name);
+}
+
+$knotenZurueck = 0;
+
+foreach ($knotenNamenVorher as $id => $name) {
+    $knotenZurueck += (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$n} WHERE id = %d", $id)) === $name ? 1 : 0;
+}
+
+check(
+    'die Namen der Traegerknoten stehen wieder da',
+    $knotenZurueck === count($knotenNamenVorher),
+    "{$knotenZurueck} von " . count($knotenNamenVorher)
+);
+
+$kantenZurueck = 0;
+
+foreach ($kantenNamenVorher as $id => $name) {
+    $kantenZurueck += (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$r} WHERE id = %d", $id)) === $name ? 1 : 0;
+}
+
+check(
+    'die Namen der noch vorhandenen Kanten stehen wieder da',
+    $kantenZurueck === count($kantenNamenVorher),
+    "{$kantenZurueck} von " . count($kantenNamenVorher)
+);
 echo "\n== ein eigener Knoten, der einen Renderer haben kann ==\n";
 
 $intId = $types->nodeId(SimpleType::Int);
@@ -1262,6 +1655,7 @@ check(
     'der Waechter laesst nichts zurueck',
     (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_rcm %'") === 0
 );
+
 
 printf("\n%d ok, %d failed\n", $passed, $failed);
 

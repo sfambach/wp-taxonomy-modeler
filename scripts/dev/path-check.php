@@ -53,7 +53,11 @@ require $root . '/wp-load.php';
 require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use Taxmod\Core\Model\FieldType;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 
 global $wpdb;
 $ok  = 0;
@@ -420,6 +424,165 @@ check(
     $tief !== null && $ahnen !== [] && $ahnen[count($ahnen) - 1] === $tief->parentNodeId,
     $tief === null ? 'nicht gefunden' : implode('.', $ahnen) . ' gegen Vater ' . (string) $tief->parentNodeId
 );
+
+// ============================================================================
+// Zusammengelegt am 2026-09-06: `field-type-gone-check.php` sagte dasselbe
+// ============================================================================
+//
+// ⚠️ **Zwei Laeufe, eine Aussage** — *«eine gefallene Spalte kommt nicht zurueck, und `dbDelta` legt
+// sie nicht wieder an». Der eine sagte es ueber `path`, der andere ueber `nodes.field_type`
+// ([D-621](../../docs/NewConcept/90-decision-log.md)). Sie sind am 2026-09-06 zusammengelegt worden
+// ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md), auf sein Wort
+// «checks mein ja»). **Keine der zwoelf Zusagen ist dabei weggefallen** (`PR-9`).*
+
+echo "\n== field_type: die Spalte ist weg und bleibt weg ==\n";
+
+foreach (['nodes', 'nodes_history'] as $tabelle) {
+    $tabellenName = Schema::table($tabelle);
+
+    check(
+        "{$tabelle} hat keine Spalte field_type",
+        $wpdb->get_var("SHOW COLUMNS FROM {$tabellenName} LIKE 'field_type'") === null
+    );
+}
+
+// ⚠️ *Auch im Quelltext, und nicht nur in der Tabelle: **eine Spalte, die niemand mehr anlegt, kann
+// ueber `dbDelta` zurueckkommen**, wenn ihre Zeile im `CREATE TABLE` stehen bleibt.*
+$schemaQuelltext = (string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Persistence/Schema.php');
+
+check(
+    'und kein CREATE TABLE legt sie wieder an',
+    ! preg_match('/^\s*field_type varchar/m', $schemaQuelltext)
+);
+
+check('die Schemafassung ist mindestens 33', Schema::VERSION >= 33, (string) Schema::VERSION);
+
+echo "\n== field_type: was gefallen ist, liegt im Schatten und im Journal ==\n";
+
+$journal = (int) $wpdb->get_var(
+    'SELECT COUNT(*) FROM ' . Schema::table('changelog') . " WHERE what = 'field type dropped'"
+);
+
+check('jede gefallene Marke hat eine Journalzeile', $journal > 0, (string) $journal);
+
+check(
+    'und alle unter genau einer Aenderungsgruppe',
+    (int) $wpdb->get_var(
+        'SELECT COUNT(DISTINCT change_group_id) FROM ' . Schema::table('changelog')
+            . " WHERE what = 'field type dropped'"
+    ) === 1
+);
+
+// ⚠️ *[D-634](../../docs/NewConcept/90-decision-log.md): die Version ist ein Pflichtwert. Eine
+// Journalzeile ohne sie kann nicht sagen, auf welchen Stand sie sich bezieht.*
+check(
+    'und jede nennt ihre Version',
+    (int) $wpdb->get_var(
+        'SELECT COUNT(*) FROM ' . Schema::table('changelog')
+            . " WHERE what = 'field type dropped' AND version IS NULL"
+    ) === 0
+);
+
+echo "\n== field_type: jede Einstellungskante wird weiter als solche erkannt ==\n";
+
+$kantenTabelle = Schema::table('relations');
+
+// ⚠️ **Die Zahl steht hier nicht fest, und das ist Absicht** *(`PR-9`: der Waechter bewacht den
+// Zielzustand, und der Eigentuemer darf Einstellungskanten anlegen). **Was fest steht, ist die
+// Gleichheit**: was die Spalte `kind` sagt, muss die Klasse hinter der Kante auch sagen.*
+$ausDerSpalte = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$kantenTabelle} WHERE kind = %s",
+    RelationKind::Setting->value
+));
+
+$ausDerKlasse = 0;
+
+foreach ((new WpdbRelationRepository())
+    ->fieldRelationsTo(array_map('intval', $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes')))) as $relation) {
+    $ausDerKlasse += $relation->isSetting() ? 1 : 0;
+}
+
+check(
+    'so viele Einstellungskanten wie die Spalte sagt',
+    $ausDerSpalte === $ausDerKlasse,
+    "Spalte {$ausDerSpalte}, Klasse {$ausDerKlasse}"
+);
+
+check('und es sind ueberhaupt welche da', $ausDerSpalte > 0, (string) $ausDerSpalte);
+
+// ⚠️ *Nur die drei Werte aus [D-639](../../docs/NewConcept/90-decision-log.md) — «ein Mittel, das
+// bestimmt, was fuer eine Verbindung es ist, und nicht noch einen Schalter».*
+$fremd = array_values(array_filter(
+    $wpdb->get_col("SELECT DISTINCT kind FROM {$kantenTabelle}"),
+    static fn ($v): bool => RelationKind::tryFrom((string) $v) === null
+));
+
+check('und keine Kantenart, die der Code nicht kennt', $fremd === [], implode(', ', $fremd));
+
+echo "\n== field_type: der Waehler unter `Renderer` bietet wieder Moeglichkeiten an ==\n";
+
+// ⚠️ **Das ist der Grund, warum der Rueckbau sichtbar ist** (`INF-042`): *ein Waehler entsteht in der
+// Wertspalte aus den **unmarkierten** Kindern des Kantenziels
+// ([D-540](../../docs/NewConcept/90-decision-log.md)). **Alle neunzehn Knoten unter `Renderer` trugen
+// die Marke**, die Auswahl sah durch jeden hindurch und bot **null** Moeglichkeiten an. Kaeme die
+// Marke auf irgendeinem Weg zurueck, stuende hier wieder null.*
+$knotenSpeicher = new WpdbNodeRepository();
+$rendererId     = (int) $wpdb->get_var(
+    $wpdb->prepare('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s LIMIT 1', 'Renderer')
+);
+
+if ($rendererId === 0) {
+    check('ein Knoten `Renderer` steht im Modell', false);
+} else {
+    // Derselbe Lauf wie {@see \Taxmod\Core\Service\Rendering::offeredUnder()}: durch markierte
+    // Knoten hindurch, unmarkierte sind die Moeglichkeiten.
+    $moeglich = 0;
+    $offen    = [$rendererId];
+
+    for ($stufe = 0; $stufe < 3 && $offen !== []; $stufe++) {
+        $alle = [];
+
+        foreach ($knotenSpeicher->visibleChildrenOf($offen) as $reihe) {
+            foreach ($reihe as $kind) {
+                $alle[$kind->id] = true;
+            }
+        }
+
+        $eigene = $knotenSpeicher->ownFieldTypes(array_keys($alle));
+        $weiter = [];
+
+        foreach ($eigene as $id => $sorte) {
+            if ($sorte === FieldType::Setting) {
+                $weiter[] = $id;
+
+                continue;
+            }
+
+            ++$moeglich;
+        }
+
+        $offen = $weiter;
+    }
+
+    check(
+        'die Renderer-Zeile bietet Moeglichkeiten an, nicht null',
+        $moeglich > 0,
+        $moeglich . ' Moeglichkeiten'
+    );
+
+    // ⚠️ *Kein Knoten unter `Renderer` traegt noch eine eigene Sorte — auf keinen zeigt eine Kante.
+    // **Das ist die Berichtigung aus [D-621](../../docs/NewConcept/90-decision-log.md)**: «sie sind
+    // Werte, die man in einer Einstellung waehlt, keine Einstellungen».*
+    $unter = array_values(array_diff($knotenSpeicher->subtreeIds($rendererId), [$rendererId]));
+
+    $markiert = count(array_filter($knotenSpeicher->ownFieldTypes($unter)));
+
+    check(
+        'und keiner der Renderer traegt noch eine eigene Sorte',
+        $markiert === 0,
+        $markiert . ' von ' . count($unter)
+    );
+}
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

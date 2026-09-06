@@ -243,5 +243,34 @@ if ($probe !== null) {
     }
 }
 
+// ============================================================================
+// Umgezogen am 2026-09-06: die zwei Zusagen aus `package1-check.php`, die
+// sonst nirgends stehen
+// ============================================================================
+//
+// ⚠️ **`package1-check.php` ist am 2026-09-06 gestrichen**
+// ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md), auf sein Wort
+// «checks mein ja»): *«Anlegen, umbenennen, Papierkorb» steht im Kernlauf und in `cleartrash`, seine
+// Tabellen stehen in `shadow-shape`, `label-space` und `id-space`, sein Weg in `path-check`.*
+// **Zwei Zusagen standen nirgends sonst** — *dass der Papierkorb unter der Wurzel haengt und dass die
+// Wurzel geschuetzt ist. Sie handeln von den Geruestknoten, also stehen sie hier.* `PR-9`: umgezogen,
+// nicht entschaerft.
+
+echo "\n== 7. Die Geruestknoten selbst (umgezogen aus package1) ==\n";
+
+$wurzel     = $framework->root();
+$papierkorb = $framework->trash();
+
+check(
+    'trash sits under the root',
+    $papierkorb->path === $wurzel->path . '.' . $papierkorb->id,
+    $papierkorb->path
+);
+
+// ⚠️ *Ohne diese Zusage koennte ein Akt die Wurzel in den Papierkorb legen — und mit ihr das ganze
+// Modell. Der Kernlauf prueft die Verweigerung an einem Fake; hier steht sie an den Knoten, die
+// wirklich da sind.*
+check('root is protected', $framework->isProtected($wurzel));
+
 echo "\n---- $ok passed, $bad failed ----\n";
 exit($bad === 0 ? 0 : 1);

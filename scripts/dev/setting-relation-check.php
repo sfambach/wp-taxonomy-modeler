@@ -49,7 +49,15 @@ require __DIR__ . '/geruest.php';
 
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Exception\NotYetStorable;
+use Taxmod\Core\Model\Branch;
+use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Renderer\FieldRowRenderer;
+use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\RenderContext;
+use Taxmod\Core\Renderer\Section;
+use Taxmod\Core\Renderer\Surroundings;
+use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
@@ -438,6 +446,232 @@ echo "\n== Die Tafel einer Stelle fragt das Ziel, nicht den Besitzer (D-668) ==\
 }
 
 $geruest->abbauen();
+
+// ============================================================================
+// Umgezogen am 2026-09-06, weil zwei Laeufe gestrichen wurden
+// ============================================================================
+//
+// ⚠️ **Die Zusagen hierunter standen bis zum 2026-09-06 in `setting-kind-check.php` und
+// `setting-self-inherit-check.php`.** *Beide fragen dasselbe wie dieser Lauf — **was eine
+// Einstellungskante ist, seit `nodes.field_type` gefallen ist** — und beide fragten es aus derselben
+// Quelle. Sie gehoerten in einen Lauf; gestrichen wurde die Datei, nicht die Zusage
+// ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md), auf sein Wort
+// «checks mein ja»). `PR-9`: sichtbar umgezogen, nichts entschaerft.*
+
+echo "\n== umgezogen: der Einstellungsast, und jeder Knoten darin ==\n";
+
+// ⚠️ **Der Ast wird ueber seine **Rolle** geholt, nicht ueber den Namen «Settings»**
+// ([D-613](../../docs/NewConcept/90-decision-log.md)). *Das war der Handgriff, der `setting-kind`
+// am 2026-09-05 vom Namen geloest hat; er zieht hier unveraendert mit ein.*
+$astKnoten = $framework->rootOf(Branch::Settings);
+$astGeladen = $nodes->find($astKnoten->id);
+
+// ⚠️ *Der Weg ist seit Fassung 35 keine Spalte mehr (TASK-001); «direkt unter der Wurzel» heisst
+// jetzt, was es immer hiess — der Vater hat selbst keinen Vater.*
+check(
+    'die Astwurzel des Einstellungsastes steht direkt unter der Wurzel',
+    $astGeladen !== null
+        && $astGeladen->parentNodeId !== null
+        && $nodes->byId($astGeladen->parentNodeId)->parentNodeId === null
+);
+
+if ($astGeladen !== null) {
+    $nodesNamed     = Schema::table('nodes_named');
+    $relationsTable = Schema::table('relations');
+
+    $unten   = array_values(array_diff($nodes->subtreeIds($astGeladen->id), [$astGeladen->id]));
+    $plaetze = implode(',', array_fill(0, max(1, count($unten)), '%d'));
+
+    $astZeilen = $unten === [] ? [] : $wpdb->get_results($wpdb->prepare(
+        "SELECT id, name FROM {$nodesNamed} WHERE id IN ({$plaetze}) ORDER BY id",
+        ...$unten
+    ), ARRAY_A);
+
+    $wegeImAst = [];
+
+    foreach ($nodes->byIds($unten) as $einer) {
+        $wegeImAst[$einer->id] = $einer->path;
+    }
+
+    check('und traegt Knoten', $astZeilen !== [], (string) count($astZeilen));
+
+    // ⚠️ *Eine Abfrage fuer alle zusammen (`CD-7`) — der Lauf ueber die Kanten ist gebuendelt.*
+    $sorten = $nodes->resolvedFieldTypes(array_map(static fn (array $r): int => (int) $r['id'], $astZeilen));
+
+    $tiefe   = substr_count($astGeladen->path, '.') + 2;
+    $fehlend = [];
+    $rest    = [];
+
+    foreach ($astZeilen as $zeile) {
+        $id   = (int) $zeile['id'];
+        $sorte = ($sorten[$id] ?? null)?->value;
+
+        if ($sorte === FieldType::Setting->value) {
+            continue;
+        }
+
+        // Rest im Sinne von D-606: direktes Astkind, auf das keine Kante zeigt und das selbst keine
+        // haelt. Zaehlt nicht als Fehler, wird aber genannt.
+        if (substr_count($wegeImAst[$id] ?? '', '.') + 1 === $tiefe) {
+            $hinein = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$relationsTable} WHERE to_node_id = %d AND kind <> 'inheritance'",
+                $id
+            ));
+            $hinaus = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$relationsTable} WHERE from_node_id = %d",
+                $id
+            ));
+
+            if ($hinein === 0 && $hinaus === 0) {
+                $rest[] = $zeile['name'] . " ({$id})";
+
+                continue;
+            }
+        }
+
+        $fehlend[] = $zeile['name'] . " ({$id})"
+            . ($sorte === null || $sorte === '' ? '' : ", traegt statt dessen `{$sorte}`");
+    }
+
+    check(
+        'kein Knoten im Ast, den die Kante nicht als Einstellung ausweist',
+        $fehlend === [],
+        implode('; ', $fehlend)
+    );
+
+    if ($rest !== []) {
+        printf("  HINWEIS Rest im Ast, auf den nichts zeigt: %s\n", implode('; ', $rest));
+    }
+}
+
+// ⚠️ **Zwei Zusagen, und keine genuegt allein** ([D-607](../../docs/NewConcept/90-decision-log.md),
+// [D-608](../../docs/NewConcept/90-decision-log.md)). *Die Sperre allein liesse den Knoten ohne
+// Antwort auf «warum hat `read_only` kein `read_only`»; die Anzeige allein waere eine Sperre, die
+// nichts sperrt.*
+//
+// ⚠️ **Der Gegenfall traegt hier mehr als die Zusage selbst.** *Die erste Fassung der Regel («ein
+// Knoten mit `kind = setting` erbt nichts», [D-605](../../docs/NewConcept/90-decision-log.md)) waere
+// bei einer Pruefung, die nur das Sperren misst, **gruen** gewesen — und haette `render with label`
+// den geerbten `converter` genommen. Der Eigentuemer hat es gesehen, bevor es gebaut war.*
+$selbstEditor = new ModelEditor($nodes, $relations, $framework, $log);
+
+/** @var list<int> $selbstGebaut */
+$selbstGebaut = [];
+
+$selbstAbbauen = static function () use (&$selbstGebaut, $wpdb, $records): void {
+    foreach (array_reverse($selbstGebaut) as $id) {
+        foreach ($records->ofNode($id) as $satz) {
+            $records->forgetRecord($satz->id);
+        }
+
+        $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d OR to_node_id = %d',
+            $id,
+            $id
+        ));
+        $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id));
+    }
+
+    $selbstGebaut = [];
+};
+
+echo "\n== umgezogen: ein Vorfahr, seine Einstellung als Kind, ein Geschwister ==\n";
+
+try {
+    $vorfahr        = $selbstEditor->createNode('__selbsterbe Vorfahr', $framework->rootOf(Branch::Model)->id);
+    $selbstGebaut[] = $vorfahr->id;
+
+    // ⚠️ *Das Ziel liegt **unter** dem Vorfahren — genau die Lage von `Root --read_only--> read_only`.*
+    $ziel           = $selbstEditor->createNode('__selbsterbe ziel', $vorfahr->id);
+    $selbstGebaut[] = $ziel->id;
+
+    // ⚠️ *Das Geschwister ist der Gegenfall: es erbt dieselbe Kante und muss sie behalten.*
+    $geschwister    = $selbstEditor->createNode('__selbsterbe Geschwister', $vorfahr->id);
+    $selbstGebaut[] = $geschwister->id;
+
+    $selbstKante = $selbstEditor->addField($vorfahr->id, $ziel->id, '__selbsterbe_feld');
+    $selbstEditor->markAsSetting($vorfahr->id, $selbstKante->id, true);
+
+    // ⚠️ **Ohne Wert misst die Kette gar nichts.** *Eine Einstellung ohne Wert fehlt in beiden
+    // Faellen, und die Pruefung waere gruen, weil nichts da ist — nicht, weil etwas greift.*
+    $data->putSettingAt($vorfahr->id, $selbstKante->id, 0, TypedValue::ofText('__selbsterbe_wert'));
+
+    check('der Aufbau steht', true);
+
+    echo "\n== umgezogen: die Sperre (D-607) ==\n";
+
+    $amZiel = (new ModelValues($records, $relations, $nodes, $framework))->forNode($nodes->byId($ziel->id));
+
+    check(
+        'der Zielknoten erbt seine eigene Einstellungskante nicht',
+        ! isset($amZiel['__selbsterbe_feld']),
+        'sie steht trotzdem da'
+    );
+
+    echo "\n== umgezogen: der Gegenfall — ohne ihn waere die Sperre auch gruen, wenn nichts mehr erbt ==\n";
+
+    $amGeschwister = (new ModelValues($records, $relations, $nodes, $framework))->forNode($nodes->byId($geschwister->id));
+
+    check(
+        'ein Geschwister erbt dieselbe Kante weiterhin',
+        isset($amGeschwister['__selbsterbe_feld']),
+        'die Vererbung ist mit gesperrt worden — das ist die zurueckgenommene Fassung D-605'
+    );
+
+    $amVorfahr = (new ModelValues($records, $relations, $nodes, $framework))->forNode($nodes->byId($vorfahr->id));
+
+    check(
+        'der erklaerende Vorfahr behaelt seine Angabe',
+        isset($amVorfahr['__selbsterbe_feld']),
+        'auch der Erklaerer hat sie verloren'
+    );
+
+    echo "\n== umgezogen: die Regel selbst, an ihrer einen Stelle ==\n";
+
+    $gelesen = $relations->byId($selbstKante->id);
+
+    check('sie greift am Ziel', ModelValues::inheritanceBlocked($gelesen, $ziel->id));
+    check('sie greift nicht am Geschwister', ! ModelValues::inheritanceBlocked($gelesen, $geschwister->id));
+    // ⚠️ *Es geht ums **Erben**, nicht ums Haben: eine Kante, die jemand absichtlich von einem
+    // Knoten auf sich selbst legt, bleibt erlaubt ([D-608](../../docs/NewConcept/90-decision-log.md)).*
+    check('sie greift nicht am Erklaerer selbst', ! ModelValues::inheritanceBlocked($gelesen, $vorfahr->id));
+
+    echo "\n== umgezogen: die Anzeige (D-608) — die Zeile bleibt und sagt, dass sie gesperrt ist ==\n";
+
+    $zeilenRenderer = new FieldRowRenderer();
+
+    $gesperrt = $zeilenRenderer->render($gelesen, new RenderContext(
+        purpose: Purpose::Edit,
+        value: TypedValue::nothing(),
+        editable: false,
+        surroundings: new Surroundings(
+            refersTo: '__selbsterbe ziel',
+            sections: [FieldRowRenderer::VALUE => new Section('', '<input name="x">')],
+            locked: true
+        ),
+    ))->markup;
+
+    $offen = $zeilenRenderer->render($gelesen, new RenderContext(
+        purpose: Purpose::Edit,
+        value: TypedValue::nothing(),
+        editable: false,
+        surroundings: new Surroundings(
+            refersTo: '__selbsterbe ziel',
+            sections: [FieldRowRenderer::VALUE => new Section('', '<input name="x">')],
+            locked: false
+        ),
+    ))->markup;
+
+    check('die gesperrte Zeile wird ueberhaupt gezeichnet', str_contains($gesperrt, '<tr'));
+    check('sie ist als gesperrt gekennzeichnet', str_contains($gesperrt, 'taxmod-field-locked'));
+    check('«gesperrt» steht sichtbar in der Zeile', str_contains($gesperrt, '>locked<') || str_contains($gesperrt, 'taxmod-locked'));
+    check('ein Hinweistext nennt den Grund', str_contains($gesperrt, 'title="'));
+    check('sie traegt kein Eingabefeld mehr', ! str_contains($gesperrt, '<input name="x">'));
+    check('eine ungesperrte Zeile traegt ihres weiterhin', str_contains($offen, '<input name="x">'));
+    check('und sie ist nicht gekennzeichnet', ! str_contains($offen, 'taxmod-field-locked'));
+} finally {
+    $selbstAbbauen();
+}
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

@@ -340,6 +340,122 @@ check(
     preg_match('/--taxmod-icon-drawn:\s*calc\(\s*var\(--taxmod-icon[,)]/', $css) === 1
 );
 
+// ============================================================================
+// Umgezogen am 2026-09-06: `icon-markup-check.php` ist gestrichen
+// ============================================================================
+//
+// ⚠️ **Der gestrichene Lauf prüfte Kode gegen Kode; dieser misst an der gezeichneten Seite — und nur
+// die Messung am Markup hat den Fehler je gefunden.** *Darum ist die Datei gefallen
+// ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md), auf sein Wort
+// «checks mein ja»). **Was nicht gefallen ist, sind ihre Zusagen** — sie stehen hier, weil dieser Lauf
+// sie noch nicht sagte (`PR-9`).*
+//
+// ⚠️ **Warum es sie überhaupt gibt:** *der Eigentümer hat dasselbe mehrfach gemeldet (2026-08-29) —
+// «Icons sind irgendwie nicht richtig aligned, die Grösse stimmt nicht … das Speichern-Symbol ist
+// wieder nach oben verschoben». **Ein Fehler, der wiederkommt, nachdem er einzeln behoben wurde, ist
+// kein Serienfehler, sondern ein fehlender Ort** — und ein Ort, den nichts bewacht, zerfällt wieder
+// in sechs.*
+
+echo "\n== nur eine Stelle schreibt ein Icon ==\n";
+
+$quellwurzel = dirname(__DIR__, 2);
+
+/** @return list<string> */
+$phpDateien = static function (string $ordner) use ($quellwurzel): array {
+    $gefunden = [];
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($quellwurzel . '/' . $ordner)) as $datei) {
+        if ($datei->isFile() && str_ends_with($datei->getFilename(), '.php')) {
+            $gefunden[] = $datei->getPathname();
+        }
+    }
+
+    sort($gefunden);
+
+    return $gefunden;
+};
+
+/**
+ * Nur die Zeichenketten einer PHP-Datei, ohne Kommentare.
+ *
+ * ⚠️ **Die erste Fassung suchte im ganzen Dateitext und meldete zwei Fehlalarme** — *einen Docblock
+ * in `Control.php`, der erklärt, was man **nicht** übergeben darf, und einen Kommentar im Stylesheet,
+ * der erklärt, was entfernt wurde. **Ein Ausdruck in einem Satz über den Code ist kein Code.***
+ */
+$nurZeichenketten = static function (string $datei): string {
+    $text = '';
+
+    foreach (token_get_all((string) file_get_contents($datei)) as $token) {
+        if (is_array($token) && in_array($token[0], [T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE, T_INLINE_HTML], true)) {
+            $text .= $token[1];
+        }
+    }
+
+    return $text;
+};
+
+$schuldig = [];
+
+foreach ($phpDateien('src') as $datei) {
+    if (str_ends_with($datei, 'IconMarkup.php')) {
+        continue;
+    }
+
+    // ⚠️ *Gesucht wird das **Zusammensetzen**, nicht das Wort. `dashicons-move` in einem Kommentar
+    // oder ein Menü-Slug für WordPress sind keine Icons, die wir zeichnen — `<span class="dashicons`
+    // in einer echten Zeichenkette ist genau der Ausdruck, der sechsmal dastand.*
+    if (str_contains($nurZeichenketten($datei), '<span class="dashicons')) {
+        $schuldig[] = str_replace([$quellwurzel, '\\'], ['', '/'], $datei);
+    }
+}
+
+check('keine Datei ausser IconMarkup schreibt ein Icon von Hand', $schuldig === [], implode(', ', $schuldig));
+
+$iconQuelle = (string) file_get_contents($quellwurzel . '/src/Core/Renderer/IconMarkup.php');
+
+check('IconMarkup schreibt es wirklich selbst', str_contains($iconQuelle, '<span class="'));
+
+// ⚠️ *Die gemeinsame Klasse ist der eigentliche Bau. Vorher war das einzig Gemeinsame `dashicons` —
+// die Klasse von WordPress mit ihren 20px, worauf jeder Zusammenhang sie neu verkleinerte.*
+check('beide Wege setzen die gemeinsame Klasse', substr_count($iconQuelle, 'self::NAME') >= 2);
+
+echo "\n== genau eine Regel legt die Groesse fest, und keine richtet zweitens aus ==\n";
+
+// ⚠️ *Die Kommentare raus, bevor gesucht wird. Der Kommentar, der erklärt, dass
+// `vertical-align: text-bottom` entfernt wurde, ist sonst der Beweis, dass es noch da ist.*
+$cssOhneKommentare = preg_replace('#/\*.*?\*/#s', '', $css);
+
+if (! is_string($cssOhneKommentare)) {
+    check('die Kommentare liessen sich aus dem Stylesheet entfernen', false);
+
+    $cssOhneKommentare = '';
+}
+
+// ⚠️ **Das ist die Zusage, die 2026-08-29 gebrochen war.** *Gemessen lagen **fünf** Regeln
+// nebeneinander: zweimal hart `16px`, einmal `17px` als Inline-Style, einmal die Variable, und die
+// Auswahlzelle gar keine — also die `20px`-Vorgabe von WordPress. Auf einer Seite standen 16, 17 und
+// 20 Pixel gleichzeitig.*
+$breiten = preg_match_all('/^\s*width:\s*(?:var\(--taxmod-icon|1[0-9]px)/m', $cssOhneKommentare);
+
+check('genau eine Regel gibt einem Icon eine Breite', $breiten === 1, (string) $breiten);
+
+// ⚠️ *Eine Grösse als Inline-Style schlägt jede Regel im Stylesheet und ist darum der Rückfall, der
+// wirklich passiert ist — an genau einer Stelle, dem Fragezeichen neben einer Überschrift.*
+$inline = 0;
+
+foreach ($phpDateien('src') as $datei) {
+    $inline += (int) preg_match_all('/style="[^"]*(?:font-size|width|height):\s*\d+px/', (string) file_get_contents($datei));
+}
+
+check('keine Icon-Groesse steht als Inline-Style im PHP', $inline === 0, (string) $inline);
+
+// ⚠️ *`vertical-align: text-bottom` auf dem Baum-Icon war der zweite von drei Mechanismen. Zwei Icons
+// gleicher Grösse sassen dadurch verschieden hoch — genau die Beobachtung des Eigentümers.*
+check(
+    'kein zweiter Ausrichtungsmechanismus neben der gemeinsamen Regel',
+    ! str_contains($cssOhneKommentare, 'vertical-align: text-bottom')
+);
+
 echo "\n";
 
 if ($failed === 0) {

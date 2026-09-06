@@ -175,6 +175,92 @@ foreach ($verweise as $wer => $welche) {
     echo '  ', $wer, ' → ', implode(', ', $welche), "\n";
 }
 
+// ============================================================================
+// Umgezogen am 2026-09-06: `supersession-check.php` las dieselbe Ablösung von
+// der anderen Seite
+// ============================================================================
+//
+// ⚠️ **Dieselbe Ablösung, zwei Richtungen** — *dort oben: wer beruft sich auf eine zurückgenommene
+// Entscheidung. Hier: **nennt die zurückgenommene ihren Nachfolger, und zwar vorn.** Der zweite Lauf
+// ist am 2026-09-06 gestrichen und seine Zusage hierher gezogen
+// ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md), auf sein Wort
+// «checks mein ja»). `PR-9`: umgezogen, nicht entschärft.*
+//
+// ⚠️ **Warum «vorn» und nicht «irgendwo».** *Gemessen am 2026-08-28: **25 von 28** überholten
+// Entscheidungen sagten es erst irgendwo in 1400 Zeichen Prosa. Wer aus einem Docblock kommt —
+// `D-133` wird 49-mal zitiert, `D-217` 59-mal — liest dann die ersetzte Regel und nicht den Hinweis.
+// **Der Eigentümer hat genau das gemeldet: «jedes Mal, wenn Du auf eine Id referenzierst, kann ich
+// die nicht lesen.»***
+
+require __DIR__ . '/lib/supersessions.php';
+
+$rows = taxmodDecisionRows($log);
+
+$supersessionFehler = 0;
+
+if (count($rows) < 100) {
+    echo "\nNur " . count($rows) . " Entscheidungen erkannt — das Log wurde nicht richtig gelesen.\n";
+
+    exit(1);
+}
+
+$ohneRueckverweis = [];
+$beidseitig       = 0;
+$zuSpaet          = [];
+
+foreach (taxmodSupersessions($rows) as $victim => $killers) {
+    $cells = explode(' | ', rtrim($rows[$victim], " |\n"));
+    // ⚠️ *220 Zeichen: so weit liest jemand, der einer Id aus einem Docblock folgt, bevor er glaubt zu
+    // wissen, was dort steht. Die Zahl ist gesetzt und nicht gemessen — sie ist eine Behauptung über
+    // Leseverhalten, und sie steht hier, damit sie kritisierbar ist.*
+    $head    = mb_substr($cells[2] ?? '', 0, 220);
+    $upFront = false;
+
+    foreach ($killers as $killer) {
+        // Das Opfer muss seinen Nachfolger nennen — irgendwo in seiner Zeile.
+        if (str_contains($rows[$victim], $killer)) {
+            ++$beidseitig;
+        } else {
+            $ohneRueckverweis[$victim][$killer] = true;
+        }
+
+        if (str_contains($head, $killer)) {
+            $upFront = true;
+        }
+    }
+
+    if (! $upFront) {
+        $zuSpaet[$victim] = array_keys($killers === [] ? [] : array_flip($killers));
+    }
+}
+
+echo "\n== jede ersetzte Entscheidung nennt ihren Nachfolger ==\n";
+
+foreach ($zuSpaet as $victim => $killers) {
+    printf(
+        "  SPAET %-7s nennt %s erst spaeter in der Zeile — wer aus einem Docblock kommt, liest die ersetzte Regel\n",
+        $victim,
+        implode(', ', $killers)
+    );
+}
+
+foreach ($ohneRueckverweis as $victim => $killers) {
+    printf("  FEHLT %-7s sagt nicht, dass %s sie ersetzt\n", $victim, implode(', ', array_keys($killers)));
+}
+
+if ($ohneRueckverweis === [] && $zuSpaet === []) {
+    printf("  ok   %d Ersetzungen, jede beidseitig verzeichnet und im ersten Satz genannt\n", $beidseitig);
+} else {
+    $supersessionFehler = count($ohneRueckverweis) + count($zuSpaet);
+
+    printf(
+        "\n%d beidseitig verzeichnet, %d einseitig, %d erst spaet genannt — diese lesen sich wie gueltige Entscheidungen.\n",
+        $beidseitig,
+        count($ohneRueckverweis),
+        count($zuSpaet)
+    );
+}
+
 $anzahl = count($verweise);
 
 echo "\n";
@@ -200,9 +286,9 @@ if ($anzahl < HINGENOMMEN) {
         HINGENOMMEN - $anzahl
     );
 
-    exit(0);
+    exit($supersessionFehler === 0 ? 0 : 1);
 }
 
 echo "Unverändert bei {$anzahl}.\n";
 
-exit(0);
+exit($supersessionFehler === 0 ? 0 : 1);
