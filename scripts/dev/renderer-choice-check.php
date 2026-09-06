@@ -420,6 +420,55 @@ check(
 
 check('und mindestens eine Zeichnung war darunter', $geprueft >= 1, (string) $geprueft);
 
+echo "\n== und jede gespeicherte Wahl ist eine erlaubte ==\n";
+
+// ⚠️ **Seine Anweisung am 2026-09-06:** *«dann bei den mal überall den rendere überprüfen dass ein
+// erlaubter gesetzte ist».* **Gemessen war es an drei von neun nicht so:** *`Base units` trug
+// `table`, `Dimension` trug `node`, `Volt` trug `chooser-dialog` — alle drei standen nicht in der
+// Menge, die ihr eigener Knoten zulässt. **Und niemand hat es gemeldet**: die Wahl wurde einmal
+// gesetzt und danach nie wieder gegen die Aussiebung gehalten.*
+//
+// ⚠️ *Eine Invariante und keine Zahl: **was gespeichert ist, muss auch angeboten sein**. Wird eine
+// Aussiebung enger — wie am selben Tag, als die Auswahllisten an kinderlosen Knoten fielen —, fällt
+// das hier auf und nicht erst dann, wenn jemand die Seite speichert.*
+$unerlaubt = [];
+
+foreach ($wpdb->get_results(
+    $wpdb->prepare(
+        'SELECT h.node_id, zn.name AS renderer
+           FROM ' . Schema::table('relation_records') . ' w
+           JOIN ' . Schema::table('node_records') . ' h ON h.id = w.node_record_id
+           JOIN ' . Schema::table('node_records') . ' z ON z.id = w.value_ref
+           LEFT JOIN ' . Schema::table('nodes_named') . ' zn ON zn.id = z.node_id
+          WHERE w.relation_id = %d AND w.value_ref_kind = %s',
+        $framework->settingRelationId(SettingKey::Renderer),
+        'record'
+    ),
+    ARRAY_A
+) ?: [] as $zeile) {
+    $knoten = $nodes->find((int) $zeile['node_id']);
+
+    if ($knoten === null) {
+        continue;
+    }
+
+    $erlaubt = [];
+
+    foreach ($rendering->choicesForNode($knoten) as $einer) {
+        $erlaubt[] = $einer->name();
+    }
+
+    if (! in_array((string) $zeile['renderer'], $erlaubt, true)) {
+        $unerlaubt[] = $knoten->name . ' → ' . $zeile['renderer'];
+    }
+}
+
+check(
+    'keine gespeicherte Wahl steht ausserhalb der zulaessigen Menge',
+    $unerlaubt === [],
+    implode(' · ', array_slice($unerlaubt, 0, 6))
+);
+
 echo "\n== Die Auswahl bietet nur, was der Knoten vertraegt ==\n";
 
 // ⚠️ **Sein Befund an `Integer`:** *«Integer sieht jetzt alle Renderer, wobei nur int-Renderer ok

@@ -46,10 +46,23 @@ final class ReferenceRenderer extends TypedFieldRenderer
         return [SimpleType::NodeRef];
     }
 
-    /** @return list<Purpose> */
+    /**
+     * ⚠️ **Auch beim Bearbeiten, seit dem 2026-09-06** — *seine Anweisung: «bei den [Knoten] mal
+     * überall den Renderer überprüfen, dass ein erlaubter gesetzt ist; für die Base units ist das
+     * einfach Referenz für alle».* **Gemessen, was «nur Anzeigen» dann kostete:** *`Base units` trug
+     * `reference`, und im Zweck «bearbeiten» löste **nichts** auf — die Zeile fiel auf den Rückfall,
+     * und der Wächter meldete «gespeichert `reference`, gezeichnet nichts».*
+     *
+     * ⚠️ **Und es ist keine Notlösung, sondern die richtige Antwort:** *eine Konstante wird nicht
+     * getippt. Sie wird an der **Verwendungsstelle** gewählt — dort steht ein Wähler —, und wo sie
+     * selbst steht, zeigt man ihre Beschriftung. {@see self::input()} tat das ohnehin schon; es war
+     * nur als unerreichbar vermerkt.*
+     *
+     * @return list<Purpose>
+     */
     public function supports(): array
     {
-        return [Purpose::Display];
+        return [Purpose::Display, Purpose::Edit];
     }
 
     protected function display(RenderContext $context): string
@@ -72,7 +85,8 @@ final class ReferenceRenderer extends TypedFieldRenderer
 
     protected function input(RenderContext $context): string
     {
-        // Unreachable: the edit purpose is declined above, so the descent never asks.
+        // ⚠️ *Erreichbar seit dem 2026-09-06, und absichtlich dasselbe: eine Konstante wird nicht
+        // getippt. Gewählt wird sie an der Verwendungsstelle, hier steht ihre Beschriftung.*
         return $this->display($context);
     }
 }

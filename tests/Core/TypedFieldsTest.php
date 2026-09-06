@@ -129,9 +129,17 @@ final class TypedFieldsTest extends TestCase
         self::assertStringContainsString('Gramm', $shown->markup);
         self::assertStringNotContainsString('4711', $shown->markup);
 
-        // ⚠️ Changing a reference means **picking** a node — the chooser, decided (D-244) and not
-        // built. Declining keeps the gap visible instead of offering a box for an id.
-        self::assertSame([Purpose::Display], $renderer->supports());
+        // ⚠️ **Er zeichnet jetzt auch beim Bearbeiten, und zwar dasselbe** *(2026-09-06, auf seine
+        // Anweisung «für die Base units ist das einfach Referenz für alle»)*. **Der alte Grund —
+        // «Ändern heisst wählen, und der Wähler ist nicht gebaut» — ist erledigt:** *der Wähler steht
+        // seit D-589, und er steht an der **Verwendungsstelle**. Wo die Konstante selbst gezeichnet
+        // wird, zeigt man ihre Beschriftung; ein Kasten für eine Id war nie gemeint und ist es
+        // weiterhin nicht.*
+        //
+        // ⚠️ *Was ohne diese Zeile geschah, ist gemessen: `Base units` trug `reference`, und im Zweck
+        // «bearbeiten» loeste **nichts** auf — der Waechter meldete «gespeichert `reference`,
+        // gezeichnet nichts».*
+        self::assertSame([Purpose::Display, Purpose::Edit], $renderer->supports());
     }
 
     #[Test]
