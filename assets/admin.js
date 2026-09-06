@@ -595,3 +595,110 @@
 	}
 
 } )();
+
+/**
+ * Der Einstellungsbereich einer Feldzeile — nachgeholt statt neu geladen.
+ *
+ * ⚠️ **Der Beschluss ist «nicht gelesen», nicht «versteckt»** (D-666). Der Server zeichnet den
+ * Bereich nur, wenn er offen ist; ein `display:none` hätte ihn längst aufgelöst und mitgeschickt.
+ * Dieses Stück ändert daran nichts — es holt denselben Bereich vom selben Kernaufruf, nur ohne die
+ * ganze Seite neu zu zeichnen.
+ *
+ * ⚠️ **Ohne Skript funktioniert der Knopf trotzdem.** Er ist ein gewöhnlicher `<button name="do">`
+ * im Formular seiner Zeile: abschicken, weiterleiten, Seite aufgeklappt neu. Dieses Stück fängt den
+ * Klick nur ab, wenn es ihn auch bedienen kann — fehlt `fetch`, fehlt die Nonce oder antwortet der
+ * Server nicht, geschieht **nichts**, und das Formular geht seinen alten Weg.
+ *
+ * ⚠️ *Es rendert nichts. Das Markup kommt fertig aus dem Kern (`R1`), hier wird es eingehängt.*
+ */
+( function () {
+	'use strict';
+
+	var AKT = 'toggle_field_settings';
+	var HOL = 'taxmod_field_settings';
+
+	function zeileVon( knopf ) {
+		return knopf.closest( 'tr[data-taxmod-relation]' );
+	}
+
+	/** Die Adresse des Nachschlags, gebaut aus dem, was das Formular der Zeile ohnehin trägt. */
+	function adresse( form, kante ) {
+		var id = form.querySelector( 'input[name="id"]' );
+		var nonce = form.querySelector( 'input[name="_taxmod_nonce"]' );
+
+		if ( ! form.action || ! id || ! nonce ) {
+			return null;
+		}
+
+		return form.action
+			+ ( form.action.indexOf( '?' ) === -1 ? '?' : '&' )
+			+ 'action=' + encodeURIComponent( HOL )
+			+ '&id=' + encodeURIComponent( id.value )
+			+ '&relation=' + encodeURIComponent( kante )
+			+ '&_taxmod_nonce=' + encodeURIComponent( nonce.value );
+	}
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target && ereignis.target.closest
+			? ereignis.target.closest( 'button[name="do"][value="' + AKT + '"]' )
+			: null;
+
+		if ( ! knopf || typeof window.fetch !== 'function' ) {
+			return;
+		}
+
+		var zeile = zeileVon( knopf );
+		var form = knopf.form || knopf.closest( 'form' );
+
+		if ( ! zeile || ! form ) {
+			return;
+		}
+
+		var kante = zeile.getAttribute( 'data-taxmod-relation' );
+		var offen = zeile.nextElementSibling;
+
+		// Zuklappen kostet keinen Nachschlag: die Zeile wird entfernt, und der nächste
+		// Seitenaufruf zeichnet sie ohnehin nicht mehr.
+		if ( offen && offen.classList.contains( 'taxmod-field-settings-row' ) ) {
+			ereignis.preventDefault();
+			offen.parentNode.removeChild( offen );
+
+			return;
+		}
+
+		var url = adresse( form, kante );
+
+		if ( ! url ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		fetch( url, { credentials: 'same-origin' } )
+			.then( function ( antwort ) {
+				if ( ! antwort.ok ) {
+					throw new Error( 'nachschlag' );
+				}
+
+				return antwort.text();
+			} )
+			.then( function ( markup ) {
+				var spalten = zeile.children.length;
+				var neu = document.createElement( 'tr' );
+
+				neu.className = 'taxmod-field-settings-row';
+				neu.innerHTML = '<td colspan="' + spalten + '">' + markup + '</td>';
+
+				zeile.parentNode.insertBefore( neu, zeile.nextSibling );
+			} )
+			.catch( function () {
+				// ⚠️ *Der alte Weg bleibt der Rückfall: das Formular abschicken, Seite neu.*
+				if ( typeof form.requestSubmit === 'function' ) {
+					form.requestSubmit( knopf );
+				} else {
+					form.submit();
+				}
+			} );
+	} );
+
+} )();

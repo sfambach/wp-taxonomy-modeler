@@ -1577,6 +1577,29 @@ final class Rendering implements Presets
          * (D-546, D-548).
          */
         bool $showValue = true,
+        /**
+         * Welche Zeilen ihren Einstellungsbereich **aufgeklappt** zeigen — Kanten-Id ⇒ `true`.
+         *
+         * ⚠️ **Das ist die ganze Zusage aus [D-666](../../../docs/NewConcept/90-decision-log.md):**
+         * *«Standard ist nicht ausgeklappt — das heisst auch nicht gelesen.» Eine Zeile, die hier
+         * nicht steht, geht **nicht** durch {@see self::withModelValues()} und bekommt aus
+         * {@see self::settingsFor()} nur «wie oft», das als Spalte an der Kante steht. Der Unterschied
+         * ist messbar: keine Kette über Kante, Zielknoten und dessen Vorfahren
+         * ([D-602](../../../docs/NewConcept/90-decision-log.md)), und im Markup steht kein einziges
+         * Steuerelement des Bereichs.*
+         *
+         * @var array<int, bool>
+         */
+        array $expanded = [],
+        /**
+         * Die Worte des Randes für den aufgeklappten Bereich — Gruppennamen, «geerbt».
+         *
+         * ⚠️ *Der Kern kann kein Wort machen (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)),
+         * also reisen sie als `word:<key>` mit, wie in der Zeile selbst.*
+         *
+         * @var list<Control>
+         */
+        array $settingsWords = [],
     ): array {
         if ($relations === []) {
             return [];
@@ -1595,7 +1618,17 @@ final class Rendering implements Presets
         $rows = [];
 
         foreach ($relations as $relation) {
-            $settings = $this->withModelValues($resolved[$relation->id] ?? [], $relation);
+            $offen = $expanded[$relation->id] ?? false;
+
+            // ⚠️ **Zugeklappt heisst nicht aufgelöst** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
+            // *`withModelValues()` geht für eine Kante die Kette über Ziel und Vorfahren
+            // ([D-602](../../../docs/NewConcept/90-decision-log.md)); «wie oft» braucht sie nicht — das
+            // ist eine **Spalte** der Kante ([D-351](../../../docs/NewConcept/90-decision-log.md)) und
+            // liegt schon in `$resolved`. **Ein `display:none` hätte hier trotzdem gelesen**, und
+            // genau das war der Beschluss.*
+            $settings = $offen
+                ? $this->withModelValues($resolved[$relation->id] ?? [], $relation)
+                : ($resolved[$relation->id] ?? []);
 
             // The multiplicity, drawn once by the settings side and handed to the row.
             $configured = [];
@@ -1617,9 +1650,39 @@ final class Rendering implements Presets
             $rowSettings = $settingPrefix === '' ? '' : $settingPrefix . '[' . $relation->id . ']';
             $rowForm     = $pageForm === '' ? FieldRowRenderer::formFor($relation) : $pageForm;
 
-            foreach ($this->settingsFor($relation, $settings, Purpose::Edit, $rowSettings, $locale, $level, [], $rowForm, $relation->fromNodeId === $declaredBy) as $drawn) {
+            foreach ($this->settingsFor(
+                $relation,
+                $settings,
+                Purpose::Edit,
+                $rowSettings,
+                $locale,
+                $level,
+                [],
+                $rowForm,
+                $relation->fromNodeId === $declaredBy,
+                // ⚠️ *Zugeklappt: genau der eine Schlüssel, den die Zeile selbst zeigt.*
+                $offen ? [] : [SettingKey::Multiplicity->value]
+            ) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
+
+            // ⚠️ **Der Bereich unter der Zeile, und er wird nur gezeichnet, wenn er offen ist**
+            // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Gezeichnet von
+            // {@see SettingsRenderer} — der Tafel, die es für genau diesen Zweck schon gibt —, damit
+            // die Einstellungen einer Kante aussehen wie die eines Knotens und nicht wie eine zweite
+            // Machart ([D-665](../../../docs/NewConcept/90-decision-log.md), `R1`).*
+            //
+            // ⚠️ *«wie oft» bleibt draussen: es steht als eigene Spalte in der Zeile, und zweimal
+            // dasselbe Steuerelement ist genau der Mangel, den `R1` verbietet.*
+            $bereich = ! $offen ? '' : $this->panelMarkup(
+                $relation,
+                $configured,
+                $settingsWords,
+                $rowForm,
+                $locale,
+                $level,
+                $relation->fromNodeId === $declaredBy
+            );
 
             // ⚠️ **Der Wert der Angabe, gezeichnet vom gewöhnlichen Abstieg.** *Bei `Display Option`
             // steigt der in den Teil hinein und liefert **beide** Felder — `render` und `converter`;
@@ -1733,7 +1796,12 @@ final class Rendering implements Presets
                         // Rand, weil er URL und Nonce braucht (CD-1), und wird durchgereicht.
                         isset($targetChoosers[$relation->id])
                             ? ['target-chooser' => new Section('', $targetChoosers[$relation->id])]
-                            : []
+                            : [],
+                        // ⚠️ *Nur wenn aufgeklappt. Die Abwesenheit des Abschnitts **ist** die
+                        // Aussage «nicht gelesen» — die Zeile zeichnet dann keine zweite Zeile.*
+                        $bereich === ''
+                            ? []
+                            : [FieldRowRenderer::SETTINGS => new Section('', $bereich)]
                     )
                 ),
             );
@@ -1748,6 +1816,106 @@ final class Rendering implements Presets
         }
 
         return $rows;
+    }
+
+    /**
+     * Die Einstellungen **einer Verwendungsstelle**, für sich allein gezeichnet — der Rückweg.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   R["der Rand: «diese Zeile wurde aufgeklappt»"] --> K[this]
+     *   K --> A["Auflösung über Kante, Ziel, Vorfahren"]
+     *   A --> P["die Tafel · SettingsRenderer"]
+     * ```
+     *
+     * ⚠️ **Das ist der erste Fall von [D-627](../../../docs/NewConcept/90-decision-log.md) in Code**,
+     * *und deshalb ist der Zuschnitt so eng: der Rand stellt fest, **dass** etwas geschah — eine Zeile
+     * wurde aufgeklappt — und fragt den Kern nach dem, was dazugehört. **Keine WordPress-Eigenheit
+     * kommt herein** (`CD-1`): eine Kanten-Id, ein Knoten, zwei Namensvorsätze und die Worte, die der
+     * Rand übersetzt hat. **Ein allgemeines Ereignissystem ist das hier ausdrücklich nicht** — es ist
+     * die eine Naht, an der ein zweiter Fall ansetzen kann.*
+     *
+     * ⚠️ **Und es ist die einzige Stelle, die auflöst, wenn eine Zeile allein nachgeholt wird**
+     * ([D-666](../../../docs/NewConcept/90-decision-log.md)): *für die Seite tut es
+     * {@see self::fieldRowsFor()}, und beide enden in derselben Tafel — eine Machart, nicht zwei
+     * ([D-665](../../../docs/NewConcept/90-decision-log.md), `R1`).*
+     *
+     * @param list<Control> $words Die Worte des Randes, als `word:<key>`.
+     */
+    public function settingsPanelForUseSite(
+        Relation $relation,
+        int $declaredBy,
+        string $fieldPrefix = '',
+        string $formId = '',
+        array $words = [],
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): string {
+        $editable   = $relation->fromNodeId === $declaredBy;
+        $settings   = $this->withModelValues($this->vonDenKanten([$relation])[$relation->id] ?? [], $relation);
+        $configured = [];
+
+        foreach ($this->settingsFor(
+            $relation,
+            $settings,
+            Purpose::Edit,
+            $fieldPrefix,
+            $locale,
+            $level,
+            [],
+            $formId,
+            $editable
+        ) as $drawn) {
+            $configured[$drawn->key] = $drawn;
+        }
+
+        return $this->panelMarkup($relation, $configured, $words, $formId, $locale, $level, $editable);
+    }
+
+    /**
+     * Die Tafel selbst — **eine Stelle, damit es eine Machart bleibt** (`R1`).
+     *
+     * ⚠️ *«wie oft» bleibt draussen: es hat seine eigene Spalte in der Zeile
+     * ([D-351](../../../docs/NewConcept/90-decision-log.md)), und zweimal dasselbe Steuerelement ist
+     * genau der Mangel, den [D-376](../../../docs/NewConcept/90-decision-log.md) gekostet hat.*
+     *
+     * ⚠️ *Kein `submits`, also **kein eigenes Formular**: die Steuerelemente nennen über `form="…"`
+     * das Formular der Seite, und gespeichert wird oben
+     * ([D-392](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param array<string, RenderedSetting> $configured
+     * @param list<Control>                  $words
+     */
+    private function panelMarkup(
+        Relation $relation,
+        array $configured,
+        array $words,
+        string $formId,
+        string $locale,
+        Level $level,
+        bool $editable,
+    ): string {
+        unset($configured[SettingKey::Multiplicity->value]);
+
+        if ($configured === []) {
+            return '';
+        }
+
+        return $this->renderers->byName(SettingsRenderer::NAME)->render(
+            $relation,
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: TypedValue::nothing(),
+                locale: $locale,
+                level: $level,
+                editable: $editable,
+                surroundings: new Surroundings(
+                    actions: $words,
+                    configured: $configured,
+                    formId: $formId,
+                ),
+            )
+        )->markup;
     }
 
     /**
@@ -1781,6 +1949,18 @@ final class Rendering implements Presets
          * Aufrufstellen unverändert bleiben, die eine eigene Sache zeichnen.*
          */
         bool $editable = true,
+        /**
+         * ⚠️ **Welche Schluessel ueberhaupt gezeichnet werden — leer heisst «alle».**
+         *
+         * *Das ist der Ort, an dem [D-666](../../../docs/NewConcept/90-decision-log.md)s «nicht
+         * gelesen» wirksam wird: eine **zugeklappte** Feldzeile braucht genau einen Schluessel,
+         * «wie oft», und der steht als Spalte an der Kante selbst. Ohne diese Schranke materialisiert
+         * die Schleife unten jeden Schluessel, der auf das Ziel zutrifft, und zeichnet ihn — dreizehn
+         * Steuerelemente je Zeile, die niemand sieht.*
+         *
+         * @var list<string>
+         */
+        array $onlyKeys = [],
     ): array {
         // ⚠️ **A use site is configured too, and its type is its target's.** [C8](../../../docs/NewConcept/10-domain-core.md)
         // gives an relation settings of its own and [D-091](90-decision-log.md) resolves them the same
@@ -1803,6 +1983,13 @@ final class Rendering implements Presets
                 0,
                 false
             );
+        }
+
+        // ⚠️ *Die Schranke wirkt **nach** dem Auffüllen und nicht davor: was der Aufrufer verlangt,
+        // soll er auch dann bekommen, wenn niemand es geschrieben hat — eine leere Zeile ist die
+        // Wahrheit über den Schlüssel ([D-266](90-decision-log.md)).*
+        if ($onlyKeys !== []) {
+            $resolved = array_intersect_key($resolved, array_flip($onlyKeys));
         }
 
         ksort($resolved);
@@ -1866,6 +2053,13 @@ final class Rendering implements Presets
                 true,
                 $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $key . ']',
                 $type,
+                // ⚠️ **Ohne dies schickt das Steuerelement nichts ab.** *Ein Auswahlfeld bekam das
+                // Formular längst mitgegeben ({@see self::drawChoice()}); ein Textfeld, ein Schalter
+                // und ein Zahlenfeld bekamen es nie — und jedes von ihnen steht ausserhalb des
+                // Formulars, in das es gehört. **Derselbe stille Mangel, den `Surroundings::$formId`
+                // schon zweimal geheilt hat**, und er fiel erst auf, als
+                // [D-666](90-decision-log.md) die Einstellungen einer Kante bedienbar machte.*
+                new Surroundings(formId: $formId),
             );
 
             $drawn[] = new RenderedSetting(

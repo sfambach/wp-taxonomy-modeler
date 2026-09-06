@@ -86,17 +86,32 @@ $framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $editor    = new ModelEditor($nodes, $relations, $framework, $log, new WpdbLabelRepository(), $rows);
 $types     = new SeededTypeNodes($nodes, $framework);
 
-/** Die Seite als Markup, so wie ein Browser sie bekommt. */
-function seite(int $nodeId): string
+/**
+ * Die Seite als Markup, so wie ein Browser sie bekommt.
+ *
+ * ⚠️ *`$offeneZeilen` ist der Umstand aus [D-666](../../docs/NewConcept/90-decision-log.md) —
+ * `null` heisst «alles zugeklappt», und **zugeklappt heisst nicht aufgeloest**.*
+ */
+function seite(int $nodeId, ?string $offeneZeilen = null): string
 {
     $_GET['page']        = 'taxmod-nodes';
     $_GET['taxmod_node'] = (string) $nodeId;
+
+    if ($offeneZeilen === null) {
+        unset($_GET['taxmod_open_rows']);
+    } else {
+        $_GET['taxmod_open_rows'] = $offeneZeilen;
+    }
 
     $rc     = new ReflectionClass(Plugin::class);
     $plugin = $rc->newInstanceWithoutConstructor();
     $rc->getProperty('file')->setValue($plugin, __FILE__);
 
-    return $plugin->screen()->render();
+    $markup = $plugin->screen()->render();
+
+    unset($_GET['taxmod_open_rows']);
+
+    return $markup;
 }
 
 /**
@@ -114,8 +129,15 @@ function abschicken(array $post): bool
 
     $gewandert = false;
 
-    $fang = static function () use (&$gewandert): string {
+    // ⚠️ *Die Adresse der Weiterleitung wird mitgeschrieben: **manche Akte schreiben nichts und
+    // ändern nur einen Umstand** ([D-666](../../docs/NewConcept/90-decision-log.md)), und dann ist
+    // die Adresse das Einzige, woran ihr Ergebnis zu sehen ist.*
+    $GLOBALS['taxmod_letzte_adresse'] = '';
+
+    $fang = static function (string $ort) use (&$gewandert): string {
         $gewandert = true;
+
+        $GLOBALS['taxmod_letzte_adresse'] = $ort;
 
         throw new RuntimeException('redirect');
     };
@@ -881,6 +903,171 @@ check(
     (int) $wpdb->get_var(
         "SELECT COUNT(*) FROM {$p}changelog WHERE owner_id = {$satzId} AND owner_kind = 'record' AND what = 'record removed'"
     ) > 0
+);
+
+echo "\n== die Einstellungen einer Feldzeile, aufklappbar (D-666) ==\n";
+
+// ⚠️ **Der Weg ueber die Maske und nicht durch den Kern** — *genau das hat den Fehler verdeckt, den
+// [D-666](../../docs/NewConcept/90-decision-log.md) behebt: `Rendering::settingsFor()` lieferte fuer
+// die Kante dreizehn Zeilen, und **die Feldzeile zeichnete keine davon**. Ein Waechter am Kern waere
+// gruen geblieben.*
+//
+// ⚠️ *Gemessen wird an `__rcm feld` — der Kante, die `__rcm traeger` auf `__rcm probe` (ein `int`)
+// legt. `min` gilt fuer eine Kante auf einen ganzzahligen Typ, also gibt es dort etwas zu bedienen.*
+$feldKante  = $relations->byId($feld->id);
+$schluessel = SettingKey::Min->value;
+$feldName   = 'taxmod_field_setting[' . $feld->id . '][' . $schluessel . ']';
+
+$zu  = seite($traeger->id);
+$auf = seite($traeger->id, (string) $feld->id);
+
+// ⚠️ **Die Zusage, die den Beschluss traegt** (*«Standard ist nicht ausgeklappt — das heisst auch
+// nicht gelesen»*): *ein `display:none` haette den Bereich **trotzdem** aufgeloest und mitgeschickt.
+// **Fehlt er im Markup, ist er nicht gezeichnet worden** — und jede Einstellungszeile kostet eine
+// Kette ueber Kante, Zielknoten und dessen Vorfahren ([D-602](../../docs/NewConcept/90-decision-log.md)).*
+check(
+    'eine zugeklappte Zeile zeichnet keine ihrer Einstellungen',
+    ! str_contains($zu, $feldName) && ! str_contains($zu, 'taxmod-field-settings-row'),
+    'der Bereich steht im Markup, obwohl niemand ihn aufgeklappt hat'
+);
+
+check(
+    'und die aufgeklappte zeichnet sie unter ihrer Zeile',
+    str_contains($auf, 'taxmod-field-settings-row') && str_contains($auf, $feldName),
+    'kein Bereich oder kein Steuerelement fuer `' . $schluessel . '`'
+);
+
+// ⚠️ *Ohne `form="…"` schickt das Steuerelement lautlos nichts ab — derselbe stille Mangel, den
+// dieser Lauf beim Renderer-Waehler schon einmal gefangen hat.*
+check(
+    'und die Steuerelemente haengen am Seitenformular',
+    (bool) preg_match(
+        '/name="' . preg_quote($feldName, '/') . '"[^>]*form="taxmod-page-' . $traeger->id . '"/',
+        $auf
+    ),
+    'kein form="taxmod-page-' . $traeger->id . '" am Steuerelement'
+);
+
+// ⚠️ **Der skriptfreie Weg, ganz** ([D-666](../../docs/NewConcept/90-decision-log.md)): *ein
+// gewoehnlicher Knopf im Formular der Zeile, eine Weiterleitung, und die Seite zeichnet die Zeile
+// aufgeklappt neu. **Ohne ihn waere das Aufklappen eine Einstellung, die es nur mit Skript gibt.***
+check(
+    'die Zeile traegt einen Knopf zum Aufklappen',
+    str_contains($zu, 'value="toggle_field_settings"'),
+    'kein solcher Knopf im Markup'
+);
+
+$gewandert = abschicken([
+    'do'            => 'toggle_field_settings',
+    'id'            => (string) $traeger->id,
+    'relation'      => (string) $feld->id,
+    '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $traeger->id),
+]);
+
+check(
+    'und er fuehrt auf dieselbe Seite mit der Zeile offen',
+    $gewandert && str_contains(
+        urldecode((string) $GLOBALS['taxmod_letzte_adresse']),
+        'taxmod_open_rows=' . $feld->id
+    ),
+    (string) $GLOBALS['taxmod_letzte_adresse']
+);
+
+// ⚠️ *Und zurueck: derselbe Knopf schliesst wieder. **Ein Oeffner, der nicht schliesst, laesst den
+// Umstand fuer immer in der Adresse stehen.***
+$_GET['taxmod_open_rows'] = (string) $feld->id;
+
+abschicken([
+    'do'                => 'toggle_field_settings',
+    'id'                => (string) $traeger->id,
+    'relation'          => (string) $feld->id,
+    'taxmod_open_rows'  => (string) $feld->id,
+    '_taxmod_nonce'     => wp_create_nonce('taxmod_node_' . $traeger->id),
+]);
+
+unset($_GET['taxmod_open_rows']);
+
+check(
+    'und derselbe Knopf klappt sie wieder zu',
+    ! str_contains(urldecode((string) $GLOBALS['taxmod_letzte_adresse']), 'taxmod_open_rows='),
+    (string) $GLOBALS['taxmod_letzte_adresse']
+);
+
+// ⚠️ **Der Rueckweg vom Rand in den Kern** ([D-627](../../docs/NewConcept/90-decision-log.md)): *der
+// Weg **mit** Skript holt genau diesen Bereich nach. **Er muss derselbe sein wie der auf der Seite**,
+// sonst gaebe es zwei Macharten ([D-665](../../docs/NewConcept/90-decision-log.md), `R1`) — und
+// welche man saehe, haenge daran, ob ein Skript laeuft.*
+$rc        = new ReflectionClass(Plugin::class);
+$pluginObj = $rc->newInstanceWithoutConstructor();
+$rc->getProperty('file')->setValue($pluginObj, __FILE__);
+
+$nachgeholt = $feldKante === null
+    ? ''
+    : $pluginObj->screen()->fieldSettingsFragment($editor->find($traeger->id), $feldKante);
+
+check(
+    'der nachgeholte Bereich ist derselbe wie der auf der Seite',
+    $nachgeholt !== '' && str_contains($auf, $nachgeholt),
+    'der Nachschlag zeichnet etwas anderes als die Seite'
+);
+
+echo "\n== eine Einstellung setzen, absenden, frisch nachlesen ==\n";
+
+$gewandert = abschicken([
+    'do'                   => 'put_setting',
+    'id'                   => (string) $traeger->id,
+    '_taxmod_nonce'        => wp_create_nonce('taxmod_node_' . $traeger->id),
+    'taxmod_field_setting' => [(string) $feld->id => [$schluessel => '7']],
+]);
+
+check('der Akt ist durchgelaufen', $gewandert);
+
+/** Was die Aufloesung an **dieser Kante** sagt, frisch gelesen. */
+function anDerKante(int $relationId, string $key): string
+{
+    $nodes     = new WpdbNodeRepository();
+    $relations = new WpdbRelationRepository();
+    $fw        = new SeededFrameworkNodes($nodes, $relations, new WpdbChangelog(new SystemClock()));
+    $model     = new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $fw);
+
+    $relation = $relations->byId($relationId);
+
+    if ($relation === null) {
+        return '';
+    }
+
+    $angabe = $model->forUseSite($relation)[$key] ?? null;
+
+    // ⚠️ *`setHere` ist die halbe Zusage und die wichtigere: **an der Kante** und nicht aus der Kette
+    // des Zielknotens ([D-611](../../docs/NewConcept/90-decision-log.md)). Ohne sie waere der Lauf
+    // auch dann gruen, wenn die Angabe am Typ gelandet waere — und dann gaelte sie fuer jedes Feld,
+    // das auf ihn zeigt.*
+    //
+    // ⚠️ *`min` ist eine **Zahl**, also steht sie in `int` und nicht in `text` — ein `->text` hier
+    // las `null` und meldete «nichts gespeichert», obwohl die Zeile den Wert anzeigte.*
+    if ($angabe === null || ! $angabe->setHere) {
+        return '';
+    }
+
+    return $angabe->value->int === null ? (string) $angabe->value->text : (string) $angabe->value->int;
+}
+
+// ⚠️ **An der **Kante** und nicht am Zielknoten** ([D-611](../../docs/NewConcept/90-decision-log.md)):
+// *eine Angabe, die am Typ landet, gilt fuer jedes Feld, das auf ihn zeigt — genau das soll die
+// Verwendungsstelle ueberschreiben koennen und nicht ueberschreiben lassen.*
+check(
+    'der Wert steht an der Kante, nicht am Zielknoten',
+    anDerKante($feld->id, $schluessel) === '7',
+    'gelesen «' . anDerKante($feld->id, $schluessel) . '» statt «7»'
+);
+
+check(
+    'und die aufgeklappte Zeile zeigt ihn wieder',
+    (bool) preg_match(
+        '/name="' . preg_quote($feldName, '/') . '"[^>]*value="7"/',
+        seite($traeger->id, (string) $feld->id)
+    ),
+    'der Wert steht nicht im Steuerelement'
 );
 
 echo "\n== aufraeumen ==\n";

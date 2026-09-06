@@ -15,6 +15,7 @@ use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Model\SettingCategory;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
@@ -147,6 +148,32 @@ final class NodesScreen
 
     /** Der Name des Merkers in der Adresse. */
     private const OPENED_FOR = 'taxmod_open_for';
+
+    /**
+     * Welche Feldzeilen ihren Einstellungsbereich offen zeigen — Kanten-Ids, mit Komma.
+     *
+     * ⚠️ **Ein Umstand und kein Modellzustand** ([D-389](../../../docs/NewConcept/90-decision-log.md)):
+     * *wer gerade wohin sieht, gehört in die Adresse und nicht in die Datenbank. Er reist deshalb mit
+     * {@see self::circumstances()}, damit ein Speichern die Zeile nicht wieder zuklappt.*
+     *
+     * ⚠️ **Und er ist der ganze skriptfreie Weg** ([D-666](../../../docs/NewConcept/90-decision-log.md)):
+     * *der Knopf schickt `toggle_field_settings`, die Weiterleitung setzt diesen Parameter, und die
+     * Seite zeichnet die Zeile aufgeklappt neu. **Ein Seitenaufruf ist die einfachste Form von
+     * «nachfordern»** und braucht kein Skript.*
+     */
+    private const OPEN_ROWS = 'taxmod_open_rows';
+
+    /** Der Akt, der eine Feldzeile auf- oder zuklappt. */
+    private const TOGGLE_ROW_SETTINGS = 'toggle_field_settings';
+
+    /**
+     * Der Aufklappzustand nach diesem Akt — `false` heisst «unberührt», `null` heisst «alles zu».
+     *
+     * ⚠️ *Drei Zustände, weil zwei nicht reichen: «unberührt» muss den mitgeschickten Umstand
+     * fortschreiben, «alles zu» muss ihn löschen. Derselbe Unterschied, den {@see self::ALL_EXPANDED}
+     * für den Faltzustand des Baums nötig gemacht hat.*
+     */
+    private string|false|null $openRowsAfterAct = false;
 
     /** Stands in for the chosen locale until the browser puts the real one in its place. */
     private const LOCALE_MARKER = '__taxmod_locale__';
@@ -1692,6 +1719,10 @@ final class NodesScreen
         $firstOwn = $ownOrder[0] ?? 0;
         $lastOwn  = $ownOrder === [] ? 0 : $ownOrder[count($ownOrder) - 1];
 
+        // ⚠️ **Welche Zeilen offen sind, einmal für die ganze Tabelle** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
+        // *Alles andere bleibt zu — und «zu» heisst hier **nicht gelesen**, nicht «versteckt».*
+        $offeneZeilen = $this->openFieldRows();
+
         foreach ($relations as $relation) {
             $own = $relation->fromNodeId === $selected->id;
 
@@ -1701,6 +1732,23 @@ final class NodesScreen
                 new Control('word:own', '', __('own', 'taxmod')),
                 new Control('word:inherited', '', __('inherited', 'taxmod')),
                 new Control('word:settings', '', __('Settings of this use site', 'taxmod')),
+                // ⚠️ **Der Auf- und Zuklapper, und er ist ein gewöhnlicher Akt**
+                // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Ein Knopf im Formular der
+                // Zeile: er schickt ab, die Weiterleitung setzt den Umstand, die Seite zeichnet die
+                // Zeile aufgeklappt neu. **Das ist der skriptfreie Weg**, und es ist genau der
+                // Seitenaufruf, den der Beschluss ausdrücklich erlaubt.*
+                //
+                // ⚠️ *Das Auge sagt, was der Klick tut — dieselbe Regel wie beim Verstecken.*
+                new Control(
+                    'do',
+                    self::TOGGLE_ROW_SETTINGS,
+                    isset($offeneZeilen[$relation->id])
+                        ? __('Hide the settings of this use site', 'taxmod')
+                        : __('Show the settings of this use site', 'taxmod'),
+                    __('The settings that apply to this field here — resolved only when it is open', 'taxmod'),
+                    true,
+                    icon: isset($offeneZeilen[$relation->id]) ? 'minus' : 'admin-generic'
+                ),
                 // ⚠️ **Der Verstecken-Schalter am Feld** — der Fall, den
                 // [D-467](../../../docs/NewConcept/90-decision-log.md) als Grund nannte und für den es
                 // nie einen Knopf gab. *Gemessen am 2026-08-30: sieben versteckte Kanten, alle sieben
@@ -1911,7 +1959,11 @@ final class NodesScreen
                 // WICHTIG: Nur die Einstellungen haben eine Wertspalte -- auf sein Wort: "die
                 // ganze Spalte Value muss weg". Ein Feld ist Benutzerdaten fuer einen Datensatz,
                 // nicht fuer das Modell; die Zeile hier definiert nur seinen Typ.
-                $istEinstellung
+                $istEinstellung,
+                // ⚠️ **Nur die aufgeklappten Zeilen lösen auf** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
+                $offeneZeilen,
+                // ⚠️ *Die Worte des Bereichs — der Kern kann keins machen (`AR-2`).*
+                $this->settingsPanelWords()
             ) as $row) {
                 $body .= $row->result->markup;
             }
@@ -1963,6 +2015,31 @@ final class NodesScreen
         // also gibt es nichts mehr, was nur dieser Block konnte — und die Wahl steht dort, wo jede
         // andere Einstellung steht.*
         return $html;
+    }
+
+    /** Den neuen Aufklappzustand merken, damit die Weiterleitung ihn trägt. */
+    private function rememberOpenRows(?string $offen): void
+    {
+        $this->openRowsAfterAct = $offen;
+    }
+
+    /**
+     * Die Worte, die der aufgeklappte Einstellungsbereich braucht.
+     *
+     * ⚠️ **Der Kern kann kein Wort machen** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)):
+     * *sie reisen als `word:<key>`, wie «own» und «inherited» in der Zeile selbst. Was hier nicht
+     * steht — die Gruppe, die nach einem **Typ** heisst — zeigt seinen Schlüssel, sichtbar. **Ein
+     * bemerktes falsches Wort schlägt ein geratenes.***
+     *
+     * @return list<Control>
+     */
+    private function settingsPanelWords(): array
+    {
+        return [
+            new Control('word:' . SettingCategory::Display->value, '', __('Display', 'taxmod')),
+            new Control('word:' . SettingCategory::Rules->value, '', __('Rules', 'taxmod')),
+            new Control('word:inherited', '', __('inherited', 'taxmod')),
+        ];
     }
 
     /**
@@ -3831,6 +3908,91 @@ final class NodesScreen
         return $felder;
     }
 
+    /** Der Name des Akts, unter dem der Rand den Einstellungsbereich nachfordert. */
+    public const FRAGMENT_ACTION = 'taxmod_field_settings';
+
+    /**
+     * Den Einstellungsbereich **einer** Feldzeile nachliefern — der Rückweg vom Rand in den Kern.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   K["Knopf «aufklappen»"] -->|"ohne Skript"| S["ganze Seite neu"]
+     *   K -->|"mit Skript"| F[this]
+     *   S & F --> P["Rendering::settingsPanelForUseSite()"]
+     * ```
+     *
+     * ⚠️ **Beide Wege enden im selben Kernaufruf, und das ist Absicht**
+     * ([D-666](../../../docs/NewConcept/90-decision-log.md), `R1`): *ein Bereich, der mit Skript
+     * anders aussieht als ohne, wäre die zweite Machart, die
+     * [D-665](../../../docs/NewConcept/90-decision-log.md) an zwei Auswahlfeldern beanstandet hat.*
+     *
+     * ⚠️ **Der erste Rückweg im Projekt** — *gemessen 0 REST-Routen und 0 AJAX, bevor dies hier stand.
+     * Er läuft über `admin-post.php`, weil das der Weg ist, den jeder andere Akt dieser Seite schon
+     * geht: dieselbe Nonce, dieselbe Fähigkeitsprüfung, keine zweite Registratur.
+     * [D-627](../../../docs/NewConcept/90-decision-log.md)s zweiter Fall kann daneben treten, ohne
+     * dass hier etwas verallgemeinert werden müsste.*
+     *
+     * ⚠️ **Die Kante wird nachgeschlagen und nicht geglaubt** (`CD-5`): *nur eine, die dieser Knoten
+     * wirklich trägt. Sonst liesse sich über eine veränderte Adresse die Auflösung fremder Kanten
+     * abfragen.*
+     */
+    public function handleFieldSettings(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        $id = isset($_GET['id']) ? absint($_GET['id']) : 0;
+
+        check_admin_referer(self::ACTION . '_' . $id, '_taxmod_nonce');
+
+        $relationId = isset($_GET['relation']) ? absint($_GET['relation']) : 0;
+        $kante      = null;
+
+        foreach ($this->editor->fieldsOf($id) as $eine) {
+            if ($eine->id === $relationId) {
+                $kante = $eine;
+
+                break;
+            }
+        }
+
+        $knoten = $this->editor->find($id);
+
+        if ($kante === null || $knoten === null) {
+            wp_die(esc_html__('No such field here.', 'taxmod'), '', ['response' => 404]);
+        }
+
+        // ⚠️ *Ausgegeben wird, was der Kern zeichnet — der Rand hängt nichts an. `wp_kses_post()`
+        // wäre hier falsch: die Tafel enthält Formularfelder, und ein Filter, der sie wegnimmt,
+        // machte aus einem bedienbaren Bereich einen stummen (`CD-8`, die Zeichenkette **kommt**
+        // aus dem Renderer und wird nur weitergereicht).*
+        header('Content-Type: text/html; charset=utf-8');
+
+        echo $this->fieldSettingsFragment($knoten, $kante); // phpcs:ignore WordPress.Security.EscapeOutput
+
+        exit;
+    }
+
+    /**
+     * Derselbe Bereich, als Zeichenkette — **die Stelle, an der ein Wächter ihn greifen kann**.
+     *
+     * ⚠️ *Getrennt von {@see self::handleFieldSettings()}, weil der mit `exit` endet und ein Lauf
+     * über die Maske dann nicht weiterläuft. **Was geprüft werden soll, darf nicht hinter einem
+     * `exit` liegen** — dieselbe Trennung, die {@see self::render()} von `handlePost()` hat.*
+     */
+    public function fieldSettingsFragment(Node $node, Relation $useSite): string
+    {
+        return $this->rendering->settingsPanelForUseSite(
+            $useSite,
+            $node->id,
+            self::ROW_SETTING_FIELD . '[' . $useSite->id . ']',
+            self::pageForm($node),
+            $this->settingsPanelWords(),
+            $this->localeFromRequest()
+        );
+    }
+
     /**
      * ⚠️ **The order below is `CD-5` and does not vary**, not even on a screen only an
      * administrator can reach: capability, nonce, validate, sanitize, act.
@@ -3963,6 +4125,13 @@ final class NodesScreen
                 // because an inherited attribute belongs to the ancestor and renaming it from a
                 // descendant would rename it for every other user, silently.
                 'toggle_field_hide' => $this->editor->hideField($id, $relation),
+                // ⚠️ **Der einzige Akt auf dieser Seite, der nichts schreibt**
+                // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Er ändert einen **Umstand**
+                // — wer gerade wohin sieht — und Umstände reisen in der Adresse
+                // ([D-389](../../../docs/NewConcept/90-decision-log.md)). Der Rückgabewert ist die neue
+                // Menge, und {@see backTo()} nimmt sie unten als `$extra` auf; ohne diesen Umweg würde
+                // {@see circumstances()} die **alte** Menge fortschreiben und der Klick bliebe wirkungslos.*
+                self::TOGGLE_ROW_SETTINGS => $this->rememberOpenRows($this->openFieldRowsToggled($relation)),
                 // ⚠️ *`save_field` stand hier und ist mit der Diskette der Zeile gegangen — Name und «wie
                 // oft» kommen jetzt mit dem Seitenformular ({@see self::saveFieldRows()}).*
                 // ⚠️ **Eine Zeile mehr** — *auf sein Bestehen, dass `Display Option` `1..*` ist: «somit
@@ -4060,7 +4229,17 @@ final class NodesScreen
 
         // Everything now happens **at** a node, so the person stays there rather than being
         // sent back to a screen with nothing selected.
-        wp_safe_redirect($this->backTo($stay, ['taxmod_message' => rawurlencode($message)]));
+        $extra = ['taxmod_message' => rawurlencode($message)];
+
+        // ⚠️ **`false` heisst «dieser Akt hat am Aufklappzustand nichts geändert»** — *und `null`
+        // heisst «alles zu». Die zwei auseinanderzuhalten ist der ganze Punkt: schriebe ein
+        // geschlossener Zustand nichts in `$extra`, fiele {@see backTo()} auf den **mitgeschickten**
+        // Umstand zurück, und die Zeile ginge nie wieder zu.*
+        if ($this->openRowsAfterAct !== false) {
+            $extra[self::OPEN_ROWS] = $this->openRowsAfterAct;
+        }
+
+        wp_safe_redirect($this->backTo($stay, $extra));
         exit;
     }
 
@@ -4133,7 +4312,65 @@ final class NodesScreen
             'taxmod_collapsed' => $this->circumstance('taxmod_collapsed') ?? $this->foldStateForLinks,
             'taxmod_hidden'    => $this->circumstance('taxmod_hidden'),
             self::OPENED_FOR   => $this->openedPathForLinks,
+            // ⚠️ *Sonst klappt jedes Speichern die Zeile wieder zu, die man gerade aufgeklappt hat —
+            // derselbe Verlust, den der Faltzustand dreimal erlitten hat.*
+            self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
         ];
+    }
+
+    /**
+     * Welche Feldzeilen aufgeklappt sind — Kanten-Id ⇒ `true`.
+     *
+     * ⚠️ **Leer ist die Vorgabe, und das ist der Beschluss und keine Gestaltung**
+     * ([D-666](../../../docs/NewConcept/90-decision-log.md)): *«Standard ist nicht ausgeklappt — das
+     * heisst auch nicht gelesen.» Eine leere Menge heisst hier: keine einzige Kette über Kante,
+     * Zielknoten und Vorfahren ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ *Durch `absint()` gelesen, also fällt heraus, was keine Id ist — die Adresse wird nicht
+     * geglaubt (`CD-5`). Ob die Kante zu diesem Knoten gehört, entscheidet der Zeichner: sie kann nur
+     * aufklappen, was er ohnehin zeichnet.*
+     *
+     * @return array<int, bool>
+     */
+    private function openFieldRows(): array
+    {
+        $roh = $this->circumstance(self::OPEN_ROWS);
+
+        if ($roh === null) {
+            return [];
+        }
+
+        $aus = [];
+
+        foreach (explode(',', $roh) as $eine) {
+            $id = absint($eine);
+
+            if ($id !== 0) {
+                $aus[$id] = true;
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Dieselbe Menge, mit einer Kante mehr oder weniger — als Zeichenkette für die Adresse.
+     *
+     * ⚠️ *Ein Umschalter und kein Öffner: derselbe Knopf schliesst wieder, wie das Auge in der
+     * Baumzeile. Leer wird zu `null`, damit `add_query_arg` den Parameter fallen lässt statt ein
+     * leeres «offen» mitzuschleppen.*
+     */
+    private function openFieldRowsToggled(int $relationId): ?string
+    {
+        $offen = $this->openFieldRows();
+
+        if (isset($offen[$relationId])) {
+            unset($offen[$relationId]);
+        } else {
+            $offen[$relationId] = true;
+        }
+
+        return $offen === [] ? null : implode(',', array_keys($offen));
     }
 
     private function backTo(?int $nodeId, array $extra = []): string
@@ -4163,6 +4400,9 @@ final class NodesScreen
                     && (string) $nodeId === ($this->openedPathForLinks ?? $this->circumstance(self::OPENED_FOR))
                         ? (string) $nodeId
                         : null,
+                // ⚠️ *Die aufgeklappten Feldzeilen sind ein Umstand wie der Faltzustand — sie müssen
+                // jeden Akt überleben, sonst klappt das Speichern zu, was man gerade geöffnet hat.*
+                self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for
                 // `taxmod_hidden` replaces the ambient value and `array_filter` then drops the key —

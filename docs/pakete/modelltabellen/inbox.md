@@ -1725,3 +1725,29 @@ Datensatzweg nicht benutzt.*
 
 **ENTSCHEIDUNG ERFORDERLICH: NEIN** — aber wenn OQ-093 einmal beantwortet wird, gehoert
 `display_size` in dieselbe Antwort wie `factor` und `offset`.
+
+---
+
+## INF-060 · Zwei Luecken am aufklappbaren Einstellungsbereich der Feldzeile
+
+[D-666](../../NewConcept/90-decision-log.md) sagt, **dass** der Bereich aufklappbar ist und dass eine
+zugeklappte Zeile **nicht gelesen** wird. Beim Bauen blieben zwei Fragen offen, und beide sind
+stillschweigend beantwortet worden — hier steht, wie, damit es kein erfundener Beschluss bleibt
+(`PR-4`).
+
+**1. Duerfen mehrere Zeilen gleichzeitig offen sein?** *Der Beschluss sagt nichts dazu.* **Gebaut:
+ja** — der Umstand `taxmod_open_rows` traegt eine Menge von Kanten-Ids, und der Knopf schaltet je
+Zeile um. *Die Gegenmoeglichkeit waere «immer nur eine», was das Vergleichen zweier Felder
+unmoeglich macht — und genau dafuer ist der Bereich da (`Street Name` gegen `House Number`).*
+**Aendert man es auf «nur eine», aendert sich nur der Umstand, nicht der Weg.**
+
+**2. Was passiert mit einer nicht gespeicherten Eingabe, wenn man eine andere Zeile aufklappt?**
+⚠️ **Auf dem skriptfreien Weg ist sie weg** — *das Aufklappen ist dort ein Seitenaufruf, und der
+Knopf steht im Formular **seiner** Zeile, nicht im Seitenformular. Mit Skript bleibt sie stehen, weil
+die Seite nicht neu geladen wird.* **Zwei Wege, zwei Verhalten**, und das ist genau die Art
+Unterschied, die [D-665](../../NewConcept/90-decision-log.md) an anderer Stelle beanstandet.
+
+**ENTSCHEIDUNG ERFORDERLICH: JA fuer (2).** *Die einfachste Behebung waere, den Aufklapp-Knopf ins
+**Seitenformular** zu haengen (`form="taxmod-page-<id>"`), damit der Seitenaufruf die Eingaben
+mitnimmt und speichert. Dann klappt Aufklappen aber jedes Mal auch **Speichern** aus — und ob ein
+Blick in die Einstellungen ein Schreibvorgang sein darf, ist nicht meine Entscheidung.*

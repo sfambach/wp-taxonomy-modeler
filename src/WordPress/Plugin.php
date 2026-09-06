@@ -65,6 +65,17 @@ final class Plugin
         add_action('admin_menu', $plugin->registerMenu(...));
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
 
+        // ⚠️ **Der erste Rückweg vom Rand in den Kern** ([D-666](../../docs/NewConcept/90-decision-log.md),
+        // [D-627](../../docs/NewConcept/90-decision-log.md)) — *gemessen 0 REST-Routen und 0 AJAX,
+        // bevor dies hier stand. Er liefert den Einstellungsbereich **einer** Feldzeile nach, damit
+        // eine zugeklappte Zeile gar nicht erst aufgelöst wird. **Über `admin-post.php` und nicht über
+        // eine eigene Registratur**: dieselbe Nonce und dieselbe Fähigkeitsprüfung wie jeder andere
+        // Akt dieser Seite.*
+        add_action(
+            'admin_post_' . NodesScreen::FRAGMENT_ACTION,
+            static fn () => $plugin->screen()->handleFieldSettings()
+        );
+
         // ⚠️ **The installation's own screen** (D-397) — three decisions had been deferred to it and
         // each had its own interim: developer mode, the neutral locale, the tree's scale.
         add_action('admin_post_' . SettingsScreen::ACTION, $plugin->handleSettings(...));

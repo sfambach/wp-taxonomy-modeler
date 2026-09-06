@@ -88,6 +88,30 @@ final class FieldRowRenderer extends RendererNode
     /** Unter diesem Namen erwartet die Zeile den gezeichneten **Wert** ihrer Angabe. */
     public const VALUE = 'value';
 
+    /**
+     * Unter diesem Namen erwartet die Zeile die **Einstellungen ihrer Kante** — aufgeklappt.
+     *
+     * ⚠️ **Fehlt der Abschnitt, ist der Bereich zu — und dann ist er auch nicht gelesen**
+     * ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «Standard ist nicht
+     * ausgeklappt — das heisst auch nicht gelesen; erst beim Ausklappen wird der Bereich gefuellt.»
+     * **Darum ist das hier keine Stilfrage**: ein `display:none` hätte den Server schon auflösen und
+     * mitschicken lassen, und jede Einstellungszeile kostet eine Kette über Kante, Zielknoten und
+     * dessen Vorfahren ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public const SETTINGS = 'settings';
+
+    /**
+     * Die Kennung der aufgeklappten Zeile, damit der Rand sie wiederfindet.
+     *
+     * ⚠️ *Der skriptfreie Weg braucht sie nicht — er zeichnet die ganze Seite neu. **Der Weg mit
+     * Skript braucht genau sie**: er holt den Bereich nach und muss wissen, wohin damit
+     * ([D-627](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public static function settingsRowFor(Relation $relation): string
+    {
+        return 'taxmod-field-settings-' . $relation->id;
+    }
+
     public function name(): string
     {
         return self::NAME;
@@ -121,6 +145,8 @@ final class FieldRowRenderer extends RendererNode
             return RenderResult::of('');
         }
 
+        $spalten = 6 + (isset($context->surroundings->sections[self::VALUE]) ? 1 : 0);
+
         $cells = $this->nameCell($subject, $context)
             // ⚠️ **The target arrives as a name, not as an id to look up** — resolving it is a
             // query and one per row is `CD-7`'s loop, which is why `refersTo` exists at all.
@@ -133,8 +159,27 @@ final class FieldRowRenderer extends RendererNode
 
         $klasse = 'taxmod-field' . ($context->surroundings->locked ? ' taxmod-field-locked' : '');
 
+        // ⚠️ **Die Kanten-Id am `<tr>`, und sie ist kein Schmuck.** *Ohne sie kann der Weg mit Skript
+        // den nachgeholten Bereich nicht einhängen; der skriptfreie Weg zeichnet die Seite neu und
+        // käme ohne aus. **Eine Angabe für beide Wege ist billiger als zwei Wege mit je eigener
+        // Adressierung** — und der zweite Fall aus [D-627](../../../docs/NewConcept/90-decision-log.md)
+        // findet hier schon eine Adresse vor.*
+        $zeile = '<tr class="' . $klasse . '" data-taxmod-relation="' . $subject->id . '">' . $cells . '</tr>';
+
+        $bereich = $context->surroundings->sections[self::SETTINGS] ?? null;
+
+        if ($bereich === null || trim($bereich->body) === '') {
+            return RenderResult::of($zeile);
+        }
+
+        // ⚠️ *Eine eigene Zeile über die volle Breite und **unter** der ersten — sein Wort: «die
+        // Einstellungen sollten unter der ersten Zeile angezeigt werden». Ein `<tr>` kann nicht in
+        // einem `<td>` stecken, also ist es eine Schwesterzeile und keine Verschachtelung.*
         return RenderResult::of(
-            '<tr class="' . $klasse . '">' . $cells . '</tr>'
+            $zeile
+            . '<tr class="taxmod-field-settings-row" id="' . RenderResult::escape(self::settingsRowFor($subject)) . '">'
+            . '<td colspan="' . $spalten . '">' . $bereich->body . '</td>'
+            . '</tr>'
         );
     }
 

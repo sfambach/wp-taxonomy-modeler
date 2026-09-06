@@ -1260,3 +1260,17 @@ a.taxmod-chosen:hover {
     color: #646970;
     line-height: 1.2;
 }
+
+/*
+ * Der Einstellungsbereich unter einer Feldzeile — D-666.
+ *
+ * Er ist eine eigene Zeile ueber die volle Breite, weil ein <tr> nicht in einem <td> stecken kann.
+ * Eingerueckt, damit man sieht, zu welcher Zeile er gehoert; abgesetzt, damit die Tabelle nicht
+ * auseinanderfaellt. Nichts hier versteckt etwas: wer ihn nicht aufgeklappt hat, bekommt ihn gar
+ * nicht geschickt.
+ */
+.taxmod-field-settings-row > td {
+    background: #f6f7f7;
+    border-left: 3px solid #c3c4c7;
+    padding: .6em 1em .8em 2em;
+}
