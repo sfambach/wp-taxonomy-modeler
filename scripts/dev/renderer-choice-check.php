@@ -325,6 +325,7 @@ $merkmal = [
 
 $geprueft = 0;
 $mitNamen = 0;
+$traeger  = 0;
 $daneben  = [];
 
 foreach ($wpdb->get_results(
@@ -346,6 +347,8 @@ foreach ($wpdb->get_results(
     if ($node === null) {
         continue;
     }
+
+    ++$traeger;
 
     $name = $rendering->rendererNameFor($node);
 
@@ -388,7 +391,24 @@ check('die Zeichnung traegt das Merkmal des gesetzten Renderers', $daneben === [
 //
 // Die schaerfere Frage ist die, auf die es ankommt: **loest jede Spalte zu einem Renderer
 // auf?** Faellt eine Wahl bei einem Umzug weg, faellt diese Zahl sofort.
-check('jeder Traeger an der Kante loest zu einem Renderer auf', $mitNamen >= 20, (string) $mitNamen . ' von 28');
+// ⚠️ **Die Zahl war an seinen Bestand gebunden und ist es seit dem 2026-09-06 nicht mehr**
+// ([`waechter-bestand.md`](../../docs/pakete/modelltabellen/waechter-bestand.md)). *Sie stand auf
+// «mindestens 20 von 28» — einer Momentaufnahme davon, wie viele Knoten er gerade eingestellt hatte.
+// **Eine solche Zahl misst nicht die Regel, sondern seine Arbeit**, und sie wird rot, sobald er einen
+// Renderer wegnimmt, ohne dass etwas kaputt wäre.*
+//
+// ⚠️ **Die Zusage, auf die es ankommt, ist eine Invariante:** *jeder Träger, den es **gibt**, löst zu
+// einem Renderer auf. Fällt eine Wahl bei einem Umzug weg, bleibt der Träger stehen und zeigt ins
+// Leere — genau das fällt hier auf, unabhängig davon, wie viele es sind.*
+//
+// ⚠️ *Und der Gegenfall bleibt: **null** Träger wäre keine grüne Antwort, sondern eine leere Wiese.*
+$ohneNamen = $traeger - $mitNamen;
+
+check(
+    'jeder Traeger an der Kante loest zu einem Renderer auf',
+    $traeger > 0 && $ohneNamen === 0,
+    $traeger === 0 ? 'kein einziger Traeger' : $ohneNamen . ' von ' . $traeger . ' loesen ins Leere'
+);
 
 check('und mindestens eine Zeichnung war darunter', $geprueft >= 1, (string) $geprueft);
 
