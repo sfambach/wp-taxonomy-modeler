@@ -1639,10 +1639,11 @@ sind die zwei gemessenen Zeilen an `slider` und `checkbox` an der falschen Stell
 weggeraeumt —, oder er ist eine des **Renderers**, dann gilt er fuer alles, was ihn waehlt, und die
 zwei Zeilen sind eine Aussage ueber jede Ganzzahl mit Schieber.*
 
-## INF-056 · «date/time kann nicht als color dargestellt werden» — sein Befund, von mir nicht nachvollzogen
+## INF-056 · ERLEDIGT — es war meine Tabelle, nicht der Kode
 
-**2026-09-06, von ihm gemeldet und ausdruecklich als `<<falsch>>` markiert.** *Er hat gesehen, dass
-an einem `date/time` der Renderer `color` angeboten oder verwendet wurde — beides waere falsch.*
+**2026-09-06, gemeldet und am selben Tag aufgeklaert.** *Er sah in **meiner** Uebersicht, dass `email` die Renderer `datetime` und `color` bekomme, und markierte es als falsch — zu Recht. **Der Fehler war die Darstellung:** ich hatte drei Zeilen in eine gequetscht («`mailto` · `datetime` → `datetime` · `color` → `color`»), und das liest sich wie eine Aufzaehlung fuer `email`. Richtig ist: `email` → `mailto`, `datetime` → `datetime`, `color` → `color`.*
+
+⚠️ **Der Kode war nie betroffen** — die vier Messungen unten haben von Anfang an dagegen gesprochen, und ich habe sie trotzdem als «nicht nachvollzogen» abgelegt, statt zuerst meine eigene Tabelle nachzulesen.
 
 ⚠️ **Vier Messungen, und keine reproduziert es:**
 
@@ -1659,9 +1660,15 @@ Und der Waehler wird in `Rendering` mit `typeOfNode($knoten)` gerufen — **dem 
 dessen Seite man steht**, nicht dem des Feldes, um das es geht. **Wo eine Zeile fuer ein Feld
 gezeichnet wird, waere das der falsche Typ.***
 
-⚠️ **Was fehlt, um es zu schliessen:** *die Stelle, an der er es gesehen hat — welcher Knoten,
-welches Feld, welche Seite. **Ohne sie waere jede Reparatur geraten** (`PR-4`), und die Messung
-sagt bisher, dass der Kode es nicht hergibt.*
+⚠️ **Was davon bleibt, obwohl der Anlass wegfiel** — *die Stelle oben ist unabhaengig von seinem
+Befund eine echte Schwachstelle: **eine Auswahl ohne Typangabe antwortet mit den Rahmen statt mit
+nichts**, und der Waehler bekommt den Typ des Knotens, auf dessen Seite man steht. Solange nur
+Knotenseiten gezeichnet werden, faellt es nicht auf. **Es ist als Aufgabe wert, nicht als Fehler
+gemeldet** — kein Nutzer hat es je gesehen.*
+
+⚠️ **Und die Lehre gehoert mir, nicht ihm:** *ich habe seine Meldung eine Stunde lang gegen den Kode
+gemessen, statt zuerst nachzusehen, **was ich ihm gezeigt hatte**. Vier Messungen sprachen dagegen,
+und die naheliegendste Erklaerung — meine eigene Zeile ist falsch gesetzt — kam zuletzt.*
 
 ⚠️ *Gehoert zu [D-658](../../NewConcept/90-decision-log.md) (jeder einfache Typ hat seine eigenen
 Renderer) und [D-603](../../NewConcept/90-decision-log.md) (die Registratur sagt, was taugt).*
