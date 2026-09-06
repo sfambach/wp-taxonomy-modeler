@@ -620,6 +620,56 @@ final class DataEntryTest extends TestCase
         self::assertCount(1, $gruppen, 'und alles liegt in einer Aenderungsgruppe');
     }
 
+    // ------------------------------------------------- die Art wird umgestellt (D-651, D-653, D-654)
+
+    /**
+     * ⚠️ **Sein Wort:** *«default / user / example muss einstellbar sein.»* *Und was umgestellt wird,
+     * ist eine **Wirkung** und keine Beschriftung ([D-654](../../docs/NewConcept/90-decision-log.md)):
+     * ein `default` belegt jeden kuenftigen Datensatz vor, ein `example` wird nur gezeigt.*
+     */
+    #[Test]
+    public function the_kind_of_an_existing_record_can_be_changed(): void
+    {
+        $satz = $this->data->create($this->part->id, RecordType::Example);
+
+        $this->data->retypeRecord($satz->id, RecordType::Default);
+
+        self::assertSame(RecordType::Default, $this->records->find($satz->id)?->recordType);
+    }
+
+    /** ⚠️ *Mit Chronik wie jede andere Aenderung — sonst waere die alte Art einfach fort.* */
+    #[Test]
+    public function changing_the_kind_is_written_down(): void
+    {
+        $satz = $this->data->create($this->part->id, RecordType::User);
+
+        $vorher = count($this->buch->entries);
+
+        $this->data->retypeRecord($satz->id, RecordType::Example);
+
+        $gemeldet = array_slice($this->buch->entries, $vorher);
+        $verben   = array_map(static fn (array $z): string => $z[2], $gemeldet);
+
+        self::assertContains('record retyped', $verben);
+    }
+
+    /**
+     * ⚠️ **Dieselbe Art ist kein Ereignis.** *Ein Formular, das seinen eigenen Zustand
+     * zurueckschickt, darf keine Version hochzaehlen — eine Chronik voll unveraenderter Zeilen ist
+     * keine Chronik.*
+     */
+    #[Test]
+    public function the_same_kind_again_changes_nothing(): void
+    {
+        $satz = $this->data->create($this->part->id, RecordType::User);
+
+        $vorher = count($this->buch->entries);
+
+        $this->data->retypeRecord($satz->id, RecordType::User);
+
+        self::assertCount($vorher, $this->buch->entries);
+    }
+
     /** Der `default`-Satz dieses Knotens — die Adresse, an der eine Einstellung hängt. */
     private function defaultRecordOf(int $nodeId): int
     {

@@ -727,6 +727,119 @@ check(
     'nicht im Markup'
 );
 
+echo "\n== und die Art laesst sich an der Zeile umstellen ==\n";
+
+// ⚠️ **Sein Wort:** *«default / user / example muss einstellbar sein.»* *Gewaehlt wurde sie bisher
+// nur beim Anlegen ([D-651](../../docs/NewConcept/90-decision-log.md),
+// [D-653](../../docs/NewConcept/90-decision-log.md)) — danach stand sie als Spalte da.*
+//
+// ⚠️ **Und es ist keine Anzeige, sondern eine Wirkung** ([D-654](../../docs/NewConcept/90-decision-log.md)):
+// *ein `default` ist eine **Vorbelegung** und greift in jede kuenftige Eingabe ein. Darum geht dieser
+// Weg ueber die Maske und nicht ueber den Kern — **die Zeile muss die Auswahl auch zeichnen**, sonst
+// gaebe es nichts umzustellen, und genau daran ist die Renderer-Wahl schon einmal gescheitert.*
+$seite = seite($satzKnoten->id);
+
+check(
+    'die Zeile zeichnet einen Waehler fuer die Art',
+    (bool) preg_match(
+        '/<select name="record_type" form="taxmod-record-' . $satzId . '"/',
+        $seite
+    ),
+    'kein Waehler mit form="taxmod-record-' . $satzId . '" im Markup'
+);
+
+// ⚠️ *Und er steht auf dem, was der Satz **ist** — ein Waehler, der immer die Vorgabe zeigt, meldet
+// beim naechsten Speichern eine Aenderung, die niemand gemacht hat.*
+$hinterWaehler = preg_split('/name="record_type" form="taxmod-record-' . $satzId . '"/', $seite)[1] ?? '';
+
+check(
+    'und er steht auf der Art, die der Satz hat',
+    (bool) preg_match(
+        '/<option value="' . \Taxmod\Core\Model\RecordType::Example->value . '" selected/',
+        explode('</select>', $hinterWaehler)[0]
+    ),
+    substr(explode('</select>', $hinterWaehler)[0], 0, 120)
+);
+
+$versionVorher = (int) $wpdb->get_var("SELECT version FROM {$p}node_records WHERE id = {$satzId}");
+$schattenVorDem = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id = {$satzId}");
+
+abschicken([
+    'do'             => 'save_record',
+    'id'             => (string) $satzKnoten->id,
+    'node_record_id' => (string) $satzId,
+    'record_type'    => \Taxmod\Core\Model\RecordType::Default->value,
+    'taxmod_value'   => [(string) $satzId => [(string) $satzFeld->id => '42']],
+    '_taxmod_nonce'  => wp_create_nonce('taxmod_node_' . $satzKnoten->id),
+]);
+
+$art = (string) $wpdb->get_var("SELECT record_type FROM {$p}node_records WHERE id = {$satzId}");
+
+check(
+    'nach dem Speichern steht die neue Art da',
+    $art === \Taxmod\Core\Model\RecordType::Default->value,
+    "gelesen «{$art}»"
+);
+
+// ⚠️ *«Wie jede Aenderung» heisst: Version hoch und der Zustand davor im Schatten
+// ([D-536](../../docs/NewConcept/90-decision-log.md)). **Ohne das waere die alte Art fort**, und
+// ein Rueckgaengig haette nichts, worauf es zurueckginge.*
+check(
+    'die Version des Satzes ist hochgezaehlt',
+    (int) $wpdb->get_var("SELECT version FROM {$p}node_records WHERE id = {$satzId}") > $versionVorher,
+    'vorher ' . $versionVorher
+);
+
+check(
+    'und der Zustand davor liegt im Schatten',
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id = {$satzId}") > $schattenVorDem,
+    'vorher ' . $schattenVorDem
+);
+
+check(
+    'und das Aenderungsbuch kennt das Umstellen',
+    (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$p}changelog WHERE owner_id = {$satzId} AND owner_kind = 'record' AND what = 'record retyped'"
+    ) > 0
+);
+
+// ⚠️ **Die Gegenprobe, und sie ist die wichtigere Haelfte.** *Ein Formular, das keine Art mitschickt
+// — ein alter Reiter —, darf **nichts** umstellen. Mit `fromStorage()` waere die fehlende Angabe
+// `user` gewesen, und jedes Speichern haette einen `default`-Satz still zu einer Benutzereingabe
+// gemacht: nach [D-654](../../docs/NewConcept/90-decision-log.md) der Wegfall einer Vorbelegung.*
+$versionNach = (int) $wpdb->get_var("SELECT version FROM {$p}node_records WHERE id = {$satzId}");
+
+abschicken([
+    'do'             => 'save_record',
+    'id'             => (string) $satzKnoten->id,
+    'node_record_id' => (string) $satzId,
+    'taxmod_value'   => [(string) $satzId => [(string) $satzFeld->id => '42']],
+    '_taxmod_nonce'  => wp_create_nonce('taxmod_node_' . $satzKnoten->id),
+]);
+
+check(
+    'ohne Angabe bleibt die Art, wie sie ist',
+    (string) $wpdb->get_var("SELECT record_type FROM {$p}node_records WHERE id = {$satzId}")
+        === \Taxmod\Core\Model\RecordType::Default->value
+);
+
+// ⚠️ *Und dasselbe noch einmal zaehlt nicht als Aenderung: gleiche Art heisst kein Akt, keine
+// Version, keine Schattenzeile. **Eine Chronik voll unveraenderter Zeilen ist keine Chronik.***
+abschicken([
+    'do'             => 'save_record',
+    'id'             => (string) $satzKnoten->id,
+    'node_record_id' => (string) $satzId,
+    'record_type'    => \Taxmod\Core\Model\RecordType::Default->value,
+    'taxmod_value'   => [(string) $satzId => [(string) $satzFeld->id => '42']],
+    '_taxmod_nonce'  => wp_create_nonce('taxmod_node_' . $satzKnoten->id),
+]);
+
+check(
+    'dieselbe Art noch einmal zaehlt keine Version hoch',
+    (int) $wpdb->get_var("SELECT version FROM {$p}node_records WHERE id = {$satzId}") === $versionNach,
+    'vorher ' . $versionNach
+);
+
 echo "\n== und er laesst sich loeschen, umkehrbar ==\n";
 
 $schattenVorher = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id = {$satzId}");

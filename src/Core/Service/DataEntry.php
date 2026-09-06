@@ -1618,6 +1618,60 @@ final class DataEntry
         }
     }
 
+    /**
+     * Die **Art** eines bestehenden Datensatzes umstellen.
+     *
+     * ⚠️ **Sein Wort:** *«default / user / example muss einstellbar sein.»* *Gewaehlt wurde sie beim
+     * Anlegen ([D-651](../../../docs/NewConcept/90-decision-log.md),
+     * [D-653](../../../docs/NewConcept/90-decision-log.md)) und danach nie wieder — sie stand als
+     * Spalte da, und was man einmal falsch waehlt, blieb falsch.*
+     *
+     * ⚠️ **Was umgestellt wird, ist eine Wirkung und keine Beschriftung**
+     * ([D-654](../../../docs/NewConcept/90-decision-log.md)): *«der Unterschied ist, dass der
+     * `default` eine Vorgabe macht, die auch bei der Eingabe verwendet werden soll — eine
+     * Vorbelegung.»* **Ein Satz, der zu `default` wird, greift ab sofort in jeden neuen Datensatz
+     * dieses Knotens ein; einer, der es aufhoert zu sein, tut es nicht mehr.**
+     *
+     * ⚠️ *Gleiche Art heisst: nichts geschieht. **Kein Akt, keine Version, keine Schattenzeile** — ein
+     * Formular, das seinen eigenen Zustand zurueckschickt, ist kein Ereignis, und eine Chronik voll
+     * solcher Zeilen waere die Chronik unbrauchbar.*
+     */
+    public function retypeRecord(int $recordId, RecordType $kind): void
+    {
+        $satz = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+
+        if ($satz->recordType === $kind) {
+            return;
+        }
+
+        $vorher = $this->satzZustand($satz);
+
+        $this->changelog?->beginAct();
+
+        try {
+            $version = $this->records->retypeRecord($recordId, $kind);
+
+            $this->melden(
+                $recordId,
+                'record',
+                'record retyped',
+                $vorher,
+                // ⚠️ *Der Zustand danach wird aus dem Satz gebaut, den wir schon haben — ein zweites
+                // Lesen aus der Datenbank waere eine Abfrage fuer eine Angabe, die hier feststeht.*
+                $this->satzZustand(new NodeRecord(
+                    $satz->id,
+                    $satz->nodeId,
+                    $satz->nodeVersion,
+                    $satz->createdAt,
+                    $kind
+                )),
+                $version
+            );
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
     /** Einen Datensatz entfernen **und es melden** — mit dem Zustand, den er zuletzt hatte. */
     private function satzEntfernen(int $recordId): void
     {

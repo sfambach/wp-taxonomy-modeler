@@ -3,6 +3,7 @@
 namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\RecordRepository;
@@ -190,6 +191,29 @@ final class InMemoryRecords implements RecordRepository
         unset($this->records[$id], $this->recordVersions[$id]);
 
         return $version;
+    }
+
+    /**
+     * ⚠️ *Die Version zaehlt mit, weil der echte Speicher es tut — sonst koennte ein Kerntest nicht
+     * zeigen, dass ein Umstellen dieselbe Buchfuehrung bekommt wie jede andere Aenderung.*
+     */
+    public function retypeRecord(int $id, RecordType $kind): ?int
+    {
+        $satz = $this->records[$id] ?? null;
+
+        if ($satz === null) {
+            return null;
+        }
+
+        $this->records[$id] = new NodeRecord(
+            $satz->id,
+            $satz->nodeId,
+            $satz->nodeVersion,
+            $satz->createdAt,
+            $kind
+        );
+
+        return $this->recordVersions[$id] = 1 + ($this->recordVersions[$id] ?? 1);
     }
 
     public function findByRelationValue(int $relationId, TypedValue $value): array

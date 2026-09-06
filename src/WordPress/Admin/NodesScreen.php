@@ -2467,6 +2467,25 @@ final class NodesScreen
             $submitted = $submitted[$recordId];
         }
 
+        // ⚠️ **Die Art wird an der Zeile umgestellt** — *sein Wort: «default / user / example muss
+        // einstellbar sein.»* *Sie kommt mit demselben Speichern wie die Werte: eine Handlung, eine
+        // Aenderungsgruppe ([D-348](../../../docs/NewConcept/90-decision-log.md)) — der Akt ist
+        // draussen schon geoeffnet.*
+        //
+        // ⚠️ **`tryFrom` und nicht `fromStorage()`, und der Unterschied ist der ganze Schutz:**
+        // *`fromStorage()` antwortet auf eine fehlende Angabe mit `user`. **Ein alter Reiter ohne die
+        // Auswahl haette damit jeden `default`-Satz beim Speichern still zu einer Benutzereingabe
+        // gemacht** — und nach [D-654](../../../docs/NewConcept/90-decision-log.md) waere das keine
+        // Beschriftung, sondern der Wegfall einer Vorbelegung. **Keine Angabe heisst hier: nichts
+        // umstellen.***
+        $gewaehlteArt = RecordType::tryFrom(
+            isset($_POST['record_type']) ? sanitize_key(wp_unslash((string) $_POST['record_type'])) : ''
+        );
+
+        if ($recordId !== 0 && $gewaehlteArt !== null) {
+            $this->data->retypeRecord($recordId, $gewaehlteArt);
+        }
+
         if ($submitted === []) {
             return;
         }
@@ -2681,9 +2700,18 @@ final class NodesScreen
                 'lead'   => [
                     __('Belongs to', 'taxmod') => $this->belongsTo($selected, $halter[$record->id] ?? null),
                     __('Record', 'taxmod')     => '<code>#' . esc_html((string) $record->id) . '</code>',
-                    // ⚠️ *Die Art gehoert sichtbar dorthin, wo sie gewaehlt wurde — sonst waere sie
-                    // eine Angabe, die man beim Anlegen macht und danach nie wiedersieht.*
-                    __('Kind', 'taxmod')       => '<code>' . esc_html($record->recordType->value) . '</code>',
+                    // ⚠️ **Die Art wird hier auch **umgestellt** und nicht nur angezeigt** — *sein
+                    // Wort: «default / user / example muss einstellbar sein.» Bisher stand hier der
+                    // Wert in einem `<code>`: eine Angabe, die man beim Anlegen macht und danach nie
+                    // wieder anfassen kann.*
+                    //
+                    // ⚠️ *Am Formular **dieser Zeile**, also wird sie mit ihrem «Speichern»
+                    // geschrieben — zwei Datensaetze sind zwei Dinge, und ein Speichern darf nicht
+                    // beide umstellen.*
+                    __('Kind', 'taxmod')       => $this->recordTypeChoice(
+                        $record->recordType,
+                        'taxmod-record-' . $record->id
+                    ),
                     __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
                 ],
                 'acts'   => [
@@ -2735,7 +2763,7 @@ final class NodesScreen
      * ⚠️ *Die Beschriftungen gehen durch die Textdomaene (`AR-2`); der **Wert** ist die Kennung der
      * Aufzaehlung und wird nie uebersetzt.*
      */
-    private function recordTypeChoice(): string
+    private function recordTypeChoice(?RecordType $gewaehlt = null, string $formId = ''): string
     {
         $worte = [
             RecordType::User->value    => __('Entry — ordinary data somebody enters', 'taxmod'),
@@ -2743,17 +2771,33 @@ final class NodesScreen
             RecordType::Example->value => __('Example — shown only, it presets nothing', 'taxmod'),
         ];
 
+        $steht    = $gewaehlt ?? RecordType::standard();
         $optionen = '';
 
         foreach (RecordType::cases() as $art) {
             $optionen .= '<option value="' . esc_attr($art->value) . '"'
-                . ($art === RecordType::standard() ? ' selected' : '') . '>'
+                . ($art === $steht ? ' selected' : '') . '>'
                 . esc_html($worte[$art->value] ?? $art->value) . '</option>';
         }
 
+        // ⚠️ **Der Hinweis steht an der Bedienung und nicht bloss im Kode**
+        // ([D-654](../../../docs/NewConcept/90-decision-log.md)): *«der Unterschied ist, dass der
+        // `default` eine Vorgabe macht, die auch bei der Eingabe verwendet werden soll — eine
+        // Vorbelegung.»* **Umstellen aendert also, was mit kuenftigen Datensaetzen geschieht**, und
+        // wer das an einer Zeile tut, muss es dort lesen koennen und nicht im Entscheidungsprotokoll.
+        $hinweis = $formId === ''
+            ? ''
+            : ' <span class="description taxmod-record-type-note">'
+                . esc_html__('Changing this changes what future records start with: a default presets them, an example does not.', 'taxmod')
+                . '</span>';
+
+        // ⚠️ *Ohne `form="…"` schickt die Auswahl lautlos nichts, wenn sie ausserhalb ihres Formulars
+        // steht — eine Tabellenzelle neben der Zelle mit dem `<form>`. Beim Anlegen steht sie **in**
+        // ihrem Formular, dort bleibt das Attribut weg.*
         return '<label class="taxmod-record-type">'
             . '<span class="screen-reader-text">' . esc_html__('Kind of record', 'taxmod') . '</span>'
-            . '<select name="record_type">' . $optionen . '</select></label> ';
+            . '<select name="record_type"' . ($formId === '' ? '' : ' form="' . esc_attr($formId) . '"') . '>'
+            . $optionen . '</select></label>' . $hinweis . ' ';
     }
 
     /**

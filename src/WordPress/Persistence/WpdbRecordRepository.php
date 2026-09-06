@@ -386,6 +386,41 @@ final class WpdbRecordRepository implements RecordRepository
         return $version === null ? null : (int) $version;
     }
 
+    /**
+     * Die Art eines bestehenden Datensatzes umstellen — mit Version und Schattenzeile.
+     *
+     * ⚠️ **Erst in den Schatten, dann schreiben** ([D-536](../../../docs/NewConcept/90-decision-log.md)),
+     * *dieselbe Reihenfolge wie bei einer Wertzeile: umgekehrt hielte der Schatten zweimal die neue
+     * Art, und der Zustand davor waere nirgends.*
+     */
+    public function retypeRecord(int $id, RecordType $kind): ?int
+    {
+        global $wpdb;
+
+        $version = Query::value('Version des Datensatzes vor dem Umstellen lesen', $wpdb->prepare(
+            'SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d',
+            $id
+        ));
+
+        if ($version === null) {
+            return null;
+        }
+
+        Shadow::keepOne('node_records', $id);
+
+        $neu = 1 + (int) $version;
+
+        $wpdb->update(
+            Schema::table('node_records'),
+            ['record_type' => $kind->value, 'version' => $neu],
+            ['id' => $id],
+            ['%s', '%d'],
+            ['%d']
+        );
+
+        return $neu;
+    }
+
     public function forgetValue(int $recordId, string $path, string $locale): ?int
     {
         global $wpdb;

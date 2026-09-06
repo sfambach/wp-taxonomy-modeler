@@ -3,6 +3,7 @@
 namespace Taxmod\Core\Repository;
 
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\TypedValue;
 
@@ -102,6 +103,24 @@ interface RecordRepository
      * @return int|null Die Version des entfernten Datensatzes, oder null, wenn es ihn nicht gab.
      */
     public function forgetRecord(int $id): ?int;
+
+    /**
+     * Die **Art** eines bestehenden Datensatzes umstellen — `default`, `user` oder `example`.
+     *
+     * ⚠️ **Sein Wort:** *«default / user / example muss einstellbar sein.»* *Gewaehlt wurde sie
+     * bisher nur beim Anlegen ([D-651](../../../docs/NewConcept/90-decision-log.md),
+     * [D-653](../../../docs/NewConcept/90-decision-log.md)) — danach stand sie als Spalte da und
+     * liess sich nicht mehr anfassen.*
+     *
+     * ⚠️ **Es ist keine Kleinigkeit an einer Anzeige, sondern eine Wirkung**
+     * ([D-654](../../../docs/NewConcept/90-decision-log.md)): *ein `default` ist eine **Vorbelegung**
+     * und greift in jede kuenftige Eingabe ein, ein `example` wird nur gezeigt. Umstellen aendert
+     * also, was mit kuenftigen Datensaetzen geschieht* — darum zaehlt die Zeile ihre Version hoch
+     * und geht mit ihrem alten Zustand in den Schatten, wie jede andere Aenderung.
+     *
+     * @return int|null Die neue Version, oder null, wenn es den Datensatz nicht gibt.
+     */
+    public function retypeRecord(int $id, RecordType $kind): ?int;
 
     /**
      * Records whose value at one relation equals this one, wherever in the record it sits.
