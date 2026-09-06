@@ -446,3 +446,59 @@ Umstellungen eine Entschärfung (`PR-9`), und jede ist im Lauf selbst begründet
 4. **Drei Läufe sind rot und gehören nicht zu diesem Auftrag:** `inheritance-column` (130
    Schattenzeilen für 139 Einordnungen), `unitvalue` (wartet auf `OQ-134`), `cleartrash` (*«its
    labels went with it»*). Der dritte ist **neu** und stand in keiner der Vorwarnungen.
+
+---
+
+# Nachtrag 2026-09-06 — der Paketlauf, und was er beim ersten Lauf gefunden hat
+
+**Auf sein Wort: «ja erstelle paketlauf».** Der Preis, den der Abschnitt oben benennt — *«was
+verlorengeht, ist … die Stelle, an der ein Paket als Ganzes noch einmal durchgespielt wird»* — ist
+damit zurueckgekauft, und zwar mit **einem** Lauf statt vier: `scripts/dev/pakete-check.php`,
+**61 Zusagen**.
+
+**Er geht den Weg, den ein Mensch geht, und misst am Ergebnis:** einen Knoten anlegen, umbenennen,
+beschriften, ein Feld daran, einen Datensatz, einen Wert hinein und wieder heraus, verschieben,
+ordnen, parken, wiederherstellen, ein Feld parken und zurueckholen, loeschen — und nach dem
+Loeschen die Gegenfrage: **haengt noch eine Kante, ein Satz, eine Wertzeile, eine Beschriftung an
+etwas, das es nicht mehr gibt?**
+
+⚠️ **Er baut sich seine eigene Wiese (Praefix `__pk`) und faellt nicht in die Falle, die diesen
+Bestand teuer gemacht hat.** *Keine feste Zahl auf seinen Bestand, kein Name aus seinem Modell — die
+Astwurzeln kommen ueber ihre Rolle ([D-613](../../NewConcept/90-decision-log.md)). Die Klammer aus
+`lib/no-write.php` traegt er wie jeder andere; **`Schema::install()` ruft er ausdruecklich nicht
+auf**, weil eine DDL-Anweisung in MySQL die offene Umklammerung stillschweigend bestaetigt. Die vier
+gestrichenen Paketlaeufe riefen sie alle vier.*
+
+## Was er beim ersten Lauf gefunden hat — zwei Funde, und beide waren echt
+
+| Fund | was daraus wurde |
+|---|---|
+| **Ein Datensatz ueberlebte seinen Knoten.** Papierkorb geleert, Knoten weg, Satz stand noch da. | Kein Produktfehler, sondern **der Aufbau**: `ModelEditor` bekommt Beschriftungen und Datensaetze als optionale Abhaengigkeiten, und **nur `clearTrash()` braucht sie**. Die vier gestrichenen Paketlaeufe bauten den Dienst alle mit vier Argumenten — *ihre Aufraeum-Zusage war gruen, weil sie nie geraeumt hat.* |
+| **Zurueckholen einer geparkten Kante belebt auch geleerte Werte wieder.** Erst `put`, dann `clear`, dann `put`, dann parken und zurueckholen — **zwei** Wertzeilen statt einer. | Gemessen und als [`INF-062`](inbox.md) aufgeschrieben, **nicht im Vorbeigehen entschieden** (`PR-4`). Der Lauf leert deshalb an einem *zweiten* Feld, damit sein Abschnitt 8 die Zusage aus [D-619](../../NewConcept/90-decision-log.md) misst und nicht eine offene Frage. |
+
+## Welche Zusagen gegengeprueft sind — kaputtgemacht und rot geworden
+
+**Nicht «sie ist gruen», sondern «sie wird rot, wenn das Verhalten faellt».** Vier Eingriffe am
+Kode, jeder einzeln, jeder danach zurueckgenommen:
+
+| kaputtgemacht | rot geworden |
+|---|---|
+| die Wache gegen die unveraenderte Speicherung in `ModelEditor::rename()` | *«das Aenderungsbuch nennt Anlegen und Umbenennen — und die unveraenderte Speicherung nicht»* (`created, renamed, renamed`) |
+| `Node::renamedTo()` hebt die Version auch ohne Aenderung | dieselbe **plus** *«eine unveraenderte Speicherung hebt sie nicht»* (`3`) |
+| `WpdbRelationRepository::unparkValues()` holt nichts mehr zurueck | *«das Zurueckholen bringt Kante und Wert zurueck, mit demselben Inhalt»* (`0 Zeilen`) |
+| `ModelEditor::moveUp()` tut nichts | *«nach oben schieben vertauscht sie»* |
+
+*Dazu die beiden Funde oben, die **von selbst** rot waren, bevor sie erklaert wurden — das ist die
+ehrlichste Gegenprobe, die es gibt.*
+
+## Was aus den vier gestrichenen Laeufen bewusst **nicht** uebernommen ist
+
+| weggelassen | warum |
+|---|---|
+| `Schema::install()` und `$framework->seed()` am Anfang (alle vier taten es) | **Kode gegen Kode**, und das `install()` bricht ausserdem die Klammer auf. Dass die Tabellen stehen, wird geprueft, nicht hergestellt. |
+| die dreizehn Einzelzusagen «Tabelle x steht» (`package1`) | Die Aussage ist «das Schema steht», nicht «Tabelle x steht». **Eine Zusage, die sagt, welche fehlt** — dreizehn zu zaehlen ist die Sorte Zahl, die diesen Bestand aufgeblaeht hat. |
+| die Zaehler-Zusagen zu `AUTO_INCREMENT` (`package1` §3, `package6` §8) | Sie messen **den Speicher**, nicht den Weg eines Menschen. Vollstaendig bei `id-space`. |
+| «die Rollen sind Knoten und liegen im Settings-Zweig» (`package5` §1) | Gerueststand, kein Weg. Steht bei `scaffold` und `label-role`. |
+| «der Zweig eines Datentyps sagt weiterhin *keine Daten*» (`package6` §1) | Eine Aussage ueber die **Astauskunft**, nicht ueber das Ergebnis. Was davon zaehlt — *ein Knoten mit Feldern darf Datensaetze tragen* ([D-522](../../NewConcept/90-decision-log.md)) — ist uebernommen. |
+| die Zusagen zum Hochziehen der Kinder (`package2` §8, §12–14) | Nachgesehen im Kernlauf (`ModelEditorTest`) und dort vollstaendig. **Der Weg eines Menschen ist parken, nicht hochziehen** — das ist ein zweiter Weg und waere ein zweiter Lauf. |
+| «der Weg stimmt mit der Spalte ueberein» (`package2` §2) | Woertlich bei `path`, und dort strenger. |

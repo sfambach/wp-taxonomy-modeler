@@ -1805,3 +1805,39 @@ eine Zeile, nur weil jemand `min` gesetzt hat.*
 **Also bleibt offen, und ausdrücklich unbeantwortet (`PR-4`):** wo die Einstellungen einer
 Verwendungsstelle liegen, wenn kein Pfad und keine Spalte an `relations` sie trägt. Die zwei Ids
 stehen fest — **Verwendungsstelle** und **Einstellungskante** —, die Ablage nicht.
+
+---
+
+## INF-062 · Zurueckholen einer geparkten Kante belebt auch geleerte Werte wieder
+
+**Gefunden am 2026-09-06 beim Bau von `scripts/dev/pakete-check.php`, gemessen und nicht vermutet.**
+
+[D-619](../../NewConcept/90-decision-log.md) sagt: *die Wertzeilen einer geparkten Kante wandern mit,
+beim Zurueckholen wieder heraus. Eine Gruppe, ein Akt, umkehrbar.* **Gebaut ist mehr als das.**
+
+**Der gemessene Ablauf**, an einem eigens angelegten Knoten:
+
+| Schritt | lebende Wertzeilen |
+|---|---|
+| `put("erst")` | 1 |
+| `clear()` — der Mensch loescht den Wert | 0 |
+| `put("zweit")` | 1 |
+| `removeField()` — die Kante wird geparkt | 0, **zwei** Zeilen im Schatten (`erst`, `zweit`) |
+| `restoreField()` | **2** — `erst` ist wieder da |
+
+**Die Ursache steht in einer Zeile:** `WpdbRelationRepository::unparkValues()` holt *jede*
+Schattenzeile der Kante zurueck, die `deleted = 1` traegt. **Eine Zeile, die das Leeren geloescht
+hat, und eine, die das Parken mitgenommen hat, sehen dort gleich aus** — obwohl beide Akte ihre
+eigene Aenderungsgruppe haben, und obwohl [D-575](../../NewConcept/90-decision-log.md) genau diese
+Gruppe als das Gepaeck des Parkens benennt.
+
+**ENTSCHEIDUNG ERFORDERLICH: JA.** *Der naheliegende Griff waere, nur die Zeilen der
+**Parkgruppe** zurueckzuholen — das ist die Form, die [D-601](../../NewConcept/90-decision-log.md)
+dem Rueckgaengig ohnehin gibt. **Ihn hier im Vorbeigehen zu waehlen, waere ein erfundener Beschluss
+(`PR-4`)**, denn es ist nicht gesagt, ob ein geleerter Wert beim Zurueckholen der Kante
+wiederkommen soll oder nicht; der Papierkorb sagt «geparkt, nicht geloescht», und ein geleertes
+Feld sagt das gerade nicht.*
+
+⚠️ **Was `pakete-check.php` deshalb tut:** *er leert an einem **zweiten** Feld und parkt am ersten,
+damit Abschnitt 8 die Zusage aus D-619 misst und nicht diese offene Frage. **Der Fall ist damit
+umgangen, nicht bewacht** — wer ihn entscheidet, bekommt dort seine Zusage.*
