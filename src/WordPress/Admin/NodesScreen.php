@@ -2675,16 +2675,15 @@ final class NodesScreen
             return $html . '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>';
         }
 
-        // ⚠️ **Wer welchen Satz hält — in einer Abfrage für alle** (`CD-7`). *Ein Teil ist ein Datensatz
-        // wie jeder andere und stand darum unerkannt zwischen den anderen: gemessen an `Einheitenwert`
-        // sind es 23 Sätze, **einer davon** ein Teil des Satzes von `__uv Resistor` über die Kante
-        // `resistance`. Der Eigentümer wollte die Spalte: «zu welchem Knoten/Kante es gehört, würde ich
-        // auch noch vorne dran schreiben».*
-        $halter = $this->data->holdersOf(array_map(
-            static fn (\Taxmod\Core\Model\NodeRecord $satz): int => $satz->id,
-            $records
-        ));
-
+        // ⚠️ **Hier stand die Spalte «Belongs to» und sie ist gefallen** — *sein Wort: «die Spalte
+        // belongs to kann weg.»* *Sie nannte den Knoten, der den Satz hält; **auf derselben Seite
+        // steht dieser Knoten ohnehin schon**, denn es ist der ausgewählte. Was sie darüber hinaus
+        // verriet — dass ein **Teil** ein Datensatz wie jeder andere ist und im Block seines
+        // Zielknotens auftaucht —, bleibt wahr und braucht keine Spalte in jeder Zeile.*
+        //
+        // ⚠️ *Mit ihr geht die Abfrage nach den Haltern und die Methode, die sie las. **Toter Kode
+        // wird nicht aufbewahrt** (`CLAUDE.md`); `DataEntry::holdersOf()` bleibt, wo es gebraucht
+        // wird — das Löschen eines Teils hängt daran.*
         $zeilen = [];
 
         foreach ($records as $record) {
@@ -2698,7 +2697,6 @@ final class NodesScreen
                 'id'     => $record->id,
                 'values' => $held,
                 'lead'   => [
-                    __('Belongs to', 'taxmod') => $this->belongsTo($selected, $halter[$record->id] ?? null),
                     __('Record', 'taxmod')     => '<code>#' . esc_html((string) $record->id) . '</code>',
                     // ⚠️ **Die Art wird hier auch **umgestellt** und nicht nur angezeigt** — *sein
                     // Wort: «default / user / example muss einstellbar sein.» Bisher stand hier der
@@ -2800,41 +2798,9 @@ final class NodesScreen
             . $optionen . '</select></label>' . $hinweis . ' ';
     }
 
-    /**
-     * Wovon dieser Datensatz einer ist — der Knoten, und bei einem Teil auch die Kante.
-     *
-     * ⚠️ **Die Spalte verrät einen Unterschied, der bisher unsichtbar war.** *Ein Teil ist ein Datensatz
-     * wie jeder andere; er trägt die Id des **Zielknotens**, taucht darum in dessen Datensatz-Block auf
-     * und ist kein Datensatz dieses Knotens im gewöhnlichen Sinn, sondern ein Stück eines fremden.*
-     *
-     * ⚠️ *Der Name des haltenden Knotens wird über den Datensatz gefunden und nicht geraten. Fehlt er,
-     * steht die Id da — **eine Lücke, die man sieht, ist besser als eine, die aussieht wie nichts**.*
-     */
-    private function belongsTo(Node $selected, ?\Taxmod\Core\Model\RelationRecord $halter): string
-    {
-        if ($halter === null) {
-            return esc_html($selected->name);
-        }
-
-        $satz  = $this->data->find($halter->recordId);
-        $node  = $satz === null ? null : $this->editor->find($satz->nodeId);
-        // ⚠️ *Über den Editor und nicht über ein eigenes Kantenverzeichnis: der Schirm hat keines, und
-        // eine Abhängigkeit mehr für einen Namen wäre der falsche Preis. Die Kante gehört dem Knoten des
-        // haltenden Datensatzes — dort wird sie gesucht.*
-        $kante = null;
-
-        foreach ($satz === null ? [] : $this->editor->fieldsOf($satz->nodeId) as $eine) {
-            if ($eine->id === $halter->relationId) {
-                $kante = $eine;
-            }
-        }
-
-        return '<span class="taxmod-record-part">'
-            . esc_html($node?->name ?? ('#' . (string) ($satz->nodeId ?? 0)))
-            . ' · <code>' . esc_html($kante?->name ?? ('#' . (string) $halter->relationId)) . '</code>'
-            . '</span>';
-    }
-
+    // ⚠️ *Hier stand `belongsTo()`, der Zeichner der Spalte «Belongs to». Er ist mit ihr gegangen
+    // (sein Wort: «die Spalte belongs to kann weg») — **eine Methode, die niemand ruft, ist toter
+    // Kode**, und die Spalte selbst ist oben begründet.*
 
     /**
      * One rendered attribute in the record box.

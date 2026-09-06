@@ -582,15 +582,27 @@ if ($mitSaetzen === 0) {
         substr_count($block, 'id="taxmod-record-') . ' von ' . $saetze
     );
 
-    // ⚠️ **Vier statt drei seit [D-653](../../docs/NewConcept/90-decision-log.md), und die Aenderung
-    // dieser Zusage ist ein sichtbarer Teil der Entscheidung** (`PR-9`). *Die Satzart wird jetzt beim
-    // Anlegen **gewaehlt** — `default`, `user` oder `example` —, und was gewaehlt wird, muss man
-    // danach wiedersehen koennen. **Ohne die Spalte waere die Wahl eine Angabe, die man einmal macht
-    // und nie wieder findet.***
+    // ⚠️ **Drei, und die Zahl hat sich zweimal bewegt — beide Male sichtbar** (`PR-9`). *Mit
+    // [D-653](../../docs/NewConcept/90-decision-log.md) kam die Satzart hinzu (drei → vier): sie wird
+    // beim Anlegen **gewaehlt**, und was gewaehlt wird, muss man wiedersehen koennen. **Am 2026-09-06
+    // faellt «Belongs to» wieder heraus** (vier → drei), auf sein Wort: *«die Spalte belongs to kann
+    // weg»* — *der Knoten, der den Satz haelt, steht auf derselben Seite ohnehin schon.*
+    //
+    // ⚠️ *Was bleibt: `Record`, `Kind`, `Version`. **`Kind` ist seit heute keine Anzeige mehr,
+    // sondern ein Waehler** — dass er zeichnet und speichert, misst `renderer-choice-mask-check`
+    // ueber die Maske; hier zaehlt nur, dass die Vorspalte eine ist.*
     check(
-        'vier Vorspalten je Zeile',
-        substr_count($block, 'taxmod-table-lead') === $saetze * 4,
-        substr_count($block, 'taxmod-table-lead') . ' bei ' . ($saetze * 4) . ' erwarteten'
+        'drei Vorspalten je Zeile',
+        substr_count($block, 'taxmod-table-lead') === $saetze * 3,
+        substr_count($block, 'taxmod-table-lead') . ' bei ' . ($saetze * 3) . ' erwarteten'
+    );
+
+    // ⚠️ *Und die Spalte ist wirklich fort und nicht bloss leer — eine Ueberschrift ohne Inhalt
+    // saehe in der Zaehlung oben genauso aus wie keine.*
+    check(
+        'und «Belongs to» steht nicht mehr darin',
+        ! str_contains($block, 'Belongs to'),
+        'die Ueberschrift steht noch im Markup'
     );
 
     // ⚠️ **Und keine Einstellungsspalte.** *Gemessen: null Werte an Einstellungskanten in
