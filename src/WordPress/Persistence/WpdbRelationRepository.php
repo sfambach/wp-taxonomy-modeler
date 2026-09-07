@@ -39,23 +39,61 @@ final class WpdbRelationRepository implements RelationRepository
      * ⚠️ *`relations.name` gibt es nicht mehr. Der Verweis ist an der Kante **freiwillig** (D-580):
      * eine namenlose Kante hat keine Beschriftungszeile, und `COALESCE` macht daraus die leere
      * Zeichenkette, die dort immer schon stand.*
+     *
+     * ⚠️ **Zwei Verbünde und ein `COALESCE`, weil der Name in der **gewählten** Sprache gelesen wird
+     * und die Standardsprache der Rückfall ist** (TASK-065, TASK-061,
+     * [D-645](../../../docs/NewConcept/90-decision-log.md),
+     * [D-387](../../../docs/NewConcept/90-decision-log.md)). *`t` ist die gewählte Sprache, `d` die
+     * Standardsprache; wo `t` nichts hat, kommt `d`, und wo **beide** nichts haben, die leere
+     * Zeichenkette — **das ist die namenlose Kante und bleibt es** (D-580). Derselbe Umbau wie an
+     * {@see WpdbNodeRepository::COLUMNS}, mit diesem einen Unterschied.*
+     *
+     * ⚠️ *Der Rückfall ist eine Anzeige und keine Festschreibung: was er liefert, wird beim nächsten
+     * Speichern nicht als Text der gewählten Sprache zurückgeschrieben ({@see self::writeName()}).*
      */
-    private const COLUMNS = "r.id, r.version, r.from_node_id, r.to_node_id, r.kind, COALESCE(t.text_name, '') AS name, r.sort_order, r.hide, r.multiplicity";
+    private const COLUMNS = "r.id, r.version, r.from_node_id, r.to_node_id, r.kind, COALESCE(t.text_name, d.text_name, '') AS name, r.sort_order, r.hide, r.multiplicity";
+
+    /**
+     * In welcher Sprache dieser Speicher Namen liest und schreibt.
+     *
+     * ⚠️ **`null` heisst «die, die oben gewählt ist»** ({@see SettingsScreen::requestedLocale()}),
+     * und ausserhalb eines Bildschirms ist das die Standardsprache. *So bekommt jeder vorhandene
+     * Aufrufer die gewählte Sprache, ohne dass eine Verdrahtung sich ändert, und ein Wächter kann
+     * eine Sprache festnageln, statt sie aus der Umgebung zu erben.*
+     */
+    public function __construct(private readonly ?string $locale = null)
+    {
+    }
+
+    /** Die gewählte Sprache. */
+    private function readLocale(): string
+    {
+        return $this->locale ?? SettingsScreen::requestedLocale();
+    }
 
     private static function fromRelations(): string
     {
         return ' FROM ' . Schema::table('relations') . ' r LEFT JOIN ' . Schema::table('label_texts') . ' t'
-            . ' ON t.label_id = r.label_id AND t.locale = %s AND t.number = %s ';
+            . ' ON t.label_id = r.label_id AND t.locale = %s AND t.number = %s '
+            . ' LEFT JOIN ' . Schema::table('label_texts') . ' d'
+            . ' ON d.label_id = r.label_id AND d.locale = %s AND d.number = %s ';
     }
 
     /**
-     * ⚠️ *Vorn in der Argumentliste, weil `FROM` vor `WHERE` steht.*
+     * ⚠️ *Die vier Werte der Verbünde stehen **vorn** in der Argumentliste, weil `FROM` vor `WHERE`
+     * steht und `prepare()` der Reihe nach füllt — erst die gewählte Sprache, dann die
+     * Standardsprache.*
      *
-     * @return array{0: string, 1: string}
+     * @return array{0: string, 1: string, 2: string, 3: string}
      */
-    private static function nameArgs(): array
+    private function nameArgs(): array
     {
-        return [SettingsScreen::neutralLocale(), Label::BASE_NUMBER];
+        return [
+            $this->readLocale(),
+            Label::BASE_NUMBER,
+            SettingsScreen::neutralLocale(),
+            Label::BASE_NUMBER,
+        ];
     }
 
     /**
@@ -64,10 +102,37 @@ final class WpdbRelationRepository implements RelationRepository
      * ⚠️ **Eine namenlose Kante bekommt keine Beschriftungszeile** — *«die 127 Vererbungskanten haben
      * heute keinen Namen und brauchen auch keinen» (D-580). Der Verweis ist hier freiwillig, und
      * freiwillig heisst: nichts anlegen, was leer bliebe.*
+     *
+     * ⚠️ **Geschrieben wird in die Sprache, in der gelesen wurde** (TASK-065). *Vorher stand hier
+     * fest die Standardsprache, und damit hiess ein Feld in jeder Sprache gleich, auch wo der Knoten
+     * dahinter längst übersetzt war.*
+     *
+     * ⚠️ **Und hier steht die Sicherung gegen das stille Festschreiben, dieselbe wie am Knoten**
+     * ({@see WpdbNodeRepository::writeName()}). *Eine Kante ohne deutschen Namen **zeigt** den
+     * englischen (`COALESCE(t, d)`). Speichert jemand auf Deutsch irgendetwas anderes an ihr —
+     * verstecken, verschieben, das Ziel wechseln —, dann fährt genau dieser angezeigte englische
+     * Text als `Relation::$name` mit, und ein blindes Schreiben machte ihn zum **deutschen** Namen.*
+     *
+     * ⚠️ *Also: in einer anderen Sprache als der Standardsprache wird nur geschrieben, **wenn der
+     * Name sich von dem der Standardsprache unterscheidet**. Gleichheit heisst «der Rückfall war
+     * es», und ein Rückfall ist eine Anzeige, keine Eingabe.*
+     *
+     * ⚠️ **Der Unterschied zum Knoten steht in der ersten Bedingung: die Kante darf namenlos sein**
+     * (D-580). *Ein leerer Name ist deshalb **keine** Gleichheit mit dem Rückfall, sondern die
+     * Ansage «diese Sprache hat hier keinen Text» — er räumt die Zeile der gewählten Sprache weg und
+     * legt keine an. Wo gar keine steht, räumt er nichts; das ist die namenlose Kante, die durch
+     * jedes Speichern namenlos hindurchgeht.*
      */
-    private function writeName(Relation $relation): void
+    private function writeName(Relation $relation, bool $beimAnlegen = false): void
     {
-        $ablage = new WpdbLabelRepository();
+        $ablage   = new WpdbLabelRepository();
+        $standard = SettingsScreen::neutralLocale();
+        // ⚠️ **Eine neue Kante bekommt ihren Namen in der Standardsprache, gleich welche oben gewählt
+        // ist** — *derselbe Grund wie am Knoten: der Name in der Standardsprache ist der **Boden**
+        // der Rückfallkette (D-387, D-645), und eine Übersetzung ist etwas, das man einer benannten
+        // Kante gibt, nicht ihr erster Name. **Dasselbe gilt für das Zurückholen aus dem Schatten**
+        // ({@see self::unpark()}): der Name dort ist der, der einmal der Boden war.*
+        $sprache = $beimAnlegen ? $standard : $this->readLocale();
 
         if ($relation->name === '') {
             $ablage->forget(
@@ -75,9 +140,13 @@ final class WpdbRelationRepository implements RelationRepository
                 IdentitySpace::Relation,
                 SeededRole::Name,
                 Label::BASE_NUMBER,
-                SettingsScreen::neutralLocale()
+                $sprache
             );
 
+            return;
+        }
+
+        if ($sprache !== $standard && $relation->name === $this->standardName($relation->id)) {
             return;
         }
 
@@ -86,8 +155,31 @@ final class WpdbRelationRepository implements RelationRepository
             IdentitySpace::Relation,
             SeededRole::Name,
             Label::BASE_NUMBER,
-            SettingsScreen::neutralLocale(),
+            $sprache,
             $relation->name
+        ));
+    }
+
+    /**
+     * Wie die Kante in der Standardsprache heisst — der letzte Schritt der Rückfallkette.
+     *
+     * ⚠️ *Eine eigene Frage und nicht `byId()` mit anderer Sprache: `byId()` fällt selbst zurück und
+     * könnte deshalb nie «nichts» antworten. Hier wird genau das gebraucht — **steht da eine Zeile,
+     * und was steht darin**. Bei einer namenlosen Kante steht keine, und die leere Zeichenkette, die
+     * dann herauskommt, wird oben nie verglichen.*
+     */
+    private function standardName(int $relationId): string
+    {
+        global $wpdb;
+
+        return (string) Query::value('Kantenname in der Standardsprache lesen', $wpdb->prepare(
+            'SELECT t.text_name FROM ' . Schema::table('relations') . ' r'
+            . ' JOIN ' . Schema::table('label_texts') . ' t'
+            . ' ON t.label_id = r.label_id AND t.locale = %s AND t.number = %s'
+            . ' WHERE r.id = %d',
+            SettingsScreen::neutralLocale(),
+            Label::BASE_NUMBER,
+            $relationId
         ));
     }
 
@@ -117,7 +209,7 @@ final class WpdbRelationRepository implements RelationRepository
 
             $relation = $relation->withAssignedId((int) $wpdb->insert_id);
 
-            $this->writeName($relation);
+            $this->writeName($relation, true);
 
             return $relation;
         }
@@ -137,7 +229,7 @@ final class WpdbRelationRepository implements RelationRepository
             ['%d', '%d', '%d', '%d', '%s', '%d', '%d', '%s']
         );
 
-        $this->writeName($relation);
+        $this->writeName($relation, true);
 
         return $relation;
     }
@@ -204,7 +296,7 @@ final class WpdbRelationRepository implements RelationRepository
 
         $row = Query::row('Kante lesen', $wpdb->prepare(
             'SELECT ' . self::COLUMNS . self::fromRelations() . 'WHERE r.id = %d',
-            ...[...self::nameArgs(), $relationId]
+            ...[...$this->nameArgs(), $relationId]
         ));
 
         return $row === null ? null : $this->hydrate($row);
@@ -276,7 +368,7 @@ final class WpdbRelationRepository implements RelationRepository
         $rows = Query::rows('Feldkanten des Knotens lesen', $wpdb->prepare(
             'SELECT ' . self::COLUMNS . self::fromRelations() . "WHERE r.from_node_id IN ({$places})
              ORDER BY {$rang} ASC, r.sort_order ASC, r.id ASC",
-            [...self::nameArgs(), ...$ids, ...$ranglos]
+            [...$this->nameArgs(), ...$ids, ...$ranglos]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -298,7 +390,7 @@ final class WpdbRelationRepository implements RelationRepository
         $rows = Query::rows('Feldkanten auf das Ziel lesen', $wpdb->prepare(
             'SELECT ' . self::COLUMNS . self::fromRelations() . "WHERE r.to_node_id IN ({$places})
              ORDER BY r.from_node_id ASC, r.sort_order ASC, r.id ASC",
-            [...self::nameArgs(), ...array_map(intval(...), $targetIds)]
+            [...$this->nameArgs(), ...array_map(intval(...), $targetIds)]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -478,8 +570,11 @@ final class WpdbRelationRepository implements RelationRepository
         $ausDemSchatten = (string) ($zeile['name'] ?? '');
         $zurueck        = $ausDemSchatten === '' ? null : $this->byId($relationId);
 
+        // ⚠️ *Und zwar in die **Standardsprache**, gleich welche oben gewählt ist (TASK-065): der Name
+        // im Schatten ist der, der einmal der Boden der Rückfallkette war, und ein Zurückholen ist
+        // ein Anlegen und keine Übersetzung.*
         if ($zurueck !== null) {
-            $this->writeName($zurueck->renamedTo($ausDemSchatten));
+            $this->writeName($zurueck->renamedTo($ausDemSchatten), true);
         }
 
         // ⚠️ **Mit der Gruppe, mit der geparkt wurde** (`INF-062`,
@@ -577,7 +672,7 @@ final class WpdbRelationRepository implements RelationRepository
         $rows = Query::rows('Kanten am Knoten lesen', $wpdb->prepare(
             'SELECT ' . self::COLUMNS . self::fromRelations()
                 . "WHERE r.from_node_id IN ({$places}) OR r.to_node_id IN ({$places})",
-            ...[...self::nameArgs(), ...$ids, ...$ids]
+            ...[...$this->nameArgs(), ...$ids, ...$ids]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);

@@ -2214,7 +2214,7 @@ nicht gepflegt. Wer sie von Hand aendert, hat eine zweite Quelle der Wahrheit an
 
 ---
 
-[ ] TASK-065  Auch der Kantenname wird in der gewaehlten Sprache gelesen und geschrieben
+[x] TASK-065  Auch der Kantenname wird in der gewaehlten Sprache gelesen und geschrieben
 
 **Der Rest von TASK-061**, dort beim Bauen gefunden und ausdrücklich liegengelassen:
 `WpdbRelationRepository::nameArgs()` liest weiter fest die Standardsprache. **Der Knotenname folgt
@@ -2238,3 +2238,19 @@ Rückfall muss das aushalten, ohne eine anzulegen.*
 **Zusage:** je Sprache ihr Text, Rückfall wo eine fehlt, Speichern in Sprache A lässt B unangetastet
 — an einer Kante gemessen, nicht an einem Knoten. Anzuhängen an `label-space-check.php`, wo dieselben
 neun Zusagen für den Knoten seit heute stehen.
+
+**Gebaut am 2026-09-07.** Derselbe Umbau: der Kantenspeicher trägt seine Sprache
+(`__construct(?string $locale = null)`, `null` heisst «die gewählte»), verbindet `label_texts`
+zweimal und nimmt `COALESCE(gewählt, standard, '')`, und `writeName()` schreibt in die Sprache, in
+der gelesen wurde. **Dieselbe Sicherung steht:** in einer anderen Sprache als der Standardsprache
+wird nur geschrieben, wenn der Name sich von dem der Standardsprache unterscheidet. *Mit ausgebauter
+Sicherung gemessen: ein Verstecken auf Französisch trug «`__ls Feld`» als französischen Namen ein.*
+
+⚠️ **Die namenlose Kante geht unverändert hindurch:** ein leerer Name ist keine Gleichheit mit dem
+Rückfall, sondern räumt die Zeile der gewählten Sprache weg — und wo keine steht, räumt er nichts.
+*Gemessen: nach einem Speichern auf Französisch trägt eine namenlose Kante null Beschriftungszeilen.*
+
+⚠️ *Ein Anlegen und ein Zurückholen aus dem Schatten schreiben weiter in die Standardsprache, gleich
+was oben gewählt ist — sie sind der Boden der Rückfallkette, keine Übersetzung.*
+
+**Elf Zusagen an `label-space-check.php`, Abschnitt 8.**

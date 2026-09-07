@@ -364,11 +364,135 @@ $check(
     (string) $textIn($ziel->id, $standard)
 );
 
-echo "\n8 · Der Lauf raeumt hinter sich auf\n";
+echo "\n8 · Auch der Kantenname wird in der gewaehlten Sprache gelesen und geschrieben\n";
+
+// ⚠️ **Der Rest von TASK-061, als TASK-065 nachgeholt.** *Der Knotenname folgte seit dem 2026-09-07
+// der gewaehlten Sprache, der Kantenname nicht — `nameArgs()` gab fest die Standardsprache in den
+// Verbund. **Ein Feld hiess damit in jeder Sprache gleich**, auch wo der Knoten dahinter uebersetzt
+// war.*
+//
+// ⚠️ **Gemessen wird hier an einer Kante und nicht an einem Knoten**, weil die Kante einen Fall hat,
+// den der Knoten nicht hat: *sie darf **namenlos** sein
+// ([D-580](../../docs/NewConcept/90-decision-log.md)) — dann hat sie gar keine Beschriftungszeile,
+// und der Rueckfall muss das aushalten, **ohne eine anzulegen**.*
+
+$kantenImStand  = new WpdbRelationRepository($standard);
+$kantenDeutsch  = new WpdbRelationRepository('de_DE');
+$kantenFranzoes = new WpdbRelationRepository('fr_FR');
+
+$textAnKante = static fn (int $id, string $sprache): ?string => $wpdb->get_var($wpdb->prepare(
+    "SELECT t.text_name FROM {$relations} r JOIN {$texts} t ON t.label_id = r.label_id
+     WHERE r.id = %d AND t.locale = %s AND t.number = 'one'",
+    $id,
+    $sprache
+));
+
+$check(
+    'eine frisch angelegte Kante traegt ihren Namen in der Standardsprache',
+    $kantenImStand->byId($kante->id)?->name === '__ls Feld',
+    (string) $kantenImStand->byId($kante->id)?->name
+);
+
+// ⚠️ **Speichern in Sprache A laesst Sprache B unangetastet** — *umbenannt wird durch einen
+// Bearbeiter, dessen Kantenspeicher auf Deutsch steht.*
+$kantenAufDeutsch = new ModelEditor($deutsch, $kantenDeutsch, $framework, $log);
+$kantenAufDeutsch->renameField($traeger->id, $kante->id, '__ls Feld deutsch');
+
+$check(
+    'ein Umbenennen in der zweiten Sprache schreibt dort',
+    $textAnKante($kante->id, 'de_DE') === '__ls Feld deutsch',
+    (string) $textAnKante($kante->id, 'de_DE')
+);
+
+$check(
+    'und laesst die Standardsprache der Kante unangetastet',
+    $textAnKante($kante->id, $standard) === '__ls Feld',
+    (string) $textAnKante($kante->id, $standard)
+);
+
+$check(
+    'die Kante liefert jeder der beiden Sprachen ihren Text',
+    $kantenDeutsch->byId($kante->id)?->name === '__ls Feld deutsch'
+        && $kantenImStand->byId($kante->id)?->name === '__ls Feld',
+    $kantenDeutsch->byId($kante->id)?->name . ' / ' . $kantenImStand->byId($kante->id)?->name
+);
+
+$check(
+    'wo eine Sprache an der Kante fehlt, kommt die Standardsprache',
+    $kantenFranzoes->byId($kante->id)?->name === '__ls Feld',
+    (string) $kantenFranzoes->byId($kante->id)?->name
+);
+
+// ⚠️ **Der heikle Teil, derselbe wie am Knoten: der Rueckfall wird nicht festgeschrieben.** *Die
+// Kante hat keinen franzoesischen Namen und **zeigt** deshalb den der Standardsprache. Wird an ihr
+// auf Franzoesisch etwas anderes gespeichert — hier das Verstecken —, faehrt genau dieser angezeigte
+// Text als Name mit.*
+$kantenAufFranzoesisch = new ModelEditor($franzoes, $kantenFranzoes, $framework, $log);
+$kantenAufFranzoesisch->hideField($traeger->id, $kante->id, true);
+
+$check(
+    'ein Speichern auf dem Rueckfall legt an der Kante keine Zeile in der gewaehlten Sprache an',
+    $textAnKante($kante->id, 'fr_FR') === null,
+    'fr_FR traegt jetzt «' . (string) $textAnKante($kante->id, 'fr_FR') . '»'
+);
+
+$check(
+    'und die Standardsprache der Kante steht unveraendert da',
+    $textAnKante($kante->id, $standard) === '__ls Feld',
+    (string) $textAnKante($kante->id, $standard)
+);
+
+// ⚠️ *Die Gegenprobe: ein **anderer** Text in derselben Sprache legt die Zeile sehr wohl an.*
+$kantenAufFranzoesisch->renameField($traeger->id, $kante->id, '__ls champ');
+
+$check(
+    'ein wirklich anderer Text legt die Zeile der gewaehlten Sprache an der Kante an',
+    $textAnKante($kante->id, 'fr_FR') === '__ls champ',
+    (string) $textAnKante($kante->id, 'fr_FR')
+);
+
+$check(
+    'und dabei bleiben die beiden anderen Sprachen der Kante stehen',
+    $textAnKante($kante->id, $standard) === '__ls Feld'
+        && $textAnKante($kante->id, 'de_DE') === '__ls Feld deutsch',
+    (string) $textAnKante($kante->id, $standard) . ' / ' . (string) $textAnKante($kante->id, 'de_DE')
+);
+
+// ⚠️ **Und der Fall, den es am Knoten nicht gibt: die namenlose Kante** (D-580). *Sie hat in keiner
+// Sprache eine Zeile, `COALESCE` macht daraus die leere Zeichenkette — und ein Speichern in einer
+// anderen Sprache darf ihr **keine** anlegen. **Ohne die Sicherung waere hier die leere Zeichenkette
+// als franzoesischer Name eingetragen worden**, oder schlimmer: der Text, den ein spaeterer Rueckfall
+// geliefert haette.*
+$namenlos = $editor->addField($traeger->id, $ziel->id, '__ls Namenlos');
+$ablage->forget($namenlos->id, IdentitySpace::Relation, SeededRole::Name, Label::BASE_NUMBER, $standard);
+
+$zeilenAn = static fn (int $id): int => (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$relations} r JOIN {$texts} t ON t.label_id = r.label_id
+     WHERE r.id = %d AND t.text_name IS NOT NULL AND t.text_name <> ''",
+    $id
+));
+
+$check(
+    'eine namenlose Kante kommt in jeder Sprache namenlos an',
+    $kantenImStand->byId($namenlos->id)?->name === ''
+        && $kantenFranzoes->byId($namenlos->id)?->name === '',
+    '«' . (string) $kantenImStand->byId($namenlos->id)?->name . '» / «'
+        . (string) $kantenFranzoes->byId($namenlos->id)?->name . '»'
+);
+
+$kantenAufFranzoesisch->hideField($traeger->id, $namenlos->id, true);
+
+$check(
+    'und ein Speichern in einer anderen Sprache legt ihr keine Beschriftungszeile an',
+    $zeilenAn($namenlos->id) === 0,
+    $zeilenAn($namenlos->id) . ' Zeile(n)'
+);
+
+echo "\n9 · Der Lauf raeumt hinter sich auf\n";
 
 $relRepo->purgeRelationsTouching($traeger->id);
 $ablage->forgetOwners([$traeger->id, $ziel->id], IdentitySpace::Node);
-$ablage->forgetOwners([$kante->id], IdentitySpace::Relation);
+$ablage->forgetOwners([$kante->id, $namenlos->id], IdentitySpace::Relation);
 
 foreach ([$traeger, $ziel] as $weg) {
     $stand = $nodeRepo->find($weg->id);
