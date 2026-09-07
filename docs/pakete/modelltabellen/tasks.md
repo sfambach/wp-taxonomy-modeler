@@ -2103,3 +2103,34 @@ Saetzen**, einer je Verwendungsstelle, und ueberschreiben einander nicht.*
 
 ⚠️ *Und der Befund oben ueber den Namen steht weiter: **`node_records` haelt jetzt auch
 Kanten-Saetze.** Er ist damit faellig und nicht erledigt.*
+
+---
+
+[ ] TASK-063  Der Tabellenrenderer bekommt den Umschalter horizontal / vertikal
+
+**2026-09-06, sein Auftrag:** *«ich würde gerne hier auch horizontal und vertikal einfügen, horizontal
+kopf oben daten darunter, vertikal kopf links daten rechts davon, wir können auch zwei rendere daraus
+machen ist mir im prinzip egal»* — und: *«renderer anpassung hinten anhängen»*, also ans Ende der
+Liste.
+
+**Es wird einer mit einem Umschalter und nicht zwei** — das hat er selbst schon einmal entschieden,
+am Kompaktrenderer ([D-471](../../NewConcept/90-decision-log.md)): *«der Kompaktrenderer, der die
+Eigenschaften hat horizontal beziehungsweise vertikal, also **einen Umschalter**»*. Die Begründung von
+damals gilt hier wörtlich: zwei Renderer, die sich in **einer** Achse unterscheiden, sind zwei
+Registrierungen, zwei Namen im `renderer`-Schlüssel und zwei Stellen, an denen dieselbe
+Tabellenhaftigkeit gepflegt wird.
+
+⚠️ **Der Umschalter existiert schon und muss nicht gebaut werden.** *Der Knoten `Orientation` mit den
+Kindern `horizontal` und `vertical` steht im Modell, und `compact` hängt daran
+(`compact --orientation--> Orientation`, gemessen am 2026-09-06). Für `table` ist es **eine Kante
+mehr** — kein neuer Mechanismus, und Vorschau, Vererbung und Einstellungstafel können es sofort.*
+
+| | Kopf | Daten |
+|---|---|---|
+| **horizontal** (Vorgabe) | oben | darunter, eine Zeile je Datensatz |
+| **vertikal** | links | rechts daneben, eine **Spalte** je Datensatz |
+
+⚠️ *Vorgabe `horizontal`, wie bei `compact` — dann ändert sich nichts, solange niemand umstellt.*
+
+**Zusage:** *derselbe Datensatz, zweimal gezeichnet, einmal je Lage — und die Köpfe stehen einmal
+oben und einmal links.* Gemessen am Markup, nicht an einer Dienstmethode.
