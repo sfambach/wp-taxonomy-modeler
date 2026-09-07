@@ -8,8 +8,8 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 
 | | |
 |---|---|
-| Entscheidungen | **492**, davon **31** ersetzt oder teilweise überholt |
-| Offene Fragen | **126**, davon **32** noch offen |
+| Entscheidungen | **681**, davon **36** ersetzt oder teilweise überholt |
+| Offene Fragen | **143**, davon **32** noch offen |
 
 ## Offene Fragen
 
@@ -37,7 +37,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-018](91-open-questions.md) | **offen** | Where does the value of an extended attribute live? |
 | [OQ-019](91-open-questions.md) | beantwortet | Cycles and depth in the render descent |
 | [OQ-020](91-open-questions.md) | beantwortet | Loading the subgraph without an N+1 |
-| [OQ-021](91-open-questions.md) | **offen** | Composition and aggregation: what is the difference here? |
+| [OQ-021](91-open-questions.md) | beantwortet | Composition and aggregation: what is the difference here? |
 | [OQ-022](91-open-questions.md) | beantwortet | One settings table, or one per owner kind? |
 | [OQ-023](91-open-questions.md) | beantwortet | Is inheritance one edge kind, or a separate construct? |
 | [OQ-024](91-open-questions.md) | **offen** | How are resolved settings computed without melting down? |
@@ -125,7 +125,7 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-106](91-open-questions.md) | beantwortet | Do settings split the same way, into `NodeSetting` and `EdgeSetting`? |
 | [OQ-107](91-open-questions.md) | **offen** | What declares a free setting? Today nothing does. |
 | [OQ-108](91-open-questions.md) | beantwortet | How does a tree row say how many records a class has? |
-| [OQ-109](91-open-questions.md) | **offen** | One key holds one answer, so where does an *ordered list* of renderers live? |
+| [OQ-109](91-open-questions.md) | beantwortet | One key holds one answer, so where does an *ordered list* of renderers live? |
 | [OQ-110](91-open-questions.md) | beantwortet | Does hiding a placement hide what hangs below it? |
 | [OQ-111](91-open-questions.md) | beantwortet | `hide` and a null renderer say the same thing. Which one owns it? |
 | [OQ-112](91-open-questions.md) | beantwortet | Does the renderer descend, and is everything still loaded before it starts? |
@@ -143,6 +143,23 @@ steht, damit man 432 Entscheidungen überblicken kann, ohne 527 KB zu lesen.*
 | [OQ-124](91-open-questions.md) | beantwortet | Gibt es im Code spezialisierte Knotenklassen? D-036 hat das delegiert und um Korrektur gebeten |
 | [OQ-125](91-open-questions.md) | **offen** | Heissen «der Wert ist ein Zeiger» und «der Wert liegt als Zeiger» weiter fast gleich? |
 | [OQ-126](91-open-questions.md) | beantwortet | Wird eine Labeländerung protokolliert? Heute nicht, und niemand hat es entschieden |
+| [OQ-127](91-open-questions.md) | beantwortet | · Ist ein Feld ohne eigene Angabe wirklich Pflicht? |
+| [OQ-128](91-open-questions.md) | beantwortet | · Lässt sich ein endgültig gelöschter Knoten aus dem Changelog zurückbauen? |
+| [OQ-129](91-open-questions.md) | beantwortet | Wie hält ein Test-Record den Wert eines Datentyp-Knotens? |
+| [OQ-130](91-open-questions.md) | beantwortet | Wann ist der Rückfall auf die Typvorgabe eine zu meldende Ersetzung? |
+| [OQ-131](91-open-questions.md) | beantwortet | Sind die vier Zweige in Wahrheit zwei Fragen, und sollen sie es auch im Code sein? |
+| [OQ-132](91-open-questions.md) | beantwortet | art |
+| [OQ-133](91-open-questions.md) | beantwortet | Wie weit läuft die Prüfung «ein Knoten zeigt nicht auf sich selbst»? |
+| [OQ-134](91-open-questions.md) | beantwortet | Wo lebt `label_role`, wenn die `settings`-Tabelle fällt? |
+| [OQ-135](91-open-questions.md) | beantwortet | einen |
+| [OQ-136](91-open-questions.md) | beantwortet | Was tut «Default nachtragen» mit Feldern, die schon einen Wert haben? |
+| [OQ-137](91-open-questions.md) | beantwortet | Journal und Rückgängig: Format, Umfang, Reichweite |
+| [OQ-138](91-open-questions.md) | beantwortet | Kommt die Schattentabelle zuerst oder als zweite Stufe? |
+| [OQ-139](91-open-questions.md) | beantwortet | ausserhalb |
+| [OQ-140](91-open-questions.md) | beantwortet | Einstellungskante |
+| [OQ-141](91-open-questions.md) | beantwortet | gesäter Knoten |
+| [OQ-142](91-open-questions.md) | **offen** | zurück |
+| [OQ-143](91-open-questions.md) | **offen** | Teil |
 
 ## Entscheidungen nach Sachgebiet
 
@@ -151,15 +168,15 @@ Eine Entscheidung steht in mehreren Gebieten, wenn sie mehrere betrifft.*
 
 | Sachgebiet | Entscheidungen | davon überholt |
 |---|---|---|
-| [10-domain-core](10-domain-core.md) | **218** | 19 |
-| [30-renderer](30-renderer.md) | **192** | 11 |
-| [20-interaction](20-interaction.md) | **101** | 4 |
-| [50-wordpress-persistence](50-wordpress-persistence.md) | **90** | 4 |
+| [10-domain-core](10-domain-core.md) | **237** | 20 |
+| [30-renderer](30-renderer.md) | **214** | 11 |
+| [20-interaction](20-interaction.md) | **116** | 4 |
+| [50-wordpress-persistence](50-wordpress-persistence.md) | **110** | 4 |
+| [40-i18n](40-i18n.md) | **37** | 2 |
+| [02-field-and-setting](02-field-and-setting.md) | **37** | 1 |
 | [70-migration](70-migration.md) | **36** | 1 |
-| [40-i18n](40-i18n.md) | **35** | 2 |
 | [01-glossary](01-glossary.md) | **18** | 1 |
 | [60-calculation](60-calculation.md) | **17** | — |
-| [02-field-and-setting](02-field-and-setting.md) | **12** | — |
 | [00-vision-and-scope](00-vision-and-scope.md) | **9** | — |
 
 ## Entscheidungen
@@ -337,8 +354,8 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-166](90-decision-log.md) | 2026-08-23 | agreed` (confirmed by the owner 2026-08-23) | 10-domain-core, 30-renderer | What cannot have been meant is removed by the converter; what might have been meant is questioned by the validator. |
 | [D-167](90-decision-log.md) | 2026-08-23 | agreed | 50-wordpress-persistence, 30-renderer | Contains is the default in the quick search, an operator field carries the filter, and there is no wildcard character. |
 | [D-168](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-217 | 30-renderer | Überholt durch D-217 |
-| [D-169](90-decision-log.md) | 2026-08-23 | agreed | 00-vision-and-scope, 50-wordpress-persistence | Yes, a WordPress plugin — and WordPress is used to the full, not held at arm's length. What is borrowed gets written down. |
-| [D-170](90-decision-log.md) | 2026-08-23 | agreed` (confirmed by the owner 2026-08-23) | 50-wordpress-persistence, 00-vision-and-scope | The namespace is the marker, a ledger catches what the namespace cannot, and a second boundary is the intended shape of a port. |
+| [D-169](90-decision-log.md) | 2026-08-23 | agreed` (`ACTIVE`, vom Eigentümer bestätigt 2026-09-01) | 00-vision-and-scope, 50-wordpress-persistence | `ACTIVE`, bestätigt am 2026-09-01, und die Ergänzung räumt einen Denkfehler von mir aus. |
+| [D-170](90-decision-log.md) | 2026-08-23 | agreed` (`ACTIVE`, bestätigt 2026-09-01; das Hauptbuch fehlt) | 50-wordpress-persistence, 00-vision-and-scope | `ACTIVE`, bestätigt am 2026-09-01 — mit einer offenen Aufgabe. |
 | [D-171](90-decision-log.md) | 2026-08-23 | agreed | 00-vision-and-scope | WordPress is not underneath the core, it is around it, and every arrow points inward. |
 | [D-172](90-decision-log.md) | 2026-08-23 | agreed | 70-migration, 10-domain-core | Undo is in scope. It is a step forward, not a rewind, and its reach is the trash. |
 | [D-173](90-decision-log.md) | 2026-08-23 | agreed | 70-migration | Migration is not an undo case, and importing existing WordPress tables is its own tool. |
@@ -351,7 +368,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-180](90-decision-log.md) | 2026-08-23 | agreed | 20-interaction | Deleting a node asks whether the branch goes too; dragging moves whole branches, several at once; duplicating lands directly beneath with an indexed … |
 | [D-181](90-decision-log.md) | 2026-08-23 | agreed`, default reversed by [D-238](#) | 20-interaction, 30-renderer | What may be picked is a property of the use site, not of the node. The legacy *hide* control is retired. |
 | [D-182](90-decision-log.md) | 2026-08-23 | agreed | 20-interaction | Branch deletion stops being its own button and becomes the second answer in the delete dialog. |
-| [D-183](90-decision-log.md) | 2026-08-23 | agreed | 10-domain-core | Having data is read off the branch: `Model` and `Kompositionen` have data, everything else is means to an end. |
+| [D-183](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-522 | 10-domain-core | Die Speicherhälfte ist überholt durch D-522 |
 | [D-184](90-decision-log.md) | 2026-08-23 | agreed | 20-interaction, 10-domain-core | Small lists do not get a second storage mechanism; they get a cheaper editor. |
 | [D-185](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-187, D-188 | 10-domain-core, 01-glossary | Überholt durch D-187 und D-188 |
 | [D-186](90-decision-log.md) | 2026-08-23 | agreed | 00-vision-and-scope | V1–V9 are confirmed, and V5 gains a nuance that changes what it forbids. |
@@ -392,7 +409,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-221](90-decision-log.md) | 2026-08-23 | agreed | 10-domain-core, 20-interaction | There is no *fixed value*. There is a restriction that collapses to one. |
 | [D-222](90-decision-log.md) | 2026-08-23 | agreed | ⚠️ **keins** | A decision is the record of a choice, not a wall. Revising one is normal work. |
 | [D-223](90-decision-log.md) | 2026-08-23 | agreed | 30-renderer, 20-interaction | Automatic is a default, never a fact. |
-| [D-224](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt | 30-renderer | A decorator is a renderer, and one layer of decoration is allowed. |
+| [D-224](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt | ⚠️ **keins** | Verschoben in den Dachboden am 2026-08-29 |
 | [D-225](90-decision-log.md) | 2026-08-23 | ⚠️ ersetzt durch D-226 | 30-renderer, 20-interaction | Überholt durch D-226 |
 | [D-226](90-decision-log.md) | 2026-08-23 | agreed | 30-renderer, 20-interaction | Invertibility decides only whether a form can be written into. Replace or decorate is a free choice. Supersedes D-225. |
 | [D-227](90-decision-log.md) | 2026-08-23 | agreed | 20-interaction | The rule counts possibilities, not entries. Refines D-198 and resolves its clash with D-056. |
@@ -506,11 +523,11 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-335](90-decision-log.md) | 2026-08-24 | agreed | 10-domain-core, 01-glossary | The type of D-331 is called `markup`. |
 | [D-336](90-decision-log.md) | 2026-08-24 | agreed | 00-vision-and-scope, 50-wordpress-persistence | The project is called Taxonomy Modeller, the repository `wp-taxonomy-modeler`, and the database prefix is `taxmod_`. |
 | [D-337](90-decision-log.md) | 2026-08-24 | agreed | 40-i18n, 50-wordpress-persistence | One token everywhere: `taxmod`. |
-| [D-338](90-decision-log.md) | 2026-08-24 | agreed | 10-domain-core | 10 Domain core is `locked`. |
+| [D-338](90-decision-log.md) | 2026-08-24 | REJECTED` (verworfen durch [D-565](#)) | 10-domain-core | Verworfen durch D-565 |
 | [D-339](90-decision-log.md) | 2026-08-24 | agreed | 10-domain-core, 50-wordpress-persistence | `Identity` becomes a table: `identities(id)`, append-only, and `owner_id` becomes a real foreign key. |
 | [D-340](90-decision-log.md) | 2026-08-24 | agreed | 70-migration, 50-wordpress-persistence | A migration may never reissue an id that was once handed out. |
 | [D-341](90-decision-log.md) | 2026-08-24 | agreed | 50-wordpress-persistence | A reset is all or nothing, and it is command line only. |
-| [D-342](90-decision-log.md) | 2026-08-24 | agreed | ⚠️ **keins** | Every package adds to a regression net, and both runs are green before anything is committed. |
+| [D-342](90-decision-log.md) | 2026-08-24 | ⚠️ ersetzt durch D-564 | ⚠️ **keins** | Überholt durch D-564 |
 | [D-343](90-decision-log.md) | 2026-08-24 | agreed | 20-interaction, 30-renderer | Recorded in error as new — it was already R19. |
 | [D-344](90-decision-log.md) | 2026-08-24 | agreed | 30-renderer | The provisional admin screen is scaffolding. It is thrown away, not grown into the real one. |
 | [D-345](90-decision-log.md) | 2026-08-24 | agreed | ⚠️ **keins** | The scaffolding keeps getting just enough surface to be operated — sparingly. |
@@ -577,7 +594,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-406](90-decision-log.md) | 2026-08-26 | agreed | 30-renderer, 10-domain-core | `hide` and `read_only` become free in both directions in the code — the half of D-399 that was written and never built. |
 | [D-407](90-decision-log.md) | 2026-08-26 | agreed | 10-domain-core, 50-wordpress-persistence | The `order` setting key is removed. Ordering is the `position` column on `relations`, which is the only place that ever held it. |
 | [D-408](90-decision-log.md) | 2026-08-26 | agreed | 20-interaction | The modelling screen gets its first script — eight lines that keep the tree where it was, and nothing else. |
-| [D-409](90-decision-log.md) | 2026-08-26 | agreed | 02-field-and-setting | A setting has no multiplicity. One key, one answer, per place — and «edge-only» stops being a property of `multiplicity` because an attribute *is* th… |
+| [D-409](90-decision-log.md) | 2026-08-26 | teilweise überholt | 02-field-and-setting | Die Hälfte «ein Setting hat keine Multiplizität» ist überholt durch D-505 und D-506 |
 | [D-410](90-decision-log.md) | 2026-08-26 | agreed | 02-field-and-setting, 40-i18n | An attribute has a name in every language — it carries labels, like a node. Answers OQ-095. |
 | [D-411](90-decision-log.md) | 2026-08-26 | agreed | 10-domain-core, 02-field-and-setting | ⚠️ Narrowed back for `min` and `max` by D-468: the owner — *«it would contradict the contract I gave earlier at the node … those two we can forbid a … |
 | [D-412](90-decision-log.md) | 2026-08-26 | agreed | 10-domain-core, 30-renderer | A `bool` may not have a floor of zero. Two states means it is always answered. |
@@ -591,7 +608,7 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-420](90-decision-log.md) | 2026-08-26 | agreed | 20-interaction | The script saves what actually scrolls — the |
 | [D-421](90-decision-log.md) | 2026-08-26 | agreed | 10-domain-core, 30-renderer | The three composed types the concept names as its own test now exist — and measured at three rungs, C116's *works immediately* is true of the model a… |
 | [D-422](90-decision-log.md) | 2026-08-26 | agreed | 30-renderer, 10-domain-core | ⚠️ Dropped by D-456: the owner, 2026-08-27 — *«we do not currently need the no-render renderer, `hide` at the edge does that»*. *Everything this row … |
-| [D-423](90-decision-log.md) | 2026-08-26 | agreed | 02-field-and-setting, 10-domain-core, 30-renderer | Settings are materialised into the inheriting node and into the attribute, `reset` becomes a *pull*, and — measured — this changes nothing on the rea… |
+| [D-423](90-decision-log.md) | 2026-08-26 | ⚠️ ersetzt | 10-domain-core | Überholt durch D-505: Vererbung statt Kopie. |
 | [D-424](90-decision-log.md) | 2026-08-26 | agreed | 02-field-and-setting, 30-renderer | The confirmation for pushing a change downwards is *one* list for the whole panel — every affected setting named, each with a yes/no switch. |
 | [D-425](90-decision-log.md) | 2026-08-26 | agreed | 10-domain-core | A `path` survives inheriting and must be *remapped* on duplicating — because inheritance keeps the edge ids and a copy does not. |
 | [D-426](90-decision-log.md) | 2026-08-26 | agreed | 10-domain-core, 50-wordpress-persistence, 30-renderer | ⚠️ Extended by D-457, not overturned: the column half stands, and it applies to an |
@@ -661,3 +678,192 @@ sich sonst wie eine gültige liest — der Fehler, der an einem Tag drei falsche
 | [D-490](90-decision-log.md) | 2026-08-28 | agreed | 10-domain-core, 40-i18n | Der Wächter «schreibt nichts, wenn sich nichts geändert hat» sitzt im |
 | [D-491](90-decision-log.md) | 2026-08-28 | agreed | 20-interaction | Der Chooser-Dialog schliesst auf Escape und hält den Fokus. Zeile 26 gebaut — und ihr eigener Vorbehalt war abgelaufen. |
 | [D-492](90-decision-log.md) | 2026-08-28 | agreed | 10-domain-core, 70-migration | Ein Journaleintrag trägt seine Adresse: `key=… path=… type=… value=…`, gebaut und gelesen von |
+| [D-493](90-decision-log.md) | 2026-08-29 | agreed | ⚠️ **keins** | Die Doku wird nachgezogen, und eine Ratsche hält sie nachgezogen: `doc-reach-check.php` misst, ob eine Entscheidung das Dokument erreicht, das sie se… |
+| [D-494](90-decision-log.md) | 2026-08-29 | agreed | 20-interaction | Die Cleanup-Seite bekommt ihre vierte Quelle: ein Datensatz, dessen Knoten es nicht mehr gibt. Gemessen, entfernbar — und «Knoten wiederherstellen» w… |
+| [D-495](90-decision-log.md) | 2026-08-29 | agreed | 30-renderer | Ein Icon wird an einer Stelle geschrieben und von einer Regel bemasst: `IconMarkup` und `.taxmod-icon`. Zeile 76 gebaut. |
+| [D-496](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting | OQ-127 wird geschlossen: sie war seit D-434 beantwortet und hätte nie gestellt werden dürfen. Zwei Behauptungen daraus sind gemessen widerlegt, und d… |
+| [D-497](90-decision-log.md) | 2026-08-29 | agreed | 10-domain-core | Zyklen entstehen in diesem Modell nicht durch einen Wächter, sondern durch den Bau: ein Feld auf ein Modell ist immer eine Aggregation, und eine Aggr… |
+| [D-498](90-decision-log.md) | 2026-08-29 | agreed | 10-domain-core | Eine Komposition ist eine Aggregation mit genau einem Besitzer. Das ist die Ursache, das Mitsterben ist die Folge. Schliesst OQ-021, die seit dem 22.… |
+| [D-499](90-decision-log.md) | 2026-08-29 | agreed | 30-renderer | Die mittlere Sprosse der Vorschau ist gebaut: echte Daten schlagen eine als Testdaten markierte Zeile. Zeilen 75 und 17. |
+| [D-500](90-decision-log.md) | 2026-08-29 | agreed | 20-interaction | `Used by` ist gebaut, und D-199s Bedingung wurde gemessen statt geglaubt. Zeile 9. |
+| [D-501](90-decision-log.md) | 2026-08-29 | agreed | 30-renderer | OQ-109 blockiert nichts: von den drei Dingen, die angeblich auf eine geordnete Liste warten, haben zwei ihr Zuhause seit Wochen — und das dritte hat … |
+| [D-502](90-decision-log.md) | 2026-08-29 | agreed | 30-renderer | Ein Knoten hat mehrere Renderer, und |
+| [D-503](90-decision-log.md) | 2026-08-29 | agreed | 10-domain-core, 02-field-and-setting | Die Richtung ist das gemeinsame Modell: ein Setting wird ein Feldwert, und der Unterschied — Kopie beim Erben statt geteilter Kante — wird eine Eigen… |
+| [D-504](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting | Ein leihender Schlüssel bekommt den «Typ des Vaterknotens», nicht eine Kante auf den Besitzer — damit bleibt D-503s Regel «kein Feld zeigt auf den ei… |
+| [D-505](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting, 10-domain-core | Es gibt nur noch Felder. Ein Merkmal sagt, ob eines eine Einstellung ist — und das heisst genau eins: es darf an der Kante überschrieben werden. Vere… |
+| [D-506](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting | Das Wort «Einstellung» verschwindet. Es gibt |
+| [D-507](90-decision-log.md) | 2026-08-29 | agreed | 50-wordpress-persistence | `owner_id` überlebt, `record_id` geht — und damit hat die zusammengelegte Zeile ihre Gestalt: `(owner_id, edge_id, path, locale, wert…)`. Die letzte … |
+| [D-508](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting | Ein Feld trägt zwei unabhängige Angaben: |
+| [D-509](90-decision-log.md) | 2026-08-29 | agreed | 20-interaction | Die Wurzel bekommt einen Ansichts-Schalter und ist damit erreichbar — sie war es nie, und das war kein Versäumnis, sondern der Bau. |
+| [D-510](90-decision-log.md) | 2026-08-29 | agreed | 50-wordpress-persistence | Der Code findet seine gesäten Knoten über die |
+| [D-511](90-decision-log.md) | 2026-08-29 | agreed | 10-domain-core, 30-renderer | Renderer, Konverter und Validatoren werden Knoten unter `Constants` — kein neuer Zweig. Und ein Systemknoten wird |
+| [D-512](90-decision-log.md) | 2026-08-29 | agreed | 50-wordpress-persistence | D-510 ist gebaut — und die Umstellung deckte zwei Bindungen auf, die schon gebrochen waren. |
+| [D-513](90-decision-log.md) | 2026-08-29 | agreed | 10-domain-core, 30-renderer, 50-wordpress-persistence | D-511 ist gesät: `Constants › Renderer` (16), `Converter` (2), `Validator` (leer) — id-gebunden von der ersten Zeile an. |
+| [D-514](90-decision-log.md) | 2026-08-29 | agreed | 10-domain-core, 02-field-and-setting | `DisplayOption` ist eine Komposition unter `Compositions`, und der Wurzelknoten trägt die zwei Felder `renderer` und `validator`. |
+| [D-515](90-decision-log.md) | 2026-08-29 | ⚠️ ersetzt durch D-516 | 02-field-and-setting | Der Mechanismus ist überholt durch D-516 |
+| [D-516](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting, 10-domain-core | `min` und `max` werden |
+| [D-517](90-decision-log.md) | 2026-08-29 | agreed | 20-interaction | Der Knoten-Einstellungsblock ist weg, und die Seite hat jetzt ein eigenes Formular — das hatte sie nie. |
+| [D-518](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting, 20-interaction | Felder und Einstellungen werden |
+| [D-519](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting, 20-interaction, 50-wordpress-persistence | D-518 ist gebaut: `nodes.kind` (Schema 14), der Vorfahrenlauf, die zwei Blöcke und ein Wähler mit drei Zuständen. |
+| [D-520](90-decision-log.md) | 2026-08-29 | agreed | 20-interaction, 30-renderer | Die Einstellungstafel unter jeder Feldzeile ist weg — 205 Zeilen mitsamt allem, was nur sie fütterte. Und sie hat vier Steuerelemente mitgenommen, wa… |
+| [D-521](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting | Ein Datensatz bleibt ein Datensatz. Was er |
+| [D-522](90-decision-log.md) | 2026-08-29 | agreed | 10-domain-core, 02-field-and-setting | Ob ein Knoten Datensätze trägt, entscheidet nicht mehr sein Zweig, sondern ob er Felder hat. D-183 fällt zur Hälfte — und war schon falsch, bevor jem… |
+| [D-523](90-decision-log.md) | 2026-08-29 | agreed | 30-renderer, 50-wordpress-persistence | `binary` und `octal` kommen dazu, und die drei Zahlensysteme teilen sich einen Gang statt ihn dreimal zu haben. Dabei fielen zwei Fehler im einen auf… |
+| [D-524](90-decision-log.md) | 2026-08-29 | agreed | 02-field-and-setting, 50-wordpress-persistence | `records.is_test` wird `records.kind` mit drei Zuständen — `user`, `default`, `example`. Schema 15. Und der Unterschied zwischen Vorgabe und Einstell… |
+| [D-526](90-decision-log.md) | 2026-08-30 | agreed | 10-domain-core, 02-field-and-setting | Eine Einstellung ist eine vierte Relationsart, und sie ist eine Komposition. Sie ist die einzige Art, die |
+| [D-527](90-decision-log.md) | 2026-08-30 | überholt | 30-renderer, 50-wordpress-persistence | Mehrere Werte eines Feldes sind mehrere |
+| [D-528](90-decision-log.md) | 2026-08-30 | agreed | 02-field-and-setting, 50-wordpress-persistence | Multiplizität wird eine Spalte an der Kante und ist nicht mehr überschreibbar. Löst die Multiplizitätshälfte von D-086 ab. |
+| [D-529](90-decision-log.md) | 2026-08-30 | agreed | 02-field-and-setting, 50-wordpress-persistence | Die `settings`-Tabelle und ihr Vokabular werden entfernt — der Vollzug von D-506, zehn Tage nachdem er ausgesprochen wurde. |
+| [D-530](90-decision-log.md) | 2026-08-30 | agreed | 50-wordpress-persistence, 30-renderer | Mehrere Werte eines Feldes sind mehrere |
+| [D-531](90-decision-log.md) | 2026-08-30 | teilweise überholt | 02-field-and-setting, 50-wordpress-persistence | Ein Default gilt, solange keine Zeile da ist. Es wird nichts kopiert und nichts verwiesen — die Abwesenheit einer Wertzeile |
+| [D-532](90-decision-log.md) | 2026-08-30 | überholt | 02-field-and-setting, 50-wordpress-persistence | Ein Datensatz bekommt beim Anlegen eine Zeile je Default — mit einem |
+| [D-533](90-decision-log.md) | 2026-08-30 | agreed | 02-field-and-setting, 50-wordpress-persistence | Beim Anlegen eines Datensatzes werden die Defaults |
+| [D-534](90-decision-log.md) | 2026-08-30 | agreed | 02-field-and-setting, 20-interaction | Zwei Benutzerfragen, und sie treffen den Bestand über den |
+| [D-535](90-decision-log.md) | 2026-08-30 | agreed | 10-domain-core, 50-wordpress-persistence | Einen Datensatz anzulegen ist |
+| [D-536](90-decision-log.md) | 2026-08-30 | agreed | 50-wordpress-persistence, 10-domain-core | Jede Version jeder Zeile bleibt erhalten. Der Schlüssel wird `(id, version)`, Löschen ist ein Kennzeichen, und das Journal gruppiert nur noch, welche… |
+| [D-537](90-decision-log.md) | 2026-08-30 | agreed | 50-wordpress-persistence | Die Geschichte liegt in |
+| [D-538](90-decision-log.md) | 2026-08-30 | agreed | 02-field-and-setting | `persistent` fällt ersatzlos. Dass ein Wert nicht im Benutzerdatensatz landet, ist dasselbe wie «die Kante ist eine Einstellung» — und das sagt seit … |
+| [D-539](90-decision-log.md) | 2026-08-30 | agreed | 02-field-and-setting, 40-i18n | `label_role` wird ein |
+| [D-540](90-decision-log.md) | 2026-08-30 | agreed | 10-domain-core, 30-renderer | Ob ein Feld eine |
+| [D-541](90-decision-log.md) | 2026-08-30 | agreed | 10-domain-core, 02-field-and-setting | `Settings` wird ein Zweig. Alle Einstellungen sind Kompositionen: ihr Wert liegt im |
+| [D-542](90-decision-log.md) | 2026-08-30 | | D-542 | ⚠️ **keins** | Ein `table`-Renderer zeichnet |
+| [D-543](90-decision-log.md) | 2026-08-30 | | D-543 | ⚠️ **keins** | Eine Einstellungskante wird an ihrer |
+| [D-544](90-decision-log.md) | 2026-08-30 | | D-544 | ⚠️ **keins** | Der Zweig `Settings` hält Datensätze, und eine Auswahl sieht durch einen |
+| [D-545](90-decision-log.md) | 2026-08-30 | agreed | 10-domain-core | Nichts im Ast `Settings` erbt von `Root` — geblockt an der Wurzel des Astes, nicht je Knoten. |
+| [D-546](90-decision-log.md) | 2026-08-30 | agreed | 30-renderer | Wie eine Einstellung gezeichnet wird, ist keine Einstellung: sie wird immer als |
+| [D-547](90-decision-log.md) | 2026-08-30 | agreed | 30-renderer | Es gibt eine dritte Ebene neben `admin` und `front-end`: `settings`. Die Vorschau hat drei Seiten — Anzeige, Admin, Einstellungen — und jede bekommt … |
+| [D-548](90-decision-log.md) | 2026-08-30 | agreed | 30-renderer | Mehrere Renderer an einem Knoten entstehen über mehrere `DisplayOption`s, nicht über mehrere `render`-Werte — und der Grund ist das Farbschema. |
+| [D-549](90-decision-log.md) | 2026-08-31 | agreed | 30-renderer | Die Multiplizität wird durchgesetzt und nicht nur angezeigt: `1..1` heisst «ein Wert muss gesetzt sein», `1..*` heisst «ein Datensatz muss da sein». |
+| [D-550](90-decision-log.md) | 2026-08-31 | agreed | 02-field-and-setting | Ein leeres Feld ist eine Wahl und nimmt den Wert heraus — es steht nicht «für nichts» da. |
+| [D-551](90-decision-log.md) | 2026-08-31 | agreed | 20-interaction | Name und Multiplizität einer Feldzeile werden mit dem Speichern-Knopf der Seite geschrieben; die Diskette in der Zeile fällt weg. |
+| [D-552](90-decision-log.md) | 2026-08-31 | agreed | 30-renderer | Ein Datensatz wird im Modelleditor immer als Tabelle gezeichnet, nicht mit dem Renderer des Knotens. |
+| [D-553](90-decision-log.md) | 2026-08-31 | agreed | 30-renderer | Der Datensatz-Block ist |
+| [D-554](90-decision-log.md) | 2026-08-31 | agreed | 02-field-and-setting | Im Datensatz-Block stehen keine Einstellungsspalten. |
+| [D-555](90-decision-log.md) | 2026-08-31 | agreed | 20-interaction | Die Vorschauseite `Settings` bekommt eine eigene Zeile über die ganze Breite; Anzeige und Admin bleiben nebeneinander. |
+| [D-556](90-decision-log.md) | 2026-08-31 | agreed | 30-renderer | Eine Einstellungskante, deren Ziel keine eigenen Felder hat, ist ein Knotenverweis — und eine Auswahl bleibt eine Auswahl, auch wenn nichts zu wählen… |
+| [D-557](90-decision-log.md) | 2026-08-31 | agreed | 50-wordpress-persistence | `Renderer`, `Converter` und `Validator` liegen im Ast `Settings`, und die Saat sät dorthin. Eine gemerkte Id gilt, wo der Knoten auch liegt — nur nic… |
+| [D-558](90-decision-log.md) | 2026-08-31 | agreed | 50-wordpress-persistence | Ein Gruppierungsknoten unter einem Behälter ist erlaubt, und wer die Behälter prüft, schaut durch ihn hindurch. |
+| [D-559](90-decision-log.md) | 2026-08-31 | agreed | 10-domain-core | `factor` und `offset` werden behandelt wie `exponent`: eine Einstellungskante an der Gruppe, der Wert im `default`-Satz des einzelnen Knotens. |
+| [D-560](90-decision-log.md) | 2026-08-31 | agreed | 10-domain-core | `validator` ist `0..*`, nicht `0..1`. |
+| [D-561](90-decision-log.md) | 2026-08-31 | agreed | 30-renderer | Der gewählte Renderer bringt seine eigenen Einstellungen mit, und sie werden dort eingegeben, wo der Renderer gewählt wird. |
+| [D-562](90-decision-log.md) | 2026-08-31 | agreed | 30-renderer | Es gibt einen Begriff für den Weg von der Multiplizität zum Auswahlfeld: die `Choice`. R28–R32 rechnet dort und nirgends sonst, und ein Kerntest zähl… |
+| [D-563](90-decision-log.md) | 2026-08-31 | PROPOSED` (Richtung bestätigt, Umsetzung an das Ereigniskonzept gekoppelt) | 30-renderer | Status auf `PROPOSED` gesetzt am 2026-09-01, und der Grund gehört in diese Zeile. |
+| [D-564](90-decision-log.md) | 2026-09-01 | agreed` (`ACTIVE`, vom Eigentümer bestätigt) | ⚠️ **keins** | Was läuft, läuft weiter — und eine Prüfung bewacht den *aktuellen* Soll-Zustand, nie einen vergangenen. |
+| [D-565](90-decision-log.md) | 2026-09-01 | agreed` (`ACTIVE`, vom Eigentümer bestätigt) | ⚠️ **keins** | Es gibt kein Lock. Ein Konzept ist entweder fertig — dann wird es umgesetzt — oder veraltet — dann wird es mit Grund durch ein neues ersetzt. |
+| [D-566](90-decision-log.md) | 2026-09-01 | agreed` (`ACTIVE`, vom Eigentümer bestätigt) | ⚠️ **keins** | Maßstab einer Spezifikation ist Prüfbarkeit durch einen Menschen, nicht Baubarkeit durch die KI. |
+| [D-567](90-decision-log.md) | 2026-09-01 | REJECTED` (zurückgezogen, siehe links) | 50-wordpress-persistence | `REJECTED` am 2026-09-01, noch am selben Tag, und der Grund ist der Kern des neuen Arbeitsmodells. |
+| [D-568](90-decision-log.md) | 2026-09-01 | agreed` (`ACTIVE`, vom Eigentümer entschieden) | ⚠️ **keins** | Das Konzept in `docs/NewConcept/` ist veraltet und wird durch ein neues ersetzt. Es wird ab sofort nicht mehr erweitert. |
+| [D-569](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer bestätigt) | ⚠️ **keins** | Eine Architekturregel darf auf einer Messung plus der Bestätigung des Eigentümers stehen, nicht nur auf einer früheren Entscheidung. |
+| [D-570](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer bestätigt: «Ja, bitte setzt das so») | ⚠️ **keins** | Von den sieben Regeln ohne Gegenstück im neuen Arbeitsmodell bleiben zwei; drei sind gedeckt, eine wird ein Schritt im Ablauf, eine eine Notiz. |
+| [D-571](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer bestätigt: «2 ja») | ⚠️ **keins** | `PR-5` bekommt einen Wächter: eine als bestätigt markierte Entscheidung, die keinen Satz des Eigentümers trägt, wird rot. |
+| [D-572](90-decision-log.md) | 2026-09-01 | agreed` (`ACTIVE`; Messung, vom Eigentümer nie bestritten) | ⚠️ **keins** | `PR-10` bekommt endlich eine Entscheidung: nachlesen und zitieren, bevor eine Behauptung über das Entschiedene fällt. |
+| [D-573](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer bestätigt) | ⚠️ **keins** | Das Immer-Gelesene bekommt eine gemessene Decke: `CLAUDE.md`, `docs/arbeitsmodell.md` und `AGENTS.md` zusammen dürfen nicht wachsen. |
+| [D-574](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `doc-reach-check` wird stillgelegt: die Datei verlässt den Randlauf und bleibt als `doc-reach-stillgelegt.php` lesbar. |
+| [D-575](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer wörtlich übernommen) | ⚠️ **keins** | Parken heisst: in die Schattentabelle wandern, mit der Änderungsgruppe im Gepäck. Die lebende Tabelle verliert `parked_by_group_id` ersatzlos. |
+| [D-576](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer entschieden: «ok relation bleibt») | ⚠️ **keins** | Von den zwei Wörtern für dieselbe Sache bleibt «relation». «edge» wird abgelöst. |
+| [D-577](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer aufgebaut und bestätigt) | ⚠️ **keins** | Das Datensatzmodell, von null aufgebaut: `node_record` trägt `node_id`, `relation_record` trägt `node_record_id`, `relation_id`, `sort_order` und ent… |
+| [D-578](90-decision-log.md) | 2026-09-01 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `nodes` und `relations` sind fertig und werden umgesetzt. Und die Speicherform aus D-577 gilt für *alle* Kantenarten — Vererbung, Komposition, Aggreg… |
+| [D-579](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer entschieden: «b») | ⚠️ **keins** | Die Tabelle `settings` wird gestrichen. Die drei verbliebenen Werte gehen verloren und werden später neu eingegeben. |
+| [D-580](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer entworfen und bestätigt) | 40-i18n | Beschriftungen bekommen zwei eigene Tabellen, und der Name zieht mit hinein: `labels` trägt das Sprachunabhängige (`name`, `symbol`, `icon`), `label_… |
+| [D-581](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Vererbung ist keine Kantenart mehr, sondern eine Spalte: `nodes.parent_node_id` mit `nodes.sort_order`. `relations` trägt nur noch Komposition, Aggre… |
+| [D-582](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer bestätigt) | ⚠️ **keins** | Knoten und Kanten bekommen je eine Spalte `settings_record_id`, die auf ihren eigenen Einstellungsdatensatz zeigt. Damit kann eine Kante die Einstell… |
+| [D-583](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein eingestellter Renderer ist ein Datensatz des Renderer-Knotens; seine Einstellungen sind dessen Felder. Die Zeile in der Einstellungsmaske *ist* d… |
+| [D-584](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Knoten und eine Kante haben genau *einen* Renderer. Der Renderer ist selbst ein Knoten und kann hierarchisch aufgebaut sein. Wer mehrere braucht,… |
+| [D-585](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer entschieden: «so festhalten») | ⚠️ **keins** | Der Konverter wird eine Einstellung am Basisknoten `Renderer` und damit an jeden Renderer vererbt. Der Hüllknoten `DisplayOption`, der Renderer und K… |
+| [D-586](90-decision-log.md) | 2026-09-02 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `relations` bekommt *zwei* Einstellungszeiger, `nodes` behält einen. Der eigene (`settings_record_id`) trägt den Form-Renderer der Kante, der zweite … |
+| [D-587](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «dann vereinfachen wir») | ⚠️ **keins** | `relation_type` fällt. Es gibt nur noch *eine* Kantenart, und an ihr eine Angabe «wird mit dem Knoten gelöscht». |
+| [D-588](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Zeigt ein Feld auf einen einfachen Typ, ist «wird mit dem Knoten gelöscht» immer an und nicht wählbar. |
+| [D-589](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Auswahldialog wählt und schliesst sich; der gewählte Knoten steht danach in einem gesperrten Feld der Anlege-Zeile, und dort steht auch der Anleg… |
+| [D-590](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `hide` ist zwei Dinge, und sie trennen sich: `nodes.hide` versteckt einen Knoten im Baum; dass ein Feld nicht gezeichnet wird, sagt künftig ein Rende… |
+| [D-591](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «2 - spalte in aggregation») | ⚠️ **keins** | «Wird mit dem Knoten gelöscht» wird eine Spalte an `relations`, nicht ein Feld am Einstellungsdatensatz. Und damit ist auch entschieden, was aus den … |
+| [D-592](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden), Name vorläufig | ⚠️ **keins** | Der Schalter heisst für den Benutzer «Gehört zu» — vorläufig. Bei einem einfachen Datentyp steht er fest und ist nicht bedienbar. |
+| [D-593](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer angenommen: «kein Widerspruch») | ⚠️ **keins** | `validator` und `read_only` gehen denselben Weg wie der Renderer: eine Kante erklärt die Einstellung, der Einstellungsdatensatz trägt ihren Wert. Es … |
+| [D-594](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «entsprechend umziehen») | ⚠️ **keins** | Der Hüllknoten `DisplayOption` wird umgezogen, nicht weggeworfen. Die 29 Renderer-Wahlen ziehen um, die 3 Konverter werden Werte am geerbten `convert… |
+| [D-595](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «a») | ⚠️ **keins** | Wer den Typ eines Feldes ändert, an dem Werte hängen, bekommt es *beim Ändern* gesagt — nicht später beim Lesen. Welche Möglichkeiten er dann hat, wi… |
+| [D-596](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Renderer im Kern gibt eine Beschreibung zurück — JSON —, und am Rand macht ein rahmenwerkabhängiger Renderer daraus HTML oder was das Rahmenwerk … |
+| [D-597](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Verweis auf ein anderes Ding steht in *einer* Spalte, und daneben sagt eine zweite, in welchem Raum die Id gilt. Zwei Spalten — eine je Zielart —… |
+| [D-598](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `label_texts` behält seine vier Spalten `form`, `table`, `select`, `help`. Rollen als Zeilen mit `role_id` sind nicht verworfen, sondern geparkt |
+| [D-599](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «ja passt») | ⚠️ **keins** | Ein Konflikt entsteht nicht durch die Art der Änderung, sondern dadurch, dass die vorhandenen Werte sie nicht überleben — und das wird gemessen, nich… |
+| [D-600](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Neuinstallation entsteht künftig aus einem Abbild des gewachsenen Baums, nicht aus Saatcode. Bis dahin wird auf der laufenden Installation gearbe… |
+| [D-601](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Rückgängig läuft über die Änderungsgruppe *in den Schattentabellen*, nicht über das Änderungsbuch. `changelog.before_state` und `after_state` fallen;… |
+| [D-602](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Auflösungskette einer Einstellung bekommt die Vorfahren zurück: Datensatz der Kante → Datensatz des Zielknotens → Datensätze der Vorfahren, von n… |
+| [D-603](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «Code») | ⚠️ **keins** | Wofür ein Konverter oder ein Renderer taugt, bleibt im Kode — `handles()` an der Klasse. Es wird nicht ins Modell gehoben. Und der Typ, der die Auswa… |
+| [D-604](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Knoten, der benutzt wird, darf nicht stillschweigend gelöscht werden. Der Benutzer wird gefragt, ob die Verwendungen mitgehen. Bei *ja* wandern s… |
+| [D-605](90-decision-log.md) | 2026-09-04 | ⚠️ ersetzt durch D-607 | ⚠️ **keins** | Überholt durch D-607 |
+| [D-606](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Was eine Einstellung ist, sagt die Marke am Knoten (`kind`, künftig `field_type`), nicht der Ast und nicht die Kante. Die Marke wird einmalig aus dem… |
+| [D-607](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Knoten erbt keine Einstellungskante, die auf *ihn selbst* zeigt. Nicht «markierte Knoten erben nichts» — das war zu breit und ist zurückgenommen … |
+| [D-608](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Eine durch D-607 gesperrte Einstellungszeile wird *angezeigt* und als gesperrt gekennzeichnet — mit einem Hinweistext, der den Grund nennt. Sie wird … |
+| [D-609](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «ja bitte») | ⚠️ **keins** | Ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen. Wer nur liest oder löscht, legt keinen an. |
+| [D-610](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «ja ok») | ⚠️ **keins** | Eine Wertzeile, die nichts trägt, wird nicht geschrieben — `value_ref = 0` ist keine Id, sondern eine zweite Schreibweise für «nichts gesagt». Und de… |
+| [D-611](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «a») | ⚠️ **keins** | Eine Verwendungsstelle darf auch eine Einstellung überschreiben, die nur der *Zielknoten* erklärt — vorerst nur Einstellungen, nicht Modellfelder. |
+| [D-612](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden: «b für das zuklappen») | ⚠️ **keins** | Ein Klick auf den Klapp-Pfeil gewinnt: wer einen Ast ausdrücklich zuklappt, klappt ihn zu — auch wenn der ausgewählte Knoten darin liegt. Der Vorrang… |
+| [D-613](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Kein Wächter sucht einen Knoten über seinen Namen. Er baut sich seine Knoten selbst oder greift sie über eine Id — so, wie es der Kode ohnehin tut. |
+| [D-614](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Wächter dürfen ihre Knoten stehenlassen, solange sie in einem eigenen Testast liegen, unsichtbar sind und den Arbeitsbaum nicht beschädigen. Aufräume… |
+| [D-615](90-decision-log.md) | 2026-09-04 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Vertrag der Baumansicht, drei Angaben und sonst nichts: der *Wurzelknoten* bestimmt, ab wo gezeichnet wird. Der *Default-Knoten* hebt genau diese… |
+| [D-616](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Eine Einstellung an der Modellwurzel ist gewollt — sie ist die modellweite Vorgabe. Falsch war nur der eine Wert, der dort stand; er wird weggeräumt,… |
+| [D-617](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | An der Modellwurzel hängt der *Rückfall*, nicht die Regel für alles. Jeder Knoten bestimmt seinen eigenen Vorgabe-Renderer selbst; die Wurzel greift … |
+| [D-618](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Kantenart wird genannt, nicht abgeleitet: der Benutzer legt sie fest. Ein Ableiten aus dem Ast kommt später — «aber auch nur vielleicht». |
+| [D-619](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Wird eine Kante geparkt, wandern ihre Wertzeilen mit — in den Schatten, und beim Zurueckholen wieder heraus. Parken nimmt alles mit, was zu der Kante… |
+| [D-620](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die spezialisierte Klasse ist die Klasse |
+| [D-621](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Kante sagt, was etwas hier ist — nicht der Knoten und nicht der Ast. `nodes.field_type` faellt, und der Ast-Automatismus zur Bestimmung der Relat… |
+| [D-622](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `storage()` und `holdsData()` sind kein Paar von Fragen, sondern ein Rest: seit D-587 wird alles gleich abgelegt — im Datensatz bei den einfachen Typ… |
+| [D-623](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Kern gibt eine Beschreibung, der Rand macht HTML daraus — und der Rand darf dabei alles nutzen, was das Framework hergibt. Der Kern zeichnet nich… |
+| [D-624](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Eine Oberklasse legt den Renderer-Vertrag fest; der Renderer im Kern erzeugt JSON, und am Rand erzeugt sein Gegenstueck daraus HTML — mit allem, was … |
+| [D-625](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Block ist ein Gutenberg-Block. Es gibt mehrere, und ein Block bekommt einen |
+| [D-626](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Vorschau zeichnet wie das Frontend, und spaeter gilt dasselbe fuer die Bloecke. Eine Darstellung, nicht drei. |
+| [D-627](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Das Ereignis ist die Naht, an der WordPress stehenbleibt: der Rand stellt fest, |
+| [D-628](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer delegiert: «nimm das Performanteste und das Beste») | ⚠️ **keins** | Eine Beschreibung je Seite, nicht je Renderer — und sie wird nur dort in JSON verwandelt, wo sie den Prozess verlaesst. Innerhalb einer Anfrage bleib… |
+| [D-629](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Beschreibung ist eine Objektstruktur. JSON kommt nur vor, wo WordPress es verlangt oder wo der Prozess endet — sonst nirgends. |
+| [D-630](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Renderer-Umbau und der Ereignis-Umbau sind ein Paket, nicht zwei. |
+| [D-631](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Ereignisse werden nach seiner Teilung geschnitten — Knoten, Kante, Knoten-Datensatz, Kanten-Datensatz. Das Aenderungsbuch ist |
+| [D-632](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | PSR-14 kommt als Paket; beim Protokoll gilt, was einfacher ist. Fehler werden |
+| [D-633](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Drei Formen von Ausloeser-Ereignissen — Wert geaendert, Verweis gewaehlt, Bedienelement betaetigt —, und die enge Auswahl trifft der Listener Provide… |
+| [D-634](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Version wird immer mitgeschrieben, und sie kann nicht mehr weggelassen werden. Auch das Schreiben von Werten meldet kuenftig. |
+| [D-635](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Fuer den Renderer-/Ereignis-Umbau gilt `PR-2` nicht Schritt fuer Schritt: nicht jeder Schritt muss fuer sich lauffaehig sein, und nicht jeder Schritt… |
+| [D-636](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Vollstaendigkeit der Beschreibung wird bewiesen, indem ein |
+| [D-637](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Knotenseite zieht zuerst um, nicht die kleinste. Wo sich zeigt, ob die Beschreibung traegt, faengt der Umbau an. |
+| [D-638](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Es wird alles auf einmal umgebaut — alle Seiten, alle Renderer, Ereignisse mit. Kein seitenweises Umziehen. Das schaerft D-637: «gross» hiess nicht «… |
+| [D-639](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Kantenart bleibt eine Spalte mit |
+| [D-640](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Auch `labels` bekommt eine Version. Die Beschriftungen sind damit wie die vier anderen Tabellen — eine Zeile, eine Nummer. |
+| [D-641](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `labels.owner_id` bekommt ihren Raum als zweite Spalte — Knoten oder Kante —, wie `value_ref` und das Aenderungsbuch. Dass ein |
+| [D-642](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Berichtigung zu D-584: er meinte eine |
+| [D-643](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Renderer faellt an der Kante weg. Ein Renderer gehoert dem Knoten; eine Kante ist eine Verwendungsstelle und zeichnet nicht selbst. |
+| [D-644](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `INF-042` wird mit Antwort 1 geschlossen: die Renderer-Knoten hoeren auf, markiert zu sein — dann zeichnet die Wertspalte den Waehler von selbst, und… |
+| [D-645](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `symbol` wird sprachabhaengig und zieht zu den Texten je Sprache. Das berichtigt D-580, das es beim Sprachunabhaengigen einordnete. Wo nichts gepfleg… |
+| [D-646](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `symbol` bekommt eine fuenfte Spalte in `label_texts` — neben `form`, `table`, `select`, `help`. Und |
+| [D-647](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Fuer die Renderer-Wahl gibt es einen eigenen Renderer. Er baut seine Liste aus der |
+| [D-648](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Interne Renderer bekommen keinen Knoten. Das Unterscheidungsmerkmal ist nicht «wichtig», sondern |
+| [D-649](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `user_ref` bekommt einen eigenen Renderer: er zeigt den |
+| [D-650](90-decision-log.md) | 2026-09-05 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Bei `user_ref` — und nur dort — bestimmt `read_only`, woher der Wert kommt: gesperrt heisst «der angemeldete Benutzer», bedienbar heisst «aus einer L… |
+| [D-651](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Beim Anlegen eines Datensatzes im Verwaltungsbereich waehlt er die Art: `default` oder `user`. Und die Vorschau bleibt Vorschau — sie zeichnet keine … |
+| [D-652](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Berichtigung zu D-651: die Vorschau bleibt, wie sie ist. Was fehlt, ist der |
+| [D-653](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Es gibt eine dritte Satzart: `example`. Beim Zeichnen gilt — ist ein `default`-Satz da |
+| [D-654](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Unterschied zwischen `default` und `example` ist die |
+| [D-655](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Strukturrenderer ist der |
+| [D-656](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein umhuellender Renderer taugt ueberall dort, wo |
+| [D-657](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ausgenommen sind die einfachen Datentypen und alles unter ihnen: dort gilt kein umhuellender Renderer, auch wenn Felder da sein sollten. |
+| [D-658](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Jeder einfache Datentyp hat seine eigenen Renderer. Welche das sind, sagt die Registratur je Typ — und die Menge ist heute schon fuer alle elf besetz… |
+| [D-659](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Typ `text` bekommt eine Einstellung `display_size` in Zeichen, und der Textrenderer richtet die Breite des Feldes danach. Damit steht `Strasse` b… |
+| [D-660](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | `display_size` reicht von 1 bis 255 Zeichen, und der Schieber zeigt seine Zahl. |
+| [D-661](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Erklaerender Text steht nicht auf der Seite, sondern hinter einem Fragezeichen — als Tooltip. Und das ist die allgemeine Loesung, nicht eine je Stell… |
+| [D-662](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Wo eine Beschriftung in der Rolle `help` steht, steht hinter dem Feld ein kleines Fragezeichen. Und im waagerechten `compact` werden die Hilfen der F… |
+| [D-663](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Im Tabellenrenderer steht das Fragezeichen hinter der |
+| [D-664](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | An einem einfachen Datentyp kann es nur `default`- oder `example`-Saetze geben, niemals `user`. Damit bleibt `relation_records.path`, und TASK-002 wi… |
+| [D-665](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Auswahlfeld wird ueberall gleich gezeichnet: |
+| [D-666](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Die Einstellungen einer Feldzeile stehen |
+| [D-667](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Datensatz nennt die Kante, zu der er gehört. `node_records` bekommt neben `node_id` eine `relation_id`; `relation_records.path` fällt ersatzlos. |
+| [D-668](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden: «zu display size ja bitte») | ⚠️ **keins** | Welche Einstellungen eine Verwendungsstelle anbietet, sagt allein die Kette ihres *Ziels*. Die Kette des Besitzers zählt für die Tafel nicht mehr mit. |
+| [D-669](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein Feld auf einen anderen Typ |
+| [D-670](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Renderer, der eine Knotenseite zeichnet, ist keiner zur Auswahl und heisst nicht mehr `node`, sondern `page`. |
+| [D-671](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ein einfacher Datentyp darf `default`- und `example`-Datensätze haben — und `With Label` zählt dazu. |
+| [D-672](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Ändert sich, was erlaubt ist, wandert der Bestand im selben Schritt mit — und ein Wächter ist das Netz darunter. |
+| [D-673](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Eine Wertzeile mit `relation_id = 0` ist der Wert des Knotens selbst — nicht der eines seiner Felder. Damit bekommt ein einfacher Datentyp endlich ei… |
+| [D-674](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | Der Datensatz einer Verwendungsstelle trägt `record_type = user` — es ist eine Eingabe des Benutzers. |
+| [D-675](90-decision-log.md) | 2026-09-06 | CONFIRMED` (vom Eigentümer entschieden) | ⚠️ **keins** | An einem einfachen Datentyp ist ein |
+| [D-676](90-decision-log.md) | 2026-09-06 | agreed` (Befund gemessen, Mechanismus nach vorhandenem Muster) | ⚠️ **keins** | Eine Wertzeile im Schatten merkt sich ihre Parkgruppe: `relation_records_history` bekommt `parked_by_group_id` — dieselbe Spalte, die `relations_hist… |
+| [D-677](90-decision-log.md) | 2026-09-07 | agreed` (sein Wort, wörtlich oben) | 10-domain-core | `Combined` wird ein eigener Ast unter `Primitives`, und die Regel der einfachen Typen zieht mit nach oben: was unter `Primitives` liegt, hält |
+| [D-678](90-decision-log.md) | 2026-09-07 | agreed` (sein Wort, wörtlich oben) | 20-interaction | Gesperrt als Feldziel ist eine Astwurzel und ein Knoten *über* einer — sonst nichts. Der Halbsatz «und ein Knoten in gar keinem Ast» fällt. |
+| [D-679](90-decision-log.md) | 2026-09-07 | agreed` (sein Vorschlag, wörtlich oben) | 20-interaction, 30-renderer | Das Vorschaufeld bekommt einen Namen und einen Knopf: was darin steht, wird als `example` festgehalten. Damit ist D-673 bedienbar. |
+| [D-680](90-decision-log.md) | 2026-09-07 | agreed` (sein Wort, wörtlich oben) | 10-domain-core, 20-interaction | Eine leere Auswahl ist nur dort ein Konflikt, wo «nichts» keine Antwort ist. Verengt D-287. |
+| [D-681](90-decision-log.md) | 2026-09-07 | agreed` (die Messung; die Regel darüber ist offen) | 20-interaction, 30-renderer | Berichtigt am selben Tag — die Messung, auf der diese Zeile stand, war falsch. |
+| [D-682](90-decision-log.md) | 2026-09-07 | agreed` (sein Wort, wörtlich oben) | 20-interaction, 30-renderer | Die Einstellungstafel fragt zwei Dinge mehr: die Kette des *Gewählten*, und Namen, die der Kode nicht als Fall kennt. |

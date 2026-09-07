@@ -43,14 +43,14 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 15 |
-| **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 13 |
+| **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 14 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 16 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 72 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 73 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 3 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
 | **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 20 |
-| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 23 |
+| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 24 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:44](../../CLAUDE.md) | 3 |
 
 ## CD — Code — wie geschrieben wird
@@ -277,11 +277,11 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R25** | A chooser is given two nodes: a branch node, whose subtree it shows, and a default node, down to whose children the tree is expanded. | [30-renderer.md:814](30-renderer.md) | 7 |
 | **R26** | The user picks from those children — but may also move into any other branch that is on screen. | [30-renderer.md:815](30-renderer.md) | 1 |
 | **R27** | The branch node is what scopes the choice: picking any node means the whole tree; picking a model means the models branch is put in front. | [30-renderer.md:816](30-renderer.md) | 3 |
-| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 52 |
+| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 54 |
 | **R29** | Whether nothing is allowed follows from the multiplicity: 0..1 and 0.. may be empty; 1 and 1.. must always have a selection. | [30-renderer.md:861](30-renderer.md) | 14 |
 | **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 12 |
 | **R31** | With no available entry there is nothing to choose and the control is disabled. | [30-renderer.md:863](30-renderer.md) | 8 |
-| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 38 |
+| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 40 |
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |
 | **R34** | One thing they could do: show a number as binary, hexadecimal, octal or in Roman numerals. | [30-renderer.md:959](30-renderer.md) | 10 |
 | **R35** | "Whether this form is really hung on as a converter, I am not sure — but we should keep it in mind. Storing the twelve is one thing, showing it as … | [30-renderer.md:960](30-renderer.md) | 2 |

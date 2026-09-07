@@ -429,6 +429,27 @@ final class ModelValues
      */
     public function declaredSettingKeys(Node|Relation $subject): array
     {
+        return array_keys($this->declaredSettingEdges($subject));
+    }
+
+    /**
+     * Dieselbe Auskunft mit den **Kanten** statt nur ihren Namen.
+     *
+     * ⚠️ **Weil eine Einstellung, die der Kode nicht als Fall kennt, ihre Gestalt aus ihrer eigenen
+     * Kante bezieht** ([D-682](../../../docs/NewConcept/90-decision-log.md), [D-529](../../../docs/NewConcept/90-decision-log.md)).
+     * *Sein Fehlerbericht: «bug - einstellungen für renderer fehlen». **Gemessen war `label_role` an
+     * der Kante erklärt und wurde trotzdem nicht gezeichnet** — der Bildschirm liess nur Namen durch,
+     * die es als Fall in {@see SettingKey} gibt, und das sind dreizehn. **Eine geschlossene Liste
+     * sperrte einen offenen Mechanismus ab.***
+     *
+     * ⚠️ *Der Name allein reicht dafür nicht: was gezeichnet werden soll, sagt das **Ziel** der
+     * Einstellungskante — `Label roles` ist eine Auswahl, `Boolean` ein Schalter. Ohne die Kante
+     * müsste der Bildschirm sie ein zweites Mal suchen, und zwei Suchen sind zwei Antworten.*
+     *
+     * @return array<string, Relation> Name → die Kante, die ihn erklärt.
+     */
+    public function declaredSettingEdges(Node|Relation $subject): array
+    {
         $ziel = $subject instanceof Relation ? $this->knoten($subject->toNodeId) : null;
 
         // ⚠️ *Die Besitzerkette wird nur noch geholt, wo es keine Stelle mit Ziel gibt — bei einem
@@ -444,12 +465,12 @@ final class ModelValues
         foreach ($kette as $besitzer) {
             foreach ($this->kantenNachBesitzer[$besitzer] ?? [] as $kante) {
                 if ($kante->isSetting()) {
-                    $aus[$kante->name] = true;
+                    $aus[$kante->name] = $kante;
                 }
             }
         }
 
-        return array_keys($aus);
+        return $aus;
     }
 
     /**

@@ -1769,7 +1769,10 @@ final class Rendering implements Presets
                 $rowForm,
                 $relation->fromNodeId === $declaredBy,
                 // ⚠️ *Zugeklappt: genau der eine Schlüssel, den die Zeile selbst zeigt.*
-                $offen ? [] : [SettingKey::Multiplicity->value]
+                $offen ? [] : [SettingKey::Multiplicity->value],
+                // ⚠️ *Der Knoten dieser Seite — er sagt, welcher Renderer hier gilt
+                // ([D-682](../../../docs/NewConcept/90-decision-log.md)).*
+                $declaredBy
             ) as $drawn) {
                 $configured[$drawn->key] = $drawn;
             }
@@ -2041,10 +2044,40 @@ final class Rendering implements Presets
      */
     private function zutreffendeSchluessel(Node|Relation $node, ?SimpleType $subject): array
     {
+        return array_keys($this->zutreffendeKanten($node, $subject, $forNode));
+    }
+
+    /**
+     * Dieselbe Frage mit den Kanten — und mit der Kette des **Gewählten**.
+     *
+     * ⚠️ **Zwei Lücken auf einmal, beide gemessen** ([D-682](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *(1) **Die Kette des Gewählten, nicht die des Kantenziels.** Sein Satz, der es entscheidet:
+     * «aber das ist doch eine einstellung am renderer». `with_label` hängt an `render with label`,
+     * `orientation` an `compact` — beide **unter** dem Kantenziel `Renderer`, und die Auskunft ging
+     * vom Ziel nur nach oben. **Gemessen boten `Root`, `Model` und `Kontact` nur `converter` an**,
+     * während `Parts List` alle drei zeigte — dort lag ein Teil, dessen Werte ohnehin schon
+     * dastanden. Sein Wort dazu: «und nur weil ich ihn schon mal den rendere geändert habe wird er
+     * richtig angezeigt».*
+     *
+     * ⚠️ *(2) **Ein Name ohne Aufzählungsfall kommt trotzdem durch.** `label_role` ist an der Kante
+     * erklärt und war keiner der dreizehn Fälle in {@see SettingKey} — also fiel er lautlos heraus.
+     * Was er ist, sagt jetzt seine eigene Kante ({@see ModelValues::declaredSettingEdges()}).*
+     *
+     * @return array<string, ?SettingKey> Name → sein Aufzählungsfall, oder `null`, wenn er keinen hat.
+     */
+    private function zutreffendeKanten(Node|Relation $node, ?SimpleType $subject, int $forNode = 0): array
+    {
         $istKante = $node instanceof Relation;
 
         if ($this->model === null) {
-            return SettingKey::applyingTo($subject, $istKante);
+            $aus = [];
+
+            foreach (SettingKey::applyingTo($subject, $istKante) as $key) {
+                $aus[$key->value] = $key;
+            }
+
+            return $aus;
         }
 
         $aus = [];
@@ -2052,20 +2085,87 @@ final class Rendering implements Presets
         // ⚠️ *Sie hängt als Spalte an der Kante und ist nirgends als Kante erklärt — aus dem Modell
         // käme sie nie zurück, und die zugeklappte Feldzeile fragt genau nach ihr.*
         if ($istKante) {
-            $aus[] = SettingKey::Multiplicity;
+            $aus[SettingKey::Multiplicity->value] = SettingKey::Multiplicity;
         }
 
-        foreach ($this->model->declaredSettingKeys($node) as $name) {
+        $kanten = $this->model->declaredSettingEdges($node);
+
+        // ⚠️ *Der Gewählte kommt **dazu** und ersetzt nicht: was das Kantenziel erklärt, gilt für
+        // jede Wahl — `converter` und `label_role` stehen an `Renderer` selbst und sollen nicht
+        // verschwinden, wenn jemand `plain` wählt.*
+        foreach ($this->chosenChainEdges($node, $forNode) as $name => $kante) {
+            $kanten[$name] ??= $kante;
+        }
+
+        foreach ($kanten as $name => $kante) {
             $key = SettingKey::tryFrom($name);
 
-            if ($key === null || $key->isRelationOnly() || ($key->isNodeOnly() && $istKante)) {
+            if ($key !== null && ($key->isRelationOnly() || ($key->isNodeOnly() && $istKante))) {
                 continue;
             }
 
-            $aus[] = $key;
+            $aus[$name] = $key;
         }
 
         return $aus;
+    }
+
+    /**
+     * Die Einstellungen des Knotens, der an dieser Einstellungskante **gilt**.
+     *
+     * ⚠️ *Ein Teil sagt «hier wurde gewählt», die Auflösung sagt «hier gilt» — und nur die zweite
+     * beantwortet seinen Fall: `Model` hat den Renderer gesetzt, `Kontact` erbt ihn und muss dessen
+     * Einstellungen trotzdem überschreiben können ([D-602](../../../docs/NewConcept/90-decision-log.md)).
+     * **Der Teil dafür entsteht beim ersten Schreiben** ([D-609](../../../docs/NewConcept/90-decision-log.md)),
+     * und {@see DataEntry::putSettingAt()} kann das längst; es fehlte nur das Steuerelement.*
+     *
+     * @return array<string, Relation>
+     */
+    private function chosenChainEdges(Node|Relation $node, int $forNode): array
+    {
+        if (! $node instanceof Relation || ! $node->isSetting() || $this->model === null) {
+            return [];
+        }
+
+        // ⚠️ **Gefragt wird der *Knoten*, nicht die Kante** — *an der Kante steht nichts, an `Model`
+        // steht etwas, und `Kontact` zeichnet damit. Das ist der geerbte Fall, um den es hier geht.*
+        $knoten = $forNode === 0 ? null : $this->nodes->find($forNode);
+
+        if ($knoten === null) {
+            return [];
+        }
+
+        $geltend = $this->withModelValues([], $knoten)[$node->name] ?? null;
+        $ref     = $geltend?->value->reference;
+
+        // ⚠️ **Der Renderer steht als *Name* in der Kette, nicht als Verweis** — *gemessen am
+        // 2026-09-07: `Parts List` löst zu `text='form'` auf, `Dimension` zu `'compact'`, und ein
+        // `reference` gibt es an keiner der beiden. **Ein Leser, der nur nach dem Verweis sieht,
+        // findet nie etwas**, und genau das war die verbleibende Lücke.*
+        //
+        // ⚠️ *Der Weg vom Namen zum Knoten ist der der Registratur — Klasse, dann Knoten
+        // ([D-510](../../../docs/NewConcept/90-decision-log.md)) —, derselbe, den die
+        // Renderer-Wahl schon geht. **Kein Suchen nach dem Anzeigenamen.***
+        if ($ref === null) {
+            $name = $geltend?->value->text ?? '';
+
+            if ($name === '') {
+                return [];
+            }
+
+            $klasse = $this->renderers->classFor($name);
+            $ref    = $klasse === null
+                ? null
+                : ($this->nodes->byImplementations([$klasse])[$klasse] ?? null)?->id;
+        }
+
+        if ($ref === null || $ref === $node->toNodeId) {
+            return [];
+        }
+
+        $gewaehlt = $this->nodes->find($ref);
+
+        return $gewaehlt === null ? [] : $this->model->declaredSettingEdges($gewaehlt);
     }
 
     /**
@@ -2157,6 +2257,12 @@ final class Rendering implements Presets
          * @var list<string>
          */
         array $onlyKeys = [],
+        /**
+         * ⚠️ **Der Knoten, an dem diese Zeile steht** — *für die Kette des Gewählten
+         * ([D-682](../../../docs/NewConcept/90-decision-log.md)). Ohne ihn lässt sich nicht fragen,
+         * welcher Renderer hier **gilt**, und die Einstellungen eines geerbten bleiben unsichtbar.*
+         */
+        int $forNode = 0,
     ): array {
         // ⚠️ **A use site is configured too, and its type is its target's.** [C8](../../../docs/NewConcept/10-domain-core.md)
         // gives an relation settings of its own and [D-091](90-decision-log.md) resolves them the same
@@ -2184,13 +2290,11 @@ final class Rendering implements Presets
         // ⚠️ **`multiplicity` applies only to an relation** and is the one key that does (D-351) — a
         // node describes a thing, and a thing has no multiplicity. *Sie hängt als **Spalte** an der
         // Kante und ist deshalb nirgends als Kante erklärt — sie käme aus dem Modell nie zurück.*
-        foreach ($this->zutreffendeSchluessel($node, $subject) as $key) {
-            $resolved[$key->value] ??= new ResolvedSetting(
-                $key->value,
-                TypedValue::nothing(),
-                0,
-                false
-            );
+        // ⚠️ *Über die **Namen** und nicht über die Aufzählung: ein im Modell erklärter Schlüssel
+        // ohne Fall in {@see SettingKey} soll eine Zeile bekommen wie jeder andere
+        // ([D-682](../../../docs/NewConcept/90-decision-log.md)).*
+        foreach (array_keys($this->zutreffendeKanten($node, $subject, $forNode)) as $name) {
+            $resolved[$name] ??= new ResolvedSetting($name, TypedValue::nothing(), 0, false);
         }
 
         // ⚠️ *Die Schranke wirkt **nach** dem Auffüllen und nicht davor: was der Aufrufer verlangt,

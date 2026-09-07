@@ -98,11 +98,44 @@ echo "== the preview appears where records are possible, and not elsewhere ==\n"
 // [D-518](../../docs/NewConcept/90-decision-log.md) lässt die Vorschau Einstellungen weg — also wurde die
 // Zeile als «versteckt» gezählt, und die `read_only`-Zusagen darunter prüften an einer Zeile, die gar
 // nicht gezeichnet wird. **Die Prüfung war rot, ohne dass am Schirm etwas falsch war.***
-$model = (int) $wpdb->get_var(
+// ⚠️ **Ein Knoten, der wirklich Benutzerdaten hält** — *zwei Einschränkungen, die hier nicht standen
+// und beide am 2026-09-07 wehgetan haben.*
+//
+// ⚠️ *`relation_id = 0` ([D-667](../../docs/NewConcept/90-decision-log.md)): Sätze einer
+// **Verwendungsstelle** zählen nicht mit, denn der Datensatzblock listet sie nicht.*
+//
+// ⚠️ *Und der Ast muss Daten halten: seit [D-677](../../docs/NewConcept/90-decision-log.md) tut
+// `Combined` das **nicht**, und ein zusammengesetzter Datentyp wartet ohnehin auf den
+// Behälter-Renderer, den es noch nicht gibt. **Der Lauf landete auf `Street / H#` und prüfte eine
+// Vorschau, die niemand versprochen hat** — dieser Abschnitt handelt von `hide` und `read_only` an
+// einem Modell.*
+$rahmen = new \Taxmod\WordPress\Persistence\SeededFrameworkNodes(
+    new \Taxmod\WordPress\Persistence\WpdbNodeRepository(),
+    new \Taxmod\WordPress\Persistence\WpdbRelationRepository(),
+    new \Taxmod\WordPress\Persistence\WpdbChangelog(new \Taxmod\WordPress\SystemClock())
+);
+
+$model = 0;
+
+/** @var list<array{node_id: string}> $kandidaten */
+$kandidaten = $wpdb->get_results(
     "SELECT r.node_id FROM {$prefix}node_records r
      INNER JOIN {$prefix}relations_named e ON e.from_node_id = r.node_id AND e.name <> '' AND e.kind <> 'setting' AND e.kind <> 'inheritance'
-     GROUP BY r.node_id ORDER BY COUNT(*) DESC LIMIT 1"
+     WHERE r.relation_id = 0
+     GROUP BY r.node_id ORDER BY COUNT(*) DESC",
+    ARRAY_A
 );
+
+foreach ($kandidaten as $kandidat) {
+    $knoten = (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->find((int) $kandidat['node_id']);
+    $ast    = $knoten === null ? null : $rahmen->branchOf($knoten);
+
+    if ($ast !== null && $ast->holdsData()) {
+        $model = $knoten->id;
+
+        break;
+    }
+}
 
 check('a model with records was found to test against', $model > 0, (string) $model);
 
