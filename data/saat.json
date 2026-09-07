@@ -3,14 +3,14 @@
     "schemafassung": 40,
     "abzugsfassung": 1,
     "zaehlung": {
-        "labels": 184,
-        "label_texts": 186,
-        "nodes": 136,
+        "labels": 183,
+        "label_texts": 185,
+        "nodes": 135,
         "relations": 48,
-        "node_records": 194,
-        "relation_records": 90
+        "node_records": 196,
+        "relation_records": 94
     },
-    "pruefsumme": "7c66cdc4d6a2c766505f52206c767129f3098f367d6b75ec582f70462a9e22ad",
+    "pruefsumme": "6fc814a0dd66a61d9e536474f8576c93c88eb6e17a8c838603aab4c8aed0dc4b",
     "optionen": {
         "taxmod_base_scaffold": "6",
         "taxmod_branch_compositions_id": "404",
@@ -743,12 +743,6 @@
             {
                 "id": "119",
                 "version": "103",
-                "owner_kind": "node",
-                "icon": null
-            },
-            {
-                "id": "120",
-                "version": "1",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -2559,18 +2553,6 @@
                 "text_select": "Read Only",
                 "text_help": "The read only flag, is used to protect a field that is only for calculation or preselected but should be written with the dataset.",
                 "text_symbol": "RO"
-            },
-            {
-                "id": "120",
-                "label_id": "120",
-                "locale": "en_US",
-                "number": "one",
-                "text_name": "Label roles",
-                "text_form": null,
-                "text_table": null,
-                "text_select": null,
-                "text_help": null,
-                "text_symbol": null
             },
             {
                 "id": "121",
@@ -4438,15 +4420,6 @@
                 "implemented_by": null,
                 "parent_node_id": "1179",
                 "sort_order": "0",
-                "hide": "0"
-            },
-            {
-                "id": "55130",
-                "version": "2",
-                "label_id": "120",
-                "implemented_by": null,
-                "parent_node_id": "1",
-                "sort_order": "20",
                 "hide": "0"
             },
             {
@@ -6879,6 +6852,24 @@
                 "created_at": "2026-09-06 14:42:49",
                 "record_type": "default",
                 "relation_id": "0"
+            },
+            {
+                "id": "12643",
+                "version": "1",
+                "node_id": "75473",
+                "node_version": "6",
+                "created_at": "2026-09-07 10:39:21",
+                "record_type": "default",
+                "relation_id": "0"
+            },
+            {
+                "id": "12644",
+                "version": "1",
+                "node_id": "43505",
+                "node_version": "6",
+                "created_at": "2026-09-07 10:39:21",
+                "record_type": "default",
+                "relation_id": "0"
             }
         ],
         "relation_records": [
@@ -7658,7 +7649,7 @@
                 "relation_id": "149000097711",
                 "locale": "",
                 "position": "0",
-                "version": "2",
+                "version": "3",
                 "value_int": "5",
                 "value_decimal": null,
                 "value_text": null,
@@ -7672,7 +7663,7 @@
                 "relation_id": "149000097711",
                 "locale": "",
                 "position": "0",
-                "version": "1",
+                "version": "2",
                 "value_int": "40",
                 "value_decimal": null,
                 "value_text": null,
@@ -8141,6 +8132,62 @@
                 "value_date": null,
                 "value_ref": "739",
                 "value_ref_kind": "node"
+            },
+            {
+                "id": "18617",
+                "node_record_id": "10016",
+                "relation_id": "50938",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "18618",
+                "node_record_id": "10015",
+                "relation_id": "50938",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "18619",
+                "node_record_id": "12643",
+                "relation_id": "50938",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "18620",
+                "node_record_id": "12643",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "12644",
+                "value_ref_kind": "record"
             }
         ]
     }
