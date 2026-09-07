@@ -2130,7 +2130,7 @@ Kanten-Saetze.** Er ist damit faellig und nicht erledigt.*
 
 ---
 
-[ ] TASK-063  Der Tabellenrenderer bekommt den Umschalter horizontal / vertikal
+[x] TASK-063  Der Tabellenrenderer bekommt den Umschalter horizontal / vertikal
 
 **2026-09-06, sein Auftrag:** *«ich würde gerne hier auch horizontal und vertikal einfügen, horizontal
 kopf oben daten darunter, vertikal kopf links daten rechts davon, wir können auch zwei rendere daraus
@@ -2158,6 +2158,29 @@ mehr** — kein neuer Mechanismus, und Vorschau, Vererbung und Einstellungstafel
 
 **Zusage:** *derselbe Datensatz, zweimal gezeichnet, einmal je Lage — und die Köpfe stehen einmal
 oben und einmal links.* Gemessen am Markup, nicht an einer Dienstmethode.
+
+⚠️ **Gebaut am 2026-09-07, in vier Stücken:**
+
+| | |
+|---|---|
+| `src/Core/Renderer/Orientation.php` | Schlüssel, die zwei Worte und **die Vorgabe an einer Stelle** — `CompactRenderer` liest jetzt von dort |
+| `TableRenderer` | eine Sammlung von Zellen, zweimal ausgelegt: `thead`/`scope="col"` gegen `th scope="row"` |
+| `Rendering::recordsAsTable()` | reicht die Angaben des **gewählten** Renderers durch — hier stand ein leerer Zeichenkontext |
+| `scripts/dev/table-orientation-migrate.php` | die eine Kante `table --orientation--> Orientation`, über `ModelEditor::addField()` |
+
+⚠️ **Der Umschalter kam nicht an, und der Grund war nicht der Renderer.** *`recordsAsTable()` baute
+den Zeichenkontext **ohne Angaben** — genau der Fehler, den er am Kompaktrenderer schon gemeldet hat
+(«compact mit horizontal und ohne Label gewählt, aber gerendert wird vertikal»). `orientation` und
+`with_label` hängen am **Satz des gewählten Renderers**, nicht an der Kette des gezeichneten Knotens.
+**Die Kante allein hätte nichts bewirkt**, und am Markup gemessen wäre es aufgefallen, an einer
+Dienstmethode nicht.*
+
+⚠️ **Der Abzug ist nachgezogen** (`data/saat.json`, [D-600](../../NewConcept/90-decision-log.md)):
+Kanten 48 → **49**. *Ohne ihn hätte eine frische Installation die Kante nicht.*
+
+**Die Zusage hängt an `package7-check.php`, Abschnitt 17c** — eigene Wiese `__t63`, Aufräumen im
+`finally`, in der Klammer aus `lib/no-write.php`. Dazu zwei Zusagen im Kernlauf
+(`TableRendererTest`): die zwei Lagen, und dass **nur das genaue Wort** die Achse dreht.
 
 ---
 

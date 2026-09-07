@@ -12,6 +12,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\Level;
+use Taxmod\Core\Renderer\Orientation;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\RenderResult;
@@ -154,6 +155,62 @@ final class TableRendererTest extends TestCase
     public function nothing_to_draw_draws_nothing(): void
     {
         self::assertSame('', $this->gezeichnet([]));
+    }
+
+    /**
+     * ⚠️ **Derselbe Datensatz, zweimal gezeichnet, einmal je Lage** (TASK-063).
+     *
+     * *Sein Auftrag: «horizontal kopf oben daten darunter, vertikal kopf links daten rechts davon».
+     * Gemessen an `scope`, weil das Wort **ist**, was oben und links bedeutet — und ein Leser ohne
+     * Augen liest genau es.*
+     */
+    #[Test]
+    public function the_same_records_are_drawn_head_on_top_or_head_on_the_left(): void
+    {
+        $datensaetze = [
+            [$this->feld($this->name, 'Mehl'), $this->feld($this->menge, '500 g')],
+            [$this->feld($this->name, 'Zucker'), $this->feld($this->menge, '100 g')],
+        ];
+
+        $waagerecht = $this->gezeichnet($datensaetze);
+        $senkrecht  = $this->gezeichnet($datensaetze, [
+            Orientation::KEY => new ResolvedSetting(Orientation::KEY, TypedValue::ofText('vertical'), 1, true),
+        ]);
+
+        self::assertStringContainsString('<thead>', $waagerecht);
+        self::assertStringContainsString('scope="col"', $waagerecht);
+        self::assertStringNotContainsString('scope="row"', $waagerecht);
+
+        self::assertStringNotContainsString('<thead>', $senkrecht);
+        self::assertStringNotContainsString('scope="col"', $senkrecht);
+        self::assertSame(2, substr_count($senkrecht, 'scope="row"'), 'je Feld ein Kopf, links');
+
+        // Zwei Datensaetze, zwei Felder: waagerecht zwei Zeilen, senkrecht zwei — und die Achse
+        // zeigt sich daran, was in einer Zeile steht.
+        self::assertSame(2, substr_count($senkrecht, '<tr class="taxmod-table-row">'), 'je Feld eine Zeile');
+        self::assertLessThan(strpos($senkrecht, 'Zucker'), strpos($senkrecht, 'Mehl'), 'die Datensaetze sind die Spalten');
+        self::assertLessThan(strpos($senkrecht, 'Mehl'), strpos($senkrecht, 'Name'), 'der Kopf steht links davon');
+
+        foreach (['Name', 'Menge', 'Mehl', 'Zucker', '500 g', '100 g'] as $stueck) {
+            self::assertStringContainsString($stueck, $waagerecht);
+            self::assertStringContainsString($stueck, $senkrecht);
+        }
+    }
+
+    /** ⚠️ *Schweigen, ein leeres Wort und ein Schreibfehler sind alle die Vorgabe — und die ist waagerecht.* */
+    #[Test]
+    public function only_the_exact_word_turns_the_axis(): void
+    {
+        $datensaetze = [[$this->feld($this->name, 'Mehl')]];
+
+        foreach (['', 'diagonal', 'Vertical', 'horizontal'] as $wort) {
+            $markup = $this->gezeichnet($datensaetze, [
+                Orientation::KEY => new ResolvedSetting(Orientation::KEY, TypedValue::ofText($wort), 1, true),
+            ]);
+
+            self::assertStringContainsString('taxmod-table-horizontal', $markup, "«{$wort}» ist nicht senkrecht");
+            self::assertStringContainsString('<thead>', $markup);
+        }
     }
 
     /** ⚠️ **Kein Typ, und das ist der Punkt** — *ein Behälter gilt für jeden Typ, weil er keinen anfasst.* */

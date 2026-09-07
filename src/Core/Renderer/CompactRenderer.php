@@ -78,8 +78,15 @@ final class CompactRenderer extends RendererNode
 {
     public const NAME = 'compact';
 
-    /** The free setting key that flips the axis. See the class docblock on OQ-120. */
-    public const ORIENTATION = 'orientation';
+    /**
+     * The free setting key that flips the axis. See the class docblock on OQ-120.
+     *
+     * ⚠️ **Der Schlüssel, die zwei Worte und die Vorgabe stehen seit TASK-063 in
+     * {@see Orientation}** — *weil {@see TableRenderer} denselben Umschalter bekommen hat und eine
+     * abgeschriebene Vorgabe eine zweite Vorgabe ist. Hier bleiben nur die Namen stehen, damit die
+     * Aufrufer sie weiter beim Renderer finden.*
+     */
+    public const ORIENTATION = Orientation::KEY;
 
     /**
      * The free setting key that switches the labels off. See the class docblock on OQ-120.
@@ -93,8 +100,8 @@ final class CompactRenderer extends RendererNode
      */
     public const LABEL = 'with_label';
 
-    public const HORIZONTAL = 'horizontal';
-    public const VERTICAL   = 'vertical';
+    public const HORIZONTAL = Orientation::Horizontal->value;
+    public const VERTICAL   = Orientation::Vertical->value;
 
     public function name(): string
     {
@@ -163,14 +170,12 @@ final class CompactRenderer extends RendererNode
 
     /**
      * ⚠️ **Only the exact word `vertical` turns the axis**; everything else — silence, an empty
-     * setting, a misspelling — is the default. *An unrecognised value is not a decided case
-     * ([OQ-120](../../../docs/NewConcept/91-open-questions.md) owns the shape of these keys), and
-     * falling back to the declared default is the only reading that cannot invent a third
-     * orientation.*
+     * setting, a misspelling — is the default. *That reading, and the default it falls back to, live
+     * in {@see Orientation} since TASK-063, because {@see TableRenderer} reads the same switch.*
      */
     private function isVertical(RenderContext $context): bool
     {
-        return $context->setting(self::ORIENTATION)?->text === self::VERTICAL;
+        return Orientation::fromContext($context)->isVertical();
     }
 
     /**

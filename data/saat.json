@@ -3,14 +3,14 @@
     "schemafassung": 40,
     "abzugsfassung": 1,
     "zaehlung": {
-        "labels": 183,
-        "label_texts": 185,
+        "labels": 184,
+        "label_texts": 186,
         "nodes": 135,
-        "relations": 48,
-        "node_records": 196,
-        "relation_records": 94
+        "relations": 49,
+        "node_records": 197,
+        "relation_records": 95
     },
-    "pruefsumme": "6fc814a0dd66a61d9e536474f8576c93c88eb6e17a8c838603aab4c8aed0dc4b",
+    "pruefsumme": "60d023b94e5063705fdcd240e9421dfea05ebfaec51b082c49fea5543e4d1156",
     "optionen": {
         "taxmod_base_scaffold": "6",
         "taxmod_branch_compositions_id": "404",
@@ -796,7 +796,7 @@
             },
             {
                 "id": "131",
-                "version": "54",
+                "version": "55",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -1134,6 +1134,12 @@
                 "id": "11870",
                 "version": "3",
                 "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "18995",
+                "version": "2",
+                "owner_kind": "relation",
                 "icon": null
             }
         ],
@@ -3357,6 +3363,18 @@
                 "text_select": null,
                 "text_help": null,
                 "text_symbol": null
+            },
+            {
+                "id": "29917",
+                "label_id": "18995",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "orientation",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
             }
         ],
         "nodes": [
@@ -4496,11 +4514,11 @@
             },
             {
                 "id": "75473",
-                "version": "6",
+                "version": "7",
                 "label_id": "131",
                 "implemented_by": null,
-                "parent_node_id": "404",
-                "sort_order": "7",
+                "parent_node_id": "3984",
+                "sort_order": "0",
                 "hide": "0"
             },
             {
@@ -5103,6 +5121,17 @@
                 "label_id": "11386",
                 "sort_order": "1",
                 "multiplicity": "0..1",
+                "hide": "0"
+            },
+            {
+                "id": "149000100849",
+                "version": "1",
+                "from_node_id": "55790",
+                "to_node_id": "55653",
+                "kind": "setting",
+                "label_id": "18995",
+                "sort_order": "0",
+                "multiplicity": "1..1",
                 "hide": "0"
             }
         ],
@@ -6870,6 +6899,15 @@
                 "created_at": "2026-09-07 10:39:21",
                 "record_type": "default",
                 "relation_id": "0"
+            },
+            {
+                "id": "12649",
+                "version": "1",
+                "node_id": "43505",
+                "node_version": "6",
+                "created_at": "2026-09-07 10:40:29",
+                "record_type": "default",
+                "relation_id": "0"
             }
         ],
         "relation_records": [
@@ -7537,7 +7575,7 @@
                 "relation_id": "50938",
                 "locale": "",
                 "position": "0",
-                "version": "4",
+                "version": "5",
                 "value_int": "0",
                 "value_decimal": null,
                 "value_text": null,
@@ -8187,6 +8225,20 @@
                 "value_text": null,
                 "value_date": null,
                 "value_ref": "12644",
+                "value_ref_kind": "record"
+            },
+            {
+                "id": "18625",
+                "node_record_id": "4758",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "12649",
                 "value_ref_kind": "record"
             }
         ]

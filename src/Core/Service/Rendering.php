@@ -1460,6 +1460,12 @@ final class Rendering implements Presets
                     rowLead: $vorne,
                     rowActs: $akte
                 ),
+                // ⚠️ **Sonst käme der Umschalter nie an** (TASK-063). *Hier stand gar keine Angabe —
+                // derselbe leere Zeichenkontext, den er am Kompaktrenderer gemeldet hat («compact mit
+                // horizontal und ohne Label gewählt, aber gerendert wird vertikal»). `orientation` und
+                // `with_label` hängen am **Satz des gewählten Renderers**, also holt sie
+                // {@see self::withRendererValues()} und nicht die Kette des gezeichneten Knotens.*
+                settings: $this->withRendererValues($model),
             )
         );
 

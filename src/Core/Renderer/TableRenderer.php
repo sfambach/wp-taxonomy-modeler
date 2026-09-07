@@ -23,11 +23,37 @@ use Taxmod\Core\Model\Node;
  * an ihrer gemeinsamen Gruppe hängt. **Fehlt sie, wird der Kopf gezeichnet:** eine Tabelle ohne
  * Spaltennamen ist für einen Leser schlechter als eine mit.*
  *
+ * ## Die Lage — ein Umschalter und nicht zwei Renderer (TASK-063)
+ *
+ * ⚠️ **Sein Auftrag am 2026-09-06, wörtlich:** *«ich würde gerne hier auch horizontal und vertikal
+ * einfügen, horizontal kopf oben daten darunter, vertikal kopf links daten rechts davon, wir können
+ * auch zwei rendere daraus machen ist mir im prinzip egal».* **Es wurde einer**, weil er dieselbe
+ * Frage am Kompaktrenderer schon entschieden hat ([D-471](../../../docs/NewConcept/90-decision-log.md)):
+ * *zwei Renderer, die sich in **einer** Achse unterscheiden, sind zwei Registrierungen, zwei Namen im
+ * `renderer`-Schlüssel und zwei Stellen, an denen dieselbe Tabellenhaftigkeit gepflegt wird.*
+ *
+ * | | Kopf | Daten |
+ * |---|---|---|
+ * | `horizontal` (Vorgabe) | oben, ein `thead` mit `scope="col"` | darunter, **eine Zeile** je Datensatz |
+ * | `vertical` | links, je Zeile ein `th scope="row"` | rechts daneben, **eine Spalte** je Datensatz |
+ *
+ * ⚠️ **Schlüssel, Worte und Vorgabe stehen nicht hier**, sondern in {@see Orientation} — dieselbe
+ * Stelle, aus der {@see CompactRenderer} liest. *Sie hier abzuschreiben hiesse, die Vorgabe zweimal
+ * zu haben, und die zweite behielte still die alte, wenn die erste sich ändert.*
+ *
+ * ⚠️ **Beide Lagen zeichnen dieselben Zellen; nur ihre Reihenfolge dreht sich.** *Die Zellen werden
+ * einmal gesammelt ({@see self::zellen()}) und dann ausgelegt — sonst wäre `with_label`, die
+ * Vorspalte und die Aktionsspalte je zweimal zu pflegen, und genau das ist die Doppelung, gegen die
+ * D-471 entschieden hat.*
+ *
  * ```mermaid
  * flowchart TD
  *   R["records: je Datensatz die gezeichneten Felder"] --> T[table]
  *   W["with_label"] --> T
- *   T --> M["thead aus den Feldnamen, ein tr je Datensatz"]
+ *   O["orientation"] --> T
+ *   T --> Z["Zellen: je Datensatz, je Spalte"]
+ *   Z -->|horizontal| H["Kopf oben, ein tr je Datensatz"]
+ *   Z -->|vertical| V["Kopf links, ein tr je Spalte"]
  * ```
  *
  * @see docs/NewConcept/30-renderer.md
@@ -71,8 +97,7 @@ final class TableRenderer extends RendererNode
             $datensaetze = [$context->surroundings->parts];
         }
 
-        $spalten   = $this->columns($datensaetze);
-        $usedRelations = [];
+        $spalten = $this->columns($datensaetze);
 
         if ($spalten === []) {
             return RenderResult::of('');
@@ -92,52 +117,153 @@ final class TableRenderer extends RendererNode
         $vorspalten = array_keys($vorspalten);
         $mitActs    = $context->surroundings->rowActs !== [];
 
-        $zeilen = '';
+        $usedRelations = [];
+        $zeilen        = [];
 
         foreach ($datensaetze as $nummer => $felder) {
-            $nachKante = [];
-
-            foreach ($felder as $feld) {
-                if ($feld instanceof RenderedField && ! $feld->isHidden()) {
-                    $nachKante[$feld->relation->id] = $feld;
-                    $usedRelations                  = [...$usedRelations, ...$feld->result->usedRelations];
-                }
-            }
-
-            $zellen = '';
-
-            // ⚠️ *Auch hier über die Spaltenliste: fehlt einer Zeile eine Vorspalte, bleibt die Zelle
-            // leer statt wegzufallen.*
-            foreach ($vorspalten as $kopf) {
-                $zellen .= '<td class="taxmod-table-lead">'
-                    . ($context->surroundings->rowLead[$nummer][$kopf] ?? '')
-                    . '</td>';
-            }
-
-            // ⚠️ **Über die Spaltenliste und nicht über die vorhandenen Felder.** *Fehlt einem
-            // Datensatz ein Feld, muss die Zelle **leer** erscheinen und nicht wegfallen — sonst
-            // verrutscht die ganze Zeile, und das sieht wie Daten aus.*
-            foreach ($spalten as $relationId => $name) {
-                $feld    = $nachKante[$relationId] ?? null;
-                $zellen .= '<td class="taxmod-table-cell">' . ($feld?->result->markup ?? '') . '</td>';
-            }
-
-            if ($mitActs) {
-                $zellen .= '<td class="taxmod-table-acts">'
-                    . ($context->surroundings->rowActs[$nummer] ?? '')
-                    . '</td>';
-            }
-
-            $zeilen .= '<tr class="taxmod-table-row">' . $zellen . '</tr>';
+            $zeilen[] = $this->zellen($felder, $context, $vorspalten, $spalten, $mitActs, $nummer, $usedRelations);
         }
 
+        // ⚠️ *Die Köpfe stehen in **einer** Liste, in der Reihenfolge der Zellen — waagerecht werden
+        // sie eine Zeile, senkrecht die erste Spalte. Ohne Wort bleibt die Aktionsspalte
+        // ([AR-2](../../../CLAUDE.md): der Kern macht keine Worte).*
+        $koepfe = [...$vorspalten, ...array_values($spalten)];
+
+        if ($mitActs) {
+            $koepfe[] = '';
+        }
+
+        $lage = Orientation::fromContext($context);
+
+        // ⚠️ *Fehlt die Einstellung, wird der Kopf gezeichnet — eine Tabelle ohne Spaltennamen ist
+        // schlechter zu lesen als eine mit.*
+        $mitKopf = $context->setting('with_label')?->asBool() !== false;
+
         return new RenderResult(
-            '<table class="taxmod-table">'
-            . $this->head($spalten, $context, $vorspalten, $mitActs)
-            . '<tbody>' . $zeilen . '</tbody>'
+            '<table class="taxmod-table taxmod-table-' . $lage->value . '">'
+            . ($lage->isVertical()
+                ? $this->senkrecht($koepfe, $zeilen, $mitKopf)
+                : $this->waagerecht($koepfe, $zeilen, $mitKopf))
             . '</table>',
             array_values(array_unique($usedRelations))
         );
+    }
+
+    /**
+     * Die Zellen **eines** Datensatzes, in der Reihenfolge der Spaltenliste — Klasse und Markup je Zelle.
+     *
+     * ⚠️ **Über die Spaltenliste und nicht über die vorhandenen Felder.** *Fehlt einem Datensatz ein
+     * Feld, muss die Zelle **leer** erscheinen und nicht wegfallen — sonst verrutscht die ganze Zeile,
+     * und das sieht wie Daten aus. Senkrecht wäre der Schaden derselbe, nur um 90 Grad gedreht.*
+     *
+     * @param  list<RenderedField>       $felder
+     * @param  list<string>              $vorspalten
+     * @param  array<int,string>         $spalten
+     * @param  list<string>              $usedRelations gesammelt über alle Datensätze
+     * @return list<array{0:string,1:string}> je Zelle: CSS-Klasse, fertiges Markup
+     */
+    private function zellen(
+        array $felder,
+        RenderContext $context,
+        array $vorspalten,
+        array $spalten,
+        bool $mitActs,
+        int|string $nummer,
+        array &$usedRelations
+    ): array {
+        $nachKante = [];
+
+        foreach ($felder as $feld) {
+            if ($feld instanceof RenderedField && ! $feld->isHidden()) {
+                $nachKante[$feld->relation->id] = $feld;
+                $usedRelations                  = [...$usedRelations, ...$feld->result->usedRelations];
+            }
+        }
+
+        $zellen = [];
+
+        // ⚠️ *Auch hier über die Spaltenliste: fehlt einer Zeile eine Vorspalte, bleibt die Zelle
+        // leer statt wegzufallen.*
+        foreach ($vorspalten as $kopf) {
+            $zellen[] = ['taxmod-table-lead', (string) ($context->surroundings->rowLead[$nummer][$kopf] ?? '')];
+        }
+
+        foreach (array_keys($spalten) as $relationId) {
+            $feld     = $nachKante[$relationId] ?? null;
+            $zellen[] = ['taxmod-table-cell', $feld?->result->markup ?? ''];
+        }
+
+        if ($mitActs) {
+            $zellen[] = ['taxmod-table-acts', (string) ($context->surroundings->rowActs[$nummer] ?? '')];
+        }
+
+        return $zellen;
+    }
+
+    /**
+     * Kopf oben, darunter eine Zeile je Datensatz — die Vorgabe.
+     *
+     * @param list<string>                          $koepfe
+     * @param list<list<array{0:string,1:string}>>  $zeilen
+     */
+    private function waagerecht(array $koepfe, array $zeilen, bool $mitKopf): string
+    {
+        $kopf = '';
+
+        if ($mitKopf) {
+            $zellen = '';
+
+            foreach ($koepfe as $name) {
+                $zellen .= '<th class="taxmod-table-head" scope="col">' . RenderResult::escape($name) . '</th>';
+            }
+
+            $kopf = '<thead><tr>' . $zellen . '</tr></thead>';
+        }
+
+        $rumpf = '';
+
+        foreach ($zeilen as $zellenDerZeile) {
+            $zellen = '';
+
+            foreach ($zellenDerZeile as [$klasse, $markup]) {
+                $zellen .= '<td class="' . $klasse . '">' . $markup . '</td>';
+            }
+
+            $rumpf .= '<tr class="taxmod-table-row">' . $zellen . '</tr>';
+        }
+
+        return $kopf . '<tbody>' . $rumpf . '</tbody>';
+    }
+
+    /**
+     * Kopf links, rechts daneben eine **Spalte** je Datensatz.
+     *
+     * ⚠️ **Kein `thead`, und das ist kein Versehen.** *Ein `thead` steht für eine Kopf**zeile**; hier
+     * ist der Kopf eine Spalte, und jede Zeile trägt ihre eigene Überschrift als `th scope="row"`.
+     * Ein `thead` um die erste Spalte gäbe es im HTML nicht — es gibt keine Spaltengruppe, die Zellen
+     * enthält.*
+     *
+     * @param list<string>                          $koepfe
+     * @param list<list<array{0:string,1:string}>>  $zeilen die Zellen je **Datensatz**
+     */
+    private function senkrecht(array $koepfe, array $zeilen, bool $mitKopf): string
+    {
+        $rumpf = '';
+
+        foreach ($koepfe as $stelle => $name) {
+            $zellen = $mitKopf
+                ? '<th class="taxmod-table-head" scope="row">' . RenderResult::escape($name) . '</th>'
+                : '';
+
+            foreach ($zeilen as $zellenDerZeile) {
+                [$klasse, $markup] = $zellenDerZeile[$stelle];
+                $zellen           .= '<td class="' . $klasse . '">' . $markup . '</td>';
+            }
+
+            $rumpf .= '<tr class="taxmod-table-row">' . $zellen . '</tr>';
+        }
+
+        return '<tbody>' . $rumpf . '</tbody>';
     }
 
     /**
@@ -169,35 +295,4 @@ final class TableRenderer extends RendererNode
         return array_map(static fn ($relation): string => $relation->name, $gesehen);
     }
 
-    /**
-     * @param array<int,string> $spalten
-     * @param list<string>      $vorspalten Die Überschriften der Spalten vor den Feldern.
-     * @param bool              $mitActs    Ob rechts eine Spalte für Bedienelemente steht.
-     */
-    private function head(array $spalten, RenderContext $context, array $vorspalten = [], bool $mitActs = false): string
-    {
-        // ⚠️ *Fehlt die Einstellung, wird der Kopf gezeichnet — eine Tabelle ohne Spaltennamen ist
-        // schlechter zu lesen als eine mit.*
-        if ($context->setting('with_label')?->asBool() === false) {
-            return '';
-        }
-
-        $zellen = '';
-
-        foreach ($vorspalten as $name) {
-            $zellen .= '<th class="taxmod-table-head" scope="col">' . RenderResult::escape($name) . '</th>';
-        }
-
-        foreach ($spalten as $name) {
-            $zellen .= '<th class="taxmod-table-head" scope="col">' . RenderResult::escape($name) . '</th>';
-        }
-
-        // ⚠️ *Ohne Wort: die Aktionsspalte trägt Bilder, und ein Kopf über Bildern ist ein Wort, das der
-        // Kern nicht machen kann (`AR-2`). Die Feldzeile hält es genauso.*
-        if ($mitActs) {
-            $zellen .= '<th class="taxmod-table-head" scope="col"></th>';
-        }
-
-        return '<thead><tr>' . $zellen . '</tr></thead>';
-    }
 }

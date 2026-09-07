@@ -901,6 +901,162 @@ if ($style !== null) {
     check('and every save is a new URL', (string) $style->ver !== '');
 }
 
+// ⚠️ **TASK-063 — sein Auftrag am 2026-09-06, woertlich:** *«ich wuerde gerne hier auch horizontal
+// und vertikal einfuegen, horizontal kopf oben daten darunter, vertikal kopf links daten rechts
+// davon».* **Es wurde ein Umschalter und nicht zwei Renderer**, wie er es am Kompaktrenderer schon
+// entschieden hat ([D-471](../../docs/NewConcept/90-decision-log.md)).
+//
+// ⚠️ **Die Zusage ist am Markup gemessen und nicht an einer Dienstmethode:** *derselbe Datensatz,
+// zweimal gezeichnet, einmal je Lage — und die Koepfe stehen einmal oben und einmal links. `vertical`
+// **muss** dabei umschalten: waere der Zeichenkontext leer, saehen beide Laeufe gleich aus, und genau
+// das war der Fehler, den er am Kompaktrenderer gemeldet hat.*
+//
+// ⚠️ *Eigene Wiese mit Praefix `__t63`, aufgeraeumt im `finally` — die Klammer aus `lib/no-write.php`
+// dreht ohnehin alles zurueck, aber ein Lauf, der in Zeile 200 rot wird, erreicht seine Zeile 400 nie.*
+echo "\n== 17c. Die Tabelle kennt zwei Lagen (TASK-063, D-471) ==\n";
+
+$t63Wiese = null;
+
+try {
+    $t63Table = $nodes->byImplementations([\Taxmod\Core\Renderer\TableRenderer::class])[\Taxmod\Core\Renderer\TableRenderer::class] ?? null;
+
+    check('der Renderer-Knoten table steht im Modell', $t63Table !== null);
+
+    // ⚠️ *Die Kante ist das, was den Umschalter im Modell erreichbar macht — ohne sie kann niemand
+    // umstellen, und die Vorgabe waere die einzige Lage.*
+    $t63Kante = null;
+
+    foreach ($t63Table === null ? [] : $relations->fieldRelationsOf([$t63Table->id]) as $eine) {
+        if ($eine->kind === \Taxmod\Core\Model\RelationKind::Setting
+            && $eine->name === \Taxmod\Core\Renderer\Orientation::KEY) {
+            $t63Kante = $eine;
+        }
+    }
+
+    check('und traegt die Einstellungskante orientation', $t63Kante !== null);
+
+    $t63Wiese  = $editor->createNode('__t63 Ding', $framework->rootOf(Branch::Model)->id);
+    $t63Links  = $editor->addField($t63Wiese->id, $seeded['text']->id, '__t63 links');
+    $t63Rechts = $editor->addField($t63Wiese->id, $seeded['text']->id, '__t63 rechts');
+
+    // ⚠️ *Die Wahl ist ein **Verweis auf den Satz** des Renderers und kein Wort
+    // ([D-583](../../docs/NewConcept/90-decision-log.md)) — nur so findet
+    // {@see \Taxmod\Core\Service\ModelValues::forChosenRenderer()} die Angaben, die an ihm haengen.*
+    $t63Satz = $satzVon($t63Table->id);
+
+    // ⚠️ **Die gesaeete `renderer`-Kante und keine selbstgelegte, und das war ein Fehlschlag, der
+    // gruen ausgesehen haette.** *`$kanteFuer()` sieht nur die eigenen Kanten des Knotens; `renderer`
+    // ist aber weit oben in der Kette erklaert. Eine zweite Kante desselben Namens am Knoten nimmt
+    // {@see \Taxmod\Core\Service\ModelValues} nicht als die Wahl — sie vergleicht die **Id** —, und
+    // der Umschalter waere still nie angekommen.*
+    $t63RendererKante = null;
+
+    foreach ($relations->fieldRelationsOf($framework->inheritanceOwnersOf($t63Wiese)) as $eine) {
+        if ($eine->name === SettingKey::Renderer->value) {
+            $t63RendererKante = $eine;
+        }
+    }
+
+    check('die gesaeete renderer-Kante ist zu finden', $t63RendererKante !== null);
+
+    $t63Records = new WpdbRecordRepository();
+    $t63Traeger = $satzVon($t63Wiese->id);
+    $t63Records->forgetValue($t63Traeger, (int) $t63RendererKante?->id, '');
+    $t63Records->putValue(new \Taxmod\Core\Model\RelationRecord(
+        $t63Traeger,
+        (int) $t63RendererKante?->id,
+        '',
+        TypedValue::ofRecordReference($t63Satz)
+    ));
+
+    /** Derselbe Datensatz, gezeichnet — nur die Lage unterscheidet die beiden Laeufe. */
+    $t63Zeichnen = static function () use (&$zeichnerNeu, $nodes, $t63Wiese, $t63Links, $t63Rechts): string {
+        return $zeichnerNeu()->recordsAsTable(
+            $nodes->byId($t63Wiese->id),
+            [$t63Links, $t63Rechts],
+            [[
+                'id'      => 1,
+                'values'  => [
+                    $t63Links->id  => TypedValue::ofText('__t63 A'),
+                    $t63Rechts->id => TypedValue::ofText('__t63 B'),
+                ],
+                'lead'    => [],
+                'acts'    => [],
+                'submits' => new \Taxmod\Core\Renderer\Submission('', []),
+            ]],
+            'taxmod_value'
+        )->markup;
+    };
+
+    $t63Waagerecht = $t63Zeichnen();
+
+    $angabe($nodes->byId($t63Table->id), \Taxmod\Core\Renderer\Orientation::KEY, TypedValue::ofText('vertical'));
+
+    $t63Senkrecht = $t63Zeichnen();
+
+    check('waagerecht ist die Vorgabe', str_contains($t63Waagerecht, 'taxmod-table-horizontal'), 'keine Lage im Markup');
+    check('und senkrecht kommt beim Umstellen an', str_contains($t63Senkrecht, 'taxmod-table-vertical'), 'der Umschalter erreicht den Renderer nicht');
+
+    // ⚠️ **Das Herzstueck: Kopf oben gegen Kopf links, an `scope` gemessen.** *`scope="col"` heisst
+    // «diese Ueberschrift gilt fuer die Spalte darunter», `scope="row"` «fuer die Zeile daneben» —
+    // die beiden Worte **sind** oben und links, und ein Leser ohne Augen liest genau sie.*
+    check('waagerecht: der Kopf steht oben', str_contains($t63Waagerecht, '<thead>') && str_contains($t63Waagerecht, 'scope="col"'));
+    check('waagerecht: und keine Zeilenkoepfe', ! str_contains($t63Waagerecht, 'scope="row"'));
+    check('senkrecht: der Kopf steht links', str_contains($t63Senkrecht, 'scope="row"'));
+    check('senkrecht: und keine Kopfzeile', ! str_contains($t63Senkrecht, '<thead>') && ! str_contains($t63Senkrecht, 'scope="col"'));
+
+    // ⚠️ *Beide zeigen **denselben** Datensatz — sonst waere die Zusage die zweier Tabellen und nicht
+    // die einer, zweimal gelegt.*
+    foreach (['__t63 links', '__t63 rechts', '__t63 A', '__t63 B'] as $t63Stueck) {
+        check(
+            "beide Lagen zeigen «{$t63Stueck}»",
+            str_contains($t63Waagerecht, $t63Stueck) && str_contains($t63Senkrecht, $t63Stueck)
+        );
+    }
+
+    // ⚠️ **Die Zahl der Zeilen ist der Beweis, dass sich die Achse wirklich dreht**, nicht nur eine
+    // Klasse. *Waagerecht ist eine Zeile ein **Datensatz** — einer, also eine. Senkrecht ist eine
+    // Zeile eine **Spalte** der anderen Lage, also so viele, wie dort Koepfe stehen.*
+    //
+    // ⚠️ *Die Zahl wird der waagerechten Lage **abgelesen** und nicht hingeschrieben: die
+    // Aktionsspalte steht auch dann, wenn dieser Lauf keine Bedienelemente mitgibt (das Formular der
+    // Zeile ist selbst eines), und eine feste Zahl haette genau das nicht gewusst.*
+    $t63Koepfe = substr_count($t63Waagerecht, 'scope="col"');
+
+    check(
+        'waagerecht: eine Zeile je Datensatz',
+        substr_count($t63Waagerecht, 'taxmod-table-row') === 1,
+        (string) substr_count($t63Waagerecht, 'taxmod-table-row')
+    );
+    check(
+        'senkrecht: eine Zeile je Spalte der anderen Lage',
+        $t63Koepfe > 1 && substr_count($t63Senkrecht, 'taxmod-table-row') === $t63Koepfe,
+        substr_count($t63Senkrecht, 'taxmod-table-row') . ' Zeilen gegen ' . $t63Koepfe . ' Koepfe'
+    );
+    check(
+        'und senkrecht steht jeder Kopf genau einmal',
+        substr_count($t63Senkrecht, 'scope="row"') === $t63Koepfe,
+        substr_count($t63Senkrecht, 'scope="row"') . ' gegen ' . $t63Koepfe
+    );
+} finally {
+    // ⚠️ *Was dieser Abschnitt selbst angelegt hat, geht hier weg — auch wenn eine Zusage rot wurde.
+    // Die Angabe am **gesaeten** Renderer-Knoten laesst sich nicht ueber `__t63%` finden, also wird
+    // sie namentlich zurueckgenommen.*
+    if (isset($t63Table) && $t63Table !== null) {
+        $ohneAngabe($nodes->byId($t63Table->id), \Taxmod\Core\Renderer\Orientation::KEY);
+    }
+
+    if ($t63Wiese !== null) {
+        foreach ($data->recordsOf($t63Wiese->id) as $t63Satzweg) {
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $t63Satzweg->id));
+            $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('node_records') . ' WHERE id = %d', $t63Satzweg->id));
+        }
+
+        $relations->purgeRelationsTouching($t63Wiese->id);
+        $nodes->purgeSubtree($nodes->byId($t63Wiese->id));
+    }
+}
+
 echo "\n== 18. Clearing up ==\n";
 foreach ($data->recordsOf($part->id) as $r) {
     $wpdb->query($wpdb->prepare('DELETE FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d', $r->id));
