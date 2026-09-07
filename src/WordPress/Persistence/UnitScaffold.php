@@ -323,8 +323,20 @@ final class UnitScaffold
      */
     private function unitValue(Node $prefixes, Node $baseUnits, array &$created): void
     {
-        $compositions = $this->framework->rootOf(Branch::Compositions);
-        $unitValue    = $this->ensure($compositions, 'Einheitenwert', $created);
+        // ⚠️ **Unter `Combined` und nicht mehr unter `Compositions`**
+        // ([D-677](../../../docs/NewConcept/90-decision-log.md)). *Ein Einheitenwert ist aus Feldern
+        // gebaut und hält **keine Benutzerdaten** — «nur example oder default wie bei typ». Genau
+        // der Ast, den D-677 dafür angelegt hat.*
+        //
+        // ⚠️ **Und er hat es selbst schon so gehängt:** *gemessen am 2026-09-07 stehen
+        // `Einheitenwert`, `Dimension`, `Street / H#` und `Zip/City` unter `Combined` (3984). Das
+        // Gerüst zog nach, nicht umgekehrt.*
+        $unitValue = $this->ensureAnywhere(
+            $this->framework->rootOf(Branch::Combined),
+            [$this->framework->rootOf(Branch::Compositions)],
+            'Einheitenwert',
+            $created
+        );
 
         $this->field($unitValue, 'wert', 'decimal');
 
@@ -366,6 +378,36 @@ final class UnitScaffold
      *
      * @param list<string> $created
      */
+    /**
+     * Wie {@see self::ensure()}, aber es **findet** den Knoten auch dort, wo er früher lag.
+     *
+     * ⚠️ **Weil ein gesätes Ding umziehen darf** ([D-119](../../../docs/NewConcept/90-decision-log.md)):
+     * *«after the import these are ordinary authored content».* **Ein Gerüst, das nur an einer Stelle
+     * nachsieht, legt beim nächsten Lauf ein zweites daneben** — und das ist die Doppelung, die
+     * `CompositionScaffold::existing()` mit einer Ausnahme verhindern wollte, allerdings erst
+     * **nachdem** sie schon wehtat.
+     *
+     * ⚠️ *Gemessen am 2026-09-07: `Einheitenwert` war unter `Combined` gewandert, und
+     * `composition-check` brach mit «is not there yet» ab, obwohl der Knoten dastand.*
+     *
+     * @param list<Node>   $auchHier Die alten Plätze, in der Reihenfolge, in der nachgesehen wird.
+     * @param list<string> $created
+     */
+    private function ensureAnywhere(Node $parent, array $auchHier, string $name, array &$created): Node
+    {
+        foreach ([$parent, ...$auchHier] as $wo) {
+            foreach ($this->editor->childrenOf($wo->id) as $child) {
+                if ($child->name === $name) {
+                    $this->label($child);
+
+                    return $child;
+                }
+            }
+        }
+
+        return $this->ensure($parent, $name, $created);
+    }
+
     private function ensure(Node $parent, string $name, array &$created): Node
     {
         foreach ($this->editor->childrenOf($parent->id) as $child) {

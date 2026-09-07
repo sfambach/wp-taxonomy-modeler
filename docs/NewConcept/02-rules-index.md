@@ -285,7 +285,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |
 | **R34** | One thing they could do: show a number as binary, hexadecimal, octal or in Roman numerals. | [30-renderer.md:959](30-renderer.md) | 10 |
 | **R35** | "Whether this form is really hung on as a converter, I am not sure — but we should keep it in mind. Storing the twelve is one thing, showing it as … | [30-renderer.md:960](30-renderer.md) | 2 |
-| **R36** | And: "if I say greater than Roman twelve, values greater than that should be shown — which ought to be no obstacle if it is stored as a decimal num… | [30-renderer.md:961](30-renderer.md) | 23 |
+| **R36** | And: "if I say greater than Roman twelve, values greater than that should be shown — which ought to be no obstacle if it is stored as a decimal num… | [30-renderer.md:961](30-renderer.md) | 26 |
 | **R37** | The registry's render is only an entry point. The registry itself neither represents nor renders anything. | [30-renderer.md:1381](30-renderer.md) | 1 |
 | **R38** | A basic renderer simply receives a node, and renders it down to the leaves. | [30-renderer.md:1382](30-renderer.md) | 3 |
 | **R39** | The sequence: from the node take the renderer name → via the registry get the renderer → call it for this node → it renders the node's own properti… | [30-renderer.md:1383](30-renderer.md) | **nie** |

@@ -299,6 +299,37 @@ final class Rendering implements Presets
     }
 
     /**
+     * Was jemand an einem **Knoten** geschrieben hat, als Wert zum Speichern.
+     *
+     * ⚠️ **Dieselbe Naht wie {@see self::valuesFrom()}, nur ohne Kante** — *der Gegenstück-Weg zu
+     * {@see self::valueOfType()}, das den Knoten als Wert **zeichnet**. Zeichnen und Zurücklesen
+     * gehören zusammen ([R36](../../../docs/NewConcept/30-renderer.md)): **ein Feld, das `XII`
+     * zeichnet und `XII` als Text speichert, hat seinen Wert verloren.***
+     *
+     * ⚠️ *Die Einstellungen kommen aus {@see self::withRendererValues()} und nicht aus der Kette
+     * des Knotens allein — sonst fände `converter` nicht statt, wo er am Satz des gewählten
+     * Renderers steht. Dieselbe Quelle, aus der die Vorschau zeichnet; **zwei Quellen wären zwei
+     * Antworten auf «welcher Wandler gilt hier».***
+     *
+     * ⚠️ *`null`, wo der Knoten kein einfacher Typ ist — dann hat der Aufrufer nichts zu speichern
+     * und soll es sagen, statt einen Text abzulegen.*
+     */
+    public function valueOfNodeFrom(Node $node, string $characters): ?TypedValue
+    {
+        $type = $this->typeOf($node, $this->nodes->byIds($node->ancestorIds()));
+
+        if ($type === null) {
+            return null;
+        }
+
+        $converter = $this->readingConverter($this->withRendererValues($node), $type);
+
+        return $converter === null
+            ? $type->valueFrom($characters)
+            : $converter->written($characters, $type);
+    }
+
+    /**
      * The converter that may read this field back, or `null` where none may.
      *
      * @param array<string, ResolvedSetting> $settings
@@ -1067,6 +1098,17 @@ final class Rendering implements Presets
         string $locale = '',
         Level $level = Level::Admin,
         bool $editable = true,
+        /**
+         * ⚠️ **Leer heisst Vorschau, gesetzt heisst Eingabe** ([D-679](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * *Sein Vorschlag: «was mir da einfällt wir könnten bei der preview eingabe einen button
+         * hinzufügen add as example». **Und das Feld kann es schon** — es kennt den Typ, den
+         * Renderer und die Kette; es warf seine Eingabe nur weg, weil es absichtlich namenlos war.
+         * Ein Name macht daraus die Maske für den eigenen Wert des Knotens
+         * ([D-673](../../../docs/NewConcept/90-decision-log.md)), ohne dass eine zweite gebaut wird.*
+         */
+        string $fieldName = '',
+        string $formId = '',
     ): ?RenderResult {
         $type = $this->typeOf($node, $this->nodes->byIds($node->ancestorIds()));
 
@@ -1123,9 +1165,10 @@ final class Rendering implements Presets
             locale: $locale,
             level: $level,
             editable: $editable,
-            // ⚠️ **Nameless on purpose**: this is a preview, and a named field inside the settings
-            // form would be submitted as if somebody had filled it in.
-            fieldName: '',
+            // ⚠️ **Namenlos, solange es eine Vorschau ist**: *ein benanntes Feld im
+            // Einstellungsformular würde mitgeschickt, als hätte es jemand ausgefüllt.* **Mit einem
+            // Namen ist es die Eingabe für den eigenen Wert** ([D-679](../../../docs/NewConcept/90-decision-log.md)).
+            fieldName: $fieldName,
             type: $type,
             surroundings: new Surroundings(
                 // ⚠️ *Aufgelöst hereingegeben und nicht im Renderer nachgeschlagen — dieselbe Naht wie
@@ -1133,6 +1176,7 @@ final class Rendering implements Presets
                 refersTo: $eigenerVerweis
                     ? ($this->labels?->forNodes([$node], $this->roleOf($settings), $locale)[$node->id] ?? $node->name)
                     : null,
+                formId: $formId,
             ),
         ));
     }

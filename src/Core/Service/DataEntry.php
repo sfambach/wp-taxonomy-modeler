@@ -391,6 +391,71 @@ final class DataEntry
     }
 
     /**
+     * Den Wert **des Knotens selbst** setzen — die Wertzeile mit `relation_id = 0`.
+     *
+     * ⚠️ **[D-673](../../../docs/NewConcept/90-decision-log.md), und es ist der Fall ohne Feld.**
+     * *Sein Wort: «ja, macht das mit relation_id gleich null». Ein einfacher Datentyp hat keine
+     * eigenen Kanten — `datetime` hat null, `With Label` hat null —, also gab es **kein Fach** für
+     * seinen eigenen Wert. Die Wertzeile sagt sonst, **welches Feld** gemeint ist; hier ist keines
+     * gemeint, und genau das heisst die Null.*
+     *
+     * ⚠️ **Nicht {@see self::put()} mit einer 0**, *weil das über {@see self::writableRelation()}
+     * geht und dort eine Kante geladen wird, die es nicht gibt. Ein eigener Weg sagt, was er tut;
+     * eine 0, die sich durch eine Kantenprüfung mogelt, wäre eine Falle für den nächsten Leser.*
+     *
+     * ⚠️ **Nur `default` und `example`, nie eine Eingabe**
+     * ([D-664](../../../docs/NewConcept/90-decision-log.md),
+     * [D-677](../../../docs/NewConcept/90-decision-log.md)): *sein Wort, «combined keine user daten
+     * enthält nur example oder default wie bei typ». **Die Prüfung steht hier und nicht nur an der
+     * Maske**, sonst hinge sie an einem Bildschirm.*
+     */
+    public function putOwnValue(int $recordId, TypedValue $value, string $locale = ''): void
+    {
+        $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+
+        $vorhanden = $this->valuesOn($recordId, 0, $locale);
+
+        if (count($vorhanden) > 1) {
+            throw NotYetStorable::thatFieldHasSeveralValues('', count($vorhanden));
+        }
+
+        $neu = $vorhanden === []
+            ? RelationRecord::direct($recordId, 0, $value, $locale)
+            : new RelationRecord($recordId, 0, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);
+
+        $version = $this->records->putValue($neu);
+
+        $this->melden(
+            $recordId,
+            'record_value',
+            'own value set',
+            $this->wertZustand($recordId, 0, $locale, $vorhanden[0]->value ?? null),
+            $this->wertZustand($recordId, 0, $locale, $value),
+            $version
+        );
+    }
+
+    /**
+     * Den eigenen Wert wieder herausnehmen — leer heisst **nicht beantwortet**.
+     *
+     * ⚠️ *Derselbe dritte Zustand wie bei einem Feld ({@see self::clear()}): ein Wert, eine
+     * ausdrückliche Leere und «nichts gesagt» sind drei Dinge, und ohne diesen Weg gäbe es keinen,
+     * einen eigenen Wert wieder loszuwerden.*
+     */
+    public function clearOwnValue(int $recordId, string $locale = ''): void
+    {
+        $this->wertLeeren($recordId, 0, $locale);
+    }
+
+    /** Der eigene Wert eines Satzes, oder `null`, wenn keiner darin steht. */
+    public function ownValueOf(int $recordId, string $locale = ''): ?TypedValue
+    {
+        $meine = $this->valuesOn($recordId, 0, $locale);
+
+        return $meine === [] ? null : $meine[0]->value;
+    }
+
+    /**
      * Einen Wert **an einer Verwendungsstelle** setzen — «das Feld B des Feldes A dieses Datensatzes».
      *
      * ⚠️ **Kein neues Mittel, sondern das vorhandene tiefer benutzt.** *Der Eigentümer: «wir haben

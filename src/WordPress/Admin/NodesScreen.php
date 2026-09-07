@@ -7,6 +7,7 @@ use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
@@ -74,6 +75,16 @@ final class NodesScreen
      * attribute — silently, and only in the rows somebody unticked.
      */
     private const VALUE_FIELD = 'taxmod_value';
+
+    /**
+     * Der **eigene Wert des Knotens** — die Wertzeile mit `relation_id = 0`
+     * ([D-673](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Ein eigener Name und nicht `taxmod_value[0]`: **die Null ist keine Kantennummer**, sondern
+     * ihre Abwesenheit. Sie in dieselbe Reihe zu stellen hiesse, dass jeder Leser dieser Maske erst
+     * herausfinden muss, dass eine der Nummern keine ist.*
+     */
+    private const OWN_VALUE_FIELD = 'taxmod_own_value';
 
     /** A setting's own control, as `taxmod_setting[<key>]` — one row, one form, one key. */
     private const SETTING_FIELD = 'taxmod_setting';
@@ -695,9 +706,12 @@ final class NodesScreen
         );
     }
 
-    private function form(int $id, array $buttons, string $extra = ''): string
+    private function form(int $id, array $buttons, string $extra = '', string $formId = ''): string
     {
-        $html = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="taxmod-acts">'
+        // ⚠️ *Eine Kennung nur, wo eine Bedienung **ausserhalb** des Formulars steht und über
+        // `form="…"` hereinzeigt — sonst bliebe sie stumm. Vorschau und Feldzeile machen das.*
+        $html = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="taxmod-acts"'
+            . ($formId === '' ? '' : ' id="' . esc_attr($formId) . '"') . '>'
             . $this->hidden($id) . $extra;
 
         foreach ($buttons as $button) {
@@ -946,7 +960,21 @@ final class NodesScreen
             return '';
         }
 
-        $edit = $this->rendering->valueOfType($selected, Purpose::Edit, locale: $this->localeFromRequest());
+        // ⚠️ **Das Eingabefeld der Vorschau ist jetzt eine Eingabe** — *sein Vorschlag: «was mir da
+        // einfällt wir könnten bei der preview eingabe einen button hinzufügen add as example».*
+        //
+        // ⚠️ **Und es ist die fehlende Maske aus [D-673](../../../docs/NewConcept/90-decision-log.md).**
+        // *Sein Fehlerbericht am selben Tag: «Ich kann zu date time kein example anlegen». Gemessen
+        // war der **Satz** entstanden und leer geblieben — der Satzblock zeichnet ein Feld je
+        // erklärter Kante, und `datetime` hat keine. **Hier steht das Feld, das den Typ selbst
+        // zeichnen kann**, und es steht schon da; es warf seine Eingabe nur weg.*
+        $edit = $this->rendering->valueOfType(
+            $selected,
+            Purpose::Edit,
+            locale: $this->localeFromRequest(),
+            fieldName: self::OWN_VALUE_FIELD,
+            formId: 'taxmod-example-' . $selected->id
+        );
 
         $html = $this->heading(
             __('Preview', 'taxmod'),
@@ -964,9 +992,9 @@ final class NodesScreen
         $html .= '<div class="taxmod-preview">';
 
         foreach ([
-            [__('As a reader sees it', 'taxmod'), $display],
-            [__('As an editor sees it', 'taxmod'), $edit],
-        ] as [$title, $side]) {
+            [__('As a reader sees it', 'taxmod'), $display, false],
+            [__('As an editor sees it', 'taxmod'), $edit, true],
+        ] as [$title, $side, $mitKnopf]) {
             $html .= '<div class="taxmod-preview-side">'
                 . '<h4>' . esc_html($title) . '</h4>'
                 . '<p><strong>' . esc_html($selected->name) . '</strong> '
@@ -974,7 +1002,22 @@ final class NodesScreen
                 . '</p></div>';
         }
 
-        return $html . '</div>';
+        $html .= '</div>';
+
+        // ⚠️ **Der Knopf steht **unter** beiden Seiten und nicht in der rechten** — *sonst läge ein
+        // `<form>` in einem `<p>` neben einem zweiten Vorschaublock, und das legt die zwei Spalten
+        // um. Das Feld nennt sein Formular über `form="…"`, wie jede andere Bedienung, die ausserhalb
+        // ihres Formulars steht ({@see \Taxmod\Core\Renderer\FieldRowRenderer::formFor()}).*
+        return $html . $this->form(
+            $selected->id,
+            [[
+                'add_example',
+                esc_html__('Add as example', 'taxmod'),
+                __('Keep what stands in the field as an example record of this type', 'taxmod'),
+            ]],
+            '',
+            'taxmod-example-' . $selected->id
+        );
     }
 
     private function previewPanel(Node $selected): string
@@ -993,10 +1036,24 @@ final class NodesScreen
             return $asValue;
         }
 
-        if ($branch === null || ! $branch->holdsData()) {
+        // ⚠️ **Gefragt ist «lässt sich das zeichnen», nicht «hält es Benutzerdaten» — und seit
+        // [D-677](../../../docs/NewConcept/90-decision-log.md) sind das zwei Fragen.**
+        //
+        // ⚠️ *Hier stand `holdsData()` allein, und das war bis heute dieselbe Antwort. **Dann hat er
+        // `Einheitenwert` nach `Combined` gehängt**, wo `holdsData()` `false` sagt — und die Vorschau
+        // eines Typs, der aus drei Feldern besteht, verschwand mit dem Satz «nichts zu zeigen».
+        // Gemessen: 0 Bytes, und `preview-check` fiel an zehn Stellen. **Ein zusammengesetzter
+        // Datentyp ist genau das, was eine Vorschau zeigen soll.***
+        //
+        // ⚠️ *Es ist derselbe Denkfehler, den der Absatz darüber schon einmal benennt: «the check
+        // below answers «does this node hold records» when the useful question is «can it be drawn
+        // as a field»». Er stand nur noch an einer zweiten Stelle.*
+        $hatFelder = $this->editor->fieldsOf($selected->id) !== [];
+
+        if (($branch === null || ! $branch->holdsData()) && ! $hatFelder) {
             return $this->heading(
                 __('Preview', 'taxmod'),
-                __('Only a node that can hold records has something to preview. A composed type or a model is drawn by a renderer that does not exist yet.', 'taxmod')
+                __('Only a node that can be drawn has something to preview: one with fields of its own, or a simple type. A model is drawn by a renderer that does not exist yet.', 'taxmod')
             ) . '<p><em>' . esc_html__('Nothing to preview here.', 'taxmod') . '</em></p>';
         }
 
@@ -2595,6 +2652,77 @@ final class NodesScreen
      * ⚠️ **Only submitted attributes are touched.** A hidden field is not in the form, and a
      * hidden field is not a cleared one.
      */
+    /**
+     * Die Zelle für den eigenen Wert eines Satzes — leer, wo der Knoten keinen eigenen Typ hat.
+     *
+     * ⚠️ *Ein Feld, kein `<code>`: er soll den Wert **ändern** können, nicht nur lesen. Es trägt
+     * das Formular seiner Zeile über `form="…"`, weil eine Tabellenzelle kein `<form>` umschliessen
+     * darf — dieselbe Regel, die schon zweimal Bedienelemente stumm gemacht hat.*
+     *
+     * @return array<string, string>
+     */
+    private function ownValueCell(Node $node, NodeRecord $record): array
+    {
+        $feld = $this->rendering->valueOfType(
+            $node,
+            Purpose::Edit,
+            $this->data->ownValueOf($record->id, $this->localeFromRequest()),
+            $this->localeFromRequest(),
+            fieldName: self::OWN_VALUE_FIELD,
+            formId: 'taxmod-record-' . $record->id
+        );
+
+        if ($feld === null) {
+            return [];
+        }
+
+        return [__('Value', 'taxmod') => $feld->markup];
+    }
+
+    /**
+     * Was im Vorschaufeld steht, als Beispielsatz festhalten.
+     *
+     * ⚠️ **Sein Vorschlag** ([D-679](../../../docs/NewConcept/90-decision-log.md)): *«was mir da
+     * einfällt wir könnten bei der preview eingabe einen button hinzufügen add as example».*
+     *
+     * ⚠️ **Und es ist der Weg, der bei `datetime` fehlte** (`INF-067`): *der Satzblock zeichnet ein
+     * Feld je erklärter Kante, und ein einfacher Datentyp hat keine. **Der Satz entstand und blieb
+     * leer.** Hier steht der Wert in einer Wertzeile mit `relation_id = 0` — dem Fach, das
+     * [D-673](../../../docs/NewConcept/90-decision-log.md) dafür geöffnet hat.*
+     *
+     * ⚠️ *Ein leeres Feld legt **keinen** Satz an. Ein Beispiel ohne Beispiel wäre eine leere Zeile,
+     * die aussieht, als hätte jemand etwas gesagt.*
+     */
+    private function addExample(int $nodeId): string
+    {
+        $node = $this->editor->find($nodeId)
+            ?? throw new \InvalidArgumentException('Keinen solchen Knoten.');
+
+        $characters = isset($_POST[self::OWN_VALUE_FIELD])
+            ? trim(sanitize_text_field(wp_unslash((string) $_POST[self::OWN_VALUE_FIELD])))
+            : '';
+
+        if ($characters === '') {
+            return __('Nothing in the field — no example was kept.', 'taxmod');
+        }
+
+        $type = $this->rendering->typeOfNode($node);
+
+        if ($type === null) {
+            throw NotYetStorable::thatFieldHasNoTypeYet($node->name);
+        }
+
+        // ⚠️ **Durch denselben Wandler wie ein Feldwert** — *ein Feld, das `XII` zeichnet und `XII`
+        // als Text speichert, hat seinen Wert verloren ([R36](../../../docs/NewConcept/30-renderer.md)).
+        // Der Kern beantwortet das für einen **Knoten** genauso wie für eine Kante.*
+        $value  = $this->rendering->valueOfNodeFrom($node, $characters) ?? $type->valueFrom($characters);
+        $record = $this->data->create($nodeId, RecordType::Example);
+
+        $this->data->putOwnValue($record->id, $value, $this->localeFromRequest());
+
+        return __('Kept as an example.', 'taxmod');
+    }
+
     private function saveRecord(int $nodeId): void
     {
         $recordId  = isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0;
@@ -2634,6 +2762,30 @@ final class NodesScreen
 
         if ($recordId !== 0 && $gewaehlteArt !== null) {
             $this->data->retypeRecord($recordId, $gewaehlteArt);
+        }
+
+        // ⚠️ **Der eigene Wert des Knotens wird mit derselben Zeile geschrieben**
+        // ([D-673](../../../docs/NewConcept/90-decision-log.md)). *Er steht in der Vorspalte, nicht
+        // zwischen den Feldern, weil er keines ist — aber er gehört demselben Formular, also
+        // demselben Speichern und derselben Änderungsgruppe.*
+        //
+        // ⚠️ *Ein leeres Feld heisst hier **nicht beantwortet** und nimmt die Zeile weg, genau wie
+        // bei einem Feld weiter unten — sonst gäbe es keinen Weg, einen Wert wieder loszuwerden.*
+        if ($recordId !== 0 && isset($_POST[self::OWN_VALUE_FIELD])) {
+            $eigene = trim(sanitize_text_field(wp_unslash((string) $_POST[self::OWN_VALUE_FIELD])));
+            $node   = $this->editor->find($nodeId);
+
+            if ($node !== null) {
+                if ($eigene === '') {
+                    $this->data->clearOwnValue($recordId, $this->localeFromRequest());
+                } else {
+                    $wert = $this->rendering->valueOfNodeFrom($node, $eigene);
+
+                    if ($wert !== null) {
+                        $this->data->putOwnValue($recordId, $wert, $this->localeFromRequest());
+                    }
+                }
+            }
         }
 
         if ($submitted === []) {
@@ -2906,6 +3058,17 @@ final class NodesScreen
                         'taxmod-record-' . $record->id,
                         $branch
                     ),
+                    // ⚠️ **Der eigene Wert des Knotens** ([D-673](../../../docs/NewConcept/90-decision-log.md)) —
+                    // *die Zelle, die bei `datetime` fehlte (`INF-067`). Der Satzblock zeichnet sonst
+                    // ein Feld je erklärter Kante, und ein einfacher Datentyp hat keine: **der Satz
+                    // entstand und blieb leer.***
+                    //
+                    // ⚠️ **In der Vorspalte und nicht als Feldzeile, weil es kein Feld ist.** *Eine
+                    // Kante mit der Nummer 0 zu erfinden, nur damit es in die Reihe passt, wäre
+                    // genau das, was {@see \Taxmod\Core\Service\Rendering::valueOfType()} sich
+                    // verbietet — «a fake `Relation` in the core to satisfy a parameter list is the
+                    // kind of thing that later gets stored».*
+                    ...$this->ownValueCell($selected, $record),
                 ],
                 'acts'   => [
                     Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')),
@@ -4376,6 +4539,10 @@ final class NodesScreen
                 // falsch**, weil ein alter Reiter ohne das Feld sonst mit «Unknown action» abbraeche,
                 // statt zu tun, was er bisher tat. Dieselbe Form wie bei `relation_kind`.*
                 'add_record'     => $this->data->create($id, $recordType),
+                // ⚠️ **Sein Vorschlag, an der Stelle, an der die Eingabe ohnehin steht**
+                // ([D-679](../../../docs/NewConcept/90-decision-log.md)): *«was mir da einfällt wir
+                // könnten bei der preview eingabe einen button hinzufügen add as example».*
+                'add_example'    => $this->addExample($id),
                 'save_record'    => $this->saveRecord($id),
                 'delete_record'  => $this->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0

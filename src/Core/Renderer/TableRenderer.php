@@ -99,10 +99,6 @@ final class TableRenderer extends RendererNode
 
         $spalten = $this->columns($datensaetze);
 
-        if ($spalten === []) {
-            return RenderResult::of('');
-        }
-
         // ⚠️ **Die Spalten vor und hinter den Feldern** — *auf sein Wort: «Action sollte rechts sein,
         // Record, Version davor, sodass wir eine schmale Zeile bekommen».* Die Überschriften kommen vom
         // Aufrufer, weil der Kern keine Worte machen kann (`AR-2`).
@@ -116,6 +112,22 @@ final class TableRenderer extends RendererNode
 
         $vorspalten = array_keys($vorspalten);
         $mitActs    = $context->surroundings->rowActs !== [];
+
+        // ⚠️ **Nichts zu zeichnen heisst: weder Felder noch Vorspalten** — *und hier stand
+        // `$spalten === []` allein, **oberhalb** der Vorspalten.*
+        //
+        // ⚠️ **Das war der Grund für seinen Fehlerbericht** (`INF-067`): *«Ich kann zu date time kein
+        // example anlegen».* *Der Satz entstand, und die Tabelle warf ihn weg: ein einfacher Datentyp
+        // hat keine eigenen Kanten, also **null Feldspalten** — und dieser Rücksprung nahm die
+        // Nummer, die Version, die Art und die Bedienelemente gleich mit, obwohl sie alle
+        // dastanden. **Gemessen: die ganze Zeile fiel weg, nicht nur eine Zelle.***
+        //
+        // ⚠️ *Seit [D-673](../../../docs/NewConcept/90-decision-log.md) trägt die Vorspalte auch den
+        // **eigenen Wert** des Knotens — und damit ist eine Tabelle ohne Feldspalten kein Sonderfall
+        // mehr, sondern der gewöhnliche Fall für jeden Knoten unter `Primitives`.*
+        if ($spalten === [] && $vorspalten === []) {
+            return RenderResult::of('');
+        }
 
         $usedRelations = [];
         $zeilen        = [];

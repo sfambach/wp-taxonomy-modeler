@@ -88,16 +88,24 @@ $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), new
 
 echo "\n== the type is in the tree ==\n";
 
-$compositions = $framework->rootOf(Branch::Compositions);
-$unitValue    = null;
+// ⚠️ **Unter `Combined`, seit [D-677](../../docs/NewConcept/90-decision-log.md)** — *ein
+// Einheitenwert ist aus Feldern gebaut und hält keine Benutzerdaten. **Hier stand `Compositions`,
+// und die Zusage fiel, als der Eigentümer den Knoten selbst dorthin hängte, wo er hingehört.***
+//
+// ⚠️ *Die alte Stelle bleibt zugelassen, weil ein gesätes Ding umziehen darf
+// ([D-119](../../docs/NewConcept/90-decision-log.md)) — geprüft wird, **dass es einen gibt**, nicht
+// dass er sich nicht bewegt hat.*
+$unitValue = null;
 
-foreach ($editor->childrenOf($compositions->id) as $child) {
-    if ($child->name === 'Einheitenwert') {
-        $unitValue = $child;
+foreach ([Branch::Combined, Branch::Compositions] as $ast) {
+    foreach ($editor->childrenOf($framework->rootOf($ast)->id) as $child) {
+        if ($child->name === 'Einheitenwert' && $unitValue === null) {
+            $unitValue = $child;
+        }
     }
 }
 
-check('«Einheitenwert» sits under Compositions', $unitValue !== null);
+check('«Einheitenwert» steht unter Combined oder Compositions', $unitValue !== null);
 
 if ($unitValue === null) {
     echo "\nNothing more can be checked. Run the unit scaffold first.\n";

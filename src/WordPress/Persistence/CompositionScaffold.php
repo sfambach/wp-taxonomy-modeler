@@ -111,7 +111,13 @@ final class CompositionScaffold
         // ⚠️ **Looked up, not created.** `Einheitenwert` belongs to {@see UnitScaffold}, whose members
         // are prefixes and base units — so it stays where its material is, and this file borrows it.
         // *Two scaffolds creating one node by the same name is the duplicated fact, one branch down.*
-        $unitValue = $this->existing($compositions, 'Einheitenwert');
+        // ⚠️ **Auch unter `Combined` gesucht** ([D-677](../../../docs/NewConcept/90-decision-log.md)):
+        // *dort legt {@see UnitScaffold} den Einheitenwert seit heute an, und dorthin hat der
+        // Eigentümer den bestehenden selbst gehängt. **Ein Gerüst, das nur an der alten Stelle
+        // nachsieht, bricht ab, obwohl der Knoten dasteht** — gemessen am 2026-09-07.*
+        $unitValue = $this->existing($this->framework->rootOf(Branch::Combined), 'Einheitenwert')
+            ?? $this->existing($compositions, 'Einheitenwert')
+            ?? throw new \RuntimeException('«Einheitenwert» is not there yet — the unit scaffold has to run first.');
 
         $this->address($compositions, $created);
         $this->dimension($compositions, $unitValue, $created);
@@ -260,8 +266,8 @@ final class CompositionScaffold
         return $made;
     }
 
-    /** The child of this name, which another delivery owns — absent, this one cannot run. */
-    private function existing(Node $parent, string $name): Node
+    /** Das Kind dieses Namens, oder `null` — der Aufrufer sieht an mehreren Stellen nach. */
+    private function existing(Node $parent, string $name): ?Node
     {
         foreach ($this->editor->childrenOf($parent->id) as $child) {
             if ($child->name === $name) {
@@ -269,9 +275,11 @@ final class CompositionScaffold
             }
         }
 
-        // ⚠️ Creating it here would make two files own one node; saying so out loud names the
-        // ordering that activation has to keep.
-        throw new \RuntimeException("«{$name}» is not there yet — the unit scaffold has to run first.");
+        // ⚠️ *`null` statt einer Ausnahme, seit an **zwei** Stellen nachgesehen wird: «hier nicht»
+        // ist keine Störung mehr, sondern eine Zwischenantwort. **Die Ausnahme steht weiterhin** —
+        // beim Aufrufer, wo sie erst fällt, wenn keine der Stellen etwas hatte. Sie zu erfinden
+        // hiesse, dass zwei Dateien einen Knoten besitzen.*
+        return null;
     }
 
     /** An attribute pointing at a simple type, found by name under the data types. */
