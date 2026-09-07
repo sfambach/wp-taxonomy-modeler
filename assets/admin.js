@@ -472,6 +472,14 @@
 	 *
 	 * Auf sein Wort: "Benutzer drueckt auf Button, selektiert Knoten wie im Baum, Dialog schliesst
 	 * sich, Knoten steht im Feld". Danach erst der Anlegen-Knopf.
+	 *
+	 * WICHTIG: Das gilt nur fuer den Dialog OHNE eigenen Knopf. Sein Befund am 2026-09-06: "man
+	 * klickt den combined knoten an und der dialog geht zu aber nichts passiert auch speichern
+	 * hilft nicht". Gemessen: der Verschiebedialog traegt seinen Knopf INNEN
+	 * ({@see \Taxmod\Core\Renderer\DialogChooserRenderer::CONFIRM}) -- also nahm dieses Zuklappen
+	 * dem Benutzer genau den Knopf weg, mit dem er haette bestaetigen muessen. Der Akt selbst war
+	 * nie kaputt; er wurde nie abgeschickt. Deshalb: hat der Dialog einen Fuss, bleibt er offen und
+	 * zeigt oben, was gewaehlt ist. Hat er keinen, schliesst er wie bisher.
 	 */
 	document.addEventListener( 'change', function ( event ) {
 		var radio = event.target;
@@ -488,6 +496,20 @@
 
 		var name = radio.closest( '.taxmod-chooser-row' );
 		var text = name ? name.querySelector( '.taxmod-tree-label' ) : null;
+		var fuss = chooser.querySelector( '.taxmod-dialog-foot' );
+
+		if ( fuss ) {
+			// Der Dialog bestaetigt selbst: offen lassen, und im Kopf steht ab jetzt der gewaehlte
+			// Knoten -- sonst waere der Klick ohne jede Rueckmeldung.
+			var kopf = chooser.querySelector( '.taxmod-chooser-current' );
+
+			if ( kopf && text ) {
+				kopf.textContent = text.textContent;
+			}
+
+			return;
+		}
+
 		var feld = chooser.parentNode ? chooser.parentNode.querySelector( '.taxmod-chosen' ) : null;
 
 		if ( feld && text ) {

@@ -108,13 +108,27 @@ function seite(int $nodeId): string
  */
 function abschicken(array $post): bool
 {
+    global $letzteMeldung;
+
     $_POST    = $post;
     $_REQUEST = $post;
 
-    $gewandert = false;
+    $gewandert     = false;
+    $letzteMeldung = '';
 
-    $fang = static function () use (&$gewandert): string {
+    $fang = static function ($ort) use (&$gewandert): string {
+        global $letzteMeldung;
+
         $gewandert = true;
+
+        $abfrage = [];
+        parse_str((string) parse_url((string) $ort, PHP_URL_QUERY), $abfrage);
+
+        // ⚠️ *Der Rand reicht den Grund in der Adresse weiter und {@see NodesScreen::notice()} zeichnet
+        // ihn. Ohne diese Zeile misst der Waechter nur, **dass** weitergeleitet wurde — und genau das
+        // war der blinde Fleck: «der Dialog geht zu und nichts passiert» ist auch dann falsch, wenn
+        // die Verweigerung richtig ist.*
+        $letzteMeldung = rawurldecode((string) ($abfrage['taxmod_message'] ?? ''));
 
         throw new RuntimeException('redirect');
     };
@@ -264,6 +278,100 @@ check(
     'nicht als gewaehlt markiert'
 );
 
+try {
+    // ⚠️ **Der Weg, den er wirklich gegangen ist** — TASK-065 angehaengt, sein Befund vom 2026-09-06:
+    // *«man klick den combined knoten an und der dialog geht zu aber nichts passiert auch speichern
+    // hilft nicht».*
+    //
+    // ⚠️ **Gemessen, und es lag weder am Akt noch am Angebot.** *Der Akt lief (oben), und `Combined`
+    // stand als waehlbare Zeile im Markup. Was fehlte, war der **Knopf**: das Skript schloss den
+    // Dialog, sobald ein Knoten gewaehlt wurde (TASK-028), und der Bestaetigungsknopf des
+    // Verschiebedialogs steht **innen** — also nahm das Zuklappen dem Benutzer genau die Stelle weg,
+    // an der er haette abschicken muessen. **Ein Dialog mit eigenem Knopf darf sich beim Waehlen
+    // nicht schliessen; einer ohne muss es.**
+    echo "\n== waehlen darf den Knopf nicht wegnehmen ==\n";
+
+    $markup = seite($wandrer->id);
+
+    $fussAuf = strpos($markup, 'taxmod-dialog-foot');
+
+    check(
+        'der Verschiebedialog traegt seinen Knopf innen',
+        $fussAuf !== false && str_contains(substr($markup, $fussAuf, 400), 'value="move"'),
+        'kein taxmod-dialog-foot mit do=move'
+    );
+
+    $skript = (string) file_get_contents(__DIR__ . '/../../assets/admin.js');
+
+    check(
+        'das Skript schliesst einen Dialog mit Fuss nicht',
+        (bool) preg_match(
+            '/taxmod-dialog-foot.*?if \( fuss \).*?return;/s',
+            $skript
+        ),
+        'admin.js schliesst weiterhin jeden Waehldialog'
+    );
+
+    // ⚠️ *Die Gegenprobe, sonst waere die Zusage die Haelfte: der Anlege-Dialog hat **keinen** Knopf
+    // innen — auf sein Wort «tree chooser ist ein standard dialog, sollte keine zusaetzliche Funktion
+    // haben» — und der muss sich beim Waehlen weiter schliessen.*
+    check(
+        'der Anlege-Dialog hat keinen eigenen Knopf und schliesst weiter',
+        str_contains($markup, 'name="field_target"')
+            && substr_count($markup, 'taxmod-dialog-foot') < substr_count($markup, 'taxmod-dialog-panel'),
+        substr_count($markup, 'taxmod-dialog-foot') . ' Fuesse an '
+            . substr_count($markup, 'taxmod-dialog-panel') . ' Dialogen'
+    );
+
+    echo "\n== und wo nichts geschieht, steht ein Grund auf dem Schirm ==\n";
+
+    global $letzteMeldung;
+
+    abschicken([
+        'do'            => 'move',
+        'id'            => (string) $wandrer->id,
+        'target'        => '0',
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $wandrer->id),
+    ]);
+
+    $ohneZiel = (string) $letzteMeldung;
+
+    check(
+        'ohne gewaehltes Ziel kommt ein Satz zurueck und kein «ok»',
+        $ohneZiel !== '' && $ohneZiel !== 'ok',
+        'Meldung war «' . $ohneZiel . '»'
+    );
+
+    // ⚠️ *Und er steht **auf dem Schirm**, nicht nur in der Adresse — die Adresse ist der Weg, der
+    // Toast ist die Zusage.*
+    // ⚠️ *Roh und nicht kodiert: PHP legt `$_GET` schon entschluesselt ab, und der Rand liest dort.*
+    $_GET['taxmod_message'] = $ohneZiel;
+    $mitMeldung             = seite($wandrer->id);
+    unset($_GET['taxmod_message']);
+
+    check(
+        'die Seite zeichnet ihn als Hinweis',
+        str_contains($mitMeldung, 'taxmod-toast-bad')
+            && str_contains($mitMeldung, esc_html(sanitize_text_field($ohneZiel))),
+        'kein taxmod-toast-bad mit dem Satz'
+    );
+
+    // ⚠️ *Dasselbe fuer die Verweigerung des Kerns: ein Zug in den eigenen Nachwuchs ist zu Recht
+    // verboten, und «nichts passiert» waere auch hier die falsche Antwort.*
+    abschicken([
+        'do'            => 'move',
+        'id'            => (string) $wandrer->id,
+        'target'        => (string) $kind->id,
+        '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $wandrer->id),
+    ]);
+
+    check(
+        'ein Zug in den eigenen Nachwuchs nennt seinen Grund',
+        $letzteMeldung !== '' && $letzteMeldung !== 'ok',
+        'Meldung war «' . (string) $letzteMeldung . '»'
+    );
+} finally {
+
 echo "\n== aufraeumen ==\n";
 
 // ⚠️ *Nach dem eigenen Namensmuster und nie ueber `clearTrash()` — dort liegt seine geparkte Arbeit.
@@ -284,6 +392,8 @@ check(
     'der Waechter laesst nichts zurueck',
     (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name LIKE '\\_\\_mv %'") === 0
 );
+
+}
 
 printf("\n%d ok, %d failed\n", $passed, $failed);
 

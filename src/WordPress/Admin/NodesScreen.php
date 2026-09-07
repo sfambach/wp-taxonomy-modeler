@@ -4217,7 +4217,7 @@ final class NodesScreen
                 'toggle_hide'    => $stay = $this->toggleHidden($id),
                 'duplicate'      => $stay = $this->editor->duplicate($id)->id,
                 'rename'         => $this->editor->rename($id, $name),
-                'move'           => $this->editor->move($id, $target),
+                'move'           => $this->movedTo($id, $target),
                 // ⚠️ **Dieselbe Spalte, andere Geschwisterliste** ([D-435](../../../docs/NewConcept/90-decision-log.md)):
                 // ein Knoten ordnet seine Vererbungskante, ein Attribut seine eigene.
                 'field_up'   => $this->editor->moveField($id, $relation, -1),
@@ -4568,6 +4568,26 @@ final class NodesScreen
      * ⚠️ *It fades on its own after a few seconds, because a fixed overlay that stays would sit on top
      * of the tree until the next reload. The animation is CSS, so nothing here has to know about time.*
      */
+    /**
+     * Verschieben — und **ohne Ziel steht ein Satz da**, kein Fehler aus der Maschine.
+     *
+     * ⚠️ *Gemessen am 2026-09-06: ein abgeschicktes `move` ohne gewaehltes Ziel kam als `target=0`
+     * an, der Kern suchte den Knoten 0 und der Benutzer las «No node with id 0.» — englisch, an der
+     * Textdomaene vorbei (`AR-2`) und ueber etwas, das er nie getan hat. **Ein leeres Ziel ist keine
+     * Stoerung, sondern eine unfertige Eingabe**, und die wird hier beantwortet, wo Benutzertext
+     * hingehoert.*
+     *
+     * @return Node|string Der verschobene Knoten, oder der Grund, warum nichts geschah.
+     */
+    private function movedTo(int $id, int $target): Node|string
+    {
+        if ($target <= 0) {
+            return __('Nothing was chosen — pick a node in the dialog first, then «Move here».', 'taxmod');
+        }
+
+        return $this->editor->move($id, $target);
+    }
+
     private function notice(): string
     {
         if (! isset($_GET['taxmod_message'])) {
