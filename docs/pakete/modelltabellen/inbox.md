@@ -1971,3 +1971,96 @@ Wahl, und der Knopf darunter verschiebt.
 **Zusage:** *ein Klick auf ein Ziel — der Dialog steht noch offen, das Ziel ist als gewählt zu
 erkennen, der Knopf darunter ist bedienbar; ein Klick darauf, und der Knoten hängt dort.* Am Markup
 gemessen, nicht an einer Dienstmethode. Der Fall aus seinem Bericht: `Zip/City` nach `Combined`.
+
+---
+
+**INF-065 · Wer erzeugt die speicherbare Fassung eines Werts?** (2026-09-07)
+
+**Sein Einwand, und er trifft:** *«also der converter sollte eigentlich nur die ausgabe umwandeln
+klar in beide richtungen wenn ich was in römsichen zahlen eingebe sollte es auch wieder in eine zahl
+umgewandelt werden. Aber das ist display schicht. und dem wiederspricht auch keines deiner
+zitate.»*
+
+⚠️ **Ich hatte [D-166](../../NewConcept/90-decision-log.md) und
+[D-149](../../NewConcept/90-decision-log.md) zu weit gelesen.** *Beide stehen an der Naht zwischen
+Anzeige und Eingabe. `Converter::written()` wandelt die **Schreibweise** zurück — römisch nach Zahl —
+und trifft damit nichts über die Normalform des Werts selbst.*
+
+**Der Fall, an dem es sichtbar wird.** Bei römischen Zahlen ist die Normalform vom **Typ** gegeben:
+`int`. Bei seiner Bauteilliste ist der Typ `text`, und `text` hat keine Normalform — also ist keiner
+zuständig für *sortiert, ohne Doppelte, Bereiche zusammengefasst*.
+
+**Damit rücken seine beiden Vorschläge zusammen:** *«hätte vom gefühl gesagt das gehört auch in den
+validator eine speicherbare version zu erzeugen»* und *«oder wir machen einen neuen datentypen comma
+separated list csl»* — **die Normalform gehört dem, der sie definieren kann, und das ist heute nur
+der Typ.**
+
+⚠️ **Offen und nicht nebenbei zu entscheiden** (`PR-4`): ob ein dritter Beteiligter zwischen
+Validator und Konverter tritt, oder ob eine eigene Normalform ein **vierter Grund** in
+[D-319](../../NewConcept/90-decision-log.md) wird, neben Speicherung, Darstellung und Sortierung.
+
+---
+
+**INF-066 · `Combined` liegt in keinem Ast, deshalb ist es kein Feldziel** (2026-09-07)
+
+**Sein Bericht:** *«knoten -> feld -> neu -> ich kann knoten in combined immer noch nicht auswählen
+warum ?»*
+
+**Gemessen an der echten Seite, an seinem Modell:** vier Knoten von 127 tragen im Feldziel-Dialog
+keinen Knopf — `Primitives` (406), `Combined` (3984), `Street / H#` (75473), `Zip/City` (75477).
+Alle vier haben denselben Grund: `branchOf()` sagt `null`. Die sechs Knoten unter `Compositions`
+sind dagegen **alle** wählbar; die Sperre trifft genau den `Primitives`-Zweig.
+
+⚠️ **Das steht seit dem Tabellen-Review schon aufgeschrieben** — [`geltende-regeln.md` §3](geltende-regeln.md):
+*«`Combined` liegt unter `Primitives`, neben `Data Types` und `Constants`. **`Primitives` ist kein
+Ast**, also liegt `Combined` in keinem — und `Street / H#` ist im Auswahldialog gesperrt.»* Sein
+*«ich dachte wir hätten das gestern besprochen»* ist berechtigt: besprochen ja, behoben nein.
+
+⚠️ **Die Sperre «kein Ast» ist keine Regel, sondern eine Folge.**
+[D-238](../../NewConcept/90-decision-log.md) verbietet den **Astwurzeln**, Ziel zu sein — das ist
+beschlossen. Der zweite Halbsatz im Code, *«und ein Knoten in gar keinem Ast»*, steht auf keinem
+Beschluss; er kommt daher, dass ohne Ast kein Typ und ohne Typ keine Wertspalte bestimmt wird.
+
+**Zwei Wege, und der Unterschied ist gross.** *Billig:* `Combined` unter `Compositions` hängen —
+eine Verschiebung, und `Street / H#` ist sofort wählbar. *Richtig:* der Typ folgt dem **Knoten**
+statt dem Ast, wie [`geltende-regeln.md` §4](geltende-regeln.md) es vorrechnet — das ist der offene
+Tabellen-Review und keine Nebenbei-Entscheidung.
+
+---
+
+**INF-067 · Zu `datetime` lässt sich kein Beispiel anlegen — und es ist die Lücke aus D-673** (2026-09-07)
+
+**Sein Bericht:** *«add bug - Ich kann zu date time kein example anlegen»*
+
+**Gemessen an der echten Maske, über `handlePost()` und nicht über eine Dienstmethode.** Der Satz
+**entsteht** sehr wohl: `datetime` trägt heute schon einen Satz der Art `example` (#12974), und ein
+zweiter liess sich über die Maske anlegen. **Was fehlt, ist das Eingabefeld darin.**
+
+```text
+Typ        Satz            Wertfelder im Satz
+int        #2281 default   3   (min, max, Schrittweite -- Einstellungen, nicht der Wert)
+text       #9639 default   1   (Länge)
+datetime   #12974 example  0
+color      keiner          0
+```
+
+⚠️ **Der Satzblock zeichnet ein Feld je erklärter Kante — und der eigene Wert eines einfachen Typs
+hat keine.** *`int` sieht nur deshalb bedienbar aus, weil unter ihm `min`, `max` und `Schrittweite`
+hängen; **der Vorgabewert einer Zahl lässt sich dort genauso wenig eintragen.** Es ist kein
+`datetime`-Fehler, sondern der allgemeine.*
+
+⚠️ **Das ist genau [D-673](../../NewConcept/90-decision-log.md)** — *`relation_id = 0` an einer
+Wertzeile heisst «der eigene Wert des Knotens»* — und steht schon auf der Arbeitsliste. Der
+Fehlerbericht ist sein Symptom, nicht ein zweiter Fall.
+
+---
+
+**INF-068 · «Add as example» am Vorschau-Feld** (2026-09-07)
+
+**Sein Vorschlag:** *«was mir da einfällt wir könnten bei der preview eingabe einen button
+hinzufügen add as example 😉»*
+
+⚠️ **Und es ist die passende Oberfläche für INF-067.** *Das Vorschaufeld steht ohnehin schon am Typ,
+kennt seinen Renderer und nimmt eine Eingabe entgegen — heute wirft es sie weg. Ein Knopf daneben
+schreibt sie als Satz der Art `example` mit `relation_id = 0`. Damit braucht der eigene Wert **keine**
+zweite Maske: die, die ihn zeichnen kann, kann ihn auch festhalten.*
