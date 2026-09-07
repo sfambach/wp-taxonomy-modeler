@@ -2211,3 +2211,30 @@ sind heute noch der einzige Weg fuer eine Installation ohne Abzug, und dass die 
 
 ⚠️ **Ein Abbild und kein zweites Modell** (`PR-1`): *`data/saat.json` wird erzeugt und eingecheckt,
 nicht gepflegt. Wer sie von Hand aendert, hat eine zweite Quelle der Wahrheit angelegt.*
+
+---
+
+[ ] TASK-065  Auch der Kantenname wird in der gewaehlten Sprache gelesen und geschrieben
+
+**Der Rest von TASK-061**, dort beim Bauen gefunden und ausdrücklich liegengelassen:
+`WpdbRelationRepository::nameArgs()` liest weiter fest die Standardsprache. **Der Knotenname folgt
+seit heute der gewählten Sprache, der Kantenname nicht** — also heisst ein Feld in jeder Sprache
+gleich, auch wo der Knoten dahinter übersetzt ist.
+
+⚠️ **Es ist derselbe Umbau ein zweites Mal**, und der Weg ist gegangen: der Speicher trägt seine
+Sprache (`__construct(?string $locale = null)`), die Abfrage verbindet zweimal — gewählte Sprache,
+dann Standardsprache —, und `writeName()` schreibt in die Sprache, in der gelesen wurde.
+
+⚠️ **Und dieselbe Sicherung ist Pflicht**, sonst wandert der englische Text still in jede Sprache:
+*in einer anderen Sprache als der Standardsprache wird nur geschrieben, wenn der Name sich von dem
+der Standardsprache **unterscheidet**. Gleichheit heisst «das war der Rückfall», und ein Rückfall ist
+eine Anzeige, keine Eingabe.* **Gemessen mit ausgebauter Sicherung**, beim Knotennamen: ein
+Verstecken auf Französisch machte den englischen Text zum französischen Namen.
+
+⚠️ *Der Unterschied zum Knoten: eine Kante darf **namenlos** sein
+([D-580](../../NewConcept/90-decision-log.md)) — sie hat dann gar keine Beschriftungszeile. Der
+Rückfall muss das aushalten, ohne eine anzulegen.*
+
+**Zusage:** je Sprache ihr Text, Rückfall wo eine fehlt, Speichern in Sprache A lässt B unangetastet
+— an einer Kante gemessen, nicht an einem Knoten. Anzuhängen an `label-space-check.php`, wo dieselben
+neun Zusagen für den Knoten seit heute stehen.
