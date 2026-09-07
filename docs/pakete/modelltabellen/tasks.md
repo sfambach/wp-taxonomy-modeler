@@ -2158,3 +2158,56 @@ mehr** — kein neuer Mechanismus, und Vorschau, Vererbung und Einstellungstafel
 
 **Zusage:** *derselbe Datensatz, zweimal gezeichnet, einmal je Lage — und die Köpfe stehen einmal
 oben und einmal links.* Gemessen am Markup, nicht an einer Dienstmethode.
+
+---
+
+[x] TASK-064  Der gewachsene Bestand wird das Abbild einer frischen Installation
+
+**2026-09-06, sein Auftrag auf die Frage aus `INF-063`:** *«wir sollten den aktuellen bestand
+einfrieren lass aber alles mit `__` weg das ist dir»* — der Vollzug von
+[D-600](../../NewConcept/90-decision-log.md), *«eine Neuinstallation entsteht kuenftig aus einem
+Abbild des gewachsenen Baums»*.
+
+**Was entstanden ist, in drei Stuecken:**
+
+| | |
+|---|---|
+| `scripts/dev/saat-export.php` | zieht ab — **ein Lesen**, in der Klammer aus `lib/no-write.php` |
+| `data/saat.json` | der Abzug: Zeilen, Optionen, Zaehlung, Pruefsumme |
+| `SeedImage::importOnce()` | spielt ein, **nur in ein leeres Modell**, vor Saat und Geruesten |
+
+**Der Abzug vom 2026-09-06, gezaehlt:**
+
+| Tabelle | im Bestand | im Abzug |
+|---|---|---|
+| Knoten | 139 | **136** |
+| Kanten | 48 | **48** |
+| Beschriftungen | 187 | **184** |
+| Beschriftungstexte | 189 | **186** |
+| Saetze | 194 | **194** |
+| Wertzeilen | 90 | **90** |
+| Optionen | 26 | **23** |
+
+*Die Luecke sind die drei Knoten `__Test` der Wiesen mit ihren Beschriftungen und die drei Optionen
+`taxmod_testast_*`, die auf sie zeigten. Im Papierkorb lag nichts.*
+
+**Die Zusage haengt an `seed-twice-check.php`, Abschnitt 5** — keine neue Datei, weil der Lauf schon
+die Saat zweimal ueber den Bestand schickt und die Umklammerung dafuer schon steht: *das Modell wird
+im `SAVEPOINT` geleert, der Abzug eingespielt, und **Zaehlung und Pruefsumme** muessen Zeile fuer
+Zeile und Feld fuer Feld dieselben sein. Danach wird zurueckgedreht und nachgezaehlt, dass sein
+Bestand wieder steht.*
+
+⚠️ **Sie spricht in Zahlen und nicht in Namen, und das ist der Kern der Sache.** *Genau daran sind
+die vier Gerueste krank: `BaseScaffold`, `UnitScaffold`, `CompositionScaffold` und
+`RenderingScaffold` suchen **am Namen** und legen an, was sie nicht finden — so kam dreimal eine
+deutsche `Adresse` in seinen Bestand, nachdem er sie in `Address` umbenannt hatte. **Ein Abzug
+bringt die Nummern mit und braucht diese Suche nicht.***
+
+⚠️ **Welche Geruese damit entbehrlich werden, ist eine eigene Entscheidung und wird hier nur
+benannt** (`PR-4`): *alle vier. Auf einer frischen Installation legt der Abzug an, was sie anlegen
+wuerden, und auf einer gewachsenen finden sie ihre Arbeit vor. **Gestrichen sind sie nicht** — sie
+sind heute noch der einzige Weg fuer eine Installation ohne Abzug, und dass die vier Fassungen
+`taxmod_*_scaffold` im Abzug mitreisen, ist genau das, was sie stillstellt.*
+
+⚠️ **Ein Abbild und kein zweites Modell** (`PR-1`): *`data/saat.json` wird erzeugt und eingecheckt,
+nicht gepflegt. Wer sie von Hand aendert, hat eine zweite Quelle der Wahrheit angelegt.*

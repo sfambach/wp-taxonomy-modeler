@@ -1909,3 +1909,26 @@ anders will.*
 ⚠️ **Hier wird sie ausdruecklich nicht beantwortet**, und die Wanderung tut es auch nicht: sie raeumt
 weg, was unzulaessig ist, und laesst den Rueckfall greifen. *Wer sie entscheidet, aendert die Saat —
 und dann ist es wieder eine Fassung mit einer Wanderung, nach genau demselben Muster.*
+
+⚠️ **BEANTWORTET am 2026-09-06, und die Antwort geht weiter als die Frage.** *Sein Satz:* **«wir
+sollten den aktuellen bestand einfrieren lass aber alles mit `__` weg das ist dir»**.
+
+**Damit ist die Frage «gehoeren die Handreparaturen in die Saat?» nicht mit ja beantwortet, sondern
+aufgeloest:** *nicht die fuenf Handgriffe wandern in eine Saat, sondern **sein ganzer heutiger
+Bestand wird das Abbild** — der Vollzug von [D-600](../../NewConcept/90-decision-log.md), «eine
+Neuinstallation entsteht kuenftig aus einem Abbild des gewachsenen Baums». Die Handreparaturen sind
+dann keine Sonderfaelle mehr; sie stehen einfach mit drin, wie jede andere Zeile auch.*
+
+| | |
+|---|---|
+| **wo** | `data/saat.json`, erzeugt von `scripts/dev/saat-export.php` |
+| **wer spielt ein** | `SeedImage::importOnce()`, vor der Saat und den vier Geruesten |
+| **draussen** | alles mit Praefix `__` samt allem darunter, und was unter dem Papierkorb haengt |
+| **bewacht** | `seed-twice-check.php`, Abschnitt 5 — Zaehlung und Pruefsumme, **keine Namen** |
+
+**Gemessen am 2026-09-06:** 136 Knoten, 48 Kanten, 184 Beschriftungen mit 186 Textzeilen, 194 Saetze,
+90 Wertzeilen, dazu 23 Optionen. *Draussen blieben drei Knoten `__Test` mit ihren drei Beschriftungen
+und die drei Optionen, die auf sie zeigten; im Papierkorb lag nichts.*
+
+⚠️ **Der Abzug ist ein Abbild und kein zweites Modell** (`PR-1`): *er wird **erzeugt** und
+eingecheckt, nicht gepflegt. Wer den Baum aendern will, aendert den Baum und zieht danach neu ab.*

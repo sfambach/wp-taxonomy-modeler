@@ -20,6 +20,7 @@ use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\SeedImage;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\UnitScaffold;
@@ -103,6 +104,10 @@ final class Plugin
 
         Schema::ensureCurrent();
 
+        // ⚠️ *Auch hier vor der Saat, aus demselben Grund — und auch hier ohne Wirkung, sobald ein
+        // Knoten steht: {@see SeedImage::importOnce()} geht an einem gewachsenen Baum vorbei.*
+        (new SeedImage())->importOnce();
+
         if ($before !== Schema::VERSION) {
             $this->frameworkNodes()->seed();
         }
@@ -119,6 +124,13 @@ final class Plugin
     {
         Schema::install();
         update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
+
+        // ⚠️ **Der Abzug zuerst** ([D-600](../../docs/NewConcept/90-decision-log.md)): *«eine
+        // Neuinstallation entsteht künftig aus einem Abbild des gewachsenen Baums».* Er bringt die
+        // **Nummern** mit — danach finden die Saat und die vier Gerüste alles vor und legen nichts
+        // an. *Auf einem gewachsenen Baum tut er nichts; er ist der Anfangszustand und keine
+        // Wanderung.*
+        (new SeedImage())->importOnce();
 
         // ⚠️ **Die Standardsprache wird beim Anlegen **geschrieben**, nicht nur hergeleitet** — und
         // dass sie es nicht wurde, war mein Versäumnis. *Der Eigentümer, am 2026-09-05, auf meinen

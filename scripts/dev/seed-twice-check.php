@@ -76,6 +76,7 @@ use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\Query;
 use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\SeedImage;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\UnitScaffold;
@@ -310,6 +311,80 @@ foreach ($vorherOption as $name => $wert) {
 }
 
 check('keine Option zeigt auf einen neuen Knoten', $verschoben === [], implode(', ', $verschoben));
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+echo "\n5 · Aus dem Abzug entsteht derselbe Baum\n";
+
+/*
+ * ⚠️ **Der Vollzug von [D-600](../../docs/NewConcept/90-decision-log.md)**, hier gemessen: *«eine
+ * Neuinstallation entsteht künftig aus einem Abbild des gewachsenen Baums».* Sein Auftrag am
+ * 2026-09-06 zu `INF-063`: *«wir sollten den aktuellen bestand einfrieren lass aber alles mit `__`
+ * weg das ist dir».*
+ *
+ * ⚠️ **Die Zusage spricht in Zahlen und einer Prüfsumme, nicht in Namen** — *ein Wächter, der
+ * `Adresse` sucht, ist genau der Fehler, den dieser Lauf dreimal in seinen Bestand gesät hat. Der
+ * Abzug bringt Nummern mit; geprüft wird, dass dieselben Nummern mit denselben Feldern ankommen.*
+ *
+ * ⚠️ **Er leert das Modell und spielt den Abzug ein — im `SAVEPOINT` von oben, der danach noch
+ * einmal zurückgedreht wird.** *Und über {@see SeedImage::import()} statt `importOnce()`: das
+ * `ALTER TABLE … AUTO_INCREMENT` aus `sealIdSpace()` würde in MySQL stillschweigend bestätigen,
+ * was die Klammer zurückdrehen soll.*
+ */
+$abzug = SeedImage::read();
+
+check('der Abzug liegt da', $abzug !== null, SeedImage::file());
+
+if ($abzug !== null) {
+    /** @var array{zaehlung: array<string, int>, pruefsumme: string} $ausDerDatei */
+    $ausDerDatei = SeedImage::shapeOf($abzug['tabellen']);
+
+    check(
+        'der Abzug beschreibt sich selbst richtig',
+        $ausDerDatei['pruefsumme'] === ($abzug['pruefsumme'] ?? ''),
+        'gerechnet ' . substr($ausDerDatei['pruefsumme'], 0, 12) . ', notiert ' . substr((string) ($abzug['pruefsumme'] ?? ''), 0, 12)
+    );
+
+    // ⚠️ *Sein Wort «lass aber alles mit `__` weg» — als Messung und nicht als Zusicherung des
+    // Abziehers: die Namen stehen in `label_texts`, und dort wird nachgesehen.*
+    $wiesen = [];
+
+    foreach ($abzug['tabellen']['label_texts'] ?? [] as $zeile) {
+        if (str_starts_with((string) ($zeile['text_name'] ?? ''), '__')) {
+            $wiesen[] = (string) $zeile['text_name'];
+        }
+    }
+
+    check('keine Wiese mit __ im Abzug', $wiesen === [], implode(', ', array_slice($wiesen, 0, 8)));
+
+    foreach (array_reverse(array_keys(SeedImage::TABLES)) as $tabelle) {
+        $wpdb->query('DELETE FROM ' . Schema::table($tabelle));
+    }
+
+    check('das Modell ist für den Versuch leer', zaehle('nodes') === 0 && zaehle('relations') === 0);
+
+    $geschrieben = (new SeedImage())->import();
+
+    $imModell = SeedImage::shapeOfModel();
+
+    foreach ($ausDerDatei['zaehlung'] as $tabelle => $sollen) {
+        check(
+            "{$tabelle}: {$sollen} im Abzug, ebenso viele im Modell",
+            ($imModell['zaehlung'][$tabelle] ?? -1) === $sollen,
+            'angekommen: ' . ($imModell['zaehlung'][$tabelle] ?? 'nichts') . ', geschrieben: ' . ($geschrieben[$tabelle] ?? 0)
+        );
+    }
+
+    check(
+        'dieselbe Prüfsumme, Zeile für Zeile und Feld für Feld',
+        $imModell['pruefsumme'] === $ausDerDatei['pruefsumme'],
+        'Modell ' . substr($imModell['pruefsumme'], 0, 12) . ', Abzug ' . substr($ausDerDatei['pruefsumme'], 0, 12)
+    );
+
+    $wpdb->query('ROLLBACK TO SAVEPOINT vor_der_zweiten_saat');
+
+    check('sein Bestand steht wieder', zaehle('nodes') === $vorherKnoten && zaehle('relations') === $vorherKanten);
+}
 
 echo "\n$ok OK, $bad FAIL\n";
 
