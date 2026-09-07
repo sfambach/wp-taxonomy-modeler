@@ -1932,3 +1932,42 @@ und die drei Optionen, die auf sie zeigten; im Papierkorb lag nichts.*
 
 ⚠️ **Der Abzug ist ein Abbild und kein zweites Modell** (`PR-1`): *er wird **erzeugt** und
 eingecheckt, nicht gepflegt. Wer den Baum aendern will, aendert den Baum und zieht danach neu ab.*
+
+---
+
+## INF-064 · Der Verschiebe-Dialog: ein Klick wählt, der Knopf darunter bestätigt
+
+**2026-09-06, sein Befund und gleich danach seine Vorgabe:**
+
+> *«ich sehe wo das problem mit dem moven ist hier wird ein doppelklick erwartet anstatt wie sonst ein
+> einfacher klick»*
+
+und, gefragt wie er es haben will:
+
+> *«einmal klick auf knoten -> knoten select -> unten bestätigen move»*
+
+**Das ist nicht «ein Klick verschiebt».** Es sind drei Schritte, und der mittlere fehlt heute:
+
+| | |
+|---|---|
+| **1** | ein Klick auf den Knoten |
+| **2** | der Knoten ist **gewählt** — sichtbar, und der Dialog **bleibt offen** |
+| **3** | der Knopf **darunter** bestätigt und verschiebt |
+
+⚠️ **Was heute passiert, und warum es aussieht wie ein Doppelklick:** *der Dialog **schliesst** beim
+Klick auf den Knoten ([D-589](../../NewConcept/90-decision-log.md): «der Dialog wählt und schliesst»),
+und der Bestätigen-Knopf steht **im** Dialog. Mit dem Dialog ist er weg, bevor jemand ihn drücken
+kann. Sein Bild: «man klick den combined knoten an und der dialog geht zu aber nichts passiert auch
+speichern hilft nicht».*
+
+⚠️ **Der Unterschied zu D-589 ist der Zweck.** *Beim **Anlegen** wählt der Dialog ein Ziel und
+schliesst — die Wahl steht danach in einem gesperrten Feld neben dem Anlegen-Knopf, also **ausserhalb**
+des Dialogs, und dort kann man sie noch sehen und bestätigen. Beim **Verschieben** gibt es dieses Feld
+nicht: die Wahl hat keinen Ort ausserhalb, an dem sie überleben könnte.*
+
+**Zu bauen ist also eins von beiden, und er hat das erste gewählt:** der Dialog bleibt offen, zeigt die
+Wahl, und der Knopf darunter verschiebt.
+
+**Zusage:** *ein Klick auf ein Ziel — der Dialog steht noch offen, das Ziel ist als gewählt zu
+erkennen, der Knopf darunter ist bedienbar; ein Klick darauf, und der Knoten hängt dort.* Am Markup
+gemessen, nicht an einer Dienstmethode. Der Fall aus seinem Bericht: `Zip/City` nach `Combined`.
