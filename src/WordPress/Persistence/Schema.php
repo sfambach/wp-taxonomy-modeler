@@ -397,8 +397,21 @@ final class Schema
      * `relation_id`** — null Abweichungen, null mehrteilige —, also sagt die Spalte nichts mehr, was
      * nicht daneben steht. *Der Schatten behält sie ({@see self::SHADOW_ONLY_IN}); Geschichte wird
      * nicht umgeschrieben ([D-065](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Fassung 40 gibt der Wertzeile im Schatten ihre Parkgruppe** (`INF-062`,
+     * [D-676](../../../docs/NewConcept/90-decision-log.md)). *`relation_records_history` bekommt
+     * `parked_by_group_id` — dieselbe Spalte, die `relations_history` seit Fassung 27 trägt, und
+     * aus demselben Grund: **eine Zeile, die das Leeren gelöscht hat, und eine, die das Parken
+     * mitgenommen hat, sahen dort gleich aus** — beide mit `deleted = 1` und nichts, was den einen
+     * Akt vom anderen trennt. *Gemessen am 2026-09-07 auf eigener Wiese: `put` → `clear` → `put` →
+     * parken → zurückholen ergab **zwei** lebende Wertzeilen statt einer; mit der Spalte ist es
+     * genau eine, und zwar die, die beim Parken lebendig war.* **Eine reine
+     * Ergänzung — `dbDelta` legt die Spalte an, es wandert nichts.** Der Bestand bleibt `NULL`:
+     * gemessen am 2026-09-07 tragen die 487 geparkten Kanten zusammen **24** Schattenwertzeilen, und
+     * **keine einzige davon ist zur Parkzeit ihrer Kante oder später archiviert worden** — sie waren
+     * alle vorher schon gelöscht, gehören also auch nach der alten Lesart nicht ins Gepäck.*
      */
-    public const VERSION = 39;
+    public const VERSION = 40;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -523,7 +536,11 @@ final class Schema
         // ([D-065](../../../docs/NewConcept/90-decision-log.md)): eine alte Zeile führt ihre Angaben
         // als **Datum** mit — auch die zwei zweiteiligen, die Fassung 37 umgehängt hat, und die
         // nirgends sonst mehr stehen.*
-        'relation_records_history' => ['path'],
+        // ⚠️ **`parked_by_group_id` steht hier seit Fassung 40** (`INF-062`,
+        // [D-676](../../../docs/NewConcept/90-decision-log.md)): *dieselbe Spalte wie an
+        // `relations_history` und mit derselben Aussage — **mit welcher Änderungsgruppe wurde diese
+        // Zeile geparkt**. Lebend gibt es sie nicht: eine lebende Wertzeile ist nicht geparkt.*
+        'relation_records_history' => ['path', 'parked_by_group_id'],
     ];
 
     /** @return list<string> The table names, without the WordPress prefix. */
@@ -3962,6 +3979,7 @@ final class Schema
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 value_ref_kind varchar(20) DEFAULT NULL,
+                parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

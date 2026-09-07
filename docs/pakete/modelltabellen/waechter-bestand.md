@@ -474,7 +474,7 @@ gestrichenen Paketlaeufe riefen sie alle vier.*
 | Fund | was daraus wurde |
 |---|---|
 | **Ein Datensatz ueberlebte seinen Knoten.** Papierkorb geleert, Knoten weg, Satz stand noch da. | Kein Produktfehler, sondern **der Aufbau**: `ModelEditor` bekommt Beschriftungen und Datensaetze als optionale Abhaengigkeiten, und **nur `clearTrash()` braucht sie**. Die vier gestrichenen Paketlaeufe bauten den Dienst alle mit vier Argumenten — *ihre Aufraeum-Zusage war gruen, weil sie nie geraeumt hat.* |
-| **Zurueckholen einer geparkten Kante belebt auch geleerte Werte wieder.** Erst `put`, dann `clear`, dann `put`, dann parken und zurueckholen — **zwei** Wertzeilen statt einer. | Gemessen und als [`INF-062`](inbox.md) aufgeschrieben, **nicht im Vorbeigehen entschieden** (`PR-4`). Der Lauf leert deshalb an einem *zweiten* Feld, damit sein Abschnitt 8 die Zusage aus [D-619](../../NewConcept/90-decision-log.md) misst und nicht eine offene Frage. |
+| **Zurueckholen einer geparkten Kante belebt auch geleerte Werte wieder.** Erst `put`, dann `clear`, dann `put`, dann parken und zurueckholen — **zwei** Wertzeilen statt einer. | Gemessen und als [`INF-062`](inbox.md) aufgeschrieben, **nicht im Vorbeigehen entschieden** (`PR-4`). ⚠️ **Am 2026-09-07 behoben** ([D-676](../../NewConcept/90-decision-log.md), Fassung 40): *die Schattenwertzeile merkt sich ihre Parkgruppe, das Zurueckholen fragt sie. **Der Umweg ueber ein zweites Feld ist zurueckgebaut** — Abschnitt 8 misst den Fall jetzt selbst, und zwar an genau dem Feld, das er parkt.* |
 
 ## Welche Zusagen gegengeprueft sind — kaputtgemacht und rot geworden
 

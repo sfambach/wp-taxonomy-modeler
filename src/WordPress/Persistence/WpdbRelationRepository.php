@@ -382,6 +382,26 @@ final class WpdbRelationRepository implements RelationRepository
         // 2 · Die Wertzeilen der Kante gehen denselben Weg — **eine Gruppe, ein Akt**.
         Shadow::keep('relation_records', 'relation_id = %d', [$relationId], true);
 
+        // ⚠️ **Und sie tragen dieselbe Gruppe wie die Kante** (Fassung 40, `INF-062`,
+        // [D-676](../../../docs/NewConcept/90-decision-log.md)). *Ohne diese Zeile ist im Schatten
+        // nicht zu sehen, **welche** Wertzeile das Parken mitgenommen hat: eine, die der Benutzer
+        // vorher geleert hatte, trägt dort dasselbe `deleted = 1`, und
+        // {@see self::unparkValues()} belebte darum beide wieder. **Gemessen am 2026-09-07 auf
+        // eigener Wiese:** `put` → `clear` → `put` → parken → zurückholen ergab **zwei** lebende
+        // Wertzeilen statt einer; mit dieser Zeile ist es genau eine.*
+        //
+        // ⚠️ **Vor dem Löschen der lebenden Zeilen, und das ist die ganze Vorsicht:** *die
+        // Verbindung sagt «genau die Zeilen, die es jetzt noch lebend gibt». Nach dem `DELETE`
+        // gäbe es nichts mehr zu verbinden.*
+        Query::run('Parkgruppe an den Wertzeilen vermerken', $wpdb->prepare(
+            'UPDATE ' . Schema::table('relation_records_history') . ' h
+             INNER JOIN ' . Schema::table('relation_records') . ' l ON l.id = h.id AND l.version = h.version
+             SET h.parked_by_group_id = %d
+             WHERE l.relation_id = %d',
+            $changeGroupId,
+            $relationId
+        ));
+
         Query::run('Wertzeilen der geparkten Kante entfernen', $wpdb->prepare(
             'DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
             $relationId
@@ -462,7 +482,10 @@ final class WpdbRelationRepository implements RelationRepository
             $this->writeName($zurueck->renamedTo($ausDemSchatten));
         }
 
-        $this->unparkValues($relationId);
+        // ⚠️ **Mit der Gruppe, mit der geparkt wurde** (`INF-062`,
+        // [D-676](../../../docs/NewConcept/90-decision-log.md)): *sie ist die Klammer, und ohne sie
+        // käme jede je gelöschte Wertzeile mit zurück.*
+        $this->unparkValues($relationId, (int) ($zeile['parked_by_group_id'] ?? 0));
 
         return $this->byId($relationId);
     }
@@ -472,9 +495,23 @@ final class WpdbRelationRepository implements RelationRepository
      *
      * ⚠️ *Der jüngste Schattenstand je Wertzeile, und nur der als gelöscht markierte — eine Zeile,
      * die es lebend noch gibt, wird nicht ein zweites Mal eingefügt.*
+     *
+     * ⚠️ **Und nur, was **beim Parken** lebendig war** (Fassung 40, `INF-062`,
+     * [D-676](../../../docs/NewConcept/90-decision-log.md)): *gefragt wird die Parkgruppe, nicht
+     * `deleted`. **Ein Wert, den der Benutzer vorher geleert hat, bleibt geleert** — das
+     * Zurückholen einer Kante ist die Umkehrung des Parkens und nicht die des ganzen Lebenslaufs.*
+     *
+     * ⚠️ *Eine Kante, die vor Fassung 40 geparkt wurde, trägt an ihren Schattenwertzeilen keine
+     * Gruppe und kommt darum ohne sie zurück. **Gemessen am 2026-09-07 kostet das nichts:** die 24
+     * Schattenwertzeilen der 487 geparkten Kanten sind alle vor der Parkzeit ihrer Kante archiviert
+     * worden, waren zum Parken also längst gelöscht.*
      */
-    private function unparkValues(int $relationId): void
+    private function unparkValues(int $relationId, int $changeGroupId): void
     {
+        if ($changeGroupId === 0) {
+            return;
+        }
+
         global $wpdb;
 
         $schatten = Schema::table('relation_records_history');
@@ -485,10 +522,11 @@ final class WpdbRelationRepository implements RelationRepository
              INNER JOIN (
                  SELECT id, MAX(version) AS version FROM {$schatten} WHERE relation_id = %d GROUP BY id
              ) neuste ON neuste.id = h.id AND neuste.version = h.version
-             WHERE h.relation_id = %d AND h.deleted = 1
+             WHERE h.relation_id = %d AND h.deleted = 1 AND h.parked_by_group_id = %d
                AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)",
             $relationId,
-            $relationId
+            $relationId,
+            $changeGroupId
         ));
 
         foreach ($zeilen as $zeile) {

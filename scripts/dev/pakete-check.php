@@ -363,12 +363,11 @@ $unterDemKnoten = array_map(static fn ($r): int => $r->id, $data->recordsOf($din
 
 check('und er steht unter seinem Knoten', in_array($satz->id, $unterDemKnoten, true), implode(', ', $unterDemKnoten));
 
-// ⚠️ **Das Leeren geht an ein *zweites* Feld, und das ist kein Zufall der Bequemlichkeit.**
-// *Gemessen beim Bau dieses Laufs: wird dasselbe Feld erst geleert und danach geparkt, bringt das
-// Zurückholen **beide** Schattenzeilen wieder — auch den Wert, den ein Mensch gelöscht hatte.
-// Der Befund steht als `INF-062` im Eingang des Pakets; hier wird er nicht im Vorbeigehen entschieden
-// (`PR-4`), sondern aus dem Weg gehalten, damit Abschnitt 8 die Zusage aus
-// [D-619](../../docs/NewConcept/90-decision-log.md) misst und nicht eine offene Frage.*
+// ⚠️ **Das Leeren wird hier an einem *zweiten* Feld gemessen, und nur, weil das erste noch
+// gebraucht wird.** *Bis zum 2026-09-06 stand hier ein anderer Grund: der Lauf ging dem Fall «erst
+// leeren, dann parken» aus dem Weg, weil `INF-062` offen war. **`INF-062` ist entschieden**
+// ([D-676](../../docs/NewConcept/90-decision-log.md)), und Abschnitt 8 misst den Fall jetzt selbst —
+// an genau dem Feld, das dort geparkt wird.*
 $notiz = $editor->addField($ding->id, $text->id, '__pk Notiz');
 
 $data->put($satz->id, $notiz->id, TypedValue::ofText('__pk zu leeren'));
@@ -465,6 +464,20 @@ check(
 
 echo "\n== 8 · Ein Feld parken und zurueckholen ==\n";
 
+// ⚠️ **Erst leeren, dann neu schreiben — und das ist seit dem 2026-09-07 der Kern dieses
+// Abschnitts.** *Der Lauf ging diesem Fall aus dem Weg, solange `INF-062` offen war: gemessen kamen
+// **zwei** Wertzeilen zurück statt einer, weil das Zurückholen jede Schattenzeile mit `deleted = 1`
+// wiederbelebte — auch die, die ein Mensch gelöscht hatte.
+// [D-676](../../docs/NewConcept/90-decision-log.md) hat entschieden, wie es stattdessen geht:
+// **zurück kommt, was beim Parken lebendig war**, und die Klammer dafür ist die Änderungsgruppe.*
+$data->clear($satz->id, $feld->id);
+$data->put($satz->id, $feld->id, TypedValue::ofText('__pk nach dem Leeren'));
+
+check(
+    'ein geleertes und neu beschriebenes Feld traegt vor dem Parken genau eine Wertzeile',
+    count(array_filter($data->valuesOf($satz->id), static fn ($w): bool => $w->relationId === $feld->id)) === 1
+);
+
 $editor->removeField($ding->id, $feld->id);
 
 check(
@@ -499,14 +512,50 @@ check(
     )) !== []
 );
 
+// ⚠️ **Zwei Schattenzeilen, und nur eine davon hat das Parken dorthin gebracht** (`INF-062`,
+// [D-676](../../docs/NewConcept/90-decision-log.md)). *Die andere hat das Leeren dorthin gebracht;
+// vor Fassung 40 war sie von ihr nicht zu unterscheiden — an `deleted` nicht, an `version` nicht
+// und an `archived_at` auch nicht.*
+$schattenwerte = Query::rows('Schattenwertzeilen zaehlen', $wpdb->prepare(
+    'SELECT parked_by_group_id FROM ' . Schema::table('relation_records_history') . '
+     WHERE relation_id = %d AND deleted = 1',
+    $feld->id
+));
+
+$mitGruppe = array_values(array_filter(
+    $schattenwerte,
+    static fn (array $r): bool => (int) ($r['parked_by_group_id'] ?? 0) > 0
+));
+
+check(
+    'im Schatten liegen beide Zeilen, aber nur die geparkte traegt eine Aenderungsgruppe (D-676)',
+    count($schattenwerte) === 2 && count($mitGruppe) === 1,
+    count($schattenwerte) . ' Schattenzeilen, ' . count($mitGruppe) . ' mit Gruppe'
+);
+
+check(
+    'und es ist dieselbe Gruppe, mit der die Kante geparkt wurde (D-575, D-676)',
+    count($mitGruppe) === 1 && $schatten !== null
+        && (int) $mitGruppe[0]['parked_by_group_id'] === (int) ($schatten['parked_by_group_id'] ?? 0),
+    count($mitGruppe) === 1 ? (string) $mitGruppe[0]['parked_by_group_id'] : 'keine'
+);
+
 $editor->restoreField($ding->id, $feld->id);
 
 $zurueck = array_values(array_filter($data->valuesOf($satz->id), static fn ($w): bool => $w->relationId === $feld->id));
 
 check(
     'das Zurueckholen bringt Kante und Wert zurueck, mit demselben Inhalt (D-619)',
-    count($zurueck) === 1 && $zurueck[0]->value->text === '__pk neu geschrieben',
+    count($zurueck) === 1 && $zurueck[0]->value->text === '__pk nach dem Leeren',
     count($zurueck) . ' Zeilen'
+);
+
+// ⚠️ **Die Zusage, die `INF-062` gekostet hat.** *Gemessen am 2026-09-06 standen hier **zwei**
+// Zeilen: `__pk neu geschrieben` kam mit zurück, obwohl ein Mensch ihn gelöscht hatte.*
+check(
+    'der zuvor geleerte Wert bleibt geleert — zurueck kommt nur, was beim Parken lebendig war (D-676)',
+    count($zurueck) === 1,
+    implode(' | ', array_map(static fn ($w): string => (string) $w->value->text, $zurueck))
 );
 
 echo "\n== 9 · Loeschen — und nichts bleibt liegen ==\n";

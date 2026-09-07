@@ -1808,9 +1808,11 @@ stehen fest — **Verwendungsstelle** und **Einstellungskante** —, die Ablage 
 
 ---
 
-## INF-062 · Zurueckholen einer geparkten Kante belebt auch geleerte Werte wieder
+## INF-062 · ERLEDIGT — Zurueckholen einer geparkten Kante belebt auch geleerte Werte wieder
 
 **Gefunden am 2026-09-06 beim Bau von `scripts/dev/pakete-check.php`, gemessen und nicht vermutet.**
+**Entschieden am 2026-09-06 mit [D-676](../../NewConcept/90-decision-log.md), gebaut und gemessen am
+2026-09-07 als Schemafassung 40.**
 
 [D-619](../../NewConcept/90-decision-log.md) sagt: *die Wertzeilen einer geparkten Kante wandern mit,
 beim Zurueckholen wieder heraus. Eine Gruppe, ein Akt, umkehrbar.* **Gebaut ist mehr als das.**
@@ -1838,9 +1840,42 @@ dem Rueckgaengig ohnehin gibt. **Ihn hier im Vorbeigehen zu waehlen, waere ein e
 wiederkommen soll oder nicht; der Papierkorb sagt «geparkt, nicht geloescht», und ein geleertes
 Feld sagt das gerade nicht.*
 
-⚠️ **Was `pakete-check.php` deshalb tut:** *er leert an einem **zweiten** Feld und parkt am ersten,
-damit Abschnitt 8 die Zusage aus D-619 misst und nicht diese offene Frage. **Der Fall ist damit
+⚠️ **Was `pakete-check.php` deshalb tat:** *er leerte an einem **zweiten** Feld und parkte am ersten,
+damit Abschnitt 8 die Zusage aus D-619 mass und nicht diese offene Frage. **Der Fall war damit
 umgangen, nicht bewacht** — wer ihn entscheidet, bekommt dort seine Zusage.*
+
+### ✅ Erledigt am 2026-09-07, Schemafassung 40
+
+**Der Eigentuemer hat entschieden: der geleerte Wert kommt nicht wieder** ([D-676](../../NewConcept/90-decision-log.md)).
+*`relation_records_history` bekommt `parked_by_group_id` — dieselbe Spalte, die `relations_history`
+seit Fassung 27 traegt. Das Parken schreibt die Aenderungsgruppe an die Wertzeilen, die es
+mitnimmt; das Zurueckholen holt **nur** die Zeilen dieser Gruppe. Eine reine Ergaenzung, `dbDelta`
+legt die Spalte an, es wandert nichts.*
+
+**Gemessen auf eigener Wiese, Praefix `__up`, vorher und nachher — dieselben fuenf Schritte:**
+
+| Schritt | lebende Wertzeilen **vorher** | lebende Wertzeilen **nachher** | Schattenzeilen |
+|---|---|---|---|
+| `put("erst")` | 1 | 1 | 0 |
+| `clear()` | 0 | 0 | 1 (ohne Gruppe) |
+| `put("zweit")` | 1 | 1 | 1 (ohne Gruppe) |
+| parken (`removeField`) | 0 | 0 | 2 — **nachher: eine mit Gruppe, eine ohne** |
+| zurueckholen (`restoreField`) | **2** — `erst` und `zweit` | **1** — nur `zweit` | 2 |
+
+⚠️ **Und die zwei Schattenzeilen waren vorher an nichts zu unterscheiden** — *nicht an `deleted`,
+nicht an `version`, nicht an `archived_at`. Genau deshalb ist die Aenderungsgruppe die Klammer und
+kein Zeitpunkt.*
+
+⚠️ **Der Bestand bleibt `NULL`, und das kostet nichts:** *gemessen am 2026-09-07 tragen die 487
+geparkten Kanten zusammen **24** Schattenwertzeilen, und **keine einzige** davon ist zur Parkzeit
+ihrer Kante oder spaeter archiviert worden — sie
+waren alle vorher schon geloescht. Eine vor Fassung 40 geparkte Kante kommt darum ohne Wertzeilen
+zurueck, so wie sie es nach der alten Lesart auch getan haette.*
+
+⚠️ **Der Umweg in `pakete-check.php` ist zurueckgebaut.** *Abschnitt 8 leert und beschreibt jetzt
+**dasselbe** Feld neu, das er danach parkt, und traegt drei neue Zusagen: nur die geparkte
+Schattenzeile traegt eine Gruppe, es ist dieselbe wie an der Kante, und zurueck kommt genau eine
+Wertzeile.*
 
 ---
 
