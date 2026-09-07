@@ -2383,3 +2383,9 @@ selbst der feste Wert wird.
 
 **Zusage:** *an einer Feldzeile lassen sich Werte abwählen; die Auswahlliste desselben Feldes zeigt
 danach genau die übrigen, und ein Ausschluss nimmt seinen Unterbaum mit.* Am Markup gemessen.
+
+⚠️ **Nachtrag zur Konfliktprüfung, seine Verengung** ([D-680](../../NewConcept/90-decision-log.md)):
+*«Genau wenn 0 keine option ist muss mindestens ein wert da bleiben.»* **Alles abgewählt ist nur bei
+`1..1` und `1..*` ein Konflikt.** *Bei `0..1` und `0..*` ist nichts eine gültige Antwort
+([D-380](../../NewConcept/90-decision-log.md)), und die leere Auswahl heisst dort «hier wird nichts
+gewählt» — keine Störung. **Gefangen wird es beim Verengen**, nicht beim Eingeben.*

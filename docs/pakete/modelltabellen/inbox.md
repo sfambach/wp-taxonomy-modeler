@@ -2081,3 +2081,36 @@ restriction that collapses to one.»*
 benannte Einschränkung bleibt. **Ein Name für eine eingeschränkte Verwendung ist kein doppelter
 Sachverhalt**, solange er nichts speichert, was die Einschränkung nicht schon sagt — aber das ist
 seine Entscheidung und nicht meine.*
+
+---
+
+**INF-070 · Wächter, die seine Knoten beim Namen nennen** (2026-09-07)
+
+**Seine Frage:** *«warum gehen wächter auf einheitswert ?»* — **und sie trifft.**
+
+**Gemessen, an den 59 Wächtern:**
+
+```text
+6   nennen «Einheitenwert» beim Namen
+    composition · edge-class · form-membership · label-role · setting-write · unitvalue
+5   nennen andere Knoten aus dem Modell (Backrezept, Zutat, Prefixes, Ohm, Gramm …)
+33  bauen sich eine eigene Wiese mit Praefix «__»
+```
+
+⚠️ **Ein Wächter, der einen benannten Knoten voraussetzt, prüft seinen Bestand statt des Kodes** —
+*und [D-119](../../NewConcept/90-decision-log.md) sagt ausdrücklich, dass er ihn wegwerfen darf:
+«after the import these are ordinary authored content. A model with no use for `Backrezept` may
+throw it away.» **Genau das ist heute passiert:** er hat `Einheitenwert` nach `Combined` gehängt —
+richtig nach [D-677](../../NewConcept/90-decision-log.md) — und zwei Wächter fielen um, ohne dass am
+Kode etwas falsch war.*
+
+⚠️ **Drei Arten, und nur die dritte ist faul:** *(1) Text- und Kodeprüfungen brauchen gar kein Modell
+(`references`, `superseded`, `silent-query`). (2) Prüfungen über die **ganze** Tabelle nennen nichts
+und messen alles (`path`, `orphans`, `id-space`) — die sollen am echten Bestand laufen. **(3) Eine
+Zusage, die an einem bestimmten Knoten hängt, gehört auf eine eigene Wiese**, wie `pakete-check` es
+mit `__pk` vormacht.*
+
+⚠️ *Offen bleibt eine Abwägung, die ich nicht allein treffe (`PR-4`): eine eigene Wiese ist teurer —
+sie muss den halben Einheitenbau nachziehen, um `Einheitenwert` prüfen zu können. **Der billige
+Zwischenschritt wäre, dass der Wächter ihn anlegt, wenn er fehlt**, statt ihn vorauszusetzen; das ist
+weniger sauber und nimmt den Fehlalarm trotzdem weg.*
