@@ -2337,3 +2337,49 @@ umbenennen, und ein Sonderfall über einen Anzeigenamen ist verboten (`CD`, Verb
 **Gemessen an der echten Seite:** 118 Feldziel-Knöpfe, genau einer angehakt, und es ist der
 Text-Knoten. `collapsed-default-check` bleibt grün — die Zeilen stehen weiterhin alle im Dokument,
 nur ihr Anfangsbild und das Skript entscheiden, was man sieht.
+
+---
+
+[ ] TASK-068  Die Auswahl an der Verwendungsstelle einschraenken — `choices`
+
+**2026-09-07, sein Auftrag** (mit Bild aus der alten Umsetzung, Bereich «Choices» mit Hakenliste
+über den Präfixen): *«ich sollte bei der Verwendung von konstanten werte einschliessen/auschliessen
+können. Die frage ist wie wir das realisieren und wo wir das festmachen wir stellen ja schon fest
+wann auswahlisten möglich sind das muss glaube ich der gleiche punkt sein. und dann müsten wir in
+den feldeinstellungen das wählen können.»*
+
+⚠️ **Es ist beschlossen und nicht gebaut.** *Gemessen: **kein** Verweis auf `D-221` oder `D-287` in
+`src/`, und **kein** Einstellungsschlüssel dafür in {@see SettingKey} — 13 gibt es, keiner heisst
+so. Sein «der schon mal funktioniert hatte den es aber nicht mehr gibt» ist wörtlich richtig.*
+
+> **[D-287](../../NewConcept/90-decision-log.md):** «*All choices start enabled; unchecking a node
+> excludes it **and its subtree*** — the allow-list of [D-221] with the obvious reading, since
+> excluding a branch while keeping its children would mean the children are reachable through
+> nothing.»
+
+> **[D-221](../../NewConcept/90-decision-log.md):** «**There is no *fixed value*. There is a
+> restriction that collapses to one.** … **Restrictions narrow downwards and never widen.** A use
+> site further down may restrict further; it may not reopen, or *only Ohm* guaranteed nothing in the
+> first place.»
+
+**Und er hat den Ort richtig geraten.** Die Stelle, an der heute festgestellt wird, ob ein Feld eine
+Auswahl ist, ist `Rendering::optionsFor()` → `offeredUnder()`, nach
+[D-540](../../NewConcept/90-decision-log.md). **Dort und nur dort gehört der Filter hin** — jeder
+zweite Ort wäre eine Liste, die anders aussieht als die, aus der gewählt wird.
+
+⚠️ **Gespeichert werden die Ausschlüsse, nicht die Erlaubnisse** — *weil D-287 «all choices start
+enabled» sagt: nichts gespeichert heisst alles erlaubt. **Und es macht das Verengen von selbst
+richtig**: eine Verwendungsstelle weiter unten fügt Ausschlüsse hinzu, die Vereinigung wächst
+monoton, und «may not reopen» ist damit keine Prüfung, sondern eine Eigenschaft.*
+
+⚠️ *Ein Schlüssel mit `0..*` und Knotenverweisen — die Mehrfachwerte gibt es seit
+[D-530](../../NewConcept/90-decision-log.md) (`appendValue`, `countValues`). **Kein neues Mittel.***
+
+⚠️ **Was mitgeprüft gehört** ([D-287](../../NewConcept/90-decision-log.md)): *alles ausgeschlossen
+ist ein **Modellkonflikt** und keine leere Liste — «an empty allow-list is a model conflict, caught
+where the narrowing happens».* Und [D-056](../../NewConcept/90-decision-log.md): *bleibt genau eine
+Möglichkeit, verschwindet das Bedienelement* — womit D-221s «restriction that collapses to one» von
+selbst der feste Wert wird.
+
+**Zusage:** *an einer Feldzeile lassen sich Werte abwählen; die Auswahlliste desselben Feldes zeigt
+danach genau die übrigen, und ein Ausschluss nimmt seinen Unterbaum mit.* Am Markup gemessen.

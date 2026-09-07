@@ -2064,3 +2064,20 @@ hinzufügen add as example 😉»*
 kennt seinen Renderer und nimmt eine Eingabe entgegen — heute wirft es sie weg. Ein Knopf daneben
 schreibt sie als Satz der Art `example` mit `relation_id = 0`. Damit braucht der eigene Wert **keine**
 zweite Maske: die, die ihn zeichnen kann, kann ihn auch festhalten.*
+
+---
+
+**INF-069 · `Zutat` ist ein Einheitenwert mit eingeschränkten Einheiten** (2026-09-07)
+
+**Seine Beobachtung:** *«zutat ist ja eigentlich auch nur ein einheits wert bei dem verschiedene
+einheiten und präfixe zulässig sind»*
+
+⚠️ **Damit ist `Zutat` kein eigener Typ, sondern eine Verwendungsstelle von `Einheitenwert` mit einer
+Einschränkung** — genau das, was `TASK-068` baut und was
+[D-221](../../NewConcept/90-decision-log.md) beschreibt: *«There is no fixed value. There is a
+restriction that collapses to one.»*
+
+⚠️ *Offen und **nicht** nebenbei zu entscheiden (`PR-4`): ob `Zutat` dann verschwindet oder als
+benannte Einschränkung bleibt. **Ein Name für eine eingeschränkte Verwendung ist kein doppelter
+Sachverhalt**, solange er nichts speichert, was die Einschränkung nicht schon sagt — aber das ist
+seine Entscheidung und nicht meine.*
