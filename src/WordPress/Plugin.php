@@ -532,7 +532,10 @@ final class Plugin
             $rendering,
             // ⚠️ *The same object the editor and the settings hold — that is the whole point of it
             // being memoised. A second one would open a bracket nobody writes into.*
-            $this->changelog()
+            $this->changelog(),
+            // ⚠️ *Dasselbe Exemplar wie der Zeichenlauf: die elf Typknoten werden einmal je
+            // Anfrage gelesen, und der Feldziel-Dialog braucht daraus nur einen — den Text.*
+            $this->typeNodes()
         );
     }
 

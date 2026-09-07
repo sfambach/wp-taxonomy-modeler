@@ -458,8 +458,33 @@
 		var tiefe = parseInt( zeile.getAttribute( 'data-depth' ), 10 );
 		var naechste = zeile.nextElementSibling;
 
+		// \u26A0\uFE0F **Aufklappen zeigt genau eine Ebene, nicht den ganzen Ast** \u2014 sein Befund am
+		// 2026-09-06: *\u00ABwenn ich auf einen andern knoten klicke wird der dann fast vollst\u00E4ndig
+		// ausgeklappt, was nicht sein sollte nur der eine knoten soll aufgemacht werden\u00BB*.
+		//
+		// \u26A0\uFE0F *Hier stand `display = 'flex'` f\u00FCr **jede** tiefere Zeile bis zum Ende des Astes. Damit
+		// klappte ein Klick auf `Model` sein ganzes Unterholz auf, gleich wie tief \u2014 und der
+		// Klappzustand der Kinder war dabei egal, weil niemand ihn ansah.*
+		//
+		// \u26A0\uFE0F **Zuklappen nimmt dagegen den ganzen Ast mit**, und stellt seine Klapper auf \u00ABzu\u00BB:
+		// *sonst st\u00FCnde ein Kind als \u00ABoffen\u00BB markiert da, w\u00E4hrend es versteckt ist, und der n\u00E4chste
+		// Klick auf den Vater br\u00E4chte einen Ast zur\u00FCck, den niemand mehr im Sinn hatte.*
 		while ( naechste && parseInt( naechste.getAttribute( 'data-depth' ), 10 ) > tiefe ) {
-			naechste.style.display = zu ? 'none' : 'flex';
+			var eigene = parseInt( naechste.getAttribute( 'data-depth' ), 10 );
+
+			if ( zu ) {
+				naechste.style.display = 'none';
+
+				var innen = naechste.querySelector( '.taxmod-tree-fold' );
+
+				if ( innen && innen.getAttribute( 'data-fold' ) === 'auf' ) {
+					innen.setAttribute( 'data-fold', 'zu' );
+					innen.innerHTML = '\u25B8';
+				}
+			} else if ( eigene === tiefe + 1 ) {
+				naechste.style.display = 'flex';
+			}
+
 			naechste = naechste.nextElementSibling;
 		}
 

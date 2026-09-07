@@ -2308,3 +2308,32 @@ mit ihnen geschieht, gehört gefragt, bevor der Umschalter gebaut wird.*
 
 **Zusage:** *die Art steht in jeder Feldzeile als dasselbe Auswahlfeld wie beim Anlegen; ein Wechsel
 kommt an und steht nach dem Neuladen noch da.* Am Markup gemessen.
+
+---
+
+[x] TASK-067  Aufklappen im Auswahldialog zeigt eine Ebene, nicht den ganzen Ast
+
+**2026-09-06, sein Befund:** *«bezüglich ellapsed and collapsed -> das ist schon richtig das der
+data types ast bei fields als default ast übergeben werden soll am besten noch text als knoten, aber
+das meinte ich nicht wenn ich auf einen andern knoten klicke wird der dann fast vollständig
+ausgeklappt, was nicht sein sollte nur der eine knoten soll aufgemacht werden.»*
+
+**Zwei Dinge, und beide erledigt.**
+
+⚠️ **Der Fehler sass im Skript, nicht im Kern.** *Die Klapp-Behandlung in `assets/admin.js` lief
+über **alle** folgenden Zeilen mit grösserer Tiefe und setzte jede auf sichtbar — ein Klick auf einen
+Knoten klappte damit sein ganzes Unterholz auf, gleich wie tief. Der Klappzustand der Kinder war
+dabei egal, weil niemand ihn ansah.* **Jetzt zeigt das Aufklappen genau `Tiefe + 1`.**
+
+⚠️ **Zuklappen nimmt dagegen den ganzen Ast mit und stellt seine Klapper auf «zu».** *Sonst stünde
+ein Kind als «offen» markiert da, während es versteckt ist, und der nächste Klick auf den Vater
+brächte einen Ast zurück, den niemand mehr im Sinn hatte.*
+
+⚠️ **Der Text ist im Feldziel-Dialog vorausgewählt** — auf sein *«am besten noch text als knoten»*.
+Der Weg dorthin geht über `SimpleType::Text` und die Klasse in `nodes.implemented_by`
+([D-510](../../NewConcept/90-decision-log.md)), **nicht über den Namen des Knotens**: den darf er
+umbenennen, und ein Sonderfall über einen Anzeigenamen ist verboten (`CD`, Verbotsliste).
+
+**Gemessen an der echten Seite:** 118 Feldziel-Knöpfe, genau einer angehakt, und es ist der
+Text-Knoten. `collapsed-default-check` bleibt grün — die Zeilen stehen weiterhin alle im Dokument,
+nur ihr Anfangsbild und das Skript entscheiden, was man sieht.

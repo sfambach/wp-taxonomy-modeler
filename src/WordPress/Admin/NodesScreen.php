@@ -37,6 +37,7 @@ use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\RenderedField;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
+use Taxmod\Core\Repository\TypeNodes;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\RestoreResult;
 use Taxmod\Core\Service\DataEntry;
@@ -214,6 +215,12 @@ final class NodesScreen
         // the **same** object the services hold: seven `new WpdbChangelog(…)` in `Plugin` are now one
         // ({@see \Taxmod\WordPress\Plugin::changelog()}).*
         private readonly Changelog $changelog,
+        // ⚠️ **Nur für die Vorauswahl im Feldziel-Dialog.** *Auf sein Wort: «das ist schon richtig
+        // das der data types ast bei fields als default ast übergeben werden soll am besten noch
+        // text als knoten». Der Weg dorthin geht über `SimpleType::Text` und die Klasse in
+        // `nodes.implemented_by` — **nicht über den Namen des Knotens**, den er umbenennen darf
+        // (`CD`-Verbot: kein Sonderfall über einen Anzeigenamen).*
+        private readonly ?TypeNodes $types = null,
     ) {
     }
 
@@ -2293,8 +2300,9 @@ final class NodesScreen
             'field_target',
             // Der offene Ast: die einfachen Typen, weil sie am meisten gebraucht werden.
             $this->framework->rootOf(Branch::DataTypes),
-            // Vorauswahl: keine -- welcher Typ gemeint ist, weiss nur er.
-            null,
+            // ⚠️ **Vorausgewaehlt ist der Text.** *Auf sein Wort: «am besten noch text als knoten».
+            // Der haeufigste Fall steht damit schon da; jeder andere ist ein Klick.*
+            $this->types?->nodeId(SimpleType::Text),
             [$this->framework->trash()->id],
             $barred,
             null,
