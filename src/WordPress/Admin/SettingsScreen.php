@@ -242,6 +242,27 @@ final class SettingsScreen
         return $site === '' ? 'en_US' : $site;
     }
 
+    /**
+     * Welche Sprache gerade **gewählt** ist — und die Standardsprache, wo keine gewählt ist.
+     *
+     * ⚠️ **Ein Umstand und keine Einstellung** ([D-389](../../../docs/NewConcept/90-decision-log.md)):
+     * *er reist in der Adresse (`taxmod_locale`), so wie der Faltzustand. Er wird nirgends gespeichert
+     * — wer die Seite ohne ihn aufruft, arbeitet in der Standardsprache.*
+     *
+     * ⚠️ **An **einer** Stelle gelesen, aus demselben Grund, aus dem
+     * {@see self::neutralLocale()} an einer steht** ([D-387](../../../docs/NewConcept/90-decision-log.md)):
+     * *zwei Leser desselben Umstands beantworten ihn irgendwann verschieden — und dann liest der
+     * Bildschirm eine Sprache und der Speicher schreibt eine andere. Genau das war TASK-061.*
+     */
+    public static function requestedLocale(): string
+    {
+        $asked = isset($_GET['taxmod_locale'])
+            ? sanitize_text_field(wp_unslash((string) $_GET['taxmod_locale']))
+            : '';
+
+        return $asked === '' ? self::neutralLocale() : $asked;
+    }
+
     public static function inDeveloperMode(): bool
     {
         return (bool) get_option(NodesScreen::DEVELOPER_OPTION, false);

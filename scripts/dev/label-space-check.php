@@ -270,7 +270,101 @@ $nachher = $versionAm($traeger->id);
 
 $check('ein Schreiben hebt die Version', $nachher === $vorher + 1, "$vorher -> $nachher");
 
-echo "\n7 · Der Lauf raeumt hinter sich auf\n";
+echo "\n7 · Der Knotenname wird in der gewaehlten Sprache gelesen und geschrieben\n";
+
+// ⚠️ **Sein Befund vom 2026-09-06** (TASK-061): *«node name ist noch nicht sprachabhaengig, obwohl du
+// geschrieben hast, dass label gebaut wurde».* **Gespeichert war er es**, `label_texts` traegt
+// `locale` — **der Weg dorthin fehlte**: der Leser gab fest die Standardsprache in den Verbund, der
+// Schreiber nahm keine Sprache entgegen. *Darum stand sein deutscher Text in der englischen Zeile.*
+//
+// ⚠️ **Drei Zusagen, und die dritte ist die, die ohne sie still kaputtgeht.**
+
+$deutsch  = new WpdbNodeRepository('de_DE');
+$imStand  = new WpdbNodeRepository($standard);
+$franzoes = new WpdbNodeRepository('fr_FR');
+
+// `$traeger` traegt seit Abschnitt 5 zwei Sprachen: den Namen aus dem Anlegen und den deutschen.
+$check(
+    'ein Knoten mit zwei Sprachen liefert der Standardsprache ihren Text',
+    $imStand->byId($traeger->id)->name === '__ls Traeger',
+    $imStand->byId($traeger->id)->name
+);
+
+$check(
+    'und derselbe Knoten liefert der zweiten Sprache ihren',
+    $deutsch->byId($traeger->id)->name === '__ls deutscher Name',
+    $deutsch->byId($traeger->id)->name
+);
+
+// ⚠️ *`$ziel` hat nur den Namen aus dem Anlegen, also nur die Standardsprache.*
+$check(
+    'wo eine Sprache fehlt, kommt die Standardsprache',
+    $franzoes->byId($ziel->id)->name === '__ls Ziel',
+    $franzoes->byId($ziel->id)->name
+);
+
+$textIn = static fn (int $id, string $sprache): ?string => $wpdb->get_var($wpdb->prepare(
+    "SELECT t.text_name FROM {$nodes} n JOIN {$texts} t ON t.label_id = n.label_id
+     WHERE n.id = %d AND t.locale = %s AND t.number = 'one'",
+    $id,
+    $sprache
+));
+
+// ⚠️ **Speichern in Sprache A laesst Sprache B unangetastet.** *Umbenannt wird durch einen Bearbeiter,
+// dessen Speicher auf Deutsch steht — die englische Zeile darf das nicht merken.*
+$aufDeutsch = new ModelEditor($deutsch, $relRepo, $framework, $log);
+$aufDeutsch->rename($traeger->id, '__ls deutsch umbenannt');
+
+$check(
+    'ein Speichern in der zweiten Sprache schreibt dort',
+    $textIn($traeger->id, 'de_DE') === '__ls deutsch umbenannt',
+    (string) $textIn($traeger->id, 'de_DE')
+);
+
+$check(
+    'und laesst die Standardsprache unangetastet',
+    $textIn($traeger->id, $standard) === '__ls Traeger',
+    (string) $textIn($traeger->id, $standard)
+);
+
+// ⚠️ **Und der heikle Teil: der Rueckfall wird nicht festgeschrieben.** *`$ziel` hat keinen
+// franzoesischen Namen und **zeigt** deshalb den der Standardsprache. Wird an ihm auf Franzoesisch
+// irgendetwas anderes gespeichert — hier das Verstecken —, faehrt genau dieser angezeigte Text als
+// Name mit. **Schriebe der Speicher ihn blind, waere die englische Beschriftung stillschweigend zur
+// franzoesischen geworden**, und ein spaeteres Umbenennen des Originals liesse sie stehen.*
+$vorSchreiben = $franzoes->byId($ziel->id);
+$franzoes->save($vorSchreiben->withHide(true), $vorSchreiben->version);
+
+$check(
+    'ein Speichern auf dem Rueckfall legt keine Zeile in der gewaehlten Sprache an',
+    $textIn($ziel->id, 'fr_FR') === null,
+    'fr_FR traegt jetzt «' . (string) $textIn($ziel->id, 'fr_FR') . '»'
+);
+
+$check(
+    'und die Standardsprache steht unveraendert da',
+    $textIn($ziel->id, $standard) === '__ls Ziel',
+    (string) $textIn($ziel->id, $standard)
+);
+
+// ⚠️ *Die Gegenprobe, damit die Zusage oben nicht bloss «es wird nie geschrieben» heisst: ein
+// **anderer** Text in derselben Sprache legt die Zeile sehr wohl an.*
+$aufFranzoesisch = new ModelEditor($franzoes, $relRepo, $framework, $log);
+$aufFranzoesisch->rename($ziel->id, '__ls cible');
+
+$check(
+    'ein wirklich anderer Text legt die Zeile der gewaehlten Sprache an',
+    $textIn($ziel->id, 'fr_FR') === '__ls cible',
+    (string) $textIn($ziel->id, 'fr_FR')
+);
+
+$check(
+    'und auch dabei bleibt die Standardsprache stehen',
+    $textIn($ziel->id, $standard) === '__ls Ziel',
+    (string) $textIn($ziel->id, $standard)
+);
+
+echo "\n8 · Der Lauf raeumt hinter sich auf\n";
 
 $relRepo->purgeRelationsTouching($traeger->id);
 $ablage->forgetOwners([$traeger->id, $ziel->id], IdentitySpace::Node);

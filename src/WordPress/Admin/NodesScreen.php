@@ -2691,16 +2691,17 @@ final class NodesScreen
      */
     private function localeFromRequest(): string
     {
-        $asked = isset($_GET['taxmod_locale'])
-            ? sanitize_text_field(wp_unslash($_GET['taxmod_locale']))
-            : self::neutralLocale();
-
         // ⚠️ **Hier stand die Abbildung «Standardsprache → leere Spalte»** ([D-387](../../../docs/NewConcept/90-decision-log.md)).
         // *Sie ist mit [D-645](../../../docs/NewConcept/90-decision-log.md) gefallen: **es gibt keine
         // sprachneutrale Zeile mehr**, die Standardsprache steht als sie selbst da. Sein Wort: «das mit
         // der sprachneutralen Zeile hatten wir behoben.» **Solange die Abbildung stand, schrieb jedes
         // Speichern in der Standardsprache eine Zeile ohne Sprache** — gemessen am 2026-09-05.*
-        return $asked === '' ? self::neutralLocale() : $asked;
+        //
+        // ⚠️ **Und hier stand das Lesen der Adresse selbst; es ist zu {@see SettingsScreen::requestedLocale()}
+        // gewandert** (TASK-061). *Nicht aus Ordnungsliebe: **der Knotenspeicher braucht dieselbe
+        // Antwort**, sonst zeigt die Maske Deutsch und der Schreiber trifft die englische Zeile —
+        // genau der Fehler, den der Eigentümer an «Straße /Haus Nr.» gefunden hat.*
+        return SettingsScreen::requestedLocale();
     }
 
     /**

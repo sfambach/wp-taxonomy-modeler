@@ -1991,7 +1991,31 @@ Wahl laesst sich ueber die Zeile speichern und wiederfinden — 19 Zusagen, alle
 
 ---
 
-[ ] TASK-061  Der Knotenname wird in der gewaehlten Sprache gelesen und geschrieben
+[x] TASK-061  Der Knotenname wird in der gewaehlten Sprache gelesen und geschrieben
+
+⚠️ **Gebaut am 2026-09-07, ohne Schemaaenderung — es fehlte nur der Weg.** *Der Leser
+(`WpdbNodeRepository`) traegt jetzt seine Sprache: zwei Verbuende auf `label_texts` und ein
+`COALESCE(gewaehlt, standard)`. Der Schreiber schreibt in dieselbe Sprache, in der gelesen wurde. Wer
+die Adresse liest, ist **eine** Stelle geworden (`SettingsScreen::requestedLocale()`) — vorher las die
+Maske sie und der Speicher nicht, und genau dazwischen ging der deutsche Text in die englische Zeile.*
+
+⚠️ **Der Rueckfall wird nicht festgeschrieben, und das ist die eigentliche Arbeit gewesen.** *In einer
+anderen Sprache als der Standardsprache wird nur geschrieben, **wenn der Name sich von dem der
+Standardsprache unterscheidet**. Gleichheit heisst «der Rueckfall war es», und ein Rueckfall ist eine
+Anzeige, keine Eingabe. **Gemessen mit ausgebauter Sicherung:** ein Verstecken auf Franzoesisch machte
+den englischen Text zum franzoesischen Namen — die Zusage wird rot, wenn die Sicherung faellt.*
+
+⚠️ *Ein **neuer** Knoten bekommt seinen Namen immer in der Standardsprache, gleich was oben gewaehlt
+ist: er ist der Boden der Rueckfallkette, und ohne ihn stuende der Knoten in jeder anderen Sprache
+namenlos da.*
+
+⚠️ *Der Preis steht im Code: wer eine Uebersetzung eintippt, die dem Text der Standardsprache Zeichen
+fuer Zeichen gleicht, bekommt keine eigene Zeile. Er sieht denselben Text, den er sehen wollte — die
+Sprache bleibt ungepflegt statt falsch gepflegt.*
+
+**Neun Zusagen an `label-space-check.php`, Abschnitt 7** — je Sprache ihr Text, der Rueckfall wo eine
+fehlt, ein Speichern in Sprache A laesst Sprache B unangetastet, der Rueckfall legt keine Zeile an,
+und die Gegenprobe, dass ein wirklich anderer Text sie sehr wohl anlegt.
 
 **2026-09-06, von ihm gefunden:** *«node name ist noch nicht sprachabhaengig, obwohl du geschrieben
 hast, dass label gebaut wurde».* **Er hat recht, und beides stimmt:** *gespeichert ist der Name

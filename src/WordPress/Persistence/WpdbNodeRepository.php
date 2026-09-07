@@ -30,17 +30,43 @@ final class WpdbNodeRepository implements NodeRepository
      * [D-646](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *`nodes.name` gibt es nicht mehr. Was ein Knoten heisst, steht als `text_name` in
-     * `label_texts` — je Sprache, seit D-646. **Hier wird die Standardsprache gelesen**: sie ist der
-     * letzte Schritt jeder Rückfallkette ({@see \Taxmod\Core\Service\Labels}), und ein `Node` trägt
-     * genau diesen einen Namen. Die sprachabhängige Anzeige läuft über die Kette und nicht über
-     * dieses Feld.*
+     * `label_texts` — je Sprache, seit D-646.*
+     *
+     * ⚠️ **Zwei Verbünde und ein `COALESCE`, weil der Name in der **gewählten** Sprache gelesen wird
+     * und die Standardsprache der Rückfall ist** (TASK-061, [D-645](../../../docs/NewConcept/90-decision-log.md),
+     * [D-387](../../../docs/NewConcept/90-decision-log.md)). *`t` ist die gewählte Sprache, `d` die
+     * Standardsprache; wo `t` nichts hat, kommt `d`. **Der Rückfall ist eine Anzeige und keine
+     * Festschreibung** — was er liefert, wird beim nächsten Speichern nicht als Text der gewählten
+     * Sprache zurückgeschrieben ({@see self::writeName()}).*
+     *
+     * ⚠️ *Ein Verbund statt zweier wäre billiger, wenn beide Sprachen dieselbe sind — er wäre aber
+     * eine zweite Fassung derselben Anweisung, und die beiden Fassungen könnten verschieden
+     * antworten. `MySQL` beantwortet den zweiten Verbund auf demselben Schlüssel.*
      *
      * ⚠️ **`n.path` steht hier seit Fassung 35 nicht mehr** (TASK-001). *Der Pfad ist keine Spalte
      * mehr, sondern wird beim Lesen aus `parent_node_id` gerechnet — `a.path` kommt aus
      * {@see self::ancestry()}. **Ein `Node` trägt ihn weiter**, und zwar in derselben Form wie zuvor;
      * was fiel, ist die zweite Ablage derselben Tatsache, nicht die Tatsache.*
      */
-    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide";
+    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, d.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide";
+
+    /**
+     * In welcher Sprache dieser Speicher Namen liest und schreibt.
+     *
+     * ⚠️ **`null` heisst «die, die oben gewählt ist»** ({@see SettingsScreen::requestedLocale()}),
+     * und ausserhalb eines Bildschirms ist das die Standardsprache. *So bekommt jeder vorhandene
+     * Aufrufer die gewählte Sprache, ohne dass eine Verdrahtung sich ändert, und ein Wächter kann
+     * eine Sprache festnageln, statt sie aus der Umgebung zu erben.*
+     */
+    public function __construct(private readonly ?string $locale = null)
+    {
+    }
+
+    /** Die gewählte Sprache. */
+    private function readLocale(): string
+    {
+        return $this->locale ?? SettingsScreen::requestedLocale();
+    }
 
     /**
      * Der Vorfahrenweg, **einmal gerechnet statt gespeichert** (TASK-001,
@@ -80,7 +106,7 @@ final class WpdbNodeRepository implements NodeRepository
     }
 
     /** Ein Knotenleser: der Vorfahrenausdruck, die Spalten, die Herkunft — und dann seine Bedingung. */
-    private static function selectNodes(string $rest): string
+    private function selectNodes(string $rest): string
     {
         return self::ancestry() . 'SELECT ' . self::COLUMNS . self::fromNodes() . $rest;
     }
@@ -98,18 +124,26 @@ final class WpdbNodeRepository implements NodeRepository
         return ' FROM ' . Schema::table('nodes') . ' n'
             . ' INNER JOIN taxmod_ahnen a ON a.id = n.id'
             . ' LEFT JOIN ' . Schema::table('label_texts') . ' t'
-            . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s ';
+            . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s '
+            . ' LEFT JOIN ' . Schema::table('label_texts') . ' d'
+            . ' ON d.label_id = n.label_id AND d.locale = %s AND d.number = %s ';
     }
 
     /**
-     * ⚠️ *Die beiden Werte des Verbunds stehen **vorn** in der Argumentliste, weil `FROM` vor `WHERE`
-     * steht und `prepare()` der Reihe nach füllt.*
+     * ⚠️ *Die vier Werte der Verbünde stehen **vorn** in der Argumentliste, weil `FROM` vor `WHERE`
+     * steht und `prepare()` der Reihe nach füllt — erst die gewählte Sprache, dann die
+     * Standardsprache.*
      *
-     * @return array{0: string, 1: string}
+     * @return array{0: string, 1: string, 2: string, 3: string}
      */
-    private static function nameArgs(): array
+    private function nameArgs(): array
     {
-        return [SettingsScreen::neutralLocale(), Label::BASE_NUMBER];
+        return [
+            $this->readLocale(),
+            Label::BASE_NUMBER,
+            SettingsScreen::neutralLocale(),
+            Label::BASE_NUMBER,
+        ];
     }
 
     public function byId(int $id): Node
@@ -122,8 +156,8 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         $row = Query::row('Knoten lesen', $wpdb->prepare(
-            self::selectNodes('WHERE n.id = %d'),
-            ...[...self::nameArgs(), $id]
+            $this->selectNodes('WHERE n.id = %d'),
+            ...[...$this->nameArgs(), $id]
         ));
 
         return $row === null ? null : $this->hydrate($row);
@@ -144,8 +178,8 @@ final class WpdbNodeRepository implements NodeRepository
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Knoten nach Ids lesen', $wpdb->prepare(
-            self::selectNodes("WHERE n.id IN ($slots)"),
-            ...[...self::nameArgs(), ...array_map(intval(...), $ids)]
+            $this->selectNodes("WHERE n.id IN ($slots)"),
+            ...[...$this->nameArgs(), ...array_map(intval(...), $ids)]
         ));
 
         $found = [];
@@ -189,7 +223,7 @@ final class WpdbNodeRepository implements NodeRepository
         $wpdb->insert(Schema::table('nodes'), $spalten, $formate);
 
         if ($node->id !== 0) {
-            $this->writeName($node);
+            $this->writeName($node, true);
 
             return $node;
         }
@@ -199,7 +233,7 @@ final class WpdbNodeRepository implements NodeRepository
         // Schreibrunde in die Tabelle ist mit der Spalte weggefallen.*
         $node = $node->withAssignedId((int) $wpdb->insert_id);
 
-        $this->writeName($node);
+        $this->writeName($node, true);
 
         return $node;
     }
@@ -212,20 +246,69 @@ final class WpdbNodeRepository implements NodeRepository
      * ({@see WpdbLabelRepository::put()}), und `label-texts-check.php` misst, dass keiner ohne
      * durchkommt.*
      *
-     * ⚠️ *Die **Standardsprache**, weil `Node::$name` genau die eine ist, auf die jede Rückfallkette
-     * zuletzt läuft ([D-387](../../../docs/NewConcept/90-decision-log.md),
-     * [D-645](../../../docs/NewConcept/90-decision-log.md)). Eine Übersetzung schreibt die Maske, nicht
-     * dieser Weg.*
+     * ⚠️ **Geschrieben wird in die Sprache, in der gelesen wurde** (TASK-061). *Vorher stand hier
+     * fest die Standardsprache, und damit traf jede Umbenennung dieselbe Zeile, gleich was oben
+     * gewählt war — so kam sein deutscher Text «Straße /Haus Nr.» in die englische Zeile.*
+     *
+     * ⚠️ **Und hier steht die Sicherung gegen das stille Festschreiben, die diese Aufgabe eigentlich
+     * ausmacht.** *Ein Knoten ohne deutschen Namen **zeigt** den englischen ({@see self::COLUMNS}:
+     * `COALESCE(t, d)`). Speichert jemand auf Deutsch irgendetwas anderes an diesem Knoten —
+     * verschieben, verstecken, eine Klasse setzen —, dann fährt genau dieser angezeigte englische
+     * Text als `Node::$name` mit, und ein blindes Schreiben machte ihn zum **deutschen** Namen.
+     * **Danach wäre die englische Beschriftung stillschweigend in die Sprache gewandert**, und beim
+     * nächsten Umbenennen des englischen Textes bliebe der alte auf Deutsch stehen.*
+     *
+     * ⚠️ *Also: in einer anderen Sprache als der Standardsprache wird nur geschrieben, **wenn der
+     * Name sich von dem der Standardsprache unterscheidet**. Gleichheit heisst hier «der Rückfall
+     * war es», und ein Rückfall ist eine Anzeige, keine Eingabe. **Der Preis ist benannt und klein:**
+     * wer eine Übersetzung eintippt, die Zeichen für Zeichen dem englischen Text gleicht, bekommt
+     * keine eigene Zeile — er sieht denselben Text, den er sehen wollte, und die Sprache bleibt
+     * ungepflegt statt falsch gepflegt.*
      */
-    private function writeName(Node $node): void
+    private function writeName(Node $node, bool $beimAnlegen = false): void
     {
+        $standard = SettingsScreen::neutralLocale();
+        // ⚠️ **Ein neuer Knoten bekommt seinen Namen in der Standardsprache, gleich welche Sprache
+        // oben gewählt ist.** *Er hat noch gar keinen — und der Name in der Standardsprache ist der
+        // **Boden** der Rückfallkette, auf den jede andere Sprache fällt (D-387, D-645). Schriebe das
+        // Anlegen nur die gewählte Sprache, stünde der Knoten in jeder anderen namenlos da, und
+        // `label-space-check`s Zusage «kein Knoten ohne Namen» wäre nicht mehr wahr. **Eine
+        // Übersetzung ist etwas, das man einem benannten Knoten gibt, nicht der erste Name.***
+        $sprache = $beimAnlegen ? $standard : $this->readLocale();
+
+        if ($sprache !== $standard && $node->name === $this->standardName($node->id)) {
+            return;
+        }
+
         (new WpdbLabelRepository())->put(new Label(
             $node->id,
             IdentitySpace::Node,
             SeededRole::Name,
             Label::BASE_NUMBER,
-            SettingsScreen::neutralLocale(),
+            $sprache,
             $node->name
+        ));
+    }
+
+    /**
+     * Wie der Knoten in der Standardsprache heisst — der letzte Schritt der Rückfallkette.
+     *
+     * ⚠️ *Eine eigene Frage und nicht `find()` mit anderer Sprache: `find()` fällt selbst zurück und
+     * könnte deshalb nie «nichts» antworten. Hier wird genau das gebraucht — **steht da eine Zeile,
+     * und was steht darin**.*
+     */
+    private function standardName(int $nodeId): string
+    {
+        global $wpdb;
+
+        return (string) Query::value('Name in der Standardsprache lesen', $wpdb->prepare(
+            'SELECT t.text_name FROM ' . Schema::table('nodes') . ' n'
+            . ' JOIN ' . Schema::table('label_texts') . ' t'
+            . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s'
+            . ' WHERE n.id = %d',
+            SettingsScreen::neutralLocale(),
+            Label::BASE_NUMBER,
+            $nodeId
         ));
     }
 
@@ -321,11 +404,11 @@ final class WpdbNodeRepository implements NodeRepository
         // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort dazu: «wäre
         // selektionstechnisch billiger».*
         $rows = Query::rows('sichtbare Kinder lesen', $wpdb->prepare(
-            self::selectNodes(
+            $this->selectNodes(
                 'WHERE n.hide = 0 AND n.parent_node_id IN (' . $platzhalter . ')
              ORDER BY n.parent_node_id ASC, n.sort_order ASC, n.id ASC'
             ),
-            ...[...self::nameArgs(), ...$ids]
+            ...[...$this->nameArgs(), ...$ids]
         ));
 
         foreach ($rows ?: [] as $row) {
@@ -345,10 +428,10 @@ final class WpdbNodeRepository implements NodeRepository
         // und bleibt es. Bis TASK-018 stand die Wahrheit in den Vererbungskanten und dieser Leser
         // war ein Join.*
         $rows = Query::rows('Kinder lesen', $wpdb->prepare(
-            self::selectNodes(
+            $this->selectNodes(
                 'WHERE n.parent_node_id = %d ORDER BY n.sort_order ASC, n.id ASC'
             ),
-            ...[...self::nameArgs(), $parent->id]
+            ...[...$this->nameArgs(), $parent->id]
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -422,8 +505,8 @@ final class WpdbNodeRepository implements NodeRepository
         // Spalte gefallen ist (TASK-001). **Die Bedingung ist dieselbe geblieben**: alles, dessen Weg
         // mit dem der Wurzel und einem Punkt beginnt.*
         $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
-            self::selectNodes('WHERE a.path LIKE %s ORDER BY a.path ASC'),
-            ...[...self::nameArgs(), $wpdb->esc_like($root->path . '.') . '%']
+            $this->selectNodes('WHERE a.path LIKE %s ORDER BY a.path ASC'),
+            ...[...$this->nameArgs(), $wpdb->esc_like($root->path . '.') . '%']
         ));
 
         return array_map($this->hydrate(...), $rows ?: []);
@@ -725,8 +808,8 @@ final class WpdbNodeRepository implements NodeRepository
         // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
         // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
         $rows = Query::rows('Knoten nach Klasse lesen', $wpdb->prepare(
-            self::selectNodes("WHERE n.implemented_by IN ($slots) ORDER BY n.id"),
-            ...[...self::nameArgs(), ...$classNames]
+            $this->selectNodes("WHERE n.implemented_by IN ($slots) ORDER BY n.id"),
+            ...[...$this->nameArgs(), ...$classNames]
         ));
 
         $aus = [];
