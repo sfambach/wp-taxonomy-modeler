@@ -59,7 +59,14 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
     private const SETTING_VALUE_RELATION_PREFIX = 'taxmod_setting_value_edge_';
 
-    /** `Primitives` is a container that splits; the branches are the two nodes beneath it. */
+    /**
+     * `Primitives` is a container that splits; the branches are the nodes beneath it.
+     *
+     * ⚠️ **Und seit [D-677](../../../docs/NewConcept/90-decision-log.md) trägt es die Regel, die
+     * vorher an `Data Types` hing** — *sein Wort: «vielleicht müssen wir data types regeln nach oben
+     * zu primitives schicken». Was darunter liegt, hält keine Benutzerdaten
+     * ({@see Branch::underPrimitives()}); es sind jetzt drei statt zwei.*
+     */
     private const PRIMITIVES_OPTION = 'taxmod_primitives_id';
 
     /** @var array<string,string> */
@@ -68,6 +75,7 @@ final class SeededFrameworkNodes implements FrameworkNodes
         'compositions' => 'taxmod_branch_compositions_id',
         'data-types'   => 'taxmod_branch_data_types_id',
         'constants'    => 'taxmod_branch_constants_id',
+        'combined'     => 'taxmod_branch_combined_id',
         'settings'     => 'taxmod_branch_settings_id',
     ];
 
@@ -282,6 +290,11 @@ final class SeededFrameworkNodes implements FrameworkNodes
         $this->ensure(self::BRANCH_OPTIONS['data-types'], 'Data Types', $primitives);
         $this->ensure(self::BRANCH_OPTIONS['constants'], 'Constants', $primitives);
 
+        // ⚠️ **Der dritte unter `Primitives`** ([D-677](../../../docs/NewConcept/90-decision-log.md)):
+        // *zusammengesetzte Datentypen, ohne Benutzerdaten. **Bestand wird übernommen, nicht
+        // verdoppelt*** — {@see self::adoptCombined()}.
+        $this->adoptCombined($primitives);
+
         // ⚠️ *Direkt unter der Wurzel und nicht unter `Primitives`: die Mengen, aus denen eine
         // Einstellung gewählt wird, sind keine Datentypen.*
         $this->ensure(self::BRANCH_OPTIONS['settings'], 'Settings', $root);
@@ -325,6 +338,47 @@ final class SeededFrameworkNodes implements FrameworkNodes
     }
 
     /** Find the node an option points at, or make it under the given parent. */
+    /**
+     * Der `Combined`-Ast — und der Notnagel für die Bestände, die ihn schon von Hand haben.
+     *
+     * ⚠️ **Ohne ihn stünden bei ihm zwei Knoten namens `Combined` nebeneinander**, einer mit den
+     * beiden zusammengesetzten Typen darin und ein leerer neuer daneben. *Gemessen an seinem Modell:
+     * `Combined` (3984) unter `Primitives`, mit `Street / H#` und `Zip/City` darunter, und
+     * `Address` hat schon heute eine Kante dorthin.*
+     *
+     * ⚠️ **Über den Namen, und das ist hier erlaubt, weil es genau einmal je Installation
+     * geschieht** — *dieselbe Ausnahme und dieselbe Begründung wie der Notnagel in
+     * {@see SeededTypeNodes::fromTheirNames()} ([D-510](../../../docs/NewConcept/90-decision-log.md)):
+     * **danach steht die Id in der Option, und der Name darf sich ändern.** Ein Knoten, der über
+     * seinen Anzeigenamen gefunden wird, ist sonst verboten — hier wird ein Bestand **einmal**
+     * eingesammelt und nie wieder gelesen.*
+     */
+    private function adoptCombined(Node $primitives): Node
+    {
+        $option = self::BRANCH_OPTIONS['combined'];
+
+        if ((int) get_option($option, 0) === 0) {
+            foreach ($this->nodes->childrenOf($primitives) as $child) {
+                if (strcasecmp($child->name, 'Combined') === 0) {
+                    update_option($option, $child->id, true);
+
+                    $this->changelog->record(
+                        $child->id,
+                        'node',
+                        'changed',
+                        null,
+                        'framework: Combined adopted as a branch',
+                        $child->version
+                    );
+
+                    return $child;
+                }
+            }
+        }
+
+        return $this->ensure($option, 'Combined', $primitives);
+    }
+
     private function ensure(string $option, string $name, ?Node $parent): Node
     {
         $id       = (int) get_option($option, 0);

@@ -40,6 +40,28 @@ enum Branch: string
     case Constants = 'constants';
 
     /**
+     * Zusammengesetzte Datentypen — eine Adresse, ein Einheitenwert: aus Feldern gebaut, aber
+     * **ohne eigene Benutzerdaten**.
+     *
+     * ⚠️ **Sein Wort, und es ist die Regel dieses Astes** ([D-677](../../../docs/NewConcept/90-decision-log.md)):
+     * *«der underschied zwischen composition und combined ist das combined keine user daten enthält
+     * nur example oder default wie bei typ. compositoins sind modelle (submodelle) und enthalten
+     * daten, somit wäre das die regel an Primitives aber kein ausschluss.»*
+     *
+     * ⚠️ *Damit steht er da, wo er hingehört: **unter `Primitives`**, neben `Data Types` und
+     * `Constants`, und teilt deren Regel — nur `default` und `example`, nie `user`
+     * ([D-664](../../../docs/NewConcept/90-decision-log.md)). **Was ihn von den einfachen Typen
+     * trennt, ist allein, dass sein Wert aus mehreren Feldern besteht** und deshalb einen eigenen
+     * Satz braucht, so wie eine Zusammensetzung.*
+     *
+     * ⚠️ **Und er war der Grund für einen Ausschluss, der auf nichts stand.** *`Combined` lag in
+     * keinem Ast, also war jeder Knoten darunter im Feldziel-Dialog gesperrt — gegen
+     * [D-238](../../../docs/NewConcept/90-decision-log.md), das alles ausser der Astwurzel für
+     * wählbar erklärt. Sein Befund: «combined zählt definitiv nicht dazu».*
+     */
+    case Combined = 'combined';
+
+    /**
      * Die Mengen, aus denen eine **Einstellung** ausgewählt wird — Renderer, Wandler, Namensrollen,
      * Validatoren.
      *
@@ -61,8 +83,28 @@ enum Branch: string
     public function relationKind(): RelationKind
     {
         return match ($this) {
-            self::Model, self::Constants, self::Settings => RelationKind::Aggregation,
-            self::Compositions, self::DataTypes          => RelationKind::Composition,
+            self::Model, self::Constants, self::Settings         => RelationKind::Aggregation,
+            self::Compositions, self::DataTypes, self::Combined  => RelationKind::Composition,
+        };
+    }
+
+    /**
+     * Ob dieser Ast unter `Primitives` liegt — und damit dessen Regel trägt.
+     *
+     * ⚠️ **Die Regel steht seit [D-677](../../../docs/NewConcept/90-decision-log.md) an
+     * `Primitives` und nicht mehr an `Data Types`.** *Sein Wort: «vielleicht müssen wir data types
+     * regeln nach oben zu primitives schicken.» **Es war schon zweimal dieselbe Regel an zwei
+     * Stellen** — [D-664](../../../docs/NewConcept/90-decision-log.md) für die einfachen Typen und,
+     * ungeschrieben, für die Konstanten; `Combined` wäre die dritte Abschrift geworden.*
+     *
+     * ⚠️ *Was daran hängt: **nur `default` und `example`, nie `user`** — und der Datensatzblock
+     * fragt danach, statt einen Ast beim Namen zu nennen.*
+     */
+    public function underPrimitives(): bool
+    {
+        return match ($this) {
+            self::DataTypes, self::Constants, self::Combined => true,
+            self::Model, self::Compositions, self::Settings  => false,
         };
     }
 
@@ -81,9 +123,14 @@ enum Branch: string
         // [D-541](../../../docs/NewConcept/90-decision-log.md): dort hat der Eigentümer entschieden, dass
         // eine Einstellung mit **eigenen Feldern** einen eigenen Teil braucht — und ein Teil ist ein
         // Datensatz.*
+        // ⚠️ **`Combined` steht bei den beiden anderen unter `Primitives` und nicht bei
+        // `Compositions`** ([D-677](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «der
+        // underschied zwischen composition und combined ist das combined keine user daten enthält
+        // nur example oder default wie bei typ». **Aus Feldern gebaut zu sein und Benutzerdaten zu
+        // halten sind zwei verschiedene Fragen** — hier wird die zweite beantwortet.*
         return match ($this) {
-            self::Model, self::Compositions, self::Settings => true,
-            self::DataTypes, self::Constants               => false,
+            self::Model, self::Compositions, self::Settings   => true,
+            self::DataTypes, self::Constants, self::Combined  => false,
         };
     }
 
@@ -92,7 +139,10 @@ enum Branch: string
     {
         return match ($this) {
             self::Model        => Storage::ExternalReference,
-            self::Compositions => Storage::OwnRecords,
+            // ⚠️ *`Combined` speichert wie eine Zusammensetzung, **weil sein Wert aus mehreren
+            // Feldern besteht** und in eine Zeile nicht passt. Das ist die eine Frage, in der er
+            // den `Compositions` gleicht — und die einzige.*
+            self::Compositions, self::Combined => Storage::OwnRecords,
             self::DataTypes    => Storage::InsideTheRecord,
             // ⚠️ *Dieselbe Antwort wie `Constants`, und das ist der ganze Zweck: **damit die
             // Speicherfrage überhaupt eine Antwort hat.** Ein Knoten neben den Ästen hatte keine.*

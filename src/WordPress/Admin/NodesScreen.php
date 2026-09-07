@@ -2138,13 +2138,37 @@ final class NodesScreen
      */
     private function barredTargets(): array
     {
+        $zeilen = $this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]);
+
+        // ⚠️ **Ein Knoten *über* einer Astwurzel ist kein Ziel — der Rest schon**
+        // ([D-678](../../../docs/NewConcept/90-decision-log.md)). *`Primitives` und die Wurzel selbst
+        // spannen mehrere Äste; ein Feld dorthin hätte keine **eine** Speicherantwort. Über die
+        // Abstammung gefragt und nicht über einen Namen, damit ein Behälter, den er morgen anlegt,
+        // von selbst mitzählt.*
+        $ueber = [];
+
+        foreach (Branch::cases() as $ast) {
+            foreach ($this->framework->rootOf($ast)->ancestorIds() as $id) {
+                $ueber[$id] = true;
+            }
+        }
+
         $aus = [];
 
-        foreach ($this->tree->rowsUnder($this->framework->root(), [$this->framework->trash()->id]) as $row) {
-            $ast = $this->framework->branchOf($row['node']);
+        foreach ($zeilen as $row) {
+            $knoten = $row['node'];
+            $ast    = $this->framework->branchOf($knoten);
 
-            if ($ast === null || $row['node']->id === $this->framework->rootOf($ast)->id) {
-                $aus[] = $row['node']->id;
+            // ⚠️ **Hier stand «oder in gar keinem Ast», und der Halbsatz stand auf keinem Beschluss.**
+            // *[D-238](../../../docs/NewConcept/90-decision-log.md) sagt: «Everything except the
+            // branch root is selectable by default.» **Sein Befund, an `Combined` gemessen:** «ich
+            // verstehe nicht warum wir noch einen ausschluss haben … combined zählt definitiv nicht
+            // dazu». Vier Knoten von 127 waren gesperrt, alle im `Primitives`-Zweig, und `Address`
+            // hatte längst eine Kante auf einen davon — der Ausschluss schützte vor nichts.*
+            if (isset($ueber[$knoten->id])
+                || ($ast !== null && $knoten->id === $this->framework->rootOf($ast)->id)
+            ) {
+                $aus[] = $knoten->id;
             }
         }
 
@@ -2270,16 +2294,7 @@ final class NodesScreen
         // and neither can a node in no branch at all — but **leaving them out tears a hole in the
         // hierarchy**, because a child of an impossible target can be a perfectly good one. *The cell
         // draws such a row as text with no radio.*
-        $barred = [];
-
-        foreach ($rows as $row) {
-            $candidate = $row['node'];
-            $branch    = $this->framework->branchOf($candidate);
-
-            if ($branch === null || $candidate->id === $this->framework->rootOf($branch)->id) {
-                $barred[] = $candidate->id;
-            }
-        }
+        $barred = $this->barredTargets();
 
         if (count($barred) === count($rows)) {
             return '<p><em>'
@@ -2810,7 +2825,12 @@ final class NodesScreen
         // ⚠️ *Am **Ast** gemessen und nicht am aufgelösten Typ: `typeOfNode()` antwortet auch für eine
         // Konstante wie `Ampere` — mit `node_ref` —, und dann bekäme **jeder** Knoten unter
         // `Constants` Datensätze. Gemeint sind die Datentypen und ihre Spezialisierungen.*
-        $istEinfacherTyp = $branch === Branch::DataTypes;
+        // ⚠️ **Die Regel steht an `Primitives` und nicht mehr an `Data Types`**
+        // ([D-677](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «vielleicht müssen wir
+        // data types regeln nach oben zu primitives schicken» — und davor die Begründung: «combined
+        // keine user daten enthält nur example oder default wie bei typ». **Hier stand ein Vergleich
+        // gegen genau einen Ast; `Combined` wäre die dritte Abschrift derselben Regel geworden.***
+        $istEinfacherTyp = $branch !== null && $branch->underPrimitives();
 
         if ($attributes === [] && ! $istEinfacherTyp && ($branch === null || ! $branch->holdsData())) {
             return $this->heading(
@@ -2837,7 +2857,7 @@ final class NodesScreen
         $html .= $this->form(
             $selected->id,
             [['add_record', esc_html__('New record', 'taxmod'), __('Start a record against this node', 'taxmod')]],
-            $this->recordTypeChoice()
+            $this->recordTypeChoice(null, '', $branch)
         );
 
         if ($records === []) {
@@ -2883,7 +2903,8 @@ final class NodesScreen
                     __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
                     __('Kind', 'taxmod')       => $this->recordTypeChoice(
                         $record->recordType,
-                        'taxmod-record-' . $record->id
+                        'taxmod-record-' . $record->id,
+                        $branch
                     ),
                 ],
                 'acts'   => [
@@ -2935,8 +2956,17 @@ final class NodesScreen
      * ⚠️ *Die Beschriftungen gehen durch die Textdomaene (`AR-2`); der **Wert** ist die Kennung der
      * Aufzaehlung und wird nie uebersetzt.*
      */
-    private function recordTypeChoice(?RecordType $gewaehlt = null, string $formId = ''): string
-    {
+    private function recordTypeChoice(
+        ?RecordType $gewaehlt = null,
+        string $formId = '',
+        // ⚠️ **Unter `Primitives` gibt es keine Eingabe, nur Vorgabe und Beispiel**
+        // ([D-664](../../../docs/NewConcept/90-decision-log.md), an `Primitives` gehoben durch
+        // [D-677](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «combined keine user
+        // daten enthält nur example oder default wie bei typ». **Die Art wurde bisher angeboten und
+        // erst beim Schreiben abgelehnt** — eine Wahl, die man treffen darf und die dann nicht
+        // gilt, ist schlechter als keine.*
+        ?Branch $branch = null,
+    ): string {
         // ⚠️ **Ein Wort je Art, und die Erklaerung steht am Fragezeichen** — *sein Wort am
         // 2026-09-06: «hier nur noch Example / Default / Record, Feld ist sonst zu breit». Der
         // erklaerende Nachsatz machte das Auswahlfeld breiter als die Spalte, die es beschreibt,
@@ -2949,10 +2979,20 @@ final class NodesScreen
             RecordType::Example->value => __('Example', 'taxmod'),
         ];
 
-        $steht    = $gewaehlt ?? RecordType::standard();
+        $nurBeispiele = $branch !== null && $branch->underPrimitives();
+
+        // ⚠️ *Und die Vorauswahl folgt mit: an einem Primitivknoten ist ein Wert ein `example`
+        // ([D-675](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: «an int würde ich aber
+        // eher ein beispiel als eine vorgaben sehen».*
+        $steht = $gewaehlt ?? ($nurBeispiele ? RecordType::Example : RecordType::standard());
+
         $optionen = '';
 
         foreach (RecordType::cases() as $art) {
+            if ($nurBeispiele && $art === RecordType::User) {
+                continue;
+            }
+
             $optionen .= '<option value="' . esc_attr($art->value) . '"'
                 . ($art === $steht ? ' selected' : '') . '>'
                 . esc_html($worte[$art->value] ?? $art->value) . '</option>';
