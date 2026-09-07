@@ -88,24 +88,36 @@ $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), new
 
 echo "\n== the type is in the tree ==\n";
 
-// ⚠️ **Unter `Combined`, seit [D-677](../../docs/NewConcept/90-decision-log.md)** — *ein
-// Einheitenwert ist aus Feldern gebaut und hält keine Benutzerdaten. **Hier stand `Compositions`,
-// und die Zusage fiel, als der Eigentümer den Knoten selbst dorthin hängte, wo er hingehört.***
+// ⚠️ **Über die Id und nicht über den Namen** — *sein Wort am 2026-09-07: «checks sind ok gut das
+// due prüfst ob das noch geht, köntest aber über id gehen 😉». Es ist
+// [D-510](../../docs/NewConcept/90-decision-log.md), zum zweiten Mal am selben Tag: der Name ist
+// eine Beschriftung, und wo der Knoten hängt, ist seine Sache.*
 //
-// ⚠️ *Die alte Stelle bleibt zugelassen, weil ein gesätes Ding umziehen darf
-// ([D-119](../../docs/NewConcept/90-decision-log.md)) — geprüft wird, **dass es einen gibt**, nicht
-// dass er sich nicht bewegt hat.*
+// ⚠️ **Was der Namensweg gekostet hat:** *hier stand «steht unter `Compositions`», und die Zusage
+// fiel, als er den Knoten nach `Combined` hängte — **richtig** hängte, nach
+// [D-677](../../docs/NewConcept/90-decision-log.md). Am Kode war nichts falsch; die Prüfung mass
+// seinen Bestand statt der Sache (`INF-070`).*
+//
+// ⚠️ *Die Namenssuche bleibt als Notnagel für Bestände, die vor der Option gesät wurden — und
+// erst, wenn auch der nichts findet, ist es ein Befund.*
 $unitValue = null;
+$bekannt   = \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId();
 
-foreach ([Branch::Combined, Branch::Compositions] as $ast) {
-    foreach ($editor->childrenOf($framework->rootOf($ast)->id) as $child) {
-        if ($child->name === 'Einheitenwert' && $unitValue === null) {
-            $unitValue = $child;
+if ($bekannt !== null) {
+    $unitValue = $editor->find($bekannt);
+}
+
+if ($unitValue === null) {
+    foreach ([Branch::Combined, Branch::Compositions] as $ast) {
+        foreach ($editor->childrenOf($framework->rootOf($ast)->id) as $child) {
+            if ($child->name === 'Einheitenwert' && $unitValue === null) {
+                $unitValue = $child;
+            }
         }
     }
 }
 
-check('«Einheitenwert» steht unter Combined oder Compositions', $unitValue !== null);
+check('der gesäte Einheitenwert ist auffindbar', $unitValue !== null, $unitValue === null ? '' : "#{$unitValue->id} «{$unitValue->name}»");
 
 if ($unitValue === null) {
     echo "\nNothing more can be checked. Run the unit scaffold first.\n";

@@ -111,11 +111,17 @@ final class CompositionScaffold
         // ⚠️ **Looked up, not created.** `Einheitenwert` belongs to {@see UnitScaffold}, whose members
         // are prefixes and base units — so it stays where its material is, and this file borrows it.
         // *Two scaffolds creating one node by the same name is the duplicated fact, one branch down.*
-        // ⚠️ **Auch unter `Combined` gesucht** ([D-677](../../../docs/NewConcept/90-decision-log.md)):
-        // *dort legt {@see UnitScaffold} den Einheitenwert seit heute an, und dorthin hat der
-        // Eigentümer den bestehenden selbst gehängt. **Ein Gerüst, das nur an der alten Stelle
-        // nachsieht, bricht ab, obwohl der Knoten dasteht** — gemessen am 2026-09-07.*
-        $unitValue = $this->existing($this->framework->rootOf(Branch::Combined), 'Einheitenwert')
+        // ⚠️ **Über die Id, die {@see UnitScaffold} hinterlegt hat** — *sein Wort: «köntest aber über
+        // id gehen 😉», und es ist [D-510](../../../docs/NewConcept/90-decision-log.md): «Ein Name
+        // ist eine Beschriftung und darf sich ändern.» **Hier stand eine Suche nach dem Namen unter
+        // einem festen Elternknoten, und sie brach ab, als er den Knoten verschob** — richtig
+        // verschob, nach [D-677](../../../docs/NewConcept/90-decision-log.md).*
+        //
+        // ⚠️ *Die Namenssuche bleibt als Notnagel für Bestände, die vor der Option gesät wurden —
+        // an **beiden** Stellen, weil der Knoten in beiden liegen kann.*
+        $bekannt   = UnitScaffold::unitValueId();
+        $unitValue = ($bekannt === null ? null : $this->editor->find($bekannt))
+            ?? $this->existing($this->framework->rootOf(Branch::Combined), 'Einheitenwert')
             ?? $this->existing($compositions, 'Einheitenwert')
             ?? throw new \RuntimeException('«Einheitenwert» is not there yet — the unit scaffold has to run first.');
 

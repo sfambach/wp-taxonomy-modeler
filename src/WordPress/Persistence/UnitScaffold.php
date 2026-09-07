@@ -49,6 +49,34 @@ final class UnitScaffold
 {
     public const OPTION = 'taxmod_unit_scaffold';
 
+    /**
+     * Wo der Einheitenwert steht — **als Id, nicht als Name**.
+     *
+     * ⚠️ **Sein Wort am 2026-09-07:** *«checks sind ok gut das due prüfst ob das noch geht, köntest
+     * aber über id gehen 😉»* — *und das ist [D-510](../../../docs/NewConcept/90-decision-log.md),
+     * derselbe Satz noch einmal: «Der Code findet seine gesäten Knoten über die **Id**, nicht über
+     * den Namen. Ein Name ist eine Beschriftung und darf sich ändern.»*
+     *
+     * ⚠️ **Was es gekostet hat, es nicht zu tun:** *er hängte `Einheitenwert` nach `Combined` —
+     * richtig nach [D-677](../../../docs/NewConcept/90-decision-log.md) —, und zwei Wächter fielen
+     * um, obwohl am Kode nichts falsch war. **Der Name war nie das Problem; der Ort war es**, und
+     * eine Id kennt beides nicht.*
+     */
+    public const UNIT_VALUE_OPTION = 'taxmod_unit_value_id';
+
+    /**
+     * Der gesäte Einheitenwert, oder `null` — für {@see CompositionScaffold} und die Wächter.
+     *
+     * ⚠️ *`null` heisst «noch nicht gesät» und ist eine Antwort, keine Störung. Wer ihn braucht,
+     * sagt selbst, was dann gilt.*
+     */
+    public static function unitValueId(): ?int
+    {
+        $id = (int) get_option(self::UNIT_VALUE_OPTION, 0);
+
+        return $id === 0 ? null : $id;
+    }
+
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
     public const VERSION = 3;
 
@@ -338,6 +366,11 @@ final class UnitScaffold
             $created
         );
 
+        // ⚠️ **Ab hier über die Id** ({@see self::UNIT_VALUE_OPTION}, [D-510](../../../docs/NewConcept/90-decision-log.md)).
+        // *Der Name wird genau einmal gebraucht — um ihn zu finden, wenn die Option noch leer ist.
+        // Danach darf er heissen, wie er will, und stehen, wo er will.*
+        update_option(self::UNIT_VALUE_OPTION, $unitValue->id, true);
+
         $this->field($unitValue, 'wert', 'decimal');
 
         $prefix = $this->fieldTo($unitValue, 'prefix', $prefixes);
@@ -395,6 +428,17 @@ final class UnitScaffold
      */
     private function ensureAnywhere(Node $parent, array $auchHier, string $name, array &$created): Node
     {
+        // ⚠️ **Zuerst die Id, und dann ist alles andere Notnagel** ([D-510](../../../docs/NewConcept/90-decision-log.md)).
+        // *Steht sie, ist die Frage «wo liegt er, wie heisst er» gar nicht erst zu stellen.*
+        $bekannt = self::unitValueId();
+        $knoten  = $bekannt === null ? null : $this->editor->find($bekannt);
+
+        if ($knoten !== null) {
+            $this->label($knoten);
+
+            return $knoten;
+        }
+
         foreach ([$parent, ...$auchHier] as $wo) {
             foreach ($this->editor->childrenOf($wo->id) as $child) {
                 if ($child->name === $name) {

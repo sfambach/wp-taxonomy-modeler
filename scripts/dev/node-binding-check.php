@@ -120,6 +120,12 @@ foreach (['root', 'trash', 'primitives', 'roles'] as $einzeln) {
     $erlaubt['taxmod_' . $einzeln . '_id'] = 'gesäter Einzelknoten';
 }
 
+// ⚠️ **Der Einheitenwert, seit dem 2026-09-07 über seine Id gebunden**
+// ([D-510](../../docs/NewConcept/90-decision-log.md), `INF-070`) — *sein Wort: «köntest aber über id
+// gehen 😉». **Er ist kein Rahmenknoten**, sondern gesäter Inhalt, den er verschieben und umbenennen
+// darf; genau deshalb steht hier eine Id und kein Name.*
+$erlaubt[\Taxmod\WordPress\Persistence\UnitScaffold::UNIT_VALUE_OPTION] = 'gesäter Inhalt, den zwei Wächter brauchen';
+
 // ⚠️ *Das Gerüst der Wächter (`scripts/dev/geruest.php`) merkt sich seine Wegwerfäste ebenso. Kein
 // Modellwissen — aber es sind Knoten-Ids in Optionen, und ungenannt wären sie hier ein Fehlalarm.*
 foreach (Branch::cases() as $ast) {
