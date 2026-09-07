@@ -2277,3 +2277,34 @@ Rückfall, sondern räumt die Zeile der gewählten Sprache weg — und wo keine 
 was oben gewählt ist — sie sind der Boden der Rückfallkette, keine Übersetzung.*
 
 **Elf Zusagen an `label-space-check.php`, Abschnitt 8.**
+
+---
+
+[ ] TASK-066  Die Kantenart ist in der Feldzeile aenderbar
+
+**2026-09-06, sein Auftrag** (mit Bild aus dem Feldblock der Knotenseite, Spalte `Kind`):
+*«müsste änderbar sein mit den schon benannten regeln»* — und auf die Rückfrage, wo:
+*«ist aus fields in der einstellungsseite»*.
+
+**Heute steht die Art als Marke da und ist nicht zu bedienen.** In der Zeile «Feld hinzufügen»
+darunter gibt es sehr wohl ein Auswahlfeld (`composition ⌄`) — **an einer bestehenden Zeile nicht.**
+Die Art lässt sich also beim Anlegen wählen und danach nie wieder ändern.
+
+⚠️ **Die Regeln, die er meint, stehen schon:**
+[D-618](../../NewConcept/90-decision-log.md) und [D-621](../../NewConcept/90-decision-log.md) — *der
+Benutzer bestimmt die Kantenart, es gibt keinen Ast-Automatismus*; und
+[D-665](../../NewConcept/90-decision-log.md) — *ein Auswahlfeld wird überall gleich gezeichnet, nur
+die Listenbeschriftung, keine Sonderfälle*.
+
+⚠️ **Der Schreiber ist da:** `ModelEditor::markAsSetting()` (die Zeile im Änderungsbuch heisst «field
+became a setting» / «setting became a field»), und `retargetField()` hat heute gelernt, die Art beim
+Umhängen **nicht** mehr zu verlieren ([D-669](../../NewConcept/90-decision-log.md)). Was fehlt, ist
+das Steuerelement in der Zeile und der Weg vom Formular dorthin.
+
+⚠️ *Zu bedenken und **nicht** nebenbei zu entscheiden (`PR-4`): eine Kante von `composition` auf
+`setting` umzustellen ändert, wo ihr Wert wohnt ([D-529](../../NewConcept/90-decision-log.md),
+[D-026](../../NewConcept/90-decision-log.md)) — bestehende Werte wandern nicht von selbst mit. Was
+mit ihnen geschieht, gehört gefragt, bevor der Umschalter gebaut wird.*
+
+**Zusage:** *die Art steht in jeder Feldzeile als dasselbe Auswahlfeld wie beim Anlegen; ein Wechsel
+kommt an und steht nach dem Neuladen noch da.* Am Markup gemessen.
