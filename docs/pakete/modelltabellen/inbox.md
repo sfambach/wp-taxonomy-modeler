@@ -2114,3 +2114,68 @@ mit `__pk` vormacht.*
 sie muss den halben Einheitenbau nachziehen, um `Einheitenwert` prüfen zu können. **Der billige
 Zwischenschritt wäre, dass der Wächter ihn anlegt, wenn er fehlt**, statt ihn vorauszusetzen; das ist
 weniger sauber und nimmt den Fehlalarm trotzdem weg.*
+
+---
+
+**INF-071 · Ein Rendererwechsel legt einen neuen Teil an, statt den vorhandenen zu ändern** (2026-09-07)
+
+**Sein Wort:** *«warum neuer alte teil es darf nur einen geben»* — und davor *«with without label wurd
+auch nicht mitgespiechert ich musste es erst umstellen obwohl ich rendere umgestellt hatte»*, *«ok
+sobald ich speichere legt er default wert an warum ?»*, *«test default wert löschen, seiten refresh
+wert ist weg, löschen funktioniert, speichern default wert ist wieder da»*.
+
+**Gemessen, dreimal umgestellt:**
+
+```text
+vorher        1 Wertzeile | Teil 13520 an compact
+nach compact  1 Wertzeile | Teil 13520 an compact
+nach form     1 Wertzeile | Teil 13521 an form
+nach table    1 Wertzeile | Teil 13522 an table
+```
+
+**Immer genau eine Wertzeile — aber jedes Mal ein neuer Teil.** Die alten bleiben herrenlos liegen:
+`record-on-first-write-check` meldet sie, *«kein leerer, ungehaltener default-Satz steht mehr da — 1»*,
+und der eine ist `#13520` an `compact`. **Das ist der «default wert», den er nach dem Speichern
+wiederkommen sieht.**
+
+⚠️ **Und der Beschluss sagt es schon:** [D-583](../../NewConcept/90-decision-log.md) — *«also wenn
+ich den Renderer auswähle **muss ein Datensatz geändert werden, es sollte schon einer da sein**»* …
+*«Damit gibt es **keinen zweiten Erzeugungsweg**»*. Der Wechsel muss den vorhandenen Teil
+**umhängen**, nicht einen zweiten anlegen.
+
+---
+
+**INF-072 · Die Untereinstellungen werden über die Satz-Id adressiert** (2026-09-07)
+
+**Sein Wort:** *«settings müssen zum knoten/kante geichert werden nicht zum datensatz»*
+
+**Gemessen am Markup:** `with_label` steht als `taxmod_part[10446][55661]` im Formular — `10446` ist
+der Teil, der **beim Zeichnen** galt. Stellt er im selben Speichern den Renderer um, entsteht ein
+neuer Teil, und die Werte gehen an den alten. **Das Formular adressiert einen Datensatz über eine
+Nummer, die derselbe Aufruf ersetzt.**
+
+⚠️ **Ein erster Umbauversuch ist zurückgenommen:** *Adresse auf `taxmod_value[<Trägerkante>][<innere
+Kante>]` umzustellen liess `renderer-choice-mask-check` an drei Stellen fallen. **Die Adresse über
+die Satz-Id wird also anderswo gebraucht**, und wo, ist noch nicht gemessen.*
+
+⚠️ *Mit `INF-071` behoben schrumpft dieser Fall: bleibt der Teil derselbe, ist seine Nummer keine
+wandernde Adresse mehr. **Ob die Adresse dann noch falsch ist, ist danach zu messen und nicht
+vorher zu behaupten.***
+
+---
+
+**INF-073 · Der Datensatzblock zeigt den Satz, in dem die Einstellungen wohnen** (2026-09-07)
+
+**Seine Frage:** *«ok sobald ich speichere legt er default wert an warum ?»*
+
+**Gemessen an `Einheitenwert`:** `#248/example`, `#250/example` — und `#13519/default` mit zwei
+Werten. **Der `default`-Satz ist kein Datensatz, den jemand angelegt hat, sondern der Ort, an dem
+die Einstellungen des Knotens liegen** ([D-541](../../NewConcept/90-decision-log.md): *«sie werden im
+verwendenden Modell gespeichert»*).
+
+⚠️ **Das Modell ist stimmig, die Darstellung nicht:** *er steht im Block «Records» zwischen seinen
+Beispielen und sieht aus wie Dateneingabe. **Unterscheidbar ist er ohne neue Spalte** — seine Werte
+hängen alle an Einstellungskanten.*
+
+⚠️ *Offen (`PR-4`): ob er dort verschwindet, oder als eigene Zeile «Einstellungen dieses Knotens»
+kenntlich wird. Das ist seine Entscheidung.*
