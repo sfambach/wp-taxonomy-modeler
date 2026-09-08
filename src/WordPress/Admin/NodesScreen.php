@@ -3533,13 +3533,26 @@ final class NodesScreen
      * ⚠️ *`$locale` comes from a hidden field and not from the URL: the page is saved by a `POST` to
      * `admin-post.php`, which never sees the `taxmod_locale` the panel was drawn with.*
      */
-    private function saveNodePage(int $nodeId, int $relationId, string $name, string $locale): void
+    private function saveNodePage(int $nodeId, int $relationId, string $name, string $locale): string
     {
         $this->saveSettings($nodeId, $relationId, $name);
         $this->saveFieldRows($nodeId);
-        $this->saveSettingValues($nodeId);
+        $geschrieben = $this->saveSettingValues($nodeId);
         $this->savePartValues($nodeId);
         $this->saveLabels($nodeId, $locale);
+
+        // ⚠️ **Der Akt sagt, was er getan hat** ([D-683](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Wort: «das problem mit dem nicht speichern ist nun schon öffters aufgetreten wie
+        // behebst du das». **Ein «ok», das «geschrieben» und «nichts gefunden» gleich aussehen
+        // lässt, ist der Grund, warum diese Klasse von Fehler so lange lebt** — sie zeigt sich erst
+        // beim nächsten Aufruf, und dann weiss niemand mehr, was abgeschickt wurde.*
+        return $geschrieben === 0
+            ? 'ok'
+            : sprintf(
+                /* translators: %d is the number of settings written. */
+                _n('Saved — %d setting written.', 'Saved — %d settings written.', $geschrieben, 'taxmod'),
+                $geschrieben
+            );
     }
 
     /**
@@ -3788,14 +3801,14 @@ final class NodesScreen
      * kommen aus derselben Zeichnung; **was hier nicht geraten wird, ist welche** — `is_array()`
      * entscheidet es.*
      */
-    private function saveSettingValues(int $nodeId): void
+    private function saveSettingValues(int $nodeId): int
     {
         $eingereicht = isset($_POST[self::VALUE_FIELD]) && is_array($_POST[self::VALUE_FIELD])
             ? wp_unslash($_POST[self::VALUE_FIELD])
             : [];
 
         if ($eingereicht === []) {
-            return;
+            return 0;
         }
 
         // ⚠️ *Nur Kanten, die dieser Knoten wirklich trägt — was das Formular sonst noch mitbringt,
@@ -3809,13 +3822,32 @@ final class NodesScreen
         // ⚠️ *Die vorhandenen Teile in **einem** Zug, nicht je Trägerkante (`CD-7`).*
         $teileJeKante = $this->data->settingPartsOf($nodeId, array_keys($aussen));
 
+        // ⚠️ **Nichts wird mehr stumm fallengelassen** ([D-683](../../../docs/NewConcept/90-decision-log.md)).
+        //
+        // ⚠️ **Sein Wort, und es ist eine Frage nach der Methode und nicht nach einem Fall:** *«das
+        // problem mit dem nicht speichern ist nun schon öffters aufgetreten wie behebst du das»*.
+        // *Gemessen an diesem Akt: **zwei stumme Aussteige** — hier, wenn die Kante nicht zum Knoten
+        // gehört, und in {@see self::putOneSettingValue()}, wenn kein Wert daraus wird. Danach meldet
+        // die Seite «ok». **«Gespeichert» und «nichts gefunden, worein» sahen gleich aus**, und genau
+        // das macht diese Klasse von Fehler so zäh: sie zeigt sich erst beim nächsten Aufruf.*
+        //
+        // ⚠️ *Gezählt statt geworfen: ein veraltetes Formular schickt legitim eine Kante, die es
+        // nicht mehr gibt, und daran soll ein Speichern nicht scheitern. **Aber wenn von einer
+        // nicht-leeren Einreichung nichts ankommt, ist das kein «ok»** — dann sagt der Akt es.*
+        $angekommen = 0;
+        $verworfen  = [];
+
         foreach ($eingereicht as $rohAussen => $roh) {
             $aussenId = absint($rohAussen);
             $kante    = $aussen[$aussenId] ?? null;
 
             if ($kante === null) {
+                $verworfen[] = $aussenId;
+
                 continue;
             }
+
+            $angekommen++;
 
             if (! is_array($roh)) {
                 $this->putOneSettingValue($nodeId, $kante, 0, $kante, (string) $roh);
@@ -3881,6 +3913,20 @@ final class NodesScreen
                 $this->putOneSettingValue($nodeId, $kante, $innenId, $innenKante, (string) $wert, 0, $gewaehlt);
             }
         }
+
+        // ⚠️ **Der Satz, der die Klasse schliesst** ([D-683](../../../docs/NewConcept/90-decision-log.md)):
+        // *wurde etwas eingereicht und **nichts** davon liess sich unterbringen, ist das kein «ok».
+        // **Ein Akt, der nichts tut und Erfolg meldet, ist die teuerste Sorte Fehler** — er kostet
+        // den nächsten Aufruf, um überhaupt bemerkt zu werden.*
+        if ($angekommen === 0 && $verworfen !== []) {
+            throw new \InvalidArgumentException(sprintf(
+                /* translators: %s is a comma-separated list of relation ids. */
+                __('Nothing was saved: this page no longer has the fields it was drawn with (%s). Reload and try again.', 'taxmod'),
+                implode(', ', $verworfen)
+            ));
+        }
+
+        return $angekommen;
     }
 
     /**
