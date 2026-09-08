@@ -231,10 +231,20 @@ check(
 
 echo "\n== Ein Knoten mit echten Feldern behaelt sie ==\n";
 
-$id     = knotenId('Passiv');
-$html   = $id === 0 ? '' : seiteVon($id);
-$felder = $html === '' ? [] : tabelleUnter($html, 'Fields', 'Settings');
-$echte  = 0;
+// ⚠️ **Gegen das Modell gezaehlt und nicht gegen eine Zahl** (`INF-070`).
+//
+// ⚠️ *Hier stand `>= 3` und der Name «Passiv». **Am 2026-09-07 fiel die Zusage, weil der Eigentuemer
+// eine Kante entfernt hatte** — an der Seite war nichts falsch, der Waechter mass seinen Bestand.
+// Sein Wort dazu, am selben Tag zu einem anderen Lauf: «warum gehen waechter auf einheitswert ?».*
+//
+// ⚠️ **Die Zusage, die wirklich gemeint ist:** *jede eigene Kompositions- und Aggregationskante
+// steht unter «Fields», und keine faellt weg. **Wieviele es sind, sagt das Modell** — dann darf er
+// anlegen und wegnehmen, ohne dass hier etwas rot wird.*
+$id       = knotenId('Passiv');
+$html     = $id === 0 ? '' : seiteVon($id);
+$felder   = $html === '' ? [] : tabelleUnter($html, 'Fields', 'Settings');
+$echte    = 0;
+$erwartet = 0;
 
 foreach ($felder as $zeile) {
     if (in_array($zeile[2] ?? '', ['composition', 'aggregation'], true)) {
@@ -242,7 +252,19 @@ foreach ($felder as $zeile) {
     }
 }
 
-check('«Passiv» zeigt seine eigenen Felder unter Fields', $echte >= 3, (string) $echte);
+if ($id !== 0) {
+    foreach ((new \Taxmod\WordPress\Persistence\WpdbRelationRepository())->fieldRelationsOf([$id]) as $kante) {
+        if ($kante->fromNodeId === $id && ! $kante->isSetting() && ! $kante->hide) {
+            ++$erwartet;
+        }
+    }
+}
+
+check(
+    'jede eigene Feldkante steht unter Fields',
+    $erwartet > 0 && $echte === $erwartet,
+    $echte . ' gezeichnet, ' . $erwartet . ' im Modell'
+);
 
 echo "\n== «How many» ist an einer geerbten Kante gesperrt ==\n";
 
