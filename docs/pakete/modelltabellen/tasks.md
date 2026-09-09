@@ -2520,9 +2520,11 @@ soll), oder eine Schranke im Steuerelement (dann ist es schlicht ein Fehler).*
 Geduld; wer sie nicht bekommt, sagt es und geht mit Rückgabewert 3, ohne auf das Ende des anderen zu
 warten; sie fällt mit der Verbindung, auch nach einem Abbruch; danach bekommt der nächste Lauf sie
 sofort.* Gemessen in Abschnitt 4 von `no-model-write-check` an zwei echten Prozessen, mit
-`lib/klammer-probe.php` als Gegenüber. **Angenommen, nicht entschieden:** die Wahl «ein Lauf zur
-Zeit» statt «jeder Wächter auf eigener Wiese» — sie stand im Lösungsweg und ist so gebaut; eine
-eigene Wiese je Wächter hätte den Fall «derselbe Wächter zweimal» nicht abgedeckt.
+`lib/klammer-probe.php` als Gegenüber. **Bestätigt am Abend des 2026-09-09**, sein Wort: *«ok dann
+lass erstmal die sperre so oft bauen wir nicht parallel»* — die Wahl «ein Lauf zur Zeit» statt «jeder
+Wächter auf eigener Wiese» bleibt; eine eigene Wiese je Wächter hätte den Fall «derselbe Wächter
+zweimal» nicht abgedeckt. *Und seine Frage dazu, offen: ob die vielen Wächter überhaupt sinnvoll sind,
+wo zwei am selben Ort arbeiten — eine Messung der Überlappung ist angeboten, nicht begonnen.*
 
 **2026-09-09, sein Auftrag:** *«kannst du die korrektur der beiden wächter dort bitte anhängen»*, nach
 dem Befund aus dem Prüflauf desselben Morgens.
