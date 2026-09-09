@@ -320,14 +320,18 @@ final class NodesScreen
         // gespeicherter Vorzug. Der Eigentuemer braucht die Wurzel, um ihr Felder zu geben.*
         $left .= ' ' . $this->rootToggle($this->showsRoot());
 
-        // ⚠️ **Under Model, not under the root.** A node hung directly on the root sits in no
-        // branch at all: it can hold no records and no attribute may point at it — a dead end
-        // the screen used to invite people into. D-273 also says what this level *is*: the top
-        // level of Model is the list of subject areas.
-        $left .= $this->addForm(
-            $this->framework->rootOf(Branch::Model),
-            __('Add a subject area under Model', 'taxmod')
-        );
+        // ⚠️ **Hier stand ein Formular «Add a subject area under Model», und es ist gefallen**
+        // ([D-692](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «knoten unter
+        // model anlegen können wir schon mit +, somit hat das feld und add keinen bestand mehr.»
+        // **Es versprach eine Sorte und legte einen gewöhnlichen Knoten an** — `createNode()` an
+        // der Model-Wurzel, ohne Merkmal und ohne Regel —, und das `+` in der Zeile tut
+        // dasselbe, wählt den neuen Knoten gleich aus und lügt dabei nicht.*
+        //
+        // ⚠️ **Und [D-273](../../../docs/NewConcept/90-decision-log.md) verlangte es nie.** *Sein
+        // Inhalt ist «ein Baum für alle Themengebiete statt eines Baums je Thema»; der Satz «the
+        // top level of Model is the list of subject areas» war eine **Feststellung** über die
+        // Position, und daraus hier ein eigener **Akt** zu machen war meine Lesart, nicht seine.
+        // **Ein Sachgebiet bleibt eine Position und wird kein Merkmal.***
         // WICHTIG: Beim Suchen wird voll aufgeklappt und auf Treffer plus deren Weg eingedampft.
         // Sein Befund: "knoten filter geht nicht" -- und der Grund war, dass die Seitenansicht
         // zugeklappt ist: 11 von 145 Zeilen stehen im Dokument, und was nicht dasteht, findet
@@ -763,15 +767,6 @@ final class NodesScreen
             ]),
             admin_url('admin.php')
         );
-    }
-
-    private function addForm(Node $parent, string $label): string
-    {
-        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:1em 0;display:flex;gap:.5em">'
-            . $this->hidden($parent->id)
-            . '<input type="text" name="name" placeholder="' . esc_attr($label) . '" required style="flex:1">'
-            . ControlMarkup::button(new Control('do', 'create', __('Add', 'taxmod'), '', true, false, '', '', true))
-            . '</form>';
     }
 
     // ------------------------------------------------------------- the details
@@ -3063,11 +3058,13 @@ final class NodesScreen
                     // und Version sind zum **Lesen**, der Wähler ist zum **Tun**; er gehört neben
                     // die Werte und nicht zwischen zwei Angaben, die niemand anfasst.*
                     __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
-                    __('Kind', 'taxmod')       => $this->recordTypeChoice(
-                        $record->recordType,
-                        'taxmod-record-' . $record->id,
-                        $branch
-                    ),
+                    __('Kind', 'taxmod')       => $record->recordType === RecordType::Default
+                        ? $this->settingsRecordMark($held)
+                        : $this->recordTypeChoice(
+                            $record->recordType,
+                            'taxmod-record-' . $record->id,
+                            $branch
+                        ),
                     // ⚠️ **Der eigene Wert des Knotens** ([D-673](../../../docs/NewConcept/90-decision-log.md)) —
                     // *die Zelle, die bei `datetime` fehlte (`INF-067`). Der Satzblock zeichnet sonst
                     // ein Feld je erklärter Kante, und ein einfacher Datentyp hat keine: **der Satz
@@ -3129,6 +3126,31 @@ final class NodesScreen
      * ⚠️ *Die Beschriftungen gehen durch die Textdomaene (`AR-2`); der **Wert** ist die Kennung der
      * Aufzaehlung und wird nie uebersetzt.*
      */
+    /**
+     * Die Marke des Einstellungssatzes, mit seinen Werten in Worten — nur im Entwicklermodus zu sehen (TASK-069).
+     *
+     * ⚠️ *Keine Auswahl der Art: dieser Satz wird nicht zu einem Eintrag, indem jemand eine Liste
+     * umstellt. Und keine Spalten: seine Werte hängen an Einstellungskanten, die der Block nicht als
+     * Felder führt — also stehen sie hier als `name = wert`, damit man sieht, was der Satz trägt.*
+     *
+     * @param array<int, TypedValue> $held
+     */
+    private function settingsRecordMark(array $held): string
+    {
+        $werte = [];
+
+        foreach ($held as $relationId => $value) {
+            $name = $relationId === 0
+                ? __('own value', 'taxmod')
+                : ($this->editor->relationById((int) $relationId)?->name ?? ('#' . $relationId));
+            $werte[] = esc_html($name . ' = ' . ($value->text ?? $value->describe()));
+        }
+
+        return '<code class="taxmod-settings-record">' . esc_html__('settings', 'taxmod') . '</code>'
+            . ' ' . HintMarkup::icon(__('The record that holds this node’s settings. It is shown because developer mode is on; its values hang on setting relations, not on fields.', 'taxmod'))
+            . ($werte === [] ? '' : '<div class="description taxmod-settings-record-values">' . implode('<br>', $werte) . '</div>');
+    }
+
     private function recordTypeChoice(
         ?RecordType $gewaehlt = null,
         string $formId = '',
@@ -4549,7 +4571,6 @@ final class NodesScreen
 
         try {
             $outcome = match ($do) {
-                'create'         => $stay = $this->editor->createNode($name, $id)->id,
                 'add_child'      => $stay = $this->editor->createNode($name, $id)->id,
                 // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
                 // whose whole point is *and now I want to work on that* — it makes a node with a
