@@ -584,9 +584,8 @@ echo "\n== field_type: der Waehler unter `Renderer` bietet wieder Moeglichkeiten
 // die Marke**, die Auswahl sah durch jeden hindurch und bot **null** Moeglichkeiten an. Kaeme die
 // Marke auf irgendeinem Weg zurueck, stuende hier wieder null.*
 $knotenSpeicher = new WpdbNodeRepository();
-$rendererId     = (int) $wpdb->get_var(
-    $wpdb->prepare('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s LIMIT 1', 'Renderer')
-);
+// ⚠️ *Über die notierte Id des Behälters, nicht über den Namen (TASK-049, [D-613](../../docs/NewConcept/90-decision-log.md)).*
+$rendererId     = (int) get_option(\Taxmod\WordPress\Persistence\RenderingScaffold::optionForContainer('Renderer'), 0);
 
 if ($rendererId === 0) {
     check('ein Knoten `Renderer` steht im Modell', false);

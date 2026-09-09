@@ -1342,9 +1342,14 @@ auseinandergingen.***
               Modellfelder.
 [x] TASK-047  Zwei Kanten auf den Zweigkopf «Constants» entfernen —
               Rueckstand aus Waechterlaeufen, ohne Eintrag im Aenderungsbuch
-[ ] TASK-046  Die vier Waechter auf die Spaltenform umschreiben — sie fragen
-              nach den Kanten 44091/44093, die es nicht mehr gibt
+[x] TASK-046  Die vier Waechter auf die Spaltenform umschreiben — sie fragen
+              nach den Kanten 44091/44093, die es nicht mehr gibt — erledigt durch Wegfall, gemessen 2026-09-10
 ```
+
+**2026-09-10, gemessen:** *kein einziger Wächter (`scripts/dev/*-check.php`) nennt die Kanten 44091
+oder 44093 noch — die Nummern stehen nur in zwei Wanderungsskripten (`dead-relation-values-clean`,
+`displayoption-migrate`), die Geschichte sind. Die vier, die hier gemeint waren, sind seit dem
+2026-09-06 und dem 2026-09-10 gefallen oder umgeschrieben; es gibt nichts mehr umzuschreiben.*
 
 **TASK-045 gebaut am 2026-09-05, und der Leser ging mit.** *`settingRelationAtUseSite()` sucht die
 Einstellungskante jetzt an **beiden** Ketten — der des Besitzers, dann der des Ziels — und
@@ -1424,6 +1429,20 @@ weiterhin öffnet. *Ohne die Gegenprobe wäre auch grün, was das Öffnen ganz a
               record-on-any-node · rename-survives · renderer-choice
               setting-edge · setting-write · unitvalue
 ```
+
+**2026-09-10, nachgemessen und weitergebaut.** *Von den zehn sind **fünf gefallen** (`package1`,
+`rename-survives`, `renderer-choice` am 2026-09-06; `page-blocks`, `setting-write` am 2026-09-10 mit
+D-706), **zwei waren schon gelöst** (`form-membership`, `label-role` — nur noch die Erzählung nennt den
+Namen), und **heute sind zwei weitere umgestellt**, die die Liste nicht kannte: `path` holt den Behälter
+`Renderer` über seine notierte Id statt über den Namen, `record-kind` holt `Integer` und `Decimal` über
+ihre Klasse, die Grenzknoten als Ziel der Kanten `min`/`max` und die Kante `read_only` an der Wurzel —
+so, wie der Kode sie findet.* ⚠️ **Was bleibt, und warum es hier nicht gelöst wird:** *`unitvalue`,
+`record-on-any-node` und `allowed` greifen `Prefixes`, `Base units`, `Einheitenwert`, `Gramm`, `Ohm`,
+`kilo`, `milli` — die Namen des **Einheitengerüsts**, und das Gerüst selbst (`UnitScaffold`, Fassung 44)
+findet seine Knoten genau so, über den Namen. Für sie gibt es keine Rolle und keine notierte Id.
+**Ein Wächter, der es anders macht als der Kode, wäre kein Fortschritt** — ob das Gerüst seine Knoten
+notieren soll, ist eine Entscheidung (`PR-4`), keine Wächterfrage. Bis dahin bleibt die Zeile offen mit
+genau diesem Rest.*
 
 ⚠️ **Der Grund ist schärfer als «fragil»:** *[D-022](../../NewConcept/90-decision-log.md) sagt,
 Knotennamen sind **absichtlich nicht eindeutig**, und «nothing resolves, references or branches on a

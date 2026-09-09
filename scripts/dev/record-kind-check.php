@@ -41,6 +41,7 @@ use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Model\Type\DecimalType;
 use Taxmod\Core\Model\Type\IntType;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
@@ -117,7 +118,30 @@ check('einer je Adresse, nie zwei (D-538)', $doppelt === 0, "{$doppelt} Adressen
 
 echo "\n== 2. die Grenzen wohnen in den Grenzknoten (D-707) ==\n";
 
-$id = static fn (string $name): int => (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$benannt} WHERE name = %s ORDER BY id LIMIT 1", $name));
+// ⚠️ *Nicht über den Namen (TASK-049, [D-613](../../docs/NewConcept/90-decision-log.md)): die Typen über
+// ihre Klasse, die Grenzknoten als Ziel der Kanten `min`/`max` — so, wie der Kode sie findet (D-707).*
+$typKnoten = [
+    'Integer' => $editor->nodeImplementing(IntType::class)?->id ?? 0,
+    'Decimal' => $editor->nodeImplementing(DecimalType::class)?->id ?? 0,
+];
+$grenze = static function (int $typId, string $key) use ($relations): int {
+    foreach ($typId === 0 ? [] : $relations->fieldRelationsOf([$typId]) as $kante) {
+        if ($kante->isSetting() && $kante->name === $key) {
+            return $kante->toNodeId;
+        }
+    }
+
+    return 0;
+};
+$id = static fn (string $name): int => match ($name) {
+    'Integer'     => $typKnoten['Integer'],
+    'Decimal'     => $typKnoten['Decimal'],
+    'integer_min' => $grenze($typKnoten['Integer'], SettingKey::Min->value),
+    'integer_max' => $grenze($typKnoten['Integer'], SettingKey::Max->value),
+    'decimal_min' => $grenze($typKnoten['Decimal'], SettingKey::Min->value),
+    'decimal_max' => $grenze($typKnoten['Decimal'], SettingKey::Max->value),
+    default       => 0,
+};
 $eigenerWert = static function (int $nodeId) use ($wpdb, $saetze, $werte): ?string {
     $wert = $wpdb->get_row($wpdb->prepare(
         "SELECT v.value_int, v.value_decimal FROM {$werte} v JOIN {$saetze} s ON s.id = v.node_record_id
@@ -165,7 +189,12 @@ $enkel  = $editor->createNode('__rk Enkel', $zahl->id);
 
 check('ein frischer Knoten hat keinen Satz', $data->recordsOf($modell->id) === []);
 
-$leseKante = (int) $wpdb->get_var("SELECT id FROM " . Schema::table('relations_named') . " WHERE name = 'read_only' AND kind = 'setting' ORDER BY id LIMIT 1");
+$leseKante = 0;
+foreach ($relations->fieldRelationsOf([$framework->root()->id]) as $kante) {
+    if ($kante->isSetting() && $kante->name === SettingKey::ReadOnly->value) {
+        $leseKante = $kante->id;
+    }
+}
 check('die Einstellungskante `read_only` ist da', $leseKante !== 0);
 $data->putSettingAt($modell->id, $leseKante, 0, TypedValue::ofBool(true));
 $arten = array_map(static fn ($s): string => $s->recordType->value, $data->recordsOf($modell->id));
