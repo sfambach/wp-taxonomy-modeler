@@ -564,3 +564,18 @@ das es nicht mehr gibt.*
 | 16 (und die fällt der Regel auf) | **entfällt** — die Kante aus der Maske ist jetzt richtig; die Gegenprobe steht über den Kern (Zusage 4) |
 | 17 (kein eigener Knoten bleibt stehen) | **entfällt** — die Klammer räumt |
 
+
+### `converter` — 20 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1–5 (die Zeile ist lebendig und bietet binary, hexadecimal, octal, roman) | **Abschnitt 8**, eine Zeile |
+| 6 (12 steht als 12) | **Abschnitt 8** |
+| 7–10 (roman: XII, derselbe Renderer; XII und xii kommen als 12 zurück) | **Abschnitt 8**, zwei Zeilen |
+| 11–16 (hexadecimal, binary, octal in beide Richtungen) | **Abschnitt 8**, eine Zeile |
+| 17–18 (fremde Ziffer und Unlesbares verweigert) | **Abschnitt 8**, eine Zeile |
+| 19 (unbekannter Konvertername nimmt kein Formular mit runter) | **Abschnitt 8** |
+| 20 (die Spielwiese ist wieder weg) | **entfällt** — die Klammer räumt |
+
+*Was der Fall kostet:* der fest verdrahtete Pfad und drei Knoten `__cv Zahl`, die am 2026-09-06 unter `Integer` liegenblieben — der Fall, der die Klammer erzwang.
+

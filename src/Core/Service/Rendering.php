@@ -791,7 +791,7 @@ final class Rendering implements Presets
             // Grund ist gemessen** ({@see self::withRendererValues()} tut es für den Behälter).
             // *Am Satz von `slider` steht `converter = hexadecimal`, am Satz von `checkbox` auch.
             // Liesse man den Satz des Renderers auch am Feld gelten, stünde **jede** Ganzzahl mit
-            // Schieber als Hexzahl da — `converter-check` sagt genau das («die 12 steht als 12 da»).
+            // Schieber als Hexzahl da — `einstellungen-check` sagt genau das («die 12 steht als 12 da»).
             // **Ob eine Abbildung eine Eigenschaft des Renderers ist oder des Feldes, ist nicht
             // entschieden** und steht als Frage im Eingangsblatt (`PR-4`); bis dahin bleibt sie da,
             // wo sie heute wirkt.*
