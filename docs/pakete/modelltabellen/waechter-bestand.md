@@ -636,3 +636,21 @@ das es nicht mehr gibt.*
 | 24–30 (Selbstvererbung D-607: Ziel erbt nicht, Geschwister nicht, Fremder schon, Vorfahr behält; die Regel an ihrer Stelle) | **Abschnitt 2**, fünf Zeilen |
 | 31–37 (die Anzeige D-608: gesperrte Zeile bleibt, gekennzeichnet, Grund, kein Eingabefeld; offene Zeile trägt ihres) | **Abschnitt 2**, zwei Zeilen |
 
+
+### `setting-write` — 34 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1–2 (`renderer` aufgeschrieben; innere Wertkante weg) | **Abschnitt 0** |
+| 3 (jeder Träger zeigt in den Renderer-Ast) | **Abschnitt 0**: «keine gespeicherte Wahl ausserhalb der zulässigen Menge» — enger als der Ast |
+| 4 (es gibt gespeicherte Renderer) | **entfällt** — in «jeder Träger löst auf» enthalten |
+| 5 (der Prüfknoten steht) | **entfällt** — immer wahr, der Rückgabetyp ist der Knoten |
+| 6, 11 (`spinner`, `slider` stehen als Knoten unter `Renderer`) | **entfällt** als Namen — Abschnitt 3 nimmt, was die Zeile anbietet; dass jeder Name des Kodes als Knoten liegt, sagt Abschnitt 0 |
+| 7–10 (schreiben, lesen, als Verweis, zweimal derselbe Satz) | **Abschnitt 3** — über die Maske statt über `putSettingValue()` |
+| 12–14, 16 (zweite Wahl ersetzt, der Leser gibt sie zurück, zurück zur ersten) | **Abschnitt 3**: «eine zweite Wahl gewinnt», «genau eine Wahl — ersetzt, nicht dazu» |
+| 15 (der alte Satz ist vergessen) | **entfällt, weil immer grün** — seit D-684 ist `value_ref` die Knotennummer des Renderers, die Abfrage zählte aber `node_records` mit dieser Nummer; ein Fund beim Lesen, nicht beim Laufen |
+| 17 (Fehlzweig) | **entfällt** |
+| 18–26 (`read_only` an einer Stelle: finden, vorher nichts, schreiben, im Satz der Stelle, herausnehmen; der Akt läuft durch, setzt und nimmt heraus) | **Abschnitt 6**, vier Zeilen |
+| 27–32 (eine Einstellung, die nur das Ziel erklärt: nicht an der Kette des Besitzers, der Schreiber findet sie, schreiben, im Satz der Stelle, herausnehmen) | **Abschnitt 2** — an der Kante, die die Maske angelegt hat |
+| 33–34 (genau eine Wahl; die Wertzeile nennt den Renderer ohne Hülle) | **Abschnitt 3** |
+

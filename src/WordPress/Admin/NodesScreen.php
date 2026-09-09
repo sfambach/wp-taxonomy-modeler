@@ -4369,7 +4369,7 @@ final class NodesScreen
         // gestrichen. **Der Schreiber war schon vorher wirkungslos**: seit
         // [D-543](../../../docs/NewConcept/90-decision-log.md) liest {@see \Taxmod\Core\Service\ModelValues}
         // aus Datensaetzen und **gewinnt** — der Eigentuemer hat es an der Oberflaeche gesehen («den
-        // Render kann ich noch nicht setzen»), und `setting-write-check.php` bewacht seither, dass
+        // Render kann ich noch nicht setzen»), und `einstellungen-check.php` bewacht seither, dass
         // geschrieben wird, wo gelesen wird. **Was hier fiel, war ein Schreiber ohne Leser.***
     }
 
