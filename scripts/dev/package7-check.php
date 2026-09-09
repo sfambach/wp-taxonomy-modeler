@@ -759,6 +759,38 @@ try {
         $entwickler ? 'Modus an' : 'Modus aus'
     );
 
+    // ⚠️ **Gegen den Schalter gemessen, nicht gegen einen angenommenen Zustand** — dieselbe Lehre
+    // wie eine Zeile darüber ([D-693](../../docs/NewConcept/90-decision-log.md)).
+    $papierkorb = \Taxmod\WordPress\Admin\SettingsScreen::showsTrash();
+
+    check(
+        'der Papierkorb steht genau dann unter dem Baum, wenn die Einstellung es sagt',
+        str_contains($markup, 'class="taxmod-trash"') === $papierkorb,
+        $papierkorb ? 'sichtbar' : 'verborgen'
+    );
+
+    // ⚠️ **Eine Suche ohne Treffer darf keine Sackgasse sein**
+    // ([D-694](../../docs/NewConcept/90-decision-log.md)). *Sein Befund: «wenn ich eine suche eingebe
+    // und der baum nichts findet verschwindet auch das suchfeld, das ist falsch.» Der Begriff steht
+    // in der Adresse — ohne Feld kann ihn niemand ändern oder löschen.*
+    $_GET['taxmod_search'] = 'zzz-nichts-das-es-gibt-zzz';
+    $leer = $screen->render();
+    unset($_GET['taxmod_search']);
+
+    check('eine Suche ohne Treffer behaelt ihr Suchfeld', str_contains($leer, 'taxmod-tree-filter'));
+    check(
+        'und traegt den Begriff weiter, damit man ihn aendern kann',
+        str_contains($leer, 'zzz-nichts-das-es-gibt-zzz')
+    );
+    // ⚠️ **Und der Satz sagt, welche Lage es ist.** *«hier ist noch nichts» ist nicht «hier ist
+    // etwas, nur nicht das» — zwei Lagen, zwei Sätze.*
+    //
+    // ⚠️ *Hier stand «und zeichnet keine Zeile dazu», gemessen an `taxmod-tree-row` **auf der ganzen
+    // Seite** — und das ist der Papierkorb darunter, der weiter seine Zeilen zeichnet. **Die Zusage
+    // war richtig, ihr Mass falsch**; genau gemessen wird sie im Kernlauf
+    // (`RenderingTest::an_empty_tree_still_draws_the_search_field`), wo nur der Baum dasteht.*
+    check('und sagt, dass nichts passt, statt dass nichts da ist', str_contains($leer, 'Nothing matches that.'));
+
     // ⚠️ **And now with a node *selected*, because that is the half the check was missing.** The
     // fatal it was written for happened in the tree; the very next one happened in the **detail**
     // pane — `RenderResult` has `markup` and the attribute renderer asked it for `html` — and this

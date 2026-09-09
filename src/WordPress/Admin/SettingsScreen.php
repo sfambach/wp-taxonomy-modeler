@@ -53,6 +53,19 @@ final class SettingsScreen
     public const FONT_SIZE = 'taxmod_font_size';
 
     /**
+     * Ob der Papierkorb unter dem Baum steht.
+     *
+     * ⚠️ **Eine Option und kein Ansichtsschalter** ([D-693](../../../docs/NewConcept/90-decision-log.md)).
+     * *`show hidden` und `show the root` reisen in der Adresse mit, weil sie **kurzzeitig** gemeint
+     * sind. Einen Papierkorb, den man nicht sehen will, will man dauerhaft nicht sehen.*
+     *
+     * ⚠️ **Und nicht hinter dem Entwicklermodus:** *der Papierkorb ist ein **Ort**
+     * ([D-123](../../../docs/NewConcept/90-decision-log.md): parken, dann endgültig entfernen), keine
+     * Diagnose. Der Entwicklermodus zeigt, was sonst niemanden angeht.*
+     */
+    public const SHOW_TRASH = 'taxmod_show_trash';
+
+    /**
      * Sizes the owner may pick, and why it is a list rather than a number field.
      *
      * ⚠️ *He walked the numbers himself — «one pixel bigger», «make 20», «25px», then back to 17 —
@@ -85,6 +98,7 @@ final class SettingsScreen
             . '<table class="form-table" role="presentation">'
             . $this->developerRow()
             . $this->localeRow()
+            . $this->trashRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('The glyphs in the tree and on its buttons.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</table>'
@@ -111,6 +125,26 @@ final class SettingsScreen
             // ([D-661](../../../docs/NewConcept/90-decision-log.md)).*
             . HintMarkup::icon(
                 __('One mode, not two: the same switch that shows which renderer drew what also lets a protected node be parked.', 'taxmod')
+            )
+            . '</td></tr>';
+    }
+
+    /**
+     * Ob der Papierkorb unter dem Baum steht.
+     *
+     * ⚠️ **Vorgabe an**, weil ein Schalter, den niemand gesetzt hat, nichts wegnehmen darf, was
+     * vorher dastand — und weil mit dem Abschnitt auch `Clear` verschwindet
+     * ([D-693](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    private function trashRow(): string
+    {
+        return '<tr><th scope="row">' . esc_html__('Trash', 'taxmod') . '</th><td>'
+            . '<label><input type="checkbox" name="show_trash" value="1"'
+            . checked(self::showsTrash(), true, false) . '> '
+            . esc_html__('Show the trash under the tree', 'taxmod')
+            . '</label>'
+            . HintMarkup::icon(
+                __('Parked nodes stay parked either way — this only decides whether the list is on the screen. With it off, «Clear» goes with it and the cleanup page is where things are removed for good.', 'taxmod')
             )
             . '</td></tr>';
     }
@@ -185,6 +219,7 @@ final class SettingsScreen
         check_admin_referer(self::ACTION, '_taxmod_nonce');
 
         update_option(NodesScreen::DEVELOPER_OPTION, isset($_POST['developer']), true);
+        update_option(self::SHOW_TRASH, isset($_POST['show_trash']) ? '1' : '0', true);
 
         $locale = isset($_POST['neutral_locale'])
             ? sanitize_text_field(wp_unslash($_POST['neutral_locale']))
@@ -266,6 +301,17 @@ final class SettingsScreen
     public static function inDeveloperMode(): bool
     {
         return (bool) get_option(NodesScreen::DEVELOPER_OPTION, false);
+    }
+
+    /**
+     * ⚠️ **`'1'` als Vorgabe und nicht `false`** — eine Option, die es noch nie gab, muss
+     * *sichtbar* heissen ([D-693](../../../docs/NewConcept/90-decision-log.md)). *Deshalb wird beim
+     * Speichern ausdrücklich `'0'` geschrieben statt der Wert gelöscht: «aus» und «nie gesetzt»
+     * sähen sonst gleich aus und bedeuteten das Gegenteil.*
+     */
+    public static function showsTrash(): bool
+    {
+        return get_option(self::SHOW_TRASH, '1') !== '0';
     }
 
     public static function defaultIconSize(): int

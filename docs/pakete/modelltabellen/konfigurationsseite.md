@@ -93,6 +93,7 @@ zurückgenommen und alles bleibt eine Option? **Beides ist vertretbar; nur der j
 | 10 | **Die Icon-Liste kuratieren** — welche Zeichen darf ein Knoten bekommen | [D-251](../../NewConcept/90-decision-log.md), sein Auftrag 2026-09-09 | **fehlt, und der Kode sagt es selbst.** Die 39 Dashicon-Schlüssel stehen als `NodesScreen::ICONS` fest, mit dem Satz daneben: *«**Curating it in Settings** (unchecking an icon hides it from pickers) **is the next step**, not this one.»* |
 | 11 | **Die Zeichen der Bedienelemente** — welcher Akt trägt welches Zeichen | [D-368](../../NewConcept/90-decision-log.md) | **fehlt.** Vier Schlüssel stehen fest im Kode: `trash`, `move`, `networking`, `editor-help`. *Ob sie überhaupt einstellbar sein sollen, ist eine eigene Frage — siehe unten.* |
 | 12 | **Der Entwicklermodus, einzeln schaltbar** — jede Diagnose ein eigener Haken | sein Auftrag 2026-09-09, gegen [D-248](../../NewConcept/90-decision-log.md) | **fehlt, und es ist eine Kehrtwende.** Heute ist es **ein** Haken; was er schaltet, steht unten. |
+| 13 | **Der Papierkorb im Baum, sichtbar oder nicht** | [D-693](../../NewConcept/90-decision-log.md) | **gebaut am 2026-09-09.** Eine Option, kein Ansichtsschalter, Vorgabe sichtbar — der Papierkorb ist ein Ort und keine Diagnose, also sitzt er **nicht** hinter dem Entwicklermodus |
 
 ---
 

@@ -1242,6 +1242,28 @@ final class RenderingTest extends TestCase
         self::assertSame('', $this->rendering->treeFor([])->markup);
     }
 
+    /**
+     * ⚠️ **Sein Befund** ([D-694](../../docs/NewConcept/90-decision-log.md)): *«wenn ich eine suche
+     * eingebe und der baum nichts findet verschwindet auch das suchfeld, das ist falsch.»* **Ohne
+     * Feld ist die Seite eine Sackgasse** — der Suchbegriff steht in der Adresse, und ohne Feld
+     * kann ihn niemand ändern oder löschen.
+     */
+    #[Test]
+    public function an_empty_tree_still_draws_the_search_field(): void
+    {
+        $markup = $this->rendering->treeFor(
+            [],
+            filterName: 'taxmod_search',
+            filterValue: 'nichts davon',
+            leer: $this->thing('Part')
+        )->markup;
+
+        self::assertStringContainsString('taxmod-tree-filter', $markup);
+        self::assertStringContainsString('nichts davon', $markup);
+        // ⚠️ *Und keine Zeile dazu erfunden: das durchgereichte Subjekt wird nie gezeichnet.*
+        self::assertStringNotContainsString('taxmod-tree-row', $markup);
+    }
+
     // ---------------------------------------------------- the container renderer
 
     #[Test]

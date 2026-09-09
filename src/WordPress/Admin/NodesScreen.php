@@ -355,28 +355,45 @@ final class NodesScreen
             . '<input type="hidden" name="taxmod_node" value="'
             . esc_attr(isset($_GET['taxmod_node']) ? (string) absint($_GET['taxmod_node']) : '') . '">'
             . $this->circumstanceFields()
-            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht)
+            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht, $root)
             . '</form>';
-        $left .= $this->heading(
-            __('Trash', 'taxmod'),
-            __('Parked, not deleted. Anything that pointed at one of these still points at something, so nothing breaks while it sits here. «Clear» is the other half: it removes them for good and keeps their ids and their history, so nothing is ever handed out twice and the changelog still says what was there.', 'taxmod'),
-            'h2'
-        );
-        // ⚠️ **The clear button, on the owner's ask** — *build a button behind the Trash label,
-        // «clear», so we can tidy up.* **Only when there is something to clear**: a button that can
-        // never act is furniture ([D-429](../../../docs/NewConcept/90-decision-log.md)), and an empty
-        // trash needs no act. *Marked `destroys`, which is what makes it red on every surface without
-        // a colour being written here.*
-        if ($parked !== []) {
-            $left .= $this->form(
-                $trash->id,
-                // ⚠️ *A word and not an icon: the tree's bin **parks**, and a second bin next to it
-                // that **deletes** would be two pictures for two opposite acts. The word says which.*
-                [['clear_trash', __('Clear', 'taxmod'), __('Remove everything in the trash for good — the ids and the changelog stay', 'taxmod'), '', true]]
+        // ⚠️ **Der Papierkorb steht nur, wenn die Einstellung es sagt**
+        // ([D-693](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «trash sollte auch
+        // sichtbar unsichtbar schaltbar sein in dein einstellungen». **Eine Option und kein
+        // Ansichtsschalter** — die beiden daneben reisen in der Adresse mit, weil sie kurzzeitig
+        // gemeint sind; einen Papierkorb, den man nicht sehen will, will man dauerhaft nicht sehen.*
+        //
+        // ⚠️ *Geparkt bleibt geparkt: die Zeilen liegen weiter unter dem Papierkorbknoten, es steht
+        // nur keine Liste mehr da. **Mit ihr geht `Clear`** — und der Aufräumbildschirm
+        // ([D-479](../../../docs/NewConcept/90-decision-log.md)) trägt die zweite Hälfte, weshalb die
+        // Vorgabe trotzdem «sichtbar» heisst.*
+        if (SettingsScreen::showsTrash()) {
+            // ⚠️ *Ein eigener Rahmen, damit «der Papierkorb steht da» eine Frage mit einer Antwort
+            // ist. Ohne ihn müsste ein Wächter das Wort «Trash» suchen — und das steht auch im
+            // Vorlesetext des Papierkorbknopfes jeder Zeile.*
+            $left .= '<div class="taxmod-trash">';
+            $left .= $this->heading(
+                __('Trash', 'taxmod'),
+                __('Parked, not deleted. Anything that pointed at one of these still points at something, so nothing breaks while it sits here. «Clear» is the other half: it removes them for good and keeps their ids and their history, so nothing is ever handed out twice and the changelog still says what was there.', 'taxmod'),
+                'h2'
             );
-        }
+            // ⚠️ **The clear button, on the owner's ask** — *build a button behind the Trash label,
+            // «clear», so we can tidy up.* **Only when there is something to clear**: a button that can
+            // never act is furniture ([D-429](../../../docs/NewConcept/90-decision-log.md)), and an empty
+            // trash needs no act. *Marked `destroys`, which is what makes it red on every surface without
+            // a colour being written here.*
+            if ($parked !== []) {
+                $left .= $this->form(
+                    $trash->id,
+                    // ⚠️ *A word and not an icon: the tree's bin **parks**, and a second bin next to it
+                    // that **deletes** would be two pictures for two opposite acts. The word says which.*
+                    [['clear_trash', __('Clear', 'taxmod'), __('Remove everything in the trash for good — the ids and the changelog stay', 'taxmod'), '', true]]
+                );
+            }
 
-        $left .= $this->table($parked, 'trash', $collapsed, $selected);
+            $left .= $this->table($parked, 'trash', $collapsed, $selected);
+            $left .= '</div>';
+        }
 
         // ⚠️ **The chosen sizes reach the stylesheet as custom properties** — the file stays static
         // and cacheable, and the two numbers a person picked ride on the page ([D-397](../../../docs/NewConcept/90-decision-log.md)).
@@ -467,10 +484,31 @@ final class NodesScreen
         return $aus;
     }
 
-    private function table(array $rows, string $mode, array $collapsed, ?Node $selected, string $gesucht = ''): string
+    private function table(array $rows, string $mode, array $collapsed, ?Node $selected, string $gesucht = '', ?Node $leer = null): string
     {
+        // ⚠️ **Eine erfolglose Suche nimmt das Suchfeld nicht mit**
+        // ([D-694](../../../docs/NewConcept/90-decision-log.md)). *Sein Befund: «wenn ich eine suche
+        // eingebe und der baum nichts findet verschwindet auch das suchfeld, das ist falsch.»
+        // **Hier stand die frühe Rückgabe über allem**, also auch über dem Feld — und damit war die
+        // Seite eine Sackgasse: kein Treffer, kein Feld, kein Weg zurück ausser über das Menü.*
+        //
+        // ⚠️ *Zwei verschiedene Sätze, weil es zwei verschiedene Lagen sind: **leer** heisst «hier
+        // ist noch nichts», **nichts gefunden** heisst «hier ist etwas, nur nicht das».*
         if ($rows === []) {
-            return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
+            if ($gesucht === '' || $leer === null) {
+                return '<p><em>' . esc_html__('Nothing here yet.', 'taxmod') . '</em></p>';
+            }
+
+            return $this->rendering->treeFor(
+                [],
+                cell: \Taxmod\Core\Renderer\TreeNodeRenderer::NAME,
+                level: \Taxmod\Core\Renderer\Level::Admin,
+                developerMode: $this->inDeveloperMode(),
+                filterName: 'taxmod_search',
+                filterValue: $gesucht,
+                leer: $leer
+            )->markup
+                . '<p><em>' . esc_html__('Nothing matches that.', 'taxmod') . '</em></p>';
         }
 
         // ⚠️ **The whole row is the cell's now** (D-367). The boundary supplies only what the core
@@ -2461,8 +2499,6 @@ final class NodesScreen
         );
     }
 
-
-    
 
 
     

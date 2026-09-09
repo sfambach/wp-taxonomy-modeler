@@ -63,7 +63,16 @@ final class TreeRenderer extends RendererNode
     {
         $rows = $context->surroundings->rows;
 
-        if ($rows === []) {
+        // ⚠️ **Keine Zeile heisst nicht «nichts zeichnen», solange ein Suchfeld verlangt ist**
+        // ([D-694](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «wenn ich eine
+        // suche eingebe und der baum nichts findet verschwindet auch das suchfeld, das ist falsch.»
+        // **Das Feld ist der einzige Weg zurück** — verschwindet es mit dem Treffer, den es nicht
+        // gab, kann man den Suchbegriff nicht mehr ändern und nicht löschen.*
+        //
+        // ⚠️ *Dieselbe Stelle wie in {@see TableRenderer}, wo die frühe Rückgabe schon einmal über
+        // etwas stand, das auch ohne Zeilen dasteht. **Eine frühe Rückgabe gehört unter alles, was
+        // nicht von dem abhängt, worauf sie prüft.***
+        if ($rows === [] && $context->surroundings->filterName === '') {
             return RenderResult::of('');
         }
 

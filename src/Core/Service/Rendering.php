@@ -3197,12 +3197,23 @@ final class Rendering implements Presets
          */
         string $filterName = '',
         string $filterValue = '',
+        /**
+         * Wessen Baum es wäre, wenn keine Zeile übrig bleibt.
+         *
+         * ⚠️ **Nur für den leeren Fall mit Suchfeld** ([D-694](90-decision-log.md)). *Der Zeichner
+         * braucht ein Subjekt, und ohne Zeile gibt es keines — dabei muss das Feld stehen bleiben,
+         * sonst kommt man aus einer erfolglosen Suche nicht mehr heraus. **Er wird nie gezeichnet**:
+         * der Baumzeichner rührt sein Subjekt nicht an, er nestet Zeilen.*
+         */
+        ?Node $leer = null,
     ): RenderResult {
-        if ($walked === []) {
+        if ($walked === [] && ($filterName === '' || $leer === null)) {
             return RenderResult::of('');
         }
 
-        $nodes = array_map(static fn (array $row): Node => $row['node'], $walked);
+        $nodes = $walked === []
+            ? [$leer]
+            : array_map(static fn (array $row): Node => $row['node'], $walked);
         // ⚠️ *The rows already carry it — {@see \Taxmod\Core\Service\Tree::rowsUnder()} reads it off
         // the inheritance relations it loads anyway ([D-467](90-decision-log.md)). No parameter at the
         // boundary, and no query here.*
