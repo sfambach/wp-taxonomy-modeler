@@ -63,7 +63,9 @@ einstellungen zu kante hausnummer / int.»*
 
 ⚠️ **Und die Messung stützt ihn:** *die drei Sätze an einer Kante tragen `read_only` und
 `display_size` — Einstellungen des **Werts**. Kein einziger trägt eine Zeichnung.* **Der Schnitt liegt
-also nicht zwischen «Knoten» und «Kante», sondern zwischen «Wert» und «Zeichnung»:**
+also nicht zwischen «Knoten» und «Kante», sondern zwischen «Wert» und «Zeichnung» — und er
+entscheidet nicht, *ob* etwas eine Einstellung ist, sondern nur zwei Dinge: ob sie an der Kante
+überschreibbar ist, und ob das Innenleben eines Renderers überhaupt eine Einstellung ist:**
 
 ```mermaid
 flowchart LR
@@ -75,7 +77,7 @@ flowchart LR
 | Einstellung | gehört zum | wohnt | überschreibbar an |
 |---|---|---|---|
 | `min`, `max`, `step`, `display_size`, `read_only`, `validator`, `converter`, `allowed` | **Wert** | am Typ (Zielknoten, [D-707](NewConcept/90-decision-log.md)) und in der Kette | **der Kante** (`Knoten × Kante`, [D-667](NewConcept/90-decision-log.md)) — Hausnummer und Alter sind zwei Kanten auf einen Typ |
-| `renderer` | **Zeichnung** | am Knoten | nur am Knoten ([D-643](NewConcept/90-decision-log.md) hat die Kante schon ausgeschlossen) — anders zeichnen heisst ein Kind |
+| `renderer` | **Zeichnung** — und trotzdem eine **Einstellung des Knotens** wie jede andere: Kante an der Wurzel ([D-529](NewConcept/90-decision-log.md)), im Einstellungssatz, vererbt über die Kette, mit Sperre und Haken. *Sein Wort: «render ist auch eine einstellung am knoten, auch wenn sie für das zeichnen ist.»* | am Knoten | nur am Knoten ([D-643](NewConcept/90-decision-log.md) hat die Kante schon ausgeschlossen) — anders zeichnen heisst ein Kind |
 | `with_label`, `label_role`, `orientation` | **Zeichnung**, Innenleben des Renderers | heute: Kanten am Renderer-Ast, Werte unter der Wahl | Wahl A: je Renderer erklärt, am Knoten unter der Wahl · Wahl B: Sache des Renderers im Kode, keine Einstellung |
 | `position` (Anordnen geerbter Felder, [D-698](NewConcept/90-decision-log.md)) | Zeichnung des Knotens | `Knoten × Kante` heute; könnte eine Liste am Knoten sein | am Knoten |
 
