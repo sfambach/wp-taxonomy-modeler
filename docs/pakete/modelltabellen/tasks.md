@@ -3349,3 +3349,22 @@ spalte».* *Vorher hing der Haken hinter dem Steuerelement in der Wertspalte. Je
 nur Wert und Herkunft; in der Tafel unter einer Feldzeile steht der Haken ebenso vorn. Dieselbe Adresse
 wie vorher (`…_override[…]`), der Rand liest nichts anders. Die Sperre am Steuerelement folgt jetzt der
 Zeile als Rahmen (`tr:has(...)`), nicht mehr der Wertspalte.*
+
+---
+
+[x] TASK-091  Die Renderer-Wahl kam nie an, wenn die Zeilen darunter mitgeschickt wurden — behoben 2026-09-10
+
+**Sein Fund, mit Bild:** *«rendrer einstellung geht nicht -> stelle table ein -> speichern -> form steht
+wieder da problem nicht behoben».* An `Parts List`, eigener Renderer `form`.
+
+⚠️ **Gemessen — und der Grund, warum es am Server nie nachzustellen war:** *die Wahl hiess
+`taxmod_value[<Kante>]`, die Zeilen darunter (`converter`, `with_label`, `label_role`) hiessen
+`taxmod_value[<Kante>][<innen>]` — **derselbe Name, einmal als Wert, einmal als Liste.** Der Browser
+schickt beides; PHP behält beim Lesen die Liste, die Wahl kommt nie an, der alte Wert bleibt. Jede Probe
+und jeder Wächter hatte die Wahl **allein** geschickt und war deshalb grün — der Fehler lag zwischen
+zwei Feldern, die nur der Browser zusammen abschickt.* **Behoben:** die Zeilen darunter heissen
+`taxmod_value_inner[…]`, der Rand liest beides und schreibt erst die Wahl, dann die Zeilen. Zusage in
+`einstellungen-check`, Abschnitt 4: Wahl und Zeile zusammen geschickt, beides steht danach.
+
+⚠️ *Dasselbe Muster liegt in der Tafel unter einer Feldzeile (`taxmod_field_setting[…][…]`): dort
+wurden Listen bisher übersprungen, also nie gespeichert — unverändert, benannt in INF-040.*

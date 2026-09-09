@@ -926,22 +926,37 @@ foreach (array_keys($angebotVater) as $einer) {
 check('ein angebotener Renderer trägt converter, label_role und with_label', $vaterWahlId !== 0, implode(',', $angebotVater));
 if ($vaterWahlId !== 0) {
     speichern($vater->id, ['taxmod_value' => [(string) $renderKante => (string) $vaterWahlId], 'taxmod_value_override' => [(string) $renderKante => '1']]);
-    speichern($vater->id, ['taxmod_value' => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '1']]]);
+    speichern($vater->id, ['taxmod_value_inner' => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '1']]]);
     $eigenerWert = static fn (int $nodeId, int $innen) => $wpdb->get_var("SELECT v.value_int FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id WHERE r.node_id = {$nodeId} AND r.record_type = 'settings' AND v.relation_id = {$innen}");
     check('der Vater trägt seine Wahl, und `with_label` steht auf «an»', gespeicherterRenderer($vater->id) === $angebotVater[$vaterWahlId] && (int) $eigenerWert($vater->id, (int) $vaterKanten['with_label']) === 1);
+    // ⚠️ **Wie der Browser es schickt: die Wahl und die Zeilen darunter in einem Formular** — sein Fund am
+    // 2026-09-10 an `Parts List`: «stelle table ein → speichern → form steht wieder da». *Die Zeilen hiessen
+    // wie die Wahl, PHP behielt die Liste, die Wahl kam nie an.*
+    $andereWahlId = (int) array_search($angebotVater[$vaterWahlId] === 'table' ? 'form' : 'table', $angebotVater, true);
+    if ($andereWahlId !== 0) {
+        speichern($vater->id, [
+            'taxmod_value'          => [(string) $renderKante => (string) $andereWahlId],
+            'taxmod_value_override' => [(string) $renderKante => '1'],
+            'taxmod_value_inner'    => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '1', (string) $vaterKanten['label_role'] => '']],
+        ]);
+        check('Wahl und Zeilen darunter zusammen geschickt: die Wahl kommt an', gespeicherterRenderer($vater->id) === $angebotVater[$andereWahlId], gespeicherterRenderer($vater->id));
+        check('und die Zeile darunter auch', (int) $eigenerWert($vater->id, (int) $vaterKanten['with_label']) === 1);
+        speichern($vater->id, ['taxmod_value' => [(string) $renderKante => (string) $vaterWahlId], 'taxmod_value_override' => [(string) $renderKante => '1']]);
+    }
+
     $sohn = $editor->createNode('__es Sohn', $vater->id);
     check('das Kind erbt den Renderer des Vaters', gespeicherterRenderer($sohn->id) === $angebotVater[$vaterWahlId]);
     $markupSohn = seite($sohn->id, (string) $renderKante);
     $alleDa = true;
     foreach (['converter', 'label_role', 'with_label'] as $welche) {
-        $alleDa = $alleDa && str_contains($markupSohn, 'name="taxmod_value[' . $renderKante . '][' . $vaterKanten[$welche] . ']"');
+        $alleDa = $alleDa && str_contains($markupSohn, 'name="taxmod_value_inner[' . $renderKante . '][' . $vaterKanten[$welche] . ']"');
     }
     check('die Einstellungen des geerbten Renderers stehen im Markup des Kindes, als geerbt gekennzeichnet', $alleDa && str_contains($markupSohn, 'taxmod-inherited'));
     check('und kein `taxmod_part` daneben, weil es keinen eigenen Satz gibt', ! preg_match('/name="taxmod_part\[\d+\]\[' . $vaterKanten['with_label'] . '\]"/', $markupSohn));
     check('das Ansehen hat keinen Teil angelegt', $eigenerWert($sohn->id, (int) $vaterKanten['with_label']) === null);
-    speichern($sohn->id, ['taxmod_value' => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '1']]]);
+    speichern($sohn->id, ['taxmod_value_inner' => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '1']]]);
     check('ein Speichern ohne Änderung legt keinen Teil an', $eigenerWert($sohn->id, (int) $vaterKanten['with_label']) === null);
-    speichern($sohn->id, ['taxmod_value' => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '0']]]);
+    speichern($sohn->id, ['taxmod_value_inner' => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '0']]]);
     $sohnAus = $eigenerWert($sohn->id, (int) $vaterKanten['with_label']);
     check('die Änderung steht am Knoten selbst, der Renderer bleibt der geerbte, der Vater bleibt auf «an»', $sohnAus !== null && (int) $sohnAus === 0 && gespeicherterRenderer($sohn->id) === $angebotVater[$vaterWahlId] && (int) $eigenerWert($vater->id, (int) $vaterKanten['with_label']) === 1);
 
@@ -953,14 +968,14 @@ if ($vaterWahlId !== 0) {
     $rolle       = $rollen[0] ?? null;
     check('die Kante `label_role` zeigt auf einen Knoten mit Rollen darunter', $rolle !== null);
     if ($rolle !== null) {
-        $lief = speichern($sohn->id, ['taxmod_value' => [(string) $renderKante => [(string) $vaterKanten['label_role'] => (string) $rolle->id]]]);
+        $lief = speichern($sohn->id, ['taxmod_value_inner' => [(string) $renderKante => [(string) $vaterKanten['label_role'] => (string) $rolle->id]]]);
         $gesetzt = $wpdb->get_var("SELECT v.value_ref FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id WHERE r.node_id = {$sohn->id} AND r.record_type = 'settings' AND v.relation_id = {$vaterKanten['label_role']}");
         check('ein Verweis am geerbten Renderer — `label_role` — lässt sich am Kind setzen und steht am Knoten selbst', $lief && (int) $gesetzt === $rolle->id, letzteMeldung() . ' / ' . var_export($gesetzt, true));
         check('und der Vater trägt keine Rolle', $wpdb->get_var("SELECT v.value_ref FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id WHERE r.node_id = {$vater->id} AND r.record_type = 'settings' AND v.relation_id = {$vaterKanten['label_role']}") === null);
         // ⚠️ *Und die Seite liest den Verweis wieder — sein zweiter Fund: «nach speichern wieder alter wert».*
-        $nameRolle = 'taxmod_value[' . $renderKante . '][' . $vaterKanten['label_role'] . ']';
+        $nameRolle = 'taxmod_value_inner[' . $renderKante . '][' . $vaterKanten['label_role'] . ']';
         check('die Seite des Kindes zeigt die gewählte Rolle danach als gewählt', (bool) preg_match('/name="' . preg_quote($nameRolle, '/') . '"[^>]*>.*?<option value="' . $rolle->id . '"[^>]*selected/s', seite($sohn->id, (string) $renderKante)));
-        $nameSchalter = 'taxmod_value[' . $renderKante . '][' . $vaterKanten['with_label'] . ']';
+        $nameSchalter = 'taxmod_value_inner[' . $renderKante . '][' . $vaterKanten['with_label'] . ']';
         check('und der Vater, der selbst wählt, zeigt sein `with_label` als «an»', (bool) preg_match('/<input type="checkbox"[^>]*name="' . preg_quote($nameSchalter, '/') . '"[^>]*checked/', seite($vater->id, (string) $renderKante)));
     }
 }

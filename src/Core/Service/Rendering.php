@@ -4310,9 +4310,16 @@ final class Rendering implements Presets
                 //
                 // ⚠️ *Ohne Teil bekommen die Felder trotzdem einen Namen, sobald ein Knoten gilt —
                 // sonst wären sie zu sehen und nicht zu bedienen.*
+                // ⚠️ **Die Zeilen unter einer Einstellung heissen anders als die Einstellung selbst** —
+                // sein Fund am 2026-09-10 an `Parts List`: «stelle table ein → speichern → form steht wieder
+                // da». *Die Wahl hiess `taxmod_value[<Kante>]`, die Zeilen darunter
+                // `taxmod_value[<Kante>][<innen>]` — **derselbe Name, einmal als Wert, einmal als Liste**,
+                // und PHP behält beim Lesen die Liste. Die Wahl kam nie an. Jetzt: `taxmod_value_inner[…]`.*
                 $fieldPrefix === '' || ($teil === null && $aufgeloest === 0)
                     ? ''
-                    : $fieldPrefix . '[' . $relation->id . ']',
+                    : ($relation->isSetting()
+                        ? (string) preg_replace('/^([A-Za-z_]+)/', '$1_inner', $fieldPrefix)
+                        : $fieldPrefix) . '[' . $relation->id . ']',
                 $locale,
                 $level,
                 $editable,

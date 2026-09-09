@@ -4069,6 +4069,21 @@ final class NodesScreen
             ? wp_unslash($_POST[self::VALUE_FIELD])
             : [];
 
+        // ⚠️ **Die Zeilen unter einer Einstellung kommen unter eigenem Namen** — sein Fund am 2026-09-10 an
+        // `Parts List`: «stelle table ein → speichern → form steht wieder da». *Vorher hiessen Wahl und
+        // Zeilen darunter gleich (`taxmod_value[<Kante>]` und `taxmod_value[<Kante>][<innen>]`); der Browser
+        // schickt beides, PHP behält die Liste, die Wahl kam nie an. Jetzt heissen die Zeilen
+        // `taxmod_value_inner[…]`, und beide werden gelesen — erst die Wahl, dann die Zeilen.*
+        $innere = isset($_POST[self::VALUE_FIELD . '_inner']) && is_array($_POST[self::VALUE_FIELD . '_inner'])
+            ? wp_unslash($_POST[self::VALUE_FIELD . '_inner'])
+            : [];
+
+        foreach ($innere as $rohAussen => $roh) {
+            if (! isset($eingereicht[$rohAussen]) && is_array($roh)) {
+                $eingereicht[$rohAussen] = $roh;
+            }
+        }
+
         if ($eingereicht === []) {
             return 0;
         }
@@ -4134,7 +4149,13 @@ final class NodesScreen
 
                 $this->putOneSettingValue($nodeId, $kante, 0, $kante, (string) $roh);
 
-                continue;
+                // ⚠️ *Kamen zur Wahl auch Zeilen darunter, folgen sie jetzt — nach der Wahl, damit sie
+                // zum gewählten Renderer gehören.*
+                if (! isset($innere[$rohAussen]) || ! is_array($innere[$rohAussen])) {
+                    continue;
+                }
+
+                $roh = $innere[$rohAussen];
             }
 
             // ⚠️ **Wessen Kanten hier gelten dürfen, hängt daran, wessen Satz der Teil ist** (`CD-5`).
