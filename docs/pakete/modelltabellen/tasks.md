@@ -2280,7 +2280,17 @@ was oben gewählt ist — sie sind der Boden der Rückfallkette, keine Übersetz
 
 ---
 
-[ ] TASK-066  Die Kantenart ist in der Feldzeile aenderbar
+[x] TASK-066  Die Kantenart ist in der Feldzeile aenderbar — gebaut 2026-09-09
+
+**Zusage** (`field-kind-check`, 17 Aussagen): *die eigene Feldzeile trägt die Art als dasselbe
+Auswahlfeld wie beim Anlegen, mit genau den drei Werten; die geerbte Zeile zeigt sie als Wort; ohne
+Werte wechselt die Art einfach, ein unbekanntes Wort ist keine Angabe. **Werte wandern mit**
+([D-690](../../NewConcept/90-decision-log.md)): Feld → Einstellung schiebt den einen Wert aus den
+Benutzersätzen in den `default`-Satz; Einstellung → Feld lässt ihn dort, er ist jetzt die Vorgabe
+(D-524); zwei verschiedene Werte sind ein Konflikt mit Satz, und nichts wandert.*
+
+*Die Form je Richtung ist die aus D-690, dort als `INFERRED` markiert — gebaut wie geschrieben, sein
+Ja zu genau dieser Form steht noch aus.*
 
 **2026-09-06, sein Auftrag** (mit Bild aus dem Feldblock der Knotenseite, Spalte `Kind`):
 *«müsste änderbar sein mit den schon benannten regeln»* — und auf die Rückfrage, wo:
@@ -2340,7 +2350,24 @@ nur ihr Anfangsbild und das Skript entscheiden, was man sieht.
 
 ---
 
-[ ] TASK-068  Die Auswahl an der Verwendungsstelle einschraenken — `choices`
+[ ] TASK-068  Die Auswahl an der Verwendungsstelle einschraenken — `choices` — **wartet auf eine Antwort (2026-09-09)**
+
+⚠️ **Nicht gebaut, mit Grund** (`PR-4`): *seine Frage im Auftrag — «wo wir das festmachen» — ist beim
+Lesen des Bestands eine echte geblieben. Drei Stücke fehlen, und das erste ist eine Entscheidung:*
+
+1. **Wo die Einstellungskante `choices` erklärt ist.** *Eine Einstellung ist eine Kante
+   ([D-529](../../NewConcept/90-decision-log.md)); `min` und `max` sind Kanten von `Integer` auf
+   eigene Knoten darunter. `choices` gilt für **jedes** Feld mit Auswahl, also an `Root` — wie
+   `renderer` und `read_only` —, oder am Typ `Node ref`, oder je Ziel. Das ist die Frage, die er
+   gestellt hat; sie ist nicht entschieden.*
+2. **Mehrere Werte in der Kette.** *`ModelValues::settingsAt()` nimmt je Schlüssel den **ersten**
+   Wert; die Ausschlüsse sind viele. Sie sind direkt am Satz der Verwendungsstelle zu lesen
+   (`appendValue`, `countValues` gibt es seit D-530), nicht über die Kette.*
+3. **Das Steuerelement:** *eine Hakenliste über der angebotenen Menge, alle an, Ausschlüsse ab —
+   gezeichnet aus `offeredUnder()`, und der Filter gehört in `optionsFor()` mit dem Unterbaum
+   (D-287) und der Konfliktprüfung nach D-680.*
+
+*Sobald 1 entschieden ist, sind 2 und 3 ein Tag. Ohne 1 wäre es eine Kante an einer geratenen Stelle.*
 
 **2026-09-07, sein Auftrag** (mit Bild aus der alten Umsetzung, Bereich «Choices» mit Hakenliste
 über den Präfixen): *«ich sollte bei der Verwendung von konstanten werte einschliessen/auschliessen
@@ -2413,7 +2440,11 @@ Einstellungswerten» — sie braucht keine Spalte: **seine Werte hängen alle an
 
 ---
 
-[ ] TASK-070  Der Installationsbildschirm gegen das Beschlossene prüfen
+[x] TASK-070  Der Installationsbildschirm gegen das Beschlossene prüfen — aufgegangen in TASK-080 (2026-09-09)
+
+*Die Messung ist gemacht, von der anderen Sitzung am selben Tag: die Liste steht in
+[`konfigurationsseite.md`](konfigurationsseite.md) und in TASK-080 unten, und der Bau wartet dort auf
+eine Entscheidung. Hier nichts zweimal.*
 
 **2026-09-07, sein Auftrag:** *«im menü fehlt so einiges was wir schon besprochen hatten bitte mal
 gegen checken und auch implementieren.»*

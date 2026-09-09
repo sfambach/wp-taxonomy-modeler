@@ -11,6 +11,7 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SeededRole;
@@ -427,6 +428,9 @@ final class Rendering implements Presets
      * characters, `symbol – form` — and a single role is its first step rather than a rival to it.*
      */
     public const LABEL_ROLE = 'label_role';
+
+    /** Der Schlüssel, unter dem die Art einer eigenen Feldzeile als Auswahlfeld mitreist (TASK-066). */
+    public const KIND_KEY = 'kind';
 
     /**
      * What the referenced nodes are called, for every reference in this batch, in one query
@@ -1793,6 +1797,15 @@ final class Rendering implements Presets
                 $configured[$drawn->key] = $drawn;
             }
 
+            // ⚠️ **Die Art ist in der eigenen Zeile änderbar** (TASK-066, [D-618](../../../docs/NewConcept/90-decision-log.md):
+            // *«der benutzer legt fest»*). *Dasselbe Auswahlfeld wie beim Anlegen
+            // ([D-665](../../../docs/NewConcept/90-decision-log.md): ein Auswahlfeld wird überall gleich
+            // gezeichnet), unter dem Namen der Zeile — der Rand liest es neben «wie oft». Eine geerbte
+            // Zeile zeigt die Art wie bisher als Wort: sie gehört dem Vorfahren.*
+            if ($rowSettings !== '' && $relation->fromNodeId === $declaredBy) {
+                $configured[self::KIND_KEY] = $this->kindChoice($relation, $rowSettings, $rowForm, $locale, $level);
+            }
+
             // ⚠️ **Der Bereich unter der Zeile, und er wird nur gezeichnet, wenn er offen ist**
             // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Gezeichnet von
             // {@see SettingsRenderer} — dem Einstellungsbereich, die es für genau diesen Zweck schon gibt —, damit
@@ -2085,6 +2098,44 @@ final class Rendering implements Presets
         return str_contains($vorlage, '%s') ? sprintf($vorlage, $name) : trim($vorlage . ' ' . $name);
     }
 
+    /**
+     * Die Art einer eigenen Feldzeile als Auswahlfeld — drei Werte, die der Benutzer festlegt.
+     *
+     * ⚠️ *[D-639](../../../docs/NewConcept/90-decision-log.md): die Kantenart ist eine Spalte mit drei
+     * Werten; [D-618](../../../docs/NewConcept/90-decision-log.md): der Benutzer legt sie fest. Die
+     * Wörter sind die Werte selbst — so stehen sie auch im Anlegeformular und in der Spalte «Kind».*
+     */
+    private function kindChoice(Relation $relation, string $rowSettings, string $formId, string $locale, Level $level): RenderedSetting
+    {
+        $options = [];
+
+        foreach (RelationKind::cases() as $kind) {
+            $options[$kind->value] = $kind->value;
+        }
+
+        $setting = new ResolvedSetting(self::KIND_KEY, TypedValue::ofText($relation->kind->value), $relation->id, true);
+
+        return new RenderedSetting(
+            self::KIND_KEY,
+            SettingShape::ARegisteredName,
+            null,
+            $setting,
+            $this->renderers->byName(ChoiceRenderer::NAME)->render(
+                $relation,
+                new RenderContext(
+                    purpose: Purpose::Edit,
+                    value: $setting->value,
+                    settings: [],
+                    locale: $locale,
+                    level: $level,
+                    fieldName: $rowSettings . '[' . self::KIND_KEY . ']',
+                    surroundings: new Surroundings(options: $options, mayBeNothing: false, formId: $formId)
+                )
+            ),
+            ChoiceRenderer::NAME
+        );
+    }
+
     private function wortAus(array $woerter, string $schluessel): string
     {
         foreach ($woerter as $control) {
@@ -2313,7 +2364,7 @@ final class Rendering implements Presets
         Level $level,
         bool $editable,
     ): string {
-        unset($configured[SettingKey::Multiplicity->value]);
+        unset($configured[SettingKey::Multiplicity->value], $configured[self::KIND_KEY]);
 
         if ($configured === []) {
             return '';

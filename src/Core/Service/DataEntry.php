@@ -8,6 +8,7 @@ use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
@@ -837,6 +838,71 @@ final class DataEntry
      * Ziel mit eigenen Feldern, sagt {@see self::refuseUnwritable()} Nein — **die Entscheidung fällt
      * dort und wird hier nicht geraten.***
      */
+    /**
+     * Wechselt eine Kante ihre Art, wandern ihre Werte mit ([D-690](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Sein Wort: «Werte wandern mit».** *Die Form je Richtung ist die aus D-690, `INFERRED`:*
+     *
+     * - **Einstellung → Feld:** der Wert wohnt im `default`-Satz, und ein Wert dort **ist** die Vorgabe
+     *   eines Feldes ([D-524](../../../docs/NewConcept/90-decision-log.md)). Nichts wandert, weil der
+     *   Ort schon der richtige ist.
+     * - **Feld → Einstellung:** die Werte wohnen in Benutzersätzen, eine Einstellung hat **einen** Wert
+     *   je Knoten. Ein Wert (oder überall derselbe) wandert in den `default`-Satz und verlässt die
+     *   Benutzersätze; verschiedene Werte sind ein Konflikt — *ein Wechsel, der einen von mehreren
+     *   still auswählt, wäre die Entscheidung, die [D-680](../../../docs/NewConcept/90-decision-log.md)
+     *   beim Verengen fangen will.*
+     *
+     * Vor dem Umstellen der Art zu rufen, weil die alte Art hier gelesen wird.
+     *
+     * @return int Wie viele Wertzeilen gewandert sind.
+     */
+    public function moveValuesForKindChange(int $nodeId, Relation $relation, RelationKind $to): int
+    {
+        if ($relation->isSetting() || $to !== RelationKind::Setting) {
+            return 0;
+        }
+
+        $gefunden = [];
+
+        foreach ($this->records->ofNode($nodeId) as $satz) {
+            if ($satz->recordType !== RecordType::User || $satz->relationId !== 0) {
+                continue;
+            }
+
+            foreach ($this->valuesOn($satz->id, $relation->id, '') as $wert) {
+                if (! $wert->value->isNothing()) {
+                    $gefunden[$wert->value->describe()] = ['satz' => $satz->id, 'wert' => $wert->value];
+                }
+            }
+        }
+
+        if ($gefunden === []) {
+            return 0;
+        }
+
+        if (count($gefunden) > 1) {
+            throw NotYetStorable::kindChangeNeedsOneValue($relation->name, count($gefunden));
+        }
+
+        $einer = array_values($gefunden)[0];
+        $this->putSettingAt($nodeId, $relation->id, 0, $einer['wert']);
+
+        $gewandert = 0;
+
+        foreach ($this->records->ofNode($nodeId) as $satz) {
+            if ($satz->recordType !== RecordType::User || $satz->relationId !== 0) {
+                continue;
+            }
+
+            foreach ($this->valuesOn($satz->id, $relation->id, '') as $wert) {
+                $this->clear($satz->id, $relation->id);
+                ++$gewandert;
+            }
+        }
+
+        return $gewandert;
+    }
+
     public function putSettingAt(
         int $nodeId,
         int $aussen,

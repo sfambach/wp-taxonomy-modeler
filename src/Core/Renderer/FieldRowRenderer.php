@@ -162,7 +162,7 @@ final class FieldRowRenderer extends RendererNode
             // ⚠️ **The target arrives as a name, not as an id to look up** — resolving it is a
             // query and one per row is `CD-7`'s loop, which is why `refersTo` exists at all.
             . $this->cell($this->targetCell($context), 'taxmod-field-target', false, true)
-            . $this->cell($subject->kind->value, 'taxmod-field-kind', true)
+            . $this->kindCell($subject, $context)
             . $this->origin($context)
             . $this->cell($this->multiplicity($context), 'taxmod-field-many', false, true)
             . $this->valueCell($context)
@@ -485,6 +485,20 @@ final class FieldRowRenderer extends RendererNode
             . '</a>'
             . $wahl
             . '</span>';
+    }
+
+    /**
+     * Die Art — als Auswahlfeld, wo der Abstieg eines mitgegeben hat (eigene Zeile, TASK-066), sonst als Wort.
+     */
+    private function kindCell(Relation $subject, RenderContext $context): string
+    {
+        $drawn = $context->surroundings->configured['kind'] ?? null;
+
+        if ($drawn !== null && $drawn->wasDrawn()) {
+            return $this->cell($drawn->result->markup, 'taxmod-field-kind', false, true);
+        }
+
+        return $this->cell($subject->kind->value, 'taxmod-field-kind', true);
     }
 
     private function cell(string $inner, string $class, bool $code = false, bool $trusted = false): string

@@ -60,6 +60,18 @@ final class NotYetStorable extends DomainError
      * geraten:** eine der Zeilen zu treffen wäre in der Hälfte der Fälle die falsche, und man sähe es
      * erst an den Daten.*
      */
+    /**
+     * Ein Feld wird eine Einstellung, aber seine Benutzersätze sagen Verschiedenes (D-690).
+     */
+    public static function kindChangeNeedsOneValue(string $attribute, int $anzahl): self
+    {
+        return new self(sprintf(
+            '«%s» cannot become a setting yet: its entries hold %d different values, and a setting holds one. Say which one first.',
+            $attribute,
+            $anzahl
+        ));
+    }
+
     public static function thatFieldHasSeveralValues(string $attribute, int $anzahl): self
     {
         return new self(sprintf(

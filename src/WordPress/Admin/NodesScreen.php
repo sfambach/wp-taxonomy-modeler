@@ -3363,9 +3363,19 @@ final class NodesScreen
      * ⚠️ *The multiplicity is written through the ordinary settings path, so `D-312`'s narrowing rule
      * still applies and a widening is still refused by the core rather than here.*
      */
-    private function saveField(int $id, int $relation, string $name, string $multiplicity): void
+    private function saveField(int $id, int $relation, string $name, string $multiplicity, string $kind = ''): void
     {
         $existing = $this->editor->ownAttribute($id, $relation);
+
+        // ⚠️ **Die Art wechselt, und die Werte wandern mit** (TASK-066, [D-690](../../../docs/NewConcept/90-decision-log.md)).
+        // *Erst die Werte, dann die Art — die Wanderung muss die alte Art kennen. Ein unbekanntes Wort
+        // ist keine Angabe (`fromStorage`-Regel), kein Fehler.*
+        $gewuenschteArt = $kind === '' ? null : RelationKind::tryFrom($kind);
+
+        if ($gewuenschteArt !== null && $gewuenschteArt !== $existing->kind) {
+            $this->data->moveValuesForKindChange($id, $existing, $gewuenschteArt);
+            $existing = $this->editor->setKind($id, $relation, $gewuenschteArt);
+        }
 
         if ($name !== '' && $name !== $existing->name) {
             $this->editor->renameField($id, $relation, $name);
@@ -3642,11 +3652,16 @@ final class NodesScreen
             //
             // ⚠️ *«wie oft» geht weiter seinen eigenen Weg: es ist eine **Spalte** der Kante
             // ([D-351](../../../docs/NewConcept/90-decision-log.md)) und keine Zeile in einem Satz.*
-            if ($name === '' && $wieOft === '') {
+            // ⚠️ *Die Art aus der Zeile (TASK-066) — dieselbe Adresse wie «wie oft», neben ihr.*
+            $art = isset($angaben[$kante->id][Rendering::KIND_KEY]) && ! is_array($angaben[$kante->id][Rendering::KIND_KEY])
+                ? sanitize_key((string) $angaben[$kante->id][Rendering::KIND_KEY])
+                : '';
+
+            if ($name === '' && $wieOft === '' && $art === '') {
                 continue;
             }
 
-            $this->saveField($nodeId, $kante->id, $name, $wieOft);
+            $this->saveField($nodeId, $kante->id, $name, $wieOft, $art);
         }
     }
 
@@ -3710,7 +3725,7 @@ final class NodesScreen
             $key = sanitize_key((string) $schluessel);
 
             // «wie oft» ist eine Spalte der Kante und wird von saveField() geschrieben.
-            if ($key === SettingKey::Multiplicity->value || is_array($roh)) {
+            if ($key === SettingKey::Multiplicity->value || $key === Rendering::KIND_KEY || is_array($roh)) {
                 continue;
             }
 

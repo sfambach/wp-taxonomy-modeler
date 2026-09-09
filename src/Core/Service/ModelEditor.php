@@ -1303,7 +1303,22 @@ final class ModelEditor
             $art = $branch->relationKind();
         }
 
-        $marked = $relation->withKind($art);
+        return $this->setKind($ownerId, $relationId, $art);
+    }
+
+    /**
+     * Die Art einer eigenen Kante auf einen der drei Werte stellen — der Benutzer legt sie fest.
+     *
+     * ⚠️ *[D-618](../../../docs/NewConcept/90-decision-log.md): «der benutzer legt fest, automation
+     * machen wir später aber auch nur vielleicht»; [D-639](../../../docs/NewConcept/90-decision-log.md):
+     * drei Werte, je eine Klasse. **Was mit den Werten geschieht, wenn die Art wechselt, sagt
+     * [D-690](../../../docs/NewConcept/90-decision-log.md) und tut {@see DataEntry::moveValuesForKindChange()}** —
+     * vor diesem Aufruf, weil sie die alte Art kennen muss.*
+     */
+    public function setKind(int $ownerId, int $relationId, RelationKind $art): Relation
+    {
+        $relation = $this->ownAttribute($ownerId, $relationId);
+        $marked   = $relation->withKind($art);
 
         if ($marked === $relation) {
             return $relation;
@@ -1312,7 +1327,9 @@ final class ModelEditor
         $this->changelog->record(
             $relation->id,
             'relation',
-            $isSetting ? 'field became a setting' : 'setting became a field',
+            $art === RelationKind::Setting
+                ? 'field became a setting'
+                : ($relation->isSetting() ? 'setting became a field' : 'field changed its kind'),
             $this->relationState($relation),
             $this->relationState($marked),
             $marked->version

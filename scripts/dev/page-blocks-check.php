@@ -139,7 +139,16 @@ function tabelleUnter(string $html, string $ueberschrift, string $bisUeberschrif
         preg_match_all('/<t[dh]\b[^>]*>(.*?)<\/t[dh]>/s', $zeile, $zellen);
 
         $aus[] = array_map(
-            static fn (string $z): string => trim((string) preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($z)))),
+            static function (string $z): string {
+                // ⚠️ *Ein Auswahlfeld zählt mit seinem gewählten Eintrag (TASK-066): die Art steht in
+                // der eigenen Zeile als Auswahl, und die Zelle soll sagen, was gewählt ist — nicht
+                // die drei Wörter hintereinander.*
+                if (preg_match('/<option value="([^"]*)"[^>]*\bselected\b/', $z, $gewaehlt)) {
+                    $z = $gewaehlt[1];
+                }
+
+                return trim((string) preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($z))));
+            },
             $zellen[1]
         );
     }

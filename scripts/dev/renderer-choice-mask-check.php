@@ -1673,6 +1673,9 @@ $erklaert = $wpdb->get_col(
 // Einstellungskante. Sie kann an keiner Kette erklaert sein — und sie gehoert trotzdem in der Einstellungsbereich,
 // weil sie zur Verwendungsstelle gehoert und nur dort zu aendern ist.*
 $erklaert[] = SettingKey::Multiplicity->value;
+// ⚠️ *Und die **Art** der Kante, aus demselben Grund (TASK-066): eine Spalte an der Kante, in der
+// eigenen Zeile als Auswahlfeld unter demselben Namen wie «wie oft» — keine Einstellungskante.*
+$erklaert[] = Rendering::KIND_KEY;
 
 $ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
 
