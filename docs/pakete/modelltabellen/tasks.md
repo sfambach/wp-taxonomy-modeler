@@ -2533,7 +2533,28 @@ nächste Mal bewusst bewegt oder der Bestand darunter gekürzt wurde.*
 
 ---
 
-[ ] TASK-075  Das Vokabular, das D-506 abgeschafft hat, lebt im Kode weiter — und sperrt aus
+[x] TASK-075  Das Vokabular, das D-506 abgeschafft hat, lebt im Kode weiter — und sperrt aus — gebaut 2026-09-09, und das Sperren war schon gefallen
+
+**Was beim Bauen herauskam** (`PR-7`): *das Aussperren gab es beim Messen am Morgen nicht mehr. Der
+Bau zu [D-682](../../NewConcept/90-decision-log.md) hatte es geschlossen: die Tafel zeichnet jeden im
+Modell erklärten Namen **über seine Kante** — `with_label` als Schalter, `label_role` als Auswahl —,
+und das Speichern findet die Kante am Namen oder an der Nummer. `renderer-choice-mask-check` hält
+genau das an `converter`, `label_role`, `with_label`; **der Wächter aus dem Lösungsweg war also schon
+da.** Die Zählung «4 von 14 kennt die Aufzählung nicht» stimmte, nur die Folgerung «und sperrt aus»
+war die vom 2026-09-07 und nicht mehr die von heute.*
+
+**Gebaut, und damit ist von D-529s Liste eingelöst, was einlösbar war:** *`Narrowing` ist gefallen
+samt `direction()` und `isBounding()` — kein Leser, ein Test, der die gefallene Regel behauptete, mit
+ihr. Die letzte Methode, die einen freien Namen als typlos las (`settingValue`, kein Aufrufer), ist
+weg. Die drei Kommentare, die «once fixed never unfixed» und «narrowing means higher» behaupteten,
+sagen jetzt, was gilt (D-399). `SettingKey` trägt im Kopf, was es seither ist: eine Liste
+reservierter Wörter, keine Liste erlaubter.*
+
+**Bewusst stehengelassen, mit Grund:** *`SettingKey` selbst — 37 Verwendungen, fast alle als Name
+(`Multiplicity`, `Renderer`, `ReadOnly`); ein Umbenennen nach `CD-9` wäre ein Durchgang durch
+29 Dateien ohne eine neue Aussage, und `applyingTo()` / `typeFor()` tragen noch den Rückfall der
+Vorschau ohne Modellzugang. `SettingShape`, `SettingCategory`, `ResolvedSetting` sind Darstellung
+(D-506: «ein Wort für den Benutzer ist keine Kategorie im Modell»).*
 
 **2026-09-09, sein Auftrag:** *«deine findings zu db settings und relations kannst du hierfür eine
 korrekturliste erstellen»*. Dies ist der erste von drei Einträgen; der vierte Befund — ob D-582 und

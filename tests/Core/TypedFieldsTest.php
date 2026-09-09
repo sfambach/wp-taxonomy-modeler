@@ -5,7 +5,6 @@ namespace Taxmod\Tests\Core;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NotAValueOfThatType;
-use Taxmod\Core\Model\Narrowing;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingKey;
@@ -365,7 +364,6 @@ final class TypedFieldsTest extends TestCase
         // ⚠️ R17 names min, max and step in one breath as settings a numeric **node** has. `step`
         // was briefly a free key here, which made one of three siblings an outsider.
         self::assertTrue(SettingKey::isReserved('step'));
-        self::assertSame(Narrowing::Free, SettingKey::Step->direction());
 
         foreach ([new SpinnerRenderer(), new SliderRenderer()] as $renderer) {
             $result = $renderer->render(

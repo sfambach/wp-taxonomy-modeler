@@ -3,7 +3,12 @@
 namespace Taxmod\Core\Model;
 
 /**
- * The settings the engine owns — and which way each of them may move down the chain.
+ * Die Namen, die der Motor selbst liest — reserviert, damit ein Autor sie nicht überschreibt (D-084).
+ *
+ * ⚠️ **Eine Liste reservierter Wörter, keine Liste erlaubter** (TASK-075, [D-506](../../../docs/NewConcept/90-decision-log.md),
+ * [D-529](../../../docs/NewConcept/90-decision-log.md)): *eine Einstellung ist eine Kante, und die Tafel
+ * zeichnet jeden im Modell erklärten Namen über seine Kante — auch die, die hier nicht stehen.
+ * `Narrowing` und die Richtung je Schlüssel sind mit D-529 gefallen: «die Kette gibt es nicht mehr».*
  *
  * ⚠️ **These names are reserved** (D-084). There is no `scope` column and no prefix: some keys
  * are the engine's, so an author cannot define a setting called `hide` and silently break
@@ -58,13 +63,13 @@ enum SettingKey: string
      * type is the point of them rather than an accident.*
      */
 
-    /** Fixed here and below. Once fixed, never unfixed further down. */
+    /** Nicht änderbar an dieser Stelle — und weiter unten wieder änderbar, wenn jemand es sagt (D-399). */
     case ReadOnly = 'read_only';
 
-    /** Smallest permitted value. Narrowing means **higher**. */
+    /** Smallest permitted value. */
     case Min = 'min';
 
-    /** Largest permitted value. Narrowing means **lower**. */
+    /** Largest permitted value. */
     case Max = 'max';
 
     // Choosing — they pick within the bounds.
@@ -258,28 +263,6 @@ enum SettingKey: string
     {
         return $this === self::Renderer;
     }
-    public function isBounding(): bool
-    {
-        return $this->direction() !== Narrowing::Free;
-    }
-
-    public function direction(): Narrowing
-    {
-        return match ($this) {
-            self::Multiplicity                          => Narrowing::BySubset,
-            self::Min                              => Narrowing::OnlyUp,
-            self::Max                              => Narrowing::OnlyDown,
-            // ⚠️ **`hide` and `read_only` are free in both directions** ([D-399](../../../docs/NewConcept/90-decision-log.md)),
-            // and this line was the half of that decision that never got built. *It still said
-            // `OnceOnAlwaysOn`, so a descendant could not reveal what an ancestor hid — which is
-            // exactly what the owner stated as fact and I only implemented the other half of.*
-            //
-            // ⚠️ *The one-way rule that remains lives on `Multiplicity` and on the ranges, where it is
-            // about what a classification **guarantees**. Hiding a field guarantees nobody anything.*
-            default                                     => Narrowing::Free,
-        };
-    }
-
     /** Whether a name belongs to the engine and may therefore not be used freely. */
     public static function isReserved(string $key): bool
     {

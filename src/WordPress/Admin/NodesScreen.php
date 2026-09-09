@@ -3247,43 +3247,6 @@ final class NodesScreen
      */
 
     /**
-     * Turn what somebody typed into a typed value.
-     *
-     * ⚠️ **A scaffolding guess, and deliberately a crude one.** The real editor knows the type
-     * of the setting and offers the right control; here a number is a number, everything else
-     * is text. Nothing about this survives the renderers.
-     */
-    /**
-     * A submitted setting value, read as the type its **key** declares.
-     *
-     * ⚠️ **The last guesser in the codebase, and it is gone.** It used to read a number as a
-     * number and everything else as text — the same regex guessing [D-354](../../../docs/NewConcept/90-decision-log.md)
-     * removed from record values, left behind here because nothing said what type a setting has.
-     * {@see SettingKey::typeFor()} says it now, so `mandatory` reads as a boolean and `range_min`
-     * on a decimal node as an exact decimal.
-     *
-     * ⚠️ **Two cases genuinely have no declared type, and they keep characters — named rather
-     * than hidden:** a **free key**, which belongs to whoever made it and about which the engine
-     * knows nothing, and a *borrowing* key on a node that is not a simple data type, which has no
-     * shape to borrow. *Neither is a guess about a value; both are the absence of a claim.*
-     */
-    private function settingValue(int $nodeId, string $key, string $raw): TypedValue
-    {
-        $raw = trim($raw);
-
-        if ($raw === '') {
-            return TypedValue::nothing();
-        }
-
-        $node = $this->editor->find($nodeId);
-        $type = $node === null
-            ? null
-            : SettingKey::tryFrom($key)?->typeFor($this->rendering->typeOfNode($node));
-
-        return $type?->valueFrom($raw) ?? TypedValue::ofText($raw);
-    }
-
-    /**
      * ⚠️ **Read once per request, not once per caller.** *Three places ask for the selected node and
      * measuring showed two of them hitting the database — the owner's ask was «simply make sure objects
      * are not loaded twice» ([D-455](../../../docs/NewConcept/90-decision-log.md)), and this is the
