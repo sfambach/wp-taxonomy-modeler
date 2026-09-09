@@ -2447,3 +2447,306 @@ soll), oder eine Schranke im Steuerelement (dann ist es schlicht ein Fehler).*
 
 ⚠️ *Und seine Zahl ist eine eigene Aussage: **die Grenzen eines `int` sind ±int_max**, nicht 255 —
 `display_size` reicht bis 255 ([D-660](../../NewConcept/90-decision-log.md)), der Wertebereich nicht.*
+
+---
+
+[ ] TASK-073  Ein schreibender Wächter stirbt an einem parallelen Lauf
+
+**2026-09-09, sein Auftrag:** *«kannst du die korrektur der beiden wächter dort bitte anhängen»*, nach
+dem Befund aus dem Prüflauf desselben Morgens.
+
+⚠️ **Gemessen:** *`cleanup-screen-check` brach im vollen Randlauf mit einem Deadlock ab — MySQL hat ihn
+festgehalten: um 07:26:35 legte der Wächter seinen Knoten `__cl Modell` an, und **eine zweite
+Verbindung** legte in derselben Sekunde Knoten unter demselben Elternknoten an, mit 84 offenen
+Schreibvorgängen. Zeitgleich lief eine zweite interaktive Sitzung auf demselben Rechner. Vier
+Wiederholungen danach, jede allein: grün. Kein Rückstand unter dem Elternknoten.*
+
+⚠️ **Es ist kein Fehler des Wächters, sondern eine Eigenschaft des Netzes:** *alle Wächter arbeiten in
+derselben Datenbank und im selben Bereich des Modells, und die Klammer aus `lib/no-write.php` hält
+jede Zeile bis zum Prozessende gesperrt. **Zwei Läufe zugleich sind damit ein Deadlock mit Ansage** —
+und der eine, der verliert, meldet rot, obwohl seine Aussage stimmt. Ein Wächter, der ohne Grund rot
+wird, wird übersehen (siehe `doc-reach-stillgelegt`, [D-574](../../NewConcept/90-decision-log.md)).*
+
+⚠️ **Was zu entscheiden ist, bevor gebaut wird** (`PR-4`): *entweder **ein** Lauf zur Zeit — eine Sperre,
+die ein zweiter Start sieht und mit einem klaren Satz wartet oder abbricht —, oder jeder Wächter auf
+seiner eigenen Wiese, so dass sich zwei nicht berühren. Das zweite ist teurer und schützt nicht gegen
+denselben Wächter zweimal. **Nicht gewählt:** ein Wiederholen bei Deadlock — es versteckt genau das,
+was hier sichtbar wurde.*
+
+**Lösungsweg (2026-09-09, `PROPOSED` — sein Auftrag: «kannst du auch gleich lösungen erarbeiten»):**
+
+*Die Sperre gehört in die Klammer, nicht in die Wächter.* `lib/no-write.php` ist die **eine** Datei,
+die jeder schreibende Lauf unmittelbar nach `wp-load` trägt — `no-model-write-check` erzwingt das
+schon. Wer dort eine Sperre setzt, hat alle 50 Läufe auf einmal, ohne einen einzigen anzufassen.
+
+1. **Die Sperre ist eine benannte Datenbanksperre**, geholt vor `START TRANSACTION`, mit einer
+   Wartezeit von einigen Sekunden. MySQL gibt sie beim Trennen der Verbindung von selbst frei — also
+   auch nach einem `exit(1)` in Zeile 200, genau wie die Klammer selbst. *Kein Sperrdatei-Mechanismus:
+   eine Datei überlebt einen abgestürzten Prozess, eine Verbindungssperre nicht.*
+2. **Wer sie nicht bekommt, sagt es und bricht ab** — mit einem eigenen Rückgabewert, nicht mit dem
+   der roten Aussage. Der Satz nennt, dass ein anderer Lauf sie hält. **Nicht warten bis zum Ende des
+   anderen:** ein voller Randlauf dauert Minuten, und ein Wächter, der stumm Minuten hängt, sieht aus
+   wie einer, der hängt.
+3. **Der Wächter dafür ist `no-model-write-check` selbst:** er prüft schon, dass die Klammer da ist und
+   nichts ein zweites `START TRANSACTION` beginnt. Dazu kommt eine Zusage: *zwei Prozesse mit der
+   Klammer zugleich, der zweite bekommt den eigenen Rückgabewert und den Satz.* Das ist am Kind-Prozess
+   messbar, ohne die Datenbank zu berühren.
+4. **Die Schleife in `tests/README.md` bleibt, wie sie ist.** Sie läuft seriell; die Sperre schützt den
+   Fall, der dort nicht steht — zwei Fenster, zwei Sitzungen.
+
+*Was das nicht löst und nicht lösen soll:* ein Wächter, der **ohne** Klammer schreibt. Den gibt es nach
+der Messung vom 2026-09-06 nicht mehr, und `no-model-write-check` hält es so.
+
+---
+
+[ ] TASK-074  `always-on` steht mit 0 Byte auf seiner Decke — Befund, keine Änderung
+
+**2026-09-09, derselbe Auftrag.** ⚠️ **Gemessen:** *CLAUDE.md, das Arbeitsmodell und AGENTS.md
+summieren sich auf genau 47652 Bytes, und das ist die Decke. Die nächste hinzugefügte Zeile in einer
+der drei Dateien macht den Wächter rot.*
+
+⚠️ **Das ist kein Fehler, sondern seine Entscheidung, und der Wächter sagt es selbst:** *«Am 2026-09-06
+auf 47652 Bytes angehoben — seine Entscheidung, sein Wort: ‹anheben›»* und *«Die Decke steht bewusst
+genau auf dem heutigen Stand und nicht darüber. … Eine Decke mit Luft darin wäre keine.»* **Die
+Korrektur ist also keine am Wächter.** Was hier steht, ist die Warnung an den Nächsten, der eine der
+drei Dateien anfasst: **die Frage ist «was kommt dafür weg?», nicht «wie hoch darf es»** — und wenn er
+die Decke doch anheben will, ist das sein Wort und eine Zeile im Entscheidungsbuch, kein Nebeneffekt
+eines Umbaus.
+
+⚠️ *Zu tun ist nichts, solange niemand schreibt. Der Eintrag wird geschlossen, sobald die Decke das
+nächste Mal bewusst bewegt oder der Bestand darunter gekürzt wurde.*
+
+---
+
+[ ] TASK-075  Das Vokabular, das D-506 abgeschafft hat, lebt im Kode weiter — und sperrt aus
+
+**2026-09-09, sein Auftrag:** *«deine findings zu db settings und relations kannst du hierfür eine
+korrekturliste erstellen»*. Dies ist der erste von drei Einträgen; der vierte Befund — ob D-582 und
+D-586 zurückgezogen sind — ist keiner: [D-643](../../NewConcept/90-decision-log.md) hat beide am
+2026-09-05 zurückgenommen, mit der Messung «je 0 Zeilen». *Ich hatte behauptet, keine Zeile dazu zu
+finden; sie steht in D-643 und in `package.md`.*
+
+⚠️ **Der Beschluss:** [D-506](../../NewConcept/90-decision-log.md): *«Das Wort ‹Einstellung›
+verschwindet. Es gibt Felder … Mehr ist es nicht.»* Und: *«damit verschwindet ein ganzes Vokabular,
+nicht nur eine Tabelle: `SettingKey`, `SettingRecord`, `SettingShape`, der `Settings`-Dienst …»*
+[D-529](../../NewConcept/90-decision-log.md) vollzieht es und nimmt `Narrowing` mit: *«alle vier Fälle
+beschreiben, wie ein Wert die Auflösungskette hinunterwandern darf, und die Kette gibt es nicht mehr.»*
+
+⚠️ **Gemessen am 2026-09-09:** *`SettingKey` steht in **29** Dateien, `SettingShape` in 6,
+`ResolvedSetting` in 6, `SettingCategory` in 4, `Narrowing` in 3. `SettingRecord` ist weg.* **Und die
+Aufzählung tut Schaden, nicht nur Unordnung:** *von **14** Einstellungsnamen im Modell kennt sie
+**4 nicht** — `orientation`, `exponent`, `with_label`, `label_role`. [D-682](../../NewConcept/90-decision-log.md)
+hat an genau dieser Liste gemessen, dass sie die Einstellungstafel absperrte: «eine geschlossene Liste
+sperrte einen offenen Mechanismus ab».*
+
+⚠️ **Was davon bleiben darf, ist entschieden, nicht zu erfinden:** *[D-084](../../NewConcept/90-decision-log.md)
+reserviert die Namen, die der Motor selbst liest — `hide`, `read_only`, `renderer` — damit ein Autor
+sie nicht überschreibt. **Das ist eine Liste reservierter Wörter, keine Liste erlaubter.** Der Umbau
+ist: jede Stelle, die «kenne ich den Namen?» fragt, fragt künftig «gibt es die Kante?» — und die
+Aufzählung schrumpft auf das, was der Motor wirklich liest, oder fällt.*
+
+**Reihenfolge nach `PR-9`:** Wächter zuerst — ein Lauf, der an einer frei benannten Einstellungskante
+(`orientation`) dieselbe Tafel, dasselbe Speichern und dieselbe Auflösung verlangt wie an `min` —,
+dann die Leser, dann das Aufräumen.
+
+**Lösungsweg (2026-09-09, `PROPOSED`):**
+
+*Zuerst die Messung, die den Umbau klein macht:* von den Aufrufen an `SettingKey` sind **fast alle
+Namen, keine Fragen** — `Multiplicity` 13 mal, `Renderer` 11, `ReadOnly` 8, `Converter` 4, und so
+weiter. Das sind die reservierten Wörter aus D-084, und die dürfen bleiben. **Nur vier Stellen
+fragen «kenne ich den Namen?»** — `tryFrom()` in `RenderedSetting`, zweimal in `Rendering`, einmal
+im `NodesScreen` —, und genau dort fällt eine freie Einstellung durch. Dazu je einmal `applyingTo()`,
+`isRelationOnly()`, `defaultSwitch()` und dreimal `typeFor()`.
+
+1. **Die vier `tryFrom()`-Stellen werden zu «gibt es die Kante?».** Was sie heute aus dem Namen
+   ableiten — den Typ, die Form, die Vorgabe —, sagt die Einstellungskante und ihr Ziel selbst:
+   der Typ ist der Typ des Zielknotens, die Vorgabe der `default`-Satz, die Form folgt aus dem Typ
+   (`NodeRef` → Auswahl, `Bool` → Schalter, sonst Eingabe). *Das ist [D-556](../../NewConcept/90-decision-log.md),
+   schon entschieden: «keine neue Regel, sondern zwei bestehende zusammengelegt».*
+2. **`typeFor()` und `applyingTo()` fallen**, denn beides beantwortet die Kette
+   ([D-668](../../NewConcept/90-decision-log.md): «welche Einstellungen eine Verwendungsstelle
+   anbietet, sagt allein die Kette ihres Ziels»). Eine Liste, die es «weiss», ist die zweite Ablage,
+   die D-578 verbietet.
+3. **`isRelationOnly()` ist die eine echte Ausnahme** — `multiplicity` gilt nur an der Verwendungsstelle
+   und ist seit [D-528](../../NewConcept/90-decision-log.md) eine **Spalte**, keine Kante. Sie gehört
+   gar nicht in eine Einstellungsliste; die eine Stelle liest die Spalte.
+4. **Was danach übrig bleibt, ist `SettingKey` als Liste reservierter Namen mit `isReserved()`** — und
+   nichts weiter. Ob sie dann noch «SettingKey» heissen darf oder «ReservedName» heissen muss, ist
+   `CD-9` und keine Konzeptfrage.
+5. **`Narrowing` fällt ersatzlos** — D-529 sagt es wörtlich, und die drei Stellen sind die Aufzählung
+   selbst, `SettingKey::direction()` und ein Kommentar in `Schema`. `SettingShape`, `SettingCategory`,
+   `ResolvedSetting` sind Darstellung (Renderer, Tafel) und **keine Kategorie im Modell**; sie bleiben,
+   bis die Tafel selbst umgebaut wird — D-506: «Ein Wort für den Benutzer ist keine Kategorie im
+   Modell.»
+
+**Der Wächter zuerst**, damit der Umbau nicht rät: ein Lauf legt eine Einstellungskante mit einem
+Namen an, den keine Aufzählung kennt, an einem Knoten ohne Sonderfall — und verlangt, dass die Tafel
+sie zeigt, das Speichern sie schreibt und die Auflösung sie am Kind findet. **Heute wäre er an der
+Tafel rot** (D-682 hat es gemessen), und das ist der Beleg, den der Umbau braucht.
+
+---
+
+[ ] TASK-076  `FieldType` trägt die Kantenart ein zweites Mal
+
+**2026-09-09, derselbe Auftrag.** ⚠️ **Der Beschluss:** [D-621](../../NewConcept/90-decision-log.md):
+*«Die Kante sagt, was etwas hier ist — nicht der Knoten und nicht der Ast. `nodes.field_type` faellt.»*
+Und [D-639](../../NewConcept/90-decision-log.md): *die Kantenart ist **eine** Spalte mit drei Werten
+und je einer Klasse dahinter.*
+
+⚠️ **Gemessen:** *die Spalte ist gefallen (TASK-059), die Aufzählung `FieldType` mit den Fällen
+`Setting` und `Model` steht noch in 4 Dateien. Der Speicher baut sie aus `relations.kind` nach: ein
+Knoten gilt als `Setting`, wenn **alle** Kanten auf ihn Einstellungskanten sind. **Das ist eine
+Ableitung, keine zweite Ablage** — erlaubt nach `CD · Prohibited` («everything else derives»).*
+
+⚠️ **Der Befund ist deshalb kleiner als der Name:** *es geht nicht um eine Spalte, sondern darum, ob
+eine Frage «was für ein Knoten ist das?» überhaupt noch gestellt werden darf, wenn D-621 sagt, dass die
+Kante es sagt. Wo `FieldType` gelesen wird, wird eine Knotenfrage gestellt, die eine Kantenfrage sein
+müsste — und an einem Knoten wie `Integer`, auf den Benutzer- **und** Autorenkanten zeigen, hat die
+Knotenfrage keine richtige Antwort.* **Zu tun:** die 4 Stellen einzeln lesen; jede, die die Kante
+schon in der Hand hat, fragt die Kante; was übrig bleibt, wird hier notiert. Kein Neubau.
+
+**Lösungsweg (2026-09-09, `PROPOSED`) — die vier Stellen sind gelesen, und es sind drei Fälle:**
+
+1. **`NodesScreen`, Feldblock:** die Aufzählung ist dort nur die **Überschrift** der zwei Blöcke
+   ([D-518](../../NewConcept/90-decision-log.md): «zweimal dieselbe Tabelle, mit je eigener
+   Überschrift»). Die Zeilen werden schon an der Kante getrennt — die Kante liegt in der Hand. **Die
+   Überschrift kann die Kantenart nehmen**, und `FieldType` verschwindet aus dem Bildschirm.
+2. **`Rendering`, zwei Stellen:** hier wird gefragt, ob ein **Knoten** eine Einstellung ist — einmal
+   für die eigene Sorte, einmal aufgelöst entlang der Vorfahren. *Das ist die Frage aus
+   [D-605](../../NewConcept/90-decision-log.md), die [D-607](../../NewConcept/90-decision-log.md) als
+   «zu breit» zurückgenommen hat:* die Regel ist «ein Knoten erbt keine Einstellungskante, die auf
+   **ihn selbst** zeigt» — eine Aussage über eine Kante und ihren Zielknoten, nicht über eine Sorte.
+   **Beide Stellen fragen künftig: zeigt diese Kante auf diesen Knoten?** Damit fällt auch die
+   Auflösung entlang der Vorfahren, denn eine Kante hat ein Ziel und braucht keine Kette.
+3. **`WpdbNodeRepository`, die Ableitung selbst:** bleibt genau so lange, wie 2 sie liest. Fällt 2, fällt
+   sie mit — samt der Aufbewahrung in `Schema`, die die alte Spalte vor dem Streichen gesichert hat
+   (TASK-059); die ist ein Schatten und bleibt.
+
+*Der Massstab:* `renderer-per-node` ist kein Wächter, sondern der Vorher-Nachher-Abzug, mit dem
+TASK-059 den Fall der Spalte gemessen hat — «was jeder Knoten zeichnet», Zeile für Zeile. **Er wird
+vor dem Umbau gezogen und danach verglichen**, und `preview-check` läuft dazu. Weicht keine Zeile ab,
+ist die Knotenfrage ohne Verlust gefallen. **Ein neuer Wächter ist nicht nötig; das ist der seltene
+Fall.**
+
+---
+
+[ ] TASK-077  111 von 113 Benutzersätzen tragen keine einzige Wertzeile
+
+**2026-09-09, derselbe Auftrag.** ⚠️ **Gemessen:** *113 Sätze mit `record_type = user`; **111** davon
+ohne eine Wertzeile. 105 hängen an `Condensator`, je einer an `Parts List`, `Address`,
+`chooser-dialog`, `Decimal`, `Boolean`, `Email`. Von den 51 `default`-Sätzen ist **keiner** leer.
+**104 der 105 an `Condensator` sind am 2026-08-30 entstanden** — dem Tag, an dem die
+`settings`-Tabelle umzog ([D-529](../../NewConcept/90-decision-log.md)); das Journal nennt für
+keinen davon einen Wächterlauf.*
+
+⚠️ **Was das nicht ist:** *kein Konzeptfehler. Ein Satz ohne Werte ist erlaubt — ein Benutzer kann
+einen Datensatz anlegen und nichts eintragen. **Aber 104 an einem Tag, an einem Knoten, ohne einen
+Wert, sind kein Benutzer** — das ist eine Wanderung oder ein Lauf, der Sätze angelegt und die Werte
+nicht hinterhergeschrieben hat.*
+
+⚠️ **Was zu tun ist, in dieser Reihenfolge, und nichts davon ist ein Löschen ohne Befund:** *(1) im
+Journal des 2026-08-30 die Änderungsgruppe finden, die die 104 angelegt hat, und sagen, welcher Akt es
+war; (2) prüfen, ob die Sätze im Schatten Werte hatten, die die Wanderung verloren hat — dann ist es
+ein Datenverlust und der Eintrag wird ein anderer; (3) erst dann: entweder gehören sie dem
+Cleanup-Bildschirm als vierte Quelle «Satz ohne Werte» ([D-247](../../NewConcept/90-decision-log.md)),
+oder sie fallen mit einem Wächter, der zählt, dass danach 0 leere Benutzersätze übrig sind und die
+2 nichtleeren unberührt.*
+
+⚠️ *`Decimal`, `Boolean` und `Email` sind einfache Typen: dort darf es nach
+[D-677](../../NewConcept/90-decision-log.md) **gar keinen** `user`-Satz geben, nur `default` und
+`example`. Diese drei sind damit nicht nur leer, sondern am falschen Ort — und `simple-type-check`
+sieht es nicht, sonst wäre er rot.*
+
+**Lösungsweg (2026-09-09, `PROPOSED`) — Schritt 1 und 2 sind gelaufen, und der Befund ist schärfer:**
+
+⚠️ **Die 104 Sätze hat kein Akt angelegt.** *Gemessen: alle 104 tragen `created_at = 2026-08-30
+00:00:00` — **Mitternacht auf die Sekunde**, ein Datum ohne Uhrzeit. Das Journal kennt **keine
+einzige Zeile** zu ihnen, weder Anlegen noch Ändern; um Mitternacht steht dort nichts. Im Schatten
+liegt keiner von ihnen. Ihre Nummern reichen von 7625 bis 10497 mit 2769 Lücken — sie sind über einen
+langen Zeitraum vergeben worden, nicht in einem Lauf. **Keine Wanderung in `Schema.php` schreibt ein
+Datum ohne Uhrzeit**, und kein Wächter im Repository, auch nicht in seiner Geschichte, legt Sätze an
+`Condensator` an.* **Der Ursprung liegt ausserhalb dessen, was das Repository heute sagt** — am
+ehesten ein Import oder ein Umbenennen der Satztabelle am 2026-08-30, bei dem `created_at` mit dem
+Tagesdatum gefüllt wurde. `PR-7`: das ist eine Vermutung, keine Messung.
+
+⚠️ **Verloren ist nichts:** *`Condensator` hat **keine eigene Kante** und keine Kinder; seine Felder
+sind die zwei geerbten von `Passiv`. Die einzige Schattenwertzeile an einem seiner Sätze gehört zu
+Satz 172 — der eine, der **nicht** um Mitternacht entstand — und sie ist am 2026-09-08 mit ihrer Kante
+**geparkt** worden ([D-575](../../NewConcept/90-decision-log.md)), nicht verloren. Die 104 hatten nie
+einen Wert, den es zu verlieren gab.*
+
+**Damit ist Schritt 3 die Antwort, und sie ist zweiteilig:**
+
+1. **Die 104 sind Rückstand und gehören dem Cleanup-Bildschirm** ([D-247](../../NewConcept/90-decision-log.md))
+   als vierte Quelle: *«Benutzersatz ohne Wertzeile, ohne Journal».* **Ohne Journal** ist die
+   Bedingung, die einen echten leeren Satz eines Benutzers ausnimmt — der hat eine Anlegezeile. So
+   entscheidet keine Zahl und kein Datum, sondern die Geschichte. `cleanup-screen-check` bekommt die
+   Quelle als eigenen Fall, mit eigener Wiese wie die drei anderen.
+2. **Die drei an einfachen Typen sind ein Loch im Netz, kein Rückstand.** `simple-type-check` prüft
+   das Inventar der Typen, nicht ihre Sätze. **Die Zusage aus D-664 und D-677 — «unter `Primitives`
+   niemals `user`» — hat heute keinen Wächter.** Sie kommt zu `simple-type-check`, weil sie eine
+   Aussage über einfache Typen ist; und die drei Sätze fallen mit der Wanderung, die der Wächter
+   erzwingt ([D-672](../../NewConcept/90-decision-log.md): «ändert sich, was erlaubt ist, wandert der
+   Bestand im selben Schritt mit»). *Ob sie `example` werden oder fallen, entscheidet ihr Inhalt: sie
+   sind leer, also fallen sie.*
+
+*Die zwei an `Parts List` und `Address` sind, was ein Benutzersatz ohne Eingabe ist, und bleiben.
+`chooser-dialog` ist ein Renderer-Knoten — ein `user`-Satz dort ist derselbe Fall wie an einem
+einfachen Typ, und die Frage, ob D-677 den Settings-Ast mitmeint, ist offen und gehört auf den
+Eingang, nicht hierher.*
+
+---
+
+[ ] TASK-078  Geerbt ist sichtbar, und ein unzulässiger geerbter Wert ist ein Konflikt — für jede Einstellung
+
+**2026-09-09, sein Befund und seine Regel** ([D-687](../../NewConcept/90-decision-log.md)): *«es
+entstehen immer wieder fehler dadurch das in der gui eine default schalterstellung steht diese aber
+nicht gespeichert ist»* — und: *«gerade wenn ein vererbter renderer nicht zulässig ist müsste auch ein
+zulässiger gewählt werden das gilt für alle einstellung».*
+
+⚠️ **Zwei Hälften, und die erste ist alt:** *[D-266](../../NewConcept/90-decision-log.md) und
+[D-361](../../NewConcept/90-decision-log.md) verlangen seit dem 2026-08-23, dass geerbt sichtbar ist
+und zurück zu geerbt eine ausdrückliche Handlung. Gebaut ist ein Pfeil «↑» mit dem Wort im Tooltip;
+das Bedienelement selbst zeigt den geerbten Wert wie einen gesetzten. Der Kommentar im Renderer nennt
+den Fall «bald selten» — das war, als jede Zeile materialisiert war (D-423). **Seit D-529 ist geerbt
+am Renderer der Normalfall.***
+
+**Lösungsweg (2026-09-09) — die Sperre war mein Vorschlag und ist seit [D-689](../../NewConcept/90-decision-log.md)
+sein Wort: «sperren finde ich gut». Schritt 1 bis 4 sind damit entschieden, nicht vorgeschlagen:**
+
+1. **Geerbt heisst gesperrt.** Das Steuerelement einer geerbten Einstellung ist nicht bedienbar und
+   zeigt den Wert mit seiner Herkunft **in Worten**: «geerbt von Integer», kein Pfeil, kein Tooltip.
+   Der Name braucht die Verdrahtung, die der Renderer heute nicht hat (D-159: ein Renderer holt
+   nichts) — der Abstieg reicht ihn hinein wie den Wert. *Ein gesperrtes Feld kann nicht so aussehen,
+   als hätte man es gesetzt: die Anzeige und das Gespeicherte fallen zusammen, das ist die ganze
+   Lösung für seinen ersten Satz.*
+2. **«Überschreiben» je Zeile schaltet frei**, das Gegenstück zum vorhandenen «Reset». Zwei Akte in
+   beide Richtungen (D-266), in fester Position (D-370). Erst nach «Überschreiben» schreibt das
+   Seitenspeichern die Zeile. **Der dritte Zustand — niemand hat es gesagt — bleibt ein leeres,
+   freies Feld ohne Herkunft.**
+3. **Zulässigkeit misst auch das Geerbte.** Die Auflösung ([D-602](../../NewConcept/90-decision-log.md))
+   liefert heute den ersten Wert die Kette hinauf. Künftig fragt sie an jedem gefundenen Wert
+   `handles()` gegen den Typ der Stelle (D-603: am Knoten der Knoten, an der Kante der Zielknoten).
+   Ein unzulässiger Wert wird **nicht** übersprungen — das wäre ein stilles Weiterwandern zum
+   nächsten Vorfahren, und «näher schlägt ferner» hätte einen Wert, den niemand sieht. **Er wird als
+   Konflikt gemeldet**, an derselben Stelle wie D-680: beim Wechsel des Typs, beim Ändern am
+   Vorfahren, beim Anlegen. Die Tafel zeigt ihn als solchen — und was sie dann zeigt, sagt Schritt 4.
+4. **Wer wählt, und was mit der Sperre geschieht, ist entschieden** — beides sein Wort am selben
+   Tag: [D-688](../../NewConcept/90-decision-log.md) *«ersten zulässigen als Vorgabe aber nur wenn
+   der vererbte nicht mehr zulässig ist»*, und [D-689](../../NewConcept/90-decision-log.md) *«sperren
+   finde ich gut, aktiv sagen hier überschreibe ich, muss automatisch gemacht werden wenn der
+   renderer (oder anderes) für kind nicht mehr zulässig ist».* **Im Konflikt tut das System also, was
+   sonst der Modellierer tut:** *es löst «Überschreiben» an dieser Zeile aus — die Sperre fällt —, und
+   setzt den **ersten zulässigen aus der Registratur** als Vorgabe hinein. Nicht geschrieben; in der
+   Tafel als «automatisch gewählt, weil ‹compact› hier nicht zulässig ist» sichtbar, dritter Zustand
+   neben gesetzt und geerbt, am Ort ersetzbar (R33c).* Solange der geerbte Wert taugt, bleibt die
+   Zeile gesperrt und nichts wählt an ihm vorbei. **Die Stelle steht nie ohne Wert da, und sie sagt,
+   dass er nicht von ihr stammt.**
+
+**Der Wächter zuerst:** ein Lauf, der an einem Knoten einen Renderer setzt, darunter einen Knoten
+eines fremden Basistyps anlegt, und verlangt: die Tafel dort zeigt «geerbt», der Wert gilt **nicht**,
+und ein Konflikt steht — nicht `plain` und nicht der Wert von oben. Heute wäre er rot, und das ist
+der Beleg. `preview-check` und `renderer-choice-mask-check` laufen dazu.
+
+*Nicht Teil dieser Aufgabe:* die Untereinstellungen eines geerbten Renderers. D-682 sagt, sie kommen
+«gesetzt oder geerbt» dazu, und D-684 gibt ihnen ihr Fach im Satz des Knotens — das steht und bleibt.
