@@ -78,7 +78,31 @@ final class UnitScaffold
     }
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 3;
+    public const VERSION = 4;
+
+    /**
+     * Jeder Knoten des Gerüsts notiert seine Id in einer Option — wie die Behälter der Renderer.
+     *
+     * ⚠️ **[D-709](../../../docs/NewConcept/90-decision-log.md), sein Wort: «ja notieren».** *Bis dahin
+     * fand das Gerüst seine Knoten über den Namen, und drei Wächter taten es ihm nach — ein Name ist
+     * absichtlich nicht eindeutig ([D-022](../../../docs/NewConcept/90-decision-log.md)). **Fassung 4
+     * trägt die Notiz nach**: beim nächsten Lauf findet `ensure()` jeden Knoten noch einmal über den
+     * Namen und merkt sich die Id; von da an gilt die Id, und der Name darf wechseln.*
+     */
+    public const NODE_OPTION_PREFIX = 'taxmod_unit_node_';
+
+    public static function optionFor(string $name): string
+    {
+        return self::NODE_OPTION_PREFIX . strtolower(str_replace(' ', '_', $name));
+    }
+
+    /** Die notierte Id eines Gerüstknotens — `null`, solange Fassung 4 nicht gelaufen ist. */
+    public static function nodeId(string $name): ?int
+    {
+        $id = (int) get_option(self::optionFor($name), 0);
+
+        return $id === 0 ? null : $id;
+    }
 
     /**
      * The SI prefixes, as **powers of ten**.
@@ -454,8 +478,21 @@ final class UnitScaffold
 
     private function ensure(Node $parent, string $name, array &$created): Node
     {
+        // ⚠️ *Erst die Notiz (D-709): steht die Id, und der Knoten lebt ausserhalb des Mülls, ist er es —
+        // egal, wie er heute heisst.*
+        $bekannt = self::nodeId($name);
+        $muell   = $this->framework->trash();
+        $gemerkt = $bekannt === null ? null : $this->editor->find($bekannt);
+
+        if ($gemerkt !== null && $gemerkt->id !== $muell->id && ! $gemerkt->isDescendantOf($muell)) {
+            $this->label($gemerkt);
+
+            return $gemerkt;
+        }
+
         foreach ($this->editor->childrenOf($parent->id) as $child) {
             if ($child->name === $name) {
+                update_option(self::optionFor($name), $child->id, true);
                 $this->label($child);
 
                 return $child;
@@ -464,6 +501,7 @@ final class UnitScaffold
 
         $made      = $this->editor->createNode($name, $parent->id);
         $created[] = $name;
+        update_option(self::optionFor($name), $made->id, true);
 
         $this->label($made);
 

@@ -75,7 +75,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 23 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 77 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 79 |
 
 ## DC — Dokumentation im Code
 

@@ -98,16 +98,10 @@ register_shutdown_function(static function () use (&$meine): void {
 
 echo "\n== 1. Eine Konstante nimmt einen Datensatz an ==\n";
 
-// ⚠️ *`kilo` über den Namen unter `Prefixes` gesucht — es gibt keine Option dafür, und der Knoten
-// gehört der Saat, nicht dem Rahmenwerk. Findet sie ihn nicht, sagt die Prüfung das, statt still
-// durchzulaufen.*
-$prefixes = null;
-
-foreach ($nodes->childrenOf($framework->rootOf(Branch::Constants)) as $child) {
-    if ($child->name === 'Prefixes') {
-        $prefixes = $child;
-    }
-}
+// ⚠️ *`Prefixes` über die Notiz des Gerüsts (D-709, TASK-049) — hier stand «es gibt keine Option dafür»,
+// und seit Fassung 4 des Gerüsts gibt es sie. Findet sie ihn nicht, sagt die Prüfung das.*
+$prefixesId = \Taxmod\WordPress\Persistence\UnitScaffold::nodeId('Prefixes');
+$prefixes   = $prefixesId === null ? null : $nodes->find($prefixesId);
 
 // ⚠️ **Der erste Kindknoten, nicht «kilo»** ([D-613](../../docs/NewConcept/90-decision-log.md),
 // vollzieht [D-022](../../docs/NewConcept/90-decision-log.md)). *`kilo` ist sein Inhalt und darf

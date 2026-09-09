@@ -174,40 +174,19 @@ check('prefix is 0..1 and not mandatory', $many === Multiplicity::ZeroToOne->val
 
 echo "\n== the constants carry their symbols as labels ==\n";
 
-$constants = $framework->rootOf(Branch::Constants);
-$prefixes  = null;
-$base      = null;
+// ⚠️ *Über die Notiz des Gerüsts, nicht über den Namen (D-709, TASK-049): das Gerüst merkt sich jede Id.*
+$notiert = static fn (string $name) => \Taxmod\WordPress\Persistence\UnitScaffold::nodeId($name) === null
+    ? null
+    : $editor->find((int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId($name));
+$prefixes = $notiert('Prefixes');
+$base     = $notiert('Base units');
 
-foreach ($editor->childrenOf($constants->id) as $child) {
-    if ($child->name === 'Prefixes') {
-        $prefixes = $child;
-    }
+check('Prefixes and Base units are there — über ihre notierte Id', $prefixes !== null && $base !== null);
 
-    if ($child->name === 'Base units') {
-        $base = $child;
-    }
-}
+$kilo = $notiert('kilo');
+$ohm  = $notiert('Ohm');
 
-check('Prefixes and Base units are there', $prefixes !== null && $base !== null);
-
-$kilo = null;
-$ohm  = null;
-
-foreach ($editor->childrenOf($prefixes->id) as $child) {
-    if ($child->name === 'kilo') {
-        $kilo = $child;
-    }
-}
-
-foreach ($editor->childrenOf($base->id) as $group) {
-    foreach ($editor->childrenOf($group->id) as $child) {
-        if ($child->name === 'Ohm') {
-            $ohm = $child;
-        }
-    }
-}
-
-check('kilo and Ohm are there', $kilo !== null && $ohm !== null);
+check('kilo and Ohm are there — über ihre notierte Id', $kilo !== null && $ohm !== null);
 
 if ($kilo === null || $ohm === null) {
     echo "\nStopping: the units are missing.\n";

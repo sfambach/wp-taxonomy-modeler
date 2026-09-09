@@ -138,7 +138,8 @@ function abschicken(array $post): void
     }
 }
 
-$idVon = static fn (string $name): int => (int) $wpdb->get_var($wpdb->prepare('SELECT id FROM ' . Schema::table('nodes_named') . ' WHERE name = %s ORDER BY id LIMIT 1', $name));
+// ⚠️ *Über die Notiz des Gerüsts, nicht über den Namen (D-709, TASK-049) — `Einheitenwert` hat seine eigene.*
+$idVon = static fn (string $name): int => (int) ($name === 'Einheitenwert' ? \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() : \Taxmod\WordPress\Persistence\UnitScaffold::nodeId($name)) ?? 0;
 
 $prefixes = $idVon('Prefixes');
 $gramm    = $idVon('Gramm');

@@ -3225,13 +3225,12 @@ final class NodesScreen
             self::VALUE_FIELD,
             '',
             // ⚠️ **Der Modus selbst und kein eigener Haken** ([D-705](../../../docs/NewConcept/90-decision-log.md)).
-            // *Er entscheidet hier über die **Renderer-Diagnose** in {@see \Taxmod\Core\Renderer\RecordRenderer}
-            // — und **gemessen am 2026-09-09 füllt sie niemand**: `Rendering::recordsAsTable()` nimmt
-            // einen Text `$diagnostic` entgegen, und **kein einziger Aufrufer im ganzen Zusatzstück
-            // übergibt ihn**. Deshalb bekam sie keinen eigenen Haken: **ein Schalter für etwas, das nie
-            // erscheint, ist Möbel** ([D-429](../../../docs/NewConcept/90-decision-log.md)). Der Weg
-            // bleibt offen, damit er nur noch gefüllt werden muss.*
-            SettingsScreen::inDeveloperMode()
+            // *Er entscheidet hier über die **Renderer-Diagnose** in {@see \Taxmod\Core\Renderer\RecordRenderer}.
+            // Gemessen am 2026-09-09 füllte sie niemand (TASK-085); seit [D-711](../../../docs/NewConcept/90-decision-log.md)
+            // reicht der Kern je Satz die gezeichneten Felder herauf, und {@see self::drawnByPerCell()}
+            // macht daraus den Text — **je Zelle**, sein Wort.*
+            SettingsScreen::inDeveloperMode(),
+            diagnose: SettingsScreen::inDeveloperMode() ? $this->drawnByPerCell(...) : null
         )->markup;
     }
 
@@ -3356,32 +3355,46 @@ final class NodesScreen
      * it is rather than like a plain field.
      */
     /**
-     * Which renderer drew what — a diagnostic beside the form, never inside it.
+     * Which renderer drew what — a diagnostic beside the form, never inside it, **one line per record,
+     * one entry per cell** ([D-711](../../../docs/NewConcept/90-decision-log.md), sein Wort: «je zelle»).
      *
      * ⚠️ **It earns its place by what it has caught.** In one afternoon: a `field` where a
      * `reference` belonged, every constant reading *no renderer*, a spinner offered for a supplier,
      * and eight settings rows drawn empty. **None of those was visible in the markup itself** —
      * only in the answer to *which renderer drew this*.
      *
-     * @param list<RenderedField> $fields
+     * ⚠️ *Bis zum 2026-09-10 hiess dieser Helfer `drawnBy()` und wurde von niemandem gerufen (TASK-085):
+     * der Kern zeichnete, der Rand hatte die Worte, und keiner reichte dem anderen etwas. Jetzt gibt
+     * {@see \Taxmod\Core\Service\Rendering::recordsAsTable()} je Satz seine gezeichneten Felder herauf.*
+     *
+     * @param list<array{id:int}>       $rows
+     * @param list<list<RenderedField>> $perRow
      */
-    private function drawnBy(array $fields): string
+    private function drawnByPerCell(array $rows, array $perRow): string
     {
         $lines = '';
 
-        foreach ($fields as $field) {
-            $what = $field->hasNoRenderer()
-                ? '<strong style="color:#b32d2e">' . esc_html__('no renderer', 'taxmod') . '</strong>'
-                : esc_html(($field->type?->value ?? '—') . ' · ' . $field->rendererName);
+        foreach ($perRow as $i => $fields) {
+            $cells = [];
 
-            $lines .= '<li><code>' . esc_html($field->relation->name) . '</code> — ' . $what
-                . ($field->isHidden() ? ' · ' . esc_html__('hidden by a setting', 'taxmod') : '')
-                . '</li>';
+            foreach ($fields as $field) {
+                $what = $field->hasNoRenderer()
+                    ? '<strong class="taxmod-record-diagnostic-none">' . esc_html__('no renderer', 'taxmod') . '</strong>'
+                    : esc_html(($field->type?->value ?? '—') . ' · ' . $field->rendererName);
+
+                $cells[] = '<code>' . esc_html($field->relation->name) . '</code> — ' . $what
+                    . ($field->isHidden() ? ' · ' . esc_html__('hidden by a setting', 'taxmod') : '');
+            }
+
+            $lines .= '<li class="taxmod-record-diagnostic-row"><strong>'
+                /* translators: %d is the record id. */
+                . esc_html(sprintf(__('#%d', 'taxmod'), (int) ($rows[$i]['id'] ?? 0)))
+                . '</strong> · ' . ($cells === [] ? '—' : implode(' · ', $cells)) . '</li>';
         }
 
         return $lines === ''
             ? ''
-            : '<ul class="description" style="margin:.4em 0 0;opacity:.75">' . $lines . '</ul>';
+            : '<ul class="taxmod-record-diagnostic-cells description" style="margin:.4em 0 0;opacity:.75">' . $lines . '</ul>';
     }
 
     // ------------------------------------------------------------------ acting

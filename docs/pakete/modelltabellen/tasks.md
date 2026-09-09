@@ -1424,7 +1424,7 @@ mit gewähltem Knoten im Ast, **und** die Gegenprobe, dass ein frisch gewählter
 weiterhin öffnet. *Ohne die Gegenprobe wäre auch grün, was das Öffnen ganz abgeschafft hätte.*
 
 ```text
-[ ] TASK-049  Zehn Waechter von seinen Knotennamen loesen (D-613)
+[x] TASK-049  Zehn Waechter von seinen Knotennamen loesen (D-613) — erledigt 2026-09-10, der Rest mit D-709
               form-membership · label-role · package1 · page-blocks
               record-on-any-node · rename-survives · renderer-choice
               setting-edge · setting-write · unitvalue
@@ -1436,13 +1436,13 @@ D-706), **zwei waren schon gelöst** (`form-membership`, `label-role` — nur no
 Namen), und **heute sind zwei weitere umgestellt**, die die Liste nicht kannte: `path` holt den Behälter
 `Renderer` über seine notierte Id statt über den Namen, `record-kind` holt `Integer` und `Decimal` über
 ihre Klasse, die Grenzknoten als Ziel der Kanten `min`/`max` und die Kante `read_only` an der Wurzel —
-so, wie der Kode sie findet.* ⚠️ **Was bleibt, und warum es hier nicht gelöst wird:** *`unitvalue`,
-`record-on-any-node` und `allowed` greifen `Prefixes`, `Base units`, `Einheitenwert`, `Gramm`, `Ohm`,
-`kilo`, `milli` — die Namen des **Einheitengerüsts**, und das Gerüst selbst (`UnitScaffold`, Fassung 44)
-findet seine Knoten genau so, über den Namen. Für sie gibt es keine Rolle und keine notierte Id.
-**Ein Wächter, der es anders macht als der Kode, wäre kein Fortschritt** — ob das Gerüst seine Knoten
-notieren soll, ist eine Entscheidung (`PR-4`), keine Wächterfrage. Bis dahin bleibt die Zeile offen mit
-genau diesem Rest.*
+so, wie der Kode sie findet.* ⚠️ **Der Rest, und wie er fiel:** *`unitvalue`, `record-on-any-node` und `allowed` griffen `Prefixes`,
+`Base units`, `Gramm`, `Ohm`, `kilo`, `milli` — die Namen des **Einheitengerüsts**, und das Gerüst selbst
+fand seine Knoten genauso. Für sie gab es keine Rolle und keine notierte Id; ob das Gerüst notieren soll,
+war eine Entscheidung (`PR-4`). **Sein Wort am selben Tag: «ja notieren»** —
+[D-709](../../NewConcept/90-decision-log.md): Fassung 4 des Gerüsts hinterlegt je Knoten eine Option,
+die drei Wächter und Fassung 44 (`allowed` an `Prefixes`) holen ihn darüber. Damit greift kein Wächter
+mehr einen Knoten über seinen Namen, ausser den eigenen mit Präfix.*
 
 ⚠️ **Der Grund ist schärfer als «fragil»:** *[D-022](../../NewConcept/90-decision-log.md) sagt,
 Knotennamen sind **absichtlich nicht eindeutig**, und «nothing resolves, references or branches on a
@@ -1451,10 +1451,14 @@ name». **Gemessen kommen fünf Namen doppelt vor, darunter `Adresse`.** Ein Wä
 `setting-write-check` schon dokumentiert.*
 
 ```text
-[ ] TASK-050  Ein Testast fuer Waechterknoten (D-614) — dort duerfen sie
+[x] TASK-050  Ein Testast fuer Waechterknoten (D-614) — dort duerfen sie
               liegenbleiben; unsichtbar, ausserhalb jeder Aufloesungskette,
-              und zaehlbar
+              und zaehlbar — gefallen 2026-09-10 (D-710)
 ```
+
+**2026-09-10, sein Wort: *«ok fällt».*** *[D-710](../../NewConcept/90-decision-log.md) nimmt D-614
+zurück: seit der Klammer vom 2026-09-06 dreht jeder Wächter alles zurück, auch nach einem Absturz,
+und `no-model-write-check` bewacht es. **Ein Ast für Reste braucht Reste, und es gibt keine mehr.***
 
 ⚠️ **Warum ein Ast und nicht besseres Aufräumen:** *aufgeräumt wird schon — die Regel greift nur
 nicht, wenn ein Lauf **mitten in der Arbeit abstürzt.** Genau das ist am 2026-09-04 dreimal
@@ -3199,7 +3203,13 @@ Nr. 19/20 suchte ein Steuerelement, das seit D-520 nicht mehr gezeichnet wird, u
 
 ---
 
-[ ] TASK-085  Die Renderer-Diagnose wird von niemandem gefüllt
+[x] TASK-085  Die Renderer-Diagnose wird von niemandem gefüllt — gebaut 2026-09-10 ([D-711](../../NewConcept/90-decision-log.md))
+
+**2026-09-10, sein Wort auf die offene Frage: *«je zelle».*** *Der Kern (`Rendering::recordsAsTable()`)
+gibt dem Rand nach dem Zeichnen je Satz seine gezeichneten Felder; der Rand (`NodesScreen::drawnByPerCell()`,
+vorher der ungerufene `drawnBy()`) macht daraus eine Zeile je Satz mit einem Eintrag je Feld — Typ und
+Renderer, «no renderer» rot, «hidden by a setting» wo eine Einstellung die Zelle schliesst. Nur im
+Entwicklermodus, neben dem Formular (D-705). Zusage in `einstellungen-check`, Abschnitt 11.*
 
 **2026-09-09, beim Bauen von TASK-081 gefunden.** ⚠️ **Gemessen:** *`RecordRenderer` zeichnet unter
 einem Datensatz eine Diagnose, sobald der Entwicklermodus gilt — «which renderer drew what».

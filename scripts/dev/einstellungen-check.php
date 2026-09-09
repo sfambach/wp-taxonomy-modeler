@@ -1429,6 +1429,14 @@ $geliehen = static function (string $option, string $wert, callable $tue): mixed
 };
 $an = $geliehen('taxmod_dev_settings_record', '1', static fn (): string => seite($mitEinstellungssatz));
 check('mit Entwicklermodus steht er da, mit Marke, nicht als umstellbare Art, und nennt den Renderer', str_contains($an, 'taxmod-settings-record') && ! preg_match('/<option value="default"[^>]*selected/', $an) && (bool) preg_match('/taxmod-settings-record-values[^>]*>.*?renderer = /s', $an));
+
+// ⚠️ **Die Renderer-Diagnose, je Zelle** ([D-711](../../docs/NewConcept/90-decision-log.md), sein Wort «je zelle»).
+$saetzeAmSatzknoten = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE node_id = {$satzKnoten->id} AND relation_id = 0");
+$diagnoseAn  = $geliehen(NodesScreen::DEVELOPER_OPTION, '1', static fn (): string => seite($satzKnoten->id));
+$diagnoseAus = $geliehen(NodesScreen::DEVELOPER_OPTION, '0', static fn (): string => seite($satzKnoten->id));
+check('im Entwicklermodus steht unter dem Datensatz-Block die Renderer-Diagnose, eine Zeile je Satz', substr_count($diagnoseAn, 'taxmod-record-diagnostic-row') === $saetzeAmSatzknoten, substr_count($diagnoseAn, 'taxmod-record-diagnostic-row') . " Zeilen für {$saetzeAmSatzknoten} Sätze");
+check('und je Zelle nennt sie das Feld und seinen Renderer', (bool) preg_match('/taxmod-record-diagnostic-row[^<]*<strong>#\d+<\/strong> · <code>__es zahl<\/code> — int · (field|spinner|slider)/', $diagnoseAn));
+check('ohne Entwicklermodus steht sie nicht da', ! str_contains($diagnoseAus, 'taxmod-record-diagnostic'));
 foreach (['taxmod_dev_settings_record' => ['taxmod-settings-record', 'der Einstellungssatz'], 'taxmod_dev_writes' => ['taxmod-tree-writes', 'die Schreibzahl'], 'taxmod_dev_root_toggle' => ['taxmod_root', 'der Schalter «show the root»']] as $option => [$marke, $nameOpt]) {
     $anM  = $geliehen($option, '1', static fn (): string => seite($mitEinstellungssatz));
     $ausM = $geliehen($option, '0', static fn (): string => seite($mitEinstellungssatz));

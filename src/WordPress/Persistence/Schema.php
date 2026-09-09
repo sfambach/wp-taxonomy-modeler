@@ -3197,7 +3197,10 @@ final class Schema
             return;
         }
 
-        $prefixes = (int) $wpdb->get_var("SELECT id FROM " . self::table('nodes_named') . " WHERE name = 'Prefixes' ORDER BY id LIMIT 1");
+        // ⚠️ *Über die Notiz des Gerüsts (D-709); der Name nur als Rückweg für eine Installation, deren
+        // Gerüst noch nicht notiert hat.*
+        $prefixes = (int) (UnitScaffold::nodeId('Prefixes')
+            ?? $wpdb->get_var("SELECT id FROM " . self::table('nodes_named') . " WHERE name = 'Prefixes' ORDER BY id LIMIT 1"));
         $nodeRef  = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$nodes} WHERE implemented_by = %s ORDER BY id LIMIT 1", \Taxmod\Core\Model\Type\NodeRefType::class));
 
         if ($prefixes === 0 || $nodeRef === 0) {

@@ -1481,6 +1481,16 @@ final class Rendering implements Presets
         Purpose $purpose = Purpose::Edit,
         string $locale = '',
         Level $level = Level::Admin,
+        /**
+         * ⚠️ **Die Renderer-Diagnose, je Zelle** ([D-711](../../../docs/NewConcept/90-decision-log.md),
+         * sein Wort: «je zelle»). *Gemessen am 2026-09-09 füllte sie niemand (TASK-085): der Rand hatte
+         * die Worte, der Kern die Zeichnung, und keiner reichte dem anderen etwas. Jetzt bekommt der Rand
+         * nach dem Zeichnen je Satz seine gezeichneten Felder und macht daraus den Text — die Worte
+         * bleiben am Rand (`AR-2`), das Wissen, wer gezeichnet hat, im Kern.*
+         *
+         * @var (\Closure(list<array{id:int}>, list<list<RenderedField>>): string)|null
+         */
+        ?\Closure $diagnose = null,
     ): RenderResult {
         $gezeichnet = [];
         $vorne      = [];
@@ -1531,6 +1541,10 @@ final class Rendering implements Presets
         );
 
         $sections = [RecordRenderer::FORM => new Section('', $tabelle->markup)];
+
+        if ($diagnostic === '' && $diagnose !== null) {
+            $diagnostic = (string) $diagnose($rows, $gezeichnet);
+        }
 
         if ($diagnostic !== '') {
             $sections[RecordRenderer::DIAGNOSTIC] = new Section('', $diagnostic);
