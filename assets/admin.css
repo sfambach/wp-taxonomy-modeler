@@ -1335,3 +1335,52 @@ a.taxmod-chosen:hover {
 .taxmod-automatic {
     color: #b32d2e;
 }
+
+/* ── Die Konfigurationsseite ─────────────────────────────────────────────────
+ *
+ * ⚠️ **Drei Spalten auf sein Wort** ([D-695](../docs/NewConcept/90-decision-log.md)): *«tablle
+ * links label, schalter/wert, recht erklärung»*. WordPress' eigene `form-table` hat zwei und
+ * könnte es nicht anders — deshalb eine eigene.
+ *
+ * ⚠️ *Die Erklärungsspalte bekommt eine Breite und keine feste: **sie soll umbrechen, nicht die
+ * Schalter schieben.** Ein Satz, der die mittlere Spalte auseinanderzieht, macht aus einer
+ * Schalterreihe eine Treppe.*
+ */
+.taxmod-config {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 60em;
+    margin: 1em 0;
+}
+
+.taxmod-config th,
+.taxmod-config td {
+    text-align: left;
+    vertical-align: top;
+    padding: .7em .9em;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.taxmod-config thead th {
+    font-size: .85em;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #646970;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.taxmod-config tbody th {
+    width: 12em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.taxmod-config-value {
+    width: 11em;
+}
+
+/* ⚠️ *Der Satz bleibt lesbar breit statt zeilenlang — dieselbe Grenze, die jeder Fliesstext
+ *  braucht, und der Grund, warum die Spalte den Rest nimmt und nicht mehr.* */
+.taxmod-config-why {
+    max-width: 34em;
+}

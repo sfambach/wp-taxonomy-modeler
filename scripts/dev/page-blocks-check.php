@@ -748,7 +748,16 @@ check('die drei Verwaltungsseiten lassen sich zeichnen', count($seiten) === 3 &&
 // ⚠️ *Der Gegenfall zuerst: **ohne eine Untergrenze waere eine Seite ganz ohne Fragezeichen gruen**
 // — und «keine Erklaerung mehr im Fliesstext» waere am billigsten dadurch erfuellt, dass es
 // ueberhaupt keine Erklaerung mehr gibt.*
-$mindestens = ['Knoten' => 3, 'Einstellungen' => 3, 'Aufraeumen' => 1];
+// ⚠️ **«Einstellungen» stand hier mit 3 und ist am 2026-09-09 herausgenommen — sichtbar und mit
+// Grund** ([D-695](../../docs/NewConcept/90-decision-log.md), `PR-9`). *Die Konfigurationsseite hat
+// seither eine **eigene Spalte** für die Erklärung, und D-695 sagt dazu: «wo eine Erklärung eine
+// eigene Spalte hat, braucht sie kein Versteck.» **Die Zusage ist nicht gefallen, sondern
+// umgezogen und umgedreht**: `configuration-screen-check.php` prüft dort, dass die Sätze dastehen
+// **und** dass kein Fragezeichen mehr da ist. Ohne diesen Umzug wäre eine der beiden Seiten immer
+// rot, egal was gebaut wird.*
+$mindestens = ['Knoten' => 3, 'Aufraeumen' => 1];
+
+$seiten = array_diff_key($seiten, ['Einstellungen' => true]);
 
 foreach ($seiten as $name => $html) {
     if ($html === '') {

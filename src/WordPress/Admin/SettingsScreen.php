@@ -3,7 +3,7 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Renderer\HintMarkup;
+use Taxmod\Core\Renderer\ToggleMarkup;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -95,13 +95,20 @@ final class SettingsScreen
             . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
             . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
-            . '<table class="form-table" role="presentation">'
+            // ⚠️ **Drei Spalten auf sein Wort** ([D-695](../../../docs/NewConcept/90-decision-log.md)):
+            // *«tablle links label, schalter/wert, recht erklärung».* **Und nicht `form-table`**,
+            // *deren zwei Spalten es gar nicht anders könnten.*
+            . '<table class="taxmod-config"><thead><tr>'
+            . '<th scope="col">' . esc_html__('Setting', 'taxmod') . '</th>'
+            . '<th scope="col">' . esc_html__('Value', 'taxmod') . '</th>'
+            . '<th scope="col">' . esc_html__('What it does', 'taxmod') . '</th>'
+            . '</tr></thead><tbody>'
             . $this->developerRow()
             . $this->localeRow()
             . $this->trashRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('The glyphs in the tree and on its buttons.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
-            . '</table>'
+            . '</tbody></table>'
             . get_submit_button(__('Save', 'taxmod'))
             . '</form></div>';
 
@@ -116,17 +123,29 @@ final class SettingsScreen
      */
     private function developerRow(): string
     {
-        return '<tr><th scope="row">' . esc_html__('Developer mode', 'taxmod') . '</th><td>'
-            . '<label><input type="checkbox" name="developer" value="1"'
-            . checked(self::inDeveloperMode(), true, false) . '> '
-            . esc_html__('Show diagnostics and lift the deletion guards', 'taxmod')
-            . '</label>'
-            // ⚠️ *Hinter das Fragezeichen, nicht unter den Schalter
-            // ([D-661](../../../docs/NewConcept/90-decision-log.md)).*
-            . HintMarkup::icon(
-                __('One mode, not two: the same switch that shows which renderer drew what also lets a protected node be parked.', 'taxmod')
-            )
-            . '</td></tr>';
+        return $this->row(
+            __('Developer mode', 'taxmod'),
+            ToggleMarkup::input('developer', self::inDeveloperMode()),
+            __('Shows the diagnostics and lifts the deletion guards. One mode, not two: the same switch that shows which renderer drew what also lets a protected node be parked.', 'taxmod')
+        );
+    }
+
+    /**
+     * Eine Zeile: Name, Schalter oder Wert, Erklärung.
+     *
+     * ⚠️ **Die Erklärung steht sichtbar und nicht hinter dem Fragezeichen, und das ist eine
+     * ausdrückliche Ausnahme von [D-661](../../../docs/NewConcept/90-decision-log.md)**
+     * ([D-695](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «tablle links label,
+     * schalter/wert, recht erklärung». D-661s Grund — «eine Erklärung, die immer sichtbar ist,
+     * wird nach dem dritten Mal nicht mehr gelesen und kostet trotzdem jedes Mal Platz» — trägt
+     * hier nicht: **diese Seite besucht man selten und jede Zeile ist eine Entscheidung**, und die
+     * Spalte ist der Platz, nicht sein Verbrauch.*
+     */
+    private function row(string $label, string $control, string $why): string
+    {
+        return '<tr><th scope="row">' . esc_html($label) . '</th>'
+            . '<td class="taxmod-config-value">' . $control . '</td>'
+            . '<td class="taxmod-config-why description">' . esc_html($why) . '</td></tr>';
     }
 
     /**
@@ -138,15 +157,11 @@ final class SettingsScreen
      */
     private function trashRow(): string
     {
-        return '<tr><th scope="row">' . esc_html__('Trash', 'taxmod') . '</th><td>'
-            . '<label><input type="checkbox" name="show_trash" value="1"'
-            . checked(self::showsTrash(), true, false) . '> '
-            . esc_html__('Show the trash under the tree', 'taxmod')
-            . '</label>'
-            . HintMarkup::icon(
-                __('Parked nodes stay parked either way — this only decides whether the list is on the screen. With it off, «Clear» goes with it and the cleanup page is where things are removed for good.', 'taxmod')
-            )
-            . '</td></tr>';
+        return $this->row(
+            __('Trash', 'taxmod'),
+            ToggleMarkup::input('show_trash', self::showsTrash()),
+            __('Shows the trash under the tree. Parked nodes stay parked either way — this only decides whether the list is on the screen. With it off, «Clear» goes with it and the cleanup page is where things are removed for good.', 'taxmod')
+        );
     }
 
     /**
@@ -178,13 +193,11 @@ final class SettingsScreen
                 . selected($current, $one, false) . '>' . esc_html($one) . '</option>';
         }
 
-        return '<tr><th scope="row">' . esc_html__('Default language', 'taxmod') . '</th><td>'
-            . '<select name="neutral_locale">' . $options . '</select>'
-            . ' '
-            . HintMarkup::icon(
-                __('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
-            )
-            . '</td></tr>';
+        return $this->row(
+            __('Default language', 'taxmod'),
+            '<select name="neutral_locale">' . $options . '</select>',
+            __('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
+        );
     }
 
     /** One size, chosen from what has been tried rather than typed. */
@@ -197,9 +210,11 @@ final class SettingsScreen
                 . esc_html($size . 'px') . '</option>';
         }
 
-        return '<tr><th scope="row">' . esc_html($label) . '</th><td>'
-            . '<select name="' . esc_attr(str_replace('taxmod_', '', $option)) . '">' . $options . '</select>'
-            . ' ' . HintMarkup::icon($why) . '</td></tr>';
+        return $this->row(
+            $label,
+            '<select name="' . esc_attr(str_replace('taxmod_', '', $option)) . '">' . $options . '</select>',
+            $why
+        );
     }
 
     /**
