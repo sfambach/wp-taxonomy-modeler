@@ -160,6 +160,43 @@ Klasse sie hat — `CompactRenderer` hat `orientation`, `SpinnerRenderer` nicht.
   hat, der eine Einstellung hat. Wenn jedes Objekt einen eigenen Satz hat, ist die Tiefe beliebig,
   ohne dass die Struktur wächst: ein Satz zeigt auf einen Satz. Flach hört bei einer Stufe auf.
 
+**Seine Antwort auf 2b:** *«das kann ich pauschal nicht beantworten, ausser mit: der Knoten
+entscheidet — in Java würde man das über eine Setter-Funktion regeln. Das Beispiel zwei gleiche
+Validierer für Range ist nicht so gut gewählt, aber es könnte auch eine Liste von Strings oder Integern
+sein, somit auch eine Liste von Komplexen. Und wenn man an typisierte Listen denkt: dann ja, es kann
+mehrere des gleichen Typs haben — Liste vom Typ Vaterknoten, Einträge vom Typ der Kinder.»*
+
+*Also: eine Liste ist typisiert über eine Klasse (`list of Renderer`), ihre Einträge sind Objekte von
+deren Unterklassen (`Compact`, `Spinner`, `Compact`), und **ob zwei Einträge derselben Klasse erlaubt
+sind, entscheidet die Klasse, die die Liste hat** — wie ein Setter. Die Struktur muss es können; die
+Klasse darf es verbieten.* **Daraus folgen 2a und 2c ohne weitere Frage:**
+
+- **2a — je Objekt ein eigener Satz.** *Zwei `Compact` in einer Liste mit verschiedener `orientation`
+  können ihre Werte nicht flach am Knoten tragen, sonst wären sie ununterscheidbar. Also: ein
+  komplexer Wert ist ein Satz, der seine Klasse nennt und seine Attributwerte hält; die Zeile am Knoten
+  zeigt auf ihn. Ein einfacher Wert bleibt eine Zeile. Eine Liste einfacher Werte (Strings, Integer)
+  sind mehrere Zeilen am selben Attribut, in Reihenfolge; eine Liste komplexer Werte sind mehrere
+  Zeilen, die je auf einen Satz zeigen.*
+- **2c — beliebig tief.** *Ein Satz zeigt auf einen Satz. Ein Renderer, der einen Konverter hat, der ein
+  Attribut hat: drei Sätze, drei Stufen, dieselbe Form.*
+
+```mermaid
+flowchart LR
+  K["Knoten Kontakt (Satz)"]
+  K --> RO["read_only = false"]
+  K --> L1["renderers[1] → Satz A"]
+  K --> L2["renderers[2] → Satz B"]
+  A["Satz A · Klasse CompactRenderer"] --> A1["withLabel = true"]
+  A --> A2["orientation = vertical"]
+  B["Satz B · Klasse CompactRenderer"] --> B1["withLabel = false"]
+  B --> B2["orientation = horizontal"]
+  L1 --> A
+  L2 --> B
+```
+
+*Ein Objekt hat damit drei Dinge: den Satz, der es ist; die Klasse, die es nennt; die Zeile am Träger,
+die auf es zeigt und seine Stelle in der Liste angibt.*
+
 ### 3 · Die Adresse: woran ein Wert hängt
 
 *Jede Zeile muss sagen, zu welchem Attribut welcher Klasse sie gehört.* In der OO ist das der
@@ -189,8 +226,7 @@ damit die Lösung des ersten es nicht verbaut:
 
 ## Wo wir stehen
 
-Sein Gerüst steht, **1a und 1b sind beantwortet**: die Erklärung ist die Klasse, per Reflection gelesen,
-ohne Spur im Modell. Offen sind vier Fragen, in der Reihenfolge, in der sie einander bedingen:
-**2b** (zwei Einträge derselben Klasse in einer Liste?), daraus **2a** (Werte flach am Knoten oder je
-Objekt ein Satz), daraus **2c** (Tiefe), dann **3** (Name oder Nummer als Adresse). Erst danach das
-zweite Problem.
+Sein Gerüst steht. **Beantwortet: 1a, 1b** (die Erklärung ist die Klasse, per Reflection gelesen, ohne
+Spur im Modell), **2b, 2a, 2c** (die Klasse entscheidet, was ihre Liste darf; ein komplexer Wert ist ein
+eigener Satz mit Klasse und Werten; beliebig tief). **Offen: 3** — ist die Adresse eines Werts der
+Attributname aus der Klasse, oder eine Nummer, die das Modell vergibt? Erst danach das zweite Problem.
