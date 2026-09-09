@@ -172,9 +172,17 @@ foreach ($verweise as [$name, $spalte, $ziel]) {
     $quelle  = Schema::table($name);
     $tabelle = Schema::table($ziel);
 
+    // ⚠️ **Die Null ist keine Waise, sondern eine Aussage** ([D-673](../../docs/NewConcept/90-decision-log.md)):
+    // *`relation_id = 0` an einer Wertzeile heisst «der Wert des Knotens selbst, nicht der eines
+    // seiner Felder», und an einem Datensatz heisst sie «gehört dem Knoten, nicht einer
+    // Verwendungsstelle» ([D-667](../../docs/NewConcept/90-decision-log.md)).*
+    //
+    // ⚠️ *Dieselbe Verengung hat `path-check.php` schon: **gefragt ist, dass jede Zahl, die keine
+    // Null ist, ihren Eintrag findet.** Ohne sie meldete diese Zusage die drei eigenen Werte an
+    // `Einheitenwert` und `datetime` als Fehler — und sie sind das Gegenteil.*
     $waisen = (int) $wpdb->get_var(
         "SELECT COUNT(*) FROM {$quelle} s
-         WHERE s.{$spalte} IS NOT NULL
+         WHERE s.{$spalte} IS NOT NULL AND s.{$spalte} <> 0
            AND NOT EXISTS (SELECT 1 FROM {$tabelle} z WHERE z.id = s.{$spalte})"
     );
 

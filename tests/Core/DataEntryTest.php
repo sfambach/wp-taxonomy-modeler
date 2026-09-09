@@ -522,35 +522,35 @@ final class DataEntryTest extends TestCase
 
         $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
 
-        $satzId = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[$kante->id] ?? 0;
+        // ⚠️ **Die Wahl ist ein Verweis auf den *Knoten*** ([D-684](../../docs/NewConcept/90-decision-log.md)).
+        // *Hier stand «der Teil hängt an der Einstellungskante» und las einen Teildatensatz. **Der
+        // Teil ist gefallen**, und mit ihm die Waisen: sein Wort war «warum neuer alte teil es darf
+        // nur einen geben».*
+        $gewaehlt = static fn (array $zeilen): ?int => ($zeilen[0] ?? null)?->value->reference;
 
-        self::assertNotSame(0, $satzId, 'der Teil hängt an der Einstellungskante');
-        self::assertSame($compact->id, $this->records->find($satzId)?->nodeId, 'und er ist ein Satz des gewaehlten Knotens');
+        $zeilenAn = fn (int $kanteId): array => array_values(array_filter(
+            $this->data->valuesOf($this->defaultRecordOf($this->gram->id)),
+            static fn (RelationRecord $wert): bool => $wert->relationId === $kanteId
+        ));
+
+        self::assertSame($compact->id, $gewaehlt($zeilenAn($kante->id)), 'die Zeile nennt den gewaehlten Knoten');
 
         // Dieselbe Wahl noch einmal legt nichts Zweites an — die Zeile *ist* der Datensatz (D-583).
         $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
 
-        self::assertSame($satzId, $this->data->partsOf($this->defaultRecordOf($this->gram->id))[$kante->id] ?? 0);
+        self::assertCount(1, $zeilenAn($kante->id), 'dieselbe Wahl legt keine zweite Zeile an');
 
         // Eine andere Wahl haengt um, statt einen zweiten Halter danebenzustellen.
         $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($table->id));
 
-        $neu = $this->data->partsOf($this->defaultRecordOf($this->gram->id))[$kante->id] ?? 0;
-
-        self::assertNotSame($satzId, $neu);
-        self::assertSame($table->id, $this->records->find($neu)?->nodeId);
+        self::assertSame($table->id, $gewaehlt($zeilenAn($kante->id)), 'eine andere Wahl haengt dieselbe Zeile um');
 
         // ⚠️ **Und es steht genau **eine** Zeile da, nicht drei.** *Der Fehler war schon da und die
         // Spalte hatte ihn zugedeckt: {@see DataEntry::chooseSettingRecord()} warf den alten Teil weg
         // und liess **den Verweis auf ihn stehen** — die naechste Wahl legte eine zweite Zeile daneben.
         // **Gemessen am 2026-09-05 an `setting-write-check.php`: drei Zeilen an einer Kante mit
         // `1..1`**, und die Aufloesung nahm die aelteste.*
-        $zeilen = array_filter(
-            $this->data->valuesOf($this->defaultRecordOf($this->gram->id)),
-            static fn (RelationRecord $wert): bool => $wert->relationId === $kante->id
-        );
-
-        self::assertCount(1, $zeilen, 'eine Kante mit 1..1 traegt eine Zeile, nicht eine je Wahl');
+        self::assertCount(1, $zeilenAn($kante->id), 'eine Kante mit 1..1 traegt eine Zeile, nicht eine je Wahl');
     }
 
     /**

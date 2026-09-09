@@ -2389,3 +2389,61 @@ danach genau die übrigen, und ein Ausschluss nimmt seinen Unterbaum mit.* Am Ma
 `1..1` und `1..*` ein Konflikt.** *Bei `0..1` und `0..*` ist nichts eine gültige Antwort
 ([D-380](../../NewConcept/90-decision-log.md)), und die leere Auswahl heisst dort «hier wird nichts
 gewählt» — keine Störung. **Gefangen wird es beim Verengen**, nicht beim Eingeben.*
+
+---
+
+[ ] TASK-069  Der Einstellungssatz wird sichtbar — am Entwicklerschalter
+
+**2026-09-07, sein Auftrag:** *«ein leiner zusatz ich würde die settings records gerne unten sehen in
+den records sehen. Das soll mit dem developer flag im installation menü ein und ausgeschaltet
+werden.»*
+
+⚠️ *Er beantwortet damit `INF-073` selbst: der `default`-Satz, in dem die Einstellungen wohnen, **soll**
+im Datensatzblock stehen — aber nur, wenn der Entwicklerschalter an ist. Nicht verstecken, sondern
+kenntlich machen.*
+
+⚠️ *Der Schalter ist gebaut: {@see \Taxmod\WordPress\Admin\NodesScreen::inDeveloperMode()} wird schon
+an `recordsAsTable()` gereicht. Was fehlt, ist die Zeile selbst und die Unterscheidung «Satz mit
+Einstellungswerten» — sie braucht keine Spalte: **seine Werte hängen alle an Einstellungskanten**.*
+
+---
+
+[ ] TASK-070  Der Installationsbildschirm gegen das Beschlossene prüfen
+
+**2026-09-07, sein Auftrag:** *«im menü fehlt so einiges was wir schon besprochen hatten bitte mal
+gegen checken und auch implementieren.»*
+
+⚠️ *Gemeint ist der Installationsbildschirm ([D-397](../../NewConcept/90-decision-log.md): «Die
+Installation bekommt einen eigenen Bildschirm, unter dem Modellierer»). **Zu tun ist erst eine
+Messung, keine Bauerei:** jede Entscheidung, die etwas dorthin legt, gegen das gelegt, was der
+Bildschirm heute zeigt — und die Lücke als Liste. Erst danach bauen.*
+
+---
+
+[ ] TASK-071  Der Knopf «Add as example» steht nicht an der Bearbeiten-Seite der Vorschau
+
+**2026-09-07, sein Befund:** *«der button save as example ist auch nicht im edit preview sichtbar»*
+
+⚠️ *Gebaut wurde er in [D-679](../../NewConcept/90-decision-log.md) — er steht **unter** beiden
+Vorschauseiten und nicht in der rechten, weil ein `<form>` in einem `<p>` neben dem zweiten
+Vorschaublock die zwei Spalten umlegt. **Offenbar ist er dort nicht zu finden**, und das ist ein
+Befund über die Anordnung, nicht über die Funktion.*
+
+---
+
+[ ] TASK-072  `min` lässt sich nicht auf 0 stellen, `max` nicht auf den Höchstwert
+
+**2026-09-07, sein Befund:** *«irgendwas stimmt mit den einstellungen noch nicht, min kann ich nicht
+auf 0 stellen und max nicht auf 255»*, *«bzw auf intmax»*, *«min könnte auch negativ sein davon
+abgesehen -int_max»*.
+
+⚠️ *Der Verdacht ist die Verengungsrichtung: `min` darf nach [D-084](../../NewConcept/90-decision-log.md)
+nur **steigen** (`Narrowing::OnlyUp`), `max` nur **fallen**. Steht an einem Vorfahren ein `min`, kommt
+kein Nachfahre mehr darunter — **auch nicht auf 0, und schon gar nicht ins Negative.***
+
+⚠️ **Noch nicht gemessen**, und die Messung entscheidet zwischen zwei ganz verschiedenen Fällen: *ein
+geerbtes `min` am Typ (dann wirkt die Regel wie vorgesehen und die Frage ist, ob sie hier gelten
+soll), oder eine Schranke im Steuerelement (dann ist es schlicht ein Fehler).*
+
+⚠️ *Und seine Zahl ist eine eigene Aussage: **die Grenzen eines `int` sind ±int_max**, nicht 255 —
+`display_size` reicht bis 255 ([D-660](../../NewConcept/90-decision-log.md)), der Wertebereich nicht.*

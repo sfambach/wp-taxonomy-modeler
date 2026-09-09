@@ -364,7 +364,12 @@ final class SettingsRenderer extends RendererNode
         // ⚠️ *And it is about to be rare: once settings are materialised
         // ([D-423](../../../docs/NewConcept/90-decision-log.md)) every owner carries its own row, so
         // `setHere` is true and this branch is reached only by nodes that predate the change.*
-        return '<em title="' . RenderResult::escape($this->word($context, 'inherited')) . '">↑</em>';
+        // ⚠️ **Dieselbe Marke wie im Abstieg** — *`taxmod-inherited` stand bisher nur an der geliehenen
+        // Zeile eines Teils ({@see \Taxmod\Core\Service\Rendering}); **seit die Teile gefallen sind**
+        // ([D-684](../../../docs/NewConcept/90-decision-log.md)) ist dies die einzige Stelle, die
+        // «geerbt» zeigt. **Zwei Marken für eine Aussage wären zwei Orte zum Vergessen** (`CD`).*
+        return '<em class="taxmod-inherited" title="'
+            . RenderResult::escape($this->word($context, 'inherited')) . '">↑</em>';
     }
 
     /** A word the boundary translated, or the key itself where it did not send one. */

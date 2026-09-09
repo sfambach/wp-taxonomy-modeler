@@ -297,7 +297,11 @@ final class ModelValues
      * @param  list<int> $recordIds
      * @return array<string,ResolvedSetting>
      */
-    private function settingsAt(Node|Relation $subject, array $recordIds, int $owner): array
+    /**
+     * @param list<int>|null $eigene Die Sätze, die dem gefragten Knoten **selbst** gehören — `null`,
+     *                              wo der Aufrufer die Frage nicht stellt.
+     */
+    private function settingsAt(Node|Relation $subject, array $recordIds, int $owner, ?array $eigene = null): array
     {
         if ($recordIds === []) {
             return [];
@@ -332,7 +336,19 @@ final class ModelValues
                     continue;
                 }
 
-                $aus[$kante->name] = new ResolvedSetting($kante->name, $wert->value, $owner, true);
+                // ⚠️ **«Hier gesetzt» heisst: die Zeile liegt im Satz **dieses** Knotens**
+                // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Hier stand fest `true`, und
+                // damit sah eine **geerbte** Renderer-Einstellung aus wie eine eigene — der Pfeil
+                // «geerbt» fehlte, und «zurücksetzen» wurde angeboten, wo es nichts zurückzusetzen
+                // gibt. **Vorher trug die geliehene Zeile des Teils diese Auskunft; den Teil gibt es
+                // nicht mehr.***
+                // ⚠️ **Eine leere Liste heisst «keiner», nicht «alle»** — *hier stand
+                // `$eigene === [] || …`, und damit galt ein Knoten **ohne** eigenen Satz als «hier
+                // gesetzt». **Gemessen: der Pfeil «geerbt» fehlte genau dort, wo er hingehört.**
+                // `null` heisst «nicht gefragt», und nur dann gilt der alte Rückfall.*
+                $hier = $eigene === null || in_array($recordId, $eigene, true);
+
+                $aus[$kante->name] = new ResolvedSetting($kante->name, $wert->value, $owner, $hier);
             }
         }
 
@@ -401,13 +417,13 @@ final class ModelValues
      * Einstellungen zu sein, nicht nur die vom Typ Text (inklusive geerbte)».* *An einem Textfeld
      * standen `min`, `max`, `step`, `factor` und `offset` — gemessen erklärt `Text` genau
      * `display_size` und erbt `validator`, `read_only`, `renderer`; `min` und `max` stehen an
-     * `Integer`, `factor` und `offset` an `Without prefix`. **Die Tafel fragte statt dessen, für
+     * `Integer`, `factor` und `offset` an `Without prefix`. **Die Einstellungsbereich fragte statt dessen, für
      * welchen Schlüssel sich ein Steuerelement zeichnen lässt** — und das lässt sich für fast jeden.*
      *
      * ⚠️ **Bei einer Verwendungsstelle zählt allein die Kette des ZIELS** ([D-668](../../../docs/NewConcept/90-decision-log.md)).
      * *Was an einer Stelle gilt, sagt der Knoten, auf den sie zeigt. **Sein Befund am 2026-09-06:
      * «zu viel oder display size in display size?»** — an `Text --display_size--> display size` bot
-     * die Tafel `display_size` selbst an, weil die Kette des **Besitzers** (`Text`) sie erklärt. Die
+     * der Einstellungsbereich `display_size` selbst an, weil die Kette des **Besitzers** (`Text`) sie erklärt. Die
      * Kante bot sich damit selbst als eigene Einstellung an. **Gemessen:** die Zielkette liefert
      * `min`, `max`, `step`, `read_only`, `renderer`, `validator`; die Besitzerkette legte
      * `display_size` darauf. Nach der Verengung bietet `Address --Country--> Text` `display_size`
@@ -418,7 +434,7 @@ final class ModelValues
      * Ketten — das verlangt [D-611](../../../docs/NewConcept/90-decision-log.md) ausdrücklich:
      * «der Schreiber sucht die Einstellungskante künftig an beiden Ketten, bei Namensgleichheit
      * gewinnt die des Besitzers». **Ein an der Besitzerkette geschriebener Wert bleibt also lesbar**;
-     * er wird nur nicht mehr als Angebot der Tafel aufgezählt.*
+     * er wird nur nicht mehr als Angebot dem Einstellungsbereich aufgezählt.*
      *
      * ⚠️ *Der Sonderfall, den [D-607](../../../docs/NewConcept/90-decision-log.md) beschreibt, ist
      * genau dieser: «ein Knoten erbt keine Einstellungskante, die auf **ihn selbst** zeigt» — «ein
@@ -834,7 +850,49 @@ final class ModelValues
     {
         $gewaehlt = $this->chosenRendererOf($subject);
 
-        if ($gewaehlt['record'] === null || $gewaehlt['node'] === null) {
+        if ($gewaehlt['node'] === null) {
+            return [];
+        }
+
+        // ⚠️ **Die Einstellungen des gewählten Renderers liegen im Satz **dieses** Knotens**
+        // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «knoten record ->
+        // relation_record parallel zum konstrukt des knotens». **Hier stand nur der Teilsatz**, und
+        // ohne ihn gab die Methode nichts zurück — deshalb standen `with_label` und `orientation`
+        // an jedem Knoten leer, der seinen Renderer nur geerbt hatte.*
+        //
+        // ⚠️ *Der Teilsatz wird weiter gelesen, solange es ihn gibt: `setting-part-migrate.php`
+        // löst sie auf, und ein Bestand, der noch nicht gewandert ist, soll nichts verlieren.*
+        // ⚠️ **Nur der `default`-Satz des Knotens** — *dort wohnen seine Einstellungen
+        // ([D-541](../../../docs/NewConcept/90-decision-log.md)). **Hier stand «jeder Satz mit
+        // `relation_id = 0`», und damit sickerten Werte aus `example`-Sätzen in die Auflösung** —
+        // `renderer-choice-mask-check` hat es gefangen: «der Wert des Vaters hat sich mitbewegt».*
+        // ⚠️ **Die ganze Erbkette, von nah nach fern** ([D-602](../../../docs/NewConcept/90-decision-log.md)).
+        // *Hier stand nur der Satz **dieses** Knotens, und damit erbte ein Kind die
+        // Renderer-Einstellungen seines Vaters nicht mehr — **gemessen an einem Wächter, der
+        // genau das prüft**: «ein Speichern ohne Aenderung legt keinen Teil an» fiel, weil der
+        // Vergleichswert fehlte und jedes Speichern schrieb.*
+        $saetze = [];
+        $eigene = [];
+
+        foreach ($this->erbkette($subject) as $besitzer) {
+            foreach ($this->saetzeVon($besitzer) as $satz) {
+                if ($satz->relationId !== 0 || $satz->recordType !== RecordType::Default) {
+                    continue;
+                }
+
+                $saetze[] = $satz->id;
+
+                if ($besitzer === $subject->id) {
+                    $eigene[] = $satz->id;
+                }
+            }
+        }
+
+        if ($gewaehlt['record'] !== null) {
+            $saetze[] = $gewaehlt['record'];
+        }
+
+        if ($saetze === []) {
             return [];
         }
 
@@ -844,7 +902,7 @@ final class ModelValues
         // ⚠️ *Gelesen mit dem **Renderer** als Subjekt: `orientation` ist an `compact` erklärt,
         // `with_label` und `label_role` an dessen Vorfahren. {@see self::settingRelation()} geht
         // genau diese Kette — mit dem gezeichneten Knoten als Subjekt fände sie keine der drei.*
-        foreach ($this->settingsAt($renderer, [$gewaehlt['record']], $renderer->id) as $schluessel => $angabe) {
+        foreach ($this->settingsAt($renderer, array_values(array_unique($saetze)), $renderer->id, $eigene) as $schluessel => $angabe) {
             $aus[$schluessel] = new ResolvedSetting(
                 $angabe->key,
                 $this->alsWort($angabe->value),

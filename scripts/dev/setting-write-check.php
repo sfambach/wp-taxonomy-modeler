@@ -151,7 +151,7 @@ function traegersatz(int $knotenId): int
         'SELECT v.value_ref FROM ' . Schema::table('node_records') . ' r
            INNER JOIN ' . Schema::table('relation_records') . " v ON v.node_record_id = r.id
           WHERE r.node_id = %d AND r.record_type = 'default'
-            AND v.relation_id = %d AND v.value_ref_kind = 'record'
+            AND v.relation_id = %d AND v.value_ref_kind = 'node'
           LIMIT 1",
         $knotenId,
         $framework->settingRelationId(SettingKey::Renderer)
@@ -206,15 +206,17 @@ $astPlaetze = implode(',', array_fill(0, max(1, count($rendererAst)), '%d'));
 $rendererKante = $framework->settingRelationId(SettingKey::Renderer);
 
 $gesamt = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'record'",
+    // ⚠️ **Ein Knoten, kein Satz** ([D-684](../../docs/NewConcept/90-decision-log.md)).
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'node'",
     $rendererKante
 ));
 
 $daneben = $rendererAst === [] ? $gesamt : (int) $wpdb->get_var($wpdb->prepare(
+    // ⚠️ *Der Verweis **ist** der Knoten — ein Sprung weniger als vorher, wo erst der Teilsatz und
+    // dann dessen `node_id` gelesen werden musste ([D-684](../../docs/NewConcept/90-decision-log.md)).*
     'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
-       INNER JOIN ' . Schema::table('node_records') . ' r ON r.id = v.value_ref
-       LEFT JOIN ' . Schema::table('nodes') . " z ON z.id = r.node_id
-      WHERE v.relation_id = %d AND v.value_ref_kind = 'record'
+       LEFT JOIN ' . Schema::table('nodes') . " z ON z.id = v.value_ref
+      WHERE v.relation_id = %d AND v.value_ref_kind = 'node'
         AND (z.id IS NULL OR z.id NOT IN ({$astPlaetze}))",
     $rendererKante,
     ...$rendererAst
@@ -305,16 +307,14 @@ if ($rendererKnoten === null) {
         // ⚠️ *Gefragt wird der Satz, der an der Einstellungskante haengt — er gehoert dem
         // **Renderer**, nicht dem eingestellten Knoten ([D-583](../../docs/NewConcept/90-decision-log.md):
         // «dessen `node_id` sagt schon, welcher Renderer es ist»).*
-        $satz = $wpdb->get_row($wpdb->prepare(
-            'SELECT record_type, node_id FROM ' . Schema::table('node_records') . ' WHERE id = %d',
-            traegersatz($knotenId)
-        ), ARRAY_A);
-
+        // ⚠️ **Der Verweis ist der Renderer-Knoten selbst** ([D-684](../../docs/NewConcept/90-decision-log.md)).
+        // *Hier stand ein Sprung über einen Teildatensatz — «und zwar im default-Satz des
+        // gewählten Renderers». **Den Teil gibt es nicht mehr**, und was er beweisen sollte, sagt
+        // die Wertzeile jetzt direkt: sie nennt den Knoten.*
         check(
-            'und zwar im default-Satz des gewaehlten Renderers',
-            ($satz['record_type'] ?? null) === 'default'
-                && (int) ($satz['node_id'] ?? 0) === (int) $rendererKnoten['id'],
-            json_encode($satz) ?: 'kein Satz'
+            'und zwar als Verweis auf den gewaehlten Renderer-Knoten',
+            traegersatz($knotenId) === (int) $rendererKnoten['id'],
+            traegersatz($knotenId) . ' statt ' . $rendererKnoten['id']
         );
 
         // ⚠️ **Zweimal schreiben legt keinen zweiten Satz an.** *Sonst stünden am Ende zwei Antworten
@@ -491,7 +491,7 @@ if ($einstellung === null) {
     // ⚠️ **Und derselbe Weg ueber die Seite, wie ein Mensch ihn geht** — die Angaben einer Feldzeile
     // kommen als `taxmod_field_setting[<Kanten-Id>][<Schluessel>]` an
     // ([D-520](../../docs/NewConcept/90-decision-log.md): sie stehen als **Feldzeilen** im
-    // Settings-Block, nicht in einer eigenen Tafel unter der Zeile).
+    // Settings-Block, nicht in einer eigenen Einstellungsbereich unter der Zeile).
     // ⚠️ *Hier gesucht statt weiter oben: der Abschnitt, der den Verwalter frueher besorgte, ging
     // ueber die gefallene Renderer-Adresse und ist mit ihr weg.*
     $verwalter = get_users(['role' => 'administrator', 'number' => 1]);
@@ -653,7 +653,7 @@ $wahlen = (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' r
        INNER JOIN ' . Schema::table('relation_records') . " v ON v.node_record_id = r.id
       WHERE r.node_id = %d AND r.record_type = 'default'
-        AND v.relation_id = %d AND v.value_ref_kind = 'record'",
+        AND v.relation_id = %d AND v.value_ref_kind = 'node'",
     $knotenId,
     $framework->settingRelationId(SettingKey::Renderer)
 ));
@@ -662,15 +662,16 @@ check('der Pruefknoten haelt genau eine Wahl', $wahlen === 1, (string) $wahlen);
 
 // Und sie ist ein Verweis auf einen Satz, dessen Knoten den Renderer nennt -- kein Behaelter
 // dazwischen, keine zweite Zeile daneben.
+// ⚠️ **Ein Sprung, keine zwei** ([D-684](../../docs/NewConcept/90-decision-log.md)). *Hier ging
+// die Abfrage über einen Teildatensatz auf dessen Knoten. **Den Teil gibt es nicht mehr** — die
+// Wertzeile nennt den Renderer-Knoten direkt, und genau das ist die Zusage.*
 $stufen = $wpdb->get_row($wpdb->prepare(
-    'SELECT z.name FROM ' . Schema::table('node_records') . ' r
-     INNER JOIN ' . Schema::table('nodes_named') . ' z ON z.id = r.node_id
-     WHERE r.id = %d',
+    'SELECT z.name FROM ' . Schema::table('nodes_named') . ' z WHERE z.id = %d',
     traegersatz($knotenId)
 ), ARRAY_A);
 
 check(
-    'und der Satz nennt den Renderer selbst — ohne Huelle dazwischen',
+    'und die Wertzeile nennt den Renderer selbst — ohne Huelle dazwischen',
     ($stufen['name'] ?? null) === 'spinner',
     $stufen['name'] ?? 'nichts'
 );

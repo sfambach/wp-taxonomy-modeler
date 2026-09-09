@@ -361,10 +361,10 @@ echo "\n== Woher die Auskunft kommt ==\n";
     );
 }
 
-echo "\n== Die Tafel einer Stelle fragt das Ziel, nicht den Besitzer (D-668) ==\n";
+echo "\n== Die Einstellungsbereich einer Stelle fragt das Ziel, nicht den Besitzer (D-668) ==\n";
 
 // ⚠️ **Sein Befund am 2026-09-06, mit Bild:** *«zu viel oder display size in display size?»* — an
-// `Text --display_size--> display size` bot die aufgeklappte Tafel `display_size` selbst an. Der
+// `Text --display_size--> display size` bot die aufgeklappte Einstellungsbereich `display_size` selbst an. Der
 // Grund war, dass {@see ModelValues::declaredSettingKeys()} **zwei** Ketten fragte, die des Ziels
 // und die des Besitzers; die Kante bot sich damit selbst als eigene Einstellung an
 // ([D-668](../../docs/NewConcept/90-decision-log.md)).
@@ -375,7 +375,7 @@ echo "\n== Die Tafel einer Stelle fragt das Ziel, nicht den Besitzer (D-668) ==\
 {
     $modell = new ModelValues($records, $relations, $nodes, $framework);
 
-    $gebaut  = $geruest->einstellung('Tafel Ziel', 'tafelmass');
+    $gebaut  = $geruest->einstellung('Einstellungsbereich Ziel', 'tafelmass');
     $eigene  = null;
 
     foreach ($relations->fieldRelationsOf([$gebaut['traeger']]) as $eine) {
@@ -398,11 +398,11 @@ echo "\n== Die Tafel einer Stelle fragt das Ziel, nicht den Besitzer (D-668) ==\
             implode(', ', $ihre)
         );
 
-        // ⚠️ **Der Gegenfall, und ohne ihn wäre die Zusage auch dann grün, wenn die Tafel gar
+        // ⚠️ **Der Gegenfall, und ohne ihn wäre die Zusage auch dann grün, wenn der Einstellungsbereich gar
         // nichts mehr anböte.** *Eine gewöhnliche Verwendungsstelle, deren **Ziel** die Einstellung
         // erklärt — die Gestalt von `Address --Country--> Text`: `Text` erklärt `display_size`,
         // also steht sie an der Stelle. Genau das darf die Verengung nicht mitnehmen.*
-        $stelle = $geruest->feldMit('Tafel Nutzer', 'zeigtauf', '1', $gebaut['traeger']);
+        $stelle = $geruest->feldMit('Einstellungsbereich Nutzer', 'zeigtauf', '1', $gebaut['traeger']);
         $nutzt  = null;
 
         foreach ($relations->fieldRelationsOf([$stelle['von']]) as $eine) {
@@ -432,7 +432,7 @@ echo "\n== Die Tafel einer Stelle fragt das Ziel, nicht den Besitzer (D-668) ==\
         }
 
         check(
-            'die Tafel einer Kante zeigt «wie oft» (D-351)',
+            'der Einstellungsbereich einer Kante zeigt «wie oft» (D-351)',
             in_array(SettingKey::Multiplicity->value, $gezeichnet, true),
             implode(', ', $gezeichnet)
         );

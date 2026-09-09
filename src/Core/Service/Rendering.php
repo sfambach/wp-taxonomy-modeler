@@ -588,7 +588,16 @@ final class Rendering implements Presets
      */
     public function settingsForNode(Node $node): array
     {
-        return $this->withModelValues([], $node);
+        // ⚠️ **Auch die Angaben des geltenden Renderers** ([D-684](../../../docs/NewConcept/90-decision-log.md)).
+        // *Der Name sagt «was an diesem Knoten gilt», und `with_label`, `label_role` und
+        // `orientation` gelten dort ebenso — sie stehen nur an einer anderen Kette
+        // ({@see self::withRendererValues()}, dieselbe Naht, aus der auch gezeichnet wird).*
+        //
+        // ⚠️ **Was das Fehlen gekostet hat:** *der Schreiber vergleicht mit dieser Auskunft, ob eine
+        // Angabe schon so dasteht ([D-609](../../../docs/NewConcept/90-decision-log.md)). **Ohne die
+        // Renderer-Angaben fand er nie einen Vergleichswert**, und jedes Speichern legte am Kind eine
+        // eigene Zeile an — aus «geerbt» wurde still «hier gesetzt» (`INF-076`).*
+        return $this->withRendererValues($node);
     }
 
     private function vonDenKnoten(array $nodes): array
@@ -1779,7 +1788,7 @@ final class Rendering implements Presets
 
             // ⚠️ **Der Bereich unter der Zeile, und er wird nur gezeichnet, wenn er offen ist**
             // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Gezeichnet von
-            // {@see SettingsRenderer} — der Tafel, die es für genau diesen Zweck schon gibt —, damit
+            // {@see SettingsRenderer} — dem Einstellungsbereich, die es für genau diesen Zweck schon gibt —, damit
             // die Einstellungen einer Kante aussehen wie die eines Knotens und nicht wie eine zweite
             // Machart ([D-665](../../../docs/NewConcept/90-decision-log.md), `R1`).*
             //
@@ -1981,7 +1990,7 @@ final class Rendering implements Presets
      * flowchart LR
      *   R["der Rand: «diese Zeile wurde aufgeklappt»"] --> K[this]
      *   K --> A["Auflösung über Kante, Ziel, Vorfahren"]
-     *   A --> P["die Tafel · SettingsRenderer"]
+     *   A --> P["der Einstellungsbereich · SettingsRenderer"]
      * ```
      *
      * ⚠️ **Das ist der erste Fall von [D-627](../../../docs/NewConcept/90-decision-log.md) in Code**,
@@ -1993,7 +2002,7 @@ final class Rendering implements Presets
      *
      * ⚠️ **Und es ist die einzige Stelle, die auflöst, wenn eine Zeile allein nachgeholt wird**
      * ([D-666](../../../docs/NewConcept/90-decision-log.md)): *für die Seite tut es
-     * {@see self::fieldRowsFor()}, und beide enden in derselben Tafel — eine Machart, nicht zwei
+     * {@see self::fieldRowsFor()}, und beide enden in derselben Einstellungsbereich — eine Machart, nicht zwei
      * ([D-665](../../../docs/NewConcept/90-decision-log.md), `R1`).*
      *
      * @param list<Control> $words Die Worte des Randes, als `word:<key>`.
@@ -2074,7 +2083,7 @@ final class Rendering implements Presets
             $aus = [];
 
             foreach (SettingKey::applyingTo($subject, $istKante) as $key) {
-                $aus[$key->value] = $key;
+                $aus[$key->value] = null;
             }
 
             return $aus;
@@ -2085,7 +2094,7 @@ final class Rendering implements Presets
         // ⚠️ *Sie hängt als Spalte an der Kante und ist nirgends als Kante erklärt — aus dem Modell
         // käme sie nie zurück, und die zugeklappte Feldzeile fragt genau nach ihr.*
         if ($istKante) {
-            $aus[SettingKey::Multiplicity->value] = SettingKey::Multiplicity;
+            $aus[SettingKey::Multiplicity->value] = null;
         }
 
         $kanten = $this->model->declaredSettingEdges($node);
@@ -2104,7 +2113,7 @@ final class Rendering implements Presets
                 continue;
             }
 
-            $aus[$name] = $key;
+            $aus[$name] = $kante;
         }
 
         return $aus;
@@ -2169,7 +2178,7 @@ final class Rendering implements Presets
     }
 
     /**
-     * Die Tafel selbst — **eine Stelle, damit es eine Machart bleibt** (`R1`).
+     * Die Einstellungsbereich selbst — **eine Stelle, damit es eine Machart bleibt** (`R1`).
      *
      * ⚠️ *«wie oft» bleibt draussen: es hat seine eigene Spalte in der Zeile
      * ([D-351](../../../docs/NewConcept/90-decision-log.md)), und zweimal dasselbe Steuerelement ist
@@ -2285,7 +2294,7 @@ final class Rendering implements Presets
         // [D-529](../../../docs/NewConcept/90-decision-log.md) vorschreibt.*
         //
         // ⚠️ *Ohne `ModelValues` bleibt es bei der alten Auskunft: eine Vorschau ohne Modellzugang
-        // hat keine Kette zu fragen, und eine leere Tafel wäre dort die falschere Antwort.*
+        // hat keine Kette zu fragen, und eine leere Einstellungsbereich wäre dort die falschere Antwort.*
         //
         // ⚠️ **`multiplicity` applies only to an relation** and is the one key that does (D-351) — a
         // node describes a thing, and a thing has no multiplicity. *Sie hängt als **Spalte** an der
@@ -2293,7 +2302,9 @@ final class Rendering implements Presets
         // ⚠️ *Über die **Namen** und nicht über die Aufzählung: ein im Modell erklärter Schlüssel
         // ohne Fall in {@see SettingKey} soll eine Zeile bekommen wie jeder andere
         // ([D-682](../../../docs/NewConcept/90-decision-log.md)).*
-        foreach (array_keys($this->zutreffendeKanten($node, $subject, $forNode)) as $name) {
+        $kanten = $this->zutreffendeKanten($node, $subject, $forNode);
+
+        foreach (array_keys($kanten) as $name) {
             $resolved[$name] ??= new ResolvedSetting($name, TypedValue::nothing(), 0, false);
         }
 
@@ -2338,14 +2349,71 @@ final class Rendering implements Presets
             // has no type the engine can know, and a borrowing key on a subject with no type of its
             // own has no shape to be drawn in.*
             if ($engineKey !== null && $shape->isAChoice()) {
-                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId, $editable);
+                // ⚠️ *Nur «wie oft» folgt der Kante; jede andere Einstellung darf an dieser
+                // Stelle überschrieben werden ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
+                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId, $engineKey === SettingKey::Multiplicity ? $editable : true);
 
                 continue;
             }
 
             // A free key, or a borrowed type the subject does not have. Nothing is drawn, and the
             // caller is told which of the two it is by the shape.
-            if ($engineKey === null || $type === null) {
+            // ⚠️ **Ein im Modell erklärter Schlüssel ist ein Feld und wird als eines gezeichnet**
+            // ([D-529](../../../docs/NewConcept/90-decision-log.md)). *Sein Bau: «knoten -> relation
+            // typ setting -> type». **Eine Einstellung *ist* eine Kante auf einen Typ**, also weiss
+            // ihre eigene Kante, was zu zeichnen ist — `label_role` zeigt auf `Label roles` und wird
+            // eine Auswahl, `with_label` auf `Boolean` und wird ein Schalter.*
+            //
+            // ⚠️ **Hier stand eine leere Zeile für jeden Namen, den die Aufzählung nicht kennt**, und
+            // das war die Lücke, die [D-682](../../../docs/NewConcept/90-decision-log.md) offenliess:
+            // *`label_role` stand als **Beschriftung ohne Bedienelement** da, obwohl das Modell die
+            // Einstellung erklärt. **Eine geschlossene Liste von dreizehn Namen entschied, was
+            // bedienbar ist** — gegen [D-529](../../../docs/NewConcept/90-decision-log.md).*
+            if ($engineKey === null) {
+                $kante = $kanten[$key] ?? null;
+
+                // ⚠️ **Woher der Wert kommt, sagt die Auflösung am *Knoten*** — *nicht die an der
+                // Kante ([D-684](../../../docs/NewConcept/90-decision-log.md)). Der Aufrufer reicht
+                // die Einstellungen der **Verwendungsstelle** herein, und die melden «hier
+                // gesetzt» für alles, was sie kennen. **Damit fehlte der Pfeil «geerbt»**, und
+                // «zurücksetzen» stand an einer Zeile, an der es nichts zurückzusetzen gibt.*
+                if ($kante !== null && $forNode !== 0) {
+                    $knotenHier = $this->nodes->find($forNode);
+
+                    if ($knotenHier !== null) {
+                        $setting = $this->withRendererValues($knotenHier)[$key] ?? $setting;
+                    }
+                }
+
+                $gezeichnet = $kante === null
+                    ? []
+                    : $this->fieldsFor(
+                        [$kante],
+                        [$kante->id => $setting->value],
+                        $purpose,
+                        $fieldPrefix === '' ? '' : $fieldPrefix,
+                        $locale,
+                        $level,
+                        true,
+                        $formId
+                    );
+
+                $feld = $gezeichnet[0] ?? null;
+
+                $drawn[] = new RenderedSetting(
+                    $key,
+                    $shape,
+                    $feld?->type,
+                    $setting,
+                    $feld?->result,
+                    $feld?->rendererName,
+                    $subject
+                );
+
+                continue;
+            }
+
+            if ($type === null) {
                 $drawn[] = new RenderedSetting($key, $shape, $type, $setting, null, null, $subject);
 
                 continue;
@@ -3055,6 +3123,21 @@ final class Rendering implements Presets
         ?SimpleType $subjectType = null,
         array $choices = [],
         string $formId = '',
+        /**
+         * Ob die **Kante selbst** hier erklärt ist — und damit **nur** für «wie oft» massgeblich.
+         *
+         * ⚠️ **Hier wirkte dieser Schalter auf die ganze Einstellungsbereich, und das war der Grund, warum er die
+         * Renderer-Einstellungen nicht setzen konnte.** *[D-376](../../../docs/NewConcept/90-decision-log.md)
+         * gilt für die **Mehrfachheit**: «wie oft» gehört der Kante, und eine geerbte Kante gehört
+         * dem Vorfahren. **Eine Einstellung gehört dagegen der Stelle** — sie überall überschreiben
+         * zu können ist der ganze Zweck der Auflösungskette ([D-015](../../../docs/NewConcept/90-decision-log.md),
+         * [D-602](../../../docs/NewConcept/90-decision-log.md): näher schlägt ferner).*
+         *
+         * ⚠️ **Gemessen an `Parts List`:** *die `renderer`-Kante ist an `Root` erklärt, also stand die
+         * ganze Einstellungsbereich gesperrt — `label_role` als graues `<select disabled>`, `with_label` als leeres
+         * Feld ohne Schalter. **Sein Befund «with without label wurd auch nicht mitgespiechert» war
+         * kein Speicherfehler: es war nie bedienbar.***
+         */
         bool $editable = true,
     ): RenderedSetting {
         $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
@@ -3358,6 +3441,22 @@ final class Rendering implements Presets
     }
 
     /**
+     * Welcher Knoten an dieser Einstellungskante **gilt** — gesetzt oder geerbt, ohne Teil.
+     *
+     * ⚠️ **Der Schreiber braucht dieselbe Auskunft wie der Zeichner**
+     * ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Vorher fragte er nach einem
+     * **Teildatensatz** ({@see self::inheritedRendererPart()}); **den gibt es nicht mehr**, und ohne
+     * ihn nahm er das Ziel der Kante — `Renderer` — als Ort der inneren Kanten. **`with_label` ist
+     * dort nicht erklärt**, also fiel es heraus: der vierte stumme Aussetzer derselben Reise.*
+     */
+    public function appliedSettingNode(int $nodeId, Relation $carrier): ?Node
+    {
+        $ref = $this->chosenNodeOf($carrier, $this->typeAt($carrier), [], $nodeId);
+
+        return $ref === 0 ? null : $this->nodes->find($ref);
+    }
+
+    /**
      * The simple type a node **is**, rather than the one an attribute points at.
      *
      * ⚠️ *It used to load every ancestor to read their names. Since the binding is by id
@@ -3627,7 +3726,14 @@ final class Rendering implements Presets
         // Renderer ein Datensatz mit eigenen Feldern (D-585: converter, geerbt). Ein Teil entsteht
         // nur, wo das Modell sagt, dass das Ziel einen eigenen Satz braucht -- also ist sein
         // Vorhandensein der bessere Beleg als der Typ.
-        if (($type !== null && $teile === []) || $tiefe >= self::TIEFSTENS) {
+        // ⚠️ **Ohne Teil, aber mit einem geltenden Knoten, wird trotzdem abgestiegen**
+        // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Seit die Teile gefallen sind, ist
+        // «kein Teil» der **Normalfall** und nicht mehr «nichts gewählt» — die Wahl steht als
+        // Knotenverweis in der Wertzeile. **Ohne diese Zeile verschwänden `converter`, `with_label`
+        // und `orientation` von jeder Seite**, weil sie an einem Teil hingen, den es nicht mehr gibt.*
+        $aufgeloest = $teile === [] ? $this->chosenNodeOf($relation, $type, $values, $forNode) : 0;
+
+        if (($type !== null && $teile === [] && $aufgeloest === 0) || $tiefe >= self::TIEFSTENS) {
             return null;
         }
 
@@ -3705,7 +3811,14 @@ final class Rendering implements Presets
             // WICHTIG: Die Felder des *gewaehlten* Knotens, nicht die des Kantenziels (D-584).
             // Die Kante zeigt auf den Basisknoten «Renderer»; im Datensatz steht «compact», und
             // gezeichnet gehoeren dessen Felder. Ohne das endet der Abstieg an der Auswahl.
-            $dieseFelder = $teil === null ? $innen : $this->fieldsOfChosen($teil, $relation->toNodeId, $innen);
+            // ⚠️ *Ohne Teil sagt die Kette des **geltenden** Knotens, was hier steht — dieselbe
+            // Auskunft wie mit Teil, nur ist die Quelle die Auflösung statt der Satz
+            // ([D-684](../../../docs/NewConcept/90-decision-log.md)).*
+            $dieseFelder = $teil === null
+                ? ($aufgeloest === 0
+                    ? $innen
+                    : $this->fieldsOfChosen(['nodeId' => $aufgeloest], $relation->toNodeId, $innen))
+                : $this->fieldsOfChosen($teil, $relation->toNodeId, $innen);
 
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
@@ -3717,11 +3830,17 @@ final class Rendering implements Presets
                 // über sie legt {@see \Taxmod\Core\Service\DataEntry::putSettingAt()} beim **ersten
                 // Schreiben** den eigenen Teil an ([D-609](../../../docs/NewConcept/90-decision-log.md)).
                 // **Angesehen wird dabei nichts geschrieben.***
-                $teil === null || $fieldPrefix === ''
+                // ⚠️ **Adressiert wird über Knoten und Kante, nicht über die Satz-Id**
+                // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «settings
+                // müssen zum knoten/kante geichert werden nicht zum datensatz». **Die Satz-Id war
+                // eine Adresse, die derselbe Aufruf ersetzen konnte** — deshalb ging `with_label`
+                // verloren, wenn er im selben Speichern den Renderer umstellte (`INF-072`).*
+                //
+                // ⚠️ *Ohne Teil bekommen die Felder trotzdem einen Namen, sobald ein Knoten gilt —
+                // sonst wären sie zu sehen und nicht zu bedienen.*
+                $fieldPrefix === '' || ($teil === null && $aufgeloest === 0)
                     ? ''
-                    : (($teil['id'] ?? 0) === 0
-                        ? $fieldPrefix . '[' . $relation->id . ']'
-                        : self::PART_FIELD . '[' . $teil['id'] . ']'),
+                    : $fieldPrefix . '[' . $relation->id . ']',
                 $locale,
                 $level,
                 $editable,
@@ -3793,6 +3912,56 @@ final class Rendering implements Presets
      * @param list<Relation> $innen
      * @return list<Relation>
      */
+    /**
+     * Welcher Knoten an dieser Einstellungskante **gilt** — gesetzt oder geerbt.
+     *
+     * ⚠️ *Ein Teil sagte «hier wurde gewählt»; seit [D-684](../../../docs/NewConcept/90-decision-log.md)
+     * gibt es keinen, und die Auflösung sagt «hier gilt». **Das ist die schärfere Auskunft**: `Model`
+     * hat den Renderer gesetzt, `Kontact` erbt ihn und muss dessen Einstellungen trotzdem
+     * überschreiben können ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param array<int, TypedValue> $values
+     */
+    private function chosenNodeOf(Relation $relation, ?SimpleType $type, array $values, int $forNode): int
+    {
+        if (! $relation->isSetting() || $type !== SimpleType::NodeRef) {
+            return 0;
+        }
+
+        $eigener = ($values[$relation->id] ?? null)?->reference;
+
+        if ($eigener !== null && $eigener !== $relation->toNodeId) {
+            return $eigener;
+        }
+
+        $knoten = $forNode === 0 ? null : $this->nodes->find($forNode);
+
+        if ($knoten === null) {
+            return 0;
+        }
+
+        $geltend = $this->withModelValues([], $knoten)[$relation->name] ?? null;
+        $ref     = $geltend?->value->reference;
+
+        // ⚠️ *Der Renderer steht in der Kette als **Name**, nicht als Verweis — gemessen: `Parts
+        // List` löst zu `text='form'` auf. Der Weg vom Namen zum Knoten ist der der Registratur
+        // ([D-510](../../../docs/NewConcept/90-decision-log.md)), nicht der über einen Anzeigenamen.*
+        if ($ref === null) {
+            $name = $geltend?->value->text ?? '';
+
+            if ($name === '') {
+                return 0;
+            }
+
+            $klasse = $this->renderers->classFor($name);
+            $ref    = $klasse === null
+                ? null
+                : ($this->nodes->byImplementations([$klasse])[$klasse] ?? null)?->id;
+        }
+
+        return $ref === null || $ref === $relation->toNodeId ? 0 : $ref;
+    }
+
     private function fieldsOfChosen(array $teil, int $targetId, array $innen): array
     {
         $gewaehlt = $teil['nodeId'] ?? 0;

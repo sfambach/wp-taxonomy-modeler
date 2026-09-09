@@ -320,7 +320,7 @@ check(
 );
 
 $traegerZahl = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'record'",
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'node'",
     $renderKante
 ));
 
@@ -397,7 +397,7 @@ foreach ($wpdb->get_results(
         'SELECT DISTINCT halter.node_id
            FROM ' . Schema::table('node_records') . ' halter
            JOIN ' . Schema::table('relation_records') . " wert ON wert.node_record_id = halter.id
-          WHERE wert.relation_id = %d AND wert.value_ref_kind = 'record'",
+          WHERE wert.relation_id = %d AND wert.value_ref_kind = 'node'",
         $renderKante
     ),
     ARRAY_A
@@ -665,7 +665,7 @@ $n = Schema::table('nodes_named');
 $traegerIds = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
     'SELECT DISTINCT r.node_id FROM ' . Schema::table('relation_records') . ' v'
         . ' JOIN ' . Schema::table('node_records') . ' r ON r.id = v.node_record_id'
-        . " WHERE v.relation_id = %d AND v.value_ref_kind = 'record' ORDER BY r.node_id",
+        . " WHERE v.relation_id = %d AND v.value_ref_kind = 'node' ORDER BY r.node_id",
     $renderKante
 )));
 
@@ -1077,19 +1077,21 @@ $satz = (int) $wpdb->get_var(
        FROM {$p}relation_records v
        JOIN {$p}node_records r ON r.id = v.node_record_id
       WHERE r.node_id = {$probe->id} AND r.record_type = 'default'
-        AND v.relation_id = {$kante} AND v.value_ref_kind = 'record'"
+        AND v.relation_id = {$kante} AND v.value_ref_kind = 'node'"
 );
 
-check('die Wahl haengt als Datensatz an dieser Kante', $satz !== 0, (string) $satz);
+check('die Wahl haengt als Verweis an dieser Kante', $satz !== 0, (string) $satz);
 
 // ⚠️ *Und der Satz **ist** der gewaehlte Renderer — seine `node_id` sagt es
 // ([D-583](../../docs/NewConcept/90-decision-log.md)). Eine Zeile, die auf irgendeinen Satz zeigt,
 // waere keine Zusage.*
+// ⚠️ **Ein Sprung, keine zwei** ([D-684](../../docs/NewConcept/90-decision-log.md)): *der Verweis
+// **ist** der Renderer-Knoten, nicht ein Teildatensatz, dessen `node_id` ihn erst nennt.*
 $gewaehlterKnoten = $satz === 0 ? '' : (string) $wpdb->get_var(
-    "SELECT z.name FROM {$p}node_records s JOIN {$p}nodes_named z ON z.id = s.node_id WHERE s.id = {$satz}"
+    "SELECT z.name FROM {$p}nodes_named z WHERE z.id = {$satz}"
 );
 
-check('und der Satz ist ein Satz des gewaehlten Renderers', $gewaehlterKnoten === $wahl, "«{$gewaehlterKnoten}» statt «{$wahl}»");
+check('und der Verweis nennt den gewaehlten Renderer', $gewaehlterKnoten === $wahl, "«{$gewaehlterKnoten}» statt «{$wahl}»");
 
 // ⚠️ **Die Spalte ist weg und darf nicht wiederkommen** (Fassung 32). *`dbDelta` legt eine fehlende
 // Spalte wieder an; kaeme sie zurueck, haette der Renderer wieder zwei Orte.*
@@ -1624,15 +1626,15 @@ check(
     'der Wert steht nicht im Steuerelement'
 );
 
-echo "\n== die Tafel bietet nur an, was die Kette erklaert (D-529, D-668) ==\n";
+echo "\n== der Einstellungsbereich bietet nur an, was die Kette erklaert (D-529, D-668) ==\n";
 
 // ⚠️ **Sein Befund am 2026-09-06:** *«es scheinen einfach alle Einstellungen zu sein, nicht nur die
-// vom Typ Text».* *Gemessen stimmte das: die Tafel ging eine **Aufzaehlung im Kode** durch und nahm
+// vom Typ Text».* *Gemessen stimmte das: der Einstellungsbereich ging eine **Aufzaehlung im Kode** durch und nahm
 // jeden Schluessel, fuer den sich ein Steuerelement zeichnen laesst. Behoben in `688798e`, verschaerft
 // durch [D-668](../../docs/NewConcept/90-decision-log.md) in `b32b491`.*
 //
 // ⚠️ **Und gemessen wird am Markup der aufgeklappten Zeile, nicht an `ModelValues`.** *Die vorhandene
-// Zusage in `setting-relation-check` fragt den Kern — sie waere gruen geblieben, solange die Tafel
+// Zusage in `setting-relation-check` fragt den Kern — sie waere gruen geblieben, solange der Einstellungsbereich
 // ihre Schluessel woanders herholt. **Genau dieser Unterschied hat den Fehler verdeckt.***
 preg_match_all(
     '/name="taxmod_field_setting\[' . $feld->id . '\]\[([a-z_]+)\]"/',
@@ -1660,16 +1662,16 @@ $erklaert = $wpdb->get_col(
 
 // ⚠️ **Eine Ausnahme, und sie steht mit Grund da:** *`multiplicity` ist **eine Spalte an der Kante**
 // ([D-351](../../docs/NewConcept/90-decision-log.md): *«one key with four constants»*) und keine
-// Einstellungskante. Sie kann an keiner Kette erklaert sein — und sie gehoert trotzdem in die Tafel,
+// Einstellungskante. Sie kann an keiner Kette erklaert sein — und sie gehoert trotzdem in der Einstellungsbereich,
 // weil sie zur Verwendungsstelle gehoert und nur dort zu aendern ist.*
 $erklaert[] = SettingKey::Multiplicity->value;
 
 $ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
 
-// ⚠️ *Der Gegenfall zuerst: **eine leere Tafel waere sonst gruen** — und «bietet nur Erklaertes an»
+// ⚠️ *Der Gegenfall zuerst: **eine leere Einstellungsbereich waere sonst gruen** — und «bietet nur Erklaertes an»
 // ist am billigsten dadurch erfuellt, dass gar nichts angeboten wird.*
 check(
-    'die Tafel bietet ueberhaupt Schluessel an',
+    'der Einstellungsbereich bietet ueberhaupt Schluessel an',
     count($angeboteneSchluessel) >= 3,
     implode(',', $angeboteneSchluessel) ?: '—'
 );
@@ -1682,14 +1684,14 @@ check(
 
 // ⚠️ **Der benannte Gegenfall, und er ist der Fall, den er gemeldet hat.** *`display_size` ist ein
 // zeichenbarer Schluessel ([D-659](../../docs/NewConcept/90-decision-log.md)) und steht **nicht** an
-// der Kette dieses Ziels. Die alte Tafel bot ihn trotzdem an, weil sie fragte, was sich zeichnen
+// der Kette dieses Ziels. Die alte Einstellungsbereich bot ihn trotzdem an, weil sie fragte, was sich zeichnen
 // laesst. **Ohne diese Zeile bliebe die Zusage oben abstrakt** — sie faellt weg, sobald `display_size`
 // hier wirklich erklaert wird, und dann ist sie zu ersetzen und nicht zu entschaerfen.*
 check(
-    'und ein zeichenbarer, aber nicht erklaerter Schluessel fehlt in der Tafel',
+    'und ein zeichenbarer, aber nicht erklaerter Schluessel fehlt in dem Einstellungsbereich',
     in_array(SettingKey::DisplaySize->value, $erklaert, true)
         || ! in_array(SettingKey::DisplaySize->value, $angeboteneSchluessel, true),
-    'die Tafel bietet `' . SettingKey::DisplaySize->value . '` an, ohne dass die Kette ihn erklaert'
+    'der Einstellungsbereich bietet `' . SettingKey::DisplaySize->value . '` an, ohne dass die Kette ihn erklaert'
 );
 
 echo "\n== die Wurzel ist der letzte Halt, nicht die Regel fuer alles (D-617) ==\n";
@@ -1878,13 +1880,19 @@ if ($vaterWahlId !== 0) {
         "SELECT v.value_ref FROM {$p}relation_records v
            JOIN {$p}node_records r ON r.id = v.node_record_id
           WHERE r.node_id = {$vater->id} AND r.record_type = 'default'
-            AND v.relation_id = {$kante} AND v.value_ref_kind = 'record'"
+            AND v.relation_id = {$kante} AND v.value_ref_kind = 'node'"
     );
 
-    $vaterAn = (int) $wpdb->get_var(
-        "SELECT value_int FROM {$p}relation_records
-          WHERE node_record_id = {$vaterSatz} AND relation_id = {$vaterKanten['with_label']}"
-    );
+    // ⚠️ **Im eigenen Satz des Knotens, nicht in einem Teil** ([D-684](../../docs/NewConcept/90-decision-log.md)).
+    $eigenerWert = static function (int $nodeId, int $innen) use ($wpdb, $p) {
+        return $wpdb->get_var(
+            "SELECT v.value_int FROM {$p}relation_records v
+               JOIN {$p}node_records r ON r.id = v.node_record_id
+              WHERE r.node_id = {$nodeId} AND r.record_type = 'default' AND v.relation_id = {$innen}"
+        );
+    };
+
+    $vaterAn = (int) $eigenerWert($vater->id, (int) $vaterKanten['with_label']);
 
     check('`with_label` steht am Vater auf «an»', $vaterAn === 1, "gelesen «{$vaterAn}»");
 
@@ -1936,16 +1944,20 @@ if ($vaterWahlId !== 0) {
     // Wurzel eine Wahl setzt, die bis dorthin durchschlaegt. Eine Zusage, die `checked` verlangt, misst
     // dann den Renderer statt den Wert. **Gleich gezeichnet ist die Aussage**, um die es geht.*
     $zelle = static function (string $markup, string $name): string {
-        foreach (explode('<td class="taxmod-table-cell">', $markup) as $stueck) {
+        // ⚠️ **Der Einstellungsbereich ist kein Tabellenfeld** ([D-666](../../docs/NewConcept/90-decision-log.md):
+        // *die Einstellungen stehen **unter** der Zeile*). *Hier stand `<td class="taxmod-table-cell">`,
+        // und damit fand der Helfer das erste beliebige Steuerelement statt des gesuchten —
+        // gemeldet wurde eine Auswahl der Beschriftungsrollen, wo ein Schalter stehen sollte.*
+        foreach (explode('<div class="taxmod-setting">', $markup) as $stueck) {
             if (! str_contains($stueck, 'name="' . $name . '"')) {
                 continue;
             }
 
-            $inhalt = explode('</td>', $stueck)[0];
+            $inhalt = explode('</div>', $stueck)[0];
 
             // ⚠️ *Der Name und das Formular sind an Vater und Kind zwangslaeufig verschieden — sie
             // sind die Adresse und nicht der Zustand.*
-            $inhalt = preg_replace('/name="taxmod_(?:value|part)\[[^"]*\]"/', 'name="X"', $inhalt);
+            $inhalt = preg_replace('/name="taxmod_(?:value|part|field_setting)\[[^"]*\]"/', 'name="X"', $inhalt);
 
             return (string) preg_replace('/form="taxmod-page-\d+"/', 'form="F"', (string) $inhalt);
         }
@@ -1955,15 +1967,26 @@ if ($vaterWahlId !== 0) {
 
     $markupVater = seite($vater->id, (string) $kante);
 
-    $amVater = $zelle($markupVater, 'taxmod_part[' . $vaterSatz . '][' . $vaterKanten['with_label'] . ']');
-    $amKind  = $zelle($markupKind, 'taxmod_value[' . $kante . '][' . $vaterKanten['with_label'] . ']');
+    // ⚠️ *Dieselbe Adresse wie beim Kind — Knoten und Kante, keine Satznummer (D-684).*
+    $amVater = $zelle($markupVater, 'taxmod_field_setting[' . $kante . '][' . $vaterKanten['with_label'] . ']');
+    $amKind  = $zelle($markupKind, 'taxmod_field_setting[' . $kante . '][' . $vaterKanten['with_label'] . ']');
 
     check('die Zelle des Vaters ist ueberhaupt gefunden', $amVater !== '', 'keine Zelle mit diesem Namen');
 
+    // ⚠️ **Verglichen wird das **Steuerelement**, nicht die ganze Zeile** — *die Zeile des Kindes
+    // trägt seit [D-684](../../docs/NewConcept/90-decision-log.md) den Pfeil «geerbt», die des
+    // Vaters nicht. **Hier stand «genau gleich», und damit widersprach diese Zusage der Zeile
+    // direkt darüber**, die den Pfeil ausdrücklich verlangt.*
+    $steuer = static function (string $zelle): string {
+        return preg_match('#<span class="taxmod-setting-value">(.*?)</span></span>|<span class="taxmod-setting-value">(.*?)</span>#s', $zelle, $t)
+            ? ($t[1] !== '' ? $t[1] : ($t[2] ?? ''))
+            : '';
+    };
+
     check(
         'und das Kind zeichnet den geerbten Wert genauso wie der Vater seinen eigenen',
-        $amVater !== '' && $amVater === $amKind,
-        'Vater: ' . $amVater . ' — Kind: ' . $amKind
+        $amVater !== '' && $steuer($amVater) === $steuer($amKind),
+        'Vater: ' . $steuer($amVater) . ' — Kind: ' . $steuer($amKind)
     );
 
     // ⚠️ *Und die Gegenprobe, damit «gleich» nicht «beide leer» heissen kann: der geerbte Wert steht
@@ -1974,14 +1997,15 @@ if ($vaterWahlId !== 0) {
         $amKind
     );
 
-    /** Der eigene Renderer-Teil dieses Knotens — `0`, wenn er keinen hat. */
-    $eigenerTeil = static function (int $nodeId) use ($wpdb, $p, $kante): int {
-        return (int) $wpdb->get_var(
-            "SELECT v.value_ref FROM {$p}relation_records v
-               JOIN {$p}node_records r ON r.id = v.node_record_id
-              WHERE r.node_id = {$nodeId} AND r.record_type = 'default'
-                AND v.relation_id = {$kante} AND v.value_ref_kind = 'record'"
-        );
+    /**
+     * Ob dieser Knoten `with_label` **selbst** gesetzt hat — `0`, wenn er es nur erbt.
+     *
+     * ⚠️ *Hier stand «sein eigener Renderer-Teil». **Den Teil gibt es nicht mehr**
+     * ([D-684](../../docs/NewConcept/90-decision-log.md)); was zaehlt, ist die Wertzeile an der
+     * inneren Kante im eigenen Satz.*
+     */
+    $eigenerTeil = static function (int $nodeId) use ($eigenerWert, $vaterKanten): int {
+        return $eigenerWert($nodeId, (int) $vaterKanten['with_label']) === null ? 0 : 1;
     };
 
     // ⚠️ **Angesehen wird nichts geschrieben** ([D-609](../../docs/NewConcept/90-decision-log.md),
@@ -2016,35 +2040,23 @@ if ($vaterWahlId !== 0) {
         'taxmod_value'  => [(string) $kante => [(string) $vaterKanten['with_label'] => '0']],
     ]);
 
-    $kindTeil = $eigenerTeil($kind->id);
+    check('die Aenderung hat eine eigene Wertzeile angelegt', $eigenerTeil($kind->id) !== 0, (string) $eigenerTeil($kind->id));
 
-    check('die Aenderung hat den eigenen Teil angelegt', $kindTeil !== 0, (string) $kindTeil);
-
-    $kindRenderer = $kindTeil === 0 ? '' : (string) $wpdb->get_var(
-        "SELECT z.name FROM {$p}node_records s JOIN {$p}nodes_named z ON z.id = s.node_id WHERE s.id = {$kindTeil}"
-    );
-
+    // ⚠️ *Der Renderer bleibt der geerbte — **eine Untereinstellung zu ueberschreiben macht keine
+    // eigene Wahl daraus** ([D-684](../../docs/NewConcept/90-decision-log.md)).*
     check(
-        'und der Teil ist ein Satz des geerbten Renderers',
-        $kindRenderer === $angebotVater[$vaterWahlId],
-        "«{$kindRenderer}» statt «" . $angebotVater[$vaterWahlId] . '»'
+        'und der Renderer bleibt der geerbte',
+        gespeicherterRenderer($kind->id) === $angebotVater[$vaterWahlId],
+        'gelesen «' . gespeicherterRenderer($kind->id) . '»'
     );
 
-    $kindAus = $kindTeil === 0 ? null : $wpdb->get_var(
-        "SELECT value_int FROM {$p}relation_records
-          WHERE node_record_id = {$kindTeil} AND relation_id = {$vaterKanten['with_label']}"
-    );
+    $kindAus = $eigenerWert($kind->id, (int) $vaterKanten['with_label']);
 
-    check('der geaenderte Wert steht am Knoten selbst', (int) $kindAus === 0 && $kindAus !== null, var_export($kindAus, true));
+    check('der geaenderte Wert steht am Knoten selbst', $kindAus !== null && (int) $kindAus === 0, var_export($kindAus, true));
 
-    // ⚠️ *Und der Vater bleibt, wie er war — sonst haette das Kind in seinen Satz geschrieben statt in
-    // einen eigenen, und «eigener Teil» waere ein Name fuer dieselbe Zeile.*
     check(
         'und der Vater steht unveraendert auf «an»',
-        (int) $wpdb->get_var(
-            "SELECT value_int FROM {$p}relation_records
-              WHERE node_record_id = {$vaterSatz} AND relation_id = {$vaterKanten['with_label']}"
-        ) === 1,
+        (int) $eigenerWert($vater->id, (int) $vaterKanten['with_label']) === 1,
         'der Wert des Vaters hat sich mitbewegt'
     );
 
@@ -2052,12 +2064,15 @@ if ($vaterWahlId !== 0) {
     // ist er nicht mehr.*
     $markupDanach = seite($kind->id, (string) $kante);
 
-    $danach = $zelle($markupDanach, 'taxmod_part[' . $kindTeil . '][' . $vaterKanten['with_label'] . ']');
+    // ⚠️ *Dieselbe Adresse wie vorher — **sie wandert nicht mehr**, denn sie nennt Knoten und Kante
+    // und keine Satznummer ([D-684](../../docs/NewConcept/90-decision-log.md)). Was sich
+    // unterscheiden muss, ist der **Wert**.*
+    $danach = $zelle($markupDanach, 'taxmod_field_setting[' . $kante . '][' . $vaterKanten['with_label'] . ']');
 
     check(
         'die Maske zeichnet danach den eigenen Wert und nicht mehr den des Vaters',
         $danach !== '' && $danach !== $amVater,
-        $danach === '' ? 'keine Zelle unter der eigenen Satz-Id' : 'gezeichnet wie der Vater: ' . $danach
+        $danach === '' ? 'keine Zelle unter dieser Adresse' : 'gezeichnet wie der Vater: ' . $danach
     );
 }
 

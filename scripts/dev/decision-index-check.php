@@ -142,7 +142,7 @@ foreach ($alle[0] as $id) {
     $genannt[$id] = true;
 }
 
-// ⚠️ *«gilt heute» ist die **zweite** Spalte einer dreispaltigen Zeile. Die Tafel «Unklar» hat zwei
+// ⚠️ *«gilt heute» ist die **zweite** Spalte einer dreispaltigen Zeile. Die Einstellungsbereich «Unklar» hat zwei
 // Spalten und wird darum nicht gelesen — dort steht absichtlich keine geltende Entscheidung.*
 foreach ($zeilen as $z) {
     $z = trim($z);

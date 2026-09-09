@@ -3593,7 +3593,27 @@ final class NodesScreen
         }
 
         foreach ($this->editor->fieldsOf($nodeId) as $kante) {
-            if ($kante->fromNodeId !== $nodeId) {
+            // ⚠️ **Die Einstellungen einer geerbten Kante werden hier trotzdem geschrieben**
+            // ([D-015](../../../docs/NewConcept/90-decision-log.md),
+            // [D-602](../../../docs/NewConcept/90-decision-log.md): näher schlägt ferner).
+            //
+            // ⚠️ **Hier stand ein `continue` für jede geerbte Kante, und das war die Ursache seines
+            // ganzen Fehlerbündels vom 2026-09-07:** *«with without label wurd auch nicht
+            // mitgespiechert ich musste es erst umstellen obwohl ich rendere umgestellt hatte».* **Die
+            // `renderer`-Kante ist an `Root` erklärt** — an jedem anderen Knoten also geerbt —, und
+            // damit wurde **jede** Einstellung, die durch diese Einstellungsbereich kam, stillschweigend
+            // weggeworfen. *Auch die Zählung aus [D-683](../../../docs/NewConcept/90-decision-log.md)
+            // sah es nicht: sie sitzt in einem anderen Leser.*
+            //
+            // ⚠️ *Was am Besitz hängen **bleibt**, ist der Name und «wie oft»: beides gehört der
+            // Kante, und eine geerbte Kante gehört dem Vorfahren
+            // ([D-376](../../../docs/NewConcept/90-decision-log.md)). **Eine Einstellung gehört
+            // dagegen der Stelle.***
+            $eigene = $kante->fromNodeId === $nodeId;
+
+            $this->saveUseSiteSettings($nodeId, $kante, is_array($angaben[$kante->id] ?? null) ? $angaben[$kante->id] : []);
+
+            if (! $eigene) {
                 continue;
             }
 
@@ -3616,8 +3636,6 @@ final class NodesScreen
             //
             // ⚠️ *«wie oft» geht weiter seinen eigenen Weg: es ist eine **Spalte** der Kante
             // ([D-351](../../../docs/NewConcept/90-decision-log.md)) und keine Zeile in einem Satz.*
-            $this->saveUseSiteSettings($kante, is_array($angaben[$kante->id] ?? null) ? $angaben[$kante->id] : []);
-
             if ($name === '' && $wieOft === '') {
                 continue;
             }
@@ -3635,7 +3653,7 @@ final class NodesScreen
      * `Settings::put()` in die mit [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichene
      * Tabelle.*
      *
-     * ⚠️ **Keine zweite Tafel** ([D-520](../../../docs/NewConcept/90-decision-log.md)): *die Angaben
+     * ⚠️ **Keine zweite Einstellungsbereich** ([D-520](../../../docs/NewConcept/90-decision-log.md)): *die Angaben
      * stehen als Feldzeilen im Settings-Block und kommen unter der Adresse an, die diese Zeilen schon
      * zeichnen. **Hier entsteht kein neues Steuerelement**, nur der Weg, den das gezeichnete nimmt.*
      *
@@ -3649,8 +3667,32 @@ final class NodesScreen
      *
      * @param array<array-key, mixed> $angaben Schlüssel ⇒ eingereichter Text.
      */
-    private function saveUseSiteSettings(Relation $useSite, array $angaben): void
+    /**
+     * Die Kante mit dieser Nummer — oder `null`, wenn es sie nicht gibt.
+     *
+     * ⚠️ *Eine Nummer aus einem Formular ist Eingabe: gefunden wird sie über den Speicher, nicht
+     * geglaubt. **Der Aufrufer prüft danach noch, dass es eine Einstellungskante ist** — sonst wäre
+     * eine geratene Nummer ein Weg, an einer beliebigen Kante zu schreiben.*
+     */
+    private function kanteMitNummer(int $id): ?Relation
     {
+        return $this->editor->relationById($id);
+    }
+
+    private function saveUseSiteSettings(int $nodeId, Relation $useSite, array $angaben): void
+    {
+        // ⚠️ **Zwei Adressen, und der Ort des Bereichs sagt welche** ([D-685](../../../docs/NewConcept/90-decision-log.md)).
+        //
+        // ⚠️ *Seine Unterscheidung, wörtlich: «wir haben einstellungen am knoten und wir haben
+        // einstellungen an der kante die die des knoten überschreiben». **Der Bereich unter einer
+        // Einstellungszeile ist die erste Art** — «wenn *dieser Knoten* gezeichnet wird, zeig das
+        // Label» —, der unter einer Feldzeile die zweite.*
+        //
+        // ⚠️ **Hier ging beides durch den Kanten-Schreiber, und der kennt keinen Knoten**
+        // ({@see DataEntry::putSettingAtUseSite()} nimmt nur eine Kantennummer). *Die
+        // `renderer`-Kante ist an `Root` erklärt — der Wert landete also **an Root, für alle**, oder
+        // gar nicht. Sein Befund: «with without label wurd auch nicht mitgespiechert».*
+        $amKnoten = $useSite->isSetting();
         foreach ($angaben as $schluessel => $roh) {
             $key = sanitize_key((string) $schluessel);
 
@@ -3659,16 +3701,33 @@ final class NodesScreen
                 continue;
             }
 
-            $kante = $this->data->settingRelationAtUseSite($useSite, $key);
+            // ⚠️ **Eine Kantennummer ist auch eine Adresse** ([D-667](../../../docs/NewConcept/90-decision-log.md):
+            // *«Adressiert wird über die letzte Kante»*). *Der Bereich zeichnet einen im Modell
+            // erklärten Schlüssel als **Feld** ([D-529](../../../docs/NewConcept/90-decision-log.md)),
+            // und ein Feld nennt seine Kante — `taxmod_field_setting[<Träger>][55661]`. **Hier wurde
+            // nur nach dem Namen gesucht**, also fiel `with_label` und `label_role` heraus, während
+            // `converter` durchkam: der hat einen Fall in der Aufzählung und wird über seinen Namen
+            // gezeichnet.*
+            //
+            // ⚠️ **Das war der dritte stumme Aussetzer an einem Tag** — *sein Wort: «with without
+            // label wurd auch nicht mitgespiechert».* *Die beiden anderen stehen in
+            // [D-683](../../../docs/NewConcept/90-decision-log.md).*
+            $kante = ctype_digit($key)
+                ? $this->kanteMitNummer((int) $key)
+                : $this->data->settingRelationAtUseSite($useSite, $key);
 
-            if ($kante === null) {
+            if ($kante === null || ! $kante->isSetting()) {
                 continue;
             }
 
             $zeichen = trim(sanitize_text_field((string) $roh));
 
             if ($zeichen === '') {
-                $this->data->clearSettingAtUseSite($useSite->id, $kante->id);
+                if ($amKnoten) {
+                    $this->data->clearSettingAt($nodeId, $useSite->id, $kante->id);
+                } else {
+                    $this->data->clearSettingAtUseSite($useSite->id, $kante->id);
+                }
 
                 continue;
             }
@@ -3676,6 +3735,12 @@ final class NodesScreen
             $wert = $this->rendering->valuesFrom([$kante], [$kante->id => $zeichen])[$kante->id] ?? null;
 
             if ($wert === null || $wert->isNothing()) {
+                continue;
+            }
+
+            if ($amKnoten) {
+                $this->data->putSettingAt($nodeId, $useSite->id, $kante->id, $wert);
+
                 continue;
             }
 
@@ -3874,11 +3939,16 @@ final class NodesScreen
             if ($vorhanden !== null && ($vorhanden['nodeId'] ?? 0) !== 0) {
                 $teilKnoten = (int) $vorhanden['nodeId'];
             } else {
-                $geliehen = $this->rendering->inheritedRendererPart($nodeId, $kante->id);
+                // ⚠️ **Gefragt wird, welcher Knoten hier **gilt**, nicht ob ein Teil dasteht**
+                // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Hier stand die Suche
+                // nach einem geliehenen **Teildatensatz**; **den gibt es nicht mehr**, und ohne
+                // ihn blieb `$teilKnoten` das Ziel der Kante — `Renderer`. **`with_label` ist dort
+                // nicht erklärt**, sondern an `render with label`, also fiel es heraus.*
+                $geltend = $this->rendering->appliedSettingNode($nodeId, $kante);
 
-                if ($geliehen !== null) {
-                    $teilKnoten = $geliehen['nodeId'];
-                    $gewaehlt   = $geliehen['nodeId'];
+                if ($geltend !== null) {
+                    $teilKnoten = $geltend->id;
+                    $gewaehlt   = $geltend->id;
                 }
             }
 
@@ -3888,6 +3958,11 @@ final class NodesScreen
             foreach ($this->editor->fieldsOf($teilKnoten) as $feld) {
                 $innen[$feld->id] = $feld;
             }
+
+            // ⚠️ *Was hier **gilt**, bevor dieses Speichern etwas ändert — die Vergleichsgrundlage
+            // für [D-609](../../../docs/NewConcept/90-decision-log.md).*
+            $knotenHier   = $this->editor->find($nodeId);
+            $geerbteWerte = $knotenHier === null ? null : $this->rendering->settingsForNode($knotenHier);
 
             foreach ($roh as $rohInnen => $wert) {
                 $innenId    = absint($rohInnen);
@@ -3906,7 +3981,16 @@ final class NodesScreen
                 // irgendeiner anderen Angabe den geerbten Renderer still zu einem eigenen** — genau
                 // der Datensatz aus einem Nicht-Ereignis, den
                 // [D-609](../../../docs/NewConcept/90-decision-log.md) verbietet.*
-                if ($geliehen !== null && $this->wieGezeichnet($geliehen['werte'][$innenId] ?? null, $innenKante, (string) $wert)) {
+                // ⚠️ **Was schon dasteht, wird nicht noch einmal geschrieben**
+                // ([D-609](../../../docs/NewConcept/90-decision-log.md): *ein Datensatz entsteht
+                // beim ersten **Schreiben**, nicht beim Ansehen*). *Verglichen wird gegen den
+                // **aufgelösten** Wert — vorher gegen die Werte eines geliehenen Teils, den es
+                // seit [D-684](../../../docs/NewConcept/90-decision-log.md) nicht mehr gibt.
+                // **Ohne diesen Vergleich legte jedes Speichern der Seite eine eigene Zeile an**,
+                // auch wenn niemand etwas anfasste — und aus «geerbt» würde still «hier gesetzt».*
+                if ($geerbteWerte !== null
+                    && $this->wieGezeichnet(($geerbteWerte[$innenKante->name] ?? null)?->value, $innenKante, (string) $wert)
+                ) {
                     continue;
                 }
 
@@ -4079,7 +4163,7 @@ final class NodesScreen
         // `renderer` ist eine davon.*
         //
         // ⚠️ **Hier stand der Schreiber der `settings`-Tabelle**, der jeden geaenderten Wert der
-        // Tafel in eine Zeile schrieb. *Die Tabelle ist mit [D-579](../../../docs/NewConcept/90-decision-log.md)
+        // Einstellungsbereich in eine Zeile schrieb. *Die Tabelle ist mit [D-579](../../../docs/NewConcept/90-decision-log.md)
         // gestrichen. **Der Schreiber war schon vorher wirkungslos**: seit
         // [D-543](../../../docs/NewConcept/90-decision-log.md) liest {@see \Taxmod\Core\Service\ModelValues}
         // aus Datensaetzen und **gewinnt** — der Eigentuemer hat es an der Oberflaeche gesehen («den
@@ -4356,7 +4440,7 @@ final class NodesScreen
         }
 
         // ⚠️ *Ausgegeben wird, was der Kern zeichnet — der Rand hängt nichts an. `wp_kses_post()`
-        // wäre hier falsch: die Tafel enthält Formularfelder, und ein Filter, der sie wegnimmt,
+        // wäre hier falsch: der Einstellungsbereich enthält Formularfelder, und ein Filter, der sie wegnimmt,
         // machte aus einem bedienbaren Bereich einen stummen (`CD-8`, die Zeichenkette **kommt**
         // aus dem Renderer und wird nur weitergereicht).*
         header('Content-Type: text/html; charset=utf-8');
@@ -4566,7 +4650,7 @@ final class NodesScreen
                 // Render kann ich noch nicht setzen» — und es war kein fehlender Renderer, sondern ein
                 // Schreiber an der alten Stelle.*
                 // ⚠️ *Hier standen die Zeilen-Akte `empty_setting` und `reset_setting`. Ihre Knöpfe
-                // sind mit der Tafel gegangen ([D-520](../../../docs/NewConcept/90-decision-log.md)) —
+                // sind mit dem Einstellungsbereich gegangen ([D-520](../../../docs/NewConcept/90-decision-log.md)) —
                 // `package7-check.php` misst, dass kein `do[<key>]` mehr auf der Seite steht — und ihr
                 // Ziel, die `settings`-Tabelle, mit [D-579](../../../docs/NewConcept/90-decision-log.md).*
                 // ⚠️ *An die Kante, seit [D-528](../../../docs/NewConcept/90-decision-log.md). Ein

@@ -1530,19 +1530,30 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('selected', $decided->markup);
     }
 
+    /**
+     * ⚠️ **Ein eigener Schlüssel wird gezeichnet — seine **Kante** sagt, wie**
+     * ([D-529](../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Hier stand das Gegenteil, und der Grund war ein anderer Fall: [D-354](../../docs/NewConcept/90-decision-log.md)
+     * verbietet, den Typ **aus dem gespeicherten Wert** zu raten. **Das tut hier niemand** — gefragt
+     * wird das Ziel der Einstellungskante, dieselbe Quelle wie bei jedem Feld
+     * ([D-529](../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ *Sein Befund, der es aufdeckte: `label_role` ist im Modell erklärt und stand trotzdem als
+     * **Beschriftung ohne Bedienelement** da — eine geschlossene Liste von dreizehn Namen entschied,
+     * was bedienbar ist.*
+     */
     #[Test]
-    public function a_key_of_someones_own_is_not_given_a_type_the_engine_cannot_know(): void
+    public function a_key_of_someones_own_is_drawn_from_its_own_edge(): void
     {
-        // ⚠️ Reading a type off whatever value happens to be stored is the guessing D-354 ended.
         $int = $this->type('int');
 
         $this->einstellung($int, 'house_style', TypedValue::ofText('narrow'));
 
         $row = $this->drawnSettings($int)['house_style'];
 
-        self::assertFalse($row->wasDrawn());
-        self::assertFalse($row->isEngineOwned());
-        self::assertNull($row->type);
+        self::assertFalse($row->isEngineOwned(), 'er gehoert nicht der Aufzaehlung');
+        self::assertTrue($row->wasDrawn(), 'und wird trotzdem gezeichnet');
     }
 
     #[Test]

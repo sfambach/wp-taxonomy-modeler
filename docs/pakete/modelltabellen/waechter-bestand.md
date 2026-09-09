@@ -414,7 +414,7 @@ geführt.*
 
 ⚠️ *Eine Ausnahme steht mit Grund in der dritten Zusage: **`multiplicity` ist eine Spalte an der
 Kante** ([D-351](../../NewConcept/90-decision-log.md)) und kann an keiner Kette erklärt sein — sie
-gehört trotzdem in die Tafel, weil sie zur Verwendungsstelle gehört.*
+gehört trotzdem in der Einstellungsbereich, weil sie zur Verwendungsstelle gehört.*
 
 ## Die festen Zahlen — was umgestellt ist
 

@@ -8,6 +8,7 @@ use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\RelationRecord;
@@ -903,11 +904,42 @@ final class DataEntry
             return;
         }
 
+        // ⚠️ **Die innere Angabe ist eine Wertzeile im Satz **dieses** Knotens**
+        // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «knoten record ->
+        // relation_record parallel zum konstrukt des knotens». **Hier wurde bisher ein Teil gesucht
+        // und, wenn keiner da war, angelegt** — und genau daraus kamen die Waisen und die
+        // wandernden Satznummern im Formular (`INF-071`, `INF-072`).*
+        //
+        // ⚠️ *Adressiert wird über die **innere Kante**, und die genügt: sie sagt allein, welches
+        // Feld gemeint ist ([D-667](../../../docs/NewConcept/90-decision-log.md)), und der Satz sagt,
+        // wem er gehört.*
         $teile  = $this->partsOf($satzId);
         $teilId = $teile[(string) $aussen] ?? null;
 
         if ($teilId === null) {
-            $teilId = $this->createPart($satzId, $aussen, $chosenNodeId)->id;
+            if ($value->isAReference() && $this->targetOwnsItsRecord($satzId, $innen)) {
+                $this->chooseSettingRecord($satzId, $innen, (int) $value->reference);
+
+                return;
+            }
+
+            $vorhanden = $this->valuesOn($satzId, $innen, $locale);
+            $vorher    = $this->wertZustand($satzId, $innen, $locale, $vorhanden[0]->value ?? null);
+
+            $version = $this->records->putValue($vorhanden === []
+                ? RelationRecord::direct($satzId, $innen, $value, $locale)
+                : new RelationRecord($satzId, $innen, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position));
+
+            $this->melden(
+                $satzId,
+                'record_value',
+                'setting value set',
+                $vorher,
+                $this->wertZustand($satzId, $innen, $locale, $value),
+                $version
+            );
+
+            return;
         }
 
         // WICHTIG: Dieselbe Wahl eine Ebene tiefer. Die aeussere Kante fuehrt in den Behaelter,
@@ -1523,14 +1555,22 @@ final class DataEntry
      */
     private function chooseSettingRecord(int $recordId, int $relationId, int $chosenNodeId): void
     {
+        // ⚠️ **Die Wahl ist ein Verweis auf den *Knoten*, nicht auf einen Teildatensatz**
+        // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «knoten record ->
+        // relation_record parallel zum konstrukt des knotens».*
+        //
+        // ⚠️ **Was der Teil gekostet hat, gemessen:** *dreimal umgestellt hiess dreimal ein neuer
+        // Satz — 13520, 13521, 13522 —, und die alten blieben herrenlos liegen. **Das war sein
+        // «default wert, der nach dem Speichern wiederkommt»** (`INF-071`, `INF-073`). Jetzt ändert
+        // ein Wechsel **eine Wertzeile**, und es gibt nichts, was übrig bleiben könnte.*
+        //
+        // ⚠️ *Ein Teil aus der alten Form wird beim ersten Schreiben mit aufgelöst — seine Werte
+        // sind schon gewandert ({@see scripts/dev/setting-part-migrate.php}), er selbst ist dann nur
+        // noch die leere Hülle.*
         $teilId = $this->partsOf($recordId)[$relationId] ?? null;
 
         if ($teilId !== null) {
             $teil = $this->records->find($teilId);
-
-            if ($teil !== null && $teil->nodeId === $chosenNodeId) {
-                return;
-            }
 
             // ⚠️ **Erst der Verweis, dann der Teil — und ohne die erste Zeile blieb ein Zeiger auf
             // einen Satz stehen, den es nicht mehr gibt.** *{@see RecordRepository::forgetRecord()}
@@ -1547,7 +1587,26 @@ final class DataEntry
             $this->satzEntfernen($teilId);
         }
 
-        $this->createPart($recordId, $relationId, $chosenNodeId);
+        // ⚠️ *Über {@see RecordRepository::putValue()} und nicht über {@see self::put()}: die Prüfung
+        // dort verlangt für ein Ziel mit eigenen Feldern einen Teil — **und den gibt es nicht mehr**.
+        // Die Regel ist nicht umgangen, sie ist mit [D-684](../../../docs/NewConcept/90-decision-log.md)
+        // gefallen.*
+        $vorhanden = $this->valuesOn($recordId, $relationId, '');
+        $wert      = TypedValue::ofReference($chosenNodeId);
+        $vorher    = $this->wertZustand($recordId, $relationId, '', $vorhanden[0]->value ?? null);
+
+        $version = $this->records->putValue($vorhanden === []
+            ? RelationRecord::direct($recordId, $relationId, $wert, '')
+            : new RelationRecord($recordId, $relationId, '', $wert, $vorhanden[0]->id, $vorhanden[0]->position));
+
+        $this->melden(
+            $recordId,
+            'record_value',
+            'setting chosen',
+            $vorher,
+            $this->wertZustand($recordId, $relationId, '', $wert),
+            $version
+        );
     }
 
     public function createPart(int $recordId, int $relationId, int $chosenNodeId = 0): NodeRecord
@@ -1662,8 +1721,16 @@ final class DataEntry
 
         $parts = [];
 
+        // ⚠️ **Ein Verweis auf einen *Knoten* ist kein Teil** ([D-684](../../../docs/NewConcept/90-decision-log.md)).
+        // *Seit die Renderer-Wahl den gewählten Knoten nennt statt einen Teildatensatz, stünde hier
+        // sonst eine Knotennummer als Satznummer — **gemessen: «There is no record 43511», und 43511
+        // ist der Knoten `form`.** Der Raum steht an der Zeile ([D-597](../../../docs/NewConcept/90-decision-log.md)),
+        // also wird er gefragt und nicht geraten.*
         foreach ($this->records->valuesOf($recordId) as $value) {
-            if (isset($owned[$value->relationId]) && $value->value->reference !== null) {
+            if (isset($owned[$value->relationId])
+                && $value->value->reference !== null
+                && $value->value->referenceSpace !== ReferenceSpace::Node
+            ) {
                 $parts[$value->relationId] ??= $value->value->reference;
             }
         }

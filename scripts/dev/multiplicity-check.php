@@ -278,7 +278,10 @@ $wieOft = (string) $wpdb->get_var($wpdb->prepare(
 check('und sie traegt genau die Mehrfachheit, die er gemeint hat', $wieOft === '1..1', $wieOft);
 
 $mitWahl = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'record'",
+    // ⚠️ **Ein Knoten, kein Satz** ([D-684](../../docs/NewConcept/90-decision-log.md)) — *die Wahl
+    // ist seit dem 2026-09-07 ein Verweis auf den gewählten Renderer selbst und nicht mehr auf einen
+    // Teildatensatz. **Der Teil war die Erfindung**, und mit ihm die Waisen.*
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'node'",
     $kante
 ));
 
@@ -293,9 +296,10 @@ $mitWahl = (int) $wpdb->get_var($wpdb->prepare(
 check('und Knoten tragen ihre Wahl an dieser Kante', $mitWahl >= 1, (string) $mitWahl);
 
 $insLeere = (int) $wpdb->get_var($wpdb->prepare(
+    // ⚠️ *Und ins Leere zeigt er, wenn den **Knoten** nicht mehr gibt ([D-684](../../docs/NewConcept/90-decision-log.md)).*
     'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
-       LEFT JOIN ' . Schema::table('node_records') . " r ON r.id = v.value_ref
-      WHERE v.relation_id = %d AND v.value_ref_kind = 'record' AND r.id IS NULL",
+       LEFT JOIN ' . Schema::table('nodes') . " r ON r.id = v.value_ref
+      WHERE v.relation_id = %d AND v.value_ref_kind = 'node' AND r.id IS NULL",
     $kante
 ));
 

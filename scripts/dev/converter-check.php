@@ -83,7 +83,7 @@ if ($integerId === null) {
 
 // ⚠️ **Das Ziel ist eine eigene Spezialisierung von `Integer`, seit dem 2026-09-06.** *Vorher zeigte
 // die Kante unmittelbar auf `Integer` und `converter` war am **Besitzer** erklaert. **Das zaehlt fuer
-// die Tafel nicht mehr** ([D-668](../../docs/NewConcept/90-decision-log.md)): welche Einstellungen an
+// der Einstellungsbereich nicht mehr** ([D-668](../../docs/NewConcept/90-decision-log.md)): welche Einstellungen an
 // einer Verwendungsstelle angeboten werden, sagt allein die Kette ihres **Ziels**. Also bekommt der
 // Lauf ein eigenes Ziel, an dem er die Einstellung erklaeren darf — `Integer` gehoert dem Eigentuemer
 // und wird nicht angefasst.*
@@ -91,7 +91,7 @@ $zielKnoten = $editor->createNode('__cv Zahl', $integerId);
 
 $relation = $editor->addField($holder->id, $zielKnoten->id, 'zaehler');
 
-// ⚠️ **Erklaert statt vorausgesetzt, seit dem 2026-09-06.** *Die Tafel bietet nur noch an, was an
+// ⚠️ **Erklaert statt vorausgesetzt, seit dem 2026-09-06.** *Die Einstellungsbereich bietet nur noch an, was an
 // der Kette als **Kante** erklaert ist ([D-529](../../docs/NewConcept/90-decision-log.md)) — sein
 // Befund war: «auch scheinen es einfach alle Einstellungen zu sein, nicht nur die vom Typ Text».
 // `converter` haengt nach [D-585](../../docs/NewConcept/90-decision-log.md) am Basisknoten

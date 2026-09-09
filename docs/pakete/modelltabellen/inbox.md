@@ -271,7 +271,7 @@ und `package7-check` schreiben jetzt durch den Kern und sind beide grün. Der Ra
 `NodesScreen::saveUseSiteSettings()` — die Angaben einer **Feldzeile**, die als
 `taxmod_field_setting[<Kanten-Id>][<Schlüssel>]` ankommen und bis dahin bis auf `multiplicity` **alle
 fallengelassen wurden**; gezeichnet waren sie längst, als Feldzeilen im Settings-Block
-([D-520](../../NewConcept/90-decision-log.md)), und keine zweite Tafel ist dazugekommen.*
+([D-520](../../NewConcept/90-decision-log.md)), und keine zweite Einstellungsbereich ist dazugekommen.*
 
 ⚠️ **Eine Grenze, die dabei gemessen wurde und die Du kennen solltest.** *Eine Einstellungskante wird
 an der Kette des **Besitzers** gesucht, weil der Leser sie genau dort sucht. Ein Schlüssel, den nur
@@ -2179,3 +2179,91 @@ hängen alle an Einstellungskanten.*
 
 ⚠️ *Offen (`PR-4`): ob er dort verschwindet, oder als eigene Zeile «Einstellungen dieses Knotens»
 kenntlich wird. Das ist seine Entscheidung.*
+
+---
+
+**INF-074 · Vier stumme Aussetzer auf dem Weg einer Renderer-Einstellung** (2026-09-07)
+
+**Sein Befund:** *«with without label wurd auch nicht mitgespiechert ich musste es erst umstellen
+obwohl ich rendere umgestellt hatte»* — und davor, als Frage nach der Methode: *«das problem mit dem
+nicht speichern ist nun schon öffters aufgetreten wie behebst du das»*.
+
+**Gemessen, indem der Wert durch die echte Maske geschickt und roh zurückgelesen wurde. Vier
+Stellen, jede für sich still, jede mit «ok» am Ende:**
+
+```text
+1  saveSettingValues   continue, wenn die Kante nicht zum Knoten gehoert     behoben (D-683, zaehlt jetzt)
+2  putOneSettingValue  return, wenn aus den Zeichen kein Wert wird           behoben (D-683, zaehlt jetzt)
+3  saveFieldRows       continue fuer JEDE geerbte Kante                      behoben
+4  saveUseSiteSettings schreibt an die Verwendungsstelle, nicht an den Knoten  OFFEN
+```
+
+⚠️ **(3) war die eigentliche Ursache seines Berichts.** *Die `renderer`-Kante ist an `Root` erklärt,
+an jedem anderen Knoten also **geerbt** — und `saveFieldRows` übersprang eine geerbte Kante
+vollständig. **Damit wurde jede Einstellung, die durch diese Einstellungsbereich kam, weggeworfen.** Der Name und
+«wie oft» gehören der Kante ([D-376](../../NewConcept/90-decision-log.md)) und bleiben hinter der
+Besitzprüfung; die Einstellungen gehören der **Stelle** ([D-602](../../NewConcept/90-decision-log.md)).*
+
+⚠️ **(4) ist noch offen und der Grund, warum `renderer-choice-mask-check` sieben Zusagen meldet.**
+*Die Einstellungsbereich einer Feldzeile heisst «Settings of this use site» und schreibt folgerichtig an die
+**Verwendungsstelle**. Die Renderer-Zeile auf einer Knotenseite ist aber eine Einstellung **des
+Knotens** — sie wird nur in derselben Einstellungsbereich gezeichnet. **Zwei verschiedene Adressen, ein
+Steuerelement**, und das ist die Frage, die vor dem Weiterbauen zu beantworten ist (`PR-4`).*
+
+⚠️ *Dazu gehört ein zweiter Befund derselben Messung: **der Einstellungsbereich adressiert einen im Modell
+erklärten Schlüssel über die Kanten-Id**, `taxmod_field_setting[<Träger>][55661]`, weil sie ihn als
+Feld zeichnet ([D-529](../../NewConcept/90-decision-log.md)) — **der Schreiber suchte nur nach dem
+Namen.** `converter` kam durch, weil er einen Fall in der Aufzählung hat; `with_label` und
+`label_role` fielen heraus. Der Leser nimmt jetzt beides.*
+
+---
+
+**INF-075 · Präfix und Einheit als Knotenverweis speichern, das Symbol erst beim Zeichnen** (2026-09-07)
+
+**Sein Vorschlag:** *«ich frage mich ob es bei den präfixen nicht sinnvoll wäre ein feld mit typ
+knoten id oder so einzuführen als code dann hätte man auch das feld zum speichern und müsste nichts
+konstruieren also gramm besteht aus präfix typ Präfix und unit type node_ref im der db würden wir
+das dann als ides base unit knoten speichern und beim anzeigen wieder in symbol umwandeln»* — und
+gleich darauf: *«dann würde da auch nicht mehr gramm gramm stehen»*.
+
+⚠️ **Der Typ dafür gibt es schon:** `node_ref` ([D-232](../../NewConcept/90-decision-log.md): *der
+Wert eines Konstantenfeldes **ist** ein Verweis auf einen Knoten*), und `Einheitenwert.einheit` zeigt
+heute bereits auf `Base units`. **Was er beschreibt, ist also weniger ein neuer Typ als die Frage,
+warum die Anzeige zweimal denselben Namen setzt.**
+
+⚠️ **Sein zweiter Satz ist der Befund und noch nicht gemessen:** *«gramm gramm»* — der Name des
+Knotens und die Beschriftung des Feldes stehen offenbar nebeneinander. *Nach
+[D-539](../../NewConcept/90-decision-log.md) soll die **Rolle** entscheiden, was dasteht: mit
+`label_role = symbol` ist es «g», nicht «Gramm».*
+
+⚠️ *Zu messen, bevor etwas gebaut wird: **wo** die Verdopplung entsteht — im Verweis-Renderer, im
+Feld-Label oder in der Vorschau. Sein Bild dazu wäre hilfreich.*
+
+---
+
+**INF-076 · Die geerbte Untereinstellung: zwei Fehler, ausserhalb des Wächters nachgestellt** (2026-09-07)
+
+**Der kleinste Fall, der sie zeigt** — Vater, Kind darunter, Renderer am Vater gewählt, `with_label`
+am Vater auf «an», alles durch die echte Maske:
+
+```text
+Kind speichern ohne Aenderung (1, wie geerbt)   -> 1 eigene Wertzeile   (erwartet: keine)
+Kind auf 0 stellen                               -> steht weiter auf 1  (erwartet: 0)
+Vater                                            -> steht auf 1         (richtig)
+```
+
+⚠️ **(1) Der Vergleich «wie gezeichnet» findet den geerbten Wert nicht.** *Gemessen kommt
+`settingsForNode(<Kind>)` in diesem Aufruf **ohne** `with_label` zurück, obwohl dasselbe an einem
+frisch gebauten {@see \Taxmod\Core\Service\ModelValues} **gefunden** wird. Ohne Vergleichswert greift
+[D-609](../../NewConcept/90-decision-log.md) nicht, und **jedes Speichern legt eine eigene Zeile
+an** — aus «geerbt» wird still «hier gesetzt».*
+
+⚠️ **(2) Die Änderung auf «aus» erreicht den Schreiber gar nicht.** *Die dritte Absendung taucht in
+der Schreibschleife **nicht auf** — `0` ist nicht das Problem (`TypedValue::ofBool(false)` ist
+gemessen **nicht** «nichts»), sondern die innere Kante ist in diesem Durchgang nicht mehr unter den
+gefundenen. **Verdacht, ungemessen:** sobald das Kind eine eigene Wertzeile hat, löst
+`appliedSettingNode()` anders auf.*
+
+⚠️ *Beides zusammen ist das, was `renderer-choice-mask-check` mit fünf von 112 Zusagen meldet. **Der
+Wächter hat recht**, und die Meldung ist reproduzierbar ausserhalb von ihm — das war der Zweck
+dieser Nachstellung.*

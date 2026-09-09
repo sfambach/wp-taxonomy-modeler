@@ -633,7 +633,7 @@ check('a choice is drawn as a set of real possibilities',
 // fillable. `converter` is the honest live case - dieser Lauf reicht keine Konverter herein, also
 // ist die Menge leer.
 //
-// ⚠️ **Erklaert statt vorausgesetzt, seit dem 2026-09-06.** *Die Tafel bietet nur noch an, was an
+// ⚠️ **Erklaert statt vorausgesetzt, seit dem 2026-09-06.** *Die Einstellungsbereich bietet nur noch an, was an
 // der Kette als **Kante** erklaert ist (D-529) — sein Befund: «auch scheinen es einfach alle
 // Einstellungen zu sein, nicht nur die vom Typ Text». `converter` haengt nach D-585 am Basisknoten
 // `Renderer` und damit **nicht** an der Kette von `int`. **Also erklaert dieser Lauf ihn auf seiner
@@ -746,7 +746,18 @@ try {
     );
     check('and what cannot be done is disabled rather than absent', str_contains($markup, 'disabled'));
     // ⚠️ Off by default: the write count is a diagnostic and waits for developer mode (D-248).
-    check('the write count is off unless developer mode says otherwise', ! str_contains($markup, 'taxmod-tree-writes'));
+    // ⚠️ **Gegen den **Schalter** gemessen und nicht gegen «aus».** *Hier stand `! str_contains(…)`,
+    // also die Annahme, der Entwicklermodus sei aus. **Er ist an, seit der Eigentümer ihn
+    // eingeschaltet hat** — und die Zusage fiel, obwohl sie genau das beschreibt, was passiert.
+    // *Die Zusage sagt in ihrem eigenen Satz «unless developer mode says otherwise»; jetzt fragt
+    // sie ihn auch (`PR-9`: sichtbar geändert, nicht entschärft).*
+    $entwickler = \Taxmod\WordPress\Admin\SettingsScreen::inDeveloperMode();
+
+    check(
+        'die Schreibzahl steht genau dann da, wenn der Entwicklermodus an ist',
+        str_contains($markup, 'taxmod-tree-writes') === $entwickler,
+        $entwickler ? 'Modus an' : 'Modus aus'
+    );
 
     // ⚠️ **And now with a node *selected*, because that is the half the check was missing.** The
     // fatal it was written for happened in the tree; the very next one happened in the **detail**
@@ -809,7 +820,7 @@ try {
         // attribute row (D-381). *A fixed id looked right and was wrong: `form="…"` finds the first
         // match, so the head button would have saved whichever panel came earliest in the document.
         // This check found that within a minute of the id being written.*
-        // ⚠️ **Die Tafel je Feldzeile ist entfallen** ([D-520](../../docs/NewConcept/90-decision-log.md)),
+        // ⚠️ **Die Einstellungsbereich je Feldzeile ist entfallen** ([D-520](../../docs/NewConcept/90-decision-log.md)),
         // *also gibt es keine Panels mehr, deren Ids sich unterscheiden müssten. **Was von der Zusage
         // übrig bleibt und weiter gilt**: keine zwei Elemente auf der Seite teilen eine Id — daran
         // scheiterte damals ein fester Wert, und `form="…"` nimmt den ersten Treffer.*
@@ -824,7 +835,7 @@ try {
         // die Abhängigkeit, die diese Zusicherung eigentlich meint**: der Knopf steht ausserhalb seines
         // Formulars und muss es benennen — welches, entscheidet die Seite.*
         check('and a button outside the form names it', (bool) preg_match('#form="taxmod-(?:page|settings)-\d+"#', $detail));
-        // ⚠️ *Die Zeilen-Akte `empty_setting` und `reset_setting` sind mit der Tafel gegangen
+        // ⚠️ *Die Zeilen-Akte `empty_setting` und `reset_setting` sind mit dem Einstellungsbereich gegangen
         // ([D-520](../../docs/NewConcept/90-decision-log.md)), also gibt es kein `do[<key>]` mehr auf
         // der Seite. **Die Form bleibt richtig und der Annahme-Pfad liest sie weiter** — was fehlt,
         // ist das Steuerelement, und das steht auf [Zeile 82](../../docs/NewConcept/97-implementation-plan.md#the-working-list).*

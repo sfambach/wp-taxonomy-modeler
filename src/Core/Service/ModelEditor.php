@@ -642,6 +642,19 @@ final class ModelEditor
     }
 
     /**
+     * Die Kante mit dieser Nummer, oder `null`.
+     *
+     * ⚠️ **Weil eine Kantennummer eine Adresse ist** ([D-667](../../../docs/NewConcept/90-decision-log.md):
+     * *«Adressiert wird über die letzte Kante»*). *Der Rand bekommt sie aus einem Formular und muss
+     * sie nachschlagen können, ohne zu raten — **eine Nummer aus einer Eingabe wird gefunden, nicht
+     * geglaubt.***
+     */
+    public function relationById(int $id): ?Relation
+    {
+        return $this->relations->byId($id);
+    }
+
+    /**
      * Who uses this node — the attributes of **other** nodes that are typed by it.
      *
      * ⚠️ **[D-199](../../../docs/NewConcept/90-decision-log.md), and it is one direction on purpose.**
