@@ -3079,3 +3079,20 @@ Sätze von `Street / H#` auch — die 3 gemischten mit einem eigenen Wert (D-673
 offene Frage aus D-704 beantwortet ist; (6) die Satzart-Auswahl beim Anlegen (D-651) bietet
 `settings` nicht an — ein Einstellungssatz entsteht beim ersten Schreiben (D-609), nie von Hand.*
 Nicht begonnen. Löst den Umbau aus TASK-077 (D-702) mit ab.
+
+---
+
+[ ] TASK-084  Ein Lauf durch die Einstellungen — die elf Wächter an der Renderer-Wahl werden einer
+
+**2026-09-09, sein Beschluss** ([D-706](../../NewConcept/90-decision-log.md)): *«1 ja zusammen».*
+Grundlage: [`waechter-ueberlappung.md`](waechter-ueberlappung.md) — elf Wächter, 489 Zusagen an
+derselben Stelle.
+
+**Zu bauen, in dieser Reihenfolge:** *(1) der neue Lauf `einstellungen-check`: ein Weg, wie ein Mensch
+ihn geht — eine Einstellungskante erklären, einen Renderer wählen, das Kind erbt, die Zeile ist
+gesperrt, überschreiben, ein unzulässiger geerbter fällt auf den Typ-Standard, die Art einer Kante
+umstellen, zurücksetzen, und nach jedem Schritt: steht, was stehen soll, und liest die Seite, was
+gespeichert ist? Eigene Wiese, Präfix `__es`; (2) grün; (3) dann je Wächter der elf ein eigener
+Commit: die Liste seiner Zusagen, je Zusage «steht in `einstellungen-check`, Abschnitt n» oder «entfällt,
+weil …»; erst dann fällt die Datei; (4) `tests/README.md` und `waechter-bestand.md` fortschreiben.*
+Ein eigener Tag. Nicht begonnen.
