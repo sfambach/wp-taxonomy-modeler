@@ -346,9 +346,45 @@ sagt die Auflösung.*
 
 ### Offen, bevor das Datenmodell steht — seine Fragen
 
-- **D1 · Ist der Knoten selbst der Satz, oder hat er einen?** *Ein Knoten ist ein Objekt seiner Klasse
-  (`IntegerNode`). Ist die Knotenzeile damit schon der Satz (`klasse` steht am Knoten), oder hängt an
-  ihr ein Satz? Dasselbe für die Kante.* Der Entwurf oben nimmt «hat einen» an (`INFERRED`).
+- **D1 · Ist der Knoten selbst der Satz, oder hat er einen?** — *sein Wort: «ist mir zu kurz, verstehe
+  ich nicht»*, darum hier ausführlich:
+
+  *Ein Knoten ist ein Objekt seiner Klasse (`ContactNode`). Seine Werte — `read_only = false`, die zwei
+  Renderer — sind Zeilen. Die Frage ist nur: **woran hängen diese Zeilen?***
+
+  **Weg A — der Knoten ist selbst der Satz.** *Die Knotenzeile trägt die Klasse; die Wertzeilen zeigen
+  direkt auf den Knoten. Kein zweiter Satz.*
+
+  | Knoten | Klasse | | Zeile gehört | Klasse.Attribut | Wert |
+  |---|---|---|---|---|---|
+  | Kontakt (#27) | `ContactNode` | | **Knoten #27** | `Node.read_only` | `false` |
+  | | | | **Knoten #27** | `Node.renderers` (1) | → Satz 2 |
+  | | | | Satz 2 | `CompactRenderer.orientation` | `vertical` |
+
+  *Dann hängt eine Zeile mal an einem Knoten, mal an einer Kante, mal an einem Satz — drei Sorten
+  Träger, und die Zeile muss sagen, welche Sorte ihr Träger ist. Dafür gibt es keine Tabelle mehr
+  zwischen Knoten und Wert.*
+
+  **Weg B — der Knoten hat einen Satz.** *Die Knotenzeile bleibt, was sie ist (Name, Vater, Stelle im
+  Baum). Ein Satz sagt «ich bin das Objekt `ContactNode` von Knoten #27», und die Wertzeilen hängen am
+  Satz — wie bei jedem anderen Objekt auch.*
+
+  | Knoten | | Satz | Klasse | gehört | | Zeile gehört | Klasse.Attribut | Wert |
+  |---|---|---|---|---|---|---|---|---|
+  | Kontakt (#27) | | **1** | `ContactNode` | Knoten #27 | | Satz 1 | `Node.read_only` | `false` |
+  | | | | | | | Satz 1 | `Node.renderers` (1) | → Satz 2 |
+  | | | 2 | `CompactRenderer` | Satz 1 | | Satz 2 | `CompactRenderer.orientation` | `vertical` |
+
+  *Dann hängt **jede** Zeile an einem Satz, und nur Sätze wissen, wem sie gehören (Knoten, Kante oder
+  Satz). Ein Knoten ohne Werte hat keinen Satz; er entsteht beim ersten Wert. Der Preis ist eine Zeile
+  mehr je Knoten, der Werte trägt — der Gewinn ist, dass Zeile → Satz die einzige Verbindung ist und
+  Knoten, Kante und Objekt in der Ablage gleich aussehen.*
+
+  **Dasselbe für die Kante:** *Weg A — die Kantenzeile trägt die Klasse (`CompositionEdge`), ihre Werte
+  hängen an ihr. Weg B — die Kante hat einen Satz.*
+
+  Der Entwurf oben nimmt Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat. Es ist seine
+  Wahl.
 - **D2 · Was ist der Wert einer Wahl aus Kindern** (`orientation` = einer von zwei; `label_role` = eine
   von fünf Rollen, die Modellknoten sind)? *Ein Text (`'vertical'`) oder ein Verweis auf den Knoten
   (`→ Rolle symbol`)?* Beides passt in die Zeile; die Klasse müsste sagen, welches.
