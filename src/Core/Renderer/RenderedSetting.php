@@ -44,7 +44,39 @@ final class RenderedSetting implements Renderable
          * node. Two nearly identical fields, and confusing them puts every range under `bool`.*
          */
         public readonly ?SimpleType $subject = null,
+        /**
+         * Der Name des Kettenglieds, von dem der Wert geerbt ist — in Worten, nicht als Nummer.
+         *
+         * ⚠️ *[D-689](../../../docs/NewConcept/90-decision-log.md): «geerbt von Integer», kein Pfeil
+         * mit Tooltip. Ein Renderer holt nichts ([D-159](../../../docs/NewConcept/90-decision-log.md)),
+         * also reicht der Abstieg den Namen herein wie den Wert.*
+         */
+        public readonly string $fromOwnerName = '',
+        /**
+         * Der Name des Feldes, mit dem die Zeile «hier überschreibe ich» sagt — leer, wo es keines gibt.
+         *
+         * ⚠️ *Ohne Skript und ohne zweiten Seitenaufruf: ein Haken neben dem gesperrten Steuerelement.
+         * **Der Rand schreibt eine geerbte Zeile nur, wenn der Haken mitkommt** — so kann ein Wert, der
+         * nur angezeigt wird, nie als gesetzt durchgehen ([D-687](../../../docs/NewConcept/90-decision-log.md)).*
+         */
+        public readonly string $overrideName = '',
     ) {
+    }
+
+    /** Dieselbe Zeile, mit Herkunft und Überschreib-Feld — die Zeile selbst ist unveränderlich. */
+    public function withOrigin(string $fromOwnerName, string $overrideName): self
+    {
+        return new self(
+            $this->key,
+            $this->shape,
+            $this->type,
+            $this->setting,
+            $this->result,
+            $this->rendererName,
+            $this->subject,
+            $fromOwnerName,
+            $overrideName
+        );
     }
 
     /**

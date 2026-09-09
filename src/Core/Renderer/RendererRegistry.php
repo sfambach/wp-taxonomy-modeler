@@ -251,6 +251,20 @@ final class RendererRegistry
     }
 
     /**
+     * Ob ein Renderer für diesen Typ zulässig ist — dieselbe Regel, nach der {@see eligibleFor()} anbietet.
+     *
+     * ⚠️ *`null` heisst «dieser Gegenstand hat keinen einfachen Typ», und zulässig ist dann, was
+     * strukturell zeichnet (`handles() === []`) — nicht «alles». Die Regel steht an **einer** Stelle,
+     * damit die Tafel und der Abstieg nie verschieden antworten.*
+     */
+    public function permits(Renderer $renderer, ?SimpleType $type): bool
+    {
+        $drawn = $renderer->handles();
+
+        return $type === null ? $drawn === [] : in_array($type, $drawn, true);
+    }
+
+    /**
      * Configuration time: what this subject may be given.
      *
      * ⚠️ **`null` means *this subject has no simple type*, not *do not filter*.** The two look
@@ -356,6 +370,25 @@ final class RendererRegistry
         }
 
         $named = $this->byName($chosen);
+
+        // ⚠️ **Ein geerbter Renderer, der hier nicht zulässig ist, gilt nicht — der erste zulässige
+        // gilt** ([D-687](../../../docs/NewConcept/90-decision-log.md), [D-688](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Wort: «gerade wenn ein vererbter renderer nicht zulässig ist müsste auch ein
+        // zulässiger gewählt werden». **Nur der geerbte:** was jemand **hier** gewählt hat, bleibt,
+        // auch wenn es ungewöhnlich ist — die zulässige Menge ist Rat und kein Zaun
+        // ([D-360](../../../docs/NewConcept/90-decision-log.md)). Der erste zulässige ist der
+        // Typ-Standard, derselbe, den die Tafel als automatisch anbietet.*
+        $ausDerKette = $settings[SettingKey::Renderer->value] ?? null;
+
+        if ($ausDerKette instanceof \Taxmod\Core\Model\ResolvedSetting
+            && $ausDerKette->isInherited()
+            && $ausDerKette->fromOwnerId !== 0
+            && ! $this->permits($named, $type)
+        ) {
+            $renderer = $this->defaultFor($type);
+
+            return in_array($purpose, $renderer->supports(), true) ? $renderer : null;
+        }
 
         // ⚠️ **A named renderer that cannot serve here is not in force, and the *type's default*
         // draws — not the fallback.** The owner found this by asking *how do we render a constant

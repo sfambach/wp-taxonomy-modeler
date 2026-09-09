@@ -86,7 +86,7 @@ zurückgenommen und alles bleibt eine Option? **Beides ist vertretbar; nur der j
 | 3 | **Update-Log** — eine Zeile je Installation und je Folge-Update, mit Version und Verweis | [D-476](../../NewConcept/90-decision-log.md) | **fehlt ganz** |
 | 4 | **Schema-Fassung sichtbar** — welche Fassung liegt, welche erwartet der Kode | `CD-6` (die Fassung ist der Wächter des Aufstiegs) | **fehlt.** Sie steht nur in einer Option |
 | 5 | **Die neutrale Sprache zieht von der Option ins Modell** | [Arbeitsliste 14](../../NewConcept/97-implementation-plan.md), begründet in [D-397](../../NewConcept/90-decision-log.md) | **offen.** Sie ist heute `taxmod_neutral_locale`, und der Kern bekommt sie durch eine Naht gereicht |
-| 6 | **Die doppelte Entwickleroption** | — | **gemessener Fehler:** `taxmod_developer` **und** `taxmod_developer_mode` stehen beide in der Datenbank; gelesen wird nur die erste, die zweite steht auf `0` und täuscht |
+| 6 | **Die doppelte Entwickleroption fällt** | seine Bestätigung 2026-09-09 | **gemessener Rest, und er ist bestätigt.** `taxmod_developer` **und** `taxmod_developer_mode` stehen beide in der Datenbank; gelesen wird nur die erste, die zweite steht auf `0` und täuscht jeden, der nachsieht. **Sein Wort auf die Frage: «zu 6 ist beides das gleiche»** — also ist es kein Zweifelsfall, sondern eine Zeile zum Wegräumen. *Keine Entscheidung nötig, kein Kode betroffen: `SeedImage` kennt beide Namen schon als «Bildschirmeinstellung eines Betreibers».* |
 | 7 | **Der Einstellungssatz im Datensatzblock, am Entwicklerschalter** | `TASK-069`, sein Wort 2026-09-07 | **offen.** Der Schalter ist da, die Zeile nicht |
 | 8 | **Die gesäten Gerüste** — welche liefen, in welcher Fassung | [D-119](../../NewConcept/90-decision-log.md) (nach dem Import ist es gewöhnlicher Inhalt) | **fehlt.** Vier Optionen (`taxmod_base_scaffold`, `taxmod_composition_scaffold`, `taxmod_rendering_scaffold`, `taxmod_unit_scaffold`) sagen es, keine Seite zeigt es |
 | 9 | **Die Rahmen-Ids** — Wurzel, Papierkorb, die sechs Äste, die Rollen | [D-510](../../NewConcept/90-decision-log.md) (Bindung über die Id) | **fehlt.** 21 Optionen, nur über die Datenbank lesbar; `node-binding-check` prüft sie, ein Mensch sieht sie nicht |
@@ -119,8 +119,11 @@ whose fact it is.**»* — *am 2026-09-09 gebaut und genau so abgelegt: `integer
 andere wäre auf Sand gebaut.
 
 **Dann die vier, die nichts voraussetzen:** die doppelte Option (6), die Schema-Fassung (4), die
-Gerüste (8) und die Rahmen-Ids (9). *Vier Anzeigen, kein neuer Mechanismus — und (6) ist das
-Wegräumen einer Falle.*
+Gerüste (8) und die Rahmen-Ids (9). *Drei Anzeigen und ein Wegräumen — kein neuer Mechanismus.*
+
+⚠️ **(6) kann jederzeit fallen und wartet auf nichts.** *Er hat bestätigt, dass beide Optionen
+dasselbe meinen; die ungelesene verschwindet, und `node-binding-check` merkt es nicht einmal, weil
+sie keine Knoten-Id trägt.*
 
 **Dann Backup und Update-Log (2, 3)** als ein Stück, weil
 [D-476](../../NewConcept/90-decision-log.md) den Rückbau ausdrücklich aus dem Backup holt und nicht
