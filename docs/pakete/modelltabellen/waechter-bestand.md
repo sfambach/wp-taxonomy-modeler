@@ -539,3 +539,14 @@ das es nicht mehr gibt.*
 **1** die Wiese · **2** erklären · **3** wählen · **4** erben und sperren · **5** Konflikt und Wurzel ·
 **6** die Tafel der Feldzeile · **7** Werte und Steuerelemente · **8** Konverter · **9** Vorschau ·
 **10** Kantenart · **11** Datensätze · **12** die Seite · **13** Umbenennen · **14** Fassung 38.
+
+### `rendering-scaffold` — 16 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1–3 (die drei Behälter unter Settings, Ids notiert) | **Abschnitt 0**, drei Zeilen |
+| 4–9 (jeder Name des Kodes liegt als Knoten; kein Blatt, das der Kode nicht kennt) | **Abschnitt 0**, zwei Zeilen je Behälter |
+| 10–11 (keiner der neun Oberflächen-Renderer; `plain` wird gesät) | **Abschnitt 0** |
+| 12 (ein zweiter Lauf legt nichts an) | **Abschnitt 0** |
+| 13–16 (der Notnagel trägt nach, ohne zweiten Knoten; eine Angabe im Müll wird nicht geglaubt) | **Abschnitt 0**, vier Zeilen |
+
