@@ -472,6 +472,16 @@ für Objekte in Attributen, in B für alles, was Werte trägt.*
 
 Der Entwurf oben nimmt Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat. Es ist seine
 Wahl.
+**Seine Teilantwort zu D1, 2026-09-10 abends — der Rest morgen:** *«eine Kante hat genau eine Klasse,
+entweder eine eigene oder sie erbt sie beim Anlegen, aber immer genau nur eine. Das Gleiche gilt für
+Knoten. Aber Knoten- und Kantenklassen sind unterschiedlich: Knoten haben nur Knotenklassen, Kanten nur
+Kantenklassen. Alles Weitere zu dem Punkt morgen — noch nichts vollständig beantwortet.»*
+
+*Festgehalten, was daraus für beide Wege gilt: **je Knoten und je Kante genau eine Klasse**, beim
+Anlegen eigen oder geerbt, danach fest; **zwei getrennte Klassenwelten**, eine für Knoten, eine für
+Kanten — eine Klasse ist nie beides. Ob die Klasse am Knoten steht (Weg A) oder am Satz (Weg B), ist
+damit noch nicht entschieden.*
+
 #### D2 · Was ist der Wert einer Wahl aus Kindern
 
 **D2 —**** (`orientation` = einer von zwei; `label_role` = eine
