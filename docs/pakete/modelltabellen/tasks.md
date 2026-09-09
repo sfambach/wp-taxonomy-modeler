@@ -2826,3 +2826,44 @@ werden, die 104 an `Condensator` nur über den Cleanup-Bildschirm.
 
 *Jede Aufgabe endet mit beiden Läufen grün und einem eigenen Commit. Was blockiert, wird geparkt und
 hier vermerkt, nicht gefragt.*
+
+---
+
+[ ] TASK-079  `cleartrash-check` ist wackelig — «its labels went with it» fällt in etwa jedem vierten Lauf
+
+**2026-09-09, beim Bauen gefunden, geparkt.** ⚠️ **Gemessen:** *im vollen Randlauf für TASK-075 rot
+mit Rückgabewert 1; allein wiederholt grün. Dreimal die Folge `cleanup-screen-check`, dann
+`cleartrash-check`: grün, **rot**, grün — jedes Mal dieselbe Zusage: «its labels went with it — 1»,
+eine Beschriftung des geleerten Papierkorbs bleibt stehen.* **Nicht von heute:** die Klammer aus
+TASK-073 ändert an Beschriftungen nichts, und der Wächter ist nicht angefasst. **Nicht behoben**, weil
+ein wackeliger Wächter keine Aussage über den Bau ist, sondern eine über sich selbst — und «einmal
+wiederholen» ihn genau zu dem macht, was TASK-073 ausschliesst: ein Rot, das man übergeht.
+
+⚠️ *Verdacht, nicht Befund: die Beschriftungszählung hängt an `forgetOrphanLabels()`, das viele Läufe
+beim Herunterfahren rufen — **nach** dem `ROLLBACK` der Klammer und bei `autocommit = 0`, also in einer
+Transaktion, die niemand bestätigt. Ob davon etwas übrig bleibt oder ob der Wächter eine fremde Zeile
+mitzählt, ist zu messen, bevor etwas geändert wird.*
+
+---
+
+[ ] TASK-077  Die Konfigurationsseite — Liste steht, Bau wartet auf eine Entscheidung
+
+**2026-09-09, sein Auftrag:** *«wir hatten öffters gesagt wenn etwas ins admin menü muss
+(settings/installation) allerdings fehlen hier die meisten einträge durchsuche das projekt und
+erstelle eine implementierungsliste nur für das installatoins menü, ich würd es lieber in
+configutation umbennen.»*
+
+**Die Liste steht in [`konfigurationsseite.md`](konfigurationsseite.md)** — neun Zeilen, jede mit
+ihrem Beschluss und dem heutigen Zustand, dazu was ausdrücklich **nicht** dorthin gehört und in
+welcher Reihenfolge gebaut würde.
+
+⚠️ **Gebaut wird nichts, bevor eine Frage beantwortet ist** (Abschnitt 3): *[D-079](../../NewConcept/90-decision-log.md)
+und [D-404](../../NewConcept/90-decision-log.md) legen die installationsweiten Vorgaben auf die
+**Installationsidentität** — und die ist mit [D-602](../../NewConcept/90-decision-log.md) aus der
+Auflösungskette gefallen. **Gemessen: Id 641, kein Knoten, null Datensätze.** Entweder bekommt sie
+ihre Stufe zurück, oder D-079 wird zurückgenommen; der jetzige Zustand ist ein Beschluss ohne
+Mechanismus.*
+
+⚠️ *Ein gemessener Fehler liegt schon in der Liste und braucht keine Entscheidung:
+**`taxmod_developer` und `taxmod_developer_mode` stehen beide in der Datenbank**, gelesen wird nur
+die erste, die zweite steht auf `0` und täuscht.*
