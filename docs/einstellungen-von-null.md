@@ -207,6 +207,25 @@ an zwei Orten Verschiedenes heissen darf.
 
 ---
 
+**Seine Antworten auf 2c und 3:** *«der Komplexität ist erstmal keine Grenze gesetzt; natürlich wird es
+in der Realität nicht beliebig tief gehen. Man sollte auch als Programmierrichtlinie möglichst auf flache
+Strukturen setzen.»* — *«Attributnamen sind nicht unbedingt eindeutig, aber wenn man den Klassennamen
+hat: Klassenname + Attributname ist dann wieder eindeutig. Beispiel `int` / `double`, `min` / `max`.»*
+
+*Also: **die Adresse eines Werts ist Klasse + Attributname.** Innerhalb eines Satzes ist die Klasse
+bekannt — der Satz nennt sie —, darum trägt eine Zeile nur den Attributnamen; erst Satz und Zeile
+zusammen sind die volle Adresse: `IntegerNode.min`, `DecimalNode.min`, `CompactRenderer.orientation`.
+Das Format des Werts sagt die Klasse. Keine Nummer, die das Modell vergibt.* ⚠️ *Eine Folge, die
+hierher gehört: wird ein Attribut im Kode umbenannt, ändert sich die Adresse — dann wandern die
+Werte, wie bei jeder Kode-Änderung, die die Ablage berührt. Das ist der Preis dafür, dass der Kode die
+einzige Erklärung ist, und er ist klein, solange die Richtlinie gilt: flach, und Namen nicht ohne Not
+ändern.*
+
+**Damit ist das erste Problem gelöst.** *Die Erklärung ist die Klasse (Reflection); ein Wert ist eine
+Zeile; ein komplexer Wert ist ein Satz mit Klasse und Werten; eine Liste sind mehrere Zeilen in
+Reihenfolge, komplex je auf einen Satz zeigend; die Adresse ist Klasse + Attributname; tief, so weit die
+Klassen gehen, mit der Richtlinie «flach».*
+
 ## Das zweite Problem, das er hintanstellt: Überschreiben an der Kante, Erben an Kindern
 
 *«Wenn wir das erste Problem gelöst haben, können wir das leicht lösen.»* — Was dafür festzuhalten ist,
@@ -226,7 +245,15 @@ damit die Lösung des ersten es nicht verbaut:
 
 ## Wo wir stehen
 
-Sein Gerüst steht. **Beantwortet: 1a, 1b** (die Erklärung ist die Klasse, per Reflection gelesen, ohne
-Spur im Modell), **2b, 2a, 2c** (die Klasse entscheidet, was ihre Liste darf; ein komplexer Wert ist ein
-eigener Satz mit Klasse und Werten; beliebig tief). **Offen: 3** — ist die Adresse eines Werts der
-Attributname aus der Klasse, oder eine Nummer, die das Modell vergibt? Erst danach das zweite Problem.
+Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
+Nächstes das zweite Problem**, in seiner Reihenfolge, je Frage sein Wort:
+
+- **Z1 · Wo wohnt der Wert an der Kante?** In einem Satz, der zur Kante gehört, in derselben Form wie
+  der Satz des Knotens — oder anders?
+- **Z2 · Was schlägt die Kante bei einem komplexen Attribut?** Das ganze Objekt (ein anderer Renderer,
+  mit allen seinen Werten neu) — oder auch einen einzelnen Wert darin (`orientation` anders, Renderer
+  gleich)?
+- **Z3 · Was tut eine Liste beim Überschreiben?** Ersetzt die Kante die Liste des Knotens, oder ergänzt
+  sie sie — und wenn ergänzt: wie nimmt man einen geerbten Eintrag weg?
+- **Z4 · Erben an Kindern:** dieselben drei Fragen für das Kind gegenüber dem Vater — oder gilt für das
+  Kind einfach dasselbe wie für die Kante?
