@@ -250,6 +250,53 @@ eine eigene Sorte bleibt. **Es ist der grössere Umbau seit D-529**, und er fäl
 
 ---
 
+## INF-041 · Wo eine Einstellung erklärt ist, sagt, wer sie hat — nichts sagt, wer sie braucht
+
+**Typ:** `QUESTION` · **Status:** `OPEN` — von ihm gefunden an `Parts List`, 2026-09-10
+
+⚠️ **Sein Wort:** *«form und table haben garkein label role und converter / validator eigentlich auch
+nicht trotzdem werden sie angezeigt»* — *«es gibt keine converter für table und form, feld ist offen
+weil falsche converter angezeigt werden, render with label ist ok, label_role ist an form und table,
+eigentlich brauchen wir das aktuell soweit ich weiss nur bei der reference — ich glaube wir haben auch
+hier eine konzeptlücke».*
+
+⚠️ **Gemessen, wer heute was erklärt:** *`converter` und `label_role` am Behälter `Renderer` — also
+erbt sie jeder Renderer, auch `form`, `table`, `compact`. `with_label` am Zwischenknoten
+`render with label` (form, compact, table, reference, chooser-inline, chooser-dialog) — das ist
+richtig, und er sagt es. `orientation` nur an `compact` und `table` — das Muster, das stimmt.
+`validator` an der Wurzel — also an jedem Knoten, und die Auswahl bietet an `Parts List` «range» und
+«shape» an, die zu einem zusammengesetzten Knoten nichts sagen.*
+
+⚠️ **Die Lücke, in zwei Hälften:** *(1) **Die Erklärung ist zu weit.** [D-529](NewConcept/90-decision-log.md)
+sagt, eine Einstellung ist eine Kante, und [D-621](NewConcept/90-decision-log.md), die Kante sagt,
+was etwas ist — aber der Renderer-Ast gruppiert nur nach **einer** Eigenschaft (mit Beschriftung),
+nicht nach den anderen: «zeichnet einen Wert» (dann Konverter) und «zeigt auf einen Knoten» (dann
+Rolle der Beschriftung). Das Gerüst (`RenderingScaffold`) baut den Ast aus dem Kode, und der Kode
+weiss je Renderer, was er kann — der Ast sagt es nicht. (2) **Das Angebot folgt nicht dem Passenden.**
+Für `converter` fragt der Kode die Registratur («welche passen zu diesem Typ»), für `validator` nicht,
+für `label_role` gibt es nichts zu fragen. Und ein leeres Angebot wird als **leeres Feld** gezeichnet —
+«feld ist offen» —, was eine ältere Zusage sogar verlangte («eine Wahl ohne Inhalt ist ein totes
+Steuerelement, kein leeres»; heute steht sie in `einstellungen-check`, Abschnitt 7).*
+
+⚠️ **Was zu entscheiden wäre (`PR-4`), als Vorschlag:** *(a) Der Renderer-Ast bekommt seine Gruppen
+**aus dem Kode**: unter `render with label` ein Zwischenknoten für die drei, die auf einen Knoten
+zeigen (reference, chooser-inline, chooser-dialog) — dort wird `label_role` erklärt; neben ihm ein
+Zwischenknoten für die, die einen Wert zeichnen (field, spinner, slider, textarea, …) — dort wird
+`converter` erklärt. Die Kanten behalten ihre Nummern, gespeicherte Werte bleiben gültig; eine Fassung
+hängt um. (b) Das Angebot jeder Einstellung mit Knotenziel folgt dem, was **an dieser Stelle passt** —
+für `converter` und `validator` nach dem Typ, wie die Registraturen es heute schon wissen; das ist
+derselbe Gedanke wie [D-697](NewConcept/90-decision-log.md), nur aus dem Kode statt aus einer Liste.
+(c) **Ein leeres Angebot zeichnet keine Zeile** — statt eines toten oder offenen Feldes. Das nimmt die
+ältere Zusage zurück und braucht deshalb sein Wort. (d) `validator` an der Wurzel oder am Ast der
+Datentypen — hängt an (b): folgt das Angebot dem Typ, kann die Kante an der Wurzel bleiben und ist an
+`Parts List` einfach leer, also nach (c) nicht da.*
+
+⚠️ *Zusammen mit [INF-040](#inf-040--eine-einstellungskante-auf-einen-knoten-ist-ein-verweis--und-geht-heute-einen-eigenen-weg)
+ist das **eine** Baureihe: dort, wie eine Einstellung mit Knotenziel gezeichnet und geschrieben wird;
+hier, wo sie erklärt ist und was sie anbietet. Nichts davon ist gebaut.*
+
+---
+
 ## Erledigte Eingänge
 
 *(noch keine)*
