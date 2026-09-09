@@ -1973,16 +1973,29 @@ final class Rendering implements Presets
                         // die den Kopf dafür gar nicht hat.
                         ! $showValue
                             ? []
-                            : [FieldRowRenderer::VALUE => new Section(
-                                '',
-                                $this->wertspalteMarkup(
-                                    $gezeichneterWert,
-                                    $sperre,
-                                    $valuePrefix === '' ? '' : $valuePrefix . '[' . $relation->id . ']',
-                                    $pageForm,
-                                    $settingsWords
-                                )
-                            )],
+                            : [
+                                // ⚠️ *Der Haken zuerst, als eigene Spalte — sein Wort am 2026-09-10; leer, wo nichts gesperrt ist.*
+                                FieldRowRenderer::OVERRIDE => new Section(
+                                    '',
+                                    $this->overrideHakenMarkup(
+                                        $gezeichneterWert,
+                                        $sperre,
+                                        $valuePrefix === '' ? '' : $valuePrefix . '[' . $relation->id . ']',
+                                        $pageForm,
+                                        $settingsWords
+                                    )
+                                ),
+                                FieldRowRenderer::VALUE => new Section(
+                                    '',
+                                    $this->wertspalteMarkup(
+                                        $gezeichneterWert,
+                                        $sperre,
+                                        $valuePrefix === '' ? '' : $valuePrefix . '[' . $relation->id . ']',
+                                        $pageForm,
+                                        $settingsWords
+                                    )
+                                ),
+                            ],
                         // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
                         // Rand, weil er URL und Nonce braucht (CD-1), und wird durchgereicht.
                         isset($targetChoosers[$relation->id])
@@ -2095,17 +2108,49 @@ final class Rendering implements Presets
         $satz        = $automatisch
             ? $this->satzAus($woerter, 'automatic', $sperre['wert'])
             : $this->satzAus($woerter, 'inherited_from', $sperre['von']);
-        $override    = (string) preg_replace('/^([A-Za-z_]+)/', '$1_override', $feldName);
-
+        // ⚠️ *Der Haken steht nicht mehr hier, sondern vorn in der Zeile, als eigene Spalte
+        // ({@see self::overrideHakenMarkup()}) — sein Wort: «als richtige spalte».*
         return '<span class="taxmod-setting-locked' . ($automatisch ? ' taxmod-setting-automatic' : '') . '">'
             . '<span class="taxmod-setting-locked-control">' . $markup . '</span>'
-            . '<label class="taxmod-override-act">'
+            . ' <em class="' . ($automatisch ? 'taxmod-automatic' : 'taxmod-inherited') . '">' . RenderResult::escape($satz) . '</em>'
+            . '</span>';
+    }
+
+    /**
+     * Der Haken «hier überschreibe ich» für die erste Spalte der Zeile — leer, wo nichts gesperrt ist.
+     *
+     * ⚠️ **Sein Wort am 2026-09-10:** *«das override tickfeld mal an den anfang der setting zeile und als
+     * richtige spalte».* *Derselbe Haken wie vorher, dieselbe Adresse (`<Feld>_override[...]`), nur nicht
+     * mehr hinter dem Steuerelement. Ob er vorgesetzt ist, sagt dasselbe Merkmal wie bei der Wertspalte:
+     * ein geerbter Eintrag, den die Stelle nicht zulässt, ist automatisch ersetzt ([D-688](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function overrideHakenMarkup(array $gezeichnet, ?array $sperre, string $feldName, string $formId, array $woerter): string
+    {
+        if ($gezeichnet === [] || $sperre === null || $feldName === '') {
+            return '';
+        }
+
+        $automatisch = $this->automatischGewaehlt($gezeichnet[0]->result->markup, $sperre);
+        $override    = (string) preg_replace('/^([A-Za-z_]+)/', '$1_override', $feldName);
+
+        return '<label class="taxmod-override-act">'
             . '<input type="checkbox" class="taxmod-override" name="' . RenderResult::escape($override) . '" value="1"'
             . ($automatisch ? ' checked' : '')
             . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"')
-            . '> ' . RenderResult::escape($this->wortAus($woerter, 'override')) . '</label>'
-            . ' <em class="' . ($automatisch ? 'taxmod-automatic' : 'taxmod-inherited') . '">' . RenderResult::escape($satz) . '</em>'
-            . '</span>';
+            . ' title="' . RenderResult::escape($this->wortAus($woerter, 'override')) . '"></label>';
+    }
+
+    /** Ob der gezeichnete Wähler einen Eintrag zeigt, den die Sperre nicht als geerbten Kandidaten kennt (D-688). */
+    private function automatischGewaehlt(string $markup, array $sperre): bool
+    {
+        if (preg_match('/<select\b[^>]*>.*?<\/select>/s', $markup, $wahl) !== 1
+            || preg_match('/<option value="([^"]*)"[^>]*\bselected\b[^>]*>([^<]*)</', $wahl[0], $gewaehlt) !== 1
+        ) {
+            return false;
+        }
+
+        return ! in_array(trim($gewaehlt[1]), $sperre['kandidaten'], true)
+            && ! in_array(trim(html_entity_decode($gewaehlt[2])), $sperre['kandidaten'], true);
     }
 
     /**

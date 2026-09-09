@@ -219,10 +219,13 @@ final class SettingsRenderer extends RendererNode
             . ($gesperrt ? ' taxmod-setting-locked' : '')
             . ($automatisch ? ' taxmod-setting-automatic' : '')
             . '">'
+            // ⚠️ *Der Haken «hier überschreibe ich» zuerst, als eigene Spalte — sein Wort am 2026-09-10: «das
+            // override tickfeld mal an den anfang der setting zeile und als richtige spalte». Die Spalte
+            // steht in jeder Zeile, damit die Schlüssel untereinander bleiben; leer, wo nichts zu überschreiben ist.*
+            . '<span class="taxmod-setting-override">' . $haken . '</span>'
             . '<code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>'
             . '<span class="taxmod-setting-value">'
             . ($gesperrt ? '<span class="taxmod-setting-locked-control">' . $this->control($drawn) . '</span>' : $this->control($drawn))
-            . $haken
             . '</span>'
             // ⚠️ **The origin is a mark and no longer a sentence.** *not defined* stood on every
             // unset row — which is most of them — and said what an empty control already says. The

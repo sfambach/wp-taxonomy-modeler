@@ -167,9 +167,12 @@ final class FieldRowRenderer extends RendererNode
             return RenderResult::of('');
         }
 
-        $spalten = 6 + (isset($context->surroundings->sections[self::VALUE]) ? 1 : 0);
+        $haken   = $context->surroundings->sections[self::OVERRIDE] ?? null;
+        $spalten = 6 + (isset($context->surroundings->sections[self::VALUE]) ? 1 : 0) + ($haken === null ? 0 : 1);
 
-        $cells = $this->nameCell($subject, $context)
+        // ⚠️ *Der Haken «hier überschreibe ich» zuerst, als eigene Spalte — sein Wort (siehe {@see self::OVERRIDE}).*
+        $cells = ($haken === null ? '' : $this->cell($haken->body, 'taxmod-field-override', false, true))
+            . $this->nameCell($subject, $context)
             // ⚠️ **The target arrives as a name, not as an id to look up** — resolving it is a
             // query and one per row is `CD-7`'s loop, which is why `refersTo` exists at all.
             . $this->cell($this->targetCell($context), 'taxmod-field-target', false, true)

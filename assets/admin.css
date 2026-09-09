@@ -1307,9 +1307,24 @@ a.taxmod-chosen:hover {
  *
  * ⚠️ Eine automatische Wahl (D-688) ist frei, mit vorgesetztem Haken und ihrem Grund daneben.
  */
-.taxmod-setting-locked:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control {
+.taxmod-setting-locked:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control,
+/* Der Haken steht seit dem 2026-09-10 in einer eigenen Spalte, vorn — also ist die Zeile der
+   gemeinsame Rahmen, nicht mehr die Wertspalte (sein Wort: «als richtige spalte»). */
+tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control,
+.taxmod-setting:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control {
     opacity: .55;
     pointer-events: none;
+}
+
+.taxmod-field-override,
+.taxmod-setting-override {
+    width: 4em;
+    white-space: nowrap;
+}
+
+.taxmod-setting-override {
+    display: inline-block;
+    min-width: 4em;
 }
 
 .taxmod-setting-locked-control {

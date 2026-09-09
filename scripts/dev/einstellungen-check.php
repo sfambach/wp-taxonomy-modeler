@@ -212,7 +212,12 @@ function speichern(int $nodeId, array $angaben): bool
     ]);
 }
 
-/** Die Wertspalte der Zeile zu dieser Einstellungskante — mit Sperre, Haken und Herkunft, wenn sie da sind. */
+/**
+ * Die ganze Zeile zu dieser Einstellungskante — Haken vorn, Sperre, Wert und Herkunft in der Wertspalte.
+ *
+ * ⚠️ *Sein Wort am 2026-09-10: «das override tickfeld mal an den anfang der setting zeile und als richtige
+ * spalte» — seither ist die Zeile der Rahmen, nicht mehr die Wertspalte.*
+ */
 function wertspalte(string $markup, int $kante): string
 {
     $wo = strpos($markup, 'name="taxmod_value[' . $kante . ']"');
@@ -221,18 +226,28 @@ function wertspalte(string $markup, int $kante): string
         return '';
     }
 
+    // Die Spalte mit dem Haken, vorn in derselben Zeile.
+    $trAnfang = strrpos(substr($markup, 0, $wo), '<tr');
+    $haken    = '';
+
+    if ($trAnfang !== false && preg_match('/<td class="taxmod-field-override"[^>]*>(.*?)<\/td>/s', substr($markup, $trAnfang, $wo - $trAnfang), $h) === 1) {
+        $haken = $h[1];
+    }
+
+    // Die Wertspalte: der gesperrte Rahmen um das Steuerelement, bis zur Herkunft in Worten — ohne die
+    // Tafel des Renderers darunter, die in derselben Zelle steht.
     preg_match_all('/<span class="taxmod-setting-locked(?: taxmod-setting-automatic)?">/', substr($markup, 0, $wo), $treffer, PREG_OFFSET_CAPTURE);
     $letzter = end($treffer[0]);
     $anfang  = $letzter === false ? false : (int) $letzter[1];
     $zelle   = strrpos(substr($markup, 0, $wo), 'taxmod-field-value');
 
     if ($anfang === false || ($zelle !== false && $anfang < $zelle)) {
-        return substr($markup, $wo, 400);
+        return $haken . substr($markup, $wo, 400);
     }
 
     $ende = strpos($markup, '</em></span>', $wo);
 
-    return substr($markup, $anfang, ($ende === false ? $wo + 400 : $ende + 12) - $anfang);
+    return $haken . substr($markup, $anfang, ($ende === false ? $wo + 400 : $ende + 12) - $anfang);
 }
 
 /** @return array<int,string> Knoten-Id => Name der angebotenen Renderer in der Zeile `renderer`. */

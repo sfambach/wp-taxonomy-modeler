@@ -3338,3 +3338,14 @@ gewählte Rolle, der Vater zeigt sein `with_label`.
 ⚠️ *Sein «überschreiben funktioniert nicht» an `read_only` und am Renderer liess sich am Server nicht
 nachstellen: über denselben Weg wie die Maske wird geschrieben und wieder gezeigt. Offen ist, was im
 Browser anders lief — siehe die Rückfrage im Gespräch.*
+
+---
+
+[x] TASK-090  Der Haken «override» steht am Anfang der Einstellungszeile, als eigene Spalte — gebaut 2026-09-10
+
+**Sein Wort:** *«so nebenbei das override tickfeld mal an den anfang der setting zeile und als richtige
+spalte».* *Vorher hing der Haken hinter dem Steuerelement in der Wertspalte. Jetzt: in der Tabelle
+«Settings» eine erste Spalte `override` mit dem Haken (leer, wo nichts gesperrt ist), die Wertspalte trägt
+nur Wert und Herkunft; in der Tafel unter einer Feldzeile steht der Haken ebenso vorn. Dieselbe Adresse
+wie vorher (`…_override[…]`), der Rand liest nichts anders. Die Sperre am Steuerelement folgt jetzt der
+Zeile als Rahmen (`tr:has(...)`), nicht mehr der Wertspalte.*

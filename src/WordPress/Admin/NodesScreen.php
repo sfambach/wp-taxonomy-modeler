@@ -2135,6 +2135,8 @@ final class NodesScreen
             $html .= $body === ''
                 ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
                 : '<table class="wp-list-table widefat striped"><thead><tr>'
+                    // ⚠️ *Sein Wort: «das override tickfeld mal an den anfang der setting zeile und als richtige spalte».*
+                    . ($istEinstellung ? '<th style="width:4em">' . esc_html__('override', 'taxmod') . '</th>' : '')
                     . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
                     // WICHTIG: "Type", nicht "Points at" -- auf sein Wort: "points at in type
                     // umbenennen". Die Spalte zeigt das Ziel des Feldes, und das ist sein Typ.
