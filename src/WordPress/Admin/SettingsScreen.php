@@ -122,6 +122,7 @@ final class SettingsScreen
             . '<th scope="col">' . esc_html__('What it does', 'taxmod') . '</th>'
             . '</tr></thead><tbody>'
             . $this->developerRow()
+            . $this->developerDetailRows()
             . $this->localeRow()
             . $this->trashRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('The glyphs in the tree and on its buttons.', 'taxmod'))
@@ -150,6 +151,76 @@ final class SettingsScreen
             ToggleMarkup::input('developer', self::inDeveloperMode()),
             __('Shows the diagnostics and lifts the deletion guards. One mode, not two: the same switch that shows which renderer drew what also lets a protected node be parked.', 'taxmod')
         );
+    }
+
+    /**
+     * Was der Entwicklermodus einzeln zeigt — **vier Haken unter einem Modus**.
+     *
+     * ⚠️ **[D-705](../../../docs/NewConcept/90-decision-log.md), und es widerruft
+     * [D-248](../../../docs/NewConcept/90-decision-log.md) nicht.** *D-248 verbot einen **zweiten
+     * Modus** («two ways to be in a surprising state»); diese vier sind ein **Sichtfilter** innerhalb
+     * des einen Modus und können in keine Lage führen, in die er nicht schon geführt hat.*
+     *
+     * ⚠️ *Vorgabe **an**, jede einzeln: der Modus soll beim Einschalten das tun, was er bisher tat.
+     * Deshalb wird beim Speichern ausdrücklich `0` geschrieben statt gelöscht — «aus» und «nie
+     * gesetzt» sähen sonst gleich aus und bedeuteten das Gegenteil.*
+     *
+     * @var array<string, string> Option => Feldname im Formular.
+     */
+    private const DEVELOPER_DETAILS = [
+        'taxmod_dev_writes'          => 'dev_writes',
+        'taxmod_dev_settings_record' => 'dev_settings_record',
+        'taxmod_dev_root_toggle'     => 'dev_root_toggle',
+    ];
+
+    /** Ob ein einzelner Haken zieht — **und er zieht nur, während der Modus an ist**. */
+    public static function developerShows(string $option): bool
+    {
+        return self::inDeveloperMode() && get_option($option, '1') !== '0';
+    }
+
+    /**
+     * Die vier Zeilen — **nur, wenn der Modus an ist**.
+     *
+     * ⚠️ *Sein Wort: «wenn developer mode aktiv ist». **Vier Haken über einem ausgeschalteten Modus
+     * wären vier Fragen ohne Wirkung.***
+     *
+     * ⚠️ *Das verborgene Feld ist der Merker: **ohne es könnte das Speichern nicht unterscheiden,
+     * ob ein Haken abgewählt wurde oder ob die Zeile gar nicht dastand** — und ein Formular, das die
+     * Zeilen nicht trug, würde sie alle löschen.*
+     */
+    private function developerDetailRows(): string
+    {
+        if (! self::inDeveloperMode()) {
+            return '';
+        }
+
+        $was = [
+            'taxmod_dev_writes'          => [
+                __('· Write counts', 'taxmod'),
+                __('The number beside each name in the tree. It counts writes and is not a version: it only says that nobody has changed that row since you read it.', 'taxmod'),
+            ],
+            'taxmod_dev_settings_record' => [
+                __('· The settings record', 'taxmod'),
+                __('The record that holds a node’s settings, shown in the record block with its values in words. It is not data anybody entered, which is why it is out of the way by default.', 'taxmod'),
+            ],
+            'taxmod_dev_root_toggle'     => [
+                __('· «Show the root»', 'taxmod'),
+                __('The view switch in the tree that reveals the root itself. It is needed to give the root a field that every branch inherits, and it is meant for a moment, not for every day.', 'taxmod'),
+            ],
+        ];
+
+        $rows = '<input type="hidden" name="dev_details" value="1">';
+
+        foreach (self::DEVELOPER_DETAILS as $option => $field) {
+            $rows .= $this->row(
+                $was[$option][0],
+                ToggleMarkup::input($field, self::developerShows($option)),
+                $was[$option][1]
+            );
+        }
+
+        return $rows;
     }
 
     /**
@@ -366,6 +437,16 @@ final class SettingsScreen
 
         update_option(NodesScreen::DEVELOPER_OPTION, isset($_POST['developer']), true);
         update_option(self::SHOW_TRASH, isset($_POST['show_trash']) ? '1' : '0', true);
+
+        // ⚠️ **Nur, wenn das Formular die Zeilen auch trug** ([D-705](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sie stehen nur da, während der Modus an ist — **ohne diesen Merker könnte das Speichern
+        // nicht unterscheiden, ob ein Haken abgewählt wurde oder ob die Zeile gar nicht dastand**,
+        // und ein Formular ohne sie löschte alle vier.*
+        if (isset($_POST['dev_details'])) {
+            foreach (self::DEVELOPER_DETAILS as $option => $field) {
+                update_option($option, isset($_POST[$field]) ? '1' : '0', true);
+            }
+        }
 
         $locale = isset($_POST['neutral_locale'])
             ? sanitize_text_field(wp_unslash($_POST['neutral_locale']))

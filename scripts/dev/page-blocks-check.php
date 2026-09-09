@@ -1050,6 +1050,40 @@ if ($mitEinstellungssatz !== 0) {
     update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, $vorher, false);
 }
 
+// ⚠️ **Die vier Einzelhaken wirken nur innerhalb des Modus, und sie wirken wirklich**
+// ([D-705](../../docs/NewConcept/90-decision-log.md)). *Gemessen wird an dem, was verschwindet: eine
+// Zusage, die nur prüft, dass etwas dasteht, sieht einen Haken nicht, der nichts tut.*
+//
+// ⚠️ *Der Modus bleibt dabei **an** — sonst prüfte man wieder nur ihn und nicht den Haken darunter.*
+if ($mitEinstellungssatz !== 0) {
+    $vorherModus = get_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, false);
+    update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, 1, false);
+
+    foreach (
+        [
+            'taxmod_dev_settings_record' => ['taxmod-settings-record', 'der Einstellungssatz'],
+            'taxmod_dev_writes'          => ['taxmod-tree-writes', 'die Schreibzahl'],
+            'taxmod_dev_root_toggle'     => ['taxmod_root', 'der Schalter «show the root»'],
+        ] as $option => $was
+    ) {
+        [$marke, $name] = $was;
+        $vorher = get_option($option, '1');
+
+        update_option($option, '1', false);
+        $an = seiteVon($mitEinstellungssatz);
+
+        update_option($option, '0', false);
+        $aus = seiteVon($mitEinstellungssatz);
+
+        update_option($option, $vorher, false);
+
+        check(sprintf('%s steht da, wenn sein Haken an ist', $name), str_contains($an, $marke));
+        check(sprintf('  · %s ist weg, wenn er aus ist', $name), ! str_contains($aus, $marke));
+    }
+
+    update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, $vorherModus, false);
+}
+
 $geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

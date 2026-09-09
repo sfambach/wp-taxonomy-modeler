@@ -62,13 +62,39 @@ $say(! str_contains($markup, 'class="form-table"'), 'und die zweispaltige von Wo
 // ⚠️ *Drei Kopfzellen, nicht «mindestens drei»: eine vierte waere so falsch wie zwei.*
 $say(substr_count($markup, '<th scope="col">') === 3, 'drei Spalten, wie er sie aufgezaehlt hat');
 
-$schalter = substr_count($markup, 'taxmod-toggle-track');
-$say($schalter === 2, sprintf('beide Optionen sind Schiebeschalter (%d gefunden)', $schalter));
+// ⚠️ *Bei Namen genannt statt gezählt: eine feste Zahl fiel hier schon einmal, als Zeilen dazukamen.*
+foreach (['developer', 'show_trash'] as $einer) {
+    $say(
+        (bool) preg_match('/name="' . $einer . '" value="1"/', $markup),
+        sprintf('«%s» ist ein Schiebeschalter', $einer)
+    );
+}
+
 // ⚠️ **Die verborgene Null ist der Unterschied zwischen «aus» und «nie gesagt»** (D-315, D-232).
 $say(
     substr_count($markup, 'name="developer" value="0"') === 1
         && substr_count($markup, 'name="show_trash" value="0"') === 1,
     'und jeder schickt seine verborgene Null mit, damit aus auch aus heisst'
+);
+
+// ⚠️ **Die vier Einzelhaken stehen genau dann da, wenn der Modus an ist**
+// ([D-705](../../docs/NewConcept/90-decision-log.md)) — *gegen den Schalter gemessen, nicht gegen
+// einen angenommenen Zustand. Sein Wort: «wenn developer mode aktiv ist».*
+$entwickler = Taxmod\WordPress\Admin\SettingsScreen::inDeveloperMode();
+
+// ⚠️ *Drei und nicht vier: die **Renderer-Diagnose** bekam keinen Haken, weil sie niemand füllt —
+//  gemessen am 2026-09-09, `Rendering::recordsAsTable()` nimmt einen Diagnosetext entgegen und **kein
+//  Aufrufer übergibt ihn**. Ein Schalter für etwas, das nie erscheint, ist Möbel (D-429).*
+foreach (['dev_writes', 'dev_settings_record', 'dev_root_toggle'] as $einer) {
+    $say(
+        str_contains($markup, 'name="' . $einer . '" value="1"') === $entwickler,
+        sprintf('  · «%s» steht da, wenn der Modus an ist', $einer)
+    );
+}
+
+$say(
+    str_contains($markup, 'name="dev_details"') === $entwickler,
+    'und der Merker reist mit, damit ein Speichern ohne die Zeilen sie nicht loescht'
 );
 
 // ⚠️ **Gegen sich selbst gezählt und nicht gegen eine feste Zahl.** *Hier standen zweimal «=== 5»,

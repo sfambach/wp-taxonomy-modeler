@@ -3002,7 +3002,12 @@ genau die Sorte, die still falsch wird, wenn die Option umzieht.*
 
 ---
 
-[ ] TASK-081  Der Entwicklermodus wird einzeln schaltbar
+[x] TASK-081  Der Entwicklermodus wird einzeln schaltbar — gebaut 2026-09-09 ([D-705](../../NewConcept/90-decision-log.md)), drei Haken statt vier
+
+**Drei Haken unter einem Modus**, sichtbar nur, während er an ist, Vorgabe alle an: der
+Schreibzähler am Knotennamen, der Einstellungssatz im Datensatzblock, und `show the root` im Baum.
+Bewacht in `page-blocks-check` an dem, **was verschwindet** — eine Zusage, die nur prüft, dass etwas
+dasteht, sieht einen Haken nicht, der nichts tut.
 
 **2026-09-09, sein Auftrag:** *«Welche einstellungen gibt es aktuell für den developer mode? wir
 sollten diese einzeln unter schaltbar machen. wenn developer mode aktiv ist»*
@@ -3096,3 +3101,22 @@ gespeichert ist? Eigene Wiese, Präfix `__es`; (2) grün; (3) dann je Wächter d
 Commit: die Liste seiner Zusagen, je Zusage «steht in `einstellungen-check`, Abschnitt n» oder «entfällt,
 weil …»; erst dann fällt die Datei; (4) `tests/README.md` und `waechter-bestand.md` fortschreiben.*
 Ein eigener Tag. Nicht begonnen.
+
+---
+
+[ ] TASK-085  Die Renderer-Diagnose wird von niemandem gefüllt
+
+**2026-09-09, beim Bauen von TASK-081 gefunden.** ⚠️ **Gemessen:** *`RecordRenderer` zeichnet unter
+einem Datensatz eine Diagnose, sobald der Entwicklermodus gilt — «which renderer drew what».
+`Rendering::recordsAsTable()` und ihre Schwester nehmen dafür einen Text `$diagnostic` entgegen und
+setzen den Abschnitt nur, wenn er nicht leer ist. **Kein einziger Aufrufer im ganzen Zusatzstück
+übergibt ihn.** Die Anzeige ist also gebaut und dunkel.*
+
+⚠️ **Deshalb bekam sie in [D-705](../../NewConcept/90-decision-log.md) keinen eigenen Haken:** *ein
+Schalter für etwas, das nie erscheint, ist Möbel ([D-429](../../NewConcept/90-decision-log.md)).*
+
+⚠️ *Was zu tun ist, ist klein: **der Weg steht schon** — es fehlt die Stelle, die beim Zeichnen
+mitschreibt, welcher Renderer welche Zelle gemacht hat, und sie durchreicht.
+`RenderResult::usedRelations` zeigt, dass der Kern so etwas schon einmal zurückgibt. **Zu klären ist
+vorher, ob die Diagnose je Datensatz oder je Zelle gemeint war** — der Abschnitt sitzt am Satz, der
+Befund entsteht an der Zelle.*

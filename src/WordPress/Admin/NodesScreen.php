@@ -318,7 +318,14 @@ final class NodesScreen
         $left .= $this->hiddenToggle($showHidden);
         // ⚠️ *Neben seinem Geschwister, weil es dieselbe Art Schalter ist: eine Ansicht, kein
         // gespeicherter Vorzug. Der Eigentuemer braucht die Wurzel, um ihr Felder zu geben.*
-        $left .= ' ' . $this->rootToggle($this->showsRoot());
+        // ⚠️ **Er wird nur angeboten, wenn der Entwicklermodus an ist und sein Haken steht**
+        // ([D-705](../../../docs/NewConcept/90-decision-log.md)). *Sein Nachtrag: «das show root node
+        // aus der baumansicht sollte auch in den developer mode wandern.» **Wandern heisst nicht
+        // umziehen** — er bleibt ein Ansichtsschalter in der Adresse, weil er kurzzeitig gemeint ist
+        // ([D-273](../../../docs/NewConcept/90-decision-log.md)); er wird nur nicht mehr angeboten.*
+        if (SettingsScreen::developerShows('taxmod_dev_root_toggle')) {
+            $left .= ' ' . $this->rootToggle($this->showsRoot());
+        }
 
         // ⚠️ **Hier stand ein Formular «Add a subject area under Model», und es ist gefallen**
         // ([D-692](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «knoten unter
@@ -503,7 +510,7 @@ final class NodesScreen
                 [],
                 cell: \Taxmod\Core\Renderer\TreeNodeRenderer::NAME,
                 level: \Taxmod\Core\Renderer\Level::Admin,
-                developerMode: $this->inDeveloperMode(),
+                developerMode: $this->zeigtSchreibzahl(),
                 filterName: 'taxmod_search',
                 filterValue: $gesucht,
                 leer: $leer
@@ -571,7 +578,11 @@ final class NodesScreen
             \Taxmod\Core\Renderer\Level::Admin,
             // ⚠️ **A circumstance, read from the option** (D-389) — the write count is a diagnostic
             // and waits for developer mode, which is now a fact about the installation.
-            $this->inDeveloperMode(),
+            //
+            // ⚠️ **Und seit [D-705](../../../docs/NewConcept/90-decision-log.md) hat er seinen eigenen
+            // Haken darunter.** *Ein Modus, vier Sichtfilter — der Haken zieht nur, während der Modus
+            // an ist ({@see SettingsScreen::developerShows()}).*
+            $this->zeigtSchreibzahl(),
             // Nur der Modellbaum sucht ueber den Server -- der Auswahldialog hat alle Zeilen da
             // und filtert im Browser. Der Feldname entscheidet, welches von beidem gilt.
             $mode === 'tree' ? 'taxmod_search' : '',
@@ -3038,7 +3049,8 @@ final class NodesScreen
         // werden.» Der `default`-Satz ist der, in dem die Einstellungen wohnen ([D-529](../../../docs/NewConcept/90-decision-log.md));
         // seine Werte hängen an Einstellungskanten, nicht an Feldern — deshalb braucht er keine
         // Spalte, sondern eine Marke und seine Werte in Worten.*
-        $entwickler = $this->inDeveloperMode();
+        // ⚠️ *Sein eigener Haken ([D-705](../../../docs/NewConcept/90-decision-log.md)).*
+        $entwickler = SettingsScreen::developerShows('taxmod_dev_settings_record');
         $records    = array_values(array_filter(
             $this->data->recordsOf($selected->id),
             static fn (NodeRecord $record): bool => $entwickler || $record->recordType !== RecordType::Default
@@ -3159,7 +3171,14 @@ final class NodesScreen
             $zeilen,
             self::VALUE_FIELD,
             '',
-            $this->inDeveloperMode()
+            // ⚠️ **Der Modus selbst und kein eigener Haken** ([D-705](../../../docs/NewConcept/90-decision-log.md)).
+            // *Er entscheidet hier über die **Renderer-Diagnose** in {@see \Taxmod\Core\Renderer\RecordRenderer}
+            // — und **gemessen am 2026-09-09 füllt sie niemand**: `Rendering::recordsAsTable()` nimmt
+            // einen Text `$diagnostic` entgegen, und **kein einziger Aufrufer im ganzen Zusatzstück
+            // übergibt ihn**. Deshalb bekam sie keinen eigenen Haken: **ein Schalter für etwas, das nie
+            // erscheint, ist Möbel** ([D-429](../../../docs/NewConcept/90-decision-log.md)). Der Weg
+            // bleibt offen, damit er nur noch gefüllt werden muss.*
+            SettingsScreen::inDeveloperMode()
         )->markup;
     }
 
@@ -4277,11 +4296,10 @@ final class NodesScreen
      */
     public const DEVELOPER_OPTION = 'taxmod_developer';
 
-    private function inDeveloperMode(): bool
+    /** Ob die Schreibzahl im Baum steht — der eigene Haken aus [D-705](../../../docs/NewConcept/90-decision-log.md). */
+    private function zeigtSchreibzahl(): bool
     {
-        // ⚠️ *Read in one place so the screen and its checks cannot disagree — the option name still
-        // lives here because this screen owns the tree's diagnostics.*
-        return SettingsScreen::inDeveloperMode();
+        return SettingsScreen::developerShows('taxmod_dev_writes');
     }
 
     /**
@@ -4318,6 +4336,14 @@ final class NodesScreen
      */
     private function showsRoot(): bool
     {
+        // ⚠️ **Die Bedingung steht **hier** und nicht nur am Schalter**
+        // ([D-705](../../../docs/NewConcept/90-decision-log.md)). *Sonst käme ein Lesezeichen auf
+        // `taxmod_root=1` an dem Haken vorbei, den es gerade nicht mehr gibt — **ein Schalter, den
+        // man nicht sieht, darf nicht trotzdem stehen.***
+        if (! SettingsScreen::developerShows('taxmod_dev_root_toggle')) {
+            return false;
+        }
+
         return isset($_GET['taxmod_root']) && $_GET['taxmod_root'] === '1';
     }
 

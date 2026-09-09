@@ -154,8 +154,10 @@ final class TreeNodeRenderer extends RendererNode
             . 'gap:.4em;align-items:center">'
             . $funktionen
             // ⚠️ **The write count is a diagnostic and shows only in developer mode** — the owner
-            // asked for it off by default, and [D-248](../../../docs/NewConcept/90-decision-log.md)
-            // says there is **one** mode for that rather than a switch per diagnostic.
+            // asked for it off by default. ⚠️ **Hier stand, [D-248] sage, es gebe **einen**
+            // Modus statt eines Schalters je Diagnose — das gilt seit [D-705](../../../docs/NewConcept/90-decision-log.md)
+            // so nicht mehr: **es bleibt ein Modus, und darunter liegen vier Sichtfilter.** *Was
+            // D-248 verbot, war ein **zweiter Modus** — kein Sichtfilter innerhalb des einen.*
             //
             // ⚠️ *It is a **write count** and never a version* ([D-349](../../../docs/NewConcept/90-decision-log.md)):
             // *version* promises a state to return to, and this only says *nobody changed this row
