@@ -958,6 +958,50 @@ final class DataEntry
         return $gegangen;
     }
 
+    /**
+     * Die Liste der erlaubten Kinder an einem Knoten für ein geerbtes Auswahlfeld schreiben (D-697).
+     *
+     * ⚠️ *Adresse `Knoten × Kante`: der Satz des Knotens zur geerbten Kante, als `settings`
+     * ([D-704](../../../docs/NewConcept/90-decision-log.md)), beim ersten Schreiben angelegt. Die Liste wird
+     * ersetzt, nicht ergänzt; **leer heisst alle**, und deshalb leert eine leere Liste den Satz.*
+     *
+     * @param list<int> $nodeIds Die erlaubten Kinder — gespeichert werden die erlaubten, nicht die Ausschlüsse.
+     */
+    public function putAllowedAt(int $nodeId, Relation $useSite, Relation $allowedRelation, array $nodeIds, string $locale = ''): void
+    {
+        $satz = $this->records->ofRelationAt($nodeId, $useSite->id);
+
+        if ($satz === null) {
+            if ($nodeIds === []) {
+                return;
+            }
+
+            $traeger = $this->nodes->byId($nodeId);
+            $neu     = new NodeRecord(0, $nodeId, $traeger->version, $this->clock->now()->format('Y-m-d H:i:s'), RecordType::Settings, $useSite->id);
+            $satzId  = $this->records->add($neu);
+            $this->melden($satzId, 'record', 'record created', null, $this->satzZustand($neu), 1);
+        } else {
+            $satzId = $satz->id;
+        }
+
+        $this->changelog?->beginAct();
+
+        try {
+            foreach ($this->valuesOn($satzId, $allowedRelation->id, $locale) as $alt) {
+                $this->records->forgetValueById((int) $alt->id);
+            }
+
+            $position = 0;
+
+            foreach (array_values(array_unique(array_map('intval', $nodeIds))) as $kind) {
+                $version = $this->records->putValue(RelationRecord::direct($satzId, $allowedRelation->id, TypedValue::ofReference($kind), $locale, $position++));
+                $this->melden($satzId, 'record_value', 'allowed child set', null, $this->wertZustand($satzId, $allowedRelation->id, $locale, TypedValue::ofReference($kind)), $version);
+            }
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
     public function putSettingAt(
         int $nodeId,
         int $aussen,

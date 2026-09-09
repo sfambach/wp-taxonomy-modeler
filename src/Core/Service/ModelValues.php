@@ -9,6 +9,7 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Model\SettingKey;
+use Taxmod\Core\Model\Type\NodeRefType;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RecordRepository;
@@ -738,6 +739,74 @@ final class ModelValues
      *
      * @return array<string,ResolvedSetting>
      */
+    /**
+     * Die Einstellungskante, die an einem Auswahlfeld sagt, welche Kinder des Ziels erlaubt sind — oder keine.
+     *
+     * ⚠️ **[D-697](../../../docs/NewConcept/90-decision-log.md), und die Form ist die Struktur, nicht ein Name:**
+     * *eine Einstellungskante aus der Kette des Ziels ([D-668](../../../docs/NewConcept/90-decision-log.md)),
+     * die auf den Typ `Node reference` zeigt und mehrere Werte erlaubt. Sein Wort zum Wort: «mit choices bist
+     * du auf dem falschen dampfer» — deshalb entscheidet hier, was die Kante **ist**, nicht wie sie heisst.*
+     */
+    public function allowedRelationFor(Relation $useSite): ?Relation
+    {
+        foreach ($this->declaredSettingEdges($useSite) as $kante) {
+            if (! $kante->multiplicity->allowsMany()) {
+                continue;
+            }
+
+            $ziel = $this->knoten($kante->toNodeId);
+
+            if ($ziel !== null && $ziel->implementedBy === NodeRefType::class) {
+                return $kante;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Welche Kinder des Ziels an diesem Knoten für dieses geerbte Auswahlfeld erlaubt sind — leer heisst alle.
+     *
+     * ⚠️ *Die Adresse ist `Knoten × Kante` ([D-667](../../../docs/NewConcept/90-decision-log.md),
+     * [D-697](../../../docs/NewConcept/90-decision-log.md)): der Satz des Knotens zur geerbten Kante,
+     * darin je erlaubtem Kind eine Verweiszeile. **Vom Knoten aufwärts**, das nächste Glied mit einer Liste
+     * gilt — ein Kind verengt, es weitet nie ([D-221](../../../docs/NewConcept/90-decision-log.md)); leer
+     * heisst «wie oben», und ganz oben heisst leer «alle».*
+     *
+     * @return list<int> Knoten-Ids der erlaubten Kinder.
+     */
+    public function allowedAt(int $nodeId, Relation $useSite): array
+    {
+        $liste = $this->allowedRelationFor($useSite);
+        $hier  = $this->knoten($nodeId);
+
+        if ($liste === null || $hier === null) {
+            return [];
+        }
+
+        foreach (array_reverse($this->framework->inheritanceOwnersOf($hier)) as $glied) {
+            $satz = $this->records->ofRelationAt($glied, $useSite->id);
+
+            if ($satz === null) {
+                continue;
+            }
+
+            $erlaubt = [];
+
+            foreach ($this->valuesOf($satz->id) as $wert) {
+                if ($wert->relationId === $liste->id && $wert->value->reference !== null) {
+                    $erlaubt[] = $wert->value->reference;
+                }
+            }
+
+            if ($erlaubt !== []) {
+                return array_values(array_unique($erlaubt));
+            }
+        }
+
+        return [];
+    }
+
     public function forUseSite(Relation $relation): array
     {
         // ⚠️ **Stufe 1 der Kette liest jetzt den Satz **dieser Kante**

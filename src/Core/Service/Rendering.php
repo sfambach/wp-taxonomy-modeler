@@ -11,6 +11,7 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
@@ -775,7 +776,7 @@ final class Rendering implements Presets
         $userNames = $this->namesOfUsers($relations, $values, $types);
         // ⚠️ *Die Hilfen der Zeile, in **einem** Zug (`CD-7`) — [D-662](../../../docs/NewConcept/90-decision-log.md).*
         $hilfen   = $this->hintsOfFields($relations, $locale);
-        $wahl     = $this->optionsFor($relations);
+        $wahl     = $this->narrowedByAllowed($relations, $values, $this->optionsFor($relations), $forNode);
         $fields   = [];
 
         // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
@@ -2093,6 +2094,117 @@ final class Rendering implements Presets
             . '</span>';
     }
 
+    /**
+     * Die Hakenliste der erlaubten Kinder für ein geerbtes Auswahlfeld an einem Knoten (D-697).
+     *
+     * ⚠️ *Das Angebot ist dasselbe, aus dem das Feld wählt ({@see self::offeredUnder()}); die Haken sind
+     * die Liste an `Knoten × Kante`, und eine leere Liste zeichnet alle gesetzt. Ein Kind, das unter
+     * einem erlaubten steht, ist mit erlaubt ([D-287](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function allowedList(Relation $useSite, Relation $liste, int $forNode, string $fieldPrefix, string $formId, SettingShape $shape, ?SimpleType $subject): RenderedSetting
+    {
+        $angebot = $this->offeredUnder([$useSite->toNodeId])[$useSite->toNodeId] ?? [];
+        $erlaubt = $forNode === 0 || $this->model === null ? [] : $this->model->allowedAt($forNode, $useSite);
+        $name    = $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $liste->id . '][]';
+        $markup  = '<span class="taxmod-allowed-list">';
+
+        foreach ($angebot as $kindId => $kindName) {
+            $an = $erlaubt === [] || in_array((int) $kindId, $erlaubt, true);
+            $markup .= '<label class="taxmod-allowed-item">'
+                . '<input type="checkbox" name="' . RenderResult::escape($name) . '" value="' . (int) $kindId . '"'
+                . ($an ? ' checked' : '')
+                . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"')
+                . ($name === '' ? ' disabled' : '') . '> '
+                . RenderResult::escape((string) $kindName) . '</label>';
+        }
+
+        $markup .= '</span>';
+
+        $setting = new ResolvedSetting($liste->name, TypedValue::nothing(), $erlaubt === [] ? 0 : $forNode, $erlaubt !== []);
+
+        return new RenderedSetting($liste->name, $shape, SimpleType::NodeRef, $setting, RenderResult::of($markup), ChoiceRenderer::NAME, $subject);
+    }
+
+    /**
+     * Das Angebot eines Feldes, verengt um die Listen der erlaubten Kinder (D-697, D-221, D-287).
+     *
+     * ⚠️ **Zwei Quellen, beide verengen, keine weitet:** *(1) die Liste am Knoten dieser Seite für das Feld
+     * selbst; (2) **das Geschwister**: trägt ein anderes Feld desselben Satzes einen Knoten als Wert — die
+     * Einheit `Gramm` —, und der erbt ein Feld auf dasselbe Ziel wie dieses — `Präfix` auf `Prefixes` —,
+     * gilt dessen Liste. Das ist der neue Mechanismus aus D-697: ein Feld fragt sein Geschwister. Ein Kind
+     * unter einem erlaubten Knoten bleibt erlaubt.*
+     *
+     * @param  list<Relation>                       $relations
+     * @param  array<int, TypedValue>               $values  Die Werte des Satzes, je Kante.
+     * @param  array<int, array<int, string>>       $wahl    Kanten-Id => (Knoten-Id => Name)
+     * @return array<int, array<int, string>>
+     */
+    private function narrowedByAllowed(array $relations, array $values, array $wahl, int $forNode): array
+    {
+        if ($this->model === null || $wahl === []) {
+            return $wahl;
+        }
+
+        foreach ($relations as $relation) {
+            if (! isset($wahl[$relation->id])) {
+                continue;
+            }
+
+            $listen = [];
+
+            if ($forNode !== 0) {
+                $eigene = $this->model->allowedAt($forNode, $relation);
+
+                if ($eigene !== []) {
+                    $listen[] = $eigene;
+                }
+            }
+
+            foreach ($this->relations === null ? [] : $relations as $geschwister) {
+                $wert = $values[$geschwister->id] ?? null;
+
+                if ($geschwister->id === $relation->id || $wert === null || $wert->reference === null || $wert->referenceSpace !== ReferenceSpace::Node) {
+                    continue;
+                }
+
+                $knoten = $this->nodes->find($wert->reference);
+
+                if ($knoten === null) {
+                    continue;
+                }
+
+                foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)) as $seines) {
+                    if ($seines->toNodeId !== $relation->toNodeId || $seines->isSetting()) {
+                        continue;
+                    }
+
+                    $liste = $this->model->allowedAt($knoten->id, $seines);
+
+                    if ($liste !== []) {
+                        $listen[] = $liste;
+                    }
+                }
+            }
+
+            foreach ($listen as $liste) {
+                $behalten = [];
+
+                foreach ($wahl[$relation->id] as $kindId => $kindName) {
+                    $kind = $this->nodes->find((int) $kindId);
+                    $wege = $kind === null ? [(int) $kindId] : [(int) $kindId, ...$kind->ancestorIds()];
+
+                    if (array_intersect($wege, $liste) !== []) {
+                        $behalten[$kindId] = $kindName;
+                    }
+                }
+
+                $wahl[$relation->id] = $behalten;
+            }
+        }
+
+        return $wahl;
+    }
+
     /** Ein Satz des Randes mit `%s` für einen Namen — oder der Name allein, wo der Rand keinen schickte. */
     private function satzAus(array $woerter, string $schluessel, string $name): string
     {
@@ -2557,6 +2669,19 @@ final class Rendering implements Presets
             // bedienbar ist** — gegen [D-529](../../../docs/NewConcept/90-decision-log.md).*
             if ($engineKey === null) {
                 $kante = $kanten[$key] ?? null;
+
+                // ⚠️ **Die Liste der erlaubten Kinder — eine Hakenliste über dem Angebot des Feldes**
+                // ([D-697](../../../docs/NewConcept/90-decision-log.md)). *Erkannt an der Struktur: eine
+                // Einstellungskante auf `Node reference` mit mehreren Werten, an einer Verwendungsstelle
+                // mit Kindern. Alle an heisst «nichts gespeichert, alle erlaubt»; abwählen verengt.
+                // Gespeichert werden die erlaubten, an der Adresse Knoten × Kante.*
+                if ($kante !== null && $node instanceof Relation && $this->model !== null
+                    && $this->model->allowedRelationFor($node)?->id === $kante->id
+                ) {
+                    $drawn[] = $this->allowedList($node, $kante, $forNode, $fieldPrefix, $formId, $shape, $subject);
+
+                    continue;
+                }
 
                 // ⚠️ **Woher der Wert kommt, sagt die Auflösung am *Knoten*** — *nicht die an der
                 // Kante ([D-684](../../../docs/NewConcept/90-decision-log.md)). Der Aufrufer reicht
@@ -3648,6 +3773,34 @@ final class Rendering implements Presets
      * **offer**, and reading it as a prohibition forecloses the special case for everybody in
      * order to prevent a mistake nobody has made yet.
      */
+    /** Die Einstellungskante der erlaubten Kinder an dieser Verwendungsstelle — für den Rand (D-697). */
+    public function allowedRelationFor(Relation $useSite): ?Relation
+    {
+        return $this->model?->allowedRelationFor($useSite);
+    }
+
+    /**
+     * Das ganze Angebot eines Auswahlfeldes, unverengt — damit der Rand «alle gesetzt» erkennen kann.
+     *
+     * @return array<int, string> Knoten-Id => Name
+     */
+    public function offeredFor(Relation $useSite): array
+    {
+        return $this->offeredUnder([$useSite->toNodeId])[$useSite->toNodeId] ?? [];
+    }
+
+    /**
+     * Das Angebot je Auswahlfeld eines Satzes, **verengt** — so, wie der Abstieg es dem Wähler gibt (D-697).
+     *
+     * @param  list<Relation>                 $relations
+     * @param  array<int, TypedValue>         $values  Die Werte des Satzes, je Kante — sie entscheiden über die Geschwister.
+     * @return array<int, array<int, string>> Kanten-Id => (Knoten-Id => Name)
+     */
+    public function offerIn(array $relations, array $values, int $forNode = 0): array
+    {
+        return $this->narrowedByAllowed($relations, $values, $this->optionsFor($relations), $forNode);
+    }
+
     public function knowsRenderer(string $name): bool
     {
         return $this->renderers->knows($name);

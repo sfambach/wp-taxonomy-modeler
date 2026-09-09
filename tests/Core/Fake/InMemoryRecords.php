@@ -89,6 +89,21 @@ final class InMemoryRecords implements RecordRepository
         return $aus;
     }
 
+    public function ofRelationAt(int $nodeId, int $relationId): ?NodeRecord
+    {
+        if ($nodeId === 0 || $relationId === 0) {
+            return null;
+        }
+
+        foreach ($this->records as $satz) {
+            if ($satz->nodeId === $nodeId && $satz->relationId === $relationId) {
+                return $satz;
+            }
+        }
+
+        return null;
+    }
+
     public function ofRelation(int $relationId): ?NodeRecord
     {
         if ($relationId === 0) {

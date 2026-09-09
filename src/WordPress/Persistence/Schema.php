@@ -411,7 +411,7 @@ final class Schema
      * **keine einzige davon ist zur Parkzeit ihrer Kante oder später archiviert worden** — sie waren
      * alle vorher schon gelöscht, gehören also auch nach der alten Lesart nicht ins Gepäck.*
      */
-    public const VERSION = 43;
+    public const VERSION = 44;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -702,6 +702,9 @@ final class Schema
         // ⚠️ **Fassung 42: die vierte Satzart, und die Grenzen wohnen in den Grenzknoten**
         // ([D-704](../../../docs/NewConcept/90-decision-log.md), [D-707](../../../docs/NewConcept/90-decision-log.md), TASK-083).
         self::separateSettingsRecords();
+
+        // ⚠️ **Fassung 44: die Kante `allowed` an `Prefixes`** ([D-697](../../../docs/NewConcept/90-decision-log.md), TASK-068).
+        self::declareAllowedAtPrefixes();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -3166,6 +3169,56 @@ final class Schema
         if ($umgetypt + $geteilt + $gesetzt + $gestrichen + $zusammengefuehrt > 0) {
             update_option('taxmod_fassung42_shape', ['umgetypt' => $umgetypt, 'geteilt' => $geteilt, 'zusammengefuehrt' => $zusammengefuehrt, 'grenzen' => $gesetzt, 'gestrichen' => $gestrichen, 'gruppe' => $gruppe], false);
         }
+    }
+
+    /**
+     * Fassung 44: **`Prefixes` erklärt die Kante `allowed`** — die Adresse für die Liste erlaubter Präfixe.
+     *
+     * ⚠️ **[D-697](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«eigentlich sage ich welche
+     * kindknoten von präfix für gramm erlaubt sind» — «ok gefällt mir».* *Erklärt **am Ziel**, nicht an
+     * `Root` («dann gibts die für alle auch wenn ich sie nicht brauche»): eine Einstellungskante, `0..*`,
+     * auf `Node reference`. Sie schaltet nichts und erklärt nichts — sie ist die Adresse für die Liste.*
+     *
+     * ⚠️ *Über den Editor, nicht mit rohem SQL: eine Kante hat eine Beschriftung ([D-580](../../../docs/NewConcept/90-decision-log.md))
+     * und eine Journalzeile, und beides macht der Editor richtig. Zweimal ausführbar: steht sie, wird
+     * nichts angelegt. Fehlt `Prefixes` oder `Node reference`, geschieht nichts — eine leere Saat ist kein Fehler.*
+     */
+    private static function declareAllowedAtPrefixes(): void
+    {
+        global $wpdb;
+
+        $nodes = self::table('nodes');
+
+        if (self::tableMissing($nodes) || self::tableMissing(self::table('relations_named'))) {
+            return;
+        }
+
+        $prefixes = (int) $wpdb->get_var("SELECT id FROM " . self::table('nodes_named') . " WHERE name = 'Prefixes' ORDER BY id LIMIT 1");
+        $nodeRef  = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$nodes} WHERE implemented_by = %s ORDER BY id LIMIT 1", \Taxmod\Core\Model\Type\NodeRefType::class));
+
+        if ($prefixes === 0 || $nodeRef === 0) {
+            return;
+        }
+
+        $schonDa = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . self::table('relations_named') . " WHERE from_node_id = %d AND name = 'allowed' AND kind = 'setting'",
+            $prefixes
+        ));
+
+        if ($schonDa > 0) {
+            return;
+        }
+
+        $knoten    = new WpdbNodeRepository();
+        $kanten    = new WpdbRelationRepository();
+        $log       = new WpdbChangelog(new SystemClock());
+        $framework = new SeededFrameworkNodes($knoten, $kanten, $log);
+        $editor    = new \Taxmod\Core\Service\ModelEditor($knoten, $kanten, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
+
+        $kante = $editor->addField($prefixes, $nodeRef, 'allowed', \Taxmod\Core\Model\RelationKind::Setting);
+        $editor->setMultiplicity($prefixes, $kante->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+
+        update_option('taxmod_fassung44_shape', ['allowed' => $kante->id, 'an' => $prefixes], false);
     }
 
     private static function constrainRelationsToNodes(): void

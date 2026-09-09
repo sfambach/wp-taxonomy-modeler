@@ -2358,7 +2358,25 @@ nur ihr Anfangsbild und das Skript entscheiden, was man sieht.
 
 ---
 
-[ ] TASK-068  Die Auswahl einschraenken — `allowed` — **entschieden am 2026-09-09 abends ([D-697](../../NewConcept/90-decision-log.md)), Bau wartet, bis er es sagt**
+[x] TASK-068  Die Auswahl einschraenken — `allowed` — gebaut 2026-09-10 ([D-697](../../NewConcept/90-decision-log.md))
+
+**Zusage** (`allowed-check`, 15 Aussagen): *Fassung 44 erklärt an `Prefixes` die Kante `allowed`
+(setting, `0..*`, Ziel `Node reference`); die aufgeklappte Zeile `Präfix` an `Gramm` zeigt eine
+Hakenliste je angebotenem Präfix, alle gesetzt, solange nichts gespeichert ist; speichern schreibt die
+erlaubten als Verweise in den Satz `Gramm × Präfix` (`settings`, D-667); `Ohm` bleibt leer, also alle;
+das Angebot des Feldes `prefix` in einem Einheitenwert hängt am gewählten Nachbarn `einheit` — mit
+`Gramm` zwei, mit `Ohm` alle; ein Kind von `Gramm` erbt die Liste (D-221); alle Haken gesetzt heisst
+nichts gespeichert.*
+
+**Beim Bauen entschieden, im Kode und hier benannt:** *(1) die Liste wird an der **Struktur** erkannt
+— Einstellungskante aus der Kette des Ziels, mehrere Werte, Ziel `Node reference` —, nicht am Namen;
+(2) die Adresse `Knoten × geerbte Kante` bekam ihren Leser (`ofRelationAt`), den der Speicher schon
+konnte (D-667); (3) das Angebot fragt sein Geschwister: trägt ein Feld desselben Satzes einen Knoten
+als Wert, und der erbt ein Feld auf dasselbe Ziel, gilt dessen Liste; (4) die Liste selbst ist nicht
+gesperrt wie andere geerbte Einstellungen — verengen darf jeder, und leer heisst «wie oben».*
+
+*Nicht gebaut: der Konflikt nach D-680, wenn eine Liste ein Pflichtfeld leer lässt — der Wähler zeichnet
+ein leeres Angebot heute schon als «nicht erfüllbar»; ob das reicht, zeigt der erste Fall im Bestand.*
 
 **Was jetzt gilt und den alten Text unten ablöst:** *das Wort ist `allowed`, nicht `choices`. Die
 Kante `allowed` (setting, `0..*`, Ziel `Node reference`) wird **am Ziel** erklärt — für die Präfixe an

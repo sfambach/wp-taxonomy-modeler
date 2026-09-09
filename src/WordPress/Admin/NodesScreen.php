@@ -3855,6 +3855,21 @@ final class NodesScreen
             $key = sanitize_key((string) $schluessel);
 
             // «wie oft» ist eine Spalte der Kante und wird von saveField() geschrieben.
+            // ⚠️ **Die Hakenliste der erlaubten Kinder kommt als Liste** ([D-697](../../../docs/NewConcept/90-decision-log.md))
+            // — *an die Adresse Knoten × geerbte Kante, nicht an den Besitzer der Kante. Alle Haken
+            // gesetzt heisst «nichts gespeichert, alle erlaubt».*
+            if (is_array($roh) && ctype_digit($key)) {
+                $liste = $this->kanteMitNummer((int) $key);
+
+                if ($liste !== null && $this->rendering->allowedRelationFor($useSite)?->id === $liste->id) {
+                    $gewaehlt = array_values(array_filter(array_map('absint', $roh)));
+                    $angebot  = array_keys($this->rendering->offeredFor($useSite));
+                    $this->data->putAllowedAt($nodeId, $useSite, $liste, count($gewaehlt) >= count($angebot) ? [] : $gewaehlt);
+                }
+
+                continue;
+            }
+
             if ($key === SettingKey::Multiplicity->value || $key === Rendering::KIND_KEY || $key === Rendering::KIND_CONFIRM_KEY || is_array($roh)) {
                 continue;
             }

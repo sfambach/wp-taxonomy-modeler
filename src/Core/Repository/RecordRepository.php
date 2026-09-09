@@ -35,6 +35,16 @@ interface RecordRepository
     public function ofRelation(int $relationId): ?NodeRecord;
 
     /**
+     * Der Satz eines **Knotens** zu einer Kante, die er geerbt hat — die Adresse `Knoten × Kante` (D-697).
+     *
+     * ⚠️ *{@see self::ofRelation()} findet den Satz des **Besitzers** der Kante. Ein Erbe, der ein geerbtes
+     * Auswahlfeld verengt («welche Kinder sind hier erlaubt»), schreibt an dieselbe Kante, aber unter
+     * seiner eigenen Nummer — [D-667](../../../docs/NewConcept/90-decision-log.md) hat den Satz dafür
+     * vorgesehen, `node_id` und `relation_id` nebeneinander.*
+     */
+    public function ofRelationAt(int $nodeId, int $relationId): ?NodeRecord;
+
+    /**
      * Dieselbe Frage für viele Stellen auf einmal (`CD-7`).
      *
      * ⚠️ *Ein Formular fragt alle seine Felder nacheinander. Einzeln gefragt kostet das eine Abfrage

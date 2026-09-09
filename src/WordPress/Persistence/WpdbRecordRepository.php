@@ -525,6 +525,24 @@ final class WpdbRecordRepository implements RecordRepository
      * @param  list<int>              $relationIds
      * @return array<int, NodeRecord>
      */
+    public function ofRelationAt(int $nodeId, int $relationId): ?NodeRecord
+    {
+        global $wpdb;
+
+        if ($nodeId === 0 || $relationId === 0) {
+            return null;
+        }
+
+        $row = Query::row('Satz des Erben zur geerbten Kante lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+                . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = %d ORDER BY id ASC LIMIT 1',
+            $nodeId,
+            $relationId
+        ));
+
+        return $row === null ? null : $this->hydrate($row);
+    }
+
     public function ofRelations(array $relationIds): array
     {
         global $wpdb;
