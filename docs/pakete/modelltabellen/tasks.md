@@ -3297,3 +3297,22 @@ werden nicht angeordnet; (5) der Sammelleser `ofNodes` las nur Sätze ohne Kante
 
 *Nicht gebaut: `position` erscheint als Zahl im Einstellungsbereich jeder Feldzeile, weil sie an der
 Wurzel erklärt ist wie `read_only` — dort tippen statt klicken geht, ist aber nicht bewacht.*
+
+---
+
+[x] TASK-088  Ein Verweis am geerbten Renderer liess sich nicht setzen — «Field … does not belong to Prefixes» — behoben 2026-09-10
+
+**Sein Fund, mit Bild:** *«label role geändert symbol eingetragen fehler siehe bild».* An `Prefixes`, das
+seinen Renderer `chooser-dialog` erbt, `label_role` auf `symbol` gestellt.
+
+⚠️ **Gemessen:** *`putSettingAt()` fragte für einen Verweis «braucht das Ziel einen eigenen Satz» über
+die **Kette des Knotens** — und `label_role` gehört dem Renderer, nicht `Prefixes`. `with_label` ist ein
+Schalter und ging diesen Zweig nie; deshalb war die geerbte Renderer-Zeile im Wächter grün und der
+Verweis daneben rot.* **Behoben:** die Frage geht an die Kante selbst (D-667). Zusage in
+`einstellungen-check`, Abschnitt 4: ein Verweis am geerbten Renderer steht danach am Knoten selbst,
+der Vater bleibt leer.
+
+⚠️ **Seine zweite Frage — «müsste man es hier genauso mit reference field machen … grosse Lücke …
+der Konzeptänderung geschuldet?» — ist ein Eingang, keine Aufgabe:**
+[INF-040](../../neues-konzept-eingang.md). *Zwei Mechanismen für dieselbe Sache, und der zweite ist ein
+Rest aus der Zeit vor D-529. Was zu entscheiden wäre, steht dort.*

@@ -928,6 +928,20 @@ if ($vaterWahlId !== 0) {
     speichern($sohn->id, ['taxmod_value' => [(string) $renderKante => [(string) $vaterKanten['with_label'] => '0']]]);
     $sohnAus = $eigenerWert($sohn->id, (int) $vaterKanten['with_label']);
     check('die Änderung steht am Knoten selbst, der Renderer bleibt der geerbte, der Vater bleibt auf «an»', $sohnAus !== null && (int) $sohnAus === 0 && gespeicherterRenderer($sohn->id) === $angebotVater[$vaterWahlId] && (int) $eigenerWert($vater->id, (int) $vaterKanten['with_label']) === 1);
+
+    // ⚠️ **Sein Fund am 2026-09-10 an `Prefixes`:** *`label_role` — ein **Verweis**, kein Schalter — am geerbten
+    // Renderer gesetzt, Antwort «Field … does not belong to Prefixes». Die innere Kante gehört dem Renderer,
+    // nicht der Kette des Knotens; adressiert wird über die Kante (D-667).*
+    $rollenKante = $relations->byId((int) $vaterKanten['label_role']);
+    $rollen      = $rollenKante === null ? [] : $nodes->childrenOf($nodes->byId($rollenKante->toNodeId));
+    $rolle       = $rollen[0] ?? null;
+    check('die Kante `label_role` zeigt auf einen Knoten mit Rollen darunter', $rolle !== null);
+    if ($rolle !== null) {
+        $lief = speichern($sohn->id, ['taxmod_value' => [(string) $renderKante => [(string) $vaterKanten['label_role'] => (string) $rolle->id]]]);
+        $gesetzt = $wpdb->get_var("SELECT v.value_ref FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id WHERE r.node_id = {$sohn->id} AND r.record_type = 'settings' AND v.relation_id = {$vaterKanten['label_role']}");
+        check('ein Verweis am geerbten Renderer — `label_role` — lässt sich am Kind setzen und steht am Knoten selbst', $lief && (int) $gesetzt === $rolle->id, letzteMeldung() . ' / ' . var_export($gesetzt, true));
+        check('und der Vater trägt keine Rolle', $wpdb->get_var("SELECT v.value_ref FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id WHERE r.node_id = {$vater->id} AND r.record_type = 'settings' AND v.relation_id = {$vaterKanten['label_role']}") === null);
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------

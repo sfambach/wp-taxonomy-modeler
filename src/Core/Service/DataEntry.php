@@ -1082,7 +1082,14 @@ final class DataEntry
         $teilId = $teile[(string) $aussen] ?? null;
 
         if ($teilId === null) {
-            if ($value->isAReference() && $this->targetOwnsItsRecord($satzId, $innen)) {
+            // ⚠️ **Über die Kante, nicht über die Kette des Knotens.** *Sein Fund am 2026-09-10 an
+            // `Prefixes`: `label_role` auf «symbol» gestellt, Antwort «Field … does not belong to
+            // Prefixes». Die innere Kante gehört dem **Renderer** (`Renderer --label_role--> Label roles`),
+            // nicht dem Knoten, der ihn nur erbt — die Kette des Knotens kennt sie nicht und darf sie
+            // nicht kennen. Adressiert wird über die Kante ([D-667](../../../docs/NewConcept/90-decision-log.md)),
+            // also fragt auch die Frage «braucht das Ziel einen eigenen Satz» die Kante selbst.
+            // `with_label` (ein Schalter, kein Verweis) ging diesen Zweig nie und fiel deshalb nicht auf.*
+            if ($value->isAReference() && $this->targetOwnsItsRecordOfEdge($innen)) {
                 $this->chooseSettingRecord($satzId, $innen, (int) $value->reference);
 
                 return;
@@ -1711,6 +1718,17 @@ final class DataEntry
     private function targetOwnsItsRecordAtNode(int $nodeId, int $relationId): bool
     {
         $relation = $this->fieldRelationOf($nodeId, $relationId);
+
+        return $this->ownsItsRecord($relation, $this->nodes->byId($relation->toNodeId));
+    }
+
+    /**
+     * Dieselbe Frage, gestellt an die **Kante selbst** — für eine innere Einstellungskante, die dem
+     * gewählten Renderer gehört und nicht der Kette des Knotens, der ihn erbt.
+     */
+    private function targetOwnsItsRecordOfEdge(int $relationId): bool
+    {
+        $relation = $this->relations->byId($relationId) ?? throw NotYetStorable::noSuchUseSite($relationId);
 
         return $this->ownsItsRecord($relation, $this->nodes->byId($relation->toNodeId));
     }

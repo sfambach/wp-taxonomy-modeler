@@ -214,6 +214,42 @@ akut, an dem er anfängt, Hilfen zu schreiben** — und dann ist sie eine Zeile 
 
 ---
 
+## INF-040 · Eine Einstellungskante auf einen Knoten ist ein Verweis — und geht heute einen eigenen Weg
+
+**Typ:** `QUESTION` · **Status:** `OPEN` — von ihm gefunden an `Prefixes`, 2026-09-10
+
+⚠️ **Sein Wort:** *«label role geändert symbol eingetragen fehler siehe bild. zusätzlich eigentlich
+müsste man es hier genauso mit reference field machen oder ich glaube hier haben wir eine große lücke
+und das ist der konzeptänderung geschuldet?»*
+
+⚠️ **Der Fehler ist behoben, und er ist ein Symptom.** *`label_role` ist die Kante
+`Renderer --label_role--> Label roles`, ihr Wert ist ein Verweis auf einen Rollenknoten. Der Schreiber
+fragte für diesen Verweis die **Kette des Knotens** («gehört die Kante zu Prefixes?») statt die Kante
+selbst — und die Kette kennt sie nicht, weil sie dem Renderer gehört. `with_label`, ein Schalter, ging
+diesen Zweig nie. Gebaut: die Frage geht an die Kante ([D-667](NewConcept/90-decision-log.md)).*
+
+⚠️ **Die Lücke, die er meint, gemessen:** *es gibt **zwei Mechanismen für dieselbe Sache**. Ein
+**Feld**, das auf einen Knoten zeigt (`einheit → Base units`, `prefix → Prefixes`), wird über
+`fieldsFor()` gezeichnet — Angebot aus den Kindern des Ziels, verengt durch `allowed`
+([D-697](NewConcept/90-decision-log.md)), gespeichert als Verweis im Satz. Eine **Einstellungskante**,
+die auf einen Knoten zeigt (`label_role → Label roles`, `converter → Converter`, `validator`,
+`renderer → Renderer`), wird über `settingsFor()` und `drawChoice()` gezeichnet — ein eigener Wähler,
+eigenes Angebot, kein `allowed`, eigener Schreibweg mit dem Fehler von heute. **Seit
+[D-529](NewConcept/90-decision-log.md) ist eine Einstellung eine Kante, und seit
+[D-621](NewConcept/90-decision-log.md) sagt die Kante, was etwas ist** — dann ist eine
+Einstellungskante auf einen Knoten ein Verweisfeld, und der zweite Weg ist ein Rest der Zeit, als
+Einstellungen noch Schlüssel in einer Tabelle waren. Insofern: ja, der Konzeptänderung geschuldet.*
+
+⚠️ **Was zu entscheiden wäre, nicht hier (`PR-4`):** *(1) ob eine Einstellungskante mit Knotenziel
+**denselben** Zeichner und Schreiber nimmt wie ein Verweisfeld — ein Angebot aus den Kindern des
+Ziels, `allowed` auch dort («welche Rollen darf dieser Knoten wählen»), ein Schreibweg über die Kante;
+(2) was mit den Sonderfällen wird, die der eigene Weg heute trägt: der Renderer bringt seinen
+**Teil** mit ([D-583](NewConcept/90-decision-log.md), die Einstellungen des Renderers unter der
+Zeile), der Konverter seine Registratur; (3) ob `renderer` selbst dazugehört oder wegen des Teils
+eine eigene Sorte bleibt. **Es ist der grössere Umbau seit D-529**, und er fällt nicht nebenbei.*
+
+---
+
 ## Erledigte Eingänge
 
 *(noch keine)*
