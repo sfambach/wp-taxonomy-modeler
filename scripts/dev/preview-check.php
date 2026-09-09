@@ -196,6 +196,17 @@ if ($dataType > 0) {
     // darin besteht, dass Anzeige und Bearbeitung auseinandergehen.*
     check('a data type previews itself as a field', substr_count($whole, 'taxmod-preview-side') === 2, (string) substr_count($whole, 'taxmod-preview-side'));
     check('and it is not told there is nothing to preview', ! str_contains($whole, 'Nothing to preview here'));
+
+    // ⚠️ **Der Knopf «Add as example» steht in der Bearbeiten-Seite** (TASK-071, [D-679](../../docs/NewConcept/90-decision-log.md)).
+    // *Sein Befund: «der button save as example ist auch nicht im edit preview sichtbar» — er stand
+    // unter beiden Seiten. Gemessen wird die Seite, nicht der Knopf: die zweite `taxmod-preview-side`
+    // enthält ihn, die erste nicht.*
+    $seiten = preg_split('/<div class="taxmod-preview-side">/', $whole) ?: [];
+    $leser  = explode('</div>', $seiten[1] ?? '')[0];
+    $editor = $seiten[2] ?? '';
+    $editor = substr($editor, 0, strpos($editor, '</form>') !== false ? strpos($editor, '</form>') + 7 : strlen($editor));
+    check('the «Add as example» button stands in the editor side', str_contains($editor, 'value="add_example"'), substr(strip_tags($editor), 0, 120));
+    check('and not in the reader side', ! str_contains($leser, 'add_example'));
 }
 
 // ── The flags, which is the point ────────────────────────────────────────────────────────────────

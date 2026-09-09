@@ -2425,7 +2425,11 @@ Bildschirm heute zeigt — und die Lücke als Liste. Erst danach bauen.*
 
 ---
 
-[ ] TASK-071  Der Knopf «Add as example» steht nicht an der Bearbeiten-Seite der Vorschau
+[x] TASK-071  Der Knopf «Add as example» steht nicht an der Bearbeiten-Seite der Vorschau — gebaut 2026-09-09
+
+**Zusage** (`preview-check`): *der Knopf steht in der zweiten Vorschauseite, «As an editor sees it»,
+als eigenes Kind der Seite nach dem Absatz — nicht in der ersten, und nicht mehr unter beiden. Das
+Formular liegt nicht mehr in einem `<p>`, also legt es die Spalten nicht um.*
 
 **2026-09-07, sein Befund:** *«der button save as example ist auch nicht im edit preview sichtbar»*
 

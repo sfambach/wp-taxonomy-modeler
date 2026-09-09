@@ -989,29 +989,30 @@ final class NodesScreen
             [__('As a reader sees it', 'taxmod'), $display, false],
             [__('As an editor sees it', 'taxmod'), $edit, true],
         ] as [$title, $side, $mitKnopf]) {
+            // ⚠️ **Der Knopf steht in der Bearbeiten-Seite, unter dem Feld, das er festhält** (TASK-071).
+            // *Sein Befund: «der button save as example ist auch nicht im edit preview sichtbar». Er
+            // stand unter **beiden** Seiten, weil ein `<form>` in einem `<p>` die Spalten umlegte —
+            // hier steht er als eigenes Kind der Seite, **nach** dem Absatz, und legt nichts um. Das
+            // Feld nennt sein Formular über `form="…"`, wie bisher.*
             $html .= '<div class="taxmod-preview-side">'
                 . '<h4>' . esc_html($title) . '</h4>'
                 . '<p><strong>' . esc_html($selected->name) . '</strong> '
                 . ($side?->markup ?? '')
-                . '</p></div>';
+                . '</p>'
+                . (! $mitKnopf ? '' : $this->form(
+                    $selected->id,
+                    [[
+                        'add_example',
+                        esc_html__('Add as example', 'taxmod'),
+                        __('Keep what stands in the field as an example record of this type', 'taxmod'),
+                    ]],
+                    '',
+                    'taxmod-example-' . $selected->id
+                ))
+                . '</div>';
         }
 
-        $html .= '</div>';
-
-        // ⚠️ **Der Knopf steht **unter** beiden Seiten und nicht in der rechten** — *sonst läge ein
-        // `<form>` in einem `<p>` neben einem zweiten Vorschaublock, und das legt die zwei Spalten
-        // um. Das Feld nennt sein Formular über `form="…"`, wie jede andere Bedienung, die ausserhalb
-        // ihres Formulars steht ({@see \Taxmod\Core\Renderer\FieldRowRenderer::formFor()}).*
-        return $html . $this->form(
-            $selected->id,
-            [[
-                'add_example',
-                esc_html__('Add as example', 'taxmod'),
-                __('Keep what stands in the field as an example record of this type', 'taxmod'),
-            ]],
-            '',
-            'taxmod-example-' . $selected->id
-        );
+        return $html . '</div>';
     }
 
     private function previewPanel(Node $selected): string
