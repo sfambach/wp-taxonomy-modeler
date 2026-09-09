@@ -8,7 +8,6 @@ use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
@@ -2003,8 +2002,6 @@ final class NodesScreen
                 static fn (Relation $relation): bool => $relation->isSetting() === $istEinstellung
             ));
 
-            $sorte = $istEinstellung ? FieldType::Setting : FieldType::Model;
-
             $body = '';
 
             foreach ($this->rendering->fieldRowsFor(
@@ -2055,7 +2052,7 @@ final class NodesScreen
                 $body .= $row->result->markup;
             }
 
-            $html .= $this->heading(...$this->fieldBlockHeading($sorte));
+            $html .= $this->heading(...$this->fieldBlockHeading($istEinstellung));
 
             $html .= $body === ''
                 ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
@@ -2083,7 +2080,7 @@ final class NodesScreen
             // [D-506](../../../docs/NewConcept/90-decision-log.md) ist alles ein Feld. **Was daraus
             // wird, entscheidet das Ziel** — zeigt das neue Feld auf einen Knoten, der eine Einstellung
             // ist, erscheint die Zeile danach im Settings-Block.*
-            if ($sorte === FieldType::Model) {
+            if (! $istEinstellung) {
                 $html .= $this->removedFields($selected) . $this->fieldForm($selected);
             }
         }
@@ -2238,9 +2235,14 @@ final class NodesScreen
      * ⚠️ *An **einer** Stelle, weil die zwei Aufrufe sonst zwei Orte wären, an denen dasselbe über
      * dieselbe Tabelle gesagt wird — und der eine würde beim Ändern vergessen.*
      *
+     * ⚠️ **Die Kantenart trennt die zwei Blöcke, keine Knotensorte** (TASK-076, [D-621](../../../docs/NewConcept/90-decision-log.md):
+     * *«die Kante sagt, was etwas hier ist»*). *Die Zeilen werden oben schon an der Kante getrennt;
+     * hier stand trotzdem `FieldType`, eine aus den Kanten **abgeleitete** Knotensorte, als zweite
+     * Fassung derselben Auskunft. Die Überschrift fragt jetzt dasselbe wie die Zeilen.*
+     *
      * @return array{0:string,1:string}
      */
-    private function fieldBlockHeading(FieldType $kind): array
+    private function fieldBlockHeading(bool $istEinstellung): array
     {
         // ⚠️ *Der Satz über «Kind» und «own/inherited» gilt für beide Blöcke — es ist dieselbe Tabelle.*
         //
@@ -2252,19 +2254,20 @@ final class NodesScreen
         // fest, automation machen wir später aber auch nur vielleicht».*
         $gemeinsam = __('«Kind» says what the relation is: composition, aggregation or setting. It is chosen when the field is added, not read off the tree. «own» means declared here; «inherited» means it belongs to a node further up and can only be changed there.', 'taxmod');
 
-        return match ($kind) {
-            FieldType::Model => [
-                __('Fields', 'taxmod'),
-                __('What this node has, and what a person enters.', 'taxmod') . ' ' . $gemeinsam,
-            ],
-            FieldType::Setting => [
+        if ($istEinstellung) {
+            return [
                 __('Settings', 'taxmod'),
                 // ⚠️ *«der Autor» und nicht «hier stehen Einstellungen»: nach
                 // [D-508](../../../docs/NewConcept/90-decision-log.md) ist der Unterschied genau, **wo
                 // der Wert liegt** — im Datensatz oder am Modell.*
                 __('The same thing, for values that belong to the model rather than to an entry — what used to be called settings.', 'taxmod') . ' ' . $gemeinsam,
-            ],
-        };
+            ];
+        }
+
+        return [
+            __('Fields', 'taxmod'),
+            __('What this node has, and what a person enters.', 'taxmod') . ' ' . $gemeinsam,
+        ];
     }
 
     /**

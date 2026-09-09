@@ -75,13 +75,4 @@ enum FieldType: string
     {
         return $stored === null || $stored === '' ? null : self::tryFrom($stored);
     }
-
-    /** Die Überschrift, unter der Felder dieser Sorte stehen ([D-518](../../../docs/NewConcept/90-decision-log.md)). */
-    public function headingKey(): string
-    {
-        return match ($this) {
-            self::Model   => 'fields',
-            self::Setting => 'settings',
-        };
-    }
 }

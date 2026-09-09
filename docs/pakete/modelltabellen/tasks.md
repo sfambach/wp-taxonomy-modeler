@@ -2431,7 +2431,14 @@ Befund über die Anordnung, nicht über die Funktion.*
 
 ---
 
-[ ] TASK-072  `min` lässt sich nicht auf 0 stellen, `max` nicht auf den Höchstwert
+[x] TASK-072  `min` lässt sich nicht auf 0 stellen, `max` nicht auf den Höchstwert — geschlossen durch D-686, nachgemessen 2026-09-09
+
+**Nachgemessen am 2026-09-09, am gezeichneten Markup der Seiten `Integer`, `integer_min` und
+`integer_max` mit allen Zeilen offen:** *jedes Zahlfeld trägt `step="1"`, keines eine Unter- oder
+Obergrenze; `min` steht auf `-9223372036854775808`, `max` auf `9223372036854775807` — die Grenzen
+eines `bigint`, nicht 255.* Der Fall aus dem Verdacht oben — geerbtes `min` am Typ — war es nicht;
+es war die Schrittweite, die `min` von `Integer` erbte ([D-686](../../NewConcept/90-decision-log.md),
+gebaut in derselben Sitzung). *Nichts mehr zu tun.*
 
 **2026-09-07, sein Befund:** *«irgendwas stimmt mit den einstellungen noch nicht, min kann ich nicht
 auf 0 stellen und max nicht auf 255»*, *«bzw auf intmax»*, *«min könnte auch negativ sein davon
@@ -2594,7 +2601,22 @@ Tafel rot** (D-682 hat es gemessen), und das ist der Beleg, den der Umbau brauch
 
 ---
 
-[ ] TASK-076  `FieldType` trägt die Kantenart ein zweites Mal
+[x] TASK-076  `FieldType` trägt die Kantenart ein zweites Mal — gebaut 2026-09-09, kleiner als geplant
+
+**Was beim Bauen herauskam, gegen den Lösungsweg unten** (`PR-7`): *von den drei Fällen war nur der
+erste einer. Die zwei Stellen im Renderer — der Behälter eines Einstellungsknotens
+([D-546](../../NewConcept/90-decision-log.md)) und das Hindurchsehen durch markierte Zwischenknoten
+([D-544](../../NewConcept/90-decision-log.md)) — zeichnen einen **Knoten**, nicht eine Kante, und haben
+keine Kante in der Hand. Sie stehen auf D-621s **zweitem** Satz: «ein Knoten, den nur Vererbung
+erreicht, bekommt seinen Charakter von der Kante über seinem nächsten Vorfahren». **Das ist die
+Ableitung, die `resolvedFieldTypes()` rechnet — beschlossen, nicht erfunden.** Der Bezug auf D-605
+und D-607 im Lösungsweg war falsch: die handeln vom Erben einer Einstellungs**kante**, nicht von der
+Sorte eines Knotens.*
+
+**Gebaut:** *die Überschrift der zwei Blöcke im Bildschirm fragt dieselbe Kantenart wie die Zeilen
+darunter; `FieldType` ist aus dem Bildschirm verschwunden, und eine nie gerufene Methode an der
+Aufzählung mit ihr. Die Ableitung im Speicher bleibt, mit D-621 als Grund.* Kernlauf, `page-blocks`,
+`preview`, `renderer-choice-mask` grün.
 
 **2026-09-09, derselbe Auftrag.** ⚠️ **Der Beschluss:** [D-621](../../NewConcept/90-decision-log.md):
 *«Die Kante sagt, was etwas hier ist — nicht der Knoten und nicht der Ast. `nodes.field_type` faellt.»*
@@ -2758,3 +2780,28 @@ der Beleg. `preview-check` und `renderer-choice-mask-check` laufen dazu.
 
 *Nicht Teil dieser Aufgabe:* die Untereinstellungen eines geerbten Renderers. D-682 sagt, sie kommen
 «gesetzt oder geerbt» dazu, und D-684 gibt ihnen ihr Fach im Satz des Knotens — das steht und bleibt.
+
+---
+
+**Baureihenfolge vom 2026-09-09** — sein Auftrag: *«kannst du mal eine build reihenfolge aufstellen und
+die dann selbstänig bauen, fragen vorher und nachher möglichst viel umsetzen ohne was zu verbauen».*
+Vorher gefragt, seine Antworten: TASK-062 **gar nicht in diesem Lauf**; TASK-066 **Werte wandern mit**
+([D-690](../../NewConcept/90-decision-log.md)); D-677 gilt **auch für Settings**
+([D-691](../../NewConcept/90-decision-log.md)); Bestand darf **mit Wanderung und Wächter** geändert
+werden, die 104 an `Condensator` nur über den Cleanup-Bildschirm.
+
+| | Aufgabe | Warum an dieser Stelle |
+|---|---|---|
+| 1 | TASK-072 | nachmessen, ob D-686 sie schon geschlossen hat |
+| 2 | TASK-076 | klein, abgeschlossen, berührt nichts Folgendes |
+| 3 | TASK-075 | öffnet die Tafel für freie Namen — Voraussetzung für 078 und 068 |
+| 4 | TASK-078 | die Tafel nach D-687 bis D-689 |
+| 5 | TASK-069 | klein, Datensatzblock |
+| 6 | TASK-071 | klein, Anordnung |
+| 7 | TASK-077 | vierte Quelle im Cleanup, Zusage in `simple-type-check`, Wanderung der vier Sätze |
+| 8 | TASK-066 | Umschalter mit D-690 |
+| 9 | TASK-068 | `choices`, braucht 075 |
+| 10 | TASK-070 | Messung gegen das Beschlossene, dann die Lücke bauen |
+
+*Jede Aufgabe endet mit beiden Läufen grün und einem eigenen Commit. Was blockiert, wird geparkt und
+hier vermerkt, nicht gefragt.*
