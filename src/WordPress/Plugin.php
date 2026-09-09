@@ -173,7 +173,9 @@ final class Plugin
         // ⚠️ **A sub-page and not a second top-level menu.** It configures the modeller, so it
         // belongs under it — and it is the screen [OQ-039](../../../docs/NewConcept/91-open-questions.md)
         // has been waiting for since Package 4.
-        add_submenu_page(
+        $unterseiten = [];
+
+        $unterseiten[] = add_submenu_page(
             'taxmod',
             __('Installation', 'taxmod'),
             __('Installation', 'taxmod'),
@@ -187,7 +189,7 @@ final class Plugin
         // something was deleted»*. It is **not a feature but a repair surface**
         // ([U24](../../docs/NewConcept/20-interaction.md)), which is why it is a page of its own and
         // not a button on the modelling screen — nothing here happens in passing.
-        add_submenu_page(
+        $unterseiten[] = add_submenu_page(
             'taxmod',
             __('Cleanup', 'taxmod'),
             __('Cleanup', 'taxmod'),
@@ -196,11 +198,20 @@ final class Plugin
             fn () => print $this->cleanupScreen()->render()
         );
 
-        // ⚠️ **On this screen's own hook**, so the stylesheet is not loaded onto every page in
-        // `wp-admin`. `add_menu_page()` returns the hook, which is why the wiring lives here rather
-        // than beside the other hooks in `boot()`.
-        if ($hook !== false) {
-            add_action('admin_print_styles-' . $hook, $this->enqueueStyle(...));
+        // ⚠️ **An den eigenen Haken jeder Seite**, damit das Stilblatt nicht auf jeder Seite in
+        // `wp-admin` landet. *`add_menu_page()` und `add_submenu_page()` geben den Haken zurück,
+        // weshalb die Verdrahtung hier steht und nicht neben den anderen Haken in `boot()`.*
+        //
+        // ⚠️ **Hier stand nur `$hook`, und damit bekamen die beiden Unterseiten das Stilblatt nie**
+        // ([D-696](../../docs/NewConcept/90-decision-log.md)). *Sein Befund an der
+        // Konfigurationsseite: «sehe aber nix» — drei Spalten standen da, aber als gewöhnliche
+        // Kästchen ohne Breiten und ohne Schiebeschalter. **Nicht der Zwischenspeicher des Browsers,
+        // sondern eine Datei, die nie angefordert wurde.** Und es galt für die Aufräumseite genauso,
+        // seit es sie gibt.*
+        foreach ([$hook, ...$unterseiten] as $seite) {
+            if ($seite !== false) {
+                add_action('admin_print_styles-' . $seite, $this->enqueueStyle(...));
+            }
         }
     }
 

@@ -77,6 +77,28 @@ $say(substr_count($markup, 'class="taxmod-config-why description"') === 5, 'und 
 // ⚠️ *Die Gegenprobe zu D-695: die Erklaerung steht in der Spalte **statt** hinter dem Fragezeichen.*
 $say(! str_contains($markup, 'taxmod-hint'), 'und keine davon versteckt sich mehr hinter einem Fragezeichen');
 
+
+// ⚠️ **Und das Stilblatt muss diese Seite überhaupt erreichen**
+// ([D-696](../../docs/NewConcept/90-decision-log.md)). *Sein Befund war «sehe aber nix»: die drei
+// Spalten standen im Markup, aber `admin_print_styles` hing nur am Haken der **Hauptseite** — die
+// beiden Unterseiten bekamen es nie. **Ein Markup-Wächter allein hätte das nie gesehen**, weil am
+// Markup nichts fehlte.*
+//
+// ⚠️ *Gemessen wird die Verdrahtung und nicht die Datei: die Menüseiten werden angemeldet, und dann
+// wird gefragt, ob an jedem Haken ein Stilblatt hängt.*
+// ⚠️ *Das Zusatzstueck ist schon hochgefahren — `wp-load` hat es geladen, weil es aktiv ist. Also
+//  wird sein eigener Menueaufbau ausgeloest statt ein zweiter gebaut: ein zweites Exemplar
+//  meldete andere Haken an als die, die der Bildschirm spaeter wirklich hat.*
+require_once ABSPATH . 'wp-admin/includes/plugin.php';
+do_action('admin_menu');
+
+foreach (['toplevel_page_taxmod', 'taxonomy-modeller_page_taxmod-settings'] as $einer) {
+    $say(
+        has_action('admin_print_styles-' . $einer) !== false,
+        sprintf('das Stilblatt haengt am Haken «%s»', $einer)
+    );
+}
+
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
 
 exit($failed === 0 ? 0 : 1);

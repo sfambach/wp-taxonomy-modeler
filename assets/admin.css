@@ -1373,11 +1373,13 @@ a.taxmod-chosen:hover {
     border-bottom: 1px solid #dcdcde;
 }
 
-/* ⚠️ *Doppelt so breit wie zuerst, auf sein Wort: «die labels spalte etwas breiter auf der
- *  settings seite würde sagen doppelt so breit wie jetzt». **12em waren zu knapp** — die
- *  längeren Namen drängten in die Schalterspalte.* */
+/* ⚠️ **Zweimal nachgestellt, und die zweite Zahl ist die richtige.** *Auf «doppelt so breit»
+ *  standen 24em — und er sah es sofort: «beserr aber jetzt zu viel abstand zwischen settings
+ *  und value spalte». **Eine feste Breite war der Fehler, nicht ihre Groesse**: die Spalte
+ *  bricht ohnehin nicht um (`nowrap`), also nimmt sie sich, was die laengste Beschriftung
+ *  braucht. `min-width` gibt ihr Luft, ohne den Rest leer zu lassen.* */
 .taxmod-config tbody th {
-    width: 24em;
+    min-width: 10em;
     font-weight: 600;
     white-space: nowrap;
 }
