@@ -346,136 +346,144 @@ sagt die Auflösung.*
 
 ### Offen, bevor das Datenmodell steht — seine Fragen
 
-- **D1 · Ist der Knoten selbst der Satz, oder hat er einen?** — *sein Wort: «ist mir zu kurz, verstehe
-  ich nicht»*, darum hier ausführlich:
+#### D1 · Ist der Knoten selbst der Satz, oder hat er einen?
 
-  *Ein Knoten ist ein Objekt seiner Klasse (`ContactNode`). Seine Werte — `read_only = false`, die zwei
-  Renderer — sind Zeilen. Die Frage ist nur: **woran hängen diese Zeilen?***
+**D1 —** — *sein Wort: «ist mir zu kurz, verstehe
+ich nicht»*, darum hier ausführlich:
 
-  **Weg A — der Knoten ist selbst der Satz.** *Die Knotenzeile trägt die Klasse; die Wertzeilen zeigen
-  direkt auf den Knoten. Kein zweiter Satz.*
+*Ein Knoten ist ein Objekt seiner Klasse (`ContactNode`). Seine Werte — `read_only = false`, die zwei
+Renderer — sind Zeilen. Die Frage ist nur: **woran hängen diese Zeilen?***
 
-  | Knoten | Klasse | | Zeile gehört | Klasse.Attribut | Wert |
-  |---|---|---|---|---|---|
-  | Kontakt (#27) | `ContactNode` | | **Knoten #27** | `Node.read_only` | `false` |
-  | | | | **Knoten #27** | `Node.renderers` (1) | → Satz 2 |
-  | | | | Satz 2 | `CompactRenderer.orientation` | `vertical` |
+**Weg A — der Knoten ist selbst der Satz.** *Die Knotenzeile trägt die Klasse; die Wertzeilen zeigen
+direkt auf den Knoten. Kein zweiter Satz.*
 
-  *Dann hängt eine Zeile mal an einem Knoten, mal an einer Kante, mal an einem Satz — drei Sorten
-  Träger, und die Zeile muss sagen, welche Sorte ihr Träger ist. Dafür gibt es keine Tabelle mehr
-  zwischen Knoten und Wert.*
+| Knoten | Klasse | | Zeile gehört | Klasse.Attribut | Wert |
+|---|---|---|---|---|---|
+| Kontakt (#27) | `ContactNode` | | **Knoten #27** | `Node.read_only` | `false` |
+| | | | **Knoten #27** | `Node.renderers` (1) | → Satz 2 |
+| | | | Satz 2 | `CompactRenderer.orientation` | `vertical` |
 
-  **Weg B — der Knoten hat einen Satz.** *Die Knotenzeile bleibt, was sie ist (Name, Vater, Stelle im
-  Baum). Ein Satz sagt «ich bin das Objekt `ContactNode` von Knoten #27», und die Wertzeilen hängen am
-  Satz — wie bei jedem anderen Objekt auch.*
+*Dann hängt eine Zeile mal an einem Knoten, mal an einer Kante, mal an einem Satz — drei Sorten
+Träger, und die Zeile muss sagen, welche Sorte ihr Träger ist. Dafür gibt es keine Tabelle mehr
+zwischen Knoten und Wert.*
 
-  | Knoten | | Satz | Klasse | gehört | | Zeile gehört | Klasse.Attribut | Wert |
-  |---|---|---|---|---|---|---|---|---|
-  | Kontakt (#27) | | **1** | `ContactNode` | Knoten #27 | | Satz 1 | `Node.read_only` | `false` |
-  | | | | | | | Satz 1 | `Node.renderers` (1) | → Satz 2 |
-  | | | 2 | `CompactRenderer` | Satz 1 | | Satz 2 | `CompactRenderer.orientation` | `vertical` |
+**Weg B — der Knoten hat einen Satz.** *Die Knotenzeile bleibt, was sie ist (Name, Vater, Stelle im
+Baum). Ein Satz sagt «ich bin das Objekt `ContactNode` von Knoten #27», und die Wertzeilen hängen am
+Satz — wie bei jedem anderen Objekt auch.*
 
-  *Dann hängt **jede** Zeile an einem Satz, und nur Sätze wissen, wem sie gehören (Knoten, Kante oder
-  Satz). Ein Knoten ohne Werte hat keinen Satz; er entsteht beim ersten Wert. Der Preis ist eine Zeile
-  mehr je Knoten, der Werte trägt — der Gewinn ist, dass Zeile → Satz die einzige Verbindung ist und
-  Knoten, Kante und Objekt in der Ablage gleich aussehen.*
+| Knoten | | Satz | Klasse | gehört | | Zeile gehört | Klasse.Attribut | Wert |
+|---|---|---|---|---|---|---|---|---|
+| Kontakt (#27) | | **1** | `ContactNode` | Knoten #27 | | Satz 1 | `Node.read_only` | `false` |
+| | | | | | | Satz 1 | `Node.renderers` (1) | → Satz 2 |
+| | | 2 | `CompactRenderer` | Satz 1 | | Satz 2 | `CompactRenderer.orientation` | `vertical` |
 
-  **Dasselbe für die Kante:** *Weg A — die Kantenzeile trägt die Klasse (`CompositionEdge`), ihre Werte
-  hängen an ihr. Weg B — die Kante hat einen Satz.*
+*Dann hängt **jede** Zeile an einem Satz, und nur Sätze wissen, wem sie gehören (Knoten, Kante oder
+Satz). Ein Knoten ohne Werte hat keinen Satz; er entsteht beim ersten Wert. Der Preis ist eine Zeile
+mehr je Knoten, der Werte trägt — der Gewinn ist, dass Zeile → Satz die einzige Verbindung ist und
+Knoten, Kante und Objekt in der Ablage gleich aussehen.*
 
-  **Das Datenmodell zu Weg A** — *die Zeile kennt drei Sorten Träger; ein Satz gibt es nur für
-  Objekte, die in einem Attribut stecken:*
+**Dasselbe für die Kante:** *Weg A — die Kantenzeile trägt die Klasse (`CompositionEdge`), ihre Werte
+hängen an ihr. Weg B — die Kante hat einen Satz.*
 
-  ```mermaid
-  erDiagram
-    KNOTEN ||--o{ ZEILE : "trägt (traeger_art = knoten)"
-    KANTE ||--o{ ZEILE : "trägt (traeger_art = kante)"
-    SATZ ||--o{ ZEILE : "trägt (traeger_art = satz)"
-    ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
-    KNOTEN {
-      id id
-      string klasse "ContactNode, IntegerNode …"
-      string name
-      ref vater
-      int stelle
-    }
-    KANTE {
-      id id
-      string klasse "CompositionEdge, AggregationEdge …"
-      ref von_knoten
-      ref zu_knoten
-    }
-    SATZ {
-      id id
-      string klasse "CompactRenderer, RangeValidator …"
-    }
-    ZEILE {
-      id id
-      string traeger_art "knoten | kante | satz"
-      ref traeger_id
-      string klasse "Adresse, Teil 1"
-      string attribut "Adresse, Teil 2"
-      int position "0, oder Stelle in der Liste"
-      bool wert_bool
-      int wert_int
-      decimal wert_decimal
-      string wert_text
-      ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
-    }
-  ```
+**Das Datenmodell zu Weg A** — *die Zeile kennt drei Sorten Träger; ein Satz gibt es nur für
+Objekte, die in einem Attribut stecken:*
 
-  **Das Datenmodell zu Weg B** — *jede Zeile hängt an einem Satz; nur der Satz kennt seinen Träger:*
+```mermaid
+erDiagram
+  KNOTEN ||--o{ ZEILE : "trägt (traeger_art = knoten)"
+  KANTE ||--o{ ZEILE : "trägt (traeger_art = kante)"
+  SATZ ||--o{ ZEILE : "trägt (traeger_art = satz)"
+  ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
+  KNOTEN {
+    id id
+    string klasse "ContactNode, IntegerNode …"
+    string name
+    ref vater
+    int stelle
+  }
+  KANTE {
+    id id
+    string klasse "CompositionEdge, AggregationEdge …"
+    ref von_knoten
+    ref zu_knoten
+  }
+  SATZ {
+    id id
+    string klasse "CompactRenderer, RangeValidator …"
+  }
+  ZEILE {
+    id id
+    string traeger_art "knoten | kante | satz"
+    ref traeger_id
+    string klasse "Adresse, Teil 1"
+    string attribut "Adresse, Teil 2"
+    int position "0, oder Stelle in der Liste"
+    bool wert_bool
+    int wert_int
+    decimal wert_decimal
+    string wert_text
+    ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
+  }
+```
 
-  ```mermaid
-  erDiagram
-    KNOTEN ||--o| SATZ : "hat (traeger_art = knoten), entsteht beim ersten Wert"
-    KANTE ||--o| SATZ : "hat (traeger_art = kante)"
-    SATZ ||--o{ SATZ : "hält als Objekt (traeger_art = satz)"
-    SATZ ||--o{ ZEILE : "trägt"
-    ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
-    KNOTEN {
-      id id
-      string name
-      ref vater
-      int stelle
-    }
-    KANTE {
-      id id
-      ref von_knoten
-      ref zu_knoten
-    }
-    SATZ {
-      id id
-      string klasse "ContactNode, CompositionEdge, CompactRenderer …"
-      string traeger_art "knoten | kante | satz"
-      ref traeger_id
-    }
-    ZEILE {
-      id id
-      ref satz_id
-      string klasse "Adresse, Teil 1"
-      string attribut "Adresse, Teil 2"
-      int position "0, oder Stelle in der Liste"
-      bool wert_bool
-      int wert_int
-      decimal wert_decimal
-      string wert_text
-      ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
-    }
-  ```
+**Das Datenmodell zu Weg B** — *jede Zeile hängt an einem Satz; nur der Satz kennt seinen Träger:*
 
-  *Der eine sichtbare Unterschied: in A steht die Klasse am Knoten und an der Kante, die Zeile hat
-  `traeger_art`; in B steht die Klasse nur am Satz, die Zeile hat nur `satz_id`. In A gibt es Sätze nur
-  für Objekte in Attributen, in B für alles, was Werte trägt.*
+```mermaid
+erDiagram
+  KNOTEN ||--o| SATZ : "hat (traeger_art = knoten), entsteht beim ersten Wert"
+  KANTE ||--o| SATZ : "hat (traeger_art = kante)"
+  SATZ ||--o{ SATZ : "hält als Objekt (traeger_art = satz)"
+  SATZ ||--o{ ZEILE : "trägt"
+  ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
+  KNOTEN {
+    id id
+    string name
+    ref vater
+    int stelle
+  }
+  KANTE {
+    id id
+    ref von_knoten
+    ref zu_knoten
+  }
+  SATZ {
+    id id
+    string klasse "ContactNode, CompositionEdge, CompactRenderer …"
+    string traeger_art "knoten | kante | satz"
+    ref traeger_id
+  }
+  ZEILE {
+    id id
+    ref satz_id
+    string klasse "Adresse, Teil 1"
+    string attribut "Adresse, Teil 2"
+    int position "0, oder Stelle in der Liste"
+    bool wert_bool
+    int wert_int
+    decimal wert_decimal
+    string wert_text
+    ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
+  }
+```
 
-  Der Entwurf oben nimmt Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat. Es ist seine
-  Wahl.
-- **D2 · Was ist der Wert einer Wahl aus Kindern** (`orientation` = einer von zwei; `label_role` = eine
+*Der eine sichtbare Unterschied: in A steht die Klasse am Knoten und an der Kante, die Zeile hat
+`traeger_art`; in B steht die Klasse nur am Satz, die Zeile hat nur `satz_id`. In A gibt es Sätze nur
+für Objekte in Attributen, in B für alles, was Werte trägt.*
+
+Der Entwurf oben nimmt Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat. Es ist seine
+Wahl.
+#### D2 · Was ist der Wert einer Wahl aus Kindern
+
+**D2 —**** (`orientation` = einer von zwei; `label_role` = eine
   von fünf Rollen, die Modellknoten sind)? *Ein Text (`'vertical'`) oder ein Verweis auf den Knoten
   (`→ Rolle symbol`)?* Beides passt in die Zeile; die Klasse müsste sagen, welches.
-- **D3 · Versionen und Schatten** — gilt für Sätze und Zeilen dasselbe wie heute für alles (jede Version
+#### D3 · Versionen und Schatten
+
+**D3 —**** — gilt für Sätze und Zeilen dasselbe wie heute für alles (jede Version
   bleibt, Löschen ist Wandern)? *Der Entwurf lässt es weg, weil es nichts an der Form ändert.*
-- **Z2–Z4 · das Überschreiben** — siehe unten; die Form hält es offen.
+#### Z2–Z4 · das Überschreiben
+
+siehe unten; die Form hält es offen.
 
 ## Das zweite Problem, das er hintanstellt: Überschreiben an der Kante, Erben an Kindern
 
