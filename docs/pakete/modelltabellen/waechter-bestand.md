@@ -579,3 +579,14 @@ das es nicht mehr gibt.*
 
 *Was der Fall kostet:* der fest verdrahtete Pfad und drei Knoten `__cv Zahl`, die am 2026-09-06 unter `Integer` liegenblieben — der Fall, der die Klammer erzwang.
 
+
+### `field-kind` — 22 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1–5 (die eigene Zeile zeigt die Art als Auswahlfeld mit drei Werten, `composition` gewählt; die geerbte als Wort) | **Abschnitt 2**, drei Zeilen |
+| 6–8 (ohne Werte wechselt die Art, hin und zurück; unbekanntes Wort ist keine Angabe) | **Abschnitt 10**, eine Zeile |
+| 9–15 (zwei Benutzersätze; die Antwort nennt sie und verlangt den Haken; Kante bleibt Feld, Werte stehen; `setting` vorgewählt, Haken, Satz was er kostet) | **Abschnitt 10**, drei Zeilen |
+| 16–19 (mit Haken: Einstellung, Sätze im Schatten, beginnt leer) | **Abschnitt 10**, eine Zeile |
+| 20–22 (Einstellung → Feld: der Einstellungssatz bleibt) | **Abschnitt 10**, eine Zeile |
+
