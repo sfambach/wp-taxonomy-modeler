@@ -2350,7 +2350,19 @@ nur ihr Anfangsbild und das Skript entscheiden, was man sieht.
 
 ---
 
-[ ] TASK-068  Die Auswahl an der Verwendungsstelle einschraenken — `choices` — **wartet auf eine Antwort (2026-09-09)**
+[ ] TASK-068  Die Auswahl einschraenken — `allowed` — **entschieden am 2026-09-09 abends ([D-697](../../NewConcept/90-decision-log.md)), Bau wartet, bis er es sagt**
+
+**Was jetzt gilt und den alten Text unten ablöst:** *das Wort ist `allowed`, nicht `choices`. Die
+Kante `allowed` (setting, `0..*`, Ziel `Node reference`) wird **am Ziel** erklärt — für die Präfixe an
+`Prefixes` —, nicht an Root. Der Wert liegt im Satz des Knotens zur geerbten Kante (`node_id = Gramm`,
+`relation_id = Präfix`), je erlaubtem Kind eine Verweiszeile; gespeichert werden die **erlaubten**,
+leer heisst alle. Sein Aufbau steht: `Base units --Unit--> Node reference`, `With prefix --Präfix-->
+Prefixes`. **Zu bauen sind drei Stücke:** (1) die Liste in der Kette lesen — heute nimmt
+`settingsAt()` je Schlüssel den ersten Wert; (2) die Hakenliste in der Tafel an `Gramm` für das
+geerbte Feld `Präfix`; (3) das Angebot des Feldes `prefix` an einer Verwendungsstelle aus der Liste
+der **gewählten Einheit** im selben Satz — der neue Mechanismus, ein Feld fragt sein Geschwister —,
+dazu die Verengung an der Stelle (D-221, nie weiten) und der Konflikt nach D-680.* Und daneben
+[D-698](../../NewConcept/90-decision-log.md): ein Kind darf geerbte Felder anordnen, an derselben Adresse.
 
 ⚠️ **Nicht gebaut, mit Grund** (`PR-4`): *seine Frage im Auftrag — «wo wir das festmachen» — ist beim
 Lesen des Bestands eine echte geblieben. Drei Stücke fehlen, und das erste ist eine Entscheidung:*
