@@ -228,6 +228,29 @@ Entwurf: «nein, validator ist eine knoten-eigenschaft».* **Also genau wie `rea
 `Kontakt · validator = 'range'`, `Kontakt · validator = 'shape'`. Kein Feld, kein Teil, keine
 zweite Adresse — dieselbe Eigenschaft, zwei Zeilen. Die Spalte gibt es, die Wanderung dafür ist gelaufen.*
 
+**Sein Beispiel für «mehrfach», und die Regel, die es braucht — `converter`.** *«sagen wir mal ein
+knoten könnte mehrere converter haben: ein to-upper, einen, der sich um die reihenfolge von
+kommagetrennten werten kümmert, und einen weiteren, der diese dann zu von-bis zusammenfasst (beispiel:
+eingabe widerstände in parts list). to-upper wäre sicherlich an anderer stelle auch noch sinnvoll. ich
+könnte ein kind von text erstellen und ihm schon diese drei converter mitgeben — somit einstellung am
+knoten. ich könnte aber auch sagen, ich hänge nur to-upper dran und definiere die anderen an der kante.»*
+
+⚠️ **Was daran neu ist — und es ist kein Speicherproblem, sondern eine Regel der Kette:** *heute gilt
+für jede Eigenschaft «näher schlägt ferner» ([D-602](NewConcept/90-decision-log.md)): stünde an der
+Kante ein Konverter, wäre der des Knotens weg. Sein Beispiel will für eine **mehrwertige** Eigenschaft
+etwas anderes: **näher ergänzt ferner** — der Knoten gibt `to-upper`, die Kante gibt `sortieren` und
+`zusammenfassen` dazu, und alle drei laufen. Und sie laufen **in einer Reihenfolge**, die zählt:
+erst gross schreiben, dann sortieren, dann zusammenfassen. Das ist eine Kette von Konvertern, keine
+Wahl eines Konverters — heute ist `converter` `0..1`, ein einziger Name.*
+
+| zu entscheiden | Vorschlag (`PROPOSED`) |
+|---|---|
+| Ein- oder mehrwertig | `converter` wird `0..*` wie `validator`; mehrere Zeilen, geordnet über `position` (D-530) |
+| Was die Kette mit mehreren Werten tut | **sammeln statt ersetzen:** die Zeilen des Typs, dann des Knotens, dann der Kante — Vorfahr vor Nachfahr, Knoten vor Kante. Die Reihenfolge im Lauf ist die Reihenfolge in der Kette, und innerhalb einer Stufe `position` |
+| Ein geerbter Eintrag, den man **nicht** will | ein Haken an der geerbten Zeile («hier nicht»), wie der Haken «hier überschreibe ich» bei einwertigen — die Abwahl steht als eigene Zeile im Satz, damit die Kette sie sieht |
+| Woher die Namen kommen | aus der Registratur des Kodes (Form E), gefiltert nach dem Typ (`handles()`, D-603): an einem Text werden `to-upper` und `sortieren` angeboten, an einer Zahl `roman` und `hexadecimal` |
+| Wo die drei aus dem Beispiel heute stehen | **nirgends** — gemessen gibt es vier Konverter (`roman`, `hexadecimal`, `binary`, `octal`), alle Zahl ↔ Text. `to-upper`, «sortieren», «zusammenfassen» sind Klassen, die es zu schreiben gäbe — je eine Datei, keine Modellfrage |
+
 ⚠️ **Und ob ein Validator selbst wieder Eigenschaften hat — gemessen: heute nicht.** *`RangeValidator`
 liest `min` und `max` aus den Einstellungen des **Knotens**, die er prüft; `ShapeValidator` das Muster
 aus dem Typ. Sie haben keine eigenen Schlüssel — deshalb reicht die Namensliste.* **Sollte einer je
@@ -275,6 +298,10 @@ die drei Fehler von heute sassen alle in der Hülle, die fällt.*
 - [ ] **Ein leeres Angebot zeichnet keine Zeile**, und das Angebot folgt dem Typ, wo der Kode ihn kennt.
 - [ ] **Auch der Renderer darf an der Kante überschrieben werden** — dann ist D-643 zurückgenommen.
   Oder er bleibt die eine Einstellung, die nur am Knoten gilt.
+- [ ] **Mehrwertige Eigenschaften sammeln sich entlang der Kette** (Typ, Knoten, Kante — in dieser
+  Reihenfolge), statt einander zu ersetzen; ein geerbter Eintrag lässt sich mit einem Haken abwählen.
+  `converter` wird dafür `0..*`. *(Sein Beispiel: to-upper am Knoten, sortieren und zusammenfassen an
+  der Kante — alle drei laufen.)*
 - [ ] **Reihenfolge:** erst der Beschluss, dann eine Baureihe, dann bauen — nicht fehlerweise.
 
 *Nichts auf dieser Seite ist gebaut. Gemessen ist alles.*
