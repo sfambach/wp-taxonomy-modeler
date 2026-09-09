@@ -204,9 +204,26 @@ final class SettingsRenderer extends RendererNode
         // the owner moved saving to the page head — *the save button goes in the page header* — so the
         // whole panel is **one** form and a row is a row. *Every row carrying its own form was what
         // made a page-level save impossible, and it went the moment he asked for the toolbar.*
-        return '<div class="taxmod-setting">'
+        // ⚠️ **Geerbt heisst gesperrt, bis jemand «hier überschreibe ich» sagt — und im Konflikt sagt
+        // es das System selbst** ([D-689](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort:
+        // «sperren finde ich gut, aktiv sagen hier überschreibe ich, muss automatisch gemacht werden
+        // wenn der renderer (oder anderes) für kind nicht mehr zulässig ist». Der Haken ist das
+        // Sagen; ohne ihn schreibt der Rand die Zeile nicht, was auch immer im Steuerelement steht.
+        // **Kein Skript und kein zweiter Seitenaufruf**: das Stilblatt sperrt, solange der Haken fehlt,
+        // und ein Rand, der den Haken verlangt, sperrt auch ohne Stilblatt.*
+        $gesperrt    = $drawn->overrideName !== '' && $drawn->setting->isLocked();
+        $automatisch = $drawn->overrideName !== '' && $drawn->setting->automatic;
+        $haken       = ! ($gesperrt || $automatisch) ? '' : $this->overrideAct($drawn, $context);
+
+        return '<div class="taxmod-setting'
+            . ($gesperrt ? ' taxmod-setting-locked' : '')
+            . ($automatisch ? ' taxmod-setting-automatic' : '')
+            . '">'
             . '<code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>'
-            . '<span class="taxmod-setting-value">' . $this->control($drawn) . '</span>'
+            . '<span class="taxmod-setting-value">'
+            . ($gesperrt ? '<span class="taxmod-setting-locked-control">' . $this->control($drawn) . '</span>' : $this->control($drawn))
+            . $haken
+            . '</span>'
             // ⚠️ **The origin is a mark and no longer a sentence.** *not defined* stood on every
             // unset row — which is most of them — and said what an empty control already says. The
             // owner: *«not defined» gone.* What is left is the one case a mark is needed for:
@@ -323,8 +340,48 @@ final class SettingsRenderer extends RendererNode
      * so they travel as controls named `word:here` and `word:undefined`. An id is not a word and is
      * printed as one — *from #418* is diagnostic and stays legible without translation.
      */
+    /**
+     * Der Haken «hier überschreibe ich» — vorgesetzt, wo das System ihn gesetzt hat.
+     *
+     * ⚠️ *Das Wort kommt vom Rand (`AR-2`), als `word:override`; fehlt es, steht der Schlüssel.*
+     */
+    private function overrideAct(RenderedSetting $drawn, RenderContext $context): string
+    {
+        return '<label class="taxmod-override-act">'
+            . '<input type="checkbox" class="taxmod-override" name="' . RenderResult::escape($drawn->overrideName) . '" value="1"'
+            . ($drawn->setting->automatic ? ' checked' : '')
+            . ($context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"')
+            . '> ' . RenderResult::escape($this->word($context, 'override')) . '</label>';
+    }
+
+    /**
+     * Ein Satz des Randes mit einem Platz für einen Namen — oder, wo der Rand keinen schickte, der Name allein.
+     */
+    private function sentence(RenderContext $context, string $key, string $name): string
+    {
+        $vorlage = $this->word($context, $key);
+
+        return str_contains($vorlage, '%s') ? sprintf($vorlage, $name) : trim($vorlage . ' ' . $name);
+    }
+
     private function whereFrom(RenderedSetting $drawn, RenderContext $context): string
     {
+        // ⚠️ **In Worten, wo der Name da ist** ([D-689](../../../docs/NewConcept/90-decision-log.md)):
+        // *«geerbt von Integer» statt eines Pfeils mit Tooltip, und bei einer automatischen Wahl der
+        // Grund — was ersetzt wurde und dass es hier nicht zulässig ist ([D-688](../../../docs/NewConcept/90-decision-log.md)).
+        // Der Pfeil bleibt nur dort, wo der Abstieg keinen Namen mitgeben konnte.*
+        if ($drawn->setting->automatic) {
+            return '<em class="taxmod-automatic">'
+                . RenderResult::escape($this->sentence($context, 'automatic', $drawn->setting->insteadOf))
+                . '</em>';
+        }
+
+        if ($drawn->fromOwnerName !== '' && $drawn->setting->isLocked()) {
+            return '<em class="taxmod-inherited">'
+                . RenderResult::escape($this->sentence($context, 'inherited_from', $drawn->fromOwnerName))
+                . '</em>';
+        }
+
         // ⚠️ **Nothing where nothing was said**, on the owner's ask: *«not defined» gone.* It stood
         // on almost every row and repeated what an empty control already says. *What stays is the one
         // case a mark prevents a mistake in — **inherited** — because overwriting an ancestor's value

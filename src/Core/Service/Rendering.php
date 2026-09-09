@@ -1732,6 +1732,13 @@ final class Rendering implements Presets
             ? []
             : $this->labels->forNodes(array_values($targets), SeededRole::Form, $locale);
 
+        // ⚠️ **Die Kette des Knotens, an dem die Zeilen stehen — einmal, nicht je Zeile** (`CD-7`).
+        // *Sie sagt der Wertspalte einer Einstellungszeile, ob der gezeigte Wert geerbt ist
+        // ([D-689](../../../docs/NewConcept/90-decision-log.md): dann gesperrt) und von wem — und ob
+        // er hier überhaupt zulässig ist ([D-687](../../../docs/NewConcept/90-decision-log.md)).*
+        $knotenHier = $showValue && $valuePrefix !== '' && $declaredBy !== 0 ? $this->nodes->find($declaredBy) : null;
+        $ketteHier  = $knotenHier === null ? [] : $this->withRendererValues($knotenHier);
+
         $rows = [];
 
         foreach ($relations as $relation) {
@@ -1837,6 +1844,8 @@ final class Rendering implements Presets
                 }
             }
 
+            $sperre = $knotenHier === null ? null : $this->sperreFuer($relation, $values, $ketteHier);
+
             $gezeichneterWert = ! $showValue ? [] : $this->fieldsFor(
                 [$relation],
                 $values,
@@ -1935,7 +1944,13 @@ final class Rendering implements Presets
                             ? []
                             : [FieldRowRenderer::VALUE => new Section(
                                 '',
-                                $gezeichneterWert === [] ? '' : $gezeichneterWert[0]->result->markup
+                                $this->wertspalteMarkup(
+                                    $gezeichneterWert,
+                                    $sperre,
+                                    $valuePrefix === '' ? '' : $valuePrefix . '[' . $relation->id . ']',
+                                    $pageForm,
+                                    $settingsWords
+                                )
                             )],
                         // WICHTIG: Der Auswahldialog dieser Zeile -- TASK-029. Er kommt fertig vom
                         // Rand, weil er URL und Nonce braucht (CD-1), und wird durchgereicht.
@@ -1972,6 +1987,104 @@ final class Rendering implements Presets
      *
      * @param list<Control> $woerter
      */
+    /**
+     * Ob die Wertspalte dieser Einstellungszeile gesperrt ist — und von wem der Wert kommt.
+     *
+     * ⚠️ **Geerbt heisst gesperrt** ([D-689](../../../docs/NewConcept/90-decision-log.md)): *ein Wert,
+     * der hier nur **gezeigt** wird, darf nicht aussehen wie einer, der hier gesetzt ist — genau so
+     * entstand sein Befund «in der gui eine default schalterstellung steht diese aber nicht
+     * gespeichert ist». Eigen ist, was im `default`-Satz dieses Knotens steht (`$values`); alles
+     * andere, was die Kette liefert, ist geerbt.*
+     *
+     * @param  array<int, TypedValue>              $values Die eigenen Werte des Knotens, je Kante.
+     * @param  array<string, ResolvedSetting>      $kette  Die Kette des Knotens, je Schlüssel.
+     * @return array{von: string, wert: string}|null
+     */
+    private function sperreFuer(Relation $relation, array $values, array $kette): ?array
+    {
+        if (! $relation->isSetting() || isset($values[$relation->id])) {
+            return null;
+        }
+
+        $angabe = $kette[$relation->name] ?? null;
+
+        if ($angabe === null || ! $angabe->isLocked() || $angabe->value->isNothing()) {
+            return null;
+        }
+
+        $text = (string) ($angabe->value->text ?? '');
+
+        return [
+            'von'        => (string) ($this->nodes->find($angabe->fromOwnerId)?->name ?? ''),
+            'wert'       => $text !== '' ? $text : $angabe->value->describe(),
+            // Woran der geerbte Wert im gezeichneten Auswahlfeld zu erkennen ist: als Wert oder als Beschriftung.
+            'kandidaten' => array_values(array_filter([$text, (string) ($angabe->value->reference ?? '')], static fn (string $k): bool => $k !== '')),
+        ];
+    }
+
+    /**
+     * Die Wertspalte — und bei einem geerbten Wert die Sperre, der Haken und die Herkunft darum herum.
+     *
+     * ⚠️ **Im Konflikt fällt die Sperre von selbst** ([D-688](../../../docs/NewConcept/90-decision-log.md),
+     * [D-689](../../../docs/NewConcept/90-decision-log.md)): *ist der geerbte Wert hier nicht zulässig,
+     * zeigt die Auswahl den Typ-Standard als gewählt und nicht ihn — dann steht die Zeile offen, der
+     * Haken ist gesetzt, und der Satz daneben nennt, was ersetzt wurde. Gelesen wird das am
+     * gezeichneten Steuerelement, weil dort und nirgends sonst die Menge steht, aus der hier gewählt
+     * werden darf.*
+     *
+     * @param list<RenderedField> $gezeichnet
+     * @param array{von: string, wert: string}|null $sperre
+     * @param list<Control> $woerter
+     */
+    private function wertspalteMarkup(array $gezeichnet, ?array $sperre, string $feldName, string $formId, array $woerter): string
+    {
+        if ($gezeichnet === []) {
+            return '';
+        }
+
+        $markup = $gezeichnet[0]->result->markup;
+
+        if ($sperre === null || $feldName === '') {
+            return $markup;
+        }
+
+        // ⚠️ *Nur das **erste** Auswahlfeld ist die Wahl — darunter zeichnet die Zelle die
+        // Untereinstellungen des Gewählten, und die haben ihre eigenen gewählten Einträge. **Automatisch
+        // ist die Zeile, wenn das Auswahlfeld etwas anderes als gewählt zeigt als die Kette liefert**:
+        // dann hat {@see RendererRegistry::chosenFor()} den geerbten Namen verworfen und den
+        // Typ-Standard eingesetzt, und genau der steht als gewählt da.*
+        $automatisch = false;
+
+        if (preg_match('/<select\b[^>]*>.*?<\/select>/s', $markup, $wahl) === 1
+            && preg_match('/<option value="([^"]*)"[^>]*\bselected\b[^>]*>([^<]*)</', $wahl[0], $gewaehlt) === 1
+        ) {
+            $automatisch = ! in_array(trim($gewaehlt[1]), $sperre['kandidaten'], true)
+                && ! in_array(trim(html_entity_decode($gewaehlt[2])), $sperre['kandidaten'], true);
+        }
+        $satz        = $automatisch
+            ? $this->satzAus($woerter, 'automatic', $sperre['wert'])
+            : $this->satzAus($woerter, 'inherited_from', $sperre['von']);
+        $override    = (string) preg_replace('/^([A-Za-z_]+)/', '$1_override', $feldName);
+
+        return '<span class="taxmod-setting-locked' . ($automatisch ? ' taxmod-setting-automatic' : '') . '">'
+            . '<span class="taxmod-setting-locked-control">' . $markup . '</span>'
+            . '<label class="taxmod-override-act">'
+            . '<input type="checkbox" class="taxmod-override" name="' . RenderResult::escape($override) . '" value="1"'
+            . ($automatisch ? ' checked' : '')
+            . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"')
+            . '> ' . RenderResult::escape($this->wortAus($woerter, 'override')) . '</label>'
+            . ' <em class="' . ($automatisch ? 'taxmod-automatic' : 'taxmod-inherited') . '">' . RenderResult::escape($satz) . '</em>'
+            . '</span>';
+    }
+
+    /** Ein Satz des Randes mit `%s` für einen Namen — oder der Name allein, wo der Rand keinen schickte. */
+    private function satzAus(array $woerter, string $schluessel, string $name): string
+    {
+        $vorlage = $this->wortAus($woerter, $schluessel);
+
+        return str_contains($vorlage, '%s') ? sprintf($vorlage, $name) : trim($vorlage . ' ' . $name);
+    }
+
     private function wortAus(array $woerter, string $schluessel): string
     {
         foreach ($woerter as $control) {
@@ -2450,6 +2563,28 @@ final class Rendering implements Presets
                 $renderer->render($node, $context),
                 $renderer->name(),
                 $subject
+            );
+        }
+
+        // ⚠️ **Herkunft in Worten, und das Feld für «hier überschreibe ich»**
+        // ([D-689](../../../docs/NewConcept/90-decision-log.md)). *Der Name des Kettenglieds kommt aus
+        // dem Speicher, weil ein Renderer nichts holt ([D-159](../../../docs/NewConcept/90-decision-log.md));
+        // das Überschreib-Feld heisst wie das Steuerelement, mit `_override` am Wortstamm — so findet
+        // der Rand beide unter derselben Adresse. Ein Aufrufer ohne Vorsatz zeigt nur, und bekommt
+        // kein Feld.*
+        foreach ($drawn as $i => $eine) {
+            $traeger = $kanten[$eine->key] ?? null;
+            $frei    = SettingKey::tryFrom($eine->key) === null && $traeger !== null;
+            $name    = $fieldPrefix === ''
+                ? ''
+                : $fieldPrefix . '[' . ($frei ? $traeger->id : $eine->key) . ']';
+            $von     = $eine->setting->isInherited() && $eine->setting->fromOwnerId !== 0
+                ? (string) ($this->nodes->find($eine->setting->fromOwnerId)?->name ?? '')
+                : '';
+
+            $drawn[$i] = $eine->withOrigin(
+                $von,
+                $name === '' ? '' : (string) preg_replace('/^([A-Za-z_]+)/', '$1_override', $name)
             );
         }
 
@@ -3234,6 +3369,35 @@ final class Rendering implements Presets
             // [D-399](90-decision-log.md)'s second half, which lived on `hide` being able to hide a
             // **field**. **A hidden node has a renderer choice like any other**: it is not shown in the
             // tree, and that says nothing about how it would be drawn.*
+            // ⚠️ **Ein geerbter Renderer, der hier nicht zulässig ist, wird nicht hingenommen**
+            // ([D-687](../../../docs/NewConcept/90-decision-log.md), [D-688](../../../docs/NewConcept/90-decision-log.md)).
+            // *Sein Wort: «ersten zulässigen als Vorgabe aber nur wenn der vererbte nicht mehr
+            // zulässig ist». **Nur der geerbte** — was hier gewählt wurde, bleibt, auch wenn es
+            // ungewöhnlich ist ([D-360](../../../docs/NewConcept/90-decision-log.md)). Die Vorgabe ist
+            // der Typ-Standard, wo er zur Wahl steht, sonst der erste der Liste — und sie ist
+            // **automatisch** markiert, mit dem Namen dessen, was sie ersetzt, damit die Tafel sagen
+            // kann, warum ([D-689](../../../docs/NewConcept/90-decision-log.md)). Nicht geschrieben:
+            // `fromOwnerId` 0 und `setHere` false, wie bei «niemand hat es gesagt».*
+            $geerbterName = (string) ($setting->value->text ?? '');
+
+            if ($setting->isInherited() && $setting->fromOwnerId !== 0 && $geerbterName !== '' && ! isset($options[$geerbterName])) {
+                $typStandard = $this->renderers->defaultFor(
+                    $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject)
+                )->name();
+                $erster = isset($options[$typStandard]) ? $typStandard : (string) (array_key_first($options) ?? '');
+
+                if ($erster !== '') {
+                    $setting = new ResolvedSetting(
+                        $setting->key,
+                        TypedValue::ofText($erster),
+                        0,
+                        false,
+                        true,
+                        $geerbterName
+                    );
+                }
+            }
+
             if ($setting->value->isNothing()) {
                 $inForce = $this->renderers->defaultFor(
                     $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject)

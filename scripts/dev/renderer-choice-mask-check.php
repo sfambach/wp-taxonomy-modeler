@@ -513,6 +513,8 @@ if ($mgIntId === null || $mgForm === null) {
         'id'            => (string) $mgProbe->id,
         '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $mgProbe->id),
         'taxmod_value'  => [(string) $renderKante => (string) $mgForm->id],
+        // ⚠️ *Der Haken «hier überschreibe ich» (D-689): ohne ihn schreibt der Rand eine geerbte Zeile nicht.*
+        'taxmod_value_override' => [(string) $renderKante => '1'],
     ]);
 
     $mgZeile = (int) $wpdb->get_var(
@@ -1050,6 +1052,8 @@ $gewandert = abschicken([
     // ([D-644](../../docs/NewConcept/90-decision-log.md)): *`taxmod_value[<kante>]` ist derselbe Weg,
     // den jede andere Einstellung nimmt.*
     'taxmod_value'  => [(string) $kante => (string) $wahlId],
+    // ⚠️ *Der Haken «hier überschreibe ich» (D-689): ohne ihn schreibt der Rand eine geerbte Zeile nicht.*
+    'taxmod_value_override' => [(string) $kante => '1'],
 ]);
 
 check('der Akt ist durchgelaufen', $gewandert);
@@ -1120,6 +1124,8 @@ abschicken([
     'id'            => (string) $probe->id,
     '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $probe->id),
     'taxmod_value'  => [(string) $kante => (string) $zweiteId],
+    // ⚠️ *Der Haken «hier überschreibe ich» (D-689): ohne ihn schreibt der Rand eine geerbte Zeile nicht.*
+    'taxmod_value_override' => [(string) $kante => '1'],
 ]);
 
 check(
@@ -1197,6 +1203,8 @@ foreach ($angebot as $id => $name) {
         'id'            => (string) $probe->id,
         '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $probe->id),
         'taxmod_value'  => [(string) $kante => (string) $id],
+        // ⚠️ *Der Haken «hier überschreibe ich» (D-689): ohne ihn schreibt der Rand eine geerbte Zeile nicht.*
+        'taxmod_value_override' => [(string) $kante => '1'],
     ]);
 
     [$gezeichneterName, $markup] = gezeichnet($feld->id);
@@ -1725,6 +1733,8 @@ abschicken([
     'id'            => (string) $wurzelId,
     '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $wurzelId),
     'taxmod_value'  => [(string) $kante => (string) $wurzelWahlId],
+    // ⚠️ *Der Haken «hier überschreibe ich» (D-689): ohne ihn schreibt der Rand eine geerbte Zeile nicht.*
+    'taxmod_value_override' => [(string) $kante => '1'],
 ]);
 
 // ⚠️ **Die Gegenprobe zuerst, und ohne sie ist der Rest wertlos:** *ein Knoten, der **nichts** sagt,
@@ -1748,6 +1758,8 @@ abschicken([
     'id'            => (string) $probe->id,
     '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $probe->id),
     'taxmod_value'  => [(string) $kante => (string) $eigenId],
+    // ⚠️ *Der Haken «hier überschreibe ich» (D-689): ohne ihn schreibt der Rand eine geerbte Zeile nicht.*
+    'taxmod_value_override' => [(string) $kante => '1'],
 ]);
 
 // ⚠️ **Und jetzt die Zusage:** *derselbe Knoten mit eigener Aussage behaelt sie. **Naeher schlaegt
@@ -1857,6 +1869,8 @@ if ($vaterWahlId !== 0) {
         'id'            => (string) $vater->id,
         '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $vater->id),
         'taxmod_value'  => [(string) $kante => (string) $vaterWahlId],
+        // ⚠️ *Der Haken «hier überschreibe ich» (D-689): ohne ihn schreibt der Rand eine geerbte Zeile nicht.*
+        'taxmod_value_override' => [(string) $kante => '1'],
     ]);
 
     check(
@@ -1948,7 +1962,9 @@ if ($vaterWahlId !== 0) {
         // *die Einstellungen stehen **unter** der Zeile*). *Hier stand `<td class="taxmod-table-cell">`,
         // und damit fand der Helfer das erste beliebige Steuerelement statt des gesuchten —
         // gemeldet wurde eine Auswahl der Beschriftungsrollen, wo ein Schalter stehen sollte.*
-        foreach (explode('<div class="taxmod-setting">', $markup) as $stueck) {
+        // ⚠️ *Eine gesperrte Zeile trägt eine zweite Klasse (D-689) — der Schnitt geht über das Wort,
+        // nicht über die ganze Klasse.*
+        foreach (preg_split('/<div class="taxmod-setting(?: [^"]*)?">/', $markup) ?: [] as $stueck) {
             if (! str_contains($stueck, 'name="' . $name . '"')) {
                 continue;
             }
@@ -1978,6 +1994,11 @@ if ($vaterWahlId !== 0) {
     // Vaters nicht. **Hier stand «genau gleich», und damit widersprach diese Zusage der Zeile
     // direkt darüber**, die den Pfeil ausdrücklich verlangt.*
     $steuer = static function (string $zelle): string {
+        // ⚠️ *Die Sperre und der Haken (D-689) gehören nicht zum Steuerelement — verglichen wird,
+        // was gezeichnet ist.*
+        $zelle = (string) preg_replace('#<label class="taxmod-override-act">.*?</label>#s', '', $zelle);
+        $zelle = str_replace('<span class="taxmod-setting-locked-control">', '', $zelle);
+
         return preg_match('#<span class="taxmod-setting-value">(.*?)</span></span>|<span class="taxmod-setting-value">(.*?)</span>#s', $zelle, $t)
             ? ($t[1] !== '' ? $t[1] : ($t[2] ?? ''))
             : '';

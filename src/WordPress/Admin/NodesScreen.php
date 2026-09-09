@@ -1804,6 +1804,11 @@ final class NodesScreen
                 new Control('word:own', '', __('own', 'taxmod')),
                 new Control('word:inherited', '', __('inherited', 'taxmod')),
                 new Control('word:settings', '', __('Settings of this use site', 'taxmod')),
+                // ⚠️ **Die drei Sätze der Sperre** ([D-689](../../../docs/NewConcept/90-decision-log.md)): *Herkunft in
+                // Worten, der Haken, und der Grund einer automatischen Wahl — mit `%s` für den Namen.*
+                new Control('word:inherited_from', '', /* translators: %s is the name of the node the value is inherited from. */ __('inherited from %s', 'taxmod')),
+                new Control('word:override', '', __('override', 'taxmod')),
+                new Control('word:automatic', '', /* translators: %s is the inherited value that is not permitted here. */ __('chosen automatically — %s is not permitted here', 'taxmod')),
                 // ⚠️ **Der Auf- und Zuklapper, und er ist ein gewöhnlicher Akt**
                 // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Ein Knopf im Formular der
                 // Zeile: er schickt ab, die Weiterleitung setzt den Umstand, die Seite zeichnet die
@@ -2122,7 +2127,9 @@ final class NodesScreen
         return [
             new Control('word:' . SettingCategory::Display->value, '', __('Display', 'taxmod')),
             new Control('word:' . SettingCategory::Rules->value, '', __('Rules', 'taxmod')),
-            new Control('word:inherited', '', __('inherited', 'taxmod')),
+            new Control('word:inherited_from', '', /* translators: %s is the name of the node the value is inherited from. */ __('inherited from %s', 'taxmod')),
+            new Control('word:override', '', __('override', 'taxmod')),
+            new Control('word:automatic', '', /* translators: %s is the inherited value that is not permitted here. */ __('chosen automatically — %s is not permitted here', 'taxmod')),
         ];
     }
 
@@ -3659,6 +3666,13 @@ final class NodesScreen
         // `renderer`-Kante ist an `Root` erklärt — der Wert landete also **an Root, für alle**, oder
         // gar nicht. Sein Befund: «with without label wurd auch nicht mitgespiechert».*
         $amKnoten = $useSite->isSetting();
+
+        $geltendAnDerStelle = $this->rendering->settingsForUseSites([$useSite])[$useSite->id] ?? [];
+        $hakenAnDerStelle   = isset($_POST[self::ROW_SETTING_FIELD . '_override'][$useSite->id])
+            && is_array($_POST[self::ROW_SETTING_FIELD . '_override'][$useSite->id])
+            ? wp_unslash($_POST[self::ROW_SETTING_FIELD . '_override'][$useSite->id])
+            : [];
+
         foreach ($angaben as $schluessel => $roh) {
             $key = sanitize_key((string) $schluessel);
 
@@ -3683,6 +3697,14 @@ final class NodesScreen
                 : $this->data->settingRelationAtUseSite($useSite, $key);
 
             if ($kante === null || ! $kante->isSetting()) {
+                continue;
+            }
+
+            // ⚠️ **Geerbt wird nur mit dem Haken geschrieben** ([D-689](../../../docs/NewConcept/90-decision-log.md))
+            // — *derselbe Riegel wie in {@see self::saveSettingValues()}, an der zweiten Adresse.*
+            $angabe = $geltendAnDerStelle[$kante->name] ?? null;
+
+            if ($angabe !== null && $angabe->isLocked() && empty($hakenAnDerStelle[$schluessel])) {
                 continue;
             }
 
@@ -3850,6 +3872,17 @@ final class NodesScreen
             $aussen[$relation->id] = $relation;
         }
 
+        // ⚠️ **Eine geerbte Zeile wird nur geschrieben, wenn der Haken «hier überschreibe ich» mitkommt**
+        // ([D-689](../../../docs/NewConcept/90-decision-log.md)). *Vorher schrieb jedes Seitenspeichern
+        // jeden gezeigten Wert als eigenen — der geerbte Renderer wurde beim ersten Speichern zur
+        // Tatsache, und was danach oben geändert wurde, kam hier nie mehr an. Das ist die Kopie, die
+        // [D-402](../../../docs/NewConcept/90-decision-log.md) ausschliesst: «overriding is not adoption».*
+        $knotenSelbst = $this->editor->find($nodeId);
+        $geltendHier  = $knotenSelbst === null ? [] : $this->rendering->settingsForNode($knotenSelbst);
+        $haken        = isset($_POST[self::VALUE_FIELD . '_override']) && is_array($_POST[self::VALUE_FIELD . '_override'])
+            ? wp_unslash($_POST[self::VALUE_FIELD . '_override'])
+            : [];
+
         // ⚠️ *Die vorhandenen Teile in **einem** Zug, nicht je Trägerkante (`CD-7`).*
         $teileJeKante = $this->data->settingPartsOf($nodeId, array_keys($aussen));
 
@@ -3881,6 +3914,15 @@ final class NodesScreen
             $angekommen++;
 
             if (! is_array($roh)) {
+                $angabe = $geltendHier[$kante->name] ?? null;
+
+                if ($angabe !== null && $angabe->isLocked() && empty($haken[$aussenId])) {
+                    // Nicht geschrieben heisst nicht gezählt — «Saved — 1 setting written» wäre gelogen (D-683).
+                    $angekommen--;
+
+                    continue;
+                }
+
                 $this->putOneSettingValue($nodeId, $kante, 0, $kante, (string) $roh);
 
                 continue;

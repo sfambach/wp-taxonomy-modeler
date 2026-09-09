@@ -512,6 +512,9 @@ if ($einstellung === null) {
                 'do'                   => 'put_setting',
                 '_taxmod_nonce'        => wp_create_nonce('taxmod_node_' . $knotenId),
                 'taxmod_field_setting' => [(string) $stelle->id => ['read_only' => $wert]],
+                // ⚠️ *Der Haken «hier überschreibe ich» (D-689): `read_only` ist an der Stelle geerbt,
+                // und ohne den Haken schreibt der Rand eine geerbte Zeile nicht.*
+                'taxmod_field_setting_override' => [(string) $stelle->id => ['read_only' => '1']],
             ];
             $_REQUEST = $_POST;
 

@@ -1297,3 +1297,41 @@ a.taxmod-chosen:hover {
     min-height: 0;
     padding: 0 .4em;
 }
+
+/* ── Geerbt heisst gesperrt, bis jemand «hier überschreibe ich» sagt ────────────────────────────
+ *
+ * ⚠️ D-689, sein Wort: «sperren finde ich gut, aktiv sagen hier überschreibe ich». Der Haken ist das
+ * Sagen. Solange er fehlt, ist das Steuerelement daneben nicht bedienbar — ohne Skript, über `:has()`.
+ * Und wo ein Browser `:has()` nicht kennt, sperrt der Rand trotzdem: er schreibt eine geerbte Zeile
+ * nur, wenn der Haken mitkommt.
+ *
+ * ⚠️ Eine automatische Wahl (D-688) ist frei, mit vorgesetztem Haken und ihrem Grund daneben.
+ */
+.taxmod-setting-locked:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control {
+    opacity: .55;
+    pointer-events: none;
+}
+
+.taxmod-setting-locked-control {
+    display: inline-block;
+}
+
+.taxmod-override-act {
+    font-size: .85em;
+    white-space: nowrap;
+    margin-left: .4em;
+}
+
+.taxmod-override-act input {
+    margin: 0 .2em 0 0;
+    vertical-align: middle;
+}
+
+.taxmod-setting-automatic .taxmod-automatic,
+.taxmod-setting-locked .taxmod-inherited {
+    font-style: italic;
+}
+
+.taxmod-automatic {
+    color: #b32d2e;
+}
