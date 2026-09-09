@@ -189,6 +189,41 @@ flowchart LR
 | **Was der Modellierer verliert** | nichts, was er je benutzt hat: keine Renderer-Knoten wurden von Hand angelegt, umbenannt oder beschriftet — die `select`-Beschriftungen der Renderer (`Labels`, Rolle `select`) kämen aus dem Kode wie jeder andere Software-String (`AR-2`) |
 | **Was es bringt** | ein Ast weniger (37 → 5 Knoten: die Rollen), eine Adresse weniger, kein Satz hinter der Wahl, keine Kette durch den Renderer-Ast; INF-040 und INF-041 erledigen sich ganz; **Form C, D und E sind zusammen ein Modell**: der Kode erklärt, das Modell wertet, die Kante schlägt den Knoten |
 
+### Wie Form E gespeichert wird — eine Eigenschaft, die selbst Eigenschaften hat
+
+**Sein Wort, der Grund von damals:** *«ein renderer hat auch wieder eigenschaften, die es zu setzen
+gilt. das heisst wir haben eigenschaften am programmierten knoten, die wiederum eigenschaften haben. um
+das darzustellen habe ich gedacht, die modellierung wäre am einfachsten, weil wir alle möglichkeiten hier
+schon haben. bin mir jetzt auch noch nicht sicher, wie wir das umsetzen würden, geschweige denn speichern
+in der db.»*
+
+**Die Antwort: flach speichern, die Verschachtelung weiss der Kode.** *Jede Einstellung, die
+irgendeine Klasse erklärt — auch die eines Renderers —, wird vom Gerüst als **eine** Kante an der
+Wurzel geschrieben: `orientation`, `with_label`, `label_role`, `converter`, `validator`, neben `renderer`
+und `read_only`. Zwei Renderer, die denselben Schlüssel nennen (`compact` und `table` nennen beide
+`orientation`), teilen sich die Kante — an einem Knoten gilt ohnehin nur ein Renderer. Der Satz des
+Knotens hält dann nebeneinander:*
+
+| Kante (Wurzel) | Wert im Satz von `Kontakt` | wer den Schlüssel erklärt | wann die Zeile gezeichnet wird |
+|---|---|---|---|
+| `renderer` | `'compact'` — ein Name, Text | das Modell selbst | immer |
+| `orientation` | `'vertical'` — Wahl aus den Kindern von `Orientation` (D-540) | `CompactRenderer`, `TableRenderer` | nur, wenn der gewählte Renderer den Schlüssel nennt |
+| `with_label` | `1` | `CompactRenderer`, `TableRenderer`, `FormRenderer`, `ReferenceRenderer`, … | dito |
+| `label_role` | Verweis auf die Rolle `symbol` — die Rollen bleiben Knoten (D-151) | `ReferenceRenderer`, `ChooserRenderer` | dito |
+| `read_only` | `0` | das Modell selbst | immer |
+
+*Das ist dieselbe Tabelle wie heute (`node_records` + `relation_records`), derselbe Satz je Knoten
+(D-704), dieselbe Kette (D-602), dieselbe Kante als Adresse (D-529, D-667) und dasselbe Überschreiben an
+der Kante (Form C). **Neu ist nur, was es nicht mehr gibt:** kein Satz hinter der Wahl (D-583), kein
+Verweis auf einen Renderer-Knoten (D-684), kein Zwischenknoten, der sagt, wer `with_label` hat — das
+sagt die Klasse. Die Verschachtelung «Renderer → seine Eigenschaften» ist keine Speicherfrage, sondern
+eine Frage, **welche Zeilen der Einstellungsbereich zeichnet**: die des Modells immer, die des gewählten
+Renderers darunter, eingerückt, wie heute — nur aus einer Liste im Kode statt aus einem Ast.*
+
+⚠️ *Der eine Ort, an dem es heute schon genau so ist: `read_only` und `renderer` sind Kanten an der
+Wurzel mit Werten im Satz des Knotens. Form E macht mit `orientation`, `with_label`, `label_role`,
+`converter`, `validator` dasselbe. Es ist kein neues Muster, es ist das erste Muster, auf alle angewandt.*
+
 ⚠️ **Ehrlich zum Preis:** *das ist die grösste Rücknahme seit D-529 — neun Beschlüsse, 23 Knoten, 26
 Kode-Stellen, eine Wanderung. Sie wird nicht an einem Abend gebaut, und sie wird nicht fehlerweise
 gebaut: erst der Beschluss mit seinen Sätzen, dann eine Baureihe mit je einem grünen Lauf, dann fallen
