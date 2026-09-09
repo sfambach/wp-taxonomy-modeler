@@ -226,6 +226,40 @@ Zeile; ein komplexer Wert ist ein Satz mit Klasse und Werten; eine Liste sind me
 Reihenfolge, komplex je auf einen Satz zeigend; die Adresse ist Klasse + Attributname; tief, so weit die
 Klassen gehen, mit der Richtlinie «flach».*
 
+## Kanten sind auch Klassen
+
+**Sein Zusatz:** *«vielleicht sollte man hinzufügen, dass Kanten ja auch Klassen sind und für die das
+Gleiche gilt.»*
+
+*Also gilt das erste Problem für Kanten wörtlich: eine Kante ist ein Objekt einer programmierten
+Klasse — `CompositionEdge`, `AggregationEdge` —, die Klasse erklärt ihre Attribute (`multiplicity`,
+`hide`, `position` und was der Kode sonst an eine Kante schreibt), per Reflection gelesen; die Kante trägt
+Werte in ihrem eigenen Satz; komplexe Attribute und Listen genauso wie am Knoten.*
+
+```mermaid
+classDiagram
+  class Edge {
+    +multiplicity : 0..1 | 1..1 | 0..n | 1..n
+    +hide : bool
+    +position : int
+  }
+  class CompositionEdge
+  class AggregationEdge
+  Edge <|-- CompositionEdge
+  Edge <|-- AggregationEdge
+  class Node {
+    +renderers : list of Renderer
+    +read_only : bool
+  }
+  Edge "verwendet" --> "1" Node : Ziel
+```
+
+**Und damit ist Z1 beantwortet:** *ein Wert «an der Kante» wohnt im Satz der Kante, in derselben Form
+wie im Satz des Knotens. Was die Kante am Ziel überschreibt (`Hausnummer / Int: max = 999`), ist eine
+Zeile in ihrem Satz mit der Adresse des Zielattributs (`IntegerNode.max`) — die Kante trägt Werte zu
+zwei Klassen: zu ihrer eigenen (`CompositionEdge.multiplicity`) und zu der ihres Ziels
+(`IntegerNode.max`). Die Adresse Klasse + Attributname hält beides auseinander.*
+
 ## Das zweite Problem, das er hintanstellt: Überschreiben an der Kante, Erben an Kindern
 
 *«Wenn wir das erste Problem gelöst haben, können wir das leicht lösen.»* — Was dafür festzuhalten ist,
@@ -248,8 +282,8 @@ damit die Lösung des ersten es nicht verbaut:
 Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
 Nächstes das zweite Problem**, in seiner Reihenfolge, je Frage sein Wort:
 
-- **Z1 · Wo wohnt der Wert an der Kante?** In einem Satz, der zur Kante gehört, in derselben Form wie
-  der Satz des Knotens — oder anders?
+- **Z1 · Wo wohnt der Wert an der Kante?** **Beantwortet** — Kanten sind Klassen (siehe oben): im Satz
+  der Kante, in derselben Form, mit der Adresse des Zielattributs.
 - **Z2 · Was schlägt die Kante bei einem komplexen Attribut?** Das ganze Objekt (ein anderer Renderer,
   mit allen seinen Werten neu) — oder auch einen einzelnen Wert darin (`orientation` anders, Renderer
   gleich)?
