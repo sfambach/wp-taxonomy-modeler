@@ -87,6 +87,58 @@ steht schon so: der Wert an der Kante überschreibbar (D-611, D-667, D-685), die
 das wie eine Werteinstellung behandelt wurde.* **Der grüne Zweig ist also näher, als es sich anfühlt:
 Form C heisst «heute, minus die Renderer-Einstellungen als Modellkanten».**
 
+## Die vierte Form — Einstellungen sind Attribute kodierter Knoten
+
+**Sein Wort, der Schritt zurück:** *«die einstellungen wieder als das betrachten was sie sind:
+attribute von codierten knoten, dazu gehören auch die renderer. ein int hat min max im int-format, ein
+double hat min max im double-format, kann beides teil des codes; was ich reinschreibe ist der
+modell-datensatz, also von 0–150 oder 1–10. das gleiche gilt für renderer: ein compact-renderer hat
+horizontal/vertical, with label, nicht mehr; ein reference hat with label, label type … das sind
+eigentlich alles programmierte eigenschaften.»*
+
+**Der Satz, der alles trägt: die *Erklärung* einer Einstellung ist Kode, ihr *Wert* ist Modell.**
+
+```mermaid
+flowchart LR
+  C["Kode: IntType erklärt min, max, step (int) · CompactRenderer erklärt orientation, with_label · ReferenceRenderer erklärt with_label, label_role"]
+  C -->|"das Gerüst schreibt die Erklärung an den kodierten Knoten"| K["Knoten Integer, compact, reference — mit ihren Einstellungskanten"]
+  K -->|"der Modellierer schreibt Werte"| W["Einstellungssätze: Hausnummer / Int max = 999 · Kontakt renderer = compact, orientation = vertical"]
+```
+
+| Sachverhalt | Form D |
+|---|---|
+| **Wer eine Einstellung erklärt** | die Klasse des kodierten Knotens: `IntType` → `min`, `max`, `step` als Ganzzahl; `DecimalType` → dieselben als Dezimalzahl; `TextType` → `display_size`; `CompactRenderer` → `orientation`, `with_label`; `ReferenceRenderer` → `with_label`, `label_role`; `FormRenderer` → `with_label`; `Root` (das Modell selbst) → `renderer`, `read_only`, `validator`, `position` |
+| **Wo die Erklärung im Modell steht** | das Gerüst schreibt sie als Kante an den kodierten Knoten — so, wie `RenderingScaffold` heute die Renderer-Knoten aus den Klassen anlegt ([D-613](NewConcept/90-decision-log.md)). Die Kante bleibt die Adresse des Werts ([D-529](NewConcept/90-decision-log.md), [D-667](NewConcept/90-decision-log.md)) — **erklärt wird sie aber nicht mehr von Hand.** |
+| **Was der Modellierer tut** | Werte schreiben: am Knoten (`Kontakt: renderer = compact`), an der Kante (`Hausnummer / Int: max = 999`, Form C), unter der Wahl (`orientation = vertical`). **Er erklärt keine Einstellungen.** |
+| **Was fällt** | die Kantenart `setting` in der Maske und der Wechsel Feld ↔ Einstellung ([D-618](NewConcept/90-decision-log.md), [D-699](NewConcept/90-decision-log.md), TASK-053, TASK-066); die von Hand angelegten Einstellungskanten (`__es_hoechstens` gibt es nur in Wächtern); die Grenzknoten `integer_min` … als **Knoten** — ihre Werte werden Vorgaben im Kode ([D-707](NewConcept/90-decision-log.md) bleibt in der Sache: die Vorgabe des Typs ist die letzte Stufe, sie steht nur nicht mehr in einem Knoten); `Renderer --converter--> …` und `Renderer --label_role--> …` als geerbte Kanten für alle (INF-041 erledigt sich) |
+| **Was bleibt** | die Einstellungssätze ([D-704](NewConcept/90-decision-log.md)), die Auflösungskette ([D-602](NewConcept/90-decision-log.md)), Sperre und Haken ([D-687](NewConcept/90-decision-log.md)–[D-689](NewConcept/90-decision-log.md)), das Überschreiben an der Kante für Werteinstellungen (Form C), die Wahl des Renderers am Knoten, `allowed` und `position` |
+| **Der Ast `Settings`** | nur noch kodierte Knoten: `Renderer`, `Converter`, `Validator`, `Label roles` mit ihren Blättern — Ziele der erklärten Kanten, alle aus dem Gerüst |
+| **Was es kostet** | je kodierter Klasse eine Zeile «meine Einstellungen»; eine Fassung, die die vier Grenzknoten wegräumt und die Renderer-Kanten umhängt (10 Werte); die Maske verliert eine Auswahl; `field-kind`-Zusagen fallen mit Grund; **Beschlüsse, die zurückgenommen werden:** D-618 (Art umstellen), D-699 (Feld → Einstellung), und D-529 wird enger: «eine Einstellung ist eine Kante — die das Gerüst aus dem Kode erklärt» |
+| **Was es bringt** | eine Wahrheit je Einstellung: der Kode weiss, was ein Typ oder Renderer hat und in welchem Format; das Modell weiss nur Werte. INF-040 und INF-041 fallen zusammen: das Angebot einer Einstellung kommt aus der Klasse, nicht aus den Kindern eines Astes; was eine Klasse nicht erklärt, gibt es nicht — auch keine leere Zeile |
+
+### Wie weit Form D heute schon wahr ist — gemessen am 2026-09-10, auf sein *«überprüfe mal»*
+
+| Satz aus Form D | heute | Befund |
+|---|---|---|
+| Der Modellierer erklärt keine Einstellungen | **wahr** | 19 Einstellungskanten im Modell, **alle 19** aus Gerüsten und Wanderungsskripten (15 Dateien), keine von Hand über die Maske. Die Kantenart `setting` in der Maske (D-618, TASK-053) hat nie eine Kante angelegt, die noch steht. |
+| Die Werte sind Modell | **wahr** | Einstellungssätze (D-704), 19 Renderer-Wahlen, 19 `read_only`, 20 Exponenten, 6 `with_label`, die Kette (D-602), die Sperre (D-687–689) — alles steht und läuft. |
+| Die Erklärung steht am kodierten Knoten | **8 von 19** | `min`/`max`/`step` an `Integer` (IntType), `min`/`max` an `Decimal` (DecimalType), `display_size` an `Text` (TextType), `orientation` an `compact` und `table` — richtig. **4 an `Root`** (`renderer`, `read_only`, `validator`, `position`: das Modell selbst, Form D nennt es so). **3 zu breit** (`converter`, `label_role` am Behälter `Renderer`; `with_label` an `render with label` — INF-041). **4 am Einheitengerüst** (`exponent`, `allowed` an `Prefixes`; `factor`, `offset` an `Without prefix` — kodiert durch `UnitScaffold`, also Gerüst). |
+| Die Klasse erklärt ihre Einstellungen | **nicht wahr** | **Keine** Typ- oder Renderer-Klasse erklärt etwas. Das Wissen ist da, aber verstreut: `SettingKey` kennt 16 Schlüssel mit Form und Format (`min` nimmt den Typ des Trägers — Int bei Int, Dezimal bei Decimal: sein Satz ist heute schon Kode); die Renderer **lesen** ihre Schlüssel ad hoc — `CompactRenderer`: `orientation`, `with_label`; `Slider`/`Spinner`: `min`, `max`, `step`; `Field`/`Textarea`: `display_size`; `Table`: `with_label`. Die Typklassen kennen nichts. |
+| Das Gerüst schreibt die Erklärung aus der Klasse | **nicht wahr** | `RenderingScaffold` schreibt die **Knoten** aus den Klassen, die Kanten kamen aus Einzelskripten. Genau der Schritt, der fehlt. |
+| Die Vorgabe des Typs steht im Kode | **nicht wahr** | sie steht in vier **Knoten** (`integer_min` … `decimal_max`, D-707) mit eigenen Werten. |
+| Das Angebot kommt aus der Klasse | **halb** | `converter`: ja, die Registratur sagt, welche zum Typ passen; `validator`: nein, alle; `label_role`: die Kinder des Ziels. |
+
+**Summe:** *die Werte, die Sätze, die Kette, die Sperre und acht der neunzehn Kanten stehen schon wie
+in Form D. Nicht wahr sind vier Dinge, und sie sind der Bau: (1) je Klasse eine Erklärung ihrer
+Einstellungen, (2) das Gerüst schreibt die Kanten daraus — und hängt `converter`, `label_role`,
+`with_label` an die Renderer, die sie nennen, (3) die vier Grenzknoten werden Vorgaben in `IntType` und
+`DecimalType`, (4) die Kantenart `setting` verlässt die Maske. Der Rest ist Rücknahme im Buch.*
+
+⚠️ **Das ist Form C plus ein Schritt:** *Form C sagt, **wo** ein Wert überschrieben werden darf; Form D
+sagt, **wer** die Einstellung erklärt. Beides zusammen ist ein Modell, das ein Mensch prüfen kann
+(`PR-13`): «Welche Einstellungen hat Int?» — in der Klasse nachlesen. «Was gilt an Hausnummer?» — die
+Kette, an der Kante zuerst.*
+
 ## Was «nur am Knoten» nicht löst
 
 - **Renderer-Einstellungen** sind eine eigene Entscheidung (Wahl A oder B oben), unabhängig davon, ob
@@ -102,8 +154,11 @@ Form C heisst «heute, minus die Renderer-Einstellungen als Modellkanten».**
   die Einstellungen des Werts (`min`, `max`, `read_only`, `display_size`, …); der Renderer wird nur am
   Knoten gewählt, anders zeichnen heisst ein Kind. *(Sein Einwand oben; die Messung stützt ihn.)*
 - [ ] **Form «nur am Knoten»** — nur, wenn er die vielen Knoten in Kauf nimmt; die Messung spricht dagegen.
-- [ ] **Renderer-Einstellungen — Wahl A** (je Renderer erklärt, bleiben Modell) **oder Wahl B**
-  (Zeichnung ist Sache des Renderers; nur `converter` und `validator` bleiben Modell).
+- [ ] **Form D: die Erklärung einer Einstellung ist Kode, ihr Wert ist Modell.** Typen und Renderer
+  erklären ihre Einstellungen in der Klasse, das Gerüst schreibt sie an den kodierten Knoten, der
+  Modellierer schreibt nur Werte. *(Sein Schritt zurück; löst Wahl A/B, INF-040 und INF-041 in einem.)*
+- [ ] Falls nicht Form D: **Renderer-Einstellungen — Wahl A** (je Renderer erklärt, bleiben Modell)
+  **oder Wahl B** (Zeichnung ist Sache des Renderers; nur `converter` und `validator` bleiben Modell).
 - [ ] **Ein leeres Angebot zeichnet keine Zeile**, und das Angebot folgt dem Typ, wo der Kode ihn kennt.
 - [ ] **Reihenfolge:** erst der Beschluss, dann eine Baureihe, dann bauen — nicht fehlerweise.
 
