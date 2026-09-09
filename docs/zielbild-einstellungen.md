@@ -81,6 +81,17 @@ flowchart LR
 | `with_label`, `label_role`, `orientation` | **Zeichnung**, Innenleben des Renderers | heute: Kanten am Renderer-Ast, Werte unter der Wahl | Wahl A: je Renderer erklärt, am Knoten unter der Wahl · Wahl B: Sache des Renderers im Kode, keine Einstellung |
 | `position` (Anordnen geerbter Felder, [D-698](NewConcept/90-decision-log.md)) | Zeichnung des Knotens | `Knoten × Kante` heute; könnte eine Liste am Knoten sein | am Knoten |
 
+⚠️ **Sein Wort dazu, und es ist die Regel selbst:** *«und wenn ich an der kante neue einstellungen für
+einen knoten machen möchte, warum nicht? dann lege ich eine neue knoten-config an mit bezug zur kante,
+und mache kante schlägt knoten.»* — *Das ist der Satz `Knoten × Kante` ([D-667](NewConcept/90-decision-log.md):
+ein Satz mit `relation_id` ist die Konfiguration zur Kante) und die erste Stufe der Kette
+([D-602](NewConcept/90-decision-log.md): die Kante am Knoten schlägt die Vorfahren und den Typ). **Beides
+steht.** Was die Klasse erklärt (Form D), darf an der Kante überschrieben werden (Form C).* ⚠️ **Eine
+Ausnahme trägt heute sein eigenes, vorsichtiges Wort:** *der Renderer an der Kante ist gefallen
+([D-643](NewConcept/90-decision-log.md): «ich bin mir noch nicht sicher, ob wir an der Kante einen
+Renderer brauchen, deshalb würde er da wegfallen»). Ob «warum nicht» auch ihn meint, ist eine eigene
+Frage — siehe die Kreuze.*
+
 **Was diese Form von heute unterscheidet — und nur das:** *die Renderer-Einstellungen. Alles andere
 steht schon so: der Wert an der Kante überschreibbar (D-611, D-667, D-685), die Zeichnung am Knoten
 (D-643). Die Fehler der letzten Tage sassen alle bei der dritten Zeile — beim Innenleben des Renderers,
@@ -160,6 +171,8 @@ Kette, an der Kante zuerst.*
 - [ ] Falls nicht Form D: **Renderer-Einstellungen — Wahl A** (je Renderer erklärt, bleiben Modell)
   **oder Wahl B** (Zeichnung ist Sache des Renderers; nur `converter` und `validator` bleiben Modell).
 - [ ] **Ein leeres Angebot zeichnet keine Zeile**, und das Angebot folgt dem Typ, wo der Kode ihn kennt.
+- [ ] **Auch der Renderer darf an der Kante überschrieben werden** — dann ist D-643 zurückgenommen.
+  Oder er bleibt die eine Einstellung, die nur am Knoten gilt.
 - [ ] **Reihenfolge:** erst der Beschluss, dann eine Baureihe, dann bauen — nicht fehlerweise.
 
 *Nichts auf dieser Seite ist gebaut. Gemessen ist alles.*
