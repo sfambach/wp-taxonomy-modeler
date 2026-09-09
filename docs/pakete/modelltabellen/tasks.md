@@ -3154,7 +3154,12 @@ hier vermerkt; gefragt wird vorher, nicht mittendrin — offen ist heute nichts.
 
 ---
 
-[ ] TASK-085  Die Konfigurationsseite speichert wie WordPress — mit dem Knopf, nicht direkt
+[ ] TASK-086  Die Konfigurationsseite speichert wie WordPress — mit dem Knopf, nicht direkt
+
+⚠️ *Hiess bei ihrer Aufnahme **TASK-085**, eine Nummer, die eine Stunde vorher schon vergeben war
+(«Die Renderer-Diagnose wird von niemandem gefüllt»). **Zwei Läufe am selben Nachmittag, dieselbe
+Nummer** — umnummeriert auf die spätere, weil die frühere zuerst eingecheckt war. Ihr Commit nennt
+noch die alte Nummer; das Verzeichnis hier ist die Quelle.*
 
 **2026-09-09, sein Wunsch und sein Vorbehalt:** *«die admin einstellungs seite kein save braucht es soll
 direkt gespeichert werden. oder hat wp einen anderen standard würde mich da an wp orientieren».*
