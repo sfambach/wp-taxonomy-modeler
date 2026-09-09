@@ -3133,3 +3133,21 @@ mitschreibt, welcher Renderer welche Zelle gemacht hat, und sie durchreicht.
 `RenderResult::usedRelations` zeigt, dass der Kern so etwas schon einmal zurückgibt. **Zu klären ist
 vorher, ob die Diagnose je Datensatz oder je Zelle gemeint war** — der Abschnitt sitzt am Satz, der
 Befund entsteht an der Zelle.*
+
+---
+
+**Baureihenfolge II, 2026-09-09 abends** — sein Auftrag: *«erstelle schon mal eine build reihenfolge
+und wenn ich das go gib arbeite sie komplett ab».* Alles aus den Beschlüssen des Abends, nichts
+begonnen; es startet mit seinem Go.
+
+| | Aufgabe | Beschlüsse | Warum an dieser Stelle |
+|---|---|---|---|
+| 1 | TASK-083 | D-704, D-702, D-707 | **Der Boden für alles Weitere:** die vierte Satzart `settings`, die Ausnahme fällt, die Auflösung bekommt die letzte Stufe (Zielknoten), Fassung 42 trägt die vier Grenzen und räumt die Reste. Erst Wächter, dann Leser, dann Daten. |
+| 2 | TASK-066 Umbau | D-699 | Die Wanderung fällt, der Bestätigungsschritt kommt: warnen, bestätigen, Sätze in den Schatten, Einstellung leer. `field-kind-check` wird umgeschrieben. |
+| 3 | TASK-082 | D-701 | **Derselbe Bestätigungsschritt** wie in 2, an der zweiten Stelle: Verschieben unter `Primitives` — Teile bleiben, Einträge ohne Verwender nach Bestätigung in den Schatten. Neuer Wächter. |
+| 4 | TASK-068 | D-697 | `allowed` an `Prefixes`, die Liste im `settings`-Satz zur geerbten Kante (braucht 1), die Hakenliste, das Angebot aus der gewählten Einheit, die Verengung an der Stelle, der Konflikt nach D-680. Neuer Wächter. |
+| 5 | D-698 | D-698 | Anordnen geerbter Felder am Kind, an derselben Adresse wie 4 — eine Angabe `position`, die zwei Knöpfe. Kommt direkt nach 4, weil es dieselbe Adresse und denselben Satz benutzt. |
+| 6 | TASK-084 | D-706 | **Zuletzt**, damit der neue Lauf durch die Einstellungen die fertige Form misst und nicht zweimal umgeschrieben wird: ein Lauf, dann fallen die elf einzeln. |
+
+*Jede Aufgabe endet mit beiden Läufen grün und einem eigenen Commit. Was blockiert, wird geparkt und
+hier vermerkt; gefragt wird vorher, nicht mittendrin — offen ist heute nichts.*
