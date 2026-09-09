@@ -618,3 +618,21 @@ das es nicht mehr gibt.*
 
 *Was der Fall kostet:* der fest verdrahtete Pfad `C:/Devel/Wordpress/wp-load.php` und das rohe SQL an seinen Sätzen — beides war in der Tabelle oben als offen geführt.
 
+
+### `setting-relation` — 37 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1–4 (`Prefixes.exponent` steht; ein Knoten erbt es) | **entfällt** — Namen aus seinem Bestand, Vorbedingungen |
+| 5 (ein Benutzerwert am Exponenten wird verweigert) | **Abschnitt 2**: «eine Einstellungskante nimmt keinen Benutzerwert an» — an der eigenen |
+| 6–8 (ein gewöhnliches Feld nimmt seinen Wert an) | **entfällt** als Gegenprobe — Abschnitt 7 schreibt sieben Werte in gewöhnliche Felder |
+| 9 (die Exponenten stehen als Vorgabe da) | **entfällt** — eine Aussage über seinen Bestand; `unitvalue-check` rechnet `2.7 kΩ` mit genau diesen Exponenten |
+| 10–11 ×3 (keine Einstellungskante in der Vorschau; die echten Felder stehen) | **Abschnitt 9**, eine Zeile |
+| 12–13 (die Kante ist eine Einstellung; nimmt ihren Datensatz mit) | **Abschnitt 2** — an der Kante aus der Maske |
+| 14–19 (die Tafel fragt das Ziel: bietet sich selbst nicht an; eine Stelle mit diesem Ziel bietet sie an; «wie oft», kein Renderer) | **Abschnitt 2**, drei Zeilen |
+| 20 (die Astwurzel steht direkt unter der Wurzel) | **entfällt** — Gerüst; `scaffold-check` bewacht die Astwurzeln |
+| 21–22 (der Ast trägt Knoten; jeder ist über die Kante als Einstellung ausgewiesen) | **Abschnitt 0**, eine Zeile |
+| 23 (der Aufbau steht) | **entfällt** — immer wahr |
+| 24–30 (Selbstvererbung D-607: Ziel erbt nicht, Geschwister nicht, Fremder schon, Vorfahr behält; die Regel an ihrer Stelle) | **Abschnitt 2**, fünf Zeilen |
+| 31–37 (die Anzeige D-608: gesperrte Zeile bleibt, gekennzeichnet, Grund, kein Eingabefeld; offene Zeile trägt ihres) | **Abschnitt 2**, zwei Zeilen |
+
