@@ -3144,7 +3144,7 @@ Nicht begonnen. Löst den Umbau aus TASK-077 (D-702) mit ab.
 
 ---
 
-[ ] TASK-084  Ein Lauf durch die Einstellungen — die elf Wächter an der Renderer-Wahl werden einer
+[x] TASK-084  Ein Lauf durch die Einstellungen — die elf Wächter an der Renderer-Wahl werden einer — gebaut 2026-09-10
 
 **2026-09-09, sein Beschluss** ([D-706](../../NewConcept/90-decision-log.md)): *«1 ja zusammen».*
 Grundlage: [`waechter-ueberlappung.md`](waechter-ueberlappung.md) — elf Wächter, 489 Zusagen an
@@ -3165,6 +3165,18 @@ und Wurzel, 6 die Tafel der Feldzeile, 7 Werte und Steuerelemente, 8 Konverter, 
 an seinen Knoten (`Kontact`, `Passiv`, `yotta`, `form`), und nichts schreibt mehr mit rohem SQL an
 lebende Sätze. Schritt 3 folgt je Wächter mit eigenem Commit; die Liste steht in
 [`waechter-bestand.md`](waechter-bestand.md) unter «Vollzug am 2026-09-10».*
+
+**Schritte 3 und 4, am selben Tag:** *elf Commits, je einer je Wächter, in dieser Reihenfolge:
+`rendering-scaffold`, `setting-branch-relation`, `converter`, `field-kind`, `setting-lock`, `preview`,
+`setting-relation`, `setting-write`, `page-blocks`, `renderer-choice-mask`, `package7`. Je Zusage steht
+in `waechter-bestand.md`, wo sie im neuen Lauf steht oder warum sie entfällt. `tests/README.md` trägt die
+neue Zeile und nicht mehr die alten; Kode-Stellen, die einen der elf als **heutige** Wache nannten, nennen
+jetzt `einstellungen-check` — die Erzählungen («hat es gemeldet») bleiben, sie sind Geschichte.*
+
+⚠️ **Zwei Funde beim Lesen der elf, beide in der Liste benannt:** *`setting-write` Nr. 15 («der alte Satz
+ist vergessen») mass eine Satztabelle gegen eine Knotennummer und war seit D-684 immer grün; `preview`
+Nr. 19/20 suchte ein Steuerelement, das seit D-520 nicht mehr gezeichnet wird, und war trivial grün.
+**Zwei Zusagen, die nie hätten rot werden können** — genau die Sorte, die er meinte.*
 
 ---
 
@@ -3198,7 +3210,7 @@ begonnen; es startet mit seinem Go.
 | 3 | TASK-082 | D-701 | **Derselbe Bestätigungsschritt** wie in 2, an der zweiten Stelle: Verschieben unter `Primitives` — Teile bleiben, Einträge ohne Verwender nach Bestätigung in den Schatten. Neuer Wächter. |
 | 4 | TASK-068 | D-697 | `allowed` an `Prefixes`, die Liste im `settings`-Satz zur geerbten Kante (braucht 1), die Hakenliste, das Angebot aus der gewählten Einheit, die Verengung an der Stelle, der Konflikt nach D-680. Neuer Wächter. |
 | 5 | TASK-087 | D-698 | Anordnen geerbter Felder am Kind, an derselben Adresse wie 4 — eine Angabe `position`, die zwei Knöpfe. Kommt direkt nach 4, weil es dieselbe Adresse und denselben Satz benutzt. *Gebaut 2026-09-10.* |
-| 6 | TASK-084 | D-706 | **Zuletzt**, damit der neue Lauf durch die Einstellungen die fertige Form misst und nicht zweimal umgeschrieben wird: ein Lauf, dann fallen die elf einzeln. |
+| 6 | TASK-084 | D-706 | **Zuletzt**, damit der neue Lauf durch die Einstellungen die fertige Form misst und nicht zweimal umgeschrieben wird: ein Lauf, dann fallen die elf einzeln. *Gebaut 2026-09-10 — zwölf Commits.* |
 
 *Jede Aufgabe endet mit beiden Läufen grün und einem eigenen Commit. Was blockiert, wird geparkt und
 hier vermerkt; gefragt wird vorher, nicht mittendrin — offen ist heute nichts.*

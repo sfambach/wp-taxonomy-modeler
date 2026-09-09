@@ -744,3 +744,21 @@ das es nicht mehr gibt.*
 
 *Was der Fall kostet:* `package7` rief `Schema::install()` und `seed()` am Anfang und schrieb Einstellungen über den Speicher am gesäten `Integer` vorbei — der neue Lauf nimmt die Maske, wo ein Mensch sie nähme. *Kode-Stellen, die `package7-check` als Wache **nannten**, nennen jetzt `einstellungen-check` (Abfragezahl, `CD-7`).*
 
+
+### Die Zahlen des Vollzugs, gemessen am 2026-09-10
+
+| | vorher (Messung 2026-09-09) | nachher |
+|---|---|---|
+| **Wächterläufe** (`scripts/dev/*-check.php`) | **62** | **56** — elf gefallen, drei dazugekommen (`allowed`, `field-order`, `einstellungen`) |
+| **Zusagen** (Aufrufstellen von `check()` und Verwandten, stumpf gezählt) | **1333** | **1138** |
+| davon in den elf / im einen | **498** in elf Dateien, 396 KB | **227** Aufrufstellen in einer Datei, **242** Zusagen im grünen Lauf |
+
+⚠️ **Die 498 sind nicht die 489 der Messung** — *dort zählte ein Muster, hier zählt `grep` auch die
+Fehlzweige und `$say(`; die Listen je Wächter oben zählen den grünen Lauf (514 mit Schleifen). Was zählt,
+ist die Richtung: **271 Aufrufstellen weniger, und keine Sachaussage verloren, die nicht mit Grund in
+der Liste steht.***
+
+⚠️ **Was die Zusammenlegung *nicht* gebracht hat, und es gehört benannt:** *`einstellungen-check` ist mit
+1300 Zeilen selbst der grösste Lauf des Netzes und braucht rund vier Minuten. Er ist nicht kleiner als
+die elf zusammen waren — er ist **einer**, und wer die Einstellungstafel ändert, macht einen Lauf rot
+statt elf. Das war die Frage, die er gestellt hat: «wäre es dann nicht einer?»*
