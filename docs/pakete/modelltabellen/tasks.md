@@ -2747,9 +2747,11 @@ auch nicht; das Entfernen geht in den Schatten und ist umkehrbar. (2) `simple-ty
 Abschnitt 8: unter `Primitives` und unter `Settings` gibt es keinen Benutzersatz (D-664, D-677,
 D-691) — Fassung 41 hat die drei leeren gestrichen, in den Schatten, mit Änderungsgruppe.*
 
-**Angenommen, nicht entschieden:** *der Satz einer **Verwendungsstelle** (`relation_id ≠ 0`) ist
-`user` (D-674) und liegt unter `Primitives`, wo die Kante auf einen Typ zeigt — er trägt
-Einstellungen, keine Daten des Typs, und bleibt ausgenommen. Zwei davon gibt es. Und «ohne Journal»
+**Entschieden am Abend** ([D-702](../../NewConcept/90-decision-log.md)): *der Satz einer
+Verwendungsstelle ist `default`, nicht `user`. Die Ausnahme `relation_id ≠ 0` fällt — umzubauen, nicht
+begonnen: die zwei Sätze von `Street / H#` umtypen (Fassung 42), der Rand legt solche Sätze als
+`default` an, `simple-type-check` und Fassung 41 ohne die Ausnahme.* *Vorher stand hier: angenommen,
+der Satz einer Verwendungsstelle sei `user` (D-674) und bleibe ausgenommen.* Und «ohne Journal»
 nimmt einen Satz aus, der vor dem Journal der Anlage entstand; die 104 an `Condensator` bleiben liegen,
 bis er sie auf dem Cleanup-Bildschirm entfernt.*
 
