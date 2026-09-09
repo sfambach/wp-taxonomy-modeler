@@ -3090,8 +3090,11 @@ Einstellungskante, unter `Primitives` und `Settings` gibt es keinen `user`-Satz 
 (`defaultRecordOf`, `settingValuesOf`, der Entwicklerschalter aus TASK-069, die Kette in
 `ModelValues`); (4) der Rand legt Einstellungssätze und die Sätze von Verwendungsstellen als
 `settings` an; (5) Fassung 42: 50 Sätze, die nur Einstellungen tragen, werden `settings`, die zwei
-Sätze von `Street / H#` auch — die 3 gemischten mit einem eigenen Wert (D-673) bleiben, bis die
-offene Frage aus D-704 beantwortet ist; (6) die Satzart-Auswahl beim Anlegen (D-651) bietet
+Sätze von `Street / H#` auch — **und nach [D-707](../../NewConcept/90-decision-log.md):** die vier
+Grenzknoten `integer_min`, `integer_max`, `decimal_min`, `decimal_max` tragen ihre Grenze als eigenen
+Wert in einem `default`-Satz, die Kantenwerte `min`/`max` an `Integer` und `Decimal` sowie die Reste
+`72` und `0` gehen in den Schatten, und die Auflösung bekommt ihre letzte Stufe, den Zielknoten;
+(6) die Satzart-Auswahl beim Anlegen (D-651) bietet
 `settings` nicht an — ein Einstellungssatz entsteht beim ersten Schreiben (D-609), nie von Hand.*
 Nicht begonnen. Löst den Umbau aus TASK-077 (D-702) mit ab.
 
