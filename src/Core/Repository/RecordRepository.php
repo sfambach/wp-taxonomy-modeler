@@ -58,7 +58,7 @@ interface RecordRepository
      * Dieselbe Frage für viele Stellen auf einmal (`CD-7`).
      *
      * ⚠️ *Ein Formular fragt alle seine Felder nacheinander. Einzeln gefragt kostet das eine Abfrage
-     * je Feld — genau das misst `package7-check.php`, und genau das hat es gemeldet, als es diese
+     * je Feld — genau das misst `einstellungen-check.php`, und genau das hat es gemeldet, als es diese
      * Methode noch nicht gab: **18 Abfragen für 7 Felder**.*
      *
      * @param  list<int>              $relationIds
@@ -72,7 +72,7 @@ interface RecordRepository
      * ⚠️ **Gebraucht seit [D-602](../../../docs/NewConcept/90-decision-log.md).** *Die Auflösungskette
      * einer Einstellung geht über die **Vorfahren**, und ein Knoten hat so viele Vorfahren, wie er
      * tief steht. Mit {@see self::ofNode()} je Stufe wäre die Zahl der Abfragen die Tiefe des Baums —
-     * genau das N+1, das `CD-7` verbietet und `package7-check.php` misst.*
+     * genau das N+1, das `CD-7` verbietet und `einstellungen-check.php` misst.*
      *
      * @param  list<int>                    $nodeIds
      * @return array<int, list<NodeRecord>> Je angefragte Id genau ein Eintrag, notfalls leer.

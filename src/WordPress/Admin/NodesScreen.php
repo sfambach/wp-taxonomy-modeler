@@ -4859,7 +4859,7 @@ final class NodesScreen
                 // Schreiber an der alten Stelle.*
                 // ⚠️ *Hier standen die Zeilen-Akte `empty_setting` und `reset_setting`. Ihre Knöpfe
                 // sind mit dem Einstellungsbereich gegangen ([D-520](../../../docs/NewConcept/90-decision-log.md)) —
-                // `package7-check.php` misst, dass kein `do[<key>]` mehr auf der Seite steht — und ihr
+                // `einstellungen-check.php` misst, dass kein `do[<key>]` mehr auf der Seite steht — und ihr
                 // Ziel, die `settings`-Tabelle, mit [D-579](../../../docs/NewConcept/90-decision-log.md).*
                 // ⚠️ *An die Kante, seit [D-528](../../../docs/NewConcept/90-decision-log.md). Ein
                 // unbekannter Wert wird verworfen und nicht geraten — die vier Konstanten sind die

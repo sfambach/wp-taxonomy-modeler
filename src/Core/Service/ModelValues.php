@@ -156,7 +156,7 @@ final class ModelValues
      *
      * ⚠️ **Alle Sätze der Kette in *einer* Abfrage** (`CD-7`). *Ein Satz je Vorfahrenstufe wäre eine
      * Abfrage je Stufe — die Tiefe des Baums als Zahl der Läufe, genau das N+1, das
-     * `package7-check.php` misst. {@see Node::ancestorIds()} gibt die Kette auf einmal, sie kostet
+     * `einstellungen-check.php` misst. {@see Node::ancestorIds()} gibt die Kette auf einmal, sie kostet
      * keine eigene Abfrage.*
      *
      * @param  bool $amKopfGesetzt Ob der Knoten selbst «hier gesetzt» heisst — von einer Kante aus nicht.
@@ -438,7 +438,7 @@ final class ModelValues
      * ⚠️ **Alle Kanten des Trägers und seiner Vorfahren in *einer* Abfrage** (`CD-7`). *Der Wert liegt
      * im Satz des Knotens, die Kante gehört aber dem Vorfahren, der sie erklärt hat — `read_only` steht
      * an `Root` und sein Wert an `Integer`. Ohne die Vorfahren wäre die Kante nicht zu finden; eine
-     * Abfrage je Wert wäre das N+1, das `package7-check.php` misst.*
+     * Abfrage je Wert wäre das N+1, das `einstellungen-check.php` misst.*
      */
     private function settingRelation(Node|Relation $subject, int $relationId): ?Relation
     {
@@ -668,7 +668,7 @@ final class ModelValues
     /**
      * Alles, was diese Gegenstände zusammen brauchen, in **einem** Zug holen.
      *
-     * ⚠️ **Ohne das ist die Kette ein N+1** (`CD-7`). *Gemessen an `package7-check.php`, das genau
+     * ⚠️ **Ohne das ist die Kette ein N+1** (`CD-7`). *Gemessen an `einstellungen-check.php`, das genau
      * dafür da ist: **«sieben Felder kosten keine sieben Läufe»** — mit einem Zug je Feld waren es
      * 19 Abfragen für 7 Felder und 35 für 14, also linear mit der Zahl der Felder. Ein Formular fragt
      * alle seine Felder nacheinander, und die Ketten überschneiden sich fast vollständig.*
@@ -697,7 +697,7 @@ final class ModelValues
         // ⚠️ **Die Sätze der Verwendungsstellen in *einer* Abfrage** (`CD-7`,
         // [D-667](../../../docs/NewConcept/90-decision-log.md)). *Einzeln gefragt kostet Stufe 1 der
         // Kette eine Abfrage je Feld — **gemessen 18 für 7 Felder**, gemeldet von
-        // `package7-check.php`, das genau dafür da ist.*
+        // `einstellungen-check.php`, das genau dafür da ist.*
         $this->stellenVorladen($stellen);
 
         $unbekannt = array_values(array_filter(
@@ -1199,7 +1199,7 @@ final class ModelValues
      * @var array<int,list<\Taxmod\Core\Model\NodeRecord>> Knoten-Id => seine Datensätze
      *
      * ⚠️ **Ohne dieses Gedächtnis ist diese Klasse ein N+1, und `CD-7` verbietet das.** *Gemessen von
-     * `package7-check.php`, das genau dafür da ist: **«sieben Felder kosten keine sieben Läufe» —
+     * `einstellungen-check.php`, das genau dafür da ist: **«sieben Felder kosten keine sieben Läufe» —
      * 15 Abfragen für 7 Felder**, sobald die Quelle je Feld einzeln nachsah. Ein Formular fragt alle
      * seine Felder nacheinander, und alle gehören **einem** Knoten: einmal laden reicht.*
      */

@@ -714,3 +714,33 @@ das es nicht mehr gibt.*
 
 *Was der Fall kostet:* 93 KB und der grösste Wächter des Netzes. Seine Zusage «kein Knoten zeichnet nach der Umbenennung anders» über den **ganzen Baum** ist mitgezogen (Abschnitt 13) — sie war der Grund, `rename-survives` am 2026-09-06 zu streichen, und darf nicht ein zweites Mal verlorengehen.
 
+
+### `package7` — 128 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| §0 1–7 (die sieben einfachen Typen stehen im Baum) | **Abschnitt 0**, wörtlich, sieben Zeilen |
+| §1 8–13 (jedes Feld findet den Renderer seines Typs; keins der Rückfall) | **Abschnitt 1** |
+| §2 14–21 (Kästchen mit verborgenem «falsch», Datum, Adresse, Farbe, Name über die Kante, Zahlmuster, kein Muster am Text) | **Abschnitt 1** — 14/15 und 17/18 je in einer Zeile |
+| §3 22 (die Wahl an der Verwendungsstelle schlägt den Typ) | **entfällt** — der Renderer an einer Verwendungsstelle ist gefallen ([D-643](../../NewConcept/90-decision-log.md)); Abschnitt 0 misst am Bestand das Gegenteil: «keine Renderer-Wahl an einer Verwendungsstelle» |
+| §4 23–27, 30–31 (Stufe 2 und 3, näher schlägt ferner, weggenommen fällt zurück) | **Abschnitt 3** — über die Maske gesetzt statt über den Speicher |
+| §4 28–29 (Stufe 1: die Kante schlägt den Typ) | **entfällt** — dieselbe Stufe wie 22, gefallen mit D-643 |
+| §5 32–38 (sieben Werte überleben den Weg hinein und zurück) | **Abschnitt 7**, eine Zeile für sieben |
+| §6 39–40 (datetime in `value_date`, bool in `value_int`) | **Abschnitt 7** |
+| §7 41–44 (Haken, Datum, Adresse, Farbe kommen zurück) | **Abschnitt 7**, eine Zeile |
+| §8 45–47 (nichts wird zurechtgebogen) | **Abschnitt 7**, eine Zeile |
+| §9 48–49 (ein Untertyp ist sein Typ, mit dessen Renderer) | **Abschnitt 1** |
+| §10 50–57 (eine Konstante als Name; bearbeiten ist eine Wahl; ein Ausgang ist keine Entscheidung) | **Abschnitt 7**, zwei Zeilen |
+| §11 58–61 (verborgen wird nicht aufgezählt; nur lesbar wird gezeigt und bleibt ein Link) | **Abschnitt 7** |
+| §12 62–63 (keine Suche; beim Anzeigen fällt keines weg) | **Abschnitt 7**, eine Zeile |
+| §13 64–65 (feste Abfragezahl, doppelt so viele Felder kosten nicht mehr) | **Abschnitt 7**, eine Zeile |
+| §14 66–71 (ein int genau drei Wege; ein Ding unter Model nur die Behälter; bool kein spinner; `checkbox` bekannt; Unbekanntes verweigert; `plain` nicht wählbar) | **Abschnitt 3** |
+| §15 72–76 (Schalter als Schieber; leihender Schlüssel; Wahl als Liste; leere Wahl ist tot; Schalter liest sich als Wahrheitswert) | **Abschnitt 7** — 75 mit einem Zeichner ohne Konverter-Registratur, und das steht dort als Grund |
+| §16 77–81 (Behälter statt Bildschirm; jedes Glied darin; nennt seine Kanten; nur lesbar vorn, Schalter zuletzt) | **Abschnitt 7**, zwei Zeilen — 78 in «jedes Glied» aufgegangen |
+| §17 82–106 (die Seite zeichnet; Grössen am Rahmen; Baum; vier Knöpfe; ausgegraut; Schreibzahl; Papierkorb; Suche ohne Treffer; Detail: Zeilenrenderer, Name, «wie oft», keine doppelte Id, Zeile kein Formular, Knopf nennt Formular, kein `do[]`, Icon-Knöpfe, «not defined», `1..1`, Bildlaufleiste) | **Abschnitt 12** — 93 («survives a node that has attributes») an der Wiese statt an einem Knoten unter `Compositions` |
+| §17b 107–110 (Stylesheet eingereiht, unter plugins, erreichbar, mit Version) | **Abschnitt 12** |
+| §17c 111–126 (table trägt orientation; waagerecht Vorgabe, senkrecht beim Umstellen; Köpfe und Zeilen je Lage; beide Lagen zeigen alles) | **Abschnitt 12**, vier Zeilen — 113 («die gesäte renderer-Kante ist zu finden») steht in Abschnitt 0 |
+| §18 127–128 (Aufräumen; keine Wahl bleibt am `decimal`) | **entfällt** — die Klammer räumt; 128 misst nur, was 127 hinterliesse |
+
+*Was der Fall kostet:* `package7` rief `Schema::install()` und `seed()` am Anfang und schrieb Einstellungen über den Speicher am gesäten `Integer` vorbei — der neue Lauf nimmt die Maske, wo ein Mensch sie nähme. *Kode-Stellen, die `package7-check` als Wache **nannten**, nennen jetzt `einstellungen-check` (Abfragezahl, `CD-7`).*
+

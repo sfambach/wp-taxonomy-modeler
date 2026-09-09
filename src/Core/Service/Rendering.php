@@ -3160,7 +3160,7 @@ final class Rendering implements Presets
         // ⚠️ *Alle Ketten auf einmal, bevor die erste gelesen wird (`CD-7`,
         // [D-602](../../../docs/NewConcept/90-decision-log.md)). Sieben Felder eines Formulars zeigen
         // auf sieben Typen, deren Vorfahren sich fast vollständig überschneiden — je Feld nachzusehen
-        // wäre linear in der Zahl der Felder, und genau das misst `package7-check.php`.*
+        // wäre linear in der Zahl der Felder, und genau das misst `einstellungen-check.php`.*
         $this->model?->preload($relations);
 
         $aus = [];
