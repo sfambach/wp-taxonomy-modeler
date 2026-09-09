@@ -91,6 +91,16 @@ selbst zurückdrehen will, nimmt einen `SAVEPOINT` — ein zweites `START TRANSA
 MySQL stillschweigend alles Bisherige und schriebe genau den Rückstand fest, den die Klammer
 verhindert. Bewacht von `no-model-write-check.php`.
 
+⚠️ **Und ein Lauf zur Zeit — seit dem 2026-09-09 holt die Klammer vor der Transaktion eine benannte
+Sperre** (TASK-073). *Gemessen: `cleanup-screen-check` starb im vollen Randlauf an einem Deadlock, weil
+eine zweite Sitzung in derselben Sekunde Knoten unter demselben Elternknoten anlegte — und meldete
+rot, obwohl seine Aussage stimmte. **Ein zweiter Lauf bekommt die Sperre nicht, sagt es und geht mit
+Rückgabewert 3**, weder grün noch rot, und ohne auf das Ende des ersten zu warten. Die Sperre hängt an
+der Verbindung und fällt mit dem Prozess, auch nach einem Abbruch. Abschnitt 4 desselben Wächters
+misst es an zwei echten Prozessen; die Probe dazu liegt in `lib/klammer-probe.php`.* **Die Schleife
+oben bleibt seriell — die Sperre schützt den Fall, der dort nicht steht: zwei Fenster, zwei
+Sitzungen.**
+
 ⚠️ **Der Befund, der die Regel gekostet hat — gemessen am 2026-09-06, alle drei am selben Tag:** *der
 Eigentümer sah die Einstellung `read_only` **zweimal** an seinem `Integer`; die zweite Kante
 `Integer --read_only--> Constants` stammte aus `package7-check.php`. Drei Knoten `__cv Zahl` aus

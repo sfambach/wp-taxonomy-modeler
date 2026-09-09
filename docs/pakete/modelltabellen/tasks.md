@@ -2450,7 +2450,15 @@ soll), oder eine Schranke im Steuerelement (dann ist es schlicht ein Fehler).*
 
 ---
 
-[ ] TASK-073  Ein schreibender Wächter stirbt an einem parallelen Lauf
+[x] TASK-073  Ein schreibender Wächter stirbt an einem parallelen Lauf — gebaut 2026-09-09
+
+**Zusage:** *die Klammer holt vor `START TRANSACTION` eine benannte Verbindungssperre, drei Sekunden
+Geduld; wer sie nicht bekommt, sagt es und geht mit Rückgabewert 3, ohne auf das Ende des anderen zu
+warten; sie fällt mit der Verbindung, auch nach einem Abbruch; danach bekommt der nächste Lauf sie
+sofort.* Gemessen in Abschnitt 4 von `no-model-write-check` an zwei echten Prozessen, mit
+`lib/klammer-probe.php` als Gegenüber. **Angenommen, nicht entschieden:** die Wahl «ein Lauf zur
+Zeit» statt «jeder Wächter auf eigener Wiese» — sie stand im Lösungsweg und ist so gebaut; eine
+eigene Wiese je Wächter hätte den Fall «derselbe Wächter zweimal» nicht abgedeckt.
 
 **2026-09-09, sein Auftrag:** *«kannst du die korrektur der beiden wächter dort bitte anhängen»*, nach
 dem Befund aus dem Prüflauf desselben Morgens.

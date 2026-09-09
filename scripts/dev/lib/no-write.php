@@ -32,6 +32,16 @@
  * `START TRANSACTION` **bestätigt** in MySQL stillschweigend alles Bisherige — es wäre die Klammer,
  * die den Rückstand festschreibt, den sie verhindern soll.*
  *
+ * ⚠️ **Ein Lauf zur Zeit — die Klammer holt vor der Transaktion eine benannte Sperre** (TASK-073).
+ * *Gemessen am 2026-09-09: `cleanup-screen-check` starb im vollen Randlauf an einem Deadlock, weil
+ * eine zweite Sitzung in derselben Sekunde Knoten unter demselben Elternknoten anlegte. Alle Wächter
+ * arbeiten in derselben Datenbank, und die Klammer hält jede geschriebene Zeile bis zum Prozessende
+ * gesperrt — **zwei Läufe zugleich sind ein Deadlock mit Ansage**, und der, der verliert, meldet rot,
+ * obwohl seine Aussage stimmt.* **Die Sperre ist eine Verbindungssperre und keine Datei:** MySQL gibt
+ * sie beim Trennen von selbst frei, also auch nach einem `exit(1)` in Zeile 200 — genau wie die
+ * Klammer selbst. *Wer sie nicht bekommt, sagt es und geht mit einem eigenen Rückgabewert, statt
+ * minutenlang stumm zu warten: ein Wächter, der hängt, sieht aus wie einer, der hängt.*
+ *
  * @see tests/README.md
  */
 
@@ -44,8 +54,29 @@ if (! isset($GLOBALS['wpdb'])) {
 if (! defined('TAXMOD_NO_WRITE')) {
     define('TAXMOD_NO_WRITE', true);
 
+    /** Der Rückgabewert eines Laufs, der die Sperre nicht bekam — weder grün (0) noch rot (1). */
+    define('TAXMOD_NO_WRITE_BESETZT', 3);
+
     /** @var \wpdb $taxmodKlammerDb */
     $taxmodKlammerDb = $GLOBALS['wpdb'];
+
+    // ⚠️ *Ein paar Sekunden Geduld für den Fall, dass der andere Lauf gerade zu Ende geht — aber
+    // nicht die Minuten, die ein voller Randlauf dauert.* `1` heisst bekommen, `0` abgelaufen,
+    // `NULL` ein Fehler; nur die `1` lässt den Lauf weiter.
+    $taxmodKlammerName = $taxmodKlammerDb->prefix . 'taxmod_waechter';
+    $taxmodKlammerFrei = $taxmodKlammerDb->get_var(
+        $taxmodKlammerDb->prepare('SELECT GET_LOCK(%s, %d)', $taxmodKlammerName, 3)
+    );
+
+    if ((string) $taxmodKlammerFrei !== '1') {
+        fwrite(
+            STDERR,
+            "no-write.php: ein anderer Wächterlauf hält die Sperre `{$taxmodKlammerName}` — "
+            . "ein Lauf zur Zeit. Dieser Lauf hat nichts geprüft.\n"
+        );
+
+        exit(TAXMOD_NO_WRITE_BESETZT);
+    }
 
     // ⚠️ *Ohne `autocommit = 0` beginnt nach einem eigenen `ROLLBACK` des Laufs keine neue
     // Umklammerung, und alles Weitere fiele wieder ungeschützt in den Bestand.*
