@@ -2846,14 +2846,18 @@ mitzählt, ist zu messen, bevor etwas geändert wird.*
 
 ---
 
-[ ] TASK-077  Die Konfigurationsseite — Liste steht, Bau wartet auf eine Entscheidung
+[ ] TASK-080  Die Konfigurationsseite — Liste steht, Bau wartet auf eine Entscheidung
+
+⚠️ *Hiess bis 2026-09-09 versehentlich **TASK-077**, eine Nummer, die schon vergeben war
+(«111 von 113 Benutzersätzen»). Umnummeriert, damit die Baureihenfolge oben eindeutig bleibt:
+**Zeile 7 dort meint die Benutzersätze, nicht diese Seite.**
 
 **2026-09-09, sein Auftrag:** *«wir hatten öffters gesagt wenn etwas ins admin menü muss
 (settings/installation) allerdings fehlen hier die meisten einträge durchsuche das projekt und
 erstelle eine implementierungsliste nur für das installatoins menü, ich würd es lieber in
 configutation umbennen.»*
 
-**Die Liste steht in [`konfigurationsseite.md`](konfigurationsseite.md)** — neun Zeilen, jede mit
+**Die Liste steht in [`konfigurationsseite.md`](konfigurationsseite.md)** — zwölf Zeilen, jede mit
 ihrem Beschluss und dem heutigen Zustand, dazu was ausdrücklich **nicht** dorthin gehört und in
 welcher Reihenfolge gebaut würde.
 
@@ -2867,3 +2871,59 @@ Mechanismus.*
 ⚠️ *Ein gemessener Fehler liegt schon in der Liste und braucht keine Entscheidung:
 **`taxmod_developer` und `taxmod_developer_mode` stehen beide in der Datenbank**, gelesen wird nur
 die erste, die zweite steht auf `0` und täuscht.*
+
+---
+
+**Bauanleitung zur Konfigurationsseite** — sein Auftrag, 2026-09-09: *«all das was beschlossen ist als
+bauanleitung an die taskliste anhängen.»*
+
+⚠️ **Nur was beschlossen ist steht hier.** *Die Zeilen 1 und 5 der Liste
+([`konfigurationsseite.md`](konfigurationsseite.md)) fehlen absichtlich: sie hängen an der offenen
+Frage aus deren Abschnitt 3 — bekommt die Installationsidentität ihre Stufe zurück, oder fällt
+[D-079](../../NewConcept/90-decision-log.md)? **Zeile 11 fehlt ebenfalls**, weil
+[D-368](../../NewConcept/90-decision-log.md) die Zeichen der Bedienelemente als Kode und nicht als
+Konfiguration bestimmt hat. **Zeile 12** wartet auf einen eigenen Beschluss (TASK-081).*
+
+| | Schritt | Beschluss | Was zu tun ist |
+|---|---|---|---|
+| 1 | **Die doppelte Entwickleroption wegräumen** | sein Wort: *«zu 6 ist beides das gleiche»* | `taxmod_developer_mode` löschen. Gelesen wird nur `taxmod_developer`; kein Kode betroffen, `SeedImage` kennt beide Namen schon |
+| 2 | **Umbenennen in `Configuration`** | sein Auftrag 2026-09-09 | Menüeintrag und Überschrift ändern, **Seitenschlüssel `taxmod-settings` lassen** — er ist eine Adresse, kein Name. *Ausser er sagt, die Lesezeichen sind ihm gleich* |
+| 3 | **Die Schema-Fassung zeigen** | `CD-6` | Zwei Zahlen nebeneinander: was liegt, was der Kode erwartet. Nur Anzeige, kein Aufstieg von hier aus |
+| 4 | **Die gesäten Gerüste zeigen** | [D-119](../../NewConcept/90-decision-log.md) | Vier Zeilen aus `taxmod_base_scaffold`, `taxmod_composition_scaffold`, `taxmod_rendering_scaffold`, `taxmod_unit_scaffold` — welches lief, in welcher Fassung |
+| 5 | **Die Rahmen-Ids zeigen** | [D-510](../../NewConcept/90-decision-log.md) | 21 Optionen als Liste: Wurzel, Papierkorb, die sechs Äste, die Rollen. Lesbar, nicht änderbar — `node-binding-check` bleibt der Wächter |
+| 6 | **Die Icon-Liste kuratieren** | [D-251](../../NewConcept/90-decision-log.md), sein Auftrag 2026-09-09 | Je Zeichen ein Haken. Abgehakt heisst *steht im Wähler*; die 39 Schlüssel aus `NodesScreen::ICONS` sind der Vorrat, und der Kode nennt diesen Schritt selbst als den nächsten |
+| 7 | **Backup-Pflicht und Update-Log** | [D-475](../../NewConcept/90-decision-log.md), [D-476](../../NewConcept/90-decision-log.md) | **Ein Stück**, weil D-476 den Rückbau aus dem Backup holt und nicht aus einem Rückwärtslauf. *Gilt für ein Release, nicht für die jetzige Arbeit — sein eigener Zuschnitt* |
+
+⚠️ **Reihenfolge:** *1 bis 5 setzen nichts voraus und sind vier Anzeigen und ein Wegräumen — kein
+neuer Mechanismus. **6 hängt an nichts** und kann jederzeit dazwischen. **7 zuletzt**, weil es das
+einzige Stück mit einem eigenen Mechanismus ist.*
+
+⚠️ **Jeder Schritt endet mit beiden Läufen grün und einem eigenen Commit** (`PR-9`). *Und jeder
+Schritt, der eine Anzeige baut, bekommt seinen Wächter — eine Seite, die eine Option zeigt, ist
+genau die Sorte, die still falsch wird, wenn die Option umzieht.*
+
+---
+
+[ ] TASK-081  Der Entwicklermodus wird einzeln schaltbar
+
+**2026-09-09, sein Auftrag:** *«Welche einstellungen gibt es aktuell für den developer mode? wir
+sollten diese einzeln unter schaltbar machen. wenn developer mode aktiv ist»*
+
+**Gemessen: ein Haken, zwei Anzeigen, eine zugesagte dritte.** *Der Schreibzähler am Knotennamen
+(`TreeNodeRenderer`), die Renderer-Diagnose unter einem Datensatz (`RecordRenderer`), und der
+Einstellungssatz im Datensatzblock aus `TASK-069`, der noch nicht gebaut ist.*
+
+⚠️ **Wartet auf einen Beschluss, und zwar auf einen, der [D-248](../../NewConcept/90-decision-log.md)
+verfeinert** (`PR-3`). *D-248 hat den Testmodus im Entwicklermodus aufgehen lassen — «two modes that
+overlap are two things to explain and two ways to be in a surprising state» —, und der Kode zitiert
+das an Ort und Stelle: «D-248 says there is **one** mode for that rather than a switch per
+diagnostic». **Sein Auftrag widerruft das nicht:** die Einzelhaken wirken nur **innerhalb** des
+Modus, also gibt es weiterhin einen einzigen Zustand, in dem man überrascht werden kann. Aber die
+Zeile im Kode wird damit falsch und muss mit dem Beschluss fallen — das ist eine sichtbare
+Konzeptänderung, keine nebenbei.*
+
+⚠️ **Und ein Ort ist zu wählen:** *drei Haken sind drei Tatsachen über die Installation — also
+dieselbe Frage wie in TASK-080s Abschnitt 3. Solange die offen ist, wären es drei weitere
+WordPress-Optionen.*
+
+**Nach `TASK-069`**, nicht davor, sonst wird zweimal an derselben Stelle gebaut.
