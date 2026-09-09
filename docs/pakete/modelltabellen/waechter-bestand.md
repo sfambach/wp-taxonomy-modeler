@@ -590,3 +590,13 @@ das es nicht mehr gibt.*
 | 16–19 (mit Haken: Einstellung, Sätze im Schatten, beginnt leer) | **Abschnitt 10**, eine Zeile |
 | 20–22 (Einstellung → Feld: der Einstellungssatz bleibt) | **Abschnitt 10**, eine Zeile |
 
+
+### `setting-lock` — 24 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1–8 (die Eltern tragen `compact`; das Kind gesperrt, nicht automatisch, Haken ungesetzt, Herkunft in Worten, kein Pfeil, `compact` gewählt) | **Abschnitt 4**, vier Zeilen |
+| 9–12 (ohne Haken nichts, mit Haken eigen; nicht mehr gesperrt, kein Haken) | **Abschnitt 4**, drei Zeilen |
+| 13–20 (`Integer` wählt `compact` und zeichnet damit; das Kind automatisch, nicht gesperrt, Haken gesetzt, Satz nennt den Ersatz, Typ-Standard gewählt und gilt) | **Abschnitt 5**, vier Zeilen — an `__es Zahl` statt am lebenden `Integer` |
+| 21–24 (dieselbe Sperre in der Tafel: Haken, Herkunft, ohne Haken geerbt, mit Haken gesetzt) | **Abschnitt 6**, drei Zeilen |
+
