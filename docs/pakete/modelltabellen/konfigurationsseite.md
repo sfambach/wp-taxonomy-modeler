@@ -112,6 +112,7 @@ Stelle gelesen und als Umstand — nicht als Einstellung — in den Render-Konte
 | a | **Der Schreibzähler** neben dem Knotennamen im Baum | `TreeNodeRenderer` |
 | b | **Die Renderer-Diagnose** unter einem Datensatz — *wer hat was gezeichnet* | `RecordRenderer` |
 | c | **Der Einstellungssatz im Datensatzblock** — `TASK-069`, sein Wort 2026-09-07 | **noch nicht gebaut**, aber schon diesem Haken zugesagt |
+| d | **`show the root`** — der Ansichtsschalter im Baum, sein Nachtrag 2026-09-09 | `NodesScreen`, heute **ohne Bedingung** sichtbar |
 
 ⚠️ **Sein Wunsch kehrt einen Beschluss um, und das gehört gesagt.**
 [D-248](../../NewConcept/90-decision-log.md) hat den Testmodus im Entwicklermodus aufgehen lassen,

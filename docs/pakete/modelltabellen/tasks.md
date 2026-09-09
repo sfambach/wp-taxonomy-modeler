@@ -2748,7 +2748,31 @@ Eingang, nicht hierher.*
 
 ---
 
-[ ] TASK-078  Geerbt ist sichtbar, und ein unzulässiger geerbter Wert ist ein Konflikt — für jede Einstellung
+[x] TASK-078  Geerbt ist sichtbar, und ein unzulässiger geerbter Wert ist ein Konflikt — für jede Einstellung — gebaut 2026-09-09
+
+**Zusage** (`setting-lock-check`, 24 Aussagen, und `InheritedSettingLockTest` im Kern): *eine geerbte
+Einstellung steht gesperrt da, mit «inherited from ‹Name›» in Worten und einem Haken «override»;
+ohne Haken schreibt das Seitenspeichern die Zeile nicht, mit Haken wird sie ein eigener Wert; ein
+geerbter Renderer, der hier nicht zulässig ist, gilt nicht — der Typ-Standard zeichnet, die Zeile
+steht offen mit gesetztem Haken und dem Satz «chosen automatically — ‹compact› is not permitted
+here»; hier Gewähltes bleibt, auch wenn es unzulässig ist (D-360). Beides an beiden Adressen
+(D-685): Wertspalte am Knoten und Tafel unter der Feldzeile.*
+
+**Was beim Bauen anders wurde als im Lösungsweg, mit Grund:** *(1) **Kein zweiter Seitenaufruf und
+kein Skript** — der Haken ist das «Überschreiben», das Stilblatt sperrt das Steuerelement daneben über
+`:has()`, und der Rand schreibt eine geerbte Zeile ohne Haken nicht, was auch immer im Steuerelement
+steht. Damit ist die Sperre auch dort eine, wo das Stilblatt nichts kann. (2) **Gemessen, warum es
+den Fehler gab:** das Seitenspeichern schrieb **jeden** gezeigten Wert als eigenen — der geerbte
+Renderer wurde beim ersten Speichern zur Tatsache, und was danach oben geändert wurde, kam nie mehr
+an. Das ist die Kopie, die D-402 ausschliesst; der Riegel schliesst sie. (3) **Die Zulässigkeit misst
+der Kern an einer Stelle**, {@see \Taxmod\Core\Renderer\RendererRegistry::permits()}, dieselbe Regel,
+nach der angeboten wird; der Abstieg und die Tafel fragen beide dort. (4) **Die Untereinstellungen
+eines geerbten Renderers** sind nicht gesperrt — sie gehören dem Satz des Knotens (D-684) und dürfen
+hier gesetzt werden (D-682); ihre ↑-Marke bleibt.*
+
+*Nicht gebaut und benannt: die Zulässigkeit gilt heute für Auswahlen (Renderer); ein geerbter
+**Zahlenwert** an einem Typ, der ihn nicht fassen kann, ist noch kein Konflikt. Der Fall braucht erst
+ein Beispiel, das es im Bestand gibt.*
 
 **2026-09-09, sein Befund und seine Regel** ([D-687](../../NewConcept/90-decision-log.md)): *«es
 entstehen immer wieder fehler dadurch das in der gui eine default schalterstellung steht diese aber
@@ -2912,6 +2936,22 @@ sollten diese einzeln unter schaltbar machen. wenn developer mode aktiv ist»*
 **Gemessen: ein Haken, zwei Anzeigen, eine zugesagte dritte.** *Der Schreibzähler am Knotennamen
 (`TreeNodeRenderer`), die Renderer-Diagnose unter einem Datensatz (`RecordRenderer`), und der
 Einstellungssatz im Datensatzblock aus `TASK-069`, der noch nicht gebaut ist.*
+
+**Dazu, sein Nachtrag am selben Tag:** *«das show root node aus der baumansicht sollte auch in den
+developer mode wandern.»*
+
+⚠️ **Gemessen: `show the root` ist heute ein Ansichtsschalter neben `show hidden`**, über die
+Adresse `taxmod_root=1`, ohne jede Bedingung sichtbar. **Wandern heisst hier nicht umziehen:** der
+Schalter bleibt, wo er ist — er ist ein Ansichtsschalter und kein gespeicherter Vorzug, sein Wort
+dazu steht im Kode: *«wenn ich dem Wurzelknoten Felder geben möchte, muss ich ihn **kurzzeitig**
+sehen können»* ([D-273](../../NewConcept/90-decision-log.md)). **Er wird nur noch angeboten, wenn
+der Entwicklermodus an ist** — also ein vierter Haken in derselben Liste, und die Zeile im Kode, die
+ihn ausdrücklich neben `showsHidden()` stellt, bleibt richtig.
+
+⚠️ *Offen und nicht von mir zu entscheiden: **`show hidden` steht direkt daneben und ist dieselbe
+Sorte.** Er hat nur die Wurzel genannt. Wenn beide gehen sollen, ist es ein Wort und dieselbe Zeile
+Kode; wenn nur die Wurzel geht, stehen künftig zwei gleich aussehende Schalter unter verschiedenen
+Bedingungen nebeneinander — das ist die Art Unterschied, die man später nicht mehr erklären kann.*
 
 ⚠️ **Wartet auf einen Beschluss, und zwar auf einen, der [D-248](../../NewConcept/90-decision-log.md)
 verfeinert** (`PR-3`). *D-248 hat den Testmodus im Entwicklermodus aufgehen lassen — «two modes that
