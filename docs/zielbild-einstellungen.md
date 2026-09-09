@@ -52,6 +52,39 @@ flowchart LR
 | **Wächter** | `einstellungen-check` 252, `allowed` 15, `field-order` 23 | `einstellungen-check` verliert Abschnitt 6 (Einstellungsbereich unter der Feldzeile, ~20 Zusagen) und die Zeilen unter der Wahl in Abschnitt 4 (~15); `allowed` und `field-order` messen die neue Adresse | jede gefallene Zusage mit Grund in `waechter-bestand.md` (`PR-9`) |
 | **Was der Modellierer verliert** | «dieses Feld ist hier read_only, dort nicht» ohne einen Knoten anzulegen | dafür ein Kind: `Kontakt` → `Kontakt, nur lesbar`. Umständlich, sein Wort — aber **eine** Regel, die jeder prüfen kann (`PR-13`) | — |
 
+## Die dritte Form — Wert an der Kante, Zeichnung am Knoten
+
+**Sein Einwand, nachdem die zwei Formen standen:** *«sagen wir mal int bietet sein min max selbst und
+jeder knoten der von int erbt bekommt auch diese einstellungen, aber diese sind attribute des knotens,
+dann müsste ich einen knoten für jede verwendung anlegen die davon abweicht, das hört sich nach vielen
+knoten an, das haben wir heute alles an der kante … wir haben das schon: eine knoten-tabelle mit
+kanten-id — knoten-einstellung überschrieben durch kante. somit haben wir einstellungen zu int und
+einstellungen zu kante hausnummer / int.»*
+
+⚠️ **Und die Messung stützt ihn:** *die drei Sätze an einer Kante tragen `read_only` und
+`display_size` — Einstellungen des **Werts**. Kein einziger trägt eine Zeichnung.* **Der Schnitt liegt
+also nicht zwischen «Knoten» und «Kante», sondern zwischen «Wert» und «Zeichnung»:**
+
+```mermaid
+flowchart LR
+  T["Int: min, max, step (eigene Werte, D-707)"] -->|erbt| H["Kante Hausnummer / Int: max = 999"]
+  T -->|erbt| A["Kante Alter / Int: max = 150"]
+  K["Knoten Kontakt: renderer = form"] -. "anders zeichnen = Kind mit eigener Wahl" .-> K2["Kind"]
+```
+
+| Einstellung | gehört zum | wohnt | überschreibbar an |
+|---|---|---|---|
+| `min`, `max`, `step`, `display_size`, `read_only`, `validator`, `converter`, `allowed` | **Wert** | am Typ (Zielknoten, [D-707](NewConcept/90-decision-log.md)) und in der Kette | **der Kante** (`Knoten × Kante`, [D-667](NewConcept/90-decision-log.md)) — Hausnummer und Alter sind zwei Kanten auf einen Typ |
+| `renderer` | **Zeichnung** | am Knoten | nur am Knoten ([D-643](NewConcept/90-decision-log.md) hat die Kante schon ausgeschlossen) — anders zeichnen heisst ein Kind |
+| `with_label`, `label_role`, `orientation` | **Zeichnung**, Innenleben des Renderers | heute: Kanten am Renderer-Ast, Werte unter der Wahl | Wahl A: je Renderer erklärt, am Knoten unter der Wahl · Wahl B: Sache des Renderers im Kode, keine Einstellung |
+| `position` (Anordnen geerbter Felder, [D-698](NewConcept/90-decision-log.md)) | Zeichnung des Knotens | `Knoten × Kante` heute; könnte eine Liste am Knoten sein | am Knoten |
+
+**Was diese Form von heute unterscheidet — und nur das:** *die Renderer-Einstellungen. Alles andere
+steht schon so: der Wert an der Kante überschreibbar (D-611, D-667, D-685), die Zeichnung am Knoten
+(D-643). Die Fehler der letzten Tage sassen alle bei der dritten Zeile — beim Innenleben des Renderers,
+das wie eine Werteinstellung behandelt wurde.* **Der grüne Zweig ist also näher, als es sich anfühlt:
+Form C heisst «heute, minus die Renderer-Einstellungen als Modellkanten».**
+
 ## Was «nur am Knoten» nicht löst
 
 - **Renderer-Einstellungen** sind eine eigene Entscheidung (Wahl A oder B oben), unabhängig davon, ob
@@ -63,8 +96,10 @@ flowchart LR
 
 ## Was zu entscheiden ist — je ein Kreuz
 
-- [ ] **Das Überschreiben an der Kante fällt.** Einstellungen wohnen nur am Knoten; anders zeichnen
-  heisst ein Kind mit eigener Wahl. `allowed` und `position` ziehen an den Knoten um.
+- [ ] **Form C: Wert an der Kante, Zeichnung am Knoten.** Das Überschreiben an der Kante bleibt für
+  die Einstellungen des Werts (`min`, `max`, `read_only`, `display_size`, …); der Renderer wird nur am
+  Knoten gewählt, anders zeichnen heisst ein Kind. *(Sein Einwand oben; die Messung stützt ihn.)*
+- [ ] **Form «nur am Knoten»** — nur, wenn er die vielen Knoten in Kauf nimmt; die Messung spricht dagegen.
 - [ ] **Renderer-Einstellungen — Wahl A** (je Renderer erklärt, bleiben Modell) **oder Wahl B**
   (Zeichnung ist Sache des Renderers; nur `converter` und `validator` bleiben Modell).
 - [ ] **Ein leeres Angebot zeichnet keine Zeile**, und das Angebot folgt dem Typ, wo der Kode ihn kennt.
