@@ -383,6 +383,91 @@ sagt die Auflösung.*
   **Dasselbe für die Kante:** *Weg A — die Kantenzeile trägt die Klasse (`CompositionEdge`), ihre Werte
   hängen an ihr. Weg B — die Kante hat einen Satz.*
 
+  **Das Datenmodell zu Weg A** — *die Zeile kennt drei Sorten Träger; ein Satz gibt es nur für
+  Objekte, die in einem Attribut stecken:*
+
+  ```mermaid
+  erDiagram
+    KNOTEN ||--o{ ZEILE : "trägt (traeger_art = knoten)"
+    KANTE ||--o{ ZEILE : "trägt (traeger_art = kante)"
+    SATZ ||--o{ ZEILE : "trägt (traeger_art = satz)"
+    ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
+    KNOTEN {
+      id id
+      string klasse "ContactNode, IntegerNode …"
+      string name
+      ref vater
+      int stelle
+    }
+    KANTE {
+      id id
+      string klasse "CompositionEdge, AggregationEdge …"
+      ref von_knoten
+      ref zu_knoten
+    }
+    SATZ {
+      id id
+      string klasse "CompactRenderer, RangeValidator …"
+    }
+    ZEILE {
+      id id
+      string traeger_art "knoten | kante | satz"
+      ref traeger_id
+      string klasse "Adresse, Teil 1"
+      string attribut "Adresse, Teil 2"
+      int position "0, oder Stelle in der Liste"
+      bool wert_bool
+      int wert_int
+      decimal wert_decimal
+      string wert_text
+      ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
+    }
+  ```
+
+  **Das Datenmodell zu Weg B** — *jede Zeile hängt an einem Satz; nur der Satz kennt seinen Träger:*
+
+  ```mermaid
+  erDiagram
+    KNOTEN ||--o| SATZ : "hat (traeger_art = knoten), entsteht beim ersten Wert"
+    KANTE ||--o| SATZ : "hat (traeger_art = kante)"
+    SATZ ||--o{ SATZ : "hält als Objekt (traeger_art = satz)"
+    SATZ ||--o{ ZEILE : "trägt"
+    ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
+    KNOTEN {
+      id id
+      string name
+      ref vater
+      int stelle
+    }
+    KANTE {
+      id id
+      ref von_knoten
+      ref zu_knoten
+    }
+    SATZ {
+      id id
+      string klasse "ContactNode, CompositionEdge, CompactRenderer …"
+      string traeger_art "knoten | kante | satz"
+      ref traeger_id
+    }
+    ZEILE {
+      id id
+      ref satz_id
+      string klasse "Adresse, Teil 1"
+      string attribut "Adresse, Teil 2"
+      int position "0, oder Stelle in der Liste"
+      bool wert_bool
+      int wert_int
+      decimal wert_decimal
+      string wert_text
+      ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
+    }
+  ```
+
+  *Der eine sichtbare Unterschied: in A steht die Klasse am Knoten und an der Kante, die Zeile hat
+  `traeger_art`; in B steht die Klasse nur am Satz, die Zeile hat nur `satz_id`. In A gibt es Sätze nur
+  für Objekte in Attributen, in B für alles, was Werte trägt.*
+
   Der Entwurf oben nimmt Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat. Es ist seine
   Wahl.
 - **D2 · Was ist der Wert einer Wahl aus Kindern** (`orientation` = einer von zwei; `label_role` = eine
