@@ -3151,3 +3151,21 @@ begonnen; es startet mit seinem Go.
 
 *Jede Aufgabe endet mit beiden Läufen grün und einem eigenen Commit. Was blockiert, wird geparkt und
 hier vermerkt; gefragt wird vorher, nicht mittendrin — offen ist heute nichts.*
+
+---
+
+[ ] TASK-085  Die Konfigurationsseite speichert wie WordPress — mit dem Knopf, nicht direkt
+
+**2026-09-09, sein Wunsch und sein Vorbehalt:** *«die admin einstellungs seite kein save braucht es soll
+direkt gespeichert werden. oder hat wp einen anderen standard würde mich da an wp orientieren».*
+
+⚠️ **Der Standard von WordPress ist der Knopf.** *Einstellungsseiten im Verwaltungsbereich schicken
+ein Formular an `options.php` und haben «Änderungen speichern» — die Options-API kennt nichts anderes.
+Direkt gespeichert wird in WordPress an zwei Stellen, und beide sind keine Einstellungsseiten: der
+Customizer (Vorschau, dann «Veröffentlichen») und der Block-Editor (Autosave eines Entwurfs, den man
+danach ausdrücklich veröffentlicht).* **Mit seinem Vorbehalt «würde mich da an wp orientieren» bleibt
+der Knopf**, und die Seite sieht aus wie jede andere Einstellungsseite in WordPress.
+
+⚠️ *Gehört zur Konfigurationsseite und damit zu TASK-080, die bei der anderen Sitzung liegt — hier
+nur festgehalten, damit die Frage nicht ein zweites Mal gestellt wird. Nichts zu bauen, solange die
+Seite den Knopf hat.*
