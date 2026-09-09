@@ -3037,3 +3037,22 @@ dieselbe Frage wie in TASK-080s Abschnitt 3. Solange die offen ist, wären es dr
 WordPress-Optionen.*
 
 **Nach `TASK-069`**, nicht davor, sonst wird zweimal an derselben Stelle gebaut.
+
+---
+
+[ ] TASK-082  Verschieben unter `Primitives` nimmt die Sätze mit — Teile bleiben, Einträge ohne Verwender nach Bestätigung in den Schatten
+
+**2026-09-09, sein Beschluss** ([D-701](../../NewConcept/90-decision-log.md)): *«Fall 1 bleibt ganz,
+Fall 2 wird gezeigt der benutzer muss bestätigen».*
+
+⚠️ *Gemessen: das Verschieben zieht heute nur den Knoten um. Sätze, auf die ein Verwendersatz zeigt
+(`value_ref_kind = record`), bleiben richtig, weil der Verweis die Adresse ist (D-541). Sätze ohne
+Verweis bleiben liegen, bis `simple-type-check` sie meldet.*
+
+**Zu bauen:** *(1) beim Verschieben eines Knotens unter `Primitives` (oder `Settings`, D-691) zählt
+der Rand die `user`-Sätze ohne Verwender; gibt es welche, geschieht das Verschieben nicht sofort —
+die Seite nennt die Zahl und verlangt eine Bestätigung, dieselbe Form wie der Artwechsel aus D-699;
+(2) mit der Bestätigung gehen sie in den Schatten ({@see DataEntry::removeRecord}), dann wandert der
+Knoten; (3) ein Wächter: ein Knoten mit einem Eintrag ohne Verwender und einem Teil mit Verwender
+wandert unter `Primitives` — der Teil steht noch, der Eintrag liegt im Schatten, und ohne Bestätigung
+ist nichts passiert.* Nicht begonnen.
