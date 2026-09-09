@@ -600,3 +600,21 @@ das es nicht mehr gibt.*
 | 13–20 (`Integer` wählt `compact` und zeichnet damit; das Kind automatisch, nicht gesperrt, Haken gesetzt, Satz nennt den Ersatz, Typ-Standard gewählt und gilt) | **Abschnitt 5**, vier Zeilen — an `__es Zahl` statt am lebenden `Integer` |
 | 21–24 (dieselbe Sperre in der Tafel: Haken, Herkunft, ohne Haken geerbt, mit Haken gesetzt) | **Abschnitt 6**, drei Zeilen |
 
+
+### `preview` — 33 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1, 5, 21 (ein Modell mit Sätzen, ein Datentyp, ein Knoten ohne Sätze wurden gefunden) | **entfällt** — Kandidatensuche im Bestand; die Wiese hat, was sie braucht |
+| 2–4 (das Band, drei Seiten, «Filled from») | **Abschnitt 9** |
+| 6–9 (ein Datentyp zeigt sich selbst, zwei Seiten, «Add as example» im Bearbeiter, nicht beim Leser) | **Abschnitt 9**, zwei Zeilen |
+| 10–11 (die `read_only`-Kante steht; ein Satz zum Hineinschreiben) | **entfällt** — Vorbedingungen, und das Hineinschreiben war rohes SQL an einem lebenden Satz |
+| 12–15 (ohne Kennzeichen gezeichnet, nichts ausgelassen; mit hide ausgelassen, mit Namen) | **Abschnitt 9**, drei Zeilen |
+| 16–18 (`read_only` lässt die Zeile stehen, meldet sie, verbirgt nichts) | **Abschnitt 9**, eine Zeile |
+| 19–20 (hide setzt den Renderer nicht ausser Kraft — an `yotta`) | **Abschnitt 9**, eine Zeile an `__es Zahl`; die erste der zwei war trivial grün, weil das Steuerelement, das sie suchte, nicht mehr gezeichnet wird |
+| 22–27 (Vorgaben genannt; Beispielsatz zeichnet und sagt es; echte Daten schlagen ihn) | **Abschnitt 9**, drei Zeilen |
+| 28–29 (zeichnen schreibt nichts) | **Abschnitt 9**, eine Zeile |
+| 30–33 (help-Beschriftung: ein Fragezeichen mehr, Satz im Markup, nach dem Wegnehmen fort) | **Abschnitt 9**, zwei Zeilen |
+
+*Was der Fall kostet:* der fest verdrahtete Pfad `C:/Devel/Wordpress/wp-load.php` und das rohe SQL an seinen Sätzen — beides war in der Tabelle oben als offen geführt.
+
