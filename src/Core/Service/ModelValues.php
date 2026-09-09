@@ -1077,6 +1077,39 @@ final class ModelValues
     }
 
     /**
+     * Was der Knoten **selbst** in seinem Einstellungssatz zu inneren Kanten gesagt hat — je Kante der Wert.
+     *
+     * ⚠️ **Sein Fund am 2026-09-10 an `Prefixes`:** *`label_role` auf «symbol» gespeichert, die Seite zeigte
+     * danach «leer». Seit [D-684](../../../docs/NewConcept/90-decision-log.md) ist die Renderer-Wahl ein
+     * Verweis auf den Knoten und kein Teil mehr — und die Zeilen unter der Wahl (`converter`, `label_role`,
+     * `with_label`) wurden ohne Werte gezeichnet, weil es keinen Teil gab, aus dem sie hätten kommen
+     * können. **Die Werte liegen im Einstellungssatz des Knotens**, dort schreibt
+     * {@see DataEntry::putSettingAt()} sie hin; hier werden sie gelesen.*
+     *
+     * @return array<int, TypedValue> Kanten-Id => Wert; ohne Verweise auf Sätze, ohne «nichts».
+     */
+    public function ownSettingValuesOf(int $nodeId): array
+    {
+        $werte = [];
+
+        foreach ($this->saetzeVon($nodeId) as $satz) {
+            if ($satz->recordType !== RecordType::Settings || $satz->relationId !== 0) {
+                continue;
+            }
+
+            foreach ($this->valuesOf($satz->id) as $wert) {
+                if ($wert->value->isNothing() || $wert->value->referenceSpace === ReferenceSpace::Record) {
+                    continue;
+                }
+
+                $werte[$wert->relationId] = $wert->value;
+            }
+        }
+
+        return $werte;
+    }
+
+    /**
      * Der **geerbte** Renderer, in der Gestalt eines Teils — oder `null`, wenn der Knoten selbst wählt.
      *
      * ⚠️ **Seine Regel, wörtlich:** *«jeder knoten hat einen renderer vater knoten kann ihn vorgeben
@@ -1125,6 +1158,15 @@ final class ModelValues
 
             $werte[$wert->relationId] = $wert->value;
         }
+
+        // ⚠️ **Die eigenen Werte darüber — sein Fund am 2026-09-10 an `Prefixes`:** *`label_role` auf
+        // «symbol» gespeichert, die Seite zeigte danach «leer». Der geliehene Teil trug nur die Werte
+        // des Vorfahren; was der Knoten selbst zu einer inneren Kante gesagt hat, liegt in **seinem**
+        // Einstellungssatz ({@see \Taxmod\Core\Service\DataEntry::putSettingAt()}, der Zweig ohne Teil)
+        // und schlägt das Geerbte — näher schlägt ferner ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
+        // ⚠️ *`+` statt Entpacken: die Schlüssel sind Kantennummern, und Entpacken zählte sie neu durch.
+        // Links steht, was gewinnt — die eigenen Werte, näher schlägt ferner (D-602).*
+        $werte = $this->ownSettingValuesOf($subject->id) + $werte;
 
         return [
             'id'     => 0,

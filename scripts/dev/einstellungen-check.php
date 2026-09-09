@@ -872,7 +872,8 @@ echo "\n== 4 · Erben: gesperrt, in Worten, mit Haken — und überschreiben (D-
 $compact = $editor->nodeImplementing(CompactRenderer::class);
 $eltern  = $editor->createNode('__es Eltern', $modellAst->id);
 $erbe    = $editor->createNode('__es Erbe', $eltern->id);
-speichern($eltern->id, ['taxmod_value' => [(string) $renderKante => (string) $compact->id]]);
+// ⚠️ *Mit Haken: ob die Eltern ihren Renderer schon erben, hängt an seinem Modell (an `Model` kann einer stehen).*
+speichern($eltern->id, ['taxmod_value' => [(string) $renderKante => (string) $compact->id], 'taxmod_value_override' => [(string) $renderKante => '1']]);
 check('die Eltern tragen `compact` als eigenen Wert', isset($data->settingValuesOf($eltern->id, [$renderKante])[$renderKante]));
 $zeile = wertspalte(seite($erbe->id), $renderKante);
 check('das Kind zeigt die Zeile gesperrt, nicht automatisch, mit dem Haken «hier überschreibe ich», ungesetzt', str_contains($zeile, 'taxmod-setting-locked') && ! str_contains($zeile, 'taxmod-setting-automatic') && str_contains($zeile, 'name="taxmod_value_override[' . $renderKante . ']"') && ! str_contains($zeile, 'value="1" checked'), substr($zeile, 0, 160));
@@ -941,6 +942,11 @@ if ($vaterWahlId !== 0) {
         $gesetzt = $wpdb->get_var("SELECT v.value_ref FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id WHERE r.node_id = {$sohn->id} AND r.record_type = 'settings' AND v.relation_id = {$vaterKanten['label_role']}");
         check('ein Verweis am geerbten Renderer — `label_role` — lässt sich am Kind setzen und steht am Knoten selbst', $lief && (int) $gesetzt === $rolle->id, letzteMeldung() . ' / ' . var_export($gesetzt, true));
         check('und der Vater trägt keine Rolle', $wpdb->get_var("SELECT v.value_ref FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id WHERE r.node_id = {$vater->id} AND r.record_type = 'settings' AND v.relation_id = {$vaterKanten['label_role']}") === null);
+        // ⚠️ *Und die Seite liest den Verweis wieder — sein zweiter Fund: «nach speichern wieder alter wert».*
+        $nameRolle = 'taxmod_value[' . $renderKante . '][' . $vaterKanten['label_role'] . ']';
+        check('die Seite des Kindes zeigt die gewählte Rolle danach als gewählt', (bool) preg_match('/name="' . preg_quote($nameRolle, '/') . '"[^>]*>.*?<option value="' . $rolle->id . '"[^>]*selected/s', seite($sohn->id, (string) $renderKante)));
+        $nameSchalter = 'taxmod_value[' . $renderKante . '][' . $vaterKanten['with_label'] . ']';
+        check('und der Vater, der selbst wählt, zeigt sein `with_label` als «an»', (bool) preg_match('/<input type="checkbox"[^>]*name="' . preg_quote($nameSchalter, '/') . '"[^>]*checked/', seite($vater->id, (string) $renderKante)));
     }
 }
 

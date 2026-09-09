@@ -4240,9 +4240,16 @@ final class Rendering implements Presets
                     : $this->fieldsOfChosen(['nodeId' => $aufgeloest], $relation->toNodeId, $innen))
                 : $this->fieldsOfChosen($teil, $relation->toNodeId, $innen);
 
+            // ⚠️ **Ohne Teil kommen die Werte aus dem Einstellungssatz des Knotens** — sein Fund am
+            // 2026-09-10 an `Prefixes`: `label_role` gespeichert, die Zeile darunter zeigte «leer». *Seit
+            // [D-684](../../../docs/NewConcept/90-decision-log.md) ist die Wahl ein Verweis und kein Teil;
+            // was der Knoten zu `converter`, `label_role`, `with_label` sagt, liegt in seinem eigenen Satz
+            // ({@see \Taxmod\Core\Service\ModelValues::ownSettingValuesOf()}).*
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
-                $teil === null ? [] : $teil['werte'],
+                $teil === null
+                    ? ($aufgeloest !== 0 && $forNode !== 0 ? ($this->model?->ownSettingValuesOf($forNode) ?? []) : [])
+                    : $teil['werte'],
                 $purpose,
                 // ⚠️ **Ein geliehener Teil hat keine Satz-Id, also nimmt er die Adresse des Knotens.**
                 // *`taxmod_value[<Trägerkante>][<innere Kante>]` ist die zweistufige Form, die

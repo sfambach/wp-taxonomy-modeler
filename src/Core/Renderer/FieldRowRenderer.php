@@ -89,6 +89,17 @@ final class FieldRowRenderer extends RendererNode
     public const VALUE = 'value';
 
     /**
+     * Unter diesem Namen erwartet die Zeile den Haken **«hier überschreibe ich»** — als erste Spalte.
+     *
+     * ⚠️ **Sein Wort am 2026-09-10:** *«das override tickfeld mal an den anfang der setting zeile und als
+     * richtige spalte».* *Vorher hing der Haken hinter dem Steuerelement in der Wertspalte; jetzt steht er
+     * vorn, in einer eigenen Zelle, und die Wertspalte trägt nur den Wert und die Herkunft. Ist der
+     * Abschnitt da, aber leer, bleibt die Zelle leer — die Spalte gibt es dann trotzdem, damit die
+     * Tabelle ihren Kopf behält.*
+     */
+    public const OVERRIDE = 'override';
+
+    /**
      * Unter diesem Namen erwartet die Zeile die **Einstellungen ihrer Kante** — aufgeklappt.
      *
      * ⚠️ **Fehlt der Abschnitt, ist der Bereich zu — und dann ist er auch nicht gelesen**

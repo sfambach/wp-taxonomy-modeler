@@ -3316,3 +3316,25 @@ der Vater bleibt leer.
 der Konzeptänderung geschuldet?» — ist ein Eingang, keine Aufgabe:**
 [INF-040](../../neues-konzept-eingang.md). *Zwei Mechanismen für dieselbe Sache, und der zweite ist ein
 Rest aus der Zeit vor D-529. Was zu entscheiden wäre, steht dort.*
+
+---
+
+[x] TASK-089  Die Zeilen unter der Renderer-Wahl zeigten «leer», obwohl der Satz die Werte trug — behoben 2026-09-10
+
+**Sein Fund:** *«einstellen des renderers an prefix geht auch nicht mehr nach speichern wieder alter
+wert»* — und davor `label_role` auf `symbol`, gespeichert, die Seite zeigte «leer».
+
+⚠️ **Gemessen, zwei Leser hinter einer Änderung zurück:** *seit [D-684](../../NewConcept/90-decision-log.md)
+ist die Renderer-Wahl ein Verweis auf den Renderer-**Knoten**, kein Teilsatz mehr. (1) `settingPartsOf()`
+hielt jeden Verweis für einen Teil — aus der Knotennummer `43499` wurde ein Teil ohne Satz und ohne
+Werte, und die Zeilen `converter`, `label_role`, `with_label` darunter wurden mit nichts gezeichnet.
+(2) Der geliehene Teil eines **geerbten** Renderers trug nur die Werte des Vorfahren; was der Knoten
+selbst zu einer inneren Kante gesagt hatte, lag in seinem Einstellungssatz und wurde nie gelesen.*
+**Behoben:** ein Teil ist nur ein Verweis auf einen *Satz*; ohne Teil kommen die Werte aus dem
+Einstellungssatz des Knotens (`ModelValues::ownSettingValuesOf()`), und beim geliehenen Teil liegen sie
+über den geerbten. Zwei Zusagen in `einstellungen-check`, Abschnitt 4: die Seite des Kindes zeigt die
+gewählte Rolle, der Vater zeigt sein `with_label`.
+
+⚠️ *Sein «überschreiben funktioniert nicht» an `read_only` und am Renderer liess sich am Server nicht
+nachstellen: über denselben Weg wie die Maske wird geschrieben und wieder gezeigt. Offen ist, was im
+Browser anders lief — siehe die Rückfrage im Gespräch.*

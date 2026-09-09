@@ -1514,7 +1514,12 @@ final class DataEntry
             foreach ($werte as $wert) {
                 $kante = $gesucht[$wert->relationId] ?? null;
 
-                if ($kante === null || $wert->value->reference === null) {
+                // ⚠️ **Nur ein Verweis auf einen *Satz* ist ein Teil.** *Seit
+                // [D-684](../../../docs/NewConcept/90-decision-log.md) ist die Renderer-Wahl ein Verweis auf
+                // den Renderer-**Knoten** — hier galt jeder Verweis als Teil, und aus der Knotennummer wurde ein
+                // Teil ohne Satz, ohne Werte. Sein Fund am 2026-09-10 an `Prefixes`: die Zeilen unter der Wahl
+                // zeigten «leer», obwohl der Satz die Werte trug.*
+                if ($kante === null || $wert->value->reference === null || $wert->value->referenceSpace !== \Taxmod\Core\Model\ReferenceSpace::Record) {
                     continue;
                 }
 
