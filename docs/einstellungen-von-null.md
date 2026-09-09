@@ -75,6 +75,72 @@ zwei Werten.*
   `orientation`»), oder erklärt die Knotenklasse sie stellvertretend?* In der OO ist es die Klasse des
   Attributs — das wäre der Renderer.
 
+**Seine Antwort auf 1a, mit Beispiel:** *«der Knoten-Integer hat eine Klasse `integer_node`.
+`integer_node` erbt von `node`. `node` hat das Attribut `renderers` vom Typ list of Renderer und
+`read_only` vom Typ boolean. `integer_node` hat die Attribute `max` vom Typ int, `min` vom Typ int.
+Alle diese Attribute sollten im Knoten-Integer zu sehen sein. Hierzu müsste man nur die Klasse
+`integer_node` per Reflection parsen (zumindest geht das unter Java): jeder simple Typ bekommt eine
+simple Einstellung, jede Klasse schachtelt tiefer.»*
+
+**Das Beispiel als Bild — die Klassen:**
+
+```mermaid
+classDiagram
+  class Node {
+    +renderers : list of Renderer
+    +read_only : bool
+  }
+  class IntegerNode {
+    +min : int
+    +max : int
+  }
+  class TextNode {
+    +display_size : int
+  }
+  class Renderer {
+    <<abstract>>
+  }
+  class CompactRenderer {
+    +withLabel : bool
+    +orientation : horizontal | vertical
+  }
+  class SpinnerRenderer {
+  }
+  Node <|-- IntegerNode
+  Node <|-- TextNode
+  Renderer <|-- CompactRenderer
+  Renderer <|-- SpinnerRenderer
+  Node "1" --> "0..n" Renderer : renderers
+```
+
+**Und dasselbe, wie der Knoten `Integer` es zeigt — per Reflection aus `IntegerNode`, geerbte
+Attribute eingeschlossen, Klassen geschachtelt:**
+
+```mermaid
+flowchart TB
+  I["Knoten Integer — Klasse IntegerNode"]
+  I --> RO["read_only : bool — aus Node — Wert: false"]
+  I --> MIN["min : int — aus IntegerNode — Wert: -9223372036854775808"]
+  I --> MAX["max : int — aus IntegerNode — Wert: 9223372036854775807"]
+  I --> RS["renderers : list of Renderer — aus Node"]
+  RS --> R1["1 · SpinnerRenderer — keine eigenen Attribute"]
+  RS --> R2["2 · CompactRenderer"]
+  R2 --> WL["withLabel : bool — Wert: true"]
+  R2 --> OR["orientation : horizontal | vertical — Wert: vertical"]
+```
+
+*Damit ist 1a beantwortet: **die Erklärung ist die Klasse, gelesen per Reflection** — nichts davon
+braucht eine Spur im Modell, die Maske holt sie beim Zeichnen. Jeder simple Typ wird eine simple
+Einstellung; jedes Attribut mit Klassentyp klappt eine Stufe tiefer auf, so tief die Klassen gehen. Ein
+Attribut mit Listentyp zeigt seine Einträge nummeriert, jeder Eintrag mit seiner eigenen Klasse und
+deren Attributen.* ⚠️ *Zur Umsetzbarkeit, gemessen an PHP: Reflection liest Klassenname, Eltern,
+Attributnamen und deren Typen (`bool`, `int`, `Renderer`); **«list of Renderer» sagt PHP nicht von
+selbst** — das steht in einer Docblock-Angabe oder einem Attribut an der Eigenschaft, das die
+Reflection mitliest. Das ist eine Zeile je Liste, keine Grenze.*
+
+*Und 1b folgt daraus ohne eigene Frage: der Renderer erklärt seine Attribute selbst, weil seine
+Klasse sie hat — `CompactRenderer` hat `orientation`, `SpinnerRenderer` nicht.*
+
 ### 2 · Der Wert: was ein Knoten trägt
 
 *Ein Knoten trägt je Attribut einen Wert. Ist das Attribut komplex, trägt er den Namen der Klasse
@@ -123,7 +189,8 @@ damit die Lösung des ersten es nicht verbaut:
 
 ## Wo wir stehen
 
-Sein Gerüst steht. Offen sind fünf Fragen, in der Reihenfolge, in der sie einander bedingen:
+Sein Gerüst steht, **1a und 1b sind beantwortet**: die Erklärung ist die Klasse, per Reflection gelesen,
+ohne Spur im Modell. Offen sind vier Fragen, in der Reihenfolge, in der sie einander bedingen:
 **2b** (zwei Einträge derselben Klasse in einer Liste?), daraus **2a** (Werte flach am Knoten oder je
-Objekt ein Satz), daraus **2c** (Tiefe), dann **3** (Name oder Nummer als Adresse), dann **1a/1b**
-(wer erklärt, und ob die Erklärung eine Spur im Modell hat). Erst danach das zweite Problem.
+Objekt ein Satz), daraus **2c** (Tiefe), dann **3** (Name oder Nummer als Adresse). Erst danach das
+zweite Problem.
