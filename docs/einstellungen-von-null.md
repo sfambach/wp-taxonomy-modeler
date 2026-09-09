@@ -254,11 +254,28 @@ classDiagram
   Edge "verwendet" --> "1" Node : Ziel
 ```
 
-**Und damit ist Z1 beantwortet:** *ein Wert «an der Kante» wohnt im Satz der Kante, in derselben Form
-wie im Satz des Knotens. Was die Kante am Ziel überschreibt (`Hausnummer / Int: max = 999`), ist eine
-Zeile in ihrem Satz mit der Adresse des Zielattributs (`IntegerNode.max`) — die Kante trägt Werte zu
-zwei Klassen: zu ihrer eigenen (`CompositionEdge.multiplicity`) und zu der ihres Ziels
-(`IntegerNode.max`). Die Adresse Klasse + Attributname hält beides auseinander.*
+**Sein Halt, und er trennt zwei Dinge, die hier zuerst in einem Satz standen:** *«da vermischen wir
+jetzt zwei Dinge: zum einen ist eine Kante eine Klasse und hat eigene Attribute; zudem soll sie später
+die des Knotens überschreiben können. Wenn man es technisch sieht, müsste eine Kante in der GUI zuerst
+die Kanten-Klasse parsen und dann über den To-Knoten die Knoten-Klasse — das erscheint aber
+überdimensioniert, da der Knoten ja schon seine Einstellungen kennt und die Kante diese nur bei Bedarf
+duplizieren müsste.»*
+
+**Also zwei Dinge, getrennt:**
+
+1. **Die eigenen Attribute der Kante** kommen aus ihrer Klasse — `CompositionEdge.multiplicity`,
+   `.hide`, `.position` —, per Reflection, in ihrem Satz. Das ist das erste Problem, angewandt auf die
+   Kante. *Fertig.*
+2. **Das Überschreiben am Ziel** ist **kein zweites Parsen**: der Knoten kennt seine Einstellungen
+   schon und zeigt sie aufgelöst. Ändert der Modellierer eine davon an der Kante, **dupliziert die Kante
+   genau diesen einen Wert** in ihren Satz — unter der Adresse des Knotenattributs (`IntegerNode.max`),
+   damit die Auflösung ihn dort findet. Die Kante erklärt nichts über den Knoten; sie hält eine Kopie,
+   die gewinnt. Was sie nicht dupliziert hat, gilt weiter vom Knoten.
+
+**Damit ist Z1 beantwortet, in seiner Form:** *ein Wert «an der Kante» ist ein bei Bedarf duplizierter
+Wert des Knotens, im Satz der Kante, in derselben Zeilenform, mit der Adresse des Knotenattributs. Die
+GUI liest eine Klasse — die der Kante — und nimmt die Einstellungen des Ziels, wie der Knoten sie
+schon hat.*
 
 ## Das zweite Problem, das er hintanstellt: Überschreiben an der Kante, Erben an Kindern
 
@@ -282,8 +299,8 @@ damit die Lösung des ersten es nicht verbaut:
 Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
 Nächstes das zweite Problem**, in seiner Reihenfolge, je Frage sein Wort:
 
-- **Z1 · Wo wohnt der Wert an der Kante?** **Beantwortet** — Kanten sind Klassen (siehe oben): im Satz
-  der Kante, in derselben Form, mit der Adresse des Zielattributs.
+- **Z1 · Wo wohnt der Wert an der Kante?** **Beantwortet** — im Satz der Kante, als bei Bedarf
+  duplizierter Wert des Knotens, mit der Adresse des Knotenattributs; die Kante parst den Knoten nicht.
 - **Z2 · Was schlägt die Kante bei einem komplexen Attribut?** Das ganze Objekt (ein anderer Renderer,
   mit allen seinen Werten neu) — oder auch einen einzelnen Wert darin (`orientation` anders, Renderer
   gleich)?
