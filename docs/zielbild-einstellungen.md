@@ -150,6 +150,51 @@ sagt, **wer** die Einstellung erklärt. Beides zusammen ist ein Modell, das ein 
 (`PR-13`): «Welche Einstellungen hat Int?» — in der Klasse nachlesen. «Was gilt an Hausnummer?» — die
 Kette, an der Kante zuerst.*
 
+## Die fünfte Form — Renderer sind Kode, keine Knoten
+
+**Sein Wort:** *«was du glaube ich übersiehst: dass jeder knoten einen renderer hat. deswegen sagte ich:
+auch wenn renderer eine eigene klasse ist, ist sie auch eine eigenschaft am knoten. und die renderer haben
+wir nur in die knoten geholt, weil wir sie modellieren wollten — was anscheinend ein fehler war.»*
+
+**Der Satz:** *`renderer` ist eine Eigenschaft jedes Knotens, wie `read_only`. Ihr Wert ist ein
+**Name** aus der Registratur des Kodes — nicht ein Verweis auf einen Knoten. Renderer, Konverter und
+Validatoren sind Klassen und sonst nichts; ihre Einstellungen sind Eigenschaften der Klasse (Form D), die
+Werte dazu stehen im Satz des Knotens.*
+
+```mermaid
+flowchart LR
+  R["Registratur im Kode: field, spinner, compact, table, reference … je Klasse ihre Einstellungen"]
+  R -->|"Angebot: was diesen Knoten zeichnen kann (handles, D-603)"| K["Knoten Kontakt: renderer = 'compact', orientation = 'vertical', read_only = 0"]
+  K -->|"Kette: Kante, Vorfahren, Typ"| E["Kante Hausnummer / Int: max = 999"]
+```
+
+### Was am Renderer-als-Knoten hängt — gemessen am 2026-09-10
+
+| | |
+|---|---|
+| Knoten im Ast `Settings` | **37** — davon **23 mit Klasse** (`Renderer` 17, `Converter` 4, `Validator` 2) und **5 Rollen** unter `Label roles` ohne Klasse |
+| Werte, die auf einen Knoten im Ast `Settings` verweisen | **23** — 19 Renderer-Wahlen, 2 `label_role`, 2 weitere |
+| Kode-Stellen, die einen Renderer über seinen Knoten suchen | **26** in 13 Dateien (`nodeImplementing`, `byImplementations`, `namesForNodes`, `RenderingScaffold`) |
+| Beschlüsse, die Renderer-Knoten voraussetzen | [D-511](NewConcept/90-decision-log.md), [D-557](NewConcept/90-decision-log.md) (Renderer, Konverter, Validatoren als Knoten im Ast `Settings`), [D-583](NewConcept/90-decision-log.md) (die Wahl legt einen Satz an), [D-585](NewConcept/90-decision-log.md) (`converter` als Kante am Knoten `Renderer`), [D-644](NewConcept/90-decision-log.md), [D-648](NewConcept/90-decision-log.md), [D-684](NewConcept/90-decision-log.md) (die Wahl ist ein Verweis auf den Knoten), der Behälter-Teil von [D-613](NewConcept/90-decision-log.md) und [D-709](NewConcept/90-decision-log.md) |
+| Beschlüsse, die **bleiben** | [D-603](NewConcept/90-decision-log.md) (wofür ein Renderer taugt, sagt `handles()` im Kode — das ist Form E), [D-643](NewConcept/90-decision-log.md) (oder seine Rücknahme, Kreuz 4), [D-151](NewConcept/90-decision-log.md) (Rollen sind Knoten — sie bleiben, sie sind Modell) |
+
+| Sachverhalt | Form E |
+|---|---|
+| **Was `renderer` ist** | eine Einstellung jedes Knotens, Kante an der Wurzel (D-529), Wert ein **Name** (`'compact'`) — wie vor D-583/D-684, als der Wert ein Text war |
+| **Woher das Angebot kommt** | aus der Registratur: `eligibleFor(Knoten, Typ)` — heute schon so (D-603); die Knoten unter `Renderer` waren nur die Hülle darum |
+| **Die Einstellungen eines Renderers** | Eigenschaften der Klasse (Form D): `CompactRenderer` nennt `orientation`, `with_label`; `ReferenceRenderer` nennt `with_label`, `label_role`. Das Gerüst schreibt sie als Kanten an die **Wurzel** (nicht an Renderer-Knoten, die es nicht mehr gibt); gezeichnet wird eine Zeile nur, wenn der gewählte Renderer den Schlüssel nennt. `label_role` zeigt weiter auf `Label roles` — die sind Modell |
+| **Konverter und Validatoren** | ebenso Namen aus ihrer Registratur; das Angebot folgt dem Typ, wie beim Konverter heute |
+| **Was fällt** | 23 Knoten mit Klasse und die Behälter `Renderer`, `Converter`, `Validator`; `RenderingScaffold` (Knoten aus Klassen) wird zum Gerüst der **Kanten** aus Klassen; die Teilsätze und der geliehene Teil; `converter`/`label_role`/`with_label` als geerbte Kanten; 26 Kode-Stellen, die über den Knoten gehen; die Wanderung Fassung 38 (D-673ff.); die Zeilen «die Bruecke Kennung → Klasse → Knoten» in `einstellungen-check` |
+| **Was wandert** | 19 Renderer-Wahlen von Knotenverweis zu Name (ein Skript, umkehrbar im Schatten); 2 `label_role`-Werte bleiben Verweise; die 4 Grenzknoten wie in Form D |
+| **Was der Modellierer verliert** | nichts, was er je benutzt hat: keine Renderer-Knoten wurden von Hand angelegt, umbenannt oder beschriftet — die `select`-Beschriftungen der Renderer (`Labels`, Rolle `select`) kämen aus dem Kode wie jeder andere Software-String (`AR-2`) |
+| **Was es bringt** | ein Ast weniger (37 → 5 Knoten: die Rollen), eine Adresse weniger, kein Satz hinter der Wahl, keine Kette durch den Renderer-Ast; INF-040 und INF-041 erledigen sich ganz; **Form C, D und E sind zusammen ein Modell**: der Kode erklärt, das Modell wertet, die Kante schlägt den Knoten |
+
+⚠️ **Ehrlich zum Preis:** *das ist die grösste Rücknahme seit D-529 — neun Beschlüsse, 23 Knoten, 26
+Kode-Stellen, eine Wanderung. Sie wird nicht an einem Abend gebaut, und sie wird nicht fehlerweise
+gebaut: erst der Beschluss mit seinen Sätzen, dann eine Baureihe mit je einem grünen Lauf, dann fallen
+die Wächterzeilen mit Grund (`PR-9`). Gemessen ist der Weg dorthin kürzer als der Weg, auf dem wir sind:
+die drei Fehler von heute sassen alle in der Hülle, die fällt.*
+
 ## Was «nur am Knoten» nicht löst
 
 - **Renderer-Einstellungen** sind eine eigene Entscheidung (Wahl A oder B oben), unabhängig davon, ob
@@ -165,6 +210,10 @@ Kette, an der Kante zuerst.*
   die Einstellungen des Werts (`min`, `max`, `read_only`, `display_size`, …); der Renderer wird nur am
   Knoten gewählt, anders zeichnen heisst ein Kind. *(Sein Einwand oben; die Messung stützt ihn.)*
 - [ ] **Form «nur am Knoten»** — nur, wenn er die vielen Knoten in Kauf nimmt; die Messung spricht dagegen.
+- [ ] **Form E: Renderer, Konverter und Validatoren sind Kode, keine Knoten.** `renderer` ist eine
+  Einstellung jedes Knotens mit einem Namen aus der Registratur; die 23 Knoten mit Klasse im Ast
+  `Settings` fallen, die Rollen bleiben. *(Sein Wort: «die renderer haben wir nur in die knoten
+  geholt, weil wir sie modellieren wollten — was anscheinend ein fehler war.»)*
 - [ ] **Form D: die Erklärung einer Einstellung ist Kode, ihr Wert ist Modell.** Typen und Renderer
   erklären ihre Einstellungen in der Klasse, das Gerüst schreibt sie an den kodierten Knoten, der
   Modellierer schreibt nur Werte. *(Sein Schritt zurück; löst Wahl A/B, INF-040 und INF-041 in einem.)*
