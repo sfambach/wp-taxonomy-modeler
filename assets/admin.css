@@ -1369,8 +1369,11 @@ a.taxmod-chosen:hover {
     border-bottom: 1px solid #dcdcde;
 }
 
+/* ⚠️ *Doppelt so breit wie zuerst, auf sein Wort: «die labels spalte etwas breiter auf der
+ *  settings seite würde sagen doppelt so breit wie jetzt». **12em waren zu knapp** — die
+ *  längeren Namen drängten in die Schalterspalte.* */
 .taxmod-config tbody th {
-    width: 12em;
+    width: 24em;
     font-weight: 600;
     white-space: nowrap;
 }
