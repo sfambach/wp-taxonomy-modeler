@@ -2289,8 +2289,13 @@ Werte wechselt die Art einfach, ein unbekanntes Wort ist keine Angabe. **Werte w
 Benutzersätzen in den `default`-Satz; Einstellung → Feld lässt ihn dort, er ist jetzt die Vorgabe
 (D-524); zwei verschiedene Werte sind ein Konflikt mit Satz, und nichts wandert.*
 
-*Die Form je Richtung ist die aus D-690, dort als `INFERRED` markiert — gebaut wie geschrieben, sein
-Ja zu genau dieser Form steht noch aus.*
+⚠️ **Berichtigt am Abend desselben Tages** ([D-699](../../NewConcept/90-decision-log.md)): *die
+gebaute Wanderung zählte Werte statt Sätze — ein `0..*`-Feld mit `rot` und `grün` in einem Satz galt
+schon als Konflikt. Sein Beschluss ersetzt sie: **es wandert nichts.** Gibt es Benutzersätze mit
+Werten, warnt die Seite, wie viele in den Schatten gehen, verlangt eine Bestätigung, und erst dann
+wechselt die Art; die Einstellung beginnt leer. Einstellung → Feld bleibt.* **Umzubauen** (offen,
+nicht begonnen): `moveValuesForKindChange()` fällt, an ihre Stelle tritt der Bestätigungsschritt im
+Rand; `field-kind-check` Abschnitte 3 und 5 werden zur Warnung und zur Bestätigung.
 
 **2026-09-06, sein Auftrag** (mit Bild aus dem Feldblock der Knotenseite, Spalte `Kind`):
 *«müsste änderbar sein mit den schon benannten regeln»* — und auf die Rückfrage, wo:
