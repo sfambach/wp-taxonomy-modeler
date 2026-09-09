@@ -117,7 +117,7 @@ function check(string $what, bool $passed, string $detail = ''): void
  *
  * ⚠️ **Die Frage ist nicht kleiner geworden, ihre Antwortmenge ist es.** *Vier Quellen zu fragen,
  * von denen drei nicht mehr existieren koennen, waere eine Pruefung auf einen Zustand von gestern
- * (`PR-9`). **Dass die Spalten weg bleiben, bewacht `renderer-choice-mask-check.php`** — *dorthin ist
+ * (`PR-9`). **Dass die Spalten weg bleiben, bewacht `einstellungen-check.php`** — *dorthin ist
  * die Zusage am 2026-09-06 gezogen, als `settings-record-carrier-check.php` gestrichen wurde.*
  *
  * @return list<array<string, string|null>>

@@ -19,7 +19,7 @@ use Taxmod\Core\Renderer\ToggleRenderer;
  * Die Renderer-Wahl — **von den Knoten aus, gesiebt durch die Registratur**.
  *
  * ⚠️ *Warum das hier steht und nicht nur am Rand ([D-647](../../docs/NewConcept/90-decision-log.md)):
- * `renderer-choice-mask-check` geht den Weg des Benutzers und sieht deshalb nur, was **heute im
+ * `einstellungen-check` geht den Weg des Benutzers und sieht deshalb nur, was **heute im
  * Bestand steht** — und heute trägt **kein einziger** Renderer-Knoten eine `select`-Beschriftung, die
  * drei belegten sitzen woanders. Die Zusage «die Rolle schlägt den Namen» wäre dort grün, ohne je
  * geprüft worden zu sein. Hier wird sie geprüft.*
@@ -203,7 +203,7 @@ final class RendererChoiceTest extends TestCase
     public function every_choosable_renderer_has_a_class_to_bind_a_node_to(): void
     {
         // ⚠️ *Die Kernhälfte der Brücke aus [D-620](../../docs/NewConcept/90-decision-log.md): dass
-        // **an einem echten Bestand** auch ein Knoten daran hängt, prüft `renderer-choice-mask-check`.*
+        // **an einem echten Bestand** auch ein Knoten daran hängt, prüft `einstellungen-check`.*
         $shipped = ShippedRenderers::registry();
 
         self::assertSame(

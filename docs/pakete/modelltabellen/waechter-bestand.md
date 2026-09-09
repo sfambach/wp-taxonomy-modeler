@@ -679,3 +679,38 @@ das es nicht mehr gibt.*
 
 *Was der Fall kostet:* nichts von der Sache — aber `page-blocks` war mit `package7` einer der zwei, die die Tabelle oben unter «bleiben» führte, weil sie **die Seite zeichnen**. Sie zeichnet jetzt Abschnitt 12, an der Wiese.
 
+
+### `renderer-choice-mask` — 114 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1 (die Kante `renderer` ist aufgeschrieben), 50, 53 | **Abschnitt 0** |
+| 2 (keine Renderer-Wahl an einer Verwendungsstelle) | **Abschnitt 0**, wörtlich |
+| 3 (es gibt Kanten-Datensätze), 5 (die Kante ist in Gebrauch) | **entfällt** — Bestandsgrössen; «jeder Träger löst auf» in Abschnitt 0 verlangt ohnehin mindestens einen |
+| 4 (höchstens die 4 benannten Reste an toten Kanten) | **entfällt** — eine feste Zahl auf seinen Bestand, die Momentaufnahme, die die Tabelle oben schon als Befund nennt |
+| 6 (kein Träger zeigt ins Leere) | **Abschnitt 0** |
+| 7 (jeder Einstellungssatz gehört einem Knoten) | **entfällt** — seit [D-684](../../NewConcept/90-decision-log.md) zeigt die Wahl auf einen Renderer-**Knoten**, nicht auf einen Satz; die Abfrage sucht `value_ref_kind = 'record'` und findet nichts mehr |
+| 8–10 (drei Spalten weg und bleiben weg) | **Abschnitt 0**, drei Zeilen |
+| 11–14 (jeder Träger löst auf; keine Wahl ausserhalb der Menge; Merkmal im Markup; mindestens eine Zeichnung) | **Abschnitt 0**, drei Zeilen — 14 in 11 enthalten |
+| 15, 41 (Fehlzweige) | **entfällt** — sie liefen nur, wenn das Gerüst fehlte |
+| 16–25 (Fassung 38: unzulässige Wahl steht, wirkt, die Wanderung meldet sie, Option, Schatten, Buch, zulässige Wahl danach, zweiter Lauf leer) | **Abschnitt 14** |
+| 26, 114 (Wiese abgeräumt) | **entfällt** — die Klammer räumt |
+| 27–31 (Umbenennen ändert nichts; Namen stehen wieder da) | **Abschnitt 13** — nur die Kante `renderer`, die innere Wertkante gibt es nicht mehr (Abschnitt 0 bewacht das) |
+| 32–37 (der Wähler, am Seitenformular, eine Liste, kein alter Block, mindestens zwei, nur was zeichnen kann) | **Abschnitt 3** — 32 und 35 in 34 aufgegangen; «mindestens zwei» wurde «genau field, spinner, slider» |
+| 38–40 (unter model form/table/compact; unter constants reference; mit Kind die Wähler) | **Abschnitt 3** — 38 am Kern (`choicesForNode`), 39 und 40 am Markup |
+| 42–43 (ohne Klasse nicht angeboten; `render with label` nicht) | **Abschnitt 3**, eine Zeile |
+| 44–46 (jeder wählbare Renderer hat einen Knoten; kein interner hat einen; der Wähler nicht in der Wahl) | **Abschnitt 0** |
+| 47 (`select`-Beschriftung) | **Abschnitt 3** |
+| 48–49, 51–52, 54–55 (Akt läuft; Wahl steht; Verweis an der Kante nennt den Renderer; Maske zeigt sie; zweite Wahl gewinnt) | **Abschnitt 3** |
+| 56–58 (jede Wahl zeichnet; keine fällt zurück; verschieden zeichnet verschieden) | **Abschnitt 3**, zwei Zeilen |
+| 59–75 (Datensatz anlegen mit Art, Wert, Seite zeigt ihn, Art umstellen mit Version/Schatten/Buch, ohne Angabe bleibt sie, gleiche Art zählt nicht, löschen umkehrbar) | **Abschnitt 11**, sechs Zeilen |
+| 76–82 (zu/auf, am Seitenformular, Knopf, hin und zurück, nachgeholter Bereich) | **Abschnitt 6** |
+| 83–85 (setzen, an der Kante, Zeile zeigt ihn) | **Abschnitt 6** |
+| 86–88 (nur erklärte Schlüssel; `display_size` fehlt) | **Abschnitt 6**, zwei Zeilen |
+| 89–90 (die Kette endet an einer Wurzel; zwei verschiedene Ids) | **entfällt** — Vorbedingungen des Aufbaus |
+| 91–94 (die Wurzel ist der letzte Halt; eigene Aussage hält; Maske markiert die eigene; gezeichnet wird die eigene) | **Abschnitt 5** |
+| 95–103, 107–112 (ein Renderer mit converter/label_role/with_label; Vater wählt; with_label an; Kind erbt; die drei stehen im Markup, geerbt gekennzeichnet; kein `taxmod_part`; Ansehen legt nichts an; Speichern ohne Änderung nichts; Änderung legt Wertzeile an; Renderer bleibt geerbt; Wert am Knoten; Vater unverändert) | **Abschnitt 4**, sieben Zeilen |
+| 104–106, 113 (die Zelle des Vaters; das Kind zeichnet den geerbten Wert **genauso**; «an» im Steuerelement; danach nicht mehr wie der Vater) | **entfällt** — seit [D-687](../../NewConcept/90-decision-log.md)/[D-689](../../NewConcept/90-decision-log.md) ist die geerbte Zeile gesperrt, mit Haken und Herkunft in Worten; «genauso wie der Vater» ist nicht mehr die Aussage. Was davon trägt — das Steuerelement zeigt den geerbten Wert — steht in Abschnitt 4 an der Renderer-Zeile |
+
+*Was der Fall kostet:* 93 KB und der grösste Wächter des Netzes. Seine Zusage «kein Knoten zeichnet nach der Umbenennung anders» über den **ganzen Baum** ist mitgezogen (Abschnitt 13) — sie war der Grund, `rename-survives` am 2026-09-06 zu streichen, und darf nicht ein zweites Mal verlorengehen.
+

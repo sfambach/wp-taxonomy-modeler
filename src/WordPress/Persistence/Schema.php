@@ -1412,7 +1412,7 @@ final class Schema
      * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine unzulässige Wahl mehr und tut nichts —
      * **und auf einer Installation, auf der nichts unzulässig ist, tut sie beim ersten Mal nichts.**
      * Deshalb ist sie an einem gebauten Fall geprüft und nicht am Bestand
-     * (`renderer-choice-mask-check.php`).*
+     * (`einstellungen-check.php`).*
      *
      * ⚠️ *Öffentlich, damit der Wächter sie an seinem eigenen Fall laufen lassen kann — sie ist die
      * einzige Wanderung mit einer Bedingung, die auf keiner heutigen Installation zutrifft, also
