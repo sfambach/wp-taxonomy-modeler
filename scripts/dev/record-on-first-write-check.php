@@ -134,7 +134,7 @@ echo "\n== kein leerer default bleibt bestehen ==\n";
 // `node_id`. **Wer ihn als leer wegraeumt, loescht eine Wahl.***
 $leerUndFrei = (int) $wpdb->get_var(
     "SELECT COUNT(*) FROM {$p}node_records s
-      WHERE s.record_type = 'default'
+      WHERE s.record_type IN ('default', 'settings')
         AND NOT EXISTS (SELECT 1 FROM {$p}relation_records v WHERE v.node_record_id = s.id)
         AND NOT EXISTS (SELECT 1 FROM {$p}relation_records h WHERE h.value_ref = s.id AND h.value_ref_kind = 'record')"
 );

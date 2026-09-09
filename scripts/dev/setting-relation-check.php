@@ -259,7 +259,7 @@ if ($exponent !== null && ($eltern = $nodes->find($exponent->fromNodeId)) !== nu
 
     foreach ($kinder as $kindId) {
         foreach ($records->ofNode($kindId) as $satz) {
-            if ($satz->recordType !== RecordType::Default) {
+            if ($satz->recordType !== RecordType::Settings) {
                 continue;
             }
 

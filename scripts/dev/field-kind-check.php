@@ -168,34 +168,52 @@ check('und zurück', $editor->relationById($feld->id)?->kind === RelationKind::C
 artSetzen($modell->id, $feld->id, 'unfug');
 check('ein unbekanntes Wort ist keine Angabe', $editor->relationById($feld->id)?->kind === RelationKind::Composition);
 
-echo "\n== 3. Feld → Einstellung: der eine Wert wandert in den default-Satz (D-690) ==\n";
+echo "\n== 3. Feld → Einstellung mit Benutzersätzen: nichts wandert, die Seite warnt und wartet auf den Haken (D-699) ==\n";
 
 $satz = $data->create($modell->id);
 $data->put($satz->id, $feld->id, TypedValue::ofText('sieben'));
-check('ein Benutzersatz trägt den Wert', ($data->valuesOf($satz->id)[0] ?? null)?->value->text === 'sieben');
-
-artSetzen($modell->id, $feld->id, 'setting');
-check('die Kante ist eine Einstellung', $editor->relationById($feld->id)?->kind === RelationKind::Setting);
-$imDefault = $data->settingValuesOf($modell->id, [$feld->id])[$feld->id] ?? null;
-check('der Wert steht im default-Satz', $imDefault?->text === 'sieben', (string) $imDefault?->describe());
-check('und nicht mehr im Benutzersatz', $data->valuesOf($satz->id) === [], count($data->valuesOf($satz->id)) . ' Werte');
-
-echo "\n== 4. Einstellung → Feld: der Wert bleibt, wo er ist — er ist jetzt die Vorgabe (D-524) ==\n";
-
-artSetzen($modell->id, $feld->id, 'composition');
-check('die Kante ist wieder ein Feld', $editor->relationById($feld->id)?->kind === RelationKind::Composition);
-check('der Wert steht weiter im default-Satz', ($data->settingValuesOf($modell->id, [$feld->id])[$feld->id] ?? null)?->text === 'sieben');
-
-echo "\n== 5. zwei verschiedene Werte: der Wechsel ist ein Konflikt, nichts wandert ==\n";
-
-$data->put($satz->id, $feld->id, TypedValue::ofText('acht'));
 $zweiter = $data->create($modell->id);
-$data->put($zweiter->id, $feld->id, TypedValue::ofText('neun'));
+$data->put($zweiter->id, $feld->id, TypedValue::ofText('acht'));
+check('zwei Benutzersätze tragen je einen Wert', ($data->valuesOf($satz->id)[0] ?? null)?->value->text === 'sieben' && ($data->valuesOf($zweiter->id)[0] ?? null)?->value->text === 'acht');
 
 $antwort = artSetzen($modell->id, $feld->id, 'setting');
-check('die Antwort nennt den Konflikt', str_contains($antwort, 'different values'), $antwort);
+check('die Antwort nennt die Sätze und verlangt den Haken', str_contains($antwort, '2 entries') && str_contains($antwort, 'tick the confirmation'), $antwort);
 check('die Kante bleibt ein Feld', $editor->relationById($feld->id)?->kind === RelationKind::Composition);
-check('beide Benutzerwerte stehen noch', ($data->valuesOf($satz->id)[0] ?? null)?->value->text === 'acht' && ($data->valuesOf($zweiter->id)[0] ?? null)?->value->text === 'neun');
+check('und beide Werte stehen noch', ($data->valuesOf($satz->id)[0] ?? null)?->value->text === 'sieben' && ($data->valuesOf($zweiter->id)[0] ?? null)?->value->text === 'acht');
+
+// ⚠️ *Die Weiterleitung trägt den wartenden Wechsel als Umstand; die Seite zeigt ihn in der Zeile.*
+$_GET['taxmod_kind_pending'] = $feld->id . ':setting:2:2';
+$markup = seite($modell->id);
+unset($_GET['taxmod_kind_pending']);
+$name   = 'taxmod_field_setting[' . $feld->id . '][kind]';
+check('die Zeile zeigt `setting` vorgewählt', (bool) preg_match('/name="' . preg_quote($name, '/') . '"[^>]*>.*?<option value="setting"[^>]*selected/s', $markup));
+check('mit dem Haken «ich bestätige»', str_contains($markup, 'name="taxmod_field_setting[' . $feld->id . '][kind_confirm]"'));
+check('und dem Satz, was der Haken kostet', str_contains($markup, '2 entries with 2 values go to the shadow'));
+
+echo "\n== 4. mit Haken: die Sätze gehen in den Schatten, die Art wechselt, die Einstellung beginnt leer ==\n";
+
+abschicken([
+    'do'                   => 'put_setting',
+    'id'                   => (string) $modell->id,
+    '_taxmod_nonce'        => wp_create_nonce('taxmod_node_' . $modell->id),
+    'taxmod_field_setting' => [(string) $feld->id => ['kind' => 'setting', 'kind_confirm' => '1']],
+]);
+check('die Kante ist eine Einstellung', $editor->relationById($feld->id)?->kind === RelationKind::Setting);
+check('die zwei Benutzersätze sind aus der lebenden Tabelle', $data->find($satz->id) === null && $data->find($zweiter->id) === null);
+check('und liegen im Schatten, also ist es umkehrbar', (int) $wpdb->get_var("SELECT COUNT(*) FROM " . \Taxmod\WordPress\Persistence\Schema::table('node_records_history') . " WHERE id IN ({$satz->id}, {$zweiter->id})") === 2);
+check('die Einstellung beginnt leer', ($data->settingValuesOf($modell->id, [$feld->id])[$feld->id] ?? null) === null);
+
+echo "\n== 5. Einstellung → Feld: was im Einstellungssatz steht, bleibt dort (D-699, Satz 3) ==\n";
+
+// ⚠️ *Gesät über den Speicher, nicht über den Kern: ein Textwert an einer Einstellungskante auf `Text`
+// weist der Kern heute ab (ein Teil bräuchte einen eigenen Satz) — hier geht es nur darum, dass eine
+// Zeile im Einstellungssatz den Artwechsel überlebt.*
+$einstellungssatz = $rows->add(new \Taxmod\Core\Model\NodeRecord(0, $modell->id, $editor->find($modell->id)?->version ?? 1, '2026-09-10 00:00:00', \Taxmod\Core\Model\RecordType::Settings));
+$rows->putValue(new \Taxmod\Core\Model\RelationRecord($einstellungssatz, $feld->id, '', TypedValue::ofText('neun')));
+check('ein Wert liegt im Einstellungssatz', ($data->settingValuesOf($modell->id, [$feld->id])[$feld->id] ?? null)?->text === 'neun');
+artSetzen($modell->id, $feld->id, 'composition');
+check('die Kante ist wieder ein Feld', $editor->relationById($feld->id)?->kind === RelationKind::Composition);
+check('der Wert steht weiter im Einstellungssatz', ($data->settingValuesOf($modell->id, [$feld->id])[$feld->id] ?? null)?->text === 'neun');
 
 echo "\n{$passed} ok, {$failed} failed\n";
 

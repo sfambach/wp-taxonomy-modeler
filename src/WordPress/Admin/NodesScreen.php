@@ -187,6 +187,19 @@ final class NodesScreen
      */
     private string|false|null $openRowsAfterAct = false;
 
+    /**
+     * Ein Artwechsel, der auf seine Bestätigung wartet — `<Kante>:<Art>:<Sätze>:<Werte>`.
+     *
+     * ⚠️ **[D-699](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«einen hinweis geben und der
+     * benutzer muss bestätigen die daten werden gelöscht und das setting bekommt neue».* *Wird ein Feld
+     * mit Benutzersätzen eine Einstellung, wandert nichts: die Seite sagt, wie viele Sätze in den Schatten
+     * gehen, und die Zeile bekommt einen Haken. Erst mit ihm wechselt die Art. Derselbe skriptfreie Weg
+     * wie die Sperre aus D-689 und der Aufklapper aus D-666.*
+     */
+    private const KIND_PENDING = 'taxmod_kind_pending';
+
+    private string|false $kindPendingAfterAct = false;
+
     /** Stands in for the chosen locale until the browser puts the real one in its place. */
     private const LOCALE_MARKER = '__taxmod_locale__';
 
@@ -2169,7 +2182,32 @@ final class NodesScreen
      */
     private function settingsPanelWords(): array
     {
+        // ⚠️ **Ein wartender Artwechsel reist als Wort mit** ([D-699](../../../docs/NewConcept/90-decision-log.md)):
+        // *`<Kante>:<Art>:<Sätze>:<Werte>` aus dem Umstand; die Zeile zeigt die gewünschte Art vorgewählt,
+        // den Satz dazu und den Haken. Der Kern macht kein Wort (`AR-2`), also kommen Satz und Haken von hier.*
+        $wartend = [];
+        $roh     = $this->circumstance(self::KIND_PENDING);
+
+        if ($roh !== null && preg_match('/^(\d+):([a-z]+):(\d+):(\d+)$/', $roh, $t) === 1) {
+            $wartend = [
+                new Control('word:kind_target:' . $t[1], '', sanitize_key($t[2])),
+                new Control('word:kind_pending:' . $t[1], '', sprintf(
+                    /* translators: 1: number of entries, 2: number of values. */
+                    _n(
+                        '%1$d entry with %2$d values goes to the shadow when this becomes a setting.',
+                        '%1$d entries with %2$d values go to the shadow when this becomes a setting.',
+                        (int) $t[3],
+                        'taxmod'
+                    ),
+                    (int) $t[3],
+                    (int) $t[4]
+                )),
+            ];
+        }
+
         return [
+            ...$wartend,
+            new Control('word:kind_confirm', '', __('I confirm — move them to the shadow', 'taxmod')),
             new Control('word:' . SettingCategory::Display->value, '', __('Display', 'taxmod')),
             new Control('word:' . SettingCategory::Rules->value, '', __('Rules', 'taxmod')),
             new Control('word:inherited_from', '', /* translators: %s is the name of the node the value is inherited from. */ __('inherited from %s', 'taxmod')),
@@ -3053,7 +3091,7 @@ final class NodesScreen
         $entwickler = SettingsScreen::developerShows('taxmod_dev_settings_record');
         $records    = array_values(array_filter(
             $this->data->recordsOf($selected->id),
-            static fn (NodeRecord $record): bool => $entwickler || $record->recordType !== RecordType::Default
+            static fn (NodeRecord $record): bool => $entwickler || $record->recordType !== RecordType::Settings
         ));
 
         $html = $this->heading(
@@ -3117,7 +3155,7 @@ final class NodesScreen
                     // und Version sind zum **Lesen**, der Wähler ist zum **Tun**; er gehört neben
                     // die Werte und nicht zwischen zwei Angaben, die niemand anfasst.*
                     __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
-                    __('Kind', 'taxmod')       => $record->recordType === RecordType::Default
+                    __('Kind', 'taxmod')       => $record->recordType === RecordType::Settings
                         ? $this->settingsRecordMark($held)
                         : $this->recordTypeChoice(
                             $record->recordType,
@@ -3237,6 +3275,7 @@ final class NodesScreen
         $worte = [
             RecordType::User->value    => __('Entry', 'taxmod'),
             RecordType::Default->value => __('Default', 'taxmod'),
+            RecordType::Settings->value => __('Settings', 'taxmod'),
             RecordType::Example->value => __('Example', 'taxmod'),
         ];
 
@@ -3250,7 +3289,8 @@ final class NodesScreen
         $optionen = '';
 
         foreach (RecordType::cases() as $art) {
-            if ($nurBeispiele && $art === RecordType::User) {
+            // ⚠️ *Ein Einstellungssatz entsteht beim ersten Schreiben, nie von Hand ([D-704](../../../docs/NewConcept/90-decision-log.md), [D-609](../../../docs/NewConcept/90-decision-log.md)).*
+            if ($art === RecordType::Settings || ($nurBeispiele && $art === RecordType::User)) {
                 continue;
             }
 
@@ -3418,17 +3458,35 @@ final class NodesScreen
      * ⚠️ *The multiplicity is written through the ordinary settings path, so `D-312`'s narrowing rule
      * still applies and a widening is still refused by the core rather than here.*
      */
-    private function saveField(int $id, int $relation, string $name, string $multiplicity, string $kind = ''): void
+    private function saveField(int $id, int $relation, string $name, string $multiplicity, string $kind = '', bool $confirmed = false): void
     {
         $existing = $this->editor->ownAttribute($id, $relation);
 
-        // ⚠️ **Die Art wechselt, und die Werte wandern mit** (TASK-066, [D-690](../../../docs/NewConcept/90-decision-log.md)).
-        // *Erst die Werte, dann die Art — die Wanderung muss die alte Art kennen. Ein unbekanntes Wort
-        // ist keine Angabe (`fromStorage`-Regel), kein Fehler.*
+        // ⚠️ **Die Art wechselt — und wird ein Feld mit Benutzersätzen eine Einstellung, wandert nichts**
+        // (TASK-066, [D-699](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «einen hinweis
+        // geben und der benutzer muss bestätigen die daten werden gelöscht und das setting bekommt
+        // neue». Ohne Haken bleibt die Art, und die Seite sagt, was der Haken kostet; mit Haken gehen
+        // die Sätze in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md): umkehrbar),
+        // dann wechselt die Art. Ein unbekanntes Wort ist keine Angabe, kein Fehler.*
         $gewuenschteArt = $kind === '' ? null : RelationKind::tryFrom($kind);
 
         if ($gewuenschteArt !== null && $gewuenschteArt !== $existing->kind) {
-            $this->data->moveValuesForKindChange($id, $existing, $gewuenschteArt);
+            $betroffen = $gewuenschteArt === RelationKind::Setting && ! $existing->isSetting()
+                ? $this->data->userRecordsHoldingValuesOn($id, $relation)
+                : ['records' => 0, 'values' => 0];
+
+            if ($betroffen['records'] > 0 && ! $confirmed) {
+                $this->kindPendingAfterAct = implode(':', [$relation, $gewuenschteArt->value, $betroffen['records'], $betroffen['values']]);
+
+                // ⚠️ *Ein Fehler des Kerns, den der Rand als Satz zeigt — wie jeder andere aus
+                // {@see NotYetStorable}; die Weiterleitung trägt den wartenden Wechsel mit.*
+                throw NotYetStorable::kindChangeNeedsConfirmation($existing->name, $betroffen['records'], $betroffen['values']);
+            }
+
+            if ($betroffen['records'] > 0) {
+                $this->data->shadowUserRecordsHoldingValuesOn($id, $relation);
+            }
+
             $existing = $this->editor->setKind($id, $relation, $gewuenschteArt);
         }
 
@@ -3716,7 +3774,10 @@ final class NodesScreen
                 continue;
             }
 
-            $this->saveField($nodeId, $kante->id, $name, $wieOft, $art);
+            // ⚠️ *Der Haken «ich bestätige» aus D-699 — neben der Art, unter demselben Namen.*
+            $bestaetigt = ! empty($angaben[$kante->id][Rendering::KIND_CONFIRM_KEY]) && ! is_array($angaben[$kante->id][Rendering::KIND_CONFIRM_KEY]);
+
+            $this->saveField($nodeId, $kante->id, $name, $wieOft, $art, $bestaetigt);
         }
     }
 
@@ -3780,7 +3841,7 @@ final class NodesScreen
             $key = sanitize_key((string) $schluessel);
 
             // «wie oft» ist eine Spalte der Kante und wird von saveField() geschrieben.
-            if ($key === SettingKey::Multiplicity->value || $key === Rendering::KIND_KEY || is_array($roh)) {
+            if ($key === SettingKey::Multiplicity->value || $key === Rendering::KIND_KEY || $key === Rendering::KIND_CONFIRM_KEY || is_array($roh)) {
                 continue;
             }
 
@@ -4834,6 +4895,10 @@ final class NodesScreen
         // Umstand zurück, und die Zeile ginge nie wieder zu.*
         if ($this->openRowsAfterAct !== false) {
             $extra[self::OPEN_ROWS] = $this->openRowsAfterAct;
+        }
+
+        if ($this->kindPendingAfterAct !== false) {
+            $extra[self::KIND_PENDING] = $this->kindPendingAfterAct;
         }
 
         wp_safe_redirect($this->backTo($stay, $extra));

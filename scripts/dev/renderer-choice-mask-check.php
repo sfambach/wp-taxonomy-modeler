@@ -1080,7 +1080,7 @@ $satz = (int) $wpdb->get_var(
     "SELECT v.value_ref
        FROM {$p}relation_records v
        JOIN {$p}node_records r ON r.id = v.node_record_id
-      WHERE r.node_id = {$probe->id} AND r.record_type = 'default'
+      WHERE r.node_id = {$probe->id} AND r.record_type = 'settings'
         AND v.relation_id = {$kante} AND v.value_ref_kind = 'node'"
 );
 
@@ -1582,6 +1582,9 @@ $gewandert = abschicken([
     'id'                   => (string) $traeger->id,
     '_taxmod_nonce'        => wp_create_nonce('taxmod_node_' . $traeger->id),
     'taxmod_field_setting' => [(string) $feld->id => [$schluessel => '7']],
+    // ⚠️ *Der Haken «hier überschreibe ich» (D-689): der Wert ist an der Stelle geerbt — seit D-707 auch
+    // aus dem eigenen Wert des Zielknotens —, und ohne den Haken schreibt der Rand eine geerbte Zeile nicht.*
+    'taxmod_field_setting_override' => [(string) $feld->id => [$schluessel => '1']],
 ]);
 
 check('der Akt ist durchgelaufen', $gewandert);
@@ -1896,7 +1899,7 @@ if ($vaterWahlId !== 0) {
     $vaterSatz = (int) $wpdb->get_var(
         "SELECT v.value_ref FROM {$p}relation_records v
            JOIN {$p}node_records r ON r.id = v.node_record_id
-          WHERE r.node_id = {$vater->id} AND r.record_type = 'default'
+          WHERE r.node_id = {$vater->id} AND r.record_type = 'settings'
             AND v.relation_id = {$kante} AND v.value_ref_kind = 'node'"
     );
 
@@ -1905,7 +1908,7 @@ if ($vaterWahlId !== 0) {
         return $wpdb->get_var(
             "SELECT v.value_int FROM {$p}relation_records v
                JOIN {$p}node_records r ON r.id = v.node_record_id
-              WHERE r.node_id = {$nodeId} AND r.record_type = 'default' AND v.relation_id = {$innen}"
+              WHERE r.node_id = {$nodeId} AND r.record_type = 'settings' AND v.relation_id = {$innen}"
         );
     };
 

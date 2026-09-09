@@ -106,14 +106,16 @@ $rendering = new Rendering($nodes, $framework, $registry, $types, $labels,
 // Verwendungsstelle gibt es im Kern noch nicht** — {@see \Taxmod\Core\Service\DataEntry::putSettingAt()}
 // schreibt am Knoten. Das steht als `INF-011` im Eingang und wird hier nicht nebenbei entschieden.*
 $satzVon = static function (int $knotenId) use ($nodes): int {
-    $records   = new WpdbRecordRepository();
-    $vorhanden = $records->ofNode($knotenId);
+    $records = new WpdbRecordRepository();
 
-    if ($vorhanden !== []) {
-        return $vorhanden[0]->id;
+    // ⚠️ *Der Einstellungssatz des Knotens, nicht irgendeiner (D-704): die Kette liest nur `settings`.*
+    foreach ($records->ofNode($knotenId) as $vorhanden) {
+        if ($vorhanden->recordType === \Taxmod\Core\Model\RecordType::Settings && $vorhanden->relationId === 0) {
+            return $vorhanden->id;
+        }
     }
 
-    return $records->add(new \Taxmod\Core\Model\NodeRecord(0, $knotenId, $nodes->byId($knotenId)->version, gmdate('Y-m-d H:i:s')));
+    return $records->add(new \Taxmod\Core\Model\NodeRecord(0, $knotenId, $nodes->byId($knotenId)->version, gmdate('Y-m-d H:i:s'), \Taxmod\Core\Model\RecordType::Settings));
 };
 
 // ⚠️ **Was diese Pruefung selbst anlegt, raeumt sie am Ende weg** (TASK-047). *Gemessen am

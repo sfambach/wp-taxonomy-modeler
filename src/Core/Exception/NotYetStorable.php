@@ -61,14 +61,17 @@ final class NotYetStorable extends DomainError
      * erst an den Daten.*
      */
     /**
-     * Ein Feld wird eine Einstellung, aber seine Benutzersätze sagen Verschiedenes (D-690).
+     * Ein Feld mit Benutzersätzen soll eine Einstellung werden — erst der Haken, dann der Wechsel (D-699).
      */
-    public static function kindChangeNeedsOneValue(string $attribute, int $anzahl): self
+    public static function kindChangeNeedsConfirmation(string $attribute, int $records, int $values): self
     {
         return new self(sprintf(
-            '«%s» cannot become a setting yet: its entries hold %d different values, and a setting holds one. Say which one first.',
+            $records === 1
+                ? '«%1$s» keeps values in %2$d entry (%3$d values). Making it a setting moves that entry to the shadow — tick the confirmation in the row and save again.'
+                : '«%1$s» keeps values in %2$d entries (%3$d values). Making it a setting moves those entries to the shadow — tick the confirmation in the row and save again.',
             $attribute,
-            $anzahl
+            $records,
+            $values
         ));
     }
 

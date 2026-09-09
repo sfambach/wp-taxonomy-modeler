@@ -1028,7 +1028,7 @@ echo "\n== der Einstellungssatz steht im Block nur im Entwicklermodus, und dann 
 $mitEinstellungssatz = (int) $wpdb->get_var(
     'SELECT nr.node_id FROM ' . Schema::table('node_records') . ' nr
        JOIN ' . Schema::table('relation_records') . " rr ON rr.node_record_id = nr.id
-      WHERE nr.record_type = 'default' AND rr.value_ref_kind = 'node'
+      WHERE nr.record_type = 'settings' AND rr.value_ref_kind = 'node'
       ORDER BY nr.id LIMIT 1"
 );
 check('ein Knoten mit Einstellungssatz und Renderer-Wahl ist da', $mitEinstellungssatz !== 0);

@@ -839,68 +839,58 @@ final class DataEntry
      * dort und wird hier nicht geraten.***
      */
     /**
-     * Wechselt eine Kante ihre Art, wandern ihre Werte mit ([D-690](../../../docs/NewConcept/90-decision-log.md)).
+     * Wie viele Benutzersätze dieses Knotens auf dieser Kante Werte tragen — und wie viele Zeilen.
      *
-     * ⚠️ **Sein Wort: «Werte wandern mit».** *Die Form je Richtung ist die aus D-690, `INFERRED`:*
+     * ⚠️ *[D-699](../../../docs/NewConcept/90-decision-log.md): wird ein Feld mit Benutzersätzen eine
+     * Einstellung, sagt die Seite, was der Haken kostet. Die Zahl kommt von hier.*
      *
-     * - **Einstellung → Feld:** der Wert wohnt im `default`-Satz, und ein Wert dort **ist** die Vorgabe
-     *   eines Feldes ([D-524](../../../docs/NewConcept/90-decision-log.md)). Nichts wandert, weil der
-     *   Ort schon der richtige ist.
-     * - **Feld → Einstellung:** die Werte wohnen in Benutzersätzen, eine Einstellung hat **einen** Wert
-     *   je Knoten. Ein Wert (oder überall derselbe) wandert in den `default`-Satz und verlässt die
-     *   Benutzersätze; verschiedene Werte sind ein Konflikt — *ein Wechsel, der einen von mehreren
-     *   still auswählt, wäre die Entscheidung, die [D-680](../../../docs/NewConcept/90-decision-log.md)
-     *   beim Verengen fangen will.*
-     *
-     * Vor dem Umstellen der Art zu rufen, weil die alte Art hier gelesen wird.
-     *
-     * @return int Wie viele Wertzeilen gewandert sind.
+     * @return array{records: int, values: int}
      */
-    public function moveValuesForKindChange(int $nodeId, Relation $relation, RelationKind $to): int
+    public function userRecordsHoldingValuesOn(int $nodeId, int $relationId): array
     {
-        if ($relation->isSetting() || $to !== RelationKind::Setting) {
-            return 0;
-        }
-
-        $gefunden = [];
+        $saetze = 0;
+        $zeilen = 0;
 
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->recordType !== RecordType::User || $satz->relationId !== 0) {
+            if ($satz->recordType !== RecordType::User) {
                 continue;
             }
 
-            foreach ($this->valuesOn($satz->id, $relation->id, '') as $wert) {
-                if (! $wert->value->isNothing()) {
-                    $gefunden[$wert->value->describe()] = ['satz' => $satz->id, 'wert' => $wert->value];
-                }
+            $meine = count($this->valuesOn($satz->id, $relationId, ''));
+
+            if ($meine > 0) {
+                ++$saetze;
+                $zeilen += $meine;
             }
         }
 
-        if ($gefunden === []) {
-            return 0;
-        }
+        return ['records' => $saetze, 'values' => $zeilen];
+    }
 
-        if (count($gefunden) > 1) {
-            throw NotYetStorable::kindChangeNeedsOneValue($relation->name, count($gefunden));
-        }
-
-        $einer = array_values($gefunden)[0];
-        $this->putSettingAt($nodeId, $relation->id, 0, $einer['wert']);
-
-        $gewandert = 0;
+    /**
+     * Die Benutzersätze, die auf dieser Kante Werte tragen, in den Schatten — nach seiner Bestätigung.
+     *
+     * ⚠️ **Sein Wort ([D-699](../../../docs/NewConcept/90-decision-log.md)):** *«der benutzer muss
+     * bestätigen die daten werden gelöscht und das setting bekommt neue».* *Gelöscht heisst hier
+     * gewandert ([D-536](../../../docs/NewConcept/90-decision-log.md)): jeder Satz geht mit allen seinen
+     * Zeilen über {@see self::removeRecord()} in den Schatten und ist von dort zurückholbar.*
+     *
+     * @return int Wie viele Sätze gingen.
+     */
+    public function shadowUserRecordsHoldingValuesOn(int $nodeId, int $relationId): int
+    {
+        $gegangen = 0;
 
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->recordType !== RecordType::User || $satz->relationId !== 0) {
+            if ($satz->recordType !== RecordType::User || $this->valuesOn($satz->id, $relationId, '') === []) {
                 continue;
             }
 
-            foreach ($this->valuesOn($satz->id, $relation->id, '') as $wert) {
-                $this->clear($satz->id, $relation->id);
-                ++$gewandert;
-            }
+            $this->removeRecord($satz->id);
+            ++$gegangen;
         }
 
-        return $gewandert;
+        return $gegangen;
     }
 
     public function putSettingAt(
@@ -939,7 +929,7 @@ final class DataEntry
             $this->refuseUnwritable($this->fieldRelationOf($nodeId, $aussen), RecordType::Default);
         }
 
-        $satzId = $this->defaultRecordOf($nodeId);
+        $satzId = $this->settingsRecordOf($nodeId);
 
         // ⚠️ *Keine eigene Wertkante heisst: die Angabe **ist** der Verweis, und sie steht direkt an der
         // Trägerkante. `refuseUnwritable()` sagt Nein, wenn das Ziel doch einen eigenen Satz braucht —
@@ -1038,7 +1028,7 @@ final class DataEntry
      *
      * ⚠️ **Und seit [D-609](../../../docs/NewConcept/90-decision-log.md) gilt derselbe Satz eine Ebene
      * höher, für den Datensatz selbst** (TASK-043, BUG-004). *Er stand hier im Kommentar und wurde eine
-     * Zeile darunter gebrochen: `defaultRecordOf()` **legte an**, bevor geprüft war, ob es überhaupt
+     * Zeile darunter gebrochen: `settingsRecordOf()` **legte an**, bevor geprüft war, ob es überhaupt
      * etwas zu löschen gibt. **Eine Seite zu speichern, auf der ein Einstellungsfeld leer ist, legte
      * damit einen Datensatz an** — gemessen waren 324 von 377 Datensätzen ohne eine einzige Wertzeile.
      * Der Eigentümer: «ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen? ja bitte.»*
@@ -1052,7 +1042,7 @@ final class DataEntry
             //
             // ⚠️ *Am Knoten gefragt und nicht am Datensatz: ob das Ziel einen eigenen Satz braucht,
             // haengt an der Kante, nicht daran, ob dieser Knoten schon einen Datensatz hat (D-609).*
-            $satzId = $this->findDefaultRecord($nodeId);
+            $satzId = $this->findSettingsRecord($nodeId);
 
             if ($satzId === 0) {
                 return;
@@ -1074,7 +1064,7 @@ final class DataEntry
             return;
         }
 
-        $satzId = $this->findDefaultRecord($nodeId);
+        $satzId = $this->findSettingsRecord($nodeId);
 
         if ($satzId === 0) {
             return;
@@ -1318,7 +1308,7 @@ final class DataEntry
         $werte = [];
 
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->recordType !== RecordType::Default) {
+            if ($satz->recordType !== RecordType::Settings) {
                 continue;
             }
 
@@ -1347,7 +1337,7 @@ final class DataEntry
      */
     public function addSettingPart(int $nodeId, int $carrierRelationId): NodeRecord
     {
-        return $this->createPart($this->defaultRecordOf($nodeId), $carrierRelationId);
+        return $this->createPart($this->settingsRecordOf($nodeId), $carrierRelationId);
     }
 
     /**
@@ -1391,7 +1381,7 @@ final class DataEntry
         $satzIds = [];
 
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->recordType === RecordType::Default) {
+            if ($satz->recordType === RecordType::Settings) {
                 $satzIds[] = $satz->id;
             }
         }
@@ -1543,7 +1533,7 @@ final class DataEntry
             $this->clock->now()->format('Y-m-d H:i:s'),
             // ⚠️ *`default`, weil es eine **Vorgabe** ist und keine Eingabe: was hier steht, gilt für
             // jede Eingabe an dieser Stelle, bis jemand sie überschreibt.*
-            RecordType::Default,
+            RecordType::Settings,
             $stelle->id
         );
 
@@ -1554,25 +1544,33 @@ final class DataEntry
         return $id;
     }
 
-    private function defaultRecordOf(int $nodeId): int
-    {
-        $vorhanden = $this->findDefaultRecord($nodeId);
-
-        return $vorhanden !== 0 ? $vorhanden : $this->create($nodeId, RecordType::Default)->id;
-    }
-
     /**
      * Derselbe Satz, aber **nur gesucht** — `0`, wenn es ihn nicht gibt.
      *
      * ⚠️ **[D-609](../../../docs/NewConcept/90-decision-log.md): ein Datensatz entsteht beim ersten
      * Schreiben, nicht beim Ansehen.** *Wer liest oder löscht, fragt hier; nur wer schreibt, ruft
-     * {@see self::defaultRecordOf()} und nimmt das Anlegen in Kauf. **Die beiden Wege getrennt zu
+     * {@see self::settingsRecordOf()} und nimmt das Anlegen in Kauf. **Die beiden Wege getrennt zu
      * haben ist der ganze Fix von BUG-004** — vorher gab es nur den anlegenden.*
      */
-    private function findDefaultRecord(int $nodeId): int
+    /**
+     * Der Einstellungssatz eines Knotens — angelegt beim ersten Schreiben ([D-609](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Die vierte Satzart** ([D-704](../../../docs/NewConcept/90-decision-log.md)): *hier wohnen die
+     * Einstellungen; der `default`-Satz daneben trägt Vorgabewerte ([D-524](../../../docs/NewConcept/90-decision-log.md))
+     * und den eigenen Wert ([D-673](../../../docs/NewConcept/90-decision-log.md)). Bis zum 2026-09-09 war
+     * das ein Satz mit einem Wort für zwei Dinge.*
+     */
+    private function settingsRecordOf(int $nodeId): int
+    {
+        $vorhanden = $this->findSettingsRecord($nodeId);
+
+        return $vorhanden !== 0 ? $vorhanden : $this->create($nodeId, RecordType::Settings)->id;
+    }
+
+    private function findSettingsRecord(int $nodeId): int
     {
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->recordType === RecordType::Default) {
+            if ($satz->recordType === RecordType::Settings && $satz->relationId === 0) {
                 return $satz->id;
             }
         }

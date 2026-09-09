@@ -244,7 +244,7 @@ if ($relation === null) {
     );
 
     $ownerRecord = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$prefix}node_records WHERE node_id = %d AND record_type = 'default' ORDER BY id LIMIT 1",
+        "SELECT id FROM {$prefix}node_records WHERE node_id = %d AND record_type = 'settings' ORDER BY id LIMIT 1",
         $model
     ));
 
@@ -267,7 +267,7 @@ if ($relation === null) {
                 'node_id'      => $model,
                 'node_version' => $ownerRecord,
                 'created_at'   => current_time('mysql'),
-                'record_type'  => 'default',
+                'record_type'  => 'settings',
             ],
             ['%d', '%d', '%s', '%s']
         );

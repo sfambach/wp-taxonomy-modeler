@@ -61,6 +61,9 @@ register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Sc
 // also im Normalfall eine. Kaeme je eine ohne, wird diese Pruefung rot, und das ist richtig so.
 const OHNE_VERSION = [
     'trash cleared'  => 'ein Sammelakt ueber hunderte Zeilen, keine einzelne',
+    // ⚠️ *Vier Zeilen der Fassung 42 (D-707): die Wertzeile war beim Schreiben schon im Schatten, ihre
+    // Version steht dort. Seit Fassung 44 traegt das Verb die Version mit; die vier bleiben erklaert.*
+    'limit moved into the bound node' => 'die Zeile lag schon im Schatten, ihre Version steht dort (Fassung 42)',
 ];
 
 $failed = 0;

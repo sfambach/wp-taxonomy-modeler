@@ -334,9 +334,9 @@ foreach (['Primitives' => $primitives, 'Settings' => $framework->rootOf(Branch::
     $ids   = $nodes->subtreeIds($wurzel);
     $liste = implode(',', array_map('intval', $ids));
     $user  = (int) $wpdb->get_var(
-        // ⚠️ *`relation_id = 0`: der Satz einer **Verwendungsstelle** ist `user` (D-674) und trägt
-        // Einstellungen, keine Daten des Typs — er ist die Adresse der Stelle, nicht ein Eintrag.*
-        "SELECT COUNT(*) FROM {$wpdb->prefix}taxmod_node_records WHERE record_type = 'user' AND relation_id = 0 AND node_id IN ({$liste})"
+        // ⚠️ *Ohne Ausnahme: der Satz einer Verwendungsstelle ist seit D-702/D-704 `settings`, nicht
+        // `user` — was hier `user` trägt, liegt falsch.*
+        "SELECT COUNT(*) FROM {$wpdb->prefix}taxmod_node_records WHERE record_type = 'user' AND node_id IN ({$liste})"
     );
 
     check($astName . ': kein Benutzersatz in ' . count($ids) . ' Knoten', $user === 0, "{$user} gefunden");

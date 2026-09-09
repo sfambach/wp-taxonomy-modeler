@@ -54,6 +54,20 @@ enum RecordType: string
      */
     case Example = 'example';
 
+    /**
+     * Der Satz, in dem die Einstellungen eines Knotens oder einer Verwendungsstelle wohnen.
+     *
+     * ⚠️ **[D-704](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«ich frage mich ob wir ein
+     * typ settings doch brauchen damit klar ist das das einstellung ist weder example, noch default
+     * noch user?» — «ich finde es auch das die vier arten es genauer machen sollten wir so festlegen».*
+     *
+     * ⚠️ *Gemessen davor: 50 von 53 `default`-Sätzen trugen nur Einstellungen — ein Wort für zwei
+     * Dinge. **Einer je Adresse** (Knoten, oder Knoten × geerbte Kante), nie zwei ([D-538](../../../docs/NewConcept/90-decision-log.md));
+     * entsteht beim ersten Schreiben ([D-609](../../../docs/NewConcept/90-decision-log.md)), nie von
+     * Hand — die Auswahl beim Anlegen bietet ihn nicht an.*
+     */
+    case Settings = 'settings';
+
     /** Was gilt, wenn niemand etwas gesagt hat. */
     public static function standard(): self
     {

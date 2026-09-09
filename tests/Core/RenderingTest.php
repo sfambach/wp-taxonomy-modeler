@@ -200,7 +200,7 @@ final class RenderingTest extends TestCase
                 $traegerId,
                 $traeger?->version ?? 1,
                 '2026-09-04 00:00:00',
-                $stelle === 0 ? RecordType::User : RecordType::Default,
+                RecordType::Settings,
                 $stelle
             ));
         }
@@ -1858,7 +1858,7 @@ final class RenderingTest extends TestCase
             $ding->id,
             $ding->version,
             '2026-09-06 00:00:00',
-            RecordType::Default
+            RecordType::Settings
         ));
 
         $this->records->putValue(new RelationRecord(

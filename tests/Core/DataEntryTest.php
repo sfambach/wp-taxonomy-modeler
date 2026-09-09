@@ -529,7 +529,7 @@ final class DataEntryTest extends TestCase
         $gewaehlt = static fn (array $zeilen): ?int => ($zeilen[0] ?? null)?->value->reference;
 
         $zeilenAn = fn (int $kanteId): array => array_values(array_filter(
-            $this->data->valuesOf($this->defaultRecordOf($this->gram->id)),
+            $this->data->valuesOf($this->settingsRecordOf($this->gram->id)),
             static fn (RelationRecord $wert): bool => $wert->relationId === $kanteId
         ));
 
@@ -673,11 +673,11 @@ final class DataEntryTest extends TestCase
         self::assertCount($vorher, $this->buch->entries);
     }
 
-    /** Der `default`-Satz dieses Knotens — die Adresse, an der eine Einstellung hängt. */
-    private function defaultRecordOf(int $nodeId): int
+    /** Der Einstellungssatz dieses Knotens — die Adresse, an der eine Einstellung hängt (D-704). */
+    private function settingsRecordOf(int $nodeId): int
     {
         foreach ($this->records->ofNode($nodeId) as $satz) {
-            if ($satz->recordType === RecordType::Default) {
+            if ($satz->recordType === RecordType::Settings) {
                 return $satz->id;
             }
         }

@@ -2293,9 +2293,12 @@ Benutzersätzen in den `default`-Satz; Einstellung → Feld lässt ihn dort, er 
 gebaute Wanderung zählte Werte statt Sätze — ein `0..*`-Feld mit `rot` und `grün` in einem Satz galt
 schon als Konflikt. Sein Beschluss ersetzt sie: **es wandert nichts.** Gibt es Benutzersätze mit
 Werten, warnt die Seite, wie viele in den Schatten gehen, verlangt eine Bestätigung, und erst dann
-wechselt die Art; die Einstellung beginnt leer. Einstellung → Feld bleibt.* **Umzubauen** (offen,
-nicht begonnen): `moveValuesForKindChange()` fällt, an ihre Stelle tritt der Bestätigungsschritt im
-Rand; `field-kind-check` Abschnitte 3 und 5 werden zur Warnung und zur Bestätigung.
+wechselt die Art; die Einstellung beginnt leer. Einstellung → Feld bleibt.* **Umgebaut am 2026-09-10**
+(Baureihenfolge II, Punkt 2): *die Wanderung ist weg; ohne Haken bleibt die Art, die Seite nennt Sätze
+und Werte, die Weiterleitung trägt den wartenden Wechsel als Umstand, die Zeile zeigt die gewünschte
+Art vorgewählt mit dem Haken «ich bestätige» und dem Satz, was er kostet; mit Haken gehen die Sätze
+über den Löschweg in den Schatten, dann wechselt die Art. `field-kind-check` misst es in den
+Abschnitten 3 bis 5, 22 Aussagen.*
 
 **2026-09-06, sein Auftrag** (mit Bild aus dem Feldblock der Knotenseite, Spalte `Kind`):
 *«müsste änderbar sein mit den schon benannten regeln»* — und auf die Rückfrage, wo:
@@ -3078,7 +3081,23 @@ ist nichts passiert.* Nicht begonnen.
 
 ---
 
-[ ] TASK-083  Die vierte Satzart `settings` — Wanderung, Rand, Leser, Wächter
+[x] TASK-083  Die vierte Satzart `settings` — Wanderung, Rand, Leser, Wächter — gebaut 2026-09-09/10
+
+**Zusage** (`record-kind-check`, 24 Aussagen; Kernlauf): *jede Einstellungszeile liegt in einem
+`settings`-Satz, keiner trägt etwas anderes, der Satz einer Verwendungsstelle ist `settings`, einer je
+Adresse; die vier Grenzknoten tragen ihre Grenze als eigenen Wert im `default`-Satz, an den Kanten
+`min`/`max` von `Integer` und `Decimal` steht nichts mehr, und die Kette holt die Grenze aus dem
+Zielknoten (D-707, letzte Stufe); der Rand legt Einstellungssätze und die Sätze von
+Verwendungsstellen als `settings` an; die Auswahl beim Anlegen bietet `settings` nicht an;
+`simple-type-check` ohne Ausnahme.*
+
+**Beim Bauen gefunden:** *(1) Fassung 42 lief auf der Datenbank, bevor der Wächter stand — ein
+Seitenaufruf der anderen Sitzung mit meinem Stand auf der Platte; der Wächter zeigte danach zwei
+Adressen mit je zwei Einstellungssätzen: `chooser-dialog` hatte schon zwei Vorgabesätze aus zwei
+Tagen, und die Aufteilung an `Street / H#` hatte einen zweiten angelegt, obwohl einer da war. Fassung
+43 führt je Adresse zusammen, der ältere bleibt; die Aufteilung nimmt seither den vorhandenen.
+(2) Ein direktes Kind von `Integer` erbt `min` nicht — es ist ein Geschwister von `integer_min`
+(D-686); die Wiese des Wächters prüft deshalb am Enkel.*
 
 **2026-09-09, sein Beschluss** ([D-704](../../NewConcept/90-decision-log.md)): *«ich finde es auch
 das die vier arten es genauer machen sollten wir so festlegen».*

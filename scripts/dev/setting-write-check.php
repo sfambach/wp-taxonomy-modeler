@@ -150,7 +150,7 @@ function traegersatz(int $knotenId): int
     return (int) $wpdb->get_var($wpdb->prepare(
         'SELECT v.value_ref FROM ' . Schema::table('node_records') . ' r
            INNER JOIN ' . Schema::table('relation_records') . " v ON v.node_record_id = r.id
-          WHERE r.node_id = %d AND r.record_type = 'default'
+          WHERE r.node_id = %d AND r.record_type = 'settings'
             AND v.relation_id = %d AND v.value_ref_kind = 'node'
           LIMIT 1",
         $knotenId,
@@ -655,7 +655,7 @@ echo "\n== Genau ein Renderer, und die zweite Zeile ist abgeschafft ==\n";
 $wahlen = (int) $wpdb->get_var($wpdb->prepare(
     'SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' r
        INNER JOIN ' . Schema::table('relation_records') . " v ON v.node_record_id = r.id
-      WHERE r.node_id = %d AND r.record_type = 'default'
+      WHERE r.node_id = %d AND r.record_type = 'settings'
         AND v.relation_id = %d AND v.value_ref_kind = 'node'",
     $knotenId,
     $framework->settingRelationId(SettingKey::Renderer)

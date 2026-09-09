@@ -432,6 +432,9 @@ final class Rendering implements Presets
     /** Der Schlüssel, unter dem die Art einer eigenen Feldzeile als Auswahlfeld mitreist (TASK-066). */
     public const KIND_KEY = 'kind';
 
+    /** Der Haken «ich bestätige», mit dem ein Feld mit Benutzersätzen eine Einstellung werden darf (D-699). */
+    public const KIND_CONFIRM_KEY = 'kind_confirm';
+
     /**
      * What the referenced nodes are called, for every reference in this batch, in one query
      * **per role** that anybody asked for.
@@ -1803,7 +1806,7 @@ final class Rendering implements Presets
             // gezeichnet), unter dem Namen der Zeile — der Rand liest es neben «wie oft». Eine geerbte
             // Zeile zeigt die Art wie bisher als Wort: sie gehört dem Vorfahren.*
             if ($rowSettings !== '' && $relation->fromNodeId === $declaredBy) {
-                $configured[self::KIND_KEY] = $this->kindChoice($relation, $rowSettings, $rowForm, $locale, $level);
+                $configured[self::KIND_KEY] = $this->kindChoice($relation, $rowSettings, $rowForm, $locale, $level, $settingsWords);
             }
 
             // ⚠️ **Der Bereich unter der Zeile, und er wird nur gezeichnet, wenn er offen ist**
@@ -2105,7 +2108,7 @@ final class Rendering implements Presets
      * Werten; [D-618](../../../docs/NewConcept/90-decision-log.md): der Benutzer legt sie fest. Die
      * Wörter sind die Werte selbst — so stehen sie auch im Anlegeformular und in der Spalte «Kind».*
      */
-    private function kindChoice(Relation $relation, string $rowSettings, string $formId, string $locale, Level $level): RenderedSetting
+    private function kindChoice(Relation $relation, string $rowSettings, string $formId, string $locale, Level $level, array $woerter = []): RenderedSetting
     {
         $options = [];
 
@@ -2113,25 +2116,44 @@ final class Rendering implements Presets
             $options[$kind->value] = $kind->value;
         }
 
-        $setting = new ResolvedSetting(self::KIND_KEY, TypedValue::ofText($relation->kind->value), $relation->id, true);
+        // ⚠️ **Ein wartender Artwechsel** ([D-699](../../../docs/NewConcept/90-decision-log.md)): *der Rand
+        // sagt als Wort, welche Art gewünscht war und was sie kostet; die Zeile zeigt sie vorgewählt,
+        // den Satz und den Haken «ich bestätige». Ohne Haken bleibt beim nächsten Speichern alles.*
+        $gewuenscht = $this->wortAus($woerter, 'kind_target:' . $relation->id);
+        $satz       = $this->wortAus($woerter, 'kind_pending:' . $relation->id);
+        $wartend    = $gewuenscht !== '' && RelationKind::tryFrom($gewuenscht) !== null;
+
+        $setting = new ResolvedSetting(self::KIND_KEY, TypedValue::ofText($wartend ? $gewuenscht : $relation->kind->value), $relation->id, true);
+
+        $auswahl = $this->renderers->byName(ChoiceRenderer::NAME)->render(
+            $relation,
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: $setting->value,
+                settings: [],
+                locale: $locale,
+                level: $level,
+                fieldName: $rowSettings . '[' . self::KIND_KEY . ']',
+                surroundings: new Surroundings(options: $options, mayBeNothing: false, formId: $formId)
+            )
+        );
+
+        $markup = $auswahl->markup;
+
+        if ($wartend) {
+            $markup .= '<label class="taxmod-kind-confirm">'
+                . '<input type="checkbox" name="' . RenderResult::escape($rowSettings . '[' . self::KIND_CONFIRM_KEY . ']') . '" value="1"'
+                . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '> '
+                . RenderResult::escape($this->wortAus($woerter, 'kind_confirm')) . '</label>'
+                . '<em class="taxmod-kind-pending description">' . RenderResult::escape($satz) . '</em>';
+        }
 
         return new RenderedSetting(
             self::KIND_KEY,
             SettingShape::ARegisteredName,
             null,
             $setting,
-            $this->renderers->byName(ChoiceRenderer::NAME)->render(
-                $relation,
-                new RenderContext(
-                    purpose: Purpose::Edit,
-                    value: $setting->value,
-                    settings: [],
-                    locale: $locale,
-                    level: $level,
-                    fieldName: $rowSettings . '[' . self::KIND_KEY . ']',
-                    surroundings: new Surroundings(options: $options, mayBeNothing: false, formId: $formId)
-                )
-            ),
+            $wartend ? RenderResult::of($markup) : $auswahl,
             ChoiceRenderer::NAME
         );
     }
@@ -2767,6 +2789,11 @@ final class Rendering implements Presets
             if ($record->recordType === RecordType::Example) {
                 $marked ??= $record;
 
+                continue;
+            }
+
+            // ⚠️ *Ein Einstellungssatz ist kein Eintrag und wird nie vorgeschaut ([D-704](../../../docs/NewConcept/90-decision-log.md)).*
+            if ($record->recordType === RecordType::Settings) {
                 continue;
             }
 

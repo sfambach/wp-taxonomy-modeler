@@ -411,7 +411,7 @@ final class Schema
      * **keine einzige davon ist zur Parkzeit ihrer Kante oder später archiviert worden** — sie waren
      * alle vorher schon gelöscht, gehören also auch nach der alten Lesart nicht ins Gepäck.*
      */
-    public const VERSION = 41;
+    public const VERSION = 43;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -698,6 +698,10 @@ final class Schema
         // ⚠️ **Fassung 41: unter `Primitives` und `Settings` gibt es keine Benutzersätze**
         // ([D-677](../../../docs/NewConcept/90-decision-log.md), [D-691](../../../docs/NewConcept/90-decision-log.md), TASK-077).
         self::dropUserRecordsUnderPrimitivesAndSettings();
+
+        // ⚠️ **Fassung 42: die vierte Satzart, und die Grenzen wohnen in den Grenzknoten**
+        // ([D-704](../../../docs/NewConcept/90-decision-log.md), [D-707](../../../docs/NewConcept/90-decision-log.md), TASK-083).
+        self::separateSettingsRecords();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -2877,6 +2881,291 @@ final class Schema
         }
 
         update_option('taxmod_fassung41_shape', ['gefallen' => count($leer), 'mit_werten_geblieben' => $voll, 'gruppe' => $gruppe], false);
+    }
+
+    /**
+     * Fassung 42: **die vierte Satzart `settings`, und die Grenzen der Zahlentypen wohnen in den Grenzknoten.**
+     *
+     * ⚠️ **Sein Wort zu beidem:** *«ich finde es auch das die vier arten es genauer machen sollten wir
+     * so festlegen»* ([D-704](../../../docs/NewConcept/90-decision-log.md)) und *«ja wenn nichts in der
+     * kante gesetzt ist gilt der Wert des Zielknoten (wenn einer da ist)»*
+     * ([D-707](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   A["default-Satz mit Einstellungen"] -->|"nur Einstellungen"| S["wird settings"]
+     *   A -->|"auch eigener Wert"| T["settings-Satz daneben · Einstellungszeilen ziehen um"]
+     *   U["Satz einer Verwendungsstelle"] --> S
+     *   G["integer_min / max, decimal_min / max"] --> E["eigener Wert = Grenze, im default-Satz"]
+     *   K["min / max an Integer, Decimal"] --> X["Wertzeilen in den Schatten"]
+     * ```
+     *
+     * ⚠️ **Gemessen am 2026-09-09, bevor der Schritt geschrieben wurde:** *53 `default`-Sätze; 50 tragen
+     * nur Einstellungen, 3 dazu einen eigenen Wert (`Integer = 72`, `integer_min = 0`,
+     * `integer_max = 72` — Reste seiner Versuche, «alles andere kann weg»); die Grenzen ±int und
+     * ±dezimal standen an den **Kanten** `Integer → min/max` und `Decimal → min/max`.*
+     *
+     * ⚠️ *Gezählt davor, gezählt danach, Abweichung ist ein Abbruch; jede gelöschte Zeile geht in den
+     * Schatten; eine Änderungsgruppe für die ganze Wanderung; zweimal ausführbar.*
+     */
+    private static function separateSettingsRecords(): void
+    {
+        global $wpdb;
+
+        $saetze    = self::table('node_records');
+        $werte     = self::table('relation_records');
+        $relations = self::table('relations');
+        $nodes     = self::table('nodes');
+
+        if (self::tableMissing($saetze) || self::tableMissing($werte) || ! self::hasColumn($saetze, 'record_type')) {
+            return;
+        }
+
+        $log    = new WpdbChangelog(new SystemClock());
+        $gruppe = null;
+        $jetzt  = (new SystemClock())->now()->format('Y-m-d H:i:s');
+
+        // 1. Sätze, die Einstellungszeilen tragen, aber nicht `settings` sind.
+        /** @var list<array{id: string, node_id: string, node_version: string, relation_id: string, record_type: string, version: string}> $traeger */
+        $traeger = $wpdb->get_results(
+            "SELECT DISTINCT s.id, s.node_id, s.node_version, s.relation_id, s.record_type, s.version
+               FROM {$saetze} s
+               JOIN {$werte} v ON v.node_record_id = s.id
+               JOIN {$relations} r ON r.id = v.relation_id AND r.kind = 'setting'
+              WHERE s.record_type <> 'settings'",
+            ARRAY_A
+        ) ?: [];
+
+        // Dazu die Sätze von Verwendungsstellen, auch ohne Zeile — sie sind der Adresse nach Einstellungssätze.
+        /** @var list<array{id: string, node_id: string, node_version: string, relation_id: string, record_type: string, version: string}> $stellen */
+        $stellen = $wpdb->get_results(
+            "SELECT s.id, s.node_id, s.node_version, s.relation_id, s.record_type, s.version
+               FROM {$saetze} s WHERE s.relation_id <> 0 AND s.record_type <> 'settings'",
+            ARRAY_A
+        ) ?: [];
+
+        $umgetypt = 0;
+        $geteilt  = 0;
+
+        foreach (array_merge($traeger, $stellen) as $satz) {
+            $id = (int) $satz['id'];
+
+            if ((int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$saetze} WHERE id = %d AND record_type = 'settings'", $id)) === 1) {
+                continue;
+            }
+
+            $fremde = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$werte} v LEFT JOIN {$relations} r ON r.id = v.relation_id
+                  WHERE v.node_record_id = %d AND (v.relation_id = 0 OR r.kind IS NULL OR r.kind <> 'setting')",
+                $id
+            ));
+
+            Shadow::keepOne('node_records', $id);
+
+            if ($fremde === 0) {
+                // ⚠️ *Nur Einstellungen: der Satz wechselt das Wort und bleibt, wie er ist.*
+                $wpdb->update($saetze, ['record_type' => 'settings', 'version' => (int) $satz['version'] + 1], ['id' => $id], ['%s', '%d'], ['%d']);
+                $gruppe = $log->record($id, 'record', 'record became a settings record', $satz['record_type'], 'settings', (int) $satz['version'] + 1, $gruppe);
+                ++$umgetypt;
+
+                continue;
+            }
+
+            // ⚠️ *Gemischt: ein Einstellungssatz daneben, die Einstellungszeilen ziehen um, der eigene
+            // Wert bleibt im `default`-Satz ([D-673](../../../docs/NewConcept/90-decision-log.md)).
+            // **Gibt es an der Adresse schon einen, wird der genommen** — einer je Adresse ([D-538](../../../docs/NewConcept/90-decision-log.md));
+            // der erste Lauf legte hier einen zweiten an, gemessen an `Street / H#`.*
+            $neu = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$saetze} WHERE node_id = %d AND relation_id = %d AND record_type = 'settings' ORDER BY id LIMIT 1",
+                (int) $satz['node_id'],
+                (int) $satz['relation_id']
+            ));
+
+            if ($neu === 0) {
+                $wpdb->insert($saetze, [
+                    'version'      => 1,
+                    'node_id'      => (int) $satz['node_id'],
+                    'node_version' => (int) $satz['node_version'],
+                    'created_at'   => $jetzt,
+                    'record_type'  => 'settings',
+                    'relation_id'  => (int) $satz['relation_id'],
+                ]);
+                $neu = (int) $wpdb->insert_id;
+            }
+            $wpdb->query($wpdb->prepare(
+                "UPDATE {$werte} v JOIN {$relations} r ON r.id = v.relation_id AND r.kind = 'setting'
+                    SET v.node_record_id = %d WHERE v.node_record_id = %d",
+                $neu,
+                $id
+            ));
+            $gruppe = $log->record($neu, 'record', 'settings record split off', 'from record ' . $id, 'settings', 1, $gruppe);
+            ++$geteilt;
+        }
+
+        // 1b. Einer je Adresse ([D-538](../../../docs/NewConcept/90-decision-log.md)): wo zwei
+        // Einstellungssätze dieselbe Adresse tragen, bleibt der ältere; die Zeilen des jüngeren
+        // ziehen um, soweit ihre Kante dort noch frei ist, sonst in den Schatten — und der geleerte
+        // Satz auch. *Gemessen am 2026-09-09: `chooser-dialog` hatte zwei Vorgabesätze aus zwei Tagen.*
+        $zusammengefuehrt = 0;
+
+        /** @var list<array{node_id: string, relation_id: string}> $adressen */
+        $adressen = $wpdb->get_results(
+            "SELECT node_id, relation_id FROM {$saetze} WHERE record_type = 'settings'
+              GROUP BY node_id, relation_id HAVING COUNT(*) > 1",
+            ARRAY_A
+        ) ?: [];
+
+        foreach ($adressen as $adresse) {
+            $ids = array_map('intval', $wpdb->get_col($wpdb->prepare(
+                "SELECT id FROM {$saetze} WHERE node_id = %d AND relation_id = %d AND record_type = 'settings' ORDER BY id",
+                (int) $adresse['node_id'],
+                (int) $adresse['relation_id']
+            )) ?: []);
+            $bleibt = array_shift($ids);
+
+            foreach ($ids as $juengerer) {
+                foreach ($wpdb->get_results($wpdb->prepare("SELECT id, relation_id, locale FROM {$werte} WHERE node_record_id = %d", $juengerer), ARRAY_A) ?: [] as $zeile) {
+                    $besetzt = (int) $wpdb->get_var($wpdb->prepare(
+                        "SELECT COUNT(*) FROM {$werte} WHERE node_record_id = %d AND relation_id = %d AND locale = %s",
+                        $bleibt,
+                        (int) $zeile['relation_id'],
+                        (string) $zeile['locale']
+                    ));
+
+                    if ($besetzt === 0) {
+                        $wpdb->update($werte, ['node_record_id' => $bleibt], ['id' => (int) $zeile['id']], ['%d'], ['%d']);
+                    } else {
+                        Shadow::keepOne('relation_records', (int) $zeile['id'], true);
+                        $wpdb->delete($werte, ['id' => (int) $zeile['id']], ['%d']);
+                    }
+                }
+
+                Shadow::keepOne('node_records', $juengerer, true);
+                $wpdb->delete($saetze, ['id' => $juengerer], ['%d']);
+                $gruppe = $log->record($juengerer, 'record', 'settings record merged into the older one', 'record ' . $juengerer, 'record ' . $bleibt, null, $gruppe);
+                ++$zusammengefuehrt;
+            }
+        }
+
+        // 2. D-707: die Grenzen wohnen in den Grenzknoten, nicht an den Kanten.
+        $grenzen = [
+            ['typ' => 'Integer', 'unten' => 'integer_min', 'oben' => 'integer_max', 'spalte' => 'value_int', 'min' => (string) PHP_INT_MIN, 'max' => (string) PHP_INT_MAX],
+            ['typ' => 'Decimal', 'unten' => 'decimal_min', 'oben' => 'decimal_max', 'spalte' => 'value_decimal', 'min' => '-99999999999999999999.9999999999', 'max' => '99999999999999999999.9999999999'],
+        ];
+        $gesetzt   = 0;
+        $gestrichen = 0;
+
+        $knotenNamens = static function (string $name) use ($wpdb, $nodes): int {
+            return (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT id FROM ' . self::table('nodes_named') . ' WHERE name = %s ORDER BY id LIMIT 1',
+                $name
+            ));
+        };
+
+        foreach ($grenzen as $grenze) {
+            $typId = $knotenNamens($grenze['typ']);
+
+            if ($typId === 0) {
+                continue;
+            }
+
+            foreach ([['knoten' => $grenze['unten'], 'kante' => 'min', 'wert' => $grenze['min']], ['knoten' => $grenze['oben'], 'kante' => 'max', 'wert' => $grenze['max']]] as $seite) {
+                $knotenId = $knotenNamens($seite['knoten']);
+
+                if ($knotenId === 0) {
+                    continue;
+                }
+
+                // Die Kantenwerte am Typ fallen in den Schatten.
+                $kantenId = (int) $wpdb->get_var($wpdb->prepare(
+                    'SELECT r.id FROM ' . self::table('relations_named') . ' r WHERE r.from_node_id = %d AND r.name = %s AND r.kind = %s LIMIT 1',
+                    $typId,
+                    $seite['kante'],
+                    'setting'
+                ));
+
+                if ($kantenId !== 0) {
+                    $zeilen = $wpdb->get_results($wpdb->prepare(
+                        "SELECT v.id, v.version FROM {$werte} v JOIN {$saetze} s ON s.id = v.node_record_id WHERE s.node_id = %d AND v.relation_id = %d",
+                        $typId,
+                        $kantenId
+                    ), ARRAY_A) ?: [];
+
+                    foreach ($zeilen as $zeile) {
+                        Shadow::keepOne('relation_records', (int) $zeile['id'], true);
+                        $wpdb->delete($werte, ['id' => (int) $zeile['id']], ['%d']);
+                        $gruppe = $log->record((int) $zeile['id'], 'record_value', 'limit moved into the bound node', $seite['kante'] . ' at ' . $grenze['typ'], $seite['knoten'], (int) $zeile['version'], $gruppe);
+                        ++$gestrichen;
+                    }
+                }
+
+                // Der eigene Wert des Grenzknotens ist die Grenze — im `default`-Satz.
+                $satzId = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM {$saetze} WHERE node_id = %d AND record_type = 'default' AND relation_id = 0 ORDER BY id LIMIT 1",
+                    $knotenId
+                ));
+
+                if ($satzId === 0) {
+                    $version = (int) $wpdb->get_var($wpdb->prepare("SELECT version FROM {$nodes} WHERE id = %d", $knotenId));
+                    $wpdb->insert($saetze, ['version' => 1, 'node_id' => $knotenId, 'node_version' => $version, 'created_at' => $jetzt, 'record_type' => 'default', 'relation_id' => 0]);
+                    $satzId = (int) $wpdb->insert_id;
+                }
+
+                // ⚠️ *Zweimal ausführbar: steht die Grenze schon da, wird nichts angefasst und nichts journalt.*
+                $steht = (string) $wpdb->get_var($wpdb->prepare(
+                    "SELECT {$grenze['spalte']} FROM {$werte} WHERE node_record_id = %d AND relation_id = 0 LIMIT 1",
+                    $satzId
+                ));
+
+                if ($steht !== '' && (float) $steht === (float) $seite['wert'] && $steht === $seite['wert']) {
+                    continue;
+                }
+
+                foreach ($wpdb->get_col($wpdb->prepare("SELECT id FROM {$werte} WHERE node_record_id = %d AND relation_id = 0", $satzId)) ?: [] as $alt) {
+                    Shadow::keepOne('relation_records', (int) $alt, true);
+                    $wpdb->delete($werte, ['id' => (int) $alt], ['%d']);
+                }
+
+                $wpdb->insert($werte, ['node_record_id' => $satzId, 'relation_id' => 0, 'locale' => '', 'position' => 0, 'version' => 1, $grenze['spalte'] => $seite['wert']]);
+                $gruppe = $log->record($satzId, 'record_value', 'own value set', null, $seite['knoten'] . ' = ' . $seite['wert'], 1, $gruppe);
+                ++$gesetzt;
+            }
+
+            // Der Rest «72» am Typ selbst fällt.
+            foreach ($wpdb->get_col($wpdb->prepare(
+                "SELECT v.id FROM {$werte} v JOIN {$saetze} s ON s.id = v.node_record_id WHERE s.node_id = %d AND s.record_type = 'default' AND v.relation_id = 0",
+                $typId
+            )) ?: [] as $alt) {
+                Shadow::keepOne('relation_records', (int) $alt, true);
+                $wpdb->delete($werte, ['id' => (int) $alt], ['%d']);
+                ++$gestrichen;
+            }
+        }
+
+        // Nachgezählt: kein Satz ausser `settings` trägt noch eine Einstellungszeile.
+        $geblieben = (int) $wpdb->get_var(
+            "SELECT COUNT(DISTINCT s.id) FROM {$saetze} s JOIN {$werte} v ON v.node_record_id = s.id
+               JOIN {$relations} r ON r.id = v.relation_id AND r.kind = 'setting' WHERE s.record_type <> 'settings'"
+        );
+
+        if ($geblieben !== 0) {
+            throw new \RuntimeException(sprintf(
+                'Fassung 42: %d Saetze tragen noch Einstellungszeilen ohne settings zu sein. Die Fassungsnummer bleibt stehen.',
+                $geblieben
+            ));
+        }
+
+        $mehrfach = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM (SELECT node_id FROM {$saetze} WHERE record_type = 'settings' GROUP BY node_id, relation_id HAVING COUNT(*) > 1) d"
+        );
+
+        if ($mehrfach !== 0) {
+            throw new \RuntimeException(sprintf('Fassung 43: %d Adressen tragen noch mehrere Einstellungssaetze. Die Fassungsnummer bleibt stehen.', $mehrfach));
+        }
+
+        if ($umgetypt + $geteilt + $gesetzt + $gestrichen + $zusammengefuehrt > 0) {
+            update_option('taxmod_fassung42_shape', ['umgetypt' => $umgetypt, 'geteilt' => $geteilt, 'zusammengefuehrt' => $zusammengefuehrt, 'grenzen' => $gesetzt, 'gestrichen' => $gestrichen, 'gruppe' => $gruppe], false);
+        }
     }
 
     private static function constrainRelationsToNodes(): void

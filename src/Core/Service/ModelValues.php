@@ -184,7 +184,49 @@ final class ModelValues
             }
         }
 
+        // ⚠️ **Die letzte Stufe: der Zielknoten selbst** ([D-707](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Wort: «ja wenn nichts in der kante gesetzt ist gilt der Wert des Zielknoten (wenn
+        // einer da ist)». Die Grenzen von `Integer` wohnen damit in `integer_min` und `integer_max`
+        // als deren eigener Wert ([D-673](../../../docs/NewConcept/90-decision-log.md)) — ein Ort für
+        // jede Zahl, keine Kopie an der Kante. **Nur, was die Kette nicht schon gesagt hat**, und nur,
+        // wo der Zielknoten wirklich einen eigenen Wert trägt: keine Stufe erfindet einen.*
+        foreach ($this->declaredSettingEdges($node) as $schluessel => $kante) {
+            if (isset($aus[$schluessel])) {
+                continue;
+            }
+
+            $eigener = $this->ownValueOf($kante->toNodeId);
+
+            if ($eigener !== null) {
+                $aus[$schluessel] = new ResolvedSetting($schluessel, $eigener, $kante->toNodeId, false);
+            }
+        }
+
         return $aus;
+    }
+
+    /**
+     * Der eigene Wert eines Knotens — die Wertzeile mit `relation_id = 0` in seinem `default`-Satz.
+     *
+     * ⚠️ *[D-673](../../../docs/NewConcept/90-decision-log.md): «eine Wertzeile mit `relation_id = 0`
+     * ist der Wert des Knotens selbst». Im `default`-Satz, nicht im Einstellungssatz — seit
+     * [D-704](../../../docs/NewConcept/90-decision-log.md) sind das zwei Sätze.*
+     */
+    private function ownValueOf(int $nodeId): ?TypedValue
+    {
+        foreach ($this->saetzeVon($nodeId) as $satz) {
+            if ($satz->recordType !== RecordType::Default || $satz->relationId !== 0) {
+                continue;
+            }
+
+            foreach ($this->valuesOf($satz->id) as $wert) {
+                if ($wert->relationId === 0 && ! $wert->value->isNothing()) {
+                    return $wert->value;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -199,7 +241,16 @@ final class ModelValues
      */
     private function stufe(Node $subject, int $traeger, bool $gesetzt): array
     {
-        $saetze = $this->recordsOf($traeger);
+        // ⚠️ **Nur die Einstellungssätze** ([D-704](../../../docs/NewConcept/90-decision-log.md)):
+        // *ein Eintrag, ein Beispiel oder eine Vorgabe trägt keine Einstellung — und was ein
+        // Einstellungssatz ist, sagt jetzt seine Art, nicht mehr eine Erkennung.*
+        $saetze = [];
+
+        foreach ($this->saetzeVon($traeger) as $satz) {
+            if ($satz->recordType === RecordType::Settings && $satz->relationId === 0) {
+                $saetze[] = $satz->id;
+            }
+        }
 
         // ⚠️ **Kein Satz, keine Angabe** — *und seit TASK-057 stimmt das wieder. Solange der Renderer
         // in `nodes.settings_record_id` stand, hing er **neben** den Sätzen und musste auch dann
@@ -901,7 +952,7 @@ final class ModelValues
 
         foreach ($this->erbkette($subject) as $besitzer) {
             foreach ($this->saetzeVon($besitzer) as $satz) {
-                if ($satz->relationId !== 0 || $satz->recordType !== RecordType::Default) {
+                if ($satz->relationId !== 0 || $satz->recordType !== RecordType::Settings) {
                     continue;
                 }
 
@@ -1052,10 +1103,16 @@ final class ModelValues
      */
     public function defaultFor(Node $node, Relation $relation): ?TypedValue
     {
+        // ⚠️ **Eine Einstellungskante wird im Einstellungssatz gelesen, ein Feld im Vorgabesatz**
+        // ([D-704](../../../docs/NewConcept/90-decision-log.md)): *der Exponent eines Präfixes ist eine
+        // Einstellung (D-559) und wohnt seit der vierten Satzart in `settings`; die Vorgabe eines Feldes
+        // bleibt in `default` (D-524).*
+        $art = $relation->isSetting() ? RecordType::Settings : RecordType::Default;
+
         // ⚠️ *Auch hier über das Gedächtnis: `nonPersistentValue()` wird je Feld gefragt, und ohne
         // das wäre es dasselbe N+1, das `package7-check.php` eben gemeldet hat.*
         foreach ($this->saetzeVon($node->id) as $record) {
-            if ($record->recordType !== RecordType::Default) {
+            if ($record->recordType !== $art) {
                 continue;
             }
 
