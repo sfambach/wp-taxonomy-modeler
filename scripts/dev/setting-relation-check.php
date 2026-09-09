@@ -612,9 +612,29 @@ try {
 
     $amGeschwister = (new ModelValues($records, $relations, $nodes, $framework))->forNode($nodes->byId($geschwister->id));
 
+    // ⚠️ **Ein Geschwister des Ziels erbt sie seit [D-686](../../docs/NewConcept/90-decision-log.md)
+    // ebenfalls nicht.** *Sein Wort: «ich würde das gerne erweitern auf sich selbst und alle seine
+    // geschwister». **Gemessen an seinem Befund «min kann ich nicht auf 0 stellen»:** `min`, `max`
+    // und `Schrittweite` liegen als Spezialisierungen unter `Integer`, also erbte `min` dessen
+    // `step = 50` — und das Feld, in dem er `min` einstellt, sprang in Fünfzigerschritten.*
     check(
-        'ein Geschwister erbt dieselbe Kante weiterhin',
-        isset($amGeschwister['__selbsterbe_feld']),
+        'ein Geschwister des Ziels erbt sie ebenfalls nicht',
+        ! isset($amGeschwister['__selbsterbe_feld']),
+        'sie steht trotzdem da'
+    );
+
+    // ⚠️ **Der Gegenfall, damit die Sperre nicht alles nimmt** — *das war der Sinn dieser Zeile,
+    // und er bleibt: ein Knoten, der weder das Ziel noch sein Geschwister ist, erbt weiter.
+    // **Ohne ihn wäre [D-605](../../docs/NewConcept/90-decision-log.md) durch die Hintertür
+    // zurück** — «markierte Knoten erben nichts», zu breit und zurückgenommen.*
+    $fremder        = $selbstEditor->createNode('__selbsterbe Fremder', $ziel->id);
+    $selbstGebaut[] = $fremder->id;
+
+    $amFremden = (new ModelValues($records, $relations, $nodes, $framework))->forNode($nodes->byId($fremder->id));
+
+    check(
+        'ein Knoten ausserhalb der Geschwisterreihe erbt sie weiterhin',
+        isset($amFremden['__selbsterbe_feld']),
         'die Vererbung ist mit gesperrt worden — das ist die zurueckgenommene Fassung D-605'
     );
 

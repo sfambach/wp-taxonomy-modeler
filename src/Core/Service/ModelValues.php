@@ -96,11 +96,34 @@ final class ModelValues
      * und dort kein {@see ModelValues} gesetzt sein muss — **eine Fassung der Regel und nicht zwei**
      * (`CD`).*
      */
-    public static function inheritanceBlocked(Relation $relation, int $heirId): bool
+    public static function inheritanceBlocked(Relation $relation, int $heirId, ?Node $heir = null, ?Node $target = null): bool
     {
-        return $relation->isSetting()
-            && $relation->toNodeId === $heirId
-            && $relation->fromNodeId !== $heirId;
+        if (! $relation->isSetting() || $relation->fromNodeId === $heirId) {
+            return false;
+        }
+
+        if ($relation->toNodeId === $heirId) {
+            return true;
+        }
+
+        // ⚠️ **Und seine Geschwister ebenso** ([D-686](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Wort: «ich würde das gerne erweitern auf sich selbst und alle seine geschwister».*
+        //
+        // ⚠️ **Was das behebt, gemessen an seinem Befund «min kann ich nicht auf 0 stellen»:**
+        // *`min`, `max` und `Schrittweite` sind Spezialisierungen unter `Integer`
+        // ([D-516](../../../docs/NewConcept/90-decision-log.md)). Also erbte `min` von `Integer`
+        // dessen `step = 50` — **und das Steuerelement, in dem er `min` einstellt, sprang in
+        // Fünfzigerschritten.** Der Knoten konfigurierte die Felder, in denen er konfiguriert
+        // wird.*
+        //
+        // ⚠️ *Ohne die beiden Knoten ist die Frage nicht zu beantworten, und dann bleibt es bei
+        // [D-607](../../../docs/NewConcept/90-decision-log.md) — **eine fehlende Auskunft sperrt
+        // nichts**, sonst hinge die Regel davon ab, wer sie gerade fragt.*
+        if ($heir === null || $target === null || $heir->parentNodeId === null) {
+            return false;
+        }
+
+        return $target->parentNodeId === $heir->parentNodeId;
     }
 
     /**
@@ -332,7 +355,9 @@ final class ModelValues
                 // `read_only` `read_only` als seine eigene, geerbte Einstellung — sein Befund am
                 // Bildschirm: «setting cannot inherit itself». Sie greift nur für einen **Knoten**;
                 // eine Verwendungsstelle ist nie das Ziel ihrer eigenen Einstellungskante.*
-                if ($subject instanceof Node && self::inheritanceBlocked($kante, $subject->id)) {
+                if ($subject instanceof Node
+                    && self::inheritanceBlocked($kante, $subject->id, $subject, $this->knoten($kante->toNodeId))
+                ) {
                     continue;
                 }
 
