@@ -220,6 +220,24 @@ sagt die Klasse. Die Verschachtelung «Renderer → seine Eigenschaften» ist ke
 eine Frage, **welche Zeilen der Einstellungsbereich zeichnet**: die des Modells immer, die des gewählten
 Renderers darunter, eingerückt, wie heute — nur aus einer Liste im Kode statt aus einem Ast.*
 
+**Und eine Knoten-Eigenschaft, die es mehrfach gibt — `validator`.** *Sein Wort: «den könnte auch der
+knoten bekommen, aber den kann es mehrfach geben, wie wird dieser gespeichert?» — und auf den ersten
+Entwurf: «nein, validator ist eine knoten-eigenschaft».* **Also genau wie `read_only` und `renderer`:**
+*vom Kode-Knoten erklärt, von jedem Knoten geerbt, sein Wert im Satz des Knotens — nur dass dieser Wert
+**mehrere Zeilen** hat, geordnet über `position` ([D-530](NewConcept/90-decision-log.md)):
+`Kontakt · validator = 'range'`, `Kontakt · validator = 'shape'`. Kein Feld, kein Teil, keine
+zweite Adresse — dieselbe Eigenschaft, zwei Zeilen. Die Spalte gibt es, die Wanderung dafür ist gelaufen.*
+
+⚠️ **Und ob ein Validator selbst wieder Eigenschaften hat — gemessen: heute nicht.** *`RangeValidator`
+liest `min` und `max` aus den Einstellungen des **Knotens**, die er prüft; `ShapeValidator` das Muster
+aus dem Typ. Sie haben keine eigenen Schlüssel — deshalb reicht die Namensliste.* **Sollte einer je
+eigene bekommen** (ein zweiter Bereich, ein eigenes Muster je Eintrag), *ist die Antwort die, die das
+Modell für zusammengesetzte Werte schon hat ([D-541](NewConcept/90-decision-log.md),
+[D-577](NewConcept/90-decision-log.md)): die Wertzeile zeigt auf einen **eigenen Satz**
+(`value_ref_kind = record`), und darin stehen die Schlüssel dieses einen Eintrags — je Zeile ihr Satz,
+so wie ein Einheitenwert je Zeile seinen hat. Flach, solange es geht; ein Teil, sobald ein Eintrag
+mehr als einen Namen braucht.*
+
 ⚠️ *Der eine Ort, an dem es heute schon genau so ist: `read_only` und `renderer` sind Kanten an der
 Wurzel mit Werten im Satz des Knotens. Form E macht mit `orientation`, `with_label`, `label_role`,
 `converter`, `validator` dasselbe. Es ist kein neues Muster, es ist das erste Muster, auf alle angewandt.*
