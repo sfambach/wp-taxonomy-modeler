@@ -277,6 +277,85 @@ Wert des Knotens, im Satz der Kante, in derselben Zeilenform, mit der Adresse de
 GUI liest eine Klasse — die der Kante — und nimmt die Einstellungen des Ziels, wie der Knoten sie
 schon hat.*
 
+## Das Datenmodell für eigene Attribute — Entwurf
+
+**Sein Wort:** *«ich würde mich gerne erst einmal auf die eigenen Attribute konzentrieren, das ist schon
+komplex genug. Überschreibung müssen wir aber klären, bevor wir ein Datenmodell definieren — oder
+währenddessen.»*
+
+*Also hier nur die eigenen Attribute von Knoten, Kanten und Objekten — mit einem Vorbehalt, der das
+Überschreiben offenhält: **jede Zeile trägt ihre Adresse (Klasse + Attribut), nicht nur den
+Attributnamen ihres Trägers.** Dann kann ein Satz später auch Werte zu einer fremden Klasse halten
+(die Kante zum Ziel), ohne dass die Ablage sich ändert. Was «schlägt» heisst, entscheidet die
+Auflösung, nicht die Tabelle.* Alles Weitere unten ist `INFERRED` — ein Entwurf zum Streichen.
+
+### Zwei Dinge, die es geben muss
+
+```mermaid
+erDiagram
+  SATZ ||--o{ ZEILE : "hält"
+  SATZ ||--o{ SATZ : "hält als Objekt (über eine Zeile)"
+  SATZ {
+    id id
+    string klasse "die programmierte Klasse, die dieses Objekt ist"
+    ref traeger "der Knoten, die Kante oder der Satz, dem es gehört"
+  }
+  ZEILE {
+    ref satz
+    string klasse "Adresse, Teil 1"
+    string attribut "Adresse, Teil 2"
+    int position "Stelle in einer Liste; 0 ohne Liste"
+    typed wert "genau eine Spalte je Format: bool, int, decimal, text, verweis"
+  }
+```
+
+- **Ein Satz ist ein Objekt.** *Er nennt seine Klasse und wem er gehört: einem Knoten, einer Kante —
+  oder einem anderen Satz, dann ist er ein komplexer Wert darin (2a).* `INFERRED`: **Knoten und Kanten
+  haben je genau einen Satz für ihre eigenen Attribute**, angelegt beim ersten Wert, nicht vorher.
+- **Eine Zeile ist ein Wert.** *Sie gehört einem Satz, trägt die Adresse (Klasse + Attribut, Frage 3), ihre
+  Stelle in einer Liste (`position`, sonst 0) und den Wert in genau einer Spalte, die das Format des
+  Attributs vorgibt. Ein komplexer Wert ist eine Zeile, deren Wert ein **Verweis auf einen Satz** ist.*
+- **Eine Liste sind mehrere Zeilen derselben Adresse im selben Satz**, geordnet über `position`
+  (2b): einfache Werte direkt, komplexe je als Verweis auf ihren Satz.
+
+### Das Beispiel `Kontakt`, in Zeilen
+
+| Satz | Klasse | gehört | Zeile: Klasse.Attribut | position | Wert |
+|---|---|---|---|---|---|
+| 1 | `ContactNode` | Knoten Kontakt | `Node.read_only` | 0 | `false` |
+| 1 | | | `Node.renderers` | 1 | → Satz 2 |
+| 1 | | | `Node.renderers` | 2 | → Satz 3 |
+| 2 | `SpinnerRenderer` | Satz 1 | *(keine eigenen Attribute)* | | |
+| 3 | `CompactRenderer` | Satz 1 | `CompactRenderer.withLabel` | 0 | `true` |
+| 3 | | | `CompactRenderer.orientation` | 0 | `vertical` |
+| 4 | `CompositionEdge` | Kante Kontakt → Strasse | `Edge.multiplicity` | 0 | `1..1` |
+| 4 | | | `Edge.hide` | 0 | `false` |
+
+*Und der Vorbehalt fürs Überschreiben, sichtbar an Satz 4: dort könnte später eine Zeile
+`TextNode.display_size = 40` stehen — dieselbe Form, eine fremde Klasse in der Adresse. Ob sie gilt,
+sagt die Auflösung.*
+
+### Was das Modell **nicht** braucht, und warum
+
+| nicht nötig | weil |
+|---|---|
+| eine Tabelle, die Attribute **erklärt** | die Klasse erklärt (1a); Reflection liest sie beim Zeichnen |
+| eine Nummer je Attribut | Klasse + Name ist die Adresse (3) |
+| eine eigene Tabelle je Liste oder je Tiefe | Liste = `position`, Tiefe = Satz zeigt auf Satz (2b, 2c) |
+| ein Unterschied zwischen «Einstellungssatz» und «Objektsatz» | jeder Satz ist ein Objekt seiner Klasse; der Knoten ist eines, der Renderer darin ist eines |
+
+### Offen, bevor das Datenmodell steht — seine Fragen
+
+- **D1 · Ist der Knoten selbst der Satz, oder hat er einen?** *Ein Knoten ist ein Objekt seiner Klasse
+  (`IntegerNode`). Ist die Knotenzeile damit schon der Satz (`klasse` steht am Knoten), oder hängt an
+  ihr ein Satz? Dasselbe für die Kante.* Der Entwurf oben nimmt «hat einen» an (`INFERRED`).
+- **D2 · Was ist der Wert einer Wahl aus Kindern** (`orientation` = einer von zwei; `label_role` = eine
+  von fünf Rollen, die Modellknoten sind)? *Ein Text (`'vertical'`) oder ein Verweis auf den Knoten
+  (`→ Rolle symbol`)?* Beides passt in die Zeile; die Klasse müsste sagen, welches.
+- **D3 · Versionen und Schatten** — gilt für Sätze und Zeilen dasselbe wie heute für alles (jede Version
+  bleibt, Löschen ist Wandern)? *Der Entwurf lässt es weg, weil es nichts an der Form ändert.*
+- **Z2–Z4 · das Überschreiben** — siehe unten; die Form hält es offen.
+
 ## Das zweite Problem, das er hintanstellt: Überschreiben an der Kante, Erben an Kindern
 
 *«Wenn wir das erste Problem gelöst haben, können wir das leicht lösen.»* — Was dafür festzuhalten ist,
