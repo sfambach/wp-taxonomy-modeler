@@ -75,6 +75,22 @@ final class NotYetStorable extends DomainError
         ));
     }
 
+    /**
+     * Ein Knoten mit Einträgen soll unter `Primitives` — erst die Bestätigung, dann der Umzug (D-701).
+     */
+    public static function moveNeedsConfirmation(string $node, string $target, int $records, int $values): self
+    {
+        return new self(sprintf(
+            $records === 1
+                ? '«%1$s» carries %3$d entry (%4$d values) that nothing refers to. Under «%2$s» there is no place for it — confirm below to move the node and send that entry to the shadow.'
+                : '«%1$s» carries %3$d entries (%4$d values) that nothing refers to. Under «%2$s» there is no place for them — confirm below to move the node and send those entries to the shadow.',
+            $node,
+            $target,
+            $records,
+            $values
+        ));
+    }
+
     public static function thatFieldHasSeveralValues(string $attribute, int $anzahl): self
     {
         return new self(sprintf(

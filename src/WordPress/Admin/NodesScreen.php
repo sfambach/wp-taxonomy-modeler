@@ -200,6 +200,20 @@ final class NodesScreen
 
     private string|false $kindPendingAfterAct = false;
 
+    /**
+     * Ein Umzug unter `Primitives` oder `Settings`, der auf seine Bestätigung wartet — `<Knoten>:<Ziel>:<Sätze>:<Werte>`.
+     *
+     * ⚠️ **[D-701](../../../docs/NewConcept/90-decision-log.md), sein Beschluss:** *«Fall 1 bleibt ganz,
+     * Fall 2 wird gezeigt der benutzer muss bestätigen».* *Einträge ohne Verwender haben unter `Primitives`
+     * keinen Ort; die Seite zeigt ihre Zahl und einen Knopf, und erst der Knopf zieht um.*
+     */
+    private const MOVE_PENDING = 'taxmod_move_pending';
+
+    /** Das Feld, mit dem der zweite Umzugsakt sagt «ich habe es gelesen». */
+    private const MOVE_CONFIRM = 'taxmod_move_confirm';
+
+    private string|false $movePendingAfterAct = false;
+
     /** Stands in for the chosen locale until the browser puts the real one in its place. */
     private const LOCALE_MARKER = '__taxmod_locale__';
 
@@ -422,7 +436,7 @@ final class NodesScreen
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
             . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px">';
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
-        $html .= $this->notice();
+        $html .= $this->notice() . ($selected === null ? '' : $this->movePendingForm($selected));
         // The owner's proportions: a third for the tree, two thirds for the detail.
         //
         // ⚠️ **Each half scrolls on its own and the page itself does not.** The owner asked for the
@@ -4901,6 +4915,10 @@ final class NodesScreen
             $extra[self::KIND_PENDING] = $this->kindPendingAfterAct;
         }
 
+        if ($this->movePendingAfterAct !== false) {
+            $extra[self::MOVE_PENDING] = $this->movePendingAfterAct;
+        }
+
         wp_safe_redirect($this->backTo($stay, $extra));
         exit;
     }
@@ -5112,7 +5130,71 @@ final class NodesScreen
             return __('Nothing was chosen — pick a node in the dialog first, then «Move here».', 'taxmod');
         }
 
+        // ⚠️ **Unter `Primitives` und `Settings` gibt es keine Einträge** ([D-677](../../../docs/NewConcept/90-decision-log.md),
+        // [D-691](../../../docs/NewConcept/90-decision-log.md)) — *und wer dorthin zieht, nimmt seine
+        // Einträge mit: die mit Verwender bleiben Teile, die ohne gehen nach Bestätigung in den Schatten
+        // ([D-701](../../../docs/NewConcept/90-decision-log.md)). Nichts wird still gelöscht.*
+        $knoten = $this->editor->find($id);
+        $ziel   = $this->editor->find($target);
+        $ast    = $ziel === null ? null : $this->framework->branchOf($ziel);
+
+        if ($knoten !== null && $ziel !== null && $ast !== null && ($ast->underPrimitives() || $ast === Branch::Settings)) {
+            $ohneVerwender = $this->data->unheldUserRecordsUnder($knoten);
+            $bestaetigt    = ! empty($_POST[self::MOVE_CONFIRM]);
+
+            if ($ohneVerwender['records'] > 0 && ! $bestaetigt) {
+                $this->movePendingAfterAct = implode(':', [$id, $target, $ohneVerwender['records'], $ohneVerwender['values']]);
+
+                throw NotYetStorable::moveNeedsConfirmation($knoten->name, $ziel->name, $ohneVerwender['records'], $ohneVerwender['values']);
+            }
+
+            if ($ohneVerwender['records'] > 0) {
+                $this->data->shadowUnheldUserRecordsUnder($knoten);
+            }
+        }
+
         return $this->editor->move($id, $target);
+    }
+
+    /**
+     * Der wartende Umzug, als Satz mit Knopf — gezeichnet auf der Seite des Knotens, der ziehen soll.
+     *
+     * ⚠️ *Skriptfrei wie die Sperre (D-689) und der Aufklapper (D-666): der Umstand kommt über die
+     * Weiterleitung, der Knopf ist derselbe Akt «move» mit dem Feld «ich bestätige».*
+     */
+    private function movePendingForm(Node $selected): string
+    {
+        $roh = $this->circumstance(self::MOVE_PENDING);
+
+        if ($roh === null || preg_match('/^(\d+):(\d+):(\d+):(\d+)$/', $roh, $t) !== 1 || (int) $t[1] !== $selected->id) {
+            return '';
+        }
+
+        $ziel = $this->editor->find((int) $t[2]);
+
+        if ($ziel === null) {
+            return '';
+        }
+
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="taxmod-acts taxmod-move-pending">'
+            . $this->hidden($selected->id)
+            . '<input type="hidden" name="target" value="' . (int) $t[2] . '">'
+            . '<input type="hidden" name="' . self::MOVE_CONFIRM . '" value="1">'
+            . '<span class="description">' . esc_html(sprintf(
+                /* translators: 1: node, 2: target, 3: entries, 4: values. */
+                _n(
+                    'Move «%1$s» under «%2$s»: %3$d entry with %4$d values that nothing refers to goes to the shadow.',
+                    'Move «%1$s» under «%2$s»: %3$d entries with %4$d values that nothing refers to go to the shadow.',
+                    (int) $t[3],
+                    'taxmod'
+                ),
+                $selected->name,
+                $ziel->name,
+                (int) $t[3],
+                (int) $t[4]
+            )) . '</span> '
+            . ControlMarkup::button(new Control('do', 'move', __('I confirm — move it', 'taxmod'), __('The entries go to the shadow and can be brought back from there.', 'taxmod'), true, true, 'trash'))
+            . '</form>';
     }
 
     private function notice(): string

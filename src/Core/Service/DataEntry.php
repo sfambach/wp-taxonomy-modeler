@@ -893,6 +893,71 @@ final class DataEntry
         return $gegangen;
     }
 
+    /**
+     * Die Benutzersätze unter einem Knoten, auf die kein Verwendersatz zeigt — und was sie tragen.
+     *
+     * ⚠️ **[D-701](../../../docs/NewConcept/90-decision-log.md), sein Beschluss:** *«Fall 1 bleibt ganz,
+     * Fall 2 wird gezeigt der benutzer muss bestätigen».* *Fall 1 ist ein Satz, auf den ein anderer Satz
+     * zeigt — ein Teil, seine Adresse ist der Verweis (D-541); der bleibt. Fall 2 hat keinen Verwender und
+     * damit unter `Primitives` keinen Ort: der wird gezählt, gezeigt, und geht nach Bestätigung.*
+     *
+     * @return array{records: int, values: int, ids: list<int>}
+     */
+    public function unheldUserRecordsUnder(Node $root): array
+    {
+        $knoten = [$root->id => true];
+
+        foreach ($this->nodes->subtreeOf($root) as $unten) {
+            $knoten[$unten->id] = true;
+        }
+
+        $kandidaten = [];
+
+        foreach ($this->records->ofNodes(array_keys($knoten)) as $saetze) {
+            foreach ($saetze as $satz) {
+                if ($satz->recordType === RecordType::User && $satz->relationId === 0) {
+                    $kandidaten[$satz->id] = $satz;
+                }
+            }
+        }
+
+        if ($kandidaten === []) {
+            return ['records' => 0, 'values' => 0, 'ids' => []];
+        }
+
+        $gehalten = $this->records->holdersOf(array_keys($kandidaten));
+        $ids      = [];
+        $zeilen   = 0;
+
+        foreach ($kandidaten as $id => $satz) {
+            if (isset($gehalten[$id])) {
+                continue;
+            }
+
+            $ids[]   = $id;
+            $zeilen += count($this->records->valuesOf($id));
+        }
+
+        return ['records' => count($ids), 'values' => $zeilen, 'ids' => $ids];
+    }
+
+    /**
+     * Die Benutzersätze ohne Verwender unter einem Knoten in den Schatten — nach seiner Bestätigung (D-701).
+     *
+     * @return int Wie viele Sätze gingen.
+     */
+    public function shadowUnheldUserRecordsUnder(Node $root): int
+    {
+        $gegangen = 0;
+
+        foreach ($this->unheldUserRecordsUnder($root)['ids'] as $id) {
+            $this->removeRecord($id);
+            ++$gegangen;
+        }
+
+        return $gegangen;
+    }
+
     public function putSettingAt(
         int $nodeId,
         int $aussen,

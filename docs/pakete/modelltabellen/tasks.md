@@ -3062,7 +3062,14 @@ WordPress-Optionen.*
 
 ---
 
-[ ] TASK-082  Verschieben unter `Primitives` nimmt die Sätze mit — Teile bleiben, Einträge ohne Verwender nach Bestätigung in den Schatten
+[x] TASK-082  Verschieben unter `Primitives` nimmt die Sätze mit — Teile bleiben, Einträge ohne Verwender nach Bestätigung in den Schatten — gebaut 2026-09-10
+
+**Zusage** (`move-under-primitives-check`, 14 Aussagen): *ein Umzug unter `Primitives` oder `Settings`
+zählt die Einträge ohne Verwender im Unterbaum; gibt es welche, geschieht nichts, die Seite sagt Zahl
+und Ziel, und die Weiterleitung trägt den wartenden Umzug; die Seite des Knotens zeigt den Knopf «ich
+bestätige» mit dem Ziel im Formular; mit ihm gehen die Einträge über den Löschweg in den Schatten und
+der Knoten zieht um; der Teil mit Verwender bleibt samt Wert, und der Verwender zeigt weiter auf ihn;
+ein Umzug innerhalb von `Model` fragt nicht.* Dieselbe Form wie der Artwechsel aus D-699.
 
 **2026-09-09, sein Beschluss** ([D-701](../../NewConcept/90-decision-log.md)): *«Fall 1 bleibt ganz,
 Fall 2 wird gezeigt der benutzer muss bestätigen».*
