@@ -108,10 +108,20 @@ function rowsFor(string $table, array $ownerIds, string $column = 'owner_id'): i
     // ⚠️ *Seit TASK-019 haengt eine Beschriftung nicht am Eigentuemer, sondern der Eigentuemer an ihr
     // ([D-580](../../docs/NewConcept/90-decision-log.md)) — gezaehlt wird ueber `label_id`.*
     if ($table === 'labels') {
+        // ⚠️ **Knoten- und Kantennummern sind zwei Räume, und sie treffen sich** (TASK-079, D-581,
+        // INF-035). *Hier standen beide Nummern in **einer** Liste, gesucht in **beiden** Tabellen —
+        // und traf die Kantennummer einen fremden lebenden Knoten, zählte dessen Beschriftung mit:
+        // «its labels went with it — 1», in etwa jedem vierten Lauf, je nachdem, welche Nummern die
+        // Wiese bekam. Gemessen am 2026-09-09: 1 von 10, immer dieselbe Zusage. Jetzt sucht jede
+        // Nummer nur in ihrem Raum.*
+        // *Die Liste ist hier `[Knoten, Kante]` — siehe `$owners` unten.*
+        $knotenId = (int) ($ownerIds[0] ?? 0);
+        $kantenId = (int) ($ownerIds[1] ?? 0);
+
         return (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM {$p}label_texts t
-             WHERE t.label_id IN (SELECT label_id FROM {$p}nodes WHERE id IN ({$in}))
-                OR t.label_id IN (SELECT label_id FROM {$p}relations WHERE id IN ({$in}))"
+             WHERE t.label_id IN (SELECT label_id FROM {$p}nodes WHERE id = {$knotenId})
+                OR t.label_id IN (SELECT label_id FROM {$p}relations WHERE id = {$kantenId})"
         );
     }
 

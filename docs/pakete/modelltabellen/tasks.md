@@ -2927,7 +2927,17 @@ hier vermerkt, nicht gefragt.*
 
 ---
 
-[ ] TASK-079  `cleartrash-check` ist wackelig — «its labels went with it» fällt in etwa jedem vierten Lauf
+[x] TASK-079  `cleartrash-check` ist wackelig — «its labels went with it» fällt in etwa jedem vierten Lauf — behoben 2026-09-09
+
+**Gemessen, auf sein Wort «ja laufen lassen»:** *zehn Läufe hinter `cleanup-screen-check`, einer rot,
+immer dieselbe Zusage mit «1». Der Verdacht aus dem Eintrag — das Aufräumen der Beschriftungen beim
+Herunterfahren — war es nicht.* **Die Ursache war die Zählabfrage des Wächters selbst:** *sie nahm
+die Nummer des Knotens und die der Kante in **eine** Liste und suchte beide in **beiden** Tabellen.
+Knoten und Kanten zählen seit D-581 in getrennten Räumen und treffen sich (INF-035); traf die
+Kantennummer einen fremden lebenden Knoten, zählte dessen Beschriftung mit. Wie oft, hing an den
+Nummern, die die Wiese gerade bekam.* **Behoben:** jede Nummer sucht nur in ihrem Raum. Danach zehn
+Läufe: neun grün, einer mit Rückgabewert 3 — die Sperre aus TASK-073, weil währenddessen ein anderer
+Lauf lief. *Nicht rot, und genau so gemeint.*
 
 **2026-09-09, beim Bauen gefunden, geparkt.** ⚠️ **Gemessen:** *im vollen Randlauf für TASK-075 rot
 mit Rückgabewert 1; allein wiederholt grün. Dreimal die Folge `cleanup-screen-check`, dann
