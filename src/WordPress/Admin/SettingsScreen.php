@@ -116,6 +116,11 @@ final class SettingsScreen
             // ⚠️ **Drei Spalten auf sein Wort** ([D-695](../../../docs/NewConcept/90-decision-log.md)):
             // *«tablle links label, schalter/wert, recht erklärung».* **Und nicht `form-table`**,
             // *deren zwei Spalten es gar nicht anders könnten.*
+            // ⚠️ **Der Merker steht **vor** der Tabelle und nicht darin**
+            // ([D-706](../../../docs/NewConcept/90-decision-log.md)). *Zwischen `</tr>` und `<tr>`
+            // gehört kein Element; der Browser holt es dort heraus und stellt es vor die Tabelle —
+            // **also stellt man es gleich dorthin, statt sich auf eine Reparatur zu verlassen.***
+            . (self::inDeveloperMode() ? '<input type="hidden" name="dev_details" value="1">' : '')
             . '<table class="taxmod-config"><thead><tr>'
             . '<th scope="col">' . esc_html__('Setting', 'taxmod') . '</th>'
             . '<th scope="col">' . esc_html__('Value', 'taxmod') . '</th>'
@@ -210,7 +215,7 @@ final class SettingsScreen
             ],
         ];
 
-        $rows = '<input type="hidden" name="dev_details" value="1">';
+        $rows = '';
 
         foreach (self::DEVELOPER_DETAILS as $option => $field) {
             $rows .= $this->row(
@@ -420,6 +425,26 @@ final class SettingsScreen
     }
 
     /**
+     * Ob ein Schiebeschalter angehakt zurückkam.
+     *
+     * ⚠️ **Nach dem Wert und nicht nach dem Dasein**
+     * ([D-706](../../../docs/NewConcept/90-decision-log.md)). *Der Schalter schickt eine verborgene
+     * `0` vor sich her, damit «aus» **falsch** heisst und nicht «nicht beantwortet»
+     * ([D-315](../../../docs/NewConcept/90-decision-log.md), [D-232](../../../docs/NewConcept/90-decision-log.md)).
+     * **Damit ist das Feld immer gesetzt**, und ein `isset()` liest jedes Ausschalten als
+     * Einschalten. PHP behält bei zwei gleichen Namen den letzten — steht das Kästchen an, kommt
+     * `1`, sonst bleibt die `0` stehen.*
+     *
+     * ⚠️ *Die einzige Stelle, die diese Frage stellt: **eine zweite könnte sie anders stellen**, und
+     * genau das war der Fehler — der Umbau auf den Schalter ging durch drei Aufrufe und die Frage
+     * wanderte in keinem mit.*
+     */
+    private static function angehakt(string $field): bool
+    {
+        return isset($_POST[$field]) && sanitize_text_field(wp_unslash((string) $_POST[$field])) === '1';
+    }
+
+    /**
      * Take the form and store it.
      *
      * ⚠️ **`CD-5` in order and no exception for an admin-only screen**: capability, nonce, validate,
@@ -435,8 +460,20 @@ final class SettingsScreen
 
         check_admin_referer(self::ACTION, '_taxmod_nonce');
 
-        update_option(NodesScreen::DEVELOPER_OPTION, isset($_POST['developer']), true);
-        update_option(self::SHOW_TRASH, isset($_POST['show_trash']) ? '1' : '0', true);
+        // ⚠️ **Nach dem *Wert* gefragt und nicht nach dem *Dasein***
+        // ([D-706](../../../docs/NewConcept/90-decision-log.md)). *Hier stand `isset()`, und mit dem
+        // Schiebeschalter aus [D-695](../../../docs/NewConcept/90-decision-log.md) war das **immer
+        // wahr**: der Schalter schickt eine verborgene `0` vor sich her, damit «aus» auch «aus»
+        // heisst — also ist das Feld **immer** gesetzt, und `isset()` las jedes Ausschalten als
+        // Einschalten.* **Sein Befund:** *«kann write counts zwar ausschalten aber nach save wieder
+        // alter wert».*
+        //
+        // ⚠️ **Es traf alle drei Schalter, nicht nur seinen** — *auch der Entwicklermodus selbst und
+        // der Papierkorb liessen sich nicht mehr ausschalten. **Ein Kästchen fragt man nach dem
+        // Dasein, einen Schiebeschalter nach dem Wert**, und beim Umbau auf den Schalter ist die
+        // Frage nicht mitgewandert.*
+        update_option(NodesScreen::DEVELOPER_OPTION, self::angehakt('developer') ? '1' : '0', true);
+        update_option(self::SHOW_TRASH, self::angehakt('show_trash') ? '1' : '0', true);
 
         // ⚠️ **Nur, wenn das Formular die Zeilen auch trug** ([D-705](../../../docs/NewConcept/90-decision-log.md)).
         // *Sie stehen nur da, während der Modus an ist — **ohne diesen Merker könnte das Speichern
@@ -444,7 +481,7 @@ final class SettingsScreen
         // und ein Formular ohne sie löschte alle vier.*
         if (isset($_POST['dev_details'])) {
             foreach (self::DEVELOPER_DETAILS as $option => $field) {
-                update_option($option, isset($_POST[$field]) ? '1' : '0', true);
+                update_option($option, self::angehakt($field) ? '1' : '0', true);
             }
         }
 

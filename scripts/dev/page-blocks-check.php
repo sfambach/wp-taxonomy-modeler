@@ -1050,38 +1050,68 @@ if ($mitEinstellungssatz !== 0) {
     update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, $vorher, false);
 }
 
+/**
+ * Eine Einstellung des Eigentümers **leihen** und sie ihm zurückgeben — auch bei einem Abbruch.
+ *
+ * ⚠️ **Am 2026-09-09 gebaut, weil es ohne sie schiefging**
+ * ([D-706](../../docs/NewConcept/90-decision-log.md)). *Ein Randlauf wurde mitten in dieser Datei
+ * abgebrochen, und **drei seiner Einstellungen blieben auf «aus» stehen** — der Papierkorb, die
+ * Schreibzahl und «show the root». Er hätte sie am nächsten Morgen aus gefunden, ohne Grund und
+ * ohne Spur.*
+ *
+ * ⚠️ *`lib/no-write.php` deckt die **Tabellen** und nicht die Optionen: sie klammert eine
+ * Transaktion, und `wp_options` liegt ausserhalb dessen, was ein Wächter hier anfasst. **Also
+ * dieselbe Zusage noch einmal, für die zweite Sorte Zustand.***
+ */
+function geliehen(string $option, string $wert, callable $tue): mixed
+{
+    $vorher = get_option($option, null);
+    // ⚠️ *Am Herunterfahren angemeldet und nicht bloss in `finally`: ein `exit` aus einem tieferen
+    // Aufruf — und `wp_die()` ist genau das — überspringt jedes `finally`.*
+    $zurueck = static function () use ($option, $vorher): void {
+        if ($vorher === null) {
+            delete_option($option);
+
+            return;
+        }
+
+        update_option($option, $vorher, false);
+    };
+
+    register_shutdown_function($zurueck);
+
+    try {
+        update_option($option, $wert, false);
+
+        return $tue();
+    } finally {
+        $zurueck();
+    }
+}
+
 // ⚠️ **Die vier Einzelhaken wirken nur innerhalb des Modus, und sie wirken wirklich**
 // ([D-705](../../docs/NewConcept/90-decision-log.md)). *Gemessen wird an dem, was verschwindet: eine
 // Zusage, die nur prüft, dass etwas dasteht, sieht einen Haken nicht, der nichts tut.*
 //
 // ⚠️ *Der Modus bleibt dabei **an** — sonst prüfte man wieder nur ihn und nicht den Haken darunter.*
 if ($mitEinstellungssatz !== 0) {
-    $vorherModus = get_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, false);
-    update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, 1, false);
+    geliehen(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, '1', static function () use ($mitEinstellungssatz): void {
+        foreach (
+            [
+                'taxmod_dev_settings_record' => ['taxmod-settings-record', 'der Einstellungssatz'],
+                'taxmod_dev_writes'          => ['taxmod-tree-writes', 'die Schreibzahl'],
+                'taxmod_dev_root_toggle'     => ['taxmod_root', 'der Schalter «show the root»'],
+            ] as $option => $was
+        ) {
+            [$marke, $name] = $was;
 
-    foreach (
-        [
-            'taxmod_dev_settings_record' => ['taxmod-settings-record', 'der Einstellungssatz'],
-            'taxmod_dev_writes'          => ['taxmod-tree-writes', 'die Schreibzahl'],
-            'taxmod_dev_root_toggle'     => ['taxmod_root', 'der Schalter «show the root»'],
-        ] as $option => $was
-    ) {
-        [$marke, $name] = $was;
-        $vorher = get_option($option, '1');
+            $an  = geliehen($option, '1', static fn (): string => seiteVon($mitEinstellungssatz));
+            $aus = geliehen($option, '0', static fn (): string => seiteVon($mitEinstellungssatz));
 
-        update_option($option, '1', false);
-        $an = seiteVon($mitEinstellungssatz);
-
-        update_option($option, '0', false);
-        $aus = seiteVon($mitEinstellungssatz);
-
-        update_option($option, $vorher, false);
-
-        check(sprintf('%s steht da, wenn sein Haken an ist', $name), str_contains($an, $marke));
-        check(sprintf('  · %s ist weg, wenn er aus ist', $name), ! str_contains($aus, $marke));
-    }
-
-    update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, $vorherModus, false);
+            check(sprintf('%s steht da, wenn sein Haken an ist', $name), str_contains($an, $marke));
+            check(sprintf('  · %s ist weg, wenn er aus ist', $name), ! str_contains($aus, $marke));
+        }
+    });
 }
 
 $geruest->abbauen();

@@ -751,12 +751,17 @@ try {
     // eingeschaltet hat** — und die Zusage fiel, obwohl sie genau das beschreibt, was passiert.
     // *Die Zusage sagt in ihrem eigenen Satz «unless developer mode says otherwise»; jetzt fragt
     // sie ihn auch (`PR-9`: sichtbar geändert, nicht entschärft).*
-    $entwickler = \Taxmod\WordPress\Admin\SettingsScreen::inDeveloperMode();
+    // ⚠️ **Seit [D-705](../../docs/NewConcept/90-decision-log.md) haengt sie an **zwei** Dingen:
+    // dem Modus **und** ihrem eigenen Haken darunter.** *Hier stand nur der Modus — sichtbar
+    // geaendert und nicht entschaerft (`PR-9`): die Zusage sagt dasselbe, sie fragt nur beides.
+    // **Ob die beiden richtig verknuepft sind, misst `page-blocks-check` an dem, was
+    // verschwindet** — hier geht es um den Rauchtest der Seite.*
+    $entwickler = \Taxmod\WordPress\Admin\SettingsScreen::developerShows('taxmod_dev_writes');
 
     check(
-        'die Schreibzahl steht genau dann da, wenn der Entwicklermodus an ist',
+        'die Schreibzahl steht genau dann da, wenn der Modus an ist und ihr Haken steht',
         str_contains($markup, 'taxmod-tree-writes') === $entwickler,
-        $entwickler ? 'Modus an' : 'Modus aus'
+        $entwickler ? 'sichtbar' : 'verborgen'
     );
 
     // ⚠️ **Gegen den Schalter gemessen, nicht gegen einen angenommenen Zustand** — dieselbe Lehre

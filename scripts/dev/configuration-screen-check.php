@@ -150,6 +150,36 @@ $say(
     sprintf('und es sind alle, die es gibt (%d)', $rahmen)
 );
 
+
+// ⚠️ **Was der Browser bei einem *ausgeschalteten* Schalter schickt, und dass es ankommt**
+// ([D-706](../../docs/NewConcept/90-decision-log.md)). *Sein Befund: «kann write counts zwar
+// ausschalten aber nach save wieder alter wert». **Der Schalter schickt eine verborgene `0` vor sich
+// her** — damit ist das Feld **immer** gesetzt, und das `isset()`, das für ein Kästchen richtig war,
+// las jedes Ausschalten als Einschalten. **Es traf alle drei Schalter**, auch den Modus selbst.*
+//
+// ⚠️ *Gemessen an der entscheidenden Stelle und ohne zu schreiben: `handlePost()` würde umleiten und
+// den Lauf beenden, und ein Wächter, der die Einstellungen des Eigentümers verstellt, ist keiner.*
+$angehakt = new ReflectionMethod(Taxmod\WordPress\Admin\SettingsScreen::class, 'angehakt');
+$angehakt->setAccessible(true);
+
+$_POST = ['aus' => '0', 'an' => '1'];
+
+$say($angehakt->invoke(null, 'an') === true, 'ein angehakter Schalter kommt als «an» an');
+$say($angehakt->invoke(null, 'aus') === false, 'und ein ausgeschalteter als «aus» — nicht als «gesetzt, also an»');
+$say($angehakt->invoke(null, 'gibt_es_nicht') === false, 'und ein Feld, das gar nicht kam, ist aus');
+
+$_POST = [];
+
+// ⚠️ *Und der Merker steht **vor** der Tabelle: zwischen `</tr>` und `<tr>` gehört kein Element, und
+// worauf der Browser es verschiebt, ist seine Entscheidung und nicht unsere.*
+$vorTabelle = strpos($markup, 'name="dev_details"');
+$tbody      = strpos($markup, '<tbody>');
+
+$say(
+    $vorTabelle === false || $tbody === false || $vorTabelle < $tbody,
+    'der Merker steht vor der Tabelle und nicht zwischen zwei Zeilen'
+);
+
 // ⚠️ *Das Zusatzstueck ist schon hochgefahren — `wp-load` hat es geladen, weil es aktiv ist. Also
 //  wird sein eigener Menueaufbau ausgeloest statt ein zweiter gebaut: ein zweites Exemplar
 //  meldete andere Haken an als die, die der Bildschirm spaeter wirklich hat.*
