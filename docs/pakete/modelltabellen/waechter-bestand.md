@@ -550,3 +550,17 @@ das es nicht mehr gibt.*
 | 12 (ein zweiter Lauf legt nichts an) | **Abschnitt 0** |
 | 13–16 (der Notnagel trägt nach, ohne zweiten Knoten; eine Angabe im Müll wird nicht geglaubt) | **Abschnitt 0**, vier Zeilen |
 
+
+### `setting-branch-relation` — 17 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 1 (jede Kante in den Einstellungsast ist eine Einstellungskante) | **Abschnitt 0**, wörtlich |
+| 2 (es gibt überhaupt welche) | **entfällt** — Abschnitt 2 legt die Gegenprobe selbst an |
+| 3–5 (die angegebene Art kommt an; eine falsche fällt auf; als Einstellungskante geht sie durch) | **Abschnitt 2**, zwei Zeilen |
+| 6–10, 12 (der Wähler der Kantenart, die drei Arten, kein vierter, im Formular des Anlegen-Knopfs) | **Abschnitt 2**, drei Zeilen |
+| 11 (die Oberfläche sagt nicht mehr «is not a choice») | **entfällt** — ein Satz aus einer alten Oberfläche, den es seit TASK-053 nicht mehr gibt |
+| 13–15 (der Akt läuft; die Maske legt eine Kante mit der angegebenen Art an) | **Abschnitt 2** — die Maske legt jetzt eine **Einstellungskante** an, wie ein Mensch es tut, statt einer `composition` in den Ast |
+| 16 (und die fällt der Regel auf) | **entfällt** — die Kante aus der Maske ist jetzt richtig; die Gegenprobe steht über den Kern (Zusage 4) |
+| 17 (kein eigener Knoten bleibt stehen) | **entfällt** — die Klammer räumt |
+
