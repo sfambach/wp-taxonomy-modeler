@@ -1357,7 +1357,11 @@ a.taxmod-chosen:hover {
 .taxmod-config td {
     text-align: left;
     vertical-align: top;
-    padding: .7em .9em;
+    /* ⚠️ *Der Spaltenabstand ist **`padding`**, nicht `margin`: eine Tabellenzelle hat kein
+     *  Aussenmass, `margin` an einem `td` tut schlicht nichts. Auf sein Wort breiter gemacht
+     *  — waagerecht deutlich, senkrecht nur wenig, sonst wird aus fuenf Zeilen eine Liste,
+     *  die man scrollt.* */
+    padding: .9em 1.8em;
     border-bottom: 1px solid #f0f0f1;
 }
 
