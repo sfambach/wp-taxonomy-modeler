@@ -1001,6 +1001,37 @@ if ($textId === null) {
     );
 }
 
+echo "\n== der Einstellungssatz steht im Block nur im Entwicklermodus, und dann kenntlich (TASK-069) ==\n";
+
+// ⚠️ *Sein Wort: «ich würde die settings records gerne unten in den records sehen. Das soll mit dem
+// developer flag im installation menü ein und ausgeschaltet werden.» Gemessen an einem Knoten, dessen
+// `default`-Satz einen Renderer trägt — damit die Marke auch ihre Werte nennt. Die Option liegt in
+// `wp_options` und fällt mit der Klammer.*
+$mitEinstellungssatz = (int) $wpdb->get_var(
+    'SELECT nr.node_id FROM ' . Schema::table('node_records') . ' nr
+       JOIN ' . Schema::table('relation_records') . " rr ON rr.node_record_id = nr.id
+      WHERE nr.record_type = 'default' AND rr.value_ref_kind = 'node'
+      ORDER BY nr.id LIMIT 1"
+);
+check('ein Knoten mit Einstellungssatz und Renderer-Wahl ist da', $mitEinstellungssatz !== 0);
+
+if ($mitEinstellungssatz !== 0) {
+    $vorher = get_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, false);
+
+    update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, 0, false);
+    $aus = seiteVon($mitEinstellungssatz);
+    check('ohne Entwicklermodus steht kein Einstellungssatz im Block', ! str_contains($aus, 'taxmod-settings-record'));
+    check('und keine Zeile der Art «Default» — der Satz ist gar nicht gezeichnet', ! preg_match('/<option value="default"[^>]*selected/', $aus));
+
+    update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, 1, false);
+    $an = seiteVon($mitEinstellungssatz);
+    check('mit Entwicklermodus steht er da, mit Marke', str_contains($an, 'taxmod-settings-record'));
+    check('und nicht als umstellbare Art', ! preg_match('/<option value="default"[^>]*selected/', $an));
+    check('und er nennt seine Werte — den Renderer darunter', (bool) preg_match('/taxmod-settings-record-values[^>]*>.*?renderer = /s', $an));
+
+    update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, $vorher, false);
+}
+
 $geruest->abbauen();
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

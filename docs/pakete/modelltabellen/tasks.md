@@ -2392,7 +2392,12 @@ gewählt» — keine Störung. **Gefangen wird es beim Verengen**, nicht beim Ei
 
 ---
 
-[ ] TASK-069  Der Einstellungssatz wird sichtbar — am Entwicklerschalter
+[x] TASK-069  Der Einstellungssatz wird sichtbar — am Entwicklerschalter — gebaut 2026-09-09
+
+**Zusage** (`page-blocks-check`, Abschnitt TASK-069): *ohne Entwicklermodus steht der `default`-Satz
+nicht im Datensatzblock; mit Entwicklermodus steht er da, mit der Marke «settings» statt einer
+umstellbaren Art, und nennt seine Werte in Worten — `renderer = …`, `read_only = …` —, weil sie an
+Einstellungskanten hängen und der Block dafür keine Spalten führt.*
 
 **2026-09-07, sein Auftrag:** *«ein leiner zusatz ich würde die settings records gerne unten sehen in
 den records sehen. Das soll mit dem developer flag im installation menü ein und ausgeschaltet

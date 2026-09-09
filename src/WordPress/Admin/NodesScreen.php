@@ -2995,7 +2995,17 @@ final class NodesScreen
                 __('Nothing can be entered here, because this node has no fields. A node records values for its fields — under «Fields» that is what a person enters, under «Settings» what the author set.', 'taxmod')
             );
         }
-        $records    = $this->data->recordsOf($selected->id);
+        // ⚠️ **Der Einstellungssatz steht im Block nur, wenn der Entwicklerschalter an ist — und dann
+        // kenntlich** (TASK-069). *Sein Wort: «ich würde die settings records gerne unten in den
+        // records sehen. Das soll mit dem developer flag im installation menü ein und ausgeschaltet
+        // werden.» Der `default`-Satz ist der, in dem die Einstellungen wohnen ([D-529](../../../docs/NewConcept/90-decision-log.md));
+        // seine Werte hängen an Einstellungskanten, nicht an Feldern — deshalb braucht er keine
+        // Spalte, sondern eine Marke und seine Werte in Worten.*
+        $entwickler = $this->inDeveloperMode();
+        $records    = array_values(array_filter(
+            $this->data->recordsOf($selected->id),
+            static fn (NodeRecord $record): bool => $entwickler || $record->recordType !== RecordType::Default
+        ));
 
         $html = $this->heading(
             __('Records', 'taxmod'),
