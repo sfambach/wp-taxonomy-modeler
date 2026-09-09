@@ -3058,3 +3058,22 @@ die Seite nennt die Zahl und verlangt eine Bestätigung, dieselbe Form wie der A
 Knoten; (3) ein Wächter: ein Knoten mit einem Eintrag ohne Verwender und einem Teil mit Verwender
 wandert unter `Primitives` — der Teil steht noch, der Eintrag liegt im Schatten, und ohne Bestätigung
 ist nichts passiert.* Nicht begonnen.
+
+---
+
+[ ] TASK-083  Die vierte Satzart `settings` — Wanderung, Rand, Leser, Wächter
+
+**2026-09-09, sein Beschluss** ([D-704](../../NewConcept/90-decision-log.md)): *«ich finde es auch
+das die vier arten es genauer machen sollten wir so festlegen».*
+
+**Zu bauen, in der Reihenfolge Wächter, Leser, Daten (`PR-9`):** *(1) `RecordType::Settings` mit Wort
+und Kopf; (2) der Wächter: ein Einstellungssatz trägt `settings`, kein `default`-Satz trägt eine
+Einstellungskante, unter `Primitives` und `Settings` gibt es keinen `user`-Satz — ohne Ausnahme;
+(3) die 12 Leser in 4 Dateien, die `RecordType::Default` als Einstellungssatz meinen
+(`defaultRecordOf`, `settingValuesOf`, der Entwicklerschalter aus TASK-069, die Kette in
+`ModelValues`); (4) der Rand legt Einstellungssätze und die Sätze von Verwendungsstellen als
+`settings` an; (5) Fassung 42: 50 Sätze, die nur Einstellungen tragen, werden `settings`, die zwei
+Sätze von `Street / H#` auch — die 3 gemischten mit einem eigenen Wert (D-673) bleiben, bis die
+offene Frage aus D-704 beantwortet ist; (6) die Satzart-Auswahl beim Anlegen (D-651) bietet
+`settings` nicht an — ein Einstellungssatz entsteht beim ersten Schreiben (D-609), nie von Hand.*
+Nicht begonnen. Löst den Umbau aus TASK-077 (D-702) mit ab.
