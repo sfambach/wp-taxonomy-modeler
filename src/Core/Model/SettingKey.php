@@ -66,6 +66,13 @@ enum SettingKey: string
     /** Nicht änderbar an dieser Stelle — und weiter unten wieder änderbar, wenn jemand es sagt (D-399). */
     case ReadOnly = 'read_only';
 
+    /**
+     * Wo eine Feldzeile an diesem Knoten steht — ein Kind ordnet geerbte Felder an derselben Adresse wie
+     * seine anderen Einstellungen ([D-698](../../../docs/NewConcept/90-decision-log.md): *«kind darf felder
+     * neu anordnen»*). Nichts gesetzt heisst Reihenfolge des Besitzers.
+     */
+    case Position = 'position';
+
     /** Smallest permitted value. */
     case Min = 'min';
 
@@ -284,8 +291,8 @@ enum SettingKey: string
         return match ($this) {
             self::ReadOnly                             => SettingShape::Switch,
             self::Factor, self::Offset                 => SettingShape::Exact,
-            // ⚠️ *Eine Anzahl Zeichen — siehe {@see self::DisplaySize}.*
-            self::DisplaySize                          => SettingShape::Whole,
+            // ⚠️ *Eine Anzahl Zeichen — siehe {@see self::DisplaySize}; eine Stelle in der Liste — D-698.*
+            self::DisplaySize, self::Position          => SettingShape::Whole,
             self::Multiplicity                         => SettingShape::OneOfFour,
             self::Renderer, self::Converter,
             self::Validator                            => SettingShape::ARegisteredName,

@@ -45,6 +45,16 @@ interface RecordRepository
     public function ofRelationAt(int $nodeId, int $relationId): ?NodeRecord;
 
     /**
+     * Die Sätze an vielen Adressen `Knoten × Kante` auf einmal (`CD-7`) — die ganze Kette eines Knotens
+     * zu allen seinen Zeilen, wie die Anordnung sie liest ([D-698](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  list<int>                             $nodeIds
+     * @param  list<int>                             $relationIds
+     * @return array<int, array<int, NodeRecord>> Knoten-Id => Kanten-Id => Satz; ohne Eintrag, wo keiner steht.
+     */
+    public function ofRelationsAt(array $nodeIds, array $relationIds): array;
+
+    /**
      * Dieselbe Frage für viele Stellen auf einmal (`CD-7`).
      *
      * ⚠️ *Ein Formular fragt alle seine Felder nacheinander. Einzeln gefragt kostet das eine Abfrage

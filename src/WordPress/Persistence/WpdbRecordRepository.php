@@ -629,4 +629,34 @@ final class WpdbRecordRepository implements RecordRepository
 
         return ['records' => $goneRecords, 'values' => $goneValues];
     }
+
+    public function ofRelationsAt(array $nodeIds, array $relationIds): array
+    {
+        global $wpdb;
+
+        $knoten = array_values(array_unique(array_filter(array_map('intval', $nodeIds))));
+        $kanten = array_values(array_unique(array_filter(array_map('intval', $relationIds))));
+
+        if ($knoten === [] || $kanten === []) {
+            return [];
+        }
+
+        $rows = Query::rows('Saetze an den Adressen Knoten x Kante lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+                . Schema::table('node_records') . '
+             WHERE node_id IN (' . implode(',', array_fill(0, count($knoten), '%d')) . ')
+               AND relation_id IN (' . implode(',', array_fill(0, count($kanten), '%d')) . ')
+             ORDER BY id ASC',
+            ...$knoten,
+            ...$kanten
+        ));
+
+        $aus = [];
+
+        foreach ($rows ?: [] as $row) {
+            $aus[(int) $row['node_id']][(int) $row['relation_id']] ??= $this->hydrate($row);
+        }
+
+        return $aus;
+    }
 }

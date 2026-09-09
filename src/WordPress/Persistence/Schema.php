@@ -411,7 +411,7 @@ final class Schema
      * **keine einzige davon ist zur Parkzeit ihrer Kante oder später archiviert worden** — sie waren
      * alle vorher schon gelöscht, gehören also auch nach der alten Lesart nicht ins Gepäck.*
      */
-    public const VERSION = 44;
+    public const VERSION = 45;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -705,6 +705,10 @@ final class Schema
 
         // ⚠️ **Fassung 44: die Kante `allowed` an `Prefixes`** ([D-697](../../../docs/NewConcept/90-decision-log.md), TASK-068).
         self::declareAllowedAtPrefixes();
+
+        // ⚠️ **Fassung 45: die Einstellung `position` an der Wurzel — ein Kind ordnet geerbte Felder**
+        // ([D-698](../../../docs/NewConcept/90-decision-log.md), TASK-087).
+        self::declarePositionAtRoot();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -3219,6 +3223,53 @@ final class Schema
         $editor->setMultiplicity($prefixes, $kante->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
 
         update_option('taxmod_fassung44_shape', ['allowed' => $kante->id, 'an' => $prefixes], false);
+    }
+
+    /**
+     * Fassung 45: die Einstellungskante `position` an der Wurzel, `0..1` auf `Integer`.
+     *
+     * ⚠️ **[D-698](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«würde sagen kind darf
+     * felder neu anordnen».* *An der Wurzel wie `read_only` und `renderer`, weil sie für jede
+     * Verwendungsstelle gilt; gelesen und geschrieben wird sie im Satz `Knoten × Kante`
+     * ({@see \Taxmod\Core\Service\FieldOrder}). Nichts wandert: kein Bestand trägt eine Anordnung.*
+     */
+    private static function declarePositionAtRoot(): void
+    {
+        global $wpdb;
+
+        $nodes = self::table('nodes');
+
+        if (self::tableMissing($nodes) || self::tableMissing(self::table('relations_named'))) {
+            return;
+        }
+
+        $log       = new WpdbChangelog(new SystemClock());
+        $knoten    = new WpdbNodeRepository();
+        $kanten    = new WpdbRelationRepository();
+        $framework = new SeededFrameworkNodes($knoten, $kanten, $log);
+        $wurzel    = $framework->root()->id;
+        $integer   = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$nodes} WHERE implemented_by = %s ORDER BY id LIMIT 1", \Taxmod\Core\Model\Type\IntType::class));
+
+        if ($wurzel === 0 || $integer === 0) {
+            return;
+        }
+
+        $schonDa = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . self::table('relations_named') . " WHERE from_node_id = %d AND name = %s AND kind = 'setting'",
+            $wurzel,
+            \Taxmod\Core\Model\SettingKey::Position->value
+        ));
+
+        if ($schonDa > 0) {
+            return;
+        }
+
+        $editor = new \Taxmod\Core\Service\ModelEditor($knoten, $kanten, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
+
+        $kante = $editor->addField($wurzel, $integer, \Taxmod\Core\Model\SettingKey::Position->value, \Taxmod\Core\Model\RelationKind::Setting);
+        $editor->setMultiplicity($wurzel, $kante->id, \Taxmod\Core\Model\Multiplicity::ZeroToOne);
+
+        update_option('taxmod_fassung45_shape', ['position' => $kante->id, 'an' => $wurzel], false);
     }
 
     private static function constrainRelationsToNodes(): void

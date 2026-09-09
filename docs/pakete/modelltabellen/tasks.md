@@ -3190,7 +3190,7 @@ begonnen; es startet mit seinem Go.
 | 2 | TASK-066 Umbau | D-699 | Die Wanderung fällt, der Bestätigungsschritt kommt: warnen, bestätigen, Sätze in den Schatten, Einstellung leer. `field-kind-check` wird umgeschrieben. |
 | 3 | TASK-082 | D-701 | **Derselbe Bestätigungsschritt** wie in 2, an der zweiten Stelle: Verschieben unter `Primitives` — Teile bleiben, Einträge ohne Verwender nach Bestätigung in den Schatten. Neuer Wächter. |
 | 4 | TASK-068 | D-697 | `allowed` an `Prefixes`, die Liste im `settings`-Satz zur geerbten Kante (braucht 1), die Hakenliste, das Angebot aus der gewählten Einheit, die Verengung an der Stelle, der Konflikt nach D-680. Neuer Wächter. |
-| 5 | D-698 | D-698 | Anordnen geerbter Felder am Kind, an derselben Adresse wie 4 — eine Angabe `position`, die zwei Knöpfe. Kommt direkt nach 4, weil es dieselbe Adresse und denselben Satz benutzt. |
+| 5 | TASK-087 | D-698 | Anordnen geerbter Felder am Kind, an derselben Adresse wie 4 — eine Angabe `position`, die zwei Knöpfe. Kommt direkt nach 4, weil es dieselbe Adresse und denselben Satz benutzt. *Gebaut 2026-09-10.* |
 | 6 | TASK-084 | D-706 | **Zuletzt**, damit der neue Lauf durch die Einstellungen die fertige Form misst und nicht zweimal umgeschrieben wird: ein Lauf, dann fallen die elf einzeln. |
 
 *Jede Aufgabe endet mit beiden Läufen grün und einem eigenen Commit. Was blockiert, wird geparkt und
@@ -3218,3 +3218,34 @@ der Knopf**, und die Seite sieht aus wie jede andere Einstellungsseite in WordPr
 ⚠️ *Gehört zur Konfigurationsseite und damit zu TASK-080, die bei der anderen Sitzung liegt — hier
 nur festgehalten, damit die Frage nicht ein zweites Mal gestellt wird. Nichts zu bauen, solange die
 Seite den Knopf hat.*
+
+---
+
+[x] TASK-087  Ein Kind ordnet geerbte Felder an — `position` — gebaut 2026-09-10 ([D-698](../../NewConcept/90-decision-log.md))
+
+**Sein Wort:** *«würde sagen kind darf felder neu anordnen»* — und sein Go zur Baureihenfolge II, in der
+Punkt 5 die Form nannte: *«eine Angabe `position`, die zwei Knöpfe»*. Damit ist die `INFERRED`-Form aus
+D-698 die gebaute.
+
+**Zusage** (`field-order-check`, 23 Aussagen): *Fassung 45 erklärt an der Wurzel die Einstellung
+`position` (`0..1` auf `Integer`), wie `read_only` und `renderer`; an einem Kind hat jede Feldzeile die
+zwei Knöpfe, die Enden ausgegraut (D-429); ein Schritt schreibt die Positionen der ganzen Liste in die
+Sätze `Kind × Kante` (`settings`, D-667, D-704); die Kante des Besitzers und ihr `sort_order` bleiben;
+der Enkel erbt die Anordnung, sein eigenes Feld kommt danach, und er darf wieder umstellen, ohne das
+Kind zu ändern (näher schlägt ferner, D-602); gilt an einem Knoten eine Anordnung, geht auch die eigene
+Zeile über sie; beim Besitzer ohne Anordnung bleibt D-435.*
+
+**Beim Bauen entschieden, im Kode und hier benannt:** *(1) **die ganze Liste wird geschrieben**, nicht
+nur die zwei Getauschten — eine Position ist nur gegen die anderen eine Aussage, und mit der ganzen
+Liste sagt der Knoten, was er sieht; (2) **dünn bleibt es trotzdem**: solange niemand verschoben hat,
+steht kein Satz, und Zeilen ohne Position kommen nach den angeordneten in der Reihenfolge der Besitzer;
+(3) **zwei Ordnungen stehen nie nebeneinander** — gilt an einem Knoten eine Anordnung, geht auch das
+Verschieben einer eigenen Zeile über sie, sonst bliebe `sort_order` neben `position` und die Knöpfe
+sagten einmal dies und einmal das; (4) die Einstellungskanten der Wurzel sind keine Feldzeilen und
+werden nicht angeordnet; (5) der Sammelleser `ofNodes` las nur Sätze ohne Kante — die Adresse
+`Knoten × Kante` bekam einen Leser für viele Adressen auf einmal (`CD-7`), zwei Abfragen je Kette;
+(6) das Schreiben geht nicht über den gewöhnlichen Wertpfad, weil der das Ziel `Integer` unter
+`Compositions` als Teil liest — derselbe Weg wie bei den anderen Einstellungen einer Stelle.*
+
+*Nicht gebaut: `position` erscheint als Zahl im Einstellungsbereich jeder Feldzeile, weil sie an der
+Wurzel erklärt ist wie `read_only` — dort tippen statt klicken geht, ist aber nicht bewacht.*

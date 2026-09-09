@@ -1836,21 +1836,16 @@ final class NodesScreen
         $actions = [];
         $submits = [];
 
-        // ⚠️ **Which of its own attributes is first and which is last** — the owner: *the attribute row
-        // should have up and down buttons like the nodes in the tree.* *A button that cannot act is left
-        // out ([D-429](../../../docs/NewConcept/90-decision-log.md)), so the ends of the list have to be
+        // ⚠️ **Which row is first and which is last** — the owner: *the attribute row should have up and
+        // down buttons like the nodes in the tree.* *A button that cannot act is left out
+        // ([D-429](../../../docs/NewConcept/90-decision-log.md)), so the ends of the list have to be
         // known before the row is drawn — exactly as the tree already passes `isFirst` and `isLast`.*
         //
-        // ⚠️ *Only its **own**: an inherited attribute is ordered where it was declared
-        // ([D-376](../../../docs/NewConcept/90-decision-log.md)), and reordering it from a descendant
-        // would reorder it for everybody.*
-        $ownOrder = [];
-
-        foreach ($relations as $relation) {
-            if ($relation->fromNodeId === $selected->id) {
-                $ownOrder[] = $relation->id;
-            }
-        }
+        // ⚠️ **Hier stand «only its own» ([D-376](../../../docs/NewConcept/90-decision-log.md)), und das
+        // ist gefallen** ([D-698](../../../docs/NewConcept/90-decision-log.md), sein Wort: *«kind darf
+        // felder neu anordnen»*). *Eine geerbte Zeile wird am Kind angeordnet, ohne die Kante des
+        // Besitzers anzufassen — die Anordnung wohnt im Satz `Knoten × Kante` wie jede andere Einstellung
+        // der Stelle, also gilt sie hier und darunter, nicht für alle.*
 
         // ⚠️ *Einmal für die ganze Tabelle, nicht je Zeile (`CD-7`) — die Werte der Teile werden weiter
         // unten noch einmal gebraucht, und der Knopf «Zeile hinzufügen» will vorher wissen, ob es
@@ -1860,8 +1855,14 @@ final class NodesScreen
             array_map(static fn (Relation $relation): int => $relation->id, $relations)
         );
 
-        $firstOwn = $ownOrder[0] ?? 0;
-        $lastOwn  = $ownOrder === [] ? 0 : $ownOrder[count($ownOrder) - 1];
+        // ⚠️ *Feldzeilen werden angeordnet; die Einstellungskanten der Wurzel — `read_only`, `renderer` —
+        // bleiben beim Besitzer, wie bisher: die Enden je Sorte.*
+        $feldzeilen  = array_values(array_filter($relations, static fn (Relation $r): bool => ! $r->isSetting()));
+        $eigeneEinst = array_values(array_filter($relations, static fn (Relation $r): bool => $r->isSetting() && $r->fromNodeId === $selected->id));
+        $ersteZeile  = $feldzeilen[0]->id ?? 0;
+        $letzteZeile = $feldzeilen === [] ? 0 : $feldzeilen[count($feldzeilen) - 1]->id;
+        $ersteEinst  = $eigeneEinst[0]->id ?? 0;
+        $letzteEinst = $eigeneEinst === [] ? 0 : $eigeneEinst[count($eigeneEinst) - 1]->id;
 
         // ⚠️ **Welche Zeilen offen sind, einmal für die ganze Tabelle** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
         // *Alles andere bleibt zu — und «zu» heisst hier **nicht gelesen**, nicht «versteckt».*
@@ -1974,8 +1975,8 @@ final class NodesScreen
                     'do',
                     'field_up',
                     __('Up', 'taxmod'),
-                    __('Move this field up among the ones declared here', 'taxmod'),
-                    $own && $relation->id !== $firstOwn,
+                    __('Move this field up — arranged here; the owner keeps its own order', 'taxmod'),
+                    $relation->isSetting() ? $own && $relation->id !== $ersteEinst : $relation->id !== $ersteZeile,
                     false,
                     'arrow-up-alt2'
                 ),
@@ -1983,8 +1984,8 @@ final class NodesScreen
                     'do',
                     'field_down',
                     __('Down', 'taxmod'),
-                    __('Move this field down among the ones declared here', 'taxmod'),
-                    $own && $relation->id !== $lastOwn,
+                    __('Move this field down — arranged here; the owner keeps its own order', 'taxmod'),
+                    $relation->isSetting() ? $own && $relation->id !== $letzteEinst : $relation->id !== $letzteZeile,
                     false,
                     'arrow-down-alt2'
                 ),
@@ -4768,8 +4769,8 @@ final class NodesScreen
                 'move'           => $this->movedTo($id, $target),
                 // ⚠️ **Dieselbe Spalte, andere Geschwisterliste** ([D-435](../../../docs/NewConcept/90-decision-log.md)):
                 // ein Knoten ordnet seine Vererbungskante, ein Attribut seine eigene.
-                'field_up'   => $this->editor->moveField($id, $relation, -1),
-                'field_down' => $this->editor->moveField($id, $relation, 1),
+                'field_up'   => $this->movedFieldRow($id, $relation, -1),
+                'field_down' => $this->movedFieldRow($id, $relation, 1),
                 'up'             => $this->editor->moveUp($id),
                 'down'           => $this->editor->moveDown($id),
                 'restore'        => $this->editor->restore($id),
@@ -5224,5 +5225,44 @@ final class NodesScreen
         return '<div class="taxmod-toast' . ($ok ? ' taxmod-toast-ok' : ' taxmod-toast-bad') . '" role="status">'
             . esc_html($ok ? __('Done.', 'taxmod') : $message)
             . '</div>';
+    }
+
+    /**
+     * Eine Feldzeile um einen Schritt verschieben — die eigene beim Besitzer über `sort_order`
+     * ([D-435](../../../docs/NewConcept/90-decision-log.md)), jede andere als Anordnung an diesem Knoten
+     * ([D-698](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sobald an diesem Knoten eine Anordnung gilt — eigene oder geerbte —, geht auch die eigene Zeile
+     * über sie: zwei Ordnungen nebeneinander, und die Knöpfe sagten einmal dies und einmal das.*
+     */
+    private function movedFieldRow(int $nodeId, int $relationId, int $direction): void
+    {
+        $zeilen  = $this->editor->fieldsOf($nodeId);
+        $ordnung = $this->editor->fieldOrder();
+        $felder  = $ordnung === null ? $zeilen : $ordnung->fieldRowsOf($zeilen);
+        $zeile   = null;
+        $nachbar = null;
+
+        foreach ($felder as $stelle => $eine) {
+            if ($eine->id === $relationId) {
+                $zeile   = $eine;
+                $nachbar = $felder[$stelle + ($direction < 0 ? -1 : 1)] ?? null;
+            }
+        }
+
+        // ⚠️ *Eine Einstellungskante der Wurzel, oder zwei eigene Zeilen nebeneinander, ohne dass hier
+        // eine Anordnung gilt: das ist der Fall von D-435, und er bleibt bei `sort_order`.*
+        $beimBesitzer = $zeile === null
+            || $zeile->isSetting()
+            || ($zeile->fromNodeId === $nodeId && $nachbar !== null && $nachbar->fromNodeId === $nodeId
+                && ($ordnung === null || ! $ordnung->isArrangedAt($nodeId, $felder)));
+
+        if ($beimBesitzer) {
+            $this->editor->moveField($nodeId, $relationId, $direction);
+
+            return;
+        }
+
+        $this->data->moveFieldAt($nodeId, $zeilen, $relationId, $direction);
     }
 }

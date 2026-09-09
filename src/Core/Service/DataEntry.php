@@ -2191,4 +2191,70 @@ final class DataEntry
 
         throw NotYetStorable::notAFieldOfThisModel($relationId, $model->name);
     }
+
+    /**
+     * Eine Feldzeile an diesem Knoten um einen Schritt verschieben — auch eine geerbte.
+     *
+     * ⚠️ **[D-698](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«würde sagen kind darf
+     * felder neu anordnen».* *Die Anordnung wohnt an derselben Adresse wie jede andere Einstellung der
+     * Stelle — der Satz `Knoten × Kante` ([D-667](../../../docs/NewConcept/90-decision-log.md)), darin
+     * `position`. Die Kante des Besitzers bleibt, wie sie ist.*
+     *
+     * ⚠️ **Geschrieben wird die ganze Liste, nicht nur die zwei Getauschten.** *Eine Position ist nur
+     * gegen die anderen eine Aussage; stünde sie allein, hinge die Reihenfolge davon ab, welche Zeile
+     * ein Vorfahre später noch anordnet. Mit der ganzen Liste sagt der Knoten, was er sieht.*
+     *
+     * @return bool Ob sich etwas bewegt hat — `false` am Rand der Liste.
+     */
+    public function moveFieldAt(int $nodeId, array $relations, int $relationId, int $direction): bool
+    {
+        $ordnung = new FieldOrder($this->records, $this->relations, $this->nodes, $this->framework);
+        $kante   = $ordnung->positionRelation();
+        $liste   = $kante === null ? null : $ordnung->movedAt($nodeId, $relations, $relationId, $direction);
+
+        if ($kante === null || $liste === null) {
+            return false;
+        }
+
+        $traeger = $this->nodes->byId($nodeId);
+
+        $this->changelog?->beginAct();
+
+        try {
+            foreach ($liste as $stelle => $zeile) {
+                $satz = $this->records->ofRelationAt($nodeId, $zeile->id);
+
+                if ($satz === null) {
+                    $neu    = new NodeRecord(0, $nodeId, $traeger->version, $this->clock->now()->format('Y-m-d H:i:s'), RecordType::Settings, $zeile->id);
+                    $satzId = $this->records->add($neu);
+                    $this->melden($satzId, 'record', 'record created', null, $this->satzZustand($neu), 1);
+                } else {
+                    $satzId = $satz->id;
+                }
+
+                // ⚠️ *Wie {@see self::putSettingAtUseSite()}, nicht über {@see self::put()}: der prüft
+                // das Ziel der Kante, und `Integer` wohnt unter `Compositions` — eine Einstellung ist
+                // aber kein Teil, sie ist eine Zahl im Satz der Stelle.*
+                $wert      = TypedValue::ofInt($stelle);
+                $vorhanden = $this->valuesOn($satzId, $kante->id, '');
+                $version   = $this->records->putValue(
+                    $vorhanden === []
+                        ? RelationRecord::direct($satzId, $kante->id, $wert, '')
+                        : new RelationRecord($satzId, $kante->id, '', $wert, $vorhanden[0]->id, $vorhanden[0]->position)
+                );
+                $this->melden(
+                    $satzId,
+                    'record_value',
+                    'value set',
+                    $this->wertZustand($satzId, $kante->id, '', $vorhanden[0]->value ?? null),
+                    $this->wertZustand($satzId, $kante->id, '', $wert),
+                    $version
+                );
+            }
+        } finally {
+            $this->changelog?->endAct();
+        }
+
+        return true;
+    }
 }

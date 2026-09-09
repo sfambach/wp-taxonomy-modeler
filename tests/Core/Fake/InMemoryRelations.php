@@ -156,7 +156,12 @@ final class InMemoryRelations implements RelationRepository
             }
         }
 
-        usort($relations, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
+        // ⚠️ *Wie die Datenbank: erst der Rang des Besitzers in der Kette, dann `sort_order` — sonst
+        // stünde das Feld eines Kindes zwischen denen seines Vaters, nur weil beide bei 0 zählen.*
+        $rang = array_flip(array_values($ownerIds));
+
+        usort($relations, static fn (Relation $a, Relation $b): int =>
+            [$rang[$a->fromNodeId] ?? PHP_INT_MAX, $a->sortOrder, $a->id] <=> [$rang[$b->fromNodeId] ?? PHP_INT_MAX, $b->sortOrder, $b->id]);
 
         return $relations;
     }

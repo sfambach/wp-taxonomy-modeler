@@ -636,9 +636,18 @@ final class ModelEditor
      */
     public function fieldsOf(int $nodeId): array
     {
-        $node = $this->nodes->byId($nodeId);
+        $node   = $this->nodes->byId($nodeId);
+        $zeilen = $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($node));
 
-        return $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($node));
+        // ⚠️ **In der Reihenfolge, die an diesem Knoten gilt** ([D-698](../../../docs/NewConcept/90-decision-log.md)):
+        // *ein Kind darf geerbte Felder anordnen; steht nichts, gilt die Reihenfolge der Besitzer.*
+        return $this->fieldOrder()?->orderedAt($nodeId, $zeilen) ?? $zeilen;
+    }
+
+    /** Die Anordnung braucht die Sätze — ohne sie gilt die Reihenfolge der Besitzer. */
+    public function fieldOrder(): ?FieldOrder
+    {
+        return $this->records === null ? null : new FieldOrder($this->records, $this->relations, $this->nodes, $this->framework);
     }
 
     /**
