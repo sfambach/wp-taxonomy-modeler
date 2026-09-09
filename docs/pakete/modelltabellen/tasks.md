@@ -3157,7 +3157,14 @@ umstellen, zurücksetzen, und nach jedem Schritt: steht, was stehen soll, und li
 gespeichert ist? Eigene Wiese, Präfix `__es`; (2) grün; (3) dann je Wächter der elf ein eigener
 Commit: die Liste seiner Zusagen, je Zusage «steht in `einstellungen-check`, Abschnitt n» oder «entfällt,
 weil …»; erst dann fällt die Datei; (4) `tests/README.md` und `waechter-bestand.md` fortschreiben.*
-Ein eigener Tag. Nicht begonnen.
+
+**2026-09-10, Schritte 1 und 2:** *`einstellungen-check` steht und ist grün — 242 Zusagen in fünfzehn
+Abschnitten (0 Gerüst und Bestand, 1 die Wiese, 2 erklären, 3 wählen, 4 erben und sperren, 5 Konflikt
+und Wurzel, 6 die Tafel der Feldzeile, 7 Werte und Steuerelemente, 8 Konverter, 9 Vorschau, 10 Kantenart,
+11 Datensätze, 12 die Seite, 13 Umbenennen, 14 Fassung 38). Eine eigene Wiese `__es`; nichts hängt mehr
+an seinen Knoten (`Kontact`, `Passiv`, `yotta`, `form`), und nichts schreibt mehr mit rohem SQL an
+lebende Sätze. Schritt 3 folgt je Wächter mit eigenem Commit; die Liste steht in
+[`waechter-bestand.md`](waechter-bestand.md) unter «Vollzug am 2026-09-10».*
 
 ---
 

@@ -502,3 +502,40 @@ ehrlichste Gegenprobe, die es gibt.*
 | «der Zweig eines Datentyps sagt weiterhin *keine Daten*» (`package6` §1) | Eine Aussage ueber die **Astauskunft**, nicht ueber das Ergebnis. Was davon zaehlt — *ein Knoten mit Feldern darf Datensaetze tragen* ([D-522](../../NewConcept/90-decision-log.md)) — ist uebernommen. |
 | die Zusagen zum Hochziehen der Kinder (`package2` §8, §12–14) | Nachgesehen im Kernlauf (`ModelEditorTest`) und dort vollstaendig. **Der Weg eines Menschen ist parken, nicht hochziehen** — das ist ein zweiter Weg und waere ein zweiter Lauf. |
 | «der Weg stimmt mit der Spalte ueberein» (`package2` §2) | Woertlich bei `path`, und dort strenger. |
+
+---
+
+## Vollzug am 2026-09-10 — D-706: die elf an der Renderer-Wahl werden einer
+
+**Sein Beschluss** ([D-706](../../NewConcept/90-decision-log.md)): *«ich glaube wir müssen mal die
+sinnhaftigkeit der vielen wächter hinterfragen wenn zwei auf der gleichen stelle arbeiten wäre es dann
+nicht einer?»* — *«1 ja zusammen».* Grundlage war die Messung in
+[`waechter-ueberlappung.md`](waechter-ueberlappung.md): elf Wächter, 489 Zusagen, alle an der
+Renderer-Wahl, den Einstellungskanten und der Tafel.
+
+**Die Reihenfolge war die aus D-706 und `PR-9`:** *erst der neue Lauf `einstellungen-check`, grün
+(242 Zusagen, fünfzehn Abschnitte); dann fiel jeder der elf **einzeln, mit eigenem Commit** und der
+Liste seiner Zusagen — je Zusage «steht in `einstellungen-check`, Abschnitt n» oder «entfällt, weil …».
+Kein Wächter fiel, bevor sein Ersatz grün war.*
+
+⚠️ **Was der neue Lauf anders macht als die elf, und das ist die Absicht:** *er baut sich **eine**
+Wiese (`__es`) und geht sie in einem Zug — erklären, wählen, erben, sperren, überschreiben, umstellen,
+zurücksetzen —, statt elfmal dieselben fünf Renderer an denselben Tabellen zu zeichnen. **Nichts hängt
+mehr an seinen Knoten** (`Kontact`, `Passiv`, `yotta`, `form`, `Prefixes.exponent`), und nichts schreibt
+mehr mit rohem SQL an lebende Sätze, wie `preview-check` es tat.*
+
+⚠️ **Was ausdrücklich entfällt, und warum — die drei Sorten:** *(1) **Aufräumzusagen** («die Wiese ist
+wieder weg», acht Stück): seit dem 2026-09-06 räumt die Klammer `lib/no-write.php`, bewacht von
+`no-model-write-check`; (2) **Vorbedingungen und Fehlzweige** («der Aufbau steht», «ein Knoten mit
+Datensätzen steht im Modell»): sie sagten nichts über die Sache, nur ob der Wächter laufen kann;
+(3) **Zusagen, deren Gegenstand gefallen ist**: der Renderer an einer Verwendungsstelle
+([D-643](../../NewConcept/90-decision-log.md)), die Zelle des Kindes «genauso wie der Vater» (seit
+[D-689](../../NewConcept/90-decision-log.md) ist die geerbte Zeile gesperrt und sagt es), der Satz
+«is not a choice» einer alten Oberfläche, und **zwei, die immer grün waren**: `setting-write` Nr. 15
+mass eine Satztabelle gegen eine Knotennummer, `preview` Nr. 19/20 einen Regex auf ein Steuerelement,
+das es nicht mehr gibt.*
+
+*Die Abschnitte des neuen Laufs, auf die die Listen unten zeigen:* **0** Gerüst und Bestand ·
+**1** die Wiese · **2** erklären · **3** wählen · **4** erben und sperren · **5** Konflikt und Wurzel ·
+**6** die Tafel der Feldzeile · **7** Werte und Steuerelemente · **8** Konverter · **9** Vorschau ·
+**10** Kantenart · **11** Datensätze · **12** die Seite · **13** Umbenennen · **14** Fassung 38.
