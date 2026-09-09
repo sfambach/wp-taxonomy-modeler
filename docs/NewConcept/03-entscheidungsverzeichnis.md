@@ -29,6 +29,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wo liegen die Einstellungen einer Verwendungsstelle? | [D-667](90-decision-log.md) — im Satz dieser Kante; [D-611](90-decision-log.md) hat damit wieder einen Träger | ~~D-643~~ (als Ende der Zusage gelesen) |
 | Welche Kantenarten gibt es? | [D-639](90-decision-log.md) — drei Werte, drei Klassen: `setting`, `aggregation`, `composition` | ~~D-161~~ ~~D-193~~ ~~D-526~~ ~~D-587~~ ~~D-591~~ ~~D-592~~ |
 | Wer bestimmt die Kantenart? | [D-618](90-decision-log.md), [D-621](90-decision-log.md) — der Benutzer; `nodes.field_type` fällt, kein Ast-Automatismus | ~~D-161~~ ~~D-606~~ |
+| Was geschieht mit den Werten, wenn eine Kante ihre Art wechselt? | [D-699](90-decision-log.md) — Werte wandern mit, **Benutzersätze nicht**: der Benutzer wird gewarnt, bestätigt, die Sätze gehen in den Schatten und die Einstellung beginnt leer | ~~D-690~~ *(nur die Form je Richtung; die Richtung «Werte wandern mit» gilt weiter)* |
 | Ist Vererbung eine Kante? | [D-581](90-decision-log.md) — nein: `nodes.parent_node_id` mit `nodes.sort_order` | ~~D-012~~ |
 | Was heisst «wird mitgelöscht»? | [D-639](90-decision-log.md) — die Kantenart sagt es, und sie sagt es über **Datensätze**; bei einfachem Typ fest ([D-588](90-decision-log.md)) | ~~D-587~~ ~~D-591~~ ~~D-592~~ |
 | Wie hängt eine Einstellung am Knoten? | [D-642](90-decision-log.md) — gewöhnliche Einstellungskante `1..1`, keine Spalte | ~~D-582~~ ~~D-583~~ ~~D-584~~ (Zeiger-Lesart) ~~D-586~~ |

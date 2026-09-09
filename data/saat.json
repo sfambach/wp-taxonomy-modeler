@@ -1,18 +1,19 @@
 {
     "erzeugt_von": "scripts/dev/saat-export.php",
-    "schemafassung": 40,
+    "schemafassung": 41,
     "abzugsfassung": 1,
     "zaehlung": {
-        "labels": 184,
-        "label_texts": 186,
-        "nodes": 135,
-        "relations": 49,
-        "node_records": 197,
-        "relation_records": 95
+        "labels": 181,
+        "label_texts": 183,
+        "nodes": 134,
+        "relations": 47,
+        "node_records": 166,
+        "relation_records": 90
     },
-    "pruefsumme": "60d023b94e5063705fdcd240e9421dfea05ebfaec51b082c49fea5543e4d1156",
+    "pruefsumme": "da5fd593ad7fb3c26028a55076cb1c9b6d9d0f04024c83ede3812998ed7c4ecf",
     "optionen": {
         "taxmod_base_scaffold": "6",
+        "taxmod_branch_combined_id": "3984",
         "taxmod_branch_compositions_id": "404",
         "taxmod_branch_constants_id": "410",
         "taxmod_branch_data_types_id": "408",
@@ -34,7 +35,8 @@
         "taxmod_root_id": "1",
         "taxmod_setting_edge_renderer": "149000093575",
         "taxmod_trash_id": "2",
-        "taxmod_unit_scaffold": "3"
+        "taxmod_unit_scaffold": "3",
+        "taxmod_unit_value_id": "4232"
     },
     "tabellen": {
         "labels": [
@@ -484,7 +486,7 @@
             },
             {
                 "id": "75",
-                "version": "1",
+                "version": "2",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -513,14 +515,8 @@
                 "icon": null
             },
             {
-                "id": "80",
-                "version": "1",
-                "owner_kind": "node",
-                "icon": null
-            },
-            {
                 "id": "81",
-                "version": "106",
+                "version": "107",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -598,13 +594,13 @@
             },
             {
                 "id": "94",
-                "version": "1",
+                "version": "2",
                 "owner_kind": "node",
                 "icon": null
             },
             {
                 "id": "95",
-                "version": "1",
+                "version": "2",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -790,7 +786,7 @@
             },
             {
                 "id": "130",
-                "version": "1",
+                "version": "2",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -802,24 +798,18 @@
             },
             {
                 "id": "132",
-                "version": "103",
+                "version": "104",
                 "owner_kind": "node",
                 "icon": null
             },
             {
                 "id": "138",
-                "version": "1",
+                "version": "2",
                 "owner_kind": "relation",
                 "icon": null
             },
             {
                 "id": "139",
-                "version": "1",
-                "owner_kind": "relation",
-                "icon": null
-            },
-            {
-                "id": "140",
                 "version": "1",
                 "owner_kind": "relation",
                 "icon": null
@@ -856,12 +846,6 @@
             },
             {
                 "id": "146",
-                "version": "1",
-                "owner_kind": "relation",
-                "icon": null
-            },
-            {
-                "id": "147",
                 "version": "1",
                 "owner_kind": "relation",
                 "icon": null
@@ -922,7 +906,7 @@
             },
             {
                 "id": "157",
-                "version": "1",
+                "version": "2",
                 "owner_kind": "relation",
                 "icon": null
             },
@@ -934,7 +918,7 @@
             },
             {
                 "id": "159",
-                "version": "1",
+                "version": "3",
                 "owner_kind": "relation",
                 "icon": null
             },
@@ -964,12 +948,6 @@
             },
             {
                 "id": "165",
-                "version": "1",
-                "owner_kind": "relation",
-                "icon": null
-            },
-            {
-                "id": "166",
                 "version": "1",
                 "owner_kind": "relation",
                 "icon": null
@@ -1078,7 +1056,7 @@
             },
             {
                 "id": "7155",
-                "version": "6",
+                "version": "7",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -1090,7 +1068,7 @@
             },
             {
                 "id": "7157",
-                "version": "2",
+                "version": "3",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -1102,7 +1080,7 @@
             },
             {
                 "id": "7159",
-                "version": "2",
+                "version": "3",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -1114,14 +1092,8 @@
             },
             {
                 "id": "7161",
-                "version": "2",
+                "version": "3",
                 "owner_kind": "node",
-                "icon": null
-            },
-            {
-                "id": "7162",
-                "version": "2",
-                "owner_kind": "relation",
                 "icon": null
             },
             {
@@ -1138,6 +1110,18 @@
             },
             {
                 "id": "18995",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "24821",
+                "version": "4",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "32526",
                 "version": "2",
                 "owner_kind": "relation",
                 "icon": null
@@ -2093,18 +2077,6 @@
                 "text_symbol": "p"
             },
             {
-                "id": "80",
-                "label_id": "80",
-                "locale": "en_US",
-                "number": "one",
-                "text_name": "Address",
-                "text_form": null,
-                "text_table": null,
-                "text_select": null,
-                "text_help": null,
-                "text_symbol": null
-            },
-            {
                 "id": "81",
                 "label_id": "81",
                 "locale": "en_US",
@@ -2265,7 +2237,7 @@
                 "label_id": "94",
                 "locale": "en_US",
                 "number": "one",
-                "text_name": "max",
+                "text_name": "integer_max",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -2277,7 +2249,7 @@
                 "label_id": "95",
                 "locale": "en_US",
                 "number": "one",
-                "text_name": "min",
+                "text_name": "integer_min",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -2705,18 +2677,6 @@
                 "text_symbol": null
             },
             {
-                "id": "140",
-                "label_id": "140",
-                "locale": "en_US",
-                "number": "one",
-                "text_name": "Value",
-                "text_form": null,
-                "text_table": null,
-                "text_select": null,
-                "text_help": null,
-                "text_symbol": null
-            },
-            {
                 "id": "141",
                 "label_id": "141",
                 "locale": "en_US",
@@ -2782,18 +2742,6 @@
                 "locale": "en_US",
                 "number": "one",
                 "text_name": "Qunatity",
-                "text_form": null,
-                "text_table": null,
-                "text_select": null,
-                "text_help": null,
-                "text_symbol": null
-            },
-            {
-                "id": "147",
-                "label_id": "147",
-                "locale": "en_US",
-                "number": "one",
-                "text_name": "Country",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -2913,7 +2861,7 @@
                 "label_id": "157",
                 "locale": "en_US",
                 "number": "one",
-                "text_name": "Präfix",
+                "text_name": "Value",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -2998,18 +2946,6 @@
                 "locale": "en_US",
                 "number": "one",
                 "text_name": "orientation",
-                "text_form": null,
-                "text_table": null,
-                "text_select": null,
-                "text_help": null,
-                "text_symbol": null
-            },
-            {
-                "id": "166",
-                "label_id": "166",
-                "locale": "en_US",
-                "number": "one",
-                "text_name": "Address",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -3249,7 +3185,7 @@
                 "label_id": "7155",
                 "locale": "en_US",
                 "number": "one",
-                "text_name": "Schrittweite",
+                "text_name": "integer_step",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -3273,7 +3209,7 @@
                 "label_id": "7157",
                 "locale": "en_US",
                 "number": "one",
-                "text_name": "min",
+                "text_name": "decimal_min",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -3297,7 +3233,7 @@
                 "label_id": "7159",
                 "locale": "en_US",
                 "number": "one",
-                "text_name": "max",
+                "text_name": "decimal_max",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -3321,19 +3257,7 @@
                 "label_id": "7161",
                 "locale": "en_US",
                 "number": "one",
-                "text_name": "step",
-                "text_form": null,
-                "text_table": null,
-                "text_select": null,
-                "text_help": null,
-                "text_symbol": null
-            },
-            {
-                "id": "11494",
-                "label_id": "7162",
-                "locale": "en_US",
-                "number": "one",
-                "text_name": "step",
+                "text_name": "decimal_step",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -3370,6 +3294,30 @@
                 "locale": "en_US",
                 "number": "one",
                 "text_name": "orientation",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "38739",
+                "label_id": "24821",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Präfix",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "51592",
+                "label_id": "32526",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Unit",
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
@@ -4046,11 +3994,11 @@
             },
             {
                 "id": "4232",
-                "version": "2",
+                "version": "3",
                 "label_id": "75",
                 "implemented_by": null,
-                "parent_node_id": "404",
-                "sort_order": "1",
+                "parent_node_id": "3984",
+                "sort_order": "3",
                 "hide": "0"
             },
             {
@@ -4090,21 +4038,12 @@
                 "hide": "0"
             },
             {
-                "id": "13404",
-                "version": "4",
-                "label_id": "80",
-                "implemented_by": null,
-                "parent_node_id": "402",
-                "sort_order": "10",
-                "hide": "0"
-            },
-            {
                 "id": "13411",
-                "version": "2",
+                "version": "3",
                 "label_id": "81",
                 "implemented_by": null,
-                "parent_node_id": "404",
-                "sort_order": "3",
+                "parent_node_id": "3984",
+                "sort_order": "2",
                 "hide": "0"
             },
             {
@@ -4217,7 +4156,7 @@
             },
             {
                 "id": "41586",
-                "version": "5",
+                "version": "6",
                 "label_id": "94",
                 "implemented_by": null,
                 "parent_node_id": "1171",
@@ -4226,7 +4165,7 @@
             },
             {
                 "id": "41588",
-                "version": "5",
+                "version": "6",
                 "label_id": "95",
                 "implemented_by": null,
                 "parent_node_id": "1171",
@@ -4505,11 +4444,11 @@
             },
             {
                 "id": "66335",
-                "version": "3",
+                "version": "4",
                 "label_id": "130",
                 "implemented_by": null,
-                "parent_node_id": "404",
-                "sort_order": "6",
+                "parent_node_id": "402",
+                "sort_order": "12",
                 "hide": "0"
             },
             {
@@ -4523,11 +4462,11 @@
             },
             {
                 "id": "75477",
-                "version": "3",
+                "version": "4",
                 "label_id": "132",
                 "implemented_by": null,
-                "parent_node_id": "404",
-                "sort_order": "8",
+                "parent_node_id": "3984",
+                "sort_order": "1",
                 "hide": "0"
             },
             {
@@ -4550,7 +4489,7 @@
             },
             {
                 "id": "149000098258",
-                "version": "2",
+                "version": "3",
                 "label_id": "7155",
                 "implemented_by": null,
                 "parent_node_id": "1171",
@@ -4559,7 +4498,7 @@
             },
             {
                 "id": "149000098259",
-                "version": "1",
+                "version": "2",
                 "label_id": "7157",
                 "implemented_by": null,
                 "parent_node_id": "1173",
@@ -4568,7 +4507,7 @@
             },
             {
                 "id": "149000098260",
-                "version": "1",
+                "version": "2",
                 "label_id": "7159",
                 "implemented_by": null,
                 "parent_node_id": "1173",
@@ -4577,7 +4516,7 @@
             },
             {
                 "id": "149000098261",
-                "version": "1",
+                "version": "2",
                 "label_id": "7161",
                 "implemented_by": null,
                 "parent_node_id": "1173",
@@ -4597,12 +4536,12 @@
         "relations": [
             {
                 "id": "3521",
-                "version": "1",
+                "version": "2",
                 "from_node_id": "27",
                 "to_node_id": "3463",
                 "kind": "composition",
                 "label_id": "138",
-                "sort_order": "1",
+                "sort_order": "2",
                 "multiplicity": "0..*",
                 "hide": "0"
             },
@@ -4615,17 +4554,6 @@
                 "label_id": "139",
                 "sort_order": "0",
                 "multiplicity": "1..*",
-                "hide": "0"
-            },
-            {
-                "id": "3850",
-                "version": "1",
-                "from_node_id": "3636",
-                "to_node_id": "1173",
-                "kind": "composition",
-                "label_id": "140",
-                "sort_order": "0",
-                "multiplicity": "1..1",
                 "hide": "0"
             },
             {
@@ -4691,17 +4619,6 @@
                 "kind": "composition",
                 "label_id": "146",
                 "sort_order": "2",
-                "multiplicity": "1..1",
-                "hide": "0"
-            },
-            {
-                "id": "13410",
-                "version": "3",
-                "from_node_id": "13404",
-                "to_node_id": "1175",
-                "kind": "composition",
-                "label_id": "147",
-                "sort_order": "7",
                 "multiplicity": "1..1",
                 "hide": "0"
             },
@@ -4806,7 +4723,7 @@
             },
             {
                 "id": "13820",
-                "version": "1",
+                "version": "2",
                 "from_node_id": "3636",
                 "to_node_id": "3988",
                 "kind": "aggregation",
@@ -4828,12 +4745,12 @@
             },
             {
                 "id": "18208",
-                "version": "1",
+                "version": "3",
                 "from_node_id": "27",
                 "to_node_id": "1175",
                 "kind": "composition",
                 "label_id": "159",
-                "sort_order": "2",
+                "sort_order": "1",
                 "multiplicity": "1..1",
                 "hide": "0"
             },
@@ -4889,17 +4806,6 @@
                 "kind": "setting",
                 "label_id": "165",
                 "sort_order": "0",
-                "multiplicity": "1..1",
-                "hide": "0"
-            },
-            {
-                "id": "56070",
-                "version": "3",
-                "from_node_id": "3083",
-                "to_node_id": "13404",
-                "kind": "composition",
-                "label_id": "166",
-                "sort_order": "1",
                 "multiplicity": "1..1",
                 "hide": "0"
             },
@@ -5102,17 +5008,6 @@
                 "hide": "0"
             },
             {
-                "id": "149000098263",
-                "version": "1",
-                "from_node_id": "1173",
-                "to_node_id": "149000098261",
-                "kind": "setting",
-                "label_id": "7162",
-                "sort_order": "2",
-                "multiplicity": "1..1",
-                "hide": "0"
-            },
-            {
                 "id": "149000100496",
                 "version": "2",
                 "from_node_id": "43495",
@@ -5130,6 +5025,28 @@
                 "to_node_id": "55653",
                 "kind": "setting",
                 "label_id": "18995",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0"
+            },
+            {
+                "id": "149000101155",
+                "version": "3",
+                "from_node_id": "4032",
+                "to_node_id": "3988",
+                "kind": "composition",
+                "label_id": "24821",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0"
+            },
+            {
+                "id": "149000101626",
+                "version": "1",
+                "from_node_id": "4030",
+                "to_node_id": "1189",
+                "kind": "composition",
+                "label_id": "32526",
                 "sort_order": "0",
                 "multiplicity": "1..1",
                 "hide": "0"
@@ -5155,192 +5072,21 @@
                 "relation_id": "0"
             },
             {
-                "id": "246",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:00:06",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "247",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:02:21",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
                 "id": "248",
-                "version": "1",
+                "version": "2",
                 "node_id": "4232",
                 "node_version": "1",
                 "created_at": "2026-08-26 01:03:27",
-                "record_type": "user",
+                "record_type": "example",
                 "relation_id": "0"
             },
             {
                 "id": "250",
-                "version": "1",
+                "version": "2",
                 "node_id": "4232",
                 "node_version": "1",
                 "created_at": "2026-08-26 01:03:27",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "251",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:03:27",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "252",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:04:24",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "254",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:04:24",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "255",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:04:24",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "270",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:05:35",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "272",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:05:35",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "273",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 01:05:35",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "278",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 07:58:38",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "280",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 07:58:38",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "281",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 07:58:38",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "282",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 08:10:12",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "286",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 08:10:13",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "294",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 08:10:34",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "299",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 08:15:34",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "302",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 08:16:23",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "316",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 08:38:37",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "486",
-                "version": "1",
-                "node_id": "4232",
-                "node_version": "1",
-                "created_at": "2026-08-26 20:35:12",
-                "record_type": "user",
+                "record_type": "example",
                 "relation_id": "0"
             },
             {
@@ -5393,15 +5139,6 @@
                 "version": "1",
                 "node_id": "1171",
                 "node_version": "6",
-                "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "2282",
-                "version": "2",
-                "node_id": "43521",
-                "node_version": "2",
                 "created_at": "2026-08-30 13:15:17",
                 "record_type": "default",
                 "relation_id": "0"
@@ -5605,15 +5342,6 @@
                 "relation_id": "0"
             },
             {
-                "id": "2700",
-                "version": "1",
-                "node_id": "13404",
-                "node_version": "1",
-                "created_at": "2026-08-30 21:22:14",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
                 "id": "2780",
                 "version": "1",
                 "node_id": "43519",
@@ -5650,15 +5378,6 @@
                 "relation_id": "0"
             },
             {
-                "id": "2791",
-                "version": "1",
-                "node_id": "43499",
-                "node_version": "4",
-                "created_at": "2026-08-30 22:08:17",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
                 "id": "2828",
                 "version": "1",
                 "node_id": "1",
@@ -5673,15 +5392,6 @@
                 "node_id": "3634",
                 "node_version": "3",
                 "created_at": "2026-08-30 23:22:26",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "2906",
-                "version": "1",
-                "node_id": "13404",
-                "node_version": "1",
-                "created_at": "2026-08-30 23:22:27",
                 "record_type": "default",
                 "relation_id": "0"
             },
@@ -6334,15 +6044,6 @@
                 "relation_id": "0"
             },
             {
-                "id": "9253",
-                "version": "1",
-                "node_id": "43505",
-                "node_version": "6",
-                "created_at": "2026-09-06 00:02:46",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
                 "id": "9332",
                 "version": "1",
                 "node_id": "3642",
@@ -6357,15 +6058,6 @@
                 "node_id": "3642",
                 "node_version": "1",
                 "created_at": "2026-08-30 00:00:00",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
-                "id": "9365",
-                "version": "1",
-                "node_id": "1173",
-                "node_version": "4",
-                "created_at": "2026-09-06 06:19:49",
                 "record_type": "user",
                 "relation_id": "0"
             },
@@ -6694,47 +6386,11 @@
                 "relation_id": "0"
             },
             {
-                "id": "10443",
-                "version": "1",
-                "node_id": "43511",
-                "node_version": "6",
-                "created_at": "2026-09-06 12:34:00",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "10445",
-                "version": "1",
-                "node_id": "43499",
-                "node_version": "7",
-                "created_at": "2026-09-06 12:34:00",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "10446",
-                "version": "1",
-                "node_id": "43511",
-                "node_version": "6",
-                "created_at": "2026-09-06 12:34:00",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
                 "id": "10447",
                 "version": "1",
                 "node_id": "149000098258",
                 "node_version": "2",
                 "created_at": "2026-09-06 12:35:24",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "10448",
-                "version": "1",
-                "node_id": "43521",
-                "node_version": "5",
-                "created_at": "2026-09-06 12:35:25",
                 "record_type": "default",
                 "relation_id": "0"
             },
@@ -6784,24 +6440,6 @@
                 "relation_id": "0"
             },
             {
-                "id": "10880",
-                "version": "1",
-                "node_id": "43527",
-                "node_version": "5",
-                "created_at": "2026-09-06 13:12:27",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "11137",
-                "version": "1",
-                "node_id": "1179",
-                "node_version": "4",
-                "created_at": "2026-09-06 13:48:34",
-                "record_type": "user",
-                "relation_id": "0"
-            },
-            {
                 "id": "11138",
                 "version": "1",
                 "node_id": "50936",
@@ -6811,37 +6449,10 @@
                 "relation_id": "0"
             },
             {
-                "id": "11140",
-                "version": "1",
-                "node_id": "43505",
-                "node_version": "6",
-                "created_at": "2026-09-06 13:49:14",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "11691",
-                "version": "1",
-                "node_id": "43499",
-                "node_version": "7",
-                "created_at": "2026-09-06 14:42:44",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
                 "id": "11692",
                 "version": "1",
                 "node_id": "4032",
                 "node_version": "2",
-                "created_at": "2026-09-06 14:42:44",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "11693",
-                "version": "1",
-                "node_id": "43519",
-                "node_version": "7",
                 "created_at": "2026-09-06 14:42:44",
                 "record_type": "default",
                 "relation_id": "0"
@@ -6856,28 +6467,10 @@
                 "relation_id": "0"
             },
             {
-                "id": "11695",
-                "version": "1",
-                "node_id": "43519",
-                "node_version": "7",
-                "created_at": "2026-09-06 14:42:44",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
                 "id": "11696",
                 "version": "1",
                 "node_id": "4036",
                 "node_version": "2",
-                "created_at": "2026-09-06 14:42:49",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "11697",
-                "version": "1",
-                "node_id": "43519",
-                "node_version": "7",
                 "created_at": "2026-09-06 14:42:49",
                 "record_type": "default",
                 "relation_id": "0"
@@ -6892,53 +6485,70 @@
                 "relation_id": "0"
             },
             {
-                "id": "12644",
+                "id": "12974",
+                "version": "1",
+                "node_id": "1183",
+                "node_version": "4",
+                "created_at": "2026-09-07 14:27:50",
+                "record_type": "example",
+                "relation_id": "0"
+            },
+            {
+                "id": "13245",
+                "version": "1",
+                "node_id": "4232",
+                "node_version": "3",
+                "created_at": "2026-09-07 19:08:31",
+                "record_type": "default",
+                "relation_id": "4234"
+            },
+            {
+                "id": "13456",
                 "version": "1",
                 "node_id": "43505",
                 "node_version": "6",
-                "created_at": "2026-09-07 10:39:21",
+                "created_at": "2026-09-08 07:14:12",
                 "record_type": "default",
                 "relation_id": "0"
             },
             {
-                "id": "12649",
+                "id": "13928",
+                "version": "2",
+                "node_id": "41588",
+                "node_version": "5",
+                "created_at": "2026-09-08 22:18:47",
+                "record_type": "default",
+                "relation_id": "0"
+            },
+            {
+                "id": "13929",
+                "version": "2",
+                "node_id": "41586",
+                "node_version": "5",
+                "created_at": "2026-09-08 22:19:07",
+                "record_type": "default",
+                "relation_id": "0"
+            },
+            {
+                "id": "14769",
                 "version": "1",
-                "node_id": "43505",
+                "node_id": "1173",
+                "node_version": "4",
+                "created_at": "2026-09-09 08:13:48",
+                "record_type": "default",
+                "relation_id": "0"
+            },
+            {
+                "id": "14907",
+                "version": "1",
+                "node_id": "3463",
                 "node_version": "6",
-                "created_at": "2026-09-07 10:40:29",
+                "created_at": "2026-09-09 10:40:57",
                 "record_type": "default",
                 "relation_id": "0"
             }
         ],
         "relation_records": [
-            {
-                "id": "790",
-                "node_record_id": "172",
-                "relation_id": "3850",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "110.0000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "889",
-                "node_record_id": "247",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
             {
                 "id": "892",
                 "node_record_id": "248",
@@ -6960,174 +6570,6 @@
                 "locale": "",
                 "position": "0",
                 "version": "1",
-                "value_int": null,
-                "value_decimal": "4.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "898",
-                "node_record_id": "252",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "903",
-                "node_record_id": "254",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "4.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "954",
-                "node_record_id": "270",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "959",
-                "node_record_id": "272",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "4.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "972",
-                "node_record_id": "278",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "977",
-                "node_record_id": "280",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "4.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "978",
-                "node_record_id": "282",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "984",
-                "node_record_id": "286",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "1002",
-                "node_record_id": "294",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "1652",
-                "node_record_id": "302",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "4.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "5752",
-                "node_record_id": "246",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "289",
-                "value_int": null,
-                "value_decimal": "2.7000000000",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "5756",
-                "node_record_id": "486",
-                "relation_id": "4234",
-                "locale": "",
-                "position": "0",
-                "version": "5",
                 "value_int": null,
                 "value_decimal": "4.7000000000",
                 "value_text": null,
@@ -7598,32 +7040,18 @@
                 "value_ref_kind": null
             },
             {
-                "id": "11968",
-                "node_record_id": "2906",
-                "relation_id": "50938",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": "0",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
                 "id": "13364",
                 "node_record_id": "2281",
                 "relation_id": "149000093575",
                 "locale": "",
                 "position": "0",
-                "version": "1",
+                "version": "2",
                 "value_int": null,
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "2282",
-                "value_ref_kind": "record"
+                "value_ref": "43523",
+                "value_ref_kind": "node"
             },
             {
                 "id": "14980",
@@ -7636,22 +7064,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "9253",
-                "value_ref_kind": "record"
-            },
-            {
-                "id": "14983",
-                "node_record_id": "9253",
-                "relation_id": "55661",
-                "locale": "",
-                "position": "0",
-                "version": "12",
-                "value_int": "0",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
+                "value_ref": "43505",
+                "value_ref_kind": "node"
             },
             {
                 "id": "14996",
@@ -7804,8 +7218,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "10443",
-                "value_ref_kind": "record"
+                "value_ref": "43511",
+                "value_ref_kind": "node"
             },
             {
                 "id": "16328",
@@ -7818,8 +7232,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "10445",
-                "value_ref_kind": "record"
+                "value_ref": "43499",
+                "value_ref_kind": "node"
             },
             {
                 "id": "16329",
@@ -7832,8 +7246,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "10446",
-                "value_ref_kind": "record"
+                "value_ref": "43511",
+                "value_ref_kind": "node"
             },
             {
                 "id": "16330",
@@ -7846,8 +7260,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "10448",
-                "value_ref_kind": "record"
+                "value_ref": "43521",
+                "value_ref_kind": "node"
             },
             {
                 "id": "16331",
@@ -7876,34 +7290,6 @@
                 "value_date": null,
                 "value_ref": null,
                 "value_ref_kind": null
-            },
-            {
-                "id": "16384",
-                "node_record_id": "246",
-                "relation_id": "4235",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "4004",
-                "value_ref_kind": "node"
-            },
-            {
-                "id": "16385",
-                "node_record_id": "246",
-                "relation_id": "4236",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "4044",
-                "value_ref_kind": "node"
             },
             {
                 "id": "16751",
@@ -7972,21 +7358,7 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "10880",
-                "value_ref_kind": "record"
-            },
-            {
-                "id": "16812",
-                "node_record_id": "10880",
-                "relation_id": "149000100496",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "733",
+                "value_ref": "43527",
                 "value_ref_kind": "node"
             },
             {
@@ -8000,36 +7372,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "11140",
-                "value_ref_kind": "record"
-            },
-            {
-                "id": "17095",
-                "node_record_id": "11140",
-                "relation_id": "55662",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "55655",
+                "value_ref": "43505",
                 "value_ref_kind": "node"
-            },
-            {
-                "id": "17096",
-                "node_record_id": "11140",
-                "relation_id": "55661",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": "1",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
             },
             {
                 "id": "17669",
@@ -8056,8 +7400,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "11691",
-                "value_ref_kind": "record"
+                "value_ref": "43499",
+                "value_ref_kind": "node"
             },
             {
                 "id": "17672",
@@ -8070,8 +7414,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "11693",
-                "value_ref_kind": "record"
+                "value_ref": "43519",
+                "value_ref_kind": "node"
             },
             {
                 "id": "17673",
@@ -8084,8 +7428,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "11695",
-                "value_ref_kind": "record"
+                "value_ref": "43519",
+                "value_ref_kind": "node"
             },
             {
                 "id": "17674",
@@ -8112,63 +7456,7 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "11697",
-                "value_ref_kind": "record"
-            },
-            {
-                "id": "17928",
-                "node_record_id": "11691",
-                "relation_id": "149000100496",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "739",
-                "value_ref_kind": "node"
-            },
-            {
-                "id": "17929",
-                "node_record_id": "11693",
-                "relation_id": "149000100496",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "739",
-                "value_ref_kind": "node"
-            },
-            {
-                "id": "17930",
-                "node_record_id": "11695",
-                "relation_id": "149000100496",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "739",
-                "value_ref_kind": "node"
-            },
-            {
-                "id": "18245",
-                "node_record_id": "10445",
-                "relation_id": "149000100496",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "739",
+                "value_ref": "43519",
                 "value_ref_kind": "node"
             },
             {
@@ -8224,8 +7512,8 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "12644",
-                "value_ref_kind": "record"
+                "value_ref": "43505",
+                "value_ref_kind": "node"
             },
             {
                 "id": "18625",
@@ -8238,8 +7526,288 @@
                 "value_decimal": null,
                 "value_text": null,
                 "value_date": null,
-                "value_ref": "12649",
-                "value_ref_kind": "record"
+                "value_ref": "43505",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "19270",
+                "node_record_id": "2236",
+                "relation_id": "50938",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "19277",
+                "node_record_id": "13245",
+                "relation_id": "50938",
+                "locale": "",
+                "position": "0",
+                "version": "6",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "19436",
+                "node_record_id": "2276",
+                "relation_id": "50938",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "19500",
+                "node_record_id": "13456",
+                "relation_id": "55662",
+                "locale": "",
+                "position": "0",
+                "version": "3",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "55655",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "19501",
+                "node_record_id": "13456",
+                "relation_id": "55661",
+                "locale": "",
+                "position": "0",
+                "version": "3",
+                "value_int": "1",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "20107",
+                "node_record_id": "2281",
+                "relation_id": "0",
+                "locale": "en_US",
+                "position": "0",
+                "version": "2",
+                "value_int": "72",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "20110",
+                "node_record_id": "2281",
+                "relation_id": "149000098260",
+                "locale": "",
+                "position": "0",
+                "version": "3",
+                "value_int": "1",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "20111",
+                "node_record_id": "13928",
+                "relation_id": "0",
+                "locale": "en_US",
+                "position": "0",
+                "version": "1",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "20112",
+                "node_record_id": "13929",
+                "relation_id": "0",
+                "locale": "en_US",
+                "position": "0",
+                "version": "1",
+                "value_int": "72",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "21082",
+                "node_record_id": "13928",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "43523",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "21083",
+                "node_record_id": "13929",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "43523",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "21084",
+                "node_record_id": "9638",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "43521",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "21199",
+                "node_record_id": "2281",
+                "relation_id": "149000086607",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "-9223372036854775808",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "21200",
+                "node_record_id": "2281",
+                "relation_id": "149000086608",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "9223372036854775807",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "21258",
+                "node_record_id": "14769",
+                "relation_id": "149000098261",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": "-99999999999999999999.9999999999",
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "21259",
+                "node_record_id": "14769",
+                "relation_id": "149000098262",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": "99999999999999999999.9999999999",
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "21261",
+                "node_record_id": "14769",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "43523",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "21431",
+                "node_record_id": "14907",
+                "relation_id": "50938",
+                "locale": "",
+                "position": "0",
+                "version": "2",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "21432",
+                "node_record_id": "14907",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "43511",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "21433",
+                "node_record_id": "14907",
+                "relation_id": "55661",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "0",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
             }
         ]
     }

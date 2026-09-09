@@ -78,6 +78,7 @@ final class SeedImage
         'taxmod_primitives_id',
         'taxmod_installation_id',
         'taxmod_roles_id',
+        'taxmod_unit_value_id',
         'taxmod_branch_*',
         'taxmod_role_*',
         'taxmod_render_*',
@@ -108,6 +109,8 @@ final class SeedImage
         'taxmod_developer'           => 'die Bildschirmeinstellung eines Betreibers, nicht sein Baum',
         'taxmod_developer_mode'      => 'dieselbe Sorte',
         'taxmod_icon_size'           => 'dieselbe Sorte',
+        'taxmod_font_size'           => 'dieselbe Sorte — sie stand nur nie da, weil kein Abzug seit D-397 lief',
+        'taxmod_show_trash'          => 'dieselbe Sorte: ob der Papierkorb dasteht, entscheidet ein Betreiber (D-693)',
     ];
 
     /**
@@ -124,6 +127,7 @@ final class SeedImage
         'taxmod_primitives_id',
         'taxmod_installation_id',
         'taxmod_roles_id',
+        'taxmod_unit_value_id',
         'taxmod_branch_*',
         'taxmod_role_*',
         'taxmod_render_*',
