@@ -64,6 +64,7 @@ final class CleanupScreen
     private const FORGET_VALUES   = 'forget_values';
     private const PURGE_NODE      = 'purge_node';
     private const FORGET_RECORDS  = 'forget_records';
+    private const FORGET_EMPTY    = 'forget_empty_records';
 
     public function __construct(
         private readonly Residue $residue,
@@ -95,6 +96,7 @@ final class CleanupScreen
                 $this->valuesWithoutRelation(),
                 $this->nodesWithoutConnections(),
                 $this->recordsWithoutNode(),
+                $this->emptyRecordsWithoutHistory(),
             ])
             . '</div>';
     }
@@ -204,6 +206,42 @@ final class CleanupScreen
      * not unique ([D-022](../../../docs/NewConcept/90-decision-log.md)), so a page that offers to
      * delete «Resistor» offers to delete something a person cannot identify.*
      */
+    /**
+     * Benutzersätze ohne Wert und ohne Journal — die Quelle aus TASK-077.
+     *
+     * ⚠️ *«Ohne Journal» nimmt den echten leeren Satz eines Benutzers aus: der hat eine Anlegezeile.
+     * Was hier steht, hat kein Akt angelegt — gemessen 104 an einem Knoten, alle mit demselben
+     * Mitternachtsdatum.*
+     */
+    private function emptyRecordsWithoutHistory(): ResidueGroup
+    {
+        $entries = [];
+
+        foreach ($this->residue->emptyUserRecordsWithoutHistory() as $node => $count) {
+            $entries[] = new ResidueEntry(
+                sprintf(
+                    _n(
+                        'Node %1$d carries %2$d empty entry that no act ever created.',
+                        'Node %1$d carries %2$d empty entries that no act ever created.',
+                        $count,
+                        'taxmod'
+                    ),
+                    $node,
+                    $count
+                ),
+                $this->act(self::FORGET_EMPTY, __('Remove these empty entries — they hold no value and the changelog never saw them', 'taxmod')),
+                $this->submits(self::FORGET_EMPTY, $node)
+            );
+        }
+
+        return new ResidueGroup(
+            __('Empty entries nobody made', 'taxmod'),
+            __('An entry with no values and no changelog line: nobody created it through this plugin, and it holds nothing. An entry a person started and left empty is not listed here — it has its creation on record.', 'taxmod'),
+            __('Nothing to tidy up here.', 'taxmod'),
+            $entries
+        );
+    }
+
     private function describe(Node $node): string
     {
         return sprintf(
@@ -305,6 +343,7 @@ final class CleanupScreen
             self::FORGET_VALUES   => $this->removed($this->residue->forgetValuesOfRelation($target)),
             self::PURGE_NODE      => $this->purged($target),
             self::FORGET_RECORDS  => $this->forgotRecords($target),
+            self::FORGET_EMPTY    => $this->forgotEmpty($target),
             default              => __('That is not something this page can do.', 'taxmod'),
         };
     }
@@ -359,6 +398,20 @@ final class CleanupScreen
             $gone['values']
         );
     }
+    private function forgotEmpty(int $nodeId): string
+    {
+        $gone = $this->residue->forgetEmptyUserRecordsOf($nodeId);
+
+        if ($gone === null) {
+            return __('That node carries no empty entries without history, so nothing was removed.', 'taxmod');
+        }
+
+        return sprintf(
+            _n('%d empty entry moved to the shadow.', '%d empty entries moved to the shadow.', $gone, 'taxmod'),
+            $gone
+        );
+    }
+
     private function notice(): string
     {
         if (! isset($_GET['taxmod_message'])) {

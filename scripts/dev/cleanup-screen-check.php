@@ -56,7 +56,7 @@ $log   = new WpdbChangelog(new SystemClock());
 $fw    = new SeededFrameworkNodes($nodes, $relations, $log);
 
 $editor   = new ModelEditor($nodes, $relations, $fw, $log);
-$data     = new DataEntry(new WpdbRecordRepository(), $relations, $nodes, $fw, new SystemClock());
+$data     = new DataEntry(new WpdbRecordRepository(), $relations, $nodes, $fw, new SystemClock(), $log);
 
 $residue = new Residue($fw, new WpdbLabelRepository(), $log, new WpdbRecordRepository());
 
@@ -190,8 +190,8 @@ $angeboten = array_values(array_unique($akte[1]));
 sort($angeboten);
 
 $say(
-    $angeboten === ['forget_records', 'forget_values', 'purge_node'],
-    'genau drei Akte, kein vierter für das Log (' . implode(', ', $angeboten) . ')'
+    $angeboten === ['forget_empty_records', 'forget_records', 'forget_values', 'purge_node'],
+    'genau vier Akte, keiner für das Log (' . implode(', ', $angeboten) . ')'
 );
 
 // ⚠️ **Die Nonce der Seite muss die sein, die `handlePost()` verlangt.** *`handlePost()` selbst laesst
@@ -314,6 +314,40 @@ if ($eineLeer) {
     echo "  --   keine Quelle ist leer, der leere Fall ist hier nicht zu sehen
 ";
 }
+
+echo "\n== 6. die Quelle aus TASK-077: leere Benutzersätze, die kein Akt angelegt hat ==\n";
+
+// ⚠️ *Gemessen am 2026-09-09: 104 leere `user`-Sätze an einem Knoten, alle mit `created_at`
+// Mitternacht und ohne eine Journalzeile — kein Akt hat sie angelegt. **Ohne Journal** ist die
+// Bedingung: ein Satz, den ein Mensch anlegt und leer lässt, hat seine Anlegezeile und bleibt.*
+$wiese  = $editor->createNode('__cl Wiese', $fw->rootOf(Branch::Model)->id);
+$roh(sprintf(
+    "INSERT INTO {$p}node_records (version, node_id, node_version, created_at, record_type, relation_id)
+     VALUES (1, %d, %d, '2026-08-30 00:00:00', 'user', 0)",
+    $wiese->id,
+    $wiese->version
+));
+$fremd = (int) $wpdb->insert_id;
+$eigen = $data->create($wiese->id);
+
+$leere = $residue->emptyUserRecordsWithoutHistory();
+$say(($leere[$wiese->id] ?? 0) === 1, sprintf('der journallose leere Satz liegt da, genau einer (%d)', $leere[$wiese->id] ?? 0));
+$say(
+    (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}changelog WHERE owner_kind = 'record' AND owner_id = {$eigen->id}") >= 1,
+    'der Satz eines Menschen hat seine Anlegezeile im Journal'
+);
+$say(! array_key_exists($modell->id, $leere), 'ein Satz mit Werten ist kein Rückstand');
+
+$markup = $plugin->cleanupScreen()->render();
+$say(str_contains($markup, 'value="forget_empty_records"'), 'ein Knopf für die leeren Sätze');
+$say(str_contains($markup, 'value="' . $wiese->id . '"'), 'und die Zeile nennt den Knoten');
+
+$gone = $residue->forgetEmptyUserRecordsOf($wiese->id);
+$say($gone === 1, sprintf('genau einer ging (%s)', var_export($gone, true)));
+$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE id = {$fremd}") === 0, 'der journallose ist weg');
+$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id = {$fremd}") === 1, 'und liegt im Schatten, also ist es umkehrbar');
+$say((int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE id = {$eigen->id}") === 1, 'der Satz des Menschen steht noch');
+$say($residue->forgetEmptyUserRecordsOf($wiese->id) === null, 'und ein zweiter Aufruf findet nichts mehr und meldet keinen Akt');
 
 printf("\n%s\n", $failed === 0 ? 'all green' : sprintf('%d FEHLER', $failed));
 

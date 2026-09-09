@@ -2690,7 +2690,20 @@ Fall.**
 
 ---
 
-[ ] TASK-077  111 von 113 Benutzersätzen tragen keine einzige Wertzeile
+[x] TASK-077  111 von 113 Benutzersätzen tragen keine einzige Wertzeile — gebaut 2026-09-09
+
+**Zusage:** *(1) `cleanup-screen-check`, Abschnitt 6: ein `user`-Satz ohne Wertzeile **und ohne
+Journalzeile** ist die fünfte Quelle des Cleanup-Bildschirms, mit eigenem Knopf; ein Satz, den ein
+Mensch anlegt, hat seine Anlegezeile («record created») und wird nicht gelistet; ein Satz mit Werten
+auch nicht; das Entfernen geht in den Schatten und ist umkehrbar. (2) `simple-type-check`,
+Abschnitt 8: unter `Primitives` und unter `Settings` gibt es keinen Benutzersatz (D-664, D-677,
+D-691) — Fassung 41 hat die drei leeren gestrichen, in den Schatten, mit Änderungsgruppe.*
+
+**Angenommen, nicht entschieden:** *der Satz einer **Verwendungsstelle** (`relation_id ≠ 0`) ist
+`user` (D-674) und liegt unter `Primitives`, wo die Kante auf einen Typ zeigt — er trägt
+Einstellungen, keine Daten des Typs, und bleibt ausgenommen. Zwei davon gibt es. Und «ohne Journal»
+nimmt einen Satz aus, der vor dem Journal der Anlage entstand; die 104 an `Condensator` bleiben liegen,
+bis er sie auf dem Cleanup-Bildschirm entfernt.*
 
 **2026-09-09, derselbe Auftrag.** ⚠️ **Gemessen:** *113 Sätze mit `record_type = user`; **111** davon
 ohne eine Wertzeile. 105 hängen an `Condensator`, je einer an `Parts List`, `Address`,

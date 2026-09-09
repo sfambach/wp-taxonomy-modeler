@@ -411,7 +411,7 @@ final class Schema
      * **keine einzige davon ist zur Parkzeit ihrer Kante oder später archiviert worden** — sie waren
      * alle vorher schon gelöscht, gehören also auch nach der alten Lesart nicht ins Gepäck.*
      */
-    public const VERSION = 40;
+    public const VERSION = 41;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -694,6 +694,10 @@ final class Schema
         // ⚠️ *Zuletzt: die Bedingung darf erst stehen, wenn die Spalten heissen wie sie heissen und
         // jeder Aufräumschritt darüber gelaufen ist (TASK-010).*
         self::constrainRelationsToNodes();
+
+        // ⚠️ **Fassung 41: unter `Primitives` und `Settings` gibt es keine Benutzersätze**
+        // ([D-677](../../../docs/NewConcept/90-decision-log.md), [D-691](../../../docs/NewConcept/90-decision-log.md), TASK-077).
+        self::dropUserRecordsUnderPrimitivesAndSettings();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -2774,6 +2778,107 @@ final class Schema
      * nur, wenn keine Waise dasteht**: eine Bedingung, die MySQL zurückweist, wäre still, und ein
      * halb gesichertes Schema ist schlimmer als ein ungesichertes, weil man sich darauf verlässt.*
      */
+    /**
+     * Fassung 41: **die Benutzersätze unter `Primitives` und `Settings` fallen** — soweit sie leer sind.
+     *
+     * ⚠️ **Sein Wort:** *«was unter Primitives liegt, hält keine Benutzerdaten — nur default und
+     * example»* ([D-677](../../../docs/NewConcept/90-decision-log.md)), und auf die Frage nach dem
+     * Settings-Ast: *«Ja, auch Settings»* ([D-691](../../../docs/NewConcept/90-decision-log.md)).
+     * **Gemessen am 2026-09-09: vier solche Sätze — `Decimal`, `Boolean`, `Email`, `chooser-dialog` —,
+     * alle ohne eine Wertzeile.** *Ändert sich, was erlaubt ist, wandert der Bestand im selben
+     * Schritt mit ([D-672](../../../docs/NewConcept/90-decision-log.md)); `simple-type-check` hält den
+     * Zustand danach.*
+     *
+     * ⚠️ **Nur die leeren, und das ist keine Vorsicht, sondern `PR-4`:** *ein Benutzersatz **mit**
+     * Werten an einem einfachen Typ wäre ein Widerspruch, den niemand entschieden hat aufzulösen —
+     * er bleibt stehen, der Wächter meldet ihn, und die Zahl steht in der Option zur Fassung.*
+     *
+     * ⚠️ *Gezählt davor, gezählt danach, Abweichung ist ein Abbruch; über den Schatten umkehrbar;
+     * zweimal ausführbar.* Die Astwurzeln kommen aus den Optionen, die {@see SeededFrameworkNodes}
+     * führt — `Primitives` ist der Elternknoten der `Data Types`-Wurzel.
+     */
+    private static function dropUserRecordsUnderPrimitivesAndSettings(): void
+    {
+        global $wpdb;
+
+        $saetze = self::table('node_records');
+        $werte  = self::table('relation_records');
+        $nodes  = self::table('nodes');
+
+        if (self::tableMissing($saetze) || self::tableMissing($nodes) || ! self::hasColumn($saetze, 'record_type')) {
+            return;
+        }
+
+        $dataTypes = (int) get_option('taxmod_branch_data_types_id', 0);
+        $settings  = (int) get_option('taxmod_branch_settings_id', 0);
+        $primitives = $dataTypes === 0
+            ? 0
+            : (int) $wpdb->get_var($wpdb->prepare("SELECT parent_node_id FROM {$nodes} WHERE id = %d", $dataTypes));
+
+        $wurzeln = array_values(array_filter([$primitives, $settings]));
+
+        if ($wurzeln === []) {
+            return;
+        }
+
+        $ast = "WITH RECURSIVE taxmod_ast (id) AS (
+                    SELECT id FROM {$nodes} WHERE id IN (" . implode(',', $wurzeln) . ")
+                    UNION ALL
+                    SELECT k.id FROM {$nodes} k INNER JOIN taxmod_ast v ON v.id = k.parent_node_id
+                )";
+        // ⚠️ *`relation_id = 0`: der Satz einer **Verwendungsstelle** ist `user`
+        // ([D-674](../../../docs/NewConcept/90-decision-log.md)) und trägt Einstellungen, keine Daten
+        // des Typs — er ist die Adresse der Stelle und bleibt, wo er ist.*
+        $leerBedingung = "s.record_type = 'user' AND s.relation_id = 0
+                AND s.node_id IN (SELECT id FROM taxmod_ast)
+                AND NOT EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)";
+
+        /** @var list<array{id: string, version: string, node_id: string}> $leer */
+        $leer = $wpdb->get_results("{$ast} SELECT s.id, s.version, s.node_id FROM {$saetze} s WHERE {$leerBedingung}", ARRAY_A) ?: [];
+        $voll = (int) $wpdb->get_var(
+            "{$ast} SELECT COUNT(*) FROM {$saetze} s WHERE s.record_type = 'user' AND s.relation_id = 0 AND s.node_id IN (SELECT id FROM taxmod_ast)
+                 AND EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)"
+        );
+
+        if ($leer === []) {
+            if ($voll !== 0) {
+                update_option('taxmod_fassung41_shape', ['gefallen' => 0, 'mit_werten_geblieben' => $voll], false);
+            }
+
+            return;
+        }
+
+        $log    = new WpdbChangelog(new SystemClock());
+        $gruppe = null;
+
+        foreach ($leer as $zeile) {
+            $id = (int) $zeile['id'];
+            Shadow::keepOne('node_records', $id, true);
+            $wpdb->delete($saetze, ['id' => $id], ['%d']);
+            $gruppe = $log->record(
+                $id,
+                'record',
+                'user record under a type dropped',
+                'node ' . (int) $zeile['node_id'],
+                null,
+                (int) $zeile['version'],
+                $gruppe
+            );
+        }
+
+        $geblieben = (int) $wpdb->get_var("{$ast} SELECT COUNT(*) FROM {$saetze} s WHERE {$leerBedingung}");
+
+        if ($geblieben !== 0) {
+            throw new \RuntimeException(sprintf(
+                'Fassung 41: %d leere Benutzersaetze unter Primitives/Settings sollten fallen, %d stehen noch. Die Fassungsnummer bleibt stehen.',
+                count($leer),
+                $geblieben
+            ));
+        }
+
+        update_option('taxmod_fassung41_shape', ['gefallen' => count($leer), 'mit_werten_geblieben' => $voll, 'gruppe' => $gruppe], false);
+    }
+
     private static function constrainRelationsToNodes(): void
     {
         global $wpdb;

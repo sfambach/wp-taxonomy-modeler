@@ -314,6 +314,34 @@ if ($schlicht === null) {
     echo "       kein klassenloser Knoten unter Model gefunden — die Gegenprobe lief ins Leere.\n";
 }
 
+echo "\n== 8. Unter Primitives und unter Settings gibt es keine Benutzersätze (D-664, D-677, D-691) ==\n";
+
+// ⚠️ *Sein Wort in [D-677](../../docs/NewConcept/90-decision-log.md): «was unter Primitives liegt,
+// hält keine Benutzerdaten — nur default und example»; und auf die Frage nach dem Settings-Ast:
+// «Ja, auch Settings» ([D-691](../../docs/NewConcept/90-decision-log.md)). **Gemessen am 2026-09-09
+// standen vier solche Sätze da, alle leer, und kein Wächter sah es.** Fassung 41 räumt sie; diese
+// Zusage hält den Zustand danach.*
+global $wpdb;
+$primitives = $dataTypes->parentNodeId ?? 0;
+
+foreach (['Primitives' => $primitives, 'Settings' => $framework->rootOf(Branch::Settings)->id] as $astName => $wurzel) {
+    if ($wurzel === 0) {
+        check($astName . ': die Wurzel ist bekannt', false);
+
+        continue;
+    }
+
+    $ids   = $nodes->subtreeIds($wurzel);
+    $liste = implode(',', array_map('intval', $ids));
+    $user  = (int) $wpdb->get_var(
+        // ⚠️ *`relation_id = 0`: der Satz einer **Verwendungsstelle** ist `user` (D-674) und trägt
+        // Einstellungen, keine Daten des Typs — er ist die Adresse der Stelle, nicht ein Eintrag.*
+        "SELECT COUNT(*) FROM {$wpdb->prefix}taxmod_node_records WHERE record_type = 'user' AND relation_id = 0 AND node_id IN ({$liste})"
+    );
+
+    check($astName . ': kein Benutzersatz in ' . count($ids) . ' Knoten', $user === 0, "{$user} gefunden");
+}
+
 echo "\n" . ($bad === 0 ? "Alles grün: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 
 exit($bad === 0 ? 0 : 1);

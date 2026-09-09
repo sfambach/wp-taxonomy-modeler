@@ -486,4 +486,68 @@ final class Residue
 
         return $wert === null ? null : (int) $wert;
     }
+
+    /**
+     * Benutzersätze ohne Wert **und ohne Journal** — die fünfte Quelle (TASK-077).
+     *
+     * ⚠️ **Gemessen am 2026-09-09: 111 von 113 Benutzersätzen trugen keine einzige Wertzeile, 104
+     * davon an einem Knoten, alle mit `created_at` genau Mitternacht des 2026-08-30 — und das
+     * Journal kannte keinen von ihnen.** *Kein Akt hat sie angelegt; ein Import oder ein Umbenennen
+     * hat sie hinterlassen.*
+     *
+     * ⚠️ **«Ohne Journal» ist die Bedingung, die einen echten leeren Satz eines Benutzers ausnimmt:**
+     * *der hat eine Anlegezeile. So entscheidet die Geschichte und keine Zahl und kein Datum.*
+     *
+     * @return array<int,int> Knoten-Id ⇒ wie viele solcher Sätze an ihm hängen
+     */
+    public function emptyUserRecordsWithoutHistory(): array
+    {
+        return $this->countsByOwner($this->rows(
+            'SELECT r.node_id AS owner, COUNT(*) AS rows_held
+               FROM ' . Schema::table('node_records') . " r
+              WHERE r.record_type = 'user'
+                AND EXISTS (SELECT 1 FROM " . Schema::table('nodes') . ' n WHERE n.id = r.node_id)
+                AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relation_records') . ' v WHERE v.node_record_id = r.id)
+                AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('changelog') . " c WHERE c.owner_kind = 'record' AND c.owner_id = r.id)
+           GROUP BY r.node_id
+           ORDER BY r.node_id ASC"
+        ));
+    }
+
+    /**
+     * Die leeren, journallosen Benutzersätze eines Knotens entfernen — in den Schatten, mit Eintrag.
+     *
+     * @return int|null Wie viele gingen; null, wenn an diesem Knoten kein solcher Fall liegt.
+     */
+    public function forgetEmptyUserRecordsOf(int $nodeId): ?int
+    {
+        global $wpdb;
+
+        if ($this->records === null || ! array_key_exists($nodeId, $this->emptyUserRecordsWithoutHistory())) {
+            return null;
+        }
+
+        // ⚠️ *Die Knoten-Id ist eine `(int)`-Umwandlung, nichts aus der Eingabe wird interpoliert (`CD-6`).*
+        $ids = array_map(static fn (object $r): int => (int) $r->owner, $this->rows(
+            'SELECT r.id AS owner FROM ' . Schema::table('node_records') . ' r
+              WHERE r.node_id = ' . (int) $nodeId . " AND r.record_type = 'user'
+                AND NOT EXISTS (SELECT 1 FROM " . Schema::table('relation_records') . ' v WHERE v.node_record_id = r.id)
+                AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('changelog') . " c WHERE c.owner_kind = 'record' AND c.owner_id = r.id)"
+        ));
+
+        $gone = 0;
+
+        foreach ($ids as $id) {
+            // ⚠️ *Über den Speicher, nicht mit rohem SQL: so wandert die Zeile in den Schatten und
+            // bleibt umkehrbar, wie jeder andere entfernte Satz.*
+            $version = $this->records->forgetRecord($id);
+
+            if ($version !== null) {
+                ++$gone;
+                $this->record($id, 'record', 'empty record without history removed', 1, $version);
+            }
+        }
+
+        return $gone;
+    }
 }
