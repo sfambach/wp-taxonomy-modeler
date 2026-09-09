@@ -654,3 +654,28 @@ das es nicht mehr gibt.*
 | 27–32 (eine Einstellung, die nur das Ziel erklärt: nicht an der Kette des Besitzers, der Schreiber findet sie, schreiben, im Satz der Stelle, herausnehmen) | **Abschnitt 2** — an der Kante, die die Maske angelegt hat |
 | 33–34 (genau eine Wahl; die Wertzeile nennt den Renderer ohne Hülle) | **Abschnitt 3** |
 
+
+### `page-blocks` — 69 Zusagen, gefallen
+
+| Zusagen | wohin |
+|---|---|
+| 3 ×3 (keine Einstellungskante unter «Fields» — an `form`, `Integer`, `Passiv`) | **Abschnitt 2**, an `__es Zahl` — die Wiese statt seiner Knoten |
+| 4–5 (`form` zeigt Einstellungen unter «Settings»; `with_label` darunter) | **Abschnitt 2**: «die eigene steht unter Settings, nicht davor» — an der eigenen Kante; `with_label` an `form` ist ein Name aus seinem Bestand |
+| 6 (jede eigene Feldkante von `Passiv` steht unter Fields) | **entfällt** — mass am lebenden `Passiv`; Abschnitt 12 zählt an der Wiese drei eigene und drei geerbte Zeilen |
+| 8–11 («wie oft» an geerbten Zeilen gesperrt, an eigenen änderbar — an `Kontact`) | **Abschnitt 6**, zwei Zeilen, an `__es Kind` und `__es Modell` |
+| 12–16 (die Renderkette durch ein zusammengesetztes Feld: Ziel hat vier Felder, die Vorschau nennt sie, je Feld eine Bedienung) | **Abschnitt 9**, zwei Zeilen |
+| 17–19 (form/table/compact stehen zur Wahl, der Zwischenknoten nicht — an `Kontact`) | **Abschnitt 3** («einem Ding unter Model … compact, form, table» am Kern; «`render with label` nicht» am Markup) |
+| 20–26 (drei Seiten Display/Admin/Settings; Admin ohne Einstellung, mit Feldern; Settings mit `read_only`, ohne Feld) | **Abschnitt 9**, zwei Zeilen |
+| 27–35 (der Block ist eine Tabelle: nicht n Tabellen, Aktionszelle, Formular, drei Vorspalten, «Belongs to» weg, keine Einstellung als Spalte) | **Abschnitt 11**, drei Zeilen — an drei eigenen Sätzen statt am Knoten mit den meisten |
+| 36 (die drei Verwaltungsseiten zeichnen sich) | **entfällt** für die Einstellungsseite — `configuration-screen-check` zeichnet sie; Knoten- und Aufräumseite stehen in Abschnitt 12 |
+| 37–40 ×2 (Fragezeichen vorhanden, je eines ein Satz, keiner leer, keiner nur im title — Knoten, Aufräumen) | **Abschnitt 12**, eine Zeile je Seite |
+| 41–44 (keine «description» mehr; Auskunft steht; jedes Fragezeichen übersetzt; mehr als eine Stelle) | **Abschnitt 12**, zwei Zeilen — dieselben Quelltext-Scans |
+| 45–50 (genau eine `HintMarkup`, im Kern, niemand baut nach, Formular und Kompaktbehälter rufen sie) | **Abschnitt 12**, eine Zeile |
+| 52–55 (drei geerbte, drei eigene, ein Block, Geerbtes vorn) | **Abschnitt 12**, eine Zeile |
+| 56 (ein Knoten mit Einstellungssatz ist da) | **entfällt** — Vorbedingung; die Wiese hat ihn (`__es Zahl`) |
+| 57–61 (ohne Entwicklermodus kein Einstellungssatz; mit Modus mit Marke, nicht als Art, nennt den Renderer) | **Abschnitt 11**, zwei Zeilen |
+| 62–63 ×3 (die drei Haken des Entwicklermodus, an und aus — [D-705](../../NewConcept/90-decision-log.md)) | **Abschnitt 11**, eine Zeile je Haken |
+| 1, 2, 7, 17, 20, 51 (Fehlzweige) | **entfällt** |
+
+*Was der Fall kostet:* nichts von der Sache — aber `page-blocks` war mit `package7` einer der zwei, die die Tabelle oben unter «bleiben» führte, weil sie **die Seite zeichnen**. Sie zeichnet jetzt Abschnitt 12, an der Wiese.
+
