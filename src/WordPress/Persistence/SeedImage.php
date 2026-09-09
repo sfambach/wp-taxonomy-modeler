@@ -107,7 +107,11 @@ final class SeedImage
         'taxmod_*_shape'             => 'Messungen von Wanderungen und Wächtern, kein Modell',
         'taxmod_renderer_choice_drop' => 'das Protokoll einer Wanderung',
         'taxmod_developer'           => 'die Bildschirmeinstellung eines Betreibers, nicht sein Baum',
-        'taxmod_developer_mode'      => 'dieselbe Sorte',
+        // ⚠️ *Am 2026-09-09 aus seinem Bestand gelöscht ([D-703](../../../docs/NewConcept/90-decision-log.md)):
+        //  sie stand auf `0`, während gelesen `1` war, und täuschte jeden, der nachsah. **Der Eintrag
+        //  bleibt trotzdem**, weil eine ältere Installation sie noch hat und der Abzug sonst dort
+        //  abbräche — er kennt keinen Rest.*
+        'taxmod_developer_mode'      => 'zurückgezogen: dieselbe Sorte, und ein zweiter Name für dieselbe Sache',
         'taxmod_icon_size'           => 'dieselbe Sorte',
         'taxmod_font_size'           => 'dieselbe Sorte — sie stand nur nie da, weil kein Abzug seit D-397 lief',
         'taxmod_show_trash'          => 'dieselbe Sorte: ob der Papierkorb dasteht, entscheidet ein Betreiber (D-693)',

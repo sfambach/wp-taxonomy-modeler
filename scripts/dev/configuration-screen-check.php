@@ -71,8 +71,15 @@ $say(
     'und jeder schickt seine verborgene Null mit, damit aus auch aus heisst'
 );
 
-$say(substr_count($markup, 'class="taxmod-config-value"') === 5, 'jede Zeile hat ihre mittlere Zelle');
-$say(substr_count($markup, 'class="taxmod-config-why description"') === 5, 'und ihre Erklaerung rechts');
+// ⚠️ **Gegen sich selbst gezählt und nicht gegen eine feste Zahl.** *Hier standen zweimal «=== 5»,
+// und die fiel in dem Moment, als [D-703](../../docs/NewConcept/90-decision-log.md) drei
+// Anzeigezeilen dazugab — obwohl an jeder Zeile alles dran war. **Eine feste Zahl misst den
+// Bestand, die Zusage meint die Form**: jede Zeile hat ihre drei Zellen, wie viele es auch seien.*
+$zeilen = substr_count($markup, '<tr><th scope="row">');
+
+$say($zeilen >= 5, sprintf('die Seite traegt Zeilen (%d)', $zeilen));
+$say(substr_count($markup, 'class="taxmod-config-value"') === $zeilen, 'jede Zeile hat ihre mittlere Zelle');
+$say(substr_count($markup, 'class="taxmod-config-why description"') === $zeilen, 'und ihre Erklaerung rechts');
 
 // ⚠️ *Die Gegenprobe zu D-695: die Erklaerung steht in der Spalte **statt** hinter dem Fragezeichen.*
 $say(! str_contains($markup, 'taxmod-hint'), 'und keine davon versteckt sich mehr hinter einem Fragezeichen');
@@ -86,6 +93,37 @@ $say(! str_contains($markup, 'taxmod-hint'), 'und keine davon versteckt sich meh
 //
 // ⚠️ *Gemessen wird die Verdrahtung und nicht die Datei: die Menüseiten werden angemeldet, und dann
 // wird gefragt, ob an jedem Haken ein Stilblatt hängt.*
+
+// ⚠️ **Die drei Anzeigezeilen** ([D-703](../../docs/NewConcept/90-decision-log.md)). *Sie standen
+// bisher nur in WordPress-Optionen — `node-binding-check` prüfte die Rahmen-Ids seit langem, ein
+// Mensch konnte sie nicht sehen.*
+//
+// ⚠️ *Gemessen wird, dass die Anzeige **dieselbe Quelle** nennt wie der Kode, und nicht, welche Zahl
+// dasteht: eine Zusage auf «41» wäre beim nächsten Schemaschritt rot, ohne dass etwas kaputt ist.*
+$say(str_contains($markup, '>Schema version<'), 'die Schemafassung steht auf der Seite');
+$say(
+    str_contains($markup, '<code>' . (int) get_option(Taxmod\WordPress\Persistence\Schema::VERSION_OPTION, 0) . '</code>'),
+    'und nennt die Fassung, die wirklich in der Datenbank liegt'
+);
+
+$say(str_contains($markup, '>Seeded scaffolds<'), 'die Geruestfassungen stehen da');
+foreach (['base', 'units', 'compositions', 'rendering'] as $eines) {
+    $say(str_contains($markup, $eines . ' <code>'), sprintf('  · das Geruest «%s» ist genannt', $eines));
+}
+
+// ⚠️ *Die Rahmen-Ids gegen die Datenbank gezählt und nicht gegen eine Zahl von heute: kommt ein Ast
+// dazu, wächst beides zusammen. **Eine feste Zahl hier wäre ein Changelog**, genau wie in `CLAUDE.md`.*
+global $wpdb;
+$rahmen = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE 'taxmod\_%\_id'"
+);
+
+$say(str_contains($markup, '>Framework ids<'), 'die Rahmen-Ids stehen da');
+$say(
+    substr_count($markup, '<code>taxmod_') === $rahmen,
+    sprintf('und es sind alle, die es gibt (%d)', $rahmen)
+);
+
 // ⚠️ *Das Zusatzstueck ist schon hochgefahren — `wp-load` hat es geladen, weil es aktiv ist. Also
 //  wird sein eigener Menueaufbau ausgeloest statt ein zweiter gebaut: ein zweites Exemplar
 //  meldete andere Haken an als die, die der Bildschirm spaeter wirklich hat.*

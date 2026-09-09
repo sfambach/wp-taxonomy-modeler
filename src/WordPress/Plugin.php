@@ -177,9 +177,17 @@ final class Plugin
 
         $unterseiten[] = add_submenu_page(
             'taxmod',
-            __('Installation', 'taxmod'),
-            __('Installation', 'taxmod'),
+            // ⚠️ **`Configuration`, nicht `Installation`** ([D-703](../../docs/NewConcept/90-decision-log.md)).
+            // *Sein Wort: «ich würd es lieber in configutation umbennen». **Und der zweite Grund ist,
+            // dass «Installation» im Modell schon etwas anderes heisst**: die reservierte Identität am
+            // Kopf der Auflösungskette ([D-079](../../docs/NewConcept/90-decision-log.md)). Ein Wort
+            // für zwei Dinge, und die Seite trug das falsche davon.*
+            __('Configuration', 'taxmod'),
+            __('Configuration', 'taxmod'),
             self::CAPABILITY,
+            // ⚠️ *Der Schlüssel bleibt: **er ist eine Adresse, kein Name.** Ein Lesezeichen auf
+            //  `page=taxmod-settings` bricht, wenn er sich ändert, und niemand liest ihn.
+            //  D-703 nennt das ausdrücklich als Teil der Entscheidung.*
             'taxmod-settings',
             fn () => print (new SettingsScreen())->render()
         );

@@ -4,6 +4,7 @@ namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\ToggleMarkup;
+use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -66,6 +67,23 @@ final class SettingsScreen
     public const SHOW_TRASH = 'taxmod_show_trash';
 
     /**
+     * Die vier Gerüste und ihre Optionen.
+     *
+     * ⚠️ *Die Namen stehen hier und nicht als `::OPTION` je Klasse abgefragt: **dieser Bildschirm
+     * zeigt sie nur an und soll nicht vier Persistenzklassen laden müssen, um eine Zahl zu
+     * drucken.** Fällt eines der Gerüste weg, fällt seine Zeile hier auf einen Strich — nicht
+     * auf einen Fehler.
+     *
+     * @var array<string, string>
+     */
+    private const SCAFFOLDS = [
+        'taxmod_base_scaffold'        => 'base',
+        'taxmod_unit_scaffold'        => 'units',
+        'taxmod_composition_scaffold' => 'compositions',
+        'taxmod_rendering_scaffold'   => 'rendering',
+    ];
+
+    /**
      * Sizes the owner may pick, and why it is a list rather than a number field.
      *
      * ⚠️ *He walked the numbers himself — «one pixel bigger», «make 20», «25px», then back to 17 —
@@ -90,7 +108,7 @@ final class SettingsScreen
         }
 
         $html = '<div class="wrap">'
-            . '<h1>' . esc_html__('Taxonomy Modeller — installation', 'taxmod') . '</h1>'
+            . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
             . $this->notice()
             . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
@@ -110,7 +128,11 @@ final class SettingsScreen
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</tbody></table>'
             . get_submit_button(__('Save', 'taxmod'))
-            . '</form></div>';
+            . '</form>'
+            // ⚠️ *Ausserhalb des Formulars, weil nichts davon abgeschickt wird.
+            //  Ein Anzeigeblock innerhalb eines Formulars lädt dazu ein, ihn für einstellbar zu halten.*
+            . $this->facts()
+            . '</div>';
 
         return $html;
     }
@@ -214,6 +236,115 @@ final class SettingsScreen
             $label,
             '<select name="' . esc_attr(str_replace('taxmod_', '', $option)) . '">' . $options . '</select>',
             $why
+        );
+    }
+
+    /**
+     * Was der Bildschirm **nur zeigt** — Schemafassung, Gerüste, Rahmen-Ids.
+     *
+     * ⚠️ **Drei Zeilen aus der Bauanleitung, und keine davon ist einstellbar**
+     * ([D-703](../../../docs/NewConcept/90-decision-log.md)). *Sie standen bisher **nur** in
+     * WordPress-Optionen: lesbar über die Datenbank, sonst nirgends. `node-binding-check` prüft die
+     * Rahmen-Ids seit langem — **ein Mensch konnte sie nicht sehen**.*
+     *
+     * ⚠️ *Deshalb ein eigener Block unter der Tabelle und nicht in ihr: **was man ändern kann und was
+     * man nur wissen kann, sind zwei Sorten**, und eine Tabelle, in der die halben Zeilen nichts
+     * tun, lädt zum Klicken ein, wo es nichts zu klicken gibt.*
+     */
+    private function facts(): string
+    {
+        return '<h2>' . esc_html__('What this installation is made of', 'taxmod') . '</h2>'
+            . '<table class="taxmod-config"><tbody>'
+            . $this->schemaRow()
+            . $this->scaffoldRow()
+            . $this->frameworkRow()
+            . '</tbody></table>';
+    }
+
+    /**
+     * Welche Schemafassung liegt, und welche der Kode erwartet.
+     *
+     * ⚠️ **Die Fassung ist der Wächter des Aufstiegs** (`CD-6`): *`Schema::install()` läuft nur,
+     * wenn beide Zahlen auseinandergehen. **Gehen sie auseinander und es passiert nichts, ist das
+     * genau die Lage, in der niemand nachsieht** — weil man sie nicht sehen konnte.*
+     */
+    private function schemaRow(): string
+    {
+        $liegt   = (int) get_option(Schema::VERSION_OPTION, 0);
+        $erwartet = Schema::VERSION;
+
+        return $this->row(
+            __('Schema version', 'taxmod'),
+            '<code>' . (int) $liegt . '</code>'
+                . ($liegt === $erwartet
+                    ? ''
+                    : ' <strong>' . esc_html(sprintf(
+                        /* translators: %d: the schema version the code expects. */
+                        __('— the code expects %d', 'taxmod'),
+                        $erwartet
+                    )) . '</strong>'),
+            $liegt === $erwartet
+                ? __('The database matches the code. An upgrade runs when these two differ.', 'taxmod')
+                : __('These two differ, which means an upgrade has not run. Deactivating and activating the plugin runs it.', 'taxmod')
+        );
+    }
+
+    /**
+     * Welche Gerüste liefen, in welcher Fassung.
+     *
+     * ⚠️ *Nach dem Import ist Gesätes gewöhnlicher Inhalt ([D-119](../../../docs/NewConcept/90-decision-log.md))
+     * — diese Zeile sagt also nicht, was im Baum steht, sondern **welcher Lauf ihn einmal angelegt
+     * hat**. Das ist der Unterschied zwischen einer Herkunft und einem Besitz.*
+     */
+    private function scaffoldRow(): string
+    {
+        $liste = [];
+
+        foreach (self::SCAFFOLDS as $option => $name) {
+            $fassung  = (int) get_option($option, 0);
+            $liste[] = esc_html($name) . ' <code>' . ($fassung === 0 ? '—' : (int) $fassung) . '</code>';
+        }
+
+        return $this->row(
+            __('Seeded scaffolds', 'taxmod'),
+            implode('<br>', $liste),
+            __('Which scaffolding runs have built this tree, and at which version. A dash means the run has never happened here — on an installation seeded from the image that is the normal case, because the image already brought everything.', 'taxmod')
+        );
+    }
+
+    /**
+     * Die Rahmen-Ids, die alles zusammenhalten.
+     *
+     * ⚠️ **Gebunden wird über die Id und nicht über den Namen**
+     * ([D-510](../../../docs/NewConcept/90-decision-log.md)) — *das ist der Grund, warum es diese
+     * Optionen gibt, und warum eine Umbenennung im Baum nichts zerbricht.*
+     *
+     * ⚠️ *Nur lesbar, ausdrücklich: **wer eine davon von Hand verstellt, hängt den Baum aus.** Der
+     * Wächter bleibt `node-binding-check`; diese Zeile macht ihn nur sichtbar.*
+     */
+    private function frameworkRow(): string
+    {
+        global $wpdb;
+
+        $rows = $wpdb->get_results(
+            "SELECT option_name, option_value FROM {$wpdb->options}"
+            . " WHERE option_name LIKE 'taxmod\_%\_id' ORDER BY option_name",
+            ARRAY_A
+        );
+
+        $liste = [];
+
+        foreach ((array) $rows as $eine) {
+            $liste[] = '<code>' . esc_html((string) $eine['option_name']) . '</code> '
+                . (int) $eine['option_value'];
+        }
+
+        return $this->row(
+            __('Framework ids', 'taxmod'),
+            $liste === []
+                ? '<em>' . esc_html__('none', 'taxmod') . '</em>'
+                : implode('<br>', $liste),
+            __('The nodes everything else is bound to: the root, the trash, the branches and the roles. They are bound by id and not by name, which is why renaming any of them in the tree breaks nothing. Reading only — changing one by hand unhooks the tree.', 'taxmod')
         );
     }
 

@@ -54,7 +54,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wann entsteht ein Datensatz? | [D-609](90-decision-log.md) — beim ersten Schreiben; eine leere Wertzeile wird nicht geschrieben ([D-610](90-decision-log.md)) | — |
 | Welche Arten von Datensatz gibt es? | [D-653](90-decision-log.md) — drei: `default`, `user`, `example`; die Art wird beim Anlegen gewählt ([D-651](90-decision-log.md)), ein leerer `default` besteht nicht |
 | Was unterscheidet `default` und `example`? | [D-654](90-decision-log.md) — der `default` ist eine **Vorbelegung** und greift in jede Eingabe ein, das `example` wird nur gezeigt |
-| Welche Art schlägt der Bildschirm vor? | [D-675](90-decision-log.md) — an einem einfachen Datentyp `example` für einen **Wert**, `default` für eine **Einstellung**; an einer Verwendungsstelle `user` ([D-674](90-decision-log.md)) |
+| Welche Art schlägt der Bildschirm vor? | [D-675](90-decision-log.md) — an einem einfachen Datentyp `example` für einen **Wert**, `default` für eine **Einstellung**; an einer Verwendungsstelle [D-702](90-decision-log.md) — ein **Vorgabesatz**, weil dort Einstellungen liegen und keine Benutzerdaten | ~~D-674~~ *(`user` an der Verwendungsstelle — von D-702 berichtigt)* |
 | Kann man in der Vorschau eingeben? | [D-652](90-decision-log.md) — nein, sie bleibt Vorschau; ~~[D-651](90-decision-log.md) wollte sie umbauen~~ |
 | Was wird beim Anlegen aus den Vorgaben? | [D-533](90-decision-log.md), [D-534](90-decision-log.md) — echte Kopien, zwei Rückfragen über den Wert | ~~D-531~~ ~~D-532~~ |
 | Wie steht ein Verweis auf ein anderes Ding? | [D-597](90-decision-log.md) — **eine** Spalte plus Raum, kein echter Fremdschlüssel; ebenso `labels.owner_id` ([D-641](90-decision-log.md)) | — |
