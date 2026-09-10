@@ -623,6 +623,26 @@ Vaters**? *(Ein Auswahlknoten erklärt dann: meine Kinder sind Konstanten. Ein I
 Kinder sind Integer. Das wäre wieder ein Attribut der Klasse, per Reflection lesbar, und die Liste
 beim Anlegen zeigt nur das.)*
 
+**Seine Antwort zu K1c, 2026-09-11:** *«die idee mit dem vaterknoten finde ich nicht schlecht: er
+sagt, mein kind darf diese und jene klassen tragen, und es gibt einen default, der bei anlage des
+kindes vorgewählt wird. zusätzlich sind alle anderen knoten, die keine spezielle funktion haben,
+Kategorieknoten — sie dienen zur strukturierung und lassen grundsätzlich alle unterklassen zu. weg A
+wird wahrscheinlicher.»*
+
+*Festgehalten, drei Dinge:*
+
+- **Die Vaterklasse erklärt die erlaubten Kindklassen und eine Vorwahl.** Beides sind
+  Klassenattribute (Code, per Reflection lesbar). Beim Anlegen zeigt die Liste nur die erlaubten,
+  die Vorwahl steht schon drin. Wer nichts tut, bekommt sie.
+- **Es gibt eine Klasse `Kategorie`** für jeden Knoten ohne besondere Funktion. Sie strukturiert
+  nur und **erlaubt alle Klassen** als Kinder. Das ist der Normalfall im Baum: `Units`, `Kontakte`,
+  ein Ordner — alles Kategorien, bis einer eine Funktion bekommt.
+- **Weg A rückt näher**, sein Wort: *«weg A wird wahrscheinlicher»*. Noch nicht entschieden.
+
+*Was das für die Fälle oben heisst: `Prefixes` — Auswahlknoten, Kinder: Konstante, Vorwahl
+Konstante. `Units` — Kategorie, Kinder: alle. `Temperatur` — offen (K1b): Kategorie, oder Einheit mit
+Kindern vom Typ Einheit. `Hausnummer` — Integer, Kinder: Integer, Vorwahl Integer.*
+
 *Die Spalte «eigen» heisst: die Klasse erklärt das Attribut, der Wert wohnt dort. «überschreibt»
 heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
 Knotenattributs neu — wie im Abschnitt «Kanten sind auch Klassen» beschrieben.*
