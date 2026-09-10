@@ -570,6 +570,12 @@ Modellknoten ist oder eine Klasse, ist damit noch nicht gesagt.*
 heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
 Knotenattributs neu — wie im Abschnitt «Kanten sind auch Klassen» beschrieben.*
 
+**Die Regel dahinter, sein Wort, 2026-09-11:** *«im grunde müssten alle settings am knoten an der
+kante überschreibbar sein, das vereinfacht es.»* Damit ist die Spalte «an der Kante» für jedes
+Knotenattribut dieselbe: **überschreibt**. Es gibt keine Liste, welche Attribute die Kante anfassen
+darf und welche nicht. Eigene Attribute hat die Kante nur dort, wo der Knoten keines hat
+(`read_only`, `multiplicity`).
+
 ## Wo wir stehen
 
 Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
