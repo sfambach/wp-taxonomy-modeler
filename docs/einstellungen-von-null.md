@@ -695,9 +695,10 @@ Wertetyp wie bool oder int.
 Ob das für `orientation` (vertical/horizontal, keine Knoten dahinter) genauso gilt oder ob das ein
 Text aus einer festen Liste bleibt, ist noch seine Wahl.*
 
-**Offen, K2a:** Präfix ist damit ein **Knoten** (`kilo`, Klasse Konstante mit Umrechnung), kein
-Objekt in einem Satz. Passt das für ihn — oder wollte er mit «eigene Klasse» auch `kilo` selbst als
-Satz und nicht als Knoten?
+**K2a — beantwortet, 2026-09-11:** Präfix ist ein **Knoten** (`kilo`, Klasse Konstante), und die
+Umrechnung hängt als **Satz** daran. Sein Wort: *«umrechnungssatz hört sich gut an.»* Also drei
+Ebenen, alle schon im Modell: der Knoten `kilo` (Klasse Konstante), sein Umrechnungssatz (Klasse
+Umrechnung), dessen Zeilen `factor` = 1000, `offset` = 0.
 
 *Die Spalte «eigen» heisst: die Klasse erklärt das Attribut, der Wert wohnt dort. «überschreibt»
 heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
