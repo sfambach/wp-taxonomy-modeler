@@ -423,6 +423,7 @@ erDiagram
     string klasse "CompositionEdge, AggregationEdge …"
     ref von_knoten
     ref zu_knoten
+    int stelle "in der Feldliste des von-Knotens"
   }
   SATZ {
     id id
@@ -613,12 +614,25 @@ settings, wo es vielleicht besser aufgehoben ist.»*
 | `default` | — | — | **fällt.** Ein Vorgabewert ist ein Datensatz der Art `default`, kein Attribut. |
 | `read_only` | — | eigen | **nur an der Kante** (*«glaube ich»* — bestätigen, wenn der Fall kommt) |
 | `min`, `max`, `step` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
-| `icon` | ? | ? | **offen:** Teil der Labels, oder Attribut |
+| `icon` | — | — | **fällt aus der Liste: wohnt in den Labels**, als Deko |
 | `converter`, `validator`, `renderer` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
 | `display_size` | eigen, **alle Knoten** | überschreibt | **Knoten besitzt, Kante überschreibt** |
 | `factor`, `offset` | eigener Knoten | — | **wahrscheinlich ein eigener Knoten** mit Faktor und Offset — für Präfixe, aber auch für Umrechnungen wie Temperatur |
 | `multiplicity` | — | eigen | **nur an der Kante** |
-| `position` | | | noch nicht verfeinert |
+| `position` | — | — | **kein Attribut, sondern Struktur:** die Spalte `stelle` am Knoten (unter seinem Vater) und an der Kante (in der Feldliste) |
+
+*Seine dritte Verfeinerung, 2026-09-11: «positionen haben wir viele: die der kante in der feldliste,
+die position der knoten unter ihren vätern. icon wohnt in labels, ist zusätzliche deko, wird aktuell
+nur im baum verwendet. im grunde könnte jede klasse ein eigenes icon haben, dann könnte man dem
+knoten ansehen, was er ist — aber das ist nur philosophiert.»*
+
+*Was daraus folgt: **`position` ist keine Einstellung.** Es ist je eine Spalte an dem Ding, das
+geordnet wird — `stelle` am Knoten für die Reihe unter dem Vater, `stelle` an der Kante für die Reihe
+in der Feldliste (beides oben in den Diagrammen). Innerhalb eines Satzes ordnet die Zeile ihre Liste
+selbst über ihre eigene `position`. Drei Stellen, drei Spalten, kein Attribut. **`icon` ist keine
+Einstellung**, sondern ein Label — es steht neben Name und Rollen, nicht in einer Zeile. Ein Icon **je
+Klasse** wäre Code, nicht Modell (es käme aus dem Vertrag) — nichts entschieden, sein Wort:
+«philosophiert».*
 
 *Seine zweite Verfeinerung, 2026-09-11: «converter, validator, renderer am knoten, von kante
 überschrieben. multiplicity nur an kante. factor sollte wahrscheinlich ein eigener knoten mit faktor
