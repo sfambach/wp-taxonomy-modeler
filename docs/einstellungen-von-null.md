@@ -602,6 +602,27 @@ ist sie fest.
 - **K1b** — Trägt `Temperatur` selbst die Umrechnung, oder erst `Celsius` und `Fahrenheit` darunter?
   *(Wenn `Temperatur` nur die Gruppe ist, hat sie die Klasse Einheit, aber keinen Umrechnungssatz.)*
 
+**Seine Antwort zu K1a, 2026-09-11:** *«wenn wir jede klasse erlauben, würde das die vererbung
+durchbrechen, da ein kind eine klasse wählen könnte, die nicht vom vater definiert wird. im grunde
+finde ich das besser: Präfix — klasse Auswahlknoten; kilo — klasse Konstante mit Umrechnung. also
+haben wir einen typ pro knoten, welcher die klasse symbolisiert?»*
+
+*Festgehalten:*
+
+- **Nicht jede Klasse.** Ein Kind darf keine Klasse wählen, die der Vater nicht vorsieht — sonst
+  bricht die Vererbung.
+- **Aber nicht zwingend dieselbe.** Sein Beispiel: `Prefixes` ist ein **Auswahlknoten**, `kilo`
+  darunter eine **Konstante mit Umrechnung**. Zwei Klassen, Vater und Kind verschieden.
+- **Ja, ein Typ je Knoten**, und der ist die Klasse. Im Datenmodell ist das die Spalte `klasse` —
+  und weil jetzt **jeder** Knoten eine hat, nicht nur die mit Werten, spricht das für **Weg A**
+  (die Klasse steht am Knoten). In Weg B bräuchte jeder Knoten einen Satz, nur um seine Klasse zu
+  tragen. *Das ist ein Argument, keine Entscheidung — D1 bleibt seine.*
+
+**Daraus die nächste Frage, K1c:** Wer sagt, welche Klassen ein Kind haben darf — **die Klasse des
+Vaters**? *(Ein Auswahlknoten erklärt dann: meine Kinder sind Konstanten. Ein Integer erklärt: meine
+Kinder sind Integer. Das wäre wieder ein Attribut der Klasse, per Reflection lesbar, und die Liste
+beim Anlegen zeigt nur das.)*
+
 *Die Spalte «eigen» heisst: die Klasse erklärt das Attribut, der Wert wohnt dort. «überschreibt»
 heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
 Knotenattributs neu — wie im Abschnitt «Kanten sind auch Klassen» beschrieben.*
