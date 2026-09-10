@@ -581,7 +581,7 @@ kein Modell — er steht nirgends in einer Tabelle. *Was noch zu klären ist, ab
 woran der Vertrag merkt, dass die Klasse sich geändert hat (Plugin-Version, oder Dateistand).*
 #### Z2–Z4 · das Überschreiben
 
-siehe unten; die Form hält es offen.
+siehe unten — «Überschreiben, zum Denken» mit Beispielen; die Form hält es offen.
 
 ## Das zweite Problem, das er hintanstellt: Überschreiben an der Kante, Erben an Kindern
 
@@ -597,6 +597,101 @@ damit die Lösung des ersten es nicht verbaut:
   *schlägt die Kante das ganze Objekt (anderer Renderer) oder auch einen einzelnen Wert darin
   (`orientation` anders, Renderer gleich)?* — die Antwort folgt aus Frage 2a: gehören die Werte dem
   Objekt, wird das Objekt überschrieben; sind sie flach, kann jeder einzeln überschrieben werden.
+
+### Überschreiben, zum Denken — Z3 und Z4 mit Beispielen
+
+*Sein Wunsch, 2026-09-11: «beschreibe Z3/Z4 mal genauer, brauche was zum denken, mit beispielen».
+Nichts hier ist entschieden; es sind Fälle und die Wege, die je Fall offenstehen.*
+
+**Was schon feststeht, und woran die Beispiele hängen:**
+
+- Alle Knotenattribute sind an der Kante überschreibbar (Regel unten), einzeln, weil sie flach sind.
+- Ein Wert an der Kante ist eine Zeile mit der Adresse des Knotenattributs (`TextNode.converter`),
+  bei Bedarf dupliziert (Z1). Ein komplexer Wert an der Kante ist ein eigener Satz an der Kante.
+- Beim Lesen gilt eine **Reihenfolge**: zuerst die Kante, dann der Zielknoten, dann dessen Vater,
+  und so weiter bis zum Vertrag der Klasse, der die Vorgabe kennt. Der erste, der etwas sagt, gilt.
+
+```mermaid
+flowchart LR
+  K["Kante<br/>Kontakt → Name"] -->|"nichts gesetzt?"| Z["Zielknoten<br/>Name"]
+  Z -->|"nichts gesetzt?"| V["Vater<br/>Text"]
+  V -->|"nichts gesetzt?"| C["Vertrag der Klasse<br/>TextNode: Vorgabe"]
+```
+
+*Für einen einzelnen Wert ist damit alles klar: `display_size` an der Kante 40, am Knoten 20, im
+Vertrag 30 — es gilt 40. Die Fragen beginnen bei **Listen** (Z3) und beim **Kind** (Z4).*
+
+---
+
+**Z3 · Listen.** Der Knoten `Text` hat die Konverterliste `[to_upper]`. Die Kante `Kontakt → Name`
+verwendet ihn und will etwas anderes. Drei Wünsche, die vorkommen:
+
+| Wunsch an der Kante | soll gelten |
+|---|---|
+| «zusätzlich noch trimmen» | `[to_upper, trim]` |
+| «nur trimmen, nicht gross» | `[trim]` |
+| «gar nichts umwandeln» | `[]` |
+
+Und drei Wege, wie die Kante das sagen könnte:
+
+- **Weg E · Ersetzen.** Sobald die Kante **eine** Zeile zu `converter` hat, gilt nur ihre Liste; die
+  des Knotens ist unsichtbar. Für «zusätzlich trimmen» muss die Kante `to_upper` **noch einmal**
+  hinschreiben. Für «gar nichts» braucht sie eine leere Liste, die es als Zeile nicht gibt — also eine
+  Zeile, die «leer» bedeutet, oder ein Schalter «Liste des Knotens nicht übernehmen».
+- **Weg G · Ergänzen.** Die Zeilen der Kante kommen **hinter** die des Knotens. «Zusätzlich trimmen»
+  ist eine Zeile. «Nur trimmen» geht nicht, weil `to_upper` nicht wegzunehmen ist — es sei denn, es
+  gibt eine **Abwahl**: eine Zeile, die auf den Eintrag des Knotens zeigt und «nicht» sagt. «Gar
+  nichts» wäre dann eine Abwahl je geerbtem Eintrag.
+- **Weg E+G · Ersetzen mit Übernahme.** Die Kante hat ihre eigene Liste (wie E), und ein Eintrag
+  darin kann **«die Liste des Knotens hier einfügen»** heissen. `[trim]` ist «nur trimmen»;
+  `[Knotenliste, trim]` ist «zusätzlich trimmen»; eine leere Liste ist «gar nichts». Ein einziger
+  Sondereintrag, keine Abwahl, kein Schalter — dafür muss die Kante die Reihenfolge selbst setzen
+  (erst gross, dann trimmen, oder umgekehrt).
+
+*Dasselbe für die zwei anderen Listen: **Renderer** (`Kontakt` hat `[Spinner, Compact]`, eine
+Kante will nur `[Compact]` — E oder E+G passt, G nur mit Abwahl) und **Validatoren** (`Alter` hat
+`[Bereich 0–150]`, die Kante «Alter des Kindes» will `[Bereich 0–18]` — hier ist es kein
+Listenproblem, sondern Z2: der Validator bleibt, nur `max` im Satz wird an der Kante neu gesetzt, und
+dafür dupliziert die Kante den Validatorsatz mit dem einen geänderten Wert).*
+
+**Was das Datenmodell je Weg braucht:** E — nichts Neues, nur die Regel «Kante hat Zeilen → Knoten
+wird nicht gelesen» **je Attribut**, plus eine Form für «leer». G — eine Zeile, die «Abwahl von
+Eintrag X» bedeuten kann (ein Verweis auf die Knotenzeile mit einem Vorzeichen). E+G — ein Eintrag
+«Knotenliste», der weder Verweis noch Satz ist: eine Zeile mit der Adresse und ohne Wert, an der
+Stelle, wo die Liste des Knotens eingesetzt wird.
+
+---
+
+**Z4 · Das Kind gegenüber dem Vater.** `Integer` → `Hausnummer` (`min` 1, `max` 999) → darunter
+ein Kind `Hausnummer klein` (`max` 99). Und `Text` (`[to_upper]`) → Kind `Name` (will `[to_upper,
+trim]`).
+
+**Dieselbe Frage wie Z3**, weil das Kind die Liste des Vaters auch ersetzen, ergänzen oder abwählen
+könnte. Wenn für das Kind **dasselbe gilt wie für die Kante**, ist die Reihenfolge oben schon die
+Antwort: Kante → Knoten → Vater → … → Vertrag, und jede Stufe verhält sich zur nächsten wie die Kante
+zum Knoten. Eine Regel, eine Auflösung.
+
+**Aber ein Unterschied, der eine eigene Entscheidung verlangt — lebendig oder kopiert:**
+
+- **Lebendig:** das Kind hat nur die Zeilen, die es selbst gesetzt hat (`max` 99). Ändert jemand am
+  Vater `min` auf 0, hat das Kind sofort `min` 0. Das Kind ist dünn, die Auflösung tut die Arbeit —
+  genau wie die Kante.
+- **Kopiert:** beim Anlegen bekommt das Kind alle Werte des Vaters als eigene Zeilen (`min` 1, `max`
+  999), dann ändert es `max`. Der Vater ist danach nur noch die Herkunft; eine Änderung dort erreicht
+  das Kind nicht mehr. Das Kind ist dick, dafür steht alles an einer Stelle.
+
+*Die Kante ist immer lebendig — sie soll ja den Knoten zeigen, wie er heute ist. Beim Kind kann man
+beides wollen: `Hausnummer klein` soll wohl mit `Hausnummer` mitgehen (lebendig); ein Kind, das man
+angelegt hat, um sich vom Vater **abzusetzen**, will vielleicht nicht, dass der Vater es nachträglich
+umbaut. Sein Wort von früher dazu: «kinder eines solchen knotens erben die einstellungsmöglichkeiten
+des vaters und diese selbst setzen können» — das ist die **Erklärung** (lebendig, aus dem Vertrag);
+zu den **Werten** sagt es nichts.*
+
+**Die zwei Fragen, die Z4 also stellt:**
+
+- **Z4a** — Gilt für Kind → Vater dieselbe Listenregel wie für Kante → Knoten (E, G oder E+G, aber
+  dieselbe)?
+- **Z4b** — Erbt das Kind Werte **lebendig** oder **kopiert** beim Anlegen?
 
 ---
 
