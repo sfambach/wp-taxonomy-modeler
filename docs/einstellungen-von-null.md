@@ -573,9 +573,11 @@ PHP kann beides. Der Vertrag ist der bessere Schnitt, und er hat zwei Formen:
   wird gehalten. Nichts kann vergessen werden; dafür muss etwas wissen, wann die Klasse sich geändert
   hat.
 
-**Offen, seine Wahl (D4a):** von Hand, oder einmal abgeleitet? *Seine Worte deuten auf «von Hand».*
-In beiden Fällen gilt: **gelesen wird nur der Vertrag**, nie die Klasse, und der Vertrag ist Code,
-kein Modell — er steht nirgends in einer Tabelle.
+**D4a — entschieden, 2026-09-11: einmal abgeleitet.** Sein Wort: *«einmal abgeleitet — manuell
+kann das nur eine KI 😉».* Reflection läuft also genau einmal je Klasse, das Ergebnis ist der
+Vertrag und wird gehalten; **gelesen wird nur der Vertrag**, nie die Klasse. Der Vertrag ist Code,
+kein Modell — er steht nirgends in einer Tabelle. *Was noch zu klären ist, aber erst beim Bauen:
+woran der Vertrag merkt, dass die Klasse sich geändert hat (Plugin-Version, oder Dateistand).*
 #### Z2–Z4 · das Überschreiben
 
 siehe unten; die Form hält es offen.
