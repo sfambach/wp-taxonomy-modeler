@@ -335,6 +335,22 @@ erDiagram
 `TextNode.display_size = 40` stehen — dieselbe Form, eine fremde Klasse in der Adresse. Ob sie gilt,
 sagt die Auflösung.*
 
+**Dasselbe Beispiel in Weg A** (entschieden 2026-09-11, siehe D1): *die Klasse steht am Knoten und
+an der Kante, ihre Zeilen hängen direkt an ihnen; Sätze gibt es nur für die zwei Renderer.*
+
+| Träger | Klasse | Zeile: Klasse.Attribut | position | Wert |
+|---|---|---|---|---|
+| Knoten Kontakt | `ContactNode` | `Node.read_only` | 0 | `false` |
+| Knoten Kontakt | | `Node.renderers` | 1 | → Satz 1 |
+| Knoten Kontakt | | `Node.renderers` | 2 | → Satz 2 |
+| Satz 1 | `SpinnerRenderer` | *(keine eigenen Attribute)* | | |
+| Satz 2 | `CompactRenderer` | `CompactRenderer.withLabel` | 0 | `true` |
+| Satz 2 | | `CompactRenderer.orientation` | 0 | `vertical` |
+| Kante Kontakt → Strasse | `CompositionEdge` | `Edge.multiplicity` | 0 | `1..1` |
+| Kante Kontakt → Strasse | | `Edge.hide` | 0 | `false` |
+
+*Zwei Sätze statt vier, und der Knoten `Kontakt` ist selbst sein Objekt.*
+
 ### Was das Modell **nicht** braucht, und warum
 
 | nicht nötig | weil |
@@ -494,8 +510,12 @@ eigenen schlüsselzähler haben.»*
   nicht gibt, kann nicht entstehen. Das ist der Vorteil, den er meint.
 - **Die Zahl der Spalten ist endlich und bekannt**, weil die Zahl der Zieltabellen es ist: drei.
 
-Der Entwurf oben nimmt Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat. Es ist seine
-Wahl.
+Der Entwurf oben nahm Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat.
+**Entschieden, 2026-09-11: Weg A.** Sein Wort: *«d1 = a»*. Die Klasse steht am Knoten und an der
+Kante; ihre Wertzeilen hängen direkt an ihnen; einen Satz gibt es nur für Objekte, die in einem
+Attribut stecken (Renderer, Umrechnung). Der Grund, der es gekippt hat: seit K1a hat **jeder** Knoten
+eine Klasse, nicht nur die mit Werten — in Weg B hätte jeder Knoten einen Satz nur dafür gebraucht.
+*Das Beispiel `Kontakt` oben ist in Weg-A-Form unten neu geschrieben.*
 **Seine Teilantwort zu D1, 2026-09-10 abends — der Rest morgen:** *«eine Kante hat genau eine Klasse,
 entweder eine eigene oder sie erbt sie beim Anlegen, aber immer genau nur eine. Das Gleiche gilt für
 Knoten. Aber Knoten- und Kantenklassen sind unterschiedlich: Knoten haben nur Knotenklassen, Kanten nur
@@ -637,7 +657,8 @@ wird wahrscheinlicher.»*
 - **Es gibt eine Klasse `Kategorie`** für jeden Knoten ohne besondere Funktion. Sie strukturiert
   nur und **erlaubt alle Klassen** als Kinder. Das ist der Normalfall im Baum: `Units`, `Kontakte`,
   ein Ordner — alles Kategorien, bis einer eine Funktion bekommt.
-- **Weg A rückt näher**, sein Wort: *«weg A wird wahrscheinlicher»*. Noch nicht entschieden.
+- **Weg A rückt näher**, sein Wort: *«weg A wird wahrscheinlicher»* — und kurz darauf entschieden:
+  *«d1 = a»* (siehe D1).
 
 *Was das für die Fälle oben heisst: `Prefixes` — Auswahlknoten, Kinder: Konstante, Vorwahl
 Konstante. `Units` — Kategorie, Kinder: alle. `Temperatur` — offen (K1b): Kategorie, oder Einheit mit
