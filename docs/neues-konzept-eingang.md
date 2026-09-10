@@ -38,7 +38,9 @@ sondern:
 > *«`path` is the **materialised ancestor path — derived and rebuildable**»*
 
 **Der Pfad entstand also aus dem Wunsch nach einer vorgerechneten Vorfahrensuche, nicht aus dem
-geteilten Id-Raum.** Und D-082 steht bis heute auf `agreed (proposal)` — **die Abkürzung wurde nie
+geteilten Id-Raum.** ⚠️ *Und der Wunsch war meiner, nie seiner — sein Wort, 2026-09-11: «der pfad war
+nie mein wunsch, ganz im gegenteil, ist im hintergrund entstanden und war nur sehr schwer wieder zu
+entfernen».* Und D-082 steht bis heute auf `agreed (proposal)` — **die Abkürzung wurde nie
 bestätigt**, und `50-wordpress-persistence.md` zitiert für sie ausserdem die falsche Nummer (`D-014`).
 
 ⚠️ *Beides kann nebeneinander wahr sein: der Id-Raum ist ein eigenes Thema, der Pfad ein anderes. Ich

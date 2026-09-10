@@ -390,10 +390,11 @@ Objekte, die in einem Attribut stecken:*
 
 ```mermaid
 erDiagram
-  KNOTEN ||--o{ ZEILE : "trägt (traeger_art = knoten)"
-  KANTE ||--o{ ZEILE : "trägt (traeger_art = kante)"
-  SATZ ||--o{ ZEILE : "trägt (traeger_art = satz)"
-  ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
+  KNOTEN ||--o{ ZEILE : "trägt (knoten_id)"
+  KANTE ||--o{ ZEILE : "trägt (kante_id)"
+  SATZ ||--o{ ZEILE : "trägt (satz_id)"
+  ZEILE }o--o| SATZ : "wert_satz_id: ein komplexer Wert"
+  ZEILE }o--o| KNOTEN : "wert_knoten_id: ein Verweis"
   KNOTEN {
     id id
     string klasse "ContactNode, IntegerNode …"
@@ -413,8 +414,9 @@ erDiagram
   }
   ZEILE {
     id id
-    string traeger_art "knoten | kante | satz"
-    ref traeger_id
+    ref knoten_id "genau einer der drei Träger ist gefüllt"
+    ref kante_id
+    ref satz_id
     string klasse "Adresse, Teil 1"
     string attribut "Adresse, Teil 2"
     int position "0, oder Stelle in der Liste"
@@ -422,7 +424,8 @@ erDiagram
     int wert_int
     decimal wert_decimal
     string wert_text
-    ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
+    ref wert_knoten_id "Verweis auf einen Knoten"
+    ref wert_satz_id "Satz eines komplexen Werts"
   }
 ```
 
@@ -430,11 +433,12 @@ erDiagram
 
 ```mermaid
 erDiagram
-  KNOTEN ||--o| SATZ : "hat (traeger_art = knoten), entsteht beim ersten Wert"
-  KANTE ||--o| SATZ : "hat (traeger_art = kante)"
-  SATZ ||--o{ SATZ : "hält als Objekt (traeger_art = satz)"
+  KNOTEN ||--o| SATZ : "hat (knoten_id), entsteht beim ersten Wert"
+  KANTE ||--o| SATZ : "hat (kante_id)"
+  SATZ ||--o{ SATZ : "hält als Objekt (satz_id)"
   SATZ ||--o{ ZEILE : "trägt"
-  ZEILE }o--o| SATZ : "wert_verweis: ein komplexer Wert"
+  ZEILE }o--o| SATZ : "wert_satz_id: ein komplexer Wert"
+  ZEILE }o--o| KNOTEN : "wert_knoten_id: ein Verweis"
   KNOTEN {
     id id
     string name
@@ -449,8 +453,9 @@ erDiagram
   SATZ {
     id id
     string klasse "ContactNode, CompositionEdge, CompactRenderer …"
-    string traeger_art "knoten | kante | satz"
-    ref traeger_id
+    ref knoten_id "genau einer der drei Träger ist gefüllt"
+    ref kante_id
+    ref satz_id
   }
   ZEILE {
     id id
@@ -462,13 +467,32 @@ erDiagram
     int wert_int
     decimal wert_decimal
     string wert_text
-    ref wert_verweis "Knoten, oder Satz eines komplexen Werts"
+    ref wert_knoten_id "Verweis auf einen Knoten"
+    ref wert_satz_id "Satz eines komplexen Werts"
   }
 ```
 
 *Der eine sichtbare Unterschied: in A steht die Klasse am Knoten und an der Kante, die Zeile hat
-`traeger_art`; in B steht die Klasse nur am Satz, die Zeile hat nur `satz_id`. In A gibt es Sätze nur
-für Objekte in Attributen, in B für alles, was Werte trägt.*
+die drei Trägerspalten; in B steht die Klasse nur am Satz, die Zeile hat nur `satz_id`. In A gibt es
+Sätze nur für Objekte in Attributen, in B für alles, was Werte trägt.*
+
+**Id-Räume — beantwortet, 2026-09-11.** Gefragt war, ob Knoten, Kanten und Sätze wieder einen
+gemeinsamen Id-Raum bekommen, damit ein Verweis allein sagt, was er meint. Sein Wort: *«wenn wir nur
+auf schlüssel setzen — und die anzahl von fremdschlüsseln ist aktuell begrenzt, und nicht auf
+id-typ-kombinationen — können wir das über die relationen über die datenbank sicherstellen. das finde
+ich einen grossen vorteil. dann brauchen wir auch keinen gemeinsamen raum, jede tabelle kann ihren
+eigenen schlüsselzähler haben.»*
+
+*Was daraus folgt, und oben in beiden Diagrammen schon eingetragen:*
+
+- **Jede Tabelle zählt für sich.** Kein gemeinsamer Raum, keine Vergabestelle, kein Ausbluten.
+- **Ein Verweis ist eine Spalte je Zieltabelle**, nie ein Paar aus Art und Nummer. Wer drei Sorten
+  Träger haben kann, hat drei Spalten (`knoten_id`, `kante_id`, `satz_id`), und genau eine ist
+  gefüllt. Ein Wert, der auf einen Knoten oder auf einen Satz zeigen kann, hat `wert_knoten_id` und
+  `wert_satz_id`.
+- **Die Datenbank prüft jeden Verweis** als Fremdschlüssel. Eine Zeile, die auf etwas zeigt, das es
+  nicht gibt, kann nicht entstehen. Das ist der Vorteil, den er meint.
+- **Die Zahl der Spalten ist endlich und bekannt**, weil die Zahl der Zieltabellen es ist: drei.
 
 Der Entwurf oben nimmt Weg B an (`INFERRED`), weil er eine Verbindung statt drei hat. Es ist seine
 Wahl.
