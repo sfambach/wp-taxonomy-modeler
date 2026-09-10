@@ -643,6 +643,62 @@ wird wahrscheinlicher.»*
 Konstante. `Units` — Kategorie, Kinder: alle. `Temperatur` — offen (K1b): Kategorie, oder Einheit mit
 Kindern vom Typ Einheit. `Hausnummer` — Integer, Kinder: Integer, Vorwahl Integer.*
 
+### K2 · Einheiten, durchgespielt — und der Verweis aus der Klasse heraus
+
+**Seine Antwort zu K1b, 2026-09-11, und gleich der nächste Knackpunkt:** *«temperatur ist aus meiner
+sicht ein typ = einheiten_wert, einstellung: ohne präfix. schau mal, ob das so passt — widerstand,
+kapazität im grunde das gleiche. ich könnte diese werte so abbilden, dass sie praktisch schon der
+feldtyp sind: wenn ich irgendwo einen basiswert einbinden möchte, wähle ich den knoten Basiseinheit,
+dieser ist vom typ Auswahl aus Kindern; kategorie mit und ohne präfix (kategorien dürfen hier nicht
+ausgewählt werden); blätter sind dann vom typ Einheitswert. mit/ohne präfix ist eine eigenschaft,
+genauso welche präfixe erlaubt sind. da stellt sich die frage, wie modellieren wir präfix — und hier
+gibt es nun durcheinander: per knoten mit klasse umrechenbare Konstante, oder wie sonst? und dann
+hätte ja die klasse in sich wieder einen verweis auf knoten, und das war der grund, warum wir alles
+als knoten modelliert hatten.»*
+
+**Sein Baum, gezeichnet:**
+
+```mermaid
+flowchart TD
+  B["Basiseinheit · Auswahl aus Kindern"]
+  M["mit Präfix · Kategorie, nicht wählbar"]
+  O["ohne Präfix · Kategorie, nicht wählbar"]
+  B --> M --> Ohm["Ohm · Einheitswert"]
+  M --> Farad["Farad · Einheitswert"]
+  M --> Kelvin["Kelvin · Einheitswert"]
+  B --> O --> Celsius["Celsius · Einheitswert"]
+  P["Prefixes · Auswahlknoten"]
+  P --> kilo["kilo · Konstante, Umrechnung 1000"]
+  P --> milli["milli · Konstante, Umrechnung 0,001"]
+  Ohm -. "erlaubte Präfixe" .-> kilo
+  Farad -. "erlaubte Präfixe" .-> milli
+```
+
+**Die Klasse `Einheitswert`, per Reflection gelesen:** `mit_praefix` (bool), `erlaubte_praefixe`
+(Liste von **Verweisen auf Knoten** der Klasse Konstante), `umrechnung` (Objekt der Klasse Umrechnung,
+für Celsius → Kelvin), dazu `symbol`. **Widerstand und Kapazität passen** — Ohm mit `k`/`M`, Farad
+mit `µ`/`n`/`p`; nur die Liste der erlaubten Präfixe ist je Blatt anders. **Eine Beobachtung dabei
+(`INFERRED`, seine Prüfung):** Kelvin hat Präfixe, Celsius nicht — «mit/ohne» trennt also nicht
+Temperatur von Widerstand, sondern läuft **quer** durch Temperatur. Als *Eigenschaft je Blatt* trägt
+das; als *Kategorie im Baum* müsste Temperatur zweimal vorkommen. Er hat beides genannt; die
+Eigenschaft reicht, die Kategorie wäre dann nur noch Ordnung.
+
+**Der Knackpunkt, aufgelöst am Datenmodell:** *«die klasse hätte in sich wieder einen verweis auf
+knoten»* — ja, und das ist erlaubt und schon vorgesehen. Die Klasse enthält keinen Knoten. Sie
+**erklärt** ein Attribut, dessen Typ *«Verweis auf einen Knoten der Klasse Konstante»* ist — so wie
+`min` den Typ *int* hat. Der **Wert** ist eine Zeile mit `wert_knoten_id` → `kilo`. Code sagt, dass
+und worauf verwiesen wird; welche Knoten es sind, steht in Zeilen. Genau dafür hat die Zeile die
+Spalte. Es muss also **nicht** alles Knoten sein, damit ein Verweis möglich ist — der Verweis ist ein
+Wertetyp wie bool oder int.
+
+*Damit ist **D2** für diesen Fall beantwortet: eine Wahl aus Knoten ist ein **Verweis**, kein Text.
+Ob das für `orientation` (vertical/horizontal, keine Knoten dahinter) genauso gilt oder ob das ein
+Text aus einer festen Liste bleibt, ist noch seine Wahl.*
+
+**Offen, K2a:** Präfix ist damit ein **Knoten** (`kilo`, Klasse Konstante mit Umrechnung), kein
+Objekt in einem Satz. Passt das für ihn — oder wollte er mit «eigene Klasse» auch `kilo` selbst als
+Satz und nicht als Knoten?
+
 *Die Spalte «eigen» heisst: die Klasse erklärt das Attribut, der Wert wohnt dort. «überschreibt»
 heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
 Knotenattributs neu — wie im Abschnitt «Kanten sind auch Klassen» beschrieben.*
