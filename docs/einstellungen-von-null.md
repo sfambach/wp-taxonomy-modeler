@@ -551,12 +551,20 @@ settings, wo es vielleicht besser aufgehoben ist.»*
 | `read_only` | — | eigen | **nur an der Kante** (*«glaube ich»* — bestätigen, wenn der Fall kommt) |
 | `min`, `max`, `step` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
 | `icon` | ? | ? | **offen:** Teil der Labels, oder Attribut |
-| `converter`, `validator` | | | noch nicht verfeinert |
-| `display_size` | | | noch nicht verfeinert |
-| `factor`, `offset` | | | noch nicht verfeinert |
+| `converter`, `validator`, `renderer` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
+| `display_size` | eigen, **alle Knoten** | überschreibt | **Knoten besitzt, Kante überschreibt** |
+| `factor`, `offset` | eigener Knoten | — | **wahrscheinlich ein eigener Knoten** mit Faktor und Offset — für Präfixe, aber auch für Umrechnungen wie Temperatur |
+| `multiplicity` | — | eigen | **nur an der Kante** |
 | `position` | | | noch nicht verfeinert |
-| `multiplicity` | | | noch nicht verfeinert (heute nur Kante) |
-| `renderer` | | | noch nicht verfeinert (heute nur Knoten) |
+
+*Seine zweite Verfeinerung, 2026-09-11: «converter, validator, renderer am knoten, von kante
+überschrieben. multiplicity nur an kante. factor sollte wahrscheinlich ein eigener knoten mit faktor
+und offset sein, kann für präfix, aber auch für temperatur-umrechnungen verwendet werden. display
+size haben alle knoten, an der kante überschreibbar.»*
+
+*Was an `factor`/`offset` neu ist: es wären dann keine Attribute eines Knotens, sondern **ein Knoten
+für sich** (eine Umrechnung), den ein Präfix oder eine Einheit verwendet. Ob dieser Knoten ein
+Modellknoten ist oder eine Klasse, ist damit noch nicht gesagt.*
 
 *Die Spalte «eigen» heisst: die Klasse erklärt das Attribut, der Wert wohnt dort. «überschreibt»
 heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
