@@ -536,6 +536,32 @@ damit die Lösung des ersten es nicht verbaut:
 
 ---
 
+## Die Attribute selbst — welche es gibt, und wo sie wohnen
+
+Der Entwurf oben sagt, **wie** ein Attribut abgelegt wird. Hier steht, **welche** es überhaupt
+gibt. Ausgangspunkt war die heutige Liste (dieselbe für Knoten und Kanten, mit zwei Ausnahmen), und
+seine erste Verfeinerung dazu, 2026-09-11: *«default ist ein datensatz, sollte es nicht mehr geben.
+read_only braucht es, glaube ich, nur an der kante. min, max, step: eigenschaften des knotens, an
+der kante überschreiben. icon sollte eigentlich teil der labels sein, könnte aber auch zurück in
+settings, wo es vielleicht besser aufgehoben ist.»*
+
+| Attribut | am Knoten | an der Kante | Stand |
+|---|---|---|---|
+| `default` | — | — | **fällt.** Ein Vorgabewert ist ein Datensatz der Art `default`, kein Attribut. |
+| `read_only` | — | eigen | **nur an der Kante** (*«glaube ich»* — bestätigen, wenn der Fall kommt) |
+| `min`, `max`, `step` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
+| `icon` | ? | ? | **offen:** Teil der Labels, oder Attribut |
+| `converter`, `validator` | | | noch nicht verfeinert |
+| `display_size` | | | noch nicht verfeinert |
+| `factor`, `offset` | | | noch nicht verfeinert |
+| `position` | | | noch nicht verfeinert |
+| `multiplicity` | | | noch nicht verfeinert (heute nur Kante) |
+| `renderer` | | | noch nicht verfeinert (heute nur Knoten) |
+
+*Die Spalte «eigen» heisst: die Klasse erklärt das Attribut, der Wert wohnt dort. «überschreibt»
+heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
+Knotenattributs neu — wie im Abschnitt «Kanten sind auch Klassen» beschrieben.*
+
 ## Wo wir stehen
 
 Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
