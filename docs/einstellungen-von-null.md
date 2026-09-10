@@ -563,8 +563,44 @@ und offset sein, kann für präfix, aber auch für temperatur-umrechnungen verwe
 size haben alle knoten, an der kante überschreibbar.»*
 
 *Was an `factor`/`offset` neu ist: es wären dann keine Attribute eines Knotens, sondern **ein Knoten
-für sich** (eine Umrechnung), den ein Präfix oder eine Einheit verwendet. Ob dieser Knoten ein
-Modellknoten ist oder eine Klasse, ist damit noch nicht gesagt.*
+für sich** (eine Umrechnung), den ein Präfix oder eine Einheit verwendet.* **Entschieden, 2026-09-11 —
+eine eigene Klasse**, sein Wort: *«ich meinte für factor eine eigene klasse»*, und auf die Wahl
+zwischen Modellknoten und Klasse: *«eigene klasse»*. Also nach dem Muster Renderer: die Klasse
+`Umrechnung` erklärt `factor` und `offset`; ihr Objekt hängt als Satz an dem Knoten, der sie
+braucht — an `kilo` mit Faktor 1000, an `Celsius` mit Faktor 1 und Offset 273,15. Der Wert ist eine
+Zeile, nur das Attribut ist Code.
+
+*Sein Zweifel davor — «wir hatten gesagt, settings sind code-einstellungen, also müssten auch factor
+und offset code sein» — löst sich am Gerüst selbst: Code ist, dass es das Attribut gibt und welchen
+Typ es hat; welcher Präfix welchen Faktor trägt, ist ein Wert am Knoten, genau wie `min` = 1 an der
+Hausnummer.*
+
+### K1 · Welche Klasse trägt `kilo`, welche `Temperatur` — und wie wird sie zugewiesen?
+
+Seine Frage, sobald die Umrechnung eine Klasse ist: *«welche knotenklasse trägt der knoten
+temperatur und kilo? und wie weise ich diese zu?»*
+
+**Was dazu schon feststeht, aus seiner Antwort zu D1:** *«eine kante hat genau eine klasse, entweder
+eine eigene, oder sie erbt sie beim anlegen — aber immer genau nur eine. das gleiche gilt für knoten.»*
+Also: die Klasse wird **beim Anlegen** vergeben, entweder gewählt oder vom Vater geerbt, und danach
+ist sie fest.
+
+**Was daraus für die zwei Knoten folgt, wenn man es durchspielt:**
+
+- Es gibt eine Klasse für Präfixe (sie erklärt das Attribut `umrechnung` vom Typ `Umrechnung`) und
+  eine für Einheiten (sie erklärt dasselbe Attribut, dazu was eine Einheit sonst hat). Ein
+  ausgelieferter Wurzelknoten `Prefixes` trägt die eine, `Units` die andere.
+- Wer `kilo` unter `Prefixes` anlegt und keine Klasse wählt, bekommt die des Vaters — `kilo` ist ein
+  Präfix, ohne dass jemand es sagen muss. Genauso `Celsius` unter `Temperatur` unter `Units`.
+- Zugewiesen wird die Klasse also **durch den Ort im Baum**, und nur wer etwas anderes will, wählt
+  beim Anlegen aus der Liste der programmierten Klassen.
+
+**Offen, seine Wahl:**
+
+- **K1a** — Darf ein Kind eine **andere** Klasse haben als der Vater? Wenn ja: jede, oder nur eine
+  Unterklasse der Vaterklasse? *(Ein `Integer` unter `Prefixes` wäre erlaubt oder nicht.)*
+- **K1b** — Trägt `Temperatur` selbst die Umrechnung, oder erst `Celsius` und `Fahrenheit` darunter?
+  *(Wenn `Temperatur` nur die Gruppe ist, hat sie die Klasse Einheit, aber keinen Umrechnungssatz.)*
 
 *Die Spalte «eigen» heisst: die Klasse erklärt das Attribut, der Wert wohnt dort. «überschreibt»
 heisst: die Kante hat kein eigenes Attribut dieses Namens, sondern setzt bei Bedarf den Wert des
