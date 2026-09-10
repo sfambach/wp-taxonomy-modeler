@@ -528,9 +528,22 @@ damit noch nicht entschieden.*
 
 #### D2 · Was ist der Wert einer Wahl aus Kindern
 
-**D2 —**** (`orientation` = einer von zwei; `label_role` = eine
+**D2 —** was ist der Wert einer Wahl (`orientation` = einer von zwei; `label_role` = eine
   von fünf Rollen, die Modellknoten sind)? *Ein Text (`'vertical'`) oder ein Verweis auf den Knoten
   (`→ Rolle symbol`)?* Beides passt in die Zeile; die Klasse müsste sagen, welches.
+
+**Beantwortet, 2026-09-11, in zwei Hälften — die Klasse sagt es, über den Typ des Attributs:**
+
+- **Steht ein Knoten hinter der Wahl** (`label_role` → Rolle, `erlaubte_praefixe` → Konstante), ist
+  der Wert ein **Verweis** (`wert_knoten_id`). Siehe K2.
+- **Steht keiner dahinter**, ist es ein **Enum oder ein bool** — sein Wort: *«orientation ist attribut
+  von verschiedenen renderern; könnte enum sein, oder wenn wir wirklich nur horizontal/vertikal
+  haben, ist es ein bool.»* Ein Enum ist im Code erklärt (Reflection liest die Fälle), abgelegt als
+  Text in `wert_text`; ein bool in `wert_bool`. Ein Text ohne Enum dahinter gibt es für eine Wahl
+  nicht.
+
+*Nebenbei gesagt: `orientation` gehört mehreren Renderern. Das ist kein Sonderfall — jede Klasse
+erklärt das Attribut für sich, die Adresse `Klasse.Attribut` hält sie auseinander (Frage 3 oben).*
 #### D3 · Versionen und Schatten
 
 **D3 —**** — gilt für Sätze und Zeilen dasselbe wie heute für alles (jede Version
