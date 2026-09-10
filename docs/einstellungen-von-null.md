@@ -546,8 +546,36 @@ damit noch nicht entschieden.*
 erklärt das Attribut für sich, die Adresse `Klasse.Attribut` hält sie auseinander (Frage 3 oben).*
 #### D3 · Versionen und Schatten
 
-**D3 —**** — gilt für Sätze und Zeilen dasselbe wie heute für alles (jede Version
+**D3 —** gilt für Sätze und Zeilen dasselbe wie heute für alles (jede Version
   bleibt, Löschen ist Wandern)? *Der Entwurf lässt es weg, weil es nichts an der Form ändert.*
+
+**Beantwortet, 2026-09-11 — ja.** Sein Wort: *«versionierung sollten wir beibehalten, mit den
+entsprechenden schatten.»* Sätze und Zeilen bekommen also je eine Schattentabelle wie Knoten und
+Kanten; jede Version bleibt, Löschen ist Wandern. Das ändert nichts an der Form oben.
+
+#### D4 · Der Vertrag — die Erklärung wird einmal gelesen, nicht bei jedem Zeichnen
+
+**Sein Vermerk zu D3, 2026-09-11:** *«kurzer vermerk: per reflektion — das kostet, das überall zu
+lesen. der knoten sollte einen vertrag haben, der einmal bestimmt wird, und es wird nur der vertrag
+gelesen. bei änderung der klasse muss auch der vertrag angepasst werden. aber ich denke, das hast du
+schon so angedacht — oder wegen PHP?»*
+
+**Ehrlich: nein, so weit war der Entwurf nicht.** Oben steht *«die Maske holt sie beim Zeichnen»* —
+das ist Reflection bei jedem Zeichnen, und er hat recht, dass das kostet. Es liegt nicht an PHP;
+PHP kann beides. Der Vertrag ist der bessere Schnitt, und er hat zwei Formen:
+
+- **Von Hand geschrieben:** die Klasse trägt ihre Attributliste ausdrücklich (Name, Typ, Liste
+  ja/nein, erlaubte Kindklassen, Vorwahl). Reflection entfällt ganz. Ändert sich die Klasse, ändert
+  der Programmierer den Vertrag mit — *«bei änderung der klasse muss auch vertrag angepasst werden»*
+  liest sich so. Preis: eine Stelle, die man vergessen kann; Gewinn: der Vertrag ist lesbar, ohne die
+  Klasse zu verstehen (PR-13).
+- **Einmal abgeleitet:** Reflection läuft genau einmal je Klasse, das Ergebnis ist der Vertrag und
+  wird gehalten. Nichts kann vergessen werden; dafür muss etwas wissen, wann die Klasse sich geändert
+  hat.
+
+**Offen, seine Wahl (D4a):** von Hand, oder einmal abgeleitet? *Seine Worte deuten auf «von Hand».*
+In beiden Fällen gilt: **gelesen wird nur der Vertrag**, nie die Klasse, und der Vertrag ist Code,
+kein Modell — er steht nirgends in einer Tabelle.
 #### Z2–Z4 · das Überschreiben
 
 siehe unten; die Form hält es offen.
