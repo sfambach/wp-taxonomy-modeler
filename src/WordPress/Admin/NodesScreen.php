@@ -695,7 +695,7 @@ final class NodesScreen
     {
         $vertrag = Contracts::of($parent->klasse);
         $html    = '<select name="klasse" class="taxmod-toolbar-class" title="'
-            . esc_attr__('Class of the new child', 'taxmod') . '">';
+            . esc_attr__('Class of the new child — not the class of this node', 'taxmod') . '">';
 
         foreach (Contracts::childClassesUnder($parent->klasse) as $klasse) {
             $html .= '<option value="' . esc_attr($klasse) . '"'
@@ -1669,6 +1669,10 @@ final class NodesScreen
     private function constants(Node $selected): string
     {
         $chips = [
+            // ⚠️ *Die eigene Klasse steht hier, weil der Wähler in der Kopfzeile die Klasse des **neuen Kindes** meint —
+            // und genau das wurde am 2026-09-11 verwechselt: «type von knoten constants kann ich nicht auf choice umschalten».
+            // Die Klasse wechselt nie (Anforderung 2.1.4); sie wird gezeigt, nicht angeboten.*
+            [__('Class', 'taxmod'), self::className($selected->klasse), __('Given when the node was created, and fixed since (2.1.4). The chooser in the head names the class of a new child.', 'taxmod')],
             [__('Path', 'taxmod'), $selected->path, __('Where it hangs in the tree. Derived from the relations and never edited.', 'taxmod')],
             [__('Id', 'taxmod'), (string) $selected->id, __('Handed out once and never reissued.', 'taxmod')],
             [__('Version', 'taxmod'), (string) $selected->version, __('Rises when the model changes, so a record can say what it was written against.', 'taxmod')],
