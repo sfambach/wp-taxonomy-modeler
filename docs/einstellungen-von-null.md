@@ -1095,6 +1095,13 @@ erDiagram
    Zeile wandert mit. *Das ist die eine Stelle, an der zwei Beschlüsse von heute sich berühren, und
    es braucht eine Regel: Verweise auf ein geparktes Ding wandern mit (wie D-619 es für Kantenzeilen
    sagt), oder Parken ist verboten, solange etwas darauf zeigt.*
+   **Entschieden, 2026-09-11 — Verweise wandern mit, als Klammer, mit Rückfrage.** Sein Wort:
+   *«verweise wandern mit — klammer ja, und benutzer darauf hinweisen, mit ja/nein-antwort.»* Also:
+   parkt jemand `kilo`, zeigt die Maske vorher, was mitwandert (die Zeilen «erlaubte Präfixe» an
+   Ohm und Farad, samt ihrer Sätze), und fragt ja/nein. Bei ja wandert alles **als eine
+   Änderungsgruppe** in den Schatten; beim Zurückholen kommt genau diese Gruppe zurück, nichts
+   anderes. Die Fremdschlüssel bleiben dabei immer gültig, weil nie eine lebende Zeile auf ein
+   geparktes Ding zeigt.
 2. **L2 · Z2 ist nicht beantwortet.** In der Übersicht steht die Frage noch offen: schlägt die Kante
    bei einem komplexen Attribut das ganze Objekt oder einen Wert darin? Die Regel «alle Attribute
    flach überschreibbar» beantwortet sie für einfache Werte; für einen Renderer **in einer Liste**
