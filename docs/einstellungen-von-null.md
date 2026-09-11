@@ -1058,9 +1058,9 @@ erDiagram
   }
   ZEILE {
     id id
-    ref knoten_id "genau einer der drei"
-    ref kante_id
+    ref knoten_id "knoten_id oder satz_id oder keines"
     ref satz_id
+    ref kante_id "dazu wahlweise: gilt nur an dieser Kante; allein: eigenes Kantenattribut"
     string klasse "erklärende Klasse"
     string attribut
     int position
@@ -1109,12 +1109,31 @@ erDiagram
    einen eigenen Renderer-Satz anhängen, oder (b) die Kantenzeile zum geerbten Eintrag zeigt auf
    einen eigenen Satz, der den geerbten **ersetzt**. (a) braucht nichts Neues; (b) braucht eine
    Zeile, die zugleich «geerbter Eintrag X» und «hier mein Satz» sagt.
-3. **L3 · Wie eine Kantenzeile den geerbten Listeneintrag benennt.** Z3 und Z3a sagen: «eine Zeile
-   mit der Adresse des Eintrags». Aber alle Einträge einer Liste haben **dieselbe** Adresse
-   (`Node.converters`). Der Eintrag ist nur über seinen Satz eindeutig (komplex) oder über seine
-   `position` am Knoten (einfach). Also braucht die Kantenzeile einen Verweis auf den Eintrag — auf
-   den Satz (`wert_satz_id` zeigt auf den Satz des Knotens) oder auf die Knotenzeile (eine Spalte
-   `zeile_id`, Zeile → Zeile). Nicht entschieden.
+   **L2 und L3 zusammen beantwortet, 2026-09-11 — mit seinem Bild der Überschreibung.** Sein Wort:
+   *«ich hatte mir die überschreibung an der kante als knoten-datensatz vorgestellt, der zusätzlich
+   zum knoten noch die kante bekommt (das haben alle sätze; bei dem zum knoten ohne kante ist die
+   kante leer). somit kann es den knoten-datensatz für den knoten und für jede knoten/kanten-
+   kombination geben. es sollen immer nur die felder gespeichert werden, die auch gesetzt werden.»*
+   *Übertragen auf die Zeile: **die Kante ist kein dritter Träger, sondern ein Zusatz zum Träger.**
+   Eine Zeile zu `IntegerNode.max` hat `knoten_id` = Hausnummer und `kante_id` leer (gilt am Knoten)
+   oder `kante_id` = die Kante (gilt nur dort). Dasselbe für eine Zeile in einem Satz: `satz_id` =
+   der Compact-Renderer des Knotens, `kante_id` = die Kante, `attribut` = `orientation` — **die
+   Kante überschreibt den einen Wert im geerbten Eintrag direkt**, ohne den Eintrag abzuschalten und
+   neu anzulegen (Lesart A). Und die Zeile «geerbter Eintrag, an dieser Kante nicht aktiv / an
+   anderer Stelle» ist `knoten_id` = Kontakt, `kante_id` = Kante, `attribut` = `renderers`,
+   `wert_satz_id` = der Satz des Eintrags, dazu `aktiv` und `position` — der Eintrag ist über seinen
+   Satz benannt (L3), bei einfachen Listen über den Wert selbst. Eigene Kantenattribute
+   (`multiplicity`) haben nur `kante_id`. Im Diagramm unten heisst das: `knoten_id`, `satz_id` oder
+   keines von beiden, **und** `kante_id` wahlweise dazu.*
+   **Seine Warnung dazu, aus Erfahrung:** *«vorsicht beim ersten verwenden, also bei der vorgabe:
+   zum beispiel im int-knoten muss die ausgabe mit den default-einstellungen übereinstimmen, sonst
+   sieht der benutzer ein bool 'on', aber da nichts im datensatz steht, wird es nicht berücksichtigt.
+   das darf nicht sein, kam aber schon oft vor.»* *Als Regel: **was die Maske zeigt, ist immer der
+   aufgelöste Wert** (Kante → Knoten → Vertrag), nie eine Vorgabe der Maske selbst. Fehlt die Zeile,
+   zeigt die Maske die Vorgabe des Vertrags — und genau die gilt dann auch. Eine Maske, die etwas
+   anderes vorwählt als der Vertrag, ist der Fehler, den er meint.*
+3. **L3 · Wie eine Kantenzeile den geerbten Listeneintrag benennt.** — *beantwortet unter L2: über
+   `wert_satz_id` (komplex) oder den Wert (einfach), mit `kante_id` als Zusatz.*
 4. **L4 · Felder erben sich, aber wie sieht das Kind sie?** «Vererbung von Feldern bleibt bestehen,
    wie in OO» — `Firmenkontakt` unter `Kontakt` hat `Name`, `Strasse`. Offen: darf das Kind geerbte
    Felder **umstellen** oder **verbergen**, und wenn ja, wo steht das? Das ist Z3 noch einmal, nur
