@@ -746,7 +746,9 @@ den Kantenzeilen.*
 raus: nicht mehr aktiv.»* Jeder geerbte Eintrag steht an der Kante mit einem Haken, der von Haus aus
 gesetzt ist; nimmt man ihn heraus, gilt der Eintrag an dieser Kante nicht. Im Modell ist das
 dieselbe Zeile wie beim Umstellen — Adresse des Eintrags, eigene `position`, kein Wert — mit einem
-Schalter `aktiv`. Fehlt die Zeile, ist der Eintrag aktiv und an seiner Stelle.
+Schalter `aktiv`. Fehlt die Zeile, ist der Eintrag aktiv und an seiner Stelle. *Ob das in der Maske
+ein Haken oder ein Schalter ist, ist Zeichnung, nicht Modell — sein Nachsatz: «haken raus kann auch
+schalter sein 😉».*
 
 ---
 
@@ -822,7 +824,7 @@ ist sie fest.
 - Zugewiesen wird die Klasse also **durch den Ort im Baum**, und nur wer etwas anderes will, wählt
   beim Anlegen aus der Liste der programmierten Klassen.
 
-**Offen, seine Wahl:**
+**Seine Wahl (beide beantwortet — K1a unten, K1b in K2):**
 
 - **K1a** — Darf ein Kind eine **andere** Klasse haben als der Vater? Wenn ja: jede, oder nur eine
   Unterklasse der Vaterklasse? *(Ein `Integer` unter `Prefixes` wäre erlaubt oder nicht.)*
@@ -868,8 +870,8 @@ wird wahrscheinlicher.»*
   *«d1 = a»* (siehe D1).
 
 *Was das für die Fälle oben heisst: `Prefixes` — Auswahlknoten, Kinder: Konstante, Vorwahl
-Konstante. `Units` — Kategorie, Kinder: alle. `Temperatur` — offen (K1b): Kategorie, oder Einheit mit
-Kindern vom Typ Einheit. `Hausnummer` — Integer, Kinder: Integer, Vorwahl Integer.*
+Konstante. `Units` — Kategorie, Kinder: alle. `Temperatur` — Einheitswert ohne Präfix (K1b,
+beantwortet in K2). `Hausnummer` — Integer, Kinder: Integer, Vorwahl Integer.*
 
 ### K2 · Einheiten, durchgespielt — und der Verweis aus der Klasse heraus
 
