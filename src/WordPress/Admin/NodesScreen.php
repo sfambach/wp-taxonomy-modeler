@@ -260,6 +260,12 @@ final class NodesScreen
         // `nodes.implemented_by` — **nicht über den Namen des Knotens**, den er umbenennen darf
         // (`CD`-Verbot: kein Sonderfall über einen Anzeigenamen).*
         private readonly ?TypeNodes $types = null,
+        /**
+         * Schreibt Attribute in das Einstellungsmodell — Schritt 5 des Bauplans
+         * ([D-712](../../../docs/NewConcept/90-decision-log.md)). *Fehlt er, schreibt die Seite noch
+         * wie bis Schritt 4: in Einstellungskanten und Sätze.*
+         */
+        private readonly ?\Taxmod\Core\Service\SettingsEditor $attributes = null,
     ) {
     }
 
@@ -1010,7 +1016,17 @@ final class NodesScreen
             // few headings* was pointing at even where he had not counted them.
             PageSlot::Attributes->value => new Section(
                 '',
-                $this->attributes($selected, $rows)
+                // ⚠️ **Der Einstellungsbereich des Knotens aus dem Vertrag** (Schritt 4 des Bauplans):
+                // *seine Attribute, der gewählte Renderer, dessen Attribute — über den Feldern.
+                // Leer, solange kein Auflöser verdrahtet ist.*
+                $this->rendering->settingsPanelForNode(
+                    $selected,
+                    self::SETTING_FIELD,
+                    self::pageForm($selected),
+                    $this->settingsPanelWords(),
+                    $this->localeFromRequest()
+                )
+                . $this->attributes($selected, $rows)
             ),
 
             // ⚠️ **The slot has been empty since Package 4 and it was not idle, it was blocked —
@@ -3789,7 +3805,7 @@ final class NodesScreen
     {
         $this->saveSettings($nodeId, $relationId, $name);
         $this->saveFieldRows($nodeId);
-        $geschrieben = $this->saveSettingValues($nodeId);
+        $geschrieben = $this->saveAttributes($nodeId) + $this->saveSettingValues($nodeId);
         $this->savePartValues($nodeId);
         $this->saveLabels($nodeId, $locale);
 
@@ -3990,6 +4006,23 @@ final class NodesScreen
             // sie sind keine Einstellungen und landen in keinem Satz ([D-713](../../../docs/NewConcept/90-decision-log.md),
             // [D-714](../../../docs/NewConcept/90-decision-log.md)).*
             if (EdgeColumn::isOne((string) $key) || $key === Rendering::KIND_KEY || $key === Rendering::KIND_CONFIRM_KEY || is_array($roh)) {
+                continue;
+            }
+
+            // ⚠️ **Ein Attribut aus dem Vertrag wird an der Kante überschrieben** (Schritt 5 des
+            // Bauplans, Anforderung 5.1, 5.2): *eine Zeile mit `kante_id`, nur wenn jemand sie setzt —
+            // eine geerbte, gesperrte Zeile braucht den Haken «hier überschreibe ich».*
+            $ziel = $this->attributes === null ? null : $this->editor->find($useSite->toNodeId);
+
+            if ($ziel !== null && $this->attributes->knows($ziel, $key, $useSite)) {
+                $angabe = $geltendAnDerStelle[$key] ?? null;
+
+                if ($angabe !== null && $angabe->isLocked() && empty($hakenAnDerStelle[$schluessel])) {
+                    continue;
+                }
+
+                $this->attributes->put($ziel, $key, sanitize_text_field((string) $roh), $useSite);
+
                 continue;
             }
 
@@ -4475,6 +4508,45 @@ final class NodesScreen
      * should do with a partial batch is genuinely undecided and is on the roadmap; failing loudly is
      * the honest interim rather than writing twenty-nine and mentioning none.*
      */
+    /**
+     * Die Attribute des Knotens aus dem Einstellungsbereich schreiben — `taxmod_setting[<attribut>]`
+     * (Schritt 5 des Bauplans, [D-712](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Der Schlüssel wird nachgeschlagen und nicht geglaubt (`CD-5`): nur ein Attribut, das der
+     * Vertrag an diesem Knoten kennt, wird geschrieben. Was der Vertrag nicht kennt, wird
+     * übergangen — es ist kein Fehler, dass ein altes Formular noch Kantennummern schickt.*
+     *
+     * @return int Wie viele Werte geschrieben wurden.
+     */
+    private function saveAttributes(int $nodeId): int
+    {
+        if ($this->attributes === null || ! isset($_POST[self::SETTING_FIELD]) || ! is_array($_POST[self::SETTING_FIELD])) {
+            return 0;
+        }
+
+        $node = $this->editor->find($nodeId);
+
+        if ($node === null) {
+            return 0;
+        }
+
+        $geschrieben = 0;
+
+        foreach (wp_unslash($_POST[self::SETTING_FIELD]) as $schluessel => $roh) {
+            $attribut = sanitize_key((string) $schluessel);
+
+            if (is_array($roh) || $attribut === '' || ! $this->attributes->knows($node, $attribut)) {
+                continue;
+            }
+
+            if ($this->attributes->put($node, $attribut, sanitize_text_field((string) $roh))) {
+                $geschrieben++;
+            }
+        }
+
+        return $geschrieben;
+    }
+
     private function saveSettings(int $nodeId, int $relationId, string $name = ''): void
     {
         // ⚠️ **The page save writes the name too, and forgetting that was a regression I shipped.**

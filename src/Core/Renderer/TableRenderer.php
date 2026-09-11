@@ -60,6 +60,14 @@ use Taxmod\Core\Model\Node;
  */
 final class TableRenderer extends RendererNode
 {
+    // ⚠️ *Dieselben zwei wie am kompakten Renderer — jede Klasse erklärt sie für sich, die
+    // Adresse `Klasse.Attribut` hält sie auseinander (Anforderung 3.3.3, D-712 D2).*
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public Orientation $orientation = Orientation::Horizontal;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $with_label = true;
+
     public const NAME = 'table';
 
     public function name(): string

@@ -23,6 +23,13 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class TextareaRenderer extends TypedFieldRenderer
 {
+    /** Spalten und Zeilen des Textfelds — ohne Vorgabe nimmt die Breite `display_size` des Knotens. */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public ?int $cols = null;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public ?int $rows = null;
+
     public const NAME = 'textarea';
 
     public function name(): string

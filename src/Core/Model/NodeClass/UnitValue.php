@@ -14,6 +14,8 @@ namespace Taxmod\Core\Model\NodeClass;
  */
 final class UnitValue implements NodeClass
 {
+    use NodeAttributes;
+
     public static function allowedChildClasses(): array
     {
         return [];

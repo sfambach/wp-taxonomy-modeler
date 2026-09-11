@@ -131,6 +131,16 @@ final class Rendering implements Presets
          * bleiben — dieselbe Form, in der `$model` dazukam.*
          */
         private readonly ?RelationRepository $relations = null,
+        /**
+         * Die Auflösung Kante → Knoten → Vertrag aus `settings_value` — Schritt 4 des Bauplans
+         * ([D-712](90-decision-log.md)).
+         *
+         * ⚠️ *Ist er da, liest der Zeichner **nur** noch ihn: {@see withModelValues()},
+         * {@see withRendererValues()} und {@see zutreffendeKanten()} fragen keine Einstellungskante
+         * mehr. Ist er nicht da, gilt der alte Weg über {@see ModelValues} — die Übergangszeit,
+         * die der Bauplan bewusst nennt, bis Schritt 7 die Kanten fallen lässt.*
+         */
+        private readonly ?SettingsResolver $resolver = null,
 
         /**
          * Der Rand, soweit er über **Benutzer** Auskunft gibt — der Name und der Angemeldete.
@@ -2447,6 +2457,36 @@ final class Rendering implements Presets
     {
         $istKante = $node instanceof Relation;
 
+        // ⚠️ **Seit Schritt 4 des Bauplans sagt der Vertrag, was es zu zeichnen gibt** ([D-712](90-decision-log.md),
+        // Anforderung 2.4.2): *die Attribute der Knotenklasse, dazu die des gewählten Renderers —
+        // keine Kante, kein Schlüssel. `null` als Wert heisst «kein Kantenobjekt», wie bei den Spalten.*
+        if ($this->resolver !== null) {
+            $aus = [];
+
+            if ($istKante) {
+                foreach (EdgeColumn::all() as $spalte) {
+                    $aus[$spalte] = null;
+                }
+            }
+
+            foreach (array_keys($this->attributesDrawnFor($node)) as $name) {
+                $aus[$name] = null;
+            }
+
+            // ⚠️ *Die Hakenliste der erlaubten Kinder ([D-697](90-decision-log.md)) hängt noch an
+            // einer Einstellungskante und ihren Sätzen — sie bleibt gezeichnet, bis Schritt 7 die
+            // Kanten fallen lässt und `erlaubte_praefixe` (Anforderung 3.6.5) sie ablöst.*
+            if ($istKante && $this->model !== null) {
+                $liste = $this->model->allowedRelationFor($node);
+
+                if ($liste !== null) {
+                    $aus[$liste->name] = $liste;
+                }
+            }
+
+            return $aus;
+        }
+
         if ($this->model === null) {
             $aus = [];
 
@@ -2568,8 +2608,38 @@ final class Rendering implements Presets
      * @param array<string, RenderedSetting> $configured
      * @param list<Control>                  $words
      */
+    /**
+     * Der Einstellungsbereich eines **Knotens** — seine Attribute aus dem Vertrag, mit dem gewählten
+     * Renderer und dessen Attributen (Schritt 4/5 des Bauplans, [D-712](90-decision-log.md)).
+     *
+     * ⚠️ *Leer ohne Auflöser: dann zeichnet die Seite ihre Einstellungen noch als Feldzeilen der
+     * Einstellungskanten, wie bis Schritt 4.*
+     *
+     * @param array<string, string> $words
+     */
+    public function settingsPanelForNode(
+        Node $node,
+        string $fieldPrefix = '',
+        string $formId = '',
+        array $words = [],
+        string $locale = '',
+        Level $level = Level::Admin,
+    ): string {
+        if ($this->resolver === null) {
+            return '';
+        }
+
+        $configured = [];
+
+        foreach ($this->settingsFor($node, $this->settingsForNode($node), Purpose::Edit, $fieldPrefix, $locale, $level, [], $formId) as $drawn) {
+            $configured[$drawn->key] = $drawn;
+        }
+
+        return $this->panelMarkup($node, $configured, $words, $formId, $locale, $level, true);
+    }
+
     private function panelMarkup(
-        Relation $relation,
+        Node|Relation $relation,
         array $configured,
         array $words,
         string $formId,
@@ -2761,6 +2831,15 @@ final class Rendering implements Presets
             // *`label_role` stand als **Beschriftung ohne Bedienelement** da, obwohl das Modell die
             // Einstellung erklärt. **Eine geschlossene Liste von dreizehn Namen entschied, was
             // bedienbar ist** — gegen [D-529](../../../docs/NewConcept/90-decision-log.md).*
+            // ⚠️ **Ein Attribut aus dem Vertrag wird aus dem Vertrag gezeichnet** (Schritt 4 des
+            // Bauplans, [D-712](90-decision-log.md)): *Typ, Wahl und Vorgabe kennt die Erklärung;
+            // die Zeile bringt den Wert. Keine Kante, kein Schlüssel.*
+            if ($this->resolver !== null && ($erklaert = $this->attributesDrawnFor($node)[$key] ?? null) !== null) {
+                $drawn[] = $this->drawAttribute($node, $erklaert, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $formId);
+
+                continue;
+            }
+
             if ($engineKey === null) {
                 $kante = $kanten[$key] ?? null;
 
@@ -3256,6 +3335,7 @@ final class Rendering implements Presets
         // auf sieben Typen, deren Vorfahren sich fast vollständig überschneiden — je Feld nachzusehen
         // wäre linear in der Zahl der Felder, und genau das misst `einstellungen-check.php`.*
         $this->model?->preload($relations);
+        $this->resolver?->preloadUseSites($relations);
 
         $aus = [];
 
@@ -3283,6 +3363,13 @@ final class Rendering implements Presets
      */
     private function withRendererValues(Node $subject): array
     {
+        // ⚠️ **Seit Schritt 4 des Bauplans aus der Auflösung** ([D-712](90-decision-log.md)):
+        // *der gewählte Renderer und seine Attribute kommen aus `settings_value` und dem Vertrag —
+        // die Einstellungskanten werden nicht mehr gelesen, solange ein Auflöser da ist.*
+        if ($this->resolver !== null) {
+            return $this->resolver->forNode($subject);
+        }
+
         return [
             ...($this->model?->forChosenRenderer($subject) ?? []),
             ...$this->withModelValues([], $subject),
@@ -3291,6 +3378,14 @@ final class Rendering implements Presets
 
     private function withModelValues(array $resolved, Node|Relation $subject): array
     {
+        if ($this->resolver !== null) {
+            $ausDerAufloesung = $subject instanceof Node
+                ? $this->resolver->forNode($subject)
+                : $this->resolver->forUseSite($subject);
+
+            return [...$resolved, ...$ausDerAufloesung];
+        }
+
         if ($this->model === null) {
             return $resolved;
         }
@@ -3573,6 +3668,178 @@ final class Rendering implements Presets
      * state, because [D-219](90-decision-log.md) decided converters and none is built. R28–R32 asked
      * for exactly that rather than an empty box that looks fillable.*
      */
+    /**
+     * Die Attribute, die der Einstellungsbereich für dieses Subjekt zeichnet: die der Knotenklasse,
+     * dazu die des gewählten Renderers (Anforderung 2.4.2, 3.6.3) — aus dem Vertrag, nie aus Kanten.
+     *
+     * ⚠️ *Für eine Verwendungsstelle ist es der Vertrag des **Ziels**: die Kante hat keine eigenen
+     * Attribute ([D-714](90-decision-log.md)), sie überschreibt die des Knotens.*
+     *
+     * @return array<string, \Taxmod\Core\Model\NodeClass\AttributeDeclaration>
+     */
+    private function attributesDrawnFor(Node|Relation $node): array
+    {
+        if ($this->resolver === null) {
+            return [];
+        }
+
+        $knoten = $node instanceof Node ? $node : $this->nodes->find($node->toNodeId);
+
+        if ($knoten === null) {
+            return [];
+        }
+
+        $aus = $this->resolver->contractOf($knoten)->attributes;
+
+        // ⚠️ *Die Attribute des gewählten Renderers stehen daneben — `orientation`, `with_label`,
+        // `label_role` —, wie {@see ModelValues::forChosenRenderer()} sie vorher lieferte.*
+        $gewaehlt = ($node instanceof Node ? $this->resolver->forNode($knoten) : $this->resolver->forUseSite($node, $knoten))[SettingKey::Renderer->value] ?? null;
+        $klasse   = $gewaehlt === null ? null : $this->renderers->classFor((string) $gewaehlt->value->text);
+
+        if ($klasse !== null) {
+            foreach (\Taxmod\Core\Model\NodeClass\Contracts::ofValueClass($klasse)->attributes as $name => $erklaert) {
+                $aus[$name] ??= $erklaert;
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Ein Attribut aus dem Vertrag zeichnen — nach seinem Typ (Anforderung 3.1): eine Zahl als
+     * Zahlenfeld, ein Schalter als Schalter, ein Enum, ein Verweis und ein Objekt als Wahl.
+     *
+     * ⚠️ *Was die Wahl anbietet, sagt die Erklärung: die Fälle des Enums, die Knoten der
+     * Verweisklasse, die Namen der Registratur. **Eine Liste zeichnet ihr erstes Glied** — mehr
+     * kommt mit Schritt 5, wenn geschrieben wird.*
+     */
+    private function drawAttribute(
+        Renderable $subject,
+        \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert,
+        ResolvedSetting $setting,
+        Purpose $purpose,
+        string $fieldPrefix,
+        string $locale,
+        Level $level,
+        ?SimpleType $subjectType,
+        string $formId,
+    ): RenderedSetting {
+        $key       = $erklaert->name;
+        $fieldName = $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $key . ']';
+        $typ       = $erklaert->type;
+
+        [$shape, $simple] = match ($typ) {
+            \Taxmod\Core\Model\NodeClass\AttributeType::Bool    => [SettingShape::Switch, SimpleType::Bool],
+            \Taxmod\Core\Model\NodeClass\AttributeType::Int     => [SettingShape::Whole, SimpleType::Int],
+            \Taxmod\Core\Model\NodeClass\AttributeType::Decimal => [SettingShape::Exact, SimpleType::Decimal],
+            \Taxmod\Core\Model\NodeClass\AttributeType::Text    => [SettingShape::Words, SimpleType::Text],
+            default                                             => [SettingShape::ARegisteredName, null],
+        };
+
+        if ($simple !== null) {
+            $renderer = $this->renderers->defaultFor($simple);
+
+            return new RenderedSetting(
+                $key,
+                $shape,
+                $simple,
+                $setting,
+                $renderer->render($subject, new RenderContext(
+                    purpose: $purpose,
+                    value: $setting->value,
+                    settings: [],
+                    locale: $locale,
+                    level: $level,
+                    editable: true,
+                    fieldName: $fieldName,
+                    type: $simple,
+                    surroundings: new Surroundings(formId: $formId),
+                )),
+                $renderer->name(),
+                $subjectType
+            );
+        }
+
+        $options = match ($typ) {
+            \Taxmod\Core\Model\NodeClass\AttributeType::Enum    => array_combine($erklaert->enumCases(), $erklaert->enumCases()),
+            \Taxmod\Core\Model\NodeClass\AttributeType::NodeRef => $this->nodesOffered($erklaert),
+            default                                             => $this->objectsOffered($erklaert, $subject),
+        };
+
+        $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
+
+        return new RenderedSetting(
+            $key,
+            $shape,
+            null,
+            $setting,
+            $renderer->render($subject, new RenderContext(
+                purpose: $purpose,
+                value: $setting->value,
+                settings: [],
+                locale: $locale,
+                level: $level,
+                editable: true,
+                fieldName: $fieldName,
+                surroundings: new Surroundings(options: $options, mayBeNothing: $setting->value->isNothing() || $typ !== \Taxmod\Core\Model\NodeClass\AttributeType::Object || $key !== SettingKey::Renderer->value, formId: $formId),
+            )),
+            $renderer->name(),
+            $subjectType
+        );
+    }
+
+    /**
+     * Die Knoten, die ein Verweisattribut anbietet: alle der Verweisklasse, nach Namen.
+     *
+     * @return array<string, string> Name ⇒ Name — der Wert einer Zeile ist der Verweis, gezeichnet wird das Wort (D-105)
+     */
+    private function nodesOffered(\Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert): array
+    {
+        if ($erklaert->refersTo === null) {
+            return [];
+        }
+
+        $aus = [];
+
+        foreach ($this->nodes->ofClass($erklaert->refersTo) as $knoten) {
+            $aus[$knoten->name] = $knoten->name;
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Die Wertklassen, die ein Objektattribut anbietet — aus der Registratur, die zur Klasse passt.
+     *
+     * @return array<string, string>
+     */
+    private function objectsOffered(\Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert, Renderable $subject): array
+    {
+        $aus = [];
+
+        if ($erklaert->objectClass === Renderer::class) {
+            foreach ($this->choicesForWhatIsDrawn($subject) as $one) {
+                $aus[$one->name()] = $one->name();
+            }
+
+            return $aus;
+        }
+
+        if ($erklaert->objectClass === Converter::class && $this->converters !== null) {
+            $forType = $subject instanceof Relation ? $this->typeAt($subject) : ($subject instanceof Node ? $this->typeOfNode($subject) : null);
+
+            foreach ($this->converters->eligibleFor($forType) as $one) {
+                $aus[$one->name()] = $one->name();
+            }
+
+            return $aus;
+        }
+
+        // ⚠️ *Validatoren: keine Registratur im Zeichner, und heute prüft ohnehin keiner beim
+        // Schreiben — das Attribut steht im Vertrag, die Wahl kommt, wenn Schritt 5 schreibt.*
+        return $aus;
+    }
+
     /**
      * «Wie oft» — die Spalte `multiplicity` der Kante, als Wahl aus den vier Werten gezeichnet
      * ([D-713](90-decision-log.md)).

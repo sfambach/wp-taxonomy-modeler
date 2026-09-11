@@ -25,6 +25,10 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class InlineChooserRenderer extends RendererNode
 {
+    /** Welches Label des Ziels gezeigt wird — wie am {@see ReferenceRenderer}. */
+    #[\Taxmod\Core\Model\NodeClass\Attribut(refersTo: \Taxmod\Core\Model\NodeClass\Constant::class)]
+    public ?int $label_role = null;
+
     public const NAME = 'chooser-inline';
 
     public function name(): string

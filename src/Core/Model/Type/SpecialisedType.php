@@ -52,6 +52,10 @@ use Taxmod\Core\Model\TypedValue;
  */
 abstract class SpecialisedType extends Node implements NodeClass
 {
+    // ⚠️ *Die Attribute der Basisklasse Knoten — `renderer`, `converter`, `validator`,
+    // `display_size` — hat auch ein Typknoten (Anforderung 2.3.3).*
+    use \Taxmod\Core\Model\NodeClass\NodeAttributes;
+
     /**
      * ⚠️ **Alles hat eine Voreinstellung, damit `new IntType()` weiter der Steckbrief ist** — und alles
      * steht in der Reihenfolge von {@see Node::fromStorage()}, damit eine geladene Zeile hier ankommt.

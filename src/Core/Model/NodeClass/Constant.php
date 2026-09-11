@@ -18,6 +18,12 @@ namespace Taxmod\Core\Model\NodeClass;
  */
 final class Constant implements NodeClass
 {
+    use NodeAttributes;
+
+    /** Die Umrechnung des Präfixes — `kilo`: Faktor 1000 (K2a: *«umrechnungssatz hört sich gut an»*). */
+    #[Attribut]
+    public ?\Taxmod\Core\Model\Setting\Conversion $umrechnung = null;
+
     public static function allowedChildClasses(): array
     {
         return [];

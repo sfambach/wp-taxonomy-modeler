@@ -76,6 +76,15 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class CompactRenderer extends RendererNode
 {
+    // ⚠️ **Der Renderer erklärt seine Attribute selbst** (Anforderung 3.6.3; sein Gerüst:
+    // *«CompactRenderer — withLabel, horizontal/vertical»*). Der Vertrag liest sie per Reflection;
+    // die Namen sind die, unter denen {@see render()} sie schon immer gelesen hat.
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $with_label = true;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public Orientation $orientation = Orientation::Horizontal;
+
     public const NAME = 'compact';
 
     /**

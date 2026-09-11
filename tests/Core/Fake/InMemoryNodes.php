@@ -264,6 +264,21 @@ final class InMemoryNodes implements NodeRepository
         return count($this->rows);
     }
 
+    public function ofClass(string $klasse): array
+    {
+        $aus = [];
+
+        foreach ($this->rows as $node) {
+            if ($node->klasse === $klasse) {
+                $aus[] = $node;
+            }
+        }
+
+        usort($aus, static fn (Node $a, Node $b): int => $a->id <=> $b->id);
+
+        return $aus;
+    }
+
     public function byImplementations(array $classNames): array
     {
         $gesucht = array_flip($classNames);

@@ -17,6 +17,8 @@ namespace Taxmod\Core\Model\NodeClass;
  */
 final class Choice implements NodeClass
 {
+    use NodeAttributes;
+
     public static function allowedChildClasses(): array
     {
         return [Constant::class, Unit::class, Category::class];

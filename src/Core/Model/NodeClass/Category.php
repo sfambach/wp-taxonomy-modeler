@@ -17,6 +17,8 @@ namespace Taxmod\Core\Model\NodeClass;
  */
 final class Category implements NodeClass
 {
+    use NodeAttributes;
+
     public static function allowedChildClasses(): array
     {
         return [];

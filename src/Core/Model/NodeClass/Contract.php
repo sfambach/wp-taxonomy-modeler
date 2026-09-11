@@ -31,6 +31,12 @@ final class Contract
         public readonly string $defaultChildClass,
         /** @var list<\Taxmod\Core\Model\Multiplicity> Leer heisst: alle vier (Modell 1.2.3). */
         public readonly array $allowedMultiplicities = [],
+        /**
+         * Die Attribute, die die Klasse erklärt — per Reflection gelesen, einmal (Anforderung 2.4.4).
+         *
+         * @var array<string, AttributeDeclaration> nach Attributname
+         */
+        public readonly array $attributes = [],
     ) {
     }
 
@@ -44,7 +50,25 @@ final class Contract
             $class::allowedChildClasses(),
             $class::defaultChildClass(),
             $class::allowedMultiplicities(),
+            AttributeReader::read($class),
         );
+    }
+
+    /**
+     * Der Vertrag einer **Wertklasse** — eines Renderers, Konverters, Validators, einer Umrechnung:
+     * nur Attribute, keine Kinder, kein Icon (Anforderung 3.6.3: *«ein Renderer erklärt seine
+     * eigenen Attribute selbst»*).
+     *
+     * @param class-string $class
+     */
+    public static function ofValueClass(string $class): self
+    {
+        return new self($class, '', '', [], '', [], AttributeReader::read($class));
+    }
+
+    public function attribute(string $name): ?AttributeDeclaration
+    {
+        return $this->attributes[$name] ?? null;
     }
 
     /** Ob ein Feld auf einen Knoten dieser Klasse diese Multiplizität tragen darf (Modell 1.2.3). */

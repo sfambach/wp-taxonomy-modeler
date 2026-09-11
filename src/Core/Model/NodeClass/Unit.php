@@ -17,6 +17,23 @@ namespace Taxmod\Core\Model\NodeClass;
  */
 final class Unit implements NodeClass
 {
+    use NodeAttributes;
+
+    // ⚠️ **Seine Attribute** (Anforderung 3.6.5, bestätigt 2026-09-11): *«mit/ohne präfix ist eine
+    // eigenschaft, genauso welche präfixe erlaubt sind»* — und die Umrechnung für Celsius → Kelvin.
+    #[Attribut]
+    public bool $mit_praefix = false;
+
+    /** @var list<int> Knoten der Klasse Konstante */
+    #[Attribut(listOf: 'node', refersTo: Constant::class)]
+    public array $erlaubte_praefixe = [];
+
+    #[Attribut]
+    public string $symbol = '';
+
+    #[Attribut]
+    public ?\Taxmod\Core\Model\Setting\Conversion $umrechnung = null;
+
     public static function allowedChildClasses(): array
     {
         return [];

@@ -828,6 +828,18 @@ final class WpdbNodeRepository implements NodeRepository
         return $aus;
     }
 
+    public function ofClass(string $klasse): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Knoten einer Knotenklasse lesen', $wpdb->prepare(
+            $this->selectNodes('WHERE n.klasse = %s ORDER BY n.id'),
+            ...[...$this->nameArgs(), $klasse]
+        ));
+
+        return array_map($this->hydrate(...), $rows ?: []);
+    }
+
     /** @param array<string,mixed> $row */
     private function hydrate(array $row): Node
     {

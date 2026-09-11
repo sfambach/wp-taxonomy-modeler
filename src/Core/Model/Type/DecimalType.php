@@ -13,6 +13,17 @@ use Taxmod\Core\Model\TypedValue;
  */
 final class DecimalType extends SpecialisedType
 {
+    // ⚠️ **Dieselben Namen wie am Integer, im eigenen Typ** (Anforderung 3.3.3, sein Wort:
+    // *«klassenname + attributname ist dann wieder eindeutig, beispiel int/double min/max»*).
+    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true)]
+    public ?string $min = null;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true)]
+    public ?string $max = null;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true)]
+    public string $step = '1';
+
     public function type(): SimpleType
     {
         return SimpleType::Decimal;

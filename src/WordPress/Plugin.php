@@ -27,6 +27,7 @@ use Taxmod\WordPress\Persistence\UnitScaffold;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbSettingsRepository;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 
@@ -554,7 +555,34 @@ final class Plugin
             $this->changelog(),
             // ⚠️ *Dasselbe Exemplar wie der Zeichenlauf: die elf Typknoten werden einmal je
             // Anfrage gelesen, und der Feldziel-Dialog braucht daraus nur einen — den Text.*
-            $this->typeNodes()
+            $this->typeNodes(),
+            // ⚠️ **Schritt 5 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
+            // Maske schreibt Attribute in `settings_value` — mit derselben Auflösung, die der Zeichner
+            // liest, damit «nur Gesetztes» gegen dasselbe Bild geprüft wird.*
+            new \Taxmod\Core\Service\SettingsEditor(
+                new WpdbSettingsRepository(),
+                new WpdbNodeRepository(),
+                $this->settingsResolver(),
+                ShippedRenderers::registry(),
+                ShippedConverters::registry(),
+                $this->changelog()
+            )
+        );
+    }
+
+    private ?\Taxmod\Core\Service\SettingsResolver $settingsResolver = null;
+
+    /**
+     * Die Auflösung Kante → Knoten → Vertrag — **eine** je Anfrage, damit Zeichner und Schreiber
+     * dasselbe Gehaltene sehen.
+     */
+    private function settingsResolver(): \Taxmod\Core\Service\SettingsResolver
+    {
+        return $this->settingsResolver ??= new \Taxmod\Core\Service\SettingsResolver(
+            new WpdbSettingsRepository(),
+            new WpdbNodeRepository(),
+            ShippedRenderers::registry(),
+            ShippedConverters::registry()
         );
     }
 
@@ -595,7 +623,11 @@ final class Plugin
             // ([D-649](../../docs/NewConcept/90-decision-log.md), `CD-1`): *der Name zum Zeichnen und
             // die Id des Angemeldeten zum Anlegen. **Der Kern nimmt beides entgegen und beschafft
             // keines.***
-            users: new WpUsers()
+            users: new WpUsers(),
+            // ⚠️ **Schritt 4 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
+            // Renderer zeichnen aus `settings_value` und dem Vertrag; `ModelValues` bleibt für das,
+            // was noch nicht umgezogen ist — die erlaubten Kinder und die Vorgaben der Datensätze.*
+            resolver: $this->settingsResolver()
         );
     }
 }

@@ -26,6 +26,10 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class DateTimeRenderer extends TypedFieldRenderer
 {
+    /** `date`, `time` oder alles — was das Steuerelement anbietet ({@see controlType()}). */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public DatePrecision $date_precision = DatePrecision::DateTime;
+
     public const NAME = 'datetime';
 
     /** The granularity setting — a free key, deliberately named apart from decimal precision. */

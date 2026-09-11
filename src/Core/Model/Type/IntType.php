@@ -13,6 +13,17 @@ use Taxmod\Core\Model\TypedValue;
  */
 final class IntType extends SpecialisedType
 {
+    // ⚠️ **Die Attribute des Typs** (Anforderung 3.6.2; sein Beispiel: *«`integer_node` hat die
+    // Attribute `max` vom Typ int, `min` vom Typ int»*). *Ohne Vorgabe heisst: keine Grenze.*
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public ?int $min = null;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public ?int $max = null;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public int $step = 1;
+
     public function type(): SimpleType
     {
         return SimpleType::Int;

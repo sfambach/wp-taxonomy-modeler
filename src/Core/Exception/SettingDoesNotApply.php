@@ -77,4 +77,13 @@ final class SettingDoesNotApply extends DomainError
             $attempted
         ));
     }
+
+    /**
+     * Ein Attribut, das der Vertrag nicht kennt — oder ein Wert, der nicht zu seinem Typ passt
+     * (Schritt 5 des Bauplans, Anforderung 3.1, 3.3).
+     */
+    public static function named(string $what): self
+    {
+        return new self(sprintf('«%s» is not a setting the contract knows, or not a value of its type.', $what));
+    }
 }

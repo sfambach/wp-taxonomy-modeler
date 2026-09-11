@@ -197,4 +197,13 @@ interface NodeRepository
      * @return array<string, Node>     Klassenname => Knoten. Wen niemand umsetzt, fehlt.
      */
     public function byImplementations(array $classNames): array;
+
+    /**
+     * Alle lebenden Knoten einer Knotenklasse, nach Id — was ein Verweisattribut anbietet
+     * (Anforderung 3.1.4, [D-716](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  class-string<\Taxmod\Core\Model\NodeClass\NodeClass> $klasse
+     * @return list<Node>
+     */
+    public function ofClass(string $klasse): array;
 }

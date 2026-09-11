@@ -118,7 +118,14 @@ ist mit `wert_int` zusammengefallen (D-315). Vor Schritt 2 gebaut, weil unabhän
 - **Wächter:** `settings-tables-check` — Form, Fremdschlüssel, «genau eine Wertspalte», «genau ein
   Träger», `kante_id` nie allein.
 
-### Schritt 4 · Der Vertrag für Wertklassen und das Lesen (TASK-096 b)
+### Schritt 4 · Der Vertrag für Wertklassen und das Lesen (TASK-096 b) — **gebaut 2026-09-11**
+
+*Kern: `Core\Model\NodeClass\Attribut` (die Angabe an der Eigenschaft), `AttributeType`, `AttributeDeclaration`,
+`AttributeReader` (Reflection, einmal je Klasse über `Contracts`), Trait `NodeAttributes` für die vier der Basisklasse,
+`Core\Model\Setting\Conversion`; `Core\Service\SettingsResolver` (Kante → Knoten → Vertrag, Ziele in einem Zug
+geladen). `Rendering` liest bei gesetztem Auflöser nur noch daraus. **Abweichung vom Plan:** kein eigener
+`vertrag-check` am Rand — der Vertrag hat keinen Rand; er ist im Kern geprüft (`ContractAttributesTest`,
+`SettingsResolverTest`, `RenderingFromContractTest`), und die Attributliste je Klasse steht dort gegen 3.6.*
 
 - Renderer, Konverter, Validatoren, `Umrechnung` erklären ihre Attribute im Code; der Vertrag
   liest sie (Listentyp per Angabe an der Eigenschaft).
@@ -132,7 +139,15 @@ ist mit `wert_int` zusammengefallen (D-315). Vor Schritt 2 gebaut, weil unabhän
 - **Wächter:** `vertrag-check` — jede Klasse hat einen; die Attributliste je Klasse stimmt mit der
   Anforderungsseite 3.6 überein; Reflection läuft genau einmal.
 
-### Schritt 5 · Schreiben, Objekte, Listen (TASK-096 c)
+### Schritt 5 · Schreiben, Objekte, Listen (TASK-096 c) — **gebaut 2026-09-11**
+
+*Kern: `Core\Service\SettingsEditor` (`knows`, `put` — einfacher Wert als Zeile, Objekt als `settings_object` mit
+Zeilen, Liste über `position`; Vorgabe und Gleiches ohne Zeile, leer nimmt heraus). Rand: die Knotenseite zeichnet den
+Einstellungsbereich aus dem Vertrag (`taxmod_setting[<attribut>]`) und schreibt über den Editor; die Feldzeile
+schreibt an die Kante. Wächter `einstellungen-check` neu geschrieben (Abschnitte 2–6, 8, Tabelle in 12; 221 Zusagen).
+**Schon mit gebaut, weil derselbe Schreibweg:** aus Schritt 6 der Haken «hier anders» an der Feldzeile, der Wert im
+geerbten Objekt an der Kante, und das Abschalten des geerbten Renderer-Glieds (`aktiv = 0`) — offen dort bleibt die
+Bedienung der Reihenfolge und des Schalters `aktiv` je Listeneintrag.*
 
 - Speichern eines einfachen Werts (Zeile), eines komplexen (Objekt + Zeilen), einer Liste
   (`position`); nur Gesetztes wird gespeichert (4.5).

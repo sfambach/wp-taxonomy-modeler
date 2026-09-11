@@ -68,6 +68,30 @@ final class Contracts
         return self::$held[$class] = Contract::of($class);
     }
 
+    /** @var array<class-string, Contract> Verträge der Wertklassen — Renderer, Konverter, Validatoren, Umrechnung. */
+    private static array $heldValues = [];
+
+    /**
+     * Der Vertrag einer Wertklasse — beim ersten Mal gelesen, danach derselbe.
+     *
+     * ⚠️ *Kein Inventar wie bei den Knotenklassen: welche Renderer, Konverter und Validatoren es gibt,
+     * sagen ihre Registraturen; hier zählt nur, dass die Klasse existiert.*
+     *
+     * @param class-string $class
+     */
+    public static function ofValueClass(string $class): Contract
+    {
+        if (isset(self::$heldValues[$class])) {
+            return self::$heldValues[$class];
+        }
+
+        if (! class_exists($class)) {
+            throw UnknownNodeClass::named($class);
+        }
+
+        return self::$heldValues[$class] = Contract::ofValueClass($class);
+    }
+
     /**
      * Welche Klassen ein Kind unter einem Knoten dieser Klasse haben darf — als Liste, die eine Maske
      * anbieten kann (Anforderung 6.3). Leer im Vertrag heisst alle; hier steht dann das ganze Inventar.
@@ -84,6 +108,7 @@ final class Contracts
     /** Nur für Tests: vergisst die gehaltenen Verträge. */
     public static function forget(): void
     {
-        self::$held = [];
+        self::$held       = [];
+        self::$heldValues = [];
     }
 }
