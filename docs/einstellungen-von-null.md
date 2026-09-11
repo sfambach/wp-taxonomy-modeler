@@ -5,6 +5,10 @@ Grundgerüst des Eigentümers vom 2026-09-10 und darunter, Schritt für Schritt,
 Struktur verlangt — als Fragen, bis er sie beantwortet hat. Der Vergleich mit dem Bestand kommt danach
 auf einer eigenen Seite.
 
+**Die formale Fassung — je Sachverhalt eine nummerierte, prüfbare Anforderung — steht auf
+[`einstellungen-anforderungen.md`](einstellungen-anforderungen.md) (seit 2026-09-11). Diese Seite
+bleibt das Protokoll: Wege, Beispiele, seine Worte.**
+
 ---
 
 ## Das Grundgerüst — sein Text
@@ -1229,7 +1233,9 @@ trägt keine Einstellungen»). **Neu durch diese Seite sind allein `SATZ` und `Z
    Einstellungs-Datensatz / settings_record?»* *Zum Denken: «Datensatz» und «record» sind genau das
    Wort, das heute die Daten der Benutzer tragen — die Kollision bliebe. **Einstellungsobjekt /
    `settings_object`** sagt, was es ist (ein Objekt seiner Klasse, Frage 2a) und kollidiert mit
-   nichts. Offen, seine Wahl.*
+   nichts.* **Entschieden, 2026-09-11:** *«settings_object ist damit gesetzt.»* Auf dieser Seite
+   heisst es weiter «Satz», weil die Beispiele so geschrieben sind; die formale Fassung
+   ([`einstellungen-anforderungen.md`](einstellungen-anforderungen.md)) sagt Einstellungsobjekt.
 8. **L8 · `read_only` nur an der Kante — mit seinem «glaube ich».** Ein Knoten, der überall nur
    lesbar sein soll (ein berechneter Wert), müsste es an jeder Kante einzeln bekommen. Kein Fehler,
    aber noch nicht bestätigt. **Bestätigt, 2026-09-11:** *«read_only stimmt»* — nur an der Kante,
