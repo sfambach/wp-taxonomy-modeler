@@ -53,7 +53,6 @@ use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;

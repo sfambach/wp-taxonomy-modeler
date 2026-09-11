@@ -14,6 +14,11 @@ namespace Taxmod\Core\Model;
  * ⚠️ **Multiplicity plays no part in storage** (D-232). Five integers are five **paths** in one
  * record, not five records.
  *
+ * ⚠️ **Der Ast `Settings` ist mit Schritt 7 des Bauplans (2026-09-11) gefallen**
+ * ([D-718](../../../docs/NewConcept/90-decision-log.md), sein Wort: *«knoten und felder können weg»*).
+ * *Renderer, Konverter und Validatoren sind Objekte programmierter Klassen ([D-712](../../../docs/NewConcept/90-decision-log.md)),
+ * keine Knoten; die Rollen wohnen unter `Constants` («K3c unter constants», [D-719](../../../docs/NewConcept/90-decision-log.md)).*
+ *
  * ```mermaid
  * flowchart TB
  *   R["Root"] --> M["Model"]
@@ -21,6 +26,7 @@ namespace Taxmod\Core\Model;
  *   R --> P["Primitives"]
  *   P --> DT["Data Types"]
  *   P --> K["Constants"]
+ *   P --> CB["Combined"]
  * ```
  *
  * @see docs/NewConcept/10-domain-core.md
@@ -61,29 +67,11 @@ enum Branch: string
      */
     case Combined = 'combined';
 
-    /**
-     * Die Mengen, aus denen eine **Einstellung** ausgewählt wird — Renderer, Wandler, Namensrollen,
-     * Validatoren.
-     *
-     * ⚠️ **Er sagt nicht «das ist eine Einstellung» — das sagt die Kante**
-     * ([D-526](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer, als ich ihm die
-     * Platz-Variante vorschlug: «ich sehe nicht, dass wir unbedingt einen Knoten brauchen, wenn wir
-     * eine Einstellungskante auf `int` setzen und sie `exponent` nennen.» **Er hat recht: der Typ kommt
-     * vom Ziel, die Einstellung von der Kante.***
-     *
-     * ⚠️ **Wofür dieser Ast dann da ist:** *eine Einstellung, deren Wert eine **Auswahl** ist, braucht
-     * eine Menge, aus der gewählt wird — und diese Mengen lagen bisher verstreut: `Renderer` und
-     * `Converter` unter `Constants`, `Label roles` neben den Ästen, wo die Speicherfrage **keine
-     * Antwort** hatte ([OQ-139](../../../docs/NewConcept/91-open-questions.md)). Hier haben sie einen
-     * Platz, und die Antwort ist dieselbe wie bei `Constants`: der Wert ist ein Knotenverweis.*
-     */
-    case Settings = 'settings';
-
     /** Which kind of relation reaches a node in this branch (D-161). */
     public function relationKind(): RelationKind
     {
         return match ($this) {
-            self::Model, self::Constants, self::Settings         => RelationKind::Aggregation,
+            self::Model, self::Constants                         => RelationKind::Aggregation,
             self::Compositions, self::DataTypes, self::Combined  => RelationKind::Composition,
         };
     }
@@ -104,32 +92,20 @@ enum Branch: string
     {
         return match ($this) {
             self::DataTypes, self::Constants, self::Combined => true,
-            self::Model, self::Compositions, self::Settings  => false,
+            self::Model, self::Compositions                  => false,
         };
     }
 
     /** Whether nodes in this branch have records of their own (D-183). */
     public function holdsData(): bool
     {
-        // ⚠️ **`Settings` stand hier auf `false`, und 48 Datensätze sagten das Gegenteil.**
-        //
-        // ⚠️ *Der Eigentümer fragte, warum die Vorschau von `DisplayOption` «Nothing to preview here»
-        // sagt, und vermutete: «weil es Settings sind». **Fast** — es lag nicht an den
-        // Einstellungskanten, sondern an dieser Zeile. Gemessen im selben Zug: `SELECT COUNT(*) …
-        // node_id = DisplayOption` ergibt **48**, und der Datensatzblock auf derselben Seite listet sie.*
-        //
-        // ⚠️ **Ein Ast, der «ich halte keine Datensätze» sagt, während 48 an ihm hängen, ist eine
-        // Angabe, die ihre eigene Tabelle nicht kennt.** *Sie ist aus der Zeit vor
-        // [D-541](../../../docs/NewConcept/90-decision-log.md): dort hat der Eigentümer entschieden, dass
-        // eine Einstellung mit **eigenen Feldern** einen eigenen Teil braucht — und ein Teil ist ein
-        // Datensatz.*
         // ⚠️ **`Combined` steht bei den beiden anderen unter `Primitives` und nicht bei
         // `Compositions`** ([D-677](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «der
         // underschied zwischen composition und combined ist das combined keine user daten enthält
         // nur example oder default wie bei typ». **Aus Feldern gebaut zu sein und Benutzerdaten zu
         // halten sind zwei verschiedene Fragen** — hier wird die zweite beantwortet.*
         return match ($this) {
-            self::Model, self::Compositions, self::Settings   => true,
+            self::Model, self::Compositions                   => true,
             self::DataTypes, self::Constants, self::Combined  => false,
         };
     }
@@ -144,9 +120,7 @@ enum Branch: string
             // den `Compositions` gleicht — und die einzige.*
             self::Compositions, self::Combined => Storage::OwnRecords,
             self::DataTypes    => Storage::InsideTheRecord,
-            // ⚠️ *Dieselbe Antwort wie `Constants`, und das ist der ganze Zweck: **damit die
-            // Speicherfrage überhaupt eine Antwort hat.** Ein Knoten neben den Ästen hatte keine.*
-            self::Constants, self::Settings => Storage::NodeRef,
+            self::Constants    => Storage::NodeRef,
         };
     }
 }

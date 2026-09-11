@@ -52,7 +52,6 @@ use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -88,7 +87,6 @@ $relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
 $framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $records   = new WpdbRecordRepository();
-$model     = new ModelValues($records, $relations, $nodes, $framework);
 
 $rendering = new Rendering(
     $nodes,
@@ -96,8 +94,7 @@ $rendering = new Rendering(
     ShippedRenderers::registry(),
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
-    null,
-    $model
+    null
 );
 
 // ⚠️ *Hier stand `feldVon(string $knotenName, …)` — ein Nachschlagen über den Knotennamen. Es hat
@@ -203,28 +200,13 @@ echo "\n== Woher die Auskunft kommt ==\n";
     // «DisplayOption traegt sie», geschrieben **vor** dem Umzug und nie zutreffend gewesen. **Der
     // Waechter misst jetzt, dass es sie ueberhaupt gibt und wohin sie zeigt**; welcher Knoten sie
     // traegt, beantwortet `OQ-134` und nicht diese Datei (`PR-4`).*
-    $feld = null;
-
-    foreach ($relations->fieldRelationsOf(array_map(static fn ($n) => $n->id, $nodes->byIds(array_map('intval', $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes')))))) as $eine) {
-        if ($eine->name === 'label_role') {
-            $feld = $eine;
-        }
-    }
-
-    check('die Kante «label_role» steht im Modell', $feld !== null);
-
-    if ($feld !== null) {
-        // ⚠️ *Verglichen wird die **Id** des Rollenbehälters, nicht sein Name
-        // ([D-613](../../docs/NewConcept/90-decision-log.md)). Wo er liegt, weiss die Registratur:
-        // der Behälter ist der Elternknoten jeder gesäten Rolle.*
-        $behaelter = $nodes->find($framework->roleId(SeededRole::Form))?->parentId();
-
-        check(
-            'und zeigt auf den Behaelter der Rollen',
-            $behaelter !== null && $feld->toNodeId === $behaelter,
-            $feld->toNodeId . ' statt ' . ($behaelter ?? 'nichts')
-        );
-    }
+    // ⚠️ **Hier stand «die Kante label_role steht im Modell»** *— seit Schritt 7 des Bauplans (2026-09-11) ist
+    // `label_role` ein Attribut des Verweis-Renderers, kein Feld ([D-712](../../docs/NewConcept/90-decision-log.md));
+    // sein Wert ist eine Rolle, eine Konstante unter Constants (D-719, «K3c unter constants»).*
+    $vertrag = \Taxmod\Core\Model\NodeClass\Contracts::ofValueClass(\Taxmod\Core\Renderer\ReferenceRenderer::class);
+    check('der Verweis-Renderer erklärt label_role als Verweis auf eine Konstante', $vertrag->attribute('label_role')?->refersTo === \Taxmod\Core\Model\NodeClass\Constant::class);
+    $rolle = $nodes->find($framework->roleId(SeededRole::Form));
+    check('die Rolle form ist eine Konstante unter Constants', $rolle !== null && $rolle->klasse === \Taxmod\Core\Model\NodeClass\Constant::class && $framework->branchOf($rolle) === \Taxmod\Core\Model\Branch::Constants, $rolle?->klasse ?? 'keine Rolle');
 }
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");

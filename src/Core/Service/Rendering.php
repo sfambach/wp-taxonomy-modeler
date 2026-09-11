@@ -17,7 +17,6 @@ use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
@@ -50,10 +49,8 @@ use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\TableRenderer;
 use Taxmod\Core\Renderer\TreeNodeRenderer;
 use Taxmod\Core\Renderer\Renderer;
-use Taxmod\Core\Renderer\RendererChoiceRenderer;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\FrameworkNodes;
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RelationRepository;
 use Taxmod\Core\Repository\TypeNodes;
@@ -113,7 +110,6 @@ final class Rendering implements Presets
          * diese Quelle «nichts» und der alte Weg trägt weiter. **Erst wenn eine Angabe umgezogen ist,
          * gewinnt die neue Stelle** — sonst hätte der Umzug keine Wirkung.*
          */
-        private readonly ?ModelValues $model = null,
 
         /**
          * ⚠️ **Damit der Abstieg durch die Knoten gehen kann.** *Der Eigentümer hat es diagnostiziert:
@@ -353,7 +349,7 @@ final class Rendering implements Presets
             return null;
         }
 
-        $name = ($settings[SettingKey::Converter->value] ?? null)?->value->text;
+        $name = ($settings['converter'] ?? null)?->value->text;
 
         if ($name === null || $name === '' || ! $this->converters->knows($name)) {
             return null;
@@ -400,7 +396,7 @@ final class Rendering implements Presets
             return null;
         }
 
-        $chosen = $settings[SettingKey::Converter->value] ?? null;
+        $chosen = $settings['converter'] ?? null;
         $name   = $chosen?->value->text;
 
         if ($name === null || $name === '' || ! $this->converters->knows($name)) {
@@ -797,7 +793,7 @@ final class Rendering implements Presets
         $userNames = $this->namesOfUsers($relations, $values, $types);
         // ⚠️ *Die Hilfen der Zeile, in **einem** Zug (`CD-7`) — [D-662](../../../docs/NewConcept/90-decision-log.md).*
         $hilfen   = $this->hintsOfFields($relations, $locale);
-        $wahl     = $this->narrowedByAllowed($relations, $values, $this->optionsFor($relations), $forNode);
+        $wahl     = $this->optionsFor($relations);
         $fields   = [];
 
         // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
@@ -865,88 +861,6 @@ final class Rendering implements Presets
             // Klasse und nicht mehr hier verteilt** ({@see RendererChoiceRenderer}). *Hier steht nur
             // noch, **dass** diese Zeile die Renderer-Wahl ist; **was** sie anbietet und **was**
             // darin vorausgewählt steht, beantwortet der Wähler selbst.*
-            $rendererZeile = false;
-
-            if ($istWahl && $forNode !== 0 && $relation->id === $this->framework->settingRelationId(SettingKey::Renderer)) {
-                $knoten  = $this->nodes->find($forNode);
-                $waehler = $this->renderers->byName(RendererChoiceRenderer::NAME);
-
-                if ($knoten !== null && $waehler instanceof RendererChoiceRenderer) {
-                    $rendererZeile = true;
-
-                    // ⚠️ *Zwei Abfragen **vor** dem Zeichnen, nicht eine je Eintrag
-                    // ([D-159](../../../docs/NewConcept/90-decision-log.md), `CD-7`): die
-                    // Renderer-Knoten in einem Zug, ihre Beschriftungen in einem Zug.*
-                    $kandidaten = $this->nodes->byImplementations($this->renderers->classesForNodes());
-
-                    $moeglich = $waehler->offer(
-                        $knoten,
-                        $this->typeOfNode($knoten),
-                        $this->renderers,
-                        $kandidaten,
-                        // ⚠️ **Die `select`-Beschriftung, Rückfall auf den Namen** — sein Wort:
-                        // *«vielleicht sogar eher select label»*. *Den Rückfall macht
-                        // {@see \Taxmod\Core\Service\Labels::forNodes()} von sich aus, Rolle vor
-                        // Sprache ([D-646](../../../docs/NewConcept/90-decision-log.md)).*
-                        $this->labels?->forNodes(array_values($kandidaten), SeededRole::Select, $locale) ?? [],
-                        $this->framework->trash(),
-                        // ⚠️ *Die eine Tatsache, die die Registratur nicht selbst messen kann — ein
-                        // Knoten trägt seine Kinder nicht mit sich ({@see self::hatEtwasZurAuswahl()}).*
-                        $this->hatEtwasZurAuswahl($knoten->id),
-                    );
-
-                    // ⚠️ **Ein gespeicherter Renderer steht in der Liste, auch wenn er heute nicht
-                    // mehr angeboten würde** ([D-360](../../../docs/NewConcept/90-decision-log.md)).
-                    //
-                    // ⚠️ **Sein Befund am 2026-09-06, und er ist der Grund für diese Zeilen:** *«in
-                    // Volt steht jetzt als Renderer nicht auswählbar `reference` und das ist auch gut
-                    // so, aber ist das auch der Wert in der DB? das müssen wir sicherstellen.»*
-                    // **Gemessen war es nicht:** *in der Datenbank stand `chooser-dialog`, angezeigt
-                    // und als «ausgewählt» markiert wurde `reference`. **Das nächste Speichern hätte
-                    // den gespeicherten Wert stillschweigend ersetzt** — genau die Falle, die D-360
-                    // eine Ebene tiefer schon einmal geschlossen hat.*
-                    //
-                    // ⚠️ *Nur was **gesetzt** ist, kommt dazu — nicht, was die Registratur als Vorgabe
-                    // liefert. Sonst stünde der Rückfall als Eintrag da, und «nichts gewählt» wäre von
-                    // «`plain` gewählt» nicht mehr zu unterscheiden ([R14b](../../../docs/NewConcept/30-renderer.md)).*
-                    $gesetzt = $this->withModelValues([], $knoten)[SettingKey::Renderer->value] ?? null;
-
-                    if ($gesetzt !== null && ! $gesetzt->value->isNothing()) {
-                        $klasse  = $this->renderers->classFor($this->rendererNameFor($knoten) ?? '');
-                        $geltend = $klasse === null ? null : ($kandidaten[$klasse] ?? null);
-
-                        if ($geltend !== null && ! isset($moeglich[$geltend->id])) {
-                            $moeglich[$geltend->id] = $geltend->name;
-                        }
-                    }
-
-                    // ⚠️ **Und die Zeile muss zeigen, was gilt — sonst wäre sie eine Falle.** *Eine
-                    // Auswahlliste ohne Vorauswahl zeigt immer den ersten Eintrag, und der nächste
-                    // Klick schreibt ihn, auch wenn niemand ihn wollte.*
-                    //
-                    // ⚠️ **Der gespeicherte Wert ist hier ein **Datensatz** und keine Knoten-Id**
-                    // ([D-583](../../../docs/NewConcept/90-decision-log.md), [D-584](../../../docs/NewConcept/90-decision-log.md)):
-                    // *seit `Renderer` das Feld `converter` trägt, legt die Wahl einen eigenen Satz an.
-                    // **Die Wahlliste steht aber auf Knoten-Ids**, also fand sich der Verweis dort nie
-                    // wieder — solange der eigene Block danebenstand, ist es niemandem aufgefallen,
-                    // weil dieser über den **Namen** ging.*
-                    //
-                    // ⚠️ *Gezeigt und nicht geschrieben ([R33c](../../../docs/NewConcept/30-renderer.md)):
-                    // gefragt wird, welcher Renderer **jetzt** zeichnet — auch wenn das die Vorgabe des
-                    // Typs ist. Ein leeres Steuerelement über einem laufenden Renderer liest sich als
-                    // «hier zeichnet nichts».*
-                    $id = $waehler->chosenIn(
-                        $moeglich,
-                        $kandidaten,
-                        $this->renderers,
-                        $this->rendererNameFor($knoten),
-                    );
-
-                    if ($id !== null) {
-                        $gewaehlt = TypedValue::ofReference($id);
-                    }
-                }
-            }
 
             // ⚠️ **Die Wahl wird gebaut und nicht stückweise ausgerechnet** ({@see Choice}). *Der
             // Eigentümer hat den Grund benannt: «von der Multiplizität zum Choice ist ein Weg … und es
@@ -1014,9 +928,9 @@ final class Rendering implements Presets
             // `choice` weiter, weil [R28–R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)
             // nur an einer Stelle stehen dürfen. **Was ihn unterscheidet, ist die Menge, nicht die
             // Gestalt.***
-            if ($istWahl && $dieWahl->canShowItsState() && ($settings[SettingKey::Renderer->value]->value->text ?? '') === '') {
+            if ($istWahl && $dieWahl->canShowItsState() && ($settings['renderer']->value->text ?? '') === '') {
                 $renderer = $this->renderers->byName(
-                    $rendererZeile ? RendererChoiceRenderer::NAME : ChoiceRenderer::NAME
+                    ChoiceRenderer::NAME
                 );
             }
 
@@ -1172,7 +1086,7 @@ final class Rendering implements Presets
         $settings = $this->withRendererValues($node);
 
         if ($value === null || $value->isNothing()) {
-            $value = ($settings[SettingKey::DefaultValue->value] ?? null)?->value ?? TypedValue::nothing();
+            $value = ($settings['default'] ?? null)?->value ?? TypedValue::nothing();
         }
 
         // ⚠️ **Eine Konstante ist ihr eigener Wert** — *sein Wort am 2026-09-06 zu `Gramm`: «Preview
@@ -1887,15 +1801,6 @@ final class Rendering implements Presets
             // ([D-609](../../../docs/NewConcept/90-decision-log.md)).*
             $dieseTeile = $parts;
 
-            if ($showValue && $declaredBy !== 0 && ($parts[$relation->id] ?? []) === []) {
-                $geliehen = $this->inheritedRendererPart($declaredBy, $relation->id);
-
-                if ($geliehen !== null) {
-                    $geliehen['geerbt']        = $this->wortAus($settingsWords, 'inherited');
-                    $dieseTeile[$relation->id] = [$geliehen];
-                }
-            }
-
             $sperre = $knotenHier === null ? null : $this->sperreFuer($relation, $values, $ketteHier);
 
             $gezeichneterWert = ! $showValue ? [] : $this->fieldsFor(
@@ -1955,7 +1860,7 @@ final class Rendering implements Presets
                     // stellen, weil sie den Knoten der Seite nicht kennt — genau dafür ist
                     // `$declaredBy` da. **Weggelassen wird die Zeile nicht**
                     // ([D-608](../../../docs/NewConcept/90-decision-log.md)).*
-                    locked: ModelValues::inheritanceBlocked($relation, $declaredBy),
+                    locked: false,
                     configured: $configured,
                     // ⚠️ **The same panel as a node's, drawn here and placed there** — so the attribute
                     // row cannot grow a settings list of its own.
@@ -2174,117 +2079,6 @@ final class Rendering implements Presets
             && ! in_array(trim(html_entity_decode($gewaehlt[2])), $sperre['kandidaten'], true);
     }
 
-    /**
-     * Die Hakenliste der erlaubten Kinder für ein geerbtes Auswahlfeld an einem Knoten (D-697).
-     *
-     * ⚠️ *Das Angebot ist dasselbe, aus dem das Feld wählt ({@see self::offeredUnder()}); die Haken sind
-     * die Liste an `Knoten × Kante`, und eine leere Liste zeichnet alle gesetzt. Ein Kind, das unter
-     * einem erlaubten steht, ist mit erlaubt ([D-287](../../../docs/NewConcept/90-decision-log.md)).*
-     */
-    private function allowedList(Relation $useSite, Relation $liste, int $forNode, string $fieldPrefix, string $formId, SettingShape $shape, ?SimpleType $subject): RenderedSetting
-    {
-        $angebot = $this->offeredUnder([$useSite->toNodeId])[$useSite->toNodeId] ?? [];
-        $erlaubt = $forNode === 0 || $this->model === null ? [] : $this->model->allowedAt($forNode, $useSite);
-        $name    = $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $liste->id . '][]';
-        $markup  = '<span class="taxmod-allowed-list">';
-
-        foreach ($angebot as $kindId => $kindName) {
-            $an = $erlaubt === [] || in_array((int) $kindId, $erlaubt, true);
-            $markup .= '<label class="taxmod-allowed-item">'
-                . '<input type="checkbox" name="' . RenderResult::escape($name) . '" value="' . (int) $kindId . '"'
-                . ($an ? ' checked' : '')
-                . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"')
-                . ($name === '' ? ' disabled' : '') . '> '
-                . RenderResult::escape((string) $kindName) . '</label>';
-        }
-
-        $markup .= '</span>';
-
-        $setting = new ResolvedSetting($liste->name, TypedValue::nothing(), $erlaubt === [] ? 0 : $forNode, $erlaubt !== []);
-
-        return new RenderedSetting($liste->name, $shape, SimpleType::NodeRef, $setting, RenderResult::of($markup), ChoiceRenderer::NAME, $subject);
-    }
-
-    /**
-     * Das Angebot eines Feldes, verengt um die Listen der erlaubten Kinder (D-697, D-221, D-287).
-     *
-     * ⚠️ **Zwei Quellen, beide verengen, keine weitet:** *(1) die Liste am Knoten dieser Seite für das Feld
-     * selbst; (2) **das Geschwister**: trägt ein anderes Feld desselben Satzes einen Knoten als Wert — die
-     * Einheit `Gramm` —, und der erbt ein Feld auf dasselbe Ziel wie dieses — `Präfix` auf `Prefixes` —,
-     * gilt dessen Liste. Das ist der neue Mechanismus aus D-697: ein Feld fragt sein Geschwister. Ein Kind
-     * unter einem erlaubten Knoten bleibt erlaubt.*
-     *
-     * @param  list<Relation>                       $relations
-     * @param  array<int, TypedValue>               $values  Die Werte des Satzes, je Kante.
-     * @param  array<int, array<int, string>>       $wahl    Kanten-Id => (Knoten-Id => Name)
-     * @return array<int, array<int, string>>
-     */
-    private function narrowedByAllowed(array $relations, array $values, array $wahl, int $forNode): array
-    {
-        if ($this->model === null || $wahl === []) {
-            return $wahl;
-        }
-
-        foreach ($relations as $relation) {
-            if (! isset($wahl[$relation->id])) {
-                continue;
-            }
-
-            $listen = [];
-
-            if ($forNode !== 0) {
-                $eigene = $this->model->allowedAt($forNode, $relation);
-
-                if ($eigene !== []) {
-                    $listen[] = $eigene;
-                }
-            }
-
-            foreach ($this->relations === null ? [] : $relations as $geschwister) {
-                $wert = $values[$geschwister->id] ?? null;
-
-                if ($geschwister->id === $relation->id || $wert === null || $wert->reference === null || $wert->referenceSpace !== ReferenceSpace::Node) {
-                    continue;
-                }
-
-                $knoten = $this->nodes->find($wert->reference);
-
-                if ($knoten === null) {
-                    continue;
-                }
-
-                foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)) as $seines) {
-                    if ($seines->toNodeId !== $relation->toNodeId || $seines->isSetting()) {
-                        continue;
-                    }
-
-                    $liste = $this->model->allowedAt($knoten->id, $seines);
-
-                    if ($liste !== []) {
-                        $listen[] = $liste;
-                    }
-                }
-            }
-
-            foreach ($listen as $liste) {
-                $behalten = [];
-
-                foreach ($wahl[$relation->id] as $kindId => $kindName) {
-                    $kind = $this->nodes->find((int) $kindId);
-                    $wege = $kind === null ? [(int) $kindId] : [(int) $kindId, ...$kind->ancestorIds()];
-
-                    if (array_intersect($wege, $liste) !== []) {
-                        $behalten[$kindId] = $kindName;
-                    }
-                }
-
-                $wahl[$relation->id] = $behalten;
-            }
-        }
-
-        return $wahl;
-    }
-
     /** Ein Satz des Randes mit `%s` für einen Namen — oder der Name allein, wo der Rand keinen schickte. */
     private function satzAus(array $woerter, string $schluessel, string $name): string
     {
@@ -2304,7 +2098,13 @@ final class Rendering implements Presets
     {
         $options = [];
 
+        // ⚠️ **Zwei Kantenklassen** ([D-715](../../../docs/NewConcept/90-decision-log.md)): *`setting` wird nicht mehr
+        // angeboten. Die Art lebt nur noch an der geparkten Kante `position` der Wurzel (Modell 2.4 offen).*
         foreach (RelationKind::cases() as $kind) {
+            if ($kind === RelationKind::Setting) {
+                continue;
+            }
+
             $options[$kind->value] = $kind->value;
         }
 
@@ -2416,25 +2216,6 @@ final class Rendering implements Presets
     }
 
     /**
-     * Welche Einstellungsschlüssel an dieser Stelle zutreffen — **aus dem Modell, nicht aus dem Kode**.
-     *
-     * ⚠️ *Die Kette liefert **Namen**; welchen Schlüssel ein Name meint und wie sein Steuerelement
-     * aussieht, bleibt Sache von {@see SettingKey}. Ein Name ohne Schlüssel fällt heraus — der Kern
-     * zeichnet nichts, wofür er keine Gestalt kennt, und erfindet auch keine.*
-     *
-     * ⚠️ **Die beiden Richtungsregeln gelten weiter:** *`multiplicity` nur an einer Kante
-     * ([D-351](../../../docs/NewConcept/90-decision-log.md)), der Renderer nur an einem Knoten
-     * ([D-643](../../../docs/NewConcept/90-decision-log.md)). **`renderer` ist an `Root` erklärt und
-     * käme über die Kette an jeder Verwendungsstelle wieder** — genau das nimmt D-643 zurück.*
-     *
-     * @return list<SettingKey>
-     */
-    private function zutreffendeSchluessel(Node|Relation $node, ?SimpleType $subject): array
-    {
-        return array_keys($this->zutreffendeKanten($node, $subject, $forNode));
-    }
-
-    /**
      * Dieselbe Frage mit den Kanten — und mit der Kette des **Gewählten**.
      *
      * ⚠️ **Zwei Lücken auf einmal, beide gemessen** ([D-682](../../../docs/NewConcept/90-decision-log.md)).
@@ -2460,8 +2241,9 @@ final class Rendering implements Presets
         // ⚠️ **Seit Schritt 4 des Bauplans sagt der Vertrag, was es zu zeichnen gibt** ([D-712](90-decision-log.md),
         // Anforderung 2.4.2): *die Attribute der Knotenklasse, dazu die des gewählten Renderers —
         // keine Kante, kein Schlüssel. `null` als Wert heisst «kein Kantenobjekt», wie bei den Spalten.*
+        $aus = [];
+
         if ($this->resolver !== null) {
-            $aus = [];
 
             if ($istKante) {
                 foreach (EdgeColumn::all() as $spalte) {
@@ -2476,122 +2258,11 @@ final class Rendering implements Presets
             // ⚠️ *Die Hakenliste der erlaubten Kinder ([D-697](90-decision-log.md)) hängt noch an
             // einer Einstellungskante und ihren Sätzen — sie bleibt gezeichnet, bis Schritt 7 die
             // Kanten fallen lässt und `erlaubte_praefixe` (Anforderung 3.6.5) sie ablöst.*
-            if ($istKante && $this->model !== null) {
-                $liste = $this->model->allowedRelationFor($node);
-
-                if ($liste !== null) {
-                    $aus[$liste->name] = $liste;
-                }
-            }
 
             return $aus;
-        }
-
-        if ($this->model === null) {
-            $aus = [];
-
-            foreach (SettingKey::applyingTo($subject, $istKante) as $key) {
-                $aus[$key->value] = null;
-            }
-
-            return $aus;
-        }
-
-        $aus = [];
-
-        // ⚠️ *Sie hängt als Spalte an der Kante und ist nirgends als Kante erklärt — aus dem Modell
-        // käme sie nie zurück, und die zugeklappte Feldzeile fragt genau nach ihr.*
-        // ⚠️ **Und seit Schritt 2 des Bauplans beide Spalten** ([D-713](90-decision-log.md),
-        // [D-714](90-decision-log.md)): *eine Modellkante, die so heisst, wird unten übergangen — sie
-        // wäre die zweite Heimat derselben Tatsache.*
-        if ($istKante) {
-            foreach (EdgeColumn::all() as $spalte) {
-                $aus[$spalte] = null;
-            }
-        }
-
-        $kanten = $this->model->declaredSettingEdges($node);
-
-        // ⚠️ *Der Gewählte kommt **dazu** und ersetzt nicht: was das Kantenziel erklärt, gilt für
-        // jede Wahl — `converter` und `label_role` stehen an `Renderer` selbst und sollen nicht
-        // verschwinden, wenn jemand `plain` wählt.*
-        foreach ($this->chosenChainEdges($node, $forNode) as $name => $kante) {
-            $kanten[$name] ??= $kante;
-        }
-
-        foreach ($kanten as $name => $kante) {
-            if (EdgeColumn::isOne((string) $name)) {
-                continue;
-            }
-
-            $key = SettingKey::tryFrom($name);
-
-            if ($key !== null && $key->isNodeOnly() && $istKante) {
-                continue;
-            }
-
-            $aus[$name] = $kante;
         }
 
         return $aus;
-    }
-
-    /**
-     * Die Einstellungen des Knotens, der an dieser Einstellungskante **gilt**.
-     *
-     * ⚠️ *Ein Teil sagt «hier wurde gewählt», die Auflösung sagt «hier gilt» — und nur die zweite
-     * beantwortet seinen Fall: `Model` hat den Renderer gesetzt, `Kontact` erbt ihn und muss dessen
-     * Einstellungen trotzdem überschreiben können ([D-602](../../../docs/NewConcept/90-decision-log.md)).
-     * **Der Teil dafür entsteht beim ersten Schreiben** ([D-609](../../../docs/NewConcept/90-decision-log.md)),
-     * und {@see DataEntry::putSettingAt()} kann das längst; es fehlte nur das Steuerelement.*
-     *
-     * @return array<string, Relation>
-     */
-    private function chosenChainEdges(Node|Relation $node, int $forNode): array
-    {
-        if (! $node instanceof Relation || ! $node->isSetting() || $this->model === null) {
-            return [];
-        }
-
-        // ⚠️ **Gefragt wird der *Knoten*, nicht die Kante** — *an der Kante steht nichts, an `Model`
-        // steht etwas, und `Kontact` zeichnet damit. Das ist der geerbte Fall, um den es hier geht.*
-        $knoten = $forNode === 0 ? null : $this->nodes->find($forNode);
-
-        if ($knoten === null) {
-            return [];
-        }
-
-        $geltend = $this->withModelValues([], $knoten)[$node->name] ?? null;
-        $ref     = $geltend?->value->reference;
-
-        // ⚠️ **Der Renderer steht als *Name* in der Kette, nicht als Verweis** — *gemessen am
-        // 2026-09-07: `Parts List` löst zu `text='form'` auf, `Dimension` zu `'compact'`, und ein
-        // `reference` gibt es an keiner der beiden. **Ein Leser, der nur nach dem Verweis sieht,
-        // findet nie etwas**, und genau das war die verbleibende Lücke.*
-        //
-        // ⚠️ *Der Weg vom Namen zum Knoten ist der der Registratur — Klasse, dann Knoten
-        // ([D-510](../../../docs/NewConcept/90-decision-log.md)) —, derselbe, den die
-        // Renderer-Wahl schon geht. **Kein Suchen nach dem Anzeigenamen.***
-        if ($ref === null) {
-            $name = $geltend?->value->text ?? '';
-
-            if ($name === '') {
-                return [];
-            }
-
-            $klasse = $this->renderers->classFor($name);
-            $ref    = $klasse === null
-                ? null
-                : ($this->nodes->byImplementations([$klasse])[$klasse] ?? null)?->id;
-        }
-
-        if ($ref === null || $ref === $node->toNodeId) {
-            return [];
-        }
-
-        $gewaehlt = $this->nodes->find($ref);
-
-        return $gewaehlt === null ? [] : $this->model->declaredSettingEdges($gewaehlt);
     }
 
     /**
@@ -2803,20 +2474,13 @@ final class Rendering implements Presets
                 continue;
             }
 
-            $engineKey = SettingKey::tryFrom($key);
-            $shape     = $engineKey?->shape() ?? SettingShape::Words;
-            $type      = $engineKey?->typeFor($subject);
+            $shape = SettingShape::Words;
 
             // ⚠️ **A choice is drawn now, by the choice renderer** — it was one of three rows that
             // came back undrawn, and the honest reason was *a chooser wants a set and none is
             // built*. It is built, so the reason is gone. *The other two remain honest: a free key
             // has no type the engine can know, and a borrowing key on a subject with no type of its
             // own has no shape to be drawn in.*
-            if ($engineKey !== null && $shape->isAChoice()) {
-                $drawn[] = $this->withListMarkup($this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId), $node, $fieldPrefix, $formId);
-
-                continue;
-            }
 
             // A free key, or a borrowed type the subject does not have. Nothing is drawn, and the
             // caller is told which of the two it is by the shape.
@@ -2840,101 +2504,52 @@ final class Rendering implements Presets
                 continue;
             }
 
-            if ($engineKey === null) {
-                $kante = $kanten[$key] ?? null;
+            $kante = $kanten[$key] ?? null;
 
-                // ⚠️ **Die Liste der erlaubten Kinder — eine Hakenliste über dem Angebot des Feldes**
-                // ([D-697](../../../docs/NewConcept/90-decision-log.md)). *Erkannt an der Struktur: eine
-                // Einstellungskante auf `Node reference` mit mehreren Werten, an einer Verwendungsstelle
-                // mit Kindern. Alle an heisst «nichts gespeichert, alle erlaubt»; abwählen verengt.
-                // Gespeichert werden die erlaubten, an der Adresse Knoten × Kante.*
-                if ($kante !== null && $node instanceof Relation && $this->model !== null
-                    && $this->model->allowedRelationFor($node)?->id === $kante->id
-                ) {
-                    $drawn[] = $this->allowedList($node, $kante, $forNode, $fieldPrefix, $formId, $shape, $subject);
+            // ⚠️ **Die Liste der erlaubten Kinder — eine Hakenliste über dem Angebot des Feldes**
+            // ([D-697](../../../docs/NewConcept/90-decision-log.md)). *Erkannt an der Struktur: eine
+            // Einstellungskante auf `Node reference` mit mehreren Werten, an einer Verwendungsstelle
+            // mit Kindern. Alle an heisst «nichts gespeichert, alle erlaubt»; abwählen verengt.
+            // Gespeichert werden die erlaubten, an der Adresse Knoten × Kante.*
 
-                    continue;
+            // ⚠️ **Woher der Wert kommt, sagt die Auflösung am *Knoten*** — *nicht die an der
+            // Kante ([D-684](../../../docs/NewConcept/90-decision-log.md)). Der Aufrufer reicht
+            // die Einstellungen der **Verwendungsstelle** herein, und die melden «hier
+            // gesetzt» für alles, was sie kennen. **Damit fehlte der Pfeil «geerbt»**, und
+            // «zurücksetzen» stand an einer Zeile, an der es nichts zurückzusetzen gibt.*
+            if ($kante !== null && $forNode !== 0) {
+                $knotenHier = $this->nodes->find($forNode);
+
+                if ($knotenHier !== null) {
+                    $setting = $this->withRendererValues($knotenHier)[$key] ?? $setting;
                 }
+            }
 
-                // ⚠️ **Woher der Wert kommt, sagt die Auflösung am *Knoten*** — *nicht die an der
-                // Kante ([D-684](../../../docs/NewConcept/90-decision-log.md)). Der Aufrufer reicht
-                // die Einstellungen der **Verwendungsstelle** herein, und die melden «hier
-                // gesetzt» für alles, was sie kennen. **Damit fehlte der Pfeil «geerbt»**, und
-                // «zurücksetzen» stand an einer Zeile, an der es nichts zurückzusetzen gibt.*
-                if ($kante !== null && $forNode !== 0) {
-                    $knotenHier = $this->nodes->find($forNode);
-
-                    if ($knotenHier !== null) {
-                        $setting = $this->withRendererValues($knotenHier)[$key] ?? $setting;
-                    }
-                }
-
-                $gezeichnet = $kante === null
-                    ? []
-                    : $this->fieldsFor(
-                        [$kante],
-                        [$kante->id => $setting->value],
-                        $purpose,
-                        $fieldPrefix === '' ? '' : $fieldPrefix,
-                        $locale,
-                        $level,
-                        true,
-                        $formId
-                    );
-
-                $feld = $gezeichnet[0] ?? null;
-
-                $drawn[] = new RenderedSetting(
-                    $key,
-                    $shape,
-                    $feld?->type,
-                    $setting,
-                    $feld?->result,
-                    $feld?->rendererName,
-                    $subject
+            $gezeichnet = $kante === null
+                ? []
+                : $this->fieldsFor(
+                    [$kante],
+                    [$kante->id => $setting->value],
+                    $purpose,
+                    $fieldPrefix === '' ? '' : $fieldPrefix,
+                    $locale,
+                    $level,
+                    true,
+                    $formId
                 );
 
-                continue;
-            }
-
-            if ($type === null) {
-                $drawn[] = new RenderedSetting($key, $shape, $type, $setting, null, null, $subject);
-
-                continue;
-            }
-
-            $renderer = $this->renderers->defaultFor($type);
-
-            $context = new RenderContext(
-                $purpose,
-                $setting->value,
-                // ⚠️ **No settings inside a setting.** The chain resolved this value; a renderer
-                // drawing it must not then resolve `hide` or `read_only` against the same node, or
-                // hiding an attribute would hide the control that un-hides it.
-                [],
-                $locale,
-                $level,
-                true,
-                $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $key . ']',
-                $type,
-                // ⚠️ **Ohne dies schickt das Steuerelement nichts ab.** *Ein Auswahlfeld bekam das
-                // Formular längst mitgegeben ({@see self::drawChoice()}); ein Textfeld, ein Schalter
-                // und ein Zahlenfeld bekamen es nie — und jedes von ihnen steht ausserhalb des
-                // Formulars, in das es gehört. **Derselbe stille Mangel, den `Surroundings::$formId`
-                // schon zweimal geheilt hat**, und er fiel erst auf, als
-                // [D-666](90-decision-log.md) die Einstellungen einer Kante bedienbar machte.*
-                new Surroundings(formId: $formId),
-            );
+            $feld = $gezeichnet[0] ?? null;
 
             $drawn[] = new RenderedSetting(
                 $key,
                 $shape,
-                $type,
+                $feld?->type,
                 $setting,
-                $renderer->render($node, $context),
-                $renderer->name(),
+                $feld?->result,
+                $feld?->rendererName,
                 $subject
             );
+
         }
 
         // ⚠️ **Herkunft in Worten, und das Feld für «hier überschreibe ich»**
@@ -2945,7 +2560,7 @@ final class Rendering implements Presets
         // kein Feld.*
         foreach ($drawn as $i => $eine) {
             $traeger = $kanten[$eine->key] ?? null;
-            $frei    = SettingKey::tryFrom($eine->key) === null && $traeger !== null;
+            $frei    = $traeger !== null;
             $name    = $fieldPrefix === ''
                 ? ''
                 : $fieldPrefix . '[' . ($frei ? $traeger->id : $eine->key) . ']';
@@ -3000,39 +2615,6 @@ final class Rendering implements Presets
      * @param  array<int, TypedValue>                             $held     What a record holds, if any.
      * @return array<int, TypedValue>                                       Keyed by relation id.
      */
-    /**
-     * What a **non-persistent** attribute is worth for one particular node.
-     *
-     * ```mermaid
-     * flowchart LR
-     *   K["kilo"] -->|"default at path «exponent»"| V["3"]
-     *   P["Prefixes declares exponent · persistent = false"] --> K
-     * ```
-     *
-     * ⚠️ **This is the first consumer of `settings.path`** ([D-413](90-decision-log.md)) and it is
-     * what makes [D-378](90-decision-log.md) work at last. That decision made a prefix's exponent an
-     * **attribute** rather than a reserved key, so that *whoever hangs under `Prefixes` has one and
-     * nobody else does* — and its value lives as a `default`, because
-     * [D-026](90-decision-log.md) says *at model level there are no values, only defaults*.
-     *
-     * ⚠️ **Measured broken on 2026-08-26 and this is the repair.** The value had been written at the
-     * **empty** path, meaning *kilo's own default*, and the attribute could never see it: a use site
-     * resolves from its **target's** chain, and `kilo` is not in that chain. *So the question has to
-     * be asked of the node, at the attribute's path — which is exactly what the column was added
-     * for.*
-     *
-     * ⚠️ *Nothing is invented when nothing is there. A missing row means this node says nothing about
-     * that attribute, which is a different fact from «zero» and is returned as such.*
-     */
-    public function nonPersistentValue(Node $node, Relation $relation): ?TypedValue
-    {
-        // ⚠️ **Nur noch die neue Stelle** ([D-579](../../../docs/NewConcept/90-decision-log.md)):
-        // *hier stand darunter der Rückfall auf die `settings`-Tabelle. Sie ist gestrichen, und
-        // gemessen am 2026-09-04 trug sie **keine einzige `default`-Zeile** mehr, sondern nur noch
-        // 13 Zeilen mit `read_only` und `label_role`. **Ein Rückfall auf eine Tabelle, die für
-        // diesen Schlüssel nichts hält, ist kein Rückfall, sondern toter Code.***
-        return $this->model?->defaultFor($node, $relation);
-    }
 
     /**
      * Which of a node's records a preview draws from — **real data before a row marked as test data**.
@@ -3120,11 +2702,6 @@ final class Rendering implements Presets
                 continue;
             }
 
-            $default = $resolved[$relation->id][SettingKey::DefaultValue->value] ?? null;
-
-            if ($default !== null && ! $default->value->isNothing()) {
-                $values[$relation->id] = $default->value;
-            }
         }
 
         return $values;
@@ -3334,7 +2911,6 @@ final class Rendering implements Presets
         // [D-602](../../../docs/NewConcept/90-decision-log.md)). Sieben Felder eines Formulars zeigen
         // auf sieben Typen, deren Vorfahren sich fast vollständig überschneiden — je Feld nachzusehen
         // wäre linear in der Zahl der Felder, und genau das misst `einstellungen-check.php`.*
-        $this->model?->preload($relations);
         $this->resolver?->preloadUseSites($relations);
 
         $aus = [];
@@ -3366,14 +2942,7 @@ final class Rendering implements Presets
         // ⚠️ **Seit Schritt 4 des Bauplans aus der Auflösung** ([D-712](90-decision-log.md)):
         // *der gewählte Renderer und seine Attribute kommen aus `settings_value` und dem Vertrag —
         // die Einstellungskanten werden nicht mehr gelesen, solange ein Auflöser da ist.*
-        if ($this->resolver !== null) {
-            return $this->resolver->forNode($subject);
-        }
-
-        return [
-            ...($this->model?->forChosenRenderer($subject) ?? []),
-            ...$this->withModelValues([], $subject),
-        ];
+        return $this->resolver === null ? [] : $this->resolver->forNode($subject);
     }
 
     private function withModelValues(array $resolved, Node|Relation $subject): array
@@ -3386,15 +2955,7 @@ final class Rendering implements Presets
             return [...$resolved, ...$ausDerAufloesung];
         }
 
-        if ($this->model === null) {
-            return $resolved;
-        }
-
-        $ausDemModell = $subject instanceof Node
-            ? $this->model->forNode($subject)
-            : $this->model->forUseSite($subject);
-
-        return [...$resolved, ...$ausDemModell];
+        return $resolved;
     }
 
     private function containerFor(Node $node, Purpose $purpose): Renderer
@@ -3408,16 +2969,13 @@ final class Rendering implements Presets
         // ([D-621](../../../docs/NewConcept/90-decision-log.md)): *«die Kante sagt, was etwas hier
         // ist.» Ein Knoten, den nur Vererbung erreicht — die neunzehn Renderer unter `Renderer` —,
         // bekommt seinen Charakter von der Kante über seinem nächsten Vorfahren.*
-        if (($this->nodes->resolvedFieldTypes([$node->id])[$node->id] ?? null) === FieldType::Setting) {
-            return $this->renderers->byName(TableRenderer::NAME);
-        }
 
         // ⚠️ **Auch aus den Datensätzen, und ohne dies war die Wahl wirkungslos** ([D-529](../../../docs/NewConcept/90-decision-log.md)).
         // *Hier stand nur die Auflösung über die `settings`-Tabelle. Der Renderer liegt seit dem Umzug
         // im Datensatz — also hätte der Eigentümer `table` wählen können und weiter ein Formular
         // gesehen. **Fünfter Fall derselben Sache an einem Tag:** Daten umgezogen, ein Leser
         // stehengeblieben.*
-        $chosen = ($this->withModelValues([], $node)[SettingKey::Renderer->value] ?? null)
+        $chosen = ($this->withModelValues([], $node)['renderer'] ?? null)
             ?->value
             ->text;
 
@@ -3483,9 +3041,9 @@ final class Rendering implements Presets
             // ⚠️ **Das Icon der Klasse, wo der Knoten keines trägt** ([D-723](90-decision-log.md)):
             // *«jede klasse nennt im vertrag ein icon, der baum zeichnet es; ein label-icon am knoten
             // geht vor.» Der Vertrag ist Code und wird einmal gelesen — keine Abfrage je Zeile.*
-            if (($eigene[SettingKey::Icon->value] ?? null)?->value->text === null || ($eigene[SettingKey::Icon->value]?->value->text ?? '') === '') {
-                $eigene[SettingKey::Icon->value] = new ResolvedSetting(
-                    SettingKey::Icon->value,
+            if (($eigene['icon'] ?? null)?->value->text === null || ($eigene['icon']?->value->text ?? '') === '') {
+                $eigene['icon'] = new ResolvedSetting(
+                    'icon',
                     TypedValue::ofText(\Taxmod\Core\Model\NodeClass\Contracts::of($node->klasse)->icon),
                     0,
                     false
@@ -3693,10 +3251,9 @@ final class Rendering implements Presets
 
         // ⚠️ *Die Attribute des gewählten Renderers stehen daneben — `orientation`, `with_label`,
         // `label_role` —, wie {@see ModelValues::forChosenRenderer()} sie vorher lieferte.*
-        $gewaehlt = ($node instanceof Node ? $this->resolver->forNode($knoten) : $this->resolver->forUseSite($node, $knoten))[SettingKey::Renderer->value] ?? null;
-        $klasse   = $gewaehlt === null ? null : $this->renderers->classFor((string) $gewaehlt->value->text);
-
-        if ($klasse !== null) {
+        // ⚠️ *Und die Attribute jedes gewählten Objekts — des Renderers wie des Umrechnungssatzes — unter
+        // ihrem eigenen Namen (Schritt 7 des Bauplans).*
+        foreach ($this->resolver->chosenObjectClasses($knoten, $node instanceof Relation ? $node : null) as $klasse) {
             foreach (\Taxmod\Core\Model\NodeClass\Contracts::ofValueClass($klasse)->attributes as $name => $erklaert) {
                 $aus[$name] ??= $erklaert;
             }
@@ -3775,7 +3332,7 @@ final class Rendering implements Presets
             level: $level,
             editable: true,
             fieldName: $fieldName,
-            surroundings: new Surroundings(options: $options, mayBeNothing: $setting->value->isNothing() || $typ !== \Taxmod\Core\Model\NodeClass\AttributeType::Object || $key !== SettingKey::Renderer->value, formId: $formId),
+            surroundings: new Surroundings(options: $options, mayBeNothing: $setting->value->isNothing() || $typ !== \Taxmod\Core\Model\NodeClass\AttributeType::Object || $key !== 'renderer', formId: $formId),
         ));
 
         if ($erklaert->list && $fieldPrefix !== '') {
@@ -3783,32 +3340,6 @@ final class Rendering implements Presets
         }
 
         return new RenderedSetting($key, $shape, null, $setting, $gezeichnet, $renderer->name(), $subjectType);
-    }
-
-    /**
-     * Eine gezeichnete Wahl, darunter die Glieder ihrer Liste — wenn der Vertrag sie als Liste erklärt.
-     */
-    private function withListMarkup(RenderedSetting $gezeichnet, Node|Relation $node, string $fieldPrefix, string $formId): RenderedSetting
-    {
-        $erklaert = $this->attributesDrawnFor($node)[$gezeichnet->key] ?? null;
-
-        if ($erklaert === null || ! $erklaert->list || $gezeichnet->result === null || $fieldPrefix === '') {
-            return $gezeichnet;
-        }
-
-        $liste = $this->listMarkup($node, $erklaert, $fieldPrefix, $formId);
-
-        return $liste === '' ? $gezeichnet : new RenderedSetting(
-            $gezeichnet->key,
-            $gezeichnet->shape,
-            $gezeichnet->type,
-            $gezeichnet->setting,
-            new RenderResult($gezeichnet->result->markup . $liste, $gezeichnet->result->usedRelations, $gezeichnet->result->condition),
-            $gezeichnet->rendererName,
-            $gezeichnet->subject,
-            $gezeichnet->fromOwnerName,
-            $gezeichnet->overrideName
-        );
     }
 
     /**
@@ -3889,6 +3420,13 @@ final class Rendering implements Presets
             }
 
             return $aus;
+        }
+
+        // ⚠️ *Eine feste Wertklasse — der Umrechnungssatz — wird unter ihrem Kurznamen angeboten.*
+        if (! interface_exists($erklaert->objectClass) && class_exists($erklaert->objectClass)) {
+            $kurz = \Taxmod\Core\Model\NodeClass\Contracts::shortName($erklaert->objectClass);
+
+            return [$kurz => $kurz];
         }
 
         if ($erklaert->objectClass === Converter::class && $this->converters !== null) {
@@ -4019,169 +3557,6 @@ final class Rendering implements Presets
         );
     }
 
-    private function drawChoice(
-        Renderable $subject,
-        SettingKey $key,
-        SettingShape $shape,
-        ResolvedSetting $setting,
-        Purpose $purpose,
-        string $fieldPrefix,
-        string $locale,
-        Level $level,
-        ?SimpleType $subjectType = null,
-        array $choices = [],
-        string $formId = '',
-    ): RenderedSetting {
-        $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
-        $options  = [];
-
-        // ⚠️ **The multiplicity is never nothing** (D-379): the owner — *multiplicity may not be
-        // empty, the default is `0..1`* — so the chooser offers no blank option and an unset setting
-        // arrives already reading the standard. *Every other setting may be left unsaid, which is
-        // what makes settings sparse (D-015); this one has a meaning when unsaid instead.*
-        $mayBeNothing = true;
-
-        // ⚠️ **A set the boundary knows takes precedence over anything worked out here**
-        // ([D-390](90-decision-log.md)). Which **icons** an installation offers is a boundary fact
-        // (`CD-1`) — the core cannot list Dashicons — so the options are handed in and this places
-        // them. *That is the same seam as `Control`: the boundary states, the core composes.*
-        if ($choices[$key->value] ?? null) {
-            $options      = $choices[$key->value];
-            $mayBeNothing = true;
-        }
-
-        // ⚠️ **The converter's set comes from the converter registry, and it may be empty.** *An empty
-        // set draws as a disabled control, which R28–R32 asked for over an empty box that looks
-        // fillable — so this branch does not need to special-case «none registered»: no options is
-        // already the honest state.*
-        //
-        // ⚠️ **And unlike the renderer below, *nothing* stays an outcome.** No converter means the value
-        // is shown as it is stored ([R33b](30-renderer.md#r33b--several-are-eligible-exactly-one-is-in-effect)),
-        // so there is no default to force and `mayBeNothing` is left alone. *Forcing one here would map
-        // every number in the installation the moment a converter was registered.*
-        if ($shape === SettingShape::ARegisteredName && $key === SettingKey::Converter && $this->converters !== null) {
-            $forType = $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject);
-
-            foreach ($this->converters->eligibleFor($forType) as $one) {
-                $options[$one->name()] = $one->name();
-            }
-        }
-
-        if ($shape === SettingShape::ARegisteredName && $key === SettingKey::Renderer) {
-            $eligible = $this->choicesForWhatIsDrawn($subject);
-
-            foreach ($eligible as $one) {
-                $options[$one->name()] = $one->name();
-            }
-
-            // ⚠️ **A renderer is never nothing, and the control must say which one is in force**
-            // ([R33c](30-renderer.md#r33c--automatic-is-a-default-never-a-fact), [D-352](90-decision-log.md)).
-            // The owner: *the renderer must always be set, we agreed that.* What was agreed is the
-            // sharper thing — **it is always *resolved***, because *which one is the default is a fact
-            // the registry holds* — and R33c adds that **an automatic choice must be visible**. The
-            // panel was showing an empty option as selected on `decimal`, `text` and `bool` while
-            // `field`, `field` and `toggle` were in fact drawing them. *An empty control over a
-            // working default is the worst of the three states: it reads as «nothing draws this».*
-            //
-            // ⚠️ *Shown, not written.* Storing the default on every node would put one fact in a
-            // thousand places and break what the type default is **for** — change it centrally and
-            // nothing would follow (D-015: settings are sparse).
-            $mayBeNothing = false;
-
-            // ⚠️ *The `hide` exception that stood here is gone with [D-448](90-decision-log.md). It set
-            // `mayBeNothing` for a hidden subject so the choice could stay empty — and it rested on
-            // [D-399](90-decision-log.md)'s second half, which lived on `hide` being able to hide a
-            // **field**. **A hidden node has a renderer choice like any other**: it is not shown in the
-            // tree, and that says nothing about how it would be drawn.*
-            // ⚠️ **Ein geerbter Renderer, der hier nicht zulässig ist, wird nicht hingenommen**
-            // ([D-687](../../../docs/NewConcept/90-decision-log.md), [D-688](../../../docs/NewConcept/90-decision-log.md)).
-            // *Sein Wort: «ersten zulässigen als Vorgabe aber nur wenn der vererbte nicht mehr
-            // zulässig ist». **Nur der geerbte** — was hier gewählt wurde, bleibt, auch wenn es
-            // ungewöhnlich ist ([D-360](../../../docs/NewConcept/90-decision-log.md)). Die Vorgabe ist
-            // der Typ-Standard, wo er zur Wahl steht, sonst der erste der Liste — und sie ist
-            // **automatisch** markiert, mit dem Namen dessen, was sie ersetzt, damit die Tafel sagen
-            // kann, warum ([D-689](../../../docs/NewConcept/90-decision-log.md)). Nicht geschrieben:
-            // `fromOwnerId` 0 und `setHere` false, wie bei «niemand hat es gesagt».*
-            $geerbterName = (string) ($setting->value->text ?? '');
-
-            if ($setting->isInherited() && $setting->fromOwnerId !== 0 && $geerbterName !== '' && ! isset($options[$geerbterName])) {
-                $typStandard = $this->renderers->defaultFor(
-                    $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject)
-                )->name();
-                $erster = isset($options[$typStandard]) ? $typStandard : (string) (array_key_first($options) ?? '');
-
-                if ($erster !== '') {
-                    $setting = new ResolvedSetting(
-                        $setting->key,
-                        TypedValue::ofText($erster),
-                        0,
-                        false,
-                        true,
-                        $geerbterName
-                    );
-                }
-            }
-
-            if ($setting->value->isNothing()) {
-                $inForce = $this->renderers->defaultFor(
-                    $subject instanceof Relation ? $this->typeAt($subject) : $this->typeOfNode($subject)
-                );
-
-                // ⚠️ **Only where it is genuinely one of the choices.** For a subject with no simple
-                // type the registry answers with the **fallback** — the marker that says *nothing
-                // draws this yet* (R14b) — and that is not an option anybody may pick, so selecting
-                // it would be the control claiming a choice the model does not offer.
-                if (isset($options[$inForce->name()])) {
-                    $setting = new ResolvedSetting(
-                        $setting->key,
-                        TypedValue::ofText($inForce->name()),
-                        0,
-                        false
-                    );
-                } else {
-                    $mayBeNothing = true;
-                }
-            }
-        }
-
-        return new RenderedSetting(
-            $key->value,
-            $shape,
-            null,
-            $setting,
-            $renderer->render(
-                $subject,
-                new RenderContext(
-                    purpose: $purpose,
-                    value: $setting->value,
-                    settings: [],
-                    locale: $locale,
-                    level: $level,
-                    fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $key->value . ']',
-                    // ⚠️ **Greyed and not removed** ([D-399](90-decision-log.md), [R30](30-renderer.md)):
-                    // a control that vanishes when a switch is thrown makes a person hunt for the row
-                    // they were about to use. *A disabled control submits nothing, so keeping it costs
-                    // nothing — which is the same argument the choice renderer already makes for a
-                    // model that cannot be satisfied.*
-                    // ⚠️ **The greying is gone** ([D-448](90-decision-log.md), confirmed by
-                    // [D-457](90-decision-log.md)). *It was `! ($hidden && $key === Renderer)` and it
-                    // implemented [D-399](90-decision-log.md)'s second half — which lived on `hide`
-                    // being able to hide a **field**. Now it hides a node in the tree, and a hidden
-                    // node's renderer choice is as real as any other's.*
-                    // ⚠️ **Und seit heute auch: nur, wo die Kante erklärt ist** ([D-376](90-decision-log.md)).
-                    // *Hier stand `true`, fest. Der Eigentümer hat gefragt, ob die Umsetzung fehlt —
-                    // **sie fehlte**: gemessen an `render with label` war **keine einzige** Auswahl
-                    // gesperrt, auch nicht bei den drei geerbten Zeilen. Die Zeile wusste es (ihre
-                    // Spalte «From» sagte `inherited`) und gab es nicht weiter.*
-                    editable: true,
-                    surroundings: new Surroundings(options: $options, mayBeNothing: $mayBeNothing, formId: $formId)
-                )
-            ),
-            $renderer->name(),
-            $subjectType
-        );
-    }
-
     /**
      * Which renderers a person may choose at this use site — the registry's second job (R14a).
      *
@@ -4283,11 +3658,6 @@ final class Rendering implements Presets
      * **offer**, and reading it as a prohibition forecloses the special case for everybody in
      * order to prevent a mistake nobody has made yet.
      */
-    /** Die Einstellungskante der erlaubten Kinder an dieser Verwendungsstelle — für den Rand (D-697). */
-    public function allowedRelationFor(Relation $useSite): ?Relation
-    {
-        return $this->model?->allowedRelationFor($useSite);
-    }
 
     /**
      * Das ganze Angebot eines Auswahlfeldes, unverengt — damit der Rand «alle gesetzt» erkennen kann.
@@ -4308,14 +3678,13 @@ final class Rendering implements Presets
      */
     public function offerIn(array $relations, array $values, int $forNode = 0): array
     {
-        return $this->narrowedByAllowed($relations, $values, $this->optionsFor($relations), $forNode);
+        return $this->optionsFor($relations);
     }
 
     public function knowsRenderer(string $name): bool
     {
         return $this->renderers->knows($name);
     }
-
 
     /**
      * Welcher Renderer an diesem Knoten **jetzt** gilt.
@@ -4333,43 +3702,6 @@ final class Rendering implements Presets
         $settings = $this->withModelValues([], $node);
 
         return $this->renderers->chosenFor($node, $settings, $purpose, $this->typeOfNode($node))?->name();
-    }
-
-    /**
-     * Der **geerbte** Renderer dieses Knotens als Teil — oder `null`, wenn er selbst wählt.
-     *
-     * ⚠️ *Der Rand fragt hier und nicht bei {@see ModelValues}: die Auflösung des Renderers ist eine
-     * Sache des Kerns, und der Bildschirm hat den Zeichner ohnehin schon (`CD-1`). **Nur an der
-     * Trägerkante `renderer`** — jede andere Einstellung hat keinen geerbten Satz, aus dem geliehen
-     * werden könnte.*
-     *
-     * @return array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array<int, list<array{}>>}|null
-     */
-    public function inheritedRendererPart(int $nodeId, int $carrierRelationId): ?array
-    {
-        if ($this->model === null || $carrierRelationId !== $this->framework->settingRelationId(SettingKey::Renderer)) {
-            return null;
-        }
-
-        $knoten = $this->nodes->find($nodeId);
-
-        return $knoten === null ? null : $this->model->inheritedRendererPart($knoten);
-    }
-
-    /**
-     * Welcher Knoten an dieser Einstellungskante **gilt** — gesetzt oder geerbt, ohne Teil.
-     *
-     * ⚠️ **Der Schreiber braucht dieselbe Auskunft wie der Zeichner**
-     * ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Vorher fragte er nach einem
-     * **Teildatensatz** ({@see self::inheritedRendererPart()}); **den gibt es nicht mehr**, und ohne
-     * ihn nahm er das Ziel der Kante — `Renderer` — als Ort der inneren Kanten. **`with_label` ist
-     * dort nicht erklärt**, also fiel es heraus: der vierte stumme Aussetzer derselben Reise.*
-     */
-    public function appliedSettingNode(int $nodeId, Relation $carrier): ?Node
-    {
-        $ref = $this->chosenNodeOf($carrier, $this->typeAt($carrier), [], $nodeId);
-
-        return $ref === 0 ? null : $this->nodes->find($ref);
     }
 
     /**
@@ -4474,9 +3806,6 @@ final class Rendering implements Presets
                     continue;
                 }
 
-                if ($this->framework->branchOf($ziel) === Branch::Settings) {
-                    $types[$relationId] = SimpleType::NodeRef;
-                }
             }
         }
 
@@ -4647,7 +3976,7 @@ final class Rendering implements Presets
         // «kein Teil» der **Normalfall** und nicht mehr «nichts gewählt» — die Wahl steht als
         // Knotenverweis in der Wertzeile. **Ohne diese Zeile verschwänden `converter`, `with_label`
         // und `orientation` von jeder Seite**, weil sie an einem Teil hingen, den es nicht mehr gibt.*
-        $aufgeloest = $teile === [] ? $this->chosenNodeOf($relation, $type, $values, $forNode) : 0;
+        $aufgeloest = 0;
 
         if (($type !== null && $teile === [] && $aufgeloest === 0) || $tiefe >= self::TIEFSTENS) {
             return null;
@@ -4744,7 +4073,7 @@ final class Rendering implements Presets
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
                 $teil === null
-                    ? ($aufgeloest !== 0 && $forNode !== 0 ? ($this->model?->ownSettingValuesOf($forNode) ?? []) : [])
+                    ? []
                     : $teil['werte'],
                 $purpose,
                 // ⚠️ **Ein geliehener Teil hat keine Satz-Id, also nimmt er die Adresse des Knotens.**
@@ -4842,55 +4171,6 @@ final class Rendering implements Presets
      * @param list<Relation> $innen
      * @return list<Relation>
      */
-    /**
-     * Welcher Knoten an dieser Einstellungskante **gilt** — gesetzt oder geerbt.
-     *
-     * ⚠️ *Ein Teil sagte «hier wurde gewählt»; seit [D-684](../../../docs/NewConcept/90-decision-log.md)
-     * gibt es keinen, und die Auflösung sagt «hier gilt». **Das ist die schärfere Auskunft**: `Model`
-     * hat den Renderer gesetzt, `Kontact` erbt ihn und muss dessen Einstellungen trotzdem
-     * überschreiben können ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
-     *
-     * @param array<int, TypedValue> $values
-     */
-    private function chosenNodeOf(Relation $relation, ?SimpleType $type, array $values, int $forNode): int
-    {
-        if (! $relation->isSetting() || $type !== SimpleType::NodeRef) {
-            return 0;
-        }
-
-        $eigener = ($values[$relation->id] ?? null)?->reference;
-
-        if ($eigener !== null && $eigener !== $relation->toNodeId) {
-            return $eigener;
-        }
-
-        $knoten = $forNode === 0 ? null : $this->nodes->find($forNode);
-
-        if ($knoten === null) {
-            return 0;
-        }
-
-        $geltend = $this->withModelValues([], $knoten)[$relation->name] ?? null;
-        $ref     = $geltend?->value->reference;
-
-        // ⚠️ *Der Renderer steht in der Kette als **Name**, nicht als Verweis — gemessen: `Parts
-        // List` löst zu `text='form'` auf. Der Weg vom Namen zum Knoten ist der der Registratur
-        // ([D-510](../../../docs/NewConcept/90-decision-log.md)), nicht der über einen Anzeigenamen.*
-        if ($ref === null) {
-            $name = $geltend?->value->text ?? '';
-
-            if ($name === '') {
-                return 0;
-            }
-
-            $klasse = $this->renderers->classFor($name);
-            $ref    = $klasse === null
-                ? null
-                : ($this->nodes->byImplementations([$klasse])[$klasse] ?? null)?->id;
-        }
-
-        return $ref === null || $ref === $relation->toNodeId ? 0 : $ref;
-    }
 
     private function fieldsOfChosen(array $teil, int $targetId, array $innen): array
     {
@@ -5169,16 +4449,9 @@ final class Rendering implements Presets
                 }
             }
 
-            $eigene = $this->nodes->ownFieldTypes(array_keys($eigene));
-
             foreach ($offen as $wurzel => $ids) {
                 foreach ($ids as $id) {
                     foreach ($kinder[$id] ?? [] as $kind) {
-                        if (($eigene[$kind->id] ?? null) === FieldType::Setting) {
-                            $weiter[$wurzel][] = $kind->id;
-
-                            continue;
-                        }
 
                         $angebot[$wurzel][$kind->id] = $kind->name;
                     }

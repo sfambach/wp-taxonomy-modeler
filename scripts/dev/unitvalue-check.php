@@ -30,11 +30,9 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -83,7 +81,6 @@ $labels    = new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $data      = new DataEntry(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $relations, $nodes, $framework, new SystemClock());
 $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), new SeededTypeNodes($nodes, $framework), $labels,
-    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
 
 echo "\n== the type is in the tree ==\n";

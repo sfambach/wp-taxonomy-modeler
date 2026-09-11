@@ -35,9 +35,7 @@ use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -210,11 +208,14 @@ $constants = $framework->rootOf(Branch::Constants);
 $underConstants = [];
 foreach ($nodes->childrenOf($constants) as $child) { $underConstants[$child->name] = $child; }
 
+// ⚠️ *Seit Schritt 7 des Bauplans (2026-09-11) tragen die Präfixe und Celsius ihre Umrechnung als Umrechnungssatz im
+// Einstellungsmodell ([D-712](../../docs/NewConcept/90-decision-log.md)) — das Feld `exponent` war eine Einstellungskante
+// und ist mit ihr gefallen; gelesen wird über die Auflösung, nicht über Sätze.*
+$leser = new \Taxmod\Core\Service\SettingsResolver(new \Taxmod\WordPress\Persistence\WpdbSettingsRepository(), $nodes, \Taxmod\Core\Renderer\ShippedRenderers::registry(), \Taxmod\Core\Converter\ShippedConverters::registry());
 check('Prefixes is there', isset($underConstants['Prefixes']));
 check('Base units is there', isset($underConstants['Base units']));
 
 if (isset($underConstants['Prefixes'])) {
-    $prefixModel    = new \Taxmod\Core\Service\ModelValues(new \Taxmod\WordPress\Persistence\WpdbRecordRepository(), $relations, $nodes, $framework);
     $prefixNodes    = $nodes->childrenOf($underConstants['Prefixes']);
 
     // ⚠️ **Hier stand `=== 20`.** *Zwanzig war nie die Zusage, sondern die Laenge der Liste, die die
@@ -231,66 +232,19 @@ if (isset($underConstants['Prefixes'])) {
         count($prefixNodes) . ' von ' . count($ausDerSaat)
     );
 
-
     // ⚠️ **An attribute declared *not persistent*** (D-378). The owner brought the distinction
     // from object orientation — *there are attributes that get persisted and ones that do not; a
     // multiplicator is not persistent* — and that is what justifies an attribute where no record can
     // ever answer. **Its worth is that inheritance says who has an exponent**, which a reserved key
     // offered on every text node in the system cannot.
-    $declaredRelations = $editor->fieldsOf($underConstants['Prefixes']->id);
-    $declared      = array_map(static fn ($e): string => $e->name, $declaredRelations);
-    check('Prefixes declares an exponent attribute', in_array('exponent', $declared, true), implode(', ', $declared));
-
-    $notKept = [];
-    foreach ($declaredRelations as $relation) {
-        // ⚠️ **Seit [D-538](../../docs/NewConcept/90-decision-log.md) sagt es die Art der Kante.**
-        // *Diese Zusage las den Schluessel `persistent` und stuerzte, als seine 148 Zeilen fielen — zu
-        // Recht: **sie ist der Waechter dafuer, dass die Auskunft nicht verlorengeht**, nur nicht dafuer,
-        // woher sie kommt.*
-        $notKept[$relation->name] = $relation->isSetting();
-    }
-
-    check('and declares it non-persistent, so nothing tries to store it', ($notKept['exponent'] ?? false) === true);
-
-    // ⚠️ The value lives as the `default`, which is what a model-level value **is** (D-026) — not a
-    // trick but the definition.
-    // ⚠️ **Read at the exponent attribute's path, not at the node's own** ([D-413](../../docs/NewConcept/90-decision-log.md)).
-    // This used to look at the empty path and pass — and it passed while the mechanism did **not
-    // work**: `kilo`'s `default = 3` sat there saying *kilo defaults to three*, which no attribute
-    // could see. *The check was right that a value should be there and wrong about where, which is why
-    // it stayed green through four days of D-378 not functioning.*
-    $exponentRelation = null;
-
-    foreach ($declaredRelations as $relation) {
-        if ($relation->name === 'exponent') {
-            $exponentRelation = $relation;
-        }
-    }
-
-    $exponents = [];
-
+    $faktoren = [];
     foreach ($prefixNodes as $prefixNode) {
-        // ⚠️ **Seit dem Umzug steht die Vorgabe im Modell und nicht mehr in der Settings-Tabelle**
-        // ([D-529](../../docs/NewConcept/90-decision-log.md)). *Diese Zusage las die alte Stelle und
-        // wurde beim Umzug rot — **zu Recht**, sie ist der Waechter dafuer. Jetzt fragt sie die neue.*
-        $exponents[$prefixNode->id] = $exponentRelation === null
-            ? null
-            : $prefixModel->defaultFor($prefixNode, $exponentRelation)?->int;
+        $faktoren[$prefixNode->name] = ($leser->forNode($prefixNode)['factor'] ?? null)?->value->decimal;
     }
-
-    // ⚠️ *Hier stand die Gegenprobe «keine Zeile mehr am eigenen Default des Knotens». **Die
-    // `settings`-Tabelle ist mit D-579 gestrichen**, es kann keine geben.*
-
-    check('every prefix carries its power of ten as a default', ! in_array(null, $exponents, true));
-    // ⚠️ *Die Invariante, die die gestrichene Zahl `=== 20` ersetzt und keine eigene braucht: **kein
-    // Exponent zweimal**. Zwei Praefixe mit derselben Zehnerpotenz waeren zwei Namen fuer dasselbe,
-    // und die Umrechnung haette die Wahl — genau das faengt die blosse Anzahl nicht.*
-    check('and no two prefixes share an exponent',
-        count(array_unique($exponents)) === count($exponents),
-        count($exponents) . ' Praefixe, ' . count(array_unique($exponents)) . ' verschiedene Exponenten');
-    // ⚠️ The whole reason it is an exponent: decimal(30,10) cannot hold 10^-24 or 10^24.
-    check('and the range reaches both ends', max($exponents) === 24 && min($exponents) === -24,
-        max($exponents) . ' … ' . min($exponents));
+    check('every prefix carries a conversion whose factor is its power of ten (Schritt 7, K3)', ! in_array(null, $faktoren, true), implode(',', array_keys(array_filter($faktoren, static fn ($f): bool => $f === null))));
+    check('and no two prefixes share a factor', count(array_unique($faktoren)) === count($faktoren), count($faktoren) . ' Praefixe, ' . count(array_unique($faktoren)) . ' verschiedene Faktoren');
+    check('and the range reaches both ends: yotta 10^24, yocto 10^-24', ($faktoren['yotta'] ?? '') === '1' . str_repeat('0', 24) && ($faktoren['yocto'] ?? '') === '0.' . str_repeat('0', 23) . '1', ($faktoren['yotta'] ?? '-') . ' … ' . ($faktoren['yocto'] ?? '-'));
+    check('kilo is a constant with the class from K3', ($nodes->find((int) array_search('kilo', array_map(static fn ($n): string => $n->name, array_combine(array_map(static fn ($n): int => $n->id, $prefixNodes), $prefixNodes)), true)))?->klasse === \Taxmod\Core\Model\NodeClass\Constant::class);
     // ⚠️ **The counter-check that keeps the flip honest:** the setting route left twenty
     // `prefix_exponent` rows behind, and a stale row under a retired key answers nothing while
     // cluttering every panel. The key is gone from the enum, so this asserts the data went with it.
@@ -324,25 +278,20 @@ if (isset($underConstants['Base units'])) {
             // wie Exponent behandeln» sind beide jetzt Einstellungskanten mit ihrem Wert im
             // `default`-Satz, und **diese Zusage wurde rot, wie sie soll**: die Daten sind gewandert und
             // der Leser stand noch.*
-            $celsius = (new ModelValues(
-                new WpdbRecordRepository(),
-                $relations,
-                $nodes,
-                $framework
-            ))->forNode($shifted);
+            $celsius = $leser->forNode($shifted);
 
             // D-274's second half: Celsius is Kelvin **shifted**, not scaled.
             check(
                 'and carries an offset rather than only a factor',
-                ($celsius[SettingKey::Offset->value]->value->decimal ?? null) !== null,
-                $celsius[SettingKey::Offset->value]->value->decimal ?? 'none'
+                ($celsius['offset']->value->decimal ?? null) !== null,
+                $celsius['offset']->value->decimal ?? 'none'
             );
 
             // ⚠️ *Und der Faktor daneben — ohne ihn prüfte die Zeile nur die Hälfte des Umzugs.*
             check(
                 'and a factor beside it',
-                ($celsius[SettingKey::Factor->value]->value->decimal ?? null) !== null,
-                $celsius[SettingKey::Factor->value]->value->decimal ?? 'none'
+                ($celsius['factor']->value->decimal ?? null) !== null,
+                $celsius['factor']->value->decimal ?? 'none'
             );
         }
     }

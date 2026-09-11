@@ -172,7 +172,23 @@ standen schon mit Schritt 5.*
   abschalten, die Reihenfolge ändern.
 - **Wächter:** `ueberschreiben-check`.
 
-### Schritt 7 · Das Alte fällt (TASK-093, TASK-096 e, D-718, D-719)
+### Schritt 7 · Das Alte fällt (TASK-093, TASK-096 e, D-718, D-719) — **gebaut 2026-09-11**
+
+*Fassung 49: die Rollen wandern unter `Constants` (Auswahl, Rollen als Konstanten), der Ast `Settings` mit Renderer-,
+Konverter-, Validator- und Orientierungsknoten in den Schatten, die Einstellungskanten samt Sätzen in den Schatten, die
+neun Einstellungsknoten unter Integer/Decimal/Boolean ebenso; die Optionen der Renderer-Knoten fallen. Im Code fallen
+`SettingKey`, `ModelValues`, `FieldType`, `RenderingScaffold`, `CannotWiden`, `Branch::Settings`, die
+Einstellungskanten-Methoden von `FrameworkNodes`, `DataEntry` und `Rendering`, die Einstellungszeilen und Teile der
+Knotenseite; die Kantenart `setting` wird nicht mehr angeboten. Fassung 5 des Einheitengerüsts schreibt die
+Umrechnungssätze (Präfixe 10^n, Celsius) und «mit Präfix» über den `SettingsEditor`; dafür sind Attribute jedes
+gewählten Objekts adressierbar (`umrechnung` → `factor`, `offset`), `wert_decimal` ist `decimal(65,30)`.
+Wächter: `allowed` fällt (D-697 hing an der Einstellungskante; `erlaubte_praefixe` steht im Vertrag, seine Bedienung
+ist offen); 16 weitere umgestellt, jeder mit dem Grund an der Stelle. Kern 537 Tests.*
+
+⚠️ **Was bleibt, und warum:** *die Einstellungskante `position` an der Wurzel mit ihren Sätzen trägt die Stelle geerbter
+Felder am Kind (Modell 2.2); wo das gespeichert wird, ist offen (Modell 2.4: «nicht in Einstellungszeilen»). Bis dahin
+bleiben sie — und mit ihnen die Werte `RelationKind::Setting` und `RecordType::Settings`, sichtbar geparkt, TASK-093
+offen. Kein Sonderweg, keine stille Entscheidung (PR-4); Eingang INF-042.*
 
 - Einstellungskanten und ihre Sätze wandern in den Schatten; Kantenart `setting` fällt, zwei Werte
   bleiben; Satzart `settings` fällt; `SettingKey` fällt; die Knoten unter `Settings` fallen, die

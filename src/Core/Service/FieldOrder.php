@@ -4,7 +4,6 @@ namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RecordRepository;
@@ -53,7 +52,7 @@ final class FieldOrder
     public function positionRelation(): ?Relation
     {
         foreach ($this->relations->fieldRelationsOf([$this->framework->root()->id]) as $kante) {
-            if ($kante->isSetting() && $kante->name === SettingKey::Position->value) {
+            if ($kante->isSetting() && $kante->name === 'position') {
                 return $kante;
             }
         }

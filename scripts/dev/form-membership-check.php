@@ -60,7 +60,6 @@ use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Service\Labels;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -164,7 +163,6 @@ $rendering = new Rendering(
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     null,
-    new ModelValues($records, $relations, $nodes, $framework)
 );
 
 $geruest = new Geruest('__fm');

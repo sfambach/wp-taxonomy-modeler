@@ -65,6 +65,24 @@ final class SettingsEditorTest extends TestCase
     }
 
     #[Test]
+    public function a_conversion_is_an_object_whose_factor_and_offset_are_addressed_by_their_names(): void
+    {
+        $kilo = $this->nodes->add(Node::create(5, 'kilo', '1', 1, 3, Constant::class));
+
+        self::assertTrue($this->editor->put($kilo, 'umrechnung', 'conversion'), 'der Umrechnungssatz heisst wie seine Klasse, klein');
+        self::assertFalse($this->editor->put($kilo, 'umrechnung', 'conversion'), 'derselbe noch einmal');
+        self::assertTrue($this->editor->put($kilo, 'factor', '1000'));
+        self::assertFalse($this->editor->put($kilo, 'offset', '0'), 'die Vorgabe des Satzes schreibt keine Zeile');
+
+        $aufgeloest = $this->resolver->forNode($kilo);
+        self::assertSame('conversion', $aufgeloest['umrechnung']->value->text);
+        self::assertSame('1000', $aufgeloest['factor']->value->decimal);
+        self::assertSame('0', $aufgeloest['offset']->value->decimal, 'die Vorgabe aus der Klasse');
+        self::assertSame([\Taxmod\Core\Model\Setting\Conversion::class], array_values($this->resolver->chosenObjectClasses($kilo)));
+        self::assertSame(1, $this->settings->countObjects());
+    }
+
+    #[Test]
     public function a_list_entry_can_be_switched_off_at_the_node_and_the_row_stays(): void
     {
         $this->editor->put($this->integer, 'renderer', 'spinner');

@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Validator;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Model\Type\SpecialisedTypes;
@@ -61,8 +60,8 @@ final class RangeValidator implements Validator
 
         $aus = [];
 
-        $unten = $settings[SettingKey::Min->value] ?? null;
-        $oben  = $settings[SettingKey::Max->value] ?? null;
+        $unten = $settings['min'] ?? null;
+        $oben  = $settings['max'] ?? null;
 
         // ⚠️ *`comparedTo()` gibt `null` für «nicht vergleichbar» — dann wird **nicht** beanstandet.
         // Eine Grenze, die nicht zum Wert passt, ist ein Modellfehler und keine Regelverletzung des

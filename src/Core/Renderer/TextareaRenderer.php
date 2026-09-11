@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Renderer;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -69,7 +68,7 @@ final class TextareaRenderer extends TypedFieldRenderer
             . $this->createHtmlAttribute(
                 'cols',
                 $this->numberSetting($context, 'cols')
-                    ?? $this->numberSetting($context, SettingKey::DisplaySize->value)
+                    ?? $this->numberSetting($context, 'display_size')
             )
             . $this->createHtmlAttribute('rows', $this->numberSetting($context, 'rows'))
             . '>' . RenderResult::escape($this->outputValue($context)) . '</textarea>';

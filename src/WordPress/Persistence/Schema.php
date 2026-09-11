@@ -2,12 +2,9 @@
 
 namespace Taxmod\WordPress\Persistence;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Renderer\ShippedRenderers;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\WordPress\SystemClock;
-
 
 /**
  * Die Tabellen des Modells (D-083), auf der Aktivierung angelegt und von einer gespeicherten
@@ -444,7 +441,7 @@ final class Schema
      * sieben Wertzeilen, alle am Knoten, alle `0` — es wandert nichts in die Spalte, und nichts geht
      * verloren. `multiplicity` war schon Spalte (Fassung 22); was fällt, ist nur ihr Schlüssel.*
      */
-    public const VERSION = 48;
+    public const VERSION = 49;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -737,7 +734,6 @@ final class Schema
         self::separateSettingsRecords();
 
         // ⚠️ **Fassung 44: die Kante `allowed` an `Prefixes`** ([D-697](../../../docs/NewConcept/90-decision-log.md), TASK-068).
-        self::declareAllowedAtPrefixes();
 
         // ⚠️ **Fassung 45: die Einstellung `position` an der Wurzel — ein Kind ordnet geerbte Felder**
         // ([D-698](../../../docs/NewConcept/90-decision-log.md), TASK-087).
@@ -757,13 +753,13 @@ final class Schema
         // ([D-714](../../../docs/NewConcept/90-decision-log.md), TASK-095). *Nach `dbDelta`, weil die
         // Spalte dastehen muss; nach den Sichten, weil die Kante über `relations_named` gefunden wird.*
         self::moveReadOnlyOntoTheRelation();
+        self::dropTheSettingsBranch();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
         // **Kern** fragt statt eine Spalte zu lesen — {@see \Taxmod\Core\Service\Rendering::choicesForNode()}
         // will Knoten, Kanten und Sätze so vorfinden, wie sie am Ende dastehen, nicht mitten im
         // Umbau.*
-        self::dropRendererChoicesOutsideTheEligibleSet();
     }
 
     /**
@@ -1426,199 +1422,6 @@ final class Schema
                 ['id' => (int) $zeile['id']]
             );
         }
-    }
-
-    /**
-     * Fassung 38: **eine gespeicherte Renderer-Wahl, die ihr Knoten nicht mehr zulässt, fällt.**
-     *
-     * ⚠️ **Der Beschluss ist [D-672](../../../docs/NewConcept/90-decision-log.md)**, und seine
-     * Diagnose steht darin: *«ich glaube das problem ist auch produziert weil wir code ändern ohne
-     * die db zu ändern».* **«Was darf gewählt werden» ist genauso ein Vertrag mit den Daten wie eine
-     * Spalte** — nur dass ihn bis heute niemand versioniert hat. *Vier Fälle an einem Tag: eine
-     * Auswahlliste braucht seit dem 2026-09-06 Kinder, die Aussiebung wurde enger, `node` ist keine
-     * Wahl mehr — jedes Mal war die Regel geändert und der Bestand lag still daneben.*
-     *
-     * ⚠️ **Sie entfernt und sie schreibt nichts hin** (`PR-4`). *Fällt die Zeile, greift der
-     * Rückfall und der Knoten zeichnet wieder. **Welcher Renderer stattdessen gelten soll, ist seine
-     * Entscheidung**, nicht die einer Wanderung — «reparieren, wo es eindeutig ist; stehenlassen und
-     * melden, wo es eine Entscheidung wäre» (D-672).*
-     *
-     * ⚠️ **Regelgetrieben und nicht als Liste von Namen** ([D-613](../../../docs/NewConcept/90-decision-log.md)):
-     * *gefragt wird {@see \Taxmod\Core\Service\Rendering::choicesForNode()} — **dieselbe Menge, die
-     * der Bildschirm anbietet**. Eine abgeschriebene Liste wäre in dem Augenblick falsch, in dem
-     * sich die Aussiebung wieder ändert, und genau darum geht es hier.*
-     *
-     * ⚠️ **Über den Schatten und nicht mit rohem `DELETE`** ([D-536](../../../docs/NewConcept/90-decision-log.md)):
-     * *{@see WpdbRecordRepository::forgetValueById()} legt die Zeile ab, bevor sie fällt, also ist
-     * der Schritt umkehrbar. **Genau daran ist am 2026-09-06 schon einmal etwas verlorengegangen.***
-     *
-     * ⚠️ **Eine Zeile, deren Verweis ins Leere zeigt, bleibt stehen** (`PR-4`). *Sie ist ein anderer
-     * Fehler als eine unzulässige Wahl, und ob sie fallen soll, ist nicht entschieden. Sie wird
-     * **gezählt und gemeldet**, wie {@see self::nameTheLabelSpace()} es mit dem tut, was es sich
-     * nicht zutraut — und der Zähler steht in derselben Option.*
-     *
-     * ⚠️ **Gemeldet wird, was fiel: Knotenname und Renderername** — *ins Änderungsbuch als **eine**
-     * Änderungsgruppe ([D-348](../../../docs/NewConcept/90-decision-log.md)) und in die Option
-     * `taxmod_renderer_choice_drop`, dieselbe Form wie `taxmod_nodepath_shape` in Fassung 35.*
-     *
-     * ⚠️ *Zweimal ausführbar: ein zweiter Lauf findet keine unzulässige Wahl mehr und tut nichts —
-     * **und auf einer Installation, auf der nichts unzulässig ist, tut sie beim ersten Mal nichts.**
-     * Deshalb ist sie an einem gebauten Fall geprüft und nicht am Bestand
-     * (`einstellungen-check.php`).*
-     *
-     * ⚠️ *Öffentlich, damit der Wächter sie an seinem eigenen Fall laufen lassen kann — sie ist die
-     * einzige Wanderung mit einer Bedingung, die auf keiner heutigen Installation zutrifft, also
-     * wäre sie sonst ungeprüft.*
-     *
-     * @return list<string> Was fiel, als `Knotenname → Renderername`.
-     */
-    public static function dropRendererChoicesOutsideTheEligibleSet(): array
-    {
-        global $wpdb;
-
-        $werte  = self::table('relation_records');
-        $saetze = self::table('node_records');
-
-        if (self::tableMissing($werte) || self::tableMissing($saetze)) {
-            return [];
-        }
-
-        $nodes     = new WpdbNodeRepository();
-        $relations = new WpdbRelationRepository();
-        $log       = new WpdbChangelog(new SystemClock());
-        $framework = new SeededFrameworkNodes($nodes, $relations, $log);
-        $records   = new WpdbRecordRepository();
-
-        // ⚠️ *Steht die Kante noch nicht aufgeschrieben, ist die Saat noch nicht gelaufen — dann gibt
-        // es keine Wahl, die unzulässig sein könnte, und still umkehren ist die richtige Antwort.*
-        $kante = $framework->settingRelationId(SettingKey::Renderer);
-
-        if ($kante === 0) {
-            return [];
-        }
-
-        // ⚠️ *Dieselbe Verdrahtung, die `renderer-per-node.php` benutzt — ohne Beschriftungen, weil
-        // die zulässige Menge aus der Registratur kommt und keinen Text braucht.*
-        $zeichnen = new Rendering(
-            $nodes,
-            $framework,
-            ShippedRenderers::registry(),
-            new SeededTypeNodes($nodes, $framework),
-            null,
-            null,
-            new ModelValues($records, $relations, $nodes, $framework),
-            $relations
-        );
-
-        // ⚠️ *Die Adresse ist die, nach der die Auflösung selbst sucht
-        // ({@see \Taxmod\Core\Service\ModelValues::rendererAt()}) — die Id der Einstellungskante.
-        // Eine Wahl an einer **Verwendungsstelle** gibt es nicht
-        // ([D-643](../../../docs/NewConcept/90-decision-log.md)), und diese Wanderung erfindet sie
-        // nicht dadurch, dass sie danach suchte.*
-        //
-        // ⚠️ *Gefragt wird `relation_id` und nicht mehr die Pfadspalte (Fassung 39, TASK-002) —
-        // **dieselbe Zeilenmenge**, weil jede lebende Zeile in ihrem Pfad genau ihre `relation_id`
-        // trug (gemessen am 2026-09-06: null Abweichungen).*
-        /** @var list<array{id: string, value_ref: string, value_ref_kind: string, node_id: string}> $gespeichert */
-        $gespeichert = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT v.id, v.value_ref, v.value_ref_kind, s.node_id
-                   FROM {$werte} v
-                   INNER JOIN {$saetze} s ON s.id = v.node_record_id
-                  WHERE v.relation_id = %d AND v.value_ref IS NOT NULL",
-                $kante
-            ),
-            ARRAY_A
-        ) ?: [];
-
-        $gefallen = [];
-        $ids      = [];
-        $insLeere = 0;
-        $gruppe   = null;
-
-        foreach ($gespeichert as $zeile) {
-            $knoten = $nodes->find((int) $zeile['node_id']);
-
-            if ($knoten === null) {
-                continue;
-            }
-
-            // ⚠️ *Hinter dem Verweis steht entweder ein **Satz** des Renderers oder der Renderknoten
-            // selbst — dieselbe Unterscheidung, die {@see \Taxmod\Core\Service\ModelValues::rendererBehind()}
-            // macht, und aus demselben Grund: Modell und Daten haben getrennte Nummernräume
-            // ([D-164](../../../docs/NewConcept/90-decision-log.md)).*
-            $verweis = (int) $zeile['value_ref'];
-            $satz    = $records->find($verweis);
-            $gewaehlt = $satz !== null ? $nodes->find($satz->nodeId) : $nodes->find($verweis);
-
-            if ($gewaehlt === null) {
-                ++$insLeere;
-
-                continue;
-            }
-
-            $erlaubt = [];
-
-            foreach ($zeichnen->choicesForNode($knoten) as $einer) {
-                $erlaubt[] = $einer->name();
-            }
-
-            if (in_array($gewaehlt->name, $erlaubt, true)) {
-                continue;
-            }
-
-            $version = $records->forgetValueById((int) $zeile['id']);
-
-            $ids[]      = (int) $zeile['id'];
-            $gefallen[] = $knoten->name . ' → ' . $gewaehlt->name;
-
-            // ⚠️ *Eine Gruppe für die ganze Wanderung: sie ist **eine** Handlung an seinen Daten
-            // ([D-348](../../../docs/NewConcept/90-decision-log.md)).*
-            //
-            // ⚠️ *Der Text ist kurz, weil `changelog.what` `varchar(40)` ist — die ausgeschriebene
-            // Fassung war 47 Zeichen lang und **die Zeile fiel still weg**, ohne dass etwas es
-            // meldete. Gemessen und nicht überlegt.*
-            $gruppe = $log->record(
-                (int) $zeile['id'],
-                'record_value',
-                'renderer choice not eligible dropped',
-                $knoten->name . ' → ' . $gewaehlt->name,
-                null,
-                $version,
-                $gruppe
-            );
-        }
-
-        // ⚠️ **Nachgezählt, und die Abweichung ist ein Abbruch und keine Meldung** (`PR-9`). *Steht
-        // eine Zeile noch, hat `$wpdb` still versagt ({@see Query}) — und eine halb gelaufene
-        // Wanderung, die sich als fertig einträgt, ist schlimmer als eine, die gar nicht lief.*
-        if ($ids !== []) {
-            // ⚠️ *Die Ids kommen aus einer `(int)`-Umwandlung und nicht aus der Eingabe — nichts wird
-            // interpoliert, was ein Zeichen sein könnte (`CD-6`).*
-            $in = implode(',', $ids);
-
-            $geblieben = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$werte} WHERE id IN ({$in})");
-
-            $imSchatten = (int) $wpdb->get_var(
-                'SELECT COUNT(DISTINCT id) FROM ' . self::table('relation_records_history') . " WHERE id IN ({$in})"
-            );
-
-            if ($geblieben !== 0 || $imSchatten !== count($ids)) {
-                throw new \RuntimeException(
-                    'Fassung 38: ' . count($ids) . ' unzulaessige Renderer-Wahlen sollten fallen, '
-                    . $geblieben . ' stehen noch, ' . $imSchatten . ' liegen im Schatten. '
-                    . 'Die Fassungsnummer bleibt stehen.'
-                );
-            }
-        }
-
-        update_option(
-            'taxmod_renderer_choice_drop',
-            ['gefallen' => $gefallen, 'ins_leere' => $insLeere, 'geprueft' => count($gespeichert)],
-            false
-        );
-
-        return $gefallen;
     }
 
     /**
@@ -3228,59 +3031,6 @@ final class Schema
     }
 
     /**
-     * Fassung 44: **`Prefixes` erklärt die Kante `allowed`** — die Adresse für die Liste erlaubter Präfixe.
-     *
-     * ⚠️ **[D-697](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«eigentlich sage ich welche
-     * kindknoten von präfix für gramm erlaubt sind» — «ok gefällt mir».* *Erklärt **am Ziel**, nicht an
-     * `Root` («dann gibts die für alle auch wenn ich sie nicht brauche»): eine Einstellungskante, `0..*`,
-     * auf `Node reference`. Sie schaltet nichts und erklärt nichts — sie ist die Adresse für die Liste.*
-     *
-     * ⚠️ *Über den Editor, nicht mit rohem SQL: eine Kante hat eine Beschriftung ([D-580](../../../docs/NewConcept/90-decision-log.md))
-     * und eine Journalzeile, und beides macht der Editor richtig. Zweimal ausführbar: steht sie, wird
-     * nichts angelegt. Fehlt `Prefixes` oder `Node reference`, geschieht nichts — eine leere Saat ist kein Fehler.*
-     */
-    private static function declareAllowedAtPrefixes(): void
-    {
-        global $wpdb;
-
-        $nodes = self::table('nodes');
-
-        if (self::tableMissing($nodes) || self::tableMissing(self::table('relations_named'))) {
-            return;
-        }
-
-        // ⚠️ *Über die Notiz des Gerüsts (D-709); der Name nur als Rückweg für eine Installation, deren
-        // Gerüst noch nicht notiert hat.*
-        $prefixes = (int) (UnitScaffold::nodeId('Prefixes')
-            ?? $wpdb->get_var("SELECT id FROM " . self::table('nodes_named') . " WHERE name = 'Prefixes' ORDER BY id LIMIT 1"));
-        $nodeRef  = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$nodes} WHERE implemented_by = %s ORDER BY id LIMIT 1", \Taxmod\Core\Model\Type\NodeRefType::class));
-
-        if ($prefixes === 0 || $nodeRef === 0) {
-            return;
-        }
-
-        $schonDa = (int) $wpdb->get_var($wpdb->prepare(
-            'SELECT COUNT(*) FROM ' . self::table('relations_named') . " WHERE from_node_id = %d AND name = 'allowed' AND kind = 'setting'",
-            $prefixes
-        ));
-
-        if ($schonDa > 0) {
-            return;
-        }
-
-        $knoten    = new WpdbNodeRepository();
-        $kanten    = new WpdbRelationRepository();
-        $log       = new WpdbChangelog(new SystemClock());
-        $framework = new SeededFrameworkNodes($knoten, $kanten, $log);
-        $editor    = new \Taxmod\Core\Service\ModelEditor($knoten, $kanten, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
-
-        $kante = $editor->addField($prefixes, $nodeRef, 'allowed', \Taxmod\Core\Model\RelationKind::Setting);
-        $editor->setMultiplicity($prefixes, $kante->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
-
-        update_option('taxmod_fassung44_shape', ['allowed' => $kante->id, 'an' => $prefixes], false);
-    }
-
-    /**
      * Fassung 45: die Einstellungskante `position` an der Wurzel, `0..1` auf `Integer`.
      *
      * ⚠️ **[D-698](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«würde sagen kind darf
@@ -3312,7 +3062,7 @@ final class Schema
         $schonDa = (int) $wpdb->get_var($wpdb->prepare(
             'SELECT COUNT(*) FROM ' . self::table('relations_named') . " WHERE from_node_id = %d AND name = %s AND kind = 'setting'",
             $wurzel,
-            \Taxmod\Core\Model\SettingKey::Position->value
+            'position'
         ));
 
         if ($schonDa > 0) {
@@ -3321,7 +3071,7 @@ final class Schema
 
         $editor = new \Taxmod\Core\Service\ModelEditor($knoten, $kanten, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
 
-        $kante = $editor->addField($wurzel, $integer, \Taxmod\Core\Model\SettingKey::Position->value, \Taxmod\Core\Model\RelationKind::Setting);
+        $kante = $editor->addField($wurzel, $integer, 'position', \Taxmod\Core\Model\RelationKind::Setting);
         $editor->setMultiplicity($wurzel, $kante->id, \Taxmod\Core\Model\Multiplicity::ZeroToOne);
 
         update_option('taxmod_fassung45_shape', ['position' => $kante->id, 'an' => $wurzel], false);
@@ -3496,6 +3246,163 @@ final class Schema
         Shadow::forgetColumnPlan();
 
         update_option('taxmod_fassung48_shape', ['spalte_gesetzt' => $gesetzt, 'kanten_geparkt' => $geparkt], false);
+    }
+
+    /**
+     * Fassung 49: **das Alte fällt** — Schritt 7 des Bauplans ([D-712](../../../docs/NewConcept/90-decision-log.md),
+     * [D-718](../../../docs/NewConcept/90-decision-log.md), [D-719](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   R["Label roles"] -->|"wandern"| C["Constants"]
+     *   S["Settings: Renderer, Converter, Validator, Orientation"] -->|"Schatten"| X["nodes_history"]
+     *   E["Einstellungskanten (ausser position an der Wurzel)"] -->|"Schatten"| Y["relations_history"]
+     *   T["integer_min, display size, … unter den Typen"] -->|"Schatten"| X
+     * ```
+     *
+     * ⚠️ **Sein Wort:** *«knoten und felder können weg»* (D-718), *«K3a ja, fallen»* und *«K3c unter
+     * constants»* (D-719). *Alles wandert in den Schatten nach der Regel für alles (Anforderung 4.6);
+     * kein Sonderweg. Die Werte der alten Einstellungskanten werden **nicht** übertragen — «wir beginnen
+     * leer dann können wir schön testen» ([D-717](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Was bleibt, und warum:** *die Einstellungskante `position` an der Wurzel mit ihren Sätzen —
+     * sie trägt die Stelle geerbter Felder am Kind (Modell 2.2), und wo das künftig gespeichert wird, ist
+     * offen (Modell 2.4: «nicht in Einstellungszeilen»). Bis dahin bleibt sie, sichtbar geparkt, und mit
+     * ihr die Kantenart `setting` und die Satzart `settings` (TASK-093 bleibt offen).*
+     */
+    private static function dropTheSettingsBranch(): void
+    {
+        global $wpdb;
+
+        $nodes     = self::table('nodes');
+        $relations = self::table('relations');
+
+        if (self::tableMissing($nodes) || self::tableMissing($relations) || self::tableMissing(self::table('settings_value'))) {
+            return;
+        }
+
+        if (get_option('taxmod_fassung49_shape', null) !== null) {
+            return;
+        }
+
+        $log       = new WpdbChangelog(new SystemClock());
+        $knoten    = new WpdbNodeRepository();
+        $kanten    = new WpdbRelationRepository();
+        $records   = new WpdbRecordRepository();
+        $framework = new SeededFrameworkNodes($knoten, $kanten, $log);
+        $editor    = new \Taxmod\Core\Service\ModelEditor($knoten, $kanten, $framework, $log, new WpdbLabelRepository(), $records);
+        $zaehlung  = ['rollen' => 0, 'typknoten' => 0, 'kanten' => 0, 'ast' => 0, 'saetze' => 0];
+
+        // 1 · Die Rollen wandern unter Constants — bevor der Ast fällt, in dem sie wohnten.
+        $constants = $framework->rootOf(\Taxmod\Core\Model\Branch::Constants);
+        $rollen    = $knoten->find((int) get_option('taxmod_roles_id', 0));
+
+        if ($rollen !== null && $rollen->parentNodeId !== $constants->id) {
+            $editor->move($rollen->id, $constants->id);
+            $zaehlung['rollen'] = 1;
+        }
+
+        // 1b · Und sie bekommen die Klasse aus K3: der Behälter eine Auswahl, jede Rolle eine Konstante
+        //      (D-719) — Ziele von `label_role`, das der Verweis-Renderer als Verweis auf eine Konstante erklärt.
+        if ($rollen !== null) {
+            $klassen = [$rollen->id => \Taxmod\Core\Model\NodeClass\Choice::class];
+
+            foreach ($knoten->childrenOf($rollen) as $rolle) {
+                $klassen[$rolle->id] = \Taxmod\Core\Model\NodeClass\Constant::class;
+            }
+
+            foreach ($klassen as $id => $klasse) {
+                if ($knoten->byId($id)->klasse === $klasse) {
+                    continue;
+                }
+
+                Shadow::keepOne('nodes', $id);
+                $wpdb->update($nodes, ['klasse' => $klasse], ['id' => $id], ['%s'], ['%d']);
+                $zaehlung['rollen']++;
+            }
+        }
+
+        // 2 · Die Einstellungsknoten unter den Typen (K3a) — die neun, die die Saat unter Integer, Decimal
+        //     und Boolean angelegt hat. *Sein Wort: «K3a ja, fallen». Gemessen am 2026-09-11: keine Kante
+        //     zeigt auf sie, sie tragen nur ihren default-Satz — also nennt die Wanderung sie, wie die Saat
+        //     sie nannte, und nur unter diesen drei Typknoten.*
+        $dataTypes = $framework->rootOf(\Taxmod\Core\Model\Branch::DataTypes);
+        $typknoten = [];
+        $dreiTypen = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+            "SELECT id FROM {$nodes} WHERE parent_node_id = %d AND implemented_by IN (%s, %s, %s)",
+            $dataTypes->id,
+            \Taxmod\Core\Model\Type\IntType::class,
+            \Taxmod\Core\Model\Type\DecimalType::class,
+            \Taxmod\Core\Model\Type\BoolType::class
+        )) ?: []);
+
+        if ($dreiTypen !== []) {
+            $namen     = ['integer_min', 'integer_max', 'integer_step', 'display size', 'decimal_min', 'decimal_max', 'decimal_step', 'Read Only', 'With Label'];
+            $plaetze   = implode(',', array_fill(0, count($dreiTypen), '%d'));
+            $namenPl   = implode(',', array_fill(0, count($namen), '%s'));
+            $typknoten = array_map(intval(...), $wpdb->get_col($wpdb->prepare(
+                'SELECT id FROM ' . self::table('nodes_named') . " WHERE parent_node_id IN ({$plaetze}) AND name IN ({$namenPl})",
+                ...[...$dreiTypen, ...$namen]
+            )) ?: []);
+        }
+
+        // 3 · Die Einstellungskanten — alle bis auf `position` an der Wurzel.
+        $position = (new \Taxmod\Core\Service\FieldOrder($records, $kanten, $knoten, $framework))->positionRelation()?->id ?? 0;
+
+        foreach ($wpdb->get_col("SELECT id FROM {$relations} WHERE kind = 'setting'") ?: [] as $kanteId) {
+            $kanteId = (int) $kanteId;
+
+            if ($kanteId === $position) {
+                continue;
+            }
+
+            Shadow::keep('relation_records', 'relation_id = %d', [$kanteId], true);
+            $wpdb->delete(self::table('relation_records'), ['relation_id' => $kanteId], ['%d']);
+            Shadow::keepOne('relations', $kanteId, true);
+            $wpdb->delete($relations, ['id' => $kanteId], ['%d']);
+            $zaehlung['kanten']++;
+        }
+
+        // 4 · Der Ast `Settings` fällt — mit allem, was darin wohnt.
+        $ast = $knoten->find((int) get_option('taxmod_branch_settings_id', 0));
+
+        if ($ast !== null) {
+            if ($ast->parentNodeId !== $framework->trash()->id) {
+                $editor->moveToTrash($ast->id);
+            }
+
+            $zaehlung['ast'] = (int) ($editor->clearTrash([$ast->id])['nodes'] ?? 0);
+        }
+
+        // 5 · Die Einstellungsknoten unter den Typen fallen.
+        foreach ($typknoten as $id) {
+            if ($knoten->find($id) !== null) {
+                $editor->moveToTrash($id);
+            }
+        }
+
+        if ($typknoten !== []) {
+            $editor->clearTrash($typknoten);
+            $zaehlung['typknoten'] = count($typknoten);
+        }
+
+        // 6 · Einstellungssätze, die nichts mehr tragen, wandern in den Schatten.
+        $saetze = self::table('node_records');
+        $werte  = self::table('relation_records');
+
+        foreach ($wpdb->get_col("SELECT r.id FROM {$saetze} r WHERE r.record_type = 'settings' AND NOT EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = r.id)") ?: [] as $satzId) {
+            $records->forgetRecord((int) $satzId);
+            $zaehlung['saetze']++;
+        }
+
+        // 7 · Die Zeiger auf das Gefallene.
+        delete_option('taxmod_branch_settings_id');
+        delete_option('taxmod_rendering_scaffold');
+        self::forgetOrphanLabels();
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE 'taxmod\\_render\\_%' OR option_name LIKE 'taxmod\\_setting\\_edge\\_%' OR option_name LIKE 'taxmod\\_setting\\_value\\_edge\\_%'");
+
+        Shadow::forgetColumnPlan();
+        update_option('taxmod_fassung49_shape', $zaehlung, false);
     }
 
     private static function constrainSettingsValues(): void
@@ -4721,7 +4628,7 @@ final class Schema
                 position int(10) unsigned NOT NULL DEFAULT 0,
                 aktiv tinyint(1) unsigned NOT NULL DEFAULT 1,
                 wert_int bigint(20) DEFAULT NULL,
-                wert_decimal decimal(30,10) DEFAULT NULL,
+                wert_decimal decimal(65,30) DEFAULT NULL,
                 wert_text text DEFAULT NULL,
                 wert_knoten_id bigint(20) unsigned DEFAULT NULL,
                 wert_settings_object_id bigint(20) unsigned DEFAULT NULL,
@@ -4754,7 +4661,7 @@ final class Schema
                 position int(10) unsigned NOT NULL DEFAULT 0,
                 aktiv tinyint(1) unsigned NOT NULL DEFAULT 1,
                 wert_int bigint(20) DEFAULT NULL,
-                wert_decimal decimal(30,10) DEFAULT NULL,
+                wert_decimal decimal(65,30) DEFAULT NULL,
                 wert_text text DEFAULT NULL,
                 wert_knoten_id bigint(20) unsigned DEFAULT NULL,
                 wert_settings_object_id bigint(20) unsigned DEFAULT NULL,

@@ -59,8 +59,8 @@ final class InheritedSettingLockTest extends TestCase
         $compact = $registry->byName('compact');
         self::assertFalse($registry->permits($compact, SimpleType::Int));
 
-        $geerbt = [SettingKey::Renderer->value => new ResolvedSetting(SettingKey::Renderer->value, TypedValue::ofText('compact'), 3, false)];
-        $eigen  = [SettingKey::Renderer->value => new ResolvedSetting(SettingKey::Renderer->value, TypedValue::ofText('compact'), 1, true)];
+        $geerbt = ['renderer' => new ResolvedSetting('renderer', TypedValue::ofText('compact'), 3, false)];
+        $eigen  = ['renderer' => new ResolvedSetting('renderer', TypedValue::ofText('compact'), 1, true)];
 
         self::assertSame(
             $registry->defaultFor(SimpleType::Int)->name(),

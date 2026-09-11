@@ -273,34 +273,6 @@ final class Geruest
     }
 
     /**
-     * Ein Einstellungsknoten und ein Traeger, der ihn benutzt.
-     *
-     * ⚠️ *«Einstellung» ist keine Wahl, sondern folgt aus dem Ast — die Oberflaeche sagt es dem
-     * Benutzer selbst: «Kind is not a choice, it follows from where the target sits in the tree».
-     * Also wird der Knoten unter `Settings` gebaut, und der Rest ergibt sich.*
-     *
-     * @return array{einstellung:int, traeger:int, feld:string}
-     */
-    public function einstellung(string $name, string $feld): array
-    {
-        $einstellung = $this->editor->createNode($this->vorsatz . ' ' . $name, $this->testast(Branch::Settings));
-        $this->gebaut[] = $einstellung->id;
-
-        // ⚠️ *Hier stand ein Markieren des Knotens. Es ist mit `nodes.field_type` gefallen
-        // (D-621) -- **die Kante unten sagt es jetzt**, und sie sagte es schon vorher auch.*
-        $traeger = $this->editor->createNode($this->vorsatz . ' Nutzer', $this->testast(Branch::Model));
-        $this->gebaut[] = $traeger->id;
-
-        $kante = $this->editor->addField($traeger->id, $einstellung->id, $feld);
-
-        // Die Kante wird ausdruecklich zur Einstellungskante -- der Ast allein reicht nicht,
-        // gemessen kam sonst «aggregation» heraus.
-        $this->editor->markAsSetting($traeger->id, $kante->id, true);
-
-        return ['einstellung' => $einstellung->id, 'traeger' => $traeger->id, 'feld' => $feld];
-    }
-
-    /**
      * Ein Knoten aus dem Rahmenwerk, über seinen Ast gefunden.
      *
      * ⚠️ *Auch hier nicht blind über den Namen: gesucht wird **im Ast**, damit ein gleichnamiger

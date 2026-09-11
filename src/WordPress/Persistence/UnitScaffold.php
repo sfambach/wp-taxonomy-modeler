@@ -78,7 +78,7 @@ final class UnitScaffold
     }
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     /**
      * Jeder Knoten des Gerüsts notiert seine Id in einer Option — wie die Behälter der Renderer.
@@ -191,6 +191,9 @@ final class UnitScaffold
         private readonly Labels $labels,
         /** ⚠️ *So a member's type is found by id and not by the node's name ([D-510](../../../docs/NewConcept/90-decision-log.md)).* */
         private readonly TypeNodes $typeNodes,
+        // ⚠️ *Fassung 5 (Schritt 7 des Bauplans): das Gerüst schreibt Umrechnungssätze und «mit Präfix» in das
+        // Einstellungsmodell ([D-712](../../../docs/NewConcept/90-decision-log.md)) — über denselben Schreiber wie die Maske.*
+        private readonly ?\Taxmod\Core\Service\SettingsEditor $settings = null,
     ) {
     }
 
@@ -248,6 +251,8 @@ final class UnitScaffold
 
         foreach (self::PREFIXES as $name => $power) {
             $node = $this->ensure($prefixes, $name, $created);
+            // ⚠️ *Sein Wort: «yotta … yocto — Konstante, je mit einem Umrechnungssatz (factor)» (K3, D-719).*
+            $this->umrechnung($node, self::factorOf($power), '0');
 
             // ⚠️ *Hier stand der Exponent des Praefixes als `default` in der `settings`-Tabelle, an
             // der Adresse der Kante `exponent` ([D-413](../../../docs/NewConcept/90-decision-log.md)).
@@ -262,7 +267,8 @@ final class UnitScaffold
         $withPrefix = $this->ensure($base, 'With prefix', $created);
 
         foreach (self::WITH_PREFIX as $name) {
-            $this->ensure($withPrefix, $name, $created);
+            // ⚠️ *«mit/ohne präfix ist eine eigenschaft je blatt» (K2) — hier als Attribut des Einheitswerts.*
+            $this->stelle($this->ensure($withPrefix, $name, $created), 'mit_praefix', '1');
         }
 
         $withoutPrefix = $this->ensure($base, 'Without prefix', $created);
@@ -272,7 +278,11 @@ final class UnitScaffold
             // [D-579](../../../docs/NewConcept/90-decision-log.md) gestrichen; gemessen trug sie
             // zuletzt weder das eine noch das andere — [D-529](../../../docs/NewConcept/90-decision-log.md)
             // hat beide als **Felder am Knoten** fortgeschrieben.*
-            $this->ensure($withoutPrefix, $name, $created);
+            $einheit = $this->ensure($withoutPrefix, $name, $created);
+
+            if ($conversion !== []) {
+                $this->umrechnung($einheit, $conversion['factor'], $conversion['offset']);
+            }
         }
 
         $this->unitValue($prefixes, $base, $created);
@@ -524,6 +534,29 @@ final class UnitScaffold
      * zurückfällt, steht `Ω` weiterhin genau einmal da. Wo ein Symbol wirklich abweicht — `St` gegen
      * `pc` —, kommt eine Zeile dieser Sprache daneben und gewinnt.*
      */
+    /** Ein Umrechnungssatz am Knoten — sein Wort: «umrechnungsatz hört sich gut an» (D-712). */
+    private function umrechnung(Node $node, string $factor, string $offset): void
+    {
+        if ($this->settings === null) {
+            return;
+        }
+
+        $this->settings->put($node, 'umrechnung', 'conversion');
+        $this->settings->put($node, 'factor', $factor);
+        $this->settings->put($node, 'offset', $offset);
+    }
+
+    private function stelle(Node $node, string $attribut, string $wert): void
+    {
+        $this->settings?->put($node, $attribut, $wert);
+    }
+
+    /** Zehn hoch n als Dezimalzahl in Zeichen: `1000` für 3, `0.001` für -3. */
+    public static function factorOf(int $power): string
+    {
+        return $power >= 0 ? '1' . str_repeat('0', $power) : '0.' . str_repeat('0', -$power - 1) . '1';
+    }
+
     private function label(Node $node): void
     {
         $symbol = self::SYMBOLS[$node->name] ?? null;

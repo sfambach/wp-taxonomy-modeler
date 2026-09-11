@@ -53,7 +53,6 @@ require $root . '/wp-load.php';
 require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -260,16 +259,6 @@ check('jede Adresse trifft eine Kante, oder sie ist die Null des Knotens', $insL
 // ⚠️ **Und der Kern schreibt wirklich an den Satz der Stelle** — sonst waere `node_records.relation_id`
 // ein Denkmal. *Gesucht im Quelltext **ohne Kommentare**.*
 $eintrag = ohneKommentare(dirname(__DIR__, 2) . '/src/Core/Service/DataEntry.php');
-
-check(
-    'putSettingAtUseSite schreibt in den Satz der Verwendungsstelle',
-    preg_match('/\$satzId\s*=\s*\$this->recordOfUseSite\(\$stelle\)/', $eintrag) === 1
-);
-
-check(
-    'clearSettingAtUseSite nimmt aus demselben Satz heraus',
-    preg_match('/ofRelation\(\$stelle->id\)/', $eintrag) === 1
-);
 
 check(
     'und niemand baut mehr Verwendungsstelle . Einstellungskante',
@@ -583,62 +572,6 @@ echo "\n== field_type: der Waehler unter `Renderer` bietet wieder Moeglichkeiten
 // ([D-540](../../docs/NewConcept/90-decision-log.md)). **Alle neunzehn Knoten unter `Renderer` trugen
 // die Marke**, die Auswahl sah durch jeden hindurch und bot **null** Moeglichkeiten an. Kaeme die
 // Marke auf irgendeinem Weg zurueck, stuende hier wieder null.*
-$knotenSpeicher = new WpdbNodeRepository();
-// ⚠️ *Über die notierte Id des Behälters, nicht über den Namen (TASK-049, [D-613](../../docs/NewConcept/90-decision-log.md)).*
-$rendererId     = (int) get_option(\Taxmod\WordPress\Persistence\RenderingScaffold::optionForContainer('Renderer'), 0);
-
-if ($rendererId === 0) {
-    check('ein Knoten `Renderer` steht im Modell', false);
-} else {
-    // Derselbe Lauf wie {@see \Taxmod\Core\Service\Rendering::offeredUnder()}: durch markierte
-    // Knoten hindurch, unmarkierte sind die Moeglichkeiten.
-    $moeglich = 0;
-    $offen    = [$rendererId];
-
-    for ($stufe = 0; $stufe < 3 && $offen !== []; $stufe++) {
-        $alle = [];
-
-        foreach ($knotenSpeicher->visibleChildrenOf($offen) as $reihe) {
-            foreach ($reihe as $kind) {
-                $alle[$kind->id] = true;
-            }
-        }
-
-        $eigene = $knotenSpeicher->ownFieldTypes(array_keys($alle));
-        $weiter = [];
-
-        foreach ($eigene as $id => $sorte) {
-            if ($sorte === FieldType::Setting) {
-                $weiter[] = $id;
-
-                continue;
-            }
-
-            ++$moeglich;
-        }
-
-        $offen = $weiter;
-    }
-
-    check(
-        'die Renderer-Zeile bietet Moeglichkeiten an, nicht null',
-        $moeglich > 0,
-        $moeglich . ' Moeglichkeiten'
-    );
-
-    // ⚠️ *Kein Knoten unter `Renderer` traegt noch eine eigene Sorte — auf keinen zeigt eine Kante.
-    // **Das ist die Berichtigung aus [D-621](../../docs/NewConcept/90-decision-log.md)**: «sie sind
-    // Werte, die man in einer Einstellung waehlt, keine Einstellungen».*
-    $unter = array_values(array_diff($knotenSpeicher->subtreeIds($rendererId), [$rendererId]));
-
-    $markiert = count(array_filter($knotenSpeicher->ownFieldTypes($unter)));
-
-    check(
-        'und keiner der Renderer traegt noch eine eigene Sorte',
-        $markiert === 0,
-        $markiert . ' von ' . count($unter)
-    );
-}
 
 echo "\n" . ($bad === 0 ? "Alles gruen: $ok\n" : "$bad fehlgeschlagen, $ok in Ordnung\n");
 

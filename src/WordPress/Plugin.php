@@ -9,7 +9,6 @@ use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\CleanupScreen;
@@ -17,7 +16,6 @@ use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
-use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Residue;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeedImage;
@@ -118,7 +116,6 @@ final class Plugin
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
         $this->compositionScaffold()->importOnce();
-        $this->renderingScaffold()->importOnce();
     }
 
     public function activate(): void
@@ -156,7 +153,6 @@ final class Plugin
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
         $this->compositionScaffold()->importOnce();
-        $this->renderingScaffold()->importOnce();
     }
 
     public function registerMenu(): void
@@ -386,7 +382,23 @@ final class Plugin
             // ⚠️ *Mit Changelog und Knoten-Repository, damit eine Labelaenderung in der Geschichte
             // steht ([D-489]) und `owner_kind` nicht geraten wird.*
             new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale(), $this->changelog()),
-            $this->typeNodes()
+            $this->typeNodes(),
+            $this->settingsEditor()
+        );
+    }
+
+    private ?\Taxmod\Core\Service\SettingsEditor $settingsEditor = null;
+
+    /** Der eine Schreiber in das Einstellungsmodell — für die Maske wie für das Einheitengerüst. */
+    private function settingsEditor(): \Taxmod\Core\Service\SettingsEditor
+    {
+        return $this->settingsEditor ??= new \Taxmod\Core\Service\SettingsEditor(
+            new WpdbSettingsRepository(),
+            new WpdbNodeRepository(),
+            $this->settingsResolver(),
+            ShippedRenderers::registry(),
+            ShippedConverters::registry(),
+            $this->changelog()
         );
     }
 
@@ -403,29 +415,6 @@ final class Plugin
             $this->editor(),
             $this->frameworkNodes(),
             $this->typeNodes()
-        );
-    }
-
-    /**
-     * Renderer, Konverter und Validatoren als Knoten unter `Constants` ([D-511](../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ **Nach den anderen Saaten, weil sie unter `Constants` hängen** — und `Constants` ist ein
-     * Zweig, den `frameworkNodes()->seed()` legt. *Die Reihenfolge ist dieselbe Abhängigkeit wie
-     * bei `compositionScaffold()` hinter `unitScaffold()`.*
-     *
-     * ⚠️ *Sie bekommt die **fertigen Registries** und keine eigene Namensliste: was der Code
-     * kennt, ist genau das, was gesät wird.*
-     */
-    public function renderingScaffold(): RenderingScaffold
-    {
-        return new RenderingScaffold(
-            $this->editor(),
-            $this->frameworkNodes(),
-            ShippedRenderers::registry(),
-            ShippedConverters::registry(),
-            // ⚠️ *Seit dem 2026-08-31 gibt es zwei Validatoren, also liegen sie auch als Knoten —
-            // dieselbe Naht wie bei Renderern und Konvertern.*
-            ShippedValidators::registry()
         );
     }
 
@@ -559,14 +548,7 @@ final class Plugin
             // ⚠️ **Schritt 5 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
             // Maske schreibt Attribute in `settings_value` — mit derselben Auflösung, die der Zeichner
             // liest, damit «nur Gesetztes» gegen dasselbe Bild geprüft wird.*
-            new \Taxmod\Core\Service\SettingsEditor(
-                new WpdbSettingsRepository(),
-                new WpdbNodeRepository(),
-                $this->settingsResolver(),
-                ShippedRenderers::registry(),
-                ShippedConverters::registry(),
-                $this->changelog()
-            )
+            $this->settingsEditor()
         );
     }
 
@@ -618,7 +600,6 @@ final class Plugin
             // ersten zusammengesetzten Feld — `Kontakt.Address` zeigte ein Kästchen, `Adresse` hat
             // fünf Felder.*
             relations: new WpdbRelationRepository(),
-            model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $this->frameworkNodes()),
             // ⚠️ **Die einzige Stelle, an der wegen `user_ref` nach WordPress gefragt wird**
             // ([D-649](../../docs/NewConcept/90-decision-log.md), `CD-1`): *der Name zum Zeichnen und
             // die Id des Angemeldeten zum Anlegen. **Der Kern nimmt beides entgegen und beschafft

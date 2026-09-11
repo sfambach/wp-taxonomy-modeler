@@ -2,8 +2,6 @@
 
 namespace Taxmod\Core\Exception;
 
-use Taxmod\Core\Model\SettingKey;
-
 /**
  * A setting written where it has nothing to say.
  *
@@ -19,13 +17,6 @@ use Taxmod\Core\Model\SettingKey;
  */
 final class SettingDoesNotApply extends DomainError
 {
-    public static function toANode(SettingKey $key): self
-    {
-        return new self(sprintf(
-            '«%s» belongs to a use of a node, not to the node itself — set it on the field.',
-            $key->value
-        ));
-    }
 
     /**
      * A renderer nobody registered.
@@ -44,29 +35,6 @@ final class SettingDoesNotApply extends DomainError
             'No renderer answers to «%s», so «%s» would end up with none.',
             $attempted,
             $node
-        ));
-    }
-
-    /**
-     * An empty value written to a switch — the third state a switch does not have.
-     *
-     * ⚠️ **Refused because an empty switch row does not read as «nothing», it reads as «false, set
-     * here».** *Measured on 2026-08-27: writing `nothing` to `hide` stored `value_int = NULL`, and
-     * resolving it came back `false (hier gesetzt)` — so the row **stops the chain**, and an ancestor
-     * saying `hide = true` is silently overruled by a row that says nothing at all.*
-     *
-     * ⚠️ *[D-401](../../../docs/NewConcept/90-decision-log.md) already decided this — «a `bool`
-     * setting has exactly two states, and «not set» is not one of them» — and
-     * [D-429](../../../docs/NewConcept/90-decision-log.md) removed the `empty` button because
-     * «a switch has no third state at all». What was missing is that the **column allows it**:
-     * `value_int` is `bigint DEFAULT NULL`, so only the core can hold that line. To unset a switch is
-     * `reset`, which pulls what the chain says above ([D-423](../../../docs/NewConcept/90-decision-log.md)).*
-     */
-    public static function hasNoEmptyState(SettingKey $key): self
-    {
-        return new self(sprintf(
-            '«%s» is either true or false — to unset it, reset it to what the chain says above.',
-            $key->value
         ));
     }
 

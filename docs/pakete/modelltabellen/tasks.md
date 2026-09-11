@@ -3380,8 +3380,9 @@ der Abgleich mit dem Bestand darunter. **Reihenfolge:** die Klasse zuerst, weil 
 
 [ ] TASK-093  Zwei Kantenklassen statt drei — `setting` fällt mit der Einstellungskante ([D-715](../../NewConcept/90-decision-log.md))
 
-*Hängt an TASK-096: die Einstellungskanten können erst fallen, wenn ihre Werte in `settings_value`
-liegen. Bis dahin bleibt der dritte Wert stehen, und dieser Punkt ist offen, nicht erledigt.*
+*Seit Schritt 7 des Bauplans (2026-09-11) wird `setting` nicht mehr angeboten und nicht mehr angelegt; die Einstellungskanten
+sind gefallen. **Der dritte Wert steht noch** — für die eine Kante `position` an der Wurzel, die die Stelle geerbter Felder
+trägt (Modell 2.2), bis Modell 2.4 sagt, wo das hingehört (INF-042). Offen, nicht erledigt.*
 
 [x] TASK-094  Multiplizität wird eine Spalte der Kante — Enum mit vier Werten; `Bool` als Ziel nur `1..1` ([D-713](../../NewConcept/90-decision-log.md)) — gebaut 2026-09-11: die Spalte gab es seit Fassung 22, gefallen ist der Schlüssel; Bool nur 1..1 über den Vertrag
 
@@ -3393,7 +3394,7 @@ Zielklasse schränkt ein: das braucht die Klasse am Knoten (TASK-092).*
 *Heute `SettingKey::ReadOnly` für Knoten und Kanten. Werte an Kanten wandern in die Spalte; Werte an
 Knoten fallen (sein Wort: nur an der Kante).*
 
-[ ] TASK-096  Das Einstellungsmodell von null — `settings_object` und `settings_value` nach [`einstellungen-anforderungen.md`](../../einstellungen-anforderungen.md) ([D-712](../../NewConcept/90-decision-log.md))
+[x] TASK-096  Das Einstellungsmodell von null — `settings_object` und `settings_value` nach [`einstellungen-anforderungen.md`](../../einstellungen-anforderungen.md) ([D-712](../../NewConcept/90-decision-log.md))
 
-*Der grosse Umbau. Vergleich und Bauplan: [`einstellungen-bauplan.md`](../../einstellungen-bauplan.md) (2026-09-11). **Sein Go am selben Tag:** «setzt du den bauplan bitte komplett um, ich möchte erst am schluss testen». Stand: Schritte 1 bis 6 gebaut (Klasse, Kantenspalten, Tabellen, Vertrag und
-Auflösung, Schreiben über den Vertrag mit neu geschriebenem `einstellungen-check`, Listen an der Kante mit `ueberschreiben-check`); 7 folgt, mit Wächter, Kern und Rand grün.*
+*Der grosse Umbau. Vergleich und Bauplan: [`einstellungen-bauplan.md`](../../einstellungen-bauplan.md) (2026-09-11). **Sein Go am selben Tag:** «setzt du den bauplan bitte komplett um, ich möchte erst am schluss testen». **Gebaut 2026-09-11, alle sieben Schritte** (Klasse, Kantenspalten, Tabellen, Vertrag und
+Auflösung, Schreiben über den Vertrag, Listen an der Kante, das Alte fällt mit Fassung 49 und dem Einheitengerüst 5), jeder mit Wächter, Kern und Rand grün. Offen bleibt allein die Kante `position` an der Wurzel (Modell 2.4, INF-042).*

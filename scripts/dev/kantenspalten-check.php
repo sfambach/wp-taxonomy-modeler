@@ -51,13 +51,12 @@ use Taxmod\Core\Exception\MultiplicityNotAllowed;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\EdgeColumn;
 use Taxmod\Core\Model\Multiplicity;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\Type\{BoolType, IntType};
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Renderer\ShippedRenderers;
-use Taxmod\Core\Service\{Labels, ModelValues, Rendering};
+use Taxmod\Core\Service\{Labels, Rendering};
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Plugin;
 use Taxmod\WordPress\Persistence\{Schema, SeededFrameworkNodes, SeededTypeNodes, WpdbChangelog, WpdbLabelRepository, WpdbNodeRepository, WpdbRecordRepository, WpdbRelationRepository};
@@ -138,8 +137,9 @@ if ($bad > 0) {
 
 echo "\n2 · Kein Schlüssel mehr\n";
 
-check('SettingKey kennt read_only nicht', SettingKey::tryFrom(EdgeColumn::READ_ONLY) === null);
-check('SettingKey kennt multiplicity nicht', SettingKey::tryFrom(EdgeColumn::MULTIPLICITY) === null);
+$vertragInt = \Taxmod\Core\Model\NodeClass\Contracts::of(IntType::class);
+check('der Vertrag von Integer kennt read_only nicht', $vertragInt->attribute(EdgeColumn::READ_ONLY) === null);
+check('und multiplicity nicht', $vertragInt->attribute(EdgeColumn::MULTIPLICITY) === null);
 
 $lebendeKanten = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('relations_named') . " WHERE kind = 'setting' AND name IN ('read_only', 'multiplicity')");
 check('keine lebende Einstellungskante heisst read_only oder multiplicity (Fassung 48)', $lebendeKanten === 0, (string) $lebendeKanten);
@@ -171,7 +171,6 @@ $zeichner = new Rendering(
     new SeededTypeNodes($knoten, $framework),
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     ShippedConverters::registry(),
-    new ModelValues(new WpdbRecordRepository(), $kanten, $knoten, $framework),
     $kanten
 );
 

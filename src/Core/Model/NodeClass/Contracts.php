@@ -106,6 +106,17 @@ final class Contracts
     }
 
     /** Nur für Tests: vergisst die gehaltenen Verträge. */
+    /**
+     * Der Name einer festen Wertklasse ohne Registratur — der Umrechnungssatz heisst `conversion`, wie
+     * seine Klasse, klein geschrieben. *Renderer und Konverter heissen, wie ihre Registratur sie nennt.*
+     */
+    public static function shortName(string $class): string
+    {
+        $kurz = strrchr($class, '\\');
+
+        return strtolower($kurz === false ? $class : substr($kurz, 1));
+    }
+
     public static function forget(): void
     {
         self::$held       = [];

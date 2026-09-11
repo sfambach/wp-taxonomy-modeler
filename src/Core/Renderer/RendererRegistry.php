@@ -352,7 +352,7 @@ final class RendererRegistry
         Purpose $purpose,
         ?SimpleType $type = null,
     ): ?Renderer {
-        $chosen = $settings[SettingKey::Renderer->value]->value->text ?? null;
+        $chosen = $settings['renderer']->value->text ?? null;
 
         if ($chosen === null || $chosen === '') {
             // ⚠️ **Ohne den Zweck, und das ist Absicht.** *Für einen Augenblick stand hier
@@ -378,7 +378,7 @@ final class RendererRegistry
         // auch wenn es ungewöhnlich ist — die zulässige Menge ist Rat und kein Zaun
         // ([D-360](../../../docs/NewConcept/90-decision-log.md)). Der erste zulässige ist der
         // Typ-Standard, derselbe, den die Tafel als automatisch anbietet.*
-        $ausDerKette = $settings[SettingKey::Renderer->value] ?? null;
+        $ausDerKette = $settings['renderer'] ?? null;
 
         if ($ausDerKette instanceof \Taxmod\Core\Model\ResolvedSetting
             && $ausDerKette->isInherited()

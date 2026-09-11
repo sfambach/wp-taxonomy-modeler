@@ -5,7 +5,6 @@ namespace Taxmod\Core\Repository;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 /**
  * The few nodes the machinery stands on — the root, and the node parked things go under.
  *
@@ -62,47 +61,6 @@ interface FrameworkNodes
      * itself, and the trash.
      */
     public function branchOf(Node $node): ?Branch;
-
-    /**
-     * Die Kante, die den Datensatz einer Einstellung hält — an ihrer **Id**, nicht an ihrem Namen.
-     *
-     * ⚠️ **[D-543](../../../docs/NewConcept/90-decision-log.md), auf sein Wort: «ja, Id — Name war nie
-     * erlaubt.»** *Und er hat recht, das steht seit langem unter `CD · Prohibited`: nach Anzeigenamen
-     * unterscheiden. Trotzdem stand in {@see \Taxmod\Core\Service\ModelValues} genau das, von mir
-     * geschrieben, mit einem Docblock daneben, der es verteidigte.*
-     *
-     * ⚠️ **Was die Messung dazu gesagt hat.** *Er hat die Kante `renderer` in «Display Options»
-     * umbenannt — sein Recht, ein Name ist eine Beschriftung — und **die Renderer-Auflösung fiel im
-     * ganzen Schirm aus**: `Base units`, `Passiv`, `Integer`, `Dimension`, `Prefixes`, `Parts List`
-     * zeichneten alle mit `plain`. Still, ohne eine Zeile Fehler. Gefunden hat es eine Randprüfung.*
-     *
-     * ⚠️ **Hier und nicht in einer eigenen Registratur, und die Korrektur ist seine:** *«ich verstehe
-     * auch nicht, warum wir hier was Neues erfinden.» **Diese Schnittstelle schreibt schon Ids auf** —
-     * {@see roleId()} tut es für die Rollen, mit demselben Muster. Eine zweite Registratur daneben wäre
-     * die doppelte Mechanik, die `R1` verbietet.*
-     *
-     * @return int `0`, wenn die Saat sie noch nicht aufgeschrieben hat.
-     */
-    public function settingRelationId(SettingKey $key): int;
-
-    /**
-     * Die Kante **innerhalb** dieses Datensatzes, die den Wert trägt.
-     *
-     * ⚠️ *Zwei Angaben und nicht eine, weil der Wert zwei Stufen tief liegt: die äussere Kante sagt,
-     * **welcher Datensatz**, die innere, **welches Feld darin**. Beide sind Pfadstücke, und ein Pfad
-     * aus Namen wäre derselbe Fehler eine Stufe weiter.*
-     *
-     * @return int `0`, wenn die Saat sie noch nicht aufgeschrieben hat.
-     */
-    public function settingValueRelationId(SettingKey $key): int;
-
-    /**
-     * Beide aufschreiben — der Notnagel, wenn sie noch nicht dastehen.
-     *
-     * ⚠️ *Genau wie {@see \Taxmod\Core\Repository\TypeNodes::remember()}: einmal auf dem alten Weg
-     * gefunden, danach nie wieder. **Ab dann ist Umbenennen frei**, und das ist der Sinn der Sache.*
-     */
-    public function rememberSettingRelations(SettingKey $key, int $relationId, int $valueRelationId): void;
 
     /**
      * Die Besitzer, deren Felder dieser Knoten erbt — **einschliesslich sich selbst**.

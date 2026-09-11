@@ -39,13 +39,11 @@ require __DIR__ . '/../../vendor/autoload.php';
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Model\Type\DecimalType;
 use Taxmod\Core\Model\Type\IntType;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
@@ -89,7 +87,6 @@ $rows      = new WpdbRecordRepository();
 $framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $editor    = new ModelEditor($nodes, $relations, $framework, $log, new WpdbLabelRepository(), $rows);
 $data      = new DataEntry($rows, $relations, $nodes, $framework, new SystemClock(), $log);
-$werteDesModells = static fn (): ModelValues => new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework);
 
 echo "== 1. der Bestand nach Fassung 42 (D-704) ==\n";
 
@@ -116,68 +113,17 @@ $doppelt = (int) $wpdb->get_var(
 );
 check('einer je Adresse, nie zwei (D-538)', $doppelt === 0, "{$doppelt} Adressen mit mehreren");
 
-echo "\n== 2. die Grenzen wohnen in den Grenzknoten (D-707) ==\n";
+echo "\n== 2. die Grenzen kommen aus dem Vertrag des Typs (D-712) ==\n";
 
-// ⚠️ *Nicht über den Namen (TASK-049, [D-613](../../docs/NewConcept/90-decision-log.md)): die Typen über
-// ihre Klasse, die Grenzknoten als Ziel der Kanten `min`/`max` — so, wie der Kode sie findet (D-707).*
-$typKnoten = [
-    'Integer' => $editor->nodeImplementing(IntType::class)?->id ?? 0,
-    'Decimal' => $editor->nodeImplementing(DecimalType::class)?->id ?? 0,
-];
-$grenze = static function (int $typId, string $key) use ($relations): int {
-    foreach ($typId === 0 ? [] : $relations->fieldRelationsOf([$typId]) as $kante) {
-        if ($kante->isSetting() && $kante->name === $key) {
-            return $kante->toNodeId;
-        }
-    }
-
-    return 0;
-};
-$id = static fn (string $name): int => match ($name) {
-    'Integer'     => $typKnoten['Integer'],
-    'Decimal'     => $typKnoten['Decimal'],
-    'integer_min' => $grenze($typKnoten['Integer'], SettingKey::Min->value),
-    'integer_max' => $grenze($typKnoten['Integer'], SettingKey::Max->value),
-    'decimal_min' => $grenze($typKnoten['Decimal'], SettingKey::Min->value),
-    'decimal_max' => $grenze($typKnoten['Decimal'], SettingKey::Max->value),
-    default       => 0,
-};
-$eigenerWert = static function (int $nodeId) use ($wpdb, $saetze, $werte): ?string {
-    $wert = $wpdb->get_row($wpdb->prepare(
-        "SELECT v.value_int, v.value_decimal FROM {$werte} v JOIN {$saetze} s ON s.id = v.node_record_id
-          WHERE s.node_id = %d AND s.record_type = 'default' AND s.relation_id = 0 AND v.relation_id = 0 LIMIT 1",
-        $nodeId
-    ), ARRAY_A);
-
-    return $wert === null ? null : (string) ($wert['value_int'] ?? $wert['value_decimal']);
-};
-
-foreach ([
-    ['integer_min', (string) PHP_INT_MIN],
-    ['integer_max', (string) PHP_INT_MAX],
-    ['decimal_min', '-99999999999999999999.9999999999'],
-    ['decimal_max', '99999999999999999999.9999999999'],
-] as [$name, $erwartet]) {
-    $wert = $id($name) === 0 ? null : $eigenerWert($id($name));
-    check("`{$name}` trägt seine Grenze als eigenen Wert im default-Satz", $wert === $erwartet, (string) $wert);
-}
-
-foreach (['Integer', 'Decimal'] as $typ) {
-    $anKanten = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$werte} v JOIN {$saetze} s ON s.id = v.node_record_id
-           JOIN " . Schema::table('relations_named') . " r ON r.id = v.relation_id
-          WHERE s.node_id = %d AND r.name IN ('min', 'max')",
-        $id($typ)
-    ));
-    check("an den Kanten min/max von `{$typ}` steht nichts mehr", $anKanten === 0, "{$anKanten} Zeilen");
-    check("und `{$typ}` selbst trägt keinen eigenen Wert mehr", $eigenerWert($id($typ)) === null, (string) $eigenerWert($id($typ)));
-}
-
+// ⚠️ **Hier stand «die Grenzen wohnen in den Grenzknoten (D-707)»** — *`integer_min`, `integer_max`, `decimal_min`,
+// `decimal_max` als Knoten unter den Typen, je mit einem default-Satz. Seit Schritt 7 des Bauplans (2026-09-11)
+// sind sie gefallen (sein Wort: «K3a ja, fallen», [D-719](../../docs/NewConcept/90-decision-log.md)); min, max und
+// step erklärt der Vertrag der Typklasse, und ohne Zeile in `settings_value` gilt seine Vorgabe.*
 $integer = $editor->nodeImplementing(IntType::class);
-$kette   = $integer === null ? [] : $werteDesModells()->forNode($integer);
-check('die Kette an `Integer` liefert min aus `integer_min`', ($kette['min'] ?? null)?->value->describe() === (string) PHP_INT_MIN && ($kette['min'] ?? null)?->fromOwnerId === $id('integer_min'), json_encode(['wert' => ($kette['min'] ?? null)?->value->describe(), 'von' => ($kette['min'] ?? null)?->fromOwnerId]));
-check('und max aus `integer_max`', ($kette['max'] ?? null)?->value->describe() === (string) PHP_INT_MAX);
-check('und beides als geerbt, nicht als hier gesetzt', ! ($kette['min'] ?? null)?->setHere && ! ($kette['max'] ?? null)?->setHere);
+$vertragInt = \Taxmod\Core\Model\NodeClass\Contracts::of(IntType::class);
+check('der Vertrag von Integer erklärt min, max und step', $vertragInt->attribute('min') !== null && $vertragInt->attribute('max') !== null && $vertragInt->attribute('step') !== null);
+check('kein Knoten `integer_min` oder `decimal_max` steht mehr unter den Typen', (int) $wpdb->get_var("SELECT COUNT(*) FROM " . Schema::table('nodes_named') . " WHERE name IN ('integer_min', 'integer_max', 'integer_step', 'decimal_min', 'decimal_max', 'decimal_step')") === 0);
+check('und `Integer` trägt keine Einstellungssätze mehr', $integer !== null && (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$saetze} WHERE node_id = %d AND record_type = 'settings'", $integer->id)) === 0);
 
 echo "\n== 3. die Wiese: der Rand schreibt seit Fassung 42 richtig ==\n";
 
@@ -192,36 +138,6 @@ check('ein frischer Knoten hat keinen Satz', $data->recordsOf($modell->id) === [
 // ⚠️ *Bis Schritt 2 des Bauplans (2026-09-11) stand hier `read_only` — die Kante ist mit Fassung 48
 // gewandert ([D-714](../../docs/NewConcept/90-decision-log.md)); `validator` ist eine
 // Einstellungskante an der Wurzel, die geblieben ist und einen Namen als Wert nimmt.*
-$leseKante = 0;
-foreach ($relations->fieldRelationsOf([$framework->root()->id]) as $kante) {
-    if ($kante->isSetting() && $kante->name === SettingKey::Validator->value) {
-        $leseKante = $kante->id;
-    }
-}
-check('die Einstellungskante `validator` ist da', $leseKante !== 0);
-check('die Einstellungskante `read_only` ist gewandert (D-714)', ! in_array('read_only', array_map(static fn ($k) => $k->name, array_filter($relations->fieldRelationsOf([$framework->root()->id]), static fn ($k) => $k->isSetting())), true));
-$data->putSettingAt($modell->id, $leseKante, 0, TypedValue::ofText('range'));
-$arten = array_map(static fn ($s): string => $s->recordType->value, $data->recordsOf($modell->id));
-check('das erste Schreiben einer Einstellung legt einen settings-Satz an, keinen default', $arten === ['settings'], implode(',', $arten));
-check('und der Wert steht darin', ($data->settingValuesOf($modell->id, [$leseKante])[$leseKante] ?? null)?->text === 'range');
-
-$feld = $editor->addField($modell->id, $integer->id, '__rk Menge', RelationKind::Composition);
-$minKante = (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT id FROM ' . Schema::table('relations_named') . " WHERE from_node_id = %d AND name = 'min' AND kind = 'setting' LIMIT 1",
-    $integer->id
-));
-$data->putSettingAtUseSite($feld->id, $minKante, TypedValue::ofInt(0));
-$stelle = $rows->ofRelation($feld->id);
-check('der Satz einer Verwendungsstelle entsteht als settings', $stelle?->recordType === RecordType::Settings, (string) $stelle?->recordType->value);
-
-$anDerStelle = $werteDesModells()->forUseSite($feld);
-check('und an der Stelle gilt das engere min', ($anDerStelle['min'] ?? null)?->value->describe() === '0' && ($anDerStelle['min'] ?? null)?->setHere, json_encode(['wert' => ($anDerStelle['min'] ?? null)?->value->describe()]));
-check('während max weiter aus `integer_max` kommt', ($anDerStelle['max'] ?? null)?->value->describe() === (string) PHP_INT_MAX && ! ($anDerStelle['max'] ?? null)?->setHere);
-
-$data->putSettingAt($enkel->id, $minKante, 0, TypedValue::ofInt(10));
-$amKind = $werteDesModells()->forNode($nodes->find($enkel->id));
-check('ein Enkel von `Integer`, der min selbst setzt: näher schlägt ferner', ($amKind['min'] ?? null)?->value->describe() === '10' && ($amKind['min'] ?? null)?->setHere);
-check('und sein max bleibt das aus `integer_max`', ($amKind['max'] ?? null)?->value->describe() === (string) PHP_INT_MAX);
 
 echo "\n{$passed} ok, {$failed} failed\n";
 

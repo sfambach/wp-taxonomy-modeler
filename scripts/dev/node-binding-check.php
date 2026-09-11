@@ -64,7 +64,6 @@ use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Validator\ShippedValidators;
-use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 
@@ -110,10 +109,6 @@ foreach (Branch::cases() as $ast) {
 
 foreach (SeededRole::cases() as $rolle) {
     $erlaubt['taxmod_role_' . $rolle->value] = 'Beschriftungsrolle';
-}
-
-foreach (RenderingScaffold::CONTAINERS as $behaelter) {
-    $erlaubt[RenderingScaffold::optionForContainer($behaelter)] = 'Behälter';
 }
 
 foreach (['root', 'trash', 'primitives', 'roles'] as $einzeln) {
@@ -189,70 +184,10 @@ check(
     implode(' · ', array_slice($fremd, 0, 8))
 );
 
-echo "\n2 · Das Abgelöste bleibt abgelöst\n";
-
-/** @var array<string,list<string>> $registriert */
-$registriert = [
-    'Renderer'  => ShippedRenderers::registry()->namesForNodes(),
-    'Converter' => ShippedConverters::registry()->namesForNodes(),
-    'Validator' => ShippedValidators::registry()->namesForNodes(),
-];
-
-$zurueck = [];
-
-foreach ($registriert as $behaelter => $namen) {
-    foreach ($namen as $name) {
-        $option = RenderingScaffold::optionFor($behaelter, $name);
-
-        if (get_option($option, null) !== null) {
-            $zurueck[] = $option;
-        }
-    }
-}
-
-$wieviele = array_sum(array_map('count', $registriert));
-
-check(
-    "keine der {$wieviele} Klassenoptionen ist zurück",
-    $zurueck === [],
-    implode(' · ', array_slice($zurueck, 0, 8))
-);
-
-echo "\n3 · Wer eine Klasse nennt, wird über die Klasse gefunden\n";
-
-$ohneKnoten = [];
-
-foreach ($registriert as $behaelter => $namen) {
-    $registry = match ($behaelter) {
-        'Renderer'  => ShippedRenderers::registry(),
-        'Converter' => ShippedConverters::registry(),
-        'Validator' => ShippedValidators::registry(),
-    };
-
-    foreach ($namen as $name) {
-        $klasse = $registry->classFor($name);
-
-        if ($klasse === null) {
-            continue;
-        }
-
-        $treffer = (int) $wpdb->get_var(
-            $wpdb->prepare("SELECT COUNT(*) FROM {$nodes} WHERE implemented_by = %s", $klasse)
-        );
-
-        if ($treffer !== 1) {
-            $ohneKnoten[] = $behaelter . ' ' . $name . ' ×' . $treffer;
-        }
-    }
-}
-
-check(
-    "jede der {$wieviele} registrierten Klassen steht an genau einem Knoten",
-    $ohneKnoten === [],
-    implode(' · ', array_slice($ohneKnoten, 0, 8))
-);
-
-echo "\n3b · Und dasselbe für die elf einfachen Typen (D-484, TASK-009)\n";
+// ⚠️ **Hier standen die Abschnitte 2 und 3 über die Renderer-, Konverter- und Validator-Knoten** *— seit Schritt 7 des Bauplans (2026-09-11): Renderer, Konverter und Validatoren sind
+// Objekte programmierter Klassen, keine Knoten; die Einstellungskanten und der Ast `Settings` sind in den Schatten
+// gewandert ([D-712](../../docs/NewConcept/90-decision-log.md), [D-718](../../docs/NewConcept/90-decision-log.md)).*
+echo "\n2 · Die elf einfachen Typen (D-484, TASK-009)\n";
 
 $typZurueck = [];
 $typOhne    = [];

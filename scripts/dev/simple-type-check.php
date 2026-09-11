@@ -270,27 +270,6 @@ foreach ($faelle as $fall) {
 // ⚠️ *«die Renderer werden Knoten, deswegen hätte ich eigentlich erwartet, dass die Renderer selbst
 // Knoten sind, weil wir sie ja auch einfach zuweisen» — dieselbe Messung für sie. **Gefragt wird über
 // `implemented_by`**, nicht über den Namen: die Bindung liegt in der Spalte (TASK-008).*
-$rendererKlassen = [];
-
-foreach ($renderer->namesForNodes() as $name) {
-    $klasse = $renderer->classFor($name);
-
-    if ($klasse !== null) {
-        $rendererKlassen[$name] = $klasse;
-    }
-}
-
-$rendererKnoten = $nodes->byImplementations(array_values($rendererKlassen));
-
-foreach ($rendererKlassen as $name => $klasse) {
-    $geladen = $rendererKnoten[$klasse] ?? null;
-
-    check(
-        'Renderer-Knoten ' . $name . ' kommt als seine Klasse',
-        $geladen instanceof RendererNode && $geladen::class === $klasse && $geladen->name() === $name,
-        $geladen === null ? 'kein Knoten mit dieser Klasse — ist die Saat gelaufen?' : $geladen::class
-    );
-}
 
 // ⚠️ **Und die Gegenprobe, die D-620 ausdrücklich verlangt:** *«das heisst nicht, dass jeder Knoten
 // eine eigene Klasse bekommt.» Ein Knoten ohne Klassenangabe muss ein schlichtes `Node` bleiben —
@@ -314,7 +293,7 @@ if ($schlicht === null) {
     echo "       kein klassenloser Knoten unter Model gefunden — die Gegenprobe lief ins Leere.\n";
 }
 
-echo "\n== 8. Unter Primitives und unter Settings gibt es keine Benutzersätze (D-664, D-677, D-691) ==\n";
+echo "\n== 8. Unter Primitives gibt es keine Benutzersätze (D-664, D-677, D-691) — den Ast Settings gibt es nicht mehr (D-718) ==\n";
 
 // ⚠️ *Sein Wort in [D-677](../../docs/NewConcept/90-decision-log.md): «was unter Primitives liegt,
 // hält keine Benutzerdaten — nur default und example»; und auf die Frage nach dem Settings-Ast:
@@ -324,7 +303,7 @@ echo "\n== 8. Unter Primitives und unter Settings gibt es keine Benutzersätze (
 global $wpdb;
 $primitives = $dataTypes->parentNodeId ?? 0;
 
-foreach (['Primitives' => $primitives, 'Settings' => $framework->rootOf(Branch::Settings)->id] as $astName => $wurzel) {
+foreach (['Primitives' => $primitives] as $astName => $wurzel) {
     if ($wurzel === 0) {
         check($astName . ': die Wurzel ist bekannt', false);
 

@@ -233,10 +233,42 @@ final class SettingsResolver
         if ($row->valueObjectId !== null) {
             $objekt = $this->objects[$row->valueObjectId] ?? null;
 
-            return $objekt === null ? '' : (string) ($this->nameOf($objekt->klasse) ?? $objekt->klasse);
+            return $objekt === null ? '' : ($this->nameOf($objekt->klasse) ?? Contracts::shortName($objekt->klasse));
         }
 
         return (string) $this->asWord($row->value)->rawValue();
+    }
+
+    /**
+     * Die gewählten Objekte eines Knotens je Objektattribut — die Klasse des ersten aktiven Glieds:
+     * `renderer` → ein Renderer, `umrechnung` → der Umrechnungssatz. An der Kante gilt deren Wahl.
+     *
+     * @return array<string, class-string>
+     */
+    public function chosenObjectClasses(Node $node, ?Relation $edge = null): array
+    {
+        $this->preload([$node]);
+
+        $rows = $this->rows[$node->id] ?? [];
+        $aus  = [];
+
+        foreach (Contracts::of($node->klasse)->attributes as $name => $erklaert) {
+            if ($erklaert->type !== AttributeType::Object) {
+                continue;
+            }
+
+            $amKnoten  = $this->rowsFor($rows, $erklaert, null);
+            $anKante   = $edge === null ? [] : $this->rowsFor($rows, $erklaert, $edge->id);
+            $eintraege = $erklaert->list ? $this->listEntries($amKnoten, $anKante) : [$anKante[0] ?? $amKnoten[0] ?? null];
+            $erstes    = $eintraege[0] ?? null;
+            $objekt    = $erstes?->valueObjectId === null ? null : ($this->objects[$erstes->valueObjectId] ?? null);
+
+            if ($objekt !== null && class_exists($objekt->klasse)) {
+                $aus[$name] = $objekt->klasse;
+            }
+        }
+
+        return $aus;
     }
 
     /** @return array<string, ResolvedSetting> */
@@ -306,12 +338,14 @@ final class SettingsResolver
 
         $objekt = $this->objects[$erstes->valueObjectId] ?? null;
 
-        if ($objekt === null) {
+        // ⚠️ *Ein Objekt, dessen Klasse mit einem Plugin verschwand, zeichnet nichts Eigenes — der
+        // Typstandard gilt. Abgewiesen wird ein fremder Name beim Schreiben (D-360), nicht beim Lesen.*
+        if ($objekt === null || ! class_exists($objekt->klasse)) {
             return [];
         }
 
         $aus  = [];
-        $name = $this->nameOf($objekt->klasse);
+        $name = $this->nameOf($objekt->klasse) ?? Contracts::shortName($objekt->klasse);
 
         if ($name !== null) {
             $aus[$erklaert->name] = new ResolvedSetting($erklaert->name, TypedValue::ofText($name), $this->ownerOf($erstes, $node, $edge), $edge === null ? $erstes->relationId === null : $erstes->relationId !== null);

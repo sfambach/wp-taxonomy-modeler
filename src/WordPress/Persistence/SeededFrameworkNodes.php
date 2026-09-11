@@ -6,7 +6,6 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Repository\NodeRepository;
@@ -55,9 +54,6 @@ final class SeededFrameworkNodes implements FrameworkNodes
      * umzuschreiben wäre eine Wanderung und keine Umbenennung, und
      * [D-576](../../../docs/NewConcept/90-decision-log.md) verlangt das Wort im **Quelltext**.*
      */
-    private const SETTING_RELATION_PREFIX = 'taxmod_setting_edge_';
-
-    private const SETTING_VALUE_RELATION_PREFIX = 'taxmod_setting_value_edge_';
 
     /**
      * `Primitives` is a container that splits; the branches are the nodes beneath it.
@@ -76,7 +72,6 @@ final class SeededFrameworkNodes implements FrameworkNodes
         'data-types'   => 'taxmod_branch_data_types_id',
         'constants'    => 'taxmod_branch_constants_id',
         'combined'     => 'taxmod_branch_combined_id',
-        'settings'     => 'taxmod_branch_settings_id',
     ];
 
     public function __construct(
@@ -189,7 +184,6 @@ final class SeededFrameworkNodes implements FrameworkNodes
         return $this->branchRoots = $roots;
     }
 
-
     public function installationId(): int
     {
         $id = (int) get_option(self::INSTALLATION_OPTION, 0);
@@ -213,7 +207,6 @@ final class SeededFrameworkNodes implements FrameworkNodes
         return $id;
     }
 
-
     public function roleId(SeededRole $role): int
     {
         return (int) get_option(self::ROLE_OPTION_PREFIX . $role->value, 0);
@@ -228,37 +221,9 @@ final class SeededFrameworkNodes implements FrameworkNodes
      */
     public function inheritanceOwnersOf(Node $node): array
     {
-        $kette = [...$node->ancestorIds(), $node->id];
-        $ast   = $this->rootOf(Branch::Settings);
-
-        $wo = array_search($ast->id, $kette, true);
-
-        // ⚠️ *Ein Knoten ausserhalb des Astes erbt wie immer — die Regel gilt nur drinnen.*
-        if ($wo === false) {
-            return $kette;
-        }
-
-        return array_values(array_slice($kette, (int) $wo));
-    }
-
-    public function settingRelationId(SettingKey $key): int
-    {
-        return (int) get_option(self::SETTING_RELATION_PREFIX . $key->value, 0);
-    }
-
-    public function settingValueRelationId(SettingKey $key): int
-    {
-        return (int) get_option(self::SETTING_VALUE_RELATION_PREFIX . $key->value, 0);
-    }
-
-    /**
-     * ⚠️ *`autoload` an, wie bei den Rollen: die Angabe wird auf **jeder** gezeichneten Seite
-     * gebraucht, und ein Nachschlag je Aufruf wäre eine Abfrage, die niemand sieht.*
-     */
-    public function rememberSettingRelations(SettingKey $key, int $relationId, int $valueRelationId): void
-    {
-        update_option(self::SETTING_RELATION_PREFIX . $key->value, $relationId, true);
-        update_option(self::SETTING_VALUE_RELATION_PREFIX . $key->value, $valueRelationId, true);
+        // ⚠️ *Seit Schritt 7 des Bauplans (2026-09-11) gibt es keinen Ast `Settings` mehr, an dem die
+        // Kette abbrach ([D-718](../../../docs/NewConcept/90-decision-log.md)) — jeder Knoten erbt entlang seines Pfads.*
+        return [...$node->ancestorIds(), $node->id];
     }
 
     public function isProtected(Node $node): bool
@@ -295,13 +260,10 @@ final class SeededFrameworkNodes implements FrameworkNodes
         // verdoppelt*** — {@see self::adoptCombined()}.
         $this->adoptCombined($primitives);
 
-        // ⚠️ *Direkt unter der Wurzel und nicht unter `Primitives`: die Mengen, aus denen eine
-        // Einstellung gewählt wird, sind keine Datentypen.*
-        $this->ensure(self::BRANCH_OPTIONS['settings'], 'Settings', $root);
-
-        // ⚠️ Roles are nodes and sit in **no data branch** — an attribute must not be able to
-        // point at one. They are the engine's own vocabulary (D-151).
-        $roles = $this->ensure(self::ROLES_OPTION, 'Label roles', $root);
+        // ⚠️ **Die Rollen wohnen unter `Constants`** — sein Wort: «K3c unter constants»
+        // ([D-719](../../../docs/NewConcept/90-decision-log.md)). *Sie sind Ziele von `label_role`-Verweisen,
+        // Konstanten also; den Ast `Settings` gibt es seit Schritt 7 des Bauplans nicht mehr ([D-718](../../../docs/NewConcept/90-decision-log.md)).*
+        $roles = $this->ensure(self::ROLES_OPTION, 'Label roles', $this->rootOf(Branch::Constants));
 
         // ⚠️ **`name` bekommt keinen Rollenknoten, und das ist der Unterschied zu den anderen fünf**
         // (TASK-019, [D-646](../../../docs/NewConcept/90-decision-log.md)). *Die Rollenknoten sind

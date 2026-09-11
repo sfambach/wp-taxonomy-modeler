@@ -3,7 +3,6 @@
 namespace Taxmod\Core\Renderer;
 
 use Taxmod\Core\Model\ResolvedSetting;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 

@@ -76,7 +76,7 @@ final class FieldOrderTest extends TestCase
         $integer = $this->editor->createNode('Integer', $branches['data-types']->id);
 
         // Fassung 45: die Einstellung `position` an der Wurzel, `0..1` auf `Integer`.
-        $position = $this->editor->addField($root->id, $integer->id, SettingKey::Position->value, RelationKind::Setting);
+        $position = $this->editor->addField($root->id, $integer->id, 'position', RelationKind::Setting);
         $this->editor->setMultiplicity($root->id, $position->id, Multiplicity::ZeroToOne);
 
         $this->owner      = $this->editor->createNode('Owner', $branches['model']->id);

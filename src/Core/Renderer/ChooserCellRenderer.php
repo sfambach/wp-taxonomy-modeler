@@ -5,7 +5,6 @@ namespace Taxmod\Core\Renderer;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\SettingKey;
 
 use Taxmod\Core\Model\SimpleType;
 
@@ -78,7 +77,7 @@ final class ChooserCellRenderer extends RendererNode
             return RenderResult::of('');
         }
 
-        $icon = $context->setting(SettingKey::Icon->value)?->text ?? '';
+        $icon = $context->setting('icon')?->text ?? '';
         // ⚠️ *Diese Stelle war die auffälligste: sie trug **gar keine** eigene CSS-Regel und zeichnete
         // darum in der 20px-Vorgabe von WordPress, neben Nachbarn mit 17.*
         $glyph = $icon === '' ? '' : IconMarkup::dashicon($icon) . ' ';

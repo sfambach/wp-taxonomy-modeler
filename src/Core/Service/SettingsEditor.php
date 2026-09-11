@@ -11,7 +11,6 @@ use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\Setting\SettingsObject;
 use Taxmod\Core\Model\Setting\SettingsValue;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\Changelog;
@@ -89,7 +88,7 @@ final class SettingsEditor
 
             $this->settings->forgetValue($eigene->id);
             $this->resolver->forget();
-            $this->note($node, $attribut, $edge, $eigene->value, null);
+            $this->note($node, $attribut, $edge, $eigene->value, null, $eigene->version);
 
             return true;
         }
@@ -101,7 +100,7 @@ final class SettingsEditor
 
             $this->settings->saveValue($eigene->withValue($wert), $eigene->version);
             $this->resolver->forget();
-            $this->note($node, $attribut, $edge, $eigene->value, $wert);
+            $this->note($node, $attribut, $edge, $eigene->value, $wert, $eigene->version + 1);
 
             return true;
         }
@@ -114,11 +113,11 @@ final class SettingsEditor
             return false;
         }
 
-        $this->settings->addValue($traeger['objectId'] !== null
+        $neu = $this->settings->addValue($traeger['objectId'] !== null
             ? SettingsValue::inObject($traeger['objectId'], $erklaert->declaredBy, $attribut, $wert, $edge?->id)
             : SettingsValue::atNode($node->id, $erklaert->declaredBy, $attribut, $wert, $edge?->id));
         $this->resolver->forget();
-        $this->note($node, $attribut, $edge, null, $wert);
+        $this->note($node, $attribut, $edge, null, $wert, $neu->version);
 
         return true;
     }
@@ -168,9 +167,9 @@ final class SettingsEditor
                     return false;
                 }
 
-                $this->settings->addValue($neu);
+                $gespeichert = $this->settings->addValue($neu);
                 $this->resolver->forget();
-                $this->note($node, $attribut, $edge, $this->stateWord($zeile), $this->stateWord($neu));
+                $this->note($node, $attribut, $edge, $this->stateWord($zeile), $this->stateWord($neu), $gespeichert->version);
 
                 return true;
             }
@@ -194,7 +193,7 @@ final class SettingsEditor
 
         $this->settings->saveValue($neu, $zeile->version);
         $this->resolver->forget();
-        $this->note($node, $attribut, $edge, $this->stateWord($zeile), $this->stateWord($neu));
+        $this->note($node, $attribut, $edge, $this->stateWord($zeile), $this->stateWord($neu), $zeile->version + 1);
 
         return true;
     }
@@ -257,7 +256,7 @@ final class SettingsEditor
             }
 
             $this->resolver->forget();
-            $this->note($node, $erklaert->name, $edge, TypedValue::ofText($name), null);
+            $this->note($node, $erklaert->name, $edge, TypedValue::ofText($name), null, $erstes->version);
 
             return true;
         }
@@ -295,7 +294,7 @@ final class SettingsEditor
         }
 
         $this->resolver->forget();
-        $this->note($node, $erklaert->name, $edge, null, TypedValue::ofText($name));
+        $this->note($node, $erklaert->name, $edge, null, TypedValue::ofText($name), $objekt->version);
 
         return true;
     }
@@ -312,9 +311,21 @@ final class SettingsEditor
         return false;
     }
 
+    /** @return array<string, \Taxmod\Core\Model\ResolvedSetting> */
+    private function resolved(Node $node, ?Relation $edge): array
+    {
+        return $edge === null ? $this->resolver->forNode($node) : $this->resolver->forUseSite($edge, $node);
+    }
+
     /**
-     * Die Erklärung eines Attributs — aus dem Vertrag des Knotens, oder aus dem des gewählten
-     * Renderers, wenn der Knoten es nicht kennt (3.6.3).
+     * Die Zeilen eines Attributs an einem Träger, am Knoten (`$edge` null) oder an dieser Kante.
+     *
+     * @param  array{nodeId: ?int, objectId: ?int} $traeger
+     * @return list<SettingsValue>
+     */
+    /**
+     * Die Erklärung eines Attributs: aus dem Vertrag des Knotens — oder aus der Klasse eines gewählten
+     * Objekts (des Renderers, des Umrechnungssatzes), denn dessen Attribute heissen wie dort (3.3).
      */
     private function declarationOf(Node $node, string $attribut, ?Relation $edge): AttributeDeclaration
     {
@@ -324,31 +335,17 @@ final class SettingsEditor
             return $erklaert;
         }
 
-        $klasse = $this->chosenRendererClass($node, $edge);
-
-        if ($klasse !== null && ($erklaert = Contracts::ofValueClass($klasse)->attribute($attribut)) !== null) {
-            return $erklaert;
+        foreach ($this->resolver->chosenObjectClasses($node, $edge) as $klasse) {
+            if (($erklaert = Contracts::ofValueClass($klasse)->attribute($attribut)) !== null) {
+                return $erklaert;
+            }
         }
 
         throw SettingDoesNotApply::named($attribut);
     }
 
-    /** @return class-string|null Die Klasse des gewählten Renderers, oder null. */
-    private function chosenRendererClass(Node $node, ?Relation $edge): ?string
-    {
-        $name = ($this->resolved($node, $edge)[SettingKey::Renderer->value] ?? null)?->value->text;
-
-        return $name === null || $name === '' ? null : $this->renderers->classFor($name);
-    }
-
-    /** @return array<string, \Taxmod\Core\Model\ResolvedSetting> */
-    private function resolved(Node $node, ?Relation $edge): array
-    {
-        return $edge === null ? $this->resolver->forNode($node) : $this->resolver->forUseSite($edge, $node);
-    }
-
     /**
-     * Wem die Zeile gehört: dem Knoten — oder dem gewählten Objekt, wenn das Attribut dessen ist.
+     * Wer die Zeile trägt: der Knoten — oder das gewählte Objekt, dessen Klasse das Attribut erklärt.
      *
      * @return array{nodeId: ?int, objectId: ?int}
      */
@@ -358,25 +355,30 @@ final class SettingsEditor
             return ['nodeId' => $node->id, 'objectId' => null];
         }
 
-        $rendererErklaert = Contracts::of($node->klasse)->attribute(SettingKey::Renderer->value);
-        $amKnoten         = $rendererErklaert === null ? [] : $this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $rendererErklaert, null);
-        $anKante          = $rendererErklaert === null || $edge === null ? [] : $this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $rendererErklaert, $edge);
+        foreach (Contracts::of($node->klasse)->attributes as $objektAttribut) {
+            if ($objektAttribut->type !== AttributeType::Object) {
+                continue;
+            }
 
-        foreach ([...$anKante, ...$amKnoten] as $row) {
-            if ($row->aktiv && $row->valueObjectId !== null) {
-                return ['nodeId' => null, 'objectId' => $row->valueObjectId];
+            $amKnoten = $this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $objektAttribut, null);
+            $anKante  = $edge === null ? [] : $this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $objektAttribut, $edge);
+
+            foreach ([...$anKante, ...$amKnoten] as $row) {
+                if (! $row->aktiv || $row->valueObjectId === null) {
+                    continue;
+                }
+
+                if ($this->settings->findObject($row->valueObjectId)?->klasse === $erklaert->declaredBy) {
+                    return ['nodeId' => null, 'objectId' => $row->valueObjectId];
+                }
+
+                break;
             }
         }
 
         throw SettingDoesNotApply::named($erklaert->name);
     }
 
-    /**
-     * Die Zeilen eines Attributs an einem Träger, am Knoten (`$edge` null) oder an dieser Kante.
-     *
-     * @param  array{nodeId: ?int, objectId: ?int} $traeger
-     * @return list<SettingsValue>
-     */
     private function rowsAt(array $traeger, AttributeDeclaration $erklaert, ?Relation $edge): array
     {
         $alle = $traeger['objectId'] !== null
@@ -447,10 +449,16 @@ final class SettingsEditor
             return $this->converters?->classFor($name);
         }
 
+        // ⚠️ *Eine feste Wertklasse — der Umrechnungssatz — hat keine Registratur: ihr Name ist ihr Kurzname.*
+        if (! interface_exists($erklaert->objectClass) && class_exists($erklaert->objectClass) && strcasecmp($name, Contracts::shortName($erklaert->objectClass)) === 0) {
+            return $erklaert->objectClass;
+        }
+
         return null;
     }
 
-    private function note(Node $node, string $attribut, ?Relation $edge, ?TypedValue $vorher, ?TypedValue $nachher): void
+    /** Ins Buch, mit der Version der Zeile, die der Akt erzeugt hat (D-536). */
+    private function note(Node $node, string $attribut, ?Relation $edge, ?TypedValue $vorher, ?TypedValue $nachher, ?int $version = null): void
     {
         $this->changelog?->record(
             $edge?->id ?? $node->id,
@@ -458,7 +466,7 @@ final class SettingsEditor
             'setting ' . $attribut,
             $vorher?->rawValue(),
             $nachher?->rawValue(),
-            null
+            $version
         );
     }
 }

@@ -49,7 +49,6 @@ require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -95,7 +94,6 @@ $framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), $types,
-    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
 
 $dataTypes = $framework->rootOf(Branch::DataTypes);

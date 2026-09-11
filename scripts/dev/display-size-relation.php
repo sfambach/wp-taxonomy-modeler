@@ -57,7 +57,7 @@ global $wpdb;
 
 $nodesTable     = Schema::table('nodes_named');
 $relationsTable = Schema::table('relations_named');
-$schluessel     = SettingKey::DisplaySize->value;
+$schluessel     = 'display_size';
 
 // ---------------------------------------------------------------- messen
 

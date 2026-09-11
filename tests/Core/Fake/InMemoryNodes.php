@@ -5,7 +5,6 @@ namespace Taxmod\Tests\Core\Fake;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Repository\NodeRepository;
 
 /**
@@ -208,55 +207,6 @@ final class InMemoryNodes implements NodeRepository
                 unset($this->rows[$id]);
             }
         }
-    }
-
-    /** Dieselbe Antwort aus den Kanten wie am Rand ([D-621](../../../docs/NewConcept/90-decision-log.md)). */
-    public function ownFieldTypes(array $ids): array
-    {
-        $sorten = [];
-
-        foreach ($ids as $id) {
-            $id      = (int) $id;
-            $treffer = null;
-
-            foreach ($this->relations?->fieldRelationsTo([$id]) ?? [] as $relation) {
-                $treffer = $treffer === null || $treffer === FieldType::Setting
-                    ? ($relation->isSetting() ? FieldType::Setting : FieldType::Model)
-                    : FieldType::Model;
-            }
-
-            $sorten[$id] = $treffer;
-        }
-
-        return $sorten;
-    }
-
-    /** Derselbe Lauf, ohne Abfragen — der Pfad steht im Knoten. */
-    public function resolvedFieldTypes(array $ids): array
-    {
-        $aufgeloest = [];
-
-        foreach ($ids as $id) {
-            $node = $this->rows[(int) $id] ?? null;
-            $sorte = FieldType::standard();
-
-            if ($node !== null) {
-                $entlang = array_reverse(explode('.', $node->path));
-                $eigene  = $this->ownFieldTypes(array_map(intval(...), $entlang));
-
-                foreach ($entlang as $stufe) {
-                    if (($eigene[(int) $stufe] ?? null) !== null) {
-                        $sorte = $eigene[(int) $stufe];
-
-                        break;
-                    }
-                }
-            }
-
-            $aufgeloest[(int) $id] = $sorte;
-        }
-
-        return $aufgeloest;
     }
 
     public function count(): int

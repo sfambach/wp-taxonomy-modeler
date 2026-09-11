@@ -5,7 +5,6 @@ namespace Taxmod\Core\Renderer;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\SettingKey;
 
 /**
  * What every renderer of one typed value does identically, so that none of them says it twice.

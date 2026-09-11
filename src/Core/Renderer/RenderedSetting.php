@@ -4,7 +4,6 @@ namespace Taxmod\Core\Renderer;
 
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingCategory;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 
@@ -88,9 +87,7 @@ final class RenderedSetting implements Renderable
      */
     public function category(): SettingCategory
     {
-        $key = SettingKey::tryFrom($this->key);
-
-        return $key === null ? SettingCategory::ofFreeKey() : SettingCategory::of($key, $this->subject);
+        return SettingCategory::of($this->key, $this->subject);
     }
 
     /**
@@ -109,19 +106,6 @@ final class RenderedSetting implements Renderable
     public function wasDrawn(): bool
     {
         return $this->result !== null;
-    }
-
-    /**
-     * Whether the engine owns this key.
-     *
-     * ⚠️ **Asked of {@see SettingKey}, never inferred from the value.** A free key belongs to
-     * whoever made it and the engine knows nothing of its type, so nothing is drawn for it and its
-     * characters are printed. Reading a type off whatever value happens to be stored is exactly
-     * the guessing [D-354](../../../docs/NewConcept/90-decision-log.md) was written to end.
-     */
-    public function isEngineOwned(): bool
-    {
-        return SettingKey::isReserved($this->key);
     }
 
     /**

@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Renderer;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -53,8 +52,8 @@ final class SpinnerRenderer extends TypedFieldRenderer
             // heraus, und das nächste Speichern schreibt leer. Dieselbe Messung wie am Schieber, und
             // dieselben Typen: `roman`, `binary`, `hexadecimal`, `octal` gelten alle für `Int`.*
             'value' => $this->controlValue($context),
-            'min'   => $this->numberSetting($context, SettingKey::Min->value),
-            'max'   => $this->numberSetting($context, SettingKey::Max->value),
+            'min'   => $this->numberSetting($context, 'min'),
+            'max'   => $this->numberSetting($context, 'max'),
             'step'  => $this->step($context),
         ]);
     }
@@ -69,7 +68,7 @@ final class SpinnerRenderer extends TypedFieldRenderer
      */
     private function step(RenderContext $context): string
     {
-        return $this->numberSetting($context, SettingKey::Step->value)
+        return $this->numberSetting($context, 'step')
             ?? ($context->type === SimpleType::Decimal ? 'any' : '1');
     }
 }

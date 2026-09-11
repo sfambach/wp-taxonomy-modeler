@@ -33,7 +33,6 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Model\Branch;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\Type\IntType;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\Purpose;
@@ -41,7 +40,6 @@ use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Renderer\SpinnerRenderer;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\SettingsResolver;
 use Taxmod\WordPress\Admin\SettingsScreen;
@@ -97,7 +95,6 @@ $zeichner = static fn (): Rendering => new Rendering(
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     ShippedConverters::registry(),
-    new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework),
     $relations,
     resolver: $leser()
 );
@@ -211,7 +208,7 @@ $gezeichnet = static function (array $kanten) use ($zeichner): array {
 /** @return array<string, array{aktiv: bool, position: int, setHere: bool, rowId: int}> Wort => Glied */
 $glieder = static function (?int $kanteId = null) use ($leser, $nodes, $relations, $zahl): array {
     $aus = [];
-    foreach ($leser()->listOf($nodes->byId($zahl->id), SettingKey::Renderer->value, $kanteId === null ? null : $relations->byId($kanteId)) as $g) {
+    foreach ($leser()->listOf($nodes->byId($zahl->id), 'renderer', $kanteId === null ? null : $relations->byId($kanteId)) as $g) {
         $aus[$g->word] = ['aktiv' => $g->aktiv, 'position' => $g->position, 'setHere' => $g->setHere, 'rowId' => $g->rowId];
     }
 
@@ -237,7 +234,7 @@ speichern($zahl->id, ['taxmod_setting' => ['renderer' => SpinnerRenderer::NAME],
 $g = $glieder();
 check('Schalter aus: der Akt gelingt, das Glied ist aus', gelungen() && ($g['spinner']['aktiv'] ?? true) === false, letzteMeldung() . ' ' . json_encode($g));
 check('die Zeile bleibt — abschalten ist nicht löschen', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings_value WHERE id = {$zeile}") === 1);
-check('nichts ist gewählt, beide Verwendungen zeichnen den Typstandard', ! isset($zeichner()->settingsForNode($nodes->byId($zahl->id))[SettingKey::Renderer->value]) && $gezeichnet([$eins, $zwei]) === [$eins->id => FieldRenderer::NAME, $zwei->id => FieldRenderer::NAME]);
+check('nichts ist gewählt, beide Verwendungen zeichnen den Typstandard', ! isset($zeichner()->settingsForNode($nodes->byId($zahl->id))['renderer']) && $gezeichnet([$eins, $zwei]) === [$eins->id => FieldRenderer::NAME, $zwei->id => FieldRenderer::NAME]);
 check('die Seite zeigt den Schalter aus', (bool) preg_match('/name="taxmod_setting_list\[renderer\]\[' . $zeile . '\]\[aktiv\]" value="1" form=/', seite($zahl->id)));
 speichern($zahl->id, ['taxmod_setting_list' => ['renderer' => [(string) $zeile => ['aktiv' => '0', 'position' => '0']]]]);
 check('dasselbe noch einmal schreibt nichts', letzteMeldung() === 'ok', letzteMeldung());

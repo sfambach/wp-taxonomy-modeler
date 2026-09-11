@@ -99,28 +99,6 @@ $feld   = $editor->addField($traeger->id, $ziel->id, 'probe');
 
 check('er hat noch keinen Datensatz', saetze($traeger->id) === 0, (string) saetze($traeger->id));
 
-echo "\n== ansehen und loeschen legen nichts an ==\n";
-
-// ⚠️ *Genau der Weg aus BUG-004: die Maske speichert ein leeres Einstellungsfeld.*
-$data->clearSettingAt($traeger->id, $feld->id, 0);
-
-check('Loeschen legt keinen Datensatz an', saetze($traeger->id) === 0, (string) saetze($traeger->id));
-
-$data->settingValuesOf($traeger->id, [$feld->id]);
-
-check('Lesen legt keinen Datensatz an', saetze($traeger->id) === 0, (string) saetze($traeger->id));
-
-echo "\n== das erste Schreiben legt ihn an ==\n";
-
-// ⚠️ **Die Gegenprobe, ohne die die Zusage auch ein Schreiber erfuellen wuerde, der gar nichts tut.**
-$data->putSettingAt($traeger->id, $feld->id, 0, TypedValue::ofText('probewert'));
-
-check('Schreiben legt genau einen Datensatz an', saetze($traeger->id) === 1, (string) saetze($traeger->id));
-
-$data->putSettingAt($traeger->id, $feld->id, 0, TypedValue::ofText('zweiter wert'));
-
-check('ein zweites Schreiben legt keinen zweiten an', saetze($traeger->id) === 1, (string) saetze($traeger->id));
-
 echo "\n== kein leerer default bleibt bestehen ==\n";
 
 // ⚠️ **[D-653](../../docs/NewConcept/90-decision-log.md), und das ist die Zusage zur einmaligen
@@ -188,7 +166,6 @@ $zeichner = new \Taxmod\Core\Service\Rendering(
     new \Taxmod\WordPress\Persistence\SeededTypeNodes($nodes, $framework),
     new \Taxmod\Core\Service\Labels(new WpdbLabelRepository(), \Taxmod\WordPress\Admin\SettingsScreen::neutralLocale()),
     null,
-    new \Taxmod\Core\Service\ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework)
 );
 
 // ⚠️ *Ein **eigener** Knoten: `__rw traeger` traegt aus dem Abschnitt darueber schon einen

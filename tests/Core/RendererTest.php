@@ -157,8 +157,8 @@ final class RendererTest extends TestCase
     {
         $chosen = $this->registry->chosenFor(
             $this->subject,
-            [SettingKey::Renderer->value => new ResolvedSetting(
-                SettingKey::Renderer->value,
+            ['renderer' => new ResolvedSetting(
+                'renderer',
                 TypedValue::ofText(PlainRenderer::NAME),
                 1,
                 true
@@ -195,8 +195,8 @@ final class RendererTest extends TestCase
 
         $this->registry->add($displayOnly);
 
-        $settings = [SettingKey::Renderer->value => new ResolvedSetting(
-            SettingKey::Renderer->value,
+        $settings = ['renderer' => new ResolvedSetting(
+            'renderer',
             TypedValue::ofText('display-only'),
             1,
             true
@@ -252,7 +252,7 @@ final class RendererTest extends TestCase
             $this->context(
                 Purpose::Edit,
                 TypedValue::ofText('Bahnhofstrasse'),
-                [SettingKey::DisplaySize->value => TypedValue::ofInt(40)],
+                ['display_size' => TypedValue::ofInt(40)],
                 'v'
             )
         )->markup;
@@ -272,14 +272,14 @@ final class RendererTest extends TestCase
         $breit = (new FieldRenderer())->render($this->subject, $this->context(
             Purpose::Edit,
             TypedValue::ofText('Bahnhofstrasse'),
-            [SettingKey::DisplaySize->value => TypedValue::ofInt(40)],
+            ['display_size' => TypedValue::ofInt(40)],
             'v'
         ))->markup;
 
         $schmal = (new FieldRenderer())->render($this->subject, $this->context(
             Purpose::Edit,
             TypedValue::ofText('12a'),
-            [SettingKey::DisplaySize->value => TypedValue::ofInt(4)],
+            ['display_size' => TypedValue::ofInt(4)],
             'v'
         ))->markup;
 
@@ -313,7 +313,7 @@ final class RendererTest extends TestCase
         $nurBreite = (new TextareaRenderer())->render($this->subject, $this->context(
             Purpose::Edit,
             TypedValue::ofText('x'),
-            [SettingKey::DisplaySize->value => TypedValue::ofInt(40)],
+            ['display_size' => TypedValue::ofInt(40)],
             'v'
         ))->markup;
 
@@ -323,7 +323,7 @@ final class RendererTest extends TestCase
             Purpose::Edit,
             TypedValue::ofText('x'),
             [
-                SettingKey::DisplaySize->value => TypedValue::ofInt(40),
+                'display_size' => TypedValue::ofInt(40),
                 'cols'                         => TypedValue::ofInt(12),
             ],
             'v'
@@ -332,14 +332,4 @@ final class RendererTest extends TestCase
         self::assertStringContainsString('cols="12"', $mitCols);
     }
 
-    /**
-     * ⚠️ **Die Angabe ist dem Rahmenwerk vorbehalten** (`D-084`): *ein Autor darf keinen eigenen
-     * Schlüssel `display_size` erfinden, sonst hiesse derselbe Name an zwei Stellen Verschiedenes.*
-     */
-    #[Test]
-    public function the_display_size_is_the_engines_own_key(): void
-    {
-        self::assertTrue(SettingKey::isReserved('display_size'));
-        self::assertSame(SettingKey::DisplaySize, SettingKey::tryFrom('display_size'));
-    }
 }

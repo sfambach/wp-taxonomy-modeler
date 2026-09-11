@@ -18,7 +18,6 @@ use Taxmod\Core\Model\EdgeColumn;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingCategory;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
@@ -1953,19 +1952,14 @@ final class NodesScreen
         // ⚠️ *Einmal für die ganze Tabelle, nicht je Zeile (`CD-7`) — die Werte der Teile werden weiter
         // unten noch einmal gebraucht, und der Knopf «Zeile hinzufügen» will vorher wissen, ob es
         // überhaupt Teile gibt.*
-        $teile = $this->data->settingPartsOf(
-            $selected->id,
-            array_map(static fn (Relation $relation): int => $relation->id, $relations)
-        );
 
         // ⚠️ *Feldzeilen werden angeordnet; die Einstellungskanten der Wurzel — `read_only`, `renderer` —
         // bleiben beim Besitzer, wie bisher: die Enden je Sorte.*
+        // ⚠️ *Die Einstellungskante `position` an der Wurzel steht noch (Modell 2.4 offen) und erbt sich
+        // auf jeden Knoten — in der Feldliste hat sie nichts zu suchen.*
         $feldzeilen  = array_values(array_filter($relations, static fn (Relation $r): bool => ! $r->isSetting()));
-        $eigeneEinst = array_values(array_filter($relations, static fn (Relation $r): bool => $r->isSetting() && $r->fromNodeId === $selected->id));
         $ersteZeile  = $feldzeilen[0]->id ?? 0;
         $letzteZeile = $feldzeilen === [] ? 0 : $feldzeilen[count($feldzeilen) - 1]->id;
-        $ersteEinst  = $eigeneEinst[0]->id ?? 0;
-        $letzteEinst = $eigeneEinst === [] ? 0 : $eigeneEinst[count($eigeneEinst) - 1]->id;
 
         // ⚠️ **Welche Zeilen offen sind, einmal für die ganze Tabelle** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
         // *Alles andere bleibt zu — und «zu» heisst hier **nicht gelesen**, nicht «versteckt».*
@@ -2056,14 +2050,6 @@ final class NodesScreen
                 // genügt nicht: zeigt die Kante auf ein Ziel ohne eigene Felder, gibt es keinen Teil, und
                 // der Kern verweigert. **Ein Knopf, der verlässlich absagt, ist schlimmer als keiner** —
                 // also wird gefragt, ob diese Kante heute schon Teile hat.*
-                new Control(
-                    'do',
-                    'add_part',
-                    __('Add row', 'taxmod'),
-                    __('Add another one of these — the model allows several', 'taxmod'),
-                    $relation->multiplicity->allowsMany() && isset($teile[$relation->id]),
-                    icon: 'plus-alt2'
-                ),
                 // ⚠️ **Up and down, the same two the tree row has** — the owner: *the attribute row
                 // should have up and down buttons like the nodes in the tree; `position` is part of node
                 // and also part of relation.* **Measured: it is part of the relation only** — a node's order is
@@ -2079,7 +2065,7 @@ final class NodesScreen
                     'field_up',
                     __('Up', 'taxmod'),
                     __('Move this field up — arranged here; the owner keeps its own order', 'taxmod'),
-                    $relation->isSetting() ? $own && $relation->id !== $ersteEinst : $relation->id !== $ersteZeile,
+                    $relation->id !== $ersteZeile,
                     false,
                     'arrow-up-alt2'
                 ),
@@ -2088,7 +2074,7 @@ final class NodesScreen
                     'field_down',
                     __('Down', 'taxmod'),
                     __('Move this field down — arranged here; the owner keeps its own order', 'taxmod'),
-                    $relation->isSetting() ? $own && $relation->id !== $letzteEinst : $relation->id !== $letzteZeile,
+                    $relation->id !== $letzteZeile,
                     false,
                     'arrow-down-alt2'
                 ),
@@ -2137,7 +2123,6 @@ final class NodesScreen
             );
         }
 
-
         // ⚠️ **One address per target, built from the same method the tree rows use.** *The owner
         // asked for a jump link on the attribute's target, and `backTo()` is a pure URL builder — no
         // query, no id check — so the map costs nothing even when two attributes point at one node.*
@@ -2177,96 +2162,89 @@ final class NodesScreen
         // ([D-538](../../../docs/NewConcept/90-decision-log.md)), und beide Male kam der Satz von ihm.*
         $html = '';
 
-        foreach ([false, true] as $istEinstellung) {
-            $dieser = array_values(array_filter(
-                $relations,
-                static fn (Relation $relation): bool => $relation->isSetting() === $istEinstellung
-            ));
+        // ⚠️ **Eine Tabelle: die Felder.** *Die zweite — die Einstellungszeilen — ist mit Schritt 7 des Bauplans
+        // (2026-09-11) gefallen ([D-712](../../../docs/NewConcept/90-decision-log.md)): Einstellungen sind Attribute
+        // der Klasse und stehen im Einstellungsbereich darüber, nicht als Kanten in dieser Liste.*
+        $teile = [];
 
-            $body = '';
+        $body = '';
 
-            foreach ($this->rendering->fieldRowsFor(
-                $dieser,
-                $selected->id,
-                $actions,
-                $submits,
-                self::NAME_FIELD,
-                self::ROW_SETTING_FIELD,
-                '',
-                \Taxmod\Core\Renderer\Level::Admin,
-                $targetHrefs,
-                // ⚠️ **Der Wert je Angabe, damit die Zeile ihn zeigen und annehmen kann.** *Auf sein
-                // Wort — «ich verstehe nicht, warum es nicht im Setting `Display Option` angezeigt
-                // wird, das ist genau dafür da» — und das Konzept sagt dasselbe: «der
-                // Eingabemechanismus existiert bereits: die Einstellungsseite».*
-                //
-                // ⚠️ *In **einem** Zug für alle Zeilen (`CD-7`), aus dem `default`-Satz des Knotens.*
-                $this->data->settingValuesOf(
-                    $selected->id,
-                    array_map(static fn (Relation $relation): int => $relation->id, $dieser)
-                ),
-                self::VALUE_FIELD,
-                // ⚠️ *Ein Speichern oben und keines je Wert — sein Wunsch: «Save in Fields sollte
-                // eigentlich auch über die Seite gehen».*
-                self::pageForm($selected),
-                // ⚠️ **Die Teile, damit die Wertspalte zeigt, was gespeichert ist.** *Er hat den Mangel
-                // gefunden: «auch bezweifle ich, dass dies Datensätze sind, die wir hier sehen». Bei
-                // `1..*` sind es mehrere, und jeder wird eine Zeile
-                // ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
-                // ⚠️ *Einmal oben geholt und hier nur benutzt — zwei Abfragen für dieselbe Auskunft
-                // wären zwei Gelegenheiten, verschieden zu antworten.*
-                $teile,
-                // WICHTIG: Ein Auswahldialog je Feldzeile -- TASK-029, auf sein Wort: "Points at
-                // ist der type und type muss aenderbar sein. Auswahl ist Mussfeld, also leere
-                // Auswahl nicht moeglich". Nur fuer eigene Felder: ein geerbtes gehoert dem
-                // Vorfahren und wird dort geaendert (D-376, dieselbe Regel wie beim Umbenennen).
-                $this->targetChoosersFor($dieser, $selected),
-                // WICHTIG: Nur die Einstellungen haben eine Wertspalte -- auf sein Wort: "die
-                // ganze Spalte Value muss weg". Ein Feld ist Benutzerdaten fuer einen Datensatz,
-                // nicht fuer das Modell; die Zeile hier definiert nur seinen Typ.
-                $istEinstellung,
-                // ⚠️ **Nur die aufgeklappten Zeilen lösen auf** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
-                $offeneZeilen,
-                // ⚠️ *Die Worte des Bereichs — der Kern kann keins machen (`AR-2`).*
-                $this->settingsPanelWords()
-            ) as $row) {
-                $body .= $row->result->markup;
-            }
-
-            $html .= $this->heading(...$this->fieldBlockHeading($istEinstellung));
-
-            $html .= $body === ''
-                ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
-                : '<table class="wp-list-table widefat striped"><thead><tr>'
-                    // ⚠️ *Sein Wort: «das override tickfeld mal an den anfang der setting zeile und als richtige spalte».*
-                    . ($istEinstellung ? '<th style="width:4em">' . esc_html__('override', 'taxmod') . '</th>' : '')
-                    . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
-                    // WICHTIG: "Type", nicht "Points at" -- auf sein Wort: "points at in type
-                    // umbenennen". Die Spalte zeigt das Ziel des Feldes, und das ist sein Typ.
-                    . '<th>' . esc_html__('Type', 'taxmod') . '</th>'
-                    . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
-                    . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
-                    . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
-                    // ⚠️ *Die Spalte, ohne die eine Einstellung nicht einzustellen war.* Nur bei
-                    // den Einstellungen -- Felder haben seit seinem Wort keine mehr.
-                    . ($istEinstellung ? '<th>' . esc_html__('Value', 'taxmod') . '</th>' : '')
-                    . '<th style="width:3em"></th>'
-                    . '</tr></thead><tbody>' . $body . '</tbody></table>';
-
-            // ⚠️ **Das Formular «Feld anlegen» und die geparkten Felder gehören unter die Felder, nicht
-            // hinter beide Blöcke.** *Der Eigentümer: «aktuell ist das Feld, um ein Field hinzuzufügen,
-            // unter Settings — dort ist es falsch, müsste unter Fields sein.» Er hat recht, und der
-            // Fehler war meiner: die zwei Blöcke wurden eine Schleife, und was danach stand, fiel
-            // hinter den **letzten**.*
+        foreach ($this->rendering->fieldRowsFor(
+            $feldzeilen,
+            $selected->id,
+            $actions,
+            $submits,
+            self::NAME_FIELD,
+            self::ROW_SETTING_FIELD,
+            '',
+            \Taxmod\Core\Renderer\Level::Admin,
+            $targetHrefs,
+            // ⚠️ **Der Wert je Angabe, damit die Zeile ihn zeigen und annehmen kann.** *Auf sein
+            // Wort — «ich verstehe nicht, warum es nicht im Setting `Display Option` angezeigt
+            // wird, das ist genau dafür da» — und das Konzept sagt dasselbe: «der
+            // Eingabemechanismus existiert bereits: die Einstellungsseite».*
             //
-            // ⚠️ *Unter «Fields» und nicht doppelt, weil es der **allgemeine** Akt ist: nach
-            // [D-506](../../../docs/NewConcept/90-decision-log.md) ist alles ein Feld. **Was daraus
-            // wird, entscheidet das Ziel** — zeigt das neue Feld auf einen Knoten, der eine Einstellung
-            // ist, erscheint die Zeile danach im Settings-Block.*
-            if (! $istEinstellung) {
-                $html .= $this->removedFields($selected) . $this->fieldForm($selected);
-            }
+            // ⚠️ *In **einem** Zug für alle Zeilen (`CD-7`), aus dem `default`-Satz des Knotens.*
+            [],
+            self::VALUE_FIELD,
+            // ⚠️ *Ein Speichern oben und keines je Wert — sein Wunsch: «Save in Fields sollte
+            // eigentlich auch über die Seite gehen».*
+            self::pageForm($selected),
+            // ⚠️ **Die Teile, damit die Wertspalte zeigt, was gespeichert ist.** *Er hat den Mangel
+            // gefunden: «auch bezweifle ich, dass dies Datensätze sind, die wir hier sehen». Bei
+            // `1..*` sind es mehrere, und jeder wird eine Zeile
+            // ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
+            // ⚠️ *Einmal oben geholt und hier nur benutzt — zwei Abfragen für dieselbe Auskunft
+            // wären zwei Gelegenheiten, verschieden zu antworten.*
+            $teile,
+            // WICHTIG: Ein Auswahldialog je Feldzeile -- TASK-029, auf sein Wort: "Points at
+            // ist der type und type muss aenderbar sein. Auswahl ist Mussfeld, also leere
+            // Auswahl nicht moeglich". Nur fuer eigene Felder: ein geerbtes gehoert dem
+            // Vorfahren und wird dort geaendert (D-376, dieselbe Regel wie beim Umbenennen).
+            $this->targetChoosersFor($relations, $selected),
+            // WICHTIG: Nur die Einstellungen haben eine Wertspalte -- auf sein Wort: "die
+            // ganze Spalte Value muss weg". Ein Feld ist Benutzerdaten fuer einen Datensatz,
+            // nicht fuer das Modell; die Zeile hier definiert nur seinen Typ.
+            false,
+            // ⚠️ **Nur die aufgeklappten Zeilen lösen auf** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
+            $offeneZeilen,
+            // ⚠️ *Die Worte des Bereichs — der Kern kann keins machen (`AR-2`).*
+            $this->settingsPanelWords()
+        ) as $row) {
+            $body .= $row->result->markup;
         }
+
+        $html .= $this->heading(...$this->fieldBlockHeading(false));
+
+        $html .= $body === ''
+            ? '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>'
+            : '<table class="wp-list-table widefat striped"><thead><tr>'
+                // ⚠️ *Sein Wort: «das override tickfeld mal an den anfang der setting zeile und als richtige spalte».*
+                . (false ? '<th style="width:4em">' . esc_html__('override', 'taxmod') . '</th>' : '')
+                . '<th>' . esc_html__('Name', 'taxmod') . '</th>'
+                // WICHTIG: "Type", nicht "Points at" -- auf sein Wort: "points at in type
+                // umbenennen". Die Spalte zeigt das Ziel des Feldes, und das ist sein Typ.
+                . '<th>' . esc_html__('Type', 'taxmod') . '</th>'
+                . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
+                . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
+                . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
+                // ⚠️ *Die Spalte, ohne die eine Einstellung nicht einzustellen war.* Nur bei
+                // den Einstellungen -- Felder haben seit seinem Wort keine mehr.
+                . (false ? '<th>' . esc_html__('Value', 'taxmod') . '</th>' : '')
+                . '<th style="width:3em"></th>'
+                . '</tr></thead><tbody>' . $body . '</tbody></table>';
+
+        // ⚠️ **Das Formular «Feld anlegen» und die geparkten Felder gehören unter die Felder, nicht
+        // hinter beide Blöcke.** *Der Eigentümer: «aktuell ist das Feld, um ein Field hinzuzufügen,
+        // unter Settings — dort ist es falsch, müsste unter Fields sein.» Er hat recht, und der
+        // Fehler war meiner: die zwei Blöcke wurden eine Schleife, und was danach stand, fiel
+        // hinter den **letzten**.*
+        //
+        // ⚠️ *Unter «Fields» und nicht doppelt, weil es der **allgemeine** Akt ist: nach
+        // [D-506](../../../docs/NewConcept/90-decision-log.md) ist alles ein Feld. **Was daraus
+        // wird, entscheidet das Ziel** — zeigt das neue Feld auf einen Knoten, der eine Einstellung
+        // ist, erscheint die Zeile danach im Settings-Block.*
+        $html .= $this->removedFields($selected) . $this->fieldForm($selected);
 
         // ⚠️ **Hier stand der eigene Renderer-Block, und er ist gefallen**
         // ([D-644](../../../docs/NewConcept/90-decision-log.md)). *Antwort 1 lautet vollständig «dann
@@ -2668,11 +2646,7 @@ final class NodesScreen
         );
     }
 
-
-
     
-
-
 
     /**
      * What the node is called — **through the renderer**, and enterable.
@@ -3107,7 +3081,6 @@ final class NodesScreen
         return SettingsScreen::neutralLocale();
     }
 
-
     /**
      * Records entered against this node, and a way to enter one.
      *
@@ -3504,9 +3477,6 @@ final class NodesScreen
 
     // ------------------------------------------------------------------ acting
 
-
-
-
     /*
      * Hier stand `settingChain()` — die Kette, an deren letztes Glied eine Einstellung geschrieben
      * wurde ([D-381](../../../docs/NewConcept/90-decision-log.md)). **Mit der `settings`-Tabelle
@@ -3607,7 +3577,8 @@ final class NodesScreen
         // neue». Ohne Haken bleibt die Art, und die Seite sagt, was der Haken kostet; mit Haken gehen
         // die Sätze in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md): umkehrbar),
         // dann wechselt die Art. Ein unbekanntes Wort ist keine Angabe, kein Fehler.*
-        $gewuenschteArt = $kind === '' ? null : RelationKind::tryFrom($kind);
+        // ⚠️ *`setting` ist keine wählbare Art mehr ([D-715](../../../docs/NewConcept/90-decision-log.md)); ein solcher Wunsch wird überlesen.*
+        $gewuenschteArt = $kind === '' || $kind === RelationKind::Setting->value ? null : RelationKind::tryFrom($kind);
 
         if ($gewuenschteArt !== null && $gewuenschteArt !== $existing->kind) {
             $betroffen = $gewuenschteArt === RelationKind::Setting && ! $existing->isSetting()
@@ -3805,8 +3776,7 @@ final class NodesScreen
     {
         $this->saveSettings($nodeId, $relationId, $name);
         $this->saveFieldRows($nodeId);
-        $geschrieben = $this->saveAttributes($nodeId) + $this->saveListEntries($nodeId) + $this->saveSettingValues($nodeId);
-        $this->savePartValues($nodeId);
+        $geschrieben = $this->saveAttributes($nodeId) + $this->saveListEntries($nodeId);
         $this->saveLabels($nodeId, $locale);
 
         // ⚠️ **Der Akt sagt, was er getan hat** ([D-683](../../../docs/NewConcept/90-decision-log.md)).
@@ -3950,17 +3920,6 @@ final class NodesScreen
      *
      * @param array<array-key, mixed> $angaben Schlüssel ⇒ eingereichter Text.
      */
-    /**
-     * Die Kante mit dieser Nummer — oder `null`, wenn es sie nicht gibt.
-     *
-     * ⚠️ *Eine Nummer aus einem Formular ist Eingabe: gefunden wird sie über den Speicher, nicht
-     * geglaubt. **Der Aufrufer prüft danach noch, dass es eine Einstellungskante ist** — sonst wäre
-     * eine geratene Nummer ein Weg, an einer beliebigen Kante zu schreiben.*
-     */
-    private function kanteMitNummer(int $id): ?Relation
-    {
-        return $this->editor->relationById($id);
-    }
 
     private function saveUseSiteSettings(int $nodeId, Relation $useSite, array $angaben): void
     {
@@ -3975,7 +3934,6 @@ final class NodesScreen
         // ({@see DataEntry::putSettingAtUseSite()} nimmt nur eine Kantennummer). *Die
         // `renderer`-Kante ist an `Root` erklärt — der Wert landete also **an Root, für alle**, oder
         // gar nicht. Sein Befund: «with without label wurd auch nicht mitgespiechert».*
-        $amKnoten = $useSite->isSetting();
 
         $geltendAnDerStelle = $this->rendering->settingsForUseSites([$useSite])[$useSite->id] ?? [];
         $hakenAnDerStelle   = isset($_POST[self::ROW_SETTING_FIELD . '_override'][$useSite->id])
@@ -3987,20 +3945,6 @@ final class NodesScreen
             $key = sanitize_key((string) $schluessel);
 
             // «wie oft» ist eine Spalte der Kante und wird von saveField() geschrieben.
-            // ⚠️ **Die Hakenliste der erlaubten Kinder kommt als Liste** ([D-697](../../../docs/NewConcept/90-decision-log.md))
-            // — *an die Adresse Knoten × geerbte Kante, nicht an den Besitzer der Kante. Alle Haken
-            // gesetzt heisst «nichts gespeichert, alle erlaubt».*
-            if (is_array($roh) && ctype_digit($key)) {
-                $liste = $this->kanteMitNummer((int) $key);
-
-                if ($liste !== null && $this->rendering->allowedRelationFor($useSite)?->id === $liste->id) {
-                    $gewaehlt = array_values(array_filter(array_map('absint', $roh)));
-                    $angebot  = array_keys($this->rendering->offeredFor($useSite));
-                    $this->data->putAllowedAt($nodeId, $useSite, $liste, count($gewaehlt) >= count($angebot) ? [] : $gewaehlt);
-                }
-
-                continue;
-            }
 
             // ⚠️ *Die Spalten der Kante und die Art gehen ihren eigenen Weg ({@see self::saveField()}) —
             // sie sind keine Einstellungen und landen in keinem Satz ([D-713](../../../docs/NewConcept/90-decision-log.md),
@@ -4026,58 +3970,6 @@ final class NodesScreen
                 continue;
             }
 
-            // ⚠️ **Eine Kantennummer ist auch eine Adresse** ([D-667](../../../docs/NewConcept/90-decision-log.md):
-            // *«Adressiert wird über die letzte Kante»*). *Der Bereich zeichnet einen im Modell
-            // erklärten Schlüssel als **Feld** ([D-529](../../../docs/NewConcept/90-decision-log.md)),
-            // und ein Feld nennt seine Kante — `taxmod_field_setting[<Träger>][55661]`. **Hier wurde
-            // nur nach dem Namen gesucht**, also fiel `with_label` und `label_role` heraus, während
-            // `converter` durchkam: der hat einen Fall in der Aufzählung und wird über seinen Namen
-            // gezeichnet.*
-            //
-            // ⚠️ **Das war der dritte stumme Aussetzer an einem Tag** — *sein Wort: «with without
-            // label wurd auch nicht mitgespiechert».* *Die beiden anderen stehen in
-            // [D-683](../../../docs/NewConcept/90-decision-log.md).*
-            $kante = ctype_digit($key)
-                ? $this->kanteMitNummer((int) $key)
-                : $this->data->settingRelationAtUseSite($useSite, $key);
-
-            if ($kante === null || ! $kante->isSetting()) {
-                continue;
-            }
-
-            // ⚠️ **Geerbt wird nur mit dem Haken geschrieben** ([D-689](../../../docs/NewConcept/90-decision-log.md))
-            // — *derselbe Riegel wie in {@see self::saveSettingValues()}, an der zweiten Adresse.*
-            $angabe = $geltendAnDerStelle[$kante->name] ?? null;
-
-            if ($angabe !== null && $angabe->isLocked() && empty($hakenAnDerStelle[$schluessel])) {
-                continue;
-            }
-
-            $zeichen = trim(sanitize_text_field((string) $roh));
-
-            if ($zeichen === '') {
-                if ($amKnoten) {
-                    $this->data->clearSettingAt($nodeId, $useSite->id, $kante->id);
-                } else {
-                    $this->data->clearSettingAtUseSite($useSite->id, $kante->id);
-                }
-
-                continue;
-            }
-
-            $wert = $this->rendering->valuesFrom([$kante], [$kante->id => $zeichen])[$kante->id] ?? null;
-
-            if ($wert === null || $wert->isNothing()) {
-                continue;
-            }
-
-            if ($amKnoten) {
-                $this->data->putSettingAt($nodeId, $useSite->id, $kante->id, $wert);
-
-                continue;
-            }
-
-            $this->data->putSettingAtUseSite($useSite->id, $kante->id, $wert);
         }
 
         // ⚠️ **Die Glieder zuletzt** (Schritt 6 des Bauplans). *Die Maske schickt den Wähler und die Glieder in
@@ -4102,397 +3994,6 @@ final class NodesScreen
      * dieser Knoten wirklich hat, und darin nur eine Kante, die dem Knoten des Teils gehört. Sonst
      * könnte ein verändertes Formular in einen fremden Datensatz schreiben.*
      */
-    /**
-     * Einen weiteren Teil an dieser Kante anlegen — eine Zeile mehr.
-     *
-     * ⚠️ **Auf sein Bestehen, dass die Multiplizität `1..*` ist und nicht `0..*`:** *«somit muss ich
-     * Zeilen hinzufügen können».*
-     *
-     * ⚠️ *Ein Teil ist eine Zeile ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere
-     * Teile sind mehrere Renderer — der Grund ist seiner
-     * ([D-548](../../../docs/NewConcept/90-decision-log.md)): «hatten wir definiert für Farbschema».*
-     *
-     * ⚠️ **Die Kante wird geprüft und nicht geglaubt** (`CD-5`): *nur eine, die dieser Knoten wirklich
-     * trägt, und nur eine, deren Multiplizität mehrere zulässt. Ob am Ziel überhaupt ein Teil entstehen
-     * kann, entscheidet der Kern ({@see \Taxmod\Core\Service\DataEntry::createPart()}) — dort sitzt die
-     * Regel aus [D-541](../../../docs/NewConcept/90-decision-log.md), und hier wird sie nicht kopiert.*
-     */
-    private function addPart(int $nodeId, int $relationId): void
-    {
-        $kante = null;
-
-        foreach ($this->editor->fieldsOf($nodeId) as $eine) {
-            if ($eine->id === $relationId) {
-                $kante = $eine;
-            }
-        }
-
-        if ($kante === null || ! $kante->multiplicity->allowsMany()) {
-            return;
-        }
-
-        $this->data->addSettingPart($nodeId, $kante->id);
-    }
-
-    private function savePartValues(int $nodeId): void
-    {
-        $eingereicht = isset($_POST[Rendering::PART_FIELD]) && is_array($_POST[Rendering::PART_FIELD])
-            ? wp_unslash($_POST[Rendering::PART_FIELD])
-            : [];
-
-        if ($eingereicht === []) {
-            return;
-        }
-
-        // ⚠️ *Alle Feldkanten des Knotens, damit sowohl Einstellungen als auch zusammengesetzte Felder
-        // erfasst sind — beide leben in einem Teil.*
-        $kanten = array_map(
-            static fn (Relation $relation): int => $relation->id,
-            $this->editor->fieldsOf($nodeId)
-        );
-
-        $erlaubt = [];
-
-        foreach ($this->data->settingPartsOf($nodeId, $kanten) as $liste) {
-            foreach ($liste as $teil) {
-                $erlaubt[$teil['id']] = (int) $teil['nodeId'];
-            }
-        }
-
-        foreach ($eingereicht as $rohTeil => $werte) {
-            $teilId = absint($rohTeil);
-            $imTeil = $erlaubt[$teilId] ?? null;
-
-            if ($imTeil === null || ! is_array($werte)) {
-                continue;
-            }
-
-            $innen = [];
-
-            foreach ($this->editor->fieldsOf($imTeil) as $feld) {
-                $innen[$feld->id] = $feld;
-            }
-
-            foreach ($werte as $rohKante => $wert) {
-                $kante = $innen[absint($rohKante)] ?? null;
-
-                if ($kante === null || is_array($wert)) {
-                    continue;
-                }
-
-                $this->putOneSettingValue($nodeId, $kante, 0, $kante, (string) $wert, $teilId);
-            }
-        }
-    }
-
-    /**
-     * Die Werte der Angaben, die in der Wertspalte eingegeben wurden.
-     *
-     * ⚠️ **Das Konzept nennt diesen Weg als den einzigen:** *«der Eingabemechanismus existiert bereits:
-     * **die Einstellungsseite**. Was sich ändert, ist nur, wie sie zu verstehen ist — hier schreibt der
-     * Autor Feldwerte am Modell»* ([02-field-and-setting.md](../../../docs/NewConcept/02-field-and-setting.md)).
-     * *Und der Eigentümer hat mich daran erinnert, als ich daneben einen eigenen Renderer-Wähler gebaut
-     * hatte: «das ist genau dafür da, und das ist glaube ich das, was du am Konzept vorbei machst».*
-     *
-     * ⚠️ **Ein Speichern für die ganze Seite, keines je Wert** — *sein Wunsch, zweimal: «biete keinen
-     * Button an» und «Save in Fields sollte eigentlich auch über die Seite gehen». Deshalb hängen die
-     * Bedienelemente am Seitenformular und werden hier zusammen gelesen; ein Akt, eine Änderungsnummer
-     * ([D-348](../../../docs/NewConcept/90-decision-log.md)).*
-     *
-     * ⚠️ **Die Adresse ist zweistufig, weil der Wert zwei Stufen tief liegt** — `taxmod_value[aussen]`
-     * für eine Angabe, die direkt an ihrer Kante steht, und `taxmod_value[aussen][innen]` für eine, die
-     * in einem eigenen Teil wohnt ([D-541](../../../docs/NewConcept/90-decision-log.md)). *Beide Formen
-     * kommen aus derselben Zeichnung; **was hier nicht geraten wird, ist welche** — `is_array()`
-     * entscheidet es.*
-     */
-    private function saveSettingValues(int $nodeId): int
-    {
-        $eingereicht = isset($_POST[self::VALUE_FIELD]) && is_array($_POST[self::VALUE_FIELD])
-            ? wp_unslash($_POST[self::VALUE_FIELD])
-            : [];
-
-        // ⚠️ **Die Zeilen unter einer Einstellung kommen unter eigenem Namen** — sein Fund am 2026-09-10 an
-        // `Parts List`: «stelle table ein → speichern → form steht wieder da». *Vorher hiessen Wahl und
-        // Zeilen darunter gleich (`taxmod_value[<Kante>]` und `taxmod_value[<Kante>][<innen>]`); der Browser
-        // schickt beides, PHP behält die Liste, die Wahl kam nie an. Jetzt heissen die Zeilen
-        // `taxmod_value_inner[…]`, und beide werden gelesen — erst die Wahl, dann die Zeilen.*
-        $innere = isset($_POST[self::VALUE_FIELD . '_inner']) && is_array($_POST[self::VALUE_FIELD . '_inner'])
-            ? wp_unslash($_POST[self::VALUE_FIELD . '_inner'])
-            : [];
-
-        foreach ($innere as $rohAussen => $roh) {
-            if (! isset($eingereicht[$rohAussen]) && is_array($roh)) {
-                $eingereicht[$rohAussen] = $roh;
-            }
-        }
-
-        if ($eingereicht === []) {
-            return 0;
-        }
-
-        // ⚠️ *Nur Kanten, die dieser Knoten wirklich trägt — was das Formular sonst noch mitbringt,
-        // gehört nicht hierher (`CD-5`).*
-        $aussen = [];
-
-        foreach ($this->editor->fieldsOf($nodeId) as $relation) {
-            $aussen[$relation->id] = $relation;
-        }
-
-        // ⚠️ **Eine geerbte Zeile wird nur geschrieben, wenn der Haken «hier überschreibe ich» mitkommt**
-        // ([D-689](../../../docs/NewConcept/90-decision-log.md)). *Vorher schrieb jedes Seitenspeichern
-        // jeden gezeigten Wert als eigenen — der geerbte Renderer wurde beim ersten Speichern zur
-        // Tatsache, und was danach oben geändert wurde, kam hier nie mehr an. Das ist die Kopie, die
-        // [D-402](../../../docs/NewConcept/90-decision-log.md) ausschliesst: «overriding is not adoption».*
-        $knotenSelbst = $this->editor->find($nodeId);
-        $geltendHier  = $knotenSelbst === null ? [] : $this->rendering->settingsForNode($knotenSelbst);
-        $haken        = isset($_POST[self::VALUE_FIELD . '_override']) && is_array($_POST[self::VALUE_FIELD . '_override'])
-            ? wp_unslash($_POST[self::VALUE_FIELD . '_override'])
-            : [];
-
-        // ⚠️ *Die vorhandenen Teile in **einem** Zug, nicht je Trägerkante (`CD-7`).*
-        $teileJeKante = $this->data->settingPartsOf($nodeId, array_keys($aussen));
-
-        // ⚠️ **Nichts wird mehr stumm fallengelassen** ([D-683](../../../docs/NewConcept/90-decision-log.md)).
-        //
-        // ⚠️ **Sein Wort, und es ist eine Frage nach der Methode und nicht nach einem Fall:** *«das
-        // problem mit dem nicht speichern ist nun schon öffters aufgetreten wie behebst du das»*.
-        // *Gemessen an diesem Akt: **zwei stumme Aussteige** — hier, wenn die Kante nicht zum Knoten
-        // gehört, und in {@see self::putOneSettingValue()}, wenn kein Wert daraus wird. Danach meldet
-        // die Seite «ok». **«Gespeichert» und «nichts gefunden, worein» sahen gleich aus**, und genau
-        // das macht diese Klasse von Fehler so zäh: sie zeigt sich erst beim nächsten Aufruf.*
-        //
-        // ⚠️ *Gezählt statt geworfen: ein veraltetes Formular schickt legitim eine Kante, die es
-        // nicht mehr gibt, und daran soll ein Speichern nicht scheitern. **Aber wenn von einer
-        // nicht-leeren Einreichung nichts ankommt, ist das kein «ok»** — dann sagt der Akt es.*
-        $angekommen = 0;
-        $verworfen  = [];
-
-        foreach ($eingereicht as $rohAussen => $roh) {
-            $aussenId = absint($rohAussen);
-            $kante    = $aussen[$aussenId] ?? null;
-
-            if ($kante === null) {
-                $verworfen[] = $aussenId;
-
-                continue;
-            }
-
-            $angekommen++;
-
-            if (! is_array($roh)) {
-                $angabe = $geltendHier[$kante->name] ?? null;
-
-                if ($angabe !== null && $angabe->isLocked() && empty($haken[$aussenId])) {
-                    // Nicht geschrieben heisst nicht gezählt — «Saved — 1 setting written» wäre gelogen (D-683).
-                    $angekommen--;
-
-                    continue;
-                }
-
-                $this->putOneSettingValue($nodeId, $kante, 0, $kante, (string) $roh);
-
-                // ⚠️ *Kamen zur Wahl auch Zeilen darunter, folgen sie jetzt — nach der Wahl, damit sie
-                // zum gewählten Renderer gehören.*
-                if (! isset($innere[$rohAussen]) || ! is_array($innere[$rohAussen])) {
-                    continue;
-                }
-
-                $roh = $innere[$rohAussen];
-            }
-
-            // ⚠️ **Wessen Kanten hier gelten dürfen, hängt daran, wessen Satz der Teil ist** (`CD-5`).
-            //
-            // ⚠️ *Hier stand `fieldsOf($kante->toNodeId)`, also die Kanten des **Basisknotens**
-            // `Renderer`. **Gemessen am 2026-09-06: das sind `converter` und `label_role`** — `with_label`
-            // hängt an `render with label`, und ein gewählter Renderer erbt alle drei. **Zwei von drei
-            // Werten wären lautlos verworfen worden.***
-            //
-            // ⚠️ *Und wenn es noch keinen eigenen Teil gibt, ist der geerbte Renderer der Massstab: an
-            // ihm hängen die Kanten, die die Maske gerade gezeichnet hat. **Der Teil entsteht dann beim
-            // Schreiben** ([D-609](../../../docs/NewConcept/90-decision-log.md)) — und als Satz genau
-            // dieses Knotens, sonst verlöre der Knoten den Renderer, dessen Einstellung er schreibt.*
-            $vorhanden  = $teileJeKante[$kante->id][0] ?? null;
-            $teilKnoten = $kante->toNodeId;
-            $gewaehlt   = 0;
-            $geliehen   = null;
-
-            if ($vorhanden !== null && ($vorhanden['nodeId'] ?? 0) !== 0) {
-                $teilKnoten = (int) $vorhanden['nodeId'];
-            } else {
-                // ⚠️ **Gefragt wird, welcher Knoten hier **gilt**, nicht ob ein Teil dasteht**
-                // ([D-684](../../../docs/NewConcept/90-decision-log.md)). *Hier stand die Suche
-                // nach einem geliehenen **Teildatensatz**; **den gibt es nicht mehr**, und ohne
-                // ihn blieb `$teilKnoten` das Ziel der Kante — `Renderer`. **`with_label` ist dort
-                // nicht erklärt**, sondern an `render with label`, also fiel es heraus.*
-                $geltend = $this->rendering->appliedSettingNode($nodeId, $kante);
-
-                if ($geltend !== null) {
-                    $teilKnoten = $geltend->id;
-                    $gewaehlt   = $geltend->id;
-                }
-            }
-
-            // ⚠️ *Die Felder des Teils, einmal geholt — nicht je Wert (`CD-7`).*
-            $innen = [];
-
-            foreach ($this->editor->fieldsOf($teilKnoten) as $feld) {
-                $innen[$feld->id] = $feld;
-            }
-
-            // ⚠️ *Was hier **gilt**, bevor dieses Speichern etwas ändert — die Vergleichsgrundlage
-            // für [D-609](../../../docs/NewConcept/90-decision-log.md).*
-            $knotenHier   = $this->editor->find($nodeId);
-            $geerbteWerte = $knotenHier === null ? null : $this->rendering->settingsForNode($knotenHier);
-
-            foreach ($roh as $rohInnen => $wert) {
-                $innenId    = absint($rohInnen);
-                $innenKante = $innen[$innenId] ?? null;
-
-                if ($innenKante === null || is_array($wert)) {
-                    continue;
-                }
-
-                // ⚠️ **Erst eine Änderung legt den Teil an, nicht schon das Absenden der Seite.**
-                //
-                // ⚠️ *Am geliehenen Teil hängt jedes Steuerelement am Seitenformular und schickt bei
-                // **jedem** Speichern mit — ein Schalter schickt sogar dann etwas, wenn er aus ist
-                // ({@see \Taxmod\Core\Renderer\ToggleRenderer}: das verborgene Feld ist es, was «aus»
-                // von «abwesend» unterscheidet). **Ohne diesen Vergleich machte das erste Speichern
-                // irgendeiner anderen Angabe den geerbten Renderer still zu einem eigenen** — genau
-                // der Datensatz aus einem Nicht-Ereignis, den
-                // [D-609](../../../docs/NewConcept/90-decision-log.md) verbietet.*
-                // ⚠️ **Was schon dasteht, wird nicht noch einmal geschrieben**
-                // ([D-609](../../../docs/NewConcept/90-decision-log.md): *ein Datensatz entsteht
-                // beim ersten **Schreiben**, nicht beim Ansehen*). *Verglichen wird gegen den
-                // **aufgelösten** Wert — vorher gegen die Werte eines geliehenen Teils, den es
-                // seit [D-684](../../../docs/NewConcept/90-decision-log.md) nicht mehr gibt.
-                // **Ohne diesen Vergleich legte jedes Speichern der Seite eine eigene Zeile an**,
-                // auch wenn niemand etwas anfasste — und aus «geerbt» würde still «hier gesetzt».*
-                if ($geerbteWerte !== null
-                    && $this->wieGezeichnet(($geerbteWerte[$innenKante->name] ?? null)?->value, $innenKante, (string) $wert)
-                ) {
-                    continue;
-                }
-
-                $this->putOneSettingValue($nodeId, $kante, $innenId, $innenKante, (string) $wert, 0, $gewaehlt);
-            }
-        }
-
-        // ⚠️ **Der Satz, der die Klasse schliesst** ([D-683](../../../docs/NewConcept/90-decision-log.md)):
-        // *wurde etwas eingereicht und **nichts** davon liess sich unterbringen, ist das kein «ok».
-        // **Ein Akt, der nichts tut und Erfolg meldet, ist die teuerste Sorte Fehler** — er kostet
-        // den nächsten Aufruf, um überhaupt bemerkt zu werden.*
-        if ($angekommen === 0 && $verworfen !== []) {
-            throw new \InvalidArgumentException(sprintf(
-                /* translators: %s is a comma-separated list of relation ids. */
-                __('Nothing was saved: this page no longer has the fields it was drawn with (%s). Reload and try again.', 'taxmod'),
-                implode(', ', $verworfen)
-            ));
-        }
-
-        return $angekommen;
-    }
-
-    /**
-     * Kommt aus einem geliehenen Steuerelement genau das zurück, was hineingezeichnet wurde?
-     *
-     * ⚠️ **Der Vergleich ist gegen das **Gezeichnete**, nicht gegen «hat einen Wert».** *Ein Schalter
-     * ohne geerbten Wert steht aus und schickt `0` zurück — das ist keine Änderung, sondern die
-     * Rückmeldung des Bildes. Verglichen mit «kein Wert» wäre es eine, und jedes Speichern der Seite
-     * legte einen eigenen Teil an.*
-     *
-     * ⚠️ *`null` heisst «nichts geerbt»: dann ist unverändert, was leer ankommt — und beim Schalter
-     * zusätzlich die ausdrückliche Null, weil genau die gezeichnet stand.*
-     */
-    private function wieGezeichnet(?TypedValue $geerbt, Relation $ofValue, string $submitted): bool
-    {
-        $characters = trim(sanitize_text_field($submitted));
-
-        if ($geerbt === null) {
-            return $characters === ''
-                || ($this->rendering->valuesFrom([$ofValue], [$ofValue->id => $characters])[$ofValue->id] ?? TypedValue::nothing())
-                    ->equals(TypedValue::ofBool(false));
-        }
-
-        if ($characters === '') {
-            return false;
-        }
-
-        $neu = $this->rendering->valuesFrom([$ofValue], [$ofValue->id => $characters])[$ofValue->id] ?? null;
-
-        return $neu !== null && $neu->equals($geerbt);
-    }
-
-    /**
-     * Einen einzelnen Wert schreiben — oder ihn herausnehmen, wenn «nichts» gewählt wurde.
-     *
-     * ⚠️ *Der Typ wird an der Kante bestimmt, deren Wert es **ist** — bei einem Teil also an der inneren.
-     * `valuesFrom()` ist derselbe Weg, den der Datensatzblock nimmt; ein zweiter wäre eine zweite
-     * Gelegenheit, anders zu deuten.*
-     *
-     * ⚠️ **Ein leeres Feld löscht — und die alte Begründung dagegen war ein Denkfehler.** *Hier stand
-     * «ein leeres Feld löscht nicht, sonst räumte jedes Speichern der Seite alles ab, was auf ihr nicht
-     * gezeichnet wurde». **Was nicht gezeichnet wurde, schickt auch nichts**, und diese Schleife läuft
-     * über die **eingereichten** Schlüssel: ein Schlüssel, der ankommt, ist ein Bedienelement, das
-     * dastand. Der Unterschied zwischen «abwesend» und «leer» ist genau der, den {@see saveSettings()}
-     * mit `array_key_exists` schon macht — hier war er zugunsten des einen Falls aufgegeben, der
-     * dadurch unerreichbar wurde.*
-     *
-     * ⚠️ **Und er ist genau darüber gestolpert:** *«wenn ich `0..1` wähle, müsste ich auch nichts im
-     * Value wählen können — kann ich auch auswählen, wird aber nicht speichern, müsste eigentlich den
-     * Datensatz dahinter löschen.» **«Nichts» war die einzige Wahl, die sich nicht speichern liess.***
-     *
-     * ⚠️ *Ein gesperrtes Steuerelement schickt gar nichts ([R28](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)),
-     * und bei `1..1` gibt es die leere Wahl nicht — **beide Fälle kommen hier also nie als leer an**.*
-     */
-    private function putOneSettingValue(
-        int $nodeId,
-        Relation $carrier,
-        int $innerId,
-        Relation $ofValue,
-        string $submitted,
-        /**
-         * ⚠️ *Ist der Teil schon bekannt — weil das Formular seine **Satz-Id** mitgeschickt hat —, wird
-         * direkt in ihn geschrieben. Dann muss niemand ihn über die Trägerkante suchen, und bei mehreren
-         * Teilen ([D-548](../../../docs/NewConcept/90-decision-log.md)) trifft es den richtigen.*
-         */
-        int $partId = 0,
-        /**
-         * ⚠️ *Welcher Knoten der Teil ist, falls er beim Schreiben **entsteht** — der geerbte Renderer.
-         * `0` heisst «das Ziel der Trägerkante», also der gewöhnliche Fall.*
-         */
-        int $chosenNodeId = 0
-    ): void {
-        $characters = trim(sanitize_text_field($submitted));
-
-        // ⚠️ *Erst löschen, dann deuten: «nichts» hat keinen Typ, an dem `valuesFrom()` es festmachen
-        // könnte — es ist die Abwesenheit eines Wertes und nicht ein Wert der Sorte leer.*
-        if ($characters === '') {
-            if ($partId !== 0) {
-                $this->data->clear($partId, $ofValue->id);
-
-                return;
-            }
-
-            $this->data->clearSettingAt($nodeId, $carrier->id, $innerId);
-
-            return;
-        }
-
-        $value = $this->rendering->valuesFrom([$ofValue], [$ofValue->id => $characters])[$ofValue->id] ?? null;
-
-        if ($value === null || $value->isNothing()) {
-            return;
-        }
-
-        if ($partId !== 0) {
-            $this->data->put($partId, $ofValue->id, $value);
-
-            return;
-        }
-
-        $this->data->putSettingAt($nodeId, $carrier->id, $innerId, $value, '', $chosenNodeId);
-    }
 
     /**
      * Every setting on the panel, written in one act.
@@ -5086,7 +4587,6 @@ final class NodesScreen
                 // muss ich Zeilen hinzufügen können». Ein Teil ist eine Zeile
                 // ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere Teile sind mehrere
                 // Renderer, für das Farbschema ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
-                'add_part'      => $this->addPart($id, $relation),
                 // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an relation
                 // with the same name, and inventing a suffix is writing user-visible text — which
                 // goes through the text domain at the boundary (`AR-2`) and never in `Taxmod\Core`.
@@ -5418,7 +4918,7 @@ final class NodesScreen
         $ziel   = $this->editor->find($target);
         $ast    = $ziel === null ? null : $this->framework->branchOf($ziel);
 
-        if ($knoten !== null && $ziel !== null && $ast !== null && ($ast->underPrimitives() || $ast === Branch::Settings)) {
+        if ($knoten !== null && $ziel !== null && $ast !== null && $ast->underPrimitives()) {
             $ohneVerwender = $this->data->unheldUserRecordsUnder($knoten);
             $bestaetigt    = ! empty($_POST[self::MOVE_CONFIRM]);
 

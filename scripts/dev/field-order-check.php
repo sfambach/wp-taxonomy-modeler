@@ -33,7 +33,6 @@ require __DIR__ . '/../../vendor/autoload.php';
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\Type\IntType;
 use Taxmod\Core\Model\Type\TextType;
 use Taxmod\Core\Service\FieldOrder;
@@ -161,7 +160,7 @@ $text          = (int) $wpdb->get_var($wpdb->prepare('SELECT id FROM ' . Schema:
 
 check('die Kante `position` ist an der Wurzel erklärt, als Einstellung', $positionKante !== null && $positionKante->fromNodeId === $framework->root()->id && $positionKante->isSetting());
 check('mit `0..1` auf `Integer`', $positionKante !== null && $positionKante->multiplicity === Multiplicity::ZeroToOne && $positionKante->toNodeId === $integer, $positionKante === null ? 'keine' : $positionKante->multiplicity->value);
-check('sie heisst, wie der Schlüssel im Kern heisst', $positionKante !== null && $positionKante->name === SettingKey::Position->value);
+check('sie heisst, wie der Schlüssel im Kern heisst', $positionKante !== null && $positionKante->name === 'position');
 
 if ($positionKante === null || $text === 0) {
     echo "\n{$passed} ok, {$failed} failed\n";

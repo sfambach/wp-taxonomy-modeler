@@ -34,7 +34,6 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\RelationKind;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SettingShape;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Service\ModelEditor;
@@ -189,30 +188,13 @@ echo "\n== 6. Every switch declares its default in one place (D-401) ==\n";
 // der Kante geworden ([D-714](../../docs/NewConcept/90-decision-log.md)). **Kein Schlüssel ist mehr
 // ein Schalter**, und die Vorgabe eines Schalters lebt an der Spalte (`DEFAULT 0`), nicht am
 // Schlüssel. Was hier bleibt, ist die Gegenprobe.*
-$schalter = [];
-
-foreach (SettingKey::cases() as $key) {
-    if ($key->shape() === SettingShape::Switch) {
-        $schalter[] = $key->value;
-    }
-}
-
-check('kein Schlüssel ist mehr ein Schalter — read_only ist eine Spalte der Kante (D-714)', $schalter === [], implode(',', $schalter));
-check('read_only ist kein Schlüssel mehr', SettingKey::tryFrom('read_only') === null);
-check('multiplicity ist kein Schlüssel mehr (D-713)', SettingKey::tryFrom('multiplicity') === null);
-
-// ⚠️ **The counter-check that gives the block its meaning**: a key that is *not* a switch must have
-// **no** boolean default to hand out. *Without this, a `declaredDefault()` that answered `false` for
-// everything would pass every assertion above.*
-$threw = false;
-
-try {
-    SettingKey::Min->defaultSwitch();
-} catch (\LogicException) {
-    $threw = true;
-}
-
-check('asking a range for its switch default is refused', $threw);
+// ⚠️ **Hier standen fünf Zusagen zur Aufzählung SettingKey** *— seit Schritt 7 des Bauplans (2026-09-11): Renderer, Konverter und Validatoren sind
+// Objekte programmierter Klassen, keine Knoten; die Einstellungskanten und der Ast `Settings` sind in den Schatten
+// gewandert ([D-712](../../docs/NewConcept/90-decision-log.md), [D-718](../../docs/NewConcept/90-decision-log.md)).*
+$vertragInt = \Taxmod\Core\Model\NodeClass\Contracts::of(\Taxmod\Core\Model\Type\IntType::class);
+check('kein Attribut des Vertrags heisst read_only — read_only ist eine Spalte der Kante (D-714)', $vertragInt->attribute('read_only') === null);
+check('und keines heisst multiplicity (D-713)', $vertragInt->attribute('multiplicity') === null);
+check('min, max, step und display_size erklärt der Vertrag von Integer', $vertragInt->attribute('min') !== null && $vertragInt->attribute('max') !== null && $vertragInt->attribute('step') !== null && $vertragInt->attribute('display_size') !== null);
 
 // ⚠️ **And the point of the whole thing, measured at a node rather than at the installation**: a node
 // with no row of its own resolves all three, because the installation is the first link of the chain

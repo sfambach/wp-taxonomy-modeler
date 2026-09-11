@@ -7,7 +7,6 @@ use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\NodeRepository;
@@ -500,8 +499,6 @@ final class WpdbNodeRepository implements NodeRepository
         return $aus;
     }
 
-
-
     public function subtreeOf(Node $root): array
     {
         global $wpdb;
@@ -670,129 +667,6 @@ final class WpdbNodeRepository implements NodeRepository
             'DELETE FROM ' . Schema::table('labels') . " WHERE id IN ({$slots})",
             ...$ids
         ));
-    }
-
-    /**
-     * Die eigene Sorte je Knoten — aus den **eingehenden Kanten**, sonst `null`.
-     *
-     * ⚠️ **[D-621](../../../docs/NewConcept/90-decision-log.md):** *«die Kante sagt, was etwas hier
-     * ist — nicht der Knoten und nicht der Ast.» **Damit gibt es keine Spalte mehr zu lesen**: was
-     * ein Knoten ist, steht in den Kanten, die auf ihn zeigen.*
-     *
-     * ⚠️ **Alle oder keine, und das ist die Berichtigung, die [D-621](../../../docs/NewConcept/90-decision-log.md)
-     * gemessen hat.** *Ein Knoten kann beides sein — `Integer` und `Decimal` sind Ziel einer
-     * Kompositions- **und** einer Einstellungskante. **Wer beides ist, ist an dieser Stelle nichts
-     * Besonderes**: nur wo jede eingehende Kante eine Einstellungskante ist, ist der Knoten selbst
-     * eine Einstellung. Sonst entscheidet die Kante, über die man kommt, und nicht der Knoten.*
-     *
-     * ⚠️ *Kein eingehender Kantensatz heisst `null` — «hier hat niemand etwas gesagt», also fragt
-     * {@see resolvedFieldTypes()} weiter oben.*
-     *
-     * @param  list<int>              $ids
-     * @return array<int, ?FieldType>
-     */
-    public function ownFieldTypes(array $ids): array
-    {
-        global $wpdb;
-
-        $ids = array_values(array_unique(array_map('intval', $ids)));
-
-        if ($ids === []) {
-            return [];
-        }
-
-        $slots = implode(',', array_fill(0, count($ids), '%d'));
-
-        $rows = Query::rows('Kantenarten der eingehenden Kanten lesen', $wpdb->prepare(
-            'SELECT to_node_id, kind FROM ' . Schema::table('relations') . " WHERE to_node_id IN ($slots)",
-            ...$ids
-        )) ?: [];
-
-        $sorten = [];
-
-        foreach ($rows as $row) {
-            $ziel = (int) $row['to_node_id'];
-
-            $sorten[$ziel] = ($sorten[$ziel] ?? FieldType::Setting) === FieldType::Setting
-                && (string) $row['kind'] === RelationKind::Setting->value
-                    ? FieldType::Setting
-                    : FieldType::Model;
-        }
-
-        foreach ($ids as $id) {
-            $sorten[$id] ??= null;
-        }
-
-        return $sorten;
-    }
-
-    /**
-     * Zwei Abfragen für beliebig viele Knoten und beliebige Tiefe.
-     *
-     * ⚠️ *Erst die angefragten Knoten mit ihrem Pfad, dann **alle** darin genannten Vorfahren mit
-     * ihren eingehenden Kanten — eine Abfrage, nicht eine je Stufe (`CD-7`). Danach läuft die
-     * Auflösung in PHP über den Pfad von hinten nach vorn.*
-     *
-     * ⚠️ **Der Lauf ist [D-621](../../../docs/NewConcept/90-decision-log.md)s eigener Satz:** *«wenn
-     * man am Vater irgendwas anhaengt, ist es genauso in den Kindern verfuegbar; da bestimmt auch die
-     * Kante darueber, wie's beim Vater angehaengt ist.» **Ein Knoten, den nur Vererbung erreicht,
-     * bekommt seinen Charakter von der Kante über seinem nächsten Vorfahren, der eine hat.***
-     */
-    public function resolvedFieldTypes(array $ids): array
-    {
-        global $wpdb;
-
-        $ids = array_values(array_unique(array_map('intval', $ids)));
-
-        if ($ids === []) {
-            return [];
-        }
-
-        $slots = implode(',', array_fill(0, count($ids), '%d'));
-
-        // ⚠️ *Der Weg kommt aus {@see self::ancestry()} statt aus einer Spalte (TASK-001) — die Form
-        // ist dieselbe, also ändert sich an der Auflösung darunter nichts.*
-        $rows = Query::rows('Pfade für den Sortenlauf lesen', $wpdb->prepare(
-            self::ancestry() . 'SELECT n.id, a.path FROM ' . Schema::table('nodes') . ' n'
-                . " INNER JOIN taxmod_ahnen a ON a.id = n.id WHERE n.id IN ($slots)",
-            ...$ids
-        )) ?: [];
-
-        // Jede Id, die in irgendeinem Pfad vorkommt — das sind die Kandidaten für den Lauf.
-        $entlang = [];
-
-        foreach ($rows as $row) {
-            foreach (explode('.', (string) $row['path']) as $stufe) {
-                $entlang[(int) $stufe] = true;
-            }
-        }
-
-        $sorten = array_filter($this->ownFieldTypes(array_keys($entlang)));
-
-        $aufgeloest = [];
-
-        foreach ($rows as $row) {
-            $stufen = array_reverse(explode('.', (string) $row['path']));
-            $gefunden = FieldType::standard();
-
-            foreach ($stufen as $stufe) {
-                if (isset($sorten[(int) $stufe])) {
-                    $gefunden = $sorten[(int) $stufe];
-
-                    break;
-                }
-            }
-
-            $aufgeloest[(int) $row['id']] = $gefunden;
-        }
-
-        // ⚠️ *Eine Id, die es nicht gibt, bekommt trotzdem eine Antwort — der Aufrufer soll nicht
-        // zwischen «kein Knoten» und «keine Sorte» unterscheiden müssen, um eine Zeile einzuordnen.*
-        foreach ($ids as $id) {
-            $aufgeloest[$id] ??= FieldType::standard();
-        }
-
-        return $aufgeloest;
     }
 
     public function byImplementations(array $classNames): array

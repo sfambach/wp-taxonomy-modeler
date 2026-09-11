@@ -141,7 +141,6 @@ nicht gibt.*
 
 ---
 
-
 ## INF-006 · Labels tragen keine Version — und die Chronik merkt es
 
 **Typ:** `QUESTION` · **Status:** `OPEN` — beim Bau von TASK-056 gefunden, 2026-09-05
@@ -296,6 +295,18 @@ Datentypen — hängt an (b): folgt das Angebot dem Typ, kann die Kante an der W
 ⚠️ *Zusammen mit [INF-040](#inf-040--eine-einstellungskante-auf-einen-knoten-ist-ein-verweis--und-geht-heute-einen-eigenen-weg)
 ist das **eine** Baureihe: dort, wie eine Einstellung mit Knotenziel gezeichnet und geschrieben wird;
 hier, wo sie erklärt ist und was sie anbietet. Nichts davon ist gebaut.*
+
+## INF-042 · Die Stelle geerbter Felder am Kind — die letzte Einstellungskante wartet auf Modell 2.4
+
+**Stand 2026-09-11, Schritt 7 des [Bauplans](einstellungen-bauplan.md).** Alle Einstellungskanten sind in den Schatten
+gewandert — bis auf eine: `position` an der Wurzel. Sie trägt mit ihren `settings`-Sätzen die Stelle geerbter Felder am
+Kind ([Modell 2.2](modell-anforderungen.md): «Ein Kind darf geerbte Felder umstellen»). Wo das künftig gespeichert wird,
+ist offen ([Modell 2.4](modell-anforderungen.md): «nicht in Einstellungszeilen»).
+
+**Was deshalb steht, bis er entscheidet:** die Kante `position` mit ihren Sätzen; der Wert `setting` in der Kantenart
+(nicht mehr wählbar, nicht mehr anlegbar) und der Wert `settings` in der Satzart; `FieldOrder` liest die Stelle von dort.
+TASK-093 bleibt offen. **Zu entscheiden:** wo die Stelle eines geerbten Felds am Kind wohnt — eine Spalte an einer
+eigenen Tabelle `Knoten × Kante`, oder etwas anderes. Nichts davon ist gebaut.
 
 ---
 

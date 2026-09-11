@@ -293,8 +293,8 @@ foreach ($zurueck as $knotenId => $satzId) {
 
 if ($angelegt === 1) {
     $editor->removeField($framework->root()->id, $kanteId);
-    delete_option('taxmod_setting_edge_' . SettingKey::Renderer->value);
-    delete_option('taxmod_setting_value_edge_' . SettingKey::Renderer->value);
+    delete_option('taxmod_setting_edge_' . 'renderer');
+    delete_option('taxmod_setting_value_edge_' . 'renderer');
 }
 
 $log->endAct();

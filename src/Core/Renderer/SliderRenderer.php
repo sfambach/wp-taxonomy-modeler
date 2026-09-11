@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Renderer;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -53,10 +52,10 @@ final class SliderRenderer extends TypedFieldRenderer
             // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
             'form'  => $context->surroundings->formId,
             'value' => $this->controlValue($context),
-            'min'   => $this->numberSetting($context, SettingKey::Min->value),
-            'max'   => $this->numberSetting($context, SettingKey::Max->value),
+            'min'   => $this->numberSetting($context, 'min'),
+            'max'   => $this->numberSetting($context, 'max'),
             // ⚠️ *`any` for a decimal, because a slider with an integer step cannot reach 2.5.*
-            'step'  => $this->numberSetting($context, SettingKey::Step->value)
+            'step'  => $this->numberSetting($context, 'step')
                 ?? ($context->type === SimpleType::Decimal ? 'any' : '1'),
         ])
             . $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));

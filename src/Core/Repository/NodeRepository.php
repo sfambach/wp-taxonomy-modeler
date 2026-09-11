@@ -3,7 +3,6 @@
 namespace Taxmod\Core\Repository;
 
 use Taxmod\Core\Model\Node;
-use Taxmod\Core\Model\FieldType;
 
 /**
  * Storage for nodes, stated as the core needs it rather than as a database offers it.
@@ -114,43 +113,6 @@ interface NodeRepository
 
     /** Remove a node and everything under it, for good. The irreversible half of D-123. */
     public function purgeSubtree(Node $node): void;
-
-    /**
-     * Die **eigene** Sorte je Knoten — aus seinen eingehenden Kanten, sonst `null`.
-     *
-     * ⚠️ **[D-621](../../../docs/NewConcept/90-decision-log.md):** *«die Kante sagt, was etwas hier
-     * ist — nicht der Knoten und nicht der Ast.» **Ein Knoten ist selbst eine Einstellung nur dann,
-     * wenn jede Kante, die auf ihn zeigt, eine Einstellungskante ist.*** *Wer auch anders erreicht
-     * wird — `Integer`, `Decimal` — ist an dieser Stelle nichts Besonderes, und dann entscheidet die
-     * Kante, über die man kommt.*
-     *
-     * ⚠️ *`null` heisst «keine eingehende Kante», also hat hier niemand etwas gesagt. Das ist die
-     * Antwort, die {@see \Taxmod\Core\Service\Rendering} für die Wählbarkeit braucht — **die eigene
-     * Sorte, nicht die aufgelöste** ([D-544](../../../docs/NewConcept/90-decision-log.md)).*
-     *
-     * @param  list<int>              $ids
-     * @return array<int, ?FieldType>  Je angefragte Id genau ein Eintrag.
-     */
-    public function ownFieldTypes(array $ids): array;
-
-    /**
-     * Die aufgelöste Sorte je Knoten — die eigene, sonst die des nächsten Vorfahren, der eine hat.
-     *
-     * ⚠️ **Der Lauf ist [D-621](../../../docs/NewConcept/90-decision-log.md)s eigener Satz:** *«wenn
-     * man am Vater irgendwas anhaengt, ist es genauso in den Kindern verfuegbar; da bestimmt auch die
-     * Kante darueber, wie's beim Vater angehaengt ist.» **Ein Knoten, den nur Vererbung erreicht,
-     * bekommt seinen Charakter von der Kante über seinem nächsten Vorfahren, der eine hat** — alles
-     * darunter leitet ab.*
-     *
-     * ⚠️ **In einer festen Zahl von Abfragen, nicht einer je Ebene** (`CD-7`). *Der Pfad ist
-     * materialisiert, also stehen alle Vorfahren-Ids schon da; es braucht keinen Aufstieg mit einer
-     * Abfrage je Stufe.*
-     *
-     * @param  list<int>              $ids
-     * @return array<int, FieldType>   Je angefragte Id genau ein Eintrag — nie `null`, weil
-     *                                {@see FieldType::standard()} das Ende des Laufs beantwortet.
-     */
-    public function resolvedFieldTypes(array $ids): array;
 
     /**
      * Wie viele Kinder ein Knoten zu zeigen hat.

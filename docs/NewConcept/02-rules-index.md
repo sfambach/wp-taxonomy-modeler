@@ -45,25 +45,25 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 16 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 14 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 16 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 76 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 72 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 4 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
-| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 22 |
-| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 24 |
+| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 21 |
+| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 23 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:44](../../CLAUDE.md) | 3 |
 
 ## CD — Code — wie geschrieben wird
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 87 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 85 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:69](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:70](../../CLAUDE.md) | 1 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:71](../../CLAUDE.md) | **nie** |
-| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 26 |
-| **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 18 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 141 |
+| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 20 |
+| **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 17 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 122 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 4 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 29 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 6 |
@@ -74,8 +74,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 23 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 83 |
+| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 22 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 82 |
 
 ## DC — Dokumentation im Code
 
@@ -91,7 +91,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **V1** | The model consists of nodes and edges. | [00-vision-and-scope.md:26](00-vision-and-scope.md) | 16 |
+| **V1** | The model consists of nodes and edges. | [00-vision-and-scope.md:26](00-vision-and-scope.md) | 15 |
 | **V2** | The nodes sit in a tree. | [00-vision-and-scope.md:27](00-vision-and-scope.md) | 1 |
 | **V3** | The tree represents the inheritance hierarchy only — nothing else. | [00-vision-and-scope.md:28](00-vision-and-scope.md) | 8 |
 | **V4** | The root node has no parent. Every other node inherits from its ancestors. | [00-vision-and-scope.md:29](00-vision-and-scope.md) | 1 |
@@ -250,7 +250,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 114 |
+| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 112 |
 | **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 4 |
 | **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 8 |
 | **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
@@ -266,7 +266,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R14** | Every renderer records which node types it is responsible for when it registers — so the settings UI can offer a choice. | [30-renderer.md:297](30-renderer.md) | 17 |
 | **R15** | One renderer per presentation variant. An integer node can be shown as a plain field, a spinner, or a slider: three renderers, not one renderer wit… | [30-renderer.md:298](30-renderer.md) | 17 |
 | **R16** | Creating an attribute means choosing: the target node, composition or aggregation, a name, and optionally a different default renderer — the render… | [30-renderer.md:299](30-renderer.md) | 2 |
-| **R17** | Integer and double nodes need min, max and step as settings. The same renderers serve both, with small deviations. | [30-renderer.md:300](30-renderer.md) | 18 |
+| **R17** | Integer and double nodes need min, max and step as settings. The same renderers serve both, with small deviations. | [30-renderer.md:300](30-renderer.md) | 16 |
 | **R18** | The tree view consists of nodes too, so a node can be drawn in the tree by a renderer. Another renderer role. | [30-renderer.md:495](30-renderer.md) | 17 |
 | **R19** | The modelling admin screen is split in two: the tree on the left, the settings of the selected node on the right. Concept taken from the predecesso… | [30-renderer.md:496](30-renderer.md) | 3 |
 | **R20** | The settings side is itself a page renderer, and it follows special steps. Also described in the old concept, same caveat. | [30-renderer.md:497](30-renderer.md) | 11 |
@@ -277,11 +277,11 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R25** | A chooser is given two nodes: a branch node, whose subtree it shows, and a default node, down to whose children the tree is expanded. | [30-renderer.md:814](30-renderer.md) | 7 |
 | **R26** | The user picks from those children — but may also move into any other branch that is on screen. | [30-renderer.md:815](30-renderer.md) | 1 |
 | **R27** | The branch node is what scopes the choice: picking any node means the whole tree; picking a model means the models branch is put in front. | [30-renderer.md:816](30-renderer.md) | 3 |
-| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 53 |
+| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 50 |
 | **R29** | Whether nothing is allowed follows from the multiplicity: 0..1 and 0.. may be empty; 1 and 1.. must always have a selection. | [30-renderer.md:861](30-renderer.md) | 14 |
-| **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 12 |
+| **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 11 |
 | **R31** | With no available entry there is nothing to choose and the control is disabled. | [30-renderer.md:863](30-renderer.md) | 8 |
-| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 40 |
+| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 38 |
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |
 | **R34** | One thing they could do: show a number as binary, hexadecimal, octal or in Roman numerals. | [30-renderer.md:959](30-renderer.md) | 10 |
 | **R35** | "Whether this form is really hung on as a converter, I am not sure — but we should keep it in mind. Storing the twelve is one thing, showing it as … | [30-renderer.md:960](30-renderer.md) | 2 |
@@ -346,10 +346,10 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **K1** | Switching a prefix — gram to kilogram — has to change the value with it. An internal conversion, handled differently again in the interface. | [60-calculation.md:28](60-calculation.md) | 6 |
+| **K1** | Switching a prefix — gram to kilogram — has to change the value with it. An internal conversion, handled differently again in the interface. | [60-calculation.md:28](60-calculation.md) | 4 |
 | **K2** | There are computed values assembled from other fields. Hidden fields may be added up and the result shown in another field. | [60-calculation.md:29](60-calculation.md) | 6 |
-| **K3** | A parts list has a total price, which comes from the prices of its positions, each of which comes from quantity × unit price. | [60-calculation.md:30](60-calculation.md) | 14 |
-| **K4** | Elsewhere, averages or sums are wanted. | [60-calculation.md:31](60-calculation.md) | 2 |
+| **K3** | A parts list has a total price, which comes from the prices of its positions, each of which comes from quantity × unit price. | [60-calculation.md:30](60-calculation.md) | 15 |
+| **K4** | Elsewhere, averages or sums are wanted. | [60-calculation.md:31](60-calculation.md) | 1 |
 | **K5** | In the old concept a calculation could also be a transformation — a text transformation, say. The owner asks for this to be questioned. | [60-calculation.md:32](60-calculation.md) | 4 |
 | **K6** | There is a difference between calculations in the model and calculations for display. A parts list may get a frontend footer that sums quantity and… | [60-calculation.md:33](60-calculation.md) | 6 |
 | **K7** | If a parts list should always show the average price, it is recalculated each time rather than snapshotted — and the calculation feeds from another… | [60-calculation.md:440](60-calculation.md) | 1 |

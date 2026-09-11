@@ -37,10 +37,8 @@ require __DIR__ . '/geruest.php';
 
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Purpose;
@@ -90,7 +88,6 @@ $labels    = new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale
 $editor    = new ModelEditor($nodes, $relations, $framework, $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 $rendering = new Rendering($nodes, $framework, ShippedRenderers::registry(), $types, $labels,
-    model: new ModelValues(new WpdbRecordRepository(), new WpdbRelationRepository(), new WpdbNodeRepository(), $framework)
 );
 
 $scaffold = new CompositionScaffold($editor, $framework, $types);

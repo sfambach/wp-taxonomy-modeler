@@ -398,26 +398,6 @@ final class DataEntryTest extends TestCase
         self::assertNotNull($this->nodes->find($seiner->id));
     }
 
-    /**
-     * ⚠️ **[D-609](../../docs/NewConcept/90-decision-log.md), und es ist BUG-004:** *Loeschen legte an.
-     * Der Eigentuemer: «ein Datensatz entsteht beim ersten Schreiben, nicht beim Ansehen? ja bitte.»*
-     */
-    #[Test]
-    public function clearing_a_setting_that_was_never_set_creates_no_record(): void
-    {
-        $this->data->clearSettingAt($this->part->id, $this->description->id, 0);
-
-        self::assertSame([], $this->data->recordsOf($this->part->id));
-    }
-
-    /** ⚠️ *Die Gegenprobe: das erste **Schreiben** legt den Satz sehr wohl an.* */
-    #[Test]
-    public function the_first_write_does_create_the_record(): void
-    {
-        $this->data->putSettingAt($this->part->id, $this->description->id, 0, TypedValue::ofText('kompakt'));
-
-        self::assertCount(1, $this->data->recordsOf($this->part->id));
-    }
     // ------------------------------------- ein Wert an einer Verwendungsstelle
 
     /**
@@ -489,68 +469,6 @@ final class DataEntryTest extends TestCase
         self::assertSame('4k7', $this->data->valuesAt($record->id, [$this->description->id])[0]->value->text);
         self::assertSame('kompakt', $this->data->valuesAt($record->id, [$this->description->id, $renderer->id])[0]->value->text);
 
-    }
-    /**
-     * Die Wahl eines Einstellungsdatensatzes hängt an einer **Kante** und nicht an einer Spalte.
-     *
-     * ⚠️ **Das ist [D-642](../../docs/NewConcept/90-decision-log.md), die Berichtigung zu
-     * [D-584](../../docs/NewConcept/90-decision-log.md):** *«das hast du leider falsch verstanden, ich
-     * meinte einfach eine Multiplizität von 1» — **am Knoten**, an einer gewöhnlichen
-     * Einstellungskante. **Der Schluss «also braucht es keine Kante» war meiner, nicht seiner.***
-     *
-     * ⚠️ **Und die Spalte hatte einen Sonderfehler, weil sie eine Sonderform war:** *als der
-     * Eigentümer den Hüllknoten löschte, fiel die Trägerkante — **der Leser kam über die Spalte
-     * weiter, der Schreiber in der Maske nicht**, und vier grüne Wächter merkten nichts (TASK-052).*
-     *
-     * ⚠️ *Zugesagt ist hier dreierlei: die Wahl legt einen Satz des **gewählten** Knotens an
-     * ([D-583](../../docs/NewConcept/90-decision-log.md)), dieselbe Wahl noch einmal legt nichts
-     * Zweites an, und eine andere Wahl hängt um statt danebenzustellen.*
-     */
-    #[Test]
-    public function eine_gewaehlte_einstellung_haengt_an_ihrer_kante(): void
-    {
-        // ⚠️ *Ein Zielknoten mit **eigenen** Feldern — nur dann besitzt die Wahl einen eigenen Satz,
-        // und genau das unterscheidet den Renderer von `read_only`.*
-        $auswahl = $this->editor->createNode('Renderer', $this->branchRoot['model']->id);
-        $this->editor->addField($auswahl->id, $this->text->id, 'converter');
-
-        $compact = $this->editor->createNode('compact', $auswahl->id);
-        $table   = $this->editor->createNode('table', $auswahl->id);
-
-        $kante = $this->editor->addField($this->gram->id, $auswahl->id, 'renderer');
-        $this->editor->markAsSetting($this->gram->id, $kante->id, true);
-
-        $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
-
-        // ⚠️ **Die Wahl ist ein Verweis auf den *Knoten*** ([D-684](../../docs/NewConcept/90-decision-log.md)).
-        // *Hier stand «der Teil hängt an der Einstellungskante» und las einen Teildatensatz. **Der
-        // Teil ist gefallen**, und mit ihm die Waisen: sein Wort war «warum neuer alte teil es darf
-        // nur einen geben».*
-        $gewaehlt = static fn (array $zeilen): ?int => ($zeilen[0] ?? null)?->value->reference;
-
-        $zeilenAn = fn (int $kanteId): array => array_values(array_filter(
-            $this->data->valuesOf($this->settingsRecordOf($this->gram->id)),
-            static fn (RelationRecord $wert): bool => $wert->relationId === $kanteId
-        ));
-
-        self::assertSame($compact->id, $gewaehlt($zeilenAn($kante->id)), 'die Zeile nennt den gewaehlten Knoten');
-
-        // Dieselbe Wahl noch einmal legt nichts Zweites an — die Zeile *ist* der Datensatz (D-583).
-        $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($compact->id));
-
-        self::assertCount(1, $zeilenAn($kante->id), 'dieselbe Wahl legt keine zweite Zeile an');
-
-        // Eine andere Wahl haengt um, statt einen zweiten Halter danebenzustellen.
-        $this->data->putSettingAt($this->gram->id, $kante->id, 0, TypedValue::ofReference($table->id));
-
-        self::assertSame($table->id, $gewaehlt($zeilenAn($kante->id)), 'eine andere Wahl haengt dieselbe Zeile um');
-
-        // ⚠️ **Und es steht genau **eine** Zeile da, nicht drei.** *Der Fehler war schon da und die
-        // Spalte hatte ihn zugedeckt: {@see DataEntry::chooseSettingRecord()} warf den alten Teil weg
-        // und liess **den Verweis auf ihn stehen** — die naechste Wahl legte eine zweite Zeile daneben.
-        // **Gemessen am 2026-09-05 an `setting-write-check.php`: drei Zeilen an einer Kante mit
-        // `1..1`**, und die Aufloesung nahm die aelteste.*
-        self::assertCount(1, $zeilenAn($kante->id), 'eine Kante mit 1..1 traegt eine Zeile, nicht eine je Wahl');
     }
 
     /**

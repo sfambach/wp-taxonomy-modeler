@@ -48,12 +48,10 @@ require __DIR__ . '/geruest.php';
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Multiplicity;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
@@ -231,7 +229,6 @@ $rendering = new Rendering(
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     ShippedConverters::registry(),
-    model: new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework)
 );
 
 if ($gefunden !== []) {
@@ -266,44 +263,10 @@ echo "\n== Und «wie oft» beim Renderer: genau einmal, und das sagt die Kante =
 // einfach eine Multiplizitaet von 1» — und auf die Rueckfrage, wo: «am Knoten». **Eine Kante mit
 // `1..1` sagt dasselbe und bleibt eine Kante.** Also fragt diese Zusage jetzt genau das ab: die
 // Kante gibt es, und sie traegt `1..1`.*
-$kante = $framework->settingRelationId(SettingKey::Renderer);
 
-check('die Einstellungskante `renderer` ist aufgeschrieben', $kante !== 0, (string) $kante);
-
-$wieOft = (string) $wpdb->get_var($wpdb->prepare(
-    'SELECT multiplicity FROM ' . Schema::table('relations') . ' WHERE id = %d',
-    $kante
-));
-
-check('und sie traegt genau die Mehrfachheit, die er gemeint hat', $wieOft === '1..1', $wieOft);
-
-$mitWahl = (int) $wpdb->get_var($wpdb->prepare(
-    // ⚠️ **Ein Knoten, kein Satz** ([D-684](../../docs/NewConcept/90-decision-log.md)) — *die Wahl
-    // ist seit dem 2026-09-07 ein Verweis auf den gewählten Renderer selbst und nicht mehr auf einen
-    // Teildatensatz. **Der Teil war die Erfindung**, und mit ihm die Waisen.*
-    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . " WHERE relation_id = %d AND value_ref_kind = 'node'",
-    $kante
-));
-
-// ⚠️ *Der Gegenfall: es gibt ueberhaupt Wahlen. Sonst waere «kein Traeger ins Leere» auch dann
-// gruen, wenn keine einzige Zeile dasteht.*
-//
-// ⚠️ **Hier stand `>= 20`, und der Waechter war rot** — *gemessen am 2026-09-06 tragen 10 Knoten
-// eine Wahl, weil der Eigentuemer seither aufgeraeumt hat. **Nichts war kaputt; eine Zahl aus seinem
-// Bestand von vorgestern stand in einer Zusage.** Die Zusage sagt in ihrem eigenen Satz, was sie
-// meint — «es gibt ueberhaupt Wahlen» —, und genau das steht jetzt da (`PR-9`: sichtbar geaendert,
-// nicht entschaerft).*
-check('und Knoten tragen ihre Wahl an dieser Kante', $mitWahl >= 1, (string) $mitWahl);
-
-$insLeere = (int) $wpdb->get_var($wpdb->prepare(
-    // ⚠️ *Und ins Leere zeigt er, wenn den **Knoten** nicht mehr gibt ([D-684](../../docs/NewConcept/90-decision-log.md)).*
-    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v
-       LEFT JOIN ' . Schema::table('nodes') . " r ON r.id = v.value_ref
-      WHERE v.relation_id = %d AND v.value_ref_kind = 'node' AND r.id IS NULL",
-    $kante
-));
-
-check('kein Traeger ins Leere — genau ein Satz je Knoten', $insLeere === 0, (string) $insLeere);
+// ⚠️ **Hier standen fünf Zusagen zur Einstellungskante `renderer`** *— seit Schritt 7 des Bauplans (2026-09-11): Renderer, Konverter und Validatoren sind
+// Objekte programmierter Klassen, keine Knoten; die Einstellungskanten und der Ast `Settings` sind in den Schatten
+// gewandert ([D-712](../../docs/NewConcept/90-decision-log.md), [D-718](../../docs/NewConcept/90-decision-log.md)).*
 
 echo "\n== Der Speichern-Knopf der Seite schreibt «wie oft» ==\n";
 

@@ -151,39 +151,10 @@ check(
     ))
 );
 
-echo "\n4 · Jeder registrierte Renderer, Konverter, Validator und einfache Typ hat seinen Knoten\n";
+echo "\n4 · Jeder einfache Typ hat seinen Knoten — Renderer, Konverter und Validatoren sind keine mehr (D-718)\n";
 
 // ⚠️ *Die Registraturen werden hier frisch gefüllt und nicht aus dem Plugin geholt: dieser Lauf soll
 // prüfen, was der Code **enthält**, nicht was eine Anfrage gerade zusammengebaut hat.*
-$renderer  = ShippedRenderers::registry();
-$konverter = ShippedConverters::registry();
-$validator = ShippedValidators::registry();
-
-$erwartet = [];
-
-foreach ($renderer->namesForNodes() as $name) {
-    $klasse = $renderer->classFor($name);
-
-    if ($klasse !== null) {
-        $erwartet[$klasse] = 'Renderer ' . $name;
-    }
-}
-
-foreach ($konverter->namesForNodes() as $name) {
-    $klasse = $konverter->classFor($name);
-
-    if ($klasse !== null) {
-        $erwartet[$klasse] = 'Converter ' . $name;
-    }
-}
-
-foreach ($validator->namesForNodes() as $name) {
-    $klasse = $validator->classFor($name);
-
-    if ($klasse !== null) {
-        $erwartet[$klasse] = 'Validator ' . $name;
-    }
-}
 
 // ⚠️ **Und die elf spezialisierten Typen** ([D-484](../../docs/NewConcept/90-decision-log.md)):
 // *seit sie Klassen sind, tragen ihre Knoten den Klassennamen wie jeder Renderer — und damit ist die

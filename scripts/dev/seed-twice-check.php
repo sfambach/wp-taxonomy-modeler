@@ -74,7 +74,6 @@ use Taxmod\Core\Validator\ShippedValidators;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\Query;
-use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeedImage;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
@@ -172,13 +171,6 @@ $gerueste = [
     'base'        => new BaseScaffold($editor, $framework, $typeNodes),
     'unit'        => new UnitScaffold($editor, $framework, $labels, $typeNodes),
     'composition' => new CompositionScaffold($editor, $framework, $typeNodes),
-    'rendering'   => new RenderingScaffold(
-        $editor,
-        $framework,
-        ShippedRenderers::registry(),
-        ShippedConverters::registry(),
-        ShippedValidators::registry()
-    ),
 ];
 
 echo "0 · Vorher zählen\n";
@@ -356,6 +348,12 @@ if ($abzug !== null) {
     }
 
     check('keine Wiese mit __ im Abzug', $wiesen === [], implode(', ', array_slice($wiesen, 0, 8)));
+
+    // ⚠️ *Die Einstellungstabellen gehören nicht zum Abzug — das Einheitengerüst schreibt sie (Schritt 7) —, aber ihre
+    // Fremdschlüssel halten die Knoten fest: also zuerst sie, dann der Abzug.*
+    foreach (['settings_value', 'settings_object'] as $tabelle) {
+        $wpdb->query('DELETE FROM ' . Schema::table($tabelle));
+    }
 
     foreach (array_reverse(array_keys(SeedImage::TABLES)) as $tabelle) {
         $wpdb->query('DELETE FROM ' . Schema::table($tabelle));

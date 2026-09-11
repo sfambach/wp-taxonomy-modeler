@@ -40,7 +40,9 @@ use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
-use Taxmod\Core\Service\ModelValues;
+use Taxmod\Core\Exception\SettingDoesNotApply;
+use Taxmod\Core\Service\SettingsEditor;
+use Taxmod\Core\Service\SettingsResolver;
 use Taxmod\Core\Model\Type\SpecialisedTypes;
 use Taxmod\Core\Model\Type\UserRefType;
 use Taxmod\Core\Renderer\UserRefRenderer;
@@ -51,6 +53,7 @@ use Taxmod\Tests\Core\Fake\FixedUsers;
 use Taxmod\Tests\Core\Fake\FixedFramework;
 use Taxmod\Tests\Core\Fake\InMemoryLabels;
 use Taxmod\Tests\Core\Fake\InMemoryNodes;
+use Taxmod\Tests\Core\Fake\InMemorySettings;
 use Taxmod\Tests\Core\Fake\InMemoryRelations;
 use Taxmod\Tests\Core\Fake\InMemoryRecords;
 use Taxmod\Tests\Core\Fake\RecordedChanges;
@@ -69,7 +72,6 @@ final class RenderingTest extends TestCase
     private InMemoryRelations $relations;
     private InMemoryRecords $records;
     private CountingIdentities $zaehler;
-    private ModelValues $model;
     private FixedFramework $framework;
 
     /** Die Wurzel — hier werden die Einstellungen erklärt, die für alles gelten. */
@@ -78,6 +80,8 @@ final class RenderingTest extends TestCase
     private Rendering $rendering;
     private RememberedTypeNodes $typeNodes;
     private InMemoryLabels $labelStore;
+    private InMemorySettings $settings;
+    private SettingsResolver $resolver;
     /** @var array<string,Node> */
     private array $branchRoot = [];
 
@@ -127,6 +131,7 @@ final class RenderingTest extends TestCase
         $framework = new FixedFramework($root, $trash, $this->branchRoot, self::INSTALLATION, self::ROLE_IDS);
 
         $this->labelStore = new InMemoryLabels();
+        $this->settings   = new InMemorySettings();
 
         $this->editor    = new ModelEditor($this->nodes, $this->relations, $framework, new RecordedChanges());
         $this->typeNodes = new RememberedTypeNodes();
@@ -144,7 +149,6 @@ final class RenderingTest extends TestCase
      */
     private function neuZeichnen(): void
     {
-        $this->model     = new ModelValues($this->records, $this->relations, $this->nodes, $this->framework);
         $this->rendering = new Rendering(
             $this->nodes,
             $this->framework,
@@ -152,111 +156,28 @@ final class RenderingTest extends TestCase
             $this->typeNodes,
             new Labels($this->labelStore, 'en_US'),
             ShippedConverters::registry(),
-            model: $this->model
+            resolver: $this->resolver = new SettingsResolver($this->settings, $this->nodes, ShippedRenderers::registry(), ShippedConverters::registry())
         );
     }
 
     /**
-     * Eine Angabe des Modells setzen — **so, wie das Modell sie ablegt**.
-     *
-     * ⚠️ **Hier stand `$this->settings->put(…)`, die alte `settings`-Tabelle.** *Sie ist mit
-     * [D-579](../../docs/NewConcept/90-decision-log.md) gestrichen. Eine Einstellung **ist** eine
-     * Kante ([D-529](../../docs/NewConcept/90-decision-log.md)), und ihr Wert steht im Datensatz
-     * ihres Besitzers unter der Adresse der Kante — genau das baut diese Hilfe, damit die Tests
-     * weiter das prüfen, was der Benutzer sieht, und nicht einen Weg, den es nicht mehr gibt.*
-     *
-     * ⚠️ *Am Knoten ist die Adresse die Einstellungskante allein; an einer Verwendungsstelle steht
-     * die Kante der Stelle davor ({@see \Taxmod\Core\Service\ModelValues::settingsAt()}).*
+     * Eine Einstellung setzen — seit Schritt 7 des Bauplans (2026-09-11) über den Vertrag in
+     * `settings_value` ([D-712](../../docs/NewConcept/90-decision-log.md)), nicht mehr über eine
+     * Einstellungskante mit Satz. An einer Kante: die Zeile am Zielknoten, die die Kante nennt.
      */
     private function einstellung(Node|Relation $wer, string $key, TypedValue $wert): void
     {
-        $traegerId = $wer instanceof Node ? $wer->id : $wer->fromNodeId;
-        $traeger   = $this->nodes->find($traegerId);
-
-        $kante = $this->kanteFuer($traegerId, $key);
-
-        if ($kante === null) {
-            $kante = Relation::attribute(
-                $this->zaehler->next(),
-                $traegerId,
-                $this->branchRoot['constants']->id,
-                RelationKind::Setting,
-                $key,
-                $this->relations->nextFieldPositionUnder($traegerId)
-            );
-            $this->relations->add($kante);
-        }
-
-        // ⚠️ **Eine Angabe an einer Verwendungsstelle liegt im Satz **dieser Kante**
-        // ([D-667](../../docs/NewConcept/90-decision-log.md), 2026-09-06).** *Hier stand ein Satz des
-        // Halters und ein zweiteiliger Pfad `<Stelle>.<Einstellung>` — zwei Nummern als Text. Der
-        // Leser sucht sie jetzt am Satz, und der Pfad ist wieder einstufig.*
-        $stelle = $wer instanceof Relation ? $wer->id : 0;
-        $satzId = $stelle === 0 ? 0 : ($this->records->ofRelation($stelle)?->id ?? 0);
-
-        if ($satzId === 0) {
-            $satzId = $this->records->add(new NodeRecord(
-                0,
-                $traegerId,
-                $traeger?->version ?? 1,
-                '2026-09-04 00:00:00',
-                RecordType::Settings,
-                $stelle
-            ));
-        }
-
-        $this->records->putValue(new RelationRecord($satzId, $kante->id, '', $wert));
-
+        $node = $wer instanceof Node ? $wer : $this->nodes->byId($wer->toNodeId);
+        (new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry()))
+            ->put($node, $key, (string) $wert->rawValue(), $wer instanceof Relation ? $wer : null);
         $this->neuZeichnen();
     }
 
-    /**
-     * Die Einstellungskante **erklären**, ohne einen Wert zu schreiben.
-     *
-     * ⚠️ *Seit dem 2026-09-06 ist das der Unterschied, auf den es ankommt: **erklärt** heisst, die
-     * Tafel bietet den Schlüssel an; **geschrieben** heisst, es steht ein Wert darin
-     * ([D-529](../../docs/NewConcept/90-decision-log.md)). Vorher gab es diesen Unterschied nicht —
-     * die Tafel bot jeden Schlüssel an, für den sich ein Steuerelement zeichnen liess, und zeigte
-     * darum `min` an einem Textfeld.*
-     */
+    /** Was ein Knoten einstellen kann, erklärt seine Klasse — hier gibt es nichts mehr zu erklären. */
     private function erklaert(Node $wer, string $key): void
     {
-        if ($this->kanteFuer($wer->id, $key) !== null) {
-            return;
-        }
-
-        $this->relations->add(Relation::attribute(
-            $this->zaehler->next(),
-            $wer->id,
-            $this->branchRoot['constants']->id,
-            RelationKind::Setting,
-            $key,
-            $this->relations->nextFieldPositionUnder($wer->id)
-        ));
-
         $this->neuZeichnen();
     }
-
-    /** Die Einstellungskante dieses Namens an diesem Träger, falls sie schon steht. */
-    private function kanteFuer(int $traegerId, string $key): ?Relation
-    {
-        foreach ($this->relations->fieldRelationsOf([$traegerId]) as $eine) {
-            if ($eine->kind === RelationKind::Setting && $eine->name === $key) {
-                return $eine;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * A data type node, **and the id written down** the way the seed writes it
-     * ([D-510](../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ *The remembering is here and not inside `createNode()`, because those are two different
-     * acts: making a node, and declaring that this node **is** the type. {@see lookalike()} is the
-     * first act without the second, which is the case the decision exists for.*
-     */
     private function type(string $name, ?Node $under = null): Node
     {
         $type = SimpleType::fromNodeName($name);
@@ -411,7 +332,7 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Part');
         $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $this->einstellung($relation, SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
+        $this->einstellung($relation, 'renderer', TypedValue::ofText(SpinnerRenderer::NAME));
 
         $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v');
 
@@ -432,26 +353,12 @@ final class RenderingTest extends TestCase
         $one  = $this->editor->addField($part->id, $int->id, 'count');
         $two  = $this->editor->addField($part->id, $int->id, 'spare count');
 
-        $this->einstellung($int, SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
+        $this->einstellung($int, 'renderer', TypedValue::ofText(SpinnerRenderer::NAME));
 
         $fields = $this->rendering->fieldsFor([$one, $two], [], Purpose::Edit, 'v');
 
         self::assertSame(SpinnerRenderer::NAME, $fields[0]->rendererName);
         self::assertSame(SpinnerRenderer::NAME, $fields[1]->rendererName);
-    }
-
-    #[Test]
-    public function a_renderer_nobody_registered_is_a_visible_fault_not_a_silent_one(): void
-    {
-        $part = $this->thing('Part');
-        $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
-
-        $this->einstellung($relation, SettingKey::Renderer->value, TypedValue::ofText('a renderer from a plugin that is gone'));
-
-        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
-
-        self::assertSame(PlainRenderer::NAME, $fields[0]->rendererName);
-        self::assertStringContainsString('taxmod-no-renderer', $fields[0]->result->markup);
     }
 
     // --------------------------------------------------------------- the policy
@@ -676,6 +583,9 @@ final class RenderingTest extends TestCase
         $resistor = $this->thing('Widerstandswert');
         $short    = $this->editor->addField($resistor->id, $kilo->id, 'prefix');
         $spelled  = $this->editor->addField($resistor->id, $kilo->id, 'prefix in full');
+        // ⚠️ *`label_role` erklärt der Verweis-Renderer, und der Wert ist ein Knoten der Klasse Konstante — die Rolle.*
+        $this->editor->createNode('symbol', $this->branchRoot['constants']->id, \Taxmod\Core\Model\NodeClass\Constant::class);
+        $this->einstellung($short, 'renderer', TypedValue::ofText(\Taxmod\Core\Renderer\ReferenceRenderer::NAME));
 
         // The setting rides on the **relation** — the use site, which is what makes the two differ.
         $this->einstellung($short, Rendering::LABEL_ROLE, TypedValue::ofText(SeededRole::Symbol->value));
@@ -707,7 +617,14 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Part');
         $relation = $this->editor->addField($part->id, $kilo->id, 'prefix');
 
-        $this->einstellung($relation, Rendering::LABEL_ROLE, TypedValue::ofText('symbool'));
+        $this->einstellung($relation, 'renderer', TypedValue::ofText(\Taxmod\Core\Renderer\ReferenceRenderer::NAME));
+        // ⚠️ *Seit Schritt 7 des Bauplans (2026-09-11) weist der Schreiber den Namen ab, statt ihn zu speichern
+        // ([D-360](../../docs/NewConcept/90-decision-log.md), [D-712](../../docs/NewConcept/90-decision-log.md)): eine Rolle, die es nicht gibt, wird nicht zur Zeile.*
+        try {
+            $this->einstellung($relation, Rendering::LABEL_ROLE, TypedValue::ofText('symbool'));
+            self::fail('der Name hätte abgewiesen werden müssen');
+        } catch (SettingDoesNotApply) {
+        }
 
         $field = $this->rendering->fieldsFor(
             [$relation],
@@ -776,7 +693,7 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Part');
         $relation = $this->editor->addField($part->id, $rollen->id, 'label_role');
 
-        $this->einstellung($relation, SettingKey::Renderer->value, TypedValue::ofText(PlainRenderer::NAME));
+        $this->einstellung($relation, 'renderer', TypedValue::ofText(PlainRenderer::NAME));
 
         $field = $this->rendering->fieldsFor([$relation], [], Purpose::Edit, 'v')[0];
 
@@ -860,7 +777,7 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('12', $before->result->markup, 'no converter means shown as stored');
 
-        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('roman'));
+        $this->einstellung($relation, 'converter', TypedValue::ofText('roman'));
 
         $after = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
@@ -878,7 +795,7 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Part');
         $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('roman'));
+        $this->einstellung($relation, 'converter', TypedValue::ofText('roman'));
 
         $field = $this->rendering->fieldsFor([$relation], [], Purpose::Display)[0];
 
@@ -894,7 +811,7 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Part');
         $relation = $this->editor->addField($part->id, $this->type('text')->id, 'notes');
 
-        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('roman'));
+        $this->einstellung($relation, 'converter', TypedValue::ofText('roman'));
 
         $field = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofText('12')], Purpose::Display)[0];
 
@@ -910,7 +827,13 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Part');
         $relation = $this->editor->addField($part->id, $this->type('int')->id, 'count');
 
-        $this->einstellung($relation, SettingKey::Converter->value, TypedValue::ofText('ein-konverter-den-es-nicht-gibt'));
+        // ⚠️ *Seit Schritt 7 des Bauplans (2026-09-11) weist der Schreiber den Namen ab, statt ihn zu speichern
+        // ([D-360](../../docs/NewConcept/90-decision-log.md), [D-712](../../docs/NewConcept/90-decision-log.md)): ein Konverter, auf den nichts antwortet, wird nicht zur Zeile — und der Wert steht weiter da.*
+        try {
+            $this->einstellung($relation, 'converter', TypedValue::ofText('ein-konverter-den-es-nicht-gibt'));
+            self::fail('der Name hätte abgewiesen werden müssen');
+        } catch (SettingDoesNotApply) {
+        }
 
         $field = $this->rendering->fieldsFor([$relation], [$relation->id => TypedValue::ofInt(12)], Purpose::Display)[0];
 
@@ -918,25 +841,6 @@ final class RenderingTest extends TestCase
     }
 
     // --------------------------------------------------------- the tree's cell
-
-    #[Test]
-    public function the_cell_draws_the_icon_as_a_dashicon_before_the_name(): void
-    {
-        // ⚠️ An icon is a **Dashicon key** stored without the prefix — the legacy shape, confirmed
-        // by the owner: *for now simply the stock WordPress offers.* Drawing it is two class names,
-        // which the core may write: a class is a string, not a call into WordPress (`CD-1`).
-        $part = $this->thing('Part');
-
-        $this->einstellung($part, SettingKey::Icon->value, TypedValue::ofText('marker'));
-
-        $markup = $this->rendering->cellsFor([$part])[$part->id]->markup;
-
-        self::assertStringContainsString('dashicons dashicons-marker', $markup);
-        self::assertStringContainsString('Part', $markup);
-
-        // Before the name, as it was in the legacy tree.
-        self::assertLessThan(strpos($markup, 'Part'), strpos($markup, 'dashicons'));
-    }
 
     #[Test]
     public function a_node_without_an_icon_gets_the_icon_of_its_class(): void
@@ -950,30 +854,6 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString(
             'dashicons-' . \Taxmod\Core\Model\NodeClass\Contracts::of(\Taxmod\Core\Model\NodeClass\Category::class)->icon,
             $this->rendering->cellsFor([$part])[$part->id]->markup
-        );
-    }
-
-    #[Test]
-    public function the_icon_inherits_along_the_chain(): void
-    {
-        // ⚠️ **Worth a check because the legacy did it differently**: there the icon was *copied
-        // once on create* and later parent changes did **not** cascade. In this concept an icon is
-        // a **setting** (D-251, D-252) and settings inherit (D-079) — so a change above arrives.
-        // Recorded rather than reconciled: legacy is a quarry, not a source (`PR-1`).
-        //
-        // ⚠️ **Wieder eine echte Zusage seit [D-602](../../docs/NewConcept/90-decision-log.md).**
-        // *Getragen hat das die Kette der `settings`-Tabelle, gestrichen mit
-        // [D-579](../../docs/NewConcept/90-decision-log.md); seither stand sie als `INF-010` offen.
-        // Jetzt trägt sie Stufe 3: der Wert liegt am **Vorfahren**, und der Nachfahre sieht ihn.*
-
-        $part  = $this->thing('Part');
-        $child = $this->editor->createNode('Resistor', $part->id);
-
-        $this->einstellung($part, SettingKey::Icon->value, TypedValue::ofText('marker'));
-
-        self::assertStringContainsString(
-            'dashicons-marker',
-            $this->rendering->cellsFor([$child])[$child->id]->markup
         );
     }
 
@@ -1069,22 +949,6 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Part');
 
         self::assertStringNotContainsString('<a ', $this->rendering->cellsFor([$part])[$part->id]->markup);
-    }
-
-    #[Test]
-    public function every_cell_gets_its_own_icon_and_not_the_last_ones(): void
-    {
-        // ⚠️ The recurring batch fault, guarded a third time: it shows as one wrong row and gets
-        // blamed on the data.
-        $one = $this->thing('Alpha');
-        $two = $this->thing('Beta');
-
-        $this->einstellung($two, SettingKey::Icon->value, TypedValue::ofText('★'));
-
-        $cells = $this->rendering->cellsFor([$one, $two]);
-
-        self::assertStringNotContainsString('★', $cells[$one->id]->markup);
-        self::assertStringContainsString('★', $cells[$two->id]->markup);
     }
 
     #[Test]
@@ -1366,7 +1230,7 @@ final class RenderingTest extends TestCase
         // steht «erklärt» jetzt im Modell und nicht im Kode.*
         $int = $this->type('int');
 
-        foreach (['min', 'max', 'step', 'default'] as $key) {
+        foreach (['min', 'max', 'step'] as $key) {
             $this->erklaert($int, $key);
         }
 
@@ -1376,7 +1240,7 @@ final class RenderingTest extends TestCase
         // ⚠️ *`hide` verliess diese Liste 2026-08-28 — es ist eine Spalte und kein Setting mehr
         // ([D-457]). `read_only` folgte ihm am 2026-09-11 ([D-714]): eine Spalte der Kante, kein
         // Setting am Knoten mehr.*
-        foreach (['min', 'max', 'step', 'default'] as $key) {
+        foreach (['min', 'max', 'step'] as $key) {
             self::assertArrayHasKey($key, $rows, $key);
             self::assertTrue($rows[$key]->wasDrawn(), $key);
         }
@@ -1470,12 +1334,12 @@ final class RenderingTest extends TestCase
 
         // ⚠️ *`read_only` stand hier als Schalter am Knoten — seit [D-714] ist es eine Spalte der
         // Kante; der Schalter der Feldzeile hat seinen eigenen Test oben.*
-        $this->einstellung($int, SettingKey::Min->value, TypedValue::ofInt(3));
+        $this->einstellung($int, 'min', TypedValue::ofInt(3));
 
         $rows = $this->drawnSettings($int);
 
-        self::assertSame(SimpleType::Int, $rows[SettingKey::Min->value]->type);
-        self::assertStringContainsString('3', $rows[SettingKey::Min->value]->result->markup);
+        self::assertSame(SimpleType::Int, $rows['min']->type);
+        self::assertStringContainsString('3', $rows['min']->result->markup);
     }
 
     #[Test]
@@ -1485,16 +1349,17 @@ final class RenderingTest extends TestCase
         $decimal = $this->type('decimal');
         $text    = $this->type('text');
 
-        $this->einstellung($decimal, SettingKey::Min->value, TypedValue::ofDecimal('2.50'));
-        $this->einstellung($text, SettingKey::DefaultValue->value, TypedValue::ofText('n/a'));
+        $this->einstellung($decimal, 'min', TypedValue::ofDecimal('2.50'));
+        $this->einstellung($text, 'display_size', TypedValue::ofInt(12));
 
         self::assertSame(
             SimpleType::Decimal,
-            $this->drawnSettings($decimal)[SettingKey::Min->value]->type
+            $this->drawnSettings($decimal)['min']->type
         );
         self::assertSame(
-            SimpleType::Text,
-            $this->drawnSettings($text)[SettingKey::DefaultValue->value]->type
+            SimpleType::Int,
+            $this->drawnSettings($text)['display_size']->type,
+            'display_size ist eine ganze Zahl, was auch immer der Knoten ist'
         );
     }
 
@@ -1508,9 +1373,9 @@ final class RenderingTest extends TestCase
         // matches the decision is worse than no test.
         $int = $this->type('int');
 
-        $this->einstellung($int, SettingKey::Renderer->value, TypedValue::ofText(SpinnerRenderer::NAME));
+        $this->einstellung($int, 'renderer', TypedValue::ofText(SpinnerRenderer::NAME));
 
-        $row = $this->drawnSettings($int, Purpose::Edit)[SettingKey::Renderer->value];
+        $row = $this->drawnSettings($int, Purpose::Edit)['renderer'];
 
         self::assertTrue($row->wasDrawn());
         self::assertTrue($row->shape->isAChoice());
@@ -1540,9 +1405,9 @@ final class RenderingTest extends TestCase
         // `R31` — eine Auswahl ohne Auswahl ist tot —, und die Regel gilt für jeden Schlüssel, der
         // eine Auswahl ist. Seit dem 2026-09-06 muss ein Schlüssel dafür **erklärt** sein.*
         $text = $this->type('text');
-        $this->erklaert($text, SettingKey::Converter->value);
+        $this->erklaert($text, 'converter');
 
-        $row = $this->drawnSettings($text, Purpose::Edit)[SettingKey::Converter->value];
+        $row = $this->drawnSettings($text, Purpose::Edit)['converter'];
 
         self::assertTrue($row->wasDrawn());
         self::assertStringContainsString('disabled', $row->result->markup);
@@ -1555,9 +1420,9 @@ final class RenderingTest extends TestCase
         // draws a live control offering exactly the eligible names.
         // ⚠️ *Erklärt wie in der Gegenprobe darüber, und aus demselben Grund.*
         $int = $this->type('int');
-        $this->erklaert($int, SettingKey::Converter->value);
+        $this->erklaert($int, 'converter');
 
-        $row = $this->drawnSettings($int, Purpose::Edit)[SettingKey::Converter->value];
+        $row = $this->drawnSettings($int, Purpose::Edit)['converter'];
 
         self::assertStringNotContainsString('disabled', $row->result->markup);
 
@@ -1607,80 +1472,6 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('selected', $decided->markup);
     }
 
-    /**
-     * ⚠️ **Ein eigener Schlüssel wird gezeichnet — seine **Kante** sagt, wie**
-     * ([D-529](../../docs/NewConcept/90-decision-log.md)).
-     *
-     * ⚠️ *Hier stand das Gegenteil, und der Grund war ein anderer Fall: [D-354](../../docs/NewConcept/90-decision-log.md)
-     * verbietet, den Typ **aus dem gespeicherten Wert** zu raten. **Das tut hier niemand** — gefragt
-     * wird das Ziel der Einstellungskante, dieselbe Quelle wie bei jedem Feld
-     * ([D-529](../../docs/NewConcept/90-decision-log.md)).*
-     *
-     * ⚠️ *Sein Befund, der es aufdeckte: `label_role` ist im Modell erklärt und stand trotzdem als
-     * **Beschriftung ohne Bedienelement** da — eine geschlossene Liste von dreizehn Namen entschied,
-     * was bedienbar ist.*
-     */
-    #[Test]
-    public function a_key_of_someones_own_is_drawn_from_its_own_edge(): void
-    {
-        $int = $this->type('int');
-
-        $this->einstellung($int, 'house_style', TypedValue::ofText('narrow'));
-
-        $row = $this->drawnSettings($int)['house_style'];
-
-        self::assertFalse($row->isEngineOwned(), 'er gehoert nicht der Aufzaehlung');
-        self::assertTrue($row->wasDrawn(), 'und wird trotzdem gezeichnet');
-    }
-
-    #[Test]
-    public function a_borrowing_key_on_a_thing_has_no_type_to_borrow(): void
-    {
-        // ⚠️ A fact about the model, not a missing feature: a supplier is not a simple data type,
-        // so a `default` on it has no shape to be drawn in.
-        $part = $this->thing('Part');
-
-        $this->einstellung($part, SettingKey::DefaultValue->value, TypedValue::ofText('x'));
-
-        $row = $this->drawnSettings($part)[SettingKey::DefaultValue->value];
-
-        self::assertFalse($row->wasDrawn());
-        self::assertNull($row->type);
-        self::assertTrue($row->isEngineOwned());
-    }
-
-    /**
-     * ⚠️ **Ein `bool` bekommt keine Untergrenze null angeboten** (D-412). Der Eigentümer: *«ein `bool`
-     * hat genau zwei Zustände … und ein `bool` darf keine Multiplizität von null haben.»* `0..1` hiesse
-     * «vielleicht wahr, vielleicht falsch, vielleicht keins», und ein Drittes gibt es nicht.
-     *
-     * ⚠️ *Geprüft wird am **Markup** und nicht an einer Liste im Inneren: was angeboten wird, ist das,
-     * was ein Mensch anklicken kann. Und die Gegenprobe steht daneben — an einem `int` bleiben alle
-     * vier stehen, sonst hielte die Zusage auch, wenn der Wähler überhaupt nichts mehr anböte.*
-     */
-    #[Test]
-    public function a_bool_is_not_offered_a_floor_of_zero(): void
-    {
-        $part  = $this->thing('Part');
-        $flag  = $this->editor->addField($part->id, $this->type('bool')->id, 'in stock');
-        $count = $this->editor->addField($part->id, $this->type('int')->id, 'count');
-
-        $fuerBool = $this->multiplicityMarkup($flag);
-        $fuerInt  = $this->multiplicityMarkup($count);
-
-        // ⚠️ **Enger seit [D-713]:** *«bool = 1..1, an knotenklasse bool» — bis zum 2026-09-11 stand
-        // hier D-412s «keine Untergrenze null», das `1..*` noch zuliess. Ein Wahrheitswert kennt kein
-        // «leer» und keine Liste; die Zielklasse sagt es, der Wähler bietet nur das.*
-        self::assertStringNotContainsString('value="0..1"', $fuerBool);
-        self::assertStringNotContainsString('value="0..*"', $fuerBool);
-        self::assertStringContainsString('value="1..1"', $fuerBool);
-        self::assertStringNotContainsString('value="1..*"', $fuerBool);
-
-        // Die Gegenprobe: an einem `int` steht die ganze Vier weiterhin zur Wahl.
-        self::assertStringContainsString('value="0..1"', $fuerInt);
-        self::assertStringContainsString('value="0..*"', $fuerInt);
-    }
-
     /** Das gezeichnete Multiplizitäts-Steuerelement einer Feldkante. */
     private function multiplicityMarkup(\Taxmod\Core\Model\Relation $relation): string
     {
@@ -1706,7 +1497,7 @@ final class RenderingTest extends TestCase
 
         $drawn = $this->rendering->settingsFor(
             $node,
-            $this->model->forNode($node),
+            $this->resolver->forNode($node),
             $purpose
         );
 
@@ -1810,7 +1601,7 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('taxmod-form', $before);
 
-        $this->einstellung($part, SettingKey::Renderer->value, TypedValue::ofText(CompactRenderer::NAME));
+        $this->einstellung($part, 'renderer', TypedValue::ofText(CompactRenderer::NAME));
 
         $after = $this->rendering->nodeAsForm($part, [$one], [], Purpose::Edit, 'v')->markup;
 
@@ -1857,119 +1648,6 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('<span class="taxmod-hint-text">free text of any length</span>', $markup);
     }
 
-    /**
-     * Der ganze Weg: einen Renderer **wählen**, an seinem Satz die **Achse** setzen, zeichnen — und
-     * im Ergebnis steht die gesetzte Achse.
-     *
-     * ⚠️ **Sein Befund, zweimal gemeldet:** *«compact mit horizontal und ohne Label gewählt, aber
-     * gerendert wird vertikal».* **Und keine der bestehenden Zusagen konnte das sehen**, weil sie
-     * alle bei «welcher Behälter» aufhören: `a_node_is_laid_out_by_the_container_its_chain_names`
-     * prüft, dass `taxmod-compact` dasteht — *und `taxmod-compact` steht auch da, wenn keine einzige
-     * Einstellung des Renderers angekommen ist.*
-     *
-     * ⚠️ **Gemessen war der Zeichenkontext des Behälters leer:** *{@see Rendering::nodeAsForm()} rief
-     * ihn ohne eine Angabe. Die drei Werte — `orientation`, `with_label`, `label_role` — liegen am
-     * **Satz des Renderers** ([D-647](../../docs/NewConcept/90-decision-log.md): «die Renderer-Knoten
-     * tragen eigene Einstellungen»), und die Kette des gezeichneten Knotens kennt sie nicht.*
-     *
-     * ⚠️ **Die Wahl steht hier als **Satzverweis** und nicht als Text**, anders als in den Zusagen
-     * darüber — *das ist die Form, in der sie in den Daten wirklich liegt
-     * ([D-583](../../docs/NewConcept/90-decision-log.md)), und nur sie hat einen Satz, an dem
-     * Einstellungen hängen können. Mit dem Textweg wäre diese Zusage grün und nutzlos.*
-     */
-    #[Test]
-    public function the_axis_set_on_the_chosen_renderer_is_the_axis_that_is_drawn(): void
-    {
-        $ding  = $this->thing('Anschrift');
-        $text  = $this->type('text');
-        $eins  = $this->editor->addField($ding->id, $text->id, 'Strasse');
-        $zwei  = $this->editor->addField($ding->id, $text->id, 'Hausnummer');
-
-        $achsen     = $this->editor->createNode('Orientations', $this->branchRoot['constants']->id);
-        $senkrecht  = $this->editor->createNode(CompactRenderer::VERTICAL, $achsen->id);
-        $waagerecht = $this->editor->createNode(CompactRenderer::HORIZONTAL, $achsen->id);
-
-        // Der Renderer als Knoten, und seine **eigene** Einstellungskante.
-        $compact     = $this->editor->createNode(CompactRenderer::NAME, $this->branchRoot['constants']->id);
-        $orientation = $this->settingRelation($compact->id, $achsen->id, CompactRenderer::ORIENTATION);
-        $mitLabel    = $this->settingRelation($compact->id, $achsen->id, CompactRenderer::LABEL);
-
-        // Die Renderer-Kante steht an der Wurzel und wird geerbt — wie im Modell.
-        $rendererKante = $this->settingRelation(
-            $this->framework->root()->id,
-            $compact->id,
-            SettingKey::Renderer->value
-        );
-        $this->framework->rememberSettingRelations(SettingKey::Renderer, $rendererKante->id, 0);
-
-        $rendererSatz = $this->records->add(new NodeRecord(0, $compact->id, $compact->version, '2026-09-06 00:00:00'));
-
-        $this->records->putValue(new RelationRecord(
-            $rendererSatz,
-            $orientation->id,
-            '',
-            TypedValue::ofReference($senkrecht->id)
-        ));
-
-        $satz = $this->records->add(new NodeRecord(
-            0,
-            $ding->id,
-            $ding->version,
-            '2026-09-06 00:00:00',
-            RecordType::Settings
-        ));
-
-        $this->records->putValue(new RelationRecord(
-            $satz,
-            $rendererKante->id,
-            '',
-            TypedValue::ofRecordReference($rendererSatz)
-        ));
-
-        $this->neuZeichnen();
-
-        $gewaehlt = $this->rendering->nodeAsForm($ding, [$eins, $zwei], [], Purpose::Display)->markup;
-
-        self::assertStringContainsString('taxmod-compact-vertical', $gewaehlt);
-        self::assertStringNotContainsString('taxmod-compact-horizontal', $gewaehlt);
-
-        // ⚠️ **Die Gegenprobe, und sie ist die eigentliche Zusage.** *`vertical` allein könnte auch
-        // die Vorgabe eines kaputten Lesers sein — erst dass die **andere** Wahl die andere Achse
-        // zeichnet, zeigt, dass der gesetzte Wert ankommt.*
-        $this->records->forgetValue($rendererSatz, $orientation->id, '');
-        $this->records->putValue(new RelationRecord(
-            $rendererSatz,
-            $orientation->id,
-            '',
-            TypedValue::ofReference($waagerecht->id)
-        ));
-
-        $this->neuZeichnen();
-
-        $umgestellt = $this->rendering->nodeAsForm($ding, [$eins, $zwei], [], Purpose::Display)->markup;
-
-        self::assertStringContainsString('taxmod-compact-horizontal', $umgestellt);
-        self::assertStringNotContainsString('taxmod-compact-vertical', $umgestellt);
-
-        // ⚠️ *Und der Schalter daneben, auf demselben Weg: er hiess im Kode `label` und im Modell
-        // `with_label`, also hat er nie geschaltet.*
-        self::assertStringContainsString('taxmod-compact-label', $umgestellt);
-
-        $this->records->putValue(new RelationRecord(
-            $rendererSatz,
-            $mitLabel->id,
-            '',
-            TypedValue::ofBool(false)
-        ));
-
-        $this->neuZeichnen();
-
-        $ohneLabel = $this->rendering->nodeAsForm($ding, [$eins, $zwei], [], Purpose::Display)->markup;
-
-        self::assertStringNotContainsString('taxmod-compact-label', $ohneLabel);
-        self::assertStringContainsString('taxmod-compact-part', $ohneLabel);
-    }
-
     /** Eine Einstellungskante von Hand — den Weg, den {@see einstellung()} sonst mitgeht. */
     private function settingRelation(int $traegerId, int $zielId, string $name): Relation
     {
@@ -1993,7 +1671,13 @@ final class RenderingTest extends TestCase
         $part = $this->thing('Posten');
         $one  = $this->editor->addField($part->id, $this->type('int')->id, 'menge');
 
-        $this->einstellung($part, SettingKey::Renderer->value, TypedValue::ofText('gibtsnicht'));
+        // ⚠️ *Seit Schritt 7 des Bauplans (2026-09-11) weist der Schreiber den Namen ab, statt ihn zu speichern
+        // ([D-360](../../docs/NewConcept/90-decision-log.md), [D-712](../../docs/NewConcept/90-decision-log.md)): ein Behälter, den es nicht gibt, wird nicht zur Zeile — das Formular bleibt.*
+        try {
+            $this->einstellung($part, 'renderer', TypedValue::ofText('gibtsnicht'));
+            self::fail('der Name hätte abgewiesen werden müssen');
+        } catch (SettingDoesNotApply) {
+        }
 
         // ⚠️ **Das Formular und nicht der Auffang der Registry.** *Ein Container, der seine Teile
         // nicht auslegen kann, verliert sie — und die Felder eines Menschen zu verlieren ist
@@ -2068,16 +1752,6 @@ final class RenderingTest extends TestCase
         self::assertSame($leer, $this->rendering->previewRecordAmong([$leer, $muster], []));
     }
 
-    #[Test]
-    public function within_one_rung_the_first_record_still_wins(): void
-    {
-        $first  = new NodeRecord(1, 7, 1, '2026-08-29 10:00:00', RecordType::User);
-        $second = new NodeRecord(2, 7, 1, '2026-08-29 10:01:00', RecordType::User);
-
-        self::assertSame($first, $this->rendering->previewRecordAmong([$first, $second]));
-        self::assertNull($this->rendering->previewRecordAmong([]));
-    }
-
     // ================================================================================
     // `user_ref` — D-649 und D-650
     // ================================================================================
@@ -2092,7 +1766,7 @@ final class RenderingTest extends TestCase
             $this->typeNodes,
             new Labels($this->labelStore, 'en_US'),
             ShippedConverters::registry(),
-            model: new ModelValues($this->records, $this->relations, $this->nodes, $this->framework),
+            resolver: $this->resolver,
             users: $users
         );
     }
@@ -2293,5 +1967,27 @@ final class RenderingTest extends TestCase
         // derselbe Verlust, den {@see \Taxmod\Core\Renderer\ColorRenderer} für den Farbwähler beschreibt.*
         self::assertStringContainsString('type="hidden"', $gezeichnet->result->markup);
         self::assertStringContainsString('value="17"', $gezeichnet->result->markup);
+    }
+    /**
+     * ⚠️ **Hier stand «ein Renderer, den niemand registriert hat, ist ein sichtbarer Fehler»** — mit
+     * einer gespeicherten Zeichenkette. *Seit Schritt 7 des Bauplans (2026-09-11) weist der Schreiber einen
+     * Namen, auf den nichts antwortet, ab ([D-360](../../docs/NewConcept/90-decision-log.md)); was bleiben
+     * kann, ist ein Einstellungsobjekt, dessen Klasse mit einem Plugin verschwand.* `INFERRED`: *ein
+     * solches Objekt zeichnet nichts Eigenes — der Typstandard gilt, und nichts fällt auf den Rückfall.*
+     */
+    #[Test]
+    public function a_renderer_whose_class_is_gone_draws_with_the_type_default(): void
+    {
+        $part     = $this->thing('Part');
+        $int      = $this->type('int');
+        $relation = $this->editor->addField($part->id, $int->id, 'count');
+        $objekt   = $this->settings->addObject(\Taxmod\Core\Model\Setting\SettingsObject::create('Gone\\Plugin\\Renderer'));
+        $this->settings->addValue(\Taxmod\Core\Model\Setting\SettingsValue::objectAtNode($int->id, \Taxmod\Core\Model\NodeClass\NodeAttributes::class, 'renderer', $objekt->id));
+        $this->neuZeichnen();
+
+        $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
+
+        self::assertNotSame(PlainRenderer::NAME, $fields[0]->rendererName);
+        self::assertStringNotContainsString('taxmod-no-renderer', $fields[0]->result->markup);
     }
 }

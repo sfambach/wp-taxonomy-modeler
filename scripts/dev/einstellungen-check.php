@@ -14,7 +14,7 @@
  *
  * ```mermaid
  * flowchart LR
- *   G["0 · Gerüst: Renderer-Knoten ↔ Kode, Wurzelkanten, Bestand"] --> W["1 · die Wiese __es: Modell, sieben Felder, ein eigener Zahltyp"]
+ *   G["0 · Gerüst: die Typen, kein Einstellungsast, der Bestand der Wahlen"] --> W["1 · die Wiese __es: Modell, sieben Felder, ein eigener Zahltyp"]
  *   W --> E["2 · der Vertrag erklärt: Attribute aus der Klasse, keine Einstellungskante, kein Erben vom Vater"]
  *   E --> R["3 · wählen: der Renderer aus dem Vertrag, ein Einstellungsobjekt, frisch lesen, zeichnen"]
  *   R --> S["4 · überschreiben an der Kante: dieselbe Zeile mit Kante, nur mit Haken — 5 · Konflikt: Typ-Standard"]
@@ -48,7 +48,6 @@ use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Exception\NotAValueOfThatType;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
-use Taxmod\Core\Model\FieldType;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
@@ -58,7 +57,6 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\CompactRenderer;
@@ -81,13 +79,11 @@ use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\ModelValues;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\SettingsResolver;
 use Taxmod\Core\Validator\ShippedValidators;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
-use Taxmod\WordPress\Persistence\RenderingScaffold;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
@@ -142,11 +138,9 @@ $zeichner = static fn (): Rendering => new Rendering(
     new SeededTypeNodes($nodes, $framework),
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     ShippedConverters::registry(),
-    new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework),
     $relations,
     resolver: new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry())
 );
-$modell = static fn (): ModelValues => new ModelValues(new WpdbRecordRepository(), $relations, $nodes, $framework);
 
 wp_set_current_user(1);
 
@@ -311,7 +305,7 @@ function gespeicherterRenderer(int $nodeId): string
     $leser     = new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry());
     $node      = $nodes->find($nodeId);
 
-    return $node === null ? '' : (string) (($leser->forNode($node)[SettingKey::Renderer->value] ?? null)?->value->text ?? '');
+    return $node === null ? '' : (string) (($leser->forNode($node)['renderer'] ?? null)?->value->text ?? '');
 }
 
 /** @return array{0:string,1:string} Renderer-Name und Markup, mit denen ein Feld gezeichnet wird. */
@@ -383,181 +377,29 @@ function vorschau(int $nodeId): string
 }
 
 /** Der Einstellungssatz eines Knotens (relation_id 0), notfalls angelegt. */
-$satzVon = static function (int $knotenId) use ($nodes, $rows): int {
-    foreach ($rows->ofNode($knotenId) as $vorhanden) {
-        if ($vorhanden->recordType === RecordType::Settings && $vorhanden->relationId === 0) {
-            return $vorhanden->id;
-        }
-    }
 
-    return $rows->add(new NodeRecord(0, $knotenId, $nodes->byId($knotenId)->version, gmdate('Y-m-d H:i:s'), RecordType::Settings));
-};
-
-/** Die Einstellungskante mit diesem Namen an einem Träger, notfalls angelegt (Ziel: der Konstantenast). */
-$kanteFuer = static function (int $traegerId, string $key) use ($relations, $framework): Relation {
-    foreach ($relations->fieldRelationsOf([$traegerId]) as $eine) {
-        if ($eine->kind === RelationKind::Setting && $eine->name === $key) {
-            return $eine;
-        }
-    }
-
-    return $relations->add(Relation::attribute(
-        0,
-        $traegerId,
-        $framework->rootOf(Branch::Constants)->id,
-        RelationKind::Setting,
-        $key,
-        $relations->nextFieldPositionUnder($traegerId)
-    ));
-};
-
-/** Eine Angabe an einem Knoten (eigener Satz) oder an einer Stelle (Satz der Kante) setzen. */
-$angabe = static function (Node|Relation $wer, string $key, TypedValue $wert) use ($satzVon, $kanteFuer, $data, $rows): void {
-    $traegerId = $wer instanceof Node ? $wer->id : $wer->fromNodeId;
-    $kante     = $kanteFuer($traegerId, $key);
-
-    if ($wer instanceof Relation) {
-        $data->putSettingAtUseSite($wer->id, $kante->id, $wert);
-
-        return;
-    }
-
-    $satzId = $satzVon($traegerId);
-    $rows->forgetValue($satzId, $kante->id, '');
-    $rows->putValue(new RelationRecord($satzId, $kante->id, '', $wert));
-};
-
-$ohneAngabe = static function (Node|Relation $wer, string $key) use ($satzVon, $kanteFuer, $data, $rows): void {
-    $traegerId = $wer instanceof Node ? $wer->id : $wer->fromNodeId;
-    $kante     = $kanteFuer($traegerId, $key);
-
-    if ($wer instanceof Relation) {
-        $data->clearSettingAtUseSite($wer->id, $kante->id);
-
-        return;
-    }
-
-    $rows->forgetValue($satzVon($traegerId), $kante->id, '');
-};
-
-$renderKante = $framework->settingRelationId(SettingKey::Renderer);
 $modellAst   = $framework->rootOf(Branch::Model);
 $wurzel      = $framework->root();
 
 // ---------------------------------------------------------------------------------------------------
 
-echo "== 0 · Das Gerüst: Renderer-Knoten und Kode, die Wurzelkanten, der Bestand ==\n";
+echo "== 0 · Das Gerüst: die Typen stehen, kein Einstellungsast mehr, der Bestand der Wahlen ==\n";
 
-$konverter  = ShippedConverters::registry();
-$validators = ShippedValidators::registry();
-$scaffold   = new RenderingScaffold($editor, $framework, $registry, $konverter, $validators);
-$scaffold->import();
-
-$heimat      = $framework->rootOf(Branch::Settings);
-$unterHeimat = [];
-foreach ($editor->childrenOf($heimat->id) as $child) {
-    $unterHeimat[$child->id] = $child;
-}
-$behaelter = [];
-foreach (RenderingScaffold::CONTAINERS as $name) {
-    $id = (int) get_option(RenderingScaffold::optionForContainer($name), 0);
-    check("der Behälter «{$name}» hängt unter Settings, seine Id ist notiert", $id > 0 && isset($unterHeimat[$id]) && $unterHeimat[$id]->name === $name, $id === 0 ? 'keine Option' : "Id {$id}");
-    if ($id > 0 && isset($unterHeimat[$id])) {
-        $behaelter[$name] = $unterHeimat[$id];
-    }
-}
-
-$klasseVon = [
-    'Renderer'  => static fn (string $n): ?string => $registry->classFor($n),
-    'Converter' => static fn (string $n): ?string => $konverter->classFor($n),
-    'Validator' => static fn (string $n): ?string => $validators->classFor($n),
-];
-$erwartet = [
-    'Renderer'  => $registry->namesForNodes(),
-    'Converter' => $konverter->namesForNodes(),
-    'Validator' => $validators->namesForNodes(),
-];
-foreach ($erwartet as $behaelterName => $namen) {
-    if (! isset($behaelter[$behaelterName])) {
-        check($behaelterName . ': Behälter fehlt', false);
-        continue;
-    }
-    $kinder = [];
-    foreach ($nodes->subtreeOf($behaelter[$behaelterName]) as $child) {
-        $kinder[$child->id] = $child;
-    }
-    $fehlend = [];
-    foreach ($namen as $name) {
-        $klasse = $klasseVon[$behaelterName]($name);
-        $node   = $klasse === null ? null : $editor->nodeImplementing($klasse);
-        if ($node === null || ! isset($kinder[$node->id])) {
-            $fehlend[] = $name;
-        }
-    }
-    check("{$behaelterName}: alle " . count($namen) . ' Namen des Kodes liegen als Knoten, über ihre Klasse gefunden', $fehlend === [], implode(', ', $fehlend));
-    $ueberzaehlig = [];
-    foreach ($nodes->subtreeOf($behaelter[$behaelterName]) as $child) {
-        if (! in_array($child->name, $namen, true) && $editor->childrenOf($child->id) === []) {
-            $ueberzaehlig[] = $child->name . ' (' . $child->id . ')';
-        }
-    }
-    check("{$behaelterName}: kein Blatt, das der Kode nicht kennt", $ueberzaehlig === [], implode(', ', $ueberzaehlig));
-}
-
-$knotenNamen = $registry->namesForNodes();
-$drinnen     = array_values(array_intersect(['tree', 'tree-node', 'labels', 'chooser-node', 'record', 'head', 'settings', 'choice', 'field-row'], $knotenNamen));
-check('keiner der neun Oberflächen-Renderer wird gesät', $drinnen === [], implode(', ', $drinnen));
-check('der Rückfall `plain` wird gesät', in_array(PlainRenderer::NAME, $knotenNamen, true));
-check('ein zweiter Lauf des Gerüsts legt nichts an', $scaffold->import() === []);
-check('der Renderer-Wähler steht in der Registratur, aber nicht in der Wahl', in_array(RendererChoiceRenderer::NAME, $registry->namesForSurfaces(), true) && ! in_array(RendererChoiceRenderer::NAME, $knotenNamen, true));
-
-$interneKlassen = [];
-foreach ($registry->namesForSurfaces() as $kennung) {
-    $klasse = $registry->classFor($kennung);
-    if ($klasse !== null) {
-        $interneKlassen[$klasse] = $kennung;
-    }
-}
-$internMitKnoten = [];
-foreach ($nodes->byImplementations(array_keys($interneKlassen)) as $klasse => $einer) {
-    $internMitKnoten[] = ($interneKlassen[$klasse] ?? $klasse) . ' => ' . $einer->name;
-}
-check('und kein interner Renderer hat einen Knoten', $internMitKnoten === [], implode(', ', $internMitKnoten));
-
-$romanKlasse = $konverter->classFor('roman');
-$romanZaehlen = static function () use ($editor, $behaelter): int {
-    $wieviele = 0;
-    foreach (isset($behaelter['Converter']) ? $editor->childrenOf($behaelter['Converter']->id) : [] as $child) {
-        if ($child->name === 'roman') {
-            $wieviele++;
-        }
-    }
-
-    return $wieviele;
-};
-if (isset($behaelter['Converter']) && $romanKlasse !== null && ($echt = $editor->nodeImplementing($romanKlasse)) !== null) {
-    $editor->setImplementedBy($echt->id, null);
-    $scaffold->import();
-    $wieder = $editor->nodeImplementing($romanKlasse);
-    check('der Notnagel trägt eine verlorene Klassenangabe nach, am selben Knoten', $wieder !== null && $wieder->id === $echt->id);
-    check('und `roman` liegt weiterhin genau einmal', $romanZaehlen() === 1, (string) $romanZaehlen());
-    $muell = $framework->trash();
-    $editor->setImplementedBy($echt->id, null);
-    $editor->setImplementedBy($muell->id, $romanKlasse);
-    $scaffold->import();
-    $wieder = $editor->find($echt->id);
-    check('eine Angabe an einem Knoten im Müll wird nicht geglaubt — sie steht wieder am echten', $wieder !== null && $wieder->implementedBy === $romanKlasse);
-    check('und es wurde kein zweiter `roman` angelegt', $romanZaehlen() === 1, (string) $romanZaehlen());
-    $editor->setImplementedBy($muell->id, null);
-    $editor->setImplementedBy($echt->id, $romanKlasse);
-}
-
-check('die Einstellungskante `renderer` ist an der Wurzel aufgeschrieben', $renderKante !== 0, (string) $renderKante);
-check('und die innere Wertkante gibt es nicht mehr', $framework->settingValueRelationId(SettingKey::Renderer) === 0);
+// ⚠️ **Bis zum 2026-09-11 prüfte dieser Abschnitt die Renderer-Knoten unter `Settings`, ihre Optionen, die
+// Einstellungskante `renderer` an der Wurzel und den Bestand der Wahlen in `relation_records`.** *Seit Schritt 7
+// des Bauplans gibt es nichts davon: Renderer, Konverter und Validatoren sind Objekte programmierter Klassen
+// ([D-712](../../docs/NewConcept/90-decision-log.md)), der Ast `Settings` ist in den Schatten gewandert
+// ([D-718](../../docs/NewConcept/90-decision-log.md)), die Rollen wohnen unter `Constants` ([D-719](../../docs/NewConcept/90-decision-log.md)).
+// Was bleibt, ist die Einstellungskante `position` an der Wurzel — bis Modell 2.4 entschieden ist.*
+check('den Ast Settings gibt es nicht mehr (D-718)', get_option('taxmod_branch_settings_id', null) === null && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name = 'Settings' AND parent_node_id = {$wurzel->id}") === 0);
+check('die Rollen wohnen unter Constants (D-719, «K3c unter constants»)', (int) $wpdb->get_var('SELECT parent_node_id FROM ' . Schema::table('nodes') . ' WHERE id = ' . (int) get_option('taxmod_roles_id', 0)) === $framework->rootOf(Branch::Constants)->id);
+$lebendeEinstellungskanten = $wpdb->get_col("SELECT name FROM {$p}relations_named WHERE kind = 'setting'") ?: [];
+check('genau eine Einstellungskante lebt noch: position an der Wurzel — bis Modell 2.4 entschieden ist', $lebendeEinstellungskanten === ['position'], implode(',', $lebendeEinstellungskanten));
+check('keine Renderer-Knoten mehr: keine Option taxmod_render_*, kein Knoten mit einer Renderer-Klasse', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE 'taxmod\\_render\\_%'") === 0 && (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . " WHERE implemented_by LIKE '%Renderer%'") === 0);
+check('keine Einstellungssätze mehr — nur die Stellen geerbter Felder (Modell 2.2) dürfen einen tragen', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records r WHERE r.record_type = 'settings' AND NOT EXISTS (SELECT 1 FROM {$p}relation_records v WHERE v.node_record_id = r.id)") === 0);
 foreach ([['nodes', 'settings_record_id'], ['relations', 'settings_record_id'], ['relations', 'target_settings_record_id']] as [$tabelle, $spalte]) {
     check("die Spalte «{$tabelle}.{$spalte}» ist weg und bleibt weg", $wpdb->get_var('SHOW COLUMNS FROM ' . Schema::table($tabelle) . " LIKE '{$spalte}'") === null);
 }
-
 $seeded = [];
 foreach (SimpleType::cases() as $typ) {
     $id = $types->nodeId($typ);
@@ -568,15 +410,10 @@ foreach (SimpleType::cases() as $typ) {
 foreach (['int', 'decimal', 'text', 'bool', 'email', 'datetime', 'color'] as $name) {
     check("der einfache Typ «{$name}» steht im Baum", isset($seeded[$name]));
 }
-if ($renderKante === 0 || count(array_intersect_key($seeded, array_flip(['int', 'decimal', 'text', 'bool', 'email', 'datetime', 'color']))) < 7) {
+if (count(array_intersect_key($seeded, array_flip(['int', 'decimal', 'text', 'bool', 'email', 'datetime', 'color']))) < 7) {
     echo "\n{$passed} ok, {$failed} failed\n";
     exit(1);
 }
-
-$anStelle = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v JOIN ' . Schema::table('node_records') . ' s ON s.id = v.node_record_id WHERE s.relation_id > 0 AND v.relation_id = %d', $renderKante));
-check('im Bestand hängt keine Renderer-Wahl an einer Verwendungsstelle (D-643)', $anStelle === 0, (string) $anStelle);
-$insLeere = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' v LEFT JOIN ' . Schema::table('node_records') . " s ON s.id = v.value_ref WHERE v.relation_id = %d AND v.value_ref_kind = 'record' AND s.id IS NULL", $renderKante));
-check('kein Träger zeigt ins Leere', $insLeere === 0, (string) $insLeere);
 
 $bestandZeichnen = $zeichner();
 $traegerZahl = 0;
@@ -611,39 +448,6 @@ check('jeder Träger einer Wahl im Bestand löst zu einem Renderer auf', $traege
 check('keine gespeicherte Wahl steht ausserhalb der zulässigen Menge', $unerlaubt === [], implode(' · ', array_slice($unerlaubt, 0, 6)));
 check('und die Zeichnung trägt das Merkmal des gesetzten Renderers', $daneben === [], implode(' · ', array_slice($daneben, 0, 4)));
 
-/** Kanten in den Einstellungsast, die keine Einstellungskanten sind. */
-$abweichungen = static function () use ($wpdb, $nodes, $framework): array {
-    $treffer = [];
-    foreach ($wpdb->get_results('SELECT id, kind, to_node_id FROM ' . Schema::table('relations_named')) as $zeile) {
-        $ziel = $nodes->find((int) $zeile->to_node_id);
-        if ($ziel instanceof Node && $framework->branchOf($ziel) === Branch::Settings && $zeile->kind !== RelationKind::Setting->value) {
-            $treffer[] = (int) $zeile->id;
-        }
-    }
-
-    return $treffer;
-};
-check('jede Kante in den Einstellungsast ist eine Einstellungskante', $abweichungen() === [], count($abweichungen()) . ' Abweichungen');
-
-$astUnten = array_values(array_diff($nodes->subtreeIds($heimat->id), [$heimat->id]));
-$sorten   = $nodes->resolvedFieldTypes($astUnten);
-$fehlend  = [];
-$tiefe    = substr_count($heimat->path, '.') + 2;
-foreach ($nodes->byIds($astUnten) as $einer) {
-    if (($sorten[$einer->id] ?? null) === FieldType::Setting) {
-        continue;
-    }
-    if (substr_count($einer->path, '.') + 1 === $tiefe) {
-        $hinein = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('relations') . " WHERE to_node_id = %d AND kind <> 'inheritance'", $einer->id));
-        $hinaus = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE from_node_id = %d', $einer->id));
-        if ($hinein === 0 && $hinaus === 0) {
-            continue;
-        }
-    }
-    $fehlend[] = $einer->name . " ({$einer->id})";
-}
-check('kein Knoten im Einstellungsast, den die Kante nicht als Einstellung ausweist', $fehlend === [], implode('; ', $fehlend));
-
 // ---------------------------------------------------------------------------------------------------
 
 echo "\n== 1 · Die Wiese: ein Modell, sieben Felder, ein eigener Zahltyp ==\n";
@@ -672,7 +476,7 @@ foreach ($rendering->fieldsFor($every, [], Purpose::Edit, 'taxmod_value') as $fi
 }
 check('sieben Felder gezeichnet', count($fields) === 7, (string) count($fields));
 check('der Typ-Standard für int ist das einfache Feld', $registry->defaultFor(SimpleType::Int, Purpose::Edit)->name() === FieldRenderer::NAME);
-$chainSays = ($rendering->settingsForUseSites([$count])[$count->id][SettingKey::Renderer->value] ?? null)?->value->text;
+$chainSays = ($rendering->settingsForUseSites([$count])[$count->id]['renderer'] ?? null)?->value->text;
 check('und ein int wird gezeichnet, wie seine Kette es sagt', $fields[$count->id]->rendererName === ($chainSays ?? FieldRenderer::NAME), $fields[$count->id]->rendererName);
 check('ein bool bekommt den Schiebeschalter', $fields[$stock->id]->rendererName === ToggleRenderer::NAME, $fields[$stock->id]->rendererName);
 check('ein datetime den Datumsrenderer', $fields[$when->id]->rendererName === DateTimeRenderer::NAME, $fields[$when->id]->rendererName);
@@ -707,7 +511,7 @@ $markup = seite($zahl->id);
 preg_match_all('/name="taxmod_setting\[([a-z_]+)\]"/', $markup, $treffer);
 $imBereich = array_values(array_unique($treffer[1]));
 check('die Seite eines Zahltyps zeichnet genau diese Attribute — und nichts, was der Vertrag nicht kennt', array_values(array_diff($imBereich, array_keys($vertragInt->attributes))) === [] && count(array_intersect(['min', 'max', 'step', 'display_size', 'renderer'], $imBereich)) === 5, implode(',', $imBereich));
-check('kein read_only am Knoten (D-714), keine Kantennummer als Name', ! in_array('read_only', $imBereich, true) && ! str_contains($markup, 'name="taxmod_setting[' . $renderKante . ']"'));
+check('kein read_only am Knoten (D-714), keine Kantennummer als Name', ! in_array('read_only', $imBereich, true) && ! preg_match('/name="taxmod_setting\[\d+\]"/', $markup));
 check('die Vorgabe des Vertrags steht in der Maske: display_size 20', (bool) preg_match('/name="taxmod_setting\[display_size\]"[^>]*value="20"/', $markup));
 $zeilenAm = static fn (int $nodeId, string $attribut = ''): int => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings_value WHERE node_id = {$nodeId}" . ($attribut === '' ? '' : " AND attribut = '{$attribut}'"));
 check('und die Vorgabe hat keine Zeile — nur Gesetztes wird gespeichert (4.5.1)', $zeilenAm($zahl->id) === 0, (string) $zeilenAm($zahl->id));
@@ -743,7 +547,7 @@ $angebotDerSeite = static function (string $markup): array {
     return array_values(array_filter($t[1] ?? [], static fn (string $n): bool => $n !== ''));
 };
 /** Der Renderer, wie die Auflösung ihn an einem Knoten liest. */
-$gewaehlterRenderer = static fn (int $nodeId): string => (string) (($zeichner()->settingsForNode($nodes->byId($nodeId))[SettingKey::Renderer->value] ?? null)?->value->text ?? '');
+$gewaehlterRenderer = static fn (int $nodeId): string => (string) (($zeichner()->settingsForNode($nodes->byId($nodeId))['renderer'] ?? null)?->value->text ?? '');
 /** Die Einstellungsobjekte hinter der Zeile `renderer` eines Knotens, in ihrer Reihenfolge. */
 $objekte = static fn (int $nodeId): array => $wpdb->get_results("SELECT o.id, o.klasse FROM {$p}settings_object o JOIN {$p}settings_value v ON v.wert_settings_object_id = o.id WHERE v.node_id = {$nodeId} AND v.attribut = 'renderer' AND v.relation_id IS NULL ORDER BY v.position, v.id", ARRAY_A) ?: [];
 $markup  = seite($zahl->id);
@@ -878,7 +682,7 @@ check('ein Knoten ohne eigene Aussage bekommt nichts von der Wurzel — es gibt 
 
 echo "\n== 6 · Der Einstellungsbereich der Feldzeile: aufklappen, setzen — die Attribute des Ziels aus dem Vertrag ==\n";
 
-$feldName = 'taxmod_field_setting[' . $eins->id . '][' . SettingKey::Min->value . ']';
+$feldName = 'taxmod_field_setting[' . $eins->id . '][' . 'min' . ']';
 $zu  = seite($modellKnoten->id);
 $auf = seite($modellKnoten->id, (string) $eins->id);
 check('eine zugeklappte Zeile zeichnet keine ihrer Einstellungen', ! str_contains($zu, $feldName) && ! str_contains($zu, 'taxmod-field-settings-row'));
@@ -895,7 +699,7 @@ $pluginObj = $rc->newInstanceWithoutConstructor();
 $rc->getProperty('file')->setValue($pluginObj, __FILE__);
 $nachgeholt = $pluginObj->screen()->fieldSettingsFragment($editor->find($modellKnoten->id), $relations->byId($eins->id));
 check('der nachgeholte Bereich ist derselbe wie der auf der Seite', $nachgeholt !== '' && str_contains($auf, $nachgeholt));
-speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $eins->id => [SettingKey::Min->value => '7']]]);
+speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $eins->id => ['min' => '7']]]);
 check('eine Einstellung setzen: der Akt läuft durch', gelungen(), letzteMeldung());
 check('der Wert steht an der Kante, nicht am Zielknoten', ($anDerKante($eins->id)['min'] ?? null)?->setHere === true && $anDerKante($eins->id)['min']->value->int === 7 && ! isset($aufgeloest($zahl->id)['min']));
 check('und die aufgeklappte Zeile zeigt ihn wieder', (bool) preg_match('/name="' . preg_quote($feldName, '/') . '"[^>]*value="7"/', seite($modellKnoten->id, (string) $eins->id)));
@@ -911,7 +715,7 @@ $erklaert[]   = \Taxmod\Core\Model\EdgeColumn::READ_ONLY;
 $erklaert[]   = Rendering::KIND_KEY;
 $ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
 check('der Einstellungsbereich bietet Schlüssel an, und jeder steht im Vertrag des Ziels oder seines Renderers', count($angeboteneSchluessel) >= 3 && $ueberzaehlig === [], 'nicht erklärt: ' . implode(',', $ueberzaehlig) . ' von ' . implode(',', $angeboteneSchluessel));
-check('display_size ist dabei — die Basisklasse erklärt es (3.6.1)', in_array(SettingKey::DisplaySize->value, $angeboteneSchluessel, true));
+check('display_size ist dabei — die Basisklasse erklärt es (3.6.1)', in_array('display_size', $angeboteneSchluessel, true));
 $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', seite($kind->id)) ?? '';
 preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/s', $html, $zeilenKind);
 $offeneGeerbte = 0;
@@ -956,7 +760,6 @@ $speicherbar($seeded['text']->id, 'display_size', '');
 // ([D-714](../../docs/NewConcept/90-decision-log.md)): *keine Einstellungskante, kein Satz — die
 // Feldzeile schreibt in die Spalte, und der Leser liest sie von dort. Die Zusagen von vorher stehen
 // hier in ihrer neuen Form; die Einstellungskante an der Wurzel ist mit Fassung 48 gewandert.*
-check('die Einstellungskante «read_only» gibt es an keiner Stelle mehr', $data->settingRelationAtUseSite($count, 'read_only') === null);
 $anDerStelle = static fn (): bool => $relations->byId($count->id)->readOnly;
 $editor->setReadOnly($modellKnoten->id, $count->id, true);
 check('über den Dienst gesetzt, und die Spalte der Kante sagt es', $anDerStelle() === true && (int) $wpdb->get_var($wpdb->prepare('SELECT read_only FROM ' . Schema::table('relations') . ' WHERE id = %d', $count->id)) === 1);
@@ -1073,10 +876,10 @@ foreach ($rendering->settingsFor($intNode, $rendering->settingsForNode($intNode)
     $editRows[$r->key] = $r;
 }
 check('eine Wahl wird als Liste echter Möglichkeiten gezeichnet', isset($editRows['renderer']) && $editRows['renderer']->wasDrawn() && str_contains($editRows['renderer']->result->markup, '<select'));
-$intLeer = $editor->createNode('__es Int leer', $seeded['int']->id);
-$editor->addField($intLeer->id, $gram->id, 'converter', RelationKind::Setting);
+// ⚠️ *Ein Text kennt keinen Konverter — der Vertrag erklärt die Zeile, die Registratur bietet nichts an (Schritt 7).*
+$intLeer = $editor->createNode('__es Text leer', $seeded['text']->id);
 // ⚠️ *Ein Zeichner ohne Konverter-Registratur: dann hat die Wahl nichts anzubieten — und genau das soll sie zeigen.*
-$rendering = new Rendering($nodes, $framework, $registry, $types, $labels, null, $modell(), $relations);
+$rendering = $zeichner();
 $eigeneZeilen = [];
 foreach ($rendering->settingsFor($nodes->byId($intLeer->id), $rendering->settingsForNode($nodes->byId($intLeer->id)), Purpose::Edit) as $r) {
     $eigeneZeilen[$r->key] = $r;
@@ -1104,7 +907,7 @@ echo "\n== 8 · Konverter: dieselbe Zahl, anders geschrieben, in beide Richtunge
 // sie an der Kante mit dem Haken (5.1), oder am Knoten für alle seine Verwendungen.*
 $konverterZeile = null;
 foreach ($zeichner()->settingsFor($eins, $zeichner()->settingsForUseSites([$eins])[$eins->id] ?? [], Purpose::Edit) as $one) {
-    if ($one->key === SettingKey::Converter->value) {
+    if ($one->key === 'converter') {
         $konverterZeile = $one;
     }
 }
@@ -1265,8 +1068,7 @@ $s1 = $data->create($modellKnoten->id);
 $data->put($s1->id, $feldArt->id, TypedValue::ofText('sieben'));
 $s2 = $data->create($modellKnoten->id);
 $data->put($s2->id, $feldArt->id, TypedValue::ofText('acht'));
-$antwort = $artSetzen($modellKnoten->id, $feldArt->id, 'setting');
-check('Feld → Einstellung mit Benutzersätzen: die Antwort nennt die Sätze und verlangt den Haken', str_contains($antwort, '2 entries') && str_contains($antwort, 'tick the confirmation'), $antwort);
+// ⚠️ *Hier stand «Feld → Einstellung mit Benutzersätzen» — die Art `setting` ist seit Schritt 7 nicht mehr wählbar (D-715).*
 $wertVon = static function (int $satzId) use ($data, $feldArt): ?string {
     foreach ($data->valuesOf($satzId) as $w) {
         if ($w->relationId === $feldArt->id) {
@@ -1277,17 +1079,9 @@ $wertVon = static function (int $satzId) use ($data, $feldArt): ?string {
     return null;
 };
 check('die Kante bleibt ein Feld, beide Werte stehen noch', $editor->relationById($feldArt->id)?->kind === RelationKind::Composition && $wertVon($s1->id) === 'sieben' && $wertVon($s2->id) === 'acht', (string) $editor->relationById($feldArt->id)?->kind->value . ' / ' . $wertVon($s1->id) . ' / ' . $wertVon($s2->id));
-$_GET['taxmod_kind_pending'] = $feldArt->id . ':setting:2:2';
-$markup = seite($modellKnoten->id);
-unset($_GET['taxmod_kind_pending']);
-$nameArt = 'taxmod_field_setting[' . $feldArt->id . '][kind]';
-check('die Zeile zeigt `setting` vorgewählt, mit dem Haken «ich bestätige» und dem Satz, was er kostet', (bool) preg_match('/name="' . preg_quote($nameArt, '/') . '"[^>]*>.*?<option value="setting"[^>]*selected/s', $markup) && str_contains($markup, 'name="taxmod_field_setting[' . $feldArt->id . '][kind_confirm]"') && str_contains($markup, '2 entries with 2 values go to the shadow'));
-speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $feldArt->id => ['kind' => 'setting', 'kind_confirm' => '1']]]);
-check('mit Haken: die Kante ist eine Einstellung, die Sätze liegen im Schatten, die Einstellung beginnt leer', $editor->relationById($feldArt->id)?->kind === RelationKind::Setting && $data->find($s1->id) === null && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id IN ({$s1->id}, {$s2->id})") === 2 && ($data->settingValuesOf($modellKnoten->id, [$feldArt->id])[$feldArt->id] ?? null) === null);
-$einstellungssatz = $rows->add(new NodeRecord(0, $modellKnoten->id, $editor->find($modellKnoten->id)?->version ?? 1, '2026-09-10 00:00:00', RecordType::Settings));
-$rows->putValue(new RelationRecord($einstellungssatz, $feldArt->id, '', TypedValue::ofText('neun')));
-$artSetzen($modellKnoten->id, $feldArt->id, 'composition');
-check('Einstellung → Feld: was im Einstellungssatz steht, bleibt dort (D-699, Satz 3)', $editor->relationById($feldArt->id)?->kind === RelationKind::Composition && ($data->settingValuesOf($modellKnoten->id, [$feldArt->id])[$feldArt->id] ?? null)?->text === 'neun');
+// ⚠️ **Hier standen drei Zusagen zum Umstellen einer Kante auf die Art `setting`.** *Seit Schritt 7 des Bauplans
+// (2026-09-11) wird keine Einstellungskante mehr angelegt ([D-712](../../docs/NewConcept/90-decision-log.md)); die
+// Art bleibt nur für die geparkte Kante `position` an der Wurzel (Modell 2.4 offen, TASK-093).*
 
 // ---------------------------------------------------------------------------------------------------
 
@@ -1399,7 +1193,7 @@ preg_match_all('#\sid="([^"]+)"#', $detail, $alleIds);
 $doppelt = array_keys(array_filter(array_count_values($alleIds[1]), static fn (int $n): bool => $n > 1));
 check('keine Id kommt zweimal vor', $doppelt === [], implode(', ', $doppelt));
 check('eine Zeile ist eine Zeile und kein Formular; ein Knopf ausserhalb nennt seines; kein Zeilen-Akt ohne Schlüssel', ! str_contains($detail, 'class="taxmod-setting" style') && (bool) preg_match('#form="taxmod-(?:page|settings)-\d+"#', $detail) && ! preg_match('#name="do\[\]"#', $detail));
-check('jeder Icon-Knopf ist gekennzeichnet, nichts sagt «not defined», und 1..1 steht nirgends im sichtbaren Text (D-376)', substr_count($detail, 'taxmod-icon-button') > 0 && substr_count($detail, '<span class="taxmod-icon') >= substr_count($detail, 'taxmod-icon-button') && ! str_contains($detail, 'not defined') && ! str_contains(strip_tags($detail), '1..1') && str_contains($detail, 'value="1..1">1<'));
+check('jeder Icon-Knopf ist gekennzeichnet, nichts sagt «not defined», und 1..1 steht nirgends im sichtbaren Text (D-376)', substr_count($detail, 'taxmod-icon-button') > 0 && substr_count($detail, '<span class="taxmod-icon') >= substr_count($detail, 'taxmod-icon-button') && ! str_contains($detail, 'not defined') && ! str_contains(strip_tags($detail), '1..1') && (bool) preg_match('/value="1\.\.1"( selected)?>1</', $detail));
 check('die Detailhälfte hat ihre eigene Bildlaufleiste', str_contains($detail, 'taxmod-detail-pane'));
 
 // Geerbte und eigene Felder stehen gruppiert, Geerbtes vorn (D-376).
@@ -1532,12 +1326,12 @@ $beschriftungen = new WpdbLabelRepository();
 $benenne = static function (IdentitySpace $raum, int $id, string $n) use ($beschriftungen): void {
     $beschriftungen->put(new Label($id, $raum, SeededRole::Name, Label::BASE_NUMBER, SettingsScreen::neutralLocale(), $n));
 };
-$zeichnetJetzt = static function (array $idListe) use ($nodes, $modell, $registry): array {
-    $werte   = $modell();
+$zeichnetJetzt = static function (array $idListe) use ($nodes, $zeichner): array {
+    $z       = $zeichner();
     $antwort = [];
     foreach ($idListe as $id) {
         $knoten       = $nodes->find($id);
-        $antwort[$id] = $knoten === null ? '(kein Knoten)' : ($registry->chosenFor($knoten, $werte->forNode($knoten), Purpose::Edit)?->name() ?? 'nichts');
+        $antwort[$id] = $knoten === null ? '(kein Knoten)' : ($z->rendererNameFor($knoten) ?? 'nichts');
     }
 
     return $antwort;
@@ -1545,18 +1339,23 @@ $zeichnetJetzt = static function (array $idListe) use ($nodes, $modell, $registr
 $beobachtet = array_values(array_diff($nodes->subtreeIds($wurzel->id), $nodes->subtreeIds($framework->trash()->id), [$wurzel->id]));
 sort($beobachtet);
 $vorherZeichnung = $zeichnetJetzt($beobachtet);
-check('die Auflösung liefert vorher überhaupt etwas', count(array_filter($vorherZeichnung, static fn (string $w): bool => $w !== 'nichts' && $w !== 'plain')) >= 1);
-$traegerIds = array_map(intval(...), $wpdb->get_col($wpdb->prepare('SELECT DISTINCT r.node_id FROM ' . Schema::table('relation_records') . ' v JOIN ' . Schema::table('node_records') . " r ON r.id = v.node_record_id WHERE v.relation_id = %d AND v.value_ref_kind = 'node' ORDER BY r.node_id", $renderKante)));
+check('die Auflösung liefert vorher überhaupt etwas', count(array_filter($vorherZeichnung, static fn (string $w): bool => $w !== 'nichts' && $w !== 'plain')) > 0);
+// ⚠️ *Die Träger einer Wahl sind seit Schritt 7 die Knoten mit einer Zeile `renderer` in `settings_value` —
+// hier die Wiese, die Abschnitt 3 bis 5 gesetzt haben.*
+$traegerIds = array_map(intval(...), $wpdb->get_col("SELECT DISTINCT node_id FROM {$p}settings_value WHERE attribut = 'renderer' AND node_id IS NOT NULL AND relation_id IS NULL") ?: []);
+check('es gibt Träger einer Wahl', $traegerIds !== []);
 $knotenNamenVorher = [];
 foreach ($traegerIds as $id) {
     $knotenNamenVorher[$id] = (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$p}nodes_named WHERE id = %d", $id));
 }
-$kantenNameVorher = (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$p}relations_named WHERE id = %d", $renderKante));
 foreach ($knotenNamenVorher as $id => $n) {
     $benenne(IdentitySpace::Node, (int) $id, 'Etwas ganz anderes');
 }
-$benenne(IdentitySpace::Relation, $renderKante, 'Etwas ganz anderes');
-check('die Träger und die Kante `renderer` heissen jetzt anders', (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$p}relations_named WHERE id = %d", $renderKante)) === 'Etwas ganz anderes');
+$umbenannt = 0;
+foreach ($knotenNamenVorher as $id => $n) {
+    $umbenannt += (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$p}nodes_named WHERE id = %d", $id)) === 'Etwas ganz anderes' ? 1 : 0;
+}
+check('die Träger heissen jetzt anders', $umbenannt === count($knotenNamenVorher), "{$umbenannt} von " . count($knotenNamenVorher));
 $nachherZeichnung = $zeichnetJetzt($beobachtet);
 $abweichend = [];
 foreach ($beobachtet as $id) {
@@ -1564,23 +1363,14 @@ foreach ($beobachtet as $id) {
         $abweichend[] = "#{$id}";
     }
 }
-check('kein Knoten zeichnet nach der Umbenennung anders (' . count($beobachtet) . ' beobachtet)', $abweichend === [], implode(', ', array_slice($abweichend, 0, 10)));
+check('kein Knoten zeichnet nach der Umbenennung anders (' . count($beobachtet) . ' beobachtet)', $abweichend === [], implode(', ', array_slice($abweichend, 0, 8)));
 foreach ($knotenNamenVorher as $id => $n) {
     $benenne(IdentitySpace::Node, (int) $id, $n);
 }
-$benenne(IdentitySpace::Relation, $renderKante, $kantenNameVorher);
 $zurueckGezaehlt = 0;
 foreach ($knotenNamenVorher as $id => $n) {
     $zurueckGezaehlt += (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$p}nodes_named WHERE id = %d", $id)) === $n ? 1 : 0;
 }
-check('die Namen stehen wieder da', $zurueckGezaehlt === count($knotenNamenVorher) && (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$p}relations_named WHERE id = %d", $renderKante)) === $kantenNameVorher);
-
-// ---------------------------------------------------------------------------------------------------
-
-// ⚠️ **Abschnitt 14 «Fassung 38: die Wanderung räumt weg, was unzulässig geworden ist» ist seit Schritt 4 des Bauplans
-// (2026-09-11) fort.** *Die Wanderung räumte Renderer-Wahlen in `relation_records` auf; eine Wahl ist heute ein
-// Einstellungsobjekt in `settings_value` ([D-712](../../docs/NewConcept/90-decision-log.md)), und der Schreiber weist
-// eine unzulässige Wahl ab, bevor sie steht (Abschnitt 3). Was von den alten Zeilen bleibt, räumt Schritt 7.*
-
+check('die Namen stehen wieder da', $zurueckGezaehlt === count($knotenNamenVorher));
 echo "\n{$passed} ok, {$failed} failed\n";
 exit($failed === 0 ? 0 : 1);

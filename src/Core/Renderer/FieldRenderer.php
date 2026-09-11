@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Renderer;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -80,7 +79,7 @@ final class FieldRenderer extends TypedFieldRenderer
             // ⚠️ *Fehlt die Angabe, fehlt das Attribut, und der Rand nimmt seine eigene Vorgabe — genau
             // wie bisher. **Das ist die andere Hälfte des Beschlusses**: sie ist ein Wunsch, kein
             // Befehl.*
-            'size'      => $this->numberSetting($context, SettingKey::DisplaySize->value),
+            'size'      => $this->numberSetting($context, 'display_size'),
             'pattern'   => $context->type?->pattern(),
             'inputmode' => $context->type?->inputMode(),
         ]);

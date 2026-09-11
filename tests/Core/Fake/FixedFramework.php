@@ -5,7 +5,6 @@ namespace Taxmod\Tests\Core\Fake;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SeededRole;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Repository\FrameworkNodes;
 
 /** A root, a trash and the four branch roots, made once and protected. */
@@ -50,15 +49,10 @@ final class FixedFramework implements FrameworkNodes
         return null;
     }
 
-
-
     public function roleId(SeededRole $role): int
     {
         return $this->roleIds[$role->value] ?? 0;
     }
-
-    /** @var array<string, array{int, int}> */
-    private array $settingRelations = [];
 
     /**
      * ⚠️ *Ohne einen Settings-Ast im Doppel gilt die alte Kette — die Regel greift nur, wo der Ast
@@ -68,31 +62,7 @@ final class FixedFramework implements FrameworkNodes
      */
     public function inheritanceOwnersOf(Node $node): array
     {
-        $kette = [...$node->ancestorIds(), $node->id];
-        $ast   = $this->branchRoots[Branch::Settings->value] ?? null;
-
-        if ($ast === null) {
-            return $kette;
-        }
-
-        $wo = array_search($ast->id, $kette, true);
-
-        return $wo === false ? $kette : array_values(array_slice($kette, (int) $wo));
-    }
-
-    public function settingRelationId(SettingKey $key): int
-    {
-        return $this->settingRelations[$key->value][0] ?? 0;
-    }
-
-    public function settingValueRelationId(SettingKey $key): int
-    {
-        return $this->settingRelations[$key->value][1] ?? 0;
-    }
-
-    public function rememberSettingRelations(SettingKey $key, int $relationId, int $valueRelationId): void
-    {
-        $this->settingRelations[$key->value] = [$relationId, $valueRelationId];
+        return [...$node->ancestorIds(), $node->id];
     }
 
     public function installationId(): int

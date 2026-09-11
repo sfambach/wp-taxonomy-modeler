@@ -126,72 +126,6 @@ if ($kilo === null) {
         'holdsData() darf sich nicht geändert haben'
     );
 
-    $exponent = null;
-
-    foreach ($editor->fieldsOf($kilo->id) as $relation) {
-        if ($relation->name === 'exponent') {
-            $exponent = $relation;
-        }
-    }
-
-    if ($exponent === null) {
-        check('die Konstante erbt ein Feld «exponent»', false);
-    } else {
-        // ⚠️ **Gefangen und nicht durchgelassen.** *Ohne das stürzt die Prüfung ab, sobald das Tor
-        // wieder nach dem Zweig fragt — und **eine abstürzende Prüfung überspringt ihre restlichen
-        // Zusicherungen**, was genau die Sorte «grün aus dem falschen Grund» ist, die dieses Projekt
-        // schon zweimal erwischt hat.*
-        $record = null;
-
-        try {
-            $record  = $data->create($kilo->id);
-            $meine[] = $record->id;
-        } catch (NotYetStorable $e) {
-            check('ein Datensatz an der Konstanten lässt sich anlegen', false, $e->getMessage());
-        }
-
-        $verweigert = null;
-
-        if ($record !== null) {
-            check('ein Datensatz an der Konstanten lässt sich anlegen', $record->id > 0, (string) $record->id);
-
-            // ⚠️ **Umgedreht am 2026-09-01, und das ist der sichtbare Teil von [D-538](../../docs/NewConcept/90-decision-log.md).**
-            // *Diese Prüfung schrieb hier einen Wert und verlangte, dass er unter der Kanten-Id steht.
-            // **`exponent` ist aber eine Einstellungskante** (4654, `kind = setting`), und seit D-538
-            // gilt: «für den Benutzer werden ja nur die Felder gespeichert, nicht die Settings, weil
-            // die Settings Eigenschaften des Modells sind». **Die Prüfung hatte sich genau das
-            // Beispiel gesucht, das die Entscheidung unmöglich macht** — und stürzte deshalb ab,
-            // statt rot zu werden. Ein Absturz überspringt die restlichen Zusicherungen.*
-            try {
-                $data->put($record->id, $exponent->id, TypedValue::ofInt(3));
-            } catch (NotYetStorable $e) {
-                $verweigert = $e->getMessage();
-            }
-        }
-
-        check(
-            'eine Einstellungskante verweigert den Datensatzwert, mit Begründung',
-            $verweigert !== null && str_contains($verweigert, 'setting'),
-            $verweigert ?? 'nicht verweigert — der Wert wurde geschrieben'
-        );
-
-        $roh = $record === null ? null : $wpdb->get_row($wpdb->prepare(
-            'SELECT relation_id, value_int FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d',
-            $record->id
-        ), ARRAY_A);
-
-        // ⚠️ **Das ist die Zusage, um die es geht:** *der Wert steht unter der **Kanten-Id** des
-        // Feldes — nicht unter einem Namen wie `default`. **Damit ist eine Einstellung und ein
-        // Datensatzwert dieselbe Zeile in zwei Tabellen**, und eine davon kann fallen.*
-        // ⚠️ **Die Gegenprobe zur Verweigerung: es darf auch wirklich nichts dastehen.** *Ohne sie
-        // wäre die Zusage oben aus einem Grund grün, der nichts beweist — eine Ausnahme kann fliegen,
-        // nachdem geschrieben wurde.*
-        check(
-            'und es steht wirklich kein Wert da',
-            $roh === null,
-            json_encode($roh)
-        );
-    }
 }
 
 echo "\n== 2. Der alte Weg bleibt, wo er war ==\n";
@@ -207,46 +141,15 @@ check(
 );
 
 echo "\n== 3. Was der Umbau kostet, wird gemessen und nicht geschätzt ==\n";
+// ⚠️ **Hier stand «jeder Knoten ausserhalb von Settings hat Felder» — wahr war es nur wegen der Einstellungskanten an den Typen; und die Konstante «erbte» ein Feld exponent, das eine Einstellungskante war** *— seit Schritt 7 des Bauplans (2026-09-11): Renderer, Konverter und Validatoren sind
+// Objekte programmierter Klassen, keine Knoten; die Einstellungskanten und der Ast `Settings` sind in den Schatten
+// gewandert ([D-712](../../docs/NewConcept/90-decision-log.md), [D-718](../../docs/NewConcept/90-decision-log.md)).*
 
 // WICHTIG: Ausserhalb des Settings-Astes, und das ist eine sichtbare Aenderung dieser Zusage
 // (PR-9). Sie verlangte es von *jedem* Knoten und war gruen, solange der Settings-Ast klein
 // war. Gemessen am 2026-09-04: 20 von 131 ohne Feld, und alle 20 liegen unter Settings --
 // Label roles, Converter, Validator, Orientation und ihre Kinder. Dass ein Einstellungsknoten
 // die Modellfelder nicht erbt, ist richtig; die Zusage war zu weit gefasst.
-$settings = $framework->rootOf(Branch::Settings);
-$alle     = $wpdb->get_col('SELECT id FROM ' . Schema::table('nodes'));
-$ohne     = 0;
-$inSettings = 0;
-
-foreach ($alle as $id) {
-    if ($editor->fieldsOf((int) $id) !== []) {
-        continue;
-    }
-
-    $knoten = $nodes->find((int) $id);
-
-    if ($knoten !== null && ($knoten->id === $settings->id || $knoten->isDescendantOf($settings))) {
-        $inSettings++;
-
-        continue;
-    }
-
-    $ohne++;
-}
-
-printf("  --   %d Knoten im Settings-Ast ohne Feld, und das ist richtig
-", $inSettings);
-
-// ⚠️ **Solange die Wurzel Felder erklärt, hat **jeder** Knoten Felder** — gemessen 0 von 129 ohne.
-// *Also zeigt der Datensätze-Bereich überall, auch am Müll und an den Zweigwurzeln. **Das ist Lärm,
-// und es ist zugleich der Fall, den der Eigentümer will**: ein Datensatz an der Wurzel ist der
-// Renderer, den alles erbt. Eine Ausnahme für «Maschinerie» nähme die Wurzel mit, darum gibt es
-// keine — aber die Zahl steht hier, damit die Folge sichtbar bleibt statt vergessen zu werden.*
-check(
-    'jeder Knoten ausserhalb von Settings hat Felder',
-    $ohne === 0,
-    $ohne . ' von ' . count($alle) . ' ohne Feld'
-);
 
 echo "\n== 3b. Die Marke am Datensatz — drei Zustände, nicht zwei ==\n";
 

@@ -25,8 +25,8 @@ final class ValidatorTest extends TestCase
     public function a_number_inside_its_bounds_is_not_complained_about(): void
     {
         $bounds = [
-            SettingKey::Min->value => TypedValue::ofInt(1),
-            SettingKey::Max->value => TypedValue::ofInt(10),
+            'min' => TypedValue::ofInt(1),
+            'max' => TypedValue::ofInt(10),
         ];
 
         self::assertSame([], (new RangeValidator())->check(TypedValue::ofInt(5), SimpleType::Int, $bounds));
@@ -38,8 +38,8 @@ final class ValidatorTest extends TestCase
         $validator = new RangeValidator();
 
         $bounds = [
-            SettingKey::Min->value => TypedValue::ofInt(3),
-            SettingKey::Max->value => TypedValue::ofInt(7),
+            'min' => TypedValue::ofInt(3),
+            'max' => TypedValue::ofInt(7),
         ];
 
         $tooSmall = $validator->check(TypedValue::ofInt(2), SimpleType::Int, $bounds);
@@ -66,7 +66,7 @@ final class ValidatorTest extends TestCase
         $complaints = (new RangeValidator())->check(
             TypedValue::ofInt(0),
             SimpleType::Int,
-            [SettingKey::Min->value => TypedValue::ofInt(5)]
+            ['min' => TypedValue::ofInt(5)]
         );
 
         self::assertSame('range', $complaints[0]->validator);
@@ -82,7 +82,7 @@ final class ValidatorTest extends TestCase
     #[Test]
     public function decimals_compare_by_digits_and_not_as_text(): void
     {
-        $bounds = [SettingKey::Max->value => TypedValue::ofDecimal('1.9')];
+        $bounds = ['max' => TypedValue::ofDecimal('1.9')];
 
         self::assertSame([], (new RangeValidator())->check(TypedValue::ofDecimal('1.10'), SimpleType::Decimal, $bounds));
 
@@ -96,8 +96,8 @@ final class ValidatorTest extends TestCase
     public function a_date_outside_its_window_is_complained_about(): void
     {
         $bounds = [
-            SettingKey::Min->value => TypedValue::ofDate('2026-01-01 00:00:00'),
-            SettingKey::Max->value => TypedValue::ofDate('2026-12-31 23:59:59'),
+            'min' => TypedValue::ofDate('2026-01-01 00:00:00'),
+            'max' => TypedValue::ofDate('2026-12-31 23:59:59'),
         ];
 
         $validator = new RangeValidator();
@@ -114,7 +114,7 @@ final class ValidatorTest extends TestCase
     #[Test]
     public function nothing_is_never_complained_about(): void
     {
-        $bounds = [SettingKey::Min->value => TypedValue::ofInt(3)];
+        $bounds = ['min' => TypedValue::ofInt(3)];
 
         self::assertSame([], (new RangeValidator())->check(TypedValue::nothing(), SimpleType::Int, $bounds));
     }
@@ -228,8 +228,8 @@ final class ValidatorTest extends TestCase
             SimpleType::Int,
             ['range'],
             [
-                SettingKey::Min->value => TypedValue::ofInt(8),
-                SettingKey::Max->value => TypedValue::ofInt(2),
+                'min' => TypedValue::ofInt(8),
+                'max' => TypedValue::ofInt(2),
             ]
         );
 
@@ -274,7 +274,7 @@ final class ValidatorTest extends TestCase
             TypedValue::ofText('hallo'),
             SimpleType::Text,
             ['range'],
-            [SettingKey::Min->value => TypedValue::ofInt(3)]
+            ['min' => TypedValue::ofInt(3)]
         );
 
         self::assertSame([], $complaints);

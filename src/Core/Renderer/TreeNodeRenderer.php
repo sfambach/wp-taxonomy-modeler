@@ -5,7 +5,6 @@ namespace Taxmod\Core\Renderer;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -74,7 +73,7 @@ final class TreeNodeRenderer extends RendererNode
 
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
-        $icon = $context->setting(SettingKey::Icon->value)?->text ?? '';
+        $icon = $context->setting('icon')?->text ?? '';
 
         // ⚠️ **The node's own name, not a label** ([D-369](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *there I would take the node name.* The modelling tree is where the model is
