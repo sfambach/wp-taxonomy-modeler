@@ -781,7 +781,7 @@ settings, wo es vielleicht besser aufgehoben ist.»*
 | Attribut | am Knoten | an der Kante | Stand |
 |---|---|---|---|
 | `default` | — | — | **fällt.** Ein Vorgabewert ist ein Datensatz der Art `default`, kein Attribut. |
-| `read_only` | — | **Spalte** | **nur an der Kante**, als Spalte der Kantentabelle (siehe «Spalte statt Zeile») |
+| `read_only` | — | — | **fällt aus der Liste: Feldeigenschaft**, Spalte der Kante, Modell (siehe «Die Kante trägt keine Einstellungen») |
 | `min`, `max`, `step` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
 | `icon` | — | — | **fällt aus der Liste: wohnt in den Labels**, als Deko |
 | `converter`, `validator`, `renderer` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
@@ -972,6 +972,23 @@ Spalte als Pflicht prüfen, eine Zeile nicht.
 *Die Folge: die Kante hat keine eigenen Zeilen mehr. `kante_id` in der Zeile ist nur noch der
 Zusatz «gilt an dieser Kante», nie allein — eine Sonderbedeutung weniger.*
 
+**Die Kante trägt keine Einstellungen — entschieden, 2026-09-11.** Sein Gedanke: *«überlege gerade,
+ob kanten-einstellungen an der kante nicht nur die knoten-überschreibung betrifft — alles andere ist
+teil der kante.»* Und auf die ausgeführte Folge: *«ja, so eintragen.»* Also, ein Schritt weiter als
+«Spalte statt Zeile»:
+
+- **Einstellungen berühren die Kante an genau einer Stelle:** eine Zeile mit `kante_id` als Zusatz —
+  «dieser Knotenwert gilt an dieser Kante anders». Sonst nichts.
+- **`read_only` ist eine Feldeigenschaft** wie `multiplicity`: Spalte der Kante, Modell, nicht
+  Einstellung. Es fällt aus der Attributliste oben. Die Kante hat damit **kein einziges**
+  Einstellungsattribut mehr, weder als Zeile noch als Spalte.
+- **«Kanten sind auch Klassen» bleibt wahr, aber als Modellaussage** (Komposition, Aggregation).
+  Für das Einstellungsmodell hat die Kantenklasse keinen Vertrag mit Attributen; die Auflösung
+  bleibt Kante → Knoten → Vertrag **des Knotens**.
+
+*Damit ist die Trennung vollständig: Modell (Knoten, Kanten, ihre Spalten) hier; Einstellungen (Satz,
+Zeile) dort; die Berührung ist `klasse` am Knoten und `kante_id` in der Zeile.*
+
 ### Multiplizität — das eine Attribut, das jede Kante hat
 
 ⚠️ *Modell, nicht Einstellung — nachgetragen 2026-09-11.* **Dieser ganze Abschnitt handelt vom
@@ -1121,8 +1138,8 @@ erDiagram
 Modelltabellen, wie gehabt.** Diese Seite fügt ihnen genau eines hinzu: `klasse` am Knoten (K1). Die
 übrigen Spalten dort — `name`, `vater_id`, `stelle`, `von`/`zu`, `multiplicity` — stehen im Diagramm
 nur, damit die Verweise ein Ziel haben; sie werden hier weder eingeführt noch geändert.
-`read_only` an der Kante ist die eine Einstellung, die als Spalte in einer Modelltabelle wohnt
-(«Spalte statt Zeile»). **Neu durch diese Seite sind allein `SATZ` und `ZEILE`.***
+`read_only` an der Kante ist ebenfalls Modell — eine Feldeigenschaft, keine Einstellung («Die Kante
+trägt keine Einstellungen»). **Neu durch diese Seite sind allein `SATZ` und `ZEILE`.***
 
 ### Prüfung
 
@@ -1216,7 +1233,8 @@ nur, damit die Verweise ein Ziel haben; sie werden hier weder eingeführt noch g
 8. **L8 · `read_only` nur an der Kante — mit seinem «glaube ich».** Ein Knoten, der überall nur
    lesbar sein soll (ein berechneter Wert), müsste es an jeder Kante einzeln bekommen. Kein Fehler,
    aber noch nicht bestätigt. **Bestätigt, 2026-09-11:** *«read_only stimmt»* — nur an der Kante,
-   als Spalte.
+   als Spalte. ⚠️ *Und danach als **Feldeigenschaft** eingeordnet, nicht als Einstellung («Die Kante
+   trägt keine Einstellungen»).*
 9. **L9 · Icon je Klasse.** Als «philosophiert» notiert; wenn es kommt, ist es Vertrag (Code), kein
    Modell. Keine Entscheidung nötig, nur damit es nicht verloren geht.
 
