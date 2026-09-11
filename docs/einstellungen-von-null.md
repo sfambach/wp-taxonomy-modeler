@@ -1254,7 +1254,7 @@ Bestand.
 
 *Sein Wort, 2026-09-11, auf die Frage nach der Klasse der ausgelieferten Knoten: «mal genauer
 schauen». Der Baum unten ist am 2026-09-11 aus der laufenden Installation gelesen; die Spalte
-«Klasse» ist mein Vorschlag (`VORSCHLAG`), nach K1c und K2. Er streicht.*
+«Klasse» war mein Vorschlag nach K1c und K2 — von ihm am selben Tag bestätigt, siehe unten.*
 
 | Knoten | Kinder | Klasse (Vorschlag) | warum |
 |---|---|---|---|
@@ -1262,20 +1262,23 @@ schauen». Der Baum unten ist am 2026-09-11 aus der laufenden Installation geles
 | Trash | — | **Kategorie** | Modell-Sonderfall, keine Einstellungen |
 | Kontact, Parts List, Project, Address, Electronic Parts, PC Parts, … (alles unter Model und Compositions) | — | **Kategorie** | Knoten mit Feldern; die Vorwahl |
 | Integer, Decimal, Text, Character, Boolean, Email, Date and time, Version, Node reference, User reference, Color | — | **je die eigene Typklasse** (`IntType`, `DecimalType`, …) | die Klasse steht heute schon als `implemented_by` am Knoten |
-| integer_min, integer_max, integer_step, display size, decimal_*, Read Only, With Label (Kinder von Integer, Decimal, Boolean) | — | **fallen** | das sind Einstellungen als Knoten — genau das, was D-712 abschafft; `OFFEN`, seine Bestätigung |
+| integer_min, integer_max, integer_step, display size, decimal_*, Read Only, With Label (Kinder von Integer, Decimal, Boolean) | — | **fallen** | das sind Einstellungen als Knoten — genau das, was D-712 abschafft; **bestätigt: «K3a ja, fallen»** |
 | Prefixes | 20 Präfixe | **Auswahl** | Kinder: Konstante, Vorwahl Konstante |
 | yotta … yocto | — | **Konstante** | je mit einem Umrechnungssatz (`factor`) |
 | Base units | With prefix, Without prefix | **Auswahl** | Kinder zur Wahl; Kategorien darunter nicht wählbar |
 | With prefix, Without prefix | Einheiten | **Kategorie** | nur Ordnung; «mit Präfix» ist Eigenschaft je Blatt (K2) |
 | Gramm, Meter, Liter, Sekunde, Ampere, Ohm, Farad, Watt, Volt, Henry, Hertz, Kelvin, Celsius, Stück | — | **Einheitswert** | mit `mit_praefix`, `erlaubte_praefixe`, `symbol`, ggf. `umrechnung` |
-| Currency | Euro, US Dollar, Pound | **Auswahl** | `OFFEN`: sind Währungen Einheitswerte (ohne Präfix) oder Konstanten? |
+| Currency | Euro, US Dollar, Pound | **Auswahl**, Kinder **Einheitswert** | **entschieden: «K3b Einheitswert ohne Präfix»** |
 | PC Constants | — | **Kategorie** | leer |
 | Street / H#, Zip/City, Dimension | — | **Kategorie** | zusammengesetzte Knoten mit Feldern |
 | Einheitenwert | — | **eigene Klasse `Einheitenwert`** | Zahl + Einheit + Präfix; die Klasse, die «Basiseinheit» wählt |
 | Settings → Renderer, Converter, Validator, Orientation (mit allen Kindern) | — | **fallen** (D-718) | Objekte im Code |
-| Settings → Label roles (form, table, select, symbol, help) | — | **Auswahl**, Kinder **Konstante** | Ziele von `label_role`-Verweisen; `OFFEN`: wohin, wenn `Settings` fällt — unter Constants? |
+| Settings → Label roles (form, table, select, symbol, help) | — | **Auswahl**, Kinder **Konstante** | Ziele von `label_role`-Verweisen; **wandern unter `Constants`: «K3c unter constants»** |
 | __Test (dreimal) | — | **fallen** | Reste |
 
 **Drei Fragen daraus, seine:** **K3a** — die Einstellungsknoten unter Integer, Decimal, Boolean
 fallen? **K3b** — Währungen: Einheitswert oder Konstante? **K3c** — wohin mit den Rollen, wenn
 `Settings` fällt?
+
+**Beantwortet, 2026-09-11:** *«K3a ja, fallen. K3b Einheitswert ohne Präfix. K3c unter Constants.»*
+Damit ist die Zuordnung vollständig; die Spalte «Klasse» gilt, `VORSCHLAG` ist aufgehoben.
