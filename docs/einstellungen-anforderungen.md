@@ -136,7 +136,7 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
   möglichkeiten, einschränken können wir es immer noch.» Eine Einschränkung auf einen Eintrag wäre
   Sache der Klasse (3.4.2).*
 - **3.6.2** `Integer` und `Decimal` müssen erklären: `min`, `max`, `step`, je im eigenen Typ. **Jede
-  einfache Typklasse** muss `display_size` (`int`, Vorgabe 20) erklären — *sein Wort 2026-09-11: «display
+  einfache Typklasse** und die Klasse `Konstante` muss `display_size` (`int`, Vorgabe 20) erklären — *sein Wort 2026-09-11: «display
   size gibts nur an den simplen datentypen»* ([D-724](NewConcept/90-decision-log.md)).
 - **3.6.3** Ein Renderer, Konverter oder Validator muss seine eigenen Attribute selbst erklären
   (`CompactRenderer.orientation`, `CompactRenderer.withLabel`).

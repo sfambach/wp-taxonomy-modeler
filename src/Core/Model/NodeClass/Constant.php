@@ -24,6 +24,11 @@ final class Constant implements NodeClass
     #[Attribut]
     public ?\Taxmod\Core\Model\Setting\Conversion $umrechnung = null;
 
+    // ⚠️ *Sein Wort am 2026-09-12: «constant sollte auch display size bekommen» — zu D-724, das es auf die einfachen
+    // Typen beschränkt hatte. Eine Konstante wird als Wert gezeichnet, also hat auch sie eine Anzeigebreite.*
+    #[Attribut]
+    public int $display_size = 20;
+
     public static function allowedChildClasses(): array
     {
         return [];

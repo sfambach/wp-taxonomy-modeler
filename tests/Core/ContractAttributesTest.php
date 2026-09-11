@@ -42,7 +42,7 @@ final class ContractAttributesTest extends TestCase
             }
 
             // ⚠️ *«display size gibts nur an den simplen datentypen» (D-724).*
-            self::assertSame(is_subclass_of($class, \Taxmod\Core\Model\Type\SpecialisedType::class), isset($attribute['display_size']), "$class.display_size nur an einem Typ");
+            self::assertSame(is_subclass_of($class, \Taxmod\Core\Model\Type\SpecialisedType::class) || $class === \Taxmod\Core\Model\NodeClass\Constant::class, isset($attribute['display_size']), "$class.display_size nur an einem Typ und an der Konstante (D-724)");
         }
     }
 

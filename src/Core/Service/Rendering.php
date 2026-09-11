@@ -3000,6 +3000,35 @@ final class Rendering implements Presets
 
         $gewaehlt = $value->reference !== null && $value->reference !== $target->id ? $value->reference : null;
 
+        // ⚠️ **Eine Ebene ist eine Liste, kein Baum** — *sein Wort am 2026-09-12 an `Prefixes`: «sollte eine normale
+        // dropdown liste anzeigen ist nur eine ebene, sollte list label zur anzeige verwenden».* Haben die Kinder des
+        // Ziels selbst keine Kinder, zeichnet der Inline-Wähler ein Auswahlfeld, beschriftet mit der Rolle `select`.
+        if ($renderer instanceof InlineChooserRenderer) {
+            $kinder = $this->nodes->visibleChildrenOf([$target->id])[$target->id] ?? [];
+            $enkel  = $kinder === [] ? [] : array_filter($this->nodes->visibleChildrenOf(array_map(static fn (Node $k): int => $k->id, $kinder)));
+
+            if ($kinder !== [] && $enkel === []) {
+                $namen   = $this->labels?->forNodes($kinder, SeededRole::Select, $locale) ?? [];
+                $options = [];
+
+                foreach ($kinder as $kind) {
+                    $options[$kind->id] = $namen[$kind->id] ?? $kind->name;
+                }
+
+                return $this->renderers->byName(ChoiceRenderer::NAME)->render($target, new RenderContext(
+                    purpose: Purpose::Edit,
+                    value: $gewaehlt === null ? TypedValue::nothing() : TypedValue::ofReference($gewaehlt),
+                    settings: [],
+                    locale: $locale,
+                    level: $level,
+                    editable: true,
+                    fieldName: $fieldName,
+                    type: SimpleType::NodeRef,
+                    surroundings: new Surroundings(options: $options, mayBeNothing: true, formId: $formId),
+                ));
+            }
+        }
+
         return $this->nodeChooser(
             $target,
             $fieldName,
