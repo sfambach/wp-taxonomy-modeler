@@ -998,6 +998,10 @@ und double gibt es «leer» sehr wohl: das Stockwerk als Zahl darf fehlen (`0..1
 wie Text, und aus demselben Grund: leer und Liste sind bei einer Zahl beide sinnvoll. Die
 Einschränkung auf `1..1` wäre nur für Klassen richtig, die kein «leer» kennen.*
 
+**M2 — entschieden, 2026-09-11:** *«einverstanden, und gutes argument.»* Int und Double erlauben alle
+vier Multiplizitäten, wie Text. Die Regel dahinter: **eine Klasse schränkt die Multiplizität nur ein,
+wenn sie kein «leer» kennt** — heute ist das allein Bool.
+
 ## Wo wir stehen
 
 Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
