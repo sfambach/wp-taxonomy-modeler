@@ -742,9 +742,11 @@ Eintrag, den sie umstellt, eine Zeile mit dessen Adresse und einer eigenen `posi
 Wert — der Wert bleibt am Knoten. Steht keine solche Zeile, bleibt der Eintrag an seiner Stelle vor
 den Kantenzeilen.*
 
-**Offen daran, Z3a:** darf die Kante einen geerbten Eintrag auch **wegnehmen** (`to_upper` nicht
-mehr), oder nur hinzufügen und umstellen? *Wenn ja, ist das dieselbe Zeile wie beim Umstellen, mit
-einem Vorzeichen «aus».*
+**Z3a — beantwortet, 2026-09-11: ja, mit einem Haken.** Sein Wort: *«ja — standard aktiv, haken
+raus: nicht mehr aktiv.»* Jeder geerbte Eintrag steht an der Kante mit einem Haken, der von Haus aus
+gesetzt ist; nimmt man ihn heraus, gilt der Eintrag an dieser Kante nicht. Im Modell ist das
+dieselbe Zeile wie beim Umstellen — Adresse des Eintrags, eigene `position`, kein Wert — mit einem
+Schalter `aktiv`. Fehlt die Zeile, ist der Eintrag aktiv und an seiner Stelle.
 
 ---
 
@@ -947,6 +949,7 @@ Nächstes das zweite Problem**, in seiner Reihenfolge, je Frage sein Wort:
   mit allen seinen Werten neu) — oder auch einen einzelnen Wert darin (`orientation` anders, Renderer
   gleich)?
 - **Z3 · Was tut eine Liste beim Überschreiben?** **Beantwortet** — ergänzen, mit änderbarer
-  Reihenfolge. Offen nur Z3a: darf die Kante einen geerbten Eintrag auch wegnehmen?
+  Reihenfolge; ein geerbter Eintrag hat an der Kante einen Haken, standard gesetzt, raus heisst
+  nicht aktiv (Z3a).
 - **Z4 · Erben an Kindern:** **Beantwortet durch den Schritt zurück** — Werte vererben sich nicht
   zwischen Knoten; es gibt nur die Kante über dem Knoten.
