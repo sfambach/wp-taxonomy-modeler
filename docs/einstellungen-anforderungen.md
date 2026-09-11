@@ -131,19 +131,25 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
 
 - **3.6.1** Die Basisklasse Knoten muss erklären: `renderer` (Liste von Renderer-Objekten),
   `converter` (Liste von Konverter-Objekten), `validator` (Liste von Validator-Objekten),
-  `display_size` (`int`).
+  `display_size` (`int`). *Alle drei als Liste — sein Wort 2026-09-11: «im grunde haben wir alle
+  möglichkeiten, einschränken können wir es immer noch.» Eine Einschränkung auf einen Eintrag wäre
+  Sache der Klasse (3.4.2).*
 - **3.6.2** `Integer` und `Decimal` müssen erklären: `min`, `max`, `step`, je im eigenen Typ.
 - **3.6.3** Ein Renderer, Konverter oder Validator muss seine eigenen Attribute selbst erklären
   (`CompactRenderer.orientation`, `CompactRenderer.withLabel`).
 - **3.6.4** `Umrechnung` ist eine Wertklasse mit `factor` und `offset` (`decimal`). Die Klassen
   `Konstante` (Präfix) und `Einheitswert` müssen ein Attribut vom Typ `Umrechnung` erklären.
 - **3.6.5** `Einheitswert` muss erklären: `mit_praefix` (`bool`), `erlaubte_praefixe` (Liste von
-  Verweisen auf Knoten der Klasse `Konstante`), `symbol` (`text`).
-- **3.6.6** Es gibt **kein** Attribut `default`; ein Vorgabewert ist ein Datensatz.
-- **3.6.7** Es gibt **kein** Attribut `position`; die Stelle eines Knotens und eines Felds ist
+  Verweisen auf Knoten der Klasse `Konstante`), `symbol` (`text`). *Bestätigt 2026-09-11.*
+- **3.6.6** `OFFEN` Wird an einem Datensatz die Einheit oder das Präfix umgeschaltet, muss der
+  gespeicherte Wert möglicherweise umgerechnet werden (über `Umrechnung`). Sein Wort: «müsste evtl.
+  beim umschalten wert umrechnen.» Ob und wie, ist nicht entschieden; es betrifft die Daten, nicht
+  die Ablage der Einstellung.
+- **3.6.7** Es gibt **kein** Attribut `default`; ein Vorgabewert ist ein Datensatz.
+- **3.6.8** Es gibt **kein** Attribut `position`; die Stelle eines Knotens und eines Felds ist
   Modell.
-- **3.6.8** Es gibt **kein** Attribut `icon`; das Icon ist ein Label.
-- **3.6.9** Es gibt **kein** Attribut `read_only` und **kein** Attribut `multiplicity`; beide sind
+- **3.6.9** Es gibt **kein** Attribut `icon`; das Icon ist ein Label.
+- **3.6.10** Es gibt **kein** Attribut `read_only` und **kein** Attribut `multiplicity`; beide sind
   Eigenschaften des Felds, Modell.
 
 ### 3.7 Spalte statt Zeile
@@ -152,7 +158,7 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
   überschreibt, darf als Spalte der Tabelle des Trägers abgelegt sein statt als Zeile. Der Vertrag
   muss dann sagen, dass der Wert aus der Spalte kommt.
 - **3.7.2** Heute gilt das für keine Einstellung; `position`, `read_only` und `multiplicity` sind
-  Modellspalten (3.6.7, 3.6.9).
+  Modellspalten (3.6.8, 3.6.10).
 
 ---
 
@@ -160,8 +166,8 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
 
 ### 4.1 Tabellen
 
-- **4.1.1** Einstellungen liegen in genau zwei Tabellen: `settings_object` und der Tabelle der
-  Zeilen. `VORSCHLAG` Name der Zeilentabelle: `settings_value`.
+- **4.1.1** Einstellungen liegen in genau zwei Tabellen: `settings_object` und `settings_value`
+  (die Zeilen). *Namen bestätigt 2026-09-11.*
 - **4.1.2** Die Knotentabelle des Modells muss eine Spalte `klasse` bekommen (2.1.1). Sonst ändert
   sich am Modell nichts.
 - **4.1.3** Es gibt keine Tabelle, die Attribute erklärt (2.4.3), keine Tabelle je Liste oder
@@ -256,9 +262,11 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
 
 ---
 
-## 7 · Nicht Gegenstand dieser Seite — auf die Modellseite zu übertragen
+## 7 · Nicht Gegenstand dieser Seite — auf die Modellseite übertragen
 
-Am 2026-09-11 mitentschieden, aber Modell, nicht Einstellung:
+Am 2026-09-11 mitentschieden, aber Modell, nicht Einstellung. **Übertragen nach
+[`modell-anforderungen.md`](modell-anforderungen.md)**, samt Abgleich mit dem gebauten Modell; hier
+nur noch zur Übersicht:
 
 - **7.1** Multiplizität ist eine Eigenschaft des Felds: ein Enum mit vier Fällen (`0..1`, `1..1`,
   `0..*`, `1..*`); jede Kantenklasse darf jeden Wert; Bool erlaubt als Ziel nur `1..1`; Integer,
