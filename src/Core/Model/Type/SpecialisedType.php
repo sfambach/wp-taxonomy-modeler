@@ -4,6 +4,7 @@ namespace Taxmod\Core\Model\Type;
 
 use Taxmod\Core\Exception\NotAValueOfThatType;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeClass\NodeClass;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 
@@ -49,7 +50,7 @@ use Taxmod\Core\Model\TypedValue;
  *
  * @see docs/NewConcept/10-domain-core.md
  */
-abstract class SpecialisedType extends Node
+abstract class SpecialisedType extends Node implements NodeClass
 {
     /**
      * ⚠️ **Alles hat eine Voreinstellung, damit `new IntType()` weiter der Steckbrief ist** — und alles
@@ -70,7 +71,11 @@ abstract class SpecialisedType extends Node
         ?int $parentNodeId = null,
         int $sortOrder = 0,
         bool $hide = false,
+        string $klasse = '',
     ) {
+        // ⚠️ **Ein Typknoten ist seine eigene Knotenklasse** ([D-719](../../../../docs/NewConcept/90-decision-log.md),
+        // K3: «je die eigene Typklasse — die Klasse steht heute schon als `implemented_by` am Knoten»).
+        // *Leer heisst «die eigene», damit der Steckbrief `new IntType()` sie nicht nennen muss.*
         parent::__construct(
             $id,
             $version,
@@ -80,7 +85,38 @@ abstract class SpecialisedType extends Node
             $parentNodeId,
             $sortOrder,
             $hide,
+            $klasse,
         );
+    }
+
+    /**
+     * ⚠️ **Ein simpler Datentyp wählt für seine Kinder den eigenen Typ vor** — sein Wort
+     * ([D-716](../../../../docs/NewConcept/90-decision-log.md)): *«besonderheiten sind
+     * simple-datentyp-knoten: da ist es jeweils der gleiche typ für kindknoten-typ-default.»*
+     *
+     * *Erlaubt ist **nur** der eigene Typ (Anforderung 2.2.5): ein `Text` unter `Integer` wäre die
+     * gebrochene Vererbung, die er meint.*
+     *
+     * @return list<class-string<NodeClass>>
+     */
+    public static function allowedChildClasses(): array
+    {
+        return [static::class];
+    }
+
+    public static function defaultChildClass(): string
+    {
+        return static::class;
+    }
+
+    public static function classIcon(): string
+    {
+        return 'editor-code';
+    }
+
+    public static function classKey(): string
+    {
+        return (new static())->humanName();
     }
 
     /** Der Aufzählungsfall, den diese Klasse ausmacht. */

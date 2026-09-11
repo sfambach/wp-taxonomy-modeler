@@ -140,6 +140,14 @@ final class Surroundings
          */
         public readonly bool $hidden = false,
         /**
+         * Wie die Knotenklasse des Subjekts heisst — **übersetzt**, vom Rand (`AR-2`).
+         *
+         * ⚠️ *Ein Vorbereitetes wie `hidden`: die Zelle zeichnet einen Knoten, und was seine Klasse
+         * für einen Menschen heisst, weiss nur der Rand ([D-716](../../../docs/NewConcept/90-decision-log.md),
+         * Schritt 1 des Bauplans: «im Baum steht sie dabei»). Leer heisst: nichts anschreiben.*
+         */
+        public readonly string $classLabel = '',
+        /**
          * The `id` of the form a control belongs to, when it cannot sit inside it.
          *
          * ⚠️ **This exists because a real bug needed it and the owner found it**: *multiplicity is not

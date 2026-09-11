@@ -410,8 +410,22 @@ final class Schema
      * gemessen am 2026-09-07 tragen die 487 geparkten Kanten zusammen **24** Schattenwertzeilen, und
      * **keine einzige davon ist zur Parkzeit ihrer Kante oder später archiviert worden** — sie waren
      * alle vorher schon gelöscht, gehören also auch nach der alten Lesart nicht ins Gepäck.*
+     *
+     * ⚠️ **Fassung 46 gibt jedem Knoten seine Klasse** ([D-716](../../../docs/NewConcept/90-decision-log.md),
+     * [D-719](../../../docs/NewConcept/90-decision-log.md), TASK-092 — Schritt 1 des Bauplans
+     * [`einstellungen-bauplan.md`](../../../docs/einstellungen-bauplan.md)). *`nodes.klasse` und
+     * `nodes_history.klasse`, gefüllt nach der Tabelle K3 der Protokollseite, die er bestätigt hat:
+     * Kategorie für Ordnung und für Knoten mit Feldern; die eigene Typklasse für die elf Typknoten
+     * (sie steht schon als `implemented_by` da); `Auswahl` für `Prefixes`, `Base units`, `Currency`
+     * und die Rollen; `Konstante` für Präfixe und Rollen; `Einheitswert` für Einheiten **und**
+     * Währungen; `Einheitenwert` für den gesäten Knoten. **Nichts wandert, nichts fällt** — die
+     * Knoten unter `Settings` und die Einstellungsknoten unter den Typen bekommen `Kategorie` und
+     * fallen erst mit Schritt 7 ([D-718](../../../docs/NewConcept/90-decision-log.md)).*
+     * ⚠️ *`Currency` ist Inhalt des Eigentümers ohne Notiz und wird **einmal** über den Namen unter
+     * `Constants` gefunden — der Fall, den [D-022](../../../docs/NewConcept/90-decision-log.md) meidet,
+     * hier als einmalige Wanderung hingenommen und im Bauplan genannt.*
      */
-    public const VERSION = 45;
+    public const VERSION = 46;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -709,6 +723,11 @@ final class Schema
         // ⚠️ **Fassung 45: die Einstellung `position` an der Wurzel — ein Kind ordnet geerbte Felder**
         // ([D-698](../../../docs/NewConcept/90-decision-log.md), TASK-087).
         self::declarePositionAtRoot();
+
+        // ⚠️ **Fassung 46: jeder Knoten bekommt seine Klasse** ([D-716](../../../docs/NewConcept/90-decision-log.md),
+        // [D-719](../../../docs/NewConcept/90-decision-log.md), TASK-092). *Nach `dbDelta`, weil die
+        // Spalte dastehen muss; nach den Sichten, weil `Currency` über `nodes_named` gefunden wird.*
+        self::assignNodeClasses();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -3275,6 +3294,100 @@ final class Schema
         update_option('taxmod_fassung45_shape', ['position' => $kante->id, 'an' => $wurzel], false);
     }
 
+    /**
+     * Fassung 46: **jeder Knoten bekommt seine Klasse**, nach der Tabelle K3 der Protokollseite
+     * ([D-716](../../../docs/NewConcept/90-decision-log.md), [D-719](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Nur Zeilen ohne Klasse werden angefasst** — die Vergabe ist einmalig, danach ist die Klasse
+     * fest (Anforderung 2.1.4). *Ein zweiter Lauf findet nichts Leeres mehr und tut nichts; ein Knoten,
+     * den jemand danach anlegt, bekommt seine Klasse vom Kern.*
+     *
+     * ⚠️ **Anker über Notizen, nicht über Namen** ([D-709](../../../docs/NewConcept/90-decision-log.md)),
+     * mit der einen Ausnahme `Currency`, die keine Notiz hat — siehe den Kopf der Fassung.
+     */
+    private static function assignNodeClasses(): void
+    {
+        global $wpdb;
+
+        $nodes = self::table('nodes');
+
+        if (self::tableMissing($nodes) || $wpdb->get_var("SHOW COLUMNS FROM {$nodes} LIKE 'klasse'") === null) {
+            return;
+        }
+
+        $leer = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$nodes} WHERE klasse = ''");
+
+        if ($leer === 0) {
+            return;
+        }
+
+        $setze = static function (string $klasse, string $where, array $args = []) use ($wpdb, $nodes): int {
+            $sql = "UPDATE {$nodes} SET klasse = %s WHERE klasse = '' AND ({$where})";
+
+            return (int) $wpdb->query($wpdb->prepare($sql, $klasse, ...$args));
+        };
+
+        $vergeben = [];
+
+        // 1 · Die elf Typknoten sind ihre eigene Klasse — sie steht schon als `implemented_by` da.
+        foreach (\Taxmod\Core\Model\Type\SpecialisedTypes::CLASSES as $typ) {
+            $vergeben[$typ] = ($vergeben[$typ] ?? 0) + $setze($typ, 'implemented_by = %s', [$typ]);
+        }
+
+        // 2 · Auswahlknoten und ihre Kinder.
+        $prefixes = (int) (UnitScaffold::nodeId('Prefixes') ?? 0);
+        $base     = (int) (UnitScaffold::nodeId('Base units') ?? 0);
+        $roles    = (int) get_option('taxmod_roles_id', 0);
+        $konstanten = (int) get_option('taxmod_branch_constants_id', 0);
+        $currency = $konstanten === 0 ? 0 : (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT id FROM ' . self::table('nodes_named') . ' WHERE parent_node_id = %d AND name = %s ORDER BY id LIMIT 1',
+            $konstanten,
+            'Currency'
+        ));
+
+        $auswahl   = \Taxmod\Core\Model\NodeClass\Choice::class;
+        $konstante = \Taxmod\Core\Model\NodeClass\Constant::class;
+        $einheit   = \Taxmod\Core\Model\NodeClass\Unit::class;
+
+        foreach (array_filter([$prefixes, $base, $roles, $currency]) as $id) {
+            $vergeben[$auswahl] = ($vergeben[$auswahl] ?? 0) + $setze($auswahl, 'id = %d', [$id]);
+        }
+
+        foreach (array_filter([$prefixes, $roles]) as $id) {
+            $vergeben[$konstante] = ($vergeben[$konstante] ?? 0) + $setze($konstante, 'parent_node_id = %d', [$id]);
+        }
+
+        // ⚠️ *Die Einheiten liegen **unter** `With prefix` / `Without prefix`, die selbst Kategorien
+        // bleiben — «mit/ohne präfix ist eine eigenschaft je blatt» (K2).*
+        if ($base !== 0) {
+            $vergeben[$einheit] = ($vergeben[$einheit] ?? 0) + $setze(
+                $einheit,
+                "parent_node_id IN (SELECT id FROM (SELECT id FROM {$nodes} WHERE parent_node_id = %d) AS gruppen)",
+                [$base]
+            );
+        }
+
+        if ($currency !== 0) {
+            $vergeben[$einheit] = ($vergeben[$einheit] ?? 0) + $setze($einheit, 'parent_node_id = %d', [$currency]);
+        }
+
+        // 3 · Der gesäte Einheitenwert.
+        $einheitenwert = (int) (UnitScaffold::unitValueId() ?? 0);
+
+        if ($einheitenwert !== 0) {
+            $unitValue = \Taxmod\Core\Model\NodeClass\UnitValue::class;
+            $vergeben[$unitValue] = ($vergeben[$unitValue] ?? 0) + $setze($unitValue, 'id = %d', [$einheitenwert]);
+        }
+
+        // 4 · Alles andere ist eine Kategorie — auch das, was mit Schritt 7 fällt.
+        $kategorie = \Taxmod\Core\Model\NodeClass\Category::class;
+        $vergeben[$kategorie] = ($vergeben[$kategorie] ?? 0) + $setze($kategorie, '1 = 1');
+
+        Shadow::forgetColumnPlan();
+
+        update_option('taxmod_fassung46_shape', ['leer_vorher' => $leer, 'vergeben' => $vergeben], false);
+    }
+
     private static function constrainRelationsToNodes(): void
     {
         global $wpdb;
@@ -4254,6 +4367,7 @@ final class Schema
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
+                klasse varchar(191) NOT NULL DEFAULT '',
                 PRIMARY KEY  (id),
                 KEY label_id (label_id),
                 KEY implemented_by (implemented_by),
@@ -4428,6 +4542,7 @@ final class Schema
                 parent_node_id bigint(20) unsigned DEFAULT NULL,
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
+                klasse varchar(191) NOT NULL DEFAULT '',
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

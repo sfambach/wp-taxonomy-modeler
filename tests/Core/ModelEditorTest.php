@@ -817,4 +817,47 @@ final class ModelEditorTest extends TestCase
         // hiesse, eine Abhängigkeit zu melden, die ihr eigener Knoten nicht zeigt.*
         self::assertSame([], $this->editor->usedBy($unit->id));
     }
+
+    #[Test]
+    public function a_child_gets_the_default_class_of_its_parent(): void
+    {
+        $prefixes = $this->editor->createNode('Prefixes', $this->root->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+        $kilo     = $this->editor->createNode('kilo', $prefixes->id);
+
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Choice::class, $prefixes->klasse);
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Constant::class, $kilo->klasse, 'die Vorwahl der Auswahl');
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Category::class, $this->editor->createNode('Kontakt', $this->root->id)->klasse, 'die Vorwahl der Kategorie');
+    }
+
+    #[Test]
+    public function a_class_the_parent_does_not_allow_is_refused(): void
+    {
+        $prefixes = $this->editor->createNode('Prefixes', $this->root->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+
+        $this->expectException(\Taxmod\Core\Exception\ClassNotAllowedUnder::class);
+
+        $this->editor->createNode('Zahl', $prefixes->id, \Taxmod\Core\Model\Type\IntType::class);
+    }
+
+    #[Test]
+    public function an_unknown_class_is_refused_before_anything_is_written(): void
+    {
+        $vorher = $this->nodes->count();
+
+        try {
+            $this->editor->createNode('Ding', $this->root->id, 'Nope\Nothing');
+            self::fail('sollte abweisen');
+        } catch (\Taxmod\Core\Exception\UnknownNodeClass) {
+        }
+
+        self::assertSame($vorher, $this->nodes->count());
+    }
+
+    #[Test]
+    public function a_duplicate_keeps_the_class_of_the_original(): void
+    {
+        $auswahl = $this->editor->createNode('Auswahl', $this->root->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Choice::class, $this->editor->duplicate($auswahl->id)->klasse);
+    }
 }

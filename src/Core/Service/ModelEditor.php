@@ -3,7 +3,10 @@
 namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Exception\CannotRestore;
+use Taxmod\Core\Exception\ClassNotAllowedUnder;
 use Taxmod\Core\Exception\ImpossibleMove;
+use Taxmod\Core\Exception\UnknownNodeClass;
+use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Exception\NodeIsProtected;
 use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\FrozenState;
@@ -73,7 +76,12 @@ final class ModelEditor
     ) {
     }
 
-    public function createNode(string $name, int $parentId): Node
+    /**
+     * @param class-string<\Taxmod\Core\Model\NodeClass\NodeClass>|null $klasse Die Knotenklasse — oder
+     *        `null` für die Vorwahl der Vaterklasse ([D-716](../../../docs/NewConcept/90-decision-log.md),
+     *        Anforderung 2.2.3).
+     */
+    public function createNode(string $name, int $parentId, ?string $klasse = null): Node
     {
         // ⚠️ **Creating a node is one change, not three** ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)).
         // *Measured against the real database: `created` plus the two settings this method materialises
@@ -87,15 +95,30 @@ final class ModelEditor
         $this->changelog->beginAct();
 
         try {
-            return $this->createdNode($name, $parentId);
+            return $this->createdNode($name, $parentId, $klasse);
         } finally {
             $this->changelog->endAct();
         }
     }
 
-    private function createdNode(string $name, int $parentId): Node
+    private function createdNode(string $name, int $parentId, ?string $klasse): Node
     {
         $parent = $this->nodes->byId($parentId);
+
+        // ⚠️ **Die Klasse kommt vom Vater, wenn niemand eine wählt — und nur eine, die er erlaubt**
+        // ([D-716](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «er sagt, mein kind darf
+        // diese und jene klassen tragen, und es gibt einen default, der bei anlage des kindes
+        // vorgewählt wird.» Beides steht im Vertrag der Vaterklasse und nirgends sonst.*
+        $vertrag = Contracts::of($parent->klasse);
+        $klasse ??= $vertrag->defaultChildClass;
+
+        if (! Contracts::isKnown($klasse)) {
+            throw UnknownNodeClass::named($klasse);
+        }
+
+        if (! $vertrag->allowsChild($klasse)) {
+            throw ClassNotAllowedUnder::parent($klasse, $parent->klasse);
+        }
 
         // ⚠️ **Zwei Ids aus zwei Räumen** — seit TASK-004 vergibt jede Tabelle ihre eigene
         // ([`package.md` §6](../../../docs/pakete/modelltabellen/package.md)). *Eine Kante bleibt ein
@@ -110,7 +133,8 @@ final class ModelEditor
             $name,
             $parent->path,
             $parent->id,
-            $this->nodes->nextPositionUnder($parent->id)
+            $this->nodes->nextPositionUnder($parent->id),
+            $klasse
         ));
         $this->changelog->record($node->id, 'node', 'created', null, $this->state($node), $node->version);
 
@@ -416,7 +440,8 @@ final class ModelEditor
         $parentId = $node->parentId()
             ?? throw NodeIsProtected::named($node->name);
 
-        $copy = $this->createNode($node->name, $parentId);
+        // ⚠️ *Die Kopie ist, was das Original ist — dieselbe Klasse, und der Vater erlaubt sie schon.*
+        $copy = $this->createNode($node->name, $parentId, $node->klasse);
 
         // ⚠️ **Its own declarations only**, which is what `ownAttribute()` already distinguishes: an
         // inherited attribute belongs to an ancestor and the copy inherits it too, by sitting where it

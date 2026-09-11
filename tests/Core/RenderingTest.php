@@ -931,11 +931,18 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
-    public function a_node_without_an_icon_gets_no_empty_icon_element(): void
+    public function a_node_without_an_icon_gets_the_icon_of_its_class(): void
     {
+        // ⚠️ **Bis zum 2026-09-11 hiess diese Zusage «kein leeres Icon-Element»** — seit
+        // [D-723](../../docs/NewConcept/90-decision-log.md) zeichnet der Baum das Icon der Klasse,
+        // wo der Knoten keines trägt: *«jede klasse nennt im vertrag ein icon, der baum zeichnet es;
+        // ein label-icon am knoten geht vor.»* Ein Ding ohne Funktion ist eine Kategorie.
         $part = $this->thing('Part');
 
-        self::assertStringNotContainsString('dashicons', $this->rendering->cellsFor([$part])[$part->id]->markup);
+        self::assertStringContainsString(
+            'dashicons-' . \Taxmod\Core\Model\NodeClass\Contracts::of(\Taxmod\Core\Model\NodeClass\Category::class)->icon,
+            $this->rendering->cellsFor([$part])[$part->id]->markup
+        );
     }
 
     #[Test]

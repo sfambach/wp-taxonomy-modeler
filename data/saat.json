@@ -1,16 +1,16 @@
 {
     "erzeugt_von": "scripts/dev/saat-export.php",
-    "schemafassung": 41,
+    "schemafassung": 46,
     "abzugsfassung": 1,
     "zaehlung": {
-        "labels": 181,
-        "label_texts": 183,
+        "labels": 184,
+        "label_texts": 186,
         "nodes": 134,
-        "relations": 47,
-        "node_records": 166,
-        "relation_records": 90
+        "relations": 50,
+        "node_records": 170,
+        "relation_records": 87
     },
-    "pruefsumme": "da5fd593ad7fb3c26028a55076cb1c9b6d9d0f04024c83ede3812998ed7c4ecf",
+    "pruefsumme": "d990d666a80a64724eecd6d16a9ff8dfe9dd5cfe24c31d4286f163d919beca85",
     "optionen": {
         "taxmod_base_scaffold": "6",
         "taxmod_branch_combined_id": "3984",
@@ -35,7 +35,45 @@
         "taxmod_root_id": "1",
         "taxmod_setting_edge_renderer": "149000093575",
         "taxmod_trash_id": "2",
-        "taxmod_unit_scaffold": "3",
+        "taxmod_unit_node_ampere": "4042",
+        "taxmod_unit_node_atto": "4024",
+        "taxmod_unit_node_base_units": "4030",
+        "taxmod_unit_node_celsius": "4060",
+        "taxmod_unit_node_centi": "4012",
+        "taxmod_unit_node_deca": "4008",
+        "taxmod_unit_node_deci": "4010",
+        "taxmod_unit_node_exa": "3994",
+        "taxmod_unit_node_farad": "4046",
+        "taxmod_unit_node_femto": "4022",
+        "taxmod_unit_node_giga": "4000",
+        "taxmod_unit_node_gramm": "4034",
+        "taxmod_unit_node_hecto": "4006",
+        "taxmod_unit_node_henry": "4052",
+        "taxmod_unit_node_hertz": "4054",
+        "taxmod_unit_node_kelvin": "4058",
+        "taxmod_unit_node_kilo": "4004",
+        "taxmod_unit_node_liter": "4038",
+        "taxmod_unit_node_mega": "4002",
+        "taxmod_unit_node_meter": "4036",
+        "taxmod_unit_node_micro": "4016",
+        "taxmod_unit_node_milli": "4014",
+        "taxmod_unit_node_nano": "4018",
+        "taxmod_unit_node_ohm": "4044",
+        "taxmod_unit_node_peta": "3996",
+        "taxmod_unit_node_pico": "4020",
+        "taxmod_unit_node_prefixes": "3988",
+        "taxmod_unit_node_sekunde": "4040",
+        "taxmod_unit_node_stück": "4062",
+        "taxmod_unit_node_tera": "3998",
+        "taxmod_unit_node_volt": "4050",
+        "taxmod_unit_node_watt": "4048",
+        "taxmod_unit_node_with_prefix": "4032",
+        "taxmod_unit_node_without_prefix": "4056",
+        "taxmod_unit_node_yocto": "4028",
+        "taxmod_unit_node_yotta": "3990",
+        "taxmod_unit_node_zepto": "4026",
+        "taxmod_unit_node_zetta": "3992",
+        "taxmod_unit_scaffold": "4",
         "taxmod_unit_value_id": "4232"
     },
     "tabellen": {
@@ -258,7 +296,7 @@
             },
             {
                 "id": "37",
-                "version": "106",
+                "version": "107",
                 "owner_kind": "node",
                 "icon": null
             },
@@ -834,7 +872,7 @@
             },
             {
                 "id": "144",
-                "version": "61",
+                "version": "62",
                 "owner_kind": "relation",
                 "icon": null
             },
@@ -1122,6 +1160,24 @@
             },
             {
                 "id": "32526",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "37108",
+                "version": "3",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "37370",
+                "version": "3",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "38396",
                 "version": "2",
                 "owner_kind": "relation",
                 "icon": null
@@ -1570,7 +1626,7 @@
                 "text_table": null,
                 "text_select": null,
                 "text_help": null,
-                "text_symbol": null
+                "text_symbol": "y"
             },
             {
                 "id": "38",
@@ -3323,6 +3379,42 @@
                 "text_select": null,
                 "text_help": null,
                 "text_symbol": null
+            },
+            {
+                "id": "58640",
+                "label_id": "37108",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "allowed",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "59043",
+                "label_id": "37370",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "position",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "60689",
+                "label_id": "38396",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Prefix",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
             }
         ],
         "nodes": [
@@ -3333,7 +3425,8 @@
                 "implemented_by": null,
                 "parent_node_id": null,
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "2",
@@ -3342,7 +3435,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "13",
@@ -3351,7 +3445,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3083",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "14",
@@ -3360,7 +3455,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3083",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "27",
@@ -3369,7 +3465,8 @@
                 "implemented_by": null,
                 "parent_node_id": "402",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "402",
@@ -3378,7 +3475,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1",
                 "sort_order": "15",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "404",
@@ -3387,7 +3485,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1",
                 "sort_order": "16",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "406",
@@ -3396,7 +3495,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1",
                 "sort_order": "17",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "408",
@@ -3405,7 +3505,8 @@
                 "implemented_by": null,
                 "parent_node_id": "406",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "410",
@@ -3414,7 +3515,8 @@
                 "implemented_by": null,
                 "parent_node_id": "406",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "731",
@@ -3423,7 +3525,8 @@
                 "implemented_by": null,
                 "parent_node_id": "40768",
                 "sort_order": "5",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
             },
             {
                 "id": "733",
@@ -3432,7 +3535,8 @@
                 "implemented_by": null,
                 "parent_node_id": "731",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "735",
@@ -3441,7 +3545,8 @@
                 "implemented_by": null,
                 "parent_node_id": "731",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "737",
@@ -3450,7 +3555,8 @@
                 "implemented_by": null,
                 "parent_node_id": "731",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "739",
@@ -3459,7 +3565,8 @@
                 "implemented_by": null,
                 "parent_node_id": "731",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "741",
@@ -3468,7 +3575,8 @@
                 "implemented_by": null,
                 "parent_node_id": "731",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "1171",
@@ -3477,7 +3585,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\IntType",
                 "parent_node_id": "408",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\IntType"
             },
             {
                 "id": "1173",
@@ -3486,7 +3595,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\DecimalType",
                 "parent_node_id": "408",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\DecimalType"
             },
             {
                 "id": "1175",
@@ -3495,7 +3605,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\TextType",
                 "parent_node_id": "408",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\TextType"
             },
             {
                 "id": "1177",
@@ -3504,7 +3615,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\CharType",
                 "parent_node_id": "408",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\CharType"
             },
             {
                 "id": "1179",
@@ -3513,7 +3625,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\BoolType",
                 "parent_node_id": "408",
                 "sort_order": "5",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\BoolType"
             },
             {
                 "id": "1181",
@@ -3522,7 +3635,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\EmailType",
                 "parent_node_id": "408",
                 "sort_order": "6",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\EmailType"
             },
             {
                 "id": "1183",
@@ -3531,7 +3645,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\DateTimeType",
                 "parent_node_id": "408",
                 "sort_order": "7",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\DateTimeType"
             },
             {
                 "id": "1185",
@@ -3540,7 +3655,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\ColorType",
                 "parent_node_id": "408",
                 "sort_order": "12",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\ColorType"
             },
             {
                 "id": "1187",
@@ -3549,7 +3665,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\VersionType",
                 "parent_node_id": "408",
                 "sort_order": "9",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\VersionType"
             },
             {
                 "id": "1189",
@@ -3558,7 +3675,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\NodeRefType",
                 "parent_node_id": "408",
                 "sort_order": "10",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\NodeRefType"
             },
             {
                 "id": "1191",
@@ -3567,7 +3685,8 @@
                 "implemented_by": "Taxmod\\Core\\Model\\Type\\UserRefType",
                 "parent_node_id": "408",
                 "sort_order": "11",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\UserRefType"
             },
             {
                 "id": "3083",
@@ -3576,7 +3695,8 @@
                 "implemented_by": null,
                 "parent_node_id": "402",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3463",
@@ -3585,7 +3705,8 @@
                 "implemented_by": null,
                 "parent_node_id": "404",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3634",
@@ -3594,7 +3715,8 @@
                 "implemented_by": null,
                 "parent_node_id": "402",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3636",
@@ -3603,7 +3725,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3634",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3638",
@@ -3612,7 +3735,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3634",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3640",
@@ -3621,7 +3745,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3636",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3642",
@@ -3630,7 +3755,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3636",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3800",
@@ -3639,7 +3765,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3636",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3984",
@@ -3648,7 +3775,8 @@
                 "implemented_by": null,
                 "parent_node_id": "406",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "3988",
@@ -3657,7 +3785,8 @@
                 "implemented_by": null,
                 "parent_node_id": "410",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
             },
             {
                 "id": "3990",
@@ -3666,7 +3795,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "3992",
@@ -3675,7 +3805,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "1",
-                "hide": "1"
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "3994",
@@ -3684,7 +3815,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "2",
-                "hide": "1"
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "3996",
@@ -3693,7 +3825,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "3998",
@@ -3702,7 +3835,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4000",
@@ -3711,7 +3845,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "5",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4002",
@@ -3720,7 +3855,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "6",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4004",
@@ -3729,7 +3865,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "7",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4006",
@@ -3738,7 +3875,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "8",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4008",
@@ -3747,7 +3885,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "9",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4010",
@@ -3756,7 +3895,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "10",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4012",
@@ -3765,7 +3905,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "11",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4014",
@@ -3774,7 +3915,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "12",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4016",
@@ -3783,7 +3925,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "13",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4018",
@@ -3792,7 +3935,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "14",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4020",
@@ -3801,7 +3945,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "15",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4022",
@@ -3810,7 +3955,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "16",
-                "hide": "1"
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4024",
@@ -3819,7 +3965,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "17",
-                "hide": "1"
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4026",
@@ -3828,7 +3975,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "18",
-                "hide": "1"
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4028",
@@ -3837,7 +3985,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3988",
                 "sort_order": "19",
-                "hide": "1"
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
             },
             {
                 "id": "4030",
@@ -3846,7 +3995,8 @@
                 "implemented_by": null,
                 "parent_node_id": "410",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
             },
             {
                 "id": "4032",
@@ -3855,7 +4005,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4030",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "4034",
@@ -3864,7 +4015,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4036",
@@ -3873,7 +4025,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4038",
@@ -3882,7 +4035,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4040",
@@ -3891,7 +4045,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4042",
@@ -3900,7 +4055,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4044",
@@ -3909,7 +4065,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "5",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4046",
@@ -3918,7 +4075,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "6",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4048",
@@ -3927,7 +4085,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "7",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4050",
@@ -3936,7 +4095,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "8",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4052",
@@ -3945,7 +4105,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "9",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4054",
@@ -3954,7 +4115,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4032",
                 "sort_order": "10",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4056",
@@ -3963,7 +4125,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4030",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "4058",
@@ -3972,7 +4135,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4056",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4060",
@@ -3981,7 +4145,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4056",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4062",
@@ -3990,7 +4155,8 @@
                 "implemented_by": null,
                 "parent_node_id": "4056",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "4232",
@@ -3999,7 +4165,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3984",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\UnitValue"
             },
             {
                 "id": "8569",
@@ -4008,7 +4175,8 @@
                 "implemented_by": null,
                 "parent_node_id": "410",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
             },
             {
                 "id": "8571",
@@ -4017,7 +4185,8 @@
                 "implemented_by": null,
                 "parent_node_id": "8569",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "8573",
@@ -4026,7 +4195,8 @@
                 "implemented_by": null,
                 "parent_node_id": "8569",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "8582",
@@ -4035,7 +4205,8 @@
                 "implemented_by": null,
                 "parent_node_id": "8569",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
             },
             {
                 "id": "13411",
@@ -4044,7 +4215,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3984",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "13416",
@@ -4053,7 +4225,8 @@
                 "implemented_by": null,
                 "parent_node_id": "404",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "13420",
@@ -4062,7 +4235,8 @@
                 "implemented_by": null,
                 "parent_node_id": "404",
                 "sort_order": "5",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "18507",
@@ -4071,7 +4245,8 @@
                 "implemented_by": null,
                 "parent_node_id": "402",
                 "sort_order": "6",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32483",
@@ -4080,7 +4255,8 @@
                 "implemented_by": null,
                 "parent_node_id": "402",
                 "sort_order": "9",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32485",
@@ -4089,7 +4265,8 @@
                 "implemented_by": null,
                 "parent_node_id": "32483",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32487",
@@ -4098,7 +4275,8 @@
                 "implemented_by": null,
                 "parent_node_id": "32485",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32489",
@@ -4107,7 +4285,8 @@
                 "implemented_by": null,
                 "parent_node_id": "32485",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32491",
@@ -4116,7 +4295,8 @@
                 "implemented_by": null,
                 "parent_node_id": "32485",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32493",
@@ -4125,7 +4305,8 @@
                 "implemented_by": null,
                 "parent_node_id": "410",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32801",
@@ -4134,7 +4315,8 @@
                 "implemented_by": null,
                 "parent_node_id": "32483",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "32897",
@@ -4143,7 +4325,8 @@
                 "implemented_by": null,
                 "parent_node_id": "32801",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "40768",
@@ -4152,7 +4335,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1",
                 "sort_order": "19",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "41586",
@@ -4161,7 +4345,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1171",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "41588",
@@ -4170,7 +4355,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1171",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43495",
@@ -4179,7 +4365,8 @@
                 "implemented_by": null,
                 "parent_node_id": "40768",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43497",
@@ -4188,7 +4375,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\CheckboxRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43499",
@@ -4197,7 +4385,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\DialogChooserRenderer",
                 "parent_node_id": "55659",
                 "sort_order": "5",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43501",
@@ -4206,7 +4395,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\InlineChooserRenderer",
                 "parent_node_id": "55659",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43503",
@@ -4215,7 +4405,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\ColorRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43505",
@@ -4224,7 +4415,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\CompactRenderer",
                 "parent_node_id": "55659",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43507",
@@ -4233,7 +4425,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\DateTimeRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "5",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43509",
@@ -4242,7 +4435,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\FieldRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "6",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43511",
@@ -4251,7 +4445,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\FormRenderer",
                 "parent_node_id": "55659",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43513",
@@ -4260,7 +4455,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\MailtoRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "8",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43517",
@@ -4269,7 +4465,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\PlainRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "10",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43519",
@@ -4278,7 +4475,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\ReferenceRenderer",
                 "parent_node_id": "55659",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43521",
@@ -4287,7 +4485,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\SliderRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "12",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43523",
@@ -4296,7 +4495,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\SpinnerRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "13",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43525",
@@ -4305,7 +4505,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\TextareaRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "14",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43527",
@@ -4314,7 +4515,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\ToggleRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "15",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43529",
@@ -4323,7 +4525,8 @@
                 "implemented_by": null,
                 "parent_node_id": "40768",
                 "sort_order": "4",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43531",
@@ -4332,7 +4535,8 @@
                 "implemented_by": "Taxmod\\Core\\Converter\\HexadecimalConverter",
                 "parent_node_id": "43529",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43533",
@@ -4341,7 +4545,8 @@
                 "implemented_by": "Taxmod\\Core\\Converter\\RomanNumeralConverter",
                 "parent_node_id": "43529",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "43535",
@@ -4350,7 +4555,8 @@
                 "implemented_by": null,
                 "parent_node_id": "40768",
                 "sort_order": "6",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "47821",
@@ -4359,7 +4565,8 @@
                 "implemented_by": "Taxmod\\Core\\Converter\\BinaryConverter",
                 "parent_node_id": "43529",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "47823",
@@ -4368,7 +4575,8 @@
                 "implemented_by": "Taxmod\\Core\\Converter\\OctalConverter",
                 "parent_node_id": "43529",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "50936",
@@ -4377,7 +4585,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1179",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "55653",
@@ -4386,7 +4595,8 @@
                 "implemented_by": null,
                 "parent_node_id": "40768",
                 "sort_order": "8",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "55655",
@@ -4395,7 +4605,8 @@
                 "implemented_by": null,
                 "parent_node_id": "55653",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "55657",
@@ -4404,7 +4615,8 @@
                 "implemented_by": null,
                 "parent_node_id": "55653",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "55659",
@@ -4413,7 +4625,8 @@
                 "implemented_by": null,
                 "parent_node_id": "43495",
                 "sort_order": "17",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "55790",
@@ -4422,7 +4635,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\TableRenderer",
                 "parent_node_id": "55659",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "63128",
@@ -4431,7 +4645,8 @@
                 "implemented_by": "Taxmod\\Core\\Validator\\RangeValidator",
                 "parent_node_id": "43535",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "63130",
@@ -4440,7 +4655,8 @@
                 "implemented_by": "Taxmod\\Core\\Validator\\ShapeValidator",
                 "parent_node_id": "43535",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "66335",
@@ -4449,7 +4665,8 @@
                 "implemented_by": null,
                 "parent_node_id": "402",
                 "sort_order": "12",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "75473",
@@ -4458,7 +4675,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3984",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "75477",
@@ -4467,7 +4685,8 @@
                 "implemented_by": null,
                 "parent_node_id": "3984",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "149000096363",
@@ -4476,7 +4695,8 @@
                 "implemented_by": "Taxmod\\Core\\Renderer\\UserRefRenderer",
                 "parent_node_id": "43495",
                 "sort_order": "18",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "149000097707",
@@ -4485,7 +4705,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1171",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "149000098258",
@@ -4494,7 +4715,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1171",
                 "sort_order": "3",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "149000098259",
@@ -4503,7 +4725,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1173",
                 "sort_order": "0",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "149000098260",
@@ -4512,7 +4735,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1173",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "149000098261",
@@ -4521,7 +4745,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1173",
                 "sort_order": "2",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             },
             {
                 "id": "149000100598",
@@ -4530,7 +4755,8 @@
                 "implemented_by": null,
                 "parent_node_id": "1179",
                 "sort_order": "1",
-                "hide": "0"
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
             }
         ],
         "relations": [
@@ -4591,14 +4817,14 @@
             },
             {
                 "id": "4654",
-                "version": "381",
+                "version": "382",
                 "from_node_id": "3988",
                 "to_node_id": "1171",
                 "kind": "setting",
                 "label_id": "144",
                 "sort_order": "0",
                 "multiplicity": "1..1",
-                "hide": "1"
+                "hide": "0"
             },
             {
                 "id": "8264",
@@ -5050,6 +5276,39 @@
                 "sort_order": "0",
                 "multiplicity": "1..1",
                 "hide": "0"
+            },
+            {
+                "id": "149000101719",
+                "version": "2",
+                "from_node_id": "3988",
+                "to_node_id": "1189",
+                "kind": "setting",
+                "label_id": "37108",
+                "sort_order": "1",
+                "multiplicity": "0..*",
+                "hide": "0"
+            },
+            {
+                "id": "149000101725",
+                "version": "2",
+                "from_node_id": "1",
+                "to_node_id": "1171",
+                "kind": "setting",
+                "label_id": "37370",
+                "sort_order": "4",
+                "multiplicity": "0..1",
+                "hide": "0"
+            },
+            {
+                "id": "149000101744",
+                "version": "1",
+                "from_node_id": "3988",
+                "to_node_id": "1189",
+                "kind": "composition",
+                "label_id": "38396",
+                "sort_order": "2",
+                "multiplicity": "1..1",
+                "hide": "0"
             }
         ],
         "node_records": [
@@ -5091,308 +5350,299 @@
             },
             {
                 "id": "2232",
-                "version": "1",
+                "version": "2",
                 "node_id": "4030",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2236",
-                "version": "1",
+                "version": "2",
                 "node_id": "13411",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2240",
-                "version": "1",
+                "version": "2",
                 "node_id": "4060",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2270",
-                "version": "1",
+                "version": "2",
                 "node_id": "3988",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2276",
-                "version": "1",
+                "version": "2",
                 "node_id": "3636",
                 "node_version": "2",
                 "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "2281",
-                "version": "1",
-                "node_id": "1171",
-                "node_version": "6",
-                "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2283",
-                "version": "1",
+                "version": "2",
                 "node_id": "27",
                 "node_version": "6",
                 "created_at": "2026-08-30 13:15:17",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2320",
-                "version": "1",
+                "version": "2",
                 "node_id": "3990",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2321",
-                "version": "1",
+                "version": "2",
                 "node_id": "3992",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2322",
-                "version": "1",
+                "version": "2",
                 "node_id": "3994",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2323",
-                "version": "1",
+                "version": "2",
                 "node_id": "3996",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2324",
-                "version": "1",
+                "version": "2",
                 "node_id": "3998",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2325",
-                "version": "1",
+                "version": "2",
                 "node_id": "4000",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2326",
-                "version": "1",
+                "version": "2",
                 "node_id": "4002",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2327",
-                "version": "1",
+                "version": "2",
                 "node_id": "4004",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2328",
-                "version": "1",
+                "version": "2",
                 "node_id": "4006",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2329",
-                "version": "1",
+                "version": "2",
                 "node_id": "4008",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2330",
-                "version": "1",
+                "version": "2",
                 "node_id": "4010",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2331",
-                "version": "1",
+                "version": "2",
                 "node_id": "4012",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2332",
-                "version": "1",
+                "version": "2",
                 "node_id": "4014",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2333",
-                "version": "1",
+                "version": "2",
                 "node_id": "4016",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2334",
-                "version": "1",
+                "version": "2",
                 "node_id": "4018",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2335",
-                "version": "1",
+                "version": "2",
                 "node_id": "4020",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2336",
-                "version": "1",
+                "version": "2",
                 "node_id": "4022",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2337",
-                "version": "1",
+                "version": "2",
                 "node_id": "4024",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2338",
-                "version": "1",
+                "version": "2",
                 "node_id": "4026",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2339",
-                "version": "1",
+                "version": "2",
                 "node_id": "4028",
                 "node_version": "1",
                 "created_at": "2026-08-30 13:46:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2683",
-                "version": "1",
+                "version": "2",
                 "node_id": "3083",
                 "node_version": "2",
                 "created_at": "2026-08-30 21:19:23",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2780",
-                "version": "1",
+                "version": "2",
                 "node_id": "43519",
                 "node_version": "4",
                 "created_at": "2026-08-30 22:07:09",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2788",
-                "version": "1",
+                "version": "2",
                 "node_id": "55790",
                 "node_version": "1",
                 "created_at": "2026-08-30 22:07:49",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2789",
-                "version": "1",
+                "version": "2",
                 "node_id": "43501",
                 "node_version": "4",
                 "created_at": "2026-08-30 22:07:58",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2790",
-                "version": "1",
+                "version": "2",
                 "node_id": "43499",
                 "node_version": "4",
                 "created_at": "2026-08-30 22:08:02",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2828",
-                "version": "1",
+                "version": "2",
                 "node_id": "1",
                 "node_version": "1",
                 "created_at": "2026-08-30 23:22:26",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "2865",
-                "version": "1",
+                "version": "2",
                 "node_id": "3634",
                 "node_version": "3",
                 "created_at": "2026-08-30 23:22:26",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
@@ -5406,20 +5656,20 @@
             },
             {
                 "id": "4758",
-                "version": "1",
+                "version": "2",
                 "node_id": "75477",
                 "node_version": "2",
                 "created_at": "2026-09-04 16:30:31",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "4760",
-                "version": "1",
+                "version": "2",
                 "node_id": "66335",
                 "node_version": "2",
                 "created_at": "2026-09-04 16:37:02",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
@@ -6144,20 +6394,20 @@
             },
             {
                 "id": "9638",
-                "version": "1",
+                "version": "2",
                 "node_id": "149000097707",
                 "node_version": "1",
                 "created_at": "2026-09-06 09:00:26",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "9639",
-                "version": "1",
+                "version": "2",
                 "node_id": "1175",
                 "node_version": "4",
                 "created_at": "2026-09-06 09:06:21",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
@@ -6261,20 +6511,20 @@
             },
             {
                 "id": "10015",
-                "version": "2",
+                "version": "3",
                 "node_id": "75473",
                 "node_version": "2",
                 "created_at": "2026-09-06 11:33:11",
-                "record_type": "user",
+                "record_type": "settings",
                 "relation_id": "75476"
             },
             {
                 "id": "10016",
-                "version": "2",
+                "version": "3",
                 "node_id": "75473",
                 "node_version": "2",
                 "created_at": "2026-09-06 11:33:11",
-                "record_type": "user",
+                "record_type": "settings",
                 "relation_id": "75475"
             },
             {
@@ -6387,11 +6637,11 @@
             },
             {
                 "id": "10447",
-                "version": "1",
+                "version": "2",
                 "node_id": "149000098258",
                 "node_version": "2",
                 "created_at": "2026-09-06 12:35:24",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
@@ -6414,29 +6664,20 @@
             },
             {
                 "id": "10824",
-                "version": "1",
+                "version": "2",
                 "node_id": "4050",
                 "node_version": "2",
                 "created_at": "2026-09-06 13:04:47",
-                "record_type": "default",
-                "relation_id": "0"
-            },
-            {
-                "id": "10825",
-                "version": "1",
-                "node_id": "43499",
-                "node_version": "7",
-                "created_at": "2026-09-06 13:04:47",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "10879",
-                "version": "1",
+                "version": "2",
                 "node_id": "149000100598",
                 "node_version": "2",
                 "created_at": "2026-09-06 13:12:27",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
@@ -6450,38 +6691,38 @@
             },
             {
                 "id": "11692",
-                "version": "1",
+                "version": "2",
                 "node_id": "4032",
                 "node_version": "2",
                 "created_at": "2026-09-06 14:42:44",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "11694",
-                "version": "1",
+                "version": "2",
                 "node_id": "4056",
                 "node_version": "2",
                 "created_at": "2026-09-06 14:42:44",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "11696",
-                "version": "1",
+                "version": "2",
                 "node_id": "4036",
                 "node_version": "2",
                 "created_at": "2026-09-06 14:42:49",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "12643",
-                "version": "1",
+                "version": "2",
                 "node_id": "75473",
                 "node_version": "6",
                 "created_at": "2026-09-07 10:39:21",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
@@ -6495,20 +6736,20 @@
             },
             {
                 "id": "13245",
-                "version": "1",
+                "version": "2",
                 "node_id": "4232",
                 "node_version": "3",
                 "created_at": "2026-09-07 19:08:31",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "4234"
             },
             {
                 "id": "13456",
-                "version": "1",
+                "version": "2",
                 "node_id": "43505",
                 "node_version": "6",
                 "created_at": "2026-09-08 07:14:12",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
@@ -6531,20 +6772,74 @@
             },
             {
                 "id": "14769",
-                "version": "1",
+                "version": "2",
                 "node_id": "1173",
                 "node_version": "4",
                 "created_at": "2026-09-09 08:13:48",
-                "record_type": "default",
+                "record_type": "settings",
                 "relation_id": "0"
             },
             {
                 "id": "14907",
-                "version": "1",
+                "version": "2",
                 "node_id": "3463",
                 "node_version": "6",
                 "created_at": "2026-09-09 10:40:57",
+                "record_type": "settings",
+                "relation_id": "0"
+            },
+            {
+                "id": "16573",
+                "version": "1",
+                "node_id": "1171",
+                "node_version": "6",
+                "created_at": "2026-09-09 16:18:00",
+                "record_type": "settings",
+                "relation_id": "0"
+            },
+            {
+                "id": "16575",
+                "version": "1",
+                "node_id": "41588",
+                "node_version": "5",
+                "created_at": "2026-09-09 16:18:00",
+                "record_type": "settings",
+                "relation_id": "0"
+            },
+            {
+                "id": "16576",
+                "version": "1",
+                "node_id": "41586",
+                "node_version": "5",
+                "created_at": "2026-09-09 16:18:00",
+                "record_type": "settings",
+                "relation_id": "0"
+            },
+            {
+                "id": "16577",
+                "version": "1",
+                "node_id": "149000098259",
+                "node_version": "2",
+                "created_at": "2026-09-09 16:18:00",
                 "record_type": "default",
+                "relation_id": "0"
+            },
+            {
+                "id": "16578",
+                "version": "1",
+                "node_id": "149000098260",
+                "node_version": "2",
+                "created_at": "2026-09-09 16:18:00",
+                "record_type": "default",
+                "relation_id": "0"
+            },
+            {
+                "id": "17306",
+                "version": "1",
+                "node_id": "402",
+                "node_version": "2",
+                "created_at": "2026-09-09 20:34:31",
+                "record_type": "settings",
                 "relation_id": "0"
             }
         ],
@@ -6929,7 +7224,7 @@
             },
             {
                 "id": "7100",
-                "node_record_id": "2281",
+                "node_record_id": "16573",
                 "relation_id": "50938",
                 "locale": "",
                 "position": "0",
@@ -6998,20 +7293,6 @@
                 "value_ref_kind": null
             },
             {
-                "id": "9214",
-                "node_record_id": "4756",
-                "relation_id": "50938",
-                "locale": "",
-                "position": "0",
-                "version": "17",
-                "value_int": "0",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
                 "id": "9216",
                 "node_record_id": "4758",
                 "relation_id": "50938",
@@ -7041,7 +7322,7 @@
             },
             {
                 "id": "13364",
-                "node_record_id": "2281",
+                "node_record_id": "16573",
                 "relation_id": "149000093575",
                 "locale": "",
                 "position": "0",
@@ -7051,20 +7332,6 @@
                 "value_text": null,
                 "value_date": null,
                 "value_ref": "43523",
-                "value_ref_kind": "node"
-            },
-            {
-                "id": "14980",
-                "node_record_id": "4756",
-                "relation_id": "149000093575",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": "43505",
                 "value_ref_kind": "node"
             },
             {
@@ -7241,7 +7508,7 @@
                 "relation_id": "149000093575",
                 "locale": "",
                 "position": "0",
-                "version": "1",
+                "version": "3",
                 "value_int": null,
                 "value_decimal": null,
                 "value_text": null,
@@ -7306,22 +7573,8 @@
                 "value_ref_kind": null
             },
             {
-                "id": "16753",
-                "node_record_id": "10825",
-                "relation_id": "55661",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": "0",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
                 "id": "16754",
-                "node_record_id": "10825",
+                "node_record_id": "2790",
                 "relation_id": "149000100496",
                 "locale": "",
                 "position": "0",
@@ -7600,22 +7853,8 @@
                 "value_ref_kind": null
             },
             {
-                "id": "20107",
-                "node_record_id": "2281",
-                "relation_id": "0",
-                "locale": "en_US",
-                "position": "0",
-                "version": "2",
-                "value_int": "72",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
                 "id": "20110",
-                "node_record_id": "2281",
+                "node_record_id": "16573",
                 "relation_id": "149000098260",
                 "locale": "",
                 "position": "0",
@@ -7628,36 +7867,8 @@
                 "value_ref_kind": null
             },
             {
-                "id": "20111",
-                "node_record_id": "13928",
-                "relation_id": "0",
-                "locale": "en_US",
-                "position": "0",
-                "version": "1",
-                "value_int": "0",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "20112",
-                "node_record_id": "13929",
-                "relation_id": "0",
-                "locale": "en_US",
-                "position": "0",
-                "version": "1",
-                "value_int": "72",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
                 "id": "21082",
-                "node_record_id": "13928",
+                "node_record_id": "16575",
                 "relation_id": "149000093575",
                 "locale": "",
                 "position": "0",
@@ -7671,7 +7882,7 @@
             },
             {
                 "id": "21083",
-                "node_record_id": "13929",
+                "node_record_id": "16576",
                 "relation_id": "149000093575",
                 "locale": "",
                 "position": "0",
@@ -7696,62 +7907,6 @@
                 "value_date": null,
                 "value_ref": "43521",
                 "value_ref_kind": "node"
-            },
-            {
-                "id": "21199",
-                "node_record_id": "2281",
-                "relation_id": "149000086607",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": "-9223372036854775808",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "21200",
-                "node_record_id": "2281",
-                "relation_id": "149000086608",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": "9223372036854775807",
-                "value_decimal": null,
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "21258",
-                "node_record_id": "14769",
-                "relation_id": "149000098261",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "-99999999999999999999.9999999999",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
-            },
-            {
-                "id": "21259",
-                "node_record_id": "14769",
-                "relation_id": "149000098262",
-                "locale": "",
-                "position": "0",
-                "version": "1",
-                "value_int": null,
-                "value_decimal": "99999999999999999999.9999999999",
-                "value_text": null,
-                "value_date": null,
-                "value_ref": null,
-                "value_ref_kind": null
             },
             {
                 "id": "21261",
@@ -7808,6 +7963,104 @@
                 "value_date": null,
                 "value_ref": null,
                 "value_ref_kind": null
+            },
+            {
+                "id": "23382",
+                "node_record_id": "13928",
+                "relation_id": "0",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "-9223372036854775808",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "23383",
+                "node_record_id": "13929",
+                "relation_id": "0",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": "9223372036854775807",
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "23384",
+                "node_record_id": "16577",
+                "relation_id": "0",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": "-99999999999999999999.9999999999",
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "23385",
+                "node_record_id": "16578",
+                "relation_id": "0",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": "99999999999999999999.9999999999",
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "24246",
+                "node_record_id": "2320",
+                "relation_id": "149000100496",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "739",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "24250",
+                "node_record_id": "17306",
+                "relation_id": "149000093575",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "43511",
+                "value_ref_kind": "node"
+            },
+            {
+                "id": "24697",
+                "node_record_id": "2283",
+                "relation_id": "149000100849",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": null,
+                "value_date": null,
+                "value_ref": "55655",
+                "value_ref_kind": "node"
             }
         ]
     }

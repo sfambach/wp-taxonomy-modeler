@@ -194,7 +194,8 @@ final class InMemoryNodes implements NodeRepository
                     $node->implementedBy,
                     $node->parentNodeId,
                     $node->sortOrder,
-                    $node->hide
+                    $node->hide,
+                    $node->klasse
                 );
             }
         }

@@ -3371,7 +3371,7 @@ wurden Listen bisher übersprungen, also nie gespeichert — unverändert, benan
 
 ---
 
-[ ] TASK-092  Jeder Knoten trägt eine Klasse — Spalte `klasse`, Vergabe beim Anlegen über die Vaterklasse ([D-716](../../NewConcept/90-decision-log.md))
+[x] TASK-092  Jeder Knoten trägt eine Klasse — Spalte `klasse`, Vergabe beim Anlegen über die Vaterklasse ([D-716](../../NewConcept/90-decision-log.md)) — gebaut 2026-09-11
 
 **Sein Auftrag, 2026-09-11:** *«übernimm das beschlossene für die modellseite ins konzept, und nicht so
 wie es aktuell ist — die vier angesprochenen sollten wir mit ändern.»* Die vier sind TASK-092 bis

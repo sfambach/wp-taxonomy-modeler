@@ -97,11 +97,38 @@ class Node extends Identity implements Renderable
          * die Frage nicht, er bewahrt nur die Angabe.*
          */
         public readonly bool $hide = false,
+        /** Die Knotenklasse, oder leer für die naheliegende — siehe {@see self::$klasse}. */
+        string $klasse = '',
     ) {
         // ⚠️ *`id` und `version` gehoeren beiden und wohnen darum bei {@see Identity} — C86s
         // «whatever serves those two purposes, and nothing else», D-080s zwei Felder.*
         parent::__construct($id, $version, $name);
+
+        // ⚠️ **Leer heisst «die naheliegende»**: ein Typknoten ist seine eigene Klasse
+        // ([D-719](../../../docs/NewConcept/90-decision-log.md) K3), alles andere eine Kategorie
+        // (Anforderung 2.2.4). *So bleibt `new IntType()` der Steckbrief und `Node::create()` ohne
+        // Klasse ein gewöhnlicher Knoten — und es gibt nie einen Knoten ohne Klasse (2.1.1).*
+        $this->klasse = $klasse !== ''
+            ? $klasse
+            : ($this instanceof NodeClass\NodeClass ? static::class : NodeClass\Category::class);
     }
+
+    /**
+     * Die Knotenklasse — was dieser Knoten **ist** ([D-716](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Sein Wort:** *«jeder knoten hat eine klasse, klasse liefert settings … also haben wir
+     * einen typ pro knoten, welcher die klasse symbolisiert.»* Vergeben beim Anlegen, eigen oder
+     * vom Vater vorgewählt, danach fest (Anforderung 2.1.4) — darum gibt es keinen `withKlasse()`.
+     *
+     * ⚠️ *Nicht dasselbe wie `implemented_by`: das nennt die PHP-Klasse, die diese **Zeile** als
+     * Objekt hydriert (ein Typknoten kommt als {@see Type\IntType} an). Die Knotenklasse sagt, was
+     * der Knoten für das Einstellungsmodell ist — bei den Typknoten fallen beide zusammen, bei
+     * allen anderen Knoten ist es {@see NodeClass\Category} oder eine der Klassen aus
+     * {@see NodeClass\Contracts}.*
+     *
+     * @var class-string<NodeClass\NodeClass>
+     */
+    public readonly string $klasse;
 
     /**
      * Rebuild a node from what storage holds. No validation beyond the name — storage is
@@ -127,10 +154,11 @@ class Node extends Identity implements Renderable
         ?int $parentNodeId = null,
         int $sortOrder = 0,
         bool $hide = false,
+        string $klasse = '',
     ): self {
         $class = self::classHydrating($implementedBy) ?? static::class;
 
-        return new $class($id, $version, $name, $path, $implementedBy, $parentNodeId, $sortOrder, $hide);
+        return new $class($id, $version, $name, $path, $implementedBy, $parentNodeId, $sortOrder, $hide, $klasse);
     }
 
     /**
@@ -154,6 +182,7 @@ class Node extends Identity implements Renderable
         ?int $sortOrder = null,
         ?bool $hide = null,
     ): static {
+        // ⚠️ *Die Klasse fährt immer mit und wird nie geändert (Anforderung 2.1.4).*
         return new static(
             $id ?? $this->id,
             $version ?? $this->version,
@@ -163,6 +192,7 @@ class Node extends Identity implements Renderable
             $clearParent ? null : ($parentNodeId ?? $this->parentNodeId),
             $sortOrder ?? $this->sortOrder,
             $hide ?? $this->hide,
+            $this->klasse,
         );
     }
 
@@ -201,10 +231,13 @@ class Node extends Identity implements Renderable
      * sagte den Vater schon, die Stelle nicht — und zwei Schreibwege für eine Einordnung sind zwei
      * Gelegenheiten, verschieden zu antworten.*
      */
-    public static function create(int $id, string $name, ?string $parentPath, ?int $parentNodeId = null, int $sortOrder = 0): self
+    public static function create(int $id, string $name, ?string $parentPath, ?int $parentNodeId = null, int $sortOrder = 0, string $klasse = ''): self
     {
         $name = self::cleanName($name);
 
+        // ⚠️ *Die Klasse kommt **mit** dem Knoten und nie danach ([D-716](../../../docs/NewConcept/90-decision-log.md)):
+        // «beim anlegen, aber immer genau nur eine». Ob sie unter dem Vater erlaubt ist, prüft der
+        // Dienst ({@see \Taxmod\Core\Service\ModelEditor::createNode()}), weil nur er den Vater kennt.*
         return new static(
             $id,
             1,
@@ -213,6 +246,8 @@ class Node extends Identity implements Renderable
             null,
             $parentNodeId,
             $sortOrder,
+            false,
+            $klasse,
         );
     }
 

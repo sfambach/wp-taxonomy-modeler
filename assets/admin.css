@@ -1408,3 +1408,14 @@ tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-contr
 .taxmod-config-why {
     max-width: 34em;
 }
+
+/* Die Knotenklasse steht im Baum dabei (D-716, Schritt 1 des Bauplans). */
+.taxmod-tree-class {
+    opacity: .55;
+    font-size: .85em;
+    margin-left: .25em;
+}
+
+.taxmod-toolbar-class {
+    max-width: 12em;
+}

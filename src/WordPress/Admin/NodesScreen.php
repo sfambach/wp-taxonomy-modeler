@@ -7,6 +7,7 @@ use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
@@ -613,8 +614,90 @@ final class NodesScreen
             // Nur der Modellbaum sucht ueber den Server -- der Auswahldialog hat alle Zeilen da
             // und filtert im Browser. Der Feldname entscheidet, welches von beidem gilt.
             $mode === 'tree' ? 'taxmod_search' : '',
-            $gesucht
+            $gesucht,
+            null,
+            // ⚠️ **Die Klasse steht im Baum dabei** ([D-716](../../../docs/NewConcept/90-decision-log.md)),
+            // übersetzt hier am Rand (`AR-2`) — nur im Modellbaum, nicht im Papierkorb.
+            $mode === 'tree' ? $this->classLabelsFor($rows) : []
         )->markup;
+    }
+
+    /**
+     * Je Zeile der übersetzte Name der Knotenklasse.
+     *
+     * @param  list<array{node: Node}> $rows
+     * @return array<int, string>
+     */
+    private function classLabelsFor(array $rows): array
+    {
+        $labels = [];
+
+        foreach ($rows as $row) {
+            $labels[$row['node']->id] = self::className($row['node']->klasse);
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Wie eine Knotenklasse für einen Menschen heisst — **hier** übersetzt, weil der Kern nur den
+     * Schlüssel kennt (`AR-2`, {@see \Taxmod\Core\Model\NodeClass\NodeClass::classKey()}).
+     */
+    public static function className(string $klasse): string
+    {
+        $key = Contracts::isKnown($klasse) ? Contracts::of($klasse)->key : $klasse;
+
+        return match ($key) {
+            'category'   => __('Category', 'taxmod'),
+            'choice'     => __('Choice', 'taxmod'),
+            'constant'   => __('Constant', 'taxmod'),
+            'unit'       => __('Unit', 'taxmod'),
+            'unit value' => __('Unit value', 'taxmod'),
+            'integer', 'int'     => __('Integer', 'taxmod'),
+            'double', 'decimal'  => __('Decimal', 'taxmod'),
+            'text'               => __('Text', 'taxmod'),
+            'character', 'char'  => __('Character', 'taxmod'),
+            'bool'               => __('Boolean', 'taxmod'),
+            'email'              => __('Email', 'taxmod'),
+            'datetime'           => __('Date and time', 'taxmod'),
+            'color'              => __('Color', 'taxmod'),
+            'version'            => __('Version', 'taxmod'),
+            'node_ref'           => __('Node reference', 'taxmod'),
+            'user_ref'           => __('User reference', 'taxmod'),
+            default              => ucfirst($key),
+        };
+    }
+
+    /**
+     * Die Klasse, die das Formular für ein neues Kind nennt — oder `null` für die Vorwahl des Vaters.
+     *
+     * ⚠️ *Nur ein Name aus dem Inventar kommt durch (`CD-5`: validieren, dann handeln); alles andere
+     * ist «nichts gewählt», und der Kern nimmt die Vorwahl ([D-716](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function requestedClass(): ?string
+    {
+        $klasse = isset($_POST['klasse']) ? sanitize_text_field(wp_unslash((string) $_POST['klasse'])) : '';
+
+        return $klasse !== '' && Contracts::isKnown($klasse) ? $klasse : null;
+    }
+
+    /**
+     * Der Wähler für die Klasse eines neuen Kindes: nur, was die Vaterklasse erlaubt, die Vorwahl
+     * vorgewählt (Anforderung 6.3).
+     */
+    private function classChooser(Node $parent): string
+    {
+        $vertrag = Contracts::of($parent->klasse);
+        $html    = '<select name="klasse" class="taxmod-toolbar-class" title="'
+            . esc_attr__('Class of the new child', 'taxmod') . '">';
+
+        foreach (Contracts::childClassesUnder($parent->klasse) as $klasse) {
+            $html .= '<option value="' . esc_attr($klasse) . '"'
+                . ($klasse === $vertrag->defaultChildClass ? ' selected' : '') . '>'
+                . esc_html(self::className($klasse)) . '</option>';
+        }
+
+        return $html . '</select>';
     }
 
     /**
@@ -1489,6 +1572,9 @@ final class NodesScreen
                 $selected->id,
                 [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
                 '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required class="taxmod-toolbar-name">'
+                // ⚠️ **Die Klasse wird beim Anlegen gewählt, und nur aus dem Erlaubten**
+                // ([D-716](../../../docs/NewConcept/90-decision-log.md), Anforderung 6.3).
+                . $this->classChooser($selected)
             )
             // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is plain
             // HTML — a button may name the form it belongs to — so nothing needs scripting.
@@ -4786,7 +4872,7 @@ final class NodesScreen
 
         try {
             $outcome = match ($do) {
-                'add_child'      => $stay = $this->editor->createNode($name, $id)->id,
+                'add_child'      => $stay = $this->editor->createNode($name, $id, $this->requestedClass())->id,
                 // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
                 // whose whole point is *and now I want to work on that* — it makes a node with a
                 // placeholder name, so leaving the parent selected means the very next thing a

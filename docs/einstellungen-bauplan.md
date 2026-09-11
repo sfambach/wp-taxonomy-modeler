@@ -68,7 +68,12 @@ bedienen kann (PR-2); die Wächter des Schritts kommen mit dem Schritt; was der 
 das Konzept nicht sagt, steht in seiner Liste. **Das Alte bleibt stehen, bis das Neue es ersetzt** —
 kein Schritt lässt die Installation ohne Einstellungen.
 
-### Schritt 1 · Die Klasse am Knoten (TASK-092)
+### Schritt 1 · Die Klasse am Knoten (TASK-092) — **gebaut 2026-09-11**
+
+*Fassung 46; `Core\Model\NodeClass\*` mit `Contract`/`Contracts`; Wächter `klasse-check` (29 Zusagen);
+Kern 511 grün, Rand 57 von 57 grün. Nebenbei gefunden und mitgenommen: der Abzug (`saat-export`) kannte
+die Notizen des Einheitengerüsts aus D-709 noch nicht und brach ab — die Muster `taxmod_unit_node_*`
+stehen jetzt im Abzug; `data/saat.json` ist neu gezogen, mit `klasse`.*
 
 - Spalte `nodes.klasse`; Schema-Fassung 46 vergibt sie nach der Tabelle K3.
 - Die Knotenklassen als Code: `Kategorie`, `Auswahl`, `Konstante`, `Einheitswert`, `Einheitenwert`

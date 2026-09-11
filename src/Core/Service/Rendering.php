@@ -3335,6 +3335,8 @@ final class Rendering implements Presets
         Level $level = Level::Admin,
         bool $developerMode = false,
         array $hidden = [],
+        /** @var array<int, string> Je Knoten der übersetzte Name seiner Klasse — leer heisst: nicht anschreiben. */
+        array $classLabels = [],
     ): array {
         if ($nodes === []) {
             return [];
@@ -3346,12 +3348,26 @@ final class Rendering implements Presets
         $cells = [];
 
         foreach ($nodes as $node) {
+            $eigene = $settings[$node->id] ?? [];
+
+            // ⚠️ **Das Icon der Klasse, wo der Knoten keines trägt** ([D-723](90-decision-log.md)):
+            // *«jede klasse nennt im vertrag ein icon, der baum zeichnet es; ein label-icon am knoten
+            // geht vor.» Der Vertrag ist Code und wird einmal gelesen — keine Abfrage je Zeile.*
+            if (($eigene[SettingKey::Icon->value] ?? null)?->value->text === null || ($eigene[SettingKey::Icon->value]?->value->text ?? '') === '') {
+                $eigene[SettingKey::Icon->value] = new ResolvedSetting(
+                    SettingKey::Icon->value,
+                    TypedValue::ofText(\Taxmod\Core\Model\NodeClass\Contracts::of($node->klasse)->icon),
+                    0,
+                    false
+                );
+            }
+
             $cells[$node->id] = $renderer->render(
                 $node,
                 new RenderContext(
                     purpose: Purpose::Display,
                     value: TypedValue::nothing(),
-                    settings: $settings[$node->id] ?? [],
+                    settings: $eigene,
                     locale: $locale,
                     level: $level,
                     editable: false,
@@ -3361,7 +3377,8 @@ final class Rendering implements Presets
                         submits: $submits[$node->id] ?? null,
                         // ⚠️ *Prepared, not asked: a cell draws a **node** and `hide` sits on its
                         // **relation** ([D-467](90-decision-log.md), [D-445](90-decision-log.md)).*
-                        hidden: $hidden[$node->id] ?? false
+                        hidden: $hidden[$node->id] ?? false,
+                        classLabel: $classLabels[$node->id] ?? ''
                     ),
                     // ⚠️ **A circumstance and not a setting** (D-389): developer mode is a fact about
                     // the installation, so the boundary reads it from a WordPress option and hands it
@@ -3417,6 +3434,8 @@ final class Rendering implements Presets
          * der Baumzeichner rührt sein Subjekt nicht an, er nestet Zeilen.*
          */
         ?Node $leer = null,
+        /** @var array<int, string> Je Knoten der übersetzte Name seiner Klasse ([D-716](90-decision-log.md)). */
+        array $classLabels = [],
     ): RenderResult {
         if ($walked === [] && ($filterName === '' || $leer === null)) {
             return RenderResult::of('');
@@ -3434,7 +3453,7 @@ final class Rendering implements Presets
             $hidden[$row['node']->id] = $row['hidden'] ?? false;
         }
 
-        $cells = $this->cellsFor($nodes, $actions, $hrefs, $submits, $cell, $locale, $level, $developerMode, $hidden);
+        $cells = $this->cellsFor($nodes, $actions, $hrefs, $submits, $cell, $locale, $level, $developerMode, $hidden, $classLabels);
 
         $rows = $this->drawnRows($walked, $cells, $toggles, $highlight);
 

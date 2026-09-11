@@ -53,7 +53,7 @@ final class SeedImage
     public const TABLES = [
         'labels'           => ['id', 'version', 'owner_kind', 'icon'],
         'label_texts'      => ['id', 'label_id', 'locale', 'number', 'text_name', 'text_form', 'text_table', 'text_select', 'text_help', 'text_symbol'],
-        'nodes'            => ['id', 'version', 'label_id', 'implemented_by', 'parent_node_id', 'sort_order', 'hide'],
+        'nodes'            => ['id', 'version', 'label_id', 'implemented_by', 'parent_node_id', 'sort_order', 'hide', 'klasse'],
         'relations'        => ['id', 'version', 'from_node_id', 'to_node_id', 'kind', 'label_id', 'sort_order', 'multiplicity', 'hide'],
         'node_records'     => ['id', 'version', 'node_id', 'node_version', 'created_at', 'record_type', 'relation_id'],
         'relation_records' => ['id', 'node_record_id', 'relation_id', 'locale', 'position', 'version', 'value_int', 'value_decimal', 'value_text', 'value_date', 'value_ref', 'value_ref_kind'],
@@ -84,6 +84,9 @@ final class SeedImage
         'taxmod_render_*',
         'taxmod_setting_edge_*',
         'taxmod_setting_value_edge_*',
+        // ⚠️ *Die Notizen des Einheitengerüsts ([D-709](../../../docs/NewConcept/90-decision-log.md)):
+        // je Gerüstknoten seine Id — Zeiger wie die Rollen, und aus demselben Grund im Abzug.*
+        'taxmod_unit_node_*',
         'taxmod_base_scaffold',
         'taxmod_unit_scaffold',
         'taxmod_composition_scaffold',
@@ -137,6 +140,7 @@ final class SeedImage
         'taxmod_render_*',
         'taxmod_setting_edge_*',
         'taxmod_setting_value_edge_*',
+        'taxmod_unit_node_*',
     ];
 
     /** Ob ein Name auf ein Muster passt — `*` steht für den Rest. */
@@ -346,6 +350,13 @@ final class SeedImage
 
                 foreach ($columns as $column) {
                     $value = $row[$column] ?? null;
+
+                    // ⚠️ *Ein Abzug von vor Fassung 46 kennt `klasse` nicht; die Spalte ist
+                    // `NOT NULL`, und leer heisst «noch nicht vergeben» — {@see Schema::install()}
+                    // holt das beim nächsten Fassungslauf nach ([D-716](../../../docs/NewConcept/90-decision-log.md)).*
+                    if ($value === null && $column === 'klasse') {
+                        $value = '';
+                    }
 
                     if ($value === null) {
                         $slots[] = 'NULL';

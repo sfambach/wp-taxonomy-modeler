@@ -89,6 +89,13 @@ final class TreeNodeRenderer extends RendererNode
         $named = ($icon === '' ? '' : IconMarkup::dashicon($icon) . ' ')
             . '<span class="taxmod-tree-label">' . RenderResult::escape($shown) . '</span>';
 
+        // ⚠️ **Die Klasse steht dabei** ([D-716](../../../docs/NewConcept/90-decision-log.md), Schritt 1
+        // des Bauplans) — klein hinter dem Namen, übersetzt vom Rand, und nur, wenn er sie hereingibt.
+        if ($context->surroundings->classLabel !== '') {
+            $named .= ' <span class="taxmod-tree-class">'
+                . RenderResult::escape($context->surroundings->classLabel) . '</span>';
+        }
+
         // ⚠️ **The link is put around what was drawn, not handed back to be wrapped.** A URL comes
         // in (`CD-1` — the core cannot make one); wrapping is ordinary markup, so the renderer keeps
         // deciding the shape of the row. *Clickable without looking like one: an anchor that gives

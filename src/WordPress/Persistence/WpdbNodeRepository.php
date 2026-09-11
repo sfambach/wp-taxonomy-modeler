@@ -48,7 +48,7 @@ final class WpdbNodeRepository implements NodeRepository
      * {@see self::ancestry()}. **Ein `Node` trägt ihn weiter**, und zwar in derselben Form wie zuvor;
      * was fiel, ist die zweite Ablage derselben Tatsache, nicht die Tatsache.*
      */
-    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, d.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide";
+    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, d.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide, n.klasse";
 
     /**
      * In welcher Sprache dieser Speicher Namen liest und schreibt.
@@ -212,8 +212,10 @@ final class WpdbNodeRepository implements NodeRepository
             'parent_node_id' => $node->parentNodeId,
             'sort_order'     => $node->sortOrder,
             'hide'           => $node->hide ? 1 : 0,
+            // ⚠️ *Die Knotenklasse kommt mit der Zeile und bleibt (Fassung 46, [D-716](../../../docs/NewConcept/90-decision-log.md)).*
+            'klasse'         => $node->klasse,
         ];
-        $formate = ['%d', '%s', '%d', '%d', '%d'];
+        $formate = ['%d', '%s', '%d', '%d', '%d', '%s'];
 
         if ($node->id !== 0) {
             $spalten = ['id' => $node->id, ...$spalten];
@@ -350,12 +352,15 @@ final class WpdbNodeRepository implements NodeRepository
                 'parent_node_id' => $node->parentNodeId,
                 'sort_order'     => $node->sortOrder,
                 'hide'           => $node->hide ? 1 : 0,
+                // ⚠️ *Fährt mit, aus demselben Grund wie `implemented_by`: ein Umbenennen darf die
+                // Klasse nicht löschen. Ändern kann sie hier niemand — der Kern hat keinen Weg dafür.*
+                'klasse'         => $node->klasse,
             ],
             [
                 'id'      => $node->id,
                 'version' => $expectedVersion,
             ],
-            ['%d', '%s', '%d', '%d', '%d'],
+            ['%d', '%s', '%d', '%d', '%d', '%s'],
 
         );
 
@@ -845,6 +850,9 @@ final class WpdbNodeRepository implements NodeRepository
                 : null,
             (int) ($row['sort_order'] ?? 0),
             (bool) (int) ($row['hide'] ?? 0),
+            // ⚠️ *Eine leere Klasse gibt es nach Fassung 46 nicht mehr; liest eine Abfrage die Spalte
+            // nicht mit, kommt der Knoten als Kategorie an — und `klasse-check` misst die Tabelle.*
+            (string) ($row['klasse'] ?? ''),
         );
     }
 }

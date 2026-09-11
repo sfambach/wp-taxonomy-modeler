@@ -68,7 +68,7 @@ erinnert.*
 | Anforderung | gebaut | Befund |
 |---|---|---|
 | 1.1 zwei Kantenklassen | **teils** | es gibt eine Kantenart mit den Werten Aggregation und Komposition; sie heisst nicht Klasse und hat keinen Vertrag |
-| 1.2 Multiplizität, vier Werte | **ja, aber als Einstellung** | die vier Werte gibt es; sie liegen als Einstellungsschlüssel in Wertzeilen, nicht als Spalte der Kante (1.2.4: nein) |
+| 1.2 Multiplizität, vier Werte | **ja, Spalte — mit einem Einstellungsschlüssel davor** | ⚠️ *Berichtigt 2026-09-11 beim Bauen:* `relations.multiplicity` **ist** seit Fassung 22 eine Spalte; was fällt, ist nur der Schlüssel `SettingKey::Multiplicity`, über den die Maske sie wie eine Einstellung anbietet. Die erste Fassung dieser Zeile («in Wertzeilen») war falsch — gemessen am `CREATE TABLE`, nicht erinnert. |
 | 1.2.3 Bool nur `1..1` | **nein** | keine Zielklasse schränkt heute ein |
 | 1.3 `read_only` an der Kante | **ja, aber als Einstellung und auch am Knoten** | Einstellungsschlüssel, für Knoten und Kanten gleichermassen (1.3.1: nein) |
 | 1.4 Stelle in der Feldliste | **ja** | Spalte an der Kante |

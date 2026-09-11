@@ -61,7 +61,10 @@ abstract class RendererNode extends Node implements Renderer
         ?int $parentNodeId = null,
         int $sortOrder = 0,
         bool $hide = false,
+        string $klasse = '',
     ) {
+        // ⚠️ *Die Renderer-Knoten fallen mit Schritt 7 des Bauplans ([D-718](../../../docs/NewConcept/90-decision-log.md));
+        // bis dahin sind sie Kategorien wie jeder Knoten ohne Funktion.*
         parent::__construct(
             $id,
             $version,
@@ -71,6 +74,7 @@ abstract class RendererNode extends Node implements Renderer
             $parentNodeId,
             $sortOrder,
             $hide,
+            $klasse,
         );
     }
 }
