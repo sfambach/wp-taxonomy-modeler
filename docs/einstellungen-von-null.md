@@ -590,10 +590,11 @@ damit die Lösung des ersten es nicht verbaut:
 
 - **Ein Wert hat einen Ort:** am Knoten, oder an der Kante, die den Knoten verwendet. Beide Orte tragen
   dieselbe Form (Frage 2a gilt für beide).
-- **Ein Kind erbt die Attribute des Vaters** — die Erklärung — **und darf Werte setzen.** Was es nicht
-  setzt, gilt vom Vater. Für Listen ist offen, ob das Kind die Liste des Vaters **ersetzt** oder
-  **ergänzt** (sein Beispiel: to-upper am Knoten, sortieren und zusammenfassen an der Kante — ergänzt).
-- **Die Kante schlägt den Knoten**, das Kind schlägt den Vater. Für ein komplexes Attribut heisst das:
+- ~~**Ein Kind erbt die Attribute des Vaters** — die Erklärung — **und darf Werte setzen.** Was es nicht
+  setzt, gilt vom Vater.~~ **Überholt, 2026-09-11:** *«vererbung von knoten-settings in knoten ist
+  grundsätzlich raus»* — die Erklärung kommt aus der **Klasse** des Kindes, nicht vom Vaterknoten;
+  Werte kommen vom Kind selbst oder aus dem Vertrag, nie vom Vater. Siehe «Der Schritt zurück».
+- **Die Kante schlägt den Knoten.** ~~das Kind schlägt den Vater.~~ Für ein komplexes Attribut heisst das:
   *schlägt die Kante das ganze Objekt (anderer Renderer) oder auch einen einzelnen Wert darin
   (`orientation` anders, Renderer gleich)?* — die Antwort folgt aus Frage 2a: gehören die Werte dem
   Objekt, wird das Objekt überschrieben; sind sie flach, kann jeder einzeln überschrieben werden.
@@ -610,12 +611,12 @@ Nichts hier ist entschieden; es sind Fälle und die Wege, die je Fall offenstehe
   bei Bedarf dupliziert (Z1). Ein komplexer Wert an der Kante ist ein eigener Satz an der Kante.
 - Beim Lesen gilt eine **Reihenfolge**: zuerst die Kante, dann der Zielknoten, dann dessen Vater,
   und so weiter bis zum Vertrag der Klasse, der die Vorgabe kennt. Der erste, der etwas sagt, gilt.
+  **Seit dem Schritt zurück (unten) ohne die Stufe «Vater»:** Kante → Zielknoten → Vertrag.
 
 ```mermaid
 flowchart LR
   K["Kante<br/>Kontakt → Name"] -->|"nichts gesetzt?"| Z["Zielknoten<br/>Name"]
-  Z -->|"nichts gesetzt?"| V["Vater<br/>Text"]
-  V -->|"nichts gesetzt?"| C["Vertrag der Klasse<br/>TextNode: Vorgabe"]
+  Z -->|"nichts gesetzt?"| C["Vertrag der Klasse<br/>TextNode: Vorgabe"]
 ```
 
 *Für einen einzelnen Wert ist damit alles klar: `display_size` an der Kante 40, am Knoten 20, im
@@ -692,6 +693,58 @@ zu den **Werten** sagt es nichts.*
 - **Z4a** — Gilt für Kind → Vater dieselbe Listenregel wie für Kante → Knoten (E, G oder E+G, aber
   dieselbe)?
 - **Z4b** — Erbt das Kind Werte **lebendig** oder **kopiert** beim Anlegen?
+
+**Z4 — beantwortet durch den Schritt zurück, 2026-09-11:** beide Fragen fallen weg. Ein Kind erbt
+**keine Werte** vom Vaterknoten, weder lebendig noch kopiert; es hat seine Klasse, deren Vertrag die
+Vorgaben liefert, und seine eigenen Zeilen. `Hausnummer klein` setzt `max` 99 selbst, `min` 1 muss
+es ebenfalls selbst setzen oder bekommt die Vorgabe aus dem Vertrag von `Integer`. Es gibt nur
+**eine** Überschreibung im Modell: die Kante über den Knoten.
+
+---
+
+### Der Schritt zurück — was zwischen Knoten vererbt wird, und was nicht
+
+**Sein Wort, 2026-09-11:** *«vielleicht nochmal einen kleinen schritt zurück, sollte sich aber in
+das schon beschlossene einfügen: vererbung von knoten-settings in knoten ist grundsätzlich raus. jeder
+knoten hat eine klasse, klasse liefert settings. es gibt abhängigkeiten, welche knotenklassen bei
+kindknoten erlaubt sind, plus eine ist default. knotenklassen können natürlich voneinander erben.
+(vererbung von feldern bleibt bestehen, aber wie in OO.) kategorieknoten sind eigentlich überall
+möglich und somit vielleicht der standard, bis der benutzer etwas anderes auswählt. besonderheiten
+sind simple-datentyp-knoten: da ist es jeweils der gleiche typ für kindknoten-typ-default. das
+gleiche bei selection-typen: da ist der default Konstante-class.»*
+
+**Es fügt sich ein — und es räumt auf.** Vier Sätze, die jetzt gelten:
+
+| | vererbt sich | von wem nach wem | wie |
+|---|---|---|---|
+| **Erklärung** (welche Attribute) | ja | Klasse → Unterklasse | im Code, wie in der OO |
+| **Werte** (Einstellungen) | **nein** | ~~Vaterknoten → Kindknoten~~ | — ; nur die Kante überschreibt den Knoten |
+| **Felder** (Kompositionen) | ja | Vaterknoten → Kindknoten | wie in der OO: `Firmenkontakt` unter `Kontakt` hat `Name`, `Strasse` |
+| **erlaubte Kindklassen + Vorwahl** | — | Klasse des Vaters → Kind beim Anlegen | aus dem Vertrag |
+
+**Die Vorwahl je Klasse, wie er sie nennt:**
+
+- **Kategorie** — überall erlaubt, und **die Vorwahl, wo nichts anderes gilt**. Ein neuer Knoten ist
+  eine Kategorie, bis jemand etwas anderes wählt.
+- **Simpler Datentyp** (`Integer`, `Text`, …) — Kinder sind vom **gleichen Typ**, das ist die Vorwahl.
+- **Auswahl** (`Prefixes`, `Basiseinheit`) — Kinder sind **Konstanten**, das ist die Vorwahl.
+
+*Was das an den Beispielen oben ändert: die Auflösungskette hat keine Stufe «Vater» mehr (Kante →
+Knoten → Vertrag); Z4 fällt; K1c ist damit vollständig. Das Wort «erben» im Gerüst («kinder erben
+die einstellungsmöglichkeiten des vaters») meint die **Erklärung** über die gleiche Klasse — nicht
+Werte.*
+
+**Z3 — beantwortet, 2026-09-11: Ergänzen, mit änderbarer Reihenfolge.** Sein Wort: *«Z3: ergänzen
+würde ich sagen, aber die reihenfolge muss änderbar sein — beispiel: trimmen zuerst.»* Die Zeilen der
+Kante kommen zur Liste des Knotens hinzu, und die Kante bestimmt die Reihenfolge der **ganzen** Liste,
+auch der geerbten Einträge. *Was das im Datenmodell heisst (`INFERRED`): die Kante hält je geerbtem
+Eintrag, den sie umstellt, eine Zeile mit dessen Adresse und einer eigenen `position`, aber ohne
+Wert — der Wert bleibt am Knoten. Steht keine solche Zeile, bleibt der Eintrag an seiner Stelle vor
+den Kantenzeilen.*
+
+**Offen daran, Z3a:** darf die Kante einen geerbten Eintrag auch **wegnehmen** (`to_upper` nicht
+mehr), oder nur hinzufügen und umstellen? *Wenn ja, ist das dieselbe Zeile wie beim Umstellen, mit
+einem Vorzeichen «aus».*
 
 ---
 
@@ -893,7 +946,7 @@ Nächstes das zweite Problem**, in seiner Reihenfolge, je Frage sein Wort:
 - **Z2 · Was schlägt die Kante bei einem komplexen Attribut?** Das ganze Objekt (ein anderer Renderer,
   mit allen seinen Werten neu) — oder auch einen einzelnen Wert darin (`orientation` anders, Renderer
   gleich)?
-- **Z3 · Was tut eine Liste beim Überschreiben?** Ersetzt die Kante die Liste des Knotens, oder ergänzt
-  sie sie — und wenn ergänzt: wie nimmt man einen geerbten Eintrag weg?
-- **Z4 · Erben an Kindern:** dieselben drei Fragen für das Kind gegenüber dem Vater — oder gilt für das
-  Kind einfach dasselbe wie für die Kante?
+- **Z3 · Was tut eine Liste beim Überschreiben?** **Beantwortet** — ergänzen, mit änderbarer
+  Reihenfolge. Offen nur Z3a: darf die Kante einen geerbten Eintrag auch wegnehmen?
+- **Z4 · Erben an Kindern:** **Beantwortet durch den Schritt zurück** — Werte vererben sich nicht
+  zwischen Knoten; es gibt nur die Kante über dem Knoten.
