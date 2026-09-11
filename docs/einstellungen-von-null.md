@@ -986,6 +986,18 @@ sinnvoll. Wenn der Vertrag nichts einschränkt (Punkt 3 oben), bleibt es dem Mod
 wenn bool nur `1..1` darf, wäre das die erste Einschränkung, und sie käme aus der **Knotenklasse**
 (bool), nicht aus der Kantenklasse.*
 
+**M1 — entschieden, 2026-09-11:** *«bool = 1..1, an knotenklasse bool.»* Die Knotenklasse `Bool`
+erklärt in ihrem Vertrag, welche Multiplizitäten eine Kante auf sie tragen darf: nur `1..1`. Damit
+gibt es diese Einschränkung als **Klassenattribut des Knotens** (`erlaubte Multiplizitäten`), und
+Punkt 3 oben bleibt wahr: die **Kantenklasse** schränkt nichts ein, die **Zielklasse** darf es.
+
+**M2 — seine Frage dazu:** *«frage, ob für int und double das gleiche?»* *Zum Denken (`INFERRED`,
+seine Wahl): bei bool gibt es kein «leer», das sich von «nein» unterscheidet — darum `1..1`. Bei int
+und double gibt es «leer» sehr wohl: das Stockwerk als Zahl darf fehlen (`0..1`), die Hausnummer nicht
+(`1..1`), und eine Liste von Messwerten oder Lottozahlen ist `0..*` oder `1..*`. Also alle vier —
+wie Text, und aus demselben Grund: leer und Liste sind bei einer Zahl beide sinnvoll. Die
+Einschränkung auf `1..1` wäre nur für Klassen richtig, die kein «leer» kennen.*
+
 ## Wo wir stehen
 
 Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
