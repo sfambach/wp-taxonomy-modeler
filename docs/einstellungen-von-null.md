@@ -47,6 +47,16 @@ auf einer eigenen Seite.
 
 ---
 
+**Abgrenzung, sein Wort, 2026-09-11:** *«es geht hier immer nur um einstellungen und ausdrücklich
+nicht um die felder — die bleiben wie gehabt. kante zu knoten, relation/composition, multiplizität
+bleibt erhalten, wie sie ist. also: felder nicht gleich settings!»* Diese Seite handelt von
+**Einstellungen** — den Attributen programmierter Klassen und ihren Werten. Das **Modell** — Knoten
+im Baum, Kanten als Felder (Komposition, Aggregation), ihre Multiplizität, ihre Reihenfolge, ihre
+Labels — ist nicht Gegenstand dieser Seite und ändert sich durch sie nicht. Wo die Seite unten
+trotzdem ins Modell greift, ist das markiert: ⚠️ *Modell, nicht Einstellung.*
+
+---
+
 ## Das erste Problem, in seiner Form: Klassenattribute wie in der OO
 
 In der Objektorientierung hat eine Klasse Attribute; ein Attribut hat einen Typ; der Typ ist einfach
@@ -227,6 +237,13 @@ Reihenfolge, komplex je auf einen Satz zeigend; die Adresse ist Klasse + Attribu
 Klassen gehen, mit der Richtlinie «flach».*
 
 ## Kanten sind auch Klassen
+
+⚠️ *Modell, nicht Einstellung — nachgetragen 2026-09-11:* **das Klassendiagramm unten führt
+`multiplicity`, `hide` und `position` als Attribute der Kantenklasse. Das war der Übergang, den er
+nicht bemerkt hat und ich nicht markiert habe: diese drei sind Eigenschaften des Felds (Modell),
+keine Einstellungen.** Was von diesem Abschnitt für Einstellungen gilt, ist nur: eine Kante ist ein
+Objekt einer Klasse, und Einstellungen des Zielknotens können an ihr überschrieben werden (Z1). Was
+die Kante als Feld ist, bleibt wie gehabt.
 
 **Sein Zusatz:** *«vielleicht sollte man hinzufügen, dass Kanten ja auch Klassen sind und für die das
 Gleiche gilt.»*
@@ -957,6 +974,13 @@ Zusatz «gilt an dieser Kante», nie allein — eine Sonderbedeutung weniger.*
 
 ### Multiplizität — das eine Attribut, das jede Kante hat
 
+⚠️ *Modell, nicht Einstellung — nachgetragen 2026-09-11.* **Dieser ganze Abschnitt handelt vom
+Feld, nicht von einer Einstellung**: Multiplizität ist eine Eigenschaft der Kante Knoten → Knoten
+und *«bleibt erhalten, wie sie ist»*. Er steht hier, weil die Frage hier gestellt wurde, und die
+Antworten (zwei Kantenklassen, Enum mit vier Fällen, jede Klasse darf alles, Bool nur `1..1`, Int und
+Double alle vier) sind seine — aber sie gehören auf die Modellseite, nicht in das Einstellungsmodell.
+Nichts davon ändert eine Tabelle dieser Seite.
+
 **Sein Wort, 2026-09-11:** *«lass uns nochmal multiplizität an der kante anschauen, alle kanten haben
 das.»* Und auf die drei Fragen dazu: *«1. aktuell zwei: Aggregation und Composition. 2. enum passt.
 3. alle klassen dürfen alles. das ist eine einstellung für die daten: 0..1 optional, maximal ein
@@ -1093,6 +1117,13 @@ erDiagram
 
 *Vier Tabellen, je mit Schatten: acht. Dazu, nicht auf dieser Seite: Labels, Datensätze.*
 
+⚠️ *Modell, nicht Einstellung — nachgetragen 2026-09-11:* **`KNOTEN` und `KANTE` sind die
+Modelltabellen, wie gehabt.** Diese Seite fügt ihnen genau eines hinzu: `klasse` am Knoten (K1). Die
+übrigen Spalten dort — `name`, `vater_id`, `stelle`, `von`/`zu`, `multiplicity` — stehen im Diagramm
+nur, damit die Verweise ein Ziel haben; sie werden hier weder eingeführt noch geändert.
+`read_only` an der Kante ist die eine Einstellung, die als Spalte in einer Modelltabelle wohnt
+(«Spalte statt Zeile»). **Neu durch diese Seite sind allein `SATZ` und `ZEILE`.***
+
 ### Prüfung
 
 | Massstab | Befund |
@@ -1155,14 +1186,12 @@ erDiagram
    wie in OO» — `Firmenkontakt` unter `Kontakt` hat `Name`, `Strasse`. Offen: darf das Kind geerbte
    Felder **umstellen** oder **verbergen**, und wenn ja, wo steht das? Das ist Z3 noch einmal, nur
    für Kanten statt Zeilen. Das Attribut `hide` an der Kante deutet an, dass Verbergen gewollt ist.
-   **Entschieden, 2026-09-11:** *«L4: ja, umstellen und verbergen.»* *Wo es steht (`INFERRED`,
-   seine Prüfung): mit demselben Mittel wie Z3 — eine Zeile am Kind (`knoten_id` = Firmenkontakt,
-   `attribut` = `felder`) mit `position` und `aktiv`, die die geerbte Kante benennt. Dafür braucht die
-   Zeile eine Spalte `wert_kante_id` (Verweis auf eine Kante), die es bisher nicht gibt — die
-   siebte Wertspalte, nach derselben Fremdschlüsselregel. Fehlt die Zeile, steht das geerbte Feld an
-   seiner Stelle und ist sichtbar. Das Attribut `hide` an der Kante selbst ist etwas anderes: es
-   verbirgt das Feld **überall**, und wäre nach «Spalte statt Zeile» eine Spalte der Kante — ob es
-   gebraucht wird, ist nicht entschieden.*
+   **Entschieden, 2026-09-11:** *«L4: ja, umstellen und verbergen.»* ⚠️ *Modell, nicht
+   Einstellung — korrigiert am selben Tag:* **das Ja gilt, aber es ist eine Frage der Felder, nicht
+   der Einstellungen.** Ich hatte dafür eine Zeile am Kind mit einer siebten Wertspalte
+   `wert_kante_id` vorgeschlagen — **zurückgenommen**: Felder werden nicht über Einstellungszeilen
+   umgestellt oder verborgen. Wie das Kind geerbte Felder ordnet und verbirgt, gehört auf die
+   Modellseite; diese Seite hält nur fest, dass es gewollt ist.
 5. **L5 · Der Name der Kante.** Zwei Kanten von `Kontakt` auf `Adresse` — Liefer- und
    Rechnungsadresse — brauchen je einen Namen, der nicht der des Zielknotens ist. Labels sind nicht
    auf dieser Seite; ob eine Kante eigene Labels hat, steht nirgends.
@@ -1171,6 +1200,8 @@ erDiagram
    sie, heisst das Feld wie sein Zielknoten. Und sein Nachsatz nennt die Alternative: statt zwei
    benannter Kanten (Liefer-, Rechnungsadresse) **eine** Kante `0..*` auf Adresse — dann
    unterscheidet der Datensatz, nicht das Modell. Beides ist möglich; der Modellierer wählt.
+   ⚠️ *Modell, nicht Einstellung:* Labels einer Kante sind Sache des Felds; die Antwort gehört auf
+   die Modellseite und ändert hier nichts.
 6. **L6 · Verwaiste Sätze.** Ein Satz hat keinen Träger mehr (Weg A); wem er gehört, sagt die Zeile,
    die auf ihn zeigt. Wandert die Zeile, muss der Satz mitwandern, sonst bleibt er allein zurück. Eine
    Regel, keine Spalte.
