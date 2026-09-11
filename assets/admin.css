@@ -325,7 +325,7 @@ details.taxmod-page-block > summary {
 /* ⚠️ *The switch rows carry the same four columns and had the same two stale widths — a second copy
    of one measurement, which is why both were wrong at once.* */
 .taxmod-settings-switches .taxmod-setting {
-    grid-template-columns: 7.5em auto 1.4em 4.4em;
+    grid-template-columns: 1.6em 7.5em auto 1.4em 4.4em;
 }
 
 /* The heading spans every column, so a group reads as a group. */
@@ -352,7 +352,11 @@ details.taxmod-page-block > summary {
      * two icon buttons wider than `3.4em`, so they wrapped under the field. **A fixed width has to be
      * re-measured whenever what stands in it changes** — that is the cost of fixed, and it is still
      * cheaper than rows that do not line up.* */
-    grid-template-columns: 7.5em minmax(0, 1fr) 1.4em 4.4em;
+     *
+     * ⚠️ **Fünf Zellen, vier Spalten — und die Wertspalte stand im 1.4em-Pfeil.** *Seit TASK-090 steht der
+     * Haken «override» als erste Zelle in jeder Zeile, auch dort, wo er leer bleibt; das Raster hatte ihn nie
+     * bekommen. Sein Befund am 2026-09-11: «die felder sind zu klein».* */
+    grid-template-columns: 1.6em 7.5em minmax(0, 1fr) 1.4em 4.4em;
     align-items: center;
     column-gap: .5em;
     padding: .12em 0;
@@ -1089,7 +1093,6 @@ a.taxmod-chosen:hover {
  * still puts the selected row on screen, which is what was asked for in the first
  * place.* */
 
-
 /* ── A hidden node, while it is being shown ──────────────────────────────────
  *
  * ⚠️ The owner: *hidden nodes should also get grey text in the shown state.* With
@@ -1324,7 +1327,8 @@ tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-contr
 
 .taxmod-setting-override {
     display: inline-block;
-    min-width: 4em;
+    width: auto;
+    min-width: 0;
 }
 
 .taxmod-setting-locked-control {
