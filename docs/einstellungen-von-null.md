@@ -1247,3 +1247,35 @@ trägt keine Einstellungen»). **Neu durch diese Seite sind allein `SATZ` und `Z
 *Nicht vergessen, sondern bewusst nicht auf dieser Seite:* Labels (Name je Sprache, Rollen, Icon),
 Datensätze (die Werte der Benutzer, mit Multiplizität als ihrer Regel), der Vergleich mit dem
 Bestand.
+
+---
+
+## K3 · Welche Klasse bekommt welcher ausgelieferte Knoten — zum genauen Hinschauen
+
+*Sein Wort, 2026-09-11, auf die Frage nach der Klasse der ausgelieferten Knoten: «mal genauer
+schauen». Der Baum unten ist am 2026-09-11 aus der laufenden Installation gelesen; die Spalte
+«Klasse» ist mein Vorschlag (`VORSCHLAG`), nach K1c und K2. Er streicht.*
+
+| Knoten | Kinder | Klasse (Vorschlag) | warum |
+|---|---|---|---|
+| Root, Model, Compositions, Primitives, Data Types, Constants, Combined | — | **Kategorie** | Ordnung, keine Funktion |
+| Trash | — | **Kategorie** | Modell-Sonderfall, keine Einstellungen |
+| Kontact, Parts List, Project, Address, Electronic Parts, PC Parts, … (alles unter Model und Compositions) | — | **Kategorie** | Knoten mit Feldern; die Vorwahl |
+| Integer, Decimal, Text, Character, Boolean, Email, Date and time, Version, Node reference, User reference, Color | — | **je die eigene Typklasse** (`IntType`, `DecimalType`, …) | die Klasse steht heute schon als `implemented_by` am Knoten |
+| integer_min, integer_max, integer_step, display size, decimal_*, Read Only, With Label (Kinder von Integer, Decimal, Boolean) | — | **fallen** | das sind Einstellungen als Knoten — genau das, was D-712 abschafft; `OFFEN`, seine Bestätigung |
+| Prefixes | 20 Präfixe | **Auswahl** | Kinder: Konstante, Vorwahl Konstante |
+| yotta … yocto | — | **Konstante** | je mit einem Umrechnungssatz (`factor`) |
+| Base units | With prefix, Without prefix | **Auswahl** | Kinder zur Wahl; Kategorien darunter nicht wählbar |
+| With prefix, Without prefix | Einheiten | **Kategorie** | nur Ordnung; «mit Präfix» ist Eigenschaft je Blatt (K2) |
+| Gramm, Meter, Liter, Sekunde, Ampere, Ohm, Farad, Watt, Volt, Henry, Hertz, Kelvin, Celsius, Stück | — | **Einheitswert** | mit `mit_praefix`, `erlaubte_praefixe`, `symbol`, ggf. `umrechnung` |
+| Currency | Euro, US Dollar, Pound | **Auswahl** | `OFFEN`: sind Währungen Einheitswerte (ohne Präfix) oder Konstanten? |
+| PC Constants | — | **Kategorie** | leer |
+| Street / H#, Zip/City, Dimension | — | **Kategorie** | zusammengesetzte Knoten mit Feldern |
+| Einheitenwert | — | **eigene Klasse `Einheitenwert`** | Zahl + Einheit + Präfix; die Klasse, die «Basiseinheit» wählt |
+| Settings → Renderer, Converter, Validator, Orientation (mit allen Kindern) | — | **fallen** (D-718) | Objekte im Code |
+| Settings → Label roles (form, table, select, symbol, help) | — | **Auswahl**, Kinder **Konstante** | Ziele von `label_role`-Verweisen; `OFFEN`: wohin, wenn `Settings` fällt — unter Constants? |
+| __Test (dreimal) | — | **fallen** | Reste |
+
+**Drei Fragen daraus, seine:** **K3a** — die Einstellungsknoten unter Integer, Decimal, Boolean
+fallen? **K3b** — Währungen: Einheitswert oder Konstante? **K3c** — wohin mit den Rollen, wenn
+`Settings` fällt?

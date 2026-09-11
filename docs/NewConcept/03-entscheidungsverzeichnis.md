@@ -39,6 +39,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie heissen die Äste? | [D-188](90-decision-log.md) — `Model`, `Compositions`, `Primitives`; Begriffe englisch ([D-187](90-decision-log.md)) | ~~D-185~~ |
 | Welcher Knoten trägt Datensätze? | [D-522](90-decision-log.md) — der, der Felder hat; nicht sein Ast | ~~D-139~~ ~~D-183~~ |
 | Welche Klasse trägt ein Knoten? | [D-716](90-decision-log.md) — genau eine, beim Anlegen; die Vaterklasse erlaubt Kindklassen und wählt vor; `Kategorie` überall | — |
+| Was geschieht mit den heutigen Einstellungswerten und den Renderer-Knoten? | [D-717](90-decision-log.md), [D-718](90-decision-log.md) — es beginnt leer; die Knoten unter `Settings` fallen, die Rollen bleiben | — |
 | Was unterscheidet Benutzer-, Vorgabe- und Beispieldaten? | [D-524](90-decision-log.md) — `records.kind` mit drei Zuständen; Sichtbarkeit im Frontend regelt [D-241](90-decision-log.md) | ~~D-521~~ *(die Rücknahme)* |
 | Was trägt die Identität? | [D-436](90-decision-log.md) — `id`, `version` **und** `name`, für Knoten wie Kante; als Tabelle ([D-339](90-decision-log.md)) | ~~D-080~~ |
 | Woran erkennt man Ausgeliefertes? | [D-194](90-decision-log.md) — an der Herkunft, nicht an einer Marke «ist Vorlage»; zwei Marken am gesäten Knoten ([D-174](90-decision-log.md)) | ~~D-121~~ ~~D-122~~ |
