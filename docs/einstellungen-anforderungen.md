@@ -284,5 +284,5 @@ nur noch zur Übersicht:
 ## 8 · Offen
 
 - **8.1** ~~`OFFEN`~~ Entschieden: `hide` am Feld gibt es, für Berechnungsfelder im Hintergrund (Modell 1.6).
-- **8.2** `OFFEN` Icon je Klasse; wenn ja, Vertrag. «Philosophiert.»
+- **8.2** ~~`OFFEN`~~ Entschieden («4 ja»): jede Klasse nennt im Vertrag ein Icon, der Baum zeichnet es; ein Label-Icon am Knoten geht vor. Kommt mit Schritt 1 des Bauplans.
 - **8.3** ~~`OFFEN`~~ 2.4.6 entschieden: Plugin-Version.
