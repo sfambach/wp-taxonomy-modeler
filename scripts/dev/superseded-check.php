@@ -76,8 +76,19 @@
  * jetzt in einem Satz, der genau das sagt. **Ohne ihn läse sich D-606, als habe sie nie einen Grund
  * gehabt.** Derselbe Fall, den der Kopf dieser Datei beschreibt: «mechanisch trennen lässt sich ‹als
  * Geschichte› nicht von ‹als Grund›».*
+ *
+ * ⚠️ **Angehoben auf 101 am 2026-09-11, und hier steht warum.** *[D-712](../../docs/NewConcept/90-decision-log.md)
+ * hat das Einstellungsmodell von null neu entschieden und damit sieben Beschlüsse in einem Zug
+ * abgelöst — `D-602`, `D-639`, `D-642`, `D-643`, `D-668`, `D-673`, `D-704`. **Fünfzehn geltende
+ * Zeilen berufen sich auf sie** (`D-611`, `D-617`, `D-655`, `D-659`, `D-666`, `D-667`, `D-679`,
+ * `D-681`, `D-682`, `D-685`, `D-690`, `D-697`, `D-700`, `D-705`, `D-707`), alle aus der Zeit, in der
+ * die Einstellungen noch Datensätze und Kanten waren. Sie sind nicht falsch geworden, sondern
+ * **Geschichte**: sie beschreiben den Bau, wie er heute steht, und der wird mit TASK-092 bis
+ * TASK-096 umgebaut. Die Zeilen umzuschreiben hiesse, die Geschichte zu fälschen; die Decke bleibt
+ * die Schuld, und sie sinkt, sobald der Umbau die alten Zeilen selbst ablöst. Sein Wort zum Anlass:
+ * «übernimm das beschlossene für die modellseite ins konzept, und nicht so wie es aktuell ist.»*
  */
-const HINGENOMMEN = 86;
+const HINGENOMMEN = 101;
 
 $log = dirname(__DIR__, 2) . '/docs/NewConcept/90-decision-log.md';
 

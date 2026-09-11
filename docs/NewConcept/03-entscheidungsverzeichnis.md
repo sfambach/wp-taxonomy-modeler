@@ -25,19 +25,20 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wo liegt das Modell? | [D-007](90-decision-log.md) — eigene Tabellen dieses Plugins | ~~D-567~~ *(Vorschlag, die Basistabellen zu benennen — verworfen)* |
 | Wie liegt ein Datensatz in den Tabellen? | [D-577](90-decision-log.md), [D-578](90-decision-log.md) — `node_record` / `relation_record`, kein Pfad, gilt für alle Kantenarten | ~~D-083~~ ~~D-133~~ ~~D-232~~ ~~D-527~~ ~~D-530~~ |
 | Wem gehört ein Datensatz? | [D-667](90-decision-log.md) — dem Knoten, und wo er einer Verwendungsstelle gehört, nennt er ihre `relation_id`; `path` fällt | — |
-| Wem gehört eine Wertzeile? | [D-673](90-decision-log.md) — einem Feld; mit `relation_id = 0` dem **Knoten selbst**, und das ist das Fach für die Vorgabe eines einfachen Typs | — |
-| Wo liegen die Einstellungen einer Verwendungsstelle? | [D-667](90-decision-log.md) — im Satz dieser Kante; [D-611](90-decision-log.md) hat damit wieder einen Träger | ~~D-643~~ (als Ende der Zusage gelesen) |
-| Welche Kantenarten gibt es? | [D-639](90-decision-log.md) — drei Werte, drei Klassen: `setting`, `aggregation`, `composition` | ~~D-161~~ ~~D-193~~ ~~D-526~~ ~~D-587~~ ~~D-591~~ ~~D-592~~ |
+| Wem gehört eine Wertzeile? | [D-673](90-decision-log.md) gilt nur noch für **Datensätze**: einem Feld; Einstellungen liegen seit [D-712](90-decision-log.md) in `settings_value` am Knoten | ~~D-673~~ *(als Fach für Einstellungen)* |
+| Wo liegen die Einstellungen einer Verwendungsstelle? | [D-712](90-decision-log.md) — als Zeile am Zielknoten mit `kante_id`; die Kante hat keine eigenen | ~~D-667~~ *(Satz der Kante)* ~~D-643~~ |
+| Welche Kantenarten gibt es? | [D-715](90-decision-log.md) — zwei Klassen: `aggregation`, `composition`; `setting` fällt | ~~D-639~~ ~~D-161~~ ~~D-193~~ ~~D-526~~ ~~D-587~~ ~~D-591~~ ~~D-592~~ |
 | Wer bestimmt die Kantenart? | [D-618](90-decision-log.md), [D-621](90-decision-log.md) — der Benutzer; `nodes.field_type` fällt, kein Ast-Automatismus | ~~D-161~~ ~~D-606~~ |
 | Was geschieht mit den Werten, wenn eine Kante ihre Art wechselt? | [D-699](90-decision-log.md) — Werte wandern mit, **Benutzersätze nicht**: der Benutzer wird gewarnt, bestätigt, die Sätze gehen in den Schatten und die Einstellung beginnt leer | ~~D-690~~ *(nur die Form je Richtung; die Richtung «Werte wandern mit» gilt weiter)* |
 | Ist Vererbung eine Kante? | [D-581](90-decision-log.md) — nein: `nodes.parent_node_id` mit `nodes.sort_order` | ~~D-012~~ |
 | Was heisst «wird mitgelöscht»? | [D-639](90-decision-log.md) — die Kantenart sagt es, und sie sagt es über **Datensätze**; bei einfachem Typ fest ([D-588](90-decision-log.md)) | ~~D-587~~ ~~D-591~~ ~~D-592~~ |
-| Wie hängt eine Einstellung am Knoten? | [D-642](90-decision-log.md) — gewöhnliche Einstellungskante `1..1`, keine Spalte | ~~D-582~~ ~~D-583~~ ~~D-584~~ (Zeiger-Lesart) ~~D-586~~ |
-| Hat eine Kante eigene Einstellungen? | [D-643](90-decision-log.md) — nein; beide Zeigerspalten an `relations` fallen ersatzlos | ~~D-586~~ |
-| Wie wird eine Einstellung aufgelöst? | [D-602](90-decision-log.md) — Kante → Zielknoten → Vorfahren → Rückfall im Kode; die Wurzel ist der **letzte** Halt ([D-617](90-decision-log.md)) | ~~D-079~~ (Installationsstufe) ~~D-401~~ ~~D-404~~ ~~D-616~~ (als Regel für alles) |
-| Welche Einstellungen bietet eine Verwendungsstelle an? | [D-668](90-decision-log.md) — die Kette ihres **Ziels**, nicht die des Besitzers; der **Schreiber** sucht weiter an beiden ([D-611](90-decision-log.md)) | — |
+| Wie hängt eine Einstellung am Knoten? | [D-712](90-decision-log.md) — als Zeile in `settings_value`, komplexe Werte als `settings_object`; keine Kante, keine Spalte | ~~D-642~~ ~~D-582~~ ~~D-583~~ ~~D-584~~ ~~D-586~~ |
+| Hat eine Kante eigene Einstellungen? | [D-712](90-decision-log.md) — nein; sie überschreibt jeden Knotenwert einzeln. `multiplicity` und `read_only` sind Spalten der Kante ([D-713](90-decision-log.md), [D-714](90-decision-log.md)) | ~~D-643~~ ~~D-586~~ |
+| Wie wird eine Einstellung aufgelöst? | [D-712](90-decision-log.md) — Kante → Zielknoten → Vertrag der Klasse; keine Vorfahren | ~~D-602~~ ~~D-617~~ ~~D-079~~ ~~D-401~~ ~~D-404~~ ~~D-616~~ |
+| Welche Einstellungen bietet eine Verwendungsstelle an? | [D-712](90-decision-log.md) — die Attribute aus dem Vertrag der Zielklasse | ~~D-668~~ ~~D-611~~ |
 | Wie heissen die Äste? | [D-188](90-decision-log.md) — `Model`, `Compositions`, `Primitives`; Begriffe englisch ([D-187](90-decision-log.md)) | ~~D-185~~ |
 | Welcher Knoten trägt Datensätze? | [D-522](90-decision-log.md) — der, der Felder hat; nicht sein Ast | ~~D-139~~ ~~D-183~~ |
+| Welche Klasse trägt ein Knoten? | [D-716](90-decision-log.md) — genau eine, beim Anlegen; die Vaterklasse erlaubt Kindklassen und wählt vor; `Kategorie` überall | — |
 | Was unterscheidet Benutzer-, Vorgabe- und Beispieldaten? | [D-524](90-decision-log.md) — `records.kind` mit drei Zuständen; Sichtbarkeit im Frontend regelt [D-241](90-decision-log.md) | ~~D-521~~ *(die Rücknahme)* |
 | Was trägt die Identität? | [D-436](90-decision-log.md) — `id`, `version` **und** `name`, für Knoten wie Kante; als Tabelle ([D-339](90-decision-log.md)) | ~~D-080~~ |
 | Woran erkennt man Ausgeliefertes? | [D-194](90-decision-log.md) — an der Herkunft, nicht an einer Marke «ist Vorlage»; zwei Marken am gesäten Knoten ([D-174](90-decision-log.md)) | ~~D-121~~ ~~D-122~~ |

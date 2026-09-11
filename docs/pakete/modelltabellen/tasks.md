@@ -3368,3 +3368,32 @@ zwei Feldern, die nur der Browser zusammen abschickt.* **Behoben:** die Zeilen d
 
 ⚠️ *Dasselbe Muster liegt in der Tafel unter einer Feldzeile (`taxmod_field_setting[…][…]`): dort
 wurden Listen bisher übersprungen, also nie gespeichert — unverändert, benannt in INF-040.*
+
+---
+
+[ ] TASK-092  Jeder Knoten trägt eine Klasse — Spalte `klasse`, Vergabe beim Anlegen über die Vaterklasse ([D-716](../../NewConcept/90-decision-log.md))
+
+**Sein Auftrag, 2026-09-11:** *«übernimm das beschlossene für die modellseite ins konzept, und nicht so
+wie es aktuell ist — die vier angesprochenen sollten wir mit ändern.»* Die vier sind TASK-092 bis
+TASK-095; ihre Anforderungen stehen auf [`modell-anforderungen.md`](../../modell-anforderungen.md),
+der Abgleich mit dem Bestand darunter. **Reihenfolge:** die Klasse zuerst, weil TASK-096 sie braucht.
+
+[ ] TASK-093  Zwei Kantenklassen statt drei — `setting` fällt mit der Einstellungskante ([D-715](../../NewConcept/90-decision-log.md))
+
+*Hängt an TASK-096: die Einstellungskanten können erst fallen, wenn ihre Werte in `settings_value`
+liegen. Bis dahin bleibt der dritte Wert stehen, und dieser Punkt ist offen, nicht erledigt.*
+
+[ ] TASK-094  Multiplizität wird eine Spalte der Kante — Enum mit vier Werten; `Bool` als Ziel nur `1..1` ([D-713](../../NewConcept/90-decision-log.md))
+
+*Heute `SettingKey::Multiplicity` in Wertzeilen. Die Werte wandern in die Spalte; der Schlüssel fällt.
+Zielklasse schränkt ein: das braucht die Klasse am Knoten (TASK-092).*
+
+[ ] TASK-095  `read_only` wird eine Spalte der Kante — und fällt am Knoten ([D-714](../../NewConcept/90-decision-log.md))
+
+*Heute `SettingKey::ReadOnly` für Knoten und Kanten. Werte an Kanten wandern in die Spalte; Werte an
+Knoten fallen (sein Wort: nur an der Kante).*
+
+[ ] TASK-096  Das Einstellungsmodell von null — `settings_object` und `settings_value` nach [`einstellungen-anforderungen.md`](../../einstellungen-anforderungen.md) ([D-712](../../NewConcept/90-decision-log.md))
+
+*Der grosse Umbau. Vorher: der Vergleich mit dem Bestand (was fällt, was wandert) als eigene Seite,
+und ein Bauplan in Schritten, jeder mit Wächter. Nicht anfangen, bevor er den Bauplan gesehen hat.*
