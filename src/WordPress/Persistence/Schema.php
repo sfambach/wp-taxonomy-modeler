@@ -424,8 +424,18 @@ final class Schema
      * ⚠️ *`Currency` ist Inhalt des Eigentümers ohne Notiz und wird **einmal** über den Namen unter
      * `Constants` gefunden — der Fall, den [D-022](../../../docs/NewConcept/90-decision-log.md) meidet,
      * hier als einmalige Wanderung hingenommen und im Bauplan genannt.*
+     *
+     * ⚠️ **Fassung 47 legt die zwei Tabellen des Einstellungsmodells an — leer** ([D-712](../../../docs/NewConcept/90-decision-log.md),
+     * [D-717](../../../docs/NewConcept/90-decision-log.md), TASK-096 a, Schritt 3 des Bauplans).
+     * *`settings_object` (id, version, klasse) und `settings_value` (Träger `node_id` **oder**
+     * `settings_object_id`, dazu wahlweise `relation_id`; Adresse `klasse`.`attribut`; `position`,
+     * `aktiv`; genau eine Wertspalte: `wert_int` — auch für `bool`, [D-315](../../../docs/NewConcept/90-decision-log.md) —,
+     * `wert_decimal`, `wert_text`, `wert_knoten_id`, `wert_settings_object_id`), je mit Schatten.
+     * **Jede Tabelle zählt ihre Ids selbst, jeder Verweis ist ein Fremdschlüssel**
+     * ({@see self::constrainSettingsValues()}). Nichts wandert hinein — sein Wort: «wir beginnen
+     * leer, dann können wir schön testen.»*
      */
-    public const VERSION = 46;
+    public const VERSION = 47;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -508,10 +518,10 @@ final class Schema
      * Spalte an einer lebenden Tabelle hinzufügt und den Schatten vergisst, wird beim nächsten Prüflauf
      * rot** — das war der Preis, den zwei Tabellen derselben Form kosten, und das ist sein Wächter.*
      */
-    public const LIVE_TABLES = ['nodes', 'relations', 'node_records', 'relation_records'];
+    public const LIVE_TABLES = ['nodes', 'relations', 'node_records', 'relation_records', 'settings_object', 'settings_value'];
 
     /** Ihre Schatten, **in derselben Reihenfolge** — darauf verlässt sich die Prüfung. */
-    public const SHADOW_TABLES = ['nodes_history', 'relations_history', 'node_records_history', 'relation_records_history'];
+    public const SHADOW_TABLES = ['nodes_history', 'relations_history', 'node_records_history', 'relation_records_history', 'settings_object_history', 'settings_value_history'];
 
     /** Spalten, die **nur** der Schatten hat und die die Prüfung deshalb übergeht. */
     public const SHADOW_ONLY = ['deleted', 'archived_at'];
@@ -728,6 +738,11 @@ final class Schema
         // [D-719](../../../docs/NewConcept/90-decision-log.md), TASK-092). *Nach `dbDelta`, weil die
         // Spalte dastehen muss; nach den Sichten, weil `Currency` über `nodes_named` gefunden wird.*
         self::assignNodeClasses();
+
+        // ⚠️ **Fassung 47: die Fremdschlüssel der Einstellungstabellen** ([D-712](../../../docs/NewConcept/90-decision-log.md),
+        // Anforderung 4.2.3). *Nach `dbDelta`, weil die Tabellen dastehen müssen — `dbDelta` legt
+        // keine Bedingungen an, also hier, wie {@see self::constrainRelationsToNodes()}.*
+        self::constrainSettingsValues();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -3388,6 +3403,51 @@ final class Schema
         update_option('taxmod_fassung46_shape', ['leer_vorher' => $leer, 'vergeben' => $vergeben], false);
     }
 
+    /**
+     * Fassung 47: **jeder Verweis in `settings_value` ist ein Fremdschlüssel, den die Datenbank prüft**
+     * (Anforderung 4.2.3 — sein Wort: *«das können wir über die relationen über die datenbank
+     * sicherstellen, das finde ich einen grossen vorteil»*).
+     *
+     * ⚠️ *Fünf Bedingungen, eine je Verweisspalte; jede nur, wenn sie noch nicht steht. Die Tabellen
+     * sind leer ([D-717](../../../docs/NewConcept/90-decision-log.md)), also gibt es keine Waisen, die
+     * eine Bedingung verhindern könnten — anders als bei {@see self::constrainRelationsToNodes()}.*
+     */
+    private static function constrainSettingsValues(): void
+    {
+        global $wpdb;
+
+        $values  = self::table('settings_value');
+        $objects = self::table('settings_object');
+
+        if (self::tableMissing($values) || self::tableMissing($objects)) {
+            return;
+        }
+
+        $ziele = [
+            ['node_id',                 self::table('nodes'),     'taxmod_sv_node'],
+            ['settings_object_id',      $objects,                 'taxmod_sv_object'],
+            ['relation_id',             self::table('relations'), 'taxmod_sv_relation'],
+            ['wert_knoten_id',          self::table('nodes'),     'taxmod_sv_wert_node'],
+            ['wert_settings_object_id', $objects,                 'taxmod_sv_wert_object'],
+        ];
+
+        foreach ($ziele as [$spalte, $ziel, $bedingung]) {
+            $steht = (int) $wpdb->get_var($wpdb->prepare(
+                'SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s
+                   AND REFERENCED_TABLE_NAME IS NOT NULL',
+                $values,
+                $spalte
+            ));
+
+            if ($steht > 0) {
+                continue;
+            }
+
+            $wpdb->query("ALTER TABLE {$values} ADD CONSTRAINT {$bedingung} FOREIGN KEY ({$spalte}) REFERENCES {$ziel} (id)");
+        }
+    }
+
     private static function constrainRelationsToNodes(): void
     {
         global $wpdb;
@@ -4543,6 +4603,74 @@ final class Schema
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 klasse varchar(191) NOT NULL DEFAULT '',
+                deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
+                archived_at datetime NOT NULL,
+                PRIMARY KEY  (id,version),
+                KEY archived_at (archived_at)
+            ) {$charset};",
+
+            // ⚠️ **Die zwei Tabellen des Einstellungsmodells** (Fassung 47, [D-712](../../../docs/NewConcept/90-decision-log.md),
+            // [`einstellungen-anforderungen.md`](../../../docs/einstellungen-anforderungen.md) §4).
+            // *Ein Objekt ist eine Klasse mit einer Nummer — wem es gehört, sagt die Zeile, die es
+            // als Wert nennt (4.3.2).*
+            "CREATE TABLE {$t('settings_object')} (
+                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                version int(10) unsigned NOT NULL DEFAULT 1,
+                klasse varchar(191) NOT NULL,
+                PRIMARY KEY  (id)
+            ) {$charset};",
+
+            // ⚠️ *Genau ein Träger (`node_id` oder `settings_object_id`), die Kante nur als Zusatz,
+            // genau eine Wertspalte — das hält {@see \Taxmod\Core\Model\Setting\SettingsValue} und
+            // misst `settings-tables-check`. **`bool` liegt in `wert_int`** ([D-315](../../../docs/NewConcept/90-decision-log.md)).*
+            "CREATE TABLE {$t('settings_value')} (
+                id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                version int(10) unsigned NOT NULL DEFAULT 1,
+                node_id bigint(20) unsigned DEFAULT NULL,
+                settings_object_id bigint(20) unsigned DEFAULT NULL,
+                relation_id bigint(20) unsigned DEFAULT NULL,
+                klasse varchar(191) NOT NULL,
+                attribut varchar(191) NOT NULL,
+                position int(10) unsigned NOT NULL DEFAULT 0,
+                aktiv tinyint(1) unsigned NOT NULL DEFAULT 1,
+                wert_int bigint(20) DEFAULT NULL,
+                wert_decimal decimal(30,10) DEFAULT NULL,
+                wert_text text DEFAULT NULL,
+                wert_knoten_id bigint(20) unsigned DEFAULT NULL,
+                wert_settings_object_id bigint(20) unsigned DEFAULT NULL,
+                PRIMARY KEY  (id),
+                KEY node_id (node_id),
+                KEY settings_object_id (settings_object_id),
+                KEY relation_id (relation_id),
+                KEY wert_knoten_id (wert_knoten_id),
+                KEY wert_settings_object_id (wert_settings_object_id)
+            ) {$charset};",
+
+            "CREATE TABLE {$t('settings_object_history')} (
+                id bigint(20) unsigned NOT NULL,
+                version int(10) unsigned NOT NULL,
+                klasse varchar(191) NOT NULL,
+                deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
+                archived_at datetime NOT NULL,
+                PRIMARY KEY  (id,version),
+                KEY archived_at (archived_at)
+            ) {$charset};",
+
+            "CREATE TABLE {$t('settings_value_history')} (
+                id bigint(20) unsigned NOT NULL,
+                version int(10) unsigned NOT NULL,
+                node_id bigint(20) unsigned DEFAULT NULL,
+                settings_object_id bigint(20) unsigned DEFAULT NULL,
+                relation_id bigint(20) unsigned DEFAULT NULL,
+                klasse varchar(191) NOT NULL,
+                attribut varchar(191) NOT NULL,
+                position int(10) unsigned NOT NULL DEFAULT 0,
+                aktiv tinyint(1) unsigned NOT NULL DEFAULT 1,
+                wert_int bigint(20) DEFAULT NULL,
+                wert_decimal decimal(30,10) DEFAULT NULL,
+                wert_text text DEFAULT NULL,
+                wert_knoten_id bigint(20) unsigned DEFAULT NULL,
+                wert_settings_object_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

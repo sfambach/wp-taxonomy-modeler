@@ -95,7 +95,13 @@ stehen jetzt im Abzug; `data/saat.json` ist neu gezogen, mit `klasse`.*
 - **Wächter:** `kantenspalten-check`; die Zusagen zu den zwei Schlüsseln in `einstellungen-check`
   fallen sichtbar.
 
-### Schritt 3 · Die zwei Tabellen, leer (TASK-096 a)
+### Schritt 3 · Die zwei Tabellen, leer (TASK-096 a) — **gebaut 2026-09-11**
+
+*Fassung 47: `settings_object`, `settings_value`, beide Schatten, fünf Fremdschlüssel. Kern:
+`Core\Model\Setting\SettingsObject`, `SettingsValue` (hält die vier Zusagen der Zeile selbst),
+`Core\Repository\SettingsRepository`, Fake `InMemorySettings`; Rand: `WpdbSettingsRepository`. Wächter
+`settings-tables-check` (31 Zusagen). Eine Abweichung von der Anforderung, dort vermerkt: `wert_bool`
+ist mit `wert_int` zusammengefallen (D-315). Vor Schritt 2 gebaut, weil unabhängig davon.*
 
 - `settings_object`, `settings_value`, Schatten, Fassung 48. Repositories im Kern mit Fake für die
   Kern-Tests. Eigene Id-Zähler, Fremdschlüssel.

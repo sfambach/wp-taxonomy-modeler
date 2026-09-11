@@ -195,9 +195,12 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
   `kante_id` darf nicht ohne Träger vorkommen.
 - **4.4.3** Eine Zeile muss ihre Adresse tragen: `klasse` und `attribut` (3.3).
 - **4.4.4** Eine Zeile muss `position` tragen: die Stelle in der Liste, sonst 0.
-- **4.4.5** Eine Zeile muss genau eine Wertspalte gefüllt haben: `wert_bool`, `wert_int`,
-  `wert_decimal`, `wert_text` (auch für Enum), `wert_knoten_id` (Verweis), `wert_settings_object_id`
-  (Objekt).
+- **4.4.5** Eine Zeile muss genau eine Wertspalte gefüllt haben: `wert_int` (auch für `bool`, als
+  `0`/`1`), `wert_decimal`, `wert_text` (auch für Enum), `wert_knoten_id` (Verweis),
+  `wert_settings_object_id` (Objekt). *Beim Bauen (Schritt 3, 2026-09-11) ist `wert_bool` mit
+  `wert_int` zusammengefallen: ein Wahrheitswert liegt im ganzen Bestand als `0`/`1` in der
+  Ganzzahlspalte ([D-315](NewConcept/90-decision-log.md)), und der Vertrag weiss, welches Attribut
+  ein `bool` ist — die Ablage muss es nicht ein zweites Mal wissen.*
 - **4.4.6** Eine Zeile darf `aktiv` tragen; das gilt nur für Zeilen nach 5.5.3.
 - **4.4.7** Eine Liste muss aus mehreren Zeilen derselben Adresse am selben Träger bestehen,
   geordnet über `position`.

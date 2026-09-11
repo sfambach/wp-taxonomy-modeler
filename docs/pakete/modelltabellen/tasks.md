@@ -3395,5 +3395,5 @@ Knoten fallen (sein Wort: nur an der Kante).*
 
 [ ] TASK-096  Das Einstellungsmodell von null — `settings_object` und `settings_value` nach [`einstellungen-anforderungen.md`](../../einstellungen-anforderungen.md) ([D-712](../../NewConcept/90-decision-log.md))
 
-*Der grosse Umbau. Vergleich und Bauplan: [`einstellungen-bauplan.md`](../../einstellungen-bauplan.md) (2026-09-11),
-und ein Bauplan in Schritten, jeder mit Wächter. Nicht anfangen, bevor er den Bauplan gesehen hat.*
+*Der grosse Umbau. Vergleich und Bauplan: [`einstellungen-bauplan.md`](../../einstellungen-bauplan.md) (2026-09-11). **Sein Go am selben Tag:** «setzt du den bauplan bitte komplett um, ich möchte erst am schluss testen». Stand: Schritt 1 (Klasse) und Schritt 3 (Tabellen, leer) gebaut;
+die übrigen folgen, jeder mit Wächter, Kern und Rand grün.*
