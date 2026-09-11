@@ -189,17 +189,21 @@ $enkel  = $editor->createNode('__rk Enkel', $zahl->id);
 
 check('ein frischer Knoten hat keinen Satz', $data->recordsOf($modell->id) === []);
 
+// ⚠️ *Bis Schritt 2 des Bauplans (2026-09-11) stand hier `read_only` — die Kante ist mit Fassung 48
+// gewandert ([D-714](../../docs/NewConcept/90-decision-log.md)); `validator` ist eine
+// Einstellungskante an der Wurzel, die geblieben ist und einen Namen als Wert nimmt.*
 $leseKante = 0;
 foreach ($relations->fieldRelationsOf([$framework->root()->id]) as $kante) {
-    if ($kante->isSetting() && $kante->name === SettingKey::ReadOnly->value) {
+    if ($kante->isSetting() && $kante->name === SettingKey::Validator->value) {
         $leseKante = $kante->id;
     }
 }
-check('die Einstellungskante `read_only` ist da', $leseKante !== 0);
-$data->putSettingAt($modell->id, $leseKante, 0, TypedValue::ofBool(true));
+check('die Einstellungskante `validator` ist da', $leseKante !== 0);
+check('die Einstellungskante `read_only` ist gewandert (D-714)', ! in_array('read_only', array_map(static fn ($k) => $k->name, array_filter($relations->fieldRelationsOf([$framework->root()->id]), static fn ($k) => $k->isSetting())), true));
+$data->putSettingAt($modell->id, $leseKante, 0, TypedValue::ofText('range'));
 $arten = array_map(static fn ($s): string => $s->recordType->value, $data->recordsOf($modell->id));
 check('das erste Schreiben einer Einstellung legt einen settings-Satz an, keinen default', $arten === ['settings'], implode(',', $arten));
-check('und der Wert steht darin', ($data->settingValuesOf($modell->id, [$leseKante])[$leseKante] ?? null)?->asBool() === true);
+check('und der Wert steht darin', ($data->settingValuesOf($modell->id, [$leseKante])[$leseKante] ?? null)?->text === 'range');
 
 $feld = $editor->addField($modell->id, $integer->id, '__rk Menge', RelationKind::Composition);
 $minKante = (int) $wpdb->get_var($wpdb->prepare(

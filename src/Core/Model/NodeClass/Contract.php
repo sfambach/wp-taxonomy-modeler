@@ -29,6 +29,8 @@ final class Contract
         public readonly string $icon,
         public readonly array $allowedChildClasses,
         public readonly string $defaultChildClass,
+        /** @var list<\Taxmod\Core\Model\Multiplicity> Leer heisst: alle vier (Modell 1.2.3). */
+        public readonly array $allowedMultiplicities = [],
     ) {
     }
 
@@ -41,7 +43,14 @@ final class Contract
             $class::classIcon(),
             $class::allowedChildClasses(),
             $class::defaultChildClass(),
+            $class::allowedMultiplicities(),
         );
+    }
+
+    /** Ob ein Feld auf einen Knoten dieser Klasse diese Multiplizität tragen darf (Modell 1.2.3). */
+    public function allowsMultiplicity(\Taxmod\Core\Model\Multiplicity $multiplicity): bool
+    {
+        return $this->allowedMultiplicities === [] || in_array($multiplicity, $this->allowedMultiplicities, true);
     }
 
     /** Ob ein Kind dieser Klasse die genannte Klasse tragen darf (Anforderung 2.2.2). */

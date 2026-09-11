@@ -434,8 +434,17 @@ final class Schema
      * **Jede Tabelle zählt ihre Ids selbst, jeder Verweis ist ein Fremdschlüssel**
      * ({@see self::constrainSettingsValues()}). Nichts wandert hinein — sein Wort: «wir beginnen
      * leer, dann können wir schön testen.»*
+     *
+     * ⚠️ **Fassung 48 macht `read_only` zur Spalte der Kante** ([D-714](../../../docs/NewConcept/90-decision-log.md),
+     * [D-713](../../../docs/NewConcept/90-decision-log.md), TASK-094/095, Schritt 2 des Bauplans).
+     * *`relations.read_only` und `relations_history.read_only`; was an einer Verwendungsstelle als
+     * Einstellung `read_only = 1` stand, wandert in die Spalte; dann geht die Einstellungskante
+     * `read_only` an der Wurzel in den Schatten, mit ihren Wertzeilen ([D-619](../../../docs/NewConcept/90-decision-log.md))
+     * — **es gibt kein `read_only` am Knoten mehr.** Gemessen am 2026-09-11: eine Einstellungskante,
+     * sieben Wertzeilen, alle am Knoten, alle `0` — es wandert nichts in die Spalte, und nichts geht
+     * verloren. `multiplicity` war schon Spalte (Fassung 22); was fällt, ist nur ihr Schlüssel.*
      */
-    public const VERSION = 47;
+    public const VERSION = 48;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -744,6 +753,11 @@ final class Schema
         // keine Bedingungen an, also hier, wie {@see self::constrainRelationsToNodes()}.*
         self::constrainSettingsValues();
 
+        // ⚠️ **Fassung 48: `read_only` wird Spalte der Kante, die Einstellungskante wandert**
+        // ([D-714](../../../docs/NewConcept/90-decision-log.md), TASK-095). *Nach `dbDelta`, weil die
+        // Spalte dastehen muss; nach den Sichten, weil die Kante über `relations_named` gefunden wird.*
+        self::moveReadOnlyOntoTheRelation();
+
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
         // **Kern** fragt statt eine Spalte zu lesen — {@see \Taxmod\Core\Service\Rendering::choicesForNode()}
@@ -981,7 +995,11 @@ final class Schema
             return;
         }
 
-        $bedingung = "s.record_type = 'default'
+        // ⚠️ **Seit Fassung 48 auch die Einstellungssätze** ([D-714](../../../docs/NewConcept/90-decision-log.md)):
+        // *das Parken der Einstellungskante `read_only` nahm ihre Wertzeilen mit ([D-619](../../../docs/NewConcept/90-decision-log.md))
+        // und liess sieben `settings`-Sätze leer zurück — gemessen am 2026-09-11 durch
+        // `record-on-first-write-check`. Ein leerer Satz sagt nichts und fällt, gleich welcher Art.*
+        $bedingung = "s.record_type IN ('default', 'settings')
              AND NOT EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)
              AND NOT EXISTS (SELECT 1 FROM {$werte} h WHERE h.value_ref = s.id AND h.value_ref_kind = 'record')";
 
@@ -3412,6 +3430,74 @@ final class Schema
      * sind leer ([D-717](../../../docs/NewConcept/90-decision-log.md)), also gibt es keine Waisen, die
      * eine Bedingung verhindern könnten — anders als bei {@see self::constrainRelationsToNodes()}.*
      */
+    /**
+     * Fassung 48: **`read_only` in die Spalte der Kante, und die Einstellungskante in den Schatten**
+     * ([D-714](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Drei Schritte, in dieser Reihenfolge:** *(1) jede Verwendungsstelle, an der ein
+     * `settings`-Satz `read_only = 1` trägt, bekommt die Spalte gesetzt — die Zeile ist die Kante
+     * selbst, also `node_records.relation_id`; (2) jede Einstellungskante namens `read_only` wird
+     * über den Kern geparkt ({@see \Taxmod\Core\Service\ModelEditor::removeField()}), und
+     * [D-619](../../../docs/NewConcept/90-decision-log.md) nimmt ihre Wertzeilen mit — die am Knoten
+     * darunter, weil es kein `read_only` am Knoten mehr gibt; (3) die Marke, damit es einmal läuft.*
+     *
+     * ⚠️ *Über den Kern und nicht mit rohem SQL, wie Fassung 44 und 45: ein Parken ist ein Akt mit
+     * Änderungsgruppe, und nur der Kern schreibt ihn richtig.*
+     */
+    private static function moveReadOnlyOntoTheRelation(): void
+    {
+        global $wpdb;
+
+        $relations = self::table('relations');
+
+        if (self::tableMissing($relations) || $wpdb->get_var("SHOW COLUMNS FROM {$relations} LIKE 'read_only'") === null) {
+            return;
+        }
+
+        if (get_option('taxmod_fassung48_shape', null) !== null) {
+            return;
+        }
+
+        $benannt = self::table('relations_named');
+        $records = self::table('node_records');
+        $values  = self::table('relation_records');
+
+        /** @var list<array{id: string, from_node_id: string}> $kanten */
+        $kanten = $wpdb->get_results("SELECT id, from_node_id FROM {$benannt} WHERE kind = 'setting' AND name = 'read_only'", ARRAY_A) ?: [];
+
+        $gesetzt = 0;
+
+        foreach ($kanten as $kante) {
+            // 1 · Werte an Verwendungsstellen in die Spalte.
+            $gesetzt += (int) $wpdb->query($wpdb->prepare(
+                "UPDATE {$relations} r
+                 JOIN {$records} nr ON nr.relation_id = r.id AND nr.record_type = 'settings'
+                 JOIN {$values} rr ON rr.node_record_id = nr.id AND rr.relation_id = %d
+                 SET r.read_only = 1
+                 WHERE rr.value_int = 1",
+                (int) $kante['id']
+            ));
+        }
+
+        // 2 · Die Einstellungskanten parken — über den Kern.
+        $log       = new WpdbChangelog(new SystemClock());
+        $knoten    = new WpdbNodeRepository();
+        $kantenRep = new WpdbRelationRepository();
+        $framework = new SeededFrameworkNodes($knoten, $kantenRep, $log);
+        $editor    = new \Taxmod\Core\Service\ModelEditor($knoten, $kantenRep, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
+
+        $geparkt = 0;
+
+        foreach ($kanten as $kante) {
+            $editor->removeField((int) $kante['from_node_id'], (int) $kante['id']);
+            $geparkt++;
+        }
+
+        Shadow::forgetColumnPlan();
+
+        update_option('taxmod_fassung48_shape', ['spalte_gesetzt' => $gesetzt, 'kanten_geparkt' => $geparkt], false);
+    }
+
     private static function constrainSettingsValues(): void
     {
         global $wpdb;
@@ -4450,6 +4536,7 @@ final class Schema
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
+                read_only tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 UNIQUE KEY one_place (from_node_id,kind,sort_order),
                 KEY to_node_id (to_node_id),
@@ -4689,6 +4776,7 @@ final class Schema
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
+                read_only tinyint(1) unsigned NOT NULL DEFAULT 0,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

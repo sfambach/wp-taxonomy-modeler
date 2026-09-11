@@ -91,13 +91,15 @@ final class SettingCategoryTest extends TestCase
         // these borrows a type, so none of them belongs to one.
         // ⚠️ *`persistent` stand hier bis 2026-09-01 und ist mit [D-538] ersatzlos gefallen: die
         // Relationsart sagt, dass ein Wert nicht im Benutzerdatensatz landet.*
-        $rules = [
-            SettingKey::ReadOnly,
-            SettingKey::Multiplicity,
-        ];
+        // ⚠️ *`read_only` und `multiplicity` standen hier bis Schritt 2 des Bauplans (2026-09-11) —
+        // beide sind Spalten der Kante geworden ([D-713], [D-714]) und keine Schlüssel mehr. Was
+        // bleibt, ist die Gegenprobe: das Inventar kennt sie nicht.*
+        self::assertNull(SettingKey::tryFrom('read_only'));
+        self::assertNull(SettingKey::tryFrom('multiplicity'));
 
-        foreach ($rules as $key) {
-            self::assertSame(SettingCategory::Rules, SettingCategory::of($key, SimpleType::Int), $key->value);
+        // ⚠️ `factor` und `offset` gehören einer Einheit, keinem Typ — sie fallen zu den Regeln.
+        foreach ([SettingKey::Factor, SettingKey::Offset] as $key) {
+            self::assertSame(SettingCategory::Rules, SettingCategory::of($key, null), $key->value);
         }
     }
 

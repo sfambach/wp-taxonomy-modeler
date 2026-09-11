@@ -37,4 +37,9 @@ final class Constant implements NodeClass
     {
         return 'constant';
     }
+
+    public static function allowedMultiplicities(): array
+    {
+        return [];
+    }
 }

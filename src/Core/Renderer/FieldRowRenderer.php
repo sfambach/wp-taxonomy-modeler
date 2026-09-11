@@ -401,7 +401,7 @@ final class FieldRowRenderer extends RendererNode
 
     private function multiplicity(RenderContext $context): string
     {
-        $drawn = $context->surroundings->configured[SettingKey::Multiplicity->value] ?? null;
+        $drawn = $context->surroundings->configured[\Taxmod\Core\Model\EdgeColumn::MULTIPLICITY] ?? null;
 
         if ($drawn === null || ! $drawn->wasDrawn()) {
             // ⚠️ *Nothing is nothing* — an em dash rather than an empty cell, so the column still

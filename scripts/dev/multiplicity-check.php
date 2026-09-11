@@ -239,7 +239,7 @@ if ($gefunden !== []) {
     $abweichung    = [];
 
     foreach ($gefunden as [$kante, $soll, $wo]) {
-        $gelesen = $ausAufloesung[$kante->id][SettingKey::Multiplicity->value]->value->text ?? null;
+        $gelesen = $ausAufloesung[$kante->id][\Taxmod\Core\Model\EdgeColumn::MULTIPLICITY]->value->text ?? null;
 
         if ($gelesen !== $soll) {
             $abweichung[] = "{$wo}: erwartet {$soll}, aufgeloest " . ($gelesen ?? 'nichts');

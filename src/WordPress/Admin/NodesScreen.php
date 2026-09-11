@@ -14,6 +14,7 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Label;
+use Taxmod\Core\Model\EdgeColumn;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SettingCategory;
@@ -2113,7 +2114,7 @@ final class NodesScreen
                     'action'         => self::ACTION,
                     'id'             => (string) $selected->id,
                     'relation'           => (string) $relation->id,
-                    'setting_key'    => SettingKey::Multiplicity->value,
+                    'setting_key'    => EdgeColumn::MULTIPLICITY,
                     '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $selected->id),
                     ...array_filter($this->circumstances()),
                 ]
@@ -3574,9 +3575,15 @@ final class NodesScreen
      * ⚠️ *The multiplicity is written through the ordinary settings path, so `D-312`'s narrowing rule
      * still applies and a widening is still refused by the core rather than here.*
      */
-    private function saveField(int $id, int $relation, string $name, string $multiplicity, string $kind = '', bool $confirmed = false): void
+    private function saveField(int $id, int $relation, string $name, string $multiplicity, string $kind = '', bool $confirmed = false, string $readOnly = ''): void
     {
         $existing = $this->editor->ownAttribute($id, $relation);
+
+        // ⚠️ **`read_only` ist eine Spalte der Kante** ([D-714](../../../docs/NewConcept/90-decision-log.md)):
+        // *der Schalter schickt `0` oder `1`; leer heisst «nicht gezeichnet» und lässt die Spalte stehen.*
+        if ($readOnly !== '' && ($readOnly === '1') !== $existing->readOnly) {
+            $existing = $this->editor->setReadOnly($id, $relation, $readOnly === '1');
+        }
 
         // ⚠️ **Die Art wechselt — und wird ein Feld mit Benutzersätzen eine Einstellung, wandert nichts**
         // (TASK-066, [D-699](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «einen hinweis
@@ -3866,9 +3873,16 @@ final class NodesScreen
                 ? sanitize_text_field((string) $namen[$kante->id])
                 : '';
 
-            $wieOft = isset($angaben[$kante->id][SettingKey::Multiplicity->value])
-                && ! is_array($angaben[$kante->id][SettingKey::Multiplicity->value])
-                ? sanitize_text_field((string) $angaben[$kante->id][SettingKey::Multiplicity->value])
+            $wieOft = isset($angaben[$kante->id][EdgeColumn::MULTIPLICITY])
+                && ! is_array($angaben[$kante->id][EdgeColumn::MULTIPLICITY])
+                ? sanitize_text_field((string) $angaben[$kante->id][EdgeColumn::MULTIPLICITY])
+                : '';
+
+            // ⚠️ **`read_only` ist eine Spalte der Kante** ([D-714](../../../docs/NewConcept/90-decision-log.md)):
+            // *der Schalter schickt `0` oder `1`; nichts heisst «nicht gezeichnet», also nicht anfassen.*
+            $nurLesen = isset($angaben[$kante->id][EdgeColumn::READ_ONLY])
+                && ! is_array($angaben[$kante->id][EdgeColumn::READ_ONLY])
+                ? sanitize_text_field((string) $angaben[$kante->id][EdgeColumn::READ_ONLY])
                 : '';
 
             // ⚠️ **Alles ausser «wie oft» ist eine Einstellung dieser Verwendungsstelle**
@@ -3886,14 +3900,14 @@ final class NodesScreen
                 ? sanitize_key((string) $angaben[$kante->id][Rendering::KIND_KEY])
                 : '';
 
-            if ($name === '' && $wieOft === '' && $art === '') {
+            if ($name === '' && $wieOft === '' && $art === '' && $nurLesen === '') {
                 continue;
             }
 
             // ⚠️ *Der Haken «ich bestätige» aus D-699 — neben der Art, unter demselben Namen.*
             $bestaetigt = ! empty($angaben[$kante->id][Rendering::KIND_CONFIRM_KEY]) && ! is_array($angaben[$kante->id][Rendering::KIND_CONFIRM_KEY]);
 
-            $this->saveField($nodeId, $kante->id, $name, $wieOft, $art, $bestaetigt);
+            $this->saveField($nodeId, $kante->id, $name, $wieOft, $art, $bestaetigt, $nurLesen);
         }
     }
 
@@ -3972,7 +3986,10 @@ final class NodesScreen
                 continue;
             }
 
-            if ($key === SettingKey::Multiplicity->value || $key === Rendering::KIND_KEY || $key === Rendering::KIND_CONFIRM_KEY || is_array($roh)) {
+            // ⚠️ *Die Spalten der Kante und die Art gehen ihren eigenen Weg ({@see self::saveField()}) —
+            // sie sind keine Einstellungen und landen in keinem Satz ([D-713](../../../docs/NewConcept/90-decision-log.md),
+            // [D-714](../../../docs/NewConcept/90-decision-log.md)).*
+            if (EdgeColumn::isOne((string) $key) || $key === Rendering::KIND_KEY || $key === Rendering::KIND_CONFIRM_KEY || is_array($roh)) {
                 continue;
             }
 

@@ -11,7 +11,7 @@ namespace Taxmod\Core\Model;
  *
  * ⚠️ **Ein Aufzählungstyp und kein `bool`, und das ist gemessen nötig statt vorsorglich.** *Von den
  * fünf Belegen in [D-508](../../../docs/NewConcept/90-decision-log.md) ist **einer schon ein dritter
- * Fall**: `multiplicity` gilt **nur** an der Verwendungsstelle ({@see SettingKey::isRelationOnly()}).
+ * Fall**: `multiplicity` gilt **nur** an der Verwendungsstelle (seit Schritt 2 des Bauplans eine Spalte, {@see EdgeColumn::MULTIPLICITY}).
  * **Ein Schalter hätte am ersten Tag eine Ausnahme gebraucht.***
  *
  * ⚠️ **Er sitzt am Knoten, nicht an der Kante** — auf sein Wort: *«der Knoten bekommt eine

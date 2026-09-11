@@ -36,4 +36,9 @@ final class Category implements NodeClass
     {
         return 'category';
     }
+
+    public static function allowedMultiplicities(): array
+    {
+        return [];
+    }
 }

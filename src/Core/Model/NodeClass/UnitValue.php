@@ -33,4 +33,9 @@ final class UnitValue implements NodeClass
     {
         return 'unit value';
     }
+
+    public static function allowedMultiplicities(): array
+    {
+        return [];
+    }
 }

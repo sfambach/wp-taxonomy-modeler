@@ -37,7 +37,10 @@ enum SettingKey: string
      * ⚠️ **Relation-only**, and the only key that is: a node describes a thing and a thing has no
      * multiplicity. See {@see Multiplicity} for what *narrower* means among the four.
      */
-    case Multiplicity = 'multiplicity';
+    // ⚠️ **`Multiplicity` stand hier bis Schritt 2 des Bauplans (2026-09-11) und ist gefallen**
+    // ([D-713](../../../docs/NewConcept/90-decision-log.md)): *sie ist eine Spalte der Kante und keine
+    // Einstellung — sein Wort: «bei multiplizität war ich mir eigentlich immer eine spalte der kante
+    // vorgestellt». Die Maske zeichnet sie unter {@see EdgeColumn::MULTIPLICITY} weiter, als Spalte.*
 
     // ⚠️ **`mandatory` used to be here and is gone** ([D-405](../../../docs/NewConcept/90-decision-log.md)).
     // The owner: *whether a field is mandatory is already determined by the multiplicity — whether it
@@ -63,8 +66,10 @@ enum SettingKey: string
      * type is the point of them rather than an accident.*
      */
 
-    /** Nicht änderbar an dieser Stelle — und weiter unten wieder änderbar, wenn jemand es sagt (D-399). */
-    case ReadOnly = 'read_only';
+    // ⚠️ **`ReadOnly` stand hier bis Schritt 2 des Bauplans (2026-09-11) und ist gefallen**
+    // ([D-714](../../../docs/NewConcept/90-decision-log.md)): *«read_only braucht es nur an der kante»,
+    // und dort ist es eine Spalte ({@see EdgeColumn::READ_ONLY}). Es gibt kein `read_only` am Knoten
+    // mehr; die Einstellungskante an der Wurzel ist mit Fassung 48 gewandert.*
 
     /**
      * Wo eine Feldzeile an diesem Knoten steht — ein Kind ordnet geerbte Felder an derselben Adresse wie
@@ -244,10 +249,8 @@ enum SettingKey: string
      * ⚠️ **This is about where a key applies, not a second mechanism.** Multiplicity still
      * inherits down the chain and is still narrowable: a subtype may tighten `0..1` to `1`.
      */
-    public function isRelationOnly(): bool
-    {
-        return $this === self::Multiplicity;
-    }
+    // ⚠️ *`isRelationOnly()` stand hier — ihr einziges Mitglied war `Multiplicity`, und die ist eine
+    // Spalte ([D-713](../../../docs/NewConcept/90-decision-log.md)). Eine Frage ohne Mitglied ist keine.*
 
     /**
      * Whether a key says something only a **node** can have.
@@ -289,11 +292,9 @@ enum SettingKey: string
     public function shape(): SettingShape
     {
         return match ($this) {
-            self::ReadOnly                             => SettingShape::Switch,
             self::Factor, self::Offset                 => SettingShape::Exact,
             // ⚠️ *Eine Anzahl Zeichen — siehe {@see self::DisplaySize}; eine Stelle in der Liste — D-698.*
             self::DisplaySize, self::Position          => SettingShape::Whole,
-            self::Multiplicity                         => SettingShape::OneOfFour,
             self::Renderer, self::Converter,
             self::Validator                            => SettingShape::ARegisteredName,
             // ⚠️ These four borrow their type from whatever is being configured — a default for a
@@ -335,10 +336,10 @@ enum SettingKey: string
      */
     public function declaredDefault(): ?TypedValue
     {
+        // ⚠️ *Bis Schritt 2 des Bauplans antworteten hier `read_only` und `multiplicity` — beide
+        // sind Spalten der Kante geworden ([D-713](../../../docs/NewConcept/90-decision-log.md),
+        // [D-714](../../../docs/NewConcept/90-decision-log.md)); ihre Vorgaben stehen an der Spalte.*
         return match ($this) {
-            // ⚠️ *`true`, and it is the one that went wrong* ([D-377](../../../docs/NewConcept/90-decision-log.md)).
-            self::ReadOnly     => TypedValue::ofBool(false),
-            self::Multiplicity => TypedValue::ofText(Multiplicity::standard()->value),
             // ⚠️ **Nothing, and that is an answer.** A range, a factor or a renderer has no meaning
             // nobody chose — [D-352](../../../docs/NewConcept/90-decision-log.md) resolves a renderer
             // from the **type** instead, which is a different mechanism and must not be shadowed here.
@@ -388,11 +389,8 @@ enum SettingKey: string
         $applying = [];
 
         foreach (self::cases() as $key) {
-            // ⚠️ A node describes a thing, and a thing has no multiplicity (D-351).
-            if ($key->isRelationOnly() && ! $isRelation) {
-                continue;
-            }
-
+            // ⚠️ *Hier stand «a thing has no multiplicity» — die Multiplizität ist keine Einstellung mehr
+            // ([D-713](../../../docs/NewConcept/90-decision-log.md)), die Frage stellt sich nicht.*
             // ⚠️ *Und die Gegenrichtung: der Renderer gehört dem Knoten, nicht der Verwendungsstelle
             // ([D-643](../../../docs/NewConcept/90-decision-log.md)).*
             if ($key->isNodeOnly() && $isRelation) {

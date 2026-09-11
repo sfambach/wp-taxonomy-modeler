@@ -5,6 +5,7 @@ namespace Taxmod\Core\Service;
 use Taxmod\Core\Exception\CannotRestore;
 use Taxmod\Core\Exception\ClassNotAllowedUnder;
 use Taxmod\Core\Exception\ImpossibleMove;
+use Taxmod\Core\Exception\MultiplicityNotAllowed;
 use Taxmod\Core\Exception\UnknownNodeClass;
 use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Exception\NodeIsProtected;
@@ -279,12 +280,47 @@ final class ModelEditor
             return $relation;
         }
 
+        // ⚠️ **Die Zielklasse darf einschränken, und nur sie** (Modell 1.2.3, [D-713](../../../docs/NewConcept/90-decision-log.md)):
+        // *«bool = 1..1, an knotenklasse bool.»* Die Kantenklasse schränkt nichts ein.
+        $ziel = $this->nodes->find($relation->toNodeId);
+
+        if ($ziel !== null && ! Contracts::of($ziel->klasse)->allowsMultiplicity($multiplicity)) {
+            throw MultiplicityNotAllowed::byTarget($multiplicity->value, Contracts::of($ziel->klasse)->key);
+        }
+
         $this->changelog->record(
             $relation->id,
             'relation',
             'multiplicity set',
             $this->relationState($relation),
             $this->relationState($geaendert),
+            $geaendert->version
+        );
+
+        $this->relations->save($geaendert, $relation->version);
+
+        return $geaendert;
+    }
+
+    /**
+     * Ein Feld an dieser Stelle nur lesbar machen oder wieder freigeben — eine Spalte der Kante
+     * ([D-714](../../../docs/NewConcept/90-decision-log.md)), derselbe Akt-Rahmen wie {@see setMultiplicity()}.
+     */
+    public function setReadOnly(int $ownerId, int $relationId, bool $readOnly): Relation
+    {
+        $relation  = $this->ownAttribute($ownerId, $relationId);
+        $geaendert = $relation->withReadOnly($readOnly);
+
+        if ($geaendert === $relation) {
+            return $relation;
+        }
+
+        $this->changelog->record(
+            $relation->id,
+            'relation',
+            'read only set',
+            $relation->readOnly ? '1' : '0',
+            $geaendert->readOnly ? '1' : '0',
             $geaendert->version
         );
 
@@ -467,7 +503,21 @@ final class ModelEditor
             // neu ab — **und eine Einstellungskante kam als Komposition heraus**, weil `setting` die
             // einzige Art ist, die kein Ast hergibt ([D-618](../../../docs/NewConcept/90-decision-log.md)).
             // Eine Kopie, deren Kanten anders heissen als die des Originals, ist keine.*
-            $newRelations[$relation->id] = $this->addField($copy->id, $relation->toNodeId, $relation->name, $relation->kind)->id;
+            $kopie = $this->addField($copy->id, $relation->toNodeId, $relation->name, $relation->kind);
+
+            // ⚠️ **Die Spalten der Kante kommen mit** ([D-713](../../../docs/NewConcept/90-decision-log.md),
+            // [D-714](../../../docs/NewConcept/90-decision-log.md)): *eine Kopie, die anders auflöst
+            // als ihr Original, ist keine Kopie — und «wie oft» und «nur lesbar» sind seit Schritt 2
+            // des Bauplans Spalten, keine Einstellungen, die der Satz mitbrächte.*
+            if ($relation->multiplicity !== $kopie->multiplicity) {
+                $kopie = $this->setMultiplicity($copy->id, $kopie->id, $relation->multiplicity);
+            }
+
+            if ($relation->readOnly) {
+                $kopie = $this->setReadOnly($copy->id, $kopie->id, true);
+            }
+
+            $newRelations[$relation->id] = $kopie->id;
         }
 
         $this->copyLabels($node->id, $copy->id, $newRelations);

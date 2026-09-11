@@ -36,4 +36,9 @@ final class Choice implements NodeClass
     {
         return 'choice';
     }
+
+    public static function allowedMultiplicities(): array
+    {
+        return [];
+    }
 }

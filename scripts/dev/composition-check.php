@@ -295,7 +295,7 @@ foreach (['titel', 'backzeit', 'ofentemperatur', 'zutat'] as $member) {
 check('zutat points at Zutat', ($recipeMembers['zutat'] ?? null)?->toNodeId === $ingredient->id);
 
 $resolved = $rendering->settingsForUseSites(array_values($recipeMembers));
-$many     = ($resolved[$recipeMembers['zutat']->id][SettingKey::Multiplicity->value] ?? null)?->value->text;
+$many     = ($resolved[$recipeMembers['zutat']->id][\Taxmod\Core\Model\EdgeColumn::MULTIPLICITY] ?? null)?->value->text;
 
 check('zutat is 1..*, because a recipe with no ingredient is not one', $many === Multiplicity::OneToMany->value, (string) $many);
 

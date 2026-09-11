@@ -119,6 +119,17 @@ abstract class SpecialisedType extends Node implements NodeClass
         return (new static())->humanName();
     }
 
+    /**
+     * ⚠️ *Ein simpler Typ kennt «leer» — das Stockwerk als Zahl darf fehlen, eine Liste von
+     * Messwerten ist `0..*` — also alle vier ([D-713](../../../../docs/NewConcept/90-decision-log.md),
+     * sein Wort zu Int und Double: «einverstanden, und gutes argument»). {@see BoolType} ist die eine
+     * Ausnahme.*
+     */
+    public static function allowedMultiplicities(): array
+    {
+        return [];
+    }
+
     /** Der Aufzählungsfall, den diese Klasse ausmacht. */
     abstract public function type(): SimpleType;
 

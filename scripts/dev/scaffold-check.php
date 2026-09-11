@@ -184,28 +184,22 @@ echo "\n== 6. Every switch declares its default in one place (D-401) ==\n";
 // mehr, also kann keine sie wiederholen — **die Vorgabe lebt nur noch am Schluessel**, und genau das
 // ist es, was hier jetzt gemessen wird.*
 
+// ⚠️ **Umgedreht ein zweites Mal, am 2026-09-11, und wieder als sichtbarer Teil einer
+// Konzeptänderung** ([`PR-9`](../../CLAUDE.md)): *der letzte Schalter, `read_only`, ist eine Spalte
+// der Kante geworden ([D-714](../../docs/NewConcept/90-decision-log.md)). **Kein Schlüssel ist mehr
+// ein Schalter**, und die Vorgabe eines Schalters lebt an der Spalte (`DEFAULT 0`), nicht am
+// Schlüssel. Was hier bleibt, ist die Gegenprobe.*
+$schalter = [];
+
 foreach (SettingKey::cases() as $key) {
-    if ($key->shape() !== SettingShape::Switch) {
-        continue;
+    if ($key->shape() === SettingShape::Switch) {
+        $schalter[] = $key->value;
     }
-
-    // ⚠️ **Umgedreht am 2026-09-01, und das ist der sichtbare Teil einer Konzeptänderung**
-    // ([`PR-9`](../../CLAUDE.md)). *Bis dahin verlangte diese Prüfung eine **gespeicherte Zeile** je
-    // Schalter — [D-401](../../docs/NewConcept/90-decision-log.md)s Soll-Zustand. Zeile 85 der
-    // Arbeitsliste hat ihn abgelöst: **alle 147 `read_only`-Zeilen sagten `false`, und `false` ist
-    // auch die Antwort ohne Zeile.** Sie trugen keine Aussage und sind entfernt — dieselbe Krankheit,
-    // die [D-505](../../docs/NewConcept/90-decision-log.md) gemessen hat.*
-    //
-    // ⚠️ **Die Vorgabe lebt jetzt am Schlüssel, und die Prüfung ist strenger als vorher:** *nicht nur
-    // muss der Schlüssel antworten — **es darf auch keine Zeile geben, die ihn wiederholt.** Eine
-    // solche Zeile ist genau die zweite Heimat, die dieses Projekt achtmal an einer Naht getroffen hat.*
-    check(
-        "«{$key->value}» is answered by the key itself",
-        $key->defaultSwitch() !== null,
-        'the key declares nothing'
-    );
-
 }
+
+check('kein Schlüssel ist mehr ein Schalter — read_only ist eine Spalte der Kante (D-714)', $schalter === [], implode(',', $schalter));
+check('read_only ist kein Schlüssel mehr', SettingKey::tryFrom('read_only') === null);
+check('multiplicity ist kein Schlüssel mehr (D-713)', SettingKey::tryFrom('multiplicity') === null);
 
 // ⚠️ **The counter-check that gives the block its meaning**: a key that is *not* a switch must have
 // **no** boolean default to hand out. *Without this, a `declaredDefault()` that answered `false` for
@@ -223,25 +217,9 @@ check('asking a range for its switch default is refused', $threw);
 // ⚠️ **And the point of the whole thing, measured at a node rather than at the installation**: a node
 // with no row of its own resolves all three, because the installation is the first link of the chain
 // ([D-079](../../docs/NewConcept/90-decision-log.md)) — so no reader ever needs a fallback.
-$probe = $editor->childrenOf($dataTypes->id)[0] ?? null;
-
-if ($probe !== null) {
-
-    foreach (SettingKey::cases() as $key) {
-        if ($key->shape() !== SettingShape::Switch) {
-            continue;
-        }
-
-        // ⚠️ *Ebenfalls umgedreht: gefragt wird nicht mehr, ob eine **Zeile** auflöst, sondern ob
-        // der Knoten überhaupt eine Antwort bekommt — aus der Zeile, wenn es eine gibt, sonst aus
-        // dem Schlüssel. **Der Rückfall ist seit Zeile 85 der Normalfall und kein Mangel.***
-        check(
-            "«{$probe->name}» gets an answer for «{$key->value}»",
-            $key->defaultSwitch() !== null,
-            'der Schluessel erklaert nichts'
-        );
-    }
-}
+// ⚠️ *Hier stand die Probe am Knoten — je Schalter eine Antwort. Ohne Schalter gibt es nichts zu
+// fragen; die Antwort eines Felds auf «nur lesbar» steht in seiner Spalte und wird in
+// `kantenspalten-check` gemessen.*
 
 // ============================================================================
 // Umgezogen am 2026-09-06: die zwei Zusagen aus `package1-check.php`, die

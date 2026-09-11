@@ -3383,12 +3383,12 @@ der Abgleich mit dem Bestand darunter. **Reihenfolge:** die Klasse zuerst, weil 
 *Hängt an TASK-096: die Einstellungskanten können erst fallen, wenn ihre Werte in `settings_value`
 liegen. Bis dahin bleibt der dritte Wert stehen, und dieser Punkt ist offen, nicht erledigt.*
 
-[ ] TASK-094  Multiplizität wird eine Spalte der Kante — Enum mit vier Werten; `Bool` als Ziel nur `1..1` ([D-713](../../NewConcept/90-decision-log.md))
+[x] TASK-094  Multiplizität wird eine Spalte der Kante — Enum mit vier Werten; `Bool` als Ziel nur `1..1` ([D-713](../../NewConcept/90-decision-log.md)) — gebaut 2026-09-11: die Spalte gab es seit Fassung 22, gefallen ist der Schlüssel; Bool nur 1..1 über den Vertrag
 
 *Heute `SettingKey::Multiplicity` in Wertzeilen. Die Werte wandern in die Spalte; der Schlüssel fällt.
 Zielklasse schränkt ein: das braucht die Klasse am Knoten (TASK-092).*
 
-[ ] TASK-095  `read_only` wird eine Spalte der Kante — und fällt am Knoten ([D-714](../../NewConcept/90-decision-log.md))
+[x] TASK-095  `read_only` wird eine Spalte der Kante — und fällt am Knoten ([D-714](../../NewConcept/90-decision-log.md)) — gebaut 2026-09-11, Fassung 48
 
 *Heute `SettingKey::ReadOnly` für Knoten und Kanten. Werte an Kanten wandern in die Spalte; Werte an
 Knoten fallen (sein Wort: nur an der Kante).*

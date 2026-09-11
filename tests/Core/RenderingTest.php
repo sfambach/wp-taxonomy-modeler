@@ -259,8 +259,16 @@ final class RenderingTest extends TestCase
      */
     private function type(string $name, ?Node $under = null): Node
     {
-        $node = $this->editor->createNode($name, ($under ?? $this->branchRoot['data-types'])->id);
         $type = SimpleType::fromNodeName($name);
+
+        // ⚠️ *Ein Typknoten ist seine eigene Klasse ([D-719], K3) — wie im Bestand, wo sie als
+        // `implemented_by` schon dasteht. Ohne sie wäre ein `bool` hier eine Kategorie und dürfte
+        // jede Multiplizität ([D-713]).*
+        $node = $this->editor->createNode(
+            $name,
+            ($under ?? $this->branchRoot['data-types'])->id,
+            $type === null ? null : \Taxmod\Core\Model\Type\SpecialisedTypes::for($type)::class
+        );
 
         if ($type !== null && $under === null) {
             $this->typeNodes->remember($type, $node->id);
@@ -1308,7 +1316,7 @@ final class RenderingTest extends TestCase
         $second = $this->editor->addField($part->id, $text->id, 'ccc ordinary');
         $fixed  = $this->editor->addField($part->id, $text->id, 'ddd read only');
 
-        $this->einstellung($fixed, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+        $fixed = $this->editor->setReadOnly($part->id, $fixed->id, true);
 
         $markup = $this->rendering->nodeAsForm($part, [$first, $flag, $second, $fixed], [], Purpose::Display)->markup;
 
@@ -1362,17 +1370,18 @@ final class RenderingTest extends TestCase
             $this->erklaert($int, $key);
         }
 
-        $this->erklaert($this->wurzel, 'read_only');
-
         $rows = $this->drawnSettings($int);
 
         // ⚠️ `mandatory` was in this list until [D-405]: the multiplicity says it, so the key is gone.
         // ⚠️ *`hide` verliess diese Liste 2026-08-28 — es ist eine Spalte und kein Setting mehr
-        // ([D-457]). `read_only` steht dafuer, weil es einer bleibt ([D-461]).*
-        foreach (['min', 'max', 'step', 'default', 'read_only'] as $key) {
+        // ([D-457]). `read_only` folgte ihm am 2026-09-11 ([D-714]): eine Spalte der Kante, kein
+        // Setting am Knoten mehr.*
+        foreach (['min', 'max', 'step', 'default'] as $key) {
             self::assertArrayHasKey($key, $rows, $key);
             self::assertTrue($rows[$key]->wasDrawn(), $key);
         }
+
+        self::assertArrayNotHasKey('read_only', $rows, 'kein read_only am Knoten (D-714)');
 
         // ⚠️ And an unwritten one says so — *nobody has said* is a third state beside *set here*
         // and *inherited* (D-266), and it is the reason the row exists at all.
@@ -1396,17 +1405,60 @@ final class RenderingTest extends TestCase
         $lieferant = $this->thing('Supplier');
 
         // ⚠️ *`min` steht an `int` und nicht an der Wurzel — ein Lieferant ist kein Nachfahr von
-        // `int`, also erreicht ihn die Kante nicht. `read_only` gilt für alles und steht oben.*
+        // `int`, also erreicht ihn die Kante nicht.*
         $this->erklaert($this->type('int'), 'min');
+
+        // ⚠️ *Und eine Modellkante, die wie eine Spalte der Kante heisst, wird übergangen — sie wäre
+        // die zweite Heimat derselben Tatsache ([D-714]).*
         $this->erklaert($this->wurzel, 'read_only');
 
         $rows = $this->drawnSettings($lieferant);
 
         self::assertArrayNotHasKey('min', $rows);
-        // ⚠️ A key that applies to **anything** still appears — `hide` stands in for what `mandatory`
-        // used to demonstrate here ([D-405]), and it makes the point better: it is a rule about the
-        // field, not about its type.
+        self::assertArrayNotHasKey('read_only', $rows, 'read_only ist eine Spalte der Kante, kein Setting am Knoten (D-714)');
+    }
+
+    #[Test]
+    public function a_field_row_draws_read_only_from_the_column_as_a_toggle(): void
+    {
+        // ⚠️ **Seit Schritt 2 des Bauplans** ([D-714]): *`read_only` ist eine Spalte der Kante. Die
+        // Feldzeile zeichnet sie als Schiebeschalter, unter dem Namen der Spalte, aus der Spalte.*
+        $part = $this->thing('Part');
+        $feld = $this->editor->addField($part->id, $this->type('int')->id, 'count');
+        $feld = $this->editor->setReadOnly($part->id, $feld->id, true);
+
+        $rows = [];
+
+        foreach ($this->rendering->settingsFor($feld, $this->rendering->settingsForUseSites([$feld])[$feld->id], Purpose::Edit) as $row) {
+            $rows[$row->key] = $row;
+        }
+
         self::assertArrayHasKey('read_only', $rows);
+        self::assertTrue($rows['read_only']->wasDrawn());
+        self::assertTrue($rows['read_only']->setting->value->asBool());
+        self::assertStringContainsString('taxmod-toggle-track', $rows['read_only']->result->markup);
+        self::assertSame(ToggleRenderer::NAME, $rows['read_only']->rendererName);
+        self::assertArrayHasKey('multiplicity', $rows, 'die zweite Spalte der Kante steht daneben');
+    }
+
+    #[Test]
+    public function a_bool_target_is_offered_only_exactly_one(): void
+    {
+        // ⚠️ **Sein Wort** ([D-713]): *«bool = 1..1, an knotenklasse bool.»* Die Zielklasse
+        // schränkt ein, der Wähler bietet nur, was sie erlaubt — und der Kern weist den Rest ab.
+        $part = $this->thing('Part');
+        $bool = $this->editor->createNode('Boolean', $this->branchRoot['data-types']->id, \Taxmod\Core\Model\Type\BoolType::class);
+        $feld = $this->editor->addField($part->id, $bool->id, 'flag');
+
+        $markup = $this->multiplicityMarkup($feld);
+
+        self::assertStringContainsString('value="1..1"', $markup);
+        self::assertStringNotContainsString('value="0..1"', $markup);
+        self::assertStringNotContainsString('value="0..*"', $markup);
+
+        $this->expectException(\Taxmod\Core\Exception\MultiplicityNotAllowed::class);
+
+        $this->editor->setMultiplicity($part->id, $feld->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
     }
 
     #[Test]
@@ -1416,15 +1468,11 @@ final class RenderingTest extends TestCase
         // It printed text until SettingKey::typeFor() said what type a setting's value has.
         $int = $this->type('int');
 
-        $this->einstellung($int, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+        // ⚠️ *`read_only` stand hier als Schalter am Knoten — seit [D-714] ist es eine Spalte der
+        // Kante; der Schalter der Feldzeile hat seinen eigenen Test oben.*
         $this->einstellung($int, SettingKey::Min->value, TypedValue::ofInt(3));
 
         $rows = $this->drawnSettings($int);
-
-        // A switch is still drawn as a switch; which switch is beside the point of this test.
-        self::assertTrue($rows[SettingKey::ReadOnly->value]->wasDrawn());
-        self::assertStringContainsString('taxmod-toggle-track', $rows[SettingKey::ReadOnly->value]->result->markup);
-        self::assertSame(ToggleRenderer::NAME, $rows[SettingKey::ReadOnly->value]->rendererName);
 
         self::assertSame(SimpleType::Int, $rows[SettingKey::Min->value]->type);
         self::assertStringContainsString('3', $rows[SettingKey::Min->value]->result->markup);
@@ -1620,10 +1668,13 @@ final class RenderingTest extends TestCase
         $fuerBool = $this->multiplicityMarkup($flag);
         $fuerInt  = $this->multiplicityMarkup($count);
 
+        // ⚠️ **Enger seit [D-713]:** *«bool = 1..1, an knotenklasse bool» — bis zum 2026-09-11 stand
+        // hier D-412s «keine Untergrenze null», das `1..*` noch zuliess. Ein Wahrheitswert kennt kein
+        // «leer» und keine Liste; die Zielklasse sagt es, der Wähler bietet nur das.*
         self::assertStringNotContainsString('value="0..1"', $fuerBool);
         self::assertStringNotContainsString('value="0..*"', $fuerBool);
         self::assertStringContainsString('value="1..1"', $fuerBool);
-        self::assertStringContainsString('value="1..*"', $fuerBool);
+        self::assertStringNotContainsString('value="1..*"', $fuerBool);
 
         // Die Gegenprobe: an einem `int` steht die ganze Vier weiterhin zur Wahl.
         self::assertStringContainsString('value="0..1"', $fuerInt);
@@ -1640,7 +1691,7 @@ final class RenderingTest extends TestCase
         );
 
         foreach ($drawn as $row) {
-            if ($row->key === SettingKey::Multiplicity->value) {
+            if ($row->key === \Taxmod\Core\Model\EdgeColumn::MULTIPLICITY) {
                 return $row->result?->markup ?? '';
             }
         }
@@ -2059,7 +2110,7 @@ final class RenderingTest extends TestCase
         $feld    = $this->editor->addField($traeger->id, $user->id, 'angelegt von');
 
         if ($readOnly) {
-            $this->einstellung($feld, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+            $feld = $this->editor->setReadOnly($traeger->id, $feld->id, true);
         }
 
         return [$traeger, $feld];

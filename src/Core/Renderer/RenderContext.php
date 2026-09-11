@@ -181,6 +181,9 @@ final class RenderContext
         // ⚠️ **The key, not the string, and the key's own default** ([D-401](../../../docs/NewConcept/90-decision-log.md)).
         // *A literal `'read_only'` beside a `?? false` is two copies of one fact in one line: rename
         // the key and this survives compilation while quietly answering «editable» for ever.*
-        return ! ($this->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch());
+        // ⚠️ **Seit Schritt 2 des Bauplans eine Spalte der Kante** ([D-714](../../../docs/NewConcept/90-decision-log.md)),
+        // die der Abstieg unter diesem Namen hereinreicht ({@see \Taxmod\Core\Service\Rendering::vonDenKanten()}).
+        // *Die Vorgabe ist «änderbar»: eine Kante, die nichts sagt, sperrt nichts.*
+        return ! ($this->setting(\Taxmod\Core\Model\EdgeColumn::READ_ONLY)?->asBool() ?? false);
     }
 }

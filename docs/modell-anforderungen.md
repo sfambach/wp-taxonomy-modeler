@@ -69,13 +69,13 @@ erinnert.*
 |---|---|---|
 | 1.1 zwei Kantenklassen | **teils** | es gibt eine Kantenart mit den Werten Aggregation und Komposition; sie heisst nicht Klasse und hat keinen Vertrag |
 | 1.2 Multiplizität, vier Werte | **ja, Spalte — mit einem Einstellungsschlüssel davor** | ⚠️ *Berichtigt 2026-09-11 beim Bauen:* `relations.multiplicity` **ist** seit Fassung 22 eine Spalte; was fällt, ist nur der Schlüssel `SettingKey::Multiplicity`, über den die Maske sie wie eine Einstellung anbietet. Die erste Fassung dieser Zeile («in Wertzeilen») war falsch — gemessen am `CREATE TABLE`, nicht erinnert. |
-| 1.2.3 Bool nur `1..1` | **nein** | keine Zielklasse schränkt heute ein |
-| 1.3 `read_only` an der Kante | **ja, aber als Einstellung und auch am Knoten** | Einstellungsschlüssel, für Knoten und Kanten gleichermassen (1.3.1: nein) |
+| 1.2.3 Bool nur `1..1` | **ja** (gebaut 2026-09-11) | der Vertrag der Zielklasse (`allowedMultiplicities`); `Bool` nur `1..1`, der Kern weist ab, der Wähler bietet nur das |
+| 1.3 `read_only` an der Kante | **ja** (gebaut 2026-09-11, Fassung 48) | Spalte `relations.read_only`; kein `read_only` am Knoten mehr, die Einstellungskante ist gewandert |
 | 1.4 Stelle in der Feldliste | **ja** | Spalte an der Kante |
 | 1.5 Kantenlabels | **ja** | Labels haben eine Besitzerart «Kante»; jede Kante bekommt beim Anlegen Beschriftungen |
 | 2.1 Felder erben sich | **ja** | die Feldliste eines Knotens enthält die geerbten Felder |
 | 2.2 / 2.3 geerbte Felder umstellen und verbergen | **nicht gemessen** | erst prüfen, wenn 2.4 entschieden ist |
-| 3.1 Klasse am Knoten | **nein** | es gibt eine Feldart am Knoten (`field_type`), keine Klasse im Sinn der Einstellungsseite |
+| 3.1 Klasse am Knoten | **ja** (gebaut 2026-09-11, Fassung 46) | Spalte `nodes.klasse`, vergeben nach K3 |
 | 3.2 Stelle unter dem Vater | **ja** | Spalte am Knoten |
 | 4.x Eingabe | **teils** | Pflicht und Liste werden aus der Multiplizität gelesen; nicht je Zeile gemessen |
 

@@ -753,7 +753,7 @@ if ($nurAmZiel !== null) {
     check('eine Einstellungskante bietet sich selbst nicht an', ! in_array('__es_hoechstens', $ihre, true), implode(', ', $ihre));
     check('eine Stelle, deren Ziel sie erklärt, bietet sie an (D-668)', in_array('__es_hoechstens', $modell()->declaredSettingKeys($stelle2), true));
     $gezeichnetKeys = array_map(static fn ($e) => $e->key, $zeichner()->settingsFor($stelle2, []));
-    check('der Einstellungsbereich einer Kante zeigt «wie oft» (D-351) und keinen Renderer (D-643)', in_array(SettingKey::Multiplicity->value, $gezeichnetKeys, true) && ! in_array(SettingKey::Renderer->value, $gezeichnetKeys, true), implode(', ', $gezeichnetKeys));
+    check('der Einstellungsbereich einer Kante zeigt «wie oft» (D-351) und keinen Renderer (D-643)', in_array(\Taxmod\Core\Model\EdgeColumn::MULTIPLICITY, $gezeichnetKeys, true) && ! in_array(SettingKey::Renderer->value, $gezeichnetKeys, true), implode(', ', $gezeichnetKeys));
     if ($gefunden !== null) {
         $anDerStelle2 = static function () use ($modell, $stelle2): ?int {
             $a = $modell()->forUseSite($stelle2)['__es_hoechstens'] ?? null;
@@ -1046,7 +1046,8 @@ while ($lauf !== 0) {
     $lauf    = $nodes->find($lauf)?->parentId() ?? 0;
 }
 $erklaert   = $wpdb->get_col("SELECT DISTINCT name FROM {$p}relations_named WHERE kind = 'setting' AND name <> '' AND from_node_id IN (" . implode(',', $kette) . ')') ?: [];
-$erklaert[] = SettingKey::Multiplicity->value;
+$erklaert[] = \Taxmod\Core\Model\EdgeColumn::MULTIPLICITY;
+$erklaert[] = \Taxmod\Core\Model\EdgeColumn::READ_ONLY;
 $erklaert[] = Rendering::KIND_KEY;
 $ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
 check('der Einstellungsbereich bietet Schlüssel an, und jeder ist an der Kette des Ziels erklärt', count($angeboteneSchluessel) >= 3 && $ueberzaehlig === [], 'nicht erklärt: ' . implode(',', $ueberzaehlig));
@@ -1095,19 +1096,23 @@ if ($schluessel !== []) {
     check("mit Haken ist `{$erster}` an der Stelle gesetzt", $a !== null && $a->setHere);
 }
 
-$leseKante = $data->settingRelationAtUseSite($count, SettingKey::ReadOnly->value);
-check('die Einstellungskante «read_only» ist an einer Stelle zu finden', $leseKante !== null);
-if ($leseKante !== null) {
-    $anDerStelle = static fn (): ?bool => ($modell()->forUseSite($count)[SettingKey::ReadOnly->value] ?? null)?->setHere;
-    $data->putSettingAtUseSite($count->id, $leseKante->id, TypedValue::ofBool(true));
-    check('über den Dienst geschrieben, und der Leser findet sie an der Stelle, im Satz der Verwendungsstelle', $anDerStelle() === true && (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' w JOIN ' . Schema::table('node_records') . ' r ON r.id = w.node_record_id WHERE r.relation_id = %d AND w.relation_id = %d', $count->id, $leseKante->id)) === 1);
-    $data->clearSettingAtUseSite($count->id, $leseKante->id);
-    check('herausgenommen, und die Stelle sagt nichts mehr', $anDerStelle() !== true);
-    speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $count->id => ['read_only' => '1']], 'taxmod_field_setting_override' => [(string) $count->id => ['read_only' => '1']]]);
-    check('der Akt der Feldzeile läuft durch, und die Angabe steht danach an der Stelle', letzteMeldung() === 'ok' && $anDerStelle() === true, letzteMeldung());
-    speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $count->id => ['read_only' => '']], 'taxmod_field_setting_override' => [(string) $count->id => ['read_only' => '1']]]);
-    check('der leere Akt nimmt sie wieder heraus', letzteMeldung() === 'ok' && $anDerStelle() !== true);
-}
+// ⚠️ **Seit Schritt 2 des Bauplans (2026-09-11) ist `read_only` eine Spalte der Kante**
+// ([D-714](../../docs/NewConcept/90-decision-log.md)): *keine Einstellungskante, kein Satz — die
+// Feldzeile schreibt in die Spalte, und der Leser liest sie von dort. Die Zusagen von vorher stehen
+// hier in ihrer neuen Form; die Einstellungskante an der Wurzel ist mit Fassung 48 gewandert.*
+check('die Einstellungskante «read_only» gibt es an keiner Stelle mehr', $data->settingRelationAtUseSite($count, 'read_only') === null);
+$anDerStelle = static fn (): bool => $relations->byId($count->id)->readOnly;
+$editor->setReadOnly($modellKnoten->id, $count->id, true);
+check('über den Dienst gesetzt, und die Spalte der Kante sagt es', $anDerStelle() === true && (int) $wpdb->get_var($wpdb->prepare('SELECT read_only FROM ' . Schema::table('relations') . ' WHERE id = %d', $count->id)) === 1);
+check('und die Auflösung an der Stelle liest es aus der Spalte', ($zeichner()->settingsForUseSites([$relations->byId($count->id)])[$count->id]['read_only'] ?? null)?->value->asBool() === true);
+$editor->setReadOnly($modellKnoten->id, $count->id, false);
+check('zurückgenommen, und die Spalte sagt nichts mehr', $anDerStelle() === false);
+speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $count->id => ['read_only' => '1']]]);
+check('der Akt der Feldzeile läuft durch, und die Spalte steht danach', letzteMeldung() === 'ok' && $anDerStelle() === true, letzteMeldung());
+speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $count->id => ['read_only' => '0']]]);
+check('der Schalter auf null nimmt sie wieder heraus', letzteMeldung() === 'ok' && $anDerStelle() === false);
+check('kein Satz ist dabei entstanden', (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('node_records') . " WHERE relation_id = %d AND record_type = 'settings'", $count->id)) === 0);
+$count = $relations->byId($count->id);
 
 // ---------------------------------------------------------------------------------------------------
 
@@ -1172,7 +1177,9 @@ foreach ($relations->fieldRelationsOf([$modellKnoten->id]) as $one) {
 }
 $label = $frisch[$label->id] ?? $label;
 $every = array_map(static fn ($e) => $frisch[$e->id] ?? $e, $every);
-$angabe($mail, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+$mail = $editor->setReadOnly($mail->fromNodeId, $mail->id, true);
+// ⚠️ *Die Spalte hängt am Kantenobjekt — wer die Liste weiterreicht, reicht die neue Fassung weiter.*
+$every = array_map(static fn ($e) => $e->id === $mail->id ? $mail : $e, $every);
 $rendering = $zeichner();
 $closed = [];
 foreach ($rendering->fieldsFor([$label, $mail], $back, Purpose::Edit, 'taxmod_value') as $field) {
@@ -1191,13 +1198,19 @@ $doppelt = $wpdb->num_queries - $before;
 check('das ganze Formular kostet eine feste Zahl Abfragen (CD-7), und doppelt so viele Felder nicht mehr', $spent <= 8 && $doppelt <= $spent, "{$spent} für 7, {$doppelt} für 14");
 
 $intNode = $nodes->byId($seeded['int']->id);
-$angabe($intNode, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
 $rendering = $zeichner();
 $srows = [];
 foreach ($rendering->settingsFor($intNode, $rendering->settingsForNode($intNode)) as $r) {
     $srows[$r->key] = $r;
 }
-check('eine boolesche Einstellung wird als Schiebeschalter gezeichnet (R20a)', isset($srows['read_only']) && $srows['read_only']->wasDrawn() && str_contains($srows['read_only']->result->markup, 'taxmod-toggle-track'));
+// ⚠️ *Der Schalter `read_only` wird seit [D-714](../../docs/NewConcept/90-decision-log.md) an der
+// Feldzeile gezeichnet, aus der Spalte — nicht mehr am Knoten.*
+$krows = [];
+foreach ($rendering->settingsFor($count, $rendering->settingsForUseSites([$count])[$count->id]) as $r) {
+    $krows[$r->key] = $r;
+}
+check('die Spalte read_only wird an der Feldzeile als Schiebeschalter gezeichnet (R20a, D-714)', isset($krows['read_only']) && $krows['read_only']->wasDrawn() && str_contains($krows['read_only']->result->markup, 'taxmod-toggle-track'));
+check('am Knoten gibt es keinen Schalter read_only mehr', ! isset($srows['read_only']));
 check('ein leihender Schlüssel nimmt den Typ des Knotens', isset($srows['step']) ? $srows['step']->type === SimpleType::Int : true);
 $editRows = [];
 foreach ($rendering->settingsFor($intNode, $rendering->settingsForNode($intNode), Purpose::Edit) as $r) {
@@ -1213,10 +1226,10 @@ foreach ($rendering->settingsFor($nodes->byId($intLeer->id), $rendering->setting
     $eigeneZeilen[$r->key] = $r;
 }
 check('eine Wahl ohne Inhalt ist ein totes Steuerelement, kein leeres', isset($eigeneZeilen['converter']) && str_contains($eigeneZeilen['converter']->result->markup ?? '', 'disabled'));
-$angabe($nodes->byId($modellKnoten->id), SettingKey::ReadOnly->value, TypedValue::ofBool(true));
-check('ein Schalter liest sich als Wahrheitswert zurück, nicht als die Zahl eins', ($zeichner()->settingsForNode($nodes->byId($modellKnoten->id))['read_only'] ?? null)?->value->asBool() === true);
-$ohneAngabe($nodes->byId($modellKnoten->id), SettingKey::ReadOnly->value);
-$ohneAngabe($intNode, SettingKey::ReadOnly->value);
+$editor->setReadOnly($modellKnoten->id, $count->id, true);
+check('ein Schalter liest sich als Wahrheitswert zurück, nicht als die Zahl eins', ($zeichner()->settingsForUseSites([$relations->byId($count->id)])[$count->id]['read_only'] ?? null)?->value->asBool() === true);
+$editor->setReadOnly($modellKnoten->id, $count->id, false);
+$count = $relations->byId($count->id);
 
 $formed = $zeichner()->nodeAsForm($nodes->byId($modellKnoten->id), $every, $back, Purpose::Edit, 'taxmod_value');
 $readOnlyAt = strpos($formed->markup, '__es contact');
@@ -1224,7 +1237,7 @@ $ordinaryAt = strpos($formed->markup, '__es count');
 $boolAt     = strpos($formed->markup, '__es in stock');
 check('ein Knoten wird von einem Behälter gezeichnet, nicht von einem Bildschirm (D-098): das Formular steht, nennt seine Kanten', str_contains($formed->markup, 'taxmod-form') && $formed->usedRelations !== []);
 check('nur lesbare Felder vorn, gewöhnliche danach, Schalter zuletzt', $readOnlyAt !== false && $ordinaryAt !== false && $boolAt !== false && $readOnlyAt < $ordinaryAt && $boolAt > $ordinaryAt, "{$readOnlyAt} / {$ordinaryAt} / {$boolAt}");
-$ohneAngabe($mail, SettingKey::ReadOnly->value);
+$mail = $editor->setReadOnly($mail->fromNodeId, $mail->id, false);
 
 // ---------------------------------------------------------------------------------------------------
 
@@ -1295,10 +1308,11 @@ check('ohne verborgenes Feld ist nichts als ausgelassen gemeldet', ! str_contain
 $bandVoll = vorschau($modellKnoten->id);
 check('das Modell mit seinem Satz: die Vorschau sagt, woher die Werte kommen, und zeichnet «__es count»', str_contains($bandVoll, 'Filled from') && str_contains($bandVoll, '__es count'));
 check('ein verborgenes Feld wird als ausgelassen gemeldet, mit Namen', (bool) preg_match('#Left out by hide:[^<]*__es label#', $bandVoll));
-$angabe($count, SettingKey::ReadOnly->value, TypedValue::ofBool(true));
+$editor->setReadOnly($modellKnoten->id, $count->id, true);
 $fixed = vorschau($modellKnoten->id);
 check('read_only lässt die Zeile stehen und meldet sie als nur lesbar — verborgen ist sie nicht', str_contains($fixed, '__es count') && str_contains($fixed, 'read-only'));
-$ohneAngabe($count, SettingKey::ReadOnly->value);
+$editor->setReadOnly($modellKnoten->id, $count->id, false);
+$count = $relations->byId($count->id);
 
 $rendererControl = static function (int $node): string {
     $_GET['taxmod_hidden'] = '1';
@@ -1327,7 +1341,10 @@ foreach ($seiten as $s) {
     $nachName[$s[1]] = trim((string) preg_replace('/\s+/', ' ', strip_tags($s[2])));
 }
 check('die drei Seiten heissen Display, Admin, Settings', count($seiten) === 3 && isset($nachName['Display'], $nachName['Admin'], $nachName['Settings']), implode(', ', array_keys($nachName)));
-check('Admin nennt keine Einstellung, aber seine Felder; Settings nennt read_only und kein Feld', ! str_contains($nachName['Admin'] ?? '', 'read_only') && str_contains($nachName['Admin'] ?? '', '__es count') && str_contains($nachName['Settings'] ?? '', 'read_only') && ! str_contains($nachName['Settings'] ?? '', '__es count'));
+// ⚠️ *«Settings nennt read_only» galt bis Fassung 48 — die Einstellungskante ist gewandert
+// ([D-714](../../docs/NewConcept/90-decision-log.md)); was bleibt: Admin nennt seine Felder und keine
+// Einstellung, Settings nennt kein Feld.*
+check('Admin nennt keine Einstellung, aber seine Felder; Settings nennt kein Feld', ! str_contains($nachName['Admin'] ?? '', 'read_only') && str_contains($nachName['Admin'] ?? '', '__es count') && ! str_contains($nachName['Settings'] ?? '', '__es count'));
 
 $whole = seite($seeded['text']->id);
 check('ein Datentyp zeigt sich selbst als Feld, mit zwei Seiten', substr_count($whole, 'taxmod-preview-side') === 2 && ! str_contains($whole, 'Nothing to preview here'));

@@ -86,7 +86,16 @@ stehen jetzt im Abzug; `data/saat.json` ist neu gezogen, mit `klasse`.*
 - **Noch nicht:** kein Attribut wird aus der Klasse gelesen; die Einstellungen laufen weiter über
   die Kanten.
 
-### Schritt 2 · Die zwei Spalten an der Kante (TASK-094, TASK-095)
+### Schritt 2 · Die zwei Spalten an der Kante (TASK-094, TASK-095) — **gebaut 2026-09-11**
+
+*Gefunden beim Bauen: `relations.multiplicity` war seit Fassung 22 schon Spalte — gefallen ist nur ihr
+Einstellungsschlüssel. Fassung 48: `relations.read_only` (+ Schatten), die Einstellungskante `read_only`
+an der Wurzel gewandert (eine Kante, sieben Wertzeilen, alle am Knoten, alle `0`). `SettingKey` kennt
+weder `read_only` noch `multiplicity`; beide heissen jetzt `EdgeColumn` und werden aus der Spalte
+gezeichnet (Schalter, Wähler) und in die Spalte geschrieben (`ModelEditor::setReadOnly()`,
+`setMultiplicity()`). Modell 1.2.3 gebaut: die Zielklasse schränkt ein, `Bool` nur `1..1` — Vertrag
+`allowedMultiplicities`, der Kern weist ab. Wächter `kantenspalten-check`; `scaffold`, `record-kind`,
+`labels-page-save`, `einstellungen` sichtbar umgestellt.*
 
 - `relations.multiplicity` (Enum, vier Werte) und `relations.read_only`; Fassung 47 füllt sie aus
   den heutigen Wertzeilen, dann fallen die zwei Schlüssel.

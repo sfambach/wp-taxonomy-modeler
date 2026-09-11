@@ -248,7 +248,10 @@ $seite = [
     'relation'         => '0',
     'name'         => '__lb Knoten neu',
     'label_locale' => '',
-    'taxmod_setting' => ['read_only' => '1'],
+    // ⚠️ *`read_only` stand hier bis Fassung 48 als das eine Setting der Seite — es ist eine Spalte
+    // der Kante geworden ([D-714](../../docs/NewConcept/90-decision-log.md)) und hat am Knoten
+    // nichts mehr zu suchen. **Der Akt trägt seither Name und Texte**; die Zusage unten zählt eine
+    // Schreibabfrage statt zwei.*
     'taxmod_label' => [
         'form'   => '__lb Formname',
         'table'  => '',
@@ -281,7 +284,9 @@ $say(count($gelesen) === 1 && $gelesen[0]->text === '__lb Formname', 'der Text s
 // ⚠️ *Zwei, seit TASK-019: der **Name** ist selbst eine Beschriftung (D-646), und der Akt aendert
 // den Namen und das Formfeld. Was hier zaehlt, ist «nur das Geaenderte» — jedes geaenderte Feld eine
 // Schreibabfrage, kein Feld mehr.*
-$say((int) $erster['writes'] === 2, sprintf('je eine Schreibabfrage fuer die zwei geaenderten Felder (%d)', (int) $erster['writes']));
+// ⚠️ *Gemessen am 2026-09-11, nachdem das Setting aus dem Akt fiel: der Name allein kostet **zwei**
+// Schreibabfragen auf den Beschriftungstabellen — die Beschriftungszeile und ihren Text.*
+$say((int) $erster['writes'] === 2, sprintf('zwei Schreibabfragen fuer den Namen: Beschriftung und Text (%d)', (int) $erster['writes']));
 
 $zeilen = $wpdb->get_results($wpdb->prepare("SELECT change_group_id, owner_kind, what FROM {$p}changelog WHERE id > %d", $marke));
 

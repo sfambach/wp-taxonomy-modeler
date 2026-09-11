@@ -126,7 +126,7 @@ enum Multiplicity: string
      * ⚠️ **Exactly one reads `1`, not `1..1`** — the owner's ask, and the stored value is
      * untouched. *`1..1` is a range whose ends happen to meet, which is a sentence about ranges;
      * `1` is what a person means.* UML writes it that way for the same reason, and the docblock of
-     * {@see SettingKey::Multiplicity} already said *a subtype may tighten `0..1` to `1`* — so the
+     * the former setting key `multiplicity` (a column since D-713) already said *a subtype may tighten `0..1` to `1`* — so the
      * screen was the odd one out, not this.
      *
      * ⚠️ **Shown, never parsed.** Storage stays `1..1`, because the value is the enum's and a

@@ -168,7 +168,7 @@ echo "\n== the prefix is optional, because D-039 says so ==\n";
 
 $resolved = $rendering->settingsForUseSites(array_values($members));
 
-$many = ($resolved[$members['prefix']->id][SettingKey::Multiplicity->value] ?? null)?->value->text;
+$many = ($resolved[$members['prefix']->id][\Taxmod\Core\Model\EdgeColumn::MULTIPLICITY] ?? null)?->value->text;
 
 check('prefix is 0..1 and not mandatory', $many === Multiplicity::ZeroToOne->value, (string) $many);
 

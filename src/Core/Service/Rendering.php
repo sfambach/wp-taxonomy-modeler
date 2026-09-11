@@ -7,6 +7,7 @@ use Taxmod\Core\Converter\ConverterRegistry;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Renderer\Renderable;
+use Taxmod\Core\Model\EdgeColumn;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
@@ -23,6 +24,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\Choice;
 use Taxmod\Core\Renderer\ChoiceRenderer;
+use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\DialogChooserRenderer;
@@ -177,8 +179,7 @@ final class Rendering implements Presets
             // ⚠️ *Der Schlüssel und seine eigene Vorgabe, nie ein `?? false` daneben — dieselbe Zeile
             // wie in {@see \Taxmod\Core\Renderer\RenderContext::mayEdit()}
             // ([D-401](../../../docs/NewConcept/90-decision-log.md)).*
-            $readOnly = ($resolved[$relation->id][SettingKey::ReadOnly->value] ?? null)?->value->asBool()
-                ?? SettingKey::ReadOnly->defaultSwitch();
+            $readOnly = ($resolved[$relation->id][EdgeColumn::READ_ONLY] ?? null)?->value->asBool() ?? false;
 
             $preset = SpecialisedTypes::for($type)->presetFor($readOnly, $signedIn);
 
@@ -624,10 +625,20 @@ final class Rendering implements Presets
         $aus = [];
 
         foreach ($relations as $relation) {
+            // ⚠️ **Zwei Spalten der Kante, als Angaben gereicht** ([D-713](90-decision-log.md),
+            // [D-714](90-decision-log.md)): *keine Einstellungen, aber die Feldzeile zeichnet sie
+            // neben den Einstellungen, und ein Renderer fragt `read_only` unter diesem Namen
+            // ({@see RenderContext::mayEdit()}). Die Spalte ist die Wahrheit, die Angabe ihr Abbild.*
             $aus[$relation->id] = [
-                SettingKey::Multiplicity->value => new ResolvedSetting(
-                    SettingKey::Multiplicity->value,
+                EdgeColumn::MULTIPLICITY => new ResolvedSetting(
+                    EdgeColumn::MULTIPLICITY,
                     TypedValue::ofText($relation->multiplicity->value),
+                    $relation->id,
+                    true
+                ),
+                EdgeColumn::READ_ONLY => new ResolvedSetting(
+                    EdgeColumn::READ_ONLY,
+                    TypedValue::ofBool($relation->readOnly),
                     $relation->id,
                     true
                 ),
@@ -1075,7 +1086,7 @@ final class Rendering implements Presets
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
-                $context->setting(SettingKey::ReadOnly->value)?->asBool() ?? SettingKey::ReadOnly->defaultSwitch(),
+                $context->setting(EdgeColumn::READ_ONLY)?->asBool() ?? false,
                 '',
                 // ⚠️ *Aus demselben Grund mitgegeben: der Behälter zeichnet das Fragezeichen und
                 // darf nichts nachschlagen ([D-662](../../../docs/NewConcept/90-decision-log.md)).*
@@ -1807,7 +1818,7 @@ final class Rendering implements Presets
                 $rowForm,
                 $relation->fromNodeId === $declaredBy,
                 // ⚠️ *Zugeklappt: genau der eine Schlüssel, den die Zeile selbst zeigt.*
-                $offen ? [] : [SettingKey::Multiplicity->value],
+                $offen ? [] : [EdgeColumn::MULTIPLICITY],
                 // ⚠️ *Der Knoten dieser Seite — er sagt, welcher Renderer hier gilt
                 // ([D-682](../../../docs/NewConcept/90-decision-log.md)).*
                 $declaredBy
@@ -2450,8 +2461,13 @@ final class Rendering implements Presets
 
         // ⚠️ *Sie hängt als Spalte an der Kante und ist nirgends als Kante erklärt — aus dem Modell
         // käme sie nie zurück, und die zugeklappte Feldzeile fragt genau nach ihr.*
+        // ⚠️ **Und seit Schritt 2 des Bauplans beide Spalten** ([D-713](90-decision-log.md),
+        // [D-714](90-decision-log.md)): *eine Modellkante, die so heisst, wird unten übergangen — sie
+        // wäre die zweite Heimat derselben Tatsache.*
         if ($istKante) {
-            $aus[SettingKey::Multiplicity->value] = null;
+            foreach (EdgeColumn::all() as $spalte) {
+                $aus[$spalte] = null;
+            }
         }
 
         $kanten = $this->model->declaredSettingEdges($node);
@@ -2464,9 +2480,13 @@ final class Rendering implements Presets
         }
 
         foreach ($kanten as $name => $kante) {
+            if (EdgeColumn::isOne((string) $name)) {
+                continue;
+            }
+
             $key = SettingKey::tryFrom($name);
 
-            if ($key !== null && ($key->isRelationOnly() || ($key->isNodeOnly() && $istKante))) {
+            if ($key !== null && $key->isNodeOnly() && $istKante) {
                 continue;
             }
 
@@ -2557,7 +2577,9 @@ final class Rendering implements Presets
         Level $level,
         bool $editable,
     ): string {
-        unset($configured[SettingKey::Multiplicity->value], $configured[self::KIND_KEY]);
+        // ⚠️ *«Wie oft» und die Art stehen in eigenen Zellen der Feldzeile; `read_only` bleibt im
+        // Bereich, als Schalter ([D-714](90-decision-log.md)).*
+        unset($configured[EdgeColumn::MULTIPLICITY], $configured[self::KIND_KEY]);
 
         if ($configured === []) {
             return '';
@@ -2696,6 +2718,21 @@ final class Rendering implements Presets
         // decides nothing is the dead code `CLAUDE.md` forbids outright.*
 
         foreach ($resolved as $key => $setting) {
+            // ⚠️ **Die zwei Spalten der Kante zuerst** ([D-713](90-decision-log.md), [D-714](90-decision-log.md)):
+            // *keine Schlüssel, keine Kanten — Spalten, und als solche gezeichnet. Nur «wie oft» folgt
+            // dem Besitzer der Kante ([D-376](90-decision-log.md)); `read_only` gehört der Stelle.*
+            if ($node instanceof Relation && $key === EdgeColumn::MULTIPLICITY) {
+                $drawn[] = $this->drawMultiplicity($node, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $formId, $editable);
+
+                continue;
+            }
+
+            if ($node instanceof Relation && $key === EdgeColumn::READ_ONLY) {
+                $drawn[] = $this->drawEdgeSwitch($node, $key, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $formId);
+
+                continue;
+            }
+
             $engineKey = SettingKey::tryFrom($key);
             $shape     = $engineKey?->shape() ?? SettingShape::Words;
             $type      = $engineKey?->typeFor($subject);
@@ -2706,9 +2743,7 @@ final class Rendering implements Presets
             // has no type the engine can know, and a borrowing key on a subject with no type of its
             // own has no shape to be drawn in.*
             if ($engineKey !== null && $shape->isAChoice()) {
-                // ⚠️ *Nur «wie oft» folgt der Kante; jede andere Einstellung darf an dieser
-                // Stelle überschrieben werden ([D-602](../../../docs/NewConcept/90-decision-log.md)).*
-                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId, $engineKey === SettingKey::Multiplicity ? $editable : true);
+                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId);
 
                 continue;
             }
@@ -3082,7 +3117,7 @@ final class Rendering implements Presets
 
             $shown[] = $relation;
 
-            if ((($keys[SettingKey::ReadOnly->value] ?? null)?->value->asBool() ?? SettingKey::ReadOnly->defaultSwitch()) === true) {
+            if ((($keys[EdgeColumn::READ_ONLY] ?? null)?->value->asBool() ?? false) === true) {
                 $fixed[] = $relation->id;
             }
         }
@@ -3538,6 +3573,119 @@ final class Rendering implements Presets
      * state, because [D-219](90-decision-log.md) decided converters and none is built. R28–R32 asked
      * for exactly that rather than an empty box that looks fillable.*
      */
+    /**
+     * «Wie oft» — die Spalte `multiplicity` der Kante, als Wahl aus den vier Werten gezeichnet
+     * ([D-713](90-decision-log.md)).
+     *
+     * ⚠️ **Nie nichts** (D-379): *der Wähler bietet keine leere Zeile an; ungesetzt liest sich die
+     * Vorgabe.* ⚠️ **Die Zielklasse schränkt ein** (Modell 1.2.3): *ein `bool` bekommt nur `1..1`
+     * angeboten — sein Wort «bool = 1..1, an knotenklasse bool». Gefragt wird der Vertrag der
+     * Zielklasse und keine Liste hier.* ⚠️ *Nur «wie oft» folgt dem Besitzer der Kante
+     * ([D-376](90-decision-log.md)): eine geerbte Kante gehört dem Vorfahren, also ist der Wähler
+     * dort gesperrt.*
+     */
+    private function drawMultiplicity(
+        Relation $subject,
+        ResolvedSetting $setting,
+        Purpose $purpose,
+        string $fieldPrefix,
+        string $locale,
+        Level $level,
+        ?SimpleType $subjectType,
+        string $formId,
+        bool $editable,
+    ): RenderedSetting {
+        $setting = new ResolvedSetting(
+            EdgeColumn::MULTIPLICITY,
+            TypedValue::ofText(Multiplicity::fromSetting($setting->value->text)->value),
+            $setting->fromOwnerId,
+            $setting->setHere
+        );
+
+        $ziel    = $this->nodes->find($subject->toNodeId);
+        $vertrag = $ziel === null ? null : \Taxmod\Core\Model\NodeClass\Contracts::of($ziel->klasse);
+        $options = [];
+
+        foreach (Multiplicity::cases() as $one) {
+            if ($vertrag !== null && ! $vertrag->allowsMultiplicity($one)) {
+                continue;
+            }
+
+            // ⚠️ The **notation**, deliberately not translated — `0..1` is not English and
+            // survives a locale change without a label.
+            $options[$one->value] = $one->notation();
+        }
+
+        $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
+
+        return new RenderedSetting(
+            EdgeColumn::MULTIPLICITY,
+            SettingShape::OneOfFour,
+            null,
+            $setting,
+            $renderer->render(
+                $subject,
+                new RenderContext(
+                    purpose: $purpose,
+                    value: $setting->value,
+                    settings: [],
+                    locale: $locale,
+                    level: $level,
+                    fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . EdgeColumn::MULTIPLICITY . ']',
+                    editable: $editable,
+                    surroundings: new Surroundings(options: $options, mayBeNothing: false, formId: $formId)
+                )
+            ),
+            $renderer->name(),
+            $subjectType
+        );
+    }
+
+    /**
+     * Ein Schalter der Kante — heute `read_only` ([D-714](90-decision-log.md)) — als Schiebeschalter.
+     *
+     * ⚠️ *Eine Spalte, kein Schlüssel und keine Kante: die Angabe kommt aus {@see vonDenKanten()},
+     * das Feld heisst wie die Spalte, und der Rand schreibt sie in die Spalte zurück
+     * ({@see \Taxmod\WordPress\Admin\NodesScreen::saveField()}). Der Schalter schickt `0` oder `1`
+     * ([D-370](90-decision-log.md)), also gibt es kein «nichts».*
+     */
+    private function drawEdgeSwitch(
+        Relation $subject,
+        string $column,
+        ResolvedSetting $setting,
+        Purpose $purpose,
+        string $fieldPrefix,
+        string $locale,
+        Level $level,
+        ?SimpleType $subjectType,
+        string $formId,
+    ): RenderedSetting {
+        $renderer = $this->renderers->byName(ToggleRenderer::NAME);
+
+        return new RenderedSetting(
+            $column,
+            SettingShape::Switch,
+            SimpleType::Bool,
+            $setting,
+            $renderer->render(
+                $subject,
+                new RenderContext(
+                    purpose: $purpose,
+                    value: TypedValue::ofBool($setting->value->asBool()),
+                    settings: [],
+                    locale: $locale,
+                    level: $level,
+                    fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $column . ']',
+                    type: SimpleType::Bool,
+                    editable: true,
+                    surroundings: new Surroundings(formId: $formId)
+                )
+            ),
+            $renderer->name(),
+            $subjectType
+        );
+    }
+
     private function drawChoice(
         Renderable $subject,
         SettingKey $key,
@@ -3550,22 +3698,6 @@ final class Rendering implements Presets
         ?SimpleType $subjectType = null,
         array $choices = [],
         string $formId = '',
-        /**
-         * Ob die **Kante selbst** hier erklärt ist — und damit **nur** für «wie oft» massgeblich.
-         *
-         * ⚠️ **Hier wirkte dieser Schalter auf die ganze Einstellungsbereich, und das war der Grund, warum er die
-         * Renderer-Einstellungen nicht setzen konnte.** *[D-376](../../../docs/NewConcept/90-decision-log.md)
-         * gilt für die **Mehrfachheit**: «wie oft» gehört der Kante, und eine geerbte Kante gehört
-         * dem Vorfahren. **Eine Einstellung gehört dagegen der Stelle** — sie überall überschreiben
-         * zu können ist der ganze Zweck der Auflösungskette ([D-015](../../../docs/NewConcept/90-decision-log.md),
-         * [D-602](../../../docs/NewConcept/90-decision-log.md): näher schlägt ferner).*
-         *
-         * ⚠️ **Gemessen an `Parts List`:** *die `renderer`-Kante ist an `Root` erklärt, also stand die
-         * ganze Einstellungsbereich gesperrt — `label_role` als graues `<select disabled>`, `with_label` als leeres
-         * Feld ohne Schalter. **Sein Befund «with without label wurd auch nicht mitgespiechert» war
-         * kein Speicherfehler: es war nie bedienbar.***
-         */
-        bool $editable = true,
     ): RenderedSetting {
         $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
         $options  = [];
@@ -3574,40 +3706,7 @@ final class Rendering implements Presets
         // empty, the default is `0..1`* — so the chooser offers no blank option and an unset setting
         // arrives already reading the standard. *Every other setting may be left unsaid, which is
         // what makes settings sparse (D-015); this one has a meaning when unsaid instead.*
-        $mayBeNothing = $shape !== SettingShape::OneOfFour;
-
-        if ($shape === SettingShape::OneOfFour) {
-            $setting = new ResolvedSetting(
-                $setting->key,
-                TypedValue::ofText(Multiplicity::fromSetting($setting->value->text)->value),
-                $setting->fromOwnerId,
-                $setting->setHere
-            );
-
-            foreach (Multiplicity::cases() as $one) {
-                // ⚠️ **Ein `bool` bekommt keine Untergrenze null angeboten** ([D-412](../../../docs/NewConcept/90-decision-log.md)),
-                // auf sein Wort: *«ein `bool` hat genau zwei Zustände … und ein `bool` darf keine
-                // Multiplizität von null haben.»* `0..1` hiesse «vielleicht wahr, vielleicht falsch,
-                // vielleicht keins» — und ein Drittes gibt es nicht.
-                //
-                // ⚠️ *Gefragt wird {@see Multiplicity::requiresOne()} und **nicht** eine Liste der
-                // beiden Werte: die Frage «verlangt das eine Antwort» ist genau die, die hier
-                // gestellt wird, und sie hat schon eine Stelle. Eine zweite Aufzählung daneben wäre
-                // dieselbe Tatsache doppelt.*
-                //
-                // ⚠️ *Das ist `R28` — **ein Steuerelement bietet nur echte Wahlen an**. Die
-                // Speicherseite kannte die Regel längst: der Schalter schreibt eine verborgene `0`
-                // neben die Ankreuzbox ([D-370](../../../docs/NewConcept/90-decision-log.md)), damit
-                // ein leeres Kästchen `false` sendet statt nichts. **Nur der Wähler log noch.***
-                if ($subjectType === SimpleType::Bool && ! $one->requiresOne()) {
-                    continue;
-                }
-
-                // ⚠️ The **notation**, deliberately not translated — `0..1` is not English and
-                // survives a locale change without a label.
-                $options[$one->value] = $one->notation();
-            }
-        }
+        $mayBeNothing = true;
 
         // ⚠️ **A set the boundary knows takes precedence over anything worked out here**
         // ([D-390](90-decision-log.md)). Which **icons** an installation offers is a boundary fact
@@ -3741,7 +3840,7 @@ final class Rendering implements Presets
                     // **sie fehlte**: gemessen an `render with label` war **keine einzige** Auswahl
                     // gesperrt, auch nicht bei den drei geerbten Zeilen. Die Zeile wusste es (ihre
                     // Spalte «From» sagte `inherited`) und gab es nicht weiter.*
-                    editable: $editable,
+                    editable: true,
                     surroundings: new Surroundings(options: $options, mayBeNothing: $mayBeNothing, formId: $formId)
                 )
             ),

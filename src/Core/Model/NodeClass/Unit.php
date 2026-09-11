@@ -36,4 +36,9 @@ final class Unit implements NodeClass
     {
         return 'unit';
     }
+
+    public static function allowedMultiplicities(): array
+    {
+        return [];
+    }
 }

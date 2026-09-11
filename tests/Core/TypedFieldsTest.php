@@ -626,7 +626,7 @@ final class TypedFieldsTest extends TestCase
             $fixed = $renderer->render(
                 $this->subject,
                 $this->context(Purpose::Edit, TypedValue::ofText('x'), SimpleType::Text, [
-                    SettingKey::ReadOnly->value => TypedValue::ofBool(true),
+                    \Taxmod\Core\Model\EdgeColumn::READ_ONLY => TypedValue::ofBool(true),
                 ], 'v[7]')
             );
 

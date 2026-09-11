@@ -50,4 +50,15 @@ interface NodeClass
      * Der maschinennahe Name der Klasse, den der Rand übersetzt (`AR-2`) — etwa `category`.
      */
     public static function classKey(): string;
+
+    /**
+     * Welche Multiplizitäten ein Feld tragen darf, das auf einen Knoten dieser Klasse zeigt —
+     * **leer heisst: alle vier** (Modell 1.2.3).
+     *
+     * ⚠️ **Sein Wort** ([D-713](../../../../docs/NewConcept/90-decision-log.md)): *«bool = 1..1, an
+     * knotenklasse bool»*, und die Regel: *eine Klasse schränkt nur ein, wenn sie kein «leer» kennt.*
+     *
+     * @return list<\Taxmod\Core\Model\Multiplicity>
+     */
+    public static function allowedMultiplicities(): array;
 }

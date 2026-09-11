@@ -76,6 +76,7 @@ abstract class Relation extends Identity implements Renderable
         ?int $parkedByGroup,
         bool $hide,
         Multiplicity $multiplicity,
+        bool $readOnly = false,
     ): self {
         $klasse = self::classFor($kind);
 
@@ -89,7 +90,8 @@ abstract class Relation extends Identity implements Renderable
             $sortOrder,
             $parkedByGroup,
             $hide,
-            $multiplicity
+            $multiplicity,
+            $readOnly
         );
     }
 
@@ -174,6 +176,19 @@ abstract class Relation extends Identity implements Renderable
          * **bedeutete** die Vorgabe; als Spalte steht sie überall, mit demselben Ergebnis.*
          */
         public readonly Multiplicity $multiplicity = Multiplicity::ExactlyOne,
+        /**
+         * Ob das Feld an dieser Stelle nur lesbar ist — **eine Spalte, seit [D-714](../../../docs/NewConcept/90-decision-log.md)**.
+         *
+         * ⚠️ **Sein Wort:** *«read_only braucht es, glaube ich, nur an der kante»* — dann *«read_only
+         * stimmt, ein umfängliches ja»* — und zuletzt: *«alles andere ist teil der kante.»* Es gibt
+         * kein `read_only` am Knoten mehr; die Einstellungskante an der Wurzel ist mit Fassung 48
+         * gewandert.
+         *
+         * ⚠️ *Eine Spalte und keine Einstellung, aus demselben Grund wie `multiplicity`: jede Kante
+         * hat sie genau einmal, und nichts überschreibt sie — die Kante ist das Ende der Auflösung
+         * ([`einstellungen-von-null.md`](../../../docs/einstellungen-von-null.md), «Spalte statt Zeile»).*
+         */
+        public readonly bool $readOnly = false,
     ) {
         // ⚠️ *Wie beim Knoten: die zwei gemeinsamen Felder wohnen bei {@see Identity}.*
         parent::__construct($id, $version, $name);
@@ -202,6 +217,7 @@ abstract class Relation extends Identity implements Renderable
         ?bool $hide = null,
         ?Multiplicity $multiplicity = null,
         bool $unpark = false,
+        ?bool $readOnly = null,
     ): self {
         return self::make(
             $this->id,
@@ -214,6 +230,7 @@ abstract class Relation extends Identity implements Renderable
             $unpark ? null : ($parkedByGroup ?? $this->parkedByGroup),
             $hide ?? $this->hide,
             $multiplicity ?? $this->multiplicity,
+            $readOnly ?? $this->readOnly,
         );
     }
 
@@ -306,6 +323,7 @@ abstract class Relation extends Identity implements Renderable
             $this->parkedByGroup,
             $this->hide,
             $this->multiplicity,
+            $this->readOnly,
         );
     }
 
@@ -320,6 +338,7 @@ abstract class Relation extends Identity implements Renderable
         ?int $parkedByGroup = null,
         bool $hide = false,
         string $multiplicity = '1..1',
+        bool $readOnly = false,
     ): self {
         return self::make(
             $id,
@@ -334,8 +353,22 @@ abstract class Relation extends Identity implements Renderable
             // ⚠️ *Ein unbekannter Wert fällt auf die Vorgabe zurück statt zu werfen: die Spalte
             // kam mit [D-528](../../../docs/NewConcept/90-decision-log.md) und alte Zeilen sollen
             // lesbar bleiben.*
-            Multiplicity::tryFrom($multiplicity) ?? Multiplicity::ExactlyOne
+            Multiplicity::tryFrom($multiplicity) ?? Multiplicity::ExactlyOne,
+            $readOnly
         );
+    }
+
+    /**
+     * Dieselbe Kante, nur lesbar oder wieder änderbar — eine Version weiter
+     * ([D-714](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    public function withReadOnly(bool $readOnly): self
+    {
+        if ($readOnly === $this->readOnly) {
+            return $this;
+        }
+
+        return $this->copy(version: $this->version + 1, readOnly: $readOnly);
     }
 
     /** The same relation pointing at a new parent, one version on. */

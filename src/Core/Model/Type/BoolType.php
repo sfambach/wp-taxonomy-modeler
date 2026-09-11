@@ -13,6 +13,16 @@ use Taxmod\Core\Model\TypedValue;
  */
 final class BoolType extends SpecialisedType
 {
+    /**
+     * ⚠️ **Nur `1..1`** — sein Wort ([D-713](../../../../docs/NewConcept/90-decision-log.md)): *«bool =
+     * 1..1, an knotenklasse bool.»* *Ein Wahrheitswert kennt kein «leer», das sich von «nein»
+     * unterscheidet, und eine Liste von Ja/Nein ohne Namen ist kaum sinnvoll.*
+     */
+    public static function allowedMultiplicities(): array
+    {
+        return [\Taxmod\Core\Model\Multiplicity::ExactlyOne];
+    }
+
     public function type(): SimpleType
     {
         return SimpleType::Bool;

@@ -54,7 +54,7 @@ final class SeedImage
         'labels'           => ['id', 'version', 'owner_kind', 'icon'],
         'label_texts'      => ['id', 'label_id', 'locale', 'number', 'text_name', 'text_form', 'text_table', 'text_select', 'text_help', 'text_symbol'],
         'nodes'            => ['id', 'version', 'label_id', 'implemented_by', 'parent_node_id', 'sort_order', 'hide', 'klasse'],
-        'relations'        => ['id', 'version', 'from_node_id', 'to_node_id', 'kind', 'label_id', 'sort_order', 'multiplicity', 'hide'],
+        'relations'        => ['id', 'version', 'from_node_id', 'to_node_id', 'kind', 'label_id', 'sort_order', 'multiplicity', 'hide', 'read_only'],
         'node_records'     => ['id', 'version', 'node_id', 'node_version', 'created_at', 'record_type', 'relation_id'],
         'relation_records' => ['id', 'node_record_id', 'relation_id', 'locale', 'position', 'version', 'value_int', 'value_decimal', 'value_text', 'value_date', 'value_ref', 'value_ref_kind'],
     ];
@@ -356,6 +356,12 @@ final class SeedImage
                     // holt das beim nächsten Fassungslauf nach ([D-716](../../../docs/NewConcept/90-decision-log.md)).*
                     if ($value === null && $column === 'klasse') {
                         $value = '';
+                    }
+
+                    // ⚠️ *Dasselbe für `read_only` (Fassung 48): ein älterer Abzug kennt die Spalte
+                    // nicht, und «nichts gesagt» ist `0` — die Vorgabe der Spalte.*
+                    if ($value === null && $column === 'read_only') {
+                        $value = '0';
                     }
 
                     if ($value === null) {

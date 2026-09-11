@@ -145,6 +145,6 @@ final class BaseScaffold
      * die Zahlentypen und die erklaerten Vorgaben der Schalter, beide in die `settings`-Tabelle
      * geschrieben. **Die Tabelle ist mit D-579 gestrichen**, und mit ihr der einzige Ort, an den
      * sie schrieben. *Was ein Schalter bedeutet, wenn niemand etwas gesagt hat, sagt seither
-     * `SettingKey::defaultSwitch()` im Kern — eine Zeile weniger, die widersprechen kann.*
+     * die Spalte `relations.read_only` (D-714) — eine Zeile weniger, die widersprechen kann.*
      */
 }

@@ -107,7 +107,7 @@ final class RendererTest extends TestCase
         $result = (new PlainRenderer())->render(
             $this->subject,
             $this->context(Purpose::Edit, TypedValue::ofText('x'), [
-                SettingKey::ReadOnly->value => TypedValue::ofBool(true),
+                \Taxmod\Core\Model\EdgeColumn::READ_ONLY => TypedValue::ofBool(true),
             ], 'v')
         );
 

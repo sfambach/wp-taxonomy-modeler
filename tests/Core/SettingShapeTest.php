@@ -31,9 +31,10 @@ final class SettingShapeTest extends TestCase
         // ⚠️ `mandatory` was here until [D-405]: the multiplicity says it, so the key is gone.
         // ⚠️ *Zwei, nicht drei: `hide` ist seit [D-457] eine Spalte und kein Schalter mehr.*
         // ⚠️ *Einer, nicht zwei: `persistent` ist seit [D-538] gefallen — die Relationsart sagt es.*
-        foreach ([SettingKey::ReadOnly] as $key) {
-            self::assertSame(SettingShape::Switch, $key->shape(), $key->value);
-            self::assertSame(SimpleType::Bool, $key->typeFor(null), $key->value);
+        // ⚠️ *Keiner mehr: `read_only` ist seit [D-714] eine Spalte der Kante. Die Form `Switch`
+        // bleibt, weil die Feldzeile die Spalte als Schalter zeichnet — nur kein Schlüssel trägt sie.*
+        foreach (SettingKey::cases() as $key) {
+            self::assertNotSame(SettingShape::Switch, $key->shape(), $key->value);
         }
     }
 
@@ -70,7 +71,7 @@ final class SettingShapeTest extends TestCase
     #[Test]
     public function the_two_choices_are_choices_and_not_typed_fields(): void
     {
-        foreach ([SettingKey::Multiplicity, SettingKey::Renderer, SettingKey::Converter] as $key) {
+        foreach ([SettingKey::Renderer, SettingKey::Converter] as $key) {
             self::assertTrue($key->shape()->isAChoice(), $key->value);
             self::assertNull($key->typeFor(SimpleType::Int), $key->value);
         }
@@ -81,7 +82,10 @@ final class SettingShapeTest extends TestCase
     {
         // ⚠️ Both are chosen, and from different kinds of set: D-351's four constants are fixed,
         // while what a registry answers to grows with every renderer registered (R14).
-        self::assertSame(SettingShape::OneOfFour, SettingKey::Multiplicity->shape());
+        // ⚠️ *Die Multiplizität ist seit [D-713] keine Einstellung mehr, sondern eine Spalte der
+        // Kante — die geschlossene Menge der vier Werte lebt bei `Multiplicity` selbst.*
+        self::assertNull(SettingKey::tryFrom('multiplicity'));
+        self::assertCount(4, \Taxmod\Core\Model\Multiplicity::cases());
         self::assertSame(SettingShape::ARegisteredName, SettingKey::Renderer->shape());
     }
 
