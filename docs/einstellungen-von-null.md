@@ -764,13 +764,13 @@ settings, wo es vielleicht besser aufgehoben ist.»*
 | Attribut | am Knoten | an der Kante | Stand |
 |---|---|---|---|
 | `default` | — | — | **fällt.** Ein Vorgabewert ist ein Datensatz der Art `default`, kein Attribut. |
-| `read_only` | — | eigen | **nur an der Kante** (*«glaube ich»* — bestätigen, wenn der Fall kommt) |
+| `read_only` | — | **Spalte** | **nur an der Kante**, als Spalte der Kantentabelle (siehe «Spalte statt Zeile») |
 | `min`, `max`, `step` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
 | `icon` | — | — | **fällt aus der Liste: wohnt in den Labels**, als Deko |
 | `converter`, `validator`, `renderer` | eigen | überschreibt | **Knoten besitzt, Kante überschreibt** |
 | `display_size` | eigen, **alle Knoten** | überschreibt | **Knoten besitzt, Kante überschreibt** |
 | `factor`, `offset` | eigener Knoten | — | **wahrscheinlich ein eigener Knoten** mit Faktor und Offset — für Präfixe, aber auch für Umrechnungen wie Temperatur |
-| `multiplicity` | — | eigen | **nur an der Kante** |
+| `multiplicity` | — | **Spalte** | **nur an der Kante**, als Spalte der Kantentabelle (siehe «Spalte statt Zeile») |
 | `position` | — | — | **kein Attribut, sondern Struktur:** die Spalte `stelle` am Knoten (unter seinem Vater) und an der Kante (in der Feldliste) |
 
 *Seine dritte Verfeinerung, 2026-09-11: «positionen haben wir viele: die der kante in der feldliste,
@@ -938,7 +938,22 @@ Knotenattributs neu — wie im Abschnitt «Kanten sind auch Klassen» beschriebe
 kante überschreibbar sein, das vereinfacht es.»* Damit ist die Spalte «an der Kante» für jedes
 Knotenattribut dieselbe: **überschreibt**. Es gibt keine Liste, welche Attribute die Kante anfassen
 darf und welche nicht. Eigene Attribute hat die Kante nur dort, wo der Knoten keines hat
-(`read_only`, `multiplicity`).
+(`read_only`, `multiplicity`) — und beide sind Spalten, keine Zeilen:
+
+**Spalte statt Zeile — entschieden, 2026-09-11.** Sein Anstoss: *«bei multiplizität war ich mir
+eigentlich immer eine spalte der kante vorgestellt; wenn es einfacher ist, müssen wir das aber nicht
+so machen — ich glaube, es widerspricht sogar unserem beschluss.»* Und auf den Vorschlag, beide
+Kantenattribute als Spalten zu führen: *«read_only stimmt, ein umfängliches ja.»*
+
+*Die Regel, die den Beschluss nicht bricht, sondern schärft:* **ein Attribut der Basisklasse, das
+jedes Objekt genau einmal trägt, nie als Liste, und das nichts überschreibt, ist eine Spalte.** Der
+Vertrag kennt es trotzdem und sagt der Maske, dass es aus der Spalte kommt. Genau so ist `position`
+schon zu `stelle` geworden. `multiplicity` und `read_only` sind derselbe Fall: jede Kante hat sie,
+einmal, und die Kante ist das Ende der Auflösung — nichts überschreibt sie. Die Datenbank kann eine
+Spalte als Pflicht prüfen, eine Zeile nicht.
+
+*Die Folge: die Kante hat keine eigenen Zeilen mehr. `kante_id` in der Zeile ist nur noch der
+Zusatz «gilt an dieser Kante», nie allein — eine Sonderbedeutung weniger.*
 
 ### Multiplizität — das eine Attribut, das jede Kante hat
 
@@ -1051,6 +1066,8 @@ erDiagram
     ref von_knoten_id
     ref zu_knoten_id
     int stelle
+    string multiplicity "0..1 | 1..1 | 0..* | 1..*"
+    bool read_only
   }
   SATZ {
     id id
@@ -1060,7 +1077,7 @@ erDiagram
     id id
     ref knoten_id "knoten_id oder satz_id oder keines"
     ref satz_id
-    ref kante_id "dazu wahlweise: gilt nur an dieser Kante; allein: eigenes Kantenattribut"
+    ref kante_id "dazu wahlweise: gilt nur an dieser Kante; nie allein"
     string klasse "erklärende Klasse"
     string attribut
     int position
@@ -1123,8 +1140,8 @@ erDiagram
    anderer Stelle» ist `knoten_id` = Kontakt, `kante_id` = Kante, `attribut` = `renderers`,
    `wert_satz_id` = der Satz des Eintrags, dazu `aktiv` und `position` — der Eintrag ist über seinen
    Satz benannt (L3), bei einfachen Listen über den Wert selbst. Eigene Kantenattribute
-   (`multiplicity`) haben nur `kante_id`. Im Diagramm unten heisst das: `knoten_id`, `satz_id` oder
-   keines von beiden, **und** `kante_id` wahlweise dazu.*
+   (`multiplicity`, `read_only`) sind Spalten der Kante, keine Zeilen. Im Diagramm unten heisst das:
+   `knoten_id` oder `satz_id`, **und** `kante_id` wahlweise dazu — nie allein.*
    **Seine Warnung dazu, aus Erfahrung:** *«vorsicht beim ersten verwenden, also bei der vorgabe:
    zum beispiel im int-knoten muss die ausgabe mit den default-einstellungen übereinstimmen, sonst
    sieht der benutzer ein bool 'on', aber da nichts im datensatz steht, wird es nicht berücksichtigt.
@@ -1149,7 +1166,8 @@ erDiagram
    dem Bauen eines umbenennen, sonst kommt der nächste Fehler aus dem Namen. *Vorschlag: «Objekt».*
 8. **L8 · `read_only` nur an der Kante — mit seinem «glaube ich».** Ein Knoten, der überall nur
    lesbar sein soll (ein berechneter Wert), müsste es an jeder Kante einzeln bekommen. Kein Fehler,
-   aber noch nicht bestätigt.
+   aber noch nicht bestätigt. **Bestätigt, 2026-09-11:** *«read_only stimmt»* — nur an der Kante,
+   als Spalte.
 9. **L9 · Icon je Klasse.** Als «philosophiert» notiert; wenn es kommt, ist es Vertrag (Code), kein
    Modell. Keine Entscheidung nötig, nur damit es nicht verloren geht.
 
