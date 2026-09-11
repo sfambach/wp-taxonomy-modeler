@@ -2364,9 +2364,12 @@ final class NodesScreen
                     true,
                     false,
                     '',
-                    '',
+                    // ⚠️ *Der Knopf und die Radios nennen das Formular der Feldzeile — beide stehen ausserhalb davon,
+                    // in der Zielzelle. Ohne das schickte der Knopf nichts (sein Befund, 2026-09-11).*
+                    \Taxmod\Core\Renderer\FieldRowRenderer::formFor($relation),
                     true
-                ))
+                )),
+                \Taxmod\Core\Renderer\FieldRowRenderer::formFor($relation)
             )->markup;
         }
 
@@ -3742,6 +3745,18 @@ final class NodesScreen
      * ([D-392](../../../docs/NewConcept/90-decision-log.md)). One form holds the whole panel now, so
      * the key cannot ride in a hidden field — a single field could only say one row.
      */
+    /**
+     * Das neue Ziel eines Feldes, wie der Dialog «Change type» es schickt: das Radio `retarget_<Kante>`.
+     *
+     * ⚠️ **Gefehlt seit dem Commit, der den Akt einführte** — der Rand rief eine Methode, die es nie gab; jeder
+     * Klick endete stumm. *Sein Befund am 2026-09-11: «change type button macht nichts».* Gelesen wie das Ziel
+     * beim Verschieben (`CD-5`): eine Zahl, sonst null — und null lässt den Kern den fehlenden Knoten benennen.
+     */
+    private function retargetTo(int $relation): int
+    {
+        return isset($_POST['retarget_' . $relation]) ? absint($_POST['retarget_' . $relation]) : 0;
+    }
+
     private function submittedAct(): string
     {
         $raw = $_POST['do'] ?? '';

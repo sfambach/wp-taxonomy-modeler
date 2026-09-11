@@ -1265,6 +1265,7 @@ final class Rendering implements Presets
         // «nicht inline». So the surface hands in its own trigger and the renderer stops guessing.*
         string $trigger = '',
         string $confirm = '',
+        string $formId = '',
     ): RenderResult {
         $barred = [];
 
@@ -1277,7 +1278,7 @@ final class Rendering implements Presets
         // ⚠️ **One value for every cell, because the radio has to know which row is checked** — and
         // the checked row is a property of the *chooser*, not of the node. *`cellsFor()` hands every
         // cell the same context apart from its own settings, which is exactly what is wanted here.*
-        $cells = $this->cellsForChoosing($nodes, $fieldName, $chosen, $barred, $locale, $level);
+        $cells = $this->cellsForChoosing($nodes, $fieldName, $chosen, $barred, $locale, $level, $formId);
         $tree  = $this->renderers->byName(TreeRenderer::NAME)->render(
             $nodes[0] ?? Node::create(0, '', null),
             new RenderContext(
@@ -1334,6 +1335,7 @@ final class Rendering implements Presets
         array $barred,
         string $locale,
         Level $level,
+        string $formId = '',
     ): array {
         if ($nodes === []) {
             return [];
@@ -1353,7 +1355,9 @@ final class Rendering implements Presets
                     locale: $locale,
                     level: $level,
                     fieldName: $fieldName,
-                    surroundings: new Surroundings(actions: $barred[$node->id] ?? []),
+                    // ⚠️ *Das Formular, zu dem die Wahl gehört — ohne es schickt ein Radio in einer Tabellenzelle nichts
+                    // (sein Befund am 2026-09-11: «change type button macht nichts»).*
+                    surroundings: new Surroundings(actions: $barred[$node->id] ?? [], formId: $formId),
                 )
             );
         }
@@ -4300,6 +4304,7 @@ final class Rendering implements Presets
         Level $level = Level::Admin,
         string $trigger = '',
         string $confirm = '',
+        string $formId = '',
     ): RenderResult {
         $laeufer = $this->walker();
 
@@ -4320,7 +4325,8 @@ final class Rendering implements Presets
             $locale,
             $level,
             $trigger,
-            $confirm
+            $confirm,
+            $formId
         );
     }
 

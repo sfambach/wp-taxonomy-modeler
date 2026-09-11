@@ -103,6 +103,7 @@ final class ChooserCellRenderer extends RendererNode
                 'name'    => $context->fieldName,
                 'value'   => (int) $subject->id,
                 'checked' => $chosen,
+                'form'    => $context->surroundings->formId,
             ]) . ' '
             . $name
             . '</label>'
