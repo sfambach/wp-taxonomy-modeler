@@ -1479,3 +1479,15 @@ tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-contr
 .taxmod-form-field > textarea {
     max-width: 100%;
 }
+
+/* ── Ein geschachteltes Formular: Trennzeile mit dem Namen, die Felder darunter links (D-725) ────── */
+.taxmod-form-group {
+    border-top: 1px solid #dcdcde;
+    margin: .5em 0 .2em;
+    padding-top: .3em;
+}
+
+.taxmod-form-group-name {
+    font-weight: 600;
+    color: #1d2327;
+}

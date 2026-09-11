@@ -160,6 +160,18 @@ final class FormRenderer extends RendererNode
      */
     private function row(RenderedField $part): string
     {
+        // ⚠️ **Ein geschachteltes Formular ist eine Trennzeile mit dem Namen, und seine Felder stehen in
+        // derselben Beschriftungsspalte** ([D-725](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort am
+        // 2026-09-11: «darstellung trennzeile mit addresse und dann labels ganz links.» Das innere Formular
+        // ist schon flach — seine eigenen Teile gingen durch dieselbe Stelle —, also wird nur die Hülle
+        // abgestreift und der Name davorgesetzt.*
+        $markup = $part->result->markup;
+
+        if ($part->rendererName === self::NAME && str_starts_with($markup, '<div class="taxmod-form">') && str_ends_with($markup, '</div>')) {
+            return '<div class="taxmod-form-group"><span class="taxmod-form-group-name">' . RenderResult::escape($part->relation->name) . '</span></div>'
+                . substr($markup, strlen('<div class="taxmod-form">'), -strlen('</div>'));
+        }
+
         return '<div class="taxmod-form-row">'
             . '<span class="taxmod-form-label">' . RenderResult::escape($part->relation->name) . '</span>'
             . '<span class="taxmod-form-field">' . $part->result->markup . '</span>'
