@@ -940,6 +940,52 @@ Knotenattribut dieselbe: **überschreibt**. Es gibt keine Liste, welche Attribut
 darf und welche nicht. Eigene Attribute hat die Kante nur dort, wo der Knoten keines hat
 (`read_only`, `multiplicity`).
 
+### Multiplizität — das eine Attribut, das jede Kante hat
+
+**Sein Wort, 2026-09-11:** *«lass uns nochmal multiplizität an der kante anschauen, alle kanten haben
+das.»* Und auf die drei Fragen dazu: *«1. aktuell zwei: Aggregation und Composition. 2. enum passt.
+3. alle klassen dürfen alles. das ist eine einstellung für die daten: 0..1 optional, maximal ein
+eintrag; 1..1 muss-feld, genau ein eintrag; 0..* optional bis mehrere einträge; 1..* mindestens
+einen wert, aber mehrere möglich.»*
+
+**Festgehalten:**
+
+- **Zwei Kantenklassen:** `Aggregation` und `Composition`. Beide erben `multiplicity` von der
+  Basisklasse Kante; keine dritte Klasse, solange keine nötig wird.
+- **Ein Enum mit vier Fällen**, im Code erklärt, als Text abgelegt (D2). Keine zwei Zahlen.
+- **Jede Kantenklasse darf jeden der vier Werte.** Nichts im Vertrag schränkt das ein.
+- **Es ist eine Einstellung für die Daten**, nicht fürs Modell: sie sagt, wie viele Sätze das Feld
+  am Datensatz haben muss und darf.
+
+**Seine Beispiele, alle an einer Adresse:**
+
+| Feld | Multiplizität | heisst |
+|---|---|---|
+| Hausnummer | `1..1` | genau eine, Pflicht |
+| Stockwerk | `0..1` | höchstens eines, darf fehlen |
+| Wohneinheit | `1..*` | mindestens eine, beliebig viele |
+| Bewohner | `0..*` | darf fehlen, beliebig viele *(«etwas gekünstelt»)* |
+
+**Was die Eingabe daraus macht — sein Wort:** *«für die eingabe später: ein auswahlfeld muss bei
+0.. ein optionales feld haben, das die eingabe von 'nichts' ermöglicht; bei 1.. darf es das nicht
+haben. ..1: nur eine wahl möglich; ..*: unendlich viele möglich. bei textfeld: 0.. kann leer, 1..
+muss gefüllt sein; ..1 genau ein text möglich; ..* mehrere texte möglich.»*
+
+| | untere Grenze `0` | untere Grenze `1` | obere Grenze `1` | obere Grenze `*` |
+|---|---|---|---|---|
+| **Auswahl** | hat einen Eintrag «nichts» | hat ihn nicht | eine Wahl | mehrere Wahlen |
+| **Text** | darf leer sein | muss gefüllt sein | ein Text | mehrere Texte |
+
+*Die untere Grenze ist also «Pflicht oder nicht», die obere «einer oder Liste» — zwei Fragen in einem
+Wert, und jeder Renderer liest beide.*
+
+**Offen, M1 — sein eigener Zweifel:** *«für bool stellt sich die frage, ob nur 1..1 möglich ist.»*
+*Zum Denken: `0..1` an einem bool wäre ein Schalter mit drittem Zustand «nicht gesetzt» — ob das je
+gebraucht wird, zeigt sich am Fall. `..*` an einem bool wäre eine Liste von Ja/Nein ohne Namen — kaum
+sinnvoll. Wenn der Vertrag nichts einschränkt (Punkt 3 oben), bleibt es dem Modellierer überlassen;
+wenn bool nur `1..1` darf, wäre das die erste Einschränkung, und sie käme aus der **Knotenklasse**
+(bool), nicht aus der Kantenklasse.*
+
 ## Wo wir stehen
 
 Sein Gerüst steht, **das erste Problem ist gelöst** (1a, 1b, 2a, 2b, 2c, 3 — siehe oben). **Als
