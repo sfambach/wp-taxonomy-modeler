@@ -1419,3 +1419,35 @@ tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-contr
 .taxmod-toolbar-class {
     max-width: 12em;
 }
+
+/* ── Die Glieder einer Liste unter ihrem Wähler (Schritt 6 des Bauplans, Z3/Z3a) ─────────────────
+ *
+ * Sein Wort: «Z3 ergänzen mit änderbarer Reihenfolge» und «haken raus nicht mehr aktiv». Je Glied ein
+ * Schalter und seine Stelle. An der Kante ist das geerbte Glied bedienbar, auch ohne den Haken der
+ * Zeile — der Schalter am Glied ist dort das Sagen.
+ */
+.taxmod-setting-list {
+    margin: .3em 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: .92em;
+}
+
+.taxmod-setting-list-entry {
+    display: flex;
+    align-items: center;
+    gap: .5em;
+    margin: .15em 0;
+}
+
+.taxmod-setting-list-inherited {
+    color: #50575e;
+}
+
+.taxmod-setting-list-position {
+    width: 4.5em;
+}
+
+.taxmod-setting-locked-control .taxmod-setting-list {
+    pointer-events: auto;
+}

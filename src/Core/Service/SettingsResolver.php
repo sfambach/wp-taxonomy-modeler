@@ -10,6 +10,7 @@ use Taxmod\Core\Model\NodeClass\Contract;
 use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\ResolvedSetting;
+use Taxmod\Core\Model\Setting\ListEntry;
 use Taxmod\Core\Model\Setting\SettingsValue;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\RendererRegistry;
@@ -176,6 +177,68 @@ final class SettingsResolver
         return $aus;
     }
 
+    /**
+     * Die Glieder einer Listeneinstellung, wie die Maske sie zeigt — **auch die abgeschalteten**, mit
+     * Schalter und Stelle. An der Kante liegen die Zeilen des Knotens darunter; eine Zeile mit Kante,
+     * die dasselbe Glied nennt, sagt dort, ob es an ist und wo es steht (Z3, Z3a).
+     *
+     * @return list<ListEntry>
+     */
+    public function listOf(Node $node, string $attribut, ?Relation $edge = null): array
+    {
+        $erklaert = Contracts::of($node->klasse)->attribute($attribut);
+
+        if ($erklaert === null || ! $erklaert->list) {
+            return [];
+        }
+
+        $this->preload([$node]);
+
+        $rows     = $this->rows[$node->id] ?? [];
+        $amKnoten = $this->rowsFor($rows, $erklaert, null);
+        $anKante  = $edge === null ? [] : $this->rowsFor($rows, $erklaert, $edge->id);
+        $ueberlagert = [];
+
+        foreach ($anKante as $row) {
+            $ueberlagert[$this->identityOf($row)] = $row;
+        }
+
+        $aus = [];
+
+        foreach ($amKnoten as $row) {
+            $schluessel = $this->identityOf($row);
+            $oben       = $ueberlagert[$schluessel] ?? null;
+            unset($ueberlagert[$schluessel]);
+            $aus[] = new ListEntry(
+                (int) ($oben?->id ?? $row->id),
+                $this->wordOf($row),
+                $oben?->aktiv ?? $row->aktiv,
+                $oben?->position ?? $row->position,
+                $edge === null || $oben !== null
+            );
+        }
+
+        foreach ($ueberlagert as $row) {
+            $aus[] = new ListEntry((int) $row->id, $this->wordOf($row), $row->aktiv, $row->position, true);
+        }
+
+        usort($aus, static fn (ListEntry $a, ListEntry $b): int => [$a->position, $a->rowId] <=> [$b->position, $b->rowId]);
+
+        return $aus;
+    }
+
+    /** Das Wort eines Glieds: der Name des Objekts in der Registratur, der Knotenname, sonst der Wert selbst. */
+    private function wordOf(SettingsValue $row): string
+    {
+        if ($row->valueObjectId !== null) {
+            $objekt = $this->objects[$row->valueObjectId] ?? null;
+
+            return $objekt === null ? '' : (string) ($this->nameOf($objekt->klasse) ?? $objekt->klasse);
+        }
+
+        return (string) $this->asWord($row->value)->rawValue();
+    }
+
     /** @return array<string, ResolvedSetting> */
     private function resolve(Node $node, ?Relation $edge): array
     {
@@ -323,6 +386,10 @@ final class SettingsResolver
      */
     private function listEntries(array $amKnoten, array $anKante): array
     {
+        // ⚠️ *Ein am Knoten abgeschaltetes Glied zählt nicht — es sei denn, eine Zeile mit Kante nennt es
+        // wieder an (Z3a: der Schalter der Kante gilt über dem des Knotens).*
+        $amKnoten = array_values(array_filter($amKnoten, static fn (SettingsValue $row): bool => $row->aktiv));
+
         if ($anKante === []) {
             return $amKnoten;
         }

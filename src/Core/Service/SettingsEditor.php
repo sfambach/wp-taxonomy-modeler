@@ -124,6 +124,96 @@ final class SettingsEditor
     }
 
     /**
+     * Ein Glied einer Liste schalten oder umstellen (Schritt 6 des Bauplans, Z3/Z3a).
+     *
+     * Am Knoten trifft es die eigene Zeile. An der Kante trifft es die Zeile mit Kante — und ist das
+     * Glied dort nur geerbt, entsteht eine Zeile mit Kante, die dasselbe Glied nennt und nur sagt, ob es
+     * an ist und wo es steht. *Sein Wort: «haken raus nicht mehr aktiv» — abschalten ist nicht löschen.*
+     *
+     * @return bool Ob etwas geschrieben wurde.
+     */
+    public function setListEntry(Node $node, string $attribut, int $rowId, ?bool $aktiv, ?int $position, ?Relation $edge = null): bool
+    {
+        $erklaert = $this->declarationOf($node, $attribut, $edge);
+
+        if (! $erklaert->list) {
+            throw SettingDoesNotApply::named($attribut . ' is no list');
+        }
+
+        $zeile = $this->settings->findValue($rowId);
+
+        if ($zeile === null || $zeile->nodeId !== $node->id || $zeile->attribut !== $erklaert->name || $zeile->klasse !== $erklaert->declaredBy) {
+            throw SettingDoesNotApply::named($attribut . ' #' . $rowId);
+        }
+
+        if ($zeile->relationId !== $edge?->id) {
+            if ($edge === null || $zeile->relationId !== null) {
+                throw SettingDoesNotApply::named($attribut . ' #' . $rowId . ' belongs to another edge');
+            }
+
+            $vorhanden = null;
+
+            foreach ($this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $erklaert, $edge) as $row) {
+                if ($this->sameEntry($row, $zeile)) {
+                    $vorhanden = $row;
+                }
+            }
+
+            if ($vorhanden === null) {
+                $neu = $zeile->valueObjectId !== null
+                    ? SettingsValue::objectAtNode($node->id, $erklaert->declaredBy, $erklaert->name, $zeile->valueObjectId, $edge->id, $position ?? $zeile->position, $aktiv ?? $zeile->aktiv)
+                    : SettingsValue::atNode($node->id, $erklaert->declaredBy, $erklaert->name, $zeile->value, $edge->id, $position ?? $zeile->position, $aktiv ?? $zeile->aktiv);
+
+                if ($neu->aktiv === $zeile->aktiv && $neu->position === $zeile->position) {
+                    return false;
+                }
+
+                $this->settings->addValue($neu);
+                $this->resolver->forget();
+                $this->note($node, $attribut, $edge, $this->stateWord($zeile), $this->stateWord($neu));
+
+                return true;
+            }
+
+            $zeile = $vorhanden;
+        }
+
+        $neu = $zeile;
+
+        if ($aktiv !== null) {
+            $neu = $neu->withAktiv($aktiv);
+        }
+
+        if ($position !== null) {
+            $neu = $neu->movedTo($position);
+        }
+
+        if ($neu->aktiv === $zeile->aktiv && $neu->position === $zeile->position) {
+            return false;
+        }
+
+        $this->settings->saveValue($neu, $zeile->version);
+        $this->resolver->forget();
+        $this->note($node, $attribut, $edge, $this->stateWord($zeile), $this->stateWord($neu));
+
+        return true;
+    }
+
+    /** Zwei Zeilen nennen dasselbe Glied: dasselbe Objekt, oder denselben Wert. */
+    private function sameEntry(SettingsValue $a, SettingsValue $b): bool
+    {
+        return $a->valueObjectId !== null
+            ? $a->valueObjectId === $b->valueObjectId
+            : $b->valueObjectId === null && $a->value->equals($b->value);
+    }
+
+    /** Schalter und Stelle eines Glieds, als Wort für das Buch. */
+    private function stateWord(SettingsValue $row): TypedValue
+    {
+        return TypedValue::ofText(($row->aktiv ? 'on' : 'off') . ' @' . $row->position);
+    }
+
+    /**
      * Ein Objektattribut setzen — die Maske schickt den Namen der Wertklasse (`compact`), leer
      * heisst «keines mehr».
      *
@@ -142,6 +232,13 @@ final class SettingsEditor
         $amKnoten = $this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $erklaert, null);
         $anKante  = $edge === null ? [] : $this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $erklaert, $edge);
         $erstes   = $edge === null ? ($amKnoten[0] ?? null) : ($anKante[0] ?? null);
+
+        // ⚠️ **Was schon gilt, wird nicht noch einmal gesetzt** (Schritt 6 des Bauplans). *Die Maske schickt den
+        // Wähler mit jedem Speichern; stünde hier ein Ersetzen, wischte es an der Kante die Schalter und Stellen
+        // der Glieder weg — gemessen am 2026-09-11: zwei Zeilen fort, zwei neue, das umgeordnete Glied wieder hinten.*
+        if ($klasse !== null && (($this->resolved($node, $edge)[$erklaert->name] ?? null)?->value->text ?? null) === $name) {
+            return false;
+        }
 
         if ($erstes !== null && $erstes->valueObjectId !== null && $klasse !== null
             && $this->settings->findObject($erstes->valueObjectId)?->klasse === $klasse) {
@@ -191,7 +288,7 @@ final class SettingsEditor
             $geerbt = $amKnoten[0] ?? null;
 
             if ($geerbt !== null && $geerbt->valueObjectId !== null) {
-                $this->settings->addValue(SettingsValue::objectAtNode($node->id, $erklaert->declaredBy, $erklaert->name, $geerbt->valueObjectId, $edge->id, $geerbt->position, false));
+                $this->settings->addValue(SettingsValue::objectAtNode($node->id, $erklaert->declaredBy, $erklaert->name, $geerbt->valueObjectId, $edge->id, max(1, $geerbt->position), false));
             }
 
             $this->settings->addValue(SettingsValue::objectAtNode($node->id, $erklaert->declaredBy, $erklaert->name, $objekt->id, $edge->id, 0));

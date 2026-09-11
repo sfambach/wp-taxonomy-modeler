@@ -3805,7 +3805,7 @@ final class NodesScreen
     {
         $this->saveSettings($nodeId, $relationId, $name);
         $this->saveFieldRows($nodeId);
-        $geschrieben = $this->saveAttributes($nodeId) + $this->saveSettingValues($nodeId);
+        $geschrieben = $this->saveAttributes($nodeId) + $this->saveListEntries($nodeId) + $this->saveSettingValues($nodeId);
         $this->savePartValues($nodeId);
         $this->saveLabels($nodeId, $locale);
 
@@ -4079,6 +4079,12 @@ final class NodesScreen
 
             $this->data->putSettingAtUseSite($useSite->id, $kante->id, $wert);
         }
+
+        // ⚠️ **Die Glieder zuletzt** (Schritt 6 des Bauplans). *Die Maske schickt den Wähler und die Glieder in
+        // einem Formular; der Wähler nennt das erste aktive Glied von vorhin. Erst er — er ist dann ein
+        // Nichts-tun —, dann die Schalter und Stellen. Andersherum sähe der Wähler nach dem Umordnen ein
+        // fremdes erstes Glied und ersetzte die Liste. Gemessen am 2026-09-11.*
+        $this->saveListEntries($nodeId, $useSite);
     }
 
     /**
@@ -4541,6 +4547,53 @@ final class NodesScreen
 
             if ($this->attributes->put($node, $attribut, sanitize_text_field((string) $roh))) {
                 $geschrieben++;
+            }
+        }
+
+        return $geschrieben;
+    }
+
+    /**
+     * Die Glieder der Listen am Knoten schalten und ordnen — `taxmod_setting_list[<attribut>][<zeile>]`
+     * (Schritt 6 des Bauplans). Der Kern vergleicht; nur Geändertes wird geschrieben.
+     *
+     * @return int Wie viele Glieder geschrieben wurden.
+     */
+    private function saveListEntries(int $nodeId, ?Relation $useSite = null): int
+    {
+        $feld = $useSite === null ? self::SETTING_FIELD . '_list' : self::ROW_SETTING_FIELD . '_list';
+        $roh  = $useSite === null ? ($_POST[$feld] ?? null) : ($_POST[$feld][$useSite->id] ?? null);
+
+        if ($this->attributes === null || ! is_array($roh)) {
+            return 0;
+        }
+
+        $node = $this->editor->find($useSite === null ? $nodeId : $useSite->toNodeId);
+
+        if ($node === null) {
+            return 0;
+        }
+
+        $geschrieben = 0;
+
+        foreach (wp_unslash($roh) as $schluessel => $glieder) {
+            $attribut = sanitize_key((string) $schluessel);
+
+            if ($attribut === '' || ! is_array($glieder) || ! $this->attributes->knows($node, $attribut, $useSite)) {
+                continue;
+            }
+
+            foreach ($glieder as $zeile => $angabe) {
+                if (! ctype_digit((string) $zeile) || ! is_array($angabe)) {
+                    continue;
+                }
+
+                $aktiv    = isset($angabe['aktiv']) ? (string) $angabe['aktiv'] === '1' : null;
+                $position = isset($angabe['position']) && is_numeric((string) $angabe['position']) ? max(0, (int) $angabe['position']) : null;
+
+                if ($this->attributes->setListEntry($node, $attribut, (int) $zeile, $aktiv, $position, $useSite)) {
+                    $geschrieben++;
+                }
             }
         }
 

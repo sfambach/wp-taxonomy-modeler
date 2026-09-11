@@ -155,7 +155,16 @@ Bedienung der Reihenfolge und des Schalters `aktiv` je Listeneintrag.*
 - **Wächter:** `einstellungen-check` **neu geschrieben** auf dem neuen Modell, Abschnitt für
   Abschnitt; die alte Fassung fällt in demselben Commit.
 
-### Schritt 6 · Überschreiben an der Kante (TASK-096 d)
+### Schritt 6 · Überschreiben an der Kante (TASK-096 d) — **gebaut 2026-09-11**
+
+*Kern: `Core\Model\Setting\ListEntry`, `SettingsResolver::listOf()` (die Glieder mit Schalter und Stelle, auch die
+abgeschalteten; ein am Knoten abgeschaltetes Glied zählt nicht, es sei denn die Kante nennt es wieder an),
+`SettingsEditor::setListEntry()` (am Knoten die eigene Zeile; an der Kante eine Zeile mit Kante, die das geerbte
+Glied nennt — abschalten ist nicht löschen). Rand: unter dem Wähler einer Liste je Glied ein Schalter «an» und
+seine Stelle (`taxmod_setting_list[…]`, an der Feldzeile `taxmod_field_setting_list[…]`); der Wähler wird vor
+den Gliedern verarbeitet und ist ein Nichts-tun, wenn er nennt, was schon gilt. Wächter `ueberschreiben-check`
+(24 Zusagen). Der Haken «hier anders», der Wert im geerbten Objekt und das Abschalten beim Wählen an der Kante
+standen schon mit Schritt 5.*
 
 - Zeile mit `kante_id`: einfacher Wert, Wert im Objekt, Listeneintrag mit `aktiv` und `position`.
 - Der Haken «hier anders» an der Feldzeile; die Maske zeigt den aufgelösten Wert.

@@ -2813,7 +2813,7 @@ final class Rendering implements Presets
             // has no type the engine can know, and a borrowing key on a subject with no type of its
             // own has no shape to be drawn in.*
             if ($engineKey !== null && $shape->isAChoice()) {
-                $drawn[] = $this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId);
+                $drawn[] = $this->withListMarkup($this->drawChoice($node, $engineKey, $shape, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $choices, $formId), $node, $fieldPrefix, $formId);
 
                 continue;
             }
@@ -3766,26 +3766,92 @@ final class Rendering implements Presets
             default                                             => $this->objectsOffered($erklaert, $subject),
         };
 
-        $renderer = $this->renderers->byName(ChoiceRenderer::NAME);
+        $renderer  = $this->renderers->byName(ChoiceRenderer::NAME);
+        $gezeichnet = $renderer->render($subject, new RenderContext(
+            purpose: $purpose,
+            value: $setting->value,
+            settings: [],
+            locale: $locale,
+            level: $level,
+            editable: true,
+            fieldName: $fieldName,
+            surroundings: new Surroundings(options: $options, mayBeNothing: $setting->value->isNothing() || $typ !== \Taxmod\Core\Model\NodeClass\AttributeType::Object || $key !== SettingKey::Renderer->value, formId: $formId),
+        ));
 
-        return new RenderedSetting(
-            $key,
-            $shape,
-            null,
-            $setting,
-            $renderer->render($subject, new RenderContext(
-                purpose: $purpose,
-                value: $setting->value,
-                settings: [],
-                locale: $locale,
-                level: $level,
-                editable: true,
-                fieldName: $fieldName,
-                surroundings: new Surroundings(options: $options, mayBeNothing: $setting->value->isNothing() || $typ !== \Taxmod\Core\Model\NodeClass\AttributeType::Object || $key !== SettingKey::Renderer->value, formId: $formId),
-            )),
-            $renderer->name(),
-            $subjectType
+        if ($erklaert->list && $fieldPrefix !== '') {
+            $gezeichnet = new RenderResult($gezeichnet->markup . $this->listMarkup($subject, $erklaert, $fieldPrefix, $formId), $gezeichnet->usedRelations, $gezeichnet->condition);
+        }
+
+        return new RenderedSetting($key, $shape, null, $setting, $gezeichnet, $renderer->name(), $subjectType);
+    }
+
+    /**
+     * Eine gezeichnete Wahl, darunter die Glieder ihrer Liste — wenn der Vertrag sie als Liste erklärt.
+     */
+    private function withListMarkup(RenderedSetting $gezeichnet, Node|Relation $node, string $fieldPrefix, string $formId): RenderedSetting
+    {
+        $erklaert = $this->attributesDrawnFor($node)[$gezeichnet->key] ?? null;
+
+        if ($erklaert === null || ! $erklaert->list || $gezeichnet->result === null || $fieldPrefix === '') {
+            return $gezeichnet;
+        }
+
+        $liste = $this->listMarkup($node, $erklaert, $fieldPrefix, $formId);
+
+        return $liste === '' ? $gezeichnet : new RenderedSetting(
+            $gezeichnet->key,
+            $gezeichnet->shape,
+            $gezeichnet->type,
+            $gezeichnet->setting,
+            new RenderResult($gezeichnet->result->markup . $liste, $gezeichnet->result->usedRelations, $gezeichnet->result->condition),
+            $gezeichnet->rendererName,
+            $gezeichnet->subject,
+            $gezeichnet->fromOwnerName,
+            $gezeichnet->overrideName
         );
+    }
+
+    /**
+     * Die Glieder einer Liste unter ihrem Wähler: je Glied ein Schalter «an» und seine Stelle
+     * (Schritt 6 des Bauplans, Z3/Z3a). Der Wähler oben setzt das erste Glied; die Zeilen darunter
+     * schalten und ordnen, was steht — auch ein geerbtes Glied an der Kante.
+     *
+     * *Die Felder heissen `<prefix>_list[<attribut>][<zeile>][aktiv|position]`; aus
+     * `taxmod_field_setting[7]` wird `taxmod_field_setting_list[7]` — dieselbe Adresse, ein Wort weiter.*
+     */
+    private function listMarkup(Renderable $subject, \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert, string $fieldPrefix, string $formId): string
+    {
+        if ($this->resolver === null || ! ($subject instanceof Node || $subject instanceof Relation)) {
+            return '';
+        }
+
+        $knoten = $subject instanceof Node ? $subject : $this->nodes->find($subject->toNodeId);
+
+        if ($knoten === null) {
+            return '';
+        }
+
+        $glieder = $this->resolver->listOf($knoten, $erklaert->name, $subject instanceof Relation ? $subject : null);
+
+        if ($glieder === []) {
+            return '';
+        }
+
+        $prefix = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_list', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
+        $form   = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
+        $html   = '<ul class="taxmod-setting-list">';
+
+        foreach ($glieder as $glied) {
+            $name  = $prefix . '[' . $glied->rowId . ']';
+            $html .= '<li class="taxmod-setting-list-entry' . ($glied->setHere ? '' : ' taxmod-setting-list-inherited') . '">'
+                . '<input type="hidden" name="' . RenderResult::escape($name) . '[aktiv]" value="0"' . $form . '>'
+                . '<label><input type="checkbox" name="' . RenderResult::escape($name) . '[aktiv]" value="1"' . ($glied->aktiv ? ' checked' : '') . $form . '> '
+                . RenderResult::escape($glied->word) . '</label> '
+                . '<input type="number" class="taxmod-setting-list-position" name="' . RenderResult::escape($name) . '[position]" value="' . $glied->position . '" min="0" step="1"' . $form . '>'
+                . '</li>';
+        }
+
+        return $html . '</ul>';
     }
 
     /**
