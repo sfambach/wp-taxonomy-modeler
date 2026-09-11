@@ -1155,15 +1155,33 @@ erDiagram
    wie in OO» — `Firmenkontakt` unter `Kontakt` hat `Name`, `Strasse`. Offen: darf das Kind geerbte
    Felder **umstellen** oder **verbergen**, und wenn ja, wo steht das? Das ist Z3 noch einmal, nur
    für Kanten statt Zeilen. Das Attribut `hide` an der Kante deutet an, dass Verbergen gewollt ist.
+   **Entschieden, 2026-09-11:** *«L4: ja, umstellen und verbergen.»* *Wo es steht (`INFERRED`,
+   seine Prüfung): mit demselben Mittel wie Z3 — eine Zeile am Kind (`knoten_id` = Firmenkontakt,
+   `attribut` = `felder`) mit `position` und `aktiv`, die die geerbte Kante benennt. Dafür braucht die
+   Zeile eine Spalte `wert_kante_id` (Verweis auf eine Kante), die es bisher nicht gibt — die
+   siebte Wertspalte, nach derselben Fremdschlüsselregel. Fehlt die Zeile, steht das geerbte Feld an
+   seiner Stelle und ist sichtbar. Das Attribut `hide` an der Kante selbst ist etwas anderes: es
+   verbirgt das Feld **überall**, und wäre nach «Spalte statt Zeile» eine Spalte der Kante — ob es
+   gebraucht wird, ist nicht entschieden.*
 5. **L5 · Der Name der Kante.** Zwei Kanten von `Kontakt` auf `Adresse` — Liefer- und
    Rechnungsadresse — brauchen je einen Namen, der nicht der des Zielknotens ist. Labels sind nicht
    auf dieser Seite; ob eine Kante eigene Labels hat, steht nirgends.
+   **Entschieden, 2026-09-11:** *«wenn es eine klare unterscheidung gibt, ja — kann aber auch
+   mehrere adressen haben.»* Also: **eine Kante darf eigene Labels haben, muss aber nicht.** Fehlen
+   sie, heisst das Feld wie sein Zielknoten. Und sein Nachsatz nennt die Alternative: statt zwei
+   benannter Kanten (Liefer-, Rechnungsadresse) **eine** Kante `0..*` auf Adresse — dann
+   unterscheidet der Datensatz, nicht das Modell. Beides ist möglich; der Modellierer wählt.
 6. **L6 · Verwaiste Sätze.** Ein Satz hat keinen Träger mehr (Weg A); wem er gehört, sagt die Zeile,
    die auf ihn zeigt. Wandert die Zeile, muss der Satz mitwandern, sonst bleibt er allein zurück. Eine
    Regel, keine Spalte.
 7. **L7 · Das Wort «Satz».** Heute heissen die **Daten** so (`node_records`, «Datensatz»). Auf dieser
    Seite ist ein Satz ein **Einstellungsobjekt** (Renderer, Umrechnung). Zwei Dinge, ein Wort — vor
    dem Bauen eines umbenennen, sonst kommt der nächste Fehler aus dem Namen. *Vorschlag: «Objekt».*
+   **Seine Namen zur Wahl, 2026-09-11:** *«settings_object / Einstellungsobjekt, oder
+   Einstellungs-Datensatz / settings_record?»* *Zum Denken: «Datensatz» und «record» sind genau das
+   Wort, das heute die Daten der Benutzer tragen — die Kollision bliebe. **Einstellungsobjekt /
+   `settings_object`** sagt, was es ist (ein Objekt seiner Klasse, Frage 2a) und kollidiert mit
+   nichts. Offen, seine Wahl.*
 8. **L8 · `read_only` nur an der Kante — mit seinem «glaube ich».** Ein Knoten, der überall nur
    lesbar sein soll (ein berechneter Wert), müsste es an jeder Kante einzeln bekommen. Kein Fehler,
    aber noch nicht bestätigt. **Bestätigt, 2026-09-11:** *«read_only stimmt»* — nur an der Kante,
