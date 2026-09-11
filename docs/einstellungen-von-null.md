@@ -1017,3 +1017,116 @@ Nächstes das zweite Problem**, in seiner Reihenfolge, je Frage sein Wort:
   nicht aktiv (Z3a).
 - **Z4 · Erben an Kindern:** **Beantwortet durch den Schritt zurück** — Werte vererben sich nicht
   zwischen Knoten; es gibt nur die Kante über dem Knoten.
+
+---
+
+## Durchsicht, 2026-09-11 — haben wir etwas vergessen, und hält das Datenmodell?
+
+*Sein Auftrag: «geh mal durch, ob wir auch wirklich nichts vergessen haben, und überprüfe das
+Datenmodell auf Konsistenz, Einfachheit, Normalformen.»* Zuerst das Modell, wie es nach allen
+Antworten aussieht, dann die Prüfung, dann die Lücken. Nichts hier ist entschieden.
+
+### Das Modell, zusammengezogen (Weg A, getrennte Id-Räume, Vertrag)
+
+```mermaid
+erDiagram
+  KNOTEN ||--o{ KNOTEN : "vater_id"
+  KNOTEN ||--o{ KANTE : "von_knoten_id"
+  KNOTEN ||--o{ KANTE : "zu_knoten_id"
+  KNOTEN ||--o{ ZEILE : "knoten_id"
+  KANTE ||--o{ ZEILE : "kante_id"
+  SATZ ||--o{ ZEILE : "satz_id"
+  ZEILE }o--o| SATZ : "wert_satz_id"
+  ZEILE }o--o| KNOTEN : "wert_knoten_id"
+  KNOTEN {
+    id id
+    string klasse
+    string name
+    ref vater_id
+    int stelle
+  }
+  KANTE {
+    id id
+    string klasse "Aggregation | Composition"
+    ref von_knoten_id
+    ref zu_knoten_id
+    int stelle
+  }
+  SATZ {
+    id id
+    string klasse "CompactRenderer, Umrechnung …"
+  }
+  ZEILE {
+    id id
+    ref knoten_id "genau einer der drei"
+    ref kante_id
+    ref satz_id
+    string klasse "erklärende Klasse"
+    string attribut
+    int position
+    bool aktiv "Z3a, nur an Kantenzeilen zu geerbten Einträgen"
+    bool wert_bool "genau eine der sechs"
+    int wert_int
+    decimal wert_decimal
+    string wert_text "auch Enum"
+    ref wert_knoten_id
+    ref wert_satz_id
+  }
+```
+
+*Vier Tabellen, je mit Schatten: acht. Dazu, nicht auf dieser Seite: Labels, Datensätze.*
+
+### Prüfung
+
+| Massstab | Befund |
+|---|---|
+| **1. Normalform** | erfüllt — jede Spalte atomar; die sechs Wertspalten sind kein Wiederholungsfeld, sondern «genau eine gefüllt» |
+| **2. / 3. Normalform** | erfüllt in den Daten — jede Tabelle hat einen einspaltigen Schlüssel, keine Spalte hängt von einer anderen Nichtschlüsselspalte ab. *Eine Abhängigkeit läuft über den Code:* `ZEILE.klasse` folgt aus (Klasse des Trägers, `attribut`) per Vertrag. Das ist keine Verletzung, weil der Vertrag nicht in der Datenbank steht — aber es heisst: **die Spalte trägt Information nur an der Kante** (fremde Klasse des Ziels) und ist am Knoten und im Satz herleitbar. |
+| **Keine doppelte Tatsache** | erfüllt, mit einer Regel, die noch nirgends steht: eine Kantenzeile zu einem Knotenattribut **existiert nur, wenn der Modellierer sie gesetzt hat** (Haken). Eine Kantenzeile mit demselben Wert wie am Knoten, die niemand wollte, wäre die Dublette, die jede spätere Änderung am Knoten unsichtbar macht. |
+| **Exklusive Spalten** | zweimal bewusst gewählt: drei Trägerspalten, sechs Wertspalten. Das ist die bekannte Alternative zu «eine Tabelle je Sorte» (drei Zeilentabellen × sechs Werttabellen). Die Datenbank prüft es mit je einer Bedingung «genau eine gefüllt». Einfacher geht es nicht, ohne die Fremdschlüssel aufzugeben, die er will. |
+| **Einfachheit** | vier Tabellen für alles, was heute `nodes`, `relations`, `node_records` (Einstellungen), `relation_records`, `labels`-Icon und die Einstellungskanten tragen. Kein Pfad, kein gemeinsamer Id-Raum, keine Erklärungstabelle, keine Satzart. |
+| **Konsistenz der Antworten** | eine Stelle widerspricht sich: **Z1 sagt «die Kante dupliziert den Wert»**, die Regel «keine doppelte Tatsache» sagt, sie tut es **nur auf Wunsch**. Beides ist gemeint, aber das Wort «dupliziert» sollte weg — die Kante **setzt** einen Wert, sie kopiert keinen. |
+
+### Was fehlt — neun Lücken, geordnet nach Gewicht
+
+1. **L1 · Fremdschlüssel gegen Schatten.** Er will Fremdschlüssel, die die Datenbank prüft, **und**
+   Löschen als Wandern in die Schattentabelle. Beides zusammen heisst: eine Zeile, die auf `kilo`
+   zeigt, kann nicht bleiben, wenn `kilo` wandert — die Datenbank verweigert das Wandern, oder die
+   Zeile wandert mit. *Das ist die eine Stelle, an der zwei Beschlüsse von heute sich berühren, und
+   es braucht eine Regel: Verweise auf ein geparktes Ding wandern mit (wie D-619 es für Kantenzeilen
+   sagt), oder Parken ist verboten, solange etwas darauf zeigt.*
+2. **L2 · Z2 ist nicht beantwortet.** In der Übersicht steht die Frage noch offen: schlägt die Kante
+   bei einem komplexen Attribut das ganze Objekt oder einen Wert darin? Die Regel «alle Attribute
+   flach überschreibbar» beantwortet sie für einfache Werte; für einen Renderer **in einer Liste**
+   fehlt das Wort. Zusammen mit Z3 gibt es zwei Wege: (a) geerbten Eintrag abschalten (Z3a) und
+   einen eigenen Renderer-Satz anhängen, oder (b) die Kantenzeile zum geerbten Eintrag zeigt auf
+   einen eigenen Satz, der den geerbten **ersetzt**. (a) braucht nichts Neues; (b) braucht eine
+   Zeile, die zugleich «geerbter Eintrag X» und «hier mein Satz» sagt.
+3. **L3 · Wie eine Kantenzeile den geerbten Listeneintrag benennt.** Z3 und Z3a sagen: «eine Zeile
+   mit der Adresse des Eintrags». Aber alle Einträge einer Liste haben **dieselbe** Adresse
+   (`Node.converters`). Der Eintrag ist nur über seinen Satz eindeutig (komplex) oder über seine
+   `position` am Knoten (einfach). Also braucht die Kantenzeile einen Verweis auf den Eintrag — auf
+   den Satz (`wert_satz_id` zeigt auf den Satz des Knotens) oder auf die Knotenzeile (eine Spalte
+   `zeile_id`, Zeile → Zeile). Nicht entschieden.
+4. **L4 · Felder erben sich, aber wie sieht das Kind sie?** «Vererbung von Feldern bleibt bestehen,
+   wie in OO» — `Firmenkontakt` unter `Kontakt` hat `Name`, `Strasse`. Offen: darf das Kind geerbte
+   Felder **umstellen** oder **verbergen**, und wenn ja, wo steht das? Das ist Z3 noch einmal, nur
+   für Kanten statt Zeilen. Das Attribut `hide` an der Kante deutet an, dass Verbergen gewollt ist.
+5. **L5 · Der Name der Kante.** Zwei Kanten von `Kontakt` auf `Adresse` — Liefer- und
+   Rechnungsadresse — brauchen je einen Namen, der nicht der des Zielknotens ist. Labels sind nicht
+   auf dieser Seite; ob eine Kante eigene Labels hat, steht nirgends.
+6. **L6 · Verwaiste Sätze.** Ein Satz hat keinen Träger mehr (Weg A); wem er gehört, sagt die Zeile,
+   die auf ihn zeigt. Wandert die Zeile, muss der Satz mitwandern, sonst bleibt er allein zurück. Eine
+   Regel, keine Spalte.
+7. **L7 · Das Wort «Satz».** Heute heissen die **Daten** so (`node_records`, «Datensatz»). Auf dieser
+   Seite ist ein Satz ein **Einstellungsobjekt** (Renderer, Umrechnung). Zwei Dinge, ein Wort — vor
+   dem Bauen eines umbenennen, sonst kommt der nächste Fehler aus dem Namen. *Vorschlag: «Objekt».*
+8. **L8 · `read_only` nur an der Kante — mit seinem «glaube ich».** Ein Knoten, der überall nur
+   lesbar sein soll (ein berechneter Wert), müsste es an jeder Kante einzeln bekommen. Kein Fehler,
+   aber noch nicht bestätigt.
+9. **L9 · Icon je Klasse.** Als «philosophiert» notiert; wenn es kommt, ist es Vertrag (Code), kein
+   Modell. Keine Entscheidung nötig, nur damit es nicht verloren geht.
+
+*Nicht vergessen, sondern bewusst nicht auf dieser Seite:* Labels (Name je Sprache, Rollen, Icon),
+Datensätze (die Werte der Benutzer, mit Multiplizität als ihrer Regel), der Vergleich mit dem
+Bestand.
