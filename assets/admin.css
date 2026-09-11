@@ -1455,3 +1455,27 @@ tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-contr
 .taxmod-setting-locked-control .taxmod-setting-list {
     pointer-events: auto;
 }
+
+/* ── Das Formular: eine Beschriftungsspalte, eine Feldspalte, der Hinweis daneben ─────────────────
+ *
+ * ⚠️ Bis zum 2026-09-11 hatte `.taxmod-form-row` keine Regel — jede Zeile mass ihre Beschriftung selbst,
+ * und die Felder standen versetzt. Sein Befund: «beim form renderer sind die felder nicht ausgerichtet».
+ * In einer Tabellenzelle sass der Hinweis deshalb unter dem Feld: «bei table gibts einen umbruch».
+ */
+.taxmod-form-row {
+    display: grid;
+    grid-template-columns: minmax(6em, 11em) minmax(0, 1fr) auto;
+    column-gap: .5em;
+    align-items: center;
+    margin: .2em 0;
+}
+
+.taxmod-form-label {
+    overflow-wrap: anywhere;
+}
+
+.taxmod-form-field > input,
+.taxmod-form-field > select,
+.taxmod-form-field > textarea {
+    max-width: 100%;
+}

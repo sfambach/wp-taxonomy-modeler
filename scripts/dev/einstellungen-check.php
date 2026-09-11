@@ -960,7 +960,7 @@ echo "\n== 9 · Vorschau: drei Seiten, keine Einstellungen darin, und zeichnen s
 $leerKnoten = $editor->createNode('__es Leer', $modellAst->id);
 $leerFeld   = $editor->addField($leerKnoten->id, $seeded['text']->id, '__es leeres Feld');
 $band       = vorschau($leerKnoten->id);
-check('die Vorschau erscheint, wo Sätze möglich sind — mit drei Seiten', $band !== '' && substr_count($band, 'taxmod-preview-side') === 3, (string) substr_count($band, 'taxmod-preview-side'));
+check('die Vorschau erscheint, wo Sätze möglich sind — mit zwei Seiten (Settings fiel mit Schritt 7)', $band !== '' && substr_count($band, 'taxmod-preview-side') === 2, (string) substr_count($band, 'taxmod-preview-side'));
 check('mit nichts eingetragen werden die Vorgaben genannt', str_contains($band, 'Filled from the defaults'));
 $beispiel = $data->create($leerKnoten->id, RecordType::Example);
 $nurBeispiel = vorschau($leerKnoten->id);
@@ -1005,7 +1005,7 @@ $nachName = [];
 foreach ($seiten as $s) {
     $nachName[$s[1]] = trim((string) preg_replace('/\s+/', ' ', strip_tags($s[2])));
 }
-check('die drei Seiten heissen Display, Admin, Settings', count($seiten) === 3 && isset($nachName['Display'], $nachName['Admin'], $nachName['Settings']), implode(', ', array_keys($nachName)));
+check('die zwei Seiten heissen Display, Admin — Settings fiel mit Schritt 7', count($seiten) === 2 && isset($nachName['Display'], $nachName['Admin']), implode(', ', array_keys($nachName)));
 // ⚠️ *«Settings nennt read_only» galt bis Fassung 48 — die Einstellungskante ist gewandert
 // ([D-714](../../docs/NewConcept/90-decision-log.md)); was bleibt: Admin nennt seine Felder und keine
 // Einstellung, Settings nennt kein Feld.*

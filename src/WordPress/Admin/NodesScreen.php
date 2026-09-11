@@ -1278,11 +1278,8 @@ final class NodesScreen
         // ⚠️ *Also trennt jetzt die Ansicht, was vorher eine Liste war: **Anzeige** und **Admin** zeigen
         // die Felder — die eine fürs Frontend, die andere fürs Modell —, und **Settings** zeigt die
         // Einstellungen. Jede Seite bekommt genau die Kanten, die zu ihr gehören.*
-        $einstellungen = array_values(array_filter(
-            $relations,
-            static fn (Relation $relation): bool => $relation->isSetting() && ! $relation->hide
-        ));
-
+        // ⚠️ *Die dritte Seite «Settings» zeichnete die Einstellungskanten; seit Schritt 7 des Bauplans gibt es keine mehr —
+        // nur die geparkte Kante `position` an der Wurzel, und die gehört nicht in die Vorschau (sein Befund, 2026-09-11).*
         // ⚠️ **`Settings` bekommt eine eigene Zeile über die ganze Breite** — *auf sein Wort: «ich würde
         // noch Settings-Preview in eine neue Zeile packen und alles in einer Linie, also wie eine
         // Tabellenzeile anzeigen — ergibt auch Sinn, weil es hier Table View ist. Wahrscheinlich ist das
@@ -1300,7 +1297,6 @@ final class NodesScreen
         foreach ([
             [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown'], ''],
             [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown'], ''],
-            [__('Settings', 'taxmod'), Purpose::Edit, true, Level::Settings, $einstellungen, ' taxmod-preview-wide'],
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '">'
                 . '<h4>' . esc_html($title) . '</h4>'
