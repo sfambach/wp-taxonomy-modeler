@@ -27,6 +27,7 @@ use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\DialogChooserRenderer;
+use Taxmod\Core\Renderer\InlineChooserRenderer;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\DrawnRow;
@@ -1006,7 +1007,10 @@ final class Rendering implements Presets
                 // anhaengen finde ich am schoensten"). Vorher ersetzte der Abstieg den Kasten,
                 // und der Renderer liess sich nicht mehr wechseln.
                 $tiefer === null
-                    ? $renderer->render($relation, $context)
+                    // ⚠️ *Das Ziel wird nur für einen Wähler-Renderer nachgeschlagen — sonst wäre es eine Abfrage je Feld (CD-7).*
+                    ? (($renderer instanceof DialogChooserRenderer || $renderer instanceof InlineChooserRenderer
+                        ? $this->chooserMarkup($this->nodes->find($relation->toNodeId), $renderer, $value, $context->fieldName, $formId, $locale, $level)
+                        : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
                 // than as something to fill in. A container must not resolve the chain again.
@@ -1109,6 +1113,10 @@ final class Rendering implements Presets
         // never silently disappear, and the fallback marks itself (R14b).*
         $renderer = $this->renderers->chosenFor($node, $settings, $purpose, $type)
             ?? $this->renderers->fallback();
+
+        if (($wahl = $this->chooserMarkup($node, $renderer, $value, $fieldName, $formId, $locale, $level)) !== null) {
+            return $wahl;
+        }
 
         return $renderer->render($node, new RenderContext(
             purpose: $purpose,
@@ -2976,6 +2984,38 @@ final class Rendering implements Presets
         }
 
         return (string) ($wahl->value->text ?? '');
+    }
+
+    /**
+     * Ein Wähler-Renderer (Dialog, Inline) zeichnet einen Baum der Kandidaten — die Kinder des Ziels. Den
+     * reicht ihm kein Aufrufer, denn die Kandidaten stehen nicht in einer Angabe, sondern im Modell; hier wird
+     * er gebaut. *Sein Befund am 2026-09-11 an `Prefixes` mit `chooser-inline`: «warum kein auswahlfeld
+     * angezeigt wird» — der Renderer bekam keinen Baum und zeichnete ein leeres Stück.*
+     */
+    private function chooserMarkup(?Node $target, Renderer $renderer, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level): ?RenderResult
+    {
+        if ($target === null || (! $renderer instanceof DialogChooserRenderer && ! $renderer instanceof InlineChooserRenderer)) {
+            return null;
+        }
+
+        $gewaehlt = $value->reference !== null && $value->reference !== $target->id ? $value->reference : null;
+
+        return $this->nodeChooser(
+            $target,
+            $fieldName,
+            $target,
+            $gewaehlt,
+            [],
+            [$target->id],
+            $gewaehlt === null ? null : $this->nodes->find($gewaehlt)?->name,
+            '',
+            $renderer->name(),
+            $locale,
+            $level,
+            '',
+            '',
+            $formId
+        );
     }
 
     private function containerFor(Node $node, Purpose $purpose): Renderer
