@@ -31,7 +31,9 @@ modellseite.»*
 - **1.4** Jede Kante muss eine Stelle in der Feldliste ihres Von-Knotens haben.
 - **1.5** Eine Kante darf eigene Labels haben. Fehlen sie, muss das Feld den Namen seines
   Zielknotens tragen.
-- **1.6** `OFFEN` Ob eine Kante ein `hide` braucht (Feld überall verbergen).
+- **1.6** Eine Kante darf `hide` tragen (`bool`): das Feld wird dem Benutzer nicht gezeigt, arbeitet
+  aber im Hintergrund — für Berechnungsfelder. Sein Wort, 2026-09-11: «es kann berechnungsfelder im
+  hintergrund geben, diese sollen für den benutzer nicht sichtbar sein — ein hide im frontend.»
 
 ## 2 · Felder und Vererbung
 

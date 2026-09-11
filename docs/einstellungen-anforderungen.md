@@ -79,8 +79,8 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
   Klasse erlaubt sind (3.4.2).
 - **2.4.5** Ein Listentyp muss im Code an der Eigenschaft angegeben sein, damit der Vertrag ihn
   lesen kann.
-- **2.4.6** `OFFEN` Woran der Vertrag erkennt, dass sich die Klasse geändert hat, wird beim Bauen
-  festgelegt.
+- **2.4.6** Der Vertrag muss an die Plugin-Version gebunden sein: eine neue Version, ein neu
+  abgeleiteter Vertrag. *Entschieden 2026-09-11: «1 ja».*
 
 ---
 
@@ -141,10 +141,10 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
   `Konstante` (Präfix) und `Einheitswert` müssen ein Attribut vom Typ `Umrechnung` erklären.
 - **3.6.5** `Einheitswert` muss erklären: `mit_praefix` (`bool`), `erlaubte_praefixe` (Liste von
   Verweisen auf Knoten der Klasse `Konstante`), `symbol` (`text`). *Bestätigt 2026-09-11.*
-- **3.6.6** `OFFEN` Wird an einem Datensatz die Einheit oder das Präfix umgeschaltet, muss der
-  gespeicherte Wert möglicherweise umgerechnet werden (über `Umrechnung`). Sein Wort: «müsste evtl.
-  beim umschalten wert umrechnen.» Ob und wie, ist nicht entschieden; es betrifft die Daten, nicht
-  die Ablage der Einstellung.
+- **3.6.6** Wird an einem Datensatz die Einheit oder das Präfix umgeschaltet, muss die Maske die Zahl
+  über `Umrechnung` umrechnen; die Grösse bleibt dieselbe. Sein Wort: «müsste evtl. beim umschalten
+  wert umrechnen» — dann «2 ja». Sache der Daten, nicht der Ablage; eigene Aufgabe nach dem Umbau
+  (Bauplan).
 - **3.6.7** Es gibt **kein** Attribut `default`; ein Vorgabewert ist ein Datensatz.
 - **3.6.8** Es gibt **kein** Attribut `position`; die Stelle eines Knotens und eines Felds ist
   Modell.
@@ -283,6 +283,6 @@ nur noch zur Übersicht:
 
 ## 8 · Offen
 
-- **8.1** `OFFEN` Ob es ein `hide` am Feld braucht (Feld überall verbergen). Modell.
+- **8.1** ~~`OFFEN`~~ Entschieden: `hide` am Feld gibt es, für Berechnungsfelder im Hintergrund (Modell 1.6).
 - **8.2** `OFFEN` Icon je Klasse; wenn ja, Vertrag. «Philosophiert.»
-- **8.3** `OFFEN` 2.4.6.
+- **8.3** ~~`OFFEN`~~ 2.4.6 entschieden: Plugin-Version.
