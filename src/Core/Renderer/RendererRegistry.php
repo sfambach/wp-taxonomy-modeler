@@ -352,7 +352,14 @@ final class RendererRegistry
         Purpose $purpose,
         ?SimpleType $type = null,
     ): ?Renderer {
-        $chosen = $settings['renderer']->value->text ?? null;
+        $chosen  = $settings['renderer']->value->text ?? null;
+        $vorgabe = $settings['renderer'] ?? null;
+
+        // ⚠️ *Die Vorgabe der Auflösung (kein Besitzer, nicht hier gesetzt) ist keine Wahl — hier entscheidet der
+        // Typ und der Zweck, wie bisher, damit ein Ding nicht als Formular in ein Feld gezeichnet wird.*
+        if ($vorgabe instanceof \Taxmod\Core\Model\ResolvedSetting && $vorgabe->fromOwnerId === 0 && ! $vorgabe->setHere) {
+            $chosen = null;
+        }
 
         if ($chosen === null || $chosen === '') {
             // ⚠️ **Ohne den Zweck, und das ist Absicht.** *Für einen Augenblick stand hier

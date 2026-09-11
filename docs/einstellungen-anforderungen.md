@@ -130,11 +130,14 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
 ### 3.6 Welche Attribute es gibt
 
 - **3.6.1** Die Basisklasse Knoten muss erklären: `renderer` (Liste von Renderer-Objekten),
-  `converter` (Liste von Konverter-Objekten), `validator` (Liste von Validator-Objekten),
-  `display_size` (`int`). *Alle drei als Liste — sein Wort 2026-09-11: «im grunde haben wir alle
+  `converter` (Liste von Konverter-Objekten), `validator` (Liste von Validator-Objekten).
+  *`display_size` stand hier bis zum 2026-09-11 und ist an die einfachen Typen gewandert (3.6.2,
+  [D-724](NewConcept/90-decision-log.md)).* *Alle drei als Liste — sein Wort 2026-09-11: «im grunde haben wir alle
   möglichkeiten, einschränken können wir es immer noch.» Eine Einschränkung auf einen Eintrag wäre
   Sache der Klasse (3.4.2).*
-- **3.6.2** `Integer` und `Decimal` müssen erklären: `min`, `max`, `step`, je im eigenen Typ.
+- **3.6.2** `Integer` und `Decimal` müssen erklären: `min`, `max`, `step`, je im eigenen Typ. **Jede
+  einfache Typklasse** muss `display_size` (`int`, Vorgabe 20) erklären — *sein Wort 2026-09-11: «display
+  size gibts nur an den simplen datentypen»* ([D-724](NewConcept/90-decision-log.md)).
 - **3.6.3** Ein Renderer, Konverter oder Validator muss seine eigenen Attribute selbst erklären
   (`CompactRenderer.orientation`, `CompactRenderer.withLabel`).
 - **3.6.4** `Umrechnung` ist eine Wertklasse mit `factor` und `offset` (`decimal`). Die Klassen

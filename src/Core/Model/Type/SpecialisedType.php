@@ -52,9 +52,15 @@ use Taxmod\Core\Model\TypedValue;
  */
 abstract class SpecialisedType extends Node implements NodeClass
 {
-    // ⚠️ *Die Attribute der Basisklasse Knoten — `renderer`, `converter`, `validator`,
-    // `display_size` — hat auch ein Typknoten (Anforderung 2.3.3).*
+    // ⚠️ *Die Attribute der Basisklasse Knoten — `renderer`, `converter`, `validator` — hat auch ein
+    // Typknoten (Anforderung 2.3.3).*
     use \Taxmod\Core\Model\NodeClass\NodeAttributes;
+
+    // ⚠️ **`display_size` gibt es nur an den einfachen Typen** ([D-724](../../../../docs/NewConcept/90-decision-log.md)).
+    // *Sein Wort am 2026-09-11: «display size gibts nur an den simplen datentypen» — und sein Befund, dass es
+    // «überall angezeigt» wurde, «auch an kategorie». Also erklärt es die Typklasse, nicht die Basisklasse.*
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public int $display_size = 20;
 
     /**
      * ⚠️ **Alles hat eine Voreinstellung, damit `new IntType()` weiter der Steckbrief ist** — und alles

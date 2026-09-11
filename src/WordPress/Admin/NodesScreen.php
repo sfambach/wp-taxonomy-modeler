@@ -1567,6 +1567,10 @@ final class NodesScreen
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
             . '<input type="hidden" name="id" value="' . esc_attr((string) $selected->id) . '">'
             . '<input type="hidden" name="relation" value="0">'
+            // ⚠️ **Enter im Namensfeld ist Speichern** — sein Befund am 2026-09-11: «sagt unknown action». *Die Knöpfe
+            // stehen ausserhalb des Formulars (`form=`), also schickt ein Enter das Formular ohne Akt. Der stille Akt des
+            // Seitenformulars ist Speichern; ein Knopf mit eigenem `do` steht in der Sendung danach und gewinnt.*
+            . '<input type="hidden" name="do" value="' . esc_attr(SettingsRenderer::WRITE) . '">'
             . '<input type="hidden" name="_taxmod_nonce" value="'
             . esc_attr(wp_create_nonce(self::ACTION . '_' . $selected->id)) . '">'
             // ⚠️ *Auch hier, und es ist dasselbe Versäumnis: das Seitenformular ist der Knopf, den man

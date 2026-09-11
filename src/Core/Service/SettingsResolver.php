@@ -313,7 +313,22 @@ final class SettingsResolver
             }
         }
 
+        // ⚠️ **Der Renderer ist nie leer** — sein Wort am 2026-09-11: *«renderer muss gesetzt sein darf nicht leer
+        // sein».* *Wo niemand gewählt hat, gilt die Vorgabe: der Standard der Registratur für den Typ des Knotens,
+        // das Formular für alles andere — als Vorgabe (kein Besitzer, nicht hier gesetzt), wie die Vorgaben des Vertrags.*
+        if (! isset($aus['renderer']) && $vertrag->attribute('renderer') !== null) {
+            $aus['renderer'] = new ResolvedSetting('renderer', TypedValue::ofText($this->defaultRendererName($node)), 0, false);
+        }
+
         return $aus;
+    }
+
+    /** Der Renderer, der ohne Wahl zeichnet: der Typstandard, sonst das Formular. */
+    private function defaultRendererName(Node $node): string
+    {
+        $typ = \Taxmod\Core\Model\Type\SpecialisedTypes::ofClass($node->klasse);
+
+        return $typ === null ? \Taxmod\Core\Renderer\FormRenderer::NAME : $this->renderers->defaultFor($typ)->name();
     }
 
     /**

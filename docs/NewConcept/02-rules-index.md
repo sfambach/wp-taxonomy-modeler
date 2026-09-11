@@ -413,7 +413,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **S6** | with rows 5 and 8, which were blocked on OQ-092's column until D-413 delivered it. | [90-decision-log.md:662](90-decision-log.md) | 5 |
+| **S6** | with rows 5 and 8, which were blocked on OQ-092's column until D-413 delivered it. | [90-decision-log.md:661](90-decision-log.md) | 5 |
 
 ## Q — Aus der Altlast übernommene Frage
 

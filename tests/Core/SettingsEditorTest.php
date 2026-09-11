@@ -96,7 +96,7 @@ final class SettingsEditorTest extends TestCase
         self::assertTrue($this->editor->setListEntry($this->integer, 'renderer', $glieder[0]->rowId, false, null));
         self::assertFalse($this->editor->setListEntry($this->integer, 'renderer', $glieder[0]->rowId, false, null), 'dasselbe noch einmal');
         self::assertFalse($this->resolver->listOf($this->integer, 'renderer')[0]->aktiv);
-        self::assertArrayNotHasKey('renderer', $this->resolver->forNode($this->integer), 'ein abgeschaltetes Glied zählt nicht');
+        self::assertFalse($this->resolver->forNode($this->integer)['renderer']->setHere, 'nur die Vorgabe steht da');
         self::assertSame(1, $this->settings->countValues(), 'abschalten ist nicht löschen');
 
         self::assertTrue($this->editor->setListEntry($this->integer, 'renderer', $glieder[0]->rowId, true, null));
@@ -129,7 +129,7 @@ final class SettingsEditorTest extends TestCase
 
         $amKnoten = $this->resolver->listOf($this->integer, 'renderer');
         $this->editor->setListEntry($this->integer, 'renderer', $amKnoten[0]->rowId, false, null);
-        self::assertArrayNotHasKey('renderer', $this->resolver->forNode($this->integer));
+        self::assertFalse($this->resolver->forNode($this->integer)['renderer']->setHere, 'nur die Vorgabe steht da');
         self::assertSame('spinner', $this->resolver->forUseSite($this->kante, $this->integer)['renderer']->value->text, 'die Kante gilt über dem Knoten (Z3a)');
     }
 

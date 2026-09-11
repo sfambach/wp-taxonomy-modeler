@@ -62,14 +62,15 @@ final class SettingsResolverTest extends TestCase
         self::assertSame(0, $aus['display_size']->fromOwnerId, 'die Vorgabe gehört niemandem');
         self::assertSame(1, $aus['step']->value->int);
         self::assertArrayNotHasKey('min', $aus, 'ohne Vorgabe und ohne Zeile: nichts');
-        self::assertArrayNotHasKey('renderer', $aus, 'kein Renderer gewählt: die Registratur nimmt den Typstandard');
+        self::assertFalse($aus['renderer']->setHere, 'kein Renderer gewählt: die Vorgabe der Registratur steht da, nicht hier gesetzt');
+        self::assertSame(0, $aus['renderer']->fromOwnerId);
     }
 
     #[Test]
     public function a_row_at_the_node_beats_the_contract(): void
     {
         $this->settings->addValue(SettingsValue::atNode($this->hausnummer->id, IntType::class, 'max', TypedValue::ofInt(999)));
-        $this->settings->addValue(SettingsValue::atNode($this->hausnummer->id, NodeAttributes::class, 'display_size', TypedValue::ofInt(4)));
+        $this->settings->addValue(SettingsValue::atNode($this->hausnummer->id, \Taxmod\Core\Model\Type\SpecialisedType::class, 'display_size', TypedValue::ofInt(4)));
 
         $aus = $this->resolver->forNode($this->hausnummer);
 

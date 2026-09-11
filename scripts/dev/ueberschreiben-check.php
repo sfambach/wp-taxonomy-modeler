@@ -234,7 +234,7 @@ speichern($zahl->id, ['taxmod_setting' => ['renderer' => SpinnerRenderer::NAME],
 $g = $glieder();
 check('Schalter aus: der Akt gelingt, das Glied ist aus', gelungen() && ($g['spinner']['aktiv'] ?? true) === false, letzteMeldung() . ' ' . json_encode($g));
 check('die Zeile bleibt — abschalten ist nicht löschen', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings_value WHERE id = {$zeile}") === 1);
-check('nichts ist gewählt, beide Verwendungen zeichnen den Typstandard', ! isset($zeichner()->settingsForNode($nodes->byId($zahl->id))['renderer']) && $gezeichnet([$eins, $zwei]) === [$eins->id => FieldRenderer::NAME, $zwei->id => FieldRenderer::NAME]);
+check('nichts ist gewählt, beide Verwendungen zeichnen den Typstandard', ($zeichner()->settingsForNode($nodes->byId($zahl->id))['renderer'] ?? null)?->setHere === false && $gezeichnet([$eins, $zwei]) === [$eins->id => FieldRenderer::NAME, $zwei->id => FieldRenderer::NAME]);
 check('die Seite zeigt den Schalter aus', (bool) preg_match('/name="taxmod_setting_list\[renderer\]\[' . $zeile . '\]\[aktiv\]" value="1" form=/', seite($zahl->id)));
 speichern($zahl->id, ['taxmod_setting_list' => ['renderer' => [(string) $zeile => ['aktiv' => '0', 'position' => '0']]]]);
 check('dasselbe noch einmal schreibt nichts', letzteMeldung() === 'ok', letzteMeldung());

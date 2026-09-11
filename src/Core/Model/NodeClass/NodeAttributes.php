@@ -39,6 +39,4 @@ trait NodeAttributes
     #[Attribut(listOf: Validator::class)]
     public array $validator = [];
 
-    #[Attribut]
-    public int $display_size = 20;
 }

@@ -123,7 +123,7 @@ final class RenderingFromContractTest extends TestCase
     public function a_stored_row_is_drawn_as_set_here_and_the_renderer_reads_it(): void
     {
         $this->settings->addValue(SettingsValue::atNode($this->integer->id, IntType::class, 'max', TypedValue::ofInt(999)));
-        $this->settings->addValue(SettingsValue::atNode($this->integer->id, NodeAttributes::class, 'display_size', TypedValue::ofInt(4)));
+        $this->settings->addValue(SettingsValue::atNode($this->integer->id, \Taxmod\Core\Model\Type\SpecialisedType::class, 'display_size', TypedValue::ofInt(4)));
 
         $rows = $this->rows($this->integer);
 

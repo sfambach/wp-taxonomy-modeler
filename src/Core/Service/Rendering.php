@@ -928,7 +928,7 @@ final class Rendering implements Presets
             // `choice` weiter, weil [R28–R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)
             // nur an einer Stelle stehen dürfen. **Was ihn unterscheidet, ist die Menge, nicht die
             // Gestalt.***
-            if ($istWahl && $dieWahl->canShowItsState() && ($settings['renderer']->value->text ?? '') === '') {
+            if ($istWahl && $dieWahl->canShowItsState() && $this->chosenRendererName($settings) === '') {
                 $renderer = $this->renderers->byName(
                     ChoiceRenderer::NAME
                 );
@@ -2958,6 +2958,22 @@ final class Rendering implements Presets
         return $resolved;
     }
 
+    /**
+     * Der gewählte Renderer als Name — leer, wo nur die Vorgabe der Auflösung steht (kein Besitzer, nicht hier
+     * gesetzt): *die Vorgabe zeigt die Maske, damit der Renderer nie leer ist (sein Wort, 2026-09-11); gezeichnet
+     * wird dann, wie Typ und Zweck es sagen — genau wie ohne Wahl.*
+     */
+    private function chosenRendererName(array $settings): string
+    {
+        $wahl = $settings['renderer'] ?? null;
+
+        if (! $wahl instanceof ResolvedSetting || ($wahl->fromOwnerId === 0 && ! $wahl->setHere)) {
+            return '';
+        }
+
+        return (string) ($wahl->value->text ?? '');
+    }
+
     private function containerFor(Node $node, Purpose $purpose): Renderer
     {
         // ⚠️ **Ein Einstellungsknoten wird als Tabelle gezeichnet** ([D-546](../../../docs/NewConcept/90-decision-log.md)),
@@ -2975,9 +2991,7 @@ final class Rendering implements Presets
         // im Datensatz — also hätte der Eigentümer `table` wählen können und weiter ein Formular
         // gesehen. **Fünfter Fall derselben Sache an einem Tag:** Daten umgezogen, ein Leser
         // stehengeblieben.*
-        $chosen = ($this->withModelValues([], $node)['renderer'] ?? null)
-            ?->value
-            ->text;
+        $chosen = $this->chosenRendererName($this->withModelValues([], $node));
 
         if ($chosen === null || $chosen === '') {
             return $this->renderers->byName(FormRenderer::NAME);

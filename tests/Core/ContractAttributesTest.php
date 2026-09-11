@@ -36,10 +36,13 @@ final class ContractAttributesTest extends TestCase
         foreach (Contracts::all() as $class) {
             $attribute = Contracts::of($class)->attributes;
 
-            foreach (['renderer', 'converter', 'validator', 'display_size'] as $name) {
+            foreach (['renderer', 'converter', 'validator'] as $name) {
                 self::assertArrayHasKey($name, $attribute, "$class.$name");
                 self::assertSame(NodeAttributes::class, $attribute[$name]->declaredBy, "$class.$name hat die Adresse des Traits");
             }
+
+            // ⚠️ *«display size gibts nur an den simplen datentypen» (D-724).*
+            self::assertSame(is_subclass_of($class, \Taxmod\Core\Model\Type\SpecialisedType::class), isset($attribute['display_size']), "$class.display_size nur an einem Typ");
         }
     }
 
@@ -56,10 +59,12 @@ final class ContractAttributesTest extends TestCase
         self::assertSame(Converter::class, $a['converter']->objectClass);
         self::assertTrue($a['converter']->allowDuplicates);
 
-        self::assertSame(AttributeType::Int, $a['display_size']->type);
-        self::assertFalse($a['display_size']->list);
-        self::assertSame(20, $a['display_size']->default?->int);
-        self::assertSame(NodeAttributes::class . '.display_size', $a['display_size']->address());
+        // ⚠️ *`display_size` erklärt die Typklasse, nicht die Basisklasse (D-724).*
+        $t = Contracts::of(\Taxmod\Core\Model\Type\IntType::class)->attributes;
+        self::assertSame(AttributeType::Int, $t['display_size']->type);
+        self::assertFalse($t['display_size']->list);
+        self::assertSame(20, $t['display_size']->default?->int);
+        self::assertSame(\Taxmod\Core\Model\Type\SpecialisedType::class . '.display_size', $t['display_size']->address());
     }
 
     #[Test]

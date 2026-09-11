@@ -120,11 +120,9 @@ $store = new WpdbSettingsRepository();
 // ⚠️ *«wir beginnen leer» (D-717) — und seit Fassung 5 des Einheitengerüsts (Schritt 7 des Bauplans) schreibt es die
 // Umrechnungssätze der Präfixe und von Celsius und «mit Präfix» der Einheiten hinein: Zeilen an Knoten unter `Constants`
 // und die Zeilen ihrer Objekte, sonst nichts.*
-$konstanten      = (int) get_option('taxmod_branch_constants_id', 0);
-$unterKonstanten = $konstanten === 0 ? [] : (new WpdbNodeRepository())->subtreeIds($konstanten);
-$anKnoten        = array_map(intval(...), $wpdb->get_col('SELECT DISTINCT node_id FROM ' . Schema::table('settings_value') . ' WHERE node_id IS NOT NULL') ?: []);
-$fremde          = array_values(array_diff($anKnoten, $unterKonstanten));
-check('jede Zeile an einem Knoten hängt unter Constants — das Einheitengerüst, sonst nichts', $fremde === [], implode(',', array_slice($fremde, 0, 8)));
+// ⚠️ *Und was der Eigentümer seither setzt, steht daneben — gemessen am 2026-09-11 an seiner ersten Wahl: die Zusage
+// «nur das Gerüst» war einen Abend lang wahr.*
+printf("  --   %d Zeilen, %d Objekte\n", $store->countValues(), $store->countObjects());
 check('und jedes Objekt wird von einer Zeile genannt', (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('settings_object') . ' o WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('settings_value') . ' v WHERE v.wert_settings_object_id = o.id)') === 0);
 
 echo "\n4 · Auf der Wiese\n";

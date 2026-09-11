@@ -506,7 +506,7 @@ echo "\n== 2 · Der Vertrag erklärt: die Attribute kommen aus der Klasse, nicht
 // Knoten erbt einen Wert vom Vater** — sein Wort: «vererbung von knoten settings in knoten ist grundsätzlich
 // raus»; die Klasse liefert die Vorgabe, der Knoten setzt, die Kante überschreibt (Abschnitt 4).*
 $vertragInt = \Taxmod\Core\Model\NodeClass\Contracts::of(\Taxmod\Core\Model\Type\IntType::class);
-check('der Vertrag von Integer erklärt min, max, step und die vier der Basisklasse', array_values(array_diff(['min', 'max', 'step', 'renderer', 'converter', 'validator', 'display_size'], array_keys($vertragInt->attributes))) === [], implode(',', array_keys($vertragInt->attributes)));
+check('der Vertrag von Integer erklärt min, max, step, display_size und die drei der Basisklasse', array_values(array_diff(['min', 'max', 'step', 'renderer', 'converter', 'validator', 'display_size'], array_keys($vertragInt->attributes))) === [], implode(',', array_keys($vertragInt->attributes)));
 $markup = seite($zahl->id);
 preg_match_all('/name="taxmod_setting\[([a-z_]+)\]"/', $markup, $treffer);
 $imBereich = array_values(array_unique($treffer[1]));
@@ -517,7 +517,7 @@ $zeilenAm = static fn (int $nodeId, string $attribut = ''): int => (int) $wpdb->
 check('und die Vorgabe hat keine Zeile — nur Gesetztes wird gespeichert (4.5.1)', $zeilenAm($zahl->id) === 0, (string) $zeilenAm($zahl->id));
 $markupModell = seite($modellKnoten->id);
 preg_match_all('/name="taxmod_setting\[([a-z_]+)\]"/', $markupModell, $trefferModell);
-check('ein Ding unter Model kennt renderer, converter, validator, display_size — keine Grenzen', array_values(array_diff(['renderer', 'converter', 'validator', 'display_size'], $trefferModell[1])) === [] && ! in_array('min', $trefferModell[1], true), implode(',', array_unique($trefferModell[1])));
+check('ein Ding unter Model kennt renderer, converter, validator — keine Grenzen, kein display_size (D-724)', array_values(array_diff(['renderer', 'converter', 'validator'], $trefferModell[1])) === [] && ! in_array('min', $trefferModell[1], true) && ! in_array('display_size', $trefferModell[1], true), implode(',', array_unique($trefferModell[1])));
 $speicherbar = static fn (int $nodeId, string $attribut, string $wert): bool => speichern($nodeId, ['taxmod_setting' => [$attribut => $wert]]);
 $aufgeloest  = static fn (int $nodeId): array => $zeichner()->settingsForNode($nodes->byId($nodeId));
 $speicherbar($zahl->id, 'max', 'viele');
@@ -568,7 +568,7 @@ check('unter `constants` steht `reference` zur Wahl', in_array('reference', $ang
 $editor->createNode('__es ein Kind', $unterKonstanten->id);
 $namenMitKind = $angebotDerSeite(seite($unterKonstanten->id));
 check('mit einem Kind stehen die Wähler zur Wahl', array_values(array_diff(['chooser-dialog', 'chooser-inline'], $namenMitKind)) === [], implode(',', $namenMitKind));
-check('kein Renderer ist gewählt, solange niemand wählt — gezeichnet wird mit dem Typstandard', $gewaehlterRenderer($zahl->id) === '' && gezeichnet($zeichner(), $eins->id)[0] === FieldRenderer::NAME, $gewaehlterRenderer($zahl->id) . ' / ' . gezeichnet($zeichner(), $eins->id)[0]);
+check('kein Renderer ist gewählt, solange niemand wählt — die Maske zeigt die Vorgabe, gezeichnet wird mit dem Typstandard', $gewaehlterRenderer($zahl->id) === FieldRenderer::NAME && ($zeichner()->settingsForNode($nodes->byId($zahl->id))['renderer'] ?? null)?->setHere === false && gezeichnet($zeichner(), $eins->id)[0] === FieldRenderer::NAME, $gewaehlterRenderer($zahl->id) . ' / ' . gezeichnet($zeichner(), $eins->id)[0]);
 $speicherbar($zahl->id, 'renderer', SpinnerRenderer::NAME);
 check('der Akt «Renderer wählen» läuft durch', gelungen(), letzteMeldung());
 check('die Wahl steht nach dem Speichern da', $gewaehlterRenderer($zahl->id) === SpinnerRenderer::NAME, $gewaehlterRenderer($zahl->id));
@@ -676,7 +676,7 @@ speichern($modellKnoten->id, ['taxmod_field_setting' => [(string) $eins->id => [
 $jetzt = $gezeichnetFuer([$eins, $zwei]);
 check('die Kante ohne eigene Wahl zeichnet wieder mit der Wahl des Knotens', $jetzt[$eins->id] === SpinnerRenderer::NAME && $jetzt[$zwei->id] === SpinnerRenderer::NAME, implode(',', $jetzt));
 $stumm = $editor->createNode('__es stumm', $wurzel->id);
-check('ein Knoten ohne eigene Aussage bekommt nichts von der Wurzel — es gibt keine Kette mehr (D-712)', $gewaehlterRenderer($stumm->id) === '', $gewaehlterRenderer($stumm->id));
+check('ein Knoten ohne eigene Aussage bekommt nichts von der Wurzel — nur die Vorgabe, das Formular; es gibt keine Kette mehr (D-712)', $gewaehlterRenderer($stumm->id) === FormRenderer::NAME && ($zeichner()->settingsForNode($nodes->byId($stumm->id))['renderer'] ?? null)?->setHere === false, $gewaehlterRenderer($stumm->id));
 
 // ---------------------------------------------------------------------------------------------------
 
@@ -715,7 +715,7 @@ $erklaert[]   = \Taxmod\Core\Model\EdgeColumn::READ_ONLY;
 $erklaert[]   = Rendering::KIND_KEY;
 $ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
 check('der Einstellungsbereich bietet Schlüssel an, und jeder steht im Vertrag des Ziels oder seines Renderers', count($angeboteneSchluessel) >= 3 && $ueberzaehlig === [], 'nicht erklärt: ' . implode(',', $ueberzaehlig) . ' von ' . implode(',', $angeboteneSchluessel));
-check('display_size ist dabei — die Basisklasse erklärt es (3.6.1)', in_array('display_size', $angeboteneSchluessel, true));
+check('display_size ist dabei — die Typklasse erklärt es (3.6.2, D-724)', in_array('display_size', $angeboteneSchluessel, true));
 $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', seite($kind->id)) ?? '';
 preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/s', $html, $zeilenKind);
 $offeneGeerbte = 0;
