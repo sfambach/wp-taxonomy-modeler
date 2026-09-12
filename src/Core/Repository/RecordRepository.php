@@ -22,6 +22,14 @@ interface RecordRepository
 
     public function find(int $id): ?NodeRecord;
 
+    /**
+     * Mehrere Sätze in einer Abfrage — die Zusammenfassung (D-753) braucht zu jedem verwiesenen Satz seinen Knoten.
+     *
+     * @param  list<int>              $ids
+     * @return array<int, NodeRecord> Satz-Id => Satz; ohne Eintrag, wo keiner steht.
+     */
+    public function byIds(array $ids): array;
+
     /** @return list<NodeRecord> Every record entered against one model node. */
     public function ofNode(int $nodeId): array;
 

@@ -906,9 +906,18 @@ final class Rendering implements Presets
             // ⚠️ *Gemessen, wie es vorher aussah: `label_role` und `orientation` standen als nacktes
             // Textfeld mit `taxmod-no-renderer` da, obwohl ihre fünf beziehungsweise zwei
             // Möglichkeiten längst als Kinder im Modell stehen.*
-            $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef;
-
             $gewaehlt = $values[$relation->id] ?? null;
+
+            // ⚠️ **Ein gespeicherter Satzverweis zeigt seine Zusammenfassung, was auch immer das Ziel ist** (D-753). *Sein Befund:
+            // «warum sieht das anders aus als summary bei Hersteller» — der Nachfolger zeigt auf «Software», das Kinder hat, und ist
+            // darum nach D-540 eine Knotenauswahl; der Satz darin wurde als Nummer gezeichnet. Der Raum des Wertes entscheidet die Anzeige.*
+            $satzverweis = $gewaehlt?->referenceSpace === ReferenceSpace::Record;
+
+            if ($satzverweis && ! $renderer instanceof SummaryRenderer) {
+                $renderer = $this->renderers->byName(SummaryRenderer::NAME);
+            }
+
+            $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef && ! $satzverweis;
 
             // ⚠️ **Ein Weg wird gerechnet, nicht gelesen, und ist nie eingebbar** ([D-751](../../../docs/NewConcept/90-decision-log.md)).
             // *Was im Satz steht, zählt nicht; die Kette der Namen vom erklärenden Vater bis hierher ist der Wert.*
@@ -3207,7 +3216,8 @@ final class Rendering implements Presets
         $betroffen = [];
 
         foreach ($relations as $relation) {
-            if ($this->drawsAsSummary($relation, $types[$relation->id] ?? null, $resolved[$relation->id] ?? [])) {
+            if ($this->drawsAsSummary($relation, $types[$relation->id] ?? null, $resolved[$relation->id] ?? [])
+                || ($values[$relation->id] ?? null)?->referenceSpace === ReferenceSpace::Record) {
                 $betroffen[] = $relation;
             }
         }
@@ -3244,6 +3254,7 @@ final class Rendering implements Presets
         }
 
         $werte  = $this->records->valuesOfMany($satzIds);
+        $saetze = $this->records->byIds($satzIds);
         $felder = [];
 
         foreach ($betroffen as $relation) {
@@ -3261,24 +3272,57 @@ final class Rendering implements Presets
                 }
             }
 
-            if ($gewaehlt === []) {
-                // ⚠️ *Ohne Wahl das erste Textfeld des Ziels — vorläufig, bis eines gewählt ist.*
-                $eigene = $this->relations?->fieldRelationsOf($this->framework->inheritanceOwnersOf($ziel)) ?? [];
-                $typen  = $this->typesOf($eigene);
+            $felder[$relation->id] = $gewaehlt;
+        }
 
-                foreach ($eigene as $feld) {
-                    if (! $feld->isSetting() && ($typen[$feld->id] ?? null) === SimpleType::Text) {
-                        $gewaehlt[] = $feld->id;
+        // ⚠️ **Ohne Wahl das erste Textfeld — beim Knoten des Satzes, nicht am Ziel der Kante.** *Sein Befund am
+        // 2026-09-12: «warum sieht das anders aus als summary bei Hersteller» — der Nachfolger zeigte «#20068», weil die Kante auf
+        // «Software» zeigt und Software keine Felder hat; die Felder des Satzes gehören OS, dem Vater seines Knotens. Die Sätze
+        // liegen unter dem Ziel, also entscheidet ihr Knoten. Alle Besitzer in einer Abfrage, dann je Knoten das erste Textfeld.*
+        $knotenIds = [];
+
+        foreach ($saetze as $satz) {
+            $knotenIds[$satz->nodeId] = true;
+        }
+
+        $erstesTextfeld = [];
+
+        if ($knotenIds !== [] && $this->relations !== null) {
+            $besitzerJeKnoten = [];
+            $alleBesitzer     = [];
+
+            foreach ($this->nodes->byIds(array_keys($knotenIds)) as $knoten) {
+                $besitzerJeKnoten[$knoten->id] = $this->framework->inheritanceOwnersOf($knoten);
+                $alleBesitzer                  = [...$alleBesitzer, ...$besitzerJeKnoten[$knoten->id]];
+            }
+
+            $alleFelder = $this->relations->fieldRelationsOf(array_values(array_unique($alleBesitzer)));
+            $typen      = $this->typesOf($alleFelder);
+            $nachBesitzer = [];
+
+            foreach ($alleFelder as $feld) {
+                if (! $feld->isSetting() && ($typen[$feld->id] ?? null) === SimpleType::Text) {
+                    $nachBesitzer[$feld->fromNodeId] ??= $feld->id;
+                }
+            }
+
+            foreach ($besitzerJeKnoten as $knotenId => $besitzer) {
+                foreach ($besitzer as $einer) {
+                    if (isset($nachBesitzer[$einer])) {
+                        $erstesTextfeld[$knotenId] = $nachBesitzer[$einer];
                         break;
                     }
                 }
             }
-
-            $felder[$relation->id] = $gewaehlt;
         }
 
-        $wort = static function (int $satzId, array $feldIds) use ($werte): string {
+        $wort = static function (int $satzId, array $feldIds) use ($werte, $saetze, $erstesTextfeld): string {
             $teile = [];
+
+            if ($feldIds === []) {
+                $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
+                $feldIds  = $knotenId !== null && isset($erstesTextfeld[$knotenId]) ? [$erstesTextfeld[$knotenId]] : [];
+            }
 
             foreach ($feldIds as $feldId) {
                 foreach ($werte[$satzId] ?? [] as $zeile) {

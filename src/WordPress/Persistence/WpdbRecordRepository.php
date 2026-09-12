@@ -58,6 +58,32 @@ final class WpdbRecordRepository implements RecordRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
+    public function byIds(array $ids): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_map(intval(...), $ids)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = Query::rows('Datensätze lesen', $wpdb->prepare(
+            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records')
+                . ' WHERE id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ')',
+            ...$ids
+        ));
+
+        $aus = [];
+
+        foreach ($rows as $row) {
+            $satz           = $this->hydrate($row);
+            $aus[$satz->id] = $satz;
+        }
+
+        return $aus;
+    }
+
     /**
      * ⚠️ **`AND relation_id = 0`, seit Fassung 37** ([D-667](../../../docs/NewConcept/90-decision-log.md)):
      * *die Sätze **des Knotens**, nicht die seiner Verwendungsstellen. Ein Satz einer Kante trägt in

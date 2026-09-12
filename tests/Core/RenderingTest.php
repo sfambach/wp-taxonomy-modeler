@@ -2106,4 +2106,24 @@ final class RenderingTest extends TestCase
         self::assertStringNotContainsString('Hardware', $this->rendering->nodeAsForm($pc, [$ast], [], Purpose::Display)->markup, 'am erklärenden Knoten: nichts');
         self::assertSame('Hardware', $this->rendering->pathTextFor($ast, $internal->id)->text, 'derselbe Wert für den Satz');
     }
+
+    /** ⚠️ *Sein Befund: «warum sieht das anders aus als summary bei Hersteller» — das Ziel hatte keine Felder, der Satz schon.* */
+    #[Test]
+    public function without_chosen_fields_the_fallback_looks_at_the_node_of_the_record_not_at_the_target(): void
+    {
+        $software = $this->thing('Software');
+        $os       = $this->editor->createNode('OS', $software->id);
+        $version  = $this->editor->addField($os->id, $this->type('Text')->id, 'version');
+        $dos      = $this->editor->createNode('DOS', $os->id);
+        $eintrag  = $this->thing('Eintrag');
+        $folger   = $this->editor->addField($eintrag->id, $software->id, 'nachfolger', RelationKind::Aggregation);
+
+        $satzId = $this->records->add(new NodeRecord(0, $dos->id, 1, '2026-09-12 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satzId, $version->id, TypedValue::ofText('6.22')));
+
+        $gezeigt = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+
+        self::assertStringContainsString('>6.22<', $gezeigt, 'das Textfeld des Satzknotens, geerbt von OS');
+        self::assertStringNotContainsString('#' . $satzId, $gezeigt);
+    }
 }

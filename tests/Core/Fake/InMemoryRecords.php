@@ -59,6 +59,11 @@ final class InMemoryRecords implements RecordRepository
         return $this->records[$id] ?? null;
     }
 
+    public function byIds(array $ids): array
+    {
+        return array_intersect_key($this->records, array_flip(array_map(intval(...), $ids)));
+    }
+
     public function ofNode(int $nodeId): array
     {
         // ⚠️ *Und nicht die Sätze seiner Verwendungsstellen — dieselbe Bedingung wie im Speicher
