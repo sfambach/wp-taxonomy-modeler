@@ -92,7 +92,9 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
 ### 3.1 Typen
 
 - **3.1.1** Ein Attribut muss genau einen dieser Typen haben: `bool`, `int`, `decimal`, `text`,
-  Enum, Verweis auf einen Knoten, Objekt einer Wertklasse.
+  Enum, Verweis auf einen Knoten, Verweis auf ein Feld, Objekt einer Wertklasse. *Verweis auf ein
+  Feld seit [D-752](NewConcept/90-decision-log.md): die Kandidaten sind die Felder des Knotens, an dem
+  die Einstellung steht — an einer Kante die Felder ihres Zielknotens.*
 - **3.1.2** Jeder Typ aus 3.1.1 darf auch als Liste erklärt sein.
 - **3.1.3** Ein Enum muss im Code erklärt sein; seine Fälle stehen im Vertrag.
 - **3.1.4** Ein Verweis auf einen Knoten muss im Vertrag sagen, welche Knotenklasse das Ziel haben

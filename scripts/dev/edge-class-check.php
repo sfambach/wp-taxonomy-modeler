@@ -125,12 +125,19 @@ function check(string $what, bool $passed, string $detail = ''): void
 function zweiBesitzer(): array
 {
     $values = Schema::table(Schema::LIVE_TABLES[3]);
+    $relations = Schema::table(Schema::LIVE_TABLES[1]);
 
     return Query::rows(
         'Datensaetze mit mehr als einem Besitzer suchen',
         "SELECT rid, COUNT(*) anzahl, GROUP_CONCAT(quelle) besitzer FROM (
-             SELECT value_ref rid, CONCAT('wertzeile:', id) quelle
-                 FROM {$values} WHERE value_ref_kind = 'record'
+             SELECT v.value_ref rid, CONCAT('wertzeile:', v.id) quelle
+                 FROM {$values} v
+                 JOIN {$relations} r ON r.id = v.relation_id
+                 -- ⚠️ Nur ein **Teil** hat einen Besitzer (Komposition, D-548). Ein Verweis über eine
+                 -- Aggregation zeigt auf einen eigenständigen Satz, den viele nennen dürfen — der
+                 -- Hersteller der Betriebssysteme (Zeile 122, D-753). Gemessen am 2026-09-12: 25 Sätze
+                 -- nannten Microsoft, und dieser Wächter hielt das für 25 Besitzer.
+                 WHERE v.value_ref_kind = 'record' AND r.kind = 'composition'
          ) halter GROUP BY rid HAVING anzahl > 1"
     );
 }

@@ -87,7 +87,7 @@ $values  = Schema::table('settings_value');
 echo "1 · Form\n";
 
 $objektSpalten = ['id', 'version', 'klasse'];
-$zeilenSpalten = ['id', 'version', 'node_id', 'settings_object_id', 'relation_id', 'klasse', 'attribut', 'position', 'aktiv', 'wert_int', 'wert_decimal', 'wert_text', 'wert_knoten_id', 'wert_settings_object_id'];
+$zeilenSpalten = ['id', 'version', 'node_id', 'settings_object_id', 'relation_id', 'klasse', 'attribut', 'position', 'aktiv', 'wert_int', 'wert_decimal', 'wert_text', 'wert_knoten_id', 'wert_settings_object_id', 'wert_kante_id'];
 
 check('settings_object hat seine drei Spalten', spalten($objects) === $objektSpalten, implode(',', spalten($objects)));
 check('settings_value hat seine vierzehn Spalten', spalten($values) === $zeilenSpalten, implode(',', spalten($values)));
@@ -103,7 +103,7 @@ if ($bad > 0) {
 
 echo "\n2 · Fremdschlüssel\n";
 
-foreach (['node_id' => 'nodes', 'settings_object_id' => 'settings_object', 'relation_id' => 'relations', 'wert_knoten_id' => 'nodes', 'wert_settings_object_id' => 'settings_object'] as $spalte => $ziel) {
+foreach (['node_id' => 'nodes', 'settings_object_id' => 'settings_object', 'relation_id' => 'relations', 'wert_knoten_id' => 'nodes', 'wert_settings_object_id' => 'settings_object', 'wert_kante_id' => 'relations'] as $spalte => $ziel) {
     $verweist = (string) $wpdb->get_var($wpdb->prepare(
         'SELECT REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE
          WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s AND REFERENCED_TABLE_NAME IS NOT NULL',

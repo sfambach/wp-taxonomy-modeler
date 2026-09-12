@@ -182,8 +182,9 @@ final class SettingsEditor
     {
         $erklaert = $this->declarationOf($node, $attribut, $edge);
 
-        if (! $erklaert->list || $erklaert->type !== AttributeType::NodeRef) {
-            throw SettingDoesNotApply::named($attribut . ' is no list of nodes');
+        // ⚠️ *Knoten oder Felder — eine Liste von Verweisen, mit Haken gewählt (D-732, D-752).*
+        if (! $erklaert->list || ! in_array($erklaert->type, [AttributeType::NodeRef, AttributeType::RelationRef], true)) {
+            throw SettingDoesNotApply::named($attribut . ' is no list of references');
         }
 
         $wanted     = array_values(array_unique(array_map(intval(...), $wanted)));
@@ -209,7 +210,8 @@ final class SettingsEditor
                 continue;
             }
 
-            $neu = $this->settings->addValue(SettingsValue::atNode($node->id, $erklaert->declaredBy, $erklaert->name, TypedValue::ofReference($verweis), $edge?->id));
+            $wert = $erklaert->type === AttributeType::RelationRef ? TypedValue::ofRelationReference($verweis) : TypedValue::ofReference($verweis);
+            $neu  = $this->settings->addValue(SettingsValue::atNode($node->id, $erklaert->declaredBy, $erklaert->name, $wert, $edge?->id));
             $this->resolver->forget();
             $this->note($node, $attribut, $edge, null, $neu->value, $neu->version);
             $geaendert++;
@@ -505,6 +507,7 @@ final class SettingsEditor
             AttributeType::Text    => TypedValue::ofText($characters),
             AttributeType::Enum    => in_array($characters, $erklaert->enumCases(), true) ? TypedValue::ofText($characters) : throw SettingDoesNotApply::named($erklaert->name . ' = ' . $characters),
             AttributeType::NodeRef => TypedValue::ofReference($this->nodeNamed($erklaert, $characters)),
+            AttributeType::RelationRef => ctype_digit($characters) ? TypedValue::ofRelationReference((int) $characters) : throw SettingDoesNotApply::named($erklaert->name . ' = ' . $characters),
             AttributeType::Object  => null,
         };
     }

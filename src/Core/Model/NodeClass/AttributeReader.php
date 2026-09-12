@@ -106,6 +106,8 @@ final class AttributeReader
 
         return match (true) {
             $element === 'node'    => [AttributeType::NodeRef, null, null, $angabe->refersTo],
+            // ⚠️ *Eine Liste von Feldern — die Kandidaten sind die Felder des Knotens, an dem die Einstellung steht (D-752).*
+            $element === 'relation' => [AttributeType::RelationRef, null, null, null],
             $element === 'bool'    => [AttributeType::Bool, null, null, null],
             $element === 'int'     => [AttributeType::Int, null, null, null],
             $element === 'decimal' => [AttributeType::Decimal, null, null, null],
@@ -129,6 +131,7 @@ final class AttributeReader
             AttributeType::Text    => TypedValue::ofText((string) $vorgabe),
             AttributeType::Enum    => TypedValue::ofText($vorgabe instanceof \BackedEnum ? (string) $vorgabe->value : (string) $vorgabe->name),
             AttributeType::NodeRef => TypedValue::ofReference((int) $vorgabe),
+            AttributeType::RelationRef => TypedValue::ofRelationReference((int) $vorgabe),
             AttributeType::Object  => null,
         };
     }

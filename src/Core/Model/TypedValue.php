@@ -104,6 +104,12 @@ final class TypedValue
         return new self(reference: $recordId, referenceSpace: ReferenceSpace::Record);
     }
 
+    /** Ein Verweis auf ein Feld (eine Kante) — der Attributtyp aus D-752. */
+    public static function ofRelationReference(int $relationId): self
+    {
+        return new self(reference: $relationId, referenceSpace: ReferenceSpace::Relation);
+    }
+
     /** Deliberately nothing — the row exists and holds no value. */
     public static function nothing(): self
     {
@@ -298,6 +304,7 @@ final class TypedValue
             // Nummer eines Datensatzes. Ältere Journalzeilen sagen nur «reference» und werden
             // als Knotenverweis gelesen — was sie bis hierher auch bedeutet haben.*
             $this->referenceSpace === ReferenceSpace::Record => 'record_reference',
+            $this->referenceSpace === ReferenceSpace::Relation => 'relation_reference',
             $this->reference !== null => 'reference',
             default                   => 'text',
         };
@@ -344,6 +351,7 @@ final class TypedValue
             'date'      => self::ofDate($rawValue),
             'reference'        => self::ofReference((int) $rawValue),
             'record_reference' => self::ofRecordReference((int) $rawValue),
+            'relation_reference' => self::ofRelationReference((int) $rawValue),
             'text'      => self::ofText($rawValue),
             default     => throw NotAValueOfThatType::submitted($rawValue, $type),
         };

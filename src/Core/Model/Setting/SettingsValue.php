@@ -117,10 +117,13 @@ final class SettingsValue
         ?string $text,
         ?int $nodeRef,
         ?int $valueObjectId,
+        ?int $relationRef = null,
     ): self {
-        $value = $nodeRef !== null
-            ? TypedValue::ofReference($nodeRef)
-            : TypedValue::fromStorage($int, $decimal, $text, null, null);
+        $value = match (true) {
+            $nodeRef !== null     => TypedValue::ofReference($nodeRef),
+            $relationRef !== null => TypedValue::ofRelationReference($relationRef),
+            default               => TypedValue::fromStorage($int, $decimal, $text, null, null),
+        };
 
         return new self($nodeId, $objectId, $relationId, $klasse, $attribut, $value, $valueObjectId, $position, $aktiv, $id, $version);
     }

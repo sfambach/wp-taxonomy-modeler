@@ -2421,7 +2421,11 @@ final class Rendering implements Presets
     ): string {
         // ⚠️ *«Wie oft» und die Art stehen in eigenen Zellen der Feldzeile; `read_only` bleibt im
         // Bereich, als Schalter ([D-714](90-decision-log.md)).*
-        unset($configured[EdgeColumn::MULTIPLICITY], $configured[self::KIND_KEY]);
+        // ⚠️ **Die drei Spalten der Kante stehen in der Zeile selbst (D-735) und nicht noch einmal hier** — sein Befund am
+        // 2026-09-12: «read only verschwindet nach Speichern, das hatten wir jetzt schon mehrfach». *Gemessen: die offene Zeile
+        // trug `read_only` und `unique` zweimal unter einem Namen — die Spalte und die Kopie im Bereich —, und der Browser schickt
+        // die zweite, deren verborgene 0. Der Wächter schickt die Seite seither wie ein Browser (D-754).*
+        unset($configured[EdgeColumn::MULTIPLICITY], $configured[EdgeColumn::READ_ONLY], $configured[EdgeColumn::UNIQUE], $configured[self::KIND_KEY]);
 
         if ($configured === []) {
             return '';
@@ -3607,13 +3611,15 @@ final class Rendering implements Presets
         // ⚠️ **Eine Verweisliste mit Anker ist eine Kaskade von Schaltern, kein Auswahlfeld** ([D-732](../../../docs/NewConcept/90-decision-log.md)).
         // *Sein Befund an `erlaubte_praefixe`: «müsste multi auswahl sein ist es aber nicht, ausserdem würde ich eine schalter
         // kaskade netter finden als jedes einzeln aus der liste auszuwählen».*
-        if ($erklaert->list && $typ === \Taxmod\Core\Model\NodeClass\AttributeType::NodeRef && $erklaert->from !== null && $fieldPrefix !== '') {
+        // ⚠️ *Eine Liste von Feldern (D-752) wird wie eine verankerte Knotenliste gezeichnet: Haken je Kandidat, die Kandidaten sind die Felder des Knotens.*
+        if ($erklaert->list && $fieldPrefix !== '' && (($typ === \Taxmod\Core\Model\NodeClass\AttributeType::NodeRef && $erklaert->from !== null) || $typ === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef)) {
             return new RenderedSetting($key, SettingShape::Switch, null, $setting, $this->switchCascade($subject, $erklaert, $fieldPrefix, $formId, $locale), CheckboxRenderer::NAME, $subjectType, band: $erklaert->band);
         }
 
         $options = match ($typ) {
             \Taxmod\Core\Model\NodeClass\AttributeType::Enum    => array_combine($erklaert->enumCases(), $erklaert->enumCases()),
             \Taxmod\Core\Model\NodeClass\AttributeType::NodeRef => $this->nodesOffered($erklaert),
+            \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef => [],
             default                                             => $this->objectsOffered($erklaert, $subject),
         };
 
@@ -3685,16 +3691,39 @@ final class Rendering implements Presets
      */
     private function switchCascade(Renderable $subject, \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert, string $fieldPrefix, string $formId, string $locale): RenderResult
     {
-        $anker  = $erklaert->from === null ? null : $this->framework->anchor($erklaert->from);
         $knoten = $subject instanceof Node ? $subject : ($subject instanceof Relation ? $this->nodes->find($subject->toNodeId) : null);
 
-        if ($anker === null || $knoten === null) {
+        if ($knoten === null) {
             return RenderResult::of('');
         }
 
-        $kandidaten = $this->nodes->childrenOf($anker);
-        $namen      = $this->labels?->forNodes($kandidaten, SeededRole::Select, $locale) ?? [];
-        $an         = [];
+        // ⚠️ **Die Kandidaten: Kinder des Ankers für eine Knotenliste, die Felder des Knotens für eine Feldliste**
+        // ([D-752](../../../docs/NewConcept/90-decision-log.md)). *Je Kandidat Id und Wort; für Felder ist das Wort
+        // der Feldname, denn das Feld ist es, das gewählt wird.*
+        $kandidaten = [];
+
+        if ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef) {
+            foreach ($this->relations?->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)) ?? [] as $feld) {
+                if (! $feld->isSetting()) {
+                    $kandidaten[$feld->id] = $feld->name;
+                }
+            }
+        } else {
+            $anker = $erklaert->from === null ? null : $this->framework->anchor($erklaert->from);
+
+            if ($anker === null) {
+                return RenderResult::of('');
+            }
+
+            $kinder = $this->nodes->childrenOf($anker);
+            $namen  = $this->labels?->forNodes($kinder, SeededRole::Select, $locale) ?? [];
+
+            foreach ($kinder as $kind) {
+                $kandidaten[$kind->id] = $namen[$kind->id] ?? $kind->name;
+            }
+        }
+
+        $an = [];
 
         foreach ($this->resolver?->listOf($knoten, $erklaert->name, $subject instanceof Relation ? $subject : null) ?? [] as $glied) {
             if ($glied->reference !== null && $glied->aktiv) {
@@ -3706,12 +3735,12 @@ final class Rendering implements Presets
         $form   = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
         $html   = '<ul class="taxmod-switch-cascade">';
 
-        foreach ($kandidaten as $kandidat) {
-            $name  = RenderResult::escape($prefix . '[' . $kandidat->id . ']');
+        foreach ($kandidaten as $kandidatId => $wort) {
+            $name  = RenderResult::escape($prefix . '[' . $kandidatId . ']');
             $html .= '<li><label>'
                 . '<input type="hidden" name="' . $name . '" value="0"' . $form . '>'
-                . '<input type="checkbox" name="' . $name . '" value="1"' . (isset($an[$kandidat->id]) ? ' checked' : '') . $form . '> '
-                . RenderResult::escape($namen[$kandidat->id] ?? $kandidat->name)
+                . '<input type="checkbox" name="' . $name . '" value="1"' . (isset($an[$kandidatId]) ? ' checked' : '') . $form . '> '
+                . RenderResult::escape($wort)
                 . '</label></li>';
         }
 

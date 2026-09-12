@@ -441,7 +441,7 @@ final class Schema
      * sieben Wertzeilen, alle am Knoten, alle `0` — es wandert nichts in die Spalte, und nichts geht
      * verloren. `multiplicity` war schon Spalte (Fassung 22); was fällt, ist nur ihr Schlüssel.*
      */
-    public const VERSION = 52;
+    public const VERSION = 53;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -760,6 +760,10 @@ final class Schema
 
         // ⚠️ **Fassung 52: `with_parent` am Verweis heisst `use_parent_label`** ([D-746](../../../docs/NewConcept/90-decision-log.md)).
         self::renameWithParent();
+
+        // ⚠️ **Fassung 53: `settings_value.wert_kante_id` — ein Verweis auf ein Feld als Einstellungswert** ([D-752](../../../docs/NewConcept/90-decision-log.md)).
+        // *Die Spalte legt `dbDelta` aus der Anweisung an; der Schatten muss seinen Spaltenplan vergessen.*
+        self::placeWertKanteId();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -3455,6 +3459,34 @@ final class Schema
     }
 
     /** Fassung 52: die Einstellung `with_parent` des Verweis-Renderers heisst `use_parent_label` — sein Wort (D-746). */
+    /**
+     * Fassung 53: `wert_kante_id` steht im Schatten an derselben Stelle wie in der lebenden Tabelle.
+     *
+     * ⚠️ *`dbDelta` hängt eine neue Spalte hinten an — im Schatten also hinter `archived_at`, und der
+     * Wächter `settings-tables` verlangt dieselbe Reihenfolge wie vorn. Läuft bei jedem Aufbau, tut aber
+     * nur etwas, wenn die Spalte an der falschen Stelle steht.*
+     */
+    private static function placeWertKanteId(): void
+    {
+        global $wpdb;
+
+        $schatten = self::table('settings_value_history');
+
+        if (self::tableMissing($schatten)) {
+            return;
+        }
+
+        $spalten = array_map(static fn (object $c): string => (string) $c->Field, $wpdb->get_results("SHOW COLUMNS FROM {$schatten}"));
+        $wo      = array_search('wert_kante_id', $spalten, true);
+
+        if ($wo === false || ($spalten[$wo + 1] ?? '') === 'deleted') {
+            return;
+        }
+
+        $wpdb->query("ALTER TABLE {$schatten} MODIFY COLUMN wert_kante_id bigint(20) unsigned DEFAULT NULL AFTER wert_settings_object_id");
+        Shadow::forgetColumnPlan();
+    }
+
     private static function renameWithParent(): void
     {
         global $wpdb;
@@ -3498,6 +3530,7 @@ final class Schema
             ['relation_id',             self::table('relations'), 'taxmod_sv_relation'],
             ['wert_knoten_id',          self::table('nodes'),     'taxmod_sv_wert_node'],
             ['wert_settings_object_id', $objects,                 'taxmod_sv_wert_object'],
+            ['wert_kante_id',           self::table('relations'), 'taxmod_sv_wert_relation'],
         ];
 
         foreach ($ziele as [$spalte, $ziel, $bedingung]) {
@@ -4709,12 +4742,14 @@ final class Schema
                 wert_text text DEFAULT NULL,
                 wert_knoten_id bigint(20) unsigned DEFAULT NULL,
                 wert_settings_object_id bigint(20) unsigned DEFAULT NULL,
+                wert_kante_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY node_id (node_id),
                 KEY settings_object_id (settings_object_id),
                 KEY relation_id (relation_id),
                 KEY wert_knoten_id (wert_knoten_id),
-                KEY wert_settings_object_id (wert_settings_object_id)
+                KEY wert_settings_object_id (wert_settings_object_id),
+                KEY wert_kante_id (wert_kante_id)
             ) {$charset};",
 
             "CREATE TABLE {$t('settings_object_history')} (
@@ -4742,6 +4777,7 @@ final class Schema
                 wert_text text DEFAULT NULL,
                 wert_knoten_id bigint(20) unsigned DEFAULT NULL,
                 wert_settings_object_id bigint(20) unsigned DEFAULT NULL,
+                wert_kante_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

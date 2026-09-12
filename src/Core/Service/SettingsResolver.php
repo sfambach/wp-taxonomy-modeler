@@ -72,6 +72,8 @@ final class SettingsResolver
         private readonly RendererRegistry $renderers,
         private readonly ?ConverterRegistry $converters = null,
         private readonly ?ValidatorRegistry $validators = null,
+        /** ⚠️ *Nur für das Wort eines Feldverweises (D-752) — wer keinen mitgibt, sieht die Nummer.* */
+        private readonly ?\Taxmod\Core\Repository\RelationRepository $relations = null,
     ) {
     }
 
@@ -495,6 +497,13 @@ final class SettingsResolver
     {
         if (! $value->isAReference() || $value->reference === null) {
             return $value;
+        }
+
+        // ⚠️ *Ein Feldverweis (D-752) heisst wie sein Feld; ohne Kantenspeicher bleibt die Nummer, gekennzeichnet.*
+        if ($value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Relation) {
+            $feld = $this->relations?->byId($value->reference);
+
+            return TypedValue::ofText($feld === null ? "#" . $value->reference : $feld->name);
         }
 
         $knoten = $this->nodes->find($value->reference);

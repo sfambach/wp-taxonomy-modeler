@@ -139,7 +139,7 @@ $zeichner = static fn (): Rendering => new Rendering(
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     ShippedConverters::registry(),
     $relations,
-    resolver: new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry())
+    resolver: new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations)
 );
 
 wp_set_current_user(1);
@@ -1355,6 +1355,46 @@ foreach ($editor->fieldsOf($modellKnoten->id) as $kante) {
 }
 $angebot = array_map(static fn (\Taxmod\Core\Renderer\Renderer $r): string => $r->name(), $zeichner()->choicesFor($adresseKante));
 check('ein Feld auf eine Kategorie bekommt Formular, Tabelle und Compact angeboten (D-749)', in_array('table', $angebot, true) && in_array('form', $angebot, true) && in_array('compact', $angebot, true), implode(',', $angebot));
+
+// ⚠️ **Die Seite wird abgeschickt, wie ein Browser sie abschickt** ([D-754](../../docs/NewConcept/90-decision-log.md)) — sein Wort am
+// 2026-09-12: *«read only verschwindet nach Speichern, das hatten wir jetzt schon mehrfach; kannst du das generell mal überprüfen,
+// ich will das nicht bei jedem Feld erneut testen müssen».* *Gemessen: die offene Feldzeile trug `read_only` und `unique` je zweimal
+// unter einem Namen — die Spalte und ihre Kopie im Einstellungsbereich —, und der Browser schickt die zweite. Darum hier: für **jedes**
+// eigene Feld des Knotens den Zeilenschalter einschalten, die Seite mit offenem Bereich wie ein Browser abschicken, und kein Name
+// darf in einem Formular der Seite doppelt stehen.*
+require_once __DIR__ . '/lib/browser-post.php';
+$roKnoten = $editor->createNode('__es nur lesen', $modellAst->id);
+foreach (['int', 'text', 'bool', 'email', 'datetime', 'color'] as $typName) {
+    $editor->addField($roKnoten->id, $seeded[$typName]->id, '__es ro ' . $typName);
+}
+$editor->addField($roKnoten->id, $anschrift->id, '__es ro teil');
+$roFelder   = array_values(array_filter($editor->fieldsOf($roKnoten->id), static fn (Relation $r): bool => ! $r->isSetting() && $r->fromNodeId === $roKnoten->id));
+$verloren   = [];
+$doppelt    = [];
+foreach ($roFelder as $roFeld) {
+    $offen = seite($roKnoten->id, (string) $roFeld->id);
+    foreach (array_unique(array_merge(['taxmod-page-' . $roKnoten->id], array_map(static fn (Relation $r): string => FieldRowRenderer::formFor($r), $roFelder))) as $formular) {
+        foreach (taxmodDuplicateNames($offen, $formular) as $name => $n) {
+            $doppelt[$formular . ' ' . $name] = $n;
+        }
+    }
+    foreach ([\Taxmod\Core\Model\EdgeColumn::READ_ONLY, \Taxmod\Core\Model\EdgeColumn::UNIQUE] as $spalte) {
+        $feldName = 'taxmod_field_setting[' . $roFeld->id . '][' . $spalte . ']';
+        $wieGeklickt = taxmodTick($offen, $feldName);
+        if ($wieGeklickt === $offen) {
+            $verloren[] = $roFeld->name . ' ' . $spalte . ' (kein Schalter)';
+            continue;
+        }
+        $felder      = taxmodBrowserFields($wieGeklickt, 'taxmod-page-' . $roKnoten->id);
+        abschicken(['do' => 'put_setting', 'id' => (string) $roKnoten->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $roKnoten->id)] + $felder);
+        $danach = $relations->byId($roFeld->id);
+        if (! gelungen() || ! ($spalte === \Taxmod\Core\Model\EdgeColumn::READ_ONLY ? $danach->readOnly : $danach->unique)) {
+            $verloren[] = $roFeld->name . ' ' . $spalte . ' (' . letzteMeldung() . ')';
+        }
+    }
+}
+check('kein Formular der Seite trägt einen Namen doppelt — sonst schickt der Browser die zweite Angabe (D-754)', $doppelt === [], json_encode($doppelt));
+check('«nur lesen» und «eindeutig» überleben das Speichern mit offenem Bereich, für jeden Feldtyp — wie ein Browser abgeschickt (D-754)', $verloren === [], implode('; ', $verloren));
 // ⚠️ **Der Typ «Weg»** ([D-751](../../docs/NewConcept/90-decision-log.md)) — Zeile 125: am Vater erklärt, am Kind die Kette, nie eingebbar.
 check('der einfache Typ «path» steht im Baum', isset($seeded['path']));
 $weg = $editor->addField($modellKnoten->id, $seeded['path']->id, '__es weg');

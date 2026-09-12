@@ -21,4 +21,6 @@ enum ReferenceSpace: string
 
     /** Eine Ausprägung — `records.id`. */
     case Record = 'record';
+    // ⚠️ *Ein Verweis auf ein Feld — nur im Einstellungsmodell, als Attributtyp «Verweis auf ein Feld» (D-752).*
+    case Relation = 'relation';
 }

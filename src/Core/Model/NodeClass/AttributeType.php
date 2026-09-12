@@ -19,6 +19,8 @@ enum AttributeType: string
     case Text    = 'text';
     case Enum    = 'enum';
     case NodeRef = 'node';
+    // ⚠️ *Verweis auf ein Feld des Knotens, an dem die Einstellung steht — Anforderung 3.1.1, erweitert mit D-752.*
+    case RelationRef = 'relation';
     case Object  = 'object';
 
     /** Ob ein Wert dieses Typs eine eigene Zeile ist (alles ausser Objekt) oder ein Einstellungsobjekt. */

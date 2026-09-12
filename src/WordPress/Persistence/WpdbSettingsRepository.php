@@ -23,7 +23,7 @@ use Taxmod\Core\Repository\SettingsRepository;
  */
 final class WpdbSettingsRepository implements SettingsRepository
 {
-    private const VALUE_COLUMNS = 'id, version, node_id, settings_object_id, relation_id, klasse, attribut, position, aktiv, wert_int, wert_decimal, wert_text, wert_knoten_id, wert_settings_object_id';
+    private const VALUE_COLUMNS = 'id, version, node_id, settings_object_id, relation_id, klasse, attribut, position, aktiv, wert_int, wert_decimal, wert_text, wert_knoten_id, wert_settings_object_id, wert_kante_id';
 
     public function addObject(SettingsObject $object): SettingsObject
     {
@@ -251,9 +251,11 @@ final class WpdbSettingsRepository implements SettingsRepository
             'wert_int'                => $value->value->int,
             'wert_decimal'            => $value->value->decimal,
             'wert_text'               => $value->value->text,
-            'wert_knoten_id'          => $value->value->reference,
+            // ⚠️ *Ein Verweis hat seinen Raum (TASK-005): Knoten in `wert_knoten_id`, Feld in `wert_kante_id` (D-752).*
+            'wert_knoten_id'          => $value->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node ? $value->value->reference : null,
             'wert_settings_object_id' => $value->valueObjectId,
-        ], ['%d', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d']];
+            'wert_kante_id'           => $value->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Relation ? $value->value->reference : null,
+        ], ['%d', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d']];
     }
 
     /** @param array<string, mixed> $row */
@@ -274,6 +276,7 @@ final class WpdbSettingsRepository implements SettingsRepository
             $row['wert_text'] === null ? null : (string) $row['wert_text'],
             $row['wert_knoten_id'] === null ? null : (int) $row['wert_knoten_id'],
             $row['wert_settings_object_id'] === null ? null : (int) $row['wert_settings_object_id'],
+            $row['wert_kante_id'] === null ? null : (int) $row['wert_kante_id'],
         );
     }
 }
