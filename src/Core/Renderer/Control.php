@@ -155,6 +155,11 @@ final class Control
          * an emoji does not, which is the whole argument in the `icon` docblock above.*
          */
         public readonly string $glyph = '',
+        /**
+         * Ein Dialog, der sich **vor** dem Akt öffnet — Felder, Bestätigen, Abbruch ([D-730](../../../docs/NewConcept/90-decision-log.md)).
+         * *Der Knopf wird zum Öffner; der Akt hängt am Bestätigen im Fuss.*
+         */
+        public readonly ?Dialog $opens = null,
     ) {
     }
 }

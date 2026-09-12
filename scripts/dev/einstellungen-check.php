@@ -1180,7 +1180,12 @@ $rc->getProperty('file')->setValue($plugin, __FILE__);
 $screen = $plugin->screen();
 $markup = $screen->render();
 check('render() liefert Markup, mit den gewählten Grössen am Rahmen', (bool) preg_match('#^<div class="wrap" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
-check('der Baum wird von der Zelle gezeichnet, jede Zeile trägt dieselben vier Knöpfe, und was nicht geht, ist ausgegraut statt fort', str_contains($markup, 'taxmod-tree-node') && substr_count($markup, 'value="trash_node"') === substr_count($markup, 'value="add_child_here"') && substr_count($markup, 'value="up"') === substr_count($markup, 'value="add_child_here"') && str_contains($markup, 'disabled'));
+// ⚠️ *Ein «+» mehr als Zeilen: das im Kopf der Seite (D-730, 2026-09-12); `add_child_here` ist darin aufgegangen.*
+// *Gezählt je Zeilenformular des Baums, nicht über die ganze Seite — der Kopf trägt sein eigenes «+» und seinen eigenen Papierkorb.*
+preg_match_all('/style="display:flex;gap:\.2em">(.*?)<\/form>/s', $markup, $zeilenFormulare);
+$zeilenMitAkten = array_filter($zeilenFormulare[1], static fn (string $f): bool => str_contains($f, 'value="trash_node"'));
+$vollstaendig   = array_filter($zeilenMitAkten, static fn (string $f): bool => str_contains($f, 'value="add_child"') && str_contains($f, 'value="up"') && str_contains($f, 'value="down"'));
+check('der Baum wird von der Zelle gezeichnet, jede Zeile trägt dieselben vier Knöpfe, und was nicht geht, ist ausgegraut statt fort', str_contains($markup, 'taxmod-tree-node') && $zeilenMitAkten !== [] && count($vollstaendig) === count($zeilenMitAkten) && str_contains($markup, 'disabled'), count($vollstaendig) . ' von ' . count($zeilenMitAkten) . ' Zeilen');
 $entwickler = SettingsScreen::developerShows('taxmod_dev_writes');
 $papierkorb = SettingsScreen::showsTrash();
 check('die Schreibzahl und der Papierkorb stehen genau dann da, wenn ihre Einstellung es sagt', str_contains($markup, 'taxmod-tree-writes') === $entwickler && str_contains($markup, 'class="taxmod-trash"') === $papierkorb);

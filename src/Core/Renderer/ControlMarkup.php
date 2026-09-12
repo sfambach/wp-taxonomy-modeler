@@ -49,6 +49,11 @@ final class ControlMarkup
     {
         $usable = $available ?? $control->available;
 
+        // ⚠️ *Ein Bedienelement mit Dialog öffnet erst und handelt im Fuss (D-730).*
+        if ($control->opens !== null) {
+            return self::dialogButton($control, $usable);
+        }
+
         // ⚠️ **«Icon-only» is about the *shape*, not about which font drew it.** Measured on the real
         // page after the first version of this: the save button lost `taxmod-icon-button` and would
         // have got its box back among 405 flat neighbours — *because a glyph button is icon-only in
@@ -99,6 +104,28 @@ final class ControlMarkup
      * travels as the name — the alternative was an emoji **as** the label, which would have made
      * «floppy disk» the name of the save button.*
      */
+    /**
+     * Ein Bedienelement mit Dialog: der Öffner trägt das Gesicht des Knopfs, der Akt sitzt am Bestätigen im Fuss,
+     * daneben der Abbruch — ein Label, das den Schalter wieder löst ([D-730](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Die Felder des Dialogs stehen im selben Formular wie der Öffner; darum braucht keines ein `form="…"`.*
+     */
+    private static function dialogButton(Control $control, bool $usable): string
+    {
+        $dialog = $control->opens ?? throw new \LogicException('Kein Dialog.');
+        $icon   = $control->icon !== '';
+        $ok     = new Control($control->name, $control->value, $dialog->confirm, '', $usable, $control->destroys, '', $control->form, true);
+
+        return DialogMarkup::of(
+            $dialog->id,
+            self::face($control, $icon),
+            RenderResult::escape($dialog->title),
+            '<span class="taxmod-dialog-body">' . $dialog->body . '</span>',
+            self::button($ok) . '<label class="button" for="' . RenderResult::escape($dialog->id) . '">' . RenderResult::escape($dialog->cancel) . '</label>',
+            ($icon || $control->glyph !== '') ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-dialog-open'
+        );
+    }
+
     private static function face(Control $control, bool $icon): string
     {
         // ⚠️ *Beide Zweige schrieben ihr Symbol selbst hin, in **zwei verschiedenen Techniken**,

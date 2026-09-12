@@ -126,6 +126,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Frage | gilt heute | abgelöst |
 |---|---|---|
 | Wer speichert — das Feld oder die Seite? | [D-392](90-decision-log.md) — die Seite; Feldzeilen ([D-551](90-decision-log.md)) und Beschriftungen ([D-488](90-decision-log.md)) gehen mit | — |
+| Wie legt man einen Knoten an? | [D-730](90-decision-log.md) — ein «+» im Baum und im Kopf; ein Dialog fragt Name und Klasse, anlegen oder abbrechen; die Klasse aus dem Erlaubten ([D-716](90-decision-log.md)) | — |
 | Wie wählt man einen Knoten? | [D-589](90-decision-log.md) — der Dialog wählt und schliesst; der gewählte Knoten steht in einem gesperrten Feld neben dem Anlegen-Knopf | ~~D-108~~ ~~D-244~~ ~~D-392~~ (für diesen Fall) |
 | Was steuert die Baumansicht? | [D-615](90-decision-log.md) — Wurzelknoten, Default-Knoten, Default-Ast, sonst nichts | ~~D-586~~ (Einstiegsast-Lesart) |
 | Wer gewinnt beim Zuklappen? | [D-612](90-decision-log.md) — der Klick auf den Pfeil; der Vorrang der Auswahl gilt nur für ungeöffnete Äste | ~~D-480~~ (ausnahmslos) |

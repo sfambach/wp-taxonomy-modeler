@@ -293,11 +293,23 @@ try {
 
     $markup = seite($wandrer->id);
 
-    $fussAuf = strpos($markup, 'taxmod-dialog-foot');
+    // ⚠️ *Nicht der erste Fuss der Seite — seit D-730 (2026-09-12) hat auch das «+» einen, und es steht vor dem Verschieben.
+    // Gesucht ist der Fuss, der den Knopf `move` traegt.*
+    $fussAuf = false;
+
+    foreach (array_keys(iterator_to_array(new \ArrayIterator(explode('taxmod-dialog-foot', $markup)))) as $i) {
+        $stueck = explode('taxmod-dialog-foot', $markup)[$i];
+
+        if ($i > 0 && str_contains(substr($stueck, 0, 400), 'value="move"')) {
+            $fussAuf = true;
+
+            break;
+        }
+    }
 
     check(
         'der Verschiebedialog traegt seinen Knopf innen',
-        $fussAuf !== false && str_contains(substr($markup, $fussAuf, 400), 'value="move"'),
+        $fussAuf === true,
         'kein taxmod-dialog-foot mit do=move'
     );
 

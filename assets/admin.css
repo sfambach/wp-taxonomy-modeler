@@ -1021,6 +1021,29 @@ a.taxmod-chosen:hover {
     color: #646970;
 }
 
+/* ⚠️ **Ein Dialog vor dem Akt** (D-730): Felder untereinander, Bestätigen und Abbruch rechts im Fuss. */
+.taxmod-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: .6em;
+    padding: .7em;
+}
+
+.taxmod-dialog-field {
+    display: grid;
+    grid-template-columns: 6em minmax(0, 1fr);
+    align-items: center;
+    gap: .5em;
+}
+
+.taxmod-dialog-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5em;
+    padding: .5em .7em;
+    border-top: 1px solid #dcdcde;
+}
+
 /* The tree scrolls inside the panel, never the panel inside the page. */
 .taxmod-dialog-panel .taxmod-chooser-tree {
     overflow: auto;

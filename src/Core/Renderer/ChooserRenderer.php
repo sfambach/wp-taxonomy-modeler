@@ -125,40 +125,17 @@ final class ChooserRenderer extends RendererNode
         return $zeichen === null || $zeichen <= 0 ? '' : ' style="width:' . $zeichen . 'ch"';
     }
 
-    private function foot(RenderContext $context): string
+    /** Der Dialog — die eine Form aus {@see DialogMarkup}; der Fuss ist das Bestätigen des Aufrufers, wo er eines gibt. */
+    private function overlay(string $switch, string $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
     {
         $confirm = $context->surroundings->sections[self::CONFIRM] ?? null;
 
-        if ($confirm === null || $confirm->body === '') {
-            return '';
-        }
-
-        return '<span class="taxmod-dialog-foot">' . $confirm->body . '</span>';
-    }
-
-    /** Der Dialog: ein Schalter-Häkchen, das die Fläche öffnet und schliesst — ohne Skript. */
-    private function overlay(string $switch, string $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
-    {
-        return RenderResult::of(
-            '<span class="taxmod-chooser">'
-            . RenderResult::htmlTag('input', [
-                'type'  => 'checkbox',
-                'class' => 'taxmod-dialog-switch',
-                'id'    => $switch,
-            ])
-            . '<label class="button taxmod-icon-button taxmod-dialog-open" for="' . RenderResult::escape($switch) . '">'
-            . ($trigger === null || $trigger->body === '' ? $current : $trigger->body)
-            . '</label>'
-            . '<span class="taxmod-dialog">'
-            . '<label class="taxmod-dialog-shade" for="' . RenderResult::escape($switch) . '"></label>'
-            . '<span class="taxmod-dialog-panel">'
-            . '<span class="taxmod-dialog-head">'
-            . '<span class="taxmod-chooser-current">' . $current . '</span>'
-            . '<label class="taxmod-dialog-close" for="' . RenderResult::escape($switch) . '">&times;</label>'
-            . '</span>'
-            . '<span class="taxmod-chooser-tree">' . $tree->body . '</span>'
-            . $this->foot($context)
-            . '</span></span></span>'
-        );
+        return RenderResult::of(DialogMarkup::of(
+            $switch,
+            $trigger === null || $trigger->body === '' ? $current : $trigger->body,
+            $current,
+            '<span class="taxmod-chooser-tree">' . $tree->body . '</span>',
+            $confirm?->body ?? ''
+        ));
     }
 }

@@ -23,6 +23,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\ChooserRenderer;
+use Taxmod\Core\Renderer\Dialog;
 use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\HintMarkup;
@@ -688,6 +689,27 @@ final class NodesScreen
     }
 
     /**
+     * Der Dialog hinter dem «+»: Name (leer heisst «New node») und Klasse, dann anlegen oder abbrechen
+     * ([D-730](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Ein Dialog je «+», also einer je Baumzeile und einer im Kopf — jeder mit eigener Schalter-Id, sonst öffnete
+     * ein Klick alle.*
+     */
+    private function newChildDialog(Node $parent, string $id): Dialog
+    {
+        return new Dialog(
+            $id,
+            /* translators: %s: the name of the parent node. */
+            sprintf(__('New node under %s', 'taxmod'), $parent->name),
+            '<label class="taxmod-dialog-field"><span>' . esc_html__('Name', 'taxmod') . '</span>'
+            . '<input type="text" name="name" placeholder="' . esc_attr__('New node', 'taxmod') . '" class="taxmod-toolbar-name"></label>'
+            . '<label class="taxmod-dialog-field"><span>' . esc_html__('Class', 'taxmod') . '</span>' . $this->classChooser($parent) . '</label>',
+            __('Add', 'taxmod'),
+            __('Cancel', 'taxmod')
+        );
+    }
+
+    /**
      * Der Wähler für die Klasse eines neuen Kindes: nur, was die Vaterklasse erlaubt, die Vorwahl
      * vorgewählt (Anforderung 6.3).
      */
@@ -768,7 +790,10 @@ final class NodesScreen
             // ⚠️ Icons rather than characters for the same reason as the bin (D-380): `+`, `↑` and `↓`
             // are text glyphs whose weight follows the body font, so they read as hairlines beside a
             // 17px icon. A Dashicon takes `font-size` and `color` and comes out solid.
-            new Control('do', 'add_child_here', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2'),
+            // ⚠️ **Ein «+», und es fragt erst** ([D-730](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «im baum erstellt
+            // automatisch kategorie knoten … nur ein + bei beiden … es kommt ein dialog hoch, lässt den benutzer den type des
+            // knoten wählen und mit ok anlegen / abbruch auch möglich».* Derselbe Dialog wie im Kopf der Seite.
+            new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id)),
             // ⚠️ **Duplicate, asked for three times** — the owner, in the end plainly: *duplicating
             // `my_int` does not work, no button in the tree nor in the head.* The title says what does
             // **not** come along, because a copy that silently dropped forty children would be a
@@ -1599,13 +1624,12 @@ final class NodesScreen
         // dieselbe Aussage wäre die Doppelung, die diese Entscheidung beseitigt hat.*
         $node = $pageForm . '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
             . ' form="' . esc_attr(self::pageForm($selected)) . '">'
+            // ⚠️ **Dasselbe «+» wie im Baum, mit demselben Dialog** ([D-730](../../../docs/NewConcept/90-decision-log.md)): *Name und
+            // Klasse werden im Dialog gewählt, die Klasse nur aus dem Erlaubten ([D-716](../../../docs/NewConcept/90-decision-log.md), Anforderung 6.3).*
             . $this->form(
                 $selected->id,
-                [['add_child', '', __('Add a child under this node', 'taxmod'), 'plus-alt2']],
-                '<input type="text" name="name" placeholder="' . esc_attr__('Name of the new child', 'taxmod') . '" required class="taxmod-toolbar-name">'
-                // ⚠️ **Die Klasse wird beim Anlegen gewählt, und nur aus dem Erlaubten**
-                // ([D-716](../../../docs/NewConcept/90-decision-log.md), Anforderung 6.3).
-                . $this->classChooser($selected)
+                [],
+                ControlMarkup::button(new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id)))
             )
             // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is plain
             // HTML — a button may name the form it belongs to — so nothing needs scripting.
@@ -4552,12 +4576,12 @@ final class NodesScreen
 
         try {
             $outcome = match ($do) {
-                'add_child'      => $stay = $this->editor->createNode($name, $id, $this->requestedClass())->id,
+                // ⚠️ *Ohne Namen heisst das Kind «New node» — der Dialog verlangt keinen (D-730); `add_child_here` ist darin aufgegangen.*
+                'add_child'      => $stay = $this->editor->createNode($name === '' ? __('New node', 'taxmod') : $name, $id, $this->requestedClass())->id,
                 // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
                 // whose whole point is *and now I want to work on that* — it makes a node with a
                 // placeholder name, so leaving the parent selected means the very next thing a
                 // person does is hunt for what they just made.
-                'add_child_here' => $stay = $this->editor->createNode(__('New node', 'taxmod'), $id)->id,
                 // ⚠️ **The copy becomes the selected node**, for the same reason `add_child_here`
                 // does: the point of duplicating is *and now I want to work on that one*, and it
                 // carries the original's name, so leaving the original selected would show two
