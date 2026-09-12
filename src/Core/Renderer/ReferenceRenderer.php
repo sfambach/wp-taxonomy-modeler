@@ -38,7 +38,7 @@ final class ReferenceRenderer extends TypedFieldRenderer
      * Welches Label des Ziels gezeigt wird — ein Verweis auf eine Rolle (Konstante unter `Constants`,
      * [D-719](../../../docs/NewConcept/90-decision-log.md) K3c). Ohne Wahl: die Formularrolle.
      */
-    #[\Taxmod\Core\Model\NodeClass\Attribut(refersTo: \Taxmod\Core\Model\NodeClass\Constant::class)]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(refersTo: \Taxmod\Core\Model\NodeClass\Constant::class, from: \Taxmod\Core\Model\NodeClass\Anchor::Roles)]
     public ?int $label_role = null;
 
     public const NAME = 'reference';

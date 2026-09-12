@@ -441,7 +441,7 @@ final class Schema
      * sieben Wertzeilen, alle am Knoten, alle `0` — es wandert nichts in die Spalte, und nichts geht
      * verloren. `multiplicity` war schon Spalte (Fassung 22); was fällt, ist nur ihr Schlüssel.*
      */
-    public const VERSION = 49;
+    public const VERSION = 50;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -754,6 +754,9 @@ final class Schema
         // Spalte dastehen muss; nach den Sichten, weil die Kante über `relations_named` gefunden wird.*
         self::moveReadOnlyOntoTheRelation();
         self::dropTheSettingsBranch();
+
+        // ⚠️ **Fassung 50: `chooser-dialog` und `chooser-inline` werden `chooser` mit Schalter** ([D-727](../../../docs/NewConcept/90-decision-log.md)).
+        self::mergeTheChoosers();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -3403,6 +3406,49 @@ final class Schema
 
         Shadow::forgetColumnPlan();
         update_option('taxmod_fassung49_shape', $zaehlung, false);
+    }
+
+    /**
+     * Fassung 50: jedes Einstellungsobjekt der beiden alten Wählerklassen wird eines der Klasse `chooser`; wer den
+     * Dialog hatte, bekommt `dialog = true`, damit sich nichts ändert, was er sieht ([D-727](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Die Klassennamen stehen hier als Wörter, weil die Klassen nicht mehr existieren — genau dafür ist eine
+     * Wanderung da. Die Adresse `klasse` steht in den Wertzeilen ebenso (Attribut `label_role`) und in den Schatten.*
+     */
+    private static function mergeTheChoosers(): void
+    {
+        global $wpdb;
+
+        if (self::tableMissing(self::table('settings_object')) || get_option('taxmod_fassung50_chooser', null) !== null) {
+            return;
+        }
+
+        $alte    = ['Taxmod\\Core\\Renderer\\DialogChooserRenderer', 'Taxmod\\Core\\Renderer\\InlineChooserRenderer'];
+        $neue    = \Taxmod\Core\Renderer\ChooserRenderer::class;
+        $objekte = self::table('settings_object');
+        $dialoge = array_map(intval(...), $wpdb->get_col($wpdb->prepare("SELECT id FROM {$objekte} WHERE klasse = %s", $alte[0])) ?: []);
+        $zaehlung = ['dialog' => count($dialoge), 'zeilen' => 0];
+
+        foreach (['settings_object', 'settings_object_history', 'settings_value', 'settings_value_history'] as $tabelle) {
+            if (self::tableMissing(self::table($tabelle))) {
+                continue;
+            }
+
+            $zaehlung['zeilen'] += (int) $wpdb->query($wpdb->prepare(
+                'UPDATE ' . self::table($tabelle) . ' SET klasse = %s WHERE klasse IN (%s, %s)',
+                $neue,
+                $alte[0],
+                $alte[1]
+            ));
+        }
+
+        $ablage = new WpdbSettingsRepository();
+
+        foreach ($dialoge as $objektId) {
+            $ablage->addValue(\Taxmod\Core\Model\Setting\SettingsValue::inObject($objektId, $neue, \Taxmod\Core\Renderer\ChooserRenderer::DIALOG, \Taxmod\Core\Model\TypedValue::ofBool(true)));
+        }
+
+        update_option('taxmod_fassung50_chooser', $zaehlung, false);
     }
 
     private static function constrainSettingsValues(): void

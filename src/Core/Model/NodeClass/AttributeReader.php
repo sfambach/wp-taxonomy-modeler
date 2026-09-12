@@ -73,6 +73,7 @@ final class AttributeReader
             $refersTo,
             $list ? null : self::defaultOf($vorgabe, $type),
             $angabe->allowDuplicates,
+            $angabe->from,
         );
     }
 

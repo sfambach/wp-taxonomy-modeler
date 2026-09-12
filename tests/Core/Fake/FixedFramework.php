@@ -20,6 +20,8 @@ final class FixedFramework implements FrameworkNodes
         private readonly int $installationId = 999000,
         /** @var array<string,int> */
         private readonly array $roleIds = [],
+        /** @var array<string, Node> Je Anker der Knoten, keyed by its value. */
+        private readonly array $anchors = [],
     ) {
     }
 
@@ -52,6 +54,11 @@ final class FixedFramework implements FrameworkNodes
     public function roleId(SeededRole $role): int
     {
         return $this->roleIds[$role->value] ?? 0;
+    }
+
+    public function anchor(\Taxmod\Core\Model\NodeClass\Anchor $anchor): ?Node
+    {
+        return $this->anchors[$anchor->value] ?? null;
     }
 
     /**

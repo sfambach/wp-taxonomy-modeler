@@ -44,6 +44,8 @@ final class Attribut
         public readonly ?string $refersTo = null,
         public readonly bool $decimal = false,
         public readonly bool $allowDuplicates = true,
+        /** Aus den Kindern welches Gerüstknotens ein Verweis wählt — statt aus allen der Verweisklasse ([D-728](../../../../docs/NewConcept/90-decision-log.md)). */
+        public readonly ?Anchor $from = null,
     ) {
     }
 }

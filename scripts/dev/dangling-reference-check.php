@@ -57,7 +57,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
-use Taxmod\Core\Renderer\DialogChooserRenderer;
+use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\ReferenceRenderer;
@@ -195,7 +195,7 @@ try {
 
     $baum = new Section('', '<span class="row">__leiche</span>');
 
-    $imDialog = (new DialogChooserRenderer())->render(
+    $imDialog = (new ChooserRenderer())->render(
         $nodes->byId($besitzer->id),
         new RenderContext(
             purpose: Purpose::Edit,
@@ -204,8 +204,10 @@ try {
             editable: true,
             fieldName: '__leiche_feld',
             type: SimpleType::NodeRef,
+            // ⚠️ *Der Dialog zeigt den gewählten Kopf; im Fluss steht nur der Baum (D-727, 2026-09-12).*
+            settings: ChooserRenderer::asDialog(),
             surroundings: new Surroundings(
-                sections: [DialogChooserRenderer::CANDIDATES => $baum]
+                sections: [ChooserRenderer::CANDIDATES => $baum]
             ),
         )
     )->markup;
@@ -215,7 +217,7 @@ try {
 
     // ⚠️ **Der Gegenfall traegt die Zusage.** *Ohne ihn waere «markiert» auch dann wahr, wenn
     // **jede** leere Wahl markiert wuerde — und ein Mal, das ueberall steht, sagt nichts.*
-    $ohneWahl = (new DialogChooserRenderer())->render(
+    $ohneWahl = (new ChooserRenderer())->render(
         $nodes->byId($besitzer->id),
         new RenderContext(
             purpose: Purpose::Edit,
@@ -224,8 +226,10 @@ try {
             editable: true,
             fieldName: '__leiche_feld',
             type: SimpleType::NodeRef,
+            // ⚠️ *Der Dialog zeigt den gewählten Kopf; im Fluss steht nur der Baum (D-727, 2026-09-12).*
+            settings: ChooserRenderer::asDialog(),
             surroundings: new Surroundings(
-                sections: [DialogChooserRenderer::CANDIDATES => $baum]
+                sections: [ChooserRenderer::CANDIDATES => $baum]
             ),
         )
     )->markup;

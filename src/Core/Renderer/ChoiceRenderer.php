@@ -127,6 +127,8 @@ final class ChoiceRenderer extends RendererNode
                 ? ''
                 : ' form="' . RenderResult::escape($context->surroundings->formId) . '"')
             . ' class="taxmod-choice' . ($unsatisfiable ? ' taxmod-unsatisfiable' : '') . '"'
+            // ⚠️ *«chooser sollte auch display size haben» (D-727): die Breite, wo der Aufrufer eine mitgibt.*
+            . (($breite = $context->setting('display_size')?->int) === null || $breite <= 0 ? '' : ' style="width:' . $breite . 'ch"')
             . ($wahl->isOperable() ? '' : ' disabled')
             . ($decided ? ' style="opacity:.55"' : '')
             . ($unsatisfiable

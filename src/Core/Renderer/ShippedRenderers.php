@@ -102,13 +102,11 @@ final class ShippedRenderers
         // `R1` (D-384). Surface-only for the same reason as the settings panel.
         $registry->addForSurfaces(new LabelsRenderer());
 
-        // ⚠️ **The two choosers of D-108, and the dialog is the default** (D-244). Registered
-        // against the **edit** purpose for `node_ref`, which is what `addForPurpose()` exists for: a
-        // reference is *shown* by the reference renderer and *picked* by a chooser, and R14a's one
-        // default per type could not say both. *Until this, `node_ref` had a default that declined
-        // `edit`, so every reference field fell back and drew as a fault.*
-        $registry->addForPurpose(new DialogChooserRenderer(), Purpose::Edit, SimpleType::NodeRef);
-        $registry->add(new InlineChooserRenderer());
+        // ⚠️ **Ein Wähler mit Schalter `dialog`, Vorgabe aus** ([D-727](../../../docs/NewConcept/90-decision-log.md)) —
+        // *bis zum 2026-09-12 zwei Renderer (D-108, D-244).* Registered against the **edit** purpose for
+        // `node_ref`, which is what `addForPurpose()` exists for: a reference is *shown* by the reference
+        // renderer and *picked* by a chooser, and R14a's one default per type could not say both.
+        $registry->addForPurpose(new ChooserRenderer(), Purpose::Edit, SimpleType::NodeRef);
 
         // ⚠️ **The chooser's cell** (D-367) — the thing that split was built for: one walker, several
         // cells. Surface-only, because *which* cell a tree draws is never a model author's choice.

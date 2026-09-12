@@ -29,6 +29,15 @@ final class Constant implements NodeClass
     #[Attribut]
     public int $display_size = 20;
 
+    /**
+     * Welches Label der Konstante gezeigt wird — eine Rolle. ⚠️ *Sein Wort am 2026-09-12: «bei constant müsste der
+     * label typ wählbar sein der angezeigt wird» — «entweder im renderer oder im type, einfacher wäre im typ glaube
+     * ich»* ([D-728](../../../../docs/NewConcept/90-decision-log.md)). Der Renderer an der Verwendungsstelle darf
+     * es überstimmen; ohne beides gilt die Formularrolle.
+     */
+    #[Attribut(refersTo: Constant::class, from: Anchor::Roles)]
+    public ?int $label_role = null;
+
     public static function allowedChildClasses(): array
     {
         return [];

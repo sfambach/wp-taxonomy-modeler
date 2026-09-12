@@ -139,7 +139,13 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
   einfache Typklasse** und die Klasse `Konstante` muss `display_size` (`int`, Vorgabe 20) erklären — *sein Wort 2026-09-11: «display
   size gibts nur an den simplen datentypen»* ([D-724](NewConcept/90-decision-log.md)).
 - **3.6.3** Ein Renderer, Konverter oder Validator muss seine eigenen Attribute selbst erklären
-  (`CompactRenderer.orientation`, `CompactRenderer.withLabel`).
+  (`CompactRenderer.orientation`, `CompactRenderer.withLabel`). **Es gibt einen Wähler** `chooser` mit
+  `label_role`, `dialog` (`bool`, Vorgabe aus) und `display_size` — *sein Wort 2026-09-12: «chooser dialog, chooser
+  inline zusammenfassen … einen schalter für dialoge einführen, default aus»* ([D-727](NewConcept/90-decision-log.md)).
+- **3.6.2a** `Constant` muss `label_role` erklären (Verweis auf eine Rolle) — *«bei constant müsste der label typ
+  wählbar sein der angezeigt wird … einfacher wäre im typ»* ([D-728](NewConcept/90-decision-log.md)). Ein
+  Verweisattribut darf einen **Anker** nennen; dann bietet es nur die Kinder dieses Gerüstknotens an (Rollen,
+  Präfixe), nie alle Knoten der Klasse.
 - **3.6.4** `Umrechnung` ist eine Wertklasse mit `factor` und `offset` (`decimal`). Die Klassen
   `Konstante` (Präfix) und `Einheitswert` müssen ein Attribut vom Typ `Umrechnung` erklären.
 - **3.6.5** `Einheitswert` muss erklären: `mit_praefix` (`bool`), `erlaubte_praefixe` (Liste von

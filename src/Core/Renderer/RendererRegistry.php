@@ -208,7 +208,7 @@ final class RendererRegistry
 
         // ⚠️ **A purpose-specific default wins where one was marked** ([D-108](90-decision-log.md),
         // [D-244](90-decision-log.md)): a reference is *shown* by the reference renderer and *picked*
-        // by a chooser, and those are deliberately two renderers rather than one with a switch.
+        // by a chooser. *Bis [D-727](90-decision-log.md) waren das zwei Wähler; seither ist es einer mit Schalter.*
         if ($purpose !== null) {
             $forPurpose = $this->defaultByTypeAndPurpose[$type->value][$purpose->value] ?? null;
 
@@ -224,9 +224,10 @@ final class RendererRegistry
      * A default for one type **and one purpose**, where showing and choosing are different renderers.
      *
      * ⚠️ **[D-108](90-decision-log.md) needs this and [R14a](30-renderer.md#r14a--the-key-is-the-type-purpose-travels-in-the-context)
-     * alone could not express it.** R14a marks one default *per type*; D-108 settles that a chooser is
-     * **two separate renderers** rather than one with a switch, and [D-244](90-decision-log.md) makes
-     * the **dialog** the default. So a reference is drawn one way and picked another — and until now
+     * alone could not express it.** R14a marks one default *per type*; a reference is shown by one
+     * renderer and picked by another. *D-108 and D-244 made the chooser two renderers with the dialog
+     * as default; [D-727](90-decision-log.md) replaced that with one chooser and a switch, off by default.*
+     * So a reference is drawn one way and picked another — and until now
      * `node_ref` had a single default that **declined** `edit`, so the descent fell back and marked
      * every reference field as a fault.
      *

@@ -212,6 +212,17 @@ final class SeededFrameworkNodes implements FrameworkNodes
         return (int) get_option(self::ROLE_OPTION_PREFIX . $role->value, 0);
     }
 
+    public function anchor(\Taxmod\Core\Model\NodeClass\Anchor $anchor): ?Node
+    {
+        $option = match ($anchor) {
+            \Taxmod\Core\Model\NodeClass\Anchor::Roles    => self::ROLES_OPTION,
+            // ⚠️ *Die Präfixe legt das Einheitengerüst an, nicht das Gerüst der Zweige — der Anker liest dessen Notiz.*
+            \Taxmod\Core\Model\NodeClass\Anchor::Prefixes => UnitScaffold::optionFor(UnitScaffold::PREFIXES_NAME),
+        };
+
+        return (int) get_option($option, 0) === 0 ? null : $this->remembered($option);
+    }
+
     /**
      * ⚠️ *Der Schnitt liegt an der Wurzel des Settings-Astes ([D-545](../../../docs/NewConcept/90-decision-log.md)).
      * Kein Aufstieg mit einer Abfrage je Stufe: der Pfad ist materialisiert, die Vorfahren-Ids stehen

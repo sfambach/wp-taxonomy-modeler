@@ -22,7 +22,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
-use Taxmod\Core\Renderer\DialogChooserRenderer;
+use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\HintMarkup;
@@ -1123,7 +1123,12 @@ final class NodesScreen
             return '';
         }
 
-        $display = $this->rendering->valueOfType($selected, Purpose::Display, locale: $this->localeFromRequest());
+        // ⚠️ **Mit dem Beispielsatz, wo einer steht** — *sein Befund am 2026-09-12 an `Prefixes`: «wir haben ein example
+        // wird aber nicht angezeigt in preview».* Dieselbe Stufenfolge wie bei der Feldvorschau ({@see self::previewSource()}).
+        $gesehen = $this->previewSource($selected);
+        $wert    = $gesehen['held'][0] ?? null;
+
+        $display = $this->rendering->valueOfType($selected, Purpose::Display, $wert, $this->localeFromRequest());
 
         if ($display === null) {
             return '';
@@ -1140,15 +1145,23 @@ final class NodesScreen
         $edit = $this->rendering->valueOfType(
             $selected,
             Purpose::Edit,
-            locale: $this->localeFromRequest(),
+            $wert,
+            $this->localeFromRequest(),
             fieldName: self::OWN_VALUE_FIELD,
             formId: 'taxmod-example-' . $selected->id
         );
 
         $html = $this->heading(
             __('Preview', 'taxmod'),
-            __('What a field of this type looks like with the settings above. If the two sides differ, that is «read only» doing its job. The value shown is this type\'s default; it needs no record.', 'taxmod')
+            __('What a field of this type looks like with the settings above. If the two sides differ, that is «read only» doing its job. The value shown is the example record where one is marked, otherwise this type\'s default.', 'taxmod')
         );
+
+        $html .= '<p class="description taxmod-preview-source">' . esc_html($gesehen['says']) . '</p>';
+
+        // ⚠️ **Der Knopf nur, wo die Bearbeiten-Seite ein Feld zeichnet** — *sein Befund an `Gramm`: «add as example scheint
+        // entweder nicht zu funktionieren oder der satz wird danach nicht angezeigt». Eine Konstante wird nicht getippt,
+        // sie zeigt ihre Beschriftung; der Knopf schickte ein Feld, das es nicht gab, und «nichts im Feld» war die Antwort.*
+        $mitFeld = str_contains($edit?->markup ?? '', 'name="' . self::OWN_VALUE_FIELD . '"');
 
         // ⚠️ **The same two sides as the attribute preview, and the same words** — the owner: *the
         // render field and the output sit next to each other without separation; maybe put a heading
@@ -1164,6 +1177,8 @@ final class NodesScreen
             [__('As a reader sees it', 'taxmod'), $display, false],
             [__('As an editor sees it', 'taxmod'), $edit, true],
         ] as [$title, $side, $mitKnopf]) {
+            $mitKnopf = $mitKnopf && $mitFeld;
+
             // ⚠️ **Der Knopf steht in der Bearbeiten-Seite, unter dem Feld, das er festhält** (TASK-071).
             // *Sein Befund: «der button save as example ist auch nicht im edit preview sichtbar». Er
             // stand unter **beiden** Seiten, weil ein `<form>` in einem `<p>` die Spalten umlegte —
@@ -1808,11 +1823,12 @@ final class NodesScreen
             $barred,
             $this->labels->of($node, SeededRole::Form, $this->localeFromRequest()),
             __('Nothing here can be a parent.', 'taxmod'),
-            DialogChooserRenderer::NAME,
+            ChooserRenderer::NAME,
             $this->localeFromRequest(),
             Level::Admin,
             $trigger,
-            $confirm
+            $confirm,
+            settings: ChooserRenderer::asDialog()
         )->markup;
     }
 
@@ -1842,7 +1858,7 @@ final class NodesScreen
      * [D-123](../../../docs/NewConcept/90-decision-log.md) mit den zwei Stufen gerade abgeschafft hat.*
      *
      * ⚠️ **Die Hülle ist dieselbe wie beim Baumdialog** — verborgenes Kontrollkästchen, `<label>` als
-     * Öffner, Schattenfläche zum Schliessen, alles ohne Skript ({@see DialogChooserRenderer}). *Sie
+     * Öffner, Schattenfläche zum Schliessen, alles ohne Skript ({@see ChooserRenderer}). *Sie
      * steht hier und nicht dort, weil dieser Dialog keinen Knoten **wählt**: er stellt eine Frage mit
      * zwei Antworten, und der Wähler-Renderer hätte einen Baum zeichnen müssen, den niemand braucht.*
      */
@@ -2352,7 +2368,7 @@ final class NodesScreen
                 $this->barredTargets(),
                 $ziel?->name,
                 __('Nothing here can be a target.', 'taxmod'),
-                DialogChooserRenderer::NAME,
+                ChooserRenderer::NAME,
                 $this->localeFromRequest(),
                 Level::Admin,
                 '<span class="button taxmod-icon-button" title="'
@@ -2373,7 +2389,8 @@ final class NodesScreen
                     \Taxmod\Core\Renderer\FieldRowRenderer::formFor($relation),
                     true
                 )),
-                \Taxmod\Core\Renderer\FieldRowRenderer::formFor($relation)
+                \Taxmod\Core\Renderer\FieldRowRenderer::formFor($relation),
+                settings: ChooserRenderer::asDialog()
             )->markup;
         }
 
@@ -2577,7 +2594,7 @@ final class NodesScreen
             $barred,
             null,
             __('Nothing here can be a target.', 'taxmod'),
-            DialogChooserRenderer::NAME,
+            ChooserRenderer::NAME,
             $this->localeFromRequest(),
             Level::Admin,
             '<span class="button taxmod-icon-button" title="' . esc_attr__('Choose what this field points at', 'taxmod') . '">'
@@ -2588,7 +2605,8 @@ final class NodesScreen
             // dialog, sollte keine zusaetzliche Funktion haben, Benutzer waehlt Knoten aus und
             // bestaetigt, Knoten wird in Anlege-Zeile angezeigt und der Benutzer kann einen Knopf
             // add/anlegen druecken". Damit ist der Dialog ueberall dasselbe Werkzeug.
-            ''
+            '',
+            settings: ChooserRenderer::asDialog()
         )->markup;
 
         // WICHTIG: Der Anlegen-Knopf steht in der Zeile, nicht im Dialog -- das dreht D-392 fuer

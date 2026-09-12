@@ -25,7 +25,8 @@ final class Unit implements NodeClass
     public bool $mit_praefix = false;
 
     /** @var list<int> Knoten der Klasse Konstante */
-    #[Attribut(listOf: 'node', refersTo: Constant::class)]
+    // ⚠️ *Aus den Kindern von «Prefixes», nicht aus allen Konstanten — sein Bild am 2026-09-12 zeigte form, table, yotta, zetta … in einer Liste (D-728).*
+    #[Attribut(listOf: 'node', refersTo: Constant::class, from: Anchor::Prefixes)]
     public array $erlaubte_praefixe = [];
 
     #[Attribut]

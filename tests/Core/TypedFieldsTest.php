@@ -14,7 +14,7 @@ use Taxmod\Core\Model\Type\DateTimeType;
 use Taxmod\Core\Renderer\ColorRenderer;
 use Taxmod\Core\Renderer\CompactRenderer;
 use Taxmod\Core\Renderer\DateTimeRenderer;
-use Taxmod\Core\Renderer\DialogChooserRenderer;
+use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\FormRenderer;
@@ -167,7 +167,7 @@ final class TypedFieldsTest extends TestCase
     {
         $baum = new Section('', '<span class="row">Gramm</span>');
 
-        $ins_leere = (new DialogChooserRenderer())->render(
+        $ins_leere = (new ChooserRenderer())->render(
             $this->subject,
             new RenderContext(
                 purpose: Purpose::Edit,
@@ -175,13 +175,15 @@ final class TypedFieldsTest extends TestCase
                 editable: true,
                 fieldName: 'wert',
                 type: SimpleType::NodeRef,
+                // ⚠️ *Der Dialog zeigt den gewählten Kopf; im Fluss steht nur der Baum (D-727).*
+                settings: ChooserRenderer::asDialog(),
                 surroundings: new Surroundings(
-                    sections: [DialogChooserRenderer::CANDIDATES => $baum]
+                    sections: [ChooserRenderer::CANDIDATES => $baum]
                 ),
             )
         )->markup;
 
-        $nichts = (new DialogChooserRenderer())->render(
+        $nichts = (new ChooserRenderer())->render(
             $this->subject,
             new RenderContext(
                 purpose: Purpose::Edit,
@@ -189,8 +191,10 @@ final class TypedFieldsTest extends TestCase
                 editable: true,
                 fieldName: 'wert',
                 type: SimpleType::NodeRef,
+                // ⚠️ *Der Dialog zeigt den gewählten Kopf; im Fluss steht nur der Baum (D-727).*
+                settings: ChooserRenderer::asDialog(),
                 surroundings: new Surroundings(
-                    sections: [DialogChooserRenderer::CANDIDATES => $baum]
+                    sections: [ChooserRenderer::CANDIDATES => $baum]
                 ),
             )
         )->markup;

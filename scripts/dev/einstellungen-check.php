@@ -567,7 +567,8 @@ $unterKonstanten = $editor->createNode('__es unter constants', $framework->rootO
 check('unter `constants` steht `reference` zur Wahl', in_array('reference', $angebotDerSeite(seite($unterKonstanten->id)), true));
 $editor->createNode('__es ein Kind', $unterKonstanten->id);
 $namenMitKind = $angebotDerSeite(seite($unterKonstanten->id));
-check('mit einem Kind stehen die Wähler zur Wahl', array_values(array_diff(['chooser-dialog', 'chooser-inline'], $namenMitKind)) === [], implode(',', $namenMitKind));
+// ⚠️ *Seit D-727 (2026-09-12) ein Wähler mit Schalter `dialog` — vorher zwei Namen.*
+check('mit einem Kind steht der Wähler zur Wahl', in_array('chooser', $namenMitKind, true), implode(',', $namenMitKind));
 check('kein Renderer ist gewählt, solange niemand wählt — die Maske zeigt die Vorgabe, gezeichnet wird mit dem Typstandard', $gewaehlterRenderer($zahl->id) === FieldRenderer::NAME && ($zeichner()->settingsForNode($nodes->byId($zahl->id))['renderer'] ?? null)?->setHere === false && gezeichnet($zeichner(), $eins->id)[0] === FieldRenderer::NAME, $gewaehlterRenderer($zahl->id) . ' / ' . gezeichnet($zeichner(), $eins->id)[0]);
 $speicherbar($zahl->id, 'renderer', SpinnerRenderer::NAME);
 check('der Akt «Renderer wählen» läuft durch', gelungen(), letzteMeldung());

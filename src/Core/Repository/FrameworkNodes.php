@@ -48,6 +48,9 @@ interface FrameworkNodes
      */
     public function roleId(SeededRole $role): int;
 
+    /** Der Gerüstknoten hinter einem Anker — `null`, solange er nicht angelegt ist. */
+    public function anchor(\Taxmod\Core\Model\NodeClass\Anchor $anchor): ?Node;
+
     /**
      * The node a branch hangs from — `Model`, `Compositions`, `Data Types`, `Constants`.
      *

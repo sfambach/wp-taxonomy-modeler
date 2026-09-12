@@ -57,13 +57,15 @@ final class RenderingFromContractTest extends TestCase
         $types         = $this->nodes->add(Node::create(4, 'Data Types', '1', 1, 2));
         $this->kontakt = $this->nodes->add(Node::create(5, 'Kontakt', '1.3', 3, 0, Category::class));
         $this->integer = $this->nodes->add(Node::create(6, 'Integer', '1.4', 4, 0, IntType::class));
+        // ⚠️ *Die Rollen hängen am Anker `roles` — ein Verweisattribut mit Anker bietet dessen Kinder an (D-728).*
+        $roles         = $this->nodes->add(Node::create(7, 'Label roles', '1', 1, 3, \Taxmod\Core\Model\NodeClass\Choice::class));
 
         $typeNodes = new RememberedTypeNodes();
         $typeNodes->remember(\Taxmod\Core\Model\SimpleType::Int, $this->integer->id);
 
         $this->rendering = new Rendering(
             $this->nodes,
-            new FixedFramework($root, $trash, ['model' => $model, 'data-types' => $types]),
+            new FixedFramework($root, $trash, ['model' => $model, 'data-types' => $types], anchors: ['roles' => $roles]),
             ShippedRenderers::registry(),
             $typeNodes,
             null,
@@ -193,7 +195,6 @@ final class RenderingFromContractTest extends TestCase
     #[Test]
     public function a_reference_attribute_offers_the_nodes_of_its_class(): void
     {
-        $roles = $this->nodes->add(Node::create(7, 'Label roles', '1', 1, 3, \Taxmod\Core\Model\NodeClass\Choice::class));
         $this->nodes->add(Node::create(8, 'form', '1.7', 7, 0, Constant::class));
         $this->nodes->add(Node::create(9, 'symbol', '1.7', 7, 1, Constant::class));
         $reference = $this->settings->addObject(SettingsObject::create(\Taxmod\Core\Renderer\ReferenceRenderer::class));

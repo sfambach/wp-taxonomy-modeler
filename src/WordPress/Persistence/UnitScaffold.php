@@ -49,6 +49,9 @@ final class UnitScaffold
 {
     public const OPTION = 'taxmod_unit_scaffold';
 
+    /** Der Knoten, dessen Kinder die Präfixe sind — {@see \Taxmod\Core\Model\NodeClass\Anchor::Prefixes}. */
+    public const PREFIXES_NAME = 'Prefixes';
+
     /**
      * Wo der Einheitenwert steht — **als Id, nicht als Name**.
      *
@@ -78,7 +81,7 @@ final class UnitScaffold
     }
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     /**
      * Jeder Knoten des Gerüsts notiert seine Id in einer Option — wie die Behälter der Renderer.
@@ -225,7 +228,7 @@ final class UnitScaffold
         $constants = $this->framework->rootOf(Branch::Constants);
         $created   = [];
 
-        $prefixes = $this->ensure($constants, 'Prefixes', $created);
+        $prefixes = $this->ensure($constants, self::PREFIXES_NAME, $created);
 
         // ⚠️ **An attribute that is declared **not persistent**** ([D-378](../../../docs/NewConcept/90-decision-log.md)).
         // The owner brought the distinction from object orientation and it is what finally justifies
@@ -572,6 +575,17 @@ final class UnitScaffold
             Label::BASE_NUMBER,
             SettingsScreen::neutralLocale(),
             $symbol
+        ));
+
+        // ⚠️ **Die Auswahlbeschriftung ist «Symbol - Name»** (Fassung 6) — *sein Wort am 2026-09-12, nachdem er sie an
+        // `yotta` selbst so getippt hatte: «alle label bezeichnungen so wie y - yotta machen»* ([D-729](../../../docs/NewConcept/90-decision-log.md)).
+        $this->labels->put(new Label(
+            $node->id,
+            IdentitySpace::Node,
+            SeededRole::Select,
+            Label::BASE_NUMBER,
+            SettingsScreen::neutralLocale(),
+            $symbol . ' - ' . $node->name
         ));
     }
 }

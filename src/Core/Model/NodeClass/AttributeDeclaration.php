@@ -33,6 +33,7 @@ final class AttributeDeclaration
         public readonly ?string $refersTo = null,
         public readonly ?TypedValue $default = null,
         public readonly bool $allowDuplicates = true,
+        public readonly ?Anchor $from = null,
     ) {
     }
 

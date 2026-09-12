@@ -83,6 +83,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wer legt den Vertrag fest? | [D-624](90-decision-log.md) — eine Oberklasse, Kern-Renderer und Rand-Gegenstück; zuerst im Admin-Menü | — |
 | Wie viele Renderer hat ein Knoten? | [D-584](90-decision-log.md) — genau **einen**; der Renderer ist selbst ein Knoten und darf hierarchisch sein | ~~D-217~~ ~~D-224~~ ~~D-236~~ ~~D-502~~ ~~D-548~~ |
 | Wo wird der Renderer gewählt? | [D-647](90-decision-log.md) — eigener Renderer für die Wahl, Liste aus der Registratur, sprachabhängig beschriftet, gespeichert wird der Verweis | ~~D-433~~ |
+| Wie wird ein Verweis im Feld gewählt? | [D-727](90-decision-log.md) — **ein** Wähler `chooser` mit dem Schalter `dialog` (Vorgabe aus) und `display_size`; eine flache Ebene ist ein Auswahlfeld. Welches Label der Gewählte zeigt, sagt die Konstante selbst ([D-728](90-decision-log.md)) | ~~D-108~~ ~~D-244~~ |
 | Bekommt jeder Renderer einen Knoten? | [D-648](90-decision-log.md) — nur, was ein Feld des Modells zeichnen kann; interne nicht. [D-644](90-decision-log.md): die Renderer-Knoten verlieren die Marke | — |
 | Wo hängt der Konverter? | [D-585](90-decision-log.md) — Einstellung am Basisknoten `Renderer`, an jeden Renderer vererbt; `DisplayOption` entfällt ([D-594](90-decision-log.md)) | ~~D-277~~ ~~D-514~~ ~~D-539~~ |
 | Wofür taugt ein Konverter oder Renderer? | [D-603](90-decision-log.md) — `handles()` im Kode, nicht im Modell; der Typ schränkt ein | — |

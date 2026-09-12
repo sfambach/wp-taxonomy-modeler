@@ -26,8 +26,7 @@ use Taxmod\Core\Renderer\ChoiceRenderer;
 use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
-use Taxmod\Core\Renderer\DialogChooserRenderer;
-use Taxmod\Core\Renderer\InlineChooserRenderer;
+use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\DrawnRow;
@@ -473,8 +472,14 @@ final class Rendering implements Presets
             return [];
         }
 
-        // Which targets each role has to answer for — the role is read off the relation that points.
+        // Which targets each role has to answer for — the role is read off the relation that points,
+        // und wo die nichts sagt, vom Ziel selbst (D-728). *Die Ziele in einem Zug geladen (`CD-7`).*
         $wanted = [];
+        $ziele  = $this->nodes->byIds(array_values(array_filter(array_map(
+            static fn (Relation $r): ?int => ($values[$r->id] ?? null)?->reference,
+            $relations
+        ))));
+        $this->resolver?->preload(array_values($ziele));
 
         foreach ($relations as $relation) {
             $reference = ($values[$relation->id] ?? null)?->reference;
@@ -483,7 +488,7 @@ final class Rendering implements Presets
                 continue;
             }
 
-            $role = $this->roleOf($resolved[$relation->id] ?? []);
+            $role = $this->roleOf($resolved[$relation->id] ?? [], $ziele[$reference] ?? null);
 
             $wanted[$role->value][$reference][] = $relation->id;
         }
@@ -655,9 +660,22 @@ final class Rendering implements Presets
         return $aus;
     }
 
-    private function roleOf(array $settings): SeededRole
+    /**
+     * Die Rolle, in der ein Verweis beschriftet wird.
+     *
+     * ⚠️ *Seit dem Einstellungsmodell (D-712) ist `label_role` ein **Verweis** auf den Rollenknoten, dessen Name das
+     * Wort der Rolle ist — hier stand nur `->text`, und jede gewählte Rolle las sich als «keine».* ⚠️ **Und die
+     * Konstante sagt selbst, welches Label sie zeigt** ([D-728](../../../docs/NewConcept/90-decision-log.md), sein
+     * Wort: «einfacher wäre im typ»): *sagt die Stelle nichts, gilt, was am Ziel steht; sonst die Formularrolle.*
+     */
+    private function roleOf(array $settings, ?Node $ziel = null): SeededRole
     {
-        $asked = ($settings[self::LABEL_ROLE] ?? null)?->value->text;
+        $wahl  = ($settings[self::LABEL_ROLE] ?? null)?->value;
+        $asked = $wahl?->text ?? ($wahl?->reference === null ? null : $this->nodes->find($wahl->reference)?->name);
+
+        if ($asked === null && $ziel !== null && $this->resolver !== null) {
+            return $this->roleOf($this->resolver->forNode($ziel));
+        }
 
         return $asked === null ? SeededRole::Form : (SeededRole::tryFrom($asked) ?? SeededRole::Form);
     }
@@ -1008,8 +1026,8 @@ final class Rendering implements Presets
                 // und der Renderer liess sich nicht mehr wechseln.
                 $tiefer === null
                     // ⚠️ *Das Ziel wird nur für einen Wähler-Renderer nachgeschlagen — sonst wäre es eine Abfrage je Feld (CD-7).*
-                    ? (($renderer instanceof DialogChooserRenderer || $renderer instanceof InlineChooserRenderer
-                        ? $this->chooserMarkup($this->nodes->find($relation->toNodeId), $renderer, $value, $context->fieldName, $formId, $locale, $level)
+                    ? (($renderer instanceof ChooserRenderer
+                        ? $this->chooserMarkup($this->nodes->find($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level)
                         : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
@@ -1114,7 +1132,12 @@ final class Rendering implements Presets
         $renderer = $this->renderers->chosenFor($node, $settings, $purpose, $type)
             ?? $this->renderers->fallback();
 
-        if (($wahl = $this->chooserMarkup($node, $renderer, $value, $fieldName, $formId, $locale, $level)) !== null) {
+        // ⚠️ **Jeder Verweis bekommt seinen Namen, nicht nur der auf sich selbst** — *gemessen am 2026-09-12 an `Prefixes`
+        // mit Beispielsatz: die Leser-Seite zeigte `#3990` als verwaist, weil nur der eigene Verweis beschriftet wurde.
+        // Die Rolle: die der Stelle, sonst die des Ziels (D-728).*
+        $verwiesen = $value->reference === null ? null : $this->nodes->find($value->reference);
+
+        if (($wahl = $this->chooserMarkup($node, $renderer, $settings, $value, $fieldName, $formId, $locale, $level)) !== null) {
             return $wahl;
         }
 
@@ -1133,9 +1156,9 @@ final class Rendering implements Presets
             surroundings: new Surroundings(
                 // ⚠️ *Aufgelöst hereingegeben und nicht im Renderer nachgeschlagen — dieselbe Naht wie
                 // im Formular ({@see self::fieldsOf()}): der Kern löst, der Renderer zeichnet.*
-                refersTo: $eigenerVerweis
-                    ? ($this->labels?->forNodes([$node], $this->roleOf($settings), $locale)[$node->id] ?? $node->name)
-                    : null,
+                refersTo: $verwiesen === null
+                    ? null
+                    : ($this->labels?->forNodes([$verwiesen], $this->roleOf($settings, $verwiesen), $locale)[$verwiesen->id] ?? $verwiesen->name),
                 formId: $formId,
             ),
         ));
@@ -1264,7 +1287,7 @@ final class Rendering implements Presets
         array $unpickable = [],
         ?string $chosenName = null,
         string $nothingToChoose = '',
-        string $chooser = DialogChooserRenderer::NAME,
+        string $chooser = ChooserRenderer::NAME,
         string $locale = '',
         Level $level = Level::Admin,
         // ⚠️ **What opens the dialog, and what confirms inside it** — both boundary markup, because
@@ -1274,6 +1297,8 @@ final class Rendering implements Presets
         string $trigger = '',
         string $confirm = '',
         string $formId = '',
+        /** @var array<string, ResolvedSetting> Die Angaben des Wählers — `dialog`, `display_size`; die Knotenseite gibt {@see ChooserRenderer::asDialog()}. */
+        array $settings = [],
     ): RenderResult {
         $barred = [];
 
@@ -1308,17 +1333,18 @@ final class Rendering implements Presets
                 value: $chosen === null ? TypedValue::nothing() : TypedValue::ofReference($chosen),
                 locale: $locale,
                 level: $level,
-                // ⚠️ **The field name reaches the chooser, and it has to.** {@see DialogChooserRenderer}
+                // ⚠️ **The field name reaches the chooser, and it has to.** {@see ChooserRenderer}
                 // builds its switch id from the subject **and** this — and both choosers on the node
                 // page are built from the *first walked node*, so without it the ids matched and **each
                 // trigger opened both dialogs**. *Measured: `taxmod-dialog-402` twice.*
                 fieldName: $fieldName,
+                settings: $settings,
                 surroundings: new Surroundings(
                     refersTo: $chosenName,
                     sections: [
-                        DialogChooserRenderer::CANDIDATES => new Section($nothingToChoose, $tree->markup),
-                        DialogChooserRenderer::TRIGGER    => new Section('', $trigger),
-                        DialogChooserRenderer::CONFIRM    => new Section('', $confirm),
+                        ChooserRenderer::CANDIDATES => new Section($nothingToChoose, $tree->markup),
+                        ChooserRenderer::TRIGGER    => new Section('', $trigger),
+                        ChooserRenderer::CONFIRM    => new Section('', $confirm),
                     ]
                 ),
             )
@@ -2992,9 +3018,12 @@ final class Rendering implements Presets
      * er gebaut. *Sein Befund am 2026-09-11 an `Prefixes` mit `chooser-inline`: «warum kein auswahlfeld
      * angezeigt wird» — der Renderer bekam keinen Baum und zeichnete ein leeres Stück.*
      */
-    private function chooserMarkup(?Node $target, Renderer $renderer, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level): ?RenderResult
+    /**
+     * @param array<string, ResolvedSetting> $settings Die aufgelösten Angaben der Stelle — darunter `dialog` und `display_size` des Wählers.
+     */
+    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level): ?RenderResult
     {
-        if ($target === null || (! $renderer instanceof DialogChooserRenderer && ! $renderer instanceof InlineChooserRenderer)) {
+        if ($target === null || ! $renderer instanceof ChooserRenderer) {
             return null;
         }
 
@@ -3002,8 +3031,9 @@ final class Rendering implements Presets
 
         // ⚠️ **Eine Ebene ist eine Liste, kein Baum** — *sein Wort am 2026-09-12 an `Prefixes`: «sollte eine normale
         // dropdown liste anzeigen ist nur eine ebene, sollte list label zur anzeige verwenden».* Haben die Kinder des
-        // Ziels selbst keine Kinder, zeichnet der Inline-Wähler ein Auswahlfeld, beschriftet mit der Rolle `select`.
-        if ($renderer instanceof InlineChooserRenderer) {
+        // Ziels selbst keine Kinder, zeichnet der Wähler ein Auswahlfeld, beschriftet mit der Rolle `select` — *ausser
+        // jemand hat den Dialog eingeschaltet ([D-727](../../../docs/NewConcept/90-decision-log.md)): dann bleibt der Baum.*
+        if (($settings[ChooserRenderer::DIALOG] ?? null)?->value->asBool() !== true) {
             $kinder = $this->nodes->visibleChildrenOf([$target->id])[$target->id] ?? [];
             $enkel  = $kinder === [] ? [] : array_filter($this->nodes->visibleChildrenOf(array_map(static fn (Node $k): int => $k->id, $kinder)));
 
@@ -3018,7 +3048,8 @@ final class Rendering implements Presets
                 return $this->renderers->byName(ChoiceRenderer::NAME)->render($target, new RenderContext(
                     purpose: Purpose::Edit,
                     value: $gewaehlt === null ? TypedValue::nothing() : TypedValue::ofReference($gewaehlt),
-                    settings: [],
+                    // ⚠️ *Nur die Breite reist mit — die übrigen Angaben gehören dem Wähler, nicht dem Auswahlfeld.*
+                    settings: isset($settings['display_size']) ? ['display_size' => $settings['display_size']] : [],
                     locale: $locale,
                     level: $level,
                     editable: true,
@@ -3043,7 +3074,8 @@ final class Rendering implements Presets
             $level,
             '',
             '',
-            $formId
+            $formId,
+            $settings
         );
     }
 
@@ -3485,7 +3517,11 @@ final class Rendering implements Presets
 
         $aus = [];
 
-        foreach ($this->nodes->ofClass($erklaert->refersTo) as $knoten) {
+        // ⚠️ *Mit Anker aus dessen Kindern, sonst aus allen der Klasse — sein Befund: «warum werden die konstanten bei
+        // label role angezeigt» (D-728).*
+        $anker = $erklaert->from === null ? null : $this->framework->anchor($erklaert->from);
+
+        foreach ($erklaert->from === null ? $this->nodes->ofClass($erklaert->refersTo) : ($anker === null ? [] : $this->nodes->childrenOf($anker)) as $knoten) {
             $aus[$knoten->name] = $knoten->name;
         }
 
@@ -4368,12 +4404,14 @@ final class Rendering implements Presets
         array $unpickable = [],
         ?string $chosenName = null,
         string $nothingToChoose = '',
-        string $chooser = DialogChooserRenderer::NAME,
+        string $chooser = ChooserRenderer::NAME,
         string $locale = '',
         Level $level = Level::Admin,
         string $trigger = '',
         string $confirm = '',
         string $formId = '',
+        /** @var array<string, ResolvedSetting> Die Angaben des Wählers — `dialog`, `display_size`; die Knotenseite gibt {@see ChooserRenderer::asDialog()}. */
+        array $settings = [],
     ): RenderResult {
         $laeufer = $this->walker();
 
@@ -4395,7 +4433,8 @@ final class Rendering implements Presets
             $level,
             $trigger,
             $confirm,
-            $formId
+            $formId,
+            $settings
         );
     }
 
