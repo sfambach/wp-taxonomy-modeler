@@ -26,6 +26,17 @@ final class PathType extends SpecialisedType
 
     public const WITH_NODE = 'with_node';
 
+    /**
+     * ⚠️ *Sein Wort am 2026-09-12 ([D-755](../../../../docs/NewConcept/90-decision-log.md)): «ich hätte gerne ein Feld, das an PC
+     * definiert ist, aber reinschreibt, ob es Hardware oder Software ist … über den Ast bestimmen, was drinne steht … im Grunde
+     * könnte das eine Einstellung am Reference-Typ sein, only direct child oder so».* Nur das erste Glied unter dem
+     * erklärenden Knoten — der Ast, in dem der Knoten liegt.
+     */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $only_direct_child = false;
+
+    public const ONLY_DIRECT_CHILD = 'only_direct_child';
+
     public const SEPARATOR = ' → ';
 
     public function type(): SimpleType

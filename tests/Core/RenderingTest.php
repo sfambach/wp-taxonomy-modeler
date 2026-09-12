@@ -2088,4 +2088,21 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('>IBM<', $gezeigt);
     }
+
+    /** ⚠️ *D-755: «ob es Hardware oder Software ist … über den Ast bestimmen» — nur das erste Glied unter dem erklärenden Knoten.* */
+    #[Test]
+    public function only_direct_child_shows_the_branch_under_the_declaring_node(): void
+    {
+        $pc       = $this->thing('PC');
+        $hardware = $this->editor->createNode('Hardware', $pc->id);
+        $internal = $this->editor->createNode('Internal', $hardware->id);
+        $ast      = $this->editor->addField($pc->id, $this->type('Path')->id, 'ast');
+
+        $this->einstellung($ast, \Taxmod\Core\Model\Type\PathType::ONLY_DIRECT_CHILD, TypedValue::ofBool(true));
+
+        self::assertStringContainsString('>Hardware<', $this->rendering->nodeAsForm($internal, [$ast], [], Purpose::Display)->markup, 'tief unten: der Ast');
+        self::assertStringContainsString('>Hardware<', $this->rendering->nodeAsForm($hardware, [$ast], [], Purpose::Display)->markup, 'am direkten Kind: es selbst');
+        self::assertStringNotContainsString('Hardware', $this->rendering->nodeAsForm($pc, [$ast], [], Purpose::Display)->markup, 'am erklärenden Knoten: nichts');
+        self::assertSame('Hardware', $this->rendering->pathTextFor($ast, $internal->id)->text, 'derselbe Wert für den Satz');
+    }
 }

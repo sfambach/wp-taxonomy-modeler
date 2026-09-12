@@ -1382,6 +1382,15 @@ check('im Einstellungsbereich der Kante stehen die Felder des Ziels als Haken (D
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $satzFeld->id => '42', (string) $wer->id => (string) $lfSatz->id]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('der Wähler der Zusammenfassung schreibt einen Satzverweis', gelungen() && (string) $wpdb->get_var("SELECT value_ref FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wer->id} AND value_ref_kind = 'record'") === (string) $lfSatz->id, letzteMeldung());
 
+
+// ⚠️ **Der Ast als Wert, und in den Satz geschrieben** ([D-755](../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«ein Feld, das an PC
+// definiert ist, aber reinschreibt, ob es Hardware oder Software ist … und das in den Datensatz auch reinschreiben».*
+$astFeld = $editor->addField($modellKnoten->id, $seeded['path']->id, '__es ast');
+$einsteller->put($nodes->byId($seeded['path']->id), \Taxmod\Core\Model\Type\PathType::ONLY_DIRECT_CHILD, '1', $astFeld);
+$astSatz = $data->create($kind->id, RecordType::User);
+abschicken(['do' => 'save_record', 'id' => (string) $kind->id, 'node_record_id' => (string) $astSatz->id, 'taxmod_value' => [(string) $astSatz->id => []], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id)]);
+check('mit «only direct child» steht am Kind der Ast — hier das Kind selbst — und das Speichern schreibt ihn in den Satz (D-755)', gelungen() && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$astSatz->id} AND relation_id = {$astFeld->id}") === $kind->name && str_contains(seite($kind->id), 'value="' . $kind->name . '"'), letzteMeldung() . ' / ' . (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$astSatz->id} AND relation_id = {$astFeld->id}"));
+
 // ⚠️ **Die Seite wird abgeschickt, wie ein Browser sie abschickt** ([D-754](../../docs/NewConcept/90-decision-log.md)) — sein Wort am
 // 2026-09-12: *«read only verschwindet nach Speichern, das hatten wir jetzt schon mehrfach; kannst du das generell mal überprüfen,
 // ich will das nicht bei jedem Feld erneut testen müssen».* *Gemessen: die offene Feldzeile trug `read_only` und `unique` je zweimal

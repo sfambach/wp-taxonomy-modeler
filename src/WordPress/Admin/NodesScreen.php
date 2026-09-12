@@ -3136,10 +3136,9 @@ final class NodesScreen
             }
         }
 
-        if ($submitted === []) {
-            return;
-        }
-
+        // ⚠️ *Hier stand «nichts geschickt, nichts zu tun». Seit D-755 stimmt das nicht mehr: ein Weg-Feld wird bei jedem
+        // Speichern gerechnet und geschrieben, auch wenn die Maske sonst nichts schickt — ein Satz, dessen einziges Feld
+        // ein Weg ist, wäre sonst nie zu speichern.*
         $attributes = [];
 
         foreach ($this->editor->fieldsOf($nodeId) as $relation) {
@@ -3215,6 +3214,23 @@ final class NodesScreen
             // ⚠️ *Already read above, converter and all. The `??` is not a fallback for a missing
             // value — `valuesFrom()` answers for every relation that had a type, and this one does.*
             $this->data->put($recordId, $relationId, $values[$relationId] ?? $type->valueFrom($characters));
+        }
+
+        // ⚠️ **Ein Weg-Feld wird mit jedem Speichern in den Satz geschrieben** ([D-755](../../../docs/NewConcept/90-decision-log.md)) —
+        // *sein Wort: «und das in den Datensatz auch reinschreiben». Die Maske schickt es nicht, es ist nie eingebbar (D-751);
+        // gerechnet wird es hier, aus dem Knoten des Satzes.*
+        if ($recordId !== 0) {
+            foreach ($attributes as $weg) {
+                if (($types[$weg->id] ?? null) === SimpleType::Path) {
+                    $gerechnet = $this->rendering->pathTextFor($weg, $nodeId);
+
+                    if ($gerechnet->isNothing()) {
+                        $this->data->clear($recordId, $weg->id);
+                    } else {
+                        $this->data->put($recordId, $weg->id, $gerechnet);
+                    }
+                }
+            }
         }
     }
 

@@ -3106,6 +3106,17 @@ final class Rendering implements Presets
      *
      * @param array<string, ResolvedSetting> $settings
      */
+    /**
+     * Der Weg eines Feldes für einen Knoten, mit den Angaben der Verwendungsstelle — für den Satz, der ihn
+     * **speichert** ([D-755](../../../docs/NewConcept/90-decision-log.md): *«und das in den Datensatz auch reinschreiben»*).
+     */
+    public function pathTextFor(Relation $relation, int $forNode): TypedValue
+    {
+        $resolved = $this->settingsForUseSites([$relation]);
+
+        return $this->pathValueFor($relation, $forNode, $this->withModelValues($resolved[$relation->id] ?? [], $relation));
+    }
+
     private function pathValueFor(Relation $relation, int $forNode, array $settings): TypedValue
     {
         $knoten = $forNode === 0 ? null : $this->nodes->find($forNode);
@@ -3118,7 +3129,17 @@ final class Rendering implements Presets
         $start     = array_search($relation->fromNodeId, $vorfahren, true);
         $glieder   = $start === false ? [] : array_slice($vorfahren, $start);
 
-        if (($settings[\Taxmod\Core\Model\Type\PathType::WITH_NODE] ?? null)?->value->asBool() === true) {
+        // ⚠️ **Nur der Ast** ([D-755](../../../docs/NewConcept/90-decision-log.md)): *das erste Glied unter dem erklärenden Knoten —
+        // an «Internal» unter «PC → Hardware» also «Hardware»; am direkten Kind ist es das Kind selbst.*
+        if (($settings[\Taxmod\Core\Model\Type\PathType::ONLY_DIRECT_CHILD] ?? null)?->value->asBool() === true) {
+            $ast = $start === false ? null : ($vorfahren[$start + 1] ?? $knoten->id);
+
+            if ($ast === null || $ast === $relation->fromNodeId) {
+                return TypedValue::nothing();
+            }
+
+            $glieder = [$ast];
+        } elseif (($settings[\Taxmod\Core\Model\Type\PathType::WITH_NODE] ?? null)?->value->asBool() === true) {
             $glieder[] = $knoten->id;
         }
 
