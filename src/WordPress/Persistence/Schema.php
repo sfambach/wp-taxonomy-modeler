@@ -441,7 +441,7 @@ final class Schema
      * sieben Wertzeilen, alle am Knoten, alle `0` — es wandert nichts in die Spalte, und nichts geht
      * verloren. `multiplicity` war schon Spalte (Fassung 22); was fällt, ist nur ihr Schlüssel.*
      */
-    public const VERSION = 50;
+    public const VERSION = 51;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -4490,6 +4490,7 @@ final class Schema
                 multiplicity varchar(10) NOT NULL DEFAULT '1..1',
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 read_only tinyint(1) unsigned NOT NULL DEFAULT 0,
+                is_unique tinyint(1) unsigned NOT NULL DEFAULT 0,
                 PRIMARY KEY  (id),
                 UNIQUE KEY one_place (from_node_id,kind,sort_order),
                 KEY to_node_id (to_node_id),
@@ -4730,6 +4731,7 @@ final class Schema
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 read_only tinyint(1) unsigned NOT NULL DEFAULT 0,
+                is_unique tinyint(1) unsigned NOT NULL DEFAULT 0,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),

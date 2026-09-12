@@ -41,7 +41,17 @@ final class ReferenceRenderer extends TypedFieldRenderer
     #[\Taxmod\Core\Model\NodeClass\Attribut(refersTo: \Taxmod\Core\Model\NodeClass\Constant::class, from: \Taxmod\Core\Model\NodeClass\Anchor::Roles)]
     public ?int $label_role = null;
 
+    /**
+     * Ob die Beschriftung des **Vaters** vorangestellt wird — *sein Wort am 2026-09-12: «reference type sollte eine
+     * schalter für Vater haben dann wird das label aus dem vater genommen zum beispiel ms_dos hat als kind ms_dos
+     * v.5.0»* ([D-734](../../../docs/NewConcept/90-decision-log.md)): aus «v.5.0» unter «ms_dos» wird «ms_dos v.5.0».
+     */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $with_parent = false;
+
     public const NAME = 'reference';
+
+    public const WITH_PARENT = 'with_parent';
 
     public function name(): string
     {

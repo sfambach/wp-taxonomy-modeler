@@ -91,6 +91,12 @@ final class NotYetStorable extends DomainError
         ));
     }
 
+    /** ⚠️ *«unique (eindeutig)» an der Kante (D-735): derselbe Wert steht schon in einem anderen Satz.* */
+    public static function thatValueIsTaken(string $attribute, string $value, int $recordId): self
+    {
+        return new self(sprintf('«%s» must be unique — «%s» is already held by record #%d.', $attribute, $value, $recordId));
+    }
+
     public static function thatFieldHasSeveralValues(string $attribute, int $anzahl): self
     {
         return new self(sprintf(

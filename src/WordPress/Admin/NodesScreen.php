@@ -2294,6 +2294,9 @@ final class NodesScreen
                 . '<th style="width:8em">' . esc_html__('Kind', 'taxmod') . '</th>'
                 . '<th style="width:5em">' . esc_html__('From', 'taxmod') . '</th>'
                 . '<th style="width:11em">' . esc_html__('How many', 'taxmod') . '</th>'
+                // ⚠️ *Sein Wort am 2026-09-12: «den schalter unique (eindeutig) und readonly direkt an der kante» (D-735).*
+                . '<th style="width:4.5em">' . esc_html__('Read only', 'taxmod') . '</th>'
+                . '<th style="width:4.5em">' . esc_html__('Unique', 'taxmod') . '</th>'
                 // ⚠️ *Die Spalte, ohne die eine Einstellung nicht einzustellen war.* Nur bei
                 // den Einstellungen -- Felder haben seit seinem Wort keine mehr.
                 . (false ? '<th>' . esc_html__('Value', 'taxmod') . '</th>' : '')
@@ -3632,7 +3635,7 @@ final class NodesScreen
      * ⚠️ *The multiplicity is written through the ordinary settings path, so `D-312`'s narrowing rule
      * still applies and a widening is still refused by the core rather than here.*
      */
-    private function saveField(int $id, int $relation, string $name, string $multiplicity, string $kind = '', bool $confirmed = false, string $readOnly = ''): void
+    private function saveField(int $id, int $relation, string $name, string $multiplicity, string $kind = '', bool $confirmed = false, string $readOnly = '', string $unique = ''): void
     {
         $existing = $this->editor->ownAttribute($id, $relation);
 
@@ -3640,6 +3643,11 @@ final class NodesScreen
         // *der Schalter schickt `0` oder `1`; leer heisst «nicht gezeichnet» und lässt die Spalte stehen.*
         if ($readOnly !== '' && ($readOnly === '1') !== $existing->readOnly) {
             $existing = $this->editor->setReadOnly($id, $relation, $readOnly === '1');
+        }
+
+        // ⚠️ *«unique (eindeutig) … direkt an der kante» (D-735) — dieselbe Form wie `read_only`.*
+        if ($unique !== '' && ($unique === '1') !== $existing->unique) {
+            $existing = $this->editor->setUnique($id, $relation, $unique === '1');
         }
 
         // ⚠️ **Die Art wechselt — und wird ein Feld mit Benutzersätzen eine Einstellung, wandert nichts**
@@ -3953,6 +3961,10 @@ final class NodesScreen
                 && ! is_array($angaben[$kante->id][EdgeColumn::READ_ONLY])
                 ? sanitize_text_field((string) $angaben[$kante->id][EdgeColumn::READ_ONLY])
                 : '';
+            $eindeutig = isset($angaben[$kante->id][EdgeColumn::UNIQUE])
+                && ! is_array($angaben[$kante->id][EdgeColumn::UNIQUE])
+                ? sanitize_text_field((string) $angaben[$kante->id][EdgeColumn::UNIQUE])
+                : '';
 
             // ⚠️ **Alles ausser «wie oft» ist eine Einstellung dieser Verwendungsstelle**
             // ([`INF-011`](../../../docs/pakete/modelltabellen/inbox.md)). *Gezeichnet wurden sie
@@ -3976,7 +3988,7 @@ final class NodesScreen
             // ⚠️ *Der Haken «ich bestätige» aus D-699 — neben der Art, unter demselben Namen.*
             $bestaetigt = ! empty($angaben[$kante->id][Rendering::KIND_CONFIRM_KEY]) && ! is_array($angaben[$kante->id][Rendering::KIND_CONFIRM_KEY]);
 
-            $this->saveField($nodeId, $kante->id, $name, $wieOft, $art, $bestaetigt, $nurLesen);
+            $this->saveField($nodeId, $kante->id, $name, $wieOft, $art, $bestaetigt, $nurLesen, $eindeutig);
         }
     }
 

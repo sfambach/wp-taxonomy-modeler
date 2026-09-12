@@ -179,6 +179,9 @@ final class FieldRowRenderer extends RendererNode
             . $this->kindCell($subject, $context)
             . $this->origin($context)
             . $this->cell($this->multiplicity($context), 'taxmod-field-many', false, true)
+            // ⚠️ *«unique (eindeutig) und readonly direkt an der kante» — je ein Schalter in der Zeile (D-735).*
+            . $this->cell($this->edgeSwitch($context, \Taxmod\Core\Model\EdgeColumn::READ_ONLY), 'taxmod-field-switch', false, true)
+            . $this->cell($this->edgeSwitch($context, \Taxmod\Core\Model\EdgeColumn::UNIQUE), 'taxmod-field-switch', false, true)
             . $this->valueCell($context)
             . $this->cell($this->controls($context->surroundings, self::formFor($subject)), 'taxmod-field-acts', false, true);
 
@@ -397,6 +400,18 @@ final class FieldRowRenderer extends RendererNode
         }
 
         return $this->cell($gezeichnet->body, 'taxmod-field-value', false, true);
+    }
+
+    /** Der Schalter einer Kantenspalte, wie er für die Zeile gezeichnet wurde — oder nichts, wo die Zeile geerbt ist. */
+    private function edgeSwitch(RenderContext $context, string $column): string
+    {
+        $drawn = $context->surroundings->configured[$column] ?? null;
+
+        if ($drawn === null || ! $drawn->wasDrawn()) {
+            return '<span class="taxmod-nothing">—</span>';
+        }
+
+        return $drawn->result->markup;
     }
 
     private function multiplicity(RenderContext $context): string

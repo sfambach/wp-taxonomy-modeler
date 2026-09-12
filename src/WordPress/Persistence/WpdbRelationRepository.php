@@ -51,7 +51,7 @@ final class WpdbRelationRepository implements RelationRepository
      * ⚠️ *Der Rückfall ist eine Anzeige und keine Festschreibung: was er liefert, wird beim nächsten
      * Speichern nicht als Text der gewählten Sprache zurückgeschrieben ({@see self::writeName()}).*
      */
-    private const COLUMNS = "r.id, r.version, r.from_node_id, r.to_node_id, r.kind, COALESCE(t.text_name, d.text_name, '') AS name, r.sort_order, r.hide, r.multiplicity, r.read_only";
+    private const COLUMNS = "r.id, r.version, r.from_node_id, r.to_node_id, r.kind, COALESCE(t.text_name, d.text_name, '') AS name, r.sort_order, r.hide, r.multiplicity, r.read_only, r.is_unique";
 
     /**
      * In welcher Sprache dieser Speicher Namen liest und schreibt.
@@ -183,7 +183,6 @@ final class WpdbRelationRepository implements RelationRepository
         ));
     }
 
-
     /**
      * ⚠️ **Die Id kommt aus dem `AUTO_INCREMENT` dieser Tabelle** (TASK-004) — dieselbe Zusage wie
      * bei {@see WpdbNodeRepository::add()}. *Id `0` heisst «vergib eine», jede andere bleibt.*
@@ -204,8 +203,9 @@ final class WpdbRelationRepository implements RelationRepository
                     'hide'     => $relation->hide ? 1 : 0,
                     'multiplicity' => $relation->multiplicity->value,
                     'read_only'    => $relation->readOnly ? 1 : 0,
+                    'is_unique'    => $relation->unique ? 1 : 0,
                 ],
-                ['%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d']
+                ['%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%d']
             );
 
             $relation = $relation->withAssignedId((int) $wpdb->insert_id);
@@ -227,8 +227,9 @@ final class WpdbRelationRepository implements RelationRepository
                 'hide'     => $relation->hide ? 1 : 0,
                 'multiplicity' => $relation->multiplicity->value,
                 'read_only'    => $relation->readOnly ? 1 : 0,
+                'is_unique'    => $relation->unique ? 1 : 0,
             ],
-            ['%d', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d']
+            ['%d', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%d']
         );
 
         $this->writeName($relation, true);
@@ -252,6 +253,7 @@ final class WpdbRelationRepository implements RelationRepository
             $relation->multiplicity->value,
             // ⚠️ *Und dahinter `read_only` (Fassung 48, [D-714](../../../docs/NewConcept/90-decision-log.md)).*
             $relation->readOnly ? 1 : 0,
+            $relation->unique ? 1 : 0,
         ];
 
         $arguments[] = $relation->id;
@@ -271,7 +273,8 @@ final class WpdbRelationRepository implements RelationRepository
                  SET version = %d, from_node_id = %d, to_node_id = %d, kind = %s, sort_order = %d,
                      hide = %d,
                      multiplicity = %s,
-                     read_only = %d
+                     read_only = %d,
+                     is_unique = %d
                  WHERE id = %d AND version = %d',
                 ...$arguments
             )
@@ -425,7 +428,7 @@ final class WpdbRelationRepository implements RelationRepository
         // die schon einmal geparkt und zurückgeholt wurde, hat mehrere.*
         $rows = Query::rows('geparkte Feldkanten aus dem Schatten lesen', $wpdb->prepare(
             "SELECT h.id, h.version, h.from_node_id, h.to_node_id, h.kind, h.name, h.sort_order,
-                    h.parked_by_group_id, h.hide, h.multiplicity, h.read_only
+                    h.parked_by_group_id, h.hide, h.multiplicity, h.read_only, h.is_unique
              FROM {$schatten} h
              INNER JOIN (
                  SELECT id, MAX(version) AS version FROM {$schatten}
@@ -740,6 +743,7 @@ final class WpdbRelationRepository implements RelationRepository
             (bool) ($row['hide'] ?? false),
             (string) ($row['multiplicity'] ?? '1..1'),
             (bool) ($row['read_only'] ?? false),
+            (bool) ($row['is_unique'] ?? false),
         );
     }
 }

@@ -346,6 +346,22 @@ final class ModelEditor
      * Ein Feld an dieser Stelle nur lesbar machen oder wieder freigeben — eine Spalte der Kante
      * ([D-714](../../../docs/NewConcept/90-decision-log.md)), derselbe Akt-Rahmen wie {@see setMultiplicity()}.
      */
+    /** «Eindeutig» an der Kante setzen ([D-735](../../../docs/NewConcept/90-decision-log.md)) — dieselbe Form wie {@see self::setReadOnly()}. */
+    public function setUnique(int $ownerId, int $relationId, bool $unique): Relation
+    {
+        $relation  = $this->ownAttribute($ownerId, $relationId);
+        $geaendert = $relation->withUnique($unique);
+
+        if ($geaendert === $relation) {
+            return $relation;
+        }
+
+        $this->changelog->record($relation->id, 'relation', 'unique set', $relation->unique ? '1' : '0', $geaendert->unique ? '1' : '0', $geaendert->version);
+        $this->relations->save($geaendert, $relation->version);
+
+        return $geaendert;
+    }
+
     public function setReadOnly(int $ownerId, int $relationId, bool $readOnly): Relation
     {
         $relation  = $this->ownAttribute($ownerId, $relationId);

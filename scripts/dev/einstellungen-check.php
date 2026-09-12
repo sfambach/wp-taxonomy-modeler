@@ -738,6 +738,7 @@ if ($gewaehlteKlasse !== null) {
 }
 $erklaert[]   = \Taxmod\Core\Model\EdgeColumn::MULTIPLICITY;
 $erklaert[]   = \Taxmod\Core\Model\EdgeColumn::READ_ONLY;
+$erklaert[]   = \Taxmod\Core\Model\EdgeColumn::UNIQUE;
 $erklaert[]   = Rendering::KIND_KEY;
 $ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
 check('der Einstellungsbereich bietet Schlüssel an, und jeder steht im Vertrag des Ziels oder seines Renderers', count($angeboteneSchluessel) >= 3 && $ueberzaehlig === [], 'nicht erklärt: ' . implode(',', $ueberzaehlig) . ' von ' . implode(',', $angeboteneSchluessel));

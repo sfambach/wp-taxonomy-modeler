@@ -481,6 +481,7 @@ final class Rendering implements Presets
             $relations
         ))));
         $this->resolver?->preload(array_values($ziele));
+        $vaeter = [];
 
         foreach ($relations as $relation) {
             $reference = ($values[$relation->id] ?? null)?->reference;
@@ -492,9 +493,18 @@ final class Rendering implements Presets
             $role = $this->roleOf($resolved[$relation->id] ?? [], $ziele[$reference] ?? null);
 
             $wanted[$role->value][$reference][] = $relation->id;
+
+            // ⚠️ *«schalter für Vater» (D-734): der Vater wird in derselben Rolle mitgeholt, in einem Zug.*
+            $vater = ($ziele[$reference] ?? null)?->parentNodeId;
+
+            if ($vater !== null && (($resolved[$relation->id][\Taxmod\Core\Renderer\ReferenceRenderer::WITH_PARENT] ?? null)?->value->asBool() ?? false)) {
+                $vaeter[$relation->id] = $vater;
+                $wanted[$role->value][$vater][] = -$relation->id;
+            }
         }
 
-        $names = [];
+        $names      = [];
+        $vaterNamen = [];
 
         foreach ($wanted as $role => $targets) {
             $resolvedNames = $this->labels->forNodes(
@@ -507,10 +517,18 @@ final class Rendering implements Presets
                 foreach ($relationIds as $relationId) {
                     // ⚠️ Absent stays absent: a dangling reference is drawn as a marked fault
                     // rather than as its id (D-363), and that decision is the renderer's to make.
-                    if (isset($resolvedNames[$target])) {
+                    if ($relationId < 0) {
+                        $vaterNamen[-$relationId] = $resolvedNames[$target] ?? null;
+                    } elseif (isset($resolvedNames[$target])) {
                         $names[$relationId] = $resolvedNames[$target];
                     }
                 }
+            }
+        }
+
+        foreach ($vaeter as $relationId => $vater) {
+            if (isset($names[$relationId]) && ($vaterNamen[$relationId] ?? null) !== null) {
+                $names[$relationId] = $vaterNamen[$relationId] . ' ' . $names[$relationId];
             }
         }
 
@@ -655,10 +673,35 @@ final class Rendering implements Presets
                     $relation->id,
                     true
                 ),
+                EdgeColumn::UNIQUE => new ResolvedSetting(
+                    EdgeColumn::UNIQUE,
+                    TypedValue::ofBool($relation->unique),
+                    $relation->id,
+                    true
+                ),
             ];
         }
 
         return $aus;
+    }
+
+    /**
+     * Der Name eines Ziels in einer Rolle — mit dem Namen des Vaters davor, wo `with_parent` gilt (D-734).
+     *
+     * @param array<string, ResolvedSetting> $settings
+     */
+    private function nameWithParent(Node $ziel, SeededRole $role, string $locale, array $settings): string
+    {
+        $vater  = $ziel->parentNodeId === null ? null : $this->nodes->find($ziel->parentNodeId);
+        $knoten = $vater === null ? [$ziel] : [$ziel, $vater];
+        $namen  = $this->labels?->forNodes($knoten, $role, $locale) ?? [];
+        $eigen  = $namen[$ziel->id] ?? $ziel->name;
+
+        if ($vater === null || ! (($settings[\Taxmod\Core\Renderer\ReferenceRenderer::WITH_PARENT] ?? null)?->value->asBool() ?? false)) {
+            return $eigen;
+        }
+
+        return ($namen[$vater->id] ?? $vater->name) . ' ' . $eigen;
     }
 
     /**
@@ -1159,7 +1202,7 @@ final class Rendering implements Presets
                 // im Formular ({@see self::fieldsOf()}): der Kern löst, der Renderer zeichnet.*
                 refersTo: $verwiesen === null
                     ? null
-                    : ($this->labels?->forNodes([$verwiesen], $this->roleOf($settings, $verwiesen), $locale)[$verwiesen->id] ?? $verwiesen->name),
+                    : $this->nameWithParent($verwiesen, $this->roleOf($settings, $verwiesen), $locale, $settings),
                 formId: $formId,
             ),
         ));
@@ -1781,7 +1824,8 @@ final class Rendering implements Presets
                 $rowForm,
                 $relation->fromNodeId === $declaredBy,
                 // ⚠️ *Zugeklappt: genau der eine Schlüssel, den die Zeile selbst zeigt.*
-                $offen ? [] : [EdgeColumn::MULTIPLICITY],
+                // ⚠️ *Die drei Spalten der Kante stehen in der Zeile selbst — «readonly direkt an der kante» (D-735).*
+                $offen ? [] : [EdgeColumn::MULTIPLICITY, EdgeColumn::READ_ONLY, EdgeColumn::UNIQUE],
                 // ⚠️ *Der Knoten dieser Seite — er sagt, welcher Renderer hier gilt
                 // ([D-682](../../../docs/NewConcept/90-decision-log.md)).*
                 $declaredBy
@@ -2507,7 +2551,7 @@ final class Rendering implements Presets
                 continue;
             }
 
-            if ($node instanceof Relation && $key === EdgeColumn::READ_ONLY) {
+            if ($node instanceof Relation && ($key === EdgeColumn::READ_ONLY || $key === EdgeColumn::UNIQUE)) {
                 $drawn[] = $this->drawEdgeSwitch($node, $key, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $formId);
 
                 continue;

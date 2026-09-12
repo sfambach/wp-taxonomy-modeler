@@ -368,6 +368,16 @@ final class DataEntry
         $relation      = $this->writableRelation($recordId, $relationId);
         $vorhanden = $this->valuesOn($recordId, $relation->id, $locale);
 
+        // ⚠️ **Eindeutig heisst geprüft** ([D-735](../../../docs/NewConcept/90-decision-log.md)): *über den Index der Kante,
+        // eine Frage je Schreiben — nicht das Auspacken aller Sätze.*
+        if ($relation->unique && ! $value->isNothing()) {
+            foreach ($this->records->findByRelationValue($relation->id, $value) as $anderer) {
+                if ($anderer !== $recordId) {
+                    throw NotYetStorable::thatValueIsTaken($relation->name, (string) $value->rawValue(), $anderer);
+                }
+            }
+        }
+
         // ⚠️ **Sonst schriebe jedes Speichern eine zweite Zeile** ([D-530](../../../docs/NewConcept/90-decision-log.md)).
         // *Bis dahin tat `$wpdb->replace()` das über den eindeutigen Schlüssel; **der ist weg**, und
         // damit muss dieser Dienst sagen, welche Zeile er meint.*

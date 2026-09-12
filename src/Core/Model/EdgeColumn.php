@@ -24,10 +24,13 @@ final class EdgeColumn
 
     public const READ_ONLY = 'read_only';
 
+    /** ⚠️ *Sein Wort am 2026-09-12: «wir brauchen noch den schalter unique (eindeutig) und readonly direkt an der kante»* ([D-735](../../../docs/NewConcept/90-decision-log.md)). */
+    public const UNIQUE = 'unique';
+
     /** @return list<string> */
     public static function all(): array
     {
-        return [self::MULTIPLICITY, self::READ_ONLY];
+        return [self::MULTIPLICITY, self::READ_ONLY, self::UNIQUE];
     }
 
     public static function isOne(string $name): bool
