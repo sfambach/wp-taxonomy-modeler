@@ -1338,6 +1338,8 @@ do_action('admin_menu');
 do_action('admin_print_styles-toplevel_page_taxmod');
 $style = $GLOBALS['wp_styles']->registered['taxmod-admin'] ?? null;
 check('das Stylesheet ist auf der Seite eingereiht, unter wp-content/plugins, mit Version', $style !== null && (bool) preg_match('#^https?://[^/]+/wp-content/plugins/[^:]+/assets/admin\.css$#', (string) $style->src) && (string) $style->ver !== '', (string) ($style->src ?? 'keins'));
+$css = (string) file_get_contents(__DIR__ . '/../../assets/admin.css');
+check('der Wähler im Fluss hält seinen Baum in der eigenen Breite — kein Überhang in die Nachbarzelle (D-745)', (bool) preg_match('/\.taxmod-chooser-open \.taxmod-chooser-tree \{[^}]*min-width: 0;/', $css) && (bool) preg_match('/\.taxmod-chooser-open \{[^}]*display: block;/', $css));
 if ($style !== null) {
     $headers = @get_headers((string) $style->src, true, stream_context_create(['http' => ['method' => 'HEAD', 'timeout' => 5, 'ignore_errors' => true]]));
     $status  = is_array($headers[0] ?? null) ? $headers[0][0] : ($headers[0] ?? 'no answer');

@@ -743,6 +743,29 @@ a.taxmod-chosen:hover {
     min-width: 18em;
 }
 
+
+/* ⚠️ **Der Wähler im Fluss bleibt in seiner Zelle** (D-745) — sein Befund am 2026-09-12 mit Bild:
+ * «Felder ineinander geschoben». *Der Baum hatte `min-width: 18em` und der Wähler `width: 20ch`
+ * (D-727): der Baum ragte über den Wähler hinaus und lag im Datensatzblock über der Nachbarzelle.
+ * Im Fluss richtet sich der Baum nach dem Wähler, nicht umgekehrt; die Grenze von 18em gilt weiter
+ * dort, wo der Baum allein steht.* */
+.taxmod-chooser-open {
+    display: block;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.taxmod-chooser-open .taxmod-chooser-tree {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0;
+}
+
+.taxmod-chooser-open .taxmod-tree-filter {
+    width: 100%;
+    box-sizing: border-box;
+}
 .taxmod-chooser-row {
     display: inline-flex;
     align-items: center;
