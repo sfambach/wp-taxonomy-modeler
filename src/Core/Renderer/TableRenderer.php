@@ -147,7 +147,16 @@ final class TableRenderer extends RendererNode
         // ⚠️ *Die Köpfe stehen in **einer** Liste, in der Reihenfolge der Zellen — waagerecht werden
         // sie eine Zeile, senkrecht die erste Spalte. Ohne Wort bleibt die Aktionsspalte
         // ([AR-2](../../../CLAUDE.md): der Kern macht keine Worte).*
-        $koepfe = [...$vorspalten, ...array_values($spalten)];
+        // ⚠️ **Der Kopf trägt das Fragezeichen der Hilfe, wie die Formularzeile** ([D-662](../../../docs/NewConcept/90-decision-log.md):
+        // *«überall dort, wo help label ist»*). *Aufgefallen, als die Vorschau ohne gewählten Behälter zur Tabelle
+        // wurde (D-748) und der Wächter zur Hilfe rot wurde: die Tabelle hatte nie eines gezeichnet. Die Köpfe sind
+        // ab hier fertiges Markup — Name entwertet, Zeichen dahinter.*
+        $hinweise = $this->hints($datensaetze);
+        $koepfe   = array_map(static fn (string $kopf): string => RenderResult::escape($kopf), $vorspalten);
+
+        foreach ($spalten as $relationId => $name) {
+            $koepfe[] = RenderResult::escape($name) . HintMarkup::icon($hinweise[$relationId] ?? '');
+        }
 
         if ($mitActs) {
             $koepfe[] = '';
@@ -234,7 +243,7 @@ final class TableRenderer extends RendererNode
             $zellen = '';
 
             foreach ($koepfe as $name) {
-                $zellen .= '<th class="taxmod-table-head" scope="col">' . RenderResult::escape($name) . '</th>';
+                $zellen .= '<th class="taxmod-table-head" scope="col">' . $name . '</th>';
             }
 
             $kopf = '<thead><tr>' . $zellen . '</tr></thead>';
@@ -272,7 +281,7 @@ final class TableRenderer extends RendererNode
 
         foreach ($koepfe as $stelle => $name) {
             $zellen = $mitKopf
-                ? '<th class="taxmod-table-head" scope="row">' . RenderResult::escape($name) . '</th>'
+                ? '<th class="taxmod-table-head" scope="row">' . $name . '</th>'
                 : '';
 
             foreach ($zeilen as $zellenDerZeile) {
@@ -295,6 +304,27 @@ final class TableRenderer extends RendererNode
      * @param  list<list<RenderedField>> $datensaetze
      * @return array<int,string>         Kanten-Id => Feldname
      */
+    /**
+     * Die Hilfe je Spalte — die erste, die ein Satz für die Kante mitbringt.
+     *
+     * @param  list<list<RenderedField>> $datensaetze
+     * @return array<int,string>         Kanten-Id => Hilfetext, nur wo einer steht
+     */
+    private function hints(array $datensaetze): array
+    {
+        $hinweise = [];
+
+        foreach ($datensaetze as $felder) {
+            foreach ($felder as $feld) {
+                if ($feld instanceof RenderedField && $feld->hint !== '' && ! isset($hinweise[$feld->relation->id])) {
+                    $hinweise[$feld->relation->id] = $feld->hint;
+                }
+            }
+        }
+
+        return $hinweise;
+    }
+
     private function columns(array $datensaetze): array
     {
         // ⚠️ **Kein Sortieren nach `sort_order`** — sein Befund am 2026-09-12: *«Reihenfolge stimmt nicht»*. *Die

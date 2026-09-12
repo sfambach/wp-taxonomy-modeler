@@ -38,6 +38,10 @@ final class Constant implements NodeClass
     #[Attribut(refersTo: Constant::class, from: Anchor::Roles)]
     public ?int $label_role = null;
 
+    // ⚠️ *Sein Wort am 2026-09-12: «Constant class sollte with label haben und Standard ist aus» (D-747).*
+    #[Attribut]
+    public bool $with_label = false;
+
     public static function allowedChildClasses(): array
     {
         return [];

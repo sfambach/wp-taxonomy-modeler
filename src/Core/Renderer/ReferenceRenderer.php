@@ -46,12 +46,14 @@ final class ReferenceRenderer extends TypedFieldRenderer
      * schalter für Vater haben dann wird das label aus dem vater genommen zum beispiel ms_dos hat als kind ms_dos
      * v.5.0»* ([D-734](../../../docs/NewConcept/90-decision-log.md)): aus «v.5.0» unter «ms_dos» wird «ms_dos v.5.0».
      */
+    // ⚠️ *Umbenannt am 2026-09-12 auf sein Wort: «With_parent sollte eher Use Parent Label sein» (D-746); Fassung 52
+    // schreibt die gespeicherten Zeilen um.*
     #[\Taxmod\Core\Model\NodeClass\Attribut]
-    public bool $with_parent = false;
+    public bool $use_parent_label = false;
 
     public const NAME = 'reference';
 
-    public const WITH_PARENT = 'with_parent';
+    public const WITH_PARENT = 'use_parent_label';
 
     public function name(): string
     {

@@ -441,7 +441,7 @@ final class Schema
      * sieben Wertzeilen, alle am Knoten, alle `0` — es wandert nichts in die Spalte, und nichts geht
      * verloren. `multiplicity` war schon Spalte (Fassung 22); was fällt, ist nur ihr Schlüssel.*
      */
-    public const VERSION = 51;
+    public const VERSION = 52;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -757,6 +757,9 @@ final class Schema
 
         // ⚠️ **Fassung 50: `chooser-dialog` und `chooser-inline` werden `chooser` mit Schalter** ([D-727](../../../docs/NewConcept/90-decision-log.md)).
         self::mergeTheChoosers();
+
+        // ⚠️ **Fassung 52: `with_parent` am Verweis heisst `use_parent_label`** ([D-746](../../../docs/NewConcept/90-decision-log.md)).
+        self::renameWithParent();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -3449,6 +3452,33 @@ final class Schema
         }
 
         update_option('taxmod_fassung50_chooser', $zaehlung, false);
+    }
+
+    /** Fassung 52: die Einstellung `with_parent` des Verweis-Renderers heisst `use_parent_label` — sein Wort (D-746). */
+    private static function renameWithParent(): void
+    {
+        global $wpdb;
+
+        if (self::tableMissing(self::table('settings_value')) || get_option('taxmod_fassung52_use_parent_label', null) !== null) {
+            return;
+        }
+
+        $zeilen = 0;
+
+        foreach (['settings_value', 'settings_value_history'] as $tabelle) {
+            if (self::tableMissing(self::table($tabelle))) {
+                continue;
+            }
+
+            $zeilen += (int) $wpdb->query($wpdb->prepare(
+                'UPDATE ' . self::table($tabelle) . ' SET attribut = %s WHERE klasse = %s AND attribut = %s',
+                \Taxmod\Core\Renderer\ReferenceRenderer::WITH_PARENT,
+                \Taxmod\Core\Renderer\ReferenceRenderer::class,
+                'with_parent'
+            ));
+        }
+
+        update_option('taxmod_fassung52_use_parent_label', ['zeilen' => $zeilen], false);
     }
 
     private static function constrainSettingsValues(): void

@@ -212,7 +212,7 @@ $inDerVorschau = static function (int $nodeId) use ($editor): array {
     $stellen = [];
     foreach ($editor->fieldsOf($nodeId) as $kante) {
         if ($kante->isSetting()) { continue; }
-        $wo = $von === false ? false : strpos($markup, '<span class="taxmod-form-label">' . $kante->name . '</span>', $von);
+        $wo = $von === false ? false : (preg_match('/(?:<span class="taxmod-form-label">|<th class="taxmod-table-head" scope="(?:col|row)">)' . preg_quote($kante->name, '/') . '(?:</span>|</th>|<span class="taxmod-hint)/', $markup, $treffer, PREG_OFFSET_CAPTURE, $von) === 1 ? $treffer[0][1] : false);
         if ($wo !== false) { $stellen[$kante->name] = $wo; }
     }
     asort($stellen);

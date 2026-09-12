@@ -1066,7 +1066,7 @@ final class Rendering implements Presets
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
             $tiefer = $onlySettingParts && ! $relation->isSetting()
                 ? null
-                : $this->partBelow($relation, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$relation->id] ?? [], $forNode);
+                : $this->partBelow($relation, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$relation->id] ?? [], $forNode, $settings);
 
             $fields[] = new RenderedField(
                 $relation,
@@ -3060,6 +3060,18 @@ final class Rendering implements Presets
      * gesetzt): *die Vorgabe zeigt die Maske, damit der Renderer nie leer ist (sein Wort, 2026-09-11); gezeichnet
      * wird dann, wie Typ und Zweck es sagen — genau wie ohne Wahl.*
      */
+    /**
+     * Ob der Knoten selbst einen Behälter gewählt hat — die Vorschau nimmt sonst die Tabelle (D-748).
+     *
+     * ⚠️ *Sein Wort am 2026-09-12: «wenn keine Tabelle, Form oder sonstiger gruppierender Renderer involviert ist,
+     * sollte der Standard Tabelle sein». Der Rückfall in {@see self::containerFor()} bleibt das Formular — er gilt
+     * für Teile in einer Maske, wo eine einzeilige Tabelle nichts gewinnt; die Vorschau ist die Seite, die er meint.*
+     */
+    public function containerChosenFor(Node $node): bool
+    {
+        return $this->chosenRendererName($this->withModelValues([], $node)) !== '';
+    }
+
     private function chosenRendererName(array $settings): string
     {
         $wahl = $settings['renderer'] ?? null;
@@ -3160,6 +3172,28 @@ final class Rendering implements Presets
             $formId,
             $settings
         );
+    }
+
+    /**
+     * Der an der Verwendungsstelle gewählte Behälter, wenn er für das Ziel taugt — sonst `null` (D-749).
+     *
+     * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $useSiteSettings
+     */
+    private function containerChosenAt(array $useSiteSettings, Node $ziel, Purpose $purpose): ?Renderer
+    {
+        $name = $this->chosenRendererName($useSiteSettings);
+
+        if ($name === '') {
+            return null;
+        }
+
+        foreach ($this->renderers->eligibleFor($ziel, null, $purpose) as $one) {
+            if ($one->name() === $name) {
+                return $one;
+            }
+        }
+
+        return null;
     }
 
     private function containerFor(Node $node, Purpose $purpose): Renderer
@@ -3819,9 +3853,17 @@ final class Rendering implements Presets
     {
         // ⚠️ *Gewählt wird aus den Kindern des **Ziels** — dorthin zeigt die Kante, und dort liegen
         // die Möglichkeiten.*
+        $type = $this->typeAt($relation);
+
+        // ⚠️ **Zeigt das Feld auf einen Knoten ohne Typ — eine Kategorie, eine Auswahl —, wird der Zielknoten
+        // ausgelegt, also gelten seine Behälter** (D-749). *Sein Wort am 2026-09-12: «Klasse/Knoten Kategorie sollte
+        // auch table, form, compact haben». Gemessen: die Auswahl am Feld `Address` war leer, weil Formular, Tabelle
+        // und Compact nur einen Knoten annehmen und hier die Kante gefragt wurde.*
+        $subject = $type === null ? ($this->nodes->find($relation->toNodeId) ?? $relation) : $relation;
+
         return $this->renderers->eligibleFor(
-            $relation,
-            $this->typeAt($relation),
+            $subject,
+            $type,
             $purpose,
             $this->hatEtwasZurAuswahl($relation->toNodeId)
         );
@@ -4215,6 +4257,8 @@ final class Rendering implements Presets
         array $gesehen = [],
         array $teile = [],
         int $forNode = 0,
+        /** @var array<string, \Taxmod\Core\Model\ResolvedSetting> Was an der Verwendungsstelle gilt — der dort gewählte Behälter zählt (D-749). */
+        array $useSiteSettings = [],
     ): ?array {
         // ⚠️ *Ein Ziel mit eigenem Typ ist fertig beantwortet — `int` hat keine Felder, und der Abstieg
         // hat dort nichts zu suchen.*
@@ -4393,7 +4437,7 @@ final class Rendering implements Presets
         // gezeichnet — eine Bedingung darauf hätte einen Fall unterschieden, den es nicht gibt.*
         $behaelter = $relation->isSetting()
             ? $this->renderers->byName(TableRenderer::NAME)
-            : $this->containerFor($ziel, $purpose);
+            : ($this->containerChosenAt($useSiteSettings, $ziel, $purpose) ?? $this->containerFor($ziel, $purpose));
 
         return [
             'renderer' => $behaelter->name(),

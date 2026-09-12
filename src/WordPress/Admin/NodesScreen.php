@@ -1371,7 +1371,9 @@ final class NodesScreen
                     '',
                     $locale,
                     $level,
-                    $editable
+                    $editable,
+                    // ⚠️ *Ohne gewählten Behälter zeichnet die Vorschau als Tabelle (D-748).*
+                    $this->rendering->containerChosenFor($selected) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME
                 )->markup
                 . '</div>';
         }

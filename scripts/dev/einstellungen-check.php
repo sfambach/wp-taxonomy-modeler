@@ -1339,6 +1339,22 @@ do_action('admin_print_styles-toplevel_page_taxmod');
 $style = $GLOBALS['wp_styles']->registered['taxmod-admin'] ?? null;
 check('das Stylesheet ist auf der Seite eingereiht, unter wp-content/plugins, mit Version', $style !== null && (bool) preg_match('#^https?://[^/]+/wp-content/plugins/[^:]+/assets/admin\.css$#', (string) $style->src) && (string) $style->ver !== '', (string) ($style->src ?? 'keins'));
 $css = (string) file_get_contents(__DIR__ . '/../../assets/admin.css');
+
+// ⚠️ **Zeilen 118–121 vom 2026-09-12** (D-746 … D-749).
+check('«with_parent» am Verweis heisst «use_parent_label», und Fassung 52 hat die Zeilen umgeschrieben (D-746)', \Taxmod\Core\Renderer\ReferenceRenderer::WITH_PARENT === 'use_parent_label' && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings_value WHERE attribut = 'with_parent'") === 0 && (int) get_option(Schema::VERSION_OPTION) >= 52, 'Fassung ' . get_option(Schema::VERSION_OPTION));
+$konstanteVertrag = new ReflectionProperty(\Taxmod\Core\Model\NodeClass\Constant::class, 'with_label');
+check('die Konstantenklasse erklärt «with_label», Standard aus (D-747)', $konstanteVertrag->getAttributes(\Taxmod\Core\Model\NodeClass\Attribut::class) !== [] && $konstanteVertrag->getDefaultValue() === false);
+$ohneWahl = $editor->createNode('__es ohne Behälter', $modellAst->id);
+$editor->addField($ohneWahl->id, $seeded['text']->id, '__es wort');
+check('die Vorschau eines Knotens ohne gewählten Behälter zeichnet als Tabelle (D-748)', str_contains(vorschau($ohneWahl->id), '<table class="taxmod-table'));
+$adresseKante = null;
+foreach ($editor->fieldsOf($modellKnoten->id) as $kante) {
+    if ($kante->name === '__es adresse') {
+        $adresseKante = $kante;
+    }
+}
+$angebot = array_map(static fn (\Taxmod\Core\Renderer\Renderer $r): string => $r->name(), $zeichner()->choicesFor($adresseKante));
+check('ein Feld auf eine Kategorie bekommt Formular, Tabelle und Compact angeboten (D-749)', in_array('table', $angebot, true) && in_array('form', $angebot, true) && in_array('compact', $angebot, true), implode(',', $angebot));
 check('der Wähler im Fluss hält seinen Baum in der eigenen Breite — kein Überhang in die Nachbarzelle (D-745)', (bool) preg_match('/\.taxmod-chooser-open \.taxmod-chooser-tree \{[^}]*min-width: 0;/', $css) && (bool) preg_match('/\.taxmod-chooser-open \{[^}]*display: block;/', $css));
 if ($style !== null) {
     $headers = @get_headers((string) $style->src, true, stream_context_create(['http' => ['method' => 'HEAD', 'timeout' => 5, 'ignore_errors' => true]]));
