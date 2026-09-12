@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace Taxmod\Core\Service;
+use Taxmod\Core\Renderer\SummaryRenderer;
 
 use Taxmod\Core\Converter\Converter;
 use Taxmod\Core\Converter\ConverterRegistry;
@@ -148,6 +149,8 @@ final class Rendering implements Presets
          * der Zeichenlauf «kein Name» und die Id zeigt sich als ungelöst — nicht als Zahl.*
          */
         private readonly ?Users $users = null,
+        /** ⚠️ *Für die Zusammenfassung verwiesener Sätze (D-753) — die Sätze eines Blocks in einer Abfrage.* */
+        private readonly ?\Taxmod\Core\Repository\RecordRepository $records = null,
     ) {
     }
 
@@ -477,14 +480,16 @@ final class Rendering implements Presets
         // und wo die nichts sagt, vom Ziel selbst (D-728). *Die Ziele in einem Zug geladen (`CD-7`).*
         $wanted = [];
         $ziele  = $this->nodes->byIds(array_values(array_filter(array_map(
-            static fn (Relation $r): ?int => ($values[$r->id] ?? null)?->reference,
+            // ⚠️ *Nur Knotenverweise: ein Satzverweis (D-753) trägt eine Satz-Id, und die ist kein Knoten — gemessen, als die Nummer 1 «Root» hiess.*
+            static fn (Relation $r): ?int => (($values[$r->id] ?? null)?->referenceSpace === ReferenceSpace::Node) ? $values[$r->id]->reference : null,
             $relations
         ))));
         $this->resolver?->preload(array_values($ziele));
         $vaeter = [];
 
         foreach ($relations as $relation) {
-            $reference = ($values[$relation->id] ?? null)?->reference;
+            $wert      = $values[$relation->id] ?? null;
+            $reference = $wert?->referenceSpace === ReferenceSpace::Node ? $wert->reference : null;
 
             if ($reference === null) {
                 continue;
@@ -857,6 +862,8 @@ final class Rendering implements Presets
         // ⚠️ *Die Hilfen der Zeile, in **einem** Zug (`CD-7`) — [D-662](../../../docs/NewConcept/90-decision-log.md).*
         $hilfen   = $this->hintsOfFields($relations, $locale);
         $wahl     = $this->optionsFor($relations);
+        // ⚠️ *Die Zusammenfassungen verwiesener Sätze, für alle Verweise dieses Blocks in einer Abfrage (D-753, D-363).*
+        $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose);
         $fields   = [];
 
         // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
@@ -1039,14 +1046,15 @@ final class Rendering implements Presets
                     // der anderen Naht. **Dasselbe Feld**, weil es dieselbe Aussage ist.*
                     refersTo: $value->reference === null
                         ? ($userNames[$relation->id] ?? null)
-                        : ($names[$relation->id] ?? null),
+                        : ($names[$relation->id] ?? $saetze['worte'][$relation->id] ?? null),
                     // ⚠️ **Already known, so it is handed over rather than looked up** (D-445). A
                     // reference with no simple type behind it is a reference to a record: `typeOf()`
                     // answers `node_ref` for a constant and a real type for a data type, so `null`
                     // here is the composed case — *and it is the summary renderer (D-106) that is
                     // missing, not a renderer that is mis-set.*
                     refersToARecord: $value->reference !== null && $type === null,
-                    options: $angebot,
+                    // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
+                    options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
                     // ⚠️ **«Nichts» ist eine Möglichkeit nur dort, wo die Multiplizität es zulässt.**
                     //
                     // ⚠️ *Der Eigentümer: «`render` ist `1..1` in `DisplayOption`, sollte somit nicht die
@@ -1071,7 +1079,9 @@ final class Rendering implements Presets
             // Feld auf einen Knoten mit **eigenen Feldern**, ist sein Wert ein eigener Teil
             // ([D-541](../../../docs/NewConcept/90-decision-log.md)) — und dessen Felder gehören
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
-            $tiefer = $onlySettingParts && ! $relation->isSetting()
+            // ⚠️ *Eine Zusammenfassung steigt nicht ab: sie zeigt Worte des verwiesenen Satzes, nicht die Felder des Ziels (D-753) —
+            // das wäre die dritte Stufe, «expand» (D-106).*
+            $tiefer = ($onlySettingParts && ! $relation->isSetting()) || $renderer instanceof SummaryRenderer
                 ? null
                 : $this->partBelow($relation, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$relation->id] ?? [], $forNode, $settings);
 
@@ -3124,6 +3134,134 @@ final class Rendering implements Presets
         }
 
         return TypedValue::ofText(implode(\Taxmod\Core\Model\Type\PathType::SEPARATOR, $worte));
+    }
+
+    /**
+     * Die Zusammenfassungen verwiesener Sätze — je Verweis das Wort des gezeigten Satzes und das Angebot der
+     * Sätze des Ziels, **in einer Abfrage** für den ganzen Block ([D-753](../../../docs/NewConcept/90-decision-log.md),
+     * [D-363](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Nur Verweise, die der Summary-Renderer zeichnet. Die Felder sagt der Zielknoten in `summary_fields`, an der
+     * Kante überschreibbar; ohne Wahl das erste Textfeld des Ziels. Verweise in einem Satz werden nicht ausgeschrieben —
+     * eine Zusammenfassung fasst Worte, keine Verweise.*
+     *
+     * @param  list<Relation>                                  $relations
+     * @param  array<int, TypedValue>                          $values
+     * @param  array<int, array<string, ResolvedSetting>>      $resolved
+     * @return array{worte: array<int, string>, angebot: array<int, array<int, string>>}
+     */
+    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose): array
+    {
+        $leer = ['worte' => [], 'angebot' => []];
+
+        if ($this->records === null || $this->resolver === null) {
+            return $leer;
+        }
+
+        $betroffen = [];
+
+        foreach ($relations as $relation) {
+            if (($resolved[$relation->id]['renderer'] ?? null)?->value->text === SummaryRenderer::NAME) {
+                $betroffen[] = $relation;
+            }
+        }
+
+        if ($betroffen === []) {
+            return $leer;
+        }
+
+        $ziele    = $this->nodes->byIds(array_values(array_unique(array_map(static fn (Relation $r): int => $r->toNodeId, $betroffen))));
+        $angebote = [];
+        $satzIds  = [];
+
+        foreach ($betroffen as $relation) {
+            if ($purpose === Purpose::Edit) {
+                foreach ($this->records->ofNode($relation->toNodeId) as $satz) {
+                    if ($satz->recordType !== RecordType::Settings) {
+                        $angebote[$relation->id][] = $satz->id;
+                        $satzIds[]                 = $satz->id;
+                    }
+                }
+            }
+
+            $wert = $values[$relation->id] ?? null;
+
+            if ($wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
+                $satzIds[] = $wert->reference;
+            }
+        }
+
+        $satzIds = array_values(array_unique($satzIds));
+
+        if ($satzIds === []) {
+            return $leer;
+        }
+
+        $werte  = $this->records->valuesOfMany($satzIds);
+        $felder = [];
+
+        foreach ($betroffen as $relation) {
+            $ziel = $ziele[$relation->toNodeId] ?? null;
+
+            if ($ziel === null) {
+                continue;
+            }
+
+            $gewaehlt = [];
+
+            foreach ($this->resolver->listOf($ziel, SummaryRenderer::FIELDS, $relation) as $glied) {
+                if ($glied->aktiv && $glied->reference !== null) {
+                    $gewaehlt[] = $glied->reference;
+                }
+            }
+
+            if ($gewaehlt === []) {
+                // ⚠️ *Ohne Wahl das erste Textfeld des Ziels — vorläufig, bis eines gewählt ist.*
+                $eigene = $this->relations?->fieldRelationsOf($this->framework->inheritanceOwnersOf($ziel)) ?? [];
+                $typen  = $this->typesOf($eigene);
+
+                foreach ($eigene as $feld) {
+                    if (! $feld->isSetting() && ($typen[$feld->id] ?? null) === SimpleType::Text) {
+                        $gewaehlt[] = $feld->id;
+                        break;
+                    }
+                }
+            }
+
+            $felder[$relation->id] = $gewaehlt;
+        }
+
+        $wort = static function (int $satzId, array $feldIds) use ($werte): string {
+            $teile = [];
+
+            foreach ($feldIds as $feldId) {
+                foreach ($werte[$satzId] ?? [] as $zeile) {
+                    if ($zeile->relationId === $feldId && ! $zeile->value->isNothing() && ! $zeile->value->isAReference()) {
+                        $teile[] = $zeile->value->rawValue();
+                        break;
+                    }
+                }
+            }
+
+            return $teile === [] ? '#' . $satzId : implode(SummaryRenderer::SEPARATOR, $teile);
+        };
+
+        $aus = $leer;
+
+        foreach ($betroffen as $relation) {
+            $feldIds = $felder[$relation->id] ?? [];
+            $wert    = $values[$relation->id] ?? null;
+
+            if ($wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
+                $aus['worte'][$relation->id] = $wort($wert->reference, $feldIds);
+            }
+
+            foreach ($angebote[$relation->id] ?? [] as $satzId) {
+                $aus['angebot'][$relation->id][$satzId] = $wort($satzId, $feldIds);
+            }
+        }
+
+        return $aus;
     }
 
     private function chosenRendererName(array $settings): string

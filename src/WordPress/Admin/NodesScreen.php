@@ -3200,6 +3200,14 @@ final class NodesScreen
 
             $type = $types[$relationId] ?? null;
 
+            // ⚠️ *Ein Feld ohne Typ, das auf einen Knoten mit Sätzen zeigt — eine Aggregation —, bekommt aus dem Wähler der
+            // Zusammenfassung die Nummer eines Satzes (D-753). Alles andere ohne Typ ist noch nicht ablegbar.*
+            if ($type === null && $relation->kind === RelationKind::Aggregation && ctype_digit($characters)) {
+                $this->data->put($recordId, $relationId, TypedValue::ofRecordReference((int) $characters));
+
+                continue;
+            }
+
             if ($type === null) {
                 throw NotYetStorable::thatFieldHasNoTypeYet($relation->name);
             }

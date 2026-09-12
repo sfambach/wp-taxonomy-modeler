@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace Taxmod\Tests\Core;
+use Taxmod\Core\Renderer\SummaryRenderer;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -156,7 +157,9 @@ final class RenderingTest extends TestCase
             $this->typeNodes,
             new Labels($this->labelStore, 'en_US'),
             ShippedConverters::registry(),
-            resolver: $this->resolver = new SettingsResolver($this->settings, $this->nodes, ShippedRenderers::registry(), ShippedConverters::registry())
+            resolver: $this->resolver = new SettingsResolver($this->settings, $this->nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $this->relations),
+            relations: $this->relations,
+            records: $this->records
         );
     }
 
@@ -1767,6 +1770,8 @@ final class RenderingTest extends TestCase
             new Labels($this->labelStore, 'en_US'),
             ShippedConverters::registry(),
             resolver: $this->resolver,
+            relations: $this->relations,
+            records: $this->records,
             users: $users
         );
     }
@@ -2024,5 +2029,63 @@ final class RenderingTest extends TestCase
         $amKind = $this->rendering->nodeAsForm($dos, [$weg], [], Purpose::Display)->markup;
 
         self::assertStringContainsString('Software → OS → DOS', $amKind);
+    }
+
+    /** ⚠️ *D-753: Hersteller und Nachfolger waren gespeichert und nicht zu sehen. Die Zusammenfassung nimmt die gewählten Felder des Ziels.* */
+    #[Test]
+    public function a_summary_shows_the_chosen_fields_of_the_referenced_record_and_the_edge_may_override(): void
+    {
+        $hersteller = $this->thing('Hersteller');
+        $name       = $this->editor->addField($hersteller->id, $this->type('Text')->id, 'name');
+        $land       = $this->editor->addField($hersteller->id, $this->type('Text')->id, 'land');
+        $os         = $this->thing('OS');
+        $wer        = $this->editor->addField($os->id, $hersteller->id, 'wer', RelationKind::Aggregation);
+
+        $satzId = $this->records->add(new NodeRecord(0, $hersteller->id, 1, '2026-09-12 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satzId, $name->id, TypedValue::ofText('Microsoft')));
+        $this->records->putValue(RelationRecord::direct($satzId, $land->id, TypedValue::ofText('USA')));
+
+        $this->einstellung($wer, 'renderer', TypedValue::ofText(SummaryRenderer::NAME));
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$name->id, $land->id]);
+        $this->neuZeichnen();
+
+        $gezeigt = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+
+        self::assertStringContainsString('Microsoft · USA', $gezeigt, 'die Felder des Knotens, in ihrer Reihenfolge');
+
+        // ⚠️ *An der Kante überschrieben: nur das Land.*
+        $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$land->id], $wer);
+        $this->neuZeichnen();
+
+        $anDerKante = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+
+        self::assertStringContainsString('>USA<', $anDerKante);
+        self::assertStringNotContainsString('Microsoft', $anDerKante);
+
+        $bearbeiten = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('<select name="v[' . $wer->id . ']"', $bearbeiten, 'beim Bearbeiten ein Auswahlfeld über die Sätze des Ziels');
+        self::assertStringContainsString('<option value="' . $satzId . '" selected>USA</option>', $bearbeiten);
+    }
+
+    #[Test]
+    public function without_chosen_fields_a_summary_takes_the_first_text_field(): void
+    {
+        $hersteller = $this->thing('Hersteller');
+        $zahl       = $this->editor->addField($hersteller->id, $this->type('Integer')->id, 'nummer');
+        $name       = $this->editor->addField($hersteller->id, $this->type('Text')->id, 'name');
+        $os         = $this->thing('OS');
+        $wer        = $this->editor->addField($os->id, $hersteller->id, 'wer', RelationKind::Aggregation);
+
+        $satzId = $this->records->add(new NodeRecord(0, $hersteller->id, 1, '2026-09-12 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satzId, $zahl->id, TypedValue::ofInt(7)));
+        $this->records->putValue(RelationRecord::direct($satzId, $name->id, TypedValue::ofText('IBM')));
+
+        $this->einstellung($wer, 'renderer', TypedValue::ofText(SummaryRenderer::NAME));
+
+        $gezeigt = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+
+        self::assertStringContainsString('>IBM<', $gezeigt);
     }
 }

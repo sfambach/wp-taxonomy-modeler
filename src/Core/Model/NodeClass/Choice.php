@@ -19,6 +19,16 @@ final class Choice implements NodeClass
 {
     use NodeAttributes;
 
+    /**
+     * Welche Felder diesen Knoten in einer Zusammenfassung ausmachen ([D-753](../../../../docs/NewConcept/90-decision-log.md)) —
+     * Vorgabe am Knoten, an der Kante überschreibbar. *Sein Wort: «aber wenn wirs am Knoten haben, können wirs an der
+     * Kante so übernehmen».*
+     *
+     * @var list<int> Kanten-Ids
+     */
+    #[Attribut(listOf: 'relation')]
+    public array $summary_fields = [];
+
     public static function allowedChildClasses(): array
     {
         // ⚠️ *Eine Auswahl darf Auswahlen enthalten — sein Wort am 2026-09-12: «typ choice sollte choice als untertyp

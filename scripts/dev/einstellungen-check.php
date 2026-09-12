@@ -139,7 +139,8 @@ $zeichner = static fn (): Rendering => new Rendering(
     new Labels(new WpdbLabelRepository(), SettingsScreen::neutralLocale()),
     ShippedConverters::registry(),
     $relations,
-    resolver: new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations)
+    resolver: new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations),
+    records: $rows
 );
 
 wp_set_current_user(1);
@@ -1355,6 +1356,31 @@ foreach ($editor->fieldsOf($modellKnoten->id) as $kante) {
 }
 $angebot = array_map(static fn (\Taxmod\Core\Renderer\Renderer $r): string => $r->name(), $zeichner()->choicesFor($adresseKante));
 check('ein Feld auf eine Kategorie bekommt Formular, Tabelle und Compact angeboten (D-749)', in_array('table', $angebot, true) && in_array('form', $angebot, true) && in_array('compact', $angebot, true), implode(',', $angebot));
+
+
+// ⚠️ **Die Zusammenfassung eines verwiesenen Satzes** ([D-753](../../docs/NewConcept/90-decision-log.md)): die gewählten Felder des Ziels,
+$sId = $data->create($satzKnoten->id, RecordType::User)->id;
+// Vorgabe am Knoten, an der Kante überschreibbar; beim Bearbeiten ein Auswahlfeld über die Sätze des Ziels.
+$lieferant     = $editor->createNode('__es Lieferant', $modellAst->id);
+$lfName        = $editor->addField($lieferant->id, $seeded['text']->id, '__es lf name');
+$lfLand        = $editor->addField($lieferant->id, $seeded['text']->id, '__es lf land');
+$lfSatz        = $data->create($lieferant->id, RecordType::User);
+$data->put($lfSatz->id, $lfName->id, TypedValue::ofText('__es Alpha'));
+$data->put($lfSatz->id, $lfLand->id, TypedValue::ofText('__es Nord'));
+$wer           = $editor->addField($satzKnoten->id, $lieferant->id, '__es wer', RelationKind::Aggregation);
+$data->put($sId, $wer->id, TypedValue::ofRecordReference($lfSatz->id));
+$einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations), ShippedRenderers::registry(), ShippedConverters::registry());
+$einsteller->put($nodes->byId($lieferant->id), 'renderer', \Taxmod\Core\Renderer\SummaryRenderer::NAME, $wer);
+$einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfName->id, $lfLand->id]);
+$mitSummary = seite($satzKnoten->id);
+check('der Satzblock zeigt den verwiesenen Satz als Zusammenfassung der am Knoten gewählten Felder (D-753)', str_contains($mitSummary, '<option value="' . $lfSatz->id . '" selected>__es Alpha · __es Nord</option>'));
+$einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfLand->id], $wer);
+$anDerKante = seite($satzKnoten->id);
+check('an der Kante überschrieben: nur das Land', str_contains($anDerKante, '<option value="' . $lfSatz->id . '" selected>__es Nord</option>') && ! str_contains($anDerKante, '__es Alpha · __es Nord'));
+$offenWer = seite($satzKnoten->id, (string) $wer->id);
+check('im Einstellungsbereich der Kante stehen die Felder des Ziels als Haken (D-752)', str_contains($offenWer, 'name="taxmod_field_setting_set[' . $wer->id . '][summary_fields][' . $lfName->id . ']"'));
+abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $satzFeld->id => '42', (string) $wer->id => (string) $lfSatz->id]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+check('der Wähler der Zusammenfassung schreibt einen Satzverweis', gelungen() && (string) $wpdb->get_var("SELECT value_ref FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wer->id} AND value_ref_kind = 'record'") === (string) $lfSatz->id, letzteMeldung());
 
 // ⚠️ **Die Seite wird abgeschickt, wie ein Browser sie abschickt** ([D-754](../../docs/NewConcept/90-decision-log.md)) — sein Wort am
 // 2026-09-12: *«read only verschwindet nach Speichern, das hatten wir jetzt schon mehrfach; kannst du das generell mal überprüfen,

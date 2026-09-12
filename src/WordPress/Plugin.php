@@ -605,6 +605,7 @@ final class Plugin
             // die Id des Angemeldeten zum Anlegen. **Der Kern nimmt beides entgegen und beschafft
             // keines.***
             users: new WpUsers(),
+            records: new WpdbRecordRepository(),
             // ⚠️ **Schritt 4 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
             // Renderer zeichnen aus `settings_value` und dem Vertrag; `ModelValues` bleibt für das,
             // was noch nicht umgezogen ist — die erlaubten Kinder und die Vorgaben der Datensätze.*

@@ -55,6 +55,8 @@ final class ShippedRenderers
         // ⚠️ **The default for a reference, which is what D-105 asks for** — and it bounds the
         // load as well as the display (R58): one label per row, not a whole target.
         $registry->add(new ReferenceRenderer(), SimpleType::NodeRef);
+        // ⚠️ *Die zweite Stufe der Anzeige eines Verweises (D-106, D-753) — nur an Aggregationen angeboten.*
+        $registry->add(new SummaryRenderer());
 
         // ⚠️ **Der Benutzerverweis** ([D-649](../../../docs/NewConcept/90-decision-log.md)): *er
         // zeichnet den **Namen**, den der Rand hereinreicht, und speichert die **Id als Text**. Voreinstellung
