@@ -316,9 +316,11 @@ foreach ([['node', 'nodes'], ['relation', 'relations']] as [$raum, $ziel]) {
     $zielTabelle = Schema::table($ziel);
 
     $waisen = (int) $wpdb->get_var($wpdb->prepare(
+        // ⚠️ *Eine geparkte Kante behält ihre Beschriftung für die Rückkehr — sie ist keine Waise (gemessen 2026-09-12 an «Type»).*
         "SELECT COUNT(*) FROM {$labelTabelle} l
          WHERE l.owner_kind = %s
-           AND NOT EXISTS (SELECT 1 FROM {$zielTabelle} z WHERE z.label_id = l.id)",
+           AND NOT EXISTS (SELECT 1 FROM {$zielTabelle} z WHERE z.label_id = l.id)
+           AND NOT EXISTS (SELECT 1 FROM " . Schema::table('relations_history') . " h WHERE h.label_id = l.id AND h.parked_by_group_id IS NOT NULL AND h.version = (SELECT MAX(version) FROM " . Schema::table('relations_history') . " h2 WHERE h2.id = h.id))",
         $raum
     ));
 

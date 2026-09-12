@@ -524,7 +524,6 @@ final class WpdbRelationRepository implements RelationRepository
             $relationId
         ));
     }
-
     /**
      * Die Einstellungen einer geparkten Kante zurückholen — die Zeilen, die beim Parken in den Schatten gingen.
      *

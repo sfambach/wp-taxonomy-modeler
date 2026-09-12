@@ -2303,10 +2303,14 @@ final class Schema
 
         $labels = self::table('labels');
 
+        // ⚠️ **Eine geparkte Kante behält ihre Beschriftung — sie kommt «ganz» zurück (package3, D-128).** *Gemessen am
+        // 2026-09-12: dieser Feger lief beim ersten Aufruf nach jeder neuen Fassung und nahm die Beschriftung der geparkten
+        // Kante «Type» mit; «id-space» und «labels-page-save» flackerten deshalb je einmal rot.*
         $ids = array_map(intval(...), $wpdb->get_col(
             "SELECT l.id FROM {$labels} l
              WHERE NOT EXISTS (SELECT 1 FROM " . self::table('nodes') . ' n WHERE n.label_id = l.id)
-               AND NOT EXISTS (SELECT 1 FROM ' . self::table('relations') . ' r WHERE r.label_id = l.id)'
+               AND NOT EXISTS (SELECT 1 FROM ' . self::table('relations') . ' r WHERE r.label_id = l.id)
+               AND NOT EXISTS (SELECT 1 FROM ' . self::table('relations_history') . ' h WHERE h.label_id = l.id AND h.parked_by_group_id IS NOT NULL AND h.version = (SELECT MAX(version) FROM ' . self::table('relations_history') . ' h2 WHERE h2.id = h.id))'
         ) ?: []);
 
         if ($ids === []) {

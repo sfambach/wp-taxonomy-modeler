@@ -286,7 +286,7 @@ $say(count($gelesen) === 1 && $gelesen[0]->text === '__lb Formname', 'der Text s
 // Schreibabfrage, kein Feld mehr.*
 // ⚠️ *Gemessen am 2026-09-11, nachdem das Setting aus dem Akt fiel: der Name allein kostet **zwei**
 // Schreibabfragen auf den Beschriftungstabellen — die Beschriftungszeile und ihren Text.*
-$say((int) $erster['writes'] === 2, sprintf('zwei Schreibabfragen fuer den Namen: Beschriftung und Text (%d)', (int) $erster['writes']));
+$say((int) $erster['writes'] === 2, sprintf('zwei Schreibabfragen fuer den Namen: Beschriftung und Text (%d)', (int) $erster['writes']) . ((int) $erster['writes'] === 2 ? '' : ' — ' . implode(' || ', array_map(static fn ($q): string => substr((string) $q, 0, 160), (array) ($erster['sql'] ?? [])))));
 
 $zeilen = $wpdb->get_results($wpdb->prepare("SELECT change_group_id, owner_kind, what FROM {$p}changelog WHERE id > %d", $marke));
 

@@ -123,7 +123,9 @@ $store = new WpdbSettingsRepository();
 // ⚠️ *Und was der Eigentümer seither setzt, steht daneben — gemessen am 2026-09-11 an seiner ersten Wahl: die Zusage
 // «nur das Gerüst» war einen Abend lang wahr.*
 printf("  --   %d Zeilen, %d Objekte\n", $store->countValues(), $store->countObjects());
-check('und jedes Objekt wird von einer Zeile genannt', (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('settings_object') . ' o WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('settings_value') . ' v WHERE v.wert_settings_object_id = o.id)') === 0);
+// ⚠️ *Oder von einer Zeile im Schatten, deren Kante geparkt ist — die Zeilen einer geparkten Kante gehen mit ihr in den Schatten
+// und kommen mit ihr zurück; ihr Objekt wartet so lange.*
+check('und jedes Objekt wird von einer Zeile genannt — lebend, oder im Schatten einer geparkten Kante', (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('settings_object') . ' o WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('settings_value') . ' v WHERE v.wert_settings_object_id = o.id) AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('settings_value_history') . ' s JOIN ' . Schema::table('relations_history') . ' h ON h.id = s.relation_id AND h.parked_by_group_id IS NOT NULL WHERE s.wert_settings_object_id = o.id AND s.deleted = 1)') === 0);
 
 echo "\n4 · Auf der Wiese\n";
 
