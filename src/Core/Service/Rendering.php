@@ -3271,6 +3271,41 @@ final class Rendering implements Presets
 
         $werte  = $this->records->valuesOfMany($satzIds);
         $saetze = $this->records->byIds($satzIds);
+
+        // ⚠️ **Ein Verweis in der Zusammenfassung bekommt selbst sein Wort — eine Stufe tief.** *Sein Wort: «ist doch ein Verweis auf
+        // den Datensatz, eigentlich sollte da Microsoft Corp. DOS 4.0 stehen». Ein Knotenverweis heisst wie sein Knoten, ein
+        // Satzverweis wie die Zusammenfassung seines Satzes; eine zweite Stufe gibt es nicht, sonst läse die Seite Satz für Satz
+        // weiter. Die inneren Sätze und Knoten in je einer Abfrage mehr.*
+        $innereSaetze = [];
+        $innereKnoten = [];
+
+        foreach ($werte as $zeilen) {
+            foreach ($zeilen as $zeile) {
+                if ($zeile->value->reference === null) {
+                    continue;
+                }
+
+                if ($zeile->value->referenceSpace === ReferenceSpace::Record) {
+                    $innereSaetze[$zeile->value->reference] = true;
+                } elseif ($zeile->value->referenceSpace === ReferenceSpace::Node) {
+                    $innereKnoten[$zeile->value->reference] = true;
+                }
+            }
+        }
+
+        $innereSaetze = array_values(array_diff(array_keys($innereSaetze), $satzIds));
+
+        if ($innereSaetze !== []) {
+            $saetze += $this->records->byIds($innereSaetze);
+            $werte  += $this->records->valuesOfMany($innereSaetze);
+        }
+
+        $knotenNamen = [];
+
+        foreach ($innereKnoten === [] ? [] : $this->nodes->byIds(array_keys($innereKnoten)) as $knoten) {
+            $knotenNamen[$knoten->id] = $knoten->name;
+        }
+
         $felder = [];
 
         foreach ($betroffen as $relation) {
@@ -3301,7 +3336,8 @@ final class Rendering implements Presets
             $knotenIds[$satz->nodeId] = true;
         }
 
-        $erstesTextfeld = [];
+        $erstesTextfeld   = [];
+        $feldwahlJeKnoten = [];
 
         if ($knotenIds !== [] && $this->relations !== null) {
             $besitzerJeKnoten = [];
@@ -3310,6 +3346,29 @@ final class Rendering implements Presets
             foreach ($this->nodes->byIds(array_keys($knotenIds)) as $knoten) {
                 $besitzerJeKnoten[$knoten->id] = $this->framework->inheritanceOwnersOf($knoten);
                 $alleBesitzer                  = [...$alleBesitzer, ...$besitzerJeKnoten[$knoten->id]];
+
+                // ⚠️ *Die Feldwahl eines inneren Satzes kommt von seinem Knoten oder dem nächsten Vorfahren, der eine trägt —
+                // `summary_fields` steht an «Software», der Satz liegt an «DOS». Gesucht vom Knoten aufwärts, der nächste gewinnt.*
+                foreach (array_reverse($besitzerJeKnoten[$knoten->id]) as $besitzerId) {
+                    $besitzer = $besitzerId === $knoten->id ? $knoten : $this->nodes->find($besitzerId);
+
+                    if ($besitzer === null) {
+                        continue;
+                    }
+
+                    $gewaehlt = [];
+
+                    foreach ($this->resolver->listOf($besitzer, SummaryRenderer::FIELDS) as $glied) {
+                        if ($glied->aktiv && $glied->reference !== null) {
+                            $gewaehlt[] = $glied->reference;
+                        }
+                    }
+
+                    if ($gewaehlt !== []) {
+                        $feldwahlJeKnoten[$knoten->id] = $gewaehlt;
+                        break;
+                    }
+                }
             }
 
             $alleFelder = $this->relations->fieldRelationsOf(array_values(array_unique($alleBesitzer)));
@@ -3332,20 +3391,31 @@ final class Rendering implements Presets
             }
         }
 
-        $wort = static function (int $satzId, array $feldIds) use ($werte, $saetze, $erstesTextfeld): string {
-            $teile = [];
+        $wort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $knotenNamen): string {
+            $teile    = [];
+            $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
 
-            if ($feldIds === []) {
-                $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
-                $feldIds  = $knotenId !== null && isset($erstesTextfeld[$knotenId]) ? [$erstesTextfeld[$knotenId]] : [];
+            if ($feldIds === [] && $knotenId !== null) {
+                $feldIds = $feldwahlJeKnoten[$knotenId] ?? (isset($erstesTextfeld[$knotenId]) ? [$erstesTextfeld[$knotenId]] : []);
             }
 
             foreach ($feldIds as $feldId) {
                 foreach ($werte[$satzId] ?? [] as $zeile) {
-                    if ($zeile->relationId === $feldId && ! $zeile->value->isNothing() && ! $zeile->value->isAReference()) {
-                        $teile[] = $zeile->value->rawValue();
-                        break;
+                    if ($zeile->relationId !== $feldId || $zeile->value->isNothing()) {
+                        continue;
                     }
+
+                    if ($zeile->value->referenceSpace === ReferenceSpace::Node) {
+                        $teile[] = $knotenNamen[$zeile->value->reference] ?? '#' . $zeile->value->reference;
+                    } elseif ($zeile->value->referenceSpace === ReferenceSpace::Record) {
+                        if ($stufe === 0 && $zeile->value->reference !== null) {
+                            $teile[] = $wort($zeile->value->reference, [], 1);
+                        }
+                    } elseif (! $zeile->value->isAReference()) {
+                        $teile[] = $zeile->value->rawValue();
+                    }
+
+                    break;
                 }
             }
 

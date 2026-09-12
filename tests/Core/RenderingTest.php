@@ -2131,4 +2131,36 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('<option value="' . $satzId . '" selected>6.22</option>', $bearbeiten);
     }
+
+    /** ⚠️ *Sein Wort: «ist doch ein Verweis auf den Datensatz, eigentlich sollte da Microsoft Corp. DOS 4.0 stehen» — eine Stufe tief.* */
+    #[Test]
+    public function a_reference_inside_a_summary_gets_its_own_word_one_level_deep(): void
+    {
+        // ⚠️ *Der Typ einmal — die Bindung ist die Id (D-510), ein zweiter «Text»-Knoten löst den ersten.*
+        $text       = $this->type('Text');
+        $hersteller = $this->thing('Hersteller');
+        $hName      = $this->editor->addField($hersteller->id, $text->id, 'name');
+        $software   = $this->thing('Software');
+        $wer        = $this->editor->addField($software->id, $hersteller->id, 'hersteller', RelationKind::Aggregation);
+        $kategorie  = $this->editor->addField($software->id, $this->type('Node reference')->id, 'kategorie');
+        $version    = $this->editor->addField($software->id, $text->id, 'version');
+        $dos        = $this->editor->createNode('DOS', $software->id);
+        $eintrag    = $this->thing('Eintrag');
+        $folger     = $this->editor->addField($eintrag->id, $software->id, 'nachfolger', RelationKind::Aggregation);
+
+        $ms = $this->records->add(new NodeRecord(0, $hersteller->id, 1, '2026-09-12 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($ms, $hName->id, TypedValue::ofText('Microsoft Corp.')));
+        $satz = $this->records->add(new NodeRecord(0, $dos->id, 1, '2026-09-12 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $wer->id, TypedValue::ofRecordReference($ms)));
+        $this->records->putValue(RelationRecord::direct($satz, $kategorie->id, TypedValue::ofReference($dos->id)));
+        $this->records->putValue(RelationRecord::direct($satz, $version->id, TypedValue::ofText('4.0')));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($software, SummaryRenderer::FIELDS, [$wer->id, $kategorie->id, $version->id]);
+        $this->neuZeichnen();
+
+        $gezeigt = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satz)], Purpose::Display)->markup;
+
+        self::assertStringContainsString('Microsoft Corp. · DOS · 4.0', $gezeigt);
+    }
 }
