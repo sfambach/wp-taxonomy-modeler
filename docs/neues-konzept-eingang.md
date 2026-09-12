@@ -317,6 +317,50 @@ andere beschreibungen verwendet werden».* **Zu entscheiden:** der Name des Typs
 
 ---
 
+## INF-044 · Datum/Zeit als zusammengesetzter Typ mit ausblendbaren Teilen?
+
+**Stand 2026-09-12.** Seit [D-737](NewConcept/90-decision-log.md) hat das Datum Teile zum An- und Ausschalten. Sein Wort:
+*«Einstellungen Teile an/aus ich nicht, aber ich überlege, ob wir das nicht als zusammengesetzten Typ machen, und bei
+Verwendung können die Felder, die nicht gebraucht werden, als hidden deklariert werden. Müssen wir mal challengen.»*
+**Zu entscheiden:** Datum bleibt ein simpler Typ mit Schaltern, oder wird ein zusammengesetzter Typ (Jahr, Monat, Tag,
+Zeit als Felder), bei dem die Verwendung Felder versteckt.
+
+## INF-045 · Braucht es «Reference» als Klasse noch, wo es den Feldtyp «Node reference» gibt?
+
+**Stand 2026-09-12.** Sein Wort: *«brauchen wir reference an Kategorie? Für was brauchen wir reference als Kategorie
+noch, wir haben ja jetzt den Feldtyp node_reference.»* **Zu entscheiden:** die Klasse «Reference» fällt, oder sie hat
+eine Aufgabe, die der Feldtyp nicht hat.
+
+## INF-046 · Wie heisst «Node reference»?
+
+**Stand 2026-09-12.** Sein Wort: *«Sollte node reference nicht lieber label reference heissen. Oder besser: label is
+input.»* **Zu entscheiden:** der Name des Typs — «Node reference», «Label reference» oder ein Schalter «label is input».
+Bis dahin bleibt «Node reference».
+
+## INF-047 · Telefonnummer: Typ, Validator, Konverter oder Renderer?
+
+**Stand 2026-09-12.** Seine Fragen: *«type? Validator/Converter/Renderer?»* — Landeskennung, Ortsvorwahl, Nummer als
+eigene Felder oder in der Form «+49 …»; die Art (Landline, Mobile, Fax …) *«hier würde ich glaube ich eine Konstante
+(Knoten) bevorzugen»*; dazu *«eine oder mehrere Extensions mit einer Beschreibung, oder wäre das eine eigene
+Datenstruktur, die man anhängen kann — Extension -01 Zentrale».* **Zu entscheiden:** ob Telefon ein simpler Typ, ein
+zusammengesetzter Typ oder nur ein Validator am Text ist; ob Land und Ort eigene Felder sind; ob die Art eine Konstante
+ist; ob Extensions eine anhängbare Struktur sind.
+
+## INF-048 · «unique» wird zum Primärschlüssel aus mehreren Feldern?
+
+**Stand 2026-09-12.** Sein Wort: *«Ich glaube, wir müssen unique in pk umwandeln, mehrere Felder zusammen ergeben den
+unique Schlüssel für die Eingabe.»* «Eindeutig» ist seit [D-735](NewConcept/90-decision-log.md) eine Spalte je Feld.
+**Zu entscheiden:** ob mehrere als «eindeutig» markierte Felder zusammen einen Schlüssel bilden, und ob der die Eingabe
+identifiziert (Anlegen findet den Satz statt ihn zu verdoppeln).
+
+## INF-049 · Festwert gegen Vorgabe plus «nur lesen»
+
+**Stand 2026-09-12.** Sein Wort: *«Festwert: man wählt einen Knoten, der ist gesetzt. Das Gleiche ist möglich über
+default und read only. Aber wenn read only gesetzt ist, kann keine Eingabe mehr gemacht werden, also müsste default immer
+eingebbar sein … prüfen, was besser ist; readonly wird nicht angezeigt, wenn es gesetzt ist.»* **Zu entscheiden:** ob es
+einen eigenen Festwert gibt, oder Vorgabe plus «nur lesen» ([D-739](NewConcept/90-decision-log.md)) ihn ersetzt — und ob
+die Vorgabe bei «nur lesen» eingebbar bleibt.
+
 ## Erledigte Eingänge
 
 *(noch keine)*
