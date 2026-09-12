@@ -863,7 +863,7 @@ final class Rendering implements Presets
         $hilfen   = $this->hintsOfFields($relations, $locale);
         $wahl     = $this->optionsFor($relations);
         // ⚠️ *Die Zusammenfassungen verwiesener Sätze, für alle Verweise dieses Blocks in einer Abfrage (D-753, D-363).*
-        $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose);
+        $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose, $types);
         $fields   = [];
 
         // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
@@ -884,6 +884,13 @@ final class Rendering implements Presets
             // wo sie heute wirkt.*
             $settings = $this->withModelValues($resolved[$relation->id] ?? [], $relation);
             $renderer = $this->renderers->chosenFor($relation, $settings, $purpose, $type);
+
+            // ⚠️ **Ein Verweis auf einen Satz zeigt seine Zusammenfassung von selbst** ([D-753](../../../docs/NewConcept/90-decision-log.md),
+            // berichtigt): *sein Wort: «an der Kante bin ich mir unsicher, ob wir einen Renderer brauchen, aber da es kein simpler
+            // Datentyp ist, muss eine Zusammenfassung gezeigt werden». Der Knoten behält seinen Behälter; die Kante braucht keine Wahl.*
+            if ($this->drawsAsSummary($relation, $type, $resolved[$relation->id] ?? [])) {
+                $renderer = $this->renderers->byName(SummaryRenderer::NAME);
+            }
 
             // ⚠️ **[D-540](../../../docs/NewConcept/90-decision-log.md), und die Regel ist seine:**
             // *«ein Feld ist eine **Auswahl**, wenn sein Ziel sichtbare, unmarkierte Kinder hat».*
@@ -3171,7 +3178,25 @@ final class Rendering implements Presets
      * @param  array<int, array<string, ResolvedSetting>>      $resolved
      * @return array{worte: array<int, string>, angebot: array<int, array<int, string>>}
      */
-    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose): array
+    /**
+     * Ob ein Feld als Zusammenfassung gezeichnet wird: ohne einfachen Typ, an einer Aggregation — es sei denn, an der
+     * Stelle ist ausdrücklich ein anderer Renderer gewählt.
+     *
+     * @param array<string, ResolvedSetting> $resolved
+     */
+    private function drawsAsSummary(Relation $relation, ?SimpleType $type, array $resolved): bool
+    {
+        if ($type !== null || $relation->kind !== RelationKind::Aggregation) {
+            return false;
+        }
+
+        $wahl = $resolved['renderer'] ?? null;
+        $name = $wahl instanceof ResolvedSetting && ($wahl->setHere || $wahl->fromOwnerId !== 0) ? (string) ($wahl->value->text ?? '') : '';
+
+        return $name === '' || $name === SummaryRenderer::NAME;
+    }
+
+    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = []): array
     {
         $leer = ['worte' => [], 'angebot' => []];
 
@@ -3182,7 +3207,7 @@ final class Rendering implements Presets
         $betroffen = [];
 
         foreach ($relations as $relation) {
-            if (($resolved[$relation->id]['renderer'] ?? null)?->value->text === SummaryRenderer::NAME) {
+            if ($this->drawsAsSummary($relation, $types[$relation->id] ?? null, $resolved[$relation->id] ?? [])) {
                 $betroffen[] = $relation;
             }
         }

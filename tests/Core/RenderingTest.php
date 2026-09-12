@@ -260,7 +260,8 @@ final class RenderingTest extends TestCase
         $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
 
         self::assertNull($fields[0]->type);
-        self::assertTrue($fields[0]->hasNoRenderer());
+        // ⚠️ *Kein Typ — und seit D-753 (berichtigt) heisst das an einer Aggregation: die Zusammenfassung des Satzes, kein Auffang.*
+        self::assertSame(SummaryRenderer::NAME, $fields[0]->rendererName);
     }
 
     // --------------------------------------------- the binding is the id (D-510)
@@ -2045,7 +2046,7 @@ final class RenderingTest extends TestCase
         $this->records->putValue(RelationRecord::direct($satzId, $name->id, TypedValue::ofText('Microsoft')));
         $this->records->putValue(RelationRecord::direct($satzId, $land->id, TypedValue::ofText('USA')));
 
-        $this->einstellung($wer, 'renderer', TypedValue::ofText(SummaryRenderer::NAME));
+        // ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
         $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
         $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$name->id, $land->id]);
         $this->neuZeichnen();
@@ -2082,7 +2083,7 @@ final class RenderingTest extends TestCase
         $this->records->putValue(RelationRecord::direct($satzId, $zahl->id, TypedValue::ofInt(7)));
         $this->records->putValue(RelationRecord::direct($satzId, $name->id, TypedValue::ofText('IBM')));
 
-        $this->einstellung($wer, 'renderer', TypedValue::ofText(SummaryRenderer::NAME));
+        // ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
 
         $gezeigt = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
 

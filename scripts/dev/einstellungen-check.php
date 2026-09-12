@@ -1370,7 +1370,7 @@ $data->put($lfSatz->id, $lfLand->id, TypedValue::ofText('__es Nord'));
 $wer           = $editor->addField($satzKnoten->id, $lieferant->id, '__es wer', RelationKind::Aggregation);
 $data->put($sId, $wer->id, TypedValue::ofRecordReference($lfSatz->id));
 $einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations), ShippedRenderers::registry(), ShippedConverters::registry());
-$einsteller->put($nodes->byId($lieferant->id), 'renderer', \Taxmod\Core\Renderer\SummaryRenderer::NAME, $wer);
+// ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
 $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfName->id, $lfLand->id]);
 $mitSummary = seite($satzKnoten->id);
 check('der Satzblock zeigt den verwiesenen Satz als Zusammenfassung der am Knoten gewählten Felder (D-753)', str_contains($mitSummary, '<option value="' . $lfSatz->id . '" selected>__es Alpha · __es Nord</option>'));
