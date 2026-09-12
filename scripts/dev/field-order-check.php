@@ -212,13 +212,13 @@ $inDerVorschau = static function (int $nodeId) use ($editor): array {
     $stellen = [];
     foreach ($editor->fieldsOf($nodeId) as $kante) {
         if ($kante->isSetting()) { continue; }
-        $wo = $von === false ? false : (preg_match('/(?:<span class="taxmod-form-label">|<th class="taxmod-table-head" scope="(?:col|row)">)' . preg_quote($kante->name, '/') . '(?:</span>|</th>|<span class="taxmod-hint)/', $markup, $treffer, PREG_OFFSET_CAPTURE, $von) === 1 ? $treffer[0][1] : false);
+        $wo = $von === false ? false : (preg_match('/(?:<span class="taxmod-form-label">|<th class="taxmod-table-head" scope="(?:col|row)">)' . preg_quote($kante->name, '/') . '(?:<\/span>|<\/th>|<span class="taxmod-hint)/', $markup, $treffer, PREG_OFFSET_CAPTURE, $von) === 1 ? $treffer[0][1] : false);
         if ($wo !== false) { $stellen[$kante->name] = $wo; }
     }
     asort($stellen);
     return array_keys($stellen);
 };
-check('und die Vorschau von B zeichnet sie in derselben Reihenfolge (D-744)', $inDerVorschau($b->id) === ['g', 'f1', 'f2'], implode(',', $inDerVorschau($b->id)));
+check('und die Vorschau von B zeichnet sie in derselben Reihenfolge (D-744)', $inDerVorschau($b->id) === ['g', 'f1', 'f2'], implode(',', $inDerVorschau($b->id)) . ' / ' . preg_last_error_msg());
 
 echo "\n== 4. der Besitzer bleibt, wie er ist ==\n";
 
