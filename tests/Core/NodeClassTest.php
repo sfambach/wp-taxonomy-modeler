@@ -57,6 +57,16 @@ final class NodeClassTest extends TestCase
     }
 
     #[Test]
+    public function a_choice_allows_a_choice_beneath_it(): void
+    {
+        // ⚠️ *«typ choice sollte choice als untertyp zulassen» (D-731); die Vorwahl bleibt die Konstante.*
+        $contract = Contracts::of(Choice::class);
+
+        self::assertTrue($contract->allowsChild(Choice::class));
+        self::assertSame(Constant::class, $contract->defaultChildClass);
+    }
+
+    #[Test]
     public function a_category_allows_everything_and_is_its_own_default(): void
     {
         $contract = Contracts::of(Category::class);

@@ -21,7 +21,9 @@ final class Choice implements NodeClass
 
     public static function allowedChildClasses(): array
     {
-        return [Constant::class, Unit::class, Category::class];
+        // ⚠️ *Eine Auswahl darf Auswahlen enthalten — sein Wort am 2026-09-12: «typ choice sollte choice als untertyp
+        // zulassen» ([D-731](../../../../docs/NewConcept/90-decision-log.md)). Der Wähler zeichnet dann den Baum statt der Liste.*
+        return [Constant::class, Unit::class, self::class, Category::class];
     }
 
     public static function defaultChildClass(): string
