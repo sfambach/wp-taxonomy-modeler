@@ -46,6 +46,7 @@ final class SpecialisedTypes
         DateTimeType::class,
         ColorType::class,
         VersionType::class,
+        PathType::class,
         NodeRefType::class,
         UserRefType::class,
     ];

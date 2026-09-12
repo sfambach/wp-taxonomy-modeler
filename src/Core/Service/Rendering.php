@@ -896,6 +896,13 @@ final class Rendering implements Presets
 
             $gewaehlt = $values[$relation->id] ?? null;
 
+            // ⚠️ **Ein Weg wird gerechnet, nicht gelesen, und ist nie eingebbar** ([D-751](../../../docs/NewConcept/90-decision-log.md)).
+            // *Was im Satz steht, zählt nicht; die Kette der Namen vom erklärenden Vater bis hierher ist der Wert.*
+            if ($type === SimpleType::Path) {
+                $gewaehlt = $this->pathValueFor($relation, $forNode, $settings);
+                $settings[EdgeColumn::READ_ONLY] = new ResolvedSetting(EdgeColumn::READ_ONLY, TypedValue::ofBool(true), $relation->id, true);
+            }
+
             $moeglich = $wahl[$relation->id] ?? [];
 
             // ⚠️ **Für den Renderer sagt die Registratur, was es gibt — nicht der Baum**
@@ -1537,7 +1544,10 @@ final class Rendering implements Presets
                 $formId,
                 0,
                 [],
-                [$model->id => true]
+                [$model->id => true],
+                [],
+                // ⚠️ *Der Satz gehört diesem Knoten — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
+                $model->id
             );
 
             $vorne[] = $row['lead'];
@@ -2923,7 +2933,8 @@ final class Rendering implements Presets
     ): RenderResult {
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
-        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true]);
+        // ⚠️ *Der Knoten reist als `forNode` mit — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
+        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true], [], $node->id);
 
         $container = $containerName === ''
             ? $this->containerFor($node, $purpose)
@@ -3070,6 +3081,45 @@ final class Rendering implements Presets
     public function containerChosenFor(Node $node): bool
     {
         return $this->chosenRendererName($this->withModelValues([], $node)) !== '';
+    }
+
+    /**
+     * Der Wert eines Weg-Feldes: die Namen vom erklärenden Vater bis zum Vater des Knotens, mit dem Knoten
+     * selbst, wo `with_node` gilt (D-751).
+     *
+     * ⚠️ *Beginnt am Knoten, der das Feld erklärt, nicht an der Wurzel — sonst stünde überall «Root → Model → …»
+     * davor. Am erklärenden Knoten selbst ist der Weg leer. Eine Abfrage je Weg-Feld (`byIds`), kein Aufstieg je Stufe.*
+     *
+     * @param array<string, ResolvedSetting> $settings
+     */
+    private function pathValueFor(Relation $relation, int $forNode, array $settings): TypedValue
+    {
+        $knoten = $forNode === 0 ? null : $this->nodes->find($forNode);
+
+        if ($knoten === null) {
+            return TypedValue::nothing();
+        }
+
+        $vorfahren = $knoten->ancestorIds();
+        $start     = array_search($relation->fromNodeId, $vorfahren, true);
+        $glieder   = $start === false ? [] : array_slice($vorfahren, $start);
+
+        if (($settings[\Taxmod\Core\Model\Type\PathType::WITH_NODE] ?? null)?->value->asBool() === true) {
+            $glieder[] = $knoten->id;
+        }
+
+        if ($glieder === []) {
+            return TypedValue::nothing();
+        }
+
+        $namen  = $this->nodes->byIds($glieder);
+        $worte  = [];
+
+        foreach ($glieder as $id) {
+            $worte[] = ($namen[$id] ?? null)?->name ?? '#' . $id;
+        }
+
+        return TypedValue::ofText(implode(\Taxmod\Core\Model\Type\PathType::SEPARATOR, $worte));
     }
 
     private function chosenRendererName(array $settings): string

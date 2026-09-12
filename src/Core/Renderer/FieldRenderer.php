@@ -28,6 +28,7 @@ final class FieldRenderer extends TypedFieldRenderer
             SimpleType::Text,
             SimpleType::Char,
             SimpleType::Version,
+            SimpleType::Path,
             SimpleType::Int,
             SimpleType::Decimal,
         ];

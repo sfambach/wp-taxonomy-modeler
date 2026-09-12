@@ -1355,6 +1355,14 @@ foreach ($editor->fieldsOf($modellKnoten->id) as $kante) {
 }
 $angebot = array_map(static fn (\Taxmod\Core\Renderer\Renderer $r): string => $r->name(), $zeichner()->choicesFor($adresseKante));
 check('ein Feld auf eine Kategorie bekommt Formular, Tabelle und Compact angeboten (D-749)', in_array('table', $angebot, true) && in_array('form', $angebot, true) && in_array('compact', $angebot, true), implode(',', $angebot));
+// ⚠️ **Der Typ «Weg»** ([D-751](../../docs/NewConcept/90-decision-log.md)) — Zeile 125: am Vater erklärt, am Kind die Kette, nie eingebbar.
+check('der einfache Typ «path» steht im Baum', isset($seeded['path']));
+$weg = $editor->addField($modellKnoten->id, $seeded['path']->id, '__es weg');
+$amKind = seite($kind->id);
+check('am Kind zeigt das Weg-Feld die Kette vom erklärenden Vater, ausgegraut (D-751)', str_contains($amKind, '__es Modell') && preg_match('/<fieldset disabled class="taxmod-read-only">[^<]*<input[^>]*value="__es Modell"/', $amKind) === 1);
+$amVater = vorschau($modellKnoten->id);
+check('am erklärenden Knoten selbst ist der Weg leer', ! str_contains($amVater, 'value="__es Modell"'));
+
 // ⚠️ **Ein Feld in den Vater oder in gewählte Kinder schieben** ([D-750](../../docs/NewConcept/90-decision-log.md)) — Zeile 117.
 $schieb = $editor->addField($modellKnoten->id, $seeded['text']->id, '__es schieb');
 $zeile  = seite($modellKnoten->id);

@@ -41,6 +41,7 @@ final class ShippedRenderers
             SimpleType::Text,
             SimpleType::Char,
             SimpleType::Version,
+            SimpleType::Path,
             SimpleType::Int,
             SimpleType::Decimal,
         );

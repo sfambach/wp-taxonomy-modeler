@@ -67,6 +67,8 @@ enum SimpleType: string
      * would put it before and every sorted list would be quietly wrong.
      */
     case Version = 'version';
+    // ⚠️ *Der Weg vom erklärenden Vater bis zum Knoten, gerechnet beim Zeichnen (D-751).*
+    case Path = 'path';
 
     /** A reference to a node in the model. */
     case NodeRef = 'node_ref';

@@ -78,6 +78,7 @@ final class TypedFieldsTest extends TestCase
             [SimpleType::Text, FieldRenderer::NAME],
             [SimpleType::Char, FieldRenderer::NAME],
             [SimpleType::Version, FieldRenderer::NAME],
+            [SimpleType::Path, FieldRenderer::NAME],
             [SimpleType::Int, FieldRenderer::NAME],
             [SimpleType::Decimal, FieldRenderer::NAME],
             [SimpleType::Bool, ToggleRenderer::NAME],

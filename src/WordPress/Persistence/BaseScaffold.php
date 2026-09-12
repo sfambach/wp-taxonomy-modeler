@@ -32,7 +32,8 @@ final class BaseScaffold
     public const OPTION = 'taxmod_base_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    public const VERSION = 6;
+    // ⚠️ *7: der Typknoten «Path» (D-751).*
+    public const VERSION = 7;
 
     public function __construct(
         private readonly ModelEditor $editor,
@@ -55,8 +56,8 @@ final class BaseScaffold
 
         $created = $this->import();
 
-        $this->boundTheNumbers();
-        $this->declareKeyDefaults();
+        // ⚠️ *Hier standen zwei Aufrufe auf Methoden, die es seit D-512 nicht mehr gibt — nie aufgefallen, weil die
+        // Fassung 6 schon stand und dieser Zweig seither nicht mehr lief. Fassung 7 (D-751) hat ihn geweckt.*
 
         update_option(self::OPTION, self::VERSION, true);
 
@@ -131,7 +132,8 @@ final class BaseScaffold
                 ?? null;
 
             if ($node === null) {
-                $node      = $this->editor->createNode($type->nodeName(), $dataTypes->id);
+                // ⚠️ *Mit seiner Typklasse (D-719, K3) — ohne sie käme ein neuer Typ als Kategorie zur Welt (gemessen an «Path», D-751).*
+                $node      = $this->editor->createNode($type->nodeName(), $dataTypes->id, \Taxmod\Core\Model\Type\SpecialisedTypes::for($type)::class);
                 $created[] = $type->nodeName();
             }
 

@@ -1990,4 +1990,39 @@ final class RenderingTest extends TestCase
         self::assertNotSame(PlainRenderer::NAME, $fields[0]->rendererName);
         self::assertStringNotContainsString('taxmod-no-renderer', $fields[0]->result->markup);
     }
+
+    /** ⚠️ *Seine Form (D-751): am Vater erklärt, am Kind die Kette «Vater → Kat 1 → …», ohne das Kind — mit Schalter auch mit ihm.* */
+    #[Test]
+    public function a_path_field_shows_the_chain_from_the_declaring_node_down_and_is_read_only(): void
+    {
+        $software = $this->thing('Software');
+        $os       = $this->editor->createNode('OS', $software->id);
+        $dos      = $this->editor->createNode('DOS', $os->id);
+        $weg      = $this->editor->addField($software->id, $this->type('Path')->id, 'weg');
+
+        $amKind = $this->rendering->nodeAsForm($dos, [$weg], [], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('Software → OS', $amKind);
+        self::assertStringNotContainsString('Software → OS → DOS', $amKind, 'das Kind selbst steht nicht in der Kette');
+        self::assertStringContainsString('taxmod-read-only', $amKind, 'nie eingebbar');
+
+        $amVater = $this->rendering->nodeAsForm($software, [$weg], [], Purpose::Display)->markup;
+
+        self::assertStringNotContainsString('→', $amVater, 'am erklärenden Knoten ist der Weg leer');
+    }
+
+    #[Test]
+    public function with_node_appends_the_node_itself_to_the_path(): void
+    {
+        $software = $this->thing('Software');
+        $os       = $this->editor->createNode('OS', $software->id);
+        $dos      = $this->editor->createNode('DOS', $os->id);
+        $weg      = $this->editor->addField($software->id, $this->type('Path')->id, 'weg');
+
+        $this->einstellung($weg, \Taxmod\Core\Model\Type\PathType::WITH_NODE, TypedValue::ofBool(true));
+
+        $amKind = $this->rendering->nodeAsForm($dos, [$weg], [], Purpose::Display)->markup;
+
+        self::assertStringContainsString('Software → OS → DOS', $amKind);
+    }
 }
