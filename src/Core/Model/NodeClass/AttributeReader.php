@@ -88,9 +88,11 @@ final class AttributeReader
             $typName === 'int'    => $angabe->refersTo !== null
                 ? [AttributeType::NodeRef, null, null, $angabe->refersTo]
                 : [AttributeType::Int, null, null, null],
-            $typName === 'string' => $angabe->decimal
-                ? [AttributeType::Decimal, null, null, null]
-                : [AttributeType::Text, null, null, null],
+            $typName === 'string' => match (true) {
+                $angabe->decimal => [AttributeType::Decimal, null, null, null],
+                $angabe->date    => [AttributeType::Date, null, null, null],
+                default          => [AttributeType::Text, null, null, null],
+            },
             is_subclass_of($typName, \UnitEnum::class) => [AttributeType::Enum, null, $typName, null],
             class_exists($typName) || interface_exists($typName) => [AttributeType::Object, $typName, null, null],
             default => throw new \LogicException("Eine Eigenschaft vom Typ «{$typName}» ist kein Attribut (Anforderung 3.1.1)."),
@@ -129,6 +131,7 @@ final class AttributeReader
             AttributeType::Int     => TypedValue::ofInt((int) $vorgabe),
             AttributeType::Decimal => TypedValue::ofDecimal((string) $vorgabe),
             AttributeType::Text    => TypedValue::ofText((string) $vorgabe),
+            AttributeType::Date    => TypedValue::ofText((string) $vorgabe),
             AttributeType::Enum    => TypedValue::ofText($vorgabe instanceof \BackedEnum ? (string) $vorgabe->value : (string) $vorgabe->name),
             AttributeType::NodeRef => TypedValue::ofReference((int) $vorgabe),
             AttributeType::RelationRef => TypedValue::ofRelationReference((int) $vorgabe),

@@ -63,6 +63,12 @@ final class RangeValidator implements Validator
         $unten = $settings['min'] ?? null;
         $oben  = $settings['max'] ?? null;
 
+        // ⚠️ *Die Grenzen eines Datums liegen als Text in der Zeile (D-757) — zum Vergleich werden sie das Datum, das sie sind.*
+        if ($value->date !== null) {
+            $unten = $unten?->text === null ? $unten : TypedValue::ofDate($unten->text);
+            $oben  = $oben?->text === null ? $oben : TypedValue::ofDate($oben->text);
+        }
+
         // ⚠️ *`comparedTo()` gibt `null` für «nicht vergleichbar» — dann wird **nicht** beanstandet.
         // Eine Grenze, die nicht zum Wert passt, ist ein Modellfehler und keine Regelverletzung des
         // Benutzers; ihn dafür anzusprechen wäre die falsche Adresse.*

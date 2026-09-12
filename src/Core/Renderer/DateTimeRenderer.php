@@ -61,8 +61,9 @@ final class DateTimeRenderer extends TypedFieldRenderer
             // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
             'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
             'value' => $this->forControl($context, 'T'),
-            'min'   => $this->controlType($context) === 'number' ? '0' : null,
-            'max'   => $this->controlType($context) === 'number' ? '9999' : null,
+            // ⚠️ *Die Grenzen des Datums (D-757) reichen bis ins Eingabefeld, in der Genauigkeit des Feldes; ein Jahr bleibt vierstellig.*
+            'min'   => $this->bound($context, 'min', '0'),
+            'max'   => $this->bound($context, 'max', '9999'),
         ]);
     }
 
@@ -71,6 +72,28 @@ final class DateTimeRenderer extends TypedFieldRenderer
      * stored because nobody configured anything would hide a value that is there. Cutting it down
      * is the deliberate act, not the default.
      */
+    /** Eine Grenze aus den Einstellungen, in der Form des Steuerelements — für das Jahr die Vorgabe, wo keine steht. */
+    private function bound(RenderContext $context, string $key, string $jahrVorgabe): ?string
+    {
+        $grenze = $context->setting($key)?->text;
+        $art    = $this->controlType($context);
+
+        if ($grenze === null || $grenze === '') {
+            return $art === 'number' ? $jahrVorgabe : null;
+        }
+
+        $date = substr($grenze, 0, 10);
+        $time = substr($grenze, 11, 5);
+
+        return match ($art) {
+            'number' => substr($date, 0, 4),
+            'month'  => substr($date, 0, 7),
+            'date'   => $date,
+            'time'   => $time,
+            default  => $date . 'T' . ($time === '' ? '00:00' : $time),
+        };
+    }
+
     private function controlType(RenderContext $context): string
     {
         return match ($context->setting(self::PRECISION)?->text) {

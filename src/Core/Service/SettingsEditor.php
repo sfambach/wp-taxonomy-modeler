@@ -505,6 +505,8 @@ final class SettingsEditor
             AttributeType::Int     => preg_match('/^-?\d+$/', $characters) === 1 ? TypedValue::ofInt((int) $characters) : throw SettingDoesNotApply::named($erklaert->name . ' = ' . $characters),
             AttributeType::Decimal => preg_match('/^-?\d+(\.\d+)?$/', $characters) === 1 ? TypedValue::ofDecimal($characters) : throw SettingDoesNotApply::named($erklaert->name . ' = ' . $characters),
             AttributeType::Text    => TypedValue::ofText($characters),
+            // ⚠️ *Ein Datum kommt in jeder Genauigkeit der Werte an (D-737) und wird wie eines gelesen; abgelegt wird der Zeitstempel als Text.*
+            AttributeType::Date    => TypedValue::ofText((string) (new \Taxmod\Core\Model\Type\DateTimeType())->valueFrom($characters)->date),
             AttributeType::Enum    => in_array($characters, $erklaert->enumCases(), true) ? TypedValue::ofText($characters) : throw SettingDoesNotApply::named($erklaert->name . ' = ' . $characters),
             AttributeType::NodeRef => TypedValue::ofReference($this->nodeNamed($erklaert, $characters)),
             AttributeType::RelationRef => ctype_digit($characters) ? TypedValue::ofRelationReference((int) $characters) : throw SettingDoesNotApply::named($erklaert->name . ' = ' . $characters),

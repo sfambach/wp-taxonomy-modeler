@@ -19,6 +19,14 @@ final class DateTimeType extends SpecialisedType
     /** Das Datum, an dem eine Uhrzeit ohne eigenes Datum geparkt wird. */
     public const TIME_WITHOUT_A_DATE = '1970-01-01';
 
+    // ⚠️ **Die Grenzen des Datums** — sein Wort am 2026-09-12: *«danach bitte Datum Restriktionen»* (D-757). *Dasselbe Band wie an
+    // den Zahlen (D-736): `min` und `max`, je ein Datum in der Form der Werte; ohne Vorgabe keine Grenze. Kein `step`.*
+    #[\Taxmod\Core\Model\NodeClass\Attribut(date: true, band: 'bounds')]
+    public ?string $min = null;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut(date: true, band: 'bounds')]
+    public ?string $max = null;
+
     public function type(): SimpleType
     {
         return SimpleType::DateTime;

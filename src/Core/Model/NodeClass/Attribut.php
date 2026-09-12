@@ -43,6 +43,8 @@ final class Attribut
         public readonly ?string $listOf = null,
         public readonly ?string $refersTo = null,
         public readonly bool $decimal = false,
+        /** Ein `string`, der ein Datum ist — gespeichert als Text in der Form der Werte, geprüft wie eines (D-757). */
+        public readonly bool $date = false,
         public readonly bool $allowDuplicates = true,
         /** Aus den Kindern welches Gerüstknotens ein Verweis wählt — statt aus allen der Verweisklasse ([D-728](../../../../docs/NewConcept/90-decision-log.md)). */
         public readonly ?Anchor $from = null,

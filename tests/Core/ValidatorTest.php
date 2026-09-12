@@ -279,4 +279,19 @@ final class ValidatorTest extends TestCase
 
         self::assertSame([], $complaints);
     }
+
+
+    /** ⚠️ *«danach bitte Datum Restriktionen» (D-757): min und max am Datum, abgelegt als Text, geprüft als Datum.* */
+    #[Test]
+    public function a_date_below_min_or_above_max_is_complained_about(): void
+    {
+        $bounds = [
+            'min' => TypedValue::ofText('2020-01-01 00:00:00'),
+            'max' => TypedValue::ofText('2020-12-31 00:00:00'),
+        ];
+
+        self::assertSame([], (new RangeValidator())->check(TypedValue::ofDate('2020-06-15 12:00:00'), SimpleType::DateTime, $bounds));
+        self::assertSame('below_min', (new RangeValidator())->check(TypedValue::ofDate('2019-12-31 23:59:00'), SimpleType::DateTime, $bounds)[0]->key);
+        self::assertSame('above_max', (new RangeValidator())->check(TypedValue::ofDate('2021-01-01 00:00:00'), SimpleType::DateTime, $bounds)[0]->key);
+    }
 }

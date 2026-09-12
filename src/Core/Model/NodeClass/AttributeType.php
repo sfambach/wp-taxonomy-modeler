@@ -17,6 +17,8 @@ enum AttributeType: string
     case Int     = 'int';
     case Decimal = 'decimal';
     case Text    = 'text';
+    // ⚠️ *Ein Datum als Einstellung — `min`, `max` am Typ «Date and time» (D-757); abgelegt als Text, gezeichnet als Datum.*
+    case Date    = 'date';
     case Enum    = 'enum';
     case NodeRef = 'node';
     // ⚠️ *Verweis auf ein Feld des Knotens, an dem die Einstellung steht — Anforderung 3.1.1, erweitert mit D-752.*

@@ -1405,6 +1405,20 @@ check('nach unten: wieder beim Kind, der Weg steht wieder', (string) $wpdb->get_
 abschicken(['do' => 'move_record', 'id' => (string) $kind->id, 'node_record_id' => (string) $wanderer->id, 'target' => (string) $satzKnoten->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id)]);
 check('ein Knoten, der weder Vater noch Kind ist, wird abgewiesen', ! gelungen() && (string) $wpdb->get_var("SELECT node_id FROM {$p}node_records WHERE id = {$wanderer->id}") === (string) $kind->id, letzteMeldung());
 
+
+// ⚠️ **Datumsbeschränkungen** ([D-757](../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«danach bitte Datum Restriktionen».*
+// `min` und `max` am Typ «Date and time», gezeichnet als Datum, bis ins Eingabefeld getragen. *Geprüft beim Speichern werden sie
+// so wenig wie die Grenzen der Zahlen — Zeile 8, Validatoren, ist eine eigene Sache.*
+$wann = $editor->createNode('__es Wann', $seeded['datetime']->id);
+$speicherbar($wann->id, 'min', '2020-01');
+check('eine Datumsgrenze wird in jeder Genauigkeit angenommen und als Zeitstempel abgelegt (D-757)', gelungen() && (string) $wpdb->get_var("SELECT wert_text FROM {$p}settings_value WHERE node_id = {$wann->id} AND attribut = 'min'") === '2020-01-01 00:00:00', letzteMeldung());
+$speicherbar($wann->id, 'max', 'irgendwann');
+check('und was kein Datum ist, wird abgewiesen', ! gelungen(), letzteMeldung());
+$wannSeite = seite($wann->id);
+check('die Grenze wird als Datum gezeichnet, im Band mit max', preg_match('/<input type="datetime-local"[^>]*name="taxmod_setting\[min\]"[^>]*value="2020-01-01T00:00"/', $wannSeite) === 1);
+$wannFeld = $editor->addField($satzKnoten->id, $wann->id, '__es wann');
+check('das Eingabefeld eines Satzes trägt die Grenze als min', preg_match('/<input type="datetime-local"[^>]*name="taxmod_value\[' . $sId . '\]\[' . $wannFeld->id . '\]"[^>]*min="2020-01-01T00:00"/', seite($satzKnoten->id)) === 1);
+
 // ⚠️ **Die Seite wird abgeschickt, wie ein Browser sie abschickt** ([D-754](../../docs/NewConcept/90-decision-log.md)) — sein Wort am
 // 2026-09-12: *«read only verschwindet nach Speichern, das hatten wir jetzt schon mehrfach; kannst du das generell mal überprüfen,
 // ich will das nicht bei jedem Feld erneut testen müssen».* *Gemessen: die offene Feldzeile trug `read_only` und `unique` je zweimal

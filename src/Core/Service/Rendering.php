@@ -3899,6 +3899,7 @@ final class Rendering implements Presets
             \Taxmod\Core\Model\NodeClass\AttributeType::Int     => [SettingShape::Whole, SimpleType::Int],
             \Taxmod\Core\Model\NodeClass\AttributeType::Decimal => [SettingShape::Exact, SimpleType::Decimal],
             \Taxmod\Core\Model\NodeClass\AttributeType::Text    => [SettingShape::Words, SimpleType::Text],
+            \Taxmod\Core\Model\NodeClass\AttributeType::Date    => [SettingShape::Words, SimpleType::DateTime],
             default                                             => [SettingShape::ARegisteredName, null],
         };
 
