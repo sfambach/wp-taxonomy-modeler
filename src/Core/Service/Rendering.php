@@ -3230,12 +3230,28 @@ final class Rendering implements Presets
         $angebote = [];
         $satzIds  = [];
 
+        // ⚠️ **Das Angebot sind alle Sätze unter dem Ziel, nicht nur die am Ziel selbst.** *Sein Befund: «Software hat Hersteller,
+        // Version als Summary, aber angezeigt wird die Id» — die Sätze der Betriebssysteme liegen an DOS, Windows, OS/2 unter
+        // «Software»; das Angebot kannte nur das Ziel, der gewählte Satz stand nicht darin, also blieb die Nummer.* Ein Unterbaum
+        // je Ziel, dann **eine** Abfrage für alle Sätze aller Knoten (`CD-7`).
+        $unterZiel = [];
+
+        if ($purpose === Purpose::Edit) {
+            foreach ($ziele as $ziel) {
+                $unterZiel[$ziel->id] = [$ziel->id, ...array_map(static fn (Node $n): int => $n->id, $this->nodes->subtreeOf($ziel))];
+            }
+        }
+
+        $saetzeJeKnoten = $unterZiel === [] ? [] : $this->records->ofNodes(array_values(array_unique(array_merge(...array_values($unterZiel)))));
+
         foreach ($betroffen as $relation) {
             if ($purpose === Purpose::Edit) {
-                foreach ($this->records->ofNode($relation->toNodeId) as $satz) {
-                    if ($satz->recordType !== RecordType::Settings) {
-                        $angebote[$relation->id][] = $satz->id;
-                        $satzIds[]                 = $satz->id;
+                foreach ($unterZiel[$relation->toNodeId] ?? [] as $knotenId) {
+                    foreach ($saetzeJeKnoten[$knotenId] ?? [] as $satz) {
+                        if ($satz->recordType !== RecordType::Settings) {
+                            $angebote[$relation->id][] = $satz->id;
+                            $satzIds[]                 = $satz->id;
+                        }
                     }
                 }
             }
@@ -3348,6 +3364,11 @@ final class Rendering implements Presets
 
             foreach ($angebote[$relation->id] ?? [] as $satzId) {
                 $aus['angebot'][$relation->id][$satzId] = $wort($satzId, $feldIds);
+            }
+
+            // ⚠️ *Der gewählte Satz steht im Angebot, auch wenn er nicht unter dem Ziel liegt — sonst zeigt das Auswahlfeld eine Nummer.*
+            if ($purpose === Purpose::Edit && $wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null && ! isset($aus['angebot'][$relation->id][$wert->reference])) {
+                $aus['angebot'][$relation->id][$wert->reference] = $wort($wert->reference, $feldIds);
             }
         }
 

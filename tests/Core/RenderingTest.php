@@ -2125,5 +2125,10 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('>6.22<', $gezeigt, 'das Textfeld des Satzknotens, geerbt von OS');
         self::assertStringNotContainsString('#' . $satzId, $gezeigt);
+
+        // ⚠️ *Und beim Bearbeiten steht der Satz unter dem Ziel im Angebot — sein Befund: «angezeigt wird die Id».*
+        $bearbeiten = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('<option value="' . $satzId . '" selected>6.22</option>', $bearbeiten);
     }
 }
