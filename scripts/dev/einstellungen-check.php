@@ -1122,6 +1122,19 @@ $satzId = (int) $wpdb->get_var("SELECT id FROM {$p}node_records WHERE node_id = 
 check('«New record» legt einen Satz an, mit der gewählten Art', $satzId > 0 && (string) $wpdb->get_var("SELECT record_type FROM {$p}node_records WHERE id = {$satzId}") === RecordType::Example->value);
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('ein eingetippter Wert steht danach im Satz, und die Seite zeigt ihn wieder', (string) $wpdb->get_var("SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$satzId} AND relation_id = {$satzFeld->id}") === '42' && str_contains(seite($satzKnoten->id), 'value="42"'));
+
+// ⚠️ **Ein zusammengesetztes Feld im Satz trägt seine inneren Felder mit Namen, und ein Wert darin kommt an und zurück**
+// ([D-742](../../docs/NewConcept/90-decision-log.md)). *Sein Befund nach D-741: «Adresse bei entry immer noch leer».
+// Die inneren Felder wurden gezeichnet, aber ohne `name` — die Maske schickte nichts. Der Name ist die Kette der Kanten.*
+$satzAnschrift = $editor->addField($satzKnoten->id, $anschrift->id, '__es anschrift');
+$gasse         = null;
+foreach ($relations->fieldRelationsOf([$anschrift->id]) as $innere) {
+    $gasse ??= $innere;
+}
+$kette = 'taxmod_value[' . $satzId . '][' . $satzAnschrift->id . '][' . $gasse->id . ']';
+check('die inneren Felder eines zusammengesetzten Feldes stehen im Satz mit ihrem Namen — der Kette der Kanten', str_contains(seite($satzKnoten->id), 'name="' . $kette . '"'), $kette);
+abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42', (string) $satzAnschrift->id => [(string) $gasse->id => '__es Gasse 7']]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+check('ein Wert im inneren Feld wird an der innersten Kante gespeichert, und die Seite zeigt ihn wieder', gelungen() && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$satzId} AND relation_id = {$gasse->id}") === '__es Gasse 7' && preg_match('/<input[^>]*name="' . preg_quote($kette, '/') . '"[^>]*value="__es Gasse 7"/', seite($satzKnoten->id)) === 1, letzteMeldung());
 $seiteSatz = seite($satzKnoten->id);
 $hinterWaehler = preg_split('/name="record_type" form="taxmod-record-' . $satzId . '"/', $seiteSatz)[1] ?? '';
 check('die Zeile zeichnet einen Wähler für die Art, und er steht auf der Art des Satzes', (bool) preg_match('/<select name="record_type" form="taxmod-record-' . $satzId . '"/', $seiteSatz) && (bool) preg_match('/<option value="' . RecordType::Example->value . '" selected/', explode('</select>', $hinterWaehler)[0]));

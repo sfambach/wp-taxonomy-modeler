@@ -4347,7 +4347,12 @@ final class Rendering implements Presets
                 // da». *Die Wahl hiess `taxmod_value[<Kante>]`, die Zeilen darunter
                 // `taxmod_value[<Kante>][<innen>]` — **derselbe Name, einmal als Wert, einmal als Liste**,
                 // und PHP behält beim Lesen die Liste. Die Wahl kam nie an. Jetzt: `taxmod_value_inner[…]`.*
-                $fieldPrefix === '' || ($teil === null && $aufgeloest === 0)
+                // ⚠️ **Ein Feld ohne Teil trägt trotzdem seinen Namen** — sein Befund am 2026-09-12, nach D-741:
+                // «Adresse bei entry immer noch leer … eingegeben, gespeichert, Inhalt der Felder leer». *Gemessen:
+                // die Adressfelder standen im Satz, aber **ohne `name`** — diese Bedingung nahm ihn jeder Kante ohne
+                // Teil, und ein Feld auf einen zusammengesetzten Typ hat nie einen. Die Maske schickte nichts, und
+                // D-741s Leser bekam nichts zu lesen. Namenlos bleibt nur die **Einstellung** ohne geltenden Knoten.*
+                $fieldPrefix === '' || ($teil === null && $aufgeloest === 0 && $relation->isSetting())
                     ? ''
                     : ($relation->isSetting()
                         ? (string) preg_replace('/^([A-Za-z_]+)/', '$1_inner', $fieldPrefix)
