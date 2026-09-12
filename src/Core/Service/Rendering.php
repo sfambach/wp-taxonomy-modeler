@@ -22,6 +22,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\Choice;
+use Taxmod\Core\Renderer\CheckboxRenderer;
 use Taxmod\Core\Renderer\ChoiceRenderer;
 use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
@@ -3436,6 +3437,13 @@ final class Rendering implements Presets
             );
         }
 
+        // ⚠️ **Eine Verweisliste mit Anker ist eine Kaskade von Schaltern, kein Auswahlfeld** ([D-732](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Befund an `erlaubte_praefixe`: «müsste multi auswahl sein ist es aber nicht, ausserdem würde ich eine schalter
+        // kaskade netter finden als jedes einzeln aus der liste auszuwählen».*
+        if ($erklaert->list && $typ === \Taxmod\Core\Model\NodeClass\AttributeType::NodeRef && $erklaert->from !== null && $fieldPrefix !== '') {
+            return new RenderedSetting($key, SettingShape::Switch, null, $setting, $this->switchCascade($subject, $erklaert, $fieldPrefix, $formId, $locale), CheckboxRenderer::NAME, $subjectType);
+        }
+
         $options = match ($typ) {
             \Taxmod\Core\Model\NodeClass\AttributeType::Enum    => array_combine($erklaert->enumCases(), $erklaert->enumCases()),
             \Taxmod\Core\Model\NodeClass\AttributeType::NodeRef => $this->nodesOffered($erklaert),
@@ -3502,6 +3510,45 @@ final class Rendering implements Presets
         }
 
         return $html . '</ul>';
+    }
+
+    /**
+     * Je Kandidat des Ankers ein Schalter: an, wenn ein aktives Glied auf ihn zeigt. Die Felder heissen
+     * `<prefix>_set[<attribut>][<knoten>]` mit `0`/`1`; die Beschriftung ist die Rolle `select` des Kandidaten.
+     */
+    private function switchCascade(Renderable $subject, \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert, string $fieldPrefix, string $formId, string $locale): RenderResult
+    {
+        $anker  = $erklaert->from === null ? null : $this->framework->anchor($erklaert->from);
+        $knoten = $subject instanceof Node ? $subject : ($subject instanceof Relation ? $this->nodes->find($subject->toNodeId) : null);
+
+        if ($anker === null || $knoten === null) {
+            return RenderResult::of('');
+        }
+
+        $kandidaten = $this->nodes->childrenOf($anker);
+        $namen      = $this->labels?->forNodes($kandidaten, SeededRole::Select, $locale) ?? [];
+        $an         = [];
+
+        foreach ($this->resolver?->listOf($knoten, $erklaert->name, $subject instanceof Relation ? $subject : null) ?? [] as $glied) {
+            if ($glied->reference !== null && $glied->aktiv) {
+                $an[$glied->reference] = true;
+            }
+        }
+
+        $prefix = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_set', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
+        $form   = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
+        $html   = '<ul class="taxmod-switch-cascade">';
+
+        foreach ($kandidaten as $kandidat) {
+            $name  = RenderResult::escape($prefix . '[' . $kandidat->id . ']');
+            $html .= '<li><label>'
+                . '<input type="hidden" name="' . $name . '" value="0"' . $form . '>'
+                . '<input type="checkbox" name="' . $name . '" value="1"' . (isset($an[$kandidat->id]) ? ' checked' : '') . $form . '> '
+                . RenderResult::escape($namen[$kandidat->id] ?? $kandidat->name)
+                . '</label></li>';
+        }
+
+        return RenderResult::of($html . '</ul>');
     }
 
     /**

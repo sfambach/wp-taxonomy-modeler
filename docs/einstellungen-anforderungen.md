@@ -46,7 +46,10 @@ markiert ist, ist keine Anforderung, sondern eine noch nicht entschiedene Stelle
 - **2.1.2** Jede Kante muss genau eine Kantenklasse haben (Modell; hier nur, weil 2.1.3 es braucht).
 - **2.1.3** Knotenklassen und Kantenklassen müssen getrennte Mengen sein. Eine Klasse darf nicht
   beides sein.
-- **2.1.4** Die Klasse muss beim Anlegen vergeben werden und darf danach nicht mehr wechseln.
+- **2.1.4** Die Klasse muss beim Anlegen vergeben werden. Sie darf danach wechseln — auf eine Klasse, die der
+  Vater erlaubt und die jedes vorhandene Kind erlaubt; Einstellungen, die der neue Vertrag nicht erklärt, fallen
+  weg. *Bis zum 2026-09-12 stand hier «darf danach nicht mehr wechseln»; sein Wort: «wir müssen typ wechsel möglich
+  machen»* ([D-733](NewConcept/90-decision-log.md)).
 
 ### 2.2 Welche Klasse ein Kind bekommt
 

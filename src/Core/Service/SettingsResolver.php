@@ -214,12 +214,13 @@ final class SettingsResolver
                 $this->wordOf($row),
                 $oben?->aktiv ?? $row->aktiv,
                 $oben?->position ?? $row->position,
-                $edge === null || $oben !== null
+                $edge === null || $oben !== null,
+                $row->value->reference
             );
         }
 
         foreach ($ueberlagert as $row) {
-            $aus[] = new ListEntry((int) $row->id, $this->wordOf($row), $row->aktiv, $row->position, true);
+            $aus[] = new ListEntry((int) $row->id, $this->wordOf($row), $row->aktiv, $row->position, true, $row->value->reference);
         }
 
         usort($aus, static fn (ListEntry $a, ListEntry $b): int => [$a->position, $a->rowId] <=> [$b->position, $b->rowId]);

@@ -1467,6 +1467,24 @@ tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-contr
     margin: .15em 0;
 }
 
+/* ⚠️ Die Kaskade (D-732): je Kandidat ein Haken, in Spalten, damit zwanzig Präfixe nicht zwanzig Zeilen sind. */
+.taxmod-switch-cascade {
+    margin: .2em 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9em, 1fr));
+    gap: .15em .8em;
+    font-size: .92em;
+}
+
+.taxmod-switch-cascade label {
+    display: flex;
+    align-items: center;
+    gap: .3em;
+    white-space: nowrap;
+}
+
 .taxmod-setting-list-inherited {
     color: #50575e;
 }

@@ -181,8 +181,10 @@ class Node extends Identity implements Renderable
         ?int $parentNodeId = null,
         ?int $sortOrder = null,
         ?bool $hide = null,
+        ?string $klasse = null,
     ): static {
-        // ⚠️ *Die Klasse fährt immer mit und wird nie geändert (Anforderung 2.1.4).*
+        // ⚠️ *Die Klasse fährt mit; nur {@see self::ofClass()} tauscht sie — sein Wort am 2026-09-12: «wir müssen typ wechsel
+        // möglich machen» ([D-733](../../../docs/NewConcept/90-decision-log.md)); bis dahin galt 2.1.4 «danach fest».*
         return new static(
             $id ?? $this->id,
             $version ?? $this->version,
@@ -192,7 +194,7 @@ class Node extends Identity implements Renderable
             $clearParent ? null : ($parentNodeId ?? $this->parentNodeId),
             $sortOrder ?? $this->sortOrder,
             $hide ?? $this->hide,
-            $this->klasse,
+            $klasse ?? $this->klasse,
         );
     }
 
@@ -257,6 +259,19 @@ class Node extends Identity implements Renderable
      * ⚠️ Returns the **same** instance when nothing changed, so an unchanged save cannot raise
      * the version (D-282). Callers compare identity, not equality.
      */
+    /**
+     * Derselbe Knoten mit einer anderen Klasse — eine Fassung weiter ([D-733](../../../docs/NewConcept/90-decision-log.md)).
+     * Ob die Klasse hier stehen darf, prüft der Editor; der Knoten trägt sie nur.
+     */
+    public function ofClass(string $klasse): self
+    {
+        if ($klasse === $this->klasse) {
+            return $this;
+        }
+
+        return $this->copy(version: $this->version + 1, klasse: $klasse);
+    }
+
     public function renamedTo(string $name): self
     {
         $name = self::cleanName($name);

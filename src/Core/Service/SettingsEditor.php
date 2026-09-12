@@ -131,6 +131,93 @@ final class SettingsEditor
      *
      * @return bool Ob etwas geschrieben wurde.
      */
+    /**
+     * Die Mitglieder einer Verweisliste auf einmal setzen — eine Kaskade von Schaltern, je Kandidat einer
+     * ([D-732](../../../docs/NewConcept/90-decision-log.md), sein Wort: «eine schalter kaskade netter … als jedes
+     * einzeln aus der liste auszuwählen»).
+     *
+     * *Gewünscht und nicht da: ein neues Glied. Da und nicht gewünscht: das Glied wird «nicht aktiv», nie gelöscht
+     * (Z3a). Da, nicht aktiv, gewünscht: wieder «aktiv».*
+     *
+     * @param  list<int> $wanted Die Knoten, die an sein sollen.
+     * @return int Wie viele Glieder sich geändert haben.
+     */
+    /**
+     * Nach einem Klassenwechsel: jede Zeile am Knoten, deren Adresse `Klasse.Attribut` der neue Vertrag nicht erklärt,
+     * fällt — *sein Wort: «die einstellungen die nicht übereinstimmen gehen dabei verloren»* ([D-733](../../../docs/NewConcept/90-decision-log.md)).
+     * Ein Objekt, das nur diese Zeile hielt, fällt mit.
+     *
+     * @return int Wie viele Zeilen gefallen sind.
+     */
+    public function dropWhatDoesNotApply(Node $node): int
+    {
+        $vertrag = Contracts::of($node->klasse);
+        $weg     = 0;
+
+        foreach ($this->settings->valuesOfNodes([$node->id])[$node->id] ?? [] as $row) {
+            $erklaert = $vertrag->attribute($row->attribut);
+
+            if ($erklaert !== null && $erklaert->declaredBy === $row->klasse) {
+                continue;
+            }
+
+            $this->settings->forgetValue($row->id);
+
+            if ($row->valueObjectId !== null) {
+                $this->settings->forgetObject($row->valueObjectId);
+            }
+
+            $this->note($node, $row->attribut, null, $row->valueObjectId === null ? $row->value : null, null, $row->version);
+            $weg++;
+        }
+
+        if ($weg > 0) {
+            $this->resolver->forget();
+        }
+
+        return $weg;
+    }
+
+    public function setMembers(Node $node, string $attribut, array $wanted, ?Relation $edge = null): int
+    {
+        $erklaert = $this->declarationOf($node, $attribut, $edge);
+
+        if (! $erklaert->list || $erklaert->type !== AttributeType::NodeRef) {
+            throw SettingDoesNotApply::named($attribut . ' is no list of nodes');
+        }
+
+        $wanted     = array_values(array_unique(array_map(intval(...), $wanted)));
+        $vorhanden  = [];
+        $geaendert  = 0;
+
+        foreach ($this->resolver->listOf($node, $attribut, $edge) as $glied) {
+            if ($glied->reference !== null) {
+                $vorhanden[$glied->reference] = $glied;
+            }
+        }
+
+        foreach ($vorhanden as $verweis => $glied) {
+            $soll = in_array($verweis, $wanted, true);
+
+            if ($glied->aktiv !== $soll && $this->setListEntry($node, $attribut, $glied->rowId, $soll, null, $edge)) {
+                $geaendert++;
+            }
+        }
+
+        foreach ($wanted as $verweis) {
+            if (isset($vorhanden[$verweis])) {
+                continue;
+            }
+
+            $neu = $this->settings->addValue(SettingsValue::atNode($node->id, $erklaert->declaredBy, $erklaert->name, TypedValue::ofReference($verweis), $edge?->id));
+            $this->resolver->forget();
+            $this->note($node, $attribut, $edge, null, $neu->value, $neu->version);
+            $geaendert++;
+        }
+
+        return $geaendert;
+    }
+
     public function setListEntry(Node $node, string $attribut, int $rowId, ?bool $aktiv, ?int $position, ?Relation $edge = null): bool
     {
         $erklaert = $this->declarationOf($node, $attribut, $edge);

@@ -614,6 +614,31 @@ check('weggenommen fällt es auf den Typstandard zurück, nicht auf den Vater', 
 
 // ---------------------------------------------------------------------------------------------------
 
+// ⚠️ *«erlaubte präfixe müsste multi auswahl sein … eine schalter kaskade» (D-732, 2026-09-12).*
+$einheit    = $editor->createNode('__es Einheit', $framework->rootOf(Branch::Constants)->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+$praefixe   = $editor->childrenOf((int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId(\Taxmod\WordPress\Persistence\UnitScaffold::PREFIXES_NAME));
+$kaskade    = seite($einheit->id);
+check('erlaubte_praefixe ist eine Kaskade: je Präfix ein Haken, kein Auswahlfeld', $praefixe !== [] && substr_count($kaskade, 'name="taxmod_setting_set[erlaubte_praefixe][') === 2 * count($praefixe) && ! str_contains($kaskade, 'name="taxmod_setting[erlaubte_praefixe]"'), substr_count($kaskade, 'name="taxmod_setting_set[erlaubte_praefixe][') . ' Felder bei ' . count($praefixe) . ' Präfixen');
+$kilo  = (int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId('kilo');
+$milli = (int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId('milli');
+speichern($einheit->id, ['taxmod_setting_set' => ['erlaubte_praefixe' => [(string) $kilo => '1', (string) $milli => '1']]]);
+$leserKaskade = new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry());
+$glieder = $leserKaskade->listOf($nodes->byId($einheit->id), 'erlaubte_praefixe');
+check('zwei Haken sind zwei aktive Glieder mit Verweis', count(array_filter($glieder, static fn ($g): bool => $g->aktiv)) === 2 && in_array($kilo, array_map(static fn ($g) => $g->reference, $glieder), true), count($glieder) . ' Glieder');
+speichern($einheit->id, ['taxmod_setting_set' => ['erlaubte_praefixe' => [(string) $kilo => '1', (string) $milli => '0']]]);
+$leserKaskade->forget();
+$glieder = $leserKaskade->listOf($nodes->byId($einheit->id), 'erlaubte_praefixe');
+check('ein Haken weg: das Glied bleibt, nicht aktiv (Z3a)', count($glieder) === 2 && count(array_filter($glieder, static fn ($g): bool => $g->aktiv)) === 1, count($glieder) . ' Glieder');
+check('und die Seite zeigt genau den einen Haken', substr_count(seite($einheit->id), 'value="1" checked') >= 1);
+
+// ⚠️ *«wir müssen typ wechsel möglich machen … die einstellungen die nicht übereinstimmen gehen dabei verloren» (D-733).*
+check('die Systemzeile bietet die eigene Klasse zur Wahl', str_contains(seite($einheit->id), 'name="klasse" class="taxmod-toolbar-class" form="'));
+// *Geslasht wie WordPress es täte — der Rand entschlasht (CD-5).*
+speichern($einheit->id, ['klasse' => wp_slash(\Taxmod\Core\Model\NodeClass\Constant::class)]);
+$gewechselt = $nodes->byId($einheit->id);
+check('der Wechsel auf Konstante ist geschrieben, eine Fassung weiter', $gewechselt->klasse === \Taxmod\Core\Model\NodeClass\Constant::class && $gewechselt->version === $einheit->version + 1, $gewechselt->klasse . ' v' . $gewechselt->version);
+check('die Präfixglieder sind mit dem Wechsel gefallen — die Konstante erklärt sie nicht', ((new WpdbSettingsRepository())->valuesOfNodes([$einheit->id])[$einheit->id] ?? []) === []);
+
 echo "\n== 4 · Überschreiben an der Kante: dieselbe Zeile mit Kante, nur auf Wunsch (5.1–5.5) ==\n";
 
 /** Die Auflösung an einer Verwendungsstelle. */

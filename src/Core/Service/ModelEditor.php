@@ -146,6 +146,47 @@ final class ModelEditor
         return $node;
     }
 
+    /**
+     * Die Klasse eines Knotens wechseln — auf eine, die der Vater erlaubt und die jedes vorhandene Kind erlaubt
+     * ([D-733](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort am 2026-09-12: «wir müssen typ wechsel möglich
+     * machen ist lästig immer den knoten zu löschen und wieder anzulegen, die einstellungen die nicht übereinstimmen
+     * gehen dabei verloren».* Die Einstellungen, die der neue Vertrag nicht erklärt, räumt der
+     * {@see SettingsEditor::dropWhatDoesNotApply()} — der Rand ruft beide nacheinander.
+     */
+    public function changeClass(int $id, string $klasse): Node
+    {
+        $node = $this->nodes->byId($id);
+
+        if (! Contracts::isKnown($klasse)) {
+            throw UnknownNodeClass::named($klasse);
+        }
+
+        $parent = $node->parentNodeId === null ? null : $this->nodes->byId($node->parentNodeId);
+
+        if ($parent !== null && ! Contracts::of($parent->klasse)->allowsChild($klasse)) {
+            throw ClassNotAllowedUnder::parent($klasse, $parent->klasse);
+        }
+
+        $vertrag = Contracts::of($klasse);
+
+        foreach ($this->childrenOf($id) as $kind) {
+            if (! $vertrag->allowsChild($kind->klasse)) {
+                throw ClassNotAllowedUnder::parent($kind->klasse, $klasse);
+            }
+        }
+
+        $neu = $node->ofClass($klasse);
+
+        if ($neu === $node) {
+            return $node;
+        }
+
+        $this->nodes->save($neu, $node->version);
+        $this->changelog->record($id, 'node', 'class changed', $this->state($node), $this->state($neu), $neu->version);
+
+        return $neu;
+    }
+
     public function rename(int $id, string $name): Node
     {
         $node    = $this->nodes->byId($id);
@@ -162,7 +203,6 @@ final class ModelEditor
 
         return $renamed;
     }
-
 
     /**
      * Sagen, welche PHP-Klasse diesen Knoten umsetzt — oder dass es keine gibt (TASK-008).
@@ -575,7 +615,6 @@ final class ModelEditor
 
         return $copy;
     }
-
 
     /*
      * Hier stand `remapPath()` — eine Adresse am Original, gelesen als dieselbe Adresse an der
@@ -1199,7 +1238,6 @@ final class ModelEditor
         );
     }
 
-
     /** The node with this id, or null. Used by surfaces that may be handed a stale link. */
     /**
      * The nodes a list of attributes points at, in one query (`CD-7`).
@@ -1492,7 +1530,6 @@ final class ModelEditor
 
         return $renamed;
     }
-
 
     /** @return list<Relation> The removed attributes of one node — D-128's *show deleted*. */
     public function removedFieldsOf(int $ownerId): array

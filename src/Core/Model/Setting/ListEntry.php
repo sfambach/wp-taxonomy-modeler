@@ -22,6 +22,8 @@ final class ListEntry
         public readonly int $position,
         /** Am Knoten: immer; an der Kante: nur, wenn die Zeile die Kante nennt. */
         public readonly bool $setHere,
+        /** Der Knoten, auf den das Glied zeigt — für eine Kaskade von Schaltern je Kandidat (D-732). */
+        public readonly ?int $reference = null,
     ) {
     }
 }

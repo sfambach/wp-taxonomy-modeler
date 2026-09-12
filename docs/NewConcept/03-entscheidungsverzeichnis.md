@@ -38,7 +38,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Welche Einstellungen bietet eine Verwendungsstelle an? | [D-712](90-decision-log.md) — die Attribute aus dem Vertrag der Zielklasse | ~~D-668~~ ~~D-611~~ |
 | Wie heissen die Äste? | [D-188](90-decision-log.md) — `Model`, `Compositions`, `Primitives`; Begriffe englisch ([D-187](90-decision-log.md)) | ~~D-185~~ |
 | Welcher Knoten trägt Datensätze? | [D-522](90-decision-log.md) — der, der Felder hat; nicht sein Ast | ~~D-139~~ ~~D-183~~ |
-| Welche Klasse trägt ein Knoten? | [D-716](90-decision-log.md) — genau eine, beim Anlegen; die Vaterklasse erlaubt Kindklassen und wählt vor; `Kategorie` überall | — |
+| Welche Klasse trägt ein Knoten? | [D-716](90-decision-log.md), [D-733](90-decision-log.md) — genau eine, beim Anlegen vergeben und seither wechselbar; die Vaterklasse erlaubt Kindklassen und wählt vor; `Kategorie` überall | — |
 | Was geschieht mit den heutigen Einstellungswerten und den Renderer-Knoten? | [D-717](90-decision-log.md), [D-718](90-decision-log.md) — es beginnt leer; die Knoten unter `Settings` fallen, die Rollen bleiben | — |
 | Was unterscheidet Benutzer-, Vorgabe- und Beispieldaten? | [D-524](90-decision-log.md) — `records.kind` mit drei Zuständen; Sichtbarkeit im Frontend regelt [D-241](90-decision-log.md) | ~~D-521~~ *(die Rücknahme)* |
 | Was trägt die Identität? | [D-436](90-decision-log.md) — `id`, `version` **und** `name`, für Knoten wie Kante; als Tabelle ([D-339](90-decision-log.md)) | ~~D-080~~ |
@@ -126,7 +126,8 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Frage | gilt heute | abgelöst |
 |---|---|---|
 | Wer speichert — das Feld oder die Seite? | [D-392](90-decision-log.md) — die Seite; Feldzeilen ([D-551](90-decision-log.md)) und Beschriftungen ([D-488](90-decision-log.md)) gehen mit | — |
-| Wie legt man einen Knoten an? | [D-730](90-decision-log.md) — ein «+» im Baum und im Kopf; ein Dialog fragt Name und Klasse, anlegen oder abbrechen; die Klasse aus dem Erlaubten ([D-716](90-decision-log.md)) | — |
+| Wie legt man einen Knoten an? | [D-730](90-decision-log.md) — ein «+» im Baum und im Kopf; ein Dialog fragt Name und Klasse, anlegen oder abbrechen; die Klasse aus dem Erlaubten | — |
+| Darf die Klasse eines Knotens wechseln? | [D-733](90-decision-log.md) — ja, auf eine Klasse, die der Vater erlaubt und die jedes Kind erlaubt; Einstellungen, die der neue Vertrag nicht erklärt, fallen weg | ~~D-716~~ (der Satz «danach fest») |
 | Wie wählt man einen Knoten? | [D-589](90-decision-log.md) — der Dialog wählt und schliesst; der gewählte Knoten steht in einem gesperrten Feld neben dem Anlegen-Knopf | ~~D-108~~ ~~D-244~~ ~~D-392~~ (für diesen Fall) |
 | Was steuert die Baumansicht? | [D-615](90-decision-log.md) — Wurzelknoten, Default-Knoten, Default-Ast, sonst nichts | ~~D-586~~ (Einstiegsast-Lesart) |
 | Wer gewinnt beim Zuklappen? | [D-612](90-decision-log.md) — der Klick auf den Pfeil; der Vorrang der Auswahl gilt nur für ungeöffnete Äste | ~~D-480~~ (ausnahmslos) |

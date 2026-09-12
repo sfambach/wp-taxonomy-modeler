@@ -74,6 +74,27 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
+    public function changing_the_class_writes_once_and_refuses_what_parent_or_children_forbid(): void
+    {
+        // ⚠️ *«wir müssen typ wechsel möglich machen» (D-733).*
+        $node    = $this->editor->createNode('Board', $this->root->id);
+        $changed = $this->editor->changeClass($node->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Choice::class, $this->nodes->byId($node->id)->klasse);
+        self::assertSame(2, $changed->version);
+        self::assertSame(['created', 'class changed'], $this->changes->verbsFor($node->id));
+
+        self::assertSame($changed, $this->editor->changeClass($node->id, \Taxmod\Core\Model\NodeClass\Choice::class), 'dieselbe Klasse schreibt nicht');
+
+        // *Eine Auswahl erlaubt keinen Einheitswert als Kind — mit einem darunter geht der Wechsel nicht.*
+        $deck = $this->editor->createNode('Deck', $this->root->id);
+        $this->editor->createNode('Kind', $deck->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+
+        $this->expectException(\Taxmod\Core\Exception\ClassNotAllowedUnder::class);
+        $this->editor->changeClass($deck->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+    }
+
+    #[Test]
     public function renaming_writes_once_and_logs_once(): void
     {
         $node    = $this->editor->createNode('Board', $this->root->id);

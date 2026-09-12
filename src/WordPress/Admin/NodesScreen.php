@@ -710,6 +710,27 @@ final class NodesScreen
     }
 
     /**
+     * Der Wähler für die **eigene** Klasse in der Systemzeile ([D-733](../../../docs/NewConcept/90-decision-log.md)): nur, was
+     * der Vater erlaubt; die Kinder prüft der Editor beim Speichern. Ein geschützter Knoten und die Wurzel zeigen nur.
+     */
+    private function ownClassSwitch(Node $selected): string
+    {
+        $parent = $selected->parentNodeId === null ? null : $this->editor->find($selected->parentNodeId);
+
+        if ($parent === null || $this->framework->isProtected($selected)) {
+            return '<code>' . esc_html(self::className($selected->klasse)) . '</code>';
+        }
+
+        $html = '<select name="klasse" class="taxmod-toolbar-class" form="' . esc_attr(self::pageForm($selected)) . '" title="' . esc_attr__('The class of this node — saved with the page', 'taxmod') . '">';
+
+        foreach (array_unique([...Contracts::childClassesUnder($parent->klasse), $selected->klasse]) as $klasse) {
+            $html .= '<option value="' . esc_attr($klasse) . '"' . ($klasse === $selected->klasse ? ' selected' : '') . '>' . esc_html(self::className($klasse)) . '</option>';
+        }
+
+        return $html . '</select>';
+    }
+
+    /**
      * Der Wähler für die Klasse eines neuen Kindes: nur, was die Vaterklasse erlaubt, die Vorwahl
      * vorgewählt (Anforderung 6.3).
      */
@@ -1707,11 +1728,14 @@ final class NodesScreen
      */
     private function constants(Node $selected): string
     {
+        // ⚠️ **Die eigene Klasse ist hier wählbar** ([D-733](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort am 2026-09-12:
+        // «wir müssen typ wechsel möglich machen ist lästig immer den knoten zu löschen und wieder anzulegen».* Bis dahin
+        // stand sie fest (2.1.4), und der Wähler im Kopf meinte die Klasse des **neuen Kindes** — das bleibt so.*
+        $html = '<span class="taxmod-chip" title="' . esc_attr__('Given when the node was created. It may be changed to any class the parent allows and the children fit; settings the new class does not declare are dropped. The «+» in the head names the class of a new child.', 'taxmod') . '">'
+            . '<span class="taxmod-chip-label">' . esc_html__('Class', 'taxmod') . '</span> '
+            . $this->ownClassSwitch($selected) . '</span>';
+
         $chips = [
-            // ⚠️ *Die eigene Klasse steht hier, weil der Wähler in der Kopfzeile die Klasse des **neuen Kindes** meint —
-            // und genau das wurde am 2026-09-11 verwechselt: «type von knoten constants kann ich nicht auf choice umschalten».
-            // Die Klasse wechselt nie (Anforderung 2.1.4); sie wird gezeigt, nicht angeboten.*
-            [__('Class', 'taxmod'), self::className($selected->klasse), __('Given when the node was created, and fixed since (2.1.4). The chooser in the head names the class of a new child.', 'taxmod')],
             [__('Path', 'taxmod'), $selected->path, __('Where it hangs in the tree. Derived from the relations and never edited.', 'taxmod')],
             [__('Id', 'taxmod'), (string) $selected->id, __('Handed out once and never reissued.', 'taxmod')],
             [__('Version', 'taxmod'), (string) $selected->version, __('Rises when the model changes, so a record can say what it was written against.', 'taxmod')],
@@ -1735,8 +1759,6 @@ final class NodesScreen
                 __('The last entry in the changelog, and what it was.', 'taxmod'),
             ];
         }
-
-        $html = '';
 
         foreach ($chips as [$label, $value, $why]) {
             $html .= '<span class="taxmod-chip" title="' . esc_attr($why) . '">'
@@ -3837,7 +3859,7 @@ final class NodesScreen
     {
         $this->saveSettings($nodeId, $relationId, $name);
         $this->saveFieldRows($nodeId);
-        $geschrieben = $this->saveAttributes($nodeId) + $this->saveListEntries($nodeId);
+        $geschrieben = $this->saveAttributes($nodeId) + $this->saveListEntries($nodeId) + $this->saveSetMembers($nodeId);
         $this->saveLabels($nodeId, $locale);
 
         // ⚠️ **Der Akt sagt, was er getan hat** ([D-683](../../../docs/NewConcept/90-decision-log.md)).
@@ -4038,6 +4060,7 @@ final class NodesScreen
         // Nichts-tun —, dann die Schalter und Stellen. Andersherum sähe der Wähler nach dem Umordnen ein
         // fremdes erstes Glied und ersetzte die Liste. Gemessen am 2026-09-11.*
         $this->saveListEntries($nodeId, $useSite);
+        $this->saveSetMembers($nodeId, $useSite);
     }
 
     /**
@@ -4121,6 +4144,48 @@ final class NodesScreen
      *
      * @return int Wie viele Glieder geschrieben wurden.
      */
+    /**
+     * Die Schalterkaskade einer Verweisliste: `<prefix>_set[<attribut>][<knoten>] = 0|1` je Kandidat
+     * ([D-732](../../../docs/NewConcept/90-decision-log.md)) — gesetzt wird die Menge der Einsen.
+     */
+    private function saveSetMembers(int $nodeId, ?Relation $useSite = null): int
+    {
+        $feld = $useSite === null ? self::SETTING_FIELD . '_set' : self::ROW_SETTING_FIELD . '_set';
+        $roh  = $useSite === null ? ($_POST[$feld] ?? null) : ($_POST[$feld][$useSite->id] ?? null);
+
+        if ($this->attributes === null || ! is_array($roh)) {
+            return 0;
+        }
+
+        $node = $this->editor->find($useSite === null ? $nodeId : $useSite->toNodeId);
+
+        if ($node === null) {
+            return 0;
+        }
+
+        $geschrieben = 0;
+
+        foreach (wp_unslash($roh) as $schluessel => $schalter) {
+            $attribut = sanitize_key((string) $schluessel);
+
+            if ($attribut === '' || ! is_array($schalter) || ! $this->attributes->knows($node, $attribut, $useSite)) {
+                continue;
+            }
+
+            $gewollt = [];
+
+            foreach ($schalter as $knoten => $an) {
+                if (ctype_digit((string) $knoten) && (string) $an === '1') {
+                    $gewollt[] = (int) $knoten;
+                }
+            }
+
+            $geschrieben += $this->attributes->setMembers($node, $attribut, $gewollt, $useSite);
+        }
+
+        return $geschrieben;
+    }
+
     private function saveListEntries(int $nodeId, ?Relation $useSite = null): int
     {
         $feld = $useSite === null ? self::SETTING_FIELD . '_list' : self::ROW_SETTING_FIELD . '_list';
@@ -4173,6 +4238,15 @@ final class NodesScreen
         // ⚠️ *Only for a node. An **relation**'s name is `save_attribute`'s business, and only where the
         // attribute is declared ([D-376](../../../docs/NewConcept/90-decision-log.md)) — renaming an
         // inherited one from a descendant would rename it for everybody, silently.*
+        // ⚠️ **Der Klassenwechsel kommt mit der Seite** ([D-733](../../../docs/NewConcept/90-decision-log.md)): *erst der Knoten,
+        // dann fallen die Einstellungen, die der neue Vertrag nicht erklärt — «gehen dabei verloren», sein Wort.*
+        $klasse = $this->requestedClass();
+
+        if ($relationId === 0 && $klasse !== null && ($vorher = $this->editor->find($nodeId)) !== null && $vorher->klasse !== $klasse) {
+            $gewechselt = $this->editor->changeClass($nodeId, $klasse);
+            $this->attributes?->dropWhatDoesNotApply($gewechselt);
+        }
+
         if ($relationId === 0 && $name !== '') {
             $node = $this->editor->find($nodeId);
 
