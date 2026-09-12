@@ -361,6 +361,22 @@ eingebbar sein … prüfen, was besser ist; readonly wird nicht angezeigt, wenn 
 einen eigenen Festwert gibt, oder Vorgabe plus «nur lesen» ([D-739](NewConcept/90-decision-log.md)) ihn ersetzt — und ob
 die Vorgabe bei «nur lesen» eingebbar bleibt.
 
+## INF-050 · Wer liest «with_label» an der Konstante?
+
+**Stand 2026-09-12.** [D-747](NewConcept/90-decision-log.md) hat den Schalter auf sein Wort in den Vertrag der Konstantenklasse
+gesetzt, Standard aus. **Gebaut: der Schalter steht im Einstellungsbereich; beim Zeichnen liest ihn noch niemand.**
+**Zu entscheiden:** was «mit Label» an einer Konstante bewirkt — der Name der Konstante neben ihrem Wert (etwa
+«Kiloohm» neben «kΩ»), oder etwas anderes.
+
+## INF-051 · Innere und äussere Werte eines Satzes tragen verschiedene Sprachangaben
+
+**Stand 2026-09-12.** Gemessen beim Bau von [D-742](NewConcept/90-decision-log.md) am Hersteller-Satz: die Werte der
+Adressfelder (innere Kanten) werden mit der Sprache der Seite gespeichert («en_US»), die Werte der äusseren Felder
+desselben Satzes ohne Sprache (leere Spalte). Beide Wege lesen sich zurück, aber es sind zwei Regeln für eine Sache.
+[D-645](NewConcept/90-decision-log.md) sagt: *es gibt keine sprachneutrale Zeile mehr, die Standardsprache steht als sie
+selbst da* — danach wäre der äussere Weg der falsche. **Zu entscheiden:** welche der beiden Regeln gilt, dann wird der
+andere Weg angeglichen und der Bestand umgeschrieben. Nichts davon ist gebaut.
+
 ## Erledigte Eingänge
 
 *(noch keine)*
