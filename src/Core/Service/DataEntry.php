@@ -1378,6 +1378,81 @@ final class DataEntry
      * Formular, das seinen eigenen Zustand zurueckschickt, ist kein Ereignis, und eine Chronik voll
      * solcher Zeilen waere die Chronik unbrauchbar.*
      */
+    /**
+     * Einen Satz in den Vater oder in ein Kind seines Knotens verschieben.
+     *
+     * ⚠️ **Sein Wort, 2026-09-12 ([D-756](../../../docs/NewConcept/90-decision-log.md)):** *«Datensatz in Kindknoten oder Vater
+     * verschieben».* *Die Werte bleiben, denn sie hängen an Kanten, nicht am Knoten: nach unten sieht das Kind jedes Feld des
+     * Vaters; nach oben bleiben Werte an Feldern, die der Vater nicht hat, in der Zeile stehen und werden erst wieder sichtbar,
+     * wenn der Satz zurückkommt. Nur Nachbarn — Vater oder direktes Kind —, ein Schritt je Akt.*
+     */
+    public function moveRecord(int $recordId, int $targetNodeId): NodeRecord
+    {
+        $satz   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+        $knoten = $this->nodes->byId($satz->nodeId);
+        $ziel   = $this->nodes->byId($targetNodeId);
+
+        if ($ziel->id === $knoten->id) {
+            return $satz;
+        }
+
+        if ($knoten->parentNodeId !== $ziel->id && $ziel->parentNodeId !== $knoten->id) {
+            throw NotYetStorable::notANeighbourOf($ziel->name, $knoten->name);
+        }
+
+        $vorher = $this->satzZustand($satz);
+        $danach = new NodeRecord($satz->id, $ziel->id, $ziel->version, $satz->createdAt, $satz->recordType, $satz->relationId);
+
+        $this->changelog?->beginAct();
+
+        try {
+            // ⚠️ **Nach oben fallen die Werte an Feldern, die der Vater nicht hat — mit Ansage, nie still** (sein Wort: *«zum Vater
+            // werden Felder gelöscht, wenn dieser weniger hat … aber nicht stillschweigend, nur mit Ansage»*). *Die Ansage macht der
+            // Dialog aus {@see self::lostOnMove()}; hier wird geräumt, jede Zeile im Buch.*
+            foreach ($this->lostOnMove($recordId, $ziel->id) as $verloren) {
+                foreach ($this->valuesOn($recordId, $verloren->id, '') as $zeile) {
+                    $this->clear($recordId, $verloren->id, $zeile->locale);
+                }
+            }
+
+            $version = $this->records->moveRecord($recordId, $ziel->id);
+            $this->melden($recordId, 'record', 'record moved', $vorher, $this->satzZustand($danach), $version);
+        } finally {
+            $this->changelog?->endAct();
+        }
+
+        return $danach;
+    }
+
+    /**
+     * Welche Felder ihre Werte verlieren, wenn der Satz zu diesem Knoten geht — die Ansage vor dem Verschieben (D-756).
+     *
+     * @return list<Relation> Felder, an denen der Satz Werte hält und die das Ziel nicht hat.
+     */
+    public function lostOnMove(int $recordId, int $targetNodeId): array
+    {
+        $ziel   = $this->nodes->byId($targetNodeId);
+        $dort   = [];
+
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($ziel)) as $feld) {
+            $dort[$feld->id] = true;
+        }
+
+        $verloren = [];
+
+        foreach ($this->records->valuesOf($recordId) as $zeile) {
+            if (! isset($dort[$zeile->relationId]) && ! isset($verloren[$zeile->relationId])) {
+                $feld = $this->relations->byId($zeile->relationId);
+
+                if ($feld !== null) {
+                    $verloren[$zeile->relationId] = $feld;
+                }
+            }
+        }
+
+        return array_values($verloren);
+    }
+
     public function retypeRecord(int $recordId, RecordType $kind): void
     {
         $satz = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);

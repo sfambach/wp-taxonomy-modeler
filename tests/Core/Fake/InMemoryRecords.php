@@ -271,6 +271,19 @@ final class InMemoryRecords implements RecordRepository
      * ⚠️ *Die Version zaehlt mit, weil der echte Speicher es tut — sonst koennte ein Kerntest nicht
      * zeigen, dass ein Umstellen dieselbe Buchfuehrung bekommt wie jede andere Aenderung.*
      */
+    public function moveRecord(int $id, int $nodeId): ?int
+    {
+        $satz = $this->records[$id] ?? null;
+
+        if ($satz === null) {
+            return null;
+        }
+
+        $this->records[$id] = new NodeRecord($satz->id, $nodeId, $satz->nodeVersion, $satz->createdAt, $satz->recordType, $satz->relationId);
+
+        return $this->recordVersions[$id] = 1 + ($this->recordVersions[$id] ?? 1);
+    }
+
     public function retypeRecord(int $id, RecordType $kind): ?int
     {
         $satz = $this->records[$id] ?? null;

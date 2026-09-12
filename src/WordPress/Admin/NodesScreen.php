@@ -3220,18 +3220,101 @@ final class NodesScreen
         // *sein Wort: «und das in den Datensatz auch reinschreiben». Die Maske schickt es nicht, es ist nie eingebbar (D-751);
         // gerechnet wird es hier, aus dem Knoten des Satzes.*
         if ($recordId !== 0) {
-            foreach ($attributes as $weg) {
-                if (($types[$weg->id] ?? null) === SimpleType::Path) {
-                    $gerechnet = $this->rendering->pathTextFor($weg, $nodeId);
+            $this->writePathFields($recordId, $nodeId);
+        }
+    }
 
-                    if ($gerechnet->isNothing()) {
-                        $this->data->clear($recordId, $weg->id);
-                    } else {
-                        $this->data->put($recordId, $weg->id, $gerechnet);
-                    }
-                }
+    /** Die Weg-Felder eines Satzes aus seinem Knoten rechnen und schreiben (D-755) — beim Speichern und nach dem Verschieben. */
+    private function writePathFields(int $recordId, int $nodeId): void
+    {
+        $felder = $this->editor->fieldsOf($nodeId);
+        $types  = $this->rendering->typesFor($felder);
+
+        foreach ($felder as $weg) {
+            if (($types[$weg->id] ?? null) !== SimpleType::Path) {
+                continue;
+            }
+
+            $gerechnet = $this->rendering->pathTextFor($weg, $nodeId);
+
+            if ($gerechnet->isNothing()) {
+                $this->data->clear($recordId, $weg->id);
+            } else {
+                $this->data->put($recordId, $weg->id, $gerechnet);
             }
         }
+    }
+
+    /**
+     * Einen Satz in den Vater oder ein Kind verschieben, und seine Weg-Felder neu schreiben (D-756).
+     *
+     * @return string Die Meldung — wohin er ging, und was dabei fiel.
+     */
+    private function movedRecord(int $nodeId, int $recordId, int $targetId): string
+    {
+        $verloren = array_map(static fn (Relation $r): string => $r->name, $this->data->lostOnMove($recordId, $targetId));
+        $danach   = $this->data->moveRecord($recordId, $targetId);
+        $this->writePathFields($recordId, $danach->nodeId);
+        $ziel = $this->editor->find($danach->nodeId)?->name ?? (string) $danach->nodeId;
+
+        if ($verloren === []) {
+            /* translators: %s: the name of the node the record now belongs to. */
+            return sprintf(__('Moved to «%s».', 'taxmod'), $ziel);
+        }
+
+        return sprintf(
+            /* translators: 1: the node's name, 2: comma-separated field names whose values were removed. */
+            __('Moved to «%1$s» — values removed, because it has no such fields: %2$s.', 'taxmod'),
+            $ziel,
+            implode(', ', $verloren)
+        );
+    }
+
+    /**
+     * Der Dialog vor «Satz verschieben»: der Vater und die Kinder als Wahl — und beim Vater die Ansage, welche Werte fallen (D-756).
+     *
+     * ⚠️ *Sein Wort: «zum Vater werden Felder gelöscht, wenn dieser weniger hat, und zum Kind können neue leere hinzukommen — aber
+     * nicht stillschweigend, nur mit Ansage».*
+     */
+    private function moveRecordDialog(Node $selected, NodeRecord $record): Dialog
+    {
+        $body   = '';
+        $parent = $selected->parentNodeId === null ? null : $this->editor->find($selected->parentNodeId);
+        $wahl   = [];
+
+        if ($parent !== null && ! $this->framework->isProtected($parent)) {
+            $faellt = array_map(static fn (Relation $r): string => $r->name, $this->data->lostOnMove($record->id, $parent->id));
+            $wahl[$parent->id] = sprintf(
+                /* translators: %s: the parent node's name. */
+                __('Up to «%s»', 'taxmod'),
+                $parent->name
+            ) . ($faellt === [] ? '' : ' — ' . sprintf(
+                /* translators: %s: comma-separated field names. */
+                __('loses the values of: %s', 'taxmod'),
+                implode(', ', $faellt)
+            ));
+        }
+
+        foreach ($this->editor->childrenOf($selected->id) as $kind) {
+            $wahl[$kind->id] = sprintf(
+                /* translators: %s: the child node's name. */
+                __('Down into «%s» — its extra fields start empty', 'taxmod'),
+                $kind->name
+            );
+        }
+
+        foreach ($wahl as $zielId => $wort) {
+            $body .= '<label class="taxmod-dialog-field"><input type="radio" name="target" value="' . (int) $zielId . '"><span>' . esc_html($wort) . '</span></label>';
+        }
+
+        return new Dialog(
+            'taxmod-move-record-' . $record->id,
+            /* translators: %d: the record's id. */
+            sprintf(__('Move record #%d where?', 'taxmod'), $record->id),
+            $body,
+            __('Move', 'taxmod'),
+            __('Cancel', 'taxmod')
+        );
     }
 
     /**
@@ -3470,6 +3553,16 @@ final class NodesScreen
                     // — *«Baue mal die Auswahl und das Loeschen».* Es ist umkehrbar
                     // ({@see \Taxmod\Core\Service\DataEntry::removeRecord()}), also traegt es die
                     // rote Marke, aber keine Warnung, die es nicht braucht.
+                    // ⚠️ *«Datensatz in Kindknoten oder Vater verschieben» (D-756) — fragt erst, wie das «+» im Baum (D-730).*
+                    new Control(
+                        'do',
+                        'move_record',
+                        __('Move', 'taxmod'),
+                        __('Move this record up to the parent or down into a child — its values travel with it', 'taxmod'),
+                        true,
+                        icon: 'randomize',
+                        opens: $this->moveRecordDialog($selected, $record)
+                    ),
                     new Control(
                         'do',
                         'delete_record',
@@ -4924,6 +5017,9 @@ final class NodesScreen
                 'delete_record'  => $this->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 ),
+                'move_record'    => $target === 0
+                    ? __('No target chosen — the record stays where it is.', 'taxmod')
+                    : $this->movedRecord($id, isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0, $target),
                 default          => throw new \InvalidArgumentException('Unknown action.'),
             };
 

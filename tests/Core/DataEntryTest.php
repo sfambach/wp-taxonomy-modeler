@@ -602,4 +602,42 @@ final class DataEntryTest extends TestCase
 
         return 0;
     }
+
+    /** ⚠️ *Sein Wort (D-756): «Datensatz in Kindknoten oder Vater verschieben» — nach oben fallen Werte an Feldern, die der Vater nicht hat, mit Ansage.* */
+    #[Test]
+    public function a_record_moves_up_and_down_and_loses_only_what_the_parent_cannot_hold(): void
+    {
+        $child  = $this->editor->createNode('Sub', $this->part->id);
+        $eigen  = $this->editor->addField($child->id, $this->text->id, 'nur hier');
+        $record = $this->data->create($child->id);
+        $this->data->put($record->id, $this->description->id, TypedValue::ofText('bleibt'));
+        $this->data->put($record->id, $eigen->id, TypedValue::ofText('fällt'));
+
+        self::assertSame(['nur hier'], array_map(static fn ($r) => $r->name, $this->data->lostOnMove($record->id, $this->part->id)), 'die Ansage');
+
+        $oben = $this->data->moveRecord($record->id, $this->part->id);
+
+        self::assertSame($this->part->id, $oben->nodeId);
+        self::assertSame($this->part->id, $this->records->find($record->id)?->nodeId);
+        $werte = $this->data->valuesOf($record->id);
+        self::assertCount(1, $werte, 'der Wert am Feld, das der Vater nicht hat, ist gefallen');
+        self::assertSame('bleibt', $werte[0]->value->text);
+        self::assertContains('record moved', $this->buch->verbsFor($record->id));
+
+        $unten = $this->data->moveRecord($record->id, $child->id);
+
+        self::assertSame($child->id, $unten->nodeId);
+        self::assertSame([], $this->data->lostOnMove($record->id, $child->id), 'nach unten fällt nichts');
+    }
+
+    #[Test]
+    public function a_record_does_not_move_to_a_node_that_is_neither_parent_nor_child(): void
+    {
+        $fremd  = $this->editor->createNode('Fremd', $this->branchRoot['model']->id);
+        $record = $this->data->create($this->part->id);
+
+        $this->expectException(NotYetStorable::class);
+
+        $this->data->moveRecord($record->id, $fremd->id);
+    }
 }

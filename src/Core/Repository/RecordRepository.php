@@ -180,6 +180,14 @@ interface RecordRepository
     public function retypeRecord(int $id, RecordType $kind): ?int;
 
     /**
+     * Einen Satz an einen anderen Knoten hängen — seine Werte bleiben, denn sie hängen an Kanten, nicht am Knoten
+     * ([D-756](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return int|null Die neue Version; `null`, wenn es den Satz nicht gibt.
+     */
+    public function moveRecord(int $id, int $nodeId): ?int;
+
+    /**
      * Records whose value at one relation equals this one, wherever in the record it sits.
      *
      * ⚠️ **This is what `relation_id` is for** (D-134) — the question *which parts are 4k7* asked

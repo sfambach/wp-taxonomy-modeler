@@ -454,6 +454,34 @@ final class WpdbRecordRepository implements RecordRepository
         return $neu;
     }
 
+    public function moveRecord(int $id, int $nodeId): ?int
+    {
+        global $wpdb;
+
+        $version = Query::value('Version des Datensatzes vor dem Verschieben lesen', $wpdb->prepare(
+            'SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d',
+            $id
+        ));
+
+        if ($version === null) {
+            return null;
+        }
+
+        Shadow::keepOne('node_records', $id);
+
+        $neu = 1 + (int) $version;
+
+        $wpdb->update(
+            Schema::table('node_records'),
+            ['node_id' => $nodeId, 'version' => $neu],
+            ['id' => $id],
+            ['%d', '%d'],
+            ['%d']
+        );
+
+        return $neu;
+    }
+
     public function forgetValue(int $recordId, int $relationId, string $locale): ?int
     {
         global $wpdb;

@@ -1391,6 +1391,20 @@ $astSatz = $data->create($kind->id, RecordType::User);
 abschicken(['do' => 'save_record', 'id' => (string) $kind->id, 'node_record_id' => (string) $astSatz->id, 'taxmod_value' => [(string) $astSatz->id => []], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id)]);
 check('mit «only direct child» steht am Kind der Ast — hier das Kind selbst — und das Speichern schreibt ihn in den Satz (D-755)', gelungen() && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$astSatz->id} AND relation_id = {$astFeld->id}") === $kind->name && str_contains(seite($kind->id), 'value="' . $kind->name . '"'), letzteMeldung() . ' / ' . (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$astSatz->id} AND relation_id = {$astFeld->id}"));
 
+
+// ⚠️ **Ein Satz wandert in den Vater oder in ein Kind** ([D-756](../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«Datensatz in
+// Kindknoten oder Vater verschieben».* Die Werte bleiben; die Weg-Felder werden neu geschrieben.
+$wanderFeld = $editor->addField($modellKnoten->id, $seeded['int']->id, '__es wander');
+$wanderer   = $data->create($kind->id, RecordType::User);
+$data->put($wanderer->id, $wanderFeld->id, TypedValue::ofInt(7));
+check('die Satzzeile trägt «Move» mit Dialog, der Vater und die Kinder zur Wahl stellt (D-756)', str_contains(seite($kind->id), 'id="taxmod-move-record-' . $wanderer->id . '"') && str_contains(seite($kind->id), 'name="target" value="' . $modellKnoten->id . '"'));
+abschicken(['do' => 'move_record', 'id' => (string) $kind->id, 'node_record_id' => (string) $wanderer->id, 'target' => (string) $modellKnoten->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id)]);
+check('nach oben: der Satz gehört dem Vater, der Wert bleibt, der Weg ist neu geschrieben (leer am erklärenden Knoten)', str_starts_with(letzteMeldung(), 'Moved') && (string) $wpdb->get_var("SELECT node_id FROM {$p}node_records WHERE id = {$wanderer->id}") === (string) $modellKnoten->id && (string) $wpdb->get_var("SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$wanderer->id} AND relation_id = {$wanderFeld->id}") === '7' && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$wanderer->id} AND relation_id = {$astFeld->id}") === 0, letzteMeldung());
+abschicken(['do' => 'move_record', 'id' => (string) $modellKnoten->id, 'node_record_id' => (string) $wanderer->id, 'target' => (string) $kind->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $modellKnoten->id)]);
+check('nach unten: wieder beim Kind, der Weg steht wieder', (string) $wpdb->get_var("SELECT node_id FROM {$p}node_records WHERE id = {$wanderer->id}") === (string) $kind->id && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$wanderer->id} AND relation_id = {$astFeld->id}") === $kind->name, letzteMeldung());
+abschicken(['do' => 'move_record', 'id' => (string) $kind->id, 'node_record_id' => (string) $wanderer->id, 'target' => (string) $satzKnoten->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id)]);
+check('ein Knoten, der weder Vater noch Kind ist, wird abgewiesen', ! gelungen() && (string) $wpdb->get_var("SELECT node_id FROM {$p}node_records WHERE id = {$wanderer->id}") === (string) $kind->id, letzteMeldung());
+
 // ⚠️ **Die Seite wird abgeschickt, wie ein Browser sie abschickt** ([D-754](../../docs/NewConcept/90-decision-log.md)) — sein Wort am
 // 2026-09-12: *«read only verschwindet nach Speichern, das hatten wir jetzt schon mehrfach; kannst du das generell mal überprüfen,
 // ich will das nicht bei jedem Feld erneut testen müssen».* *Gemessen: die offene Feldzeile trug `read_only` und `unique` je zweimal

@@ -130,6 +130,12 @@ final class NotYetStorable extends DomainError
         ));
     }
 
+    /** Ein Satz wandert nur zum Vater oder in ein direktes Kind (D-756). */
+    public static function notANeighbourOf(string $target, string $node): self
+    {
+        return new self(sprintf('«%s» is neither the parent nor a child of «%s».', $target, $node));
+    }
+
     public static function noSuchRecord(int $id): self
     {
         return new self(sprintf('There is no record %d.', $id));
