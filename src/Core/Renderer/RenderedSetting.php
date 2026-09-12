@@ -59,6 +59,8 @@ final class RenderedSetting implements Renderable
          * nur angezeigt wird, nie als gesetzt durchgehen ([D-687](../../../docs/NewConcept/90-decision-log.md)).*
          */
         public readonly string $overrideName = '',
+        /** Die Gruppe, in der das Attribut mit seinen Nachbarn gezeichnet wird — `min`, `max`, `step` als eine ([D-736](../../../docs/NewConcept/90-decision-log.md)). */
+        public readonly ?string $band = null,
     ) {
     }
 
@@ -74,7 +76,8 @@ final class RenderedSetting implements Renderable
             $this->rendererName,
             $this->subject,
             $fromOwnerName,
-            $overrideName
+            $overrideName,
+            $this->band
         );
     }
 

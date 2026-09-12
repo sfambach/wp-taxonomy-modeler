@@ -185,6 +185,17 @@ abstract class SpecialisedType extends Node implements NodeClass
     }
 
     /**
+     * Dieselbe Form, aber mit den Einstellungen der Stelle — ein Typ, dessen Form von einer Einstellung abhängt
+     * ({@see VersionType}: die Zahl der Ebenen, D-738), antwortet hier; die anderen wie ohne.
+     *
+     * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $settings
+     */
+    public function wellFormedShapeWith(array $settings): ?string
+    {
+        return $this->wellFormedShape();
+    }
+
+    /**
      * Ob `min` und `max` für diesen Typ einen Sinn ergeben.
      *
      * ⚠️ **Hierher gewandert aus {@see \Taxmod\Core\Validator\RangeValidator::handles()}**, und das

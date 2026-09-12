@@ -63,6 +63,11 @@ final class DateTimeType extends SpecialisedType
         $characters = str_replace('T', ' ', $characters);
 
         return match (true) {
+            // ⚠️ *Nur Jahr, nur Monat und Jahr — die Genauigkeiten aus D-737; gespeichert wird der erste Tag, die erste Stunde.*
+            preg_match('/^\d{4}$/', $characters) === 1
+                => $characters . '-01-01 00:00:00',
+            preg_match('/^\d{4}-\d{2}$/', $characters) === 1
+                => $characters . '-01 00:00:00',
             preg_match('/^\d{4}-\d{2}-\d{2}$/', $characters) === 1
                 => $characters . ' 00:00:00',
             preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $characters) === 1

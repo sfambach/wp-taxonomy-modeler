@@ -315,7 +315,10 @@ foreach (['Primitives' => $primitives] as $astName => $wurzel) {
     $user  = (int) $wpdb->get_var(
         // ⚠️ *Ohne Ausnahme: der Satz einer Verwendungsstelle ist seit D-702/D-704 `settings`, nicht
         // `user` — was hier `user` trägt, liegt falsch.*
-        "SELECT COUNT(*) FROM {$wpdb->prefix}taxmod_node_records WHERE record_type = 'user' AND node_id IN ({$liste})"
+        // ⚠️ *Ausser den **Teilen** (D-583): ein Teil ist ein Satz am zusammengesetzten Typ, den der Satz des Besitzers als
+        // Wert nennt — seine Daten, nur anders abgelegt. Gemessen am 2026-09-12 an seinem ersten Satz mit Adresse: drei Teile.*
+        "SELECT COUNT(*) FROM {$wpdb->prefix}taxmod_node_records WHERE record_type = 'user' AND node_id IN ({$liste})
+         AND id NOT IN (SELECT value_ref FROM {$wpdb->prefix}taxmod_relation_records WHERE value_ref_kind = 'record' AND value_ref IS NOT NULL)"
     );
 
     check($astName . ': kein Benutzersatz in ' . count($ids) . ' Knoten', $user === 0, "{$user} gefunden");

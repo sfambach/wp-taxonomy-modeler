@@ -872,7 +872,8 @@ foreach ($rendering->fieldsFor([$label, $mail], $back, Purpose::Edit, 'taxmod_va
     $closed[$field->relation->id] = $field;
 }
 check('ein verborgenes Feld wird gar nicht aufgezählt, die anderen bleiben', ! isset($closed[$label->id]) && count($closed) === 1);
-check('eine nur lesbare Adresse wird gezeigt, nicht angeboten — und bleibt ein Link', ! str_contains($closed[$mail->id]->result->markup, '<input') && str_contains($closed[$mail->id]->result->markup, 'mailto:'));
+// ⚠️ *Seit D-739 (2026-09-12): das Feld bleibt beim Bearbeiten, gesperrt und gefüllt — der Link gehört der Anzeige.*
+check('eine nur lesbare Adresse wird beim Bearbeiten als gesperrtes Feld gezeigt (D-739)', str_starts_with($closed[$mail->id]->result->markup, '<fieldset disabled class="taxmod-read-only">'));
 check('kein Feld wird zur Suche angeboten (D-217), und beim Anzeigen fällt keines weg', $rendering->fieldsFor($every, [], Purpose::Search, 'q') === [] && count($rendering->fieldsFor($every, [], Purpose::Display, '')) === count($every) - 1);
 
 $before = $wpdb->num_queries;

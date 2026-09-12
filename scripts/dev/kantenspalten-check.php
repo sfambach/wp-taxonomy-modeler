@@ -196,7 +196,8 @@ check('die Feldzeile zeichnet read_only als Schiebeschalter, aus der Spalte', is
 check('und «wie oft» daneben', isset($rows['multiplicity']) && $rows['multiplicity']->wasDrawn());
 
 $feld = $zeichner->fieldsFor([$zahl], [], Purpose::Edit, 'taxmod_value');
-check('ein nur lesbares Feld bietet beim Bearbeiten kein Eingabefeld an', $feld !== [] && ! str_contains($feld[0]->result->markup, '<input type="text"') && ! str_contains($feld[0]->result->markup, '<input type="number"'));
+// ⚠️ *Seit D-739 (2026-09-12) bleibt das Feld, ausgegraut und gefüllt: «feld ausgegraut und falls wert da ist gefüllt».*
+check('ein nur lesbares Feld bietet beim Bearbeiten ein gesperrtes Eingabefeld an (D-739)', $feld !== [] && str_starts_with($feld[0]->result->markup, '<fieldset disabled class="taxmod-read-only">') && str_contains($feld[0]->result->markup, '<input'));
 
 abschicken(['do' => 'put_setting', 'id' => (string) $wiese->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $wiese->id), 'taxmod_field_setting' => [(string) $zahl->id => ['read_only' => '0']]]);
 check('das Formular schaltet die Spalte aus', $kanten->byId($zahl->id)->readOnly === false);

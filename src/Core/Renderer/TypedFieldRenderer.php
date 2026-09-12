@@ -61,9 +61,28 @@ abstract class TypedFieldRenderer extends RendererNode
         // reached every field of that type through the chain, and the check here is where it landed.
         // **Measured twice** (OQ-101, and again 2026-08-27).*
         return new RenderResult(
-            $context->mayEdit() ? $this->input($context) : $this->display($context),
+            $this->control($context),
             $used
         );
+    }
+
+    /**
+     * ⚠️ **Nur lesen heisst ausgegraut, nicht weg** ([D-739](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort am
+     * 2026-09-12: «read only an kante muss beim rendern berücksichtigt werden, feld ausgegraut und falls wert da ist
+     * gefüllt».* Ein `<fieldset disabled>` sperrt jedes Steuerelement darin ohne Skript und ohne dass jeder Renderer sein
+     * `disabled` selbst schreibt.
+     */
+    private function control(RenderContext $context): string
+    {
+        if ($context->mayEdit()) {
+            return $this->input($context);
+        }
+
+        if ($context->editable && $context->purpose === Purpose::Edit) {
+            return '<fieldset disabled class="taxmod-read-only">' . $this->input($context) . '</fieldset>';
+        }
+
+        return $this->display($context);
     }
 
     /** The value as a reader sees it. */

@@ -61,6 +61,8 @@ final class DateTimeRenderer extends TypedFieldRenderer
             // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
             'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
             'value' => $this->forControl($context, 'T'),
+            'min'   => $this->controlType($context) === 'number' ? '0' : null,
+            'max'   => $this->controlType($context) === 'number' ? '9999' : null,
         ]);
     }
 
@@ -72,8 +74,11 @@ final class DateTimeRenderer extends TypedFieldRenderer
     private function controlType(RenderContext $context): string
     {
         return match ($context->setting(self::PRECISION)?->text) {
-            'date' => 'date',
-            'time' => 'time',
+            // ⚠️ *Ein Jahr allein hat kein eigenes Eingabefeld im Browser — eine vierstellige Zahl (D-737).*
+            'year'  => 'number',
+            'month' => 'month',
+            'date'  => 'date',
+            'time'  => 'time',
             default => 'datetime-local',
         };
     }
@@ -91,9 +96,11 @@ final class DateTimeRenderer extends TypedFieldRenderer
         $time = substr($stored, 11, 5);
 
         return match ($this->controlType($context)) {
-            'date'  => $date,
-            'time'  => $time,
-            default => $time === '' ? $date : $date . $separator . $time,
+            'number' => substr($date, 0, 4),
+            'month'  => substr($date, 0, 7),
+            'date'   => $date,
+            'time'   => $time,
+            default  => $time === '' ? $date : $date . $separator . $time,
         };
     }
 }

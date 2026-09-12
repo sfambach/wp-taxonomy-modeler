@@ -991,10 +991,18 @@ final class Rendering implements Presets
             // `choice` weiter, weil [R28–R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)
             // nur an einer Stelle stehen dürfen. **Was ihn unterscheidet, ist die Menge, nicht die
             // Gestalt.***
-            if ($istWahl && $dieWahl->canShowItsState() && $this->chosenRendererName($settings) === '') {
+            // ⚠️ *Ohne Kandidaten ist es keine Liste — ein Verweis auf den Typ selbst bekommt den Wähler über den ganzen Baum
+            // ({@see self::chooserMarkup()}); sein Befund an `Organisation`: «type in preview ist leer» (D-740).*
+            if ($istWahl && ($moeglich !== [] || $verweis !== null) && $dieWahl->canShowItsState() && $this->chosenRendererName($settings) === '') {
                 $renderer = $this->renderers->byName(
                     ChoiceRenderer::NAME
                 );
+            }
+
+            // ⚠️ *Ein Verweis auf den Typ «Node reference» selbst, ohne Wahl: der Wähler über den ganzen Baum (D-740) — auch wenn
+            // der Typstandard sonst der Anzeige-Renderer wäre.*
+            if ($istWahl && $moeglich === [] && $this->chosenRendererName($settings) === '' && $this->typeNodes->nodeId(SimpleType::NodeRef) === $relation->toNodeId) {
+                $renderer = $this->renderers->byName(ChooserRenderer::NAME);
             }
 
             if ($renderer === null) {
@@ -2518,7 +2526,10 @@ final class Rendering implements Presets
             $resolved = array_intersect_key($resolved, array_flip($onlyKeys));
         }
 
-        ksort($resolved);
+        // ⚠️ **In der Reihenfolge des Vertrags, nicht des Alphabets** ([D-736](../../../docs/NewConcept/90-decision-log.md)) — *sein
+        // Befund: «min und max sollten vertauscht sein». Was der Vertrag nicht kennt, kommt danach, alphabetisch.*
+        $reihenfolge = $node instanceof Node || $node instanceof Relation ? array_flip(array_keys($this->attributesDrawnFor($node))) : [];
+        uksort($resolved, static fn (string $a, string $b): int => (($reihenfolge[$a] ?? PHP_INT_MAX) <=> ($reihenfolge[$b] ?? PHP_INT_MAX)) ?: strcmp($a, $b));
 
         $drawn = [];
 
@@ -3074,6 +3085,30 @@ final class Rendering implements Presets
 
         $gewaehlt = $value->reference !== null && $value->reference !== $target->id ? $value->reference : null;
 
+        // ⚠️ **Ein Verweis auf den Typ «Node reference» selbst ist unbeschränkt: der ganze Baum, als Dialog** ([D-740](../../../docs/NewConcept/90-decision-log.md)) —
+        // *sein Befund an `Organisation`: «preview funktioniert nicht reference type type … type in preview ist leer».*
+        if ($this->typeNodes->nodeId(SimpleType::NodeRef) === $target->id) {
+            $wurzel = $this->framework->root();
+
+            return $this->nodeChooser(
+                $wurzel,
+                $fieldName,
+                null,
+                $gewaehlt,
+                [$this->framework->trash()->id],
+                [$wurzel->id],
+                $gewaehlt === null ? null : $this->nodes->find($gewaehlt)?->name,
+                '',
+                ChooserRenderer::NAME,
+                $locale,
+                $level,
+                '',
+                '',
+                $formId,
+                [...$settings, ...ChooserRenderer::asDialog()]
+            );
+        }
+
         // ⚠️ **Eine Ebene ist eine Liste, kein Baum** — *sein Wort am 2026-09-12 an `Prefixes`: «sollte eine normale
         // dropdown liste anzeigen ist nur eine ebene, sollte list label zur anzeige verwenden».* Haben die Kinder des
         // Ziels selbst keine Kinder, zeichnet der Wähler ein Auswahlfeld, beschriftet mit der Rolle `select` — *ausser
@@ -3477,7 +3512,8 @@ final class Rendering implements Presets
                     surroundings: new Surroundings(formId: $formId),
                 )),
                 $renderer->name(),
-                $subjectType
+                $subjectType,
+                band: $erklaert->band
             );
         }
 
@@ -3485,7 +3521,7 @@ final class Rendering implements Presets
         // *Sein Befund an `erlaubte_praefixe`: «müsste multi auswahl sein ist es aber nicht, ausserdem würde ich eine schalter
         // kaskade netter finden als jedes einzeln aus der liste auszuwählen».*
         if ($erklaert->list && $typ === \Taxmod\Core\Model\NodeClass\AttributeType::NodeRef && $erklaert->from !== null && $fieldPrefix !== '') {
-            return new RenderedSetting($key, SettingShape::Switch, null, $setting, $this->switchCascade($subject, $erklaert, $fieldPrefix, $formId, $locale), CheckboxRenderer::NAME, $subjectType);
+            return new RenderedSetting($key, SettingShape::Switch, null, $setting, $this->switchCascade($subject, $erklaert, $fieldPrefix, $formId, $locale), CheckboxRenderer::NAME, $subjectType, band: $erklaert->band);
         }
 
         $options = match ($typ) {
@@ -3510,7 +3546,7 @@ final class Rendering implements Presets
             $gezeichnet = new RenderResult($gezeichnet->markup . $this->listMarkup($subject, $erklaert, $fieldPrefix, $formId), $gezeichnet->usedRelations, $gezeichnet->condition);
         }
 
-        return new RenderedSetting($key, $shape, null, $setting, $gezeichnet, $renderer->name(), $subjectType);
+        return new RenderedSetting($key, $shape, null, $setting, $gezeichnet, $renderer->name(), $subjectType, band: $erklaert->band);
     }
 
     /**
@@ -4284,10 +4320,12 @@ final class Rendering implements Presets
             // [D-684](../../../docs/NewConcept/90-decision-log.md) ist die Wahl ein Verweis und kein Teil;
             // was der Knoten zu `converter`, `label_role`, `with_label` sagt, liegt in seinem eigenen Satz
             // ({@see \Taxmod\Core\Service\ModelValues::ownSettingValuesOf()}).*
+            // ⚠️ **Ohne eigenen Teil tragen die inneren Felder die Werte des Satzes** — *adressiert über die letzte Kante (D-667),
+            // also stehen sie im selben Vorrat wie die äusseren; hier stand `[]`, und die Adresse blieb leer (D-741).*
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
                 $teil === null
-                    ? []
+                    ? $values
                     : $teil['werte'],
                 $purpose,
                 // ⚠️ **Ein geliehener Teil hat keine Satz-Id, also nimmt er die Adresse des Knotens.**

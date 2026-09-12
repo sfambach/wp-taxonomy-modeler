@@ -46,6 +46,8 @@ final class Attribut
         public readonly bool $allowDuplicates = true,
         /** Aus den Kindern welches Gerüstknotens ein Verweis wählt — statt aus allen der Verweisklasse ([D-728](../../../../docs/NewConcept/90-decision-log.md)). */
         public readonly ?Anchor $from = null,
+        /** Attribute mit demselben Band werden als eine Gruppe gezeichnet — *«eine gruppe daraus machen min, max, step»* ([D-736](../../../../docs/NewConcept/90-decision-log.md)). */
+        public readonly ?string $band = null,
     ) {
     }
 }

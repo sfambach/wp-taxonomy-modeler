@@ -15,13 +15,14 @@ final class IntType extends SpecialisedType
 {
     // ⚠️ **Die Attribute des Typs** (Anforderung 3.6.2; sein Beispiel: *«`integer_node` hat die
     // Attribute `max` vom Typ int, `min` vom Typ int»*). *Ohne Vorgabe heisst: keine Grenze.*
-    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    // ⚠️ *Ein Band «bounds» — sein Wort am 2026-09-12: «vielleicht sollte wir eine gruppe daraus machen min, max, step» (D-736).*
+    #[\Taxmod\Core\Model\NodeClass\Attribut(band: 'bounds')]
     public ?int $min = null;
 
-    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(band: 'bounds')]
     public ?int $max = null;
 
-    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(band: 'bounds')]
     public int $step = 1;
 
     public function type(): SimpleType

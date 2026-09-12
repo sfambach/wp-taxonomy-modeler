@@ -24,6 +24,29 @@ use Taxmod\Core\Validator\ShapeValidator;
 final class SpecialisedTypeTest extends TestCase
 {
     #[Test]
+    public function ein_datum_kennt_nur_jahr_und_nur_monat(): void
+    {
+        // ⚠️ *«nur jahr, nur monat und jahr» (D-737).*
+        $typ = new \Taxmod\Core\Model\Type\DateTimeType();
+
+        self::assertSame('2026-01-01 00:00:00', $typ->valueFrom('2026')->date);
+        self::assertSame('2026-09-01 00:00:00', $typ->valueFrom('2026-09')->date);
+    }
+
+    #[Test]
+    public function eine_version_hat_so_viele_ebenen_wie_eingestellt(): void
+    {
+        // ⚠️ *«eine = 1 zwei = 1.1» (D-738).*
+        $typ = new \Taxmod\Core\Model\Type\VersionType();
+        $zwei = ['levels' => new \Taxmod\Core\Model\ResolvedSetting('levels', \Taxmod\Core\Model\TypedValue::ofInt(2), 0, true)];
+
+        self::assertSame(1, preg_match((string) $typ->wellFormedShapeWith($zwei), '1.1'));
+        self::assertSame(0, preg_match((string) $typ->wellFormedShapeWith($zwei), '1.1.1'));
+        self::assertSame(1, preg_match((string) $typ->wellFormedShape(), '1.1.1'));
+        self::assertSame(1, preg_match(\Taxmod\Core\Model\Type\VersionType::shapeFor(1), '7'));
+    }
+
+    #[Test]
     public function es_gibt_genau_eine_klasse_je_aufzaehlungsfall(): void
     {
         self::assertCount(count(SimpleType::cases()), SpecialisedTypes::CLASSES);

@@ -34,6 +34,7 @@ final class AttributeDeclaration
         public readonly ?TypedValue $default = null,
         public readonly bool $allowDuplicates = true,
         public readonly ?Anchor $from = null,
+        public readonly ?string $band = null,
     ) {
     }
 

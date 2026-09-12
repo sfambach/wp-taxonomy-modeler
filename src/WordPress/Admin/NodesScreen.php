@@ -2912,6 +2912,49 @@ final class NodesScreen
      * hidden field is not a cleared one.
      */
     /**
+     * Die Werte eines Teils, adressiert über die Kette der Kanten — von aussen nach innen, beliebig tief
+     * ([D-741](../../../docs/NewConcept/90-decision-log.md), {@see DataEntry::putAt()}).
+     *
+     * @param list<int>            $chain     Die Kanten bis hierher, von aussen nach innen.
+     * @param array<string, mixed> $submitted Was die Maske unter der letzten Kante geschickt hat.
+     */
+    private function saveNestedValues(int $recordId, array $chain, array $submitted): void
+    {
+        foreach ($submitted as $rawInner => $rawValue) {
+            $innerId = absint($rawInner);
+            $inner   = $innerId === 0 ? null : $this->editor->relationById($innerId);
+
+            if ($inner === null) {
+                continue;
+            }
+
+            $weg = [...$chain, $innerId];
+
+            if (is_array($rawValue)) {
+                $this->saveNestedValues($recordId, $weg, $rawValue);
+
+                continue;
+            }
+
+            $characters = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+
+            if ($characters === '') {
+                $this->data->clear($recordId, $innerId, $this->localeFromRequest());
+
+                continue;
+            }
+
+            $type = $this->rendering->typesFor([$inner])[$innerId] ?? null;
+
+            if ($type === null) {
+                throw NotYetStorable::thatFieldHasNoTypeYet($inner->name);
+            }
+
+            $this->data->putAt($recordId, $weg, $type->valueFrom($characters), $this->localeFromRequest());
+        }
+    }
+
+    /**
      * Die Zelle für den eigenen Wert eines Satzes — leer, wo der Knoten keinen eigenen Typ hat.
      *
      * ⚠️ *Ein Feld, kein `<code>`: er soll den Wert **ändern** können, nicht nur lesen. Es trägt
@@ -3069,7 +3112,8 @@ final class NodesScreen
         foreach ($submitted as $rawRelation => $rawValue) {
             $relationId = absint($rawRelation);
 
-            if (isset($attributes[$relationId])) {
+            // ⚠️ *Eine Liste ist ein Teil (D-741) und wird unten abgestiegen — hier nur Wörter.*
+            if (isset($attributes[$relationId]) && ! is_array($rawValue)) {
                 $typedIn[$relationId] = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
             }
         }
@@ -3082,6 +3126,15 @@ final class NodesScreen
         foreach ($submitted as $rawRelation => $rawValue) {
             $relationId = absint($rawRelation);
             $relation   = $attributes[$relationId] ?? null;
+
+            // ⚠️ **Ein Teil schickt seine Felder als Liste** ([D-741](../../../docs/NewConcept/90-decision-log.md)) — *sein Befund an
+            // `Organisation`: «die daten für adresse werden nicht gespeichert oder nicht angezeigt». Der Satz zeichnet
+            // `taxmod_value[<Satz>][<aussen>][<innen>]`, und dieser Leser machte aus der Liste das Wort «Array».*
+            if ($relation !== null && is_array($rawValue)) {
+                $this->saveNestedValues($recordId, [$relationId], $rawValue);
+
+                continue;
+            }
 
             if ($relation === null) {
                 // An relation id from a form is input. DataEntry refuses it as well; refusing twice

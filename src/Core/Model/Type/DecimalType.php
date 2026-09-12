@@ -15,13 +15,13 @@ final class DecimalType extends SpecialisedType
 {
     // ⚠️ **Dieselben Namen wie am Integer, im eigenen Typ** (Anforderung 3.3.3, sein Wort:
     // *«klassenname + attributname ist dann wieder eindeutig, beispiel int/double min/max»*).
-    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true)]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true, band: 'bounds')]
     public ?string $min = null;
 
-    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true)]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true, band: 'bounds')]
     public ?string $max = null;
 
-    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true)]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(decimal: true, band: 'bounds')]
     public string $step = '1';
 
     public function type(): SimpleType

@@ -10,6 +10,9 @@ namespace Taxmod\Core\Renderer;
  */
 enum DatePrecision: string
 {
+    /** ⚠️ *Sein Wort am 2026-09-12: «nur jahr, nur monat und jahr, monat jahr tag … zeit» (D-737).* */
+    case Year     = 'year';
+    case Month    = 'month';
     case Date     = 'date';
     case Time     = 'time';
     case DateTime = 'datetime';

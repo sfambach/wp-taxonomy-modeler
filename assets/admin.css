@@ -1467,6 +1467,32 @@ tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-contr
     margin: .15em 0;
 }
 
+/* ⚠️ Ein Band (D-736): min, max, step in einer Gruppe, nebeneinander; das Wort davor. */
+.taxmod-setting-band {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: .2em .6em;
+    padding-left: .4em;
+    border-left: 2px solid #dcdcde;
+}
+
+.taxmod-setting-band-name {
+    font-size: .85em;
+    color: #50575e;
+}
+
+/* ⚠️ Nur lesen: das Feld bleibt, gefüllt und ausgegraut (D-739). */
+fieldset.taxmod-read-only {
+    display: inline;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-inline-size: 0;
+    opacity: .55;
+}
+
 /* ⚠️ Die Kaskade (D-732): je Kandidat ein Haken, in Spalten, damit zwanzig Präfixe nicht zwanzig Zeilen sind. */
 .taxmod-switch-cascade {
     margin: .2em 0 0;

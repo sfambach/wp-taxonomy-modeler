@@ -141,6 +141,7 @@ final class SettingsRenderer extends RendererNode
             // value is yes-or-no, and a key added tomorrow lands in the right half by itself (`CD-9`).*
             $narrow = '';
             $wide   = '';
+            $band   = null;
 
             foreach ($grouped[$group] as $key => $drawn) {
                 $row = $this->row((string) $key, $drawn, $context);
@@ -151,8 +152,17 @@ final class SettingsRenderer extends RendererNode
                     continue;
                 }
 
+                // ⚠️ *Nachbarn mit demselben Band stehen in einer Gruppe — `min`, `max`, `step` nebeneinander (D-736).*
+                if ($drawn->band !== $band) {
+                    $wide .= $band === null ? '' : '</div>';
+                    $wide .= $drawn->band === null ? '' : '<div class="taxmod-setting-band"><code class="taxmod-setting-band-name">' . RenderResult::escape($drawn->band) . '</code>';
+                    $band  = $drawn->band;
+                }
+
                 $wide .= $row;
             }
+
+            $wide .= $band === null ? '' : '</div>';
 
             if ($narrow === '' && $wide === '') {
                 continue;

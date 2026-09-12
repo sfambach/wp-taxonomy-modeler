@@ -633,7 +633,9 @@ final class TypedFieldsTest extends TestCase
                 ], 'v[7]')
             );
 
-            self::assertStringNotContainsString('<input type="text" name', $fixed->markup, $renderer->name());
+            // ⚠️ *Seit D-739 bleibt das Feld, ausgegraut und gefüllt: «feld ausgegraut und falls wert da ist gefüllt».*
+            self::assertStringStartsWith('<fieldset disabled class="taxmod-read-only">', $fixed->markup, $renderer->name());
+            self::assertStringContainsString('x', $fixed->markup, $renderer->name());
         }
     }
 

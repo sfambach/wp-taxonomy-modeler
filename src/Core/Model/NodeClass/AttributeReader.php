@@ -74,6 +74,7 @@ final class AttributeReader
             $list ? null : self::defaultOf($vorgabe, $type),
             $angabe->allowDuplicates,
             $angabe->from,
+            $angabe->band,
         );
     }
 

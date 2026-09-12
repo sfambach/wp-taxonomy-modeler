@@ -308,6 +308,13 @@ ist offen ([Modell 2.4](modell-anforderungen.md): «nicht in Einstellungszeilen�
 TASK-093 bleibt offen. **Zu entscheiden:** wo die Stelle eines geerbten Felds am Kind wohnt — eine Spalte an einer
 eigenen Tabelle `Knoten × Kante`, oder etwas anderes. Nichts davon ist gebaut.
 
+## INF-043 · Wie heisst der Typ mit gestuften Nummern?
+
+**Stand 2026-09-12.** Der Typ «Version» hat seit [D-738](NewConcept/90-decision-log.md) die Einstellung `levels`
+(1 → «1», 2 → «1.1»). Sein Wort: *«ich weiss aber nicht ob man das version nennen sollte kann auch für kapitel oder
+andere beschreibungen verwendet werden».* **Zu entscheiden:** der Name des Typs — «Version», «Nummerierung»,
+«Gliederung» oder ein anderes Wort. Bis dahin bleibt «Version».
+
 ---
 
 ## Erledigte Eingänge

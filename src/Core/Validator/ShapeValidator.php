@@ -66,7 +66,7 @@ final class ShapeValidator implements Validator
             return [];
         }
 
-        $muster = $this->shapeOf($type);
+        $muster = $this->shapeOf($type, $settings);
 
         if ($muster === null) {
             return [];
@@ -95,8 +95,9 @@ final class ShapeValidator implements Validator
      * und nicht über diesen Validator — hier stand die Kenntnis ein zweites Mal, und der Wächter
      * hätte sie nicht auseinanderhalten können.*
      */
-    private function shapeOf(SimpleType $type): ?string
+    /** @param array<string, \Taxmod\Core\Model\ResolvedSetting> $settings */
+    private function shapeOf(SimpleType $type, array $settings): ?string
     {
-        return $type->specialised()->wellFormedShape();
+        return $type->specialised()->wellFormedShapeWith($settings);
     }
 }

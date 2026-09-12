@@ -168,7 +168,8 @@ final class FieldRowRenderer extends RendererNode
         }
 
         $haken   = $context->surroundings->sections[self::OVERRIDE] ?? null;
-        $spalten = 6 + (isset($context->surroundings->sections[self::VALUE]) ? 1 : 0) + ($haken === null ? 0 : 1);
+        // ⚠️ *Acht seit D-735 (nur lesen, eindeutig) — sein Befund: die Klappleiste rutschte nach links.*
+        $spalten = 8 + (isset($context->surroundings->sections[self::VALUE]) ? 1 : 0) + ($haken === null ? 0 : 1);
 
         // ⚠️ *Der Haken «hier überschreibe ich» zuerst, als eigene Spalte — sein Wort (siehe {@see self::OVERRIDE}).*
         $cells = ($haken === null ? '' : $this->cell($haken->body, 'taxmod-field-override', false, true))
@@ -316,8 +317,9 @@ final class FieldRowRenderer extends RendererNode
                 continue;
             }
 
+            // ⚠️ *«settings dazu schreiben» — das Zeichen und das Wort, nicht das Zeichen allein (sein Wort, 2026-09-12).*
             return '<tr class="taxmod-field-fold"><td colspan="' . $spalten . '">'
-                . ControlMarkup::button($control)
+                . ControlMarkup::button(new Control($control->name, $control->value, trim($control->glyph . ' ' . $control->label), $control->title, $control->available, false, '', $control->form))
                 . '</td></tr>';
         }
 
