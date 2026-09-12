@@ -508,12 +508,72 @@ final class WpdbRelationRepository implements RelationRepository
         ));
 
         // 3 · Und erst jetzt die lebende Zeile.
+        // ⚠️ **Die Einstellungen an der Kante gehen mit in den Schatten** — sein Fund am 2026-09-12 beim Schieben des Weg-Feldes
+        // «Path»: *«Cannot delete or update a parent row: a foreign key constraint fails (settings_value … relation_id)»*. Eine Kante
+        // mit Einstellungen an ihrer Stelle liess sich nie parken; erst ein Schalter am Weg-Feld hat es gezeigt. Zurück kommen sie
+        // mit der Kante ({@see self::unparkSettings()}).
+        Shadow::keep('settings_value', 'relation_id = %d', [$relationId], true);
+
+        Query::run('Einstellungen der geparkten Kante entfernen', $wpdb->prepare(
+            'DELETE FROM ' . Schema::table('settings_value') . ' WHERE relation_id = %d',
+            $relationId
+        ));
+
         Query::run('geparkte Kante lebend entfernen', $wpdb->prepare(
             'DELETE FROM ' . Schema::table('relations') . ' WHERE id = %d',
             $relationId
         ));
     }
 
+    /**
+     * Die Einstellungen einer geparkten Kante zurückholen — die Zeilen, die beim Parken in den Schatten gingen.
+     *
+     * ⚠️ *Der Schatten der Einstellungen kennt keine Parkgruppe; was zählt, ist der Augenblick: nur Zeilen, die nicht früher
+     * als die Kante selbst archiviert wurden. Eine Zeile, die jemand vor dem Parken gelöscht hat, ist älter und bleibt fort.*
+     */
+    private function unparkSettings(int $relationId, string $archivedAt): void
+    {
+        global $wpdb;
+
+        $schatten = Schema::table('settings_value_history');
+        $lebend   = Schema::table('settings_value');
+
+        if (Schema::tableMissing($schatten)) {
+            return;
+        }
+
+        $zeilen = Query::rows('Einstellungen der geparkten Kante suchen', $wpdb->prepare(
+            "SELECT h.* FROM {$schatten} h
+             INNER JOIN (
+                 SELECT id, MAX(version) AS version FROM {$schatten} WHERE relation_id = %d GROUP BY id
+             ) neuste ON neuste.id = h.id AND neuste.version = h.version
+             WHERE h.relation_id = %d AND h.deleted = 1 AND h.archived_at >= %s
+               AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)",
+            $relationId,
+            $relationId,
+            $archivedAt
+        ));
+
+        foreach ($zeilen as $zeile) {
+            $spalten = [];
+
+            foreach ($zeile as $name => $wert) {
+                if (in_array($name, Schema::SHADOW_ONLY, true)) {
+                    continue;
+                }
+
+                $spalten[$name] = $wert;
+            }
+
+            $spalten['version'] = (int) $zeile['version'] + 1;
+
+            $wpdb->insert($lebend, $spalten, array_fill(0, count($spalten), '%s'));
+
+            if ($wpdb->last_error !== '') {
+                throw new \RuntimeException('Eine Einstellung der geparkten Kante liess sich nicht zurückholen: ' . $wpdb->last_error);
+            }
+        }
+    }
     /**
      * Eine geparkte Kante zurückholen — **mit ihren Wertzeilen**, in umgekehrter Reihenfolge.
      *
@@ -589,6 +649,7 @@ final class WpdbRelationRepository implements RelationRepository
         // [D-676](../../../docs/NewConcept/90-decision-log.md)): *sie ist die Klammer, und ohne sie
         // käme jede je gelöschte Wertzeile mit zurück.*
         $this->unparkValues($relationId, (int) ($zeile['parked_by_group_id'] ?? 0));
+        $this->unparkSettings($relationId, (string) ($zeile['archived_at'] ?? ''));
 
         return $this->byId($relationId);
     }

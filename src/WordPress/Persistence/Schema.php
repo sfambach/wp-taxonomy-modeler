@@ -2325,7 +2325,7 @@ final class Schema
         return count($ids);
     }
 
-    private static function tableMissing(string $table): bool
+    public static function tableMissing(string $table): bool
     {
         global $wpdb;
 

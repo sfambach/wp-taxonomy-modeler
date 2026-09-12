@@ -75,6 +75,8 @@ final class ModelEditor
         // bauen, verschieben meist nur Knoten und hätten sonst eine Abhängigkeit zu erklären, die sie
         // nie benutzen.*
         private readonly ?RecordRepository $records = null,
+        /** ⚠️ *Nur `pushFieldToChildren()` liest es: die Einstellungen der alten Stelle gehen auf die neuen Kanten über (D-750).* */
+        private readonly ?\Taxmod\Core\Repository\SettingsRepository $settings = null,
     ) {
     }
 
@@ -1555,6 +1557,7 @@ final class ModelEditor
                 }
 
                 $this->carryValuesDown($kind, $relation->id, $neu->id);
+                $this->carrySettingsDown($relation, $neu);
                 $neue[] = $neu;
             }
 
@@ -1565,6 +1568,29 @@ final class ModelEditor
             return $neue;
         } finally {
             $this->changelog->endAct();
+        }
+    }
+
+    /**
+     * Die Einstellungen an der alten Stelle auf die neue Kante kopieren — Schalter wie `with_node` am Weg-Feld (D-755) gehören zur
+     * Stelle und gingen sonst mit dem Parken der alten Kante in den Schatten.
+     */
+    private function carrySettingsDown(Relation $alt, Relation $neu): void
+    {
+        if ($this->settings === null) {
+            return;
+        }
+
+        foreach ($this->settings->valuesOfNodes([$alt->toNodeId])[$alt->toNodeId] ?? [] as $zeile) {
+            if ($zeile->relationId !== $alt->id) {
+                continue;
+            }
+
+            $this->settings->addValue(
+                $zeile->valueObjectId !== null
+                    ? \Taxmod\Core\Model\Setting\SettingsValue::objectAtNode($zeile->nodeId, $zeile->klasse, $zeile->attribut, $zeile->valueObjectId, $neu->id, $zeile->position, $zeile->aktiv)
+                    : \Taxmod\Core\Model\Setting\SettingsValue::atNode($zeile->nodeId, $zeile->klasse, $zeile->attribut, $zeile->value, $neu->id, $zeile->position, $zeile->aktiv)
+            );
         }
     }
 

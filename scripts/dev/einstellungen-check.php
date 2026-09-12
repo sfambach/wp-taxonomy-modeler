@@ -124,7 +124,7 @@ $nodes     = new WpdbNodeRepository();
 $relations = new WpdbRelationRepository();
 $rows      = new WpdbRecordRepository();
 $framework = new SeededFrameworkNodes($nodes, $relations, $log);
-$editor    = new ModelEditor($nodes, $relations, $framework, $log, new WpdbLabelRepository(), $rows);
+$editor    = new ModelEditor($nodes, $relations, $framework, $log, new WpdbLabelRepository(), $rows, new WpdbSettingsRepository());
 $data      = new DataEntry($rows, $relations, $nodes, $framework, new SystemClock(), $log);
 $types     = new SeededTypeNodes($nodes, $framework);
 $registry  = ShippedRenderers::registry();
@@ -1454,14 +1454,24 @@ check('am erklärenden Knoten selbst ist der Weg leer', ! str_contains($amVater,
 
 // ⚠️ **Ein Feld in den Vater oder in gewählte Kinder schieben** ([D-750](../../docs/NewConcept/90-decision-log.md)) — Zeile 117.
 $schieb = $editor->addField($modellKnoten->id, $seeded['text']->id, '__es schieb');
+// ⚠️ *Eine Einstellung an der Stelle — sein Fund: eine Kante mit Einstellungen liess sich nie parken (Fremdschlüssel), und das
+// Schieben in die Kinder verlor sie.*
+$einsteller->put($nodes->byId($seeded['text']->id), 'display_size', '33', $schieb);
 $zeile  = seite($modellKnoten->id);
 check('die eigene Feldzeile trägt «To parent» und «To children», Letzteres mit Dialog (D-750)', str_contains($zeile, 'value="field_to_parent"') && str_contains($zeile, 'value="field_to_children"') && str_contains($zeile, 'id="taxmod-push-' . $schieb->id . '"') && str_contains($zeile, 'name="children[]" value="' . $kind->id . '"'));
 abschicken(['do' => 'field_to_children', 'id' => (string) $modellKnoten->id, 'relation' => (string) $schieb->id, 'children' => [(string) $kind->id], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $modellKnoten->id)]);
 $beimKind = array_values(array_filter($relations->fieldRelationsOf([$kind->id]), static fn (Relation $r): bool => $r->name === '__es schieb'));
-check('in die Kinder geschoben: das Kind hat eine eigene Kante, der Vater die alte geparkt', gelungen() && count($beimKind) === 1 && $beimKind[0]->id !== $schieb->id && count(array_filter($relations->fieldRelationsOf([$modellKnoten->id]), static fn (Relation $r): bool => $r->id === $schieb->id)) === 0 && count(array_filter($relations->parkedFieldRelationsOf([$modellKnoten->id]), static fn (Relation $r): bool => $r->id === $schieb->id)) === 1, letzteMeldung());
+check('in die Kinder geschoben: das Kind hat eine eigene Kante mit der Einstellung der Stelle, der Vater die alte geparkt', gelungen() && count($beimKind) === 1 && (int) $wpdb->get_var("SELECT wert_int FROM {$p}settings_value WHERE relation_id = {$beimKind[0]->id} AND attribut = 'display_size'") === 33 && count($beimKind) === 1 && $beimKind[0]->id !== $schieb->id && count(array_filter($relations->fieldRelationsOf([$modellKnoten->id]), static fn (Relation $r): bool => $r->id === $schieb->id)) === 0 && count(array_filter($relations->parkedFieldRelationsOf([$modellKnoten->id]), static fn (Relation $r): bool => $r->id === $schieb->id)) === 1, letzteMeldung());
 abschicken(['do' => 'field_to_parent', 'id' => (string) $kind->id, 'relation' => (string) $beimKind[0]->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id)]);
 $zurueck = $relations->byId($beimKind[0]->id);
 check('in den Vater geschoben: dieselbe Kante, jetzt am Vater, eine Version weiter', gelungen() && $zurueck !== null && $zurueck->fromNodeId === $modellKnoten->id && $zurueck->version === $beimKind[0]->version + 1, letzteMeldung());
+// ⚠️ *Und eine geparkte Kante kommt mit ihrer Einstellung zurück — der Schatten der Einstellungen wird mit der Kante zurückgeholt.*
+$kurz = $editor->addField($modellKnoten->id, $seeded['text']->id, '__es kurz');
+$einsteller->put($nodes->byId($seeded['text']->id), 'display_size', '34', $kurz);
+$editor->removeField($modellKnoten->id, $kurz->id);
+check('geparkt: die Einstellung der Stelle ist aus der lebenden Tabelle fort', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings_value WHERE relation_id = {$kurz->id}") === 0);
+$editor->restoreField($modellKnoten->id, $kurz->id);
+check('zurückgeholt: die Einstellung der Stelle ist wieder da', (int) $wpdb->get_var("SELECT wert_int FROM {$p}settings_value WHERE relation_id = {$kurz->id} AND attribut = 'display_size'") === 34);
 
 check('der Wähler im Fluss hält seinen Baum in der eigenen Breite — kein Überhang in die Nachbarzelle (D-745)', (bool) preg_match('/\.taxmod-chooser-open \.taxmod-chooser-tree \{[^}]*min-width: 0;/', $css) && (bool) preg_match('/\.taxmod-chooser-open \{[^}]*display: block;/', $css));
 if ($style !== null) {

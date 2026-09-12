@@ -363,7 +363,8 @@ final class Plugin
             // ⚠️ **Damit `clearTrash()` die Daten mitnimmt** — [C102](../../docs/NewConcept/10-domain-core.md):
             // *ein Record ohne seinen Knoten ist undenkbar.* Ohne dieses Argument überlebten die Records
             // ihren Knoten, während der Docblock der Methode behauptete, sie gingen mit.
-            new WpdbRecordRepository()
+            new WpdbRecordRepository(),
+            new WpdbSettingsRepository()
         );
     }
 
