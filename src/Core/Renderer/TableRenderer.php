@@ -297,22 +297,41 @@ final class TableRenderer extends RendererNode
      */
     private function columns(array $datensaetze): array
     {
-        $gesehen = [];
+        // ⚠️ **Kein Sortieren nach `sort_order`** — sein Befund am 2026-09-12: *«Reihenfolge stimmt nicht»*. *Die
+        // Stellung beim Besitzer ist nicht die Anordnung, die am Kind gilt (D-698, D-744); die hat der Aufrufer
+        // hergestellt, und jeder Satz bringt seine Felder in ihr mit. **Die Spalten sind die Vereinigung dieser
+        // Folgen**: ein Feld, das nur ein späterer Satz trägt, rückt hinter das letzte, das in seinem Satz davor
+        // stand — so bleibt «Name vor Menge», auch wenn der erste Satz kein «Name» hat.*
+        $reihe    = [];
+        $relation = [];
 
         foreach ($datensaetze as $felder) {
+            $davor = null;
+
             foreach ($felder as $feld) {
-                if ($feld instanceof RenderedField && ! $feld->isHidden()) {
-                    $gesehen[$feld->relation->id] = $feld->relation;
+                if (! $feld instanceof RenderedField || $feld->isHidden()) {
+                    continue;
                 }
+
+                $id = $feld->relation->id;
+
+                if (! isset($relation[$id])) {
+                    $relation[$id] = $feld->relation;
+                    $stelle        = $davor === null ? 0 : array_search($davor, $reihe, true) + 1;
+                    array_splice($reihe, $stelle, 0, [$id]);
+                }
+
+                $davor = $id;
             }
         }
 
-        uasort(
-            $gesehen,
-            static fn ($a, $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]
-        );
+        $spalten = [];
 
-        return array_map(static fn ($relation): string => $relation->name, $gesehen);
+        foreach ($reihe as $id) {
+            $spalten[$id] = $relation[$id]->name;
+        }
+
+        return $spalten;
     }
 
 }

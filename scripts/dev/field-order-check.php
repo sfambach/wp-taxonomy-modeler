@@ -203,6 +203,23 @@ $positionen = $ordnung->positionsAt($b->id, $editor->fieldsOf($b->id));
 check('und die Positionen lauten g 0, f1 1, f2 2', ($positionen[$g->id] ?? null) === 0 && ($positionen[$f1->id] ?? null) === 1 && ($positionen[$f2->id] ?? null) === 2, json_encode($positionen));
 check('die Seite von B zeichnet die Zeilen so', $aufDerSeite($b->id) === ['g', 'f1', 'f2'], implode(',', $aufDerSeite($b->id)));
 
+// ⚠️ **Die Vorschau zeichnet die Felder in derselben Reihenfolge wie die Feldliste** ([D-744](../../docs/NewConcept/90-decision-log.md)) —
+// sein Befund am 2026-09-12: «Reihenfolge stimmt nicht», Liste Name–Vorname, Vorschau Vorname–Name. *Das Formular sortierte
+// nach `sort_order` der Kante und warf die Anordnung des Kindes weg.*
+$inDerVorschau = static function (int $nodeId) use ($editor): array {
+    $markup = seite($nodeId);
+    $von    = strpos($markup, 'class="taxmod-preview"');
+    $stellen = [];
+    foreach ($editor->fieldsOf($nodeId) as $kante) {
+        if ($kante->isSetting()) { continue; }
+        $wo = $von === false ? false : strpos($markup, '<span class="taxmod-form-label">' . $kante->name . '</span>', $von);
+        if ($wo !== false) { $stellen[$kante->name] = $wo; }
+    }
+    asort($stellen);
+    return array_keys($stellen);
+};
+check('und die Vorschau von B zeichnet sie in derselben Reihenfolge (D-744)', $inDerVorschau($b->id) === ['g', 'f1', 'f2'], implode(',', $inDerVorschau($b->id)));
+
 echo "\n== 4. der Besitzer bleibt, wie er ist ==\n";
 
 $f1Jetzt = $relations->byId($f1->id);

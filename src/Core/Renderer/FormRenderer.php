@@ -110,13 +110,12 @@ final class FormRenderer extends RendererNode
 
         $ordered = [];
 
+        // ⚠️ **Innerhalb der Gruppe bleibt die Reihenfolge, in der die Felder ankommen** — sein Befund am
+        // 2026-09-12: *«Reihenfolge stimmt nicht»*, die Feldliste zeigte Name vor Vorname, die Vorschau
+        // Vorname vor Name. *Hier stand ein Sortieren nach `sort_order` der Kante, und das ist die
+        // Stellung beim **Besitzer** — die Anordnung, die am Kind gilt (D-698), kennt nur der Aufrufer,
+        // und er hat sie schon hergestellt. Ein Renderer, der neu sortiert, wirft sie weg.*
         foreach ($groups as $group) {
-            usort(
-                $group,
-                static fn (RenderedField $a, RenderedField $b): int
-                    => [$a->relation->sortOrder, $a->relation->id] <=> [$b->relation->sortOrder, $b->relation->id]
-            );
-
             $ordered = [...$ordered, ...$group];
         }
 

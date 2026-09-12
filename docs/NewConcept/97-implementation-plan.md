@@ -828,6 +828,7 @@ list scannable.**
 | **124** | **Felder, die auf Datenfelder zeigen, bekommen «select only»** | Seine Worte: *«also manufacturer → address muss es eine Auswahl geben, select_only (darf nur selektiert werden), Eingabe von Daten sucht im Datensatz. Evtl. kann man das an Aggregation hängen.»* Der Ort («an Aggregation») ist sein «evtl.» — vor dem Bau eine `D-`. | **offen** |
 | **125** | **`feld_type` als Weg: am Vater gewählt, an den Kindern als Hierarchie gezeigt** | Seine Worte: *«man wählt es am Vater als Feld (sollte auch einen Knoten in den simplen Typen haben) und in den Kindern wird von Vater bis Kind die Hierarchie angezeigt, Vater → Kat 1 → Kat 1 → (Kind wird aber nicht mehr angezeigt, oder per Schalter auch Kind anzeigen).»* | **offen** |
 | **126** | **Kinder am Vater zugeklappt und erst beim Aufklappen geladen** | Seine Worte: *«Für später: Rendering der Kindknoten am Vater, unterhalb, zugeklappt; wird nur geladen, wenn es gebraucht wird.»* Steht hinten, weil er «für später» sagt. | **offen** |
+| **127** | **~~Die Vorschau ordnet die Felder anders als die Feldliste~~ — erledigt 2026-09-12, [D-744](90-decision-log.md)** | Sein Befund mit Bild: *«Reihenfolge stimmt nicht»* — Liste Name vor Vorname, Vorschau Vorname vor Name. ⚠️ **Gemessen: Formular und Tabelle sortierten nach `sort_order` der Kante und warfen die Anordnung des Kindes ([D-698](90-decision-log.md)) weg. Jetzt zeichnen sie, wie die Felder ankommen; Wächter `field-order` prüft die Vorschau.** | **erledigt** |
 
 ### Sprints — was ohne Rückfrage zusammen gebaut wird
 
