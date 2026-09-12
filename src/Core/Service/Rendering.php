@@ -2785,17 +2785,20 @@ final class Rendering implements Presets
     {
         $values = [];
 
-        foreach ($relations as $relation) {
-            // ⚠️ **Real data wins, and the rung between it and the defaults is
-            // {@see previewRecordAmong()}** — the caller has already chosen *which* record the
-            // values came from, so what is left here is the decided *«fällt auf die Vorgaben
-            // zurück, wo keine da sind»* of [D-028](90-decision-log.md).
-            if (isset($held[$relation->id]) && ! $held[$relation->id]->isNothing()) {
-                $values[$relation->id] = $held[$relation->id];
-
-                continue;
+        // ⚠️ **Über die gehaltenen Werte, nicht über die Kanten des Knotens** — sein Befund am 2026-09-12:
+        // *«Datensatz wird jetzt gespeichert, aber nicht in Preview angezeigt».* *Die Adresse eines Satzes
+        // liegt an den **inneren** Kanten (D-742), und diese Schleife lief nur über die äusseren — alles
+        // darunter fiel heraus, die Vorschau zeichnete die Adressfelder leer, der Satzblock daneben voll.
+        // Der Satz ist gewählt ({@see previewRecordAmong()}), also gilt alles, was er trägt.*
+        //
+        // ⚠️ **Real data wins, and the rung between it and the defaults is
+        // {@see previewRecordAmong()}** — the caller has already chosen *which* record the
+        // values came from, so what is left here is the decided *«fällt auf die Vorgaben
+        // zurück, wo keine da sind»* of [D-028](90-decision-log.md).
+        foreach ($held as $relationId => $value) {
+            if (! $value->isNothing()) {
+                $values[$relationId] = $value;
             }
-
         }
 
         return $values;
