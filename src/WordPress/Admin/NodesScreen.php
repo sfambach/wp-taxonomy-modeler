@@ -695,6 +695,29 @@ final class NodesScreen
      * ⚠️ *Ein Dialog je «+», also einer je Baumzeile und einer im Kopf — jeder mit eigener Schalter-Id, sonst öffnete
      * ein Klick alle.*
      */
+    /**
+     * Der Dialog vor «in die Kinder schieben»: die Kinder als Haken (D-750).
+     *
+     * @param list<Node> $kinder
+     */
+    private function pushToChildrenDialog(Relation $relation, array $kinder): Dialog
+    {
+        $body = '';
+
+        foreach ($kinder as $kind) {
+            $body .= '<label class="taxmod-dialog-field"><input type="checkbox" name="children[]" value="' . (int) $kind->id . '"><span>' . esc_html($kind->name) . '</span></label>';
+        }
+
+        return new Dialog(
+            'taxmod-push-' . $relation->id,
+            /* translators: %s: the name of the field. */
+            sprintf(__('Move «%s» into which children?', 'taxmod'), $relation->name),
+            $body,
+            __('Move', 'taxmod'),
+            __('Cancel', 'taxmod')
+        );
+    }
+
     private function newChildDialog(Node $parent, string $id): Dialog
     {
         return new Dialog(
@@ -2035,6 +2058,7 @@ final class NodesScreen
 
         foreach ($relations as $relation) {
             $own = $relation->fromNodeId === $selected->id;
+            $kinderDesKnotens ??= $this->editor->childrenOf($selected->id);
 
             $actions[$relation->id] = [
                 // ⚠️ The two words the core cannot make ([OQ-087](../../../docs/NewConcept/91-open-questions.md)):
@@ -2167,6 +2191,26 @@ final class NodesScreen
                 // [D-155](../../../docs/NewConcept/90-decision-log.md)'s *moved down* by another
                 // route, which is a different act and not this button. **Greyed rather than absent**
                 // (D-370), so the row keeps its shape.
+                // ⚠️ **Ein Feld in den Vater oder in gewählte Kinder schieben** ([D-750](../../../docs/NewConcept/90-decision-log.md)) —
+                // *seine Form: «beim Feld an der Deklaration: schiebe es in den Vater; am Vater: schiebe es in die Kinder, und dann
+                // Kinder auswählen, die es bekommen sollen».* Der zweite Knopf fragt erst, wie das «+» im Baum (D-730).
+                new Control(
+                    'do',
+                    'field_to_parent',
+                    __('To parent', 'taxmod'),
+                    __('Move this field up to the parent — it keeps its values, and every sibling inherits it from now on', 'taxmod'),
+                    $own && $selected->parentNodeId !== null && $selected->parentNodeId !== $this->framework->root()->id,
+                    icon: 'arrow-up-alt'
+                ),
+                new Control(
+                    'do',
+                    'field_to_children',
+                    __('To children', 'taxmod'),
+                    __('Move this field down into chosen children — each gets its own copy, and this one is parked', 'taxmod'),
+                    $own && $kinderDesKnotens !== [],
+                    icon: 'arrow-down-alt',
+                    opens: $this->pushToChildrenDialog($relation, $kinderDesKnotens)
+                ),
                 new Control(
                     'do',
                     'remove_field',
@@ -4682,6 +4726,7 @@ final class NodesScreen
             isset($_POST['record_type']) ? sanitize_key(wp_unslash((string) $_POST['record_type'])) : ''
         );
         $relation         = isset($_POST['relation']) ? absint($_POST['relation']) : 0;
+        $children         = isset($_POST['children']) && is_array($_POST['children']) ? array_map(absint(...), $_POST['children']) : [];
         $settingKey   = isset($_POST['setting_key']) ? sanitize_text_field(wp_unslash($_POST['setting_key'])) : '';
         // Each setting is edited where it sits, under `taxmod_setting[<key>]`.
         $settingValue = isset($_POST[self::SETTING_FIELD][$settingKey])
@@ -4771,6 +4816,10 @@ final class NodesScreen
                 // meldet ein gleichzeitiger Umbau sich als Konflikt statt still zu gewinnen.
                 'retarget_field' => $this->editor->retargetField($id, $relation, $this->retargetTo($relation)),
                 'remove_field'  => $this->editor->removeField($id, $relation),
+                'field_to_parent'   => $this->editor->moveFieldToParent($id, $relation),
+                'field_to_children' => $children === []
+                    ? __('No child chosen — the field stays where it is.', 'taxmod')
+                    : $this->editor->pushFieldToChildren($id, $relation, $children),
                 'restore_field' => $this->editor->restoreField($id, $relation),
                 // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
                 // because an inherited attribute belongs to the ancestor and renaming it from a

@@ -881,4 +881,79 @@ final class ModelEditorTest extends TestCase
 
         self::assertSame(\Taxmod\Core\Model\NodeClass\Choice::class, $this->editor->duplicate($auswahl->id)->klasse);
     }
+
+    /** ⚠️ *Seine Form (D-750): «beim Feld an der Deklaration: schiebe es in den Vater» — die Kante behält ihre Id.* */
+    #[Test]
+    public function a_field_moves_to_the_parent_and_keeps_its_id(): void
+    {
+        $model  = $this->withModelBranch();
+        $eltern = $this->editor->createNode('Eltern', $model->id);
+        $kind   = $this->editor->createNode('Kind', $eltern->id);
+        $ziel   = $this->editor->createNode('Ziel', $model->id);
+        $feld   = $this->editor->addField($kind->id, $ziel->id, 'f');
+
+        $bewegt = $this->editor->moveFieldToParent($kind->id, $feld->id);
+
+        self::assertSame($feld->id, $bewegt->id);
+        self::assertSame($eltern->id, $bewegt->fromNodeId);
+        self::assertSame($feld->version + 1, $bewegt->version);
+        self::assertContains('field moved to parent', $this->changes->verbsFor($feld->id));
+        self::assertSame([$feld->id], array_map(static fn (Relation $r): int => $r->id, $this->relations->fieldRelationsOf([$eltern->id])));
+        self::assertSame([], $this->relations->fieldRelationsOf([$kind->id]));
+    }
+
+    #[Test]
+    public function a_field_directly_under_the_model_root_has_no_parent_to_take_it(): void
+    {
+        $model = $this->withModelBranch();
+        $ding  = $this->editor->createNode('Ding', $this->root->id);
+        $ziel  = $this->editor->createNode('Ziel', $model->id);
+        $feld  = $this->editor->addField($ding->id, $ziel->id, 'f');
+
+        $this->expectException(ImpossibleMove::class);
+
+        $this->editor->moveFieldToParent($ding->id, $feld->id);
+    }
+
+    /** ⚠️ *Seine Form (D-750): «am Vater: schiebe es in die Kinder, und dann Kinder auswählen, die es bekommen sollen».* */
+    #[Test]
+    public function a_field_pushed_into_chosen_children_is_copied_there_and_parked_here(): void
+    {
+        $model  = $this->withModelBranch();
+        $eltern = $this->editor->createNode('Eltern', $model->id);
+        $a      = $this->editor->createNode('A', $eltern->id);
+        $b      = $this->editor->createNode('B', $eltern->id);
+        $ziel   = $this->editor->createNode('Ziel', $model->id);
+        $feld   = $this->editor->addField($eltern->id, $ziel->id, 'f');
+
+        $neue = $this->editor->pushFieldToChildren($eltern->id, $feld->id, [$a->id]);
+
+        self::assertCount(1, $neue);
+        self::assertSame($a->id, $neue[0]->fromNodeId);
+        self::assertSame($ziel->id, $neue[0]->toNodeId);
+        self::assertSame('f', $neue[0]->name);
+        self::assertNotSame($feld->id, $neue[0]->id);
+        self::assertSame([], $this->relations->fieldRelationsOf([$eltern->id]), 'am Vater geparkt');
+        self::assertCount(1, $this->relations->parkedFieldRelationsOf([$eltern->id]));
+        self::assertSame([], $this->relations->fieldRelationsOf([$b->id]), 'B war nicht gewählt');
+    }
+
+    #[Test]
+    public function pushing_into_a_node_that_is_not_a_child_is_refused_and_nothing_moves(): void
+    {
+        $model  = $this->withModelBranch();
+        $eltern = $this->editor->createNode('Eltern', $model->id);
+        $fremd  = $this->editor->createNode('Fremd', $model->id);
+        $ziel   = $this->editor->createNode('Ziel', $model->id);
+        $feld   = $this->editor->addField($eltern->id, $ziel->id, 'f');
+
+        try {
+            $this->editor->pushFieldToChildren($eltern->id, $feld->id, [$fremd->id]);
+            self::fail('kein Kind, keine Wanderung');
+        } catch (ImpossibleMove) {
+        }
+
+        self::assertCount(1, $this->relations->fieldRelationsOf([$eltern->id]));
+        self::assertSame([], $this->relations->fieldRelationsOf([$fremd->id]));
+    }
 }

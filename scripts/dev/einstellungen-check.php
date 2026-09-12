@@ -1355,6 +1355,17 @@ foreach ($editor->fieldsOf($modellKnoten->id) as $kante) {
 }
 $angebot = array_map(static fn (\Taxmod\Core\Renderer\Renderer $r): string => $r->name(), $zeichner()->choicesFor($adresseKante));
 check('ein Feld auf eine Kategorie bekommt Formular, Tabelle und Compact angeboten (D-749)', in_array('table', $angebot, true) && in_array('form', $angebot, true) && in_array('compact', $angebot, true), implode(',', $angebot));
+// ⚠️ **Ein Feld in den Vater oder in gewählte Kinder schieben** ([D-750](../../docs/NewConcept/90-decision-log.md)) — Zeile 117.
+$schieb = $editor->addField($modellKnoten->id, $seeded['text']->id, '__es schieb');
+$zeile  = seite($modellKnoten->id);
+check('die eigene Feldzeile trägt «To parent» und «To children», Letzteres mit Dialog (D-750)', str_contains($zeile, 'value="field_to_parent"') && str_contains($zeile, 'value="field_to_children"') && str_contains($zeile, 'id="taxmod-push-' . $schieb->id . '"') && str_contains($zeile, 'name="children[]" value="' . $kind->id . '"'));
+abschicken(['do' => 'field_to_children', 'id' => (string) $modellKnoten->id, 'relation' => (string) $schieb->id, 'children' => [(string) $kind->id], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $modellKnoten->id)]);
+$beimKind = array_values(array_filter($relations->fieldRelationsOf([$kind->id]), static fn (Relation $r): bool => $r->name === '__es schieb'));
+check('in die Kinder geschoben: das Kind hat eine eigene Kante, der Vater die alte geparkt', gelungen() && count($beimKind) === 1 && $beimKind[0]->id !== $schieb->id && count(array_filter($relations->fieldRelationsOf([$modellKnoten->id]), static fn (Relation $r): bool => $r->id === $schieb->id)) === 0 && count(array_filter($relations->parkedFieldRelationsOf([$modellKnoten->id]), static fn (Relation $r): bool => $r->id === $schieb->id)) === 1, letzteMeldung());
+abschicken(['do' => 'field_to_parent', 'id' => (string) $kind->id, 'relation' => (string) $beimKind[0]->id, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $kind->id)]);
+$zurueck = $relations->byId($beimKind[0]->id);
+check('in den Vater geschoben: dieselbe Kante, jetzt am Vater, eine Version weiter', gelungen() && $zurueck !== null && $zurueck->fromNodeId === $modellKnoten->id && $zurueck->version === $beimKind[0]->version + 1, letzteMeldung());
+
 check('der Wähler im Fluss hält seinen Baum in der eigenen Breite — kein Überhang in die Nachbarzelle (D-745)', (bool) preg_match('/\.taxmod-chooser-open \.taxmod-chooser-tree \{[^}]*min-width: 0;/', $css) && (bool) preg_match('/\.taxmod-chooser-open \{[^}]*display: block;/', $css));
 if ($style !== null) {
     $headers = @get_headers((string) $style->src, true, stream_context_create(['http' => ['method' => 'HEAD', 'timeout' => 5, 'ignore_errors' => true]]));

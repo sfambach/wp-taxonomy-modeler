@@ -446,6 +446,19 @@ abstract class Relation extends Identity implements Renderable
         return $this->copy(version: $this->version + 1, toNodeId: $targetId, kind: $kind);
     }
 
+    /**
+     * Dieselbe Kante an einem anderen Besitzer, eine Version weiter — sie behält ihre Id, also auch
+     * jeden Wert, der an ihr steht (D-750: «schiebe es in den Vater»).
+     */
+    public function withOwner(int $ownerId, int $sortOrder): self
+    {
+        if ($ownerId === $this->fromNodeId) {
+            return $this;
+        }
+
+        return $this->copy(version: $this->version + 1, fromNodeId: $ownerId, sortOrder: $sortOrder);
+    }
+
     public function withHide(bool $hide): self
     {
         if ($hide === $this->hide) {

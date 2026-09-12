@@ -16,6 +16,7 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
+use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Model\Label;
@@ -1476,6 +1477,129 @@ final class ModelEditor
         $this->relations->save($marked, $relation->version);
 
         return $marked;
+    }
+
+    /**
+     * Ein eigenes Feld in den Vater schieben — die Kante wechselt den Besitzer und behält ihre Id.
+     *
+     * ⚠️ **Seine Form, 2026-09-12 ([D-750](../../../docs/NewConcept/90-decision-log.md)):** *«Ich kann beim Feld an der
+     * Deklaration sagen: schiebe es in den Vater.»* *Die Id bleibt, also bleibt jeder Wert, der an der Kante steht,
+     * und die Geschwister erben das Feld von nun an mit. Was am Vater hinten angehängt wird, darf das Kind nach
+     * D-698 wieder anordnen.*
+     */
+    public function moveFieldToParent(int $ownerId, int $relationId): Relation
+    {
+        $relation = $this->ownAttribute($ownerId, $relationId);
+        $owner    = $this->nodes->byId($ownerId);
+        $parent   = $owner->parentNodeId === null ? null : $this->nodes->find($owner->parentNodeId);
+
+        if ($parent === null || $parent->id === $this->framework->root()->id) {
+            throw ImpossibleMove::noParentTakesTheField($relation->name);
+        }
+
+        $moved = $relation->withOwner($parent->id, $this->relations->nextFieldPositionUnder($parent->id));
+
+        $this->changelog->record(
+            $relation->id,
+            'relation',
+            'field moved to parent',
+            $this->relationState($relation),
+            $this->relationState($moved),
+            $moved->version
+        );
+
+        $this->relations->save($moved, $relation->version);
+
+        return $moved;
+    }
+
+    /**
+     * Ein eigenes Feld in gewählte Kinder schieben — je Kind eine neue Kante, die alte wird geparkt.
+     *
+     * ⚠️ **Seine Form, 2026-09-12 ([D-750](../../../docs/NewConcept/90-decision-log.md)):** *«Am Vater kann ich sagen:
+     * schiebe es in die Kinder, und dann Kinder auswählen, die es bekommen sollen.»* *Jedes gewählte Kind bekommt
+     * eine eigene Kante mit Ziel, Art und Schaltern der alten; die Werte der Sätze unter diesem Kind ziehen auf die
+     * neue Kante um. Die alte Kante wird geparkt wie beim Entfernen (D-128) — mit ihr die Werte der Sätze, die kein
+     * gewähltes Kind mehr erreicht.*
+     *
+     * @param  list<int>      $childIds Unmittelbare Kinder des Besitzers.
+     * @return list<Relation> Die neuen Kanten, in der Reihenfolge der Kinder.
+     */
+    public function pushFieldToChildren(int $ownerId, int $relationId, array $childIds): array
+    {
+        $this->changelog->beginAct();
+
+        try {
+            $relation = $this->ownAttribute($ownerId, $relationId);
+            $owner    = $this->nodes->byId($ownerId);
+            $kinder   = [];
+
+            foreach ($this->nodes->childrenOf($owner) as $kind) {
+                $kinder[$kind->id] = $kind;
+            }
+
+            $neue = [];
+
+            foreach (array_values(array_unique(array_map(intval(...), $childIds))) as $childId) {
+                $kind = $kinder[$childId] ?? throw ImpossibleMove::notAChildOf($childId, $owner->name);
+                $neu  = $this->addedField($kind->id, $relation->toNodeId, $relation->name, $relation->kind);
+                $wie  = $neu
+                    ->withMultiplicity($relation->multiplicity)
+                    ->withReadOnly($relation->readOnly)
+                    ->withUnique($relation->unique)
+                    ->withHide($relation->hide);
+
+                if ($wie !== $neu) {
+                    $this->relations->save($wie, $neu->version);
+                    $neu = $wie;
+                }
+
+                $this->carryValuesDown($kind, $relation->id, $neu->id);
+                $neue[] = $neu;
+            }
+
+            if ($neue !== []) {
+                $this->removeField($ownerId, $relationId);
+            }
+
+            return $neue;
+        } finally {
+            $this->changelog->endAct();
+        }
+    }
+
+    /** Die Werte der Sätze unter einem Kind von der alten auf die neue Kante umhängen — in wenigen Abfragen (CD-7). */
+    private function carryValuesDown(Node $kind, int $alteKante, int $neueKante): void
+    {
+        if ($this->records === null) {
+            return;
+        }
+
+        $knoten = [$kind->id];
+
+        foreach ($this->nodes->subtreeOf($kind) as $unten) {
+            $knoten[] = $unten->id;
+        }
+
+        $saetze = [];
+
+        foreach ($this->records->ofNodes(array_values(array_unique($knoten))) as $liste) {
+            foreach ($liste as $satz) {
+                $saetze[] = $satz->id;
+            }
+        }
+
+        if ($saetze === []) {
+            return;
+        }
+
+        foreach ($this->records->valuesOfMany($saetze) as $werte) {
+            foreach ($werte as $wert) {
+                if ($wert->relationId === $alteKante && $wert->id !== null) {
+                    $this->records->putValue(new RelationRecord($wert->recordId, $neueKante, $wert->locale, $wert->value, $wert->id, $wert->position));
+                }
+            }
+        }
     }
 
     public function retargetField(int $ownerId, int $relationId, int $targetId): Relation
