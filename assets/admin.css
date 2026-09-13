@@ -882,6 +882,19 @@ a.taxmod-chosen:hover {
     text-decoration: none;
 }
 
+/* ⚠️ Die ganze Zeile ist klickbar (D-788): der Zeiger sagt es, das Überfahren zeigt, welche; die geöffnete bleibt hinterlegt. */
+.taxmod-table tr:has(> * a.taxmod-record-open) {
+    cursor: pointer;
+}
+
+.taxmod-table tr:has(> * a.taxmod-record-open):hover > td {
+    background: #f0f6fc;
+}
+
+.taxmod-table tr:has(> * a.taxmod-record-in-preview) > td {
+    background: #fcf9e8;
+}
+
 /* ⚠️ Dasselbe für die Datensatz-Tabelle — sein Wort: «das gleiche gilt für die records auch einen horizontalen scrollbalken damit
  * die seite nicht so auseinander gezogen wird» (D-777). */
 .taxmod-record-form {

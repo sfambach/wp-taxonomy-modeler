@@ -806,4 +806,37 @@
 			} );
 	} );
 
+	// ⚠️ **Ein Klick auf die ganze Zeile öffnet den Satz in der Vorschau** (D-788) — sein Wort: «jetzt Klick auf die ganze
+	// Zeile bauen». *Die Satznummer bleibt der Link und ohne Skript der Weg; hier wird nur ihr Ziel für den Rest der Zeile
+	// geliehen. Wer in der Zeile etwas bedient — Verschieben, Löschen, einen Sprung, einen Dialog —, meint nicht die Zeile.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		if ( ereignis.defaultPrevented || ereignis.button !== 0 || ereignis.metaKey || ereignis.ctrlKey || ereignis.shiftKey || ereignis.altKey ) {
+			return;
+		}
+
+		var ziel = ereignis.target;
+
+		if ( ! ( ziel instanceof Element ) || ziel.closest( 'a, button, input, select, textarea, label, summary, dialog, .taxmod-table-acts' ) ) {
+			return;
+		}
+
+		// ⚠️ *Die Zeile, die selbst den Satzlink trägt — nicht eine Zeile einer Tabelle, die in einer Zelle steckt.*
+		var zeile = ziel.closest( 'tr' );
+
+		while ( zeile && ! zeile.querySelector( ':scope > * a.taxmod-record-open' ) ) {
+			zeile = zeile.parentElement ? zeile.parentElement.closest( 'tr' ) : null;
+		}
+
+		if ( ! zeile ) {
+			return;
+		}
+
+		// ⚠️ *Wer Text markiert, will kopieren, nicht springen.*
+		if ( window.getSelection && String( window.getSelection() ).length > 0 ) {
+			return;
+		}
+
+		window.location.href = zeile.querySelector( ':scope > * a.taxmod-record-open' ).href;
+	} );
+
 } )();
