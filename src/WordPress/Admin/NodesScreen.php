@@ -2514,6 +2514,23 @@ final class NodesScreen
             new Control('word:inherited_from', '', /* translators: %s is the name of the node the value is inherited from. */ __('inherited from %s', 'taxmod')),
             new Control('word:override', '', __('override', 'taxmod')),
             new Control('word:automatic', '', /* translators: %s is the inherited value that is not permitted here. */ __('chosen automatically — %s is not permitted here', 'taxmod')),
+            // ⚠️ *Die Erklärungen hinter dem Fragezeichen je Einstellung (D-795) — sein Wort: «question mark explaining what this area does».*
+            new Control('word:hint:renderer', '', __('How this is drawn — as a form, a table, compact in one line, or complex (parts as a table).', 'taxmod')),
+            new Control('word:hint:converter', '', __('Shows a stored value in another notation, e.g. a number as hexadecimal. The stored value itself does not change.', 'taxmod')),
+            new Control('word:hint:validator', '', __('Checks a value before it is saved; a value that fails is not stored.', 'taxmod')),
+            new Control('word:hint:with_label', '', __('Whether each part is shown with its field name in front of it.', 'taxmod')),
+            new Control('word:hint:orientation', '', __('Horizontal: the parts side by side in one line. Vertical: one part per line.', 'taxmod')),
+            new Control('word:hint:display_size', '', __('The width of the input, in characters.', 'taxmod')),
+            new Control('word:hint:dialog', '', __('Open the choice in a dialog instead of showing the tree in place.', 'taxmod')),
+            new Control('word:hint:label_role', '', __('Which label of the chosen entry is shown — its name, its symbol, the selection text …', 'taxmod')),
+            new Control('word:hint:summary_fields', '', __('Which fields make up the one-line summary of a record, e.g. in a parts list. Tick the fields and put them in order with the arrows; unticked, the first text field is used.', 'taxmod')),
+            new Control('word:hint:preset_field', '', __('When a record of this node is picked: the field of the offered records that is compared, e.g. Bauform.', 'taxmod')),
+            new Control('word:hint:preset_source', '', __('Where the value to compare comes from, field by field, starting at the record being edited or the record holding it — e.g. Platinenversion, then Bestückung.', 'taxmod')),
+            new Control('word:hint:preset_mode', '', __('filter: only matching records are offered. first: matching records come first and are highlighted, the rest stay selectable.', 'taxmod')),
+            new Control('word:hint:erlaubte_einheiten', '', __('Which units a value of this field may have. Exactly one: it is preselected and cannot be changed. None: every unit.', 'taxmod')),
+            new Control('word:hint:erlaubte_praefixe', '', __('Which prefixes this unit offers, e.g. p n µ m for Farad. None: every prefix.', 'taxmod')),
+            new Control('word:hint:mit_praefix', '', __('Whether this unit takes a prefix at all — Ohm does, Percent does not.', 'taxmod')),
+            new Control('word:hint:symbol', '', __('The short sign of the unit, e.g. Ω or %.', 'taxmod')),
         ];
     }
 

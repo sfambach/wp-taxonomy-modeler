@@ -232,7 +232,9 @@ final class SettingsRenderer extends RendererNode
             // override tickfeld mal an den anfang der setting zeile und als richtige spalte». Die Spalte
             // steht in jeder Zeile, damit die Schlüssel untereinander bleiben; leer, wo nichts zu überschreiben ist.*
             . '<span class="taxmod-setting-override">' . $haken . '</span>'
-            . '<code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>'
+            // ⚠️ **Ein Fragezeichen, das sagt, was die Einstellung tut** ([D-795](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
+            // «question mark explaining what this area does». Der Satz kommt vom Rand als `hint:<schlüssel>` (`AR-2`); ohne Satz kein Zeichen.*
+            . '<code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>' . HintMarkup::icon($this->hintFor($context, $key))
             . '<span class="taxmod-setting-value">'
             . ($gesperrt ? '<span class="taxmod-setting-locked-control">' . $this->control($drawn) . '</span>' : $this->control($drawn))
             . '</span>'
@@ -443,6 +445,18 @@ final class SettingsRenderer extends RendererNode
         // «geerbt» zeigt. **Zwei Marken für eine Aussage wären zwei Orte zum Vergessen** (`CD`).*
         return '<em class="taxmod-inherited" title="'
             . RenderResult::escape($this->word($context, 'inherited')) . '">↑</em>';
+    }
+
+    /** Die Erklärung einer Einstellung, wie der Rand sie schickt — leer, wo er keine hat (dann steht kein Fragezeichen). */
+    private function hintFor(RenderContext $context, string $key): string
+    {
+        foreach ($context->surroundings->actions as $control) {
+            if ($control->name === 'word:hint:' . $key) {
+                return $control->label;
+            }
+        }
+
+        return '';
     }
 
     /** A word the boundary translated, or the key itself where it did not send one. */
