@@ -415,6 +415,13 @@ details.taxmod-page-block > summary {
     gap: .25em;
 }
 
+/* ⚠️ Der Name bricht nicht mehr mitten im Wort — gemessen an seinem Bild: «summary_fie / lds». Das `anywhere` stammte aus der schmalen
+ * Schlüsselspalte, die es seit D-796 nicht mehr gibt. */
+.taxmod-setting > .taxmod-setting-name .taxmod-setting-key {
+    overflow-wrap: normal;
+    white-space: nowrap;
+}
+
 /* ── No box around an icon button, anywhere ──────────────────────────────────
  *
  * ⚠️ **The owner said it twice because the first fix reached one place only**: *in the node renderer

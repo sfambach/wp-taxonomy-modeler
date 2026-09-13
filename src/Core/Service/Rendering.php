@@ -3759,6 +3759,26 @@ final class Rendering implements Presets
             $knotenNamen[$knoten->id] = $knoten->name;
         }
 
+        // ⚠️ **Präfix und Einheit als Zeichen** ([D-797](../../../docs/NewConcept/90-decision-log.md)) — *sein Bild: «33 Farad micro»
+        // und «-20 20 Prozent» in der Stückliste, sein Wort: «should be -/+20%». Erkannt am Anker des Gerüsts (Kind von `Prefixes`,
+        // unter `Base units`), nicht am Namen; das Zeichen ist die Beschriftung der Rolle `symbol`, sonst der Name.*
+        $praefixAnker = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Prefixes);
+        $einheitAnker = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Units);
+        $istPraefix   = [];
+        $istEinheit   = [];
+        $bekannte     = $innereKnoten === [] ? [] : $this->gemerkteKnoten(array_keys($innereKnoten));
+
+        foreach ($bekannte as $knoten) {
+            if ($praefixAnker !== null && $knoten->parentNodeId === $praefixAnker->id) {
+                $istPraefix[$knoten->id] = true;
+            } elseif ($einheitAnker !== null && in_array($einheitAnker->id, array_map('intval', $knoten->ancestorIds()), true)) {
+                $istEinheit[$knoten->id] = true;
+            }
+        }
+
+        $zeichenKnoten = array_values(array_intersect_key($bekannte, $istPraefix + $istEinheit));
+        $zeichen       = $zeichenKnoten === [] ? [] : ($this->labels?->forNodes($zeichenKnoten, SeededRole::Symbol, '') ?? []);
+
         $felder = [];
 
         foreach ($betroffen as $relation) {
@@ -3844,7 +3864,7 @@ final class Rendering implements Presets
             }
         }
 
-        $wort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $knotenNamen): string {
+        $wort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
 
@@ -3856,6 +3876,11 @@ final class Rendering implements Presets
             // «0207 · #24558 · #25187», weil «Widerstandswert» ein Einheitenwert-Teil ist und keinen Text trägt. Eine Stufe tief also alle
             // Werte in ihrer Reihenfolge: «330 Ohm», «-20 20 Prozent».*
             if ($feldIds === [] && $stufe > 0) {
+                $zahlen  = [];
+                $praefix = '';
+                $einheit = '';
+                $sonst   = [];
+
                 foreach ($werte[$satzId] ?? [] as $zeile) {
                     $v = $zeile->value;
 
@@ -3863,16 +3888,37 @@ final class Rendering implements Presets
                         continue;
                     }
 
-                    if ($v->referenceSpace === ReferenceSpace::Node) {
-                        $teile[] = $knotenNamen[$v->reference] ?? '';
-                    } elseif ($v->decimal !== null) {
-                        $teile[] = str_contains($v->decimal, '.') ? rtrim(rtrim($v->decimal, '0'), '.') : $v->decimal;
+                    if ($v->referenceSpace === ReferenceSpace::Node && $v->reference !== null) {
+                        $knotenWort = (string) ($zeichen[$v->reference] ?? $knotenNamen[$v->reference] ?? '');
+
+                        if (isset($istPraefix[$v->reference])) {
+                            $praefix = $knotenWort;
+                        } elseif (isset($istEinheit[$v->reference])) {
+                            $einheit = $knotenWort;
+                        } else {
+                            $sonst[] = $knotenWort;
+                        }
+                    } elseif ($v->decimal !== null || $v->int !== null) {
+                        $roh      = $v->decimal ?? (string) $v->int;
+                        $zahlen[] = str_contains($roh, '.') ? rtrim(rtrim($roh, '0'), '.') : $roh;
                     } elseif (! $v->isAReference()) {
-                        $teile[] = $v->rawValue();
+                        $sonst[] = $v->rawValue();
                     }
                 }
 
-                $teile = array_values(array_filter($teile, static fn (string $teil): bool => $teil !== ''));
+                // ⚠️ *Zwei Zahlen sind ein Bereich: gleich gross mit verschiedenem Vorzeichen «±20», sonst «-20 … 80»; eine Zahl steht allein.
+                // Präfix und Einheit folgen als Zeichen: «±20 %», «33 µF», «250 mW» (D-797).*
+                $betrag = match (true) {
+                    count($zahlen) === 2 && ltrim($zahlen[0], '-') === ltrim($zahlen[1], '-') && str_starts_with($zahlen[0], '-') !== str_starts_with($zahlen[1], '-')
+                                           => '±' . ltrim($zahlen[0], '-'),
+                    count($zahlen) === 2   => $zahlen[0] . ' … ' . $zahlen[1],
+                    default                => implode(' ', $zahlen),
+                };
+
+                $teile = array_values(array_filter(
+                    [$betrag === '' ? '' : trim($betrag . ' ' . $praefix . $einheit), ...$sonst],
+                    static fn (string $teil): bool => $teil !== ''
+                ));
 
                 return $teile === [] ? '#' . $satzId : implode(' ', $teile);
             }
