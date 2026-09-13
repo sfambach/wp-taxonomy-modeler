@@ -420,6 +420,51 @@ Renderer. Die Beschlüsse sprechen von `records`, `record_values` und Typen als 
 *Nicht Teil dieses Vorschlags: das Hochladen selbst und der Block «alle Datenblätter einer Stückliste» aus
 [D-230](NewConcept/90-decision-log.md) — beides kommt, wenn der Typ steht.*
 
+## INF-054 · Eingabe und Änderung komplexer Daten — Entwurf für ein Konzept
+
+**Typ:** `HYPOTHESE` · **Status:** `INFERRED` — auf sein Wort vom 2026-09-13: *«Eingabe von Daten: wir sollten mal
+ein Konzept entwickeln, wie auch komplexe Daten gut eingegeben werden können bzw. geändert werden können.»*
+Das hier ist der Entwurf dazu, kein Beschluss. Jede Zeile unter «Zu entscheiden» wartet auf sein Wort.
+
+### Was schon steht, und was es trägt
+
+| Beschluss | Was er für die Eingabe festlegt |
+|---|---|
+| [D-759](NewConcept/90-decision-log.md) | *«Ein zusammengesetzter Wert in einem Datensatz ist ein eigener Teil-Satz … die Maske spricht einen Teil über seine Satz-Id an … Bei einer Komposition mit mehreren Werten lassen sich Zeilen anhängen und entfernen.»* — Teile werden im Satz des Besitzers erfasst, nicht auf einer eigenen Seite. |
+| [D-758](NewConcept/90-decision-log.md) | Der Komplex-Renderer ordnet die Eingabe: feste Angaben, einfache Felder, Teile mit höchstens einem Wert als Formular, mit mehreren als Tabelle, tiefere Teile als Zusammenfassung. |
+| [D-753](NewConcept/90-decision-log.md) | Ein Verweis auf einen Satz zeigt seine Zusammenfassung; beim Bearbeiten ein Auswahlfeld über die Sätze des Ziels, in einer Abfrage je Block. |
+| [D-540](NewConcept/90-decision-log.md) | *«hat es sichtbare, unmarkierte Kinder, wählt man aus ihnen — sonst gibt man einen Wert ein. Der Ast entscheidet das nicht.»* |
+| [D-756](NewConcept/90-decision-log.md) | Ein Satz wandert in den Vater oder ein Kind, mit Ansage, was dabei fällt. |
+| [D-760](NewConcept/90-decision-log.md) | Erst prüfen, dann schreiben: eine Beschwerde eines Validators, und nichts des Satzes wird gespeichert. |
+| [D-730](NewConcept/90-decision-log.md) | Ein Akt, der etwas braucht, fragt erst — der Dialog vor dem Anlegen. |
+| [D-392](NewConcept/90-decision-log.md), Zeile 11 | Das Speichern einer Seite ist gebaut; das automatische Speichern beim Verlassen eines Feldes ist beschlossen und wartet. |
+
+### Was heute beim Aufbau der Betriebssysteme aufgefallen ist
+
+1. Am Feld «Nachfolger» bietet der Wähler **Knoten** an, weil das Ziel «Software» Kinder hat (D-540) — gemeint ist aber ein **Satz**, eine OS-Version. Die Anzeige geht seit D-753, die Eingabe nicht.
+2. Die Zusammenfassung eines Verweises reicht eine Stufe tief; wer tiefer will, sieht Nummern.
+3. Ein neuer Satz, der noch nirgends passt — etwa ein Hersteller, den es noch nicht gibt —, muss auf der Seite des Ziels angelegt werden, bevor man ihn wählen kann. Sein Wort dazu: *«bei der Eingabe muss man den Satz auch auswählen oder eingeben können»* und Zeile 124: *«Eingabe von Daten sucht im Datensatz»*.
+4. Zwei leere Sätze (Beispiel, leerer Benutzersatz) stehen im Angebot des Wählers als «#Nummer».
+5. Der Satzblock zeichnet je Zeile zwei vollständige Baumwähler; bei zwanzig Zeilen wird die Seite schwer.
+6. Was ein Speichern mit einem abgelehnten Wert von dreissig tut, ist für Validatoren entschieden (D-760: nichts), für den Kern-Fehler mitten im Satz nicht (Zeile 11).
+
+### Zu entscheiden — je Zeile eine Frage, mit meiner Empfehlung
+
+| # | Frage | Empfehlung |
+|---|---|---|
+| E1 | **Was wählt ein Feld an einer Aggregation in den Modellast: Knoten oder Sätze?** D-540 sagt Knoten, sobald das Ziel Kinder hat; der Nachfolger will Sätze. | D-540 verfeinern: an einer Aggregation in den Modellast werden **Sätze unter dem Ziel** gewählt; Knoten wählt man an Kanten in die Konstanten und an Verweistypen. |
+| E2 | **Wie wird ein Satz gewählt, wenn es hundert sind?** Ein Auswahlfeld mit hundert Zeilen ist keine Eingabe. | Tippen sucht in den Zusammenfassungsfeldern des Ziels (das Renderer-Papier sagt schon: *«the visible fields are the default search fields»*) und bietet Treffer an; das Auswahlfeld bleibt für kleine Mengen. |
+| E3 | **Darf man aus dem Feld heraus einen neuen Satz anlegen?** | Ja, als Dialog nach D-730: die Zusammenfassungsfelder des Ziels als Eingabe, «Anlegen und wählen». Kein Treffer beim Tippen bietet das an. |
+| E4 | **Wie werden Teile mit mehreren Werten erfasst — Tabelle mit Zeilen (D-759) oder je Teil ein Formular?** | Tabelle bleibt die Vorgabe; ab drei Feldern je Teil ein aufklappbares Formular je Zeile, weil eine Tabelle mit acht Spalten nicht mehr lesbar ist. Das ist eine Einstellung am Renderer, keine neue Regel. |
+| E5 | **Wie tief wird an Ort und Stelle erfasst?** D-758 sagt: tiefere Teile als Zusammenfassung. | Eine Stufe an Ort und Stelle; die Zusammenfassung einer tieferen Stufe ist ein Sprung auf den Satz, der sie hält (der «Link» aus seinem Wort zu D-758), nicht ein weiteres Aufklappen. |
+| E6 | **Was tut ein Speichern, wenn der Kern einen Wert von dreissig ablehnt?** (Zeile 11) | Wie D-760: nichts wird geschrieben, alle Ablehnungen stehen in der Meldung, die eingegebenen Werte bleiben im Formular stehen. |
+| E7 | **Automatisches Speichern beim Verlassen eines Feldes** — sein Wunsch aus D-392. | Erst, wenn E6 steht; dann je Feld ein Speichern des ganzen Satzes mit derselben Regel, und der Bearbeiter sieht, ob es gelang. |
+| E8 | **Leere Sätze im Angebot** — zeigen, ausblenden, löschen? | Ausblenden: ein Satz ohne Wort ist keine Wahl. |
+| E9 | **Wer ist Pflicht?** Zeile 31 (Pflichtfeld) wartete auf Zeile 8, die jetzt teils steht. | Ein Validator «required», gewählt wie «range», mit Beschwerde nach D-760. |
+| E10 | **Die Last der Seite** — zwei Baumwähler je Satzzeile. | Der Wähler ist ein Dialog (D-727 hat den Schalter), der seinen Baum erst beim Öffnen holt — das ist Zeile 126 «nur laden, wenn es gebraucht wird», auf die Wähler übertragen. |
+
+**Nicht gebaut, nichts davon.** Bis er entscheidet, gilt, was oben unter «Was schon steht» zitiert ist.
+
 ## Erledigte Eingänge
 
 *(noch keine)*
