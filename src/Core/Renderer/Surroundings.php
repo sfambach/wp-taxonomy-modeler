@@ -227,6 +227,13 @@ final class Surroundings
          * herein wie «own» und «inherited» auch ([OQ-087](../../../docs/NewConcept/91-open-questions.md)).*
          */
         public readonly bool $locked = false,
+        /**
+         * Die Sätze unter dem Ziel eines Verweises als Baum seiner Knoten — für den Dialog der Satzauswahl
+         * ([D-791](../../../docs/NewConcept/90-decision-log.md)). In Baumreihenfolge; Äste ohne Satz fehlen.
+         *
+         * @var list<array{depth: int, name: string, records: array<int, string>}>
+         */
+        public readonly array $recordTree = [],
     ) {
     }
 

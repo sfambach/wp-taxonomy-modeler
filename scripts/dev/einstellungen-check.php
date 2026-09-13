@@ -1403,10 +1403,12 @@ $einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsReposit
 // ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
 $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfName->id, $lfLand->id]);
 $mitSummary = seite($satzKnoten->id, null, $sId);
-check('der Satzblock zeigt den verwiesenen Satz als Zusammenfassung der am Knoten gewählten Felder (D-753)', str_contains($mitSummary, '<option value="' . $lfSatz->id . '" selected>__es Alpha · __es Nord</option>'));
+// ⚠️ **Geändert am 2026-09-13 mit [D-791](../../docs/NewConcept/90-decision-log.md), sichtbar:** *die Satzauswahl ist ein Dialog mit
+// Baum und Auswahlknöpfen statt eines Auswahlfelds; geprüft wird derselbe Satz, jetzt als gewählter Knopf mit seiner Zusammenfassung.*
+check('der Satzblock zeigt den verwiesenen Satz als Zusammenfassung der am Knoten gewählten Felder (D-753)', (bool) preg_match('/value="' . $lfSatz->id . '" checked[^>]*> __es Alpha · __es Nord</u', $mitSummary));
 $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfLand->id], $wer);
 $anDerKante = seite($satzKnoten->id, null, $sId);
-check('an der Kante überschrieben: nur das Land', str_contains($anDerKante, '<option value="' . $lfSatz->id . '" selected>__es Nord</option>') && ! str_contains($anDerKante, '__es Alpha · __es Nord'));
+check('an der Kante überschrieben: nur das Land', (bool) preg_match('/value="' . $lfSatz->id . '" checked[^>]*> __es Nord</u', $anDerKante) && ! str_contains($anDerKante, '__es Alpha · __es Nord'));
 $offenWer = seite($satzKnoten->id, (string) $wer->id);
 check('im Einstellungsbereich der Kante stehen die Felder des Ziels als Haken (D-752)', str_contains($offenWer, 'name="taxmod_field_setting_set[' . $wer->id . '][summary_fields][' . $lfName->id . ']"'));
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $satzFeld->id => '42', (string) $wer->id => (string) $lfSatz->id]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);

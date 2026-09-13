@@ -882,6 +882,48 @@ a.taxmod-chosen:hover {
     text-decoration: none;
 }
 
+/* ⚠️ Der Dialog der Satzauswahl (D-791): der Baum der Knoten als Äste, darin je Satz ein Auswahlknopf. */
+.taxmod-record-tree {
+    display: block;
+    min-width: 26em;
+    max-height: 60vh;
+    overflow: auto;
+    padding: .3em .2em;
+}
+
+.taxmod-record-branch {
+    margin-left: 1em;
+}
+
+.taxmod-record-tree > .taxmod-record-branch {
+    margin-left: 0;
+}
+
+.taxmod-record-branch > summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: .15em 0;
+}
+
+.taxmod-record-count {
+    font-weight: 400;
+    color: #646970;
+}
+
+.taxmod-record-choice {
+    display: block;
+    margin-left: 1.3em;
+    padding: .1em 0;
+    font-weight: 400;
+}
+
+.taxmod-record-dialog-open {
+    max-width: 22em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ⚠️ Die ganze Zeile ist klickbar (D-788): der Zeiger sagt es, das Überfahren zeigt, welche; die geöffnete bleibt hinterlegt. */
 .taxmod-table tr:has(> * a.taxmod-record-open) {
     cursor: pointer;

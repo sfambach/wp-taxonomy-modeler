@@ -2071,8 +2071,9 @@ final class RenderingTest extends TestCase
 
         $bearbeiten = $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v')->markup;
 
-        self::assertStringContainsString('<select name="v[' . $wer->id . ']"', $bearbeiten, 'beim Bearbeiten ein Auswahlfeld über die Sätze des Ziels');
-        self::assertStringContainsString('<option value="' . $satzId . '" selected>USA</option>', $bearbeiten);
+        // ⚠️ *Seit D-791 ein Dialog mit Baum und Auswahlknöpfen statt eines Auswahlfelds — geprüft wird derselbe gewählte Satz.*
+        self::assertStringContainsString('<input type="radio" name="v[' . $wer->id . ']"', $bearbeiten, 'beim Bearbeiten eine Auswahl über die Sätze des Ziels');
+        self::assertMatchesRegularExpression('/value="' . $satzId . '" checked[^>]*> USA</', $bearbeiten);
     }
 
     #[Test]
@@ -2134,7 +2135,7 @@ final class RenderingTest extends TestCase
         // ⚠️ *Und beim Bearbeiten steht der Satz unter dem Ziel im Angebot — sein Befund: «angezeigt wird die Id».*
         $bearbeiten = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satzId)], Purpose::Edit, 'v')->markup;
 
-        self::assertStringContainsString('<option value="' . $satzId . '" selected>6.22</option>', $bearbeiten);
+        self::assertMatchesRegularExpression('/value="' . $satzId . '" checked[^>]*> 6\.22</', $bearbeiten);
     }
 
     /** ⚠️ *Sein Wort: «ist doch ein Verweis auf den Datensatz, eigentlich sollte da Microsoft Corp. DOS 4.0 stehen» — eine Stufe tief.* */

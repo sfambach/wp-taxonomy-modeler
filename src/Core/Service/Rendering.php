@@ -1394,6 +1394,8 @@ final class Rendering implements Presets
                     refersToARecord: $value->reference !== null && $type === null,
                     // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
                     options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
+                    // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*
+                    recordTree: $saetze['baum'][$relation->id] ?? [],
                     // ⚠️ **«Nichts» ist eine Möglichkeit nur dort, wo die Multiplizität es zulässt.**
                     //
                     // ⚠️ *Der Eigentümer: «`render` ist `1..1` in `DisplayOption`, sollte somit nicht die
@@ -3625,7 +3627,7 @@ final class Rendering implements Presets
 
     private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = []): array
     {
-        $leer = ['worte' => [], 'angebot' => []];
+        $leer = ['worte' => [], 'angebot' => [], 'baum' => []];
 
         if ($this->records === null || $this->resolver === null) {
             return $leer;
@@ -3858,9 +3860,69 @@ final class Rendering implements Presets
             if ($purpose === Purpose::Edit && $wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null && ! isset($aus['angebot'][$relation->id][$wert->reference])) {
                 $aus['angebot'][$relation->id][$wert->reference] = $wort($wert->reference, $feldIds);
             }
+
+            // ⚠️ **Der Baum des Dialogs** ([D-791](../../../docs/NewConcept/90-decision-log.md), Zeile 149) — *sein Wort: «einen baum
+            // ansicht … wo ich erst den knoten auswähle … dann … datensatz aus». Dieselben Sätze wie das Angebot, nur nach ihren Knoten
+            // gelegt; aus dem schon geladenen Unterbaum, ohne weitere Abfrage.*
+            if ($purpose === Purpose::Edit && isset($ziele[$relation->toNodeId])) {
+                $aus['baum'][$relation->id] = $this->recordTreeOf($ziele[$relation->toNodeId], $saetzeJeKnoten, $aus['angebot'][$relation->id] ?? []);
+            }
         }
 
         return $aus;
+    }
+
+    /**
+     * Die Sätze unter einem Ziel als Baum seiner Knoten — je Knoten Tiefe, Name und seine eigenen Sätze; ein Ast ohne Satz fällt
+     * weg, damit der Dialog nicht durch leere Ordner führt (D-791).
+     *
+     * @param  array<int, list<\Taxmod\Core\Model\NodeRecord>> $saetzeJeKnoten
+     * @param  array<int, string>                              $worte Die Zusammenfassung je Satz-Id.
+     * @return list<array{depth: int, name: string, records: array<int, string>}>
+     */
+    private function recordTreeOf(Node $ziel, array $saetzeJeKnoten, array $worte): array
+    {
+        $kinder = [];
+
+        foreach ($this->gemerkterUnterbaum($ziel) as $knoten) {
+            if ($knoten->id !== $ziel->id && $knoten->parentNodeId !== null && ! $knoten->hide) {
+                $kinder[$knoten->parentNodeId][] = $knoten;
+            }
+        }
+
+        foreach ($kinder as $vater => $reihe) {
+            usort($reihe, static fn (Node $a, Node $b): int => [$a->sortOrder, $a->name] <=> [$b->sortOrder, $b->name]);
+            $kinder[$vater] = $reihe;
+        }
+
+        $zeilen = [];
+        $lauf   = function (Node $knoten, int $tiefe) use (&$lauf, &$zeilen, $kinder, $saetzeJeKnoten, $worte): bool {
+            $eigene = [];
+
+            foreach ($saetzeJeKnoten[$knoten->id] ?? [] as $satz) {
+                if (isset($worte[$satz->id])) {
+                    $eigene[$satz->id] = $worte[$satz->id];
+                }
+            }
+
+            $stelle   = count($zeilen);
+            $zeilen[] = ['depth' => $tiefe, 'name' => $knoten->name, 'records' => $eigene];
+            $etwas    = $eigene !== [];
+
+            foreach ($kinder[$knoten->id] ?? [] as $kind) {
+                $etwas = $lauf($kind, $tiefe + 1) || $etwas;
+            }
+
+            if (! $etwas) {
+                array_splice($zeilen, $stelle);
+            }
+
+            return $etwas;
+        };
+
+        $lauf($ziel, 0);
+
+        return $zeilen;
     }
 
     /**
