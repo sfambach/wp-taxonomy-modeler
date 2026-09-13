@@ -1126,10 +1126,6 @@ final class NodesScreen
             // Entscheidung samt der Bedingung, unter der sie gilt.** *Die ausgehende Richtung steht
             // schon dreimal auf dieser Seite — Attribute, Elternteil im Kopf, Kinder im Baum. Der
             // Platz war seit Paket 4 leer, weil die eingehende Richtung nirgends abgefragt wurde.*
-            PageSlot::Relations->value => new Section(
-                '',
-                $this->usedByPanel($selected)
-            ),
         ];
 
         // ⚠️ **Records are outside the frame, deliberately.** R20a's order is about the **model** —
@@ -1141,7 +1137,10 @@ final class NodesScreen
         // head's first row already holds that name as an editable field — printing it again above in
         // larger type was the duplication, and he saw it the moment the head existed.*
         return $this->rendering->nodeAsPage($selected, $sections)->markup
-            . '<div class="taxmod-page-block">' . $this->recordsPanel($selected) . '</div>';
+            . '<div class="taxmod-page-block">' . $this->recordsPanel($selected) . '</div>'
+            // ⚠️ **«Used by» ganz unten und zugeklappt** (D-781) — sein Wort: «den Used by Bereich ganz nach unten und
+            // macht den ausklappbar, standardmäßig eingeklappt».
+            . '<div class="taxmod-page-block"><details class="taxmod-used-by-block">' . $this->usedByPanel($selected) . '</details></div>';
     }
 
     /**
@@ -1586,10 +1585,11 @@ final class NodesScreen
     {
         $relations = $this->editor->usedBy($selected->id);
 
-        $html = $this->heading(
+        $html = '<summary style="cursor:pointer">' . $this->heading(
             __('Used by', 'taxmod'),
-            __('Which attributes of other nodes are typed by this one. Everything going out of this node is in the attributes above; this is the direction that appears nowhere else, and it is what would break if this node were deleted.', 'taxmod')
-        );
+            __('Which attributes of other nodes are typed by this one. Everything going out of this node is in the attributes above; this is the direction that appears nowhere else, and it is what would break if this node were deleted.', 'taxmod'),
+            'strong'
+        ) . '</summary>';
 
         if ($relations === []) {
             // ⚠️ *Gesagt statt weggelassen: «nichts verweist hierher» und «ich habe nicht
