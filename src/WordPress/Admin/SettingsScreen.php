@@ -66,6 +66,16 @@ final class SettingsScreen
      */
     public const SHOW_TRASH = 'taxmod_show_trash';
 
+    /** Wie viele Datensätze die Knotenseite je Seite zeichnet ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
+    public const RECORDS_PER_PAGE = 'taxmod_records_per_page';
+
+    /**
+     * Die wählbaren Seitengrössen — sein Wort: «5,10,20,50» ([D-763](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @var list<int>
+     */
+    private const PAGE_SIZES = [5, 10, 20, 50];
+
     /**
      * Die vier Gerüste und ihre Optionen.
      *
@@ -130,6 +140,7 @@ final class SettingsScreen
             . $this->developerDetailRows()
             . $this->localeRow()
             . $this->trashRow()
+            . $this->recordsPerPageRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('The glyphs in the tree and on its buttons.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</tbody></table>'
@@ -295,6 +306,23 @@ final class SettingsScreen
             __('Default language', 'taxmod'),
             '<select name="neutral_locale">' . $options . '</select>',
             __('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
+        );
+    }
+
+    /** Wie viele Datensätze eine Seite zeigt — eine Liste, kein Zahlenfeld, wie bei den Grössen darunter. */
+    private function recordsPerPageRow(): string
+    {
+        $options = '';
+
+        foreach (self::PAGE_SIZES as $size) {
+            $options .= '<option value="' . (int) $size . '"' . selected(self::recordsPerPage(), $size, false) . '>'
+                . esc_html((string) $size) . '</option>';
+        }
+
+        return $this->row(
+            __('Records per page', 'taxmod'),
+            '<select name="records_per_page">' . $options . '</select>',
+            __('How many records a node page draws at once. Drawing a record costs time; the rest are a page away.', 'taxmod')
         );
     }
 
@@ -503,6 +531,12 @@ final class SettingsScreen
             }
         }
 
+        $jeSeite = isset($_POST['records_per_page']) ? absint($_POST['records_per_page']) : 0;
+
+        if (in_array($jeSeite, self::PAGE_SIZES, true)) {
+            update_option(self::RECORDS_PER_PAGE, $jeSeite, true);
+        }
+
         wp_safe_redirect(add_query_arg(
             ['page' => 'taxmod-settings', 'taxmod_saved' => '1'],
             admin_url('admin.php')
@@ -573,6 +607,14 @@ final class SettingsScreen
      * Speichern ausdrücklich `'0'` geschrieben statt der Wert gelöscht: «aus» und «nie gesetzt»
      * sähen sonst gleich aus und bedeuteten das Gegenteil.*
      */
+    /** Die gewählte Seitengrösse; was keine der vier ist, zählt als fünf (D-763). */
+    public static function recordsPerPage(): int
+    {
+        $size = (int) get_option(self::RECORDS_PER_PAGE, 5);
+
+        return in_array($size, self::PAGE_SIZES, true) ? $size : 5;
+    }
+
     public static function showsTrash(): bool
     {
         return get_option(self::SHOW_TRASH, '1') !== '0';

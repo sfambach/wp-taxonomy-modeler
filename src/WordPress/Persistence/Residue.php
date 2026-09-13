@@ -105,6 +105,7 @@ final class Residue
              LEFT JOIN ' . Schema::table('label_texts') . ' t ON t.label_id = l.id
              WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.label_id = l.id)
                AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.label_id = l.id)
+               AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations_history') . ' h WHERE h.label_id = l.id AND h.parked_by_group_id IS NOT NULL AND h.version = (SELECT MAX(version) FROM ' . Schema::table('relations_history') . ' h2 WHERE h2.id = h.id))
              GROUP BY l.id
              ORDER BY l.id ASC'
         );

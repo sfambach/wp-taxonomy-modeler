@@ -592,10 +592,13 @@ check(
 );
 
 check(
-    'keine Beschriftungszeile steht ohne Knoten und ohne Kante da (D-580)',
+    'keine Beschriftungszeile steht ohne Knoten, ohne Kante und ohne geparkte Kante da (D-580)',
+    // ⚠️ *Die geparkte Kante zählt seit a0baba3 als Besitzer — sie behält ihre Beschriftung, damit sie ganz zurückkommt.
+    // Der Feger in `Schema` wurde damals nachgezogen, diese Zusage nicht; am 2026-09-13 meldete sie zwei richtige Zeilen rot.*
     (int) Query::value('Beschriftungen ohne Besitzer zaehlen', 'SELECT COUNT(*) FROM ' . Schema::table('labels') . ' l
      WHERE NOT EXISTS (SELECT 1 FROM ' . Schema::table('nodes') . ' n WHERE n.label_id = l.id)
-       AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.label_id = l.id)') === 0
+       AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations') . ' r WHERE r.label_id = l.id)
+       AND NOT EXISTS (SELECT 1 FROM ' . Schema::table('relations_history') . ' h WHERE h.label_id = l.id AND h.parked_by_group_id IS NOT NULL AND h.version = (SELECT MAX(version) FROM ' . Schema::table('relations_history') . ' h2 WHERE h2.id = h.id))') === 0
 );
 
 // ⚠️ *Die Gegenprobe zur eigenen Wiese: nicht «meine Nummern sind weg», sondern «der Präfix ist

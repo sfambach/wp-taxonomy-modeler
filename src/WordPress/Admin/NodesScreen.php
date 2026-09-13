@@ -177,6 +177,9 @@ final class NodesScreen
      */
     private const OPEN_ROWS = 'taxmod_open_rows';
 
+    /** Welche Seite der Datensätze gezeigt wird — eine Zahl oder `last` ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
+    private const RECORD_PAGE = 'taxmod_record_page';
+
     /** Der Akt, der eine Feldzeile auf- oder zuklappt. */
     private const TOGGLE_ROW_SETTINGS = 'toggle_field_settings';
 
@@ -3612,6 +3615,17 @@ final class NodesScreen
             return $html . '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>';
         }
 
+        // ⚠️ **Seiten zu fünf** ([D-763](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «dies nur auf
+        // seiten aufteilen und immer nur 5 laden». Gemessen am 2026-09-13 an `CPUs` mit 59 Sätzen: 5,8 s,
+        // 4 939 Abfragen, 10 MB HTML — der Baum allein 0,14 s. **Die Zeit liegt im Zeichnen je Satz**, also
+        // wird nur gezeichnet, was die Seite zeigt; die Satzliste selbst ist eine Abfrage und bleibt ganz.*
+        $gesamt    = count($records);
+        $seiten    = max(1, (int) ceil($gesamt / SettingsScreen::recordsPerPage()));
+        $gewuenscht = $this->circumstance(self::RECORD_PAGE);
+        $seite     = $gewuenscht === 'last' ? $seiten : min($seiten, max(1, absint($gewuenscht)));
+        $records   = array_slice($records, ($seite - 1) * SettingsScreen::recordsPerPage(), SettingsScreen::recordsPerPage());
+        $blaettern = $this->recordPager($selected, $seite, $seiten, $gesamt);
+
         // ⚠️ **Hier stand die Spalte «Belongs to» und sie ist gefallen** — *sein Wort: «die Spalte
         // belongs to kann weg.»* *Sie nannte den Knoten, der den Satz hält; **auf derselben Seite
         // steht dieser Knoten ohnehin schon**, denn es ist der ausgewählte. Was sie darüber hinaus
@@ -3708,7 +3722,7 @@ final class NodesScreen
         }
 
         // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
-        return $html . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->recordsAsTable(
+        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->recordsAsTable(
             $selected,
             $attributes,
             $zeilen,
@@ -3721,7 +3735,47 @@ final class NodesScreen
             // macht daraus den Text — **je Zelle**, sein Wort.*
             SettingsScreen::inDeveloperMode(),
             diagnose: SettingsScreen::inDeveloperMode() ? $this->drawnByPerCell(...) : null
-        )->markup;
+        )->markup . $blaettern;
+    }
+
+    /**
+     * Die Blätterleiste der Datensätze — nur, wenn es mehr als eine Seite gibt ([D-763](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Links und keine Formulare: Blättern ändert nichts, also ist es ein Aufruf und kein Akt, und die
+     * Seitenzahl reist in der Adresse wie der Faltzustand ({@see backTo()}).*
+     */
+    private function recordPager(Node $selected, int $seite, int $seiten, int $gesamt): string
+    {
+        if ($seiten <= 1) {
+            return '';
+        }
+
+        // ⚠️ *Ein Symbol ohne Rahmen und mit Namen, wie jeder Symbolknopf dieser Seite — `icon-button-check`
+        // hat die erste Fassung mit «, ‹ als nackten Zeichen in `button`-Kästen rot gemeldet.*
+        $link = static function (string $ziel, string $icon, string $titel, bool $moeglich): string {
+            $gesicht = IconMarkup::dashicon($icon, $titel);
+
+            return $moeglich
+                ? '<a class="button ' . ControlMarkup::ICON_ONLY . '" href="' . esc_url($ziel) . '" title="' . esc_attr($titel) . '">' . $gesicht . '</a>'
+                : '<span class="button disabled ' . ControlMarkup::ICON_ONLY . '" aria-disabled="true" title="' . esc_attr($titel) . '">' . $gesicht . '</span>';
+        };
+        $nach = fn (int $blatt): string => $this->backTo($selected->id, [self::RECORD_PAGE => (string) $blatt]);
+
+        return '<p class="taxmod-record-pager">'
+            . $link($nach(1), 'controls-skipback', __('First page', 'taxmod'), $seite > 1) . ' '
+            . $link($nach($seite - 1), 'arrow-left-alt2', __('Previous page', 'taxmod'), $seite > 1) . ' '
+            . '<span class="taxmod-record-pager-where">' . esc_html(sprintf(
+                /* translators: 1: first record shown, 2: last record shown, 3: all records, 4: this page, 5: all pages */
+                __('Records %1$d–%2$d of %3$d · page %4$d of %5$d', 'taxmod'),
+                ($seite - 1) * SettingsScreen::recordsPerPage() + 1,
+                min($gesamt, $seite * SettingsScreen::recordsPerPage()),
+                $gesamt,
+                $seite,
+                $seiten
+            )) . '</span> '
+            . $link($nach($seite + 1), 'arrow-right-alt2', __('Next page', 'taxmod'), $seite < $seiten) . ' '
+            . $link($nach($seiten), 'controls-skipforward', __('Last page', 'taxmod'), $seite < $seiten)
+            . '</p>';
     }
 
     /**
@@ -5182,6 +5236,12 @@ final class NodesScreen
         // sent back to a screen with nothing selected.
         $extra = ['taxmod_message' => rawurlencode($message)];
 
+        // ⚠️ *Ein neuer Satz steht hinten — ohne diese Zeile landete er auf einer Seite, die niemand ansieht,
+        // und «New record» sähe aus wie «nichts passiert» (D-763).*
+        if (in_array($do, ['add_record', 'add_example'], true)) {
+            $extra[self::RECORD_PAGE] = 'last';
+        }
+
         // ⚠️ **`false` heisst «dieser Akt hat am Aufklappzustand nichts geändert»** — *und `null`
         // heisst «alles zu». Die zwei auseinanderzuhalten ist der ganze Punkt: schriebe ein
         // geschlossener Zustand nichts in `$extra`, fiele {@see backTo()} auf den **mitgeschickten**
@@ -5274,6 +5334,8 @@ final class NodesScreen
             // ⚠️ *Sonst klappt jedes Speichern die Zeile wieder zu, die man gerade aufgeklappt hat —
             // derselbe Verlust, den der Faltzustand dreimal erlitten hat.*
             self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
+            // ⚠️ *Sonst springt jedes Speichern auf Seite 1 zurück, weg von dem Satz, den man gerade bearbeitet hat (D-763).*
+            self::RECORD_PAGE  => $this->circumstance(self::RECORD_PAGE),
         ];
     }
 
@@ -5362,6 +5424,11 @@ final class NodesScreen
                 // ⚠️ *Die aufgeklappten Feldzeilen sind ein Umstand wie der Faltzustand — sie müssen
                 // jeden Akt überleben, sonst klappt das Speichern zu, was man gerade geöffnet hat.*
                 self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
+                // ⚠️ *Die Seite der Datensätze gilt nur für den Knoten, auf dem geblättert wurde — ein Link
+                // auf einen anderen beginnt bei Seite 1, wie der Merker oben (D-763).*
+                self::RECORD_PAGE  => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
+                    ? $this->circumstance(self::RECORD_PAGE)
+                    : null,
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for
                 // `taxmod_hidden` replaces the ambient value and `array_filter` then drops the key —
