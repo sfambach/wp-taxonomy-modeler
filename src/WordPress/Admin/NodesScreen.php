@@ -473,11 +473,11 @@ final class NodesScreen
         $pane = 'max-height:calc(100vh - 12em);overflow-y:auto;overflow-x:hidden';
 
         $html .= '<table style="width:100%;border:0"><tr style="vertical-align:top">'
-            // ⚠️ *40 zu 60 statt 33 zu 67 — sein Wort: «mach mal die baumansicht etwas breiter» (D-776).*
-            . '<td style="width:40%;padding:0 1.5em 0 0">'
+            // ⚠️ *27 zu 73 — erst «mach mal die baumansicht etwas breiter» (40 %), dann nach seinem Bildschirmfoto «baum kann 2/3 so breit sein wie jetzt» (D-776).*
+            . '<td style="width:27%;padding:0 1.5em 0 0">'
             . '<div class="taxmod-tree-pane" style="' . $pane . ';padding-right:.6em">' . $left . '</div>'
             . '</td>'
-            . '<td style="width:60%;padding:0">'
+            . '<td style="width:73%;padding:0">'
             . '<div class="taxmod-detail-pane" style="' . $pane . ';padding-right:.6em">'
             . $this->detail($selected, $rows, $root)
             . '</div></td>'
