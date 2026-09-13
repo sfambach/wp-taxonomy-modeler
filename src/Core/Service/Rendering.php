@@ -331,7 +331,7 @@ final class Rendering implements Presets
      */
     public function valueOfNodeFrom(Node $node, string $characters): ?TypedValue
     {
-        $type = $this->typeOf($node, $this->nodes->byIds($node->ancestorIds()));
+        $type = $this->typeOf($node, $this->gemerkteKnoten($node->ancestorIds()));
 
         if ($type === null) {
             return null;
@@ -395,6 +395,134 @@ final class Rendering implements Presets
      */
     /** @var array{add?: string, remove?: string} Die Worte der Knöpfe an mehrfachen Teilen — vom Rand (`AR-2`). Leer: keine Knöpfe. */
     private array $partActs = [];
+
+    /**
+     * Die Knoten, die dieser Zeichner schon gelesen hat — Id ⇒ Knoten, `null` für «gibt es nicht».
+     *
+     * ⚠️ **Gemessen am 2026-09-13, und der Grund für diese drei Methoden** ([D-764](../../../docs/NewConcept/90-decision-log.md)):
+     * *`CPUs` mit fünf Sätzen auf der Seite — **1 208** Einzelabfragen nach je einem Knoten, 1,17 s von 1,5 s SQL. Jeder
+     * Satz und jeder seiner Teile fragte **dieselben** Knoten neu (`Einheitenwert`, `Text`, `Hertz`, `Bit`); die Werte
+     * selbst kosteten 115 Abfragen.* **Also merkt sich der Zeichner, was er gelesen hat** — *so wie er sich schon Ketten
+     * und Sätze merkt. Er schreibt nicht, und wer nach einem Schreiben neu zeichnen will, nimmt einen frischen Zeichner
+     * (das tun Rand und Wächter ohnehin: ein Aufruf, ein Zeichner).*
+     *
+     * @var array<int, Node|null>
+     */
+    private array $gelesen = [];
+
+    /** @var array<int, list<Node>> Unterbäume, nach der Id ihrer Wurzel. */
+    private array $gelesenUnter = [];
+
+    private function gemerkterKnoten(int $id): ?Node
+    {
+        if (! array_key_exists($id, $this->gelesen)) {
+            $speicher          = $this->nodes;
+            $this->gelesen[$id] = $speicher->find($id);
+        }
+
+        return $this->gelesen[$id];
+    }
+
+    /**
+     * Wie `byIds()`, aber nur die noch nicht gelesenen gehen an die Datenbank — in **einer** Abfrage.
+     *
+     * @param  list<int>|array<int> $ids
+     * @return array<int, Node>
+     */
+    private function gemerkteKnoten(array $ids): array
+    {
+        $ids    = array_values(array_unique(array_map(intval(...), array_filter($ids))));
+        $fehlen = array_values(array_filter($ids, fn (int $id): bool => ! array_key_exists($id, $this->gelesen)));
+
+        if ($fehlen !== []) {
+            $speicher = $this->nodes;
+            $geholt   = $speicher->byIds($fehlen);
+
+            foreach ($fehlen as $id) {
+                $this->gelesen[$id] = $geholt[$id] ?? null;
+            }
+        }
+
+        $aus = [];
+
+        foreach ($ids as $id) {
+            if ($this->gelesen[$id] !== null) {
+                $aus[$id] = $this->gelesen[$id];
+            }
+        }
+
+        return $aus;
+    }
+
+    /** @return list<Node> */
+    private function gemerkterUnterbaum(Node $wurzel): array
+    {
+        if (! isset($this->gelesenUnter[$wurzel->id])) {
+            $speicher                         = $this->nodes;
+            $this->gelesenUnter[$wurzel->id] = $speicher->subtreeOf($wurzel);
+
+            foreach ($this->gelesenUnter[$wurzel->id] as $knoten) {
+                $this->gelesen[$knoten->id] ??= $knoten;
+            }
+        }
+
+        return $this->gelesenUnter[$wurzel->id];
+    }
+
+    /** @var array<int, list<Node>> Sichtbare Kinder, nach der Id ihres Vaters — auch leere Listen, damit ein kinderloser Vater nicht neu gefragt wird. */
+    private array $gelesenKinder = [];
+
+    /**
+     * Wie `visibleChildrenOf()`, aber jeder Vater nur einmal je Zeichner (D-764).
+     *
+     * ⚠️ *Gemessen am 2026-09-13 an `CPUs` mit zwanzig Sätzen: die Auswahlfelder lasen die Kinder ihres Ankers **je Satz**
+     * neu — 192 von 325 verbliebenen Knotenabfragen.*
+     *
+     * @param  list<int>              $parentIds
+     * @return array<int, list<Node>> wie das Original: nur Väter, die Kinder haben
+     */
+    private function gemerkteSichtbareKinder(array $parentIds): array
+    {
+        $parentIds = array_values(array_unique(array_map(intval(...), $parentIds)));
+        $fehlen    = array_values(array_filter($parentIds, fn (int $id): bool => ! isset($this->gelesenKinder[$id])));
+
+        if ($fehlen !== []) {
+            $speicher = $this->nodes;
+            $geholt   = $speicher->visibleChildrenOf($fehlen);
+
+            foreach ($fehlen as $id) {
+                $this->gelesenKinder[$id] = $geholt[$id] ?? [];
+            }
+        }
+
+        $aus = [];
+
+        foreach ($parentIds as $id) {
+            if ($this->gelesenKinder[$id] !== []) {
+                $aus[$id] = $this->gelesenKinder[$id];
+            }
+        }
+
+        return $aus;
+    }
+
+    /** @var array<string, array<int, array<string, mixed>>> Zeilen des Baumwählers, nach Wurzel und Ausnahmen. */
+    private array $gelesenZeilen = [];
+
+    /**
+     * Die Zeilen unter einer Wurzel für den Baumwähler — einmal je Wurzel und Ausnahmen, nicht je Satz (D-764).
+     *
+     * ⚠️ *Gemessen: der Wähler eines Knotenverweises lief den Unterbaum für jeden Satz neu, 63 Abfragen bei zwanzig Sätzen.*
+     *
+     * @param  list<int>                            $skip
+     * @return array<int, array<string, mixed>>
+     */
+    private function gemerkteZeilenUnter(Tree $laeufer, Node $root, array $skip): array
+    {
+        $schluessel = $root->id . '|' . implode(',', array_map(intval(...), $skip));
+
+        return $this->gelesenZeilen[$schluessel] ??= $laeufer->rowsUnder($root, $skip);
+    }
 
     /** Dieselbe Zeichnung, aber mit Knöpfen zum Hinzufügen und Entfernen von Teil-Zeilen (D-758); die Worte kommen vom Rand. */
     public function withPartActs(string $add, string $remove): static
@@ -613,7 +741,7 @@ final class Rendering implements Presets
         // Which targets each role has to answer for — the role is read off the relation that points,
         // und wo die nichts sagt, vom Ziel selbst (D-728). *Die Ziele in einem Zug geladen (`CD-7`).*
         $wanted = [];
-        $ziele  = $this->nodes->byIds(array_values(array_filter(array_map(
+        $ziele  = $this->gemerkteKnoten(array_values(array_filter(array_map(
             // ⚠️ *Nur Knotenverweise: ein Satzverweis (D-753) trägt eine Satz-Id, und die ist kein Knoten — gemessen, als die Nummer 1 «Root» hiess.*
             static fn (Relation $r): ?int => (($values[$r->id] ?? null)?->referenceSpace === ReferenceSpace::Node) ? $values[$r->id]->reference : null,
             $relations
@@ -647,7 +775,7 @@ final class Rendering implements Presets
 
         foreach ($wanted as $role => $targets) {
             $resolvedNames = $this->labels->forNodes(
-                array_values($this->nodes->byIds(array_keys($targets))),
+                array_values($this->gemerkteKnoten(array_keys($targets))),
                 SeededRole::from($role),
                 $locale
             );
@@ -697,7 +825,7 @@ final class Rendering implements Presets
             return [];
         }
 
-        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
+        $targets = $this->gemerkteKnoten(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
         $hilfen  = $this->labels->helpFor(array_values($targets), $locale);
 
         $found = [];
@@ -831,7 +959,7 @@ final class Rendering implements Presets
      */
     private function nameWithParent(Node $ziel, SeededRole $role, string $locale, array $settings): string
     {
-        $vater  = $ziel->parentNodeId === null ? null : $this->nodes->find($ziel->parentNodeId);
+        $vater  = $ziel->parentNodeId === null ? null : $this->gemerkterKnoten($ziel->parentNodeId);
         $knoten = $vater === null ? [$ziel] : [$ziel, $vater];
         $namen  = $this->labels?->forNodes($knoten, $role, $locale) ?? [];
         $eigen  = $namen[$ziel->id] ?? $ziel->name;
@@ -854,7 +982,7 @@ final class Rendering implements Presets
     private function roleOf(array $settings, ?Node $ziel = null): SeededRole
     {
         $wahl  = ($settings[self::LABEL_ROLE] ?? null)?->value;
-        $asked = $wahl?->text ?? ($wahl?->reference === null ? null : $this->nodes->find($wahl->reference)?->name);
+        $asked = $wahl?->text ?? ($wahl?->reference === null ? null : $this->gemerkterKnoten($wahl->reference)?->name);
 
         if ($asked === null && $ziel !== null && $this->resolver !== null) {
             return $this->roleOf($this->resolver->forNode($ziel));
@@ -1247,7 +1375,7 @@ final class Rendering implements Presets
                 $tiefer === null
                     // ⚠️ *Das Ziel wird nur für einen Wähler-Renderer nachgeschlagen — sonst wäre es eine Abfrage je Feld (CD-7).*
                     ? (($renderer instanceof ChooserRenderer
-                        ? $this->chooserMarkup($this->nodes->find($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level)
+                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level)
                         : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
@@ -1309,7 +1437,7 @@ final class Rendering implements Presets
         string $fieldName = '',
         string $formId = '',
     ): ?RenderResult {
-        $type = $this->typeOf($node, $this->nodes->byIds($node->ancestorIds()));
+        $type = $this->typeOf($node, $this->gemerkteKnoten($node->ancestorIds()));
 
         if ($type === null) {
             return null;
@@ -1360,7 +1488,7 @@ final class Rendering implements Presets
         // ⚠️ **Jeder Verweis bekommt seinen Namen, nicht nur der auf sich selbst** — *gemessen am 2026-09-12 an `Prefixes`
         // mit Beispielsatz: die Leser-Seite zeigte `#3990` als verwaist, weil nur der eigene Verweis beschriftet wurde.
         // Die Rolle: die der Stelle, sonst die des Ziels (D-728).*
-        $verwiesen = $value->reference === null ? null : $this->nodes->find($value->reference);
+        $verwiesen = $value->reference === null ? null : $this->gemerkterKnoten($value->reference);
 
         if (($wahl = $this->chooserMarkup($node, $renderer, $settings, $value, $fieldName, $formId, $locale, $level)) !== null) {
             return $wahl;
@@ -1952,7 +2080,7 @@ final class Rendering implements Presets
 
         $renderer = $this->renderers->byName(FieldRowRenderer::NAME);
         $resolved = $this->vonDenKanten($relations);
-        $targets  = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
+        $targets  = $this->gemerkteKnoten(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
 
         // ⚠️ One query for the whole table, not one per row (`CD-7`) — and through the ordinary
         // label walk, so an attribute's target reads the same here as it does anywhere else.
@@ -1964,7 +2092,7 @@ final class Rendering implements Presets
         // *Sie sagt der Wertspalte einer Einstellungszeile, ob der gezeigte Wert geerbt ist
         // ([D-689](../../../docs/NewConcept/90-decision-log.md): dann gesperrt) und von wem — und ob
         // er hier überhaupt zulässig ist ([D-687](../../../docs/NewConcept/90-decision-log.md)).*
-        $knotenHier = $showValue && $valuePrefix !== '' && $declaredBy !== 0 ? $this->nodes->find($declaredBy) : null;
+        $knotenHier = $showValue && $valuePrefix !== '' && $declaredBy !== 0 ? $this->gemerkterKnoten($declaredBy) : null;
         $ketteHier  = $knotenHier === null ? [] : $this->withRendererValues($knotenHier);
 
         $rows = [];
@@ -2257,7 +2385,7 @@ final class Rendering implements Presets
         $text = (string) ($angabe->value->text ?? '');
 
         return [
-            'von'        => (string) ($this->nodes->find($angabe->fromOwnerId)?->name ?? ''),
+            'von'        => (string) ($this->gemerkterKnoten($angabe->fromOwnerId)?->name ?? ''),
             'wert'       => $text !== '' ? $text : $angabe->value->describe(),
             // Woran der geerbte Wert im gezeichneten Auswahlfeld zu erkennen ist: als Wert oder als Beschriftung.
             'kandidaten' => array_values(array_filter([$text, (string) ($angabe->value->reference ?? '')], static fn (string $k): bool => $k !== '')),
@@ -2797,7 +2925,7 @@ final class Rendering implements Presets
             // gesetzt» für alles, was sie kennen. **Damit fehlte der Pfeil «geerbt»**, und
             // «zurücksetzen» stand an einer Zeile, an der es nichts zurückzusetzen gibt.*
             if ($kante !== null && $forNode !== 0) {
-                $knotenHier = $this->nodes->find($forNode);
+                $knotenHier = $this->gemerkterKnoten($forNode);
 
                 if ($knotenHier !== null) {
                     $setting = $this->withRendererValues($knotenHier)[$key] ?? $setting;
@@ -2844,7 +2972,7 @@ final class Rendering implements Presets
                 ? ''
                 : $fieldPrefix . '[' . ($frei ? $traeger->id : $eine->key) . ']';
             $von     = $eine->setting->isInherited() && $eine->setting->fromOwnerId !== 0
-                ? (string) ($this->nodes->find($eine->setting->fromOwnerId)?->name ?? '')
+                ? (string) ($this->gemerkterKnoten($eine->setting->fromOwnerId)?->name ?? '')
                 : '';
 
             $drawn[$i] = $eine->withOrigin(
@@ -3287,7 +3415,7 @@ final class Rendering implements Presets
 
     private function pathValueFor(Relation $relation, int $forNode, array $settings): TypedValue
     {
-        $knoten = $forNode === 0 ? null : $this->nodes->find($forNode);
+        $knoten = $forNode === 0 ? null : $this->gemerkterKnoten($forNode);
 
         if ($knoten === null) {
             return TypedValue::nothing();
@@ -3315,7 +3443,7 @@ final class Rendering implements Presets
             return TypedValue::nothing();
         }
 
-        $namen  = $this->nodes->byIds($glieder);
+        $namen  = $this->gemerkteKnoten($glieder);
         $worte  = [];
 
         foreach ($glieder as $id) {
@@ -3378,7 +3506,7 @@ final class Rendering implements Presets
             return $leer;
         }
 
-        $ziele    = $this->nodes->byIds(array_values(array_unique(array_map(static fn (Relation $r): int => $r->toNodeId, $betroffen))));
+        $ziele    = $this->gemerkteKnoten(array_values(array_unique(array_map(static fn (Relation $r): int => $r->toNodeId, $betroffen))));
         $angebote = [];
         $satzIds  = [];
 
@@ -3390,7 +3518,7 @@ final class Rendering implements Presets
 
         if ($purpose === Purpose::Edit) {
             foreach ($ziele as $ziel) {
-                $unterZiel[$ziel->id] = [$ziel->id, ...array_map(static fn (Node $n): int => $n->id, $this->nodes->subtreeOf($ziel))];
+                $unterZiel[$ziel->id] = [$ziel->id, ...array_map(static fn (Node $n): int => $n->id, $this->gemerkterUnterbaum($ziel))];
             }
         }
 
@@ -3454,7 +3582,7 @@ final class Rendering implements Presets
 
         $knotenNamen = [];
 
-        foreach ($innereKnoten === [] ? [] : $this->nodes->byIds(array_keys($innereKnoten)) as $knoten) {
+        foreach ($innereKnoten === [] ? [] : $this->gemerkteKnoten(array_keys($innereKnoten)) as $knoten) {
             $knotenNamen[$knoten->id] = $knoten->name;
         }
 
@@ -3495,14 +3623,14 @@ final class Rendering implements Presets
             $besitzerJeKnoten = [];
             $alleBesitzer     = [];
 
-            foreach ($this->nodes->byIds(array_keys($knotenIds)) as $knoten) {
+            foreach ($this->gemerkteKnoten(array_keys($knotenIds)) as $knoten) {
                 $besitzerJeKnoten[$knoten->id] = $this->framework->inheritanceOwnersOf($knoten);
                 $alleBesitzer                  = [...$alleBesitzer, ...$besitzerJeKnoten[$knoten->id]];
 
                 // ⚠️ *Die Feldwahl eines inneren Satzes kommt von seinem Knoten oder dem nächsten Vorfahren, der eine trägt —
                 // `summary_fields` steht an «Software», der Satz liegt an «DOS». Gesucht vom Knoten aufwärts, der nächste gewinnt.*
                 foreach (array_reverse($besitzerJeKnoten[$knoten->id]) as $besitzerId) {
-                    $besitzer = $besitzerId === $knoten->id ? $knoten : $this->nodes->find($besitzerId);
+                    $besitzer = $besitzerId === $knoten->id ? $knoten : $this->gemerkterKnoten($besitzerId);
 
                     if ($besitzer === null) {
                         continue;
@@ -3613,7 +3741,7 @@ final class Rendering implements Presets
             return [];
         }
 
-        $ziel = $this->nodes->find($relation->toNodeId);
+        $ziel = $this->gemerkterKnoten($relation->toNodeId);
 
         if ($ziel === null) {
             return [];
@@ -3681,7 +3809,7 @@ final class Rendering implements Presets
                 $gewaehlt,
                 [$this->framework->trash()->id],
                 [$wurzel->id],
-                $gewaehlt === null ? null : $this->nodes->find($gewaehlt)?->name,
+                $gewaehlt === null ? null : $this->gemerkterKnoten($gewaehlt)?->name,
                 '',
                 ChooserRenderer::NAME,
                 $locale,
@@ -3698,8 +3826,8 @@ final class Rendering implements Presets
         // Ziels selbst keine Kinder, zeichnet der Wähler ein Auswahlfeld, beschriftet mit der Rolle `select` — *ausser
         // jemand hat den Dialog eingeschaltet ([D-727](../../../docs/NewConcept/90-decision-log.md)): dann bleibt der Baum.*
         if (($settings[ChooserRenderer::DIALOG] ?? null)?->value->asBool() !== true) {
-            $kinder = $this->nodes->visibleChildrenOf([$target->id])[$target->id] ?? [];
-            $enkel  = $kinder === [] ? [] : array_filter($this->nodes->visibleChildrenOf(array_map(static fn (Node $k): int => $k->id, $kinder)));
+            $kinder = $this->gemerkteSichtbareKinder([$target->id])[$target->id] ?? [];
+            $enkel  = $kinder === [] ? [] : array_filter($this->gemerkteSichtbareKinder(array_map(static fn (Node $k): int => $k->id, $kinder)));
 
             if ($kinder !== [] && $enkel === []) {
                 $namen   = $this->labels?->forNodes($kinder, SeededRole::Select, $locale) ?? [];
@@ -3731,7 +3859,7 @@ final class Rendering implements Presets
             $gewaehlt,
             [],
             [$target->id],
-            $gewaehlt === null ? null : $this->nodes->find($gewaehlt)?->name,
+            $gewaehlt === null ? null : $this->gemerkterKnoten($gewaehlt)?->name,
             '',
             $renderer->name(),
             $locale,
@@ -4048,7 +4176,7 @@ final class Rendering implements Presets
             return [];
         }
 
-        $knoten = $node instanceof Node ? $node : $this->nodes->find($node->toNodeId);
+        $knoten = $node instanceof Node ? $node : $this->gemerkterKnoten($node->toNodeId);
 
         if ($knoten === null) {
             return [];
@@ -4174,7 +4302,7 @@ final class Rendering implements Presets
             return '';
         }
 
-        $knoten = $subject instanceof Node ? $subject : $this->nodes->find($subject->toNodeId);
+        $knoten = $subject instanceof Node ? $subject : $this->gemerkterKnoten($subject->toNodeId);
 
         if ($knoten === null) {
             return '';
@@ -4209,7 +4337,7 @@ final class Rendering implements Presets
      */
     private function switchCascade(Renderable $subject, \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert, string $fieldPrefix, string $formId, string $locale): RenderResult
     {
-        $knoten = $subject instanceof Node ? $subject : ($subject instanceof Relation ? $this->nodes->find($subject->toNodeId) : null);
+        $knoten = $subject instanceof Node ? $subject : ($subject instanceof Relation ? $this->gemerkterKnoten($subject->toNodeId) : null);
 
         if ($knoten === null) {
             return RenderResult::of('');
@@ -4357,7 +4485,7 @@ final class Rendering implements Presets
             $setting->setHere
         );
 
-        $ziel    = $this->nodes->find($subject->toNodeId);
+        $ziel    = $this->gemerkterKnoten($subject->toNodeId);
         $vertrag = $ziel === null ? null : \Taxmod\Core\Model\NodeClass\Contracts::of($ziel->klasse);
         $options = [];
 
@@ -4456,7 +4584,7 @@ final class Rendering implements Presets
         // ausgelegt, also gelten seine Behälter** (D-749). *Sein Wort am 2026-09-12: «Klasse/Knoten Kategorie sollte
         // auch table, form, compact haben». Gemessen: die Auswahl am Feld `Address` war leer, weil Formular, Tabelle
         // und Compact nur einen Knoten annehmen und hier die Kante gefragt wurde.*
-        $subject = $type === null ? ($this->nodes->find($relation->toNodeId) ?? $relation) : $relation;
+        $subject = $type === null ? ($this->gemerkterKnoten($relation->toNodeId) ?? $relation) : $relation;
 
         return $this->renderers->eligibleFor(
             $subject,
@@ -4480,7 +4608,7 @@ final class Rendering implements Presets
      */
     private function hatEtwasZurAuswahl(int $nodeId): bool
     {
-        $knoten = $this->nodes->find($nodeId);
+        $knoten = $this->gemerkterKnoten($nodeId);
 
         return $knoten !== null && $this->nodes->childrenOf($knoten) !== [];
     }
@@ -4526,7 +4654,7 @@ final class Rendering implements Presets
             return $this->choicesFor($subject);
         }
 
-        $besitzer = $this->nodes->find($subject->fromNodeId);
+        $besitzer = $this->gemerkterKnoten($subject->fromNodeId);
 
         return $besitzer === null ? [] : $this->choicesForNode($besitzer);
     }
@@ -4629,7 +4757,7 @@ final class Rendering implements Presets
      */
     private function typesOf(array $relations): array
     {
-        $targets = $this->nodes->byIds(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
+        $targets = $this->gemerkteKnoten(array_map(static fn (Relation $e): int => $e->toNodeId, $relations));
 
         $types = [];
         $offen = [];
@@ -4654,7 +4782,7 @@ final class Rendering implements Presets
         //
         // ⚠️ *In einer Abfrage für alle offenen Ziele zusammen (`CD-7`), nicht einer je Zeile.*
         if ($offen !== []) {
-            $kinder = $this->nodes->visibleChildrenOf(array_values(array_unique($offen)));
+            $kinder = $this->gemerkteSichtbareKinder(array_values(array_unique($offen)));
 
             foreach ($offen as $relationId => $targetId) {
                 if (($kinder[$targetId] ?? []) !== []) {
@@ -4785,7 +4913,7 @@ final class Rendering implements Presets
             // [D-541](../../../docs/NewConcept/90-decision-log.md) unter **`Settings`**. **Damit blieb
             // genau die Zeile leer, um die es ging**: der Eigentümer sah eine Wertspalte ohne Wert.
             // Eine Liste der erlaubten Äste ist eine Liste, die beim nächsten Zweig wieder falsch ist.*
-            $knoten = $this->nodes->byIds($offen);
+            $knoten = $this->gemerkteKnoten($offen);
             $fragen = [];
 
             foreach ($offen as $id) {
@@ -4906,7 +5034,7 @@ final class Rendering implements Presets
             return null;
         }
 
-        $ziel = $this->nodes->find($relation->toNodeId);
+        $ziel = $this->gemerkterKnoten($relation->toNodeId);
 
         if ($ziel === null) {
             return null;
@@ -5118,7 +5246,7 @@ final class Rendering implements Presets
             return $innen;
         }
 
-        $knoten = $this->nodes->find($gewaehlt);
+        $knoten = $this->gemerkterKnoten($gewaehlt);
 
         if ($knoten === null) {
             return $innen;
@@ -5234,7 +5362,7 @@ final class Rendering implements Presets
             return RenderResult::of('');
         }
 
-        $walked = $this->closedApartFrom($laeufer->rowsUnder($root, $skip), $expanded, $preselected);
+        $walked = $this->closedApartFrom($this->gemerkteZeilenUnter($laeufer, $root, $skip), $expanded, $preselected);
 
         return $this->chooserFor(
             $walked,
@@ -5377,7 +5505,7 @@ final class Rendering implements Presets
                 }
             }
 
-            $kinder = $this->nodes->visibleChildrenOf(array_keys($alle));
+            $kinder = $this->gemerkteSichtbareKinder(array_keys($alle));
             $weiter = [];
 
             // ⚠️ **Die eigene Sorte kommt jetzt aus den eingehenden Kanten**

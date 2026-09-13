@@ -3400,14 +3400,17 @@ final class NodesScreen
      * ⚠️ *Sein Wort: «zum Vater werden Felder gelöscht, wenn dieser weniger hat, und zum Kind können neue leere hinzukommen — aber
      * nicht stillschweigend, nur mit Ansage».*
      */
-    private function moveRecordDialog(Node $selected, NodeRecord $record): Dialog
+    /**
+     * @param list<Node>     $kinder  die Kinder des gewählten Knotens — für alle Sätze der Seite dieselben, also einmal gelesen
+     * @param list<Relation> $verloren was dieser Satz beim Vater verlöre — für die ganze Seite in einem Zug bestimmt (D-764)
+     */
+    private function moveRecordDialog(NodeRecord $record, ?Node $parent, array $kinder, array $verloren): Dialog
     {
         $body   = '';
-        $parent = $selected->parentNodeId === null ? null : $this->editor->find($selected->parentNodeId);
         $wahl   = [];
 
-        if ($parent !== null && ! $this->framework->isProtected($parent)) {
-            $faellt = array_map(static fn (Relation $r): string => $r->name, $this->data->lostOnMove($record->id, $parent->id));
+        if ($parent !== null) {
+            $faellt = array_map(static fn (Relation $r): string => $r->name, $verloren);
             $wahl[$parent->id] = sprintf(
                 /* translators: %s: the parent node's name. */
                 __('Up to «%s»', 'taxmod'),
@@ -3419,7 +3422,7 @@ final class NodesScreen
             ));
         }
 
-        foreach ($this->editor->childrenOf($selected->id) as $kind) {
+        foreach ($kinder as $kind) {
             $wahl[$kind->id] = sprintf(
                 /* translators: %s: the child node's name. */
                 __('Down into «%s» — its extra fields start empty', 'taxmod'),
@@ -3637,6 +3640,16 @@ final class NodesScreen
         // wird — das Löschen eines Teils hängt daran.*
         $zeilen = [];
 
+        // ⚠️ *Was der Dialog «Move» je Satz braucht, ist für die ganze Seite dasselbe Ziel — also einmal gelesen und nicht
+        // je Zeile (D-764; gemessen: drei Einzelabfragen je Satz, auch wenn niemand den Dialog öffnet).*
+        $vater    = $selected->parentNodeId === null ? null : $this->editor->find($selected->parentNodeId);
+        $vater    = $vater !== null && ! $this->framework->isProtected($vater) ? $vater : null;
+        $kinder   = $this->editor->childrenOf($selected->id);
+        $verluste = $vater === null ? [] : $this->data->lostOnMoveMany(
+            array_map(static fn (NodeRecord $r): int => $r->id, $records),
+            $vater->id
+        );
+
         foreach ($records as $record) {
             $held = [];
 
@@ -3696,7 +3709,7 @@ final class NodesScreen
                         __('Move this record up to the parent or down into a child — its values travel with it', 'taxmod'),
                         true,
                         icon: 'randomize',
-                        opens: $this->moveRecordDialog($selected, $record)
+                        opens: $this->moveRecordDialog($record, $vater, $kinder, $verluste[$record->id] ?? [])
                     ),
                     new Control(
                         'do',

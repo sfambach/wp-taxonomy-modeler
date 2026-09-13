@@ -170,6 +170,48 @@ check('eine Seite hinter dem Ende zeigt die letzte', gezeigt($m, $zwoelf) === ar
 [$m] = seite($wiese->id, 'x');
 check('Unsinn in der Adresse ist Seite 1', gezeigt($m, $zwoelf) === array_slice($zwoelf, 0, 5));
 
+// 3a · Ein Satz mit Teilen fragt keine Knoten nach, die schon ein anderer Satz gelesen hat (D-764)
+$einheitswert = array_values($nodes->ofClass(\Taxmod\Core\Model\NodeClass\UnitValue::class))[0] ?? null;
+check('ein Einheitswert-Knoten ist da', $einheitswert !== null);
+
+if ($einheitswert !== null) {
+    $dezimal  = $types->nodeId(SimpleType::Decimal);
+    $wertFeld = array_values(array_filter($editor->fieldsOf($einheitswert->id), static fn ($f): bool => $f->toNodeId === $dezimal))[0] ?? null;
+    $teile    = $editor->createNode('__rp Teile', $framework->rootOf(Branch::Model)->id);
+    $messung  = $editor->addField($teile->id, $einheitswert->id, 'messung');
+    $teilSaetze = [];
+
+    for ($i = 1; $i <= 10; $i++) {
+        $satz = $data->create($teile->id);
+        $teil = $data->partsOf($satz->id)[$messung->id] ?? $data->createPart($satz->id, $messung->id)->id;
+
+        if ($wertFeld !== null) {
+            $data->put($teil, $wertFeld->id, TypedValue::ofDecimal((string) $i));
+        }
+
+        $teilSaetze[] = $satz->id;
+    }
+
+    $einzeln = static function () use (&$wpdb): int {
+        return count(array_filter($wpdb->queries, static fn (array $q): bool => str_contains($q[0], 'WHERE n.id = ')));
+    };
+
+    update_option(\Taxmod\WordPress\Admin\SettingsScreen::RECORDS_PER_PAGE, 5);
+    seite($teile->id);
+    $beiFuenf = $einzeln();
+    update_option(\Taxmod\WordPress\Admin\SettingsScreen::RECORDS_PER_PAGE, 10);
+    [$m] = seite($teile->id);
+    $beiZehn = $einzeln();
+    update_option(\Taxmod\WordPress\Admin\SettingsScreen::RECORDS_PER_PAGE, 5);
+
+    check('zehn Sätze mit Teilen stehen da', gezeigt($m, $teilSaetze) === $teilSaetze);
+    check(
+        'Einzelabfragen nach Knoten wachsen nicht mit den gezeigten Sätzen',
+        $beiZehn <= $beiFuenf,
+        "fünf Sätze {$beiFuenf}, zehn Sätze {$beiZehn}"
+    );
+}
+
 // 3b · Die Einstellung zählt
 update_option(\Taxmod\WordPress\Admin\SettingsScreen::RECORDS_PER_PAGE, 10);
 [$m] = seite($wiese->id);

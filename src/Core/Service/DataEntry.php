@@ -1438,26 +1438,55 @@ final class DataEntry
      */
     public function lostOnMove(int $recordId, int $targetNodeId): array
     {
-        $ziel   = $this->nodes->byId($targetNodeId);
-        $dort   = [];
+        return $this->lostOnMoveMany([$recordId], $targetNodeId)[$recordId] ?? [];
+    }
+
+    /**
+     * Dieselbe Ansage für mehrere Sätze zum selben Ziel — in wenigen Abfragen statt einigen je Satz (`CD-7`, [D-764](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Gemessen am 2026-09-13: der Dialog «Move» fragte je Satz das Ziel, dessen Felder und jedes verlorene Feld einzeln —
+     * drei und mehr Abfragen je Zeile der Satztabelle, auch wenn niemand den Dialog öffnet.*
+     *
+     * @param  list<int>                   $recordIds
+     * @return array<int, list<Relation>> Satz-Id ⇒ Felder, an denen er Werte hält und die das Ziel nicht hat.
+     */
+    public function lostOnMoveMany(array $recordIds, int $targetNodeId): array
+    {
+        if ($recordIds === []) {
+            return [];
+        }
+
+        $ziel = $this->nodes->byId($targetNodeId);
+        $dort = [];
 
         foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($ziel)) as $feld) {
             $dort[$feld->id] = true;
         }
 
-        $verloren = [];
+        $felder = [];
+        $aus    = [];
 
-        foreach ($this->records->valuesOf($recordId) as $zeile) {
-            if (! isset($dort[$zeile->relationId]) && ! isset($verloren[$zeile->relationId])) {
-                $feld = $this->relations->byId($zeile->relationId);
+        foreach ($this->records->valuesOfMany($recordIds) as $satzId => $werte) {
+            $verloren = [];
 
-                if ($feld !== null) {
-                    $verloren[$zeile->relationId] = $feld;
+            foreach ($werte as $zeile) {
+                if (isset($dort[$zeile->relationId]) || isset($verloren[$zeile->relationId])) {
+                    continue;
+                }
+
+                if (! array_key_exists($zeile->relationId, $felder)) {
+                    $felder[$zeile->relationId] = $this->relations->byId($zeile->relationId);
+                }
+
+                if ($felder[$zeile->relationId] !== null) {
+                    $verloren[$zeile->relationId] = $felder[$zeile->relationId];
                 }
             }
+
+            $aus[(int) $satzId] = array_values($verloren);
         }
 
-        return array_values($verloren);
+        return $aus;
     }
 
     public function retypeRecord(int $recordId, RecordType $kind): void
