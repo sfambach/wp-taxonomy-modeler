@@ -846,9 +846,11 @@ a.taxmod-chosen:hover {
  * `stretch` gibt beiden die Hoehe der hoeheren; unter 40em fallen sie doch untereinander, weil
  * zwei Formulare in einer Handbreite nicht lesbar sind.
  */
+/* ⚠️ Untereinander statt nebeneinander — sein Wort am 2026-09-13: «die beiden preview mal untereinander und mit horizontalen
+ * scroll balken» (D-777). Breite Tabellen scrollen jetzt in ihrem Kasten, statt die Seite auseinanderzuziehen. */
 .taxmod-preview {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1em;
     align-items: stretch;
 }
@@ -864,6 +866,16 @@ a.taxmod-chosen:hover {
     border-radius: 3px;
     background: #fff;
     padding: .6em .8em;
+    /* ⚠️ Der Kasten scrollt waagerecht, nicht die Seite (D-777); `min-width: 0`, sonst dehnt ein Rasterglied sich auf seinen Inhalt. */
+    overflow-x: auto;
+    min-width: 0;
+}
+
+/* ⚠️ Dasselbe für die Datensatz-Tabelle — sein Wort: «das gleiche gilt für die records auch einen horizontalen scrollbalken damit
+ * die seite nicht so auseinander gezogen wird» (D-777). */
+.taxmod-record-form {
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 /* ⚠️ Eine eigene Zeile über die ganze Breite — auf sein Wort: «Settings-Preview in eine neue Zeile
