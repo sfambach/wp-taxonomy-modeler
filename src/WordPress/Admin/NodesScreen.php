@@ -1140,7 +1140,9 @@ final class NodesScreen
         // head's first row already holds that name as an editable field — printing it again above in
         // larger type was the duplication, and he saw it the moment the head existed.*
         return $this->rendering->nodeAsPage($selected, $sections)->markup
-            . '<div class="taxmod-page-block">' . $this->recordsPanel($selected) . '</div>'
+            // ⚠️ *Ein eigener Name für den Satzblock, damit er waagerecht scrollt statt die Seite zu dehnen — sein Befund: «scrollbar for records
+            // disappeared webside is again stretched to wide» (D-777, verloren mit D-785).*
+            . '<div class="taxmod-page-block taxmod-records-block">' . $this->recordsPanel($selected) . '</div>'
             // ⚠️ **«Used by» ganz unten und zugeklappt** (D-781) — sein Wort: «den Used by Bereich ganz nach unten und
             // macht den ausklappbar, standardmäßig eingeklappt».
             . '<div class="taxmod-page-block"><details class="taxmod-used-by-block">' . $this->usedByPanel($selected) . '</details></div>';

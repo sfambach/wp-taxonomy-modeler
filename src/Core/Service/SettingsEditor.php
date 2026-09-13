@@ -385,6 +385,20 @@ final class SettingsEditor
             }
         }
 
+        // ⚠️ **Derselbe Renderer wie geerbt, hier festgehalten: dasselbe Objekt, kein neues** (D-798, berichtigt) — *sein Befund: «compact is
+        // selected for all unit values, so why is rendering not working». Gemessen an `Betriebsspannung`: das neue Objekt trug die Vorgaben
+        // der Klasse (`with_label` an) statt der Einstellungen von Einheitenwert (`with_label` aus), und die Stückliste zeichnete drei
+        // beschriftete Zeilen. Die Kante zeigt jetzt auf das geerbte Objekt; was dort anders sein soll, überschreibt eine Zeile mit Kante.*
+        $geerbtesObjekt = $edge !== null && $holdHere ? ($amKnoten[0] ?? null)?->valueObjectId : null;
+
+        if ($geerbtesObjekt !== null && $this->settings->findObject($geerbtesObjekt)?->klasse === $klasse) {
+            $this->settings->addValue(SettingsValue::objectAtNode($node->id, $erklaert->declaredBy, $erklaert->name, $geerbtesObjekt, $edge->id, 0));
+            $this->resolver->forget();
+            $this->note($node, $erklaert->name, $edge, null, TypedValue::ofText($name), 1);
+
+            return true;
+        }
+
         $objekt = $this->settings->addObject(SettingsObject::create($klasse));
 
         if ($edge === null) {
