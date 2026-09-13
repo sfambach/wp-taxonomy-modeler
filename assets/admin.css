@@ -885,6 +885,17 @@ a.taxmod-chosen:hover {
     width: 100%;
 }
 
+/* ⚠️ Die Filterzeile über den Datensätzen, farbig hinterlegt — sein Wort: «filterzeile bitte anders farblich hinterlegen»
+ * (D-768). Erkannt an ihrem Formular `taxmod-record-0`, damit der Tabellen-Renderer keine Sonderzeile kennen muss. */
+.taxmod-table tr:has(form#taxmod-record-0) > td,
+.taxmod-table tr:has(form#taxmod-record-0) > th {
+    background: #eaf2fa;
+}
+
+.taxmod-table tr:has(form#taxmod-record-0) {
+    border-bottom: 2px solid #72aee6;
+}
+
 .taxmod-preview-side h4 {
     margin: 0 0 .5em;
     font-size: .9em;

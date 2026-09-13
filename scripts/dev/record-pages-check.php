@@ -273,5 +273,69 @@ check('«New record» führt auf die letzte Seite', str_contains($ort, 'taxmod_r
 $ort = $abschicken([...$form, 'do' => 'save_record', 'node_record_id' => (string) $zwoelf[5], 'taxmod_record_page' => '2']);
 check('Speichern auf Seite 2 bleibt auf Seite 2', str_contains($ort, 'taxmod_record_page=2'), $ort);
 
+// 6 · Der Filter (D-768): dieselben Felder wie ein Satz, greift vor dem Blättern, reist in der Adresse
+$ort = $abschicken([...$form, 'do' => 'filter_records', 'taxmod_value' => [0 => [(string) $feld->id => '__rp 2']], 'taxmod_record_page' => '2']);
+check('Filtern trägt den Filter in die Adresse', str_contains($ort, 'taxmod_record_filter='), $ort);
+check('und beginnt wieder bei Seite 1', ! str_contains($ort, 'taxmod_record_page='), $ort);
+
+parse_str((string) parse_url($ort, PHP_URL_QUERY), $abfrage);
+$filterParam = (string) ($abfrage['taxmod_record_filter'] ?? '');
+
+$_GET['taxmod_record_filter'] = $filterParam;
+[$m] = seite($wiese->id);
+unset($_GET['taxmod_record_filter']);
+
+// ⚠️ *Die Namen der Wiese zählen je Aufruf von 1 an: 1–5, 1–2, 1–5 — «__rp 2» steht also dreimal da.*
+$erwartet = [$zwoelf[1], $zwoelf[6], $zwoelf[8]];
+check('der Filter lässt nur die passenden Sätze stehen', gezeigt($m, $zwoelf) === $erwartet, implode(',', gezeigt($m, $zwoelf)));
+check('die Filterzeile trägt die Felder des Satzes', str_contains($m, 'taxmod_value[0][' . $feld->id . ']'));
+check('und sagt, wie viele von allen passen', str_contains($m, '3 of 13'), 'erwartet «3 of 13»');
+
+[$m] = seite($wiese->id);
+check('ohne Filter in der Adresse stehen wieder alle', count(gezeigt($m, $zwoelf)) === 5);
+
+$ort = $abschicken([...$form, 'do' => 'clear_filter', 'taxmod_record_filter' => $filterParam]);
+check('Zurücksetzen nimmt den Filter aus der Adresse', ! str_contains($ort, 'taxmod_record_filter='), $ort);
+
+$ort = $abschicken([...$form, 'do' => 'save_record', 'node_record_id' => (string) $zwoelf[1], 'taxmod_record_filter' => $filterParam]);
+check('Speichern unter einem Filter behält ihn', str_contains($ort, 'taxmod_record_filter=' . $filterParam), $ort);
+
+// 7 · Der Sprung (D-769): ein Feld, das nichts speichert, führt zum Ziel und setzt dort den Filter «von = dieser Satz»
+$sprungTyp = $types->nodeId(SimpleType::Jump);
+check('der Typknoten «Jump» ist gesät', $sprungTyp !== null);
+
+if ($sprungTyp !== null) {
+    $resolver = new \Taxmod\Core\Service\SettingsResolver(new WpdbSettingsRepository(), $nodes, \Taxmod\Core\Renderer\ShippedRenderers::registry(), \Taxmod\Core\Converter\ShippedConverters::registry(), relations: $relations);
+    $attrs    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, $resolver, \Taxmod\Core\Renderer\ShippedRenderers::registry(), \Taxmod\Core\Converter\ShippedConverters::registry(), $log);
+
+    $ziel   = $editor->createNode('__rp Sprungziel', $framework->rootOf(Branch::Model)->id);
+    $von    = $editor->addField($ziel->id, $wiese->id, 'von');
+    $sprung = $editor->addField($wiese->id, $sprungTyp, 'sprung');
+    $typKnoten = $nodes->byId($sprungTyp);
+
+    $attrs->setMembers($typKnoten, \Taxmod\Core\Model\Type\JumpType::ZIEL, [$ziel->id], $sprung);
+    $attrs->setMembers($typKnoten, \Taxmod\Core\Model\Type\JumpType::FILTER_FELD, [$von->id], $sprung);
+
+    $zielA = $data->create($ziel->id);
+    $data->put($zielA->id, $von->id, TypedValue::ofRecordReference($zwoelf[0]));
+    $zielB = $data->create($ziel->id);
+    $data->put($zielB->id, $von->id, TypedValue::ofRecordReference($zwoelf[1]));
+
+    [$m] = seite($wiese->id);
+    $links = preg_match_all('/class="taxmod-jump" href="([^"]+)"/', $m, $treffer);
+    check('jeder gezeigte Satz trägt einen Sprung, die Filterzeile nicht', $links === 5, "{$links} Links");
+
+    $adresse = html_entity_decode($treffer[1][0] ?? '');
+    parse_str((string) parse_url($adresse, PHP_URL_QUERY), $sprungAbfrage);
+    check('der Sprung führt zum Zielknoten', (int) ($sprungAbfrage['taxmod_node'] ?? 0) === $ziel->id, $adresse);
+    check('und trägt einen Filter, aber keine Seitenzahl', isset($sprungAbfrage['taxmod_record_filter']) && ! isset($sprungAbfrage['taxmod_record_page']), $adresse);
+    check('der Sprung speichert nichts', (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . $wpdb->prefix . 'taxmod_relation_records WHERE relation_id = %d', $sprung->id)) === 0);
+
+    $_GET['taxmod_record_filter'] = (string) ($sprungAbfrage['taxmod_record_filter'] ?? '');
+    [$m] = seite($ziel->id);
+    unset($_GET['taxmod_record_filter']);
+    check('am Ziel steht nur der Satz mit «von = dieser Satz»', gezeigt($m, [$zielA->id, $zielB->id]) === [$zielA->id], implode(',', gezeigt($m, [$zielA->id, $zielB->id])));
+}
+
 echo "\n" . ($failed === 0 ? 'all green' : "{$failed} FAILED") . " ({$passed} ok)\n";
 exit($failed === 0 ? 0 : 1);

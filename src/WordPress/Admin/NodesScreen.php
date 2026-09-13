@@ -180,6 +180,9 @@ final class NodesScreen
     /** Welche Seite der Datensätze gezeigt wird — eine Zahl oder `last` ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
     private const RECORD_PAGE = 'taxmod_record_page';
 
+    /** Der Filter der Satztabelle — Kante ⇒ Zeichen, als ein Parameter ([D-768](../../../docs/NewConcept/90-decision-log.md)). */
+    private const RECORD_FILTER = 'taxmod_record_filter';
+
     /** Der Akt, der eine Feldzeile auf- oder zuklappt. */
     private const TOGGLE_ROW_SETTINGS = 'toggle_field_settings';
 
@@ -191,6 +194,9 @@ final class NodesScreen
      * für den Faltzustand des Baums nötig gemacht hat.*
      */
     private string|false|null $openRowsAfterAct = false;
+
+    /** Der Filter nach diesem Akt — `false` «unberührt», `null` «kein Filter» (D-768), dieselben drei Zustände wie oben. */
+    private string|false|null $filterAfterAct = false;
 
     /**
      * Ein Artwechsel, der auf seine Bestätigung wartet — `<Kante>:<Art>:<Sätze>:<Werte>`.
@@ -3618,6 +3624,31 @@ final class NodesScreen
             return $html . '<p><em>' . esc_html__('None yet.', 'taxmod') . '</em></p>';
         }
 
+        // ⚠️ **Der Filter greift vor dem Blättern** ([D-768](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort:
+        // «repliziere die felder des satzes für die den filter» — die Filterzeile trägt dieselben Felder wie ein Satz, und ein
+        // Satz bleibt stehen, wenn jedes ausgefüllte Filterfeld zu einem seiner Werte passt. Die Werte aller Sätze kommen dafür
+        // in **einer** Abfrage (`CD-7`).*
+        $filterFelder = array_values(array_filter($attributes, static fn (Relation $r): bool => ! $r->isSetting()));
+        $filterZeichen = $this->recordFilter($filterFelder);
+        $filterWerte   = $this->rendering->valuesFrom($filterFelder, $filterZeichen);
+
+        // ⚠️ *Ein Satzverweis hat keinen einfachen Typ, also liest `valuesFrom()` ihn nicht — der Sprung filtert aber genau so:
+        // «von = aktuelle Zeile» (D-769). Eine Satznummer wird darum als Verweis gelesen, und nur eine Nummer.*
+        foreach ($filterZeichen as $kante => $zeichen) {
+            if (! isset($filterWerte[$kante]) && ctype_digit($zeichen)) {
+                $filterWerte[$kante] = \Taxmod\Core\Model\TypedValue::ofRecordReference((int) $zeichen);
+            }
+        }
+        $ungefiltert  = count($records);
+
+        if ($filterWerte !== []) {
+            $alleWerte = $this->data->valuesOfMany(array_map(static fn (NodeRecord $r): int => $r->id, $records));
+            $records   = array_values(array_filter(
+                $records,
+                fn (NodeRecord $r): bool => $this->matchesFilter($alleWerte[$r->id] ?? [], $filterWerte)
+            ));
+        }
+
         // ⚠️ **Seiten zu fünf** ([D-763](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «dies nur auf
         // seiten aufteilen und immer nur 5 laden». Gemessen am 2026-09-13 an `CPUs` mit 59 Sätzen: 5,8 s,
         // 4 939 Abfragen, 10 MB HTML — der Baum allein 0,14 s. **Die Zeit liegt im Zeichnen je Satz**, also
@@ -3734,8 +3765,48 @@ final class NodesScreen
             ];
         }
 
+        // ⚠️ **Die Filterzeile steht über den Sätzen** ([D-768](../../../docs/NewConcept/90-decision-log.md)) — *dieselben Felder,
+        // gezeichnet wie eine Satzzeile, mit einem eigenen Formular (Satz-Id 0). Zusammengesetzte Felder zeichnet sie mit, filtert
+        // aber noch nicht über sie (Zeile 140).*
+        $vorspalten = $zeilen === []
+            ? [__('Record', 'taxmod') => '', __('Version', 'taxmod') => '', __('Kind', 'taxmod') => '']
+            : array_fill_keys(array_keys($zeilen[0]['lead']), '');
+        $vorspalten[array_key_first($vorspalten)] = '<strong>' . esc_html__('Filter', 'taxmod') . '</strong>'
+            . ($filterWerte === [] ? '' : ' <em>' . esc_html(sprintf(
+                /* translators: 1: records that match the filter, 2: all records of this node */
+                __('%1$d of %2$d', 'taxmod'),
+                $gesamt,
+                $ungefiltert
+            )) . '</em>');
+
+        array_unshift($zeilen, [
+            'id'      => 0,
+            'values'  => $filterWerte,
+            'lead'    => $vorspalten,
+            'acts'    => [
+                new Control('do', 'filter_records', __('Filter', 'taxmod'), __('Show only the records whose fields match what is filled in here', 'taxmod'), true, false, 'filter'),
+                new Control('do', 'clear_filter', __('Reset filter', 'taxmod'), __('Show all records again', 'taxmod'), $filterWerte !== [], false, 'dismiss'),
+            ],
+            'submits' => new Submission(
+                admin_url('admin-post.php'),
+                [
+                    'action'        => self::ACTION,
+                    'id'            => (string) $selected->id,
+                    '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                    ...array_filter($this->circumstances()),
+                ]
+            ),
+        ]);
+
         // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
-        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->recordsAsTable(
+        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->withJumps(
+            // ⚠️ *Ein Sprung ist ein Aufruf des Zielknotens mit gesetztem Filter und ab Seite 1 (D-769).*
+            fn (int $ziel, int $feld, string $wert): string => $this->backTo($ziel, [
+                self::RECORD_FILTER => self::encodeFilter([$feld => $wert]),
+                self::RECORD_PAGE   => null,
+            ]),
+            __('Open the matching records', 'taxmod')
+        )->recordsAsTable(
             $selected,
             $attributes,
             $zeilen,
@@ -3789,6 +3860,127 @@ final class NodesScreen
             . $link($nach($seite + 1), 'arrow-right-alt2', __('Next page', 'taxmod'), $seite < $seiten) . ' '
             . $link($nach($seiten), 'controls-skipforward', __('Last page', 'taxmod'), $seite < $seiten)
             . '</p>';
+    }
+
+    /**
+     * Die abgeschickte Filterzeile als **ein** Adressparameter — Kante ⇒ Zeichen, JSON, base64url ([D-768](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Ein Parameter und nicht einer je Feld: so reist der Filter durch {@see circumstances()} in jedes Formular der
+     * Seite, wie die Seitenzahl, und kein Formular muss wissen, welche Felder dieser Knoten hat. Zusammengesetzte Felder
+     * kommen als Liste an und fallen hier noch heraus (Zeile 140).*
+     */
+    private function submittedFilter(): ?string
+    {
+        $roh = isset($_POST[self::VALUE_FIELD][0]) && is_array($_POST[self::VALUE_FIELD][0])
+            ? wp_unslash($_POST[self::VALUE_FIELD][0])
+            : [];
+        $filter = [];
+
+        foreach ($roh as $kante => $zeichen) {
+            $id = absint($kante);
+
+            if ($id === 0 || is_array($zeichen)) {
+                continue;
+            }
+
+            $zeichen = trim(sanitize_text_field((string) $zeichen));
+
+            if ($zeichen !== '') {
+                $filter[$id] = $zeichen;
+            }
+        }
+
+        return $filter === [] ? null : self::encodeFilter($filter);
+    }
+
+    /**
+     * Ein Filter als Adressparameter — **eine** Form für die Filterzeile und den Sprung (D-768, D-769).
+     *
+     * @param array<int, string> $filter Kante ⇒ Zeichen
+     */
+    private static function encodeFilter(array $filter): string
+    {
+        return rtrim(strtr(base64_encode((string) wp_json_encode($filter)), '+/', '-_'), '=');
+    }
+
+    /** Merkt sich den Filter für die Umleitung; ein Akt, der nichts schreibt, hat nichts zu melden. */
+    private function rememberFilter(?string $filter): void
+    {
+        $this->filterAfterAct = $filter;
+    }
+
+    /**
+     * Der Filter aus der Adresse, beschränkt auf die Felder dieses Knotens — was keine seiner Kanten ist, wird nicht geglaubt (`CD-5`).
+     *
+     * @param  list<Relation>     $felder
+     * @return array<int, string>
+     */
+    private function recordFilter(array $felder): array
+    {
+        $roh = $this->circumstance(self::RECORD_FILTER);
+
+        if ($roh === null) {
+            return [];
+        }
+
+        $json   = base64_decode(strtr($roh, '-_', '+/'), true);
+        $daten  = $json === false ? null : json_decode($json, true);
+
+        if (! is_array($daten)) {
+            return [];
+        }
+
+        $erlaubt = array_flip(array_map(static fn (Relation $r): int => $r->id, $felder));
+        $aus     = [];
+
+        foreach ($daten as $kante => $zeichen) {
+            $id = absint($kante);
+
+            if (isset($erlaubt[$id]) && is_string($zeichen) && trim($zeichen) !== '') {
+                $aus[$id] = sanitize_text_field($zeichen);
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Passt ein Satz zum Filter? Jedes ausgefüllte Feld muss zu einem seiner Werte passen.
+     *
+     * ⚠️ *Wie verglichen wird, ist meine Form und nicht sein Wort (D-768): Text **enthält** (ohne Gross/klein), ein Datum
+     * trifft den **Tag**, eine Zahl ist **gleich** als Zahl (`8` trifft `8.0000000000`), ein Verweis zeigt auf **dasselbe**.*
+     *
+     * @param list<\Taxmod\Core\Model\RelationRecord> $werte
+     * @param array<int, TypedValue>                   $filter
+     */
+    private function matchesFilter(array $werte, array $filter): bool
+    {
+        foreach ($filter as $kante => $gesucht) {
+            $passt = false;
+
+            foreach ($werte as $wert) {
+                if ($wert->relationId !== $kante) {
+                    continue;
+                }
+
+                $passt = match (true) {
+                    $gesucht->text !== null => mb_stripos($wert->value->rawValue(), $gesucht->text) !== false,
+                    $gesucht->date !== null => str_starts_with($wert->value->rawValue(), substr($gesucht->date, 0, 10)),
+                    $gesucht->int !== null, $gesucht->decimal !== null => $wert->value->comparedTo($gesucht) === 0,
+                    default                 => $wert->value->rawValue() === $gesucht->rawValue(),
+                };
+
+                if ($passt) {
+                    break;
+                }
+            }
+
+            if (! $passt) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -3932,6 +4124,11 @@ final class NodesScreen
         $lines = '';
 
         foreach ($perRow as $i => $fields) {
+            // ⚠️ *Die Filterzeile (Satz-Id 0, D-768) ist kein Satz — eine Diagnose «je Satz» nennt sie nicht.*
+            if ((int) ($rows[$i]['id'] ?? 0) === 0) {
+                continue;
+            }
+
             $cells = [];
 
             foreach ($fields as $field) {
@@ -5206,6 +5403,9 @@ final class NodesScreen
                 // könnten bei der preview eingabe einen button hinzufügen add as example».*
                 'add_example'    => $this->addExample($id),
                 'save_record'    => $this->saveRecord($id),
+                // ⚠️ *Filtern schreibt nichts — es trägt die Filterzeile in die Adresse (D-768).*
+                'filter_records' => $this->rememberFilter($this->submittedFilter()),
+                'clear_filter'   => $this->rememberFilter(null),
                 // ⚠️ *Zeilen eines mehrfachen Teilfeldes (D-758, D-577).*
                 'add_part'       => $this->addedPart($id),
                 'remove_part'    => $this->removedPart($id),
@@ -5253,6 +5453,12 @@ final class NodesScreen
         // und «New record» sähe aus wie «nichts passiert» (D-763).*
         if (in_array($do, ['add_record', 'add_example'], true)) {
             $extra[self::RECORD_PAGE] = 'last';
+        }
+
+        // ⚠️ *Ein neuer Filter beginnt bei Seite 1 — Seite 3 von zwölf Sätzen gibt es unter drei Treffern nicht (D-768).*
+        if ($this->filterAfterAct !== false) {
+            $extra[self::RECORD_FILTER] = $this->filterAfterAct;
+            $extra[self::RECORD_PAGE]   = null;
         }
 
         // ⚠️ **`false` heisst «dieser Akt hat am Aufklappzustand nichts geändert»** — *und `null`
@@ -5349,6 +5555,8 @@ final class NodesScreen
             self::OPEN_ROWS    => $this->circumstance(self::OPEN_ROWS),
             // ⚠️ *Sonst springt jedes Speichern auf Seite 1 zurück, weg von dem Satz, den man gerade bearbeitet hat (D-763).*
             self::RECORD_PAGE  => $this->circumstance(self::RECORD_PAGE),
+            // ⚠️ *Sonst hebt jedes Speichern den Filter auf, unter dem man gerade arbeitet (D-768).*
+            self::RECORD_FILTER => $this->circumstance(self::RECORD_FILTER),
         ];
     }
 
@@ -5441,6 +5649,10 @@ final class NodesScreen
                 // auf einen anderen beginnt bei Seite 1, wie der Merker oben (D-763).*
                 self::RECORD_PAGE  => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
                     ? $this->circumstance(self::RECORD_PAGE)
+                    : null,
+                // ⚠️ *Der Filter nennt Kanten dieses Knotens — auf einem anderen hiesse er nichts (D-768).*
+                self::RECORD_FILTER => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
+                    ? $this->circumstance(self::RECORD_FILTER)
                     : null,
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for

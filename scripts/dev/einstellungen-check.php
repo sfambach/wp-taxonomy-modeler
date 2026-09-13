@@ -1180,7 +1180,9 @@ $seiteSatz = seite($satzKnoten->id);
 $at    = strpos($seiteSatz, 'taxmod-record');
 $block = $at === false ? '' : substr($seiteSatz, $at);
 $saetze = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE node_id = {$satzKnoten->id} AND relation_id = 0");
-check('der Datensatz-Block ist eine Tabelle: nicht n Tabellen, je Satz eine Zeile mit Aktionszelle, eigenem Formular und drei Vorspalten', $block !== '' && substr_count($block, '<table class="taxmod-table"') < $saetze && substr_count($block, 'taxmod-table-acts') === $saetze && substr_count($block, 'id="taxmod-record-') === $saetze && substr_count($block, 'taxmod-table-lead') === $saetze * 3, "{$saetze} Sätze");
+// ⚠️ **Geändert am 2026-09-13 mit [D-768](../../docs/NewConcept/90-decision-log.md), sichtbar:** *über den Sätzen steht die
+// Filterzeile — eine Zeile mehr mit Aktionszelle, eigenem Formular (`taxmod-record-0`) und denselben drei Vorspalten.*
+check('der Datensatz-Block ist eine Tabelle: nicht n Tabellen, je Satz eine Zeile mit Aktionszelle, eigenem Formular und drei Vorspalten — dazu die Filterzeile', $block !== '' && substr_count($block, '<table class="taxmod-table"') < $saetze && substr_count($block, 'taxmod-table-acts') === $saetze + 1 && substr_count($block, 'id="taxmod-record-') === $saetze + 1 && str_contains($block, 'id="taxmod-record-0"') && substr_count($block, 'taxmod-table-lead') === ($saetze + 1) * 3, "{$saetze} Sätze");
 check('«Belongs to» steht nicht mehr darin', ! str_contains($block, 'Belongs to'));
 $einstellungsNamen = $wpdb->get_col("SELECT e.name FROM {$p}relations_named e WHERE e.kind = 'setting' AND e.name <> ''") ?: [];
 $drin = [];

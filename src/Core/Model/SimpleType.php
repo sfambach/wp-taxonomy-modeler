@@ -69,6 +69,8 @@ enum SimpleType: string
     case Version = 'version';
     // ⚠️ *Der Weg vom erklärenden Vater bis zum Knoten, gerechnet beim Zeichnen (D-751).*
     case Path = 'path';
+    // ⚠️ *Ein Sprung zu einem anderen Knoten, gefiltert nach diesem Satz — gerechnet beim Zeichnen, nie gespeichert (D-769).*
+    case Jump = 'jump';
 
     /** A reference to a node in the model. */
     case NodeRef = 'node_ref';

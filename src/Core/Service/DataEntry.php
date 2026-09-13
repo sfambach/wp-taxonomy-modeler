@@ -1545,6 +1545,17 @@ final class DataEntry
     }
 
     /**
+     * Die Werte vieler Sätze in einer Abfrage (`CD-7`) — der Filter der Satztabelle prüft alle Sätze eines Knotens, nicht nur die der Seite ([D-768](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  list<int>                                                $recordIds
+     * @return array<int, list<\Taxmod\Core\Model\RelationRecord>>
+     */
+    public function valuesOfMany(array $recordIds): array
+    {
+        return $recordIds === [] ? [] : $this->records->valuesOfMany($recordIds);
+    }
+
+    /**
      * Welche dieser Datensätze überhaupt eine Wertzeile tragen — **in einer Abfrage** (`CD-7`).
      *
      * ⚠️ **Gebraucht, seit ein leerer `default` nicht mehr als vorhanden zählt**

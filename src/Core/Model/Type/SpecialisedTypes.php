@@ -47,6 +47,7 @@ final class SpecialisedTypes
         ColorType::class,
         VersionType::class,
         PathType::class,
+        JumpType::class,
         NodeRefType::class,
         UserRefType::class,
     ];

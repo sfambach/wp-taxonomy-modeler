@@ -32,8 +32,8 @@ final class BaseScaffold
     public const OPTION = 'taxmod_base_scaffold';
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
-    // ⚠️ *7: der Typknoten «Path» (D-751).*
-    public const VERSION = 7;
+    // ⚠️ *7: der Typknoten «Path» (D-751). 8: der Typknoten «Jump» (D-769).*
+    public const VERSION = 8;
 
     public function __construct(
         private readonly ModelEditor $editor,

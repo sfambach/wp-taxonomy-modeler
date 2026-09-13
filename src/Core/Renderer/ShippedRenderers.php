@@ -49,6 +49,9 @@ final class ShippedRenderers
         // ⚠️ **The sliding switch is the default for a boolean** — the owner: *bools always with a
         // slider.* The checkbox stays **offered**, because a variant nobody can choose is a variant
         // that need not exist (D-018's pattern: one renderer per presentation variant).
+        // ⚠️ *Der Sprung hat genau einen Renderer: einen Link zum gefilterten Ziel (D-769).*
+        $registry->add(new JumpRenderer(), SimpleType::Jump);
+
         $registry->add(new ToggleRenderer(), SimpleType::Bool);
         $registry->add(new CheckboxRenderer());
 

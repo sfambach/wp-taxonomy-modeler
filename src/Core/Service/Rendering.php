@@ -396,6 +396,12 @@ final class Rendering implements Presets
     /** @var array{add?: string, remove?: string} Die Worte der Knöpfe an mehrfachen Teilen — vom Rand (`AR-2`). Leer: keine Knöpfe. */
     private array $partActs = [];
 
+    /** @var (\Closure(int, int, string): string)|null Die Adresse eines Sprungs: Zielknoten, Filterfeld, Wert — vom Rand, weil der Kern keine Adresse kennt (D-769). */
+    private ?\Closure $jumpUrl = null;
+
+    /** Das Wort des Sprung-Links für den Screenreader — vom Rand (`AR-2`). */
+    private string $jumpWord = '';
+
     /**
      * Die Knoten, die dieser Zeichner schon gelesen hat — Id ⇒ Knoten, `null` für «gibt es nicht».
      *
@@ -529,6 +535,20 @@ final class Rendering implements Presets
     {
         $kopie           = clone $this;
         $kopie->partActs = ['add' => $add, 'remove' => $remove];
+
+        return $kopie;
+    }
+
+    /**
+     * Dieselbe Zeichnung, aber mit Sprung-Feldern, die eine Adresse haben ([D-769](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param \Closure(int, int, string): string $url  Zielknoten, Filterfeld am Ziel, eingesetzter Wert ⇒ Adresse
+     */
+    public function withJumps(\Closure $url, string $word): static
+    {
+        $kopie           = clone $this;
+        $kopie->jumpUrl  = $url;
+        $kopie->jumpWord = $word;
 
         return $kopie;
     }
@@ -1086,6 +1106,8 @@ final class Rendering implements Presets
          * Vorgabe stehen.
          */
         bool $onlySettingParts = false,
+        /** Der Satz, dessen Werte hier stehen — ein Sprung-Feld setzt ihn als Filterwert ein (D-769). `0` heisst «kein Satz», dann zeichnet ein Sprung nichts. */
+        int $recordId = 0,
     ): array {
         if ($relations === []) {
             return [];
@@ -1186,6 +1208,12 @@ final class Rendering implements Presets
             // *Was im Satz steht, zählt nicht; die Kette der Namen vom erklärenden Vater bis hierher ist der Wert.*
             if ($type === SimpleType::Path) {
                 $gewaehlt = $this->pathValueFor($relation, $forNode, $settings);
+                $settings[EdgeColumn::READ_ONLY] = new ResolvedSetting(EdgeColumn::READ_ONLY, TypedValue::ofBool(true), $relation->id, true);
+            }
+
+            // ⚠️ **Ein Sprung wird gerechnet, nicht gelesen, und ist nie eingebbar** ([D-769](../../../docs/NewConcept/90-decision-log.md)).
+            if ($type === SimpleType::Jump) {
+                $gewaehlt = $this->jumpValueFor($relation, $settings, $values, $recordId);
                 $settings[EdgeColumn::READ_ONLY] = new ResolvedSetting(EdgeColumn::READ_ONLY, TypedValue::ofBool(true), $relation->id, true);
             }
 
@@ -1350,7 +1378,7 @@ final class Rendering implements Presets
                     mayBeNothing: $dieWahl->mayBeNothing,
                     formId: $formId,
                 ),
-                shown: $this->convertedCharacters($value, $settings, $type),
+                shown: $type === SimpleType::Jump ? $this->jumpWord : $this->convertedCharacters($value, $settings, $type),
             );
 
             // ⚠️ **Hier war die Kette unterbrochen**, und die Diagnose ist seine: *«heisst wohl
@@ -1846,7 +1874,9 @@ final class Rendering implements Presets
                 [$model->id => true],
                 $teile[$row['id']] ?? [],
                 // ⚠️ *Der Satz gehört diesem Knoten — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
-                $model->id
+                $model->id,
+                // ⚠️ *Und ein Sprung-Feld (D-769) setzt den Satz selbst als Filterwert ein.*
+                recordId: $row['id']
             );
 
             $vorne[] = $row['lead'];
@@ -3406,6 +3436,56 @@ final class Rendering implements Presets
      * Der Weg eines Feldes für einen Knoten, mit den Angaben der Verwendungsstelle — für den Satz, der ihn
      * **speichert** ([D-755](../../../docs/NewConcept/90-decision-log.md): *«und das in den Datensatz auch reinschreiben»*).
      */
+    /**
+     * Der Wert eines Sprung-Feldes: die Adresse zum Zielknoten, gefiltert nach dem eingestellten Feld ([D-769](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Gerechnet beim Zeichnen, nie gespeichert — wie der Weg. Ohne Adressgeber vom Rand, ohne Satz, ohne Ziel oder ohne
+     * Filterfeld zeichnet das Feld nichts: ein halb eingestellter Sprung führt nirgendwohin, statt irgendwohin.*
+     *
+     * @param array<string, ResolvedSetting> $settings Was an dieser Stelle gilt — `ziel` steht darin.
+     * @param array<int, TypedValue>         $values   Die Werte des Satzes, für ein eingestelltes Quellfeld.
+     */
+    private function jumpValueFor(Relation $relation, array $settings, array $values, int $recordId): TypedValue
+    {
+        if ($this->jumpUrl === null || $recordId === 0 || $this->resolver === null) {
+            return TypedValue::nothing();
+        }
+
+        $typKnoten = $this->gemerkterKnoten($relation->toNodeId);
+
+        if ($typKnoten === null) {
+            return TypedValue::nothing();
+        }
+
+        // ⚠️ *Über `listOf()` und nicht über `$settings`: aufgelöste Einstellungen sind Wörter, die Glieder einer Liste tragen ihre Nummer.*
+        $erstes = static function (iterable $glieder): ?int {
+            foreach ($glieder as $glied) {
+                if ($glied->aktiv && $glied->reference !== null) {
+                    return (int) $glied->reference;
+                }
+            }
+
+            return null;
+        };
+
+        $ziel       = $erstes($this->resolver->listOf($typKnoten, \Taxmod\Core\Model\Type\JumpType::ZIEL, $relation));
+        $filterFeld = $erstes($this->resolver->listOf($typKnoten, \Taxmod\Core\Model\Type\JumpType::FILTER_FELD, $relation));
+
+        if ($ziel === null || $filterFeld === null) {
+            return TypedValue::nothing();
+        }
+
+        // ⚠️ *Leer heisst «der Satz selbst» — sein Wort: «setzte filter von = aktulle zeile».*
+        $quellFeld = $erstes($this->resolver->listOf($typKnoten, \Taxmod\Core\Model\Type\JumpType::QUELL_FELD, $relation));
+        $wert      = $quellFeld === null ? (string) $recordId : (($values[$quellFeld] ?? null)?->rawValue() ?? '');
+
+        if ($wert === '') {
+            return TypedValue::nothing();
+        }
+
+        return TypedValue::ofText(($this->jumpUrl)((int) $ziel, $filterFeld, $wert));
+    }
+
     public function pathTextFor(Relation $relation, int $forNode): TypedValue
     {
         $resolved = $this->settingsForUseSites([$relation]);
