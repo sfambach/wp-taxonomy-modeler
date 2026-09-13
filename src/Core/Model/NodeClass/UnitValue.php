@@ -16,6 +16,20 @@ final class UnitValue implements NodeClass
 {
     use NodeAttributes;
 
+    /**
+     * Welche Einheiten ein Feld dieses Typs anbietet — leer heisst alle; genau eine heisst vorgewählt und nicht änderbar.
+     *
+     * ⚠️ **Sein Wort** ([D-783](../../../../docs/NewConcept/90-decision-log.md)): *«shrink the available base units for these
+     * fields in the settings so that we say only Ohms allowed, and so this is preselected and not changeable … das ist doch
+     * das Gleiche wie bei den Präfixes».* *Gesetzt am Feld (der Verwendungsstelle), gelesen, wenn der Teil gezeichnet wird.*
+     *
+     * @var list<int> Knoten der Klasse Einheit
+     */
+    #[Attribut(listOf: 'node', refersTo: Unit::class, from: Anchor::Units)]
+    public array $erlaubte_einheiten = [];
+
+    public const ERLAUBTE_EINHEITEN = 'erlaubte_einheiten';
+
     public static function allowedChildClasses(): array
     {
         return [];

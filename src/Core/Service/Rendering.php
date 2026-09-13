@@ -1135,6 +1135,8 @@ final class Rendering implements Presets
         bool $onlySettingParts = false,
         /** Der Satz, dessen Werte hier stehen — ein Sprung-Feld setzt ihn als Filterwert ein (D-769). `0` heisst «kein Satz», dann zeichnet ein Sprung nichts. */
         int $recordId = 0,
+        /** @var array<int, list<int>> Je Feld die erlaubten Knoten seines Wählers — gesetzt vom Teil, der die Felder trägt (D-783). Fehlt ein Feld, gilt alles. */
+        array $allowedChoices = [],
     ): array {
         if ($relations === []) {
             return [];
@@ -1430,7 +1432,7 @@ final class Rendering implements Presets
                 $tiefer === null
                     // ⚠️ *Das Ziel wird nur für einen Wähler-Renderer nachgeschlagen — sonst wäre es eine Abfrage je Feld (CD-7).*
                     ? (($renderer instanceof ChooserRenderer
-                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level)
+                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null)
                         : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
@@ -3896,13 +3898,19 @@ final class Rendering implements Presets
     /**
      * @param array<string, ResolvedSetting> $settings Die aufgelösten Angaben der Stelle — darunter `dialog` und `display_size` des Wählers.
      */
-    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level): ?RenderResult
+    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null): ?RenderResult
     {
         if ($target === null || ! $renderer instanceof ChooserRenderer) {
             return null;
         }
 
         $gewaehlt = $value->reference !== null && $value->reference !== $target->id ? $value->reference : null;
+
+        // ⚠️ **Nur die erlaubten, wo der Teil sie nennt** (D-783) — *erlaubte Einheiten am Feld, erlaubte Präfixe an der Einheit.*
+        // *Eine leere Liste, die der Teil **nennt**, heisst «nichts zu wählen» — der Präfix einer Einheit ohne Präfix.*
+        if ($erlaubt !== null) {
+            return $erlaubt === [] ? RenderResult::of('') : $this->allowedChoiceMarkup($target, $erlaubt, $gewaehlt, $fieldName, $formId, $locale, $level, $settings);
+        }
 
         // ⚠️ **Ein Verweis auf den Typ «Node reference» selbst ist unbeschränkt: der ganze Baum, als Dialog** ([D-740](../../../docs/NewConcept/90-decision-log.md)) —
         // *sein Befund an `Organisation`: «preview funktioniert nicht reference type type … type in preview ist leer».*
@@ -4473,7 +4481,7 @@ final class Rendering implements Presets
                 return RenderResult::of('');
             }
 
-            $kinder = $this->nodes->childrenOf($anker);
+            $kinder = $this->candidatesUnder($anker, $erklaert);
             $namen  = $this->labels?->forNodes($kinder, SeededRole::Select, $locale) ?? [];
 
             foreach ($kinder as $kind) {
@@ -4506,6 +4514,147 @@ final class Rendering implements Presets
     }
 
     /**
+     * Die Kandidaten unter einem Anker: seine Kinder — oder, wo die Kinder nicht von der Verweisklasse sind, die Knoten dieser
+     * Klasse im ganzen Ast.
+     *
+     * ⚠️ *Die Einheiten liegen unter «With prefix» und «Without prefix», eine Ebene tiefer als die Präfixe (D-783). Wo die Kinder
+     * schon passen — Präfixe, Rollen —, bleibt es bei den Kindern.*
+     *
+     * @return list<Node>
+     */
+    private function candidatesUnder(Node $anker, \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert): array
+    {
+        $kinder = $this->nodes->childrenOf($anker);
+
+        if ($erklaert->refersTo === null || array_filter($kinder, static fn (Node $kind): bool => $kind->klasse !== $erklaert->refersTo) === []) {
+            return $kinder;
+        }
+
+        return array_values(array_filter(
+            $this->gemerkterUnterbaum($anker),
+            static fn (Node $knoten): bool => $knoten->id !== $anker->id && $knoten->klasse === $erklaert->refersTo
+        ));
+    }
+
+    /**
+     * Welche Knoten die Wähler in einem Teil anbieten dürfen: die Einheiten, die das tragende Feld erlaubt (D-783), und die
+     * Präfixe, die die gewählte Einheit erlaubt ([D-697](../../../docs/NewConcept/90-decision-log.md)). Leer heisst alle — dann
+     * fehlt das Feld in der Antwort.
+     *
+     * ⚠️ *Erkannt am Ziel des inneren Feldes, das ein Anker des Gerüsts ist — nicht an einem Namen (`CD · Prohibited`). Ist keine
+     * Einheit gewählt, aber genau eine erlaubt, gilt sie: sonst stünde bei einem neuen Satz die volle Präfixliste neben «Ohm».*
+     *
+     * @param  list<Relation>         $felder
+     * @param  array<int, TypedValue> $werte
+     * @return array<int, list<int>>
+     */
+    private function allowedChoicesIn(Node $ziel, Relation $traeger, array $felder, array $werte): array
+    {
+        if ($this->resolver === null) {
+            return [];
+        }
+
+        $einheiten = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Units);
+        $praefixe  = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Prefixes);
+        $aktive    = static fn (array $glieder): array => array_values(array_map(
+            static fn ($glied): int => (int) $glied->reference,
+            array_filter($glieder, static fn ($glied): bool => $glied->aktiv && $glied->reference !== null)
+        ));
+        $aus     = [];
+        $einheit = null;
+
+        foreach ($felder as $feld) {
+            if ($einheiten === null || $feld->toNodeId !== $einheiten->id) {
+                continue;
+            }
+
+            $erlaubt = $aktive($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\UnitValue::ERLAUBTE_EINHEITEN, $traeger));
+
+            if ($erlaubt !== []) {
+                $aus[$feld->id] = $erlaubt;
+            }
+
+            $einheit = ($werte[$feld->id] ?? null)?->reference ?? (count($erlaubt) === 1 ? $erlaubt[0] : null);
+        }
+
+        $einheitKnoten = $einheit === null ? null : $this->gemerkterKnoten($einheit);
+
+        foreach ($felder as $feld) {
+            if ($praefixe === null || $einheitKnoten === null || $feld->toNodeId !== $praefixe->id) {
+                continue;
+            }
+
+            // ⚠️ *Eine Einheit ohne Präfix (`mit_praefix` aus — Prozent, Kelvin) bietet keinen an: die leere Liste heisst hier «keiner»,
+            // nicht «alle». Gemessen an `Toleranz`: neben «% - Prozent» stand die ganze Präfixliste.*
+            if (($this->resolver->forNode($einheitKnoten)['mit_praefix'] ?? null)?->value->asBool() !== true) {
+                $aus[$feld->id] = [];
+
+                continue;
+            }
+
+            $erlaubt = $aktive($this->resolver->listOf($einheitKnoten, \Taxmod\Core\Model\NodeClass\Unit::ERLAUBTE_PRAEFIXE));
+
+            if ($erlaubt !== []) {
+                $aus[$feld->id] = $erlaubt;
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Ein Wähler, der nur die erlaubten Knoten anbietet — als Auswahlfeld, gleich wie tief sie im Ziel liegen (D-783).
+     *
+     * ⚠️ *Sein Wort: «only Ohms allowed, and so this is preselected and not changeable». Bei genau einem erlaubten Knoten zeichnet
+     * {@see ChoiceRenderer} ihn vorgewählt und ausgegraut (R30). Ein gesperrtes Feld schickt nichts ab — also trägt ein verstecktes
+     * Feld den Wert, damit auch ein neuer Satz ihn speichert. Ein gespeicherter Wert, der nicht mehr erlaubt ist, bleibt ein
+     * Eintrag ([D-360](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param list<int>                      $erlaubt
+     * @param array<string, ResolvedSetting> $settings
+     */
+    private function allowedChoiceMarkup(Node $target, array $erlaubt, ?int $gewaehlt, string $fieldName, string $formId, string $locale, Level $level, array $settings): RenderResult
+    {
+        $ids    = $gewaehlt === null || in_array($gewaehlt, $erlaubt, true) ? $erlaubt : [...$erlaubt, $gewaehlt];
+        $knoten = $this->gemerkteKnoten($ids);
+        $namen  = $this->labels?->forNodes(array_values($knoten), SeededRole::Select, $locale) ?? [];
+        $options = [];
+
+        foreach ($ids as $id) {
+            if (isset($knoten[$id])) {
+                $options[$id] = $namen[$id] ?? $knoten[$id]->name;
+            }
+        }
+
+        $einzig = count($options) === 1 ? (int) array_key_first($options) : null;
+        $wert   = $gewaehlt ?? $einzig;
+
+        $auswahl = $this->renderers->byName(ChoiceRenderer::NAME)->render($target, new RenderContext(
+            purpose: Purpose::Edit,
+            value: $wert === null ? TypedValue::nothing() : TypedValue::ofReference($wert),
+            settings: isset($settings['display_size']) ? ['display_size' => $settings['display_size']] : [],
+            locale: $locale,
+            level: $level,
+            editable: true,
+            fieldName: $fieldName,
+            type: SimpleType::NodeRef,
+            surroundings: new Surroundings(options: $options, mayBeNothing: $einzig === null, formId: $formId),
+        ));
+
+        if ($einzig === null || $fieldName === '') {
+            return $auswahl;
+        }
+
+        return new RenderResult(
+            $auswahl->markup
+                . '<input type="hidden" name="' . RenderResult::escape($fieldName) . '" value="' . $einzig . '"'
+                . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '>',
+            $auswahl->usedRelations,
+            $auswahl->condition
+        );
+    }
+
+    /**
      * Die Knoten, die ein Verweisattribut anbietet: alle der Verweisklasse, nach Namen.
      *
      * @return array<string, string> Name ⇒ Name — der Wert einer Zeile ist der Verweis, gezeichnet wird das Wort (D-105)
@@ -4522,7 +4671,7 @@ final class Rendering implements Presets
         // label role angezeigt» (D-728).*
         $anker = $erklaert->from === null ? null : $this->framework->anchor($erklaert->from);
 
-        foreach ($erklaert->from === null ? $this->nodes->ofClass($erklaert->refersTo) : ($anker === null ? [] : $this->nodes->childrenOf($anker)) as $knoten) {
+        foreach ($erklaert->from === null ? $this->nodes->ofClass($erklaert->refersTo) : ($anker === null ? [] : $this->candidatesUnder($anker, $erklaert)) as $knoten) {
             $aus[$knoten->name] = $knoten->name;
         }
 
@@ -5208,6 +5357,8 @@ final class Rendering implements Presets
             // ({@see \Taxmod\Core\Service\ModelValues::ownSettingValuesOf()}).*
             // ⚠️ **Ohne eigenen Teil tragen die inneren Felder die Werte des Satzes** — *adressiert über die letzte Kante (D-667),
             // also stehen sie im selben Vorrat wie die äusseren; hier stand `[]`, und die Adresse blieb leer (D-741).*
+            $erlaubteWahl = $purpose === Purpose::Edit ? $this->allowedChoicesIn($ziel, $relation, $dieseFelder, $teil === null ? $values : $teil['werte']) : [];
+
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
                 $teil === null
@@ -5256,7 +5407,8 @@ final class Rendering implements Presets
                 // WICHTIG: Hier stand eine leere Liste, und daran endete der Abstieg. Die Teile
                 // *dieses* Teils sind der gewaehlte Renderer und was unter ihm haengt (D-583).
                 $teil['teile'] ?? [],
-                $forNode
+                $forNode,
+                allowedChoices: $erlaubteWahl
             );
         }
 

@@ -52,6 +52,9 @@ final class UnitScaffold
     /** Der Knoten, dessen Kinder die Präfixe sind — {@see \Taxmod\Core\Model\NodeClass\Anchor::Prefixes}. */
     public const PREFIXES_NAME = 'Prefixes';
 
+    /** Der Knoten, unter dem die Einheiten liegen — {@see \Taxmod\Core\Model\NodeClass\Anchor::Units}. */
+    public const BASE_UNITS_NAME = 'Base units';
+
     /**
      * Wo der Einheitenwert steht — **als Id, nicht als Name**.
      *

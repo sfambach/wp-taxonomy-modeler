@@ -18,4 +18,10 @@ enum Anchor: string
 
     /** ⚠️ *Sein Bild am 2026-09-12: `erlaubte_praefixe` bot form, table, yotta … an — alle Konstanten statt der Präfixe.* */
     case Prefixes = 'prefixes';
+
+    /**
+     * ⚠️ *Sein Wort am 2026-09-13: «shrink the available base units for these fields in the settings» ([D-783](../../../../docs/NewConcept/90-decision-log.md)).
+     * Die Einheiten liegen eine Ebene tiefer als die Präfixe — unter «With prefix» und «Without prefix».*
+     */
+    case Units = 'units';
 }

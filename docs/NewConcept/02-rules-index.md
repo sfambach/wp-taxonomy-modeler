@@ -279,7 +279,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R27** | The branch node is what scopes the choice: picking any node means the whole tree; picking a model means the models branch is put in front. | [30-renderer.md:816](30-renderer.md) | 3 |
 | **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 50 |
 | **R29** | Whether nothing is allowed follows from the multiplicity: 0..1 and 0.. may be empty; 1 and 1.. must always have a selection. | [30-renderer.md:861](30-renderer.md) | 14 |
-| **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 11 |
+| **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 12 |
 | **R31** | With no available entry there is nothing to choose and the control is disabled. | [30-renderer.md:863](30-renderer.md) | 7 |
 | **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 38 |
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |

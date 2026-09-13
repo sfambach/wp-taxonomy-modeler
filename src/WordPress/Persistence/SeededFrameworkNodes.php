@@ -218,6 +218,7 @@ final class SeededFrameworkNodes implements FrameworkNodes
             \Taxmod\Core\Model\NodeClass\Anchor::Roles    => self::ROLES_OPTION,
             // ⚠️ *Die Präfixe legt das Einheitengerüst an, nicht das Gerüst der Zweige — der Anker liest dessen Notiz.*
             \Taxmod\Core\Model\NodeClass\Anchor::Prefixes => UnitScaffold::optionFor(UnitScaffold::PREFIXES_NAME),
+            \Taxmod\Core\Model\NodeClass\Anchor::Units    => UnitScaffold::optionFor(UnitScaffold::BASE_UNITS_NAME),
         };
 
         return (int) get_option($option, 0) === 0 ? null : $this->remembered($option);

@@ -29,6 +29,8 @@ final class Unit implements NodeClass
     #[Attribut(listOf: 'node', refersTo: Constant::class, from: Anchor::Prefixes)]
     public array $erlaubte_praefixe = [];
 
+    public const ERLAUBTE_PRAEFIXE = 'erlaubte_praefixe';
+
     #[Attribut]
     public string $symbol = '';
 
