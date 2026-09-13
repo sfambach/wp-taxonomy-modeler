@@ -140,7 +140,8 @@ $zeichner = static fn (): Rendering => new Rendering(
     ShippedConverters::registry(),
     $relations,
     resolver: new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations),
-    records: $rows
+    records: $rows,
+    validators: \Taxmod\Core\Validator\ShippedValidators::registry()
 );
 
 wp_set_current_user(1);
@@ -1388,7 +1389,7 @@ $data->put($lfSatz->id, $lfName->id, TypedValue::ofText('__es Alpha'));
 $data->put($lfSatz->id, $lfLand->id, TypedValue::ofText('__es Nord'));
 $wer           = $editor->addField($satzKnoten->id, $lieferant->id, '__es wer', RelationKind::Aggregation);
 $data->put($sId, $wer->id, TypedValue::ofRecordReference($lfSatz->id));
-$einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations), ShippedRenderers::registry(), ShippedConverters::registry());
+$einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations), ShippedRenderers::registry(), ShippedConverters::registry(), validators: \Taxmod\Core\Validator\ShippedValidators::registry());
 // ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
 $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfName->id, $lfLand->id]);
 $mitSummary = seite($satzKnoten->id);
@@ -1437,6 +1438,15 @@ $wannSeite = seite($wann->id);
 check('die Grenze wird als Datum gezeichnet, im Band mit max', preg_match('/<input type="datetime-local"[^>]*name="taxmod_setting\[min\]"[^>]*value="2020-01-01T00:00"/', $wannSeite) === 1);
 $wannFeld = $editor->addField($satzKnoten->id, $wann->id, '__es wann');
 check('das Eingabefeld eines Satzes trägt die Grenze als min', preg_match('/<input type="datetime-local"[^>]*name="taxmod_value\[' . $sId . '\]\[' . $wannFeld->id . '\]"[^>]*min="2020-01-01T00:00"/', seite($satzKnoten->id)) === 1);
+
+
+// ⚠️ **Zeile 8: die Validatoren laufen beim Speichern** ([D-760](../../docs/NewConcept/90-decision-log.md)) — erst prüfen, dann schreiben;
+// eine Beschwerde, und nichts wird gespeichert. *Am Datum mit Grenze von D-757: der Bereichs-Wächter «range» an der Stelle.*
+$einsteller->put($nodes->byId($wann->id), 'validator', 'range');
+abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $satzFeld->id => '43', (string) $wannFeld->id => '2019-05-01T10:00']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+check('ein Wert unter der Grenze wird abgewiesen, mit Feld und Grenze in der Meldung, und nichts geschrieben — auch nicht der Nachbar (D-760)', ! gelungen() && str_contains(letzteMeldung(), '__es wann') && str_contains(letzteMeldung(), '2020-01-01') && (string) $wpdb->get_var("SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$satzFeld->id}") !== '43' && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wannFeld->id}") === 0, letzteMeldung());
+abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $wannFeld->id => '2021-03-01T10:00']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+check('ein Wert innerhalb der Grenzen wird gespeichert', gelungen() && (string) $wpdb->get_var("SELECT value_date FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wannFeld->id}") === '2021-03-01 10:00:00', letzteMeldung());
 
 // ⚠️ **Die Seite wird abgeschickt, wie ein Browser sie abschickt** ([D-754](../../docs/NewConcept/90-decision-log.md)) — sein Wort am
 // 2026-09-12: *«read only verschwindet nach Speichern, das hatten wir jetzt schon mehrfach; kannst du das generell mal überprüfen,

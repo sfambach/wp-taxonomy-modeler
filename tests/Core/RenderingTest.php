@@ -159,7 +159,8 @@ final class RenderingTest extends TestCase
             ShippedConverters::registry(),
             resolver: $this->resolver = new SettingsResolver($this->settings, $this->nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $this->relations),
             relations: $this->relations,
-            records: $this->records
+            records: $this->records,
+            validators: \Taxmod\Core\Validator\ShippedValidators::registry()
         );
     }
 
@@ -1776,6 +1777,7 @@ final class RenderingTest extends TestCase
             resolver: $this->resolver,
             relations: $this->relations,
             records: $this->records,
+            validators: \Taxmod\Core\Validator\ShippedValidators::registry(),
             users: $users
         );
     }
@@ -2165,5 +2167,39 @@ final class RenderingTest extends TestCase
         $gezeigt = $this->rendering->nodeAsForm($eintrag, [$folger], [$folger->id => TypedValue::ofRecordReference($satz)], Purpose::Display)->markup;
 
         self::assertStringContainsString('Microsoft Corp. · DOS · 4.0', $gezeigt);
+    }
+
+    /** ⚠️ *Zeile 8 (D-760): der Validator der Stelle sieht den Wert, bevor er gespeichert wird.* */
+    #[Test]
+    public function the_validators_of_a_use_site_complain_about_a_value_outside_its_bounds(): void
+    {
+        $int    = $this->type('Integer');
+        $posten = $this->thing('Posten');
+        $menge  = $this->editor->addField($posten->id, $int->id, 'menge');
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), validators: \Taxmod\Core\Validator\ShippedValidators::registry());
+        $editor->put($int, 'validator', 'range');
+        $editor->put($int, 'min', '3', $menge);
+        $this->neuZeichnen();
+
+        self::assertSame([], $this->rendering->complaintsFor($menge, TypedValue::ofInt(5)));
+
+        $beschwerden = $this->rendering->complaintsFor($menge, TypedValue::ofInt(1));
+
+        self::assertCount(1, $beschwerden);
+        self::assertSame('below_min', $beschwerden[0]->key);
+        self::assertSame('3', $beschwerden[0]->values['min']);
+    }
+
+    #[Test]
+    public function without_a_chosen_validator_nothing_complains(): void
+    {
+        $int    = $this->type('Integer');
+        $posten = $this->thing('Posten');
+        $menge  = $this->editor->addField($posten->id, $int->id, 'menge');
+
+        $this->einstellung($menge, 'min', TypedValue::ofInt(3));
+
+        self::assertSame([], $this->rendering->complaintsFor($menge, TypedValue::ofInt(1)));
     }
 }

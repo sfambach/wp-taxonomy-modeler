@@ -122,6 +122,9 @@ final class TreeRenderer extends RendererNode
                 'class' => 'taxmod-tree-filter',
                 'name'  => $context->surroundings->filterName,
                 'value' => $context->surroundings->filterValue,
+                // ⚠️ *Das Suchformular steht ausserhalb des Baums — die Zeilen tragen eigene Formulare, und ein Formular im
+                // Formular verwirft der Browser (sein Befund: «add node with + is currently not working»).*
+                'form'  => $context->surroundings->formId,
             ], static fn (string $v): bool => $v !== ''))
             . '</div>';
 

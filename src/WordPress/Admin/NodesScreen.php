@@ -392,13 +392,17 @@ final class NodesScreen
         // `taxmod_collapsed` in der Adresse, {@see self::collapsedFromRequest()} las «nichts» und
         // die Vorgabe griff -- ein leeres Suchfeld liess den Baum dann so aussehen, als sei er
         // aufgeklappt geblieben.
-        $left .= '<form method="get" class="taxmod-tree-searchform">'
+        // ⚠️ **Das Formular schliesst vor dem Baum, und das Suchfeld nennt es über `form="…"`.** *Sein Befund 2026-09-13:
+        // «add node with + is currently not working». Gemessen: dieses `<form method="get">` umschloss die ganze Tabelle,
+        // also stand jedes Zeilenformular darin. **Ein Browser verwirft ein Formular im Formular** — das «+» schickte die
+        // Suche ab statt `add_child`, und ebenso jeder andere Knopf der Zeile. Der Server sah den Fehler nie.*
+        $left .= '<form method="get" id="' . self::TREE_SEARCH_FORM . '" class="taxmod-tree-searchform">'
             . '<input type="hidden" name="page" value="taxmod">'
             . '<input type="hidden" name="taxmod_node" value="'
             . esc_attr(isset($_GET['taxmod_node']) ? (string) absint($_GET['taxmod_node']) : '') . '">'
             . $this->circumstanceFields()
-            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht, $root)
-            . '</form>';
+            . '</form>'
+            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht, $root);
         // ⚠️ **Der Papierkorb steht nur, wenn die Einstellung es sagt**
         // ([D-693](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «trash sollte auch
         // sichtbar unsichtbar schaltbar sein in dein einstellungen». **Eine Option und kein
@@ -548,7 +552,8 @@ final class NodesScreen
                 developerMode: $this->zeigtSchreibzahl(),
                 filterName: 'taxmod_search',
                 filterValue: $gesucht,
-                leer: $leer
+                leer: $leer,
+                filterForm: self::TREE_SEARCH_FORM
             )->markup
                 . '<p><em>' . esc_html__('Nothing matches that.', 'taxmod') . '</em></p>';
         }
@@ -625,7 +630,8 @@ final class NodesScreen
             null,
             // ⚠️ **Die Klasse steht im Baum dabei** ([D-716](../../../docs/NewConcept/90-decision-log.md)),
             // übersetzt hier am Rand (`AR-2`) — nur im Modellbaum, nicht im Papierkorb.
-            $mode === 'tree' ? $this->classLabelsFor($rows) : []
+            $mode === 'tree' ? $this->classLabelsFor($rows) : [],
+            filterForm: $mode === 'tree' ? self::TREE_SEARCH_FORM : ''
         )->markup;
     }
 
@@ -3182,6 +3188,49 @@ final class NodesScreen
         // gemacht** — und nach [D-654](../../../docs/NewConcept/90-decision-log.md) waere das keine
         // Beschriftung, sondern der Wegfall einer Vorbelegung. **Keine Angabe heisst hier: nichts
         // umstellen.***
+        // ⚠️ **Erst prüfen, dann schreiben** ([D-760](../../../docs/NewConcept/90-decision-log.md), Zeile 8): *die Validatoren jeder
+        // Stelle sehen jeden geschickten Wert, bevor irgendetwas dieses Satzes geschrieben wird — auch die Art und der eigene
+        // Wert. Eine Beschwerde, und nichts wird gespeichert; alle Beschwerden stehen in der Meldung.*
+        $attributes = [];
+
+        foreach ($this->editor->fieldsOf($nodeId) as $relation) {
+            $attributes[$relation->id] = $relation;
+        }
+
+        $types   = $this->rendering->typesFor(array_values($attributes));
+        $typedIn = [];
+
+        foreach ($submitted as $rawRelation => $rawValue) {
+            $relationId = absint($rawRelation);
+
+            if (isset($attributes[$relationId]) && ! is_array($rawValue)) {
+                $typedIn[$relationId] = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+            }
+        }
+
+        $values = $this->rendering->valuesFrom(
+            array_values($attributes),
+            array_filter($typedIn, static fn (string $one): bool => $one !== '')
+        );
+
+        $beschwerden = [];
+
+        foreach ($typedIn as $relationId => $characters) {
+            $type = $types[$relationId] ?? null;
+
+            if ($characters === '' || $type === null) {
+                continue;
+            }
+
+            foreach ($this->rendering->complaintsFor($attributes[$relationId], $values[$relationId] ?? $type->valueFrom($characters)) as $complaint) {
+                $beschwerden[] = $attributes[$relationId]->name . ': ' . $this->complaintText($complaint);
+            }
+        }
+
+        if ($beschwerden !== []) {
+            throw NotYetStorable::refusedByValidators(implode('; ', $beschwerden));
+        }
+
         $gewaehlteArt = RecordType::tryFrom(
             isset($_POST['record_type']) ? sanitize_key(wp_unslash((string) $_POST['record_type'])) : ''
         );
@@ -3217,34 +3266,7 @@ final class NodesScreen
         // ⚠️ *Hier stand «nichts geschickt, nichts zu tun». Seit D-755 stimmt das nicht mehr: ein Weg-Feld wird bei jedem
         // Speichern gerechnet und geschrieben, auch wenn die Maske sonst nichts schickt — ein Satz, dessen einziges Feld
         // ein Weg ist, wäre sonst nie zu speichern.*
-        $attributes = [];
-
-        foreach ($this->editor->fieldsOf($nodeId) as $relation) {
-            $attributes[$relation->id] = $relation;
-        }
-
-        // One resolution for the whole form rather than one per field (`CD-7`).
-        $types = $this->rendering->typesFor(array_values($attributes));
-
-        // ⚠️ **Gathered first, then read in one pass** — because the converter in effect has to run on
-        // the way **in** as well ([R36](../../../docs/NewConcept/30-renderer.md), list row 7). *A field
-        // that draws `XII` and saves `XII` as text is a field that lost its value.* Reading per field
-        // would resolve the converter setting per field, which is `CD-7`'s loop.
-        $typedIn = [];
-
-        foreach ($submitted as $rawRelation => $rawValue) {
-            $relationId = absint($rawRelation);
-
-            // ⚠️ *Eine Liste ist ein Teil (D-741) und wird unten abgestiegen — hier nur Wörter.*
-            if (isset($attributes[$relationId]) && ! is_array($rawValue)) {
-                $typedIn[$relationId] = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
-            }
-        }
-
-        $values = $this->rendering->valuesFrom(
-            array_values($attributes),
-            array_filter($typedIn, static fn (string $one): bool => $one !== '')
-        );
+        // ⚠️ *Felder, Typen und Werte stehen seit der Vorprüfung oben — einmal gelesen, zweimal gebraucht.*
 
         foreach ($submitted as $rawRelation => $rawValue) {
             $relationId = absint($rawRelation);
@@ -3300,6 +3322,27 @@ final class NodesScreen
         if ($recordId !== 0) {
             $this->writePathFields($recordId, $nodeId);
         }
+    }
+
+    /**
+     * Die Worte zu einer Beschwerde — der Rand macht sie, der Kern kennt nur den Schlüssel (`AR-2`, D-158: *named placeholders*).
+     *
+     * ⚠️ *Eine vom Autor ersetzte Meldung (D-158) ist noch nicht gebaut; hier steht die mitgelieferte.*
+     */
+    private function complaintText(\Taxmod\Core\Validator\Complaint $complaint): string
+    {
+        $text = match ($complaint->key) {
+            'below_min'   => __('below the minimum of {min}', 'taxmod'),
+            'above_max'   => __('above the maximum of {max}', 'taxmod'),
+            'wrong_shape' => __('«{value}» does not have the required shape', 'taxmod'),
+            default       => $complaint->validator . ': ' . $complaint->key,
+        };
+
+        foreach ($complaint->values as $name => $wert) {
+            $text = str_replace('{' . $name . '}', (string) $wert, $text);
+        }
+
+        return $text;
     }
 
     /** Die Weg-Felder eines Satzes aus seinem Knoten rechnen und schreiben (D-755) — beim Speichern und nach dem Verschieben. */
@@ -4799,6 +4842,9 @@ final class NodesScreen
 
         return $felder;
     }
+
+    /** Die Id des Suchformulars am Baum — das Suchfeld steht ausserhalb und nennt es (kein Formular im Formular). */
+    private const TREE_SEARCH_FORM = 'taxmod-tree-search';
 
     /** Der Name des Akts, unter dem der Rand den Einstellungsbereich nachfordert. */
     public const FRAGMENT_ACTION = 'taxmod_field_settings';

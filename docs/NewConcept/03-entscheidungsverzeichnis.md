@@ -52,7 +52,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Gibt es `persistent`? | [D-538](90-decision-log.md) — nein, ersatzlos gefallen: dass ein Wert nicht im Benutzerdatensatz landet, sagt die Kantenart | ~~D-373~~ ~~D-377~~ ~~D-460~~ ~~D-508~~ |
 | Wo steht der Exponent eines Präfixes? | [D-378](90-decision-log.md) — als Feld an `Prefixes`, der Wert im Vorgabesatz des einzelnen Knotens; `factor` und `offset` ebenso ([D-559](90-decision-log.md)) | ~~D-372~~ |
 | Ist `range` ein eigener Typ? | [D-328](90-decision-log.md) — ja: der Gliedtyp wird einmal gewählt, beide Felder folgen | ~~D-320~~ |
-| Wie liegt eine Datei im Modell? | [D-229](90-decision-log.md) — als gewöhnlicher Typ, der seinen MIME-Typ kennt; heisst `Link` ([D-322](90-decision-log.md), [D-323](90-decision-log.md)) | ~~D-211~~ |
+| Wie liegt eine Datei im Modell? | [D-229](90-decision-log.md) — als gewöhnlicher Typ, der seinen MIME-Typ kennt; heisst `Link` ([D-322](90-decision-log.md), [D-323](90-decision-log.md)); im heutigen Modell [D-761](90-decision-log.md): eigene Klasse unter `Model`, Mediathek-Id als einfacher Typ, Dateiarten als Konstanten, leere Liste erlaubt alles | ~~D-211~~ ~~D-287~~ *(leere Liste als Konflikt)* |
 | Braucht es einen Zyklenwächter? | [D-497](90-decision-log.md) — nein: ein Feld auf ein Modell ist eine Aggregation, und die verweist, statt abzusteigen | ~~D-100~~ *(nur seine Kompositions-Hälfte)* |
 | Erbt ein Einstellungsknoten sich selbst? | [D-607](90-decision-log.md) — nur die Kante, die auf ihn selbst zeigt, ist gesperrt; sichtbar gekennzeichnet ([D-608](90-decision-log.md)) | ~~D-605~~ |
 | Wann entsteht ein Datensatz? | [D-609](90-decision-log.md) — beim ersten Schreiben; eine leere Wertzeile wird nicht geschrieben ([D-610](90-decision-log.md)) | — |

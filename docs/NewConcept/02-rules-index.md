@@ -50,7 +50,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 4 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
 | **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 21 |
-| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 23 |
+| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 24 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:44](../../CLAUDE.md) | 3 |
 
 ## CD — Code — wie geschrieben wird
@@ -75,7 +75,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 22 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 81 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 87 |
 
 ## DC — Dokumentation im Code
 
@@ -285,7 +285,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |
 | **R34** | One thing they could do: show a number as binary, hexadecimal, octal or in Roman numerals. | [30-renderer.md:959](30-renderer.md) | 10 |
 | **R35** | "Whether this form is really hung on as a converter, I am not sure — but we should keep it in mind. Storing the twelve is one thing, showing it as … | [30-renderer.md:960](30-renderer.md) | 2 |
-| **R36** | And: "if I say greater than Roman twelve, values greater than that should be shown — which ought to be no obstacle if it is stored as a decimal num… | [30-renderer.md:961](30-renderer.md) | 26 |
+| **R36** | And: "if I say greater than Roman twelve, values greater than that should be shown — which ought to be no obstacle if it is stored as a decimal num… | [30-renderer.md:961](30-renderer.md) | 25 |
 | **R37** | The registry's render is only an entry point. The registry itself neither represents nor renders anything. | [30-renderer.md:1381](30-renderer.md) | 1 |
 | **R38** | A basic renderer simply receives a node, and renders it down to the leaves. | [30-renderer.md:1382](30-renderer.md) | 3 |
 | **R39** | The sequence: from the node take the renderer name → via the registry get the renderer → call it for this node → it renders the node's own properti… | [30-renderer.md:1383](30-renderer.md) | **nie** |

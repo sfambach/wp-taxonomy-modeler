@@ -151,6 +151,8 @@ final class Rendering implements Presets
         private readonly ?Users $users = null,
         /** ⚠️ *Für die Zusammenfassung verwiesener Sätze (D-753) — die Sätze eines Blocks in einer Abfrage.* */
         private readonly ?\Taxmod\Core\Repository\RecordRepository $records = null,
+        /** ⚠️ *Die Validatoren, die beim Speichern laufen (Zeile 8, D-760) — ohne Registratur beschwert sich niemand.* */
+        private readonly ?\Taxmod\Core\Validator\ValidatorRegistry $validators = null,
     ) {
     }
 
@@ -3595,6 +3597,50 @@ final class Rendering implements Presets
         return $aus;
     }
 
+    /**
+     * Was die Validatoren einer Stelle an einem Wert auszusetzen haben — leer heisst: der Wert darf gespeichert werden.
+     *
+     * ⚠️ **Zeile 8, gebaut nach [D-158](../../../docs/NewConcept/90-decision-log.md) und [D-760](../../../docs/NewConcept/90-decision-log.md):**
+     * *die Validatoren kommen aus der Einstellung `validator` der Stelle (Vorgabe am Typ, am Knoten, an der Kante), die Grenzen aus
+     * denselben Einstellungen; alle laufen, und jede Beschwerde wird gemeldet — «einen Menschen nicht dreimal speichern lassen,
+     * um drei Dinge zu erfahren».* Die Worte macht der Rand aus dem Schlüssel der Beschwerde (`AR-2`).
+     *
+     * @return list<\Taxmod\Core\Validator\Complaint>
+     */
+    public function complaintsFor(Relation $relation, TypedValue $value): array
+    {
+        if ($this->validators === null || $this->resolver === null || $value->isNothing()) {
+            return [];
+        }
+
+        $ziel = $this->nodes->find($relation->toNodeId);
+
+        if ($ziel === null) {
+            return [];
+        }
+
+        $klasse = $this->resolver->chosenObjectClasses($ziel, $relation)['validator'] ?? null;
+        $namen  = [];
+
+        foreach ($this->validators->names() as $name) {
+            if ($klasse !== null && $this->validators->classFor($name) === $klasse) {
+                $namen[] = $name;
+            }
+        }
+
+        if ($namen === []) {
+            return [];
+        }
+
+        $einstellungen = [];
+
+        foreach ($this->settingsForUseSites([$relation])[$relation->id] ?? [] as $key => $resolved) {
+            $einstellungen[$key] = $resolved->value;
+        }
+
+        return $this->validators->complaintsAbout($value, $this->typeAt($relation), $namen, $einstellungen);
+    }
+
     private function chosenRendererName(array $settings): string
     {
         $wahl = $settings['renderer'] ?? null;
@@ -3883,6 +3929,8 @@ final class Rendering implements Presets
         ?Node $leer = null,
         /** @var array<int, string> Je Knoten der übersetzte Name seiner Klasse ([D-716](90-decision-log.md)). */
         array $classLabels = [],
+        /** Das Formular, dem das Suchfeld gehört — es steht ausserhalb des Baums, weil die Zeilen eigene Formulare tragen. */
+        string $filterForm = '',
     ): RenderResult {
         if ($walked === [] && ($filterName === '' || $leer === null)) {
             return RenderResult::of('');
@@ -3912,7 +3960,7 @@ final class Rendering implements Presets
                 locale: $locale,
                 level: $level,
                 editable: false,
-                surroundings: new Surroundings(rows: $rows, filterName: $filterName, filterValue: $filterValue),
+                surroundings: new Surroundings(rows: $rows, filterName: $filterName, filterValue: $filterValue, formId: $filterForm),
             )
         );
     }

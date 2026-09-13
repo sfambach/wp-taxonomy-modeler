@@ -136,6 +136,12 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('«%s» is neither the parent nor a child of «%s».', $target, $node));
     }
 
+    /** Die Validatoren haben etwas auszusetzen — nichts wird gespeichert (D-760). */
+    public static function refusedByValidators(string $liste): self
+    {
+        return new self(sprintf('Not saved — %s.', $liste));
+    }
+
     public static function noSuchRecord(int $id): self
     {
         return new self(sprintf('There is no record %d.', $id));

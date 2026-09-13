@@ -389,6 +389,37 @@ Schreiben weist ein Feld mit mehreren Werten ab. ~~**Zu entscheiden:** (1) ob je
 flachen Weg aus D-741/D-742, nicht das Modell; gebaut nach D-577 in [D-759](NewConcept/90-decision-log.md).
 **Offen bleibt nur (2):** wohin der «Link mit Summary» einer tieferen Stufe führt — bis dahin klappt er an Ort und Stelle auf.
 
+## INF-053 · Der Typ `Link` (früher «Medium») im heutigen Modell
+
+**Typ:** `VORSCHLAG` · **Status:** ~~`INFERRED`~~ **entschieden, L1–L4 wie empfohlen — [D-761](NewConcept/90-decision-log.md)** — *sein Auftrag 2026-09-13: «wir hatten mal einen media typ angedacht, wo ist der
+geblieben?» und «pass das mal bitte ans neue Konzept an».* Beschlossen ist er seit August ([D-229](NewConcept/90-decision-log.md),
+[D-230](NewConcept/90-decision-log.md), [D-287](NewConcept/90-decision-log.md), [D-294](NewConcept/90-decision-log.md),
+[D-322](NewConcept/90-decision-log.md), [D-323](NewConcept/90-decision-log.md)); **gebaut: nein** — kein Typ, keine Klasse, kein
+Renderer. Die Beschlüsse sprechen von `records`, `record_values` und Typen als Daten; das ist nicht mehr das Modell.
+
+**Zu entscheiden, bevor etwas gebaut wird** — je mit meiner Empfehlung:
+
+| # | Frage | Empfehlung | Warum |
+|---|---|---|---|
+| L1 | Eigene Knotenklasse `Link` oder ein gewöhnlicher Kategorieknoten mit Feldern? | **eigene Klasse** | Renderer, Prüfung und erlaubte Arten müssen einen Link erkennen; am Namen erkennen ist verboten (`CD`, keine Sonderfälle nach Namen). Wie `Einheitswert` ([D-719](NewConcept/90-decision-log.md)). |
+| L2 | Die Id in der WordPress-Mediathek: eigener einfacher Typ oder Text? | **eigener einfacher Typ**, wie der Benutzerverweis ([D-649](NewConcept/90-decision-log.md)) | Der Rand löst ihn auf (Vorschaubild, Dateiname); [D-319](NewConcept/90-decision-log.md): ein Typ hat Platz, wo er anders gezeichnet wird. |
+| L3 | Die erlaubten Dateiarten ([D-287](NewConcept/90-decision-log.md)): feste Aufzählung oder Konstanten unter einem Gerüstknoten? | **Konstanten unter einem Anker**, wie die Präfixe ([D-728](NewConcept/90-decision-log.md)) | Eine neue Art ist dann ein Knoten, keine Kodeänderung. |
+| L4 | Eine leere Liste erlaubter Arten: alles erlaubt, oder ein Konflikt? | **alles erlaubt** | [D-287](NewConcept/90-decision-log.md) sagte «Konflikt»; dein Wort vom 2026-09-11 zu den Listen: *«im Grunde haben wir alle Möglichkeiten, einschränken können wir es immer noch.»* Das widerspricht sich — deine Wahl. |
+
+**Die Übersetzung, wo nichts zu entscheiden ist** — alt gegen heute:
+
+| Beschluss | damals | heute |
+|---|---|---|
+| [D-229](NewConcept/90-decision-log.md) Ablage | ein Typ unter `Model`, Satz in `records`, Attribute als Werte | ein Knoten unter `Model` (Ast `Model` = eigener Satz, geteilt); seine Angaben sind **Felder**: `url` (Text), Mediathek-Id (L2), `mime` (Text), `source` (Text), `licence` (Text). Ein Satz je Datei in `node_records`, die Werte in `relation_records` ([D-577](NewConcept/90-decision-log.md)). |
+| [D-229](NewConcept/90-decision-log.md) geteilt | «aggregated by whoever uses it» | ein Feld auf `Link` ist eine **Aggregation** — «ob zwei Datensätze auf denselben zeigen dürfen» ([D-577](NewConcept/90-decision-log.md), [D-715](NewConcept/90-decision-log.md)); mehrere Datenblätter sind `0..*`. ⚠️ *«Welche Sätze benutzen diese Datei» ist **nicht gebaut**: «Used by» ([D-199](NewConcept/90-decision-log.md)) zeigt heute Knoten, die auf einen Knoten zeigen, nicht Sätze, die auf einen Satz zeigen.* |
+| [D-323](NewConcept/90-decision-log.md) mindestens eine Adresse | Invariante | ein **Validator** am Knoten `Link`: `url` oder Mediathek-Id muss stehen. |
+| [D-230](NewConcept/90-decision-log.md) Zeichnung | ein Renderer, Art aus MIME, Grad eingestellt | ein Renderer `link`, der ein Aggregationsfeld auf einen `Link` zeichnet; er erklärt sein Attribut **`presence`** (Symbol · Link · Vorschaubild · voll · eingebettet) selbst (Anforderung 3.6.3), Vorgabe am Knoten, **an der Kante überschreibbar** (Anforderung §5). Die Art liest er aus `mime`. Ohne ihn zeigt das Feld die Zusammenfassung ([D-753](NewConcept/90-decision-log.md)). |
+| [D-287](NewConcept/90-decision-log.md) erlaubte Arten | Allow-List am Medienattribut | ein Listenattribut der Klasse `Link` (L3), an der Kante überschreibbar — wie `summary_fields`. |
+| [D-294](NewConcept/90-decision-log.md), [D-316](NewConcept/90-decision-log.md) Kopie | einmal beim Speichern holen, keine Bytes in der Datenbank | unverändert: die Kopie liegt in der Mediathek, der **Rand** holt sie beim Speichern; der Kern hält nur die Id. |
+
+*Nicht Teil dieses Vorschlags: das Hochladen selbst und der Block «alle Datenblätter einer Stückliste» aus
+[D-230](NewConcept/90-decision-log.md) — beides kommt, wenn der Typ steht.*
+
 ## Erledigte Eingänge
 
 *(noch keine)*

@@ -48,6 +48,8 @@ final class SettingsEditor
         private readonly RendererRegistry $renderers,
         private readonly ?ConverterRegistry $converters = null,
         private readonly ?Changelog $changelog = null,
+        /** ⚠️ *Damit «validator = range» einen Namen findet (Zeile 8, D-760) — wie `renderers` und `converters`.* */
+        private readonly ?\Taxmod\Core\Validator\ValidatorRegistry $validators = null,
     ) {
     }
 
@@ -539,6 +541,10 @@ final class SettingsEditor
 
         if ($erklaert->objectClass === \Taxmod\Core\Converter\Converter::class) {
             return $this->converters?->classFor($name);
+        }
+
+        if ($erklaert->objectClass === \Taxmod\Core\Validator\Validator::class) {
+            return $this->validators?->knows($name) === true ? $this->validators->classFor($name) : null;
         }
 
         // ⚠️ *Eine feste Wertklasse — der Umrechnungssatz — hat keine Registratur: ihr Name ist ihr Kurzname.*
