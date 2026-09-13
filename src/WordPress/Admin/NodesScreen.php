@@ -183,6 +183,9 @@ final class NodesScreen
     /** Der Filter der Satztabelle — Kante ⇒ Zeichen, als ein Parameter ([D-768](../../../docs/NewConcept/90-decision-log.md)). */
     private const RECORD_FILTER = 'taxmod_record_filter';
 
+    /** Der Satz, den die Vorschau zeigt und bearbeitet — gewählt in der Tabelle darunter ([D-785](../../../docs/NewConcept/90-decision-log.md)). */
+    private const PREVIEW_RECORD = 'taxmod_preview_record';
+
     /** Der Akt, der eine Feldzeile auf- oder zuklappt. */
     private const TOGGLE_ROW_SETTINGS = 'toggle_field_settings';
 
@@ -1395,27 +1398,35 @@ final class NodesScreen
         // ⚠️ *Die Breite wird nicht hier gerechnet, sondern über eine Klasse gesagt: `grid-column: 1/-1`
         // steht im Stylesheet, wo der Rest des Rasters auch steht. **Ein Layout an zwei Orten ist ein
         // Layout, das auseinanderläuft.***
+        // ⚠️ **Die Admin-Seite bearbeitet den gezeigten Satz** ([D-785](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
+        // «wir zeigen unten die Records nur noch an und benutzen die Eingabe … um's zu editieren oder neue Sätze einzufügen».*
+        // *Hier stand «a preview must not be submittable: two forms with the same field names on one page is how a person saves
+        // the thing they were only looking at». Das gilt weiter — nur ist die Tabelle jetzt die Seite, die nichts abschickt, und
+        // die Vorschau die eine, die es tut. Ohne Satz (nur Vorgaben) bleibt sie ohne Namen.*
+        $satz     = (int) ($seen['record'] ?? 0);
+        $formular = $satz === 0 ? '' : 'taxmod-preview-record-' . $satz;
+
         foreach ([
-            [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown'], ''],
-            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown'], ''],
-        ] as [$title, $purpose, $editable, $level, $gezeigte, $breite]) {
+            [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown'], '', ''],
+            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown'], '', $formular],
+        ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '">'
                 . '<h4>' . esc_html($title) . '</h4>'
-                // ⚠️ **No field prefix.** A preview must not be submittable: two forms with the same
-                // field names on one page is how a person saves the thing they were only looking at.
-                . $this->rendering->nodeAsForm(
+                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->nodeAsForm(
                     $selected,
                     $gezeigte,
                     $values,
                     $purpose,
-                    '',
+                    $formId === '' ? '' : self::VALUE_FIELD . '[' . $satz . ']',
                     $locale,
                     $level,
                     $editable,
                     // ⚠️ *Ohne gewählten Behälter zeichnet die Vorschau als Tabelle (D-748).*
                     $this->rendering->containerChosenFor($selected) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
-                    $teile
+                    $teile,
+                    formId: $formId
                 )->markup
+                . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId))
                 . '</div>';
         }
 
@@ -1483,6 +1494,39 @@ final class NodesScreen
     }
 
     /**
+     * Die Bedienung der bearbeitbaren Vorschau: die Art des Satzes, Speichern, ein neuer Satz ([D-785](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Ein eigenes Formular mit eigener Id — die Zeile desselben Satzes in der Tabelle behält ihr `taxmod-record-<id>` für
+     * Verschieben und Löschen, und zwei Formulare mit einer Id wären eines zu viel. Gespeichert wird über denselben Akt wie
+     * vorher in der Zeile, also gelten dieselben Prüfungen und Validatoren.*
+     */
+    private function previewActs(Node $selected, int $recordId, string $formId): string
+    {
+        $satz = $this->data->find($recordId);
+
+        return '<div class="taxmod-preview-acts">'
+            . ($satz === null ? '' : $this->recordTypeChoice($satz->recordType, $formId, $this->framework->branchOf($selected)))
+            . ControlMarkup::actsForm(
+                $formId,
+                new Submission(
+                    admin_url('admin-post.php'),
+                    [
+                        'action'         => self::ACTION,
+                        'id'             => (string) $selected->id,
+                        'node_record_id' => (string) $recordId,
+                        '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                        ...array_filter($this->circumstances()),
+                    ]
+                ),
+                [
+                    Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')),
+                    new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2'),
+                ]
+            )
+            . '</div>';
+    }
+
+    /**
      * What the preview is filled with, and a sentence saying so.
      *
      * ⚠️ **The provenance is shown, not implied.** *A filled preview is worth looking at only if a
@@ -1506,7 +1550,19 @@ final class NodesScreen
         // ⚠️ **Und welche davon überhaupt etwas tragen** ([D-653](../../../docs/NewConcept/90-decision-log.md)):
         // *ein leerer `default` zählt nicht als vorhanden. In **einer** Abfrage für alle (`CD-7`) —
         // je Satz nachzusehen wäre ein Lauf je Datensatz.*
-        $chosen = $this->rendering->previewRecordAmong(
+        // ⚠️ **Der in der Tabelle gewählte Satz geht vor** ([D-785](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
+        // «wenn ich unten eine Zeile markiere, dann erscheinen die Einträge oben … und ich kann's dann ändern und speichern».
+        // Nur ein Satz dieses Knotens, und nie ein Einstellungssatz; sonst gilt die Leiter wie bisher.*
+        $gewuenscht = absint($this->circumstance(self::PREVIEW_RECORD) ?? 0);
+        $gezeigt    = null;
+
+        foreach ($records as $satz) {
+            if ($satz->id === $gewuenscht && $satz->recordType !== RecordType::Settings) {
+                $gezeigt = $satz;
+            }
+        }
+
+        $chosen = $gezeigt ?? $this->rendering->previewRecordAmong(
             $records,
             $this->data->filledAmong(array_map(
                 static fn (\Taxmod\Core\Model\NodeRecord $satz): int => $satz->id,
@@ -1540,7 +1596,13 @@ final class NodesScreen
             // the fault this sentence exists to prevent — and
             // [D-241](../../../docs/NewConcept/90-decision-log.md) says the mark governs what is
             // shown, so a surface that has it and stays silent about it is throwing it away.*
-            'says' => $chosen->recordType === RecordType::Example
+            'says' => $gezeigt !== null
+                ? sprintf(
+                    /* translators: %d: the record's id. */
+                    __('Record #%d, chosen in the table below — change it here and save.', 'taxmod'),
+                    $chosen->id
+                )
+                : ($chosen->recordType === RecordType::Example
                 ? sprintf(
                     /* translators: %d: the record's id. */
                     __('Filled from record #%d, which is marked as test data — no real data has been entered here yet.', 'taxmod'),
@@ -1550,7 +1612,7 @@ final class NodesScreen
                     /* translators: %d: the record's id. */
                     __('Filled from record #%d, with the defaults where it says nothing.', 'taxmod'),
                     $chosen->id
-                ),
+                )),
         ];
     }
     /**
@@ -3682,6 +3744,10 @@ final class NodesScreen
             $vater->id
         );
 
+        // ⚠️ *Hervorgehoben wird nur der ausdrücklich geöffnete Satz — ihn aus der Leiter der Vorschau zu errechnen hiesse,
+        // sie ein zweites Mal zu laufen (`CD-7`).*
+        $gezeigterSatz = absint($this->circumstance(self::PREVIEW_RECORD) ?? 0);
+
         foreach ($records as $record) {
             $held = [];
 
@@ -3689,11 +3755,23 @@ final class NodesScreen
                 $held[$value->relationId] = $value->value;
             }
 
+            // ⚠️ **Die Zeile zeigt nur an; die Nummer öffnet den Satz in der Vorschau** ([D-785](../../../docs/NewConcept/90-decision-log.md)).
+            // *Sein Wort: «wenn ich unten eine Zeile markiere, dann erscheinen die Einträge oben». Ohne Skript ein Link — der Satz,
+            // der oben steht, ist hervorgehoben. Ein einfacher Datentyp behält seinen eigenen Wert in der Zeile: er hat keine Felder,
+            // die die Vorschau zeigen könnte.*
+            $imBlick = $record->id === $gezeigterSatz;
+            $nummer  = '<code>#' . esc_html((string) $record->id) . '</code>';
+
             $zeilen[] = [
-                'id'     => $record->id,
-                'values' => $held,
-                'lead'   => [
-                    __('Record', 'taxmod')     => '<code>#' . esc_html((string) $record->id) . '</code>',
+                'id'       => $record->id,
+                'values'   => $held,
+                'editable' => false,
+                'lead'     => [
+                    __('Record', 'taxmod')     => $record->recordType === RecordType::Settings
+                        ? $nummer
+                        : '<a class="taxmod-record-open' . ($imBlick ? ' taxmod-record-in-preview' : '') . '" href="' . esc_url($this->backTo($selected->id, [self::PREVIEW_RECORD => (string) $record->id])) . '"'
+                            . ' title="' . esc_attr__('Open this record in the preview above to change it', 'taxmod') . '">'
+                            . ($imBlick ? '<strong>▸ ' . $nummer . '</strong>' : $nummer) . '</a>',
                     // ⚠️ **Die Art wird hier auch **umgestellt** und nicht nur angezeigt** — *sein
                     // Wort: «default / user / example muss einstellbar sein.» Bisher stand hier der
                     // Wert in einem `<code>`: eine Angabe, die man beim Anlegen macht und danach nie
@@ -3708,13 +3786,12 @@ final class NodesScreen
                     // und Version sind zum **Lesen**, der Wähler ist zum **Tun**; er gehört neben
                     // die Werte und nicht zwischen zwei Angaben, die niemand anfasst.*
                     __('Version', 'taxmod')    => esc_html((string) $record->nodeVersion),
+                    // ⚠️ *Die Art wird jetzt oben in der Vorschau umgestellt (D-785); hier steht sie nur noch.*
                     __('Kind', 'taxmod')       => $record->recordType === RecordType::Settings
                         ? $this->settingsRecordMark($held)
-                        : $this->recordTypeChoice(
-                            $record->recordType,
-                            'taxmod-record-' . $record->id,
-                            $branch
-                        ),
+                        : ($istEinfacherTyp
+                            ? $this->recordTypeChoice($record->recordType, 'taxmod-record-' . $record->id, $branch)
+                            : '<code>' . esc_html($record->recordType->value) . '</code>'),
                     // ⚠️ **Der eigene Wert des Knotens** ([D-673](../../../docs/NewConcept/90-decision-log.md)) —
                     // *die Zelle, die bei `datetime` fehlte (`INF-067`). Der Satzblock zeichnet sonst
                     // ein Feld je erklärter Kante, und ein einfacher Datentyp hat keine: **der Satz
@@ -3728,7 +3805,8 @@ final class NodesScreen
                     ...$this->ownValueCell($selected, $record),
                 ],
                 'acts'   => [
-                    Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')),
+                    // ⚠️ *Speichern nur, wo die Zeile selbst noch etwas trägt — der eigene Wert eines einfachen Datentyps (D-785).*
+                    ...($istEinfacherTyp ? [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))] : []),
                     // ⚠️ **Das Loeschen aus [D-653](../../../docs/NewConcept/90-decision-log.md)**
                     // — *«Baue mal die Auswahl und das Loeschen».* Es ist umkehrbar
                     // ({@see \Taxmod\Core\Service\DataEntry::removeRecord()}), also traegt es die
@@ -5456,6 +5534,15 @@ final class NodesScreen
             $extra[self::RECORD_PAGE] = 'last';
         }
 
+        // ⚠️ *Ein neuer Satz öffnet sich in der Vorschau, dort wird er ausgefüllt; ein gelöschter verlässt sie (D-785).*
+        if ($do === 'add_record' && isset($outcome) && $outcome instanceof NodeRecord) {
+            $extra[self::PREVIEW_RECORD] = (string) $outcome->id;
+        }
+
+        if ($do === 'delete_record') {
+            $extra[self::PREVIEW_RECORD] = null;
+        }
+
         // ⚠️ *Ein neuer Filter beginnt bei Seite 1 — Seite 3 von zwölf Sätzen gibt es unter drei Treffern nicht (D-768).*
         if ($this->filterAfterAct !== false) {
             $extra[self::RECORD_FILTER] = $this->filterAfterAct;
@@ -5558,6 +5645,8 @@ final class NodesScreen
             self::RECORD_PAGE  => $this->circumstance(self::RECORD_PAGE),
             // ⚠️ *Sonst hebt jedes Speichern den Filter auf, unter dem man gerade arbeitet (D-768).*
             self::RECORD_FILTER => $this->circumstance(self::RECORD_FILTER),
+            // ⚠️ *Sonst wechselt die Vorschau nach jedem Speichern auf den ersten Satz zurück (D-785).*
+            self::PREVIEW_RECORD => $this->circumstance(self::PREVIEW_RECORD),
         ];
     }
 
@@ -5654,6 +5743,10 @@ final class NodesScreen
                 // ⚠️ *Der Filter nennt Kanten dieses Knotens — auf einem anderen hiesse er nichts (D-768).*
                 self::RECORD_FILTER => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
                     ? $this->circumstance(self::RECORD_FILTER)
+                    : null,
+                // ⚠️ *Der Satz in der Vorschau gehört diesem Knoten — auf einem anderen gibt es ihn nicht (D-785).*
+                self::PREVIEW_RECORD => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
+                    ? $this->circumstance(self::PREVIEW_RECORD)
                     : null,
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for

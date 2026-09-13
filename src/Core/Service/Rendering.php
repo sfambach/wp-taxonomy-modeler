@@ -1889,14 +1889,18 @@ final class Rendering implements Presets
 
             // ⚠️ *Der Knoten selbst gilt als «schon besucht»: eine Einstellung, die auf ihn zeigt, würde
             // ihn sonst ein zweites Mal aufklappen ([OQ-133](../../../docs/NewConcept/91-open-questions.md)).*
+            // ⚠️ **Eine Zeile darf nur anzeigen** ([D-785](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «zeigen wir unten
+            // die Records nur noch an und benutzen die Eingabe … oben». Eine solche Zeile trägt keine Feldnamen: sie schickt nichts ab.*
+            $nurAnzeige = ($row['editable'] ?? true) === false;
+
             $gezeichnet[] = $this->fieldsFor(
                 $relations,
                 $row['values'],
-                $purpose,
-                $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $row['id'] . ']',
+                $nurAnzeige ? Purpose::Display : $purpose,
+                $fieldPrefix === '' || $nurAnzeige ? '' : $fieldPrefix . '[' . $row['id'] . ']',
                 $locale,
                 $level,
-                true,
+                ! $nurAnzeige,
                 $formId,
                 0,
                 $unterbau,
@@ -3299,11 +3303,13 @@ final class Rendering implements Presets
          * @var array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>
          */
         array $recordParts = [],
+        /** Das Formular, zu dem die Felder gehören, wenn sie ausserhalb von ihm stehen — die bearbeitbare Vorschau (D-785). */
+        string $formId = '',
     ): RenderResult {
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
         // ⚠️ *Der Knoten reist als `forNode` mit — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
-        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true], $recordParts, $node->id);
+        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, 0, [], [$node->id => true], $recordParts, $node->id);
 
         $container = $containerName === ''
             ? $this->containerFor($node, $purpose)

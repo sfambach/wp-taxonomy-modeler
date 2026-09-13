@@ -146,7 +146,9 @@ $zeichner = static fn (): Rendering => new Rendering(
 
 wp_set_current_user(1);
 
-function seite(int $nodeId, ?string $offen = null): string
+// ⚠️ **Geändert am 2026-09-13 mit [D-785](../../docs/NewConcept/90-decision-log.md), sichtbar:** *ein Satz wird in der Vorschau
+// bearbeitet, nicht mehr in seiner Zeile. Wer die Eingabefelder eines bestimmten Satzes prüft, öffnet ihn dort (`$imBlick`).*
+function seite(int $nodeId, ?string $offen = null, ?int $imBlick = null): string
 {
     $_GET['page']        = 'taxmod-nodes';
     $_GET['taxmod_node'] = (string) $nodeId;
@@ -157,12 +159,18 @@ function seite(int $nodeId, ?string $offen = null): string
         $_GET['taxmod_open_rows'] = $offen;
     }
 
+    if ($imBlick === null) {
+        unset($_GET['taxmod_preview_record']);
+    } else {
+        $_GET['taxmod_preview_record'] = (string) $imBlick;
+    }
+
     $rc     = new ReflectionClass(Plugin::class);
     $plugin = $rc->newInstanceWithoutConstructor();
     $rc->getProperty('file')->setValue($plugin, __FILE__);
 
     $markup = $plugin->screen()->render();
-    unset($_GET['taxmod_open_rows']);
+    unset($_GET['taxmod_open_rows'], $_GET['taxmod_preview_record']);
 
     return $markup;
 }
@@ -1157,9 +1165,9 @@ $zweiTeile = $teilIds();
 check('bei `0..*` hängt «Add row» einen zweiten Teil hinten an, und jede Zeile hat ihr Entfernen', count($zweiTeile) === 2 && $zweiTeile[0] === $ersterTeil && substr_count(seite($satzKnoten->id), 'value="remove_part"') === 2, implode(',', $zweiTeile) . ' · ' . letzteMeldung());
 abschicken(['do' => [(string) ($zweiTeile[1] ?? 0) => 'remove_part'], 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('«Remove this row» nimmt genau diesen Teil weg; der erste bleibt mit seinem Wert', $teilIds() === [$ersterTeil] && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$ersterTeil} AND relation_id = {$gasse->id}") === '__es Gasse 7', implode(',', $teilIds()) . ' · ' . letzteMeldung());
-$seiteSatz = seite($satzKnoten->id);
-$hinterWaehler = preg_split('/name="record_type" form="taxmod-record-' . $satzId . '"/', $seiteSatz)[1] ?? '';
-check('die Zeile zeichnet einen Wähler für die Art, und er steht auf der Art des Satzes', (bool) preg_match('/<select name="record_type" form="taxmod-record-' . $satzId . '"/', $seiteSatz) && (bool) preg_match('/<option value="' . RecordType::Example->value . '" selected/', explode('</select>', $hinterWaehler)[0]));
+$seiteSatz = seite($satzKnoten->id, null, $satzId);
+$hinterWaehler = preg_split('/name="record_type" form="taxmod-preview-record-' . $satzId . '"/', $seiteSatz)[1] ?? '';
+check('die Vorschau zeichnet für den geöffneten Satz einen Wähler für die Art, und er steht auf der Art des Satzes (D-785)', (bool) preg_match('/<select name="record_type" form="taxmod-preview-record-' . $satzId . '"/', $seiteSatz) && (bool) preg_match('/<option value="' . RecordType::Example->value . '" selected/', explode('</select>', $hinterWaehler)[0]));
 check('die Satzart-Auswahl bietet `settings` nicht an (D-704)', ! str_contains(explode('</select>', $hinterWaehler)[0], 'value="settings"'));
 $versionVorher  = (int) $wpdb->get_var("SELECT version FROM {$p}node_records WHERE id = {$satzId}");
 $schattenVorDem = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records_history WHERE id = {$satzId}");
@@ -1394,10 +1402,10 @@ $data->put($sId, $wer->id, TypedValue::ofRecordReference($lfSatz->id));
 $einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations), ShippedRenderers::registry(), ShippedConverters::registry(), validators: \Taxmod\Core\Validator\ShippedValidators::registry());
 // ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
 $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfName->id, $lfLand->id]);
-$mitSummary = seite($satzKnoten->id);
+$mitSummary = seite($satzKnoten->id, null, $sId);
 check('der Satzblock zeigt den verwiesenen Satz als Zusammenfassung der am Knoten gewählten Felder (D-753)', str_contains($mitSummary, '<option value="' . $lfSatz->id . '" selected>__es Alpha · __es Nord</option>'));
 $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfLand->id], $wer);
-$anDerKante = seite($satzKnoten->id);
+$anDerKante = seite($satzKnoten->id, null, $sId);
 check('an der Kante überschrieben: nur das Land', str_contains($anDerKante, '<option value="' . $lfSatz->id . '" selected>__es Nord</option>') && ! str_contains($anDerKante, '__es Alpha · __es Nord'));
 $offenWer = seite($satzKnoten->id, (string) $wer->id);
 check('im Einstellungsbereich der Kante stehen die Felder des Ziels als Haken (D-752)', str_contains($offenWer, 'name="taxmod_field_setting_set[' . $wer->id . '][summary_fields][' . $lfName->id . ']"'));
@@ -1439,7 +1447,7 @@ check('und was kein Datum ist, wird abgewiesen', ! gelungen(), letzteMeldung());
 $wannSeite = seite($wann->id);
 check('die Grenze wird als Datum gezeichnet, im Band mit max', preg_match('/<input type="datetime-local"[^>]*name="taxmod_setting\[min\]"[^>]*value="2020-01-01T00:00"/', $wannSeite) === 1);
 $wannFeld = $editor->addField($satzKnoten->id, $wann->id, '__es wann');
-check('das Eingabefeld eines Satzes trägt die Grenze als min', preg_match('/<input type="datetime-local"[^>]*name="taxmod_value\[' . $sId . '\]\[' . $wannFeld->id . '\]"[^>]*min="2020-01-01T00:00"/', seite($satzKnoten->id)) === 1);
+check('das Eingabefeld eines Satzes trägt die Grenze als min', preg_match('/<input type="datetime-local"[^>]*name="taxmod_value\[' . $sId . '\]\[' . $wannFeld->id . '\]"[^>]*min="2020-01-01T00:00"/', seite($satzKnoten->id, null, $sId)) === 1);
 
 
 // ⚠️ **Zeile 8: die Validatoren laufen beim Speichern** ([D-760](../../docs/NewConcept/90-decision-log.md)) — erst prüfen, dann schreiben;

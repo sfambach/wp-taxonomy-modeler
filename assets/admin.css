@@ -870,6 +870,18 @@ a.taxmod-chosen:hover {
     min-width: 0;
 }
 
+/* ⚠️ Die Bedienung der bearbeitbaren Vorschau: Art, Speichern, neuer Satz in einer Reihe (D-785). */
+.taxmod-preview-acts {
+    display: flex;
+    align-items: center;
+    gap: .6em;
+    margin-top: .6em;
+}
+
+.taxmod-record-in-preview {
+    text-decoration: none;
+}
+
 /* ⚠️ Dasselbe für die Datensatz-Tabelle — sein Wort: «das gleiche gilt für die records auch einen horizontalen scrollbalken damit
  * die seite nicht so auseinander gezogen wird» (D-777). */
 .taxmod-record-form {
