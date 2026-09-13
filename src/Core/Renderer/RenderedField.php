@@ -56,6 +56,27 @@ final class RenderedField
          * Stelle, die sie alle sieht, ist der Behälter.*
          */
         public readonly string $hint = '',
+        /**
+         * Die Zeilen eines zusammengesetzten Feldes, wie der Abstieg sie gezeichnet hat — leer für ein einfaches.
+         *
+         * ⚠️ *Für {@see ComplexRenderer} ([D-758](../../../docs/NewConcept/90-decision-log.md)): er legt die Felder des
+         * Teils selbst als Formular oder Tabelle aus und braucht sie dazu einzeln, nicht als fertiges Markup.*
+         *
+         * @var list<list<RenderedField>>
+         */
+        public readonly array $rows = [],
+        /**
+         * Der Wert in einfachen Worten, ohne Bedienelement — die Zusammenfassung eines tiefer liegenden Teils (D-758).
+         */
+        public readonly string $summary = '',
+        /**
+         * Je Zeile in {@see $rows} ihr Knopf zum Entfernen, als fertiges Markup — leer, wo keiner gilt (D-758).
+         *
+         * @var list<string>
+         */
+        public readonly array $rowActs = [],
+        /** Was hinter den Zeilen steht — der Knopf, der eine hinzufügt (D-758). */
+        public readonly string $after = '',
     ) {
     }
 

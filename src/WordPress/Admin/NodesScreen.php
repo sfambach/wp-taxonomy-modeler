@@ -1335,6 +1335,8 @@ final class NodesScreen
         $seen     = $this->previewSource($selected);
 
         $values     = $this->rendering->previewValuesFor($relations, $resolved, $seen['held']);
+        // ⚠️ *Die Werte eines zusammengesetzten Feldes stehen in seinem eigenen Teil (D-577) — die Vorschau braucht sie (D-743).*
+        $teile      = ($seen['record'] ?? 0) === 0 ? [] : $this->rendering->partsOfRecord($seen['record'], $relations);
         $visibility = $this->rendering->previewVisibilityFor($relations, $resolved);
         $locale     = $this->localeFromRequest();
 
@@ -1396,7 +1398,8 @@ final class NodesScreen
                     $level,
                     $editable,
                     // ⚠️ *Ohne gewählten Behälter zeichnet die Vorschau als Tabelle (D-748).*
-                    $this->rendering->containerChosenFor($selected) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME
+                    $this->rendering->containerChosenFor($selected) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
+                    $teile
                 )->markup
                 . '</div>';
         }
@@ -1498,8 +1501,9 @@ final class NodesScreen
 
         if ($chosen === null) {
             return [
-                'held' => [],
-                'says' => __('Filled from the defaults — nothing has been entered against this node yet.', 'taxmod'),
+                'held'   => [],
+                'record' => 0,
+                'says'   => __('Filled from the defaults — nothing has been entered against this node yet.', 'taxmod'),
             ];
         }
 
@@ -1514,6 +1518,8 @@ final class NodesScreen
 
         return [
             'held' => $held,
+            // ⚠️ *Der Satz selbst, damit die Vorschau seine Teile laden kann (D-577, D-743).*
+            'record' => $chosen->id,
             // ⚠️ **The mark is named, because that is the whole point of a provenance line.** *A
             // preview filled from test data that reads exactly like one filled from real data is
             // the fault this sentence exists to prevent — and
@@ -2958,46 +2964,118 @@ final class NodesScreen
      * hidden field is not a cleared one.
      */
     /**
-     * Die Werte eines Teils, adressiert über die Kette der Kanten — von aussen nach innen, beliebig tief
-     * ([D-741](../../../docs/NewConcept/90-decision-log.md), {@see DataEntry::putAt()}).
+     * Die Teile eines zusammengesetzten Feldes schreiben — **jeder ein eigener Satz, über seine Id angesprochen**
+     * ([D-577](../../../docs/NewConcept/90-decision-log.md), D-758).
      *
-     * @param list<int>            $chain     Die Kanten bis hierher, von aussen nach innen.
-     * @param array<string, mixed> $submitted Was die Maske unter der letzten Kante geschickt hat.
+     * ⚠️ **Löst den flachen Weg aus D-741 ab** — *sein Wort 2026-09-13: «mehrere Sätze sollten möglich sein, ein komplexer Typ
+     * wird gruppiert gespeichert». Dort landeten die inneren Werte im Satz des Besitzers, und zwei Adressen hätten sich eine Kante
+     * geteilt. `0` heisst «noch kein Teil» — er entsteht, sobald darin etwas steht.*
+     *
+     * @param array<int|string, mixed> $submittedByPart Teil-Id => (innere Kante => Wert oder Liste)
      */
-    private function saveNestedValues(int $recordId, array $chain, array $submitted): void
+    private function saveParts(int $holderId, int $relationId, array $submittedByPart): void
     {
-        foreach ($submitted as $rawInner => $rawValue) {
-            $innerId = absint($rawInner);
-            $inner   = $innerId === 0 ? null : $this->editor->relationById($innerId);
+        // ⚠️ *Eine Teil-Id aus der Maske ist Eingabe: geschrieben wird nur in einen Teil, den dieser Halter hält.*
+        $gehalten = [];
 
-            if ($inner === null) {
-                continue;
+        foreach ($this->data->valuesOf($holderId) as $zeile) {
+            if ($zeile->relationId === $relationId && $zeile->value->reference !== null) {
+                $gehalten[$zeile->value->reference] = true;
             }
-
-            $weg = [...$chain, $innerId];
-
-            if (is_array($rawValue)) {
-                $this->saveNestedValues($recordId, $weg, $rawValue);
-
-                continue;
-            }
-
-            $characters = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
-
-            if ($characters === '') {
-                $this->data->clear($recordId, $innerId, $this->localeFromRequest());
-
-                continue;
-            }
-
-            $type = $this->rendering->typesFor([$inner])[$innerId] ?? null;
-
-            if ($type === null) {
-                throw NotYetStorable::thatFieldHasNoTypeYet($inner->name);
-            }
-
-            $this->data->putAt($recordId, $weg, $type->valueFrom($characters), $this->localeFromRequest());
         }
+
+        foreach ($submittedByPart as $rawPart => $inner) {
+            $partId = absint($rawPart);
+
+            if (! is_array($inner)) {
+                continue;
+            }
+
+            if ($partId === 0) {
+                if (! $this->holdsSomething($inner)) {
+                    continue;
+                }
+
+                $partId = $this->data->createPart($holderId, $relationId)->id;
+            } elseif (! isset($gehalten[$partId])) {
+                continue;
+            }
+
+            foreach ($inner as $rawInner => $rawValue) {
+                $innerId  = absint($rawInner);
+                $relation = $innerId === 0 ? null : $this->editor->relationById($innerId);
+
+                if ($relation === null) {
+                    continue;
+                }
+
+                if (is_array($rawValue)) {
+                    $this->saveParts($partId, $innerId, $rawValue);
+
+                    continue;
+                }
+
+                $characters = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+
+                if ($characters === '') {
+                    $this->data->clear($partId, $innerId);
+
+                    continue;
+                }
+
+                $type = $this->rendering->typesFor([$relation])[$innerId] ?? null;
+
+                if ($type === null) {
+                    throw NotYetStorable::thatFieldHasNoTypeYet($relation->name);
+                }
+
+                $this->data->put($partId, $innerId, $type->valueFrom($characters));
+            }
+        }
+    }
+
+    /** Ob in einer geschickten Liste irgendwo ein Zeichen steht — ein leerer neuer Teil wird nicht angelegt. */
+    private function holdsSomething(array $submitted): bool
+    {
+        foreach ($submitted as $wert) {
+            if (is_array($wert) ? $this->holdsSomething($wert) : trim((string) $wert) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Speichern, dann eine Zeile an ein mehrfaches Teilfeld hängen (D-758) — der Knopf nennt `do[<Halter>-<Kante>]`. */
+    private function addedPart(int $nodeId): void
+    {
+        $this->saveRecord($nodeId);
+
+        [$halter, $kante] = array_map(absint(...), explode('-', $this->actKey()) + [0, 0]);
+
+        if ($halter !== 0 && $kante !== 0) {
+            $this->data->createPart($halter, $kante);
+        }
+    }
+
+    /** Speichern, dann eine Teil-Zeile entfernen (D-758) — umkehrbar, der Verweis geht mit ({@see DataEntry::removeRecord()}). */
+    private function removedPart(int $nodeId): void
+    {
+        $this->saveRecord($nodeId);
+
+        $teil = absint($this->actKey());
+
+        if ($teil !== 0 && isset($this->data->holdersOf([$teil])[$teil])) {
+            $this->data->removeRecord($teil);
+        }
+    }
+
+    /** Der Schlüssel, den ein Knopf in `do[<Schlüssel>]` nennt — leer, wo `do` ein Wort ist. */
+    private function actKey(): string
+    {
+        $raw = $_POST['do'] ?? '';
+
+        return is_array($raw) ? sanitize_text_field(wp_unslash((string) array_key_first($raw))) : '';
     }
 
     /**
@@ -3176,7 +3254,7 @@ final class NodesScreen
             // `Organisation`: «die daten für adresse werden nicht gespeichert oder nicht angezeigt». Der Satz zeichnet
             // `taxmod_value[<Satz>][<aussen>][<innen>]`, und dieser Leser machte aus der Liste das Wort «Array».*
             if ($relation !== null && is_array($rawValue)) {
-                $this->saveNestedValues($recordId, [$relationId], $rawValue);
+                $this->saveParts($recordId, $relationId, $rawValue);
 
                 continue;
             }
@@ -3586,7 +3664,8 @@ final class NodesScreen
             ];
         }
 
-        return $html . $this->rendering->recordsAsTable(
+        // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
+        return $html . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->recordsAsTable(
             $selected,
             $attributes,
             $zeilen,
@@ -5014,6 +5093,9 @@ final class NodesScreen
                 // könnten bei der preview eingabe einen button hinzufügen add as example».*
                 'add_example'    => $this->addExample($id),
                 'save_record'    => $this->saveRecord($id),
+                // ⚠️ *Zeilen eines mehrfachen Teilfeldes (D-758, D-577).*
+                'add_part'       => $this->addedPart($id),
+                'remove_part'    => $this->removedPart($id),
                 'delete_record'  => $this->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 ),

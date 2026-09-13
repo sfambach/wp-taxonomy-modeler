@@ -1185,7 +1185,14 @@ final class DataEntry
         // einen schreibt. Der Raum wandert seit TASK-005 mit in die Spalte `value_ref_kind`.*
         $verweis = TypedValue::ofRecordReference($part->id);
 
-        $version = $this->records->putValue(RelationRecord::direct($recordId, $relationId, $verweis));
+        // ⚠️ *Hinten angehängt: zwei Adressen sind zwei Wertzeilen, «und die Reihenfolge braucht `sort_order`» (D-577).*
+        $hinterste = -1;
+
+        foreach ($this->valuesOn($recordId, $relationId, '') as $vorhanden) {
+            $hinterste = max($hinterste, $vorhanden->position);
+        }
+
+        $version = $this->records->putValue(RelationRecord::direct($recordId, $relationId, $verweis, '', $hinterste + 1));
 
         $this->melden(
             $recordId,

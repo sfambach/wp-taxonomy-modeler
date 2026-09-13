@@ -377,6 +377,18 @@ desselben Satzes ohne Sprache (leere Spalte). Beide Wege lesen sich zurück, abe
 selbst da* — danach wäre der äussere Weg der falsche. **Zu entscheiden:** welche der beiden Regeln gilt, dann wird der
 andere Weg angeglichen und der Bestand umgeschrieben. Nichts davon ist gebaut.
 
+## INF-052 · Wo liegen mehrere Werte eines zusammengesetzten Feldes — und wohin führt der Link?
+
+**Stand 2026-09-13.** Beim Bau des Komplex-Renderers ([D-758](NewConcept/90-decision-log.md)). Sein Wort: *«bei
+höherer Multiplizität Datensätze hinzufügen und entfernen»*. **Gemessen:** die Werte eines zusammengesetzten Feldes
+liegen im Satz des Besitzers an der innersten Kante ([D-667](NewConcept/90-decision-log.md),
+[D-742](NewConcept/90-decision-log.md)); zwei Adressen in einem Satz hätten dieselbe Kante für «Street», und das
+Schreiben weist ein Feld mit mehreren Werten ab. ~~**Zu entscheiden:** (1) ob jede Zeile ein eigener Teil-Satz wird …~~
+⚠️ **(1) war keine offene Frage, sondern mein Lesefehler** — *sein Wort: «ein komplexer Typ wird gruppiert gespeichert».*
+[D-577](NewConcept/90-decision-log.md) hatte es entschieden: jeder Teil ein eigener Satz. Die Messung oben beschrieb den
+flachen Weg aus D-741/D-742, nicht das Modell; gebaut nach D-577 in [D-759](NewConcept/90-decision-log.md).
+**Offen bleibt nur (2):** wohin der «Link mit Summary» einer tieferen Stufe führt — bis dahin klappt er an Ort und Stelle auf.
+
 ## Erledigte Eingänge
 
 *(noch keine)*

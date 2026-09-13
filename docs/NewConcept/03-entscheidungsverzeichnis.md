@@ -24,6 +24,8 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 |---|---|---|
 | Wo liegt das Modell? | [D-007](90-decision-log.md) — eigene Tabellen dieses Plugins | ~~D-567~~ *(Vorschlag, die Basistabellen zu benennen — verworfen)* |
 | Wie liegt ein Datensatz in den Tabellen? | [D-577](90-decision-log.md), [D-578](90-decision-log.md) — `node_record` / `relation_record`, kein Pfad, gilt für alle Kantenarten | ~~D-083~~ ~~D-133~~ ~~D-232~~ ~~D-527~~ ~~D-530~~ |
+| Wo liegt ein zusammengesetzter Wert in einem Datensatz, und wie werden es mehrere? | [D-759](90-decision-log.md) — in einem eigenen Teil-Satz, auf den der Besitzer zeigt; mehrere Teile sind mehrere Wertzeilen, `position` ordnet; Zeilen anhängen und entfernen (folgt [D-577](90-decision-log.md)) | ~~D-741~~ ~~D-742~~ *(innere Werte flach im Satz des Besitzers)* |
+| Wie zeichnet sich ein zusammengesetzter Knoten als Ganzes? | [D-758](90-decision-log.md) — Komplex-Renderer `complex`: feste Angaben, einfache Felder als Formular, komplexe `≤1` als Formular, `>1` als Tabelle, tiefer als Zusammenfassung | — |
 | Wem gehört ein Datensatz? | [D-667](90-decision-log.md) — dem Knoten, und wo er einer Verwendungsstelle gehört, nennt er ihre `relation_id`; `path` fällt | — |
 | Wem gehört eine Wertzeile? | [D-673](90-decision-log.md) gilt nur noch für **Datensätze**: einem Feld; Einstellungen liegen seit [D-712](90-decision-log.md) in `settings_value` am Knoten | ~~D-673~~ *(als Fach für Einstellungen)* |
 | Wo liegen die Einstellungen einer Verwendungsstelle? | [D-712](90-decision-log.md) — als Zeile am Zielknoten mit `kante_id`; die Kante hat keine eigenen | ~~D-667~~ *(Satz der Kante)* ~~D-643~~ |

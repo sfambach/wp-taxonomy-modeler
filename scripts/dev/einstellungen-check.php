@@ -560,7 +560,8 @@ sort($offeredForInt);
 check('der Kern sagt dasselbe für `Integer`', $offeredForInt === ['field', 'slider', 'spinner'], implode(', ', $offeredForInt));
 $offeredForThing = array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($modellKnoten->id)));
 sort($offeredForThing);
-check('einem Ding unter Model werden nur die Behälter angeboten: compact, form, table', $offeredForThing === ['compact', 'form', 'table'], implode(', ', $offeredForThing));
+// ⚠️ *`complex` seit D-758 — sein Wort: «ein echter Knoten-Renderer, der auch in der Auswahl wie form und table auftaucht».*
+check('einem Ding unter Model werden nur die Behälter angeboten: compact, complex, form, table', $offeredForThing === ['compact', 'complex', 'form', 'table'], implode(', ', $offeredForThing));
 check('einem bool kein spinner', ! in_array('spinner', array_map(static fn ($r): string => $r->name(), $rendering->choicesForNode($nodes->byId($seeded['bool']->id))), true));
 check('was nicht angeboten wird, ist noch nicht verboten — `checkbox` ist bekannt', $rendering->knowsRenderer('checkbox'));
 check('ein Name, auf den nichts antwortet, wird verweigert, und der Rückfall ist nicht wählbar', ! $rendering->knowsRenderer('__es no such renderer') && ! $rendering->knowsRenderer(PlainRenderer::NAME));
@@ -1124,19 +1125,37 @@ check('«New record» legt einen Satz an, mit der gewählten Art', $satzId > 0 &
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('ein eingetippter Wert steht danach im Satz, und die Seite zeigt ihn wieder', (string) $wpdb->get_var("SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$satzId} AND relation_id = {$satzFeld->id}") === '42' && str_contains(seite($satzKnoten->id), 'value="42"'));
 
-// ⚠️ **Ein zusammengesetztes Feld im Satz trägt seine inneren Felder mit Namen, und ein Wert darin kommt an und zurück**
-// ([D-742](../../docs/NewConcept/90-decision-log.md)). *Sein Befund nach D-741: «Adresse bei entry immer noch leer».
-// Die inneren Felder wurden gezeichnet, aber ohne `name` — die Maske schickte nichts. Der Name ist die Kette der Kanten.*
+// ⚠️ **Ein zusammengesetzter Wert ist ein eigener Teil-Satz, über seine Id angesprochen** ([D-577](../../docs/NewConcept/90-decision-log.md),
+// [D-758](../../docs/NewConcept/90-decision-log.md)). *Sein Wort 2026-09-13: «mehrere Sätze sollten möglich sein, ein komplexer Typ wird
+// gruppiert gespeichert». **Hier standen drei Zusagen zu D-741/D-742** — die inneren Werte flach im Satz des Besitzers, an der
+// innersten Kante —, und sie hielten einen Stand fest, der D-577 widersprach. Jetzt: Name `[<Kante>][<Teil>][<innen>]`, `0` für
+// «noch kein Teil»; der Wert steht im Teil; mehrere Teile lassen sich anhängen und entfernen.*
 $satzAnschrift = $editor->addField($satzKnoten->id, $anschrift->id, '__es anschrift');
 $gasse         = null;
 foreach ($relations->fieldRelationsOf([$anschrift->id]) as $innere) {
     $gasse ??= $innere;
 }
-$kette = 'taxmod_value[' . $satzId . '][' . $satzAnschrift->id . '][' . $gasse->id . ']';
-check('die inneren Felder eines zusammengesetzten Feldes stehen im Satz mit ihrem Namen — der Kette der Kanten', str_contains(seite($satzKnoten->id), 'name="' . $kette . '"'), $kette);
-abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42', (string) $satzAnschrift->id => [(string) $gasse->id => '__es Gasse 7']]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
-check('ein Wert im inneren Feld wird an der innersten Kante gespeichert, und die Seite zeigt ihn wieder', gelungen() && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$satzId} AND relation_id = {$gasse->id}") === '__es Gasse 7' && preg_match('/<input[^>]*name="' . preg_quote($kette, '/') . '"[^>]*value="__es Gasse 7"/', seite($satzKnoten->id)) === 1, letzteMeldung());
-check('und die Vorschau zeigt den inneren Wert — nicht nur der Satzblock (D-743)', str_contains(vorschau($satzKnoten->id), '__es Gasse 7'));
+$ohneTeil = 'taxmod_value[' . $satzId . '][' . $satzAnschrift->id . '][0][' . $gasse->id . ']';
+check('ohne Teil tragen die inneren Felder die Adresse «noch kein Teil»: Kante, dann 0', str_contains(seite($satzKnoten->id), 'name="' . $ohneTeil . '"'), $ohneTeil);
+abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42', (string) $satzAnschrift->id => ['0' => [(string) $gasse->id => '__es Gasse 7']]]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+$teilIds = static fn (): array => array_map('intval', $wpdb->get_col("SELECT value_ref FROM {$p}relation_records WHERE node_record_id = {$satzId} AND relation_id = {$satzAnschrift->id} AND value_ref_kind = 'record' ORDER BY position, id") ?: []);
+$ersterTeil = $teilIds()[0] ?? 0;
+$imTeil     = 'taxmod_value[' . $satzId . '][' . $satzAnschrift->id . '][' . $ersterTeil . '][' . $gasse->id . ']';
+check(
+    'der Wert steht in einem eigenen Teil-Satz und nicht im Besitzer, und die Seite zeigt ihn unter der Teil-Id',
+    gelungen() && $ersterTeil > 0
+        && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$ersterTeil} AND relation_id = {$gasse->id}") === '__es Gasse 7'
+        && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$satzId} AND relation_id = {$gasse->id}") === 0
+        && preg_match('/<input[^>]*name="' . preg_quote($imTeil, '/') . '"[^>]*value="__es Gasse 7"/', seite($satzKnoten->id)) === 1,
+    letzteMeldung() . ' · Teil ' . $ersterTeil
+);
+check('und die Vorschau zeigt den Wert aus dem Teil (D-743)', str_contains(vorschau($satzKnoten->id), '__es Gasse 7'));
+$editor->setMultiplicity($satzKnoten->id, $satzAnschrift->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+abschicken(['do' => [$satzId . '-' . $satzAnschrift->id => 'add_part'], 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+$zweiTeile = $teilIds();
+check('bei `0..*` hängt «Add row» einen zweiten Teil hinten an, und jede Zeile hat ihr Entfernen', count($zweiTeile) === 2 && $zweiTeile[0] === $ersterTeil && substr_count(seite($satzKnoten->id), 'value="remove_part"') === 2, implode(',', $zweiTeile) . ' · ' . letzteMeldung());
+abschicken(['do' => [(string) ($zweiTeile[1] ?? 0) => 'remove_part'], 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+check('«Remove this row» nimmt genau diesen Teil weg; der erste bleibt mit seinem Wert', $teilIds() === [$ersterTeil] && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$ersterTeil} AND relation_id = {$gasse->id}") === '__es Gasse 7', implode(',', $teilIds()) . ' · ' . letzteMeldung());
 $seiteSatz = seite($satzKnoten->id);
 $hinterWaehler = preg_split('/name="record_type" form="taxmod-record-' . $satzId . '"/', $seiteSatz)[1] ?? '';
 check('die Zeile zeichnet einen Wähler für die Art, und er steht auf der Art des Satzes', (bool) preg_match('/<select name="record_type" form="taxmod-record-' . $satzId . '"/', $seiteSatz) && (bool) preg_match('/<option value="' . RecordType::Example->value . '" selected/', explode('</select>', $hinterWaehler)[0]));

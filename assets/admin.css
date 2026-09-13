@@ -1581,3 +1581,34 @@ fieldset.taxmod-read-only {
     font-weight: 600;
     color: #1d2327;
 }
+
+/* ── Der Knoten-Renderer: feste Angaben in einer Zeile, dann Blöcke mit Überschrift (D-758) ────── */
+.taxmod-complex-fixed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3em 1em;
+    margin-bottom: .5em;
+    color: #50575e;
+}
+
+.taxmod-complex-fixed-label {
+    font-weight: 600;
+}
+
+.taxmod-complex-block {
+    margin-top: .8em;
+}
+
+.taxmod-complex-heading {
+    margin: 0 0 .3em;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.taxmod-part-add {
+    margin-top: .2em;
+}
+
+.taxmod-complex-link > summary {
+    cursor: pointer;
+    color: #2271b1;
+}

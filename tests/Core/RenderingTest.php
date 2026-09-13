@@ -25,7 +25,7 @@ use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Renderer\FormRenderer;
-use Taxmod\Core\Renderer\NodeRenderer;
+use Taxmod\Core\Renderer\ComplexRenderer;
 use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Section;
@@ -519,8 +519,11 @@ final class RenderingTest extends TestCase
         // — *sein Wort: «keiner unserer Knoten-Renderer, sondern der der Seite … sollte nicht Teil der
         // Renderer sein, die der Benutzer auswählen kann». Er heisst seitdem `page` statt `node` und
         // wird wie die Baumzelle nur von der Oberfläche gerufen.*
+        //
+        // ⚠️ **`complex` (zuerst `node`) ist seit [D-758](../../docs/NewConcept/90-decision-log.md) dabei** — *        // Namen, und diesmal meint er, was er sagt: sein Wort «ein echter Knoten-Renderer, der auch in der Auswahl wie
+        // form und table auftaucht».*
         self::assertSame(
-            [CompactRenderer::NAME, FormRenderer::NAME, TableRenderer::NAME],
+            [CompactRenderer::NAME, ComplexRenderer::NAME, FormRenderer::NAME, TableRenderer::NAME],
             $names
         );
     }

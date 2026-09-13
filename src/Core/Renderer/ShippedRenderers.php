@@ -83,6 +83,10 @@ final class ShippedRenderers
         // the kind of thing a modeller decides (D-471: one renderer with a switch, not two).
         $registry->add(new CompactRenderer());
 
+        // ⚠️ **Der Knoten-Renderer** ([D-758](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «ein echter
+        // Knoten-Renderer, der auch in der Auswahl wie form und table auftaucht»*. Angeboten, ohne Typ.
+        $registry->add(new ComplexRenderer());
+
         // ⚠️ **Die Seite selbst, und deshalb keine Wahl** ([D-670](../../../docs/NewConcept/90-decision-log.md)).
         // *Sein Wort am 2026-09-06: «dann ist es aber keiner unserer Knoten-Renderer, sondern der der
         // Seite und sollte nicht Teil der Renderer sein, die der Benutzer auswählen kann.» **Hier

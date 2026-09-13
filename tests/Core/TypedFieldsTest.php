@@ -20,7 +20,7 @@ use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\MailtoRenderer;
-use Taxmod\Core\Renderer\NodeRenderer;
+use Taxmod\Core\Renderer\ComplexRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\TableRenderer;
@@ -284,8 +284,9 @@ final class TypedFieldsTest extends TestCase
         // — *sein Wort: «keiner unserer Knoten-Renderer, sondern der der Seite … sollte nicht Teil der
         // Renderer sein, die der Benutzer auswählen kann». Er heisst seitdem `page` statt `node` und
         // wird wie die Baumzelle nur von der Oberfläche gerufen.*
+        // ⚠️ *`complex` seit [D-758](../../docs/NewConcept/90-decision-log.md).*
         self::assertSame(
-            [CompactRenderer::NAME, FormRenderer::NAME, TableRenderer::NAME],
+            [CompactRenderer::NAME, ComplexRenderer::NAME, FormRenderer::NAME, TableRenderer::NAME],
             $names
         );
     }

@@ -391,6 +391,138 @@ final class Rendering implements Presets
      *
      * @param array<string, ResolvedSetting> $settings
      */
+    /** @var array{add?: string, remove?: string} Die Worte der Knöpfe an mehrfachen Teilen — vom Rand (`AR-2`). Leer: keine Knöpfe. */
+    private array $partActs = [];
+
+    /** Dieselbe Zeichnung, aber mit Knöpfen zum Hinzufügen und Entfernen von Teil-Zeilen (D-758); die Worte kommen vom Rand. */
+    public function withPartActs(string $add, string $remove): static
+    {
+        $kopie           = clone $this;
+        $kopie->partActs = ['add' => $add, 'remove' => $remove];
+
+        return $kopie;
+    }
+
+    /**
+     * Die Teile **eines** Satzes für diese Felder — für eine Zeichnung ausserhalb des Satzblocks, etwa die Vorschau (D-743, D-577).
+     *
+     * @param  list<Relation> $relations
+     * @return array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>
+     */
+    public function partsOfRecord(int $recordId, array $relations): array
+    {
+        return $this->partsOfRecords([$recordId], $relations, $this->subgraph($relations, self::TIEFSTENS))[$recordId] ?? [];
+    }
+
+    /**
+     * Die Teile mehrerer Sätze, Stufe um Stufe — **ein zusammengesetzter Wert ist ein eigener Satz, auf den der Besitzer zeigt**.
+     *
+     * ⚠️ **[D-577](../../../docs/NewConcept/90-decision-log.md), von ihm aufgebaut:** *«Eine Adresse — sie bekommt ihren eigenen
+     * `node_record`, der Kunde verweist darauf. Zwei Adressen — zwei Wertzeilen, und die Reihenfolge braucht `sort_order`.»*
+     * *Nur Kompositionen: ein Verweis an einer Aggregation zeigt auf einen fremden Satz und wird zusammengefasst (D-753).*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   S["Satz"] -->|Kante · position| T1["Teil 1"]
+     *   S -->|Kante · position| T2["Teil 2"]
+     *   T1 --> W["seine Werte, seine Teile"]
+     * ```
+     *
+     * @param  list<int>                  $recordIds
+     * @param  list<Relation>             $relations
+     * @param  array<int, list<Relation>> $unterbau
+     * @return array<int, array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>>
+     */
+    private function partsOfRecords(array $recordIds, array $relations, array $unterbau): array
+    {
+        if ($this->records === null || $recordIds === []) {
+            return [];
+        }
+
+        $kompositionen = [];
+
+        foreach ([$relations, ...array_values($unterbau)] as $liste) {
+            foreach ($liste as $kante) {
+                if ($kante->kind === RelationKind::Composition && ! $kante->isSetting()) {
+                    $kompositionen[$kante->id] = true;
+                }
+            }
+        }
+
+        $gehalten = [];
+        $werte    = [];
+        $knoten   = [];
+        $gesehen  = array_fill_keys($recordIds, true);
+        $ebene    = $recordIds;
+
+        // ⚠️ *Eine Abfrage je Stufe für die Werte, eine für die Knoten der neuen Teile — nie eine je Teil (`CD-7`).*
+        for ($stufe = 0; $stufe <= self::TIEFSTENS && $ebene !== []; $stufe++) {
+            $weiter = [];
+
+            foreach ($this->records->valuesOfMany($ebene) as $halter => $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    $wert = $zeile->value;
+
+                    if (isset($kompositionen[$zeile->relationId]) && $wert->reference !== null && $wert->referenceSpace === ReferenceSpace::Record) {
+                        $gehalten[$halter][$zeile->relationId][] = [$wert->reference, $zeile->position];
+
+                        if (! isset($gesehen[$wert->reference])) {
+                            $gesehen[$wert->reference] = true;
+                            $weiter[]                  = $wert->reference;
+                        }
+
+                        continue;
+                    }
+
+                    $werte[$halter][$zeile->relationId] = $wert;
+                }
+            }
+
+            foreach ($weiter === [] ? [] : $this->records->byIds($weiter) as $id => $satz) {
+                $knoten[$id] = $satz->nodeId;
+            }
+
+            $ebene = $weiter;
+        }
+
+        $bauen = static function (int $halter, array $weg) use (&$bauen, $gehalten, $werte, $knoten): array {
+            $aus = [];
+
+            foreach ($gehalten[$halter] ?? [] as $kanteId => $liste) {
+                usort($liste, static fn (array $a, array $b): int => $a[1] <=> $b[1]);
+
+                foreach ($liste as [$teilId]) {
+                    if (isset($weg[$teilId])) {
+                        continue;
+                    }
+
+                    $aus[$kanteId][] = [
+                        'id'     => $teilId,
+                        'nodeId' => $knoten[$teilId] ?? 0,
+                        'werte'  => $werte[$teilId] ?? [],
+                        'teile'  => $bauen($teilId, $weg + [$teilId => true]),
+                    ];
+                }
+            }
+
+            return $aus;
+        };
+
+        $aus = [];
+
+        foreach ($recordIds as $id) {
+            $aus[$id] = $bauen($id, [$id => true]);
+        }
+
+        return $aus;
+    }
+
+    /** Ein gespeicherter Wert als Zeichen, wie er dasteht — für eine Zusammenfassung (D-758). */
+    private function wordsOf(TypedValue $value): string
+    {
+        return (string) ($value->text ?? $value->decimal ?? $value->date ?? ($value->int === null ? '' : (string) $value->int));
+    }
+
     private function convertedCharacters(
         TypedValue $value,
         array $settings,
@@ -911,7 +1043,8 @@ final class Rendering implements Presets
             // ⚠️ **Ein gespeicherter Satzverweis zeigt seine Zusammenfassung, was auch immer das Ziel ist** (D-753). *Sein Befund:
             // «warum sieht das anders aus als summary bei Hersteller» — der Nachfolger zeigt auf «Software», das Kinder hat, und ist
             // darum nach D-540 eine Knotenauswahl; der Satz darin wurde als Nummer gezeichnet. Der Raum des Wertes entscheidet die Anzeige.*
-            $satzverweis = $gewaehlt?->referenceSpace === ReferenceSpace::Record;
+            // ⚠️ *Nicht an einer Komposition: dort zeigt der Verweis auf den eigenen Teil, und der wird gezeichnet, nicht zusammengefasst (D-577).*
+            $satzverweis = $gewaehlt?->referenceSpace === ReferenceSpace::Record && $relation->kind !== RelationKind::Composition;
 
             if ($satzverweis && ! $renderer instanceof SummaryRenderer) {
                 $renderer = $this->renderers->byName(SummaryRenderer::NAME);
@@ -1121,7 +1254,12 @@ final class Rendering implements Presets
                 '',
                 // ⚠️ *Aus demselben Grund mitgegeben: der Behälter zeichnet das Fragezeichen und
                 // darf nichts nachschlagen ([D-662](../../../docs/NewConcept/90-decision-log.md)).*
-                $hilfen[$relation->id] ?? ''
+                $hilfen[$relation->id] ?? '',
+                $tiefer['rows'] ?? [],
+                // ⚠️ *Die Worte des Wertes, ohne Bedienelement — die Zusammenfassung eines tieferen Teils (D-758).*
+                $context->shown ?? $context->surroundings->refersTo ?? $this->wordsOf($value),
+                $tiefer['rowActs'] ?? [],
+                $tiefer['after'] ?? ''
             );
         }
 
@@ -1554,6 +1692,11 @@ final class Rendering implements Presets
         $vorne      = [];
         $akte       = [];
 
+        // ⚠️ **Die Teile aller Sätze, vor dem Abstieg geladen** ([D-577](../../../docs/NewConcept/90-decision-log.md),
+        // D-159, `CD-7`): *ein zusammengesetzter Wert ist ein eigener Satz, auf den der Besitzer zeigt — je Stufe eine Abfrage.*
+        $unterbau = $this->subgraph($relations, self::TIEFSTENS);
+        $teile    = $this->partsOfRecords(array_map(static fn (array $row): int => $row['id'], $rows), $relations, $unterbau);
+
         foreach ($rows as $row) {
             $formId = 'taxmod-record-' . $row['id'];
 
@@ -1569,9 +1712,9 @@ final class Rendering implements Presets
                 true,
                 $formId,
                 0,
-                [],
+                $unterbau,
                 [$model->id => true],
-                [],
+                $teile[$row['id']] ?? [],
                 // ⚠️ *Der Satz gehört diesem Knoten — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
                 $model->id
             );
@@ -2960,11 +3103,18 @@ final class Rendering implements Presets
          * siehe {@see self::recordAsBlock()}. Leer heisst: das Modell entscheidet.*
          */
         string $containerName = '',
+        /**
+         * ⚠️ *Die Teile des gezeichneten Satzes, aus {@see self::partsOfRecord()} — ohne sie stünden die Felder eines
+         * zusammengesetzten Wertes leer da, denn ihre Werte liegen im eigenen Teil (D-577).*
+         *
+         * @var array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>
+         */
+        array $recordParts = [],
     ): RenderResult {
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
         // ⚠️ *Der Knoten reist als `forNode` mit — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
-        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true], [], $node->id);
+        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, '', 0, [], [$node->id => true], $recordParts, $node->id);
 
         $container = $containerName === ''
             ? $this->containerFor($node, $purpose)
@@ -4639,7 +4789,7 @@ final class Rendering implements Presets
      * ⚠️ *Gemessen an `Kontakt`: `Address` bekam Typ «keiner» und `plain`, während `Adresse` fünf eigene
      * Felder trägt. **Vier von fünf waren nie zu sehen.***
      *
-     * @return array{renderer: string, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
+     * @return array{renderer: string, rows: list<list<RenderedField>>, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
      */
     private function partBelow(
         Relation $relation,
@@ -4727,7 +4877,8 @@ final class Rendering implements Presets
         //
         // ⚠️ **Je Teil eine Zeile.** *Ohne Teil eine leere Zeile **ohne Namen**, also ohne Adresse: sie
         // kann nichts abschicken, und das ist richtig — es gibt nichts, worin sie schreiben könnte.*
-        $zeilen = [];
+        $zeilen  = [];
+        $teilIds = [];
 
         // ⚠️ **Die Zeile sagt, dass sie geliehen ist**, so wie die Einstellungstafel es tut
         // ({@see SettingsRenderer::whereFrom()}: der Pfeil, das Wort im `title`). *Ohne die Kennzeichnung
@@ -4741,7 +4892,8 @@ final class Rendering implements Presets
             // ⚠️ *Erkannt an der **Satz-Id `0`** und nicht am Wort: fehlt dem Rand die Übersetzung, wäre
             // die Zeile sonst still ungekennzeichnet — und ungekennzeichnet ist genau der Zustand, den
             // diese Vorspalte verhindern soll.*
-            $wort = (string) ($teil['geerbt'] ?? '');
+            $wort      = (string) ($teil['geerbt'] ?? '');
+            $teilIds[] = (int) ($teil['id'] ?? 0);
 
             $vorspalten[] = $teil === null || ($teil['id'] ?? 0) !== 0
                 ? []
@@ -4801,8 +4953,11 @@ final class Rendering implements Presets
                 $fieldPrefix === '' || ($teil === null && $aufgeloest === 0 && $relation->isSetting())
                     ? ''
                     : ($relation->isSetting()
-                        ? (string) preg_replace('/^([A-Za-z_]+)/', '$1_inner', $fieldPrefix)
-                        : $fieldPrefix) . '[' . $relation->id . ']',
+                        ? (string) preg_replace('/^([A-Za-z_]+)/', '$1_inner', $fieldPrefix) . '[' . $relation->id . ']'
+                        // ⚠️ **Ein Teil ist ein eigener Satz und wird über seine Id angesprochen** ([D-577](../../../docs/NewConcept/90-decision-log.md),
+                        // sein Wort 2026-09-13: «ein komplexer Typ wird gruppiert gespeichert»): `[<Kante>][<Teil>]`, `0` für einen, der
+                        // beim ersten Speichern entsteht. *Hier stand `[<Kante>]` allein, und D-741 schrieb die inneren Werte flach in den Besitzer.*
+                        : $fieldPrefix . '[' . $relation->id . '][' . (int) ($teil['id'] ?? 0) . ']'),
                 $locale,
                 $level,
                 $editable,
@@ -4836,11 +4991,35 @@ final class Rendering implements Presets
         // gezeichnet — eine Bedingung darauf hätte einen Fall unterschieden, den es nicht gibt.*
         $behaelter = $relation->isSetting()
             ? $this->renderers->byName(TableRenderer::NAME)
-            : ($this->containerChosenAt($useSiteSettings, $ziel, $purpose) ?? $this->containerFor($ziel, $purpose));
+            : ($this->containerChosenAt($useSiteSettings, $ziel, $purpose)
+                // ⚠️ *Mehrere Teile sind Zeilen: ohne Wahl an der Stelle zeichnet die Tabelle — ein Formular zeigte nur den ersten (D-758).*
+                ?? ($relation->multiplicity->allowsMany() ? $this->renderers->byName(TableRenderer::NAME) : $this->containerFor($ziel, $purpose)));
 
-        return [
-            'renderer' => $behaelter->name(),
-            'result'   => $behaelter->render(
+        // ⚠️ **Zeilen hinzufügen und entfernen** (D-758, sein Wort: *«bei höherer Multiplizität Datensätze hinzufügen und entfernen»*).
+        // *Nur beim Bearbeiten, nur an einer Komposition mit mehreren, nur mit Worten vom Rand (`AR-2`). Der Halter ist der Satz, dessen
+        // Name zuletzt im Präfix steht — ein Teil, den es noch nicht gibt (`0`), bekommt keine eigenen Kinder.*
+        $akte   = [];
+        $danach = '';
+
+        if ($purpose === Purpose::Edit && $editable && $this->partActs !== [] && $fieldPrefix !== ''
+            && ! $relation->isSetting() && $relation->kind === RelationKind::Composition && $relation->multiplicity->allowsMany()
+        ) {
+            foreach ($teilIds as $teilId) {
+                $akte[] = $teilId === 0 ? '' : ControlMarkup::button(
+                    new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'minus', $formId)
+                );
+            }
+
+            $halter = preg_match('/\[(\d+)\]$/', $fieldPrefix, $treffer) === 1 ? (int) $treffer[1] : 0;
+
+            if ($halter !== 0) {
+                $danach = '<div class="taxmod-part-add">' . ControlMarkup::button(
+                    new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . ']', 'add_part', $this->partActs['add'], '', true, false, 'plus-alt2', $formId)
+                ) . '</div>';
+            }
+        }
+
+        $gezeichnet = $behaelter->render(
                 $ziel,
                 new RenderContext(
                     purpose: $purpose,
@@ -4854,9 +5033,17 @@ final class Rendering implements Presets
                     // ⚠️ **`node_records` ist der Platz, den der Table-Renderer für mehrere Zeilen hat, und
                     // er stand leer** — *der Grund, warum eine Einstellung mit `1..*` trotzdem nur eine
                     // Zeile zeigte. `parts` bleibt daneben für die Behälter, die nur einen Satz kennen.*
-                    surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId, rowLead: $vorspalten),
+                    surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId, rowLead: $vorspalten, rowActs: implode('', $akte) === '' ? [] : $akte),
                 )
-            ),
+            );
+
+        return [
+            'renderer' => $behaelter->name(),
+            // ⚠️ *Die Zeilen einzeln, für den Komplex-Renderer, der sie selbst auslegt (D-758) — mit ihren Knöpfen.*
+            'rows'     => $zeilen,
+            'rowActs'  => $akte,
+            'after'    => $danach,
+            'result'   => new RenderResult($gezeichnet->markup . $danach, $gezeichnet->usedRelations, $gezeichnet->condition),
         ];
     }
 
