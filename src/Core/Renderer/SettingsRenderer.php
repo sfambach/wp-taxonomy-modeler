@@ -234,7 +234,8 @@ final class SettingsRenderer extends RendererNode
             . '<span class="taxmod-setting-override">' . $haken . '</span>'
             // ⚠️ **Ein Fragezeichen, das sagt, was die Einstellung tut** ([D-795](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
             // «question mark explaining what this area does». Der Satz kommt vom Rand als `hint:<schlüssel>` (`AR-2`); ohne Satz kein Zeichen.*
-            . '<code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>' . HintMarkup::icon($this->hintFor($context, $key))
+            // ⚠️ *Name und Fragezeichen in einem Element, oben; der Wert darunter — sein Wort: «label/ question mark on top, value beneath» (D-796).*
+            . '<span class="taxmod-setting-name"><code class="taxmod-setting-key">' . RenderResult::escape($key) . '</code>' . HintMarkup::icon($this->hintFor($context, $key)) . '</span>'
             . '<span class="taxmod-setting-value">'
             . ($gesperrt ? '<span class="taxmod-setting-locked-control">' . $this->control($drawn) . '</span>' : $this->control($drawn))
             . '</span>'

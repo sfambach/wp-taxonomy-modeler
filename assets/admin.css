@@ -392,6 +392,29 @@ details.taxmod-page-block > summary {
     gap: .1em;
 }
 
+/* ⚠️ Name und Fragezeichen oben, der Wert darunter über die ganze Breite — sein Wort: «label/ question mark on top, value beneath»
+ * (D-796). Oben: Haken · Name mit Fragezeichen · Herkunft · Knöpfe; unten: der Wert. Eine lange Liste (summary_fields) schiebt so
+ * nichts mehr neben sich her. */
+.taxmod-setting {
+    grid-template-columns: 1.6em minmax(0, 1fr) auto auto;
+    grid-template-areas:
+        "haken name herkunft akte"
+        ".     wert wert     wert";
+    row-gap: .15em;
+}
+
+.taxmod-setting > .taxmod-setting-override { grid-area: haken; }
+.taxmod-setting > .taxmod-setting-value { grid-area: wert; }
+.taxmod-setting > .taxmod-setting-from { grid-area: herkunft; }
+.taxmod-setting > .taxmod-setting-acts { grid-area: akte; }
+
+.taxmod-setting > .taxmod-setting-name {
+    grid-area: name;
+    display: flex;
+    align-items: center;
+    gap: .25em;
+}
+
 /* ── No box around an icon button, anywhere ──────────────────────────────────
  *
  * ⚠️ **The owner said it twice because the first fix reached one place only**: *in the node renderer
