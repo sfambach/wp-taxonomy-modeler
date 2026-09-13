@@ -866,8 +866,7 @@ a.taxmod-chosen:hover {
     border-radius: 3px;
     background: #fff;
     padding: .6em .8em;
-    /* ⚠️ Der Kasten scrollt waagerecht, nicht die Seite (D-777); `min-width: 0`, sonst dehnt ein Rasterglied sich auf seinen Inhalt. */
-    overflow-x: auto;
+    /* ⚠️ Kein eigener Scrollbalken mehr — sein Wort: «die beiden scrollbalken kannst du wieder entfernen» (D-780). */
     min-width: 0;
 }
 

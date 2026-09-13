@@ -419,6 +419,33 @@ final class Rendering implements Presets
     /** @var array<int, list<Node>> Unterbäume, nach der Id ihrer Wurzel. */
     private array $gelesenUnter = [];
 
+    /** @var array<string, string|null> Die Beschriftung einer Wahl im Wähler, nach Rolle, Locale und Id ([D-780](../../../docs/NewConcept/90-decision-log.md)). */
+    private array $gelesenWahlNamen = [];
+
+    /** @var array<int, SeededRole> Die Rolle, die ein Ziel selbst sagt, nach seiner Id. */
+    private array $gelesenZielRollen = [];
+
+    /**
+     * Die gewählte Einheit als ihr Zeichen — gemerkt, denn jeder Satz auf der Seite fragt dieselben Einheiten (D-764).
+     *
+     * @param array<string, ResolvedSetting> $settings
+     */
+    private function gemerkterWahlName(int $id, array $settings, Node $ziel, string $locale): ?string
+    {
+        $rolle = isset($settings[self::LABEL_ROLE])
+            ? $this->roleOf($settings)
+            : ($this->gelesenZielRollen[$ziel->id] ??= $this->roleOf([], $ziel));
+        $key   = $rolle->value . '|' . $locale . '|' . $id;
+
+        if (! array_key_exists($key, $this->gelesenWahlNamen)) {
+            $knoten                       = $this->gemerkterKnoten($id);
+            $this->gelesenWahlNamen[$key] = $knoten === null ? null
+                : (($this->labels?->forNodes([$knoten], $rolle, $locale) ?? [])[$id] ?? $knoten->name);
+        }
+
+        return $this->gelesenWahlNamen[$key];
+    }
+
     private function gemerkterKnoten(int $id): ?Node
     {
         if (! array_key_exists($id, $this->gelesen)) {
@@ -3932,6 +3959,11 @@ final class Rendering implements Presets
             }
         }
 
+        // ⚠️ **Die gewählte Einheit steht als ihr Zeichen da** ([D-780](../../../docs/NewConcept/90-decision-log.md)) —
+        // *sein Wort: «sollte eigentlich das Ohmzeichen sein und bei Watt W».* Die Rolle sagt die Stelle oder das Ziel;
+        // fehlt die Beschriftung in der Rolle, bleibt der Name.
+        $gewaehlterName = $gewaehlt === null ? null : $this->gemerkterWahlName($gewaehlt, $settings, $target, $locale);
+
         return $this->nodeChooser(
             $target,
             $fieldName,
@@ -3939,7 +3971,7 @@ final class Rendering implements Presets
             $gewaehlt,
             [],
             [$target->id],
-            $gewaehlt === null ? null : $this->gemerkterKnoten($gewaehlt)?->name,
+            $gewaehlterName,
             '',
             $renderer->name(),
             $locale,

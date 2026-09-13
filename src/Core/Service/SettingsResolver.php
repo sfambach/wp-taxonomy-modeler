@@ -506,7 +506,13 @@ final class SettingsResolver
             return TypedValue::ofText($feld === null ? "#" . $value->reference : $feld->name);
         }
 
-        $knoten = $this->nodes->find($value->reference);
+        // ⚠️ *Gemerkt wie jeder andere Knoten (D-764): seit `label_role = symbol` an `Base units` (D-780) fragte jeder Satz
+        // mit einer Einheit den Rollenknoten neu — gemessen, fünf Sätze mehr, zehn Abfragen mehr.*
+        $knoten = $this->known[$value->reference] ?? $this->nodes->find($value->reference);
+
+        if ($knoten !== null) {
+            $this->known[$knoten->id] = $knoten;
+        }
 
         return $knoten === null ? $value : TypedValue::ofText($knoten->name);
     }
