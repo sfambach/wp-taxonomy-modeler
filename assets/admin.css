@@ -919,6 +919,25 @@ a.taxmod-chosen:hover {
     border-bottom: 2px solid #72aee6;
 }
 
+/* ⚠️ Schmal — sein Wort: «Er muss zu Filter schmäler» (D-787). Die Felder nehmen nicht mehr ihre Eingabebreite, sondern
+ * so wenig, wie ein Suchbegriff braucht; eine gesperrte Einheit (genau eine erlaubt, D-783) steht dort nicht: nach ihr
+ * lässt sich nicht filtern, sie ist in jedem Satz dieselbe. */
+.taxmod-table tr:has(form#taxmod-record-0) input[type="text"],
+.taxmod-table tr:has(form#taxmod-record-0) input[type="number"],
+.taxmod-table tr:has(form#taxmod-record-0) input:not([type]) {
+    width: 7em;
+    min-width: 0;
+}
+
+.taxmod-table tr:has(form#taxmod-record-0) select {
+    max-width: 8em;
+    min-width: 0;
+}
+
+.taxmod-table tr:has(form#taxmod-record-0) select[disabled] {
+    display: none;
+}
+
 .taxmod-preview-side h4 {
     margin: 0 0 .5em;
     font-size: .9em;
