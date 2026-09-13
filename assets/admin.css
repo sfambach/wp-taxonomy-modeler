@@ -1039,11 +1039,17 @@ ol.taxmod-switch-cascade .taxmod-list-move {
     font-weight: 400;
 }
 
-.taxmod-record-dialog-open {
+/* ⚠️ Alle Öffner gleich breit — sein Wort an den Positionen der Stückliste: «they should have the same size». Links bündig, ein zu
+ * langer Satz endet mit «…»; auch der leere Öffner («—») nimmt dieselbe Breite, damit die Spalte nicht springt. */
+.taxmod-record-dialog-open,
+.taxmod-record-pick .taxmod-dialog-open {
+    box-sizing: border-box;
+    width: 22em;
     max-width: 22em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-align: left;
 }
 
 /* ⚠️ Die ganze Zeile ist klickbar (D-788): der Zeiger sagt es, das Überfahren zeigt, welche; die geöffnete bleibt hinterlegt. */
