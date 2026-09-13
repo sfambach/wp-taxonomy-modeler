@@ -1410,7 +1410,7 @@ final class NodesScreen
             [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown'], '', ''],
             [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown'], '', $formular],
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
-            $html .= '<div class="taxmod-preview-side' . $breite . '">'
+            $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
                 . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->nodeAsForm(
                     $selected,
@@ -3769,7 +3769,8 @@ final class NodesScreen
                 'lead'     => [
                     __('Record', 'taxmod')     => $record->recordType === RecordType::Settings
                         ? $nummer
-                        : '<a class="taxmod-record-open' . ($imBlick ? ' taxmod-record-in-preview' : '') . '" href="' . esc_url($this->backTo($selected->id, [self::PREVIEW_RECORD => (string) $record->id])) . '"'
+                        // ⚠️ *Mit Anker: die Seite hält an der Eingabe an, nicht oben (D-788).*
+                        : '<a class="taxmod-record-open' . ($imBlick ? ' taxmod-record-in-preview' : '') . '" href="' . esc_url($this->backTo($selected->id, [self::PREVIEW_RECORD => (string) $record->id]) . '#taxmod-preview-edit') . '"'
                             . ' title="' . esc_attr__('Open this record in the preview above to change it', 'taxmod') . '">'
                             . ($imBlick ? '<strong>▸ ' . $nummer . '</strong>' : $nummer) . '</a>',
                     // ⚠️ **Die Art wird hier auch **umgestellt** und nicht nur angezeigt** — *sein

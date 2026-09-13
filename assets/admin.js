@@ -50,6 +50,17 @@
 	}
 
 	function restore() {
+		// ⚠️ **Ein Anker in der Adresse geht vor** (D-788) — sein Befund: *«Wenn ich auf eine Zeile klicke, dann springt der
+		// Bildschirm ganz nach oben … er sollte … in der Eingabe anhalten.»* *Der geöffnete Satz bringt `#taxmod-preview-edit`
+		// mit; die gemerkte Stelle gehört zur Seite davor und würde ihn wegschieben.*
+		var anker = window.location.hash ? document.getElementById( window.location.hash.slice( 1 ) ) : null;
+
+		if ( anker ) {
+			anker.scrollIntoView( { block: 'start' } );
+
+			return;
+		}
+
 		if ( ! saved ) {
 			return;
 		}
