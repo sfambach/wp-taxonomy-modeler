@@ -1025,6 +1025,87 @@
 		}
 	} );
 
+	// ⚠️ **Hinzufügen und Entfernen in einer Auswahlliste** (D-799) — sein Wort: «select unit and press add, added showing up in a list
+	// and can be removed again». *Hinzufügen legt eine Zeile mit verborgener 1 an und nimmt den Eintrag aus dem Auswahlfeld; Entfernen setzt
+	// die verborgene 0, blendet die Zeile aus und gibt den Eintrag dem Auswahlfeld zurück. Gespeichert wird mit der Seite.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var ziel = ereignis.target instanceof Element ? ereignis.target : null;
+		var dazu = ziel ? ziel.closest( '.taxmod-list-add' ) : null;
+		var weg  = ziel ? ziel.closest( '.taxmod-list-remove' ) : null;
+
+		if ( ! dazu && ! weg ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		var waehler = ( dazu || weg ).closest( '.taxmod-switch-picker' );
+		var liste   = waehler ? waehler.querySelector( '.taxmod-switch-cascade' ) : null;
+		var auswahl = waehler ? waehler.querySelector( '.taxmod-switch-candidates' ) : null;
+
+		if ( ! liste || ! auswahl ) {
+			return;
+		}
+
+		if ( dazu ) {
+			var eintrag = auswahl.options[ auswahl.selectedIndex ];
+
+			if ( ! eintrag || eintrag.value === '' ) {
+				return;
+			}
+
+			var zeile = document.createElement( 'li' );
+			var mitglied = document.createElement( 'input' );
+			var name = document.createElement( 'span' );
+			var entfernen = document.createElement( 'button' );
+
+			zeile.className = 'taxmod-switch-chosen';
+			zeile.setAttribute( 'data-taxmod-id', eintrag.value );
+			mitglied.type = 'hidden';
+			mitglied.className = 'taxmod-switch-member';
+			mitglied.name = auswahl.name.replace( /\[add\]$/, '[' + eintrag.value + ']' );
+			mitglied.value = '1';
+
+			if ( auswahl.getAttribute( 'form' ) ) {
+				mitglied.setAttribute( 'form', auswahl.getAttribute( 'form' ) );
+			}
+
+			name.className = 'taxmod-switch-name';
+			name.textContent = eintrag.textContent;
+			entfernen.type = 'button';
+			entfernen.className = 'button taxmod-icon-button taxmod-list-remove';
+			entfernen.style.color = '#b32d2e';
+			entfernen.innerHTML = '<span class="dashicons dashicons-no-alt" aria-hidden="true"></span><span class="screen-reader-text"></span>';
+			entfernen.querySelector( '.screen-reader-text' ).textContent = eintrag.textContent;
+
+			zeile.appendChild( mitglied );
+			zeile.appendChild( name );
+			zeile.appendChild( entfernen );
+			liste.appendChild( zeile );
+			eintrag.remove();
+			auswahl.value = '';
+
+			return;
+		}
+
+		var weggenommen = weg.closest( 'li' );
+		var feld = weggenommen ? weggenommen.querySelector( '.taxmod-switch-member' ) : null;
+
+		if ( ! weggenommen || ! feld ) {
+			return;
+		}
+
+		feld.value = '0';
+		weggenommen.hidden = true;
+		weggenommen.classList.remove( 'taxmod-switch-chosen' );
+
+		var zurueck = document.createElement( 'option' );
+
+		zurueck.value = weggenommen.getAttribute( 'data-taxmod-id' ) || '';
+		zurueck.textContent = ( weggenommen.querySelector( '.taxmod-switch-name' ) || weggenommen ).textContent;
+		auswahl.appendChild( zurueck );
+	} );
+
 	// ⚠️ **Die Pfeile einer geordneten Schalterliste** (D-794) — sein Wort: «more ordered by arrows». *Eine gewählte Zeile tauscht mit
 	// ihrer gewählten Nachbarin; danach werden die verborgenen Stellen der Reihe nach neu gezählt und mit der Seite gespeichert.*
 	document.addEventListener( 'click', function ( ereignis ) {

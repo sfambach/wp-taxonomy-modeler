@@ -4997,6 +4997,11 @@ final class NodesScreen
                 if (ctype_digit((string) $knoten) && (string) $an === '1') {
                     $gewollt[] = (int) $knoten;
                 }
+
+                // ⚠️ *Das Auswahlfeld «hinzufügen» (D-799): ohne Skript gewählt und mit der Seite gespeichert, kommt es als `[add]` an.*
+                if ((string) $knoten === 'add' && ctype_digit((string) $an)) {
+                    $gewollt[] = (int) $an;
+                }
             }
 
             $geschrieben += $this->attributes->setMembers($node, $attribut, $gewollt, $useSite);

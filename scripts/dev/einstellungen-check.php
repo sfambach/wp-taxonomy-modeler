@@ -629,7 +629,10 @@ check('weggenommen fällt es auf den Typstandard zurück, nicht auf den Vater', 
 $einheit    = $editor->createNode('__es Einheit', $framework->rootOf(Branch::Constants)->id, \Taxmod\Core\Model\NodeClass\Unit::class);
 $praefixe   = $editor->childrenOf((int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId(\Taxmod\WordPress\Persistence\UnitScaffold::PREFIXES_NAME));
 $kaskade    = seite($einheit->id);
-check('erlaubte_praefixe ist eine Kaskade: je Präfix ein Haken, kein Auswahlfeld', $praefixe !== [] && substr_count($kaskade, 'name="taxmod_setting_set[erlaubte_praefixe][') === 2 * count($praefixe) && ! str_contains($kaskade, 'name="taxmod_setting[erlaubte_praefixe]"'), substr_count($kaskade, 'name="taxmod_setting_set[erlaubte_praefixe][') . ' Felder bei ' . count($praefixe) . ' Präfixen');
+// ⚠️ **Geändert am 2026-09-14 mit [D-799](../../docs/NewConcept/90-decision-log.md), sichtbar:** *statt einem Haken je Präfix eine Liste der
+// gewählten und ein Auswahlfeld mit «+» — sein Wort: «to space consuming, better would be a selection list and an add button».*
+$auswahlPraefixe = preg_match('/<select class="taxmod-switch-candidates" name="taxmod_setting_set\[erlaubte_praefixe\]\[add\]"[^>]*>(.*?)<\/select>/s', $kaskade, $trefferAuswahl) === 1 ? $trefferAuswahl[1] : '';
+check('erlaubte_praefixe ist ein Auswahlfeld mit «+»: jeder Präfix als Eintrag, kein Haken', $praefixe !== [] && preg_match_all('/<option value="\d+">/', $auswahlPraefixe) === count($praefixe) && ! str_contains($kaskade, 'type="checkbox" name="taxmod_setting_set[erlaubte_praefixe]'), preg_match_all('/<option value="\d+">/', $auswahlPraefixe) . ' Einträge bei ' . count($praefixe) . ' Präfixen');
 $kilo  = (int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId('kilo');
 $milli = (int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId('milli');
 speichern($einheit->id, ['taxmod_setting_set' => ['erlaubte_praefixe' => [(string) $kilo => '1', (string) $milli => '1']]]);
@@ -640,7 +643,11 @@ speichern($einheit->id, ['taxmod_setting_set' => ['erlaubte_praefixe' => [(strin
 $leserKaskade->forget();
 $glieder = $leserKaskade->listOf($nodes->byId($einheit->id), 'erlaubte_praefixe');
 check('ein Haken weg: das Glied bleibt, nicht aktiv (Z3a)', count($glieder) === 2 && count(array_filter($glieder, static fn ($g): bool => $g->aktiv)) === 1, count($glieder) . ' Glieder');
-check('und die Seite zeigt genau den einen Haken', substr_count(seite($einheit->id), 'value="1" checked') >= 1);
+$nachEinem = seite($einheit->id);
+check('und die Seite zeigt genau den einen gewählten, der andere steht wieder im Auswahlfeld (D-799)', substr_count($nachEinem, 'class="taxmod-switch-member" name="taxmod_setting_set[erlaubte_praefixe][') === 1 && str_contains($nachEinem, 'name="taxmod_setting_set[erlaubte_praefixe][' . $kilo . ']" value="1"') && (bool) preg_match('/name="taxmod_setting_set\[erlaubte_praefixe\]\[add\]"[^>]*>.*?<option value="' . $milli . '">/s', $nachEinem));
+speichern($einheit->id, ['taxmod_setting_set' => ['erlaubte_praefixe' => [(string) $kilo => '1', 'add' => (string) $milli]]]);
+$leserKaskade->forget();
+check('ohne Skript: im Auswahlfeld gewählt und gespeichert, ist der Präfix wieder aktiv (D-799)', count(array_filter($leserKaskade->listOf($nodes->byId($einheit->id), 'erlaubte_praefixe'), static fn ($g): bool => $g->aktiv)) === 2, letzteMeldung());
 
 // ⚠️ *«wir müssen typ wechsel möglich machen … die einstellungen die nicht übereinstimmen gehen dabei verloren» (D-733).*
 check('die Systemzeile bietet die eigene Klasse zur Wahl', str_contains(seite($einheit->id), 'name="klasse" class="taxmod-toolbar-class" form="'));
@@ -1410,7 +1417,7 @@ $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\Summ
 $anDerKante = seite($satzKnoten->id, null, $sId);
 check('an der Kante überschrieben: nur das Land', (bool) preg_match('/value="' . $lfSatz->id . '" checked[^>]*> __es Nord</u', $anDerKante) && ! str_contains($anDerKante, '__es Alpha · __es Nord'));
 $offenWer = seite($satzKnoten->id, (string) $wer->id);
-check('im Einstellungsbereich der Kante stehen die Felder des Ziels als Haken (D-752)', str_contains($offenWer, 'name="taxmod_field_setting_set[' . $wer->id . '][summary_fields][' . $lfName->id . ']"'));
+check('im Einstellungsbereich der Kante stehen die Felder des Ziels zur Auswahl (D-752, seit D-799 im Auswahlfeld mit «+»)', (bool) preg_match('/name="taxmod_field_setting_set\[' . $wer->id . '\]\[summary_fields\]\[add\]"[^>]*>.*?<option value="' . $lfName->id . '">/s', $offenWer));
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $satzFeld->id => '42', (string) $wer->id => (string) $lfSatz->id]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('der Wähler der Zusammenfassung schreibt einen Satzverweis', gelungen() && (string) $wpdb->get_var("SELECT value_ref FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wer->id} AND value_ref_kind = 'record'") === (string) $lfSatz->id, letzteMeldung());
 

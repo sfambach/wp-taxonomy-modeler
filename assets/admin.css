@@ -934,7 +934,32 @@ ol.taxmod-switch-cascade > li.taxmod-switch-chosen {
     font-weight: 600;
 }
 
-ol.taxmod-switch-cascade .taxmod-list-move {
+/* ⚠️ Gewählte als Liste, darunter Auswahlfeld und «+» (D-799). */
+.taxmod-switch-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .25em;
+}
+
+.taxmod-switch-add {
+    display: inline-flex;
+    align-items: center;
+    gap: .2em;
+}
+
+.taxmod-switch-add select {
+    width: auto;
+    min-width: 12em;
+}
+
+ol.taxmod-switch-cascade:empty {
+    display: none;
+}
+
+ol.taxmod-switch-cascade .taxmod-list-move,
+ol.taxmod-switch-cascade .taxmod-list-remove,
+.taxmod-switch-add .taxmod-list-add {
     min-height: 0;
     padding: 0 .1em;
     line-height: 1;

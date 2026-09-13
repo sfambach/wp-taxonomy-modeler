@@ -4919,20 +4919,22 @@ final class Rendering implements Presets
         // ist eine Zahl und wird mit der Seite gespeichert, über denselben Weg wie die Glieder einer Liste (`_list`).*
         $gewaehlt = array_values(array_filter(array_keys($an), static fn (int $id): bool => isset($kandidaten[$id])));
         usort($gewaehlt, static fn (int $a, int $b): int => ($stelle[$a] ?? 0) <=> ($stelle[$b] ?? 0));
-        $reihe = [...$gewaehlt, ...array_values(array_diff(array_keys($kandidaten), $gewaehlt))];
 
         $prefix     = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_set', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
         $listPrefix = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_list', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
         $form       = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
-        $html       = '<ol class="taxmod-switch-cascade">';
 
-        foreach ($reihe as $platz => $kandidatId) {
+        // ⚠️ **Gewählte als Liste, der Rest als Auswahlfeld mit «hinzufügen»** ([D-799](../../../docs/NewConcept/90-decision-log.md)) — *sein
+        // Wort an `erlaubte_einheiten`: «to space consuming, better would be a selection list and an add button. select unit and press add,
+        // added showing up in a list and can be removed again … also used for the field selections». Ein gewähltes Glied reist als
+        // verborgene 1 (entfernt: 0), das Auswahlfeld als `[add]` — ohne Skript wählt man dort und speichert die Seite.*
+        $html = '<span class="taxmod-switch-picker"><ol class="taxmod-switch-cascade">';
+
+        foreach ($gewaehlt as $platz => $kandidatId) {
             $name  = RenderResult::escape($prefix . '[' . $kandidatId . ']');
-            $html .= '<li' . (isset($an[$kandidatId]) ? ' class="taxmod-switch-chosen"' : '') . '><label>'
-                . '<input type="hidden" name="' . $name . '" value="0"' . $form . '>'
-                . '<input type="checkbox" name="' . $name . '" value="1"' . (isset($an[$kandidatId]) ? ' checked' : '') . $form . '> '
-                . RenderResult::escape($kandidaten[$kandidatId])
-                . '</label>'
+            $html .= '<li class="taxmod-switch-chosen" data-taxmod-id="' . (int) $kandidatId . '">'
+                . '<input type="hidden" class="taxmod-switch-member" name="' . $name . '" value="1"' . $form . '>'
+                . '<span class="taxmod-switch-name">' . RenderResult::escape($kandidaten[$kandidatId]) . '</span>'
                 // ⚠️ *Verschoben mit Pfeilen — sein Wort: «more ordered by arrows». Die Stelle reist verborgen; das Skript tauscht die
                 // Zeile mit ihrer Nachbarin und zählt die Stellen neu. Die Pfeile sind `type="button"` und schicken nie ab.*
                 . (isset($an[$kandidatId], $zeile[$kandidatId])
@@ -4948,10 +4950,23 @@ final class Rendering implements Presets
                         . ($platz === count($gewaehlt) - 1 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
                         . IconMarkup::dashicon('arrow-down-alt2', $kandidaten[$kandidatId]) . '</button>'
                     : '')
+                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
+                . IconMarkup::dashicon('no-alt', $kandidaten[$kandidatId]) . '</button>'
                 . '</li>';
         }
 
-        return RenderResult::of($html . '</ol>');
+        $html .= '</ol><span class="taxmod-switch-add">'
+            . '<select class="taxmod-switch-candidates" name="' . RenderResult::escape($prefix . '[add]') . '"' . $form . '>'
+            . '<option value=""></option>';
+
+        foreach (array_diff(array_keys($kandidaten), $gewaehlt) as $kandidatId) {
+            $html .= '<option value="' . (int) $kandidatId . '">' . RenderResult::escape($kandidaten[$kandidatId]) . '</option>';
+        }
+
+        return RenderResult::of($html . '</select>'
+            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-add" style="color:#1d2327">'
+            . IconMarkup::dashicon('plus-alt2', $erklaert->name) . '</button>'
+            . '</span></span>');
     }
 
     /**
