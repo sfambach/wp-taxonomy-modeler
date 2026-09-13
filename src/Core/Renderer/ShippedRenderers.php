@@ -52,6 +52,9 @@ final class ShippedRenderers
         // ⚠️ *Der Sprung hat genau einen Renderer: einen Link zum gefilterten Ziel (D-769).*
         $registry->add(new JumpRenderer(), SimpleType::Jump);
 
+        // ⚠️ *Das Medienfeld: Link oder hochgeladene Datei, gespeichert als Adresse (D-793).*
+        $registry->add(new MediaRenderer(), SimpleType::Media);
+
         $registry->add(new ToggleRenderer(), SimpleType::Bool);
         $registry->add(new CheckboxRenderer());
 

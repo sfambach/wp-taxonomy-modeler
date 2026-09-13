@@ -33,7 +33,7 @@ final class BaseScaffold
 
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
     // ⚠️ *7: der Typknoten «Path» (D-751). 8: der Typknoten «Jump» (D-769).*
-    public const VERSION = 8;
+    public const VERSION = 9;
 
     public function __construct(
         private readonly ModelEditor $editor,

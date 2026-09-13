@@ -72,6 +72,9 @@ enum SimpleType: string
     // ⚠️ *Ein Sprung zu einem anderen Knoten, gefiltert nach diesem Satz — gerechnet beim Zeichnen, nie gespeichert (D-769).*
     case Jump = 'jump';
 
+    /** Eine Datei oder ein Link — gespeichert wird die Adresse ([D-793](../../../docs/NewConcept/90-decision-log.md): «it is a media type, both is the right answer»). */
+    case Media = 'media';
+
     /** A reference to a node in the model. */
     case NodeRef = 'node_ref';
 

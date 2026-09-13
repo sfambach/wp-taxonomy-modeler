@@ -201,7 +201,8 @@ final class ControlMarkup
             $buttons .= self::button($control);
         }
 
-        return '<form method="post" id="' . RenderResult::escape($formId) . '"'
+        // ⚠️ *`multipart`, damit ein Medienfeld in der Zeile eine Datei mitschicken kann (D-793) — für die übrigen Felder ändert es nichts.*
+        return '<form method="post" enctype="multipart/form-data" id="' . RenderResult::escape($formId) . '"'
             . ' action="' . RenderResult::escape($submits->action) . '"'
             . ' class="taxmod-acts">'
             . self::hidden($submits)

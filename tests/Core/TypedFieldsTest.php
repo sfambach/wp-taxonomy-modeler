@@ -80,6 +80,7 @@ final class TypedFieldsTest extends TestCase
             [SimpleType::Version, FieldRenderer::NAME],
             [SimpleType::Path, FieldRenderer::NAME],
             [SimpleType::Jump, \Taxmod\Core\Renderer\JumpRenderer::NAME],
+            [SimpleType::Media, \Taxmod\Core\Renderer\MediaRenderer::NAME],
             [SimpleType::Int, FieldRenderer::NAME],
             [SimpleType::Decimal, FieldRenderer::NAME],
             [SimpleType::Bool, ToggleRenderer::NAME],

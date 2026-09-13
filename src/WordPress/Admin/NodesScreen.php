@@ -4024,6 +4024,88 @@ final class NodesScreen
         return $aus;
     }
 
+    /**
+     * Die Dateien aus den Hochladefeldern der Medienfelder in die Mediathek legen und ihre Adresse als Wert eintragen (D-793).
+     *
+     * ⚠️ *Der Kern kennt nur die Adresse ({@see \Taxmod\Core\Model\Type\MediaType}); hier wird aus einer Datei eine. Das Hochladefeld
+     * trägt denselben Weg wie sein Wertfeld ({@see \Taxmod\Core\Renderer\MediaRenderer::uploadNameFor()}), also landet die Adresse
+     * genau dort, wo sonst ein eingetippter Link stünde — und jeder Akt speichert sie wie einen. Wer nicht hochladen darf, lädt
+     * nicht hoch (`CD-5`); ein Fehler der Mediathek lässt den Wert, wie er war.*
+     */
+    private function absorbUploads(): void
+    {
+        $feld = self::VALUE_FIELD . \Taxmod\Core\Renderer\MediaRenderer::UPLOAD_SUFFIX;
+
+        if (! isset($_FILES[$feld]['name']) || ! is_array($_FILES[$feld]['name']) || ! current_user_can('upload_files')) {
+            return;
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $blatt = static function (string $art, array $weg) use ($feld) {
+            $wert = $_FILES[$feld][$art] ?? null;
+
+            foreach ($weg as $schritt) {
+                $wert = is_array($wert) ? ($wert[$schritt] ?? null) : null;
+            }
+
+            return $wert;
+        };
+
+        $lauf = function (array $namen, array $weg) use (&$lauf, $blatt): void {
+            foreach ($namen as $schluessel => $name) {
+                $hier = [...$weg, $schluessel];
+
+                if (is_array($name)) {
+                    $lauf($name, $hier);
+
+                    continue;
+                }
+
+                if ((string) $name === '' || (int) $blatt('error', $hier) !== UPLOAD_ERR_OK) {
+                    continue;
+                }
+
+                $anhang = media_handle_sideload([
+                    'name'     => sanitize_file_name((string) $name),
+                    'type'     => (string) $blatt('type', $hier),
+                    'tmp_name' => (string) $blatt('tmp_name', $hier),
+                    'error'    => 0,
+                    'size'     => (int) $blatt('size', $hier),
+                ], 0);
+
+                $adresse = is_wp_error($anhang) ? false : wp_get_attachment_url((int) $anhang);
+
+                if (! is_string($adresse) || $adresse === '') {
+                    continue;
+                }
+
+                $ziel  = &$_POST;
+                $kette = [self::VALUE_FIELD, ...$hier];
+
+                foreach ($kette as $stelle => $schritt) {
+                    if ($stelle === count($kette) - 1) {
+                        $ziel[$schritt] = $adresse;
+
+                        break;
+                    }
+
+                    if (! isset($ziel[$schritt]) || ! is_array($ziel[$schritt])) {
+                        $ziel[$schritt] = [];
+                    }
+
+                    $ziel = &$ziel[$schritt];
+                }
+
+                unset($ziel);
+            }
+        };
+
+        $lauf($_FILES[$feld]['name'], []);
+    }
+
     /** @var array<int, list<int>> Die Vorfahren eines Knotens, je Seite einmal gelesen — für den Filter über Unterbäume (D-791). */
     private array $vorfahren = [];
 
@@ -5302,6 +5384,9 @@ final class NodesScreen
         $id = isset($_POST['id']) ? absint($_POST['id']) : 0;
 
         check_admin_referer(self::ACTION . '_' . $id, '_taxmod_nonce');
+
+        // ⚠️ *Hochgeladene Dateien zuerst in die Mediathek, ihre Adresse in die Werte — dann speichert jeder Akt sie wie einen Link (D-793).*
+        $this->absorbUploads();
 
         // ⚠️ **`do` may arrive as an array**, because a settings row's act names its key in the
         // button — `do[range_min]` ([D-392](../../../docs/NewConcept/90-decision-log.md)). One form
