@@ -923,6 +923,27 @@ ol.taxmod-switch-cascade {
     align-items: flex-start;
 }
 
+/* ⚠️ Die Satztabelle bündig (D-801) — sein Wort an der Stückliste: «does not look well aligned». Gemessen am Bild: die Zellen standen
+ * mittig, jede eingeschachtelte Positionstabelle mass ihre Spalten selbst, und leere Spalten («Seite») fielen zusammen. Jetzt oben
+ * bündig, und eine Tabelle in einer Zelle nimmt die volle Breite mit festen Spalten — so fluchten die Positionen von Satz zu Satz. */
+.taxmod-records-block .taxmod-table > tbody > tr > td,
+.taxmod-record-form .taxmod-table > tbody > tr > td,
+.taxmod-table td {
+    vertical-align: top;
+}
+
+.taxmod-table td .taxmod-table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.taxmod-table td .taxmod-table th,
+.taxmod-table td .taxmod-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
 /* ⚠️ Die Pfeile hinter dem Namen, nicht darunter — sein Wort: «put the arrows after the label not beneath». */
 ol.taxmod-switch-cascade > li {
     display: flex;

@@ -246,6 +246,13 @@ final class SettingsEditor
             throw SettingDoesNotApply::named($attribut . ' #' . $rowId);
         }
 
+        // ⚠️ **Nie zweimal derselbe Renderer an einer Stelle aktiv** ([D-800](../../../docs/NewConcept/90-decision-log.md)) — *sein Bild: «form 1»
+        // zweimal angehakt. Gemessen: an `Betriebsspannung` schaltete jedes Speichern das geerbte `compact` neben dem eigenen wieder an
+        // (0 → 1 → 0 → 1). Ein Glied, dessen Klasse an dieser Stelle schon aktiv steht, wird nicht angeschaltet.*
+        if ($aktiv === true && ! $zeile->aktiv && $this->sameClassActiveAt($node, $erklaert, $edge, $zeile)) {
+            $aktiv = null;
+        }
+
         if ($zeile->relationId !== $edge?->id) {
             if ($edge === null || $zeile->relationId !== null) {
                 throw SettingDoesNotApply::named($attribut . ' #' . $rowId . ' belongs to another edge');
@@ -366,6 +373,18 @@ final class SettingsEditor
             return true;
         }
 
+        // ⚠️ *Dieselbe Klasse steht an dieser Stelle schon aktiv (ausser im ersten Glied, das gleich ersetzt wird) — kein zweites Glied (D-800).
+        // Gemessen an `Projekte`: zwei Speichern in derselben Sekunde legten zweimal `form` an.*
+        foreach ($edge === null ? $amKnoten : $anKante as $vorhanden) {
+            if ($edge === null && $vorhanden->id === $erstes?->id) {
+                continue;
+            }
+
+            if ($vorhanden->aktiv && $vorhanden->valueObjectId !== null && $this->settings->findObject($vorhanden->valueObjectId)?->klasse === $klasse) {
+                return false;
+            }
+        }
+
         $objekt = $this->settings->addObject(SettingsObject::create($klasse));
 
         if ($edge === null) {
@@ -402,6 +421,32 @@ final class SettingsEditor
         $this->note($node, $erklaert->name, $edge, null, TypedValue::ofText($name), $objekt->version);
 
         return true;
+    }
+
+    /** Steht an dieser Stelle (Knoten oder Kante) schon ein anderes aktives Glied derselben Objektklasse? (D-800) */
+    private function sameClassActiveAt(Node $node, AttributeDeclaration $erklaert, ?Relation $edge, SettingsValue $zeile): bool
+    {
+        if ($zeile->valueObjectId === null) {
+            return false;
+        }
+
+        $klasse = $this->settings->findObject($zeile->valueObjectId)?->klasse;
+
+        if ($klasse === null) {
+            return false;
+        }
+
+        foreach ($this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $erklaert, $edge) as $row) {
+            if ($row->id === $zeile->id || ! $row->aktiv || $row->valueObjectId === null) {
+                continue;
+            }
+
+            if ($this->settings->findObject($row->valueObjectId)?->klasse === $klasse) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param list<SettingsValue> $amKnoten */
