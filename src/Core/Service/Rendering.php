@@ -1201,7 +1201,9 @@ final class Rendering implements Presets
             // ⚠️ **Ein Verweis auf einen Satz zeigt seine Zusammenfassung von selbst** ([D-753](../../../docs/NewConcept/90-decision-log.md),
             // berichtigt): *sein Wort: «an der Kante bin ich mir unsicher, ob wir einen Renderer brauchen, aber da es kein simpler
             // Datentyp ist, muss eine Zusammenfassung gezeigt werden». Der Knoten behält seinen Behälter; die Kante braucht keine Wahl.*
-            if ($this->drawsAsSummary($relation, $type, $resolved[$relation->id] ?? [])) {
+            $alsZusammenfassung = $this->drawsAsSummary($relation, $type, $resolved[$relation->id] ?? []);
+
+            if ($alsZusammenfassung) {
                 $renderer = $this->renderers->byName(SummaryRenderer::NAME);
             }
 
@@ -1231,7 +1233,8 @@ final class Rendering implements Presets
                 $renderer = $this->renderers->byName(SummaryRenderer::NAME);
             }
 
-            $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef && ! $satzverweis;
+            // ⚠️ *Wer Sätze anbietet, ist keine Knotenauswahl — sonst schlüge die Kinderregel (D-540) die Satzauswahl wieder.*
+            $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef && ! $satzverweis && ! $alsZusammenfassung;
 
             // ⚠️ **Ein Weg wird gerechnet, nicht gelesen, und ist nie eingebbar** ([D-751](../../../docs/NewConcept/90-decision-log.md)).
             // *Was im Satz steht, zählt nicht; die Kette der Namen vom erklärenden Vater bis hierher ist der Wert.*
@@ -3590,8 +3593,24 @@ final class Rendering implements Presets
      */
     private function drawsAsSummary(Relation $relation, ?SimpleType $type, array $resolved): bool
     {
-        if ($type !== null || $relation->kind !== RelationKind::Aggregation) {
+        if ($relation->kind !== RelationKind::Aggregation) {
             return false;
+        }
+
+        // ⚠️ **Ein Ziel mit Sätzen bietet Sätze an, auch wenn es Kinder hat** — *sein Bild der leeren Position in `Parts List`:
+        // «Part» ohne Auswahl. Gemessen: `Electronic Parts` hat Kinder, also antwortete der Typ `node_ref`, und eine leere Zeile
+        // bekam den Anzeige-Renderer eines Knotenverweises; erst ein gespeicherter Satzverweis machte daraus die Satzauswahl.
+        // Die Sätze liegen aber genau dort (D-753: «alle Sätze unter dem Ziel»). Eine Auswahl von Knoten bleibt, was eine ist:
+        // eine `Choice`, eine Konstante, eine Einheit — auch wenn sie im Datenast liegt wie `Bestückungsseiten`.*
+        if ($type !== null) {
+            $ziel = $type === SimpleType::NodeRef ? $this->gemerkterKnoten($relation->toNodeId) : null;
+
+            if ($ziel === null
+                || in_array($ziel->klasse, [\Taxmod\Core\Model\NodeClass\Choice::class, \Taxmod\Core\Model\NodeClass\Constant::class, \Taxmod\Core\Model\NodeClass\Unit::class], true)
+                || ! ($this->framework->branchOf($ziel)?->holdsData() ?? false)
+            ) {
+                return false;
+            }
         }
 
         // ⚠️ **Nur eine Wahl an der Kante zählt, nicht der Behälter des Zielknotens** (D-786) — *sein Bild der leeren Position
