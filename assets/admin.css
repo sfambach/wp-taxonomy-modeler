@@ -1356,9 +1356,10 @@ a.taxmod-chosen:hover {
 
 /* Die Klappleiste unter einer Feldzeile -- ein schmaler Balken ueber die volle Breite, der Knopf
    am rechten Ende. So sah die Oberflaeche aus, die er als Vorbild geschickt hat (2026-09-06). */
+/* ⚠️ Links, nur das Zeichen, ohne Rahmen — sein Wort: «at the left side … without the rectangle» (D-782). */
 .taxmod-field-fold > td {
     padding: 0 .5em;
-    text-align: right;
+    text-align: left;
     border-top: 1px solid #dcdcde;
     background: #fbfbfc;
 }

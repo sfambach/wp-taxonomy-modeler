@@ -317,9 +317,12 @@ final class FieldRowRenderer extends RendererNode
                 continue;
             }
 
-            // ⚠️ *«settings dazu schreiben» — das Zeichen und das Wort, nicht das Zeichen allein (sein Wort, 2026-09-12).*
+            // ⚠️ **Nur das Zeichen, links, ohne Rahmen** ([D-782](../../../docs/NewConcept/90-decision-log.md)) — sein Wort am 2026-09-13:
+            // *«should be displayed at the left side and without the settings text and without the rectangle around it … looks
+            // better and is more the standard».* *Das nimmt «settings dazu schreiben» vom 2026-09-12 zurück. Das Wort bleibt der
+            // Name des Knopfes für den Screenreader; ein Knopf mit Zeichen bekommt von {@see ControlMarkup} keinen Kasten.*
             return '<tr class="taxmod-field-fold"><td colspan="' . $spalten . '">'
-                . ControlMarkup::button(new Control($control->name, $control->value, trim($control->glyph . ' ' . $control->label), $control->title, $control->available, false, '', $control->form))
+                . ControlMarkup::button($control)
                 . '</td></tr>';
         }
 

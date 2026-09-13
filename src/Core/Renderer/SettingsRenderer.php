@@ -359,11 +359,15 @@ final class SettingsRenderer extends RendererNode
      */
     private function overrideAct(RenderedSetting $drawn, RenderContext $context): string
     {
-        return '<label class="taxmod-override-act">'
+        // ⚠️ **Nur der Haken in der schmalen Spalte, das Wort im Titel und für den Screenreader** (D-782) — *sein Befund am
+        // 2026-09-13: «There are two overlapped texts». Die Spalte ist 1.6em breit; «override» lief in den Schlüssel daneben.*
+        $wort = RenderResult::escape($this->word($context, 'override'));
+
+        return '<label class="taxmod-override-act" title="' . $wort . '">'
             . '<input type="checkbox" class="taxmod-override" name="' . RenderResult::escape($drawn->overrideName) . '" value="1"'
             . ($drawn->setting->automatic ? ' checked' : '')
             . ($context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"')
-            . '> ' . RenderResult::escape($this->word($context, 'override')) . '</label>';
+            . '><span class="screen-reader-text">' . $wort . '</span></label>';
     }
 
     /**
