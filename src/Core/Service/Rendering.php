@@ -3594,8 +3594,12 @@ final class Rendering implements Presets
             return false;
         }
 
+        // ⚠️ **Nur eine Wahl an der Kante zählt, nicht der Behälter des Zielknotens** (D-786) — *sein Bild der leeren Position
+        // in `Parts List`: «Part» ohne Auswahl. Gemessen: seit `complex` an `Electronic Parts` steht, las diese Zeile die Wahl des
+        // Knotens als Wahl der Stelle, und die neue Zeile bekam kein Auswahlfeld; gefüllte Zeilen retteten sich über ihren
+        // Satzverweis. Ein Behälter sagt, wie der Knoten seine Felder legt — nicht, wie ein Verweis auf seine Sätze aussieht.*
         $wahl = $resolved['renderer'] ?? null;
-        $name = $wahl instanceof ResolvedSetting && ($wahl->setHere || $wahl->fromOwnerId !== 0) ? (string) ($wahl->value->text ?? '') : '';
+        $name = $wahl instanceof ResolvedSetting && $wahl->fromOwnerId === $relation->id ? (string) ($wahl->value->text ?? '') : '';
 
         return $name === '' || $name === SummaryRenderer::NAME;
     }
