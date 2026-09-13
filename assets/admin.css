@@ -882,6 +882,24 @@ a.taxmod-chosen:hover {
     text-decoration: none;
 }
 
+/* ⚠️ Die Schalterkaskade ist eine geordnete Liste: gewählte oben, mit ihrer Stelle (D-794). */
+ol.taxmod-switch-cascade {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+ol.taxmod-switch-cascade > li.taxmod-switch-chosen {
+    font-weight: 600;
+}
+
+ol.taxmod-switch-cascade .taxmod-list-move {
+    min-height: 0;
+    padding: 0 .1em;
+    line-height: 1;
+    vertical-align: middle;
+}
+
 /* ⚠️ Der Dialog der Satzauswahl (D-791): der Baum der Knoten als Äste, darin je Satz ein Auswahlknopf. */
 .taxmod-record-tree {
     display: block;

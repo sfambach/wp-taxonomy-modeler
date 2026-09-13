@@ -31,6 +31,7 @@ use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\Core\Renderer\IconMarkup;
 use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\LabelSlot;
@@ -4781,28 +4782,62 @@ final class Rendering implements Presets
             }
         }
 
-        $an = [];
+        $an     = [];
+        $zeile  = [];
+        $stelle = [];
 
         foreach ($this->resolver?->listOf($knoten, $erklaert->name, $subject instanceof Relation ? $subject : null) ?? [] as $glied) {
-            if ($glied->reference !== null && $glied->aktiv) {
+            if ($glied->reference === null) {
+                continue;
+            }
+
+            $zeile[$glied->reference]  = $glied->rowId;
+            $stelle[$glied->reference] = $glied->position;
+
+            if ($glied->aktiv) {
                 $an[$glied->reference] = true;
             }
         }
 
-        $prefix = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_set', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
-        $form   = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
-        $html   = '<ul class="taxmod-switch-cascade">';
+        // ⚠️ **Eine geordnete Liste, deren Glieder sich verschieben lassen** ([D-794](../../../docs/NewConcept/90-decision-log.md)) — *sein
+        // Wort an `summary_fields`: «should be a ordered list and position should be moveable». Die gewählten stehen oben in ihrer
+        // Reihenfolge, jede mit ihrer Stelle; die übrigen darunter, wie der Anker oder der Knoten sie liefert. Ohne Skript: die Stelle
+        // ist eine Zahl und wird mit der Seite gespeichert, über denselben Weg wie die Glieder einer Liste (`_list`).*
+        $gewaehlt = array_values(array_filter(array_keys($an), static fn (int $id): bool => isset($kandidaten[$id])));
+        usort($gewaehlt, static fn (int $a, int $b): int => ($stelle[$a] ?? 0) <=> ($stelle[$b] ?? 0));
+        $reihe = [...$gewaehlt, ...array_values(array_diff(array_keys($kandidaten), $gewaehlt))];
 
-        foreach ($kandidaten as $kandidatId => $wort) {
+        $prefix     = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_set', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
+        $listPrefix = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_list', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
+        $form       = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
+        $html       = '<ol class="taxmod-switch-cascade">';
+
+        foreach ($reihe as $platz => $kandidatId) {
             $name  = RenderResult::escape($prefix . '[' . $kandidatId . ']');
-            $html .= '<li><label>'
+            $html .= '<li' . (isset($an[$kandidatId]) ? ' class="taxmod-switch-chosen"' : '') . '><label>'
                 . '<input type="hidden" name="' . $name . '" value="0"' . $form . '>'
                 . '<input type="checkbox" name="' . $name . '" value="1"' . (isset($an[$kandidatId]) ? ' checked' : '') . $form . '> '
-                . RenderResult::escape($wort)
-                . '</label></li>';
+                . RenderResult::escape($kandidaten[$kandidatId])
+                . '</label>'
+                // ⚠️ *Verschoben mit Pfeilen — sein Wort: «more ordered by arrows». Die Stelle reist verborgen; das Skript tauscht die
+                // Zeile mit ihrer Nachbarin und zählt die Stellen neu. Die Pfeile sind `type="button"` und schicken nie ab.*
+                . (isset($an[$kandidatId], $zeile[$kandidatId])
+                    ? '<input type="hidden" class="taxmod-setting-list-position"'
+                        . ' name="' . RenderResult::escape($listPrefix . '[' . $zeile[$kandidatId] . '][position]') . '"'
+                        . ' value="' . (int) ($stelle[$kandidatId] ?? $platz) . '"' . $form . '>'
+                        // *Wie die Pfeile der Feldzeilen: dasselbe Zeichen, randlos, der erste nach oben und der letzte nach unten ausgegraut —
+                        // sein Wort «like the fields».*
+                        . ' <button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
+                        . ($platz === 0 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+                        . IconMarkup::dashicon('arrow-up-alt2', $kandidaten[$kandidatId]) . '</button>'
+                        . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
+                        . ($platz === count($gewaehlt) - 1 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+                        . IconMarkup::dashicon('arrow-down-alt2', $kandidaten[$kandidatId]) . '</button>'
+                    : '')
+                . '</li>';
         }
 
-        return RenderResult::of($html . '</ul>');
+        return RenderResult::of($html . '</ol>');
     }
 
     /**

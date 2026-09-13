@@ -887,6 +887,61 @@
 		} );
 	} );
 
+	// ⚠️ **Die Pfeile einer geordneten Schalterliste** (D-794) — sein Wort: «more ordered by arrows». *Eine gewählte Zeile tauscht mit
+	// ihrer gewählten Nachbarin; danach werden die verborgenen Stellen der Reihe nach neu gezählt und mit der Seite gespeichert.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-list-move' ) : null;
+
+		if ( ! knopf ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		var zeile = knopf.closest( 'li' );
+		var liste = zeile ? zeile.parentElement : null;
+
+		if ( ! liste ) {
+			return;
+		}
+
+		if ( knopf.getAttribute( 'data-taxmod-move' ) === 'up' ) {
+			var davor = zeile.previousElementSibling;
+
+			if ( davor && davor.classList.contains( 'taxmod-switch-chosen' ) ) {
+				liste.insertBefore( zeile, davor );
+			}
+		} else {
+			var danach = zeile.nextElementSibling;
+
+			if ( danach && danach.classList.contains( 'taxmod-switch-chosen' ) ) {
+				liste.insertBefore( danach, zeile );
+			}
+		}
+
+		var gewaehlte = liste.querySelectorAll( 'li.taxmod-switch-chosen' );
+
+		gewaehlte.forEach( function ( eintrag, stelle ) {
+			var feld = eintrag.querySelector( '.taxmod-setting-list-position' );
+
+			if ( feld ) {
+				feld.value = String( stelle );
+			}
+
+			// *Wie in den Feldzeilen: der erste kann nicht höher, der letzte nicht tiefer.*
+			eintrag.querySelectorAll( '.taxmod-list-move' ).forEach( function ( pfeil ) {
+				var gesperrt = pfeil.getAttribute( 'data-taxmod-move' ) === 'up' ? stelle === 0 : stelle === gewaehlte.length - 1;
+
+				pfeil.disabled = gesperrt;
+				pfeil.style.opacity = gesperrt ? '.35' : '';
+			} );
+		} );
+
+		if ( ! knopf.disabled ) {
+			knopf.focus();
+		}
+	} );
+
 	// *Enter in der Suche schickt nichts ab.*
 	document.addEventListener( 'keydown', function ( ereignis ) {
 		if ( ereignis.key === 'Enter' && ereignis.target instanceof HTMLInputElement && ereignis.target.classList.contains( 'taxmod-record-search' ) ) {
