@@ -159,6 +159,10 @@ final class SummaryRenderer extends TypedFieldRenderer
             $koerper .= '<details class="taxmod-record-branch"' . ($zeile['depth'] === 0 || isset($offen[$i]) ? ' open' : '') . '>'
                 . '<summary>' . RenderResult::escape($zeile['name'])
                 . ($zeile['records'] === [] ? '' : ' <span class="taxmod-record-count">(' . count($zeile['records']) . ')</span>')
+                // ⚠️ *Fehlt der Satz, legt man ihn an diesem Knoten an (D-792, Zeile 154) — seine Seite in einem neuen Reiter, damit die
+                // Auswahl hier stehen bleibt; danach die Seite neu laden, und der Satz steht im Baum.*
+                . ((string) ($zeile['add'] ?? '') === '' ? '' : ' <a class="' . ControlMarkup::ICON_ONLY . ' taxmod-record-add" href="' . RenderResult::escape((string) $zeile['add']) . '" target="_blank" rel="noopener" title="' . RenderResult::escape((string) ($zeile['addWord'] ?? '')) . '">'
+                    . IconMarkup::dashicon('plus-alt2', (string) ($zeile['addWord'] ?? '')) . '</a>')
                 . '</summary>';
 
             foreach ($zeile['records'] as $satzId => $wort) {
@@ -181,7 +185,7 @@ final class SummaryRenderer extends TypedFieldRenderer
             ? '<span class="taxmod-nothing">—</span><span class="screen-reader-text">' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '</span>'
             : RenderResult::escape((string) $context->surroundings->refersTo);
 
-        return DialogMarkup::of(
+        $dialog = DialogMarkup::of(
             'taxmod-record-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $context->surroundings->formId . $context->fieldName),
             $jetzt,
             $jetzt,
@@ -189,5 +193,15 @@ final class SummaryRenderer extends TypedFieldRenderer
             '',
             $nichts ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-record-dialog-open'
         );
+
+        // ⚠️ **Das Suchfeld vor dem Dialog** ([D-792](../../../docs/NewConcept/90-decision-log.md), Zeile 153) — *sein Wort: «free text
+        // field user can enter something and then a list appears below … if he cannot find anything he can choose a button and gets the
+        // dialog». Tippen zeigt darunter die passenden Sätze aus dem Baum; ein Klick wählt. Der Knopf daneben ist der Dialog. Ohne Skript
+        // und ohne Namen schickt das Feld nichts und tut nichts — der Dialog bleibt der Weg.*
+        return '<span class="taxmod-record-pick">'
+            . '<input type="search" class="taxmod-record-quick" autocomplete="off" aria-label="' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '">'
+            . $dialog
+            . '<span class="taxmod-record-hits" hidden></span>'
+            . '</span>';
     }
 }

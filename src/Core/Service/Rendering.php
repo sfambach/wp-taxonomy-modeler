@@ -581,6 +581,27 @@ final class Rendering implements Presets
         return $kopie;
     }
 
+    /** @var (\Closure(int): string)|null Die Adresse, unter der man an einem Knoten einen neuen Satz anlegt — vom Rand (D-792, Zeile 154). */
+    private ?\Closure $newRecordUrl = null;
+
+    /** Das Wort dazu, für den Screenreader und den Titel (`AR-2`). */
+    private string $newRecordWord = '';
+
+    /**
+     * Dieselbe Zeichnung, aber mit einem Weg zum Anlegen im Satzdialog ([D-792](../../../docs/NewConcept/90-decision-log.md), Zeile 154) —
+     * *sein Wort: «if the part does not exists he needs to enter a new one».*
+     *
+     * @param \Closure(int): string $url Knoten ⇒ Adresse seiner Seite
+     */
+    public function withRecordCreation(\Closure $url, string $word): static
+    {
+        $kopie                = clone $this;
+        $kopie->newRecordUrl  = $url;
+        $kopie->newRecordWord = $word;
+
+        return $kopie;
+    }
+
     /**
      * Die Teile **eines** Satzes für diese Felder — für eine Zeichnung ausserhalb des Satzblocks, etwa die Vorschau (D-743, D-577).
      *
@@ -3725,6 +3746,15 @@ final class Rendering implements Presets
 
         $knotenNamen = [];
 
+        // *Auch die Knoten der Teile — ein Einheitenwert nennt seine Einheit und sein Präfix erst eine Stufe tiefer («330 Ohm»).*
+        foreach ($innereSaetze as $innererSatz) {
+            foreach ($werte[$innererSatz] ?? [] as $zeile) {
+                if ($zeile->value->referenceSpace === ReferenceSpace::Node && $zeile->value->reference !== null) {
+                    $innereKnoten[$zeile->value->reference] = true;
+                }
+            }
+        }
+
         foreach ($innereKnoten === [] ? [] : $this->gemerkteKnoten(array_keys($innereKnoten)) as $knoten) {
             $knotenNamen[$knoten->id] = $knoten->name;
         }
@@ -3822,6 +3852,31 @@ final class Rendering implements Presets
                 $feldIds = $feldwahlJeKnoten[$knotenId] ?? (isset($erstesTextfeld[$knotenId]) ? [$erstesTextfeld[$knotenId]] : []);
             }
 
+            // ⚠️ **Ein Teil ohne Feldwahl und ohne Textfeld zeigt seine Werte** — *gemessen an einem Widerstand: die Zusammenfassung las
+            // «0207 · #24558 · #25187», weil «Widerstandswert» ein Einheitenwert-Teil ist und keinen Text trägt. Eine Stufe tief also alle
+            // Werte in ihrer Reihenfolge: «330 Ohm», «-20 20 Prozent».*
+            if ($feldIds === [] && $stufe > 0) {
+                foreach ($werte[$satzId] ?? [] as $zeile) {
+                    $v = $zeile->value;
+
+                    if ($v->isNothing() || $v->referenceSpace === ReferenceSpace::Record) {
+                        continue;
+                    }
+
+                    if ($v->referenceSpace === ReferenceSpace::Node) {
+                        $teile[] = $knotenNamen[$v->reference] ?? '';
+                    } elseif ($v->decimal !== null) {
+                        $teile[] = str_contains($v->decimal, '.') ? rtrim(rtrim($v->decimal, '0'), '.') : $v->decimal;
+                    } elseif (! $v->isAReference()) {
+                        $teile[] = $v->rawValue();
+                    }
+                }
+
+                $teile = array_values(array_filter($teile, static fn (string $teil): bool => $teil !== ''));
+
+                return $teile === [] ? '#' . $satzId : implode(' ', $teile);
+            }
+
             foreach ($feldIds as $feldId) {
                 foreach ($werte[$satzId] ?? [] as $zeile) {
                     if ($zeile->relationId !== $feldId || $zeile->value->isNothing()) {
@@ -3907,6 +3962,9 @@ final class Rendering implements Presets
                         if ($stufe === 0) {
                             $teile[] = $worteVon($wert->reference, 1);
                         }
+                    } elseif ($wert->decimal !== null) {
+                        // ⚠️ *Ohne Nullen hinten (D-792, Zeile 153): «1.7» und «330» statt «1.7000000000» — sonst träfe eine getippte «1» auch «100».*
+                        $teile[] = str_contains($wert->decimal, '.') ? rtrim(rtrim($wert->decimal, '0'), '.') : $wert->decimal;
                     } elseif (! $wert->isAReference()) {
                         $teile[] = $wert->rawValue();
                     }
@@ -4108,14 +4166,24 @@ final class Rendering implements Presets
                 $eigene = array_replace(array_intersect_key($eigene, $treffer), $eigene);
             }
 
-            $zeilen[] = ['depth' => $tiefe, 'name' => $knoten->name, 'records' => $eigene, 'search' => $gesucht, 'match' => $treffer];
+            $zeilen[] = [
+                'depth'   => $tiefe,
+                'name'    => $knoten->name,
+                'records' => $eigene,
+                'search'  => $gesucht,
+                'match'   => $treffer,
+                // *Wo ein neuer Satz entstehen kann — die Seite des Knotens, vom Rand (Zeile 154).*
+                'add'     => $this->newRecordUrl === null ? '' : ($this->newRecordUrl)($knoten->id),
+                'addWord' => $this->newRecordWord,
+            ];
             $etwas    = $eigene !== [];
 
             foreach ($kinder[$knoten->id] ?? [] as $kind) {
                 $etwas = $lauf($kind, $tiefe + 1) || $etwas;
             }
 
-            if (! $etwas) {
+            // *Ein leerer Ast bleibt stehen, wo man dort anlegen kann — sonst fände man den Knoten nicht, in dem der neue Satz entstehen soll.*
+            if (! $etwas && $this->newRecordUrl === null) {
                 array_splice($zeilen, $stelle);
             }
 

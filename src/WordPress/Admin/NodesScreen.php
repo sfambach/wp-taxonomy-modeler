@@ -1412,7 +1412,11 @@ final class NodesScreen
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
-                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->nodeAsForm(
+                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->withRecordCreation(
+                    // ⚠️ *Ein neuer Satz entsteht auf der Seite seines Knotens (D-792, Zeile 154) — ohne Filter, Seite und geöffneten Satz von hier.*
+                    fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
+                    __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod')
+                )->nodeAsForm(
                     $selected,
                     $gezeigte,
                     $values,

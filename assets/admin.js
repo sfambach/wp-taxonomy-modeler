@@ -850,6 +850,45 @@
 		window.location.href = zeile.querySelector( ':scope > * a.taxmod-record-open' ).href;
 	} );
 
+	// ⚠️ **Die Schreibweise der Elektronik** (D-792, Zeile 153) — sein Beispiel: *«user enter 1k and then all 1 k Ohm resistors will
+	// appear or 1k7 all 1,7 K ohm resistors»*. *«1k7» wird zu den Wörtern «1.7» und «kilo», «4n7» zu «4.7» und «nano», «100p» zu «100»
+	// und «pico»; ein Komma ist ein Punkt. Gross M ist mega, klein m milli — deshalb vor dem Kleinschreiben gelesen.*
+	var PRAEFIXE = { p: 'pico', n: 'nano', u: 'micro', 'µ': 'micro', m: 'milli', k: 'kilo', K: 'kilo', M: 'mega', G: 'giga' };
+
+	function suchwoerter( eingabe ) {
+		var aus = [];
+
+		String( eingabe ).split( /\s+/ ).filter( Boolean ).forEach( function ( wort ) {
+			var treffer = /^(\d+(?:[.,]\d+)?)([pnuµmkKMG])(\d*)$/.exec( wort );
+
+			if ( treffer ) {
+				var zahl = treffer[ 3 ] ? treffer[ 1 ].replace( ',', '.' ) + ( treffer[ 1 ].indexOf( '.' ) === -1 && treffer[ 1 ].indexOf( ',' ) === -1 ? '.' : '' ) + treffer[ 3 ] : treffer[ 1 ].replace( ',', '.' );
+
+				aus.push( zahl, PRAEFIXE[ treffer[ 2 ] ] );
+
+				return;
+			}
+
+			aus.push( wort.replace( ',', '.' ).toLowerCase() );
+		} );
+
+		return aus;
+	}
+
+	// *Eine Zahl muss ein ganzes Wort treffen («1» trifft nicht «100»), jedes andere Wort den Anfang eines Wortes («smd» trifft «smd»,
+	// «kera» trifft «keramik»).*
+	function passt( text, woerter ) {
+		var teile = text.split( /\s+/ );
+
+		return woerter.every( function ( wort ) {
+			var zahl = /^\d+(?:\.\d+)?$/.test( wort );
+
+			return teile.some( function ( teil ) {
+				return zahl ? teil === wort : teil.indexOf( wort ) === 0;
+			} );
+		} );
+	}
+
 	// ⚠️ **Die Suche im Dialog der Satzauswahl** (D-791 Schritt 2) — *jedes Wort muss im Suchtext eines Satzes stehen; was nicht passt,
 	// wird ausgeblendet, ein Ast ohne sichtbaren Satz auch, und ein Ast mit Treffern klappt auf. Leeres Feld: alles wieder da.*
 	document.addEventListener( 'input', function ( ereignis ) {
@@ -865,14 +904,10 @@
 			return;
 		}
 
-		var woerter = feld.value.toLowerCase().split( /\s+/ ).filter( Boolean );
+		var woerter = suchwoerter( feld.value );
 
 		baum.querySelectorAll( '.taxmod-record-choice[data-taxmod-search]' ).forEach( function ( wahl ) {
-			var text = wahl.getAttribute( 'data-taxmod-search' ) || '';
-
-			wahl.hidden = ! woerter.every( function ( wort ) {
-				return text.indexOf( wort ) !== -1;
-			} );
+			wahl.hidden = ! passt( wahl.getAttribute( 'data-taxmod-search' ) || '', woerter );
 		} );
 
 		// *Von innen nach aussen, damit ein Vater seine schon entschiedenen Kinder sieht.*
@@ -885,6 +920,109 @@
 				ast.open = true;
 			}
 		} );
+	} );
+
+	// ⚠️ **Das Suchfeld vor dem Satzdialog** (D-792, Zeile 153) — *tippen, darunter erscheinen die passenden Sätze aus dem Baum des
+	// Dialogs; ein Klick (oder Enter für den ersten) setzt den Auswahlknopf im Dialog und schreibt den Satz in den Öffner. Findet sich
+	// nichts, ist der Knopf daneben der Dialog.*
+	function trefferZeigen( feld ) {
+		var wahl  = feld.closest( '.taxmod-record-pick' );
+		var liste = wahl ? wahl.querySelector( '.taxmod-record-hits' ) : null;
+
+		if ( ! liste ) {
+			return;
+		}
+
+		var woerter = suchwoerter( feld.value );
+
+		liste.innerHTML = '';
+
+		if ( woerter.length === 0 ) {
+			liste.hidden = true;
+
+			return;
+		}
+
+		var anzahl = 0;
+
+		wahl.querySelectorAll( '.taxmod-record-choice[data-taxmod-search]' ).forEach( function ( eintrag ) {
+			var knopf = eintrag.querySelector( 'input[type="radio"]' );
+
+			if ( anzahl >= 15 || ! knopf || ! passt( eintrag.getAttribute( 'data-taxmod-search' ) || '', woerter ) ) {
+				return;
+			}
+
+			var treffer = document.createElement( 'button' );
+
+			treffer.type = 'button';
+			treffer.className = 'taxmod-record-hit';
+			treffer.textContent = eintrag.textContent.trim();
+			treffer.setAttribute( 'data-taxmod-value', knopf.value );
+			liste.appendChild( treffer );
+			anzahl++;
+		} );
+
+		liste.hidden = anzahl === 0;
+	}
+
+	function trefferNehmen( treffer ) {
+		var wahl = treffer.closest( '.taxmod-record-pick' );
+
+		if ( ! wahl ) {
+			return;
+		}
+
+		wahl.querySelectorAll( '.taxmod-record-choice input[type="radio"]' ).forEach( function ( knopf ) {
+			if ( knopf.value === treffer.getAttribute( 'data-taxmod-value' ) ) {
+				knopf.checked = true;
+			}
+		} );
+
+		var oeffner = wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' );
+
+		if ( oeffner ) {
+			oeffner.textContent = treffer.textContent;
+			oeffner.className = 'button taxmod-record-dialog-open';
+		}
+
+		var feld = wahl.querySelector( '.taxmod-record-quick' );
+
+		if ( feld ) {
+			feld.value = '';
+		}
+
+		wahl.querySelector( '.taxmod-record-hits' ).hidden = true;
+	}
+
+	document.addEventListener( 'input', function ( ereignis ) {
+		if ( ereignis.target instanceof HTMLInputElement && ereignis.target.classList.contains( 'taxmod-record-quick' ) ) {
+			trefferZeigen( ereignis.target );
+		}
+	} );
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var treffer = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-hit' ) : null;
+
+		if ( treffer ) {
+			ereignis.preventDefault();
+			trefferNehmen( treffer );
+		}
+	} );
+
+	document.addEventListener( 'keydown', function ( ereignis ) {
+		var feld = ereignis.target;
+
+		if ( ereignis.key !== 'Enter' || ! ( feld instanceof HTMLInputElement ) || ! feld.classList.contains( 'taxmod-record-quick' ) ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		var erster = feld.closest( '.taxmod-record-pick' ).querySelector( '.taxmod-record-hit' );
+
+		if ( erster ) {
+			trefferNehmen( erster );
+		}
 	} );
 
 	// ⚠️ **Die Pfeile einer geordneten Schalterliste** (D-794) — sein Wort: «more ordered by arrows». *Eine gewählte Zeile tauscht mit

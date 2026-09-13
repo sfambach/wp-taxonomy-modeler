@@ -882,11 +882,22 @@ a.taxmod-chosen:hover {
     text-decoration: none;
 }
 
-/* ⚠️ Die Schalterkaskade ist eine geordnete Liste: gewählte oben, mit ihrer Stelle (D-794). */
+/* ⚠️ Die Schalterkaskade ist eine geordnete Liste: gewählte oben, mit ihrer Stelle (D-794) — untereinander, nicht in Spalten.
+ * Sein Wort: «either all under each other or all in one line» — untereinander passt zu den Pfeilen nach oben und unten. */
 ol.taxmod-switch-cascade {
     margin: 0;
     padding-left: 0;
     list-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* ⚠️ Die Pfeile hinter dem Namen, nicht darunter — sein Wort: «put the arrows after the label not beneath». */
+ol.taxmod-switch-cascade > li {
+    display: flex;
+    align-items: center;
+    gap: .15em;
 }
 
 ol.taxmod-switch-cascade > li.taxmod-switch-chosen {
@@ -898,6 +909,52 @@ ol.taxmod-switch-cascade .taxmod-list-move {
     padding: 0 .1em;
     line-height: 1;
     vertical-align: middle;
+}
+
+/* ⚠️ Das Suchfeld vor dem Satzdialog und seine Treffer darunter (D-792, Zeile 153); das «+» je Ast zum Anlegen (Zeile 154). */
+.taxmod-record-pick {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+}
+
+.taxmod-record-quick {
+    width: 9em;
+}
+
+.taxmod-record-hits {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    min-width: 22em;
+    max-height: 18em;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #8c8f94;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+}
+
+.taxmod-record-hit {
+    text-align: left;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid #f0f0f1;
+    padding: .3em .5em;
+    cursor: pointer;
+}
+
+.taxmod-record-hit:hover,
+.taxmod-record-hit:focus {
+    background: #f0f6fc;
+}
+
+.taxmod-record-add {
+    margin-left: .3em;
+    text-decoration: none;
 }
 
 /* ⚠️ Der Dialog der Satzauswahl (D-791): der Baum der Knoten als Äste, darin je Satz ein Auswahlknopf. */
