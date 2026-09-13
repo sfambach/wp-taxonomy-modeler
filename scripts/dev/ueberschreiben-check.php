@@ -277,5 +277,18 @@ check('eine Zeile eines anderen Knotens wird abgewiesen, nichts geschrieben', ! 
 speichern($zahl->id, ['taxmod_setting_list' => ['renderer' => [(string) $zeile => ['aktiv' => '1', 'position' => 'viele']]]]);
 check('eine Stelle, die keine Zahl ist, ändert nichts', letzteMeldung() === 'ok' && ($glieder()['spinner']['position'] ?? -1) === 0, letzteMeldung());
 
+// ---------------------------------------------------------------------------------------------------
+
+// ⚠️ **Hinzugefügt am 2026-09-14 mit [D-798](../../docs/NewConcept/90-decision-log.md), sichtbar:** *sein Befund «override renderer does
+// not save» — der Haken mit demselben Renderer wie geerbt legte keine Zeile an, und nach dem Speichern war alles wieder gesperrt.*
+echo "\n== 5 · Der Haken hält auch den geerbten Renderer an der Kante fest (D-798) ==\n";
+
+$vorher = $zeilenAnDerKante($zwei->id);
+speichern($modell->id, ['taxmod_field_setting' => [(string) $zwei->id => ['renderer' => SpinnerRenderer::NAME]], 'taxmod_field_setting_override' => [(string) $zwei->id => ['renderer' => '1']]]);
+$mitHaken = $zeilenAnDerKante($zwei->id);
+check('mit Haken und demselben Renderer wie geerbt: eine eigene Zeile an der Kante', gelungen() && $mitHaken > $vorher, "{$vorher} → {$mitHaken} · " . letzteMeldung());
+speichern($modell->id, ['taxmod_field_setting' => [(string) $zwei->id => ['renderer' => SpinnerRenderer::NAME]]]);
+check('dasselbe Speichern ohne Haken legt keine weitere Zeile an', $zeilenAnDerKante($zwei->id) === $mitHaken, (string) $zeilenAnDerKante($zwei->id));
+
 echo "\n{$passed} ok, {$failed} failed\n";
 exit($failed === 0 ? 0 : 1);

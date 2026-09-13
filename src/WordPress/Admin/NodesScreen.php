@@ -4859,7 +4859,15 @@ final class NodesScreen
                     continue;
                 }
 
-                $this->attributes->put($ziel, $key, sanitize_text_field((string) $roh), $useSite);
+                // ⚠️ *Gesperrt und angehakt heisst «hier festhalten», auch mit dem geerbten Wert (D-798) — sein Befund: «override renderer
+                // does not save».*
+                $this->attributes->put(
+                    $ziel,
+                    $key,
+                    sanitize_text_field((string) $roh),
+                    $useSite,
+                    holdHere: $angabe !== null && $angabe->isLocked() && ! empty($hakenAnDerStelle[$schluessel])
+                );
 
                 continue;
             }

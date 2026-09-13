@@ -70,13 +70,23 @@ final class SettingsEditor
      *
      * @return bool Ob etwas geschrieben wurde.
      */
-    public function put(Node $node, string $attribut, string $characters, ?Relation $edge = null): bool
-    {
+    public function put(
+        Node $node,
+        string $attribut,
+        string $characters,
+        ?Relation $edge = null,
+        /**
+         * ⚠️ *Hier festhalten, auch wenn der Wert dem geerbten gleicht — der Haken «override» an einer gesperrten Zeile (D-798). Sein
+         * Befund: «override renderer does not save». Ohne ihn blieb `compact` geerbt, und die Einstellungen darunter liessen sich an
+         * der Kante nie ändern.*
+         */
+        bool $holdHere = false,
+    ): bool {
         $erklaert = $this->declarationOf($node, $attribut, $edge);
         $wert     = $this->parse($erklaert, $characters);
 
         if ($erklaert->type === AttributeType::Object) {
-            return $this->putObject($node, $erklaert, $characters, $edge);
+            return $this->putObject($node, $erklaert, $characters, $edge, $holdHere);
         }
 
         $traeger = $this->carrierOf($node, $erklaert, $edge);
@@ -310,7 +320,7 @@ final class SettingsEditor
      * ⚠️ *Am Knoten ersetzt die Wahl das erste Glied der Liste. An der Kante wird das geerbte Glied
      * abgeschaltet und ein eigenes davorgesetzt (5.5.1, 5.5.3) — die Zeilen des Knotens bleiben.*
      */
-    private function putObject(Node $node, AttributeDeclaration $erklaert, string $name, ?Relation $edge): bool
+    private function putObject(Node $node, AttributeDeclaration $erklaert, string $name, ?Relation $edge, bool $holdHere = false): bool
     {
         $name   = trim($name);
         $klasse = $name === '' ? null : $this->classOf($erklaert, $name);
@@ -326,7 +336,11 @@ final class SettingsEditor
         // ⚠️ **Was schon gilt, wird nicht noch einmal gesetzt** (Schritt 6 des Bauplans). *Die Maske schickt den
         // Wähler mit jedem Speichern; stünde hier ein Ersetzen, wischte es an der Kante die Schalter und Stellen
         // der Glieder weg — gemessen am 2026-09-11: zwei Zeilen fort, zwei neue, das umgeordnete Glied wieder hinten.*
-        if ($klasse !== null && (($this->resolved($node, $edge)[$erklaert->name] ?? null)?->value->text ?? null) === $name) {
+        // ⚠️ *Ausser an der Kante mit dem Haken «override»: dann ist «dasselbe wie geerbt» eine bewusste eigene Zeile, auf der die
+        // Einstellungen des Renderers danach für diese Stelle geändert werden (D-798). Steht die Zeile schon hier, bleibt es beim Nichtstun.*
+        $geltend = $this->resolved($node, $edge)[$erklaert->name] ?? null;
+
+        if ($klasse !== null && ($geltend?->value->text ?? null) === $name && ! ($holdHere && $edge !== null && $anKante === [])) {
             return false;
         }
 
