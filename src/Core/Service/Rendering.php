@@ -3842,6 +3842,81 @@ final class Rendering implements Presets
             return $teile === [] ? '#' . $satzId : implode(SummaryRenderer::SEPARATOR, $teile);
         };
 
+        // ⚠️ **Was die Suche im Dialog durchsucht** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 2, Zeile 150) — *jeder
+        // Wert des Satzes und eine Stufe tiefer die seiner Teile; ein Knotenverweis mit den Namen seiner Vorfahren, damit «SMD» auch einen
+        // Satz mit «0603» unter SMD findet. Aus den schon geladenen Werten; Knoten und Vorfahren in zwei Zügen (`CD-7`).*
+        $suche = [];
+
+        if ($purpose === Purpose::Edit) {
+            $knotenVerweise = [];
+
+            foreach ($werte as $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    if ($zeile->value->referenceSpace === ReferenceSpace::Node && $zeile->value->reference !== null) {
+                        $knotenVerweise[$zeile->value->reference] = true;
+                    }
+                }
+            }
+
+            $verwiesen    = $knotenVerweise === [] ? [] : $this->gemerkteKnoten(array_keys($knotenVerweise));
+            $vorfahrenIds = [];
+
+            foreach ($verwiesen as $knoten) {
+                foreach ($knoten->ancestorIds() as $vorfahrId) {
+                    $vorfahrenIds[(int) $vorfahrId] = true;
+                }
+            }
+
+            $vorfahren  = $vorfahrenIds === [] ? [] : $this->gemerkteKnoten(array_keys($vorfahrenIds));
+            // *Nicht `static`: sie fragt das Gerüst, welche Vorfahren nichts sagen — gemessen, `static` warf «Using $this» in record-pages.*
+            $knotenWort = function (int $id) use ($verwiesen, $vorfahren): string {
+                $knoten = $verwiesen[$id] ?? null;
+
+                if ($knoten === null) {
+                    return '';
+                }
+
+                $namen = [];
+
+                foreach ($knoten->ancestorIds() as $vorfahrId) {
+                    // *Die Knoten des Gerüsts (Root, Primitives, Constants …) sagen über einen Satz nichts — gemessen standen sie in
+                    // jedem Suchtext und hätten «units» oder «model» überall treffen lassen.*
+                    if (isset($vorfahren[(int) $vorfahrId]) && ! $this->framework->isProtected($vorfahren[(int) $vorfahrId])) {
+                        $namen[] = $vorfahren[(int) $vorfahrId]->name;
+                    }
+                }
+
+                return implode(' ', [...$namen, $knoten->name]);
+            };
+            $worteVon = static function (int $satzId, int $stufe) use (&$worteVon, $werte, $knotenWort): string {
+                $teile = [];
+
+                foreach ($werte[$satzId] ?? [] as $zeile) {
+                    $wert = $zeile->value;
+
+                    if ($wert->isNothing()) {
+                        continue;
+                    }
+
+                    if ($wert->referenceSpace === ReferenceSpace::Node && $wert->reference !== null) {
+                        $teile[] = $knotenWort($wert->reference);
+                    } elseif ($wert->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
+                        if ($stufe === 0) {
+                            $teile[] = $worteVon($wert->reference, 1);
+                        }
+                    } elseif (! $wert->isAReference()) {
+                        $teile[] = $wert->rawValue();
+                    }
+                }
+
+                return implode(' ', $teile);
+            };
+
+            foreach ($satzIds as $satzId) {
+                $suche[$satzId] = mb_strtolower($worteVon($satzId, 0));
+            }
+        }
+
         $aus = $leer;
 
         foreach ($betroffen as $relation) {
@@ -3865,7 +3940,7 @@ final class Rendering implements Presets
             // ansicht … wo ich erst den knoten auswähle … dann … datensatz aus». Dieselben Sätze wie das Angebot, nur nach ihren Knoten
             // gelegt; aus dem schon geladenen Unterbaum, ohne weitere Abfrage.*
             if ($purpose === Purpose::Edit && isset($ziele[$relation->toNodeId])) {
-                $aus['baum'][$relation->id] = $this->recordTreeOf($ziele[$relation->toNodeId], $saetzeJeKnoten, $aus['angebot'][$relation->id] ?? []);
+                $aus['baum'][$relation->id] = $this->recordTreeOf($ziele[$relation->toNodeId], $saetzeJeKnoten, $aus['angebot'][$relation->id] ?? [], $suche);
             }
         }
 
@@ -3878,9 +3953,10 @@ final class Rendering implements Presets
      *
      * @param  array<int, list<\Taxmod\Core\Model\NodeRecord>> $saetzeJeKnoten
      * @param  array<int, string>                              $worte Die Zusammenfassung je Satz-Id.
-     * @return list<array{depth: int, name: string, records: array<int, string>}>
+     * @param  array<int, string>                              $suche Was die Suche im Dialog je Satz-Id durchsucht (Schritt 2).
+     * @return list<array{depth: int, name: string, records: array<int, string>, search: array<int, string>}>
      */
-    private function recordTreeOf(Node $ziel, array $saetzeJeKnoten, array $worte): array
+    private function recordTreeOf(Node $ziel, array $saetzeJeKnoten, array $worte, array $suche = []): array
     {
         $kinder = [];
 
@@ -3896,17 +3972,20 @@ final class Rendering implements Presets
         }
 
         $zeilen = [];
-        $lauf   = function (Node $knoten, int $tiefe) use (&$lauf, &$zeilen, $kinder, $saetzeJeKnoten, $worte): bool {
-            $eigene = [];
+        $lauf   = function (Node $knoten, int $tiefe) use (&$lauf, &$zeilen, $kinder, $saetzeJeKnoten, $worte, $suche): bool {
+            $eigene  = [];
+            $gesucht = [];
 
             foreach ($saetzeJeKnoten[$knoten->id] ?? [] as $satz) {
                 if (isset($worte[$satz->id])) {
-                    $eigene[$satz->id] = $worte[$satz->id];
+                    $eigene[$satz->id]  = $worte[$satz->id];
+                    // *Die Zusammenfassung und der Knotenname gehören mit hinein — «Condensator» soll den Kondensator finden.*
+                    $gesucht[$satz->id] = mb_strtolower($worte[$satz->id] . ' ' . $knoten->name) . ' ' . ($suche[$satz->id] ?? '');
                 }
             }
 
             $stelle   = count($zeilen);
-            $zeilen[] = ['depth' => $tiefe, 'name' => $knoten->name, 'records' => $eigene];
+            $zeilen[] = ['depth' => $tiefe, 'name' => $knoten->name, 'records' => $eigene, 'search' => $gesucht];
             $etwas    = $eigene !== [];
 
             foreach ($kinder[$knoten->id] ?? [] as $kind) {

@@ -895,6 +895,17 @@ a.taxmod-chosen:hover {
     margin-left: 1em;
 }
 
+/* ⚠️ Die Suche im Dialog (D-791 Schritt 2): oben über die ganze Breite; was nicht passt, verschwindet ganz. */
+.taxmod-record-search {
+    display: block;
+    width: 100%;
+    margin-bottom: .4em;
+}
+
+.taxmod-record-tree [hidden] {
+    display: none !important;
+}
+
 .taxmod-record-tree > .taxmod-record-branch {
     margin-left: 0;
 }

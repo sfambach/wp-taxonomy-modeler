@@ -4024,6 +4024,15 @@ final class NodesScreen
         return $aus;
     }
 
+    /** @var array<int, list<int>> Die Vorfahren eines Knotens, je Seite einmal gelesen — für den Filter über Unterbäume (D-791). */
+    private array $vorfahren = [];
+
+    /** @return list<int> */
+    private function vorfahrenVon(int $knotenId): array
+    {
+        return $this->vorfahren[$knotenId] ??= array_map('intval', $this->editor->find($knotenId)?->ancestorIds() ?? []);
+    }
+
     /**
      * Passt ein Satz zum Filter? Jedes ausgefüllte Feld muss zu einem seiner Werte passen.
      *
@@ -4047,6 +4056,11 @@ final class NodesScreen
                     $gesucht->text !== null => mb_stripos($wert->value->rawValue(), $gesucht->text) !== false,
                     $gesucht->date !== null => str_starts_with($wert->value->rawValue(), substr($gesucht->date, 0, 10)),
                     $gesucht->int !== null, $gesucht->decimal !== null => $wert->value->comparedTo($gesucht) === 0,
+                    // ⚠️ **Ein Knotenverweis trifft auch alles unter dem gesuchten Knoten** ([D-791](../../../docs/NewConcept/90-decision-log.md)
+                    // Schritt 2, Zeile 140) — *«SMD» trifft «0603» unter SMD. Die Vorfahren eines Wertes je Seite einmal gelesen.*
+                    $gesucht->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node && $gesucht->reference !== null
+                        && $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node && $wert->value->reference !== null
+                                            => $wert->value->reference === $gesucht->reference || in_array($gesucht->reference, $this->vorfahrenVon($wert->value->reference), true),
                     default                 => $wert->value->rawValue() === $gesucht->rawValue(),
                 };
 

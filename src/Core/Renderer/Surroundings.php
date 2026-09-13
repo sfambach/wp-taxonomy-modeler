@@ -231,7 +231,9 @@ final class Surroundings
          * Die Sätze unter dem Ziel eines Verweises als Baum seiner Knoten — für den Dialog der Satzauswahl
          * ([D-791](../../../docs/NewConcept/90-decision-log.md)). In Baumreihenfolge; Äste ohne Satz fehlen.
          *
-         * @var list<array{depth: int, name: string, records: array<int, string>}>
+         * ⚠️ *`search` trägt je Satz, was die Suche im Dialog durchsucht — klein geschrieben (Schritt 2).*
+         *
+         * @var list<array{depth: int, name: string, records: array<int, string>, search?: array<int, string>}>
          */
         public readonly array $recordTree = [],
     ) {

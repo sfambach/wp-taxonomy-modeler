@@ -850,4 +850,48 @@
 		window.location.href = zeile.querySelector( ':scope > * a.taxmod-record-open' ).href;
 	} );
 
+	// ⚠️ **Die Suche im Dialog der Satzauswahl** (D-791 Schritt 2) — *jedes Wort muss im Suchtext eines Satzes stehen; was nicht passt,
+	// wird ausgeblendet, ein Ast ohne sichtbaren Satz auch, und ein Ast mit Treffern klappt auf. Leeres Feld: alles wieder da.*
+	document.addEventListener( 'input', function ( ereignis ) {
+		var feld = ereignis.target;
+
+		if ( ! ( feld instanceof HTMLInputElement ) || ! feld.classList.contains( 'taxmod-record-search' ) ) {
+			return;
+		}
+
+		var baum = feld.closest( '.taxmod-record-tree' );
+
+		if ( ! baum ) {
+			return;
+		}
+
+		var woerter = feld.value.toLowerCase().split( /\s+/ ).filter( Boolean );
+
+		baum.querySelectorAll( '.taxmod-record-choice[data-taxmod-search]' ).forEach( function ( wahl ) {
+			var text = wahl.getAttribute( 'data-taxmod-search' ) || '';
+
+			wahl.hidden = ! woerter.every( function ( wort ) {
+				return text.indexOf( wort ) !== -1;
+			} );
+		} );
+
+		// *Von innen nach aussen, damit ein Vater seine schon entschiedenen Kinder sieht.*
+		Array.prototype.slice.call( baum.querySelectorAll( 'details.taxmod-record-branch' ) ).reverse().forEach( function ( ast ) {
+			var treffer = ast.querySelector( '.taxmod-record-choice[data-taxmod-search]:not([hidden])' );
+
+			ast.hidden = woerter.length > 0 && ! treffer;
+
+			if ( woerter.length > 0 && treffer ) {
+				ast.open = true;
+			}
+		} );
+	} );
+
+	// *Enter in der Suche schickt nichts ab.*
+	document.addEventListener( 'keydown', function ( ereignis ) {
+		if ( ereignis.key === 'Enter' && ereignis.target instanceof HTMLInputElement && ereignis.target.classList.contains( 'taxmod-record-search' ) ) {
+			ereignis.preventDefault();
+		}
+	} );
+
 } )();

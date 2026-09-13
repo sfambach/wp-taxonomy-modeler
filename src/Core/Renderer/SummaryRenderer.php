@@ -108,7 +108,8 @@ final class SummaryRenderer extends TypedFieldRenderer
         $baum     = $context->surroundings->recordTree;
         $name     = RenderResult::escape($context->fieldName);
         $form     = $context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"';
-        $knopf    = static fn (string $wert, bool $an, string $wort): string => '<label class="taxmod-record-choice">'
+        $knopf    = static fn (string $wert, bool $an, string $wort, string $suche = ''): string => '<label class="taxmod-record-choice"'
+            . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
             . '<input type="radio" name="' . $name . '" value="' . $wert . '"' . ($an ? ' checked' : '') . $form . '> ' . $wort . '</label>';
 
         // *Welche Äste den gewählten Satz enthalten — sie stehen offen, damit er zu sehen ist.*
@@ -131,7 +132,9 @@ final class SummaryRenderer extends TypedFieldRenderer
             }
         }
 
-        $koerper = '';
+        // ⚠️ **Die Suche** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 2) — *ein Feld ohne Namen, also schickt es nichts ab;
+        // das Skript blendet aus, was nicht passt. Ohne Skript steht es da und tut nichts, und der Baum zeigt alles wie vorher.*
+        $koerper = '<input type="search" class="taxmod-record-search" autocomplete="off" aria-label="' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '">';
 
         if ($context->surroundings->mayBeNothing || $gewaehlt === null) {
             $koerper .= $knopf('', $gewaehlt === null, '—');
@@ -156,7 +159,7 @@ final class SummaryRenderer extends TypedFieldRenderer
                 . '</summary>';
 
             foreach ($zeile['records'] as $satzId => $wort) {
-                $koerper .= $knopf((string) (int) $satzId, (int) $satzId === $gewaehlt, RenderResult::escape((string) $wort));
+                $koerper .= $knopf((string) (int) $satzId, (int) $satzId === $gewaehlt, RenderResult::escape((string) $wort), (string) ($zeile['search'][$satzId] ?? ''));
             }
 
             $tiefe = $zeile['depth'];
