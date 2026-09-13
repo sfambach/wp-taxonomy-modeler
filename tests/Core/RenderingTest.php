@@ -2096,6 +2096,51 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('>IBM<', $gezeigt);
     }
 
+    /** ⚠️ *D-791 Schritt 3: «smd/tht oder hauptsächlich smd … sollen die entsprechenden werte mit der bauform oben stehen».* */
+    #[Test]
+    public function a_preset_from_the_record_puts_matching_records_first_or_filters_the_rest(): void
+    {
+        $formen = $this->thing('Formen');
+        $smd    = $this->editor->createNode('SMD', $formen->id);
+        $klein  = $this->editor->createNode('0603', $smd->id);
+        $tht    = $this->editor->createNode('THT', $formen->id);
+        $gross  = $this->editor->createNode('0207', $tht->id);
+        $teil   = $this->thing('Teil');
+        $name   = $this->editor->addField($teil->id, $this->type('Text')->id, 'name');
+        $form   = $this->editor->addField($teil->id, $formen->id, 'form', RelationKind::Aggregation);
+        $platte = $this->thing('Platte');
+        $art    = $this->editor->addField($platte->id, $formen->id, 'bestueckung', RelationKind::Aggregation);
+        $wahl   = $this->editor->addField($platte->id, $teil->id, 'wahl', RelationKind::Aggregation);
+
+        foreach ([['Winzling', $klein], ['Brocken', $gross]] as [$wort, $knoten]) {
+            $satz = $this->records->add(new NodeRecord(0, $teil->id, 1, '2026-09-13 10:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($satz, $name->id, TypedValue::ofText($wort)));
+            $this->records->putValue(RelationRecord::direct($satz, $form->id, TypedValue::ofReference($knoten->id)));
+        }
+
+        $einsteller = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $einsteller->setMembers($teil, \Taxmod\Core\Model\NodeClass\Category::PRESET_FIELD, [$form->id], $wahl);
+        $einsteller->setMembers($teil, \Taxmod\Core\Model\NodeClass\Category::PRESET_SOURCE, [$art->id], $wahl);
+        $this->neuZeichnen();
+
+        $zuerst = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('taxmod-record-match', $zuerst, 'der Treffer unter SMD ist gekennzeichnet');
+        self::assertStringContainsString('> Brocken<', $zuerst, '«first» lässt die übrigen wählbar');
+
+        $einsteller->put($teil, \Taxmod\Core\Model\NodeClass\Category::PRESET_MODE, 'filter', $wahl);
+        $this->neuZeichnen();
+
+        $gefiltert = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('> Winzling<', $gefiltert);
+        self::assertStringNotContainsString('> Brocken<', $gefiltert, '«filter» nimmt die THT-Form heraus');
+
+        $ohneWert = $this->rendering->nodeAsForm($platte, [$wahl], [], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('> Brocken<', $ohneWert, 'ohne Wert keine Vorbelegung');
+    }
+
     /** ⚠️ *D-755: «ob es Hardware oder Software ist … über den Ast bestimmen» — nur das erste Glied unter dem erklärenden Knoten.* */
     #[Test]
     public function only_direct_child_shows_the_branch_under_the_declaring_node(): void

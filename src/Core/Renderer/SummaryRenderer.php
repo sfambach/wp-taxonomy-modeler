@@ -108,7 +108,7 @@ final class SummaryRenderer extends TypedFieldRenderer
         $baum     = $context->surroundings->recordTree;
         $name     = RenderResult::escape($context->fieldName);
         $form     = $context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"';
-        $knopf    = static fn (string $wert, bool $an, string $wort, string $suche = ''): string => '<label class="taxmod-record-choice"'
+        $knopf    = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): string => '<label class="taxmod-record-choice' . ($passt ? ' taxmod-record-match' : '') . '"'
             . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
             . '<input type="radio" name="' . $name . '" value="' . $wert . '"' . ($an ? ' checked' : '') . $form . '> ' . $wort . '</label>';
 
@@ -117,11 +117,14 @@ final class SummaryRenderer extends TypedFieldRenderer
         $steht = false;
 
         foreach ($baum as $i => $zeile) {
-            if ($gewaehlt === null || ! isset($zeile['records'][$gewaehlt])) {
+            $hatGewaehlten = $gewaehlt !== null && isset($zeile['records'][$gewaehlt]);
+
+            // ⚠️ *Auch der Ast mit vorbelegten Treffern steht offen (D-791 Schritt 3) — «hauptsächlich SMD» soll die SMD-Teile zeigen.*
+            if (! $hatGewaehlten && ($zeile['match'] ?? []) === []) {
                 continue;
             }
 
-            $steht = true;
+            $steht = $steht || $hatGewaehlten;
             $tiefe = $zeile['depth'];
 
             for ($j = $i; $j >= 0; $j--) {
@@ -159,7 +162,7 @@ final class SummaryRenderer extends TypedFieldRenderer
                 . '</summary>';
 
             foreach ($zeile['records'] as $satzId => $wort) {
-                $koerper .= $knopf((string) (int) $satzId, (int) $satzId === $gewaehlt, RenderResult::escape((string) $wort), (string) ($zeile['search'][$satzId] ?? ''));
+                $koerper .= $knopf((string) (int) $satzId, (int) $satzId === $gewaehlt, RenderResult::escape((string) $wort), (string) ($zeile['search'][$satzId] ?? ''), isset($zeile['match'][$satzId]));
             }
 
             $tiefe = $zeile['depth'];

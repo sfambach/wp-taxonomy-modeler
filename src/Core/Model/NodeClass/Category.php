@@ -29,6 +29,33 @@ final class Category implements NodeClass
     #[Attribut(listOf: 'relation')]
     public array $summary_fields = [];
 
+    /**
+     * Die Vorbelegung des Filters, wenn ein Satz dieses Knotens gewählt wird ([D-791](../../../../docs/NewConcept/90-decision-log.md)
+     * Schritt 3) — *sein Wort: «smd könnte schon mit übergeben werden, aber … generisch … weil wir das auch noch an anderer stelle
+     * brauchen».* Wie `summary_fields`: Vorgabe am Knoten, an der Kante überschreibbar — gesetzt wird sie meist an der Kante, weil
+     * die Quelle von dort aus gelesen wird.
+     *
+     * ⚠️ *Angenommen, nicht von ihm gesagt: das erste aktive Glied gilt; die Quelle ist ein Weg über Felder, der im Satz des Feldes
+     * beginnt oder im Satz, der ihn hält (die Stückliste über ihrer Position), und Satzverweisen folgt.*
+     *
+     * @var list<int> Kanten-Ids — das Feld **am Ziel**, das verglichen wird
+     */
+    #[Attribut(listOf: 'relation')]
+    public array $preset_field = [];
+
+    public const PRESET_FIELD = 'preset_field';
+
+    /** @var list<int> Kanten-Ids — der Weg zum Wert **hier**, Glied für Glied */
+    #[Attribut(listOf: 'relation')]
+    public array $preset_source = [];
+
+    public const PRESET_SOURCE = 'preset_source';
+
+    #[Attribut]
+    public PresetMode $preset_mode = PresetMode::First;
+
+    public const PRESET_MODE = 'preset_mode';
+
     public static function allowedChildClasses(): array
     {
         return [];

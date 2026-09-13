@@ -916,6 +916,12 @@ a.taxmod-chosen:hover {
     padding: .15em 0;
 }
 
+/* ⚠️ Vorbelegte Treffer stehen zuerst und sind hinterlegt (D-791 Schritt 3). */
+.taxmod-record-match {
+    background: #edfaef;
+    border-radius: 2px;
+}
+
 .taxmod-record-count {
     font-weight: 400;
     color: #646970;

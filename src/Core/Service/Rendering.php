@@ -1137,6 +1137,8 @@ final class Rendering implements Presets
         int $recordId = 0,
         /** @var array<int, list<int>> Je Feld die erlaubten Knoten seines Wählers — gesetzt vom Teil, der die Felder trägt (D-783). Fehlt ein Feld, gilt alles. */
         array $allowedChoices = [],
+        /** @var array<int, TypedValue> Die Werte des Satzes, der diesen Teil hält — die Vorbelegung eines Filters liest auch dort (D-791 Schritt 3). */
+        array $ownerValues = [],
     ): array {
         if ($relations === []) {
             return [];
@@ -1176,7 +1178,7 @@ final class Rendering implements Presets
         $hilfen   = $this->hintsOfFields($relations, $locale);
         $wahl     = $this->optionsFor($relations);
         // ⚠️ *Die Zusammenfassungen verwiesener Sätze, für alle Verweise dieses Blocks in einer Abfrage (D-753, D-363).*
-        $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose, $types);
+        $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose, $types, $ownerValues);
         $fields   = [];
 
         // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
@@ -3625,7 +3627,7 @@ final class Rendering implements Presets
         return $name === '' || $name === SummaryRenderer::NAME;
     }
 
-    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = []): array
+    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = []): array
     {
         $leer = ['worte' => [], 'angebot' => [], 'baum' => []];
 
@@ -3927,7 +3929,17 @@ final class Rendering implements Presets
                 $aus['worte'][$relation->id] = $wort($wert->reference, $feldIds);
             }
 
+            // ⚠️ **Die Vorbelegung** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 3): *«filter» lässt nur passende
+            // Sätze im Angebot, «first» behält alle und reicht die passenden an den Baum. Ohne Einstellung oder ohne Wert: nichts.*
+            [$passend, $modus] = $purpose === Purpose::Edit
+                ? $this->presetFor($relation, $ziele[$relation->toNodeId] ?? null, $angebote[$relation->id] ?? [], $werte, $values, $ownerValues)
+                : [null, \Taxmod\Core\Model\NodeClass\PresetMode::First];
+
             foreach ($angebote[$relation->id] ?? [] as $satzId) {
+                if ($passend !== null && $modus === \Taxmod\Core\Model\NodeClass\PresetMode::Filter && ! isset($passend[$satzId])) {
+                    continue;
+                }
+
                 $aus['angebot'][$relation->id][$satzId] = $wort($satzId, $feldIds);
             }
 
@@ -3940,11 +3952,114 @@ final class Rendering implements Presets
             // ansicht … wo ich erst den knoten auswähle … dann … datensatz aus». Dieselben Sätze wie das Angebot, nur nach ihren Knoten
             // gelegt; aus dem schon geladenen Unterbaum, ohne weitere Abfrage.*
             if ($purpose === Purpose::Edit && isset($ziele[$relation->toNodeId])) {
-                $aus['baum'][$relation->id] = $this->recordTreeOf($ziele[$relation->toNodeId], $saetzeJeKnoten, $aus['angebot'][$relation->id] ?? [], $suche);
+                $aus['baum'][$relation->id] = $this->recordTreeOf($ziele[$relation->toNodeId], $saetzeJeKnoten, $aus['angebot'][$relation->id] ?? [], $suche, $passend);
             }
         }
 
         return $aus;
+    }
+
+    /** @var array<int, array<int, TypedValue>> Die Werte eines Satzes, den ein Vorbelegungsweg durchläuft — je Satz einmal gelesen (`CD-7`). */
+    private array $gelesenWegWerte = [];
+
+    /**
+     * Die Vorbelegung des Filters an einem Verweisfeld ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 3): welche der
+     * angebotenen Sätze passen, und ob nur sie bleiben oder sie zuerst stehen.
+     *
+     * ⚠️ *Der Weg beginnt im Satz des Feldes und fällt auf den haltenden Satz zurück; ein Glied, das auf einen Satz zeigt, führt in
+     * dessen Werte. Fehlt ein Glied oder ein Wert, gibt es keine Vorbelegung — dann steht alles da wie ohne sie.*
+     *
+     * @param  list<int>                                                  $angebot
+     * @param  array<int, list<\Taxmod\Core\Model\RelationRecord>>        $werte       Die Werte der angebotenen Sätze.
+     * @param  array<int, TypedValue>                                     $values      Die Werte des Satzes, in dem das Feld steht.
+     * @param  array<int, TypedValue>                                     $ownerValues Die Werte des Satzes, der ihn hält.
+     * @return array{0: array<int, true>|null, 1: \Taxmod\Core\Model\NodeClass\PresetMode}
+     */
+    private function presetFor(Relation $relation, ?Node $ziel, array $angebot, array $werte, array $values, array $ownerValues): array
+    {
+        $modus = \Taxmod\Core\Model\NodeClass\PresetMode::First;
+
+        if ($ziel === null || $this->resolver === null || $this->records === null) {
+            return [null, $modus];
+        }
+
+        $aktive = static fn (array $glieder): array => array_values(array_map(
+            static fn ($glied): int => (int) $glied->reference,
+            array_filter($glieder, static fn ($glied): bool => $glied->aktiv && $glied->reference !== null)
+        ));
+
+        $feld = $aktive($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\Category::PRESET_FIELD, $relation))[0] ?? null;
+        $weg  = $aktive($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\Category::PRESET_SOURCE, $relation));
+
+        if ($feld === null || $weg === []) {
+            return [null, $modus];
+        }
+
+        $gewaehlt = ($this->resolver->forUseSite($relation)[\Taxmod\Core\Model\NodeClass\Category::PRESET_MODE] ?? null)?->value->text;
+        $modus    = \Taxmod\Core\Model\NodeClass\PresetMode::tryFrom((string) $gewaehlt) ?? $modus;
+
+        $stufe = $values + $ownerValues;
+        $wert  = null;
+
+        foreach ($weg as $i => $kanteId) {
+            $wert = $stufe[$kanteId] ?? null;
+
+            if ($wert === null || $wert->isNothing()) {
+                return [null, $modus];
+            }
+
+            if ($i < count($weg) - 1) {
+                if ($wert->referenceSpace !== ReferenceSpace::Record || $wert->reference === null) {
+                    return [null, $modus];
+                }
+
+                if (! isset($this->gelesenWegWerte[$wert->reference])) {
+                    $this->gelesenWegWerte[$wert->reference] = [];
+
+                    foreach ($this->records->valuesOfMany([$wert->reference])[$wert->reference] ?? [] as $zeile) {
+                        $this->gelesenWegWerte[$wert->reference][$zeile->relationId] ??= $zeile->value;
+                    }
+                }
+
+                $stufe = $this->gelesenWegWerte[$wert->reference];
+            }
+        }
+
+        $passend = [];
+
+        foreach ($angebot as $satzId) {
+            foreach ($werte[$satzId] ?? [] as $zeile) {
+                if ($zeile->relationId === $feld && $wert !== null && $this->presetValueMatches($zeile->value, $wert)) {
+                    $passend[$satzId] = true;
+
+                    break;
+                }
+            }
+        }
+
+        return [$passend, $modus];
+    }
+
+    /**
+     * Passt ein Wert eines angebotenen Satzes zum vorbelegten Wert? Wie die Filterzeile: ein Knotenverweis trifft auch alles darunter,
+     * Text enthält, eine Zahl ist gleich (D-768, D-791).
+     */
+    private function presetValueMatches(TypedValue $wert, TypedValue $gesucht): bool
+    {
+        if ($gesucht->referenceSpace === ReferenceSpace::Node && $gesucht->reference !== null) {
+            if ($wert->referenceSpace !== ReferenceSpace::Node || $wert->reference === null) {
+                return false;
+            }
+
+            return $wert->reference === $gesucht->reference
+                || in_array($gesucht->reference, array_map('intval', $this->gemerkterKnoten($wert->reference)?->ancestorIds() ?? []), true);
+        }
+
+        return match (true) {
+            $gesucht->text !== null => $wert->text !== null && mb_stripos($wert->text, $gesucht->text) !== false,
+            $gesucht->int !== null, $gesucht->decimal !== null => $wert->comparedTo($gesucht) === 0,
+            default => $wert->rawValue() === $gesucht->rawValue(),
+        };
     }
 
     /**
@@ -3956,7 +4071,7 @@ final class Rendering implements Presets
      * @param  array<int, string>                              $suche Was die Suche im Dialog je Satz-Id durchsucht (Schritt 2).
      * @return list<array{depth: int, name: string, records: array<int, string>, search: array<int, string>}>
      */
-    private function recordTreeOf(Node $ziel, array $saetzeJeKnoten, array $worte, array $suche = []): array
+    private function recordTreeOf(Node $ziel, array $saetzeJeKnoten, array $worte, array $suche = [], ?array $passend = null): array
     {
         $kinder = [];
 
@@ -3972,7 +4087,7 @@ final class Rendering implements Presets
         }
 
         $zeilen = [];
-        $lauf   = function (Node $knoten, int $tiefe) use (&$lauf, &$zeilen, $kinder, $saetzeJeKnoten, $worte, $suche): bool {
+        $lauf   = function (Node $knoten, int $tiefe) use (&$lauf, &$zeilen, $kinder, $saetzeJeKnoten, $worte, $suche, $passend): bool {
             $eigene  = [];
             $gesucht = [];
 
@@ -3985,7 +4100,14 @@ final class Rendering implements Presets
             }
 
             $stelle   = count($zeilen);
-            $zeilen[] = ['depth' => $tiefe, 'name' => $knoten->name, 'records' => $eigene, 'search' => $gesucht];
+            // ⚠️ *Passende zuerst (D-791 Schritt 3) — innerhalb des Astes, damit der Baum der Baum bleibt.*
+            $treffer = $passend === null ? [] : array_intersect_key($passend, $eigene);
+
+            if ($treffer !== []) {
+                $eigene = array_replace(array_intersect_key($eigene, $treffer), $eigene);
+            }
+
+            $zeilen[] = ['depth' => $tiefe, 'name' => $knoten->name, 'records' => $eigene, 'search' => $gesucht, 'match' => $treffer];
             $etwas    = $eigene !== [];
 
             foreach ($kinder[$knoten->id] ?? [] as $kind) {
@@ -5578,7 +5700,9 @@ final class Rendering implements Presets
                 // *dieses* Teils sind der gewaehlte Renderer und was unter ihm haengt (D-583).
                 $teil['teile'] ?? [],
                 $forNode,
-                allowedChoices: $erlaubteWahl
+                allowedChoices: $erlaubteWahl,
+                // ⚠️ *Der haltende Satz: eine Position liest die Vorbelegung ihres Filters aus der Stückliste (D-791 Schritt 3).*
+                ownerValues: $values
             );
         }
 
