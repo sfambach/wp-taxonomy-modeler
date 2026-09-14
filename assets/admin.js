@@ -214,7 +214,68 @@
 		);
 	}
 
+	// ⚠️ **Was beim Öffnen gewählt war, legt «Abbrechen» zurück** (D-804) — sein Wort: «they should have buttons ok/confirm, cancel».
+	// *Beim Öffnen wird der Zustand jedes Bedienelements im Dialog und die Beschriftung des Öffners gemerkt; «Abbrechen», das ✕ und
+	// Escape legen ihn zurück, «OK» behält, was jetzt gilt.*
+	var gemerkt = new WeakMap();
+
+	function merken( theSwitch ) {
+		var chooser = theSwitch.closest( '.taxmod-chooser' );
+
+		if ( ! chooser ) {
+			return;
+		}
+
+		var oeffner = chooser.querySelector( ':scope > .taxmod-dialog-open, :scope > .taxmod-record-dialog-open' );
+		var kopf = chooser.querySelector( '.taxmod-chooser-current' );
+
+		gemerkt.set( theSwitch, {
+			felder: Array.prototype.map.call( chooser.querySelectorAll( '.taxmod-dialog-panel input, .taxmod-dialog-panel select' ), function ( feld ) {
+				return { feld: feld, checked: feld.checked, value: feld.value };
+			} ),
+			oeffner: oeffner ? { html: oeffner.innerHTML, klasse: oeffner.className } : null,
+			kopf: kopf ? kopf.innerHTML : null
+		} );
+	}
+
+	function zuruecklegen( theSwitch ) {
+		var stand = gemerkt.get( theSwitch );
+		var chooser = theSwitch.closest( '.taxmod-chooser' );
+
+		if ( ! stand || ! chooser ) {
+			return;
+		}
+
+		stand.felder.forEach( function ( eintrag ) {
+			eintrag.feld.checked = eintrag.checked;
+			eintrag.feld.value = eintrag.value;
+		} );
+
+		var oeffner = chooser.querySelector( ':scope > .taxmod-dialog-open, :scope > .taxmod-record-dialog-open' );
+		var kopf = chooser.querySelector( '.taxmod-chooser-current' );
+
+		if ( oeffner && stand.oeffner ) {
+			oeffner.innerHTML = stand.oeffner.html;
+			oeffner.className = stand.oeffner.klasse;
+		}
+
+		if ( kopf && stand.kopf !== null ) {
+			kopf.innerHTML = stand.kopf;
+		}
+	}
+
+	document.addEventListener( 'click', function ( event ) {
+		var abbruch = event.target instanceof Element ? event.target.closest( '.taxmod-dialog-cancel' ) : null;
+		var chooser = abbruch ? abbruch.closest( '.taxmod-chooser' ) : null;
+		var theSwitch = chooser ? chooser.querySelector( SWITCH ) : null;
+
+		if ( theSwitch ) {
+			zuruecklegen( theSwitch );
+		}
+	}, true );
+
 	function close( theSwitch ) {
+		zuruecklegen( theSwitch );
 		theSwitch.checked = false;
 
 		// ⚠️ *Back to the switch, which is the focusable half of the opener. Without this the focus
@@ -293,6 +354,8 @@
 		if ( ! target || ! target.matches || ! target.matches( SWITCH ) || ! target.checked ) {
 			return;
 		}
+
+		merken( target );
 
 		var panel = panelOf( target );
 
@@ -1035,12 +1098,7 @@
 			kopf.textContent = wort === '' ? '—' : wort;
 		}
 
-		var schalter = wahl ? wahl.querySelector( '.taxmod-dialog-switch' ) : null;
-
-		if ( schalter ) {
-			schalter.checked = false;
-			schalter.focus();
-		}
+		// ⚠️ *Der Dialog bleibt offen — geschlossen wird nur über «OK», «Abbrechen» oder das ✕ (D-804). «Abbrechen» nimmt die Wahl zurück.*
 	} );
 
 	document.addEventListener( 'click', function ( ereignis ) {

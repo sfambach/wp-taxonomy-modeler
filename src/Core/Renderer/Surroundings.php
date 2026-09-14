@@ -236,6 +236,12 @@ final class Surroundings
          * @var list<array{depth: int, name: string, records: array<int, string>, search?: array<int, string>}>
          */
         public readonly array $recordTree = [],
+        /**
+         * Die Worte der Dialogknöpfe «OK» und «Abbrechen», vom Rand (`AR-2`) — jeder Dialog hat sie ([D-804](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * @var array{ok?: string, cancel?: string}
+         */
+        public readonly array $dialogWords = [],
     ) {
     }
 

@@ -135,7 +135,9 @@ final class ChooserRenderer extends RendererNode
             $trigger === null || $trigger->body === '' ? $current : $trigger->body,
             $current,
             '<span class="taxmod-chooser-tree">' . $tree->body . '</span>',
-            $confirm?->body ?? ''
+            $confirm?->body ?? '',
+            ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
+            cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? '')
         ));
     }
 }

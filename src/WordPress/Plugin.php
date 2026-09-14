@@ -517,7 +517,8 @@ final class Plugin
         // Vorbelegung eines Feldes ({@see \Taxmod\Core\Port\Presets}) — «beim Anlegen gibt es noch
         // keinen Datensatz, dann muss hier automatisch die Benutzer-Id hinterlegt werden». **Dasselbe
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
-        $rendering = $this->rendering($labels);
+        // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'));
 
         return new NodesScreen(
             $this->editor(),

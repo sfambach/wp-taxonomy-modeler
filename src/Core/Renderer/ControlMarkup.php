@@ -121,7 +121,7 @@ final class ControlMarkup
             self::face($control, $icon),
             RenderResult::escape($dialog->title),
             '<span class="taxmod-dialog-body">' . $dialog->body . '</span>',
-            self::button($ok) . '<label class="button" for="' . RenderResult::escape($dialog->id) . '">' . RenderResult::escape($dialog->cancel) . '</label>',
+            self::button($ok) . '<label class="button taxmod-dialog-cancel" for="' . RenderResult::escape($dialog->id) . '">' . RenderResult::escape($dialog->cancel) . '</label>',
             ($icon || $control->glyph !== '') ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-dialog-open'
         );
     }

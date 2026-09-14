@@ -1295,12 +1295,13 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
 }
 
 /* Above everything, including the admin menu, so it cannot open behind it. */
+/* ⚠️ Ein Klick daneben schliesst nicht mehr (D-804) — die Fläche sieht darum auch nicht mehr klickbar aus. */
 .taxmod-dialog-shade {
     position: fixed;
     inset: 0;
     z-index: 100000;
     background: rgba(0, 0, 0, .45);
-    cursor: pointer;
+    cursor: default;
 }
 
 .taxmod-dialog-panel {

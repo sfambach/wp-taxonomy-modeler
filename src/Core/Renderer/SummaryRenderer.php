@@ -191,7 +191,9 @@ final class SummaryRenderer extends TypedFieldRenderer
             $jetzt,
             '<div class="taxmod-record-tree">' . $koerper . '</div>',
             '',
-            $nichts ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-record-dialog-open'
+            $nichts ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-record-dialog-open',
+            ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
+            cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? '')
         );
 
         // ⚠️ **Das Suchfeld vor dem Dialog** ([D-792](../../../docs/NewConcept/90-decision-log.md), Zeile 153) — *sein Wort: «free text

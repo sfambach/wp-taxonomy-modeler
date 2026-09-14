@@ -581,6 +581,21 @@ final class Rendering implements Presets
         return $kopie;
     }
 
+    /** @var array{ok?: string, cancel?: string} Die Worte der Dialogknöpfe, vom Rand (D-804). Leer: kein Fuss, wo der Aufrufer keinen gibt. */
+    private array $dialogWords = [];
+
+    /**
+     * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
+     * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
+     */
+    public function withDialogWords(string $ok, string $cancel): static
+    {
+        $kopie              = clone $this;
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel];
+
+        return $kopie;
+    }
+
     /** @var (\Closure(int): string)|null Die Adresse, unter der man an einem Knoten einen neuen Satz anlegt — vom Rand (D-792, Zeile 154). */
     private ?\Closure $newRecordUrl = null;
 
@@ -1420,6 +1435,7 @@ final class Rendering implements Presets
                     options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
                     // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*
                     recordTree: $saetze['baum'][$relation->id] ?? [],
+                    dialogWords: $this->dialogWords,
                     // ⚠️ **«Nichts» ist eine Möglichkeit nur dort, wo die Multiplizität es zulässt.**
                     //
                     // ⚠️ *Der Eigentümer: «`render` ist `1..1` in `DisplayOption`, sollte somit nicht die
@@ -1784,7 +1800,8 @@ final class Rendering implements Presets
                         ChooserRenderer::CANDIDATES => new Section($nothingToChoose, $tree->markup),
                         ChooserRenderer::TRIGGER    => new Section('', $trigger),
                         ChooserRenderer::CONFIRM    => new Section('', $confirm),
-                    ]
+                    ],
+                    dialogWords: $this->dialogWords,
                 ),
             )
         );
