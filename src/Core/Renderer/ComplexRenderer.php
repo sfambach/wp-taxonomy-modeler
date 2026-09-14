@@ -69,7 +69,14 @@ final class ComplexRenderer extends RendererNode
             }
 
             // ⚠️ *Eine Einstellung bleibt, wo das Formular sie hinlegt — hinten bei den einfachen: der Renderer ist für Daten.*
-            if ($part->rows === [] || $part->relation->isSetting()) {
+            // ⚠️ **Ein Teil mit eigenem Behälter, der in eine Zeile passt, steht bei den einfachen** ([D-802](../../../docs/NewConcept/90-decision-log.md)) —
+            // *sein Befund: «compact is selected for all unit values, so why is rendering not working». Gemessen: an `Parts List` und
+            // `Resistor` bekam jeder Einheitenwert einen eigenen Block mit Überschrift und Formular — der Komplex-Renderer fragte nur
+            // «hat Teile», nicht, womit der Teil gezeichnet wird. Formular, Tabelle und Komplex bleiben Blöcke; alles andere
+            // (compact) zeichnet sein eigener Behälter, in der Zeile.*
+            $inZeile = ! in_array($part->rendererName, [FormRenderer::NAME, TableRenderer::NAME, self::NAME], true);
+
+            if ($part->rows === [] || $part->relation->isSetting() || ($inZeile && ! $part->relation->multiplicity->allowsMany())) {
                 $einfach[] = $part;
             } elseif ($part->relation->multiplicity->allowsMany()) {
                 $mehrere[] = $part;
