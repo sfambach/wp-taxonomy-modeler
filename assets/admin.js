@@ -983,15 +983,11 @@
 			wahl.hidden = ! passt( wahl.getAttribute( 'data-taxmod-search' ) || '', woerter );
 		} );
 
-		// *Von innen nach aussen, damit ein Vater seine schon entschiedenen Kinder sieht.*
-		Array.prototype.slice.call( baum.querySelectorAll( 'details.taxmod-record-branch' ) ).reverse().forEach( function ( ast ) {
-			var treffer = ast.querySelector( '.taxmod-record-choice[data-taxmod-search]:not([hidden])' );
+		// *Seit D-805 stehen die Sätze rechts in Gruppen je Knoten: eine Gruppe ohne Treffer verschwindet, der Baum links bleibt.*
+		baum.querySelectorAll( '.taxmod-record-group' ).forEach( function ( gruppe ) {
+			var treffer = gruppe.querySelector( '.taxmod-record-choice[data-taxmod-search]:not([hidden])' );
 
-			ast.hidden = woerter.length > 0 && ! treffer;
-
-			if ( woerter.length > 0 && treffer ) {
-				ast.open = true;
-			}
+			gruppe.classList.toggle( 'taxmod-record-group-nomatch', woerter.length > 0 && ! treffer );
 		} );
 	} );
 
@@ -1259,6 +1255,67 @@
 
 		if ( ! knopf.disabled ) {
 			knopf.focus();
+		}
+	} );
+
+	// ⚠️ **Ein Knoten im Baum des Satzdialogs zeigt rechts seine Sätze** (D-805) — sein Wort: «show the tree select a node and then see a
+	// list of datasets to select from in a list». *Gezeigt werden die Gruppe des Knotens und die aller Knoten darunter — erkannt an der
+	// Tiefe: nach dem Knoten, bis eine Gruppe nicht mehr tiefer liegt. Das Auf- und Zuklappen des Astes macht der Browser selbst.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var name = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-node' ) : null;
+		var baum = name ? name.closest( '.taxmod-record-tree' ) : null;
+
+		if ( ! baum ) {
+			return;
+		}
+
+		var nummer = name.getAttribute( 'data-taxmod-group' );
+		var drin = false;
+		var tiefe = -1;
+
+		baum.querySelectorAll( '.taxmod-record-node.is-active' ).forEach( function ( alt ) {
+			alt.classList.remove( 'is-active' );
+		} );
+		name.classList.add( 'is-active' );
+
+		baum.querySelectorAll( '.taxmod-record-group' ).forEach( function ( gruppe ) {
+			var eigene = parseInt( gruppe.getAttribute( 'data-taxmod-depth' ) || '0', 10 );
+
+			if ( gruppe.getAttribute( 'data-taxmod-group' ) === nummer ) {
+				drin = true;
+				tiefe = eigene;
+			} else if ( drin && eigene <= tiefe ) {
+				drin = false;
+				tiefe = -2;
+			}
+
+			gruppe.classList.toggle( 'taxmod-record-group-off', ! drin );
+		} );
+	} );
+
+	// ⚠️ **Der Baum lässt sich ausschalten** (D-805) — sein Wort: «can be switched on and off». *Aus: nur die Liste, alle Gruppen.*
+	document.addEventListener( 'change', function ( ereignis ) {
+		var schalter = ereignis.target;
+
+		if ( ! ( schalter instanceof HTMLInputElement ) || ! schalter.classList.contains( 'taxmod-record-treetoggle' ) ) {
+			return;
+		}
+
+		var baum = schalter.closest( '.taxmod-record-tree' );
+
+		if ( ! baum ) {
+			return;
+		}
+
+		baum.classList.toggle( 'taxmod-record-notree', ! schalter.checked );
+
+		if ( ! schalter.checked ) {
+			baum.querySelectorAll( '.taxmod-record-group-off' ).forEach( function ( gruppe ) {
+				gruppe.classList.remove( 'taxmod-record-group-off' );
+			} );
+			baum.querySelectorAll( '.taxmod-record-node.is-active' ).forEach( function ( alt ) {
+				alt.classList.remove( 'is-active' );
+			} );
 		}
 	} );
 

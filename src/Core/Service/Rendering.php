@@ -559,12 +559,38 @@ final class Rendering implements Presets
     }
 
     /** Dieselbe Zeichnung, aber mit Knöpfen zum Hinzufügen und Entfernen von Teil-Zeilen (D-758); die Worte kommen vom Rand. */
-    public function withPartActs(string $add, string $remove): static
+    public function withPartActs(string $add, string $remove, string $many = ''): static
     {
         $kopie           = clone $this;
-        $kopie->partActs = ['add' => $add, 'remove' => $remove];
+        // *Dazu das Wort für «mehrere hinzufügen» (D-806).*
+        $kopie->partActs = ['add' => $add, 'remove' => $remove, 'many' => $many];
 
         return $kopie;
+    }
+
+    /**
+     * Das Feld, über das eine neue Zeile eines mehrfachen Teils gewählt wird — `pick_field` am Ziel, an der Kante überschreibbar
+     * ([D-806](../../../docs/NewConcept/90-decision-log.md)). `null`, wo keines eingestellt ist.
+     */
+    public function pickFieldOf(Relation $relation): ?Relation
+    {
+        if ($this->resolver === null || $this->relations === null) {
+            return null;
+        }
+
+        $ziel = $this->gemerkterKnoten($relation->toNodeId);
+
+        if ($ziel === null) {
+            return null;
+        }
+
+        foreach ($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\Category::PICK_FIELD, $relation) as $glied) {
+            if ($glied->aktiv && $glied->reference !== null) {
+                return $this->relations->byId((int) $glied->reference);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -588,10 +614,11 @@ final class Rendering implements Presets
      * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
      * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
      */
-    public function withDialogWords(string $ok, string $cancel): static
+    public function withDialogWords(string $ok, string $cancel, string $tree = ''): static
     {
         $kopie              = clone $this;
-        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel];
+        // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805).*
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree];
 
         return $kopie;
     }
@@ -5928,9 +5955,32 @@ final class Rendering implements Presets
             $halter = preg_match('/\[(\d+)\]$/', $fieldPrefix, $treffer) === 1 ? (int) $treffer[1] : 0;
 
             if ($halter !== 0) {
+                // ⚠️ **Mehrere hinzufügen** ([D-806](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «i select multiple parts and for
+                // each part a item is created … propose a button to add multiple». Nur, wo die Kante sagt, über welches Feld gewählt wird
+                // (`pick_field`); der Dialog ist der Satzdialog mit Baum und Liste, je Satz ein Haken; «bestätigen» schickt `add_parts`.*
+                $mehrere  = '';
+                $wahlFeld = ($this->partActs['many'] ?? '') === '' ? null : $this->pickFieldOf($relation);
+
+                if ($wahlFeld !== null) {
+                    $wahlBaum   = $this->summariesOf([$wahlFeld], [], $this->settingsForUseSites([$wahlFeld]), Purpose::Edit, $this->typesOf([$wahlFeld]))['baum'][$wahlFeld->id] ?? [];
+                    $schluessel = $halter . '-' . $relation->id;
+
+                    if ($wahlBaum !== []) {
+                        $mehrere = SummaryRenderer::multiDialog(
+                            $wahlBaum,
+                            'taxmod_multi[' . $schluessel . '][]',
+                            $formId,
+                            'taxmod-multi-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $schluessel),
+                            IconMarkup::dashicon('plus-alt', $this->partActs['many']) . ' ' . RenderResult::escape($this->partActs['many']),
+                            ControlMarkup::button(new \Taxmod\Core\Renderer\Control('do[' . $schluessel . ']', 'add_parts', $this->partActs['many'], '', true, false, '', $formId, true)),
+                            $this->dialogWords
+                        );
+                    }
+                }
+
                 $danach = '<div class="taxmod-part-add">' . ControlMarkup::button(
                     new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . ']', 'add_part', $this->partActs['add'], '', true, false, 'plus-alt2', $formId)
-                ) . '</div>';
+                ) . $mehrere . '</div>';
             }
         }
 

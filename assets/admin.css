@@ -996,6 +996,84 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     vertical-align: middle;
 }
 
+/* ⚠️ Der Satzdialog in zwei Spalten (D-805): oben Suche und Schalter für den Baum, links der Baum der Knoten, rechts die Sätze je
+ * Knoten. Ohne Baum nur die Liste. Der Dialog wird dafür breiter. */
+.taxmod-dialog-panel:has(.taxmod-record-columns) {
+    width: min(64em, calc(100vw - 2em));
+}
+
+.taxmod-record-tools {
+    display: flex;
+    align-items: center;
+    gap: .4em;
+    margin-bottom: .4em;
+}
+
+.taxmod-record-tools .taxmod-record-search {
+    flex: 1;
+    margin: 0;
+}
+
+.taxmod-record-treeswitch {
+    display: inline-flex;
+    align-items: center;
+    gap: .15em;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.taxmod-record-columns {
+    display: grid;
+    grid-template-columns: minmax(12em, 1fr) minmax(0, 2fr);
+    gap: .8em;
+    min-height: 0;
+}
+
+.taxmod-record-notree .taxmod-record-columns {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.taxmod-record-notree .taxmod-record-nodes {
+    display: none;
+}
+
+.taxmod-record-nodes {
+    border-right: 1px solid #dcdcde;
+    padding-right: .5em;
+    overflow: auto;
+    max-height: 50vh;
+}
+
+.taxmod-record-list {
+    overflow: auto;
+    max-height: 50vh;
+}
+
+.taxmod-record-node {
+    cursor: pointer;
+}
+
+.taxmod-record-node.is-active {
+    color: #2271b1;
+    text-decoration: underline;
+}
+
+.taxmod-record-group-name {
+    margin: .5em 0 .1em;
+    font-weight: 600;
+    color: #50575e;
+}
+
+.taxmod-record-group:empty,
+.taxmod-record-group-off,
+.taxmod-record-group-nomatch {
+    display: none;
+}
+
+.taxmod-record-list .taxmod-record-choice {
+    margin-left: .3em;
+}
+
 /* ⚠️ Das Suchfeld vor dem Satzdialog und seine Treffer darunter (D-792, Zeile 153); das «+» je Ast zum Anlegen (Zeile 154). */
 .taxmod-record-pick {
     position: relative;

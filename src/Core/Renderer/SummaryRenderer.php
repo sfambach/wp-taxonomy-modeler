@@ -112,19 +112,50 @@ final class SummaryRenderer extends TypedFieldRenderer
             . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
             . '<input type="radio" name="' . $name . '" value="' . $wert . '"' . ($an ? ' checked' : '') . $form . '> ' . $wort . '</label>';
 
-        // *Welche Äste den gewählten Satz enthalten — sie stehen offen, damit er zu sehen ist.*
-        $offen = [];
         $steht = false;
 
-        foreach ($baum as $i => $zeile) {
-            $hatGewaehlten = $gewaehlt !== null && isset($zeile['records'][$gewaehlt]);
+        foreach ($baum as $zeile) {
+            $steht = $steht || ($gewaehlt !== null && isset($zeile['records'][$gewaehlt]));
+        }
 
-            // ⚠️ *Auch der Ast mit vorbelegten Treffern steht offen (D-791 Schritt 3) — «hauptsächlich SMD» soll die SMD-Teile zeigen.*
-            if (! $hatGewaehlten && ($zeile['match'] ?? []) === []) {
+        $vorn = '';
+
+        if ($context->surroundings->mayBeNothing || $gewaehlt === null) {
+            $vorn .= $knopf('', $gewaehlt === null, '—');
+        }
+
+        // ⚠️ *Ein gespeicherter Satz ausserhalb des Baums bleibt wählbar und sichtbar (D-360) — sonst schriebe das nächste Speichern nichts.*
+        if ($gewaehlt !== null && ! $steht) {
+            $vorn .= $knopf((string) (int) $gewaehlt, true, RenderResult::escape($context->surroundings->refersTo ?? '#' . $gewaehlt));
+        }
+
+        $koerper = self::browserBody($baum, $knopf, $gewaehlt, $vorn, $context->surroundings->dialogWords);
+
+        return $this->dialogAround($context, $baum, $gewaehlt, $koerper);
+    }
+
+    /**
+     * Der Körper eines Satzdialogs: oben Suche und Schalter für den Baum, links der Baum der Knoten, rechts die Sätze je Knoten
+     * ([D-805](../../../docs/NewConcept/90-decision-log.md)) — für die Einzelwahl und die Mehrfachauswahl gleich.
+     *
+     * ⚠️ *Seine Worte: «show the tree select a node and then see a list of datasets to select from in a list not directly in the tree»,
+     * «can be switched on and off», «collapse or expand when i clicking on a non dataset node». Ein Knoten ist ein aufklappbarer Ast; ein
+     * Klick auf seinen Namen zeigt rechts seine Sätze und die aller darunter. Ohne Skript stehen alle Gruppen rechts untereinander.*
+     *
+     * @param list<array{depth: int, name: string, records: array<int, string>, search?: array<int, string>, match?: array<int, true>, add?: string, addWord?: string}> $baum
+     * @param \Closure(string, bool, string, string=, bool=): string $knopf Ein Auswahlknopf: Wert, gewählt, Wort, Suchtext, Treffer
+     * @param array{ok?: string, cancel?: string, tree?: string} $worte
+     */
+    public static function browserBody(array $baum, \Closure $knopf, ?int $gewaehlt, string $vorn, array $worte): string
+    {
+        // *Welche Äste den gewählten Satz oder vorbelegte Treffer enthalten — sie stehen offen, damit man sie sieht.*
+        $offen = [];
+
+        foreach ($baum as $i => $zeile) {
+            if (! ($gewaehlt !== null && isset($zeile['records'][$gewaehlt])) && ($zeile['match'] ?? []) === []) {
                 continue;
             }
 
-            $steht = $steht || $hatGewaehlten;
             $tiefe = $zeile['depth'];
 
             for ($j = $i; $j >= 0; $j--) {
@@ -135,48 +166,91 @@ final class SummaryRenderer extends TypedFieldRenderer
             }
         }
 
-        // ⚠️ **Die Suche** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 2) — *ein Feld ohne Namen, also schickt es nichts ab;
-        // das Skript blendet aus, was nicht passt. Ohne Skript steht es da und tut nichts, und der Baum zeigt alles wie vorher.*
-        $koerper = '<input type="search" class="taxmod-record-search" autocomplete="off" aria-label="' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '">';
+        $wurzel    = RenderResult::escape((string) ($baum[0]['name'] ?? ''));
+        $baumWort  = (string) ($worte['tree'] ?? '');
+        $werkzeuge = '<div class="taxmod-record-tools">'
+            . '<input type="search" class="taxmod-record-search" autocomplete="off" aria-label="' . $wurzel . '">'
+            . ($baumWort === '' ? '' : '<label class="taxmod-record-treeswitch" title="' . RenderResult::escape($baumWort) . '">'
+                . '<input type="checkbox" class="taxmod-record-treetoggle" checked>' . IconMarkup::dashicon('networking', $baumWort) . '</label>')
+            . '</div>';
 
-        if ($context->surroundings->mayBeNothing || $gewaehlt === null) {
-            $koerper .= $knopf('', $gewaehlt === null, '—');
-        }
-
-        // ⚠️ *Ein gespeicherter Satz ausserhalb des Baums bleibt wählbar und sichtbar (D-360) — sonst schriebe das nächste Speichern nichts.*
-        if ($gewaehlt !== null && ! $steht) {
-            $koerper .= $knopf((string) (int) $gewaehlt, true, RenderResult::escape($context->surroundings->refersTo ?? '#' . $gewaehlt));
-        }
-
-        $tiefe = -1;
+        $knoten = '';
+        $liste  = $vorn;
+        $tiefe  = -1;
 
         foreach ($baum as $i => $zeile) {
             while ($tiefe >= $zeile['depth']) {
-                $koerper .= '</details>';
+                $knoten .= '</details>';
                 $tiefe--;
             }
 
-            $koerper .= '<details class="taxmod-record-branch"' . ($zeile['depth'] === 0 || isset($offen[$i]) ? ' open' : '') . '>'
-                . '<summary>' . RenderResult::escape($zeile['name'])
+            $knoten .= '<details class="taxmod-record-branch"' . ($zeile['depth'] === 0 || isset($offen[$i]) ? ' open' : '') . '>'
+                . '<summary><span class="taxmod-record-node" data-taxmod-group="' . (int) $i . '">' . RenderResult::escape($zeile['name'])
                 . ($zeile['records'] === [] ? '' : ' <span class="taxmod-record-count">(' . count($zeile['records']) . ')</span>')
-                // ⚠️ *Fehlt der Satz, legt man ihn an diesem Knoten an (D-792, Zeile 154) — seine Seite in einem neuen Reiter, damit die
-                // Auswahl hier stehen bleibt; danach die Seite neu laden, und der Satz steht im Baum.*
+                . '</span>'
+                // ⚠️ *Fehlt der Satz, legt man ihn an diesem Knoten an (D-792, Zeile 154) — seine Seite in einem neuen Reiter.*
                 . ((string) ($zeile['add'] ?? '') === '' ? '' : ' <a class="' . ControlMarkup::ICON_ONLY . ' taxmod-record-add" href="' . RenderResult::escape((string) $zeile['add']) . '" target="_blank" rel="noopener" title="' . RenderResult::escape((string) ($zeile['addWord'] ?? '')) . '">'
                     . IconMarkup::dashicon('plus-alt2', (string) ($zeile['addWord'] ?? '')) . '</a>')
                 . '</summary>';
 
-            foreach ($zeile['records'] as $satzId => $wort) {
-                $koerper .= $knopf((string) (int) $satzId, (int) $satzId === $gewaehlt, RenderResult::escape((string) $wort), (string) ($zeile['search'][$satzId] ?? ''), isset($zeile['match'][$satzId]));
+            $tiefe = $zeile['depth'];
+
+            // *Je Knoten eine Gruppe rechts — auch eine leere, damit das Skript die Grenzen eines Astes an der Tiefe erkennt.*
+            $liste .= '<div class="taxmod-record-group" data-taxmod-group="' . (int) $i . '" data-taxmod-depth="' . (int) $zeile['depth'] . '">';
+
+            if ($zeile['records'] !== []) {
+                $liste .= '<div class="taxmod-record-group-name">' . RenderResult::escape($zeile['name']) . '</div>';
+
+                foreach ($zeile['records'] as $satzId => $wort) {
+                    $liste .= $knopf((string) (int) $satzId, (int) $satzId === $gewaehlt, RenderResult::escape((string) $wort), (string) ($zeile['search'][$satzId] ?? ''), isset($zeile['match'][$satzId]));
+                }
             }
 
-            $tiefe = $zeile['depth'];
+            $liste .= '</div>';
         }
 
         while ($tiefe >= 0) {
-            $koerper .= '</details>';
+            $knoten .= '</details>';
             $tiefe--;
         }
 
+        return $werkzeuge
+            . '<div class="taxmod-record-columns">'
+            . '<div class="taxmod-record-nodes">' . $knoten . '</div>'
+            . '<div class="taxmod-record-list">' . $liste . '</div>'
+            . '</div>';
+    }
+
+    /**
+     * Die Mehrfachauswahl ([D-806](../../../docs/NewConcept/90-decision-log.md)): derselbe Dialog mit Baum und Liste, je Satz ein Haken;
+     * «bestätigen» schickt die gewählten Sätze ab, und der Rand legt je Satz eine Zeile an.
+     *
+     * ⚠️ *Sein Wort: «i select multiple parts and for each part a item is created … propose a button to add multiple».*
+     *
+     * @param list<array{depth: int, name: string, records: array<int, string>}> $baum
+     * @param array{ok?: string, cancel?: string, tree?: string}                 $worte
+     */
+    public static function multiDialog(array $baum, string $name, string $formId, string $schalter, string $oeffner, string $bestaetigen, array $worte): string
+    {
+        $form  = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
+        $knopf = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): string => '<label class="taxmod-record-choice' . ($passt ? ' taxmod-record-match' : '') . '"'
+            . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
+            . '<input type="checkbox" name="' . RenderResult::escape($name) . '" value="' . $wert . '"' . $form . '> ' . $wort . '</label>';
+
+        return DialogMarkup::of(
+            $schalter,
+            $oeffner,
+            $oeffner,
+            '<div class="taxmod-record-tree">' . self::browserBody($baum, $knopf, null, '', $worte) . '</div>',
+            $bestaetigen,
+            'button taxmod-dialog-open taxmod-record-multi-open',
+            cancel: (string) ($worte['cancel'] ?? '')
+        );
+    }
+
+    /** @param list<array<string, mixed>> $baum */
+    private function dialogAround(RenderContext $context, array $baum, ?int $gewaehlt, string $koerper): string
+    {
         // ⚠️ *Ohne gewählten Satz steht nur das Zeichen «—» — dann ist der Öffner ein Zeichenknopf: randlos, und sein Name steht für
         // den Vorleser dabei, wie beim Knotenwähler ({@see ChooserRenderer}; `icon-button-check`). Der Name ist der Knoten, aus dem
         // gewählt wird — die Wurzel des Baums; `render()` ist in {@see TypedFieldRenderer} endgültig und reicht das Feld nicht herein.*

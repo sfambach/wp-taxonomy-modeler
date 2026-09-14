@@ -1414,7 +1414,7 @@ final class NodesScreen
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
-                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->withRecordCreation(
+                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'))->withRecordCreation(
                     // ⚠️ *Ein neuer Satz entsteht auf der Seite seines Knotens (D-792, Zeile 154) — ohne Filter, Seite und geöffneten Satz von hier.*
                     fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
                     __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod')
@@ -2533,6 +2533,7 @@ final class NodesScreen
             new Control('word:hint:erlaubte_praefixe', '', __('Which prefixes this unit offers, e.g. p n µ m for Farad. None: every prefix.', 'taxmod')),
             new Control('word:hint:mit_praefix', '', __('Whether this unit takes a prefix at all — Ohm does, Percent does not.', 'taxmod')),
             new Control('word:hint:symbol', '', __('The short sign of the unit, e.g. Ω or %.', 'taxmod')),
+            new Control('word:hint:pick_field', '', __('For a field with several lines (e.g. the positions of a parts list): the field a new line is chosen by, e.g. Part. With it, «Add several» picks records in a dialog and adds one line per record.', 'taxmod')),
         ];
     }
 
@@ -3156,6 +3157,34 @@ final class NodesScreen
 
         if ($halter !== 0 && $kante !== 0) {
             $this->data->createPart($halter, $kante);
+        }
+    }
+
+    /**
+     * Speichern, dann je gewähltem Satz eine Zeile anlegen, deren Wahlfeld auf ihn zeigt ([D-806](../../../docs/NewConcept/90-decision-log.md)) —
+     * der Knopf nennt `do[<Halter>-<Kante>]`, die Haken `taxmod_multi[<Halter>-<Kante>][]`.
+     *
+     * ⚠️ *Sein Wort: «i select multiple parts and for each part a item is created». Das Wahlfeld wird nicht geglaubt, sondern nachgeschlagen
+     * (`pick_field` an der Kante, `CD-5`); ohne es geschieht nichts. Die übrigen Felder der neuen Zeilen bleiben leer.*
+     */
+    private function addedParts(int $nodeId): void
+    {
+        $this->saveRecord($nodeId);
+
+        $schluessel       = $this->actKey();
+        [$halter, $kante] = array_map(absint(...), explode('-', $schluessel) + [0, 0]);
+        $roh              = $_POST['taxmod_multi'][$schluessel] ?? [];
+        $saetze           = is_array($roh) ? array_values(array_unique(array_filter(array_map(absint(...), wp_unslash($roh))))) : [];
+        $relation         = $kante === 0 ? null : $this->editor->relationById($kante);
+        $wahlFeld         = $relation === null ? null : $this->rendering->pickFieldOf($relation);
+
+        if ($halter === 0 || $wahlFeld === null) {
+            return;
+        }
+
+        foreach ($saetze as $satz) {
+            $teil = $this->data->createPart($halter, $kante);
+            $this->data->put($teil->id, $wahlFeld->id, \Taxmod\Core\Model\TypedValue::ofRecordReference($satz));
         }
     }
 
@@ -3902,7 +3931,7 @@ final class NodesScreen
         ]);
 
         // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
-        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'))->withJumps(
+        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'))->withJumps(
             // ⚠️ *Ein Sprung ist ein Aufruf des Zielknotens mit gesetztem Filter und ab Seite 1 (D-769).*
             fn (int $ziel, int $feld, string $wert): string => $this->backTo($ziel, [
                 self::RECORD_FILTER => self::encodeFilter([$feld => $wert]),
@@ -5623,6 +5652,8 @@ final class NodesScreen
                 'clear_filter'   => $this->rememberFilter(null),
                 // ⚠️ *Zeilen eines mehrfachen Teilfeldes (D-758, D-577).*
                 'add_part'       => $this->addedPart($id),
+                // ⚠️ *Mehrere Zeilen auf einmal, je gewähltem Satz eine (D-806).*
+                'add_parts'      => $this->addedParts($id),
                 'remove_part'    => $this->removedPart($id),
                 'delete_record'  => $this->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0

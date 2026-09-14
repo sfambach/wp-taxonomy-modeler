@@ -518,7 +518,7 @@ final class Plugin
         // keinen Datensatz, dann muss hier automatisch die Benutzer-Id hinterlegt werden». **Dasselbe
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
-        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'));
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'));
 
         return new NodesScreen(
             $this->editor(),

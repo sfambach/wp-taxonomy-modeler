@@ -56,6 +56,18 @@ final class Category implements NodeClass
 
     public const PRESET_MODE = 'preset_mode';
 
+    /**
+     * Über welches Feld eine neue Zeile dieses Knotens gewählt wird, wenn er als mehrfacher Teil hängt — etwa `Part` an einer Position
+     * ([D-806](../../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «the item list needs to know what the selection criteria is to
+     * create new item and propose a button to add multiple».* Gesetzt an der Kante des mehrfachen Teils; ohne sie kein Knopf.
+     *
+     * @var list<int> Kanten-Ids — das erste aktive Glied gilt
+     */
+    #[Attribut(listOf: 'relation')]
+    public array $pick_field = [];
+
+    public const PICK_FIELD = 'pick_field';
+
     public static function allowedChildClasses(): array
     {
         return [];
