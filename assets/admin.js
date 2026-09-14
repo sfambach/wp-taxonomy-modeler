@@ -831,14 +831,24 @@
 			return;
 		}
 
-		// ⚠️ *Die Zeile, die selbst den Satzlink trägt — nicht eine Zeile einer Tabelle, die in einer Zelle steckt.*
+		// ⚠️ **Nur eine Zeile, deren eigener Satzlink in ihr selbst steht** (D-803) — *sein Befund: «dialog opens and if you click somewhere
+		// else it closes». Hier stand «eine Zelle der Zeile enthält irgendwo einen Satzlink», und die Seite selbst ist eine Tabelle: ihre
+		// rechte Zelle enthält die Satztabelle. Jeder Klick in einen Dialog der Vorschau sprang so zum ersten Satz und lud die Seite neu.*
+		var link  = null;
 		var zeile = ziel.closest( 'tr' );
 
-		while ( zeile && ! zeile.querySelector( ':scope > * a.taxmod-record-open' ) ) {
-			zeile = zeile.parentElement ? zeile.parentElement.closest( 'tr' ) : null;
+		while ( zeile && ! link ) {
+			link = Array.prototype.find.call( zeile.querySelectorAll( 'a.taxmod-record-open' ), function ( kandidat ) {
+				return kandidat.closest( 'tr' ) === zeile;
+			} ) || null;
+
+			if ( ! link ) {
+				zeile = zeile.parentElement ? zeile.parentElement.closest( 'tr' ) : null;
+			}
 		}
 
-		if ( ! zeile ) {
+		// *Ein Klick in einem Dialog gehört dem Dialog, nie der Zeile dahinter.*
+		if ( ! link || ziel.closest( '.taxmod-dialog' ) ) {
 			return;
 		}
 
@@ -847,7 +857,7 @@
 			return;
 		}
 
-		window.location.href = zeile.querySelector( ':scope > * a.taxmod-record-open' ).href;
+		window.location.href = link.href;
 	} );
 
 	// ⚠️ **Die Schreibweise der Elektronik** (D-792, Zeile 153) — sein Beispiel: *«user enter 1k and then all 1 k Ohm resistors will
@@ -997,6 +1007,39 @@
 	document.addEventListener( 'input', function ( ereignis ) {
 		if ( ereignis.target instanceof HTMLInputElement && ereignis.target.classList.contains( 'taxmod-record-quick' ) ) {
 			trefferZeigen( ereignis.target );
+		}
+	} );
+
+	// ⚠️ **Ein Satz im Dialog gewählt: er steht im Öffner, und der Dialog geht zu** (D-803) — *sein Befund: «if you select a leave it closes
+	// but does not select the leave for the item at least it does not show up». Der Auswahlknopf war gesetzt, aber nichts zeigte ihn;
+	// gespeichert wird er weiter mit der Seite.*
+	document.addEventListener( 'change', function ( ereignis ) {
+		var knopf = ereignis.target;
+
+		if ( ! ( knopf instanceof HTMLInputElement ) || knopf.type !== 'radio' || ! knopf.closest( '.taxmod-record-tree' ) ) {
+			return;
+		}
+
+		var wahl    = knopf.closest( '.taxmod-record-pick' ) || knopf.closest( '.taxmod-chooser' );
+		var eintrag = knopf.closest( '.taxmod-record-choice' );
+		var oeffner = wahl ? wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' ) : null;
+		var kopf    = wahl ? wahl.querySelector( '.taxmod-chooser-current' ) : null;
+		var wort    = eintrag ? eintrag.textContent.trim() : '';
+
+		if ( oeffner ) {
+			oeffner.textContent = wort === '' ? '—' : wort;
+			oeffner.className = 'button taxmod-record-dialog-open';
+		}
+
+		if ( kopf ) {
+			kopf.textContent = wort === '' ? '—' : wort;
+		}
+
+		var schalter = wahl ? wahl.querySelector( '.taxmod-dialog-switch' ) : null;
+
+		if ( schalter ) {
+			schalter.checked = false;
+			schalter.focus();
 		}
 	} );
 
