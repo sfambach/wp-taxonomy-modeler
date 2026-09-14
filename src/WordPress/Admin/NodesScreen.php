@@ -5701,7 +5701,16 @@ final class NodesScreen
             $extra[self::MOVE_PENDING] = $this->movePendingAfterAct;
         }
 
-        wp_safe_redirect($this->backTo($stay, $extra));
+        // ⚠️ *Ist ein Satz in der Vorschau geöffnet, landet die Seite nach dem Akt wieder an seiner Eingabe (D-788) — sein Befund an der
+        // Stückliste: «add line … is reloading the page and losses the selected dataset». Gemessen blieb der Satz in der Adresse; ohne
+        // Anker sprang die Seite aber nach oben, weg von der Zeile, die gerade dazukam.*
+        $adresse = $this->backTo($stay, $extra);
+
+        if (str_contains($adresse, self::PREVIEW_RECORD . '=')) {
+            $adresse .= '#taxmod-preview-edit';
+        }
+
+        wp_safe_redirect($adresse);
         exit;
     }
 
