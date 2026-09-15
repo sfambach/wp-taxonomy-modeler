@@ -1209,6 +1209,46 @@ final class DataEntry
     }
 
     /**
+     * Einen **bestehenden** Satz als Teil an einen Halter hängen — hinten angehängt, wie ein neuer Teil ([D-833](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Gebraucht beim Umbau Stückliste → Revision: Platine, Revision, Positionen und die Betriebsspannung gab es schon; sie bekommen
+     * einen neuen Halter. {@see self::appendValue()} verweigert das zu Recht («a composed part is a record of its own»), und
+     * {@see self::createPart()} legt einen neuen an. Geprüft wie dort: die Kante hält eigene Sätze, und der Satz liegt am Ziel oder darunter.*
+     */
+    public function attachPart(int $recordId, int $relationId, int $partId): void
+    {
+        $record   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+        $relation = $this->relationOf($record, $relationId);
+        $target   = $this->nodes->byId($relation->toNodeId);
+        $part     = $this->records->find($partId) ?? throw NotYetStorable::noSuchRecord($partId);
+        $teilKnoten = $this->nodes->byId($part->nodeId);
+
+        if (! $this->ownsItsRecord($relation, $target) || ($teilKnoten->id !== $target->id && ! $teilKnoten->isDescendantOf($target))) {
+            throw NotYetStorable::thatIsNotAComposedPart($relation->name);
+        }
+
+        $verweis   = TypedValue::ofRecordReference($partId);
+        $hinterste = -1;
+
+        foreach ($this->valuesOn($recordId, $relationId, '') as $vorhanden) {
+            if ($vorhanden->value->reference === $partId) {
+                return;
+            }
+
+            $hinterste = max($hinterste, $vorhanden->position);
+        }
+
+        $this->changelog?->beginAct();
+
+        try {
+            $version = $this->records->putValue(RelationRecord::direct($recordId, $relationId, $verweis, '', $hinterste + 1));
+            $this->melden($recordId, 'record_value', 'part linked', null, $this->wertZustand($recordId, $relationId, '', $verweis), $version);
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
+    /**
      * Eine Teilzeile direkt **unter** einer bestehenden einfügen ([D-830](../../../docs/NewConcept/90-decision-log.md)) — am selben
      * Knoten und in derselben Art wie diese Zeile; die Zeilen dahinter rücken eine Stelle nach.
      *

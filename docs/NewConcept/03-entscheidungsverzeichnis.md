@@ -60,6 +60,8 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie sieht der Dialog der Satzauswahl aus? | [D-805](90-decision-log.md) — Baum der Knoten links, Liste der Sätze des gewählten Knotens rechts, Baum abschaltbar | ~~D-791~~ *(Schritt 1: Sätze als Blätter im Baum)* |
 | Wie zeigt die Tabelle ein Teil mit mehreren Sätzen (1..n)? | [D-825](90-decision-log.md) — nur die Anzahl der Sätze als Link auf den Satz der Zeile; ausgebreitet zeigt es `complex` | ~~D-801~~ *(eingeschachtelte Teiltabelle in der Zelle)* |
 | Wo steht «darunter einfügen» in einer Teilzeile? | [D-831](90-decision-log.md) — erst «+», dann der Mülleimer | ~~D-830~~ *(«+» hinter dem Mülleimer)* |
+| Wo steht der Link eines Projekts? | [D-836](90-decision-log.md) — am Projekt, immer die originale GitHub-Seite | ~~D-833~~ *(«Quelle» an der Revision)* |
+| Welche Art haben «Platinen» und «Revisionen»? | [D-837](90-decision-log.md) — Verweise auf Sätze (Aggregation); Positionen bleiben Komposition | ~~D-833~~, ~~D-834~~ *(«Komposition»)* |
 | Wann öffnet ein Klick einen Satz in der Vorschau? | [D-803](90-decision-log.md) — nur ein Klick in die eigene Satzzeile, nie aus einem Dialog; ein im Satzdialog gewählter Satz steht sofort im Öffner | ~~D-788~~ *(«eine Zelle enthält irgendwo einen Satzlink» — traf die ganze Seite)* |
 | Wie wählt man die Glieder einer Verweisliste (erlaubte Einheiten, `summary_fields`)? | [D-799](90-decision-log.md) — Liste der gewählten mit ▲/▼ und ✕, darunter ein Auswahlfeld mit «+» | ~~D-732~~ *(ein Haken je Kandidat)* |
 | Wo wird ein Datensatz bearbeitet? | [D-785](90-decision-log.md) — in der Vorschau oben; die Tabelle unten zeigt nur an, ihre Satznummer öffnet den Satz oben | ~~D-653~~ *(Bearbeiten und Speichern in der Zeile)* |
