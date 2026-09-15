@@ -603,11 +603,11 @@ final class Rendering implements Presets
     }
 
     /** Dieselbe Zeichnung, aber mit Knöpfen zum Hinzufügen und Entfernen von Teil-Zeilen (D-758); die Worte kommen vom Rand. */
-    public function withPartActs(string $add, string $remove, string $many = ''): static
+    public function withPartActs(string $add, string $remove, string $many = '', string $insert = ''): static
     {
         $kopie           = clone $this;
-        // *Dazu das Wort für «mehrere hinzufügen» (D-806).*
-        $kopie->partActs = ['add' => $add, 'remove' => $remove, 'many' => $many];
+        // *Dazu das Wort für «mehrere hinzufügen» (D-806) und für «darunter einfügen» (D-830).*
+        $kopie->partActs = ['add' => $add, 'remove' => $remove, 'many' => $many, 'insert' => $insert];
 
         return $kopie;
     }
@@ -6165,7 +6165,11 @@ final class Rendering implements Presets
             foreach ($teilIds as $teilId) {
                 $akte[] = $teilId === 0 ? '' : ControlMarkup::button(
                     new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId)
-                );
+                )
+                    // ⚠️ *Hinter dem Mülleimer ein «+», das direkt unter dieser Zeile eine gleicher Art einfügt (D-830).*
+                    . (($this->partActs['insert'] ?? '') === '' ? '' : ControlMarkup::button(
+                        new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'insert_part', $this->partActs['insert'], '', true, false, 'plus-alt2', $formId)
+                    ));
             }
 
             $halter = preg_match('/\[(\d+)\]$/', $fieldPrefix, $treffer) === 1 ? (int) $treffer[1] : 0;

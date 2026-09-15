@@ -1433,7 +1433,7 @@ final class NodesScreen
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
-                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'))->withRecordCreation(
+                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'))->withRecordCreation(
                     // ⚠️ *Ein neuer Satz entsteht auf der Seite seines Knotens (D-792, Zeile 154) — ohne Filter, Seite und geöffneten Satz von hier.*
                     fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
                     __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod')
@@ -3318,6 +3318,22 @@ final class NodesScreen
         }
     }
 
+    /**
+     * Speichern, dann unter dieser Teilzeile eine gleicher Art einfügen ([D-830](../../../docs/NewConcept/90-decision-log.md)) — der Knopf
+     * nennt `do[<Teil>]`. *Halter und Kante werden nicht geglaubt, sondern nachgeschlagen: ein Teil, den niemand hält, fügt nichts ein.*
+     */
+    private function insertedPart(int $nodeId): void
+    {
+        $this->saveRecord($nodeId);
+
+        $teil   = absint($this->actKey());
+        $halter = $teil === 0 ? null : ($this->data->holdersOf([$teil])[$teil] ?? null);
+
+        if ($halter !== null) {
+            $this->data->createPartAfter($halter->recordId, $halter->relationId, $teil);
+        }
+    }
+
     /** Der Schlüssel, den ein Knopf in `do[<Schlüssel>]` nennt — leer, wo `do` ein Wort ist. */
     private function actKey(): string
     {
@@ -4070,7 +4086,7 @@ final class NodesScreen
         ]);
 
         // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
-        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'))->withJumps(
+        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'))->withJumps(
             // ⚠️ *Ein Sprung ist ein Aufruf des Zielknotens mit gesetztem Filter und ab Seite 1 (D-769).*
             fn (int $ziel, int $feld, string $wert): string => $this->backTo($ziel, [
                 self::RECORD_FILTER => self::encodeFilter([$feld => $wert]),
@@ -5813,6 +5829,8 @@ final class NodesScreen
                 // ⚠️ *Mehrere Zeilen auf einmal, je gewähltem Satz eine (D-806).*
                 'add_parts'      => $this->addedParts($id),
                 'remove_part'    => $this->removedPart($id),
+                // ⚠️ *Unter dieser Zeile eine gleicher Art einfügen (D-830).*
+                'insert_part'    => $this->insertedPart($id),
                 'delete_record'  => $this->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 ),

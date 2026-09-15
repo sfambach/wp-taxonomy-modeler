@@ -1172,6 +1172,27 @@ $zweiTeile = $teilIds();
 check('bei `0..*` hängt «Add row» einen zweiten Teil hinten an, und jede Zeile hat ihr Entfernen', count($zweiTeile) === 2 && $zweiTeile[0] === $ersterTeil && substr_count(seite($satzKnoten->id), 'value="remove_part"') === 2, implode(',', $zweiTeile) . ' · ' . letzteMeldung());
 abschicken(['do' => [(string) ($zweiTeile[1] ?? 0) => 'remove_part'], 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('«Remove this row» nimmt genau diesen Teil weg; der erste bleibt mit seinem Wert', $teilIds() === [$ersterTeil] && (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$ersterTeil} AND relation_id = {$gasse->id}") === '__es Gasse 7', implode(',', $teilIds()) . ' · ' . letzteMeldung());
+// ⚠️ **«+» je Zeile fügt direkt darunter ein** ([D-830](../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «mach doch gleich mal ein plus hinter
+// jede zeile … so dass man eine zeile einfügen kann». Eine zweite Zeile hinten, dann unter der ersten einfügen: die neue steht zwischen beiden,
+// in der Art der ersten; danach beide Zusatzzeilen wieder weg.*
+abschicken(['do' => [$satzId . '-' . $satzAnschrift->id => 'add_part'], 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+$hinten = $teilIds()[1] ?? 0;
+check('jede Zeile trägt ihr «+» zum Einfügen darunter (D-830)', substr_count(seite($satzKnoten->id), 'value="insert_part"') === 2, (string) substr_count(seite($satzKnoten->id), 'value="insert_part"'));
+abschicken(['do' => [(string) $ersterTeil => 'insert_part'], 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+$dreiTeile = $teilIds();
+$eingefuegt = $dreiTeile[1] ?? 0;
+check(
+    '«+» fügt direkt unter der Zeile ein, in ihrer Art (D-830)',
+    count($dreiTeile) === 3 && $dreiTeile[0] === $ersterTeil && $dreiTeile[2] === $hinten && $eingefuegt > 0
+        && $wpdb->get_var("SELECT record_type FROM {$p}node_records WHERE id = {$eingefuegt}") === $wpdb->get_var("SELECT record_type FROM {$p}node_records WHERE id = {$ersterTeil}"),
+    implode(',', $dreiTeile) . ' · ' . letzteMeldung()
+);
+foreach ([$eingefuegt, $hinten] as $zusatz) {
+    if ($zusatz > 0) {
+        abschicken(['do' => [(string) $zusatz => 'remove_part'], 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $satzId, 'taxmod_value' => [(string) $satzId => [(string) $satzFeld->id => '42']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
+    }
+}
+check('und danach steht wieder nur der erste Teil', $teilIds() === [$ersterTeil], implode(',', $teilIds()));
 $seiteSatz = seite($satzKnoten->id, null, $satzId);
 $hinterWaehler = preg_split('/name="record_type" form="taxmod-preview-record-' . $satzId . '"/', $seiteSatz)[1] ?? '';
 check('die Vorschau zeichnet für den geöffneten Satz einen Wähler für die Art, und er steht auf der Art des Satzes (D-785)', (bool) preg_match('/<select name="record_type" form="taxmod-preview-record-' . $satzId . '"/', $seiteSatz) && (bool) preg_match('/<option value="' . RecordType::Example->value . '" selected/', explode('</select>', $hinterWaehler)[0]));

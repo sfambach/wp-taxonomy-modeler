@@ -1209,6 +1209,64 @@ final class DataEntry
     }
 
     /**
+     * Eine Teilzeile direkt **unter** einer bestehenden einfügen ([D-830](../../../docs/NewConcept/90-decision-log.md)) — am selben
+     * Knoten und in derselben Art wie diese Zeile; die Zeilen dahinter rücken eine Stelle nach.
+     *
+     * ⚠️ *Sein Wort: «mach doch gleich mal ein plus hinter jede zeile von der postions tabelle so dass man eine zeile einfügen kann (ist
+     * automatisch gleiche typ (entry ... ) wie die zeile». Angelegt wird über {@see self::createPart()} — dieselbe Prüfung, derselbe
+     * Vorgabesatz (D-827); danach nur die Stellen der Zeiger neu gezählt, alles in einer Änderungsgruppe.*
+     */
+    public function createPartAfter(int $recordId, int $relationId, int $afterPartId): NodeRecord
+    {
+        $nach = $this->records->find($afterPartId) ?? throw NotYetStorable::noSuchRecord($afterPartId);
+
+        $this->changelog?->beginAct();
+
+        try {
+            $teil = $this->createPart($recordId, $relationId, $nach->nodeId);
+
+            if ($teil->recordType !== $nach->recordType) {
+                $this->retypeRecord($teil->id, $nach->recordType);
+                $teil = $this->records->find($teil->id) ?? $teil;
+            }
+
+            $zeiger = $this->valuesOn($recordId, $relationId, '');
+            usort($zeiger, static fn (RelationRecord $a, RelationRecord $b): int => [$a->position, $a->id] <=> [$b->position, $b->id]);
+
+            $reihe = [];
+
+            foreach ($zeiger as $zeile) {
+                if ($zeile->value->reference === $teil->id) {
+                    continue;
+                }
+
+                $reihe[] = $zeile;
+
+                if ($zeile->value->reference === $afterPartId) {
+                    foreach ($zeiger as $neu) {
+                        if ($neu->value->reference === $teil->id) {
+                            $reihe[] = $neu;
+                        }
+                    }
+                }
+            }
+
+            foreach ($reihe as $stelle => $zeile) {
+                if ($zeile->position === $stelle) {
+                    continue;
+                }
+
+                $version = $this->records->putValue(new RelationRecord($zeile->recordId, $zeile->relationId, $zeile->locale, $zeile->value, $zeile->id, $stelle));
+                $this->melden($recordId, 'record_value', 'part moved', null, $this->wertZustand($recordId, $relationId, $zeile->locale, $zeile->value), $version);
+            }
+
+            return $teil;
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
+    /**
      * Eine neue Teilzeile übernimmt die Werte aus dem gefüllten `default`-Satz ihres Knotens ([D-827](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Sein Wort: «3 stimmt» — auf die Frage, ob neue Zeilen die Anzahl 1 bekommen. Nicht am Feldnamen, sondern am Vorgabesatz
