@@ -6201,9 +6201,13 @@ final class Rendering implements Presets
                     }
                 }
 
-                $danach = '<div class="taxmod-part-add">' . ControlMarkup::button(
+                // ⚠️ **«Add row» nur, solange es keine Zeile gibt** ([D-832](../../../docs/NewConcept/90-decision-log.md)) — *sein Bild mit zwei «+»:
+                // «zweimal plus». Jede Zeile trägt ihr eigenes «+» (D-830); unter der letzten eingefügt ist dasselbe wie hinten angehängt.
+                // Ohne Zeile gäbe es sonst keinen Weg zur ersten.*
+                $zeilenDa = array_filter($teilIds, static fn (int $id): bool => $id !== 0) !== [];
+                $danach   = '<div class="taxmod-part-add">' . ($zeilenDa && ($this->partActs['insert'] ?? '') !== '' ? '' : ControlMarkup::button(
                     new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . ']', 'add_part', $this->partActs['add'], '', true, false, 'plus-alt2', $formId)
-                ) . $mehrere . '</div>';
+                )) . $mehrere . '</div>';
             }
         }
 

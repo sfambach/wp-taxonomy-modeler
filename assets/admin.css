@@ -2133,7 +2133,26 @@ fieldset.taxmod-read-only {
  * rechts daneben in derselben Zeile. */
 .taxmod-preview-side .taxmod-node > .taxmod-complex-block:last-child > .taxmod-part-add {
     float: left;
-    margin: .2em 1.5em 0 0;
+    /* ⚠️ Derselbe Abstand oben wie die Akte daneben (sein Bild: «alignment stimmt noch nicht») — hier stand `.2em`, die Akte `.6em`. */
+    margin: .6em 1.5em 0 0;
+}
+
+/* *Alles in der Knopfzeile gleich hoch und mittig: Knöpfe und die Auswahl der Art.* */
+.taxmod-part-add .button,
+.taxmod-preview-acts .button,
+.taxmod-preview-acts select {
+    min-height: 30px;
+    box-sizing: border-box;
+    vertical-align: middle;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.taxmod-preview-acts > label,
+.taxmod-part-add > .taxmod-chooser {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
 }
 
 .taxmod-complex-link > summary {
