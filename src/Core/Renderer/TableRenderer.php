@@ -219,7 +219,7 @@ final class TableRenderer extends RendererNode
 
         foreach (array_keys($spalten) as $relationId) {
             $feld     = $nachKante[$relationId] ?? null;
-            $zellen[] = ['taxmod-table-cell', $feld?->result->markup ?? ''];
+            $zellen[] = ['taxmod-table-cell', $feld !== null && self::zaehltNur($feld) ? $this->anzahl($feld, $context, $nummer) : ($feld?->result->markup ?? '')];
         }
 
         if ($mitActs) {
@@ -227,6 +227,35 @@ final class TableRenderer extends RendererNode
         }
 
         return $zellen;
+    }
+
+    /**
+     * Ob ein Feld in der Tabelle nur als Anzahl steht: ein Teil, das mehrere Sätze tragen darf ([D-825](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «wenn wir eine 1..n beziehung haben sollen hier nur die anzahl Sätze mit link angezeigt werden» — und «für komplexe
+     * anzeigen haben wir den komplex renderer». Nur Kompositionen mit eigenen Sätzen; eine Einstellung mit mehreren Werten bleibt, wie sie ist.*
+     */
+    private static function zaehltNur(RenderedField $feld): bool
+    {
+        // ⚠️ *Nur wo das Feld hier nicht bearbeitet wird: trägt es «Entfernen» je Zeile oder «Add row», ist es eine Eingabe (die Vorschau
+        // ohne gewählten Behälter ist eine Tabelle, D-748) — gemessen: sonst verlor sie ihre Teilzeilen samt Knöpfen.*
+        return $feld->type === null
+            && $feld->relation->kind === \Taxmod\Core\Model\RelationKind::Composition
+            && ! $feld->relation->isSetting()
+            && $feld->relation->multiplicity->allowsMany()
+            && $feld->rowActs === []
+            && $feld->after === '';
+    }
+
+    /** Die Anzahl der Sätze eines 1..n-Teils, mit dem Link der Zeile, wo einer mitkommt (D-825). */
+    private function anzahl(RenderedField $feld, RenderContext $context, int|string $nummer): string
+    {
+        $zahl = (string) count(array_filter($feld->rows, static fn ($zeile): bool => ($zeile['id'] ?? 1) !== 0));
+        $link = (string) ($context->surroundings->rowLinks[$nummer] ?? '');
+
+        return $link === ''
+            ? '<span class="taxmod-part-count">' . $zahl . '</span>'
+            : '<a class="taxmod-part-count" href="' . RenderResult::escape($link) . '">' . $zahl . '</a>';
     }
 
     /**

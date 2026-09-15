@@ -242,6 +242,13 @@ final class Surroundings
          * @var array{ok?: string, cancel?: string}
          */
         public readonly array $dialogWords = [],
+        /**
+         * Je Zeile der Tabelle die Adresse, die ihren Satz öffnet — der Link hinter der Anzahl eines 1..n-Teils ([D-825](../../../docs/NewConcept/90-decision-log.md)).
+         * Gleich lang wie {@see self::$records}; leer heisst: die Zahl steht ohne Link.
+         *
+         * @var list<string>
+         */
+        public readonly array $rowLinks = [],
     ) {
     }
 

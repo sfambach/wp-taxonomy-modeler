@@ -3953,6 +3953,8 @@ final class NodesScreen
                 'id'       => $record->id,
                 'values'   => $held,
                 'editable' => false,
+                // ⚠️ *Das Ziel hinter der Anzahl eines 1..n-Teils in der Tabelle (D-825) — derselbe Weg wie die Satznummer.*
+                'link'     => $record->recordType === RecordType::Settings ? '' : $this->backTo($selected->id, [self::PREVIEW_RECORD => (string) $record->id]) . '#taxmod-preview-edit',
                 'lead'     => [
                     __('Record', 'taxmod')     => $record->recordType === RecordType::Settings
                         ? $nummer

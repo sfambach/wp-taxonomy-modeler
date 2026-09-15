@@ -600,7 +600,7 @@ details.taxmod-page-block > summary {
     pointer-events: none;
 }
 
-/* ⚠️ Unsichtbar heisst hier auch: ohne Grösse (D-814, sein Bild «to many bars»). Gemessen: die unsichtbaren Kästen der Spaltenköpfe
+/* ⚠️ Unsichtbar heisst hier auch: ohne Grösse (D-823, sein Bild «to many bars»). Gemessen: die unsichtbaren Kästen der Spaltenköpfe
  * ragten bis 2443px über den rechten Rand, und die Seite bekam davon ihren eigenen waagerechten Balken. Wie `screen-reader-text` — die
  * Vorlesehilfe liest ihn weiter; erst beim Zeigen bekommt er seine Breite. */
 .taxmod-hint:not(:hover):not(:focus):not(:focus-within) .taxmod-hint-text {
@@ -2083,7 +2083,7 @@ fieldset.taxmod-read-only {
 }
 
 /* ⚠️ Die Tabelle eines Teils rollt waagerecht in sich (sein Bild der Stückliste: «Da fehlt noch ne scrollbar im complex renderer»).
- * `relative`, damit Vorlesetexte darin mit abgeschnitten werden und die Seite nicht verbreitern (D-814). */
+ * `relative`, damit Vorlesetexte darin mit abgeschnitten werden und die Seite nicht verbreitern (D-823). */
 .taxmod-complex-block > .taxmod-table {
     display: block;
     max-width: 100%;

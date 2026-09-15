@@ -348,7 +348,7 @@ final class SettingsEditor
         $geltend = $this->resolved($node, $edge)[$erklaert->name] ?? null;
 
         // ⚠️ *Und am Knoten ohne eigene Zeile ebenso: «jeder Knoten hat seinen Renderer» ([D-808](../../../docs/NewConcept/90-decision-log.md),
-        // [D-814](../../../docs/NewConcept/90-decision-log.md)) heisst eine Zeile, auch wenn sie der Vorgabe gleicht.*
+        // [D-823](../../../docs/NewConcept/90-decision-log.md)) heisst eine Zeile, auch wenn sie der Vorgabe gleicht.*
         if ($klasse !== null && ($geltend?->value->text ?? null) === $name && ! ($holdHere && ($edge !== null ? $anKante === [] : $amKnoten === []))) {
             return false;
         }

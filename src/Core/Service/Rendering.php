@@ -2041,6 +2041,7 @@ final class Rendering implements Presets
         $gezeichnet = [];
         $vorne      = [];
         $akte       = [];
+        $links      = [];
 
         // ⚠️ **Die Teile aller Sätze, vor dem Abstieg geladen** ([D-577](../../../docs/NewConcept/90-decision-log.md),
         // D-159, `CD-7`): *ein zusammengesetzter Wert ist ein eigener Satz, auf den der Besitzer zeigt — je Stufe eine Abfrage.*
@@ -2111,6 +2112,8 @@ final class Rendering implements Presets
 
             $vorne[] = $row['lead'];
             $akte[]  = ControlMarkup::actsForm($formId, $row['submits'], $row['acts']);
+            // ⚠️ *Wohin die Anzahl eines 1..n-Teils führt: der Satz der Zeile, geöffnet an seiner Eingabe (D-825).*
+            $links[] = (string) ($row['link'] ?? '');
         }
 
         $tabelle = $this->renderers->byName(TableRenderer::NAME)->render(
@@ -2123,7 +2126,8 @@ final class Rendering implements Presets
                 surroundings: new Surroundings(
                     records: $gezeichnet,
                     rowLead: $vorne,
-                    rowActs: $akte
+                    rowActs: $akte,
+                    rowLinks: $links
                 ),
                 // ⚠️ **Sonst käme der Umschalter nie an** (TASK-063). *Hier stand gar keine Angabe —
                 // derselbe leere Zeichenkontext, den er am Kompaktrenderer gemeldet hat («compact mit
