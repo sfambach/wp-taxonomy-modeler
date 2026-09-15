@@ -3,6 +3,7 @@
 namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Exception\ConcurrentChange;
+use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\Setting\SettingsObject;
 use Taxmod\Core\Model\Setting\SettingsValue;
 use Taxmod\Core\Repository\SettingsRepository;
@@ -103,6 +104,17 @@ final class InMemorySettings implements SettingsRepository
         }
 
         return $aus;
+    }
+
+    public function valuesAtRelations(array $relationIds): array
+    {
+        $gesucht = array_flip($relationIds);
+
+        return array_values(array_filter(
+            $this->ordered(),
+            static fn (SettingsValue $value): bool => ($value->relationId !== null && isset($gesucht[$value->relationId]))
+                || ($value->value->referenceSpace === ReferenceSpace::Relation && $value->value->reference !== null && isset($gesucht[$value->value->reference]))
+        ));
     }
 
     public function valuesNamingObjects(array $objectIds): array

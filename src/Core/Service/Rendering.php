@@ -540,6 +540,50 @@ final class Rendering implements Presets
         return $aus;
     }
 
+    /** @var array<int, NodeRecord|null> Sätze, einmal je Zeichner gelesen — auch die, die es nicht gibt. */
+    private array $gelesenSaetze = [];
+
+    /** @var array<int, list<\Taxmod\Core\Model\RelationRecord>> Wertzeilen je Satz, einmal je Zeichner gelesen. */
+    private array $gelesenSatzWerte = [];
+
+    /**
+     * Sätze und ihre Wertzeilen — nur die noch nicht gelesenen gehen an die Datenbank, in je einer Abfrage.
+     *
+     * ⚠️ *Gemessen am 2026-09-15: die Satztabelle fragte die Zusammenfassung **je Zeile** — 103 Satz- und 103 Wertabfragen auf fünf
+     * Seiten ([D-814](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param  list<int>|array<int> $ids
+     * @return array{0: array<int, NodeRecord>, 1: array<int, list<\Taxmod\Core\Model\RelationRecord>>} Sätze nach Id; Werte je angefragter Id, notfalls leer.
+     */
+    private function gemerkteSaetze(array $ids): array
+    {
+        $ids    = array_values(array_unique(array_map(intval(...), array_filter($ids))));
+        $fehlen = array_values(array_filter($ids, fn (int $id): bool => ! array_key_exists($id, $this->gelesenSaetze)));
+
+        if ($fehlen !== [] && $this->records !== null) {
+            $saetze = $this->records->byIds($fehlen);
+            $werte  = $this->records->valuesOfMany($fehlen);
+
+            foreach ($fehlen as $id) {
+                $this->gelesenSaetze[$id]    = $saetze[$id] ?? null;
+                $this->gelesenSatzWerte[$id] = $werte[$id] ?? [];
+            }
+        }
+
+        $saetze = [];
+        $werte  = [];
+
+        foreach ($ids as $id) {
+            if (($this->gelesenSaetze[$id] ?? null) !== null) {
+                $saetze[$id] = $this->gelesenSaetze[$id];
+            }
+
+            $werte[$id] = $this->gelesenSatzWerte[$id] ?? [];
+        }
+
+        return [$saetze, $werte];
+    }
+
     /** @var array<string, array<int, array<string, mixed>>> Zeilen des Baumwählers, nach Wurzel und Ausnahmen. */
     private array $gelesenZeilen = [];
 
@@ -1021,6 +1065,9 @@ final class Rendering implements Presets
     private function vonDenKnoten(array $nodes): array
     {
         $aus = [];
+
+        // ⚠️ *Alle Knoten in einem Zug vorladen — sonst fragt `forNode()` je Knoten einzeln: gemessen ~320 Abfragen je Seite ([D-814](../../../docs/NewConcept/90-decision-log.md)).*
+        $this->resolver?->preload(array_values($nodes));
 
         foreach ($nodes as $node) {
             $aus[$node->id] = $this->withModelValues([], $node);
@@ -1956,6 +2003,40 @@ final class Rendering implements Presets
         // D-159, `CD-7`): *ein zusammengesetzter Wert ist ein eigener Satz, auf den der Besitzer zeigt — je Stufe eine Abfrage.*
         $unterbau = $this->subgraph($relations, self::TIEFSTENS);
         $teile    = $this->partsOfRecords(array_map(static fn (array $row): int => $row['id'], $rows), $relations, $unterbau);
+
+        // ⚠️ *Die Sätze, auf die irgendeine Zeile zeigt, und eine Stufe tiefer, samt ihrer Knoten — in je einer Abfrage vor den Zeilen;
+        // sonst liest die Zusammenfassung je Zeile nach ([D-814](../../../docs/NewConcept/90-decision-log.md)).*
+        $verwiesen = [];
+        $knoten    = [];
+
+        foreach ($rows as $row) {
+            foreach ($row['values'] as $wert) {
+                if ($wert instanceof TypedValue && $wert->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
+                    $verwiesen[] = $wert->reference;
+                }
+            }
+        }
+
+        for ($stufe = 0; $stufe < 2 && $verwiesen !== []; $stufe++) {
+            [, $werteVerwiesen] = $this->gemerkteSaetze($verwiesen);
+            $verwiesen          = [];
+
+            foreach ($werteVerwiesen as $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    if ($zeile->value->reference === null) {
+                        continue;
+                    }
+
+                    if ($zeile->value->referenceSpace === ReferenceSpace::Record) {
+                        $verwiesen[] = $zeile->value->reference;
+                    } elseif ($zeile->value->referenceSpace === ReferenceSpace::Node) {
+                        $knoten[] = $zeile->value->reference;
+                    }
+                }
+            }
+        }
+
+        $this->gemerkteKnoten($knoten);
 
         foreach ($rows as $row) {
             $formId = 'taxmod-record-' . $row['id'];
@@ -3757,8 +3838,7 @@ final class Rendering implements Presets
             return $leer;
         }
 
-        $werte  = $this->records->valuesOfMany($satzIds);
-        $saetze = $this->records->byIds($satzIds);
+        [$saetze, $werte] = $this->gemerkteSaetze($satzIds);
 
         // ⚠️ **Ein Verweis in der Zusammenfassung bekommt selbst sein Wort — eine Stufe tief.** *Sein Wort: «ist doch ein Verweis auf
         // den Datensatz, eigentlich sollte da Microsoft Corp. DOS 4.0 stehen». Ein Knotenverweis heisst wie sein Knoten, ein
@@ -3784,8 +3864,9 @@ final class Rendering implements Presets
         $innereSaetze = array_values(array_diff(array_keys($innereSaetze), $satzIds));
 
         if ($innereSaetze !== []) {
-            $saetze += $this->records->byIds($innereSaetze);
-            $werte  += $this->records->valuesOfMany($innereSaetze);
+            [$innereSaetzeGelesen, $innereWerte] = $this->gemerkteSaetze($innereSaetze);
+            $saetze += $innereSaetzeGelesen;
+            $werte  += $innereWerte;
         }
 
         $knotenNamen = [];

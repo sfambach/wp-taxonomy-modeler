@@ -324,13 +324,13 @@ try {
         'admin.js schliesst weiterhin jeden Waehldialog'
     );
 
-    // ⚠️ *Die Gegenprobe, sonst waere die Zusage die Haelfte: der Anlege-Dialog hat **keinen** Knopf
-    // innen — auf sein Wort «tree chooser ist ein standard dialog, sollte keine zusaetzliche Funktion
-    // haben» — und der muss sich beim Waehlen weiter schliessen.*
+    // ⚠️ **Geändert am 2026-09-15 mit [D-804](../../docs/NewConcept/90-decision-log.md), sichtbar (`PR-9`):** *hier stand die
+    // Gegenprobe «der Anlege-Dialog hat **keinen** Knopf innen und schliesst beim Waehlen». D-804 gibt **jedem** Dialog
+    // «OK» und «Abbrechen» — «this is a general rule for all dialogs». Die Zusage lautet jetzt: jeder Dialog hat seinen Fuss.*
     check(
-        'der Anlege-Dialog hat keinen eigenen Knopf und schliesst weiter',
+        'jeder Dialog hat seinen Fuss, auch der Anlege-Dialog (D-804)',
         str_contains($markup, 'name="field_target"')
-            && substr_count($markup, 'taxmod-dialog-foot') < substr_count($markup, 'taxmod-dialog-panel'),
+            && substr_count($markup, 'taxmod-dialog-foot') === substr_count($markup, 'taxmod-dialog-panel'),
         substr_count($markup, 'taxmod-dialog-foot') . ' Fuesse an '
             . substr_count($markup, 'taxmod-dialog-panel') . ' Dialogen'
     );

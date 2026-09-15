@@ -146,6 +146,27 @@ final class WpdbSettingsRepository implements SettingsRepository
         return array_map($this->hydrate(...), $rows);
     }
 
+    public function valuesAtRelations(array $relationIds): array
+    {
+        global $wpdb;
+
+        if ($relationIds === []) {
+            return [];
+        }
+
+        $ids   = array_map(intval(...), $relationIds);
+        $slots = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = Query::rows('Zeilen an Kanten lesen', $wpdb->prepare(
+            'SELECT ' . self::VALUE_COLUMNS . ' FROM ' . Schema::table('settings_value')
+            . " WHERE relation_id IN ({$slots}) OR wert_kante_id IN ({$slots}) ORDER BY id",
+            ...$ids,
+            ...$ids
+        ));
+
+        return array_map($this->hydrate(...), $rows);
+    }
+
     public function valuesNamingObjects(array $objectIds): array
     {
         global $wpdb;

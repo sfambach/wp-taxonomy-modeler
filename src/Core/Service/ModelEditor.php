@@ -935,7 +935,14 @@ final class ModelEditor
         // *Ein Objekt, das danach keine lebende Zeile mehr nennt (der Renderer des Knotens), geht mit — sonst stünde es verwaist da.*
         $objekte = [];
 
-        foreach ($this->settings === null ? [] : [...array_merge([], ...array_values($this->settings->valuesOfNodes($ids))), ...$this->settings->valuesReferring($ids)] as $zeile) {
+        // ⚠️ *Und die Zeilen an **fremden** Knoten, deren Kante mit dem Unterbaum geht — sonst verweigert `taxmod_sv_relation` das Löschen der Kante, still ([D-819](../../../docs/NewConcept/90-decision-log.md)).*
+        $zeilen = [];
+
+        foreach ($this->settings === null ? [] : [...array_merge([], ...array_values($this->settings->valuesOfNodes($ids))), ...$this->settings->valuesReferring($ids), ...$this->settings->valuesAtRelations($relations)] as $zeile) {
+            $zeilen[$zeile->id] = $zeile;
+        }
+
+        foreach ($zeilen as $zeile) {
             $this->settings->forgetValue($zeile->id);
 
             if ($zeile->valueObjectId !== null) {

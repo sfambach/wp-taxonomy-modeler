@@ -97,14 +97,17 @@ final class TreeRenderer extends RendererNode
             // WICHTIG: Die Tiefe steht am Element, nicht nur in der Einrueckung. Ein Skript, das
             // einen Ast auf- und zuklappt, muss wissen, wo er aufhoert -- und im Dokument ist der
             // Baum flach.
+            // ⚠️ *Die gleichbleibende Gestalt steht im Stylesheet (`.taxmod-tree-row`, `-indent`, `-cell`); inline bleibt nur, was
+            // je Zeile anders ist ([D-816](../../../docs/NewConcept/90-decision-log.md) — gemessen 212 KB allein für den Zeilenstil).
+            // Das Skript schaltet `style.display` weiter selbst, und ein Inline-Wert schlägt die Klasse.*
+            $stil = array_filter([$versteckt ? 'display:none' : '', $row->highlighted ? 'background:#e8f0fb' : '']);
+
             $markup .= '<div class="taxmod-tree-row" data-depth="' . (int) $row->depth . '"'
-                . ' style="display:' . ($versteckt ? 'none' : 'flex') . ';align-items:center;'
-                . 'padding:1px 6px;border-bottom:1px solid #f0f0f1'
-                . ($row->highlighted ? ';background:#e8f0fb' : '') . '">'
-                . '<span style="display:inline-block;width:'
-                . number_format($row->depth * self::STEP, 2, '.', '') . 'em;flex:none"></span>'
+                . ($stil === [] ? '' : ' style="' . implode(';', $stil) . '"') . '>'
+                . '<span class="taxmod-tree-indent" style="width:'
+                . number_format($row->depth * self::STEP, 2, '.', '') . 'em"></span>'
                 . $this->fold($row)
-                . '<span style="flex:1;min-width:0">' . $row->cell->markup . '</span>'
+                . '<span class="taxmod-tree-cell">' . $row->cell->markup . '</span>'
                 . '</div>';
         }
 
@@ -143,23 +146,19 @@ final class TreeRenderer extends RendererNode
      */
     private function fold(DrawnRow $row): string
     {
-        $box = 'display:inline-block;width:1.4em;flex:none;text-align:center';
-
         if (! $row->hasChildren || $row->toggle === null) {
-            return '<span style="' . $box . '"></span>';
+            return '<span class="taxmod-tree-fold-box"></span>';
         }
 
         // WICHTIG: '#' heisst "klappt im Browser". Im Dialog kann der Klapper kein Link sein --
         // ein Neuaufbau schliesst den Dialog, weil er von einer angehakten Checkbox offengehalten
         // wird. Auf der Seite bleibt es ein echter Link und braucht kein Skript.
         if ($row->toggle === '#') {
-            return '<a href="#" class="taxmod-tree-fold" data-fold="' . ($row->collapsed ? 'zu' : 'auf') . '"'
-                . ' style="' . $box . ';text-decoration:none;color:inherit">'
+            return '<a href="#" class="taxmod-tree-fold taxmod-tree-fold-box" data-fold="' . ($row->collapsed ? 'zu' : 'auf') . '">'
                 . ($row->collapsed ? '&#9656;' : '&#9662;') . '</a>';
         }
 
-        return '<a href="' . RenderResult::escape($row->toggle) . '"'
-            . ' style="' . $box . ';text-decoration:none;color:inherit">'
+        return '<a href="' . RenderResult::escape($row->toggle) . '" class="taxmod-tree-fold-box">'
             . ($row->collapsed ? '&#9656;' : '&#9662;') . '</a>';
     }
 }

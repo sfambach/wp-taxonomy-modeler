@@ -325,8 +325,10 @@ $dialogZeilen = static function (string $markup, string $feld): array {
         // ⚠️ *Am **Anfang** der Zeile und nicht irgendwo darin: die innere Zelle traegt selbst ein
         // `display:flex`, und die erste Fassung dieser Prueferei las genau die — jede Zeile war
         // damit «sichtbar», auch die ausgeblendete.*
+        // ⚠️ **Geändert am 2026-09-15 mit [D-816](../../docs/NewConcept/90-decision-log.md), sichtbar:** *die Zeile trägt ihr `display:flex`
+        // seither in der Klasse; inline steht nur noch `display:none`, wo sie verborgen ist. Sichtbar heisst also: am Anfang kein `display:none`.*
         $zeilen[(int) $wer[1]] = [
-            'sichtbar' => preg_match('/^ data-depth="\d+" style="display:flex;/', $zeile) === 1,
+            'sichtbar' => preg_match('/^ data-depth="\d+"(?: style="(?![^"]*display:none)[^"]*")?>/', $zeile) === 1,
             'klapp'    => preg_match('/data-fold="(auf|zu)"/', $zeile, $k) === 1 ? $k[1] : '',
         ];
     }

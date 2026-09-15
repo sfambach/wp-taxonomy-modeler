@@ -1103,7 +1103,8 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('&#9656;', $tree->markup, 'collapsed shows the closed triangle');
 
         // A leaf keeps the space, or depth stops being readable.
-        self::assertSame(2, substr_count($tree->markup, 'width:1.4em;flex:none'));
+        // ⚠️ *Geändert am 2026-09-15 mit D-816, sichtbar: die Breite steht seither in der Klasse und nicht mehr inline.*
+        self::assertSame(2, substr_count($tree->markup, 'taxmod-tree-fold-box'));
     }
 
     #[Test]

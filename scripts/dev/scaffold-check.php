@@ -162,9 +162,13 @@ if ($still !== null) {
     $relations->purgeRelationsTouching($still->id);
     $nodes->purgeSubtree($still);
 }
-$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (SELECT id FROM (SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "__sc%") x)');
-$wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__sc%"');
-$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__sc%"');
+// ⚠️ **`_` ist in `LIKE` ein Platzhalter und muss maskiert sein, wie in der Schleife oben.** *Unmaskiert traf
+// `"__sc%"` am 2026-09-15 den Knoten «Geschlecht» des Eigentümers (G-e-**sc**…): der Wächter meldete ihn als
+// Rückstand, und die beiden Zeilen darüber hätten seine Kanten und Buchzeilen gelöscht — nur die Klammer
+// hat das zurückgedreht.*
+$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (SELECT id FROM (SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "\\_\\_sc%") x)');
+$wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%\\_\\_sc%"');
+$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "\\_\\_sc%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 
 $colourNow = $colour === null ? null : $nodes->byId($colour->id);

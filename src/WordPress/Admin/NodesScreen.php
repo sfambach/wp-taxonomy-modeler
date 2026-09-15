@@ -283,6 +283,12 @@ final class NodesScreen
 
     public function render(): string
     {
+        // ⚠️ *Ein Zeichenlauf liest vieles mehrfach; für seine Dauer wird Gelesenes behalten ([D-814](../../../docs/NewConcept/90-decision-log.md)).*
+        return \Taxmod\WordPress\Persistence\Query::remembering(fn (): string => $this->drawn());
+    }
+
+    private function drawn(): string
+    {
         $root  = $this->framework->root();
         $trash = $this->framework->trash();
 
@@ -2702,12 +2708,24 @@ final class NodesScreen
      * greyed, labelled «deleted with X», with a restore action.* The label names the **act** that
      * removed it, which is what `parked_by_group_id` carries ([D-371](../../../docs/NewConcept/90-decision-log.md)).
      */
+    /** Ob die entfernten Felder gezeigt werden — erst dann werden sie gelesen ([D-820](../../../docs/NewConcept/90-decision-log.md)). */
+    private const SHOW_REMOVED = 'taxmod_show_removed';
+
     private function removedFields(Node $selected): string
     {
+        // ⚠️ **Erst beim Öffnen gelesen, und dann ohne Zahl davor** ([D-820](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort
+        // «2 a and b». Das Öffnen ist ein Seitenaufruf mit einem Umstand in der Adresse, wie das Aufklappen einer Feldzeile (D-666).*
+        if ($this->circumstance(self::SHOW_REMOVED) === null) {
+            return '<p style="margin:.6em 0"><a href="' . esc_url($this->backTo($selected->id, [self::SHOW_REMOVED => '1'])) . '">'
+                . esc_html__('Show removed fields', 'taxmod') . '</a></p>';
+        }
+
         $parked = $this->editor->removedFieldsOf($selected->id);
+        $zu     = '<a href="' . esc_url($this->backTo($selected->id, [self::SHOW_REMOVED => null])) . '">'
+            . esc_html__('Hide removed fields', 'taxmod') . '</a>';
 
         if ($parked === []) {
-            return '';
+            return '<p style="margin:.6em 0">' . esc_html__('No removed fields.', 'taxmod') . ' ' . $zu . '</p>';
         }
 
         $rows = '';
@@ -2728,13 +2746,13 @@ final class NodesScreen
                 . '</div>';
         }
 
-        return '<details style="margin:.6em 0"><summary style="cursor:pointer">'
+        return '<details open style="margin:.6em 0"><summary style="cursor:pointer">'
             . esc_html(sprintf(
                 /* translators: %d is how many attributes were removed. */
                 _n('%d removed field', '%d removed fields', count($parked), 'taxmod'),
                 count($parked)
             ))
-            . '</summary>' . $rows . '</details>';
+            . ' ' . $zu . '</summary>' . $rows . '</details>';
     }
 
     private function fieldForm(Node $selected): string
@@ -3290,12 +3308,24 @@ final class NodesScreen
      *
      * @return array<string, string>
      */
-    private function ownValueCell(Node $node, NodeRecord $record): array
+    private function ownValueCell(Node $node, NodeRecord $record, array $werte): array
     {
+        // ⚠️ *Aus den schon gelesenen Werten des Satzes und nicht je Zeile nachgefragt ([D-814](../../../docs/NewConcept/90-decision-log.md)) —
+        // dieselbe Auswahl wie `DataEntry::ownValueOf()`: die erste Zeile ohne Kante in der gewählten Sprache.*
+        $eigener = null;
+
+        foreach ($werte as $zeile) {
+            if ($zeile->relationId === 0 && $zeile->locale === $this->localeFromRequest()) {
+                $eigener = $zeile->value;
+
+                break;
+            }
+        }
+
         $feld = $this->rendering->valueOfType(
             $node,
             Purpose::Edit,
-            $this->data->ownValueOf($record->id, $this->localeFromRequest()),
+            $eigener,
             $this->localeFromRequest(),
             fieldName: self::OWN_VALUE_FIELD,
             formId: 'taxmod-record-' . $record->id
@@ -3877,10 +3907,13 @@ final class NodesScreen
         // sie ein zweites Mal zu laufen (`CD-7`).*
         $gezeigterSatz = absint($this->circumstance(self::PREVIEW_RECORD) ?? 0);
 
+        // ⚠️ *Die Werte aller Sätze der Seite in einer Abfrage — hier stand eine je Satz ([D-814](../../../docs/NewConcept/90-decision-log.md)).*
+        $werteJeSatz = $this->data->valuesOfMany(array_map(static fn (NodeRecord $r): int => $r->id, $records));
+
         foreach ($records as $record) {
             $held = [];
 
-            foreach ($this->data->valuesOf($record->id) as $value) {
+            foreach ($werteJeSatz[$record->id] ?? [] as $value) {
                 $held[$value->relationId] = \Taxmod\Core\Service\Rendering::collectedValue($held[$value->relationId] ?? null, $value->value);
             }
 
@@ -3932,7 +3965,7 @@ final class NodesScreen
                     // genau das, was {@see \Taxmod\Core\Service\Rendering::valueOfType()} sich
                     // verbietet — «a fake `Relation` in the core to satisfy a parameter list is the
                     // kind of thing that later gets stored».*
-                    ...$this->ownValueCell($selected, $record),
+                    ...$this->ownValueCell($selected, $record, $werteJeSatz[$record->id] ?? []),
                 ],
                 'acts'   => [
                     // ⚠️ *Speichern nur, wo die Zeile selbst noch etwas trägt — der eigene Wert eines einfachen Datentyps (D-785).*
@@ -5898,6 +5931,8 @@ final class NodesScreen
             self::RECORD_PAGE  => $this->circumstance(self::RECORD_PAGE),
             // ⚠️ *Sonst hebt jedes Speichern den Filter auf, unter dem man gerade arbeitet (D-768).*
             self::RECORD_FILTER => $this->circumstance(self::RECORD_FILTER),
+            // ⚠️ *Sonst verschwindet die Liste der entfernten Felder nach «Restore» wieder (D-820).*
+            self::SHOW_REMOVED => $this->circumstance(self::SHOW_REMOVED),
             // ⚠️ *Sonst wechselt die Vorschau nach jedem Speichern auf den ersten Satz zurück (D-785).*
             self::PREVIEW_RECORD => $this->circumstance(self::PREVIEW_RECORD),
         ];
@@ -6000,6 +6035,10 @@ final class NodesScreen
                 // ⚠️ *Der Satz in der Vorschau gehört diesem Knoten — auf einem anderen gibt es ihn nicht (D-785).*
                 self::PREVIEW_RECORD => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
                     ? $this->circumstance(self::PREVIEW_RECORD)
+                    : null,
+                // ⚠️ *Die offene Liste der entfernten Felder gilt für diesen Knoten; ein anderer beginnt geschlossen (D-820).*
+                self::SHOW_REMOVED => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
+                    ? $this->circumstance(self::SHOW_REMOVED)
                     : null,
                 // ⚠️ **`$extra` comes last so a caller can override a circumstance rather than only add
                 // to it.** The hidden toggle is the caller that needs it: passing `null` for

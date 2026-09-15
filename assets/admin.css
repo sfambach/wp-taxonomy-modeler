@@ -803,6 +803,44 @@ a.taxmod-chosen:hover {
     cursor: pointer;
 }
 
+/* ⚠️ Die Gestalt einer Baumzeile, die vorher in jeder Zeile inline stand (D-816) -- gemessen 13 988
+ * Stilangaben auf der grössten Seite. Inline bleibt nur, was je Zeile anders ist: die Einrückung,
+ * das Verbergen und die Hervorhebung; das Skript schaltet `style.display` weiter selbst. */
+.taxmod-tree-row {
+    display: flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.taxmod-tree-indent {
+    display: inline-block;
+    flex: none;
+}
+
+.taxmod-tree-fold-box {
+    display: inline-block;
+    width: 1.4em;
+    flex: none;
+    text-align: center;
+}
+
+a.taxmod-tree-fold-box {
+    text-decoration: none;
+    color: inherit;
+}
+
+.taxmod-tree-cell {
+    flex: 1;
+    min-width: 0;
+}
+
+.taxmod-tree-node {
+    display: flex;
+    gap: .5em;
+    align-items: center;
+}
+
 /* ⚠️ **Der Kreis ist weg, das Klicken bleibt.** Auf sein Wort: "Kreis soll einfach weg, klicken
  * funktioniert jetzt" -- die ganze Zeile ist ein `<label>` um den Radio, ein Klick irgendwo auf
  * ihr trifft ihn also schon. Geklemmt statt `display:none`, aus demselben Grund wie beim

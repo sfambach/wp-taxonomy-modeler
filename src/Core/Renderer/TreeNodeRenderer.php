@@ -132,8 +132,7 @@ final class TreeNodeRenderer extends RendererNode
         $hidden = $context->surroundings->hidden;
 
         $markup = '<div class="taxmod-tree-node' . ($hidden ? ' taxmod-tree-node-hidden' : '') . '"'
-            . ' id="' . RenderResult::escape($context->surroundings->rowIdPrefix) . (int) $subject->id . '"'
-            . ' style="display:flex;gap:.5em;align-items:center">'
+            . ' id="' . RenderResult::escape($context->surroundings->rowIdPrefix) . (int) $subject->id . '">'
             . $named;
 
         // ⚠️ **Right-aligned**, the owner's ask: `margin-left:auto` pushes everything after the

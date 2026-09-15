@@ -18,6 +18,8 @@ use Taxmod\Tests\Core\Fake\FixedFramework;
 use Taxmod\Tests\Core\Fake\InMemoryNodes;
 use Taxmod\Tests\Core\Fake\InMemoryRecords;
 use Taxmod\Tests\Core\Fake\InMemoryRelations;
+use Taxmod\Tests\Core\Fake\InMemorySettings;
+use Taxmod\Core\Model\Setting\SettingsValue;
 use Taxmod\Tests\Core\Fake\RecordedChanges;
 
 /**
@@ -396,6 +398,33 @@ final class DataEntryTest extends TestCase
         self::assertSame(1, $gone['nodes']);
         self::assertNull($this->nodes->find($this->part->id));
         self::assertNotNull($this->nodes->find($seiner->id));
+    }
+
+    /**
+     * ⚠️ *[D-819](../../docs/NewConcept/90-decision-log.md): eine Einstellungszeile an einem **fremden** Knoten, die an einer Kante
+     * des geleerten Unterbaums hängt, geht mit — sonst hält sie die Kante fest. Die eigene Zeile des fremden Knotens bleibt.*
+     */
+    #[Test]
+    public function clearing_the_trash_takes_settings_rows_at_its_fields_on_other_nodes(): void
+    {
+        $settings = new InMemorySettings();
+        $editor   = new ModelEditor(
+            $this->nodes,
+            $this->relations,
+            (new \ReflectionProperty(ModelEditor::class, 'framework'))->getValue($this->editor),
+            new RecordedChanges(),
+            records: $this->records,
+            settings: $settings
+        );
+
+        $anDerKante = $settings->addValue(SettingsValue::atNode($this->text->id, 'NodeAttributes', 'renderer', TypedValue::ofText('compact'), $this->description->id));
+        $eigene     = $settings->addValue(SettingsValue::atNode($this->text->id, 'NodeAttributes', 'renderer', TypedValue::ofText('plain')));
+
+        $editor->moveToTrash($this->part->id);
+        $editor->clearTrash([$this->part->id]);
+
+        self::assertNull($settings->findValue((int) $anDerKante->id));
+        self::assertNotNull($settings->findValue((int) $eigene->id));
     }
 
     // ------------------------------------- ein Wert an einer Verwendungsstelle

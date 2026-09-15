@@ -68,6 +68,15 @@ interface SettingsRepository
     public function valuesReferring(array $nodeIds): array;
 
     /**
+     * Alle Zeilen an diesen Kanten — an der Kante überschrieben (`relation_id`) oder auf sie verweisend
+     * (`wert_kante_id`), gleich an welchem Knoten sie stehen ([D-819](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  list<int> $relationIds
+     * @return list<SettingsValue>
+     */
+    public function valuesAtRelations(array $relationIds): array;
+
+    /**
      * Die lebenden Zeilen, die eines dieser Objekte als Wert nennen — ob ein Objekt nach dem Leeren des Papierkorbs noch gebraucht wird
      * ([D-813](../../../docs/NewConcept/90-decision-log.md)).
      *

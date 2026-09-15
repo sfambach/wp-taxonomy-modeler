@@ -441,7 +441,12 @@ final class Schema
      * sieben Wertzeilen, alle am Knoten, alle `0` — es wandert nichts in die Spalte, und nichts geht
      * verloren. `multiplicity` war schon Spalte (Fassung 22); was fällt, ist nur ihr Schlüssel.*
      */
-    public const VERSION = 53;
+    /**
+     * ⚠️ **Fassung 54: `relations_history` bekommt einen Index auf `from_node_id`** ([D-820](../../../docs/NewConcept/90-decision-log.md)).
+     * *Die entfernten Felder eines Knotens suchten dort ohne Index — gemessen 11 ms je Seite über 28 285 Zeilen. Eine reine Ergänzung:
+     * `dbDelta` legt den Index an, es wandert nichts.*
+     */
+    public const VERSION = 54;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -2709,9 +2714,13 @@ final class Schema
         // ⚠️ *`relation_id = 0`: der Satz einer **Verwendungsstelle** ist `user`
         // ([D-674](../../../docs/NewConcept/90-decision-log.md)) und trägt Einstellungen, keine Daten
         // des Typs — er ist die Adresse der Stelle und bleibt, wo er ist.*
+        // ⚠️ **Und kein Satz, auf den ein Wert zeigt** — *er ist ein Teil eines anderen Satzes und nicht leer. Gemessen am 2026-09-15: der
+        // Schritt lief beim Heben auf Fassung 54 erneut und nahm 68 Adressteile unter «Street / H#» und «Zip/City», auf die 68 lebende
+        // Werte zeigten; über ihre Änderungsgruppe zurückgeholt. Dieselbe Bedingung steht in {@see self::dropEmptyDefaultRecords()}.*
         $leerBedingung = "s.record_type = 'user' AND s.relation_id = 0
                 AND s.node_id IN (SELECT id FROM taxmod_ast)
-                AND NOT EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)";
+                AND NOT EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)
+                AND NOT EXISTS (SELECT 1 FROM {$werte} h WHERE h.value_ref = s.id AND h.value_ref_kind = 'record')";
 
         /** @var list<array{id: string, version: string, node_id: string}> $leer */
         $leer = $wpdb->get_results("{$ast} SELECT s.id, s.version, s.node_id FROM {$saetze} s WHERE {$leerBedingung}", ARRAY_A) ?: [];
@@ -4805,7 +4814,8 @@ final class Schema
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
                 PRIMARY KEY  (id,version),
-                KEY archived_at (archived_at)
+                KEY archived_at (archived_at),
+                KEY from_node_id (from_node_id)
             ) {$charset};",
 
             "CREATE TABLE {$t('node_records_history')} (
