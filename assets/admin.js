@@ -1365,7 +1365,8 @@
 			entfernen.type = 'button';
 			entfernen.className = 'button taxmod-icon-button taxmod-list-remove';
 			entfernen.style.color = '#b32d2e';
-			entfernen.innerHTML = '<span class="dashicons dashicons-no-alt" aria-hidden="true"></span><span class="screen-reader-text"></span>';
+			// *Löschen ist immer der Mülleimer (D-828).*
+			entfernen.innerHTML = '<span class="dashicons dashicons-trash" aria-hidden="true"></span><span class="screen-reader-text"></span>';
 			entfernen.querySelector( '.screen-reader-text' ).textContent = eintrag.textContent;
 
 			zeile.appendChild( mitglied );

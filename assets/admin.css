@@ -991,12 +991,6 @@ a.taxmod-tree-fold-box {
     white-space: nowrap;
 }
 
-.taxmod-record-multi-open .dashicons {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-}
-
 .taxmod-preview-side .taxmod-node > .taxmod-complex-block:last-child > .taxmod-part-add {
     margin-top: .6em;
 }

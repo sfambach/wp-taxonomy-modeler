@@ -5210,7 +5210,8 @@ final class Rendering implements Presets
                         . IconMarkup::dashicon('arrow-down-alt2', $kandidaten[$kandidatId]) . '</button>'
                     : '')
                 . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
-                . IconMarkup::dashicon('no-alt', $kandidaten[$kandidatId]) . '</button>'
+                // *Löschen ist immer der Mülleimer (D-828).*
+                . IconMarkup::dashicon('trash', $kandidaten[$kandidatId]) . '</button>'
                 . '</li>';
         }
 
@@ -6163,7 +6164,7 @@ final class Rendering implements Presets
         ) {
             foreach ($teilIds as $teilId) {
                 $akte[] = $teilId === 0 ? '' : ControlMarkup::button(
-                    new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'minus', $formId)
+                    new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId)
                 );
             }
 
