@@ -608,6 +608,17 @@ final class DataEntry
         $relation     = $this->writableRelation($recordId, $relationId);
         $hinterste = -1;
 
+        // ⚠️ **Eindeutig gilt auch beim Anhängen** ([D-838](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «nur zu einem eine platine
+        // ist etwas sehr spezielles». Ein mehrfaches Feld hängt Werte an, statt sie zu setzen; ohne diese Prüfung stünde dieselbe Platine
+        // über «Platinen» in zwei Projekten, obwohl die Kante eindeutig ist (D-735).*
+        if ($relation->unique && ! $value->isNothing()) {
+            foreach ($this->records->findByRelationValue($relation->id, $value) as $anderer) {
+                if ($anderer !== $recordId) {
+                    throw NotYetStorable::thatValueIsTaken($relation->name, (string) $value->rawValue(), $anderer);
+                }
+            }
+        }
+
         foreach ($this->valuesOn($recordId, $relation->id, $locale) as $vorhanden) {
             $hinterste = max($hinterste, $vorhanden->position);
         }
