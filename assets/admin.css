@@ -600,6 +600,19 @@ details.taxmod-page-block > summary {
     pointer-events: none;
 }
 
+/* ⚠️ Unsichtbar heisst hier auch: ohne Grösse (D-814, sein Bild «to many bars»). Gemessen: die unsichtbaren Kästen der Spaltenköpfe
+ * ragten bis 2443px über den rechten Rand, und die Seite bekam davon ihren eigenen waagerechten Balken. Wie `screen-reader-text` — die
+ * Vorlesehilfe liest ihn weiter; erst beim Zeigen bekommt er seine Breite. */
+.taxmod-hint:not(:hover):not(:focus):not(:focus-within) .taxmod-hint-text {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 .taxmod-hint:hover .taxmod-hint-text,
 .taxmod-hint:focus .taxmod-hint-text,
 .taxmod-hint:focus-within .taxmod-hint-text {
@@ -1024,6 +1037,20 @@ ol.taxmod-switch-cascade {
 
 .taxmod-hscroll > div {
     height: 1px;
+}
+
+/* ⚠️ Nur ein Balken (sein Bild: «to many bars»): das Satzformular rollt weiter waagerecht, zeigt aber seinen eigenen Balken nicht —
+ * der mitlaufende steht dafür. Senkrecht rollt es nie; `hidden` statt `visible`, weil `overflow-x:auto` ein `visible` zu `auto` macht. */
+.taxmod-records-block .taxmod-record-form {
+    /* ⚠️ `relative`, damit absolut gesetzte Kinder (die Vorlesetexte von WordPress, `.screen-reader-text`) hier abgeschnitten werden.
+     * Gemessen: ohne das standen sie an ihrer Stelle in der 1891px breiten Tabelle, und die ganze Seite wurde 2443px breit. */
+    position: relative;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.taxmod-records-block .taxmod-record-form::-webkit-scrollbar {
+    display: none;
 }
 
 /* ⚠️ Die Pfeile hinter dem Namen, nicht darunter — sein Wort: «put the arrows after the label not beneath». */

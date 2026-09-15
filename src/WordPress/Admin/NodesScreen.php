@@ -3246,7 +3246,7 @@ final class NodesScreen
         $kind = $this->editor->createNode($name, $parentId, $this->requestedClass());
 
         if ($this->attributes !== null && $this->attributes->knows($kind, 'renderer')) {
-            $this->attributes->put($kind, 'renderer', $this->rendering->rendererForNewNode($kind, $this->editor->find($parentId)));
+            $this->attributes->put($kind, 'renderer', $this->rendering->rendererForNewNode($kind, $this->editor->find($parentId)), null, true);
         }
 
         return $kind;

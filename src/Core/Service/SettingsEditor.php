@@ -347,7 +347,9 @@ final class SettingsEditor
         // Einstellungen des Renderers danach für diese Stelle geändert werden (D-798). Steht die Zeile schon hier, bleibt es beim Nichtstun.*
         $geltend = $this->resolved($node, $edge)[$erklaert->name] ?? null;
 
-        if ($klasse !== null && ($geltend?->value->text ?? null) === $name && ! ($holdHere && $edge !== null && $anKante === [])) {
+        // ⚠️ *Und am Knoten ohne eigene Zeile ebenso: «jeder Knoten hat seinen Renderer» ([D-808](../../../docs/NewConcept/90-decision-log.md),
+        // [D-814](../../../docs/NewConcept/90-decision-log.md)) heisst eine Zeile, auch wenn sie der Vorgabe gleicht.*
+        if ($klasse !== null && ($geltend?->value->text ?? null) === $name && ! ($holdHere && ($edge !== null ? $anKante === [] : $amKnoten === []))) {
             return false;
         }
 

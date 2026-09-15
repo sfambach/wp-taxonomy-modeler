@@ -482,7 +482,7 @@ Das hier ist der Entwurf dazu, kein Beschluss. Jede Zeile unter «Zu entscheiden
 |---|---|---|
 | Braucht es ein gemeinsames Feld «Bezeichnung»? | a) nein — `summary_fields` je Kategorie legt fest, was «Typ/Wert» ist (Active: Typ; Resistor: Widerstandswert + Toleranz) · b) ein **abgeleitetes** Feld (wie ein Weg-Feld, D-755), das je Kategorie aus anderen Feldern gerechnet und gespeichert wird · c) ein echtes Feld, dessen Typ je Kind wechseln darf | **a** jetzt, **b** wenn gesucht/sortiert werden soll — c bricht «ein Feld, ein Typ». |
 
-**Nicht gebaut.**
+**Entschieden: a ([D-815](NewConcept/90-decision-log.md)), sein Wort «3 agreed».**
 
 ## Erledigte Eingänge
 
