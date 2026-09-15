@@ -1,4 +1,169 @@
 /**
+ * Der gemeinsame Auswahlbaum der Knotenseite (D-815, D-821).
+ *
+ * ⚠️ **Ein Baum je Seite statt einer je Stelle.** Sein Wort: «one shared window for the whole page». Der Öffner trägt, wohin die
+ * Wahl geht (das versteckte Feld hinter ihm), was gewählt ist, was hier nicht gewählt werden kann und welcher Ast offen steht; das
+ * Skript richtet den einen Baum dafür her und öffnet ihn. «OK» trägt die Wahl ein und schickt den Akt ab, wo einer dahintersteht;
+ * «Abbrechen» legt zurück wie jeder Dialog (D-804). *Ohne Skript gibt es diesen Dialog nicht — «3 ok».*
+ */
+( function () {
+	'use strict';
+
+	var aktuell = null;
+
+	function liste( wert ) {
+		return ( wert || '' ).split( ',' ).filter( function ( eines ) {
+			return eines !== '';
+		} );
+	}
+
+	function herrichten( huelle, oeffner ) {
+		var gesperrt = liste( oeffner.getAttribute( 'data-barred' ) );
+		var offen    = liste( oeffner.getAttribute( 'data-open' ) );
+		var gewaehlt = oeffner.getAttribute( 'data-chosen' ) || '';
+		var zeilen   = huelle.querySelectorAll( '.taxmod-tree-row' );
+		var vater    = {};
+		var stapel   = [];
+		var ids      = [];
+		var i;
+
+		for ( i = 0; i < zeilen.length; i++ ) {
+			var tiefe = parseInt( zeilen[ i ].getAttribute( 'data-depth' ), 10 );
+			var radio = zeilen[ i ].querySelector( 'input[type="radio"]' );
+			var zelle = zeilen[ i ].querySelector( '.taxmod-tree-node' );
+			var id    = radio ? radio.value : ( zelle && zelle.id ? zelle.id.replace( /^.*-/, '' ) : '' );
+
+			stapel[ tiefe ] = id;
+			stapel.length   = tiefe + 1;
+			vater[ id ]     = tiefe > 0 ? stapel[ tiefe - 1 ] : null;
+			ids[ i ]        = id;
+
+			if ( radio ) {
+				var aus = gesperrt.indexOf( id ) !== -1;
+
+				radio.disabled = aus;
+				radio.checked  = ! aus && id === gewaehlt;
+				zeilen[ i ].classList.toggle( 'taxmod-pick-barred', aus );
+			}
+		}
+
+		// ⚠️ *Offen stehen der Einstiegsast mit seinem Weg und der Weg zum Gewählten — der Gewählte selbst bleibt zu (D-615).*
+		var auf = {};
+
+		function mitWeg( id ) {
+			while ( id !== null && id !== undefined && id !== '' ) {
+				auf[ id ] = true;
+				id = vater[ id ];
+			}
+		}
+
+		offen.forEach( mitWeg );
+
+		if ( gewaehlt !== '' ) {
+			mitWeg( vater[ gewaehlt ] );
+		}
+
+		var sichtbar = {};
+
+		for ( i = 0; i < zeilen.length; i++ ) {
+			var eigen = ids[ i ];
+			var oben  = vater[ eigen ];
+
+			sichtbar[ eigen ] = oben === null || ( sichtbar[ oben ] === true && auf[ oben ] === true );
+			zeilen[ i ].style.display = sichtbar[ eigen ] ? 'flex' : 'none';
+
+			var klapper = zeilen[ i ].querySelector( '.taxmod-tree-fold' );
+
+			if ( klapper ) {
+				klapper.setAttribute( 'data-fold', auf[ eigen ] === true ? 'auf' : 'zu' );
+				klapper.innerHTML = auf[ eigen ] === true ? '▾' : '▸';
+			}
+		}
+	}
+
+	document.addEventListener( 'click', function ( event ) {
+		var oeffner = event.target instanceof Element ? event.target.closest( '.taxmod-pick-open' ) : null;
+
+		if ( ! oeffner ) {
+			return;
+		}
+
+		event.preventDefault();
+
+		var huelle   = document.querySelector( '.taxmod-shared-pick' );
+		var schalter = huelle ? huelle.querySelector( '.taxmod-dialog-switch' ) : null;
+
+		if ( ! schalter ) {
+			return;
+		}
+
+		aktuell = oeffner;
+		herrichten( huelle, oeffner );
+
+		var kopf = huelle.querySelector( '.taxmod-chooser-current' );
+
+		if ( kopf ) {
+			kopf.textContent = oeffner.getAttribute( 'title' ) || '';
+		}
+
+		schalter.checked = true;
+		schalter.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+	} );
+
+	document.addEventListener( 'click', function ( event ) {
+		var ok = event.target instanceof Element ? event.target.closest( '.taxmod-shared-pick .taxmod-dialog-ok' ) : null;
+
+		if ( ! ok || ! aktuell ) {
+			return;
+		}
+
+		var oeffner = aktuell;
+		var radio   = ok.closest( '.taxmod-shared-pick' ).querySelector( 'input[type="radio"]:checked' );
+
+		aktuell = null;
+
+		if ( ! radio ) {
+			return;
+		}
+
+		var feld = oeffner.nextElementSibling;
+
+		if ( feld && feld.matches( 'input[type="hidden"]' ) ) {
+			feld.value = radio.value;
+		}
+
+		oeffner.setAttribute( 'data-chosen', radio.value );
+
+		var zeile   = radio.closest( '.taxmod-chooser-row' );
+		var name    = zeile ? zeile.querySelector( '.taxmod-tree-label' ) : null;
+		var anzeige = oeffner.parentNode ? oeffner.parentNode.querySelector( '.taxmod-chosen' ) : null;
+
+		if ( anzeige && name ) {
+			if ( anzeige.tagName === 'INPUT' ) {
+				anzeige.value = name.textContent;
+			} else {
+				anzeige.textContent = name.textContent;
+			}
+		}
+
+		// ⚠️ *Ein Öffner, der den gewählten Namen selbst zeigt (ein Verweis auf den ganzen Baum), trägt ihn danach.*
+		if ( oeffner.getAttribute( 'data-names' ) === '1' && name ) {
+			oeffner.textContent = name.textContent;
+		}
+
+		var senden = feld ? feld.nextElementSibling : null;
+
+		if ( senden && senden.matches( '.taxmod-pick-submit' ) && senden.form ) {
+			if ( senden.form.requestSubmit ) {
+				senden.form.requestSubmit( senden );
+			} else {
+				senden.click();
+			}
+		}
+	} );
+} )();
+
+/**
  * The modelling screen keeps its scroll position across a page change.
  *
  * ⚠️ **This is the first script on this screen and that was a decision, not a convenience**

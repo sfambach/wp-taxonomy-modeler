@@ -841,6 +841,17 @@ a.taxmod-tree-fold-box {
     align-items: center;
 }
 
+/* ⚠️ Der gemeinsame Auswahlbaum (D-815) hat keinen eigenen Öffner — jede Stelle der Seite öffnet ihn
+ * über ihren Knopf, das Skript setzt den Schalter. */
+.taxmod-shared-pick > .taxmod-chooser > .taxmod-dialog-open {
+    display: none;
+}
+
+/* Hier nicht wählbar — gezeigt, damit der Baum ganz bleibt, aber ausgegraut (D-815). */
+.taxmod-shared-pick .taxmod-pick-barred {
+    opacity: .45;
+}
+
 /* ⚠️ **Der Kreis ist weg, das Klicken bleibt.** Auf sein Wort: "Kreis soll einfach weg, klicken
  * funktioniert jetzt" -- die ganze Zeile ist ein `<label>` um den Radio, ein Klick irgendwo auf
  * ihr trifft ihn also schon. Geklemmt statt `display:none`, aus demselben Grund wie beim

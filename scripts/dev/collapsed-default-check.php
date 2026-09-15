@@ -336,49 +336,49 @@ $dialogZeilen = static function (string $markup, string $feld): array {
     return $zeilen;
 };
 
-// Die Seite steht so weit offen, wie sie nur kann — und der Dialog darf davon nichts uebernehmen.
+// ⚠️ **Geändert am 2026-09-15 mit [D-815](../../docs/NewConcept/90-decision-log.md) und [D-821](../../docs/NewConcept/90-decision-log.md),
+// sichtbar (`PR-9`):** *der Verschiebedialog ist der eine gemeinsame Baum der Seite. Er kommt ganz zugeklappt vom Server; welcher Ast
+// offen steht und was gewählt ist, trägt der Öffner (`data-open`, `data-chosen`), und das Skript richtet den Baum beim Öffnen her
+// (D-615). Geprüft wird darum beides: der Baum startet zu, gleich wie die Seite steht — und der Öffner nennt den Einstiegsast.*
 $_GET['taxmod_collapsed'] = 'none';
 $_GET['taxmod_node']      = (string) $ast->id;
 
-$weit = $dialogZeilen($plugin->screen()->render(), 'target');
+$seiteWeit = $plugin->screen()->render();
+$weit      = $dialogZeilen($seiteWeit, 'taxmod_pick');
 
-printf("       %d Zeilen im Verschiebe-Dialog\n", count($weit));
+printf("       %d Zeilen im gemeinsamen Baum\n", count($weit));
 
-$say($weit !== [], 'der Verschiebe-Dialog ist auf der Seite und seine Zeilen sind lesbar');
+$say($weit !== [], 'der gemeinsame Baum ist auf der Seite und seine Zeilen sind lesbar');
 
 // ⚠️ *Alle Zeilen stehen im Dokument — der Dialog klappt im Browser und kann nichts nachladen.
 // Geprueft wird also die **Anzeige**, nicht das Vorhandensein.*
-$say(isset($weit[$enkel->id]), 'der Enkel steht im Dokument des Dialogs (er klappt ohne Neuaufbau)');
-$say(($weit[$ast->id]['sichtbar'] ?? false) === true, 'der Ast ist sichtbar — er liegt im Einstiegsast «Model»');
+$say(isset($weit[$enkel->id]), 'der Enkel steht im Dokument des Baums (er klappt ohne Neuaufbau)');
+$say(($weit[$ast->id]['sichtbar'] ?? true) === false, 'der Ast startet zu — die Seite ist offen, der Baum nicht');
 $say(($weit[$kind->id]['sichtbar'] ?? true) === false, 'das Kind ist zu, obwohl die Seite alles offen hat');
 $say(($weit[$enkel->id]['sichtbar'] ?? true) === false, 'der Enkel ebenso — «alle darunter», nicht nur die oberste Ebene');
 
-// ⚠️ **Der Kern der Ast-Angabe ([D-615](../../docs/NewConcept/90-decision-log.md)): sie ist
-// ausschliessend.** *Unterhalb des offenen Astes darf kein zweiter offenstehen — sonst waere «alles
-// zu ausser einem» nur fuer die oberste Ebene wahr.*
-$offeneAeste = [];
+$offeneAeste = array_keys(array_filter($weit, static fn (array $z): bool => $z['klapp'] === 'auf'));
 
-foreach ($weit as $id => $z) {
-    if ($z['klapp'] === 'auf') {
-        $offeneAeste[] = $id;
-    }
-}
+printf("       %d offene Aeste im Baum: %s\n", count($offeneAeste), implode(',', $offeneAeste));
 
-printf("       %d offene Aeste im Dialog: %s\n", count($offeneAeste), implode(',', $offeneAeste));
+$say($offeneAeste === [], 'vom Server steht kein Ast offen — das Öffnen richtet der Öffner ein');
 
-$say(count($offeneAeste) === 1, 'genau ein Ast steht offen — kein zweiter unterhalb');
-$say(($weit[$ast->id]['klapp'] ?? '') === 'zu', 'der Ast selbst ist zugeklappt, obwohl er sichtbar ist');
+$modell = $fw->rootOf(Branch::Model);
 
-// ── Und dieselbe Seite ohne jeden Faltzustand gibt denselben Dialog ────────
+$say(
+    str_contains($seiteWeit, 'data-field="target" data-chosen="' . $modell->id . '"')
+        && (bool) preg_match('/data-field="target"[^>]*data-open="' . $modell->id . '"/', $seiteWeit),
+    'der Öffner nennt den Einstiegsast «Model» und den heutigen Elternknoten (D-615)'
+);
+
+// ── Und dieselbe Seite ohne jeden Faltzustand gibt denselben Baum ─────────
 //
-// ⚠️ *Das ist die eigentliche Zusage: **zwei Seitenzustaende, ein Dialog.** Ohne diesen Vergleich
-// waere «zu» oben auch dann gruen, wenn der Dialog schlicht immer der Seite folgt und die Seite
-// zufaellig zu ist.*
+// ⚠️ *Das ist die eigentliche Zusage: **zwei Seitenzustaende, ein Baum.***
 unset($_GET['taxmod_collapsed']);
 
-$frischerDialog = $dialogZeilen($plugin->screen()->render(), 'target');
+$frischerDialog = $dialogZeilen($plugin->screen()->render(), 'taxmod_pick');
 
-$say($frischerDialog === $weit, 'der Dialog sieht gleich aus, ob die Seite offen oder zu ist');
+$say($frischerDialog === $weit, 'der Baum sieht gleich aus, ob die Seite offen oder zu ist');
 
 unset($_GET['taxmod_node']);
 

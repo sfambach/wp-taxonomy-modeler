@@ -462,6 +462,10 @@ final class NodesScreen
         // ⚠️ **The chosen sizes reach the stylesheet as custom properties** — the file stays static
         // and cacheable, and the two numbers a person picked ride on the page ([D-397](../../../docs/NewConcept/90-decision-log.md)).
         // *The alternative was a `<style>` block again, which is what the stylesheet was extracted from.*
+        // ⚠️ *Zuerst gezeichnet und hinten eingesetzt: sein Lauf lädt die Einstellungen aller Knoten in einem Zug, die die
+        // Detailhälfte danach nur noch liest (D-814). Gemessen: zuletzt gezeichnet waren es 165 statt 130 Abfragen.*
+        $picker = $selected === null ? '' : $this->sharedPicker();
+
         $html  = '<div class="wrap" data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
             . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px">';
@@ -498,7 +502,8 @@ final class NodesScreen
             . '</div></td>'
             . '</tr></table>';
 
-        return $html . '</div>';
+        // ⚠️ *Der eine Auswahlbaum der Seite, ausserhalb jedes Formulars — seine Zeilen schicken nie etwas ab (D-815).*
+        return $html . $picker . '</div>';
     }
 
     // ---------------------------------------------------------------- the tree
@@ -1968,41 +1973,23 @@ final class NodesScreen
         // class="button">` is styled like a button and laid out like a span, which is why the owner saw
         // the move button *«leicht versetzt»* beside the others. *The label is the control; nesting a
         // fake one inside it gave the box model two owners.*
-        $trigger = IconMarkup::dashicon('move')
-            . '<span class="screen-reader-text">' . esc_html__('Move', 'taxmod') . '</span>';
-
-        $confirm = ControlMarkup::button(new Control(
-            'do',
-            'move',
-            __('Move here', 'taxmod'),
-            '',
-            true,
-            false,
-            '',
-            '',
-            true
-        ));
-
         $ast = $this->framework->branchOf($node);
 
-        return $this->rendering->nodeChooser(
-            $root,
+        // ⚠️ **Der Öffner des gemeinsamen Baums** ([D-815](../../../docs/NewConcept/90-decision-log.md)) — *«OK» trägt die Wahl in
+        // `target` und schickt `move` ab; die Bestätigung «Move here» im eigenen Dialog ist damit fort.*
+        return $this->pickOpener(
             'target',
-            // Der Einstiegsast: der, in dem der Knoten heute liegt — wer verschiebt, bleibt
-            // meistens in der Naehe, und alles andere macht der Benutzer selbst auf.
-            $ast === null ? null : $this->framework->rootOf($ast),
+            '',
             $node->parentId(),
-            [$this->framework->trash()->id],
+            null,
             $barred,
-            $this->labels->of($node, SeededRole::Form, $this->localeFromRequest()),
-            __('Nothing here can be a parent.', 'taxmod'),
-            ChooserRenderer::NAME,
-            $this->localeFromRequest(),
-            Level::Admin,
-            $trigger,
-            $confirm,
-            settings: ChooserRenderer::asDialog()
-        )->markup;
+            // Der Einstiegsast: der, in dem der Knoten heute liegt — wer verschiebt, bleibt meistens in der Naehe.
+            $ast === null ? [] : [$this->framework->rootOf($ast)->id],
+            'move',
+            __('Move this node under another', 'taxmod'),
+            'move',
+            __('Move', 'taxmod')
+        );
     }
 
     /**
@@ -2562,6 +2549,74 @@ final class NodesScreen
      * @param list<Relation> $relations
      * @return array<int, string>
      */
+    /** Der Name der Wahl im gemeinsamen Auswahlbaum — sie wird nie abgeschickt, das Skript trägt sie in das Feld des Öffners. */
+    private const PICK_FIELD = 'taxmod_pick';
+
+    /**
+     * Der eine Auswahlbaum der Seite — einmal gezeichnet, jede Stelle öffnet ihn ([D-815](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «one shared window for the whole page». Gemessen stand der ganze Baum bis zu 19-mal in einer Seite, je
+     * Feldzeile ein eigener Dialog. **Der Dialog braucht Skript** ([D-821](../../../docs/NewConcept/90-decision-log.md), «3 ok»):
+     * welche Zeile gewählt hat, was gesperrt und was offen ist, trägt der Öffner und liest das Skript.*
+     */
+    private function sharedPicker(): string
+    {
+        return '<div class="taxmod-shared-pick">'
+            . $this->rendering->nodeChooser(
+                $this->framework->root(),
+                self::PICK_FIELD,
+                null,
+                null,
+                [$this->framework->trash()->id],
+                [],
+                null,
+                __('Nothing here can be chosen.', 'taxmod'),
+                ChooserRenderer::NAME,
+                $this->localeFromRequest(),
+                Level::Admin,
+                settings: ChooserRenderer::asDialog()
+            )->markup
+            . '</div>';
+    }
+
+    /**
+     * Ein Öffner des gemeinsamen Auswahlbaums: das Feld, in das die Wahl geht, und — wo einer ist — der Akt, der danach abschickt.
+     *
+     * @param list<int> $barred Knoten, die hier nicht gewählt werden können.
+     * @param list<int> $open   Knoten, deren Ast beim Öffnen offen steht (der Einstiegsast, D-615).
+     */
+    private function pickOpener(
+        string $field,
+        string $formId,
+        ?int $chosen,
+        ?int $initial,
+        array $barred,
+        array $open,
+        string $act,
+        string $title,
+        string $icon,
+        string $label,
+    ): string {
+        $form = $formId === '' ? '' : ' form="' . esc_attr($formId) . '"';
+
+        // ⚠️ *Der Öffner selbst ist an einer Stelle gebaut ({@see Rendering::pickOpener()}) — der Kern braucht ihn ebenso für einen Verweis auf
+        // einen ganzen Baum; hier kommen nur das Icon mit Wort und der Akt dahinter dazu.*
+        return Rendering::pickOpener(
+            $field,
+            $formId,
+            $chosen,
+            $initial,
+            $barred,
+            $open,
+            $title,
+            IconMarkup::dashicon($icon) . '<span class="screen-reader-text">' . esc_html($label) . '</span>'
+        )
+            . ($act === '' ? '' : '<button type="submit" name="do" value="' . esc_attr($act) . '" class="taxmod-pick-submit" hidden' . $form . '>' . esc_html($label) . '</button>');
+    }
+
+    /** @var list<int>|null Einmal je Seite ({@see barredTargets()}), nicht je Feldzeile. */
+    private ?array $barredTargetsOnce = null;
+
     private function targetChoosersFor(array $relations, Node $selected): array
     {
         $aus = [];
@@ -2574,39 +2629,21 @@ final class NodesScreen
             $ziel = $this->editor->find($relation->toNodeId);
             $ast  = $ziel === null ? null : $this->framework->branchOf($ziel);
 
-            $aus[$relation->id] = $this->rendering->nodeChooser(
-                $this->framework->root(),
+            // ⚠️ **Ein Öffner des gemeinsamen Baums statt eines eigenen Dialogs je Zeile** ([D-815](../../../docs/NewConcept/90-decision-log.md)).
+            // *Feld und Akt nennen das Formular der Feldzeile — sie stehen ausserhalb davon, in der Zielzelle; ohne das schickte der
+            // Akt nichts (sein Befund, 2026-09-11). Die gesperrten Ziele sind für jede Zeile dieselben, also einmal gerechnet.*
+            $aus[$relation->id] = $this->pickOpener(
                 'retarget_' . $relation->id,
-                $ast === null ? null : $this->framework->rootOf($ast),
-                $relation->toNodeId,
-                [$this->framework->trash()->id],
-                $this->barredTargets(),
-                $ziel?->name,
-                __('Nothing here can be a target.', 'taxmod'),
-                ChooserRenderer::NAME,
-                $this->localeFromRequest(),
-                Level::Admin,
-                '<span class="button taxmod-icon-button" title="'
-                . esc_attr__('Change what this field points at', 'taxmod') . '">'
-                . IconMarkup::dashicon('networking')
-                . '<span class="screen-reader-text">' . esc_html__('Change type', 'taxmod') . '</span>'
-                . '</span>',
-                ControlMarkup::button(new Control(
-                    'do',
-                    'retarget_field',
-                    __('Change type', 'taxmod'),
-                    '',
-                    true,
-                    false,
-                    '',
-                    // ⚠️ *Der Knopf und die Radios nennen das Formular der Feldzeile — beide stehen ausserhalb davon,
-                    // in der Zielzelle. Ohne das schickte der Knopf nichts (sein Befund, 2026-09-11).*
-                    \Taxmod\Core\Renderer\FieldRowRenderer::formFor($relation),
-                    true
-                )),
                 \Taxmod\Core\Renderer\FieldRowRenderer::formFor($relation),
-                settings: ChooserRenderer::asDialog()
-            )->markup;
+                $relation->toNodeId,
+                null,
+                $this->barredTargetsOnce ??= $this->barredTargets(),
+                $ast === null ? [] : [$this->framework->rootOf($ast)->id],
+                'retarget_field',
+                __('Change what this field points at', 'taxmod'),
+                'networking',
+                __('Change type', 'taxmod')
+            );
         }
 
         return $aus;
@@ -2805,36 +2842,24 @@ final class NodesScreen
         // ([D-244](../../../docs/NewConcept/90-decision-log.md)) and because this sits inside a form
         // that already has a name field — a tree unfolding in place would push the button it belongs to
         // off the screen.*
-        $chooser = $this->rendering->nodeChooser(
-            $this->framework->root(),
-            // ⚠️ **Its own field name, not `target` again.** The move chooser already uses `target`, and
-            // two radio groups of one name on one page is a collision waiting for a second reader — *and
-            // it is honest besides: «where does this node go» and «what does this attribute point at»
-            // are two questions.*
+        // ⚠️ **Ein Öffner des gemeinsamen Baums** ([D-815](../../../docs/NewConcept/90-decision-log.md)). *Eigener Feldname und nicht
+        // `target`: «wohin geht dieser Knoten» und «worauf zeigt dieses Feld» sind zwei Fragen. Vorausgewählt bleibt der Text — sein
+        // Wort «am besten noch text als knoten» —, und es gibt keinen Akt dahinter: gewählt wird hier, angelegt mit dem Knopf der
+        // Zeile ("tree chooser ist ein standard dialog, sollte keine zusaetzliche Funktion haben").*
+        $textId  = $this->types?->nodeId(SimpleType::Text);
+        $chooser = $this->pickOpener(
             'field_target',
-            // Der offene Ast: die einfachen Typen, weil sie am meisten gebraucht werden.
-            $this->framework->rootOf(Branch::DataTypes),
-            // ⚠️ **Vorausgewaehlt ist der Text.** *Auf sein Wort: «am besten noch text als knoten».
-            // Der haeufigste Fall steht damit schon da; jeder andere ist ein Klick.*
-            $this->types?->nodeId(SimpleType::Text),
-            [$this->framework->trash()->id],
-            $barred,
-            null,
-            __('Nothing here can be a target.', 'taxmod'),
-            ChooserRenderer::NAME,
-            $this->localeFromRequest(),
-            Level::Admin,
-            '<span class="button taxmod-icon-button" title="' . esc_attr__('Choose what this field points at', 'taxmod') . '">'
-            . IconMarkup::dashicon('networking')
-            . '<span class="screen-reader-text">' . esc_html__('Choose a target', 'taxmod') . '</span>'
-            . '</span>',
-            // WICHTIG: Kein Knopf mehr im Dialog. Auf sein Wort: "tree chooser ist ein standard
-            // dialog, sollte keine zusaetzliche Funktion haben, Benutzer waehlt Knoten aus und
-            // bestaetigt, Knoten wird in Anlege-Zeile angezeigt und der Benutzer kann einen Knopf
-            // add/anlegen druecken". Damit ist der Dialog ueberall dasselbe Werkzeug.
             '',
-            settings: ChooserRenderer::asDialog()
-        )->markup;
+            $textId,
+            $textId,
+            $barred,
+            // Der offene Ast: die einfachen Typen, weil sie am meisten gebraucht werden.
+            [$this->framework->rootOf(Branch::DataTypes)->id],
+            '',
+            __('Choose what this field points at', 'taxmod'),
+            'networking',
+            __('Choose a target', 'taxmod')
+        );
 
         // WICHTIG: Der Anlegen-Knopf steht in der Zeile, nicht im Dialog -- das dreht D-392 fuer
         // diesen Fall um, und zwar auf sein Wort. Die Begruendung dort war "zwei Knoepfe fuer

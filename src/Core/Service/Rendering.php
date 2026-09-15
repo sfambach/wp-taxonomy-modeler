@@ -667,6 +667,49 @@ final class Rendering implements Presets
         return $kopie;
     }
 
+    /** Ob die Seite den einen Auswahlbaum zeichnet — dann öffnet ein ganzer Knotenbaum ihn, statt einen eigenen zu tragen (D-815). */
+    private bool $sharedPicker = false;
+
+    /** Dieselbe Zeichnung, aber ganze Knotenbäume öffnen den gemeinsamen Auswahlbaum — nur für eine Seite, die ihn zeichnet ([D-815](../../../docs/NewConcept/90-decision-log.md)). */
+    public function withSharedPicker(): static
+    {
+        $kopie               = clone $this;
+        $kopie->sharedPicker = true;
+
+        return $kopie;
+    }
+
+    /**
+     * Ein Öffner des gemeinsamen Auswahlbaums: der Knopf mit dem, was das Skript braucht, und das versteckte Feld, in das die Wahl geht
+     * ([D-815](../../../docs/NewConcept/90-decision-log.md), [D-821](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param list<int> $barred Hier nicht wählbar.
+     * @param list<int> $open   Beim Öffnen offen stehende Äste (D-615).
+     * @param string    $face   Was der Knopf zeigt — fertiges, sicheres Markup.
+     */
+    public static function pickOpener(
+        string $field,
+        string $formId,
+        ?int $chosen,
+        ?int $initial,
+        array $barred,
+        array $open,
+        string $title,
+        string $face,
+        string $class = 'button taxmod-icon-button taxmod-pick-open',
+        bool $showsName = false,
+    ): string {
+        return '<button type="button" class="' . RenderResult::escape($class) . '"'
+            . ' data-field="' . RenderResult::escape($field) . '"'
+            . ' data-chosen="' . ($chosen === null ? '' : $chosen) . '"'
+            . ' data-barred="' . implode(',', array_map('intval', $barred)) . '"'
+            . ' data-open="' . implode(',', array_map('intval', $open)) . '"'
+            . ($showsName ? ' data-names="1"' : '')
+            . ' title="' . RenderResult::escape($title) . '">' . $face . '</button>'
+            . '<input type="hidden" name="' . RenderResult::escape($field) . '" value="' . ($initial === null ? '' : $initial) . '"'
+            . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '>';
+    }
+
     /** @var (\Closure(int): string)|null Die Adresse, unter der man an einem Knoten einen neuen Satz anlegt — vom Rand (D-792, Zeile 154). */
     private ?\Closure $newRecordUrl = null;
 
@@ -4448,6 +4491,28 @@ final class Rendering implements Presets
         // *sein Befund an `Organisation`: «preview funktioniert nicht reference type type … type in preview ist leer».*
         if ($this->typeNodes->nodeId(SimpleType::NodeRef) === $target->id) {
             $wurzel = $this->framework->root();
+
+            // ⚠️ **Wo die Seite den einen Auswahlbaum zeichnet, öffnet der Verweis ihn** ([D-815](../../../docs/NewConcept/90-decision-log.md)) —
+            // *gemessen am 2026-09-15 trug `Mikrocontroller` den ganzen Baum hier noch zweimal (Vorschau und neuer Satz), 310 KB.*
+            if ($this->sharedPicker) {
+                $name = $gewaehlt === null ? null : $this->gemerkterKnoten($gewaehlt)?->name;
+
+                return RenderResult::of(self::pickOpener(
+                    $fieldName,
+                    $formId,
+                    $gewaehlt,
+                    $gewaehlt,
+                    [$wurzel->id],
+                    [],
+                    $name ?? '',
+                    // ⚠️ *Ohne Wahl trägt der Öffner kein lesbares Wort — der Name des Gegenstands steht für den Vorleser dabei, wie im Wähler selbst.*
+                    $name === null
+                        ? '<span class="taxmod-nothing">—</span><span class="screen-reader-text">' . RenderResult::escape($target->name) . '</span>'
+                        : RenderResult::escape($name),
+                    'button taxmod-dialog-open taxmod-pick-open',
+                    true
+                ));
+            }
 
             return $this->nodeChooser(
                 $wurzel,

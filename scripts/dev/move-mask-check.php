@@ -176,19 +176,22 @@ check(
     'kein Knopf mit do=move im Markup'
 );
 
+// ⚠️ **Geändert am 2026-09-15 mit [D-815](../../docs/NewConcept/90-decision-log.md) und [D-821](../../docs/NewConcept/90-decision-log.md), sichtbar (`PR-9`):**
+// *der Verschiebedialog ist nicht mehr ein eigener Baum mit Radios `target`, sondern ein Öffner des **einen** Baums der Seite.
+// Das Ziel geht in ein verstecktes Feld `target`; die Zeilen des Baums heissen `taxmod_pick` und werden nie abgeschickt.*
 check(
     'sie zeichnet Steuerelemente fuer das Ziel',
-    (bool) preg_match('/name="target" value="\d+"/', $markup),
-    'kein Steuerelement namens target'
+    str_contains($markup, 'data-field="target"') && (bool) preg_match('/<input type="hidden" name="target" value=""/', $markup),
+    'kein Öffner und kein Feld target'
 );
 
 // ⚠️ **Das Ziel muss **waehlbar** sein, nicht nur irgendein Ziel.** *Genau hier hing sein Fall: der
 // Dialog zeichnete nur die aufgeklappten Zeilen, und ein geschlossener Ast war deshalb kein
 // moegliches Ziel — der Akt funktionierte, das Ziel war nur nicht anzukommen.*
 check(
-    'der Zielknoten steht als waehlbare Zeile darunter',
-    str_contains($markup, 'name="target" value="' . $nach->id . '"'),
-    'kein target-Steuerelement fuer ' . $nach->id
+    'der Zielknoten steht als waehlbare Zeile im gemeinsamen Baum',
+    str_contains($markup, 'name="taxmod_pick" value="' . $nach->id . '"'),
+    'keine Zeile fuer ' . $nach->id . ' im gemeinsamen Baum'
 );
 
 // ⚠️ *Ein Steuerelement ausserhalb des Formulars schickt lautlos nichts mit — dann kaeme `target=0`
@@ -196,7 +199,7 @@ check(
 $vorDemKnopf   = substr($markup, 0, (int) strpos($markup, 'value="move"'));
 $formularAuf   = substr_count($vorDemKnopf, '<form');
 $formularZu    = substr_count($vorDemKnopf, '</form>');
-$vorDemZiel    = substr($markup, 0, (int) strpos($markup, 'name="target" value="' . $nach->id . '"'));
+$vorDemZiel    = substr($markup, 0, (int) strpos($markup, 'name="target" value=""'));
 
 check(
     'Ziel und Knopf stecken im selben Formular',
@@ -273,8 +276,8 @@ echo "\n== und die Maske zeigt danach den neuen Ort ==\n";
 $markup = seite($wandrer->id);
 
 check(
-    'der neue Elternknoten ist im Dialog vorgewaehlt',
-    str_contains($markup, 'name="target" value="' . $nach->id . '" checked'),
+    'der neue Elternknoten ist am Öffner vorgewaehlt (D-815)',
+    str_contains($markup, 'data-field="target" data-chosen="' . $nach->id . '"'),
     'nicht als gewaehlt markiert'
 );
 
@@ -295,22 +298,20 @@ try {
 
     // ⚠️ *Nicht der erste Fuss der Seite — seit D-730 (2026-09-12) hat auch das «+» einen, und es steht vor dem Verschieben.
     // Gesucht ist der Fuss, der den Knopf `move` traegt.*
-    $fussAuf = false;
-
-    foreach (array_keys(iterator_to_array(new \ArrayIterator(explode('taxmod-dialog-foot', $markup)))) as $i) {
-        $stueck = explode('taxmod-dialog-foot', $markup)[$i];
-
-        if ($i > 0 && str_contains(substr($stueck, 0, 400), 'value="move"')) {
-            $fussAuf = true;
-
-            break;
-        }
-    }
+    // ⚠️ **Geändert am 2026-09-15 mit [D-815](../../docs/NewConcept/90-decision-log.md), sichtbar:** *hier stand «der Verschiebedialog
+    // trägt seinen Knopf innen». Seither steht der Akt `move` versteckt beim Öffner, und «OK» des gemeinsamen Baums schickt ihn ab —
+    // der Knopf kann also nicht mehr weggenommen werden, bevor gewählt ist.*
+    check(
+        'der gemeinsame Baum hat «OK», und der Akt move steht beim Öffner bereit',
+        (bool) preg_match('/class="taxmod-shared-pick".*?taxmod-dialog-ok/s', $markup)
+            && (bool) preg_match('/name="do" value="move" class="taxmod-pick-submit" hidden/', $markup),
+        'kein OK im gemeinsamen Baum oder kein versteckter Akt move'
+    );
 
     check(
-        'der Verschiebedialog traegt seinen Knopf innen',
-        $fussAuf === true,
-        'kein taxmod-dialog-foot mit do=move'
+        'das Skript trägt die Wahl ein und schickt den Akt ab',
+        (bool) preg_match('/taxmod-shared-pick \.taxmod-dialog-ok.*?requestSubmit\( senden \)/s', (string) file_get_contents(__DIR__ . '/../../assets/admin.js')),
+        'admin.js schickt nach OK nichts ab'
     );
 
     $skript = (string) file_get_contents(__DIR__ . '/../../assets/admin.js');
