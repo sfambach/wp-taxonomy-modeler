@@ -6163,13 +6163,14 @@ final class Rendering implements Presets
             && ! $relation->isSetting() && $relation->kind === RelationKind::Composition && $relation->multiplicity->allowsMany()
         ) {
             foreach ($teilIds as $teilId) {
-                $akte[] = $teilId === 0 ? '' : ControlMarkup::button(
-                    new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId)
-                )
-                    // ⚠️ *Hinter dem Mülleimer ein «+», das direkt unter dieser Zeile eine gleicher Art einfügt (D-830).*
-                    . (($this->partActs['insert'] ?? '') === '' ? '' : ControlMarkup::button(
+                // ⚠️ *Erst das «+», das direkt unter dieser Zeile eine gleicher Art einfügt (D-830), dann der Mülleimer — sein Wort: «bitte + und
+                // müll tauschen erst + dann müll» (D-831).*
+                $akte[] = $teilId === 0 ? '' : (($this->partActs['insert'] ?? '') === '' ? '' : ControlMarkup::button(
                         new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'insert_part', $this->partActs['insert'], '', true, false, 'plus-alt2', $formId)
-                    ));
+                    ))
+                    . ControlMarkup::button(
+                        new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId)
+                    );
             }
 
             $halter = preg_match('/\[(\d+)\]$/', $fieldPrefix, $treffer) === 1 ? (int) $treffer[1] : 0;
