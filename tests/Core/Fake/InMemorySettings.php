@@ -105,6 +105,16 @@ final class InMemorySettings implements SettingsRepository
         return $aus;
     }
 
+    public function valuesNamingObjects(array $objectIds): array
+    {
+        $gesucht = array_flip($objectIds);
+
+        return array_values(array_filter(
+            $this->ordered(),
+            static fn (SettingsValue $value): bool => $value->valueObjectId !== null && isset($gesucht[$value->valueObjectId])
+        ));
+    }
+
     public function forgetValue(int $id): ?int
     {
         $value = $this->values[$id] ?? null;

@@ -1258,7 +1258,8 @@ $plugin = $rc->newInstanceWithoutConstructor();
 $rc->getProperty('file')->setValue($plugin, __FILE__);
 $screen = $plugin->screen();
 $markup = $screen->render();
-check('render() liefert Markup, mit den gewählten Grössen am Rahmen', (bool) preg_match('#^<div class="wrap" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
+// ⚠️ *Seit D-807 trägt der Rahmen auch die Wahl für den Baumklick (`data-taxmod-tree-click`).*
+check('render() liefert Markup, mit den gewählten Grössen und der Wahl für den Baumklick am Rahmen', (bool) preg_match('#^<div class="wrap" data-taxmod-tree-click="(?:stay|jump)" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
 // ⚠️ *Ein «+» mehr als Zeilen: das im Kopf der Seite (D-730, 2026-09-12); `add_child_here` ist darin aufgegangen.*
 // *Gezählt je Zeilenformular des Baums, nicht über die ganze Seite — der Kopf trägt sein eigenes «+» und seinen eigenen Papierkorb.*
 preg_match_all('/style="display:flex;gap:\.2em">(.*?)<\/form>/s', $markup, $zeilenFormulare);
@@ -1279,7 +1280,8 @@ $doppelt = array_keys(array_filter(array_count_values($alleIds[1]), static fn (i
 check('keine Id kommt zweimal vor', $doppelt === [], implode(', ', $doppelt));
 check('eine Zeile ist eine Zeile und kein Formular; ein Knopf ausserhalb nennt seines; kein Zeilen-Akt ohne Schlüssel', ! str_contains($detail, 'class="taxmod-setting" style') && (bool) preg_match('#form="taxmod-(?:page|settings)-\d+"#', $detail) && ! preg_match('#name="do\[\]"#', $detail));
 check('jeder Icon-Knopf ist gekennzeichnet, nichts sagt «not defined», und 1..1 steht nirgends im sichtbaren Text (D-376)', substr_count($detail, 'taxmod-icon-button') > 0 && substr_count($detail, '<span class="taxmod-icon') >= substr_count($detail, 'taxmod-icon-button') && ! str_contains($detail, 'not defined') && ! str_contains(strip_tags($detail), '1..1') && (bool) preg_match('/value="1\.\.1"( selected)?>1</', $detail));
-check('die Detailhälfte hat ihre eigene Bildlaufleiste', str_contains($detail, 'taxmod-detail-pane'));
+// ⚠️ **Ersetzt durch D-807:** *hier stand «die Detailhälfte hat ihre eigene Bildlaufleiste». Sein Wort: «reduce vertical scroll bars to one».*
+check('die Hälften rollen nicht mehr einzeln — ein Rollbalken, der der Seite (D-807)', str_contains($detail, 'taxmod-detail-pane') && ! str_contains($detail, 'max-height:calc(100vh') && ! str_contains($detail, 'overflow-y:auto'));
 
 // Geerbte und eigene Felder stehen gruppiert, Geerbtes vorn (D-376).
 $rangEltern = $editor->createNode('__es Rang Eltern', $modellAst->id);
@@ -1307,11 +1309,13 @@ check('drei geerbte und drei eigene Felder stehen in je einem Block, das Geerbte
 
 // Das Fragezeichen.
 $fragezeichen = static function (string $html): array {
-    preg_match_all('/<span class="taxmod-hint" tabindex="0" title="([^"]*)"/', $html, $t);
+    // ⚠️ **Kein `title` mehr am Fragezeichen** ([D-809](../../docs/NewConcept/90-decision-log.md)) — sein Befund: «tooltip on ? is coming twice
+    // one box and one standard tooltip». *Gezählt wird jetzt die Hülle mit ihrem Satz; ein `title` daran wäre der doppelte Tooltip.*
+    preg_match_all('/<span class="taxmod-hint" tabindex="0"( title="[^"]*")?>.*?<span class="taxmod-hint-text">(.*?)<\/span>/s', $html, $t);
     preg_match_all('/<span class="taxmod-hint-text">(.*?)<\/span>/s', $html, $x);
     $klartext = static fn (string $roh): string => trim((string) preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($roh), ENT_QUOTES)));
 
-    return ['titel' => array_map($klartext, $t[1]), 'text' => array_map($klartext, $x[1]), 'huellen' => substr_count($html, 'class="taxmod-hint"')];
+    return ['titel' => array_map($klartext, array_filter($t[2], static fn (string $s): bool => trim($s) !== '')), 'text' => array_map($klartext, $x[1]), 'huellen' => substr_count($html, 'class="taxmod-hint"') - count(array_filter($t[1]))];
 };
 require_once ABSPATH . 'wp-admin/includes/template.php';
 foreach (['Knoten' => [seite($wurzel->id), 3], 'Aufräumen' => [$plugin->cleanupScreen()->render(), 1]] as $seitenName => [$html, $mindestens]) {

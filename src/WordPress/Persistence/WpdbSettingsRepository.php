@@ -146,6 +146,23 @@ final class WpdbSettingsRepository implements SettingsRepository
         return array_map($this->hydrate(...), $rows);
     }
 
+    public function valuesNamingObjects(array $objectIds): array
+    {
+        global $wpdb;
+
+        if ($objectIds === []) {
+            return [];
+        }
+
+        $rows = Query::rows('Zeilen lesen, die ein Objekt als Wert nennen', $wpdb->prepare(
+            'SELECT ' . self::VALUE_COLUMNS . ' FROM ' . Schema::table('settings_value')
+            . ' WHERE wert_settings_object_id IN (' . implode(',', array_fill(0, count($objectIds), '%d')) . ') ORDER BY id',
+            ...array_map(intval(...), $objectIds)
+        ));
+
+        return array_map($this->hydrate(...), $rows);
+    }
+
     public function forgetValue(int $id): ?int
     {
         global $wpdb;

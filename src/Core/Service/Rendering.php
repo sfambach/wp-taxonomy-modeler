@@ -715,7 +715,7 @@ final class Rendering implements Presets
                         continue;
                     }
 
-                    $werte[$halter][$zeile->relationId] = $wert;
+                    $werte[$halter][$zeile->relationId] = self::collectedValue($werte[$halter][$zeile->relationId] ?? null, $wert);
                 }
             }
 
@@ -4715,6 +4715,53 @@ final class Rendering implements Presets
     }
 
     /**
+     * Ob eine Kante Sätze anbietet, also ein gewählter Wert ein Satzverweis ist ([D-812](../../../docs/NewConcept/90-decision-log.md)) —
+     * dieselbe Frage, die das Zeichnen stellt, damit Zeichnen und Zurücklesen nicht zwei Antworten geben.
+     */
+    public function referencesRecords(Relation $relation): bool
+    {
+        return $this->drawsAsSummary($relation, $this->typesOf([$relation])[$relation->id] ?? null, $this->settingsForUseSites([$relation])[$relation->id] ?? []);
+    }
+
+    /**
+     * Der Renderer, den ein neuer Knoten bekommt ([D-808](../../../docs/NewConcept/90-decision-log.md)): der Standard seines Typs, sonst
+     * der, der am Vater gilt, sonst das Formular.
+     *
+     * ⚠️ *Sein Wort: «every node has a renderer, it is defined by its type or by the type of the father node during creation». Der
+     * Rückfall ist nie die Antwort — er ist die Fehlermarke (R14b) und nicht wählbar.*
+     */
+    public function rendererForNewNode(Node $node, ?Node $parent): string
+    {
+        $typ = $this->typeOfNode($node);
+
+        if ($typ !== null && ($standard = $this->renderers->defaultFor($typ)) !== $this->renderers->fallback()) {
+            return $standard->name();
+        }
+
+        $amVater = $parent === null ? null : $this->rendererNameFor($parent, Purpose::Display);
+
+        return $amVater !== null && $this->renderers->knows($amVater) ? $amVater : FormRenderer::NAME;
+    }
+
+    /**
+     * Mehrere Werte eines einfachen Textfeldes für die Eingabe zusammengelegt ([D-811](../../../docs/NewConcept/90-decision-log.md)): «C1, C2».
+     *
+     * ⚠️ *Sein Befund: «add row does not work». Die Maske zeigte nur den letzten Wert, und das nächste Speichern verweigerte das Feld.
+     * Nur Text wird zusammengelegt — eine Zahl mit Komma wäre eine andere Zahl.*
+     */
+    public static function collectedValue(?TypedValue $vorher, TypedValue $neu): TypedValue
+    {
+        if ($vorher === null || $vorher->text === null || $neu->text === null || $vorher->isAReference() || $neu->isAReference()) {
+            return $neu;
+        }
+
+        return TypedValue::ofText($vorher->text . self::VALUE_JOIN . $neu->text);
+    }
+
+    /** Was mehrere Textwerte in einer Eingabe trennt ([D-811](../../../docs/NewConcept/90-decision-log.md)). */
+    public const VALUE_JOIN = ', ';
+
+    /**
      * Draw one choosing setting through the choice renderer.
      *
      * ⚠️ **The set comes from here and never from the renderer** ([D-159](90-decision-log.md)). Two
@@ -4840,10 +4887,28 @@ final class Rendering implements Presets
             default                                             => $this->objectsOffered($erklaert, $subject),
         };
 
+        // ⚠️ **Die Auswahl zeigt den Renderer, der gilt, nie bloss die erste Zeile** ([D-808](../../../docs/NewConcept/90-decision-log.md)) — *sein
+        // Wort: «you see the renderer that is choosen not one that is the first line in the select and not chooseen». Ohne eigene Wahl steht
+        // hier die Vorgabe der Auflösung; gilt am Knoten ein anderer, steht der da, und fehlt er unter den angebotenen, wird er vorn angeboten.*
+        $gezeigt = $setting->value;
+
+        if ($key === 'renderer' && $typ === \Taxmod\Core\Model\NodeClass\AttributeType::Object) {
+            if ($subject instanceof Node && $setting->fromOwnerId === 0 && ! $setting->setHere) {
+                $gilt    = $this->rendererNameFor($subject, Purpose::Display);
+                $gezeigt = $gilt !== null && $this->renderers->knows($gilt) ? TypedValue::ofText($gilt) : $gezeigt;
+            }
+
+            $name = (string) ($gezeigt->text ?? '');
+
+            if ($name !== '' && ! isset($options[$name])) {
+                $options = [$name => $name] + $options;
+            }
+        }
+
         $renderer  = $this->renderers->byName(ChoiceRenderer::NAME);
         $gezeichnet = $renderer->render($subject, new RenderContext(
             purpose: $purpose,
-            value: $setting->value,
+            value: $gezeigt,
             settings: [],
             locale: $locale,
             level: $level,

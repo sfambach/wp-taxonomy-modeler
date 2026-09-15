@@ -456,7 +456,7 @@ final class NodesScreen
         // ⚠️ **The chosen sizes reach the stylesheet as custom properties** — the file stays static
         // and cacheable, and the two numbers a person picked ride on the page ([D-397](../../../docs/NewConcept/90-decision-log.md)).
         // *The alternative was a `<style>` block again, which is what the stylesheet was extracted from.*
-        $html  = '<div class="wrap" style="'
+        $html  = '<div class="wrap" data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
             . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px">';
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
@@ -473,9 +473,15 @@ final class NodesScreen
         //
         // ⚠️ *`calc` rather than a fixed height, because the admin bar, the heading and the notice
         // are all variable — guessing a number would leave a gap on one screen and clip on another.*
-        $pane = 'max-height:calc(100vh - 12em);overflow-y:auto;overflow-x:hidden';
+        //
+        // ⚠️ **Ersetzt: ein Rollbalken, der der Seite** ([D-807](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«i think we should
+        // reduce vertical scroll bars to one at the side an page»*. *Die Hälften rollen nicht mehr; `clip` statt `hidden`, weil `hidden` die
+        // Hälfte wieder zu einem Rollbehälter machte und der mitlaufende Balken der Satztabelle an ihr statt am Fenster klebte.*
+        $pane = 'overflow-x:clip';
 
-        $html .= '<table style="width:100%;border:0"><tr style="vertical-align:top">'
+        // ⚠️ *`table-layout:fixed`, damit die rechte Zelle wirklich 73 % bleibt — sonst wächst sie mit dem breitesten Inhalt, und der Satzblock
+        // hat nichts, woran er scrollen könnte. Sein Befund: «no scrollbar, and records are shrinked to size of the page».*
+        $html .= '<table style="width:100%;border:0;table-layout:fixed"><tr style="vertical-align:top">'
             // ⚠️ *27 zu 73 — erst «mach mal die baumansicht etwas breiter» (40 %), dann nach seinem Bildschirmfoto «baum kann 2/3 so breit sein wie jetzt» (D-776).*
             . '<td style="width:27%;padding:0 1.5em 0 0">'
             . '<div class="taxmod-tree-pane" style="' . $pane . ';padding-right:.6em">' . $left . '</div>'
@@ -3125,15 +3131,82 @@ final class NodesScreen
                     continue;
                 }
 
+                // ⚠️ **Eine Satzauswahl ist ein Satzverweis, auch in einer Teilzeile** ([D-812](../../../docs/NewConcept/90-decision-log.md)) — *sein
+                // Befund: «u1 is missing after that». Hier ging «Part» über seinen Typ `node_ref` und legte die Satznummer als Knotenverweis ab.*
+                if ($relation->kind === RelationKind::Aggregation && ctype_digit($characters) && $this->rendering->referencesRecords($relation)) {
+                    $this->data->put($partId, $innerId, TypedValue::ofRecordReference((int) $characters));
+
+                    continue;
+                }
+
                 $type = $this->rendering->typesFor([$relation])[$innerId] ?? null;
 
                 if ($type === null) {
                     throw NotYetStorable::thatFieldHasNoTypeYet($relation->name);
                 }
 
+                if ($this->savedAsSeveral($partId, $relation, $type, $characters)) {
+                    continue;
+                }
+
                 $this->data->put($partId, $innerId, $type->valueFrom($characters));
             }
         }
+    }
+
+    /**
+     * Ein Textfeld, das mehrere Werte tragen darf, schreibt jeden durch Komma getrennten Wert als eigene Zeile ([D-811](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Befund: «add row does not work». Die Position «C1, C2» trug zwei Werte, die Maske zeigte einen, und `put()` verweigerte das
+     * Feld — damit fiel jeder Akt der Stückliste, der zuerst speichert. Nur Text: eine Zahl mit Komma wäre eine andere Zahl.*
+     *
+     * @return bool Ob das Feld hier geschrieben wurde.
+     */
+    private function savedAsSeveral(int $recordId, Relation $relation, SimpleType $type, string $characters): bool
+    {
+        if ($type !== SimpleType::Text || ! $relation->multiplicity->allowsMany()) {
+            return false;
+        }
+
+        $werte = array_values(array_filter(array_map('trim', explode(',', $characters)), static fn (string $wert): bool => $wert !== ''));
+        $jetzt = array_values(array_map(
+            static fn ($zeile): string => (string) $zeile->value->text,
+            array_filter($this->data->valuesOf($recordId), static fn ($zeile): bool => $zeile->relationId === $relation->id)
+        ));
+
+        if ($werte === $jetzt) {
+            return true;
+        }
+
+        if (count($werte) <= 1 && count($jetzt) <= 1) {
+            return false;
+        }
+
+        $this->data->clear($recordId, $relation->id);
+
+        foreach ($werte as $wert) {
+            $this->data->appendValue($recordId, $relation->id, $type->valueFrom($wert));
+        }
+
+        return true;
+    }
+
+    /**
+     * Ein Kind anlegen und ihm gleich seinen Renderer geben ([D-808](../../../docs/NewConcept/90-decision-log.md)) — aus seinem Typ, sonst
+     * aus dem, was am Vater gilt.
+     *
+     * ⚠️ *Sein Wort: «every node has a renderer, it is defined by its type or by the type of the father node during creation». Kennt die
+     * Klasse des Kindes `renderer` nicht, bleibt es beim Anlegen.*
+     */
+    private function createdChild(string $name, int $parentId): Node
+    {
+        $kind = $this->editor->createNode($name, $parentId, $this->requestedClass());
+
+        if ($this->attributes !== null && $this->attributes->knows($kind, 'renderer')) {
+            $this->attributes->put($kind, 'renderer', $this->rendering->rendererForNewNode($kind, $this->editor->find($parentId)));
+        }
+
+        return $kind;
     }
 
     /** Ob in einer geschickten Liste irgendwo ein Zeichen steht — ein leerer neuer Teil wird nicht angelegt. */
@@ -3425,7 +3498,7 @@ final class NodesScreen
 
             // ⚠️ *Ein Feld ohne Typ, das auf einen Knoten mit Sätzen zeigt — eine Aggregation —, bekommt aus dem Wähler der
             // Zusammenfassung die Nummer eines Satzes (D-753). Alles andere ohne Typ ist noch nicht ablegbar.*
-            if ($type === null && $relation->kind === RelationKind::Aggregation && ctype_digit($characters)) {
+            if ($relation->kind === RelationKind::Aggregation && ctype_digit($characters) && ($type === null || $this->rendering->referencesRecords($relation))) {
                 $this->data->put($recordId, $relationId, TypedValue::ofRecordReference((int) $characters));
 
                 continue;
@@ -3433,6 +3506,10 @@ final class NodesScreen
 
             if ($type === null) {
                 throw NotYetStorable::thatFieldHasNoTypeYet($relation->name);
+            }
+
+            if ($this->savedAsSeveral($recordId, $relation, $type, $characters)) {
+                continue;
             }
 
             // ⚠️ *Already read above, converter and all. The `??` is not a fallback for a missing
@@ -3804,7 +3881,7 @@ final class NodesScreen
             $held = [];
 
             foreach ($this->data->valuesOf($record->id) as $value) {
-                $held[$value->relationId] = $value->value;
+                $held[$value->relationId] = \Taxmod\Core\Service\Rendering::collectedValue($held[$value->relationId] ?? null, $value->value);
             }
 
             // ⚠️ **Die Zeile zeigt nur an; die Nummer öffnet den Satz in der Vorschau** ([D-785](../../../docs/NewConcept/90-decision-log.md)).
@@ -5513,7 +5590,7 @@ final class NodesScreen
         try {
             $outcome = match ($do) {
                 // ⚠️ *Ohne Namen heisst das Kind «New node» — der Dialog verlangt keinen (D-730); `add_child_here` ist darin aufgegangen.*
-                'add_child'      => $stay = $this->editor->createNode($name === '' ? __('New node', 'taxmod') : $name, $id, $this->requestedClass())->id,
+                'add_child'      => $stay = $this->createdChild($name === '' ? __('New node', 'taxmod') : $name, $id)->id,
                 // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
                 // whose whole point is *and now I want to work on that* — it makes a node with a
                 // placeholder name, so leaving the parent selected means the very next thing a

@@ -929,6 +929,32 @@ final class ModelEditor
         // worauf es zeigt.*
         $data = $this->records?->forgetNodes($ids) ?? ['records' => 0, 'values' => 0];
 
+        // ⚠️ **Die Einstellungszeilen gehen mit — sonst bleibt der Knoten still liegen.** *Gemessen am 2026-09-15: seit jeder neue Knoten
+        // seinen Renderer als Zeile trägt ([D-808](../../../docs/NewConcept/90-decision-log.md)), verweigerte der Fremdschlüssel
+        // `taxmod_sv_node` das Löschen, und `$wpdb` meldete es nur ins Protokoll. Die eigenen Zeilen der Knoten und die, die auf sie zeigen.*
+        // *Ein Objekt, das danach keine lebende Zeile mehr nennt (der Renderer des Knotens), geht mit — sonst stünde es verwaist da.*
+        $objekte = [];
+
+        foreach ($this->settings === null ? [] : [...array_merge([], ...array_values($this->settings->valuesOfNodes($ids))), ...$this->settings->valuesReferring($ids)] as $zeile) {
+            $this->settings->forgetValue($zeile->id);
+
+            if ($zeile->valueObjectId !== null) {
+                $objekte[$zeile->valueObjectId] = true;
+            }
+        }
+
+        if ($this->settings !== null && $objekte !== []) {
+            $genannt = [];
+
+            foreach ($this->settings->valuesNamingObjects(array_keys($objekte)) as $zeile) {
+                $genannt[(int) $zeile->valueObjectId] = true;
+            }
+
+            foreach (array_diff_key($objekte, $genannt) as $objektId => $_) {
+                $this->settings->forgetObject($objektId);
+            }
+        }
+
         $gone = [
             'labels'   => ($this->labels?->forgetOwners($ids, IdentitySpace::Node) ?? 0)
                 + ($this->labels?->forgetOwners($relations, IdentitySpace::Relation) ?? 0),

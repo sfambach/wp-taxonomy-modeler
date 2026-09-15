@@ -105,8 +105,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **C1** | Model contains Bauteil (Passiv, Halbleiter, Elektromechanik, Sonstige), Bauteilliste, Kontakt, Platine, Bauteillisten Position. | [01-standard-tree.md:88](01-standard-tree.md) | 10 |
-| **C2** | Implementation holds Bauteile, BOM, Lieferanten — actual instances. | [01-standard-tree.md:89](01-standard-tree.md) | 19 |
+| **C1** | Model contains Bauteil (Passiv, Halbleiter, Elektromechanik, Sonstige), Bauteilliste, Kontakt, Platine, Bauteillisten Position. | [01-standard-tree.md:88](01-standard-tree.md) | 14 |
+| **C2** | Implementation holds Bauteile, BOM, Lieferanten — actual instances. | [01-standard-tree.md:89](01-standard-tree.md) | 23 |
 | **C3** | Konstanten also holds Bauformen and Bauteil Monatge Typen (sic). | [01-standard-tree.md:90](01-standard-tree.md) | 7 |
 | **C4** | The file's own notes list four known live inconsistencies, including a typo and a soft-trashed node. | [01-standard-tree.md:91](01-standard-tree.md) | 10 |
 | **C5** | The attributes that appear only through specialisation — an integer node carrying min, max, step — are stored generically, in the settings table. | [10-domain-core.md:1135](10-domain-core.md) | 9 |
@@ -240,7 +240,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **U1** | the row shows the frequent, a ⋯ menu holds everything — touch has no right-click | [97-implementation-plan.md:188](97-implementation-plan.md) | 6 |
+| **U1** | the row shows the frequent, a ⋯ menu holds everything — touch has no right-click | [97-implementation-plan.md:188](97-implementation-plan.md) | 8 |
 | **U5** | dragging moves whole branches, and several at once | [97-implementation-plan.md:189](97-implementation-plan.md) | 2 |
 | **U6** | duplicating puts the copy directly beneath, with an indexed name | [97-implementation-plan.md:190](97-implementation-plan.md) | 2 |
 | **U21** | the tree row draws the node's icon | [97-implementation-plan.md:191](97-implementation-plan.md) | 3 |

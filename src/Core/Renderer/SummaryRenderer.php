@@ -254,10 +254,17 @@ final class SummaryRenderer extends TypedFieldRenderer
         // ⚠️ *Ohne gewählten Satz steht nur das Zeichen «—» — dann ist der Öffner ein Zeichenknopf: randlos, und sein Name steht für
         // den Vorleser dabei, wie beim Knotenwähler ({@see ChooserRenderer}; `icon-button-check`). Der Name ist der Knoten, aus dem
         // gewählt wird — die Wurzel des Baums; `render()` ist in {@see TypedFieldRenderer} endgültig und reicht das Feld nicht herein.*
-        $nichts = $context->surroundings->refersTo === null || $gewaehlt === null;
+        // ⚠️ *Ohne Wort der Umgebung das Wort aus dem Baum des Dialogs, zuletzt die Nummer — ein gewählter Satz zeigt nie «—» (D-810).*
+        $wort = $context->surroundings->refersTo;
+
+        foreach ($gewaehlt === null || $wort !== null ? [] : $baum as $zeile) {
+            $wort ??= isset($zeile['records'][$gewaehlt]) ? (string) $zeile['records'][$gewaehlt] : null;
+        }
+
+        $nichts = $gewaehlt === null;
         $jetzt  = $nichts
             ? '<span class="taxmod-nothing">—</span><span class="screen-reader-text">' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '</span>'
-            : RenderResult::escape((string) $context->surroundings->refersTo);
+            : RenderResult::escape($wort ?? '#' . $gewaehlt);
 
         $dialog = DialogMarkup::of(
             'taxmod-record-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $context->surroundings->formId . $context->fieldName),

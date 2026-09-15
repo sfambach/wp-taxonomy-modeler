@@ -69,6 +69,9 @@ final class SettingsScreen
     /** Wie viele Datensätze die Knotenseite je Seite zeichnet ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
     public const RECORDS_PER_PAGE = 'taxmod_records_per_page';
 
+    /** Ob ein Klick im Baum die Seite stehen lässt oder nach oben springt ([D-807](../../../docs/NewConcept/90-decision-log.md)). */
+    public const TREE_CLICK = 'taxmod_tree_click';
+
     /**
      * Die wählbaren Seitengrössen — sein Wort: «5,10,20,50» ([D-763](../../../docs/NewConcept/90-decision-log.md)).
      *
@@ -141,6 +144,7 @@ final class SettingsScreen
             . $this->localeRow()
             . $this->trashRow()
             . $this->recordsPerPageRow()
+            . $this->treeClickRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('The glyphs in the tree and on its buttons.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</tbody></table>'
@@ -323,6 +327,24 @@ final class SettingsScreen
             __('Records per page', 'taxmod'),
             '<select name="records_per_page">' . $options . '</select>',
             __('How many records a node page draws at once. Drawing a record costs time; the rest are a page away.', 'taxmod')
+        );
+    }
+
+    /** Ein Klick im Baum: stehen bleiben oder nach oben springen ([D-807](../../../docs/NewConcept/90-decision-log.md)). */
+    private function treeClickRow(): string
+    {
+        $jetzt = self::treeClickJumps() ? 'jump' : 'stay';
+        $wahl  = ['stay' => __('Stay where the page is', 'taxmod'), 'jump' => __('Jump to the top', 'taxmod')];
+        $options = '';
+
+        foreach ($wahl as $wert => $wort) {
+            $options .= '<option value="' . esc_attr($wert) . '"' . selected($jetzt, $wert, false) . '>' . esc_html($wort) . '</option>';
+        }
+
+        return $this->row(
+            __('Clicking a node in the tree', 'taxmod'),
+            '<select name="tree_click">' . $options . '</select>',
+            __('Whether the node page keeps its scroll position or starts at the top when a node in the tree is chosen. Opening a record always lands at its input.', 'taxmod')
         );
     }
 
@@ -537,6 +559,12 @@ final class SettingsScreen
             update_option(self::RECORDS_PER_PAGE, $jeSeite, true);
         }
 
+        $baumKlick = isset($_POST['tree_click']) ? sanitize_key(wp_unslash((string) $_POST['tree_click'])) : '';
+
+        if (in_array($baumKlick, ['stay', 'jump'], true)) {
+            update_option(self::TREE_CLICK, $baumKlick, true);
+        }
+
         wp_safe_redirect(add_query_arg(
             ['page' => 'taxmod-settings', 'taxmod_saved' => '1'],
             admin_url('admin.php')
@@ -613,6 +641,12 @@ final class SettingsScreen
         $size = (int) get_option(self::RECORDS_PER_PAGE, 5);
 
         return in_array($size, self::PAGE_SIZES, true) ? $size : 5;
+    }
+
+    /** Ob ein Klick im Baum nach oben springt; Vorgabe ist «bleiben» ([D-807](../../../docs/NewConcept/90-decision-log.md)). */
+    public static function treeClickJumps(): bool
+    {
+        return get_option(self::TREE_CLICK, 'stay') === 'jump';
     }
 
     public static function showsTrash(): bool

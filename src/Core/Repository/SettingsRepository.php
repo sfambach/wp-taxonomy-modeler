@@ -67,6 +67,15 @@ interface SettingsRepository
      */
     public function valuesReferring(array $nodeIds): array;
 
+    /**
+     * Die lebenden Zeilen, die eines dieser Objekte als Wert nennen — ob ein Objekt nach dem Leeren des Papierkorbs noch gebraucht wird
+     * ([D-813](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  list<int> $objectIds
+     * @return list<SettingsValue>
+     */
+    public function valuesNamingObjects(array $objectIds): array;
+
     /** Eine Zeile in den Schatten wandern lassen. Gibt die Version zurück, mit der sie ging, oder `null`. */
     public function forgetValue(int $id): ?int;
 

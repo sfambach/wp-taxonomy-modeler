@@ -42,12 +42,32 @@
 	// a browser set to refuse it. A screen that fails to load because a preference could not be read
 	// would be worse than one that starts at the top.
 	var saved = null;
+	var SPRUNG = 'taxmod.sprung';
+	var springen = false;
 
 	try {
 		saved = JSON.parse( window.sessionStorage.getItem( KEY ) || 'null' );
+		springen = window.sessionStorage.getItem( SPRUNG ) === '1';
+		window.sessionStorage.removeItem( SPRUNG );
 	} catch ( e ) {
 		saved = null;
 	}
+
+	// *Die Wahl steht an der Seite (`data-taxmod-tree-click`); gemerkt wird nur, dass der nächste Aufbau aus einem Baumklick kommt.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var link = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-tree-pane a[href]' ) : null;
+		var seite = link ? link.closest( '[data-taxmod-tree-click]' ) : null;
+
+		if ( ! seite || seite.getAttribute( 'data-taxmod-tree-click' ) !== 'jump' ) {
+			return;
+		}
+
+		try {
+			window.sessionStorage.setItem( SPRUNG, '1' );
+		} catch ( e ) {
+			// Ohne Speicher bleibt die Seite stehen — die Vorgabe.
+		}
+	} );
 
 	function restore() {
 		// ⚠️ **Ein Anker in der Adresse geht vor** (D-788) — sein Befund: *«Wenn ich auf eine Zeile klicke, dann springt der
@@ -57,6 +77,14 @@
 
 		if ( anker ) {
 			anker.scrollIntoView( { block: 'start' } );
+
+			return;
+		}
+
+		// ⚠️ **Ein Klick im Baum springt nach oben, wenn die Konfiguration es sagt** (D-807) — sein Wort: «if selecting something in the
+		// tree it should jump to top, this should be switchable, stay or jump … default would be stay».
+		if ( springen ) {
+			window.scrollTo( 0, 0 );
 
 			return;
 		}
@@ -1325,5 +1353,64 @@
 			ereignis.preventDefault();
 		}
 	} );
+
+	// ⚠️ **Ein mitlaufender waagerechter Balken unter jeder breiten Satztabelle** (D-807) — sein Befund: «no scrollbar, and records are
+	// shrinked to size of the page». *Der echte Balken des Satzformulars liegt am Ende einer langen Tabelle; dieser steht unten am Fenster,
+	// solange die Tabelle im Blick ist, und rollt dasselbe.*
+	function balkenAnlegen() {
+		document.querySelectorAll( '.taxmod-records-block .taxmod-record-form' ).forEach( function ( formular ) {
+			var balken = formular.nextElementSibling && formular.nextElementSibling.classList.contains( 'taxmod-hscroll' ) ? formular.nextElementSibling : null;
+
+			if ( formular.scrollWidth <= formular.clientWidth + 1 ) {
+				if ( balken ) {
+					balken.hidden = true;
+				}
+
+				return;
+			}
+
+			if ( ! balken ) {
+				balken = document.createElement( 'div' );
+				balken.className = 'taxmod-hscroll';
+				balken.appendChild( document.createElement( 'div' ) );
+				formular.parentNode.insertBefore( balken, formular.nextSibling );
+
+				var gerade = false;
+
+				balken.addEventListener( 'scroll', function () {
+					if ( gerade ) {
+						gerade = false;
+
+						return;
+					}
+
+					gerade = true;
+					formular.scrollLeft = balken.scrollLeft;
+				}, { passive: true } );
+				formular.addEventListener( 'scroll', function () {
+					if ( gerade ) {
+						gerade = false;
+
+						return;
+					}
+
+					gerade = true;
+					balken.scrollLeft = formular.scrollLeft;
+				}, { passive: true } );
+			}
+
+			balken.hidden = false;
+			balken.style.width = formular.clientWidth + 'px';
+			balken.firstChild.style.width = formular.scrollWidth + 'px';
+		} );
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', balkenAnlegen );
+	} else {
+		balkenAnlegen();
+	}
+
+	window.addEventListener( 'resize', balkenAnlegen );
 
 } )();

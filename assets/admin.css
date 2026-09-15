@@ -927,7 +927,7 @@ ol.taxmod-switch-cascade {
  * to wide». Der Scrollbalken aus D-777 hing an `.taxmod-record-form`; seit die Zeilen nur anzeigen (D-785), steht die Tabelle nicht mehr
  * darin. Jetzt am Block selbst. */
 .taxmod-records-block {
-    overflow-x: auto;
+    /* ⚠️ Kein eigenes Rollen mehr (D-807): gerollt wird im Satzformular darin, sonst klebte der mitlaufende Balken an diesem Block statt am Fenster. */
     max-width: 100%;
     min-width: 0;
 }
@@ -943,6 +943,9 @@ ol.taxmod-switch-cascade {
 
 .taxmod-table td .taxmod-table {
     width: 100%;
+    /* ⚠️ Nicht schmaler als ihr Inhalt braucht — sonst quetscht die feste Spaltenbreite die Positionen auf Seitenbreite zusammen
+     * (sein Befund: «records are shrinked to size of the page»); der Satzblock scrollt dann waagerecht. */
+    min-width: 42em;
     table-layout: fixed;
 }
 
@@ -951,6 +954,27 @@ ol.taxmod-switch-cascade {
     overflow: hidden;
     text-overflow: ellipsis;
     text-align: left;
+}
+
+/* ⚠️ Der Kopf schneidet nicht ab — sonst verschwände der Erklärkasten des Fragezeichens in der Zelle (D-809). */
+.taxmod-table td .taxmod-table th {
+    overflow: visible;
+}
+
+/* ⚠️ Ein Rollbalken für die Seite (D-807): die breite Satztabelle rollt waagerecht in ihrem Formular, und ein mitlaufender Balken
+ * steht unten am Fenster, solange die Tabelle im Blick ist — sonst läge er am Ende einer langen Tabelle. */
+.taxmod-hscroll {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 17px;
+    background: #f0f0f1;
+}
+
+.taxmod-hscroll > div {
+    height: 1px;
 }
 
 /* ⚠️ Die Pfeile hinter dem Namen, nicht darunter — sein Wort: «put the arrows after the label not beneath». */

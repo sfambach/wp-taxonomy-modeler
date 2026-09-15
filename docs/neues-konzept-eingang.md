@@ -465,6 +465,25 @@ Das hier ist der Entwurf dazu, kein Beschluss. Jede Zeile unter «Zu entscheiden
 
 **Nicht gebaut, nichts davon.** Bis er entscheidet, gilt, was oben unter «Was schon steht» zitiert ist.
 
+## INF-055 · Typ und Wert als ein Feld?
+
+**Sein Wort (2026-09-15):** *«if type would be LM7905 as well as 33Kohm +-5% you could simply show the type/value when nothing is set. think about that type and value the same field is it currently even possible?»*
+
+### Was heute steht (gemessen)
+
+- Ein aktives Bauteil trägt «Typ» als **Text** am Knoten `Active` (LM7905).
+- Ein Widerstand oder Kondensator trägt seinen Wert als **Teile vom Typ Einheitenwert** («Widerstandswert», «Toleranz») an seinem eigenen Knoten.
+- Beides sind **verschiedene Kanten mit verschiedenen Typen**. Ein Feld kann heute nicht einmal Text und einmal Einheitenwert sein.
+- Was eine Stückliste zeigt, sagt die Einstellung `summary_fields` je Kategorie; ohne sie das erste Textfeld, eine Stufe tief alle Werte (D-797, D-810).
+
+### Zu entscheiden — mit meiner Empfehlung
+
+| Frage | Möglichkeiten | Empfehlung |
+|---|---|---|
+| Braucht es ein gemeinsames Feld «Bezeichnung»? | a) nein — `summary_fields` je Kategorie legt fest, was «Typ/Wert» ist (Active: Typ; Resistor: Widerstandswert + Toleranz) · b) ein **abgeleitetes** Feld (wie ein Weg-Feld, D-755), das je Kategorie aus anderen Feldern gerechnet und gespeichert wird · c) ein echtes Feld, dessen Typ je Kind wechseln darf | **a** jetzt, **b** wenn gesucht/sortiert werden soll — c bricht «ein Feld, ein Typ». |
+
+**Nicht gebaut.**
+
 ## Erledigte Eingänge
 
 *(noch keine)*

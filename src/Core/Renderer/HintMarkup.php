@@ -79,7 +79,7 @@ final class HintMarkup
             return '';
         }
 
-        return '<span class="' . self::NAME . '" tabindex="0" title="' . RenderResult::escape($hint) . '">'
+        return '<span class="' . self::NAME . '" tabindex="0">'
             . '<span class="' . self::ICON . '">'
             . IconMarkup::dashicon('editor-help')
             . '</span>'
