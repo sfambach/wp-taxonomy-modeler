@@ -643,6 +643,13 @@ details.taxmod-page-block > summary {
     --taxmod-icon-more: 3px;
 }
 
+/* ⚠️ Beide Hälften beginnen auf einer Linie (sein Bild: «rechts zu weit unten»): der erste Block rechts trug den Aussenabstand
+ * `.7em` jedes Blocks auch oben, der Baum links keinen. */
+.taxmod-detail-pane > :first-child,
+.taxmod-detail-pane > :first-child > .taxmod-page-block:first-child {
+    margin-top: 0;
+}
+
 /* ── A record as a block ─────────────────────────────────────────────────────
  *
  * ⚠️ The owner: *I assume a record is not a renderer yet either.* Half right — the **fields** were

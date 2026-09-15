@@ -369,6 +369,8 @@ final class NodesScreen
             'h2'
         );
         $left .= $this->hiddenToggle($showHidden);
+        // ⚠️ **Alles auf, alles zu** ([D-829](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «button collaps ellaps all fehlt im baum».*
+        $left .= ' ' . $this->foldAllToggles();
         // ⚠️ *Neben seinem Geschwister, weil es dieselbe Art Schalter ist: eine Ansicht, kein
         // gespeicherter Vorzug. Der Eigentuemer braucht die Wurzel, um ihr Felder zu geben.*
         // ⚠️ **Er wird nur angeboten, wenn der Entwicklermodus an ist und sein Haken steht**
@@ -5342,6 +5344,25 @@ final class NodesScreen
             . IconMarkup::dashicon($showing ? 'admin-home' : 'admin-home') . ' '
             . esc_html($showing ? __('hiding the root again', 'taxmod') : __('show the root', 'taxmod'))
             . '</a>';
+    }
+
+    /**
+     * «Alles aufklappen» und «alles zuklappen» über dem Baum ([D-829](../../../docs/NewConcept/90-decision-log.md)) — gebaut wie
+     * {@see self::hiddenToggle()}: Ansichtsschalter in der Adresse.
+     *
+     * ⚠️ *Auf ist das Wort {@see self::ALL_EXPANDED}; zu ist **kein** Parameter — das ist der frische Aufruf, der alles faltet und den Weg
+     * zum gewählten Knoten offen lässt (D-478). Ein leerer Wert statt des Worts würde von `add_query_arg` verschluckt.*
+     */
+    private function foldAllToggles(): string
+    {
+        $knoten = $this->selectedFromRequest()?->id;
+        $auf    = $this->backTo($knoten, ['taxmod_collapsed' => self::ALL_EXPANDED]);
+        $zu     = $this->backTo($knoten, ['taxmod_collapsed' => null]);
+
+        return '<a class="taxmod-show-hidden taxmod-fold-all" href="' . esc_url($auf) . '">'
+            . IconMarkup::dashicon('arrow-down-alt2') . ' ' . esc_html__('expand all', 'taxmod') . '</a> '
+            . '<a class="taxmod-show-hidden taxmod-fold-all" href="' . esc_url($zu) . '">'
+            . IconMarkup::dashicon('arrow-right-alt2') . ' ' . esc_html__('collapse all', 'taxmod') . '</a>';
     }
 
     /**
