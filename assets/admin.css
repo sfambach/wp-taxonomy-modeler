@@ -2077,6 +2077,25 @@ fieldset.taxmod-read-only {
 
 .taxmod-part-add {
     margin-top: .2em;
+    display: flex;
+    align-items: center;
+    gap: .4em;
+}
+
+/* ⚠️ Die Tabelle eines Teils rollt waagerecht in sich (sein Bild der Stückliste: «Da fehlt noch ne scrollbar im complex renderer»).
+ * `relative`, damit Vorlesetexte darin mit abgeschnitten werden und die Seite nicht verbreitern (D-814). */
+.taxmod-complex-block > .taxmod-table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    position: relative;
+}
+
+/* ⚠️ «die buttons unten können nebeneinander»: die Knöpfe des letzten Teils stehen links, die Akte der Vorschau (Art, Speichern, +)
+ * rechts daneben in derselben Zeile. */
+.taxmod-preview-side .taxmod-node > .taxmod-complex-block:last-child > .taxmod-part-add {
+    float: left;
+    margin: .2em 1.5em 0 0;
 }
 
 .taxmod-complex-link > summary {
