@@ -6177,7 +6177,9 @@ final class Rendering implements Presets
                 $wahlFeld = ($this->partActs['many'] ?? '') === '' ? null : $this->pickFieldOf($relation);
 
                 if ($wahlFeld !== null) {
-                    $wahlBaum   = $this->summariesOf([$wahlFeld], [], $this->settingsForUseSites([$wahlFeld]), Purpose::Edit, $this->typesOf([$wahlFeld]))['baum'][$wahlFeld->id] ?? [];
+                    // ⚠️ **Die Vorbelegung gilt auch hier** (D-826) — *sein Wort: «2. ja». Eine neue Zeile hat noch keine Werte; der Weg der
+                    // Vorbelegung fällt darum auf die Werte des haltenden Satzes zurück, wie bei der Einzelwahl einer leeren Zeile.*
+                    $wahlBaum   = $this->summariesOf([$wahlFeld], [], $this->settingsForUseSites([$wahlFeld]), Purpose::Edit, $this->typesOf([$wahlFeld]), $values)['baum'][$wahlFeld->id] ?? [];
                     $schluessel = $halter . '-' . $relation->id;
 
                     if ($wahlBaum !== []) {

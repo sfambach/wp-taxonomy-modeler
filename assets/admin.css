@@ -970,6 +970,37 @@ a.taxmod-tree-fold-box {
     margin-top: .6em;
 }
 
+/* ⚠️ Die Knopfzeile unter den Teilen in einer Höhe (sein Bild: «sieht noch nicht so gut aus»): «+», «Add several», die Art, Speichern
+ * und «+» stehen auf einer Mittellinie, gleich hoch; «Add several» einzeilig, das Zeichen so gross wie die anderen. */
+.taxmod-part-add,
+.taxmod-preview-acts {
+    min-height: 30px;
+}
+
+.taxmod-part-add > .taxmod-chooser {
+    display: inline-flex;
+    align-items: center;
+}
+
+.taxmod-record-multi-open {
+    display: inline-flex !important;
+    align-items: center;
+    gap: .35em;
+    min-height: 30px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.taxmod-record-multi-open .dashicons {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
+
+.taxmod-preview-side .taxmod-node > .taxmod-complex-block:last-child > .taxmod-part-add {
+    margin-top: .6em;
+}
+
 .taxmod-record-in-preview {
     text-decoration: none;
 }

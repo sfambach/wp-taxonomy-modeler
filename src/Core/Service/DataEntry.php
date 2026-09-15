@@ -1203,7 +1203,45 @@ final class DataEntry
             $version
         );
 
+        $this->vorgabenUebernehmen($part, $gewaehlt);
+
         return $part;
+    }
+
+    /**
+     * Eine neue Teilzeile übernimmt die Werte aus dem gefüllten `default`-Satz ihres Knotens ([D-827](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «3 stimmt» — auf die Frage, ob neue Zeilen die Anzahl 1 bekommen. Nicht am Feldnamen, sondern am Vorgabesatz
+     * (D-026: «at model level there are no values, only defaults»). Nur einfache Werte und Knotenverweise: ein Satzverweis oder ein Teil
+     * des Vorgabesatzes gehört diesem und darf nicht in zwei Zeilen stehen. Eine Vorgabe selbst übernimmt nichts.*
+     */
+    private function vorgabenUebernehmen(NodeRecord $part, Node $knoten): void
+    {
+        if ($part->recordType === RecordType::Default) {
+            return;
+        }
+
+        foreach ($this->records->ofNode($knoten->id) as $vorgabe) {
+            if ($vorgabe->recordType !== RecordType::Default) {
+                continue;
+            }
+
+            $werte = $this->records->valuesOf($vorgabe->id);
+
+            if ($werte === []) {
+                continue;
+            }
+
+            foreach ($werte as $wert) {
+                if ($wert->value->isNothing() || $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record) {
+                    continue;
+                }
+
+                $this->put($part->id, $wert->relationId, $wert->value, $wert->locale);
+            }
+
+            return;
+        }
     }
 
     /**
