@@ -1218,6 +1218,12 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     width: 9em;
 }
 
+/* ⚠️ Eine versteckte Trefferliste wird nicht gezeichnet (sein Bild: «was sind das für striche»). `display: flex` unten schlug das
+ * `hidden`-Attribut, und unter jeder Satzauswahl stand die leere Liste als schmaler Kasten mit Rahmen. */
+.taxmod-record-hits[hidden] {
+    display: none;
+}
+
 .taxmod-record-hits {
     position: absolute;
     top: 100%;
