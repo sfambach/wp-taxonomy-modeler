@@ -1449,7 +1449,9 @@ final class NodesScreen
                     // ⚠️ *Ohne gewählten Behälter zeichnet die Vorschau als Tabelle (D-748).*
                     $this->rendering->containerChosenFor($selected) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
                     $teile,
-                    formId: $formId
+                    formId: $formId,
+                    // ⚠️ *Damit die Zeilen eines mehrfachen Feldes wissen, aus welchem Satz sie lesen (D-842).*
+                    recordId: $satz
                 )->markup
                 . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId))
                 . '</div>';
@@ -3163,7 +3165,12 @@ final class NodesScreen
                 }
 
                 if (is_array($rawValue)) {
-                    $this->saveParts($partId, $innerId, $rawValue);
+                    // ⚠️ *Auch in einer Teilzeile: mehrfache Werte unter `values` (D-842).*
+                    if (isset($rawValue['values']) && is_array($rawValue['values'])) {
+                        $this->saveValueRows($partId, $relation, $rawValue['values']);
+                    } else {
+                        $this->saveParts($partId, $innerId, $rawValue);
+                    }
 
                     continue;
                 }
@@ -3252,6 +3259,68 @@ final class NodesScreen
         }
 
         return $kind;
+    }
+
+    /**
+     * Die Zeilen eines mehrfachen Feldes schreiben ([D-842](../../../docs/NewConcept/90-decision-log.md)) — je Zeile ein Wert, leere Zeilen
+     * fallen weg, die Reihenfolge ist die der Maske.
+     *
+     * ⚠️ *Sein Wort: «ja bau das so, sonst kann man ja auch keine zeilen eingeben». Die Maske schickt `…[<Kante>][values][<Stelle>]`; ein
+     * Satzverweis wird als Satzverweis gelesen (D-812), alles andere über den Typ. Geschrieben wird erst gelöscht, dann angehängt — so
+     * bleibt die Reihenfolge, und «eindeutig» prüft jede Zeile ([D-838](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @param array<int|string, mixed> $zeilen
+     */
+    private function saveValueRows(int $recordId, Relation $relation, array $zeilen): void
+    {
+        $type  = $this->rendering->typesFor([$relation])[$relation->id] ?? null;
+        $werte = [];
+
+        foreach ($zeilen as $roh) {
+            if (is_array($roh)) {
+                continue;
+            }
+
+            $zeichen = trim(sanitize_text_field(wp_unslash((string) $roh)));
+
+            if ($zeichen === '') {
+                continue;
+            }
+
+            if ($relation->kind === RelationKind::Aggregation && ctype_digit($zeichen) && ($type === null || $this->rendering->referencesRecords($relation))) {
+                $werte[] = TypedValue::ofRecordReference((int) $zeichen);
+
+                continue;
+            }
+
+            if ($type === null) {
+                throw NotYetStorable::thatFieldHasNoTypeYet($relation->name);
+            }
+
+            $werte[] = $type->valueFrom($zeichen);
+        }
+
+        $vorher = array_values(array_filter(
+            $this->data->valuesOf($recordId),
+            static fn ($zeile): bool => $zeile->relationId === $relation->id
+        ));
+
+        // *Nichts zu tun, wenn dieselben Werte in derselben Reihenfolge schon stehen — sonst schriebe jedes Speichern die Zeilen neu.*
+        $gleich = count($vorher) === count($werte);
+
+        foreach ($werte as $stelle => $wert) {
+            $gleich = $gleich && ($vorher[$stelle]->value->equals($wert));
+        }
+
+        if ($gleich) {
+            return;
+        }
+
+        $this->data->clear($recordId, $relation->id);
+
+        foreach ($werte as $wert) {
+            $this->data->appendValue($recordId, $relation->id, $wert);
+        }
     }
 
     /** Ob in einer geschickten Liste irgendwo ein Zeichen steht — ein leerer neuer Teil wird nicht angelegt. */
@@ -3546,7 +3615,12 @@ final class NodesScreen
             // `Organisation`: «die daten für adresse werden nicht gespeichert oder nicht angezeigt». Der Satz zeichnet
             // `taxmod_value[<Satz>][<aussen>][<innen>]`, und dieser Leser machte aus der Liste das Wort «Array».*
             if ($relation !== null && is_array($rawValue)) {
-                $this->saveParts($recordId, $relationId, $rawValue);
+                // ⚠️ *Die Zeilen eines mehrfachen Feldes kommen unter `values` (D-842); alles andere sind Teile mit eigenen Sätzen (D-741).*
+                if (isset($rawValue['values']) && is_array($rawValue['values'])) {
+                    $this->saveValueRows($recordId, $relation, $rawValue['values']);
+                } else {
+                    $this->saveParts($recordId, $relationId, $rawValue);
+                }
 
                 continue;
             }

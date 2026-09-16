@@ -1583,6 +1583,12 @@ final class Rendering implements Presets
                 ? null
                 : $this->partBelow($relation, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$relation->id] ?? [], $forNode, $settings);
 
+            if ($tiefer === null) {
+                // ⚠️ **Mehrfach heisst Zeilen, gleich welcher Art das Feld ist** ([D-842](../../../docs/NewConcept/90-decision-log.md)) — *sein
+                // Wort: «ja bau das so, sonst kann man ja auch keine zeilen eingeben». Zeilen entstanden bisher nur für Teile mit eigenen Sätzen.*
+                $tiefer = $this->valueRowsBelow($relation, $renderer, $context, $purpose, $fieldPrefix, $formId, $editable, $recordId);
+            }
+
             $fields[] = new RenderedField(
                 $relation,
                 $type,
@@ -3504,13 +3510,15 @@ final class Rendering implements Presets
          * @var array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>
          */
         array $recordParts = [],
+        /** Der Satz, der gezeichnet wird — die Zeilen eines mehrfachen Feldes lesen aus ihm ([D-842](../../../docs/NewConcept/90-decision-log.md)). */
+        int $recordId = 0,
         /** Das Formular, zu dem die Felder gehören, wenn sie ausserhalb von ihm stehen — die bearbeitbare Vorschau (D-785). */
         string $formId = '',
     ): RenderResult {
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
         // ⚠️ *Der Knoten reist als `forNode` mit — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
-        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, 0, [], [$node->id => true], $recordParts, $node->id);
+        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, 0, [], [$node->id => true], $recordParts, $node->id, recordId: $recordId);
 
         $container = $containerName === ''
             ? $this->containerFor($node, $purpose)
@@ -5944,6 +5952,98 @@ final class Rendering implements Presets
      *
      * @return array{renderer: string, rows: list<list<RenderedField>>, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
      */
+    /**
+     * Die Zeilen eines **mehrfachen** Feldes, das kein Teil mit eigenen Sätzen ist ([D-842](../../../docs/NewConcept/90-decision-log.md)) —
+     * je Wert eine Zeile, darunter eine leere für den nächsten.
+     *
+     * ⚠️ *Sein Befund an der Projektseite: «Links» (Text 0..*) hatte **ein** Feld, «Genutzte Platinen» (Verweis 0..*) **eine** Auswahl —
+     * mehr als ein Wert war dort nicht eingebbar. Dieselbe Gestalt wie die Teile eines mehrfachen Feldes (D-758), damit Behälter und
+     * Renderer sie ohne Sonderfall auslegen.*
+     *
+     * ⚠️ *Die Werte kommen aus dem Satz, einmal je Satz gelesen (`CD-7`); die Adresse lautet `…[<Kante>][values][<Stelle>]`, damit der
+     * Rand sie von den Teilen unterscheiden kann.*
+     *
+     * @return array{renderer: string, rows: list<list<RenderedField>>, rowActs: list<string>, after: string, result: RenderResult}|null
+     */
+    private function valueRowsBelow(
+        Relation $relation,
+        \Taxmod\Core\Renderer\Renderer $renderer,
+        RenderContext $context,
+        Purpose $purpose,
+        string $fieldPrefix,
+        string $formId,
+        bool $editable,
+        int $recordId
+    ): ?array {
+        if ($purpose !== Purpose::Edit || ! $editable || $fieldPrefix === '' || $recordId === 0
+            || $relation->isSetting() || ! $relation->multiplicity->allowsMany() || $this->records === null
+        ) {
+            return null;
+        }
+
+        $werte = [];
+
+        foreach ($this->werteJeSatz($recordId) as $zeile) {
+            if ($zeile->relationId === $relation->id && ! $zeile->value->isNothing()) {
+                $werte[] = $zeile->value;
+            }
+        }
+
+        // *Die leere Zeile am Ende ist die Eingabe für den nächsten Wert; ohne sie liesse sich der erste nie schreiben.*
+        $werte[] = TypedValue::nothing();
+        $zeilen  = [];
+        $markup  = '';
+
+        foreach ($werte as $stelle => $wert) {
+            $name = $fieldPrefix . '[' . $relation->id . '][values][' . $stelle . ']';
+            // *Das Wort eines Satzverweises steht im Angebot; die übrigen Angaben der Umgebung gelten für jede Zeile gleich.*
+            $wort = $wert->referenceSpace === ReferenceSpace::Record && $wert->reference !== null
+                ? (string) ($context->surroundings->options[$wert->reference] ?? '')
+                : '';
+
+            $zeilenContext = new RenderContext(
+                purpose: $purpose,
+                value: $wert,
+                settings: $context->settings,
+                locale: $context->locale,
+                level: $context->level,
+                editable: true,
+                fieldName: $name,
+                type: $context->type,
+                surroundings: new Surroundings(
+                    refersTo: $wort === '' ? null : $wort,
+                    refersToARecord: $wert->reference !== null && $context->type === null,
+                    options: $context->surroundings->options,
+                    recordTree: $context->surroundings->recordTree,
+                    dialogWords: $this->dialogWords,
+                    mayBeNothing: true,
+                    formId: $formId,
+                ),
+            );
+
+            $gezeichnet = $renderer->render($relation, $zeilenContext);
+            $zeilen[]   = [new RenderedField($relation, $context->type, $renderer->name(), $gezeichnet)];
+            $markup    .= '<div class="taxmod-value-row">' . $gezeichnet->markup . '</div>';
+        }
+
+        return [
+            'renderer' => $renderer->name(),
+            'rows'     => $zeilen,
+            'rowActs'  => [],
+            'after'    => '',
+            'result'   => new RenderResult('<div class="taxmod-value-rows">' . $markup . '</div>'),
+        ];
+    }
+
+    /** @var array<int, list<\Taxmod\Core\Model\RelationRecord>> Die Werte eines Satzes, einmal je Zeichenlauf gelesen (`CD-7`). */
+    private array $werteJeSatzGelesen = [];
+
+    /** @return list<\Taxmod\Core\Model\RelationRecord> */
+    private function werteJeSatz(int $recordId): array
+    {
+        return $this->werteJeSatzGelesen[$recordId] ??= ($this->records?->valuesOfMany([$recordId])[$recordId] ?? []);
+    }
+
     private function partBelow(
         Relation $relation,
         ?SimpleType $type,

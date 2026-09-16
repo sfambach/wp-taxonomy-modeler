@@ -63,6 +63,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wo steht der Link eines Projekts? | [D-836](90-decision-log.md) — am Projekt, immer die originale GitHub-Seite | ~~D-833~~ *(«Quelle» an der Revision)* |
 | Welche Art haben «Platinen» und «Revisionen»? | [D-837](90-decision-log.md) — Verweise auf Sätze (Aggregation); Positionen bleiben Komposition | ~~D-833~~, ~~D-834~~ *(«Komposition»)* |
 | Wo stehen Beschreibung und Links eines Projekts? | [D-840](90-decision-log.md) — als Felder am Projekt, Links 0..* | *(vorher: eigener Kindknoten «Projekt Beschreibung»)* |
+| Wie wird ein mehrfaches Feld gezeichnet? | [D-842](90-decision-log.md) — je Wert eine Zeile, darunter eine leere; fuer jede Feldart gleich | ~~D-811~~ *(mehrfacher Text als ein Feld mit Komma)* |
 | Wann öffnet ein Klick einen Satz in der Vorschau? | [D-803](90-decision-log.md) — nur ein Klick in die eigene Satzzeile, nie aus einem Dialog; ein im Satzdialog gewählter Satz steht sofort im Öffner | ~~D-788~~ *(«eine Zelle enthält irgendwo einen Satzlink» — traf die ganze Seite)* |
 | Wie wählt man die Glieder einer Verweisliste (erlaubte Einheiten, `summary_fields`)? | [D-799](90-decision-log.md) — Liste der gewählten mit ▲/▼ und ✕, darunter ein Auswahlfeld mit «+» | ~~D-732~~ *(ein Haken je Kandidat)* |
 | Wo wird ein Datensatz bearbeitet? | [D-785](90-decision-log.md) — in der Vorschau oben; die Tabelle unten zeigt nur an, ihre Satznummer öffnet den Satz oben | ~~D-653~~ *(Bearbeiten und Speichern in der Zeile)* |
