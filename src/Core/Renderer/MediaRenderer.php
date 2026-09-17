@@ -46,14 +46,38 @@ final class MediaRenderer extends TypedFieldRenderer
             return $this->createHtmlValueSpan('');
         }
 
-        $pfad = parse_url($adresse, PHP_URL_PATH);
-        $name = basename(is_string($pfad) && $pfad !== '' ? $pfad : $adresse);
-
         return $this->createHtmlValueSpan(
             '<a class="taxmod-media" href="' . RenderResult::escape($adresse) . '" target="_blank" rel="noopener">'
-            . RenderResult::escape($name)
+            . RenderResult::escape(self::describe($adresse))
             . '</a>'
         );
+    }
+
+    /**
+     * Die Beschreibung eines Mediums, aus der Datei selbst gemacht ([D-846](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
+     * *«media sollte eine beschreibung haben, kann aus der media datei generiert werden».*
+     *
+     * ⚠️ *Gerechnet, nicht gespeichert: `schaltplan_v2-final.pdf` heisst «schaltplan v2 final (PDF)»; eine Adresse ohne Datei heisst wie
+     * Rechner und Weg, `github.com/sfambach/diskbuddy64`. **Angenommen, nicht von ihm gesagt:** der Dateiname genügt — WordPress legt den
+     * Titel einer hochgeladenen Datei ebenfalls aus ihm an.*
+     */
+    public static function describe(string $adresse): string
+    {
+        $adresse = trim($adresse);
+        $pfad    = parse_url($adresse, PHP_URL_PATH);
+        $pfad    = is_string($pfad) ? rtrim($pfad, '/') : '';
+        $rechner = parse_url($adresse, PHP_URL_HOST);
+        $rechner = is_string($rechner) ? (string) preg_replace('/^www\./', '', $rechner) : '';
+        $datei   = $pfad === '' ? ($rechner === '' ? basename($adresse) : '') : basename($pfad);
+        $endung  = pathinfo($datei, PATHINFO_EXTENSION);
+
+        if ($endung !== '' && preg_match('/^[A-Za-z0-9]{1,5}$/', $endung) === 1) {
+            $wort = trim((string) preg_replace('/[\s_\-.]+/', ' ', rawurldecode(pathinfo($datei, PATHINFO_FILENAME))));
+
+            return ($wort === '' ? $datei : $wort) . ' (' . strtoupper($endung) . ')';
+        }
+
+        return $rechner !== '' ? $rechner . $pfad : $adresse;
     }
 
     protected function input(RenderContext $context): string
@@ -67,9 +91,18 @@ final class MediaRenderer extends TypedFieldRenderer
             return $link;
         }
 
+        // ⚠️ **Der Dateiknopf ist ein Symbol rechts vom Feld** ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-847](../../../docs/NewConcept/90-decision-log.md))
+        // — sein Wort: *«das folder symbol oder datei symbol für den knopf verwenden und den knopf nach rechts».* Das Dateifeld selbst steckt
+        // unsichtbar in der Beschriftung; ein Klick auf das Symbol öffnet die Dateiwahl, ohne Skript.
+        $wort = (string) ($context->surroundings->dialogWords['upload'] ?? '');
+
         return '<span class="taxmod-media-input">'
             . $link
-            . '<input type="file" class="taxmod-media-file" name="' . RenderResult::escape(self::uploadNameFor($context->fieldName)) . '"' . $form . '>'
+            . '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-media-pick" style="color:#1d2327"' . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"') . '>'
+            . IconMarkup::dashicon('media-default', $wort)
+            . '<input type="file" class="taxmod-media-file screen-reader-text" name="' . RenderResult::escape(self::uploadNameFor($context->fieldName)) . '"' . $form . '>'
+            . '</label>'
+            . '<span class="taxmod-media-chosen description"></span>'
             . ($adresse === '' ? '' : ' ' . $this->display($context))
             . '</span>';
     }

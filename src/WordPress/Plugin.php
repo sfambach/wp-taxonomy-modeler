@@ -521,7 +521,7 @@ final class Plugin
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
-        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'))->withSharedPicker()
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file to upload', 'taxmod'))->withSharedPicker()
             // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*
             ->withAddonWords([
                 'add'                   => __('Add this function', 'taxmod'),

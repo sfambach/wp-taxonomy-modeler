@@ -53,7 +53,10 @@ final class DialogMarkup
                 'class' => 'taxmod-dialog-switch',
                 'id'    => $switch,
             ])
-            . '<label class="' . RenderResult::escape($openerClass) . '" for="' . $id . '">' . $opener . '</label>'
+            // ⚠️ *Ein Öffner, der nur ein Symbol ist, trägt dessen Namen als Tooltip (D-847).*
+            . '<label class="' . RenderResult::escape($openerClass) . '" for="' . $id . '"'
+            . (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : '')
+            . '>' . $opener . '</label>'
             . '<span class="taxmod-dialog">'
             . '<span class="taxmod-dialog-shade"></span>'
             . '<span class="taxmod-dialog-panel">'

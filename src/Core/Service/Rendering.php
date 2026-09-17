@@ -662,11 +662,11 @@ final class Rendering implements Presets
      * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
      * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
      */
-    public function withDialogWords(string $ok, string $cancel, string $tree = ''): static
+    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = ''): static
     {
         $kopie              = clone $this;
-        // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805).*
-        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree];
+        // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805) und das des Dateiknopfs eines Medienfeldes (D-846).*
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload];
 
         return $kopie;
     }
@@ -6197,12 +6197,14 @@ final class Rendering implements Presets
         $name    = $fieldPrefix . '[' . $relation->id . '][values][]';
         $form    = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
         $angebot = $context->surroundings->options;
-        $wortVon = static function (TypedValue $wert) use ($angebot): string {
+        $medium  = $this->typeAt($relation) === SimpleType::Media;
+        $wortVon = static function (TypedValue $wert) use ($angebot, $medium): string {
             if ($wert->reference !== null) {
                 return (string) ($angebot[$wert->reference] ?? '#' . $wert->reference);
             }
 
-            return (string) $wert->rawValue();
+            // *Ein Medium heisst wie seine Datei (D-846), nicht wie seine Adresse.*
+            return $medium ? \Taxmod\Core\Renderer\MediaRenderer::describe((string) $wert->rawValue()) : (string) $wert->rawValue();
         };
 
         $html = '<span class="taxmod-switch-picker taxmod-value-picker"><ol class="taxmod-switch-cascade">';
@@ -6241,6 +6243,16 @@ final class Rendering implements Presets
         } else {
             // *Alles andere wird geschrieben: ein Feld für den nächsten Wert, in der Gestalt seines Typs.*
             $html .= '<input type="text" class="taxmod-value-new" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . ' size="30">';
+
+            // ⚠️ *Ein mehrfaches Medienfeld bekommt denselben Dateiknopf wie ein einfaches (D-846, D-847). Die Datei reist unter
+            // `…[values][upload]` — ein eigener Schlüssel, damit die Adresse hinter den stehenden Werten angehängt wird und keinen überschreibt.*
+            if ($medium) {
+                $hochladen = (string) ($this->dialogWords['upload'] ?? '');
+                $html     .= '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-media-pick" style="color:#1d2327"' . ($hochladen === '' ? '' : ' title="' . RenderResult::escape($hochladen) . '"') . '>'
+                    . IconMarkup::dashicon('media-default', $hochladen)
+                    . '<input type="file" class="taxmod-media-file screen-reader-text" name="' . RenderResult::escape(\Taxmod\Core\Renderer\MediaRenderer::uploadNameFor($fieldPrefix . '[' . $relation->id . '][values][upload]')) . '"' . $form . '>'
+                    . '</label><span class="taxmod-media-chosen description"></span>';
+            }
         }
 
         $html .= '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-add" style="color:#1d2327">'

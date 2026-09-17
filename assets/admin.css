@@ -2159,3 +2159,29 @@ fieldset.taxmod-read-only {
     cursor: pointer;
     color: #2271b1;
 }
+
+/* Das Medienfeld: Feld, rechts daneben der Dateiknopf, dann die gewählte Datei und die Beschreibung (D-846). */
+.taxmod-media-input {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+/* Die Zusatzfunktionen (D-845): je Glied seine Felder in einer Zeile, umbrechend, wenn es eng wird. */
+.taxmod-addon-entry {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+}
+
+.taxmod-addon-field {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.taxmod-addon-inherited {
+	margin: 0 0 4px;
+}

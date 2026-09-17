@@ -1514,6 +1514,35 @@
 		wertPfeileSetzen( liste );
 	}, true );
 
+	// ⚠️ **Jeder Symbolknopf zeigt beim Darüberfahren seinen Namen** (D-847) — sein Wort: «Tooltip knopf beschreibung/name». *Die Knöpfe aus
+	// {@see ControlMarkup} tragen ihn schon; hier bekommen ihn auch die von Hand gebauten und die aus Vorlagen eingefügten, aus dem Namen
+	// ihres Symbols — beim ersten Darüberfahren, also auch für später eingefügte.*
+	document.addEventListener( 'mouseover', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-icon-button' ) : null;
+
+		if ( ! knopf || knopf.hasAttribute( 'title' ) ) {
+			return;
+		}
+
+		var benannt = knopf.querySelector( '[aria-label]' );
+		var name    = benannt ? benannt.getAttribute( 'aria-label' ) : '';
+
+		if ( name ) {
+			knopf.setAttribute( 'title', name );
+		}
+	} );
+
+	// ⚠️ *Das Dateifeld steckt unsichtbar im Symbolknopf (D-846) — damit man sieht, was gewählt ist, steht der Dateiname daneben.*
+	document.addEventListener( 'change', function ( ereignis ) {
+		var feld   = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-media-file' ) : null;
+		var anzeige = feld ? feld.closest( '.taxmod-media-input' ) : null;
+		var ziel   = anzeige ? anzeige.querySelector( '.taxmod-media-chosen' ) : null;
+
+		if ( ziel ) {
+			ziel.textContent = feld.files && feld.files.length ? ' ' + feld.files[ 0 ].name : '';
+		}
+	} );
+
 	// *Enter im Eingabefeld übernimmt den Wert, statt die Seite abzuschicken.*
 	document.addEventListener( 'keydown', function ( ereignis ) {
 		var feld = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-value-new' ) : null;

@@ -80,7 +80,10 @@ final class ControlMarkup
             . ($control->form === '' ? '' : ' form="' . RenderResult::escape($control->form) . '"')
             . ' name="' . RenderResult::escape($control->name) . '"'
             . ' value="' . RenderResult::escape($control->value) . '"'
-            . ($control->title === '' ? '' : ' title="' . RenderResult::escape($control->title) . '"')
+            // ⚠️ **Ein Symbolknopf zeigt beim Darüberfahren seinen Namen** ([D-847](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
+            // *«knöpfe grundsätzlich ein icon verwenden wenn es eins gibt und rechts vom feld. Tooltip knopf beschreibung/name».* Ohne eigenen
+            // Titel ist es die Beschriftung, die das Symbol ersetzt.
+            . (($control->title !== '' ? $control->title : ($bare ? $control->label : '')) === '' ? '' : ' title="' . RenderResult::escape($control->title !== '' ? $control->title : $control->label) . '"')
             . ($usable ? '' : ' disabled')
             // ⚠️ **Red only where something is taken away**, and the fact arrives as `destroys`
             // rather than as a colour — so the one control that must never be clicked by accident
