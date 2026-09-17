@@ -47,7 +47,7 @@ final class MediaRenderer extends TypedFieldRenderer
         }
 
         return $this->createHtmlValueSpan(
-            '<a class="taxmod-media" href="' . RenderResult::escape($adresse) . '" target="_blank" rel="noopener">'
+            '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '" target="_blank" rel="noopener">'
             . RenderResult::escape(self::describe($adresse))
             . '</a>'
         );
@@ -61,9 +61,18 @@ final class MediaRenderer extends TypedFieldRenderer
      * Rechner und Weg, `github.com/sfambach/diskbuddy64`. **Angenommen, nicht von ihm gesagt:** der Dateiname genügt — WordPress legt den
      * Titel einer hochgeladenen Datei ebenfalls aus ihm an.*
      */
-    public static function describe(string $adresse): string
+    /** *Eine Adresse ohne «https://» — `www.google.de`, `github.com/x` — ist eine Adresse und keine Datei «www google (DE)»; der Link zeigt nach draussen.* */
+    public static function absolute(string $adresse): string
     {
         $adresse = trim($adresse);
+
+        return ! str_contains($adresse, '://') && preg_match('~^(www\.[^/\s]+|[a-z0-9-]+(\.[a-z0-9-]+)+/)~i', $adresse) === 1 ? 'https://' . $adresse : $adresse;
+    }
+
+    public static function describe(string $adresse): string
+    {
+        $adresse = self::absolute($adresse);
+
         $pfad    = parse_url($adresse, PHP_URL_PATH);
         $pfad    = is_string($pfad) ? rtrim($pfad, '/') : '';
         $rechner = parse_url($adresse, PHP_URL_HOST);

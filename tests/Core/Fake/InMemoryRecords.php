@@ -303,6 +303,19 @@ final class InMemoryRecords implements RecordRepository
         return $this->recordVersions[$id] = 1 + ($this->recordVersions[$id] ?? 1);
     }
 
+    public function recordRefsHeldAt(int $relationId): array
+    {
+        $aus = [];
+
+        foreach ($this->values as $stored) {
+            if ($stored->relationId === $relationId && $stored->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record && $stored->value->reference !== null) {
+                $aus[$stored->value->reference] ??= $stored->recordId;
+            }
+        }
+
+        return $aus;
+    }
+
     public function findByRelationValue(int $relationId, TypedValue $value): array
     {
         $found = [];

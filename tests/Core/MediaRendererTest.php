@@ -28,6 +28,8 @@ final class MediaRendererTest extends TestCase
         self::assertSame('schaltplan v2 final (PDF)', MediaRenderer::describe('https://example.org/wp-content/uploads/2026/09/schaltplan_v2-final.pdf'));
         self::assertSame('github.com/sfambach/diskbuddy64', MediaRenderer::describe('https://github.com/sfambach/diskbuddy64'), 'ohne Datei: Rechner und Weg');
         self::assertSame('github.com', MediaRenderer::describe('https://www.github.com/'));
+        self::assertSame('google.de', MediaRenderer::describe('www.google.de'), 'ohne https ist es trotzdem eine Adresse');
+        self::assertSame('github.com/sfambach/x', MediaRenderer::describe('github.com/sfambach/x'));
         self::assertSame('foto platine (JPG)', MediaRenderer::describe('foto%20platine.JPG'));
     }
 

@@ -6229,6 +6229,16 @@ final class Rendering implements Presets
         $html .= '</ol><span class="taxmod-switch-add">';
         $genommen = array_map(static fn (TypedValue $wert): string => (string) ($wert->reference ?? $wert->rawValue()), $werte);
 
+        // ⚠️ *Eine eindeutige Kante bietet nicht an, was schon ein anderer Satz hält (D-838) — sein Befund: «zusätzliche pcb [speichert] nicht».
+        // Die Platine gehört einem Projekt; angeboten und dann beim Speichern abgewiesen war sie eine Falle.*
+        if ($relation->unique && $angebot !== [] && $this->records !== null) {
+            foreach ($this->records->recordRefsHeldAt($relation->id) as $satz => $halter) {
+                if ($halter !== $recordId) {
+                    unset($angebot[$satz]);
+                }
+            }
+        }
+
         if ($angebot !== []) {
             // *Ein Verweis wählt aus dem Angebot; gewählte Sätze stehen nicht noch einmal darin.*
             $html .= '<select class="taxmod-switch-candidates taxmod-value-candidates" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . '><option value=""></option>';

@@ -532,6 +532,25 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(intval(...), $ids ?: []);
     }
 
+    public function recordRefsHeldAt(int $relationId): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Gehaltene Satzverweise einer Kante lesen', $wpdb->prepare(
+            'SELECT value_ref, node_record_id FROM ' . Schema::table('relation_records') . "
+             WHERE relation_id = %d AND value_ref_kind = 'record' AND value_ref IS NOT NULL",
+            $relationId
+        ));
+
+        $aus = [];
+
+        foreach ($rows as $row) {
+            $aus[(int) $row['value_ref']] ??= (int) $row['node_record_id'];
+        }
+
+        return $aus;
+    }
+
     /** @param array<string,mixed> $row */
     private function hydrate(array $row): NodeRecord
     {

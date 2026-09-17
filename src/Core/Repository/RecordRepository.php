@@ -199,6 +199,14 @@ interface RecordRepository
     public function findByRelationValue(int $relationId, TypedValue $value): array;
 
     /**
+     * Welche Sätze über diese Kante schon von einem Satz gehalten werden — Satzverweis => der haltende Satz. Für eine eindeutige
+     * Kante das, was nicht mehr angeboten wird ([D-838](../../../docs/NewConcept/90-decision-log.md)); in einer Abfrage (`CD-7`).
+     *
+     * @return array<int, int>
+     */
+    public function recordRefsHeldAt(int $relationId): array;
+
+    /**
      * Everything these nodes hold as data — the records and their values.
      *
      * ⚠️ **Das ist die Durchsetzung von [C102](../../../docs/NewConcept/10-domain-core.md), und die
