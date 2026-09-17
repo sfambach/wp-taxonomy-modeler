@@ -1586,7 +1586,7 @@ final class Rendering implements Presets
             if ($tiefer === null) {
                 // ⚠️ **Mehrfach heisst Zeilen, gleich welcher Art das Feld ist** ([D-842](../../../docs/NewConcept/90-decision-log.md)) — *sein
                 // Wort: «ja bau das so, sonst kann man ja auch keine zeilen eingeben». Zeilen entstanden bisher nur für Teile mit eigenen Sätzen.*
-                $tiefer = $this->valueRowsBelow($relation, $renderer, $context, $purpose, $fieldPrefix, $formId, $editable, $recordId);
+                $tiefer = $this->valueListBelow($relation, $context, $purpose, $fieldPrefix, $formId, $editable, $recordId);
             }
 
             $fields[] = new RenderedField(
@@ -5941,33 +5941,18 @@ final class Rendering implements Presets
     }
 
     /**
-     * Der Teil unter einem zusammengesetzten Feld, gezeichnet wie ein Knoten.
+     * Ein **mehrfaches** Feld als geordnete Liste ([D-842](../../../docs/NewConcept/90-decision-log.md), Gestalt nach
+     * [D-794](../../../docs/NewConcept/90-decision-log.md)/[D-799](../../../docs/NewConcept/90-decision-log.md)) — je Wert eine Zeile mit
+     * Pfeilen und Mülleimer, darunter die Eingabe für den nächsten mit «+».
      *
-     * ⚠️ **Seine Diagnose:** *«heisst wohl Renderkette ist unterbrochen»* — *und «Form-Render sollte ja
-     * die Knoten durchgehen». Durchgehen tut der **Abstieg**; der Behälter legt aus, was er bekommt
-     * ([D-366](../../../docs/NewConcept/90-decision-log.md)).*
+     * ⚠️ *Sein Wort: «wir haben grundsätzlich schon eine darstellungsform für multiple ordered lists mit aktivierung die sollten wir auch
+     * für den renderer verwenden» — also dieselben Klassen wie die Schalterliste der Einstellungen, damit Bild und Skript dieselben sind.*
      *
-     * ⚠️ *Gemessen an `Kontakt`: `Address` bekam Typ «keiner» und `plain`, während `Adresse` fünf eigene
-     * Felder trägt. **Vier von fünf waren nie zu sehen.***
-     *
-     * @return array{renderer: string, rows: list<list<RenderedField>>, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
+     * ⚠️ *Die Reihenfolge ist die der Zeilen: die Adresse lautet `…[<Kante>][values][]`, und der Rand liest sie in der Reihenfolge, in der
+     * die Maske sie schickt. Ein Haken zum Abschalten gibt es hier nicht — ein Wert steht oder steht nicht.*
      */
-    /**
-     * Die Zeilen eines **mehrfachen** Feldes, das kein Teil mit eigenen Sätzen ist ([D-842](../../../docs/NewConcept/90-decision-log.md)) —
-     * je Wert eine Zeile, darunter eine leere für den nächsten.
-     *
-     * ⚠️ *Sein Befund an der Projektseite: «Links» (Text 0..*) hatte **ein** Feld, «Genutzte Platinen» (Verweis 0..*) **eine** Auswahl —
-     * mehr als ein Wert war dort nicht eingebbar. Dieselbe Gestalt wie die Teile eines mehrfachen Feldes (D-758), damit Behälter und
-     * Renderer sie ohne Sonderfall auslegen.*
-     *
-     * ⚠️ *Die Werte kommen aus dem Satz, einmal je Satz gelesen (`CD-7`); die Adresse lautet `…[<Kante>][values][<Stelle>]`, damit der
-     * Rand sie von den Teilen unterscheiden kann.*
-     *
-     * @return array{renderer: string, rows: list<list<RenderedField>>, rowActs: list<string>, after: string, result: RenderResult}|null
-     */
-    private function valueRowsBelow(
+    private function valueListBelow(
         Relation $relation,
-        \Taxmod\Core\Renderer\Renderer $renderer,
         RenderContext $context,
         Purpose $purpose,
         string $fieldPrefix,
@@ -5989,49 +5974,65 @@ final class Rendering implements Presets
             }
         }
 
-        // *Die leere Zeile am Ende ist die Eingabe für den nächsten Wert; ohne sie liesse sich der erste nie schreiben.*
-        $werte[] = TypedValue::nothing();
-        $zeilen  = [];
-        $markup  = '';
+        $name    = $fieldPrefix . '[' . $relation->id . '][values][]';
+        $form    = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
+        $angebot = $context->surroundings->options;
+        $wortVon = static function (TypedValue $wert) use ($angebot): string {
+            if ($wert->reference !== null) {
+                return (string) ($angebot[$wert->reference] ?? '#' . $wert->reference);
+            }
 
-        foreach ($werte as $stelle => $wert) {
-            $name = $fieldPrefix . '[' . $relation->id . '][values][' . $stelle . ']';
-            // *Das Wort eines Satzverweises steht im Angebot; die übrigen Angaben der Umgebung gelten für jede Zeile gleich.*
-            $wort = $wert->referenceSpace === ReferenceSpace::Record && $wert->reference !== null
-                ? (string) ($context->surroundings->options[$wert->reference] ?? '')
-                : '';
+            return (string) $wert->rawValue();
+        };
 
-            $zeilenContext = new RenderContext(
-                purpose: $purpose,
-                value: $wert,
-                settings: $context->settings,
-                locale: $context->locale,
-                level: $context->level,
-                editable: true,
-                fieldName: $name,
-                type: $context->type,
-                surroundings: new Surroundings(
-                    refersTo: $wort === '' ? null : $wort,
-                    refersToARecord: $wert->reference !== null && $context->type === null,
-                    options: $context->surroundings->options,
-                    recordTree: $context->surroundings->recordTree,
-                    dialogWords: $this->dialogWords,
-                    mayBeNothing: true,
-                    formId: $formId,
-                ),
-            );
+        $html = '<span class="taxmod-switch-picker taxmod-value-picker"><ol class="taxmod-switch-cascade">';
 
-            $gezeichnet = $renderer->render($relation, $zeilenContext);
-            $zeilen[]   = [new RenderedField($relation, $context->type, $renderer->name(), $gezeichnet)];
-            $markup    .= '<div class="taxmod-value-row">' . $gezeichnet->markup . '</div>';
+        foreach ($werte as $platz => $wert) {
+            $roh   = (string) ($wert->reference ?? $wert->rawValue());
+            $wort  = $wortVon($wert);
+            $html .= '<li class="taxmod-switch-chosen" data-taxmod-id="' . RenderResult::escape($roh) . '">'
+                . '<input type="hidden" class="taxmod-switch-member" name="' . RenderResult::escape($name) . '" value="' . RenderResult::escape($roh) . '"' . $form . '>'
+                . '<span class="taxmod-switch-name">' . RenderResult::escape($wort) . '</span>'
+                . ' <button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
+                . ($platz === 0 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+                . IconMarkup::dashicon('arrow-up-alt2', $wort) . '</button>'
+                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
+                . ($platz === count($werte) - 1 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+                . IconMarkup::dashicon('arrow-down-alt2', $wort) . '</button>'
+                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
+                . IconMarkup::dashicon('trash', $wort) . '</button>'
+                . '</li>';
         }
 
+        $html .= '</ol><span class="taxmod-switch-add">';
+        $genommen = array_map(static fn (TypedValue $wert): string => (string) ($wert->reference ?? $wert->rawValue()), $werte);
+
+        if ($angebot !== []) {
+            // *Ein Verweis wählt aus dem Angebot; gewählte Sätze stehen nicht noch einmal darin.*
+            $html .= '<select class="taxmod-switch-candidates taxmod-value-candidates" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . '><option value=""></option>';
+
+            foreach ($angebot as $id => $wort) {
+                if (! in_array((string) $id, $genommen, true)) {
+                    $html .= '<option value="' . RenderResult::escape((string) $id) . '">' . RenderResult::escape((string) $wort) . '</option>';
+                }
+            }
+
+            $html .= '</select>';
+        } else {
+            // *Alles andere wird geschrieben: ein Feld für den nächsten Wert, in der Gestalt seines Typs.*
+            $html .= '<input type="text" class="taxmod-value-new" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . ' size="30">';
+        }
+
+        $html .= '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-add" style="color:#1d2327">'
+            . IconMarkup::dashicon('plus-alt2', $relation->name) . '</button></span></span>';
+
         return [
-            'renderer' => $renderer->name(),
-            'rows'     => $zeilen,
+            'renderer' => $context->surroundings->options !== [] ? SummaryRenderer::NAME : 'field',
+            // *Keine Zeilen für den Behälter: die Liste ist ein Bedienelement wie jedes andere und steht bei den einfachen Feldern.*
+            'rows'     => [],
             'rowActs'  => [],
             'after'    => '',
-            'result'   => new RenderResult('<div class="taxmod-value-rows">' . $markup . '</div>'),
+            'result'   => RenderResult::of($html),
         ];
     }
 
@@ -6044,6 +6045,18 @@ final class Rendering implements Presets
         return $this->werteJeSatzGelesen[$recordId] ??= ($this->records?->valuesOfMany([$recordId])[$recordId] ?? []);
     }
 
+    /**
+     * Der Teil unter einem zusammengesetzten Feld, gezeichnet wie ein Knoten.
+     *
+     * ⚠️ **Seine Diagnose:** *«heisst wohl Renderkette ist unterbrochen»* — *und «Form-Render sollte ja
+     * die Knoten durchgehen». Durchgehen tut der **Abstieg**; der Behälter legt aus, was er bekommt
+     * ([D-366](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ *Gemessen an `Kontakt`: `Address` bekam Typ «keiner» und `plain`, während `Adresse` fünf eigene
+     * Felder trägt. **Vier von fünf waren nie zu sehen.***
+     *
+     * @return array{renderer: string, rows: list<list<RenderedField>>, result: RenderResult}|null `null`, wenn hier kein Teil liegt.
+     */
     private function partBelow(
         Relation $relation,
         ?SimpleType $type,

@@ -1315,6 +1315,155 @@
 		}
 	} );
 
+	// ⚠️ **Die Werteliste eines mehrfachen Feldes** (D-842) — sein Wort: «darstellungsform für multiple ordered lists mit aktivierung die
+	// sollten wir auch für den renderer verwenden». *Dieselbe Liste wie in den Einstellungen, nur dass ein Wert selbst das Mitglied ist:
+	// Hinzufügen legt eine Zeile mit dem Wert als verborgenem Eintrag an, der Mülleimer nimmt die Zeile ganz heraus. Die Reihenfolge der
+	// Zeilen ist die gespeicherte.*
+	function wertZeileAnlegen( waehler, wert, wort ) {
+		var liste  = waehler.querySelector( '.taxmod-switch-cascade' );
+		var quelle = waehler.querySelector( '[data-taxmod-name]' );
+
+		if ( ! liste || ! quelle ) {
+			return;
+		}
+
+		var zeile    = document.createElement( 'li' );
+		var mitglied = document.createElement( 'input' );
+		var name     = document.createElement( 'span' );
+
+		zeile.className = 'taxmod-switch-chosen';
+		zeile.setAttribute( 'data-taxmod-id', wert );
+		mitglied.type = 'hidden';
+		mitglied.className = 'taxmod-switch-member';
+		mitglied.name = quelle.getAttribute( 'data-taxmod-name' );
+		mitglied.value = wert;
+
+
+		if ( liste.querySelector( 'input[form]' ) ) {
+			mitglied.setAttribute( 'form', liste.querySelector( 'input[form]' ).getAttribute( 'form' ) );
+		} else if ( quelle.getAttribute( 'form' ) ) {
+			mitglied.setAttribute( 'form', quelle.getAttribute( 'form' ) );
+		}
+
+		name.className = 'taxmod-switch-name';
+		name.textContent = wort;
+		zeile.appendChild( mitglied );
+		zeile.appendChild( name );
+		zeile.appendChild( document.createTextNode( ' ' ) );
+
+		[ [ 'taxmod-list-move', 'up', 'arrow-up-alt2', '#1d2327' ], [ 'taxmod-list-move', 'down', 'arrow-down-alt2', '#1d2327' ], [ 'taxmod-list-remove', '', 'trash', '#b32d2e' ] ].forEach( function ( art ) {
+			var knopf = document.createElement( 'button' );
+			var bild  = document.createElement( 'span' );
+
+			knopf.type = 'button';
+			knopf.className = 'button taxmod-icon-button ' + art[ 0 ];
+			knopf.style.color = art[ 3 ];
+
+			if ( art[ 1 ] ) {
+				knopf.setAttribute( 'data-taxmod-move', art[ 1 ] );
+			}
+
+			bild.className = 'taxmod-icon dashicons dashicons-' + art[ 2 ];
+			bild.setAttribute( 'aria-hidden', 'true' );
+			knopf.title = wort;
+			knopf.appendChild( bild );
+			zeile.appendChild( knopf );
+		} );
+
+		liste.appendChild( zeile );
+		wertPfeileSetzen( liste );
+	}
+
+	function wertPfeileSetzen( liste ) {
+		var gewaehlte = liste.querySelectorAll( 'li.taxmod-switch-chosen' );
+
+		gewaehlte.forEach( function ( eintrag, stelle ) {
+			eintrag.querySelectorAll( '.taxmod-list-move' ).forEach( function ( pfeil ) {
+				var gesperrt = pfeil.getAttribute( 'data-taxmod-move' ) === 'up' ? stelle === 0 : stelle === gewaehlte.length - 1;
+
+				pfeil.disabled = gesperrt;
+				pfeil.style.opacity = gesperrt ? '.35' : '';
+			} );
+		} );
+	}
+
+	function wertHinzufuegen( waehler ) {
+		var auswahl = waehler.querySelector( '.taxmod-value-candidates' );
+		var neu     = waehler.querySelector( '.taxmod-value-new' );
+
+		if ( auswahl ) {
+			var eintrag = auswahl.options[ auswahl.selectedIndex ];
+
+			if ( ! eintrag || eintrag.value === '' ) {
+				return;
+			}
+
+			wertZeileAnlegen( waehler, eintrag.value, eintrag.textContent );
+			eintrag.remove();
+			auswahl.value = '';
+
+			return;
+		}
+
+		if ( neu && neu.value.trim() !== '' ) {
+			wertZeileAnlegen( waehler, neu.value.trim(), neu.value.trim() );
+			neu.value = '';
+			neu.focus();
+		}
+	}
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var ziel    = ereignis.target instanceof Element ? ereignis.target : null;
+		var knopf   = ziel ? ziel.closest( '.taxmod-list-add, .taxmod-list-remove' ) : null;
+		var waehler = knopf ? knopf.closest( '.taxmod-value-picker' ) : null;
+
+		if ( ! waehler ) {
+			return;
+		}
+
+		// *Die Schalterliste der Einstellungen hört auf dieselben Knöpfe; hier endet der Klick.*
+		ereignis.preventDefault();
+		ereignis.stopImmediatePropagation();
+
+		if ( knopf.classList.contains( 'taxmod-list-add' ) ) {
+			wertHinzufuegen( waehler );
+
+			return;
+		}
+
+		var zeile   = knopf.closest( 'li' );
+		var auswahl = waehler.querySelector( '.taxmod-value-candidates' );
+
+		if ( ! zeile ) {
+			return;
+		}
+
+		if ( auswahl ) {
+			var zurueck = document.createElement( 'option' );
+
+			zurueck.value = zeile.getAttribute( 'data-taxmod-id' ) || '';
+			zurueck.textContent = ( zeile.querySelector( '.taxmod-switch-name' ) || zeile ).textContent;
+			auswahl.appendChild( zurueck );
+		}
+
+		var liste = zeile.parentElement;
+
+		zeile.remove();
+		wertPfeileSetzen( liste );
+	}, true );
+
+	// *Enter im Eingabefeld übernimmt den Wert, statt die Seite abzuschicken.*
+	document.addEventListener( 'keydown', function ( ereignis ) {
+		var feld = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-value-new' ) : null;
+
+		if ( ! feld || ereignis.key !== 'Enter' ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+		wertHinzufuegen( feld.closest( '.taxmod-value-picker' ) );
+	} );
+
 	// ⚠️ **Hinzufügen und Entfernen in einer Auswahlliste** (D-799) — sein Wort: «select unit and press add, added showing up in a list
 	// and can be removed again». *Hinzufügen legt eine Zeile mit verborgener 1 an und nimmt den Eintrag aus dem Auswahlfeld; Entfernen setzt
 	// die verborgene 0, blendet die Zeile aus und gibt den Eintrag dem Auswahlfeld zurück. Gespeichert wird mit der Seite.*

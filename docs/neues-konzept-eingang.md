@@ -532,7 +532,7 @@ Gewählt wird wie ein Validator: eine Liste `functions` an Knoten oder Kante. Oh
 2. Die Vorbelegung als erste Funktion — mit filter/sort an den Werten?
 3. `pick_field` als zweite umziehen?
 
-**Nicht gebaut.**
+**Entschieden: alle drei ja, und der Validator zieht mit ein ([D-845](NewConcept/90-decision-log.md)).**
 
 ## Erledigte Eingänge
 
