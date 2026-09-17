@@ -152,8 +152,8 @@ final class Rendering implements Presets
         private readonly ?Users $users = null,
         /** ⚠️ *Für die Zusammenfassung verwiesener Sätze (D-753) — die Sätze eines Blocks in einer Abfrage.* */
         private readonly ?\Taxmod\Core\Repository\RecordRepository $records = null,
-        /** ⚠️ *Die Validatoren, die beim Speichern laufen (Zeile 8, D-760) — ohne Registratur beschwert sich niemand.* */
-        private readonly ?\Taxmod\Core\Validator\ValidatorRegistry $validators = null,
+        /** ⚠️ *Die Zusatzfunktionen (D-845): Vorbelegung, «Mehrere hinzufügen», Prüfen beim Speichern — ohne Registratur greift keine ein.* */
+        private readonly ?\Taxmod\Core\Addon\AddonRegistry $addons = null,
     ) {
     }
 
@@ -628,9 +628,13 @@ final class Rendering implements Presets
             return null;
         }
 
-        foreach ($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\Category::PICK_FIELD, $relation) as $glied) {
-            if ($glied->aktiv && $glied->reference !== null) {
-                return $this->relations->byId((int) $glied->reference);
+        // ⚠️ *Seit D-845 die Zusatzfunktion «Mehrere hinzufügen» an der Kante (oder am Ziel) und nicht mehr ein Feld jeder Kategorie.*
+        foreach ($this->resolver->addonsAt($ziel, $relation) as $gewaehlt) {
+            $addon = $this->addons?->byClass($gewaehlt->klasse);
+            $feld  = $addon instanceof \Taxmod\Core\Addon\PicksRows ? $addon->pickField($gewaehlt->settings) : null;
+
+            if ($feld !== null) {
+                return $this->relations->byId($feld);
             }
         }
 
@@ -669,6 +673,206 @@ final class Rendering implements Presets
 
     /** Ob die Seite den einen Auswahlbaum zeichnet — dann öffnet ein ganzer Knotenbaum ihn, statt einen eigenen zu tragen (D-815). */
     private bool $sharedPicker = false;
+
+    /** @var array<string, string> Die Worte der Zusatzfunktionen, vom Rand (D-845): `addon:<name>`, `field:<feld>`, `enum:<wert>`, `add`, `inherited`. */
+    private array $addonWords = [];
+
+    /**
+     * Dieselbe Zeichnung, mit den Worten der Zusatzfunktionen ([D-845](../../../docs/NewConcept/90-decision-log.md)); ohne sie stehen die Schlüssel da.
+     *
+     * @param array<string, string> $words
+     */
+    public function withAddonWords(array $words): static
+    {
+        $kopie             = clone $this;
+        $kopie->addonWords = $words;
+
+        return $kopie;
+    }
+
+    /**
+     * Die Zusatzfunktionen einer Stelle als geordnete Liste ([D-845](../../../docs/NewConcept/90-decision-log.md)) — je Glied Name, eigene
+     * Felder, Pfeile und Mülleimer; darunter die Wahl einer weiteren mit «+». Gestalt wie die Schalterliste (D-794, D-799).
+     *
+     * ⚠️ *Die Adresse ist `<prefix>_addons[<glied>][name]` und `…[fields][<feld>]`, dazu `[present]`, damit eine geleerte Liste ankommt.
+     * Die Reihenfolge der Glieder ist die, in der die Maske sie schickt. Für ein neues Glied liegt je wählbarer Funktion eine Vorlage bereit.*
+     *
+     * ⚠️ **Angenommen, nicht von ihm gesagt:** *an einer Kante ohne eigene Glieder stehen die des Knotens grau darüber und werden nicht
+     * mitgeschickt; wer an der Kante eine hinzufügt, ersetzt sie dort.*
+     */
+    private function drawAddons(Renderable $subject, string $fieldPrefix, string $formId): RenderResult
+    {
+        $knoten = $subject instanceof Node ? $subject : ($subject instanceof Relation ? $this->gemerkterKnoten($subject->toNodeId) : null);
+
+        if ($knoten === null || $this->resolver === null || $this->addons === null) {
+            return RenderResult::of('');
+        }
+
+        $kante = $subject instanceof Relation ? $subject : null;
+        $orte  = [\Taxmod\Core\Addon\AddonSite::Node];
+
+        if ($kante !== null) {
+            $orte = [\Taxmod\Core\Addon\AddonSite::Edge];
+
+            if ($kante->multiplicity->allowsMany()) {
+                $orte[] = \Taxmod\Core\Addon\AddonSite::ManyEdge;
+            }
+
+            if ($this->referencesRecords($kante)) {
+                $orte[] = \Taxmod\Core\Addon\AddonSite::RecordEdge;
+            }
+        }
+
+        $wort    = fn (string $schluessel, string $sonst): string => $this->addonWords[$schluessel] ?? $sonst;
+        $prefix  = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_addons', $fieldPrefix, 1);
+        $form    = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
+        $gewaehlt = $this->resolver->addonsAt($knoten, $kante);
+        $eigene  = array_values(array_filter($gewaehlt, static fn (\Taxmod\Core\Addon\ChosenAddon $eine): bool => $eine->setHere));
+        $geerbt  = $eigene === [] ? $gewaehlt : [];
+
+        $html = '<span class="taxmod-switch-picker taxmod-addon-picker">'
+            . '<input type="hidden" name="' . RenderResult::escape($prefix . '[present]') . '" value="1"' . $form . '>';
+
+        if ($geerbt !== []) {
+            $html .= '<ul class="taxmod-addon-inherited description">';
+
+            foreach ($geerbt as $eine) {
+                $addon = $this->addons->byClass($eine->klasse);
+                $html .= '<li>' . RenderResult::escape($addon === null ? $eine->klasse : $wort('addon:' . $addon->name(), $addon->name()))
+                    . ' <em>' . RenderResult::escape($wort('inherited', '')) . '</em></li>';
+            }
+
+            $html .= '</ul>';
+        }
+
+        $html .= '<ol class="taxmod-switch-cascade">';
+
+        foreach ($eigene as $stelle => $eine) {
+            $addon = $this->addons->byClass($eine->klasse);
+
+            if ($addon !== null) {
+                $html .= $this->addonEntry($addon, $eine->settings, $prefix . '[' . $stelle . ']', $form, $knoten, $kante, $stelle === 0, $stelle === count($eigene) - 1);
+            }
+        }
+
+        $html .= '</ol><span class="taxmod-switch-add"><select class="taxmod-addon-candidates"' . $form . '><option value=""></option>';
+        $vorlagen = '';
+
+        foreach ($this->addons->forSites($orte) as $addon) {
+            $html     .= '<option value="' . RenderResult::escape($addon->name()) . '">' . RenderResult::escape($wort('addon:' . $addon->name(), $addon->name())) . '</option>';
+            $vorlagen .= '<template class="taxmod-addon-template" data-taxmod-addon="' . RenderResult::escape($addon->name()) . '">'
+                // *Die Vorlage trägt ihre Adressen nur als `data-taxmod-name` — ein Name in einer Vorlage stünde für jede Funktion gleich da;
+                // das Skript macht beim Einfügen Namen daraus.*
+                . str_replace(' name="', ' data-taxmod-name="', $this->addonEntry($addon, [], $prefix . '[__glied__]', $form, $knoten, $kante, false, false))
+                . '</template>';
+        }
+
+        $html .= '</select><button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-addon-add" style="color:#1d2327" title="' . RenderResult::escape($wort('add', '+')) . '">'
+            . IconMarkup::dashicon('plus-alt2', $wort('add', '+')) . '</button></span>' . $vorlagen . '</span>';
+
+        return RenderResult::of($html);
+    }
+
+    /**
+     * Ein Glied der Liste: verborgener Name, Wort, je eigenes Feld ein Steuerelement, Pfeile und Mülleimer.
+     *
+     * @param array<string, TypedValue> $werte
+     */
+    private function addonEntry(\Taxmod\Core\Addon\Addon $addon, array $werte, string $name, string $form, Node $knoten, ?Relation $kante, bool $erstes, bool $letztes): string
+    {
+        $wort  = fn (string $schluessel, string $sonst): string => $this->addonWords[$schluessel] ?? $sonst;
+        $titel = $wort('addon:' . $addon->name(), $addon->name());
+        $html  = '<li class="taxmod-switch-chosen taxmod-addon-entry" data-taxmod-id="' . RenderResult::escape($addon->name()) . '">'
+            . '<input type="hidden" name="' . RenderResult::escape($name . '[name]') . '" value="' . RenderResult::escape($addon->name()) . '"' . $form . '>'
+            . '<span class="taxmod-switch-name">' . RenderResult::escape($titel) . '</span> ';
+
+        foreach (\Taxmod\Core\Model\NodeClass\Contracts::ofValueClass($addon::class)->attributes as $feldName => $erklaert) {
+            $wert     = $werte[$feldName] ?? $erklaert->default;
+            $feld     = RenderResult::escape($name . '[fields][' . $feldName . ']');
+            $beschrift = RenderResult::escape($wort('field:' . $feldName, $feldName));
+            $html    .= '<label class="taxmod-addon-field">' . $beschrift . ' ';
+
+            if ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef) {
+                $html .= '<select name="' . $feld . '"' . $form . '><option value=""></option>';
+
+                foreach ($this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $kante) as $id => $feldWort) {
+                    $html .= '<option value="' . $id . '"' . ($wert?->reference === $id ? ' selected' : '') . '>' . RenderResult::escape($feldWort) . '</option>';
+                }
+
+                $html .= '</select>';
+            } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Enum) {
+                $html .= '<select name="' . $feld . '"' . $form . '>';
+
+                foreach ($erklaert->enumCases() as $fall) {
+                    $html .= '<option value="' . RenderResult::escape($fall) . '"' . ($wert?->text === $fall ? ' selected' : '') . '>' . RenderResult::escape($wort('enum:' . $fall, $fall)) . '</option>';
+                }
+
+                $html .= '</select>';
+            } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Bool) {
+                $html .= '<input type="hidden" name="' . $feld . '" value="0"' . $form . '><input type="checkbox" name="' . $feld . '" value="1"' . ((bool) $wert?->rawValue() ? ' checked' : '') . $form . '>';
+            } else {
+                $html .= '<input type="text" size="10" name="' . $feld . '" value="' . RenderResult::escape((string) ($wert?->rawValue() ?? '')) . '"' . $form . '>';
+            }
+
+            $html .= '</label> ';
+        }
+
+        return $html
+            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"' . ($erstes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+            . IconMarkup::dashicon('arrow-up-alt2', $titel) . '</button>'
+            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"' . ($letztes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
+            . IconMarkup::dashicon('arrow-down-alt2', $titel) . '</button>'
+            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
+            . IconMarkup::dashicon('trash', $titel) . '</button>'
+            . '</li>';
+    }
+
+    /**
+     * Die Felder, die ein Feldverweis einer Zusatzfunktion anbietet ([D-844](../../../docs/NewConcept/90-decision-log.md)): am angebotenen Satz
+     * die Felder des Ziels; im tragenden Satz die Felder des Knotens, von dem die Kante ausgeht, und die der Knoten, die ihn halten.
+     *
+     * @return array<int, string>
+     */
+    private function addonFieldCandidates(?\Taxmod\Core\Model\NodeClass\FieldSource $quelle, Node $knoten, ?Relation $kante): array
+    {
+        if ($this->relations === null) {
+            return [];
+        }
+
+        $felderVon = function (Node $traeger, string $vorn): array {
+            $aus = [];
+
+            foreach ($this->relations?->fieldRelationsOf($this->framework->inheritanceOwnersOf($traeger)) ?? [] as $feld) {
+                if (! $feld->isSetting()) {
+                    $aus[$feld->id] = $vorn . $feld->name;
+                }
+            }
+
+            return $aus;
+        };
+
+        if ($kante === null || $quelle !== \Taxmod\Core\Model\NodeClass\FieldSource::Holder) {
+            return $felderVon($knoten, '');
+        }
+
+        $traeger = $this->gemerkterKnoten($kante->fromNodeId);
+
+        if ($traeger === null) {
+            return [];
+        }
+
+        $aus = $felderVon($traeger, $traeger->name . ' › ');
+
+        foreach ($this->relations->fieldRelationsTo([$traeger->id]) as $haltend) {
+            $halter = $this->gemerkterKnoten($haltend->fromNodeId);
+
+            if ($halter !== null && ! $haltend->isSetting()) {
+                $aus += $felderVon($halter, $halter->name . ' › ');
+            }
+        }
+
+        return $aus;
+    }
 
     /** Dieselbe Zeichnung, aber ganze Knotenbäume öffnen den gemeinsamen Auswahlbaum — nur für eine Seite, die ihn zeichnet ([D-815](../../../docs/NewConcept/90-decision-log.md)). */
     public function withSharedPicker(): static
@@ -4216,12 +4420,20 @@ final class Rendering implements Presets
 
             // ⚠️ **Die Vorbelegung** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 3): *«filter» lässt nur passende
             // Sätze im Angebot, «first» behält alle und reicht die passenden an den Baum. Ohne Einstellung oder ohne Wert: nichts.*
-            [$passend, $modus] = $purpose === Purpose::Edit
+            // ⚠️ *Seit D-844/D-845 sagen die gewählten Vorbelegungen der Stelle, was bleibt und was nach vorn gehört — je Paar gefiltert
+            // oder sortiert.*
+            [$behalten, $vorn] = $purpose === Purpose::Edit
                 ? $this->presetFor($relation, $ziele[$relation->toNodeId] ?? null, $angebote[$relation->id] ?? [], $werte, $values, $ownerValues)
-                : [null, \Taxmod\Core\Model\NodeClass\PresetMode::First];
+                : [null, null];
+            $passend = $vorn === null ? null : array_fill_keys(array_keys($vorn), true);
+            $reihe   = $angebote[$relation->id] ?? [];
 
-            foreach ($angebote[$relation->id] ?? [] as $satzId) {
-                if ($passend !== null && $modus === \Taxmod\Core\Model\NodeClass\PresetMode::Filter && ! isset($passend[$satzId])) {
+            if ($vorn !== null) {
+                usort($reihe, static fn (int $a, int $b): int => ($vorn[$b] ?? 0) <=> ($vorn[$a] ?? 0));
+            }
+
+            foreach ($reihe as $satzId) {
+                if ($behalten !== null && ! isset($behalten[$satzId])) {
                     continue;
                 }
 
@@ -4244,85 +4456,84 @@ final class Rendering implements Presets
         return $aus;
     }
 
-    /** @var array<int, array<int, TypedValue>> Die Werte eines Satzes, den ein Vorbelegungsweg durchläuft — je Satz einmal gelesen (`CD-7`). */
-    private array $gelesenWegWerte = [];
-
     /**
-     * Die Vorbelegung des Filters an einem Verweisfeld ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 3): welche der
-     * angebotenen Sätze passen, und ob nur sie bleiben oder sie zuerst stehen.
+     * Die Vorbelegung an einem Verweisfeld ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 3, als Vergleichspaare seit
+     * [D-844](../../../docs/NewConcept/90-decision-log.md)/[D-845](../../../docs/NewConcept/90-decision-log.md)): welche der angebotenen Sätze
+     * bleiben und welche nach vorn gehören.
      *
-     * ⚠️ *Der Weg beginnt im Satz des Feldes und fällt auf den haltenden Satz zurück; ein Glied, das auf einen Satz zeigt, führt in
-     * dessen Werte. Fehlt ein Glied oder ein Wert, gibt es keine Vorbelegung — dann steht alles da wie ohne sie.*
+     * ⚠️ *Jedes Paar vergleicht eine Stufe: ein Feld des Satzes, in dem das Feld steht, oder des Satzes, der ihn hält, mit einem Feld des
+     * angebotenen. Der Weg über mehrere Stufen ist mit D-844 entfallen. Ohne Wert gibt es kein Urteil — dann steht alles da wie ohne sie.*
      *
      * @param  list<int>                                                  $angebot
      * @param  array<int, list<\Taxmod\Core\Model\RelationRecord>>        $werte       Die Werte der angebotenen Sätze.
      * @param  array<int, TypedValue>                                     $values      Die Werte des Satzes, in dem das Feld steht.
      * @param  array<int, TypedValue>                                     $ownerValues Die Werte des Satzes, der ihn hält.
-     * @return array{0: array<int, true>|null, 1: \Taxmod\Core\Model\NodeClass\PresetMode}
+     * @return array{0: array<int, true>|null, 1: array<int, int>|null} Was bleibt (`null`: alles) und je Satz, wie viele Paare ihn nach vorn stellen.
      */
     private function presetFor(Relation $relation, ?Node $ziel, array $angebot, array $werte, array $values, array $ownerValues): array
     {
-        $modus = \Taxmod\Core\Model\NodeClass\PresetMode::First;
-
-        if ($ziel === null || $this->resolver === null || $this->records === null) {
-            return [null, $modus];
+        if ($ziel === null || $this->resolver === null || $this->addons === null) {
+            return [null, null];
         }
 
-        $aktive = static fn (array $glieder): array => array_values(array_map(
-            static fn ($glied): int => (int) $glied->reference,
-            array_filter($glieder, static fn ($glied): bool => $glied->aktiv && $glied->reference !== null)
-        ));
+        $angebotWerte = null;
+        $urteile      = [];
 
-        $feld = $aktive($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\Category::PRESET_FIELD, $relation))[0] ?? null;
-        $weg  = $aktive($this->resolver->listOf($ziel, \Taxmod\Core\Model\NodeClass\Category::PRESET_SOURCE, $relation));
+        foreach ($this->resolver->addonsAt($ziel, $relation) as $gewaehlt) {
+            $addon = $this->addons->byClass($gewaehlt->klasse);
 
-        if ($feld === null || $weg === []) {
-            return [null, $modus];
-        }
-
-        $gewaehlt = ($this->resolver->forUseSite($relation)[\Taxmod\Core\Model\NodeClass\Category::PRESET_MODE] ?? null)?->value->text;
-        $modus    = \Taxmod\Core\Model\NodeClass\PresetMode::tryFrom((string) $gewaehlt) ?? $modus;
-
-        $stufe = $values + $ownerValues;
-        $wert  = null;
-
-        foreach ($weg as $i => $kanteId) {
-            $wert = $stufe[$kanteId] ?? null;
-
-            if ($wert === null || $wert->isNothing()) {
-                return [null, $modus];
+            if (! $addon instanceof \Taxmod\Core\Addon\ShapesOffer) {
+                continue;
             }
 
-            if ($i < count($weg) - 1) {
-                if ($wert->referenceSpace !== ReferenceSpace::Record || $wert->reference === null) {
-                    return [null, $modus];
-                }
+            if ($angebotWerte === null) {
+                $angebotWerte = [];
 
-                if (! isset($this->gelesenWegWerte[$wert->reference])) {
-                    $this->gelesenWegWerte[$wert->reference] = [];
-
-                    foreach ($this->records->valuesOfMany([$wert->reference])[$wert->reference] ?? [] as $zeile) {
-                        $this->gelesenWegWerte[$wert->reference][$zeile->relationId] ??= $zeile->value;
+                foreach ($angebot as $satzId) {
+                    foreach ($werte[$satzId] ?? [] as $zeile) {
+                        $angebotWerte[$satzId][$zeile->relationId][] = $zeile->value;
                     }
                 }
-
-                $stufe = $this->gelesenWegWerte[$wert->reference];
             }
+
+            $urteile[] = $addon->judge(
+                $angebot,
+                $angebotWerte,
+                $values + $ownerValues,
+                $gewaehlt->settings,
+                fn (TypedValue $wert, TypedValue $gesucht): bool => $this->presetValueMatches($wert, $gesucht),
+                // *Das Bedingte am gesuchten Wert: «SMD filter, THT filter, fast SMD sort» (D-845).*
+                function (TypedValue $gesucht) use ($addon): ?string {
+                    if ($gesucht->referenceSpace !== ReferenceSpace::Node || $gesucht->reference === null) {
+                        return null;
+                    }
+
+                    $knoten = $this->gemerkterKnoten($gesucht->reference);
+
+                    return $knoten === null ? null : $this->resolver?->requirementValue($knoten, $addon::class, \Taxmod\Core\Addon\PresetAddon::BEHAVIOUR);
+                }
+            );
         }
 
-        $passend = [];
+        $behalten = null;
+        $vorn     = null;
 
-        foreach ($angebot as $satzId) {
-            foreach ($werte[$satzId] ?? [] as $zeile) {
-                if ($zeile->relationId === $feld && $wert !== null && $this->presetValueMatches($zeile->value, $wert)) {
-                    $passend[$satzId] = true;
+        // *Die Urteile zusammen: behalten wird, was jedes filternde Paar behält; nach vorn kommt, was die meisten Paare treffen.*
+        foreach ($urteile as $urteil) {
+            if ($urteil->keep !== null) {
+                $behalten = $behalten === null ? $urteil->keep : array_intersect_key($behalten, $urteil->keep);
+            }
 
-                    break;
+            if ($urteil->first !== null) {
+                $vorn ??= [];
+
+                foreach (array_keys($urteil->first) as $satzId) {
+                    $vorn[$satzId] = ($vorn[$satzId] ?? 0) + 1;
                 }
             }
         }
 
-        return [$passend, $modus];
+        return [$behalten, $vorn];
     }
 
     /**
@@ -4429,11 +4640,11 @@ final class Rendering implements Presets
      * denselben Einstellungen; alle laufen, und jede Beschwerde wird gemeldet — «einen Menschen nicht dreimal speichern lassen,
      * um drei Dinge zu erfahren».* Die Worte macht der Rand aus dem Schlüssel der Beschwerde (`AR-2`).
      *
-     * @return list<\Taxmod\Core\Validator\Complaint>
+     * @return list<\Taxmod\Core\Addon\Complaint>
      */
     public function complaintsFor(Relation $relation, TypedValue $value): array
     {
-        if ($this->validators === null || $this->resolver === null || $value->isNothing()) {
+        if ($this->addons === null || $this->resolver === null || $value->isNothing()) {
             return [];
         }
 
@@ -4443,16 +4654,13 @@ final class Rendering implements Presets
             return [];
         }
 
-        $klasse = $this->resolver->chosenObjectClasses($ziel, $relation)['validator'] ?? null;
-        $namen  = [];
+        // ⚠️ *Seit D-845 jede gewählte Zusatzfunktion, die beim Speichern prüft — nicht mehr nur die erste gewählte.*
+        $gewaehlt = array_values(array_filter(
+            $this->resolver->addonsAt($ziel, $relation),
+            fn (\Taxmod\Core\Addon\ChosenAddon $eine): bool => $this->addons?->byClass($eine->klasse) instanceof \Taxmod\Core\Addon\ChecksOnSave
+        ));
 
-        foreach ($this->validators->names() as $name) {
-            if ($klasse !== null && $this->validators->classFor($name) === $klasse) {
-                $namen[] = $name;
-            }
-        }
-
-        if ($namen === []) {
+        if ($gewaehlt === []) {
             return [];
         }
 
@@ -4462,7 +4670,7 @@ final class Rendering implements Presets
             $einstellungen[$key] = $resolved->value;
         }
 
-        return $this->validators->complaintsAbout($value, $this->typeAt($relation), $namen, $einstellungen);
+        return $this->addons->complaintsAbout($value, $this->typeAt($relation), $gewaehlt, $einstellungen);
     }
 
     private function chosenRendererName(array $settings): string
@@ -4960,6 +5168,13 @@ final class Rendering implements Presets
 
         $aus = $this->resolver->contractOf($knoten)->attributes;
 
+        // ⚠️ *Was eine gewählte Zusatzfunktion an diesem Knoten bedingt (D-845) — nur am Knoten, und nur wo sie hinzeigt.*
+        if ($node instanceof Node) {
+            foreach ($this->resolver->requirementsAt($knoten) as $name => $bedingt) {
+                $aus[$name] ??= $bedingt;
+            }
+        }
+
         // ⚠️ *Die Attribute des gewählten Renderers stehen daneben — `orientation`, `with_label`,
         // `label_role` —, wie {@see ModelValues::forChosenRenderer()} sie vorher lieferte.*
         // ⚠️ *Und die Attribute jedes gewählten Objekts — des Renderers wie des Umrechnungssatzes — unter
@@ -4995,6 +5210,11 @@ final class Rendering implements Presets
         $key       = $erklaert->name;
         $fieldName = $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $key . ']';
         $typ       = $erklaert->type;
+
+        // ⚠️ **Die Zusatzfunktionen als geordnete Liste mit ihren Feldern je Glied** ([D-845](../../../docs/NewConcept/90-decision-log.md)).
+        if ($typ === \Taxmod\Core\Model\NodeClass\AttributeType::Object && $erklaert->objectClass === \Taxmod\Core\Addon\Addon::class) {
+            return new RenderedSetting($key, SettingShape::Switch, null, $setting, $fieldPrefix === '' ? RenderResult::of('') : $this->drawAddons($subject, $fieldPrefix, $formId), CheckboxRenderer::NAME, $subjectType, band: $erklaert->band);
+        }
 
         [$shape, $simple] = match ($typ) {
             \Taxmod\Core\Model\NodeClass\AttributeType::Bool    => [SettingShape::Switch, SimpleType::Bool],

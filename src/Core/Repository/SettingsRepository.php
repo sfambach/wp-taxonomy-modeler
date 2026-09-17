@@ -85,6 +85,14 @@ interface SettingsRepository
      */
     public function valuesNamingObjects(array $objectIds): array;
 
+    /**
+     * Alle lebenden Zeilen eines Attributs am Knoten, gleich an welchem — etwa jede gewählte Zusatzfunktion, damit ein Knoten erfährt,
+     * ob eine von ihnen an ihm etwas bedingt ([D-845](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return list<SettingsValue>
+     */
+    public function valuesNamed(string $attribut): array;
+
     /** Eine Zeile in den Schatten wandern lassen. Gibt die Version zurück, mit der sie ging, oder `null`. */
     public function forgetValue(int $id): ?int;
 

@@ -157,10 +157,10 @@ final class RenderingTest extends TestCase
             $this->typeNodes,
             new Labels($this->labelStore, 'en_US'),
             ShippedConverters::registry(),
-            resolver: $this->resolver = new SettingsResolver($this->settings, $this->nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $this->relations),
+            resolver: $this->resolver = new SettingsResolver($this->settings, $this->nodes, ShippedRenderers::registry(), ShippedConverters::registry(), \Taxmod\Core\Addon\ShippedAddons::registry(), relations: $this->relations),
             relations: $this->relations,
             records: $this->records,
-            validators: \Taxmod\Core\Validator\ShippedValidators::registry()
+            addons: \Taxmod\Core\Addon\ShippedAddons::registry()
         );
     }
 
@@ -1778,7 +1778,7 @@ final class RenderingTest extends TestCase
             resolver: $this->resolver,
             relations: $this->relations,
             records: $this->records,
-            validators: \Taxmod\Core\Validator\ShippedValidators::registry(),
+            addons: \Taxmod\Core\Addon\ShippedAddons::registry(),
             users: $users
         );
     }
@@ -2119,17 +2119,19 @@ final class RenderingTest extends TestCase
             $this->records->putValue(RelationRecord::direct($satz, $form->id, TypedValue::ofReference($knoten->id)));
         }
 
-        $einsteller = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
-        $einsteller->setMembers($teil, \Taxmod\Core\Model\NodeClass\Category::PRESET_FIELD, [$form->id], $wahl);
-        $einsteller->setMembers($teil, \Taxmod\Core\Model\NodeClass\Category::PRESET_SOURCE, [$art->id], $wahl);
+        // ⚠️ *Seit D-844/D-845 ein Vergleichspaar als Zusatzfunktion an der Kante: «bestueckung» hier ↔ «form» am angebotenen Satz.*
+        $einsteller = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), addons: \Taxmod\Core\Addon\ShippedAddons::registry());
+        $paar       = static fn (string $modus): array => [['name' => 'preset', 'fields' => ['source_field' => (string) $art->id, 'offered_field' => (string) $form->id, 'mode' => $modus]]];
+        $einsteller->putAddons($teil, $paar('sort'), $wahl);
         $this->neuZeichnen();
 
         $zuerst = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
 
         self::assertStringContainsString('taxmod-record-match', $zuerst, 'der Treffer unter SMD ist gekennzeichnet');
-        self::assertStringContainsString('> Brocken<', $zuerst, '«first» lässt die übrigen wählbar');
+        self::assertStringContainsString('> Brocken<', $zuerst, '«sort» lässt die übrigen wählbar');
+        self::assertLessThan(strpos($zuerst, '> Brocken<'), strpos($zuerst, '> Winzling<'), '«sort» stellt den Treffer nach vorn');
 
-        $einsteller->put($teil, \Taxmod\Core\Model\NodeClass\Category::PRESET_MODE, 'filter', $wahl);
+        $einsteller->putAddons($teil, $paar('filter'), $wahl);
         $this->neuZeichnen();
 
         $gefiltert = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
@@ -2140,6 +2142,72 @@ final class RenderingTest extends TestCase
         $ohneWert = $this->rendering->nodeAsForm($platte, [$wahl], [], Purpose::Edit, 'v')->markup;
 
         self::assertStringContainsString('> Brocken<', $ohneWert, 'ohne Wert keine Vorbelegung');
+    }
+
+    /**
+     * ⚠️ *D-845, sein Wort: «an den konstanten sagen ist filter oder ist sort smd filter, tht filter, almost .. sort». Das Paar sortiert;
+     * am gesuchten Wert steht, dass hier gefiltert wird — und das Feld dafür erscheint nur unter dem Ziel des verglichenen Feldes.*
+     */
+    #[Test]
+    public function what_the_searched_value_says_beats_the_mode_of_the_pair_and_is_offered_only_where_the_pair_points(): void
+    {
+        $formen = $this->thing('Formen');
+        $smd    = $this->editor->createNode('SMD', $formen->id);
+        $klein  = $this->editor->createNode('0603', $smd->id);
+        $tht    = $this->editor->createNode('THT', $formen->id);
+        $gross  = $this->editor->createNode('0207', $tht->id);
+        $fremd  = $this->thing('Fremd');
+        $teil   = $this->thing('Teil');
+        $name   = $this->editor->addField($teil->id, $this->type('Text')->id, 'name');
+        $form   = $this->editor->addField($teil->id, $formen->id, 'form', RelationKind::Aggregation);
+        $platte = $this->thing('Platte');
+        $art    = $this->editor->addField($platte->id, $formen->id, 'bestueckung', RelationKind::Aggregation);
+        $wahl   = $this->editor->addField($platte->id, $teil->id, 'wahl', RelationKind::Aggregation);
+
+        foreach ([['Winzling', $klein], ['Brocken', $gross]] as [$wort, $knoten]) {
+            $satz = $this->records->add(new NodeRecord(0, $teil->id, 1, '2026-09-17 10:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($satz, $name->id, TypedValue::ofText($wort)));
+            $this->records->putValue(RelationRecord::direct($satz, $form->id, TypedValue::ofReference($knoten->id)));
+        }
+
+        $einsteller = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), addons: \Taxmod\Core\Addon\ShippedAddons::registry());
+        $einsteller->putAddons($teil, [['name' => 'preset', 'fields' => ['source_field' => (string) $art->id, 'offered_field' => (string) $form->id, 'mode' => 'sort']]], $wahl);
+
+        self::assertTrue($einsteller->knows($this->nodes->byId($smd->id), \Taxmod\Core\Addon\PresetAddon::BEHAVIOUR), 'unter dem Ziel des verglichenen Feldes');
+        self::assertFalse($einsteller->knows($this->nodes->byId($fremd->id), \Taxmod\Core\Addon\PresetAddon::BEHAVIOUR), 'anderswo nicht');
+
+        $einsteller->put($this->nodes->byId($smd->id), \Taxmod\Core\Addon\PresetAddon::BEHAVIOUR, 'filter');
+        $this->neuZeichnen();
+
+        $gefiltert = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($smd->id)], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('> Winzling<', $gefiltert);
+        self::assertStringNotContainsString('> Brocken<', $gefiltert, 'SMD sagt «filter», das gilt über dem «sort» des Paars');
+
+        $sortiert = $this->rendering->nodeAsForm($platte, [$wahl], [$art->id => TypedValue::ofReference($tht->id)], Purpose::Edit, 'v')->markup;
+
+        self::assertStringContainsString('> Winzling<', $sortiert, 'THT sagt nichts — das Paar sortiert');
+    }
+
+    /** ⚠️ *D-845: «Mehrere hinzufügen» ist eine Zusatzfunktion der mehrfachen Kante; ihr Feld sagt, worüber gewählt wird.* */
+    #[Test]
+    public function add_several_is_an_addon_of_the_many_edge(): void
+    {
+        $teil     = $this->thing('Teil');
+        $position = $this->thing('Position');
+        $welches  = $this->editor->addField($position->id, $teil->id, 'teil', RelationKind::Aggregation);
+        $liste    = $this->thing('Liste');
+        $zeilen   = $this->editor->addField($liste->id, $position->id, 'zeilen', RelationKind::Composition);
+        $zeilen   = $this->editor->setMultiplicity($liste->id, $zeilen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+
+        self::assertNull($this->rendering->pickFieldOf($zeilen), 'ohne Wahl kein Knopf');
+
+        $einsteller = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), addons: \Taxmod\Core\Addon\ShippedAddons::registry());
+        $einsteller->putAddons($position, [['name' => 'pick_rows', 'fields' => ['pick_field' => (string) $welches->id]]], $zeilen);
+        $this->neuZeichnen();
+
+        self::assertSame($welches->id, $this->rendering->pickFieldOf($zeilen)?->id);
+        self::assertFalse($einsteller->putAddons($position, [['name' => 'pick_rows', 'fields' => ['pick_field' => (string) $welches->id]]], $zeilen), 'dasselbe noch einmal schreibt nichts');
     }
 
     /** ⚠️ *D-755: «ob es Hardware oder Software ist … über den Ast bestimmen» — nur das erste Glied unter dem erklärenden Knoten.* */
@@ -2224,8 +2292,9 @@ final class RenderingTest extends TestCase
         $posten = $this->thing('Posten');
         $menge  = $this->editor->addField($posten->id, $int->id, 'menge');
 
-        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), validators: \Taxmod\Core\Validator\ShippedValidators::registry());
-        $editor->put($int, 'validator', 'range');
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), addons: \Taxmod\Core\Addon\ShippedAddons::registry());
+        // ⚠️ *Seit D-845 eine Zusatzfunktion «beim Speichern prüfen», gewählt in der Liste der Stelle.*
+        $editor->putAddons($int, [['name' => 'range']]);
         $editor->put($int, 'min', '3', $menge);
         $this->neuZeichnen();
 

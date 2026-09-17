@@ -4,7 +4,7 @@ namespace Taxmod\Core\Model\NodeClass;
 
 use Taxmod\Core\Converter\Converter;
 use Taxmod\Core\Renderer\Renderer;
-use Taxmod\Core\Validator\Validator;
+use Taxmod\Core\Addon\Addon;
 
 /**
  * **Die Attribute der Basisklasse Knoten** — jeder Knoten hat sie (Anforderung 2.3.3, 3.6.1).
@@ -35,8 +35,13 @@ trait NodeAttributes
     #[Attribut(listOf: Converter::class)]
     public array $converter = [];
 
-    /** @var list<Validator> */
-    #[Attribut(listOf: Validator::class)]
-    public array $validator = [];
+    /**
+     * Die gewählten Zusatzfunktionen ([D-845](../../../../docs/NewConcept/90-decision-log.md)) — Vorbelegung, «Mehrere hinzufügen», die
+     * Prüfungen beim Speichern. *Hier stand `validator`; die Prüfungen sind jetzt Zusatzfunktionen, und gewählt war nie eine.*
+     *
+     * @var list<Addon>
+     */
+    #[Attribut(listOf: Addon::class)]
+    public array $addons = [];
 
 }

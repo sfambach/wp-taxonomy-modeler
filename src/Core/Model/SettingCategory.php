@@ -24,7 +24,7 @@ enum SettingCategory: string
 
     case Rules = 'rules';
 
-    private const DISPLAY    = ['renderer', 'converter', 'validator', 'icon'];
+    private const DISPLAY    = ['renderer', 'converter', 'addons', 'icon'];
     private const OF_THE_TYPE = ['min', 'max', 'step'];
 
     public static function of(string $key, ?SimpleType $subject = null): self

@@ -63,7 +63,7 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Renderer\ShippedRenderers;
-use Taxmod\Core\Validator\ShippedValidators;
+use Taxmod\Core\Addon\ShippedAddons;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededTypeNodes;
 

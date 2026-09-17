@@ -2522,21 +2522,18 @@ final class NodesScreen
             // ⚠️ *Die Erklärungen hinter dem Fragezeichen je Einstellung (D-795) — sein Wort: «question mark explaining what this area does».*
             new Control('word:hint:renderer', '', __('How this is drawn — as a form, a table, compact in one line, or complex (parts as a table).', 'taxmod')),
             new Control('word:hint:converter', '', __('Shows a stored value in another notation, e.g. a number as hexadecimal. The stored value itself does not change.', 'taxmod')),
-            new Control('word:hint:validator', '', __('Checks a value before it is saved; a value that fails is not stored.', 'taxmod')),
+            new Control('word:hint:addons', '', __('Extra functions for this place, each with its own fields: a preset that filters or sorts the offered records by comparing a field here with a field on them, «Add several» for lines chosen in a dialog, and checks that run before a value is saved. Order them with the arrows.', 'taxmod')),
+            new Control('word:hint:preset_behaviour', '', __('A preset compares against this value: filter shows only matching records, sort keeps all and puts matching ones first. Applies to everything below unless set there.', 'taxmod')),
             new Control('word:hint:with_label', '', __('Whether each part is shown with its field name in front of it.', 'taxmod')),
             new Control('word:hint:orientation', '', __('Horizontal: the parts side by side in one line. Vertical: one part per line.', 'taxmod')),
             new Control('word:hint:display_size', '', __('The width of the input, in characters.', 'taxmod')),
             new Control('word:hint:dialog', '', __('Open the choice in a dialog instead of showing the tree in place.', 'taxmod')),
             new Control('word:hint:label_role', '', __('Which label of the chosen entry is shown — its name, its symbol, the selection text …', 'taxmod')),
             new Control('word:hint:summary_fields', '', __('Which fields make up the one-line summary of a record, e.g. in a parts list. Tick the fields and put them in order with the arrows; unticked, the first text field is used.', 'taxmod')),
-            new Control('word:hint:preset_field', '', __('When a record of this node is picked: the field of the offered records that is compared, e.g. Bauform.', 'taxmod')),
-            new Control('word:hint:preset_source', '', __('Where the value to compare comes from, field by field, starting at the record being edited or the record holding it — e.g. Platinenversion, then Bestückung.', 'taxmod')),
-            new Control('word:hint:preset_mode', '', __('filter: only matching records are offered. first: matching records come first and are highlighted, the rest stay selectable.', 'taxmod')),
             new Control('word:hint:erlaubte_einheiten', '', __('Which units a value of this field may have. Exactly one: it is preselected and cannot be changed. None: every unit.', 'taxmod')),
             new Control('word:hint:erlaubte_praefixe', '', __('Which prefixes this unit offers, e.g. p n µ m for Farad. None: every prefix.', 'taxmod')),
             new Control('word:hint:mit_praefix', '', __('Whether this unit takes a prefix at all — Ohm does, Percent does not.', 'taxmod')),
             new Control('word:hint:symbol', '', __('The short sign of the unit, e.g. Ω or %.', 'taxmod')),
-            new Control('word:hint:pick_field', '', __('For a field with several lines (e.g. the positions of a parts list): the field a new line is chosen by, e.g. Part. With it, «Add several» picks records in a dialog and adds one line per record.', 'taxmod')),
         ];
     }
 
@@ -3677,7 +3674,7 @@ final class NodesScreen
      *
      * ⚠️ *Eine vom Autor ersetzte Meldung (D-158) ist noch nicht gebaut; hier steht die mitgelieferte.*
      */
-    private function complaintText(\Taxmod\Core\Validator\Complaint $complaint): string
+    private function complaintText(\Taxmod\Core\Addon\Complaint $complaint): string
     {
         $text = match ($complaint->key) {
             'below_min'   => __('below the minimum of {min}', 'taxmod'),
@@ -4926,7 +4923,7 @@ final class NodesScreen
     {
         $this->saveSettings($nodeId, $relationId, $name);
         $this->saveFieldRows($nodeId);
-        $geschrieben = $this->saveAttributes($nodeId) + $this->saveListEntries($nodeId) + $this->saveSetMembers($nodeId);
+        $geschrieben = $this->saveAttributes($nodeId) + $this->saveListEntries($nodeId) + $this->saveSetMembers($nodeId) + $this->saveAddons($nodeId);
         $this->saveLabels($nodeId, $locale);
 
         // ⚠️ **Der Akt sagt, was er getan hat** ([D-683](../../../docs/NewConcept/90-decision-log.md)).
@@ -5140,6 +5137,51 @@ final class NodesScreen
         // fremdes erstes Glied und ersetzte die Liste. Gemessen am 2026-09-11.*
         $this->saveListEntries($nodeId, $useSite);
         $this->saveSetMembers($nodeId, $useSite);
+        $this->saveAddons($nodeId, $useSite);
+    }
+
+    /**
+     * Die Zusatzfunktionen einer Stelle: `<prefix>_addons[<glied>][name|fields]` in der Reihenfolge der Liste, dazu `[present]`
+     * ([D-845](../../../docs/NewConcept/90-decision-log.md)). Ohne `present` wurde die Liste nicht gezeichnet — dann bleibt alles, wie es ist.
+     *
+     * ⚠️ *Die Namen werden nicht geglaubt (`CD-5`): der Kern kennt nur Funktionen seiner Registratur und nur Felder ihrer Klasse.*
+     *
+     * @return int 1, wenn die Liste geschrieben wurde.
+     */
+    private function saveAddons(int $nodeId, ?Relation $useSite = null): int
+    {
+        $feld = $useSite === null ? self::SETTING_FIELD . '_addons' : self::ROW_SETTING_FIELD . '_addons';
+        $roh  = $useSite === null ? ($_POST[$feld] ?? null) : ($_POST[$feld][$useSite->id] ?? null);
+
+        if ($this->attributes === null || ! is_array($roh) || empty($roh['present'])) {
+            return 0;
+        }
+
+        $node = $this->editor->find($useSite === null ? $nodeId : $useSite->toNodeId);
+
+        if ($node === null || ! $this->attributes->knows($node, \Taxmod\Core\Addon\AddonRegistry::ATTRIBUTE, $useSite)) {
+            return 0;
+        }
+
+        $gewollt = [];
+
+        foreach (wp_unslash($roh) as $glied => $angabe) {
+            if ($glied === 'present' || ! is_array($angabe)) {
+                continue;
+            }
+
+            $felder = [];
+
+            foreach (is_array($angabe['fields'] ?? null) ? $angabe['fields'] : [] as $name => $wert) {
+                if (! is_array($wert)) {
+                    $felder[sanitize_key((string) $name)] = sanitize_text_field((string) $wert);
+                }
+            }
+
+            $gewollt[] = ['name' => sanitize_key((string) ($angabe['name'] ?? '')), 'fields' => $felder];
+        }
+
+        return $this->attributes->putAddons($node, $gewollt, $useSite) ? 1 : 0;
     }
 
     /**

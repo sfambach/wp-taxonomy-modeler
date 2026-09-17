@@ -16,7 +16,9 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\SettingsRepository;
-use Taxmod\Core\Validator\ValidatorRegistry;
+use Taxmod\Core\Addon\Addon;
+use Taxmod\Core\Addon\AddonRegistry;
+use Taxmod\Core\Addon\ChosenAddon;
 
 /**
  * **Die Auflösung: Kante → Knoten → Vertrag** (Anforderung 5.7) — aus `settings_value`, nie aus einer
@@ -71,7 +73,7 @@ final class SettingsResolver
         private readonly NodeRepository $nodes,
         private readonly RendererRegistry $renderers,
         private readonly ?ConverterRegistry $converters = null,
-        private readonly ?ValidatorRegistry $validators = null,
+        private readonly ?AddonRegistry $addons = null,
         /** ⚠️ *Nur für das Wort eines Feldverweises (D-752) — wer keinen mitgibt, sieht die Nummer.* */
         private readonly ?\Taxmod\Core\Repository\RelationRepository $relations = null,
     ) {
@@ -256,7 +258,9 @@ final class SettingsResolver
         $aus  = [];
 
         foreach (Contracts::of($node->klasse)->attributes as $name => $erklaert) {
-            if ($erklaert->type !== AttributeType::Object) {
+            // ⚠️ *Zusatzfunktionen haben ihre eigene Liste mit ihren eigenen Feldern je Glied (D-845) — mehrere derselben Art an einer
+            // Stelle; ihre Felder unter dem Knoten auszubreiten hiesse, dass die zweite Vorbelegung die erste überschreibt.*
+            if ($erklaert->type !== AttributeType::Object || $erklaert->objectClass === Addon::class) {
                 continue;
             }
 
@@ -284,6 +288,10 @@ final class SettingsResolver
         foreach ($vertrag->attributes as $name => $erklaert) {
             $amKnoten = $this->rowsFor($rows, $erklaert, null);
             $anKante  = $edge === null ? [] : $this->rowsFor($rows, $erklaert, $edge->id);
+
+            if ($erklaert->type === AttributeType::Object && $erklaert->objectClass === Addon::class) {
+                continue;
+            }
 
             if ($erklaert->type === AttributeType::Object) {
                 $aus = [...$aus, ...$this->resolveObject($erklaert, $amKnoten, $anKante, $node, $edge)];
@@ -313,6 +321,19 @@ final class SettingsResolver
 
             if ($erklaert->default !== null) {
                 $aus[$name] = new ResolvedSetting($name, $this->asWord($erklaert->default), 0, false);
+            }
+        }
+
+        // ⚠️ *Was eine gewählte Zusatzfunktion an diesem Knoten bedingt (D-845), steht nur am Knoten selbst — an der Kante gibt es das nicht.*
+        if ($edge === null) {
+            foreach ($this->requirementsAt($node) as $name => $bedingt) {
+                foreach ($rows as $row) {
+                    if ($row->klasse === $bedingt->declaredBy && $row->attribut === $name && $row->relationId === null) {
+                        $aus[$name] = new ResolvedSetting($name, $row->value, $node->id, true);
+
+                        break;
+                    }
+                }
             }
         }
 
@@ -571,8 +592,8 @@ final class SettingsResolver
             }
         }
 
-        foreach ($this->validators?->names() ?? [] as $name) {
-            if ($this->validators?->classFor($name) === $class) {
+        foreach ($this->addons?->names() ?? [] as $name) {
+            if ($this->addons?->classFor($name) === $class) {
                 return $this->names[$class] = $name;
             }
         }
@@ -584,6 +605,138 @@ final class SettingsResolver
     public function forget(): void
     {
         $this->held = $this->rows = $this->objectRows = $this->objects = $this->known = [];
+        $this->addonRows = null;
+    }
+
+    /**
+     * Die Zusatzfunktionen, die an einer Stelle gelten ([D-845](../../../docs/NewConcept/90-decision-log.md)) — mit ihren eigenen Feldern,
+     * in ihrer Reihenfolge, nur die aktiven.
+     *
+     * ⚠️ **Angenommen, nicht von ihm gesagt:** *hat die Kante eigene Glieder, gelten nur sie; sonst die des Knotens. Anders als bei den
+     * Renderern wird nicht Glied für Glied überlagert — ein Vergleichspaar an der Kante ist eine andere Vorbelegung, keine abgeänderte.*
+     *
+     * @return list<ChosenAddon>
+     */
+    public function addonsAt(Node $node, ?Relation $edge = null): array
+    {
+        $erklaert = Contracts::of($node->klasse)->attribute(\Taxmod\Core\Addon\AddonRegistry::ATTRIBUTE);
+
+        if ($erklaert === null) {
+            return [];
+        }
+
+        $this->preload([$node]);
+
+        $rows    = $this->rows[$node->id] ?? [];
+        $anKante = $edge === null ? [] : $this->rowsFor($rows, $erklaert, $edge->id);
+        $hier    = $anKante !== [] || $edge === null;
+        $glieder = $anKante !== [] ? $anKante : $this->rowsFor($rows, $erklaert, null);
+        $aus     = [];
+
+        foreach ($glieder as $row) {
+            $objekt = $row->valueObjectId === null ? null : ($this->objects[$row->valueObjectId] ?? null);
+
+            if (! $row->aktiv || $objekt === null || ! class_exists($objekt->klasse)) {
+                continue;
+            }
+
+            $felder = [];
+
+            foreach ($this->objectRows[$objekt->id] ?? [] as $innen) {
+                $felder[$innen->attribut] ??= $innen->value;
+            }
+
+            foreach (Contracts::ofValueClass($objekt->klasse)->attributes as $name => $innenErklaert) {
+                if (! isset($felder[$name]) && $innenErklaert->default !== null) {
+                    $felder[$name] = $innenErklaert->default;
+                }
+            }
+
+            $aus[] = new ChosenAddon($objekt->klasse, $objekt->id, $felder, $hier);
+        }
+
+        return $aus;
+    }
+
+    /** @var list<\Taxmod\Core\Model\Setting\SettingsValue>|null Jede gewählte Zusatzfunktion im Modell, einmal je Lauf gelesen (`CD-7`). */
+    private ?array $addonRows = null;
+
+    /**
+     * Was gewählte Zusatzfunktionen an **diesem** Knoten bedingen ([D-845](../../../docs/NewConcept/90-decision-log.md)). Ein Feld erscheint
+     * nur, wo das Feld `atValuesOf` einer gewählten Funktion hinzeigen kann: an dessen Ziel und darunter.
+     *
+     * @return array<string, AttributeDeclaration>
+     */
+    public function requirementsAt(Node $node): array
+    {
+        if ($this->addons === null || $this->relations === null) {
+            return [];
+        }
+
+        if ($this->addonRows === null) {
+            $this->addonRows = $this->settings->valuesNamed(\Taxmod\Core\Addon\AddonRegistry::ATTRIBUTE);
+            $this->loadObjectsBehind($this->addonRows);
+        }
+
+        $oben = array_flip([...$node->ancestorIds(), $node->id]);
+        $aus  = [];
+
+        foreach ($this->addonRows as $row) {
+            $objekt = $row->valueObjectId === null ? null : ($this->objects[$row->valueObjectId] ?? null);
+            $addon  = $objekt === null ? null : $this->addons->byClass($objekt->klasse);
+
+            if (! $row->aktiv || $addon === null) {
+                continue;
+            }
+
+            foreach ($addon->requirements() as $bedingt) {
+                if (isset($aus[$bedingt->attribut])) {
+                    continue;
+                }
+
+                foreach ($this->objectRows[$objekt->id] ?? [] as $innen) {
+                    if ($innen->attribut !== $bedingt->atValuesOf || $innen->value->reference === null) {
+                        continue;
+                    }
+
+                    $feld = $this->relations->byId($innen->value->reference);
+
+                    if ($feld !== null && isset($oben[$feld->toNodeId])) {
+                        $aus[$bedingt->attribut] = new AttributeDeclaration($objekt->klasse, $bedingt->attribut, AttributeType::Enum, enumClass: $bedingt->enumClass);
+                    }
+                }
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Der Wert eines bedingten Feldes an einem Knoten oder, ohne eigenen, am nächsten Vorfahren, der einen trägt — «SMD» sagt «filter»,
+     * und das gilt für «0603» darunter mit.
+     */
+    public function requirementValue(Node $node, string $addonClass, string $attribut): ?string
+    {
+        $kette   = array_reverse([...$node->ancestorIds(), $node->id]);
+        $fehlend = array_values(array_filter($kette, fn (int $id): bool => ! isset($this->known[$id])));
+
+        if ($fehlend !== []) {
+            foreach ($this->nodes->byIds($fehlend) as $geholt) {
+                $this->known[$geholt->id] = $geholt;
+            }
+        }
+
+        $this->preload(array_values(array_filter(array_map(fn (int $id): ?Node => $this->known[$id] ?? null, $kette))));
+
+        foreach ($kette as $id) {
+            foreach ($this->rows[$id] ?? [] as $row) {
+                if ($row->klasse === $addonClass && $row->attribut === $attribut && $row->relationId === null && $row->value->text !== null) {
+                    return $row->value->text;
+                }
+            }
+        }
+
+        return null;
     }
 
     /** Der Vertrag eines Knotens — die Maske zeichnet daraus, was es zu zeichnen gibt. */

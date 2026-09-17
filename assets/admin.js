@@ -1452,6 +1452,68 @@
 		wertPfeileSetzen( liste );
 	}, true );
 
+	// ⚠️ **Die Zusatzfunktionen einer Stelle** (D-845). *Dieselbe Liste; ein neues Glied kommt aus der Vorlage seiner Funktion, mit einer
+	// eigenen Nummer in der Adresse. Der Mülleimer nimmt das Glied heraus; gespeichert wird mit der Seite, in der Reihenfolge der Liste.*
+	var addonZaehler = 0;
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var ziel    = ereignis.target instanceof Element ? ereignis.target : null;
+		var knopf   = ziel ? ziel.closest( '.taxmod-addon-add, .taxmod-list-remove' ) : null;
+		var waehler = knopf ? knopf.closest( '.taxmod-addon-picker' ) : null;
+
+		if ( ! waehler ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+		ereignis.stopImmediatePropagation();
+
+		var liste = waehler.querySelector( '.taxmod-switch-cascade' );
+
+		if ( knopf.classList.contains( 'taxmod-list-remove' ) ) {
+			var weg = knopf.closest( 'li' );
+
+			if ( weg ) {
+				weg.remove();
+				wertPfeileSetzen( liste );
+			}
+
+			return;
+		}
+
+		var auswahl = waehler.querySelector( '.taxmod-addon-candidates' );
+		var name    = auswahl ? auswahl.value : '';
+		var vorlage = null;
+
+		waehler.querySelectorAll( 'template.taxmod-addon-template' ).forEach( function ( eine ) {
+			if ( eine.getAttribute( 'data-taxmod-addon' ) === name ) {
+				vorlage = eine;
+			}
+		} );
+
+		if ( ! vorlage || ! liste ) {
+			return;
+		}
+
+		addonZaehler++;
+
+		var glied = 'n' + Date.now() + '_' + addonZaehler;
+		var halter = document.createElement( 'div' );
+
+		halter.innerHTML = vorlage.innerHTML.split( '__glied__' ).join( glied );
+		halter.querySelectorAll( '[data-taxmod-name]' ).forEach( function ( feld ) {
+			feld.setAttribute( 'name', feld.getAttribute( 'data-taxmod-name' ) );
+			feld.removeAttribute( 'data-taxmod-name' );
+		} );
+
+		while ( halter.firstElementChild ) {
+			liste.appendChild( halter.firstElementChild );
+		}
+
+		auswahl.value = '';
+		wertPfeileSetzen( liste );
+	}, true );
+
 	// *Enter im Eingabefeld übernimmt den Wert, statt die Seite abzuschicken.*
 	document.addEventListener( 'keydown', function ( ereignis ) {
 		var feld = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-value-new' ) : null;

@@ -184,6 +184,18 @@ final class WpdbSettingsRepository implements SettingsRepository
         return array_map($this->hydrate(...), $rows);
     }
 
+    public function valuesNamed(string $attribut): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Zeilen eines Attributs an allen Knoten lesen', $wpdb->prepare(
+            'SELECT ' . self::VALUE_COLUMNS . ' FROM ' . Schema::table('settings_value') . ' WHERE attribut = %s AND node_id IS NOT NULL ORDER BY id',
+            $attribut
+        ));
+
+        return array_map($this->hydrate(...), $rows);
+    }
+
     public function forgetValue(int $id): ?int
     {
         global $wpdb;

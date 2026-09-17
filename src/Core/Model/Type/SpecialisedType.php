@@ -173,7 +173,7 @@ abstract class SpecialisedType extends Node implements NodeClass
     }
 
     /**
-     * Die Form, die dieser Typ **verspricht, aber nicht erzwingt** — für {@see \Taxmod\Core\Validator\ShapeValidator}.
+     * Die Form, die dieser Typ **verspricht, aber nicht erzwingt** — für {@see \Taxmod\Core\Addon\ShapeValidator}.
      *
      * ⚠️ **Hierher gewandert aus dem Formvalidator**, wo sie als `match` über drei Typen stand. *Es
      * ist eine Aussage über den Typ und nicht über den Validator: `null` heisst «dieser Typ
@@ -198,7 +198,7 @@ abstract class SpecialisedType extends Node implements NodeClass
     /**
      * Ob `min` und `max` für diesen Typ einen Sinn ergeben.
      *
-     * ⚠️ **Hierher gewandert aus {@see \Taxmod\Core\Validator\RangeValidator::handles()}**, und das
+     * ⚠️ **Hierher gewandert aus {@see \Taxmod\Core\Addon\RangeValidator::handles()}**, und das
      * ist die Frage, die der Eigentümer am 2026-09-05 gestellt hat: *«wenn ich einen int-Knoten habe,
      * kann ich das softwaretechnisch prüfen.»* Jetzt sagt der Typ es selbst, und der Validator liest
      * es ab, statt eine zweite Liste zu führen.

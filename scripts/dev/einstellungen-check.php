@@ -81,7 +81,7 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\SettingsResolver;
-use Taxmod\Core\Validator\ShippedValidators;
+use Taxmod\Core\Addon\ShippedAddons;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\Schema;
@@ -141,7 +141,7 @@ $zeichner = static fn (): Rendering => new Rendering(
     $relations,
     resolver: new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations),
     records: $rows,
-    validators: \Taxmod\Core\Validator\ShippedValidators::registry()
+    addons: \Taxmod\Core\Addon\ShippedAddons::registry()
 );
 
 wp_set_current_user(1);
@@ -516,7 +516,7 @@ echo "\n== 2 · Der Vertrag erklärt: die Attribute kommen aus der Klasse, nicht
 // Knoten erbt einen Wert vom Vater** — sein Wort: «vererbung von knoten settings in knoten ist grundsätzlich
 // raus»; die Klasse liefert die Vorgabe, der Knoten setzt, die Kante überschreibt (Abschnitt 4).*
 $vertragInt = \Taxmod\Core\Model\NodeClass\Contracts::of(\Taxmod\Core\Model\Type\IntType::class);
-check('der Vertrag von Integer erklärt min, max, step, display_size und die drei der Basisklasse', array_values(array_diff(['min', 'max', 'step', 'renderer', 'converter', 'validator', 'display_size'], array_keys($vertragInt->attributes))) === [], implode(',', array_keys($vertragInt->attributes)));
+check('der Vertrag von Integer erklärt min, max, step, display_size und die drei der Basisklasse', array_values(array_diff(['min', 'max', 'step', 'renderer', 'converter', 'addons', 'display_size'], array_keys($vertragInt->attributes))) === [], implode(',', array_keys($vertragInt->attributes)));
 $markup = seite($zahl->id);
 preg_match_all('/name="taxmod_setting\[([a-z_]+)\]"/', $markup, $treffer);
 $imBereich = array_values(array_unique($treffer[1]));
@@ -527,7 +527,8 @@ $zeilenAm = static fn (int $nodeId, string $attribut = ''): int => (int) $wpdb->
 check('und die Vorgabe hat keine Zeile — nur Gesetztes wird gespeichert (4.5.1)', $zeilenAm($zahl->id) === 0, (string) $zeilenAm($zahl->id));
 $markupModell = seite($modellKnoten->id);
 preg_match_all('/name="taxmod_setting\[([a-z_]+)\]"/', $markupModell, $trefferModell);
-check('ein Ding unter Model kennt renderer, converter, validator — keine Grenzen, kein display_size (D-724)', array_values(array_diff(['renderer', 'converter', 'validator'], $trefferModell[1])) === [] && ! in_array('min', $trefferModell[1], true) && ! in_array('display_size', $trefferModell[1], true), implode(',', array_unique($trefferModell[1])));
+// ⚠️ *Seit D-845 statt `validator` die Liste der Zusatzfunktionen — sie hat ihre eigene Adresse `taxmod_setting_addons[…]`.*
+check('ein Ding unter Model kennt renderer, converter und die Zusatzfunktionen — keine Grenzen, kein display_size (D-724, D-845)', array_values(array_diff(['renderer', 'converter'], $trefferModell[1])) === [] && str_contains($markupModell, 'name="taxmod_setting_addons[present]"') && ! in_array('min', $trefferModell[1], true) && ! in_array('display_size', $trefferModell[1], true), implode(',', array_unique($trefferModell[1])));
 $speicherbar = static fn (int $nodeId, string $attribut, string $wert): bool => speichern($nodeId, ['taxmod_setting' => [$attribut => $wert]]);
 $aufgeloest  = static fn (int $nodeId): array => $zeichner()->settingsForNode($nodes->byId($nodeId));
 $speicherbar($zahl->id, 'max', 'viele');
@@ -1431,7 +1432,7 @@ $data->put($lfSatz->id, $lfName->id, TypedValue::ofText('__es Alpha'));
 $data->put($lfSatz->id, $lfLand->id, TypedValue::ofText('__es Nord'));
 $wer           = $editor->addField($satzKnoten->id, $lieferant->id, '__es wer', RelationKind::Aggregation);
 $data->put($sId, $wer->id, TypedValue::ofRecordReference($lfSatz->id));
-$einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), relations: $relations), ShippedRenderers::registry(), ShippedConverters::registry(), validators: \Taxmod\Core\Validator\ShippedValidators::registry());
+$einsteller    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, new SettingsResolver(new WpdbSettingsRepository(), $nodes, ShippedRenderers::registry(), ShippedConverters::registry(), \Taxmod\Core\Addon\ShippedAddons::registry(), relations: $relations), ShippedRenderers::registry(), ShippedConverters::registry(), addons: \Taxmod\Core\Addon\ShippedAddons::registry());
 // ⚠️ *Keine Wahl an der Kante: ein Satzverweis zeigt seine Zusammenfassung von selbst (D-753, berichtigt).*
 $einsteller->setMembers($nodes->byId($lieferant->id), \Taxmod\Core\Renderer\SummaryRenderer::FIELDS, [$lfName->id, $lfLand->id]);
 $mitSummary = seite($satzKnoten->id, null, $sId);
@@ -1486,7 +1487,12 @@ check('das Eingabefeld eines Satzes trägt die Grenze als min', preg_match('/<in
 
 // ⚠️ **Zeile 8: die Validatoren laufen beim Speichern** ([D-760](../../docs/NewConcept/90-decision-log.md)) — erst prüfen, dann schreiben;
 // eine Beschwerde, und nichts wird gespeichert. *Am Datum mit Grenze von D-757: der Bereichs-Wächter «range» an der Stelle.*
-$einsteller->put($nodes->byId($wann->id), 'validator', 'range');
+// ⚠️ *Seit D-845 eine Zusatzfunktion: gewählt über die Liste im Einstellungsbereich, abgeschickt wie ein Browser sie schickt.*
+check('die Liste der Zusatzfunktionen bietet am Datum «range» an, mit Vorlage (D-845)', (bool) preg_match('/class="taxmod-addon-candidates".*?<option value="range">.*?<template class="taxmod-addon-template" data-taxmod-addon="range">/s', seite($wann->id)));
+speichern($wann->id, ['taxmod_setting_addons' => ['present' => '1', 'n1' => ['name' => 'range']]]);
+check('abgeschickt steht «range» als gewählte Zusatzfunktion am Knoten (D-845)', gelungen() && (string) $wpdb->get_var("SELECT o.klasse FROM {$p}settings_value v JOIN {$p}settings_object o ON o.id = v.wert_settings_object_id WHERE v.node_id = {$wann->id} AND v.attribut = 'addons'") === \Taxmod\Core\Addon\RangeValidator::class, letzteMeldung());
+speichern($wann->id, ['taxmod_setting_addons' => ['present' => '1', 'n1' => ['name' => 'gibt-es-nicht']]]);
+check('ein Name, den die Registratur nicht kennt, wird abgewiesen, und «range» bleibt (CD-5)', ! gelungen() && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}settings_value WHERE node_id = {$wann->id} AND attribut = 'addons'") === 1, letzteMeldung());
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $satzFeld->id => '43', (string) $wannFeld->id => '2019-05-01T10:00']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);
 check('ein Wert unter der Grenze wird abgewiesen, mit Feld und Grenze in der Meldung, und nichts geschrieben — auch nicht der Nachbar (D-760)', ! gelungen() && str_contains(letzteMeldung(), '__es wann') && str_contains(letzteMeldung(), '2020-01-01') && (string) $wpdb->get_var("SELECT value_int FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$satzFeld->id}") !== '43' && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}relation_records WHERE node_record_id = {$sId} AND relation_id = {$wannFeld->id}") === 0, letzteMeldung());
 abschicken(['do' => 'save_record', 'id' => (string) $satzKnoten->id, 'node_record_id' => (string) $sId, 'taxmod_value' => [(string) $sId => [(string) $wannFeld->id => '2021-03-01T10:00']], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $satzKnoten->id)]);

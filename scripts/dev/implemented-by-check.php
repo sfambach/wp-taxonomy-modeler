@@ -56,7 +56,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Renderer\ShippedRenderers;
-use Taxmod\Core\Validator\ShippedValidators;
+use Taxmod\Core\Addon\ShippedAddons;
 use Taxmod\WordPress\Persistence\Schema;
 
 global $wpdb;

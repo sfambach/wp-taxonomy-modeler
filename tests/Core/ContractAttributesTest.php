@@ -36,7 +36,7 @@ final class ContractAttributesTest extends TestCase
         foreach (Contracts::all() as $class) {
             $attribute = Contracts::of($class)->attributes;
 
-            foreach (['renderer', 'converter', 'validator'] as $name) {
+            foreach (['renderer', 'converter', 'addons'] as $name) {
                 self::assertArrayHasKey($name, $attribute, "$class.$name");
                 self::assertSame(NodeAttributes::class, $attribute[$name]->declaredBy, "$class.$name hat die Adresse des Traits");
             }

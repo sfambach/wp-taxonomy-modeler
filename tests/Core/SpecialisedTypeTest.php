@@ -12,8 +12,8 @@ use Taxmod\Core\Model\Type\SpecialisedType;
 use Taxmod\Core\Model\Type\SpecialisedTypes;
 use Taxmod\Core\Renderer\CheckboxRenderer;
 use Taxmod\Core\Renderer\RendererNode;
-use Taxmod\Core\Validator\RangeValidator;
-use Taxmod\Core\Validator\ShapeValidator;
+use Taxmod\Core\Addon\RangeValidator;
+use Taxmod\Core\Addon\ShapeValidator;
 
 /**
  * Das Inventar der spezialisierten Typen — der Teil, der ohne Datenbank messbar ist.

@@ -59,13 +59,13 @@ final class NotAPossibleTarget extends DomainError
 
     /**
      * ⚠️ *Wie bei einem Konverter: ein unbekannter Name wirft, statt «nichts zu beanstanden» zu
-     * antworten. **Ein Validator, der still nicht läuft, ist schlimmer als keiner** — die Zeile sieht
-     * geprüft aus, und niemand erfährt, dass die Frage nie gestellt wurde.*
+     * antworten. **Eine Prüfung, die still nicht läuft, ist schlimmer als keine** — die Zeile sieht
+     * geprüft aus, und niemand erfährt, dass die Frage nie gestellt wurde. Seit D-845 gilt das für jede Zusatzfunktion.*
      */
-    public static function thereIsNoSuchValidator(string $attempted): self
+    public static function thereIsNoSuchAddon(string $attempted): self
     {
         return new self(sprintf(
-            'No validator answers to «%s».',
+            'No add-on answers to «%s».',
             $attempted
         ));
     }

@@ -29,6 +29,10 @@ function taxmodBrowserFields(string $html, string $formId): array
     $formEnd   = strpos($html, '</form>', $start);
     $paare     = [];
 
+    // ⚠️ *Wie ein Browser: was in einer Vorlage steht, gehört zu keinem Formular (D-845, die Vorlagen der Zusatzfunktionen). Gleich lang
+    // ausgeblendet, damit die Stellen der übrigen Elemente bleiben.*
+    $html = (string) preg_replace_callback('~<template\b.*?</template>~s', static fn (array $t): string => str_repeat(' ', strlen($t[0])), $html);
+
     preg_match_all('/<(input|select|textarea)\b([^>]*)>/i', $html, $m, PREG_OFFSET_CAPTURE);
 
     foreach ($m[0] as $i => [$tag, $pos]) {
@@ -41,7 +45,7 @@ function taxmodBrowserFields(string $html, string $formId): array
             continue;
         }
 
-        if (preg_match('/\bname="([^"]*)"/', $attrs, $n) !== 1 || $n[1] === '') {
+        if (preg_match('/(?<![-\w])name="([^"]*)"/', $attrs, $n) !== 1 || $n[1] === '') {
             continue;
         }
 
@@ -114,6 +118,10 @@ function taxmodDuplicateNames(string $html, string $formId): array
     $arten     = [];
     $werte     = [];
 
+    // ⚠️ *Wie ein Browser: was in einer Vorlage steht, gehört zu keinem Formular (D-845, die Vorlagen der Zusatzfunktionen). Gleich lang
+    // ausgeblendet, damit die Stellen der übrigen Elemente bleiben.*
+    $html = (string) preg_replace_callback('~<template\b.*?</template>~s', static fn (array $t): string => str_repeat(' ', strlen($t[0])), $html);
+
     preg_match_all('/<(input|select|textarea)\b([^>]*)>/i', $html, $m, PREG_OFFSET_CAPTURE);
 
     foreach ($m[0] as $i => [, $pos]) {
@@ -125,7 +133,7 @@ function taxmodDuplicateNames(string $html, string $formId): array
             continue;
         }
 
-        if (preg_match('/\bname="([^"]*)"/', $attrs, $n) !== 1 || $n[1] === '' || str_ends_with($n[1], '[]')) {
+        if (preg_match('/(?<![-\w])name="([^"]*)"/', $attrs, $n) !== 1 || $n[1] === '' || str_ends_with($n[1], '[]')) {
             continue;
         }
 

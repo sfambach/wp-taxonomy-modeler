@@ -17,7 +17,7 @@ final class SettingCategoryTest extends TestCase
     public function every_name_lands_somewhere_for_every_subject(): void
     {
         foreach ([null, SimpleType::Int, SimpleType::Decimal, SimpleType::Text] as $subject) {
-            foreach (['min', 'max', 'step', 'renderer', 'converter', 'validator', 'display_size', 'orientation', 'irgendwas'] as $key) {
+            foreach (['min', 'max', 'step', 'renderer', 'converter', 'addons', 'display_size', 'orientation', 'irgendwas'] as $key) {
                 self::assertInstanceOf(SettingCategory::class, SettingCategory::of($key, $subject), $key);
             }
         }
@@ -42,7 +42,7 @@ final class SettingCategoryTest extends TestCase
     #[Test]
     public function what_draws_and_converts_is_display(): void
     {
-        foreach (['renderer', 'converter', 'validator', 'icon'] as $key) {
+        foreach (['renderer', 'converter', 'addons', 'icon'] as $key) {
             self::assertSame(SettingCategory::Display, SettingCategory::of($key, SimpleType::Int), $key);
         }
 

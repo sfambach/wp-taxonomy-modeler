@@ -75,6 +75,7 @@ final class AttributeReader
             $angabe->allowDuplicates,
             $angabe->from,
             $angabe->band,
+            $angabe->fieldsFrom,
         );
     }
 
@@ -85,6 +86,8 @@ final class AttributeReader
     {
         return match (true) {
             $typName === 'bool'   => [AttributeType::Bool, null, null, null],
+            // ⚠️ *Ein einzelner Feldverweis (D-845): `refersTo: 'relation'` — die Vorbelegung vergleicht genau ein Feld mit genau einem.*
+            $typName === 'int' && $angabe->refersTo === 'relation' => [AttributeType::RelationRef, null, null, null],
             $typName === 'int'    => $angabe->refersTo !== null
                 ? [AttributeType::NodeRef, null, null, $angabe->refersTo]
                 : [AttributeType::Int, null, null, null],

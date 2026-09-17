@@ -3,7 +3,7 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Converter\ShippedConverters;
-use Taxmod\Core\Validator\ShippedValidators;
+use Taxmod\Core\Addon\ShippedAddons;
 use Taxmod\Core\Renderer\ResidueRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
@@ -399,7 +399,9 @@ final class Plugin
             $this->settingsResolver(),
             ShippedRenderers::registry(),
             ShippedConverters::registry(),
-            $this->changelog()
+            $this->changelog(),
+            // ⚠️ *Damit eine gewählte Zusatzfunktion ihren Namen findet (D-845).*
+            ShippedAddons::registry()
         );
     }
 
@@ -519,7 +521,22 @@ final class Plugin
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
-        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'))->withSharedPicker();
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'))->withSharedPicker()
+            // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*
+            ->withAddonWords([
+                'add'                   => __('Add this function', 'taxmod'),
+                'inherited'             => __('inherited from the node — adding one here replaces them at this place', 'taxmod'),
+                'addon:preset'          => __('Preset', 'taxmod'),
+                'addon:pick_rows'       => __('Add several', 'taxmod'),
+                'addon:range'           => __('Check range', 'taxmod'),
+                'addon:shape'           => __('Check shape', 'taxmod'),
+                'field:source_field'    => __('field here', 'taxmod'),
+                'field:offered_field'   => __('field on the offered record', 'taxmod'),
+                'field:mode'            => __('then', 'taxmod'),
+                'field:pick_field'      => __('chosen by', 'taxmod'),
+                'enum:filter'           => __('filter', 'taxmod'),
+                'enum:sort'             => __('sort', 'taxmod'),
+            ]);
 
         return new NodesScreen(
             $this->editor(),
@@ -567,7 +584,10 @@ final class Plugin
             new WpdbSettingsRepository(),
             new WpdbNodeRepository(),
             ShippedRenderers::registry(),
-            ShippedConverters::registry()
+            ShippedConverters::registry(),
+            // ⚠️ *Die Zusatzfunktionen und die Kanten: was eine gewählte Vorbelegung an einer Konstante bedingt, hängt am Ziel ihres Feldes (D-845).*
+            ShippedAddons::registry(),
+            new WpdbRelationRepository()
         );
     }
 
@@ -609,7 +629,7 @@ final class Plugin
             // keines.***
             users: new WpUsers(),
             records: new WpdbRecordRepository(),
-            validators: \Taxmod\Core\Validator\ShippedValidators::registry(),
+            addons: ShippedAddons::registry(),
             // ⚠️ **Schritt 4 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
             // Renderer zeichnen aus `settings_value` und dem Vertrag; `ModelValues` bleibt für das,
             // was noch nicht umgezogen ist — die erlaubten Kinder und die Vorgaben der Datensätze.*

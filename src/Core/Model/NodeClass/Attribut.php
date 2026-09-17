@@ -50,6 +50,8 @@ final class Attribut
         public readonly ?Anchor $from = null,
         /** Attribute mit demselben Band werden als eine Gruppe gezeichnet — *«eine gruppe daraus machen min, max, step»* ([D-736](../../../../docs/NewConcept/90-decision-log.md)). */
         public readonly ?string $band = null,
+        /** ⚠️ *Ein Feldverweis einer Zusatzfunktion: woher seine Kandidaten kommen (D-845).* */
+        public readonly ?FieldSource $fieldsFrom = null,
     ) {
     }
 }

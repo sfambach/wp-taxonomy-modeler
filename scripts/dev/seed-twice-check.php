@@ -70,7 +70,7 @@ use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Validator\ShippedValidators;
+use Taxmod\Core\Addon\ShippedAddons;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\Query;

@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Validator;
+namespace Taxmod\Core\Addon;
 
 /**
  * Was ein Validator beanstandet — als **Schlüssel mit Platzhaltern**, nicht als Satz.

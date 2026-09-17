@@ -96,7 +96,7 @@ final class RenderingFromContractTest extends TestCase
     {
         $rows = $this->rows($this->integer);
 
-        foreach (['renderer', 'converter', 'validator', 'display_size', 'min', 'max', 'step'] as $name) {
+        foreach (['renderer', 'converter', 'addons', 'display_size', 'min', 'max', 'step'] as $name) {
             self::assertArrayHasKey($name, $rows, $name);
         }
 

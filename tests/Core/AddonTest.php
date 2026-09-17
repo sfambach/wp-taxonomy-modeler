@@ -8,16 +8,18 @@ use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
-use Taxmod\Core\Validator\RangeValidator;
-use Taxmod\Core\Validator\ShapeValidator;
-use Taxmod\Core\Validator\ShippedValidators;
+use Taxmod\Core\Addon\ChosenAddon;
+use Taxmod\Core\Addon\RangeValidator;
+use Taxmod\Core\Addon\ShapeValidator;
+use Taxmod\Core\Addon\ShippedAddons;
+use Taxmod\Core\Addon\AddonSite;
 
 /**
- * Die Validatoren, und die Grenzen, die sie **nicht** überschreiten.
+ * Die Zusatzfunktionen (D-845) — die Prüfungen beim Speichern, und die Grenzen, die sie **nicht** überschreiten.
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class ValidatorTest extends TestCase
+final class AddonTest extends TestCase
 {
     // ------------------------------------------------------------ der Bereich
 
@@ -195,23 +197,20 @@ final class ValidatorTest extends TestCase
     // ------------------------------------------------------------ die Registratur
 
     #[Test]
-    public function the_shipped_set_is_exactly_the_two_that_were_measured(): void
+    public function the_shipped_set_is_preset_add_several_and_the_two_checks(): void
     {
-        self::assertSame(['range', 'shape'], ShippedValidators::registry()->names());
+        self::assertSame(['preset', 'pick_rows', 'range', 'shape'], ShippedAddons::registry()->names());
     }
 
+    /** ⚠️ *Jede Funktion sagt selbst, wo sie hängen darf (D-845): «Mehrere hinzufügen» nur an einer mehrfachen Kante.* */
     #[Test]
-    public function eligibility_follows_the_type(): void
+    public function each_addon_says_where_it_may_be_chosen(): void
     {
-        $registry = ShippedValidators::registry();
+        $namen = static fn (array $orte): array => array_map(static fn ($a): string => $a->name(), ShippedAddons::registry()->forSites($orte));
 
-        $forInt = array_map(static fn ($v): string => $v->name(), $registry->eligibleFor(SimpleType::Int));
-        $forMail = array_map(static fn ($v): string => $v->name(), $registry->eligibleFor(SimpleType::Email));
-
-        self::assertSame(['range'], $forInt);
-        self::assertSame(['shape'], $forMail);
-        self::assertSame([], $registry->eligibleFor(SimpleType::Text));
-        self::assertSame([], $registry->eligibleFor(null));
+        self::assertSame(['preset', 'range', 'shape'], $namen([AddonSite::Node]));
+        self::assertSame(['range', 'shape'], $namen([AddonSite::Edge]));
+        self::assertSame(['preset', 'pick_rows', 'range', 'shape'], $namen([AddonSite::Edge, AddonSite::ManyEdge, AddonSite::RecordEdge]));
     }
 
     /**
@@ -223,10 +222,10 @@ final class ValidatorTest extends TestCase
     public function both_bounds_are_reported_together(): void
     {
         // Ein widersprüchliches Fenster: darunter **und** darüber.
-        $complaints = ShippedValidators::registry()->complaintsAbout(
+        $complaints = ShippedAddons::registry()->complaintsAbout(
             TypedValue::ofInt(5),
             SimpleType::Int,
-            ['range'],
+            [new ChosenAddon(RangeValidator::class, 1, [], true)],
             [
                 'min' => TypedValue::ofInt(8),
                 'max' => TypedValue::ofInt(2),
@@ -238,48 +237,68 @@ final class ValidatorTest extends TestCase
     }
 
     /**
-     * ⚠️ *Ein Name aus dem Modell, den niemand kennt, wird **übersprungen**: ein Tippfehler dort darf
-     * nicht das Speichern einer ganzen Seite verhindern.*
+     * ⚠️ *Eine gewählte Funktion, deren Klasse niemand mehr kennt, wird **übersprungen**: ein verschwundenes Plugin darf nicht das
+     * Speichern einer ganzen Seite verhindern. Und eine, die nicht prüft (die Vorbelegung), beanstandet nichts.*
      */
     #[Test]
-    public function an_unknown_name_in_the_model_is_skipped_rather_than_thrown(): void
+    public function an_unknown_or_non_checking_addon_is_skipped_rather_than_thrown(): void
     {
-        $complaints = ShippedValidators::registry()->complaintsAbout(
+        $complaints = ShippedAddons::registry()->complaintsAbout(
             TypedValue::ofInt(1),
             SimpleType::Int,
-            ['gibt-es-nicht'],
+            [new ChosenAddon('Gibt\Es\Nicht', 1, [], true), new ChosenAddon(\Taxmod\Core\Addon\PresetAddon::class, 2, [], true)],
             []
         );
 
         self::assertSame([], $complaints);
     }
 
-    /** ⚠️ *Wer ihn aber **absichtlich** holt, bekommt einen Fehler — `CD-10`, wie beim Konverter.* */
+    /** ⚠️ *Wer sie aber **absichtlich** beim Namen holt, bekommt einen Fehler — `CD-10`, wie beim Konverter.* */
     #[Test]
-    public function asking_for_an_unknown_validator_by_name_refuses(): void
+    public function asking_for_an_unknown_addon_by_name_refuses(): void
     {
         $this->expectException(NotAPossibleTarget::class);
 
-        ShippedValidators::registry()->byName('gibt-es-nicht');
+        ShippedAddons::registry()->byName('gibt-es-nicht');
     }
 
     /**
-     * ⚠️ *Ein Validator, der den Typ nicht kann, urteilt nicht — sonst beanstandete der
+     * ⚠️ *Eine Prüfung, die den Typ nicht kann, urteilt nicht — sonst beanstandete der
      * Bereichsvalidator jeden Text, weil er ihn nicht vergleichen kann.*
      */
     #[Test]
     public function a_validator_that_cannot_judge_this_type_stays_silent(): void
     {
-        $complaints = ShippedValidators::registry()->complaintsAbout(
+        $complaints = ShippedAddons::registry()->complaintsAbout(
             TypedValue::ofText('hallo'),
             SimpleType::Text,
-            ['range'],
+            [new ChosenAddon(RangeValidator::class, 1, [], true)],
             ['min' => TypedValue::ofInt(3)]
         );
 
         self::assertSame([], $complaints);
     }
 
+    /** ⚠️ *Das Vergleichspaar für sich (D-844): «filter» behält nur Treffer, «sort» behält alle und nennt die Treffer.* */
+    #[Test]
+    public function a_preset_pair_filters_or_sorts_and_says_nothing_without_a_value(): void
+    {
+        $paar    = new \Taxmod\Core\Addon\PresetAddon();
+        $angebot = [1, 2];
+        $werte   = [1 => [20 => [TypedValue::ofText('SMD 0603')]], 2 => [20 => [TypedValue::ofText('THT')]]];
+        $gleich  = static fn (TypedValue $wert, TypedValue $gesucht): bool => str_contains((string) $wert->text, (string) $gesucht->text);
+        $nichts  = static fn (TypedValue $gesucht): ?string => null;
+        $felder  = static fn (string $modus): array => ['source_field' => TypedValue::ofRelationReference(10), 'offered_field' => TypedValue::ofRelationReference(20), 'mode' => TypedValue::ofText($modus)];
+
+        $sortiert = $paar->judge($angebot, $werte, [10 => TypedValue::ofText('SMD')], $felder('sort'), $gleich, $nichts);
+        self::assertNull($sortiert->keep);
+        self::assertSame([1 => true], $sortiert->first);
+
+        $gefiltert = $paar->judge($angebot, $werte, [10 => TypedValue::ofText('SMD')], $felder('sort'), $gleich, static fn (TypedValue $g): ?string => 'filter');
+        self::assertSame([1 => true], $gefiltert->keep, 'der Wert sagt «filter» und schlägt das Paar');
+
+        self::assertNull($paar->judge($angebot, $werte, [], $felder('filter'), $gleich, $nichts)->keep, 'ohne Wert kein Urteil');
+    }
 
     /** ⚠️ *«danach bitte Datum Restriktionen» (D-757): min und max am Datum, abgelegt als Text, geprüft als Datum.* */
     #[Test]

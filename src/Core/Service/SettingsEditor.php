@@ -48,8 +48,8 @@ final class SettingsEditor
         private readonly RendererRegistry $renderers,
         private readonly ?ConverterRegistry $converters = null,
         private readonly ?Changelog $changelog = null,
-        /** ⚠️ *Damit «validator = range» einen Namen findet (Zeile 8, D-760) — wie `renderers` und `converters`.* */
-        private readonly ?\Taxmod\Core\Validator\ValidatorRegistry $validators = null,
+        /** ⚠️ *Damit eine Zusatzfunktion («preset», «range») einen Namen findet (D-845) — wie `renderers` und `converters`.* */
+        private readonly ?\Taxmod\Core\Addon\AddonRegistry $addons = null,
     ) {
     }
 
@@ -170,6 +170,11 @@ final class SettingsEditor
             $erklaert = $vertrag->attribute($row->attribut);
 
             if ($erklaert !== null && $erklaert->declaredBy === $row->klasse) {
+                continue;
+            }
+
+            // ⚠️ *Ein bedingtes Feld (D-845) gehört der Zusatzfunktion, nicht der Klasse des Knotens — ein Klassenwechsel nimmt es nicht mit.*
+            if (is_subclass_of($row->klasse, \Taxmod\Core\Addon\Addon::class)) {
                 continue;
             }
 
@@ -439,6 +444,100 @@ final class SettingsEditor
         return true;
     }
 
+    /**
+     * Die Zusatzfunktionen einer Stelle auf einmal setzen, wie die Liste im Einstellungsbereich sie schickt
+     * ([D-845](../../../docs/NewConcept/90-decision-log.md)) — je Glied ein Name und seine Felder, in der Reihenfolge der Liste.
+     *
+     * ⚠️ *Die Liste der Stelle wird ersetzt, nicht Glied für Glied abgeglichen: zwei Vorbelegungen derselben Art unterscheiden sich nur an
+     * ihren Feldern, und ein umgestelltes Paar ist dasselbe Paar an anderer Stelle. Steht schon dasselbe da, geschieht nichts.*
+     *
+     * @param  list<array{name?: string, fields?: array<string, string>}> $wanted
+     * @return bool Ob etwas geschrieben wurde.
+     */
+    public function putAddons(Node $node, array $wanted, ?Relation $edge = null): bool
+    {
+        $erklaert = $this->declarationOf($node, \Taxmod\Core\Addon\AddonRegistry::ATTRIBUTE, $edge);
+        $soll     = [];
+
+        foreach ($wanted as $eintrag) {
+            $name   = trim((string) ($eintrag['name'] ?? ''));
+            $klasse = $name === '' ? null : $this->addons?->classFor($name);
+
+            if ($klasse === null) {
+                throw SettingDoesNotApply::named($erklaert->name . ' = ' . $name);
+            }
+
+            $felder = [];
+
+            foreach (Contracts::ofValueClass($klasse)->attributes as $feldName => $innen) {
+                $wert = $this->parse($innen, (string) ($eintrag['fields'][$feldName] ?? ''));
+
+                if ($wert !== null) {
+                    $felder[$feldName] = $wert;
+                }
+            }
+
+            $soll[] = [$klasse, $felder];
+        }
+
+        $vorhanden = $this->rowsAt(['nodeId' => $node->id, 'objectId' => null], $erklaert, $edge);
+        $gleich    = count($vorhanden) === count($soll);
+
+        foreach ($vorhanden as $stelle => $row) {
+            if (! $gleich) {
+                break;
+            }
+
+            $objekt = $row->valueObjectId === null ? null : $this->settings->findObject($row->valueObjectId);
+            $ist    = [];
+
+            foreach ($objekt === null ? [] : ($this->settings->valuesOfObjects([$objekt->id])[$objekt->id] ?? []) as $innen) {
+                $ist[$innen->attribut] = $innen->value;
+            }
+
+            [$klasse, $felder] = $soll[$stelle];
+            $gleich = $row->aktiv && $objekt?->klasse === $klasse && count($ist) === count($felder);
+
+            foreach ($felder as $feldName => $wert) {
+                $gleich = $gleich && isset($ist[$feldName]) && $ist[$feldName]->equals($wert);
+            }
+        }
+
+        if ($gleich) {
+            return false;
+        }
+
+        foreach ($vorhanden as $row) {
+            $this->settings->forgetValue($row->id);
+
+            if ($row->valueObjectId !== null) {
+                $this->settings->forgetObject($row->valueObjectId);
+            }
+        }
+
+        foreach ($soll as $stelle => [$klasse, $felder]) {
+            $objekt = $this->settings->addObject(SettingsObject::create($klasse));
+
+            foreach ($felder as $feldName => $wert) {
+                $this->settings->addValue(SettingsValue::inObject($objekt->id, $klasse, $feldName, $wert, null));
+            }
+
+            $this->settings->addValue(SettingsValue::objectAtNode($node->id, $erklaert->declaredBy, $erklaert->name, $objekt->id, $edge?->id, $stelle));
+        }
+
+        $this->resolver->forget();
+        $this->note(
+            $node,
+            $erklaert->name,
+            $edge,
+            TypedValue::ofText((string) count($vorhanden)),
+            TypedValue::ofText(implode(', ', array_map(static fn (array $glied): string => Contracts::shortName($glied[0]), $soll))),
+            1
+        );
+
+        return true;
+    }
+
     /** Steht an dieser Stelle (Knoten oder Kante) schon ein anderes aktives Glied derselben Objektklasse? (D-800) */
     private function sameClassActiveAt(Node $node, AttributeDeclaration $erklaert, ?Relation $edge, SettingsValue $zeile): bool
     {
@@ -501,6 +600,11 @@ final class SettingsEditor
             return $erklaert;
         }
 
+        // ⚠️ *Ein Feld, das eine gewählte Zusatzfunktion an diesem Knoten bedingt (D-845) — nur am Knoten, nie an einer Kante.*
+        if ($edge === null && ($erklaert = $this->resolver->requirementsAt($node)[$attribut] ?? null) !== null) {
+            return $erklaert;
+        }
+
         foreach ($this->resolver->chosenObjectClasses($node, $edge) as $klasse) {
             if (($erklaert = Contracts::ofValueClass($klasse)->attribute($attribut)) !== null) {
                 return $erklaert;
@@ -517,7 +621,7 @@ final class SettingsEditor
      */
     private function carrierOf(Node $node, AttributeDeclaration $erklaert, ?Relation $edge): array
     {
-        if (Contracts::of($node->klasse)->attribute($erklaert->name) !== null) {
+        if (Contracts::of($node->klasse)->attribute($erklaert->name) !== null || is_subclass_of($erklaert->declaredBy, \Taxmod\Core\Addon\Addon::class)) {
             return ['nodeId' => $node->id, 'objectId' => null];
         }
 
@@ -618,8 +722,8 @@ final class SettingsEditor
             return $this->converters?->classFor($name);
         }
 
-        if ($erklaert->objectClass === \Taxmod\Core\Validator\Validator::class) {
-            return $this->validators?->knows($name) === true ? $this->validators->classFor($name) : null;
+        if ($erklaert->objectClass === \Taxmod\Core\Addon\Addon::class) {
+            return $this->addons?->classFor($name);
         }
 
         // ⚠️ *Eine feste Wertklasse — der Umrechnungssatz — hat keine Registratur: ihr Name ist ihr Kurzname.*

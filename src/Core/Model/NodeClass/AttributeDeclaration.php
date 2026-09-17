@@ -35,6 +35,7 @@ final class AttributeDeclaration
         public readonly bool $allowDuplicates = true,
         public readonly ?Anchor $from = null,
         public readonly ?string $band = null,
+        public readonly ?FieldSource $fieldsFrom = null,
     ) {
     }
 

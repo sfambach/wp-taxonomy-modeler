@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Validator;
+namespace Taxmod\Core\Addon;
 
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
@@ -32,13 +32,23 @@ use Taxmod\Core\Model\Type\SpecialisedTypes;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class RangeValidator implements Validator
+final class RangeValidator implements ChecksOnSave
 {
     public const NAME = 'range';
 
     public function name(): string
     {
         return self::NAME;
+    }
+
+    public function sites(): array
+    {
+        return [AddonSite::Node, AddonSite::Edge];
+    }
+
+    public function requirements(): array
+    {
+        return [];
     }
 
     public function handles(): array
