@@ -38,13 +38,13 @@ final class JumpType extends SpecialisedType
     public const ZIEL = 'ziel';
 
     /** Das Feld **am Ziel**, nach dem gefiltert wird — das erste aktive Glied gilt. */
-    #[\Taxmod\Core\Model\NodeClass\Attribut(listOf: 'relation')]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(listOf: 'relation', fieldsFrom: \Taxmod\Core\Model\NodeClass\FieldSource::ChosenTarget)]
     public array $filter_feld = [];
 
     public const FILTER_FELD = 'filter_feld';
 
     /** Das Feld **dieses Satzes**, dessen Wert eingesetzt wird — leer heisst: der Satz selbst («von = aktuelle Zeile»). */
-    #[\Taxmod\Core\Model\NodeClass\Attribut(listOf: 'relation')]
+    #[\Taxmod\Core\Model\NodeClass\Attribut(listOf: 'relation', fieldsFrom: \Taxmod\Core\Model\NodeClass\FieldSource::Owner)]
     public array $quell_feld = [];
 
     public const QUELL_FELD = 'quell_feld';

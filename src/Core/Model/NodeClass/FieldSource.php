@@ -13,4 +13,13 @@ enum FieldSource: string
 {
     case Holder = 'holder';
     case Target = 'target';
+
+    /**
+     * Die Felder des Knotens, der im Feld `ziel` derselben Stelle gewählt ist — für den Sprung ([D-769](../../../../docs/NewConcept/90-decision-log.md)):
+     * das Filterfeld liegt am Ziel des Sprungs, nicht am Typ «Jump».
+     */
+    case ChosenTarget = 'chosen_target';
+
+    /** Nur die Felder des Knotens, von dem die Kante ausgeht — «das Feld dieses Satzes» des Sprungs (D-769), ohne die haltenden Sätze. */
+    case Owner = 'owner';
 }

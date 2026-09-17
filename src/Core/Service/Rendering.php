@@ -851,6 +851,25 @@ final class Rendering implements Presets
             return $aus;
         };
 
+        if ($quelle === \Taxmod\Core\Model\NodeClass\FieldSource::ChosenTarget) {
+            // *Das gewählte Ziel derselben Stelle, erstes aktives Glied von `ziel`.*
+            foreach ($this->resolver?->listOf($knoten, \Taxmod\Core\Model\Type\JumpType::ZIEL, $kante) ?? [] as $glied) {
+                $ziel = $glied->aktiv && $glied->reference !== null ? $this->gemerkterKnoten($glied->reference) : null;
+
+                if ($ziel !== null) {
+                    return $felderVon($ziel, '');
+                }
+            }
+
+            return [];
+        }
+
+        if ($quelle === \Taxmod\Core\Model\NodeClass\FieldSource::Owner) {
+            $eigner = $kante === null ? $knoten : $this->gemerkterKnoten($kante->fromNodeId);
+
+            return $eigner === null ? [] : $felderVon($eigner, '');
+        }
+
         if ($kante === null || $quelle !== \Taxmod\Core\Model\NodeClass\FieldSource::Holder) {
             return $felderVon($knoten, '');
         }
@@ -5362,7 +5381,11 @@ final class Rendering implements Presets
         // der Feldname, denn das Feld ist es, das gewählt wird.*
         $kandidaten = [];
 
-        if ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef) {
+        if ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef && $erklaert->fieldsFrom !== null) {
+            // ⚠️ *Woher die Felder kommen, sagt die Erklärung (D-844, D-769) — derselbe Weg wie bei den Zusatzfunktionen. Sein Befund am Sprung
+            // «Kompatibilität»: «felder sind hier aber nicht definiert» — gesucht wurde am Typ «Jump», der keine Felder hat.*
+            $kandidaten = $this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $subject instanceof Relation ? $subject : null);
+        } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef) {
             foreach ($this->relations?->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)) ?? [] as $feld) {
                 if (! $feld->isSetting()) {
                     $kandidaten[$feld->id] = $feld->name;
