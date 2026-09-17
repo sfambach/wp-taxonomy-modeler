@@ -484,6 +484,56 @@ Das hier ist der Entwurf dazu, kein Beschluss. Jede Zeile unter «Zu entscheiden
 
 **Entschieden: a ([D-824](NewConcept/90-decision-log.md)), sein Wort «3 agreed».**
 
+## INF-056 · Zusatzfunktionen: angeschaltetes Verhalten an Kante oder Knoten
+
+**Sein Wort (2026-09-17):** *«eigentlich müssten wir dann an den konstanten sagen ist filter oder ist sort smd filter, tht filter, almost .. sort … wir haben hier so eine art "rankonfiguriertes verhalten" das hatte wir schon öfters eine art modul mit zusatz funktionen. hast du eine idee dafür wie wir das generalisieren könnten, ich denke da an sowas wie -> relation hat zusatz funktion filter/sort. das bedingt dass … meist sind es funktionen die nur an wenigen stellen benötigt werden, natürlich könne man das auch über ein feld dran konfigurieren kann aber noch nicht abschätzen ob das die richtig variante ist»*
+
+### Was schon steht (gemessen)
+
+| Art | Beispiele | Wie angehängt |
+|---|---|---|
+| Benannte Objekte aus einer Registratur, mit eigenen Feldern | Renderer (orientation, with_label …), Converter (Umrechnung: Faktor, Offset), Validator | Liste `renderer`/`converter`/`validator` an Knoten oder Kante; Kette Kante → Knoten → Vertrag |
+| Felder einer Knotenklasse | Category: `summary_fields`, `preset_field`, `preset_source`, `preset_mode`, `pick_field` · Unit: `erlaubte_praefixe`, `mit_praefix` · UnitValue: `erlaubte_einheiten` | stehen an **jedem** Knoten der Klasse, auch wo niemand sie braucht |
+| Kantenspalten | Anzahl, eindeutig, nur lesen, verborgen | an jeder Kante |
+| Typen mit Verhalten | Sprung (Ziel, Filterfeld, Quellfeld), Weg (gerechnet), Medien | als Typ des Feldes |
+
+Ausgedrückt «das bedingt, dass …» wird bisher **nirgends**: keine Funktion sagt, was sie an anderen Knoten braucht.
+
+### Mein Vorschlag
+
+Eine vierte Registratur neben Renderer, Converter und Validator: **Zusatzfunktion**. Jede Funktion ist eine Klasse und erklärt:
+
+1. **wo** sie hängen darf (Kante auf Sätze, mehrfache Kante, Knotenklasse),
+2. **ihre eigenen Felder** (für die Vorbelegung: die Vergleichspaare, D-844),
+3. **was sie bedingt** — Felder, die sie an anderen Knoten verlangt und die nur dort erscheinen, wo sie benutzt wird (für die Vorbelegung: an den Werten der verglichenen Auswahl «filter» oder «sort», also SMD → filter, «hauptsächlich SMD» → sort),
+4. **an welcher Stelle** sie eingreift (Angebot filtern/sortieren, Zeilen anlegen, Wert rechnen).
+
+Gewählt wird wie ein Validator: eine Liste `functions` an Knoten oder Kante. Ohne Wahl erscheinen ihre Felder nicht — die Einstellungen der Kategorie werden kleiner.
+
+| Heute | Als Zusatzfunktion |
+|---|---|
+| `preset_field`/`preset_source`/`preset_mode` | «Vorbelegung» an der Kante; bedingt filter/sort an den Werten |
+| `pick_field` | «Mehrere hinzufügen» an der mehrfachen Kante |
+| `summary_fields` | bleibt Feld der Klasse — jede Kategorie hat eine Zusammenfassung |
+| Sprung, Weg, Medien | bleiben Typen |
+
+### Gegenüber «über ein Feld dranhängen»
+
+| | Zusatzfunktion (Registratur) | nur Felder |
+|---|---|---|
+| Verhalten im Code | ja, je Funktion eine Klasse | nein, der Code fragt Felder ab |
+| «bedingt, dass …» | erklärbar und prüfbar | nicht ausdrückbar |
+| sichtbar nur, wo gebraucht | ja | nein, an jedem Knoten der Klasse |
+| neue Funktion | Klasse schreiben | Feld anlegen, Code anpassen |
+
+### Zu entscheiden
+
+1. Registratur «Zusatzfunktion» ja/nein?
+2. Die Vorbelegung als erste Funktion — mit filter/sort an den Werten?
+3. `pick_field` als zweite umziehen?
+
+**Nicht gebaut.**
+
 ## Erledigte Eingänge
 
 *(noch keine)*
