@@ -139,32 +139,53 @@ final class SettingsRenderer extends RendererNode
             //
             // ⚠️ *Read off the **shape**, not off a list of keys: a switch is a switch because its
             // value is yes-or-no, and a key added tomorrow lands in the right half by itself (`CD-9`).*
-            $narrow = '';
-            $wide   = '';
-            $band   = null;
+            // ⚠️ **Unter der Kategorie der Abschnitt, wofür die Einstellungen sind** — sein Wort: *«über den einstellungen sollte immer stehen
+            // für was sie sind also in dem fall nicht nur rules sondern auch rules for jump field … rules als kategorie und dann darunter jump
+            // field»*. Die Abschnitte stehen in der Reihenfolge, in der ihre erste Einstellung kommt.
+            $abschnitte = [];
 
             foreach ($grouped[$group] as $key => $drawn) {
-                $row = $this->row((string) $key, $drawn, $context);
+                $abschnitte[$drawn->section][(string) $key] = $drawn;
+            }
 
-                if ($drawn->shape === SettingShape::Switch) {
-                    $narrow .= $row;
+            $innen = '';
 
+            foreach ($abschnitte as $abschnitt => $zeilen) {
+                $narrow = '';
+                $wide   = '';
+                $band   = null;
+
+                foreach ($zeilen as $key => $drawn) {
+                    $row = $this->row($key, $drawn, $context);
+
+                    if ($drawn->shape === SettingShape::Switch) {
+                        $narrow .= $row;
+
+                        continue;
+                    }
+
+                    // ⚠️ *Nachbarn mit demselben Band stehen in einer Gruppe — `min`, `max`, `step` nebeneinander (D-736).*
+                    if ($drawn->band !== $band) {
+                        $wide .= $band === null ? '' : '</div>';
+                        $wide .= $drawn->band === null ? '' : '<div class="taxmod-setting-band"><code class="taxmod-setting-band-name">' . RenderResult::escape($drawn->band) . '</code>';
+                        $band  = $drawn->band;
+                    }
+
+                    $wide .= $row;
+                }
+
+                $wide .= $band === null ? '' : '</div>';
+
+                if ($narrow === '' && $wide === '') {
                     continue;
                 }
 
-                // ⚠️ *Nachbarn mit demselben Band stehen in einer Gruppe — `min`, `max`, `step` nebeneinander (D-736).*
-                if ($drawn->band !== $band) {
-                    $wide .= $band === null ? '' : '</div>';
-                    $wide .= $drawn->band === null ? '' : '<div class="taxmod-setting-band"><code class="taxmod-setting-band-name">' . RenderResult::escape($drawn->band) . '</code>';
-                    $band  = $drawn->band;
-                }
-
-                $wide .= $row;
+                $innen .= ($abschnitt === '' ? '' : '<div class="taxmod-settings-subheading">' . RenderResult::escape($this->word($context, 'section:' . $abschnitt)) . '</div>')
+                    . ($narrow === '' ? '' : '<div class="taxmod-settings-switches">' . $narrow . '</div>')
+                    . ($wide === '' ? '' : '<div class="taxmod-settings-fields">' . $wide . '</div>');
             }
 
-            $wide .= $band === null ? '' : '</div>';
-
-            if ($narrow === '' && $wide === '') {
+            if ($innen === '') {
                 continue;
             }
 
@@ -172,8 +193,7 @@ final class SettingsRenderer extends RendererNode
                 . '<div class="taxmod-settings-heading description">'
                 . RenderResult::escape($this->word($context, $group))
                 . '</div>'
-                . ($narrow === '' ? '' : '<div class="taxmod-settings-switches">' . $narrow . '</div>')
-                . ($wide === '' ? '' : '<div class="taxmod-settings-fields">' . $wide . '</div>')
+                . $innen
                 . '</div>';
         }
 

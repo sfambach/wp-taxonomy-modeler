@@ -2514,8 +2514,34 @@ final class NodesScreen
             ];
         }
 
+        // ⚠️ *Die Worte der Abschnitte (sein Wort: «rules als kategorie und dann darunter jump field») — je Klasse, je Renderer, je Zusatzfunktion.*
+        $abschnitte = [new Control('word:section:node', '', __('Every node', 'taxmod'))];
+
+        foreach (Contracts::all() as $klasse) {
+            $abschnitte[] = new Control(
+                'word:section:class:' . Contracts::of($klasse)->key,
+                '',
+                in_array($klasse, \Taxmod\Core\Model\Type\SpecialisedTypes::CLASSES, true)
+                    /* translators: %s is the name of a field type, e.g. Jump. */
+                    ? sprintf(__('%s field', 'taxmod'), self::className($klasse))
+                    /* translators: %s is the name of a node class, e.g. Category. */
+                    : sprintf(__('%s node', 'taxmod'), self::className($klasse))
+            );
+        }
+
+        foreach (\Taxmod\Core\Renderer\ShippedRenderers::registry()->namesForNodes() as $name) {
+            /* translators: %s is the name of a renderer, e.g. complex. */
+            $abschnitte[] = new Control('word:section:renderer:' . $name, '', sprintf(__('Renderer «%s»', 'taxmod'), $name));
+        }
+
+        foreach (\Taxmod\Core\Addon\ShippedAddons::registry()->names() as $name) {
+            /* translators: %s is the key of an add-on function, e.g. preset. */
+            $abschnitte[] = new Control('word:section:addon:' . $name, '', sprintf(__('Function «%s»', 'taxmod'), $name));
+        }
+
         return [
             ...$wartend,
+            ...$abschnitte,
             new Control('word:kind_confirm', '', __('I confirm — move them to the shadow', 'taxmod')),
             new Control('word:' . SettingCategory::Display->value, '', __('Display', 'taxmod')),
             new Control('word:' . SettingCategory::Rules->value, '', __('Rules', 'taxmod')),

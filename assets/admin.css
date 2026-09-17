@@ -2185,3 +2185,11 @@ fieldset.taxmod-read-only {
 .taxmod-addon-inherited {
 	margin: 0 0 4px;
 }
+
+/* Unter der Kategorie der Abschnitt, wofür die Einstellungen sind — «rules als kategorie und dann darunter jump field». */
+.taxmod-settings-subheading {
+	margin: .5em 0 .15em .2em;
+	font-size: .85em;
+	font-weight: 600;
+	color: #50575e;
+}

@@ -675,6 +675,40 @@ final class Rendering implements Presets
     /** Ob die Seite den einen Auswahlbaum zeichnet — dann öffnet ein ganzer Knotenbaum ihn, statt einen eigenen zu tragen (D-815). */
     private bool $sharedPicker = false;
 
+    /**
+     * Der Abschnitt einer Einstellung: wer sie erklärt — ein Schlüssel, das Wort macht der Rand (`AR-2`). Sein Wort: «rules als kategorie
+     * und dann darunter jump field».
+     */
+    private function sectionOf(string $klasse, string $knotenKlasse = ''): string
+    {
+        // *Was die gemeinsame Oberklasse der Typen erklärt (`display_size`), gehört zum Typ, der gerade eingestellt wird — «jump field».*
+        if ($klasse === \Taxmod\Core\Model\Type\SpecialisedType::class && $knotenKlasse !== '') {
+            $klasse = $knotenKlasse;
+        }
+
+        if ($klasse === \Taxmod\Core\Model\NodeClass\NodeAttributes::class) {
+            return 'node';
+        }
+
+        if (\Taxmod\Core\Model\NodeClass\Contracts::isKnown($klasse)) {
+            return 'class:' . \Taxmod\Core\Model\NodeClass\Contracts::of($klasse)->key;
+        }
+
+        if (is_subclass_of($klasse, \Taxmod\Core\Addon\Addon::class)) {
+            return 'addon:' . ($this->addons?->byClass($klasse)?->name() ?? strtolower(\Taxmod\Core\Model\NodeClass\Contracts::shortName($klasse)));
+        }
+
+        if (is_subclass_of($klasse, Renderer::class)) {
+            foreach ([...$this->renderers->namesForNodes(), ...$this->renderers->namesForSurfaces()] as $name) {
+                if ($this->renderers->classFor($name) === $klasse) {
+                    return 'renderer:' . $name;
+                }
+            }
+        }
+
+        return strtolower(\Taxmod\Core\Model\NodeClass\Contracts::shortName($klasse));
+    }
+
     /** @var array<string, string> Die Worte der Zusatzfunktionen, vom Rand (D-845): `addon:<name>`, `field:<feld>`, `enum:<wert>`, `add`, `inherited`. */
     private array $addonWords = [];
 
@@ -3397,7 +3431,7 @@ final class Rendering implements Presets
             // Bauplans, [D-712](90-decision-log.md)): *Typ, Wahl und Vorgabe kennt die Erklärung;
             // die Zeile bringt den Wert. Keine Kante, kein Schlüssel.*
             if ($this->resolver !== null && ($erklaert = $this->attributesDrawnFor($node)[$key] ?? null) !== null) {
-                $drawn[] = $this->drawAttribute($node, $erklaert, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $formId);
+                $drawn[] = $this->drawAttribute($node, $erklaert, $setting, $purpose, $fieldPrefix, $locale, $level, $subject, $formId)->inSection($this->sectionOf($erklaert->declaredBy, $node instanceof Node ? $node->klasse : ($this->gemerkterKnoten($node->toNodeId)?->klasse ?? '')));
 
                 continue;
             }

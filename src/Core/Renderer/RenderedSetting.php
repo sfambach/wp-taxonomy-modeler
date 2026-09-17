@@ -61,7 +61,18 @@ final class RenderedSetting implements Renderable
         public readonly string $overrideName = '',
         /** Die Gruppe, in der das Attribut mit seinen Nachbarn gezeichnet wird — `min`, `max`, `step` als eine ([D-736](../../../docs/NewConcept/90-decision-log.md)). */
         public readonly ?string $band = null,
+        /**
+         * Wofür die Einstellung da ist — die Klasse, die sie erklärt, als Schlüssel (`node`, `class:jump`, `renderer:complex`, `addon:preset`).
+         * *Sein Wort: «über den einstellungen sollte immer stehen für was sie sind … rules als kategorie und dann darunter jump field».*
+         */
+        public readonly string $section = '',
     ) {
+    }
+
+    /** Dieselbe Einstellung, mit dem Abschnitt, zu dem sie gehört. */
+    public function inSection(string $section): self
+    {
+        return new self($this->key, $this->shape, $this->type, $this->setting, $this->result, $this->rendererName, $this->subject, $this->fromOwnerName, $this->overrideName, $this->band, $section);
     }
 
     /** Dieselbe Zeile, mit Herkunft und Überschreib-Feld — die Zeile selbst ist unveränderlich. */
@@ -77,7 +88,8 @@ final class RenderedSetting implements Renderable
             $this->subject,
             $fromOwnerName,
             $overrideName,
-            $this->band
+            $this->band,
+            $this->section
         );
     }
 
