@@ -1536,6 +1536,98 @@
 		wertPfeileSetzen( liste );
 	}, true );
 
+	// ⚠️ **Automatisch speichern** (D-854) — *sein Wort: «wir sollten dafür einen umschalter in der config machen, autosave und ihn
+	// anschalten. es ist aber nicht immer das feld bei checkboxen kann es auch beim verlassen der gruppe sein».* Ein Textfeld schickt beim
+	// Verlassen, ein Haken oder eine Wahl erst, wenn der Fokus die Gruppe verlässt — so reisen mehrere Haken zusammen. Was in einem Dialog
+	// steht, wartet auf «OK», und die Suchfelder schicken nie.
+	var autosaveWartet = null;
+
+	function autosaveAn( teil ) {
+		var seite = teil.closest( '[data-taxmod-autosave]' );
+
+		return !! seite && seite.getAttribute( 'data-taxmod-autosave' ) === 'on';
+	}
+
+	function autosaveGruppe( feld ) {
+		return feld.closest( '.taxmod-switch-picker, .taxmod-addon-picker, .taxmod-settings-switches, .taxmod-setting-band, fieldset, li, tr' );
+	}
+
+	function autosaveSchicken( feld ) {
+		var formular = feld.form || feld.closest( 'form' );
+
+		if ( ! formular ) {
+			return;
+		}
+
+		if ( autosaveWartet ) {
+			window.clearTimeout( autosaveWartet );
+		}
+
+		autosaveWartet = window.setTimeout( function () {
+			autosaveWartet = null;
+
+			var knopf = formular.querySelector( 'button[name="do"], input[type="submit"][name="do"]' );
+
+			if ( formular.requestSubmit ) {
+				formular.requestSubmit( knopf || undefined );
+			} else {
+				formular.submit();
+			}
+		}, 150 );
+	}
+
+	function autosaveMeint( feld ) {
+		if ( ! ( feld instanceof HTMLInputElement || feld instanceof HTMLSelectElement || feld instanceof HTMLTextAreaElement ) ) {
+			return false;
+		}
+
+		if ( feld.disabled || feld.type === 'search' || feld.type === 'file' || feld.type === 'hidden' || feld.name === '' ) {
+			return false;
+		}
+
+		// *In einem Dialog entscheidet «OK»; Baumfilter und Schnellsuche schicken ihre eigenen Wege.*
+		if ( feld.closest( '.taxmod-dialog, .taxmod-tree-searchform' ) || feld.classList.contains( 'taxmod-tree-filter' ) ) {
+			return false;
+		}
+
+		return autosaveAn( feld );
+	}
+
+	document.addEventListener( 'change', function ( ereignis ) {
+		var feld = ereignis.target;
+
+		if ( ! autosaveMeint( feld ) ) {
+			return;
+		}
+
+		// *Haken und Auswahlknöpfe warten auf das Verlassen ihrer Gruppe.*
+		if ( feld.type === 'checkbox' || feld.type === 'radio' ) {
+			return;
+		}
+
+		autosaveSchicken( feld );
+	} );
+
+	document.addEventListener( 'focusout', function ( ereignis ) {
+		var feld = ereignis.target;
+
+		if ( ! autosaveMeint( feld ) || ( feld.type !== 'checkbox' && feld.type !== 'radio' ) ) {
+			return;
+		}
+
+		var gruppe = autosaveGruppe( feld );
+
+		window.setTimeout( function () {
+			var jetzt = document.activeElement;
+
+			if ( gruppe && jetzt && gruppe.contains( jetzt ) ) {
+				return;
+			}
+
+			autosaveSchicken( feld );
+		}, 0 );
+	} );
+
 	// ⚠️ **Der Mülleimer an einer gesetzten Referenz** (D-851) — *sein Wort: «bei den referenzen könnte höchstens delete stehen und dann eine
 	// neue wahl ermöglichen». Er wählt «nichts» (der leere Knopf des Dialogs) und gibt Suchfeld und Öffner wieder frei; gespeichert wird mit
 	// der Seite.*

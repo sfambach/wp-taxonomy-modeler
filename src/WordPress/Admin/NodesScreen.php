@@ -468,7 +468,9 @@ final class NodesScreen
         // Detailhälfte danach nur noch liest (D-814). Gemessen: zuletzt gezeichnet waren es 165 statt 130 Abfragen.*
         $picker = $selected === null ? '' : $this->sharedPicker();
 
-        $html  = '<div class="wrap" data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '" style="'
+        $html  = '<div class="wrap" data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '"'
+            // ⚠️ *Automatisch speichern steht an der Seite (D-854); das Skript liest es dort, wie schon den Baumklick.*
+            . ' data-taxmod-autosave="' . (SettingsScreen::autosaves() ? 'on' : 'off') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
             . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px">';
         $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';

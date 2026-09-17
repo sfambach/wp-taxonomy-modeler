@@ -1281,8 +1281,8 @@ $plugin = $rc->newInstanceWithoutConstructor();
 $rc->getProperty('file')->setValue($plugin, __FILE__);
 $screen = $plugin->screen();
 $markup = $screen->render();
-// ⚠️ *Seit D-807 trägt der Rahmen auch die Wahl für den Baumklick (`data-taxmod-tree-click`).*
-check('render() liefert Markup, mit den gewählten Grössen und der Wahl für den Baumklick am Rahmen', (bool) preg_match('#^<div class="wrap" data-taxmod-tree-click="(?:stay|jump)" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
+// ⚠️ *Seit D-807 trägt der Rahmen die Wahl für den Baumklick, seit D-854 auch, ob automatisch gespeichert wird.*
+check('render() liefert Markup, mit Grössen, Baumklick und Autosave am Rahmen', (bool) preg_match('#^<div class="wrap" data-taxmod-tree-click="(?:stay|jump)" data-taxmod-autosave="(?:on|off)" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
 // ⚠️ *Ein «+» mehr als Zeilen: das im Kopf der Seite (D-730, 2026-09-12); `add_child_here` ist darin aufgegangen.*
 // *Gezählt je Zeilenformular des Baums, nicht über die ganze Seite — der Kopf trägt sein eigenes «+» und seinen eigenen Papierkorb.*
 preg_match_all('/style="display:flex;gap:\.2em">(.*?)<\/form>/s', $markup, $zeilenFormulare);

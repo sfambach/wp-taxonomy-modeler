@@ -72,6 +72,9 @@ final class SettingsScreen
     /** Ob ein Klick im Baum die Seite stehen lässt oder nach oben springt ([D-807](../../../docs/NewConcept/90-decision-log.md)). */
     public const TREE_CLICK = 'taxmod_tree_click';
 
+    /** Automatisch speichern ([D-854](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: «autosave und ihn anschalten». */
+    public const AUTOSAVE = 'taxmod_autosave';
+
     /**
      * Die wählbaren Seitengrössen — sein Wort: «5,10,20,50» ([D-763](../../../docs/NewConcept/90-decision-log.md)).
      *
@@ -145,6 +148,7 @@ final class SettingsScreen
             . $this->trashRow()
             . $this->recordsPerPageRow()
             . $this->treeClickRow()
+            . $this->autosaveRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('The glyphs in the tree and on its buttons.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</tbody></table>'
@@ -330,6 +334,22 @@ final class SettingsScreen
             __('Clicking a node in the tree', 'taxmod'),
             \Taxmod\Core\Renderer\SelectMarkup::of('tree_click', $wahl, $jetzt, false),
             __('Whether the node page keeps its scroll position or starts at the top when a node in the tree is chosen. Opening a record always lands at its input.', 'taxmod')
+        );
+    }
+
+    /**
+     * Automatisch speichern ([D-854](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «wir sollten dafür einen umschalter in der
+     * config machen, autosave und ihn anschalten. es ist aber nicht immer das feld bei checkboxen kann es auch beim verlassen der gruppe
+     * sein».*
+     */
+    private function autosaveRow(): string
+    {
+        $wahl = ['on' => __('Save on leaving a field', 'taxmod'), 'off' => __('Save only with the save button', 'taxmod')];
+
+        return $this->row(
+            __('Saving', 'taxmod'),
+            \Taxmod\Core\Renderer\SelectMarkup::of('autosave', $wahl, self::autosaves() ? 'on' : 'off', false),
+            __('With «save on leaving a field» a change is written when the field loses focus — for switches and choices when the group around them is left, so several ticks travel together.', 'taxmod')
         );
     }
 
@@ -549,6 +569,12 @@ final class SettingsScreen
             update_option(self::TREE_CLICK, $baumKlick, true);
         }
 
+        $selbst = isset($_POST['autosave']) ? sanitize_key(wp_unslash((string) $_POST['autosave'])) : '';
+
+        if (in_array($selbst, ['on', 'off'], true)) {
+            update_option(self::AUTOSAVE, $selbst, true);
+        }
+
         wp_safe_redirect(add_query_arg(
             ['page' => 'taxmod-settings', 'taxmod_saved' => '1'],
             admin_url('admin.php')
@@ -625,6 +651,12 @@ final class SettingsScreen
         $size = (int) get_option(self::RECORDS_PER_PAGE, 5);
 
         return in_array($size, self::PAGE_SIZES, true) ? $size : 5;
+    }
+
+    /** Ob beim Verlassen eines Feldes gespeichert wird; Vorgabe ist «ja» ([D-854](../../../docs/NewConcept/90-decision-log.md)). */
+    public static function autosaves(): bool
+    {
+        return get_option(self::AUTOSAVE, 'on') !== 'off';
     }
 
     /** Ob ein Klick im Baum nach oben springt; Vorgabe ist «bleiben» ([D-807](../../../docs/NewConcept/90-decision-log.md)). */
