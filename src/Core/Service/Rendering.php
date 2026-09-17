@@ -6231,6 +6231,8 @@ final class Rendering implements Presets
 
         // ⚠️ *Eine eindeutige Kante bietet nicht an, was schon ein anderer Satz hält (D-838) — sein Befund: «zusätzliche pcb [speichert] nicht».
         // Die Platine gehört einem Projekt; angeboten und dann beim Speichern abgewiesen war sie eine Falle.*
+        $waehlt = $angebot !== [];
+
         if ($relation->unique && $angebot !== [] && $this->records !== null) {
             foreach ($this->records->recordRefsHeldAt($relation->id) as $satz => $halter) {
                 if ($halter !== $recordId) {
@@ -6239,14 +6241,30 @@ final class Rendering implements Presets
             }
         }
 
-        if ($angebot !== []) {
-            // *Ein Verweis wählt aus dem Angebot; gewählte Sätze stehen nicht noch einmal darin.*
+        // *Ein Verweis wählt aus dem Angebot; gewählte Sätze stehen nicht noch einmal darin.*
+        $frei = array_filter($angebot, static fn ($wort, $id): bool => ! in_array((string) $id, $genommen, true), ARRAY_FILTER_USE_BOTH);
+
+        // ⚠️ *Bleibt nichts zu wählen, sind Auswahl und «+» ausgegraut — sein Wort: «eine leere auswahl müssen wir denke ich nicht anzeigen
+        // bzw ausgrauen» — und das ist die bestehende Regel: D-380 «select fields always greyed out when there is no entry», D-370 eine unmögliche
+        // Handlung ist ausgegraut, nicht weg. Hier von Hand gebaut, weil die Liste nicht durch den ChoiceRenderer geht; ein gesperrtes Feld wird nicht geschickt.*
+        if ($waehlt && $frei === []) {
+            return [
+                'renderer' => SummaryRenderer::NAME,
+                'rows'     => [],
+                'rowActs'  => [],
+                'after'    => '',
+                'result'   => RenderResult::of($html
+                    . '<select class="taxmod-switch-candidates taxmod-value-candidates" disabled style="opacity:.35"' . $form . '><option value=""></option></select>'
+                    . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-add" disabled style="color:#1d2327;opacity:.35">'
+                    . IconMarkup::dashicon('plus-alt2', $relation->name) . '</button></span></span>'),
+            ];
+        }
+
+        if ($waehlt) {
             $html .= '<select class="taxmod-switch-candidates taxmod-value-candidates" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . '><option value=""></option>';
 
-            foreach ($angebot as $id => $wort) {
-                if (! in_array((string) $id, $genommen, true)) {
-                    $html .= '<option value="' . RenderResult::escape((string) $id) . '">' . RenderResult::escape((string) $wort) . '</option>';
-                }
+            foreach ($frei as $id => $wort) {
+                $html .= '<option value="' . RenderResult::escape((string) $id) . '">' . RenderResult::escape((string) $wort) . '</option>';
             }
 
             $html .= '</select>';
