@@ -70,6 +70,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie sehen Knöpfe aus? | [D-847](90-decision-log.md) — Symbol, wo es eines gibt, rechts vom Feld, Tooltip mit Namen | — |
 | Wie sieht ein Auswahlfeld aus? | [D-848](90-decision-log.md) — überall dasselbe, an einer Stelle gebaut; ohne Eintrag oder mit nur einem ausgegraut ([D-380](90-decision-log.md)) | — |
 | Wie ist der Einstellungsbereich überschrieben? | [D-849](90-decision-log.md) — Kategorie, darunter wofür (Every node, Jump field, Renderer, Function) | — |
+| Wie wird ein gesetzter Satzverweis bedient? | [D-851](90-decision-log.md) — Wert und Mülleimer; angezeigt ist er ein Link auf seinen Satz ([D-852](90-decision-log.md)) | *(vorher: die Schnellsuche aus [D-792](90-decision-log.md) stand auch neben einem gesetzten Verweis)* |
 | Wann öffnet ein Klick einen Satz in der Vorschau? | [D-803](90-decision-log.md) — nur ein Klick in die eigene Satzzeile, nie aus einem Dialog; ein im Satzdialog gewählter Satz steht sofort im Öffner | ~~D-788~~ *(«eine Zelle enthält irgendwo einen Satzlink» — traf die ganze Seite)* |
 | Wie wählt man die Glieder einer Verweisliste (erlaubte Einheiten, `summary_fields`)? | [D-799](90-decision-log.md) — Liste der gewählten mit ▲/▼ und ✕, darunter ein Auswahlfeld mit «+» | ~~D-732~~ *(ein Haken je Kandidat)* |
 | Wo wird ein Datensatz bearbeitet? | [D-785](90-decision-log.md) — in der Vorschau oben; die Tabelle unten zeigt nur an, ihre Satznummer öffnet den Satz oben | ~~D-653~~ *(Bearbeiten und Speichern in der Zeile)* |

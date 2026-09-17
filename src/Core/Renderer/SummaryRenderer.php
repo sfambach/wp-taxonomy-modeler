@@ -61,7 +61,13 @@ final class SummaryRenderer extends TypedFieldRenderer
                 . '</span>';
         }
 
-        return $this->createHtmlValueSpan(RenderResult::escape($context->surroundings->refersTo));
+        $wort = RenderResult::escape($context->surroundings->refersTo);
+        $ziel = $context->surroundings->href;
+
+        // ⚠️ *Ein angezeigter Satzverweis führt zu seinem Satz (D-852) — ohne Adresse bleibt es beim Wort.*
+        return $this->createHtmlValueSpan($ziel === null || $ziel === ''
+            ? $wort
+            : '<a class="taxmod-record-link" href="' . RenderResult::escape($ziel) . '">' . $wort . '</a>');
     }
 
     protected function input(RenderContext $context): string
@@ -281,9 +287,17 @@ final class SummaryRenderer extends TypedFieldRenderer
         // field user can enter something and then a list appears below … if he cannot find anything he can choose a button and gets the
         // dialog». Tippen zeigt darunter die passenden Sätze aus dem Baum; ein Klick wählt. Der Knopf daneben ist der Dialog. Ohne Skript
         // und ohne Namen schickt das Feld nichts und tut nichts — der Dialog bleibt der Weg.*
-        return '<span class="taxmod-record-pick">'
-            . '<input type="search" class="taxmod-record-quick" autocomplete="off" aria-label="' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '">'
+        // ⚠️ **Steht schon ein Satz da, steht dort kein leeres Suchfeld** ([D-851](../../../docs/NewConcept/90-decision-log.md)) — *sein Befund
+        // am Mainboard: «was sollen die felder?», und sein Vorschlag: «bei den referenzen könnte höchstens delete stehen und dann eine neue
+        // wahl ermöglichen». Also: gewählt → Wort und Mülleimer; der Mülleimer wählt «nichts» und gibt Suchfeld und Dialog frei.*
+        $suche = '<input type="search" class="taxmod-record-quick" autocomplete="off" aria-label="' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '"'
+            . ($nichts ? '' : ' hidden') . '>';
+
+        return '<span class="taxmod-record-pick' . ($nichts ? '' : ' taxmod-record-taken') . '">'
+            . $suche
             . $dialog
+            . ($nichts ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear" style="color:#b32d2e" title="' . RenderResult::escape((string) ($context->surroundings->dialogWords['clear'] ?? '')) . '">'
+                . IconMarkup::dashicon('trash', (string) ($context->surroundings->dialogWords['clear'] ?? '')) . '</button>')
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
     }

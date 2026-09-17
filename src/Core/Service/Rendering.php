@@ -663,11 +663,12 @@ final class Rendering implements Presets
      * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
      * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
      */
-    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = ''): static
+    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = ''): static
     {
         $kopie              = clone $this;
-        // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805) und das des Dateiknopfs eines Medienfeldes (D-846).*
-        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload];
+        // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805), das des Dateiknopfs (D-846) und das des Mülleimers an einer
+        // gesetzten Referenz (D-851).*
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear];
 
         return $kopie;
     }
@@ -707,6 +708,24 @@ final class Rendering implements Presets
         }
 
         return strtolower(\Taxmod\Core\Model\NodeClass\Contracts::shortName($klasse));
+    }
+
+    /** @var \Closure(int): string|null Satz-Id ⇒ Adresse seiner Seite, vom Rand (D-852). */
+    private ?\Closure $recordLink = null;
+
+    /**
+     * Dieselbe Zeichnung, aber ein angezeigter Satzverweis ist ein Link auf den Satz ([D-852](../../../docs/NewConcept/90-decision-log.md)) —
+     * *sein Wort: «wäre gut wenn man unten in der ansicht dann auf octek (link) klicken könnte und landet im entsprechenden knoten mit
+     * aktiviertem datensatz».* Der Kern baut keine Adressen (`CD-1`); die Naht bekommt die Satznummer und antwortet mit der Adresse.
+     *
+     * @param \Closure(int): string $url
+     */
+    public function withRecordLinks(\Closure $url): static
+    {
+        $kopie             = clone $this;
+        $kopie->recordLink = $url;
+
+        return $kopie;
     }
 
     /** @var array<string, string> Die Worte der Zusatzfunktionen, vom Rand (D-845): `addon:<name>`, `field:<feld>`, `enum:<wert>`, `add`, `inherited`. */
@@ -1803,6 +1822,10 @@ final class Rendering implements Presets
                     // here is the composed case — *and it is the summary renderer (D-106) that is
                     // missing, not a renderer that is mis-set.*
                     refersToARecord: $value->reference !== null && $type === null,
+                    // *Beim Anzeigen führt ein Satzverweis zu seinem Satz (D-852); beim Bearbeiten steht dort der Wähler.*
+                    href: $purpose === Purpose::Display && $this->recordLink !== null && $value->referenceSpace === ReferenceSpace::Record && $value->reference !== null
+                        ? ($this->recordLink)($value->reference)
+                        : null,
                     // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
                     options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
                     // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*

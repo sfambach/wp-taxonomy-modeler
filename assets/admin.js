@@ -1536,6 +1536,41 @@
 		wertPfeileSetzen( liste );
 	}, true );
 
+	// ⚠️ **Der Mülleimer an einer gesetzten Referenz** (D-851) — *sein Wort: «bei den referenzen könnte höchstens delete stehen und dann eine
+	// neue wahl ermöglichen». Er wählt «nichts» (der leere Knopf des Dialogs) und gibt Suchfeld und Öffner wieder frei; gespeichert wird mit
+	// der Seite.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-clear' ) : null;
+		var wahl  = knopf ? knopf.closest( '.taxmod-record-pick' ) : null;
+
+		if ( ! wahl ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		var leer = wahl.querySelector( 'input[type="radio"][value=""]' );
+
+		if ( leer ) {
+			leer.checked = true;
+		}
+
+		var oeffner = wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' );
+		var feld    = wahl.querySelector( '.taxmod-record-quick' );
+
+		if ( oeffner ) {
+			oeffner.textContent = '—';
+		}
+
+		wahl.classList.remove( 'taxmod-record-taken' );
+		knopf.remove();
+
+		if ( feld ) {
+			feld.hidden = false;
+			feld.focus();
+		}
+	} );
+
 	// ⚠️ **Jeder Symbolknopf zeigt beim Darüberfahren seinen Namen** (D-847) — sein Wort: «Tooltip knopf beschreibung/name». *Die Knöpfe aus
 	// {@see ControlMarkup} tragen ihn schon; hier bekommen ihn auch die von Hand gebauten und die aus Vorlagen eingefügten, aus dem Namen
 	// ihres Symbols — beim ersten Darüberfahren, also auch für später eingefügte.*

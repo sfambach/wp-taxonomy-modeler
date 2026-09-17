@@ -1436,7 +1436,10 @@ final class NodesScreen
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
-                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'))->withRecordCreation(
+                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'))->withRecordLinks(
+                    // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
+                    fn (int $satz): string => $this->recordAddress($satz)
+                )->withRecordCreation(
                     // ⚠️ *Ein neuer Satz entsteht auf der Seite seines Knotens (D-792, Zeile 154) — ohne Filter, Seite und geöffneten Satz von hier.*
                     fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
                     __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod')
@@ -4407,6 +4410,26 @@ final class NodesScreen
         };
 
         $lauf($_FILES[$feld]['name'], []);
+    }
+
+    /** @var array<int, string> Die Adresse eines Satzes, je Seite einmal gebaut (`CD-7`). */
+    private array $satzAdressen = [];
+
+    /**
+     * Die Adresse eines Satzes: die Seite seines Knotens, mit ihm in der Vorschau ([D-852](../../../docs/NewConcept/90-decision-log.md)).
+     * Leer, wo es den Satz nicht mehr gibt — dann bleibt das Wort ohne Link.
+     */
+    private function recordAddress(int $satzId): string
+    {
+        if (isset($this->satzAdressen[$satzId])) {
+            return $this->satzAdressen[$satzId];
+        }
+
+        $satz = $this->data->find($satzId);
+
+        return $this->satzAdressen[$satzId] = $satz === null
+            ? ''
+            : $this->backTo($satz->nodeId, [self::PREVIEW_RECORD => (string) $satzId, self::RECORD_PAGE => null, self::RECORD_FILTER => null]) . '#taxmod-preview-edit';
     }
 
     /** @var array<int, list<int>> Die Vorfahren eines Knotens, je Seite einmal gelesen — für den Filter über Unterbäume (D-791). */
