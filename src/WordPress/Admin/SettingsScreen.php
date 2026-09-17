@@ -298,17 +298,9 @@ final class SettingsScreen
 
         ksort($offered);
 
-        $current = self::neutralLocale();
-        $options = '';
-
-        foreach ($offered as $one) {
-            $options .= '<option value="' . esc_attr($one) . '"'
-                . selected($current, $one, false) . '>' . esc_html($one) . '</option>';
-        }
-
         return $this->row(
             __('Default language', 'taxmod'),
-            '<select name="neutral_locale">' . $options . '</select>',
+            \Taxmod\Core\Renderer\SelectMarkup::of('neutral_locale', $offered, self::neutralLocale(), false),
             __('A text written in this language counts as valid everywhere, and is stored without a language of its own. Other languages are stored beside it and win where they exist.', 'taxmod')
         );
     }
@@ -316,16 +308,15 @@ final class SettingsScreen
     /** Wie viele Datensätze eine Seite zeigt — eine Liste, kein Zahlenfeld, wie bei den Grössen darunter. */
     private function recordsPerPageRow(): string
     {
-        $options = '';
+        $options = [];
 
         foreach (self::PAGE_SIZES as $size) {
-            $options .= '<option value="' . (int) $size . '"' . selected(self::recordsPerPage(), $size, false) . '>'
-                . esc_html((string) $size) . '</option>';
+            $options[(int) $size] = (string) $size;
         }
 
         return $this->row(
             __('Records per page', 'taxmod'),
-            '<select name="records_per_page">' . $options . '</select>',
+            \Taxmod\Core\Renderer\SelectMarkup::of('records_per_page', $options, (string) self::recordsPerPage(), false),
             __('How many records a node page draws at once. Drawing a record costs time; the rest are a page away.', 'taxmod')
         );
     }
@@ -335,15 +326,9 @@ final class SettingsScreen
     {
         $jetzt = self::treeClickJumps() ? 'jump' : 'stay';
         $wahl  = ['stay' => __('Stay where the page is', 'taxmod'), 'jump' => __('Jump to the top', 'taxmod')];
-        $options = '';
-
-        foreach ($wahl as $wert => $wort) {
-            $options .= '<option value="' . esc_attr($wert) . '"' . selected($jetzt, $wert, false) . '>' . esc_html($wort) . '</option>';
-        }
-
         return $this->row(
             __('Clicking a node in the tree', 'taxmod'),
-            '<select name="tree_click">' . $options . '</select>',
+            \Taxmod\Core\Renderer\SelectMarkup::of('tree_click', $wahl, $jetzt, false),
             __('Whether the node page keeps its scroll position or starts at the top when a node in the tree is chosen. Opening a record always lands at its input.', 'taxmod')
         );
     }
@@ -351,16 +336,15 @@ final class SettingsScreen
     /** One size, chosen from what has been tried rather than typed. */
     private function sizeRow(string $option, string $label, int $now, string $why): string
     {
-        $options = '';
+        $options = [];
 
         foreach (self::SIZES as $size) {
-            $options .= '<option value="' . (int) $size . '"' . selected($now, $size, false) . '>'
-                . esc_html($size . 'px') . '</option>';
+            $options[(int) $size] = $size . 'px';
         }
 
         return $this->row(
             $label,
-            '<select name="' . esc_attr(str_replace('taxmod_', '', $option)) . '">' . $options . '</select>',
+            \Taxmod\Core\Renderer\SelectMarkup::of(str_replace('taxmod_', '', $option), $options, (string) $now, false),
             $why
         );
     }

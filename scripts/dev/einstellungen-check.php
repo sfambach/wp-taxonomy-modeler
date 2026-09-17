@@ -632,7 +632,8 @@ $praefixe   = $editor->childrenOf((int) \Taxmod\WordPress\Persistence\UnitScaffo
 $kaskade    = seite($einheit->id);
 // ⚠️ **Geändert am 2026-09-14 mit [D-799](../../docs/NewConcept/90-decision-log.md), sichtbar:** *statt einem Haken je Präfix eine Liste der
 // gewählten und ein Auswahlfeld mit «+» — sein Wort: «to space consuming, better would be a selection list and an add button».*
-$auswahlPraefixe = preg_match('/<select class="taxmod-switch-candidates" name="taxmod_setting_set\[erlaubte_praefixe\]\[add\]"[^>]*>(.*?)<\/select>/s', $kaskade, $trefferAuswahl) === 1 ? $trefferAuswahl[1] : '';
+// ⚠️ *Seit dem einen Auswahlfeld (SelectMarkup, D-380) stehen die Merkmale in fester Reihenfolge `name`, `form`, `class` — geprüft wird der Inhalt, nicht die Reihenfolge.*
+$auswahlPraefixe = preg_match('/<select name="taxmod_setting_set\[erlaubte_praefixe\]\[add\]"[^>]*class="[^"]*taxmod-switch-candidates[^"]*"[^>]*>(.*?)<\/select>/s', $kaskade, $trefferAuswahl) === 1 ? $trefferAuswahl[1] : '';
 check('erlaubte_praefixe ist ein Auswahlfeld mit «+»: jeder Präfix als Eintrag, kein Haken', $praefixe !== [] && preg_match_all('/<option value="\d+">/', $auswahlPraefixe) === count($praefixe) && ! str_contains($kaskade, 'type="checkbox" name="taxmod_setting_set[erlaubte_praefixe]'), preg_match_all('/<option value="\d+">/', $auswahlPraefixe) . ' Einträge bei ' . count($praefixe) . ' Präfixen');
 $kilo  = (int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId('kilo');
 $milli = (int) \Taxmod\WordPress\Persistence\UnitScaffold::nodeId('milli');
@@ -651,7 +652,7 @@ $leserKaskade->forget();
 check('ohne Skript: im Auswahlfeld gewählt und gespeichert, ist der Präfix wieder aktiv (D-799)', count(array_filter($leserKaskade->listOf($nodes->byId($einheit->id), 'erlaubte_praefixe'), static fn ($g): bool => $g->aktiv)) === 2, letzteMeldung());
 
 // ⚠️ *«wir müssen typ wechsel möglich machen … die einstellungen die nicht übereinstimmen gehen dabei verloren» (D-733).*
-check('die Systemzeile bietet die eigene Klasse zur Wahl', str_contains(seite($einheit->id), 'name="klasse" class="taxmod-toolbar-class" form="'));
+check('die Systemzeile bietet die eigene Klasse zur Wahl', preg_match('/<select name="klasse" form="[^"]+" class="[^"]*taxmod-toolbar-class/', seite($einheit->id)) === 1);
 // *Geslasht wie WordPress es täte — der Rand entschlasht (CD-5).*
 speichern($einheit->id, ['klasse' => wp_slash(\Taxmod\Core\Model\NodeClass\Constant::class)]);
 $gewechselt = $nodes->byId($einheit->id);
@@ -1488,7 +1489,7 @@ check('das Eingabefeld eines Satzes trägt die Grenze als min', preg_match('/<in
 // ⚠️ **Zeile 8: die Validatoren laufen beim Speichern** ([D-760](../../docs/NewConcept/90-decision-log.md)) — erst prüfen, dann schreiben;
 // eine Beschwerde, und nichts wird gespeichert. *Am Datum mit Grenze von D-757: der Bereichs-Wächter «range» an der Stelle.*
 // ⚠️ *Seit D-845 eine Zusatzfunktion: gewählt über die Liste im Einstellungsbereich, abgeschickt wie ein Browser sie schickt.*
-check('die Liste der Zusatzfunktionen bietet am Datum «range» an, mit Vorlage (D-845)', (bool) preg_match('/class="taxmod-addon-candidates".*?<option value="range">.*?<template class="taxmod-addon-template" data-taxmod-addon="range">/s', seite($wann->id)));
+check('die Liste der Zusatzfunktionen bietet am Datum «range» an, mit Vorlage (D-845)', (bool) preg_match('/taxmod-addon-candidates".*?<option value="range">.*?<template class="taxmod-addon-template" data-taxmod-addon="range">/s', seite($wann->id)));
 speichern($wann->id, ['taxmod_setting_addons' => ['present' => '1', 'n1' => ['name' => 'range']]]);
 check('abgeschickt steht «range» als gewählte Zusatzfunktion am Knoten (D-845)', gelungen() && (string) $wpdb->get_var("SELECT o.klasse FROM {$p}settings_value v JOIN {$p}settings_object o ON o.id = v.wert_settings_object_id WHERE v.node_id = {$wann->id} AND v.attribut = 'addons'") === \Taxmod\Core\Addon\RangeValidator::class, letzteMeldung());
 speichern($wann->id, ['taxmod_setting_addons' => ['present' => '1', 'n1' => ['name' => 'gibt-es-nicht']]]);

@@ -782,13 +782,14 @@ final class NodesScreen
             return '<code>' . esc_html(self::className($selected->klasse)) . '</code>';
         }
 
-        $html = '<select name="klasse" class="taxmod-toolbar-class" form="' . esc_attr(self::pageForm($selected)) . '" title="' . esc_attr__('The class of this node — saved with the page', 'taxmod') . '">';
+        $klassen = [];
 
         foreach (array_unique([...Contracts::childClassesUnder($parent->klasse), $selected->klasse]) as $klasse) {
-            $html .= '<option value="' . esc_attr($klasse) . '"' . ($klasse === $selected->klasse ? ' selected' : '') . '>' . esc_html(self::className($klasse)) . '</option>';
+            $klassen[$klasse] = self::className($klasse);
         }
 
-        return $html . '</select>';
+        // ⚠️ *Das eine Auswahlfeld — ist nur eine Klasse erlaubt, steht sie ausgegraut da (D-380).*
+        return \Taxmod\Core\Renderer\SelectMarkup::of('klasse', $klassen, $selected->klasse, false, self::pageForm($selected), ['class' => 'taxmod-toolbar-class', 'title' => __('The class of this node — saved with the page', 'taxmod')]);
     }
 
     /**
@@ -798,16 +799,18 @@ final class NodesScreen
     private function classChooser(Node $parent): string
     {
         $vertrag = Contracts::of($parent->klasse);
-        $html    = '<select name="klasse" class="taxmod-toolbar-class" title="'
-            . esc_attr__('Class of the new child — not the class of this node', 'taxmod') . '">';
+        $klassen = [];
 
         foreach (Contracts::childClassesUnder($parent->klasse) as $klasse) {
-            $html .= '<option value="' . esc_attr($klasse) . '"'
-                . ($klasse === $vertrag->defaultChildClass ? ' selected' : '') . '>'
-                . esc_html(self::className($klasse)) . '</option>';
+            $klassen[$klasse] = self::className($klasse);
         }
 
-        return $html . '</select>';
+        // *Das eine Auswahlfeld (D-380). Ein gesperrtes Feld schickt nichts — die eine erlaubte Klasse reist darum zusätzlich verborgen mit.*
+        $wahl = \Taxmod\Core\Renderer\SelectMarkup::of('klasse', $klassen, $vertrag->defaultChildClass, false, '', ['class' => 'taxmod-toolbar-class', 'title' => __('Class of the new child — not the class of this node', 'taxmod')]);
+
+        return \Taxmod\Core\Renderer\SelectMarkup::operable($klassen, false) || $klassen === []
+            ? $wahl
+            : $wahl . '<input type="hidden" name="klasse" value="' . esc_attr((string) array_key_first($klassen)) . '">';
     }
 
     /**
@@ -2902,11 +2905,11 @@ final class NodesScreen
             // recht:** die Satzart hatte ich eine Stunde vorher genau so gekürzt
             // ([D-661](../../../docs/NewConcept/90-decision-log.md)) und diese Liste dabei
             // übersehen — zwei Auswahlfelder auf einer Seite, zwei Macharten.*
-            . '<select name="relation_kind">'
-            . '<option value="composition" selected>' . esc_html__('composition', 'taxmod') . '</option>'
-            . '<option value="aggregation">' . esc_html__('aggregation', 'taxmod') . '</option>'
-            . '<option value="setting">' . esc_html__('setting', 'taxmod') . '</option>'
-            . '</select>'
+            . \Taxmod\Core\Renderer\SelectMarkup::of('relation_kind', [
+                'composition' => __('composition', 'taxmod'),
+                'aggregation' => __('aggregation', 'taxmod'),
+                'setting'     => __('setting', 'taxmod'),
+            ], 'composition', false)
             . HintMarkup::icon(
                 __('composition — the target belongs to this node. aggregation — the target stands on its own. setting — a value the model carries, not an entry.', 'taxmod')
             )
@@ -3066,16 +3069,11 @@ final class NodesScreen
 
         ksort($offered);
 
-        $options = '';
 
-        foreach ($offered as $value => $shown) {
-            $options .= '<option value="' . esc_attr((string) $value) . '"'
-                // ⚠️ The screen works in `''` where the neutral locale was picked, so the option to
-                // mark is the neutral one — otherwise the picker would show nothing selected on the
-                // very language it is working in.
-                . selected($current === '' ? self::neutralLocale() : $current, (string) $value, false)
-                . '>' . esc_html((string) $shown) . '</option>';
-        }
+        // ⚠️ The screen works in `''` where the neutral locale was picked, so the option to
+        // mark is the neutral one — otherwise the picker would show nothing selected on the
+        // very language it is working in.
+        $gewaehlteSprache = $current === '' ? self::neutralLocale() : $current;
 
         // ⚠️ **A bare `select` that navigates, and no form of its own** — because the owner wants it
         // on the same line as the short fields (*then we save space*), and those live **inside** the
@@ -3096,11 +3094,12 @@ final class NodesScreen
         // locale never has to be spliced into a URL by string arithmetic on either side.
         $pattern = esc_url_raw(add_query_arg('taxmod_locale', self::LOCALE_MARKER, $base));
 
-        return '<select class="taxmod-locale" style="max-width:100%"'
-            . ' onchange="location.href=' . esc_attr(wp_json_encode($pattern))
-            . '.replace(' . esc_attr(wp_json_encode(self::LOCALE_MARKER))
-            . ',encodeURIComponent(this.value))">'
-            . $options . '</select>';
+        // *Das eine Auswahlfeld (D-380); ohne Namen, es schickt nichts.*
+        return \Taxmod\Core\Renderer\SelectMarkup::of('', array_map('strval', $offered), (string) $gewaehlteSprache, false, '', [
+            'class'    => 'taxmod-locale',
+            'style'    => 'max-width:100%',
+            'onchange' => 'location.href=' . wp_json_encode($pattern) . '.replace(' . wp_json_encode(self::LOCALE_MARKER) . ',encodeURIComponent(this.value))',
+        ]);
     }
 
     /**
@@ -4503,7 +4502,7 @@ final class NodesScreen
         // eher ein beispiel als eine vorgaben sehen».*
         $steht = $gewaehlt ?? ($nurBeispiele ? RecordType::Example : RecordType::standard());
 
-        $optionen = '';
+        $optionen = [];
 
         foreach (RecordType::cases() as $art) {
             // ⚠️ *Ein Einstellungssatz entsteht beim ersten Schreiben, nie von Hand ([D-704](../../../docs/NewConcept/90-decision-log.md), [D-609](../../../docs/NewConcept/90-decision-log.md)).*
@@ -4511,9 +4510,7 @@ final class NodesScreen
                 continue;
             }
 
-            $optionen .= '<option value="' . esc_attr($art->value) . '"'
-                . ($art === $steht ? ' selected' : '') . '>'
-                . esc_html($worte[$art->value] ?? $art->value) . '</option>';
+            $optionen[$art->value] = $worte[$art->value] ?? $art->value;
         }
 
         // ⚠️ **Der Hinweis steht an der Bedienung und nicht bloss im Kode**
@@ -4535,8 +4532,8 @@ final class NodesScreen
         // ihrem Formular, dort bleibt das Attribut weg.*
         return '<label class="taxmod-record-type">'
             . '<span class="screen-reader-text">' . esc_html__('Kind of record', 'taxmod') . '</span>'
-            . '<select name="record_type"' . ($formId === '' ? '' : ' form="' . esc_attr($formId) . '"') . '>'
-            . $optionen . '</select></label>' . $hinweis . ' ';
+            . \Taxmod\Core\Renderer\SelectMarkup::of('record_type', $optionen, $steht->value, false, $formId)
+            . '</label>' . $hinweis . ' ';
     }
 
     // ⚠️ *Hier stand `belongsTo()`, der Zeichner der Spalte «Belongs to». Er ist mit ihr gegangen

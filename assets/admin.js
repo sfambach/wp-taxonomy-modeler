@@ -1315,6 +1315,25 @@
 		}
 	} );
 
+	// ⚠️ *Das eine Auswahlfeld (D-380): ohne Eintrag gesperrt und ausgegraut, der «+» daneben mit — auch nachdem das Skript Einträge
+	// herausgenommen oder zurückgelegt hat.*
+	function auswahlZustand( auswahl ) {
+		if ( ! auswahl ) {
+			return;
+		}
+
+		var frei  = Array.prototype.some.call( auswahl.options, function ( eintrag ) { return eintrag.value !== ''; } );
+		var knopf = auswahl.parentElement ? auswahl.parentElement.querySelector( '.taxmod-list-add, .taxmod-addon-add' ) : null;
+
+		auswahl.disabled    = ! frei;
+		auswahl.style.opacity = frei ? '' : '.55';
+
+		if ( knopf ) {
+			knopf.disabled      = ! frei;
+			knopf.style.opacity = frei ? '' : '.35';
+		}
+	}
+
 	// ⚠️ **Die Werteliste eines mehrfachen Feldes** (D-842) — sein Wort: «darstellungsform für multiple ordered lists mit aktivierung die
 	// sollten wir auch für den renderer verwenden». *Dieselbe Liste wie in den Einstellungen, nur dass ein Wert selbst das Mitglied ist:
 	// Hinzufügen legt eine Zeile mit dem Wert als verborgenem Eintrag an, der Mülleimer nimmt die Zeile ganz heraus. Die Reihenfolge der
@@ -1401,6 +1420,7 @@
 			wertZeileAnlegen( waehler, eintrag.value, eintrag.textContent );
 			eintrag.remove();
 			auswahl.value = '';
+			auswahlZustand( auswahl );
 
 			return;
 		}
@@ -1444,6 +1464,7 @@
 			zurueck.value = zeile.getAttribute( 'data-taxmod-id' ) || '';
 			zurueck.textContent = ( zeile.querySelector( '.taxmod-switch-name' ) || zeile ).textContent;
 			auswahl.appendChild( zurueck );
+			auswahlZustand( auswahl );
 		}
 
 		var liste = zeile.parentElement;
@@ -1511,6 +1532,7 @@
 		}
 
 		auswahl.value = '';
+		auswahlZustand( auswahl );
 		wertPfeileSetzen( liste );
 	}, true );
 
@@ -1615,6 +1637,7 @@
 			liste.appendChild( zeile );
 			eintrag.remove();
 			auswahl.value = '';
+			auswahlZustand( auswahl );
 
 			return;
 		}
@@ -1635,6 +1658,7 @@
 		zurueck.value = weggenommen.getAttribute( 'data-taxmod-id' ) || '';
 		zurueck.textContent = ( weggenommen.querySelector( '.taxmod-switch-name' ) || weggenommen ).textContent;
 		auswahl.appendChild( zurueck );
+		auswahlZustand( auswahl );
 	} );
 
 	// ⚠️ **Die Pfeile einer geordneten Schalterliste** (D-794) — sein Wort: «more ordered by arrows». *Eine gewählte Zeile tauscht mit

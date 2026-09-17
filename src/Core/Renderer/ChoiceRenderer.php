@@ -107,55 +107,30 @@ final class ChoiceRenderer extends RendererNode
         //
         // ⚠️ *Dieser Renderer **zeichnet** eine Wahl und **rechnet** sie nicht. Ausgänge, entschieden,
         // unerfüllbar — alles Fragen an das eine Objekt, das sie beantworten darf.*
-        $wahl = Choice::forSetting(
+        // ⚠️ **Gezeichnet vom einen Auswahlfeld** ({@see SelectMarkup}) — die Regel rechnet {@see Choice}, das Aussehen steht an einer Stelle,
+        // damit jedes andere Auswahlfeld der Oberfläche gleich gesperrt und ausgegraut ist.
+        $unsatisfiable = Choice::forSetting($offered, ! $context->surroundings->mayBeNothing)->isUnsatisfiable();
+        $breite        = $context->setting('display_size')?->int;
+        $merkmale      = [];
+
+        // ⚠️ *«chooser sollte auch display size haben» (D-727): die Breite, wo der Aufrufer eine mitgibt.*
+        if ($breite !== null && $breite > 0) {
+            $merkmale['style'] = 'width:' . $breite . 'ch';
+        }
+
+        if ($unsatisfiable) {
+            $merkmale['title'] = $context->surroundings->refersTo ?? '';
+        }
+
+        return RenderResult::of(SelectMarkup::of(
+            $context->fieldName,
             $offered,
-            ! $context->surroundings->mayBeNothing,
-            $context->value,
+            $now,
+            $context->surroundings->mayBeNothing,
+            $context->surroundings->formId,
+            $merkmale,
             $context->editable
-        );
-
-        $mayBeNothing  = $wahl->mayBeNothing;
-        $outcomes      = $wahl->outcomes();
-        $unsatisfiable = $wahl->isUnsatisfiable();
-        $decided       = $wahl->isDecided();
-
-        $markup = '<select name="' . RenderResult::escape($context->fieldName) . '"'
-            // ⚠️ **Where the control cannot sit inside its form, it names it.** An attribute row is a
-            // `<tr>`: its cells cannot be wrapped in one form, so without this the select submitted
-            // nothing at all — which is how a multiplicity change looked like a save that did nothing.
-            . ($context->surroundings->formId === ''
-                ? ''
-                : ' form="' . RenderResult::escape($context->surroundings->formId) . '"')
-            . ' class="taxmod-choice' . ($unsatisfiable ? ' taxmod-unsatisfiable' : '') . '"'
-            // ⚠️ *«chooser sollte auch display size haben» (D-727): die Breite, wo der Aufrufer eine mitgibt.*
-            . (($breite = $context->setting('display_size')?->int) === null || $breite <= 0 ? '' : ' style="width:' . $breite . 'ch"')
-            . ($wahl->isOperable() ? '' : ' disabled')
-            . ($decided ? ' style="opacity:.55"' : '')
-            . ($unsatisfiable
-                ? ' title="' . RenderResult::escape($context->surroundings->refersTo ?? '') . '"'
-                : '')
-            . '>';
-
-        // ⚠️ **The empty option exists only where nothing is a real answer**, which is what makes
-        // *empty counts as an entry* true rather than a courtesy. Where it is not allowed, offering
-        // it would be a control that can produce an answer the model refuses.
-        if ($mayBeNothing) {
-            $markup .= '<option value=""' . ($now === '' || $now === null ? ' selected' : '') . '></option>';
-        }
-
-        foreach ($offered as $value => $label) {
-            $value = (string) $value;
-
-            // R30: with one outcome that outcome **is** the answer, so it is selected rather than
-            // merely offered — a greyed control showing nothing would say the field is unset.
-            $chosen = $now === $value || ($decided && $outcomes === 1 && ! $mayBeNothing);
-
-            $markup .= '<option value="' . RenderResult::escape($value) . '"'
-                . ($chosen ? ' selected' : '') . '>'
-                . RenderResult::escape($label) . '</option>';
-        }
-
-        return RenderResult::of($markup . '</select>');
+        ));
     }
 
     /**

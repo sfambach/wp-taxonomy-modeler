@@ -72,27 +72,27 @@ final class SummaryRenderer extends TypedFieldRenderer
         }
 
         $gewaehlt = $context->value->reference;
-        $markup   = '<select name="' . RenderResult::escape($context->fieldName) . '"'
-            . ($context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"')
-            . ' class="taxmod-choice taxmod-summary-choice">';
-
-        if ($context->surroundings->mayBeNothing || $gewaehlt === null) {
-            $markup .= '<option value=""' . ($gewaehlt === null ? ' selected' : '') . '>—</option>';
-        }
-
-        $steht = false;
+        $angebot  = [];
 
         foreach ($context->surroundings->options as $satzId => $wort) {
-            $ist    = (int) $satzId === $gewaehlt;
-            $steht  = $steht || $ist;
-            $markup .= '<option value="' . (int) $satzId . '"' . ($ist ? ' selected' : '') . '>' . RenderResult::escape((string) $wort) . '</option>';
+            $angebot[(int) $satzId] = (string) $wort;
         }
 
-        if ($gewaehlt !== null && ! $steht) {
-            $markup .= '<option value="' . (int) $gewaehlt . '" selected>#' . (int) $gewaehlt . '</option>';
+        // *Ein gewählter Satz, der nicht im Angebot steht, bleibt als Nummer sichtbar — sonst löschte das nächste Speichern ihn.*
+        if ($gewaehlt !== null && ! isset($angebot[$gewaehlt])) {
+            $angebot[$gewaehlt] = '#' . $gewaehlt;
         }
 
-        return $markup . '</select>';
+        // ⚠️ *Das eine Auswahlfeld ({@see SelectMarkup}) — gesperrt und ausgegraut, wo es nichts zu wählen gibt (D-380).*
+        return SelectMarkup::of(
+            $context->fieldName,
+            $angebot,
+            $gewaehlt === null ? null : (string) $gewaehlt,
+            $context->surroundings->mayBeNothing || $gewaehlt === null,
+            $context->surroundings->formId,
+            ['class' => 'taxmod-summary-choice'],
+            nothingWord: '—'
+        );
     }
 
     /**

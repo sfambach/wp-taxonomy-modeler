@@ -31,6 +31,7 @@ use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
+use Taxmod\Core\Renderer\SelectMarkup;
 use Taxmod\Core\Renderer\IconMarkup;
 use Taxmod\Core\Renderer\DrawnRow;
 use Taxmod\Core\Renderer\FormRenderer;
@@ -755,11 +756,11 @@ final class Rendering implements Presets
             }
         }
 
-        $html .= '</ol><span class="taxmod-switch-add"><select class="taxmod-addon-candidates"' . $form . '><option value=""></option>';
         $vorlagen = '';
+        $wahlen   = [];
 
         foreach ($this->addons->forSites($orte) as $addon) {
-            $html     .= '<option value="' . RenderResult::escape($addon->name()) . '">' . RenderResult::escape($wort('addon:' . $addon->name(), $addon->name())) . '</option>';
+            $wahlen[$addon->name()] = $wort('addon:' . $addon->name(), $addon->name());
             $vorlagen .= '<template class="taxmod-addon-template" data-taxmod-addon="' . RenderResult::escape($addon->name()) . '">'
                 // *Die Vorlage trägt ihre Adressen nur als `data-taxmod-name` — ein Name in einer Vorlage stünde für jede Funktion gleich da;
                 // das Skript macht beim Einfügen Namen daraus.*
@@ -767,8 +768,11 @@ final class Rendering implements Presets
                 . '</template>';
         }
 
-        $html .= '</select><button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-addon-add" style="color:#1d2327" title="' . RenderResult::escape($wort('add', '+')) . '">'
-            . IconMarkup::dashicon('plus-alt2', $wort('add', '+')) . '</button></span>' . $vorlagen . '</span>';
+        // *Das eine Auswahlfeld (SelectMarkup): ohne wählbare Funktion ausgegraut, der «+» mit (D-380, D-370).*
+        $html .= '</ol><span class="taxmod-switch-add">'
+            . SelectMarkup::of('', $wahlen, null, true, trim($form) === '' ? '' : (string) preg_replace('/^ form="(.*)"$/', '$1', $form), ['class' => 'taxmod-addon-candidates'])
+            . SelectMarkup::addButton($wahlen, $wort('add', '+'), 'taxmod-addon-add')
+            . '</span>' . $vorlagen . '</span>';
 
         return RenderResult::of($html);
     }
@@ -793,21 +797,15 @@ final class Rendering implements Presets
             $html    .= '<label class="taxmod-addon-field">' . $beschrift . ' ';
 
             if ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef) {
-                $html .= '<select name="' . $feld . '"' . $form . '><option value=""></option>';
-
-                foreach ($this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $kante) as $id => $feldWort) {
-                    $html .= '<option value="' . $id . '"' . ($wert?->reference === $id ? ' selected' : '') . '>' . RenderResult::escape($feldWort) . '</option>';
-                }
-
-                $html .= '</select>';
+                $html .= SelectMarkup::of(html_entity_decode($feld, ENT_QUOTES), $this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $kante), $wert?->reference === null ? null : (string) $wert->reference, true, (string) preg_replace('/^ form="(.*)"$/', '$1', $form));
             } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Enum) {
-                $html .= '<select name="' . $feld . '"' . $form . '>';
+                $faelle = [];
 
                 foreach ($erklaert->enumCases() as $fall) {
-                    $html .= '<option value="' . RenderResult::escape($fall) . '"' . ($wert?->text === $fall ? ' selected' : '') . '>' . RenderResult::escape($wort('enum:' . $fall, $fall)) . '</option>';
+                    $faelle[$fall] = $wort('enum:' . $fall, $fall);
                 }
 
-                $html .= '</select>';
+                $html .= SelectMarkup::of(html_entity_decode($feld, ENT_QUOTES), $faelle, $wert?->text, false, (string) preg_replace('/^ form="(.*)"$/', '$1', $form));
             } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Bool) {
                 $html .= '<input type="hidden" name="' . $feld . '" value="0"' . $form . '><input type="checkbox" name="' . $feld . '" value="1"' . ((bool) $wert?->rawValue() ? ' checked' : '') . $form . '>';
             } else {
@@ -5466,17 +5464,16 @@ final class Rendering implements Presets
                 . '</li>';
         }
 
-        $html .= '</ol><span class="taxmod-switch-add">'
-            . '<select class="taxmod-switch-candidates" name="' . RenderResult::escape($prefix . '[add]') . '"' . $form . '>'
-            . '<option value=""></option>';
+        $frei = [];
 
         foreach (array_diff(array_keys($kandidaten), $gewaehlt) as $kandidatId) {
-            $html .= '<option value="' . (int) $kandidatId . '">' . RenderResult::escape($kandidaten[$kandidatId]) . '</option>';
+            $frei[(int) $kandidatId] = $kandidaten[$kandidatId];
         }
 
-        return RenderResult::of($html . '</select>'
-            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-add" style="color:#1d2327">'
-            . IconMarkup::dashicon('plus-alt2', $erklaert->name) . '</button>'
+        // *Das eine Auswahlfeld (SelectMarkup): sein Befund an `filter_feld` — «select felder leer aber nicht ausgegraut».*
+        return RenderResult::of($html . '</ol><span class="taxmod-switch-add">'
+            . SelectMarkup::of($prefix . '[add]', $frei, null, true, $formId, ['class' => 'taxmod-switch-candidates'])
+            . SelectMarkup::addButton($frei, $erklaert->name)
             . '</span></span>');
     }
 
@@ -6270,27 +6267,9 @@ final class Rendering implements Presets
         // ⚠️ *Bleibt nichts zu wählen, sind Auswahl und «+» ausgegraut — sein Wort: «eine leere auswahl müssen wir denke ich nicht anzeigen
         // bzw ausgrauen» — und das ist die bestehende Regel: D-380 «select fields always greyed out when there is no entry», D-370 eine unmögliche
         // Handlung ist ausgegraut, nicht weg. Hier von Hand gebaut, weil die Liste nicht durch den ChoiceRenderer geht; ein gesperrtes Feld wird nicht geschickt.*
-        if ($waehlt && $frei === []) {
-            return [
-                'renderer' => SummaryRenderer::NAME,
-                'rows'     => [],
-                'rowActs'  => [],
-                'after'    => '',
-                'result'   => RenderResult::of($html
-                    . '<select class="taxmod-switch-candidates taxmod-value-candidates" disabled style="opacity:.35"' . $form . '><option value=""></option></select>'
-                    . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-add" disabled style="color:#1d2327;opacity:.35">'
-                    . IconMarkup::dashicon('plus-alt2', $relation->name) . '</button></span></span>'),
-            ];
-        }
-
         if ($waehlt) {
-            $html .= '<select class="taxmod-switch-candidates taxmod-value-candidates" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . '><option value=""></option>';
-
-            foreach ($frei as $id => $wort) {
-                $html .= '<option value="' . RenderResult::escape((string) $id) . '">' . RenderResult::escape((string) $wort) . '</option>';
-            }
-
-            $html .= '</select>';
+            // *Das eine Auswahlfeld (SelectMarkup) — ohne freie Wahl gesperrt und ausgegraut, der «+» mit.*
+            $html .= SelectMarkup::of($name, array_map('strval', $frei), null, true, $formId, ['class' => 'taxmod-switch-candidates taxmod-value-candidates', 'data-taxmod-name' => $name]);
         } else {
             // *Alles andere wird geschrieben: ein Feld für den nächsten Wert, in der Gestalt seines Typs.*
             $html .= '<input type="text" class="taxmod-value-new" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . ' size="30">';
@@ -6306,8 +6285,7 @@ final class Rendering implements Presets
             }
         }
 
-        $html .= '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-list-add" style="color:#1d2327">'
-            . IconMarkup::dashicon('plus-alt2', $relation->name) . '</button></span></span>';
+        $html .= ($waehlt ? SelectMarkup::addButton($frei, $relation->name) : SelectMarkup::addButton(['x' => ''], $relation->name)) . '</span></span>';
 
         return [
             'renderer' => $context->surroundings->options !== [] ? SummaryRenderer::NAME : 'field',
