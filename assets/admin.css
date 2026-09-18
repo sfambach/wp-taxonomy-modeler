@@ -2199,3 +2199,9 @@ fieldset.taxmod-read-only {
 [data-taxmod-autosave="on"] .taxmod-save {
 	display: none !important;
 }
+
+/* Symbol und Wort in einer Linie (D-861) — «+ Add field», «+ New record». */
+.button:not(.taxmod-icon-button) > .taxmod-icon.dashicons {
+	vertical-align: middle;
+	margin: -2px 2px 0 -2px;
+}
