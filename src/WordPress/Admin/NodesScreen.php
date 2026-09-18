@@ -2967,7 +2967,8 @@ final class NodesScreen
                 false,
                 'plus-alt2',
                 '',
-                true,
+                // ⚠️ *Nicht mehr blau (D-861): «führend» war meine Einordnung, nicht seine — sein Wort: «gibts einen grund warum der button blau ist ?».*
+                false,
                 // *Wort und «+» (D-861) — sein Wort: «gleiche für add field».*
                 iconWithLabel: true
             ))
