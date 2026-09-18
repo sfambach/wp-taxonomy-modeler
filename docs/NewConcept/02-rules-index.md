@@ -57,13 +57,13 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 84 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 87 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:69](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:70](../../CLAUDE.md) | 1 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:71](../../CLAUDE.md) | **nie** |
-| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 26 |
+| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 25 |
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 17 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 135 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 138 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 4 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 29 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 5 |
@@ -75,7 +75,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 22 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 94 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 95 |
 
 ## DC — Dokumentation im Code
 
@@ -168,7 +168,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **C61** | Whether permitted sub-nodes are handled by activating or by deactivating should be the user's choice, made when a new sub-node is created. | [10-domain-core.md:1836](10-domain-core.md) | **nie** |
 | **C62** | But if the type is not used anywhere yet, the question is pointless and would only get in the way. It should be suppressed. | [10-domain-core.md:1837](10-domain-core.md) | 1 |
 | **C63** | The same principle applies to model versioning. With no data present, a new version causes no break, whatever it changes. | [10-domain-core.md:1838](10-domain-core.md) | 1 |
-| **C64** | Test data are a possible exception, and the lean is: do not take them into account, but warn that they may need adjusting. | [10-domain-core.md:1839](10-domain-core.md) | 2 |
+| **C64** | Test data are a possible exception, and the lean is: do not take them into account, but warn that they may need adjusting. | [10-domain-core.md:1839](10-domain-core.md) | 3 |
 | **C65** | How test data come about is open — a checkbox is test data / is default value would do it. | [10-domain-core.md:1840](10-domain-core.md) | 12 |
 | **C66** | Storage of a unit value is undecided. Either always store the base unit and keep the prefix for output, or bind value and prefix one to one — in wh… | [10-domain-core.md:1841](10-domain-core.md) | 2 |
 | **C67** | Numbers are whole numbers or decimals. The underlying data type does not matter — if floating point is unsuitable, it is left out. | [10-domain-core.md:1935](10-domain-core.md) | 1 |
@@ -228,8 +228,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **P5** | There will not be a database table per model. The data have to be stored some other way. | [50-wordpress-persistence.md:109](50-wordpress-persistence.md) | 9 |
 | **P6** | How exactly is not yet defined. | [50-wordpress-persistence.md:110](50-wordpress-persistence.md) | 1 |
 | **P7** | And it does not greatly matter: "I define my model, and with the model I also know how the data are to be interpreted. How they are stored efficien… | [50-wordpress-persistence.md:111](50-wordpress-persistence.md) | 3 |
-| **P8** | Such queries must be possible, and as fast as can be managed. This is hereby settled rather than left open. | [50-wordpress-persistence.md:158](50-wordpress-persistence.md) | 3 |
-| **P9** | Concretely: all BOMs over a thousand euro; all BOMs containing a particular part; all parts that appear in a particular BOM — and so on. | [50-wordpress-persistence.md:159](50-wordpress-persistence.md) | **nie** |
+| **P8** | Such queries must be possible, and as fast as can be managed. This is hereby settled rather than left open. | [50-wordpress-persistence.md:158](50-wordpress-persistence.md) | 4 |
+| **P9** | Concretely: all BOMs over a thousand euro; all BOMs containing a particular part; all parts that appear in a particular BOM — and so on. | [50-wordpress-persistence.md:159](50-wordpress-persistence.md) | 1 |
 | **P10** | Almost exactly what a relational database can do, only finer-grained here. | [50-wordpress-persistence.md:160](50-wordpress-persistence.md) | **nie** |
 | **P11** | The picture: as if all values lay in one row of a table, and a selection were assembled through well-chosen categories and the ids of type assignme… | [50-wordpress-persistence.md:161](50-wordpress-persistence.md) | 5 |
 | **P12** | Type safety matters. That may well mean separate nodes for whole numbers and for decimals, each defined by its own node. | [50-wordpress-persistence.md:363](50-wordpress-persistence.md) | 1 |

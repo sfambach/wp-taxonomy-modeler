@@ -4370,8 +4370,9 @@ final class Rendering implements Presets
             $knotenIds[$satz->nodeId] = true;
         }
 
-        $erstesTextfeld   = [];
-        $feldwahlJeKnoten = [];
+        $erstesTextfeld     = [];
+        $feldwahlJeKnoten   = [];
+        $textfelderJeKnoten = [];
 
         if ($knotenIds !== [] && $this->relations !== null) {
             $besitzerJeKnoten = [];
@@ -4409,9 +4410,12 @@ final class Rendering implements Presets
             $typen      = $this->typesOf($alleFelder);
             $nachBesitzer = [];
 
+            $alleTexte = [];
+
             foreach ($alleFelder as $feld) {
                 if (! $feld->isSetting() && ($typen[$feld->id] ?? null) === SimpleType::Text) {
                     $nachBesitzer[$feld->fromNodeId] ??= $feld->id;
+                    $alleTexte[$feld->fromNodeId][] = $feld->id;
                 }
             }
 
@@ -4422,15 +4426,44 @@ final class Rendering implements Presets
                         break;
                     }
                 }
+
+                // ⚠️ *Alle Textfelder in Erbfolge, von oben nach unten — der Rückfall nimmt das erste, das im Satz einen Wert hat. Gemessen am
+                // Mainboard: das erste Textfeld von oben war leer, und die Revision zeigte «#29946» statt ihrer Bezeichnung «1.3».*
+                foreach ($besitzer as $einer) {
+                    foreach ($alleTexte[$einer] ?? [] as $textfeld) {
+                        $textfelderJeKnoten[$knotenId][] = $textfeld;
+                    }
+                }
             }
         }
 
-        $wort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit): string {
+        $wort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
 
-            if ($feldIds === [] && $knotenId !== null) {
-                $feldIds = $feldwahlJeKnoten[$knotenId] ?? (isset($erstesTextfeld[$knotenId]) ? [$erstesTextfeld[$knotenId]] : []);
+            if ($feldIds === [] && $knotenId !== null && isset($feldwahlJeKnoten[$knotenId])) {
+                $feldIds = $feldwahlJeKnoten[$knotenId];
+            } elseif ($feldIds === [] && $knotenId !== null) {
+                // *Ohne Feldwahl das erste Textfeld mit Wert, in Erbfolge von oben; hat keines einen, das erste überhaupt.*
+                $gefuellt = [];
+
+                foreach ($werte[$satzId] ?? [] as $zeile) {
+                    if ($zeile->value->text !== null && trim($zeile->value->text) !== '') {
+                        $gefuellt[$zeile->relationId] = true;
+                    }
+                }
+
+                foreach ($textfelderJeKnoten[$knotenId] ?? [] as $textfeld) {
+                    if (isset($gefuellt[$textfeld])) {
+                        $feldIds = [$textfeld];
+
+                        break;
+                    }
+                }
+
+                if ($feldIds === [] && isset($erstesTextfeld[$knotenId])) {
+                    $feldIds = [$erstesTextfeld[$knotenId]];
+                }
             }
 
             // ⚠️ **Ein Teil ohne Feldwahl und ohne Textfeld zeigt seine Werte** — *gemessen an einem Widerstand: die Zusammenfassung las

@@ -2252,6 +2252,29 @@ final class RenderingTest extends TestCase
         self::assertMatchesRegularExpression('/value="' . $satzId . '" checked[^>]*> 6\.22</', $bearbeiten);
     }
 
+    /** ⚠️ *Gemessen am Mainboard: das geerbte Textfeld oben war leer, die Revision zeigte «#29946» statt ihrer Bezeichnung.* */
+    #[Test]
+    public function without_chosen_fields_the_fallback_skips_an_empty_inherited_text_field(): void
+    {
+        $text        = $this->type('Text')->id;
+        $modelle     = $this->thing('Modelle');
+        $pfad        = $this->editor->addField($modelle->id, $text, 'pfad');
+        $bezeichnung = $this->editor->addField($modelle->id, $text, 'bezeichnung');
+        $revisionen  = $this->editor->createNode('Revisionen', $modelle->id);
+        $hinweis     = $this->editor->addField($revisionen->id, $text, 'hinweis');
+        $reihe       = $this->thing('Reihe');
+        $hat         = $this->editor->addField($reihe->id, $modelle->id, 'revisionen', RelationKind::Aggregation);
+
+        $satzId = $this->records->add(new NodeRecord(0, $revisionen->id, 1, '2026-09-18 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satzId, $bezeichnung->id, TypedValue::ofText('Rev 1.2')));
+        $this->records->putValue(RelationRecord::direct($satzId, $hinweis->id, TypedValue::ofText('ein langer Hinweis')));
+
+        $gezeigt = $this->rendering->nodeAsForm($reihe, [$hat], [$hat->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+
+        self::assertStringContainsString('>Rev 1.2<', $gezeigt, 'das erste Textfeld mit Wert in Erbfolge — nicht das leere «' . $pfad->name . '» davor, nicht der eigene Hinweis danach');
+        self::assertStringNotContainsString('#' . $satzId, $gezeigt);
+    }
+
     /** ⚠️ *Sein Wort: «ist doch ein Verweis auf den Datensatz, eigentlich sollte da Microsoft Corp. DOS 4.0 stehen» — eine Stufe tief.* */
     #[Test]
     public function a_reference_inside_a_summary_gets_its_own_word_one_level_deep(): void
