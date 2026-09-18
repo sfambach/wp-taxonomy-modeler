@@ -34,6 +34,24 @@ final class MediaType extends SpecialisedType
 
     public const NEW_TAB = 'new_tab';
 
+    /**
+     * Eine Datei der Mediathek steht als `media:<Id>` da, eine Adresse von draussen so, wie sie eingegeben wurde
+     * ([D-865](../../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«id»*. *Eine Adresse mit eigenem Schema, damit ein Wert
+     * weiterhin eine Adresse bleibt und keine zweite Spalte braucht.*
+     */
+    public const LIBRARY_SCHEME = 'media:';
+
+    /** Die Id einer Mediathek-Datei, oder `null` für eine Adresse von draussen. */
+    public static function libraryIdOf(string $adresse): ?int
+    {
+        return preg_match('/^' . preg_quote(self::LIBRARY_SCHEME, '/') . '(\d+)$/', trim($adresse), $treffer) === 1 ? (int) $treffer[1] : null;
+    }
+
+    public static function libraryAddress(int $id): string
+    {
+        return self::LIBRARY_SCHEME . $id;
+    }
+
     public function type(): SimpleType
     {
         return SimpleType::Media;

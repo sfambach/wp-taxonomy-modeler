@@ -286,6 +286,12 @@ final class NodesScreen
 
     public function render(): string
     {
+        // ⚠️ *Beim Zeichnen merkt sich das Repository die Beschriftungen, die es gelesen hat — nur für diesen Lauf (D-814).*
+        return \Taxmod\WordPress\Persistence\WpdbLabelRepository::whileDrawing(fn (): string => $this->drawPage());
+    }
+
+    private function drawPage(): string
+    {
         // ⚠️ **Ein Satzlink nennt nur den Satz** ([D-852](../../../docs/NewConcept/90-decision-log.md)); *welcher Knoten ihn trägt, wird erst beim
         // Klick nachgeschlagen — sonst kostete jeder angezeigte Verweis eine Abfrage (gemessen: 156 statt höchstens 150 auf der Bezugsseite).*
         $geoeffnet = isset($_GET[self::OPEN_RECORD]) ? absint(wp_unslash((string) $_GET[self::OPEN_RECORD])) : 0;
@@ -519,8 +525,9 @@ final class NodesScreen
             . '</div></td>'
             . '</tr></table>';
 
-        // ⚠️ *Der eine Auswahlbaum der Seite, ausserhalb jedes Formulars — seine Zeilen schicken nie etwas ab (D-815).*
-        return $html . $picker . '</div>';
+        // ⚠️ *Der eine Auswahlbaum der Seite, ausserhalb jedes Formulars — seine Zeilen schicken nie etwas ab (D-815). Dahinter die Körper der
+        // Satzdialoge, einmal je gleichem Körper (D-866) — zuletzt, weil erst jetzt alle gezeichnet sind.*
+        return $html . $picker . $this->rendering->sharedRecordBodies() . '</div>';
     }
 
     // ---------------------------------------------------------------- the tree
@@ -1455,11 +1462,7 @@ final class NodesScreen
                 . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
                     fn (int $satz): string => $this->recordAddress($satz)
-                )->withRecordCreation(
-                    // ⚠️ *Ein neuer Satz entsteht auf der Seite seines Knotens (D-792, Zeile 154) — ohne Filter, Seite und geöffneten Satz von hier.*
-                    fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
-                    __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod')
-                )->nodeAsForm(
+                )->withRecordCreation(...$this->recordCreation())->nodeAsForm(
                     $selected,
                     $gezeigte,
                     $values,
@@ -4212,7 +4215,9 @@ final class NodesScreen
                 self::RECORD_PAGE   => null,
             ]),
             __('Open the matching records', 'taxmod')
-        )->recordsAsTable(
+        // ⚠️ *Derselbe Weg zum Anlegen wie in der Vorschau — sonst unterschiede sich der Satzdialog von «neuer Satz» von dem der Vorschau und
+        // liesse sich nicht teilen (D-866; gemessen: 107 und 58 KB für dasselbe Feld «Nachfolger»).*
+        )->withRecordCreation(...$this->recordCreation())->recordsAsTable(
             $selected,
             $attributes,
             $zeilen,
@@ -4357,6 +4362,20 @@ final class NodesScreen
      * Die Adresse eines Satzes: die Seite seines Knotens, mit ihm in der Vorschau ([D-852](../../../docs/NewConcept/90-decision-log.md)).
      * Leer, wo es den Satz nicht mehr gibt — dann bleibt das Wort ohne Link.
      */
+    /**
+     * Der Weg zum Anlegen eines Satzes aus dem Satzdialog: die Seite des Knotens und das Wort dazu (D-792, Zeile 154).
+     *
+     * @return array{0: \Closure(int): string, 1: string}
+     */
+    private function recordCreation(): array
+    {
+        return [
+            // ⚠️ *Ein neuer Satz entsteht auf der Seite seines Knotens — ohne Filter, Seite und geöffneten Satz von hier.*
+            fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
+            __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod'),
+        ];
+    }
+
     private function recordAddress(int $satzId): string
     {
         // *Keine Abfrage hier: die Adresse nennt den Satz, die Seite schlägt beim Öffnen seinen Knoten nach.*

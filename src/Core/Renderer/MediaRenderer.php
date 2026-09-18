@@ -3,6 +3,9 @@
 namespace Taxmod\Core\Renderer;
 
 use Taxmod\Core\Model\SimpleType;
+use Taxmod\Core\Model\Type\MediaType;
+use Taxmod\Core\Port\MediaFile;
+use Taxmod\Core\Port\MediaLibrary;
 
 /**
  * Zeichnet ein Medienfeld: angezeigt ein Link auf die Datei, bearbeitet ein Feld für den Link und eines zum Hochladen.
@@ -43,14 +46,41 @@ final class MediaRenderer extends TypedFieldRenderer
         }
 
         // *Mit Beschriftungsfeld ist die Beschriftung der Linktext (D-856); leer bleibt es die aus der Datei gerechnete.*
-        return $this->createHtmlValueSpan(self::link($adresse, (string) ($context->surroundings->refersTo ?? ''), self::opensNewTab($context)));
+        return $this->createHtmlValueSpan(self::link($adresse, (string) ($context->surroundings->refersTo ?? ''), self::opensNewTab($context), $context->surroundings->mediaLibrary));
+    }
+
+    /** Die Datei der Mediathek hinter `media:<Id>`, oder `null` — für eine Adresse von draussen oder ohne Naht (D-865). */
+    public static function fileOf(string $adresse, ?MediaLibrary $bibliothek): ?MediaFile
+    {
+        $id = MediaType::libraryIdOf($adresse);
+
+        return $id === null || $bibliothek === null ? null : ($bibliothek->filesFor([$id])[$id] ?? null);
     }
 
 
     /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
-    public static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true): string
+    public static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?MediaLibrary $bibliothek = null): string
     {
-        $wort = trim($beschriftung) !== '' ? trim($beschriftung) : self::describe($adresse);
+        $wort  = trim($beschriftung) !== '' ? trim($beschriftung) : self::describe($adresse, $bibliothek);
+        $datei = self::fileOf($adresse, $bibliothek);
+
+        // ⚠️ *Eine Id, zu der die Mediathek nichts sagt, steht als das da, was gespeichert ist — kein erfundenes Wort (`AR-2`).*
+        if (MediaType::libraryIdOf($adresse) !== null && $datei === null) {
+            return '<span class="taxmod-media taxmod-media-missing">' . RenderResult::escape($wort) . '</span>';
+        }
+
+        $ziel = $datei === null ? self::absolute($adresse) : $datei->url;
+        $auf  = $neuerTab ? ' target="_blank" rel="noopener"' : '';
+
+        // *Ein Bild zeigt sein Vorschaubild; der Klick öffnet das ganze Bild (D-865).*
+        if ($datei !== null && $datei->isImage()) {
+            return '<a class="taxmod-media taxmod-media-image" href="' . RenderResult::escape($ziel) . '" title="' . RenderResult::escape($wort) . '"' . $auf . '>'
+                . '<img class="taxmod-media-thumb" src="' . RenderResult::escape($datei->thumbnail) . '" alt="' . RenderResult::escape($wort) . '" loading="lazy"></a>';
+        }
+
+        if ($datei !== null) {
+            return '<a class="taxmod-media" href="' . RenderResult::escape($ziel) . '"' . $auf . '>' . RenderResult::escape($wort) . '</a>';
+        }
 
         // *Ob in einem neuen Tab, sagt die Einstellung `new_tab` (D-858); Vorgabe ja.*
         return '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '"' . ($neuerTab ? ' target="_blank" rel="noopener"' : '') . '>'
@@ -73,8 +103,19 @@ final class MediaRenderer extends TypedFieldRenderer
         return ! str_contains($adresse, '://') && preg_match('~^(www\.[^/\s]+|[a-z0-9-]+(\.[a-z0-9-]+)+/)~i', $adresse) === 1 ? 'https://' . $adresse : $adresse;
     }
 
-    public static function describe(string $adresse): string
+    public static function describe(string $adresse, ?MediaLibrary $bibliothek = null): string
     {
+        // *Eine Mediathek-Datei heisst wie ihr Titel dort; ohne Titel wie ihre Datei.*
+        $datei = self::fileOf($adresse, $bibliothek);
+
+        if ($datei !== null) {
+            return trim($datei->title) !== '' ? trim($datei->title) : self::describe($datei->url);
+        }
+
+        if (MediaType::libraryIdOf($adresse) !== null) {
+            return trim($adresse);
+        }
+
         $adresse = self::absolute($adresse);
 
         $pfad    = parse_url($adresse, PHP_URL_PATH);

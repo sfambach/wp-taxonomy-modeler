@@ -1187,9 +1187,82 @@
 	// ⚠️ **Das Suchfeld vor dem Satzdialog** (D-792, Zeile 153) — *tippen, darunter erscheinen die passenden Sätze aus dem Baum des
 	// Dialogs; ein Klick (oder Enter für den ersten) setzt den Auswahlknopf im Dialog und schreibt den Satz in den Öffner. Findet sich
 	// nichts, ist der Knopf daneben der Dialog.*
+	// ⚠️ **Geteilte Satzdialoge** (D-866) — *sein Wort: «3. ja». Gleiche Körper stehen einmal als `<template>` am Ende der Seite; das Feld
+	// trägt einen Platzhalter mit Name, Formular, Wert und der aktuellen Wahl. Beim ersten Anfassen wird die Vorlage geklont, ihre Knöpfe
+	// bekommen Name und Formular des Feldes, und die Wahl steht im Baum statt doppelt.*
+	function koerperEinsetzen( wurzel ) {
+		if ( ! wurzel ) {
+			return;
+		}
+
+		wurzel.querySelectorAll( '.taxmod-record-stub' ).forEach( function ( platz ) {
+			var vorlage = document.querySelector( 'template.taxmod-shared-body[data-taxmod-body="' + platz.getAttribute( 'data-taxmod-body' ) + '"]' );
+
+			if ( ! vorlage ) {
+				return;
+			}
+
+			var name   = platz.getAttribute( 'data-taxmod-name' ) || '';
+			var form   = platz.getAttribute( 'data-taxmod-form' ) || '';
+			var wert   = platz.getAttribute( 'data-taxmod-value' ) || '';
+			var teil   = vorlage.content.cloneNode( true );
+			var liste  = teil.querySelector( '.taxmod-record-list' );
+			var imBaum = wert === '' ? null : teil.querySelector( 'input[type="radio"][value="' + wert + '"]' );
+
+			teil.querySelectorAll( 'input[type="radio"]' ).forEach( function ( knopf ) {
+				knopf.name = name;
+
+				if ( form !== '' ) {
+					knopf.setAttribute( 'form', form );
+				}
+			} );
+
+			if ( liste ) {
+				var erster = liste.firstChild;
+
+				Array.prototype.slice.call( platz.children ).forEach( function ( eintrag ) {
+					var knopf = eintrag.querySelector( 'input[type="radio"]' );
+
+					// *Die Wahl, die auch im Baum steht, bleibt nur dort.*
+					if ( imBaum && knopf && knopf.value === wert ) {
+						return;
+					}
+
+					liste.insertBefore( eintrag, erster );
+				} );
+			}
+
+			if ( imBaum ) {
+				imBaum.checked = true;
+
+				// *Der Ast der Wahl steht offen, wie ohne Teilen.*
+				var gruppe = imBaum.closest( '.taxmod-record-group' );
+				var knoten = gruppe ? teil.querySelector( '.taxmod-record-node[data-taxmod-group="' + gruppe.getAttribute( 'data-taxmod-group' ) + '"]' ) : null;
+
+				for ( var ast = knoten ? knoten.closest( 'details' ) : null; ast; ast = ast.parentElement ? ast.parentElement.closest( 'details' ) : null ) {
+					ast.open = true;
+				}
+			}
+
+			platz.replaceWith( teil );
+		} );
+	}
+
+	[ 'click', 'focusin' ].forEach( function ( art ) {
+		document.addEventListener( art, function ( ereignis ) {
+			var wahl = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-pick' ) : null;
+
+			if ( wahl ) {
+				koerperEinsetzen( wahl );
+			}
+		}, true );
+	} );
+
 	function trefferZeigen( feld ) {
 		var wahl  = feld.closest( '.taxmod-record-pick' );
 		var liste = wahl ? wahl.querySelector( '.taxmod-record-hits' ) : null;
+
+		koerperEinsetzen( wahl );
 
 		if ( ! liste ) {
 			return;
@@ -1752,6 +1825,7 @@
 
 	// ⚠️ **Die Mediathek** (D-858) — sein Wort: «für datei sollte die mediathek geöffnet werden». *Gewählt wird eine Datei; ihre Adresse kommt
 	// ins Adressfeld, ihr Titel ins Beschriftungsfeld, wenn dort noch nichts steht.*
+	// ⚠️ *Seit D-865 kommt statt der Adresse die Id: «media:4711». Sein Wort: «id» — die Adresse hängt am Rechner, die Id nicht.*
 	document.addEventListener( 'click', function ( ereignis ) {
 		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-media-library' ) : null;
 
@@ -1772,7 +1846,7 @@
 		rahmen.on( 'select', function () {
 			var datei = rahmen.state().get( 'selection' ).first().toJSON();
 
-			medienEintragen( ziel, datei.url || '', ziel.titel && ziel.titel.value.trim() !== '' ? '' : ( datei.title || '' ) );
+			medienEintragen( ziel, datei.id ? 'media:' + datei.id : ( datei.url || '' ), ziel.titel && ziel.titel.value.trim() !== '' ? '' : ( datei.title || '' ) );
 		} );
 
 		rahmen.open();

@@ -2205,3 +2205,12 @@ fieldset.taxmod-read-only {
 	vertical-align: middle;
 	margin: -2px 2px 0 -2px;
 }
+
+/* Vorschaubild einer Mediathek-Datei (D-865): klein in Zeile und Tabelle, der Klick oeffnet das ganze Bild. */
+.taxmod-media-thumb {
+	max-width: 96px;
+	max-height: 72px;
+	vertical-align: middle;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+}

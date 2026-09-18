@@ -534,6 +534,35 @@ Gewählt wird wie ein Validator: eine Liste `functions` an Knoten oder Kante. Oh
 
 **Entschieden: alle drei ja, und der Validator zieht mit ein ([D-845](NewConcept/90-decision-log.md)).**
 
+## INF-057 · Was deine Projektbeiträge tragen, und was davon ins Modell passt
+
+**Typ:** `BEFUND` + `VORSCHLAG` · **Status:** `INFERRED` — sein Auftrag vom 2026-09-19: *«durchforste mal alle seiten es gibt auch test, firmware treiber ... und schau wie wir das noch erweitern können»*
+
+### Was gemessen ist
+
+96 Beiträge «Retro Projekt …» im lokalen WordPress (16 veröffentlicht, 80 Entwurf), alle aus einer Vorlage. Fünf Blöcke haben feste Form:
+
+| Block | Beiträge mit echtem Inhalt | Beispiel |
+|---|---|---|
+| Platinenbestellung (Gerber vorhanden, bestellt wo, Stück, Preis, Farbe/Oberfläche) | 65 Tabellen, ~40 echt | «Enig, Grün», «12€ incl. Porto» |
+| Bauteilliste (Referenz, Grösse, Anzahl, Beschreibung, Preis, Lager) | 42 gefüllt, 777 Zeilen | Summe «19,26€» |
+| Fazit (Erfolgreich, Preis pro Stück, Lötdauer, Schwierigkeit, Funktion, Lohnt es sich, Einschränkungen) | 38 | «Nur 8 Bit» (7-mal) |
+| Logbuch (Datum, Text) | 74, 232 Einträge | «PCB Eingetroffen», «Platine getestet» |
+| Dateien (Bilder 327, PDF 102, ZIP 62, dazu bin/jed/uf2 als Firmware) | 50 | Schaltplan, Gerber, Datenblatt |
+
+Firmware steht in 19, Treiber in 8, Probleme in 13 Beiträgen mit echtem Inhalt; **Tests** als eigene Rubrik nur in 2 — Testwissen steht verstreut unter Inbetriebnahme, Probleme und im Logbuch. Jumper-/DIP-Tabellen in etwa 14 Beiträgen. ⚠️ *Vorlagenwerte («1 Stunde», «10», «JLCPCB») sind von echten nicht zu unterscheiden.*
+
+### Mein Vorschlag (nicht beschlossen)
+
+Als Teile (wiederholbar, mit Unterfeldern) an einem Projekt: **Platinenbestellung**, **Bauteilposition**, **Firmware** (Name, Version, Datei, Zielchip, Programmiergerät), **Treiber** (Name, Datei, Betriebssystem, Aufrufzeile, Optionen), **Jumper-Einstellung** (gibt es am Mainboard schon), **Test** (Datum, Werkzeug, Schritt, Ergebnis), **Problem** (Fehlerbild, Ursache, Lösung, gelöst), **Logbuch-Eintrag** (Datum, Text). Als Felder: **Fazit** (Erfolgreich, Preis pro Stück, Lötdauer in Minuten, Schwierigkeit, Funktion, Lohnt es sich, Einschränkungen), **Schaltplan**, **Gerber-Datei**, **Gehäuse**. Der Status liesse sich aus dem Logbuch ableiten statt doppelt zu führen.
+
+### Zu entscheiden
+
+1. Welche dieser Teile zuerst — und ob Werkzeuge (T48, Terminalprogramm) und Rechner eigene Knoten werden.
+2. Ob die Beiträge dann ins Modell übernommen werden (Skript wie bei den Quellen) — und was mit den Vorlagenwerten geschieht.
+3. Wie das mit dem Aufbau der Seiten zusammengeht (Gutenberg, von ihm für den 2026-09-20 angekündigt).
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*

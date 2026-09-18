@@ -135,6 +135,33 @@ final class SummaryRenderer extends TypedFieldRenderer
             $vorn .= $knopf((string) (int) $gewaehlt, true, RenderResult::escape($context->surroundings->refersTo ?? '#' . $gewaehlt));
         }
 
+        // ⚠️ **Teilt die Seite die Körper** ([D-866](../../../docs/NewConcept/90-decision-log.md)), steht hier nur ein Platzhalter: Name, Formular
+        // und Wert des Feldes, dazu die aktuelle Wahl als echter Knopf — damit ein Speichern ohne Skript nichts verliert. Der Körper selbst ist
+        // neutral (ohne Namen, ohne Wahl) und steht einmal je Seite als Vorlage.
+        if ($context->surroundings->sharedBodies !== null) {
+            $neutral = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): string => '<label class="taxmod-record-choice' . ($passt ? ' taxmod-record-match' : '') . '"'
+                . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
+                . '<input type="radio" value="' . $wert . '"> ' . $wort . '</label>';
+            $wahl    = $vorn;
+
+            if ($gewaehlt !== null && $steht) {
+                $wort = null;
+
+                foreach ($baum as $zeile) {
+                    $wort ??= isset($zeile['records'][$gewaehlt]) ? (string) $zeile['records'][$gewaehlt] : null;
+                }
+
+                $wahl .= $knopf((string) (int) $gewaehlt, true, RenderResult::escape($wort ?? '#' . $gewaehlt));
+            }
+
+            $schluessel = $context->surroundings->sharedBodies->share(self::browserBody($baum, $neutral, null, '', $context->surroundings->dialogWords));
+            $koerper    = '<div class="taxmod-record-stub" data-taxmod-body="' . $schluessel . '" data-taxmod-name="' . $name . '"'
+                . ' data-taxmod-form="' . RenderResult::escape($context->surroundings->formId) . '"'
+                . ' data-taxmod-value="' . ($gewaehlt === null ? '' : (int) $gewaehlt) . '">' . $wahl . '</div>';
+
+            return $this->dialogAround($context, $baum, $gewaehlt, $koerper);
+        }
+
         $koerper = self::browserBody($baum, $knopf, $gewaehlt, $vorn, $context->surroundings->dialogWords);
 
         return $this->dialogAround($context, $baum, $gewaehlt, $koerper);

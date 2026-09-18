@@ -43,13 +43,81 @@ final class WpdbLabelRepository implements LabelRepository
         return 'text_' . $role->value;
     }
 
+    /**
+     * Was dieser Aufruf schon gelesen hat, je Art und Eigentümer — auch «keine Beschriftung» als leere Liste.
+     *
+     * ⚠️ *Gemessen am 2026-09-19 an «Mikrocontroller»: dieselbe Abfrage 21-mal je Seite, weil jeder Block seine Knoten neu erfragt — meist
+     * dieselben (`CD-7`).*
+     *
+     * ⚠️ **Nur während eine Seite gezeichnet wird** ({@see self::whileDrawing()}). *Es gibt mehrere Exemplare dieser Klasse, und Beschriftungen
+     * schreiben auch andere (Knoten anlegen, Aufräumen). Ein Gedächtnis, das immer gälte, las einmal schon Veraltetes — gemessen am
+     * Wächter `labels-page-save`, der in einem Lauf schreibt und dann zeichnet. Beim Zeichnen schreibt niemand; danach ist es weg.*
+     *
+     * @var array<string, array<int, list<Label>>>|null `null`: aus
+     */
+    private static ?array $gemerkt = null;
+
+    /**
+     * Zeichnen mit Gedächtnis: dieselben Eigentümer werden in diesem Lauf einmal gelesen ([D-814](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * *`mixed`, weil PHP keine Generics kennt: zurück kommt, was das Zeichnen liefert (`T`).*
+     *
+     * @template T
+     * @param  \Closure(): T $zeichnen
+     * @return T
+     */
+    public static function whileDrawing(\Closure $zeichnen): mixed
+    {
+        $vorher         = self::$gemerkt;
+        self::$gemerkt ??= [];
+
+        try {
+            return $zeichnen();
+        } finally {
+            self::$gemerkt = $vorher;
+        }
+    }
+
     public function forOwners(array $ownerIds, IdentitySpace $ownerKind): array
     {
-        global $wpdb;
-
         if ($ownerIds === []) {
             return [];
         }
+
+        if (self::$gemerkt === null) {
+            return $this->lesen(array_values(array_map(intval(...), $ownerIds)), $ownerKind);
+        }
+
+        $art    = $ownerKind->value;
+        $ids    = array_values(array_unique(array_map(intval(...), $ownerIds)));
+        $fehlen = array_values(array_filter($ids, static fn (int $id): bool => ! isset(self::$gemerkt[$art][$id])));
+
+        if ($fehlen !== []) {
+            foreach ($fehlen as $id) {
+                self::$gemerkt[$art][$id] = [];
+            }
+
+            foreach ($this->lesen($fehlen, $ownerKind) as $label) {
+                self::$gemerkt[$art][$label->ownerId][] = $label;
+            }
+        }
+
+        $antwort = [];
+
+        foreach ($ids as $id) {
+            array_push($antwort, ...self::$gemerkt[$art][$id]);
+        }
+
+        return $antwort;
+    }
+
+    /**
+     * @param  list<int>   $ownerIds
+     * @return list<Label>
+     */
+    private function lesen(array $ownerIds, IdentitySpace $ownerKind): array
+    {
+        global $wpdb;
 
         $places = implode(',', array_fill(0, count($ownerIds), '%d'));
         $owner  = self::ownerTable($ownerKind);
@@ -108,6 +176,8 @@ final class WpdbLabelRepository implements LabelRepository
     {
         global $wpdb;
 
+        self::$gemerkt = self::$gemerkt === null ? null : [];
+
         $labelId = $this->labelIdFor($label->ownerId, $label->ownerKind, true);
         $spalte  = self::columnFor($label->role);
         $texts   = Schema::table('label_texts');
@@ -134,6 +204,8 @@ final class WpdbLabelRepository implements LabelRepository
     public function forget(int $ownerId, IdentitySpace $ownerKind, SeededRole $role, string $number, string $locale): void
     {
         global $wpdb;
+
+        self::$gemerkt = self::$gemerkt === null ? null : [];
 
         $labelId = $this->labelIdFor($ownerId, $ownerKind, false);
 
@@ -186,6 +258,8 @@ final class WpdbLabelRepository implements LabelRepository
     public function forgetOwners(array $ownerIds, IdentitySpace $ownerKind): int
     {
         global $wpdb;
+
+        self::$gemerkt = self::$gemerkt === null ? null : [];
 
         $ids = array_values(array_unique(array_map(intval(...), $ownerIds)));
 

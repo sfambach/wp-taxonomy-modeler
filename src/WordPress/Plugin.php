@@ -548,6 +548,8 @@ final class Plugin
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
         $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file from the media library', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'))->withSharedPicker()
+            // ⚠️ *Und gleiche Satzdialoge stehen einmal als Vorlage (D-866) — die Seite gibt sie am Ende aus.*
+            ->withSharedRecordBodies(new \Taxmod\Core\Renderer\SharedBodies())
             // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*
             ->withAddonWords([
                 'add'                   => __('Add this function', 'taxmod'),
@@ -655,6 +657,8 @@ final class Plugin
             // keines.***
             users: new WpUsers(),
             records: new WpdbRecordRepository(),
+            // ⚠️ *Die Mediathek (D-865): der Kern speichert die Id einer Datei, der Rand sagt Adresse, Titel und Vorschaubild.*
+            media: new WpMediaLibrary(),
             addons: ShippedAddons::registry(),
             // ⚠️ **Schritt 4 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
             // Renderer zeichnen aus `settings_value` und dem Vertrag; `ModelValues` bleibt für das,

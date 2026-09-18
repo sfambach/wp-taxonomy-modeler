@@ -6,7 +6,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SimpleType;
+use Taxmod\Core\Model\Type\MediaType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Port\MediaFile;
+use Taxmod\Core\Port\MediaLibrary;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\MediaRenderer;
@@ -40,6 +43,45 @@ final class MediaRendererTest extends TestCase
         self::assertStringContainsString('>Schaltplan Rev. B</a>', MediaRenderer::link('https://example.org/plan_b.pdf', 'Schaltplan Rev. B'));
         self::assertStringContainsString('>plan b (PDF)</a>', MediaRenderer::link('https://example.org/plan_b.pdf', '  '));
         self::assertStringContainsString('href="https://www.google.de"', MediaRenderer::link('www.google.de'));
+    }
+
+    /** ⚠️ *D-865, sein Wort: «id» — eine Datei der Mediathek steht als `media:<Id>`, der Rand sagt Adresse, Titel und Vorschaubild.* */
+    #[Test]
+    public function a_library_file_is_stored_by_id_and_an_image_shows_its_thumbnail(): void
+    {
+        $bibliothek = new class () implements MediaLibrary {
+            public int $gefragt = 0;
+
+            public function filesFor(array $ids): array
+            {
+                ++$this->gefragt;
+
+                return array_intersect_key([
+                    7 => new MediaFile(7, 'https://example.org/up/platine.jpg', 'Platine oben', 'https://example.org/up/platine-150x150.jpg'),
+                    8 => new MediaFile(8, 'https://example.org/up/plan.pdf', 'Schaltplan'),
+                ], array_flip($ids));
+            }
+        };
+
+        self::assertSame(7, MediaType::libraryIdOf(' media:7 '));
+        self::assertNull(MediaType::libraryIdOf('https://example.org/media:7'));
+        self::assertSame('media:7', MediaType::libraryAddress(7));
+
+        $bild = MediaRenderer::link('media:7', '', true, $bibliothek);
+        self::assertStringContainsString('href="https://example.org/up/platine.jpg"', $bild);
+        self::assertStringContainsString('<img class="taxmod-media-thumb" src="https://example.org/up/platine-150x150.jpg" alt="Platine oben"', $bild);
+
+        self::assertStringContainsString('>Schaltplan</a>', MediaRenderer::link('media:8', '', true, $bibliothek), 'kein Bild: der Titel ist der Linktext');
+        self::assertStringContainsString('>Rev. B</a>', MediaRenderer::link('media:8', 'Rev. B', true, $bibliothek), 'die Beschriftung gewinnt');
+        self::assertSame('Schaltplan', MediaRenderer::describe('media:8', $bibliothek));
+
+        // *Eine Id ohne Datei zeigt, was gespeichert ist, und ist kein Link ins Leere.*
+        $fehlt = MediaRenderer::link('media:9', '', true, $bibliothek);
+        self::assertStringContainsString('taxmod-media-missing', $fehlt);
+        self::assertStringNotContainsString('href=', $fehlt);
+
+        // *Ohne Naht bleibt die gespeicherte Adresse stehen — nichts wird erfunden.*
+        self::assertStringContainsString('media:7', MediaRenderer::link('media:7'));
     }
 
     /** ⚠️ *Sein Wort: «das folder symbol oder datei symbol für den knopf verwenden und den knopf nach rechts».* */

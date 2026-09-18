@@ -127,9 +127,12 @@ $ownRelation = $editor->addField($part->id, $text->id, 'part number');
 // **einer** Liste, und das ist die Lücke, die der Eigentümer selbst benannt hat: «die Felder, die wir
 // hier definieren, definieren Daten des Modells und nicht Daten, die durch den Benutzer eingegeben
 // werden».*
+// ⚠️ **Geändert am 2026-09-19 mit [D-865](../../docs/NewConcept/90-decision-log.md), sichtbar:** *auch was am Vater aller Modelle
+// steht («Titelbild», «Bilder», «Quellen») erbt jeder Probeknoten unter «Model» und wird nicht gezählt — sein Wort: «am vater zu allen
+// sollte es bilder geben», und auf die Folge für diese Prüfung: «ja».*
 $vonDerWurzel = array_map(
     static fn (Relation $r): string => $r->name,
-    $editor->fieldsOf($framework->root()->id)
+    [...$editor->fieldsOf($framework->root()->id), ...$editor->fieldsOf($framework->rootOf(Branch::Model)->id)]
 );
 
 echo '  (von der Wurzel geerbt und darum nicht gezählt: '

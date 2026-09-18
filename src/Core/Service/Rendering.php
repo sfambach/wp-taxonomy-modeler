@@ -155,6 +155,8 @@ final class Rendering implements Presets
         private readonly ?\Taxmod\Core\Repository\RecordRepository $records = null,
         /** ⚠️ *Die Zusatzfunktionen (D-845): Vorbelegung, «Mehrere hinzufügen», Prüfen beim Speichern — ohne Registratur greift keine ein.* */
         private readonly ?\Taxmod\Core\Addon\AddonRegistry $addons = null,
+        /** ⚠️ *Die Mediathek des Randes (D-865): eine Datei wird mit ihrer Id gespeichert, Adresse und Vorschaubild reicht der Rand.* */
+        private readonly ?\Taxmod\Core\Port\MediaLibrary $media = null,
     ) {
     }
 
@@ -995,6 +997,27 @@ final class Rendering implements Presets
         }
 
         return $aus;
+    }
+
+    /** Wohin die Körper der Satzdialoge gehen, wenn die Seite sie teilt (D-866) — ein Exemplar, das alle Kopien dieser Zeichnung teilen. */
+    private ?\Taxmod\Core\Renderer\SharedBodies $geteilteKoerper = null;
+
+    /**
+     * Dieselbe Zeichnung, aber jeder gleiche Satzdialog-Körper steht einmal als Vorlage ([D-866](../../../docs/NewConcept/90-decision-log.md)) —
+     * nur für eine Seite, die {@see sharedRecordBodies()} am Ende ausgibt.
+     */
+    public function withSharedRecordBodies(\Taxmod\Core\Renderer\SharedBodies $koerper): static
+    {
+        $kopie                  = clone $this;
+        $kopie->geteilteKoerper = $koerper;
+
+        return $kopie;
+    }
+
+    /** Die gesammelten Vorlagen — leer, wenn die Seite nicht teilt. */
+    public function sharedRecordBodies(): string
+    {
+        return $this->geteilteKoerper?->markup() ?? '';
     }
 
     /** Dieselbe Zeichnung, aber ganze Knotenbäume öffnen den gemeinsamen Auswahlbaum — nur für eine Seite, die ihn zeichnet ([D-815](../../../docs/NewConcept/90-decision-log.md)). */
@@ -1916,6 +1939,8 @@ final class Rendering implements Presets
                     // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*
                     recordTree: $saetze['baum'][$relation->id] ?? [],
                     dialogWords: $this->dialogWords,
+                    mediaLibrary: $this->media,
+                    sharedBodies: $this->geteilteKoerper,
                     // ⚠️ **«Nichts» ist eine Möglichkeit nur dort, wo die Multiplizität es zulässt.**
                     //
                     // ⚠️ *Der Eigentümer: «`render` ist `1..1` in `DisplayOption`, sollte somit nicht die
@@ -6416,6 +6441,29 @@ final class Rendering implements Presets
         // ⚠️ **Angezeigt stehen alle Werte** ([D-859](../../../docs/NewConcept/90-decision-log.md)) — sein Befund: beim IV 386 stand nur eine
         // CPU, obwohl zwei eingetragen sind. *Ein Satzverweis ist ein Link auf seinen Satz (D-852).*
         if ($purpose === Purpose::Display) {
+            // ⚠️ *Mehrere Medien — «Bilder», «Quellen» — jedes für sich (D-865): gemessen stand sonst «media:15685, media:15686, …» als
+            // ein einziger Link da, weil der alte Weg die Werte mit Komma zu einem verklebt. Bilder nebeneinander, Dateien untereinander.*
+            if ($werte !== [] && $this->typeAt($relation) === SimpleType::Media) {
+                $neuerTab = $this->mediaOpensNewTab([$relation], $relation->id);
+                $bilder   = '';
+                $dateien  = [];
+
+                foreach ($werte as $wert) {
+                    $adresse = trim((string) $wert->text);
+                    $link    = \Taxmod\Core\Renderer\MediaRenderer::link($adresse, '', $neuerTab, $this->media);
+
+                    if (\Taxmod\Core\Renderer\MediaRenderer::fileOf($adresse, $this->media)?->isImage() === true) {
+                        $bilder .= $link . ' ';
+                    } else {
+                        $dateien[] = $link;
+                    }
+                }
+
+                return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
+                    '<span class="taxmod-value taxmod-media-list">' . trim($bilder) . ($bilder !== '' && $dateien !== [] ? '<br>' : '') . implode('<br>', $dateien) . '</span>'
+                )];
+            }
+
             if ($werte === [] || ! $verweise) {
                 return null;
             }
@@ -6446,13 +6494,14 @@ final class Rendering implements Presets
         $form    = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
         $angebot = $context->surroundings->options;
         $medium  = $this->typeAt($relation) === SimpleType::Media;
-        $wortVon = static function (TypedValue $wert) use ($angebot, $medium): string {
+        $bibliothek = $this->media;
+        $wortVon    = static function (TypedValue $wert) use ($angebot, $medium, $bibliothek): string {
             if ($wert->reference !== null) {
                 return (string) ($angebot[$wert->reference] ?? '#' . $wert->reference);
             }
 
             // *Ein Medium heisst wie seine Datei (D-846), nicht wie seine Adresse.*
-            return $medium ? \Taxmod\Core\Renderer\MediaRenderer::describe((string) $wert->rawValue()) : (string) $wert->rawValue();
+            return $medium ? \Taxmod\Core\Renderer\MediaRenderer::describe((string) $wert->rawValue(), $bibliothek) : (string) $wert->rawValue();
         };
 
         $html = '<span class="taxmod-switch-picker taxmod-value-picker"><ol class="taxmod-switch-cascade">';
@@ -6843,7 +6892,7 @@ final class Rendering implements Presets
                     // ⚠️ *Sein Wort: «alle buttons bitte nach rechts» (D-858): Mediathek und Linkdialog vor «+» und Mülleimer, der Link dahinter.*
                     $akte[$i]   = \Taxmod\Core\Renderer\MediaRenderer::buttons($teilPrefix . '[' . $medium . ']', $teilPrefix . '[' . $beschriftung . ']', $this->dialogWords, $neuerTab)
                         . $akt
-                        . ($adresse === '' ? '' : ' ' . \Taxmod\Core\Renderer\MediaRenderer::link($adresse, (string) (($werte[$beschriftung] ?? null)?->text ?? ''), $neuerTab));
+                        . ($adresse === '' ? '' : ' ' . \Taxmod\Core\Renderer\MediaRenderer::link($adresse, (string) (($werte[$beschriftung] ?? null)?->text ?? ''), $neuerTab, $this->media));
                 }
             }
 

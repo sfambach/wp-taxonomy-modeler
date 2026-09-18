@@ -251,6 +251,10 @@ final class Surroundings
         public readonly array $rowLinks = [],
         /** Der Name des Beschriftungsfeldes neben einem Medienfeld — dorthin schreibt der Linkdialog den Linktext (D-857). */
         public readonly string $captionName = '',
+        /** Die Mediathek, die eine gespeicherte Id (`media:<Id>`) in Adresse, Titel und Vorschaubild auflöst (D-865). Ohne sie bleibt die Id stehen. */
+        public readonly ?\Taxmod\Core\Port\MediaLibrary $mediaLibrary = null,
+        /** Wohin der Körper eines Satzdialogs geht, wenn die Seite ihn teilt (D-866); ohne: jeder Dialog trägt seinen eigenen. */
+        public readonly ?SharedBodies $sharedBodies = null,
     ) {
     }
 

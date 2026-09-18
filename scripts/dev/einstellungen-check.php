@@ -1220,7 +1220,10 @@ $block = $at === false ? '' : substr($seiteSatz, $at);
 $saetze = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE node_id = {$satzKnoten->id} AND relation_id = 0");
 // ⚠️ **Geändert am 2026-09-13 mit [D-768](../../docs/NewConcept/90-decision-log.md), sichtbar:** *über den Sätzen steht die
 // Filterzeile — eine Zeile mehr mit Aktionszelle, eigenem Formular (`taxmod-record-0`) und denselben drei Vorspalten.*
-check('der Datensatz-Block ist eine Tabelle: nicht n Tabellen, je Satz eine Zeile mit Aktionszelle, eigenem Formular und drei Vorspalten — dazu die Filterzeile', $block !== '' && substr_count($block, '<table class="taxmod-table"') < $saetze && substr_count($block, 'taxmod-table-acts') === $saetze + 1 && substr_count($block, 'id="taxmod-record-') === $saetze + 1 && str_contains($block, 'id="taxmod-record-0"') && substr_count($block, 'taxmod-table-lead') === ($saetze + 1) * 3, "{$saetze} Sätze");
+// ⚠️ **Geändert am 2026-09-19 mit [D-865](../../docs/NewConcept/90-decision-log.md), sichtbar:** *gezählt wird die Aktionszelle mit dem
+// Formular des Satzes. Seit «Quellen» am Vater aller Modelle steht, trägt jeder Satzknoten ein mehrfaches Teil, und dessen Teilzeile hat
+// ihre eigene Aktionszelle («+», Mülleimer) — die ist kein Satz.*
+check('der Datensatz-Block ist eine Tabelle: nicht n Tabellen, je Satz eine Zeile mit Aktionszelle, eigenem Formular und drei Vorspalten — dazu die Filterzeile', $block !== '' && substr_count($block, '<table class="taxmod-table"') < $saetze && substr_count($block, 'taxmod-table-acts"><form') === $saetze + 1 && substr_count($block, 'id="taxmod-record-') === $saetze + 1 && str_contains($block, 'id="taxmod-record-0"') && substr_count($block, 'taxmod-table-lead') === ($saetze + 1) * 3, "{$saetze} Sätze");
 check('«Belongs to» steht nicht mehr darin', ! str_contains($block, 'Belongs to'));
 $einstellungsNamen = $wpdb->get_col("SELECT e.name FROM {$p}relations_named e WHERE e.kind = 'setting' AND e.name <> ''") ?: [];
 $drin = [];
@@ -1262,7 +1265,9 @@ $saetzeAmSatzknoten = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_record
 $diagnoseAn  = $geliehen(NodesScreen::DEVELOPER_OPTION, '1', static fn (): string => seite($satzKnoten->id));
 $diagnoseAus = $geliehen(NodesScreen::DEVELOPER_OPTION, '0', static fn (): string => seite($satzKnoten->id));
 check('im Entwicklermodus steht unter dem Datensatz-Block die Renderer-Diagnose, eine Zeile je Satz', substr_count($diagnoseAn, 'taxmod-record-diagnostic-row') === $saetzeAmSatzknoten, substr_count($diagnoseAn, 'taxmod-record-diagnostic-row') . " Zeilen für {$saetzeAmSatzknoten} Sätze");
-check('und je Zelle nennt sie das Feld und seinen Renderer', (bool) preg_match('/taxmod-record-diagnostic-row[^<]*<strong>#\d+<\/strong> · <code>__es zahl<\/code> — int · (field|spinner|slider)/', $diagnoseAn));
+// ⚠️ *Seit D-865 (2026-09-19, sichtbar geändert) stehen die geerbten Felder des Vaters aller Modelle vorn in der Zeile; das eigene Feld
+// folgt ihnen.*
+check('und je Zelle nennt sie das Feld und seinen Renderer', (bool) preg_match('/taxmod-record-diagnostic-row[^<]*<strong>#\d+<\/strong>(?: · <code>[^<]*<\/code> — [^·]*· [^·<]*)* · <code>__es zahl<\/code> — int · (field|spinner|slider)/', $diagnoseAn));
 check('ohne Entwicklermodus steht sie nicht da', ! str_contains($diagnoseAus, 'taxmod-record-diagnostic'));
 foreach (['taxmod_dev_writes' => ['taxmod-tree-writes', 'die Schreibzahl'], 'taxmod_dev_root_toggle' => ['taxmod_root', 'der Schalter «show the root»']] as $option => [$marke, $nameOpt]) {
     $anM  = $geliehen($option, '1', static fn (): string => seite($mitEinstellungssatz));
@@ -1316,7 +1321,13 @@ foreach (['K1', 'K2', 'K3'] as $n) {
     $editor->addField($rangKind->id, $seeded['text']->id, '__es ' . $n);
 }
 $herkunft = [];
+// ⚠️ *Seit D-865 (2026-09-19, sichtbar geändert) erbt jeder Knoten unter «Model» dessen Felder; gezählt werden nur die der Probeknoten.*
+$vomVater = array_map(static fn ($r): string => $r->name, $editor->fieldsOf($modellAst->id));
 foreach (tabelleUnter(seite($rangKind->id), 'Fields', 'Settings') as $zeile) {
+    if (in_array(trim((string) ($zeile[0] ?? '')), $vomVater, true) || in_array(trim((string) ($zeile[1] ?? '')), $vomVater, true)) {
+        continue;
+    }
+
     $woher = $zeile[3] ?? '';
     if ($woher === 'own' || $woher === 'inherited') {
         $herkunft[] = $woher;
