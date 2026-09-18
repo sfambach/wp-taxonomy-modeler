@@ -160,6 +160,11 @@ final class Control
          * *Der Knopf wird zum Öffner; der Akt hängt am Bestätigen im Fuss.*
          */
         public readonly ?Dialog $opens = null,
+        /**
+         * Symbol **und** Wort — sein Wort: *«wobei ich hier den text lassen würde und ein + als icon dazu … gleiche für add field»*
+         * ([D-861](../../../docs/NewConcept/90-decision-log.md)). Ohne: ein Symbol ersetzt das Wort (D-847).
+         */
+        public readonly bool $iconWithLabel = false,
     ) {
     }
 }

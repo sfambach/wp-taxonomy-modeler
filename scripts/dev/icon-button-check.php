@@ -122,6 +122,12 @@ function controlsOf(string $html): array
         $dashicon = $xpath->query('.//span[contains(@class,"dashicons")]', $node)->item(0);
         $glyph    = $xpath->query('.//span[contains(@class,"' . ControlMarkup::GLYPH_FACE . '")]', $node)->item(0);
         $words    = trim(preg_replace('/\s+/u', ' ', $node->textContent) ?? '');
+        // *Was man sieht — ohne den Text für Vorleser. Steht neben dem Symbol ein Wort, ist es ein gewöhnlicher Knopf (D-861).*
+        $sichtbar = '';
+
+        foreach ($xpath->query('.//text()[not(ancestor::*[contains(@class,"screen-reader-text")])]', $node) as $text) {
+            $sichtbar .= $text->nodeValue;
+        }
 
         $found[] = [
             'tag'   => $node->nodeName,
@@ -131,6 +137,7 @@ function controlsOf(string $html): array
                 ? $dashicon->getAttribute('aria-label')
                 : ($glyph instanceof DOMElement ? $glyph->getAttribute('aria-label') : ''),
             'words' => $words,
+            'visible' => trim(preg_replace('/\s+/u', ' ', $sichtbar) ?? ''),
             'value' => $node->getAttribute('value'),
         ];
     }
@@ -148,6 +155,13 @@ function controlsOf(string $html): array
  */
 function looksLikeAnIcon(array $control): bool
 {
+    // ⚠️ *Geändert am 2026-09-18 mit [D-861](../../docs/NewConcept/90-decision-log.md), sichtbar: ein Symbol **mit** Wort daneben
+    // («+ New record», «+ Add field») ist ein gewöhnlicher Knopf und darf seinen Rahmen tragen — sein Wort: «den text lassen und ein + als
+    // icon dazu».*
+    if ($control['face'] === 'dashicon' && preg_match('/[\p{L}\p{N}]/u', (string) ($control['visible'] ?? '')) === 1) {
+        return false;
+    }
+
     if ($control['face'] !== 'words') {
         return true;
     }

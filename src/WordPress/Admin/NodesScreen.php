@@ -1015,7 +1015,8 @@ final class NodesScreen
                 $button[2],
                 true,
                 $button[4] ?? false,
-                $button[3] ?? ''
+                $button[3] ?? '',
+                iconWithLabel: $button[5] ?? false
             ));
         }
 
@@ -2964,9 +2965,11 @@ final class NodesScreen
                 '',
                 true,
                 false,
+                'plus-alt2',
                 '',
-                '',
-                true
+                true,
+                // *Wort und «+» (D-861) — sein Wort: «gleiche für add field».*
+                iconWithLabel: true
             ))
         );
     }
@@ -3995,7 +3998,8 @@ final class NodesScreen
         // die auch bei der Eingabe verwendet werden soll; ein `example` wird nur gezeigt».*
         $html .= $this->form(
             $selected->id,
-            [['add_record', esc_html__('New record', 'taxmod'), __('Start a record against this node', 'taxmod')]],
+            // ⚠️ *Ein Symbol statt des Wortes (D-847) — sein Wort: «new record gibt es noch als button könnte auch ein + werden».*
+            [['add_record', __('New record', 'taxmod'), __('Start a record against this node', 'taxmod'), 'plus-alt2', false, true]],
             $this->recordTypeChoice(null, '', $branch)
         );
 

@@ -61,7 +61,7 @@ final class ControlMarkup
         // page after the first version of this: the save button lost `taxmod-icon-button` and would
         // have got its box back among 405 flat neighbours — *because a glyph button is icon-only in
         // every way that matters to the layout, and only `face()` cares which of the two it is.*
-        $bare = $control->icon !== '' || $control->glyph !== '';
+        $bare = ($control->icon !== '' || $control->glyph !== '') && ! $control->iconWithLabel;
         $icon = $control->icon !== '';
 
         // ⚠️ **One place builds every button, and it took four hand-written ones to get here.** The
@@ -139,6 +139,11 @@ final class ControlMarkup
         // ⚠️ *Beide Zweige schrieben ihr Symbol selbst hin, in **zwei verschiedenen Techniken**,
         // innerhalb derselben Methode. Jetzt fragen sie {@see IconMarkup} — dieselbe Stelle, die
         // auch die sechs übrigen Fundorte benutzen.*
+        // *Symbol und Wort (D-861): das Symbol ist Schmuck, der Name steht als Text daneben.*
+        if ($icon && $control->iconWithLabel) {
+            return IconMarkup::dashicon($control->icon) . ' ' . RenderResult::escape($control->label);
+        }
+
         if ($icon) {
             return IconMarkup::dashicon($control->icon, $control->label);
         }
