@@ -50,6 +50,17 @@ final class MediaRenderer extends TypedFieldRenderer
         return $this->createHtmlValueSpan(self::link($adresse, (string) ($context->surroundings->refersTo ?? '')));
     }
 
+    /** Der Knopf, der den Linkdialog von WordPress öffnet ([D-857](../../../docs/NewConcept/90-decision-log.md)). */
+    private static function linkButton(RenderContext $context): string
+    {
+        $wort = (string) ($context->surroundings->dialogWords['link'] ?? '');
+
+        return '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-media-wplink" style="color:#1d2327"'
+            . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"')
+            . ($context->surroundings->captionName === '' ? '' : ' data-taxmod-caption="' . RenderResult::escape($context->surroundings->captionName) . '"')
+            . '>' . IconMarkup::dashicon('admin-links', $wort) . '</button>';
+    }
+
     /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
     public static function link(string $adresse, string $beschriftung = ''): string
     {
@@ -117,6 +128,8 @@ final class MediaRenderer extends TypedFieldRenderer
             . IconMarkup::dashicon('media-default', $wort)
             . '<input type="file" class="taxmod-media-file screen-reader-text" name="' . RenderResult::escape(self::uploadNameFor($context->fieldName)) . '"' . $form . '>'
             . '</label>'
+            // ⚠️ *Der Linkdialog von WordPress (D-857): füllt Adresse und — wo es eines gibt — das Beschriftungsfeld der Zeile.*
+            . self::linkButton($context)
             . '<span class="taxmod-media-chosen description"></span>'
             // ⚠️ *Mit Beschriftungsfeld steht der Link nicht im Feld, sondern hinter «+» und Mülleimer der Zeile (D-856).*
             . ($adresse === '' || $context->surroundings->refersTo !== null ? '' : ' ' . $this->display($context))

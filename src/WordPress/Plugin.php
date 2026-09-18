@@ -293,6 +293,16 @@ final class Plugin
      */
     public function enqueueScript(): void
     {
+        // ⚠️ **Der Linkdialog von WordPress** ([D-857](../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«ja bau den wp linkdialog
+        // ein»*. Derselbe Dialog wie im Editor: Adresse, Linktext, Suche in den eigenen Inhalten. Er braucht sein Skript, sein Stilblatt und
+        // sein Markup im Fuss der Seite.
+        wp_enqueue_script('wplink');
+        wp_enqueue_style('editor-buttons');
+
+        if (! has_action('admin_footer', [$this, 'printLinkDialog'])) {
+            add_action('admin_footer', [$this, 'printLinkDialog']);
+        }
+
         wp_enqueue_script(
             'taxmod-admin',
             plugins_url('assets/admin.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
@@ -300,6 +310,20 @@ final class Plugin
             (string) (@filemtime($this->path('assets/admin.js')) ?: self::VERSION),
             true
         );
+    }
+
+    /**
+     * Das Markup des Linkdialogs und das verborgene Textfeld, in das er seinen Link schreibt ([D-857](../../docs/NewConcept/90-decision-log.md)).
+     * *Der Dialog schreibt `<a href="…">Text</a>` in ein Textfeld; das Skript liest daraus Adresse und Beschriftung.*
+     */
+    public function printLinkDialog(): void
+    {
+        if (! class_exists('_WP_Editors', false)) {
+            require_once ABSPATH . WPINC . '/class-wp-editor.php';
+        }
+
+        echo '<textarea id="taxmod-wplink-target" hidden aria-hidden="true"></textarea>';
+        \_WP_Editors::wp_link_dialog();
     }
 
     /** A path inside the plugin folder, from the file `boot()` was given. */
@@ -521,7 +545,7 @@ final class Plugin
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
-        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file to upload', 'taxmod'), __('Remove this choice', 'taxmod'))->withSharedPicker()
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file to upload', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'))->withSharedPicker()
             // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*
             ->withAddonWords([
                 'add'                   => __('Add this function', 'taxmod'),

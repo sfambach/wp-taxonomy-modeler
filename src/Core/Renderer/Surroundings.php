@@ -249,6 +249,8 @@ final class Surroundings
          * @var list<string>
          */
         public readonly array $rowLinks = [],
+        /** Der Name des Beschriftungsfeldes neben einem Medienfeld — dorthin schreibt der Linkdialog den Linktext (D-857). */
+        public readonly string $captionName = '',
     ) {
     }
 

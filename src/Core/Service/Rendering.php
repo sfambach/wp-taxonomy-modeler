@@ -663,12 +663,12 @@ final class Rendering implements Presets
      * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
      * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
      */
-    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = ''): static
+    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = '', string $link = ''): static
     {
         $kopie              = clone $this;
-        // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805), das des Dateiknopfs (D-846) und das des Mülleimers an einer
-        // gesetzten Referenz (D-851).*
-        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear];
+        // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805), das des Dateiknopfs (D-846), das des Mülleimers an einer
+        // gesetzten Referenz (D-851) und das des Linkknopfs (D-857).*
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear, 'link' => $link];
 
         return $kopie;
     }
@@ -1868,6 +1868,8 @@ final class Rendering implements Presets
                     // here is the composed case — *and it is the summary renderer (D-106) that is
                     // missing, not a renderer that is mis-set.*
                     refersToARecord: $value->reference !== null && $type === null,
+                    // *Wohin der Linkdialog die Beschriftung schreibt: das Nachbarfeld derselben Zeile (D-857).*
+                    captionName: isset($beschriftet[$relation->id]) && $fieldPrefix !== '' ? $fieldPrefix . '[' . $beschriftet[$relation->id] . ']' : '',
                     // *Beim Anzeigen führt ein Satzverweis zu seinem Satz (D-852); beim Bearbeiten steht dort der Wähler.*
                     href: $purpose === Purpose::Display && $this->recordLink !== null && $value->referenceSpace === ReferenceSpace::Record && $value->reference !== null
                         ? ($this->recordLink)($value->reference)

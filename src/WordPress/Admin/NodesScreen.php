@@ -186,6 +186,9 @@ final class NodesScreen
     /** Der Satz, den die Vorschau zeigt und bearbeitet — gewählt in der Tabelle darunter ([D-785](../../../docs/NewConcept/90-decision-log.md)). */
     private const PREVIEW_RECORD = 'taxmod_preview_record';
 
+    /** Ein Satz, der über seinen Link geöffnet wird — der Knoten dazu wird beim Öffnen nachgeschlagen (D-852). */
+    private const OPEN_RECORD = 'taxmod_open_record';
+
     /** Der Akt, der eine Feldzeile auf- oder zuklappt. */
     private const TOGGLE_ROW_SETTINGS = 'toggle_field_settings';
 
@@ -283,6 +286,16 @@ final class NodesScreen
 
     public function render(): string
     {
+        // ⚠️ **Ein Satzlink nennt nur den Satz** ([D-852](../../../docs/NewConcept/90-decision-log.md)); *welcher Knoten ihn trägt, wird erst beim
+        // Klick nachgeschlagen — sonst kostete jeder angezeigte Verweis eine Abfrage (gemessen: 156 statt höchstens 150 auf der Bezugsseite).*
+        $geoeffnet = isset($_GET[self::OPEN_RECORD]) ? absint(wp_unslash((string) $_GET[self::OPEN_RECORD])) : 0;
+        $satz      = $geoeffnet === 0 ? null : $this->data->find($geoeffnet);
+
+        if ($satz !== null) {
+            $_GET['taxmod_node']         = (string) $satz->nodeId;
+            $_GET[self::PREVIEW_RECORD]  = (string) $satz->id;
+        }
+
         // ⚠️ *Ein Zeichenlauf liest vieles mehrfach; für seine Dauer wird Gelesenes behalten ([D-814](../../../docs/NewConcept/90-decision-log.md)).*
         return \Taxmod\WordPress\Persistence\Query::remembering(fn (): string => $this->drawn());
     }
@@ -4423,15 +4436,8 @@ final class NodesScreen
      */
     private function recordAddress(int $satzId): string
     {
-        if (isset($this->satzAdressen[$satzId])) {
-            return $this->satzAdressen[$satzId];
-        }
-
-        $satz = $this->data->find($satzId);
-
-        return $this->satzAdressen[$satzId] = $satz === null
-            ? ''
-            : $this->backTo($satz->nodeId, [self::PREVIEW_RECORD => (string) $satzId, self::RECORD_PAGE => null, self::RECORD_FILTER => null]) . '#taxmod-preview-edit';
+        // *Keine Abfrage hier: die Adresse nennt den Satz, die Seite schlägt beim Öffnen seinen Knoten nach.*
+        return $this->satzAdressen[$satzId] ??= add_query_arg(['page' => 'taxmod', self::OPEN_RECORD => (string) $satzId], admin_url('admin.php')) . '#taxmod-preview-edit';
     }
 
     /** @var array<int, list<int>> Die Vorfahren eines Knotens, je Seite einmal gelesen — für den Filter über Unterbäume (D-791). */

@@ -1628,6 +1628,68 @@
 		}, 0 );
 	} );
 
+	// ⚠️ **Der Linkdialog von WordPress** (D-857) — sein Wort: «ja bau den wp linkdialog ein». *Der Dialog schreibt seinen Link als
+	// `<a href="…">Text</a>` in ein verborgenes Textfeld; beim Schliessen liest dieses Skript daraus Adresse und Linktext und trägt sie in
+	// das Adressfeld und das Beschriftungsfeld der Zeile ein. Abbrechen lässt das Textfeld leer — dann bleibt alles, wie es war. Die
+	// Felder melden die Änderung, damit auch das automatische Speichern (D-854) sie sieht.*
+	var linkZiel = null;
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-media-wplink' ) : null;
+		var feld  = knopf ? knopf.closest( '.taxmod-media-input' ) : null;
+		var adresse = feld ? feld.querySelector( '.taxmod-media-link' ) : null;
+		var ablage  = document.getElementById( 'taxmod-wplink-target' );
+
+		if ( ! adresse || ! ablage || ! window.wpLink ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		var name  = knopf.getAttribute( 'data-taxmod-caption' ) || '';
+		var titel = name ? document.querySelector( '[name="' + name.replace( /"/g, '\\"' ) + '"]' ) : null;
+
+		linkZiel = { adresse: adresse, titel: titel };
+		ablage.value = '';
+		window.wpLink.open( 'taxmod-wplink-target', adresse.value, titel ? titel.value : '' );
+
+		// *Ohne Editor setzt der Dialog die Adresse nicht selbst vor — gemessen: das Feld blieb leer, und ohne Adresse schreibt er nichts.*
+		var dialogAdresse = document.getElementById( 'wp-link-url' );
+
+		if ( dialogAdresse && adresse.value !== '' ) {
+			dialogAdresse.value = adresse.value;
+		}
+	} );
+
+	if ( window.jQuery ) {
+		window.jQuery( document ).on( 'wplink-close', function () {
+			var ablage = document.getElementById( 'taxmod-wplink-target' );
+			var ziel   = linkZiel;
+
+			linkZiel = null;
+
+			if ( ! ablage || ! ziel || ablage.value.trim() === '' ) {
+				return;
+			}
+
+			var gelesen = new DOMParser().parseFromString( ablage.value, 'text/html' ).querySelector( 'a' );
+
+			ablage.value = '';
+
+			if ( ! gelesen ) {
+				return;
+			}
+
+			ziel.adresse.value = gelesen.getAttribute( 'href' ) || '';
+			ziel.adresse.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+
+			if ( ziel.titel && gelesen.textContent.trim() !== '' ) {
+				ziel.titel.value = gelesen.textContent.trim();
+				ziel.titel.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+			}
+		} );
+	}
+
 	// ⚠️ **Der Mülleimer an einer gesetzten Referenz** (D-851) — *sein Wort: «bei den referenzen könnte höchstens delete stehen und dann eine
 	// neue wahl ermöglichen». Er wählt «nichts» (der leere Knopf des Dialogs) und gibt Suchfeld und Öffner wieder frei; gespeichert wird mit
 	// der Seite.*
