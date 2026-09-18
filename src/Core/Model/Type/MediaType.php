@@ -28,6 +28,12 @@ final class MediaType extends SpecialisedType
 
     public const CAPTION_FIELD = 'caption_field';
 
+    /** Ob ein Link in einem neuen Tab öffnet ([D-858](../../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«open link in a new tab sollte default sein, nimm das mal in die einstellungen auf»*. */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $new_tab = true;
+
+    public const NEW_TAB = 'new_tab';
+
     public function type(): SimpleType
     {
         return SimpleType::Media;

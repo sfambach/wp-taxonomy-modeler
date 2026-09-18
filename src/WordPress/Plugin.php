@@ -298,6 +298,8 @@ final class Plugin
         // sein Markup im Fuss der Seite.
         wp_enqueue_script('wplink');
         wp_enqueue_style('editor-buttons');
+        // ⚠️ *Und die Mediathek (D-858) — sein Wort: «für datei sollte die mediathek geöffnet werden». Sie lädt auch selbst hoch.*
+        wp_enqueue_media();
 
         if (! has_action('admin_footer', [$this, 'printLinkDialog'])) {
             add_action('admin_footer', [$this, 'printLinkDialog']);
@@ -545,7 +547,7 @@ final class Plugin
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
-        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file to upload', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'))->withSharedPicker()
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file from the media library', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'))->withSharedPicker()
             // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*
             ->withAddonWords([
                 'add'                   => __('Add this function', 'taxmod'),

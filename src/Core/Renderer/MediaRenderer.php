@@ -20,7 +20,7 @@ final class MediaRenderer extends TypedFieldRenderer
 {
     public const NAME = 'media';
 
-    public const UPLOAD_SUFFIX = '_upload';
+
 
     public function name(): string
     {
@@ -32,11 +32,7 @@ final class MediaRenderer extends TypedFieldRenderer
         return [SimpleType::Media];
     }
 
-    /** Der Name des Hochladefeldes zu einem Wertfeld: `taxmod_value[7][9]` wird `taxmod_value_upload[7][9]`. */
-    public static function uploadNameFor(string $fieldName): string
-    {
-        return (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1' . self::UPLOAD_SUFFIX, $fieldName, 1);
-    }
+
 
     protected function display(RenderContext $context): string
     {
@@ -47,26 +43,17 @@ final class MediaRenderer extends TypedFieldRenderer
         }
 
         // *Mit Beschriftungsfeld ist die Beschriftung der Linktext (D-856); leer bleibt es die aus der Datei gerechnete.*
-        return $this->createHtmlValueSpan(self::link($adresse, (string) ($context->surroundings->refersTo ?? '')));
+        return $this->createHtmlValueSpan(self::link($adresse, (string) ($context->surroundings->refersTo ?? ''), self::opensNewTab($context)));
     }
 
-    /** Der Knopf, der den Linkdialog von WordPress öffnet ([D-857](../../../docs/NewConcept/90-decision-log.md)). */
-    private static function linkButton(RenderContext $context): string
-    {
-        $wort = (string) ($context->surroundings->dialogWords['link'] ?? '');
-
-        return '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-media-wplink" style="color:#1d2327"'
-            . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"')
-            . ($context->surroundings->captionName === '' ? '' : ' data-taxmod-caption="' . RenderResult::escape($context->surroundings->captionName) . '"')
-            . '>' . IconMarkup::dashicon('admin-links', $wort) . '</button>';
-    }
 
     /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
-    public static function link(string $adresse, string $beschriftung = ''): string
+    public static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true): string
     {
         $wort = trim($beschriftung) !== '' ? trim($beschriftung) : self::describe($adresse);
 
-        return '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '" target="_blank" rel="noopener">'
+        // *Ob in einem neuen Tab, sagt die Einstellung `new_tab` (D-858); Vorgabe ja.*
+        return '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '"' . ($neuerTab ? ' target="_blank" rel="noopener"' : '') . '>'
             . RenderResult::escape($wort) . '</a>';
     }
 
@@ -113,26 +100,45 @@ final class MediaRenderer extends TypedFieldRenderer
         $link    = '<input type="text" inputmode="url" class="taxmod-media-link" name="' . RenderResult::escape($context->fieldName) . '"'
             . ' value="' . RenderResult::escape($adresse) . '" size="30"' . $form . '>';
 
-        if ($context->fieldName === '') {
+        // ⚠️ *Mit Beschriftungsfeld stehen die Knöpfe und der Link rechts hinter der Zeile, nicht am Feld (D-856, D-858) — sein Wort: «alle
+        // buttons bitte nach rechts».*
+        if ($context->fieldName === '' || $context->surroundings->refersTo !== null) {
             return $link;
         }
 
-        // ⚠️ **Der Dateiknopf ist ein Symbol rechts vom Feld** ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-847](../../../docs/NewConcept/90-decision-log.md))
-        // — sein Wort: *«das folder symbol oder datei symbol für den knopf verwenden und den knopf nach rechts».* Das Dateifeld selbst steckt
-        // unsichtbar in der Beschriftung; ein Klick auf das Symbol öffnet die Dateiwahl, ohne Skript.
-        $wort = (string) ($context->surroundings->dialogWords['upload'] ?? '');
-
         return '<span class="taxmod-media-input">'
             . $link
-            . '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-media-pick" style="color:#1d2327"' . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"') . '>'
-            . IconMarkup::dashicon('media-default', $wort)
-            . '<input type="file" class="taxmod-media-file screen-reader-text" name="' . RenderResult::escape(self::uploadNameFor($context->fieldName)) . '"' . $form . '>'
-            . '</label>'
-            // ⚠️ *Der Linkdialog von WordPress (D-857): füllt Adresse und — wo es eines gibt — das Beschriftungsfeld der Zeile.*
-            . self::linkButton($context)
-            . '<span class="taxmod-media-chosen description"></span>'
-            // ⚠️ *Mit Beschriftungsfeld steht der Link nicht im Feld, sondern hinter «+» und Mülleimer der Zeile (D-856).*
-            . ($adresse === '' || $context->surroundings->refersTo !== null ? '' : ' ' . $this->display($context))
+            . self::buttons($context->fieldName, '', $context->surroundings->dialogWords, self::opensNewTab($context))
+            . ($adresse === '' ? '' : ' ' . $this->display($context))
             . '</span>';
+    }
+
+    /** Ob ein Link in einem neuen Tab öffnet — die Einstellung `new_tab` am Medienfeld, Vorgabe ja ([D-858](../../../docs/NewConcept/90-decision-log.md)). */
+    private static function opensNewTab(RenderContext $context): bool
+    {
+        $wert = $context->setting(\Taxmod\Core\Model\Type\MediaType::NEW_TAB);
+
+        return $wert === null || $wert->isNothing() || (bool) $wert->rawValue();
+    }
+
+    /**
+     * Die Knöpfe eines Medienfeldes, rechts vom Feld ([D-858](../../../docs/NewConcept/90-decision-log.md)): die Mediathek und der Linkdialog.
+     * *Der Kern zeichnet nur Knopf, Wort und die Namen der Felder, die gefüllt werden; was dahinter aufgeht, stellt der Rand (`CD-1`).*
+     *
+     * @param array<string, string> $worte Die Worte vom Rand: `upload` (Mediathek) und `link` (Linkdialog).
+     */
+    public static function buttons(string $adresseName, string $beschriftungName, array $worte, bool $neuerTab): string
+    {
+        $daten = ($adresseName === '' ? '' : ' data-taxmod-address="' . RenderResult::escape($adresseName) . '"')
+            . ($beschriftungName === '' ? '' : ' data-taxmod-caption="' . RenderResult::escape($beschriftungName) . '"')
+            . ' data-taxmod-newtab="' . ($neuerTab ? '1' : '0') . '"';
+        $knopf = static function (string $klasse, string $symbol, string $wort) use ($daten): string {
+            return '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' ' . $klasse . '" style="color:#1d2327"'
+                . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"') . $daten . '>'
+                . IconMarkup::dashicon($symbol, $wort) . '</button>';
+        };
+
+        return $knopf('taxmod-media-library', 'media-default', (string) ($worte['upload'] ?? ''))
+            . $knopf('taxmod-media-wplink', 'admin-links', (string) ($worte['link'] ?? ''));
     }
 }

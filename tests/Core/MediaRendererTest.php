@@ -44,8 +44,9 @@ final class MediaRendererTest extends TestCase
 
     /** ⚠️ *Sein Wort: «das folder symbol oder datei symbol für den knopf verwenden und den knopf nach rechts».* */
     #[Test]
-    public function the_upload_is_a_file_symbol_right_of_the_field_with_its_word_as_tooltip(): void
+    public function the_media_library_and_the_link_dialog_are_symbols_right_of_the_field(): void
     {
+        // ⚠️ *Seit D-858 öffnet das Dateisymbol die Mediathek; daneben der Linkdialog (D-857). Beide nennen das Feld, das sie füllen.*
         $markup = (new MediaRenderer())->render(
             Node::create(1, 'Projekt', null),
             new RenderContext(
@@ -54,18 +55,30 @@ final class MediaRendererTest extends TestCase
                 editable: true,
                 fieldName: 'taxmod_value[7][9]',
                 type: SimpleType::Media,
-                surroundings: new Surroundings(dialogWords: ['upload' => 'Datei hochladen']),
+                surroundings: new Surroundings(dialogWords: ['upload' => 'Aus der Mediathek', 'link' => 'Link wählen']),
             )
         )->markup;
 
-        $feld  = strpos($markup, 'class="taxmod-media-link"');
-        $knopf = strpos($markup, 'taxmod-media-pick');
+        $feld    = strpos($markup, 'class="taxmod-media-link"');
+        $mediath = strpos($markup, 'taxmod-media-library');
+        $link    = strpos($markup, 'taxmod-media-wplink');
 
         self::assertNotFalse($feld);
-        self::assertNotFalse($knopf);
-        self::assertGreaterThan($feld, $knopf, 'der Knopf steht rechts vom Feld');
-        self::assertMatchesRegularExpression('/<label class="button taxmod-icon-button taxmod-media-pick"[^>]*title="Datei hochladen"[^>]*><span[^>]*dashicons-media-default[^>]*><\/span><input type="file"[^>]*name="taxmod_value_upload\[7\]\[9\]"/', $markup);
+        self::assertNotFalse($mediath);
+        self::assertGreaterThan($feld, $mediath, 'die Knöpfe stehen rechts vom Feld');
+        self::assertGreaterThan($mediath, (int) $link, 'erst die Mediathek, dann der Link');
+        self::assertMatchesRegularExpression('/taxmod-media-library"[^>]*title="Aus der Mediathek"[^>]*data-taxmod-address="taxmod_value\[7\]\[9\]"[^>]*data-taxmod-newtab="1"/', $markup);
+        self::assertStringNotContainsString('type="file"', $markup, 'kein eigenes Hochladen mehr — das macht die Mediathek');
+        self::assertStringContainsString('target="_blank"', $markup, 'Vorgabe: neuer Tab');
         self::assertStringContainsString('>plan (PDF)</a>', $markup);
+    }
+
+    /** ⚠️ *D-858: «open link in a new tab sollte default sein, nimm das mal in die einstellungen auf» — ausgeschaltet öffnet er im selben Tab.* */
+    #[Test]
+    public function without_new_tab_the_link_opens_in_place(): void
+    {
+        self::assertStringNotContainsString('target=', MediaRenderer::link('https://example.org/a', 'A', false));
+        self::assertStringContainsString('target="_blank"', MediaRenderer::link('https://example.org/a', 'A'));
     }
 
     /** ⚠️ *Sein Wort: «knöpfe grundsätzlich ein icon verwenden wenn es eins gibt und rechts vom feld. Tooltip knopf beschreibung/name».* */

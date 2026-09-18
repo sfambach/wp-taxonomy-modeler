@@ -1634,24 +1634,89 @@
 	// Felder melden die Änderung, damit auch das automatische Speichern (D-854) sie sieht.*
 	var linkZiel = null;
 
-	document.addEventListener( 'click', function ( ereignis ) {
-		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-media-wplink' ) : null;
-		var feld  = knopf ? knopf.closest( '.taxmod-media-input' ) : null;
-		var adresse = feld ? feld.querySelector( '.taxmod-media-link' ) : null;
-		var ablage  = document.getElementById( 'taxmod-wplink-target' );
+	// *Die Felder, die ein Medienknopf füllt: über die Namen am Knopf (D-858 — die Knöpfe stehen rechts, nicht mehr im Feld), sonst das Feld
+	// daneben.*
+	function medienFelder( knopf ) {
+		var suche = function ( name ) {
+			return name ? document.querySelector( '[name="' + name.replace( /"/g, '\\"' ) + '"]' ) : null;
+		};
+		var adresse = suche( knopf.getAttribute( 'data-taxmod-address' ) || '' );
 
-		if ( ! adresse || ! ablage || ! window.wpLink ) {
+		if ( ! adresse ) {
+			var umfeld = knopf.closest( '.taxmod-media-input, .taxmod-switch-add' );
+
+			adresse = umfeld ? umfeld.querySelector( 'input[type="text"]' ) : null;
+		}
+
+		return { adresse: adresse, titel: suche( knopf.getAttribute( 'data-taxmod-caption' ) || '' ) };
+	}
+
+	function medienEintragen( ziel, adresse, titel ) {
+		ziel.adresse.value = adresse;
+		ziel.adresse.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+
+		if ( ziel.titel && titel ) {
+			ziel.titel.value = titel;
+			ziel.titel.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		}
+	}
+
+	// ⚠️ **Die Mediathek** (D-858) — sein Wort: «für datei sollte die mediathek geöffnet werden». *Gewählt wird eine Datei; ihre Adresse kommt
+	// ins Adressfeld, ihr Titel ins Beschriftungsfeld, wenn dort noch nichts steht.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-media-library' ) : null;
+
+		if ( ! knopf || ! window.wp || ! window.wp.media ) {
 			return;
 		}
 
 		ereignis.preventDefault();
 
-		var name  = knopf.getAttribute( 'data-taxmod-caption' ) || '';
-		var titel = name ? document.querySelector( '[name="' + name.replace( /"/g, '\\"' ) + '"]' ) : null;
+		var ziel = medienFelder( knopf );
 
-		linkZiel = { adresse: adresse, titel: titel };
+		if ( ! ziel.adresse ) {
+			return;
+		}
+
+		var rahmen = window.wp.media( { title: knopf.getAttribute( 'title' ) || '', multiple: false } );
+
+		rahmen.on( 'select', function () {
+			var datei = rahmen.state().get( 'selection' ).first().toJSON();
+
+			medienEintragen( ziel, datei.url || '', ziel.titel && ziel.titel.value.trim() !== '' ? '' : ( datei.title || '' ) );
+		} );
+
+		rahmen.open();
+	} );
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf  = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-media-wplink' ) : null;
+		var ablage = document.getElementById( 'taxmod-wplink-target' );
+
+		if ( ! knopf || ! ablage || ! window.wpLink ) {
+			return;
+		}
+
+		var ziel    = medienFelder( knopf );
+		var adresse = ziel.adresse;
+		var titel   = ziel.titel;
+
+		if ( ! adresse ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		linkZiel = ziel;
 		ablage.value = '';
 		window.wpLink.open( 'taxmod-wplink-target', adresse.value, titel ? titel.value : '' );
+
+		// *«In neuem Tab öffnen» folgt der Einstellung des Feldes (D-858), Vorgabe an.*
+		var neuerTab = document.getElementById( 'wp-link-target' );
+
+		if ( neuerTab ) {
+			neuerTab.checked = knopf.getAttribute( 'data-taxmod-newtab' ) !== '0';
+		}
 
 		// *Ohne Editor setzt der Dialog die Adresse nicht selbst vor — gemessen: das Feld blieb leer, und ohne Adresse schreibt er nichts.*
 		var dialogAdresse = document.getElementById( 'wp-link-url' );
@@ -1680,13 +1745,7 @@
 				return;
 			}
 
-			ziel.adresse.value = gelesen.getAttribute( 'href' ) || '';
-			ziel.adresse.dispatchEvent( new Event( 'change', { bubbles: true } ) );
-
-			if ( ziel.titel && gelesen.textContent.trim() !== '' ) {
-				ziel.titel.value = gelesen.textContent.trim();
-				ziel.titel.dispatchEvent( new Event( 'change', { bubbles: true } ) );
-			}
+			medienEintragen( ziel, gelesen.getAttribute( 'href' ) || '', gelesen.textContent.trim() );
 		} );
 	}
 
@@ -1743,16 +1802,6 @@
 		}
 	} );
 
-	// ⚠️ *Das Dateifeld steckt unsichtbar im Symbolknopf (D-846) — damit man sieht, was gewählt ist, steht der Dateiname daneben.*
-	document.addEventListener( 'change', function ( ereignis ) {
-		var feld   = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-media-file' ) : null;
-		var anzeige = feld ? feld.closest( '.taxmod-media-input' ) : null;
-		var ziel   = anzeige ? anzeige.querySelector( '.taxmod-media-chosen' ) : null;
-
-		if ( ziel ) {
-			ziel.textContent = feld.files && feld.files.length ? ' ' + feld.files[ 0 ].name : '';
-		}
-	} );
 
 	// *Enter im Eingabefeld übernimmt den Wert, statt die Seite abzuschicken.*
 	document.addEventListener( 'keydown', function ( ereignis ) {

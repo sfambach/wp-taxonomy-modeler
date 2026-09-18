@@ -745,6 +745,24 @@ final class Rendering implements Presets
         return $aus;
     }
 
+    /**
+     * Ob ein Medienfeld in einem neuen Tab öffnet — seine Einstellung `new_tab` ([D-858](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param list<Relation> $felder
+     */
+    private function mediaOpensNewTab(array $felder, int $medium): bool
+    {
+        foreach ($felder as $feld) {
+            if ($feld->id === $medium) {
+                $wert = ($this->settingsForUseSites([$feld])[$feld->id][\Taxmod\Core\Model\Type\MediaType::NEW_TAB] ?? null)?->value;
+
+                return $wert === null || $wert->isNothing() || (bool) $wert->rawValue();
+            }
+        }
+
+        return true;
+    }
+
     /** @var \Closure(int): string|null Satz-Id ⇒ Adresse seiner Seite, vom Rand (D-852). */
     private ?\Closure $recordLink = null;
 
@@ -6379,14 +6397,10 @@ final class Rendering implements Presets
             // *Alles andere wird geschrieben: ein Feld für den nächsten Wert, in der Gestalt seines Typs.*
             $html .= '<input type="text" class="taxmod-value-new" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . ' size="30">';
 
-            // ⚠️ *Ein mehrfaches Medienfeld bekommt denselben Dateiknopf wie ein einfaches (D-846, D-847). Die Datei reist unter
-            // `…[values][upload]` — ein eigener Schlüssel, damit die Adresse hinter den stehenden Werten angehängt wird und keinen überschreibt.*
+            // ⚠️ *Ein mehrfaches Medienfeld bekommt dieselben Knöpfe wie ein einfaches (D-858): Mediathek und Linkdialog füllen das Feld
+            // für den nächsten Wert.*
             if ($medium) {
-                $hochladen = (string) ($this->dialogWords['upload'] ?? '');
-                $html     .= '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-media-pick" style="color:#1d2327"' . ($hochladen === '' ? '' : ' title="' . RenderResult::escape($hochladen) . '"') . '>'
-                    . IconMarkup::dashicon('media-default', $hochladen)
-                    . '<input type="file" class="taxmod-media-file screen-reader-text" name="' . RenderResult::escape(\Taxmod\Core\Renderer\MediaRenderer::uploadNameFor($fieldPrefix . '[' . $relation->id . '][values][upload]')) . '"' . $form . '>'
-                    . '</label><span class="taxmod-media-chosen description"></span>';
+                $html .= \Taxmod\Core\Renderer\MediaRenderer::buttons('', '', $this->dialogWords, true);
             }
         }
 
@@ -6664,11 +6678,13 @@ final class Rendering implements Presets
                 $werte  = $zeilenWerte[$i] ?? [];
 
                 foreach ($this->captionFieldsOf($felder, $this->typesOf($felder)) as $medium => $beschriftung) {
-                    $adresse = trim((string) (($werte[$medium] ?? null)?->text ?? ''));
-
-                    if ($adresse !== '') {
-                        $akte[$i] = $akt . ' ' . \Taxmod\Core\Renderer\MediaRenderer::link($adresse, (string) (($werte[$beschriftung] ?? null)?->text ?? ''));
-                    }
+                    $adresse    = trim((string) (($werte[$medium] ?? null)?->text ?? ''));
+                    $neuerTab   = $this->mediaOpensNewTab($felder, $medium);
+                    $teilPrefix = $fieldPrefix . '[' . $relation->id . '][' . ($teilIds[$i] ?? 0) . ']';
+                    // ⚠️ *Sein Wort: «alle buttons bitte nach rechts» (D-858): Mediathek und Linkdialog vor «+» und Mülleimer, der Link dahinter.*
+                    $akte[$i]   = \Taxmod\Core\Renderer\MediaRenderer::buttons($teilPrefix . '[' . $medium . ']', $teilPrefix . '[' . $beschriftung . ']', $this->dialogWords, $neuerTab)
+                        . $akt
+                        . ($adresse === '' ? '' : ' ' . \Taxmod\Core\Renderer\MediaRenderer::link($adresse, (string) (($werte[$beschriftung] ?? null)?->text ?? ''), $neuerTab));
                 }
             }
 
