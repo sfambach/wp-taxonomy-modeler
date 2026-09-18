@@ -46,11 +46,17 @@ final class MediaRenderer extends TypedFieldRenderer
             return $this->createHtmlValueSpan('');
         }
 
-        return $this->createHtmlValueSpan(
-            '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '" target="_blank" rel="noopener">'
-            . RenderResult::escape(self::describe($adresse))
-            . '</a>'
-        );
+        // *Mit Beschriftungsfeld ist die Beschriftung der Linktext (D-856); leer bleibt es die aus der Datei gerechnete.*
+        return $this->createHtmlValueSpan(self::link($adresse, (string) ($context->surroundings->refersTo ?? '')));
+    }
+
+    /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
+    public static function link(string $adresse, string $beschriftung = ''): string
+    {
+        $wort = trim($beschriftung) !== '' ? trim($beschriftung) : self::describe($adresse);
+
+        return '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '" target="_blank" rel="noopener">'
+            . RenderResult::escape($wort) . '</a>';
     }
 
     /**
@@ -112,7 +118,8 @@ final class MediaRenderer extends TypedFieldRenderer
             . '<input type="file" class="taxmod-media-file screen-reader-text" name="' . RenderResult::escape(self::uploadNameFor($context->fieldName)) . '"' . $form . '>'
             . '</label>'
             . '<span class="taxmod-media-chosen description"></span>'
-            . ($adresse === '' ? '' : ' ' . $this->display($context))
+            // ⚠️ *Mit Beschriftungsfeld steht der Link nicht im Feld, sondern hinter «+» und Mülleimer der Zeile (D-856).*
+            . ($adresse === '' || $context->surroundings->refersTo !== null ? '' : ' ' . $this->display($context))
             . '</span>';
     }
 }

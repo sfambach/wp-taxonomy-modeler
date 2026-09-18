@@ -17,6 +17,17 @@ use Taxmod\Core\Model\TypedValue;
  */
 final class MediaType extends SpecialisedType
 {
+    /**
+     * Welches Nachbarfeld die Beschriftung trägt ([D-856](../../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«ja die beschriftung
+     * soll der link sein»*. Die Kandidaten sind die Felder des Knotens, dem das Medienfeld gehört (beim `Medium`: Adresse, Beschriftung).
+     *
+     * @var list<int> Kanten-Ids — das erste aktive Glied gilt
+     */
+    #[\Taxmod\Core\Model\NodeClass\Attribut(listOf: 'relation', fieldsFrom: \Taxmod\Core\Model\NodeClass\FieldSource::Owner)]
+    public array $caption_field = [];
+
+    public const CAPTION_FIELD = 'caption_field';
+
     public function type(): SimpleType
     {
         return SimpleType::Media;

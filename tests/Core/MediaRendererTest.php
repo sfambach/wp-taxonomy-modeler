@@ -33,6 +33,15 @@ final class MediaRendererTest extends TestCase
         self::assertSame('foto platine (JPG)', MediaRenderer::describe('foto%20platine.JPG'));
     }
 
+    /** ⚠️ *D-856, sein Wort: «ja die beschriftung soll der link sein» — ohne Beschriftung bleibt die aus der Datei gerechnete.* */
+    #[Test]
+    public function the_caption_is_the_link_text_and_without_one_the_file_speaks(): void
+    {
+        self::assertStringContainsString('>Schaltplan Rev. B</a>', MediaRenderer::link('https://example.org/plan_b.pdf', 'Schaltplan Rev. B'));
+        self::assertStringContainsString('>plan b (PDF)</a>', MediaRenderer::link('https://example.org/plan_b.pdf', '  '));
+        self::assertStringContainsString('href="https://www.google.de"', MediaRenderer::link('www.google.de'));
+    }
+
     /** ⚠️ *Sein Wort: «das folder symbol oder datei symbol für den knopf verwenden und den knopf nach rechts».* */
     #[Test]
     public function the_upload_is_a_file_symbol_right_of_the_field_with_its_word_as_tooltip(): void

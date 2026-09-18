@@ -710,6 +710,41 @@ final class Rendering implements Presets
         return strtolower(\Taxmod\Core\Model\NodeClass\Contracts::shortName($klasse));
     }
 
+    /**
+     * Welche Medienfelder dieser Reihe ihre Beschriftung aus einem Nachbarfeld nehmen ([D-856](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  list<Relation>               $relations
+     * @param  array<int, SimpleType|null>  $types
+     * @return array<int, int> Medienfeld ⇒ Beschriftungsfeld
+     */
+    private function captionFieldsOf(array $relations, array $types): array
+    {
+        if ($this->resolver === null) {
+            return [];
+        }
+
+        $hier = array_flip(array_map(static fn (Relation $r): int => $r->id, $relations));
+        $aus  = [];
+
+        foreach ($relations as $relation) {
+            if (($types[$relation->id] ?? null) !== SimpleType::Media) {
+                continue;
+            }
+
+            $ziel = $this->gemerkterKnoten($relation->toNodeId);
+
+            foreach ($ziel === null ? [] : $this->resolver->listOf($ziel, \Taxmod\Core\Model\Type\MediaType::CAPTION_FIELD, $relation) as $glied) {
+                if ($glied->aktiv && $glied->reference !== null && isset($hier[$glied->reference])) {
+                    $aus[$relation->id] = (int) $glied->reference;
+
+                    break;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
     /** @var \Closure(int): string|null Satz-Id ⇒ Adresse seiner Seite, vom Rand (D-852). */
     private ?\Closure $recordLink = null;
 
@@ -1608,6 +1643,10 @@ final class Rendering implements Presets
         // ⚠️ *Die Zusammenfassungen verwiesener Sätze, für alle Verweise dieses Blocks in einer Abfrage (D-753, D-363).*
         $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose, $types, $ownerValues);
         $fields   = [];
+        // ⚠️ *Ein Medienfeld mit Beschriftungsfeld zeigt die Beschriftung als Linktext (D-856); angezeigt steht die Beschriftung dann nicht
+        // noch einmal daneben.*
+        $beschriftet     = $this->captionFieldsOf($relations, $types);
+        $alsBeschriftung = array_flip(array_values($beschriftet));
 
         // ⚠️ *Einmal, ganz oben, in einer festen Zahl von Abfragen — und danach rührt der Abstieg die
         // Datenbank nicht mehr an.*
@@ -1616,6 +1655,10 @@ final class Rendering implements Presets
         }
 
         foreach ($relations as $relation) {
+            if ($purpose === Purpose::Display && isset($alsBeschriftung[$relation->id])) {
+                continue;
+            }
+
             $type     = $types[$relation->id] ?? null;
             // ⚠️ **Hier kommen die Werte des gewählten Renderers ausdrücklich *nicht* dazu, und der
             // Grund ist gemessen** ({@see self::withRendererValues()} tut es für den Behälter).
@@ -1813,9 +1856,12 @@ final class Rendering implements Presets
                     // ⚠️ *Ein Benutzerverweis ist kein Knotenverweis — sein Wert ist Text
                     // ([D-171](../../../docs/NewConcept/90-decision-log.md)), also kommt sein Name aus
                     // der anderen Naht. **Dasselbe Feld**, weil es dieselbe Aussage ist.*
-                    refersTo: $value->reference === null
-                        ? ($userNames[$relation->id] ?? null)
-                        : ($names[$relation->id] ?? $saetze['worte'][$relation->id] ?? null),
+                    refersTo: isset($beschriftet[$relation->id])
+                        // *Das Wort eines Mediums ist seine Beschriftung (D-856); leer heisst: die aus der Datei gerechnete.*
+                        ? (string) (($values[$beschriftet[$relation->id]] ?? null)?->text ?? '')
+                        : ($value->reference === null
+                            ? ($userNames[$relation->id] ?? null)
+                            : ($names[$relation->id] ?? $saetze['worte'][$relation->id] ?? null)),
                     // ⚠️ **Already known, so it is handed over rather than looked up** (D-445). A
                     // reference with no simple type behind it is a reference to a record: `typeOf()`
                     // answers `node_ref` for a constant and a real type for a data type, so `null`
@@ -6462,6 +6508,9 @@ final class Rendering implements Presets
         // ⚠️ **Je Teil eine Zeile.** *Ohne Teil eine leere Zeile **ohne Namen**, also ohne Adresse: sie
         // kann nichts abschicken, und das ist richtig — es gibt nichts, worin sie schreiben könnte.*
         $zeilen  = [];
+        // *Je Zeile ihre Felder und Werte — für den Link hinter den Knöpfen (D-856).*
+        $zeilenFelder = [];
+        $zeilenWerte  = [];
         $teilIds = [];
 
         // ⚠️ **Die Zeile sagt, dass sie geliehen ist**, so wie die Einstellungstafel es tut
@@ -6506,6 +6555,8 @@ final class Rendering implements Presets
             // also stehen sie im selben Vorrat wie die äusseren; hier stand `[]`, und die Adresse blieb leer (D-741).*
             $erlaubteWahl = $purpose === Purpose::Edit ? $this->allowedChoicesIn($ziel, $relation, $dieseFelder, $teil === null ? $values : $teil['werte']) : [];
 
+            $zeilenWerte[]  = $teil === null ? $values : $teil['werte'];
+            $zeilenFelder[] = $dieseFelder;
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
                 $teil === null
@@ -6602,6 +6653,21 @@ final class Rendering implements Presets
                     . ControlMarkup::button(
                         new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId)
                     );
+            }
+
+            // ⚠️ **Hinter «+» und Mülleimer der gezeichnete Link** ([D-856](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
+            // *«reihenfolge address feld, beschriftungs feld +, müll link gerendert»*. Nur wo ein Medienfeld der Zeile ein Beschriftungsfeld hat.
+            foreach ($akte as $i => $akt) {
+                $felder = $zeilenFelder[$i] ?? [];
+                $werte  = $zeilenWerte[$i] ?? [];
+
+                foreach ($this->captionFieldsOf($felder, $this->typesOf($felder)) as $medium => $beschriftung) {
+                    $adresse = trim((string) (($werte[$medium] ?? null)?->text ?? ''));
+
+                    if ($adresse !== '') {
+                        $akte[$i] = $akt . ' ' . \Taxmod\Core\Renderer\MediaRenderer::link($adresse, (string) (($werte[$beschriftung] ?? null)?->text ?? ''));
+                    }
+                }
             }
 
             $halter = preg_match('/\[(\d+)\]$/', $fieldPrefix, $treffer) === 1 ? (int) $treffer[1] : 0;
