@@ -2193,3 +2193,9 @@ fieldset.taxmod-read-only {
 	font-weight: 600;
 	color: #50575e;
 }
+
+/* Wird automatisch gespeichert, gibt es keinen Speichern-Knopf (D-860) — sein Wort: «save on leaving a field ist eingeschaltet dennoch ist
+   der speichern knopf zu sehen». Das Skript schickt trotzdem über ihn ab, darum bleibt er im Dokument. */
+[data-taxmod-autosave="on"] .taxmod-save {
+	display: none !important;
+}

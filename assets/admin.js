@@ -1234,11 +1234,19 @@
 			return;
 		}
 
+		var genommen = null;
+
 		wahl.querySelectorAll( '.taxmod-record-choice input[type="radio"]' ).forEach( function ( knopf ) {
 			if ( knopf.value === treffer.getAttribute( 'data-taxmod-value' ) ) {
 				knopf.checked = true;
+				genommen = knopf;
 			}
 		} );
+
+		// *Ohne Speichern-Knopf schickt die Wahl aus der Schnellsuche sich selbst (D-860).*
+		if ( genommen && autosaveAn( genommen ) ) {
+			autosaveSchicken( genommen );
+		}
 
 		var oeffner = wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' );
 
@@ -1617,7 +1625,11 @@
 		autosaveWartet = window.setTimeout( function () {
 			autosaveWartet = null;
 
-			var knopf = formular.querySelector( 'button[name="do"], input[type="submit"][name="do"]' );
+			// *Der Knopf, mit dem sonst gespeichert würde — auch wenn er ausserhalb des Formulars steht (`form="…"`) und verborgen ist (D-860).*
+			var knoepfe = Array.prototype.filter.call( formular.elements, function ( el ) {
+				return el.name === 'do' && ( el.type === 'submit' || el.tagName === 'BUTTON' );
+			} );
+			var knopf = knoepfe.filter( function ( el ) { return el.classList.contains( 'taxmod-save' ); } )[ 0 ] || knoepfe[ 0 ] || null;
 
 			if ( formular.requestSubmit ) {
 				formular.requestSubmit( knopf || undefined );
@@ -1658,6 +1670,32 @@
 
 		autosaveSchicken( feld );
 	} );
+
+	// ⚠️ *Ohne Speichern-Knopf (D-860) muss auch eine Wahl im Dialog ankommen: sie wird gemerkt und beim Schliessen mit «OK» geschickt;
+	// «Abbrechen» und das ✕ vergessen sie — die Seite legt dann die alte Wahl zurück.*
+	var dialogWahl = null;
+
+	document.addEventListener( 'change', function ( ereignis ) {
+		var feld = ereignis.target;
+
+		if ( feld instanceof HTMLInputElement && ( feld.type === 'radio' || feld.type === 'checkbox' ) && feld.name !== ''
+			&& feld.closest( '.taxmod-dialog' ) && ! feld.classList.contains( 'taxmod-dialog-switch' ) && autosaveAn( feld ) ) {
+			dialogWahl = feld;
+		}
+
+		if ( feld instanceof HTMLInputElement && feld.classList.contains( 'taxmod-dialog-switch' ) && ! feld.checked && dialogWahl ) {
+			var gewaehlt = dialogWahl;
+
+			dialogWahl = null;
+			autosaveSchicken( gewaehlt );
+		}
+	} );
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		if ( ereignis.target instanceof Element && ereignis.target.closest( '.taxmod-dialog-cancel' ) ) {
+			dialogWahl = null;
+		}
+	}, true );
 
 	document.addEventListener( 'focusout', function ( ereignis ) {
 		var feld = ereignis.target;
@@ -1817,6 +1855,11 @@
 
 		if ( leer ) {
 			leer.checked = true;
+
+			// *Ohne Speichern-Knopf wird das Entfernen sofort geschrieben (D-860).*
+			if ( autosaveAn( leer ) ) {
+				autosaveSchicken( leer );
+			}
 		}
 
 		var oeffner = wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' );

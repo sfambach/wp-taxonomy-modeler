@@ -41,6 +41,9 @@ final class ControlMarkup
      */
     public const GLYPH_FACE = 'taxmod-icon-glyph';
 
+    /** Die Klasse jedes Speichern-Knopfs ([D-860](../../../docs/NewConcept/90-decision-log.md)). */
+    public const SAVE = 'taxmod-save';
+
     /**
      * @param bool|null $available Overrides the control's own answer, for a row that decides per
      *                            row — the settings panel greys `Reset` where nothing was set here.
@@ -76,7 +79,9 @@ final class ControlMarkup
         // take one away. The two together are what made the diskette blue among flat neighbours — so
         // the combination is now unrepresentable instead of merely discouraged.*
         return '<button class="button' . ($control->leads && ! $bare ? ' button-primary' : '')
-            . ($bare ? ' ' . self::ICON_ONLY : '') . '"'
+            . ($bare ? ' ' . self::ICON_ONLY : '')
+            // *Der Speichern-Knopf ist erkennbar, damit die Seite ihn bei automatischem Speichern ausblenden kann (D-860).*
+            . ($control->glyph === Control::SAVE_GLYPH ? ' ' . self::SAVE : '') . '"'
             . ($control->form === '' ? '' : ' form="' . RenderResult::escape($control->form) . '"')
             . ' name="' . RenderResult::escape($control->name) . '"'
             . ' value="' . RenderResult::escape($control->value) . '"'
