@@ -1659,7 +1659,26 @@ final class Rendering implements Presets
         $hilfen   = $this->hintsOfFields($relations, $locale);
         $wahl     = $this->optionsFor($relations);
         // ⚠️ *Die Zusammenfassungen verwiesener Sätze, für alle Verweise dieses Blocks in einer Abfrage (D-753, D-363).*
-        $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose, $types, $ownerValues);
+        $mehrfach = [];
+
+        // ⚠️ *Ein mehrfacher Verweis trägt mehrere Sätze; die Werte-Liste des Satzes nennt alle, die Einzelwerte nur einen (D-859).*
+        if ($recordId !== 0 && $this->records !== null) {
+            $vielfach = [];
+
+            foreach ($relations as $relation) {
+                if (! $relation->isSetting() && $relation->multiplicity->allowsMany()) {
+                    $vielfach[$relation->id] = true;
+                }
+            }
+
+            foreach ($vielfach === [] ? [] : $this->werteJeSatz($recordId) as $zeile) {
+                if (isset($vielfach[$zeile->relationId]) && $zeile->value->referenceSpace === ReferenceSpace::Record && $zeile->value->reference !== null) {
+                    $mehrfach[$zeile->relationId][] = $zeile->value->reference;
+                }
+            }
+        }
+
+        $saetze   = $this->summariesOf($relations, $values, $resolved, $purpose, $types, $ownerValues, $mehrfach);
         $fields   = [];
         // ⚠️ *Ein Medienfeld mit Beschriftungsfeld zeigt die Beschriftung als Linktext (D-856); angezeigt steht die Beschriftung dann nicht
         // noch einmal daneben.*
@@ -1930,7 +1949,7 @@ final class Rendering implements Presets
             if ($tiefer === null) {
                 // ⚠️ **Mehrfach heisst Zeilen, gleich welcher Art das Feld ist** ([D-842](../../../docs/NewConcept/90-decision-log.md)) — *sein
                 // Wort: «ja bau das so, sonst kann man ja auch keine zeilen eingeben». Zeilen entstanden bisher nur für Teile mit eigenen Sätzen.*
-                $tiefer = $this->valueListBelow($relation, $context, $purpose, $fieldPrefix, $formId, $editable, $recordId);
+                $tiefer = $this->valueListBelow($relation, $context, $purpose, $fieldPrefix, $formId, $editable, $recordId, $saetze['mehrfach'][$relation->id] ?? []);
             }
 
             $fields[] = new RenderedField(
@@ -2431,6 +2450,19 @@ final class Rendering implements Presets
         }
 
         $this->gemerkteKnoten($knoten);
+
+        // ⚠️ *Die Werte aller Zeilen in **einer** Abfrage — ein mehrfacher Verweis liest je Satz alle seine Werte (D-859), und je Zeile
+        // gefragt war das die Abfrage, die die Seitenlast gesprengt hat (gemessen: 27-mal auf einer Seite, `CD-7`).*
+        $fehlend = array_values(array_filter(
+            array_map(static fn (array $row): int => (int) $row['id'], $rows),
+            fn (int $id): bool => $id !== 0 && ! isset($this->werteJeSatzGelesen[$id])
+        ));
+
+        if ($fehlend !== [] && $this->records !== null) {
+            foreach ($this->records->valuesOfMany($fehlend) + array_fill_keys($fehlend, []) as $id => $zeilen) {
+                $this->werteJeSatzGelesen[$id] ??= $zeilen;
+            }
+        }
 
         foreach ($rows as $row) {
             $formId = 'taxmod-record-' . $row['id'];
@@ -4173,9 +4205,10 @@ final class Rendering implements Presets
         return $name === '' || $name === SummaryRenderer::NAME;
     }
 
-    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = []): array
+    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = [], array $mehrfach = []): array
     {
-        $leer = ['worte' => [], 'angebot' => [], 'baum' => []];
+        // *`mehrfach`: je mehrfachem Verweis alle seine Sätze, damit jeder ein Wort bekommt und nicht nur der erste (D-859).*
+        $leer = ['worte' => [], 'angebot' => [], 'baum' => [], 'mehrfach' => []];
 
         if ($this->records === null || $this->resolver === null) {
             return $leer;
@@ -4228,6 +4261,10 @@ final class Rendering implements Presets
 
             if ($wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
                 $satzIds[] = $wert->reference;
+            }
+
+            foreach ($mehrfach[$relation->id] ?? [] as $weiterer) {
+                $satzIds[] = $weiterer;
             }
         }
 
@@ -4556,6 +4593,10 @@ final class Rendering implements Presets
 
             if ($wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
                 $aus['worte'][$relation->id] = $wort($wert->reference, $feldIds);
+            }
+
+            foreach ($mehrfach[$relation->id] ?? [] as $weiterer) {
+                $aus['mehrfach'][$relation->id][$weiterer] = $wort($weiterer, $feldIds);
             }
 
             // ⚠️ **Die Vorbelegung** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 3): *«filter» lässt nur passende
@@ -6321,11 +6362,11 @@ final class Rendering implements Presets
         string $fieldPrefix,
         string $formId,
         bool $editable,
-        int $recordId
+        int $recordId,
+        /** @var array<int, string> Satz-Id ⇒ Wort, für die Sätze eines mehrfachen Verweises (D-859). */
+        array $woerter = []
     ): ?array {
-        if ($purpose !== Purpose::Edit || ! $editable || $fieldPrefix === '' || $recordId === 0
-            || $relation->isSetting() || ! $relation->multiplicity->allowsMany() || $this->records === null
-        ) {
+        if ($recordId === 0 || $relation->isSetting() || ! $relation->multiplicity->allowsMany() || $this->records === null) {
             return null;
         }
 
@@ -6335,6 +6376,37 @@ final class Rendering implements Presets
             if ($zeile->relationId === $relation->id && ! $zeile->value->isNothing()) {
                 $werte[] = $zeile->value;
             }
+        }
+
+        $verweise = $woerter !== [] || $context->surroundings->options !== [] || array_filter($werte, static fn (TypedValue $w): bool => $w->referenceSpace === ReferenceSpace::Record) !== [];
+
+        // ⚠️ **Angezeigt stehen alle Werte** ([D-859](../../../docs/NewConcept/90-decision-log.md)) — sein Befund: beim IV 386 stand nur eine
+        // CPU, obwohl zwei eingetragen sind. *Ein Satzverweis ist ein Link auf seinen Satz (D-852).*
+        if ($purpose === Purpose::Display) {
+            if ($werte === [] || ! $verweise) {
+                return null;
+            }
+
+            $teile = [];
+
+            foreach ($werte as $wert) {
+                $wort = RenderResult::escape($woerter[(int) $wert->reference] ?? '#' . (int) $wert->reference);
+                $ziel = $this->recordLink === null || $wert->reference === null ? '' : ($this->recordLink)($wert->reference);
+                $teile[] = $ziel === '' ? $wort : '<a class="taxmod-record-link" href="' . RenderResult::escape($ziel) . '">' . $wort . '</a>';
+            }
+
+            return ['renderer' => SummaryRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of('<span class="taxmod-value taxmod-ref-list">' . implode('<br>', $teile) . '</span>')];
+        }
+
+        if ($purpose !== Purpose::Edit || ! $editable || $fieldPrefix === '') {
+            return null;
+        }
+
+        // ⚠️ **Mehrfache Verweise als Zeilen wie die Teile** ([D-859](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«ja bitte folge
+        // deinen vorschlag für mehrfach verweise»*. Je Wert eine Zeile mit dem Auswahlfeld, dahinter «+» (eine leere Zeile darunter) und
+        // der Mülleimer; ohne Wert eine leere Zeile. Gespeichert wird in der Reihenfolge der Zeilen.
+        if ($verweise) {
+            return $this->referenceRows($relation, $context, $fieldPrefix, $formId, $recordId, $werte, $woerter);
         }
 
         $name    = $fieldPrefix . '[' . $relation->id . '][values][]';
@@ -6413,6 +6485,60 @@ final class Rendering implements Presets
             'rowActs'  => [],
             'after'    => '',
             'result'   => RenderResult::of($html),
+        ];
+    }
+
+    /**
+     * Die Zeilen eines mehrfachen Verweises beim Bearbeiten ([D-859](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param list<TypedValue>   $werte
+     * @param array<int, string> $woerter
+     * @return array{renderer: string, rows: list<mixed>, rowActs: list<string>, after: string, result: RenderResult}
+     */
+    private function referenceRows(Relation $relation, RenderContext $context, string $fieldPrefix, string $formId, int $recordId, array $werte, array $woerter): array
+    {
+        $name    = $fieldPrefix . '[' . $relation->id . '][values][]';
+        $angebot = array_map('strval', $context->surroundings->options);
+
+        // *Eine eindeutige Kante bietet nicht an, was ein anderer Satz hält (D-838).*
+        if ($relation->unique && $angebot !== [] && $this->records !== null) {
+            foreach ($this->records->recordRefsHeldAt($relation->id) as $satz => $halter) {
+                if ($halter !== $recordId) {
+                    unset($angebot[$satz]);
+                }
+            }
+        }
+
+        $einfuegen = (string) ($this->partActs['insert'] ?? '');
+        $entfernen = (string) ($this->partActs['remove'] ?? '');
+        $html      = '<table class="taxmod-ref-rows"><tbody>'
+            // *Damit eine ganz geleerte Liste ankommt und gelöscht wird.*
+            . '<input type="hidden" name="' . RenderResult::escape($name) . '" value=""' . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '>';
+
+        foreach ($werte === [] ? [null] : $werte as $wert) {
+            $jetzt    = $wert?->reference;
+            $optionen = $angebot;
+
+            if ($jetzt !== null && ! isset($optionen[$jetzt])) {
+                $optionen = [$jetzt => (string) ($woerter[$jetzt] ?? '#' . $jetzt)] + $optionen;
+            }
+
+            $html .= '<tr class="taxmod-ref-row"><td>'
+                . SelectMarkup::of($name, $optionen, $jetzt === null ? null : (string) $jetzt, true, $formId, ['class' => 'taxmod-ref-select'])
+                . '</td><td class="taxmod-table-acts">'
+                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-ref-add" style="color:#1d2327"' . ($einfuegen === '' ? '' : ' title="' . RenderResult::escape($einfuegen) . '"') . '>'
+                . IconMarkup::dashicon('plus-alt2', $einfuegen) . '</button>'
+                . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-ref-remove" style="color:#b32d2e"' . ($entfernen === '' ? '' : ' title="' . RenderResult::escape($entfernen) . '"') . '>'
+                . IconMarkup::dashicon('trash', $entfernen) . '</button>'
+                . '</td></tr>';
+        }
+
+        return [
+            'renderer' => SummaryRenderer::NAME,
+            'rows'     => [],
+            'rowActs'  => [],
+            'after'    => '',
+            'result'   => RenderResult::of($html . '</tbody></table>'),
         ];
     }
 

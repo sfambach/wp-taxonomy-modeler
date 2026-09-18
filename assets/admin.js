@@ -1473,6 +1473,57 @@
 		wertPfeileSetzen( liste );
 	}, true );
 
+	// ⚠️ **Mehrfache Verweise als Zeilen** (D-859) — sein Wort: «ja bitte folge deinen vorschlag für mehrfach verweise». *«+» setzt unter die
+	// Zeile eine leere; der Mülleimer nimmt die Zeile weg (die letzte wird nur geleert). Danach meldet eine Auswahl die Änderung, damit das
+	// automatische Speichern (D-854) sie sieht.*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-ref-add, .taxmod-ref-remove' ) : null;
+		var zeile = knopf ? knopf.closest( '.taxmod-ref-row' ) : null;
+
+		if ( ! zeile ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		var tabelle = zeile.parentElement;
+
+		if ( knopf.classList.contains( 'taxmod-ref-add' ) ) {
+			var neu   = zeile.cloneNode( true );
+			var wahl  = neu.querySelector( 'select' );
+
+			if ( wahl ) {
+				wahl.value = '';
+			}
+
+			zeile.after( neu );
+
+			if ( wahl ) {
+				wahl.focus();
+			}
+
+			return;
+		}
+
+		var uebrig = tabelle ? tabelle.querySelectorAll( '.taxmod-ref-row' ).length : 0;
+		var melder = null;
+
+		if ( uebrig > 1 ) {
+			zeile.remove();
+			melder = tabelle.querySelector( '.taxmod-ref-row select' );
+		} else {
+			melder = zeile.querySelector( 'select' );
+
+			if ( melder ) {
+				melder.value = '';
+			}
+		}
+
+		if ( melder ) {
+			melder.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		}
+	} );
+
 	// ⚠️ **Die Zusatzfunktionen einer Stelle** (D-845). *Dieselbe Liste; ein neues Glied kommt aus der Vorlage seiner Funktion, mit einer
 	// eigenen Nummer in der Adresse. Der Mülleimer nimmt das Glied heraus; gespeichert wird mit der Seite, in der Reihenfolge der Liste.*
 	var addonZaehler = 0;
