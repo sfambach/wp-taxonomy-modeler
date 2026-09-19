@@ -563,6 +563,35 @@ Als Teile (wiederholbar, mit Unterfeldern) an einem Projekt: **Platinenbestellun
 3. Wie das mit dem Aufbau der Seiten zusammengeht (Gutenberg, von ihm für den 2026-09-20 angekündigt).
 
 ---
+## INF-058 · Hardware-Tabellen und Benchmarks: was darin steckt und was davon stimmt
+
+**Typ:** `BEFUND` + `VORSCHLAG` · **Status:** `INFERRED` — sein Auftrag vom 2026-09-19: *«erst mal gucken, welche Tabellen gehören zusammen … stimmen die Einträge der Hardware … und danach gucken wir, wie wir die Benchmark-Tests aufbauen»*, und zu den Benchmarks: *«jeder Test hat einen Testaufbau»*, *«so ein Benchmark ist so eine eigene Softwarekategorie»*, Betriebssysteme *«nicht weiter als Windows 2000»*.
+
+### Gruppen der TablePress-Tabellen (gemessen)
+
+CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · Benchmarks (#13, #14, #19, #20, #22 — eine Sammlung, nach Epochen geteilt; #14 und #19 teilen 7 Testsysteme) · Karten: Sound #17, Netzwerk #21, Grafik #23 (+ #24 leer), Controller #25 (leer) **und #27** — «Kopie von Netzwerk-Adapter» ist in Wahrheit die Multi-I/O-Karte Winbond W83757F · Laufwerke #26 (leer) · Komplettsysteme #28 · Wareneingang #15 (53 Käufe) · Maker, nicht Retro: #1, #5, #6, #7, #8, #10, #11.
+
+### Stimmen die Einträge?
+
+**CPU-Tabelle #12 — geprüft gegen Wikipedia EN/DE: nur Rohmaterial.** Rund 20 sichere Fehler, u. a. Pentium-Busbreite 32 statt 64 Bit, P120 Bustakt 50 statt 60, P150 Multiplikator 3,5 statt 2,5, P166/P200 Codename P55CS statt P54CS, drei Einführungsdaten; 386: SX/DX-Einführung vertauscht, «8,33 MHz» und «/2,/3,/4» als Platzhalter über alle Spalten, i386SL Busbreite, RapidCAD-1 «externer Koprozessor». Dazu verrutschte Zellen, gemischte Einheiten und Formate. Empfehlung: CPUs frisch aus Quellen übernehmen, je Wert die Quelle.
+
+**Mainboards #16 (von mir gelesen, nicht gegen Quellen geprüft):** Werte in falschen Zeilen (JT-586IV4 «FDD = 2xIDE, 1xFDD», CPU-Takte unter «Bus»; GA-586S2 «RAM-Frequenz = 60ns»), zweifelhafte Werte (Dell E93839), M598 Rev 5.1 und 7.0A Feld für Feld gleich, Tippfehler, uneinheitliche Schreibweisen. **Karten:** «Marox», «Tiro32», «ET300AX», «Creativ»; Millennium «VGA / DVI» prüfen.
+
+### Benchmarks (Recherche, Quellen im Befund)
+
+- Sein Paket ist fast sicher **Phil's Computer Lab DOS Benchmark Pack 1.6** (https://www.philscomputerlab.com/dos-benchmark-pack.html).
+- **Was seine Daten selbst zeigen:** Landmark CPU, Norton SI CPU und Speedsys CPU sind auf allen Socket-7-Boards mit derselben CPU gleich — sie messen die CPU, nicht das Board. Doom «Zeit» (immer 2134) und Quake «Frames» (immer 969) sind Konstanten, keine Messwerte; Chris-Score = FPS × 1,667; 3DBench liefert Stufenwerte; Landmark läuft ab etwa Pentium II über; Quake 640×480 bei den Celeron D vermutlich an 60 Hz gebunden.
+- **Wofür welcher Test:** CPUs — Speedsys CPU, Doom, Quake 320×200, 3DBench 1.0c, TOPBENCH bis 486; Boards/Cache — Speedsys L1/L2/Durchsatz, Cachechk; Grafikkarten — PC Player 640×480, Chris 640×480, Doom max, Landmark Video, dazu VIDSPEED; Platten — Speedsys HDD, Norton SI.
+- **Weitere DOS-Tests:** CACHECHK, VIDSPEED, VGAFPS, VESATEST, Wolf3D-timedemo, Memory Speed, MIPS u. a. **Windows 3.11–2000:** Ziff-Davis PC Benchmarks, WinBench/Winstone 99, WinTune 98, Final Reality, 3DMark99/2000/2001, PCMark 2002, Quake II/III-timedemo, Sandra.
+- **Ein Test als Datensatz (Vorschlag):** Programm, Version, Paket, Betriebssystem, Szenario, Einstellung, Rohwert mit Einheit, abgeleiteter Wert mit Formel, Richtung, Messbereich/Grenzen, gemessene Komponenten mit Gewicht, Voraussetzungen (FPU, VESA 2.0). **Jede Messung** mit Testaufbau (Board, CPU, RAM, Karte, Platte, BIOS-Einstellungen, Treiber), Datum und Gültigkeit.
+
+### Zu entscheiden
+
+1. Eine vierte Stufe «Exemplar» unter der Revision — sein Stück mit BIOS-Stand, Kauf (aus #15) und Benchmarks?
+2. Fehler beim Übernehmen berichtigen (mit Vermerk) oder erst übernehmen und getrennt abarbeiten?
+3. Welche Tests gelten, welche fallen weg — und welche werden wiederholt (sein Wort: *«vielleicht müssen wir auch ein paar Tests wiederholen»*).
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*
