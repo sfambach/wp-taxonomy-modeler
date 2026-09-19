@@ -362,7 +362,7 @@ final class NodesScreen
         // ⚠️ **Ab hier trägt jeder Link den Zustand**, auch der einer frischen Seite — das ist das
         // «Fortschreiben». *Ein Klick auf den Menüpunkt hat keinen Parameter und setzt damit zurück,
         // was er ausdrücklich so wollte.*
-        $this->foldStateForLinks = $collapsed === [] ? self::ALL_EXPANDED : implode(',', $collapsed);
+        $this->foldStateForLinks = self::foldState($collapsed);
 
         $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden, $this->showsRoot());
         $parked    = $this->tree->rowsUnder($trash, [], $collapsed, $showHidden);
@@ -1057,7 +1057,7 @@ final class NodesScreen
                 // *`implode(',', [])` is the empty string, which `array_filter` drops and
                 // {@see collapsedFromRequest()} would then read as «no parameter» — the fresh page,
                 // which is now folded. So the empty set says so in a word ({@see self::ALL_EXPANDED}).*
-                'taxmod_collapsed' => $next === [] ? self::ALL_EXPANDED : implode(',', $next),
+                'taxmod_collapsed' => self::foldState($next),
                 'taxmod_node'      => isset($_GET['taxmod_node']) ? absint($_GET['taxmod_node']) : null,
                 // ⚠️ *Der Merker reist mit, sonst wäre der nächste Aufruf wieder «neu gewählt» und
                 // machte den eben zugeklappten Ast auf ({@see $openedPathForLinks}).*
@@ -2327,7 +2327,9 @@ final class NodesScreen
                     __('Move this field down into chosen children — each gets its own copy, and this one is parked', 'taxmod'),
                     $own && $kinderDesKnotens !== [],
                     icon: 'arrow-down-alt',
-                    opens: $this->pushToChildrenDialog($relation, $kinderDesKnotens)
+                    // ⚠️ *Der Dialog nur, wo die Aktion geht (D-869) — sonst stand je Feldzeile ein leerer, gesperrter Dialog, gemessen an «CPUs»
+                    // 71-mal zu rund 800 Byte. Der ausgegraute Knopf bleibt.*
+                    opens: $own && $kinderDesKnotens !== [] ? $this->pushToChildrenDialog($relation, $kinderDesKnotens) : null
                 ),
                 new Control(
                     'do',
@@ -4668,9 +4670,52 @@ final class NodesScreen
 
         $raw = sanitize_text_field(wp_unslash($_GET['taxmod_collapsed']));
 
+        // ⚠️ *Die kurze Form (D-869) beginnt mit «z»: Abstände zur vorigen Nummer in Basis 36. Die alte Kommaliste gilt weiter — Lesezeichen
+        // und Wächter tragen sie noch.*
+        if (str_starts_with($raw, 'z')) {
+            $ids  = [];
+            $lauf = 0;
+
+            foreach (explode('.', substr($raw, 1)) as $abstand) {
+                $lauf  += (int) base_convert($abstand, 36, 10);
+                $ids[] = $lauf;
+            }
+
+            return array_values(array_filter($ids));
+        }
+
         // `absint()` turns the marker into 0 and `array_filter` drops it, so the deliberate empty
         // set arrives as an empty list rather than as a missing parameter.
         return array_values(array_filter(array_map('absint', explode(',', $raw))));
+    }
+
+    /**
+     * Der Faltzustand, wie Links und Formulare ihn tragen — kurz: «z», dann die Abstände der sortierten Nummern in Basis 36.
+     *
+     * ⚠️ *Gemessen am 2026-09-19: dieselbe Liste von 83 zwölfstelligen Nummern stand 299-mal auf der Seite «CPUs», 259 von 1529 KB
+     * ([D-869](../../../docs/NewConcept/90-decision-log.md), [D-818](../../../docs/NewConcept/90-decision-log.md)). Die Nummern liegen dicht
+     * beieinander, also sind die Abstände kurz. Was gilt, ändert sich nicht — nur, wie es geschrieben wird. Die leere Menge bleibt das Wort
+     * {@see self::ALL_EXPANDED}.*
+     *
+     * @param list<int> $ids
+     */
+    private static function foldState(array $ids): string
+    {
+        if ($ids === []) {
+            return self::ALL_EXPANDED;
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        sort($ids);
+        $vorher   = 0;
+        $abstaende = [];
+
+        foreach ($ids as $id) {
+            $abstaende[] = base_convert((string) ($id - $vorher), 10, 36);
+            $vorher      = $id;
+        }
+
+        return 'z' . implode('.', $abstaende);
     }
 
     /**

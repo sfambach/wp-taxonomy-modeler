@@ -167,6 +167,22 @@ final class CompactRenderer extends RendererNode
             $inner    .= $this->createHtmlPart($part, $withLabel, $vertical);
         }
 
+        // ⚠️ **Angezeigt und ganz leer: ein leerer Wert statt eines leeren Gerüsts** ([D-869](../../../docs/NewConcept/90-decision-log.md)).
+        // *Gemessen am 2026-09-19 an «CPUs»: ein leerer Einheitenwert zeichnete drei leere Teile in einem Flex-Rahmen, 534 Byte je Zelle —
+        // bei 40 Spalten und 20 Zeilen der grösste Posten der Satztabelle. Zu sehen war nichts davon.*
+        if ($context->purpose === Purpose::Display && $inner !== '' && ! $withLabel) {
+            $sichtbar = false;
+
+            foreach ($context->surroundings->parts as $part) {
+                $markup   = $part->isHidden() ? '' : $part->result->markup;
+                $sichtbar = $sichtbar || trim(strip_tags($markup)) !== '' || str_contains($markup, '<img') || str_contains($markup, '<input');
+            }
+
+            if (! $sichtbar) {
+                return new RenderResult('<span class="taxmod-value"></span>', array_values(array_unique($usedRelations)));
+            }
+        }
+
         if ($inner !== '' && $gesammelt !== []) {
             $inner .= HintMarkup::combined($gesammelt);
         }

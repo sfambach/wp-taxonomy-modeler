@@ -129,12 +129,50 @@ final class ChooserRenderer extends RendererNode
     private function overlay(string $switch, string $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
     {
         $confirm = $context->surroundings->sections[self::CONFIRM] ?? null;
+        $koerper = $tree->body;
+
+        // ⚠️ **Teilt die Seite die Körper** ([D-866](../../../docs/NewConcept/90-decision-log.md)), steht der Baum einmal als Vorlage da — gemessen
+        // am 2026-09-19 an «CPUs»: 25 gleiche Einheitenbäume zu je 12 KB, seit die CPUs elf Einheitenwert-Felder haben. Der Baum kommt fertig
+        // gezeichnet, mit Feldname, Formular und Wahl in jedem Knopf; neutral heisst: ohne diese drei. Im Platzhalter steht die aktuelle Wahl als
+        // gewählter, verborgener Knopf, damit ein Speichern ohne Skript nichts verliert.
+        if ($context->surroundings->sharedBodies !== null && str_contains($koerper, 'type="radio"')) {
+            $wahl = preg_match('/<input type="radio"[^>]*\bchecked\b[^>]*>/', $koerper, $gewaehlt) === 1 ? $gewaehlt[0] : '';
+            $name = '';
+            $form = '';
+            $wert = '';
+            $neutral = (string) preg_replace_callback(
+                '/<input type="radio"[^>]*>/',
+                static fn (array $knopf): string => (string) preg_replace(['/ name="[^"]*"/', '/ form="[^"]*"/', '/ checked\b/'], '', $knopf[0]),
+                $koerper
+            );
+
+            if (preg_match('/<input type="radio"[^>]* name="([^"]*)"[^>]*>/', $koerper, $einer) === 1) {
+                $name = $einer[1];
+                $form = preg_match('/ form="([^"]*)"/', $einer[0], $f) === 1 ? $f[1] : '';
+                $wert = preg_match('/ value="([^"]*)"/', $wahl, $w) === 1 ? $w[1] : '';
+            }
+
+            // *Nur Knöpfe eines Satzformulars — der eine Auswahlbaum der Seite (D-815) liest seine Knöpfe selbst und bleibt ganz.*
+            if ($form !== '') {
+                // *Die Zeilen tragen den Feldnamen in ihrer Kennung («taxmod-choice-<Feld>-<Knoten>»); in der Vorlage steht dafür «{feld}», das
+                // Skript setzt ihn beim Einsetzen wieder ein.*
+                $neutral = str_replace(
+                    'id="taxmod-choice-' . preg_replace('/[^a-z0-9_-]/i', '', html_entity_decode($name)) . '-',
+                    'id="taxmod-choice-{feld}-',
+                    $neutral
+                );
+                $koerper = '<span class="taxmod-record-stub" data-taxmod-body="' . $context->surroundings->sharedBodies->share($neutral) . '"'
+                    . ' data-taxmod-name="' . $name . '" data-taxmod-form="' . $form . '" data-taxmod-value="' . $wert . '">'
+                    . ($wahl === '' ? '' : (string) preg_replace('/^<input /', '<input hidden ', $wahl))
+                    . '</span>';
+            }
+        }
 
         return RenderResult::of(DialogMarkup::of(
             $switch,
             $trigger === null || $trigger->body === '' ? $current : $trigger->body,
             $current,
-            '<span class="taxmod-chooser-tree">' . $tree->body . '</span>',
+            '<span class="taxmod-chooser-tree">' . $koerper . '</span>',
             $confirm?->body ?? '',
             ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
             cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? '')

@@ -1209,6 +1209,10 @@
 			var liste  = teil.querySelector( '.taxmod-record-list' );
 			var imBaum = wert === '' ? null : teil.querySelector( 'input[type="radio"][value="' + wert + '"]' );
 
+			teil.querySelectorAll( '[id*="{feld}"]' ).forEach( function ( element ) {
+				element.id = element.id.replace( '{feld}', name.replace( /[^a-z0-9_-]/gi, '' ) );
+			} );
+
 			teil.querySelectorAll( 'input[type="radio"]' ).forEach( function ( knopf ) {
 				knopf.name = name;
 
@@ -1216,6 +1220,9 @@
 					knopf.setAttribute( 'form', form );
 				}
 			} );
+
+			// *Ein Satzdialog hat rechts die Liste, ein Knotenbaum nicht — dort kommt, was im Platzhalter stand, an den Anfang.*
+			liste = liste || teil;
 
 			if ( liste ) {
 				var erster = liste.firstChild;
@@ -1244,13 +1251,33 @@
 				}
 			}
 
+			var gewaehlt = wert === '' ? null : teil.querySelector( '.taxmod-tree-row input[type="radio"][value="' + wert + '"]' );
+
 			platz.replaceWith( teil );
+
+			// *In einem Knotenbaum den Ast der Wahl aufklappen: jede Zeile darüber mit geringerer Tiefe ist ein Vorfahr.*
+			var zeile = gewaehlt ? gewaehlt.closest( '.taxmod-tree-row' ) : null;
+			var tiefe = zeile ? parseInt( zeile.getAttribute( 'data-depth' ) || '0', 10 ) : 0;
+
+			for ( var davor = zeile ? zeile.previousElementSibling : null; davor && tiefe > 0; davor = davor.previousElementSibling ) {
+				var t = parseInt( davor.getAttribute( 'data-depth' ) || '0', 10 );
+
+				if ( davor.classList.contains( 'taxmod-tree-row' ) && t < tiefe ) {
+					var klapper = davor.querySelector( '.taxmod-tree-fold[data-fold="zu"]' );
+
+					if ( klapper ) {
+						klapper.click();
+					}
+
+					tiefe = t;
+				}
+			}
 		} );
 	}
 
 	[ 'click', 'focusin' ].forEach( function ( art ) {
 		document.addEventListener( art, function ( ereignis ) {
-			var wahl = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-pick' ) : null;
+			var wahl = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-pick, .taxmod-chooser' ) : null;
 
 			if ( wahl ) {
 				koerperEinsetzen( wahl );

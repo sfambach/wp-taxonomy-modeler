@@ -2313,6 +2313,7 @@ final class Rendering implements Presets
                         ChooserRenderer::CONFIRM    => new Section('', $confirm),
                     ],
                     dialogWords: $this->dialogWords,
+                    sharedBodies: $this->geteilteKoerper,
                 ),
             )
         );
@@ -4830,7 +4831,11 @@ final class Rendering implements Presets
                 if (isset($worte[$satz->id])) {
                     $eigene[$satz->id]  = $worte[$satz->id];
                     // *Die Zusammenfassung und der Knotenname gehören mit hinein — «Condensator» soll den Kondensator finden.*
-                    $gesucht[$satz->id] = mb_strtolower($worte[$satz->id] . ' ' . $knoten->name) . ' ' . ($suche[$satz->id] ?? '');
+                    // ⚠️ *Jedes Wort einmal (D-869): gesucht wird, ob jedes getippte Wort vorkommt — ein zweites «intel» findet nichts mehr, kostete
+                    // aber in der Satzauswahl über alle Models ein Viertel der Vorlage.*
+                    $gesucht[$satz->id] = implode(' ', array_unique(preg_split('/\s+/u', trim(
+                        mb_strtolower($worte[$satz->id] . ' ' . $knoten->name) . ' ' . ($suche[$satz->id] ?? '')
+                    )) ?: []));
                 }
             }
 
@@ -7101,7 +7106,10 @@ final class Rendering implements Presets
             return RenderResult::of('');
         }
 
-        $walked = $this->closedApartFrom($this->gemerkteZeilenUnter($laeufer, $root, $skip), $expanded, $preselected);
+        // ⚠️ *Teilt die Seite die Körper (D-866), klappt der Baum eines Satzformulars nicht auf die Wahl hin auf — sonst wäre jeder Baum ein
+        // anderer und keiner teilbar (gemessen: 25 Einheitenbäume, 25 Vorlagen). Das Skript öffnet den Ast der Wahl nach dem Einsetzen.*
+        $geteilt = $this->geteilteKoerper !== null && $formId !== '';
+        $walked  = $this->closedApartFrom($this->gemerkteZeilenUnter($laeufer, $root, $skip), $expanded, $geteilt ? null : $preselected);
 
         return $this->chooserFor(
             $walked,
