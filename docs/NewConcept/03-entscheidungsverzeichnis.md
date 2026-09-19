@@ -78,6 +78,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wo steht das eigene Stück? | [D-867](90-decision-log.md) — als Exemplar mit Verweis auf sein Modell | — |
 | Wie wird eine Datei der Mediathek gespeichert? | [D-865](90-decision-log.md) — mit ihrer Id, als `media:<Id>`; Bilder zeigen ein Vorschaubild | *(vorher: ihre Adresse, [D-793](90-decision-log.md))* |
 | Wie oft steht ein Satzauswahl-Dialog auf einer Seite? | [D-866](90-decision-log.md) — jeder gleiche Körper einmal, als Vorlage; das Feld trägt einen Platzhalter | *(vorher: je Feld ein eigener Dialog)* |
+| Wo steht der Aufbau eines Beitrags? | [D-870](90-decision-log.md) — als Seitenvorlage im Modell; WordPress bietet sie beim neuen Beitrag als Startmuster an | — |
 | Was ist eine Schnittstelle, und worauf verweist ein Steckplatz? | [D-862](90-decision-log.md) — ein Satz unter «Schnittstellen»; der Vater trägt die vergleichbaren Felder, der Steckplatz verweist auf einen Erweiterungsbus | *(vorher: Konstanten «Steckplatzarten» und die Auswahl «Schnittstellen»)* |
 | Wann öffnet ein Klick einen Satz in der Vorschau? | [D-803](90-decision-log.md) — nur ein Klick in die eigene Satzzeile, nie aus einem Dialog; ein im Satzdialog gewählter Satz steht sofort im Öffner | ~~D-788~~ *(«eine Zelle enthält irgendwo einen Satzlink» — traf die ganze Seite)* |
 | Wie wählt man die Glieder einer Verweisliste (erlaubte Einheiten, `summary_fields`)? | [D-799](90-decision-log.md) — Liste der gewählten mit ▲/▼ und ✕, darunter ein Auswahlfeld mit «+» | ~~D-732~~ *(ein Haken je Kandidat)* |

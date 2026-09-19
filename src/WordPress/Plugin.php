@@ -88,6 +88,16 @@ final class Plugin
         // again (`CD-6`). One option read per admin request, and the work happens only when
         // the stored version is behind.
         add_action('admin_init', $plugin->ensureUpToDate(...));
+
+        // ⚠️ **Seitenvorlagen als Startmuster** ([D-870](../../docs/NewConcept/90-decision-log.md)) — *nur in der Verwaltung und für die
+        // REST-Schnittstelle, über die der Block-Editor die Muster holt; der öffentliche Aufruf liest nichts.*
+        add_action('admin_init', static fn () => $plugin->starterPatterns()->register());
+        add_action('rest_api_init', static fn () => $plugin->starterPatterns()->register());
+    }
+
+    public function starterPatterns(): WpStarterPatterns
+    {
+        return new WpStarterPatterns($this->editor(), new WpdbRecordRepository());
     }
 
     /**
