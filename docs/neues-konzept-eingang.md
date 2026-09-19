@@ -616,6 +616,17 @@ CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · 
 **Was es heute gibt:** Startmuster aus den Seitenvorlagen ([D-870](NewConcept/90-decision-log.md)); seine wiederverwendbaren Blöcke (etwa für 386er und 486er) stehen darin als Verweise und bleiben überall gleich. **Was fehlt:** ein kurzer Fragedialog vor dem Muster, dessen Antworten Blöcke auswählen (etwa den Block der Prozessorfamilie) und den Beitrag mit einem Satz im Modell verbinden.
 
 ---
+## INF-061 · Bezeichnung und Beschreibung an «Model» — für alles
+
+**Typ:** `VORSCHLAG` · **Status:** `INFERRED` — seine Frage vom 2026-09-19, als die Bilder vor dem Projektnamen standen: *«Ich sehe es weil in modell die bildell jetzt die bilder hängen, hat nicht alles einen titel und beschreibung ?»*
+
+**Gemessen am 2026-09-19** — Namensfelder (Text) unter «Model», mit gefüllten Werten: Hardware › Bezeichnung 213 · Quellenverzeichnis › Titel 203 · Kontact › Name 56 · Prozessor-Familien › Name 48 · Schnittstellen › Bezeichnung 32 · Projekte › Project Name 19 · Seitenvorlagen › Name 17 (vom Code gelesen, `StarterPattern::NAME`) · Platine › Name 6 · Formfaktoren › Bezeichnung 6. Beschreibungen: Electronic Parts 28 · Projekte 16 · Platine 4. Ohne Namen: Exemplare (heissen nach ihrem Modell).
+
+**Vorschlag:** «Bezeichnung» (0..1, damit ein Exemplar ohne auskommt) und «Beschreibung» (0..1) als die ersten Felder an «Model»; die Kante Hardware › Bezeichnung wandert hinauf (Id, Werte und Einstellungen bleiben), die übrigen Namens- und Beschreibungsfelder gehen mit ihren Werten darin auf. Dann stehen Name und Beschreibung überall vorn, ohne Anordnung je Knoten.
+
+**Zu entscheiden:** 1. So bauen? 2. Kontakt › Name dabei (Personen haben Vorname + Name)? 3. «Bezeichnung» an Hardware bleibt Pflicht (1..1) oder überall 0..1?
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*
