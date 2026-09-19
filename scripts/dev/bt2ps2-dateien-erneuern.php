@@ -1,5 +1,5 @@
 <?php declare(strict_types=1);
-// Plan 244: die Dateien beider BT2PS2-Platinen neu (fambach.net im Bestückungsdruck) — an Ort und Stelle, die
+// Plan 247: die Dateien beider BT2PS2-Platinen neu (fambach.net im Bestückungsdruck) — an Ort und Stelle, die
 // Mediathek-Ids bleiben. Dazu der Fork mit den Platinen als Link am Projekt. Ohne --write wird nur gezeigt.
 define('WP_USE_THEMES', false);
 require 'C:/Devel/Wordpress/wp-load.php';
