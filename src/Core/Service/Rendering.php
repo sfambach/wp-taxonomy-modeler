@@ -2490,6 +2490,9 @@ final class Rendering implements Presets
             }
         }
 
+        // ⚠️ *In der Satztabelle steht von mehreren Medien nur ihre Anzahl (D-878) — der Merker gilt nur, solange die Zeilen gezeichnet werden.*
+        $this->inSatztabelle = true;
+
         foreach ($rows as $row) {
             $formId = 'taxmod-record-' . $row['id'];
 
@@ -2523,6 +2526,8 @@ final class Rendering implements Presets
             // ⚠️ *Wohin die Anzahl eines 1..n-Teils führt: der Satz der Zeile, geöffnet an seiner Eingabe (D-825).*
             $links[] = (string) ($row['link'] ?? '');
         }
+
+        $this->inSatztabelle = false;
 
         $tabelle = $this->renderers->byName(TableRenderer::NAME)->render(
             $model,
@@ -4632,7 +4637,16 @@ final class Rendering implements Presets
                         // ⚠️ *Ohne Nullen hinten (D-792, Zeile 153): «1.7» und «330» statt «1.7000000000» — sonst träfe eine getippte «1» auch «100».*
                         $teile[] = str_contains($wert->decimal, '.') ? rtrim(rtrim($wert->decimal, '0'), '.') : $wert->decimal;
                     } elseif (! $wert->isAReference()) {
-                        $teile[] = $wert->rawValue();
+                        $roh = (string) $wert->rawValue();
+
+                        // ⚠️ *Gesucht wird, was einen Satz benennt, nicht seine Prosa ([D-877](../../../docs/NewConcept/90-decision-log.md)):
+                        // ein Text über SUCHTEXT_HOECHSTENS Zeichen bleibt draussen, ein Datum ohne seine Mitternacht. Gemessen am 2026-09-19:
+                        // mit 25 Mainboards wuchs die Satzauswahl «Models» auf 208 KB, zwei Drittel davon Suchtext, meist Herkunftshinweise.*
+                        if ($wert->date !== null) {
+                            $teile[] = str_replace(' 00:00:00', '', $roh);
+                        } elseif (mb_strlen($roh) <= self::SUCHTEXT_HOECHSTENS) {
+                            $teile[] = $roh;
+                        }
                     }
                 }
 
@@ -6313,6 +6327,9 @@ final class Rendering implements Presets
      */
     private const TIEFSTENS = 3;
 
+    /** Längster Text, der noch in den Suchtext einer Satzauswahl kommt ([D-877](../../../docs/NewConcept/90-decision-log.md)). */
+    private const SUCHTEXT_HOECHSTENS = 120;
+
     /**
      * Unter diesem Namen kommen die Werte eines **Teils** zurück — `taxmod_part[<Satz-Id>][<Kanten-Id>]`.
      *
@@ -6448,6 +6465,14 @@ final class Rendering implements Presets
         if ($purpose === Purpose::Display) {
             // ⚠️ *Mehrere Medien — «Bilder», «Quellen» — jedes für sich (D-865): gemessen stand sonst «media:15685, media:15686, …» als
             // ein einziger Link da, weil der alte Weg die Werte mit Komma zu einem verklebt. Bilder nebeneinander, Dateien untereinander.*
+            if ($werte !== [] && $this->typeAt($relation) === SimpleType::Media && $this->inSatztabelle) {
+                // ⚠️ **In der Tabelle nur die Anzahl** ([D-878](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«records titelbild
+                // anzuzeigen ist ganz nett, die andern stören aber eher also nur anzahl zeigen»*. Ein einzelnes Medium (Titelbild) bleibt Bild.*
+                return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
+                    '<span class="taxmod-value taxmod-media-count">' . \Taxmod\Core\Renderer\IconMarkup::dashicon('format-gallery') . ' ' . count($werte) . '</span>'
+                )];
+            }
+
             if ($werte !== [] && $this->typeAt($relation) === SimpleType::Media) {
                 $neuerTab = $this->mediaOpensNewTab([$relation], $relation->id);
                 $bilder   = '';
@@ -6631,6 +6656,9 @@ final class Rendering implements Presets
 
     /** @var array<int, list<\Taxmod\Core\Model\RelationRecord>> Die Werte eines Satzes, einmal je Zeichenlauf gelesen (`CD-7`). */
     private array $werteJeSatzGelesen = [];
+
+    /** Ob gerade die Zeilen einer Satztabelle gezeichnet werden (D-878). */
+    private bool $inSatztabelle = false;
 
     /** @return list<\Taxmod\Core\Model\RelationRecord> */
     private function werteJeSatz(int $recordId): array
