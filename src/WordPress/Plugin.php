@@ -76,6 +76,12 @@ final class Plugin
             static fn () => $plugin->screen()->handleFieldSettings()
         );
 
+        // ⚠️ *Die Zeilen der geerbten Felder, auf Wunsch nachgeladen (D-871) — derselbe Rückweg.*
+        add_action(
+            'admin_post_' . NodesScreen::INHERITED_ACTION,
+            static fn () => $plugin->screen()->handleInheritedFields()
+        );
+
         // ⚠️ **The installation's own screen** (D-397) — three decisions had been deferred to it and
         // each had its own interim: developer mode, the neutral locale, the tree's scale.
         add_action('admin_post_' . SettingsScreen::ACTION, $plugin->handleSettings(...));

@@ -763,6 +763,14 @@ $erklaert[]   = Rendering::KIND_KEY;
 $ueberzaehlig = array_values(array_diff($angeboteneSchluessel, $erklaert));
 check('der Einstellungsbereich bietet Schlüssel an, und jeder steht im Vertrag des Ziels oder seines Renderers', count($angeboteneSchluessel) >= 3 && $ueberzaehlig === [], 'nicht erklärt: ' . implode(',', $ueberzaehlig) . ' von ' . implode(',', $angeboteneSchluessel));
 check('display_size ist dabei — die Typklasse erklärt es (3.6.2, D-724)', in_array('display_size', $angeboteneSchluessel, true));
+// ⚠️ **Geändert am 2026-09-19 mit [D-871](../../docs/NewConcept/90-decision-log.md), sichtbar:** *die geerbten Zeilen stehen erst auf Wunsch
+// in der Feldtabelle — sein Wort: «nachladen bauen». Diese Prüfung sieht sie über den Merker, wie ein Klick ohne Skript.*
+$zuklappen = $_GET['taxmod_inherited'] ?? null;
+$zu        = preg_replace('/<dialog\b.*?<\/dialog>/s', '', seite($kind->id)) ?? '';
+check('die geerbten Felder stehen zugeklappt da — eine Zeile, die sie nachlädt, und keine geerbte Feldzeile (D-871)', str_contains($zu, 'data-taxmod-inherited="') && ! str_contains($zu, '<em>inherited</em>'));
+$geholt = $pluginObj->screen()->inheritedFieldRows($kind);
+check('das Nachladen liefert genau die geerbten Zeilen, ohne Tabelle drumherum (D-871)', substr_count($geholt, 'class="taxmod-field"') >= 2 && str_contains($geholt, '<em>inherited</em>') && ! str_contains($geholt, '<em>own</em>') && ! str_contains($geholt, '<table class="wp-list-table'));
+$_GET['taxmod_inherited'] = '1';
 $html = preg_replace('/<dialog\b.*?<\/dialog>/s', '', seite($kind->id)) ?? '';
 preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/s', $html, $zeilenKind);
 $offeneGeerbte = 0;
@@ -776,6 +784,7 @@ foreach ($zeilenKind[1] as $z) {
     }
 }
 check('«How many» ist an geerbten Zeilen gesperrt', $geerbte >= 2 && $offeneGeerbte === 0, "{$offeneGeerbte} offen von {$geerbte}");
+if ($zuklappen === null) { unset($_GET['taxmod_inherited']); } else { $_GET['taxmod_inherited'] = $zuklappen; }
 $htmlEigen = preg_replace('/<dialog\b.*?<\/dialog>/s', '', seite($modellKnoten->id)) ?? '';
 preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/s', $htmlEigen, $zeilenEigen);
 $gesperrteEigene = 0;
@@ -1324,7 +1333,11 @@ foreach (['K1', 'K2', 'K3'] as $n) {
 $herkunft = [];
 // ⚠️ *Seit D-865 (2026-09-19, sichtbar geändert) erbt jeder Knoten unter «Model» dessen Felder; gezählt werden nur die der Probeknoten.*
 $vomVater = array_map(static fn ($r): string => $r->name, $editor->fieldsOf($modellAst->id));
-foreach (tabelleUnter(seite($rangKind->id), 'Fields', 'Settings') as $zeile) {
+// *Aufgeklappt über den Merker (D-871) — sonst stünden die geerbten Zeilen gar nicht in der Seite.*
+$_GET['taxmod_inherited'] = '1';
+$rangSeite = seite($rangKind->id);
+unset($_GET['taxmod_inherited']);
+foreach (tabelleUnter($rangSeite, 'Fields', 'Settings') as $zeile) {
     if (in_array(trim((string) ($zeile[0] ?? '')), $vomVater, true) || in_array(trim((string) ($zeile[1] ?? '')), $vomVater, true)) {
         continue;
     }

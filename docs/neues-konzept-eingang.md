@@ -607,6 +607,15 @@ CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · 
 - **Einlesen statt eintippen:** ein DOS-Programm (Stapeldatei oder kleines Programm), das die Tests nacheinander startet und die Ergebnisse in eine Textdatei schreibt; das Plugin bekommt dafür seine erste Importfunktion.
 
 ---
+## INF-060 · Beim Anlegen einer Seite gleich fragen
+
+**Typ:** `IDEE` · **Status:** `INFERRED` — sein Wort vom 2026-09-19, ausdrücklich für später:
+
+> *«wenn ich so eine Seite anlege, dann könnte ich ja gleich schon ein paar Fragen beantworten. Was möchte ich anlegen? Welche Prozessorfamilie geht es? … Aber das ist wahrscheinlich für die nächste Version eher dann gedacht.»*
+
+**Was es heute gibt:** Startmuster aus den Seitenvorlagen ([D-870](NewConcept/90-decision-log.md)); seine wiederverwendbaren Blöcke (etwa für 386er und 486er) stehen darin als Verweise und bleiben überall gleich. **Was fehlt:** ein kurzer Fragedialog vor dem Muster, dessen Antworten Blöcke auswählen (etwa den Block der Prozessorfamilie) und den Beitrag mit einem Satz im Modell verbinden.
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*

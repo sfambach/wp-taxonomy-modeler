@@ -2277,3 +2277,48 @@
 	window.addEventListener( 'resize', balkenAnlegen );
 
 } )();
+
+/**
+ * Die Zeilen der geerbten Felder, auf Wunsch nachgeladen (D-871) — sein Wort: «nachladen bauen».
+ *
+ * ⚠️ *Ohne Skript lädt der Knopf die Seite mit dem Merker neu; mit Skript holt er nur die Zeilen und setzt sie an seine Stelle. Scheitert
+ * der Abruf, geht der Knopf seinen Link — derselbe Rückfall wie beim Einstellungsbereich.*
+ */
+( function () {
+	'use strict';
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( 'a[data-taxmod-inherited]' ) : null;
+		var zeile = knopf ? knopf.closest( 'tr' ) : null;
+
+		if ( ! zeile ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+		knopf.setAttribute( 'aria-busy', 'true' );
+
+		fetch( knopf.getAttribute( 'data-taxmod-inherited' ), { credentials: 'same-origin' } )
+			.then( function ( antwort ) {
+				if ( ! antwort.ok ) {
+					throw new Error( 'geerbt' );
+				}
+
+				return antwort.text();
+			} )
+			.then( function ( markup ) {
+				var koerper = document.createElement( 'tbody' );
+
+				koerper.innerHTML = markup;
+
+				while ( koerper.firstChild ) {
+					zeile.parentNode.insertBefore( koerper.firstChild, zeile );
+				}
+
+				zeile.remove();
+			} )
+			.catch( function () {
+				window.location.href = knopf.href;
+			} );
+	} );
+}() );

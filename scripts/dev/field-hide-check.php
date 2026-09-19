@@ -100,6 +100,8 @@ $prefix = $wpdb->prefix . 'taxmod_';
 $knoepfeAuf = static function (int $nodeId): array {
     $_GET['page']        = 'taxmod';
     $_GET['taxmod_node'] = (string) $nodeId;
+    // ⚠️ *Geändert am 2026-09-19 mit D-871, sichtbar: geerbte Zeilen stehen erst auf Wunsch da — die Prüfung klappt sie auf.*
+    $_GET['taxmod_inherited'] = '1';
 
     wp_set_current_user(1);
 

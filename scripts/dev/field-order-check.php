@@ -81,7 +81,8 @@ wp_set_current_user(1);
 
 function seite(int $nodeId): string
 {
-    $_GET = ['page' => 'taxmod-nodes', 'taxmod_node' => (string) $nodeId];
+    // ⚠️ *Geändert am 2026-09-19 mit D-871, sichtbar: geerbte Zeilen stehen erst auf Wunsch da — die Prüfung klappt sie auf.*
+    $_GET = ['page' => 'taxmod-nodes', 'taxmod_node' => (string) $nodeId, 'taxmod_inherited' => '1'];
 
     $rc     = new ReflectionClass(Plugin::class);
     $plugin = $rc->newInstanceWithoutConstructor();

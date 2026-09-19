@@ -2170,6 +2170,18 @@ final class NodesScreen
         $ersteZeile  = $feldzeilen[0]->id ?? 0;
         $letzteZeile = $feldzeilen === [] ? 0 : $feldzeilen[count($feldzeilen) - 1]->id;
 
+        // ⚠️ **Die geerbten Felder erst auf Wunsch** ([D-871](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«nachladen bauen»*.
+        // *Gemessen am 2026-09-19 an «CPUs»: 35 geerbte Zeilen zu je rund 5 KB, die meisten Knöpfe gesperrt, weil ein geerbtes Feld dem
+        // Vorfahren gehört. Ohne Skript lädt der Knopf die Seite mit dem Merker neu; mit Skript holt er nur diese Zeilen.*
+        $geerbt       = array_values(array_filter($feldzeilen, static fn (Relation $r): bool => $r->fromNodeId !== $selected->id));
+        $geerbtZu     = $this->geerbtModus === null && $geerbt !== [] && $this->circumstance(self::SHOW_INHERITED) !== '1';
+
+        if ($this->geerbtModus === 'only') {
+            $feldzeilen = $geerbt;
+        } elseif ($geerbtZu) {
+            $feldzeilen = array_values(array_filter($feldzeilen, static fn (Relation $r): bool => $r->fromNodeId === $selected->id));
+        }
+
         // ⚠️ **Welche Zeilen offen sind, einmal für die ganze Tabelle** ([D-666](../../../docs/NewConcept/90-decision-log.md)).
         // *Alles andere bleibt zu — und «zu» heisst hier **nicht gelesen**, nicht «versteckt».*
         $offeneZeilen = $this->openFieldRows();
@@ -2444,6 +2456,24 @@ final class NodesScreen
             $this->settingsPanelWords()
         ) as $row) {
             $body .= $row->result->markup;
+        }
+
+        if ($this->geerbtModus === 'only') {
+            return $body;
+        }
+
+        if ($geerbtZu) {
+            $body = '<tr class="taxmod-inherited-toggle"><td colspan="8">'
+                . '<a class="button" href="' . esc_url($this->backTo($selected->id, [self::SHOW_INHERITED => '1'])) . '"'
+                . ' data-taxmod-inherited="' . esc_url(add_query_arg([
+                    'action'        => self::INHERITED_ACTION,
+                    'id'            => $selected->id,
+                    '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
+                    ...array_filter($this->circumstances()),
+                ], admin_url('admin-post.php'))) . '">'
+                /* translators: %d: the number of inherited fields. */
+                . esc_html(sprintf(_n('Show %d inherited field', 'Show %d inherited fields', count($geerbt), 'taxmod'), count($geerbt)))
+                . '</a></td></tr>' . $body;
         }
 
         $html .= $this->heading(...$this->fieldBlockHeading(false));
@@ -2801,6 +2831,15 @@ final class NodesScreen
      */
     /** Ob die entfernten Felder gezeigt werden — erst dann werden sie gelesen ([D-820](../../../docs/NewConcept/90-decision-log.md)). */
     private const SHOW_REMOVED = 'taxmod_show_removed';
+
+    /** Ob die Zeilen der geerbten Felder in der Feldtabelle stehen — sonst eine Zeile, die sie nachlädt ([D-871](../../../docs/NewConcept/90-decision-log.md)). */
+    private const SHOW_INHERITED = 'taxmod_inherited';
+
+    /** Der Akt, unter dem das Skript die Zeilen der geerbten Felder nachfordert ([D-871](../../../docs/NewConcept/90-decision-log.md)). */
+    public const INHERITED_ACTION = 'taxmod_inherited_fields';
+
+    /** `only`, während {@see self::handleInheritedFields()} nur die geerbten Zeilen zeichnet. */
+    private ?string $geerbtModus = null;
 
     private function removedFields(Node $selected): string
     {
@@ -5710,6 +5749,45 @@ final class NodesScreen
      * wirklich trägt. Sonst liesse sich über eine veränderte Adresse die Auflösung fremder Kanten
      * abfragen.*
      */
+    /**
+     * Die Zeilen der geerbten Felder nachliefern ([D-871](../../../docs/NewConcept/90-decision-log.md)) — derselbe Rückweg wie
+     * {@see self::handleFieldSettings()}: dieselbe Fähigkeit, dieselbe Nonce, und gezeichnet wird mit derselben Methode wie die Seite.
+     */
+    public function handleInheritedFields(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        $id = isset($_GET['id']) ? absint($_GET['id']) : 0;
+
+        check_admin_referer(self::ACTION . '_' . $id, '_taxmod_nonce');
+
+        $knoten = $this->editor->find($id);
+
+        if ($knoten === null) {
+            wp_die(esc_html__('No such node.', 'taxmod'), '', ['response' => 404]);
+        }
+
+        header('Content-Type: text/html; charset=utf-8');
+
+        echo $this->inheritedFieldRows($knoten); // phpcs:ignore WordPress.Security.EscapeOutput
+
+        exit;
+    }
+
+    /** Dieselben Zeilen als Zeichenkette — die Stelle, an der ein Wächter sie greifen kann (hinter keinem `exit`). */
+    public function inheritedFieldRows(Node $node): string
+    {
+        $this->geerbtModus = 'only';
+
+        try {
+            return \Taxmod\WordPress\Persistence\WpdbLabelRepository::whileDrawing(fn (): string => $this->attributes($node, []));
+        } finally {
+            $this->geerbtModus = null;
+        }
+    }
+
     public function handleFieldSettings(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
@@ -6154,6 +6232,8 @@ final class NodesScreen
             self::RECORD_FILTER => $this->circumstance(self::RECORD_FILTER),
             // ⚠️ *Sonst verschwindet die Liste der entfernten Felder nach «Restore» wieder (D-820).*
             self::SHOW_REMOVED => $this->circumstance(self::SHOW_REMOVED),
+            // ⚠️ *Sonst klappt jeder Akt an einem geerbten Feld seine Zeilen wieder weg (D-871).*
+            self::SHOW_INHERITED => $this->circumstance(self::SHOW_INHERITED),
             // ⚠️ *Sonst wechselt die Vorschau nach jedem Speichern auf den ersten Satz zurück (D-785).*
             self::PREVIEW_RECORD => $this->circumstance(self::PREVIEW_RECORD),
         ];
@@ -6256,6 +6336,10 @@ final class NodesScreen
                 // ⚠️ *Der Satz in der Vorschau gehört diesem Knoten — auf einem anderen gibt es ihn nicht (D-785).*
                 self::PREVIEW_RECORD => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
                     ? $this->circumstance(self::PREVIEW_RECORD)
+                    : null,
+                // ⚠️ *Die aufgeklappten geerbten Felder gelten für diesen Knoten; ein anderer beginnt zugeklappt (D-871).*
+                self::SHOW_INHERITED => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))
+                    ? $this->circumstance(self::SHOW_INHERITED)
                     : null,
                 // ⚠️ *Die offene Liste der entfernten Felder gilt für diesen Knoten; ein anderer beginnt geschlossen (D-820).*
                 self::SHOW_REMOVED => $nodeId !== null && $nodeId === absint(wp_unslash($_POST['id'] ?? $_GET['taxmod_node'] ?? 0))

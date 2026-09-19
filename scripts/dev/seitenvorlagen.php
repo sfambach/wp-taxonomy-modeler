@@ -131,7 +131,9 @@ $vAbschnitt = $feld($vorlagen, $abschnitt, StarterPattern::SECTIONS, RelationKin
 
 // ── 4. Den Beitrag zerlegen ────────────────────────────────────────────────────────────────────────
 $name    = trim((string) preg_replace('/\s*-?\s*Template\s*$/i', '', $post->post_title));
-$praefix = $name . ' -';
+// *Ein Titel, der nur «Template» ist, gibt keinen Namen und kein Präfix her — dann heisst die Vorlage wie der Beitrag.*
+$praefix = $name === '' ? '' : $name . ' -';
+$name    = $name === '' ? trim($post->post_title) : $name;
 $bloecke = array_values(array_filter(parse_blocks($post->post_content), static fn (array $b): bool => $b['blockName'] !== null || trim((string) $b['innerHTML']) !== ''));
 $vorspann = [];
 $teile    = [];
@@ -195,7 +197,9 @@ if (! $schreiben) {
 
 $satz = $data->create((int) $vorlagen, RecordType::User);
 $data->put($satz->id, (int) $vName, TypedValue::ofText($name));
-$data->put($satz->id, (int) $vPraefix, TypedValue::ofText($praefix));
+if ($praefix !== '') {
+    $data->put($satz->id, (int) $vPraefix, TypedValue::ofText($praefix));
+}
 $data->put($satz->id, (int) $vBeitrag, TypedValue::ofInt($beitrag));
 
 if ($vorspann !== []) {
