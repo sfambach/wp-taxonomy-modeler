@@ -7045,7 +7045,9 @@ final class Rendering implements Presets
         RenderContext $context,
         RenderResult $tiefer
     ): RenderResult {
-        if ($type !== SimpleType::NodeRef) {
+        // ⚠️ *Ein mehrfaches Feld wählt in seinen Zeilen (D-859) — ein Kasten davor war ein zweites, leeres Auswahlfeld ohne «+» (D-881, sein
+        // Befund: «bei voltage blaster herkunft sieht komisch aus gleich zwei leere felder übereinander»).*
+        if ($type !== SimpleType::NodeRef || $relation->multiplicity->allowsMany()) {
             return $tiefer;
         }
 
