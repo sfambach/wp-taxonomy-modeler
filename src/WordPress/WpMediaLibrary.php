@@ -95,7 +95,7 @@ final class WpMediaLibrary implements MediaLibrary
             $url      = (string) wp_get_attachment_url($id);
             $vorschau = wp_attachment_is_image($id) ? (string) wp_get_attachment_image_url($id, 'thumbnail') : '';
 
-            $dateien[$id] = $url === '' ? null : new MediaFile($id, $url, (string) $post->post_title, $vorschau);
+            $dateien[$id] = $url === '' ? null : new MediaFile($id, $url, (string) $post->post_title, $vorschau, trim(wp_strip_all_tags((string) $post->post_excerpt)));
         }
 
         return $dateien;

@@ -3,7 +3,7 @@
 namespace Taxmod\Core\Port;
 
 /**
- * Eine Datei der Mediathek, wie der Rand sie beschreibt: Adresse, Titel und — bei einem Bild — die Adresse des Vorschaubilds.
+ * Eine Datei der Mediathek, wie der Rand sie beschreibt: Adresse, Titel, Bildunterschrift und — bei einem Bild — die Adresse des Vorschaubilds.
  *
  * @see MediaLibrary
  */
@@ -15,6 +15,8 @@ final class MediaFile
         public readonly string $title,
         /** Leer, wenn die Datei kein Bild ist. */
         public readonly string $thumbnail = '',
+        /** Die Bildunterschrift der Mediathek (D-879) — leer, wenn keine gepflegt ist. */
+        public readonly string $caption = '',
     ) {
     }
 

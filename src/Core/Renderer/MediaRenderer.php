@@ -105,11 +105,19 @@ final class MediaRenderer extends TypedFieldRenderer
 
     public static function describe(string $adresse, ?MediaLibrary $bibliothek = null): string
     {
-        // *Eine Mediathek-Datei heisst wie ihr Titel dort; ohne Titel wie ihre Datei.*
+        // ⚠️ *Eine Mediathek-Datei heisst wie ihre Bildunterschrift, sonst wie ihr Titel, sonst wie ihre Datei ([D-879](../../../docs/NewConcept/90-decision-log.md)) —
+        // sein Wort: «bilder haben eigentlich immer eine caption/titel». Gemessen am 2026-09-19: der Titel ist fast immer der Dateiname
+        // der Kamera («20260605_220411»), die Unterschrift sagt, was zu sehen ist.*
         $datei = self::fileOf($adresse, $bibliothek);
 
         if ($datei !== null) {
-            return trim($datei->title) !== '' ? trim($datei->title) : self::describe($datei->url);
+            foreach ([$datei->caption, $datei->title] as $wort) {
+                if (trim($wort) !== '') {
+                    return trim($wort);
+                }
+            }
+
+            return self::describe($datei->url);
         }
 
         if (MediaType::libraryIdOf($adresse) !== null) {

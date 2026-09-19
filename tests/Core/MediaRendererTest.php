@@ -59,6 +59,7 @@ final class MediaRendererTest extends TestCase
                 return array_intersect_key([
                     7 => new MediaFile(7, 'https://example.org/up/platine.jpg', 'Platine oben', 'https://example.org/up/platine-150x150.jpg'),
                     8 => new MediaFile(8, 'https://example.org/up/plan.pdf', 'Schaltplan'),
+                    10 => new MediaFile(10, 'https://example.org/up/20260605_220411.jpg', '20260605_220411', 'https://example.org/up/t.jpg', 'Platine bestückt oben'),
                 ], array_flip($ids));
             }
         };
@@ -74,6 +75,11 @@ final class MediaRendererTest extends TestCase
         self::assertStringContainsString('>Schaltplan</a>', MediaRenderer::link('media:8', '', true, $bibliothek), 'kein Bild: der Titel ist der Linktext');
         self::assertStringContainsString('>Rev. B</a>', MediaRenderer::link('media:8', 'Rev. B', true, $bibliothek), 'die Beschriftung gewinnt');
         self::assertSame('Schaltplan', MediaRenderer::describe('media:8', $bibliothek));
+
+        // ⚠️ *D-879, sein Wort: «bilder haben eigentlich immer eine caption/titel» — die Bildunterschrift vor dem Titel, der meist der
+        // Dateiname der Kamera ist.*
+        self::assertSame('Platine bestückt oben', MediaRenderer::describe('media:10', $bibliothek));
+        self::assertStringContainsString('alt="Platine bestückt oben"', MediaRenderer::link('media:10', '', true, $bibliothek));
 
         // *Eine Id ohne Datei zeigt, was gespeichert ist, und ist kein Link ins Leere.*
         $fehlt = MediaRenderer::link('media:9', '', true, $bibliothek);
