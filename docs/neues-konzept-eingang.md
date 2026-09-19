@@ -592,6 +592,21 @@ CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · 
 3. Welche Tests gelten, welche fallen weg — und welche werden wiederholt (sein Wort: *«vielleicht müssen wir auch ein paar Tests wiederholen»*).
 
 ---
+## INF-059 · Am Exemplar: Umbauten, Reparaturen, Fehlersuche — und Messwerte einlesen statt eintippen
+
+**Typ:** `NOTIZ` · **Status:** `INFERRED` — seine Worte vom 2026-09-19, zum Behalten:
+
+> *«Reparatur und Fehlersuche ist noch so ein Punkt, den du mal mit im Hinterkopf behalten könntest.»*
+> *«auf den älteren Boards sind zum Beispiel auch Quarze verbaut, die man austauschen kann … man kann auch tunen oder den Cache erweitern. Das ergibt sich dann so ein bisschen auch aus den Einstellungen, die das Board bietet.»*
+> *«wie ich das möglichst leicht eingeben kann, wenn ich solche Tests durchführe … vielleicht ein DOS-Programm schreiben, das alle Tests durchführt. Und dann irgendwie eine Tabelle extrahiert und die hochlädt … oder ich importiere sie … die erste Importfunktion.»*
+
+### Was daraus folgt (Vorschlag, nicht beschlossen)
+
+- Am Exemplar ([D-867](NewConcept/90-decision-log.md)) wiederholbare Teile **Umbau** (was, womit — Quarz, Cache, Spannung —, Datum) und **Reparatur** (Fehlerbild, Ursache, Massnahme, Datum, Ergebnis). Die möglichen Umbauten ergeben sich aus den Einstellungen des Boards (Jumper, Takt, Cache-Grössen) — die stehen am Modell.
+- Messwerte gehören an ein Exemplar und einen Testaufbau (INF-058).
+- **Einlesen statt eintippen:** ein DOS-Programm (Stapeldatei oder kleines Programm), das die Tests nacheinander startet und die Ergebnisse in eine Textdatei schreibt; das Plugin bekommt dafür seine erste Importfunktion.
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*

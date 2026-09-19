@@ -1222,8 +1222,9 @@ $saetze = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE node
 // Filterzeile — eine Zeile mehr mit Aktionszelle, eigenem Formular (`taxmod-record-0`) und denselben drei Vorspalten.*
 // ⚠️ **Geändert am 2026-09-19 mit [D-865](../../docs/NewConcept/90-decision-log.md), sichtbar:** *gezählt wird die Aktionszelle mit dem
 // Formular des Satzes. Seit «Quellen» am Vater aller Modelle steht, trägt jeder Satzknoten ein mehrfaches Teil, und dessen Teilzeile hat
-// ihre eigene Aktionszelle («+», Mülleimer) — die ist kein Satz.*
-check('der Datensatz-Block ist eine Tabelle: nicht n Tabellen, je Satz eine Zeile mit Aktionszelle, eigenem Formular und drei Vorspalten — dazu die Filterzeile', $block !== '' && substr_count($block, '<table class="taxmod-table"') < $saetze && substr_count($block, 'taxmod-table-acts"><form') === $saetze + 1 && substr_count($block, 'id="taxmod-record-') === $saetze + 1 && str_contains($block, 'id="taxmod-record-0"') && substr_count($block, 'taxmod-table-lead') === ($saetze + 1) * 3, "{$saetze} Sätze");
+// ihre eigene Aktionszelle («+», Mülleimer) — die ist kein Satz. Und gezählt wird das Formular an seiner Satznummer: seit «Quellen» ein
+// Verweis ins Quellenverzeichnis ist (D-868), steht in der Zeile auch ein Satzdialog, dessen Kennung ebenfalls mit «taxmod-record-» beginnt.*
+check('der Datensatz-Block ist eine Tabelle: nicht n Tabellen, je Satz eine Zeile mit Aktionszelle, eigenem Formular und drei Vorspalten — dazu die Filterzeile', $block !== '' && substr_count($block, '<table class="taxmod-table"') < $saetze && substr_count($block, 'taxmod-table-acts"><form') === $saetze + 1 && preg_match_all('/id="taxmod-record-\d+"/', $block) === $saetze + 1 && str_contains($block, 'id="taxmod-record-0"') && substr_count($block, 'taxmod-table-lead') === ($saetze + 1) * 3, "{$saetze} Sätze");
 check('«Belongs to» steht nicht mehr darin', ! str_contains($block, 'Belongs to'));
 $einstellungsNamen = $wpdb->get_col("SELECT e.name FROM {$p}relations_named e WHERE e.kind = 'setting' AND e.name <> ''") ?: [];
 $drin = [];
