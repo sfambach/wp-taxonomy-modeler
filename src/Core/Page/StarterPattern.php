@@ -24,7 +24,8 @@ namespace Taxmod\Core\Page;
 final class StarterPattern
 {
     /** Die Feldnamen des Knotens, der diese Klasse nennt — sein Vertrag mit dem Rand. */
-    public const NAME       = 'Name';
+    // ⚠️ *«Bezeichnung» erbt jeder Satz unter «Model» (D-883); das eigene Feld «Name» der Seitenvorlagen ist darin aufgegangen.*
+    public const NAME       = 'Bezeichnung';
     public const PREFIX     = 'Titel-Präfix';
     public const LEAD       = 'Vorspann';
     public const SECTIONS   = 'Abschnitte';

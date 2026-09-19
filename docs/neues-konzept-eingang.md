@@ -626,6 +626,8 @@ CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · 
 
 **Zu entscheiden:** 1. So bauen? 2. Kontakt › Name dabei (Personen haben Vorname + Name)? 3. «Bezeichnung» an Hardware bleibt Pflicht (1..1) oder überall 0..1?
 
+**Entschieden 2026-09-19 → [D-883](NewConcept/90-decision-log.md):** gebaut; Kontakt ohne; Bezeichnung Pflicht.
+
 ---
 ## Erledigte Eingänge
 
