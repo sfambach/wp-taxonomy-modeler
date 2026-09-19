@@ -233,8 +233,14 @@ $neu = 0;
 $ergaenzt = 0;
 
 foreach ($daten as $cpu) {
+    // ⚠️ *RapidCAD ist ein Satz aus zwei Chips, je Takt ein Satz «RapidCAD-25» (D-874, sein Wort: «behalten ein satz»). Der Hilfschip
+    // RapidCAD-2 ist kein eigener Prozessor; was ihn betrifft, trägt der Satz — `rapidcad-als-satz.php`.*
+    if (preg_match('/^RapidCAD-2 /', (string) $cpu['bezeichnung']) === 1) {
+        continue;
+    }
+
     // *Die DX- und SX-Taktstufen heissen wie die vorhandenen Sätze («80386DX-33»), damit der Bestand einheitlich bleibt.*
-    $name = (string) preg_replace(['/^i386(DX|SX)-(\d+)$/', '/^(RapidCAD-\d) \((\d+) MHz\)$/'], ['80386$1-$2', '$1-$2'], (string) $cpu['bezeichnung']);
+    $name = (string) preg_replace(['/^i386(DX|SX)-(\d+)$/', '/^RapidCAD-1 \((\d+) MHz\)$/'], ['80386$1-$2', 'RapidCAD-$1'], (string) $cpu['bezeichnung']);
     $satz = $wpdb->get_var($wpdb->prepare(
         "SELECT v.node_record_id FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id
          WHERE r.node_id = %d AND v.relation_id = %d AND v.value_text = %s LIMIT 1",

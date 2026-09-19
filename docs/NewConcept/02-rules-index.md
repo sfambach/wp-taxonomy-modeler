@@ -224,12 +224,12 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 4 |
 | **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 2 |
 | **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 1 |
-| **P4** | These are the base tables for storing the model data later: nodes, settings, relations. → amended to nodes, settings, labels, relations by D-019. | [50-wordpress-persistence.md:29](50-wordpress-persistence.md) | 15 |
+| **P4** | These are the base tables for storing the model data later: nodes, settings, relations. → amended to nodes, settings, labels, relations by D-019. | [50-wordpress-persistence.md:29](50-wordpress-persistence.md) | 16 |
 | **P5** | There will not be a database table per model. The data have to be stored some other way. | [50-wordpress-persistence.md:109](50-wordpress-persistence.md) | 9 |
 | **P6** | How exactly is not yet defined. | [50-wordpress-persistence.md:110](50-wordpress-persistence.md) | 1 |
 | **P7** | And it does not greatly matter: "I define my model, and with the model I also know how the data are to be interpreted. How they are stored efficien… | [50-wordpress-persistence.md:111](50-wordpress-persistence.md) | 3 |
-| **P8** | Such queries must be possible, and as fast as can be managed. This is hereby settled rather than left open. | [50-wordpress-persistence.md:158](50-wordpress-persistence.md) | 6 |
-| **P9** | Concretely: all BOMs over a thousand euro; all BOMs containing a particular part; all parts that appear in a particular BOM — and so on. | [50-wordpress-persistence.md:159](50-wordpress-persistence.md) | 3 |
+| **P8** | Such queries must be possible, and as fast as can be managed. This is hereby settled rather than left open. | [50-wordpress-persistence.md:158](50-wordpress-persistence.md) | 7 |
+| **P9** | Concretely: all BOMs over a thousand euro; all BOMs containing a particular part; all parts that appear in a particular BOM — and so on. | [50-wordpress-persistence.md:159](50-wordpress-persistence.md) | 4 |
 | **P10** | Almost exactly what a relational database can do, only finer-grained here. | [50-wordpress-persistence.md:160](50-wordpress-persistence.md) | **nie** |
 | **P11** | The picture: as if all values lay in one row of a table, and a selection were assembled through well-chosen categories and the ids of type assignme… | [50-wordpress-persistence.md:161](50-wordpress-persistence.md) | 5 |
 | **P12** | Type safety matters. That may well mean separate nodes for whole numbers and for decimals, each defined by its own node. | [50-wordpress-persistence.md:363](50-wordpress-persistence.md) | 1 |
