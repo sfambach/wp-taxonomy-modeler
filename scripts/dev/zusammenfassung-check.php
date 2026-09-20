@@ -57,11 +57,18 @@ if ($typKnoten === null) {
 // *Ein Satz mit geschriebener Zusammenfassung, dessen Teil eine Zahl trägt, **die auch im Text steht** — sonst prüfte der
 // Lauf eine Änderung, die den Text zu Recht nicht anfasst (gemessen am Spannungsregler: seine Zusammenfassung ist Typ und
 // Beschreibung, nicht die Spannung).*
+// *Zwei Wege führen zu einem geschriebenen Text (D-885, D-888): ein Feld vom Typ «Zusammenfassung», und ein Feld, an dessen
+// Knoten eine Liste zur Kante steht («hier wird es zusammengesetzt»). Der Wächter nimmt beides.*
 $kandidaten = $wpdb->get_results($wpdb->prepare(
     "SELECT v.node_record_id AS satz, v.relation_id AS kante, v.value_text AS text
        FROM {$p}relation_records v
-       JOIN {$p}relations k ON k.id = v.relation_id AND k.to_node_id = %d
+       JOIN {$p}node_records r ON r.id = v.node_record_id
+       JOIN {$p}relations k ON k.id = v.relation_id
       WHERE v.value_text IS NOT NULL AND v.value_text <> ''
+        AND (k.to_node_id = %d
+             OR EXISTS (SELECT 1 FROM {$p}settings_value s
+                         WHERE s.attribut = 'summary_fields' AND s.aktiv = 1
+                           AND s.relation_id = v.relation_id AND s.node_id = r.node_id))
       ORDER BY v.node_record_id LIMIT 50",
     $typKnoten
 ));

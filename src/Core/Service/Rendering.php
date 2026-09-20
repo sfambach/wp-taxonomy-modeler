@@ -1795,7 +1795,13 @@ final class Rendering implements Presets
 
             // ⚠️ **Eine Zusammenfassung wird geschrieben, nicht eingegeben** ([D-885](../../../docs/NewConcept/90-decision-log.md)).
             // *Sie steht im Satz wie jeder andere Wert — gelesen wird sie von dort —, aber die Maske bietet sie nicht zum Tippen an.*
-            if ($type === SimpleType::Summary) {
+            // ⚠️ *Dasselbe gilt für ein Textfeld, an dem **hier** steht, woraus es sich zusammensetzt ([D-888](../../../docs/NewConcept/90-decision-log.md),
+            // sein Wort: «bezeichnung sollte eigentlich abgeleitet sein somit readonly für den benutzer»): die Bezeichnung eines Bauteils
+            // kommt aus seinen Werten, und was gerechnet wird, tippt niemand.*
+            // ⚠️ *Die Filterzeile ist Satz 0 und bleibt tippbar — gerade nach einem gerechneten Feld will er suchen (D-885).*
+            $gerechnet = $recordId !== 0 && ($type === SimpleType::Summary || $this->zusammengesetztHier($relation, $forNode));
+
+            if ($gerechnet) {
                 $settings[EdgeColumn::READ_ONLY] = new ResolvedSetting(EdgeColumn::READ_ONLY, TypedValue::ofBool(true), $relation->id, true);
             }
 
@@ -1930,7 +1936,9 @@ final class Rendering implements Presets
                 settings: $settings,
                 locale: $locale,
                 level: $level,
-                editable: $editable,
+                // ⚠️ *Ein gerechnetes Feld wird gezeigt, nicht getippt (D-885, D-888) — sonst stünde eine Eingabe da, die beim nächsten
+                // Schreiben überschrieben wird.*
+                editable: $editable && ! $gerechnet,
                 fieldName: $fieldPrefix === '' ? '' : $fieldPrefix . '[' . $relation->id . ']',
                 type: $type,
                 surroundings: new Surroundings(
@@ -4165,6 +4173,37 @@ final class Rendering implements Presets
         $resolved = $this->settingsForUseSites([$relation]);
 
         return $this->pathValueFor($relation, $forNode, $this->withModelValues($resolved[$relation->id] ?? [], $relation));
+    }
+
+    /**
+     * Ob dieses Feld **an diesem Knoten** zusammengesetzt wird ([D-888](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Die Zusage steht als `summary_fields` am Knoten **zur Kante** — dieselbe Adresse, an der ein Kind geerbte Felder
+     * anordnet ([D-698](../../../docs/NewConcept/90-decision-log.md)). Steht dort eine Liste, schreibt {@see SummaryWriter}
+     * das Feld, und die Maske sperrt es. Steht nichts, ist es ein gewöhnliches Feld.*
+     */
+    public function zusammengesetztHier(Relation $relation, int $forNode): bool
+    {
+        if ($forNode <= 0 || $relation->isSetting() || $this->resolver === null) {
+            return false;
+        }
+
+        $knoten = $this->gemerkterKnoten($forNode);
+
+        if ($knoten === null) {
+            return false;
+        }
+
+        foreach ($this->resolver->listOf($knoten, SummaryRenderer::FIELDS, $relation) as $glied) {
+            // ⚠️ *`setHere` ist der Unterschied, auf den es ankommt: die Liste **am Knoten** sagt, was ein Wähler zeigt, und gilt für
+            // jedes Feld. Nur eine Zeile, die diese **Kante** nennt, sagt «dieses Feld wird hier zusammengesetzt». Gemessen: ohne die
+            // Unterscheidung galt an einem Bauteil auch «Alternative Bezeichnungen» als zusammengesetzt.*
+            if ($glied->setHere && $glied->aktiv && $glied->reference !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function pathValueFor(Relation $relation, int $forNode, array $settings): TypedValue

@@ -76,7 +76,14 @@ final class SummaryWriter
             }
 
             foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($knoten)) as $kante) {
-                if ($kante->toNodeId === $typKnoten && ! $kante->hide && ! $kante->isSetting()) {
+                if ($kante->hide || $kante->isSetting()) {
+                    continue;
+                }
+
+                // ⚠️ *Zwei Wege zu demselben Text: ein Feld **vom Typ** «Zusammenfassung» (D-885) und ein gewöhnliches Feld, an dem
+                // **hier** steht, woraus es sich zusammensetzt ([D-888](../../../docs/NewConcept/90-decision-log.md), sein Wort:
+                // «bezeichnung soll das feld sein bei bauteilen»). Geschrieben wird beides gleich.*
+                if ($kante->toNodeId === $typKnoten || $this->rendering->zusammengesetztHier($kante, $knotenId)) {
                     $felderJeKnoten[$knotenId][] = $kante;
                 }
             }
