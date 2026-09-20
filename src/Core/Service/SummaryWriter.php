@@ -91,8 +91,12 @@ final class SummaryWriter
 
         foreach ($knotenJeSatz as $satzId => $knotenId) {
             foreach ($felderJeKnoten[$knotenId] ?? [] as $kante) {
-                $saetzeJeFeld[$kante->id]['relation'] = $kante;
-                $saetzeJeFeld[$kante->id]['records'][] = $satzId;
+                // ⚠️ *Je Knoten **und** Kante ein Auftrag: zwei Knoten können dasselbe Feld aus verschiedenen Feldern zusammensetzen.*
+                $schluessel = $kante->id . ':' . $knotenId;
+
+                $saetzeJeFeld[$schluessel]['relation']  = $kante;
+                $saetzeJeFeld[$schluessel]['fields']    = $this->rendering->zusammensetzungAn($kante, $knotenId);
+                $saetzeJeFeld[$schluessel]['records'][] = $satzId;
             }
         }
 
@@ -103,11 +107,15 @@ final class SummaryWriter
         // ⚠️ *Erst vergessen, dann rechnen: geschrieben wurde eben, und der Zeichenlauf merkt sich jeden Satz (D-885).*
         $this->rendering->forgetRecords($betroffen);
 
-        $texte     = $this->rendering->summaryTextsOf(array_values($saetzeJeFeld));
         $geaendert = 0;
 
-        foreach ($texte as $kanteId => $jeSatz) {
-            foreach ($jeSatz as $satzId => $text) {
+        // ⚠️ *Ein Auftrag je Knoten und Feld, nicht alle auf einmal: dieselbe Kante kann an zwei Knoten aus **verschiedenen** Feldern
+        // zusammengesetzt sein, und ein Auftrag je Kante liesse den zweiten den ersten überschreiben. Gemessen am 2026-09-20: im
+        // Massenlauf blieben die Stecker auf dem alten Text stehen, einzeln gerechnet stimmte er.*
+        foreach ($saetzeJeFeld as $eintrag) {
+            $kanteId = $eintrag['relation']->id;
+
+            foreach ($this->rendering->summaryTextsOf([$eintrag])[$kanteId] ?? [] as $satzId => $text) {
                 // ⚠️ *Ohne einen einzigen Wert bleibt das Feld leer. Gemessen an einem Kabel ohne Hersteller und Teilenummer: da
                 // stand «#24621» — die Notnummer, mit der ein Wähler einen namenlosen Satz zeigt. Im Satz ist sie kein Name.*
                 $text = preg_match('/^#\d+$/', trim($text)) === 1 ? '' : $text;

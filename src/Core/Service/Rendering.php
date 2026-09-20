@@ -4194,26 +4194,42 @@ final class Rendering implements Presets
      */
     public function zusammengesetztHier(Relation $relation, int $forNode): bool
     {
+        return $this->zusammensetzungAn($relation, $forNode) !== [];
+    }
+
+    /**
+     * Die Felder, aus denen dieses Feld **an diesem Knoten** zusammengesetzt wird — leer heisst: wird es nicht.
+     *
+     * ⚠️ *Nur, was die Zeile **zur Kante** nennt (`setHere`): die Liste am Knoten ohne Kante sagt, was ein Wähler zeigt.
+     * Gemessen am 2026-09-20: solange die Rechnung nur die Knotenliste nahm, blieb «am Feld auswählen, was es zusammenfasst»
+     * ([D-885](../../../docs/NewConcept/90-decision-log.md)) eine Zusage ohne Wirkung — der Steckertyp stand weiter im Namen.*
+     *
+     * @return list<int>
+     */
+    public function zusammensetzungAn(Relation $relation, int $forNode): array
+    {
         if ($forNode <= 0 || $relation->isSetting() || $this->resolver === null) {
-            return false;
+            return [];
         }
 
         $knoten = $this->gemerkterKnoten($forNode);
 
         if ($knoten === null) {
-            return false;
+            return [];
         }
+
+        $aus = [];
 
         foreach ($this->resolver->listOf($knoten, SummaryRenderer::FIELDS, $relation) as $glied) {
             // ⚠️ *`setHere` ist der Unterschied, auf den es ankommt: die Liste **am Knoten** sagt, was ein Wähler zeigt, und gilt für
             // jedes Feld. Nur eine Zeile, die diese **Kante** nennt, sagt «dieses Feld wird hier zusammengesetzt». Gemessen: ohne die
             // Unterscheidung galt an einem Bauteil auch «Alternative Bezeichnungen» als zusammengesetzt.*
             if ($glied->setHere && $glied->aktiv && $glied->reference !== null) {
-                return true;
+                $aus[] = $glied->reference;
             }
         }
 
-        return false;
+        return $aus;
     }
 
     private function pathValueFor(Relation $relation, int $forNode, array $settings): TypedValue
@@ -4316,27 +4332,32 @@ final class Rendering implements Presets
      * zusammengefasst werden; ohne Wahl gilt derselbe Rückfall wie im Wähler. Alle Sätze einer Kante in **einem** Lauf
      * (`CD-7`) — deshalb die Liste je Kante und nicht je Satz.*
      *
-     * @param  list<array{relation: Relation, records: list<int>}> $auftrag
+     * @param  list<array{relation: Relation, records: list<int>, fields?: list<int>}> $auftrag
      * @return array<int, array<int, string>> Kanten-Id ⇒ Satz-Id ⇒ Text
      */
     public function summaryTextsOf(array $auftrag): array
     {
         $relations = [];
         $mehrfach  = [];
+        $feldwahl  = [];
 
         foreach ($auftrag as $eines) {
             $relations[]                        = $eines['relation'];
             $mehrfach[$eines['relation']->id]   = array_values($eines['records']);
+
+            if (($eines['fields'] ?? []) !== []) {
+                $feldwahl[$eines['relation']->id] = array_values($eines['fields']);
+            }
         }
 
         if ($relations === []) {
             return [];
         }
 
-        return $this->summariesOf($relations, [], [], Purpose::Display, [], [], $mehrfach)['mehrfach'] ?? [];
+        return $this->summariesOf($relations, [], [], Purpose::Display, [], [], $mehrfach, $feldwahl)['mehrfach'] ?? [];
     }
 
-    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = [], array $mehrfach = []): array
+    private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = [], array $mehrfach = [], array $feldwahl = []): array
     {
         // *`mehrfach`: je mehrfachem Verweis alle seine Sätze, damit jeder ein Wort bekommt und nicht nur der erste (D-859).*
         $leer = ['worte' => [], 'angebot' => [], 'baum' => [], 'mehrfach' => []];
@@ -4490,7 +4511,8 @@ final class Rendering implements Presets
                 }
             }
 
-            $felder[$relation->id] = $gewaehlt;
+            // ⚠️ *Wer die Felder selbst mitbringt, bekommt sie auch — der Weg von {@see self::summaryTextsOf()} (D-885).*
+            $felder[$relation->id] = $feldwahl[$relation->id] ?? $gewaehlt;
         }
 
         // ⚠️ **Ohne Wahl das erste Textfeld — beim Knoten des Satzes, nicht am Ziel der Kante.** *Sein Befund am
