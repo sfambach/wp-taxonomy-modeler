@@ -582,6 +582,35 @@ final class Plugin
                 'enum:sort'             => __('sort', 'taxmod'),
             ]);
 
+        // ⚠️ *Ein Exemplar, weil der Nachlauf es selbst wieder braucht: geschriebene Zusammenfassungen gehen denselben Weg
+        // wie jeder andere Wert ([D-885](../../docs/NewConcept/90-decision-log.md)).*
+        $data = new DataEntry(
+            new WpdbRecordRepository(),
+            new WpdbRelationRepository(),
+            new WpdbNodeRepository(),
+            $this->frameworkNodes(),
+            new SystemClock(),
+            $this->changelog(),
+            // ⚠️ *Die Vorbelegung eines Feldes, gefragt beim **ersten Schreiben**
+            // ([D-609](../../docs/NewConcept/90-decision-log.md), [D-649](../../docs/NewConcept/90-decision-log.md)).
+            // Derselbe Zeichenlauf, damit Typ und Kette nicht zweimal aufgelöst werden.*
+            $rendering
+        );
+
+        // ⚠️ **Die Zusammenfassung wird bei jeder Änderung neu geschrieben** ([D-885](../../docs/NewConcept/90-decision-log.md),
+        // sein Wort) — *auch, wenn ein Teil sich ändert: der Nachlauf sucht die Halter.*
+        $data->afterWrite(function (array $saetze) use ($data, $rendering): void {
+            (new \Taxmod\Core\Service\SummaryWriter(
+                new WpdbRecordRepository(),
+                new WpdbRelationRepository(),
+                new WpdbNodeRepository(),
+                $this->frameworkNodes(),
+                $this->typeNodes(),
+                $rendering,
+                $data
+            ))->refresh($saetze);
+        });
+
         return new NodesScreen(
             $this->editor(),
             new Tree(new WpdbNodeRepository()),
@@ -589,18 +618,7 @@ final class Plugin
             // ⚠️ *Dasselbe Exemplar des Aenderungsbuchs wie oben, seit auch Wertaenderungen melden
             // ([D-634](../../docs/NewConcept/90-decision-log.md)): sonst faende ein Wert, der in
             // derselben Handlung geschrieben wird wie ein Label, eine andere Aenderungsgruppe vor.*
-            new DataEntry(
-                new WpdbRecordRepository(),
-                new WpdbRelationRepository(),
-                new WpdbNodeRepository(),
-                $this->frameworkNodes(),
-                new SystemClock(),
-                $this->changelog(),
-                // ⚠️ *Die Vorbelegung eines Feldes, gefragt beim **ersten Schreiben**
-                // ([D-609](../../docs/NewConcept/90-decision-log.md), [D-649](../../docs/NewConcept/90-decision-log.md)).
-                // Derselbe Zeichenlauf, damit Typ und Kette nicht zweimal aufgelöst werden.*
-                $rendering
-            ),
+            $data,
             $this->frameworkNodes(),
             $rendering,
             // ⚠️ *The same object the editor and the settings hold — that is the whole point of it

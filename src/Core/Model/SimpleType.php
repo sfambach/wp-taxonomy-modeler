@@ -71,6 +71,8 @@ enum SimpleType: string
     case Path = 'path';
     // ⚠️ *Ein Sprung zu einem anderen Knoten, gefiltert nach diesem Satz — gerechnet beim Zeichnen, nie gespeichert (D-769).*
     case Jump = 'jump';
+    // ⚠️ *Andere Felder desselben Satzes als ein Text, gespeichert und bei jeder Änderung neu geschrieben (D-885).*
+    case Summary = 'summary';
 
     /** Eine Datei oder ein Link — gespeichert wird die Adresse ([D-793](../../../docs/NewConcept/90-decision-log.md): «it is a media type, both is the right answer»). */
     case Media = 'media';

@@ -48,6 +48,7 @@ final class SpecialisedTypes
         VersionType::class,
         PathType::class,
         JumpType::class,
+        SummaryType::class,
         MediaType::class,
         NodeRefType::class,
         UserRefType::class,

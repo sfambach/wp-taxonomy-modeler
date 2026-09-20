@@ -86,6 +86,39 @@ final class DataEntry
     }
 
     /**
+     * Was nach jedem geschriebenen Wert geschieht — der Rand hängt hier das Neuschreiben der Zusammenfassungen ein
+     * ([D-885](../../../docs/NewConcept/90-decision-log.md), sein Wort: «bei jeder Änderung muss es natürlich neu geschrieben werden»).
+     *
+     * @var (\Closure(list<int>): void)|null
+     */
+    private ?\Closure $nachSchreiben = null;
+
+    /** ⚠️ *Der Nachlauf schreibt selbst, und sein Schreiben darf ihn nicht wieder auslösen.* */
+    private bool $imNachlauf = false;
+
+    /** @param (\Closure(list<int>): void)|null $was */
+    public function afterWrite(?\Closure $was): void
+    {
+        $this->nachSchreiben = $was;
+    }
+
+    /** Ein Satz wurde angefasst — der Nachlauf bekommt ihn, einmal und ohne sich selbst zu wecken. */
+    private function angefasst(int $recordId): void
+    {
+        if ($this->nachSchreiben === null || $this->imNachlauf || $recordId <= 0) {
+            return;
+        }
+
+        $this->imNachlauf = true;
+
+        try {
+            ($this->nachSchreiben)([$recordId]);
+        } finally {
+            $this->imNachlauf = false;
+        }
+    }
+
+    /**
      * Eine Zeile ins Änderungsbuch — der einzige Weg dieses Dienstes dorthin.
      *
      * ⚠️ **Die Version ist Pflicht und wird an jeder Stelle vom Speicher erfragt**
@@ -399,6 +432,8 @@ final class DataEntry
             $this->wertZustand($recordId, $neu->relationId, $locale, $value),
             $version
         );
+
+        $this->angefasst($recordId);
     }
 
     /**
@@ -636,6 +671,8 @@ final class DataEntry
             $this->wertZustand($recordId, $neu->relationId, $locale, $value),
             $version
         );
+
+        $this->angefasst($recordId);
     }
 
     /**
@@ -1419,6 +1456,7 @@ final class DataEntry
     public function clear(int $recordId, int $relationId, string $locale = ''): void
     {
         $this->wertLeeren($recordId, $relationId, $locale);
+        $this->angefasst($recordId);
     }
 
     /**

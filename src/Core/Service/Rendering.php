@@ -550,6 +550,23 @@ final class Rendering implements Presets
     private array $gelesenSatzWerte = [];
 
     /**
+     * Diese Sätze noch einmal lesen — für den, der zwischen zwei Rechnungen schreibt
+     * ([D-885](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Ein Zeichenlauf liest jeden Satz einmal, und das ist richtig, solange er nur zeichnet. Wer während desselben
+     * Laufs schreibt — der Nachlauf der Zusammenfassung —, bekäme sonst den Stand von vorhin. Gemessen: die zweite
+     * Änderung an einem Teil ging nicht mehr in die Zusammenfassung.*
+     *
+     * @param list<int> $recordIds
+     */
+    public function forgetRecords(array $recordIds): void
+    {
+        foreach ($recordIds as $id) {
+            unset($this->gelesenSaetze[(int) $id], $this->gelesenSatzWerte[(int) $id]);
+        }
+    }
+
+    /**
      * Sätze und ihre Wertzeilen — nur die noch nicht gelesenen gehen an die Datenbank, in je einer Abfrage.
      *
      * ⚠️ *Gemessen am 2026-09-15: die Satztabelle fragte die Zusammenfassung **je Zeile** — 103 Satz- und 103 Wertabfragen auf fünf
@@ -1773,6 +1790,12 @@ final class Rendering implements Presets
             // *Was im Satz steht, zählt nicht; die Kette der Namen vom erklärenden Vater bis hierher ist der Wert.*
             if ($type === SimpleType::Path) {
                 $gewaehlt = $this->pathValueFor($relation, $forNode, $settings);
+                $settings[EdgeColumn::READ_ONLY] = new ResolvedSetting(EdgeColumn::READ_ONLY, TypedValue::ofBool(true), $relation->id, true);
+            }
+
+            // ⚠️ **Eine Zusammenfassung wird geschrieben, nicht eingegeben** ([D-885](../../../docs/NewConcept/90-decision-log.md)).
+            // *Sie steht im Satz wie jeder andere Wert — gelesen wird sie von dort —, aber die Maske bietet sie nicht zum Tippen an.*
+            if ($type === SimpleType::Summary) {
                 $settings[EdgeColumn::READ_ONLY] = new ResolvedSetting(EdgeColumn::READ_ONLY, TypedValue::ofBool(true), $relation->id, true);
             }
 
@@ -4236,6 +4259,34 @@ final class Rendering implements Presets
         return $name === '' || $name === SummaryRenderer::NAME;
     }
 
+    /**
+     * Die Zusammenfassung dieser Sätze als Text — dieselben Worte, die ein Wähler zeigt
+     * ([D-885](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Für ein Feld vom Typ «Zusammenfassung»: die Kante sagt über ihre Einstellung `summary_fields`, welche Felder
+     * zusammengefasst werden; ohne Wahl gilt derselbe Rückfall wie im Wähler. Alle Sätze einer Kante in **einem** Lauf
+     * (`CD-7`) — deshalb die Liste je Kante und nicht je Satz.*
+     *
+     * @param  list<array{relation: Relation, records: list<int>}> $auftrag
+     * @return array<int, array<int, string>> Kanten-Id ⇒ Satz-Id ⇒ Text
+     */
+    public function summaryTextsOf(array $auftrag): array
+    {
+        $relations = [];
+        $mehrfach  = [];
+
+        foreach ($auftrag as $eines) {
+            $relations[]                        = $eines['relation'];
+            $mehrfach[$eines['relation']->id]   = array_values($eines['records']);
+        }
+
+        if ($relations === []) {
+            return [];
+        }
+
+        return $this->summariesOf($relations, [], [], Purpose::Display, [], [], $mehrfach)['mehrfach'] ?? [];
+    }
+
     private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = [], array $mehrfach = []): array
     {
         // *`mehrfach`: je mehrfachem Verweis alle seine Sätze, damit jeder ein Wort bekommt und nicht nur der erste (D-859).*
@@ -4249,7 +4300,9 @@ final class Rendering implements Presets
 
         foreach ($relations as $relation) {
             if ($this->drawsAsSummary($relation, $types[$relation->id] ?? null, $resolved[$relation->id] ?? [])
-                || ($values[$relation->id] ?? null)?->referenceSpace === ReferenceSpace::Record) {
+                || ($values[$relation->id] ?? null)?->referenceSpace === ReferenceSpace::Record
+                // ⚠️ *Auch eine Kante, für die nur Sätze genannt sind — der Weg von {@see self::summaryTextsOf()} (D-885).*
+                || ($mehrfach[$relation->id] ?? []) !== []) {
                 $betroffen[] = $relation;
             }
         }
