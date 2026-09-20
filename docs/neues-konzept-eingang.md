@@ -629,6 +629,21 @@ CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · 
 **Entschieden 2026-09-19 → [D-883](NewConcept/90-decision-log.md):** gebaut; Kontakt ohne; Bezeichnung Pflicht.
 
 ---
+## INF-062 · Kompatibilität als Beziehung: die Form ist offen
+
+**Typ:** `FRAGE` · **Status:** `INFERRED` — zu [D-886](NewConcept/90-decision-log.md), sein Wort: *«So haben wir vielleicht eine neue Art von Relationstyp, und dann sagen wir, A ist kompatibel zu B. Ja, finde ich gut.»*
+
+Heute stehen 151 Sätze unter «Kompatibilität» mit «Art», «von», «zu» und «zu Familie»; keiner trägt einen Namen. Offen: wie eine solche Beziehung gespeichert wird (eigene Kante, eigener Satz mit zwei Enden, oder eine Kantenart), wie man sie **von beiden Seiten** sieht, und was mit den 151 Sätzen geschieht.
+
+---
+
+## INF-063 · Eine Abfrage steht 27- bis 28-mal auf zwei Seiten
+
+**Typ:** `BEFUND` · **Status:** `INFERRED` — gemessen am 2026-09-20 von mir, nicht von ihm gemeldet.
+
+`seitenlast-check` ist auf «Kompatibilität» (28-mal) und «Parts List» (27-mal) rot: dieselbe Abfrage nach den Kanten eines Besitzers. Die Decke liegt bei 20 ([D-814](NewConcept/90-decision-log.md)). **Nicht von den Änderungen dieses Tages:** gemessen mit dem Stand vor D-888 und vor D-889 — dieselben Zahlen. Zu finden: wer die Kanten je Teil neu liest.
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*

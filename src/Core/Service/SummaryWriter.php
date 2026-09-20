@@ -108,7 +108,11 @@ final class SummaryWriter
 
         foreach ($texte as $kanteId => $jeSatz) {
             foreach ($jeSatz as $satzId => $text) {
-                if ($this->steht($satzId, $kanteId) === $text) {
+                // ⚠️ *Ohne einen einzigen Wert bleibt das Feld leer. Gemessen an einem Kabel ohne Hersteller und Teilenummer: da
+                // stand «#24621» — die Notnummer, mit der ein Wähler einen namenlosen Satz zeigt. Im Satz ist sie kein Name.*
+                $text = preg_match('/^#\d+$/', trim($text)) === 1 ? '' : $text;
+
+                if ($this->steht($satzId, $kanteId) === $text || ($text === '' && $this->steht($satzId, $kanteId) === null)) {
                     continue;
                 }
 

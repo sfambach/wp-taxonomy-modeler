@@ -174,13 +174,19 @@ final class ComplexRenderer extends RendererNode
 
                 $worte = self::summaryOf($field);
 
+                // ⚠️ *Ein leerer Teil klappt nicht zu ([D-889](../../../docs/NewConcept/90-decision-log.md)): «…» hinter einem Pfeil
+                // sagt nichts, und gerade dort will er tippen. Gemessen an einem neuen Lieferanten: Strasse und Ort standen als «…» da.*
+                if ($worte === '') {
+                    return $field;
+                }
+
                 return new RenderedField(
                     $field->relation,
                     $field->type,
                     self::NAME,
                     new RenderResult(
                         '<details class="taxmod-complex-link"><summary>'
-                        . RenderResult::escape($worte === '' ? '…' : $worte)
+                        . RenderResult::escape($worte)
                         . '</summary>' . $field->result->markup . '</details>',
                         $field->result->usedRelations
                     ),
@@ -192,6 +198,31 @@ final class ComplexRenderer extends RendererNode
                 );
             },
             $row
+        );
+    }
+
+    /**
+     * Derselbe Teil, aber nur als Worte — ohne Bedienelemente.
+     *
+     * ⚠️ **Für die Satztabelle** ([D-889](../../../docs/NewConcept/90-decision-log.md), sein Befund zur Adresse in der
+     * Filterzeile: *«das sieht auch nicht so schön aus»*): *ein zusammengesetzter Teil brachte dort sein ganzes Formular mit —
+     * bei einer Adresse zwei Zeilen mit vier Eingaben in einer Zelle. In der Tabelle steht deshalb nur, was drinsteht; die
+     * Filterzeile (Satz 0) bleibt leer, weil über zusammengesetzte Felder ohnehin nicht gefiltert wird ([D-768](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    public static function asWords(RenderedField $field, bool $leer = false): RenderedField
+    {
+        $worte = $leer ? '' : self::summaryOf($field);
+
+        return new RenderedField(
+            $field->relation,
+            $field->type,
+            self::NAME,
+            new RenderResult('<span class="taxmod-value">' . RenderResult::escape($worte) . '</span>', $field->result->usedRelations),
+            true,
+            $field->valueId,
+            $field->hint,
+            [],
+            $worte
         );
     }
 

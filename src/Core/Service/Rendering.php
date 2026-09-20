@@ -2533,7 +2533,17 @@ final class Rendering implements Presets
             // die Records nur noch an und benutzen die Eingabe … oben». Eine solche Zeile trägt keine Feldnamen: sie schickt nichts ab.*
             $nurAnzeige = ($row['editable'] ?? true) === false;
 
-            $gezeichnet[] = $this->fieldsFor(
+            // ⚠️ **In der Tabelle steht ein zusammengesetzter Teil als Worte** ([D-889](../../../docs/NewConcept/90-decision-log.md),
+            // sein Befund an der Adresse: *«das sieht auch nicht so schön aus»*) — *vier Eingaben in einer Zelle waren es vorher.
+            // In der Filterzeile (Satz 0) bleibt die Zelle leer: über zusammengesetzte Felder filtert die Zeile ohnehin nicht (D-768).*
+            $alsWorte = static fn (array $felder): array => array_map(
+                static fn (RenderedField $feld): RenderedField => $feld->rows === [] || $feld->relation->isSetting() || $feld->isHidden()
+                    ? $feld
+                    : \Taxmod\Core\Renderer\ComplexRenderer::asWords($feld, $row['id'] === 0),
+                $felder
+            );
+
+            $gezeichnet[] = $alsWorte($this->fieldsFor(
                 $relations,
                 $row['values'],
                 $nurAnzeige ? Purpose::Display : $purpose,
@@ -2550,7 +2560,7 @@ final class Rendering implements Presets
                 $model->id,
                 // ⚠️ *Und ein Sprung-Feld (D-769) setzt den Satz selbst als Filterwert ein.*
                 recordId: $row['id']
-            );
+            ));
 
             $vorne[] = $row['lead'];
             $akte[]  = ControlMarkup::actsForm($formId, $row['submits'], $row['acts']);
