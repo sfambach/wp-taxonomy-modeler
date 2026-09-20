@@ -646,6 +646,19 @@ Heute stehen 151 Sätze unter «Kompatibilität» mit «Art», «von», «zu» u
 **Erledigt 2026-09-20:** gefunden in {@see SettingsResolver}: je **Feldverweis** einer Einstellung (`summary_fields`) eine eigene Kantenabfrage — 28 verschiedene Kanten, 28 Abfragen. Jetzt lädt die Vorladung sie in einer (`RelationRepository::byIds()`). Gemessen danach: «Kompatibilität» 138 → 114 Abfragen, häufigste 28 → 19; «Parts List» 116 → 93, häufigste 27 → 14.
 
 ---
+## INF-064 · Serien sind Gruppen — und Gruppen gibt es auch für Links
+
+**Typ:** `VORSCHLAG` · **Status:** `INFERRED` — seine Worte vom 2026-09-20: *«Serien scheinen eine Gruppierung zu sein, damit würde die Serie als eine Entität entstehen, mit zusätzlichen Infos. Und einen kurzen Titel, den wir wiederum verwenden könnten?»* und *«Hier kommen wir zu einem Thema, das ich auch schon für Links entdeckt habe: Gruppen, Gruppen von Links zum Beispiel Retro-Webshops, Retro-Software, Retro-Foren …»*
+
+**Gemessen am 2026-09-20:** «Serie» ist heute ein **Text** am Teil, fünfmal gefüllt — und die Texte sind schon halbe Steckbriefe: *«90331 (Industry Standard Power Supply Housing); Gegenstück KK 396»*, *«Mini-Fit Jr. (Gehäuse 5557, Stiftleiste 5566)»*. Darum wurde die gerechnete Bezeichnung eines Steckers so lang. Links stehen an fünf Stellen als `Medium` (Adresse + Beschriftung), 28 Werte; eine Gruppe haben sie nicht.
+
+**Vorschlag Serie:** ein Knoten «Bauteil-Serien» mit je einem Satz: **Bezeichnung** (kurz, «KK 396»), Hersteller, Beschreibung, Rastermaß, Links/Datenblätter. Das Feld «Serie» am Teil wird ein Verweis darauf statt Text; die fünf Texte wandern hinein (kurzer Name in die Bezeichnung, der Rest in die Beschreibung). Die Bezeichnung eines Steckers liest dann den **kurzen** Namen: «KK 396 · 6 St · männlich».
+
+**Vorschlag Gruppe, allgemein:** eine Gruppe ist immer dasselbe — ein Satz mit Bezeichnung und Beschreibung, auf den andere zeigen. Für Links: ein Knoten «Linkgruppen» (Retro-Webshops, Retro-Software, Retro-Foren) und am Link ein Feld «Gruppe». Serien wären dann nichts anderes als Gruppen von Teilen, nur mit eigenen Feldern.
+
+**Zu entscheiden:** 1. Serien zuerst bauen? 2. Sind «Gruppe» und «Serie» dasselbe Muster mit verschiedenen Feldern — oder zwei Sachen? 3. Gehört ein Link künftig in eine Gruppe **und** an sein Ding, oder nur in die Gruppe?
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*
