@@ -139,4 +139,17 @@ interface RelationRepository
      * einer Kante eine aufgeschriebene Angabe, und dann muss man von ihr aus auch zurückkommen.*
      */
     public function byId(int $relationId): ?Relation;
+
+    /**
+     * Mehrere Kanten in **einer** Abfrage (`CD-7`).
+     *
+     * ⚠️ *Gemessen am 2026-09-20 ([INF-063](../../../docs/neues-konzept-eingang.md)): die Einstellungen lasen je Feldverweis
+     * eine Kante — auf «Kompatibilität» 28 Abfragen derselben Form, auf «Parts List» 27, gegen eine Decke von 20
+     * ([D-814](../../../docs/NewConcept/90-decision-log.md)). Verweise auf Felder haben Listen wie `summary_fields`, und
+     * davon gibt es seit [D-888](../../../docs/NewConcept/90-decision-log.md) mehr.*
+     *
+     * @param  list<int>                $relationIds
+     * @return array<int, Relation>     Kanten-Id => Kante; ohne Eintrag, wo keine steht.
+     */
+    public function byIds(array $relationIds): array;
 }

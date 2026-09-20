@@ -46,6 +46,21 @@ final class InMemoryRelations implements RelationRepository
         $this->rows[$relation->id] = $relation;
     }
 
+    public function byIds(array $relationIds): array
+    {
+        $aus = [];
+
+        foreach ($relationIds as $id) {
+            $kante = $this->byId((int) $id);
+
+            if ($kante !== null) {
+                $aus[$kante->id] = $kante;
+            }
+        }
+
+        return $aus;
+    }
+
     public function byId(int $relationId): ?Relation
     {
         foreach ($this->rows as $relation) {

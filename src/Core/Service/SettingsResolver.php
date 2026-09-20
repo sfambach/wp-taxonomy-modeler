@@ -105,7 +105,42 @@ final class SettingsResolver
             $this->rows[$nodeId] = $rows;
         }
 
-        $this->loadObjectsBehind(array_merge(...array_values(array_map(fn (int $id): array => $this->rows[$id] ?? [], $ids))));
+        $zeilen = array_merge(...array_values(array_map(fn (int $id): array => $this->rows[$id] ?? [], $ids)));
+
+        $this->loadObjectsBehind($zeilen);
+        $this->kantenVorladen($zeilen);
+    }
+
+    /**
+     * Die Kanten, auf die geladene Zeilen zeigen, in **einer** Abfrage ([INF-063](../../../docs/neues-konzept-eingang.md)).
+     *
+     * ⚠️ *Gemessen am 2026-09-20: je Feldverweis eine Abfrage — 28 auf «Kompatibilität», 27 auf «Parts List», Decke 20
+     * ([D-814](../../../docs/NewConcept/90-decision-log.md)). Seit [D-888](../../../docs/NewConcept/90-decision-log.md)
+     * zeigen mehr Listen auf Felder, und damit wurde aus einer Unart ein roter Wächter.*
+     *
+     * @param list<\Taxmod\Core\Model\Setting\SettingsValue> $zeilen
+     */
+    private function kantenVorladen(array $zeilen): void
+    {
+        $fehlend = [];
+
+        foreach ($zeilen as $zeile) {
+            if ($zeile->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Relation
+                && $zeile->value->reference !== null
+                && ! array_key_exists($zeile->value->reference, $this->gemerkteKanten)) {
+                $fehlend[$zeile->value->reference] = $zeile->value->reference;
+            }
+        }
+
+        if ($fehlend === [] || $this->relations === null) {
+            return;
+        }
+
+        $gelesen = $this->relations->byIds(array_values($fehlend));
+
+        foreach ($fehlend as $id) {
+            $this->gemerkteKanten[$id] = $gelesen[$id] ?? null;
+        }
     }
 
     /**
@@ -230,6 +265,20 @@ final class SettingsResolver
         usort($aus, static fn (ListEntry $a, ListEntry $b): int => [$a->position, $a->rowId] <=> [$b->position, $b->rowId]);
 
         return $aus;
+    }
+
+    /** @var array<int, \Taxmod\Core\Model\Relation|null> Kanten, einmal je Auflösung gelesen — auch die, die es nicht gibt. */
+    private array $gemerkteKanten = [];
+
+    /**
+     * Eine Kante, einmal gelesen ([INF-063](../../../docs/neues-konzept-eingang.md)).
+     *
+     * ⚠️ *Gemessen am 2026-09-20: auf «Kompatibilität» stand dieselbe Kantenabfrage 28-mal auf der Seite, auf «Parts List» 27-mal —
+     * je Feldverweis eine, und dieselben Felder kommen je Zeile wieder. Die Decke des Wächters liegt bei 20 ([D-814](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function gemerkteKante(int $id): ?\Taxmod\Core\Model\Relation
+    {
+        return $this->gemerkteKanten[$id] ??= $this->relations?->byId($id);
     }
 
     /** Das Wort eines Glieds: der Name des Objekts in der Registratur, der Knotenname, sonst der Wert selbst. */
@@ -522,7 +571,7 @@ final class SettingsResolver
 
         // ⚠️ *Ein Feldverweis (D-752) heisst wie sein Feld; ohne Kantenspeicher bleibt die Nummer, gekennzeichnet.*
         if ($value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Relation) {
-            $feld = $this->relations?->byId($value->reference);
+            $feld = $this->gemerkteKante($value->reference);
 
             return TypedValue::ofText($feld === null ? "#" . $value->reference : $feld->name);
         }
@@ -699,7 +748,7 @@ final class SettingsResolver
                         continue;
                     }
 
-                    $feld = $this->relations->byId($innen->value->reference);
+                    $feld = $this->gemerkteKante($innen->value->reference);
 
                     if ($feld !== null && isset($oben[$feld->toNodeId])) {
                         $aus[$bedingt->attribut] = new AttributeDeclaration($objekt->klasse, $bedingt->attribut, AttributeType::Enum, enumClass: $bedingt->enumClass);

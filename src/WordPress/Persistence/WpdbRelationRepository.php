@@ -298,6 +298,32 @@ final class WpdbRelationRepository implements RelationRepository
         }
     }
 
+    public function byIds(array $relationIds): array
+    {
+        global $wpdb;
+
+        $relationIds = array_values(array_unique(array_map(intval(...), $relationIds)));
+
+        if ($relationIds === []) {
+            return [];
+        }
+
+        $places = implode(',', array_fill(0, count($relationIds), '%d'));
+        $rows   = Query::rows('Kanten lesen', $wpdb->prepare(
+            'SELECT ' . self::COLUMNS . self::fromRelations() . "WHERE r.id IN ({$places})",
+            [...$this->nameArgs(), ...$relationIds]
+        ));
+
+        $aus = [];
+
+        foreach ($rows ?: [] as $row) {
+            $kante            = $this->hydrate($row);
+            $aus[$kante->id] = $kante;
+        }
+
+        return $aus;
+    }
+
     public function byId(int $relationId): ?Relation
     {
         global $wpdb;

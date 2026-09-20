@@ -643,6 +643,8 @@ Heute stehen 151 Sätze unter «Kompatibilität» mit «Art», «von», «zu» u
 
 `seitenlast-check` ist auf «Kompatibilität» (28-mal) und «Parts List» (27-mal) rot: dieselbe Abfrage nach den Kanten eines Besitzers. Die Decke liegt bei 20 ([D-814](NewConcept/90-decision-log.md)). **Nicht von den Änderungen dieses Tages:** gemessen mit dem Stand vor D-888 und vor D-889 — dieselben Zahlen. Zu finden: wer die Kanten je Teil neu liest.
 
+**Erledigt 2026-09-20:** gefunden in {@see SettingsResolver}: je **Feldverweis** einer Einstellung (`summary_fields`) eine eigene Kantenabfrage — 28 verschiedene Kanten, 28 Abfragen. Jetzt lädt die Vorladung sie in einer (`RelationRepository::byIds()`). Gemessen danach: «Kompatibilität» 138 → 114 Abfragen, häufigste 28 → 19; «Parts List» 116 → 93, häufigste 27 → 14.
+
 ---
 ## Erledigte Eingänge
 
