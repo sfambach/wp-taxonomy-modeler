@@ -50,8 +50,8 @@ $radial2 = $knoten('radial RM 2 mm', THT);
 $jstxh = $knoten('JST XH (2,5 mm)', STECKERTYPEN);
 
 // (Früher als Herkunftshinweis geschrieben, siehe unten.)
-$hinweis = 'Aus der Stückliste der BT2PS2-Platinen (KiCad, 2026-09-19). Toleranz, Leistung und Spannungsfestigkeit, '
-         . 'wo nicht beim Teil genannt, als übliche Werte angenommen und nicht im Datenblatt geprüft.';
+$hinweis = 'Aus der Stückliste der BT2PS2-Platinen (KiCad, 2026-09-19). Toleranz, Leistung und Spannungsfestigkeit '
+         . 'als übliche Werte angenommen und nicht im Datenblatt geprüft.';
 
 // key => [Knoten, Beschreibung, Bauform, [Feld => Wert, …]]; Wert: string = Text, ['ref', id], ['ew', zahl, vorsatz, einheit], ['tol', ±]
 $teile = [
@@ -59,11 +59,11 @@ $teile = [
     'R1k0805'  => [RESISTOR, 'Widerstand 1 kΩ 0805', B0805, [R_WERT => ['ew', 1, KILO, OHM], R_LEISTUNG => ['ew', 125, MILLI, WATT], TOLERANZ => ['tol', 1]]],
     'R10k0207' => [RESISTOR, 'Widerstand 10 kΩ 0207 (¼ W, bedrahtet)', B0207, [R_WERT => ['ew', 10, KILO, OHM], R_LEISTUNG => ['ew', 250, MILLI, WATT], TOLERANZ => ['tol', 1]]],
     'R1k0207'  => [RESISTOR, 'Widerstand 1 kΩ 0207 (¼ W, bedrahtet)', B0207, [R_WERT => ['ew', 1, KILO, OHM], R_LEISTUNG => ['ew', 250, MILLI, WATT], TOLERANZ => ['tol', 1]]],
-    'C10u0805' => [CONDENSATOR, 'Kondensator Keramik 10 µF 0805 (mind. 6,3 V)', B0805, [C_KAPAZITAET => ['ew', 10, MICRO, FARAD], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
-    'C1u0805'  => [CONDENSATOR, 'Kondensator Keramik 1 µF 0805', B0805, [C_KAPAZITAET => ['ew', 1, MICRO, FARAD], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
-    'C100n0805'=> [CONDENSATOR, 'Kondensator Keramik 100 nF 0805', B0805, [C_KAPAZITAET => ['ew', 100, NANO, FARAD], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
-    'C10uElko' => [CONDENSATOR, 'Elektrolytkondensator 10 µF, Ø 5 mm, RM 2 mm (mind. 10 V)', $radial2, [C_KAPAZITAET => ['ew', 10, MICRO, FARAD], C_DIELEKTRIKUM => ['ref', ELEKTROLYT], TOLERANZ => ['tol', 20]]],
-    'C1uDisc'  => [CONDENSATOR, 'Kondensator Keramik 1 µF, radial RM 5 mm', RADIAL5, [C_KAPAZITAET => ['ew', 1, MICRO, FARAD], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
+    'C10u0805' => [CONDENSATOR, 'Kondensator Keramik 10 µF 0805', B0805, [C_KAPAZITAET => ['ew', 10, MICRO, FARAD], C_SPANNUNG => ['ew', 16, null, VOLT], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
+    'C1u0805'  => [CONDENSATOR, 'Kondensator Keramik 1 µF 0805', B0805, [C_KAPAZITAET => ['ew', 1, MICRO, FARAD], C_SPANNUNG => ['ew', 16, null, VOLT], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
+    'C100n0805'=> [CONDENSATOR, 'Kondensator Keramik 100 nF 0805', B0805, [C_KAPAZITAET => ['ew', 100, NANO, FARAD], C_SPANNUNG => ['ew', 16, null, VOLT], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
+    'C10uElko' => [CONDENSATOR, 'Elektrolytkondensator 10 µF, Ø 5 mm, RM 2 mm', $radial2, [C_KAPAZITAET => ['ew', 10, MICRO, FARAD], C_SPANNUNG => ['ew', 16, null, VOLT], C_DIELEKTRIKUM => ['ref', ELEKTROLYT], TOLERANZ => ['tol', 20]]],
+    'C1uDisc'  => [CONDENSATOR, 'Kondensator Keramik 1 µF, radial RM 5 mm', RADIAL5, [C_KAPAZITAET => ['ew', 1, MICRO, FARAD], C_SPANNUNG => ['ew', 16, null, VOLT], C_DIELEKTRIKUM => ['ref', KERAMIK], TOLERANZ => ['tol', 10]]],
     'LED0805'  => [LED, 'LED blau 0805', B0805, [LED_FARBE => ['ref', BLAU]]],
     'LED3mm'   => [LED, 'LED blau 3 mm', LED3, [LED_FARBE => ['ref', BLAU]]],
     'BSS138'   => [TRANSISTOR, 'N-Kanal-MOSFET BSS138 (Pegelwandler 5 V ↔ 3,3 V)', SOT23, [TR_TYP => ['ref', NMOS], TYP => 'BSS138', TEILENUMMER => 'BSS138']],
@@ -79,6 +79,7 @@ $teile = [
     'Taster6'  => [TASTER, 'Taster 6 × 6 mm, bedrahtet', THT_ALLG, []],
 ];
 
+$beschreibungsKante = (int) $wpdb->get_var("SELECT id FROM {$p}relations_named WHERE name = 'Beschreibung' AND from_node_id = 402");
 $zahl = static fn ($z) => rtrim(rtrim(number_format((float) $z, 3, '.', ''), '0'), '.');
 // Ein Pflichtfeld (1..1) aus Teilen bringt beim Anlegen des Satzes schon einen leeren Teil mit — den füllen, nicht
 // einen zweiten daneben legen (gemessen beim ersten Lauf: 28 leere Doppel).
@@ -88,14 +89,16 @@ $teilFuer = static function (int $satz, int $feld) use ($data, $wpdb, $p) {
 };
 $id = ['Jumper' => JUMPER, 'C100nDisc' => C100N_DISC];
 foreach ($teile as $key => [$node, $text, $bauform, $felder]) {
+    // ⚠️ «Beschreibung» ist an den Vater «Model» gewandert — die Kante aus den Konstanten gibt es nicht mehr.
+    // Darum wird über den Text im Satz gesucht, nicht über die Kantennummer (sonst legt ein zweiter Lauf alles doppelt an).
     $steht = $wpdb->get_var($wpdb->prepare(
         "SELECT r.node_record_id FROM {$p}relation_records r JOIN {$p}node_records n ON n.id = r.node_record_id
-         WHERE n.node_id = %d AND r.relation_id = %d AND r.value_text = %s", $node, BESCHREIBUNG, $text));
+         WHERE n.node_id = %d AND r.value_text = %s", $node, $text));
     if ($steht !== null) { $id[$key] = (int) $steht; continue; }
     echo "Teil neu: $text\n";
     if (! $schreiben) { $id[$key] = 0; continue; }
     $satz = $data->create($node, RecordType::User);
-    $data->put($satz->id, BESCHREIBUNG, TypedValue::ofText($text));
+    $data->put($satz->id, $beschreibungsKante, TypedValue::ofText($text));
     $data->put($satz->id, BAUFORM, TypedValue::ofReference((int) $bauform));
     foreach ($felder as $feld => $wert) {
         if (is_string($wert)) { $data->put($satz->id, $feld, TypedValue::ofText($wert)); continue; }
