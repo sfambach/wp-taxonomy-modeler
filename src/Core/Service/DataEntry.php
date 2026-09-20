@@ -767,9 +767,12 @@ final class DataEntry
     private function refuseUnwritable(Relation $relation, RecordType $kind = RecordType::User): void
     {
         $target = $this->nodes->byId($relation->toNodeId);
-        $branch = $this->framework->branchOf($target);
 
-        if ($branch === null) {
+        // ⚠️ **Kein benannter Ast mehr** ([D-890](../../../docs/NewConcept/90-decision-log.md), sein Wort: «bitte keine benannten äste»).
+        // *Hier stand «liegt das Ziel in keinem Ast, gibt es dort keine Sätze» — seit [D-884](../../../docs/NewConcept/90-decision-log.md)
+        // ist `Kontact` ein eigener Hauptast, und damit war **kein Verweis auf einen Kontakt mehr zu schreiben**, obwohl unter
+        // `Manufacturer` 56 Sätze stehen (gemessen am 2026-09-20). **Ein Rahmenknoten bleibt verwehrt**: er benennt einen Ort.*
+        if ($this->framework->isProtected($target)) {
             throw NotYetStorable::thatBranchHasNoRecords($target->name);
         }
 

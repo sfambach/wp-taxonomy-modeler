@@ -5,27 +5,19 @@ namespace Taxmod\Core\Exception;
 /**
  * A node that cannot stand at the far end of an attribute.
  *
- * ⚠️ **The kind of an relation is read off the target's branch and never chosen** (D-161). A target
- * that sits in no branch therefore has no kind to read, and there is nothing sensible to fall
- * back on — inventing one is precisely how a supplier ends up *composed* into an order, which
- * is the error the branch rule exists to prevent.
+ * ⚠️ **Seit [D-890](../../../docs/NewConcept/90-decision-log.md) verlangt ein Ziel keinen benannten Ast mehr** — *sein Wort: «bitte keine
+ * benannten äste», und die Art nennt ohnehin der Benutzer ([D-618](../../../docs/NewConcept/90-decision-log.md)). Übrig sind die zwei
+ * Verbote mit Grund: ein **Rahmenknoten** steht für einen Ort und nicht für ein Ding (D-238), und im **Papierkorb** steht nichts,
+ * worauf ein Feld zeigen dürfte.*
  *
  * @see docs/NewConcept/10-domain-core.md
  */
 final class NotAPossibleTarget extends DomainError
 {
-    public static function itSitsInNoBranch(string $name): self
-    {
-        return new self(sprintf(
-            '«%s» sits in no branch, so there is no relation kind to read off it. An attribute points into Model, Compositions, Data Types or Constants.',
-            $name
-        ));
-    }
-
-    /** D-238: everything **but** the branch root is selectable — the root itself names the branch. */
+    /** D-238, D-890: jeder Knoten ausser einem Rahmenknoten ist wählbar — ein Rahmenknoten benennt einen Ort. */
     public static function itIsABranchRoot(string $name): self
     {
-        return new self(sprintf('«%s» is the root of its branch and stands for the branch itself, not for a thing in it.', $name));
+        return new self(sprintf('«%s» is a framework node and stands for a place, not for a thing in it.', $name));
     }
 
     /**

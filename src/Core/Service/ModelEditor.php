@@ -712,32 +712,55 @@ final class ModelEditor
         }
     }
 
-    private function addedField(int $ownerId, int $targetId, string $name, ?RelationKind $kind): Relation
+    /**
+     * Ob dieser Knoten am fernen Ende eines Feldes stehen darf ([D-890](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Kein benannter Ast mehr** — *sein Wort am 2026-09-20: «bitte keine benannten äste».* Bis dahin verlangte das Anlegen, dass das
+     * Ziel in einem der vier Äste liegt; seit [D-884](../../../docs/NewConcept/90-decision-log.md) ist `Kontact` ein eigener Hauptast, und
+     * damit war **kein neues Feld mehr auf einen Kontakt anzulegen** (gemessen am 2026-09-20 beim Versuch, «übernommen durch» zu erklären).
+     *
+     * ⚠️ *Was bleibt, sind die zwei Verbote, die einen Sinn haben: **ein Rahmenknoten** — Wurzel, Papierkorb, `Primitives` und die
+     * Astwurzeln — steht für einen Ort und nicht für ein Ding ([D-238](../../../docs/NewConcept/90-decision-log.md)), und **im Papierkorb**
+     * steht nichts, worauf man zeigt.*
+     */
+    private function targetIsPossible(Node $target): void
     {
-        $owner  = $this->nodes->byId($ownerId);
-        $target = $this->nodes->byId($targetId);
-
-        $branch = $this->framework->branchOf($target)
-            ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
-
-        // D-238: everything **but** the branch root is selectable. The root stands for the
-        // branch itself, not for a thing in it.
-        if ($target->id === $this->framework->rootOf($branch)->id) {
+        if ($this->framework->isProtected($target)) {
             throw NotAPossibleTarget::itIsABranchRoot($target->name);
         }
 
         if ($target->isDescendantOf($this->framework->trash())) {
             throw NotAPossibleTarget::itIsInTheTrash($target->name);
         }
+    }
+
+    /**
+     * Die Art, wenn der Benutzer keine nennt: die des Astes, und ohne Ast **Komposition**
+     * ([D-890](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «vorgabe ist composition benutzer kann aggregation wählen». Die Maske schickt die Art ohnehin mit
+     * ([D-618](../../../docs/NewConcept/90-decision-log.md)); dieser Rückfall gilt den Aufrufern, die keine nennen — Saat und Gerüste.*
+     */
+    private function fallbackKind(Node $target): RelationKind
+    {
+        return $this->framework->branchOf($target)?->relationKind() ?? RelationKind::Composition;
+    }
+
+    private function addedField(int $ownerId, int $targetId, string $name, ?RelationKind $kind): Relation
+    {
+        $owner  = $this->nodes->byId($ownerId);
+        $target = $this->nodes->byId($targetId);
+
+        $this->targetIsPossible($target);
 
         $relation = Relation::attribute(
             // ⚠️ *`0` heisst «die Tabelle vergibt sie» (TASK-004).*
             0,
             $owner->id,
             $target->id,
-            // ⚠️ **Die Angabe gewinnt, der Ast ist nur noch der Rückfall** (TASK-053,
-            // [D-618](../../../docs/NewConcept/90-decision-log.md)).
-            $kind ?? $branch->relationKind(),
+            // ⚠️ **Die Angabe gewinnt; ohne sie gilt der Ast, und ohne Ast die Komposition**
+            // ([D-618](../../../docs/NewConcept/90-decision-log.md), [D-890](../../../docs/NewConcept/90-decision-log.md)).
+            $kind ?? $this->fallbackKind($target),
             $name,
             $this->relations->nextFieldPositionUnder($owner->id)
         );
@@ -1470,11 +1493,7 @@ final class ModelEditor
         if ($isSetting) {
             $art = RelationKind::Setting;
         } else {
-            $target = $this->nodes->byId($relation->toNodeId);
-            $branch = $this->framework->branchOf($target)
-                ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
-
-            $art = $branch->relationKind();
+            $art = $this->fallbackKind($this->nodes->byId($relation->toNodeId));
         }
 
         return $this->setKind($ownerId, $relationId, $art);
@@ -1666,16 +1685,7 @@ final class ModelEditor
         $relation   = $this->ownAttribute($ownerId, $relationId);
         $target = $this->nodes->byId($targetId);
 
-        $branch = $this->framework->branchOf($target)
-            ?? throw NotAPossibleTarget::itSitsInNoBranch($target->name);
-
-        if ($target->id === $this->framework->rootOf($branch)->id) {
-            throw NotAPossibleTarget::itIsABranchRoot($target->name);
-        }
-
-        if ($target->isDescendantOf($this->framework->trash())) {
-            throw NotAPossibleTarget::itIsInTheTrash($target->name);
-        }
+        $this->targetIsPossible($target);
 
         // ⚠️ **Eine Einstellungskante bleibt eine Einstellungskante** — *sein Befund am 2026-09-06:
         // «die Typzuordnung am Knoten `render with label` kann ich nicht auf diesen Typ ändern,
@@ -1690,7 +1700,7 @@ final class ModelEditor
         // steht der Rückbau noch aus und wird nicht nebenbei entschieden (`PR-4`).*
         $moved = $relation->retargetedTo(
             $targetId,
-            $relation->isSetting() ? $relation->kind : $branch->relationKind()
+            $relation->isSetting() ? $relation->kind : $this->fallbackKind($target)
         );
 
         if ($moved === $relation) {

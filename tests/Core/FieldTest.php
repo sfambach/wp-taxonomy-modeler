@@ -281,17 +281,17 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
-    public function a_node_in_no_branch_cannot_be_the_target(): void
+    public function a_node_in_no_branch_may_be_the_target_and_falls_back_to_composition(): void
     {
-        // ⚠️ `Primitives` splits into two branches and the concept says nothing about the space
-        // between, so a node hung directly under it has no kind to read. Refusing is honest;
-        // guessing would invent a rule.
+        // ⚠️ **Geändert am 2026-09-20 mit D-890, sichtbar:** *hier stand «ein Knoten in keinem Ast kann kein Ziel sein». Sein Wort:
+        // «bitte keine benannten äste» — und «vorgabe ist composition benutzer kann aggregation wählen». Der Anlass ist gemessen:
+        // seit D-884 ist «Kontact» ein eigener Hauptast, und damit liess sich kein Feld mehr auf einen Kontakt anlegen.*
         $part  = $this->under('model', 'Part');
         $limbo = $this->editor->createNode('Neither', $this->primitives->id);
 
-        $this->expectException(NotAPossibleTarget::class);
+        $relation = $this->editor->addField($part->id, $limbo->id, 'something');
 
-        $this->editor->addField($part->id, $limbo->id, 'something');
+        self::assertSame(RelationKind::Composition, $relation->kind);
     }
 
     #[Test]
