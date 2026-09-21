@@ -37,12 +37,12 @@ final class ComplexRendererTest extends TestCase
     }
 
     /** @param list<RenderedField> $parts */
-    private function gezeichnet(array $parts, array $lead = []): string
+    private function gezeichnet(array $parts, array $lead = [], Purpose $purpose = Purpose::Edit): string
     {
         return (new ComplexRenderer())->render(
             Node::create(1, 'Kontakt', null),
             new RenderContext(
-                purpose: Purpose::Edit,
+                purpose: $purpose,
                 value: TypedValue::nothing(),
                 surroundings: new Surroundings(parts: $parts, rowLead: $lead === [] ? [] : [$lead]),
             )
@@ -78,14 +78,27 @@ final class ComplexRendererTest extends TestCase
     }
 
     #[Test]
-    public function a_part_below_a_part_is_its_summary(): void
+    public function a_part_below_a_part_is_its_summary_on_display(): void
+    {
+        $innen   = $this->feld(41, 'Street', '<input name="s">', 'Hauptstr.');
+        $adresse = $this->feld(40, 'Address', 'ADRESSE', '', [[$innen, $this->feld(42, 'City', '<input>', 'Bonn')]]);
+
+        $markup = $this->gezeichnet([$this->feld(50, 'Supplier', 'X', '', [[$this->feld(51, 'Name', '<input>', 'ACME'), $adresse]])], [], Purpose::Display);
+
+        self::assertStringContainsString('<details class="taxmod-complex-link"><summary>Hauptstr., Bonn</summary>', $markup);
+    }
+
+    /** D-894, sein Wort: «ich denke bei der eingabe sollten die felder zu sehen sein». */
+    #[Test]
+    public function a_part_below_a_part_shows_its_fields_when_editing(): void
     {
         $innen   = $this->feld(41, 'Street', '<input name="s">', 'Hauptstr.');
         $adresse = $this->feld(40, 'Address', 'ADRESSE', '', [[$innen, $this->feld(42, 'City', '<input>', 'Bonn')]]);
 
         $markup = $this->gezeichnet([$this->feld(50, 'Supplier', 'X', '', [[$this->feld(51, 'Name', '<input>', 'ACME'), $adresse]])]);
 
-        self::assertStringContainsString('<details class="taxmod-complex-link"><summary>Hauptstr., Bonn</summary>', $markup);
+        self::assertStringNotContainsString('taxmod-complex-link', $markup, 'nichts zugeklappt');
+        self::assertStringContainsString('ADRESSE', $markup, 'die Felder des Teils stehen da');
     }
 
     #[Test]

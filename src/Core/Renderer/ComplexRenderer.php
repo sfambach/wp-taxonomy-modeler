@@ -27,6 +27,8 @@ use Taxmod\Core\Model\SimpleType;
  * ⚠️ **Eine Stufe tiefer steht nur die Zusammenfassung**, auf sein Wort: *«sollten die komplexen Felder wieder
  * komplexe Felder haben, sollen diese erstmal als Link mit Summary dargestellt werden».* *Wohin der Link führt, ist
  * nicht entschieden (`INF-052`); bis dahin klappt er die Felder an Ort und Stelle auf, damit sie bedienbar bleiben.*
+ * ⚠️ **Das gilt nur für die Anzeige** ([D-894](../../../docs/NewConcept/90-decision-log.md)), sein Befund an BerryBase:
+ * *«ich denke bei der eingabe sollten die felder zu sehen sein»*. *In der Eingabe stehen die Felder offen da.*
  *
  * ⚠️ *Er hiess zuerst `node`; umbenannt auf sein Wort am 2026-09-13: «benenne den mal in Komplex-Renderer um».*
  *
@@ -91,7 +93,7 @@ final class ComplexRenderer extends RendererNode
         $markup .= $this->form($subject, $context, $einfach, $used);
 
         foreach ($einzeln as $part) {
-            $markup .= $this->block($part, $this->form($subject, $context, $this->summarised($part->rows[0] ?? []), $used));
+            $markup .= $this->block($part, $this->form($subject, $context, $this->summarised($part->rows[0] ?? [], $context), $used));
         }
 
         foreach ($mehrere as $part) {
@@ -148,7 +150,7 @@ final class ComplexRenderer extends RendererNode
         $result = (new TableRenderer())->render(
             $subject,
             $this->with($context, new Surroundings(
-                records: array_map(fn (array $row): array => $this->summarised($row), $rows),
+                records: array_map(fn (array $row): array => $this->summarised($row, $context), $rows),
                 formId: $context->surroundings->formId,
                 rowActs: implode('', $rowActs) === '' ? [] : $rowActs,
             ))
@@ -159,13 +161,18 @@ final class ComplexRenderer extends RendererNode
     }
 
     /**
-     * Ein Feld, dessen Teil selbst zusammengesetzt ist, wird zu seiner Zusammenfassung — aufklappbar.
+     * Ein Feld, dessen Teil selbst zusammengesetzt ist, wird zu seiner Zusammenfassung — aufklappbar; in der Eingabe
+     * bleiben seine Felder offen ([D-894](../../../docs/NewConcept/90-decision-log.md)).
      *
      * @param  list<RenderedField> $row
      * @return list<RenderedField>
      */
-    private function summarised(array $row): array
+    private function summarised(array $row, RenderContext $context): array
     {
+        if ($context->purpose === Purpose::Edit) {
+            return $row;
+        }
+
         return array_map(
             static function (RenderedField $field): RenderedField {
                 if ($field->rows === [] || $field->relation->isSetting() || $field->isHidden()) {
