@@ -150,9 +150,25 @@ final class WpdbNodeRepository implements NodeRepository
         return $this->find($id) ?? throw NodeNotFound::withId($id);
     }
 
+    /**
+     * ⚠️ **Während eines Zeichenlaufs: alle Knoten in einer Abfrage, danach aus dem Gedächtnis** (D-899). *Gemessen am 2026-09-21
+     * an «Prozessoren»: 21 Knoten wurden einzeln gelesen, von fünf Stellen aus, und die Seite lag über der Grenze von 20 gleichen
+     * Abfragen (`seitenlast-check`). Der Vorfahrenausdruck rechnet ohnehin den ganzen Baum; alle Zeilen zu nehmen kostet kaum mehr
+     * als eine. Ausserhalb eines Zeichenlaufs bleibt es bei der einen Zeile — dort gibt es kein Gedächtnis, das die anderen hielte.*
+     */
     public function find(int $id): ?Node
     {
         global $wpdb;
+
+        if (Query::isRemembering()) {
+            foreach (Query::rows('Alle Knoten lesen', $wpdb->prepare($this->selectNodes('WHERE 1 = %d'), ...[...$this->nameArgs(), 1])) as $row) {
+                if ((int) $row['id'] === $id) {
+                    return $this->hydrate($row);
+                }
+            }
+
+            return null;
+        }
 
         $row = Query::row('Knoten lesen', $wpdb->prepare(
             $this->selectNodes('WHERE n.id = %d'),

@@ -55,6 +55,12 @@ final class Query
         self::$read = [];
     }
 
+    /** Ob gerade behalten wird — dann lohnt es, eine Frage breiter zu stellen und die Antwort für die nächsten mitzunehmen. */
+    public static function isRemembering(): bool
+    {
+        return self::$depth > 0;
+    }
+
     /**
      * Eine Arbeit, während der Gelesenes behalten wird — vorher und nachher ist das Gedächtnis leer.
      *
