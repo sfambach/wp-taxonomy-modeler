@@ -138,7 +138,8 @@ $typFuer = [
 
 // ── Quellenverzeichnis ─────────────────────────────────────────────────────────────────────────────
 $verzeichnis = (int) $wpdb->get_var("SELECT id FROM {$p}nodes_named WHERE name = 'Quellenverzeichnis' AND parent_node_id = " . MODEL);
-$qTitel      = $feldAn($verzeichnis, 'Titel');
+// ⚠️ *Der Titel einer Quelle ist seit D-883 ihre «Bezeichnung» (an «Model»); das eigene Feld «Titel» ist darin aufgegangen.*
+$qTitel      = 149000103839;
 $qAdresse    = $feldAn($verzeichnis, 'Adresse');
 $qArt        = $feldAn($verzeichnis, 'Art');
 $qAbgerufen  = $feldAn($verzeichnis, 'Abgerufen');

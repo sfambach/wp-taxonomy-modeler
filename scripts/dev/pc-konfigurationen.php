@@ -48,7 +48,7 @@ $p = $wpdb->prefix . 'taxmod_';
 const HARDWARE = 149000103001, TEXT = 1175, BEZEICHNUNG = 149000103839, HERSTELLER = 149000102544, ERSCHIEN = 149000103840;
 const HERSTELLERLISTE = 149000102677, HERSTELLER_NAME = 149000102666, EXEMPLARE = 149000108212, MAINBOARDS = 149000107691;
 const EX_MODELL = 149000108189, EX_GEKAUFT = 149000108194, EX_PREIS = 149000108195, EX_WAEHRUNG = 149000108196;
-const EX_HINWEIS = 149000108198, EX_EINGEBAUT = 149000108193, EURO = 8571;
+const EX_HINWEIS = 149000108198, EX_EINGEBAUT = 149000108193, EURO = 8571, CPUS = 149000103845;
 
 $sagen = static fn (string $satz) => print($satz . "\n");
 
@@ -152,6 +152,14 @@ $zuordnung = [
     'Biostar GF8100 M2 TE (PI)'                    => ['GF8100 M2+ TE', null, ''],
     'MSI PT880NEO MS 7008V1 + Pentium 4'           => ['PT880 Neo', null, ''],
     'FIC 486-HC-HD 486 DX33'                       => ['486-VC-HD', 22921, 'The Retro Web führt «486-HC-HD» als zweiten Namen des 486-VC-HD.'],
+    // *Seit D-896 im Modell — nach ihrer Bezeichnung gesucht.*
+    '486 DX2 40'                                   => [null, 'i486DX2-40', ''],
+    '486 DX2 66'                                   => [null, 'i486DX2-66', ''],
+    '486 DX4 100'                                  => [null, 'i486DX4-100', 'Hersteller nicht genannt — angenommen Intel.'],
+    'Celeron D 2,8 GHz'                            => [null, 'Celeron D 336 (2,8 GHz)', ''],
+    'Celeron D 3,2GHz'                             => [null, 'Celeron D 351 (3,2 GHz)', ''],
+    'Celeron D 3,33GHz'                            => [null, 'Celeron D 355 (3,33 GHz)', ''],
+    'MSI PM8PM-V MS-7222 V2.0 + Celeron D 2,8 MHz' => [null, 'Celeron D 336 (2,8 GHz)', ''],
 ];
 
 foreach ($zuordnung as $aufbau => [$board, $cpu, $hinweis]) {
@@ -164,6 +172,10 @@ foreach ($zuordnung as $aufbau => [$board, $cpu, $hinweis]) {
 
     if ($board !== null && ($boardSatz = $satzMit(MAINBOARDS, BEZEICHNUNG, $board)) !== null) {
         $setzen($satz, 'Mainboard', TypedValue::ofRecordReference($boardSatz));
+    }
+
+    if (is_string($cpu)) {
+        $cpu = $satzMit(CPUS, BEZEICHNUNG, $cpu);
     }
 
     if ($cpu !== null) {

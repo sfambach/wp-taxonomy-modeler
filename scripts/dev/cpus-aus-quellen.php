@@ -146,7 +146,8 @@ $geerbt = [
 
 // ── Quellenverzeichnis ─────────────────────────────────────────────────────────────────────────────
 $verzeichnis = (int) $wpdb->get_var("SELECT id FROM {$p}nodes_named WHERE name = 'Quellenverzeichnis' AND parent_node_id = " . MODEL);
-$qTitel      = $feldAn($verzeichnis, 'Titel');
+// ⚠️ *Der Titel einer Quelle ist seit D-883 ihre «Bezeichnung» (an «Model»); das eigene Feld «Titel» ist darin aufgegangen.*
+$qTitel      = 149000103839;
 $qAdresse    = $feldAn($verzeichnis, 'Adresse');
 $qArt        = $feldAn($verzeichnis, 'Art');
 $qAbgerufen  = $feldAn($verzeichnis, 'Abgerufen');
@@ -275,8 +276,28 @@ foreach ($daten as $cpu) {
         $data->appendValue($satz, TEILENUMMER, TypedValue::ofText((string) $cpu['variante']));
     }
 
-    $familie = match (true) {
-        str_starts_with((string) $cpu['familie'], 'Pentium')                                   => FAMILIE_PENTIUM,
+    // ⚠️ *Erst die Familie am Namen suchen, den die Daten nennen («80486», «Celeron D»), und anlegen, wenn es sie nicht gibt
+    // (D-896: die fehlenden CPUs der Benchmarks). Die feste Zuordnung darunter gilt nur noch für die 386er, deren Daten die
+    // Familie «80386» nennen, das Modell aber DX und SX trennt.*
+    $familieName = trim((string) ($cpu['familie'] ?? ''));
+    // ⚠️ *Der Knoten, an dem die Familien stehen — es gibt zwei Knoten dieses Namens (gemessen am 2026-09-21), und nur einer trägt Sätze.*
+    $familieKnoten = (int) $wpdb->get_var("SELECT node_id FROM {$p}node_records WHERE id = " . FAMILIE_PENTIUM);
+    $familie       = $familieName === '' || $familieName === '80386' ? null : ($wpdb->get_var($wpdb->prepare(
+        "SELECT v.node_record_id FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id
+         WHERE r.node_id = %d AND v.relation_id = %d AND v.value_text = %s AND r.record_type = 'user' LIMIT 1",
+        $familieKnoten,
+        BEZEICHNUNG,
+        $familieName
+    )));
+
+    if ($familie === null && $familieName !== '' && $familieName !== '80386' && ! str_starts_with($familieName, 'Pentium')) {
+        $familie = $data->create($familieKnoten, RecordType::User)->id;
+        $data->put((int) $familie, BEZEICHNUNG, TypedValue::ofText($familieName));
+        $sagen("  Familie «{$familieName}» angelegt");
+    }
+
+    $familie = $familie !== null ? (int) $familie : match (true) {
+        str_starts_with($familieName, 'Pentium')                                               => FAMILIE_PENTIUM,
         preg_match('/^(i386DX|80386DX|RapidCAD|i376)/', (string) $cpu['bezeichnung']) === 1    => FAMILIE_DX,
         default                                                                                 => FAMILIE_SX,
     };

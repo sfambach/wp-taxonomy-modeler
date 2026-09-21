@@ -297,7 +297,8 @@ $sockelKonstante = static fn (string $name): ?int => $konstante(SOCKELWAHL, $nam
 
 // ── Quellen ────────────────────────────────────────────────────────────────────────────────────────
 $verzeichnis = (int) $wpdb->get_var("SELECT id FROM {$p}nodes_named WHERE name = 'Quellenverzeichnis' AND parent_node_id = " . MODEL);
-$qTitel      = (int) $feldAn($verzeichnis, 'Titel');
+// ⚠️ *Der Titel einer Quelle ist seit D-883 ihre «Bezeichnung» (an «Model»); das eigene Feld «Titel» ist darin aufgegangen.*
+$qTitel      = 149000103839;
 $qAdresse    = (int) $feldAn($verzeichnis, 'Adresse');
 $qArt        = (int) $feldAn($verzeichnis, 'Art');
 $qAbgerufen  = (int) $feldAn($verzeichnis, 'Abgerufen');
