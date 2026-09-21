@@ -667,6 +667,8 @@ Auf der CPU-Seite steht die Auswahl aller Sätze unter «Models» als geteilte V
 
 **Vorschlag:** die Vorlage einer Satzauswahl erst laden, wenn der Dialog aufgeht — derselbe Weg wie die geerbten Feldzeilen ([D-871](NewConcept/90-decision-log.md)). Bis dahin trägt die Seite nur, was sichtbar ist.
 
+**Erledigt 2026-09-21 → [D-898](NewConcept/90-decision-log.md):** gebaut; CPU-Seite 1010 → 781 KB.
+
 ---
 ## Erledigte Eingänge
 

@@ -527,7 +527,61 @@ final class NodesScreen
 
         // ⚠️ *Der eine Auswahlbaum der Seite, ausserhalb jedes Formulars — seine Zeilen schicken nie etwas ab (D-815). Dahinter die Körper der
         // Satzdialoge, einmal je gleichem Körper (D-866) — zuletzt, weil erst jetzt alle gezeichnet sind.*
-        return $html . $picker . $this->rendering->sharedRecordBodies() . '</div>';
+        // ⚠️ *Das Wort für den Fall, dass eine nachgeladene Liste abgelaufen ist (D-898) — übersetzt hier, gelesen vom Skript.*
+        $worte = '<span hidden id="taxmod-words" data-reload-list="' . esc_attr__('This list is no longer available. Please reload the page.', 'taxmod') . '"></span>';
+
+        return $html . $picker . $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)) . $worte . '</div>';
+    }
+
+    /** Ab welcher Grösse ein Satzdialog-Körper nachgeladen wird statt in der Seite zu stehen ([D-898](../../../docs/NewConcept/90-decision-log.md)). */
+    private const NACHLADEN_AB = 20000;
+
+    /** Der Akt, unter dem das Skript einen ausgelagerten Körper holt (D-898). */
+    public const SHARED_BODY_ACTION = 'taxmod_shared_body';
+
+    /**
+     * Einen grossen Körper ablegen und die Adresse geben, unter der das Skript ihn holt — sonst null, dann steht er in der Seite.
+     *
+     * ⚠️ *Abgelegt als Transient unter seinem Schlüssel, und der Schlüssel ist der Hash des Inhalts (D-866): ein veralteter Körper
+     * kann nicht ausgeliefert werden, weil ein geänderter einen anderen Schlüssel hat. Ein Tag reicht für eine offene Seite; ist er
+     * abgelaufen, sagt das Skript es und bittet ums Neuladen.*
+     */
+    private function grosseKoerperAuslagern(string $schluessel, string $koerper): ?string
+    {
+        if (strlen($koerper) < self::NACHLADEN_AB) {
+            return null;
+        }
+
+        set_transient('taxmod_body_' . $schluessel, $koerper, DAY_IN_SECONDS);
+
+        return add_query_arg([
+            'action'        => self::SHARED_BODY_ACTION,
+            'key'           => $schluessel,
+            '_taxmod_nonce' => wp_create_nonce(self::SHARED_BODY_ACTION),
+        ], admin_url('admin-post.php'));
+    }
+
+    /** Einen ausgelagerten Körper ausliefern (D-898) — Fähigkeit, Nonce, Schlüssel prüfen, dann nur der abgelegte Inhalt. */
+    public function handleSharedBody(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        check_admin_referer(self::SHARED_BODY_ACTION, '_taxmod_nonce');
+
+        $schluessel = isset($_GET['key']) ? sanitize_key(wp_unslash($_GET['key'])) : '';
+        $koerper    = preg_match('/^b[0-9a-f]{12}$/', $schluessel) === 1 ? get_transient('taxmod_body_' . $schluessel) : false;
+
+        if (! is_string($koerper)) {
+            wp_die(esc_html__('This list is no longer available. Please reload the page.', 'taxmod'), '', ['response' => 404]);
+        }
+
+        header('Content-Type: text/html; charset=utf-8');
+
+        echo $koerper; // phpcs:ignore WordPress.Security.EscapeOutput — gezeichnet und escaped beim Zeichnen der Seite
+
+        exit;
     }
 
     // ---------------------------------------------------------------- the tree

@@ -35,13 +35,27 @@ final class SharedBodies
         return $schluessel;
     }
 
-    /** Die Vorlagen, einmal je Körper — ausserhalb jedes Formulars auszugeben, denn ihre Knöpfe haben noch keinen Namen. */
-    public function markup(): string
+    /**
+     * Die Vorlagen, einmal je Körper — ausserhalb jedes Formulars auszugeben, denn ihre Knöpfe haben noch keinen Namen.
+     *
+     * ⚠️ **Ein grosser Körper darf ausgelagert werden** ([D-898](../../../docs/NewConcept/90-decision-log.md), INF-065): *gibt
+     * `$auslagern` für einen Körper eine Adresse zurück, steht nur eine leere Vorlage mit dieser Adresse da, und das Skript holt
+     * den Körper beim ersten Öffnen. Gemessen am 2026-09-21: die Satzauswahl «Models» war 171 KB und wuchs mit jedem Satz; die
+     * CPU-Seite lag bei 1010 KB. Wohin ausgelagert wird, weiss nur der Rand — der Kern kennt keine Adressen.*
+     *
+     * @param (\Closure(string $schluessel, string $koerper): ?string)|null $auslagern
+     */
+    public function markup(?\Closure $auslagern = null): string
     {
         $html = '';
 
         foreach ($this->koerper as $schluessel => $koerper) {
-            $html .= '<template class="taxmod-shared-body" data-taxmod-body="' . $schluessel . '">' . $koerper . '</template>';
+            $adresse = $auslagern === null ? null : $auslagern($schluessel, $koerper);
+
+            $html .= $adresse === null
+                ? '<template class="taxmod-shared-body" data-taxmod-body="' . $schluessel . '">' . $koerper . '</template>'
+                : '<template class="taxmod-shared-body" data-taxmod-body="' . $schluessel . '" data-taxmod-src="'
+                    . htmlspecialchars($adresse, ENT_QUOTES) . '"></template>';
         }
 
         return $html;

@@ -122,6 +122,12 @@ foreach (TAXMOD_REFERENCE_PAGES as $id => $name) {
         $haeufigste . '-mal: ' . substr((string) key($formen), 0, 160)
     );
     check('der gemeinsame Auswahlbaum steht genau einmal da (D-815)', substr_count($markup, 'class="taxmod-shared-pick"') === 1, (string) substr_count($markup, 'class="taxmod-shared-pick"'));
+
+    // ⚠️ *Neu mit D-898 (sichtbar geändert): keine Satzdialog-Vorlage über 20 KB steht in der Seite — die grossen werden nachgeladen.
+    // Gemessen vorher: «Models» 171 KB auf der CPU-Seite.*
+    preg_match_all('/<template class="taxmod-shared-body" data-taxmod-body="[^"]+">(.*?)<\/template>/s', $markup, $vorlagen);
+    $groesste = max([0, ...array_map('strlen', $vorlagen[1])]);
+    check('keine Satzdialog-Vorlage über 20 KB in der Seite (D-898)', $groesste < 20000, (string) intdiv($groesste, 1024) . ' KB');
 }
 
 echo "\n" . ($failed === 0 ? 'all green' : "{$failed} FAIL") . "\n";

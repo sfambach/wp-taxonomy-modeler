@@ -76,6 +76,12 @@ final class Plugin
             static fn () => $plugin->screen()->handleFieldSettings()
         );
 
+        // ⚠️ *Grosse Satzdialog-Körper, beim ersten Öffnen nachgeladen (D-898).*
+        add_action(
+            'admin_post_' . NodesScreen::SHARED_BODY_ACTION,
+            static fn () => $plugin->screen()->handleSharedBody()
+        );
+
         // ⚠️ *Die Zeilen der geerbten Felder, auf Wunsch nachgeladen (D-871) — derselbe Rückweg.*
         add_action(
             'admin_post_' . NodesScreen::INHERITED_ACTION,

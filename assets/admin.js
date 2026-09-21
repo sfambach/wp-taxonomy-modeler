@@ -1190,7 +1190,52 @@
 	// ⚠️ **Geteilte Satzdialoge** (D-866) — *sein Wort: «3. ja». Gleiche Körper stehen einmal als `<template>` am Ende der Seite; das Feld
 	// trägt einen Platzhalter mit Name, Formular, Wert und der aktuellen Wahl. Beim ersten Anfassen wird die Vorlage geklont, ihre Knöpfe
 	// bekommen Name und Formular des Feldes, und die Wahl steht im Baum statt doppelt.*
-	function koerperEinsetzen( wurzel ) {
+	// ⚠️ **Ein grosser Körper steht nicht in der Seite, nur seine Adresse** (D-898) — *er wird beim ersten Öffnen geholt, einmal je
+	// Körper; wer in der Zwischenzeit fragt, wartet mit. Gemessen am 2026-09-21: die Satzauswahl «Models» war 171 KB gross.*
+	var ladende = {};
+
+	function vorlageBereit( vorlage, danach ) {
+		var quelle = vorlage.getAttribute( 'data-taxmod-src' );
+
+		if ( ! quelle ) {
+			return true;
+		}
+
+		var schluessel = vorlage.getAttribute( 'data-taxmod-body' );
+
+		if ( ladende[ schluessel ] ) {
+			ladende[ schluessel ].push( danach );
+
+			return false;
+		}
+
+		ladende[ schluessel ] = [ danach ];
+
+		fetch( quelle, { credentials: 'same-origin' } ).then( function ( antwort ) {
+			return antwort.ok ? antwort.text() : Promise.reject( antwort.status );
+		} ).then( function ( text ) {
+			vorlage.innerHTML = text;
+			vorlage.removeAttribute( 'data-taxmod-src' );
+		} ).catch( function () {
+			// *Abgelaufen oder nicht erreichbar: die Seite neu laden bringt die Liste wieder.*
+			var worte = document.getElementById( 'taxmod-words' );
+
+			window.alert( worte ? worte.getAttribute( 'data-reload-list' ) : '' );
+		} ).then( function () {
+			var warten = ladende[ schluessel ] || [];
+
+			delete ladende[ schluessel ];
+			warten.forEach( function ( weiter ) {
+				if ( typeof weiter === 'function' ) {
+					weiter();
+				}
+			} );
+		} );
+
+		return false;
+	}
+
+	function koerperEinsetzen( wurzel, danach ) {
 		if ( ! wurzel ) {
 			return;
 		}
@@ -1199,6 +1244,17 @@
 			var vorlage = document.querySelector( 'template.taxmod-shared-body[data-taxmod-body="' + platz.getAttribute( 'data-taxmod-body' ) + '"]' );
 
 			if ( ! vorlage ) {
+				return;
+			}
+
+			// *Nach dem Laden noch einmal einsetzen und dann weitermachen, wo der Aufrufer war — nur dann, sonst liefe «danach» im Kreis.*
+			if ( ! vorlageBereit( vorlage, function () {
+				koerperEinsetzen( wurzel );
+
+				if ( typeof danach === 'function' ) {
+					danach();
+				}
+			} ) ) {
 				return;
 			}
 
@@ -1287,9 +1343,11 @@
 
 	function trefferZeigen( feld ) {
 		var wahl  = feld.closest( '.taxmod-record-pick' );
-		var liste = wahl ? wahl.querySelector( '.taxmod-record-hits' ) : null;
 
-		koerperEinsetzen( wahl );
+		// *Ist die Liste noch nicht geladen (D-898), kommt die Suche nach dem Laden noch einmal.*
+		koerperEinsetzen( wahl, function () { trefferZeigen( feld ); } );
+
+		var liste = wahl ? wahl.querySelector( '.taxmod-record-hits' ) : null;
 
 		if ( ! liste ) {
 			return;

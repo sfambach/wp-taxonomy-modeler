@@ -1031,10 +1031,14 @@ final class Rendering implements Presets
         return $kopie;
     }
 
-    /** Die gesammelten Vorlagen — leer, wenn die Seite nicht teilt. */
-    public function sharedRecordBodies(): string
+    /**
+     * Die gesammelten Vorlagen — leer, wenn die Seite nicht teilt.
+     *
+     * @param (\Closure(string, string): ?string)|null $auslagern Wohin ein grosser Körper geht (D-898); null heisst: alle in der Seite.
+     */
+    public function sharedRecordBodies(?\Closure $auslagern = null): string
     {
-        return $this->geteilteKoerper?->markup() ?? '';
+        return $this->geteilteKoerper?->markup($auslagern) ?? '';
     }
 
     /** Dieselbe Zeichnung, aber ganze Knotenbäume öffnen den gemeinsamen Auswahlbaum — nur für eine Seite, die ihn zeichnet ([D-815](../../../docs/NewConcept/90-decision-log.md)). */
