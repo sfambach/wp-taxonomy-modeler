@@ -659,6 +659,15 @@ Heute stehen 151 Sätze unter «Kompatibilität» mit «Art», «von», «zu» u
 **Zu entscheiden:** 1. Serien zuerst bauen? 2. Sind «Gruppe» und «Serie» dasselbe Muster mit verschiedenen Feldern — oder zwei Sachen? 3. Gehört ein Link künftig in eine Gruppe **und** an sein Ding, oder nur in die Gruppe?
 
 ---
+## INF-065 · Die Satzauswahl «Models» wächst mit jedem Satz
+
+**Typ:** `BEFUND` · **Status:** `INFERRED` — gemessen am 2026-09-21 von mir.
+
+Auf der CPU-Seite steht die Auswahl aller Sätze unter «Models» als geteilte Vorlage — 171 KB, bei rund 300 Sätzen. Jeder neue Satz (Mainboards, PC-Konfigurationen, CPUs, Karten) macht sie grösser; die Seite liegt jetzt bei 1010 KB gegen eine Decke von 1 MB ([D-818](NewConcept/90-decision-log.md)). Mit den Karten wird sie rot.
+
+**Vorschlag:** die Vorlage einer Satzauswahl erst laden, wenn der Dialog aufgeht — derselbe Weg wie die geerbten Feldzeilen ([D-871](NewConcept/90-decision-log.md)). Bis dahin trägt die Seite nur, was sichtbar ist.
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*
