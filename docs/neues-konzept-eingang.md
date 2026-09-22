@@ -670,6 +670,15 @@ Auf der CPU-Seite steht die Auswahl aller Sätze unter «Models» als geteilte V
 **Erledigt 2026-09-21 → [D-898](NewConcept/90-decision-log.md):** gebaut; CPU-Seite 1010 → 781 KB.
 
 ---
+## INF-066 · Das Exemplar hat eigene Kauffelder, die den Kauf doppeln
+
+**Typ:** `BEFUND` · **Status:** `INFERRED` — gemessen am 2026-09-22 von mir.
+
+Das Exemplar trägt «Gekauft am», «Kaufpreis», «Währung» und «Händler»; seit D-897 hat ein Kauf dieselben Angaben und nennt seine Exemplare ([D-901](NewConcept/90-decision-log.md)). Eine Tatsache an zwei Orten widerspricht dem Code-Standard (*«One place owns each piece of state»*). Gefüllt sind die Felder bei 2 von 63 Exemplaren.
+
+**Vorschlag:** die vier Felder am Exemplar streichen und die zwei Werte in je einen Kauf überführen; am Exemplar zeigt man den Kauf als Rückverweis. Offen, ob ein Exemplar ohne Kauf (geschenkt, gefunden) ein Feld «Herkunft des Stücks» braucht.
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*
