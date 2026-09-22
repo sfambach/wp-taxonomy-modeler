@@ -60,4 +60,28 @@ $kasten = substr_count($markup, 'name="taxmod_value[' . $fund->satz . '][' . $fu
 $gut = $zeilen > 0 && $kasten === 0;
 printf("  %s Satz #%d, Feld %d: %d Zeilen, %d einfacher Kasten\n", $gut ? 'ok  ' : 'FAIL', $fund->satz, $fund->kante, $zeilen, $kasten);
 
-exit($gut ? 0 : 1);
+// ⚠️ **Und in der Satztabelle stehen alle Werte** ([D-900](../../docs/NewConcept/90-decision-log.md)) — *gemessen am 2026-09-21: drei
+// Herkunftsarten gespeichert, in der Zelle stand nur die letzte. Gesucht wird ein Satz mit mindestens zwei Werten in einem solchen Feld.*
+$mehrere = $wpdb->get_row(
+    "SELECT r.id AS satz, r.node_id AS knoten, v.relation_id AS kante, GROUP_CONCAT(n.name ORDER BY v.position SEPARATOR '\t') AS namen
+       FROM {$p}relation_records v
+       JOIN {$p}relations k ON k.id = v.relation_id AND k.multiplicity IN ('0..*', '1..*') AND k.hide = 0
+       JOIN {$p}nodes z ON z.id = k.to_node_id AND z.klasse LIKE '%Choice'
+       JOIN {$p}nodes_named n ON n.id = v.value_ref
+       JOIN {$p}node_records r ON r.id = v.node_record_id AND r.record_type = 'user'
+      GROUP BY r.id, r.node_id, v.relation_id HAVING COUNT(*) > 1 ORDER BY r.id DESC LIMIT 1"
+);
+
+if ($mehrere === null) {
+    echo "  FAIL kein Satz mit zwei Werten in einem mehrfachen Auswahlfeld — der Wächter prüft nichts\n";
+    exit(1);
+}
+
+$_GET     = ['page' => 'taxmod', 'taxmod_node' => (string) $mehrere->knoten];
+$_REQUEST = $_GET;
+$tabelle  = $plugin->screen()->render();
+$liste    = '<span class="taxmod-value taxmod-ref-list">' . implode('<br>', array_map('esc_html', explode("\t", (string) $mehrere->namen))) . '</span>';
+$alle     = str_contains($tabelle, $liste);
+printf("  %s Satz #%d, Feld %d: in der Tabelle stehen alle Werte (%s)\n", $alle ? 'ok  ' : 'FAIL', $mehrere->satz, $mehrere->kante, str_replace("\t", ', ', (string) $mehrere->namen));
+
+exit($gut && $alle ? 0 : 1);

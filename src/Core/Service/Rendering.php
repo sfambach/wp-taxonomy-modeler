@@ -6622,6 +6622,26 @@ final class Rendering implements Presets
                 )];
             }
 
+            // ⚠️ **Auch mehrere Konstanten stehen alle da** (D-900) — *gemessen am 2026-09-21 an der Netzwerkkarte #37641: drei
+            // Herkunftsarten gespeichert, in der Zelle stand nur «Vermutung». Beim Anzeigen gibt es kein Angebot, also galt ein Verweis
+            // auf Knoten nicht als Liste, und die Zelle fiel auf den Einzelwert zurück. Die Namen kommen wie im Wähler aus den Labels.*
+            $aufKnoten = array_values(array_filter(
+                $werte,
+                static fn (TypedValue $w): bool => $w->referenceSpace === ReferenceSpace::Node && $w->reference !== null
+            ));
+
+            if ($woerter === [] && count($aufKnoten) > 1) {
+                $knoten = $this->gemerkteKnoten(array_map(static fn (TypedValue $w): int => (int) $w->reference, $aufKnoten));
+                $namen  = $this->labels?->forNodes(array_values($knoten), SeededRole::Select, $context->locale) ?? [];
+
+                return ['renderer' => SummaryRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
+                    '<span class="taxmod-value taxmod-ref-list">' . implode('<br>', array_map(
+                        static fn (TypedValue $w): string => RenderResult::escape($namen[(int) $w->reference] ?? $knoten[(int) $w->reference]->name ?? '#' . (int) $w->reference),
+                        $aufKnoten
+                    )) . '</span>'
+                )];
+            }
+
             if ($werte === [] || ! $verweise) {
                 return null;
             }
