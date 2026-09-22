@@ -820,6 +820,17 @@ final class ModelEditor
     }
 
     /**
+     * Mehrere Kanten nach Nummer, in einer Abfrage (`CD-7`) — für «Verwiesen von» am geöffneten Satz (D-902).
+     *
+     * @param  list<int> $ids
+     * @return array<int, Relation>
+     */
+    public function relationsByIds(array $ids): array
+    {
+        return $ids === [] ? [] : $this->relations->byIds($ids);
+    }
+
+    /**
      * Who uses this node — the attributes of **other** nodes that are typed by it.
      *
      * ⚠️ **[D-199](../../../docs/NewConcept/90-decision-log.md), and it is one direction on purpose.**

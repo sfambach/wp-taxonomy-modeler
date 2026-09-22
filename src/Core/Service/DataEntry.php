@@ -1796,6 +1796,27 @@ final class DataEntry
     }
 
     /**
+     * Alle Wertzeilen, die auf diesen Satz zeigen ([D-902](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return list<\Taxmod\Core\Model\RelationRecord>
+     */
+    public function referrersOf(int $recordId): array
+    {
+        return $this->records->referrersOf($recordId);
+    }
+
+    /**
+     * Mehrere Sätze nach Nummer (D-902).
+     *
+     * @param  list<int> $recordIds
+     * @return array<int, NodeRecord>
+     */
+    public function recordsByIds(array $recordIds): array
+    {
+        return $recordIds === [] ? [] : $this->records->byIds($recordIds);
+    }
+
+    /**
      * Every record holding this value at this attribute.
      *
      * @return list<NodeRecord>

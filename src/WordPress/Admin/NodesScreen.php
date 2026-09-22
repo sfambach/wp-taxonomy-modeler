@@ -1460,6 +1460,7 @@ final class NodesScreen
         $locale     = $this->localeFromRequest();
 
         $html .= '<p class="description taxmod-preview-source">' . esc_html($seen['says']) . '</p>';
+        $html .= $this->referrersLine((int) ($seen['record'] ?? 0));
 
         $html .= '<div class="taxmod-preview">';
 
@@ -4469,6 +4470,83 @@ final class NodesScreen
             fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
             __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod'),
         ];
+    }
+
+    /** Wie viele verweisende Sätze je Feld genannt werden, bevor der Rest nur gezählt wird (D-902). */
+    private const VERWEISE_HOECHSTENS = 20;
+
+    /**
+     * «Verwiesen von» am geöffneten Satz — welche anderen Sätze auf ihn zeigen, je Feld, als Links (D-902).
+     *
+     * ⚠️ **Sein Wort** auf den Vorschlag, die Kauffelder am Exemplar zu streichen und dort den Kauf zu zeigen: *«ok»*
+     * ([D-902](../../../docs/NewConcept/90-decision-log.md)). *[D-199](../../../docs/NewConcept/90-decision-log.md) hatte die Linie
+     * gezogen: «Which records point at a record is a different question and belongs to a record's own screen» — hier ist sie. Ein
+     * Teil (ein Anschluss einer Karte) wird durch den Satz ersetzt, der ihn hält: gemeint ist die Karte, nicht ihre Zeile.*
+     */
+    private function referrersLine(int $satzId): string
+    {
+        if ($satzId === 0) {
+            return '';
+        }
+
+        $zeilen = $this->data->referrersOf($satzId);
+
+        if ($zeilen === []) {
+            return '';
+        }
+
+        // *Ein Teil zählt als sein Halter — eine Abfrage für alle (`CD-7`). Teil ist nur, was über eine **Komposition** gehalten wird:
+        // gemessen am 2026-09-22 nannte `holdersOf()` für ein Exemplar den Kauf, der es aufzählt, und das Exemplar verschwand.*
+        $halter        = $this->data->holdersOf(array_map(static fn ($z): int => $z->recordId, $zeilen));
+        $halterKanten  = $this->editor->relationsByIds(array_values(array_unique(array_map(static fn ($h): int => $h->relationId, $halter))));
+        $gruppen       = [];
+
+        foreach ($zeilen as $zeile) {
+            $durch = $halter[$zeile->recordId] ?? null;
+            $durch = $durch !== null && ($halterKanten[$durch->relationId] ?? null)?->kind === \Taxmod\Core\Model\RelationKind::Composition ? $durch : null;
+            $kante = $durch === null ? $zeile->relationId : $durch->relationId;
+            $satz  = $durch === null ? $zeile->recordId : $durch->recordId;
+
+            if ($satz !== $satzId) {
+                $gruppen[$kante][$satz] = $satz;
+            }
+        }
+
+        if ($gruppen === []) {
+            return '';
+        }
+
+        $kanten  = $this->editor->relationsByIds(array_keys($gruppen));
+        $besitzer = $this->editor->ownersOf(array_values($kanten));
+        $worte   = $this->rendering->summaryTextsOf(array_values(array_filter(array_map(
+            static fn (int $kante): ?array => isset($kanten[$kante]) ? ['relation' => $kanten[$kante], 'records' => array_values($gruppen[$kante]), 'ownWords' => true] : null,
+            array_keys($gruppen)
+        ))));
+
+        $teile = [];
+
+        foreach ($gruppen as $kante => $saetze) {
+            $relation = $kanten[$kante] ?? null;
+            $wo       = $relation === null ? '#' . $kante : (($besitzer[$relation->fromNodeId] ?? null)?->name ?? '#' . $relation->fromNodeId) . ' · ' . $relation->name;
+            $links    = [];
+
+            foreach (array_slice(array_values($saetze), 0, self::VERWEISE_HOECHSTENS) as $satz) {
+                $wort    = trim((string) ($worte[$kante][$satz] ?? ''));
+                $links[] = '<a class="taxmod-record-link" href="' . esc_url($this->recordAddress($satz)) . '">' . esc_html($wort === '' ? '#' . $satz : $wort) . '</a>';
+            }
+
+            $rest = count($saetze) - self::VERWEISE_HOECHSTENS;
+
+            if ($rest > 0) {
+                /* translators: %d: how many more records point here. */
+                $links[] = esc_html(sprintf(__('and %d more', 'taxmod'), $rest));
+            }
+
+            $teile[] = '<span class="taxmod-referrers-where">' . esc_html($wo) . ':</span> ' . implode(', ', $links);
+        }
+
+        // *Je Feld eine Zeile: ein Satzwort trägt selbst oft ein « · » (die Zusammenfassung), in einer Zeile liefen die Gruppen ineinander.*
+        return '<div class="description taxmod-referrers"><strong>' . esc_html__('Referred to by', 'taxmod') . '</strong><br>' . implode('<br>', $teile) . '</div>';
     }
 
     private function recordAddress(int $satzId): string

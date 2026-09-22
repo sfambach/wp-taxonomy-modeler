@@ -192,6 +192,14 @@ final class InMemoryRecords implements RecordRepository
      * @param  list<int> $recordIds
      * @return array<int, RelationRecord>
      */
+    public function referrersOf(int $recordId): array
+    {
+        return array_values(array_filter(
+            $this->values,
+            static fn ($wert): bool => $wert->value->reference === $recordId && $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record
+        ));
+    }
+
     public function holdersOf(array $recordIds): array
     {
         $gesucht = array_fill_keys(array_map('intval', $recordIds), true);

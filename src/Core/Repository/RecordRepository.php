@@ -120,6 +120,16 @@ interface RecordRepository
      * @return array<int, RelationRecord> Satz-Id => die Wertzeile, die ihn hält; fehlt sie, ist er eigenständig.
      */
     public function holdersOf(array $recordIds): array;
+
+    /**
+     * **Alle** Wertzeilen, die auf diesen Satz zeigen — anders als {@see self::holdersOf()}, das je Satz nur den ersten Halter nennt.
+     *
+     * ⚠️ *Für die Zeile «Verwiesen von» am geöffneten Satz ([D-902](../../../docs/NewConcept/90-decision-log.md)): ein Exemplar zeigt
+     * seinen Kauf, ohne dass es ein eigenes Kauf-Feld trägt. In einer Abfrage (`CD-7`).*
+     *
+     * @return list<RelationRecord>
+     */
+    public function referrersOf(int $recordId): array;
     /**
      * Eine Wertzeile schreiben — und **sagen, welche Version dabei entstanden ist**.
      *

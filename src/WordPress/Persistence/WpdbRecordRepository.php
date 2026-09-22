@@ -263,6 +263,21 @@ final class WpdbRecordRepository implements RecordRepository
             (int) $r['position'],
         );
     }
+    public function referrersOf(int $recordId): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Verweise auf einen Datensatz lesen', $wpdb->prepare(
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('relation_records') . '
+             WHERE value_ref_kind = \'record\' AND value_ref = %d
+             ORDER BY relation_id ASC, node_record_id ASC',
+            $recordId
+        ));
+
+        return array_map(fn (array $r): RelationRecord => $this->valueFromRow($r), $rows);
+    }
+
     public function holdersOf(array $recordIds): array
     {
         global $wpdb;

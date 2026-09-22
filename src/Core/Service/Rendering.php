@@ -4336,7 +4336,9 @@ final class Rendering implements Presets
      * zusammengefasst werden; ohne Wahl gilt derselbe Rückfall wie im Wähler. Alle Sätze einer Kante in **einem** Lauf
      * (`CD-7`) — deshalb die Liste je Kante und nicht je Satz.*
      *
-     * @param  list<array{relation: Relation, records: list<int>, fields?: list<int>}> $auftrag
+     * ⚠️ *`ownWords`: die Sätze mit ihren eigenen Worten benennen, ohne die Feldwahl am Ziel der Kante (D-902).*
+     *
+     * @param  list<array{relation: Relation, records: list<int>, fields?: list<int>, ownWords?: bool}> $auftrag
      * @return array<int, array<int, string>> Kanten-Id ⇒ Satz-Id ⇒ Text
      */
     public function summaryTextsOf(array $auftrag): array
@@ -4349,8 +4351,8 @@ final class Rendering implements Presets
             $relations[]                        = $eines['relation'];
             $mehrfach[$eines['relation']->id]   = array_values($eines['records']);
 
-            if (($eines['fields'] ?? []) !== []) {
-                $feldwahl[$eines['relation']->id] = array_values($eines['fields']);
+            if (($eines['fields'] ?? []) !== [] || ($eines['ownWords'] ?? false)) {
+                $feldwahl[$eines['relation']->id] = array_values($eines['fields'] ?? []);
             }
         }
 
@@ -4516,7 +4518,9 @@ final class Rendering implements Presets
             }
 
             // ⚠️ *Wer die Felder selbst mitbringt, bekommt sie auch — der Weg von {@see self::summaryTextsOf()} (D-885).*
-            $felder[$relation->id] = $feldwahl[$relation->id] ?? $gewaehlt;
+            // ⚠️ *Eine leere Liste heisst «die Worte des Satzes selbst», nicht «keine Wahl» (D-902): wer die verweisenden Sätze benennt,
+            // fragt über deren Kante — und die Feldwahl ihres Ziels gehört zum Satz, auf den gezeigt wird, nicht zu ihnen.*
+            $felder[$relation->id] = array_key_exists($relation->id, $feldwahl) ? $feldwahl[$relation->id] : $gewaehlt;
         }
 
         // ⚠️ **Ohne Wahl das erste Textfeld — beim Knoten des Satzes, nicht am Ziel der Kante.** *Sein Befund am

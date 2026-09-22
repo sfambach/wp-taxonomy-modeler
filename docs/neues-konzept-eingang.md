@@ -678,6 +678,8 @@ Das Exemplar trägt «Gekauft am», «Kaufpreis», «Währung» und «Händler»
 
 **Vorschlag:** die vier Felder am Exemplar streichen und die zwei Werte in je einen Kauf überführen; am Exemplar zeigt man den Kauf als Rückverweis. Offen, ob ein Exemplar ohne Kauf (geschenkt, gefunden) ein Feld «Herkunft des Stücks» braucht.
 
+**Erledigt 2026-09-22 → [D-902](NewConcept/90-decision-log.md):** gebaut wie vorgeschlagen; offen bleibt nur das Feld für ein Stück ohne Kauf.
+
 ---
 ## Erledigte Eingänge
 
