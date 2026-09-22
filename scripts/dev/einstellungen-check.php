@@ -1097,6 +1097,9 @@ check('zeichnen schreibt nichts — kein Satz, kein Wert', $vorherZahlen === [(i
 
 $satzText = 'Dieser Satz steht nur während der Prüfung da.';
 $sprache  = SettingsScreen::neutralLocale();
+// ⚠️ *Seit «Integer» selbst eine Hilfe trägt ([D-905](../../docs/NewConcept/90-decision-log.md)), setzte ein zweiter Text kein Fragezeichen mehr:
+// die vorhandene Hilfe wird zuerst vergessen — die Klammer dreht es am Ende zurück.*
+$labels->forget(new Label($seeded['int']->id, IdentitySpace::Node, SeededRole::Help, Label::BASE_NUMBER, $sprache, ''));
 $vorherBand = vorschau($modellKnoten->id);
 $zeichenVorher = substr_count($vorherBand, 'taxmod-hint-icon');
 $labels->put(new Label($seeded['int']->id, IdentitySpace::Node, SeededRole::Help, Label::BASE_NUMBER, $sprache, $satzText));
