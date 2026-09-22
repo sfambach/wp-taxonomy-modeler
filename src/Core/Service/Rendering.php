@@ -4374,7 +4374,9 @@ final class Rendering implements Presets
 
             if ($ziel === null
                 || in_array($ziel->klasse, [\Taxmod\Core\Model\NodeClass\Choice::class, \Taxmod\Core\Model\NodeClass\Constant::class, \Taxmod\Core\Model\NodeClass\Unit::class], true)
-                || ! ($this->framework->branchOf($ziel)?->holdsData() ?? false)
+                // ⚠️ *Ohne benannten Ast hält ein Knoten Sätze, solange er kein Rahmenknoten ist ([D-890](../../../docs/NewConcept/90-decision-log.md)).
+                // Sein Bild an BerryBase: «übernommen durch» → `Organisation` unter `Kontakt` stand ohne Auswahl da, weil hier `false` der Rückfall war.*
+                || ! ($this->framework->branchOf($ziel)?->holdsData() ?? ! $this->framework->isProtected($ziel))
             ) {
                 return false;
             }

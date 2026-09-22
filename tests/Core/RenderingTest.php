@@ -265,6 +265,31 @@ final class RenderingTest extends TestCase
         self::assertSame(SummaryRenderer::NAME, $fields[0]->rendererName);
     }
 
+    /**
+     * ⚠️ *Sein Bild am 2026-09-22, BerryBase: unter «Nachfolge» stand «übernommen durch» ohne Auswahl — «fehlt da nicht was».
+     * Das Ziel `Organisation` liegt unter `Kontakt`, einem Hauptast ohne Namen; die Frage «hält der Ast Daten» antwortete dort
+     * mit nein. Seit [D-890](../../docs/NewConcept/90-decision-log.md) gibt es keinen benannten Ast mehr als Bedingung.*
+     */
+    #[Test]
+    public function an_empty_reference_into_a_node_in_no_branch_offers_its_records(): void
+    {
+        $kontakt  = $this->editor->createNode('Kontakt', $this->wurzel->id);
+        $firma    = $this->editor->createNode('Organisation', $kontakt->id);
+        $haendler = $this->editor->createNode('Lieferant', $firma->id);
+        $name     = $this->editor->addField($firma->id, $this->type('Text')->id, 'name');
+        $satz     = $this->records->add(new NodeRecord(0, $haendler->id, 1, '2026-09-22 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $name->id, TypedValue::ofText('RS Components')));
+
+        $nachfolge = $this->thing('Nachfolge');
+        $durch     = $this->editor->addField($nachfolge->id, $firma->id, 'übernommen durch', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        $fields = $this->rendering->fieldsFor([$durch], [], Purpose::Edit, 'v');
+
+        self::assertSame(SummaryRenderer::NAME, $fields[0]->rendererName, 'die Satzauswahl, nicht die Anzeige eines Knotenverweises');
+        self::assertStringContainsString('RS Components', $fields[0]->result->markup, 'der Satz steht im Angebot');
+    }
+
     // --------------------------------------------- the binding is the id (D-510)
 
     #[Test]
