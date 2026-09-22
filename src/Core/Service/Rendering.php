@@ -564,6 +564,9 @@ final class Rendering implements Presets
         foreach ($recordIds as $id) {
             unset($this->gelesenSaetze[(int) $id], $this->gelesenSatzWerte[(int) $id]);
         }
+
+        // *Wer eine Revision hält, kann sich mit jedem Schreiben ändern (D-903).*
+        $this->gehaltenAn = [];
     }
 
     /**
@@ -575,6 +578,65 @@ final class Rendering implements Presets
      * @param  list<int>|array<int> $ids
      * @return array{0: array<int, NodeRecord>, 1: array<int, list<\Taxmod\Core\Model\RelationRecord>>} Sätze nach Id; Werte je angefragter Id, notfalls leer.
      */
+    /** @var array<int, list<int>> Knoten-Id ⇒ die eindeutigen Kanten, die ihn als letzte Stufe halten (D-903). */
+    private array $eindeutigeKantenJeKnoten = [];
+
+    /** @var array<int, array<int, int>> Kanten-Id ⇒ gehaltener Satz ⇒ Halter, je Zeichenlauf einmal gelesen (D-903). */
+    private array $gehaltenAn = [];
+
+    /**
+     * Der Halter jedes Satzes, der als **letzte Stufe** einer eindeutigen Kette hängt — Satz-Id ⇒ Halter-Id ([D-903](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Eindeutig heisst: an einer Aggregation mit `unique` (D-838, D-853) — Platine › Revision, Mainboard › Revision, Projekt › Platine,
+     * Reihe › Modell. **Letzte Stufe** heisst: der Knoten des Satzes hält selbst nichts eindeutig. So bekommen die Revisionen den Namen
+     * ihres Boards, die Platinen und Modelle aber nicht den ihres Projekts oder ihrer Reihe — über die hat er nichts gesagt, und dort
+     * stünde der Hersteller doppelt («Octek · Jaguar · Octek · IV 386»). Das ist meine Grenze, im Beschluss als Annahme genannt.*
+     *
+     * @param  array<int, \Taxmod\Core\Model\NodeRecord> $saetze
+     * @return array<int, int>
+     */
+    private function eindeutigeHalter(array $saetze): array
+    {
+        if ($saetze === [] || $this->relations === null || $this->records === null) {
+            return [];
+        }
+
+        $knotenIds = array_values(array_unique(array_map(static fn (\Taxmod\Core\Model\NodeRecord $s): int => $s->nodeId, $saetze)));
+        $fehlen    = array_values(array_filter($knotenIds, fn (int $id): bool => ! array_key_exists($id, $this->eindeutigeKantenJeKnoten)));
+
+        if ($fehlen !== []) {
+            $eindeutig = static fn (Relation $r): bool => $r->unique && $r->kind === \Taxmod\Core\Model\RelationKind::Aggregation;
+            $hinein    = array_values(array_filter($this->relations->fieldRelationsTo($fehlen), $eindeutig));
+            $hinaus    = array_values(array_filter($this->relations->fieldRelationsOf($fehlen), $eindeutig));
+            $haeltSelbst = array_fill_keys(array_map(static fn (Relation $r): int => $r->fromNodeId, $hinaus), true);
+
+            foreach ($fehlen as $id) {
+                $this->eindeutigeKantenJeKnoten[$id] = [];
+            }
+
+            foreach ($hinein as $kante) {
+                if (! isset($haeltSelbst[$kante->toNodeId])) {
+                    $this->eindeutigeKantenJeKnoten[$kante->toNodeId][] = $kante->id;
+                }
+            }
+        }
+
+        $aus = [];
+
+        foreach ($saetze as $satz) {
+            foreach ($this->eindeutigeKantenJeKnoten[$satz->nodeId] ?? [] as $kanteId) {
+                $this->gehaltenAn[$kanteId] ??= $this->records->recordRefsHeldAt($kanteId);
+
+                if (isset($this->gehaltenAn[$kanteId][$satz->id])) {
+                    $aus[$satz->id] = $this->gehaltenAn[$kanteId][$satz->id];
+                    break;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
     private function gemerkteSaetze(array $ids): array
     {
         $ids    = array_values(array_unique(array_map(intval(...), array_filter($ids))));
@@ -4436,6 +4498,15 @@ final class Rendering implements Presets
 
         [$saetze, $werte] = $this->gemerkteSaetze($satzIds);
 
+        // ⚠️ *Die Halter der Revisionen gleich mitladen — ihr Wort steht vor dem des Satzes (D-903), samt ihren inneren Verweisen.*
+        $halter = $this->eindeutigeHalter($saetze);
+
+        if ($halter !== []) {
+            [$halterSaetze, $halterWerte] = $this->gemerkteSaetze(array_values($halter));
+            $saetze += $halterSaetze;
+            $werte  += $halterWerte;
+        }
+
         // ⚠️ **Ein Verweis in der Zusammenfassung bekommt selbst sein Wort — eine Stufe tief.** *Sein Wort: «ist doch ein Verweis auf
         // den Datensatz, eigentlich sollte da Microsoft Corp. DOS 4.0 stehen». Ein Knotenverweis heisst wie sein Knoten, ein
         // Satzverweis wie die Zusammenfassung seines Satzes; eine zweite Stufe gibt es nicht, sonst läse die Seite Satz für Satz
@@ -4463,6 +4534,16 @@ final class Rendering implements Presets
             [$innereSaetzeGelesen, $innereWerte] = $this->gemerkteSaetze($innereSaetze);
             $saetze += $innereSaetzeGelesen;
             $werte  += $innereWerte;
+
+            // *Auch ein innerer Satz kann eine Revision sein — das Exemplar nennt sein Board über sie.*
+            $innereHalter = $this->eindeutigeHalter($innereSaetzeGelesen);
+
+            if ($innereHalter !== []) {
+                $halter += $innereHalter;
+                [$halterSaetze, $halterWerte] = $this->gemerkteSaetze(array_values($innereHalter));
+                $saetze += $halterSaetze;
+                $werte  += $halterWerte;
+            }
         }
 
         $knotenNamen = [];
@@ -4600,7 +4681,7 @@ final class Rendering implements Presets
             }
         }
 
-        $wort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit): string {
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
 
@@ -4701,6 +4782,25 @@ final class Rendering implements Presets
             }
 
             return $teile === [] ? '#' . $satzId : implode(SummaryRenderer::SEPARATOR, $teile);
+        };
+
+        // ⚠️ **Eine Revision heisst mit ihrem Halter** ([D-903](../../../docs/NewConcept/90-decision-log.md)) — *sein «ok» auf den Vorschlag
+        // «FIC 386-SC-HG · A». Gemessen am 2026-09-22: das Board im Escom-PC hiess nur «A». Das Wort des Halters ohne dessen eigenen
+        // Halter, damit die Kette nicht wächst. Was vorn schon im Halter steht, fällt weg — die Revision erbt den Hersteller und hiess
+        // sonst «Fujitsu · D3400-A · Fujitsu · A11 GS 5».*
+        $wort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$eigenesWort, $halter): string {
+            if (! isset($halter[$satzId])) {
+                return $eigenesWort($satzId, $feldIds, $stufe);
+            }
+
+            $vorn  = explode(SummaryRenderer::SEPARATOR, $eigenesWort($halter[$satzId], [], $stufe));
+            $eigen = explode(SummaryRenderer::SEPARATOR, $eigenesWort($satzId, $feldIds, $stufe));
+
+            while (count($eigen) > 1 && in_array($eigen[0], $vorn, true)) {
+                array_shift($eigen);
+            }
+
+            return implode(SummaryRenderer::SEPARATOR, [...$vorn, ...$eigen]);
         };
 
         // ⚠️ **Was die Suche im Dialog durchsucht** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 2, Zeile 150) — *jeder
