@@ -14,7 +14,10 @@ use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\Type\IntType;
+use Taxmod\Core\Model\Setting\SettingsObject;
+use Taxmod\Core\Model\Setting\SettingsValue;
 use Taxmod\Core\Renderer\CompactRenderer;
+use Taxmod\Core\Renderer\TableRenderer;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\SettingsEditor;
 use Taxmod\Core\Service\SettingsResolver;
@@ -215,6 +218,23 @@ final class SettingsEditorTest extends TestCase
         self::assertFalse($this->resolver->forNode($this->kontakt)['with_label']->value->asBool());
 
         self::assertFalse($this->editor->put($this->kontakt, 'renderer', 'compact'), 'dieselbe Wahl noch einmal');
+    }
+
+    /**
+     * ⚠️ *D-904, sein Befund an `PC-Konfigurationen`: «Form Renderer Auswahl wird nicht übernommen». Ein doppeltes Speichern hatte zweimal
+     * `table` an Stelle 1 hinterlassen; «form» ersetzte nur die erste Zeile, und die zweite gewann weiter.*
+     */
+    #[Test]
+    public function a_new_renderer_replaces_a_doubled_first_entry_entirely(): void
+    {
+        $this->editor->put($this->kontakt, 'renderer', 'table');
+        $erste = $this->settings->valuesOfNodes([$this->kontakt->id])[$this->kontakt->id][0];
+        $this->settings->addValue(SettingsValue::objectAtNode($this->kontakt->id, $erste->klasse, 'renderer', $this->settings->addObject(SettingsObject::create(TableRenderer::class))->id, null, $erste->position));
+        $this->resolver->forget();
+
+        self::assertTrue($this->editor->put($this->kontakt, 'renderer', 'form'));
+        self::assertSame('form', $this->resolver->forNode($this->kontakt)['renderer']->value->text);
+        self::assertCount(1, $this->resolver->listOf($this->kontakt, 'renderer'), 'keine zweite Zeile an Stelle 1');
     }
 
     #[Test]

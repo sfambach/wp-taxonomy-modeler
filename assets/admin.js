@@ -1811,6 +1811,13 @@
 			return false;
 		}
 
+		// ⚠️ *Eine Einstellungswahl schickt ihr eigener Weg sofort ab (oben, «Einstellungswechsel gleich übernehmen»). Schickte das Autospeichern
+		// sie 150 ms später noch einmal, kämen zwei Speichern in derselben Sekunde an — gemessen an `PC-Konfigurationen`: zweimal `table` an
+		// Stelle 1, und das spätere «form» ersetzte nur die erste (D-904).*
+		if ( feld.matches( '.taxmod-setting-value select, .taxmod-setting-value input[type="checkbox"]' ) ) {
+			return false;
+		}
+
 		return autosaveAn( feld );
 	}
 

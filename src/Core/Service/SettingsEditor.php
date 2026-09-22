@@ -410,11 +410,18 @@ final class SettingsEditor
 
         if ($edge === null) {
             // ⚠️ *Das erste Glied wird ersetzt: alte Zeile und altes Objekt wandern.*
-            if ($erstes !== null) {
-                $this->settings->forgetValue($erstes->id);
+            // ⚠️ *Und jede weitere eigene Zeile auf derselben Stelle mit ihm — zwei erste Glieder gibt es nicht (D-904). Gemessen an
+            // `PC-Konfigurationen`: zweimal `table` an Stelle 1 aus einem doppelten Speichern; «form» ersetzte nur die erste, die zweite
+            // gewann weiter, und seine Wahl schien nicht übernommen.*
+            foreach ($erstes === null ? [] : $amKnoten as $alt) {
+                if ($alt->id !== $erstes->id && $alt->position !== $erstes->position) {
+                    continue;
+                }
 
-                if ($erstes->valueObjectId !== null) {
-                    $this->settings->forgetObject($erstes->valueObjectId);
+                $this->settings->forgetValue($alt->id);
+
+                if ($alt->valueObjectId !== null) {
+                    $this->settings->forgetObject($alt->valueObjectId);
                 }
             }
 
