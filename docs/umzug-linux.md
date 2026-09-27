@@ -12,7 +12,7 @@ noch die Verweise im Modell.
 |---|---|---|
 | Datenbank `wordpress`, 31 Tabellen | 74 MB | `mysqldump` |
 | davon die 17 `wp_taxmod_*` | 31 MB | im selben Abzug |
-| `wp-content/uploads` | 3,2 GB | einmal kopieren |
+| `wp-content/uploads` | 3,2 GB | von der Windows-Platte kopieren |
 | WordPress-Kern 7.1.2 | — | neu laden |
 | 5 eigene Plugins | — | aus GitHub klonen |
 | Tablepress, Akismet, WordPress-Importer | — | aus dem Plugin-Verzeichnis |
@@ -35,6 +35,8 @@ auf dem Windows-Rechner: der Zweig `paket7-…` ohne Gegenstück, `main` 40 Comm
 ```
 "C:/laragon/bin/mysql/mysql-8.4.3-winx64/bin/mysqldump.exe" -h 127.0.0.1 -u root --single-transaction --default-character-set=utf8mb4 --routines --events wordpress > wordpress.sql
 ```
+
+⚠️ **Es ist derselbe Rechner** (sein Wort am 2026-09-27: *«ist der gleiche Rechner ich habe zugriff auf die windows platte»*). *Die 3,2 GB werden also nicht über das Netz geschoben, sondern von der eingehängten Windows-Platte kopiert — und die Sicherung der Datenbank kann dort liegen bleiben.* **Doppelte Dateien in der Mediathek sind bekannt und unerwünscht** ([Zeile 279](NewConcept/97-implementation-plan.md)), werden aber **nicht** beim Umzug angefasst: erst kopieren, später aufräumen.
 
 ## Schritt 3 · Auf Linux: PHP, MySQL, Apache
 
