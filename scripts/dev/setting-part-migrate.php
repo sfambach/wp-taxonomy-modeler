@@ -49,7 +49,7 @@ foreach ($argumente as $argument) {
     }
 }
 
-$root ??= 'C:/Devel/Wordpress';
+$root ??= getenv('WP_ROOT') ?: 'C:/Devel/Wordpress';
 
 define('WP_ADMIN', true);
 define('WP_USE_THEMES', false);

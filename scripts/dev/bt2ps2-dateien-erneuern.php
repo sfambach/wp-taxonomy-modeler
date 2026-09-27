@@ -2,23 +2,24 @@
 // Plan 247: die Dateien beider BT2PS2-Platinen neu (fambach.net im Bestückungsdruck) — an Ort und Stelle, die
 // Mediathek-Ids bleiben. Dazu der Fork mit den Platinen als Link am Projekt. Ohne --write wird nur gezeigt.
 define('WP_USE_THEMES', false);
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once ABSPATH . 'wp-admin/includes/image.php';
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\WordPress\Plugin;
 wp_set_current_user(1);
 $schreiben = in_array('--write', $argv, true);
 $rc = new ReflectionClass(Plugin::class); $plugin = $rc->newInstanceWithoutConstructor();
-$rc->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $screen = $plugin->screen();
 $data = (new ReflectionProperty($screen, 'data'))->getValue($screen);
 global $wpdb; $p = $wpdb->prefix . 'taxmod_';
 
 const PROJEKT = 30753, LINKS = 149000107930, ADRESSE = 149000107928, BESCHRIFTUNG = 149000107929;
 const FORK = 'https://github.com/sfambach/esp32-bt2ps2';
-$smd = 'C:/Devel/Platinen/projekte/esp32-bt2ps2/';
-$tht = 'C:/Devel/Platinen/projekte/esp32-bt2ps2-tht/';
+$platinen = getenv('PLATINEN_ROOT') ?: 'C:/Devel/Platinen/projekte';
+$smd = $platinen . '/esp32-bt2ps2/';
+$tht = $platinen . '/esp32-bt2ps2-tht/';
 $ersetzen = [
     16879 => $smd . 'bt2ps2-3d.png', 16880 => $smd . 'bt2ps2-oben.png', 16881 => $smd . 'bt2ps2-unten.png',
     16882 => $smd . 'bt2ps2-schaltplan.pdf', 16883 => $smd . 'fertigung/bt2ps2-jlcpcb-gerber.zip',

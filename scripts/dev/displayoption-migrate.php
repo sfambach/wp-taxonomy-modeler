@@ -32,7 +32,7 @@
 
 define('WP_USE_THEMES', false);
 
-require 'C:/Devel/Wordpress/wp-load.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
 
 $go = in_array('--go', $argv, true);
 

@@ -36,8 +36,8 @@ define('WP_USE_THEMES', false);
 // Schreibvorgänge ist die eine Messung, die dieser Prüfung ihren Wert gibt.*
 define('SAVEQUERIES', true);
 
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 wp_set_current_user(1);
 
@@ -62,7 +62,7 @@ $p = $wpdb->prefix . 'taxmod_';
 $plugin = static function (): object {
     $r      = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
     $plugin = $r->newInstanceWithoutConstructor();
-    $r->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+    $r->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 
     return $plugin;
 };

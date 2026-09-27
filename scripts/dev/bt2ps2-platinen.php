@@ -2,8 +2,8 @@
 // Plan 237: die zwei Platinen zu «ESP32 BT2PS2» (SMD und THT) mit Revision, Gerber, Bildern und Schaltplan.
 // Ohne --write wird nur gezeigt. Die Dateien kommen aus C:/Devel/Platinen/projekte (KiCad-Projekte).
 define('WP_USE_THEMES', false);
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once ABSPATH . 'wp-admin/includes/file.php';
 require_once ABSPATH . 'wp-admin/includes/media.php';
 require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -13,7 +13,7 @@ use Taxmod\WordPress\Plugin;
 wp_set_current_user(1);
 $schreiben = in_array('--write', $argv, true);
 $rc = new ReflectionClass(Plugin::class); $plugin = $rc->newInstanceWithoutConstructor();
-$rc->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $screen = $plugin->screen();
 $data = (new ReflectionProperty($screen, 'data'))->getValue($screen);
 global $wpdb; $p = $wpdb->prefix . 'taxmod_';
@@ -24,7 +24,8 @@ const P_NAME = 149000105893, P_ART = 149000105894, P_BESCHREIBUNG = 149000105895
 const R_VERSION = 149000105897, R_BESTUECKUNG = 149000105898, R_GERBER = 149000105899, R_AUFWAND = 149000105900, R_FERTIGER = 149000105902;
 const TITELBILD = 149000108056, BILDER = 149000108057, PROJ_PLATINEN = 149000107283;
 const EIGENE = 149000105254, SMD = 149000104322, THT = 149000104330, MITTEL = 149000105259, EINFACH = 149000105258;
-const QUELLE = 'C:/Devel/Platinen/projekte';
+// ⚠️ *Sein KiCad-Ordner; unter Linux über die Umgebungsvariable `PLATINEN_ROOT`.*
+define('QUELLE', getenv('PLATINEN_ROOT') ?: 'C:/Devel/Platinen/projekte');
 
 $platinen = [
     [

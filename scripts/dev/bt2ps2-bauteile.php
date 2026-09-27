@@ -2,8 +2,8 @@
 // Plan 249: die Bauteile der zwei BT2PS2-Platinen im Teilekatalog und die Stücklisten («Positionen») beider
 // Revisionen. Wiederverwendet: Jumper 24583, Keramik 100 nF RM 5 mm 24586. Ohne --write wird nur gezeigt.
 define('WP_USE_THEMES', false);
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 use Taxmod\Core\Model\NodeClass\Constant;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\TypedValue;
@@ -11,7 +11,7 @@ use Taxmod\WordPress\Plugin;
 wp_set_current_user(1);
 $schreiben = in_array('--write', $argv, true);
 $rc = new ReflectionClass(Plugin::class); $plugin = $rc->newInstanceWithoutConstructor();
-$rc->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $screen = $plugin->screen();
 $editor = (new ReflectionProperty($screen, 'editor'))->getValue($screen);
 $data = (new ReflectionProperty($screen, 'data'))->getValue($screen);

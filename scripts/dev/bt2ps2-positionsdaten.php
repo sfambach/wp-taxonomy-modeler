@@ -3,8 +3,8 @@
 // je eine Datei an der Revision. Dazu die geänderten Gerber- und Projekt-ZIPs an Ort und Stelle erneuern —
 // die Mediathek-Ids bleiben. Ohne --write wird nur gezeigt.
 define('WP_USE_THEMES', false);
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once ABSPATH . 'wp-admin/includes/file.php';
 require_once ABSPATH . 'wp-admin/includes/media.php';
 require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -14,15 +14,16 @@ use Taxmod\WordPress\Plugin;
 wp_set_current_user(1);
 $schreiben = in_array('--write', $argv, true);
 $rc = new ReflectionClass(Plugin::class); $plugin = $rc->newInstanceWithoutConstructor();
-$rc->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $screen = $plugin->screen();
 $editor = (new ReflectionProperty($screen, 'editor'))->getValue($screen);
 $data = (new ReflectionProperty($screen, 'data'))->getValue($screen);
 global $wpdb; $p = $wpdb->prefix . 'taxmod_';
 
 const REV_SMD = 33072, REV_THT = 33074;
-$smd = 'C:/Devel/Platinen/projekte/esp32-bt2ps2/';
-$tht = 'C:/Devel/Platinen/projekte/esp32-bt2ps2-tht/';
+$platinen = getenv('PLATINEN_ROOT') ?: 'C:/Devel/Platinen/projekte';
+$smd = $platinen . '/esp32-bt2ps2/';
+$tht = $platinen . '/esp32-bt2ps2-tht/';
 
 // ── 1. Geänderte Dateien erneuern (gleiche Id, neuer Inhalt) ──────────────────────────────────
 $ersetzen = [

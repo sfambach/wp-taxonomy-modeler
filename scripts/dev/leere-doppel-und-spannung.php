@@ -3,14 +3,14 @@
 // (2) Leere Doppel aufräumen: ein leerer Teilsatz neben einem gefüllten im selben Feld — das Muster entsteht, weil
 // ein Pflichtfeld aus Teilen beim Anlegen schon einen leeren Teil mitbringt. Ohne --write wird nur gezeigt.
 define('WP_USE_THEMES', false);
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\WordPress\Plugin;
 wp_set_current_user(1);
 $schreiben = in_array('--write', $argv, true);
 $rc = new ReflectionClass(Plugin::class); $plugin = $rc->newInstanceWithoutConstructor();
-$rc->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $screen = $plugin->screen();
 $data = (new ReflectionProperty($screen, 'data'))->getValue($screen);
 global $wpdb; $p = $wpdb->prefix . 'taxmod_';

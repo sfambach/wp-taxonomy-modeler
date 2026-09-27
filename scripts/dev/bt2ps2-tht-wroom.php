@@ -3,20 +3,20 @@
 // Mediathek werden an Ort und Stelle ersetzt — die Ids bleiben, also bleiben alle Verweise gültig. Dazu die neue
 // Beschreibung. Ohne --write wird nur gezeigt.
 define('WP_USE_THEMES', false);
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once ABSPATH . 'wp-admin/includes/image.php';
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\WordPress\Plugin;
 wp_set_current_user(1);
 $schreiben = in_array('--write', $argv, true);
 $rc = new ReflectionClass(Plugin::class); $plugin = $rc->newInstanceWithoutConstructor();
-$rc->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $screen = $plugin->screen();
 $data = (new ReflectionProperty($screen, 'data'))->getValue($screen);
 
 const PLATINE = 33075, P_BESCHREIBUNG = 149000105895;
-const ORDNER = 'C:/Devel/Platinen/projekte/esp32-bt2ps2-tht/';
+define('ORDNER', (getenv('PLATINEN_ROOT') ?: 'C:/Devel/Platinen/projekte') . '/esp32-bt2ps2-tht/');
 $ersetzen = [
     16884 => 'bt2ps2-tht-3d.png', 16885 => 'bt2ps2-tht-oben.png', 16886 => 'bt2ps2-tht-unten.png',
     16887 => 'bt2ps2-tht-schaltplan.pdf', 16888 => 'fertigung/bt2ps2-tht-jlcpcb-gerber.zip',

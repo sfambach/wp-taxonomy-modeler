@@ -3,8 +3,8 @@
 // geht in den Schatten; der Schaltplan wandert aus «Bilder» der Platine an ihre Revision. Dazu Bestückungsplan und
 // KiCad-Projekt der zwei BT2PS2-Platinen, und das Projekt steht «im Bau». Ohne --write wird nur gezeigt.
 define('WP_USE_THEMES', false);
-require 'C:/Devel/Wordpress/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once ABSPATH . 'wp-admin/includes/file.php';
 require_once ABSPATH . 'wp-admin/includes/media.php';
 require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -18,7 +18,7 @@ use Taxmod\WordPress\Plugin;
 wp_set_current_user(1);
 $schreiben = in_array('--write', $argv, true);
 $rc = new ReflectionClass(Plugin::class); $plugin = $rc->newInstanceWithoutConstructor();
-$rc->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$rc->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $screen = $plugin->screen();
 $editor = (new ReflectionProperty($screen, 'editor'))->getValue($screen);
 $data = (new ReflectionProperty($screen, 'data'))->getValue($screen);
@@ -27,7 +27,8 @@ global $wpdb; $p = $wpdb->prefix . 'taxmod_';
 const REVISION = 149000105262, GERBER_ALT = 149000105899, P_REVISIONEN = 149000107282, BILDER = 149000108057;
 const HW_KONSTANTEN = 149000104441, KOMPOSITIONEN = 404, MEDIA = 149000105224;
 const PROJEKT = 30753, STATUS = 149000108054, IM_BAU = 149000108066;
-const QUELLE = 'C:/Devel/Platinen/projekte';
+// ⚠️ *Sein KiCad-Ordner; unter Linux über die Umgebungsvariable `PLATINEN_ROOT`.*
+define('QUELLE', getenv('PLATINEN_ROOT') ?: 'C:/Devel/Platinen/projekte');
 // Platine → [Ordner, Bestückungspläne, KiCad-Projekt]
 $bt2ps2 = [
     33073 => ['esp32-bt2ps2', ['fertigung/bestueckung-oben.pdf' => 'bt2ps2-bestueckung-oben.pdf', 'fertigung/bestueckung-unten.pdf' => 'bt2ps2-bestueckung-unten.pdf'], 'fertigung/bt2ps2-kicad-projekt.zip'],

@@ -29,7 +29,7 @@
  * @see docs/pakete/modelltabellen/tasks.md
  */
 
-$wordpress = $argv[1] ?? 'C:/Devel/Wordpress';
+$wordpress = $argv[1] ?? getenv('WP_ROOT') ?: 'C:/Devel/Wordpress';
 
 define('WP_USE_THEMES', false);
 

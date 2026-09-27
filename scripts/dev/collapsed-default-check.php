@@ -26,12 +26,12 @@
 define('WP_ADMIN', true);
 define('WP_USE_THEMES', false);
 
-require 'C:/Devel/Wordpress/wp-load.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
 
 // ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
 // alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
 require __DIR__ . '/lib/no-write.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 wp_set_current_user(1);
 
@@ -71,7 +71,7 @@ $enkel = $editor->createNode('__cd Enkel', $kind->id);
 
 $r      = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
 $plugin = $r->newInstanceWithoutConstructor();
-$r->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+$r->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 
 /** Welche der drei Zeilen die gezeichnete Seite enthält — an der Id, nicht am Namen. */
 $sichtbar = static function (NodesScreen $screen, array $ids): array {

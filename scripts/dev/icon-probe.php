@@ -25,13 +25,13 @@
  */
 
 require dirname(__DIR__, 4) . '/wp-load.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\IconMarkup;
 
-$css = file_get_contents('C:/Devel/Wordpress/source/wp-taxonomy-tree/assets/admin.css');
+$css = file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
 
 $knopf = static function (string $icon, string $label): string {
     return ControlMarkup::button(new Control('do', $icon, $label, $label, true, false, $icon));
@@ -113,7 +113,7 @@ was hier gemessen wird, gilt erst, wenn Abschnitt 6 es bestaetigt.
     // sagt nur das echte Markup — sonst misst man die eigene Probe.*
     $r = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
     $plugin = $r->newInstanceWithoutConstructor();
-    $r->getProperty('file')->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+    $r->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
     wp_set_current_user(1);
     global $wpdb;
     $p = $wpdb->prefix . 'taxmod_';

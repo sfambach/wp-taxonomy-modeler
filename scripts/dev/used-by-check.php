@@ -17,12 +17,12 @@
 define('WP_ADMIN', true);
 define('WP_USE_THEMES', false);
 
-require 'C:/Devel/Wordpress/wp-load.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
 
 // ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
 // alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
 require __DIR__ . '/lib/no-write.php';
-require 'C:/Devel/Wordpress/source/wp-taxonomy-tree/vendor/autoload.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 wp_set_current_user(1);
 
@@ -48,7 +48,7 @@ $say = static function (bool $ok, string $what, string $saw = ''): void {
 
 $plugin = (new ReflectionClass(Plugin::class))->newInstanceWithoutConstructor();
 (new ReflectionClass(Plugin::class))->getProperty('file')
-    ->setValue($plugin, 'C:/Devel/Wordpress/source/wp-taxonomy-tree/wp-taxonomy-modeler.php');
+    ->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 
 $screen = (new ReflectionMethod(Plugin::class, 'screen'))->invoke($plugin);
 $editor = (new ReflectionMethod(Plugin::class, 'editor'))->invoke($plugin);

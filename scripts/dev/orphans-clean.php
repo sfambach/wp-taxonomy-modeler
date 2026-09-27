@@ -31,7 +31,7 @@
 
 define('WP_USE_THEMES', false);
 
-require 'C:/Devel/Wordpress/wp-load.php';
+require (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress') . '/wp-load.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\WordPress\Persistence\Residue;
