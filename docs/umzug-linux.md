@@ -93,3 +93,17 @@ export PLATINEN_ROOT=$HOME/Platinen/projekte
 
 ⚠️ **Zwei Wächter sind schon auf Windows rot** (`collapsed-default`, `superseded`) — sie sind kein
 Befund des Umzugs.
+
+## Alles in einem Lauf
+
+**Stand 2026-09-29.** [`scripts/linux/setup-dev.sh`](../scripts/linux/setup-dev.sh) fasst die Schritte 2–8
+zusammen und liest dafür nur von der eingehängten Windows-Platte:
+
+```
+WP_ROOT=$HOME/Devel/WP/Tax scripts/linux/setup-dev.sh
+```
+
+⚠️ **Schritt 2 entfällt.** Statt `mysqldump` unter Windows kopiert das Skript das Laragon-Datenverzeichnis
+und liest es mit einem MySQL 8.4.3 aus dem Linux-Tarball aus (`lower_case_table_names=1`, wie Windows
+es angelegt hat). *Unter Linux nicht erprobt* — schlägt der Start fehl, bleibt Schritt 2 der Ausweg.
+Die eigenen Plugins werden samt `.git` und nicht eingecheckter Änderungen kopiert, nicht geklont.
