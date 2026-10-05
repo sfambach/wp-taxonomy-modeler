@@ -26,30 +26,31 @@ use Taxmod\Tests\Core\Fake\InMemoryRelations;
 final class ModelEditorTest extends TestCase
 {
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private RecordedChanges $changes;
     private ModelEditor $editor;
     private Node $root;
     private Node $trash;
 
+    /** Kept so a test can build a second editor over the same repositories without reissuing ids. */
+    private CountingIdentities $identities;
+
     protected function setUp(): void
     {
-        $this->edges   = new InMemoryRelations();
-        $this->nodes   = new InMemoryNodes($this->edges);
+        $this->relations   = new InMemoryRelations();
+        $this->nodes   = new InMemoryNodes($this->relations);
         $this->changes = new RecordedChanges();
-        $identities    = new CountingIdentities();
+        $identities    = $this->identities = new CountingIdentities();
 
         $this->root  = Node::create($identities->next(), 'Root', null);
-        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path);
+        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path, $this->root->id, 0);
 
         $this->nodes->add($this->root);
         $this->nodes->add($this->trash);
-        $this->edges->add(Relation::inheritance($identities->next(), $this->root->id, $this->trash->id, 0));
 
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
-            $identities,
+            $this->relations,
             new FixedFramework($this->root, $this->trash),
             $this->changes
         );
@@ -70,6 +71,27 @@ final class ModelEditorTest extends TestCase
         $this->expectException(NodeNotFound::class);
 
         $this->editor->createNode('Board', 999);
+    }
+
+    #[Test]
+    public function changing_the_class_writes_once_and_refuses_what_parent_or_children_forbid(): void
+    {
+        // ⚠️ *«wir müssen typ wechsel möglich machen» (D-733).*
+        $node    = $this->editor->createNode('Board', $this->root->id);
+        $changed = $this->editor->changeClass($node->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Choice::class, $this->nodes->byId($node->id)->klasse);
+        self::assertSame(2, $changed->version);
+        self::assertSame(['created', 'class changed'], $this->changes->verbsFor($node->id));
+
+        self::assertSame($changed, $this->editor->changeClass($node->id, \Taxmod\Core\Model\NodeClass\Choice::class), 'dieselbe Klasse schreibt nicht');
+
+        // *Eine Auswahl erlaubt keinen Einheitswert als Kind — mit einem darunter geht der Wechsel nicht.*
+        $deck = $this->editor->createNode('Deck', $this->root->id);
+        $this->editor->createNode('Kind', $deck->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+
+        $this->expectException(\Taxmod\Core\Exception\ClassNotAllowedUnder::class);
+        $this->editor->changeClass($deck->id, \Taxmod\Core\Model\NodeClass\Choice::class);
     }
 
     #[Test]
@@ -162,9 +184,9 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function children_come_back_in_the_order_the_edges_give_them(): void
+    public function children_come_back_in_the_order_the_relations_give_them(): void
     {
-        // Not alphabetical. Order is a property of the edge, so it is the order somebody put
+        // Not alphabetical. Order is a property of the relation, so it is the order somebody put
         // them in — and it stays that way until somebody moves one.
         $parent = $this->editor->createNode('Board', $this->root->id);
         $this->editor->createNode('Resistor', $parent->id);
@@ -213,29 +235,33 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function creating_a_node_creates_exactly_one_inheritance_edge(): void
+    public function creating_a_node_writes_its_place_onto_the_node(): void
     {
+        // ⚠️ *Seit TASK-018 ist die Einordnung eine Spalte und keine zweite Zeile*
+        // *([D-581](../../../docs/NewConcept/90-decision-log.md)). **Der Prüfsatz hat sich mit ihr
+        // gedreht**: er hiess «legt genau eine Vererbungskante an» und misst jetzt dieselbe Zusage
+        // an der Stelle, an der sie heute steht — nicht entschärft, sondern umgezogen (`PR-9`).*
         $node = $this->editor->createNode('Board', $this->root->id);
-        $edge = $this->edges->inheritanceEdgeTo($node->id);
 
-        self::assertNotNull($edge);
-        self::assertSame($this->root->id, $edge->fromId);
-        self::assertSame($node->id, $edge->toId);
-        self::assertSame('', $edge->name, 'a tree edge has no name of its own');
+        self::assertSame($this->root->id, $node->parentNodeId);
+        self::assertSame($this->root->id, $this->nodes->byId($node->id)->parentNodeId);
+        self::assertSame(0, $this->relations->count(), 'ein neuer Knoten legt keine Kante an');
     }
 
     #[Test]
-    public function the_edge_gets_its_own_identity_not_the_nodes(): void
+    public function a_new_node_lands_behind_its_siblings(): void
     {
-        // C11: nodes and edges share one space, which is what lets an edge carry settings and
-        // labels of its own. Sharing a space is not sharing a number.
-        $node = $this->editor->createNode('Board', $this->root->id);
+        // ⚠️ *Hier stand «die Kante bekommt ihre eigene Identität» — eine Aussage über eine Zeile,
+        // die es seit TASK-018 nicht mehr gibt. **An ihrer Stelle steht die Zusage, die `sort_order`
+        // am Knoten überhaupt trägt**: das nächste Kind kommt hinter das letzte.*
+        $erste  = $this->editor->createNode('Board', $this->root->id);
+        $zweite = $this->editor->createNode('Resistor', $this->root->id);
 
-        self::assertNotSame($node->id, $this->edges->inheritanceEdgeTo($node->id)->id);
+        self::assertGreaterThan($erste->sortOrder, $zweite->sortOrder);
     }
 
     #[Test]
-    public function moving_repoints_the_edge_and_rewrites_the_path(): void
+    public function moving_repoints_the_relation_and_rewrites_the_path(): void
     {
         $a = $this->editor->createNode('Model', $this->root->id);
         $b = $this->editor->createNode('Primitives', $this->root->id);
@@ -243,7 +269,7 @@ final class ModelEditorTest extends TestCase
 
         $moved = $this->editor->move($x->id, $b->id);
 
-        self::assertSame($b->id, $this->edges->inheritanceEdgeTo($x->id)->fromId);
+        self::assertSame($b->id, $this->nodes->byId($x->id)->parentNodeId);
         self::assertSame($b->path . '.' . $x->id, $moved->path);
         self::assertSame(['created', 'moved'], $this->changes->verbsFor($x->id));
     }
@@ -295,12 +321,12 @@ final class ModelEditorTest extends TestCase
     }
 
     #[Test]
-    public function parking_is_a_move_and_the_edge_says_so(): void
+    public function parking_is_a_move_and_the_relation_says_so(): void
     {
         $node = $this->editor->createNode('Board', $this->root->id);
         $this->editor->moveToTrash($node->id);
 
-        self::assertSame($this->trash->id, $this->edges->inheritanceEdgeTo($node->id)->fromId);
+        self::assertSame($this->trash->id, $this->nodes->byId($node->id)->parentNodeId);
     }
 
     #[Test]
@@ -323,15 +349,15 @@ final class ModelEditorTest extends TestCase
     {
         $parent = $this->editor->createNode('Board', $this->root->id);
         $child  = $this->editor->createNode('Resistor', $parent->id);
-        $before = $this->edges->inheritanceEdgeTo($child->id)->version;
+        $before = $this->nodes->byId($child->id)->version;
 
         $this->editor->reorder($child->id, 0);
 
-        self::assertSame($before, $this->edges->inheritanceEdgeTo($child->id)->version);
+        self::assertSame($before, $this->nodes->byId($child->id)->version);
     }
 
     #[Test]
-    public function every_path_can_be_rebuilt_from_the_edges_alone(): void
+    public function every_path_can_be_rebuilt_from_the_relations_alone(): void
     {
         // ⚠️ This is the property D-014 actually asks for: path is derived, rebuildable, and
         // never a second truth. If this ever fails, the tree and its shortcut have drifted.
@@ -341,17 +367,17 @@ final class ModelEditorTest extends TestCase
         $this->editor->move($b->id, $this->root->id);
 
         foreach ([$this->trash, $a, $this->nodes->byId($b->id), $this->nodes->byId($c->id)] as $node) {
-            self::assertSame($this->pathFromEdges($node->id), $node->path, "path of «{$node->name}»");
+            self::assertSame($this->pathFromRelations($node->id), $node->path, "path of «{$node->name}»");
         }
     }
 
-    /** Walk the edges upwards and build the path the long way round. */
-    private function pathFromEdges(int $id): string
+    /** Walk the relations upwards and build the path the long way round. */
+    private function pathFromRelations(int $id): string
     {
         $ids = [$id];
 
-        while (($edge = $this->edges->inheritanceEdgeTo($id)) !== null) {
-            $id = $edge->fromId;
+        while (($vater = $this->nodes->byId($id)->parentNodeId) !== null) {
+            $id = $vater;
             array_unshift($ids, $id);
         }
 
@@ -417,7 +443,7 @@ final class ModelEditorTest extends TestCase
 
         $this->editor->moveToTrashPromotingChildren($middle->id);
 
-        self::assertSame($grandparent->id, $this->edges->inheritanceEdgeTo($child->id)->fromId);
+        self::assertSame($grandparent->id, $this->nodes->byId($child->id)->parentNodeId);
         self::assertSame(
             $grandparent->path . '.' . $child->id,
             $this->nodes->byId($child->id)->path
@@ -497,7 +523,7 @@ final class ModelEditorTest extends TestCase
         $back = $this->editor->restore($node->id)->node;
 
         self::assertSame($was, $back->path);
-        self::assertSame($parent->id, $this->edges->inheritanceEdgeTo($node->id)->fromId);
+        self::assertSame($parent->id, $this->nodes->byId($node->id)->parentNodeId);
         self::assertSame(['created', 'parked', 'restored'], $this->changes->verbsFor($node->id));
     }
 
@@ -736,5 +762,198 @@ final class ModelEditorTest extends TestCase
 
         self::assertGreaterThan($atStart, $afterPromotion, 'promotion moves it');
         self::assertGreaterThan($afterPromotion, $afterRestore, 'and so does coming back');
+    }
+
+    /**
+     * `Used by` — [D-199](../../docs/NewConcept/90-decision-log.md)'s one direction.
+     *
+     * ⚠️ *Die Gegenrichtung ist die Probe, die zählt: `usedBy()` darf **nicht** aufzählen, was der
+     * Knoten selbst benutzt — sonst wäre der Abschnitt eine zweite Attributtabelle.*
+     */
+    /**
+     * An editor that knows a `Model` branch, so `addField()` can read a relation kind off a target.
+     *
+     * ⚠️ *Derselbe Identitätszähler wie in {@see setUp()}, denn ein zweiter finge wieder bei 1 an und
+     * gäbe eine Id zweimal aus — genau das, was ein Allokator nie tut.*
+     */
+    private function withModelBranch(): Node
+    {
+        $model = $this->editor->createNode('Model', $this->root->id);
+
+        $this->editor = new ModelEditor(
+            $this->nodes,
+            $this->relations,
+            new FixedFramework($this->root, $this->trash, [\Taxmod\Core\Model\Branch::Model->value => $model]),
+            $this->changes
+        );
+
+        return $model;
+    }
+
+    #[Test]
+    public function used_by_lists_the_attributes_of_other_nodes_typed_by_this_one(): void
+    {
+        $model  = $this->withModelBranch();
+        $unit   = $this->editor->createNode('Einheit', $model->id);
+        $part   = $this->editor->createNode('Teil', $model->id);
+        $recipe = $this->editor->createNode('Rezept', $model->id);
+
+        $this->editor->addField($part->id, $unit->id, 'einheit');
+        $this->editor->addField($recipe->id, $unit->id, 'menge_einheit');
+
+        // Was der Knoten selbst benutzt — die andere Richtung, und sie gehört nicht hierher.
+        $this->editor->addField($unit->id, $part->id, 'beispielteil');
+
+        $used = $this->editor->usedBy($unit->id);
+
+        self::assertSame(
+            ['einheit', 'menge_einheit'],
+            array_map(static fn (Relation $relation): string => $relation->name, $used)
+        );
+
+        self::assertSame(
+            [$part->id, $recipe->id],
+            array_map(static fn (Relation $relation): int => $relation->fromNodeId, $used)
+        );
+
+        // ⚠️ *Eine Vererbungskante ist ein **Kind**, und das zeichnet der Baum. Der Knoten `Einheit`
+        // hat `Model` als Elternteil und `Model` hat drei Kinder — keines davon steht hier.*
+        self::assertSame([], $this->editor->usedBy($model->id));
+    }
+
+    #[Test]
+    public function a_parked_attribute_is_not_a_use(): void
+    {
+        $model = $this->withModelBranch();
+        $unit  = $this->editor->createNode('Einheit', $model->id);
+        $part  = $this->editor->createNode('Teil', $model->id);
+
+        $relation = $this->editor->addField($part->id, $unit->id, 'einheit');
+
+        self::assertCount(1, $this->editor->usedBy($unit->id));
+
+        $this->editor->removeField($part->id, $relation->id);
+
+        // ⚠️ *D-128: eine geparkte Kante ist in ihrem eigenen Knoten versteckt. Sie hier zu zeigen
+        // hiesse, eine Abhängigkeit zu melden, die ihr eigener Knoten nicht zeigt.*
+        self::assertSame([], $this->editor->usedBy($unit->id));
+    }
+
+    #[Test]
+    public function a_child_gets_the_default_class_of_its_parent(): void
+    {
+        $prefixes = $this->editor->createNode('Prefixes', $this->root->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+        $kilo     = $this->editor->createNode('kilo', $prefixes->id);
+
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Choice::class, $prefixes->klasse);
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Constant::class, $kilo->klasse, 'die Vorwahl der Auswahl');
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Category::class, $this->editor->createNode('Kontakt', $this->root->id)->klasse, 'die Vorwahl der Kategorie');
+    }
+
+    #[Test]
+    public function a_class_the_parent_does_not_allow_is_refused(): void
+    {
+        $prefixes = $this->editor->createNode('Prefixes', $this->root->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+
+        $this->expectException(\Taxmod\Core\Exception\ClassNotAllowedUnder::class);
+
+        $this->editor->createNode('Zahl', $prefixes->id, \Taxmod\Core\Model\Type\IntType::class);
+    }
+
+    #[Test]
+    public function an_unknown_class_is_refused_before_anything_is_written(): void
+    {
+        $vorher = $this->nodes->count();
+
+        try {
+            $this->editor->createNode('Ding', $this->root->id, 'Nope\Nothing');
+            self::fail('sollte abweisen');
+        } catch (\Taxmod\Core\Exception\UnknownNodeClass) {
+        }
+
+        self::assertSame($vorher, $this->nodes->count());
+    }
+
+    #[Test]
+    public function a_duplicate_keeps_the_class_of_the_original(): void
+    {
+        $auswahl = $this->editor->createNode('Auswahl', $this->root->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+
+        self::assertSame(\Taxmod\Core\Model\NodeClass\Choice::class, $this->editor->duplicate($auswahl->id)->klasse);
+    }
+
+    /** ⚠️ *Seine Form (D-750): «beim Feld an der Deklaration: schiebe es in den Vater» — die Kante behält ihre Id.* */
+    #[Test]
+    public function a_field_moves_to_the_parent_and_keeps_its_id(): void
+    {
+        $model  = $this->withModelBranch();
+        $eltern = $this->editor->createNode('Eltern', $model->id);
+        $kind   = $this->editor->createNode('Kind', $eltern->id);
+        $ziel   = $this->editor->createNode('Ziel', $model->id);
+        $feld   = $this->editor->addField($kind->id, $ziel->id, 'f');
+
+        $bewegt = $this->editor->moveFieldToParent($kind->id, $feld->id);
+
+        self::assertSame($feld->id, $bewegt->id);
+        self::assertSame($eltern->id, $bewegt->fromNodeId);
+        self::assertSame($feld->version + 1, $bewegt->version);
+        self::assertContains('field moved to parent', $this->changes->verbsFor($feld->id));
+        self::assertSame([$feld->id], array_map(static fn (Relation $r): int => $r->id, $this->relations->fieldRelationsOf([$eltern->id])));
+        self::assertSame([], $this->relations->fieldRelationsOf([$kind->id]));
+    }
+
+    #[Test]
+    public function a_field_directly_under_the_model_root_has_no_parent_to_take_it(): void
+    {
+        $model = $this->withModelBranch();
+        $ding  = $this->editor->createNode('Ding', $this->root->id);
+        $ziel  = $this->editor->createNode('Ziel', $model->id);
+        $feld  = $this->editor->addField($ding->id, $ziel->id, 'f');
+
+        $this->expectException(ImpossibleMove::class);
+
+        $this->editor->moveFieldToParent($ding->id, $feld->id);
+    }
+
+    /** ⚠️ *Seine Form (D-750): «am Vater: schiebe es in die Kinder, und dann Kinder auswählen, die es bekommen sollen».* */
+    #[Test]
+    public function a_field_pushed_into_chosen_children_is_copied_there_and_parked_here(): void
+    {
+        $model  = $this->withModelBranch();
+        $eltern = $this->editor->createNode('Eltern', $model->id);
+        $a      = $this->editor->createNode('A', $eltern->id);
+        $b      = $this->editor->createNode('B', $eltern->id);
+        $ziel   = $this->editor->createNode('Ziel', $model->id);
+        $feld   = $this->editor->addField($eltern->id, $ziel->id, 'f');
+
+        $neue = $this->editor->pushFieldToChildren($eltern->id, $feld->id, [$a->id]);
+
+        self::assertCount(1, $neue);
+        self::assertSame($a->id, $neue[0]->fromNodeId);
+        self::assertSame($ziel->id, $neue[0]->toNodeId);
+        self::assertSame('f', $neue[0]->name);
+        self::assertNotSame($feld->id, $neue[0]->id);
+        self::assertSame([], $this->relations->fieldRelationsOf([$eltern->id]), 'am Vater geparkt');
+        self::assertCount(1, $this->relations->parkedFieldRelationsOf([$eltern->id]));
+        self::assertSame([], $this->relations->fieldRelationsOf([$b->id]), 'B war nicht gewählt');
+    }
+
+    #[Test]
+    public function pushing_into_a_node_that_is_not_a_child_is_refused_and_nothing_moves(): void
+    {
+        $model  = $this->withModelBranch();
+        $eltern = $this->editor->createNode('Eltern', $model->id);
+        $fremd  = $this->editor->createNode('Fremd', $model->id);
+        $ziel   = $this->editor->createNode('Ziel', $model->id);
+        $feld   = $this->editor->addField($eltern->id, $ziel->id, 'f');
+
+        try {
+            $this->editor->pushFieldToChildren($eltern->id, $feld->id, [$fremd->id]);
+            self::fail('kein Kind, keine Wanderung');
+        } catch (ImpossibleMove) {
+        }
+
+        self::assertCount(1, $this->relations->fieldRelationsOf([$eltern->id]));
+        self::assertSame([], $this->relations->fieldRelationsOf([$fremd->id]));
     }
 }

@@ -28,6 +28,8 @@ final class FieldRenderer extends TypedFieldRenderer
             SimpleType::Text,
             SimpleType::Char,
             SimpleType::Version,
+            SimpleType::Path,
+            SimpleType::Summary,
             SimpleType::Int,
             SimpleType::Decimal,
         ];
@@ -35,7 +37,7 @@ final class FieldRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->characters($context)));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 
     /**
@@ -54,11 +56,34 @@ final class FieldRenderer extends TypedFieldRenderer
      */
     protected function input(RenderContext $context): string
     {
-        return '<input type="text"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $this->characters($context))
-            . $this->attribute('pattern', $context->type?->pattern())
-            . $this->attribute('inputmode', $context->type?->inputMode())
-            . '>';
+        return RenderResult::htmlTag('input', [
+            'type'      => 'text',
+            'name'      => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht —
+            // eine Tabellenzelle neben der Zelle mit dem `<form>`. Leer wird das Attribut weggelassen.*
+            'form'      => $context->surroundings->formId,
+            // ⚠️ **[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein
+            // Wort:** *«damit ist gemeint, dass sich ein Eingabefeld immer gleich verhalten muss — und
+            // ja, wenn `1..1` steht, muss ein Wert gesetzt sein».* *Die Regel steht seit dem 2026-08-22
+            // im Konzept und galt bis heute nur für Auswahllisten
+            // ([R29](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete)); **gemessen trug
+            // keine einzige einfache Eingabe ein `required`**.*
+            //
+            // ⚠️ *`mayBeNothing` trägt die Angabe schon: sie kommt aus der Multiplizität der Kante. Die
+            // Vorgabe ist `true`, also bleibt jede Zeichnung ohne diese Angabe unverändert.*
+            'aria-required'  => $context->surroundings->mayBeNothing ? null : 'true',
+            'value'     => $this->outputValue($context),
+            // ⚠️ **Die Anzeigebreite in Zeichen** ([D-659](../../../docs/NewConcept/90-decision-log.md)),
+            // *und `size` ist genau das: die Breite in Zeichen, nicht `maxlength`. **Die Verwechslung
+            // wäre der Fehler, vor dem die Entscheidung ausdrücklich warnt** — sie beschneidet nichts
+            // und weist nichts zurück.*
+            //
+            // ⚠️ *Fehlt die Angabe, fehlt das Attribut, und der Rand nimmt seine eigene Vorgabe — genau
+            // wie bisher. **Das ist die andere Hälfte des Beschlusses**: sie ist ein Wunsch, kein
+            // Befehl.*
+            'size'      => $this->numberSetting($context, 'display_size'),
+            'pattern'   => $context->type?->pattern(),
+            'inputmode' => $context->type?->inputMode(),
+        ]);
     }
 }

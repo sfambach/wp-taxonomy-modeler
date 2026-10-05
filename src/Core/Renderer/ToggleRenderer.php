@@ -52,31 +52,23 @@ final class ToggleRenderer extends TypedFieldRenderer
     protected function display(RenderContext $context): string
     {
         if ($context->value->isNothing()) {
-            return $this->shown('');
+            return $this->createHtmlValueSpan('');
         }
 
-        return $this->shown($this->track($context->value->asBool(), false));
+        return $this->createHtmlValueSpan(ToggleMarkup::track($context->value->asBool(), false));
     }
 
     protected function input(RenderContext $context): string
     {
-        $on   = ! $context->value->isNothing() && $context->value->asBool();
-        $name = $this->attribute('name', $context->fieldName);
-
-        // The hidden field is what makes *off* mean false rather than absent. PHP keeps the last of
-        // two equal names, so the switch overrides it when it is on.
-        return '<label class="taxmod-toggle">'
-            . '<input type="hidden"' . $name . ' value="0">'
-            . '<input type="checkbox" class="taxmod-toggle-input"' . $name . ' value="1"'
-            . ($on ? ' checked' : '') . '>'
-            . $this->track($on, true)
-            . '</label>';
+        // ⚠️ **Das Aussehen steht in {@see ToggleMarkup}, seit die Konfigurationsseite denselben
+        // Schalter braucht** ([D-695](../../../docs/NewConcept/90-decision-log.md)). *Dort geht es
+        // um eine WordPress-Option und nicht um einen `bool` aus dem Modell — aber es ist derselbe
+        // Schalter, und einer mit zwei Gesichtern wäre keiner.*
+        return ToggleMarkup::input($context->fieldName, $this->isOn($context), $context->surroundings->formId);
     }
 
-    /** The switch itself: a rail and a knob, named so the surface can paint them. */
-    private function track(bool $on, bool $live): string
+    private function isOn(RenderContext $context): bool
     {
-        return '<span class="taxmod-toggle-track' . ($on ? ' is-on' : '')
-            . ($live ? '' : ' is-fixed') . '"><span class="taxmod-toggle-knob"></span></span>';
+        return ! $context->value->isNothing() && $context->value->asBool();
     }
 }

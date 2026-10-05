@@ -2,13 +2,11 @@
 
 namespace Taxmod\Core\Exception;
 
-use Taxmod\Core\Model\SettingKey;
-
 /**
  * A setting written where it has nothing to say.
  *
  * ⚠️ **The asymmetry runs one way.** Everything sayable about a node is also sayable about one
- * use of it; the reverse is not true. A node describes a *thing*, an edge describes a *use of a
+ * use of it; the reverse is not true. A node describes a *thing*, an relation describes a *use of a
  * thing* — so a thing has no multiplicity while a use of it does.
  *
  * ⚠️ **Refused in the core, not merely hidden in the screen.** A key that cannot be reached
@@ -19,13 +17,6 @@ use Taxmod\Core\Model\SettingKey;
  */
 final class SettingDoesNotApply extends DomainError
 {
-    public static function toANode(SettingKey $key): self
-    {
-        return new self(sprintf(
-            '«%s» belongs to a use of a node, not to the node itself — set it on the attribute.',
-            $key->value
-        ));
-    }
 
     /**
      * A renderer nobody registered.
@@ -53,5 +44,14 @@ final class SettingDoesNotApply extends DomainError
             'A multiplicity is one of 0..1, 1..1, 0..* or 1..*, and «%s» is none of them.',
             $attempted
         ));
+    }
+
+    /**
+     * Ein Attribut, das der Vertrag nicht kennt — oder ein Wert, der nicht zu seinem Typ passt
+     * (Schritt 5 des Bauplans, Anforderung 3.1, 3.3).
+     */
+    public static function named(string $what): self
+    {
+        return new self(sprintf('«%s» is not a setting the contract knows, or not a value of its type.', $what));
     }
 }

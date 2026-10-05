@@ -23,7 +23,7 @@ if ( ! $host instanceof WP_Term ) {
 }
 $host_id = (int) $host->term_id;
 
-$edge_id   = '';
+$relation_id   = '';
 $attr_name = '';
 $prior     = '';
 foreach ( Relation::list_outgoing( $tax, $host_id ) as $edge ) {
@@ -35,13 +35,13 @@ foreach ( Relation::list_outgoing( $tax, $host_id ) as $edge ) {
 	if ( '' === $name ) {
 		continue;
 	}
-	$edge_id   = Attribute::normalize_attr_id( $edge['id'] ?? '' );
+	$relation_id   = Attribute::normalize_attr_id( $edge['id'] ?? '' );
 	$attr_name = $name;
 	$prior     = $name;
 	break;
 }
 
-if ( '' === $edge_id ) {
+if ( '' === $relation_id ) {
 	echo "edge=missing\nsmoke=fail\n";
 	exit( 1 );
 }
@@ -49,14 +49,14 @@ if ( '' === $edge_id ) {
 $payload = \WTT\Tree_Model::get_stored_relations_payload( $tax, $host_id );
 $von_has = false;
 foreach ( $payload['von'] as $row ) {
-	if ( Attribute::normalize_attr_id( $row['id'] ?? '' ) === $edge_id ) {
+	if ( Attribute::normalize_attr_id( $row['id'] ?? '' ) === $relation_id ) {
 		$von_has = isset( $row['name'] ) && (string) $row['name'] === $attr_name;
 		break;
 	}
 }
 
 $marker = 'wtt-smoke-relname-' . wp_generate_password( 6, false, false );
-$renamed = Relation::update_name( $tax, $host_id, $edge_id, $marker );
+$renamed = Relation::update_name( $tax, $host_id, $relation_id, $marker );
 if ( is_wp_error( $renamed ) ) {
 	echo 'rename_err=' . $renamed->get_error_code() . "\nsmoke=fail\n";
 	exit( 1 );
@@ -64,7 +64,7 @@ if ( is_wp_error( $renamed ) ) {
 
 $edge_after = '';
 foreach ( Relation::list_outgoing( $tax, $host_id ) as $edge ) {
-	if ( Attribute::normalize_attr_id( $edge['id'] ?? '' ) === $edge_id ) {
+	if ( Attribute::normalize_attr_id( $edge['id'] ?? '' ) === $relation_id ) {
 		$edge_after = Relation::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
 		break;
 	}
@@ -72,14 +72,14 @@ foreach ( Relation::list_outgoing( $tax, $host_id ) as $edge ) {
 
 $attr_after = '';
 foreach ( Attribute::list_own( $tax, $host_id ) as $row ) {
-	if ( Attribute::normalize_attr_id( $row['id'] ?? '' ) === $edge_id ) {
+	if ( Attribute::normalize_attr_id( $row['id'] ?? '' ) === $relation_id ) {
 		$attr_after = (string) ( $row['name'] ?? '' );
 		break;
 	}
 }
 
 /* Restore via Attribute::update (same path as Attributes / Relations AJAX for bindings). */
-$restore = Attribute::update( $tax, $host_id, $edge_id, array( 'name' => $prior ) );
+$restore = Attribute::update( $tax, $host_id, $relation_id, array( 'name' => $prior ) );
 if ( is_wp_error( $restore ) ) {
 	echo 'restore_err=' . $restore->get_error_code() . "\nsmoke=fail\n";
 	exit( 1 );
@@ -87,7 +87,7 @@ if ( is_wp_error( $restore ) ) {
 
 $restored = '';
 foreach ( Relation::list_outgoing( $tax, $host_id ) as $edge ) {
-	if ( Attribute::normalize_attr_id( $edge['id'] ?? '' ) === $edge_id ) {
+	if ( Attribute::normalize_attr_id( $edge['id'] ?? '' ) === $relation_id ) {
 		$restored = Relation::normalize_edge_name( (string) ( $edge['name'] ?? '' ) );
 		break;
 	}
@@ -114,7 +114,7 @@ $ok = defined( 'WTT_VERSION' ) && version_compare( (string) WTT_VERSION, '0.0.43
 
 echo 'WTT_VERSION=' . ( defined( 'WTT_VERSION' ) ? WTT_VERSION : '?' ) . PHP_EOL;
 echo 'host=Kontakt id=' . $host_id . PHP_EOL;
-echo 'attr_id=' . $edge_id . PHP_EOL;
+echo 'attr_id=' . $relation_id . PHP_EOL;
 echo 'attr_name=' . $attr_name . PHP_EOL;
 echo 'payload_name=yes' . PHP_EOL;
 echo 'von_has_name=' . ( $von_has ? 'yes' : 'no' ) . PHP_EOL;

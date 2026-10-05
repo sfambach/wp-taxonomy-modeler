@@ -4,9 +4,13 @@ namespace Taxmod\WordPress\Persistence;
 
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NodeNotFound;
+use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\RelationKind;
+use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\NodeRepository;
+use Taxmod\WordPress\Admin\SettingsScreen;
 
 /**
  * Nodes in a table of our own (AR-1), reached through `$wpdb`.
@@ -19,19 +23,157 @@ use Taxmod\Core\Repository\NodeRepository;
  */
 final class WpdbNodeRepository implements NodeRepository
 {
+    /**
+     * Die Spalten eines Knotens — **und der Name kommt aus den Beschriftungen** (TASK-019,
+     * [D-580](../../../docs/NewConcept/90-decision-log.md),
+     * [D-646](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *`nodes.name` gibt es nicht mehr. Was ein Knoten heisst, steht als `text_name` in
+     * `label_texts` — je Sprache, seit D-646.*
+     *
+     * ⚠️ **Zwei Verbünde und ein `COALESCE`, weil der Name in der **gewählten** Sprache gelesen wird
+     * und die Standardsprache der Rückfall ist** (TASK-061, [D-645](../../../docs/NewConcept/90-decision-log.md),
+     * [D-387](../../../docs/NewConcept/90-decision-log.md)). *`t` ist die gewählte Sprache, `d` die
+     * Standardsprache; wo `t` nichts hat, kommt `d`. **Der Rückfall ist eine Anzeige und keine
+     * Festschreibung** — was er liefert, wird beim nächsten Speichern nicht als Text der gewählten
+     * Sprache zurückgeschrieben ({@see self::writeName()}).*
+     *
+     * ⚠️ *Ein Verbund statt zweier wäre billiger, wenn beide Sprachen dieselbe sind — er wäre aber
+     * eine zweite Fassung derselben Anweisung, und die beiden Fassungen könnten verschieden
+     * antworten. `MySQL` beantwortet den zweiten Verbund auf demselben Schlüssel.*
+     *
+     * ⚠️ **`n.path` steht hier seit Fassung 35 nicht mehr** (TASK-001). *Der Pfad ist keine Spalte
+     * mehr, sondern wird beim Lesen aus `parent_node_id` gerechnet — `a.path` kommt aus
+     * {@see self::ancestry()}. **Ein `Node` trägt ihn weiter**, und zwar in derselben Form wie zuvor;
+     * was fiel, ist die zweite Ablage derselben Tatsache, nicht die Tatsache.*
+     */
+    private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, d.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide, n.klasse";
+
+    /**
+     * In welcher Sprache dieser Speicher Namen liest und schreibt.
+     *
+     * ⚠️ **`null` heisst «die, die oben gewählt ist»** ({@see SettingsScreen::requestedLocale()}),
+     * und ausserhalb eines Bildschirms ist das die Standardsprache. *So bekommt jeder vorhandene
+     * Aufrufer die gewählte Sprache, ohne dass eine Verdrahtung sich ändert, und ein Wächter kann
+     * eine Sprache festnageln, statt sie aus der Umgebung zu erben.*
+     */
+    public function __construct(private readonly ?string $locale = null)
+    {
+    }
+
+    /** Die gewählte Sprache. */
+    private function readLocale(): string
+    {
+        return $this->locale ?? SettingsScreen::requestedLocale();
+    }
+
+    /**
+     * Der Vorfahrenweg, **einmal gerechnet statt gespeichert** (TASK-001,
+     * [D-082](../../../docs/NewConcept/90-decision-log.md): «materialised ancestor path, derived and
+     * rebuildable»).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   W["Wurzel · parent_node_id IS NULL"] --> K["Kind · CONCAT(Weg, '.', id)"]
+     *   K --> K
+     * ```
+     *
+     * ⚠️ **Eine Anweisung und keine Runde je Ebene** (`CD-7`). *Ein rekursiver Ausdruck steigt vom
+     * einen wurzellosen Knoten abwärts und setzt den Weg dabei zusammen; eine Funktion, die je Stufe
+     * fragt, wäre genau das, was die Regel verbietet.*
+     *
+     * ⚠️ **Er rechnet den **ganzen** Baum, auch wenn nur eine Zeile gesucht ist, und das ist eine
+     * bewusste Wahl.** *Ein Aufstieg von der gesuchten Zeile aus wäre billiger, aber sein Anker
+     * hinge an der `WHERE`-Bedingung des äusseren Lesers — und die ist bei jedem Leser eine andere.
+     * **Ein Ausdruck, den jeder Leser gleich benutzt, ist mehr wert als sechs verschiedene**
+     * (`CD-7`: einmal gelöst, an einer Stelle). Gemessen am 2026-09-05 sind es 137 Zeilen.*
+     *
+     * ⚠️ *`CAST(... AS CHAR(255))` im Anker gibt der Spalte ihre Breite — MySQL nimmt sie von dort
+     * und schneidet sonst am ersten Wert ab. **255 ist dieselbe Breite, die die gefallene Spalte
+     * hatte**, also kann kein Weg dadurch kürzer werden, als er war.*
+     */
+    private static function ancestry(): string
+    {
+        $nodes = Schema::table('nodes');
+
+        return "WITH RECURSIVE taxmod_ahnen (id, path) AS (
+                    SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
+                    UNION ALL
+                    SELECT k.id, CONCAT(v.path, '.', k.id)
+                      FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
+                ) ";
+    }
+
+    /** Ein Knotenleser: der Vorfahrenausdruck, die Spalten, die Herkunft — und dann seine Bedingung. */
+    private function selectNodes(string $rest): string
+    {
+        return self::ancestry() . 'SELECT ' . self::COLUMNS . self::fromNodes() . $rest;
+    }
+
+    /**
+     * ⚠️ **`LEFT JOIN` und kein `JOIN`:** *ein Knoten ohne Beschriftungszeile hätte sonst gar keine
+     * Zeile mehr — er wäre unsichtbar statt namenlos, und das ist die schlechtere Störung. Dass es
+     * ihn nicht geben darf, hält `label-texts-check.php` fest, nicht dieser Leser.*
+     */
+    private static function fromNodes(): string
+    {
+        // ⚠️ *`INNER JOIN` auf den Vorfahrenausdruck und kein `LEFT JOIN`: **ein Knoten, den der
+        // Abstieg nicht erreicht, hat keinen Weg zur Wurzel** — er ist verwaist, nicht namenlos, und
+        // das ist ein Befund für `orphans-check` und nicht eine Zeile mit leerem Pfad (TASK-001).*
+        return ' FROM ' . Schema::table('nodes') . ' n'
+            . ' INNER JOIN taxmod_ahnen a ON a.id = n.id'
+            . ' LEFT JOIN ' . Schema::table('label_texts') . ' t'
+            . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s '
+            . ' LEFT JOIN ' . Schema::table('label_texts') . ' d'
+            . ' ON d.label_id = n.label_id AND d.locale = %s AND d.number = %s ';
+    }
+
+    /**
+     * ⚠️ *Die vier Werte der Verbünde stehen **vorn** in der Argumentliste, weil `FROM` vor `WHERE`
+     * steht und `prepare()` der Reihe nach füllt — erst die gewählte Sprache, dann die
+     * Standardsprache.*
+     *
+     * @return array{0: string, 1: string, 2: string, 3: string}
+     */
+    private function nameArgs(): array
+    {
+        return [
+            $this->readLocale(),
+            Label::BASE_NUMBER,
+            SettingsScreen::neutralLocale(),
+            Label::BASE_NUMBER,
+        ];
+    }
+
     public function byId(int $id): Node
     {
         return $this->find($id) ?? throw NodeNotFound::withId($id);
     }
 
+    /**
+     * ⚠️ **Während eines Zeichenlaufs: alle Knoten in einer Abfrage, danach aus dem Gedächtnis** (D-899). *Gemessen am 2026-09-21
+     * an «Prozessoren»: 21 Knoten wurden einzeln gelesen, von fünf Stellen aus, und die Seite lag über der Grenze von 20 gleichen
+     * Abfragen (`seitenlast-check`). Der Vorfahrenausdruck rechnet ohnehin den ganzen Baum; alle Zeilen zu nehmen kostet kaum mehr
+     * als eine. Ausserhalb eines Zeichenlaufs bleibt es bei der einen Zeile — dort gibt es kein Gedächtnis, das die anderen hielte.*
+     */
     public function find(int $id): ?Node
     {
         global $wpdb;
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare('SELECT id, version, name, path FROM ' . Schema::table('nodes') . ' WHERE id = %d', $id),
-            ARRAY_A
-        );
+        if (Query::isRemembering()) {
+            foreach (Query::rows('Alle Knoten lesen', $wpdb->prepare($this->selectNodes('WHERE 1 = %d'), ...[...$this->nameArgs(), 1])) as $row) {
+                if ((int) $row['id'] === $id) {
+                    return $this->hydrate($row);
+                }
+            }
+
+            return null;
+        }
+
+        $row = Query::row('Knoten lesen', $wpdb->prepare(
+            $this->selectNodes('WHERE n.id = %d'),
+            ...[...$this->nameArgs(), $id]
+        ));
 
         return $row === null ? null : $this->hydrate($row);
     }
@@ -50,13 +192,10 @@ final class WpdbNodeRepository implements NodeRepository
         // interpolated — `CD-6` has no exception for values that look safe.
         $slots = implode(',', array_fill(0, count($ids), '%d'));
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . " WHERE id IN ($slots)",
-                ...array_map(intval(...), $ids)
-            ),
-            ARRAY_A
-        );
+        $rows = Query::rows('Knoten nach Ids lesen', $wpdb->prepare(
+            $this->selectNodes("WHERE n.id IN ($slots)"),
+            ...[...$this->nameArgs(), ...array_map(intval(...), $ids)]
+        ));
 
         $found = [];
 
@@ -67,15 +206,127 @@ final class WpdbNodeRepository implements NodeRepository
         return $found;
     }
 
-    public function add(Node $node): void
+    /**
+     * ⚠️ **Die Id kommt aus dem `AUTO_INCREMENT` dieser Tabelle** (TASK-004). *`identities` ist
+     * gestrichen; wer mit Id `0` ankommt, bekommt die nächste freie Nummer **dieses** Raums, und der
+     * Pfad wird mit ihr nachgezogen ({@see Node::withAssignedId()}). Eine mitgebrachte Id bleibt,
+     * wie sie ist — sonst könnte ein Wiederaufbau seine Nummern nicht zurückschreiben.*
+     */
+    public function add(Node $node): Node
     {
         global $wpdb;
 
-        $wpdb->insert(
-            Schema::table('nodes'),
-            ['id' => $node->id, 'version' => $node->version, 'name' => $node->name, 'path' => $node->path],
-            ['%d', '%d', '%s', '%s']
-        );
+        // ⚠️ *`path` steht hier seit Fassung 35 nicht mehr (TASK-001) — er wird gelesen, nicht
+        // geschrieben. Was den Knoten einordnet, ist `parent_node_id`, und das steht schon da.*
+        $spalten = [
+            'version'        => $node->version,
+            'implemented_by' => $node->implementedBy,
+            // ⚠️ *Seit TASK-018 kommt die Einordnung mit der Zeile* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+            // *`null` ist die Wurzel und nicht «weiss nicht» — `$wpdb->insert()` schreibt dafür ein
+            // echtes NULL, was `prepare('%d', null)` nicht täte.*
+            'parent_node_id' => $node->parentNodeId,
+            'sort_order'     => $node->sortOrder,
+            'hide'           => $node->hide ? 1 : 0,
+            // ⚠️ *Die Knotenklasse kommt mit der Zeile und bleibt (Fassung 46, [D-716](../../../docs/NewConcept/90-decision-log.md)).*
+            'klasse'         => $node->klasse,
+        ];
+        $formate = ['%d', '%s', '%d', '%d', '%d', '%s'];
+
+        if ($node->id !== 0) {
+            $spalten = ['id' => $node->id, ...$spalten];
+            $formate = ['%d', ...$formate];
+        }
+
+        $wpdb->insert(Schema::table('nodes'), $spalten, $formate);
+
+        if ($node->id !== 0) {
+            $this->writeName($node, true);
+
+            return $node;
+        }
+
+        // ⚠️ *Der Pfad des zurückgegebenen Knotens trug bis eben die `0` an letzter Stelle und wird
+        // mit der vergebenen Nummer nachgezogen — **nur noch im Hauptspeicher** (TASK-001). Die zweite
+        // Schreibrunde in die Tabelle ist mit der Spalte weggefallen.*
+        $node = $node->withAssignedId((int) $wpdb->insert_id);
+
+        $this->writeName($node, true);
+
+        return $node;
+    }
+
+    /**
+     * Der Name geht in die Beschriftungen, nicht in die Knotenzeile (TASK-019, D-580, D-646).
+     *
+     * ⚠️ **Und hier entsteht die `label_id`, die am Knoten Pflicht ist.** *Ein Knoten ohne sie hätte
+     * keinen Namen mehr — darum legt die Ablage die Beschriftungszeile beim ersten Schreiben an
+     * ({@see WpdbLabelRepository::put()}), und `label-texts-check.php` misst, dass keiner ohne
+     * durchkommt.*
+     *
+     * ⚠️ **Geschrieben wird in die Sprache, in der gelesen wurde** (TASK-061). *Vorher stand hier
+     * fest die Standardsprache, und damit traf jede Umbenennung dieselbe Zeile, gleich was oben
+     * gewählt war — so kam sein deutscher Text «Straße /Haus Nr.» in die englische Zeile.*
+     *
+     * ⚠️ **Und hier steht die Sicherung gegen das stille Festschreiben, die diese Aufgabe eigentlich
+     * ausmacht.** *Ein Knoten ohne deutschen Namen **zeigt** den englischen ({@see self::COLUMNS}:
+     * `COALESCE(t, d)`). Speichert jemand auf Deutsch irgendetwas anderes an diesem Knoten —
+     * verschieben, verstecken, eine Klasse setzen —, dann fährt genau dieser angezeigte englische
+     * Text als `Node::$name` mit, und ein blindes Schreiben machte ihn zum **deutschen** Namen.
+     * **Danach wäre die englische Beschriftung stillschweigend in die Sprache gewandert**, und beim
+     * nächsten Umbenennen des englischen Textes bliebe der alte auf Deutsch stehen.*
+     *
+     * ⚠️ *Also: in einer anderen Sprache als der Standardsprache wird nur geschrieben, **wenn der
+     * Name sich von dem der Standardsprache unterscheidet**. Gleichheit heisst hier «der Rückfall
+     * war es», und ein Rückfall ist eine Anzeige, keine Eingabe. **Der Preis ist benannt und klein:**
+     * wer eine Übersetzung eintippt, die Zeichen für Zeichen dem englischen Text gleicht, bekommt
+     * keine eigene Zeile — er sieht denselben Text, den er sehen wollte, und die Sprache bleibt
+     * ungepflegt statt falsch gepflegt.*
+     */
+    private function writeName(Node $node, bool $beimAnlegen = false): void
+    {
+        $standard = SettingsScreen::neutralLocale();
+        // ⚠️ **Ein neuer Knoten bekommt seinen Namen in der Standardsprache, gleich welche Sprache
+        // oben gewählt ist.** *Er hat noch gar keinen — und der Name in der Standardsprache ist der
+        // **Boden** der Rückfallkette, auf den jede andere Sprache fällt (D-387, D-645). Schriebe das
+        // Anlegen nur die gewählte Sprache, stünde der Knoten in jeder anderen namenlos da, und
+        // `label-space-check`s Zusage «kein Knoten ohne Namen» wäre nicht mehr wahr. **Eine
+        // Übersetzung ist etwas, das man einem benannten Knoten gibt, nicht der erste Name.***
+        $sprache = $beimAnlegen ? $standard : $this->readLocale();
+
+        if ($sprache !== $standard && $node->name === $this->standardName($node->id)) {
+            return;
+        }
+
+        (new WpdbLabelRepository())->put(new Label(
+            $node->id,
+            IdentitySpace::Node,
+            SeededRole::Name,
+            Label::BASE_NUMBER,
+            $sprache,
+            $node->name
+        ));
+    }
+
+    /**
+     * Wie der Knoten in der Standardsprache heisst — der letzte Schritt der Rückfallkette.
+     *
+     * ⚠️ *Eine eigene Frage und nicht `find()` mit anderer Sprache: `find()` fällt selbst zurück und
+     * könnte deshalb nie «nichts» antworten. Hier wird genau das gebraucht — **steht da eine Zeile,
+     * und was steht darin**.*
+     */
+    private function standardName(int $nodeId): string
+    {
+        global $wpdb;
+
+        return (string) Query::value('Name in der Standardsprache lesen', $wpdb->prepare(
+            'SELECT t.text_name FROM ' . Schema::table('nodes') . ' n'
+            . ' JOIN ' . Schema::table('label_texts') . ' t'
+            . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s'
+            . ' WHERE n.id = %d',
+            SettingsScreen::neutralLocale(),
+            Label::BASE_NUMBER,
+            $nodeId
+        ));
     }
 
     public function save(Node $node, int $expectedVersion): void
@@ -84,18 +335,53 @@ final class WpdbNodeRepository implements NodeRepository
 
         // The WHERE carries the expected version, so the guard is the write itself rather than
         // a read followed by a hopeful update (P4c).
-        $written = $wpdb->query(
-            $wpdb->prepare(
-                'UPDATE ' . Schema::table('nodes') . ' SET version = %d, name = %s, path = %s WHERE id = %d AND version = %d',
-                $node->version,
-                $node->name,
-                $node->path,
-                $node->id,
-                $expectedVersion
-            )
+        // ⚠️ *`kind` fährt mit, sonst hätte ein Umbenennen die Sorte gelöscht — dieselbe Falle, die
+        // `path` hier schon hat.*
+        //
+        // ⚠️ **`update()` und nicht `query(prepare(...))`, und der Grund ist gemessen:
+        // `$wpdb->prepare('kind = %s', null)` ergibt `kind = ''` — eine leere Zeichenkette, nicht
+        // NULL.** *Das hat am 2026-08-29 eine Zeile mit `kind = ''` hinterlassen, und damit **zwei
+        // Darstellungen desselben Zustands**: `fromStorage()` liest beide als «niemand hat etwas
+        // gesagt», aber `WHERE kind IS NOT NULL` findet nur eine. `$wpdb->update()` schreibt für
+        // `null` ein echtes NULL — gemessen, nicht erinnert.*
+        //
+        // ⚠️ *Der Fassungswächter bleibt derselbe: er steht im `WHERE` und ist damit der Schreibvorgang
+        // selbst statt eines Lesens mit Hoffnung (P4c).*
+        // ⚠️ *Vor dem Schreiben in den Schatten ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+        // Die Version zählt der Kern hoch, nicht dieser Weg — ein Knoten weiss, in welcher Version er
+        // ist.*
+        Shadow::keepOne('nodes', $node->id);
+
+        $written = $wpdb->update(
+            Schema::table('nodes'),
+            [
+                'version'        => $node->version,
+                // ⚠️ *`path` fährt seit Fassung 35 nicht mehr mit (TASK-001) — und damit ist auch die
+                // Falle weg, die er hier trug: ein veraltetes Formular kann keinen alten Weg mehr
+                // zurückschreiben, weil keiner geschrieben wird.*
+                // ⚠️ *Fährt mit, aus demselben Grund wie `kind`: ein Umbenennen hätte sonst die
+                // Klassenangabe gelöscht (TASK-008).*
+                'implemented_by' => $node->implementedBy,
+                // ⚠️ *Fahren mit, aus demselben Grund wie `implemented_by`: ein
+                // Umbenennen hätte den Knoten sonst aus dem Baum geschrieben (TASK-018).*
+                'parent_node_id' => $node->parentNodeId,
+                'sort_order'     => $node->sortOrder,
+                'hide'           => $node->hide ? 1 : 0,
+                // ⚠️ *Fährt mit, aus demselben Grund wie `implemented_by`: ein Umbenennen darf die
+                // Klasse nicht löschen. Ändern kann sie hier niemand — der Kern hat keinen Weg dafür.*
+                'klasse'         => $node->klasse,
+            ],
+            [
+                'id'      => $node->id,
+                'version' => $expectedVersion,
+            ],
+            ['%d', '%s', '%d', '%d', '%d', '%s'],
+
         );
 
         if ($written === 1) {
+            $this->writeName($node);
+
             return;
         }
 
@@ -112,69 +398,160 @@ final class WpdbNodeRepository implements NodeRepository
         }
     }
 
+    /**
+     * ⚠️ *Eine Abfrage für alle Eltern zusammen — `GROUP BY` statt einer Runde je Zeile (`CD-7`).*
+     *
+     * @param  list<int>              $parentIds
+     * @return array<int, list<Node>>
+     */
+    public function visibleChildrenOf(array $parentIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $parentIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // ⚠️ *Jede angefragte Id bekommt einen Eintrag, auch die ohne Kinder — sonst müsste jeder
+        // Aufrufer denselben `?? []` schreiben, und einer würde ihn vergessen.*
+        $kinder = array_fill_keys($ids, []);
+
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        // ⚠️ *Kein Join mehr, seit die Einordnung eine Spalte ist* (TASK-018,
+        // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort dazu: «wäre
+        // selektionstechnisch billiger».*
+        $rows = Query::rows('sichtbare Kinder lesen', $wpdb->prepare(
+            $this->selectNodes(
+                'WHERE n.hide = 0 AND n.parent_node_id IN (' . $platzhalter . ')
+             ORDER BY n.parent_node_id ASC, n.sort_order ASC, n.id ASC'
+            ),
+            ...[...$this->nameArgs(), ...$ids]
+        ));
+
+        foreach ($rows ?: [] as $row) {
+            $kinder[(int) $row['parent_node_id']][] = $this->hydrate($row);
+        }
+
+        return $kinder;
+    }
+
     public function childrenOf(Node $parent): array
     {
         global $wpdb;
 
-        // ⚠️ **Asked of the edges, not of the path.** The inheritance rows are the tree
-        // (D-014); the path is the shortcut derived from them. And order lives on the edge,
-        // because it is per parent — the same node under two parents may sit third under one
-        // and first under the other. One statement, one join, no walking (`CD-7`).
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT n.id, n.version, n.name, n.path
-                 FROM ' . Schema::table('relations') . ' r
-                 INNER JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
-                 WHERE r.from_id = %d AND r.kind = %s
-                 ORDER BY r.position ASC, r.id ASC',
-                $parent->id,
-                RelationKind::Inheritance->value
+        // ⚠️ **Asked of the column, not of the path** (TASK-018,
+        // [D-581](../../../docs/NewConcept/90-decision-log.md)). *`parent_node_id` **ist** der Baum;
+        // der Pfad ist die daraus abgeleitete Abkürzung ([D-014](../../../docs/NewConcept/90-decision-log.md))
+        // und bleibt es. Bis TASK-018 stand die Wahrheit in den Vererbungskanten und dieser Leser
+        // war ein Join.*
+        $rows = Query::rows('Kinder lesen', $wpdb->prepare(
+            $this->selectNodes(
+                'WHERE n.parent_node_id = %d ORDER BY n.sort_order ASC, n.id ASC'
             ),
-            ARRAY_A
-        );
+            ...[...$this->nameArgs(), $parent->id]
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
 
+    public function nextPositionUnder(int $parentId): int
+    {
+        global $wpdb;
 
+        $hoechste = Query::value('naechste Stelle unter dem Knoten lesen', $wpdb->prepare(
+            'SELECT MAX(sort_order) FROM ' . Schema::table('nodes') . ' WHERE parent_node_id = %d',
+            $parentId
+        ));
+
+        return $hoechste === null ? 0 : (int) $hoechste + 1;
+    }
+
+    public function reparentChildren(int $fromParentId, int $toParentId, int $startPosition): void
+    {
+        global $wpdb;
+
+        // ⚠️ *Eine Anweisung, wie viele Kinder es auch sind. `sort_order + start` behält ihre
+        // Reihenfolge untereinander und setzt sie hinter ihre neuen Geschwister (`CD-7`).*
+        //
+        // ⚠️ *Auch eine Massenänderung hebt in den Schatten* ([D-536](../../../docs/NewConcept/90-decision-log.md))
+        // — **sie zählt `version` selbst hoch**, also muss der alte Stand vorher hinüber. *Bis
+        // TASK-018 lag der alte Stand in `relations` und `Shadow::keep()` stand in
+        // `reparentChildRelations()`; die Zusage zieht mit der Spalte um.*
+        Shadow::keep('nodes', 'parent_node_id = %d', [$fromParentId]);
+
+        $wpdb->query($wpdb->prepare(
+            'UPDATE ' . Schema::table('nodes') . '
+             SET parent_node_id = %d, sort_order = sort_order + %d, version = version + 1
+             WHERE parent_node_id = %d',
+            $toParentId,
+            $startPosition,
+            $fromParentId
+        ));
+    }
+
+    public function allPlacements(): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows(
+            'alle Einordnungen lesen',
+            'SELECT id, parent_node_id, sort_order, hide FROM ' . Schema::table('nodes')
+                . ' ORDER BY parent_node_id ASC, sort_order ASC, id ASC'
+        );
+
+        $aus = [];
+
+        foreach ($rows ?: [] as $row) {
+            $aus[(int) $row['id']] = [
+                'parent'    => $row['parent_node_id'] === null ? null : (int) $row['parent_node_id'],
+                'sortOrder' => (int) $row['sort_order'],
+                'hide'      => (bool) (int) $row['hide'],
+            ];
+        }
+
+        return $aus;
+    }
 
     public function subtreeOf(Node $root): array
     {
         global $wpdb;
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
-                'SELECT id, version, name, path FROM ' . Schema::table('nodes') . '
-                 WHERE path LIKE %s
-                 ORDER BY path ASC',
-                $wpdb->esc_like($root->path . '.') . '%'
-            ),
-            ARRAY_A
-        );
+        // ⚠️ *`a.path` und nicht `n.path` — der Weg kommt aus {@see self::ancestry()}, seit die
+        // Spalte gefallen ist (TASK-001). **Die Bedingung ist dieselbe geblieben**: alles, dessen Weg
+        // mit dem der Wurzel und einem Punkt beginnt.*
+        $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
+            $this->selectNodes('WHERE a.path LIKE %s ORDER BY a.path ASC'),
+            ...[...$this->nameArgs(), $wpdb->esc_like($root->path . '.') . '%']
+        ));
 
         return array_map($this->hydrate(...), $rows ?: []);
     }
+
+    /**
+     * ⚠️ **Seit Fassung 35 gibt es hier nichts mehr zu tun, und das ist die ganze Aussage von
+     * TASK-001.**
+     *
+     * *Diese Methode schrieb den Weg jedes Nachfahren um, weil er als Spalte dastand. **Er steht
+     * nicht mehr da**: er wird beim Lesen aus `parent_node_id` gerechnet
+     * ({@see self::ancestry()}), und `parent_node_id` hat der Aufrufer bereits gesetzt, bevor er
+     * hierherkommt. Ein Umzug ändert also **eine** Zeile — die des umgezogenen Knotens —, und die
+     * Wege aller Nachfahren stimmen im selben Augenblick.*
+     *
+     * ⚠️ **Auch der Versionszähler bleibt jetzt stehen, und der Grund dafür fällt mit derselben
+     * Spalte.** *Er lief mit, weil «`save()` writes name and path together, so a stale form could
+     * rename a node and write its old path back» — ein veraltetes Formular kann keinen Weg mehr
+     * zurückschreiben, denn `save()` schreibt keinen. **Eine Version zu heben, ohne dass sich die
+     * Zeile ändert, hiesse fünfhundert unveränderte Zeilen in den Schatten zu schreiben** und die
+     * Geschichte mit Nichts zu füllen.*
+     *
+     * ⚠️ *Die Methode bleibt in der Schnittstelle stehen, statt in einem Zug mit gesperrten Dateien
+     * zu verschwinden — dass sie fallen sollte, steht als `INF-052` im Eingang (`PR-4`).*
+     */
     public function moveSubtree(string $oldPath, string $newPath): void
     {
-        global $wpdb;
-
-        // One statement for the whole subtree. Done node by node this would be N+1, which the
-        // code standard forbids outright (`CD-7`).
-        //
-        // ⚠️ **The counter rides along in the same UPDATE** (D-349). It has to move: `save()`
-        // writes name and path together, so without it a stale form could rename a node and
-        // write its old path back, silently undoing somebody else's move. Five hundred
-        // descendants cost no extra statement for it.
-        $wpdb->query(
-            $wpdb->prepare(
-                'UPDATE ' . Schema::table('nodes') . '
-                 SET path = CONCAT(%s, SUBSTRING(path, %d)), version = version + 1
-                 WHERE path LIKE %s',
-                $newPath,
-                strlen($oldPath) + 1,
-                $wpdb->esc_like($oldPath . '.') . '%'
-            )
-        );
     }
 
     public function purgeSubtree(Node $node): void
@@ -183,23 +560,174 @@ final class WpdbNodeRepository implements NodeRepository
 
         $nodes     = Schema::table('nodes');
         $relations = Schema::table('relations');
-        $under     = $wpdb->esc_like($node->path . '.') . '%';
 
-        // The edges go first, because a relation row whose node is gone is the dangling
+        // ⚠️ **Der Knoten und alles unter ihm, als Liste von Nummern** (TASK-001). *Vorher stand hier
+        // fünfmal `n.path LIKE '<Weg>.%'`. Der Weg ist keine Spalte mehr, und ein `LIKE` auf den
+        // gerechneten Weg ginge in einem `DELETE` nicht: **MySQL verbietet, dieselbe Tabelle im
+        // Unterausdruck zu lesen, aus der gelöscht wird.** Also **eine** Abfrage vorweg, die den Ast
+        // einsammelt, und danach fünf Bedingungen auf dieselbe Liste — kein `LIKE`, keine Runde je
+        // Ebene (`CD-7`).*
+        $ast    = $this->subtreeIds($node->id);
+        $plaetze = implode(',', array_fill(0, count($ast), '%d'));
+
+        // ⚠️ **Erst in den Schatten, dann weg** ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+        // *Der Eigentümer: «auch wenn es gelöscht ist, nur mit Löschkennzeichen versehen». **Hier ist
+        // es endgültig für die lebende Tabelle und nicht endgültig für die Geschichte** — und der
+        // Anlass steht in den Daten: gemessen am 2026-08-30 gab es **8 Datensätze, deren Knoten es
+        // nicht mehr gab**, und niemand konnte mehr sagen, was sie bedeuteten.
+        Shadow::keep(
+            'relations',
+            "id IN (SELECT x.id FROM {$relations} x
+                    WHERE x.to_node_id IN ({$plaetze}) OR x.from_node_id IN ({$plaetze}))",
+            [...$ast, ...$ast],
+            true
+        );
+
+        Shadow::keep('nodes', "id IN ({$plaetze})", $ast, true);
+
+        // ⚠️ **Die Beschriftungen gehen mit, und das ist seit TASK-019 nicht mehr optional**
+        // ([D-580](../../../docs/NewConcept/90-decision-log.md)). *Vorher hatte ein Knoten nur dann
+        // eine Beschriftungszeile, wenn jemand einen Text geschrieben hatte; **jetzt hat sie jeder**,
+        // weil der Name eine ist. Ein Löschen, das sie stehenlässt, hinterlässt eine Waise je
+        // gelöschtem Knoten — gemessen an den Prüfläufen, die genau das taten.*
+        $this->forgetLabelsOf(
+            "SELECT n.label_id FROM {$nodes} n WHERE n.id IN ({$plaetze})",
+            $ast
+        );
+
+        $this->forgetLabelsOf(
+            "SELECT r.label_id FROM {$relations} r
+             WHERE r.to_node_id IN ({$plaetze}) OR r.from_node_id IN ({$plaetze})",
+            [...$ast, ...$ast]
+        );
+
+        // The relations go first, because a relation row whose node is gone is the dangling
         // reference the whole two-stage deletion exists to avoid. Both are one statement.
         $wpdb->query($wpdb->prepare(
-            "DELETE r FROM {$relations} r
-             INNER JOIN {$nodes} n ON n.id = r.to_id OR n.id = r.from_id
-             WHERE n.id = %d OR n.path LIKE %s",
-            $node->id,
-            $under
+            "DELETE FROM {$relations}
+             WHERE to_node_id IN ({$plaetze}) OR from_node_id IN ({$plaetze})",
+            ...[...$ast, ...$ast]
         ));
 
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$nodes} WHERE id = %d OR path LIKE %s",
-            $node->id,
-            $under
+            "DELETE FROM {$nodes} WHERE id IN ({$plaetze})",
+            ...$ast
         ));
+    }
+
+    /**
+     * Ein Knoten und alles unter ihm, als Nummern — **eine Abfrage, nicht eine je Ebene** (`CD-7`).
+     *
+     * ⚠️ *Der Aufstieg aus {@see self::ancestry()} taugt hier nicht: er rechnet **Wege** und würde
+     * wieder auf ein `LIKE` hinauslaufen. Hier steigt derselbe rekursive Ausdruck vom Knoten selbst
+     * abwärts und sammelt nur Nummern ein.*
+     *
+     * ⚠️ *Öffentlich, weil die Randprüfungen dieselbe Frage stellen und sie bisher als
+     * `WHERE path LIKE '<Weg>.%'` selbst geschrieben haben. **Ein Ort für die Frage, nicht zwölf**
+     * (`CD-7`) — und sie sollen dieselbe Antwort bekommen wie der Kode, den sie prüfen.*
+     *
+     * @return list<int> Die Nummer des Knotens selbst zuerst; nie leer.
+     */
+    public function subtreeIds(int $id): array
+    {
+        global $wpdb;
+
+        $nodes = Schema::table('nodes');
+
+        $rows = Query::column('Ast einsammeln', $wpdb->prepare(
+            "WITH RECURSIVE taxmod_ast (id) AS (
+                 SELECT id FROM {$nodes} WHERE id = %d
+                 UNION ALL
+                 SELECT k.id FROM {$nodes} k INNER JOIN taxmod_ast v ON v.id = k.parent_node_id
+             )
+             SELECT id FROM taxmod_ast",
+            $id
+        ));
+
+        $ast = array_values(array_unique(array_map('intval', $rows)));
+
+        // ⚠️ *Der Knoten selbst gehört dazu, auch wenn ihn die Abfrage nicht mehr fände — sonst hätte
+        // eine leere Liste `IN ()` ergeben, und das ist ein Syntaxfehler, über den `$wpdb` schweigt.*
+        return $ast === [] ? [$id] : $ast;
+    }
+
+    /**
+     * Die Beschriftungen, auf die eine gleich verschwindende Zeile zeigt — samt ihren Texten.
+     *
+     * ⚠️ *Vor dem Löschen der Zeile aufgerufen, weil danach niemand mehr sagen könnte, worauf sie
+     * zeigte. **Die Geschichte behält sie trotzdem**: der Schatten trägt `label_id` und `name`.*
+     *
+     * @param list<int|string> $args
+     */
+    private function forgetLabelsOf(string $auswahl, array $args): void
+    {
+        global $wpdb;
+
+        $ids = array_values(array_filter(array_map(
+            intval(...),
+            Query::column('Beschriftungen des Weggeraeumten lesen', $wpdb->prepare($auswahl, ...$args))
+        )));
+
+        if ($ids === []) {
+            return;
+        }
+
+        $slots = implode(',', array_fill(0, count($ids), '%d'));
+
+        $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . Schema::table('label_texts') . " WHERE label_id IN ({$slots})",
+            ...$ids
+        ));
+
+        $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . Schema::table('labels') . " WHERE id IN ({$slots})",
+            ...$ids
+        ));
+    }
+
+    public function byImplementations(array $classNames): array
+    {
+        global $wpdb;
+
+        $classNames = array_values(array_unique(array_filter(
+            array_map(static fn (string $n): string => trim($n), $classNames),
+            static fn (string $n): bool => $n !== ''
+        )));
+
+        if ($classNames === []) {
+            return [];
+        }
+
+        $slots = implode(',', array_fill(0, count($classNames), '%s'));
+
+        // ⚠️ *`ORDER BY id` — die kleinste Id gewinnt, wenn zwei Zeilen dieselbe Klasse nennen. Das
+        // ist ein Befund und keine Auswahl; der Wächter meldet ihn, dieser Weg bleibt nur stabil.*
+        $rows = Query::rows('Knoten nach Klasse lesen', $wpdb->prepare(
+            $this->selectNodes("WHERE n.implemented_by IN ($slots) ORDER BY n.id"),
+            ...[...$this->nameArgs(), ...$classNames]
+        ));
+
+        $aus = [];
+
+        foreach ($rows ?: [] as $row) {
+            $klasse = (string) $row['implemented_by'];
+
+            $aus[$klasse] ??= $this->hydrate($row);
+        }
+
+        return $aus;
+    }
+
+    public function ofClass(string $klasse): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Knoten einer Knotenklasse lesen', $wpdb->prepare(
+            $this->selectNodes('WHERE n.klasse = %s ORDER BY n.id'),
+            ...[...$this->nameArgs(), $klasse]
+        ));
+
+        return array_map($this->hydrate(...), $rows ?: []);
     }
 
     /** @param array<string,mixed> $row */
@@ -210,6 +738,23 @@ final class WpdbNodeRepository implements NodeRepository
             (int) $row['version'],
             (string) $row['name'],
             (string) $row['path'],
+            // ⚠️ *Eine leere Zeichenkette ist `null`. **Zwei
+            // Schreibweisen für «nichts» sind der Fehler, den `kind` schon einmal hatte.***
+            isset($row['implemented_by']) && (string) $row['implemented_by'] !== ''
+                ? (string) $row['implemented_by']
+                : null,
+            // ⚠️ *Dieselbe Vorsicht wie oben, und hier zählt sie doppelt: `parent_node_id` ist bei der
+            // Wurzel echt `NULL`, und eine Abfrage ohne die Spalte darf daraus keine Wurzel machen.
+            // Beides liest sich hier als `null` — deshalb steht der Wächter daneben, der die eine
+            // Wurzel **zählt** (TASK-018).*
+            isset($row['parent_node_id']) && (int) $row['parent_node_id'] !== 0
+                ? (int) $row['parent_node_id']
+                : null,
+            (int) ($row['sort_order'] ?? 0),
+            (bool) (int) ($row['hide'] ?? 0),
+            // ⚠️ *Eine leere Klasse gibt es nach Fassung 46 nicht mehr; liest eine Abfrage die Spalte
+            // nicht mit, kommt der Knoten als Kategorie an — und `klasse-check` misst die Tabelle.*
+            (string) ($row['klasse'] ?? ''),
         );
     }
 }

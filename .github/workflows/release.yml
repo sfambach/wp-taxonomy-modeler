@@ -2,7 +2,7 @@ name: Build and Package Plugin
 
 # Run via Actions → Run workflow. The tag points to a commit on branch `release` that carries
 # vendor/ (Composer autoloader) and leaves out the dev folders, so Git Updater can install the
-# tag zipball as it is (D-373).
+# tag zipball as it is (D-907).
 on:
   workflow_dispatch:
     inputs:

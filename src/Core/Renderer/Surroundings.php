@@ -60,6 +60,30 @@ final class Surroundings
      *                                          nests what the cell drew ([D-367](../../../docs/NewConcept/90-decision-log.md)).
      * @param array<string, Section>  $sections Blocks of a node's page, keyed by {@see PageSlot} —
      *                                          the frame's **order** is the enum's, not this array's.
+     * @param array<string, RenderedSetting> $configured Drawn settings **of the subject**, by key.
+     *
+     * ⚠️ **Its own field rather than squeezed into `parts`.** A part is a **member** of the subject —
+     * an attribute of a node — while a setting *configures* the subject; the two are drawn alike and
+     * mean different things, and one list holding both would make a container guess which it had.
+     * *The docblock above predicted this field would be wanted and named the reason: the shape
+     * belongs here, not on the context.*
+     */
+    /**
+     * @param array<string, string> $options      What may be chosen, value ⇒ **already translated**
+     *                                            label. This is the field the docblock above
+     *                                            predicted: *the chooser will want a fifth field —
+     *                                            the set that may be picked.*
+     * @param bool                  $mayBeNothing Whether leaving it unanswered is itself a real
+     *                                            answer.
+     *
+     * ⚠️ **`mayBeNothing` is a separate fact and not derivable from `options`**, which is exactly
+     * what [R31b](../../../docs/NewConcept/30-renderer.md#r31b--the-rule-counts-possibilities-not-entries)
+     * turns on: *the test is never how many rows are in the list but how many **outcomes** this
+     * control can produce.* One entry plus *nothing* is two outcomes and a live control; one entry
+     * without it is one and already decided. **A renderer counting only rows would grey out the very
+     * case where a person still has a take-it-or-leave-it decision** — R28–R32's fourth row, which
+     * the concept marks as where the rule must not be over-applied. [R29](../../../docs/NewConcept/30-renderer.md)
+     * says where the answer comes from: the **multiplicity**, which is not a renderer's to resolve.
      */
     public function __construct(
         public readonly ?string $refersTo = null,
@@ -68,7 +92,169 @@ final class Surroundings
         public readonly ?string $href = null,
         public readonly ?Submission $submits = null,
         public readonly array $rows = [],
+        /**
+         * Je Datensatz die gezeichneten Felder — **für eine Tabelle**.
+         *
+         * ⚠️ **`parts` ist einer, das hier sind mehrere** ([D-542](../../../docs/NewConcept/90-decision-log.md)).
+         * *Der Eigentümer: «der Table-Renderer bekommt auch einen Knoten und kann **mehrere Datensätze
+         * untereinander** darstellen». Ein Formular zeichnet **einen** Datensatz, eine Tabelle mehrere
+         * — und die Spalten sind dieselben Felder.*
+         *
+         * ⚠️ *`rows` war es nicht: ein {@see DrawnRow} trägt **eine** Zelle mit einer Tiefe, das ist
+         * der Baum. Eine Tabellenzeile ist ein Satz Felder, also dieselbe Form wie `parts`, eine
+         * Ebene höher.*
+         *
+         * @var list<list<RenderedField>>
+         */
+        public readonly array $records = [],
         public readonly array $sections = [],
+        public readonly array $configured = [],
+        public readonly array $options = [],
+        public readonly bool $mayBeNothing = true,
+        /**
+         * Whether this reference points at a **record** rather than at a node.
+         *
+         * ⚠️ **A prepared fact, so no renderer has to ask** ([D-445](../../../docs/NewConcept/90-decision-log.md)):
+         * the descent already resolved the relation's type, and `null` there means the target is not a
+         * data type and not a constant — *`typeOf()`'s own words: «a `Model` target is a reference to
+         * a **record**, which has no simple type of its own and no renderer either — it wants the
+         * summary renderer ([D-106](../../../docs/NewConcept/90-decision-log.md))».* **Costs nothing:
+         * the type was resolved for the whole form in one query before the descent began.**
+         *
+         * ⚠️ **Why it exists at all — the message was blaming the wrong thing.** *Measured
+         * 2026-08-27 on a `resistance` attribute pointing at `Einheitenwert`: the fallback said «the
+         * one set for this cannot draw a reference», which sends a person to the renderer control
+         * where **nothing is wrong**. The renderer it needs does not exist yet. A fault that names
+         * the wrong cause costs more than one that says «not built».*
+         */
+        public readonly bool $refersToARecord = false,
+        /**
+         * Whether this placement is hidden — prepared by the descent, never asked for.
+         *
+         * ⚠️ **`hide` lives on the **inheritance relation** ([D-467](../../../docs/NewConcept/90-decision-log.md)),
+         * and a tree cell draws the **node**.** *So the cell cannot read it off its subject; the walk
+         * loads those relations anyway and hands the answer in ([D-445](../../../docs/NewConcept/90-decision-log.md)).*
+         *
+         * ⚠️ *Only ever true in developer mode's «show hidden» view: with it off the row does not
+         * exist, because the walk did not follow its relation.*
+         */
+        public readonly bool $hidden = false,
+        /**
+         * Wie die Knotenklasse des Subjekts heisst — **übersetzt**, vom Rand (`AR-2`).
+         *
+         * ⚠️ *Ein Vorbereitetes wie `hidden`: die Zelle zeichnet einen Knoten, und was seine Klasse
+         * für einen Menschen heisst, weiss nur der Rand ([D-716](../../../docs/NewConcept/90-decision-log.md),
+         * Schritt 1 des Bauplans: «im Baum steht sie dabei»). Leer heisst: nichts anschreiben.*
+         */
+        public readonly string $classLabel = '',
+        /**
+         * The `id` of the form a control belongs to, when it cannot sit inside it.
+         *
+         * ⚠️ **This exists because a real bug needed it and the owner found it**: *multiplicity is not
+         * saved, or something else goes wrong changing 0..1 to 0..\** on `Bauteilliste`'s `Position`.
+         * The attribute row is a `<tr>`, its multiplicity sits in one `<td>` and its acts build a
+         * `<form>` in **another** — so the control was **outside** the form and submitted nothing.
+         * *HTML forbids a form wrapping table rows, so the control has to name the form instead:
+         * `form="…"`, which is plain HTML and needs no scripting.*
+         *
+         * ⚠️ *The same seam the page-head save button uses ([D-392](../../../docs/NewConcept/90-decision-log.md)),
+         * pointing the other way: there a **button** stands outside its form, here a **field** does.*
+         */
+        public readonly string $formId = '',
+
+        /**
+         * Vorsatz der Zeilen-Id, damit dieselbe Zeile zweimal auf einer Seite stehen kann.
+         *
+         * WICHTIG: Seit der Auswahldialog dieselbe Baumzeile zeichnet wie die Seitenansicht, steht
+         * jeder Knoten zweimal im Dokument -- und eine HTML-Id darf es nur einmal geben.
+         * package7-check hat es gemeldet, elf Stueck. Der Vorsatz trennt die beiden Vorkommen,
+         * ohne dass die Zeile zwei Renderer braucht.
+         */
+        public readonly string $rowIdPrefix = 'taxmod-node-',
+
+        /**
+         * Feldname des Suchfeldes im Baum, leer fuer «filtert nur im Browser».
+         *
+         * WICHTIG: Der Unterschied ist nicht Geschmack, sondern was ueberhaupt da ist. Der
+         * Auswahldialog zeigt alle Zeilen, dort kann ein Skript filtern. Die Seitenansicht ist
+         * zugeklappt -- gemessen 11 von 145 Zeilen -- und was nicht im Dokument steht, findet kein
+         * Skript. Traegt das Feld einen Namen, sucht der Server.
+         */
+        public readonly string $filterName = '',
+
+        /** Wonach gerade gesucht wird, damit es nach dem Laden im Feld stehen bleibt. */
+        public readonly string $filterValue = '',
+        /**
+         * Spalten **vor** den Feldern, je Zeile — Überschrift => gezeichnete Zelle.
+         *
+         * ⚠️ **Auf sein Wort zum Datensatz-Block:** *«Action sollte rechts sein, Record, Version davor,
+         * sodass wir eine schmale Zeile bekommen … und zu welchem Knoten/Kante es gehört, würde ich auch
+         * noch vorne dran schreiben.»*
+         *
+         * ⚠️ **Bewusst allgemein und nicht «Datensatz-Spalten».** *Die Tabelle soll nicht wissen, dass es
+         * Datensätze sind — sie legt Zellen aus, die ihr gegeben werden ([D-366](../../../docs/NewConcept/90-decision-log.md):
+         * ein Behälter fasst keinen Wert an). Der Aufrufer sagt, was vorne steht; die Überschriften sind
+         * seine Worte, weil der Kern keine machen kann (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)).*
+         *
+         * ⚠️ *Gleich lang wie {@see self::$records} und in derselben Reihenfolge. Fehlt ein Eintrag,
+         * bleibt die Zelle leer — **eine Zeile darf nicht verrutschen**, das sieht wie Daten aus.*
+         *
+         * @var list<array<string,string>>
+         */
+        public readonly array $rowLead = [],
+        /**
+         * Die Bedienelemente **hinter** den Feldern, je Zeile, schon gezeichnet.
+         *
+         * ⚠️ *Je Zeile und nicht je Tabelle: {@see self::$actions} gilt für das Ganze, hier hat jede
+         * Zeile ihre eigenen — ein Speichern gehört zu **einem** Datensatz und darf nicht zwei schreiben.*
+         *
+         * ⚠️ *Sie tragen ihr Formular selbst mit, denn ein `<tr>` darf kein `<form>` umschliessen — die
+         * Wertfelder nennen es über `form="…"`, genau wie in der Feldzeile.*
+         *
+         * @var list<string>
+         */
+        public readonly array $rowActs = [],
+        /**
+         * Ob diese Zeile **gesperrt** ist — [D-607](../../../docs/NewConcept/90-decision-log.md),
+         * angezeigt nach [D-608](../../../docs/NewConcept/90-decision-log.md).
+         *
+         * ⚠️ **Vorbereitet und nicht erfragt** ([D-445](../../../docs/NewConcept/90-decision-log.md)):
+         * ob eine Kante auf den Knoten zeigt, der sie erben würde, weiss der Abstieg — er kennt den
+         * Knoten der Seite, die Zeile kennt nur ihre Kante.
+         *
+         * ⚠️ *Ein Wahrheitswert und kein Text: **der Grund ist Benutzertext** und gehört durch die
+         * Textdomäne am Rand (`AR-2`), den der Kern nicht rufen darf (`CD-1`). Er kommt als Wort
+         * herein wie «own» und «inherited» auch ([OQ-087](../../../docs/NewConcept/91-open-questions.md)).*
+         */
+        public readonly bool $locked = false,
+        /**
+         * Die Sätze unter dem Ziel eines Verweises als Baum seiner Knoten — für den Dialog der Satzauswahl
+         * ([D-791](../../../docs/NewConcept/90-decision-log.md)). In Baumreihenfolge; Äste ohne Satz fehlen.
+         *
+         * ⚠️ *`search` trägt je Satz, was die Suche im Dialog durchsucht — klein geschrieben (Schritt 2).*
+         *
+         * @var list<array{depth: int, name: string, records: array<int, string>, search?: array<int, string>}>
+         */
+        public readonly array $recordTree = [],
+        /**
+         * Die Worte der Dialogknöpfe «OK» und «Abbrechen», vom Rand (`AR-2`) — jeder Dialog hat sie ([D-804](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * @var array{ok?: string, cancel?: string}
+         */
+        public readonly array $dialogWords = [],
+        /**
+         * Je Zeile der Tabelle die Adresse, die ihren Satz öffnet — der Link hinter der Anzahl eines 1..n-Teils ([D-825](../../../docs/NewConcept/90-decision-log.md)).
+         * Gleich lang wie {@see self::$records}; leer heisst: die Zahl steht ohne Link.
+         *
+         * @var list<string>
+         */
+        public readonly array $rowLinks = [],
+        /** Der Name des Beschriftungsfeldes neben einem Medienfeld — dorthin schreibt der Linkdialog den Linktext (D-857). */
+        public readonly string $captionName = '',
+        /** Die Mediathek, die eine gespeicherte Id (`media:<Id>`) in Adresse, Titel und Vorschaubild auflöst (D-865). Ohne sie bleibt die Id stehen. */
+        public readonly ?\Taxmod\Core\Port\MediaLibrary $mediaLibrary = null,
+        /** Wohin der Körper eines Satzdialogs geht, wenn die Seite ihn teilt (D-866); ohne: jeder Dialog trägt seinen eigenen. */
+        public readonly ?SharedBodies $sharedBodies = null,
     ) {
     }
 

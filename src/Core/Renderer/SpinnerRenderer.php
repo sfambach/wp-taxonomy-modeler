@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Renderer;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -31,18 +30,32 @@ final class SpinnerRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->characters($context)));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 
     protected function input(RenderContext $context): string
     {
-        return '<input type="number"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $this->characters($context))
-            . $this->attribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
-            . $this->attribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
-            . $this->attribute('step', $this->step($context))
-            . '>';
+        // ⚠️ *One call where there were six pieces of string* ([D-463](../../../docs/NewConcept/90-decision-log.md)):
+        // `'<input type="number"'` was written by hand and **went past the escaping**, while the rest
+        // came through the helper. {@see RenderResult::htmlTag()} is now the one place that knows how an
+        // element is spelled.
+        return RenderResult::htmlTag('input', [
+            'type'  => 'number',
+            'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
+            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
+            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
+            'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
+            // ⚠️ **Der gespeicherte Wert und nicht die Notation** ({@see TypedFieldRenderer::controlValue()}).
+            // *`<input type="number" value="XII">` ist für den Browser kein Wert — das Feld kommt leer
+            // heraus, und das nächste Speichern schreibt leer. Dieselbe Messung wie am Schieber, und
+            // dieselben Typen: `roman`, `binary`, `hexadecimal`, `octal` gelten alle für `Int`.*
+            'value' => $this->controlValue($context),
+            'min'   => $this->numberSetting($context, 'min'),
+            'max'   => $this->numberSetting($context, 'max'),
+            'step'  => $this->step($context),
+        ]);
     }
 
     /**
@@ -55,7 +68,7 @@ final class SpinnerRenderer extends TypedFieldRenderer
      */
     private function step(RenderContext $context): string
     {
-        return $this->numberSetting($context, SettingKey::RangeStep->value)
+        return $this->numberSetting($context, 'step')
             ?? ($context->type === SimpleType::Decimal ? 'any' : '1');
     }
 }

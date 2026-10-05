@@ -428,12 +428,13 @@ config:
 flowchart TD
     ID[(identity space)] --> N[(nodes)]
     ID --> R[(relations)]
-    N --> S[(settings)]
-    R --> S
     N --> L[(labels)]
     R --> L
     N --> C[(changelog)]
     R --> C
+    N --> RC[(records)]
+    RC --> RV[(record_values)]
+    R --> RV
 ```
 
 **Naming: every foreign key ends in `_id`** ([D-090](90-decision-log.md)). The owner asked whether
@@ -443,10 +444,10 @@ the confusion the suffix prevents.
 | Table | Columns | Note |
 |---|---|---|
 | **nodes** | `id` · `version` · `name` · `path` | `id` from the shared identity space ([C11](10-domain-core.md)). `name` required, **not unique** ([D-022](90-decision-log.md)). `path` is the materialised ancestor path ([D-014](90-decision-log.md)) — **derived**, rebuildable, never a second truth. |
-| **relations** | `id` · `version` · `from_id` · `to_id` · `kind` · `name` · `position` | `kind` an enum ([D-036](90-decision-log.md)). `name` empty for inheritance edges. `position` orders siblings — it belongs to the **edge**, because order is per parent, not per node. |
-| **settings** | `owner_id` · `key` · typed value columns | `owner_id` a single real foreign key into the identity space ([OQ-022](91-open-questions.md) option 3) — it holds the `id` of the node **or** relation the row belongs to. Engine-owned keys are a reserved namespace, not a column ([D-084](90-decision-log.md)). |
-| **labels** | `owner_id` · `role` · `locale` · `text` | [D-019](90-decision-log.md), roles plain ([D-023](90-decision-log.md)). |
-| **changelog** | `owner_id` · `at` · `by_user_id` · `what` | The migration script ([D-061](90-decision-log.md)). |
+| **relations** | `id` · `version` · `from_id` · `to_id` · `kind` · `name` · `position` · `hide` · `multiplicity` | `kind` an enum ([D-036](90-decision-log.md)). `name` empty for inheritance edges. `position` orders siblings — it belongs to the **edge**, because order is per parent, not per node. |
+| ~~**settings**~~ | — | ⚠️ **Entfernt am 2026-08-30** ([D-529](90-decision-log.md)). *Eine Einstellung ist ein Feld, also eine Kante — es gab nie einen zweiten Speicher, nur einen zweiten Mechanismus ([D-011](90-decision-log.md), [D-506](90-decision-log.md)). Die elf Schlüssel und wohin jeder ging, stehen in [02 Field and setting](02-field-and-setting.md#die-settings-tabelle-fällt--stand-2026-08-30).* |
+| **labels** | `owner_id` · `role` · `locale` · `text` | [D-019](90-decision-log.md), roles plain ([D-023](90-decision-log.md)). The full row, with the columns added since, is [I9a](40-i18n.md#i9a--what-a-label-row-carries) — this line is the summary, that one is the owner. |
+| **changelog** | `change_group_id` · `owner_id` · `owner_kind` · `at` · `by_user_id` · `what` · `before_state` · `after_state` | The migration script ([D-061](90-decision-log.md)) — what those last three columns carry is [P4e](#p4e--the-changelog-row-one-act-one-group-one-address). |
 
 **Why the column is called `owner_id` and not `node_id`:** it also holds relation ids. One number
 space ([C11](10-domain-core.md)) means one column and a foreign key the database can actually
@@ -537,6 +538,61 @@ purpose: no change is ever silently lost. WordPress offers no optimistic locking
 comparison is entirely ours; its Heartbeat API is usable for the lease, `wp_set_post_lock()` is not
 ([D-007](90-decision-log.md)).
 
+### P4e — the changelog row: one act, one group, one address
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    P["one POST · one thing a person did"] --> B["bracket opened"]
+    B --> R1["node renamed"] --> G[("change_group_id<br/>= id of the first row")]
+    B --> R2["edge reordered"] --> G
+    B --> R3["setting written"] --> G
+```
+
+**An act is bracketed, and the bracket is what gives a change its number**
+([D-470](90-decision-log.md)). The owner: *«I think we need a unique change number — whatever was
+changed in one change, edge, node, setting, if they were changed together they should have one
+change number.»*
+
+⚠️ **Before it the column existed and grouped nothing, measured:** *2282 rows across **1945**
+groups, 1609 of them holding a single row, and **0 of 1945** spanning more than one kind of owner.
+The number was handed out per **write**, so a node renamed, its edge reordered and its setting
+written in one act produced three groups — the opposite of what the column means.*
+
+**No second counter was introduced.** The group is still *the id of the act's first row*; the
+bracket only says **which rows belong to that first one**. An act is opened where one POST is
+handled — *one POST is one thing a person did* — and closed in a `finally`, so a refusal still
+closes it; an act left open would swallow the **next** person's.
+
+⚠️ **The obstacle was the wiring, not the design**, and it is a persistence lesson: *the changelog
+collaborator had been constructed **seven** times. Opening a bracket on one of them would have said
+nothing to the other six. **Seven copies of a stateless object are merely wasteful; seven copies of
+one that carries state are wrong** — worth asking of the next collaborator that grows state.*
+
+**Creating a node is one change, not three.** Writing the node plus the settings it materialises is
+one act, because *nobody performs «materialise `read_only`» as an act* — so the compound service
+methods bracket themselves, and a caller that is not a screen (activation, a scaffold, the command
+line) also gets one group per node.
+
+⚠️ **`by_user_id` is null for a machine change, and a cast had been undoing that.** *`(int)` turns
+`NULL` into `0`, and with **7696 machine rows against 1262 human ones** almost the whole history
+was being reported as «user 0». [D-296](90-decision-log.md) keeps a machine change null because
+**a wrong name in the history is worse than no name**.*
+
+**What `before_state` and `after_state` hold** — `key=… path=… type=… value=…` — is
+[M13b](70-migration.md#m13b--a-journal-entry-carries-its-address), where the changelog is read as
+the migration script.
+
 ### OQ-016 answered — one construct, one mechanism, a reserved namespace
 
 > A first version of this answer split settings into a *model scope* and a *system scope* with a
@@ -573,14 +629,15 @@ hold. The real distinction is **who owns the meaning of the key**:
 
 | | Meaning defined by | Example |
 |---|---|---|
-| **engine-owned** | the engine, identically for every node | `hide`, `read_only`, `renderer`, `converter`, `validators` |
+| **engine-owned** | the engine, identically for every node | `read_only`, `renderer`, `converter`, `validators` — ⚠️ *`hide` was in this list and is **not a setting at all** any more: one column on the edge, [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge), [D-467](90-decision-log.md)* |
 | **type-owned** | the type | `min`, `max`, `step` on an integer; something else entirely on a text type |
 
 A spinner renderer reads `min` because it is registered **for that type** and knows what the type
 means by it. The engine does not know what `min` is at all.
 
 That distinction calls for a **reserved namespace** validated at write time, not a structural
-split: an author must not be able to define a setting named `hide` and silently break rendering.
+split: an author must not be able to define a setting named `read_only` and silently break
+rendering.
 A rule about names, and one line of validation.
 
 ### The asymmetry — edge-only settings exist, node-only ones do not
@@ -599,9 +656,19 @@ about a use, because the thing itself has no opinion on them:
 |---|---|
 | `kind` · the attribute's `name` | the edge — fields on `relations` |
 | **multiplicity** | the edge — *how many, here* |
+| **`hide`** | the edge — *drawn from here down, or not.* ⚠️ **A column and not a setting** ([D-467](90-decision-log.md), [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)) — *and it is this table's own argument that makes it belong here: hiding is something only a **use** can be, because a node one refuses to draw at all would not have been created* |
 | everything else | the node, with an override available at the edge |
 
 Which is why settings resolve **node → edge** and never the other way.
+
+⚠️ **What moving `hide` out of the settings table cost in storage** ([D-464](90-decision-log.md)):
+*110 setting rows were migrated and nothing was lost — **7** rows saying *hidden* travelled into the
+column, **103** saying *not hidden* were not copied because the column already defaults to that, and
+all 110 were then deleted. The key is gone from the reserved namespace as well, so it can no longer
+be resolved.* **`dbDelta` cannot rename**, which decided the order: this step runs **after** it,
+because it needs the column to exist before it can write into it. *The rule itself is owned by
+[Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge); what stands here is
+only what it did to these tables.*
 
 **Multiplicity stays a setting rather than a column**, despite being read constantly, because it
 inherits and can be narrowed — and a setting gets the resolution walk for free while a column
@@ -609,9 +676,9 @@ would need inheritance handled specially. [D-014](90-decision-log.md)'s batched 
 with everything else. If profiling later demands it, denormalising is a cache, not a second truth.
 
 **Why the column was a mistake:** its main justification was letting a renderer fetch only what it
-needs. It does not partition that way. A renderer needs `hide` and `read_only` *and* the renderer
-choice; a validator needs `min` and `max` *and* the validator choice. Both consumers want a mix,
-so the split would have bought nothing and cost a distinction to maintain.
+needs. It does not partition that way. A renderer needs `read_only` *and* the renderer choice; a
+validator needs `min` and `max` *and* the validator choice. Both consumers want a mix, so the split
+would have bought nothing and cost a distinction to maintain.
 
 **A note on applicability:** a few keys only make sense on an edge — multiplicity is the clear one,
 since a node has no multiplicity but a use of it does. That is about *where a key applies*, not
@@ -622,6 +689,106 @@ narrow `0..1` to `1`.
 decides storage **dissolved** — [D-232](90-decision-log.md) takes multiplicity out of the storage
 rule entirely and lets the **branch** decide (see [P13d](#p13d--the-branch-decides-storage-not-the-multiplicity)).
 Multiplicity still inherits and is still overridable; it simply no longer moves anything.
+
+### P15 — one table, two kinds of row, and a column that says which
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    R["a row"] --> K{"which kind"}
+    K -->|setting| S["owner is an identity"]
+    K -->|field value| V["owner is a record"]
+    O["the owner id alone"] -.->|cannot say which| K
+```
+
+Settings and field values are to share one table, and **a column of its own says which kind of row
+it is** ([D-472](90-decision-log.md)). The owner: *«ich würde einfach eine neue Spalte in die
+Tabelle einfügen, die dann genau unterscheidet: ist Setting oder ist Attributwert»* — and, before
+that, why the question exists at all: *«es geht darauf hinaus, wie wir Daten speichern und dass wir
+keine **Rückkoppelung** bekommen, und da haben Settings praktisch den gleichen Standfuss wie
+Attribute.»*
+
+**His word *Rückkoppelung* is the better one** for what had been called a bootstrap problem: not the
+loading file, but the **self-reference** — with settings and field values in one table, the engine
+reads its own configuration through the very machine that needs configuration in order to read.
+
+⚠️ **The objection recorded against exactly this column is refuted, and by measurement.** *It ran:
+«a fact stored twice, and the code standard forbids that duplication». **It assumes there is one id
+space. There are two** ([D-164](90-decision-log.md), [P4a](#p4a--two-identity-spaces-one-for-the-model-one-for-the-records)):
+identities run from 1 to 26 453, records have their own `AUTO_INCREMENT` and run from 16 to 879.
+**They overlap — id 16 is at once a relation and a record.** An owner id alone therefore does not
+say which space it came from, and without the column the row is simply unreadable. **The column
+carries; it does not duplicate.*** That also disposes of the other candidate — *the owner column
+says it* — not as a matter of taste but because it does not work.
+
+**Left open on purpose** ([PR-4](../../CLAUDE.md)): the harder half of
+[OQ-119](91-open-questions.md) — the four borrowing keys `default`, `min`, `max` and `step`, whose
+type is **that of the subject** and is never stored. *It is quite possible that his column settles
+them too, since «setting» would tell a reader the type is derived rather than looked up. That is an
+inference and not his statement, so it stays a question.*
+
+⚠️ *Decided, **not built**: measured in the schema, `settings` and `record_values` still stand
+apart, and `settings` carries no such column yet.*
+
+### P16 — `persistent` is an instruction to the saving mechanism
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    N["node · persistent?"] -->|inherited| F["field · may say the opposite"]
+    F --> W["the saving mechanism"]
+```
+
+`persistent` **stays a setting**, and the use site overrides the node **in both directions**
+([D-460](90-decision-log.md)). The owner, reasoning it out: *a node is not persistent — say all base
+types are not, because they cannot be stored as such. Then I hang that node on with a relation and
+say `persistent` **in the relation**. In that case the `persistent` on the relation beats the `not
+persistent` on the node. The reverse case: the node says persistent and I say **not** persistent on
+the field — then it simply is not saved along. So `persistent` is an instruction for the saving
+mechanism.* ⚠️ *Measured, and it already behaves exactly like that.*
+
+| | on the node | on the field | resolved at the field |
+|---|---|---|---|
+| case 1 | `false` | `true` | **`true`** |
+| case 2 | `true` | `false` | **`false`** |
+
+**So it does not follow `hide` out of the settings table.** *`hide` left because the chain gave it a
+**second meaning nobody asked for** — hiding a type blanked every field of that type
+([D-464](90-decision-log.md)). `persistent` has no second meaning: inheriting down a type is the
+whole point, since a type declares itself non-persistent once and every field using it inherits
+that.*
+
+⚠️ **And the sharper half is the last sentence of his, because it names a different subsystem:**
+*`persistent` instructs the **saving** mechanism, `hide` instructs the **drawing** walk. Two
+subsystems — which, rather than any measurement, is why the two keys part company.*
+
+⚠️ **One divergence between his sentence and the built behaviour, and it is not cosmetic.** *He:
+«then it simply is **not saved along**». The code **refuses the write**, arguing that dropping it
+silently would let a form appear to save and lose the value, which is worse than either storing it
+or saying no. **Skip and refuse are different promises to whoever is typing**, and which one he
+means is [OQ-115](91-open-questions.md).*
+
+⚠️ *`read_only` is **not** answered here; [OQ-114](91-open-questions.md) stays open for it.*
 
 ### OQ-039 answered — the installation is the root of the walk
 
@@ -644,15 +811,31 @@ boundary; they are not model settings and do not belong in this walk.
 
 | Table | Columns |
 |---|---|
-| **records** | `id` · `model_id` · `model_version` · `is_test` |
+| **records** | `id` · `node_id` · `node_version` · `is_test` |
 | **record_values** | `record_id` · `edge_id` · `value_int` · `value_decimal` · `value_text` · `value_ref` · `value_date` |
+
+⚠️ **Corrected: this table used to read `model_id` and `model_version`** ([D-462](90-decision-log.md)).
+*The word «model» had to go for a measured reason rather than a stylistic one: `model_id` pointed
+into `Compositions` for 21 of 24 records and into `Model` for 3 — while `Model` is at the same time
+the name of a branch in the tree, so a reader who knew the tree read the column wrongly four times
+out of five. The rename was one schema step and moved no row: 24 records before and after. It came
+with the class names — `Record` → `NodeRecord`, `RecordValue` → `EdgeRecord`, `Setting` →
+`SettingRecord` — and with «attribute» → «field» throughout the code
+([D-459](90-decision-log.md)).* ⚠️ *This document still says **attribute** almost everywhere; that
+sweep is [list row 62](97-implementation-plan.md#the-working-list) and is sentence by sentence, not
+a search and replace — the decision log keeps «attribute» deliberately, because renaming inside
+testimony would falsify it.*
+
+⚠️ *Measured against the built schema, and not resolved here: `records` carries `id`, `node_id`,
+`node_version` and `created_at`. **`is_test` is not built** — [D-028](90-decision-log.md)'s flag is
+in the concept and not in the table. Recorded rather than quietly dropped ([PR-4](../../CLAUDE.md)).*
 
 - Five model tables and two data tables — seven in all ([D-083](90-decision-log.md), whose storage
   rule is superseded below by [D-133](90-decision-log.md)).
 - `id` comes from the **record** identity space, not the model's
   ([D-164](90-decision-log.md), [P4a](#p4a--two-identity-spaces-one-for-the-model-one-for-the-records)) — a
   per-table `AUTO_INCREMENT`.
-- `model_version` sits on the **record** ([D-060](90-decision-log.md)) — and the record **keeps**
+- `node_version` sits on the **record** ([D-060](90-decision-log.md)) — and the record **keeps**
   that stamp. There is no mass re-stamping: a migration walks the records a change actually broke
   and leaves the rest alone, so records at several versions are a normal steady state, and the stamp
   means *written against* rather than *checked against* ([D-210](90-decision-log.md)).
@@ -947,6 +1130,63 @@ Two meanings of *shown* had been conflated ([D-237](90-decision-log.md)):
 The first is a statement about *how do I recognise a part*, which does not change because some table
 shows two columns fewer — so it is available at save time, which is what the search column needs.
 
+## Residue — what is left over, and the one place that measures it
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    Q["one class · the queries"] --> S["the cleanup screen"]
+    Q --> C["the command line"]
+    S --> D["removal · deliberate, never automatic"]
+```
+
+Rows can outlive their owner — a setting or a label whose identity is gone, a value whose edge is
+gone, a node with no connection at all. **One class owns those queries**
+([D-479](90-decision-log.md)), and the command-line scripts now use it instead of their own copies.
+*Two copies of a query are the road on which a correction reaches only one of them —
+[D-469](90-decision-log.md) measured that for documents; here it holds for code.*
+
+⚠️ **Measured on the running installation: 0 orphaned settings, 0 orphaned labels, **7 values
+without an edge**, 0 nodes without connections.** *The seven are real backlog. They are **shown and
+not removed**, because removal is deliberate and never automatic ([D-247](90-decision-log.md)).*
+
+Two of its assumptions touch storage and are stated rather than hidden: **`owner_kind` gains a
+fourth value for an owner that no longer exists** — neither *node* nor *relation* is true of one —
+and **every removal writes a changelog row against that vanished owner**. Orphaned **labels** are
+measured but not offered for removal, because the deciding row does not name them.
+
+⚠️ *Not built: cleaning the changelog itself. Its gate is a dependency and not a date, and it needs
+the conflict resolver — see
+[M21 and M22](70-migration.md#m21-and-m22--history-may-go-when-nothing-hangs-from-it).*
+
+## Release updates and these tables
+
+**The rule for a release update is owned by [70 Migration](70-migration.md).** What belongs here is
+only what it says about storage.
+
+**The update log stays minimal because our schema steps are not reversible**
+([D-476](90-decision-log.md)) — a dropped column and deleted setting rows do not remember what they
+held, so no roll-back can be promised from the log; the backup restores instead. Today the schema
+writes **no** changelog line at all, so installation and update are logged nowhere. The whole
+argument is
+[M18 and M19](70-migration.md#m18-and-m19--the-backup-restores-the-log-only-narrates).
+
+**New nodes arrive additively, and the version that governs that is not the schema version**
+([D-477](90-decision-log.md)): each scaffold keeps **its own** version in an option of its own,
+because a scaffold is **content** and the schema is **machinery** — they move for different reasons
+and must not drag each other along. The two duties of a release are
+[M20](70-migration.md#m20--a-release-update-owes-two-things).
+
 ## What belongs here
 
 - The storage decision — with the reason.
@@ -966,3 +1206,169 @@ shows two columns fewer — so it is available at save time, which is what the s
 | [`../legacy/ARCHITECTURE.md`](../legacy/ARCHITECTURE.md) | How the old round intended to build it. |
 | [`../legacy/plans/case-study.md`](../legacy/plans/case-study.md) | The `wtt_fs` Fallstudie scaffold that actually ran. |
 | [`../../AGENTS.md`](../../AGENTS.md) | Dev environment: Laragon on Windows, SQLite on the cloud VM. Current, not legacy. |
+
+## Die zusammengelegte Zeile — Stand 2026-08-29
+
+[D-507](90-decision-log.md) gibt der Zeile ihre Gestalt, nachdem [D-506](90-decision-log.md) die
+Kategorie «Einstellung» aufgelöst hat:
+
+```
+(owner_id, edge_id, path, locale, value_int|value_decimal|value_text|value_date|value_ref)
+```
+
+| Feld | sagt |
+|---|---|
+| `owner_id` | **wem** der Wert gehört — Knoten, Kante, Datensatz oder Installation |
+| `edge_id` | **welches Feld** — die Deklaration, statt eines Namens |
+| `path` | **welche Stelle** ([D-413](90-decision-log.md)) |
+| `locale` | **welche Sprache** — heute nur Feldwerte, danach auch Vorgaben |
+
+⚠️ **`setting_key` fällt mit [D-506](90-decision-log.md), `record_id` mit
+[D-507](90-decision-log.md).** *Gemessen sprach die Zahl deutlich: `owner_id` steht an **186**
+Stellen in `src/` und trägt **326** Zeilen, `record_id` an **40** und trägt **43**.*
+
+⚠️ **Und `owner_id` löst die Stelle, an der der Umbau sonst hängengeblieben wäre:** *die
+Installations-Identität ist **weder Knoten noch Kante** ([D-079](90-decision-log.md)) und trägt
+trotzdem zwei Angaben. Ein Datensatz braucht ein `node_id` — die Installation hat keins. **Mit
+`owner_id` braucht sie auch keins.***
+
+⚠️ *Der Preis, benannt statt entdeckt: ein Datensatz wird ein Besitzer wie jeder andere, und «gehört
+dieser Wert zu einem Datensatz oder zu einem Knoten» ist nicht mehr an der Spalte ablesbar. Das ist
+dieselbe Lage wie heute bei `settings.owner_id`, wo `Residue` bereits vier Arten unterscheiden
+muss.*
+
+---
+
+## Wie der Code seine gesäten Knoten findet — Stand 2026-08-29
+
+[D-510](90-decision-log.md), gebaut am selben Tag als [D-512](90-decision-log.md). **Über die Id, nicht über den Namen.**
+
+| Technik | Beispiel | überlebt ein Umbenennen |
+|---|---|---|
+| über den **Namen** | `SimpleType::fromNodeName('Integer')` | **nein** |
+| über eine **Id in einer Option** | `taxmod_branch_model_id = 402` | **ja** |
+
+⚠️ **Dass die Namensbindung bricht, ist gemessen und nicht befürchtet.** *Zwei Fälle an einem Tag:
+eine Prüfung suchte einen Knoten namens `int` — er heisst seit [D-428](90-decision-log.md) `Integer` —
+und lief **nie**. Und `BaseScaffold::boundTheNumbers()` suchte denselben Namen: **auf dieser
+Installation überlebten die Zahlengrenzen nur, weil sie älter als die Umbenennung sind. Eine frisch
+gesäte Installation hätte sie nie bekommen.***
+
+### Die Naht, und warum sie nötig ist
+
+`SimpleType` liegt im **Kern** und darf `get_option()` nicht rufen (`CD-1`). Also fragt sie eine
+Schnittstelle — `TypeNodes` —, die der Rand mit `SeededTypeNodes` erfüllt: **eine Option je Typ**,
+`taxmod_type_<wert>_id`, genau die Technik von `SeededFrameworkNodes`.
+
+⚠️ *Die Schnittstelle wird **verlangt**, nicht optional übergeben. **Eine optionale Bindung mit einem
+Namensrückfall dahinter lässt eine vergessene Verdrahtung genauso aussehen wie eine funktionierende.***
+
+⚠️ **Der Notnagel bleibt, an genau einer Stelle:** *findet die Option nichts, wird über den Namen
+gesucht **und die Option nachgeschrieben**. Ohne ihn wäre ein Update ein Datenverlust — eine
+bestehende Installation hat die Optionen nicht.*
+
+### Und ein zweiter Fehler, den die Umstellung aufdeckte
+
+⚠️ **Die Saat band an den falschen Knoten.** *`import()` schrieb `$taken[$child->name] = $child`, und
+`childrenOf()` liefert nach Position — unter gleichnamigen Knoten **gewann der letzte**. Sechs
+`Integer`-Knoten aus abgestürzten Prüfläufen lagen unter `Data Types`; die Saat band an einen davon,
+notierte dessen Id und legte beim nächsten Lauf einen weiteren an. **Behoben mit `??=` und einer
+Id-zuerst-Suche in der Saat selbst.***
+
+⚠️ *Nebenbefund, der nichts kostet: `Rendering::typesOf()` lädt die Vorfahrenknoten gar nicht mehr —
+es brauchte nur ihre Namen. **Eine Abfrage weniger je Formular.***
+
+---
+
+### Gesät — Stand 2026-08-29
+
+[D-513](90-decision-log.md) baut, was [D-511](90-decision-log.md) entschied:
+
+```text
+Constants
+├── Renderer   → 16 Knoten
+├── Converter  →  4 Knoten (binary, hexadecimal, octal, roman)
+└── Validator  →  leer
+```
+
+⚠️ **Die Saat zählt keine Namen auf, sie fragt** — `RendererRegistry::namesForNodes()` und
+`ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
+ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
+ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ **Aus zwei wurden vier am 2026-08-29** ([D-523](90-decision-log.md)), *und die Saat brauchte dafür nur ihre eigene `VERSION`: sie fragt die Registratur, also lag `binary` und `octal` nach dem nächsten Laden als Knoten da — **gemessen: 4 Kinder unter `Constants > Converter`, `hexadecimal` und `roman` mit unveränderter Id.***
+
+⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
+([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und
+der nächste Leser legt ihn woanders an.***
+
+---
+
+### Gebaut — Stand 2026-08-29
+
+[D-519](90-decision-log.md). `nodes.kind`, Schema 14, nullbar.
+
+```text
+Integer          Fields 0 «None yet»   Settings 4  (renderer, validator, min, max)
+Parts List       Fields 2              Settings 2  (renderer, validator — geerbt)
+Root             Fields 0 «None yet»   Settings 2  (renderer, validator — eigen)
+```
+
+⚠️ **Der Vorfahrenlauf kostet zwei Abfragen, unabhängig von Anzahl und Tiefe.** *Der Pfad ist
+materialisiert, also stehen alle Vorfahren-Ids schon da — kein Aufstieg je Stufe (`CD-7`).*
+
+⚠️ **Drei Zustände am Wähler:** *«erbt — field», «field», «setting». **«Erbt» nennt, was dabei
+herauskäme** ([R14b](30-renderer.md): «nichts» muss eine Entscheidung sein), und ohne diesen Eintrag
+liesse sich eine geerbte Antwort nicht zurücknehmen.*
+
+⚠️ **`$wpdb->prepare('%s', null)` schreibt `''` und nicht NULL.** *Das erzeugte zwei Darstellungen
+desselben Zustands — `fromStorage()` liest beide als «nichts gesagt», `WHERE kind IS NOT NULL` findet
+nur eine. `$wpdb->update()` schreibt echtes NULL; eine Zusicherung hält es fest.*
+
+---
+
+### Die Marke am Datensatz — Stand 2026-08-29
+
+[D-524](90-decision-log.md), Schema 15. *`records.is_test` wird `records.kind`.*
+
+| Wert | heisst |
+|---|---|
+| `user` | ein Mensch hat es eingegeben |
+| `default` | der Wert des Autors — **unter *Fields* die Vorgabe, unter *Settings* die Einstellung** |
+| `example` | Beispieldaten, die Vorschau greift darauf zurück |
+
+⚠️ **[C65](10-domain-core.md) hatte es seit dem 2026-08-23:** *«a checkbox «is test data» / «is
+default value» would do it»* — **drei Zustände, und ein `bool` konnte zwei.**
+
+⚠️ **Der Unterschied zwischen Vorgabe und Einstellung steht absichtlich *nicht* in der Marke.** *Er
+kommt aus dem Block, in dem das Feld steht — derselbe Wert liest sich zweimal verschieden. Ihn hier
+zu wiederholen wäre die Doppelung aus [D-521](90-decision-log.md).*
+
+⚠️ *Und sie löst den Fall, der ohne sie unlösbar war: bekommt `Parts List.Name` eine Vorgabe, entsteht
+**genau ein** neuer Datensatz — **die Marke weist ihn aus, sonst sähe er aus wie eine vierte
+Stückliste.***
+
+---
+
+### Mehrere Werte je Feld — Stand 2026-08-30
+
+[D-527](90-decision-log.md). *Der Speicher sah es immer vor; gemessen hatte es nie jemand benutzt.*
+
+```text
+ein Wert        path = 4654
+der zweite      path = 4654.2
+darin ein Feld  path = 4654.2.7788
+```
+
+⚠️ **Die Nummer rückt nicht nach.** *Sie ist ein Name, kein Index: `.1, .2, .3` minus `.2` ergibt
+`.1, .3`, und der nächste ist `.4`. **Nachrücken änderte die Pfade der übrigen**, und an Pfaden
+hängen verschachtelte Teile.*
+
+⚠️ *Daraus folgt, wie das Gerüst zuordnet: **jeder Eintrag findet sein «entfernen» über seinen Pfad**,
+nie über seine Stellung — bei `.1, .3` bekäme der zweite sonst den Knopf für `.2`.*
+
+⚠️ **`repeatable` zeichnet nichts selbst.** *Die Einträge kommen fertig gezeichnet in
+`Surroundings::$parts`, wie bei jedem Behälter ([D-366](90-decision-log.md)); es meldet keinen Typ und
+kennt die Mehrfachheit nicht. **Darum gilt es für Zahlen, Texte, Verweise und Teile gleichermassen.***
+
+---

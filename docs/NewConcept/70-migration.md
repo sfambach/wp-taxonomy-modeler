@@ -271,6 +271,65 @@ says that when everything is resolved only records of the current version remain
 without being carried forward. Not resolved here — see
 [`_harvest/contradictions.md`](_harvest/contradictions.md).
 
+### M13b — a journal entry carries its address
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    E["a changelog entry"] --> W["what · the verb, compared and shown"]
+    E --> S["before_state / after_state<br/>key= path= type= value="]
+    S --> R["replayable"]
+```
+
+**The changelog is only the migration script if an entry says *what* it changed and *where*.**
+[D-492](90-decision-log.md) gives it that address: `before_state` and `after_state` stop being
+prose and become `key=… path=… type=… value=…`, written and read by **one** class. That is what
+turns [D-061](90-decision-log.md) from a claim into something checkable.
+
+⚠️ **How badly it stood was measured, not assumed:** *of 10 745 changelog rows **5 773** were about
+settings and **not one** named a `path`. Four spellings stood side by side, and the path was dug
+back out with a string search in **two** places — the writer and its test double.*
+
+**The address goes into `before_state` / `after_state` and never into `what`.** *`what` is asked
+for **equality** when an act is read back, it is **shown raw** on the node page, and 19 of its 31
+distinct values are already key names rather than verbs. A data structure in a column that is
+compared and displayed would be the third misuse of the same column.* The key stays **additionally**
+in `what`, so the 5 773 existing rows keep saying what they said — both columns are written in one
+statement from one variable and cannot drift apart.
+
+```php
+// CONTRACT — the entry format (D-492)
+// key=<token> path=<edge ids> type=<name> value=<the value>
+//
+// keys are lower-case tokens, one space separates fields,
+// only the LAST field may contain whitespace — which is why `name` stands after `path`,
+// a token opens a field only when its key is new,
+// and there is no escaping: a line that does not start with `key=` is a bare value.
+```
+
+*Measured on the existing rows: **844** carry a space in the name and survive it, and the old rows
+read the same under the new rule as under the old one.*
+
+⚠️ **No schema step, and no row rewritten — deliberately.** *A missing path is **not
+reconstructible**, and writing a blanket `path=` would falsify at least the 20 rows that do carry
+one. [M19](#m18-and-m19--the-backup-restores-the-log-only-narrates) demands that a destroying step
+be able to say what it destroys; here it cannot, so it does not happen.*
+
+**Open, and named rather than filled:** the **replayer** itself is not built — the entries are
+replayable, nothing replays them yet. Prose entries (`reordered`, `promoted`, `hidden`,
+`trash cleared`) stay prose. And **removing** a setting writes no journal line at all, so a
+deletion is invisible in the history ([list row 74](97-implementation-plan.md#the-working-list)).
+
 ## M15–M17 — what the resolver can offer
 
 Answering [OQ-052](91-open-questions.md), in the owner's own list:
@@ -522,6 +581,177 @@ recipe ships too and must be deletable. **Provenance is information, framework i
 > ⚠️ [D-119](90-decision-log.md) says updates *never overwrite*; [D-174](90-decision-log.md) says
 > an untouched node is *updated silently*. Not resolved here — see
 > [`_harvest/contradictions.md`](_harvest/contradictions.md).
+
+## Owner statement — 2026-08-28: a release update, and when history may be deleted
+
+| # | Statement |
+|---|---|
+| **M18** | Before an update there must **always** be a backup. *«Das ist Pflicht. Der Benutzer wird dazu gezwungen, es herunterzuladen.»* |
+| **M19** | *«einfach nur einen Logeintrag machen für die Installation und für ein Folgeupdate, mit einer Referenz auf eine Versionsnummer … und dann vielleicht ein Link auf die GitHub-Seite, was es bedeutet. **Das wär so mein Minimallog.**»* |
+| **M20** | *«Zum einen müssen wir sicherstellen, dass **die Daten, die schon im Baum sind, nicht kaputtgemacht werden**. Und zum anderen, dass wir **verlustfrei neue Knoten reinbekommen**, wenn die im neuen Template enthalten sind.»* |
+| **M21** | *«Solange ich Konflikte habe, darf ich die Sätze nicht löschen. **Das ist eine Abhängigkeit, und die müssen wir befolgen.** … Ist der Konflikt aufgelöst, kann das Changelog auch gelöscht werden — weil dann ist es auch nicht mehr sensibel.»* |
+| **M22** | *«ich würde das Create drinne lassen — und nicht nur das Create, sondern jedes Update, das gefahren wird. Das würde ich drinnen lassen im Changelog und **als nicht löschbar deklarieren**.»* |
+
+### M18 and M19 — the backup restores, the log only narrates
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+    U["a release update"] --> B["backup · downloaded<br/>before anything runs"]
+    U --> L["log entry · version + link"]
+    B --> R["restore, if it goes wrong"]
+    L -.->|never| R
+```
+
+**A backup before a release update is a constraint, not a recommendation**
+([D-475](90-decision-log.md)), and **the user is made to download it**. A backup lying on the same
+installation helps against a failed schema step, not against what people actually meet — an
+installation that no longer starts. *Forced* therefore means: **the update does not begin before
+the file is with the user.**
+
+⚠️ **It binds a release, not this month's development, and the owner drew that line himself:**
+*«aktuell sind wir ja noch in der Development-Phase … **Ich spreche aber von Änderungen, die durch
+ein neues Release reinkommen.**»* The twelve schema steps of this month are development.
+
+**The log beside it stays minimal** ([D-476](90-decision-log.md)): one entry for the installation
+and one per follow-up update, with the version and a link to what it means. **The division of
+labour is the point — the log narrates, the backup restores.** A log that pretends it could
+restore is worse than one that only tells.
+
+⚠️ **And that division is measured, not preferred:** *our own steps are **not reversible**. Three
+destroying statements stand in the schema — a dropped `hide` column, the deletion of the `hide`
+setting rows, and a retired column thrown away. **A roll-back button would be a promise the past
+cannot keep:** the values are gone, not remembered. «Write every change down» would have to mean
+«here are the values this step destroys», and that cannot be produced afterwards.* The same rule
+stops a rewrite of the journal in
+[M13b](#m13b--a-journal-entry-carries-its-address).
+
+**What is new here rather than trimmed:** installation and update are today logged **nowhere** —
+the schema writes not a single changelog line. The journal knows changes to the *model*, not to the
+*machine*.
+
+⚠️ **The obligation hangs on something that does not exist.**
+[M9](#owner-statement--2026-08-22-second-pass-export-versions-per-record-and-what-the-resolver-offers)
+demands that all data be exportable and re-importable, tree included, and
+[M12](#m9m12--two-exports-and-they-are-not-the-same-thing) keeps backup apart from views —
+**but there is no export function at all today, not one.** The export is therefore the
+**precondition** for every update path, and [D-475](90-decision-log.md) is the first decision that
+forces it instead of wishing for it. Where it lives is [OQ-122](91-open-questions.md).
+
+### M20 — a release update owes two things
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    R["a release"] --> A["adds nodes<br/>additive import · no resolver needed"]
+    R --> B["replaces nodes<br/>model version · resolver required"]
+```
+
+[D-477](90-decision-log.md) writes down the two duties in the owner's own words, and **they are in
+very different states.**
+
+**The second is built.** *Every scaffold carries **its own version** in an option of its own, and
+its import runs only while the stored version is behind the code's. The import itself is **purely
+additive**: it looks under the parent for the name and creates only what is missing. So a release
+raises the version, the new nodes arrive, and what is already there is untouched — which is exactly
+what he asked for.* The separation that makes it possible was already in the code: **a scaffold is
+content and the schema is machinery**, they move for different reasons and must not drag each other
+along.
+
+**The first is the dependency chain of
+[M21 and M22](#m21-and-m22--history-may-go-when-nothing-hangs-from-it) and it is not built** — the
+conflict resolver ([M6–M8](#m6m8--the-conflict-resolver)), the version on the record
+([D-060](90-decision-log.md)), and [M13](#owner-statement--2026-08-22-second-pass-export-versions-per-record-and-what-the-resolver-offers)'s
+rule that the stamp travels with the resolution. *The gate is already computable —
+`records.node_version < nodes.version`, today **1 of 25** — and it is the **surface** that is
+missing.*
+
+⚠️ **The line nobody had drawn:** *a release that **adds** nodes needs no conflict resolver; a
+release that **replaces** nodes needs one without exception
+([M4](#m1m4--rename-is-not-replace)).* That is where an update is harmless or delicate.
+
+### M21 and M22 — history may go when nothing hangs from it
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart TD
+    D["a cut-off date"] --> F["the filter"]
+    F --> G{"anything still<br/>hanging from these rows"}
+    G -->|an unresolved conflict| K["the rows stay"]
+    G -->|nothing| X["they may go"]
+    A["a row declared permanent"] -.->|never| X
+```
+
+**Deleting changelog entries is bound to a *dependency*, not to a date**
+([D-473](90-decision-log.md)). The date is the **filter**; the gate is *no unresolved conflicts
+from that period*. That makes [D-061](90-decision-log.md) operable instead of merely asserted, and
+it narrows nothing about it.
+
+**The chain existed and nobody had put it together:** the resolver resolves data against the
+changed model in stages ([M6–M8](#m6m8--the-conflict-resolver)); **the record carries its version**
+and records of different versions coexist until resolution ([D-060](90-decision-log.md)); the
+resolution needs **the changes**, which is the changelog ([D-061](90-decision-log.md)). *Three
+decisions, one dependency — never named as one.*
+
+⚠️ **The gate is computable today, and it currently says no:** *`records.node_version <
+nodes.version` — 25 records, **one** of them unresolved. So for that period the log may not be
+deleted, which is not a thought experiment.*
+
+**A whole group goes only if *every* one of its rows lies at or before the cut-off date** — his own
+rule, and the only technically sound one: an act is read back as a whole, so **half a group would
+be worse than a deleted one** ([D-470](90-decision-log.md)).
+
+⚠️ **A second dependency of the same shape, measured and not named by him:** *a parked node needs
+its `parked` row or it cannot be brought back — the old path is read **there and nowhere else**
+([D-123](90-decision-log.md)). Today that is **2 rows** of 9041.* **The general rule underneath his
+special one: a row may go when nothing hangs from it any more.**
+
+**And permanence is *declared*, not computed** ([D-474](90-decision-log.md)). The `created` row
+stays, so [D-080](90-decision-log.md) remains the only home of the creation date and the chip on
+the node page does not one day stop appearing. *The second half is the load-bearing one: «declare»
+is his word and it turns the question round — not «what may be deleted» but «what is announced as
+staying». A deletion condition has to be formed correctly by every caller; an announcement stands
+at the row and holds for everyone who reads it.*
+
+**Open, and it is a real question:** what «every update that is run» covers.
+[M19](#m18-and-m19--the-backup-restores-the-log-only-narrates) settles one half — he means the
+**software's** schema and model update, not every model change a user makes, so the **1690 rows
+describing keys that no longer exist** (`hide` 1025, `range_*` 661, `mandatory` 4) are ordinary
+model changes and deletable. *Of 9210 rows a **human caused 1295, 14 %**.* How a row is marked as
+undeletable stays [OQ-121](91-open-questions.md).
+
+⚠️ *And the conflict resolver is an admin surface of its own — the owner confirmed it, and
+[M6](#m6m8--the-conflict-resolver) had said so since 2026-08-22.*
 
 ## Durability is a lifecycle question, not a storage-shape question
 

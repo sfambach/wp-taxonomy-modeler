@@ -1,0 +1,2216 @@
+/*
+ * The modelling screen's own paint.
+ *
+ * ⚠️ A real stylesheet rather than a `<style>` block in PHP — the owner asked the question that
+ * settles it: *do you put that in a taxmod css or do you hard-code it?* It was hard-coded, and that
+ * was fine while it was three lines for the tree. At forty it is a stylesheet living inside a string:
+ * no editor help, every quote escaped, and re-sent on every page load instead of being cached.
+ *
+ * ⚠️ **The renderers deliberately keep their inline layout and only class names come here.** A
+ * renderer states the shape of a row — that a form is a flex row, that a cell is a column — because
+ * that shape *is* the drawing and it has to hold on any surface. What belongs here is what is true
+ * of **this screen**: sizes, weights, colours, the paint on a switch. *A renderer that hard-coded a
+ * height would carry it into every block on the front end too.*
+ *
+ * @see docs/NewConcept/30-renderer.md
+ */
+
+/* ── The panels: flat fields ─────────────────────────────────────────────────
+ *
+ * ⚠️ The owner named both causes: *the borders in the fields are a bit big for my taste, which makes
+ * them quite tall … or margin?* Both. WordPress gives an admin `input` and `select` a `min-height`
+ * of 30px, 3px of padding **and** a 1px margin — so a row of five fields carries five gaps too.
+ */
+.taxmod-labels input,
+.taxmod-labels select,
+.taxmod-labels textarea,
+.taxmod-settings input,
+.taxmod-settings select {
+    min-height: 0;
+    padding: 2px 6px;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.taxmod-settings .button {
+    min-height: 0;
+    padding: 1px .5em;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ⚠️ Dashicons is a **font**, so a glyph shows inside an `<option>` once the control asks for that
+ * font — which is what lets the icon be a plain `<select>` instead of a grid of tiles. I had claimed
+ * this was impossible until the owner said flatly *Cursor could do that*. */
+.taxmod-settings select[name$="[icon]"] {
+    font-family: dashicons, sans-serif;
+    font-size: 1.05em;
+}
+
+/* ── The tree ────────────────────────────────────────────────────────────── */
+
+/* ⚠️ **The size comes from the installation screen** ([D-397](docs/NewConcept/90-decision-log.md)):
+ * the owner walked these numbers himself — *one pixel bigger*, *make 20*, *25px*, back to 17 — and
+ * asked for them *in the settings*. The fallback is what the file used to hard-code, so a page without
+ * the custom property looks exactly as it did. */
+.taxmod-tree {
+    font-size: var(--taxmod-font, 15px);
+}
+
+.taxmod-tree td,
+.taxmod-tree th {
+    padding: 2px 8px;
+    line-height: 1.5;
+}
+
+/* The button glyphs and the node's own icon at one scale, with the line height held down so the row
+ * stays flat. *The owner asked for the button icons and I enlarged the wrong one first.* */
+.taxmod-tree .button {
+    min-height: 0;
+    height: auto;
+    padding: 0 .3em;
+    line-height: 1.2;
+    font-size: var(--taxmod-icon, 17px);
+}
+
+/* ⚠️ *Hier stand der **zweite** Ausrichtungsmechanismus: `vertical-align: text-bottom` auf einem
+   `inline-block`, während der Knopf daneben zentrierte. Zwei Icons gleicher Grösse sassen darum
+   verschieden hoch — genau die Beobachtung des Eigentümers. **Die Regel ist weg, nicht ersetzt:**
+   `.taxmod-icon` bemasst und zentriert den Baum jetzt wie alles andere.* */
+
+.taxmod-tree form {
+    gap: .2em !important;
+}
+
+/* ⚠️ **No box around a row's buttons.** A glyph on its own reads as an action; a border round each
+ * one turns a row into a row of boxes. The hover keeps them findable. */
+.taxmod-tree .button {
+    border: 0;
+    background: 0 0;
+    box-shadow: none;
+}
+
+.taxmod-tree .button:hover {
+    background: #f0f0f1;
+    border-radius: 3px;
+}
+
+.taxmod-tree .button:disabled {
+    background: 0 0;
+}
+
+/* ── The sliding switch ──────────────────────────────────────────────────────
+ *
+ * ⚠️ **Markup from the renderer, paint from here** (`CD-1`). The owner asked for it by name —
+ * *for the bool node renderer there should also be a version with a slider* — and without this block
+ * it degrades to a plain checkbox rather than to nothing.
+ */
+.taxmod-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.taxmod-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.taxmod-toggle-track {
+    display: inline-block;
+    position: relative;
+    width: 2.4em;
+    height: 1.2em;
+    border-radius: 1em;
+    background: #c3c4c7;
+    transition: background .15s;
+}
+
+.taxmod-toggle-track.is-on {
+    background: #2271b1;
+}
+
+/* ⚠️ **The switch had no reaction to being clicked, and that is why the owner said none of the three
+   works.** `is-on` is written by the **server** at render time, so the knob only ever moved after a
+   save and a reload: a click flipped the hidden checkbox correctly and **nothing on screen changed.**
+   *Measured through `saveSettings()` the three switches always took — which is exactly why the
+   measurement missed it. I tested the save and he was testing the click.*
+
+   ⚠️ **`is-on` stays and is not redundant**: a `Purpose::Display` rendering draws the track with **no
+   checkbox at all** ({@see ToggleRenderer::track()} with `$live = false`), so the class is the only
+   state it has. The two agree at load, because the server sets `checked` as well — and from the first
+   click onwards these rules are what a person sees. */
+.taxmod-toggle-input:checked ~ .taxmod-toggle-track {
+    background: #2271b1;
+}
+
+.taxmod-toggle-input:checked ~ .taxmod-toggle-track .taxmod-toggle-knob {
+    left: 1.35em;
+}
+
+/* ⚠️ *And the reverse, because `is-on` is still on the element after a click that turned it **off**:
+   without this the knob would slide back and the rail would stay blue.* */
+.taxmod-toggle-input:not(:checked) ~ .taxmod-toggle-track.is-on {
+    background: #c3c4c7;
+}
+
+.taxmod-toggle-input:not(:checked) ~ .taxmod-toggle-track.is-on .taxmod-toggle-knob {
+    left: .15em;
+}
+
+/* ⚠️ *Keyboard focus has to be visible on the thing a person sees, for the same reason the dialog
+   trigger needed it: the input itself is `opacity: 0` and has no box to ring.* */
+.taxmod-toggle-input:focus-visible ~ .taxmod-toggle-track {
+    box-shadow: 0 0 0 2px #007cba;
+}
+
+.taxmod-toggle-track.is-fixed {
+    opacity: .6;
+}
+
+.taxmod-toggle-knob {
+    position: absolute;
+    top: .15em;
+    left: .15em;
+    width: .9em;
+    height: .9em;
+    border-radius: 50%;
+    background: #fff;
+    transition: left .15s;
+}
+
+.taxmod-toggle-track.is-on .taxmod-toggle-knob {
+    left: 1.35em;
+}
+
+/* ── Marks a reader has to be able to tell apart ─────────────────────────── */
+
+/* ⚠️ A gap, not a style: a field nothing could draw says so rather than looking plain (R14b). */
+.taxmod-no-renderer,
+.taxmod-dangling,
+.taxmod-unsatisfiable {
+    color: #b32d2e;
+}
+
+/* *Nothing is nothing* (D-232) — an unanswered value is an em dash and not an empty cell. */
+.taxmod-nothing {
+    opacity: .5;
+}
+
+/* A choice whose stored value is no longer in the set — usually a member somebody deleted. */
+.taxmod-unknown-choice {
+    color: #b32d2e;
+    text-decoration: line-through;
+}
+
+.taxmod-settings-heading {
+    margin: .6em 0 .2em;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-size: .8em;
+}
+
+/* ── A box per band ──────────────────────────────────────────────────────────
+ *
+ * ⚠️ **The owner asked for the boxes he had drawn on the screenshot**: *please draw the boxes from
+ * the picture.* His red annotations were not marking faults — they were showing where he wanted
+ * frames. *I had read the earlier «look at a few more frames» as «remove a few» and softened them
+ * to a hairline; the second sentence corrected it. The headings going was right and separate.*
+ *
+ * ⚠️ **A box groups; the headings named.** With four headings gone the frame is what says *these
+ * things belong together*, which is the job the heading used to do and does more quietly.
+ */
+.taxmod-page-block {
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    padding: .6em .8em;
+    margin: .7em 0;
+    background: #fff;
+}
+
+/* ⚠️ The first heading inside a box loses its top margin — the box already provides the gap, and
+ * both together push the title away from its own frame. */
+.taxmod-page-block > h3:first-child {
+    margin-top: 0;
+}
+
+/* ⚠️ *A `details` band paints its own frame the same way, so the collapsed relations block does not
+ * read as the one thing on the page that is not boxed.* */
+.taxmod-page-block[open] > summary,
+details.taxmod-page-block > summary {
+    margin: 0;
+}
+
+/* The path behind the name — a chip, not a line. */
+.taxmod-path {
+    opacity: .55;
+    font-size: .85em;
+    background: 0 0;
+    padding: 0;
+    cursor: help;
+    white-space: nowrap;
+}
+
+/* ⚠️ The heading and its `?` on one baseline, so the mark does not push the line taller. */
+/* ⚠️ *Ein Icon in einer Überschrift darf kleiner sein als eines auf einem Knopf — **die Absicht
+   bleibt, der Weg ändert sich.** Vorher stand hier hart `16px` und damit eine zweite Stelle, die
+   eine Icon-Grösse festlegt; jetzt verschiebt es nur die **eine** Rechnung um ein Pixel. Dreht
+   jemand `--taxmod-icon` hoch, geht die Überschrift mit, statt bei 16 stehenzubleiben.* */
+.taxmod-page-block h3 .taxmod-icon,
+.taxmod-detail-pane h2 .taxmod-icon,
+.taxmod-tree-pane h2 .taxmod-icon {
+    --taxmod-icon-more: -1px;
+}
+
+/* ── The settings panel: two columns, and no boxes round the icons ───────────
+ *
+ * ⚠️ The owner, in one breath: *let us make the settings two-column, that makes room — «not defined»
+ * gone, the save button goes in the page header, the Nothing button could be the bin again.* Two
+ * columns fit because the rows are short: a key, a control, a mark, two acts.
+ *
+ * ⚠️ *The grid collapses to one column on a narrow pane — the tree already takes a third of the
+ * width, and two columns inside two thirds of a laptop screen would put a `select` in 6em.*
+ */
+/* ⚠️ **Two grids nested, and the inner one is the reason the columns line up.** A row of its own
+ * grid measures itself, so the key column of the left half and the key column of the right half ended
+ * up different widths — *that is what «formatting nicer would be good too» was looking at.* The row is
+ * now a **subgrid**, so every row in the panel shares one set of column widths.
+ *
+ * ⚠️ *`subgrid` has a fallback below for browsers without it: the fixed `9em` key column, which is
+ * what the rows had before — worse, but never broken.*
+ */
+.taxmod-settings-group {
+    display: block;
+}
+
+/* ⚠️ **A group is two sub-grids, not one grid of everything.** `auto-fit` over the whole group gave
+ * four columns at width and one when narrow — the owner: *now we are infinitely-columned depending on
+ * the width.* **Switches and fields want different widths**, and a grid gives every column the same
+ * one, so a single text field forces the switches to be as wide as it is.
+ *
+ * ⚠️ *His own ordering: «bool first, it needs little space and can be multi-column, and then fields
+ * only two-column». Read off the setting's **shape** in the renderer, not off a list of keys.*
+ */
+/* ⚠️ **The number of columns is capped, and `auto-fit` alone cannot cap it.** The owner: *please
+ * limit the columns, otherwise this happens* — four columns of switches on a wide screen, scattered
+ * across the pane with the eye unable to hold a row together. **`auto-fit` fits as many as the room
+ * allows, which is a different question from as many as help.**
+ *
+ * ⚠️ *So the counts are stated: one column when narrow, then two, then three for switches and two
+ * for fields. A field needs room to be read back and a switch does not, which is why the caps differ.*
+ */
+.taxmod-settings-switches,
+.taxmod-settings-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 1.6em;
+}
+
+@media (min-width: 1100px) {
+    .taxmod-settings-switches,
+    .taxmod-settings-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1500px) {
+    /* Switches gain a third; fields stay at two, on purpose. */
+    .taxmod-settings-switches {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+/* A switch needs no room for its value, so its key column can be shorter. */
+/* ⚠️ *The switch rows carry the same four columns and had the same two stale widths — a second copy
+   of one measurement, which is why both were wrong at once.* */
+.taxmod-settings-switches .taxmod-setting {
+    grid-template-columns: 1.6em 7.5em auto 1.4em 4.4em;
+}
+
+/* The heading spans every column, so a group reads as a group. */
+.taxmod-settings-heading {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid #f0f0f1;
+    padding-bottom: .2em;
+}
+
+.taxmod-setting {
+    display: grid;
+    /* ⚠️ Fixed widths, because that is what makes every row line up **across both columns** — a
+     * row measuring itself gave the left half and the right half different key columns.
+     *
+     * ⚠️ **Two of the four changed today and both were my doing.** The owner: *the gap to the field
+     * is too large, it should be right against it* and *the buttons are still below.* **The third
+     * column used to hold the word «here»**, which [D-423](../docs/NewConcept/90-decision-log.md)
+     * made true of every row and which was therefore removed — leaving `3.2em` of nothing wedged
+     * between the field and its buttons. *An empty column is not a gap somebody chose.* It now holds
+     * only the rare inherited arrow, so `1.4em` is the whole of what it needs.
+     *
+     * ⚠️ *And the acts column grew because the buttons did: `inline-flex` centring
+     * ([the icons sat too low](../docs/NewConcept/97-implementation-plan.md#the-working-list)) made
+     * two icon buttons wider than `3.4em`, so they wrapped under the field. **A fixed width has to be
+     * re-measured whenever what stands in it changes** — that is the cost of fixed, and it is still
+     * cheaper than rows that do not line up.* */
+     *
+     * ⚠️ **Fünf Zellen, vier Spalten — und die Wertspalte stand im 1.4em-Pfeil.** *Seit TASK-090 steht der
+     * Haken «override» als erste Zelle in jeder Zeile, auch dort, wo er leer bleibt; das Raster hatte ihn nie
+     * bekommen. Sein Befund am 2026-09-11: «die felder sind zu klein».* */
+    grid-template-columns: 1.6em 7.5em minmax(0, 1fr) 1.4em 4.4em;
+    align-items: center;
+    column-gap: .5em;
+    padding: .12em 0;
+}
+
+/* ⚠️ Zebra, faintly: at a dozen rows in two columns the eye needs to keep a row together across
+ * four cells. *Faint enough to disappear when one is not looking for it.* */
+.taxmod-setting:nth-child(odd) {
+    background: #fafafa;
+}
+
+.taxmod-setting input[type="text"],
+.taxmod-setting select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.taxmod-setting-key {
+    background: 0 0;
+    padding: 0;
+    font-size: .9em;
+    overflow-wrap: anywhere;
+}
+
+.taxmod-setting-from {
+    font-size: .85em;
+    opacity: .7;
+    white-space: nowrap;
+}
+
+.taxmod-setting-acts {
+    display: flex;
+    gap: .1em;
+}
+
+/* ⚠️ Name und Fragezeichen oben, der Wert darunter über die ganze Breite — sein Wort: «label/ question mark on top, value beneath»
+ * (D-796). Oben: Haken · Name mit Fragezeichen · Herkunft · Knöpfe; unten: der Wert. Eine lange Liste (summary_fields) schiebt so
+ * nichts mehr neben sich her. */
+.taxmod-setting {
+    grid-template-columns: 1.6em minmax(0, 1fr) auto auto;
+    grid-template-areas:
+        "haken name herkunft akte"
+        ".     wert wert     wert";
+    row-gap: .15em;
+}
+
+.taxmod-setting > .taxmod-setting-override { grid-area: haken; }
+.taxmod-setting > .taxmod-setting-value { grid-area: wert; }
+.taxmod-setting > .taxmod-setting-from { grid-area: herkunft; }
+.taxmod-setting > .taxmod-setting-acts { grid-area: akte; }
+
+.taxmod-setting > .taxmod-setting-name {
+    grid-area: name;
+    display: flex;
+    align-items: center;
+    gap: .25em;
+}
+
+/* ⚠️ Der Name bricht nicht mehr mitten im Wort — gemessen an seinem Bild: «summary_fie / lds». Das `anywhere` stammte aus der schmalen
+ * Schlüsselspalte, die es seit D-796 nicht mehr gibt. */
+.taxmod-setting > .taxmod-setting-name .taxmod-setting-key {
+    overflow-wrap: normal;
+    white-space: nowrap;
+}
+
+/* ── No box around an icon button, anywhere ──────────────────────────────────
+ *
+ * ⚠️ **The owner said it twice because the first fix reached one place only**: *in the node renderer
+ * you have put boxes around the icons again — away with them … it seems to be the case throughout.*
+ * The borderless rule had been scoped to `.taxmod-tree`, and three more panels grew icon buttons
+ * afterwards. **The renderers now mark such a button themselves** ({@see ControlMarkup::ICON_ONLY}),
+ * so this rule needs no place to be scoped to and cannot be outgrown again.
+ *
+ * ⚠️ **Reported a third time — and the first two fixes were about reach when the cause was
+ * specificity.** `.taxmod-icon-button` and WordPress's own `.button` are **both a single class**, so
+ * they weigh the same and the later stylesheet wins. **Ours declared no dependency on `buttons`**, so
+ * «later» was never ours to decide: the rule was correct and sometimes simply lost. *Two fixes that
+ * widened the selector's reach could not have helped, because reach was never what failed.*
+ *
+ * ⚠️ *`.button.taxmod-icon-button` is two classes and outweighs `.button` whatever the order; the
+ * `buttons` dependency in `Plugin::enqueue()` makes the order right as well. Belt and braces, because
+ * this one has now cost three reports.*
+ */
+.button.taxmod-icon-button,
+.taxmod-icon-button {
+    border: 0;
+    background: 0 0;
+    box-shadow: none;
+    padding: 0 .25em;
+    min-height: 0;
+    line-height: 1;
+    /* ⚠️ **A `<label>` needs telling; a `<button>` already knows.** The move trigger is a label —
+       a `<button>` inside a form would submit it — and a label is laid out as **inline text**, so
+       the same classes gave it a different box from its neighbours. The owner asked twice: first
+       *«leicht versetzt»*, then *why is the move button smaller, why still a box.* Moving the
+       classes onto the label (D-418) was not enough, because what differed was the element's own
+       display type. */
+    /* ⚠️ **Flex, so the glyph is centred instead of aligned to a baseline.** The owner: *the icons look
+       shifted slightly downwards, why?* — **and `vertical-align: middle`, which I added an hour
+       earlier, is the likely author of it**: on an inline-block it aligns the box's middle to the
+       parent's baseline plus half an x-height, which sits lower than the text it stands beside.
+
+       ⚠️ *`inline-flex` with `align-items: center` removes the arithmetic rather than tuning it: the
+       glyph is centred in the button's own box, and the box is what aligns in the line. A `<label>`
+       and a `<button>` behave the same way once both are flex containers, which is what the move
+       trigger needed in the first place.* */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* ⚠️ **Es steht noch da, und der Kommentar oben behauptete bis 2026-08-29, es sei weg.**
+       *Gemessen und aufgelöst: der Kommentar meinte `vertical-align` auf dem **Icon** — das ist
+       entfernt. Diese Zeile richtet den **Knopf** in seiner Textzeile aus, eine andere Aufgabe.
+       Die Verwechslung von beidem ist der Grund, warum derselbe Fehler mehrfach gemeldet wurde:
+       er wurde am Kind behoben und am Elternteil stehengelassen.* */
+    vertical-align: middle;
+}
+
+.button.taxmod-icon-button:hover:not(:disabled),
+.taxmod-icon-button:hover:not(:disabled) {
+    background: #f0f0f1;
+    border-radius: 3px;
+}
+
+/* ── How big an icon is drawn: one sum, one place ─────────────────────────────
+ *
+ * ⚠️ **The size the owner picked on the installation screen was reaching nothing.**
+ * [D-397](../docs/NewConcept/90-decision-log.md) says *the two sizes reach the stylesheet as custom
+ * properties … the fallbacks are what the file used to hard-code* — and the property was on the
+ * wrapper as promised. **Measured in the browser: raising `--taxmod-icon` from 17px to 30px moved no
+ * glyph at all, in the tree or in a panel.** The rule below hard-coded `17px`, and it is one class
+ * pair like `.taxmod-tree .dashicons` — so it simply came later and won. *A number in a stylesheet
+ * beat a control the owner had walked himself, and nothing said so.*
+ *
+ * ⚠️ **`--taxmod-icon-more` is an addition, not a factor**, so the result stays a whole pixel. *A
+ * factor of 1.2 on 17 gives 20.4, and a 20.4px box beside a 20.4px box leaves a hairline the eye
+ * reads as a rendering fault.* Zero everywhere unless a region asks for more.
+ */
+/* ⚠️ *Die Rechnung stand hier, solange nur Knöpfe ein Icon zeichneten. Seit sie **jedes** Icon
+   betrifft, steht sie an `.taxmod-icon` — sonst gäbe es sie zweimal, und zwei Stellen, die
+   ausrechnen wie gross ein Icon ist, sind derselbe Fehler wie sechs Stellen, die eins malen.* */
+
+/* ⚠️ **`display: block`, because a dashicon is a font character.** An inline glyph carries its font's
+   descent even inside a flex container, and that descent is what reads as *a little too low*.
+   *Blocking it takes the line box out of the picture instead of tuning a pixel count — and it is why
+   `vertical-align` is gone from here: the button centres the glyph now, so nothing is left to align.* */
+/* ⚠️ **Die eine Regel, die jedes Icon bemasst und ausrichtet.** Der Eigentümer hat dasselbe
+   *mehrfach* bemängelt — *«Icons sind nicht richtig aligned, die Grösse stimmt nicht, das
+   Speichern-Symbol ist wieder nach oben verschoben»* — und der Grund war nicht ein schlechtes
+   Icon-Set, sondern **fünf konkurrierende Grössenregeln**: zweimal hart `16px`, einmal `17px`
+   als Inline-Style, einmal die Variable, und die Auswahlzelle **gar keine**, also die `20px`
+   von WordPress. *Auf einer Seite standen 16, 17 und 20 Pixel gleichzeitig.*
+
+   ⚠️ **Seine Vermutung war nachprüfbar falsch, und das gehört hierher, damit sie nicht wiederkommt:**
+   *er hielt unterschiedliche `viewBox`-Werte für die Ursache. **Es gibt in diesem Plugin kein
+   einziges SVG und keine einzige Bilddatei** — gemessen, 0 Treffer. Ein Set zu tauschen hätte
+   nichts davon berührt.*
+
+   ⚠️ **Die Berechnung steht hier und nicht weiter oben, und das ist keine Kosmetik:**
+   *eine benutzerdefinierte Eigenschaft wird dort eingesetzt, wo sie **deklariert** ist. Stünde
+   `--taxmod-icon-drawn` am Seitenrahmen, wäre `--taxmod-icon-more` dort schon `0px` eingerechnet
+   und der Detailbereich verlöre seine drei Pixel. Am Icon selbst gerechnet, erbt es zuerst.*
+
+   ⚠️ *Der zweite Selektor wiegt schwerer als `.dashicons` von WordPress. Ohne ihn entschiede die
+   Reihenfolge der Stylesheets — genau die Konstellation, die `--taxmod-icon` schon einmal still
+   totgelegt hat (D-486).* */
+.taxmod-icon,
+.dashicons.taxmod-icon {
+    --taxmod-icon-drawn: calc(var(--taxmod-icon, 17px) + var(--taxmod-icon-more, 0px));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    font-size: var(--taxmod-icon-drawn);
+    width: var(--taxmod-icon-drawn);
+    height: var(--taxmod-icon-drawn);
+    line-height: 1;
+    /* ⚠️ **Gemessen im Browser, nicht geraten — und es ist die Umkehrung einer früheren Korrektur.**
+       *Ein Icon im Textfluss stand gegen die optische Mitte des Textes **3,5 px zu hoch**: das ist
+       das «sitzt zu hoch», das der Eigentümer mehrfach gemeldet hat. `vertical-align: middle` heisst
+       in CSS genau «Grundlinie plus halbe x-Höhe», also die optische Textmitte — nach dem Setzen
+       bleiben **0,25 px, und für jeden Fall dieselben**.*
+
+       ⚠️ **Die Regel war einmal da und wurde als Ursache entfernt.** *Sie war es auch — aber am
+       `inline-block` **im Knopf**, wo die Bezugsgrundlinie die des Icons selbst ist. Hier steht sie
+       an einem Icon **neben echtem Text**, und dort ist sie richtig. **Auf einen Knopf wirkt sie
+       gar nicht: ein Flex-Element ignoriert `vertical-align`** — nachgemessen, die fünf Knopf-Icons
+       bewegen sich um 0,00 px.*
+
+       ⚠️ *Die anderen Kandidaten sind durchgemessen und schlechter: `baseline` −3,5/−3,5/−2,
+       `text-bottom` −0,5/−0,5/−2, `-0.3em` 0,59/0,59/0,09. **Nicht der kleinste Wert gewinnt,
+       sondern der gleichmässige** — «überall gleich» war die Bitte.* */
+    vertical-align: middle;
+}
+
+/* ⚠️ *Das Fragezeichen neben einer Überschrift: durchscheinend und mit einem Zeiger, der sagt,
+   dass es etwas erklärt. **Vorher stand das zusammen mit der Grösse in einem Inline-Style**, der
+   jede Regel im Stylesheet schlug. Der Umschlag trägt es, nicht das Icon — ein Icon soll nichts
+   über seinen Ort wissen müssen.* */
+.taxmod-hint-icon {
+    display: inline-flex;
+    opacity: .5;
+    cursor: help;
+}
+
+/* ⚠️ **Die Hülle des Fragezeichens, und sie ist der Grund, warum D-661 nicht bloss ein `title` ist.**
+   *Ein Tooltip ist auf einem Berührungsbildschirm nicht erreichbar. Also ist die Hülle mit
+   `tabindex` fokussierbar, und die Sprechblase klappt bei `:hover` **und** bei `:focus` auf —
+   Tippen setzt den Fokus, Tabben auch.* */
+.taxmod-hint {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+}
+
+/* ⚠️ **Der Satz steht immer im Markup und wird nur unsichtbar gemacht, nicht entfernt.**
+   *`display:none` oder `visibility:hidden` nähmen ihn aus dem Baum, den eine Vorlesehilfe liest —
+   und dann wäre die Erklärung für genau die Benutzer weg, für die D-661 sie gerettet hat.
+   `opacity` lässt ihn dort stehen; `pointer-events` hält ihn aus dem Weg. **Ohne Stylesheet steht
+   er schlicht sichtbar da** — es gibt keinen Zustand, in dem er verschwindet.* */
+.taxmod-hint-text {
+    position: absolute;
+    left: 0;
+    top: calc(100% + .3em);
+    z-index: 100;
+    width: max-content;
+    max-width: 28em;
+    padding: .5em .7em;
+    background: #fff;
+    color: #1d2327;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+    font-size: 13px;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ⚠️ Unsichtbar heisst hier auch: ohne Grösse (D-823, sein Bild «to many bars»). Gemessen: die unsichtbaren Kästen der Spaltenköpfe
+ * ragten bis 2443px über den rechten Rand, und die Seite bekam davon ihren eigenen waagerechten Balken. Wie `screen-reader-text` — die
+ * Vorlesehilfe liest ihn weiter; erst beim Zeigen bekommt er seine Breite. */
+.taxmod-hint:not(:hover):not(:focus):not(:focus-within) .taxmod-hint-text {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.taxmod-hint:hover .taxmod-hint-text,
+.taxmod-hint:focus .taxmod-hint-text,
+.taxmod-hint:focus-within .taxmod-hint-text {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ⚠️ **The diskette is a character and had no size of its own.** Measured in the head row: the save
+   button drew at 21×13 between five 24×17 neighbours, because the glyph span carried no class and so
+   took the admin page's 13px. *WordPress's emoji script then swaps the character for an
+   `<img class="emoji">` sized `1em`, which is why sizing the span is enough to size the picture.* */
+/* ⚠️ **Hier stand die Diskette als einziges Icon ohne `width` und `height`** — nur eine
+   Schriftgrösse, während jeder Nachbar einen festen Kasten hatte. Eine Emoji-Schrift bringt
+   eigene Ober- und Unterlängen mit, *dieselbe Schriftgrösse bedeutet also weder dieselbe Höhe
+   noch dieselbe optische Mitte*. **Den Kasten gibt ihr jetzt `.taxmod-icon` wie allen anderen.**
+   Was bleibt, ist das eine, was sie wirklich braucht: sie ist keine Icon-Schrift, also darf sie
+   nicht überlaufen. */
+.taxmod-icon-glyph {
+    overflow: hidden;
+}
+
+/* ⚠️ **The panels get the bigger icon, the tree keeps the size he tuned.** The owner: *the icons in
+   the settings area could be a bit bigger.* One addition on the pane rather than a second number per
+   panel — and the tree is deliberately outside it, because 17px is where he stopped walking.
+   ⚠️ *Whether this should be a second control on the installation screen instead of a constant here is
+   his to decide; the sum above is ready for it either way.* */
+.taxmod-detail-pane {
+    --taxmod-icon-more: 3px;
+}
+
+/* ⚠️ Beide Hälften beginnen auf einer Linie (sein Bild: «rechts zu weit unten»): der erste Block rechts trug den Aussenabstand
+ * `.7em` jedes Blocks auch oben, der Baum links keinen. */
+.taxmod-detail-pane > :first-child,
+.taxmod-detail-pane > :first-child > .taxmod-page-block:first-child {
+    margin-top: 0;
+}
+
+/* ── A record as a block ─────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *I assume a record is not a renderer yet either.* Half right — the **fields** were
+ * drawn by the form renderer already; everything around them was hand-built. This is the paint for
+ * {@see \Taxmod\Core\Renderer\RecordRenderer}, the fourth panel to go through `R1`.
+ */
+.taxmod-record {
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    padding: .6em .8em;
+    margin: .6em 0;
+}
+
+.taxmod-record-head {
+    font-size: .9em;
+    opacity: .7;
+    margin-bottom: .4em;
+}
+
+.taxmod-record-acts {
+    display: flex;
+    gap: .2em;
+    margin-top: .5em;
+}
+
+/* ⚠️ *Which renderer drew what* — scaffolding (D-344), so it is faint and sits apart from the form
+ * rather than woven into it, where it would have to be unpicked when the scaffolding goes. */
+.taxmod-record-diagnostic {
+    margin-top: .6em;
+    border-top: 1px solid #f0f0f1;
+    padding-top: .4em;
+    font-size: .85em;
+    opacity: .6;
+}
+
+/* ── The tree on white ───────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *would you make the background of the tree white too, I think it looks better.* And
+ * it does — the detail half is a column of white boxes, so a grey tree beside them read as the one
+ * unfinished part of the screen rather than as a different kind of thing.
+ */
+.taxmod-tree-pane {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    padding: .6em .8em;
+}
+
+/* ⚠️ WordPress paints `.striped` rows grey; on white that reads as a second background rather than
+ * as an aid, and the tree already has its indentation to follow. */
+.taxmod-tree-pane .striped > tbody > :nth-child(odd),
+.taxmod-tree-pane .wp-list-table.striped > tbody > :nth-child(odd) {
+    background: 0 0;
+}
+
+/* The row under the pointer, and the one being looked at — enough to find, not enough to stripe. */
+.taxmod-tree tbody tr:hover {
+    background: #f6f7f7;
+}
+
+/* ── The toolbar ─────────────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *the toolbar is not quite perfect yet, it should be **one line**, icons for move and
+ * trash.* It was three lines because it is three separate `<form>`s — three different acts with three
+ * different fields, which has to stay — so they are laid out as one strip instead of being merged.
+ */
+.taxmod-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5em;
+}
+
+/* Each little form contributes its buttons to the same line rather than starting a new one. */
+.taxmod-acts {
+    display: flex;
+    align-items: center;
+    gap: .2em;
+    margin: 0;
+}
+
+/* ⚠️ The name field takes the room that is left, so the acts sit at the right and the line does not
+ * break as soon as the pane narrows. */
+.taxmod-toolbar-name {
+    flex: 1 1 12em;
+    min-width: 8em;
+}
+
+.taxmod-toolbar select {
+    max-width: 16em;
+}
+
+/* ── The tree chooser ────────────────────────────────────────────────────────
+ *
+ * ⚠️ The owner, looking at a flat eighty-entry `<select>` with middle-dot indents: *the select would
+ * have to be the tree chooser.* It is the modelling tree's own walker with a different cell — D-367's
+ * *one walker, several cells*, which until now had only ever had one.
+ */
+.taxmod-chooser {
+    display: inline-block;
+    max-width: 100%;
+}
+
+.taxmod-chooser-current {
+    cursor: pointer;
+    padding: 2px 6px;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    background: #fff;
+    min-width: 10em;
+}
+
+/* ⚠️ **Dasselbe gesperrte Feld, egal ob es ein `<input readonly>` oder ein `<a>` ist.** Auf sein
+ * Wort: "sollte in den Feldern genauso aussehen wie unten bei der Anlage" -- ein `<a>` traegt von
+ * sich aus keine Feld-Optik, deshalb bekommt die Klasse hier ihre eigene Umrandung statt sich auf
+ * das an-oder-abwesende `<input>`-Aussehen des Browsers zu verlassen. */
+.taxmod-chosen {
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 3px 8px;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    background: #f0f0f1;
+    color: #2c3338;
+    text-decoration: none;
+}
+
+a.taxmod-chosen:hover {
+    background: #e3e3e3;
+}
+
+/* ⚠️ Bounded and scrolling: a hundred prefixes must not push the toolbar off the screen. */
+.taxmod-chooser-tree {
+    max-height: 18em;
+    overflow: auto;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    padding: .3em .5em;
+    margin-top: .2em;
+    background: #fff;
+    min-width: 18em;
+}
+
+
+/* ⚠️ **Der Wähler im Fluss bleibt in seiner Zelle** (D-745) — sein Befund am 2026-09-12 mit Bild:
+ * «Felder ineinander geschoben». *Der Baum hatte `min-width: 18em` und der Wähler `width: 20ch`
+ * (D-727): der Baum ragte über den Wähler hinaus und lag im Datensatzblock über der Nachbarzelle.
+ * Im Fluss richtet sich der Baum nach dem Wähler, nicht umgekehrt; die Grenze von 18em gilt weiter
+ * dort, wo der Baum allein steht.* */
+.taxmod-chooser-open {
+    display: block;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.taxmod-chooser-open .taxmod-chooser-tree {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0;
+}
+
+.taxmod-chooser-open .taxmod-tree-filter {
+    width: 100%;
+    box-sizing: border-box;
+}
+.taxmod-chooser-row {
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+    cursor: pointer;
+}
+
+/* ⚠️ Die Gestalt einer Baumzeile, die vorher in jeder Zeile inline stand (D-816) -- gemessen 13 988
+ * Stilangaben auf der grössten Seite. Inline bleibt nur, was je Zeile anders ist: die Einrückung,
+ * das Verbergen und die Hervorhebung; das Skript schaltet `style.display` weiter selbst. */
+.taxmod-tree-row {
+    display: flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.taxmod-tree-indent {
+    display: inline-block;
+    flex: none;
+}
+
+.taxmod-tree-fold-box {
+    display: inline-block;
+    width: 1.4em;
+    flex: none;
+    text-align: center;
+}
+
+a.taxmod-tree-fold-box {
+    text-decoration: none;
+    color: inherit;
+}
+
+.taxmod-tree-cell {
+    flex: 1;
+    min-width: 0;
+}
+
+.taxmod-tree-node {
+    display: flex;
+    gap: .5em;
+    align-items: center;
+}
+
+/* ⚠️ Der gemeinsame Auswahlbaum (D-815) hat keinen eigenen Öffner — jede Stelle der Seite öffnet ihn
+ * über ihren Knopf, das Skript setzt den Schalter. */
+.taxmod-shared-pick > .taxmod-chooser > .taxmod-dialog-open {
+    display: none;
+}
+
+/* Hier nicht wählbar — gezeigt, damit der Baum ganz bleibt, aber ausgegraut (D-815). */
+.taxmod-shared-pick .taxmod-pick-barred {
+    opacity: .45;
+}
+
+/* ⚠️ **Der Kreis ist weg, das Klicken bleibt.** Auf sein Wort: "Kreis soll einfach weg, klicken
+ * funktioniert jetzt" -- die ganze Zeile ist ein `<label>` um den Radio, ein Klick irgendwo auf
+ * ihr trifft ihn also schon. Geklemmt statt `display:none`, aus demselben Grund wie beim
+ * Dialogschalter oben: ein `display:none`-Radio bleibt zwar vom Label ansteuerbar, ist aber per
+ * Tastatur nicht mehr erreichbar. */
+.taxmod-chooser-row input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    opacity: 0;
+}
+
+/* ⚠️ Der Ring landet auf der Zeile, sonst wird der Tastaturfokus unsichtbar -- derselbe Grund wie
+ * beim Dialogschalter. */
+.taxmod-chooser-row input[type="radio"]:focus-visible + * {
+    box-shadow: 0 0 0 1px #007cba;
+    border-radius: 3px;
+}
+
+/* ⚠️ **A row that cannot be picked is shown, not removed** — its child may be pickable, so taking it
+ * out would tear a hole in the hierarchy. Greyed, with no radio, and not clickable. */
+.taxmod-chooser-fixed {
+    opacity: .45;
+    cursor: default;
+}
+
+.taxmod-chooser-row:hover {
+    background: #f6f7f7;
+}
+
+/* ── Showing what is hidden ──────────────────────────────────────────────────
+ *
+ * ⚠️ The owner: *I would have a use for `hide` on a node for the first time — I would like to hide
+ * some prefixes. For that we need a switch on the tree view, «show hidden nodes», default off.*
+ */
+.taxmod-show-hidden {
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+    font-size: .85em;
+    text-decoration: none;
+    opacity: .7;
+    margin: 0 0 .4em;
+}
+
+.taxmod-show-hidden:hover {
+    opacity: 1;
+}
+
+/* ⚠️ *Dieselbe Absicht, derselbe Weg wie in der Überschrift — und vorher dieselben harten 16px.* */
+.taxmod-show-hidden .taxmod-icon {
+    --taxmod-icon-more: -1px;
+}
+
+/* ── The preview ────────────────────────────────────────────────────────────
+ * Two renderings of one descent, side by side (D-160). The owner asked for it
+ * to see the flags work: `read_only` is the setting whose whole meaning is
+ * that the two sides differ, so they have to be readable at once. */
+/*
+ * Zwei Spalten zu je der Haelfte, und beide gleich hoch.
+ *
+ * Sein Wort am 2026-09-06: «zwei Preview-Felder, Display und Admin, sollten jeweils 50 % der
+ * verfuegbaren Breite belegen und sollten gleich hoch sein, damit es schoener aussieht.»
+ *
+ * Vorher stand hier `auto-fit` mit `minmax(20em, 1fr)`: die Spalten sprangen je nach Fensterbreite
+ * von zwei auf eine und waren nie genau halb. Und `align-items: start` liess jede Spalte nur so
+ * hoch werden, wie ihr Inhalt — darum standen zwei verschieden hohe Kaesten nebeneinander.
+ *
+ * `stretch` gibt beiden die Hoehe der hoeheren; unter 40em fallen sie doch untereinander, weil
+ * zwei Formulare in einer Handbreite nicht lesbar sind.
+ */
+/* ⚠️ Untereinander statt nebeneinander — sein Wort am 2026-09-13: «die beiden preview mal untereinander und mit horizontalen
+ * scroll balken» (D-777). Breite Tabellen scrollen jetzt in ihrem Kasten, statt die Seite auseinanderzuziehen. */
+.taxmod-preview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1em;
+    align-items: stretch;
+}
+
+@media (max-width: 40em) {
+    .taxmod-preview {
+        grid-template-columns: 1fr;
+    }
+}
+
+.taxmod-preview-side {
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    background: #fff;
+    padding: .6em .8em;
+    /* ⚠️ Kein eigener Scrollbalken mehr — sein Wort: «die beiden scrollbalken kannst du wieder entfernen» (D-780). */
+    min-width: 0;
+}
+
+/* ⚠️ Die Bedienung der bearbeitbaren Vorschau: Art, Speichern, neuer Satz in einer Reihe (D-785). */
+.taxmod-preview-acts {
+    display: flex;
+    align-items: center;
+    gap: .6em;
+    margin-top: .6em;
+}
+
+/* ⚠️ Die Knopfzeile unter den Teilen in einer Höhe (sein Bild: «sieht noch nicht so gut aus»): «+», «Add several», die Art, Speichern
+ * und «+» stehen auf einer Mittellinie, gleich hoch; «Add several» einzeilig, das Zeichen so gross wie die anderen. */
+.taxmod-part-add,
+.taxmod-preview-acts {
+    min-height: 30px;
+}
+
+.taxmod-part-add > .taxmod-chooser {
+    display: inline-flex;
+    align-items: center;
+}
+
+.taxmod-record-multi-open {
+    display: inline-flex !important;
+    align-items: center;
+    gap: .35em;
+    min-height: 30px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.taxmod-preview-side .taxmod-node > .taxmod-complex-block:last-child > .taxmod-part-add {
+    margin-top: .6em;
+}
+
+.taxmod-record-in-preview {
+    text-decoration: none;
+}
+
+/* ⚠️ Die Schalterkaskade ist eine geordnete Liste: gewählte oben, mit ihrer Stelle (D-794) — untereinander, nicht in Spalten.
+ * Sein Wort: «either all under each other or all in one line» — untereinander passt zu den Pfeilen nach oben und unten. */
+ol.taxmod-switch-cascade {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* ⚠️ Der Satzblock scrollt waagerecht, die Seite bleibt schmal — sein Befund: «scrollbar for records disappeared webside is again stretched
+ * to wide». Der Scrollbalken aus D-777 hing an `.taxmod-record-form`; seit die Zeilen nur anzeigen (D-785), steht die Tabelle nicht mehr
+ * darin. Jetzt am Block selbst. */
+.taxmod-records-block {
+    /* ⚠️ Kein eigenes Rollen mehr (D-807): gerollt wird im Satzformular darin, sonst klebte der mitlaufende Balken an diesem Block statt am Fenster. */
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* ⚠️ Die Satztabelle bündig (D-801) — sein Wort an der Stückliste: «does not look well aligned». Gemessen am Bild: die Zellen standen
+ * mittig, jede eingeschachtelte Positionstabelle mass ihre Spalten selbst, und leere Spalten («Seite») fielen zusammen. Jetzt oben
+ * bündig, und eine Tabelle in einer Zelle nimmt die volle Breite mit festen Spalten — so fluchten die Positionen von Satz zu Satz. */
+.taxmod-records-block .taxmod-table > tbody > tr > td,
+.taxmod-record-form .taxmod-table > tbody > tr > td,
+.taxmod-table td {
+    vertical-align: top;
+}
+
+.taxmod-table td .taxmod-table {
+    width: 100%;
+    /* ⚠️ Nicht schmaler als ihr Inhalt braucht — sonst quetscht die feste Spaltenbreite die Positionen auf Seitenbreite zusammen
+     * (sein Befund: «records are shrinked to size of the page»); der Satzblock scrollt dann waagerecht. */
+    min-width: 42em;
+    table-layout: fixed;
+}
+
+.taxmod-table td .taxmod-table th,
+.taxmod-table td .taxmod-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+/* ⚠️ Der Kopf schneidet nicht ab — sonst verschwände der Erklärkasten des Fragezeichens in der Zelle (D-809). */
+.taxmod-table td .taxmod-table th {
+    overflow: visible;
+}
+
+/* ⚠️ Ein Rollbalken für die Seite (D-807): die breite Satztabelle rollt waagerecht in ihrem Formular, und ein mitlaufender Balken
+ * steht unten am Fenster, solange die Tabelle im Blick ist — sonst läge er am Ende einer langen Tabelle. */
+.taxmod-hscroll {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 17px;
+    background: #f0f0f1;
+}
+
+.taxmod-hscroll > div {
+    height: 1px;
+}
+
+/* ⚠️ Nur ein Balken (sein Bild: «to many bars»): das Satzformular rollt weiter waagerecht, zeigt aber seinen eigenen Balken nicht —
+ * der mitlaufende steht dafür. Senkrecht rollt es nie; `hidden` statt `visible`, weil `overflow-x:auto` ein `visible` zu `auto` macht. */
+.taxmod-records-block .taxmod-record-form {
+    /* ⚠️ `relative`, damit absolut gesetzte Kinder (die Vorlesetexte von WordPress, `.screen-reader-text`) hier abgeschnitten werden.
+     * Gemessen: ohne das standen sie an ihrer Stelle in der 1891px breiten Tabelle, und die ganze Seite wurde 2443px breit. */
+    position: relative;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.taxmod-records-block .taxmod-record-form::-webkit-scrollbar {
+    display: none;
+}
+
+/* ⚠️ Die Pfeile hinter dem Namen, nicht darunter — sein Wort: «put the arrows after the label not beneath». */
+ol.taxmod-switch-cascade > li {
+    display: flex;
+    align-items: center;
+    gap: .15em;
+}
+
+ol.taxmod-switch-cascade > li.taxmod-switch-chosen {
+    font-weight: 600;
+}
+
+/* ⚠️ Gewählte als Liste, darunter Auswahlfeld und «+» (D-799). */
+.taxmod-switch-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .25em;
+}
+
+.taxmod-switch-add {
+    display: inline-flex;
+    align-items: center;
+    gap: .2em;
+}
+
+.taxmod-switch-add select {
+    width: auto;
+    min-width: 12em;
+}
+
+ol.taxmod-switch-cascade:empty {
+    display: none;
+}
+
+ol.taxmod-switch-cascade .taxmod-list-move,
+ol.taxmod-switch-cascade .taxmod-list-remove,
+.taxmod-switch-add .taxmod-list-add {
+    min-height: 0;
+    padding: 0 .1em;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* ⚠️ Der Satzdialog in zwei Spalten (D-805): oben Suche und Schalter für den Baum, links der Baum der Knoten, rechts die Sätze je
+ * Knoten. Ohne Baum nur die Liste. Der Dialog wird dafür breiter. */
+.taxmod-dialog-panel:has(.taxmod-record-columns) {
+    width: min(64em, calc(100vw - 2em));
+}
+
+.taxmod-record-tools {
+    display: flex;
+    align-items: center;
+    gap: .4em;
+    margin-bottom: .4em;
+}
+
+.taxmod-record-tools .taxmod-record-search {
+    flex: 1;
+    margin: 0;
+}
+
+.taxmod-record-treeswitch {
+    display: inline-flex;
+    align-items: center;
+    gap: .15em;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.taxmod-record-columns {
+    display: grid;
+    grid-template-columns: minmax(12em, 1fr) minmax(0, 2fr);
+    gap: .8em;
+    min-height: 0;
+}
+
+.taxmod-record-notree .taxmod-record-columns {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.taxmod-record-notree .taxmod-record-nodes {
+    display: none;
+}
+
+.taxmod-record-nodes {
+    border-right: 1px solid #dcdcde;
+    padding-right: .5em;
+    overflow: auto;
+    max-height: 50vh;
+}
+
+.taxmod-record-list {
+    overflow: auto;
+    max-height: 50vh;
+}
+
+.taxmod-record-node {
+    cursor: pointer;
+}
+
+.taxmod-record-node.is-active {
+    color: #2271b1;
+    text-decoration: underline;
+}
+
+.taxmod-record-group-name {
+    margin: .5em 0 .1em;
+    font-weight: 600;
+    color: #50575e;
+}
+
+.taxmod-record-group:empty,
+.taxmod-record-group-off,
+.taxmod-record-group-nomatch {
+    display: none;
+}
+
+.taxmod-record-list .taxmod-record-choice {
+    margin-left: .3em;
+}
+
+/* ⚠️ Das Suchfeld vor dem Satzdialog und seine Treffer darunter (D-792, Zeile 153); das «+» je Ast zum Anlegen (Zeile 154). */
+.taxmod-record-pick {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+}
+
+.taxmod-record-quick {
+    width: 9em;
+}
+
+/* ⚠️ Eine versteckte Trefferliste wird nicht gezeichnet (sein Bild: «was sind das für striche»). `display: flex` unten schlug das
+ * `hidden`-Attribut, und unter jeder Satzauswahl stand die leere Liste als schmaler Kasten mit Rahmen. */
+.taxmod-record-hits[hidden] {
+    display: none;
+}
+
+.taxmod-record-hits {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    min-width: 22em;
+    max-height: 18em;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #8c8f94;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+}
+
+.taxmod-record-hit {
+    text-align: left;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid #f0f0f1;
+    padding: .3em .5em;
+    cursor: pointer;
+}
+
+.taxmod-record-hit:hover,
+.taxmod-record-hit:focus {
+    background: #f0f6fc;
+}
+
+.taxmod-record-add {
+    margin-left: .3em;
+    text-decoration: none;
+}
+
+/* ⚠️ Der Dialog der Satzauswahl (D-791): der Baum der Knoten als Äste, darin je Satz ein Auswahlknopf. */
+.taxmod-record-tree {
+    display: block;
+    min-width: 26em;
+    max-height: 60vh;
+    overflow: auto;
+    padding: .3em .2em;
+}
+
+.taxmod-record-branch {
+    margin-left: 1em;
+}
+
+/* ⚠️ Die Suche im Dialog (D-791 Schritt 2): oben über die ganze Breite; was nicht passt, verschwindet ganz. */
+.taxmod-record-search {
+    display: block;
+    width: 100%;
+    margin-bottom: .4em;
+}
+
+.taxmod-record-tree [hidden] {
+    display: none !important;
+}
+
+.taxmod-record-tree > .taxmod-record-branch {
+    margin-left: 0;
+}
+
+.taxmod-record-branch > summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: .15em 0;
+}
+
+/* ⚠️ Vorbelegte Treffer stehen zuerst und sind hinterlegt (D-791 Schritt 3). */
+.taxmod-record-match {
+    background: #edfaef;
+    border-radius: 2px;
+}
+
+.taxmod-record-count {
+    font-weight: 400;
+    color: #646970;
+}
+
+.taxmod-record-choice {
+    display: block;
+    margin-left: 1.3em;
+    padding: .1em 0;
+    font-weight: 400;
+}
+
+/* ⚠️ Alle Öffner gleich breit — sein Wort an den Positionen der Stückliste: «they should have the same size». Links bündig, ein zu
+ * langer Satz endet mit «…»; auch der leere Öffner («—») nimmt dieselbe Breite, damit die Spalte nicht springt. */
+.taxmod-record-dialog-open,
+.taxmod-record-pick .taxmod-dialog-open {
+    box-sizing: border-box;
+    width: 22em;
+    max-width: 22em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* ⚠️ Die ganze Zeile ist klickbar (D-788): der Zeiger sagt es, das Überfahren zeigt, welche; die geöffnete bleibt hinterlegt. */
+.taxmod-table tr:has(> * a.taxmod-record-open) {
+    cursor: pointer;
+}
+
+.taxmod-table tr:has(> * a.taxmod-record-open):hover > td {
+    background: #f0f6fc;
+}
+
+.taxmod-table tr:has(> * a.taxmod-record-in-preview) > td {
+    background: #fcf9e8;
+}
+
+/* ⚠️ Dasselbe für die Datensatz-Tabelle — sein Wort: «das gleiche gilt für die records auch einen horizontalen scrollbalken damit
+ * die seite nicht so auseinander gezogen wird» (D-777). */
+.taxmod-record-form {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+/* ⚠️ Eine eigene Zeile über die ganze Breite — auf sein Wort: «Settings-Preview in eine neue Zeile
+ * packen und alles in einer Linie, also wie eine Tabellenzeile, weil es hier Table View ist».
+ *
+ * ⚠️ Der Grund ist gemessen: Anzeige und Admin sind gestapelte Formularzeilen, Settings ist eine
+ * echte Tabelle (D-546) — und eine Tabelle in einem Drittel der Rasterbreite bricht um. Die zwei
+ * anderen standen schon in einer Linie; hier fehlte die Breite.
+ *
+ * ⚠️ `1 / -1` statt einer Zahl, damit es bei zwei wie bei fünf Spalten stimmt: das Raster ist
+ * `auto-fit`, die Spaltenzahl hängt am Fenster. Eine gezählte Spalte wäre eine Annahme über die
+ * Fensterbreite. */
+.taxmod-preview-wide {
+    grid-column: 1 / -1;
+}
+
+/* Und die Tabelle darin darf die Zeile auch benutzen. */
+.taxmod-preview-wide .taxmod-table {
+    width: 100%;
+}
+
+/* ⚠️ Die Filterzeile über den Datensätzen, farbig hinterlegt — sein Wort: «filterzeile bitte anders farblich hinterlegen»
+ * (D-768). Erkannt an ihrem Formular `taxmod-record-0`, damit der Tabellen-Renderer keine Sonderzeile kennen muss. */
+.taxmod-table tr:has(form#taxmod-record-0) > td,
+.taxmod-table tr:has(form#taxmod-record-0) > th {
+    background: #eaf2fa;
+}
+
+.taxmod-table tr:has(form#taxmod-record-0) {
+    border-bottom: 2px solid #72aee6;
+}
+
+/* ⚠️ Schmal — sein Wort: «Er muss zu Filter schmäler» (D-787). Die Felder nehmen nicht mehr ihre Eingabebreite, sondern
+ * so wenig, wie ein Suchbegriff braucht; eine gesperrte Einheit (genau eine erlaubt, D-783) steht dort nicht: nach ihr
+ * lässt sich nicht filtern, sie ist in jedem Satz dieselbe. */
+.taxmod-table tr:has(form#taxmod-record-0) input[type="text"],
+.taxmod-table tr:has(form#taxmod-record-0) input[type="number"],
+.taxmod-table tr:has(form#taxmod-record-0) input:not([type]) {
+    width: 7em;
+    min-width: 0;
+}
+
+.taxmod-table tr:has(form#taxmod-record-0) select {
+    max-width: 8em;
+    min-width: 0;
+}
+
+.taxmod-table tr:has(form#taxmod-record-0) select[disabled] {
+    display: none;
+}
+
+.taxmod-preview-side h4 {
+    margin: 0 0 .5em;
+    font-size: .9em;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #646970;
+}
+
+/* Named, never silently dropped: a preview that quietly loses a field cannot be
+ * told apart from one that forgot it. */
+.taxmod-preview-hidden {
+    font-style: italic;
+}
+
+/* ── Used by (D-199) ────────────────────────────────────────────────────────
+ * The one direction that appears nowhere else on the page. A list rather than a
+ * table because each row is two words — the attribute and the node that owns it
+ * — and a table of two words per row is a table pretending to be a grid. */
+.taxmod-used-by {
+    margin: .3em 0 0;
+    list-style: disc;
+    padding-left: 1.4em;
+}
+
+.taxmod-used-by li {
+    margin: 0 0 .2em;
+}
+
+/* ── The detail head ────────────────────────────────────────────────────────
+ * The owner's own sketch: a table, 3 rows, 2 columns — Action, System, Name on
+ * the left, the buttons, the constants and the name field on the right. */
+.taxmod-head {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+}
+
+.taxmod-head th,
+.taxmod-head td {
+    padding: .45em .7em;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.taxmod-head tr:last-child th,
+.taxmod-head tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Narrow and quiet: the label names the row, the row is the content. */
+.taxmod-head-label {
+    width: 7em;
+    font-weight: 400;
+    font-size: .85em;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #646970;
+    white-space: nowrap;
+}
+
+/* ⚠️ Derived, every one of them — so they read as facts and not as fields. */
+.taxmod-head-system {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3em .9em;
+    font-size: .85em;
+    color: #646970;
+}
+
+.taxmod-head-name input[type="text"] {
+    width: 100%;
+}
+
+/* ── The dialog chooser ─────────────────────────────────────────────────────
+ * "nicht inline" — the owner, looking at a <details> that pushed the page down.
+ * A real overlay, still without script: a nameless checkbox holds the open
+ * state, a <label> flips it, and this shows the panel while it is checked. */
+/* ⚠️ **The blue frame around the move button was this element's focus ring.** `opacity: 0` hides a
+   checkbox from the eye and leaves it **in the layout and focusable** — so clicking the label moved
+   focus into it and the browser drew a ring, in the admin's own `#007cba`, around a box nobody can
+   see. The owner: *the frame is blue, so it probably has something to do with a link?* Same colour,
+   different cause — and his noticing the colour is what found it.
+
+   ⚠️ *Clipped rather than `display: none`, because a `display: none` checkbox is still toggled by its
+   label and is no longer reachable by keyboard at all — which would trade a stray ring for a dialog
+   that cannot be opened without a mouse.* */
+.taxmod-dialog-switch {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.taxmod-dialog-open {
+    cursor: pointer;
+}
+
+/* ⚠️ **The ring has to land somewhere**, or keyboard focus becomes invisible: the switch is clipped,
+   so the mark moves onto the thing a person actually sees. */
+.taxmod-dialog-switch:focus-visible + .taxmod-dialog-open {
+    box-shadow: 0 0 0 1px #007cba;
+    border-radius: 3px;
+}
+
+.taxmod-dialog {
+    display: none;
+}
+
+.taxmod-dialog-switch:checked ~ .taxmod-dialog {
+    display: block;
+}
+
+/* Above everything, including the admin menu, so it cannot open behind it. */
+/* ⚠️ Ein Klick daneben schliesst nicht mehr (D-804) — die Fläche sieht darum auch nicht mehr klickbar aus. */
+.taxmod-dialog-shade {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, .45);
+    cursor: default;
+}
+
+.taxmod-dialog-panel {
+    position: fixed;
+    z-index: 100001;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    width: min(38em, calc(100vw - 2em));
+    max-height: min(34em, calc(100vh - 4em));
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, .35);
+}
+
+.taxmod-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6em;
+    padding: .5em .7em;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.taxmod-dialog-close {
+    cursor: pointer;
+    font-size: 1.4em;
+    line-height: 1;
+    padding: 0 .2em;
+    color: #646970;
+}
+
+/* ⚠️ **Ein Dialog vor dem Akt** (D-730): Felder untereinander, Bestätigen und Abbruch rechts im Fuss. */
+.taxmod-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: .6em;
+    padding: .7em;
+}
+
+.taxmod-dialog-field {
+    display: grid;
+    grid-template-columns: 6em minmax(0, 1fr);
+    align-items: center;
+    gap: .5em;
+}
+
+.taxmod-dialog-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5em;
+    padding: .5em .7em;
+    border-top: 1px solid #dcdcde;
+}
+
+/* The tree scrolls inside the panel, never the panel inside the page. */
+.taxmod-dialog-panel .taxmod-chooser-tree {
+    overflow: auto;
+    padding: .5em .7em;
+}
+
+/* ── The head, second pass ──────────────────────────────────────────────────
+ * "name in die erste zeile, name label durch knoten tauschen und actions keine
+ * eigene zeile sondern hinter namens feld" — so row one holds both. */
+.taxmod-head-node {
+    display: flex;
+    align-items: center;
+    gap: .5em;
+}
+
+.taxmod-head-node input[type="text"][name="name"] {
+    flex: 1;
+    min-width: 8em;
+}
+
+/* ── Buttons: never blue, and never half-aligned ─────────────────────────────
+ *
+ * ⚠️ **Why the head kept its borders while the tree lost them.** WordPress styles
+ * `.wp-core-ui .button` — *two* classes — and my borderless rule was the single
+ * class `.taxmod-icon-button`, so it lost every time. `.taxmod-tree .button` is
+ * also two classes, which is exactly why the tree looked right and nothing else
+ * did. *Specificity, not a missing rule.*
+ *
+ * ⚠️ **Three `.wp-core-ui .taxmod-toolbar …` rules stood here and they were dead** — nothing has
+ * rendered a `taxmod-toolbar` since the head became `.taxmod-head-node`; only `.taxmod-toolbar-name`
+ * survived the rename. **They are gone rather than kept**, because what they said was
+ * `border: 1px solid` on `.taxmod-icon-button` at three classes — *a loaded rule pointing at the exact
+ * fault the owner has now reported four times, waiting for the class name to come back.*
+ *
+ * ⚠️ *`.taxmod-toolbar { display: flex }` and `.taxmod-toolbar select` are dead the same way and are
+ * left alone: layout that draws nothing is untidy, a border rule that outweighs the borderless one is
+ * a trap.*
+ *
+ * ⚠️ **This next block was the answer to «leicht versetzt» and has become the cause of it.** It spelled the
+ * box model out for a `<label>` back when `.taxmod-icon-button` was not a flex container — and once
+ * that rule became one, the only thing left here that differed was the size: **measured in the head
+ * row, the move label drew at 30×30 between five buttons at 24×17**, the tallest thing on the line and
+ * the reason the row does not read as a row.
+ *
+ * ⚠️ *So what stays is `box-sizing`, which a label genuinely does not get from `.button`. The display,
+ * the centring and the padding come from `.taxmod-icon-button` like every other icon control — the
+ * label carries that class ({@see \Taxmod\Core\Renderer\DialogChooserRenderer}) and always has.
+ * A fix kept past its cause is a second answer to a question that already has one.* */
+.wp-core-ui .taxmod-dialog-open {
+    box-sizing: border-box;
+}
+
+/* Borderless stays borderless where it was agreed: a tree row. */
+.wp-core-ui .taxmod-tree .button,
+.wp-core-ui .taxmod-tree .taxmod-icon-button {
+    border: 0;
+    background: 0 0;
+    box-shadow: none;
+}
+
+/* ── Where a fragment puts the selected row ──────────────────────────────────
+ *
+ * ⚠️ **`scroll-margin-top` is gone.** It existed only to soften the fragment jump
+ * while there was no script, and now there is one (D-408) that restores the exact
+ * offset — so the margin was fighting it: the browser placed the row 40vh down and
+ * the script then moved it back. *A workaround that outlives its reason becomes a
+ * second answer to a question that already has one.*
+ *
+ * ⚠️ *The fragment itself stays, as the no-script fallback: with JavaScript off it
+ * still puts the selected row on screen, which is what was asked for in the first
+ * place.* */
+
+/* ── A hidden node, while it is being shown ──────────────────────────────────
+ *
+ * ⚠️ The owner: *hidden nodes should also get grey text in the shown state.* With
+ * *show hidden* on, a hidden row would otherwise look exactly like a visible one —
+ * and working on the hidden ones is the entire purpose of that mode.
+ *
+ * ⚠️ Grey and not struck through or italic: it says «not part of the working tree»
+ * without saying «broken». The crossed-out eye in the row says what it is; this
+ * only has to make the row recede. */
+.taxmod-tree-node-hidden .taxmod-tree-name,
+.taxmod-tree-node-hidden a {
+    color: #8c8f94;
+}
+
+/* The icon fades with the name, or a grey label beside a black glyph reads as a
+ * rendering fault rather than as a state. */
+.taxmod-tree-node-hidden .dashicons {
+    color: #a7aaad;
+}
+
+/* ── The message after an act ─────────────────────────────────────────────────
+ *
+ * ⚠️ The owner found the real cause of the page jump here: *the whole page jumps
+ * because of the message output at the top — can that be prevented and the
+ * messages still kept?* It can. `position: fixed` takes the notice out of the
+ * flow, so the page after an act is laid out exactly like the page before it —
+ * which is what lets a restored scroll offset land where it was measured.
+ *
+ * ⚠️ It is deliberately **not** called `notice`: wp-admin relocates every
+ * `.notice` to just under the h1 with its own script, which would put it back
+ * into the flow and undo all of this. */
+.taxmod-toast {
+    position: fixed;
+    z-index: 100002;
+    top: 46px;
+    right: 24px;
+    max-width: 26em;
+    padding: .7em 1.1em;
+    border-radius: 4px;
+    border-left: 4px solid;
+    background: #fff;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .18);
+    font-size: 13px;
+    line-height: 1.5;
+
+    /* Fades on its own: a fixed overlay that stayed would sit on the tree until
+     * the next reload. Held opaque for four seconds, then gone — and
+     * `pointer-events` goes with it so it cannot swallow a click afterwards. */
+    animation: taxmod-toast-out 5s ease-in forwards;
+}
+
+.taxmod-toast-ok {
+    border-left-color: #00a32a;
+}
+
+.taxmod-toast-bad {
+    border-left-color: #d63638;
+}
+
+@keyframes taxmod-toast-out {
+    0%, 80% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+/* Somebody who asked not to see motion sees it appear and stay. */
+@media (prefers-reduced-motion: reduce) {
+    .taxmod-toast {
+        animation: none;
+    }
+}
+
+/* ── Das Suchfeld im Auswahldialog ───────────────────────────────────────────
+ *
+ * TASK-031, auf sein Wort: ein Filterfeld oben, «um schneller einen Knoten
+ * über den Namen zu suchen». Der Dialog kommt ohne Skript aus; dieses Feld
+ * nicht — ohne Skript steht es da und tut nichts, und die vollständige Liste
+ * bleibt darunter erreichbar.
+ */
+.taxmod-tree-search {
+	display: flex;
+	align-items: center;
+	gap: .4em;
+	flex: 1 1 auto;
+	margin: 0;
+	padding: .4em .6em;
+	border-bottom: 1px solid #dcdcde;
+	position: sticky;
+	top: 0;
+	background: #fff;
+	z-index: 1;
+}
+
+.taxmod-tree-filter {
+	width: 100%;
+	min-width: 8em;
+}
+
+/*
+ * Kompakt heisst wirklich kompakt.
+ *
+ * Sein Wort am 2026-09-06, auf ein Bild, in dem zwei Felder nebeneinander standen und einander
+ * ueberlappten: «schau mal, kompakt meint wirklich kompakt zusammen».
+ *
+ * Der Umbruch war vorher weg (CompactRenderer), aber die Felder behielten ihre Standardbreite und
+ * liefen aus der Spalte heraus. Ein Flex-Kind schrumpft nur, wenn es darf: `min-width: 0` hebt die
+ * Mindestbreite auf, die ein Eingabefeld sonst von sich aus behaelt.
+ *
+ * Die Breite je Feld sagt kuenftig `display_size` (D-659).
+ *
+ * ⚠️ **Und sie strecken sich nicht ueber die Zeile.** *Sein Wort am 2026-09-06: «mit compact meine
+ * ich immer noch, dass die Felder nahe beieinander liegen — fuer Admin und in der Ausgabe trennt
+ * sie im Prinzip nur ein Space.» Ein `flex: 1 1 auto` hatte sie den ganzen Platz teilen lassen;
+ * jetzt nimmt jedes seine eigene Breite und der Rest der Zeile bleibt leer.*
+ */
+.taxmod-compact-horizontal > * {
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+/*
+ * ⚠️ **Hier stand `min-width: 0` und `max-width: 100%`, und beides zusammen loeschte die Breite,
+ * die `display_size` gerade erst gesetzt hatte.** *Gemessen am 2026-09-06: das Markup traegt
+ * `size="40"` und `size="5"` — auf dem Schirm waren beide Felder gleich breit. **Meine eigene Regel
+ * von einer Stunde vorher hat sie plattgedrueckt**, und sein Verdacht galt darum dem Modell, wo
+ * nichts fehlte.*
+ *
+ * Ein Feld behaelt seine Breite. Schrumpfen darf es nur, wenn die Zeile sonst ueberliefe — das
+ * besorgt `min-width: 0` an der **Huelle** (oben), nicht am Feld selbst.
+ */
+.taxmod-compact-horizontal input,
+.taxmod-compact-horizontal select {
+    max-width: 100%;
+}
+
+/* Das Etikett bleibt bei seinem Feld und draengt sich nicht dazwischen. */
+.taxmod-compact-horizontal label {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/*
+ * Waagerecht steht die Beschriftung ueber ihrem Feld.
+ *
+ * Sein Wort am 2026-09-06: «bei kompakt horizontal muesste die Beschriftung ueber den Feldern
+ * liegen». Vorher stand sie davor, in derselben Zeile — bei zwei Feldern nebeneinander liest sich
+ * das als eine lange Zeile aus vier Dingen statt als zwei beschriftete Felder.
+ *
+ * Senkrecht bleibt es, wie es war: dort steht ohnehin jedes Feld in seiner eigenen Zeile, und die
+ * Beschriftung davor ist die kuerzere Form.
+ */
+.taxmod-compact-horizontal .taxmod-compact-part {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .1em;
+}
+
+.taxmod-compact-horizontal .taxmod-compact-label {
+    font-size: .85em;
+    color: #646970;
+    line-height: 1.2;
+}
+
+/*
+ * Der Einstellungsbereich unter einer Feldzeile — D-666.
+ *
+ * Er ist eine eigene Zeile ueber die volle Breite, weil ein <tr> nicht in einem <td> stecken kann.
+ * Eingerueckt, damit man sieht, zu welcher Zeile er gehoert; abgesetzt, damit die Tabelle nicht
+ * auseinanderfaellt. Wer ihn noch nie aufgeklappt hat, bekommt ihn gar nicht geschickt -- das ist
+ * der Beschluss. Wer ihn einmal offen hatte, behaelt ihn: zugeklappt wird er nur versteckt, damit
+ * eine noch nicht gespeicherte Eingabe beim Speichern der Seite mitgeht. Sein Wort am 2026-09-06:
+ * "einmal geladen bleibt erstmal bis die Seite geschlossen wird".
+ */
+.taxmod-field-settings-row > td {
+    background: #f6f7f7;
+    border-left: 3px solid #c3c4c7;
+    padding: .6em 1em .8em 2em;
+}
+
+/* Ein <tr hidden> zeigt WordPress sonst weiter an -- die Tabellenregeln der Oberflaeche setzen
+   display auf table-row und stechen den Vorgabewert des Browsers aus. */
+.taxmod-field-settings-row[hidden] {
+    display: none;
+}
+
+/* Die Klappleiste unter einer Feldzeile -- ein schmaler Balken ueber die volle Breite, der Knopf
+   am rechten Ende. So sah die Oberflaeche aus, die er als Vorbild geschickt hat (2026-09-06). */
+/* ⚠️ Links, nur das Zeichen, ohne Rahmen — sein Wort: «at the left side … without the rectangle» (D-782). */
+.taxmod-field-fold > td {
+    padding: 0 .5em;
+    text-align: left;
+    border-top: 1px solid #dcdcde;
+    background: #fbfbfc;
+}
+
+.taxmod-field-fold button {
+    line-height: 1.2;
+    min-height: 0;
+    padding: 0 .4em;
+}
+
+/* ── Geerbt heisst gesperrt, bis jemand «hier überschreibe ich» sagt ────────────────────────────
+ *
+ * ⚠️ D-689, sein Wort: «sperren finde ich gut, aktiv sagen hier überschreibe ich». Der Haken ist das
+ * Sagen. Solange er fehlt, ist das Steuerelement daneben nicht bedienbar — ohne Skript, über `:has()`.
+ * Und wo ein Browser `:has()` nicht kennt, sperrt der Rand trotzdem: er schreibt eine geerbte Zeile
+ * nur, wenn der Haken mitkommt.
+ *
+ * ⚠️ Eine automatische Wahl (D-688) ist frei, mit vorgesetztem Haken und ihrem Grund daneben.
+ */
+.taxmod-setting-locked:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control,
+/* Der Haken steht seit dem 2026-09-10 in einer eigenen Spalte, vorn — also ist die Zeile der
+   gemeinsame Rahmen, nicht mehr die Wertspalte (sein Wort: «als richtige spalte»). */
+tr.taxmod-field:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control,
+.taxmod-setting:not(:has(.taxmod-override:checked)) .taxmod-setting-locked-control {
+    opacity: .55;
+    pointer-events: none;
+}
+
+.taxmod-field-override,
+.taxmod-setting-override {
+    width: 4em;
+    white-space: nowrap;
+}
+
+.taxmod-setting-override {
+    display: inline-block;
+    width: auto;
+    min-width: 0;
+}
+
+.taxmod-setting-locked-control {
+    display: inline-block;
+}
+
+.taxmod-override-act {
+    font-size: .85em;
+    white-space: nowrap;
+    margin-left: .4em;
+}
+
+.taxmod-override-act input {
+    margin: 0 .2em 0 0;
+    vertical-align: middle;
+}
+
+.taxmod-setting-automatic .taxmod-automatic,
+.taxmod-setting-locked .taxmod-inherited {
+    font-style: italic;
+}
+
+.taxmod-automatic {
+    color: #b32d2e;
+}
+
+/* ── Die Konfigurationsseite ─────────────────────────────────────────────────
+ *
+ * ⚠️ **Drei Spalten auf sein Wort** ([D-695](../docs/NewConcept/90-decision-log.md)): *«tablle
+ * links label, schalter/wert, recht erklärung»*. WordPress' eigene `form-table` hat zwei und
+ * könnte es nicht anders — deshalb eine eigene.
+ *
+ * ⚠️ *Die Erklärungsspalte bekommt eine Breite und keine feste: **sie soll umbrechen, nicht die
+ * Schalter schieben.** Ein Satz, der die mittlere Spalte auseinanderzieht, macht aus einer
+ * Schalterreihe eine Treppe.*
+ */
+.taxmod-config {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 60em;
+    margin: 1em 0;
+}
+
+.taxmod-config th,
+.taxmod-config td {
+    text-align: left;
+    vertical-align: top;
+    /* ⚠️ *Der Spaltenabstand ist **`padding`**, nicht `margin`: eine Tabellenzelle hat kein
+     *  Aussenmass, `margin` an einem `td` tut schlicht nichts. Auf sein Wort breiter gemacht
+     *  — waagerecht deutlich, senkrecht nur wenig, sonst wird aus fuenf Zeilen eine Liste,
+     *  die man scrollt.* */
+    padding: .9em 1.8em;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.taxmod-config thead th {
+    font-size: .85em;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #646970;
+    border-bottom: 1px solid #dcdcde;
+}
+
+/* ⚠️ **Zweimal nachgestellt, und die zweite Zahl ist die richtige.** *Auf «doppelt so breit»
+ *  standen 24em — und er sah es sofort: «beserr aber jetzt zu viel abstand zwischen settings
+ *  und value spalte». **Eine feste Breite war der Fehler, nicht ihre Groesse**: die Spalte
+ *  bricht ohnehin nicht um (`nowrap`), also nimmt sie sich, was die laengste Beschriftung
+ *  braucht. `min-width` gibt ihr Luft, ohne den Rest leer zu lassen.* */
+.taxmod-config tbody th {
+    min-width: 10em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.taxmod-config-value {
+    width: 11em;
+}
+
+/* ⚠️ *Der Satz bleibt lesbar breit statt zeilenlang — dieselbe Grenze, die jeder Fliesstext
+ *  braucht, und der Grund, warum die Spalte den Rest nimmt und nicht mehr.* */
+.taxmod-config-why {
+    max-width: 34em;
+}
+
+/* Die Knotenklasse steht im Baum dabei (D-716, Schritt 1 des Bauplans). */
+.taxmod-tree-class {
+    opacity: .55;
+    font-size: .85em;
+    margin-left: .25em;
+}
+
+.taxmod-toolbar-class {
+    max-width: 12em;
+}
+
+/* ── Die Glieder einer Liste unter ihrem Wähler (Schritt 6 des Bauplans, Z3/Z3a) ─────────────────
+ *
+ * Sein Wort: «Z3 ergänzen mit änderbarer Reihenfolge» und «haken raus nicht mehr aktiv». Je Glied ein
+ * Schalter und seine Stelle. An der Kante ist das geerbte Glied bedienbar, auch ohne den Haken der
+ * Zeile — der Schalter am Glied ist dort das Sagen.
+ */
+.taxmod-setting-list {
+    margin: .3em 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: .92em;
+}
+
+.taxmod-setting-list-entry {
+    display: flex;
+    align-items: center;
+    gap: .5em;
+    margin: .15em 0;
+}
+
+/* ⚠️ Ein Band (D-736): min, max, step in einer Gruppe, nebeneinander; das Wort davor. */
+.taxmod-setting-band {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: .2em .6em;
+    padding-left: .4em;
+    border-left: 2px solid #dcdcde;
+}
+
+.taxmod-setting-band-name {
+    font-size: .85em;
+    color: #50575e;
+}
+
+/* ⚠️ Nur lesen: das Feld bleibt, gefüllt und ausgegraut (D-739). */
+fieldset.taxmod-read-only {
+    display: inline;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-inline-size: 0;
+    opacity: .55;
+}
+
+/* ⚠️ Die Kaskade (D-732): je Kandidat ein Haken, in Spalten, damit zwanzig Präfixe nicht zwanzig Zeilen sind. */
+.taxmod-switch-cascade {
+    margin: .2em 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9em, 1fr));
+    gap: .15em .8em;
+    font-size: .92em;
+}
+
+.taxmod-switch-cascade label {
+    display: flex;
+    align-items: center;
+    gap: .3em;
+    white-space: nowrap;
+}
+
+.taxmod-setting-list-inherited {
+    color: #50575e;
+}
+
+.taxmod-setting-list-position {
+    width: 4.5em;
+}
+
+.taxmod-setting-locked-control .taxmod-setting-list {
+    pointer-events: auto;
+}
+
+/* ── Das Formular: eine Beschriftungsspalte, eine Feldspalte, der Hinweis daneben ─────────────────
+ *
+ * ⚠️ Bis zum 2026-09-11 hatte `.taxmod-form-row` keine Regel — jede Zeile mass ihre Beschriftung selbst,
+ * und die Felder standen versetzt. Sein Befund: «beim form renderer sind die felder nicht ausgerichtet».
+ * In einer Tabellenzelle sass der Hinweis deshalb unter dem Feld: «bei table gibts einen umbruch».
+ */
+.taxmod-form-row {
+    display: grid;
+    grid-template-columns: minmax(6em, 11em) minmax(0, 1fr) auto;
+    column-gap: .5em;
+    align-items: center;
+    margin: .2em 0;
+}
+
+.taxmod-form-label {
+    overflow-wrap: anywhere;
+}
+
+.taxmod-form-field > input,
+.taxmod-form-field > select,
+.taxmod-form-field > textarea {
+    max-width: 100%;
+}
+
+/* ── Ein geschachteltes Formular: Trennzeile mit dem Namen, die Felder darunter links (D-725) ────── */
+.taxmod-form-group {
+    border-top: 1px solid #dcdcde;
+    margin: .5em 0 .2em;
+    padding-top: .3em;
+}
+
+.taxmod-form-group-name {
+    font-weight: 600;
+    color: #1d2327;
+}
+
+/* ── Der Knoten-Renderer: feste Angaben in einer Zeile, dann Blöcke mit Überschrift (D-758) ────── */
+.taxmod-complex-fixed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3em 1em;
+    margin-bottom: .5em;
+    color: #50575e;
+}
+
+.taxmod-complex-fixed-label {
+    font-weight: 600;
+}
+
+.taxmod-complex-block {
+    margin-top: .8em;
+}
+
+.taxmod-complex-heading {
+    margin: 0 0 .3em;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.taxmod-part-add {
+    margin-top: .2em;
+    display: flex;
+    align-items: center;
+    gap: .4em;
+}
+
+/* ⚠️ Die Tabelle eines Teils rollt waagerecht in sich (sein Bild der Stückliste: «Da fehlt noch ne scrollbar im complex renderer»).
+ * `relative`, damit Vorlesetexte darin mit abgeschnitten werden und die Seite nicht verbreitern (D-823). */
+.taxmod-complex-block > .taxmod-table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    position: relative;
+}
+
+/* ⚠️ «die buttons unten können nebeneinander»: die Knöpfe des letzten Teils stehen links, die Akte der Vorschau (Art, Speichern, +)
+ * rechts daneben in derselben Zeile. */
+.taxmod-preview-side .taxmod-node > .taxmod-complex-block:last-child > .taxmod-part-add {
+    float: left;
+    /* ⚠️ Derselbe Abstand oben wie die Akte daneben (sein Bild: «alignment stimmt noch nicht») — hier stand `.2em`, die Akte `.6em`. */
+    margin: .6em 1.5em 0 0;
+}
+
+/* *Alles in der Knopfzeile gleich hoch und mittig: Knöpfe und die Auswahl der Art.* */
+.taxmod-part-add .button,
+.taxmod-preview-acts .button,
+.taxmod-preview-acts select {
+    min-height: 30px;
+    box-sizing: border-box;
+    vertical-align: middle;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.taxmod-preview-acts > label,
+.taxmod-part-add > .taxmod-chooser {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+}
+
+.taxmod-complex-link > summary {
+    cursor: pointer;
+    color: #2271b1;
+}
+
+/* Das Medienfeld: Feld, rechts daneben der Dateiknopf, dann die gewählte Datei und die Beschreibung (D-846). */
+.taxmod-media-input {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+/* Die Zusatzfunktionen (D-845): je Glied seine Felder in einer Zeile, umbrechend, wenn es eng wird. */
+.taxmod-addon-entry {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+}
+
+.taxmod-addon-field {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.taxmod-addon-inherited {
+	margin: 0 0 4px;
+}
+
+/* Unter der Kategorie der Abschnitt, wofür die Einstellungen sind — «rules als kategorie und dann darunter jump field». */
+.taxmod-settings-subheading {
+	margin: .5em 0 .15em .2em;
+	font-size: .85em;
+	font-weight: 600;
+	color: #50575e;
+}
+
+/* Wird automatisch gespeichert, gibt es keinen Speichern-Knopf (D-860) — sein Wort: «save on leaving a field ist eingeschaltet dennoch ist
+   der speichern knopf zu sehen». Das Skript schickt trotzdem über ihn ab, darum bleibt er im Dokument. */
+[data-taxmod-autosave="on"] .taxmod-save {
+	display: none !important;
+}
+
+/* Symbol und Wort in einer Linie (D-861) — «+ Add field», «+ New record». */
+.button:not(.taxmod-icon-button) > .taxmod-icon.dashicons {
+	vertical-align: middle;
+	margin: -2px 2px 0 -2px;
+}
+
+/* Vorschaubild einer Mediathek-Datei (D-865): klein in Zeile und Tabelle, der Klick oeffnet das ganze Bild. */
+.taxmod-media-thumb {
+	max-width: 96px;
+	max-height: 72px;
+	vertical-align: middle;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+}

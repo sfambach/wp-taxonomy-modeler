@@ -2,7 +2,7 @@
 /**
  * Smoke: Attribute duplicate / reorder / move keep edge UUID ids (no slots) ≈ 0.0.439.
  *
- * - Duplicate Kontakt attr → new edge id, toId = type (not slot)
+ * - Duplicate Kontakt attr → new edge id, toNodeId = type (not slot)
  * - Copy RO onto duplicate; move to temp child; assert RO preserved; move back; cleanup
  *
  * Usage (from WordPress docroot):
@@ -72,7 +72,7 @@ if ( null === $dup_edge ) {
 	exit( 1 );
 }
 
-$to_id   = (int) ( $dup_edge['toId'] ?? 0 );
+$to_id   = (int) ( $dup_edge['toNodeId'] ?? 0 );
 $no_slot = $to_id > 0 && ! Attribute::is_slot( $to_id );
 echo 'dup_id=' . $dup_id . "\n";
 echo 'dup_toId=' . $to_id . "\n";
@@ -127,7 +127,7 @@ foreach ( Relation::list_outgoing( $tax, $child_id ) as $edge ) {
 	}
 	$on_child = true;
 	$ro_kept  = ! empty( $edge['readOnly'] ) || ! empty( $edge['readonly'] );
-	$slot_on_child = Attribute::is_slot( (int) ( $edge['toId'] ?? 0 ) );
+	$slot_on_child = Attribute::is_slot( (int) ( $edge['toNodeId'] ?? 0 ) );
 	break;
 }
 $gone_from_host = null === ( function () use ( $tax, $host_id, $dup_id ) {

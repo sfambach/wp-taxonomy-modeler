@@ -2,15 +2,16 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 
 /**
  * Everything a person sees comes from one of these (sentence 14 of the core on one page).
  *
- * ⚠️ **One contract for both halves.** The subject is a node **or** an edge, because both are
+ * ⚠️ **One contract for both halves.** The subject is a node **or** an relation, because both are
  * identities drawn from one space (C11) and both carry a resolved renderer setting (D-091).
- * There is no second interface for edges, and none for pages either: a page is a rendered node.
+ * There is no second interface for relations, and none for pages either: a page is a rendered node.
  *
  * ⚠️ **`supports()` declares the purposes; the registry does not key on them** (D-217). One
  * lookup by type — display, edit and search are answered or **declined** by the same renderer.
@@ -20,7 +21,7 @@ use Taxmod\Core\Model\Relation;
  *
  * ```mermaid
  * flowchart LR
- *   S["the edge's own setting"] --> T["the target node's setting"]
+ *   S["the relation's own setting"] --> T["the target node's setting"]
  *   T --> A["its ancestors"] --> F["the fallback"]
  * ```
  *
@@ -65,7 +66,24 @@ interface Renderer
      * Whether it is eligible for this subject at all — the registry's second job, at
      * configuration time: *which renderers may this node be given?*
      */
-    public function fits(Node|Relation $subject): bool;
+    public function fits(Renderable $subject): bool;
 
-    public function render(Node|Relation $subject, RenderContext $context): RenderResult;
+    /**
+     * Ob dieser Renderer eine **Menge zum Auswählen** braucht.
+     *
+     * ⚠️ **Sein Befund am 2026-09-06, an `Ampere`:** *«aktuell werden die beiden Chooser angeboten,
+     * das kann aber nicht richtig sein, weil der Knoten keine Kinder hat».* **Er hat recht:** eine
+     * Auswahlliste ohne etwas zur Auswahl ist ein leerer Kasten, und {@see self::fits()} konnte es
+     * nicht sehen — es bekommt den Gegenstand, aber nicht seine Kinder.
+     *
+     * ⚠️ *Deshalb steht die Angabe hier und nicht als Sonderfall in der Registratur: **der Renderer
+     * sagt selbst, was er braucht** (`CD`, keine Sonderfälle nach Namen). Die Registratur fragt nur
+     * noch, ob es an dieser Stelle etwas zu wählen gibt.*
+     *
+     * ⚠️ *Das ist der erste Teil von [OQ-120](../../../docs/NewConcept/91-open-questions.md) —
+     * «deklariert ein Renderer seine Eigenschaften» — für genau eine Eigenschaft, und nicht mehr.*
+     */
+    public function needsSomethingToChooseFrom(): bool;
+
+    public function render(Renderable $subject, RenderContext $context): RenderResult;
 }

@@ -83,9 +83,11 @@ the thing that also writes the code, nobody can check the code. So the test for 
 9. **Settings resolve along one chain:** installation → model root → ancestors → node → use site,
    walked key by key, stored sparsely.
 
-10. **Bounding settings may only be tightened downwards; choosing settings are free.** Permitted
-    set, range, multiplicity, mandatory, `hide`, `read_only` narrow only. Default, renderer,
-    converter, labels, icon, order are free.
+10. **Three settings narrow only; every other one is free** ([D-468](90-decision-log.md)) —
+    `multiplicity`, `min`, `max`, and that is the **whole** list, checked against the code. What
+    left it: `mandatory` is gone ([D-405](90-decision-log.md)), `hide` is not a setting at all
+    (see [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge)), and `read_only` and `persistent` are free in both directions
+    ([D-460](90-decision-log.md), [D-461](90-decision-log.md)).
 
 11. **A label is text in one role and one locale.** Roles are nodes, seeded and extensible.
 
@@ -277,15 +279,40 @@ outcome is not a choice ([D-198](90-decision-log.md), [D-227](90-decision-log.md
 **A use site is an attribute** — the same relation seen from the owning node. **Bounding settings may only
 be tightened downwards; choosing settings are free** ([D-312](90-decision-log.md)):
 
-| Kind | Examples | Direction |
-|---|---|---|
-| **bounding** | permitted set · range · multiplicity · mandatory · `hide` · `read_only` | **narrower only** |
-| **choosing** | default value · renderer · converter · labels · icon · order | **free** |
+#### The three that narrow — and they are the whole list
 
-So a child may **hide** what the parent shows and never reveal what it hid; may **fix** what the
-parent left editable and never unfix what it computed. A **default** is not a bound but a choice
-inside the permitted set, and stays free. Where more is genuinely needed it is added **at the type**,
-where it is visible in one place.
+**Three keys may only be tightened downwards. Every other key is free in both directions**
+([D-468](90-decision-log.md), narrowing [D-411](90-decision-log.md) back to exactly these).
+*This table is checked against the code: it is what `SettingKey::direction()` answers, and
+everything not named here answers `Free`.*
+
+| Key | Direction | Why this one is bounded |
+|---|---|---|
+| `multiplicity` | **by subset** | `0..*` may become `0..1`, never the reverse — a promise about how many there are |
+| `min` | **up only** | the owner: *«the node says minus ten to ten and we say minus twenty to twenty — **not nice**. It would contradict the contract I gave earlier at the node»* |
+| `max` | **down only** | the same sentence, from the other end |
+
+⚠️ **A range is a promise; a choice is not.** That is the whole test, and it is why the list shrank
+to three. *A default value, a renderer, a converter, a label, an icon, an order — none of them
+guarantee anything to a reader of the model, so nothing is lost by letting a descendant say
+otherwise.*
+
+#### What left the bounded list, and why
+
+*Each of these was in the table above and is not any more. Kept, because «it used to narrow» is the
+first thing a reader assumes about a key they find.*
+
+| Key | Where it went | Decision |
+|---|---|---|
+| `mandatory` | **gone as a key.** The guarantee it tried to make lives in the **multiplicity**, which is unreachable from a descendant because an inherited attribute **is the same edge** | [D-405](90-decision-log.md) |
+| `hide` | **not a setting at all** — one column on the edge, out of the chain entirely. See [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge) | [D-467](90-decision-log.md) |
+| `read_only` | **free.** The owner: *«if it is read-only here I can make it editable there»* | [D-411](90-decision-log.md), [D-461](90-decision-log.md) |
+| `persistent` | **free**, and stays a setting rather than becoming a column | [D-460](90-decision-log.md) |
+| permitted set | never was a key of its own; a restriction is a **type**, not a setting ([C117](#c117--there-is-no-fixed-value-only-a-restriction)) | [D-221](90-decision-log.md) |
+
+⚠️ **Why the strict half is strict at all:** a restriction that may be reopened anywhere **says
+nothing when read** — to know what is allowed you would have to inspect every use site. Where more
+is genuinely needed it is added **at the type**, where it is visible in one place.
 
 ⚠️ **One axis is strict: what an ancestor declares **mandatory** stays mandatory for every descendant** ([D-311](90-decision-log.md)). It may be tightened downwards, never loosened — otherwise *every bird has a name* would never hold, and a classification that guarantees nothing about a group is worth nothing. An attribute that does not apply to a descendant is **moved down** ([D-155](90-decision-log.md)), not refused.
 
@@ -331,6 +358,80 @@ revocable at the use site and must be **visible**.
 **The unit of saving is the group that belongs together** ([D-300](90-decision-log.md)) — an
 allow-list is **one** value that happens to be a set; a switch is a group of one and waits for
 nobody.
+
+---
+
+### Hiding — `hide` is one column, and it is on the edge
+
+**One boolean on the edge, and one abort in the walk that follows edges** ([D-467](90-decision-log.md)).
+That is the entire mechanism. It is written out here, in one place, because it was decided **eleven
+times in three days** and several of those decisions correct each other — so this section owns it and
+every other mention in these documents points here.
+
+```mermaid
+flowchart LR
+  P["parent node"] -->|"inheritance edge · hide"| N["node"] --- S["its subtree<br/>never reached"]
+  O["owning node"] -->|"attribute edge · hide"| F["field"]
+```
+
+⚠️ **Two readers, one column, and they are the same question asked of two kinds of edge.** An
+attribute **is** a relation ([D-011](90-decision-log.md)), and the tree **is** the inheritance edges
+([D-014](90-decision-log.md)) — so *«do not draw from here down»* needs no second mechanism:
+
+| Reader | Which edge | What stops |
+|---|---|---|
+| the **tree walk** | the **inheritance** edge — the one thing that puts a node in the tree at all | the row, **and its whole subtree** |
+| the **form descent** | an **attribute** edge | that field, and everything composed under it |
+
+**The subtree falls out of the existing structure rather than being built.** A hidden target joins
+the walk's `skip` set, which already meant *not listed **and** not descended into* — so a hidden
+placement takes its branch with it **by construction**. And the walk loads those edges anyway, so
+there is no second query and no filter afterwards.
+
+⚠️ **The root cannot be hidden, and that is correct rather than a gap.** It has no inheritance edge
+([D-194](90-decision-log.md)), so there is nowhere to write the flag — the editor answers *nothing
+changed* instead of failing.
+
+⚠️ **In developer mode a hidden row can be shown**, and then it says so in grey ([D-464](90-decision-log.md)).
+Without that mode the row does not exist, because the walk never followed its edge.
+
+#### What `hide` is **not**, and each of these was tried
+
+| Not | Why not | Decision |
+|---|---|---|
+| a **setting** | a setting resolves along the chain installation → root → ancestors → node → use site, and a **type** is an ancestor. Measured: `hide` on a type blanked **every field of that type**. *A column is not in the chain — that is the whole reason it left* | [D-426](90-decision-log.md), [D-457](90-decision-log.md) |
+| a **column on the node** | built, and removed the next day. The owner: *«I do not simply create a model node and then say I will not draw it — that would be nonsense.»* **A node-level flag had no use case behind it**; hiding is about a **placement** from the start | [D-467](90-decision-log.md) |
+| **inheritance** | the chain is a *side effect* here, never the mechanism. The owner cut this argument off in as many words: *«that has nothing to do with inheritance»* | [D-452](90-decision-log.md) |
+| a **bounding setting** | it was in that category and left it: *bounding exists so a classification **guarantees** something about a group, and hiding a field guarantees nobody anything* | [D-399](90-decision-log.md), [D-411](90-decision-log.md) |
+| a **renderer's business** | a renderer never resolves it and never sees it. **The descent filters the edge out before any renderer runs** — so a *no-render* renderer is not needed either | [D-456](90-decision-log.md), [D-159](90-decision-log.md) |
+| a **greying** | a hidden **node** has a renderer choice like any other, so greying the control lost its ground. What survives is narrower: a hidden placement draws nothing, so *which renderer draws it* has no answer to force | [D-448](90-decision-log.md) |
+
+#### How it got here — the eleven, in order
+
+*Kept as a row each, because the corrections are the interesting part and a reader who finds only the
+last one cannot tell which arguments were already tried.*
+
+| Decision | What it said | What became of it |
+|---|---|---|
+| [D-426](90-decision-log.md) | `hide` is not a setting — it is a **column** | stands; the column half is still true |
+| [D-448](90-decision-log.md) | it means one thing: *is this drawn* — and the greying goes | superseded the same day by D-449; its measurement stands |
+| [D-449](90-decision-log.md) | **edge only** | superseded by D-453 — *the edge-only restriction was mine* |
+| [D-450](90-decision-log.md) | on an edge it is an **abort** for the descent, not a skip | **stands, and it is the load-bearing one** |
+| [D-451](90-decision-log.md) | argued the abort from inheritance | reading corrected by D-452; its three measurements stand |
+| [D-452](90-decision-log.md) | *«that has nothing to do with inheritance»* | stands. Also withdrew a rule nobody had decided — *«a renderer has no registry»* was in three docblocks and in **no** decision |
+| [D-453](90-decision-log.md) | **both** node and edge — an `Identity` property | narrowed to the edge alone by D-467 |
+| [D-456](90-decision-log.md) | it means *render no further* in both places; no *no-render* renderer needed | stands |
+| [D-457](90-decision-log.md) | a property of the identity, never chain-resolved | the *never chain-resolved* half stands and is the point |
+| [D-464](90-decision-log.md) | **built** — schema 10, the setting key deleted | stands as the build record |
+| [D-467](90-decision-log.md) | **the edge alone.** `nodes.hide` dropped, schema 12 | **current** |
+
+⚠️ **What this thread cost, recorded so it is not paid twice.** *Six of these decisions were made
+without reading D-426, which had already answered the question the day before. The reason is one
+word: the owner said «Attribut» on both days, and I read «Setting» both times — his word for a
+property of an edge, mine for a row in the settings table. **The fault it produced was reproduced
+live before it was fixed**: `hide` on a type blanked every field of that type. And the second rebuild
+deleted more than it added — 65 lines of after-the-fact filtering went for one line of substance in
+the walk.*
 
 ---
 
@@ -833,14 +934,12 @@ one construct with a different `owner_id`.
 ([D-312](90-decision-log.md), superseding [D-310](90-decision-log.md) and the widening half of
 [D-088](90-decision-log.md)).
 
-| Kind | Examples | Direction |
-|---|---|---|
-| **bounding** — it limits what is possible | permitted set · range `min`/`max` · multiplicity · mandatory · `hide` · `read_only` | **narrower only** |
-| **choosing** — it picks within the bounds | default value · renderer · converter · labels · icon · order | **free** |
-
-**Why the strict half:** a restriction that may be reopened anywhere **says nothing when read** —
-to know what is allowed you would have to inspect every use site. **And what an ancestor declares
-mandatory stays mandatory for every descendant** ([D-311](90-decision-log.md)).
+⚠️ **The list of bounded keys lives in one place now**, and it is
+[The three that narrow](#the-three-that-narrow--and-they-are-the-whole-list): `multiplicity`, `min`, `max`, and nothing else.
+*The table that stood here named six and four of them had left — `mandatory` as a key
+([D-405](90-decision-log.md)), `hide` out of the settings entirely ([D-467](90-decision-log.md)),
+`read_only` and `persistent` free ([D-461](90-decision-log.md), [D-460](90-decision-log.md)). **Two
+copies of one table is how that happens**: the correction reached one of them.*
 
 **Orphaned overrides are never cascade-deleted** ([D-033](90-decision-log.md)); they are promoted
 ([D-156](90-decision-log.md)) or shown, never quietly removed.
@@ -948,7 +1047,7 @@ and removable ([D-175](90-decision-log.md)).
 | `slug` | a boundary concern ([D-195](90-decision-log.md)) |
 | a *fixed value* | a restriction collapsing to one ([D-221](90-decision-log.md)) |
 | `set`, `table` as constructs | a composed type plus a renderer ([D-246](90-decision-log.md)) |
-| a per-node *hide* flag | selectability belongs to the use site ([D-181](90-decision-log.md)) |
+| a per-node *hide* flag | selectability belongs to the use site ([D-181](90-decision-log.md)). ⚠️ **Reaffirmed three days later by the owner and built that way**: *«I do not simply create a model node and then say I will not draw it»* — `hide` sits on the **placement**, see [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge) ([D-467](90-decision-log.md)) |
 | record versioning as a mechanism | versions are records under the thing ([D-305](90-decision-log.md)) |
 | conversion as a property of a unit | a conversion is a record ([D-306](90-decision-log.md)) |
 | a running number per record | the `id` identifies; a number circle is parked ([D-267](90-decision-log.md), [D-268](90-decision-log.md)) |
@@ -1146,6 +1245,17 @@ This answers [OQ-021](91-open-questions.md). The distinction is the UML one, and
 | **Aggregation** | always | the target is independent and survives the whole |
 | **Composition** | yes | the target belongs to the whole and **is deleted with it** |
 
+⚠️ **Geschärft am 2026-08-29 durch [D-498](90-decision-log.md), und die Reihenfolge dreht sich
+um.** *Der Eigentümer: «eine Komposition hat nur **einen Besitzer**. Sobald sie mehrere Besitzer
+hat, ist sie wieder eine Aggregation.» **Die Anzahl der Besitzer ist die Ursache, die Lebensdauer
+die Folge** — bei einem Besitzer ist «stirbt mit ihm» überhaupt erst wohldefiniert. Die Tabelle
+oben nennt die Folge und bleibt richtig; sie nennt nur nicht den Grund.*
+
+⚠️ *Und «points at another node» meint die **Kante**, nicht den **Wert**: gespeichert wird bei
+einer Aggregation auf ein Modell und bei einer Komposition gleichermassen eine Referenz auf
+einen **Datensatz**; nur bei `Constants` ist es eine Referenz auf einen **Knoten**. Siehe
+[Warum hier keine Zyklen entstehen](#warum-hier-keine-zyklen-entstehen--stand-2026-08-29).*
+
 The worked example the owner raised — a parts list made of positions, where a position is used
 nowhere else — is the case where composition earns its keep. It is discussed under
 [OQ-026](91-open-questions.md), because the tempting answer (store the position inline instead
@@ -1248,7 +1358,7 @@ flowchart LR
 instance. Half of [OQ-018](91-open-questions.md) was therefore the wrong question — it mixed the
 two layers and asked where *the value* of a model-level attribute lives. There is none.
 
-C25 answers [OQ-011](91-open-questions.md) outright: [C2](#owner-statement--2026-08-22)
+C25 answers [OQ-011](91-open-questions.md) outright: [C2](#owner-statements--2026-08-22)
 listed *type* and *connection kind* as two separate things, and now it is clear why. They are
 **two fields of the same edge** — `to` is the type, `kind` is the connection.
 
@@ -2187,7 +2297,9 @@ Four, and the shortness is a good sign:
 
 Everything else that looked like a candidate turned out to belong elsewhere: **`type`** is the
 inheritance branch, **`order`** belongs to the *edge* because ordering is per parent, and
-**`hide`, `read_only`, renderer and converter choices** are system-scope settings.
+**`read_only`, renderer and converter choices** are system-scope settings — and **`hide` is not
+among them any more**: it is a column on the edge, see [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge)
+([D-467](90-decision-log.md)).
 
 ## Owner statement — 2026-08-22, sixteenth pass: an override owner may be a node
 
@@ -2212,12 +2324,19 @@ config:
     lineColor: "#ffffff"
 ---
 flowchart TD
-    B["Part · #10 lieferant · 0..1"] --> P["Passiv<br/>[#10].multiplicity = 1<br/>[#10].hide = true"]
+    B["Part · #10 lieferant · 0..1"] --> P["Passiv<br/>[#10].multiplicity = 1<br/>[#10].read_only = true"]
     B --> U["a use site · edge #77<br/>[#10].step = 5"]
 ```
 
 This answers [OQ-058](91-open-questions.md), and with the wider reading C83 gives it: **an
 override is the same thing wherever it sits. Only its owner differs.**
+
+⚠️ **The example in that diagram was changed and the change is worth naming.** *It said
+`[#10].hide = true` when it was drawn on 2026-08-22, because `hide` was a setting then. It is a
+column on the edge now ([D-467](90-decision-log.md), see
+[Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge)), so as an example of an **override** it
+had stopped being one. `read_only` makes C83s point unchanged — it is a real setting, it really
+overrides, and it is free in both directions ([D-461](90-decision-log.md)).*
 
 | Owner | Means |
 |---|---|
@@ -3497,6 +3616,152 @@ chosen but read off the target's branch ([D-161](90-decision-log.md)); `Identity
 **What is still deliberately not drawn:** the record side. Records live in their own tables and
 their own id space ([D-164](90-decision-log.md)), and mixing them into a model diagram is what
 makes people build the two layers into one.
+## Was eine Änderung ist, und was mit ihr passiert — Stand 2026-08-28
+
+⚠️ **Diese Stelle besitzt einen Faden, der vorher nur im Log stand** ([D-469](90-decision-log.md)):
+*eine Änderung hat eine Nummer, sie trägt ihre Adresse, sie wird nur geschrieben wenn sie eine ist,
+und sie darf erst verschwinden wenn nichts mehr von ihr hängt.* Vier Entscheidungen, ein Gegenstand.
+
+### Eine Änderung hat eine Nummer, und die Klammer gibt sie ihr
+
+[D-470](90-decision-log.md), auf seine Bitte: *«was in einer Änderung geändert wurde — Kante, Knoten,
+Setting — wenn sie zusammen geändert wurden, sollten sie **eine Änderungsnummer** haben.»*
+
+⚠️ **Die Spalte war seit [D-348](90-decision-log.md) da und gruppierte nichts.** *Gemessen: **2282
+Zeilen in 1945 Gruppen**, davon **1609 mit einer einzigen Zeile**, und **0 von 1945** über mehr als
+eine Art Eigentümer. Eine Nummer wurde **pro Schreibvorgang** vergeben statt pro Änderung.*
+
+**`beginAct()` / `endAct()`, nach Tiefe gezählt, ohne neuen Zähler** — die Nummer bleibt die Id der
+ersten Zeile des Akts, die Klammer sagt nur, welche Zeilen dazugehören. Ein Akt beginnt am Rand, wo
+eine Person etwas tut.
+
+⚠️ *Und eine Festlegung steckt darin: **einen Knoten anlegen ist eine Änderung, nicht drei.**
+`createNode()` schreibt `created` plus die zwei Settings, die es materialisiert — **niemand führt
+«materialisiere `read_only`» als Akt aus**.*
+
+⚠️ **Das Hindernis war nicht der Entwurf, sondern die Verdrahtung:** *`new WpdbChangelog(…)` stand
+**siebenmal** im Rand. Die Klammer auf einem Exemplar hätte den anderen sechs nichts gesagt.
+**Sieben Kopien eines zustandslosen Objekts sind Verschwendung; sieben Kopien von einem mit Zustand
+sind falsch** — eine Frage, die beim nächsten Mitarbeiter mit Zustand wieder zu stellen ist.*
+
+### Ein Eintrag trägt seine Adresse
+
+[D-492](90-decision-log.md) baut, was [D-427](90-decision-log.md) verlangt hatte: `before_state` und
+`after_state` hören auf, Prosa zu sein.
+
+⚠️ **Gemessen, wie schlecht es stand: 10 745 Zeilen, davon 5 773 über Settings — und *keine einzige*
+nannte einen `path`.** *Ein Eintrag sagte «etwas hat `min` auf 10 gesetzt» und nicht **für welche
+Stelle** ([D-413](90-decision-log.md)). Damit war [D-061](90-decision-log.md)s «der Changelog **ist**
+das Migrationsskript» gegen den Pfad schlicht falsch.*
+
+Das Format: `key=min path=4654 type=int value=10`, gebaut und gelesen von **einer** Klasse. *Vorher
+standen vier Schreibweisen nebeneinander, und der Pfad wurde an **zwei** Stellen mit einer
+Zeichensuche herausgegraben.*
+
+⚠️ **Die Adresse steht in den Zustandsspalten und nicht im `what`, und das ist gemessen:** *`what`
+wird auf **Gleichheit** abgefragt, **roh angezeigt**, und **19 von 31** Werten sind schon
+Schlüsselnamen statt Verben.*
+
+⚠️ *Der Vertrag ist eng, damit die alten Zeilen lesbar bleiben: **nur das letzte Feld darf Leerraum
+enthalten**, und eine Zeile, die nicht mit `key=` beginnt, ist ein nackter Wert. **844 Zeilen haben
+ein Leerzeichen im Namen und überleben es.** Kein Schemaschritt, keine Zeile umgeschrieben — der
+fehlende Pfad ist nicht rekonstruierbar, und [D-476](90-decision-log.md) verlangt, dass ein
+zerstörender Schritt sagen kann, was er zerstört.*
+
+### Nichts wird geschrieben, wenn sich nichts geändert hat
+
+[D-490](90-decision-log.md), aus seiner Frage entstanden: *«wie merkst Du Dir aktuell Änderungen auf
+der Einstellungsseite, oder schreibst Du immer alle?»*
+
+⚠️ **Die Antwort war zweigeteilt, und das hatte niemand benannt:** *die **Seite** verglich und
+übersprang, der **Kern-Dienst** schrieb **immer**. Derselbe Wert zweimal gesetzt ergab zwei
+Schreibabfragen. **Für die Oberfläche war es gelöst, für ein Scaffold oder einen Import nicht.***
+
+⚠️ **Verglichen wird gegen das *hier* Gespeicherte und nicht gegen die Kette, und das ist der ganze
+Unterschied.** *«Hier gesetzt» und «von oben geerbt» sind zwei verschiedene Zustände
+([D-266](90-decision-log.md)) — löst die Kette `X` auf und schreibt jemand `X` ausdrücklich **hier**
+hin, ist das eine echte Änderung.*
+
+### Löschen ist an eine Abhängigkeit gebunden, nicht an ein Datum
+
+[D-473](90-decision-log.md), auf sein Wort: *«solange ich Konflikte habe, darf ich die Sätze nicht
+löschen. **Das ist eine Abhängigkeit, und die müssen wir befolgen.**»*
+
+⚠️ **Damit ist [D-061](90-decision-log.md) keine Behauptung mehr, sondern eine Regel mit einem Tor** —
+und die Kette dafür stand längst da, nur nie zusammengesetzt: [D-054](90-decision-log.md) der
+Konfliktlöser, [D-060](90-decision-log.md) der Datensatz trägt seine Version,
+[D-061](90-decision-log.md) die Auflösung braucht die Änderungen.
+
+⚠️ *Das Tor ist berechenbar: `records.node_version < nodes.version`. **Gemessen 1 von 25 offen.** Und
+eine Gruppe geht nur, wenn **jede** ihrer Zeilen am Stichtag oder davor liegt — sein Wort, und
+technisch die einzige richtige Form, weil eine Gruppe als Ganzes gelesen wird.*
+
+⚠️ **Die Anlage-Zeile bleibt dauerhaft** ([D-474](90-decision-log.md)), und *Unlöschbarkeit ist etwas,
+das man einer Zeile **ansagt**, kein Nebenprodukt der Löschbedingung.*
+
+### Ein Datensatz ohne seinen Knoten darf es nicht geben
+
+[D-485](90-decision-log.md) baut [C102](#owner-statement--2026-08-22-twenty-third-pass-deleting-a-referenced-node)
+endlich. Der Eigentümer: *«ein Record ohne Knoten wäre undenkbar … sonst weiss man ja auch gar nicht,
+wie dieser Record interpretiert werden soll. Wir haben ein einziges Datum, einen Text oder eine Zahl —
+was soll ich denn damit machen?»*
+
+⚠️ **Es war «geschrieben und nicht gebaut», und der Docblock war der Belastungszeuge:** *`clearTrash()`
+sagte «und es nimmt mit, was zu einem Knoten gehört: settings, labels, **records** und edges», und das
+Diagramm zeichnete «records · values». **Gelöscht wurden vier von sechs.***
+
+⚠️ *Der Changelog geht ausdrücklich **nicht** mit ([D-065](90-decision-log.md)): was verschwindet, sind
+**Daten**, nicht die Nachricht, dass es sie gab.*
+
+### Spezialisierte Klassen, und wer einen eigenen Renderer will
+
+[D-484](90-decision-log.md) korrigiert die **delegierte Hälfte** von [D-036](90-decision-log.md) — und
+diese Entscheidung hatte ausdrücklich darum gebeten: *«die Repräsentation sei ihm gleich; korrigiere
+es, falls das nicht die Absicht war.»* Sie war es nicht.
+
+> *Ich hätte, wie von Anfang an geschrieben, gerne **spezialisierte Klassen**, weil dann auch klar ist,
+> **wie viele spezialisierten Typen wir haben**.*
+
+⚠️ **Sein Grund ist das Inventar, und die Messung stützt ihn sofort:** *das Enum nennt **11** Typen,
+gesät sind **11**, die Registry bindet einen Renderer an **10**. **`user_ref` ist ein Typ ohne
+Renderer** — die Antwort auf «wie viele haben wir» steht an drei Stellen, und die stimmen nicht
+überein.*
+
+⚠️ **[V5](00-vision-and-scope.md) bleibt unberührt, und das ist wichtig, weil es anders klingt.** *Er
+hat V5 selbst mit der Nuance bestätigt: «diese Aussage betraf das **Datenmodell** und **wie Knoten
+gespeichert werden**». **Eine Gestalt in der Datenbank, mehrere Klassen darüber** — das widerspricht
+sich nicht.*
+
+⚠️ *Der Preis ist benannt: die **Hydrierung braucht einen Unterscheider**. Für einen Knoten, der selbst
+ein Typ ist, steht er in der Zeile; für einen **Untertyp** ergibt ihn erst der Lauf die Vorfahren
+hoch.*
+
+Dazu [D-482](90-decision-log.md): **wer einen eigenen Renderer will, wird ein Typ** — *«ein Renderer
+ist ja sowieso was Programmiertes; ich kann ja nicht einfach nur einen Namen in die Datenbank
+klatschen und hoffen, dass es irgendwie gerendert wird.»*
+
+### Settings und Feldwerte in einer Tabelle: was sie unterscheidet
+
+[D-472](90-decision-log.md), auf sein Wort: *«ich würde einfach eine neue Spalte in die Tabelle
+einfügen, die dann genau unterscheidet: ist Setting oder ist Attributwert.»*
+
+⚠️ **Der Einwand, den [OQ-119](91-open-questions.md) dagegen notiert hatte, ist widerlegt — gemessen.**
+*Er lautete «eine Tatsache doppelt, der Eigentümer impliziert sie schon». **Das setzt einen Id-Raum
+voraus. Es sind zwei** ([D-164](90-decision-log.md)), und sie überlappen: Identitäten laufen von 1 bis
+26453, Records haben `AUTO_INCREMENT` und laufen von 16 bis 879 — **Id 16 ist gleichzeitig eine
+Relation und ein Record.** Eine Eigentümer-Id allein sagt nicht, aus welchem Raum sie kommt.*
+
+⚠️ *Offen bleibt die härtere Hälfte: die vier leihenden Schlüssel `default`, `min`, `max`, `step`,
+deren Typ **der des Gegenstands** ist und nirgends steht.*
+
+### Was sich im Vokabular geändert hat
+
+| | |
+|---|---|
+| *Attribut* heisst **Feld** | [D-462](90-decision-log.md) — «was wir machen, sind **Felder** in einem Datensatz» |
+| `range_min`/`range_max`/`range_step` heissen **`min`/`max`/`step`** | [D-466](90-decision-log.md), Schema 11 |
+
+---
 ## What belongs here
 
 **Objects and their shape**
@@ -3516,7 +3781,8 @@ neighbour of it:
 - Which objects carry configuration, and which do not.
 - The resolution walk: what wins when an ancestor and a descendant both define something.
 - Where the renderer / converter / validator assignment of a node is recorded (V8).
-- Where hide, read-only and order live.
+- Where read-only and order live — and **`hide` is answered**: one column on the edge, see
+  [Hiding](#hiding--hide-is-one-column-and-it-is-on-the-edge).
 - **The one-sentence distinction between a setting and an attribute** — both are name/type/value
   triples hanging off a node, and without that sentence they will keep collapsing into each
   other ([OQ-013](91-open-questions.md)).
@@ -3595,3 +3861,350 @@ Worked through **after** the concept is written from the statements of the owner
 | [`../legacy/plans/data-structure.md`](../legacy/plans/data-structure.md) | 1589 lines: node, root, hierarchy vs relation, invariants, worked examples. Largest quarry — expect to drop most of it. |
 | [`../legacy/plans/part-identity-layers.md`](../legacy/plans/part-identity-layers.md) | kind / package / catalog part / BOM usage — a hard test case for any core model. |
 | [`../legacy/plans/project-plan.md`](../legacy/plans/project-plan.md) | Section *Settings cascade → paint*. |
+
+## Warum hier keine Zyklen entstehen — Stand 2026-08-29
+
+⚠️ **Diese Stelle besitzt das Thema** ([D-469](90-decision-log.md)). [D-497](90-decision-log.md)
+fasst [D-100](90-decision-log.md), [D-104](90-decision-log.md) und [D-105](90-decision-log.md)
+zusammen; jede weitere Nennung ist ein Zeiger hierher.
+
+Der Eigentümer, 2026-08-29: *«bei uns würden meist gar keine Zyklen entstehen … wenn in dem
+Modell wieder auf das erste Modell verwiesen wird, dann ist es auch nur eine Referenz. **Somit
+haben wir durch die Referenz keine Zyklen wirklich.**»* **Gegengeprüft: seine Kette trägt.**
+
+### Der Zweig entscheidet die Kantenart, nicht der Autor
+
+Gemessen an `Branch::relationKind()` und `Branch::storage()`:
+
+| Ziel im Zweig | Kantenart | was gespeichert wird | steigt ab |
+|---|---|---|---|
+| **Model** | **Aggregation** | Referenz auf einen **Datensatz** | **nein** |
+| **Constants** | **Aggregation** | Referenz auf einen **Knoten** | **nein** |
+| **Data Types** | Komposition | der Wert selbst, im Datensatz des Halters | nein — ein einfacher Typ hält keine Felder |
+| **Compositions** | Komposition | Referenz auf einen **Datensatz**, der dem Halter gehört | **ja** |
+
+⚠️ **Die Spalte hiess einmal «Speicherung» und stellte «externe Referenz» gegen «eigene
+Datensätze», als wären das zwei Formen. Der Eigentümer hat das bemängelt und hatte recht**
+([D-498](90-decision-log.md)): *bei einer Aggregation auf ein Modell **und** bei einer
+Komposition wird dasselbe abgelegt — eine Referenz auf einen Datensatz. Verschieden ist, **wem
+der Datensatz gehört**, nicht wie er erreicht wird.* **Die einzige wirklich andere Form ist
+`Constants`: dort zeigt der Wert auf einen Knoten.** *Gemessen: von 19 Werten mit `value_ref`
+zeigen 18 auf einen Knoten und 1 auf einen Datensatz.* Genau diese Doppelbedeutung des Wortes
+«Referenz» notiert [OQ-125](91-open-questions.md).
+
+#### Jeder Wert endet an einem Knoten — die Frage ist, ob eine Instanz dazwischenliegt
+
+⚠️ **Der Eigentümer, 2026-08-29, im nächsten Zug:** *«der Datensatz hat ja dann wieder einen
+Verweis auf einen Knoten, weil die Struktur muss ja irgendwo definiert sein. In der Hinsicht ist
+das natürlich auch ein Unterschied der Komposition.»* **Richtig, und es macht die Unterscheidung
+einfacher statt komplizierter.**
+
+Gemessen an zwei echten Werten:
+
+```
+Komposition:  Halter-Datensatz 485 → Datensatz 486 → Knoten «Einheitenwert», Version 1
+Konstante:    Halter-Datensatz 247 → Knoten «kilo»
+```
+
+| Zweig | Weg vom Wert zu seiner Definition | Instanz dazwischen |
+|---|---|---|
+| **Data Types** | keiner — der Wert steht im Datensatz des Halters | nein |
+| **Constants** | **ein Schritt**: Wert → Knoten. *Der Knoten **ist** der Wert.* | **nein** |
+| **Model** | **zwei Schritte**: Wert → Datensatz → Knoten samt Version | **ja** |
+| **Compositions** | **zwei Schritte**: Wert → Datensatz → Knoten samt Version | **ja** |
+
+⚠️ **`Model` und `Compositions` sind in dieser Tabelle gleich, und das ist kein Versehen.** *Sie
+**sind** dieselbe Form — genau das, was der Eigentümer mit «im Grunde ist eine Komposition ja
+auch eine Aggregation» meinte. Was sie trennt, steht nicht in der Form, sondern in der Anzahl
+der Besitzer ([D-498](90-decision-log.md)).*
+
+**Damit fällt die ganze Unterscheidung auf zwei Fragen zusammen:**
+
+```mermaid
+flowchart TD
+  A{"Liegt eine Instanz<br/>zwischen Wert und Definition?"}
+  A -->|nein| B{"Steht der Wert selbst da,<br/>oder zeigt er auf einen Knoten?"}
+  B -->|steht da| C["Data Types"]
+  B -->|zeigt| D["Constants"]
+  A -->|ja| E{"Wie viele Besitzer<br/>hat die Instanz?"}
+  E -->|genau einer| F["Composition"]
+  E -->|mehrere moeglich| G["Aggregation auf ein Modell"]
+```
+
+⚠️ *Und der Datensatz trägt nicht nur seinen Knoten, sondern dessen **Version** — gemessen: 26
+von 26 Datensätzen haben `node_id` **und** `node_version`. Das ist [D-060](90-decision-log.md),
+und es ist der Grund, warum eine Modelländerung alte Daten nicht stillschweigend umdeutet:
+[D-054](90-decision-log.md)s Konfliktlöser kann fragen, gegen **welche** Fassung ein Datensatz
+geschrieben wurde.*
+
+⚠️ **Das ist der ganze Grund, und er ist strukturell statt bewacht.** *Ein Feld, das auf ein
+**Modell** zeigt, kann gar keine Kompositionskante werden — der Zweig bestimmt die Kantenart.
+Und [D-105](90-decision-log.md) macht die Aggregation zum Referenz-Renderer: «composition
+expands by default, aggregation references by default».*
+
+```mermaid
+flowchart LR
+  H["Hardware"] -->|Feld → Model| T["Treiber"]
+  T -->|Feld → Model| O["OS"]
+  O -->|Feld → Model| H
+  H -.->|jede dieser Kanten ist eine<br/>Aggregation und verweist nur| R["kein Abstieg,<br/>kein Kreis"]
+```
+
+*Sein eigenes Beispiel hört beim ersten Verweis auf und erreicht den Kreis nie.*
+
+### Die drei Wege, auf denen ein Kreis entstehen müsste
+
+| Weg | was ihn versperrt |
+|---|---|
+| **Vererbung** | im Code verweigert: `ImpossibleMove::intoItsOwnDescendant`. *«Streng
+hierarchisch» ist nicht nur gesagt, sondern gebaut.* |
+| **Feld auf ein Modell** | kann keine absteigende Kante sein — siehe Tabelle oben |
+| **Feld auf eine Komposition** | **nichts** |
+
+⚠️ **Die eine Stelle, gemessen 2026-08-29: 7 Kompositionskanten verlaufen innerhalb des Zweigs
+`Compositions`.** *Ein zusammengesetzter Teil, der einen enthält, der den ersten enthält, würde
+absteigen und nicht zurückkommen. **Heute sind es 0 Kreise**, und `NotAPossibleTarget` hat fünf
+Verweigerungen, von denen keine einen Kreis betrifft.*
+
+### Warum trotzdem kein Wächter gebaut wird
+
+⚠️ **Es steigt heute nichts in eine Komposition hinein** — der generische Composite-Renderer
+existiert nicht ([Zeile 36](97-implementation-plan.md#the-working-list)). *Ein Wächter ohne
+einen Lauf, den er bewachen könnte, wäre Code, den nichts erreicht — und genau die Sorte
+«geschrieben und nie gelesen», die dieses Projekt an anderer Stelle fünfmal an einem Tag
+gefunden hat.*
+
+**Die Gefahr und ihr Wächter kommen im selben Augenblick zur Welt.** Die Prüfung gehört zu
+[Zeile 36](97-implementation-plan.md#the-working-list) — nicht davor und nicht danach.
+
+### Was gilt, wenn jener Tag kommt
+
+[D-100](90-decision-log.md) bleibt unverändert der Bauplan, und seine Unterscheidung ist die
+wichtige Hälfte:
+
+| Abbruch | was er bedeutet | was gezeichnet wird |
+|---|---|---|
+| **Zyklus** | *du hast das schon gesehen* — **nichts fehlt** | ein Verweis, und das ist
+vollständige Information |
+| **Tiefengrenze** | *hier ist mehr, und ich habe aufgehört* — **etwas wird vorenthalten** | ein
+Verweis **und** eine Warnung |
+
+⚠️ *Und [D-104](90-decision-log.md) daneben: der **Rechenlauf** braucht den Zyklus-Wächter und
+**keine** Tiefengrenze. «A truncated rendering shows less than the truth and says so; a
+truncated sum **states an untruth**, in the same typeface as a correct number.» Ein Ergebnis,
+das nicht fertig gerechnet werden kann, ist **keine Zahl**, sondern «nicht berechenbar».*
+
+⚠️ **Eine Hälfte von [D-100](90-decision-log.md) war nie eine Entscheidung des Eigentümers:**
+*«forbidden only for inheritance and composition» trägt dort den Vermerk «my call». Für
+**Vererbung** ist es gebaut und dadurch bestätigt; für **Komposition** ist es mit
+[D-497](90-decision-log.md) fallengelassen — unmöglich gemacht, wo es geht, und bewacht, wo es
+nicht geht.*
+
+---
+
+## Es gibt nur noch Felder — Stand 2026-08-29
+
+⚠️ *Die besitzende Stelle ist
+[02 Field and setting](02-field-and-setting.md); hier steht nur, was den Domänenkern betrifft.*
+
+[D-505](90-decision-log.md), auf sein Wort: *«wir unterscheiden jetzt eigentlich nur noch anhand
+eines Merkmals, ist es eine Einstellung oder ist es ein Feld. **Somit ist im Grunde alles ein Feld**,
+und wir haben nur noch: die Einstellung kann in der Kante überschrieben werden.»*
+
+**Das ist das Ende des Settings-Konzepts als zweiter Mechanismus.** Kein zweiter Schlüsselraum, kein
+zweiter Speicher, keine zweite Vererbungsregel.
+
+### Das Merkmal hat drei Stufen, und sie decken alles ab
+
+| Stufe | Beispiel | heute ein Sonderfall namens |
+|---|---|---|
+| nur am Knoten | `factor`, `offset` | — |
+| am Knoten, **überschreibbar an der Kante** | `min`, `default`, `renderer` | «Setting» |
+| **nur** an der Kante | `multiplicity` | `SettingKey::isEdgeOnly()` |
+
+### Vererbung statt Kopie
+
+⚠️ **Gemessen, was die Kopie kostet: von 326 Settings-Zeilen sind 191 reine Kopien des
+Elternwerts.** *Nach [D-266](90-decision-log.md)s eigener Regel — «ein Schlüssel, der da ist, hält
+Änderungen von oben ab» — behaupten diese 191 Zeilen eine Entscheidung, die niemand getroffen hat.
+**Mit der Vererbung verschwinden sie, und D-266 bekommt seinen Träger zurück.***
+
+⚠️ **Was dafür fällt, und es ist benannt statt entdeckt:** *[D-423](90-decision-log.md)s
+Materialisierung und mit ihr das **Nachfragen beim Ändern**, das der Eigentümer damals wollte. Eine
+Änderung oben erreicht jetzt jeden darunter, es sei denn, jemand hat unten etwas gesagt.*
+
+⚠️ *Und [D-364](90-decision-log.md)s Test überlebt als **Kriterium**, nicht als Trennung: «does a
+record answer it?» sagt weiterhin, ob etwas zur **Modellzeit** oder zur **Benutzungszeit** entsteht —
+nur ist die Antwort nicht mehr «zwei Mechanismen», sondern «ein Merkmal».*
+
+---
+
+## Wo Renderer, Konverter und Validatoren wohnen — Stand 2026-08-29
+
+[D-511](90-decision-log.md): als Knoten unter **`Constants`** — kein neuer Zweig.
+
+⚠️ **Sie *sind* Konstanten, im genauen Sinn des Codes:** *`Storage::NodeRef` — «a fixed value a person
+may extend, so the value is a **reference to a node**». Das ist die Definition eines
+Renderer-Namens.*
+
+⚠️ *Ein eigener Zweig wäre eine Doppelung: gemessen antwortete er in **jeder** Eigenschaft genau wie
+`Constants` — Aggregation, `NodeRef`, keine Datensätze. **Drei Fälle, die identisch antworten.***
+
+⚠️ **Was sie von `Prefixes` und `Currency` trennt, ist die Urheberschaft — System gegen Anwender — und
+das ist eine Angabe am Knoten, kein Zweig.** *Dieselbe Bewegung wie [D-506](90-decision-log.md): ein
+Mechanismus, unterschieden durch ein Merkmal.*
+
+⚠️ *Die **Oberflächen**-Renderer bleiben draussen, auf sein Wort: «es geht nur um die Knotenrenderer».
+Der Code trennt das schon — **16 Knotenrenderer** gegen **9** über
+`addForSurfaces()`.*
+
+⚠️ **Und ein Systemknoten wird nicht `final`:** *`RendererRegistry::byName()` gibt bei einem unbekannten
+Namen den Rückfall `plain` zurück — «hier zeichnet noch nichts» ([R14b](30-renderer.md)). Ein
+abgeleiteter Renderer markiert sich selbst als nicht gezeichnet; **es gibt nichts abzuwehren**. Eine
+Regel «Systemknoten sind final» bräuchte sofort eine Ausnahme für Datentypen, wo die Ableitung gewollt
+ist.*
+
+---
+
+### Gesät — Stand 2026-08-29
+
+[D-513](90-decision-log.md) baut, was [D-511](90-decision-log.md) entschied:
+
+```text
+Constants
+├── Renderer   → 16 Knoten
+├── Converter  →  4 Knoten (binary, hexadecimal, octal, roman)
+└── Validator  →  leer
+```
+
+⚠️ **Die Saat zählt keine Namen auf, sie fragt** — `RendererRegistry::namesForNodes()` und
+`ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
+ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
+ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ **Aus zwei wurden vier am 2026-08-29** ([D-523](90-decision-log.md)), *und die Saat brauchte dafür nur ihre eigene `VERSION`: sie fragt die Registratur, also lag `binary` und `octal` nach dem nächsten Laden als Knoten da — **gemessen: 4 Kinder unter `Constants > Converter`, `hexadecimal` und `roman` mit unveränderter Id.***
+
+⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
+([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und
+der nächste Leser legt ihn woanders an.***
+
+---
+
+### Der Wurzelknoten trägt Felder — Stand 2026-08-29
+
+[D-514](90-decision-log.md) und [D-515](90-decision-log.md), auf seinen Bauauftrag:
+
+```text
+Root
+├── renderer  → Compositions › DisplayOption   (1..*, Komposition)
+└── validator → Constants › Validator          (Aggregation)
+
+Compositions › DisplayOption
+├── render    → Constants › Renderer
+└── converter → Constants › Converter
+
+Data Types › Same as owner        ← D-504s Kunstgriff, jetzt ein Knoten
+Data Types › Integer
+├── min → Same as owner
+└── max → Same as owner
+```
+
+⚠️ **Der Zweig entscheidet die Art, und die zwei Wurzelfelder fallen darum verschieden aus**
+([D-497](90-decision-log.md)): *`renderer` ist eine **Komposition** — jeder Knoten bekommt seine
+eigene DisplayOption. `validator` ist eine **Aggregation** — ein Verweis auf einen geteilten Knoten.
+**Niemand hat das gewählt; es folgt daraus, wo das Ziel liegt.***
+
+⚠️ **Ein Feld an der Wurzel erbt jeder: gemessen alle 124 lebenden Knoten.** *Und `DisplayOption` erbt
+`renderer` **mit sich selbst als Ziel** — die Lage, die [D-503](90-decision-log.md) verbietet, ohne
+die Kante, an der [D-504](90-decision-log.md) sie erkennen wollte. Siehe
+[OQ-133](91-open-questions.md).*
+
+⚠️ **Und was noch fehlt, ist [D-508](90-decision-log.md)s erste Angabe — «wo liegt der Wert».**
+*Solange die fehlt, stehen `wert`, `prefix`, `einheit` (Daten des Benutzers) und `renderer`,
+`validator` (Daten des Autors) in **einer** Liste. Zwei Prüfungen sind daran rot geworden und rechnen
+die Wurzelfelder jetzt heraus — **das ist ein Abzug, kein Ersatz für die Angabe**.*
+
+---
+
+### Eine Angabe wird ein Kindknoten ihres Typs — Stand 2026-08-29
+
+[D-516](90-decision-log.md), seine Idee, gemessen bestätigt:
+
+```text
+Data Types › Integer
+├── min   ← Spezialisierung, löst zu int auf
+└── max   ← Spezialisierung, löst zu int auf
+
+Integer.min → Integer › min      (Typ = int)
+Integer.max → Integer › max      (Typ = int)
+```
+
+⚠️ **Warum das den erfundenen Typ ersetzt:** *`Rendering::typeOf()` läuft die Vorfahren hoch, also
+**erbt eine Spezialisierung den Typ ihres Elternknotens**. `Integer › min` löst zu `int` auf; ein
+Knoten `Same as owner` direkt unter `Data Types` löst zu **nichts** auf, weil kein Vorfahre ein Typ
+ist. **Keine Zeile neuen Code gegen eine Auflösung, die es nicht gibt.***
+
+⚠️ *Und es gilt allgemein: `Decimal › min` wäre decimal, `Text › default` wäre text. **Der Satz «ein
+Standardwert für einen Text ist ein Text» fällt aus der Vererbung heraus**, statt als Regel irgendwo
+zu stehen.*
+
+⚠️ **Ein eigener Knoten je Angabe ist auch, was eine Markierung am Knoten möglich macht.** *Die
+Kollision, die dagegen sprach — `Integer` ist Ziel von Autoren- **und** Benutzerdaten — trifft
+`Integer › min` nicht, weil das ein anderer Knoten ist.*
+
+⚠️ *Der Selbstbezug bleibt: **`Integer › min` erbt `min` mit sich selbst als Ziel** — dieselbe Form
+wie bei `DisplayOption`. Die Bedingung «das Ziel liegt unter dem Besitzer» ist bei `addField()`
+prüfbar, **aber als Verbot unbrauchbar**: alles liegt unter der Wurzel. Siehe
+[OQ-133](91-open-questions.md).*
+
+---
+
+### Ein Knoten trägt Datensätze für seine Felder — Stand 2026-08-29
+
+[D-522](90-decision-log.md). *Das Tor fragt nach **Feldern**, nicht nach dem Zweig.*
+
+```text
+kilo (unter Constants)
+└── erbt «exponent» als Kante 4654
+    record_values   edge_id=4654  path='4654'  value_int=3     ← neu
+    settings        owner_id=kilo setting_key='default' … =3   ← dasselbe, heute
+```
+
+⚠️ **[D-183](90-decision-log.md)s Satz «everything under Definition has none» war schon falsch:**
+*gemessen **232 Setting-Zeilen** an Knoten ausserhalb von `Model` und `Compositions`. Die Daten waren
+da — in einer anderen Tabelle und unter einem anderen Namen.*
+
+⚠️ **Additiv:** *Zweig hält Daten **oder** der Knoten hat Felder. Ein Modellknoten ohne Felder ist
+eine Baustelle und darf weiter anlegen — das hat ein Kerntest erzwungen.*
+
+⚠️ **Und die unbequeme Folge, gemessen: von 129 Knoten hat _keiner_ null Felder**, weil die Wurzel
+`renderer` und `validator` erklärt. *Der Datensätze-Bereich zeigt also überall. **Eine Ausnahme für
+Maschinerie nähme die Wurzel mit** — und ein Datensatz an der Wurzel ist der nützliche Fall.*
+
+---
+
+### Die vierte Relationsart — Stand 2026-08-30
+
+[D-526](90-decision-log.md). *`setting`, und sie ist eine Komposition.*
+
+| Art | wer vergibt sie |
+|---|---|
+| `inheritance` | der Baum |
+| `composition`, `aggregation` | **der Ast des Ziels** ([D-161](90-decision-log.md)) |
+| **`setting`** | **jemand** — die einzige, die kein Ast zurückgibt |
+
+⚠️ **Warum nicht `setting_composition` und `setting_aggregation`:** *sein Satz «eine Einstellung ist
+immer eine Komposition». Vorher war `Root.validator` eine Aggregation und eine Einstellung — **und
+diese Aggregation war falsch**, weil «welchen Validator benutze ich» dem Knoten gehört.*
+
+⚠️ **Warum nicht am Zielknoten:** *gemessen zeigen `Prefixes.exponent` (Autor), `Passiv.Tolerance` und
+`Part List Item.Quantity` (Benutzer) alle auf `Integer`. **Ein Knoten kann das nicht
+auseinanderhalten, eine Kante schon.***
+
+⚠️ *Und die Vererbung kostet nichts: ein geerbtes Feld ist **dieselbe Kante** — fünf Knoten sehen die
+Kante `44093` als ihr `renderer`-Feld. Einmal markiert, überall gültig.*
+
+⚠️ **Offen und absichtlich nicht gebaut: wie eine Einstellungskante entsteht.** *Zweites Eingabefeld,
+`Settings`-Ast oder Umschalter — seine Entscheidung.*
+
+---

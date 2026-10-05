@@ -6,7 +6,7 @@ What lives here: everything that knows WordPress exists. Hooks, admin screens, a
 ## What this does
 
 **It fulfils the interfaces the core declares** — `NodeRepository`, `IdentityAllocator`, `Clock`,
-`Changelog`, `FrameworkNodes` — and it **translates rather than decides**
+`Changelog`, `FrameworkNodes`, `TypeNodes` — and it **translates rather than decides**
 ([D-170](../../docs/NewConcept/90-decision-log.md)). A rule that lives here instead of in the
 core is a rule a second boundary would have to reinvent.
 

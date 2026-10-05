@@ -2,9 +2,9 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\SettingKey;
 
 /**
  * What every renderer of one typed value does identically, so that none of them says it twice.
@@ -19,7 +19,7 @@ use Taxmod\Core\Model\SettingKey;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-abstract class TypedFieldRenderer implements Renderer
+abstract class TypedFieldRenderer extends RendererNode
 {
     /**
      * @return list<Purpose>
@@ -38,27 +38,51 @@ abstract class TypedFieldRenderer implements Renderer
     /**
      * ⚠️ **The type answers eligibility, not the structure** — {@see Renderer::handles()} is the
      * registry key (R14a). `fits()` stays for the structural questions a later renderer needs to
-     * ask: a table renderer only fits a multi-valued edge (D-098).
+     * ask: a table renderer only fits a multi-valued relation (D-098).
      */
-    public function fits(Node|Relation $subject): bool
+    public function fits(Renderable $subject): bool
     {
         return true;
     }
 
-    final public function render(Node|Relation $subject, RenderContext $context): RenderResult
+    final public function render(Renderable $subject, RenderContext $context): RenderResult
     {
-        // The edge whose value went into this rendering — metadata a caller cannot recover from
+        // The relation whose value went into this rendering — metadata a caller cannot recover from
         // the markup afterwards (D-021).
         $used = $subject instanceof Relation ? [$subject->id] : [];
 
-        if ($context->setting(SettingKey::Hide->value)?->asBool() ?? false) {
-            return new RenderResult('', $used);
-        }
-
+        // ⚠️ **The `hide` check that stood here is gone, and its absence is the decision**
+        // ([D-457](../../../docs/NewConcept/90-decision-log.md), [D-450](../../../docs/NewConcept/90-decision-log.md)).
+        // *`hide` is a **column** on the identity now, not a setting, and it is an **abort**: the
+        // descent stops before it asks a renderer at all. A renderer that returned an empty string
+        // had already been asked — and its children had already been drawn.*
+        //
+        // ⚠️ *What that removes is not a line but a class of fault: as a setting, `hide` on a **type**
+        // reached every field of that type through the chain, and the check here is where it landed.
+        // **Measured twice** (OQ-101, and again 2026-08-27).*
         return new RenderResult(
-            $context->mayEdit() ? $this->input($context) : $this->display($context),
+            $this->control($context),
             $used
         );
+    }
+
+    /**
+     * ⚠️ **Nur lesen heisst ausgegraut, nicht weg** ([D-739](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort am
+     * 2026-09-12: «read only an kante muss beim rendern berücksichtigt werden, feld ausgegraut und falls wert da ist
+     * gefüllt».* Ein `<fieldset disabled>` sperrt jedes Steuerelement darin ohne Skript und ohne dass jeder Renderer sein
+     * `disabled` selbst schreibt.
+     */
+    private function control(RenderContext $context): string
+    {
+        if ($context->mayEdit()) {
+            return $this->input($context);
+        }
+
+        if ($context->editable && $context->purpose === Purpose::Edit) {
+            return '<fieldset disabled class="taxmod-read-only">' . $this->input($context) . '</fieldset>';
+        }
+
+        return $this->display($context);
     }
 
     /** The value as a reader sees it. */
@@ -72,8 +96,50 @@ abstract class TypedFieldRenderer implements Renderer
      *
      * ⚠️ **Nothing is drawn as nothing** — never a dash, never a zero. A missing value means
      * *not answered* (D-232), and a placeholder would hide that from the reader for good.
+     *
+     * ⚠️ **This is the one place a converter takes effect, and that is why it is `final`.** *The
+     * descent runs the converter in effect and hands the characters in
+     * ([D-445](../../../docs/NewConcept/90-decision-log.md)); every typed field already came through
+     * here for its characters, so `2k7`, `XII` and `FF` arrive without a single renderer knowing
+     * converters exist. **Sixteen renderers would have been sixteen chances to forget** — `CD-7`'s
+     * reasoning applied to a mapping instead of to a query.*
+     *
+     * ⚠️ *Nothing still wins over a converter: a mapping of a value that is not there would be a
+     * reading of an unanswered question.*
      */
-    final protected function characters(RenderContext $context): string
+    final protected function outputValue(RenderContext $context): string
+    {
+        if ($context->value->isNothing()) {
+            return '';
+        }
+
+        return $context->shown ?? $context->value->describe();
+    }
+
+    /**
+     * Der Wert für ein Steuerelement, **das der Browser selbst deutet** — immer der gespeicherte.
+     *
+     * ⚠️ **Der Unterschied zu {@see self::outputValue()} ist Datenverlust, und er war gebaut.** *Der
+     * Eigentümer hat danach gefragt: «wenn ich einen Konverter habe, müssten die Werte anders
+     * dargestellt werden — wenn ich römisch habe, in römischen Werten.» **Das stimmt für die Ziffer,
+     * die ein Mensch liest, und nicht für das Attribut `value`.** Gemessen: der Konverter `roman`
+     * macht aus `12` die Zeichen `XII`, und `<input type="range" value="XII">` ist für den Browser
+     * kein Wert — er setzt den Griff in die Mitte. **Beim nächsten Speichern wäre die Mitte der neue
+     * Wert.***
+     *
+     * ⚠️ **Die Trennlinie:** *ein `range`, `number`, `color`, `date` oder `email` bekommt den
+     * gespeicherten Wert; ein freies Textfeld bekommt, was ein Mensch liest — dort ist die Notation
+     * der Sinn der Sache und der Konverter liest sie wieder ein (`isInvertible()`).*
+     *
+     * ⚠️ *Die **Anzeige** (nicht die Eingabe) nimmt weiter {@see self::outputValue()}: was ein Leser
+     * sieht, ist die Notation. Der Schieber zeigt darum die Ziffer neben der Bahn in der Notation und
+     * trägt den gespeicherten Wert in der Bahn.*
+     *
+     * ⚠️ *Offen bleibt, was beim **Zurückschreiben** gilt, wenn beide Notationen im Spiel sind — siehe
+     * [OQ-142](../../../docs/NewConcept/91-open-questions.md). Gemessen: `roman->written('12')`
+     * **verweigert** und verdreht nicht, also ist der schlechteste Fall eine sichtbare Absage.*
+     */
+    final protected function controlValue(RenderContext $context): string
     {
         return $context->value->isNothing() ? '' : $context->value->describe();
     }
@@ -100,7 +166,7 @@ abstract class TypedFieldRenderer implements Renderer
         };
     }
 
-    final protected function attribute(string $name, ?string $value): string
+    final protected function createHtmlAttribute(string $name, ?string $value): string
     {
         return $value === null || $value === ''
             ? ''
@@ -108,7 +174,7 @@ abstract class TypedFieldRenderer implements Renderer
     }
 
     /** What a `<span>` holding a read value looks like, in one place. */
-    final protected function shown(string $markup): string
+    final protected function createHtmlValueSpan(string $markup): string
     {
         return '<span class="taxmod-value">' . $markup . '</span>';
     }

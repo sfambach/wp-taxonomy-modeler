@@ -2,8 +2,8 @@
 /**
  * Soft-delete unreferenced parent=0 attribute-slot orphans on wtt_fs.
  *
- * 1) Collect live referenced ids (Attribute::list + prop bindings + hierarchy-child edges).
- * 2) Prune stale besteht_aus/aggregation edges to parent=0 terms not in that set.
+ * 1) Collect live referenced ids (Attribute::list + prop bindings + hierarchy-child relations).
+ * 2) Prune stale besteht_aus/aggregation relations to parent=0 terms not in that set.
  * 3) Soft-delete remaining unreferenced parent=0 terms (Trash).
  *
  * Usage:
@@ -75,7 +75,7 @@ if ( is_array( $roots ) ) {
 $trash_id   = \WTT\Trash::ensure_trash_node( $taxonomy );
 $referenced = array_fill_keys( \WTT\Attribute::collect_referenced_term_ids( $taxonomy ), true );
 
-/* --- Prune stale attribute-binding edges to parent=0 orphans --- */
+/* --- Prune stale attribute-binding relations to parent=0 orphans --- */
 $all_terms = get_terms(
 	array(
 		'taxonomy'   => $taxonomy,
@@ -87,19 +87,19 @@ if ( ! is_array( $all_terms ) ) {
 	$all_terms = array();
 }
 
-$pruned_edges = 0;
-$edge_errors  = array();
+$pruned_relations = 0;
+$relation_errors  = array();
 foreach ( $all_terms as $host ) {
 	if ( ! $host instanceof \WP_Term ) {
 		continue;
 	}
 	$host_id = (int) $host->term_id;
-	foreach ( \WTT\Relation::list_outgoing( $taxonomy, $host_id ) as $edge ) {
-		$key = (string) ( $edge['typeKey'] ?? $edge['typeName'] ?? '' );
+	foreach ( \WTT\Relation::list_outgoing( $taxonomy, $host_id ) as $relation ) {
+		$key = (string) ( $relation['typeKey'] ?? $relation['typeName'] ?? '' );
 		if ( ! \WTT\Attribute::is_attribute_binding( $key ) ) {
 			continue;
 		}
-		$to = (int) ( $edge['toId'] ?? 0 );
+		$to = (int) ( $relation['toNodeId'] ?? 0 );
 		if ( $to <= 0 || isset( $referenced[ $to ] ) ) {
 			continue;
 		}
@@ -107,18 +107,18 @@ foreach ( $all_terms as $host ) {
 		if ( ! $target instanceof \WP_Term || (int) $target->parent > 0 ) {
 			continue;
 		}
-		/* Stale edge → parent=0 orphan not in live keep set. */
+		/* Stale relation → parent=0 orphan not in live keep set. */
 		if ( $dry_run ) {
-			++$pruned_edges;
+			++$pruned_relations;
 			continue;
 		}
-		$edge_id = (string) ( $edge['id'] ?? '' );
-		$type_id = (int) ( $edge['typeId'] ?? 0 );
-		$result  = \WTT\Relation::remove( $taxonomy, $host_id, $type_id, $to, $edge_id );
+		$relation_id = (string) ( $relation['id'] ?? '' );
+		$type_id = (int) ( $relation['typeId'] ?? 0 );
+		$result  = \WTT\Relation::remove( $taxonomy, $host_id, $type_id, $to, $relation_id );
 		if ( is_wp_error( $result ) ) {
-			$edge_errors[] = "{$host->name}→{$target->name}: " . $result->get_error_message();
+			$relation_errors[] = "{$host->name}→{$target->name}: " . $result->get_error_message();
 		} else {
-			++$pruned_edges;
+			++$pruned_relations;
 		}
 	}
 }
@@ -185,12 +185,12 @@ foreach ( $parent_zero as $term ) {
 $mode = $dry_run ? 'DRY-RUN' : 'EXECUTE';
 echo "cleanup-orphan-slots [{$mode}] taxonomy={$taxonomy}\n";
 echo 'referenced_ids=' . count( $referenced ) . "\n";
-echo 'pruned_stale_edges=' . $pruned_edges . "\n";
+echo 'pruned_stale_relations=' . $pruned_relations . "\n";
 echo 'kept=' . count( $kept ) . ' trashed=' . count( $trashed ) . ' skipped=' . count( $skipped ) . ' errors=' . count( $errors ) . "\n";
 echo 'trashed sample: ' . implode( ', ', array_slice( $trashed, 0, 25 ) ) . "\n";
-if ( array() !== $edge_errors ) {
-	echo "edge prune errors:\n";
-	foreach ( array_slice( $edge_errors, 0, 10 ) as $err ) {
+if ( array() !== $relation_errors ) {
+	echo "relation prune errors:\n";
+	foreach ( array_slice( $relation_errors, 0, 10 ) as $err ) {
 		echo "  {$err}\n";
 	}
 }
@@ -231,4 +231,4 @@ if ( ! $dry_run ) {
 }
 
 echo "OK\n";
-exit( ( array() === $errors && array() === $edge_errors ) ? 0 : 1 );
+exit( ( array() === $errors && array() === $relation_errors ) ? 0 : 1 );

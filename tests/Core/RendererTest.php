@@ -9,12 +9,14 @@ use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\RendererRegistry;
 use Taxmod\Core\Renderer\RenderResult;
+use Taxmod\Core\Renderer\TextareaRenderer;
 
 /**
  * The render contract, the fallback and the registry's two jobs.
@@ -105,7 +107,7 @@ final class RendererTest extends TestCase
         $result = (new PlainRenderer())->render(
             $this->subject,
             $this->context(Purpose::Edit, TypedValue::ofText('x'), [
-                SettingKey::ReadOnly->value => TypedValue::ofBool(true),
+                \Taxmod\Core\Model\EdgeColumn::READ_ONLY => TypedValue::ofBool(true),
             ], 'v')
         );
 
@@ -113,16 +115,24 @@ final class RendererTest extends TestCase
     }
 
     #[Test]
-    public function hidden_draws_nothing_at_all(): void
+    public function a_renderer_no_longer_knows_what_hidden_means(): void
     {
+        // ⚠️ **This test used to assert the opposite, and the reversal is D-457.** *`hide` was a
+        // setting, and a renderer handed a `hide = true` context returned an empty string. Now `hide`
+        // is a **column on the identity** and an **abort**: the descent stops before it asks a renderer
+        // at all (D-450, D-452).*
+        //
+        // ⚠️ *So a renderer given a setting called `hide` must **ignore** it — there is no such setting
+        // any more, and a renderer that still honoured one would be a second answer to a question the
+        // model already answers. The value is drawn, because drawing is all this class does.*
         $result = (new PlainRenderer())->render(
             $this->subject,
             $this->context(Purpose::Display, TypedValue::ofText('secret'), [
-                SettingKey::Hide->value => TypedValue::ofBool(true),
+                'hide' => TypedValue::ofBool(true),
             ])
         );
 
-        self::assertSame('', $result->markup);
+        self::assertStringContainsString('secret', $result->markup);
     }
 
     // -------------------------------------------------------------- the registry
@@ -147,8 +157,8 @@ final class RendererTest extends TestCase
     {
         $chosen = $this->registry->chosenFor(
             $this->subject,
-            [SettingKey::Renderer->value => new ResolvedSetting(
-                SettingKey::Renderer->value,
+            ['renderer' => new ResolvedSetting(
+                'renderer',
                 TypedValue::ofText(PlainRenderer::NAME),
                 1,
                 true
@@ -174,8 +184,10 @@ final class RendererTest extends TestCase
             public function supports(): array { return [Purpose::Display]; }
             /** @return list<\Taxmod\Core\Model\SimpleType> */
             public function handles(): array { return [SimpleType::Text]; }
-            public function fits(Node|\Taxmod\Core\Model\Relation $subject): bool { return true; }
-            public function render(Node|\Taxmod\Core\Model\Relation $subject, RenderContext $context): RenderResult
+            public function fits(\Taxmod\Core\Renderer\Renderable $subject): bool { return true; }
+            /** ⚠️ *Er zeichnet nur an — es gibt nichts zu wählen.* */
+            public function needsSomethingToChooseFrom(): bool { return false; }
+            public function render(\Taxmod\Core\Renderer\Renderable $subject, RenderContext $context): RenderResult
             {
                 return RenderResult::of('shown');
             }
@@ -183,8 +195,8 @@ final class RendererTest extends TestCase
 
         $this->registry->add($displayOnly);
 
-        $settings = [SettingKey::Renderer->value => new ResolvedSetting(
-            SettingKey::Renderer->value,
+        $settings = ['renderer' => new ResolvedSetting(
+            'renderer',
             TypedValue::ofText('display-only'),
             1,
             true
@@ -223,6 +235,101 @@ final class RendererTest extends TestCase
         $both = $first->followedBy($second);
 
         self::assertSame('<b>40</b><span class="rings"></span>', $both->markup);
-        self::assertSame([7, 9], $both->usedEdges);
+        self::assertSame([7, 9], $both->usedRelations);
     }
+
+    // ------------------------------------------------------- die Anzeigebreite (D-659)
+
+    /**
+     * ⚠️ **Sein Anlass, gemessen:** *`Street / H#` zeichnet waagerecht und ohne Umbruch, **aber beide
+     * Felder sind gleich breit** — ein Textfeld ohne Angabe nimmt die Vorgabe des Rahmenwerks.*
+     */
+    #[Test]
+    public function the_display_size_reaches_the_drawn_field(): void
+    {
+        $markup = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(
+                Purpose::Edit,
+                TypedValue::ofText('Bahnhofstrasse'),
+                ['display_size' => TypedValue::ofInt(40)],
+                'v'
+            )
+        )->markup;
+
+        self::assertStringContainsString('size="40"', $markup);
+
+        // ⚠️ **Keine Längenbegrenzung** ([D-659](../../../docs/NewConcept/90-decision-log.md)):
+        // *«sie beschneidet nichts und weist nichts zurück; wer eine Grenze will, braucht einen
+        // Validator».* **Die Verwechslung mit `maxlength` ist der eine Fehler, den sie benennt.**
+        self::assertStringNotContainsString('maxlength', $markup);
+    }
+
+    /** Zwei Angaben, zwei Breiten — sonst zeichnete nicht die Angabe, sondern etwas hinter ihr. */
+    #[Test]
+    public function two_widths_draw_two_widths(): void
+    {
+        $breit = (new FieldRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('Bahnhofstrasse'),
+            ['display_size' => TypedValue::ofInt(40)],
+            'v'
+        ))->markup;
+
+        $schmal = (new FieldRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('12a'),
+            ['display_size' => TypedValue::ofInt(4)],
+            'v'
+        ))->markup;
+
+        self::assertStringContainsString('size="4"', $schmal);
+        self::assertNotSame($breit, $schmal);
+    }
+
+    /**
+     * ⚠️ **Ohne Angabe bleibt es, wie es war.** *Sie ist ein **Wunsch, kein Befehl** — ein Rand, der
+     * sie nicht umsetzen kann oder keine bekommt, ignoriert sie, statt zu scheitern.*
+     */
+    #[Test]
+    public function without_a_display_size_nothing_changes(): void
+    {
+        $markup = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(Purpose::Edit, TypedValue::ofText('Bahnhofstrasse'), [], 'v')
+        )->markup;
+
+        self::assertStringNotContainsString('size=', $markup);
+        self::assertStringContainsString('value="Bahnhofstrasse"', $markup);
+    }
+
+    /**
+     * ⚠️ *Der mehrzeilige Textrenderer zählt in derselben Einheit und nimmt die Angabe darum auch —
+     * seine eigene `cols` bleibt die nähere Aussage und gewinnt.*
+     */
+    #[Test]
+    public function the_textarea_takes_it_too_and_its_own_cols_wins(): void
+    {
+        $nurBreite = (new TextareaRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('x'),
+            ['display_size' => TypedValue::ofInt(40)],
+            'v'
+        ))->markup;
+
+        self::assertStringContainsString('cols="40"', $nurBreite);
+
+        $mitCols = (new TextareaRenderer())->render($this->subject, $this->context(
+            Purpose::Edit,
+            TypedValue::ofText('x'),
+            [
+                'display_size' => TypedValue::ofInt(40),
+                'cols'                         => TypedValue::ofInt(12),
+            ],
+            'v'
+        ))->markup;
+
+        self::assertStringContainsString('cols="12"', $mitCols);
+    }
+
 }

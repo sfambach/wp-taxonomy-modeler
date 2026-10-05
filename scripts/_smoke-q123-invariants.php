@@ -105,7 +105,7 @@ foreach ( $hosts as $name => $term ) {
 			continue;
 		}
 
-		$to_id = (int) ( $edge['toId'] ?? 0 );
+		$to_id = (int) ( $edge['toNodeId'] ?? 0 );
 		if ( $to_id > 0 && Attribute::is_slot( $to_id ) ) {
 			$fail[] = "$label:toId_is_slot($to_id)";
 		}
@@ -205,7 +205,7 @@ if ( $kontakt instanceof WP_Term ) {
 				$fail[] = 'add_probe:legacy_slot';
 			}
 			$edge = wtt_smoke_q123_find_edge( $tax, $host_id, $new_id );
-			$to   = (int) ( is_array( $edge ) ? ( $edge['toId'] ?? 0 ) : 0 );
+			$to   = (int) ( is_array( $edge ) ? ( $edge['toNodeId'] ?? 0 ) : 0 );
 			if ( $to !== $type_id ) {
 				$fail[] = "add_probe:toId_not_type(got=$to want=$type_id)";
 			}

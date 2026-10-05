@@ -30,7 +30,7 @@ final class NotYetStorable extends DomainError
      * ([D-105](../../../docs/NewConcept/90-decision-log.md)) and a composed part a record of its
      * own; keeping whatever was typed would look right until somebody tried to follow it.
      */
-    public static function thatAttributeHasNoTypeYet(string $attribute): self
+    public static function thatFieldHasNoTypeYet(string $attribute): self
     {
         return new self(sprintf(
             '«%s» does not point at a simple data type, so there is nothing to type in yet.',
@@ -47,13 +47,128 @@ final class NotYetStorable extends DomainError
         ));
     }
 
+    /**
+     * ⚠️ **Not a *yet*, unlike its neighbours here.** The others say *nobody has built this*; this
+     * one says *the model declared that nothing is kept* ([D-378](../../../docs/NewConcept/90-decision-log.md)),
+     * which is an answer and not a gap. It shares the class because the caller's question is the
+     * same — *can this value be stored* — and the honest reply is no either way.
+     */
+    /**
+     * ⚠️ **«Setze den Wert» ist keine Frage, die ein Feld mit mehreren Werten beantworten kann.**
+     * *Seit [D-530](../../../docs/NewConcept/90-decision-log.md) stehen mehrere Werte als mehrere
+     * Zeilen nebeneinander; früher verhinderte der eindeutige Schlüssel den Fall. **Verweigert statt
+     * geraten:** eine der Zeilen zu treffen wäre in der Hälfte der Fälle die falsche, und man sähe es
+     * erst an den Daten.*
+     */
+    /**
+     * Ein Feld mit Benutzersätzen soll eine Einstellung werden — erst der Haken, dann der Wechsel (D-699).
+     */
+    public static function kindChangeNeedsConfirmation(string $attribute, int $records, int $values): self
+    {
+        return new self(sprintf(
+            $records === 1
+                ? '«%1$s» keeps values in %2$d entry (%3$d values). Making it a setting moves that entry to the shadow — tick the confirmation in the row and save again.'
+                : '«%1$s» keeps values in %2$d entries (%3$d values). Making it a setting moves those entries to the shadow — tick the confirmation in the row and save again.',
+            $attribute,
+            $records,
+            $values
+        ));
+    }
+
+    /**
+     * Ein Knoten mit Einträgen soll unter `Primitives` — erst die Bestätigung, dann der Umzug (D-701).
+     */
+    public static function moveNeedsConfirmation(string $node, string $target, int $records, int $values): self
+    {
+        return new self(sprintf(
+            $records === 1
+                ? '«%1$s» carries %3$d entry (%4$d values) that nothing refers to. Under «%2$s» there is no place for it — confirm below to move the node and send that entry to the shadow.'
+                : '«%1$s» carries %3$d entries (%4$d values) that nothing refers to. Under «%2$s» there is no place for them — confirm below to move the node and send those entries to the shadow.',
+            $node,
+            $target,
+            $records,
+            $values
+        ));
+    }
+
+    /** ⚠️ *«unique (eindeutig)» an der Kante (D-735): derselbe Wert steht schon in einem anderen Satz.* */
+    public static function thatValueIsTaken(string $attribute, string $value, int $recordId): self
+    {
+        return new self(sprintf('«%s» must be unique — «%s» is already held by record #%d.', $attribute, $value, $recordId));
+    }
+
+    public static function thatFieldHasSeveralValues(string $attribute, int $anzahl): self
+    {
+        return new self(sprintf(
+            '«%s» holds %d values — say which one, or append instead of setting.',
+            $attribute,
+            $anzahl
+        ));
+    }
+
+    public static function thatFieldKeepsNothing(string $attribute): self
+    {
+        return new self(sprintf(
+            // ⚠️ *Wortlaut nachgezogen am 2026-09-01: «not persistent» war das Vokabular von
+            // [D-538]s Vorgänger. Die Kante ist eine **Einstellung** — das ist der Grund, und
+            // `keepsValues()` fragt genau das.*
+            '«%s» is a setting, not a field — its value lives as a default and is read, never written.',
+            $attribute
+        ));
+    }
+
+    /**
+     * ⚠️ *A part exists only where the branch says the value has records of its own
+     * ([D-232](../../../docs/NewConcept/90-decision-log.md)). Anywhere else the value belongs **in**
+     * the holder's record, and a part would be a second home for the same fact.*
+     */
+    public static function thatIsNotAComposedPart(string $attribute): self
+    {
+        return new self(sprintf(
+            '«%s» does not point into Compositions, so its value lives in the record itself.',
+            $attribute
+        ));
+    }
+
+    /** Ein Satz wandert nur zum Vater oder in ein direktes Kind (D-756). */
+    public static function notANeighbourOf(string $target, string $node): self
+    {
+        return new self(sprintf('«%s» is neither the parent nor a child of «%s».', $target, $node));
+    }
+
+    /** Die Validatoren haben etwas auszusetzen — nichts wird gespeichert (D-760). */
+    public static function refusedByValidators(string $liste): self
+    {
+        return new self(sprintf('Not saved — %s.', $liste));
+    }
+
     public static function noSuchRecord(int $id): self
     {
         return new self(sprintf('There is no record %d.', $id));
     }
 
-    public static function notAnAttributeOfThisModel(int $edgeId, string $model): self
+    /**
+     * ⚠️ **Kein stilles Nichts** ([D-543](../../../docs/NewConcept/90-decision-log.md)). *Wenn die Saat
+     * die Id der Einstellungskante noch nicht aufgeschrieben hat, ist Schreiben unmöglich — und der
+     * Vorgänger dieser Zeile, ein `return` ohne Wort, ist genau der Grund, warum ein Renderer-Ausfall
+     * einen ganzen Tag unsichtbar bleiben konnte.*
+     */
+    public static function thatSettingHasNoRelationYet(string $key): self
     {
-        return new self(sprintf('Attribute %d does not belong to «%s» or anything it inherits from.', $edgeId, $model));
+        return new self(sprintf('The setting «%s» has no relation written down yet, so nothing can be stored at it.', $key));
+    }
+
+    public static function notAFieldOfThisModel(int $relationId, string $model): self
+    {
+        return new self(sprintf('Field %d does not belong to «%s» or anything it inherits from.', $relationId, $model));
+    }
+
+    /**
+     * ⚠️ *Eine Verwendungsstelle wird über ihre **Id** angesprochen, und eine Id, die auf nichts zeigt,
+     * ist Eingabe und kein Zustand — sie wird gemeldet und nicht als «nichts zu tun» geschluckt.*
+     */
+    public static function noSuchUseSite(int $relationId): self
+    {
+        return new self(sprintf('There is no use site %d.', $relationId));
     }
 }

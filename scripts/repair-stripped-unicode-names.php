@@ -26,7 +26,7 @@ $result   = Json_Meta::repair_taxonomy( $taxonomy );
 update_option( Json_Meta::OPTION_UNICODE_REPAIRED, 1, false );
 
 echo 'taxonomy=' . $taxonomy . "\n";
-echo 'edges=' . (int) $result['edges'] . "\n";
+echo 'relations=' . (int) $result['relations'] . "\n";
 echo 'terms=' . (int) $result['terms'] . "\n";
 echo 'repaired=' . ( ! empty( $result['repaired'] ) ? 'yes' : 'no' ) . "\n";
 echo "ok\n";

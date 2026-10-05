@@ -95,7 +95,7 @@ Related, from [Vision and scope](00-vision-and-scope.md):
 | **R8** | Three display levels: the **admin module** (where models are rendered), **Gutenberg blocks** (fill data, make it available to the site), and the **frontend** (display, and possibly user input). |
 | **R9** | A renderer — an integer renderer, say — must carry **options for these different circumstances**. |
 | **R10** | Every renderer must support **editable / not editable**. |
-| **R11** | A renderer must honour whether a node is **visible** (`hide`), as set on the attributes. |
+| **R11** | A renderer must honour whether a node is **visible** (`hide`), as set on the attributes. ⚠️ **Held, and by a mechanism that makes the renderer's part of it empty** — see [R11 as it was built](#r11-as-it-was-built--the-renderer-never-sees-hide). |
 
 ### R6, R7 — how a node finds its renderer, and how the descent works
 
@@ -154,8 +154,27 @@ flowchart LR
 
 The same renderer serves all three levels; the level is a **circumstance** it is given (R9),
 not a reason for a second implementation. Two circumstances are named so far: the level
-itself, and **editable / not editable** (R10). `hide` (R11) is a third input, but it comes
-from the node's settings rather than from the caller.
+itself, and **editable / not editable** (R10).
+
+#### R11 as it was built — the renderer never sees `hide`
+
+⚠️ **`hide` is *not* a third circumstance, and the finished mechanism is better than the rule.**
+*It stood here as «an input that comes from the node's settings» while `hide` was a setting. It is
+**one column on the edge** now ([D-467](90-decision-log.md), owned by [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)), and the
+**descent drops the edge before any renderer is asked** ([D-450](90-decision-log.md),
+[D-456](90-decision-log.md)).*
+
+| | |
+|---|---|
+| **R11's demand** | *a renderer must honour whether a node is visible* |
+| **How it is met** | by a renderer never being called for something hidden |
+| **What that buys** | there is no way for a renderer to get it wrong, and no *no-render* renderer is needed ([D-456](90-decision-log.md)) |
+
+⚠️ *One consequence, and it is the reason this is written out: a **tree cell** cannot read the flag
+off its subject either, because a cell draws a **node** and the flag sits on its **edge**. Developer
+mode's «show hidden» view needs it to grey the row, so the walk hands it in as a prepared fact
+([D-445](90-decision-log.md)) — the one place `hide` reaches a renderer at all, and it arrives
+**answered** rather than asked.*
 
 **Answered:** [D-021](90-decision-log.md) settles what was [OQ-014](91-open-questions.md).
 **Renderers are PHP**, and they serve all three levels, all three of which WordPress renders in
@@ -948,6 +967,33 @@ a converter changes the form of one that did.** `XII` and `12` are the same numb
 differently — nothing gained, nothing lost. So a numeral-system converter is a converter, exactly
 as gram-to-kilogram is — recorded as [D-075](90-decision-log.md).
 
+### R34a — die drei Zahlensysteme sind gebaut, und sie sind **ein** Gang
+
+```mermaid
+flowchart LR
+    N["12"] --> B["binary · 1100"]
+    N --> O["octal · 14"]
+    N --> H["hexadecimal · C"]
+    B & O & H -->|written| N
+```
+
+[D-523](90-decision-log.md), auf seine Bitte *«kannst du im hintergrund bauen converter binary,
+converter hex, convert oct für int»* — und [R34](#owner-statement--2026-08-22-seventh-pass-converters-and-how-many)
+hatte alle drei am 2026-08-22 schon genannt. **Alle drei sind invertierbar**, also bedienen sie
+Anzeige, Eingabe und Suche ([R36](#r36--and-this-splits-converters-into-two-kinds)); alle drei sind
+`format` nach [R33a](#r33a--there-are-a-few-kinds-of-converter-parameterised-by-data).
+
+⚠️ **Der Stellenwert-Gang liegt an einer Stelle, nicht an dreien.** *Die Basis ist ihr ganzer
+Unterschied. Drei Abschriften hiessen: jeden Fehler dreimal beheben — und **zwei Fehler waren schon
+da**, in der einen Klasse, die es gab. `shown()` stürzte auf der kleinsten ganzen Zahl ab
+(`abs(PHP_INT_MIN)` ist ein `float`), und eine zu grosse Zahl kam als **`0`** zurück statt als
+Absage. Das ist die stille Null, die [D-071](90-decision-log.md) verbietet, durch die andere Tür.*
+
+⚠️ **Kein Präfix und keine feste Breite, in keiner der drei Basen** — `0x`, `0b`, `0755` und
+`00001100` sind alle **zweite Formen für denselben Wert**, und der Rundgang ist dann keiner mehr.
+*Bei `octal` ist das die einzige echte Falle: `0755` heisst in C, in PHP und in einem Dateirecht
+«oktal», hier heisst es nichts — es ist dieselbe Zahl wie `755`, und geschrieben wird `755`.*
+
 ### R36 — and this splits converters into two kinds
 
 ```mermaid
@@ -1534,11 +1580,17 @@ sparse storage only works if reading merges per key.
 *Always honour every attribute, no special arrangements.* Concretely, a renderer that draws a value
 must take account of **all** of these, every time:
 
-`hide` · `read_only` · the chosen converter · `min` · `max` · `step` · multiplicity · the label in
+`read_only` · the chosen converter · `min` · `max` · `step` · multiplicity · the label in
 the right role and locale.
 
-Not *the ones this renderer cares about* — **all of them.** A renderer that ignores `hide` produces
-a visible field that the model says is invisible, and the bug shows up somewhere else entirely.
+Not *the ones this renderer cares about* — **all of them.** A renderer that ignores `read_only`
+produces an editable field that the model says is fixed, and the bug shows up somewhere else
+entirely.
+
+⚠️ **`hide` was first in that list and is deliberately not in it any more.** *Not because the demand
+was dropped — because it was met somewhere a renderer cannot break it: the descent removes the edge
+before a renderer is asked ([Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge), [D-467](90-decision-log.md)). **A rule that no
+renderer can violate does not belong in a list of rules renderers must follow.***
 
 This pairs with [D-056](90-decision-log.md): *a control offers only real choices.* One rule says
 never present a decision already made; this one says never ignore what the model stated. Agreed
@@ -1546,9 +1598,10 @@ as [D-094](90-decision-log.md).
 
 **And it is not the same as *the engine branches on it*.** [D-085](90-decision-log.md) draws the
 finer line: a renderer must honour `min` and `max` too — a spinner cannot be drawn without
-them — and what differs is **who owns the meaning**. The engine defines `hide`, `read_only`,
+them — and what differs is **who owns the meaning**. The engine defines `read_only`,
 `renderer`, `converter`, `validators` identically for every node; a **type** defines `min`,
-`max`, `step`, and a spinner reads them because it is registered *for that type*.
+`max`, `step`, and a spinner reads them because it is registered *for that type*. *(`hide` stood in
+the engine's list and has left the settings altogether — [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge).)*
 
 ### R42/R43 — and R49 removes the exception again
 
@@ -2901,7 +2954,10 @@ improved away later.
 
 *Not shown at every level, but at least in the admin* is a **circumstance**
 ([R9](#owner-statement--2026-08-22-second-pass)), not a new mechanism: read-only values default to
-visible in the admin and hidden in the frontend, and `hide` overrides that wherever it matters.
+visible in the admin and hidden in the frontend. ⚠️ *This used to end «and `hide` overrides that
+wherever it matters», which reads as a resolution between two settings. It is not one: a hidden
+placement is **not drawn at any level**, because the descent never reaches it
+([Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge)). There is nothing to override — the field is absent, not overruled.*
 
 ### Consequences of R1
 
@@ -3165,6 +3221,128 @@ circumstance of a renderer ([D-018](90-decision-log.md)), so the mechanism exist
 ⚠️ *Who may, what is checked, how abuse is prevented are deliberately **not** decided with it; those
 belong to the first real use case.*
 
+## Wie ein Renderer gewählt wird und was er baut — Stand 2026-08-28
+
+⚠️ **Diese Stelle besitzt vier Fragen, die vorher nur im Log standen** ([D-469](90-decision-log.md)):
+*wer darf gewählt werden, wer wählt aus, wer baut das Markup, und was ist ein Renderer überhaupt.*
+Alles darunter ist am selben Tag entschieden und gebaut worden.
+
+### Der Entwurf, in seinen Worten
+
+[D-463](90-decision-log.md) hält fest, was gebaut war und nirgends stand. Der Eigentümer:
+
+> *Hier, die Klasse Renderer hat eine Funktion `render()`. Der bekommt das Renderbare übergeben plus
+> einen Kontext. Und jeder Renderer baut sein HTML selbst. Gemeinsamkeiten regelt man über CSS.
+> Generische Lösungen kommen in die Elternklasse.*
+
+⚠️ *Vier Sätze, vier Regeln — und die vierte ist die, die den Rest zusammenhält: **was mehrere
+Renderer gleich tun, tut die Elternklasse einmal**. Genau daraus folgt die nächste Stelle.*
+
+### Ein Element wird an einer Stelle geschrieben
+
+[D-465](90-decision-log.md) baut die vierte Regel: `RenderResult::htmlTag()` ist die eine Stelle, die
+weiss, wie ein HTML-Element geschrieben wird — Name, Attribute, Escaping, weggelassene Leerwerte.
+
+⚠️ **Gemessen, warum es nötig war:** *achtzehn Stellen schrieben `<input` von Hand, **vier davon
+escapten selbst** und **eine** benutzte den vorhandenen Helfer. Nach dem Umbau steht in `src/Core`
+**kein einziges** handgeschriebenes `<input` mehr.* **Der Wert ist nicht Kürze, sondern dass Escaping
+nicht mehr die Aufmerksamkeit eines Autors braucht.**
+
+### Wer angeboten wird: zwei Gruppen von Knoten
+
+[D-481](90-decision-log.md), auf das Wort des Eigentümers:
+
+> *Der Kompaktrenderer sollte praktisch an **allen** Knoten möglich sein, **ausser an den simplen
+> Datentypen**. Das gleiche gilt für Tabelle und Formular … Damit haben wir praktisch **zwei
+> Gruppen**.*
+
+⚠️ **Und die Trennung stand schon als eine Bedingung im Code, nur nie als Regel benannt** —
+`RendererRegistry::eligibleFor()`:
+
+| Gegenstand | angeboten wird |
+|---|---|
+| hat einen **einfachen Typ** | nur Renderer, die diesen Typ nennen — *«sein eigener oder spezialisierter»* |
+| hat **keinen** | nur strukturelle Renderer — *«die allgemeinen»* |
+
+⚠️ **Der Mechanismus ist seiner, nicht meiner, und er ist der bessere.** *Ich hatte eine **dritte
+Frage** im Vertrag vorgeschlagen — «darf ich der Renderer eines Knotens sein». Er: «wir haben ja
+aktuell in Renderern eine **Supported-Liste** … das sollte eigentlich schon ausreichen, oder?»
+**Ein neuer Eintrag in der vorhandenen Liste statt einer neuen Achse** — und die Bedingung wird
+dadurch **kürzer**: der Sonderfall «kein Typ → nur leere Listen» verschwindet.*
+
+⚠️ *Genau dieser Sonderfall ist auch der Grund, warum ein Chooser heute nicht beides sein kann:
+`InlineChooserRenderer` und `DialogChooserRenderer` antworten `handles(): [SimpleType::NodeRef]` und
+sind damit **Wert**-Renderer — sie könnten einen Knoten zeichnen und werden nie dafür angeboten.
+**Gemessen: sieben Renderer nehmen ausdrücklich einen Knoten an, genau zwei werden für einen
+angeboten.***
+
+### Wer einen eigenen Renderer will, wird ein Typ
+
+[D-482](90-decision-log.md), und die Begründung ist besser als der Mechanismus. Der Eigentümer:
+
+> *Wenn ich wirklich für Money einen eigenen Renderer haben will, dann muss Money ein **Typ** sein.
+> Und ein Renderer ist ja sowieso was **Programmiertes** — ich kann ja nicht einfach nur einen Namen
+> in die Datenbank klatschen und hoffen, dass es irgendwie gerendert wird.*
+
+⚠️ **Das ist `CD`s Verbot von der anderen Seite gesagt** — nicht *«behandle keinen Knoten nach Namen
+sonder»*, sondern *«dann mach ihn zu einem Typ»*. **Ein Anspruch, der an Daten hängt, ist ein
+Versprechen, das kein Code hält.** *Und «ein Typ werden» heisst konkret ein Paar: ein Fall im Enum
+**und** ein gesäter Knoten unter `Data Types`, verbunden über `SimpleType::fromNodeName()`
+([D-428](90-decision-log.md)).*
+
+⚠️ *Und ein Knoten sagt ausdrücklich **nicht**, welche Renderer er zulässt. Der Eigentümer hat es
+erwogen und selbst verworfen ([D-483](90-decision-log.md)): «wenn ich dann einen neuen Renderer
+hinzufüge, dann weiss der Knoten das gar nicht, obwohl er vielleicht damit gerendert werden könnte.
+Das wäre ein schlechtes Konzept.» **Offen/geschlossen in seinen eigenen Worten.***
+
+### Der Container eines Knotens kommt aus der Kette
+
+[D-483](90-decision-log.md). ⚠️ **Und das war «geschrieben und nicht gebaut».** *Der Docblock von
+`Rendering::nodeAsForm()` sagte seit dem Anfang «der Container wird genauso gewählt wie der Renderer
+eines Feldes — die Kette, dann die strukturelle Vorgabe», und die Zeile darunter hiess
+`byName(FormRenderer::NAME)` und fragte nichts.* **`form` wirkte allein deshalb, weil er der einzige
+war** — und in der Sekunde, in der ein zweiter Container existierte, konnte der Eigentümer ihn wählen
+und auf dem Schirm änderte sich nichts. Sein Befund: *«ich kann irgendwie hier noch nichts richtig
+aufsetzen.»*
+
+⚠️ *Die Zulässigkeit wird dabei **gefragt und nicht neu erfunden**: ein Name zählt nur, wenn
+`eligibleFor()` ihn für diesen Knoten angeboten hätte. So stellen Lese- und Schreibseite **eine**
+Frage. Der Rückfall ist das Formular und ausdrücklich nicht der Auffang der Registry — ein Container,
+der seine Teile nicht auslegen kann, verliert sie.*
+
+### Der kompakte Renderer ist einer, nicht zwei
+
+[D-471](90-decision-log.md) verengt [D-245](90-decision-log.md): dort sprach der Eigentümer noch von
+*«den compact horizontal und compact vertical Renderern»*, heute von **einem** mit zwei Eigenschaften
+— Ausrichtung (Vorgabe **horizontal**) und Label (Vorgabe **an**).
+
+⚠️ *Zwei Renderer, die sich in einer Achse unterscheiden, sind zwei Registrierungen, zwei Namen im
+`renderer`-Schlüssel und zwei Stellen, an denen dieselbe Kompaktheit gepflegt wird.*
+
+⚠️ **Wo die Eigenschaften wohnen, ist offen** — [OQ-120](91-open-questions.md). *Gemessen lesen heute
+drei Renderer überhaupt Optionen, und sie tun es auf **zwei verschiedene Weisen**: `min`/`max`/`step`
+als reservierte Schlüssel, `cols`/`rows` als freie, die niemand deklariert.*
+
+### Was sich im Vokabular geändert hat
+
+| | |
+|---|---|
+| *Attribut* heisst **Feld** | [D-462](90-decision-log.md) — der Eigentümer: «das gibt immer Verwirrung zwischen Klassenattribut und unserer Definition; lass es uns **Felder** nennen, weil was wir machen sind Felder in einem Datensatz» |
+| `range_min`/`range_max`/`range_step` heissen **`min`/`max`/`step`** | [D-466](90-decision-log.md), Schema 11 — *der `range_`-Präfix sagte «range» dreimal, und `step` ist gar kein Teil eines Bereichs* |
+| `hide` ist **kein Setting mehr** | [D-464](90-decision-log.md), [D-467](90-decision-log.md) — eine Spalte auf der **Kante**. Die ganze Mechanik an einer Stelle: [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) |
+
+⚠️ *Die Umbenennung auf «Feld» ist in der Prosa dieses Dokuments **noch nicht durchgezogen** — das ist
+[Zeile 62](97-implementation-plan.md#the-working-list), ausdrücklich Satz für Satz und nicht als
+Sweep, weil «attribute» hier auch **HTML-Attribut** heisst.*
+
+### Und die spezialisierten Knotenklassen
+
+[D-484](90-decision-log.md) — der Eigentümer will Klassen je Typ, *«weil dann auch klar ist, wie viele
+spezialisierten Typen wir haben»*. **Das gehört in den Domänenkern und steht dort**; für den Renderer
+zählt nur die Folge: der Anspruch eines spezialisierten Renderers hängt dann an einem **Typ**, und ein
+Typ ist Code.
+
+---
 ## What belongs here
 
 - The renderer interface and its contract.
@@ -3419,3 +3597,317 @@ quietly returns as a renderer later.
 | A **binding** | a named slot carrying a pointer and nothing else — explicitly **no renderer** | [D-120](90-decision-log.md) |
 | A **data pack** | data, never behaviour; a pack needing a renderer **declares a dependency** on it | [D-175](90-decision-log.md), [D-215](90-decision-log.md) |
 | A **view** | a named calculation belonging to no node — the calculation side, deferred | [D-201](90-decision-log.md), [D-203](90-decision-log.md) |
+
+## Ein Icon wird an einer Stelle geschrieben — Stand 2026-08-29
+
+[D-495](90-decision-log.md), auf die dritte Meldung desselben Fehlers. Der Eigentümer:
+*«ich habe **mehrfach** bemängelt, dass Icons nicht richtig aligned sind … kannst Du nicht mal
+einen Icon-Renderer machen, der sich darum kümmert, dass das überall gleich aussieht?»*
+
+⚠️ **«Mehrfach» ist der Befund, nicht die Beschwerde.** *Ein Fehler, der wiederkommt, nachdem er
+einzeln behoben wurde, ist kein Serienfehler, sondern ein **fehlender Ort** — dieselbe Diagnose,
+aus der [D-465](90-decision-log.md) `RenderResult::htmlTag()` gemacht hat.*
+
+### Was gemessen wurde, bevor etwas gebaut wurde
+
+| | |
+|---|---|
+| SVG-Dateien, Bilddateien, `viewBox` | **0** — seine Vermutung konnte die Ursache nicht sein |
+| Techniken nebeneinander | **4** (Icon-Schrift, Emoji, rohes Font-Zeichen, HTML-Entity) |
+| Stellen, die ein Symbol von Hand schreiben | **6** |
+| konkurrierende Grössenregeln | **5** — zweimal hart `16px`, einmal `17px` als Inline-Style, einmal die Variable, einmal **gar keine** (also `20px` von WordPress) |
+| Ausrichtungsmechanismen | **3** |
+
+⚠️ **Ein Set zu tauschen hätte kein einziges Symptom berührt** — und das war der erste Vorschlag.
+*Deshalb wird hier gemessen, bevor getauscht wird: eine Ursache, die man nicht gemessen hat,
+tauscht man nur gegen eine andere.*
+
+### Die Umkehrung, die den Wiederholungsfehler erklärt
+
+⚠️ **`vertical-align: middle` war einmal da, wurde als Ursache benannt und entfernt — und war die
+Lösung.** *Gemessen im Browser gegen die **optische Mitte des Textes** (Grundlinie minus halbe
+x-Höhe, aus `measureText()`) stand ein Icon im Textfluss **3,5 px zu hoch**. Genau das heisst
+`vertical-align: middle` in CSS. Danach: **0,25 px, und für jeden Fall dieselben.***
+
+⚠️ *Die frühere Korrektur war nicht falsch, sondern am falschen Element: sie entfernte die Regel
+vom `inline-block` **im Knopf**, wo die Bezugsgrundlinie die des Icons selbst ist. **Auf einen
+Knopf wirkt sie ohnehin nicht — ein Flex-Element ignoriert `vertical-align`**, nachgemessen 0,00 px
+Bewegung. Der Fehler wurde am Kind behoben und am Elternteil stehengelassen.*
+
+⚠️ **Nicht der kleinste Wert gewinnt, sondern der gleichmässige.** *`baseline` −3,5/−3,5/−2,
+`text-bottom` −0,5/−0,5/−2, `-0.3em` 0,59/0,59/0,09, `middle` 0,25/0,25/0,25. «Überall gleich»
+war die Bitte, nicht «möglichst nah».*
+
+### Was nicht vereinheitlicht wurde
+
+Das `×` im Dialog und die Icon-Auswahlliste sind **Text**, kein gezeichnetes Icon — eines ist ein
+Schliessen-Zeichen im Fluss, das andere schaltet für ein `<select>` die Schrift um. *Sie in
+dieselbe Regel zu zwingen hiesse, Gleichheit über Gleichartigkeit zu stellen.*
+
+⚠️ *Bewacht von `icon-markup-check.php` (nur eine Stelle schreibt, nur eine Regel bemasst) und
+nachstellbar mit `icon-probe.php`, das die Kästen im Browser **misst** statt sie anzusehen.*
+
+---
+
+## Woraus eine Vorschau zeichnet — Stand 2026-08-29
+
+[D-499](90-decision-log.md) baut die mittlere Sprosse von [D-028](90-decision-log.md). Die
+Reihenfolge steht seit dem 22.08. fest und war bis heute nur zweistufig:
+
+| | Quelle | seit |
+|---|---|---|
+| 1 | **echte Daten** | gebaut |
+| 2 | **als Testdaten markierte Zeilen** | **2026-08-29** — Schema 13 legte die Spalte, [D-499](90-decision-log.md) die Sprosse |
+| 3 | der **Standard des Typs** | gebaut |
+
+⚠️ **Die Sprosse war nicht nur fehlend, sondern umkehrbar, und das ist der Befund.** *Vorher nahm
+`previewSource()` schlicht `records[0]`, und `WpdbRecordRepository::ofNode()` sortiert
+`ORDER BY id ASC`. **Eine markierte Zeile schlug echte Daten allein dadurch, dass sie früher
+angelegt worden war.** Die Prüfung gibt der echten Zeile darum ausdrücklich die **höhere** Id —
+sonst wäre sie durch die Sortierung grün statt durch die Regel.*
+
+⚠️ **Zeichnen einer Vorschau schreibt nichts, und das ist eine geprüfte Zusage.** *26 Datensätze
+vorher, 26 nachher; 43 Werte vorher, 43 nachher. Ein Entwurf, der einen Test-Record anlegen
+müsste, um etwas zu zeigen, schriebe Musterwerte in genau die Daten, über die er berichtet.*
+
+⚠️ **Was fehlt, ist die Geste** ([C65](10-domain-core.md)): *wie jemand eine Zeile markiert, ist
+offen — der Entwurf des Eigentümers war «ein Häkchen: sind Testdaten / ist Vorgabewert». Gemessen
+sind **0 von 26** Datensätzen markiert. **Die Sprosse ist gebaut und im Betrieb nicht
+auslösbar.***
+
+⚠️ *Und weiter reichend: **`Level::FrontEnd` kommt in `src/` an keiner Stelle vor.**
+[D-241](90-decision-log.md) sagt, das Kennzeichen steuere die Sichtbarkeit **vorn** — es gibt kein
+Vorn. Die Vorschau ist heute der einzige Ort, an dem `is_test` etwas tun kann.*
+
+⚠️ *Nicht gebaut und warum: der zweite Renderpfad `valueOfType()` bleibt
+([OQ-129](91-open-questions.md)). Ein Datentyp ist nie das Modell eines Datensatzes, und ein Wert
+wird über eine **Kante** adressiert — ein Test-Record für einen Datentyp hätte keinen Schlüssel
+für seinen Wert.*
+
+---
+
+## Wozu die Renderer-Liste da ist — und wozu nicht — Stand 2026-08-29
+
+⚠️ **Der Eigentümer hat die Prämisse angegriffen** ([D-501](90-decision-log.md)): *«warum sollte es
+die geben? Ein Renderer startet, hat einen Knoten, der hat Felder, die zeigen wieder auf Knoten, der
+Knoten hat einen Renderer. Wozu brauchen wir diese geordnete Liste?»*
+
+**Seine Kette deckt genau das ab, wofür die Liste nicht da ist.** Die Hierarchie komponiert
+**Struktur**. Die Liste ist für **einen Wert, mehrfach gezeichnet** — [R15a](#r15a--the-renderer-list-is-a-third-axis-and-it-multiplies-nothing):
+*«a traffic light beside an integer is not a new integer renderer and not an option of the spinner —
+it is a second entry in the node's list».* Dort gibt es **einen** Knoten und **ein** Feld; die
+Hierarchie hat nichts zu komponieren.
+
+⚠️ **Trotzdem war die Frage berechtigt, und zwar für die anderen zwei Fälle.** *[OQ-109](91-open-questions.md)
+behandelte Renderer, Validatoren und mehrere Defaults als ein Problem. Sie sind drei:*
+
+| Fall | braucht | Zuhause |
+|---|---|---|
+| **Validatoren** ([D-158](90-decision-log.md)) | mehrere, **keine Reihenfolge** — alle müssen laufen | `labels.path`, **gebaut** |
+| **mehrere Defaults** ([D-030](90-decision-log.md)) | mehrere Zeilen über den Index | `settings.path`, **gebaut** |
+| **Renderer** ([D-236](90-decision-log.md)) | mehrere **in Reihenfolge** | offen |
+
+⚠️ **Und der verbleibende Fall hat keinen Benutzer, gemessen 2026-08-29:** *`RenderResult::followedBy()`
+wird **ausschliesslich von seinem eigenen Test** aufgerufen. **Es existiert kein Renderer, der neben
+einen Wert gehört** — weder die Ampel aus [D-236](90-decision-log.md) noch der Barcode aus
+[D-332](90-decision-log.md).*
+
+⚠️ **Richtiggestellt am selben Tag durch [D-502](90-decision-log.md): den Benutzer gibt es, und er
+steht seit dem 23.08. im Konzept — der Widerstand.** *Die Messung oben war richtig (der **Code** hat
+keinen), der Schluss war zu weit (das **Konzept** hat einen). [D-226](90-decision-log.md): «value,
+plus colour rings is **one setting in one place**».*
+
+### Ein Eintrag der Liste ist ein Paar
+
+[D-502](90-decision-log.md), auf sein Wort: *«beide sind Display — und **ein Renderer hat einen
+Konverter**».*
+
+⚠️ **Das ändert [R33b](#r33b--several-are-eligible-exactly-one-is-in-effect) nicht, es liest es
+wörtlich:** *dort steht «exactly one is in effect **per rendering**» — **nicht pro Knoten**. Ein
+Listeneintrag **ist** eine Zeichnung; zwei Einträge sind zwei Zeichnungen, also zwei Konverter, je
+einer.*
+
+| | |
+|---|---|
+| **Knoten** | trägt eine geordnete Liste, einer davon pflichtig ([D-236](90-decision-log.md)) |
+| **Eintrag** | ein Renderer **und** ein Konverter |
+| **Konverter** | genau einer je Eintrag ([R33b](#r33b--several-are-eligible-exactly-one-is-in-effect), [V8](00-vision-and-scope.md)) |
+
+⚠️ *Damit löst sich eine Spannung, die beim Durchgehen auffiel: **die Ampel wird als Grund für die
+Liste genannt ([D-236](90-decision-log.md)) und zugleich als nicht-invertierbarer Konverter
+([D-076](90-decision-log.md)).** Beides stimmt, sobald ein Eintrag ein Paar ist: ein zweiter
+Renderer mit einem Ampel-Konverter.*
+
+⚠️ *Offen bleibt allein die **Speicherform** ([OQ-109](91-open-questions.md)) — und die Frage wird
+dadurch schärfer, nicht grösser: ein Eintrag trägt zwei Angaben statt einer, und **eine Kante trüge
+beide von selbst**.*
+
+**Die Liste bleibt entschieden und wird gebaut, wenn ihr erster Benutzer existiert.** *Eine
+Speicherfrage ohne Daten ist billiger richtig zu beantworten als eine mit — und bis dahin hält sie
+keine Zeile mehr auf.*
+
+⚠️ *Aufgeräumt dabei: [D-224](92-veraltete-entscheidungen.md) trug **keinen** Überholt-Vermerk,
+obwohl [D-236](90-decision-log.md) seinen Dekorator als Konfigurationsbegriff ersetzt hat. Es las
+sich als gültig und liegt jetzt im Dachboden.*
+
+---
+
+## Wo Renderer, Konverter und Validatoren wohnen — Stand 2026-08-29
+
+[D-511](90-decision-log.md): als Knoten unter **`Constants`** — kein neuer Zweig.
+
+⚠️ **Sie *sind* Konstanten, im genauen Sinn des Codes:** *`Storage::NodeRef` — «a fixed value a person
+may extend, so the value is a **reference to a node**». Das ist die Definition eines
+Renderer-Namens.*
+
+⚠️ *Ein eigener Zweig wäre eine Doppelung: gemessen antwortete er in **jeder** Eigenschaft genau wie
+`Constants` — Aggregation, `NodeRef`, keine Datensätze. **Drei Fälle, die identisch antworten.***
+
+⚠️ **Was sie von `Prefixes` und `Currency` trennt, ist die Urheberschaft — System gegen Anwender — und
+das ist eine Angabe am Knoten, kein Zweig.** *Dieselbe Bewegung wie [D-506](90-decision-log.md): ein
+Mechanismus, unterschieden durch ein Merkmal.*
+
+⚠️ *Die **Oberflächen**-Renderer bleiben draussen, auf sein Wort: «es geht nur um die Knotenrenderer».
+Der Code trennt das schon — **16 Knotenrenderer** gegen **9** über
+`addForSurfaces()`.*
+
+⚠️ **Und ein Systemknoten wird nicht `final`:** *`RendererRegistry::byName()` gibt bei einem unbekannten
+Namen den Rückfall `plain` zurück — «hier zeichnet noch nichts» ([R14b](30-renderer.md)). Ein
+abgeleiteter Renderer markiert sich selbst als nicht gezeichnet; **es gibt nichts abzuwehren**. Eine
+Regel «Systemknoten sind final» bräuchte sofort eine Ausnahme für Datentypen, wo die Ableitung gewollt
+ist.*
+
+---
+
+### Gesät — Stand 2026-08-29
+
+[D-513](90-decision-log.md) baut, was [D-511](90-decision-log.md) entschied:
+
+```text
+Constants
+├── Renderer   → 16 Knoten
+├── Converter  →  4 Knoten (binary, hexadecimal, octal, roman)
+└── Validator  →  leer
+```
+
+⚠️ **Die Saat zählt keine Namen auf, sie fragt** — `RendererRegistry::namesForNodes()` und
+`ConverterRegistry::namesForNodes()`. *Eine eigene Liste wäre die Doppelung, die auseinanderläuft,
+ohne dass etwas rot wird: ein neuer Renderer im Code, kein Knoten im Modell, und die Auswahl zeigt
+ihn nie. Die Prüfung misst **beide** Richtungen.*
+
+⚠️ **Aus zwei wurden vier am 2026-08-29** ([D-523](90-decision-log.md)), *und die Saat brauchte dafür nur ihre eigene `VERSION`: sie fragt die Registratur, also lag `binary` und `octal` nach dem nächsten Laden als Knoten da — **gemessen: 4 Kinder unter `Constants > Converter`, `hexadecimal` und `roman` mit unveränderter Id.***
+
+⚠️ *`Validator` ist leer und das ist eine Aussage: der Ort steht, es liegt nichts darin
+([Zeile 8](97-implementation-plan.md) der Arbeitsliste). **Ein fehlender Behälter sagt nichts, und
+der nächste Leser legt ihn woanders an.***
+
+---
+
+### Die Einstellungstafel je Feldzeile ist weg — Stand 2026-08-29
+
+[D-520](90-decision-log.md), auf seine Bitte. *Sie war nach [D-518](90-decision-log.md) eine
+Doppelung: dieselben Angaben stehen jetzt als Feldzeilen im Settings-Block, und
+[R1](30-renderer.md) erlaubt **eine** Art, eine Sache zu zeichnen.*
+
+⚠️ **Was dabei seine Bedienung verlor, gemessen am Markup:** *`renderer` und `converter` je
+Verwendungsstelle, `read_only`, `factor`, `offset`, und die Zeilen-Akte `empty_setting` und
+`reset_setting` — **0x**. Der Annahme-Pfad liest sie weiter; es fehlt der Knopf. Ersatz auf
+[Zeile 82](97-implementation-plan.md#the-working-list).*
+
+⚠️ *Die **Mehrfachheit** bleibt — sie hängt an `surroundings->configured` und hat ihre eigene Spalte
+in der Zeile, nicht diese Tafel.*
+
+⚠️ **Und der Umbau deckte einen älteren Fehler auf:** *`wp_nonce_field()` macht eine **Id** aus dem
+Namen, und eine Seite trägt vier dieser Formulare — `id="_taxmod_nonce"` stand **viermal** da.
+**Ungültiges HTML, und `form="…"` wie `getElementById` nehmen den ersten Treffer** — derselbe Fehler
+wie bei der festen Panel-Id ([D-381](90-decision-log.md)).*
+
+---
+
+### Mehrere Werte je Feld — Stand 2026-08-30
+
+[D-527](90-decision-log.md). *Der Speicher sah es immer vor; gemessen hatte es nie jemand benutzt.*
+
+```text
+ein Wert        path = 4654
+der zweite      path = 4654.2
+darin ein Feld  path = 4654.2.7788
+```
+
+⚠️ **Die Nummer rückt nicht nach.** *Sie ist ein Name, kein Index: `.1, .2, .3` minus `.2` ergibt
+`.1, .3`, und der nächste ist `.4`. **Nachrücken änderte die Pfade der übrigen**, und an Pfaden
+hängen verschachtelte Teile.*
+
+⚠️ *Daraus folgt, wie das Gerüst zuordnet: **jeder Eintrag findet sein «entfernen» über seinen Pfad**,
+nie über seine Stellung — bei `.1, .3` bekäme der zweite sonst den Knopf für `.2`.*
+
+⚠️ **`repeatable` zeichnet nichts selbst.** *Die Einträge kommen fertig gezeichnet in
+`Surroundings::$parts`, wie bei jedem Behälter ([D-366](90-decision-log.md)); es meldet keinen Typ und
+kennt die Mehrfachheit nicht. **Darum gilt es für Zahlen, Texte, Verweise und Teile gleichermassen.***
+
+---
+
+### R77 — der Datensatz-Block ist eine Tabelle, und die erste Spalte sagt, wovon der Satz ist
+
+**Entscheidung [D-553](90-decision-log.md)**, 2026-08-31.
+
+Alle Datensätze eines Knotens stehen in **einer** Tabelle: eine Zeile je Satz, davor «wovon · Record ·
+Version», die Bedienelemente rechts.
+
+Der Eigentümer: *«Action sollte rechts sein, Record, Version davor, sodass wir eine schmale Zeile
+bekommen. Würde alle Datensätze in eine Tabelle packen, ist kompakter und sieht besser aus. Und zu
+welchem Knoten/Kante es gehört, würde ich auch noch vorne dran schreiben.»*
+
+⚠️ **Die erste Spalte ist keine Deko, und das ist gemessen.** *An `Einheitenwert` stehen 23 Datensätze;
+**einer davon ist ein Teil** des Satzes eines anderen Knotens, angehängt über dessen Kante. Ein Teil
+trägt die Id des **Zielknotens** und erscheint darum in dessen Block — ohne jedes Merkmal zwischen den
+eigenständigen Sätzen. **Er ist kein Datensatz dieses Knotens im gewöhnlichen Sinn, sondern ein Stück
+eines fremden.***
+
+⚠️ **Ein Formular je Zeile, nicht eines für die Tabelle.** *Zwei Datensätze sind zwei Dinge, und ein
+Speichern darf nicht beide schreiben. Ein `<tr>` kann kein `<form>` umschliessen, also steht es in der
+Aktionszelle und die Wertfelder nennen es über `form="…"` — dieselbe Naht wie in der Feldzeile
+([D-551](90-decision-log.md)).*
+
+⚠️ *Die Spalten vor und hinter den Feldern sind eine **allgemeine** Zutat des Tabellen-Renderers und
+heissen nicht «Datensatz-Spalten»: ein Behälter legt aus, was ihm gegeben wird
+([D-366](90-decision-log.md)), und die Überschriften sind Worte des Randes (`AR-2`).*
+
+⚠️ **Der Löschknopf fehlt, mit Grund** — *es gibt im Kern keinen Weg, einen Datensatz zu entfernen, und
+was «löschen» hier heisst, ist nicht entschieden: [OQ-143](91-open-questions.md).*
+
+---
+
+### R78 — eine Auswahl bleibt eine Auswahl, auch wenn nichts zu wählen ist
+
+**Entscheidung [D-556](90-decision-log.md)**, 2026-08-31.
+
+Eine Einstellungskante, deren Ziel **keine eigenen Felder** hat, ist ein Knotenverweis — also eine
+Auswahl. Auch mit **null** Einträgen.
+
+Der Eigentümer: *«`validator` müsste eigentlich Select-Feld sein, `choice_renderer`, ausgegraut, weil
+aktuell kein Validator existiert.»*
+
+⚠️ **Keine neue Regel, sondern zwei bestehende zusammengelegt.** *[D-541](90-decision-log.md) sagt
+wörtlich: «hat es eigene Felder, braucht er einen Teil; **hat es nur Kinder, wählt man eines aus**».
+`Validator` hat weder — also der Wahlfall mit keinem Ausgang, und [R28](#r28r32--the-rule-complete)
+sagt, was dann gilt: **gesperrt und markiert.***
+
+### Die drei Fälle
+
+| Möglichkeiten | gespeicherter Wert | was gezeichnet wird |
+|---|---|---|
+| ja | egal | Auswahl; der gespeicherte Wert ist **immer** ein Eintrag ([D-360](90-decision-log.md)) |
+| nein | keiner | Auswahl, leer, **gesperrt und markiert** — der Fall `validator` |
+| nein | einer, dessen Name nicht auflöst | **Rückfall**, denn eine leere Auswahl liesse den Wert verschwinden |
+
+⚠️ **Der dritte Fall wurde von einem Kerntest gefangen**, und er ist keine Feinheit: *eine leere
+gesperrte Auswahl über einem gespeicherten Verweis zeigt den Wert nirgends — und das nächste Speichern
+schreibt «nichts».*
+
+⚠️ *Nur im Ast `Settings`. Ein Ziel im Ast `Model` ist ein Verweis auf einen **Datensatz** und will den
+Zusammenfassungs-Renderer ([D-106](90-decision-log.md)); es hier zum Knotenverweis zu machen wäre ein
+Verweis auf die falsche Art Sache. **Gemessen ändert die Regel genau eine Kante im Modell:
+`validator`.***
+
+---
