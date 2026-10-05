@@ -10,6 +10,8 @@
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       taxmod
+ * GitHub Plugin URI: sfambach/wp-taxonomy-modeler
+ * Primary Branch:    main
  *
  * @see docs/NewConcept/10-domain-core.md
  */
