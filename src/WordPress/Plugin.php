@@ -11,6 +11,7 @@ use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Tree;
+use Taxmod\WordPress\Admin\BackupScreen;
 use Taxmod\WordPress\Admin\CleanupScreen;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
@@ -51,6 +52,9 @@ final class Plugin
 
     /** What a person must be able to do before they may shape the model. */
     public const CAPABILITY = 'manage_options';
+
+    /** Was den letzten Umbau der Tabellen abbrach — `null`, solange keiner scheiterte. */
+    private ?string $upgradeFailure = null;
 
     private function __construct(private readonly string $file)
     {
@@ -96,6 +100,10 @@ final class Plugin
         // three sources it names went on collecting.
         add_action('admin_post_' . CleanupScreen::ACTION, $plugin->handleCleanup(...));
 
+        // ⚠️ **Sichern und Einspielen** ([D-908](../../docs/NewConcept/90-decision-log.md)).
+        add_action('admin_post_' . BackupScreen::DOWNLOAD_ACTION, static fn () => (new BackupScreen())->handleDownload());
+        add_action('admin_post_' . BackupScreen::RESTORE_ACTION, static fn () => (new BackupScreen())->handleRestore());
+
         // An upgrade must not depend on somebody remembering to deactivate and activate
         // again (`CD-6`). One option read per admin request, and the work happens only when
         // the stored version is behind.
@@ -103,7 +111,7 @@ final class Plugin
 
         // ⚠️ **Seitenvorlagen als Startmuster** ([D-870](../../docs/NewConcept/90-decision-log.md)) — *nur in der Verwaltung und für die
         // REST-Schnittstelle, über die der Block-Editor die Muster holt; der öffentliche Aufruf liest nichts.*
-        add_action('admin_init', static fn () => $plugin->starterPatterns()->register());
+        add_action('admin_init', static fn () => $plugin->upgradeFailure === null && $plugin->starterPatterns()->register());
         add_action('rest_api_init', static fn () => $plugin->starterPatterns()->register());
     }
 
@@ -120,6 +128,34 @@ final class Plugin
      * upgraded would otherwise never get them.
      */
     public function ensureUpToDate(): void
+    {
+        // ⚠️ **Ein Umbau, der scheitert, legt nicht die ganze Verwaltung lahm** ([D-909](../../docs/NewConcept/90-decision-log.md)).
+        // *Ohne diesen Fang war ein Fehler hier ein weisser Bildschirm in jedem wp-admin-Aufruf — und auf einer Website ohne
+        // Dateizugang kein Rückweg. So bleibt die Verwaltung bedienbar, der Hinweis nennt den Fehler, und die Seite «Backup»
+        // kann einen funktionierenden Stand einspielen.*
+        try {
+            $this->bringUpToDate();
+        } catch (\Throwable $e) {
+            $this->upgradeFailure = $e->getMessage();
+            add_action('admin_notices', $this->reportUpgradeFailure(...));
+        }
+    }
+
+    public function reportUpgradeFailure(): void
+    {
+        if (! current_user_can(self::CAPABILITY)) {
+            return;
+        }
+
+        printf(
+            '<div class="notice notice-error"><p><strong>%s</strong> %s</p><p><code>%s</code></p></div>',
+            esc_html__('Taxonomy Modeller:', 'taxmod'),
+            esc_html__('Updating the tables failed. The model may be incomplete until a backup is restored (Taxonomy Modeller → Backup).', 'taxmod'),
+            esc_html((string) $this->upgradeFailure)
+        );
+    }
+
+    private function bringUpToDate(): void
     {
         $before = (int) get_option(Schema::VERSION_OPTION, 0);
 
@@ -223,6 +259,15 @@ final class Plugin
             self::CAPABILITY,
             CleanupScreen::PAGE,
             fn () => print $this->cleanupScreen()->render()
+        );
+
+        $unterseiten[] = add_submenu_page(
+            'taxmod',
+            __('Backup', 'taxmod'),
+            __('Backup', 'taxmod'),
+            self::CAPABILITY,
+            BackupScreen::PAGE,
+            static fn () => print (new BackupScreen())->render()
         );
 
         // ⚠️ **An den eigenen Haken jeder Seite**, damit das Stilblatt nicht auf jeder Seite in

@@ -2253,7 +2253,7 @@ final class Schema
      * sie sich, werden die Sichten beim nächsten Fassungslauf neu gebaut; wer sie augenblicklich
      * braucht, fragt die Beschriftungen selbst.*
      */
-    private static function buildTheReadableViews(): void
+    public static function buildTheReadableViews(): void
     {
         global $wpdb;
 
@@ -3071,6 +3071,12 @@ final class Schema
             return;
         }
 
+        // ⚠️ *Auf einer frischen Installation steht noch keine Wurzel: gesät wird erst nach `install()`. Dann ist
+        // hier nichts nachzuziehen, und `root()` würfe, statt «keine» zu sagen ([D-909](../../../docs/NewConcept/90-decision-log.md)).*
+        if ((int) get_option(SeededFrameworkNodes::ROOT_OPTION, 0) === 0) {
+            return;
+        }
+
         $log       = new WpdbChangelog(new SystemClock());
         $knoten    = new WpdbNodeRepository();
         $kanten    = new WpdbRelationRepository();
@@ -3305,6 +3311,11 @@ final class Schema
         }
 
         if (get_option('taxmod_fassung49_shape', null) !== null) {
+            return;
+        }
+
+        // ⚠️ *Frische Installation: noch keine Wurzel, also kein Ast, der fallen könnte (D-909).*
+        if ((int) get_option(SeededFrameworkNodes::ROOT_OPTION, 0) === 0) {
             return;
         }
 
