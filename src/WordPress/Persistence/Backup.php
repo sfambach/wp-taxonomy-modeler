@@ -443,8 +443,10 @@ final class Backup
      *
      * ⚠️ *Der Name trägt einen Zufallsteil, und `.htaccess` plus `index.php` sperren den Ordner: er liegt unter
      * `uploads`, weil nur dort sicher geschrieben werden darf.*
+     *
+     * ⚠️ *Öffentlich, seit auch eine Änderung über die Abilities vorher sichern kann ([D-911](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private function safetyCopy(): string
+    public function safetyCopy(string $anlass = 'vor-einspielen'): string
     {
         $uploads = wp_upload_dir();
         $dir     = trailingslashit($uploads['basedir']) . self::SAFETY_DIR;
@@ -458,7 +460,7 @@ final class Backup
             file_put_contents($dir . '/index.php', "<?php\n");
         }
 
-        $file = $dir . '/vor-einspielen-' . gmdate('Ymd-His') . '-' . wp_generate_password(12, false) . '.zip';
+        $file = $dir . '/' . sanitize_file_name($anlass) . '-' . gmdate('Ymd-His') . '-' . wp_generate_password(12, false) . '.zip';
 
         $this->export($file);
 

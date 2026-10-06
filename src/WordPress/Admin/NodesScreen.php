@@ -284,6 +284,25 @@ final class NodesScreen
     ) {
     }
 
+    /**
+     * Die Felder eines Knotens mit ihrem einfachen Typ — für die Abilities, aus demselben Zeichenlauf wie die Maske ([D-911](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return list<array{relation: Relation, type: SimpleType|null}>
+     */
+    public function fieldsWithTypes(int $nodeId): array
+    {
+        $felder = $this->editor->fieldsOf($nodeId);
+        $types  = $this->rendering->typesFor($felder);
+
+        return array_map(static fn (Relation $r): array => ['relation' => $r, 'type' => $types[$r->id] ?? null], $felder);
+    }
+
+    /** Der Schreibweg der Sätze, den auch die Maske benutzt — mit ihrem Nachlauf (D-885) und ihrer Vorbelegung (D-649). */
+    public function entries(): DataEntry
+    {
+        return $this->data;
+    }
+
     public function render(): string
     {
         // ⚠️ *Beim Zeichnen merkt sich das Repository die Beschriftungen, die es gelesen hat — nur für diesen Lauf (D-814).*
@@ -3395,7 +3414,17 @@ final class NodesScreen
      */
     private function createdChild(string $name, int $parentId): Node
     {
-        $kind = $this->editor->createNode($name, $parentId, $this->requestedClass());
+        return $this->createChild($name, $parentId, $this->requestedClass());
+    }
+
+    /**
+     * Dasselbe Anlegen ohne Anfrage — die Abilities rufen es mit ihrer eigenen, geprüften Klasse ([D-911](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param class-string<\Taxmod\Core\Model\NodeClass\NodeClass>|null $klasse
+     */
+    public function createChild(string $name, int $parentId, ?string $klasse): Node
+    {
+        $kind = $this->editor->createNode($name, $parentId, $klasse);
 
         if ($this->attributes !== null && $this->attributes->knows($kind, 'renderer')) {
             $this->attributes->put($kind, 'renderer', $this->rendering->rendererForNewNode($kind, $this->editor->find($parentId)), null, true);
@@ -3659,6 +3688,26 @@ final class NodesScreen
             $submitted = $submitted[$recordId];
         }
 
+        $this->writeRecord(
+            $nodeId,
+            $recordId,
+            $submitted,
+            RecordType::tryFrom(isset($_POST['record_type']) ? sanitize_key(wp_unslash((string) $_POST['record_type'])) : ''),
+            isset($_POST[self::OWN_VALUE_FIELD]) ? (string) $_POST[self::OWN_VALUE_FIELD] : null,
+            $this->localeFromRequest()
+        );
+    }
+
+    /**
+     * Die Werte eines Satzes schreiben, wie die Maske sie schickt — für die Maske und für die Abilities ([D-911](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Eingaben in der Form der Anfrage, also **mit Schrägstrichen** wie `$_POST`: die Leser hier drin nehmen sie mit
+     * `wp_unslash()` ab. Ein anderer Aufrufer reicht `wp_slash()` seiner Werte, statt einen zweiten Leser zu bekommen.*
+     *
+     * @param array<int|string, mixed> $submitted Kanten-Id → Zeichen, `['values' => [...]]` oder Teile.
+     */
+    public function writeRecord(int $nodeId, int $recordId, array $submitted, ?RecordType $gewaehlteArt, ?string $ownValue, string $locale): void
+    {
         // ⚠️ **Die Art wird an der Zeile umgestellt** — *sein Wort: «default / user / example muss
         // einstellbar sein.»* *Sie kommt mit demselben Speichern wie die Werte: eine Handlung, eine
         // Aenderungsgruppe ([D-348](../../../docs/NewConcept/90-decision-log.md)) — der Akt ist
@@ -3713,10 +3762,6 @@ final class NodesScreen
             throw NotYetStorable::refusedByValidators(implode('; ', $beschwerden));
         }
 
-        $gewaehlteArt = RecordType::tryFrom(
-            isset($_POST['record_type']) ? sanitize_key(wp_unslash((string) $_POST['record_type'])) : ''
-        );
-
         if ($recordId !== 0 && $gewaehlteArt !== null) {
             $this->data->retypeRecord($recordId, $gewaehlteArt);
         }
@@ -3728,18 +3773,18 @@ final class NodesScreen
         //
         // ⚠️ *Ein leeres Feld heisst hier **nicht beantwortet** und nimmt die Zeile weg, genau wie
         // bei einem Feld weiter unten — sonst gäbe es keinen Weg, einen Wert wieder loszuwerden.*
-        if ($recordId !== 0 && isset($_POST[self::OWN_VALUE_FIELD])) {
-            $eigene = trim(sanitize_text_field(wp_unslash((string) $_POST[self::OWN_VALUE_FIELD])));
+        if ($recordId !== 0 && $ownValue !== null) {
+            $eigene = trim(sanitize_text_field(wp_unslash($ownValue)));
             $node   = $this->editor->find($nodeId);
 
             if ($node !== null) {
                 if ($eigene === '') {
-                    $this->data->clearOwnValue($recordId, $this->localeFromRequest());
+                    $this->data->clearOwnValue($recordId, $locale);
                 } else {
                     $wert = $this->rendering->valueOfNodeFrom($node, $eigene);
 
                     if ($wert !== null) {
-                        $this->data->putOwnValue($recordId, $wert, $this->localeFromRequest());
+                        $this->data->putOwnValue($recordId, $wert, $locale);
                     }
                 }
             }

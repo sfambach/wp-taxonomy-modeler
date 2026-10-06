@@ -47,14 +47,14 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.2';
+    public const VERSION     = '0.1.3';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
     public const CAPABILITY = 'manage_options';
 
     /** Was die Aktivierung abbrach — eine Option, weil der Hinweis erst im nächsten Aufruf erscheint. */
-    private const ACTIVATION_FAILURE = 'taxmod_activation_failure';
+    public const ACTIVATION_FAILURE = 'taxmod_activation_failure';
 
     /** Was den letzten Umbau der Tabellen abbrach — `null`, solange keiner scheiterte. */
     private ?string $upgradeFailure = null;
@@ -116,6 +116,21 @@ final class Plugin
         // REST-Schnittstelle, über die der Block-Editor die Muster holt; der öffentliche Aufruf liest nichts.*
         add_action('admin_init', static fn () => $plugin->upgradeFailure === null && $plugin->starterPatterns()->register());
         add_action('rest_api_init', static fn () => $plugin->starterPatterns()->register());
+
+        // ⚠️ **Das Modell online pflegen** ([D-911](../../docs/NewConcept/90-decision-log.md)) — *über die Abilities, die der
+        // WordPress-Connector als Werkzeuge zeigt. Ohne die Abilities-API (vor WordPress 6.9) feuern die Haken nie.*
+        add_action('wp_abilities_api_categories_init', static fn () => $plugin->abilities()->registerCategory());
+        add_action('wp_abilities_api_init', static fn () => $plugin->abilities()->register());
+    }
+
+    public function abilities(): ModelAbilities
+    {
+        return new ModelAbilities(
+            $this->screen(...),
+            $this->editor(...),
+            $this->changelog(...),
+            $this->frameworkNodes(...)
+        );
     }
 
     public function starterPatterns(): WpStarterPatterns
