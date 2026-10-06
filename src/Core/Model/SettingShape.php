@@ -17,7 +17,7 @@ namespace Taxmod\Core\Model;
  *
  * ```mermaid
  * flowchart TD
- *   S["a setting key"] --> F["a type of its own<br/>mandatory · order"]
+ *   S["a setting key"] --> F["a type of its own<br/>order · factor"]
  *   S --> L["whatever the subject is<br/>default · range_min · range_max · range_step"]
  *   S --> C["a choice from a set<br/>multiplicity · renderer · converter"]
  * ```
@@ -29,7 +29,7 @@ namespace Taxmod\Core\Model;
  */
 enum SettingShape
 {
-    /** True or false — `mandatory`, `hide`, `read_only`. */
+    /** True or false — `read_only`. *`mandatory` fell with [D-405], `hide` became a column with [D-457], `persistent` fell with [D-538].* */
     case Switch;
 
     /** A whole number of its own, independent of whatever is being configured. */
@@ -85,5 +85,27 @@ enum SettingShape
     public function isAChoice(): bool
     {
         return $this === self::OneOfFour || $this === self::ARegisteredName;
+    }
+
+    /**
+     * Whether a row of this shape may hold no value at all — **`NOT NULL`, as an attribute of the
+     * shape rather than a rule about one key.**
+     *
+     * ⚠️ **The owner's framing, and it is the better one**: *«an int setting must have a value» is
+     * wrong, null is allowed; «a bool can be unset» is wrong, it can only be 0 or 1 — but all of it
+     * is coverable through the same structure.* So the column stays nullable because an `int`
+     * genuinely needs it, and what differs is **one declared attribute per shape**, asked in one
+     * place. *Comparing against `Switch` by name in the writing path would have been the
+     * special-casing `CD` forbids, and it would not have extended to the next shape that wants it.*
+     *
+     * ⚠️ *Why it has to be refused at all, measured on 2026-08-27: an empty switch row does not read
+     * back as «nothing», it reads as **«false, set here»** — so it stops the chain, and an ancestor
+     * saying `hide = true` is silently overruled by a row that says nothing.
+     * [D-401](../../../docs/NewConcept/90-decision-log.md) had already decided the state does not
+     * exist; nothing enforced it.*
+     */
+    public function allowsNothing(): bool
+    {
+        return $this !== self::Switch;
     }
 }

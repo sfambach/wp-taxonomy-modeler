@@ -5,21 +5,25 @@ namespace Taxmod\Tests\Core;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Exception\NotAValueOfThatType;
-use Taxmod\Core\Model\Narrowing;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\ResolvedSetting;
 use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Model\Type\DateTimeType;
 use Taxmod\Core\Renderer\ColorRenderer;
+use Taxmod\Core\Renderer\CompactRenderer;
 use Taxmod\Core\Renderer\DateTimeRenderer;
+use Taxmod\Core\Renderer\ChooserRenderer;
+use Taxmod\Core\Renderer\Section;
 use Taxmod\Core\Renderer\FieldRenderer;
 use Taxmod\Core\Renderer\FormRenderer;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\MailtoRenderer;
-use Taxmod\Core\Renderer\NodeRenderer;
+use Taxmod\Core\Renderer\ComplexRenderer;
 use Taxmod\Core\Renderer\PlainRenderer;
 use Taxmod\Core\Renderer\Purpose;
+use Taxmod\Core\Renderer\TableRenderer;
 use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\RenderContext;
 use Taxmod\Core\Renderer\ShippedRenderers;
@@ -29,6 +33,7 @@ use Taxmod\Core\Renderer\Surroundings;
 use Taxmod\Core\Renderer\CheckboxRenderer;
 use Taxmod\Core\Renderer\TextareaRenderer;
 use Taxmod\Core\Renderer\ToggleRenderer;
+use Taxmod\Core\Renderer\UserRefRenderer;
 
 /**
  * The renderers that draw one typed value, and the reading back that pairs with them.
@@ -73,6 +78,9 @@ final class TypedFieldsTest extends TestCase
             [SimpleType::Text, FieldRenderer::NAME],
             [SimpleType::Char, FieldRenderer::NAME],
             [SimpleType::Version, FieldRenderer::NAME],
+            [SimpleType::Path, FieldRenderer::NAME],
+            [SimpleType::Jump, \Taxmod\Core\Renderer\JumpRenderer::NAME],
+            [SimpleType::Media, \Taxmod\Core\Renderer\MediaRenderer::NAME],
             [SimpleType::Int, FieldRenderer::NAME],
             [SimpleType::Decimal, FieldRenderer::NAME],
             [SimpleType::Bool, ToggleRenderer::NAME],
@@ -87,15 +95,22 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
-    public function a_reference_is_drawn_by_the_reference_renderer_and_a_user_key_by_nothing(): void
+    public function both_kinds_of_reference_have_their_own_renderer(): void
     {
-        // ⚠️ `node_ref` has its renderer now (D-105). `user_ref` still has none, deliberately: it
-        // resolves a WordPress user, which is a boundary concern reaching into the core's hands,
-        // and a quiet plain field pretending otherwise is what R14b forbids.
+        // ⚠️ **Hier stand «und ein Benutzerschlüssel von nichts»**, mit der Begründung, `user_ref`
+        // greife vom Rand in den Kern hinein und ein stilles `plain` wäre schlimmer (R14b).
+        // **Die Begründung war richtig und die Folgerung falsch** ([D-649](../../docs/NewConcept/90-decision-log.md)):
+        // der Rand greift nicht hinein, er **reicht den Namen herein** — dieselbe Naht, über die ein
+        // Knotenverweis seine Beschriftung bekommt (D-159). *Die Zusage wandert also mit dem Modell
+        // mit, statt einen vergangenen Zustand zu bewachen (`PR-9`).*
         $registry = ShippedRenderers::registry();
 
         self::assertSame(ReferenceRenderer::NAME, $registry->defaultFor(SimpleType::NodeRef)->name());
-        self::assertSame(PlainRenderer::NAME, $registry->defaultFor(SimpleType::UserRef)->name());
+        self::assertSame(UserRefRenderer::NAME, $registry->defaultFor(SimpleType::UserRef)->name());
+
+        // ⚠️ *Und keiner der beiden ist der Rückfall — sonst wäre die Zusage oben auch dann grün,
+        // wenn wieder nichts zeichnete.*
+        self::assertNotSame(PlainRenderer::NAME, $registry->defaultFor(SimpleType::UserRef)->name());
     }
 
     #[Test]
@@ -116,9 +131,17 @@ final class TypedFieldsTest extends TestCase
         self::assertStringContainsString('Gramm', $shown->markup);
         self::assertStringNotContainsString('4711', $shown->markup);
 
-        // ⚠️ Changing a reference means **picking** a node — the chooser, decided (D-244) and not
-        // built. Declining keeps the gap visible instead of offering a box for an id.
-        self::assertSame([Purpose::Display], $renderer->supports());
+        // ⚠️ **Er zeichnet jetzt auch beim Bearbeiten, und zwar dasselbe** *(2026-09-06, auf seine
+        // Anweisung «für die Base units ist das einfach Referenz für alle»)*. **Der alte Grund —
+        // «Ändern heisst wählen, und der Wähler ist nicht gebaut» — ist erledigt:** *der Wähler steht
+        // seit D-589, und er steht an der **Verwendungsstelle**. Wo die Konstante selbst gezeichnet
+        // wird, zeigt man ihre Beschriftung; ein Kasten für eine Id war nie gemeint und ist es
+        // weiterhin nicht.*
+        //
+        // ⚠️ *Was ohne diese Zeile geschah, ist gemessen: `Base units` trug `reference`, und im Zweck
+        // «bearbeiten» loeste **nichts** auf — der Waechter meldete «gespeichert `reference`,
+        // gezeichnet nichts».*
+        self::assertSame([Purpose::Display, Purpose::Edit], $renderer->supports());
     }
 
     #[Test]
@@ -133,6 +156,59 @@ final class TypedFieldsTest extends TestCase
 
         self::assertStringContainsString('taxmod-dangling', $shown->markup);
         self::assertStringContainsString('#4711', $shown->markup);
+    }
+
+    /**
+     * ⚠️ **Derselbe Fall im Bedienweg** ([D-604](../../docs/NewConcept/90-decision-log.md), TASK-038).
+     *
+     * ⚠️ *Der Auswahldialog zeichnete «zeigt auf einen geloeschten Knoten» als Gedankenstrich —
+     * **ununterscheidbar von «nichts gewaehlt»**. Sein Wort: «das muss sichtbar sein, also am Feld
+     * in der Kante.»*
+     */
+    #[Test]
+    public function the_chooser_tells_a_deleted_target_apart_from_no_choice(): void
+    {
+        $baum = new Section('', '<span class="row">Gramm</span>');
+
+        $ins_leere = (new ChooserRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: TypedValue::ofReference(4711),
+                editable: true,
+                fieldName: 'wert',
+                type: SimpleType::NodeRef,
+                // ⚠️ *Der Dialog zeigt den gewählten Kopf; im Fluss steht nur der Baum (D-727).*
+                settings: ChooserRenderer::asDialog(),
+                surroundings: new Surroundings(
+                    sections: [ChooserRenderer::CANDIDATES => $baum]
+                ),
+            )
+        )->markup;
+
+        $nichts = (new ChooserRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                purpose: Purpose::Edit,
+                value: TypedValue::nothing(),
+                editable: true,
+                fieldName: 'wert',
+                type: SimpleType::NodeRef,
+                // ⚠️ *Der Dialog zeigt den gewählten Kopf; im Fluss steht nur der Baum (D-727).*
+                settings: ChooserRenderer::asDialog(),
+                surroundings: new Surroundings(
+                    sections: [ChooserRenderer::CANDIDATES => $baum]
+                ),
+            )
+        )->markup;
+
+        self::assertStringContainsString('taxmod-dangling', $ins_leere);
+        self::assertStringContainsString('#4711', $ins_leere);
+
+        // ⚠️ *Der Gegenfall traegt die Zusage: ohne ihn waere «markiert» auch dann wahr, wenn
+        // **jede** leere Wahl markiert wuerde — und das Mal saehe man ueberall und nirgends.*
+        self::assertStringNotContainsString('taxmod-dangling', $nichts);
+        self::assertStringContainsString('taxmod-nothing', $nichts);
     }
 
     #[Test]
@@ -202,7 +278,19 @@ final class TypedFieldsTest extends TestCase
         );
 
         sort($names);
-        self::assertSame([FormRenderer::NAME, NodeRenderer::NAME], $names);
+        // ⚠️ *`table` ist seit [D-542](../../docs/NewConcept/90-decision-log.md) dabei — ein Behälter
+        // ohne Typ, wie `form` und `compact`. **Diese Zusage hat den neuen Renderer gemeldet**, und
+        // das ist ihre Aufgabe: sie haelt fest, was einem Knoten angeboten wird.*
+        //
+        // ⚠️ **`page` ist seit [D-670](../../docs/NewConcept/90-decision-log.md) **nicht** mehr dabei**
+        // — *sein Wort: «keiner unserer Knoten-Renderer, sondern der der Seite … sollte nicht Teil der
+        // Renderer sein, die der Benutzer auswählen kann». Er heisst seitdem `page` statt `node` und
+        // wird wie die Baumzelle nur von der Oberfläche gerufen.*
+        // ⚠️ *`complex` seit [D-758](../../docs/NewConcept/90-decision-log.md).*
+        self::assertSame(
+            [CompactRenderer::NAME, ComplexRenderer::NAME, FormRenderer::NAME, TableRenderer::NAME],
+            $names
+        );
     }
 
     #[Test]
@@ -268,8 +356,8 @@ final class TypedFieldsTest extends TestCase
         $result = (new SpinnerRenderer())->render(
             $this->subject,
             $this->context(Purpose::Edit, TypedValue::ofInt(5), SimpleType::Int, [
-                SettingKey::RangeMin->value => TypedValue::ofInt(1),
-                SettingKey::RangeMax->value => TypedValue::ofInt(10),
+                'min' => TypedValue::ofInt(1),
+                'max' => TypedValue::ofInt(10),
             ], 'v[7]')
         );
 
@@ -283,14 +371,12 @@ final class TypedFieldsTest extends TestCase
     {
         // ⚠️ R17 names min, max and step in one breath as settings a numeric **node** has. `step`
         // was briefly a free key here, which made one of three siblings an outsider.
-        self::assertTrue(SettingKey::isReserved('range_step'));
-        self::assertSame(Narrowing::Free, SettingKey::RangeStep->direction());
 
         foreach ([new SpinnerRenderer(), new SliderRenderer()] as $renderer) {
             $result = $renderer->render(
                 $this->subject,
                 $this->context(Purpose::Edit, TypedValue::ofInt(10), SimpleType::Int, [
-                    SettingKey::RangeStep->value => TypedValue::ofInt(5),
+                    'step' => TypedValue::ofInt(5),
                 ], 'v[7]')
             );
 
@@ -372,6 +458,98 @@ final class TypedFieldsTest extends TestCase
         self::assertStringContainsString('47', $result->markup);
     }
 
+    /**
+     * ⚠️ **Der Konverter gehört neben die Bahn, nicht in die Bahn.**
+     *
+     * *Der Eigentümer: «wenn ich einen Konverter habe, müssten die Werte anders dargestellt werden —
+     * wenn ich römisch habe, in römischen Werten. Ich weiss gar nicht, ob man beim Slider aktuell schon
+     * den Wert sieht.»* **Man sieht ihn — und vorher stand er auch im Attribut `value`.**
+     *
+     * ⚠️ *`<input type="range" value="XII">` ist für den Browser kein Wert: der Griff springt in die
+     * Mitte, und das nächste Speichern schreibt die Mitte. **Ein Konverter hätte den Wert gelöscht,
+     * ohne dass etwas rot geworden wäre** — genau die Sorte Fehler, die `PR-12` beschreibt.*
+     */
+    #[Test]
+    public function a_slider_keeps_the_stored_number_in_the_track_and_the_notation_beside_it(): void
+    {
+        $result = (new SliderRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                Purpose::Edit,
+                TypedValue::ofInt(12),
+                [],
+                '',
+                Level::Admin,
+                true,
+                'v[7]',
+                SimpleType::Int,
+                new Surroundings(),
+                false,
+                // Was der Konverter `roman` aus der 12 macht.
+                'XII'
+            )
+        );
+
+        self::assertStringContainsString('value="12"', $result->markup);
+        self::assertStringNotContainsString('value="XII"', $result->markup);
+
+        // Und die Ziffer, die ein Mensch liest, steht daneben.
+        self::assertStringContainsString('XII', $result->markup);
+    }
+
+    /** ⚠️ *Dieselbe Trennlinie am Zahlenfeld — dieselben Typen, dieselben Konverter.* */
+    #[Test]
+    public function a_spinner_keeps_the_stored_number(): void
+    {
+        $result = (new SpinnerRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                Purpose::Edit,
+                TypedValue::ofInt(255),
+                [],
+                '',
+                Level::Admin,
+                true,
+                'v[7]',
+                SimpleType::Int,
+                new Surroundings(),
+                false,
+                'FF'
+            )
+        );
+
+        self::assertStringContainsString('value="255"', $result->markup);
+        self::assertStringNotContainsString('value="FF"', $result->markup);
+    }
+
+    /**
+     * ⚠️ **Der Gegenfall, und ohne ihn wäre der Wächter halb.** *Ein freies Textfeld bekommt die
+     * Notation — dort ist sie der Sinn der Sache, und der Konverter liest sie wieder ein. Ohne diese
+     * Zusage könnte jemand `controlValue()` überall einsetzen und der Konverter wäre wirkungslos.*
+     */
+    #[Test]
+    public function a_text_field_shows_the_notation(): void
+    {
+        $result = (new FieldRenderer())->render(
+            $this->subject,
+            new RenderContext(
+                Purpose::Edit,
+                TypedValue::ofInt(12),
+                [],
+                '',
+                Level::Admin,
+                true,
+                'v[7]',
+                SimpleType::Int,
+                new Surroundings(),
+                false,
+                'XII'
+            )
+        );
+
+        self::assertStringContainsString('value="XII"', $result->markup);
+    }
+
     #[Test]
     public function an_address_becomes_a_link_and_cannot_break_out_of_it(): void
     {
@@ -439,27 +617,46 @@ final class TypedFieldsTest extends TestCase
     }
 
     #[Test]
-    public function hide_and_read_only_close_every_typed_field_the_same_way(): void
+    public function read_only_closes_every_typed_field_the_same_way(): void
     {
+        // ⚠️ **`hide` left this test on 2026-08-28, and that is the point of D-457.** *It used to
+        // assert that `hide` and `read_only` close a field «the same way» — and they never were the
+        // same thing. `read_only` **keeps the field and refuses the edit**; `hide` now stops the walk
+        // before a renderer is asked at all, so there is nothing here for it to do.*
+        //
+        // ⚠️ *`read_only` stays a setting and stays freely settable in both directions
+        // ([D-461](../../docs/NewConcept/90-decision-log.md)) — only `hide` left the settings, because
+        // only `hide` had a second meaning nobody asked for.*
+        //
         // ⚠️ They are answered once, in the base — a subclass adds a control, never a rule.
         foreach ([new FieldRenderer(), new CheckboxRenderer(), new MailtoRenderer(), new ColorRenderer()] as $renderer) {
-            $hidden = $renderer->render(
-                $this->subject,
-                $this->context(Purpose::Display, TypedValue::ofText('x'), SimpleType::Text, [
-                    SettingKey::Hide->value => TypedValue::ofBool(true),
-                ])
-            );
-
             $fixed = $renderer->render(
                 $this->subject,
                 $this->context(Purpose::Edit, TypedValue::ofText('x'), SimpleType::Text, [
-                    SettingKey::ReadOnly->value => TypedValue::ofBool(true),
+                    \Taxmod\Core\Model\EdgeColumn::READ_ONLY => TypedValue::ofBool(true),
                 ], 'v[7]')
             );
 
-            self::assertSame('', $hidden->markup, $renderer->name());
-            self::assertStringNotContainsString('<input type="text" name', $fixed->markup, $renderer->name());
+            // ⚠️ *Seit D-739 bleibt das Feld, ausgegraut und gefüllt: «feld ausgegraut und falls wert da ist gefüllt».*
+            self::assertStringStartsWith('<fieldset disabled class="taxmod-read-only">', $fixed->markup, $renderer->name());
+            self::assertStringContainsString('x', $fixed->markup, $renderer->name());
         }
+    }
+
+    #[Test]
+    public function a_renderer_ignores_a_setting_called_hide_because_there_is_no_such_setting(): void
+    {
+        // ⚠️ *The guard against the old behaviour creeping back: a context carrying `hide` must draw
+        // the value anyway. `hide` is a column on the identity (D-457) and an abort in the descent
+        // (D-450) — a renderer honouring it would be a second answer to a settled question.*
+        $drawn = (new FieldRenderer())->render(
+            $this->subject,
+            $this->context(Purpose::Display, TypedValue::ofText('x'), SimpleType::Text, [
+                'hide' => TypedValue::ofBool(true),
+            ])
+        );
+
+        self::assertStringContainsString('x', $drawn->markup);
     }
 
     // ------------------------------------------------------------ reading back
@@ -504,7 +701,7 @@ final class TypedFieldsTest extends TestCase
         self::assertSame('2026-08-25 00:00:00', SimpleType::DateTime->valueFrom('2026-08-25')->date);
         self::assertSame('2026-08-25 14:32:00', SimpleType::DateTime->valueFrom('2026-08-25T14:32')->date);
         self::assertSame(
-            SimpleType::TIME_WITHOUT_A_DATE . ' 14:32:00',
+            DateTimeType::TIME_WITHOUT_A_DATE . ' 14:32:00',
             SimpleType::DateTime->valueFrom('14:32')->date
         );
     }

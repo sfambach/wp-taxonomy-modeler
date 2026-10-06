@@ -8,7 +8,6 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
-use Taxmod\Core\Repository\IdentityAllocator;
 use Taxmod\Core\Repository\NodeRepository;
 use Taxmod\Core\Repository\RelationRepository;
 
@@ -43,7 +42,27 @@ final class SeededFrameworkNodes implements FrameworkNodes
     private const ROLES_OPTION        = 'taxmod_roles_id';
     private const ROLE_OPTION_PREFIX  = 'taxmod_role_';
 
-    /** `Primitives` is a container that splits; the branches are the two nodes beneath it. */
+    /**
+     * Wo die Ids der Einstellungskanten stehen ([D-543](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Dasselbe Muster wie {@see self::ROLE_OPTION_PREFIX} — **kein zweiter Mechanismus**, auf seine
+     * Korrektur: «ich verstehe auch nicht, warum wir hier was Neues erfinden.»*
+     *
+     * ⚠️ **Der Name der Konstante ist mit TASK-016 gewandert, die Zeichenkette nicht — und das ist
+     * kein Versehen.** *`taxmod_setting_edge_…` ist der **Schlüssel einer WordPress-Option** und
+     * damit ein Datum: ein neuer Schlüssel fände die vorhandenen Zeilen nicht mehr wieder. Sie
+     * umzuschreiben wäre eine Wanderung und keine Umbenennung, und
+     * [D-576](../../../docs/NewConcept/90-decision-log.md) verlangt das Wort im **Quelltext**.*
+     */
+
+    /**
+     * `Primitives` is a container that splits; the branches are the nodes beneath it.
+     *
+     * ⚠️ **Und seit [D-677](../../../docs/NewConcept/90-decision-log.md) trägt es die Regel, die
+     * vorher an `Data Types` hing** — *sein Wort: «vielleicht müssen wir data types regeln nach oben
+     * zu primitives schicken». Was darunter liegt, hält keine Benutzerdaten
+     * ({@see Branch::underPrimitives()}); es sind jetzt drei statt zwei.*
+     */
     private const PRIMITIVES_OPTION = 'taxmod_primitives_id';
 
     /** @var array<string,string> */
@@ -52,29 +71,62 @@ final class SeededFrameworkNodes implements FrameworkNodes
         'compositions' => 'taxmod_branch_compositions_id',
         'data-types'   => 'taxmod_branch_data_types_id',
         'constants'    => 'taxmod_branch_constants_id',
+        'combined'     => 'taxmod_branch_combined_id',
     ];
 
     public function __construct(
         private readonly NodeRepository $nodes,
+        /**
+         * ⚠️ **Wird seit TASK-018 nicht mehr gelesen** ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+         * *Die Saat schrieb Knoten **und** Vererbungskante; die Kante gibt es nicht mehr. Der
+         * Parameter steht noch, weil ihn 58 Aufrufer der Reihe nach übergeben — **ihn hier zu
+         * streichen wäre eine Änderung an 58 Stellen mitten in einer Datenwanderung**, und das ist
+         * genau die Vermischung, die `PR-2` nicht will. Er fällt mit TASK-032, wo die Kantenart
+         * ohnehin angefasst wird; bis dahin steht er als `INF-034` im Eingang.*
+         */
         private readonly RelationRepository $relations,
-        private readonly IdentityAllocator $identities,
         private readonly Changelog $changelog,
     ) {
     }
 
+    /**
+     * @var array<string, Node> The seeded nodes this request has already read, by option name.
+     *
+     * ⚠️ **Measured, and it is the same fault {@see self::branchRoots()} was already fixed for.** One
+     * page of the modelling screen made **111 queries, and 83 of them read a single node by id — 70 of
+     * those from `rootOf()`.** *The comment beside `branchRoots()` had already written the lesson down —
+     * «asking again per node made this an N+1 through the back door» — and this method never got it.*
+     *
+     * ⚠️ *Safe because a framework node cannot move ([D-194](../../../docs/NewConcept/90-decision-log.md)):
+     * it is protected, so nothing can reparent or rename it mid-request. The one thing that **creates**
+     * them is {@see self::seed()}, which clears this.*
+     */
+    private array $seeded = [];
+
     public function root(): Node
     {
-        return $this->nodes->byId((int) get_option(self::ROOT_OPTION, 0));
+        return $this->remembered(self::ROOT_OPTION);
     }
 
     public function trash(): Node
     {
-        return $this->nodes->byId((int) get_option(self::TRASH_OPTION, 0));
+        return $this->remembered(self::TRASH_OPTION);
     }
 
     public function rootOf(Branch $branch): Node
     {
-        return $this->nodes->byId((int) get_option(self::BRANCH_OPTIONS[$branch->value], 0));
+        return $this->remembered(self::BRANCH_OPTIONS[$branch->value]);
+    }
+
+    /**
+     * The node an option points at — read once per request.
+     *
+     * ⚠️ *`byId()` and not `find()`: a missing framework node is a broken installation, and the
+     * exception says so where a `null` would travel on and surface as something else entirely.*
+     */
+    private function remembered(string $option): Node
+    {
+        return $this->seeded[$option] ??= $this->nodes->byId((int) get_option($option, 0));
     }
 
     /**
@@ -116,37 +168,74 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
         $roots = [];
 
+        // ⚠️ **Through the same store, so a branch root is read once per request and not twice.**
+        // *Two caches over the same eight nodes is the duplicated-fact prohibition in miniature: after
+        // `rootOf()` was memoised, the page still read 14 single nodes where 8 exist, because this
+        // method kept its own copy. Measured, that was 6 wasted queries a page.*
         foreach (self::BRANCH_OPTIONS as $value => $option) {
-            $root = $this->nodes->find((int) get_option($option, 0));
+            $root = $this->seeded[$option] ?? $this->nodes->find((int) get_option($option, 0));
 
             if ($root !== null) {
-                $roots[$value] = $root;
+                $this->seeded[$option] = $root;
+                $roots[$value]         = $root;
             }
         }
 
         return $this->branchRoots = $roots;
     }
 
-
     public function installationId(): int
     {
         $id = (int) get_option(self::INSTALLATION_OPTION, 0);
 
         if ($id === 0) {
-            // ⚠️ An identity with no node behind it. The foreign keys point at `identities`,
-            // not at `nodes` (D-339), so a settings owner that is not a node is a first-class
-            // thing rather than a hole in the schema.
-            $id = $this->identities->next();
+            // ⚠️ **Eine Identität, hinter der kein Knoten steht** — der Kopf der Einstellungskette.
+            //
+            // ⚠️ **Seit TASK-004 gibt es keinen geteilten Nummernraum mehr, aus dem sie kommen
+            // könnte.** *`1` ist deshalb reserviert: {@see Schema} setzt das `AUTO_INCREMENT` von
+            // `nodes` und `relations` auf einer frischen Installation auf `2`, damit diese Nummer
+            // niemand anders bekommt. **Auf einer bestehenden Installation steht hier weiter die
+            // alte Nummer** — es wird nichts umnummeriert.*
+            //
+            // ⚠️ *Wo die Installationsidentität künftig wohnen soll, ist eine Frage an den
+            // Eigentümer und steht als `INF-008` in
+            // [`inbox.md`](../../../docs/pakete/modelltabellen/inbox.md).*
+            $id = 1;
             update_option(self::INSTALLATION_OPTION, $id, true);
         }
 
         return $id;
     }
 
-
     public function roleId(SeededRole $role): int
     {
         return (int) get_option(self::ROLE_OPTION_PREFIX . $role->value, 0);
+    }
+
+    public function anchor(\Taxmod\Core\Model\NodeClass\Anchor $anchor): ?Node
+    {
+        $option = match ($anchor) {
+            \Taxmod\Core\Model\NodeClass\Anchor::Roles    => self::ROLES_OPTION,
+            // ⚠️ *Die Präfixe legt das Einheitengerüst an, nicht das Gerüst der Zweige — der Anker liest dessen Notiz.*
+            \Taxmod\Core\Model\NodeClass\Anchor::Prefixes => UnitScaffold::optionFor(UnitScaffold::PREFIXES_NAME),
+            \Taxmod\Core\Model\NodeClass\Anchor::Units    => UnitScaffold::optionFor(UnitScaffold::BASE_UNITS_NAME),
+        };
+
+        return (int) get_option($option, 0) === 0 ? null : $this->remembered($option);
+    }
+
+    /**
+     * ⚠️ *Der Schnitt liegt an der Wurzel des Settings-Astes ([D-545](../../../docs/NewConcept/90-decision-log.md)).
+     * Kein Aufstieg mit einer Abfrage je Stufe: der Pfad ist materialisiert, die Vorfahren-Ids stehen
+     * schon da (`CD-7`).*
+     *
+     * @return list<int>
+     */
+    public function inheritanceOwnersOf(Node $node): array
+    {
+        // ⚠️ *Seit Schritt 7 des Bauplans (2026-09-11) gibt es keinen Ast `Settings` mehr, an dem die
+        // Kette abbrach ([D-718](../../../docs/NewConcept/90-decision-log.md)) — jeder Knoten erbt entlang seines Pfads.*
+        return [...$node->ancestorIds(), $node->id];
     }
 
     public function isProtected(Node $node): bool
@@ -165,6 +254,7 @@ final class SeededFrameworkNodes implements FrameworkNodes
         // Seeding is the one thing that can make a cached branch root wrong — it is what creates
         // them. Everything afterwards may cache freely, because they cannot move (D-194).
         $this->branchRoots = null;
+        $this->seeded      = [];
 
         $root = $this->ensure(self::ROOT_OPTION, 'Root', null);
 
@@ -177,11 +267,30 @@ final class SeededFrameworkNodes implements FrameworkNodes
         $this->ensure(self::BRANCH_OPTIONS['data-types'], 'Data Types', $primitives);
         $this->ensure(self::BRANCH_OPTIONS['constants'], 'Constants', $primitives);
 
-        // ⚠️ Roles are nodes and sit in **no data branch** — an attribute must not be able to
-        // point at one. They are the engine's own vocabulary (D-151).
-        $roles = $this->ensure(self::ROLES_OPTION, 'Label roles', $root);
+        // ⚠️ **Der dritte unter `Primitives`** ([D-677](../../../docs/NewConcept/90-decision-log.md)):
+        // *zusammengesetzte Datentypen, ohne Benutzerdaten. **Bestand wird übernommen, nicht
+        // verdoppelt*** — {@see self::adoptCombined()}.
+        $this->adoptCombined($primitives);
 
+        // ⚠️ **Die Rollen wohnen unter `Constants`** — sein Wort: «K3c unter constants»
+        // ([D-719](../../../docs/NewConcept/90-decision-log.md)). *Sie sind Ziele von `label_role`-Verweisen,
+        // Konstanten also; den Ast `Settings` gibt es seit Schritt 7 des Bauplans nicht mehr ([D-718](../../../docs/NewConcept/90-decision-log.md)).*
+        $roles = $this->ensure(self::ROLES_OPTION, 'Label roles', $this->rootOf(Branch::Constants));
+
+        // ⚠️ **`name` bekommt keinen Rollenknoten, und das ist der Unterschied zu den anderen fünf**
+        // (TASK-019, [D-646](../../../docs/NewConcept/90-decision-log.md)). *Die Rollenknoten sind
+        // das, **woraus ein Renderer seine Rolle wählt** ([D-044](../../../docs/NewConcept/90-decision-log.md));
+        // `name` ist keine Wahl, sondern **das Ende der Kette**, auf das jede Wahl zurückfällt
+        // ([D-386](../../../docs/NewConcept/90-decision-log.md)). Ihn anzubieten hiesse, «fall auf
+        // dich selbst zurück» wählbar zu machen.*
+        //
+        // ⚠️ *Als **Spalte** in `label_texts` gibt es ihn trotzdem, und die Beschriftungsmaske bietet
+        // ihn je Sprache an — sie liest die Aufzählung, nicht die Knoten.*
         foreach (SeededRole::cases() as $role) {
+            if ($role === SeededRole::Name) {
+                continue;
+            }
+
             $this->ensure(self::ROLE_OPTION_PREFIX . $role->value, $role->value, $roles);
         }
     }
@@ -203,6 +312,47 @@ final class SeededFrameworkNodes implements FrameworkNodes
     }
 
     /** Find the node an option points at, or make it under the given parent. */
+    /**
+     * Der `Combined`-Ast — und der Notnagel für die Bestände, die ihn schon von Hand haben.
+     *
+     * ⚠️ **Ohne ihn stünden bei ihm zwei Knoten namens `Combined` nebeneinander**, einer mit den
+     * beiden zusammengesetzten Typen darin und ein leerer neuer daneben. *Gemessen an seinem Modell:
+     * `Combined` (3984) unter `Primitives`, mit `Street / H#` und `Zip/City` darunter, und
+     * `Address` hat schon heute eine Kante dorthin.*
+     *
+     * ⚠️ **Über den Namen, und das ist hier erlaubt, weil es genau einmal je Installation
+     * geschieht** — *dieselbe Ausnahme und dieselbe Begründung wie der Notnagel in
+     * {@see SeededTypeNodes::fromTheirNames()} ([D-510](../../../docs/NewConcept/90-decision-log.md)):
+     * **danach steht die Id in der Option, und der Name darf sich ändern.** Ein Knoten, der über
+     * seinen Anzeigenamen gefunden wird, ist sonst verboten — hier wird ein Bestand **einmal**
+     * eingesammelt und nie wieder gelesen.*
+     */
+    private function adoptCombined(Node $primitives): Node
+    {
+        $option = self::BRANCH_OPTIONS['combined'];
+
+        if ((int) get_option($option, 0) === 0) {
+            foreach ($this->nodes->childrenOf($primitives) as $child) {
+                if (strcasecmp($child->name, 'Combined') === 0) {
+                    update_option($option, $child->id, true);
+
+                    $this->changelog->record(
+                        $child->id,
+                        'node',
+                        'changed',
+                        null,
+                        'framework: Combined adopted as a branch',
+                        $child->version
+                    );
+
+                    return $child;
+                }
+            }
+        }
+
+        return $this->ensure($option, 'Combined', $primitives);
+    }
+
     private function ensure(string $option, string $name, ?Node $parent): Node
     {
         $id       = (int) get_option($option, 0);
@@ -212,20 +362,21 @@ final class SeededFrameworkNodes implements FrameworkNodes
             return $existing;
         }
 
-        $node = Node::create($this->identities->next(), $name, $parent?->path);
-        $this->nodes->add($node);
+        // ⚠️ *`0` heisst «die Tabelle vergibt die Id» (TASK-004) — der Speicher gibt den
+        // geschriebenen Knoten mit seiner Nummer und seinem fertigen Pfad zurück.*
+        // ⚠️ *Vater und Stelle kommen seit TASK-018 mit der Zeile* ([D-581](../../../docs/NewConcept/90-decision-log.md)).
+        // *Hier stand danach eine Vererbungskante — «ein Rahmenknoten ohne Kante wäre ein Knoten, den
+        // der Baum nicht sieht». **Das kann jetzt nicht mehr auseinanderfallen**, weil es eine Zeile
+        // ist.*
+        $node = $this->nodes->add(Node::create(
+            0,
+            $name,
+            $parent?->path,
+            $parent?->id,
+            $parent === null ? 0 : $this->nodes->nextPositionUnder($parent->id)
+        ));
 
-        if ($parent !== null) {
-            // A framework node without an edge would be a node the tree cannot see.
-            $this->relations->add(Relation::inheritance(
-                $this->identities->next(),
-                $parent->id,
-                $node->id,
-                $this->relations->nextPositionUnder($parent->id)
-            ));
-        }
-
-        $this->changelog->record($node->id, 'node', 'created', null, 'framework: ' . $name);
+        $this->changelog->record($node->id, 'node', 'created', null, 'framework: ' . $name, $node->version);
         update_option($option, $node->id, true);
 
         return $node;

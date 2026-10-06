@@ -127,8 +127,113 @@ Kept so a discarded term cannot quietly return under another name.
 | *Primary key* for an attribute | The primary key is the **`id`** ([D-055](90-decision-log.md)). Use **`unique`** ([D-115](90-decision-log.md)). |
 | *Bestand* | Proposed as a collective for the data half and rejected by the owner as unnecessary ([D-176](90-decision-log.md)). **Daten** already reads perfectly well. |
 | *Definition* as a branch name | A model node is a definition too, so the word separates nothing. The branch is **`Primitives`** ([D-185](90-decision-log.md)). |
-| *hide* as a flag on a node | The legacy control that went unused because it sat on the wrong object. What may be picked belongs to the **use site** ([D-181](90-decision-log.md)). |
+| *hide* as a flag on a node | The legacy control that went unused because it sat on the wrong object. What may be picked belongs to the **use site** ([D-181](90-decision-log.md)). ⚠️ **Built as a node column on 2026-08-27 and removed again on 2026-08-28** — the owner: *«I do not simply create a model node and then say I will not draw it»*. It is one column on the **edge**: [Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) ([D-467](90-decision-log.md)). |
 | *View* as a catch-all for anything reusable | A **view** is a deferred *calculation* belonging to no node ([OQ-069](91-open-questions.md)); a **report** is prepared *output* — an exported parts list, an invoice — and belongs to the renderer side. Two concepts, two homes, never one word ([D-201](90-decision-log.md)). |
+
+## Referenz — drei Fragen, ein Wort
+
+**Der Eigentümer hat es gerochen, bevor es jemand aufgeschrieben hatte:** *«du verwendest immer andere Begriffe `***_ref` — das zeigt, dass da Unklarheiten bestehen. Wollen wir die mal auflösen?»* Diese Stelle besitzt die Familie ([D-469](90-decision-log.md)); jede andere Erwähnung zeigt hierher.
+
+⚠️ **Die Unklarheit ist keine Nachlässigkeit, sie ist ein Zusammenfallen: drei verschiedene Fragen tragen dasselbe Wort, und zwei ihrer Antworten treffen sich am Zweig `Constants`.**
+
+### 1 · Was für ein Wert ist das? — `SimpleType`
+
+| Fall | Bedeutung | Stand |
+|---|---|---|
+| `NodeRef` (`node_ref`) | der Wert **ist** ein Zeiger auf einen Knoten im Modell | entsteht, wenn ein Feld in den Zweig `Constants` zeigt ([D-232](90-decision-log.md)); drei Renderer lesen ihn — `reference` zum Zeigen, die zwei Chooser zum Wählen. **Gemessen: 4 von 32 Feldern** |
+| `UserRef` (`user_ref`) | ein Zeiger auf einen **WordPress-Benutzer**, als Text gespeichert (`P4d`, [D-171](90-decision-log.md)) | ⚠️ **kein Renderer** — gemessen fällt er auf den Auffang (`TypedFieldsTest`). Von den 11 Typen ist er der einzige ohne einen; **das ist die Abweichung, die [D-484](90-decision-log.md) sichtbar machen soll** |
+
+### 2 · Wo liegt der Wert? — `Storage`, entschieden vom **Zweig**
+
+| Zweig | Speicherort |
+|---|---|
+| `Model` | `ExternalReference` |
+| `Compositions` | `OwnRecords` |
+| `DataTypes` | `InsideTheRecord` |
+| `Constants` | `NodeRef` |
+
+⚠️ *`ExternalReference` hat **einen** Leser, und der ist ein Test. Der Zweig `Model` soll so speichern und nichts tut es bisher — kein Fehler, aber es heisst, dass die Bedeutung dieses Falls unerprobt ist.*
+
+### 3 · Was wird gezeichnet?
+
+| Name | Was er wirklich hält |
+|---|---|
+| `TypedValue::ofReference()`, Spalte `value_ref` | **der gespeicherte Zeiger selbst** — eine Id |
+| `ReferenceRenderer` | zeichnet einen Zeiger, und zwar als **Label des Ziels** ([D-105](90-decision-log.md)) |
+| `Surroundings::$refersTo` | ⚠️ **ein Label, kein Zeiger.** *Hier lügt das Wort, und `CD-9` verlangt umbenennen. Vorschlag: `targetLabel`* |
+| `Surroundings::$refersToARecord` | ein `bool` über die **Art des Ziels** — ein Record statt eines Knotens ([D-445](90-decision-log.md)) |
+
+### Jede Stelle im Schema, die eine Knoten-Id hält — gemessen 2026-08-28
+
+**Der Eigentümer hat den Fall gestellt und nach den übrigen gefragt:** *«wir haben eine Knotenreferenz, die sagt: ich bin ein Attribut und ich habe als Datentyp einen Knoten. … Nenn mir doch einfach mal die anderen Fälle, in denen das vorkommt.»*
+
+⚠️ **Zwei meiner Sortierungen hat er verworfen, beide zu Recht — und die zweite war schlimmer.**
+
+*Zuerst hatte ich nach **Bedeutung** getrennt («wem gehört es» gegen «wie hängt es zusammen»), und er: «warum trennst Du die `relations.to_id` von der `from_id`? **Das sind alles Referenzen auf Knoten.**» Richtig — das war eine Erzählung über die Spalte, keine Eigenschaft von ihr.*
+
+*Dann schrieb ich eine Spalte «Zeile ohne ihr Ziel» mit den Werten «bedeutungslos» und «veraltet», und er: **«Du machst Dir wieder Schlussfolgerungen, die wir hier gar nicht beschliessen.»** Auch richtig, und das ist der schwerere Fehler: **ich habe eine Wertung als Messung ausgegeben.** Die Spalte ist entfernt. Was bleibt, ist gemessen.*
+
+#### Die Spalten
+
+| Spalte | hält die Id von | Fremdschlüssel |
+|---|---|---|
+| `relations.from_id` | einem Knoten | → `identities` |
+| `relations.to_id` | einem Knoten — *dem **Typ** des Feldes* | → `identities` |
+| `settings.owner_id` | einem Knoten **oder** einer Kante | → `identities` |
+| `labels.owner_id` | einem Knoten oder einer Kante | → `identities` |
+| `changelog.owner_id` | einem Knoten oder einer Kante | → `identities` |
+| `records.node_id` | einem Knoten | **keiner** |
+| `record_values.edge_id` | einer Kante | **keiner** |
+| `labels.role_id` | einem Knoten — *die **Rolle** eines Labels ist ein Knoten* | **keiner** |
+| `settings.value_ref` | einem Knoten — *der **Wert** ist die Id* | **keiner** |
+| `record_values.value_ref` | einem Knoten — *der **Wert** ist die Id* | **keiner** |
+| `nodes.path` | einer **Kette** von Knoten-Ids, gepunktet | Text — kann keinen haben |
+| `settings.path`, `labels.path` | einer Kette von **Kanten**-Ids | Text — kann keinen haben |
+
+#### ⚠️ Was ein Fremdschlüssel hier **nicht** leistet, und das ist der Kern
+
+**Jeder der sieben zeigt auf `identities`, nicht auf `nodes`.** *Gemessen: `identities` hat **28670** Zeilen, `nodes` hat **91** — eine Id wird einmal vergeben und nie wieder ([D-340](90-decision-log.md)). **Ein Fremdschlüssel garantiert also nur, dass diese Id einmal ausgegeben wurde. Er garantiert nicht, dass der Knoten noch existiert.***
+
+*Damit ist der Unterschied zwischen «abgesichert» und «nicht abgesichert» viel kleiner, als er aussieht — und die Frage des Eigentümers, «wo ist denn das Loch für Knoten, die genutzt werden», hat die Antwort: **es gibt keins, weil der Fremdschlüssel benutzt und gelöscht nicht unterscheidet.***
+
+#### Wie es heute wirklich steht — Zeilen, deren Ziel es nicht mehr gibt
+
+| Spalte | solche Zeilen |
+|---|---|
+| `relations.to_id`, `relations.from_id` | 0 |
+| `settings.value_ref` | 0 |
+| `labels.role_id` | 0 |
+| **`records.node_id`** | **1** |
+| **`record_values.edge_id`** | **7** — dieselben, die die Cleanup-Seite zeigt ([D-479](90-decision-log.md)) |
+
+⚠️ *Die vier oberen sind sauber, aber **nicht weil** ein Fremdschlüssel sie hält.*
+
+⚠️ **Und die acht Zeilen sind eine einzige Leiche, zweimal gezählt — der Eigentümer hat es erraten, bevor es gemessen war.** *Er: «wir haben eine Menge Datenmüll noch da, dadurch dass der Baum gewachsen ist. Ist es vielleicht das Problem, dass die einfach nicht richtig gefüllt sind und Du jetzt denkst, das werden irgendwelche Regeln?» **Genau so war es.** Gemessen: alle acht gehören zu **Record 879**, angelegt am 2026-08-28 um 08:30, der auf Knoten 23878 zeigt — und zu diesem Knoten gibt es **keinen einzigen Changelog-Eintrag**, er wurde also von Hand aus der Tabelle gelöscht und nicht über die Anwendung. Die Werte lauten `42`, `4k7`, `a@b.example`, `#663399`: die Testdaten-Signatur von `package7-check.php`. **Es ist Abfall aus einem Prüflauf, und ich habe daraus Struktur gelesen.***
+
+⚠️ *Was das für die Fremdschlüssel heisst: **der Beleg dafür, dass es «in der Praxis vorkommt», ist weg.** Es kam vor, weil jemand — ich — Knoten unter der Anwendung wegräumte. Ob die drei Spalten trotzdem einen bekommen sollten, bleibt eine Frage, aber ohne diesen Beleg und damit kleiner, als sie aussah.*
+
+#### Sein Fall, geschlossen
+
+*«Ein Attribut hat als Datentyp einen Knoten»* steht in `relations.to_id`. Die Spalte existiert, sie hält die Id, und sie hat einen Fremdschlüssel auf `identities`. *Sie gilt für **jedes** Feld, nicht nur für eines mit einem Konstanten-Ziel — der Typ eines Feldes ist immer ein Knoten ([D-011](90-decision-log.md): ein Attribut ist eine Relation).* **Gemessen zeigt heute keine davon ins Leere.**
+
+#### Ein Wort, überall
+
+**Seine Regel:** *«immer wenn es eine Knotenreferenz ist, also auf eine Id eines Knotens, dann sollte es auch gleich heissen. Aber nicht dass eines `NodeRef` heisst und das andere `NodeReference`.»*
+
+| hiess | heisst |
+|---|---|
+| `Storage::NodeReference` (`node-reference`) | **`Storage::NodeRef` (`node-ref`)** — 3 Stellen, eine davon ein Test; der Wert ist nirgends gespeichert, geprüft |
+| `SimpleType::NodeRef` (`node_ref`) | **bleibt** — `node_ref` steht als Zeichenkette in der Datenbank |
+
+⚠️ *Schreibweise, nicht Bedeutung (`CD-9`). Die Bedeutungsfrage liegt in [OQ-125](91-open-questions.md).*
+
+---
+
+### Die zwei Stolperstellen, die bleiben
+
+⚠️ **`SimpleType::NodeRef` gegen `Storage::NodeRef`.** *Fast dasselbe Wort für «der Wert **ist** ein Zeiger» und «der Wert **liegt** als Zeiger». Beide werden am Zweig `Constants` wahr, weshalb man sie nie auseinander lesen muss und deshalb nie merkt, dass sie Verschiedenes sagen.* **Was zu klären ist:** [OQ-125](91-open-questions.md).
+
+⚠️ *Und was hier **nicht** hingehört, damit es nicht wieder mitwandert: `records.node_id` ist kein Referenztyp, sondern die Spalte, mit der ein Datensatz seinen Knoten nennt ([D-460](90-decision-log.md)s Umbenennung, Schema 9).*
 
 ## Dictation notes
 
@@ -154,7 +259,49 @@ over them.
 | *Lebensraum* | **Namensraum** — namespace |
 | *Applikation* | **Aggregation** |
 | *Heid* | **hide** |
+| *Rennrad*, *Ränderer*, *Nottreff* | **Renderer**, **Renderer**, **`node_ref`** — *seine eigene Ansage: «Rennrad ist übrigens gleich Renderer immer»* |
 | *Track and Drop* | **drag and drop** |
 | *Andofall* | **Undo-Fall** |
 | *Inumwerte* | **Enum-Werte** |
 | *aufplänen* | **aufblähen** — to bloat |
+
+## ⚠️ Attribute and setting — moved out
+
+The distinction between the two, the truth table, the worked example and the storage places used to
+live here. They are now [`02-field-and-setting.md`](02-field-and-setting.md), because they had
+grown to three hundred lines and **a glossary is where a word is looked up, not where an argument is
+made.**
+
+**The one line worth keeping here:** *an attribute is a question the model asks its users; a setting is
+a decision the modeller makes about a question.*
+
+---
+
+## Wörter, die am 2026-08-30 aneinander vorbeigingen
+
+⚠️ **Der Eigentümer hat den Grund benannt, und er ist keine Kleinigkeit:** *«manche Probleme treten
+aus unterschiedlichem Modelldenken hervor — **du hast ein anderes Modell als ich im Kopf**, und wenn
+ich was sage, interpretierst du das anders. Ich glaube, wir müssen beide noch an unserer Sprache
+arbeiten, denn manchmal verstehe auch ich dich nicht.»*
+
+*Diese Tabelle steht hier, damit dieselben Wörter nicht ein zweites Mal einen halben Tag kosten.*
+
+| Wort | was er meinte | was ich daraus machte | was gilt |
+|---|---|---|---|
+| **«Datensatz an der Kante»** | ein Wert, der **die Kante adressiert** | ein Datensatz, der **an** einer Kante hängt — ein neuer Behälter | ein Wert im Datensatz des **besitzenden Knotens**, an dem Pfad, der die Kante nennt. **Es gibt keinen Behälter an einer Kante** |
+| **«der oberste»** | der dem **konkreten Datensatz nächste** — `Giga` schlägt `Kilo` | hätte auch «der wurzelnächste» heissen können | die Auflösung läuft Wurzel → Knoten, **der spätere gewinnt** ([D-531](90-decision-log.md)) |
+| **«Records»** (drei für `4 GB`) | drei **Wertzeilen** | drei Zeilen in `records` | **ein** Datensatz mit **drei Wertzeilen**. Wären es drei Datensätze, bände nichts sie zu «4 GB» zusammen |
+| **«Settings»** | je nach Satz: die alte Tabelle · das alte Konzept · der Bereich in der Oberfläche | einmal das eine, einmal das andere — und einmal aus einer überholten Stelle zitiert | im **Modell** gibt es nur Felder und eine Relationsart ([D-506](90-decision-log.md), [D-526](90-decision-log.md)). Der **Bereich** darf weiter so heissen |
+| **«Pfad»** | die Adresse einer Stelle | zeitweise auch eine laufende Nummer ([D-527](90-decision-log.md)) | in allen drei Tabellen dasselbe: **Kanten-Ids, mit Punkten**, von aussen nach innen ([D-530](90-decision-log.md)) |
+| **«Multiplizität»** | wie **viele** Werte | ich zog «welche Werte erlaubt sind» hinein (SCSI-ID 0..7) | Multiplizität sind **vier** Werte ([D-351](90-decision-log.md)). Welche Werte erlaubt sind, sind Daten oder `min`/`max` |
+| **«nicht persistent»** | **das ist eine Einstellung** | ein eigener Schlüssel neben der Relationsart | dasselbe, und der Schlüssel fällt ([D-538](90-decision-log.md)) |
+| **«Version»** | die Version der **Zeile** | zeitweise auch die Modellversion am Datensatz | die Zeilenversion ([D-536](90-decision-log.md)); die Modellversion heisst am Datensatz `node_version` |
+
+⚠️ **Zwei Regeln, die daraus folgen und für mich gelten:**
+
+1. *Wenn ein Satz von ihm ein **neues Ding** zu verlangen scheint, erst prüfen, ob er eine **neue
+   Adresse auf ein vorhandenes Ding** meint.* **«Datensatz an der Kante» war genau das**, und ich habe
+   daraus eine Bauaufgabe gemacht, die es nicht gab.
+2. *Wenn zwei Angaben nie widersprechen können, sind es keine zwei.* [D-405](90-decision-log.md) hat
+   so `mandatory` abgeschafft, [D-538](90-decision-log.md) so `persistent` — **beide Male hat er es
+   gesehen, nicht ich.**

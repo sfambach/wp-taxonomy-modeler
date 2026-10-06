@@ -4,18 +4,35 @@ namespace Taxmod\Tests\Core\Fake;
 
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Model\Relation;
-use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Repository\RelationRepository;
 
-/** Edges in an array, ordered the way the SQL one orders them. */
+/** Relations in an array, ordered the way the SQL one orders them. */
 final class InMemoryRelations implements RelationRepository
 {
     /** @var array<int,Relation> */
     private array $rows = [];
 
-    public function add(Relation $relation): void
+    /**
+     * Der Schatten — geparkte Kanten stehen hier und **nicht** mehr bei den lebenden.
+     *
+     * ⚠️ *Dieselbe Form wie in der Datenbank seit [D-619](../../../docs/NewConcept/90-decision-log.md):
+     * geparkt ist kein Merkmal einer lebenden Zeile, sondern ein anderer Ort. **Ein Doppel wäre die
+     * Sorte Fälschung, die eine Zusage grün hält, die in Wahrheit rot ist.***
+     *
+     * @var array<int,Relation>
+     */
+    private array $geparkt = [];
+
+    /** ⚠️ *Eigener Id-Raum, genau wie {@see InMemoryNodes::add()} — `0` heisst «vergib eine».* */
+    public function add(Relation $relation): Relation
     {
+        if ($relation->id === 0) {
+            $relation = $relation->withAssignedId($this->rows === [] ? 1 : max(array_keys($this->rows)) + 1);
+        }
+
         $this->rows[$relation->id] = $relation;
+
+        return $relation;
     }
 
     public function save(Relation $relation, int $expectedVersion): void
@@ -29,113 +46,145 @@ final class InMemoryRelations implements RelationRepository
         $this->rows[$relation->id] = $relation;
     }
 
-    public function inheritanceEdgeTo(int $childId): ?Relation
+    public function byIds(array $relationIds): array
     {
-        foreach ($this->rows as $edge) {
-            if ($edge->toId === $childId && $edge->kind === RelationKind::Inheritance) {
-                return $edge;
+        $aus = [];
+
+        foreach ($relationIds as $id) {
+            $kante = $this->byId((int) $id);
+
+            if ($kante !== null) {
+                $aus[$kante->id] = $kante;
+            }
+        }
+
+        return $aus;
+    }
+
+    public function byId(int $relationId): ?Relation
+    {
+        foreach ($this->rows as $relation) {
+            if ($relation->id === $relationId) {
+                return $relation;
             }
         }
 
         return null;
     }
 
-    public function childEdgesOf(int $parentId): array
+    // ⚠️ *Die fünf Baumleser sind mit TASK-018 gefallen* ([D-581](../../../docs/NewConcept/90-decision-log.md))
+    // *— ihre Ablösung steht in {@see InMemoryNodes}.*
+
+    public function nextFieldPositionUnder(int $ownerId): int
     {
-        $edges = [];
+        $relations = $this->fieldRelationsOf([$ownerId]);
 
-        foreach ($this->rows as $edge) {
-            if ($edge->fromId === $parentId && $edge->kind === RelationKind::Inheritance) {
-                $edges[] = $edge;
-            }
-        }
-
-        usort($edges, static fn (Relation $a, Relation $b): int => $a->position <=> $b->position ?: $a->id <=> $b->id);
-
-        return $edges;
+        return $relations === [] ? 0 : end($relations)->sortOrder + 1;
     }
 
-    public function nextPositionUnder(int $parentId): int
-    {
-        $edges = $this->childEdgesOf($parentId);
-
-        return $edges === [] ? 0 : end($edges)->position + 1;
-    }
-
-    public function allInheritanceEdges(): array
-    {
-        $edges = [];
-
-        foreach ($this->rows as $edge) {
-            if ($edge->kind === RelationKind::Inheritance) {
-                $edges[] = $edge;
-            }
-        }
-
-        usort($edges, static fn (Relation $a, Relation $b): int =>
-            [$a->fromId, $a->position, $a->id] <=> [$b->fromId, $b->position, $b->id]);
-
-        return $edges;
-    }
-
-
-    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void
-    {
-        foreach ($this->rows as $id => $edge) {
-            if ($edge->fromId === $fromParentId && $edge->kind === RelationKind::Inheritance) {
-                $this->rows[$id] = $edge->reparentedTo($toParentId, $edge->position + $startPosition);
-            }
-        }
-    }
-
-
-
-    public function nextAttributePositionUnder(int $ownerId): int
-    {
-        $edges = $this->attributeEdgesOf([$ownerId]);
-
-        return $edges === [] ? 0 : end($edges)->position + 1;
-    }
-
-    public function attributeEdgesOf(array $ownerIds): array
+    public function fieldRelationsOf(array $ownerIds): array
     {
         // Parked ones are left out here, as in the real repository: a parked attribute is hidden by
         // default in its owning node (D-128).
-        return $this->attributesOf($ownerIds, false);
+        return $this->fieldsOf($ownerIds, false);
     }
 
-    public function parkedAttributeEdgesOf(array $ownerIds): array
+    public function parkedFieldRelationsOf(array $ownerIds): array
     {
-        return $this->attributesOf($ownerIds, true);
+        $relations = [];
+
+        foreach ($this->geparkt as $relation) {
+            if (in_array($relation->fromNodeId, $ownerIds, true)) {
+                $relations[] = $relation;
+            }
+        }
+
+        usort($relations, static fn (Relation $a, Relation $b): int => [$a->sortOrder, $a->id] <=> [$b->sortOrder, $b->id]);
+
+        return $relations;
+    }
+
+    public function park(int $relationId, int $changeGroupId): void
+    {
+        $relation = $this->rows[$relationId] ?? null;
+
+        if ($relation === null) {
+            return;
+        }
+
+        $this->geparkt[$relationId] = $relation->parkedBy($changeGroupId);
+
+        unset($this->rows[$relationId]);
+    }
+
+    public function unpark(int $relationId): ?Relation
+    {
+        $relation = $this->geparkt[$relationId] ?? null;
+
+        if ($relation === null) {
+            return $this->rows[$relationId] ?? null;
+        }
+
+        $revived = $relation->revived();
+
+        $this->rows[$relationId] = $revived;
+
+        unset($this->geparkt[$relationId]);
+
+        return $revived;
+    }
+
+    public function fieldRelationsTo(array $targetIds): array
+    {
+        $relations = [];
+
+        foreach ($this->rows as $relation) {
+            if (! in_array($relation->toNodeId, $targetIds, true)) {
+                continue;
+            }
+
+            if (! $relation->isParked()) {
+                $relations[] = $relation;
+            }
+        }
+
+        usort($relations, static fn (Relation $a, Relation $b): int => [$a->fromNodeId, $a->sortOrder, $a->id] <=> [$b->fromNodeId, $b->sortOrder, $b->id]);
+
+        return $relations;
     }
 
     /**
      * @param  list<int>      $ownerIds
      * @return list<Relation>
      */
-    private function attributesOf(array $ownerIds, bool $parked): array
+    private function fieldsOf(array $ownerIds, bool $parked = false): array
     {
-        $edges = [];
+        $relations = [];
 
-        foreach ($this->rows as $edge) {
-            if ($edge->kind === RelationKind::Inheritance || ! in_array($edge->fromId, $ownerIds, true)) {
+        foreach ($this->rows as $relation) {
+            if (! in_array($relation->fromNodeId, $ownerIds, true)) {
                 continue;
             }
 
-            if ($edge->isParked() === $parked) {
-                $edges[] = $edge;
+            if ($relation->isParked() === $parked) {
+                $relations[] = $relation;
             }
         }
 
-        usort($edges, static fn (Relation $a, Relation $b): int => [$a->position, $a->id] <=> [$b->position, $b->id]);
+        // ⚠️ *Wie die Datenbank: erst der Rang des Besitzers in der Kette, dann `sort_order` — sonst
+        // stünde das Feld eines Kindes zwischen denen seines Vaters, nur weil beide bei 0 zählen.*
+        $rang = array_flip(array_values($ownerIds));
 
-        return $edges;
+        usort($relations, static fn (Relation $a, Relation $b): int =>
+            [$rang[$a->fromNodeId] ?? PHP_INT_MAX, $a->sortOrder, $a->id] <=> [$rang[$b->fromNodeId] ?? PHP_INT_MAX, $b->sortOrder, $b->id]);
+
+        return $relations;
     }
 
-    public function purgeEdgesTouching(int $nodeId): void
+    public function purgeRelationsTouching(int $nodeId): void
     {
-        foreach ($this->rows as $id => $edge) {
-            if ($edge->fromId === $nodeId || $edge->toId === $nodeId) {
+        foreach ($this->rows as $id => $relation) {
+            if ($relation->fromNodeId === $nodeId || $relation->toNodeId === $nodeId) {
                 unset($this->rows[$id]);
             }
         }
@@ -144,5 +193,18 @@ final class InMemoryRelations implements RelationRepository
     public function count(): int
     {
         return count($this->rows);
+    }
+
+    public function relationsTouching(array $nodeIds): array
+    {
+        $found = [];
+
+        foreach ($this->rows as $relation) {
+            if (in_array($relation->fromNodeId, $nodeIds, true) || in_array($relation->toNodeId, $nodeIds, true)) {
+                $found[] = $relation;
+            }
+        }
+
+        return $found;
     }
 }

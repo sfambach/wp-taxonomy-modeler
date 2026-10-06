@@ -13,10 +13,11 @@ use Taxmod\Core\Model\SimpleType;
  * territory, and *which of the three ways to draw a number is the ordinary one* is not a property
  * of the spinner.
  *
- * ⚠️ **One type is still deliberately without one** and shows the fault marker until it gets
- * hers: `user_ref` wants a renderer that resolves a WordPress user, which is a boundary concern
- * reaching into the core's hands. *A quiet plain field pretending otherwise would be the worse
- * outcome* (R14b). `node_ref` got its **reference renderer** ([D-105](90-decision-log.md)).
+ * ⚠️ **Seit dem 2026-09-05 hat jeder Typ einen** ([D-649](90-decision-log.md)). *Hier stand: «one
+ * type is still deliberately without one … `user_ref` wants a renderer that resolves a WordPress
+ * user, which is a boundary concern reaching into the core's hands.» **Die Diagnose war richtig und
+ * die Folgerung falsch:** der Rand greift nicht in den Kern, er **reicht den Namen herein** — dieselbe
+ * Naht, über die ein Knotenverweis seine Beschriftung bekommt ([D-159](90-decision-log.md)).*
  *
  * ```mermaid
  * flowchart LR
@@ -40,6 +41,8 @@ final class ShippedRenderers
             SimpleType::Text,
             SimpleType::Char,
             SimpleType::Version,
+            SimpleType::Path,
+            SimpleType::Summary,
             SimpleType::Int,
             SimpleType::Decimal,
         );
@@ -47,12 +50,26 @@ final class ShippedRenderers
         // ⚠️ **The sliding switch is the default for a boolean** — the owner: *bools always with a
         // slider.* The checkbox stays **offered**, because a variant nobody can choose is a variant
         // that need not exist (D-018's pattern: one renderer per presentation variant).
+        // ⚠️ *Der Sprung hat genau einen Renderer: einen Link zum gefilterten Ziel (D-769).*
+        $registry->add(new JumpRenderer(), SimpleType::Jump);
+
+        // ⚠️ *Das Medienfeld: Link oder hochgeladene Datei, gespeichert als Adresse (D-793).*
+        $registry->add(new MediaRenderer(), SimpleType::Media);
+
         $registry->add(new ToggleRenderer(), SimpleType::Bool);
         $registry->add(new CheckboxRenderer());
 
         // ⚠️ **The default for a reference, which is what D-105 asks for** — and it bounds the
         // load as well as the display (R58): one label per row, not a whole target.
         $registry->add(new ReferenceRenderer(), SimpleType::NodeRef);
+        // ⚠️ *Die zweite Stufe der Anzeige eines Verweises (D-106, D-753) — nur an Aggregationen angeboten.*
+        $registry->add(new SummaryRenderer());
+
+        // ⚠️ **Der Benutzerverweis** ([D-649](../../../docs/NewConcept/90-decision-log.md)): *er
+        // zeichnet den **Namen**, den der Rand hereinreicht, und speichert die **Id als Text**. Voreinstellung
+        // für seinen Typ, weil es keinen zweiten Weg gibt, einen Benutzer zu zeigen — und der Rückfall
+        // hätte die Id nackt hingeschrieben ([R14b](../../../docs/NewConcept/30-renderer.md)).*
+        $registry->add(new UserRefRenderer(), SimpleType::UserRef);
 
         $registry->add(new MailtoRenderer(), SimpleType::Email);
         $registry->add(new DateTimeRenderer(), SimpleType::DateTime);
@@ -63,10 +80,29 @@ final class ShippedRenderers
         // with no simple type could honestly be given nothing.
         $registry->add(new FormRenderer());
 
-        // ⚠️ **A whole node as a page**, and the page renderer is the same renderer (D-256, D-233).
-        // Offered like any other structural renderer: naming it on a node means *draw this one as a
-        // page*, which is a legitimate thing for an author to want.
-        $registry->add(new NodeRenderer());
+        // ⚠️ *Ohne Typ, wie das Formular: ein Behälter fasst keinen an. Er zeichnet mehrere
+        // Datensätze untereinander ([D-542](../../../docs/NewConcept/90-decision-log.md)).*
+        $registry->add(new TableRenderer());
+
+        // ⚠️ **The second structural renderer, and the one D-245 has been carrying since 2026-08-23**
+        // — *a node with several attributes shown as compactly as possible together*. **Offered**
+        // rather than surface-only, because which of the two container shapes a node wants is exactly
+        // the kind of thing a modeller decides (D-471: one renderer with a switch, not two).
+        $registry->add(new CompactRenderer());
+
+        // ⚠️ **Der Knoten-Renderer** ([D-758](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «ein echter
+        // Knoten-Renderer, der auch in der Auswahl wie form und table auftaucht»*. Angeboten, ohne Typ.
+        $registry->add(new ComplexRenderer());
+
+        // ⚠️ **Die Seite selbst, und deshalb keine Wahl** ([D-670](../../../docs/NewConcept/90-decision-log.md)).
+        // *Sein Wort am 2026-09-06: «dann ist es aber keiner unserer Knoten-Renderer, sondern der der
+        // Seite und sollte nicht Teil der Renderer sein, die der Benutzer auswählen kann.» **Hier
+        // stand `add()` mit der Begründung, «draw this one as a page» sei etwas, was ein Autor wollen
+        // dürfe** — gemessen wollte es niemand: eine einzige Aufrufstelle, der Knotenschirm.*
+        //
+        // ⚠️ *Dieselbe Tür wie für die Baumzelle eine Zeile weiter: registriert, damit `R12` hält,
+        // nicht angeboten, weil die **Oberfläche** ihn ruft und nicht der Autor.*
+        $registry->addForSurfaces(new PageRenderer());
 
         // ⚠️ **The tree's cell** (D-367): registered so R12 holds, not offered because *which* cell
         // a tree draws is the surface's decision — the chooser and the trash want another.
@@ -75,6 +111,58 @@ final class ShippedRenderers
         // ⚠️ **The walker** (D-367): it nests what the cell drew and draws no node itself. Asked for
         // by a surface, never chosen for a node.
         $registry->addForSurfaces(new TreeRenderer());
+
+        // ⚠️ **What a subject is called, in one locale** — the third hand-built panel to go through
+        // `R1` (D-384). Surface-only for the same reason as the settings panel.
+        $registry->addForSurfaces(new LabelsRenderer());
+
+        // ⚠️ **Ein Wähler mit Schalter `dialog`, Vorgabe aus** ([D-727](../../../docs/NewConcept/90-decision-log.md)) —
+        // *bis zum 2026-09-12 zwei Renderer (D-108, D-244).* Registered against the **edit** purpose for
+        // `node_ref`, which is what `addForPurpose()` exists for: a reference is *shown* by the reference
+        // renderer and *picked* by a chooser, and R14a's one default per type could not say both.
+        $registry->addForPurpose(new ChooserRenderer(), Purpose::Edit, SimpleType::NodeRef);
+
+        // ⚠️ **The chooser's cell** (D-367) — the thing that split was built for: one walker, several
+        // cells. Surface-only, because *which* cell a tree draws is never a model author's choice.
+        $registry->addForSurfaces(new ChooserCellRenderer());
+
+        // ⚠️ **One record as a block** — the fourth hand-built panel to go through `R1` (D-393).
+        $registry->addForSurfaces(new RecordRenderer());
+
+        // ⚠️ **The fifth hand-built panel to become a renderer** — the owner, pointing at a head
+        // that still had none of his layout: *that is a renderer, right?* Surface-only, because a
+        // node's **head** is a screen's furniture and never a model author's choice of how a value
+        // looks.
+        $registry->addForSurfaces(new HeadRenderer());
+
+        // ⚠️ **One settings panel for a node and for an attribute alike.** Surface-only: it is
+        // asked for by a panel, never named as a node's `renderer`, because it draws a subject's
+        // **configuration** and not its value.
+        $registry->addForSurfaces(new SettingsRenderer());
+        // ⚠️ *Als Oberflaeche und nicht als Wahl: ein Behaelter ist nichts, was jemand fuer einen
+        // Wert **aussucht** — der Rand nimmt ihn, wenn ein Feld mehrere Werte tragen darf
+        // ([D-527](../../../docs/NewConcept/90-decision-log.md)). Damit bleibt er auch aus der
+        // Saat heraus, die nur `namesForNodes()` saet.*
+        $registry->addForSurfaces(new RepeatableRenderer());
+
+        // ⚠️ **One answer out of a set, and the only implementation of R28–R32.** Surface-only
+        // because it is chosen for a **shape** rather than for a type: nothing about a node says
+        // *draw me as a choice*, and the set it needs has to be handed in by whoever knows it.
+        $registry->addForSurfaces(new ChoiceRenderer());
+
+        // ⚠️ **Die Renderer-Wahl selbst** ([D-647](../../../docs/NewConcept/90-decision-log.md)):
+        // *sie holt ihre Menge nicht aus den Kindern des Kantenziels, sondern aus den Renderer-Knoten,
+        // gesiebt durch diese Registratur.* **Oberflaechen-Renderer und damit ohne Knoten**
+        // ([D-648](../../../docs/NewConcept/90-decision-log.md), sein Wort: *«ist was Internes»*) —
+        // ein Knoten machte ihn waehlbar, und dann stuende «Renderer-Waehler» in der Renderer-Liste
+        // eines Textfeldes.
+        $registry->addForSurfaces(new RendererChoiceRenderer());
+
+        // ⚠️ **The attribute row, and the first renderer whose subject is an **relation**.** Surface-only
+        // for the same reason as the tree's cell: it is asked for by a panel, and naming it as a
+        // node's `renderer` would be meaningless — it cannot draw a node at all ({@see
+        // FieldRowRenderer::fits()}).
+        $registry->addForSurfaces(new FieldRowRenderer());
 
         // Eligible everywhere they fit, default nowhere.
         $registry->add(new TextareaRenderer());

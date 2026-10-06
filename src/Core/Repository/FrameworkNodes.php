@@ -48,6 +48,9 @@ interface FrameworkNodes
      */
     public function roleId(SeededRole $role): int;
 
+    /** Der Gerüstknoten hinter einem Anker — `null`, solange er nicht angelegt ist. */
+    public function anchor(\Taxmod\Core\Model\NodeClass\Anchor $anchor): ?Node;
+
     /**
      * The node a branch hangs from — `Model`, `Compositions`, `Data Types`, `Constants`.
      *
@@ -61,4 +64,27 @@ interface FrameworkNodes
      * itself, and the trash.
      */
     public function branchOf(Node $node): ?Branch;
+
+    /**
+     * Die Besitzer, deren Felder dieser Knoten erbt — **einschliesslich sich selbst**.
+     *
+     * ⚠️ **[D-545](../../../docs/NewConcept/90-decision-log.md), und die Regel ist seine, kürzer als
+     * mein Vorschlag:** *«nichts in Settings erbt von Root, das wird im Settings schon geblockt und kann
+     * nicht weiter vererbt werden. Das macht Vererbung innerhalb von Settings möglich, was so sein
+     * soll.»*
+     *
+     * ⚠️ **Warum es das braucht:** *`Root` trägt die Einstellungskanten, damit **jeder** Knoten sie erbt
+     * — das ist richtig und war seine Absicht. Aber alle fünf Äste liegen unter `Root`, also erbt auch
+     * `DisplayOption` sie **und damit sich selbst**: die Lage, die
+     * [D-503](../../../docs/NewConcept/90-decision-log.md) verbietet und
+     * [OQ-133](../../../docs/NewConcept/91-open-questions.md) verfolgt. Er hat sie im Datensatzblock
+     * gesehen — `render` stand doppelt.*
+     *
+     * ⚠️ **Geblockt an der Wurzel des Astes, nicht je Knoten.** *Damit bleibt die Vererbung **innerhalb**
+     * von Settings unberührt — `Renderer` → `render with label` → `form` erbt weiter, und genau das
+     * braucht der Zwischenknoten, den er gebaut hat.*
+     *
+     * @return list<int> Von oben nach unten, der Knoten selbst zuletzt.
+     */
+    public function inheritanceOwnersOf(Node $node): array;
 }

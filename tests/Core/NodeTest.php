@@ -124,4 +124,39 @@ final class NodeTest extends TestCase
 
         self::assertFalse($sibling->isDescendantOf($parent));
     }
+
+    /**
+     * ⚠️ *TASK-008 — der Knoten nennt die Klasse, die ihn umsetzt. **Dass sie ein Umbenennen und
+     * einen Umzug überlebt, ist der Punkt**: sie ging bei `kind` schon einmal auf diesem Weg
+     * verloren.*
+     */
+    #[Test]
+    public function the_class_survives_a_rename_and_a_move(): void
+    {
+        $node = Node::create(9, 'slider', '1')->implementedBy('Taxmod\Core\Renderer\SliderRenderer');
+
+        self::assertSame('Taxmod\Core\Renderer\SliderRenderer', $node->renamedTo('Schieber')->implementedBy);
+        self::assertSame('Taxmod\Core\Renderer\SliderRenderer', $node->movedUnder('1.2')->implementedBy);
+        self::assertSame('Taxmod\Core\Renderer\SliderRenderer', $node->withAssignedId(77)->implementedBy);
+    }
+
+    #[Test]
+    public function naming_the_same_class_again_changes_nothing(): void
+    {
+        $node = Node::create(9, 'slider', '1')->implementedBy('A\B');
+
+        self::assertSame($node, $node->implementedBy('A\B'));
+        self::assertSame(2, $node->version, 'die erste Angabe hebt die Fassung, die zweite nicht');
+    }
+
+    /** ⚠️ *Eine leere Zeichenkette und `null` sagen dasselbe — also gibt es nur eine Schreibweise.* */
+    #[Test]
+    public function an_empty_class_name_is_nothing(): void
+    {
+        $node = Node::create(9, 'slider', '1');
+
+        self::assertNull($node->implementedBy);
+        self::assertSame($node, $node->implementedBy(''), 'leer ist schon der Zustand');
+        self::assertNull($node->implementedBy('A\B')->implementedBy('  ')->implementedBy);
+    }
 }

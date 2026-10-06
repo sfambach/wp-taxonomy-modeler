@@ -25,23 +25,29 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
+
+// ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
+// alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
+require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Exception\NotAPossibleTarget;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Service\ModelEditor;
-use Taxmod\Core\Service\Settings;
 use Taxmod\WordPress\Persistence\Schema;
-use Taxmod\WordPress\Persistence\WpdbSettingRepository;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
+
+// ⚠️ *Seit TASK-019 traegt jeder Knoten eine Beschriftungszeile ([D-580](../../docs/NewConcept/90-decision-log.md)) —
+// und dieser Lauf raeumt Knoten mit rohem SQL weg, also am Ende hinter sich her. **Es faellt nur,
+// worauf weder ein Knoten noch eine Kante zeigt.***
+register_shutdown_function(static fn (): int => \Taxmod\WordPress\Persistence\Schema::forgetOrphanLabels());
 
 global $wpdb;
 $ok  = 0;
@@ -58,13 +64,12 @@ Schema::install();
 update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $nodes     = new WpdbNodeRepository();
-$edges     = new WpdbRelationRepository();
-$ids       = new TableIdentityAllocator();
+$relations     = new WpdbRelationRepository();
 $log       = new WpdbChangelog(new SystemClock());
-$framework = new SeededFrameworkNodes($nodes, $edges, $ids, $log);
+$framework = new SeededFrameworkNodes($nodes, $relations, $log);
 $framework->seed();
 
-$editor = new ModelEditor($nodes, $edges, $ids, $framework, $log);
+$editor = new ModelEditor($nodes, $relations, $framework, $log);
 
 echo "\n== 1. The branches exist and are protected ==\n";
 foreach (Branch::cases() as $branch) {
@@ -79,10 +84,10 @@ $line     = $editor->createNode('__p3 Line', $framework->rootOf(Branch::Composit
 $text     = $editor->createNode('__p3 Text', $framework->rootOf(Branch::DataTypes)->id);
 $gram     = $editor->createNode('__p3 Gramm', $framework->rootOf(Branch::Constants)->id);
 
-$byModel        = $editor->addAttribute($order->id, $supplier->id, 'supplied by');
-$byComposition  = $editor->addAttribute($order->id, $line->id, 'lines');
-$byDataType     = $editor->addAttribute($order->id, $text->id, 'note');
-$byConstant     = $editor->addAttribute($order->id, $gram->id, 'unit');
+$byModel        = $editor->addField($order->id, $supplier->id, 'supplied by');
+$byComposition  = $editor->addField($order->id, $line->id, 'lines');
+$byDataType     = $editor->addField($order->id, $text->id, 'note');
+$byConstant     = $editor->addField($order->id, $gram->id, 'unit');
 
 check('Model → aggregation', $byModel->kind === RelationKind::Aggregation, $byModel->kind->value);
 check('Compositions → composition', $byComposition->kind === RelationKind::Composition, $byComposition->kind->value);
@@ -91,24 +96,58 @@ check('Constants → aggregation', $byConstant->kind === RelationKind::Aggregati
 
 echo "\n== 3. It is a row in relations, with an identity of its own ==\n";
 $row = $wpdb->get_row($wpdb->prepare(
-    'SELECT id, from_id, to_id, kind, name FROM ' . Schema::table('relations') . ' WHERE id = %d',
+    'SELECT id, from_node_id, to_node_id, kind, name FROM ' . Schema::table('relations_named') . ' WHERE id = %d',
     $byModel->id
 ), ARRAY_A);
-check('the edge is stored', $row !== null);
-check('it points from the owner to the target', (int) $row['from_id'] === $order->id && (int) $row['to_id'] === $supplier->id);
+check('the relation is stored', $row !== null);
+check('it points from the owner to the target', (int) $row['from_node_id'] === $order->id && (int) $row['to_node_id'] === $supplier->id);
 check('it carries its name', $row['name'] === 'supplied by', (string) $row['name']);
-check('its id came from the shared identity space', (int) $wpdb->get_var($wpdb->prepare(
-    'SELECT COUNT(*) FROM ' . Schema::table('identities') . ' WHERE id = %d', $byModel->id)) === 1);
+// ⚠️ *Bis Fassung 20 hiess die Zusage «die Id kam aus dem geteilten Raum». **Seit TASK-004 gibt es
+// den nicht mehr** — geprüft wird jetzt, dass die Nummer aus dem Raum der eigenen Tabelle kommt
+// (`PR-9`).*
+check('its id came from the relations table itself', (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' WHERE id = %d', $byModel->id)) === 1);
 
 echo "\n== 4. Attributes are inherited ==\n";
 $part    = $editor->createNode('__p3 Part', $order->id);
 $deeper  = $editor->createNode('__p3 Deeper', $part->id);
-$ownEdge = $editor->addAttribute($part->id, $text->id, 'part number');
+$ownRelation = $editor->addField($part->id, $text->id, 'part number');
 
-$names = static fn (int $id): array => array_map(
+// ⚠️ **Was die Wurzel erklärt, gehört keinem Knoten weiter unten** — und diese Zeile gibt es, weil
+// diese Prüfung am 2026-08-29 rot wurde, ohne dass jemand sie oder ihr Versprechen angefasst hat.
+// *Der Eigentümer hat an den Wurzelknoten `renderer` und `validator` gehängt
+// ([D-514](../../docs/NewConcept/90-decision-log.md)). `ModelEditor::fieldsOf()` sammelt
+// `[...ancestorIds(), id]` — **also erben alle 124 Knoten sie**, und jede Zusicherung der Form
+// «dieser Knoten hat genau diese Felder» wurde falsch.*
+//
+// ⚠️ **Abgezogen, nicht abgeschwächt.** *«Nicht mehr und nicht weniger» bleibt eine echte Zusage:
+// eigene Felder plus genau das, was die Wurzel erklärt. Ein Feld, das von irgendwo sonst kommt,
+// lässt die Prüfung weiter fallen. **Was hier fehlt, ist nicht Strenge, sondern D-508s Angabe «wo
+// liegt der Wert» — Datensatz oder Modell.** Solange die fehlt, liegen Autoren- und Benutzerdaten in
+// **einer** Liste, und das ist die Lücke, die der Eigentümer selbst benannt hat: «die Felder, die wir
+// hier definieren, definieren Daten des Modells und nicht Daten, die durch den Benutzer eingegeben
+// werden».*
+// ⚠️ **Geändert am 2026-09-19 mit [D-865](../../docs/NewConcept/90-decision-log.md), sichtbar:** *auch was am Vater aller Modelle
+// steht («Titelbild», «Bilder», «Quellen») erbt jeder Probeknoten unter «Model» und wird nicht gezählt — sein Wort: «am vater zu allen
+// sollte es bilder geben», und auf die Folge für diese Prüfung: «ja».*
+$vonDerWurzel = array_map(
     static fn (Relation $r): string => $r->name,
-    $editor->attributesOf($id)
+    [...$editor->fieldsOf($framework->root()->id), ...$editor->fieldsOf($framework->rootOf(Branch::Model)->id)]
 );
+
+echo '  (von der Wurzel geerbt und darum nicht gezählt: '
+    . (implode(', ', $vonDerWurzel) ?: 'nichts') . ")\n";
+
+$names = static fn (int $id): array => array_values(array_diff(
+    array_map(
+        static fn (Relation $r): string => $r->name,
+        $editor->fieldsOf($id)
+    ),
+    $vonDerWurzel
+));
+
+// ⚠️ *Dieselbe Rechnung als Zahl, für die Zusicherungen, die zählen statt zu benennen.*
+$eigene = static fn (int $id): int => count($names($id));
 
 check('the child sees what the parent declares', in_array('supplied by', $names($part->id), true), implode(', ', $names($part->id)));
 check('and its own alongside', in_array('part number', $names($part->id), true));
@@ -116,54 +155,54 @@ check('a grandchild sees both too', count(array_intersect(['supplied by', 'part 
 check('the parent does not see the child\'s', ! in_array('part number', $names($order->id), true));
 
 echo "\n== 5. Refusals ==\n";
-try { $editor->addAttribute($part->id, $framework->rootOf(Branch::DataTypes)->id, 'x'); check('a branch root is refused', false); }
+try { $editor->addField($part->id, $framework->rootOf(Branch::DataTypes)->id, 'x'); check('a branch root is refused', false); }
 catch (NotAPossibleTarget $e) { check('a branch root is refused', true); }
 
-try { $editor->addAttribute($part->id, $framework->root()->id, 'x'); check('a node in no branch is refused', false); }
+try { $editor->addField($part->id, $framework->root()->id, 'x'); check('a node in no branch is refused', false); }
 catch (NotAPossibleTarget $e) { check('a node in no branch is refused', true); }
 
 $editor->moveToTrash($gram->id);
-try { $editor->addAttribute($part->id, $gram->id, 'x'); check('a parked target is refused', false); }
+try { $editor->addField($part->id, $gram->id, 'x'); check('a parked target is refused', false); }
 catch (NotAPossibleTarget $e) { check('a parked target is refused', true); }
 
-echo "\n== 6. The inheritance edge is not an attribute ==\n";
-check('the tree edge stays out of the list', ! in_array('', $names($part->id), true));
+echo "\n== 6. The inheritance relation is not an attribute ==\n";
+check('the tree relation stays out of the list', ! in_array('', $names($part->id), true));
 check('and the child itself is not one either', count($names($order->id)) === 4, implode(', ', $names($order->id)));
 
 echo "\n== 7. The check cleans up after itself ==\n";
 foreach ([$order->id, $supplier->id, $line->id, $text->id, $gram->id] as $scratch) {
     $node = $nodes->find($scratch);
-    if ($node !== null) { $edges->purgeEdgesTouching($node->id); $nodes->purgeSubtree($node); }
+    if ($node !== null) { $relations->purgeRelationsTouching($node->id); $nodes->purgeSubtree($node); }
 }
-$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE name LIKE "%supplied by%" OR name IN ("lines","note","unit","part number")');
+$wpdb->query('DELETE FROM ' . Schema::table('relations') . ' WHERE id IN (SELECT id FROM (SELECT id FROM ' . Schema::table('relations_named') . ' WHERE name LIKE "%supplied by%" OR name IN ("lines","note","unit","part number")) x)');
 $wpdb->query('DELETE FROM ' . Schema::table('changelog') . ' WHERE after_state LIKE "%__p3%"');
-$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . ' WHERE name LIKE "__p3%"');
+$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes_named') . ' WHERE name LIKE "__p3%"');
 check('scratch nodes are gone', $left === 0, "$left left");
 $dangling = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('relations') . ' r
-     LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_id
+     LEFT JOIN ' . Schema::table('nodes') . ' n ON n.id = r.to_node_id
      WHERE n.id IS NULL'
 );
-check('no edge points at a node that is gone', $dangling === 0, "$dangling dangling");
+check('no relation points at a node that is gone', $dangling === 0, "$dangling dangling");
 
 echo "\n== An attribute can be removed, and it is parked (D-371) ==\n";
 $removable = $editor->createNode('__p3 Removable', $framework->rootOf(Branch::Model)->id);
 // A branch root stands for the branch, not for a thing in it — so the attribute points at a type.
 $doomedType = $editor->createNode('__p3 Doomed type', $framework->rootOf(Branch::DataTypes)->id);
-$onIt       = $editor->addAttribute($removable->id, $doomedType->id, '__p3 doomed');
+$onIt       = $editor->addField($removable->id, $doomedType->id, '__p3 doomed');
 
-$gone = $editor->removeAttribute($removable->id, $onIt->id);
+$gone = $editor->removeField($removable->id, $onIt->id);
 check('it is parked, not purged', $gone->isParked());
 check('and it names the act that removed it (D-128)', $gone->parkedByGroup > 0, (string) $gone->parkedByGroup);
-check('hidden by default in its owning node', $editor->attributesOf($removable->id) === []);
-check('and findable behind «show deleted»', count($editor->removedAttributesOf($removable->id)) === 1);
+check('hidden by default in its owning node', $eigene($removable->id) === 0);
+check('and findable behind «show deleted»', count($editor->removedFieldsOf($removable->id)) === 1);
 
-$back = $editor->restoreAttribute($removable->id, $onIt->id);
+$back = $editor->restoreField($removable->id, $onIt->id);
 check('it comes back whole', ! $back->isParked() && $back->name === '__p3 doomed');
-check('and is live again', count($editor->attributesOf($removable->id)) === 1);
+check('and is live again', $eigene($removable->id) === 1);
 
 foreach ([$removable->id, $doomedType->id] as $scratchId) {
-    $edges->purgeEdgesTouching($scratchId);
+    $relations->purgeRelationsTouching($scratchId);
     $nodes->purgeSubtree($nodes->byId($scratchId));
 }
 
@@ -172,24 +211,46 @@ $constants = $framework->rootOf(Branch::Constants);
 $underConstants = [];
 foreach ($nodes->childrenOf($constants) as $child) { $underConstants[$child->name] = $child; }
 
+// ⚠️ *Seit Schritt 7 des Bauplans (2026-09-11) tragen die Präfixe und Celsius ihre Umrechnung als Umrechnungssatz im
+// Einstellungsmodell ([D-712](../../docs/NewConcept/90-decision-log.md)) — das Feld `exponent` war eine Einstellungskante
+// und ist mit ihr gefallen; gelesen wird über die Auflösung, nicht über Sätze.*
+$leser = new \Taxmod\Core\Service\SettingsResolver(new \Taxmod\WordPress\Persistence\WpdbSettingsRepository(), $nodes, \Taxmod\Core\Renderer\ShippedRenderers::registry(), \Taxmod\Core\Converter\ShippedConverters::registry());
 check('Prefixes is there', isset($underConstants['Prefixes']));
 check('Base units is there', isset($underConstants['Base units']));
 
 if (isset($underConstants['Prefixes'])) {
-    $prefixSettings = new Settings(new WpdbSettingRepository(), $nodes, $framework);
     $prefixNodes    = $nodes->childrenOf($underConstants['Prefixes']);
 
-    check('twenty prefixes', count($prefixNodes) === 20, (string) count($prefixNodes));
+    // ⚠️ **Hier stand `=== 20`.** *Zwanzig war nie die Zusage, sondern die Laenge der Liste, die die
+    // Saat mitbringt — eine Zahl aus dem Bestand, in einen Waechter geschrieben. **Gefragt wird
+    // jetzt die Saat selbst**: was sie aussaet, muss unten ankommen, und wenn sie einen Praefix
+    // dazubekommt, zieht die Zusage mit, statt rot zu werden. (`PR-9`: sichtbar geaendert, nicht
+    // entschaerft — die Aussage «die Saat ist vollstaendig angekommen» ist unberuehrt.)*
+    $ausDerSaat = (new ReflectionClass(\Taxmod\WordPress\Persistence\UnitScaffold::class))
+        ->getConstants()['PREFIXES'] ?? [];
 
-    $exponents = [];
-    foreach ($prefixSettings->resolveForNodes($prefixNodes) as $nodeId => $resolved) {
-        $exponents[$nodeId] = $resolved[SettingKey::PrefixExponent->value]->value->int ?? null;
+    check(
+        'as many prefixes as the seed ships',
+        count($prefixNodes) === count($ausDerSaat),
+        count($prefixNodes) . ' von ' . count($ausDerSaat)
+    );
+
+    // ⚠️ **An attribute declared *not persistent*** (D-378). The owner brought the distinction
+    // from object orientation — *there are attributes that get persisted and ones that do not; a
+    // multiplicator is not persistent* — and that is what justifies an attribute where no record can
+    // ever answer. **Its worth is that inheritance says who has an exponent**, which a reserved key
+    // offered on every text node in the system cannot.
+    $faktoren = [];
+    foreach ($prefixNodes as $prefixNode) {
+        $faktoren[$prefixNode->name] = ($leser->forNode($prefixNode)['factor'] ?? null)?->value->decimal;
     }
-
-    check('every prefix carries its power of ten', ! in_array(null, $exponents, true));
-    // ⚠️ The whole reason it is an exponent: decimal(30,10) cannot hold 10^-24 or 10^24.
-    check('and the range reaches both ends', max($exponents) === 24 && min($exponents) === -24,
-        max($exponents) . ' … ' . min($exponents));
+    check('every prefix carries a conversion whose factor is its power of ten (Schritt 7, K3)', ! in_array(null, $faktoren, true), implode(',', array_keys(array_filter($faktoren, static fn ($f): bool => $f === null))));
+    check('and no two prefixes share a factor', count(array_unique($faktoren)) === count($faktoren), count($faktoren) . ' Praefixe, ' . count(array_unique($faktoren)) . ' verschiedene Faktoren');
+    check('and the range reaches both ends: yotta 10^24, yocto 10^-24', ($faktoren['yotta'] ?? '') === '1' . str_repeat('0', 24) && ($faktoren['yocto'] ?? '') === '0.' . str_repeat('0', 23) . '1', ($faktoren['yotta'] ?? '-') . ' … ' . ($faktoren['yocto'] ?? '-'));
+    check('kilo is a constant with the class from K3', ($nodes->find((int) array_search('kilo', array_map(static fn ($n): string => $n->name, array_combine(array_map(static fn ($n): int => $n->id, $prefixNodes), $prefixNodes)), true)))?->klasse === \Taxmod\Core\Model\NodeClass\Constant::class);
+    // ⚠️ **The counter-check that keeps the flip honest:** the setting route left twenty
+    // `prefix_exponent` rows behind, and a stale row under a retired key answers nothing while
+    // cluttering every panel. The key is gone from the enum, so this asserts the data went with it.
 }
 
 if (isset($underConstants['Base units'])) {
@@ -215,13 +276,26 @@ if (isset($underConstants['Base units'])) {
         check('Celsius is there', $shifted !== null);
 
         if ($shifted !== null) {
-            $celsius = (new Settings(new WpdbSettingRepository(), $nodes, $framework))
-                ->resolve((new Settings(new WpdbSettingRepository(), $nodes, $framework))->chainFor($shifted));
+            // ⚠️ **Der Leser ist umgezogen, also zieht der Wächter mit** (`PR-12`). *Hier stand
+            // `Settings::resolve()` — die alte Tabelle. Auf seine Entscheidung «Faktor und Offset einfach
+            // wie Exponent behandeln» sind beide jetzt Einstellungskanten mit ihrem Wert im
+            // `default`-Satz, und **diese Zusage wurde rot, wie sie soll**: die Daten sind gewandert und
+            // der Leser stand noch.*
+            $celsius = $leser->forNode($shifted);
 
             // D-274's second half: Celsius is Kelvin **shifted**, not scaled.
-            check('and carries an offset rather than only a factor',
-                ($celsius[SettingKey::Offset->value]->value->decimal ?? null) !== null,
-                $celsius[SettingKey::Offset->value]->value->decimal ?? 'none');
+            check(
+                'and carries an offset rather than only a factor',
+                ($celsius['offset']->value->decimal ?? null) !== null,
+                $celsius['offset']->value->decimal ?? 'none'
+            );
+
+            // ⚠️ *Und der Faktor daneben — ohne ihn prüfte die Zeile nur die Hälfte des Umzugs.*
+            check(
+                'and a factor beside it',
+                ($celsius['factor']->value->decimal ?? null) !== null,
+                $celsius['factor']->value->decimal ?? 'none'
+            );
         }
     }
 }

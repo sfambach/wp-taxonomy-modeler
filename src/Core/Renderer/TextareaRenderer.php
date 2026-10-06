@@ -22,6 +22,13 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class TextareaRenderer extends TypedFieldRenderer
 {
+    /** Spalten und Zeilen des Textfelds — ohne Vorgabe nimmt die Breite `display_size` des Knotens. */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public ?int $cols = null;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public ?int $rows = null;
+
     public const NAME = 'textarea';
 
     public function name(): string
@@ -40,16 +47,30 @@ final class TextareaRenderer extends TypedFieldRenderer
         // rewriting the value on the way out, and the same text would read differently
         // depending on which renderer drew it.
         return '<span class="taxmod-value" style="white-space:pre-wrap">'
-            . RenderResult::escape($this->characters($context))
+            . RenderResult::escape($this->outputValue($context))
             . '</span>';
     }
 
     protected function input(RenderContext $context): string
     {
         return '<textarea'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('cols', $this->numberSetting($context, 'cols'))
-            . $this->attribute('rows', $this->numberSetting($context, 'rows'))
-            . '>' . RenderResult::escape($this->characters($context)) . '</textarea>';
+            . $this->createHtmlAttribute('name', $context->fieldName)
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            . $this->createHtmlAttribute('form', $context->surroundings->formId)
+            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
+            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
+            . ($context->surroundings->mayBeNothing ? '' : ' aria-required="true"')
+            // ⚠️ **`cols` zuerst, `display_size` als Rückfall** ([D-659](../../../docs/NewConcept/90-decision-log.md)).
+            // *Beide sagen dasselbe in derselben Einheit — eine Breite in Zeichen —, und `cols` ist die
+            // Angabe, die **diesen** Rand meint. **Die Anzeigebreite ist der Wunsch, den jeder Rand
+            // berücksichtigt, der kann**; ihn hier zu übergehen hiesse, dass die Breite eines Feldes
+            // davon abhinge, welchen Renderer der Knoten gewählt hat.*
+            . $this->createHtmlAttribute(
+                'cols',
+                $this->numberSetting($context, 'cols')
+                    ?? $this->numberSetting($context, 'display_size')
+            )
+            . $this->createHtmlAttribute('rows', $this->numberSetting($context, 'rows'))
+            . '>' . RenderResult::escape($this->outputValue($context)) . '</textarea>';
     }
 }

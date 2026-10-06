@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Repository;
 
+use Taxmod\Core\Model\ChangeSummary;
+
 /**
  * Frozen history. **Every object has at least one item**, because creation must be logged —
  * `creation_date` is read from here rather than stored twice (D-080, D-081).
@@ -14,15 +16,54 @@ namespace Taxmod\Core\Repository;
 interface Changelog
 {
     /**
+     * Open an act: everything recorded until {@see endAct()} belongs to **one change**.
+     *
+     * ⚠️ **The owner asked for this and the column was already there and grouping nothing**
+     * ([list row 45](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)): *I think
+     * we need a unique change number — whatever was changed in one change, relation, node, setting, if
+     * they were changed together they should have one change number.* **Measured before the bracket:
+     * 2282 rows across 1945 groups, 1609 of them holding a single row, and 0 of 1945 spanning more
+     * than one kind of owner.** *A group id was handed out per **write** rather than per change.*
+     *
+     * ⚠️ **No new counter, so [D-348](../../../docs/NewConcept/90-decision-log.md) stands
+     * untouched**: the group is still *the id of the act's first row*. This only says **which rows
+     * belong to that first one** — the bracket holds no number of its own until a row arrives, which
+     * is also why it returns nothing.
+     *
+     * ⚠️ **Re-entrant on purpose.** *A boundary act calls a service that calls another — `duplicate()`
+     * creates a node, which records — and each of those may open a bracket of its own. Counting depth
+     * makes the **outermost** one the act, which is the one a person performed.*
+     */
+    public function beginAct(): void;
+
+    /** Close the innermost act; the outermost close ends the grouping. */
+    public function endAct(): void;
+
+    /**
+     * Write one row.
+     *
+     * ⚠️ **The two state columns have a format and it is a contract, not a habit**
+     * ([D-427](../../../docs/NewConcept/90-decision-log.md)): they are built and read by
+     * {@see \Taxmod\Core\Model\FrozenState} and by nothing else. *Callers do not assemble the string
+     * themselves — that is how there came to be three dialects and a value with no address.*
+     *
+     * ⚠️ **The address belongs in the state, never in `what`.** *`what` is matched by **equality**
+     * here ({@see actAround()}) and shown raw on a screen, so an address in the verb turns every place
+     * into its own verb: measured, **19 of the 31** distinct values in the table were already a key
+     * rather than a verb.*
+     *
      * @param int         $ownerId       Node or relation id, from the model identity space.
      * @param string      $ownerKind     `node` or `relation` — stored alongside because the
      *                                   changelog outlives what it refers to (D-065).
      * @param string      $what          Short verb: `created`, `renamed`, `moved`, `parked`.
-     * @param string|null $before        The previous state, or null when there was none.
+     * @param string|null $before        The previous state as {@see \Taxmod\Core\Model\FrozenState}
+     *                                  writes it, or null when there was none.
      * @param string|null $after         The new state, or null when the object is gone.
-     * @param int|null    $changeGroupId The act this row belongs to; null starts a new one.
+     * @param int|null    $version       Die Version der Zeile, die diese Änderung erzeugt hat.
+     * @param int|null    $changeGroupId Die Änderungsgruppe, zu der diese Zeile gehört; null
+     *                                   beginnt eine neue.
      *
-     * @return int The change group — pass it to every further row of the same act (D-348).
+     * @return int Die Änderungsgruppe — an jede weitere Zeile desselben Akts weitergeben (D-348).
      */
     public function record(
         int $ownerId,
@@ -30,6 +71,22 @@ interface Changelog
         string $what,
         ?string $before,
         ?string $after,
+        /**
+         * Die **Version** — die Zeilennummer, die diese Änderung erzeugt hat
+         * ([D-536](../../../docs/NewConcept/90-decision-log.md)).
+         *
+         * ⚠️ **Ohne Vorgabewert, seit [D-634](../../../docs/NewConcept/90-decision-log.md), und das
+         * ist der ganze Punkt.** *Gemessen: `ModelEditor` meldete 17 mal und nannte sie kein
+         * einziges Mal — nicht aus Streit, sondern weil das Weglassen erlaubt war. **Eine Regel, die
+         * man vergessen kann, ist die Regel, die hier vergessen wurde.** Jetzt muss jeder Melder sie
+         * hinschreiben, auch wenn die Antwort `null` lautet.*
+         *
+         * ⚠️ *`null` bleibt möglich und ist kein Schlupfloch, sondern ein Befund: **Labels tragen
+         * keine Versionsspalte**, und ein Sammelakt wie das Leeren des Papierkorbs erzeugt keine
+         * einzelne Zeile. Wer `null` übergibt, sagt das ausdrücklich; `scripts/dev/version-check.php`
+         * kennt genau diese Verben und wird rot, sobald ein anderes dazukommt (`PR-4`).*
+         */
+        ?int $version,
         ?int $changeGroupId = null,
     ): int;
 
@@ -40,7 +97,10 @@ interface Changelog
      * *this child moved from here to there* is. Writing them one at a time would be the loop
      * `CD-7` forbids, so they go together.
      *
-     * @param list<array{ownerId: int, ownerKind: string, what: string, before: ?string, after: ?string}> $rows
+     * ⚠️ *`version` gehört seit [D-634](../../../docs/NewConcept/90-decision-log.md) in **jede** Zeile
+     * und ist darum kein wahlfreier Schlüssel mehr.*
+     *
+     * @param list<array{ownerId: int, ownerKind: string, what: string, before: ?string, after: ?string, version: ?int}> $rows
      *
      * @return int The change group they were written under.
      */
@@ -64,4 +124,16 @@ interface Changelog
      * **format** is now a contract: see {@see Changelog::record()}.
      */
     public function pathBeforeLastParking(int $ownerId): ?string;
+
+    /**
+     * When this subject appeared, when it last changed, and who did it.
+     *
+     * ⚠️ **Two rows, not the whole history.** The owner wants *creation, last change, change owner* on
+     * the page, and reading every act to find two of them would be a query that grows with the age of
+     * the installation — the first and the last are one statement each.
+     *
+     * ⚠️ *Null fields are a real answer: a node seeded before the changelog existed has no history,
+     * and showing the moment somebody first touched it as its birthday would be a lie.*
+     */
+    public function summaryOf(int $ownerId): ChangeSummary;
 }

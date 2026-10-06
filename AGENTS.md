@@ -165,3 +165,63 @@ the deliberate rules reorganisation. **But git only sees commits** — a file br
 before the next one leaves no trace, and that is exactly what *the assistant is hallucinating and
 we keep going in circles* would feel like from the outside. Recorded as a possibility, not a
 finding.
+
+### ⚠️ 2026-09-05 — mehrere Agenten in einem Arbeitsbaum
+
+**Fremde Änderungen mit einzuchecken ist nicht das Problem. Sie ungesehen einzuchecken schon.**
+Auf sein Wort: *«einchecken ist nicht schlimm, es müssen nur die Regeln beachtet werden —
+Änderungen vergleichen und dann einchecken, damit nicht überbügelt wird.»*
+
+Also, vor jedem Commit, ohne Ausnahme:
+
+1. **Ansehen, was im Baum liegt** — `git status` und `git diff` über *alles*, nicht nur über die
+   eigenen Dateien. Wer nur seine eigenen kennt, weiss nicht, was er mitnimmt.
+2. **Vergleichen statt überschreiben.** Eine fremde Änderung an derselben Stelle wird gelesen und
+   zusammengeführt. Sie wegzunehmen, weil sie im Weg steht, ist der Schaden, den diese Regel
+   verhindert.
+3. **Kein `git stash`**, kein `git checkout`/`reset` auf fremde Dateien. *Ein Stash hat den
+   gemeinsamen Baum schon einmal verschluckt.*
+4. **Die Nachricht sagt, was drin ist.** Nimmt ein Commit fremde Arbeit mit, steht das darin — sonst
+   erzählt die Geschichte es falsch, und das ist der einzige bleibende Schaden.
+
+**Und der Notnagel ist nicht die Lösung.** *Git ist nie für nebenläufige Arbeit in **einem** Baum
+gebaut worden; es löst sie über **getrennte Bäume**. Die vier Punkte oben sind Disziplin an einer
+Stelle, an der Werkzeug gehörte.* Wo mehrere Agenten gleichzeitig bauen, ist der saubere Weg **ein
+eigener Arbeitsbaum je Agent** (`git worktree`), zusammengeführt am Ende. Die Regeln oben gelten
+für den Fall, dass es dennoch ein gemeinsamer Baum ist — **nicht als Ersatz für den getrennten.**
+
+### ⚠️ 2026-09-06 — wo die Zeit verlorengeht
+
+**Gemessen, auf seinen Hinweis «der Agent laeuft schon wieder fuenf Minuten fuer einen kleinen
+Schritt»:**
+
+| was ein Agent liest oder tut | Kosten |
+|---|---|
+| `docs/NewConcept/90-decision-log.md` | **1052 KB** |
+| `src/WordPress/Admin/NodesScreen.php` | 232 KB |
+| `src/Core/Service/Rendering.php` | 171 KB |
+| ein **voller** Waechterlauf | ~60 s, und er wird oft mehrfach gefahren |
+
+**Drei Regeln folgen daraus. Sie gelten fuer jeden Auftrag an einen Agenten:**
+
+1. **Zuerst das Verzeichnis, nicht das Protokoll.**
+   [`03-entscheidungsverzeichnis.md`](docs/NewConcept/03-entscheidungsverzeichnis.md) sagt auf 150
+   Zeilen, **was gilt** — das Protokoll sagt auf 1 MB, was je entschieden wurde. *Der Wortlaut einer
+   Entscheidung wird nur dort verlangt, wo es auf ihn ankommt (`PR-10`), und dann mit Nummer.*
+2. **Nur die berührten Waechter, der volle Lauf zum Schluss.**
+   Vor jedem Commit: Kernlauf (0,5 s) **und** die Waechter, die die geaenderte Stelle betreffen.
+   Der volle Randlauf gehoert **an das Ende des Auftrags** und vor jede Wanderung an den Daten —
+   nicht nach jedem Zwischenschritt. *Wird einer rot, laeuft sofort der volle Lauf: ein roter
+   Waechter kommt selten allein.*
+3. **Grosse Dateien werden geteilt, bevor drei Agenten sie gleichzeitig brauchen.**
+   `NodesScreen.php` (63 Methoden) und `Rendering.php` (56) sind die zwei, an denen gestern drei
+   Baustellen kollidierten. **Eine Datei, die drei Auftraege gleichzeitig anfasst, ist zu gross** —
+   das ist die Regel, nicht die Zeilenzahl.
+
+⚠️ **Und nie `git commit --amend` in einem gemeinsamen Baum.** *Am 2026-09-06 hat ein Agent seine
+eigene Commit-Nachricht nachgebessert, waehrend ein zweiter committete — `--amend` greift auf
+**HEAD**, und HEAD gehoerte in dem Moment dem anderen. **Zweimal hintereinander wurde so ein fremder
+Commit umgeschrieben:** einer verlor seine `Co-Authored-By`-Zeile, einer traegt seither die Nachricht
+eines anderen. Kein Inhalt ging verloren, die Geschichte erzaehlt es aber falsch, und repariert wird
+es nicht, weil darauf schon weitergebaut wurde. **Eine unschoene Nachricht ist billiger als eine
+umgeschriebene Geschichte.**

@@ -2,6 +2,7 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SimpleType;
@@ -36,7 +37,7 @@ use Taxmod\Core\Model\SimpleType;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class FormRenderer implements Renderer
+final class FormRenderer extends RendererNode
 {
     public const NAME = 'form';
 
@@ -57,19 +58,19 @@ final class FormRenderer implements Renderer
     }
 
     /**
-     * ⚠️ **A node, not a use site.** D-098 says *a node's attributes*; what a form of an **edge**
-     * would mean — the target's attributes, or the edge's own — is not decided, and answering it
+     * ⚠️ **A node, not a use site.** D-098 says *a node's attributes*; what a form of an **relation**
+     * would mean — the target's attributes, or the relation's own — is not decided, and answering it
      * here by accident is how a concept acquires a rule nobody wrote.
      */
-    public function fits(Node|Relation $subject): bool
+    public function fits(Renderable $subject): bool
     {
         return $subject instanceof Node;
     }
 
-    public function render(Node|Relation $subject, RenderContext $context): RenderResult
+    public function render(Renderable $subject, RenderContext $context): RenderResult
     {
         $rows      = '';
-        $usedEdges = [];
+        $usedRelations = [];
 
         foreach ($this->grouped($context->surroundings->parts) as $part) {
             if ($part->isHidden()) {
@@ -78,13 +79,13 @@ final class FormRenderer implements Renderer
                 continue;
             }
 
-            $usedEdges = [...$usedEdges, ...$part->result->usedEdges];
+            $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
             $rows     .= $this->row($part);
         }
 
         return new RenderResult(
             $rows === '' ? '' : '<div class="taxmod-form">' . $rows . '</div>',
-            array_values(array_unique($usedEdges))
+            array_values(array_unique($usedRelations))
         );
     }
 
@@ -109,13 +110,12 @@ final class FormRenderer implements Renderer
 
         $ordered = [];
 
+        // ⚠️ **Innerhalb der Gruppe bleibt die Reihenfolge, in der die Felder ankommen** — sein Befund am
+        // 2026-09-12: *«Reihenfolge stimmt nicht»*, die Feldliste zeigte Name vor Vorname, die Vorschau
+        // Vorname vor Name. *Hier stand ein Sortieren nach `sort_order` der Kante, und das ist die
+        // Stellung beim **Besitzer** — die Anordnung, die am Kind gilt (D-698), kennt nur der Aufrufer,
+        // und er hat sie schon hergestellt. Ein Renderer, der neu sortiert, wirft sie weg.*
         foreach ($groups as $group) {
-            usort(
-                $group,
-                static fn (RenderedField $a, RenderedField $b): int
-                    => [$a->edge->position, $a->edge->id] <=> [$b->edge->position, $b->edge->id]
-            );
-
             $ordered = [...$ordered, ...$group];
         }
 
@@ -125,9 +125,22 @@ final class FormRenderer implements Renderer
     private function groupOf(RenderedField $part): int
     {
         return match (true) {
-            $part->readOnly                      => 1,
-            $part->type === SimpleType::Bool     => 3,
-            default                              => 2,
+            // ⚠️ **Einstellungen zuletzt, auf sein Wort:** *«das verstehe ich auch nicht, aber bitte
+            // hinten anhängen».* *Er hat es im Datensatzblock von `Adresse` gesehen: dort stand
+            // `Street`, dann `Display Option`, dann `No.`, dann `validator` — **zwischen** den Feldern,
+            // weil sie von der Wurzel geerbt sind und deren Kanten die kleineren Positionen haben.*
+            //
+            // ⚠️ *Die vierte Gruppe war angelegt und leer. **Und die Prüfung steht zuerst**, weil ein
+            // `read_only` sonst in Gruppe 1 landet und ein `validator` in Gruppe 2 — die Einstellungen
+            // wären über drei Gruppen verstreut statt hinten.*
+            //
+            // ⚠️ *`position` ordnet weiterhin **innerhalb** der Gruppe
+            // ([D-407](../../../docs/NewConcept/90-decision-log.md)) — sie sagt die Reihenfolge unter
+            // Geschwistern, nicht den Rang zwischen Feld und Einstellung.*
+            $part->relation->isSetting()         => 4,
+            $part->readOnly                  => 1,
+            $part->type === SimpleType::Bool => 3,
+            default                          => 2,
         };
     }
 
@@ -135,14 +148,33 @@ final class FormRenderer implements Renderer
      * ⚠️ **The label is the attribute's name, and that is a gap named rather than filled.** A field
      * in a form should read its label in the **`form` role** ([D-196](../../../docs/NewConcept/90-decision-log.md)
      * seeds one by that name), which means the label has to arrive in the context the way a
-     * reference's does (D-363). *Until it does this shows the edge's internal name, which is the
+     * reference's does (D-363). *Until it does this shows the relation's internal name, which is the
      * same honesty the chain itself ends on — a node's own name, never nothing (D-020).*
+     *
+     * ⚠️ **Und hinter dem Feld das Fragezeichen, wo eine Hilfe geschrieben ist**
+     * ([D-662](../../../docs/NewConcept/90-decision-log.md)). *Hier je Feld und nicht gesammelt: ein
+     * Formular hat je Feld eine **Zeile**, also steht das Zeichen dort, wo es hingehört. Gesammelt
+     * wird nur im waagerechten `compact` ({@see CompactRenderer}), wo die Felder ein Leerzeichen
+     * trennt.*
      */
     private function row(RenderedField $part): string
     {
+        // ⚠️ **Ein geschachteltes Formular ist eine Trennzeile mit dem Namen, und seine Felder stehen in
+        // derselben Beschriftungsspalte** ([D-725](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort am
+        // 2026-09-11: «darstellung trennzeile mit addresse und dann labels ganz links.» Das innere Formular
+        // ist schon flach — seine eigenen Teile gingen durch dieselbe Stelle —, also wird nur die Hülle
+        // abgestreift und der Name davorgesetzt.*
+        $markup = $part->result->markup;
+
+        if ($part->rendererName === self::NAME && str_starts_with($markup, '<div class="taxmod-form">') && str_ends_with($markup, '</div>')) {
+            return '<div class="taxmod-form-group"><span class="taxmod-form-group-name">' . RenderResult::escape($part->relation->name) . '</span></div>'
+                . substr($markup, strlen('<div class="taxmod-form">'), -strlen('</div>'));
+        }
+
         return '<div class="taxmod-form-row">'
-            . '<span class="taxmod-form-label">' . RenderResult::escape($part->edge->name) . '</span>'
+            . '<span class="taxmod-form-label">' . RenderResult::escape($part->relation->name) . '</span>'
             . '<span class="taxmod-form-field">' . $part->result->markup . '</span>'
+            . HintMarkup::icon($part->hint)
             . '</div>';
     }
 }

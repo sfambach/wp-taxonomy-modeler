@@ -56,7 +56,7 @@ foreach ( $terms as $tid ) {
 	foreach ( $terms as $hid ) {
 		$hid = (int) $hid;
 		foreach ( Relation::list_outgoing( $tax, $hid ) as $e ) {
-			$to = (int) ( $e['toId'] ?? 0 );
+			$to = (int) ( $e['toNodeId'] ?? 0 );
 			if ( $to !== $tid ) {
 				continue;
 			}

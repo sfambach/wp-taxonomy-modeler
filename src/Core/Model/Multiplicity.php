@@ -9,8 +9,8 @@ namespace Taxmod\Core\Model;
  * nothing in the model ever wanted, and they invite a pair that contradicts itself — `min = 5`
  * with `max = 2`. One key with four values cannot be wrong.
  *
- * ⚠️ **It belongs to the edge, never to the node.** A node describes a *thing* and a thing has
- * no multiplicity; an edge describes a *use of a thing*, and a use does.
+ * ⚠️ **It belongs to the relation, never to the node.** A node describes a *thing* and a thing has
+ * no multiplicity; an relation describes a *use of a thing*, and a use does.
  *
  * ## What "narrower" means here
  *
@@ -45,6 +45,52 @@ enum Multiplicity: string
     /** At least one, and there may be many. */
     case OneToMany = '1..*';
 
+    /**
+     * What an attribute means when nobody has said — **`1`**, on the owner's word
+     * ([D-434](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **There is no such thing as an attribute without a multiplicity**, so *unset* had to mean
+     * something and it was meaning nothing: the chooser offered a blank option and the screen showed
+     * an em dash ([D-379](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Not seeded onto every relation, because settings are sparse**
+     * ([D-015](../../../docs/NewConcept/90-decision-log.md)). An absent row **means** this rather
+     * than being a gap to fill — writing it onto every attribute would put a fact in a thousand
+     * places and make *nobody has narrowed this* indistinguishable from *somebody chose it*.
+     *
+     * ⚠️ **It was `0..1` and the reason against `1` was his own**, kept here because a reversed
+     * decision is worth reading twice: *«a default that **required** a value would make every new
+     * attribute mandatory the moment it is created, which is a rule nobody asked for arriving through
+     * a default.»* **Now it is asked for** — and by
+     * [D-405](../../../docs/NewConcept/90-decision-log.md) that is exactly what it does, in his words:
+     * *a floor of one **is** mandatoriness.*
+     *
+     * ⚠️ *Measured when it changed: **23 of 32 attribute relations** carried no row of their own, so their
+     * meaning flipped from optional to required in one edit. Nothing enforces it yet
+     * ([row 31](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)) — the rule lands
+     * before the enforcement, which is the right order and only safe if the rule is known first.*
+     */
+    public static function standard(): self
+    {
+        return self::ExactlyOne;
+    }
+
+    /**
+     * Read a stored multiplicity, falling back to the standard.
+     *
+     * ⚠️ **One place, because the fallback is worth exactly nothing if half the callers skip it.**
+     * A resolved setting may be absent, empty, or hold something an import wrote; all three mean
+     * *nobody said*, and `from()` would throw on the last two.
+     */
+    public static function fromSetting(?string $stored): self
+    {
+        if ($stored === null || $stored === '') {
+            return self::standard();
+        }
+
+        return self::tryFrom($stored) ?? self::standard();
+    }
+
     /** Whether an occurrence is required at all. */
     public function requiresOne(): bool
     {
@@ -76,9 +122,18 @@ enum Multiplicity: string
      *
      * ⚠️ Deliberately the notation itself. `0..1` is not English and needs no translating,
      * which is exactly why it survives a locale change without a label (`AR-2`).
+     *
+     * ⚠️ **Exactly one reads `1`, not `1..1`** — the owner's ask, and the stored value is
+     * untouched. *`1..1` is a range whose ends happen to meet, which is a sentence about ranges;
+     * `1` is what a person means.* UML writes it that way for the same reason, and the docblock of
+     * the former setting key `multiplicity` (a column since D-713) already said *a subtype may tighten `0..1` to `1`* — so the
+     * screen was the odd one out, not this.
+     *
+     * ⚠️ **Shown, never parsed.** Storage stays `1..1`, because the value is the enum's and a
+     * display shortening must not become a second spelling the database has to know about.
      */
     public function notation(): string
     {
-        return $this->value;
+        return $this === self::ExactlyOne ? '1' : $this->value;
     }
 }

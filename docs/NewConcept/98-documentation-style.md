@@ -81,6 +81,32 @@ classDiagram
 - **Diagrams do not contradict each other.** If two units need different shapes of the same
   thing, that is an open question, not two diagrams.
 
+## One topic, one owning place
+
+**A topic gets one section that owns it. Every other mention is a pointer to that section.**
+([D-469](90-decision-log.md).) The owner: *«everything that concerns one point or one subject area,
+one category, simply summarise it together, so that one can then also find it together.»*
+
+| | |
+|---|---|
+| **the owning section** | states the **current** state completely, and carries the thread's history as a table so a reader sees which arguments were already tried |
+| **every other mention** | is corrected, or reduced to a link |
+| **a mention that was wrong** | says so — *«this used to say X, and here is why it changed»* |
+
+⚠️ **The failure this prevents is contradiction, not length.** *Measured on `hide`, which spanned
+eleven decisions across six documents: a rule demanded a renderer honour a flag it never sees, and
+two copies of one table disagreed because a correction had reached only the nearer one.* **A
+duplicated table is the specific thing to look for** — the second copy is where a retired rule
+survives.
+
+⚠️ **Und was ganz überholt ist, zieht in den Dachboden** ([D-487](90-decision-log.md)): [92 Veraltete Entscheidungen](92-veraltete-entscheidungen.md). *Mit **drei** Bedingungen, und alle drei sind gemessen: die Aussage muss **ganz** überholt sein, die Entscheidung **selten zitiert**, und im Log bleibt immer ein **Stummel**. Eine teilweise überholte bleibt, wo sie ist — ihre Warnung steht im ersten Satz, was der billigere und wirksamere Schutz ist.*
+
+⚠️ *Consolidating is not compressing. Nothing decided is dropped: the corrections are the valuable
+part, because they say which readings were tried and failed. See
+[Hiding](10-domain-core.md#hiding--hide-is-one-column-and-it-is-on-the-edge) for the worked example.*
+
+---
+
 ## Why this way
 
 The seed sketches ([`TreeMeremaid.md`](TreeMeremaid.md),
@@ -110,3 +136,25 @@ Adding is comparatively safe: a new term sits beside the others and nothing yet 
 Removing and merging are the operations that reach backwards into text already written, and they
 are the ones this project keeps paying for. `grep` costs seconds; a contradiction discovered three
 weeks later costs an argument about what was meant.
+
+## Erreicht eine Entscheidung ihr Dokument? — Stand 2026-08-29
+
+[D-493](90-decision-log.md). Jede Zeile im Entscheidungslog nennt in der vorletzten Spalte die
+Dokumente, die sie betrifft. `scripts/dev/doc-reach-check.php` prüft, ob das Dokument die Id
+wirklich nennt.
+
+⚠️ **Die Spalte heisst «dieses Dokument muss die Entscheidung nennen» und nicht «dieses Dokument
+wurde angefasst».** *D-493 selbst hat den Unterschied vorgeführt: es trug die sechs Dokumente ein,
+die es überarbeitet hatte, und riss damit sechs Lücken auf. **Eine Regel über das Schreiben von
+Dokumenten gehört hierher, nicht in jedes Fachdokument.**
+
+⚠️ **Die Zahl ist eine Ratsche und keine Ampel.** *Bei 370 offenen Lücken rot zu sein hiesse, ab dem
+ersten Tag ignoriert zu werden. Die Obergrenze steht **in der Prüfdatei**, damit ihre Anhebung im
+Diff einer Entscheidung auftaucht — eine stillschweigend erhöhte Grenze wäre genau das Nachgeben,
+das eine Ratsche verhindern soll.*
+
+⚠️ *Was sie **nicht** kann: sie sucht die Id, nicht den Inhalt. Ein Dokument kann eine Regel
+vollständig beschreiben, ohne sie zu zitieren. **Obergrenze für echte Lücken, Untergrenze für
+fehlende Verweise** — sie ersetzt kein Lesen.*
+
+---

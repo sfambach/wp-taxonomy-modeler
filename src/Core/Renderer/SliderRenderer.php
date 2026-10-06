@@ -2,7 +2,6 @@
 
 namespace Taxmod\Core\Renderer;
 
-use Taxmod\Core\Model\SettingKey;
 use Taxmod\Core\Model\SimpleType;
 
 /**
@@ -37,24 +36,28 @@ final class SliderRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->characters($context)));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 
     protected function input(RenderContext $context): string
     {
-        $characters = $this->characters($context);
-
-        return '<input type="range"'
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $characters)
-            . $this->attribute('min', $this->numberSetting($context, SettingKey::RangeMin->value))
-            . $this->attribute('max', $this->numberSetting($context, SettingKey::RangeMax->value))
-            . $this->attribute(
-                'step',
-                $this->numberSetting($context, SettingKey::RangeStep->value)
-                    ?? ($context->type === SimpleType::Decimal ? 'any' : '1')
-            )
-            . '>'
-            . $this->shown(RenderResult::escape($characters));
+        // ⚠️ **Zwei Werte, und vorher war es einer.** *In der Bahn steht der **gespeicherte** Wert, denn
+        // der Browser deutet ihn; neben der Bahn steht, was ein Mensch **liest** — mit Konverter also
+        // `XII` statt `12`. Vorher stand die Notation in `value`, und `<input type="range" value="XII">`
+        // ist kein Wert: der Griff sprang in die Mitte, und das nächste Speichern hätte die Mitte
+        // geschrieben. {@see TypedFieldRenderer::controlValue()} trägt die Messung.*
+        return RenderResult::htmlTag('input', [
+            'type'  => 'range',
+            'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
+            'value' => $this->controlValue($context),
+            'min'   => $this->numberSetting($context, 'min'),
+            'max'   => $this->numberSetting($context, 'max'),
+            // ⚠️ *`any` for a decimal, because a slider with an integer step cannot reach 2.5.*
+            'step'  => $this->numberSetting($context, 'step')
+                ?? ($context->type === SimpleType::Decimal ? 'any' : '1'),
+        ])
+            . $this->createHtmlValueSpan(RenderResult::escape($this->outputValue($context)));
     }
 }

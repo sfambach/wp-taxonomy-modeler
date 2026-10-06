@@ -74,10 +74,21 @@ final class SimpleTypeTest extends TestCase
         $names = SimpleType::names();
 
         self::assertSame($names, array_values(array_unique($names)));
-        self::assertContains('datetime', $names, 'one type for date, time and both (D-291)');
+
+        // ⚠️ **Rewritten for D-428, not loosened.** The names are spelled out now — `Integer`, not
+        // `int` — so this used to look for `'datetime'` and found `'Date and time'`. *Every intent
+        // below is the one it always had; only the spelling it checks has moved.*
+        self::assertContains(SimpleType::DateTime->nodeName(), $names, 'one type for date, time and both (D-291)');
         self::assertNotContains('date', $names);
         self::assertNotContains('time', $names);
         self::assertNotContains('double', $names, 'no floating point anywhere (D-057)');
         self::assertNotContains('textarea', $names, 'a textarea is a renderer, not a type');
+
+        // ⚠️ **The assertion the rename adds, and the reason it exists**: no name may still be one of
+        // the short machine values, or the tree would show `int` beside `Decimal` again — which is the
+        // inconsistency the owner reported.
+        foreach (SimpleType::cases() as $type) {
+            self::assertNotContains($type->value, $names, "«{$type->value}» is an identifier, not a name");
+        }
     }
 }

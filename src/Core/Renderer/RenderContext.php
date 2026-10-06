@@ -38,11 +38,23 @@ final class RenderContext
      *                                                 edit purpose. Empty when nothing is being
      *                                                 edited.
      * @param SimpleType|null                $type     Which type is being drawn.
+     * @param bool $developerMode Whether the installation is in developer mode.
      *
      * ⚠️ **The type is told, not inferred.** It is the registry key that chose the renderer in
      * the first place (R14a), and a renderer serving two types — a spinner draws an integer and a
      * decimal — otherwise has to guess from the value it was handed. An empty decimal field would
      * then be indistinguishable from an integer one and would quietly refuse decimals.
+     *
+     * ⚠️ **Developer mode is a *circumstance*, exactly like `level`, and it used to be a setting on
+     * a node** ([D-389](../../../docs/NewConcept/90-decision-log.md)). The owner ended that: *develop
+     * is not a setting on the node but a setting in the WordPress admin settings menu.* **He is
+     * right, and it closes [OQ-039](../../../docs/NewConcept/91-open-questions.md)** — a posture is a
+     * fact about the **installation**, not about whichever node it happened to be resolved on, and
+     * putting it on the chain meant it could differ per branch, which is meaningless.
+     *
+     * ⚠️ *That it lived on the root node was always described as an interim — «the chain doing its
+     * job for want of a screen». The screen is a WordPress option, which is a screen that already
+     * exists, so the interim ends rather than being replaced.*
      */
     public function __construct(
         public readonly Purpose $purpose,
@@ -54,6 +66,24 @@ final class RenderContext
         public readonly string $fieldName = '',
         public readonly ?SimpleType $type = null,
         public readonly Surroundings $surroundings = new Surroundings(),
+        public readonly bool $developerMode = false,
+        /**
+         * The value already run through the converter in effect, or `null` where none is.
+         *
+         * ⚠️ **Prepared, not fetched** ([D-445](../../../docs/NewConcept/90-decision-log.md)): the
+         * descent resolves which converter applies and runs it, so a renderer does not know converters
+         * exist. *That is [D-159](../../../docs/NewConcept/90-decision-log.md) held rather than bent —
+         * a renderer is handed what it needs and reaches for nothing.*
+         *
+         * ⚠️ **`null` and `''` mean different things.** *`null` is «no converter is in effect, show the
+         * stored value»; an empty string is a converter that mapped the value to nothing. Collapsing
+         * them would make an unmapped value and a deliberately blank one look identical.*
+         *
+         * ⚠️ *It carries characters and not a `TypedValue`, because that is what a converter produces:
+         * [D-219](../../../docs/NewConcept/90-decision-log.md) calls the converter **the mapping** and
+         * the renderer **the form**, so the mapping's output is what a person reads.*
+         */
+        public readonly ?string $shown = null,
     ) {
     }
 
@@ -77,6 +107,37 @@ final class RenderContext
             fieldName: $this->fieldName,
             type: $this->type,
             surroundings: $this->surroundings,
+            developerMode: $this->developerMode,
+        );
+    }
+
+    /**
+     * Derselbe Zusammenhang, aber als Zeile in einem Auswahldialog.
+     *
+     * WICHTIG: Nur die Zeilen-Id bekommt einen anderen Vorsatz. Sonst stuende jeder Knoten zweimal
+     * mit derselben HTML-Id im Dokument -- einmal im Modellbaum, einmal im Dialog.
+     */
+    public function asChooserRow(): self
+    {
+        return new self(
+            purpose: $this->purpose,
+            value: $this->value,
+            settings: $this->settings,
+            locale: $this->locale,
+            level: $this->level,
+            editable: false,
+            fieldName: $this->fieldName,
+            type: $this->type,
+            surroundings: new Surroundings(
+                hidden: $this->surroundings->hidden,
+                // WICHTIG: Der Feldname gehoert hinein, weil zwei Dialoge auf einer Seite
+                // dieselben Knoten zeigen -- der Verschiebe-Dialog und der Typ-Dialog. Genau
+                // dieselbe Kollision, vor der der Docblock von DialogChooserRenderer warnt.
+                rowIdPrefix: 'taxmod-choice-'
+                    . (string) preg_replace('/[^a-z0-9_-]/i', '', $this->fieldName)
+                    . '-',
+            ),
+            developerMode: false,
         );
     }
 
@@ -99,6 +160,7 @@ final class RenderContext
             fieldName: $fieldName === '' ? $this->fieldName : $fieldName,
             type: $this->type,
             surroundings: $this->surroundings->referringTo($refersTo),
+            developerMode: $this->developerMode,
         );
     }
 
@@ -115,6 +177,12 @@ final class RenderContext
             return false;
         }
 
-        return ! ($this->setting('read_only')?->asBool() ?? false);
+        // ⚠️ **The key, not the string, and the key's own default** ([D-401](../../../docs/NewConcept/90-decision-log.md)).
+        // *A literal `'read_only'` beside a `?? false` is two copies of one fact in one line: rename
+        // the key and this survives compilation while quietly answering «editable» for ever.*
+        // ⚠️ **Seit Schritt 2 des Bauplans eine Spalte der Kante** ([D-714](../../../docs/NewConcept/90-decision-log.md)),
+        // die der Abstieg unter diesem Namen hereinreicht ({@see \Taxmod\Core\Service\Rendering::vonDenKanten()}).
+        // *Die Vorgabe ist «änderbar»: eine Kante, die nichts sagt, sperrt nichts.*
+        return ! ($this->setting(\Taxmod\Core\Model\EdgeColumn::READ_ONLY)?->asBool() ?? false);
     }
 }

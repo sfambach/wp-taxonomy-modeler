@@ -1,0 +1,4816 @@
+{
+    "erzeugt_von": "scripts/dev/saat-export.php",
+    "schemafassung": 49,
+    "abzugsfassung": 1,
+    "zaehlung": {
+        "labels": 127,
+        "label_texts": 129,
+        "nodes": 94,
+        "relations": 33,
+        "node_records": 111,
+        "relation_records": 6
+    },
+    "pruefsumme": "26238cf82c6cd32dd17bb2d4928e5747f81921dbc8ee113ade486290d56efd25",
+    "optionen": {
+        "taxmod_base_scaffold": "6",
+        "taxmod_branch_combined_id": "3984",
+        "taxmod_branch_compositions_id": "404",
+        "taxmod_branch_constants_id": "410",
+        "taxmod_branch_data_types_id": "408",
+        "taxmod_branch_model_id": "402",
+        "taxmod_composition_scaffold": "1",
+        "taxmod_neutral_locale": "en_US",
+        "taxmod_primitives_id": "406",
+        "taxmod_role_form": "733",
+        "taxmod_role_help": "741",
+        "taxmod_role_select": "737",
+        "taxmod_role_symbol": "739",
+        "taxmod_role_table": "735",
+        "taxmod_roles_id": "731",
+        "taxmod_root_id": "1",
+        "taxmod_trash_id": "2",
+        "taxmod_unit_node_ampere": "4042",
+        "taxmod_unit_node_atto": "4024",
+        "taxmod_unit_node_base_units": "4030",
+        "taxmod_unit_node_celsius": "4060",
+        "taxmod_unit_node_centi": "4012",
+        "taxmod_unit_node_deca": "4008",
+        "taxmod_unit_node_deci": "4010",
+        "taxmod_unit_node_exa": "3994",
+        "taxmod_unit_node_farad": "4046",
+        "taxmod_unit_node_femto": "4022",
+        "taxmod_unit_node_giga": "4000",
+        "taxmod_unit_node_gramm": "4034",
+        "taxmod_unit_node_hecto": "4006",
+        "taxmod_unit_node_henry": "4052",
+        "taxmod_unit_node_hertz": "4054",
+        "taxmod_unit_node_kelvin": "4058",
+        "taxmod_unit_node_kilo": "4004",
+        "taxmod_unit_node_liter": "4038",
+        "taxmod_unit_node_mega": "4002",
+        "taxmod_unit_node_meter": "4036",
+        "taxmod_unit_node_micro": "4016",
+        "taxmod_unit_node_milli": "4014",
+        "taxmod_unit_node_nano": "4018",
+        "taxmod_unit_node_ohm": "4044",
+        "taxmod_unit_node_peta": "3996",
+        "taxmod_unit_node_pico": "4020",
+        "taxmod_unit_node_prefixes": "3988",
+        "taxmod_unit_node_sekunde": "4040",
+        "taxmod_unit_node_stück": "4062",
+        "taxmod_unit_node_tera": "3998",
+        "taxmod_unit_node_volt": "4050",
+        "taxmod_unit_node_watt": "4048",
+        "taxmod_unit_node_with_prefix": "4032",
+        "taxmod_unit_node_without_prefix": "4056",
+        "taxmod_unit_node_yocto": "4028",
+        "taxmod_unit_node_yotta": "3990",
+        "taxmod_unit_node_zepto": "4026",
+        "taxmod_unit_node_zetta": "3992",
+        "taxmod_unit_scaffold": "5",
+        "taxmod_unit_value_id": "4232"
+    },
+    "tabellen": {
+        "labels": [
+            {
+                "id": "1",
+                "version": "4",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "2",
+                "version": "77",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "3",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "4",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "5",
+                "version": "106",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "6",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "7",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "8",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "9",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "10",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "11",
+                "version": "2",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "12",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "13",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "14",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "15",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "16",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "17",
+                "version": "106",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "18",
+                "version": "43",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "19",
+                "version": "44",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "20",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "21",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "22",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "23",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "24",
+                "version": "151",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "25",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "26",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "27",
+                "version": "2",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "28",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "29",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "30",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "31",
+                "version": "106",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "32",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "33",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "34",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "35",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "36",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "37",
+                "version": "107",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "38",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "39",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "40",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "41",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "42",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "43",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "44",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "45",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "46",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "47",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "48",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "49",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "50",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "51",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "52",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "53",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "54",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "55",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "56",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "57",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "58",
+                "version": "106",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "59",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "60",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "61",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "62",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "63",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "64",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "65",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "66",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "67",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "68",
+                "version": "104",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "69",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "70",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "71",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "72",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "73",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "74",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "75",
+                "version": "2",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "76",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "77",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "78",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "79",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "81",
+                "version": "107",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "82",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "83",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "84",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "85",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "86",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "87",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "88",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "89",
+                "version": "103",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "90",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "91",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "92",
+                "version": "1",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "130",
+                "version": "2",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "131",
+                "version": "55",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "132",
+                "version": "104",
+                "owner_kind": "node",
+                "icon": null
+            },
+            {
+                "id": "138",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "139",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "141",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "142",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "143",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "145",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "146",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "148",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "149",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "150",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "151",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "152",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "153",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "154",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "155",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "156",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "157",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "158",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "159",
+                "version": "3",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "160",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "169",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "176",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "177",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "178",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "179",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "180",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "186",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "187",
+                "version": "1",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "24821",
+                "version": "4",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "32526",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "37370",
+                "version": "3",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "38396",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            },
+            {
+                "id": "42449",
+                "version": "2",
+                "owner_kind": "relation",
+                "icon": null
+            }
+        ],
+        "label_texts": [
+            {
+                "id": "1",
+                "label_id": "1",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Root",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "2",
+                "label_id": "2",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Trash",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "3",
+                "label_id": "3",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Organisation",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "4",
+                "label_id": "4",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Person",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "5",
+                "label_id": "5",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Parts List",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "6",
+                "label_id": "6",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Model",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "7",
+                "label_id": "7",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Compositions",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "8",
+                "label_id": "8",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Primitives",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "9",
+                "label_id": "9",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Data Types",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "10",
+                "label_id": "10",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Constants",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "11",
+                "label_id": "11",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Label roles",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "12",
+                "label_id": "12",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "form",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "13",
+                "label_id": "13",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "table",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "14",
+                "label_id": "14",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "select",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "15",
+                "label_id": "15",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "symbol",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "16",
+                "label_id": "16",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "help",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "17",
+                "label_id": "17",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Integer",
+                "text_form": "int 1",
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "18",
+                "label_id": "18",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Decimal",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "19",
+                "label_id": "19",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Text",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": "Text field type, display length of the text can be shoosen",
+                "text_symbol": null
+            },
+            {
+                "id": "20",
+                "label_id": "20",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Character",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "21",
+                "label_id": "21",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Boolean",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "22",
+                "label_id": "22",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Email",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "23",
+                "label_id": "23",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Date and time",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "24",
+                "label_id": "24",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Color",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "25",
+                "label_id": "25",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Version",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "26",
+                "label_id": "26",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Node reference",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "27",
+                "label_id": "27",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "User reference",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": "A reference to a WordPress user. The record holds the user id as text; the name is resolved at the boundary. When this field is read-only the logged-in user is filled in on creation; when it is editable the user is picked from a list the boundary supplies.",
+                "text_symbol": null
+            },
+            {
+                "id": "28",
+                "label_id": "28",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Kontact",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "29",
+                "label_id": "29",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Part List Item",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "30",
+                "label_id": "30",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Electronic Parts",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "31",
+                "label_id": "31",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Passiv",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "32",
+                "label_id": "32",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Active",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "33",
+                "label_id": "33",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Resistor",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "34",
+                "label_id": "34",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Condensator",
+                "text_form": "Condensator",
+                "text_table": "Cond.",
+                "text_select": "Condensator",
+                "text_help": "condensator is an electronic part that has a capacity and can store current",
+                "text_symbol": "C"
+            },
+            {
+                "id": "35",
+                "label_id": "35",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Coil",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "36",
+                "label_id": "36",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Combined",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "37",
+                "label_id": "37",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Prefixes",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "y"
+            },
+            {
+                "id": "38",
+                "label_id": "38",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "yotta",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "Y"
+            },
+            {
+                "id": "39",
+                "label_id": "39",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "zetta",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "Z"
+            },
+            {
+                "id": "40",
+                "label_id": "40",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "exa",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "E"
+            },
+            {
+                "id": "41",
+                "label_id": "41",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "peta",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "P"
+            },
+            {
+                "id": "42",
+                "label_id": "42",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "tera",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "T"
+            },
+            {
+                "id": "43",
+                "label_id": "43",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "giga",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "G"
+            },
+            {
+                "id": "44",
+                "label_id": "44",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "mega",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "M"
+            },
+            {
+                "id": "45",
+                "label_id": "45",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "kilo",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "k"
+            },
+            {
+                "id": "46",
+                "label_id": "46",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "hecto",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "h"
+            },
+            {
+                "id": "47",
+                "label_id": "47",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "deca",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "da"
+            },
+            {
+                "id": "48",
+                "label_id": "48",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "deci",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "d"
+            },
+            {
+                "id": "49",
+                "label_id": "49",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "centi",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "c"
+            },
+            {
+                "id": "50",
+                "label_id": "50",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "milli",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "m"
+            },
+            {
+                "id": "51",
+                "label_id": "51",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "micro",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "µ"
+            },
+            {
+                "id": "52",
+                "label_id": "52",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "nano",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "n"
+            },
+            {
+                "id": "53",
+                "label_id": "53",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "pico",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "p"
+            },
+            {
+                "id": "54",
+                "label_id": "54",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "femto",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "f"
+            },
+            {
+                "id": "55",
+                "label_id": "55",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "atto",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "a"
+            },
+            {
+                "id": "56",
+                "label_id": "56",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "zepto",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "z"
+            },
+            {
+                "id": "57",
+                "label_id": "57",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "yocto",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "y"
+            },
+            {
+                "id": "58",
+                "label_id": "58",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Base units",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "59",
+                "label_id": "59",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "With prefix",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "60",
+                "label_id": "60",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Gramm",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "g"
+            },
+            {
+                "id": "61",
+                "label_id": "61",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Meter",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "m"
+            },
+            {
+                "id": "62",
+                "label_id": "62",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Liter",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "l"
+            },
+            {
+                "id": "63",
+                "label_id": "63",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Sekunde",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "s"
+            },
+            {
+                "id": "64",
+                "label_id": "64",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Ampere",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "A"
+            },
+            {
+                "id": "65",
+                "label_id": "65",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Ohm",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "Ω"
+            },
+            {
+                "id": "66",
+                "label_id": "66",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Farad",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "F"
+            },
+            {
+                "id": "67",
+                "label_id": "67",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Watt",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "W"
+            },
+            {
+                "id": "68",
+                "label_id": "68",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Volt",
+                "text_form": null,
+                "text_table": null,
+                "text_select": "V- Volt",
+                "text_help": null,
+                "text_symbol": "V"
+            },
+            {
+                "id": "69",
+                "label_id": "69",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Henry",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "H"
+            },
+            {
+                "id": "70",
+                "label_id": "70",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Hertz",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "Hz"
+            },
+            {
+                "id": "71",
+                "label_id": "71",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Without prefix",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "72",
+                "label_id": "72",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Kelvin",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "K"
+            },
+            {
+                "id": "73",
+                "label_id": "73",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Celsius",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "°C"
+            },
+            {
+                "id": "74",
+                "label_id": "74",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Stück",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "St"
+            },
+            {
+                "id": "75",
+                "label_id": "75",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Einheitenwert",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "76",
+                "label_id": "76",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Currency",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "77",
+                "label_id": "77",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Euro",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "€"
+            },
+            {
+                "id": "78",
+                "label_id": "78",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "US Dollar",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "$"
+            },
+            {
+                "id": "79",
+                "label_id": "79",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Pound",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": "p"
+            },
+            {
+                "id": "81",
+                "label_id": "81",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Dimension",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "82",
+                "label_id": "82",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Zutat",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "83",
+                "label_id": "83",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Backrezept",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "84",
+                "label_id": "84",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Project",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "85",
+                "label_id": "85",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "PC Parts",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "86",
+                "label_id": "86",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Enhancement Cards",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "87",
+                "label_id": "87",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Graphics",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "88",
+                "label_id": "88",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "IO",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "89",
+                "label_id": "89",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Divers not Categoriezed",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "90",
+                "label_id": "90",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "PC Constants",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "91",
+                "label_id": "91",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Storage",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "92",
+                "label_id": "92",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "New node",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "130",
+                "label_id": "130",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Address",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "131",
+                "label_id": "131",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Street / H#",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "132",
+                "label_id": "132",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Zip/City",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "138",
+                "label_id": "138",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Position",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "139",
+                "label_id": "139",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Bauteil Ref.",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "141",
+                "label_id": "141",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "wert",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "142",
+                "label_id": "142",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "prefix",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "143",
+                "label_id": "143",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "einheit",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "145",
+                "label_id": "145",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Part",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "146",
+                "label_id": "146",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Qunatity",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "148",
+                "label_id": "148",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "laenge",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "149",
+                "label_id": "149",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "breite",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "150",
+                "label_id": "150",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "hoehe",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "151",
+                "label_id": "151",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "menge",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "152",
+                "label_id": "152",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "bezeichnung",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "153",
+                "label_id": "153",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "titel",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "154",
+                "label_id": "154",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "backzeit",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "155",
+                "label_id": "155",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "ofentemperatur",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "156",
+                "label_id": "156",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "zutat",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "157",
+                "label_id": "157",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Value",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "158",
+                "label_id": "158",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Tolerance",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "159",
+                "label_id": "159",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Name",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "160",
+                "label_id": "160",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Name",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "169",
+                "label_id": "169",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Name",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "176",
+                "label_id": "176",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Country",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "177",
+                "label_id": "177",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Street Name",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "178",
+                "label_id": "178",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "House Number",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "179",
+                "label_id": "179",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Postal Code",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "180",
+                "label_id": "180",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "City Name",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "186",
+                "label_id": "186",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Street",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "187",
+                "label_id": "187",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Zip/City",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "196",
+                "label_id": "5",
+                "locale": "de_DE",
+                "number": "one",
+                "text_name": null,
+                "text_form": null,
+                "text_table": "Test 4",
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "201",
+                "label_id": "34",
+                "locale": "de_DE",
+                "number": "one",
+                "text_name": null,
+                "text_form": "Kondensator",
+                "text_table": "Kond.",
+                "text_select": "Kondensator",
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "38739",
+                "label_id": "24821",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Präfix",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "51592",
+                "label_id": "32526",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Unit",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "59043",
+                "label_id": "37370",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "position",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "60689",
+                "label_id": "38396",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "Prefix",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            },
+            {
+                "id": "67290",
+                "label_id": "42449",
+                "locale": "en_US",
+                "number": "one",
+                "text_name": "exponent",
+                "text_form": null,
+                "text_table": null,
+                "text_select": null,
+                "text_help": null,
+                "text_symbol": null
+            }
+        ],
+        "nodes": [
+            {
+                "id": "1",
+                "version": "1",
+                "label_id": "1",
+                "implemented_by": null,
+                "parent_node_id": null,
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "2",
+                "version": "144",
+                "label_id": "2",
+                "implemented_by": null,
+                "parent_node_id": "1",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "13",
+                "version": "6",
+                "label_id": "3",
+                "implemented_by": null,
+                "parent_node_id": "3083",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "14",
+                "version": "9",
+                "label_id": "4",
+                "implemented_by": null,
+                "parent_node_id": "3083",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "27",
+                "version": "7",
+                "label_id": "5",
+                "implemented_by": null,
+                "parent_node_id": "402",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "402",
+                "version": "2",
+                "label_id": "6",
+                "implemented_by": null,
+                "parent_node_id": "1",
+                "sort_order": "15",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "404",
+                "version": "2",
+                "label_id": "7",
+                "implemented_by": null,
+                "parent_node_id": "1",
+                "sort_order": "16",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "406",
+                "version": "2",
+                "label_id": "8",
+                "implemented_by": null,
+                "parent_node_id": "1",
+                "sort_order": "17",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "408",
+                "version": "426",
+                "label_id": "9",
+                "implemented_by": null,
+                "parent_node_id": "406",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "410",
+                "version": "2",
+                "label_id": "10",
+                "implemented_by": null,
+                "parent_node_id": "406",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "731",
+                "version": "5",
+                "label_id": "11",
+                "implemented_by": null,
+                "parent_node_id": "410",
+                "sort_order": "4",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
+            },
+            {
+                "id": "733",
+                "version": "4",
+                "label_id": "12",
+                "implemented_by": null,
+                "parent_node_id": "731",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "735",
+                "version": "4",
+                "label_id": "13",
+                "implemented_by": null,
+                "parent_node_id": "731",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "737",
+                "version": "4",
+                "label_id": "14",
+                "implemented_by": null,
+                "parent_node_id": "731",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "739",
+                "version": "4",
+                "label_id": "15",
+                "implemented_by": null,
+                "parent_node_id": "731",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "741",
+                "version": "4",
+                "label_id": "16",
+                "implemented_by": null,
+                "parent_node_id": "731",
+                "sort_order": "4",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "1171",
+                "version": "8",
+                "label_id": "17",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\IntType",
+                "parent_node_id": "408",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\IntType"
+            },
+            {
+                "id": "1173",
+                "version": "4",
+                "label_id": "18",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\DecimalType",
+                "parent_node_id": "408",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\DecimalType"
+            },
+            {
+                "id": "1175",
+                "version": "4",
+                "label_id": "19",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\TextType",
+                "parent_node_id": "408",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\TextType"
+            },
+            {
+                "id": "1177",
+                "version": "4",
+                "label_id": "20",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\CharType",
+                "parent_node_id": "408",
+                "sort_order": "4",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\CharType"
+            },
+            {
+                "id": "1179",
+                "version": "4",
+                "label_id": "21",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\BoolType",
+                "parent_node_id": "408",
+                "sort_order": "5",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\BoolType"
+            },
+            {
+                "id": "1181",
+                "version": "4",
+                "label_id": "22",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\EmailType",
+                "parent_node_id": "408",
+                "sort_order": "6",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\EmailType"
+            },
+            {
+                "id": "1183",
+                "version": "4",
+                "label_id": "23",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\DateTimeType",
+                "parent_node_id": "408",
+                "sort_order": "7",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\DateTimeType"
+            },
+            {
+                "id": "1185",
+                "version": "1089",
+                "label_id": "24",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\ColorType",
+                "parent_node_id": "408",
+                "sort_order": "12",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\ColorType"
+            },
+            {
+                "id": "1187",
+                "version": "4",
+                "label_id": "25",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\VersionType",
+                "parent_node_id": "408",
+                "sort_order": "9",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\VersionType"
+            },
+            {
+                "id": "1189",
+                "version": "4",
+                "label_id": "26",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\NodeRefType",
+                "parent_node_id": "408",
+                "sort_order": "10",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\NodeRefType"
+            },
+            {
+                "id": "1191",
+                "version": "4",
+                "label_id": "27",
+                "implemented_by": "Taxmod\\Core\\Model\\Type\\UserRefType",
+                "parent_node_id": "408",
+                "sort_order": "11",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\Type\\UserRefType"
+            },
+            {
+                "id": "3083",
+                "version": "3",
+                "label_id": "28",
+                "implemented_by": null,
+                "parent_node_id": "402",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3463",
+                "version": "6",
+                "label_id": "29",
+                "implemented_by": null,
+                "parent_node_id": "404",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3634",
+                "version": "4",
+                "label_id": "30",
+                "implemented_by": null,
+                "parent_node_id": "402",
+                "sort_order": "4",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3636",
+                "version": "3",
+                "label_id": "31",
+                "implemented_by": null,
+                "parent_node_id": "3634",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3638",
+                "version": "2",
+                "label_id": "32",
+                "implemented_by": null,
+                "parent_node_id": "3634",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3640",
+                "version": "3",
+                "label_id": "33",
+                "implemented_by": null,
+                "parent_node_id": "3636",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3642",
+                "version": "3",
+                "label_id": "34",
+                "implemented_by": null,
+                "parent_node_id": "3636",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3800",
+                "version": "2",
+                "label_id": "35",
+                "implemented_by": null,
+                "parent_node_id": "3636",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3984",
+                "version": "4",
+                "label_id": "36",
+                "implemented_by": null,
+                "parent_node_id": "406",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "3988",
+                "version": "2",
+                "label_id": "37",
+                "implemented_by": null,
+                "parent_node_id": "410",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
+            },
+            {
+                "id": "3990",
+                "version": "2",
+                "label_id": "38",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "3992",
+                "version": "2",
+                "label_id": "39",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "1",
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "3994",
+                "version": "2",
+                "label_id": "40",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "2",
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "3996",
+                "version": "2",
+                "label_id": "41",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "3998",
+                "version": "2",
+                "label_id": "42",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "4",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4000",
+                "version": "2",
+                "label_id": "43",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "5",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4002",
+                "version": "2",
+                "label_id": "44",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "6",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4004",
+                "version": "2",
+                "label_id": "45",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "7",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4006",
+                "version": "2",
+                "label_id": "46",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "8",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4008",
+                "version": "2",
+                "label_id": "47",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "9",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4010",
+                "version": "2",
+                "label_id": "48",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "10",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4012",
+                "version": "2",
+                "label_id": "49",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "11",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4014",
+                "version": "2",
+                "label_id": "50",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "12",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4016",
+                "version": "2",
+                "label_id": "51",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "13",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4018",
+                "version": "2",
+                "label_id": "52",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "14",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4020",
+                "version": "2",
+                "label_id": "53",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "15",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4022",
+                "version": "2",
+                "label_id": "54",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "16",
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4024",
+                "version": "2",
+                "label_id": "55",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "17",
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4026",
+                "version": "2",
+                "label_id": "56",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "18",
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4028",
+                "version": "2",
+                "label_id": "57",
+                "implemented_by": null,
+                "parent_node_id": "3988",
+                "sort_order": "19",
+                "hide": "1",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Constant"
+            },
+            {
+                "id": "4030",
+                "version": "2",
+                "label_id": "58",
+                "implemented_by": null,
+                "parent_node_id": "410",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
+            },
+            {
+                "id": "4032",
+                "version": "2",
+                "label_id": "59",
+                "implemented_by": null,
+                "parent_node_id": "4030",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "4034",
+                "version": "2",
+                "label_id": "60",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4036",
+                "version": "2",
+                "label_id": "61",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4038",
+                "version": "2",
+                "label_id": "62",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4040",
+                "version": "2",
+                "label_id": "63",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4042",
+                "version": "2",
+                "label_id": "64",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "4",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4044",
+                "version": "2",
+                "label_id": "65",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "5",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4046",
+                "version": "2",
+                "label_id": "66",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "6",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4048",
+                "version": "2",
+                "label_id": "67",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "7",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4050",
+                "version": "2",
+                "label_id": "68",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "8",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4052",
+                "version": "2",
+                "label_id": "69",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "9",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4054",
+                "version": "2",
+                "label_id": "70",
+                "implemented_by": null,
+                "parent_node_id": "4032",
+                "sort_order": "10",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4056",
+                "version": "2",
+                "label_id": "71",
+                "implemented_by": null,
+                "parent_node_id": "4030",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "4058",
+                "version": "2",
+                "label_id": "72",
+                "implemented_by": null,
+                "parent_node_id": "4056",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4060",
+                "version": "2",
+                "label_id": "73",
+                "implemented_by": null,
+                "parent_node_id": "4056",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4062",
+                "version": "2",
+                "label_id": "74",
+                "implemented_by": null,
+                "parent_node_id": "4056",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "4232",
+                "version": "3",
+                "label_id": "75",
+                "implemented_by": null,
+                "parent_node_id": "3984",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\UnitValue"
+            },
+            {
+                "id": "8569",
+                "version": "3",
+                "label_id": "76",
+                "implemented_by": null,
+                "parent_node_id": "410",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Choice"
+            },
+            {
+                "id": "8571",
+                "version": "3",
+                "label_id": "77",
+                "implemented_by": null,
+                "parent_node_id": "8569",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "8573",
+                "version": "3",
+                "label_id": "78",
+                "implemented_by": null,
+                "parent_node_id": "8569",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "8582",
+                "version": "4",
+                "label_id": "79",
+                "implemented_by": null,
+                "parent_node_id": "8569",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Unit"
+            },
+            {
+                "id": "13411",
+                "version": "3",
+                "label_id": "81",
+                "implemented_by": null,
+                "parent_node_id": "3984",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "13416",
+                "version": "2",
+                "label_id": "82",
+                "implemented_by": null,
+                "parent_node_id": "404",
+                "sort_order": "4",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "13420",
+                "version": "2",
+                "label_id": "83",
+                "implemented_by": null,
+                "parent_node_id": "404",
+                "sort_order": "5",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "18507",
+                "version": "3",
+                "label_id": "84",
+                "implemented_by": null,
+                "parent_node_id": "402",
+                "sort_order": "6",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32483",
+                "version": "3",
+                "label_id": "85",
+                "implemented_by": null,
+                "parent_node_id": "402",
+                "sort_order": "9",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32485",
+                "version": "3",
+                "label_id": "86",
+                "implemented_by": null,
+                "parent_node_id": "32483",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32487",
+                "version": "3",
+                "label_id": "87",
+                "implemented_by": null,
+                "parent_node_id": "32485",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32489",
+                "version": "3",
+                "label_id": "88",
+                "implemented_by": null,
+                "parent_node_id": "32485",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32491",
+                "version": "4",
+                "label_id": "89",
+                "implemented_by": null,
+                "parent_node_id": "32485",
+                "sort_order": "2",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32493",
+                "version": "3",
+                "label_id": "90",
+                "implemented_by": null,
+                "parent_node_id": "410",
+                "sort_order": "3",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32801",
+                "version": "3",
+                "label_id": "91",
+                "implemented_by": null,
+                "parent_node_id": "32483",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "32897",
+                "version": "2",
+                "label_id": "92",
+                "implemented_by": null,
+                "parent_node_id": "32801",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "66335",
+                "version": "4",
+                "label_id": "130",
+                "implemented_by": null,
+                "parent_node_id": "402",
+                "sort_order": "12",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "75473",
+                "version": "7",
+                "label_id": "131",
+                "implemented_by": null,
+                "parent_node_id": "3984",
+                "sort_order": "0",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            },
+            {
+                "id": "75477",
+                "version": "4",
+                "label_id": "132",
+                "implemented_by": null,
+                "parent_node_id": "3984",
+                "sort_order": "1",
+                "hide": "0",
+                "klasse": "Taxmod\\Core\\Model\\NodeClass\\Category"
+            }
+        ],
+        "relations": [
+            {
+                "id": "3521",
+                "version": "2",
+                "from_node_id": "27",
+                "to_node_id": "3463",
+                "kind": "composition",
+                "label_id": "138",
+                "sort_order": "2",
+                "multiplicity": "0..*",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "3633",
+                "version": "1",
+                "from_node_id": "3463",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "139",
+                "sort_order": "0",
+                "multiplicity": "1..*",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "4234",
+                "version": "1",
+                "from_node_id": "4232",
+                "to_node_id": "1173",
+                "kind": "composition",
+                "label_id": "141",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "4235",
+                "version": "1",
+                "from_node_id": "4232",
+                "to_node_id": "3988",
+                "kind": "aggregation",
+                "label_id": "142",
+                "sort_order": "1",
+                "multiplicity": "0..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "4236",
+                "version": "1",
+                "from_node_id": "4232",
+                "to_node_id": "4030",
+                "kind": "aggregation",
+                "label_id": "143",
+                "sort_order": "2",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "8264",
+                "version": "1",
+                "from_node_id": "3463",
+                "to_node_id": "3634",
+                "kind": "aggregation",
+                "label_id": "145",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "8265",
+                "version": "1",
+                "from_node_id": "3463",
+                "to_node_id": "1171",
+                "kind": "composition",
+                "label_id": "146",
+                "sort_order": "2",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13413",
+                "version": "1",
+                "from_node_id": "13411",
+                "to_node_id": "4232",
+                "kind": "composition",
+                "label_id": "148",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13414",
+                "version": "1",
+                "from_node_id": "13411",
+                "to_node_id": "4232",
+                "kind": "composition",
+                "label_id": "149",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13415",
+                "version": "1",
+                "from_node_id": "13411",
+                "to_node_id": "4232",
+                "kind": "composition",
+                "label_id": "150",
+                "sort_order": "2",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13418",
+                "version": "1",
+                "from_node_id": "13416",
+                "to_node_id": "4232",
+                "kind": "composition",
+                "label_id": "151",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13419",
+                "version": "1",
+                "from_node_id": "13416",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "152",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13422",
+                "version": "1",
+                "from_node_id": "13420",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "153",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13423",
+                "version": "1",
+                "from_node_id": "13420",
+                "to_node_id": "4232",
+                "kind": "composition",
+                "label_id": "154",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13424",
+                "version": "1",
+                "from_node_id": "13420",
+                "to_node_id": "4232",
+                "kind": "composition",
+                "label_id": "155",
+                "sort_order": "2",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13425",
+                "version": "1",
+                "from_node_id": "13420",
+                "to_node_id": "13416",
+                "kind": "composition",
+                "label_id": "156",
+                "sort_order": "3",
+                "multiplicity": "1..*",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13820",
+                "version": "2",
+                "from_node_id": "3636",
+                "to_node_id": "3988",
+                "kind": "aggregation",
+                "label_id": "157",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "13954",
+                "version": "1",
+                "from_node_id": "3636",
+                "to_node_id": "1171",
+                "kind": "composition",
+                "label_id": "158",
+                "sort_order": "3",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "18208",
+                "version": "3",
+                "from_node_id": "27",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "159",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "18509",
+                "version": "1",
+                "from_node_id": "18507",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "160",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "65594",
+                "version": "2",
+                "from_node_id": "3083",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "169",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "66341",
+                "version": "4",
+                "from_node_id": "66335",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "176",
+                "sort_order": "6",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "75475",
+                "version": "1",
+                "from_node_id": "75473",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "177",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "75476",
+                "version": "1",
+                "from_node_id": "75473",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "178",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "75479",
+                "version": "2",
+                "from_node_id": "75477",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "179",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "1",
+                "read_only": "0"
+            },
+            {
+                "id": "75480",
+                "version": "1",
+                "from_node_id": "75477",
+                "to_node_id": "1175",
+                "kind": "composition",
+                "label_id": "180",
+                "sort_order": "1",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "76120",
+                "version": "2",
+                "from_node_id": "66335",
+                "to_node_id": "75473",
+                "kind": "composition",
+                "label_id": "186",
+                "sort_order": "4",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "76121",
+                "version": "2",
+                "from_node_id": "66335",
+                "to_node_id": "75477",
+                "kind": "composition",
+                "label_id": "187",
+                "sort_order": "5",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "149000101155",
+                "version": "3",
+                "from_node_id": "4032",
+                "to_node_id": "3988",
+                "kind": "composition",
+                "label_id": "24821",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "149000101626",
+                "version": "1",
+                "from_node_id": "4030",
+                "to_node_id": "1189",
+                "kind": "composition",
+                "label_id": "32526",
+                "sort_order": "0",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "149000101725",
+                "version": "2",
+                "from_node_id": "1",
+                "to_node_id": "1171",
+                "kind": "setting",
+                "label_id": "37370",
+                "sort_order": "4",
+                "multiplicity": "0..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "149000101744",
+                "version": "1",
+                "from_node_id": "3988",
+                "to_node_id": "1189",
+                "kind": "composition",
+                "label_id": "38396",
+                "sort_order": "2",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            },
+            {
+                "id": "149000101931",
+                "version": "1",
+                "from_node_id": "3988",
+                "to_node_id": "1171",
+                "kind": "composition",
+                "label_id": "42449",
+                "sort_order": "3",
+                "multiplicity": "1..1",
+                "hide": "0",
+                "read_only": "0"
+            }
+        ],
+        "node_records": [
+            {
+                "id": "16",
+                "version": "1",
+                "node_id": "27",
+                "node_version": "4",
+                "created_at": "2026-08-25 00:30:19",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "172",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "2",
+                "created_at": "2026-08-25 23:52:13",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "248",
+                "version": "2",
+                "node_id": "4232",
+                "node_version": "1",
+                "created_at": "2026-08-26 01:03:27",
+                "record_type": "example",
+                "relation_id": "0"
+            },
+            {
+                "id": "250",
+                "version": "2",
+                "node_id": "4232",
+                "node_version": "1",
+                "created_at": "2026-08-26 01:03:27",
+                "record_type": "example",
+                "relation_id": "0"
+            },
+            {
+                "id": "4756",
+                "version": "2",
+                "node_id": "75473",
+                "node_version": "2",
+                "created_at": "2026-09-04 16:29:45",
+                "record_type": "example",
+                "relation_id": "0"
+            },
+            {
+                "id": "7625",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7627",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7700",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7710",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7727",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7728",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7766",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7767",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7821",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7831",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7864",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7874",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7913",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7919",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7933",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7937",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7958",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "7964",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8010",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8020",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8054",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8064",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8101",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8111",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8146",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8149",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8171",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8175",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8201",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8205",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8231",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8235",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8261",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8265",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8291",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8298",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8324",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8331",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8375",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8385",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8418",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8428",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8465",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8475",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8525",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8535",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8565",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8575",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8605",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8615",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8661",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8671",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8704",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8714",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8758",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8768",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8815",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8828",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8894",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8904",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "8919",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9098",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9106",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9139",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9147",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9182",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9192",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9225",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9235",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9332",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9333",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9381",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9391",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9410",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9411",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9465",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9475",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9542",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9561",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9563",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9641",
+                "version": "1",
+                "node_id": "75473",
+                "node_version": "6",
+                "created_at": "2026-09-06 09:09:05",
+                "record_type": "example",
+                "relation_id": "0"
+            },
+            {
+                "id": "9710",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9720",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9783",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9793",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9870",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9880",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9918",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9928",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "9994",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10004",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10050",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10062",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10121",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10133",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10204",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10216",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10273",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10285",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10346",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10358",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10424",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10436",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10485",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "10497",
+                "version": "1",
+                "node_id": "3642",
+                "node_version": "1",
+                "created_at": "2026-08-30 00:00:00",
+                "record_type": "user",
+                "relation_id": "0"
+            },
+            {
+                "id": "12974",
+                "version": "1",
+                "node_id": "1183",
+                "node_version": "4",
+                "created_at": "2026-09-07 14:27:50",
+                "record_type": "example",
+                "relation_id": "0"
+            }
+        ],
+        "relation_records": [
+            {
+                "id": "892",
+                "node_record_id": "248",
+                "relation_id": "4234",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": "2.7000000000",
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "897",
+                "node_record_id": "250",
+                "relation_id": "4234",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": "4.7000000000",
+                "value_text": null,
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "14996",
+                "node_record_id": "4756",
+                "relation_id": "75475",
+                "locale": "",
+                "position": "0",
+                "version": "3",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": "Oxford Street",
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "14997",
+                "node_record_id": "4756",
+                "relation_id": "75476",
+                "locale": "",
+                "position": "0",
+                "version": "3",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": "10",
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "15429",
+                "node_record_id": "9641",
+                "relation_id": "75475",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": "Londen Road",
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            },
+            {
+                "id": "15430",
+                "node_record_id": "9641",
+                "relation_id": "75476",
+                "locale": "",
+                "position": "0",
+                "version": "1",
+                "value_int": null,
+                "value_decimal": null,
+                "value_text": "200a",
+                "value_date": null,
+                "value_ref": null,
+                "value_ref_kind": null
+            }
+        ]
+    }
+}

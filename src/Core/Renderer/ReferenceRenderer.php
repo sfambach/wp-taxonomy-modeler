@@ -9,7 +9,7 @@ use Taxmod\Core\Model\SimpleType;
  * ([D-105](../../../docs/NewConcept/90-decision-log.md)).
  *
  * ⚠️ **It bounds the load, not only the display** ([R58](../../../docs/NewConcept/30-renderer.md#owner-statement--2026-08-22-thirteenth-pass-the-reference-renderer)).
- * That is the point of it being the default for an aggregation edge: a supplier on a part draws one
+ * That is the point of it being the default for an aggregation relation: a supplier on a part draws one
  * label, not a whole supplier — so a parts list of five hundred rows does not pull five hundred
  * suppliers with everything they own. *A renderer that shows less also asks for less, and the guard
  * against a runaway descent becomes a backstop rather than the mechanism.*
@@ -34,7 +34,26 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class ReferenceRenderer extends TypedFieldRenderer
 {
+    /**
+     * Welches Label des Ziels gezeigt wird — ein Verweis auf eine Rolle (Konstante unter `Constants`,
+     * [D-719](../../../docs/NewConcept/90-decision-log.md) K3c). Ohne Wahl: die Formularrolle.
+     */
+    #[\Taxmod\Core\Model\NodeClass\Attribut(refersTo: \Taxmod\Core\Model\NodeClass\Constant::class, from: \Taxmod\Core\Model\NodeClass\Anchor::Roles)]
+    public ?int $label_role = null;
+
+    /**
+     * Ob die Beschriftung des **Vaters** vorangestellt wird — *sein Wort am 2026-09-12: «reference type sollte eine
+     * schalter für Vater haben dann wird das label aus dem vater genommen zum beispiel ms_dos hat als kind ms_dos
+     * v.5.0»* ([D-734](../../../docs/NewConcept/90-decision-log.md)): aus «v.5.0» unter «ms_dos» wird «ms_dos v.5.0».
+     */
+    // ⚠️ *Umbenannt am 2026-09-12 auf sein Wort: «With_parent sollte eher Use Parent Label sein» (D-746); Fassung 52
+    // schreibt die gespeicherten Zeilen um.*
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $use_parent_label = false;
+
     public const NAME = 'reference';
+
+    public const WITH_PARENT = 'use_parent_label';
 
     public function name(): string
     {
@@ -46,16 +65,29 @@ final class ReferenceRenderer extends TypedFieldRenderer
         return [SimpleType::NodeRef];
     }
 
-    /** @return list<Purpose> */
+    /**
+     * ⚠️ **Auch beim Bearbeiten, seit dem 2026-09-06** — *seine Anweisung: «bei den [Knoten] mal
+     * überall den Renderer überprüfen, dass ein erlaubter gesetzt ist; für die Base units ist das
+     * einfach Referenz für alle».* **Gemessen, was «nur Anzeigen» dann kostete:** *`Base units` trug
+     * `reference`, und im Zweck «bearbeiten» löste **nichts** auf — die Zeile fiel auf den Rückfall,
+     * und der Wächter meldete «gespeichert `reference`, gezeichnet nichts».*
+     *
+     * ⚠️ **Und es ist keine Notlösung, sondern die richtige Antwort:** *eine Konstante wird nicht
+     * getippt. Sie wird an der **Verwendungsstelle** gewählt — dort steht ein Wähler —, und wo sie
+     * selbst steht, zeigt man ihre Beschriftung. {@see self::input()} tat das ohnehin schon; es war
+     * nur als unerreichbar vermerkt.*
+     *
+     * @return list<Purpose>
+     */
     public function supports(): array
     {
-        return [Purpose::Display];
+        return [Purpose::Display, Purpose::Edit];
     }
 
     protected function display(RenderContext $context): string
     {
         if ($context->value->isNothing()) {
-            return $this->shown('');
+            return $this->createHtmlValueSpan('');
         }
 
         // ⚠️ **A reference whose label never arrived is drawn as a fault, not as an id.** It means
@@ -67,12 +99,13 @@ final class ReferenceRenderer extends TypedFieldRenderer
                 . '</span>';
         }
 
-        return $this->shown(RenderResult::escape($context->surroundings->refersTo));
+        return $this->createHtmlValueSpan(RenderResult::escape($context->surroundings->refersTo));
     }
 
     protected function input(RenderContext $context): string
     {
-        // Unreachable: the edit purpose is declined above, so the descent never asks.
+        // ⚠️ *Erreichbar seit dem 2026-09-06, und absichtlich dasselbe: eine Konstante wird nicht
+        // getippt. Gewählt wird sie an der Verwendungsstelle, hier steht ihre Beschriftung.*
         return $this->display($context);
     }
 }

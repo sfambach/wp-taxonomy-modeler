@@ -32,7 +32,7 @@ $ok_type = $type_id > 0 ? 'yes' : 'no';
 $link_ok = 'no';
 foreach ( Relation::list_outgoing_by_type_key( $tax, $pos_id, Relation::TYPE_DEFAULTVALUE_FROM ) as $edge ) {
 	$name = strtolower( trim( (string) ( $edge['name'] ?? '' ) ) );
-	$to   = (int) ( $edge['toId'] ?? 0 );
+	$to   = (int) ( $edge['toNodeId'] ?? 0 );
 	if ( 'bauart' === $name && $to === $list_id ) {
 		$link_ok = 'yes';
 		break;

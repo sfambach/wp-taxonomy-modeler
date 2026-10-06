@@ -22,3 +22,6 @@ scripts/_tmp-*/
 .claude/
 /.phpunit.cache/
 /.phpunit.result.cache
+
+# Sicherungen des Nachfuellens (D-423) — Daten, nie Quellcode.
+.backup-settings-*.sql

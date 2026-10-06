@@ -2,7 +2,8 @@
 
 namespace Taxmod\Core\Model;
 
-use Taxmod\Core\Exception\NotAValueOfThatType;
+use Taxmod\Core\Model\Type\SpecialisedType;
+use Taxmod\Core\Model\Type\SpecialisedTypes;
 
 /**
  * The simple data types that ship in the box.
@@ -66,6 +67,15 @@ enum SimpleType: string
      * would put it before and every sorted list would be quietly wrong.
      */
     case Version = 'version';
+    // ⚠️ *Der Weg vom erklärenden Vater bis zum Knoten, gerechnet beim Zeichnen (D-751).*
+    case Path = 'path';
+    // ⚠️ *Ein Sprung zu einem anderen Knoten, gefiltert nach diesem Satz — gerechnet beim Zeichnen, nie gespeichert (D-769).*
+    case Jump = 'jump';
+    // ⚠️ *Andere Felder desselben Satzes als ein Text, gespeichert und bei jeder Änderung neu geschrieben (D-885).*
+    case Summary = 'summary';
+
+    /** Eine Datei oder ein Link — gespeichert wird die Adresse ([D-793](../../../docs/NewConcept/90-decision-log.md): «it is a media type, both is the right answer»). */
+    case Media = 'media';
 
     /** A reference to a node in the model. */
     case NodeRef = 'node_ref';
@@ -86,20 +96,106 @@ enum SimpleType: string
      */
     public function column(): string
     {
-        return match ($this) {
-            self::Int, self::Bool                                              => 'value_int',
-            self::Decimal                                                      => 'value_decimal',
-            self::DateTime                                                     => 'value_date',
-            self::NodeRef                                                      => 'value_ref',
-            self::Text, self::Char, self::Email, self::Color,
-            self::Version, self::UserRef                                       => 'value_text',
-        };
+        return $this->specialised()->column();
+    }
+
+    /**
+     * Die Klasse, die diesen Fall ausmacht — **und die alles beantwortet, was unten steht**.
+     *
+     * ⚠️ **Der Fall ist die Adresse, die Klasse ist die Wahrheit** ([D-484](../../../docs/NewConcept/90-decision-log.md)).
+     * *Bis zum 2026-09-05 stand jede dieser Auskünfte hier als `match` über elf Fälle; sie stehen
+     * jetzt je einmal in {@see \Taxmod\Core\Model\Type\SpecialisedType}s Kind. Was hier bleibt, sind
+     * die Signaturen, damit kein Aufrufer sich ändern muss — **eine Weiterleitung und keine zweite
+     * Heimat**.*
+     */
+    public function specialised(): SpecialisedType
+    {
+        return SpecialisedTypes::for($this);
+    }
+
+    /**
+     * The word a person reads for this type.
+     *
+     * ⚠️ **`int` reads *integer* and `decimal` reads *double***, which is how the owner named them
+     * when he asked for the grouping: *settings for `int` category integer, settings for `double`
+     * category double.* The stored names are the short machine ones and stay that way; this is only
+     * what a heading shows.
+     *
+     * ⚠️ *English here and translated at the boundary, because the core cannot make a word (`AR-2`,
+     * [OQ-087](../../../docs/NewConcept/91-open-questions.md)). What it can do is say **which** word,
+     * so a twelfth type gets a heading without anybody remembering to add one.*
+     */
+    public function humanName(): string
+    {
+        return $this->specialised()->humanName();
+    }
+
+    /**
+     * The name the **node** carries in the tree — spelled out, not abbreviated.
+     *
+     * ⚠️ **The owner: *the data type `int` is shown as `int`, `decimal` as `decimal` — unify that,
+     * for `int` = `Integer`.*** He is pointing at an inconsistency that `CD-9` already forbids in
+     * code and that the tree had inherited: *no abbreviations that need a lookup.* `decimal` reads as
+     * a word, `int` does not, and both sit in the same list.
+     *
+     * ⚠️ **This is a **name**, not a label, and [D-369](../../../docs/NewConcept/90-decision-log.md)
+     * is why.** *The modelling tree shows a node's own name … «there I would take the node name».* So
+     * making the tree read `Integer` means the node **is** called `Integer` — a label would not show
+     * there at all.
+     *
+     * ⚠️ **And that is why `value` stays what it is.** The node's name was doing two jobs: what a
+     * person reads **and** how {@see self::fromNodeName()} recognises the type. *Renaming the enum's
+     * values instead would have meant a sweep of some seventy string literals across scaffolds,
+     * checks and tests — for a change that is about a word on a screen.* **The identifier stays
+     * short and machine-shaped; the name becomes the word.**
+     *
+     * ⚠️ **The second job is gone** ([D-510](../../../docs/NewConcept/90-decision-log.md)): the
+     * binding is the node's **id**, written down by the seed. *So this returns the word a person
+     * reads and nothing depends on it any more — which is what a name should have been all along.*
+     *
+     * ⚠️ *Two choices in here are mine and are flagged rather than smuggled: `Decimal` rather than
+     * {@see self::humanName()}'s **double** — he asked for consistent spelling, not a different word
+     * — and `Boolean` rather than **yes or no**, which is a phrase for a heading and not a name a
+     * person types.*
+     */
+    public function nodeName(): string
+    {
+        return $this->specialised()->nodeName();
+    }
+
+    /**
+     * The type a node of this name stands for — **the Notnagel, and no longer the link.**
+     *
+     * ⚠️ **The binding is the node's id** ([D-510](../../../docs/NewConcept/90-decision-log.md)),
+     * written down by the seed and read through {@see \Taxmod\Core\Repository\TypeNodes}. *This method
+     * used to say «its name, which is the only link there is», and that sentence is what the decision
+     * removed: a check looked for a node called `int` — it is called `Integer` — **so it never ran and
+     * preserved a contradiction for three days.** And [D-022](../../../docs/NewConcept/90-decision-log.md)
+     * says node names are deliberately not unique, so a name could never have been a key.*
+     *
+     * ⚠️ **What it is still for: the installation that has no ids written down yet.** *An upgrade must
+     * not be a loss, so a lookup that finds nothing falls back to here **once** and then writes the id
+     * down. Nothing in the drawing path reaches this method any more.*
+     *
+     * ⚠️ **Both spellings answer, and that is not indecision.** A tree that has not been migrated yet
+     * still holds a node called `int`, and the fallback must recognise it. *The old value is accepted
+     * for as long as an installation can still carry it; the new name is what gets written.*
+     */
+    public static function fromNodeName(string $name): ?self
+    {
+        foreach (self::cases() as $type) {
+            if ($name === $type->nodeName() || $name === $type->value) {
+                return $type;
+            }
+        }
+
+        return null;
     }
 
     /** @return list<string> The node names, in the order they are seeded. */
     public static function names(): array
     {
-        return array_map(static fn (self $type): string => $type->value, self::cases());
+        return array_map(static fn (self $type): string => $type->nodeName(), self::cases());
     }
 
     /**
@@ -129,21 +225,13 @@ enum SimpleType: string
      */
     public function pattern(): ?string
     {
-        return match ($this) {
-            self::Int     => '-?\d+',
-            self::Decimal => '-?\d+(\.\d+)?',
-            default       => null,
-        };
+        return $this->specialised()->pattern();
     }
 
     /** Which on-screen keyboard the control should ask for. */
     public function inputMode(): ?string
     {
-        return match ($this) {
-            self::Int     => 'numeric',
-            self::Decimal => 'decimal',
-            default       => null,
-        };
+        return $this->specialised()->inputMode();
     }
 
     /**
@@ -170,111 +258,9 @@ enum SimpleType: string
             return TypedValue::nothing();
         }
 
-        return match ($this) {
-            self::Int     => $this->integer($characters),
-            self::Decimal => $this->exactDecimal($characters),
-            self::Bool    => $this->boolean($characters),
-            self::DateTime => TypedValue::ofDate($this->timestamp($characters)),
-            self::NodeRef => $this->nodeReference($characters),
-            self::Char    => $this->oneCharacter($characters),
-            // ⚠️ Text, email, colour, version and a foreign user key are stored as given. Whether
-            // an address is one, or a version well-formed, is a **validator's** question (D-319) —
-            // and a renderer that never writes has no business tidying it either (D-159).
-            default       => TypedValue::ofText($characters),
-        };
+        // ⚠️ *Und ab hier antwortet der Typ selbst* ([D-484](../../../docs/NewConcept/90-decision-log.md)).
+        // Text, E-Mail, Farbe, Fassung und ein fremder Benutzerschlüssel werden abgelegt, wie sie
+        // kamen — ob eine Adresse eine ist, ist die Frage eines **Validators** (D-319).
+        return $this->specialised()->valueFrom($characters);
     }
-
-    private function integer(string $characters): TypedValue
-    {
-        $this->mustMatchItsShape($characters);
-
-        return TypedValue::ofInt((int) $characters);
-    }
-
-    /** Kept as the characters it arrived as — a decimal never becomes a float (D-057). */
-    private function exactDecimal(string $characters): TypedValue
-    {
-        $this->mustMatchItsShape($characters);
-
-        return TypedValue::ofDecimal($characters);
-    }
-
-    /**
-     * ⚠️ **The same pattern the control carries**, anchored. Writing the rule out a second time
-     * here is how a control and its core come to disagree, and the disagreement only shows up as
-     * *the form refuses what the field allowed*.
-     */
-    private function mustMatchItsShape(string $characters): void
-    {
-        $pattern = $this->pattern();
-
-        if ($pattern !== null && preg_match('/^' . $pattern . '$/', $characters) !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
-    }
-
-    private function boolean(string $characters): TypedValue
-    {
-        return match (strtolower($characters)) {
-            '1', 'true', 'on', 'yes'  => TypedValue::ofBool(true),
-            '0', 'false', 'off', 'no' => TypedValue::ofBool(false),
-            default                   => throw NotAValueOfThatType::submitted($characters, $this->value),
-        };
-    }
-
-    private function nodeReference(string $characters): TypedValue
-    {
-        if (preg_match('/^\d+$/', $characters) !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
-
-        return TypedValue::ofReference((int) $characters);
-    }
-
-    /**
-     * ⚠️ **Counted in characters, not bytes.** `mb_strlen` is why `ä` is one `char` and not two —
-     * a `char` has a numeric identity behind it (D-329), and that identity is a code point.
-     */
-    private function oneCharacter(string $characters): TypedValue
-    {
-        if (mb_strlen($characters, 'UTF-8') !== 1) {
-            throw NotAValueOfThatType::submitted($characters, $this->value);
-        }
-
-        return TypedValue::ofText($characters);
-    }
-
-    /**
-     * The three shapes a date control submits, normalised to what the column holds.
-     *
-     * ⚠️ **A time with no date is stored against the epoch, and that is a compromise, not a
-     * design.** The column is a `datetime` (D-291 gives date, time and both to one type), so a
-     * time of day has nowhere to sit without a date beside it. The epoch is used because it is
-     * recognisable and because the precision setting is what says the date part carries no
-     * meaning — but a stored fact nobody meant is exactly what this model tries not to have. See
-     * [OQ-088](../../../docs/NewConcept/91-open-questions.md).
-     */
-    private function timestamp(string $characters): string
-    {
-        $characters = str_replace('T', ' ', $characters);
-
-        return match (true) {
-            preg_match('/^\d{4}-\d{2}-\d{2}$/', $characters) === 1
-                => $characters . ' 00:00:00',
-            preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $characters) === 1
-                => self::TIME_WITHOUT_A_DATE . ' ' . $this->withSeconds($characters),
-            preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $characters) === 1
-                => substr($characters, 0, 10) . ' ' . $this->withSeconds(substr($characters, 11)),
-            default
-                => throw NotAValueOfThatType::submitted($characters, $this->value),
-        };
-    }
-
-    private function withSeconds(string $time): string
-    {
-        return strlen($time) === 5 ? $time . ':00' : $time;
-    }
-
-    /** The date a time-of-day is parked against when it has none of its own. */
-    public const TIME_WITHOUT_A_DATE = '1970-01-01';
 }

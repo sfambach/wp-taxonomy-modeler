@@ -1,0 +1,280 @@
+<?php declare(strict_types=1);
+
+namespace Taxmod\Core\Renderer;
+
+use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\SimpleType;
+
+/**
+ * A node's fields drawn as tightly together as they will go — **one** renderer with a switch, not
+ * two ([D-471](../../../docs/NewConcept/90-decision-log.md)).
+ *
+ * ⚠️ **Why one and not two.** [D-245](../../../docs/NewConcept/90-decision-log.md) carried *compact
+ * horizontal* and *compact vertical* as two entries, from the owner's own words of 2026-08-23.
+ * [D-471](../../../docs/NewConcept/90-decision-log.md) narrowed that: *«Zwei Renderer, die sich in
+ * einer Achse unterscheiden, sind zwei Registrierungen, zwei Namen im `renderer`-Schlüssel und zwei
+ * Stellen, an denen dieselbe Kompaktheit gepflegt wird. **Ein Umschalter ist dieselbe Aussage, an
+ * einer Stelle.***
+ *
+ * ⚠️ **What it is for**, in the owner's words in [D-245](../../../docs/NewConcept/90-decision-log.md):
+ * *«a node with several attributes that I want shown as compactly as possible together»* — so the
+ * parts keep **the order they were handed in**. There is no regrouping here: {@see FormRenderer}
+ * sorts by R75's four groups because a form is read top to bottom, and a compact line that
+ * rearranged an author's fields would be a second, competing layout rule.
+ *
+ * ⚠️ **It lays out parts the descent drew; it does not draw them.** A renderer reaches out to
+ * nothing ([D-159](../../../docs/NewConcept/90-decision-log.md)), so the container cannot be what
+ * asks the registry — the members arrive in {@see Surroundings::$parts}, exactly as they do for
+ * {@see FormRenderer}.
+ *
+ * ```mermaid
+ * flowchart LR
+ *   P["parts · already drawn"] --> O{"orientation"}
+ *   O -->|horizontal| R["one row"]
+ *   O -->|vertical| C["one column"]
+ *   L["label"] -.->|on by default| R
+ *   L -.-> C
+ *   R --> H1["ein Fragezeichen am Ende · alle Hilfen der Zeile"]
+ *   C --> H2["ein Fragezeichen je Feld"]
+ * ```
+ *
+ * ⚠️ **Das Fragezeichen ist nicht überall gleich verteilt, und das ist
+ * [D-662](../../../docs/NewConcept/90-decision-log.md).** *Waagerecht trennt die Felder **ein
+ * Leerzeichen** — ein Zeichen je Feld wäre eines je Leerzeichen, und die Zeile wäre von Zeichen
+ * zerhackt, die niemand braucht, bis er sie sucht. Also **ein** Zeichen am Ende, das alle Hilfen der
+ * Zeile trägt. Senkrecht hat jedes Feld seine Zeile und behält sein eigenes.*
+ *
+ * ## The two properties, and the open question they hang on
+ *
+ * | Key | Values | Silence means |
+ * |---|---|---|
+ * | `orientation` | `horizontal`, `vertical` | `horizontal` |
+ * | `label` | a switch | **on** |
+ *
+ * Both defaults are the owner's, verbatim in [D-471](../../../docs/NewConcept/90-decision-log.md):
+ * *«**Standard ist Label an**, und bei horizontal/vertikal ist **Standard horizontal**.»*
+ *
+ * ⚠️ **They are read as *free* setting keys, and that choice is provisional.**
+ * [OQ-120](../../../docs/NewConcept/91-open-questions.md) asks whether a renderer **declares** its
+ * properties at all, and measures that the same thing is done two ways today: `SpinnerRenderer` and
+ * `SliderRenderer` read **reserved** keys, `TextareaRenderer` reads the free keys `cols` and `rows`
+ * that nobody declares. *This follows `TextareaRenderer`, because
+ * [D-364](../../../docs/NewConcept/90-decision-log.md) already settled what a free key is for —
+ * «`cols` and `rows` are free keys today and correctly so — no instance has *rows*; it is how one
+ * renderer draws … **What changes is who writes them: whoever writes renderers, not whoever
+ * models.**» An orientation is not a fact about a thing; no record answers it.* **If
+ * [OQ-120](../../../docs/NewConcept/91-open-questions.md) answers that renderers declare their
+ * properties, these two keys move and this class changes with them.**
+ *
+ * ⚠️ **The defaults live here, in the renderer, and that is also OQ-120's part 2.**
+ * {@see SpinnerRenderer::step()} does the same thing today for `step`. *The alternative — seeding
+ * the two keys on the model so silence never happens — would put a drawing instruction in the model
+ * for every node that might ever be drawn compactly, and [OQ-120](../../../docs/NewConcept/91-open-questions.md)
+ * is where that is being decided rather than here.*
+ *
+ * @see docs/NewConcept/30-renderer.md
+ */
+final class CompactRenderer extends RendererNode
+{
+    // ⚠️ **Der Renderer erklärt seine Attribute selbst** (Anforderung 3.6.3; sein Gerüst:
+    // *«CompactRenderer — withLabel, horizontal/vertical»*). Der Vertrag liest sie per Reflection;
+    // die Namen sind die, unter denen {@see render()} sie schon immer gelesen hat.
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $with_label = true;
+
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public Orientation $orientation = Orientation::Horizontal;
+
+    public const NAME = 'compact';
+
+    /**
+     * The free setting key that flips the axis. See the class docblock on OQ-120.
+     *
+     * ⚠️ **Der Schlüssel, die zwei Worte und die Vorgabe stehen seit TASK-063 in
+     * {@see Orientation}** — *weil {@see TableRenderer} denselben Umschalter bekommen hat und eine
+     * abgeschriebene Vorgabe eine zweite Vorgabe ist. Hier bleiben nur die Namen stehen, damit die
+     * Aufrufer sie weiter beim Renderer finden.*
+     */
+    public const ORIENTATION = Orientation::KEY;
+
+    /**
+     * The free setting key that switches the labels off. See the class docblock on OQ-120.
+     *
+     * ⚠️ **Es hiess hier `label` und im Modell `with_label`, und darum hat der Schalter nie
+     * geschaltet.** *Gemessen am 2026-09-06: **5 Wertzeilen an der Kante `with_label`, null an einer
+     * Kante `label`** — die Kante ist an `render with label` erklärt
+     * ([D-647](../../../docs/NewConcept/90-decision-log.md): «`with_label` und `label_role` an `render
+     * with label`»). **Der Name der Kante ist der Schlüssel**, also war dieser hier schlicht falsch
+     * geschrieben und las lebenslang Schweigen.*
+     */
+    public const LABEL = 'with_label';
+
+    public const HORIZONTAL = Orientation::Horizontal->value;
+    public const VERTICAL   = Orientation::Vertical->value;
+
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
+    public function supports(): array
+    {
+        return [Purpose::Display, Purpose::Edit];
+    }
+
+    /** @return list<SimpleType> Empty: it is chosen for what a subject **is**, like every container. */
+    public function handles(): array
+    {
+        return [];
+    }
+
+    /**
+     * ⚠️ **A node, for {@see FormRenderer::fits()}'s reason and no wider.** D-245 describes the
+     * subject as *a node with several attributes*; what a compact rendering of an **relation** would
+     * mean — the target's fields, or the relation's own — is not decided, and answering it here by
+     * accident is how a concept acquires a rule nobody wrote.
+     */
+    public function fits(Renderable $subject): bool
+    {
+        return $subject instanceof Node;
+    }
+
+    public function render(Renderable $subject, RenderContext $context): RenderResult
+    {
+        $vertical  = $this->isVertical($context);
+        $withLabel = $this->withLabel($context);
+
+        $inner     = '';
+        $usedRelations = [];
+        // ⚠️ *Waagerecht wandern die Hilfen hierher und werden am Ende **ein** Zeichen
+        // ([D-662](../../../docs/NewConcept/90-decision-log.md)); senkrecht bleibt jede bei ihrem Feld.*
+        $gesammelt = [];
+
+        foreach ($context->surroundings->parts as $part) {
+            if ($part->isHidden()) {
+                // R11: a hidden member takes no place at all — the same rule the form applies, and
+                // the reason `isHidden()` lives on the part rather than being re-derived here.
+                continue;
+            }
+
+            // ⚠️ *Eine versteckte Zeile nimmt auch ihre Hilfe mit — sie steht **über** dem `continue`
+            // nicht, und das ist Absicht: ein Satz zu einem Feld, das niemand sieht, erklärt nichts.*
+            if (! $vertical && $part->hint !== '') {
+                $gesammelt[] = $part->hint;
+            }
+
+            $usedRelations = [...$usedRelations, ...$part->result->usedRelations];
+            $inner    .= $this->createHtmlPart($part, $withLabel, $vertical);
+        }
+
+        // ⚠️ **Angezeigt und ganz leer: ein leerer Wert statt eines leeren Gerüsts** ([D-869](../../../docs/NewConcept/90-decision-log.md)).
+        // *Gemessen am 2026-09-19 an «CPUs»: ein leerer Einheitenwert zeichnete drei leere Teile in einem Flex-Rahmen, 534 Byte je Zelle —
+        // bei 40 Spalten und 20 Zeilen der grösste Posten der Satztabelle. Zu sehen war nichts davon.*
+        if ($context->purpose === Purpose::Display && $inner !== '' && ! $withLabel) {
+            $sichtbar = false;
+
+            foreach ($context->surroundings->parts as $part) {
+                $markup   = $part->isHidden() ? '' : $part->result->markup;
+                $sichtbar = $sichtbar || trim(strip_tags($markup)) !== '' || str_contains($markup, '<img') || str_contains($markup, '<input');
+            }
+
+            if (! $sichtbar) {
+                return new RenderResult('<span class="taxmod-value"></span>', array_values(array_unique($usedRelations)));
+            }
+        }
+
+        if ($inner !== '' && $gesammelt !== []) {
+            $inner .= HintMarkup::combined($gesammelt);
+        }
+
+        return new RenderResult(
+            $inner === '' ? '' : $this->createHtmlContainer($inner, $vertical),
+            array_values(array_unique($usedRelations))
+        );
+    }
+
+    /**
+     * ⚠️ **Only the exact word `vertical` turns the axis**; everything else — silence, an empty
+     * setting, a misspelling — is the default. *That reading, and the default it falls back to, live
+     * in {@see Orientation} since TASK-063, because {@see TableRenderer} reads the same switch.*
+     */
+    private function isVertical(RenderContext $context): bool
+    {
+        return Orientation::fromContext($context)->isVertical();
+    }
+
+    /**
+     * ⚠️ **Silence is *on*, which is why this is not a plain `asBool()`.** The pattern is
+     * {@see RenderContext::mayEdit()}'s — read the switch, and where the chain is silent use the
+     * default that was decided rather than PHP's falsy zero. *`?->` guards a null object here, not
+     * a missing key.*
+     */
+    private function withLabel(RenderContext $context): bool
+    {
+        $switch = $context->setting(self::LABEL);
+
+        if ($switch === null || $switch->isNothing()) {
+            return true;
+        }
+
+        return $switch->asBool();
+    }
+
+    /**
+     * ⚠️ **The class is the hook and the inline axis is the behaviour.** *A class alone would make
+     * the switch a name that only a stylesheet honours — and there is no rule for `taxmod-compact`
+     * in `assets/admin.css`, so the two orientations would have rendered identically. The class
+     * stays so a stylesheet can still take over.*
+     */
+    private function createHtmlContainer(string $inner, bool $vertical): string
+    {
+        // ⚠️ *The cross-axis alignment is not the same fact as the axis.* Along a row the parts share
+        // a **text baseline**, which is what makes a compact line read as one line; down a column
+        // baseline alignment would align them sideways instead, so the column starts them flush.
+        // ⚠️ **Waagerecht heisst waagerecht — kein Umbruch.** *Sein Befund am 2026-09-06: die Achse
+        // stand richtig auf `row`, und in der schmalen Vorschauspalte brachen zwei Eingabefelder
+        // trotzdem untereinander. **Es sah aus wie der falsche Renderer und war der Umbruch.** Sein
+        // Wort: «und nicht umbrechen». Senkrecht darf weiter umbrechen — dort ist es die Achse selbst.*
+        $axis = $vertical
+            ? 'flex-direction:column;align-items:flex-start;flex-wrap:wrap'
+            : 'flex-direction:row;align-items:baseline;flex-wrap:nowrap';
+
+        return RenderResult::htmlTag('div', [
+            'class' => 'taxmod-compact taxmod-compact-' . ($vertical ? self::VERTICAL : self::HORIZONTAL),
+            // ⚠️ **Ein Leerzeichen, nicht ein Abstand.** *Sein Wort: «für Admin und in der Ausgabe
+            // trennt sie im Prinzip nur ein Space.» `.25em` ist die Breite eines Leerzeichens in
+            // dieser Schrift; `.5em` sah nach Spalten aus, und genau das ist `compact` nicht.*
+            'style' => 'display:flex;gap:.25em;' . $axis,
+        ]) . $inner . '</div>';
+    }
+
+    /**
+     * ⚠️ **The label is the attribute's own name, and that is the same gap
+     * {@see FormRenderer::row()} names rather than fills.** A field should read its label in the
+     * **`form` role** ([D-196](../../../docs/NewConcept/90-decision-log.md) seeds one by that
+     * name), which means the label has to arrive in the context the way a reference's does. *Until
+     * it does, this shows the relation's internal name — the same honesty the chain itself ends on: a
+     * node's own name, never nothing ([D-020](../../../docs/NewConcept/90-decision-log.md)).*
+     */
+    private function createHtmlPart(RenderedField $part, bool $withLabel, bool $vertical): string
+    {
+        $label = $withLabel
+            ? RenderResult::htmlTag('span', ['class' => 'taxmod-compact-label'])
+                . RenderResult::escape($part->relation->name) . '</span>'
+            : '';
+
+        // ⚠️ **Senkrecht steht die Hilfe bei ihrem Feld, waagerecht nicht**
+        // ([D-662](../../../docs/NewConcept/90-decision-log.md)). *Sein Grund, wörtlich: «bei compact
+        // horizontal würde ich die Texte sammeln und in ein Fragezeichen am Ende kombinieren» — dort
+        // trennt die Felder nur ein Leerzeichen, **ein Zeichen je Feld wäre ein Zeichen je
+        // Leerzeichen**. Senkrecht hat jedes Feld seine eigene Zeile und damit auch Platz für sein
+        // eigenes Zeichen.*
+        $hint = $vertical ? HintMarkup::icon($part->hint) : '';
+
+        return RenderResult::htmlTag('span', ['class' => 'taxmod-compact-part'])
+            . $label
+            . RenderResult::htmlTag('span', ['class' => 'taxmod-compact-field'])
+            . $part->result->markup
+            . '</span>' . $hint . '</span>';
+    }
+}

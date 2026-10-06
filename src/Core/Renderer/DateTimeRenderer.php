@@ -26,6 +26,10 @@ use Taxmod\Core\Model\SimpleType;
  */
 final class DateTimeRenderer extends TypedFieldRenderer
 {
+    /** `date`, `time` oder alles — was das Steuerelement anbietet ({@see controlType()}). */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public DatePrecision $date_precision = DatePrecision::DateTime;
+
     public const NAME = 'datetime';
 
     /** The granularity setting — a free key, deliberately named apart from decimal precision. */
@@ -43,16 +47,24 @@ final class DateTimeRenderer extends TypedFieldRenderer
 
     protected function display(RenderContext $context): string
     {
-        return $this->shown(RenderResult::escape($this->forControl($context, ' ')));
+        return $this->createHtmlValueSpan(RenderResult::escape($this->forControl($context, ' ')));
     }
 
     protected function input(RenderContext $context): string
     {
-        return '<input'
-            . $this->attribute('type', $this->controlType($context))
-            . $this->attribute('name', $context->fieldName)
-            . $this->attribute('value', $this->forControl($context, 'T'))
-            . '>';
+        return RenderResult::htmlTag('input', [
+            'type'  => $this->controlType($context),
+            'name'  => $context->fieldName,
+            // ⚠️ *Ohne dies schickt die Eingabe nichts, wenn sie ausserhalb ihres Formulars steht.*
+            'form'  => $context->surroundings->formId,
+            // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
+            // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
+            'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
+            'value' => $this->forControl($context, 'T'),
+            // ⚠️ *Die Grenzen des Datums (D-757) reichen bis ins Eingabefeld, in der Genauigkeit des Feldes; ein Jahr bleibt vierstellig.*
+            'min'   => $this->bound($context, 'min', '0'),
+            'max'   => $this->bound($context, 'max', '9999'),
+        ]);
     }
 
     /**
@@ -60,11 +72,36 @@ final class DateTimeRenderer extends TypedFieldRenderer
      * stored because nobody configured anything would hide a value that is there. Cutting it down
      * is the deliberate act, not the default.
      */
+    /** Eine Grenze aus den Einstellungen, in der Form des Steuerelements — für das Jahr die Vorgabe, wo keine steht. */
+    private function bound(RenderContext $context, string $key, string $jahrVorgabe): ?string
+    {
+        $grenze = $context->setting($key)?->text;
+        $art    = $this->controlType($context);
+
+        if ($grenze === null || $grenze === '') {
+            return $art === 'number' ? $jahrVorgabe : null;
+        }
+
+        $date = substr($grenze, 0, 10);
+        $time = substr($grenze, 11, 5);
+
+        return match ($art) {
+            'number' => substr($date, 0, 4),
+            'month'  => substr($date, 0, 7),
+            'date'   => $date,
+            'time'   => $time,
+            default  => $date . 'T' . ($time === '' ? '00:00' : $time),
+        };
+    }
+
     private function controlType(RenderContext $context): string
     {
         return match ($context->setting(self::PRECISION)?->text) {
-            'date' => 'date',
-            'time' => 'time',
+            // ⚠️ *Ein Jahr allein hat kein eigenes Eingabefeld im Browser — eine vierstellige Zahl (D-737).*
+            'year'  => 'number',
+            'month' => 'month',
+            'date'  => 'date',
+            'time'  => 'time',
             default => 'datetime-local',
         };
     }
@@ -72,7 +109,7 @@ final class DateTimeRenderer extends TypedFieldRenderer
     /** @param string $separator What sits between date and time — a space to read, a `T` to submit. */
     private function forControl(RenderContext $context, string $separator): string
     {
-        $stored = $this->characters($context);
+        $stored = $this->outputValue($context);
 
         if ($stored === '') {
             return '';
@@ -82,9 +119,11 @@ final class DateTimeRenderer extends TypedFieldRenderer
         $time = substr($stored, 11, 5);
 
         return match ($this->controlType($context)) {
-            'date'  => $date,
-            'time'  => $time,
-            default => $time === '' ? $date : $date . $separator . $time,
+            'number' => substr($date, 0, 4),
+            'month'  => substr($date, 0, 7),
+            'date'   => $date,
+            'time'   => $time,
+            default  => $time === '' ? $date : $date . $separator . $time,
         };
     }
 }

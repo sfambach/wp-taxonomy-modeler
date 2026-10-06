@@ -5,9 +5,9 @@ namespace Taxmod\Core\Repository;
 use Taxmod\Core\Model\Relation;
 
 /**
- * Storage for edges.
+ * Storage for relations.
  *
- * ⚠️ **The inheritance edges are the tree.** `nodes.path` is a **materialised** ancestor path
+ * ⚠️ **The inheritance relations are the tree.** `nodes.path` is a **materialised** ancestor path
  * (D-014) — derived, rebuildable, and never a second truth. What is asked here is the truth;
  * `path` is what makes asking it cheap.
  *
@@ -21,54 +21,32 @@ use Taxmod\Core\Model\Relation;
  */
 interface RelationRepository
 {
-    public function add(Relation $relation): void;
+    /**
+     * Eine neue Kante schreiben — **und die Kante zurückgeben, wie sie nun dasteht**.
+     *
+     * ⚠️ *Dieselbe Zusage wie {@see \Taxmod\Core\Repository\NodeRepository::add()}: seit TASK-004
+     * vergibt `relations` ihre Ids selbst, **Id `0` heisst «vergib eine»**, jede andere wird
+     * übernommen.*
+     */
+    public function add(Relation $relation): Relation;
 
     /**
      * @throws \Taxmod\Core\Exception\ConcurrentChange
      */
     public function save(Relation $relation, int $expectedVersion): void;
 
-    /** The inheritance edge that puts this node where it is, or null for the root. */
-    public function inheritanceEdgeTo(int $childId): ?Relation;
-
-    /**
-     * The inheritance edges under a parent, in `position` order.
-     *
-     * @return list<Relation>
-     */
-    public function childEdgesOf(int $parentId): array;
-
-    /** One past the last position among a parent's children — where a new child goes. */
-    public function nextPositionUnder(int $parentId): int;
+    // ⚠️ **Hier standen `inheritanceRelationTo()`, `childRelationsOf()`, `nextPositionUnder()`,
+    // `reparentChildRelations()` und `allInheritanceRelations()` — der ganze Baum** (TASK-018,
+    // [D-581](../../../docs/NewConcept/90-decision-log.md)). *Vererbung ist keine Kantenart mehr,
+    // sondern `nodes.parent_node_id` mit `nodes.sort_order`; ihre Leser stehen jetzt in
+    // {@see NodeRepository}. **Damit verschwindet auch die Frage «ist es Vererbung?»**, die
+    // gemessen 15 von 19 Verzweigungen auf die Kantenart stellten.*
 
     /** One past the last position among a node's **attributes** — where a new one goes. */
-    public function nextAttributePositionUnder(int $ownerId): int;
+    public function nextFieldPositionUnder(int $ownerId): int;
 
     /**
-     * Hang every child of one parent under another, in one statement.
-     *
-     * ⚠️ **Exists so that [U4](../../../docs/NewConcept/20-interaction.md) is not a loop.**
-     * Deleting only a node promotes its children to their grandparent; done one edge at a time
-     * that is a write per child, which `CD-7` forbids.
-     *
-     * @param int $startPosition Where the promoted children are placed among their new
-     *                           siblings — their relative order is kept.
-     */
-    public function reparentChildEdges(int $fromParentId, int $toParentId, int $startPosition): void;
-
-    /**
-     * Every inheritance edge in the model.
-     *
-     * ⚠️ **Deliberately unbounded, because the model is small by design.** This is a modeller:
-     * thousands of *records* are unremarkable, but the model itself stays in the hundreds
-     * (D-308). Asking per parent instead would be one query per level.
-     *
-     * @return list<Relation>
-     */
-    public function allInheritanceEdges(): array;
-
-    /**
-     * The attribute edges owned by any of these nodes — everything that is not inheritance.
+     * The attribute relations owned by any of these nodes — everything that is not inheritance.
      *
      * ⚠️ **Several owners in one call, because attributes are inherited.** A node's attributes
      * are its own plus every ancestor's, and asking per ancestor would be one query per level —
@@ -79,9 +57,9 @@ interface RelationRepository
      *
      * @return list<Relation>
      */
-    public function attributeEdgesOf(array $ownerIds): array;
+    public function fieldRelationsOf(array $ownerIds): array;
 
-    /** Remove the edges belonging to a purge. The only place edges are deleted outright. */
+    /** Remove the relations belonging to a purge. The only place relations are deleted outright. */
     /**
      * The removed attributes of these owners — D-128's *show deleted*.
      *
@@ -93,7 +71,85 @@ interface RelationRepository
      * @param  list<int>      $ownerIds
      * @return list<Relation>
      */
-    public function parkedAttributeEdgesOf(array $ownerIds): array;
+    public function parkedFieldRelationsOf(array $ownerIds): array;
 
-    public function purgeEdgesTouching(int $nodeId): void;
+    /**
+     * Eine Kante parken — **sie und alles, was zu ihr gehört**.
+     *
+     * ⚠️ **[D-619](../../../docs/NewConcept/90-decision-log.md), auf sein Wort:** *«1»*, auf drei
+     * vorgelegte Wege — mitwandern, stehenbleiben, oder Parken verbieten, solange Werte dranhängen.
+     * **Die Wertzeilen der Kante wandern mit**, und beim Zurückholen wieder heraus: eine Gruppe, ein
+     * Akt, umkehrbar. *«Stehenbleiben» hiesse Wertzeilen ohne ihre Kante — ein Rest, der niemandem
+     * gehört, und Parken ist kein Löschen ([D-604](../../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * ⚠️ **Warum das hier steht und nicht bei {@see self::save()}:** *seit TASK-013 ist Parken kein
+     * Schreiben einer Spalte mehr, sondern ein **Umzug**. Wer es als `save()` einer veränderten Kante
+     * schriebe, müsste die Wertzeilen selbst mitnehmen — und würde es beim nächsten Mal vergessen.*
+     */
+    public function park(int $relationId, int $changeGroupId): void;
+
+    /**
+     * Die Umkehrung von {@see self::park()} — und ausdrücklich keine zweite Mechanik.
+     *
+     * @return Relation|null Die zurückgeholte Kante, oder `null`, wenn dort nichts geparkt liegt.
+     */
+    public function unpark(int $relationId): ?Relation;
+
+    /**
+     * The mirror of {@see self::fieldRelationsOf()} — every attribute **pointing at** these nodes.
+     *
+     * ⚠️ **This is the one direction that appears nowhere else** ([D-199](../../../docs/NewConcept/90-decision-log.md)):
+     * *«everything going out of the current node is in the attributes»* — outgoing non-inheritance
+     * relations **are** the attributes table, the parent relation is a chip in the head and the children are
+     * the tree. **Incoming is what was left, and it had no query.**
+     *
+     * ⚠️ *Inheritance is excluded here for the same reason it is excluded there: an incoming
+     * inheritance relation is a **child**, and the tree already draws every one of them.*
+     *
+     * ⚠️ **Parked attributes are left out**, as in {@see self::fieldRelationsOf()} — a parked attribute
+     * is hidden in its owning node ([D-128](../../../docs/NewConcept/90-decision-log.md)), so listing
+     * it as a *use* of this node would show a dependency its own node does not show.
+     *
+     * @param  list<int>      $targetIds
+     * @return list<Relation>
+     */
+    public function fieldRelationsTo(array $targetIds): array;
+
+    /**
+     * Every relation with one end on any of these nodes — **both** ends, and every kind.
+     *
+     * ⚠️ **Both ends and every kind, because a purge has to reach what hangs off an relation.** An relation is
+     * an identity ([D-080](../../../docs/NewConcept/90-decision-log.md)) and may carry settings and
+     * labels of its own, so the tidy-up needs its **id** and not only its deletion — *which is why this
+     * exists beside {@see self::purgeRelationsTouching()} rather than instead of it.*
+     *
+     * @param  list<int>      $nodeIds
+     * @return list<Relation>
+     */
+    public function relationsTouching(array $nodeIds): array;
+
+    public function purgeRelationsTouching(int $nodeId): void;
+
+    /**
+     * Eine Kante zu ihrer Id.
+     *
+     * ⚠️ **Der Leser hat gefehlt, und das ist auffällig.** *Jeder andere Zugang hier braucht einen
+     * **Knoten** — den Besitzer, das Ziel, den Elternteil. Solange Kanten nur über ihre Nachbarn
+     * gefunden wurden, ging es; seit [D-543](../../../docs/NewConcept/90-decision-log.md) ist die **Id**
+     * einer Kante eine aufgeschriebene Angabe, und dann muss man von ihr aus auch zurückkommen.*
+     */
+    public function byId(int $relationId): ?Relation;
+
+    /**
+     * Mehrere Kanten in **einer** Abfrage (`CD-7`).
+     *
+     * ⚠️ *Gemessen am 2026-09-20 ([INF-063](../../../docs/neues-konzept-eingang.md)): die Einstellungen lasen je Feldverweis
+     * eine Kante — auf «Kompatibilität» 28 Abfragen derselben Form, auf «Parts List» 27, gegen eine Decke von 20
+     * ([D-814](../../../docs/NewConcept/90-decision-log.md)). Verweise auf Felder haben Listen wie `summary_fields`, und
+     * davon gibt es seit [D-888](../../../docs/NewConcept/90-decision-log.md) mehr.*
+     *
+     * @param  list<int>                $relationIds
+     * @return array<int, Relation>     Kanten-Id => Kante; ohne Eintrag, wo keine steht.
+     */
+    public function byIds(array $relationIds): array;
 }

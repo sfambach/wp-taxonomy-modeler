@@ -49,9 +49,9 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
-use Taxmod\WordPress\Persistence\TableIdentityAllocator;
 use Taxmod\WordPress\Persistence\WpdbChangelog;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\SystemClock;
 
 global $wpdb;
@@ -79,14 +79,16 @@ update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
 
 $framework = new SeededFrameworkNodes(
     new WpdbNodeRepository(),
-    new TableIdentityAllocator(),
+    new WpdbRelationRepository(),
     new WpdbChangelog(new SystemClock())
 );
 $framework->seed();
 
 printf(
-    "Reinstalled. Root is #%d, trash is #%d, next id will be %d.\n",
+    // ⚠️ *Seit TASK-004 gibt es keine gemeinsame Nummer mehr — die nächste Knoten-Id kommt aus
+    // `nodes`, die nächste Kanten-Id aus `relations`.*
+    "Reinstalled. Root is #%d, trash is #%d, next node id will be %d.\n",
     $framework->root()->id,
     $framework->trash()->id,
-    (int) $wpdb->get_var('SELECT MAX(id) + 1 FROM ' . Schema::table('identities'))
+    (int) $wpdb->get_var('SELECT MAX(id) + 1 FROM ' . Schema::table('nodes'))
 );

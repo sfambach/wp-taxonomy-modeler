@@ -20,6 +20,8 @@ final class FixedFramework implements FrameworkNodes
         private readonly int $installationId = 999000,
         /** @var array<string,int> */
         private readonly array $roleIds = [],
+        /** @var array<string, Node> Je Anker der Knoten, keyed by its value. */
+        private readonly array $anchors = [],
     ) {
     }
 
@@ -49,11 +51,25 @@ final class FixedFramework implements FrameworkNodes
         return null;
     }
 
-
-
     public function roleId(SeededRole $role): int
     {
         return $this->roleIds[$role->value] ?? 0;
+    }
+
+    public function anchor(\Taxmod\Core\Model\NodeClass\Anchor $anchor): ?Node
+    {
+        return $this->anchors[$anchor->value] ?? null;
+    }
+
+    /**
+     * ⚠️ *Ohne einen Settings-Ast im Doppel gilt die alte Kette — die Regel greift nur, wo der Ast
+     * existiert ([D-545](../../docs/NewConcept/90-decision-log.md)).*
+     *
+     * @return list<int>
+     */
+    public function inheritanceOwnersOf(Node $node): array
+    {
+        return [...$node->ancestorIds(), $node->id];
     }
 
     public function installationId(): int

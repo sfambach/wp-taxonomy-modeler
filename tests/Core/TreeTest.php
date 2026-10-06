@@ -22,7 +22,7 @@ use Taxmod\Tests\Core\Fake\RecordedChanges;
 final class TreeTest extends TestCase
 {
     private InMemoryNodes $nodes;
-    private InMemoryRelations $edges;
+    private InMemoryRelations $relations;
     private ModelEditor $editor;
     private Tree $tree;
     private Node $root;
@@ -30,26 +30,24 @@ final class TreeTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->edges = new InMemoryRelations();
-        $this->nodes = new InMemoryNodes($this->edges);
+        $this->relations = new InMemoryRelations();
+        $this->nodes = new InMemoryNodes($this->relations);
         $identities  = new CountingIdentities();
 
         $this->root  = Node::create($identities->next(), 'Root', null);
-        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path);
+        $this->trash = Node::create($identities->next(), 'Trash', $this->root->path, $this->root->id, 0);
 
         $this->nodes->add($this->root);
         $this->nodes->add($this->trash);
-        $this->edges->add(Relation::inheritance($identities->next(), $this->root->id, $this->trash->id, 0));
 
         $this->editor = new ModelEditor(
             $this->nodes,
-            $this->edges,
-            $identities,
+            $this->relations,
             new FixedFramework($this->root, $this->trash),
             new RecordedChanges()
         );
 
-        $this->tree = new Tree($this->nodes, $this->edges);
+        $this->tree = new Tree($this->nodes);
     }
 
     /** @return list<string> */
@@ -97,7 +95,7 @@ final class TreeTest extends TestCase
     }
 
     #[Test]
-    public function siblings_come_in_edge_order_and_follow_a_reorder(): void
+    public function siblings_come_in_relation_order_and_follow_a_reorder(): void
     {
         $this->editor->createNode('Model', $this->root->id);
         $second = $this->editor->createNode('Primitives', $this->root->id);
@@ -187,6 +185,55 @@ final class TreeTest extends TestCase
         self::assertFalse($has['Primitives']);
     }
 
+    /**
+     * ⚠️ **Die Wurzel steht sonst in keiner Zeile, und das ist der Bau, keine Einstellung:**
+     * `collect()` gibt ab `$rows[]` nur **Kinder** aus. Es gab also nichts umzuschalten — der Schalter
+     * musste im Lauf entstehen.
+     *
+     * ⚠️ *Der Eigentümer braucht sie, um ihr **Felder zu geben**: die Auflösungskette lautet
+     * Installation → Wurzel → Vorfahren → Knoten, und die Installation ist kein Knoten. Der Vorgänger
+     * hatte den Schalter, und D-273 nennt ihn «already the right answer».*
+     */
+    #[Test]
+    public function the_root_is_no_row_until_it_is_asked_for(): void
+    {
+        $this->editor->createNode('Model', $this->root->id);
+
+        $ohne = $this->tree->rowsUnder($this->root, [$this->trash->id]);
+        $mit  = $this->tree->rowsUnder($this->root, [$this->trash->id], [], false, true);
+
+        $namen = static fn (array $rows): array => array_map(
+            static fn (array $r): string => $r['node']->name,
+            $rows
+        );
+
+        self::assertNotContains('Root', $namen($ohne), 'ohne Bitte steht die Wurzel in keiner Zeile');
+        self::assertSame('Root', $namen($mit)[0] ?? null, 'mit Bitte steht sie vorn');
+        self::assertCount(count($ohne) + 1, $mit, 'und sie ist genau eine Zeile mehr');
+    }
+
+    /**
+     * ⚠️ *Die Kinder rücken eine Stufe ein, sonst stünde die Wurzel **neben** ihnen statt über ihnen —
+     * und jeder Leser der Zeilen müsste einen Sonderfall kennen.*
+     */
+    #[Test]
+    public function asking_for_the_root_pushes_its_children_one_level_in(): void
+    {
+        $this->editor->createNode('Model', $this->root->id);
+
+        $mit = $this->tree->rowsUnder($this->root, [$this->trash->id], [], false, true);
+
+        self::assertSame(0, $mit[0]['depth'], 'die Wurzel steht auf null');
+        self::assertSame('Model', $mit[1]['node']->name);
+        self::assertSame(1, $mit[1]['depth'], 'und ihr Kind eine Stufe tiefer');
+
+        // ⚠️ *Allein auf ihrer Ebene, also erste **und** letzte — damit bietet die Zeile keine Pfeile
+        // an, was richtig ist: die Wurzel hat keine Geschwister zum Tauschen.*
+        self::assertTrue($mit[0]['isFirst']);
+        self::assertTrue($mit[0]['isLast']);
+        self::assertFalse($mit[0]['hidden'], 'nie versteckt: auf die Wurzel zeigt keine Vererbungskante');
+    }
+
     #[Test]
     public function a_node_whose_only_children_are_skipped_counts_as_having_none(): void
     {
@@ -220,6 +267,54 @@ final class TreeTest extends TestCase
             static fn (array $row): string => str_repeat('-', $row['depth']) . $row['node']->name,
             $this->tree->rowsUnder($this->root, $skip, $collapsed)
         );
+    }
+
+    #[Test]
+    public function by_default_every_node_that_has_children_is_folded(): void
+    {
+        // ⚠️ The owner, 2026-08-28: *«wenn ich die Seite neu aufmach, dann sollte Kolleps sein — das
+        // bitte die beste Übersicht.»* So the top level is the whole of a fresh page.
+        $model = $this->editor->createNode('Model', $this->root->id);
+        $board = $this->editor->createNode('Board', $model->id);
+        $this->editor->createNode('Resistor', $board->id);
+        $this->editor->createNode('Primitives', $this->root->id);
+
+        // Without the default this reads ['Trash', 'Model', '-Board', '--Resistor', 'Primitives'] —
+        // which is what the screen showed before, and what makes this assertion worth something.
+        self::assertSame(
+            ['Trash', 'Model', 'Primitives'],
+            $this->drawnWith([], $this->tree->collapsedByDefault())
+        );
+    }
+
+    #[Test]
+    public function the_path_to_the_revealed_node_is_open_and_the_node_itself_stays_folded(): void
+    {
+        // ⚠️ Consistency, not taste: a screen showing this node's detail beside the tree would
+        // otherwise show a node the tree does not contain.
+        $model = $this->editor->createNode('Model', $this->root->id);
+        $board = $this->editor->createNode('Board', $model->id);
+        $chosen = $this->editor->createNode('Resistor', $board->id);
+        $this->editor->createNode('Tolerance', $chosen->id);
+        $this->editor->createNode('Primitives', $this->root->id);
+
+        self::assertSame(
+            ['Trash', 'Model', '-Board', '--Resistor', 'Primitives'],
+            $this->drawnWith([], $this->tree->collapsedByDefault($chosen))
+        );
+    }
+
+    #[Test]
+    public function a_node_with_no_children_is_never_in_the_folded_set(): void
+    {
+        // A fold control on a row that has nothing under it would do nothing (U8).
+        $model = $this->editor->createNode('Model', $this->root->id);
+        $leaf  = $this->editor->createNode('Board', $model->id);
+
+        $folded = $this->tree->collapsedByDefault();
+
+        self::assertContains($model->id, $folded);
+        self::assertNotContains($leaf->id, $folded);
     }
 
     #[Test]
