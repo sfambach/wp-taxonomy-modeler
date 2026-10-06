@@ -215,13 +215,7 @@ echo "\n4 · Der gerechnete Pfad stimmt mit der Spalte überein\n";
 $gerechnet = [];
 
 foreach ($wpdb->get_results(
-    "WITH RECURSIVE taxmod_ahnen (id, path) AS (
-         SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
-         UNION ALL
-         SELECT k.id, CONCAT(v.path, '.', k.id)
-           FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
-     )
-     SELECT id, path FROM taxmod_ahnen",
+    "SELECT a.id, a.path FROM " . \Taxmod\WordPress\Persistence\Ancestry::paths($nodes) . " a",
     ARRAY_A
 ) ?: [] as $zeile) {
     $gerechnet[(int) $zeile['id']] = (string) $zeile['path'];
