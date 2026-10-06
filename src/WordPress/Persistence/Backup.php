@@ -299,7 +299,8 @@ final class Backup
         $options = [];
 
         foreach ($rows as $row) {
-            if (! in_array($row['option_name'], self::OPTIONS_KEPT, true)) {
+            // ⚠️ *Ein Aktivierungsfehler gehört der Website, auf der er geschah — eingespielt soll er drüben verschwinden.*
+            if (! in_array($row['option_name'], [...self::OPTIONS_KEPT, 'taxmod_activation_failure'], true)) {
                 $options[(string) $row['option_name']] = (string) $row['option_value'];
             }
         }

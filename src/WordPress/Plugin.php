@@ -47,11 +47,14 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.1';
+    public const VERSION     = '0.1.2';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
     public const CAPABILITY = 'manage_options';
+
+    /** Was die Aktivierung abbrach — eine Option, weil der Hinweis erst im nächsten Aufruf erscheint. */
+    private const ACTIVATION_FAILURE = 'taxmod_activation_failure';
 
     /** Was den letzten Umbau der Tabellen abbrach — `null`, solange keiner scheiterte. */
     private ?string $upgradeFailure = null;
@@ -137,6 +140,11 @@ final class Plugin
             $this->bringUpToDate();
         } catch (\Throwable $e) {
             $this->upgradeFailure = $e->getMessage();
+        }
+
+        $this->upgradeFailure ??= ((string) get_option(self::ACTIVATION_FAILURE, '')) ?: null;
+
+        if ($this->upgradeFailure !== null) {
             add_action('admin_notices', $this->reportUpgradeFailure(...));
         }
     }
@@ -176,7 +184,23 @@ final class Plugin
         $this->compositionScaffold()->importOnce();
     }
 
+    /**
+     * ⚠️ **Auch die Aktivierung fängt ihren Fehler** ([D-909](../../docs/NewConcept/90-decision-log.md)). *Gemessen am
+     * 2026-10-06 auf fambach.net: ein Rest von 0.0.1 liess `install()` werfen, und WordPress verweigerte die Aktivierung
+     * ganz — damit war auch die Seite «Backup» nicht erreichbar, die den Stand reparieren soll. Jetzt bleibt das Plugin
+     * aktiv, der Fehler steht in einer Option und als Hinweis, und das Einspielen einer Sicherung räumt beide weg.*
+     */
     public function activate(): void
+    {
+        try {
+            $this->installFresh();
+            delete_option(self::ACTIVATION_FAILURE);
+        } catch (\Throwable $e) {
+            update_option(self::ACTIVATION_FAILURE, $e->getMessage(), false);
+        }
+    }
+
+    private function installFresh(): void
     {
         Schema::install();
         update_option(Schema::VERSION_OPTION, Schema::VERSION, true);
