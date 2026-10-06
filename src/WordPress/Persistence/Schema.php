@@ -363,7 +363,7 @@ final class Schema
      * `parent_node_id` der Baum** ([D-581](../../../docs/NewConcept/90-decision-log.md)), und
      * [D-082](../../../docs/NewConcept/90-decision-log.md) nannte die Kette von Anfang an «derived and
      * rebuildable». **Ein `Node` trägt den Weg weiter** — er wird beim Lesen gerechnet
-     * ({@see WpdbNodeRepository::ancestry()}), nicht abgeschrieben.*
+     * ({@see Ancestry::paths()}), nicht abgeschrieben.*
      *
      * ⚠️ *Der Schatten behält seine Spalte, aus demselben Grund wie `name`
      * ([D-065](../../../docs/NewConcept/90-decision-log.md)): eine alte Zeile führt ihre Angaben als
@@ -1319,7 +1319,7 @@ final class Schema
      * punktseparierte Kette daneben ist seine Abkürzung, und
      * [D-082](../../../docs/NewConcept/90-decision-log.md) hat sie von Anfang an «derived and
      * rebuildable» genannt. **Ein `Node` trägt sie weiter** — sie wird beim Lesen gerechnet
-     * ({@see WpdbNodeRepository::ancestry()}); was fällt, ist die zweite Ablage, nicht die Tatsache.*
+     * ({@see Ancestry::paths()}); was fällt, ist die zweite Ablage, nicht die Tatsache.*
      *
      * ⚠️ **Der Schritt vergleicht, bevor er löscht, und kehrt bei der ersten Abweichung um.** *«Der
      * gerechnete Weg ist derselbe wie der gespeicherte» ist keine Vermutung, die man nach dem Löschen
@@ -1573,14 +1573,8 @@ final class Schema
         // `parent_node_id` und stellt ihn neben den gespeicherten. **Null Abweichungen ist die
         // Bedingung**, nicht das erwartete Ergebnis.*
         $abweichend = (int) $wpdb->get_var(
-            "WITH RECURSIVE taxmod_ahnen (id, path) AS (
-                 SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
-                 UNION ALL
-                 SELECT k.id, CONCAT(v.path, '.', k.id)
-                   FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
-             )
-             SELECT COUNT(*) FROM {$nodes} n
-             LEFT JOIN taxmod_ahnen a ON a.id = n.id
+            "SELECT COUNT(*) FROM {$nodes} n
+             LEFT JOIN " . Ancestry::paths($nodes) . " a ON a.id = n.id
              WHERE a.path IS NULL OR a.path <> n.path"
         );
 
@@ -1638,14 +1632,8 @@ final class Schema
     {
         $nodes ??= self::table('nodes');
 
-        return "WITH RECURSIVE taxmod_ahnen (id, path) AS (
-                    SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
-                    UNION ALL
-                    SELECT k.id, CONCAT(v.path, '.', k.id)
-                      FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
-                )
-                SELECT COALESCE(MD5(GROUP_CONCAT(a.path ORDER BY a.path SEPARATOR '|')), '')
-                FROM taxmod_ahnen a";
+        return "SELECT COALESCE(MD5(GROUP_CONCAT(a.path ORDER BY a.path SEPARATOR '|')), '')
+                FROM " . Ancestry::paths($nodes) . ' a';
     }
 
     /**
@@ -1670,13 +1658,8 @@ final class Schema
             // ⚠️ *Die Tiefen je Ebene — **aus `parent_node_id` gerechnet**, nie aus dem Pfad, sonst
             // stünde die Zusage auf dem, was gerade geprüft wird.*
             'depths'    => (string) $wpdb->get_var(
-                "WITH RECURSIVE taxmod_tiefe (id, ebene) AS (
-                     SELECT id, 0 FROM {$nodes} WHERE parent_node_id IS NULL
-                     UNION ALL
-                     SELECT k.id, v.ebene + 1 FROM {$nodes} k INNER JOIN taxmod_tiefe v ON v.id = k.parent_node_id
-                 )
-                 SELECT COALESCE(GROUP_CONCAT(CONCAT(x.ebene, ':', x.wieviele) ORDER BY x.ebene SEPARATOR '|'), '')
-                 FROM (SELECT ebene, COUNT(*) AS wieviele FROM taxmod_tiefe GROUP BY ebene) x"
+                "SELECT COALESCE(GROUP_CONCAT(CONCAT(x.ebene, ':', x.wieviele) ORDER BY x.ebene SEPARATOR '|'), '')
+                 FROM (SELECT " . Ancestry::depth() . ' AS ebene, COUNT(*) AS wieviele FROM ' . Ancestry::paths($nodes) . ' a GROUP BY ebene) x'
             ),
             // ⚠️ *Vater · Stelle · Kind, als eine Prüfsumme. **Das ist der Baum selbst**, in der
             // einzigen Form, die ohne den Pfad auskommt.*
@@ -2706,11 +2689,9 @@ final class Schema
             return;
         }
 
-        $ast = "WITH RECURSIVE taxmod_ast (id) AS (
-                    SELECT id FROM {$nodes} WHERE id IN (" . implode(',', $wurzeln) . ")
-                    UNION ALL
-                    SELECT k.id FROM {$nodes} k INNER JOIN taxmod_ast v ON v.id = k.parent_node_id
-                )";
+        // ⚠️ *In eine abgeleitete Tabelle verpackt: MySQL 5.7 lässt in einem `IN (SELECT …)` keine Tabelle zu, die die
+        // Anweisung zugleich ändert — die Kopie in `t` entkoppelt beide (D-910).*
+        $ast = '(SELECT t.id FROM (' . Ancestry::descendants(array_map('intval', $wurzeln), $nodes) . ') t)';
         // ⚠️ *`relation_id = 0`: der Satz einer **Verwendungsstelle** ist `user`
         // ([D-674](../../../docs/NewConcept/90-decision-log.md)) und trägt Einstellungen, keine Daten
         // des Typs — er ist die Adresse der Stelle und bleibt, wo er ist.*
@@ -2718,14 +2699,14 @@ final class Schema
         // Schritt lief beim Heben auf Fassung 54 erneut und nahm 68 Adressteile unter «Street / H#» und «Zip/City», auf die 68 lebende
         // Werte zeigten; über ihre Änderungsgruppe zurückgeholt. Dieselbe Bedingung steht in {@see self::dropEmptyDefaultRecords()}.*
         $leerBedingung = "s.record_type = 'user' AND s.relation_id = 0
-                AND s.node_id IN (SELECT id FROM taxmod_ast)
+                AND s.node_id IN {$ast}
                 AND NOT EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)
                 AND NOT EXISTS (SELECT 1 FROM {$werte} h WHERE h.value_ref = s.id AND h.value_ref_kind = 'record')";
 
         /** @var list<array{id: string, version: string, node_id: string}> $leer */
-        $leer = $wpdb->get_results("{$ast} SELECT s.id, s.version, s.node_id FROM {$saetze} s WHERE {$leerBedingung}", ARRAY_A) ?: [];
+        $leer = $wpdb->get_results("SELECT s.id, s.version, s.node_id FROM {$saetze} s WHERE {$leerBedingung}", ARRAY_A) ?: [];
         $voll = (int) $wpdb->get_var(
-            "{$ast} SELECT COUNT(*) FROM {$saetze} s WHERE s.record_type = 'user' AND s.relation_id = 0 AND s.node_id IN (SELECT id FROM taxmod_ast)
+            "SELECT COUNT(*) FROM {$saetze} s WHERE s.record_type = 'user' AND s.relation_id = 0 AND s.node_id IN {$ast}
                  AND EXISTS (SELECT 1 FROM {$werte} v WHERE v.node_record_id = s.id)"
         );
 
@@ -2755,7 +2736,7 @@ final class Schema
             );
         }
 
-        $geblieben = (int) $wpdb->get_var("{$ast} SELECT COUNT(*) FROM {$saetze} s WHERE {$leerBedingung}");
+        $geblieben = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$saetze} s WHERE {$leerBedingung}");
 
         if ($geblieben !== 0) {
             throw new \RuntimeException(sprintf(
@@ -4542,7 +4523,7 @@ final class Schema
             // ⚠️ **`path` steht hier seit Fassung 35 nicht mehr, und der Schlüssel darauf auch nicht**
             // (TASK-001). *Der Weg zur Wurzel war zweimal gespeichert; seit TASK-018 ist
             // `parent_node_id` der Baum ([D-581](../../../docs/NewConcept/90-decision-log.md)), und
-            // der Weg wird beim Lesen daraus gerechnet ({@see WpdbNodeRepository::ancestry()}) —
+            // der Weg wird beim Lesen daraus gerechnet ({@see Ancestry::paths()}) —
             // «derived and rebuildable», wie [D-082](../../../docs/NewConcept/90-decision-log.md) ihn
             // von Anfang an genannt hat.*
             "CREATE TABLE {$t('nodes')} (

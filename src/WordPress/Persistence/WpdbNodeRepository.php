@@ -44,7 +44,7 @@ final class WpdbNodeRepository implements NodeRepository
      *
      * ⚠️ **`n.path` steht hier seit Fassung 35 nicht mehr** (TASK-001). *Der Pfad ist keine Spalte
      * mehr, sondern wird beim Lesen aus `parent_node_id` gerechnet — `a.path` kommt aus
-     * {@see self::ancestry()}. **Ein `Node` trägt ihn weiter**, und zwar in derselben Form wie zuvor;
+     * {@see Ancestry::paths()}. **Ein `Node` trägt ihn weiter**, und zwar in derselben Form wie zuvor;
      * was fiel, ist die zweite Ablage derselben Tatsache, nicht die Tatsache.*
      */
     private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, d.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide, n.klasse";
@@ -67,47 +67,10 @@ final class WpdbNodeRepository implements NodeRepository
         return $this->locale ?? SettingsScreen::requestedLocale();
     }
 
-    /**
-     * Der Vorfahrenweg, **einmal gerechnet statt gespeichert** (TASK-001,
-     * [D-082](../../../docs/NewConcept/90-decision-log.md): «materialised ancestor path, derived and
-     * rebuildable»).
-     *
-     * ```mermaid
-     * flowchart LR
-     *   W["Wurzel · parent_node_id IS NULL"] --> K["Kind · CONCAT(Weg, '.', id)"]
-     *   K --> K
-     * ```
-     *
-     * ⚠️ **Eine Anweisung und keine Runde je Ebene** (`CD-7`). *Ein rekursiver Ausdruck steigt vom
-     * einen wurzellosen Knoten abwärts und setzt den Weg dabei zusammen; eine Funktion, die je Stufe
-     * fragt, wäre genau das, was die Regel verbietet.*
-     *
-     * ⚠️ **Er rechnet den **ganzen** Baum, auch wenn nur eine Zeile gesucht ist, und das ist eine
-     * bewusste Wahl.** *Ein Aufstieg von der gesuchten Zeile aus wäre billiger, aber sein Anker
-     * hinge an der `WHERE`-Bedingung des äusseren Lesers — und die ist bei jedem Leser eine andere.
-     * **Ein Ausdruck, den jeder Leser gleich benutzt, ist mehr wert als sechs verschiedene**
-     * (`CD-7`: einmal gelöst, an einer Stelle). Gemessen am 2026-09-05 sind es 137 Zeilen.*
-     *
-     * ⚠️ *`CAST(... AS CHAR(255))` im Anker gibt der Spalte ihre Breite — MySQL nimmt sie von dort
-     * und schneidet sonst am ersten Wert ab. **255 ist dieselbe Breite, die die gefallene Spalte
-     * hatte**, also kann kein Weg dadurch kürzer werden, als er war.*
-     */
-    private static function ancestry(): string
-    {
-        $nodes = Schema::table('nodes');
-
-        return "WITH RECURSIVE taxmod_ahnen (id, path) AS (
-                    SELECT id, CAST(id AS CHAR(255)) FROM {$nodes} WHERE parent_node_id IS NULL
-                    UNION ALL
-                    SELECT k.id, CONCAT(v.path, '.', k.id)
-                      FROM {$nodes} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
-                ) ";
-    }
-
     /** Ein Knotenleser: der Vorfahrenausdruck, die Spalten, die Herkunft — und dann seine Bedingung. */
     private function selectNodes(string $rest): string
     {
-        return self::ancestry() . 'SELECT ' . self::COLUMNS . self::fromNodes() . $rest;
+        return 'SELECT ' . self::COLUMNS . self::fromNodes() . $rest;
     }
 
     /**
@@ -121,7 +84,7 @@ final class WpdbNodeRepository implements NodeRepository
         // Abstieg nicht erreicht, hat keinen Weg zur Wurzel** — er ist verwaist, nicht namenlos, und
         // das ist ein Befund für `orphans-check` und nicht eine Zeile mit leerem Pfad (TASK-001).*
         return ' FROM ' . Schema::table('nodes') . ' n'
-            . ' INNER JOIN taxmod_ahnen a ON a.id = n.id'
+            . ' INNER JOIN ' . Ancestry::paths() . ' a ON a.id = n.id'
             . ' LEFT JOIN ' . Schema::table('label_texts') . ' t'
             . ' ON t.label_id = n.label_id AND t.locale = %s AND t.number = %s '
             . ' LEFT JOIN ' . Schema::table('label_texts') . ' d'
@@ -519,7 +482,7 @@ final class WpdbNodeRepository implements NodeRepository
     {
         global $wpdb;
 
-        // ⚠️ *`a.path` und nicht `n.path` — der Weg kommt aus {@see self::ancestry()}, seit die
+        // ⚠️ *`a.path` und nicht `n.path` — der Weg kommt aus {@see Ancestry::paths()}, seit die
         // Spalte gefallen ist (TASK-001). **Die Bedingung ist dieselbe geblieben**: alles, dessen Weg
         // mit dem der Wurzel und einem Punkt beginnt.*
         $rows = Query::rows('Teilbaum lesen', $wpdb->prepare(
@@ -536,7 +499,7 @@ final class WpdbNodeRepository implements NodeRepository
      *
      * *Diese Methode schrieb den Weg jedes Nachfahren um, weil er als Spalte dastand. **Er steht
      * nicht mehr da**: er wird beim Lesen aus `parent_node_id` gerechnet
-     * ({@see self::ancestry()}), und `parent_node_id` hat der Aufrufer bereits gesetzt, bevor er
+     * ({@see Ancestry::paths()}), und `parent_node_id` hat der Aufrufer bereits gesetzt, bevor er
      * hierherkommt. Ein Umzug ändert also **eine** Zeile — die des umgezogenen Knotens —, und die
      * Wege aller Nachfahren stimmen im selben Augenblick.*
      *
@@ -618,9 +581,8 @@ final class WpdbNodeRepository implements NodeRepository
     /**
      * Ein Knoten und alles unter ihm, als Nummern — **eine Abfrage, nicht eine je Ebene** (`CD-7`).
      *
-     * ⚠️ *Der Aufstieg aus {@see self::ancestry()} taugt hier nicht: er rechnet **Wege** und würde
-     * wieder auf ein `LIKE` hinauslaufen. Hier steigt derselbe rekursive Ausdruck vom Knoten selbst
-     * abwärts und sammelt nur Nummern ein.*
+     * ⚠️ *Nicht über die Wege aus {@see Ancestry::paths()}: die kennen nur Knoten mit Weg zur Wurzel und
+     * liefen auf ein `LIKE` hinaus. {@see Ancestry::descendants()} fragt die Kette der Väter direkt.*
      *
      * ⚠️ *Öffentlich, weil die Randprüfungen dieselbe Frage stellen und sie bisher als
      * `WHERE path LIKE '<Weg>.%'` selbst geschrieben haben. **Ein Ort für die Frage, nicht zwölf**
@@ -630,21 +592,9 @@ final class WpdbNodeRepository implements NodeRepository
      */
     public function subtreeIds(int $id): array
     {
-        global $wpdb;
+        $rows = Query::column('Ast einsammeln', Ancestry::descendants([$id]));
 
-        $nodes = Schema::table('nodes');
-
-        $rows = Query::column('Ast einsammeln', $wpdb->prepare(
-            "WITH RECURSIVE taxmod_ast (id) AS (
-                 SELECT id FROM {$nodes} WHERE id = %d
-                 UNION ALL
-                 SELECT k.id FROM {$nodes} k INNER JOIN taxmod_ast v ON v.id = k.parent_node_id
-             )
-             SELECT id FROM taxmod_ast",
-            $id
-        ));
-
-        $ast = array_values(array_unique(array_map('intval', $rows)));
+        $ast = array_values(array_unique([$id, ...array_map('intval', $rows)]));
 
         // ⚠️ *Der Knoten selbst gehört dazu, auch wenn ihn die Abfrage nicht mehr fände — sonst hätte
         // eine leere Liste `IN ()` ergeben, und das ist ein Syntaxfehler, über den `$wpdb` schweigt.*

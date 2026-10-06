@@ -388,13 +388,7 @@ foreach ($alle as $zeile) {
 }
 
 $gerechnet = $wpdb->get_results(
-    "WITH RECURSIVE taxmod_ahnen (id, path) AS (
-         SELECT id, CAST(id AS CHAR(255)) FROM {$knoten} WHERE parent_node_id IS NULL
-         UNION ALL
-         SELECT k.id, CONCAT(v.path, '.', k.id)
-           FROM {$knoten} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
-     )
-     SELECT id, path FROM taxmod_ahnen",
+    "SELECT a.id, a.path FROM " . \Taxmod\WordPress\Persistence\Ancestry::paths($knoten) . " a",
     ARRAY_A
 ) ?: [];
 
@@ -433,12 +427,7 @@ check('und der Vergleich hat wirklich Zeilen gesehen', $verglichen === count($al
 // geblieben und unerreichbar gewesen. Jetzt faellt er aus jedem Leser heraus, also muss diese Zahl
 // null sein.*
 $unerreicht = (int) $wpdb->get_var(
-    "WITH RECURSIVE taxmod_ahnen (id) AS (
-         SELECT id FROM {$knoten} WHERE parent_node_id IS NULL
-         UNION ALL
-         SELECT k.id FROM {$knoten} k INNER JOIN taxmod_ahnen v ON v.id = k.parent_node_id
-     )
-     SELECT COUNT(*) FROM {$knoten} n WHERE n.id NOT IN (SELECT id FROM taxmod_ahnen)"
+    "SELECT COUNT(*) FROM {$knoten} n WHERE n.id NOT IN (SELECT a.id FROM " . \Taxmod\WordPress\Persistence\Ancestry::paths($knoten) . " a)"
 );
 
 check('jeder Knoten wird vom Abstieg erreicht', $unerreicht === 0, "$unerreicht unerreicht");
