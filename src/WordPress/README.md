@@ -11,7 +11,9 @@ What lives here: everything that knows WordPress exists. Hooks, admin screens, a
 core is a rule a second boundary would have to reinvent.
 
 ⚠️ **`CD-5` is the order and it never varies:** capability check → nonce → validate → sanitize →
-act → escape on output. Not even on a screen only an administrator can reach.
+act → escape on output. Not even on a screen only an administrator can reach. *The abilities
+([D-911](../../docs/NewConcept/90-decision-log.md)) check the capability in their
+`permission_callback`; the nonce's place is taken by the REST authentication the caller arrives with.*
 
 Other standing rules that bite here: prepared statements for anything with a variable in it
 (`CD-6`), no SQL inside a loop (`CD-7`), and presentation code **returns** strings rather than
