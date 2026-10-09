@@ -47,7 +47,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.3';
+    public const VERSION     = '0.1.4';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -121,6 +121,9 @@ final class Plugin
         // WordPress-Connector als Werkzeuge zeigt. Ohne die Abilities-API (vor WordPress 6.9) feuern die Haken nie.*
         add_action('wp_abilities_api_categories_init', static fn () => $plugin->abilities()->registerCategory());
         add_action('wp_abilities_api_init', static fn () => $plugin->abilities()->register());
+
+        // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
+        add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
     }
 
     public function abilities(): ModelAbilities

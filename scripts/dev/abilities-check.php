@@ -155,5 +155,27 @@ check('der Schritt davor ist zurückgerollt', $knoten('__ab Bleibt nicht') === 0
 check('ein unbekannter Verweis wird abgewiesen', is_wp_error($apply->execute(['changes' => [['op' => 'rename_node', 'node' => '@nichts', 'name' => 'x']]])));
 check('die erste Liste steht noch', $knoten('__ab Initiative') === 1);
 
+echo "Werte mit Verweis\n";
+
+$verweis = $apply->execute(['changes' => [
+    ['op' => 'create_record', 'ref' => 'z', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@z', 'values' => [(string) $ergebnis['refs']['f'] => '@z']],
+]]);
+$zweiter = is_array($verweis) ? $node->execute(['node' => $ergebnis['refs']['i']]) : null;
+$zWerte  = is_array($zweiter) ? array_column(array_column($zweiter['records'], null, 'id')[$verweis['refs']['z']]['values'] ?? [], 'value', 'relation_id') : [];
+
+check('ein Wert «@ref» wird die Id des Angelegten', ($zWerte[$ergebnis['refs']['f']] ?? null) === (string) ($verweis['refs']['z'] ?? -1), wp_json_encode($zWerte));
+
+echo "Block im Beitrag (D-912)\n";
+
+check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));
+
+wp_set_current_user(0);
+$block = do_blocks('<!-- wp:taxmod/record {"record":' . $ergebnis['refs']['r'] . ',"field":' . $ergebnis['refs']['f'] . '} /-->');
+check('der Block zeigt den Wert des Satzes, maskiert', str_contains($block, esc_html('C:\\Pfad «Hallo»')) || str_contains($block, 'C:\\Pfad &laquo;Hallo&raquo;'), substr(wp_strip_all_tags($block), 0, 200));
+check('der Block schickt nichts ab', ! str_contains($block, '<form') && ! str_contains($block, '<input'));
+check('ein fehlender Satz zeigt Lesern nichts', trim(do_blocks('<!-- wp:taxmod/record {"record":999999999} /-->')) === '');
+wp_set_current_user((int) ($admin[0] ?? 1));
+
 echo "\n$ok ok, $bad failed\n";
 exit($bad === 0 ? 0 : 1);
