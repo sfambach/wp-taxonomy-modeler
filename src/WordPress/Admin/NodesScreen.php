@@ -297,6 +297,50 @@ final class NodesScreen
         return array_map(static fn (Relation $r): array => ['relation' => $r, 'type' => $types[$r->id] ?? null], $felder);
     }
 
+    /**
+     * Ein Satz, wie ein Leser ihn sieht — die Seite «Anzeige» der Vorschau ([D-547](../../../docs/NewConcept/90-decision-log.md)), für den Block im Beitrag ([D-912](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Dieselbe Zeichnung wie links in der Vorschau: `Purpose::Display` auf `Level::FrontEnd`, ohne Akte und ohne Links in die
+     * Verwaltung. Ein Feld gewählt, steht nur dieses da.*
+     */
+    public function recordForReaders(int $recordId, int $onlyField, string $locale): string
+    {
+        $satz   = $this->data->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
+        $knoten = $this->editor->find($satz->nodeId) ?? throw new \InvalidArgumentException("No node {$satz->nodeId}.");
+        $felder = $this->editor->fieldsOf($knoten->id);
+
+        if ($felder === []) {
+            return '';
+        }
+
+        $held = [];
+
+        foreach ($this->data->valuesOf($recordId) as $wert) {
+            $held[$wert->relationId] = $wert->value;
+        }
+
+        $resolved = $this->rendering->settingsForUseSites($felder);
+        $gezeigte = $this->rendering->previewVisibilityFor($felder, $resolved)['shown'];
+
+        if ($onlyField !== 0) {
+            $gezeigte = array_values(array_filter($gezeigte, static fn (Relation $r): bool => $r->id === $onlyField));
+        }
+
+        return $this->rendering->nodeAsForm(
+            $knoten,
+            $gezeigte,
+            $this->rendering->previewValuesFor($felder, $resolved, $held),
+            Purpose::Display,
+            '',
+            $locale,
+            Level::FrontEnd,
+            false,
+            $this->rendering->containerChosenFor($knoten) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
+            $this->rendering->partsOfRecord($recordId, $felder),
+            recordId: $recordId
+        )->markup;
+    }
+
     /** Der Schreibweg der Sätze, den auch die Maske benutzt — mit ihrem Nachlauf (D-885) und ihrer Vorbelegung (D-649). */
     public function entries(): DataEntry
     {

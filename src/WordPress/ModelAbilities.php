@@ -109,7 +109,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?}, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text, or {values: [text, ...]} for a field taking several}, own_value?, record_type?, locale?}, remove_record {record}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?}, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -365,8 +365,9 @@ final class ModelAbilities
 
                 // ⚠️ *Ein Feld aus derselben Liste heisst hier «@ref» — erst so lässt sich eine Initiative in einem Aufruf anlegen.*
                 foreach (is_array($change['values'] ?? null) ? $change['values'] : [] as $kante => $wert) {
-                    $values[$this->resolve($kante, $refs, 'values')] = $wert;
+                    $values[$this->resolve($kante, $refs, 'values')] = $this->resolveValues($wert, $refs);
                 }
+                $values   = $this->intoHeldParts($recordId, $values);
                 $own      = isset($change['own_value']) ? (string) $change['own_value'] : null;
                 $locale   = sanitize_text_field((string) ($change['locale'] ?? ''));
 
@@ -390,6 +391,51 @@ final class ModelAbilities
         }
 
         throw new \InvalidArgumentException('Unknown op.');
+    }
+
+    /**
+     * Teil «0» heisst hier: der Teil, den der Satz an diesem Feld schon hält — sonst ein neuer.
+     *
+     * ⚠️ *Ein neuer Satz bekommt für jedes Pflichtfeld aus Teilen gleich einen leeren Teil (die Vorbelegung beim ersten Schreiben).
+     * Die Maske zeigt dessen Id und schreibt hinein; ein Aufrufer von aussen kennt sie nicht. Ohne diese Abbildung stünde neben dem
+     * leeren Teil ein zweiter, und die Zusammenfassung läse den leeren.*
+     *
+     * @param array<int, mixed> $values
+     * @return array<int, mixed>
+     */
+    private function intoHeldParts(int $recordId, array $values): array
+    {
+        $gehalten = [];
+
+        foreach ($this->screen()->entries()->valuesOf($recordId) as $zeile) {
+            if ($zeile->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record && $zeile->value->reference !== null) {
+                $gehalten[$zeile->relationId] ??= $zeile->value->reference;
+            }
+        }
+
+        foreach ($values as $kante => $teile) {
+            if (is_array($teile) && array_key_exists(0, $teile) && ! isset($teile['values']) && isset($gehalten[$kante])) {
+                $teile[$gehalten[$kante]] = $teile[0];
+                unset($teile[0]);
+                $values[$kante] = $teile;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Ein Wert «@ref» wird die Id des früher Angelegten — so zeigt eine Position auf ein Bauteil aus derselben Liste.
+     *
+     * @param array<string, int> $refs
+     */
+    private function resolveValues(mixed $wert, array $refs): mixed
+    {
+        if (is_array($wert)) {
+            return array_map(fn (mixed $inner): mixed => $this->resolveValues($inner, $refs), $wert);
+        }
+
+        return is_string($wert) && preg_match('/^@[A-Za-z0-9_-]+$/', $wert) === 1 ? (string) $this->resolve($wert, $refs, 'values') : $wert;
     }
 
     /** @param array<string, int> $refs */
