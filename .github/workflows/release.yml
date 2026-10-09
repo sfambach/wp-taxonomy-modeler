@@ -53,13 +53,14 @@ jobs:
         run: |
           mkdir -p ../dist/wp-taxonomy-modeler
           git archive HEAD | tar -x -C ../dist/wp-taxonomy-modeler
-          cd ../dist && zip -qr "$GITHUB_WORKSPACE/wp-taxonomy-modeler.zip" wp-taxonomy-modeler
+          cd ../dist && zip -qr "$GITHUB_WORKSPACE/wp-taxonomy-modeler-${{ github.event.inputs.tag }}.zip" wp-taxonomy-modeler
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag }}
           target_commitish: ${{ steps.release_commit.outputs.sha }}
-          files: wp-taxonomy-modeler.zip
+          files: wp-taxonomy-modeler-${{ github.event.inputs.tag }}.zip
+          name: wp-taxonomy-modeler ${{ github.event.inputs.tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
