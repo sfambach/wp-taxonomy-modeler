@@ -5165,6 +5165,23 @@ final class Rendering implements Presets
         return $this->addons->complaintsAbout($value, $this->typeAt($relation), $gewaehlt, $einstellungen);
     }
 
+    /**
+     * Nur die Renderer-Wahl, die an dieser Stelle selbst gesetzt ist (D-759).
+     *
+     * @param array<string,ResolvedSetting> $settings
+     * @return array<string,ResolvedSetting>
+     */
+    private function chosenHereOnly(array $settings): array
+    {
+        $wahl = $settings['renderer'] ?? null;
+
+        if ($wahl instanceof ResolvedSetting && ! $wahl->setHere) {
+            unset($settings['renderer']);
+        }
+
+        return $settings;
+    }
+
     private function chosenRendererName(array $settings): string
     {
         $wahl = $settings['renderer'] ?? null;
@@ -7142,9 +7159,11 @@ final class Rendering implements Presets
         // gezeichnet — eine Bedingung darauf hätte einen Fall unterschieden, den es nicht gibt.*
         $behaelter = $relation->isSetting()
             ? $this->renderers->byName(TableRenderer::NAME)
-            : ($this->containerChosenAt($useSiteSettings, $ziel, $purpose)
-                // ⚠️ *Mehrere Teile sind Zeilen: ohne Wahl an der Stelle zeichnet die Tabelle — ein Formular zeigte nur den ersten (D-758).*
-                ?? ($relation->multiplicity->allowsMany() ? $this->renderers->byName(TableRenderer::NAME) : $this->containerFor($ziel, $purpose)));
+            : ($relation->multiplicity->allowsMany()
+                // ⚠️ *Mehrere Teile sind Zeilen: ohne Wahl **an der Stelle** zeichnet die Tabelle — ein Formular zeigte nur den ersten (D-758, D-759).
+                // Die Wahl am Zielknoten zählt hier nicht: `form` an `Part List Item` liess an einer neuen Liste nur die erste Position stehen (D-914).*
+                ? ($this->containerChosenAt($this->chosenHereOnly($useSiteSettings), $ziel, $purpose) ?? $this->renderers->byName(TableRenderer::NAME))
+                : ($this->containerChosenAt($useSiteSettings, $ziel, $purpose) ?? $this->containerFor($ziel, $purpose)));
 
         // ⚠️ **Zeilen hinzufügen und entfernen** (D-758, sein Wort: *«bei höherer Multiplizität Datensätze hinzufügen und entfernen»*).
         // *Nur beim Bearbeiten, nur an einer Komposition mit mehreren, nur mit Worten vom Rand (`AR-2`). Der Halter ist der Satz, dessen
