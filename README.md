@@ -93,6 +93,10 @@ cosmetic.
 
 Details, including the cloud VM with SQLite: [`AGENTS.md`](AGENTS.md).
 
+## AI disclosure
+
+This plugin is built with AI assistance: the code and the concept documents are written largely by Claude (Anthropic) via Claude Code, earlier parts also with Cursor. Stefan Fambach specifies, decides, reviews and tests.
+
 ## License
 
 GPLv2 or later — to be finalised with the first plugin bootstrap commit.
