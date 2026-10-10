@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress;
 
+use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Model\RecordType;
@@ -109,7 +110,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?}, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?, multiplicity?}, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -132,6 +133,7 @@ final class ModelAbilities
                                 'record'      => $ziel,
                                 'class'       => ['type' => 'string'],
                                 'kind'        => ['type' => 'string', 'enum' => array_map(static fn (RelationKind $k): string => $k->value, RelationKind::cases())],
+                                'multiplicity' => ['type' => 'string', 'enum' => array_map(static fn (Multiplicity $m): string => $m->value, Multiplicity::cases())],
                                 'record_type' => ['type' => 'string', 'enum' => array_map(static fn (RecordType $t): string => $t->value, RecordType::cases())],
                                 'values'      => ['type' => 'object'],
                                 'own_value'   => ['type' => 'string'],
@@ -351,7 +353,12 @@ final class ModelAbilities
                 $target = $this->node($at('target'));
                 $kind   = isset($change['kind']) ? RelationKind::from((string) $change['kind']) : null;
 
-                return $editor->addField($at('node'), $target->id, $name === '' ? $target->name : $name, $kind)->id;
+                $field  = $editor->addField($at('node'), $target->id, $name === '' ? $target->name : $name, $kind);
+
+                // ⚠️ *Ohne Angabe gilt die Vorgabe der Maske (1..1); eine Liste wie «Bauteile» braucht 0..* (D-914).*
+                return isset($change['multiplicity'])
+                    ? $editor->setMultiplicity($field->fromNodeId, $field->id, Multiplicity::from((string) $change['multiplicity']))->id
+                    : $field->id;
 
             case 'create_record':
                 $type = isset($change['record_type']) ? RecordType::from((string) $change['record_type']) : RecordType::User;
