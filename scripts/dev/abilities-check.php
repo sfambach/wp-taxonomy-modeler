@@ -166,6 +166,16 @@ $zWerte  = is_array($zweiter) ? array_column(array_column($zweiter['records'], n
 
 check('ein Wert «@ref» wird die Id des Angelegten', ($zWerte[$ergebnis['refs']['f']] ?? null) === (string) ($verweis['refs']['z'] ?? -1), wp_json_encode($zWerte));
 
+echo "Feld mit Multiplizität (D-914)\n";
+
+$liste = $apply->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'l', 'node' => $ergebnis['refs']['i'], 'target' => $text?->id ?? 0, 'name' => '__ab Liste', 'multiplicity' => '0..*'],
+]]);
+$dritter = is_array($liste) ? $node->execute(['node' => $ergebnis['refs']['i']]) : null;
+$lFeld   = is_array($dritter) ? array_column($dritter['fields'], null, 'relation_id')[$liste['refs']['l']] ?? null : null;
+
+check('add_field setzt die Multiplizität gleich mit', ($lFeld['multiplicity'] ?? '') === '0..*', is_wp_error($liste) ? $liste->get_error_message() : wp_json_encode($lFeld));
+
 echo "Block im Beitrag (D-912)\n";
 
 check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));

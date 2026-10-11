@@ -555,7 +555,7 @@ final class NodesScreen
             . ' data-taxmod-autosave="' . (SettingsScreen::autosaves() ? 'on' : 'off') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
             . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px">';
-        $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . '</h1>';
+        $html .= '<h1>' . esc_html__('Taxonomy Modeller', 'taxmod') . ' <small>' . esc_html(Plugin::VERSION) . '</small></h1>';
         $html .= $this->notice() . ($selected === null ? '' : $this->movePendingForm($selected));
         // The owner's proportions: a third for the tree, two thirds for the detail.
         //
