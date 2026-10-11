@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress;
 
+use Taxmod\Core\Renderer\HintMarkup;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 
@@ -88,6 +89,21 @@ final class RecordBlock
                 : '';
         }
 
-        return '<div ' . get_block_wrapper_attributes(['class' => 'taxmod-record-block']) . '>' . $markup . '</div>';
+        return '<div ' . get_block_wrapper_attributes(['class' => 'taxmod-record-block']) . '>' . self::withoutHints($markup) . '</div>';
+    }
+
+    /**
+     * Ohne die Fragezeichen der Maske: Hilfetexte sind für Bearbeiter, nicht für Leser (D-912).
+     *
+     * ⚠️ *Das Stylesheet blendete sie nur aus — im Markup standen sie weiter und kamen in Textauszügen, Feeds und beim
+     * Kopieren mit (gemeldet am 2026-10-11 an Beitrag 14256). Die Hülle hat genau eine Form ({@see HintMarkup::icon()}),
+     * und ihr Satz ist entschärft, enthält also kein `<`.*
+     */
+    private static function withoutHints(string $markup): string
+    {
+        $pattern = '#<span class="' . HintMarkup::NAME . '" tabindex="0"><span class="' . HintMarkup::ICON . '">.*?</span></span>'
+            . '<span class="' . HintMarkup::TEXT . '">[^<]*</span></span>#s';
+
+        return (string) preg_replace($pattern, '', $markup);
     }
 }

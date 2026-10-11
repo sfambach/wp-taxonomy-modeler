@@ -183,6 +183,7 @@ check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_ins
 wp_set_current_user(0);
 $block = do_blocks('<!-- wp:taxmod/record {"record":' . $ergebnis['refs']['r'] . ',"field":' . $ergebnis['refs']['f'] . '} /-->');
 check('der Block zeigt den Wert des Satzes, maskiert', str_contains($block, esc_html('C:\\Pfad «Hallo»')) || str_contains($block, 'C:\\Pfad &laquo;Hallo&raquo;'), substr(wp_strip_all_tags($block), 0, 200));
+check('der Block trägt keine Hilfetexte der Maske', ! str_contains($block, 'taxmod-hint'));
 check('der Block schickt nichts ab', ! str_contains($block, '<form') && ! str_contains($block, '<input'));
 check('ein fehlender Satz zeigt Lesern nichts', trim(do_blocks('<!-- wp:taxmod/record {"record":999999999} /-->')) === '');
 wp_set_current_user((int) ($admin[0] ?? 1));
