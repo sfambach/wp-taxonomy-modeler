@@ -74,4 +74,28 @@ final class ComparisonTableTest extends TestCase
         self::assertStringContainsString('a&amp;b', $html);
         self::assertStringContainsString('&lt;i&gt;', $html);
     }
+
+    #[Test]
+    public function a_grouped_table_heads_each_group_once_and_joins_the_labels(): void
+    {
+        $html = ComparisonTable::render(
+            self::COLUMNS,
+            2,
+            ComparisonPosition::Middle,
+            ['Szenario', 'Einheit'],
+            [
+                ['group' => 'Chris 3D Benchmark', 'labels' => ['', 'Punkte'], 'cells' => [2 => '1223.5']],
+                ['group' => 'Chris 3D Benchmark', 'labels' => ['640x480', 'Punkte'], 'cells' => [2 => '205.2']],
+                ['group' => 'Landmark', 'labels' => ['Landmark [CPU]'], 'cells' => [1 => '23400']],
+            ],
+            '',
+            '',
+        );
+
+        self::assertSame(1, substr_count($html, '<tr class="taxmod-comparison-head"><th colspan="4">Chris 3D Benchmark</th></tr>'));
+        self::assertSame(1, substr_count($html, '<th colspan="4">Landmark</th>'));
+        self::assertStringContainsString('<thead><tr><th>Szenario · Einheit</th>', $html);
+        self::assertStringContainsString('<td class="taxmod-comparison-detail">640x480 · Punkte</td>', $html);
+        self::assertStringContainsString('<td class="taxmod-comparison-detail">Punkte</td>', $html);
+    }
 }

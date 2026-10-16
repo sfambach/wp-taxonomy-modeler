@@ -82,3 +82,14 @@
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 }
+
+/* Gruppen (D-922): je Benchmark eine Kopfzeile, die Resultate eingerückt darunter. */
+.taxmod-record-block .taxmod-comparison-head th {
+	padding-top: 1em;
+	font-weight: 700;
+	border-bottom: 1px solid rgba(128, 128, 128, 0.5);
+}
+
+.taxmod-record-block .taxmod-comparison-head ~ tr .taxmod-comparison-detail {
+	padding-left: 1.4em;
+}

@@ -370,6 +370,7 @@ final class NodesScreen
         int $valueField,
         string $mainWord,
         string $otherWord,
+        int $groupBy = 0,
     ): string {
         $ids = array_values(array_unique(array_filter(array_map('intval', $recordIds))));
 
@@ -401,7 +402,7 @@ final class NodesScreen
 
         [$koepfe, $zeilen] = $via === 0
             ? $this->comparisonOwnRows(array_column($spalten, 'id'), $felder)
-            : $this->comparisonReferrerRows(array_column($spalten, 'id'), $via, $rowKey, $rowFields, $valueField);
+            : $this->comparisonReferrerRows(array_column($spalten, 'id'), $via, $rowKey, $rowFields, $valueField, $groupBy);
 
         return \Taxmod\Core\Renderer\ComparisonTable::render($spalten, $mainId, $position, $koepfe, $zeilen, $mainWord, $otherWord);
     }
@@ -440,10 +441,14 @@ final class NodesScreen
      * Zeilen aus den Sätzen, die auf die Spalten zeigen — je Ziel von `rowKey` eine Zeile.
      *
      * @param  list<int> $ids
+     * ⚠️ *`groupBy` ist ein Feld des Zeilenziels (der Benchmark einer Messgrösse): je Wert eine Kopfzeile, die Zeilen einer Gruppe stehen
+     * beisammen in der Reihenfolge ihres ersten Auftretens ([D-922](../../../docs/NewConcept/90-decision-log.md)). Sind alle
+     * Beschriftungsfelder einer Zeile leer, heisst sie wie ihr Satz — Landmark [CPU] hat weder Szenario noch Einheit.*
+     *
      * @param  list<int> $rowFields
-     * @return array{0: list<string>, 1: list<array{labels: list<string>, cells: array<int, string>}>}
+     * @return array{0: list<string>, 1: list<array{group?: string, labels: list<string>, cells: array<int, string>}>}
      */
-    private function comparisonReferrerRows(array $ids, int $via, int $rowKey, array $rowFields, int $valueField): array
+    private function comparisonReferrerRows(array $ids, int $via, int $rowKey, array $rowFields, int $valueField, int $groupBy = 0): array
     {
         $verweise = [];
 
@@ -455,7 +460,7 @@ final class NodesScreen
             }
         }
 
-        $kanten = $this->editor->relationsByIds(array_values(array_unique([$valueField, ...$rowFields])));
+        $kanten = $this->editor->relationsByIds(array_values(array_unique(array_filter([$valueField, $groupBy, ...$rowFields]))));
         $werte  = $this->data->valuesOfMany(array_keys($verweise));
         $texte  = $this->comparisonTexts($werte, array_values(array_filter([$kanten[$valueField] ?? null])));
         $zellen = [];
@@ -471,19 +476,45 @@ final class NodesScreen
         $schluessel = array_keys($zellen);
         sort($schluessel);
 
-        // *Ohne gewählte Beschriftungsfelder heisst die Zeile wie ihr Satz.*
-        $zeilenKante = $rowFields === [] ? $this->editor->relationById($rowKey) : null;
+        // *Das eigene Wort jeder Zeile — Beschriftung, wenn keine Felder gewählt sind oder alle gewählten leer.*
+        $zeilenKante = $this->editor->relationById($rowKey);
         $worte       = $zeilenKante === null || $schluessel === [] ? [] : ($this->rendering->summaryTextsOf([['relation' => $zeilenKante, 'records' => $schluessel, 'ownWords' => true]])[$rowKey] ?? []);
-        $beschrift   = $rowFields === [] ? [] : $this->comparisonTexts($this->data->valuesOfMany($schluessel), array_values(array_filter(array_map(static fn (int $f): ?Relation => $kanten[$f] ?? null, $rowFields))));
+        $mitGruppe   = array_values(array_filter([$groupBy, ...$rowFields]));
+        $beschrift   = $mitGruppe === [] || $schluessel === [] ? [] : $this->comparisonTexts($this->data->valuesOfMany($schluessel), array_values(array_filter(array_map(static fn (int $f): ?Relation => $kanten[$f] ?? null, $mitGruppe))));
         $zeilen      = [];
 
         foreach ($schluessel as $ziel) {
-            $zeilen[] = [
-                'labels' => $rowFields === []
-                    ? [trim((string) ($worte[$ziel] ?? ''))]
-                    : array_map(static fn (int $f): string => $beschrift[$ziel][$f] ?? '', $rowFields),
-                'cells'  => $zellen[$ziel],
-            ];
+            // *Eine Zeile ohne einen einzigen Wert sagt nichts — Speedsys MB/S L2 hat bei keinem Celeron einen.*
+            if (implode('', $zellen[$ziel]) === '') {
+                continue;
+            }
+
+            $labels = array_map(static fn (int $f): string => $beschrift[$ziel][$f] ?? '', $rowFields);
+
+            if (implode('', $labels) === '') {
+                $labels = [trim((string) ($worte[$ziel] ?? ''))];
+            }
+
+            $zeile = ['labels' => $labels, 'cells' => $zellen[$ziel]];
+
+            if ($groupBy !== 0) {
+                $zeile['group'] = $beschrift[$ziel][$groupBy] ?? '';
+            }
+
+            $zeilen[] = $zeile;
+        }
+
+        if ($groupBy !== 0) {
+            // *Stabil nach dem ersten Auftreten der Gruppe — innerhalb bleibt die Reihenfolge der Sätze.*
+            $rang = [];
+
+            foreach ($zeilen as $i => $zeile) {
+                $rang[$zeile['group']] ??= $i;
+            }
+
+            $nummeriert = array_map(null, array_keys($zeilen), $zeilen);
+            usort($nummeriert, static fn (array $a, array $b): int => [$rang[$a[1]['group']], $a[0]] <=> [$rang[$b[1]['group']], $b[0]]);
+            $zeilen = array_column($nummeriert, 1);
         }
 
         $koepfe = $rowFields === []

@@ -67,6 +67,7 @@
 				} ),
 				numberField( props, 'via', __( 'Rows from records pointing here: their field (relation id, empty = own fields)', 'taxmod' ) ),
 				a.via ? numberField( props, 'rowKey', __( 'One row per target of field (relation id)', 'taxmod' ) ) : null,
+				a.via ? numberField( props, 'groupBy', __( 'Group rows by this field of that target (relation id, empty = no groups)', 'taxmod' ) ) : null,
 				a.via ? listField( props, 'rowFields', __( 'Row labels: fields of that target (relation ids)', 'taxmod' ) ) : null,
 				a.via ? numberField( props, 'value', __( 'Cell value field (relation id)', 'taxmod' ) ) : null
 			) : null;
