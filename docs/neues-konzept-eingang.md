@@ -689,7 +689,14 @@ Das Exemplar trägt «Gekauft am», «Kaufpreis», «Währung» und «Händler»
 
 > *«mit diesen Prozenten, Abweichungen und so weiter, ähm, das würde ich mir für einen anderen Block später, wenn wir Vergleichsstatistiken darstellen, äh, aufheben wollen.»*
 
-Im Muster zum Vergleich ([D-920](NewConcept/90-decision-log.md)) zeigte Variante C je Vergleichsspalte die Abweichung vom Hauptsatz in Prozent, grün oder rot nach der Richtung der Messgröße («höher/niedriger ist besser»). Das kommt nicht in den Satz-Block, sondern in einen späteren eigenen Block. Offen: was er alles zeigt, und ob er dieselbe Satzauswahl nutzt.
+Im Muster zum Vergleich ([D-920](NewConcept/90-decision-log.md)) zeigte Variante C je Vergleichsspalte die Abweichung vom Hauptsatz in Prozent, grün oder rot nach der Richtung der Messgröße («höher/niedriger ist besser»). Das kommt nicht in die Anzeige «Vergleich» des Satz-Blocks.
+
+Am selben Tag genauer:
+
+> *«einen Block bauen können mit irgendwelchen Balkendiagrammen, der die einzelnen Resultate, ja, oder ähnliche Resultate vergleicht und dann praktisch den Satz in den Fokus stellt, der aktuell in diesem Block äh, bearbeitet wird. Und aber auch die Möglichkeit gibt, sich die anderen Daten anzuschauen. Also ähnlich wie auf einer Hardware-Testseite […] Das wäre aber, glaube ich, ein anderer Block einfach.»* — und gleich danach: *«oder aber eine umschaltung auf statistik im vorhandenen block»*
+
+- **Gewünscht:** Balkendiagramme je Messgröße, der Hauptsatz des Blocks im Fokus, die übrigen Ergebnisse einsehbar — wie auf Hardware-Testseiten.
+- **Offen:** eigener Block oder eine vierte Anzeige «Statistik» im Block `taxmod/record` ([D-916](NewConcept/90-decision-log.md)). *Mein Vorschlag (INFERRED): die vierte Anzeige, weil Hauptsatz ([D-920](NewConcept/90-decision-log.md)), Satzauswahl und Puffer ([D-919](NewConcept/90-decision-log.md)) dieselben sind.* Offen auch: welche Sätze in die Balken kommen (alle mit derselben Messgröße oder nur die gewählten).
 
 ---
 ## Erledigte Eingänge
