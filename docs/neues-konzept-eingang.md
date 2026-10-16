@@ -699,6 +699,17 @@ Am selben Tag genauer:
 - **Offen:** eigener Block oder eine vierte Anzeige «Statistik» im Block `taxmod/record` ([D-916](NewConcept/90-decision-log.md)). *Mein Vorschlag (INFERRED): die vierte Anzeige, weil Hauptsatz ([D-920](NewConcept/90-decision-log.md)), Satzauswahl und Puffer ([D-919](NewConcept/90-decision-log.md)) dieselben sind.* Welche Sätze in die Balken kommen, ist entschieden: alle mit derselben Messgröße ([D-921](NewConcept/90-decision-log.md)).
 
 ---
+## INF-068 · Benchmarks heissen «#36005» statt mit ihrem Namen
+
+**Typ:** `BEFUND` · **Status:** `INFERRED` — gemessen am 2026-10-16 von mir, lokal an einer Kopie seiner Daten.
+
+Ein Verweis auf einen Benchmark (Feld «Benchmark» an den Messgrössen) zeigt in der Anzeige und im Vergleich «#36005» statt «3D Bench». Die Benchmarks liegen unter «Software», und dort wählt `summary_fields` Hersteller und Version — beides hat ein Benchmark nicht, also bleibt die Nummer. Der Rückfall auf das erste Textfeld greift nur, wenn **keine** Feldwahl da ist, nicht wenn die gewählten Felder leer sind.
+
+**Vorschlag:** am Knoten «Benchmarks» eine eigene Feldwahl «Bezeichnung» setzen (eine Datenänderung über den Upload, kein Code). Offen, ob der Rückfall allgemein auch bei leeren gewählten Feldern greifen soll.
+
+**Für den Vergleich bis dahin:** als Zeilenbeschriftung die «Bezeichnung» der Messgrösse («3D Bench für langsame PCs») und die Einheit.
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*

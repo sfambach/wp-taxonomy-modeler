@@ -200,6 +200,21 @@ final class InMemoryRecords implements RecordRepository
         ));
     }
 
+    public function referrersOfMany(array $recordIds): array
+    {
+        $aus = [];
+
+        foreach (array_map('intval', $recordIds) as $id) {
+            $zeilen = $this->referrersOf($id);
+
+            if ($zeilen !== []) {
+                $aus[$id] = $zeilen;
+            }
+        }
+
+        return $aus;
+    }
+
     public function holdersOf(array $recordIds): array
     {
         $gesucht = array_fill_keys(array_map('intval', $recordIds), true);

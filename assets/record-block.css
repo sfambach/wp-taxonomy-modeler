@@ -19,3 +19,66 @@
 .taxmod-record-block .taxmod-complex-heading {
 	margin: 1em 0 0.4em;
 }
+
+/* Vergleich (D-920): der Hauptsatz farbig hervorgehoben, die Vergleichsspalten treten zurück. */
+.taxmod-record-block .taxmod-comparison-wrap {
+	overflow-x: auto;
+}
+
+.taxmod-record-block .taxmod-comparison {
+	width: 100%;
+	border-collapse: collapse;
+	font-variant-numeric: tabular-nums;
+}
+
+.taxmod-record-block .taxmod-comparison th,
+.taxmod-record-block .taxmod-comparison td {
+	padding: 0.3em 0.6em;
+	border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+	text-align: left;
+	vertical-align: top;
+}
+
+.taxmod-record-block .taxmod-comparison thead th {
+	vertical-align: bottom;
+	border-bottom-width: 2px;
+}
+
+.taxmod-record-block .taxmod-comparison-group td {
+	border-top: 1px solid rgba(128, 128, 128, 0.5);
+}
+
+.taxmod-record-block .taxmod-comparison-term {
+	font-weight: 600;
+}
+
+.taxmod-record-block .taxmod-comparison-detail {
+	opacity: 0.75;
+}
+
+.taxmod-record-block .taxmod-comparison-value {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.taxmod-record-block .taxmod-comparison-main {
+	background: rgba(47, 111, 208, 0.12);
+	font-weight: 600;
+}
+
+.taxmod-record-block thead .taxmod-comparison-main {
+	border-bottom-color: rgb(47, 111, 208);
+}
+
+.taxmod-record-block .taxmod-comparison-other {
+	opacity: 0.65;
+	font-weight: 400;
+}
+
+.taxmod-record-block .taxmod-comparison-role {
+	display: block;
+	font-size: 0.75em;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}

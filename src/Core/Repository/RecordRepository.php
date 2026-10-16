@@ -130,6 +130,14 @@ interface RecordRepository
      * @return list<RelationRecord>
      */
     public function referrersOf(int $recordId): array;
+
+    /**
+     * Die verweisenden Wertzeilen vieler Sätze in einer Abfrage — der Vergleich im Satz-Block fragt je Spalte (D-916, `CD-7`).
+     *
+     * @param  list<int>                           $recordIds
+     * @return array<int, list<RelationRecord>>    Satz-Id ⇒ die Zeilen, die auf ihn zeigen.
+     */
+    public function referrersOfMany(array $recordIds): array;
     /**
      * Eine Wertzeile schreiben — und **sagen, welche Version dabei entstanden ist**.
      *

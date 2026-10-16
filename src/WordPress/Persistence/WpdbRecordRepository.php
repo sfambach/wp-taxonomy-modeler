@@ -278,6 +278,35 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(fn (array $r): RelationRecord => $this->valueFromRow($r), $rows);
     }
 
+    public function referrersOfMany(array $recordIds): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $recordIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        $rows = Query::rows('Verweise auf mehrere Datensaetze lesen', $wpdb->prepare(
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+             FROM ' . Schema::table('relation_records') . '
+             WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
+             ORDER BY relation_id ASC, node_record_id ASC',
+            ...$ids
+        ));
+
+        $aus = [];
+
+        foreach ($rows as $r) {
+            $aus[(int) $r['value_ref']][] = $this->valueFromRow($r);
+        }
+
+        return $aus;
+    }
+
     public function holdersOf(array $recordIds): array
     {
         global $wpdb;
