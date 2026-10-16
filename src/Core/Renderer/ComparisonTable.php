@@ -26,7 +26,9 @@ final class ComparisonTable
     /**
      * @param list<array{id: int, label: string}>                           $columns   Die Sätze in ihrer gewählten Reihenfolge.
      * @param list<string>                                                  $labelHeads Überschriften der Beschriftungsspalten.
-     * @param list<array{labels: list<string>, cells: array<int, string>}>  $rows      Zellen je Satz-Id; fehlt eine, bleibt sie leer.
+     * @param list<array{group?: string, labels: list<string>, cells: array<int, string>}> $rows Zellen je Satz-Id; fehlt eine, bleibt sie leer.
+     *        Trägt eine Zeile `group`, bekommt jede Gruppe eine Kopfzeile über die ganze Breite und die Beschriftungen stehen in einer
+     *        Spalte, mit « · » verbunden ([D-922](../../../docs/NewConcept/90-decision-log.md)).
      */
     public static function render(
         array $columns,
@@ -41,10 +43,6 @@ final class ComparisonTable
 
         $head = '';
 
-        foreach ($labelHeads as $label) {
-            $head .= '<th>' . RenderResult::escape($label) . '</th>';
-        }
-
         foreach ($columns as $column) {
             $main  = $column['id'] === $mainId;
             $word  = $main ? $mainWord : $otherWord;
@@ -53,24 +51,38 @@ final class ComparisonTable
                 . RenderResult::escape($column['label']) . '</th>';
         }
 
+        $grouped = array_filter($rows, static fn (array $row): bool => ($row['group'] ?? '') !== '') !== [];
         $body     = '';
         $previous = null;
 
         foreach ($rows as $row) {
             $labels = $row['labels'];
-            $first  = $labels[0] ?? '';
-            $starts = $first !== $previous;
-            $previous = $first;
 
-            // *Eine Gruppe nennt ihren ersten Begriff einmal — wie seine Tabellen es taten (Doom, Doom, Doom …).*
-            if (!$starts && $labels !== []) {
-                $labels[0] = '';
+            if ($grouped) {
+                $group = (string) ($row['group'] ?? '');
+
+                if ($group !== $previous) {
+                    $previous = $group;
+                    $body    .= '<tr class="' . self::NAME . '-head"><th colspan="' . (count($columns) + 1) . '">' . RenderResult::escape($group) . '</th></tr>';
+                }
+
+                $labels = [implode(' · ', array_values(array_filter($labels, static fn (string $l): bool => $l !== '')))];
+                $starts = false;
+            } else {
+                $first    = $labels[0] ?? '';
+                $starts   = $first !== $previous;
+                $previous = $first;
+
+                // *Eine Gruppe nennt ihren ersten Begriff einmal — wie seine Tabellen es taten (Doom, Doom, Doom …).*
+                if (!$starts && $labels !== []) {
+                    $labels[0] = '';
+                }
             }
 
             $body .= '<tr' . ($starts ? ' class="' . self::NAME . '-group"' : '') . '>';
 
             foreach ($labels as $i => $label) {
-                $body .= '<td class="' . self::NAME . ($i === 0 ? '-term' : '-detail') . '">' . RenderResult::escape($label) . '</td>';
+                $body .= '<td class="' . self::NAME . ($i === 0 && !$grouped ? '-term' : '-detail') . '">' . RenderResult::escape($label) . '</td>';
             }
 
             foreach ($columns as $column) {
@@ -82,7 +94,17 @@ final class ComparisonTable
             $body .= '</tr>';
         }
 
-        return '<table class="' . self::NAME . '"><thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table>';
+        if ($grouped) {
+            $labelHeads = [implode(' · ', array_values(array_filter($labelHeads, static fn (string $l): bool => $l !== '')))];
+        }
+
+        $kopf = '';
+
+        foreach ($labelHeads as $label) {
+            $kopf .= '<th>' . RenderResult::escape($label) . '</th>';
+        }
+
+        return '<table class="' . self::NAME . '"><thead><tr>' . $kopf . $head . '</tr></thead><tbody>' . $body . '</tbody></table>';
     }
 
     /**

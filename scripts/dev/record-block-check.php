@@ -84,10 +84,13 @@ $wpdb->insert("{$p}changelog", ['owner_id' => $c, 'owner_kind' => 'record', 'at'
 $pruefe($danach > 1 && $neu === $html, "nach einer Änderung wird neu gebaut ({$danach} Abfragen), gleiches Ergebnis");
 
 $verweis = $wpdb->get_row(
-    "SELECT v.relation_id AS via, v.value_ref AS spalte, k.relation_id AS zeile, k.value_ref AS ziel
+    "SELECT v.relation_id AS via, v.value_ref AS spalte, k.relation_id AS zeile, k.value_ref AS ziel, w.relation_id AS wert
        FROM {$p}relation_records v
        JOIN {$p}node_records r ON r.id = v.node_record_id AND r.record_type = 'user'
        JOIN {$p}relation_records k ON k.node_record_id = v.node_record_id AND k.value_ref_kind = 'record' AND k.relation_id <> v.relation_id
+       -- *Eine Zeile ohne Wert fällt weg (D-922) — also ein Verweisender, der auch einen Wert trägt.*
+       JOIN {$p}relation_records w ON w.node_record_id = v.node_record_id AND w.value_ref IS NULL
+                                  AND COALESCE(w.value_text, w.value_decimal, w.value_int) IS NOT NULL
       WHERE v.value_ref_kind = 'record' ORDER BY v.id DESC LIMIT 1"
 );
 
@@ -99,6 +102,7 @@ if ($verweis === null) {
         'record'  => (int) $verweis->spalte,
         'via'     => (int) $verweis->via,
         'rowKey'  => (int) $verweis->zeile,
+        'value'   => (int) $verweis->wert,
     ]);
 
     $pruefe(substr_count($html, '<tr') >= 2, "Zeilen aus den Sätzen, die über #{$verweis->via} auf #{$verweis->spalte} zeigen");

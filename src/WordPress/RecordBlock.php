@@ -76,6 +76,7 @@ final class RecordBlock
                 'rowKey'    => ['type' => 'integer', 'default' => 0],
                 'rowFields' => ['type' => 'string', 'default' => ''],
                 'value'     => ['type' => 'integer', 'default' => 0],
+                'groupBy'   => ['type' => 'integer', 'default' => 0],
             ],
             'supports'        => ['html' => false, 'align' => ['wide', 'full']],
             'editor_script'   => self::SCRIPT,
@@ -118,6 +119,7 @@ final class RecordBlock
                     // im deutschen Beitrag. Die Farbe trägt die Rolle (D-920, sein Wort: «das mit der farblichen Darstellung finde ich gut»).*
                     '',
                     '',
+                    absint($attributes['groupBy'] ?? 0),
                 )
                 : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale());
         } catch (\Throwable $e) {
