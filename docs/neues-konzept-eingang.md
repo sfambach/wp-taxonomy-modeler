@@ -709,7 +709,7 @@ Ein Verweis auf einen Benchmark (Feld «Benchmark» an den Messgrössen) zeigt i
 
 **Für den Vergleich bis dahin:** als Zeilenbeschriftung die «Bezeichnung» der Messgrösse («3D Bench für langsame PCs») und die Einheit.
 
-**Am 2026-10-16 bestätigt → [D-922](NewConcept/90-decision-log.md).** ⚠️ *Die Fähigkeit `taxmod/apply` kann keine Einstellungen setzen; die Feldwahl wird in der Maske des Knotens gesetzt.* Zweiter Befund dabei: bei Landmark, Speedsys und System Info steht der gemessene Teil (CPU, FPU, Video, RAM, HDD) nur in der Bezeichnung («Landmark [CPU]»), Szenario ist leer.
+**Am 2026-10-16 bestätigt → [D-922](NewConcept/90-decision-log.md).** ⚠️ *Die Fähigkeit `taxmod/apply` konnte keine Einstellungen setzen; seit [D-923](NewConcept/90-decision-log.md) kann sie es (`set_list`).* Zweiter Befund dabei: bei Landmark, Speedsys und System Info steht der gemessene Teil (CPU, FPU, Video, RAM, HDD) nur in der Bezeichnung («Landmark [CPU]»), Szenario ist leer.
 
 ---
 ## Erledigte Eingänge

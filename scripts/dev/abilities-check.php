@@ -166,6 +166,20 @@ $zWerte  = is_array($zweiter) ? array_column(array_column($zweiter['records'], n
 
 check('ein Wert «@ref» wird die Id des Angelegten', ($zWerte[$ergebnis['refs']['f']] ?? null) === (string) ($verweis['refs']['z'] ?? -1), wp_json_encode($zWerte));
 
+echo "Listeneinstellung (D-923)\n";
+
+$liste0 = $apply->execute(['changes' => [
+    ['op' => 'set_list', 'node' => $ergebnis['refs']['i'], 'attribute' => 'summary_fields', 'members' => [$ergebnis['refs']['f']]],
+]]);
+$gewaehlt = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('settings_value') . " WHERE node_id = %d AND attribut = 'summary_fields' AND aktiv = 1 AND wert_kante_id = %d",
+    $ergebnis['refs']['i'],
+    $ergebnis['refs']['f']
+));
+
+check('set_list setzt die Feldwahl des Knotens', is_array($liste0) && $gewaehlt === 1, is_wp_error($liste0) ? $liste0->get_error_message() : (string) $gewaehlt);
+check('eine unbekannte Einstellung wird abgewiesen', is_wp_error($apply->execute(['changes' => [['op' => 'set_list', 'node' => $ergebnis['refs']['i'], 'attribute' => 'gibt_es_nicht', 'members' => []]]])));
+
 echo "Feld mit Multiplizität (D-914)\n";
 
 $liste = $apply->execute(['changes' => [

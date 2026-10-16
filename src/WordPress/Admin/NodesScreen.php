@@ -578,6 +578,24 @@ final class NodesScreen
         return $aus;
     }
 
+    /**
+     * Eine Listeneinstellung des Knotens selbst auf genau diese Glieder setzen — der Weg der Haken in der Maske (D-732, D-752),
+     * für die Fähigkeit `taxmod/apply` ([D-923](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param list<int> $members Ids der gewählten Felder oder Knoten.
+     * @return int Wie viele Glieder sich geändert haben.
+     */
+    public function setListMembers(int $nodeId, string $attribut, array $members): int
+    {
+        $knoten = $this->editor->find($nodeId) ?? throw new \InvalidArgumentException("No node {$nodeId}.");
+
+        if ($this->attributes === null) {
+            throw new \RuntimeException('Settings cannot be written here.');
+        }
+
+        return $this->attributes->setMembers($knoten, $attribut, $members);
+    }
+
     /** Der Schreibweg der Sätze, den auch die Maske benutzt — mit ihrem Nachlauf (D-885) und ihrer Vorbelegung (D-649). */
     public function entries(): DataEntry
     {

@@ -110,7 +110,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?, multiplicity?}, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?, multiplicity?}, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -124,7 +124,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'add_field', 'create_record', 'set_values', 'remove_record']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'add_field', 'create_record', 'set_values', 'remove_record', 'set_list']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -138,6 +138,8 @@ final class ModelAbilities
                                 'values'      => ['type' => 'object'],
                                 'own_value'   => ['type' => 'string'],
                                 'locale'      => ['type' => 'string'],
+                                'attribute'   => ['type' => 'string', 'pattern' => '^[a-z_]+$'],
+                                'members'     => ['type' => 'array', 'items' => $ziel],
                             ],
                             'required'   => ['op'],
                         ],
@@ -395,6 +397,15 @@ final class ModelAbilities
                 $screen->entries()->removeRecord($recordId);
 
                 return $recordId;
+
+            case 'set_list':
+                // ⚠️ *Gebaut, weil die Feldwahl der Benchmarks sonst nur in der Maske zu setzen war (D-923, INF-068).*
+                $nodeId  = $this->node($at('node'))->id;
+                $members = array_map(fn (mixed $m): int => $this->resolve($m, $refs, 'members'), is_array($change['members'] ?? null) ? $change['members'] : []);
+
+                $screen->setListMembers($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), $members);
+
+                return $nodeId;
         }
 
         throw new \InvalidArgumentException('Unknown op.');
