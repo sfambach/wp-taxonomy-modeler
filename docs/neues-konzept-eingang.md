@@ -635,6 +635,8 @@ CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · 
 
 Heute stehen 151 Sätze unter «Kompatibilität» mit «Art», «von», «zu» und «zu Familie»; keiner trägt einen Namen. Offen: wie eine solche Beziehung gespeichert wird (eigene Kante, eigener Satz mit zwei Enden, oder eine Kantenart), wie man sie **von beiden Seiten** sieht, und was mit den 151 Sätzen geschieht.
 
+**Zweiter Fall, gemeldet am 2026-10-16:** seine Fragen *«haben wir bei graphikarten und sound karten sowas wie vorgänger nachfolger ?»* und *«ich frage mich auch ob wir das richtig modelliert haben als feld und nicht als relation»*. Gemessen: «Nachfolger» ist ein **Feld** an «Models» (Verweis auf ein Modell, 0..1), das alle Modelle erben, auch Grafik- und Soundkarten; gefüllt ist es 52-mal, nur bei Betriebssystemen. «Vorgänger» gibt es nicht — es wäre dieselbe Beziehung von der anderen Seite gelesen. Eine Entscheidung zum Feld habe ich im Log nicht gefunden. Ebenso ist «Kompatibel mit» an den Karten nach [D-897](NewConcept/90-decision-log.md) «vorerst Text». Beides gehört in dieselbe Antwort: Beziehungen zwischen zwei Sätzen, die man von beiden Seiten sieht.
+
 ---
 
 ## INF-063 · Eine Abfrage steht 27- bis 28-mal auf zwei Seiten
@@ -679,6 +681,33 @@ Das Exemplar trägt «Gekauft am», «Kaufpreis», «Währung» und «Händler»
 **Vorschlag:** die vier Felder am Exemplar streichen und die zwei Werte in je einen Kauf überführen; am Exemplar zeigt man den Kauf als Rückverweis. Offen, ob ein Exemplar ohne Kauf (geschenkt, gefunden) ein Feld «Herkunft des Stücks» braucht.
 
 **Erledigt 2026-09-22 → [D-902](NewConcept/90-decision-log.md):** gebaut wie vorgeschlagen; offen bleibt nur das Feld für ein Stück ohne Kauf.
+
+---
+## INF-067 · Ein Block für Vergleichsstatistiken
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — gemeldet am 2026-10-16 vom Eigentümer.
+
+> *«mit diesen Prozenten, Abweichungen und so weiter, ähm, das würde ich mir für einen anderen Block später, wenn wir Vergleichsstatistiken darstellen, äh, aufheben wollen.»*
+
+Im Muster zum Vergleich ([D-920](NewConcept/90-decision-log.md)) zeigte Variante C je Vergleichsspalte die Abweichung vom Hauptsatz in Prozent, grün oder rot nach der Richtung der Messgröße («höher/niedriger ist besser»). Das kommt nicht in die Anzeige «Vergleich» des Satz-Blocks.
+
+Am selben Tag genauer:
+
+> *«einen Block bauen können mit irgendwelchen Balkendiagrammen, der die einzelnen Resultate, ja, oder ähnliche Resultate vergleicht und dann praktisch den Satz in den Fokus stellt, der aktuell in diesem Block äh, bearbeitet wird. Und aber auch die Möglichkeit gibt, sich die anderen Daten anzuschauen. Also ähnlich wie auf einer Hardware-Testseite […] Das wäre aber, glaube ich, ein anderer Block einfach.»* — und gleich danach: *«oder aber eine umschaltung auf statistik im vorhandenen block»*
+
+- **Gewünscht:** Balkendiagramme je Messgröße, der Hauptsatz des Blocks im Fokus, die übrigen Ergebnisse einsehbar — wie auf Hardware-Testseiten.
+- **Offen:** eigener Block oder eine vierte Anzeige «Statistik» im Block `taxmod/record` ([D-916](NewConcept/90-decision-log.md)). *Mein Vorschlag (INFERRED): die vierte Anzeige, weil Hauptsatz ([D-920](NewConcept/90-decision-log.md)), Satzauswahl und Puffer ([D-919](NewConcept/90-decision-log.md)) dieselben sind.* Welche Sätze in die Balken kommen, ist entschieden: alle mit derselben Messgröße ([D-921](NewConcept/90-decision-log.md)).
+
+---
+## INF-068 · Benchmarks heissen «#36005» statt mit ihrem Namen
+
+**Typ:** `BEFUND` · **Status:** `INFERRED` — gemessen am 2026-10-16 von mir, lokal an einer Kopie seiner Daten.
+
+Ein Verweis auf einen Benchmark (Feld «Benchmark» an den Messgrössen) zeigt in der Anzeige und im Vergleich «#36005» statt «3D Bench». Die Benchmarks liegen unter «Software», und dort wählt `summary_fields` Hersteller und Version — beides hat ein Benchmark nicht, also bleibt die Nummer. Der Rückfall auf das erste Textfeld greift nur, wenn **keine** Feldwahl da ist, nicht wenn die gewählten Felder leer sind.
+
+**Vorschlag:** am Knoten «Benchmarks» eine eigene Feldwahl «Bezeichnung» setzen (eine Datenänderung über den Upload, kein Code). Offen, ob der Rückfall allgemein auch bei leeren gewählten Feldern greifen soll.
+
+**Für den Vergleich bis dahin:** als Zeilenbeschriftung die «Bezeichnung» der Messgrösse («3D Bench für langsame PCs») und die Einheit.
 
 ---
 ## Erledigte Eingänge

@@ -341,6 +341,212 @@ final class NodesScreen
         )->markup;
     }
 
+    /**
+     * Mehrere Sätze als Vergleich im Beitrag, einer davon der Hauptsatz ([D-916](../../../docs/NewConcept/90-decision-log.md), [D-920](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ```mermaid
+     * flowchart LR
+     *   V{"via gesetzt?"} -->|nein| E["Zeilen = Felder der Sätze"]
+     *   V -->|ja| R["Zeilen = Sätze, die über «via» auf die Spalten zeigen, gruppiert nach «rowKey», Zelle = «value»"]
+     *   E --> T["ComparisonTable"]
+     *   R --> T
+     * ```
+     *
+     * ⚠️ *Die zweite Form ist der Fall der Messwerte: ein Messwert zeigt auf seinen Testaufbau (`via`) und seine Messgrösse
+     * (`rowKey`) und trägt den Wert (`value`); `rowFields` sind die Felder der Messgrösse, die die Zeile beschriften. Wie Zeilen
+     * und Spalten gewählt werden, sagte D-916 nicht — das ist meine Form (INFERRED), beim Bau gewählt.* Jeder Schritt liest alle
+     * Sätze auf einmal (`CD-7`).
+     *
+     * @param list<int> $recordIds
+     * @param list<int> $rowFields
+     */
+    public function comparisonForReaders(
+        array $recordIds,
+        int $mainId,
+        \Taxmod\Core\Renderer\ComparisonPosition $position,
+        int $via,
+        int $rowKey,
+        array $rowFields,
+        int $valueField,
+        string $mainWord,
+        string $otherWord,
+    ): string {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $recordIds))));
+
+        if ($mainId !== 0 && !in_array($mainId, $ids, true)) {
+            array_unshift($ids, $mainId);
+        }
+
+        if ($ids === []) {
+            return '';
+        }
+
+        $saetze = $this->data->recordsByIds($ids);
+        $erster = $saetze[$ids[0]] ?? throw new \InvalidArgumentException("No record {$ids[0]}.");
+        $felder = array_values($this->editor->fieldsOf($erster->nodeId));
+
+        if ($felder === []) {
+            return '';
+        }
+
+        $namen   = $this->rendering->summaryTextsOf([['relation' => $felder[0], 'records' => $ids, 'ownWords' => true]])[$felder[0]->id] ?? [];
+        $spalten = [];
+
+        foreach ($ids as $id) {
+            if (isset($saetze[$id])) {
+                $name      = trim((string) ($namen[$id] ?? ''));
+                $spalten[] = ['id' => $id, 'label' => $name === '' ? '#' . $id : $name];
+            }
+        }
+
+        [$koepfe, $zeilen] = $via === 0
+            ? $this->comparisonOwnRows(array_column($spalten, 'id'), $felder)
+            : $this->comparisonReferrerRows(array_column($spalten, 'id'), $via, $rowKey, $rowFields, $valueField);
+
+        return \Taxmod\Core\Renderer\ComparisonTable::render($spalten, $mainId, $position, $koepfe, $zeilen, $mainWord, $otherWord);
+    }
+
+    /**
+     * Zeilen aus den eigenen Feldern der Sätze — so, wie die Anzeige sie zeigt.
+     *
+     * @param  list<int>      $ids
+     * @param  list<Relation> $felder
+     * @return array{0: list<string>, 1: list<array{labels: list<string>, cells: array<int, string>}>}
+     */
+    private function comparisonOwnRows(array $ids, array $felder): array
+    {
+        $resolved = $this->rendering->settingsForUseSites($felder);
+        $gezeigte = $this->rendering->previewVisibilityFor($felder, $resolved)['shown'];
+        $werte    = $this->data->valuesOfMany($ids);
+        $texte    = $this->comparisonTexts($werte, $gezeigte);
+        $zeilen   = [];
+
+        foreach ($gezeigte as $feld) {
+            $zellen = [];
+
+            foreach ($ids as $id) {
+                $zellen[$id] = $texte[$id][$feld->id] ?? '';
+            }
+
+            if (implode('', $zellen) !== '') {
+                $zeilen[] = ['labels' => [$feld->name], 'cells' => $zellen];
+            }
+        }
+
+        return [[''], $zeilen];
+    }
+
+    /**
+     * Zeilen aus den Sätzen, die auf die Spalten zeigen — je Ziel von `rowKey` eine Zeile.
+     *
+     * @param  list<int> $ids
+     * @param  list<int> $rowFields
+     * @return array{0: list<string>, 1: list<array{labels: list<string>, cells: array<int, string>}>}
+     */
+    private function comparisonReferrerRows(array $ids, int $via, int $rowKey, array $rowFields, int $valueField): array
+    {
+        $verweise = [];
+
+        foreach ($this->data->referrersOfMany($ids) as $spalte => $zeilen) {
+            foreach ($zeilen as $zeile) {
+                if ($zeile->relationId === $via) {
+                    $verweise[$zeile->recordId] = $spalte;
+                }
+            }
+        }
+
+        $kanten = $this->editor->relationsByIds(array_values(array_unique([$valueField, ...$rowFields])));
+        $werte  = $this->data->valuesOfMany(array_keys($verweise));
+        $texte  = $this->comparisonTexts($werte, array_values(array_filter([$kanten[$valueField] ?? null])));
+        $zellen = [];
+
+        foreach ($werte as $satz => $eigene) {
+            foreach ($eigene as $wert) {
+                if ($wert->relationId === $rowKey && $wert->value->reference !== null) {
+                    $zellen[$wert->value->reference][$verweise[$satz]] = $texte[$satz][$valueField] ?? '';
+                }
+            }
+        }
+
+        $schluessel = array_keys($zellen);
+        sort($schluessel);
+
+        // *Ohne gewählte Beschriftungsfelder heisst die Zeile wie ihr Satz.*
+        $zeilenKante = $rowFields === [] ? $this->editor->relationById($rowKey) : null;
+        $worte       = $zeilenKante === null || $schluessel === [] ? [] : ($this->rendering->summaryTextsOf([['relation' => $zeilenKante, 'records' => $schluessel, 'ownWords' => true]])[$rowKey] ?? []);
+        $beschrift   = $rowFields === [] ? [] : $this->comparisonTexts($this->data->valuesOfMany($schluessel), array_values(array_filter(array_map(static fn (int $f): ?Relation => $kanten[$f] ?? null, $rowFields))));
+        $zeilen      = [];
+
+        foreach ($schluessel as $ziel) {
+            $zeilen[] = [
+                'labels' => $rowFields === []
+                    ? [trim((string) ($worte[$ziel] ?? ''))]
+                    : array_map(static fn (int $f): string => $beschrift[$ziel][$f] ?? '', $rowFields),
+                'cells'  => $zellen[$ziel],
+            ];
+        }
+
+        $koepfe = $rowFields === []
+            ? [$zeilenKante?->name ?? '']
+            : array_map(static fn (int $f): string => ($kanten[$f] ?? null)?->name ?? '', $rowFields);
+
+        return [$koepfe, $zeilen];
+    }
+
+    /**
+     * Die Werte dieser Felder als Lesetext, Verweise mit dem Wort ihres Satzes — alle Verweise in einem Lauf (`CD-7`).
+     *
+     * @param  array<int, list<\Taxmod\Core\Model\RelationRecord>> $werte
+     * @param  list<Relation>                                         $felder
+     * @return array<int, array<int, string>> Satz-Id ⇒ Feld-Id ⇒ Text
+     */
+    private function comparisonTexts(array $werte, array $felder): array
+    {
+        $gesucht = [];
+
+        foreach ($felder as $feld) {
+            $gesucht[$feld->id] = $feld;
+        }
+
+        $verweise = [];
+
+        foreach ($werte as $eigene) {
+            foreach ($eigene as $wert) {
+                if (isset($gesucht[$wert->relationId]) && $wert->value->reference !== null && $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record) {
+                    $verweise[$wert->relationId][$wert->value->reference] = $wert->value->reference;
+                }
+            }
+        }
+
+        $worte = $verweise === [] ? [] : $this->rendering->summaryTextsOf(array_map(
+            static fn (int $kante): array => ['relation' => $gesucht[$kante], 'records' => array_values($verweise[$kante]), 'ownWords' => true],
+            array_keys($verweise)
+        ));
+
+        $aus = [];
+
+        foreach ($werte as $satz => $eigene) {
+            foreach ($eigene as $wert) {
+                if (!isset($gesucht[$wert->relationId]) || ($wert->locale !== '' && $wert->locale !== SettingsScreen::neutralLocale())) {
+                    continue;
+                }
+
+                $v    = $wert->value;
+                $text = match (true) {
+                    $v->reference !== null => trim((string) ($worte[$wert->relationId][$v->reference] ?? '')),
+                    $v->decimal !== null   => str_contains($v->decimal, '.') ? rtrim(rtrim($v->decimal, '0'), '.') : $v->decimal,
+                    default                => (string) ($v->text ?? $v->date ?? ($v->int === null ? '' : (string) $v->int)),
+                };
+
+                // *Ein Feld mit mehreren Werten nennt sie alle, nicht nur den letzten.*
+                $alt                        = $aus[$satz][$wert->relationId] ?? '';
+                $aus[$satz][$wert->relationId] = $alt === '' ? $text : $alt . ', ' . $text;
+            }
+        }
+
+        return $aus;
+    }
+
     /** Der Schreibweg der Sätze, den auch die Maske benutzt — mit ihrem Nachlauf (D-885) und ihrer Vorbelegung (D-649). */
     public function entries(): DataEntry
     {

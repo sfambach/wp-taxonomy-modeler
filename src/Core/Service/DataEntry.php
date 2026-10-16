@@ -1806,6 +1806,17 @@ final class DataEntry
     }
 
     /**
+     * Die verweisenden Wertzeilen vieler Sätze in einer Abfrage (D-916).
+     *
+     * @param  list<int>                                              $recordIds
+     * @return array<int, list<\Taxmod\Core\Model\RelationRecord>>
+     */
+    public function referrersOfMany(array $recordIds): array
+    {
+        return $recordIds === [] ? [] : $this->records->referrersOfMany($recordIds);
+    }
+
+    /**
      * Mehrere Sätze nach Nummer (D-902).
      *
      * @param  list<int> $recordIds
