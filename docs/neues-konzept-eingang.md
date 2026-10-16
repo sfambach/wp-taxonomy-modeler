@@ -683,6 +683,15 @@ Das Exemplar trägt «Gekauft am», «Kaufpreis», «Währung» und «Händler»
 **Erledigt 2026-09-22 → [D-902](NewConcept/90-decision-log.md):** gebaut wie vorgeschlagen; offen bleibt nur das Feld für ein Stück ohne Kauf.
 
 ---
+## INF-067 · Ein Block für Vergleichsstatistiken
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — gemeldet am 2026-10-16 vom Eigentümer.
+
+> *«mit diesen Prozenten, Abweichungen und so weiter, ähm, das würde ich mir für einen anderen Block später, wenn wir Vergleichsstatistiken darstellen, äh, aufheben wollen.»*
+
+Im Muster zum Vergleich ([D-920](NewConcept/90-decision-log.md)) zeigte Variante C je Vergleichsspalte die Abweichung vom Hauptsatz in Prozent, grün oder rot nach der Richtung der Messgröße («höher/niedriger ist besser»). Das kommt nicht in den Satz-Block, sondern in einen späteren eigenen Block. Offen: was er alles zeigt, und ob er dieselbe Satzauswahl nutzt.
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*
