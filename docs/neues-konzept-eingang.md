@@ -696,7 +696,7 @@ Am selben Tag genauer:
 > *«einen Block bauen können mit irgendwelchen Balkendiagrammen, der die einzelnen Resultate, ja, oder ähnliche Resultate vergleicht und dann praktisch den Satz in den Fokus stellt, der aktuell in diesem Block äh, bearbeitet wird. Und aber auch die Möglichkeit gibt, sich die anderen Daten anzuschauen. Also ähnlich wie auf einer Hardware-Testseite […] Das wäre aber, glaube ich, ein anderer Block einfach.»* — und gleich danach: *«oder aber eine umschaltung auf statistik im vorhandenen block»*
 
 - **Gewünscht:** Balkendiagramme je Messgröße, der Hauptsatz des Blocks im Fokus, die übrigen Ergebnisse einsehbar — wie auf Hardware-Testseiten.
-- **Offen:** eigener Block oder eine vierte Anzeige «Statistik» im Block `taxmod/record` ([D-916](NewConcept/90-decision-log.md)). *Mein Vorschlag (INFERRED): die vierte Anzeige, weil Hauptsatz ([D-920](NewConcept/90-decision-log.md)), Satzauswahl und Puffer ([D-919](NewConcept/90-decision-log.md)) dieselben sind.* Offen auch: welche Sätze in die Balken kommen (alle mit derselben Messgröße oder nur die gewählten).
+- **Offen:** eigener Block oder eine vierte Anzeige «Statistik» im Block `taxmod/record` ([D-916](NewConcept/90-decision-log.md)). *Mein Vorschlag (INFERRED): die vierte Anzeige, weil Hauptsatz ([D-920](NewConcept/90-decision-log.md)), Satzauswahl und Puffer ([D-919](NewConcept/90-decision-log.md)) dieselben sind.* Welche Sätze in die Balken kommen, ist entschieden: alle mit derselben Messgröße ([D-921](NewConcept/90-decision-log.md)).
 
 ---
 ## Erledigte Eingänge
