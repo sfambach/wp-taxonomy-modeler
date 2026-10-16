@@ -635,6 +635,8 @@ CPUs (#12, zwei Blöcke nebeneinander) · Mainboards (#16, 25 eigene Boards) · 
 
 Heute stehen 151 Sätze unter «Kompatibilität» mit «Art», «von», «zu» und «zu Familie»; keiner trägt einen Namen. Offen: wie eine solche Beziehung gespeichert wird (eigene Kante, eigener Satz mit zwei Enden, oder eine Kantenart), wie man sie **von beiden Seiten** sieht, und was mit den 151 Sätzen geschieht.
 
+**Zweiter Fall, gemeldet am 2026-10-16:** seine Fragen *«haben wir bei graphikarten und sound karten sowas wie vorgänger nachfolger ?»* und *«ich frage mich auch ob wir das richtig modelliert haben als feld und nicht als relation»*. Gemessen: «Nachfolger» ist ein **Feld** an «Models» (Verweis auf ein Modell, 0..1), das alle Modelle erben, auch Grafik- und Soundkarten; gefüllt ist es 52-mal, nur bei Betriebssystemen. «Vorgänger» gibt es nicht — es wäre dieselbe Beziehung von der anderen Seite gelesen. Eine Entscheidung zum Feld habe ich im Log nicht gefunden. Ebenso ist «Kompatibel mit» an den Karten nach [D-897](NewConcept/90-decision-log.md) «vorerst Text». Beides gehört in dieselbe Antwort: Beziehungen zwischen zwei Sätzen, die man von beiden Seiten sieht.
+
 ---
 
 ## INF-063 · Eine Abfrage steht 27- bis 28-mal auf zwei Seiten
