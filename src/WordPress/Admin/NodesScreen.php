@@ -726,15 +726,17 @@ final class NodesScreen
      * @param list<int> $members Ids der gewählten Felder oder Knoten.
      * @return int Wie viele Glieder sich geändert haben.
      */
-    public function setListMembers(int $nodeId, string $attribut, array $members): int
+    public function setListMembers(int $nodeId, string $attribut, array $members, ?int $fieldId = null): int
     {
         $knoten = $this->editor->find($nodeId) ?? throw new \InvalidArgumentException("No node {$nodeId}.");
+        $kante  = $fieldId === null ? null : ($this->editor->relationById($fieldId) ?? throw new \InvalidArgumentException("No field {$fieldId}."));
 
         if ($this->attributes === null) {
             throw new \RuntimeException('Settings cannot be written here.');
         }
 
-        return $this->attributes->setMembers($knoten, $attribut, $members);
+        // ⚠️ *Mit Feld gilt die Liste nur an dieser Verwendungsstelle (D-712), etwa die erlaubten Einheiten eines Preisfelds (D-930).*
+        return $this->attributes->setMembers($knoten, $attribut, $members, $kante);
     }
 
     /** Der Schreibweg der Sätze, den auch die Maske benutzt — mit ihrem Nachlauf (D-885) und ihrer Vorbelegung (D-649). */

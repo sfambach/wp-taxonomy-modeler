@@ -110,7 +110,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field). Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -414,7 +414,7 @@ final class ModelAbilities
                 $nodeId  = $this->node($at('node'))->id;
                 $members = array_map(fn (mixed $m): int => $this->resolve($m, $refs, 'members'), is_array($change['members'] ?? null) ? $change['members'] : []);
 
-                $screen->setListMembers($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), $members);
+                $screen->setListMembers($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), $members, isset($change['field']) ? $at('field') : null);
 
                 return $nodeId;
         }

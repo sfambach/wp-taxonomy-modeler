@@ -226,7 +226,7 @@ $weg      = is_array($kombi) ? $apply->execute(['changes' => [['op' => 'remove_f
 $fuenfter = is_array($weg) ? $node->execute(['node' => $ergebnis['refs']['i']]) : null;
 check('remove_field nimmt das Feld vom Knoten', is_array($fuenfter) && ! in_array($kombi['refs']['kombi'] ?? -1, array_column($fuenfter['fields'], 'relation_id'), true), is_wp_error($weg) ? $weg->get_error_message() : '');
 
-echo "Knoten verschieben, Preis als Einheitenwert (D-928, D-929)\n";
+echo "Knoten verschieben, Preis als Einheitenwert (D-928, D-929, D-930)\n";
 
 // *Eine Währung ist ein Zweig der Einheiten (D-039): unter «Base units» wählt der Einheitenwert sie wie Gramm oder Hertz.*
 $basis     = \Taxmod\WordPress\Persistence\UnitScaffold::nodeId(\Taxmod\WordPress\Persistence\UnitScaffold::BASE_UNITS_NAME) ?? 0;
@@ -254,6 +254,20 @@ wp_set_current_user(0);
 $preis = is_array($geld) ? wp_strip_all_tags(do_blocks('<!-- wp:taxmod/record {"record":' . $ergebnis['refs']['r'] . ',"field":' . $geld['refs']['preis'] . '} /-->')) : '';
 wp_set_current_user((int) ($admin[0] ?? 1));
 check('ein Preis als Einheitenwert zeigt Betrag und Währung', str_contains($preis, '29.28') && str_contains($preis, '__ab Taler'), trim($preis));
+
+$nur = is_array($geld) ? $apply->execute(['changes' => [[
+    'op'        => 'set_list',
+    'node'      => \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0,
+    'field'     => $geld['refs']['preis'],
+    'attribute' => 'erlaubte_einheiten',
+    'members'   => [$geld['refs']['taler']],
+]]]) : null;
+$erlaubt = is_array($nur) ? $wpdb->get_col($wpdb->prepare(
+    'SELECT wert_knoten_id FROM ' . Schema::table('settings_value') . ' WHERE relation_id = %d AND attribut = %s AND aktiv = 1',
+    $geld['refs']['preis'],
+    'erlaubte_einheiten'
+)) : [];
+check('set_list mit Feld setzt die erlaubten Einheiten nur an dieser Verwendungsstelle (D-930)', array_map('intval', $erlaubt) === [$geld['refs']['taler']], is_wp_error($nur) ? $nur->get_error_message() : wp_json_encode($erlaubt));
 
 echo "Block im Beitrag (D-912)\n";
 
