@@ -2085,7 +2085,7 @@ final class Rendering implements Presets
                 $tiefer === null
                     // ⚠️ *Das Ziel wird nur für einen Wähler-Renderer nachgeschlagen — sonst wäre es eine Abfrage je Feld (CD-7).*
                     ? (($renderer instanceof ChooserRenderer
-                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null)
+                        ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null, $relation->multiplicity->requiresOne())
                         : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
                 // Carried for the **layout**: R75 puts read-only values first, as context rather
@@ -5202,7 +5202,7 @@ final class Rendering implements Presets
     /**
      * @param array<string, ResolvedSetting> $settings Die aufgelösten Angaben der Stelle — darunter `dialog` und `display_size` des Wählers.
      */
-    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null): ?RenderResult
+    private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null, bool $required = false): ?RenderResult
     {
         if ($target === null || ! $renderer instanceof ChooserRenderer) {
             return null;
@@ -5213,7 +5213,7 @@ final class Rendering implements Presets
         // ⚠️ **Nur die erlaubten, wo der Teil sie nennt** (D-783) — *erlaubte Einheiten am Feld, erlaubte Präfixe an der Einheit.*
         // *Eine leere Liste, die der Teil **nennt**, heisst «nichts zu wählen» — der Präfix einer Einheit ohne Präfix.*
         if ($erlaubt !== null) {
-            return $erlaubt === [] ? RenderResult::of('') : $this->allowedChoiceMarkup($target, $erlaubt, $gewaehlt, $fieldName, $formId, $locale, $level, $settings);
+            return $erlaubt === [] ? RenderResult::of('') : $this->allowedChoiceMarkup($target, $erlaubt, $gewaehlt, $fieldName, $formId, $locale, $level, $settings, $required);
         }
 
         // ⚠️ **Ein Verweis auf den Typ «Node reference» selbst ist unbeschränkt: der ganze Baum, als Dialog** ([D-740](../../../docs/NewConcept/90-decision-log.md)) —
@@ -6069,7 +6069,7 @@ final class Rendering implements Presets
      * @param list<int>                      $erlaubt
      * @param array<string, ResolvedSetting> $settings
      */
-    private function allowedChoiceMarkup(Node $target, array $erlaubt, ?int $gewaehlt, string $fieldName, string $formId, string $locale, Level $level, array $settings): RenderResult
+    private function allowedChoiceMarkup(Node $target, array $erlaubt, ?int $gewaehlt, string $fieldName, string $formId, string $locale, Level $level, array $settings, bool $required = false): RenderResult
     {
         $ids    = $gewaehlt === null || in_array($gewaehlt, $erlaubt, true) ? $erlaubt : [...$erlaubt, $gewaehlt];
         $knoten = $this->gemerkteKnoten($ids);
@@ -6094,7 +6094,8 @@ final class Rendering implements Presets
             editable: true,
             fieldName: $fieldName,
             type: SimpleType::NodeRef,
-            surroundings: new Surroundings(options: $options, mayBeNothing: $einzig === null, formId: $formId),
+            // ⚠️ *Ein Pflichtfeld bietet kein «—» an: die Währung eines Preises ist nie leer (D-931).*
+            surroundings: new Surroundings(options: $options, mayBeNothing: $einzig === null && ! $required, formId: $formId),
         ));
 
         if ($einzig === null || $fieldName === '') {

@@ -226,7 +226,7 @@ $weg      = is_array($kombi) ? $apply->execute(['changes' => [['op' => 'remove_f
 $fuenfter = is_array($weg) ? $node->execute(['node' => $ergebnis['refs']['i']]) : null;
 check('remove_field nimmt das Feld vom Knoten', is_array($fuenfter) && ! in_array($kombi['refs']['kombi'] ?? -1, array_column($fuenfter['fields'], 'relation_id'), true), is_wp_error($weg) ? $weg->get_error_message() : '');
 
-echo "Knoten verschieben, Preis als Einheitenwert (D-928, D-929, D-930)\n";
+echo "Knoten verschieben, Preis als Einheitenwert (D-928, D-929, D-930, D-931)\n";
 
 // *Eine Währung ist ein Zweig der Einheiten (D-039): unter «Base units» wählt der Einheitenwert sie wie Gramm oder Hertz.*
 $basis     = \Taxmod\WordPress\Persistence\UnitScaffold::nodeId(\Taxmod\WordPress\Persistence\UnitScaffold::BASE_UNITS_NAME) ?? 0;
@@ -238,7 +238,7 @@ $geld = $apply->execute(['changes' => [
     ['op' => 'create_node', 'ref' => 'geld', 'name' => '__ab Geld', 'parent' => $konstante, 'class' => 'Choice'],
     ['op' => 'create_node', 'ref' => 'taler', 'name' => '__ab Taler', 'parent' => '@geld', 'class' => 'Unit'],
     ['op' => 'move_node', 'node' => '@geld', 'parent' => $basis],
-    ['op' => 'add_field', 'ref' => 'preis', 'node' => $ergebnis['refs']['i'], 'target' => \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0, 'name' => '__ab Preis'],
+    ['op' => 'add_field', 'ref' => 'preis', 'node' => $ergebnis['refs']['i'], 'target' => \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0, 'name' => '__ab Preis', 'multiplicity' => '0..1'],
     ['op' => 'set_values', 'record' => $ergebnis['refs']['r'], 'values' => ['@preis' => ['p' => [
         (string) ($teile['wert']['relation_id'] ?? 0)    => '29.28',
         (string) ($teile['einheit']['relation_id'] ?? 0) => '@taler',
@@ -268,6 +268,33 @@ $erlaubt = is_array($nur) ? $wpdb->get_col($wpdb->prepare(
     'erlaubte_einheiten'
 )) : [];
 check('set_list mit Feld setzt die erlaubten Einheiten nur an dieser Verwendungsstelle (D-930)', array_map('intval', $erlaubt) === [$geld['refs']['taler']], is_wp_error($nur) ? $nur->get_error_message() : wp_json_encode($erlaubt));
+
+$leer = is_array($geld) ? $apply->execute(['changes' => [
+    ['op' => 'create_record', 'ref' => 'ohne', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@ohne', 'values' => [(string) $geld['refs']['preis'] => ['n' => [
+        (string) ($teile['wert']['relation_id'] ?? 0)    => '',
+        (string) ($teile['einheit']['relation_id'] ?? 0) => (string) $geld['refs']['taler'],
+    ]]]],
+]]) : null;
+$ohneTeil = is_array($leer) ? (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT COUNT(*) FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d AND relation_id = %d',
+    $leer['refs']['ohne'],
+    $geld['refs']['preis']
+)) : -1;
+check('ein Preis ohne Betrag legt keinen Teil an, auch wenn die Währung mitkommt (D-931)', $ohneTeil === 0, is_wp_error($leer) ? $leer->get_error_message() : (string) $ohneTeil);
+
+$zwei = is_array($geld) ? $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'kreuzer', 'name' => '__ab Kreuzer', 'parent' => $geld['refs']['geld'], 'class' => 'Unit'],
+    ['op' => 'set_list', 'node' => \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0, 'field' => $geld['refs']['preis'], 'attribute' => 'erlaubte_einheiten', 'members' => [$geld['refs']['taler'], '@kreuzer']],
+]]) : null;
+$_GET['page']               = 'taxmod';
+$_GET['taxmod_open_record'] = (string) $ergebnis['refs']['r'];
+$plugin                     = (new ReflectionClass(\Taxmod\WordPress\Plugin::class))->newInstanceWithoutConstructor();
+(new ReflectionProperty($plugin, 'file'))->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
+$maske = is_array($zwei) ? $plugin->screen()->render() : '';
+unset($_GET['page'], $_GET['taxmod_open_record']);
+preg_match('/<select name="taxmod_value\[' . $ergebnis['refs']['r'] . '\]\[' . ($geld['refs']['preis'] ?? 0) . '\][^"]*\[' . ($teile['einheit']['relation_id'] ?? 0) . '\]"[^>]*>(.*?)<\/select>/s', $maske, $waehler);
+check('die Pflicht-Einheit eines Preises bietet kein leeres «—» an (D-931)', isset($waehler[1]) && str_contains($waehler[1], '__ab Kreuzer') && ! str_contains($waehler[1], '<option value=""'), is_wp_error($zwei) ? $zwei->get_error_message() : substr($waehler[1] ?? 'kein Wähler', 0, 200));
 
 echo "Block im Beitrag (D-912)\n";
 

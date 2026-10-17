@@ -3751,7 +3751,7 @@ final class NodesScreen
             }
 
             if ($partId === 0) {
-                if (! $this->holdsSomething($inner)) {
+                if (! $this->holdsSomething($this->withoutPresetUnit($inner))) {
                     continue;
                 }
 
@@ -3935,6 +3935,26 @@ final class NodesScreen
         foreach ($werte as $wert) {
             $this->data->appendValue($recordId, $relation->id, $wert);
         }
+    }
+
+    /**
+     * Ein neuer Teil ohne eigene Eingabe bleibt leer, auch wenn seine Einheit schon gewählt dasteht.
+     *
+     * ⚠️ *Eine Pflicht-Einheit bietet kein «—» an (D-931) und wird darum immer mitgeschickt — ohne diesen Abzug
+     * legte jedes Speichern eines Kaufs ohne Preis einen Teil «€» an.*
+     *
+     * @param array<int|string, mixed> $inner
+     * @return array<int|string, mixed>
+     */
+    private function withoutPresetUnit(array $inner): array
+    {
+        $einheiten = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Units);
+
+        return $einheiten === null ? $inner : array_filter($inner, function (mixed $wert, int|string $kante) use ($einheiten): bool {
+            $relation = absint($kante) === 0 ? null : $this->editor->relationById(absint($kante));
+
+            return $relation === null || $relation->toNodeId !== $einheiten->id || ! $relation->multiplicity->requiresOne();
+        }, ARRAY_FILTER_USE_BOTH);
     }
 
     /** Ob in einer geschickten Liste irgendwo ein Zeichen steht — ein leerer neuer Teil wird nicht angelegt. */
