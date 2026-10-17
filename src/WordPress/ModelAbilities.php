@@ -110,7 +110,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -124,7 +124,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'add_field', 'rename_field', 'remove_field', 'create_record', 'set_values', 'remove_record', 'set_list']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'create_record', 'set_values', 'remove_record', 'set_list']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -351,6 +351,10 @@ final class ModelAbilities
 
             case 'trash_node':
                 return $editor->moveToTrash($at('node'))->id;
+
+            case 'move_node':
+                // ⚠️ *Built so a currency can hang under «Base units» without a hand in the admin (D-928).*
+                return $editor->move($at('node'), $this->node($at('parent'))->id)->id;
 
             case 'add_field':
                 $target = $this->node($at('target'));

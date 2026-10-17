@@ -728,6 +728,8 @@ Bei den Mikrocontroller-Boards stehen Preise heute als Text in «Beschreibung» 
 
 *Angelegt 2026-10-17 (INFERRED, meine Form, nicht von ihm entschieden):* Knoten «Preisangaben» unter «Model», neben «Käufe»; eigene Felder, keine mit dem Kauf geteilt: Modell (→ Models) und Bauteil (→ Electronic Parts) — wie «von»/«von Bauteil» an der Kompatibilität, weil «Model» als Rahmenknoten kein Ziel sein darf —, Datum, Art (Angebot, Durchschnitt, Listenpreis), Preis je Stück, Währung, Plattform, Händler; die Quelle steht im geerbten «Herkunftshinweis». Neue Währung «Australian Dollar». Ort und gemeinsame Felder bleiben offen. ⚠️ *Am selben Abend ersetzt durch [D-927](NewConcept/90-decision-log.md): Preis als Kombifeld «Geldbetrag», Lieferant als Verweis auf «Lieferant»; die getrennte Form ging nie online.*
 
+*«Geldbetrag» war online (Käufe, Preisangaben) und wird ersetzt durch [D-929](NewConcept/90-decision-log.md): der Preis ist ein Einheitenwert, «Currency» hängt unter «Base units».*
+
 ---
 ## Erledigte Eingänge
 

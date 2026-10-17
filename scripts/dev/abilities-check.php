@@ -226,6 +226,35 @@ $weg      = is_array($kombi) ? $apply->execute(['changes' => [['op' => 'remove_f
 $fuenfter = is_array($weg) ? $node->execute(['node' => $ergebnis['refs']['i']]) : null;
 check('remove_field nimmt das Feld vom Knoten', is_array($fuenfter) && ! in_array($kombi['refs']['kombi'] ?? -1, array_column($fuenfter['fields'], 'relation_id'), true), is_wp_error($weg) ? $weg->get_error_message() : '');
 
+echo "Knoten verschieben, Preis als Einheitenwert (D-928, D-929)\n";
+
+// *Eine Währung ist ein Zweig der Einheiten (D-039): unter «Base units» wählt der Einheitenwert sie wie Gramm oder Hertz.*
+$basis     = \Taxmod\WordPress\Persistence\UnitScaffold::nodeId(\Taxmod\WordPress\Persistence\UnitScaffold::BASE_UNITS_NAME) ?? 0;
+$konstante = (int) $wpdb->get_var($wpdb->prepare('SELECT parent_node_id FROM ' . Schema::table('nodes') . ' WHERE id = %d', $basis));
+$einheiten = $node->execute(['node' => \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0]);
+$teile     = is_array($einheiten) ? array_column($einheiten['fields'], null, 'name') : [];
+
+$geld = $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'geld', 'name' => '__ab Geld', 'parent' => $konstante, 'class' => 'Choice'],
+    ['op' => 'create_node', 'ref' => 'taler', 'name' => '__ab Taler', 'parent' => '@geld', 'class' => 'Unit'],
+    ['op' => 'move_node', 'node' => '@geld', 'parent' => $basis],
+    ['op' => 'add_field', 'ref' => 'preis', 'node' => $ergebnis['refs']['i'], 'target' => \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0, 'name' => '__ab Preis'],
+    ['op' => 'set_values', 'record' => $ergebnis['refs']['r'], 'values' => ['@preis' => ['p' => [
+        (string) ($teile['wert']['relation_id'] ?? 0)    => '29.28',
+        (string) ($teile['einheit']['relation_id'] ?? 0) => '@taler',
+    ]]]],
+]]);
+$gezogen = is_array($geld) ? $node->execute(['node' => $geld['refs']['geld']]) : null;
+check('move_node hängt den Knoten unter den neuen Vater', ($gezogen['node']['parent'] ?? null) === $basis, is_wp_error($geld) ? $geld->get_error_message() : wp_json_encode($gezogen['node'] ?? null));
+
+$zurueck = is_array($geld) ? $apply->execute(['changes' => [['op' => 'move_node', 'node' => $geld['refs']['geld'], 'parent' => $geld['refs']['taler']]]]) : null;
+check('move_node unter das eigene Kind wird abgewiesen', is_wp_error($zurueck));
+
+wp_set_current_user(0);
+$preis = is_array($geld) ? wp_strip_all_tags(do_blocks('<!-- wp:taxmod/record {"record":' . $ergebnis['refs']['r'] . ',"field":' . $geld['refs']['preis'] . '} /-->')) : '';
+wp_set_current_user((int) ($admin[0] ?? 1));
+check('ein Preis als Einheitenwert zeigt Betrag und Währung', str_contains($preis, '29.28') && str_contains($preis, '__ab Taler'), trim($preis));
+
 echo "Block im Beitrag (D-912)\n";
 
 check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));
