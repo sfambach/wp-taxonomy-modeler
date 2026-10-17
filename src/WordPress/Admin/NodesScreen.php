@@ -371,6 +371,7 @@ final class NodesScreen
         string $mainWord,
         string $otherWord,
         int $groupBy = 0,
+        int $columnLabel = 0,
     ): string {
         $ids = array_values(array_unique(array_filter(array_map('intval', $recordIds))));
 
@@ -390,7 +391,11 @@ final class NodesScreen
             return '';
         }
 
-        $namen   = $this->rendering->summaryTextsOf([['relation' => $felder[0], 'records' => $ids, 'ownWords' => true]])[$felder[0]->id] ?? [];
+        // *Der Spaltenkopf: das gewählte Feld der Sätze (D-925), sonst ihre eigenen Worte.*
+        $kopfFeld = $columnLabel === 0 ? null : $this->ownFieldOf($felder, $columnLabel);
+        $namen    = $kopfFeld === null
+            ? ($this->rendering->summaryTextsOf([['relation' => $felder[0], 'records' => $ids, 'ownWords' => true]])[$felder[0]->id] ?? [])
+            : ($this->comparisonFieldTexts($ids, [$kopfFeld])[$kopfFeld->id] ?? []);
         $spalten = [];
 
         foreach ($ids as $id) {
@@ -401,32 +406,102 @@ final class NodesScreen
         }
 
         [$koepfe, $zeilen] = $via === 0
-            ? $this->comparisonOwnRows(array_column($spalten, 'id'), $felder)
+            ? $this->comparisonOwnRows(array_column($spalten, 'id'), $felder, $rowFields)
             : $this->comparisonReferrerRows(array_column($spalten, 'id'), $via, $rowKey, $rowFields, $valueField, $groupBy);
 
         return \Taxmod\Core\Renderer\ComparisonTable::render($spalten, $mainId, $position, $koepfe, $zeilen, $mainWord, $otherWord);
     }
 
     /**
-     * Zeilen aus den eigenen Feldern der Sätze — so, wie die Anzeige sie zeigt.
+     * What the block editor needs to offer a node's records and fields by name instead of by number ([D-924](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Records are named by their own words, the same that head a comparison column. The fields that point **at** this
+     * node or one of its ancestors are where measurements come from (`via`); their owners' fields are fetched only when one
+     * is picked.* Each part is one read for all (`CD-7`).
+     *
+     * @return array{id: int, name: string, fields: list<array{id: int, name: string, target: int}>, records: list<array{id: int, label: string}>, referrers: list<array{id: int, name: string, owner: int, ownerName: string}>}
+     */
+    public function blockEditorNode(int $nodeId, bool $withRecords = true, int $labelField = 0): array
+    {
+        $node   = $this->editor->find($nodeId) ?? throw new \InvalidArgumentException("No node {$nodeId}.");
+        $felder = array_values($this->editor->fieldsOf($nodeId));
+        $saetze = [];
+
+        if ($withRecords && $felder !== []) {
+            $ids   = array_map(
+                static fn (NodeRecord $r): int => $r->id,
+                array_values(array_filter(
+                    $this->data->recordsOf($nodeId),
+                    static fn (NodeRecord $r): bool => $r->recordType === RecordType::User
+                ))
+            );
+            $namen = $ids === [] ? [] : ($this->rendering->summaryTextsOf([['relation' => $felder[0], 'records' => $ids, 'ownWords' => true]])[$felder[0]->id] ?? []);
+            $feld  = $labelField === 0 ? null : $this->ownFieldOf($felder, $labelField);
+            $wahl  = $feld === null || $ids === [] ? [] : ($this->comparisonFieldTexts($ids, [$feld])[$feld->id] ?? []);
+
+            foreach ($ids as $id) {
+                $name     = trim((string) (($wahl[$id] ?? '') !== '' ? $wahl[$id] : ($namen[$id] ?? '')));
+                $saetze[] = ['id' => $id, 'label' => $name === '' ? '#' . $id : $name];
+            }
+
+            // ⚠️ *Two records with the same words cannot be told apart in a list — then the number goes with them. Measured at «CPUs»,
+            // whose own words are the maker alone: 118 records, «Intel» dozens of times.*
+            $haeufig = array_count_values(array_column($saetze, 'label'));
+
+            foreach ($saetze as $i => $satz) {
+                if ($haeufig[$satz['label']] > 1) {
+                    $saetze[$i]['label'] .= ' (#' . $satz['id'] . ')';
+                }
+            }
+
+            usort($saetze, static fn (array $a, array $b): int => strnatcasecmp($a['label'], $b['label']));
+        }
+
+        $verweise = $withRecords ? $this->editor->fieldsPointingAt([...$node->ancestorIds(), $nodeId]) : [];
+        $besitzer = $this->editor->findMany(array_values(array_unique(array_map(static fn (Relation $r): int => $r->fromNodeId, $verweise))));
+
+        return [
+            'id'        => $node->id,
+            'name'      => $node->name,
+            'fields'    => array_map(static fn (Relation $f): array => ['id' => $f->id, 'name' => $f->name, 'target' => $f->toNodeId], $felder),
+            'records'   => $saetze,
+            'referrers' => array_map(static fn (Relation $r): array => [
+                'id'        => $r->id,
+                'name'      => $r->name,
+                'owner'     => $r->fromNodeId,
+                'ownerName' => ($besitzer[$r->fromNodeId] ?? null)?->name ?? '#' . $r->fromNodeId,
+            ], $verweise),
+        ];
+    }
+
+    /**
+     * Zeilen aus den eigenen Feldern der Sätze — die gewählten in ihrer Reihenfolge, ohne Wahl alle, die die Anzeige zeigt.
+     *
+     * ⚠️ *Die Zellen sind die Worte, die ein Wähler für das Feld zeigt ([D-925](../../../docs/NewConcept/90-decision-log.md)): ein
+     * Einheitenwert heisst «66 MHz», nicht «#31522». Bis 0.1.9 stand hier die Nummer des Teils. Alle Felder in einem Lauf (`CD-7`).*
      *
      * @param  list<int>      $ids
      * @param  list<Relation> $felder
+     * @param  list<int>      $rowFields
      * @return array{0: list<string>, 1: list<array{labels: list<string>, cells: array<int, string>}>}
      */
-    private function comparisonOwnRows(array $ids, array $felder): array
+    private function comparisonOwnRows(array $ids, array $felder, array $rowFields = []): array
     {
-        $resolved = $this->rendering->settingsForUseSites($felder);
-        $gezeigte = $this->rendering->previewVisibilityFor($felder, $resolved)['shown'];
-        $werte    = $this->data->valuesOfMany($ids);
-        $texte    = $this->comparisonTexts($werte, $gezeigte);
-        $zeilen   = [];
+        if ($rowFields === []) {
+            $resolved = $this->rendering->settingsForUseSites($felder);
+            $gezeigte = $this->rendering->previewVisibilityFor($felder, $resolved)['shown'];
+        } else {
+            $gezeigte = array_values(array_filter(array_map(fn (int $f): ?Relation => $this->ownFieldOf($felder, $f), $rowFields)));
+        }
+
+        $texte  = $this->comparisonFieldTexts($ids, $gezeigte);
+        $zeilen = [];
 
         foreach ($gezeigte as $feld) {
             $zellen = [];
 
             foreach ($ids as $id) {
-                $zellen[$id] = $texte[$id][$feld->id] ?? '';
+                $zellen[$id] = $texte[$feld->id][$id] ?? '';
             }
 
             if (implode('', $zellen) !== '') {
@@ -435,6 +510,53 @@ final class NodesScreen
         }
 
         return [[''], $zeilen];
+    }
+
+    /**
+     * Je Feld die Worte der Sätze dafür — der Weg der Zusammenfassung mit genau diesem einen Feld ({@see Rendering::summaryTextsOf()}).
+     *
+     * ⚠️ *Ein Satz oder Teil ohne Wert bekommt dort seine Nummer («#31521») — hier ist das eine leere Zelle. Ein Datum ohne Uhrzeit verliert
+     * die Nullen der Uhr.*
+     *
+     * @param  list<int>      $ids
+     * @param  list<Relation> $felder
+     * @return array<int, array<int, string>> Feld-Id ⇒ Satz-Id ⇒ Text
+     */
+    private function comparisonFieldTexts(array $ids, array $felder): array
+    {
+        if ($ids === [] || $felder === []) {
+            return [];
+        }
+
+        $roh = $this->rendering->summaryTextsOf(array_map(
+            static fn (Relation $f): array => ['relation' => $f, 'records' => $ids, 'fields' => [$f->id]],
+            $felder
+        ));
+
+        $aus = [];
+
+        foreach ($roh as $feld => $jeSatz) {
+            foreach ($jeSatz as $satz => $text) {
+                $text = trim((string) $text);
+                $text = preg_match('/^#\d+$/', $text) === 1 ? '' : (string) preg_replace('/^(\d{4}-\d{2}-\d{2}) 00:00:00$/', '$1', $text);
+
+                $aus[$feld][$satz] = $text;
+            }
+        }
+
+        return $aus;
+    }
+
+    /** @param list<Relation> $felder */
+    private function ownFieldOf(array $felder, int $id): ?Relation
+    {
+        foreach ($felder as $feld) {
+            if ($feld->id === $id) {
+                return $feld;
+            }
+        }
+
+        return null;
     }
 
     /**

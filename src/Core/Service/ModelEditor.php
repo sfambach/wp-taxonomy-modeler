@@ -1778,6 +1778,26 @@ final class ModelEditor
         return $this->nodes->find($id);
     }
 
+    /**
+     * The fields of other nodes that point at any of these nodes — {@see usedBy()} for a node and its ancestors in one read.
+     *
+     * @param  list<int>      $nodeIds
+     * @return list<Relation>
+     */
+    public function fieldsPointingAt(array $nodeIds): array
+    {
+        return $nodeIds === [] ? [] : $this->relations->fieldRelationsTo($nodeIds);
+    }
+
+    /**
+     * @param  list<int>        $ids
+     * @return array<int, Node>
+     */
+    public function findMany(array $ids): array
+    {
+        return $ids === [] ? [] : $this->nodes->byIds($ids);
+    }
+
     /** @return list<Node> */
     public function childrenOf(int $parentId): array
     {

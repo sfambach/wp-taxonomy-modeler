@@ -39,9 +39,18 @@ final class ComparisonTableTest extends TestCase
     }
 
     #[Test]
-    public function an_unknown_position_word_is_front(): void
+    public function an_unknown_or_empty_position_word_is_the_list_order(): void
     {
-        self::assertSame(ComparisonPosition::Front, ComparisonPosition::fromWord('links'));
+        // ⚠️ *Bis 0.1.9 war es «vorn» (D-920); seit D-924 ist die Liste die Vorgabe.*
+        self::assertSame(ComparisonPosition::Listed, ComparisonPosition::fromWord('links'));
+        self::assertSame(ComparisonPosition::Listed, ComparisonPosition::fromWord(''));
+    }
+
+    #[Test]
+    public function listed_keeps_the_order_the_records_were_listed_in(): void
+    {
+        self::assertSame([1, 2, 3], self::ids(ComparisonTable::ordered(self::COLUMNS, 3, ComparisonPosition::Listed)));
+        self::assertSame([1, 2, 3], self::ids(ComparisonTable::ordered(self::COLUMNS, 2, ComparisonPosition::Listed)));
     }
 
     #[Test]

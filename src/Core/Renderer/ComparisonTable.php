@@ -108,13 +108,17 @@ final class ComparisonTable
     }
 
     /**
-     * Der Hauptsatz an seinen Platz, die übrigen in ihrer Reihenfolge darum.
+     * Der Hauptsatz an seinen Platz, die übrigen in ihrer Reihenfolge darum — bei «Liste» bleibt alles, wie es steht (D-924).
      *
      * @param  list<array{id: int, label: string}> $columns
      * @return list<array{id: int, label: string}>
      */
     public static function ordered(array $columns, int $mainId, ComparisonPosition $position): array
     {
+        if ($position === ComparisonPosition::Listed) {
+            return array_values($columns);
+        }
+
         $main = null;
         $rest = [];
 

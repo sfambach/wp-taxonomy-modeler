@@ -37,6 +37,8 @@ final class RecordBlock
 
     private const CACHE = 'taxmod_block_';
 
+    private const ROUTES = 'taxmod/v1';
+
     /** @param \Closure(): NodesScreen $screen Erst beim Zeichnen gebaut — die meisten Seiten zeigen keinen Satz. */
     public function __construct(
         private readonly \Closure $screen,
@@ -49,7 +51,7 @@ final class RecordBlock
         wp_register_script(
             self::SCRIPT,
             plugins_url('assets/record-block.js', $this->pluginFile),
-            ['wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render', 'wp-i18n'],
+            ['wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-server-side-render', 'wp-i18n', 'wp-api-fetch', 'wp-data'],
             Plugin::VERSION,
             true
         );
@@ -71,7 +73,9 @@ final class RecordBlock
                 'field'     => ['type' => 'integer', 'default' => 0],
                 // *Listen als Text «36064, 36065» — so tippt man sie in ein Feld der Seitenleiste.*
                 'records'   => ['type' => 'string', 'default' => ''],
-                'position'  => ['type' => 'string', 'default' => ComparisonPosition::Front->value],
+                'node'        => ['type' => 'integer', 'default' => 0],
+                'position'    => ['type' => 'string', 'default' => ComparisonPosition::Listed->value],
+                'columnLabel' => ['type' => 'integer', 'default' => 0],
                 'via'       => ['type' => 'integer', 'default' => 0],
                 'rowKey'    => ['type' => 'integer', 'default' => 0],
                 'rowFields' => ['type' => 'string', 'default' => ''],
@@ -83,6 +87,101 @@ final class RecordBlock
             'style'           => self::SCRIPT,
             'render_callback' => $this->render(...),
         ]);
+    }
+
+    /**
+     * What the block's sidebar asks for: nodes by name, and a node's records and fields with their names ([D-924](../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Only for people who may write posts — the answers name the model's records. The cookie nonce is checked by
+     * WordPress before the callback runs.*
+     */
+    public function registerRoutes(): void
+    {
+        $mayEdit = static fn (): bool => current_user_can('edit_posts');
+
+        register_rest_route(self::ROUTES, '/block-nodes', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'permission_callback' => $mayEdit,
+            'args'                => [
+                'search' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+            'callback'            => static fn (\WP_REST_Request $request): \WP_REST_Response => new \WP_REST_Response(
+                self::nodesNamed((string) $request->get_param('search'))
+            ),
+        ]);
+
+        // *Blocks written before 0.1.10 hold no node — the sidebar finds it from their main record.*
+        register_rest_route(self::ROUTES, '/block-record-node/(?P<id>\\d+)', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'permission_callback' => $mayEdit,
+            'args'                => ['id' => ['type' => 'integer', 'required' => true, 'sanitize_callback' => 'absint']],
+            'callback'            => static function (\WP_REST_Request $request): \WP_REST_Response|\WP_Error {
+                global $wpdb;
+
+                $node = (int) Query::value('Knoten des Satzes lesen', $wpdb->prepare(
+                    'SELECT node_id FROM ' . Schema::table('node_records') . ' WHERE id = %d',
+                    absint($request->get_param('id'))
+                ));
+
+                return $node === 0
+                    ? new \WP_Error('taxmod_no_record', __('No such record.', 'taxmod'), ['status' => 404])
+                    : new \WP_REST_Response(['node' => $node]);
+            },
+        ]);
+
+        register_rest_route(self::ROUTES, '/block-node/(?P<id>\\d+)', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'permission_callback' => $mayEdit,
+            'args'                => [
+                'id'      => ['type' => 'integer', 'required' => true, 'sanitize_callback' => 'absint'],
+                'records' => ['type' => 'boolean', 'default' => true],
+                'label'   => ['type' => 'integer', 'default' => 0, 'sanitize_callback' => 'absint'],
+            ],
+            'callback'            => function (\WP_REST_Request $request): \WP_REST_Response|\WP_Error {
+                try {
+                    return new \WP_REST_Response(($this->screen)()->blockEditorNode(
+                        absint($request->get_param('id')),
+                        (bool) $request->get_param('records'),
+                        absint($request->get_param('label'))
+                    ));
+                } catch (\InvalidArgumentException $e) {
+                    return new \WP_Error('taxmod_no_node', $e->getMessage(), ['status' => 404]);
+                }
+            },
+        ]);
+    }
+
+    /** @return list<array{id: int, name: string, parent: string, records: int}> */
+    private static function nodesNamed(string $search): array
+    {
+        global $wpdb;
+
+        $search = trim($search);
+
+        if ($search === '') {
+            return [];
+        }
+
+        $nodes   = Schema::table('nodes_named');
+        $records = Schema::table('node_records');
+        $rows    = Query::rows('Knoten fuer den Block suchen', $wpdb->prepare(
+            "SELECT n.id, n.name, p.name AS parent, COALESCE(c.records, 0) AS records
+               FROM {$nodes} n
+               LEFT JOIN {$nodes} p ON p.id = n.parent_node_id
+               LEFT JOIN (SELECT node_id, COUNT(*) AS records FROM {$records}
+                           WHERE relation_id = 0 AND record_type = 'user' GROUP BY node_id) c ON c.node_id = n.id
+              WHERE n.name LIKE %s
+              ORDER BY records = 0, n.name
+              LIMIT 25",
+            '%' . $wpdb->esc_like($search) . '%'
+        ));
+
+        return array_map(static fn (array $row): array => [
+            'id'      => (int) $row['id'],
+            'name'    => (string) $row['name'],
+            'parent'  => (string) ($row['parent'] ?? ''),
+            'records' => (int) $row['records'],
+        ], $rows);
     }
 
     /** @param array<string, mixed> $attributes */
@@ -120,6 +219,7 @@ final class RecordBlock
                     '',
                     '',
                     absint($attributes['groupBy'] ?? 0),
+                    absint($attributes['columnLabel'] ?? 0),
                 )
                 : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale());
         } catch (\Throwable $e) {

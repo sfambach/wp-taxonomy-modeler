@@ -6,7 +6,9 @@
  *
  *     php scripts/dev/record-block-check.php [path/to/wordpress]
  *
- * ⚠️ **[D-919](../../docs/NewConcept/90-decision-log.md) und [D-920](../../docs/NewConcept/90-decision-log.md).** *Gesucht wird die
+ * ⚠️ **[D-919](../../docs/NewConcept/90-decision-log.md), [D-920](../../docs/NewConcept/90-decision-log.md), [D-924](../../docs/NewConcept/90-decision-log.md)
+ * und [D-925](../../docs/NewConcept/90-decision-log.md).** *Seit D-924 steht ohne Position jede Spalte, wo die Liste sie nennt —
+ * «vorn» und «Mitte» bleiben für Blöcke, die vorher geschrieben wurden.* *Gesucht wird die
  * Gestalt, kein Name: drei Sätze eines Knotens mit Werten für die eigenen Felder, und ein Satz, auf den ein anderer Satz zeigt, der
  * selbst auf einen dritten zeigt (der Fall der Messwerte: Testaufbau ← Messwert → Messgrösse).*
  */
@@ -74,6 +76,34 @@ $pruefe($koepfe[1] === ['other', 'main', 'other'], 'in der Mitte: Vergleich, Hau
 $vorn = $block->render(['position' => 'front'] + $mitte);
 preg_match_all('#<th class="taxmod-comparison-value taxmod-comparison-(main|other)"#', $vorn, $koepfe);
 $pruefe($koepfe[1] === ['main', 'other', 'other'], 'vorn: der Hauptsatz zuerst');
+
+$liste = $block->render(['display' => RecordBlock::COMPARISON, 'record' => $b, 'records' => "{$c}, {$b}, {$a}"]);
+preg_match_all('#<th class="taxmod-comparison-value taxmod-comparison-(main|other)"#', $liste, $koepfe);
+$pruefe($koepfe[1] === ['other', 'main', 'other'], 'ohne Position: die Reihenfolge der Liste, der Hauptsatz an seinem Platz (D-924)');
+
+// *Die eigenen Felder, gewählt: genau die Zeilen der gewählten Felder mit einem Wert, und keine Nummer eines Teils in einer Zelle (D-925).*
+$felder = $wpdb->get_col($wpdb->prepare(
+    "SELECT DISTINCT v.relation_id FROM {$p}relation_records v
+      WHERE v.node_record_id IN (%d, %d) AND v.value_ref IS NULL AND COALESCE(v.value_text, v.value_decimal, v.value_int) IS NOT NULL
+      ORDER BY v.relation_id LIMIT 2",
+    $a,
+    $b
+));
+$eigene = $block->render(['display' => RecordBlock::COMPARISON, 'record' => $a, 'records' => "{$a}, {$b}", 'rowFields' => implode(',', $felder)]);
+$pruefe(substr_count($eigene, '<tr') - 1 === count($felder) && count($felder) > 0, 'gewählte Felder: eine Zeile je Feld (' . count($felder) . ')');
+$pruefe(preg_match('#<td class="taxmod-comparison-value[^"]*">\#\d+</td>#', $eigene) === 0, 'keine Satznummer statt eines Werts');
+
+// *Die Seitenleiste fragt über REST — nur wer Beiträge schreiben darf, bekommt Antwort.*
+do_action('rest_api_init');
+$frage = static fn (string $pfad): WP_REST_Response => rest_do_request(new WP_REST_Request('GET', $pfad));
+$pruefe($frage('/taxmod/v1/block-record-node/' . $a)->get_status() === 401, 'ohne Anmeldung keine Antwort der Seitenleiste');
+
+$admin = (int) $wpdb->get_var("SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = '{$wpdb->prefix}capabilities' AND meta_value LIKE '%administrator%' LIMIT 1");
+wp_set_current_user($admin);
+$knoten = (int) ($frage('/taxmod/v1/block-record-node/' . $a)->get_data()['node'] ?? 0);
+$antwort = $knoten === 0 ? [] : $frage('/taxmod/v1/block-node/' . $knoten)->get_data();
+$pruefe(in_array($a, array_column($antwort['records'] ?? [], 'id'), true), "der Knoten #{$knoten} nennt seine Sätze mit Namen");
+wp_set_current_user(0);
 
 [, $zweiter] = $abfragen(static fn (): string => $block->render($mitte));
 $pruefe($zweiter === 1, "der zweite Aufruf kommt aus dem Puffer ({$zweiter} Abfrage)");

@@ -47,7 +47,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.9';
+    public const VERSION     = '0.1.10';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -124,6 +124,7 @@ final class Plugin
 
         // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
         add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
+        add_action('rest_api_init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->registerRoutes());
     }
 
     public function abilities(): ModelAbilities

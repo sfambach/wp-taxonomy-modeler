@@ -93,3 +93,26 @@
 .taxmod-record-block .taxmod-comparison-head ~ tr .taxmod-comparison-detail {
 	padding-left: 1.4em;
 }
+
+/* Sidebar of the block editor (D-924): the listed records, the main one marked. */
+.taxmod-block-records {
+	margin: 0 0 1em 1.4em;
+}
+
+.taxmod-block-record {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.taxmod-block-record > span {
+	flex: 1;
+}
+
+.taxmod-block-record.is-main > span {
+	font-weight: 600;
+}
+
+.taxmod-block-fields {
+	margin-bottom: 1em;
+}
