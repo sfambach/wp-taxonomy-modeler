@@ -110,7 +110,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?, multiplicity?}, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -124,13 +124,14 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'add_field', 'create_record', 'set_values', 'remove_record', 'set_list']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'add_field', 'rename_field', 'remove_field', 'create_record', 'set_values', 'remove_record', 'set_list']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
                                 'node'        => $ziel,
                                 'target'      => $ziel,
                                 'record'      => $ziel,
+                                'field'       => $ziel,
                                 'class'       => ['type' => 'string'],
                                 'kind'        => ['type' => 'string', 'enum' => array_map(static fn (RelationKind $k): string => $k->value, RelationKind::cases())],
                                 'multiplicity' => ['type' => 'string', 'enum' => array_map(static fn (Multiplicity $m): string => $m->value, Multiplicity::cases())],
@@ -362,6 +363,12 @@ final class ModelAbilities
                     ? $editor->setMultiplicity($field->fromNodeId, $field->id, Multiplicity::from((string) $change['multiplicity']))->id
                     : $field->id;
 
+            case 'rename_field':
+                return $editor->renameField($at('node'), $at('field'), $name === '' ? throw new \InvalidArgumentException('rename_field needs a name.') : $name)->id;
+
+            case 'remove_field':
+                return $editor->removeField($at('node'), $at('field'))->id;
+
             case 'create_record':
                 $type = isset($change['record_type']) ? RecordType::from((string) $change['record_type']) : RecordType::User;
 
@@ -450,7 +457,16 @@ final class ModelAbilities
     private function resolveValues(mixed $wert, array $refs): mixed
     {
         if (is_array($wert)) {
-            return array_map(fn (mixed $inner): mixed => $this->resolveValues($inner, $refs), $wert);
+            $aus = [];
+
+            // ⚠️ *Auch die Schlüssel: in einem Teil heisst das innere Feld «@betrag», wenn es in derselben Liste angelegt wurde.
+            // Bis 0.1.11 blieb es stehen, und der Teil wurde leer angelegt.*
+            foreach ($wert as $schluessel => $inner) {
+                $schluessel       = is_string($schluessel) && preg_match('/^@[A-Za-z0-9_-]+$/', $schluessel) === 1 ? $this->resolve($schluessel, $refs, 'values') : $schluessel;
+                $aus[$schluessel] = $this->resolveValues($inner, $refs);
+            }
+
+            return $aus;
         }
 
         return is_string($wert) && preg_match('/^@[A-Za-z0-9_-]+$/', $wert) === 1 ? (string) $this->resolve($wert, $refs, 'values') : $wert;

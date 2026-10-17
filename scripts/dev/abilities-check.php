@@ -190,6 +190,42 @@ $lFeld   = is_array($dritter) ? array_column($dritter['fields'], null, 'relation
 
 check('add_field setzt die Multiplizität gleich mit', ($lFeld['multiplicity'] ?? '') === '0..*', is_wp_error($liste) ? $liste->get_error_message() : wp_json_encode($lFeld));
 
+echo "Kombifeld, Umbenennen, Entfernen (D-927)\n";
+
+// *Ein Teil lebt nur unter den Kompositionen — dort, wo auch der Einheitenwert steht.*
+$kompositionen = (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT parent_node_id FROM ' . Schema::table('nodes') . ' WHERE id = %d',
+    \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0
+));
+
+$kombi = $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 't', 'name' => '__ab Teil', 'parent' => $kompositionen],
+    ['op' => 'add_field', 'ref' => 'innen', 'node' => '@t', 'target' => $text?->id ?? 0, 'name' => '__ab Innen'],
+    ['op' => 'add_field', 'ref' => 'kombi', 'node' => $ergebnis['refs']['i'], 'target' => '@t', 'name' => '__ab Kombi'],
+    ['op' => 'set_values', 'record' => $ergebnis['refs']['r'], 'values' => ['@kombi' => ['neu' => ['@innen' => 'im Teil']]]],
+    ['op' => 'rename_field', 'node' => $ergebnis['refs']['i'], 'field' => '@kombi', 'name' => '__ab Kombi neu'],
+]]);
+$teil = is_array($kombi) ? (int) $wpdb->get_var($wpdb->prepare(
+    'SELECT v.value_ref FROM ' . Schema::table('relation_records') . ' v WHERE v.node_record_id = %d AND v.relation_id = %d',
+    $ergebnis['refs']['r'],
+    $kombi['refs']['kombi']
+)) : 0;
+$innen = $teil === 0 ? null : $wpdb->get_var($wpdb->prepare(
+    'SELECT value_text FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d AND relation_id = %d',
+    $teil,
+    $kombi['refs']['innen']
+));
+
+check('ein inneres Feld «@ref» füllt den neuen Teil', $innen === 'im Teil', is_wp_error($kombi) ? $kombi->get_error_message() : (string) $innen);
+
+$vierter = is_array($kombi) ? $node->execute(['node' => $ergebnis['refs']['i']]) : null;
+$kFeld   = is_array($vierter) ? array_column($vierter['fields'], null, 'relation_id')[$kombi['refs']['kombi']] ?? null : null;
+check('rename_field gibt dem Feld den neuen Namen', ($kFeld['name'] ?? '') === '__ab Kombi neu', wp_json_encode($kFeld));
+
+$weg      = is_array($kombi) ? $apply->execute(['changes' => [['op' => 'remove_field', 'node' => $ergebnis['refs']['i'], 'field' => $kombi['refs']['kombi']]]]) : null;
+$fuenfter = is_array($weg) ? $node->execute(['node' => $ergebnis['refs']['i']]) : null;
+check('remove_field nimmt das Feld vom Knoten', is_array($fuenfter) && ! in_array($kombi['refs']['kombi'] ?? -1, array_column($fuenfter['fields'], 'relation_id'), true), is_wp_error($weg) ? $weg->get_error_message() : '');
+
 echo "Block im Beitrag (D-912)\n";
 
 check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));
