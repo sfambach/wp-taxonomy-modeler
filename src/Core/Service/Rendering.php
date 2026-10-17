@@ -4714,8 +4714,9 @@ final class Rendering implements Presets
 
             // ⚠️ **Ein Teil ohne Feldwahl und ohne Textfeld zeigt seine Werte** — *gemessen an einem Widerstand: die Zusammenfassung las
             // «0207 · #24558 · #25187», weil «Widerstandswert» ein Einheitenwert-Teil ist und keinen Text trägt. Eine Stufe tief also alle
-            // Werte in ihrer Reihenfolge: «330 Ohm», «-20 20 Prozent».*
-            if ($feldIds === [] && $stufe > 0) {
+            // Werte in ihrer Reihenfolge: «330 Ohm», «-20 20 Prozent».* *Auch ganz oben, wenn die Teile selbst gefragt sind — der Vergleich
+            // nannte mehrere Takte eines Mainboards «#33615, #33616» (gemessen am 2026-10-17, D-925).*
+            if ($feldIds === []) {
                 $zahlen  = [];
                 $praefix = '';
                 $einheit = '';

@@ -296,6 +296,25 @@ unset($_GET['page'], $_GET['taxmod_open_record']);
 preg_match('/<select name="taxmod_value\[' . $ergebnis['refs']['r'] . '\]\[' . ($geld['refs']['preis'] ?? 0) . '\][^"]*\[' . ($teile['einheit']['relation_id'] ?? 0) . '\]"[^>]*>(.*?)<\/select>/s', $maske, $waehler);
 check('die Pflicht-Einheit eines Preises bietet kein leeres «—» an (D-931)', isset($waehler[1]) && str_contains($waehler[1], '__ab Kreuzer') && ! str_contains($waehler[1], '<option value=""'), is_wp_error($zwei) ? $zwei->get_error_message() : substr($waehler[1] ?? 'kein Wähler', 0, 200));
 
+// *Ein Feld mit mehreren Einheitenwerten nennt im Vergleich jeden mit Einheit — gemessen am 2026-10-17: der Takt eines Mainboards
+// stand als «#33615, #33616, #33617» (D-925).*
+$takte = is_array($zwei) ? $apply->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'takte', 'node' => $ergebnis['refs']['i'], 'target' => \Taxmod\WordPress\Persistence\UnitScaffold::unitValueId() ?? 0, 'name' => '__ab Takte', 'multiplicity' => '0..*'],
+    ['op' => 'set_values', 'record' => $ergebnis['refs']['r'], 'values' => ['@takte' => [
+        'a' => [(string) ($teile['wert']['relation_id'] ?? 0) => '50', (string) ($teile['einheit']['relation_id'] ?? 0) => (string) $geld['refs']['taler']],
+        'b' => [(string) ($teile['wert']['relation_id'] ?? 0) => '60', (string) ($teile['einheit']['relation_id'] ?? 0) => (string) $geld['refs']['taler']],
+    ]]],
+]]) : null;
+wp_set_current_user(0);
+$vergleich = is_array($takte) ? wp_strip_all_tags(do_blocks('<!-- wp:taxmod/record ' . wp_json_encode([
+    'display'   => 'comparison',
+    'record'    => $ergebnis['refs']['r'],
+    'records'   => (string) $ergebnis['refs']['r'],
+    'rowFields' => (string) $takte['refs']['takte'],
+]) . ' /-->')) : '';
+wp_set_current_user((int) ($admin[0] ?? 1));
+check('mehrere Einheitenwerte im Vergleich heissen «50 Taler, 60 Taler», nicht ihre Nummern', str_contains($vergleich, '50 __ab Taler, 60 __ab Taler'), is_wp_error($takte) ? $takte->get_error_message() : trim($vergleich));
+
 echo "Block im Beitrag (D-912)\n";
 
 check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));
