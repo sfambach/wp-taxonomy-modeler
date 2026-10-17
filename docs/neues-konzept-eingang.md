@@ -712,6 +712,19 @@ Ein Verweis auf einen Benchmark (Feld «Benchmark» an den Messgrössen) zeigt i
 **Am 2026-10-16 bestätigt → [D-922](NewConcept/90-decision-log.md).** ⚠️ *Die Fähigkeit `taxmod/apply` konnte keine Einstellungen setzen; seit [D-923](NewConcept/90-decision-log.md) kann sie es (`set_list`).* Zweiter Befund dabei: bei Landmark, Speedsys und System Info steht der gemessene Teil (CPU, FPU, Video, RAM, HDD) nur in der Bezeichnung («Landmark [CPU]»), Szenario ist leer.
 
 ---
+## INF-069 · Marktpreise mit Datum
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — gemeldet am 2026-10-17 vom Eigentümer.
+
+> *«historische preise mit datum erhalten»* — und gleich danach: *«wäre das ne eigene tabelle wie modellieren wir das ?»*
+
+Bei den Mikrocontroller-Boards stehen Preise heute als Text in «Beschreibung» («Preise: 17.10.2026 ab 31,99 $ (Luckfox); 16.06.2025 16,99 $ (Waveshare)»). Ein Feld dafür gibt es nicht. Ein Marktpreis ist nicht dasselbe wie ein **Kauf** ([D-897](NewConcept/90-decision-log.md)): der Kauf hält fest, was er bezahlt hat, der Marktpreis, was ein Händler an einem Tag verlangt — auch für Dinge, die er nie kauft.
+
+- **Gewünscht:** ältere Preise bleiben mit Datum erhalten, neue kommen dazu.
+- **Offen:** (a) eigener Knoten «Preisangabe» (Datum, Betrag, Währung, Händler, Quelle) als Komposition 0..* am Satz, (b) ein Textfeld «Preis» mit mehreren Einträgen, (c) bleibt Text in «Beschreibung». *Mein Vorschlag (INFERRED): (a), weil jede Angabe Zeitpunkt und Quelle hat und sich dann sortieren und vergleichen lässt; offen dabei, ob «Preisangabe» und «Kauf» Betrag, Währung und Händler teilen.*
+- **Bis zur Entscheidung:** Preise mit Datum im Text, in Beiträgen und in «Beschreibung».
+
+---
 ## Erledigte Eingänge
 
 *(noch keine)*
