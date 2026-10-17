@@ -707,7 +707,8 @@ final class NodesScreen
                     $v->reference !== null && $v->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node => $knotenNamen[$v->reference] ?? '',
                     $v->reference !== null => trim((string) ($worte[$wert->relationId][$v->reference] ?? '')),
                     $v->decimal !== null   => str_contains($v->decimal, '.') ? rtrim(rtrim($v->decimal, '0'), '.') : $v->decimal,
-                    default                => (string) ($v->text ?? $v->date ?? ($v->int === null ? '' : (string) $v->int)),
+                    // *Ein Datum in seiner Genauigkeit — «1994», nicht der erste Januar (D-932).*
+                    default                => (string) ($v->text ?? ($v->date === null ? null : $v->rawValue()) ?? ($v->int === null ? '' : (string) $v->int)),
                 };
 
                 // *Ein Feld mit mehreren Werten nennt sie alle, nicht nur den letzten.*
@@ -3918,6 +3919,16 @@ final class NodesScreen
             $this->data->valuesOf($recordId),
             static fn ($zeile): bool => $zeile->relationId === $relation->id
         ));
+
+        // ⚠️ *Ein Eingabefeld für einen ganzen Zeitpunkt schickt ein Jahr als ersten Januar zurück — derselbe Zeitpunkt behält die gemerkte
+        // Genauigkeit, sonst machte jedes Speichern aus «1994» den 1. Januar 1994 (D-932).*
+        foreach ($werte as $stelle => $wert) {
+            $alt = $vorher[$stelle]->value ?? null;
+
+            if ($wert->date !== null && $wert->precision === null && $alt?->precision !== null && $alt->date === $wert->date) {
+                $werte[$stelle] = $alt;
+            }
+        }
 
         // *Nichts zu tun, wenn dieselben Werte in derselben Reihenfolge schon stehen — sonst schriebe jedes Speichern die Zeilen neu.*
         $gleich = count($vorher) === count($werte);

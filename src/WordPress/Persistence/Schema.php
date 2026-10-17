@@ -446,7 +446,12 @@ final class Schema
      * *Die entfernten Felder eines Knotens suchten dort ohne Index — gemessen 11 ms je Seite über 28 285 Zeilen. Eine reine Ergänzung:
      * `dbDelta` legt den Index an, es wandert nichts.*
      */
-    public const VERSION = 54;
+    /**
+     * ⚠️ **Fassung 55: `relation_records.value_precision`** ([D-932](../../../docs/NewConcept/90-decision-log.md)). *Ein Datum merkt sich,
+     * ob nur das Jahr oder Monat und Jahr bekannt sind. Eine reine Ergänzung: `dbDelta` legt die Spalte an, in lebender und Schattentabelle;
+     * eine Zeile ohne Angabe ist ganz bekannt, wie bisher — es wandert nichts.*
+     */
+    public const VERSION = 55;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -4682,6 +4687,7 @@ final class Schema
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 value_ref_kind varchar(20) DEFAULT NULL,
+                value_precision varchar(10) DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY of_field (node_record_id,relation_id,locale),
                 KEY relation_id (relation_id),
@@ -4838,6 +4844,7 @@ final class Schema
                 value_date datetime DEFAULT NULL,
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 value_ref_kind varchar(20) DEFAULT NULL,
+                value_precision varchar(10) DEFAULT NULL,
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,

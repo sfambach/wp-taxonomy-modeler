@@ -16,4 +16,6 @@ enum DatePrecision: string
     case Date     = 'date';
     case Time     = 'time';
     case DateTime = 'datetime';
+    /** ⚠️ *Jahr, Monat oder Tag, wie der Wert bekannt ist — ein freies Feld (D-932).* */
+    case Any      = 'any';
 }

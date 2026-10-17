@@ -55,7 +55,10 @@ final class DateTimeType extends SpecialisedType
 
     public function valueFrom(string $characters): TypedValue
     {
-        return TypedValue::ofDate($this->timestamp($characters));
+        // ⚠️ *Ein Jahr oder ein Monat merkt sich, dass es nicht mehr ist (D-932).*
+        $bekannt = TypedValue::ofKnownDate($characters);
+
+        return $bekannt->precision !== null ? $bekannt : TypedValue::ofDate($this->timestamp($characters));
     }
 
     /**

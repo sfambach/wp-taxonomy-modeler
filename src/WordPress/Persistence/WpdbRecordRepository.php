@@ -163,7 +163,7 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Wertzeilen mehrerer Datensaetze lesen', $wpdb->prepare(
-            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
              FROM ' . Schema::table('relation_records') . '
              WHERE node_record_id IN (' . $platzhalter . ') ORDER BY node_record_id ASC, position ASC, id ASC',
             ...$ids
@@ -181,6 +181,7 @@ final class WpdbRecordRepository implements RecordRepository
                     $r['value_date'] === null ? null : (string) $r['value_date'],
                     $r['value_ref'] === null ? null : (int) $r['value_ref'],
                     ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
+                    \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
                 ),
                 (int) $r['id'],
                 (int) $r['position'],
@@ -198,7 +199,7 @@ final class WpdbRecordRepository implements RecordRepository
             // ⚠️ *Nach `position` geordnet und **bei Gleichstand nach der Id**
             // ([D-530](../../../docs/NewConcept/90-decision-log.md)): so hat auch ein Feld, dem
             // niemand eine Reihenfolge gegeben hat, eine stabile — die des Eintragens.*
-            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
              FROM ' . Schema::table('relation_records') . '
              WHERE node_record_id = %d ORDER BY position ASC, id ASC',
             $recordId
@@ -217,6 +218,7 @@ final class WpdbRecordRepository implements RecordRepository
                     $r['value_date'] === null ? null : (string) $r['value_date'],
                     $r['value_ref'] === null ? null : (int) $r['value_ref'],
                     ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
+                    \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
                 ),
                 (int) $r['id'],
                 (int) $r['position'],
@@ -258,6 +260,7 @@ final class WpdbRecordRepository implements RecordRepository
                 $r['value_date'] === null ? null : (string) $r['value_date'],
                 $r['value_ref'] === null ? null : (int) $r['value_ref'],
                 ReferenceSpace::tryFrom((string) ($r['value_ref_kind'] ?? '')),
+                \Taxmod\Core\Model\ValuePrecision::tryFrom((string) ($r['value_precision'] ?? '')),
             ),
             (int) $r['id'],
             (int) $r['position'],
@@ -268,7 +271,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $rows = Query::rows('Verweise auf einen Datensatz lesen', $wpdb->prepare(
-            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
              FROM ' . Schema::table('relation_records') . '
              WHERE value_ref_kind = \'record\' AND value_ref = %d
              ORDER BY relation_id ASC, node_record_id ASC',
@@ -291,7 +294,7 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Verweise auf mehrere Datensaetze lesen', $wpdb->prepare(
-            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
              FROM ' . Schema::table('relation_records') . '
              WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
              ORDER BY relation_id ASC, node_record_id ASC',
@@ -324,7 +327,7 @@ final class WpdbRecordRepository implements RecordRepository
         // und die Abfrage fragt nur noch die Datensatzverweise. Vorher hätte ein Knoten mit der Nummer
         // eines Datensatzes hier mitgeliefert; heute nicht mehr.*
         $rows = Query::rows('Halter der Datensaetze lesen', $wpdb->prepare(
-            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
              FROM ' . Schema::table('relation_records') . '
              WHERE value_ref_kind = \'record\' AND value_ref IN (' . $platzhalter . ')
              ORDER BY value_ref ASC, id ASC',
@@ -365,9 +368,11 @@ final class WpdbRecordRepository implements RecordRepository
             // ⚠️ *Der Raum wird **mitgeschrieben**, nicht abgeleitet: sobald jede Tabelle ihren eigenen
             // Id-Raum hat (TASK-004), sagt die Nummer allein nicht mehr, auf welche Tabelle sie zeigt.*
             'value_ref_kind' => $value->value->referenceSpace?->value,
+            // ⚠️ *Wie genau ein Datum bekannt ist (D-932) — `null` heisst ganz.*
+            'value_precision' => $value->value->precision?->value,
         ];
 
-        $formate = ['%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s'];
+        $formate = ['%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s'];
 
         if ($value->id === null) {
             $wpdb->insert(Schema::table('relation_records'), $spalten, $formate);

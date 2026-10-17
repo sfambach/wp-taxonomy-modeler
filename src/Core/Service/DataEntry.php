@@ -418,6 +418,14 @@ final class DataEntry
             throw NotYetStorable::thatFieldHasSeveralValues($relation->name, count($vorhanden));
         }
 
+        // ⚠️ *Ein Eingabefeld für einen ganzen Zeitpunkt schickt ein Jahr als ersten Januar zurück — derselbe Zeitpunkt lässt die gemerkte
+        // Genauigkeit stehen, sonst machte jedes Speichern aus «1994» den 1. Januar 1994 (D-932).*
+        $alt = $vorhanden[0]->value ?? null;
+
+        if ($value->date !== null && $value->precision === null && $alt?->precision !== null && $alt->date === $value->date) {
+            return;
+        }
+
         $neu = $vorhanden === []
             ? RelationRecord::direct($recordId, $relation->id, $value, $locale)
             : new RelationRecord($recordId, $relation->id, $locale, $value, $vorhanden[0]->id, $vorhanden[0]->position);

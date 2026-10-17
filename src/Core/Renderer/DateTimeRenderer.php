@@ -60,7 +60,10 @@ final class DateTimeRenderer extends TypedFieldRenderer
             // ⚠️ *[R32](../../../docs/NewConcept/30-renderer.md#r28r32--the-rule-complete), auf sein Wort: ein
             // Eingabefeld muss sich immer gleich verhalten, und bei `1..1` muss ein Wert gesetzt sein.*
             'aria-required' => $context->surroundings->mayBeNothing ? null : 'true',
-            'value' => $this->forControl($context, 'T'),
+            // ⚠️ *Das Steuerelement bekommt den ganzen gespeicherten Zeitpunkt, nie die kurze Form: «1994» ist für ein Datumsfeld kein Wert,
+            // es bliebe leer, und das nächste Speichern löschte das Jahr (D-932). Nur das freie Feld nimmt die kurze Form, die es auch zurückschickt.*
+            'value' => $this->forControl($context, 'T', $this->controlType($context) === 'text' ? null : $context->value->date),
+            'pattern' => $this->controlType($context) === 'text' ? '\\d{4}(-\\d{2}(-\\d{2})?)?' : null,
             // ⚠️ *Die Grenzen des Datums (D-757) reichen bis ins Eingabefeld, in der Genauigkeit des Feldes; ein Jahr bleibt vierstellig.*
             'min'   => $this->bound($context, 'min', '0'),
             'max'   => $this->bound($context, 'max', '9999'),
@@ -102,14 +105,16 @@ final class DateTimeRenderer extends TypedFieldRenderer
             'month' => 'month',
             'date'  => 'date',
             'time'  => 'time',
+            // ⚠️ *Jahr, Monat oder Tag, je Wert (D-932): kein Steuerelement des Browsers nimmt alle drei, also ein Textfeld mit Muster.*
+            'any'   => 'text',
             default => 'datetime-local',
         };
     }
 
     /** @param string $separator What sits between date and time — a space to read, a `T` to submit. */
-    private function forControl(RenderContext $context, string $separator): string
+    private function forControl(RenderContext $context, string $separator, ?string $stored = null): string
     {
-        $stored = $this->outputValue($context);
+        $stored ??= $this->outputValue($context);
 
         if ($stored === '') {
             return '';
@@ -123,6 +128,7 @@ final class DateTimeRenderer extends TypedFieldRenderer
             'month'  => substr($date, 0, 7),
             'date'   => $date,
             'time'   => $time,
+            'text'   => $time === '' || $time === '00:00' ? $date : $date . $separator . $time,
             default  => $time === '' ? $date : $date . $separator . $time,
         };
     }

@@ -24,6 +24,8 @@ final class TypedValue
         public readonly ?string $date = null,
         public readonly ?int $reference = null,
         ?ReferenceSpace $referenceSpace = null,
+        /** Wie genau {@see $date} bekannt ist — `null` heisst ganz ([D-932](../../../docs/NewConcept/90-decision-log.md)). */
+        public readonly ?ValuePrecision $precision = null,
     ) {
         // ⚠️ *Die Zusicherung wird hier hergestellt und nicht von den Aufrufern verlangt: ein Verweis
         // ohne Raumangabe ist genau der mehrdeutige Zustand, den TASK-005 beseitigt. Ein Verweis ohne
@@ -46,8 +48,9 @@ final class TypedValue
         ?string $date,
         ?int $reference,
         ?ReferenceSpace $referenceSpace = null,
+        ?ValuePrecision $precision = null,
     ): self {
-        return new self($int, $decimal, $text, $date, $reference, $referenceSpace);
+        return new self($int, $decimal, $text, $date, $reference, $referenceSpace, $date === null ? null : $precision);
     }
 
     public static function ofInt(int $value): self
@@ -79,9 +82,36 @@ final class TypedValue
         return new self(text: $value);
     }
 
-    public static function ofDate(string $value): self
+    public static function ofDate(string $value, ?ValuePrecision $precision = null): self
     {
-        return new self(date: $value);
+        return new self(date: $value, precision: $precision);
+    }
+
+    /**
+     * Ein Datum aus den Zeichen, die seine Genauigkeit tragen: «1994» ist ein Jahr, «1997-03» ein Monat, alles andere ganz
+     * ([D-932](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Gespeichert wird der erste Tag, die erste Stunde ([D-737](../../../docs/NewConcept/90-decision-log.md)) — so sortiert ein Jahr
+     * vor seinen Monaten, und {@see self::rawValue()} gibt die Zeichen zurück, aus denen der Wert entstand: ein Rückspielen behält die
+     * Genauigkeit.*
+     */
+    public static function ofKnownDate(string $characters): self
+    {
+        return match (true) {
+            preg_match('/^\d{4}$/', $characters) === 1         => self::ofDate($characters . '-01-01 00:00:00', ValuePrecision::Year),
+            preg_match('/^\d{4}-\d{2}$/', $characters) === 1   => self::ofDate($characters . '-01 00:00:00', ValuePrecision::Month),
+            default                                            => self::ofDate($characters),
+        };
+    }
+
+    /** Das Datum in seiner Genauigkeit — «1994», «1997-03» oder ganz, wie gespeichert. */
+    private function knownDate(): string
+    {
+        return match ($this->precision) {
+            ValuePrecision::Year  => substr((string) $this->date, 0, 4),
+            ValuePrecision::Month => substr((string) $this->date, 0, 7),
+            null                  => (string) $this->date,
+        };
     }
 
     /** Booleans are integers, `0` or `1` (D-315). */
@@ -242,6 +272,7 @@ final class TypedValue
             && $this->decimal === $other->decimal
             && $this->text === $other->text
             && $this->date === $other->date
+            && $this->precision === $other->precision
             && $this->reference === $other->reference;
     }
 
@@ -266,7 +297,7 @@ final class TypedValue
             $this->isNothing()             => '(nothing)',
             $this->int !== null            => (string) $this->int,
             $this->decimal !== null        => $this->decimal,
-            $this->date !== null           => $this->date,
+            $this->date !== null           => $this->knownDate(),
             $this->reference !== null      => '(a reference)',
             default                        => (string) $this->text,
         };
@@ -329,7 +360,7 @@ final class TypedValue
             $this->isNothing()        => '',
             $this->int !== null       => (string) $this->int,
             $this->decimal !== null   => $this->decimal,
-            $this->date !== null      => $this->date,
+            $this->date !== null      => $this->knownDate(),
             $this->reference !== null => (string) $this->reference,
             default                   => (string) $this->text,
         };
@@ -348,7 +379,7 @@ final class TypedValue
             'nothing'   => self::nothing(),
             'int'       => self::ofInt((int) $rawValue),
             'decimal'   => self::ofDecimal($rawValue),
-            'date'      => self::ofDate($rawValue),
+            'date'      => self::ofKnownDate($rawValue),
             'reference'        => self::ofReference((int) $rawValue),
             'record_reference' => self::ofRecordReference((int) $rawValue),
             'relation_reference' => self::ofRelationReference((int) $rawValue),

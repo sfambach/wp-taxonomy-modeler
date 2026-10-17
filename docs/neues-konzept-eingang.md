@@ -751,7 +751,8 @@ Gespeichert wird in der eigenen Währung ([D-064](NewConcept/90-decision-log.md)
 Anlass: Im Vergleich der Netzwerkkarten steht «Erscheinungs Monat/Jahr» als «1994-01-01». Die Genauigkeit gibt es schon ([D-737](NewConcept/90-decision-log.md): *«Datum und Zeit kennen fünf Genauigkeiten: Jahr, Monat, Tag, Zeit, Tag und Zeit — gewählt am Renderer (`date_precision`).»*); [D-925](NewConcept/90-decision-log.md) liess das Datum im Vergleich unformatiert, *«offen, bis ein Datumsformat ein Merkmal des Felds ist»*.
 
 - **Offen:** ob der Vergleich `date_precision` des Felds übernimmt, und wie die Reihenfolge Tag-Monat-Jahr je Sprache aussieht (D-737 lässt sie offen).
-- **Gebaut:** nein — der Vergleich schreibt das gespeicherte Datum ohne Uhrzeit.
+- **Entschieden am selben Abend:** die Genauigkeit gilt je Wert ([D-932](NewConcept/90-decision-log.md), seine Wahl *«Genauigkeit je Wert»*); gebaut in 0.1.17 — «1994», «1997-03».
+- **Weiter offen:** die Schreibweise je Sprache («März 1997» statt «1997-03»).
 
 ---
 ## Erledigte Eingänge
