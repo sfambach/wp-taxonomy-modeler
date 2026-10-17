@@ -724,6 +724,8 @@ Bei den Mikrocontroller-Boards stehen Preise heute als Text in «Beschreibung» 
 - **Offen:** (a) eigener Knoten «Preisangabe» (Datum, Betrag, Währung, Händler, Quelle) als Komposition 0..* am Satz, (b) ein Textfeld «Preis» mit mehreren Einträgen, (c) bleibt Text in «Beschreibung». *Mein Vorschlag (INFERRED): (a), weil jede Angabe Zeitpunkt und Quelle hat und sich dann sortieren und vergleichen lässt; offen dabei, ob «Preisangabe» und «Kauf» Betrag, Währung und Händler teilen.*
 - **Bis zur Entscheidung:** Preise mit Datum im Text, in Beiträgen und in «Beschreibung».
 
+**Entschieden 2026-10-17 → [D-926](NewConcept/90-decision-log.md):** Variante (a), *«preis gehört ja auch immer zu nem lieferanten oder auch druchschnitt also a is sowas wie bei einer bestellung»*. Offen: Ort des Knotens, gemeinsame Felder mit dem Kauf.
+
 ---
 ## Erledigte Eingänge
 
