@@ -730,6 +730,18 @@ Bei den Mikrocontroller-Boards stehen Preise heute als Text in «Beschreibung» 
 
 *«Geldbetrag» war online (Käufe, Preisangaben) und wird ersetzt durch [D-929](NewConcept/90-decision-log.md): der Preis ist ein Einheitenwert, «Currency» hängt unter «Base units».*
 
+## INF-070 · Preise in der Währung des Besuchers zeigen
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — gemeldet am 2026-10-17 vom Eigentümer.
+
+> *«es war ja mal eine speicherung der in wärung aber anzeige in der seiten einstellunge (sprache, wäreung im browser)»*
+
+Gespeichert wird in der eigenen Währung ([D-064](NewConcept/90-decision-log.md): *«An amount is stored in its own currency; a frozen rate is stored beside it; the converted figure is derived.»*). Seit [D-929](NewConcept/90-decision-log.md) ist der Preis ein Einheitenwert mit einer Währung als Einheit.
+
+- **Gewünscht:** Anzeige umgerechnet in die Währung, die Seite oder Besucher (Sprache, Browser) vorgeben.
+- **Offen:** Woher die Kurse kommen (fest eingetragen, je Tag abgerufen), ob ein Kurs am Satz eingefroren wird ([D-064](NewConcept/90-decision-log.md)), wie die Zielwährung bestimmt wird (Seiteneinstellung, Sprache, Browser) und ob der Originalbetrag mit angezeigt wird.
+- **Gebaut:** nein — es gibt weder Kurse noch Umrechnung; Preise erscheinen in ihrer gespeicherten Währung.
+
 ---
 ## Erledigte Eingänge
 
