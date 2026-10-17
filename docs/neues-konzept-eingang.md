@@ -742,6 +742,17 @@ Gespeichert wird in der eigenen Währung ([D-064](NewConcept/90-decision-log.md)
 - **Offen:** Woher die Kurse kommen (fest eingetragen, je Tag abgerufen), ob ein Kurs am Satz eingefroren wird ([D-064](NewConcept/90-decision-log.md)), wie die Zielwährung bestimmt wird (Seiteneinstellung, Sprache, Browser) und ob der Originalbetrag mit angezeigt wird.
 - **Gebaut:** nein — es gibt weder Kurse noch Umrechnung; Preise erscheinen in ihrer gespeicherten Währung.
 
+## INF-071 · Datum im Vergleich in der Genauigkeit des Felds zeigen
+
+**Typ:** `BEFUND` · **Status:** `OPEN` — gemeldet am 2026-10-17 vom Eigentümer, später zu besprechen.
+
+> *«datum sollten wir später drüber regeden aber dafür gibts einen type»*
+
+Anlass: Im Vergleich der Netzwerkkarten steht «Erscheinungs Monat/Jahr» als «1994-01-01». Die Genauigkeit gibt es schon ([D-737](NewConcept/90-decision-log.md): *«Datum und Zeit kennen fünf Genauigkeiten: Jahr, Monat, Tag, Zeit, Tag und Zeit — gewählt am Renderer (`date_precision`).»*); [D-925](NewConcept/90-decision-log.md) liess das Datum im Vergleich unformatiert, *«offen, bis ein Datumsformat ein Merkmal des Felds ist»*.
+
+- **Offen:** ob der Vergleich `date_precision` des Felds übernimmt, und wie die Reihenfolge Tag-Monat-Jahr je Sprache aussieht (D-737 lässt sie offen).
+- **Gebaut:** nein — der Vergleich schreibt das gespeicherte Datum ohne Uhrzeit.
+
 ---
 ## Erledigte Eingänge
 
