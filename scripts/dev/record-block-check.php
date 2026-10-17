@@ -93,6 +93,21 @@ $eigene = $block->render(['display' => RecordBlock::COMPARISON, 'record' => $a, 
 $pruefe(substr_count($eigene, '<tr') - 1 === count($felder) && count($felder) > 0, 'gewählte Felder: eine Zeile je Feld (' . count($felder) . ')');
 $pruefe(preg_match('#<td class="taxmod-comparison-value[^"]*">\#\d+</td>#', $eigene) === 0, 'keine Satznummer statt eines Werts');
 
+// *Ein Feld mit mehreren Werten nennt alle — die Zusammenfassung allein nannte nur den ersten.*
+$viele = $wpdb->get_row(
+    "SELECT v.node_record_id AS satz, v.relation_id AS feld, COUNT(*) AS n FROM {$p}relation_records v
+       JOIN {$p}node_records r ON r.id = v.node_record_id AND r.record_type = 'user' AND r.relation_id = 0
+      WHERE v.value_ref_kind = 'node' GROUP BY v.node_record_id, v.relation_id HAVING n >= 2 ORDER BY v.node_record_id DESC LIMIT 1"
+);
+
+if ($viele === null) {
+    $pruefe(false, 'kein Satz mit mehreren Knotenwerten in einem Feld — ungeprüft');
+} else {
+    $mehrfach = $block->render(['display' => RecordBlock::COMPARISON, 'record' => (int) $viele->satz, 'records' => (string) $viele->satz, 'rowFields' => (string) $viele->feld]);
+    preg_match('#<td class="taxmod-comparison-value[^"]*">([^<]*)</td>#', $mehrfach, $zelle);
+    $pruefe(count(explode(', ', $zelle[1] ?? '')) === (int) $viele->n, "alle {$viele->n} Werte von #{$viele->feld} in einer Zelle");
+}
+
 // *Die Seitenleiste fragt über REST — nur wer Beiträge schreiben darf, bekommt Antwort.*
 do_action('rest_api_init');
 $frage = static fn (string $pfad): WP_REST_Response => rest_do_request(new WP_REST_Request('GET', $pfad));

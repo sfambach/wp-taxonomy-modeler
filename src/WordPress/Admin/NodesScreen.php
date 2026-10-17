@@ -528,10 +528,22 @@ final class NodesScreen
             return [];
         }
 
-        $roh = $this->rendering->summaryTextsOf(array_map(
+        // ⚠️ *Die Zusammenfassung nennt bei einem Feld mit mehreren Werten nur den ersten (gemessen: «FPU» statt «FPU, SMM, MMX»)
+        // — solche Felder gehen den Weg der Messwerte, der alle nennt.*
+        $mehrere = array_values(array_filter($felder, static fn (Relation $f): bool => $f->multiplicity->allowsMany()));
+        $einzeln = array_values(array_filter($felder, static fn (Relation $f): bool => !$f->multiplicity->allowsMany()));
+        $roh     = $einzeln === [] ? [] : $this->rendering->summaryTextsOf(array_map(
             static fn (Relation $f): array => ['relation' => $f, 'records' => $ids, 'fields' => [$f->id]],
-            $felder
+            $einzeln
         ));
+
+        if ($mehrere !== []) {
+            foreach ($this->comparisonTexts($this->data->valuesOfMany($ids), $mehrere) as $satz => $jeFeld) {
+                foreach ($jeFeld as $feld => $text) {
+                    $roh[$feld][$satz] = $text;
+                }
+            }
+        }
 
         $aus = [];
 
@@ -662,14 +674,20 @@ final class NodesScreen
         }
 
         $verweise = [];
+        $knoten   = [];
 
         foreach ($werte as $eigene) {
             foreach ($eigene as $wert) {
                 if (isset($gesucht[$wert->relationId]) && $wert->value->reference !== null && $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record) {
                     $verweise[$wert->relationId][$wert->value->reference] = $wert->value->reference;
+                } elseif (isset($gesucht[$wert->relationId]) && $wert->value->reference !== null && $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node) {
+                    $knoten[$wert->value->reference] = $wert->value->reference;
                 }
             }
         }
+
+        // *Ein Verweis auf einen Knoten (eine Auswahl wie «MMX») heisst wie der Knoten.*
+        $knotenNamen = array_map(static fn (Node $n): string => $n->name, $this->editor->findMany(array_values($knoten)));
 
         $worte = $verweise === [] ? [] : $this->rendering->summaryTextsOf(array_map(
             static fn (int $kante): array => ['relation' => $gesucht[$kante], 'records' => array_values($verweise[$kante]), 'ownWords' => true],
@@ -686,6 +704,7 @@ final class NodesScreen
 
                 $v    = $wert->value;
                 $text = match (true) {
+                    $v->reference !== null && $v->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node => $knotenNamen[$v->reference] ?? '',
                     $v->reference !== null => trim((string) ($worte[$wert->relationId][$v->reference] ?? '')),
                     $v->decimal !== null   => str_contains($v->decimal, '.') ? rtrim(rtrim($v->decimal, '0'), '.') : $v->decimal,
                     default                => (string) ($v->text ?? $v->date ?? ($v->int === null ? '' : (string) $v->int)),
