@@ -4511,8 +4511,11 @@ final class Rendering implements Presets
 
         // ⚠️ **Ein Verweis in der Zusammenfassung bekommt selbst sein Wort — eine Stufe tief.** *Sein Wort: «ist doch ein Verweis auf
         // den Datensatz, eigentlich sollte da Microsoft Corp. DOS 4.0 stehen». Ein Knotenverweis heisst wie sein Knoten, ein
-        // Satzverweis wie die Zusammenfassung seines Satzes; eine zweite Stufe gibt es nicht, sonst läse die Seite Satz für Satz
-        // weiter. Die inneren Sätze und Knoten in je einer Abfrage mehr.*
+        // Satzverweis wie die Zusammenfassung seines Satzes. Die inneren Sätze und Knoten in je einer Abfrage mehr.*
+        // ⚠️ **Seit [D-935](../../../docs/NewConcept/90-decision-log.md) zwei Stufen, und dort ist Schluss.** *Sein Wort «gleiche regel
+        // fürs mainboard»: das Board im Vergleich hiess «386-SC-HG» statt «FIC · 386-SC-HG», weil sein Hersteller ein Satzverweis eine
+        // Stufe tief ist. Die zweite Stufe nennt ihre Sätze mit ihren eigenen Worten und folgt keinem Verweis mehr — sonst läse die Seite
+        // Satz für Satz weiter. Ihre Sätze in **einer** Abfrage mehr (`CD-7`).*
         $innereSaetze = [];
         $innereKnoten = [];
 
@@ -4531,6 +4534,8 @@ final class Rendering implements Presets
         }
 
         $innereSaetze = array_values(array_diff(array_keys($innereSaetze), $satzIds));
+        $innen        = [];
+        $zweiteStufe  = [];
 
         if ($innereSaetze !== []) {
             [$innereSaetzeGelesen, $innereWerte] = $this->gemerkteSaetze($innereSaetze);
@@ -4546,12 +4551,31 @@ final class Rendering implements Presets
                 $saetze += $halterSaetze;
                 $werte  += $halterWerte;
             }
+
+            // *Die zweite Stufe (D-935): worauf die inneren Sätze und ihre Halter zeigen, was noch nicht gelesen ist — alle auf einmal.*
+            $innen = [...array_keys($innereSaetzeGelesen), ...array_values($innereHalter)];
+
+            foreach ($innen as $innererSatz) {
+                foreach ($werte[$innererSatz] ?? [] as $zeile) {
+                    if ($zeile->value->referenceSpace === ReferenceSpace::Record && $zeile->value->reference !== null
+                        && ! array_key_exists($zeile->value->reference, $werte)) {
+                        $zweiteStufe[$zeile->value->reference] = true;
+                    }
+                }
+            }
+
+            if ($zweiteStufe !== []) {
+                [$zweiteSaetze, $zweiteWerte] = $this->gemerkteSaetze(array_keys($zweiteStufe));
+                $saetze += $zweiteSaetze;
+                $werte  += $zweiteWerte;
+            }
         }
 
         $knotenNamen = [];
 
         // *Auch die Knoten der Teile — ein Einheitenwert nennt seine Einheit und sein Präfix erst eine Stufe tiefer («330 Ohm»).*
-        foreach ($innereSaetze as $innererSatz) {
+        // *Und die der zweiten Stufe und der inneren Halter, denn auch dort steht ein Teil (D-935).*
+        foreach ([...$innereSaetze, ...$innen, ...array_keys($zweiteStufe)] as $innererSatz) {
             foreach ($werte[$innererSatz] ?? [] as $zeile) {
                 if ($zeile->value->referenceSpace === ReferenceSpace::Node && $zeile->value->reference !== null) {
                     $innereKnoten[$zeile->value->reference] = true;
@@ -4775,8 +4799,9 @@ final class Rendering implements Presets
                     if ($zeile->value->referenceSpace === ReferenceSpace::Node) {
                         $teile[] = $knotenNamen[$zeile->value->reference] ?? '#' . $zeile->value->reference;
                     } elseif ($zeile->value->referenceSpace === ReferenceSpace::Record) {
-                        if ($stufe === 0 && $zeile->value->reference !== null) {
-                            $teile[] = $wort($zeile->value->reference, [], 1);
+                        // *Zwei Stufen, dann Schluss (D-935) — ganz unten zählen nur die eigenen Worte des Satzes.*
+                        if ($stufe < 2 && $zeile->value->reference !== null) {
+                            $teile[] = $wort($zeile->value->reference, [], $stufe + 1);
                         }
                     } elseif (! $zeile->value->isAReference()) {
                         $teile[] = $zeile->value->rawValue();
