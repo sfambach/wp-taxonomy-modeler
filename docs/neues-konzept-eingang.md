@@ -777,6 +777,24 @@ Anlass: Bestellungen ([D-933](NewConcept/90-decision-log.md)) und Verkäufe ([D-
 
 - **Vorhanden:** Stücklisten (`Part List Item`, [D-912](NewConcept/90-decision-log.md), [D-914](NewConcept/90-decision-log.md)), Projekte mit Platinen, Exemplare (Einzelstücke), Käufe mit Einstandspreis.
 - **Offen:** Bestand als gepflegte Zahl je Artikel oder als Summe von Bewegungen (Zugang aus Kauf, Verbrauch und Zugang aus einem Baulauf, Abgang aus Verkauf); was ein Lagerartikel ist (Bauteil, Platine, Fertigprodukt — Exemplare sind schon Einzelstücke); wie die Selbstkosten eines Baulaufs aus den verbrauchten Teilen entstehen. Eine Summe über Bewegungen braucht Code im Plugin — das Modell rechnet heute nicht.
+- **Ablauf, wie der Eigentümer ihn sieht (2026-10-18, noch unsicher, nicht entschieden):**
+  > *«würde gerne auch den bestand den ich schon haben einbringen aber nur wenn ich was baue also ne platine kommt oder ich lege ein neues projek an, ich suche nach den teilen die schon da sind. dann trage ich einfach den katuellen bestand ein. später gehen wir dazu über was ist im bestand was muss ich bestellen wenn alles da ist fange ich an zu bauen wenn fertig kann man den verbrauch buchen, evtl ist es wichtig auch sowas darszustellen wir reserviert, ich habe meist mehrere projekte laufen wenn 10 widerstände da sind und diese sind schon reserviert muss ich welche fürs nächste projekt bestellen oder ich teile sie auf.»*
+  1. **Anfangsbestand nach Bedarf:** kein Inventurlauf — erfasst wird, wenn ein Bau oder ein neues Projekt ansteht, und nur für dessen Teile.
+  2. **Bedarf:** Stückliste des Projekts gegen Bestand → was fehlt, wird bestellt.
+  3. **Reservierung:** Teile im Bestand sind einem laufenden Projekt zugeordnet; mehrere Projekte laufen gleichzeitig, frei ist Bestand minus reserviert. Aufteilen muss möglich sein.
+  4. **Verbrauch buchen,** wenn der Bau fertig ist.
+- **Gebaut:** nein. Die Erfassung braucht Formulare — [INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen).
+
+## INF-075 · Prozesse und Formulare im Modell anlegen
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — gemeldet am 2026-10-18 vom Eigentümer, nicht besprochen.
+
+> *«Was wir noch gar nicht haben, sind irgendwelche Formulare, um das Ganze zu verarbeiten. Das wäre wahrscheinlich dann der nächste Schritt in der Taxonomie, dass wir Prozesse und Formulare anlegen. Auf eine möglichst einfache Art und Weise und aber auch modular, sodass man einfach neue erstellen kann, wenn man das braucht.»*
+
+Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf) — Bestand erfassen, reservieren, Verbrauch buchen sind Abläufe über mehrere Sätze, keine Eingabe in einen einzelnen Satz.
+
+- **Vorhanden:** Eingabe je Satz über den Komplex-Renderer ([D-758](NewConcept/90-decision-log.md)); Schreiben über `taxmod/apply` ([D-911](NewConcept/90-decision-log.md)).
+- **Offen:** was ein Prozess ist (Schritte über mehrere Sätze?), ob ein Formular selbst im Modell steht (Daten) oder Code ist, wo es läuft (Admin, Beitrag, Block).
 - **Gebaut:** nein.
 
 ## INF-074 · Angebote bei eBay einstellen, Verkaufstexte, Link zum laufenden Angebot
