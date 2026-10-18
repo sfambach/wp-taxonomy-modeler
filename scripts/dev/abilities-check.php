@@ -315,6 +315,44 @@ $vergleich = is_array($takte) ? wp_strip_all_tags(do_blocks('<!-- wp:taxmod/reco
 wp_set_current_user((int) ($admin[0] ?? 1));
 check('mehrere Einheitenwerte im Vergleich heissen «50 Taler, 60 Taler», nicht ihre Nummern', str_contains($vergleich, '50 __ab Taler, 60 __ab Taler'), is_wp_error($takte) ? $takte->get_error_message() : trim($vergleich));
 
+echo "Nur Daten (D-936)\n";
+
+$daten = wp_get_ability('taxmod/write-data');
+check('write-data ist registriert und öffentlich', $daten !== null && $daten->get_meta_item('show_in_rest'));
+
+$rolle = get_role(\Taxmod\WordPress\ModelAbilities::DATA_ROLE);
+check('die Rolle trägt nur Lesen und das Schreiben von Sätzen', $rolle !== null && array_keys(array_filter($rolle->capabilities)) === ['read', \Taxmod\WordPress\ModelAbilities::DATA_CAPABILITY], wp_json_encode($rolle?->capabilities));
+
+$importer = wp_insert_user(['user_login' => '__ab_importer', 'user_pass' => wp_generate_password(), 'role' => 'editor']);
+$importerId = is_wp_error($importer) ? 0 : (int) $importer;
+(new WP_User($importerId))->add_role(\Taxmod\WordPress\ModelAbilities::DATA_ROLE);
+wp_set_current_user($importerId);
+
+$neu = $daten?->execute(['changes' => [
+    ['op' => 'create_record', 'ref' => 'd', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@d', 'values' => [(string) $ergebnis['refs']['f'] => 'vom Importer']],
+]]);
+check('der Importer legt einen Satz an und füllt ihn', is_array($neu) && ($neu['refs']['d'] ?? 0) > 0, is_wp_error($neu) ? $neu->get_error_message() : '');
+check('der Importer liest den Knoten', is_array($node->execute(['node' => $ergebnis['refs']['i']])));
+check('apply bleibt ihm verschlossen', is_wp_error($apply->execute(['changes' => [['op' => 'rename_node', 'node' => $ergebnis['refs']['i'], 'name' => '__ab nicht']]])));
+check('write-data nimmt keine Modelländerung an', is_wp_error($daten?->execute(['changes' => [['op' => 'rename_node', 'node' => $ergebnis['refs']['i'], 'name' => '__ab nicht']]])));
+
+$einstellung = (int) $wpdb->get_var("SELECT id FROM " . Schema::table('node_records') . " WHERE record_type <> 'user' LIMIT 1");
+$fremd = $daten?->execute(['changes' => [['op' => 'set_values', 'record' => $einstellung, 'values' => []]]]);
+check('ein Einstellungssatz wird über write-data nicht beschrieben', $einstellung > 0 && is_wp_error($fremd) && str_contains($fremd->get_error_message(), 'only user records'), is_wp_error($fremd) ? $fremd->get_error_message() : 'kein Fehler');
+
+$saetzeVorher = count($node->execute(['node' => $ergebnis['refs']['i']])['records'] ?? []);
+$abgewiesen   = $daten?->execute(['changes' => [
+    ['op' => 'create_record', 'ref' => 'x', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'remove_record', 'record' => $einstellung],
+]]);
+check('nach einem abgewiesenen Schritt bleibt kein Satz stehen', is_wp_error($abgewiesen) && count($node->execute(['node' => $ergebnis['refs']['i']])['records'] ?? []) === $saetzeVorher);
+
+wp_set_current_user(0);
+check('ein Gast darf keine Sätze schreiben', is_wp_error($daten?->execute(['changes' => [['op' => 'create_record', 'node' => $ergebnis['refs']['i']]]])));
+wp_set_current_user((int) ($admin[0] ?? 1));
+check('der Administrator darf write-data auch', is_array($daten?->execute(['changes' => [['op' => 'create_record', 'node' => $ergebnis['refs']['i']]]])));
+
 echo "Block im Beitrag (D-912)\n";
 
 check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));

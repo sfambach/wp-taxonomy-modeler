@@ -756,7 +756,7 @@ Anlass: Im Vergleich der Netzwerkkarten steht «Erscheinungs Monat/Jahr» als «
 
 ## INF-072 · Daten schreiben ohne das Modell ändern zu dürfen
 
-**Typ:** `VORSCHLAG` · **Status:** `OPEN` — vom Eigentümer am 2026-10-18 zurückgestellt, bis ein Werkzeug nur Daten braucht.
+**Typ:** `VORSCHLAG` · **Status:** `DECIDED` — [D-936](NewConcept/90-decision-log.md), gebaut in 0.1.20 (2026-10-18), weil der Importer der Bestellmails schreiben soll.
 
 > *«würde ich gerne erstmal offen starten und ohne diese Sicherheit […] Später, wenn wir vielleicht andere Tools haben, die nur auf die Daten zugreifen sollen, ähm, würde ich das ändern wollen»*
 
@@ -765,7 +765,7 @@ Anlass: ein geplanter Importer für Käufe (Bestellmails von eBay und AliExpress
 - **Vorgeschlagen, nicht entschieden:** eine eigene Ability nur für `create_record`, `set_values`, `remove_record`; eine eigene Berechtigung dafür und eine Rolle ohne Admin-Rechte; ein Wächter, der Modelländerungen über diesen Weg ablehnt.
 - **Bis dahin:** ein Werkzeug, das schreibt, braucht einen Benutzer mit `manage_options`.
 - **Wann:** *«wenn wir ihn brauchen implementieren wir inf-072»* (2026-10-18) — also bevor der Importer schreibt. Der Benutzer dafür ist angelegt: `auto_einkauf`, Rolle Redakteur, und soll es bleiben.
-- **Gebaut:** nein.
+- **Gebaut:** ja, 0.1.20 — `taxmod/write-data`, Rolle `taxmod_data_writer` ([D-936](NewConcept/90-decision-log.md)).
 
 ## INF-073 · Bestand und Fertigung: vom Wareneingang über die Platine zum Verkauf
 

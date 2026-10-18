@@ -47,6 +47,15 @@ final class ModelAbilities
     /** So viele Änderungen nimmt ein Aufruf — darüber teilt der Aufrufer. */
     private const MAX_CHANGES = 500;
 
+    /** Wer nur Sätze schreiben darf, das Modell aber nicht ändern (D-936) — ein Importer. */
+    public const DATA_CAPABILITY = 'taxmod_write_data';
+
+    /** Die Rolle, die nur diese Fähigkeit trägt — zusätzlich zur Rolle des Benutzers vergeben. */
+    public const DATA_ROLE = 'taxmod_data_writer';
+
+    /** Was `write-data` annimmt: Sätze und Werte, kein Knoten, kein Feld, keine Einstellung. */
+    private const DATA_OPS = ['create_record', 'set_values', 'remove_record'];
+
     /**
      * @param \Closure(): NodesScreen $screen Erst beim Ausführen gebaut — das Registrieren läuft in jeder Anfrage.
      * @param \Closure(): ModelEditor $editor
@@ -86,7 +95,7 @@ final class ModelAbilities
                 'additionalProperties' => false,
             ],
             'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->readTree(is_array($input) ? $input : [])),
-            'permission_callback' => $this->allowed(...),
+            'permission_callback' => $this->allowedToRead(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
@@ -101,7 +110,7 @@ final class ModelAbilities
                 'additionalProperties' => false,
             ],
             'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->readNode((int) (is_array($input) ? ($input['node'] ?? 0) : 0))),
-            'permission_callback' => $this->allowed(...),
+            'permission_callback' => $this->allowedToRead(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
@@ -154,11 +163,75 @@ final class ModelAbilities
             'permission_callback' => $this->allowed(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => false]],
         ]);
+
+        // ⚠️ **Daten schreiben, ohne das Modell ändern zu dürfen** ([D-936](../../docs/NewConcept/90-decision-log.md)) — *für den
+        // Importer der Bestellmails. Derselbe Weg wie `apply`, nur mit drei Ops und nur an Benutzersätzen.*
+        wp_register_ability('taxmod/write-data', [
+            'label'               => __('Write records', 'taxmod'),
+            'description'         => __(
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record on user records. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
+                'taxmod'
+            ),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'changes' => [
+                        'type'     => 'array',
+                        'minItems' => 1,
+                        'maxItems' => self::MAX_CHANGES,
+                        'items'    => [
+                            'type'       => 'object',
+                            'properties' => [
+                                'op'        => ['type' => 'string', 'enum' => self::DATA_OPS],
+                                'ref'       => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
+                                'node'      => $ziel,
+                                'record'    => $ziel,
+                                'values'    => ['type' => 'object'],
+                                'own_value' => ['type' => 'string'],
+                                'locale'    => ['type' => 'string'],
+                            ],
+                            'required'   => ['op'],
+                            'additionalProperties' => false,
+                        ],
+                    ],
+                ],
+                'required'   => ['changes'],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->apply(is_array($input) ? ['changes' => $input['changes'] ?? null] : [], true)),
+            'permission_callback' => $this->allowedToWriteData(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => false]],
+        ]);
     }
 
     public function allowed(mixed $input = null): bool
     {
         return current_user_can(Plugin::CAPABILITY);
+    }
+
+    public function allowedToWriteData(mixed $input = null): bool
+    {
+        return $this->allowed() || current_user_can(self::DATA_CAPABILITY);
+    }
+
+    /** Wer Sätze schreiben darf, muss sie finden können — sonst legt ein Importer jede Bestellung doppelt an. */
+    public function allowedToRead(mixed $input = null): bool
+    {
+        return $this->allowedToWriteData();
+    }
+
+    /**
+     * Die Rolle steht, sobald das Plugin läuft — eine Option, einmal je Anfrage gelesen, geschrieben nur beim ersten Mal.
+     *
+     * ⚠️ *Nur `read` dazu: die Rolle wird **neben** der des Benutzers vergeben (bei `auto_einkauf` Redakteur) und gibt ihm
+     * nichts im Modell ausser dem Schreiben von Sätzen.*
+     */
+    public static function ensureDataRole(): void
+    {
+        if (get_role(self::DATA_ROLE) === null) {
+            add_role(self::DATA_ROLE, __('Taxonomy Modeller: write records', 'taxmod'), ['read' => true, self::DATA_CAPABILITY => true]);
+        }
     }
 
     /**
@@ -267,7 +340,7 @@ final class ModelAbilities
      * @param array<string, mixed> $input
      * @return array<string, mixed>
      */
-    private function apply(array $input): array
+    private function apply(array $input, bool $onlyData = false): array
     {
         global $wpdb;
 
@@ -277,7 +350,7 @@ final class ModelAbilities
             throw new \InvalidArgumentException(sprintf('Between 1 and %d changes per call.', self::MAX_CHANGES));
         }
 
-        $sicherung = ! empty($input['backup']) ? (new Backup())->safetyCopy('vor-ability') : null;
+        $sicherung = ! $onlyData && ! empty($input['backup']) ? (new Backup())->safetyCopy('vor-ability') : null;
         $refs      = [];
         $ergebnis  = [];
         $changelog = ($this->changelog)();
@@ -296,6 +369,10 @@ final class ModelAbilities
         try {
             foreach ($changes as $stelle => $change) {
                 try {
+                    if ($onlyData) {
+                        $this->refuseUnlessData(is_array($change) ? $change : [], $refs);
+                    }
+
                     $id = $this->applyOne(is_array($change) ? $change : [], $refs);
                 } catch (\Throwable $e) {
                     throw new \RuntimeException(sprintf('Change %d (%s) refused, nothing was written: %s', $stelle, (string) ($change['op'] ?? '?'), $e->getMessage()), 0, $e);
@@ -420,6 +497,34 @@ final class ModelAbilities
         }
 
         throw new \InvalidArgumentException('Unknown op.');
+    }
+
+    /**
+     * Was über `write-data` kommt, darf nur Benutzersätze berühren — eine Einstellung ist ein Satz, aber Teil des Modells (D-936).
+     *
+     * @param array<string, mixed> $change
+     * @param array<string, int>   $refs
+     */
+    private function refuseUnlessData(array $change, array $refs): void
+    {
+        $op = (string) ($change['op'] ?? '');
+
+        if (! in_array($op, self::DATA_OPS, true)) {
+            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values and remove_record are allowed here.");
+        }
+
+        if (isset($change['record_type']) && (string) $change['record_type'] !== RecordType::User->value) {
+            throw new \InvalidArgumentException('Only user records can be written here.');
+        }
+
+        if ($op !== 'create_record') {
+            $recordId = $this->resolve($change['record'] ?? null, $refs, 'record');
+            $record   = $this->screen()->entries()->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
+
+            if ($record->recordType !== RecordType::User) {
+                throw new \InvalidArgumentException("Record {$recordId} is a {$record->recordType->value} record; only user records can be written here.");
+            }
+        }
     }
 
     /**
