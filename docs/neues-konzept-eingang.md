@@ -754,6 +754,19 @@ Anlass: Im Vergleich der Netzwerkkarten steht «Erscheinungs Monat/Jahr» als «
 - **Entschieden am selben Abend:** die Genauigkeit gilt je Wert ([D-932](NewConcept/90-decision-log.md), seine Wahl *«Genauigkeit je Wert»*); gebaut in 0.1.17 — «1994», «1997-03».
 - **Weiter offen:** die Schreibweise je Sprache («März 1997» statt «1997-03»).
 
+## INF-072 · Daten schreiben ohne das Modell ändern zu dürfen
+
+**Typ:** `VORSCHLAG` · **Status:** `OPEN` — vom Eigentümer am 2026-10-18 zurückgestellt, bis ein Werkzeug nur Daten braucht.
+
+> *«würde ich gerne erstmal offen starten und ohne diese Sicherheit […] Später, wenn wir vielleicht andere Tools haben, die nur auf die Daten zugreifen sollen, ähm, würde ich das ändern wollen»*
+
+Anlass: ein geplanter Importer für Käufe (Bestellmails von eBay und AliExpress → «Käufe») soll Sätze anlegen, aber das Modell nicht ändern können. Heute verlangen alle drei Abilities `manage_options` (`ModelAbilities::allowed()`), und `taxmod/apply` nimmt Daten- und Modelländerungen in einer Liste ([D-911](NewConcept/90-decision-log.md)).
+
+- **Vorgeschlagen, nicht entschieden:** eine eigene Ability nur für `create_record`, `set_values`, `remove_record`; eine eigene Berechtigung dafür und eine Rolle ohne Admin-Rechte; ein Wächter, der Modelländerungen über diesen Weg ablehnt.
+- **Bis dahin:** ein Werkzeug, das schreibt, braucht einen Benutzer mit `manage_options`.
+- **Wann:** *«wenn wir ihn brauchen implementieren wir inf-072»* (2026-10-18) — also bevor der Importer schreibt. Der Benutzer dafür ist angelegt: `auto_einkauf`, Rolle Redakteur, und soll es bleiben.
+- **Gebaut:** nein.
+
 ---
 ## Erledigte Eingänge
 
