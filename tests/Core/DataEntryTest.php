@@ -669,4 +669,63 @@ final class DataEntryTest extends TestCase
 
         $this->data->moveRecord($record->id, $fremd->id);
     }
+
+    // ------------------------------------------------- Verweislisten als Tabelle (D-937, nach D-758 und D-498)
+
+    /** ⚠️ *«Add row» an einer Verweisliste: ein eigener Satz am Ziel, in der Art des Besitzers, und ein Verweis darauf — ein Akt.* */
+    #[Test]
+    public function a_new_row_in_a_list_of_references_is_a_record_of_its_own_that_the_holder_points_at(): void
+    {
+        $kaeufe     = $this->editor->createNode('Käufe', $this->branchRoot['model']->id);
+        $this->editor->addField($kaeufe->id, $this->text->id, 'Artikel');
+        $positionen = $this->editor->addField($this->part->id, $kaeufe->id, 'Positionen', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $satz       = $this->data->create($this->part->id, RecordType::Example);
+
+        $this->buch->entries = [];
+        $neu = $this->data->createReferencedRecord($satz->id, $positionen->id);
+
+        self::assertSame($kaeufe->id, $neu->nodeId, 'ein Satz des Ziels');
+        self::assertSame(RecordType::Example, $neu->recordType, 'in der Art des Besitzers (INFERRED)');
+        self::assertSame([$neu->id], array_values(array_map(
+            static fn (RelationRecord $z): ?int => $z->value->reference,
+            array_filter($this->records->valuesOf($satz->id), static fn (RelationRecord $z): bool => $z->relationId === $positionen->id)
+        )));
+        self::assertCount(1, array_unique(array_map(static fn (array $z): int => $z[5], $this->buch->entries)), 'eine Änderungsgruppe');
+    }
+
+    /** ⚠️ *Aus der Liste nehmen heisst: nur der Verweis geht. Eine Aggregation besitzt nicht (D-498).* */
+    #[Test]
+    public function unlinking_removes_only_the_reference_and_keeps_the_record(): void
+    {
+        $kaeufe     = $this->editor->createNode('Käufe', $this->branchRoot['model']->id);
+        $this->editor->addField($kaeufe->id, $this->text->id, 'Artikel');
+        $positionen = $this->editor->addField($this->part->id, $kaeufe->id, 'Positionen', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $satz       = $this->data->create($this->part->id);
+        $erster     = $this->data->createReferencedRecord($satz->id, $positionen->id);
+        $zweiter    = $this->data->createReferencedRecord($satz->id, $positionen->id);
+
+        $this->data->unlinkReferencedRecord($satz->id, $positionen->id, $erster->id);
+
+        $verweise = array_values(array_map(
+            static fn (RelationRecord $z): ?int => $z->value->reference,
+            array_filter($this->records->valuesOf($satz->id), static fn (RelationRecord $z): bool => $z->relationId === $positionen->id)
+        ));
+
+        self::assertSame([$zweiter->id], $verweise, 'genau dieser Verweis ist fort');
+        self::assertNotNull($this->data->find($erster->id), 'der Satz selbst bleibt');
+    }
+
+    /** ⚠️ *Eine Komposition hat Teile, keine Verweise — ihr «Add row» bleibt {@see DataEntry::createPart()}.* */
+    #[Test]
+    public function a_composition_gets_no_referenced_record(): void
+    {
+        $stueck = $this->editor->createNode('Stueck', $this->branchRoot['compositions']->id);
+        $this->editor->addField($stueck->id, $this->text->id, 'name');
+        $kante  = $this->editor->addField($this->part->id, $stueck->id, 'stueck');
+        $satz   = $this->data->create($this->part->id);
+
+        $this->expectException(NotYetStorable::class);
+
+        $this->data->createReferencedRecord($satz->id, $kante->id);
+    }
 }

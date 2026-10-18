@@ -1976,7 +1976,7 @@ final class NodesScreen
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
-                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'))->withRecordLinks(
+                . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
                     fn (int $satz): string => $this->recordAddress($satz)
                 )->withRecordCreation(...$this->recordCreation())->nodeAsForm(
@@ -3756,7 +3756,7 @@ final class NodesScreen
                     continue;
                 }
 
-                $partId = $this->data->createPart($holderId, $relationId)->id;
+                $partId = $this->newRow($holderId, $relationId)->id;
             } elseif (! isset($gehalten[$partId])) {
                 continue;
             }
@@ -3988,7 +3988,40 @@ final class NodesScreen
         [$halter, $kante] = array_map(absint(...), explode('-', $this->actKey()) + [0, 0]);
 
         if ($halter !== 0 && $kante !== 0) {
-            $this->data->createPart($halter, $kante);
+            $this->newRow($halter, $kante);
+        }
+    }
+
+    /**
+     * Eine neue Zeile an einem mehrfachen Feld: an einer Komposition ein Teil, an einer Verweisliste ein eigener Satz am Ziel, auf den
+     * der Halter verweist ([D-937](../../../docs/NewConcept/90-decision-log.md), [D-498](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Dieselbe Unterscheidung wie beim Zurücklesen eines Satzverweises in {@see self::saveParts()}: die Art der Kante. Geprüft wird
+     * im Kern — {@see DataEntry::createPart()} weist eine Aggregation ab, {@see DataEntry::createReferencedRecord()} eine Komposition.*
+     */
+    private function newRow(int $holderId, int $relationId): \Taxmod\Core\Model\NodeRecord
+    {
+        return $this->editor->relationById($relationId)?->kind === RelationKind::Aggregation
+            ? $this->data->createReferencedRecord($holderId, $relationId)
+            : $this->data->createPart($holderId, $relationId);
+    }
+
+    /**
+     * Speichern, dann einen Satz aus einer Verweisliste nehmen (D-937) — der Knopf nennt `do[<Halter>-<Kante>-<Satz>]`.
+     *
+     * ⚠️ **Nur der Verweis geht, der Satz bleibt** — *eine Aggregation besitzt nicht ([D-498](../../../docs/NewConcept/90-decision-log.md)).
+     * Halter, Kante und Satz sind Eingabe: der Kern nimmt nur eine Zeile weg, die es an diesem Halter auf dieser Kante gibt. Der Halter
+     * muss der gespeicherte Satz sein — eine Verweisliste wird nur auf der ersten Stufe als Tabelle gezeichnet.*
+     */
+    private function unlinkedPart(int $nodeId): void
+    {
+        $this->saveRecord($nodeId);
+
+        [$halter, $kante, $satz] = array_map(absint(...), explode('-', $this->actKey()) + [0, 0, 0]);
+        $gespeichert             = isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0;
+
+        if ($halter !== 0 && $kante !== 0 && $satz !== 0 && $halter === $gespeichert) {
+            $this->data->unlinkReferencedRecord($halter, $kante, $satz);
         }
     }
 
@@ -4822,7 +4855,7 @@ final class NodesScreen
         ]);
 
         // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
-        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'))->withJumps(
+        return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withJumps(
             // ⚠️ *Ein Sprung ist ein Aufruf des Zielknotens mit gesetztem Filter und ab Seite 1 (D-769).*
             fn (int $ziel, int $feld, string $wert): string => $this->backTo($ziel, [
                 self::RECORD_FILTER => self::encodeFilter([$feld => $wert]),
@@ -6712,6 +6745,8 @@ final class NodesScreen
                 // ⚠️ *Mehrere Zeilen auf einmal, je gewähltem Satz eine (D-806).*
                 'add_parts'      => $this->addedParts($id),
                 'remove_part'    => $this->removedPart($id),
+                // ⚠️ *Aus einer Verweisliste nehmen, der Satz bleibt (D-937).*
+                'unlink_part'    => $this->unlinkedPart($id),
                 // ⚠️ *Unter dieser Zeile eine gleicher Art einfügen (D-830).*
                 'insert_part'    => $this->insertedPart($id),
                 'delete_record'  => $this->data->removeRecord(

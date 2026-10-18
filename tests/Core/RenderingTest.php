@@ -2421,4 +2421,93 @@ final class RenderingTest extends TestCase
 
         self::assertSame([], $this->rendering->complaintsFor($menge, TypedValue::ofInt(1)));
     }
+
+    /**
+     * Eine Verweisliste unter dem Komplex-Renderer ist eine Tabelle ihrer Sätze ([D-937](../../docs/NewConcept/90-decision-log.md), nach D-758).
+     *
+     * @return array{0: Node, 1: Relation, 2: Relation, 3: int, 4: list<int>}
+     */
+    private function bestellungMitPositionen(): array
+    {
+        $kaeufe     = $this->thing('Käufe');
+        $artikel    = $this->editor->addField($kaeufe->id, $this->type('Text')->id, 'Artikel');
+        $bestellung = $this->thing('Bestellungen');
+        $positionen = $this->editor->addField($bestellung->id, $kaeufe->id, 'Positionen', RelationKind::Aggregation);
+        $positionen = $this->editor->setMultiplicity($bestellung->id, $positionen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+
+        $satz  = $this->records->add(new NodeRecord(0, $bestellung->id, 1, '2026-10-18 10:00:00', RecordType::User));
+        $kauf1 = $this->records->add(new NodeRecord(0, $kaeufe->id, 1, '2026-10-18 10:00:00', RecordType::User));
+        $kauf2 = $this->records->add(new NodeRecord(0, $kaeufe->id, 1, '2026-10-18 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($kauf1, $artikel->id, TypedValue::ofText('Widerstand')));
+        $this->records->putValue(RelationRecord::direct($kauf2, $artikel->id, TypedValue::ofText('Kondensator')));
+        $this->records->putValue(RelationRecord::direct($satz, $positionen->id, TypedValue::ofRecordReference($kauf1), '', 0));
+        $this->records->putValue(RelationRecord::direct($satz, $positionen->id, TypedValue::ofRecordReference($kauf2), '', 1));
+
+        return [$bestellung, $positionen, $artikel, $satz, [$kauf1, $kauf2]];
+    }
+
+    #[Test]
+    public function under_the_complex_renderer_a_list_of_record_references_is_a_table_of_those_records(): void
+    {
+        [$bestellung, $positionen, $artikel, $satz, [$kauf1, $kauf2]] = $this->bestellungMitPositionen();
+        $this->einstellung($bestellung, 'renderer', TypedValue::ofText(ComplexRenderer::NAME));
+
+        $rendering = $this->rendering->withPartActs('Add row', 'Remove this row', 'Add several', 'Insert', 'Unlink');
+        $teile     = $rendering->partsOfRecord($satz, [$positionen]);
+        $bearbeitet = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $teile, recordId: $satz)->markup;
+
+        self::assertStringContainsString('<h4 class="taxmod-complex-heading">Positionen', $bearbeitet, 'eine Überschrift');
+        self::assertSame(2, substr_count($bearbeitet, '<tr class="taxmod-table-row">'), 'je verwiesenem Satz eine Zeile');
+        self::assertMatchesRegularExpression('/name="v\[' . $satz . '\]\[' . $positionen->id . '\]\[' . $kauf1 . '\]\[' . $artikel->id . '\]"[^>]*value="Widerstand"/', $bearbeitet, 'die Felder des Ziels, bearbeitbar, unter der Satz-Id');
+        self::assertStringContainsString('name="do[' . $satz . '-' . $positionen->id . '-' . $kauf2 . ']" value="unlink_part"', $bearbeitet, 'der Mülleimer nimmt nur den Verweis');
+        self::assertStringNotContainsString('value="remove_part"', $bearbeitet, 'nichts wird gelöscht');
+        self::assertStringNotContainsString('value="insert_part"', $bearbeitet, 'kein Einfügen eines Teils');
+        self::assertStringContainsString('name="do[' . $satz . '-' . $positionen->id . ']" value="add_part"', $bearbeitet, '«Add row» unter der Tabelle');
+        self::assertStringNotContainsString('taxmod-ref-rows', $bearbeitet, 'nicht mehr die Auswahlzeilen aus D-859');
+
+        $gezeigt = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Display, '', recordParts: $teile, recordId: $satz)->markup;
+
+        self::assertSame(2, substr_count($gezeigt, '<tr class="taxmod-table-row">'), 'angezeigt dieselbe Tabelle');
+        self::assertStringContainsString('Kondensator', $gezeigt);
+        self::assertStringNotContainsString('<input', $gezeigt, 'nur lesend');
+    }
+
+    #[Test]
+    public function without_the_complex_renderer_or_with_a_choice_at_the_edge_a_list_of_references_stays_a_chooser(): void
+    {
+        [$bestellung, $positionen, , $satz] = $this->bestellungMitPositionen();
+        $rendering = $this->rendering->withPartActs('Add row', 'Remove this row');
+
+        $alsFormular = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$positionen]), recordId: $satz)->markup;
+
+        self::assertStringContainsString('taxmod-ref-rows', $alsFormular, 'unter form bleiben es die Auswahlzeilen (D-859)');
+        self::assertStringNotContainsString('unlink_part', $alsFormular);
+
+        // ⚠️ *Eine Wahl an der Kante gilt (D-106) — auch `summary`.*
+        $this->einstellung($bestellung, 'renderer', TypedValue::ofText(ComplexRenderer::NAME));
+        $this->einstellung($positionen, 'renderer', TypedValue::ofText(SummaryRenderer::NAME));
+        $rendering = $this->rendering->withPartActs('Add row', 'Remove this row');
+
+        $mitWahl = $rendering->nodeAsForm($bestellung, [$positionen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$positionen]), recordId: $satz)->markup;
+
+        self::assertStringNotContainsString('unlink_part', $mitWahl);
+    }
+
+    #[Test]
+    public function a_single_reference_and_a_list_of_constants_stay_choosers_under_the_complex_renderer(): void
+    {
+        [$bestellung, $positionen, , $satz] = $this->bestellungMitPositionen();
+        $herkunft = $this->editor->createNode('Herkunft', $this->branchRoot['constants']->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+        $this->editor->createNode('Vermutung', $herkunft->id);
+        $feld = $this->editor->addField($bestellung->id, $herkunft->id, 'Herkunft', RelationKind::Aggregation);
+        $feld = $this->editor->setMultiplicity($bestellung->id, $feld->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+        $haendler = $this->editor->addField($bestellung->id, $this->nodes->byId($positionen->toNodeId)->id, 'Ein Kauf', RelationKind::Aggregation);
+        $this->einstellung($bestellung, 'renderer', TypedValue::ofText(ComplexRenderer::NAME));
+        $rendering = $this->rendering->withPartActs('Add row', 'Remove this row');
+
+        $felder = $rendering->fieldsFor([$feld, $haendler], [], Purpose::Edit, 'v[' . $satz . ']', recordId: $satz, recordListsAsTables: true);
+
+        self::assertSame([], $felder[0]->rows, 'mehrere Konstanten: keine Tabelle');
+        self::assertSame([], $felder[1]->rows, 'ein einzelner Verweis: keine Tabelle');
+    }
 }

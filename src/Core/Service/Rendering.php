@@ -685,11 +685,11 @@ final class Rendering implements Presets
     }
 
     /** Dieselbe Zeichnung, aber mit Knöpfen zum Hinzufügen und Entfernen von Teil-Zeilen (D-758); die Worte kommen vom Rand. */
-    public function withPartActs(string $add, string $remove, string $many = '', string $insert = ''): static
+    public function withPartActs(string $add, string $remove, string $many = '', string $insert = '', string $unlink = ''): static
     {
         $kopie           = clone $this;
-        // *Dazu das Wort für «mehrere hinzufügen» (D-806) und für «darunter einfügen» (D-830).*
-        $kopie->partActs = ['add' => $add, 'remove' => $remove, 'many' => $many, 'insert' => $insert];
+        // *Dazu das Wort für «mehrere hinzufügen» (D-806), für «darunter einfügen» (D-830) und für «aus der Liste nehmen» (D-937).*
+        $kopie->partActs = ['add' => $add, 'remove' => $remove, 'many' => $many, 'insert' => $insert, 'unlink' => $unlink];
 
         return $kopie;
     }
@@ -1167,12 +1167,16 @@ final class Rendering implements Presets
     /**
      * Die Teile **eines** Satzes für diese Felder — für eine Zeichnung ausserhalb des Satzblocks, etwa die Vorschau (D-743, D-577).
      *
+     * ⚠️ *Mit den Sätzen seiner Verweislisten ([D-937](../../../docs/NewConcept/90-decision-log.md)): der Komplex-Renderer zeichnet sie
+     * als Tabelle (D-758). Geladen wird hier, ohne den Behälter zu kennen — eine Stufe mehr in derselben Abfrage je Stufe (`CD-7`);
+     * ein anderer Behälter fasst sie zusammen wie bisher und braucht sie nicht.*
+     *
      * @param  list<Relation> $relations
      * @return array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>
      */
     public function partsOfRecord(int $recordId, array $relations): array
     {
-        return $this->partsOfRecords([$recordId], $relations, $this->subgraph($relations, self::TIEFSTENS))[$recordId] ?? [];
+        return $this->partsOfRecords([$recordId], $relations, $this->subgraph($relations, self::TIEFSTENS), true)[$recordId] ?? [];
     }
 
     /**
@@ -1180,7 +1184,9 @@ final class Rendering implements Presets
      *
      * ⚠️ **[D-577](../../../docs/NewConcept/90-decision-log.md), von ihm aufgebaut:** *«Eine Adresse — sie bekommt ihren eigenen
      * `node_record`, der Kunde verweist darauf. Zwei Adressen — zwei Wertzeilen, und die Reihenfolge braucht `sort_order`.»*
-     * *Nur Kompositionen: ein Verweis an einer Aggregation zeigt auf einen fremden Satz und wird zusammengefasst (D-753).*
+     * *Nur Kompositionen: ein Verweis an einer Aggregation zeigt auf einen fremden Satz und wird zusammengefasst (D-753) — ausser, auf
+     * Wunsch, die Verweislisten der gezeichneten Sätze selbst (`$mitVerweislisten`, [D-937](../../../docs/NewConcept/90-decision-log.md)):
+     * deren Sätze kommen mit, damit der Komplex-Renderer sie als Tabelle zeichnen kann. Nur auf der ersten Stufe, wie dort gezeichnet wird.*
      *
      * ```mermaid
      * flowchart LR
@@ -1194,13 +1200,25 @@ final class Rendering implements Presets
      * @param  array<int, list<Relation>> $unterbau
      * @return array<int, array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>>
      */
-    private function partsOfRecords(array $recordIds, array $relations, array $unterbau): array
+    private function partsOfRecords(array $recordIds, array $relations, array $unterbau, bool $mitVerweislisten = false): array
     {
         if ($this->records === null || $recordIds === []) {
             return [];
         }
 
         $kompositionen = [];
+        $verweislisten = [];
+
+        if ($mitVerweislisten) {
+            $typen    = $this->typesOf($relations);
+            $angaben  = $this->settingsForUseSites($relations);
+
+            foreach ($relations as $kante) {
+                if ($this->listsRecordsAsTable($kante, $typen[$kante->id] ?? null, $angaben[$kante->id] ?? [])) {
+                    $verweislisten[$kante->id] = true;
+                }
+            }
+        }
 
         foreach ([$relations, ...array_values($unterbau)] as $liste) {
             foreach ($liste as $kante) {
@@ -1224,7 +1242,9 @@ final class Rendering implements Presets
                 foreach ($zeilen as $zeile) {
                     $wert = $zeile->value;
 
-                    if (isset($kompositionen[$zeile->relationId]) && $wert->reference !== null && $wert->referenceSpace === ReferenceSpace::Record) {
+                    if ((isset($kompositionen[$zeile->relationId]) || ($stufe === 0 && isset($verweislisten[$zeile->relationId])))
+                        && $wert->reference !== null && $wert->referenceSpace === ReferenceSpace::Record
+                    ) {
                         $gehalten[$halter][$zeile->relationId][] = [$wert->reference, $zeile->position];
 
                         if (! isset($gesehen[$wert->reference])) {
@@ -1726,6 +1746,8 @@ final class Rendering implements Presets
         array $allowedChoices = [],
         /** @var array<int, TypedValue> Die Werte des Satzes, der diesen Teil hält — die Vorbelegung eines Filters liest auch dort (D-791 Schritt 3). */
         array $ownerValues = [],
+        /** Ob der Komplex-Renderer diese Felder auslegt — dann wird eine Verweisliste zur Tabelle ihrer Sätze (D-937, {@see self::listsRecordsAsTable()}). */
+        bool $recordListsAsTables = false,
     ): array {
         if ($relations === []) {
             return [];
@@ -1817,7 +1839,14 @@ final class Rendering implements Presets
             // ⚠️ **Ein Verweis auf einen Satz zeigt seine Zusammenfassung von selbst** ([D-753](../../../docs/NewConcept/90-decision-log.md),
             // berichtigt): *sein Wort: «an der Kante bin ich mir unsicher, ob wir einen Renderer brauchen, aber da es kein simpler
             // Datentyp ist, muss eine Zusammenfassung gezeigt werden». Der Knoten behält seinen Behälter; die Kante braucht keine Wahl.*
-            $alsZusammenfassung = $this->drawsAsSummary($relation, $type, $resolved[$relation->id] ?? []);
+            // ⚠️ **Eine Verweisliste unter dem Komplex-Renderer ist eine Tabelle ihrer Sätze** (D-937, D-758) — *nur auf der ersten Stufe
+            // (tiefer steht die Zusammenfassung), nur wo das Ziel Felder hat und nicht der gezeichnete Knoten selbst ist.*
+            $verweisTabelle = $recordListsAsTables && $tiefe === 0
+                && ! isset($gesehen[$relation->toNodeId])
+                && array_filter($unterbau[$relation->toNodeId] ?? [], static fn (Relation $innen): bool => ! $innen->hide && ! $innen->isSetting()) !== []
+                && $this->listsRecordsAsTable($relation, $type, $resolved[$relation->id] ?? []);
+
+            $alsZusammenfassung = ! $verweisTabelle && $this->drawsAsSummary($relation, $type, $resolved[$relation->id] ?? []);
 
             if ($alsZusammenfassung) {
                 $renderer = $this->renderers->byName(SummaryRenderer::NAME);
@@ -1843,14 +1872,14 @@ final class Rendering implements Presets
             // «warum sieht das anders aus als summary bei Hersteller» — der Nachfolger zeigt auf «Software», das Kinder hat, und ist
             // darum nach D-540 eine Knotenauswahl; der Satz darin wurde als Nummer gezeichnet. Der Raum des Wertes entscheidet die Anzeige.*
             // ⚠️ *Nicht an einer Komposition: dort zeigt der Verweis auf den eigenen Teil, und der wird gezeichnet, nicht zusammengefasst (D-577).*
-            $satzverweis = $gewaehlt?->referenceSpace === ReferenceSpace::Record && $relation->kind !== RelationKind::Composition;
+            $satzverweis = ! $verweisTabelle && $gewaehlt?->referenceSpace === ReferenceSpace::Record && $relation->kind !== RelationKind::Composition;
 
             if ($satzverweis && ! $renderer instanceof SummaryRenderer) {
                 $renderer = $this->renderers->byName(SummaryRenderer::NAME);
             }
 
             // ⚠️ *Wer Sätze anbietet, ist keine Knotenauswahl — sonst schlüge die Kinderregel (D-540) die Satzauswahl wieder.*
-            $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef && ! $satzverweis && ! $alsZusammenfassung;
+            $istWahl = $purpose === Purpose::Edit && $type === SimpleType::NodeRef && ! $satzverweis && ! $alsZusammenfassung && ! $verweisTabelle;
 
             // ⚠️ **Ein Weg wird gerechnet, nicht gelesen, und ist nie eingebbar** ([D-751](../../../docs/NewConcept/90-decision-log.md)).
             // *Was im Satz steht, zählt nicht; die Kette der Namen vom erklärenden Vater bis hierher ist der Wert.*
@@ -2064,9 +2093,9 @@ final class Rendering implements Presets
             // gezeichnet. Vorher endete der Abstieg hier und lieferte `plain`.*
             // ⚠️ *Eine Zusammenfassung steigt nicht ab: sie zeigt Worte des verwiesenen Satzes, nicht die Felder des Ziels (D-753) —
             // das wäre die dritte Stufe, «expand» (D-106).*
-            $tiefer = ($onlySettingParts && ! $relation->isSetting()) || $renderer instanceof SummaryRenderer
+            $tiefer = ($onlySettingParts && ! $relation->isSetting()) || ($renderer instanceof SummaryRenderer && ! $verweisTabelle)
                 ? null
-                : $this->partBelow($relation, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$relation->id] ?? [], $forNode, $settings);
+                : $this->partBelow($relation, $type, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, $tiefe, $unterbau, $values, $gesehen, $parts[$relation->id] ?? [], $forNode, $settings, $verweisTabelle);
 
             if ($tiefer === null) {
                 // ⚠️ **Mehrfach heisst Zeilen, gleich welcher Art das Feld ist** ([D-842](../../../docs/NewConcept/90-decision-log.md)) — *sein
@@ -4032,11 +4061,12 @@ final class Rendering implements Presets
         // ⚠️ *Der gezeichnete Knoten gilt als «schon besucht» — sonst klappt ein Feld, das auf ihn
         // selbst zeigt, ihn ein zweites Mal auf. Genau das war auf `DisplayOption` zu sehen.*
         // ⚠️ *Der Knoten reist als `forNode` mit — ein Weg-Feld (D-751) rechnet aus ihm seine Kette.*
-        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, 0, [], [$node->id => true], $recordParts, $node->id, recordId: $recordId);
-
         $container = $containerName === ''
             ? $this->containerFor($node, $purpose)
             : $this->renderers->byName($containerName);
+
+        // ⚠️ *Der Behälter zuerst: legt der Komplex-Renderer aus, werden Verweislisten zu Tabellen (D-937).*
+        $parts = $this->fieldsFor($relations, $values, $purpose, $fieldPrefix, $locale, $level, $editable, $formId, 0, [], [$node->id => true], $recordParts, $node->id, recordId: $recordId, recordListsAsTables: $container instanceof \Taxmod\Core\Renderer\ComplexRenderer);
 
         return $container->render(
             $node,
@@ -4386,10 +4416,47 @@ final class Rendering implements Presets
         // in `Parts List`: «Part» ohne Auswahl. Gemessen: seit `complex` an `Electronic Parts` steht, las diese Zeile die Wahl des
         // Knotens als Wahl der Stelle, und die neue Zeile bekam kein Auswahlfeld; gefüllte Zeilen retteten sich über ihren
         // Satzverweis. Ein Behälter sagt, wie der Knoten seine Felder legt — nicht, wie ein Verweis auf seine Sätze aussieht.*
-        $wahl = $resolved['renderer'] ?? null;
-        $name = $wahl instanceof ResolvedSetting && $wahl->fromOwnerId === $relation->id ? (string) ($wahl->value->text ?? '') : '';
+        $name = $this->rendererChosenAtEdge($relation, $resolved);
 
         return $name === '' || $name === SummaryRenderer::NAME;
+    }
+
+    /**
+     * Der Renderer, der **an dieser Kante** gewählt ist — leer, wo dort nichts gewählt ist (D-786).
+     *
+     * @param array<string, ResolvedSetting> $resolved
+     */
+    private function rendererChosenAtEdge(Relation $relation, array $resolved): string
+    {
+        $wahl = $resolved['renderer'] ?? null;
+
+        return $wahl instanceof ResolvedSetting && $wahl->fromOwnerId === $relation->id ? (string) ($wahl->value->text ?? '') : '';
+    }
+
+    /**
+     * **Die eine Stelle, die sagt, ob eine Aggregation als Tabelle ihrer Sätze gezeichnet wird** — wenn der Komplex-Renderer ihren
+     * Besitzer auslegt ([D-937](../../../docs/NewConcept/90-decision-log.md), nach [D-758](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ **Sein Wort zu D-758:** *«darunter die komplexen jeweils mit Überschrift, die eine Multiplizität von mehr als 1 haben, in
+     * Tabellenform … bei höherer Multiplizität Datensätze hinzufügen und entfernen»*. *Gebaut war das nur für Kompositionen; eine
+     * Liste von Satzverweisen («Positionen» an «Bestellungen» auf «Käufe», [D-933](../../../docs/NewConcept/90-decision-log.md)) stand als
+     * Auswahlfelder da. Sein Wort am 2026-10-18: «das ist aber keine neue regel schau mal in der doku nach».*
+     *
+     * ⚠️ *Was hier zählt: eine Aggregation, keine Einstellung, mehrere Werte, und ihr Ziel hält Sätze — dieselbe Frage, die
+     * {@see self::referencesRecords()} stellt; ein Verweis auf Knoten (`Herkunft`, eine Konstante) bleibt eine Auswahl. **Und an der
+     * Kante ist kein Renderer gewählt**: die Anzeige einer Aggregation ist eine Wahl an der Kante
+     * ([D-106](../../../docs/NewConcept/90-decision-log.md)) — wer dort etwas wählt, bekommt es, auch `summary`. Der Komplex-Renderer legt
+     * nur aus, was niemand anders bestimmt hat.*
+     *
+     * @param array<string, ResolvedSetting> $resolved
+     */
+    private function listsRecordsAsTable(Relation $relation, ?SimpleType $type, array $resolved): bool
+    {
+        return $relation->kind === RelationKind::Aggregation
+            && ! $relation->isSetting()
+            && $relation->multiplicity->allowsMany()
+            && $this->rendererChosenAtEdge($relation, $resolved) === ''
+            && $this->drawsAsSummary($relation, $type, $resolved);
     }
 
     /**
@@ -7003,6 +7070,8 @@ final class Rendering implements Presets
         int $forNode = 0,
         /** @var array<string, \Taxmod\Core\Model\ResolvedSetting> Was an der Verwendungsstelle gilt — der dort gewählte Behälter zählt (D-749). */
         array $useSiteSettings = [],
+        /** Eine Verweisliste, die als Tabelle ihrer Sätze gezeichnet wird (D-937) — ihre Zeilen sind verwiesene Sätze, keine Teile. */
+        bool $verweisliste = false,
     ): ?array {
         // ⚠️ *Ein Ziel mit eigenem Typ ist fertig beantwortet — `int` hat keine Felder, und der Abstieg
         // hat dort nichts zu suchen.*
@@ -7019,7 +7088,9 @@ final class Rendering implements Presets
         // und `orientation` von jeder Seite**, weil sie an einem Teil hingen, den es nicht mehr gibt.*
         $aufgeloest = 0;
 
-        if (($type !== null && $teile === [] && $aufgeloest === 0) || $tiefe >= self::TIEFSTENS) {
+        // ⚠️ *Eine leere Verweisliste steigt trotzdem ab (D-937): ihr Ziel kann Kinder haben und darum den Typ `node_ref` tragen, und
+        // ohne Zeile gäbe es keinen Weg zur ersten.*
+        if (($type !== null && $teile === [] && $aufgeloest === 0 && ! $verweisliste) || $tiefe >= self::TIEFSTENS) {
             return null;
         }
 
@@ -7208,10 +7279,24 @@ final class Rendering implements Presets
         $akte   = [];
         $danach = '';
 
+        // ⚠️ *Und an einer Verweisliste unter dem Komplex-Renderer (D-937): dort nimmt der Mülleimer nur den Verweis weg.*
         if ($purpose === Purpose::Edit && $editable && $this->partActs !== [] && $fieldPrefix !== ''
-            && ! $relation->isSetting() && $relation->kind === RelationKind::Composition && $relation->multiplicity->allowsMany()
+            && ! $relation->isSetting() && ($relation->kind === RelationKind::Composition || $verweisliste) && $relation->multiplicity->allowsMany()
         ) {
+            $halter = preg_match('/\[(\d+)\]$/', $fieldPrefix, $treffer) === 1 ? (int) $treffer[1] : 0;
+
             foreach ($teilIds as $teilId) {
+                // ⚠️ **Aus der Liste nehmen, nicht löschen** (D-937, INFERRED): *eine Aggregation besitzt nicht (D-498) — der verwiesene Satz
+                // bleibt, nur der Verweis geht. Der Knopf nennt Halter, Kante und Satz, weil ein verwiesener Satz mehrere Halter haben kann.
+                // Kein «+» je Zeile: «darunter einfügen» (D-830) legt einen Teil an, den es hier nicht gibt; neue Zeilen kommen über «Add row».*
+                if ($verweisliste) {
+                    $akte[] = $teilId === 0 || $halter === 0 ? '' : ControlMarkup::button(
+                        new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . '-' . $teilId . ']', 'unlink_part', ($this->partActs['unlink'] ?? '') === '' ? $this->partActs['remove'] : $this->partActs['unlink'], '', true, true, 'trash', $formId)
+                    );
+
+                    continue;
+                }
+
                 // ⚠️ *Erst das «+», das direkt unter dieser Zeile eine gleicher Art einfügt (D-830), dann der Mülleimer — sein Wort: «bitte + und
                 // müll tauschen erst + dann müll» (D-831).*
                 $akte[] = $teilId === 0 ? '' : (($this->partActs['insert'] ?? '') === '' ? '' : ControlMarkup::button(
@@ -7239,14 +7324,12 @@ final class Rendering implements Presets
                 }
             }
 
-            $halter = preg_match('/\[(\d+)\]$/', $fieldPrefix, $treffer) === 1 ? (int) $treffer[1] : 0;
-
             if ($halter !== 0) {
                 // ⚠️ **Mehrere hinzufügen** ([D-806](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «i select multiple parts and for
                 // each part a item is created … propose a button to add multiple». Nur, wo die Kante sagt, über welches Feld gewählt wird
                 // (`pick_field`); der Dialog ist der Satzdialog mit Baum und Liste, je Satz ein Haken; «bestätigen» schickt `add_parts`.*
                 $mehrere  = '';
-                $wahlFeld = ($this->partActs['many'] ?? '') === '' ? null : $this->pickFieldOf($relation);
+                $wahlFeld = ($this->partActs['many'] ?? '') === '' || $verweisliste ? null : $this->pickFieldOf($relation);
 
                 if ($wahlFeld !== null) {
                     // ⚠️ **Die Vorbelegung gilt auch hier** (D-826) — *sein Wort: «2. ja». Eine neue Zeile hat noch keine Werte; der Weg der
@@ -7271,7 +7354,7 @@ final class Rendering implements Presets
                 // «zweimal plus». Jede Zeile trägt ihr eigenes «+» (D-830); unter der letzten eingefügt ist dasselbe wie hinten angehängt.
                 // Ohne Zeile gäbe es sonst keinen Weg zur ersten.*
                 $zeilenDa = array_filter($teilIds, static fn (int $id): bool => $id !== 0) !== [];
-                $danach   = '<div class="taxmod-part-add">' . ($zeilenDa && ($this->partActs['insert'] ?? '') !== '' ? '' : ControlMarkup::button(
+                $danach   = '<div class="taxmod-part-add">' . ($zeilenDa && ($this->partActs['insert'] ?? '') !== '' && ! $verweisliste ? '' : ControlMarkup::button(
                     new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . ']', 'add_part', $this->partActs['add'], '', true, false, 'plus-alt2', $formId)
                 )) . $mehrere . '</div>';
             }

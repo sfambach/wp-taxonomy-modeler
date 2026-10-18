@@ -1268,6 +1268,70 @@ final class DataEntry
     }
 
     /**
+     * Eine neue Zeile in einer **Verweisliste**: ein eigener Satz am Ziel, und der Besitzer hängt einen Verweis auf ihn an
+     * ([D-937](../../../docs/NewConcept/90-decision-log.md), nach [D-758](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Das Gegenstück zu {@see self::createPart()} an einer Aggregation — «eine Komposition ist eine Aggregation mit genau einem
+     * Besitzer» ([D-498](../../../docs/NewConcept/90-decision-log.md)), und dieselbe Ablage für beide
+     * ([D-587](../../../docs/NewConcept/90-decision-log.md)): eine Wertzeile mit dem Satzverweis. Der neue Satz gehört dem Besitzer nicht,
+     * er wird nur verwiesen. Satz und Verweis sind **ein** Akt.* *Meine Form (INFERRED, D-937): der neue Satz bekommt die Art des
+     * Besitzers, wie ein Teil.*
+     */
+    public function createReferencedRecord(int $recordId, int $relationId): NodeRecord
+    {
+        $record   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+        // ⚠️ *Verweigert eine Komposition («a composed part is a record of its own»), einen Rahmenknoten und was nichts behält.*
+        $relation = $this->writableRelation($recordId, $relationId);
+        $target   = $this->nodes->byId($relation->toNodeId);
+
+        if ($relation->isSetting() || ! ($this->framework->branchOf($target)?->holdsData() ?? true)) {
+            throw NotYetStorable::thatBranchHasNoRecords($target->name);
+        }
+
+        $this->changelog?->beginAct();
+
+        try {
+            $neu = $this->create($target->id, $record->recordType);
+            $this->appendValue($recordId, $relation->id, TypedValue::ofRecordReference($neu->id));
+
+            return $neu;
+        } finally {
+            $this->changelog?->endAct();
+        }
+    }
+
+    /**
+     * Eine Zeile aus einer Verweisliste nehmen: **nur der Verweis** geht, der verwiesene Satz bleibt
+     * ([D-937](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Eine Aggregation besitzt nicht, also stirbt nichts mit ihr ([D-498](../../../docs/NewConcept/90-decision-log.md)) — ein Kauf,
+     * der aus einer Bestellung genommen wird, ist weiter ein Kauf. Angesprochen über den verwiesenen Satz, nicht über die Kante: an einer
+     * Kante mit mehreren Werten fielen sonst alle. Eine Komposition weist {@see self::writableRelation()} ab — ihr Teil geht über
+     * {@see self::removeRecord()}.*
+     */
+    public function unlinkReferencedRecord(int $recordId, int $relationId, int $referencedId): void
+    {
+        $relation = $this->writableRelation($recordId, $relationId);
+
+        foreach ($this->valuesOn($recordId, $relation->id, '') as $zeile) {
+            if ($zeile->value->referenceSpace !== ReferenceSpace::Record || $zeile->value->reference !== $referencedId) {
+                continue;
+            }
+
+            $this->changelog?->beginAct();
+
+            try {
+                $this->halterZeileLeeren($zeile);
+                $this->angefasst($recordId);
+            } finally {
+                $this->changelog?->endAct();
+            }
+
+            return;
+        }
+    }
+
+    /**
      * Einen **bestehenden** Satz als Teil an einen Halter hängen — hinten angehängt, wie ein neuer Teil ([D-833](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Gebraucht beim Umbau Stückliste → Revision: Platine, Revision, Positionen und die Betriebsspannung gab es schon; sie bekommen

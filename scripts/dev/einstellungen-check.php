@@ -1207,6 +1207,61 @@ foreach ([$eingefuegt, $hinten] as $zusatz) {
     }
 }
 check('und danach steht wieder nur der erste Teil', $teilIds() === [$ersterTeil], implode(',', $teilIds()));
+
+// ⚠️ **Eine Verweisliste unter dem Komplex-Renderer ist eine Tabelle ihrer Sätze** ([D-937](../../docs/NewConcept/90-decision-log.md), nach
+// [D-758](../../docs/NewConcept/90-decision-log.md)) — *sein Wort zu D-758: «darunter die komplexen jeweils mit Überschrift, die eine Multiplizität
+// von mehr als 1 haben, in Tabellenform … Datensätze hinzufügen und entfernen». Gebaut war es nur für Kompositionen; «Positionen» an «Bestellungen»
+// (D-933) stand als Auswahlfelder da. Eigene Wiese `__es`: eine Bestellung mit Aggregation 0..* auf Käufe mit einem Textfeld, zwei Käufe verwiesen.
+// Speichern schreibt in den verwiesenen Satz, «Add row» legt einen Kauf an und verweist darauf, der Mülleimer nimmt nur den Verweis (D-498).*
+$vlKaeufe   = $editor->createNode('__es vl kaeufe', $modellAst->id);
+$vlArtikel  = $editor->addField($vlKaeufe->id, $seeded['text']->id, '__es vl artikel');
+$vlBestell  = $editor->createNode('__es vl bestellung', $modellAst->id);
+$vlPos      = $editor->addField($vlBestell->id, $vlKaeufe->id, '__es vl positionen', RelationKind::Aggregation);
+$vlPos      = $editor->setMultiplicity($vlBestell->id, $vlPos->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+$speicherbar($vlBestell->id, 'renderer', 'complex');
+$vlSatz     = $data->create($vlBestell->id);
+$vlKauf1    = $data->create($vlKaeufe->id);
+$vlKauf2    = $data->create($vlKaeufe->id);
+$data->put($vlKauf1->id, $vlArtikel->id, TypedValue::ofText('__es Widerstand'));
+$data->put($vlKauf2->id, $vlArtikel->id, TypedValue::ofText('__es Kondensator'));
+$data->appendValue($vlSatz->id, $vlPos->id, TypedValue::ofRecordReference($vlKauf1->id));
+$data->appendValue($vlSatz->id, $vlPos->id, TypedValue::ofRecordReference($vlKauf2->id));
+$vlVerweise = static fn (): array => array_map('intval', $wpdb->get_col("SELECT value_ref FROM {$p}relation_records WHERE node_record_id = {$vlSatz->id} AND relation_id = {$vlPos->id} AND value_ref_kind = 'record' ORDER BY position, id") ?: []);
+$vlText     = static fn (int $satz): string => (string) $wpdb->get_var("SELECT value_text FROM {$p}relation_records WHERE node_record_id = {$satz} AND relation_id = {$vlArtikel->id}");
+$vlName     = static fn (int $kauf): string => 'taxmod_value[' . $vlSatz->id . '][' . $vlPos->id . '][' . $kauf . '][' . $vlArtikel->id . ']';
+$vlAkt      = static fn (array|string $do, array $werte = []): bool => abschicken(['do' => $do, 'id' => (string) $vlBestell->id, 'node_record_id' => (string) $vlSatz->id, 'taxmod_value' => [(string) $vlSatz->id => $werte], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $vlBestell->id)]);
+$vlSeite    = preg_replace('/<dialog\b.*?<\/dialog>/s', '', seite($vlBestell->id, null, $vlSatz->id)) ?? '';
+// *Nur die bearbeitbare Seite der Vorschau — darunter steht der Satzblock mit seiner eigenen Tabelle.*
+$vlEdit     = (string) explode('taxmod-preview-acts', (string) (explode('id="taxmod-preview-edit"', $vlSeite)[1] ?? ''))[0];
+check(
+    'eine Verweisliste unter `complex`: Überschrift, eine Tabelle, je verwiesenem Satz eine Zeile mit seinen Feldern, bearbeitbar (D-937)',
+    str_contains($vlEdit, '<h4 class="taxmod-complex-heading">__es vl positionen')
+        && substr_count($vlEdit, '<tr class="taxmod-table-row">') === 2
+        && preg_match('/name="' . preg_quote($vlName($vlKauf1->id), '/') . '"[^>]*value="__es Widerstand"/', $vlEdit) === 1
+        && str_contains($vlEdit, 'name="' . $vlName($vlKauf2->id) . '"')
+        && ! str_contains($vlEdit, 'taxmod-ref-rows'),
+    substr_count($vlEdit, '<tr class="taxmod-table-row">') . ' Zeilen'
+);
+check('und je Zeile ein Mülleimer, der nur aus der Liste nimmt; kein Löschen, kein Einfügen eines Teils', substr_count($vlEdit, 'value="unlink_part"') === 2 && ! str_contains($vlEdit, 'value="remove_part"') && ! str_contains($vlEdit, 'value="insert_part"'));
+$vlAnzeige = (string) (explode('id="taxmod-preview-edit"', $vlSeite)[0] ?? '');
+check('angezeigt dieselbe Tabelle, nur lesend', substr_count($vlAnzeige, '<tr class="taxmod-table-row">') >= 2 && str_contains($vlAnzeige, '__es Kondensator') && ! str_contains((string) (explode('taxmod-preview-side', $vlAnzeige)[1] ?? ''), 'name="' . $vlName($vlKauf1->id) . '"'));
+$vlAkt('save_record', [(string) $vlPos->id => [(string) $vlKauf1->id => [(string) $vlArtikel->id => '__es Widerstand 10k']]]);
+check('Speichern schreibt in den verwiesenen Satz, nicht in die Bestellung', gelungen() && $vlText($vlKauf1->id) === '__es Widerstand 10k' && $vlText($vlKauf2->id) === '__es Kondensator' && $vlVerweise() === [$vlKauf1->id, $vlKauf2->id], letzteMeldung() . ' · ' . $vlText($vlKauf1->id));
+$vlAkt([$vlSatz->id . '-' . $vlPos->id => 'add_part']);
+$vlNach = $vlVerweise();
+$vlNeu  = $vlNach[2] ?? 0;
+check('«Add row» legt einen Kauf an und hängt einen Verweis auf ihn an', gelungen() && count($vlNach) === 3 && $vlNeu > 0 && (int) $wpdb->get_var("SELECT node_id FROM {$p}node_records WHERE id = {$vlNeu}") === $vlKaeufe->id, implode(',', $vlNach) . ' · ' . letzteMeldung());
+$vlAkt([$vlSatz->id . '-' . $vlPos->id . '-' . $vlKauf2->id => 'unlink_part']);
+check('der Mülleimer nimmt nur den Verweis — der Kauf bleibt mit seinem Wert', gelungen() && $vlVerweise() === [$vlKauf1->id, $vlNeu] && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records WHERE id = {$vlKauf2->id}") === 1 && $vlText($vlKauf2->id) === '__es Kondensator', implode(',', $vlVerweise()) . ' · ' . letzteMeldung());
+$vlAkt([$vlSatz->id . '-' . $vlPos->id . '-' . $vlKauf2->id => 'unlink_part']);
+check('ein zweites Mal ändert nichts: der Verweis ist schon fort', $vlVerweise() === [$vlKauf1->id, $vlNeu]);
+// *Eine leere Liste zeigt eine Zeile «0»: wer dort tippt, legt beim Speichern den ersten Kauf an und verweist darauf — wie bei einem Teil (D-759).*
+$vlLeer     = $data->create($vlBestell->id);
+$vlLeerName = 'taxmod_value[' . $vlLeer->id . '][' . $vlPos->id . '][0][' . $vlArtikel->id . ']';
+check('eine leere Verweisliste zeigt eine Zeile für den ersten Satz', str_contains(seite($vlBestell->id, null, $vlLeer->id), 'name="' . $vlLeerName . '"'), $vlLeerName);
+abschicken(['do' => 'save_record', 'id' => (string) $vlBestell->id, 'node_record_id' => (string) $vlLeer->id, 'taxmod_value' => [(string) $vlLeer->id => [(string) $vlPos->id => ['0' => [(string) $vlArtikel->id => '__es neu getippt']]]], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $vlBestell->id)]);
+$vlErster = (int) $wpdb->get_var("SELECT value_ref FROM {$p}relation_records WHERE node_record_id = {$vlLeer->id} AND relation_id = {$vlPos->id} AND value_ref_kind = 'record'");
+check('getippt und gespeichert: ein neuer Kauf mit dem Wert, und die Bestellung verweist darauf', gelungen() && $vlErster > 0 && $vlText($vlErster) === '__es neu getippt' && (int) $wpdb->get_var("SELECT node_id FROM {$p}node_records WHERE id = {$vlErster}") === $vlKaeufe->id, letzteMeldung() . ' · ' . $vlErster);
 $seiteSatz = seite($satzKnoten->id, null, $satzId);
 $hinterWaehler = preg_split('/name="record_type" form="taxmod-preview-record-' . $satzId . '"/', $seiteSatz)[1] ?? '';
 check('die Vorschau zeichnet für den geöffneten Satz einen Wähler für die Art, und er steht auf der Art des Satzes (D-785)', (bool) preg_match('/<select name="record_type" form="taxmod-preview-record-' . $satzId . '"/', $seiteSatz) && (bool) preg_match('/<option value="' . RecordType::Example->value . '" selected/', explode('</select>', $hinterWaehler)[0]));
