@@ -767,6 +767,28 @@ Anlass: ein geplanter Importer für Käufe (Bestellmails von eBay und AliExpress
 - **Wann:** *«wenn wir ihn brauchen implementieren wir inf-072»* (2026-10-18) — also bevor der Importer schreibt. Der Benutzer dafür ist angelegt: `auto_einkauf`, Rolle Redakteur, und soll es bleiben.
 - **Gebaut:** nein.
 
+## INF-073 · Bestand und Fertigung: vom Wareneingang über die Platine zum Verkauf
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — gemeldet am 2026-10-18 vom Eigentümer, nicht besprochen.
+
+> *«wir können nur verkaufen, was wir produziert haben. Ne? Das heißt, wir brauchen auch irgendwie äh, einen Bestand oder sowas. […] das sollten wir vielleicht noch als ja, dritte Ebene mit einführen. Ich meine auch die, wir haben ja so eine Art Produktion, ne? Also die Wareneingänge führen zu, werden verwendet, was weiß ich, wenn ich Widerstände kaufe, dann wieder für eine Platine und die Platine wird dann verkauft.»*
+
+Anlass: Bestellungen ([D-933](NewConcept/90-decision-log.md)) und Verkäufe ([D-934](NewConcept/90-decision-log.md)) sind angelegt; dazwischen fehlt, was auf Lager ist und was daraus gebaut wurde. Der Einstandspreis eines Eigenbaus (Greaseweazle) ließe sich erst damit herleiten.
+
+- **Vorhanden:** Stücklisten (`Part List Item`, [D-912](NewConcept/90-decision-log.md), [D-914](NewConcept/90-decision-log.md)), Projekte mit Platinen, Exemplare (Einzelstücke), Käufe mit Einstandspreis.
+- **Offen:** Bestand als gepflegte Zahl je Artikel oder als Summe von Bewegungen (Zugang aus Kauf, Verbrauch und Zugang aus einem Baulauf, Abgang aus Verkauf); was ein Lagerartikel ist (Bauteil, Platine, Fertigprodukt — Exemplare sind schon Einzelstücke); wie die Selbstkosten eines Baulaufs aus den verbrauchten Teilen entstehen. Eine Summe über Bewegungen braucht Code im Plugin — das Modell rechnet heute nicht.
+- **Gebaut:** nein.
+
+## INF-074 · Angebote bei eBay einstellen, Verkaufstexte, Link zum laufenden Angebot
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — gemeldet am 2026-10-18 vom Eigentümer, ausdrücklich für später.
+
+> *«gibt die [eBay] API her, dass man dann Verkäufer einstellen kann. Dann wäre es später natürlich auch interessant, Verkaufstexte irgendwie zu erstellen und vielleicht sogar einen Link äh, bei den Artikeln auf den aktuellen eBay-Verkauf, wenn da irgendwas vorhanden ist, zu machen.»*
+
+- **Was eBay anbietet (nicht gemessen, aus allgemeinem Wissen):** Angebote einstellen über die Sell-APIs (Inventory API, oder die ältere Trading API mit `AddItem`); laufende eigene Angebote lesen, um von einem Satz auf das Angebot zu verlinken. Beides braucht einen eBay-Entwicklerzugang und die Zustimmung des Kontos (OAuth).
+- **Verkaufstexte** kämen aus dem Modell (Projekt, Platine, Exemplar, Messwerte) — dafür braucht es keine eBay-API.
+- **Gebaut:** nein. Hängt an [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf) (was ist verkaufbar) und an [D-934](NewConcept/90-decision-log.md) (Verkäufe).
+
 ---
 ## Erledigte Eingänge
 
