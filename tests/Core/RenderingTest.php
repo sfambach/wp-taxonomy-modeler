@@ -2332,6 +2332,52 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('Microsoft Corp. · DOS · 4.0', $gezeigt);
     }
 
+    /**
+     * ⚠️ *Gemessen am 2026-10-18 im Vergleich der PC-Konfigurationen: die Zeile «CPU» fehlte bei jedem Satz. Die Feldwahl an «CPUs»
+     * bestand nur aus Satzverweisen, die eine Stufe tief wegfallen — also stand «#29802» statt «Am386DX-40» (D-925).*
+     */
+    #[Test]
+    public function an_inner_record_whose_chosen_fields_give_no_word_falls_back_to_its_first_filled_text_field(): void
+    {
+        $text        = $this->type('Text');
+        $hersteller  = $this->thing('Hersteller');
+        $hName       = $this->editor->addField($hersteller->id, $text->id, 'name');
+        $cpus        = $this->thing('CPUs');
+        $wer         = $this->editor->addField($cpus->id, $hersteller->id, 'hersteller', RelationKind::Aggregation);
+        $bezeichnung = $this->editor->addField($cpus->id, $text->id, 'bezeichnung');
+        $boards      = $this->thing('Mainboards');
+        $boardVon    = $this->editor->addField($boards->id, $hersteller->id, 'hersteller', RelationKind::Aggregation);
+        $boardName   = $this->editor->addField($boards->id, $text->id, 'bezeichnung');
+        $pcs         = $this->thing('PC-Konfigurationen');
+        $cpu         = $this->editor->addField($pcs->id, $cpus->id, 'cpu', RelationKind::Aggregation);
+        $board       = $this->editor->addField($pcs->id, $boards->id, 'mainboard', RelationKind::Aggregation);
+
+        $amd = $this->records->add(new NodeRecord(0, $hersteller->id, 1, '2026-10-18 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($amd, $hName->id, TypedValue::ofText('AMD')));
+        $am386 = $this->records->add(new NodeRecord(0, $cpus->id, 1, '2026-10-18 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($am386, $wer->id, TypedValue::ofRecordReference($amd)));
+        $this->records->putValue(RelationRecord::direct($am386, $bezeichnung->id, TypedValue::ofText('Am386DX-40')));
+        $sc = $this->records->add(new NodeRecord(0, $boards->id, 1, '2026-10-18 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($sc, $boardVon->id, TypedValue::ofRecordReference($amd)));
+        $this->records->putValue(RelationRecord::direct($sc, $boardName->id, TypedValue::ofText('386-SC-HG')));
+        $pc = $this->records->add(new NodeRecord(0, $pcs->id, 1, '2026-10-18 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($pc, $cpu->id, TypedValue::ofRecordReference($am386)));
+        $this->records->putValue(RelationRecord::direct($pc, $board->id, TypedValue::ofRecordReference($sc)));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($cpus, SummaryRenderer::FIELDS, [$wer->id]);
+        $editor->setMembers($boards, SummaryRenderer::FIELDS, [$boardVon->id, $boardName->id]);
+        $this->neuZeichnen();
+
+        $texte = $this->rendering->summaryTextsOf([
+            ['relation' => $cpu, 'records' => [$pc], 'fields' => [$cpu->id]],
+            ['relation' => $board, 'records' => [$pc], 'fields' => [$board->id]],
+        ]);
+
+        self::assertSame('Am386DX-40', $texte[$cpu->id][$pc] ?? null, 'die Wahl gibt eine Stufe tief kein Wort — das erste Textfeld mit Wert, nicht «#' . $am386 . '»');
+        self::assertSame('386-SC-HG', $texte[$board->id][$pc] ?? null, 'gibt die Wahl ein Wort, bleibt es bei ihr');
+    }
+
     /** ⚠️ *Zeile 8 (D-760): der Validator der Stelle sieht den Wert, bevor er gespeichert wird.* */
     #[Test]
     public function the_validators_of_a_use_site_complain_about_a_value_outside_its_bounds(): void

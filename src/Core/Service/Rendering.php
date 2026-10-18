@@ -4683,12 +4683,14 @@ final class Rendering implements Presets
             }
         }
 
-        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0) use (&$wort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit): string {
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
+            $ausWahl  = false;
 
-            if ($feldIds === [] && $knotenId !== null && isset($feldwahlJeKnoten[$knotenId])) {
+            if ($feldIds === [] && ! $ohneWahl && $knotenId !== null && isset($feldwahlJeKnoten[$knotenId])) {
                 $feldIds = $feldwahlJeKnoten[$knotenId];
+                $ausWahl = true;
             } elseif ($feldIds === [] && $knotenId !== null) {
                 // *Ohne Feldwahl das erste Textfeld mit Wert, in Erbfolge von oben; hat keines einen, das erste überhaupt.*
                 $gefuellt = [];
@@ -4782,6 +4784,14 @@ final class Rendering implements Presets
 
                     break;
                 }
+            }
+
+            // ⚠️ **Gibt die Feldwahl eines inneren Satzes kein Wort, gilt der Rückfall ohne Wahl** — *gemessen am 2026-10-18 im Vergleich
+            // der PC-Konfigurationen: die Zeile «CPU» fehlte bei jedem Satz. Der Verweis auf «Am386DX-40» wird eine Stufe tief benannt, und
+            // dort fallen Satzverweise weg; bestand die Wahl an «CPUs» nur aus solchen, blieb «#29802», und der Vergleich macht daraus eine
+            // leere Zelle. Also das erste Textfeld mit Wert, wie ohne Wahl. Ganz oben und wo die Wahl ein Wort gibt, bleibt alles, wie es war.*
+            if ($teile === [] && $ausWahl && $stufe > 0) {
+                return $eigenesWort($satzId, [], $stufe, true);
             }
 
             return $teile === [] ? '#' . $satzId : implode(SummaryRenderer::SEPARATOR, $teile);
