@@ -56,9 +56,11 @@
 	opacity: 0.75;
 }
 
+/* Long texts wrap; otherwise one column pushes the others out of view. */
 .taxmod-record-block .taxmod-comparison-value {
 	text-align: right;
-	white-space: nowrap;
+	min-width: 8em;
+	overflow-wrap: anywhere;
 }
 
 .taxmod-record-block .taxmod-comparison-main {
