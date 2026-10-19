@@ -784,6 +784,13 @@ Anlass: Bestellungen ([D-933](NewConcept/90-decision-log.md)) und Verkäufe ([D-
   3. **Reservierung:** Teile im Bestand sind einem laufenden Projekt zugeordnet; mehrere Projekte laufen gleichzeitig, frei ist Bestand minus reserviert. Aufteilen muss möglich sein.
   4. **Verbrauch buchen,** wenn der Bau fertig ist.
 - **Gebaut:** nein. Die Erfassung braucht Formulare — [INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen).
+- **Erster Schritt, sein Wort am 2026-10-19:** *«erstmal was einfaches ein wareneingang erhöht den bestand ein verbrauch mindert ihn»*. Anlass: zehn Bauteile mit gezähltem Bestand, auf seinen Vorschlag als Bestellung mit Händler «Bestand» erfasst (*«mach einfach eine bestellung mit den ganzen teilen Lieferant ist Bestand»*).
+- **Vorschlag (meiner, nicht entschieden):**
+  1. Der Bestand ist **keine gespeicherte Zahl**, sondern Zugänge minus Abgänge — sonst steht eine Tatsache an zwei Orten (Code-Standard, «One place owns each piece of state»).
+  2. **Zugang** ist eine Kaufposition: ihre `Anzahl`. Dafür braucht der Kauf einen Verweis auf das Bauteil; `Modell` zeigt heute nur auf «Models», nicht auf «Electronic Parts» — also ein Feld `Bauteil` am Kauf, Satzverweis auf «Electronic Parts», `0..1`.
+  3. **Abgang** ist ein Satz unter einem neuen Knoten `Verbrauch`: Bauteil, Anzahl, Datum, optional Projekt, Hinweis.
+  4. **Anzeige:** am Bauteil eine gerechnete Zeile «Bestand» — eine Abfrage für alle Bauteile einer Seite (`CD-7`). Das braucht Code; das Modell rechnet heute nicht.
+  - Später, nicht Teil des ersten Schritts: Verkäufe als Abgang, Reservierung, Bedarf aus der Stückliste.
 
 ## INF-075 · Prozesse und Formulare im Modell anlegen
 
