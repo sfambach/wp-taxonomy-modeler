@@ -32,6 +32,7 @@ final class RecordBlock
     public const NAME = 'taxmod/record';
 
     private const SCRIPT = 'taxmod-record-block';
+    private const VIEW_SCRIPT = 'taxmod-record-block-view';
 
     public const COMPARISON = 'comparison';
 
@@ -57,6 +58,9 @@ final class RecordBlock
         );
 
         wp_set_script_translations(self::SCRIPT, Plugin::TEXT_DOMAIN);
+
+        // *Sein Wunsch am 2026-10-19: «sichtbar machen das es noch nach rechts oder links geht» — the scrollbar is easy to miss.*
+        wp_register_script(self::VIEW_SCRIPT, plugins_url('assets/record-block-view.js', $this->pluginFile), [], Plugin::VERSION, ['in_footer' => true, 'strategy' => 'defer']);
 
         wp_register_style(self::SCRIPT, plugins_url('assets/record-block.css', $this->pluginFile), [], Plugin::VERSION);
 
@@ -85,6 +89,7 @@ final class RecordBlock
             'supports'        => ['html' => false, 'align' => ['wide', 'full']],
             'editor_script'   => self::SCRIPT,
             'style'           => self::SCRIPT,
+            'view_script'     => self::VIEW_SCRIPT,
             'render_callback' => $this->render(...),
         ]);
     }

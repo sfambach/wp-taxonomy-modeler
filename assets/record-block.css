@@ -118,3 +118,46 @@
 .taxmod-block-fields {
 	margin-bottom: 1em;
 }
+
+/* Columns hidden to the left or right: a shade and an arrow at that edge (record-block-view.js). */
+.taxmod-record-block .taxmod-comparison-frame {
+	position: relative;
+}
+
+.taxmod-record-block .taxmod-comparison-frame::before,
+.taxmod-record-block .taxmod-comparison-frame::after {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	width: 1.4em;
+	font-size: 2em;
+	font-weight: 700;
+	color: rgb(47, 111, 208);
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+
+.taxmod-record-block .taxmod-comparison-frame::before {
+	content: "\2039";
+	left: 0;
+	justify-content: flex-start;
+	padding-left: 0.2em;
+	background: linear-gradient(to right, rgba(0, 0, 0, 0.18), transparent);
+}
+
+.taxmod-record-block .taxmod-comparison-frame::after {
+	content: "\203A";
+	right: 0;
+	justify-content: flex-end;
+	padding-right: 0.2em;
+	background: linear-gradient(to left, rgba(0, 0, 0, 0.18), transparent);
+}
+
+.taxmod-record-block .taxmod-comparison-frame.is-more-left::before,
+.taxmod-record-block .taxmod-comparison-frame.is-more-right::after {
+	opacity: 1;
+}
