@@ -10,6 +10,7 @@
 	var SelectControl = wp.components.SelectControl;
 	var ComboboxControl = wp.components.ComboboxControl;
 	var CheckboxControl = wp.components.CheckboxControl;
+	var TextControl = wp.components.TextControl;
 	var Button = wp.components.Button;
 	var Placeholder = wp.components.Placeholder;
 	var Spinner = wp.components.Spinner;
@@ -84,6 +85,7 @@
 		var a = props.attributes;
 		var node = props.node;
 		var list = ids( a.records );
+		var filter = useState( '' );
 		var labels = {};
 		( node.records || [] ).forEach( function ( r ) { labels[ r.id ] = r.label; } );
 
@@ -112,12 +114,25 @@
 			);
 		} );
 
+		// The combobox only searches the names; the filter searches every value, so «386» finds the boards with a 386.
+		var words = filter[ 0 ].trim().toLowerCase().split( /\s+/ ).filter( Boolean );
+		var offered = ( node.records || [] ).filter( function ( r ) {
+			var text = ( r.label + ' ' + ( r.search || '' ) ).toLowerCase();
+			return list.indexOf( r.id ) < 0 && words.every( function ( w ) { return text.indexOf( w ) >= 0; } );
+		} );
+
 		return el( 'div', null,
 			el( 'ol', { className: 'taxmod-block-records' }, rows ),
+			el( TextControl, {
+				label: __( 'Filter records by any value', 'taxmod' ),
+				help: words.length ? offered.length + ' ' + __( 'records match', 'taxmod' ) : __( 'e.g. 386 or Intel', 'taxmod' ),
+				value: filter[ 0 ],
+				onChange: filter[ 1 ]
+			} ),
 			el( ComboboxControl, {
 				label: __( 'Add record', 'taxmod' ),
 				value: null,
-				options: ( node.records || [] ).filter( function ( r ) { return list.indexOf( r.id ) < 0; } ).map( function ( r ) { return { value: r.id, label: r.label }; } ),
+				options: offered.map( function ( r ) { return { value: r.id, label: r.label }; } ),
 				onChange: function ( v ) { if ( v ) { set( list.concat( [ Number( v ) ] ) ); } }
 			} ),
 			list.length ? el( SelectControl, {

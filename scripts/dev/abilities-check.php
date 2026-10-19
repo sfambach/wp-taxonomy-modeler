@@ -110,7 +110,7 @@ $ergebnis = $apply->execute(['changes' => [
     ['op' => 'create_node', 'ref' => 'k', 'name' => '__ab Kind', 'parent' => '@i'],
     ['op' => 'add_field', 'ref' => 'f', 'node' => '@i', 'target' => $text?->id ?? 0, 'name' => '__ab Titel'],
     ['op' => 'create_record', 'ref' => 'r', 'node' => '@i'],
-    ['op' => 'set_values', 'record' => '@r', 'values' => ['@f' => 'C:\\Pfad «Hallo»']],
+    ['op' => 'set_values', 'record' => '@r', 'values' => ['@f' => 'C:\\Pfad «Hallo» < 120°']],
 ]]);
 
 check('apply nimmt die Liste an', is_array($ergebnis), is_wp_error($ergebnis) ? $ergebnis->get_error_message() : '');
@@ -131,7 +131,7 @@ check('read-node findet das Feld mit seinem Typ', ($feld['name'] ?? '') === '__a
 $satz  = is_array($gelesen) ? array_column($gelesen['records'], null, 'id')[$ergebnis['refs']['r']] ?? null : null;
 $werte = array_column($satz['values'] ?? [], 'value', 'relation_id');
 
-check('der Wert steht unverändert im Satz, Schrägstrich eingeschlossen', ($werte[$ergebnis['refs']['f']] ?? null) === 'C:\\Pfad «Hallo»', wp_json_encode($werte));
+check('der Wert steht unverändert im Satz, Schrägstrich und ein einzelnes «<» eingeschlossen', ($werte[$ergebnis['refs']['f']] ?? null) === 'C:\\Pfad «Hallo» < 120°', wp_json_encode($werte));
 
 $gruppen = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT change_group_id FROM ' . Schema::table('changelog') . ' WHERE id > %d', $vorher));
 check('die ganze Liste hat eine Änderungsnummer', count($gruppen) === 1 && $gruppen[0] !== null, wp_json_encode($gruppen));
@@ -359,11 +359,16 @@ check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_ins
 
 wp_set_current_user(0);
 $block = do_blocks('<!-- wp:taxmod/record {"record":' . $ergebnis['refs']['r'] . ',"field":' . $ergebnis['refs']['f'] . '} /-->');
-check('der Block zeigt den Wert des Satzes, maskiert', str_contains($block, esc_html('C:\\Pfad «Hallo»')) || str_contains($block, 'C:\\Pfad &laquo;Hallo&raquo;'), substr(wp_strip_all_tags($block), 0, 200));
+check('der Block zeigt den Wert des Satzes, maskiert', str_contains($block, esc_html('C:\\Pfad «Hallo» < 120°')) || str_contains($block, 'C:\\Pfad &laquo;Hallo&raquo; &lt; 120°'), substr(wp_strip_all_tags($block), 0, 200));
+check('der Block maskiert ein «<» einmal, nicht zweimal', ! str_contains($block, '&amp;lt;'), substr($block, 0, 200));
 check('der Block trägt keine Hilfetexte der Maske', ! str_contains($block, 'taxmod-hint'));
 check('der Block schickt nichts ab', ! str_contains($block, '<form') && ! str_contains($block, '<input'));
 check('ein fehlender Satz zeigt Lesern nichts', trim(do_blocks('<!-- wp:taxmod/record {"record":999999999} /-->')) === '');
 wp_set_current_user((int) ($admin[0] ?? 1));
+
+// *Sein Wunsch am 2026-10-19: «386 eingeben und dann werden nur boards mit 386 angezeigt» — der Editor filtert über alle Werte.*
+$imEditor = array_column($plugin->screen()->blockEditorNode((int) $ergebnis['refs']['i'])['records'], null, 'id');
+check('der Editor bekommt je Satz die Worte aller Felder zum Filtern', str_contains((string) ($imEditor[$ergebnis['refs']['r']]['search'] ?? ''), '< 120°'), wp_json_encode($imEditor[$ergebnis['refs']['r']] ?? null));
 
 echo "\n$ok ok, $bad failed\n";
 exit($bad === 0 ? 0 : 1);

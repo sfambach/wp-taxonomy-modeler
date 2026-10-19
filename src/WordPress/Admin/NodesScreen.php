@@ -419,7 +419,7 @@ final class NodesScreen
      * node or one of its ancestors are where measurements come from (`via`); their owners' fields are fetched only when one
      * is picked.* Each part is one read for all (`CD-7`).
      *
-     * @return array{id: int, name: string, fields: list<array{id: int, name: string, target: int}>, records: list<array{id: int, label: string}>, referrers: list<array{id: int, name: string, owner: int, ownerName: string}>}
+     * @return array{id: int, name: string, fields: list<array{id: int, name: string, target: int}>, records: list<array{id: int, label: string, search: string}>, referrers: list<array{id: int, name: string, owner: int, ownerName: string}>}
      */
     public function blockEditorNode(int $nodeId, bool $withRecords = true, int $labelField = 0): array
     {
@@ -439,9 +439,14 @@ final class NodesScreen
             $feld  = $labelField === 0 ? null : $this->ownFieldOf($felder, $labelField);
             $wahl  = $feld === null || $ids === [] ? [] : ($this->comparisonFieldTexts($ids, [$feld])[$feld->id] ?? []);
 
+            // ⚠️ *His wish on 2026-10-19: «386 eingeben und dann werden nur boards mit 386 angezeigt» — the board's name does not
+            // say its CPU, its values do. So each record carries the words of all its fields, read in one run (`CD-7`).*
+            $alles = $ids === [] ? [] : $this->comparisonFieldTexts($ids, $felder);
+
             foreach ($ids as $id) {
                 $name     = trim((string) (($wahl[$id] ?? '') !== '' ? $wahl[$id] : ($namen[$id] ?? '')));
-                $saetze[] = ['id' => $id, 'label' => $name === '' ? '#' . $id : $name];
+                $worte    = array_filter(array_map(static fn (array $jeSatz): string => (string) ($jeSatz[$id] ?? ''), $alles));
+                $saetze[] = ['id' => $id, 'label' => $name === '' ? '#' . $id : $name, 'search' => implode(' ', $worte)];
             }
 
             // ⚠️ *Two records with the same words cannot be told apart in a list — then the number goes with them. Measured at «CPUs»,
@@ -3780,7 +3785,7 @@ final class NodesScreen
                     continue;
                 }
 
-                $characters = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+                $characters = self::typedText((string) $rawValue);
 
                 if ($characters === '') {
                     $this->data->clear($partId, $innerId);
@@ -3896,7 +3901,7 @@ final class NodesScreen
                 continue;
             }
 
-            $zeichen = trim(sanitize_text_field(wp_unslash((string) $roh)));
+            $zeichen = self::typedText((string) $roh);
 
             if ($zeichen === '') {
                 continue;
@@ -4148,7 +4153,7 @@ final class NodesScreen
             ?? throw new \InvalidArgumentException('Keinen solchen Knoten.');
 
         $characters = isset($_POST[self::OWN_VALUE_FIELD])
-            ? trim(sanitize_text_field(wp_unslash((string) $_POST[self::OWN_VALUE_FIELD])))
+            ? self::typedText((string) $_POST[self::OWN_VALUE_FIELD])
             : '';
 
         if ($characters === '') {
@@ -4241,7 +4246,7 @@ final class NodesScreen
             $relationId = absint($rawRelation);
 
             if (isset($attributes[$relationId]) && ! is_array($rawValue)) {
-                $typedIn[$relationId] = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+                $typedIn[$relationId] = self::typedText((string) $rawValue);
             }
         }
 
@@ -4280,7 +4285,7 @@ final class NodesScreen
         // ⚠️ *Ein leeres Feld heisst hier **nicht beantwortet** und nimmt die Zeile weg, genau wie
         // bei einem Feld weiter unten — sonst gäbe es keinen Weg, einen Wert wieder loszuwerden.*
         if ($recordId !== 0 && $ownValue !== null) {
-            $eigene = trim(sanitize_text_field(wp_unslash($ownValue)));
+            $eigene = self::typedText($ownValue);
             $node   = $this->editor->find($nodeId);
 
             if ($node !== null) {
@@ -4325,7 +4330,7 @@ final class NodesScreen
                 continue;
             }
 
-            $characters = trim(sanitize_text_field(wp_unslash((string) $rawValue)));
+            $characters = self::typedText((string) $rawValue);
 
             if ($characters === '') {
                 // Empty means unanswered — the row goes, which is a third state beside a value
@@ -6865,6 +6870,17 @@ final class NodesScreen
      *
      * @param array<string, string> $extra
      */
+    /**
+     * A typed value as the person meant it: tags stripped, but a lone `<` stays a `<`.
+     *
+     * ⚠️ *`sanitize_text_field()` turns a lone `<` into the entity `&lt;` before it strips tags, and the
+     * core escapes on output — so «< 120°» was stored as `&lt; 120°` and shown as «&amp;lt; 120°».*
+     */
+    private static function typedText(string $raw): string
+    {
+        return trim(str_replace('&lt;', '<', sanitize_text_field(wp_unslash($raw))));
+    }
+
     /**
      * One circumstance, from wherever this request happens to be carrying it.
      *
