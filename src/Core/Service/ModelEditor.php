@@ -14,6 +14,7 @@ use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\RelationRecord;
@@ -1689,6 +1690,148 @@ final class ModelEditor
                 }
             }
         }
+    }
+
+    /**
+     * Ein eigenes Feld an einem beliebigen anderen Knoten erklären — die Kante behält ihre Id, also bleibt jeder Wert.
+     *
+     * ⚠️ **Sein Wort ([D-941](../../../docs/NewConcept/90-decision-log.md)):** *«Ja, bauen»* — für den Umbau nach
+     * [D-940](../../../docs/NewConcept/90-decision-log.md). *[D-750](../../../docs/NewConcept/90-decision-log.md) kannte nur
+     * den Vater; der Umbau braucht jeden Knoten, damit Felder dorthin wandern, wo ihre Sätze künftig liegen.*
+     *
+     * ⚠️ *Verweigert, wenn danach ein Satz mit Werten an dieser Kante nicht am neuen Knoten oder darunter liegt — seine Werte
+     * wären nicht gelöscht, aber ohne Feld ([INF-076](../../../docs/neues-konzept-eingang.md)).*
+     */
+    public function moveFieldTo(int $ownerId, int $relationId, int $newOwnerId): Relation
+    {
+        $relation = $this->ownAttribute($ownerId, $relationId);
+        $neu      = $this->nodes->byId($newOwnerId);
+
+        if ($neu->id === $ownerId) {
+            return $relation;
+        }
+
+        if ($neu->id === $this->framework->root()->id) {
+            throw ImpossibleMove::noParentTakesTheField($relation->name);
+        }
+
+        $draussen = $this->recordsOutside($this->recordsHolding($relation->id), $neu);
+
+        if ($draussen !== []) {
+            throw ImpossibleMove::valuesWouldHide($relation->name, $neu->name, $draussen);
+        }
+
+        $moved = $relation->withOwner($neu->id, $this->relations->nextFieldPositionUnder($neu->id));
+
+        $this->changelog->record(
+            $relation->id,
+            'relation',
+            'field moved',
+            $this->relationState($relation),
+            $this->relationState($moved),
+            $moved->version
+        );
+
+        $this->relations->save($moved, $relation->version);
+
+        return $moved;
+    }
+
+    /**
+     * Die Werte eines eigenen Felds an ein anderes Feld mit demselben Ziel hängen; das alte wird geparkt, wenn keine Werte
+     * mehr daran stehen.
+     *
+     * ⚠️ **Sein Wort ([D-941](../../../docs/NewConcept/90-decision-log.md)):** *«Ja, bauen»*. *Gebraucht, wo dieselbe
+     * Angabe zweimal erklärt ist — «Teilenummer» an «Hardware» und an den Bauteilen — und die Sätze künftig unter einem Dach
+     * liegen.*
+     *
+     * ⚠️ *Verweigert statt zu raten: ein anderes Ziel, ein Satz ausserhalb des Zielfelds, oder ein Satz, der in beiden Feldern
+     * schon Werte hat. Mit `$underNodeId` nur die Sätze unter diesem Knoten; dann bleibt das alte Feld für die übrigen.*
+     */
+    public function mergeField(int $ownerId, int $relationId, int $intoRelationId, ?int $underNodeId = null): Relation
+    {
+        $this->changelog->beginAct();
+
+        try {
+            $alt  = $this->ownAttribute($ownerId, $relationId);
+            $neu  = $this->relations->byId($intoRelationId) ?? throw ImpossibleMove::noSuchField($intoRelationId);
+
+            if ($neu->id === $alt->id || $neu->toNodeId !== $alt->toNodeId) {
+                throw ImpossibleMove::notTheSameField($alt->name, $neu->name);
+            }
+
+            $saetze   = $this->recordsHolding($alt->id);
+            $draussen = $underNodeId === null ? [] : $this->recordsOutside($saetze, $this->nodes->byId($underNodeId));
+            $saetze   = array_values(array_diff($saetze, $draussen));
+
+            $nichtImZiel = $this->recordsOutside($saetze, $this->nodes->byId($neu->fromNodeId));
+
+            if ($nichtImZiel !== []) {
+                throw ImpossibleMove::valuesWouldHide($neu->name, $this->nodes->byId($neu->fromNodeId)->name, $nichtImZiel);
+            }
+
+            $beide = array_values(array_intersect($saetze, $this->recordsHolding($neu->id)));
+
+            if ($beide !== []) {
+                throw ImpossibleMove::bothFieldsHoldValues($alt->name, $neu->name, $beide);
+            }
+
+            if ($saetze !== [] && $this->records !== null) {
+                foreach ($this->records->valuesOfMany($saetze) as $werte) {
+                    foreach ($werte as $wert) {
+                        if ($wert->relationId === $alt->id && $wert->id !== null) {
+                            $this->records->putValue(new RelationRecord($wert->recordId, $neu->id, $wert->locale, $wert->value, $wert->id, $wert->position));
+                        }
+                    }
+                }
+            }
+
+            if ($draussen === []) {
+                $this->removeField($ownerId, $alt->id);
+            }
+
+            return $neu;
+        } finally {
+            $this->changelog->endAct();
+        }
+    }
+
+    /** @return list<int> */
+    private function recordsHolding(int $relationId): array
+    {
+        return $this->records?->recordsWithValuesOn($relationId) ?? [];
+    }
+
+    /**
+     * Die Sätze, die nicht am Knoten oder darunter liegen — in zwei Abfragen (CD-7).
+     *
+     * @param  list<int> $recordIds
+     * @return list<int>
+     */
+    private function recordsOutside(array $recordIds, Node $bereich): array
+    {
+        if ($recordIds === [] || $this->records === null) {
+            return [];
+        }
+
+        $saetze = $this->records->byIds($recordIds);
+        $knoten = [];
+
+        foreach ($this->nodes->byIds(array_values(array_unique(array_map(static fn (NodeRecord $r): int => $r->nodeId, $saetze)))) as $k) {
+            $knoten[$k->id] = $k;
+        }
+
+        $aus = [];
+
+        foreach ($saetze as $satz) {
+            $k = $knoten[$satz->nodeId] ?? null;
+
+            if ($k === null || ($k->id !== $bereich->id && ! $k->isDescendantOf($bereich))) {
+                $aus[] = $satz->id;
+            }
+        }
+
+        return $aus;
     }
 
     public function retargetField(int $ownerId, int $relationId, int $targetId): Relation

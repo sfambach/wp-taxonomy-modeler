@@ -877,8 +877,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 > *«ok vielleicht sollten wir vorher etwas aufräumen die pc und bauteilspate sind etwas gewuchert»*
 
 - **Befund und Vorschlag:** [`pakete/aufraeumen/baum.md`](pakete/aufraeumen/baum.md) — zwölf Befunde (drei Orte für Konstanten, doppelte Bauformen, zwei Chip-Kataloge, zwei Revisionswege …), Ziel-Baum nach Modulen ([INF-078](#inf-078--model-in-module-umbenennen)).
-- **Entschieden:** [D-940](NewConcept/90-decision-log.md) — *«a1-a4 ja»*.
-- **Gebaut:** nein.
+- **Entschieden:** [D-940](NewConcept/90-decision-log.md) — *«a1-a4 ja»*; Werkzeuge dafür [D-941](NewConcept/90-decision-log.md).
+- **Gebaut:** `move_field` und `merge_field` in 0.1.26, nicht live. Der Umbau selbst: nein.
 
 ---
 ## Erledigte Eingänge

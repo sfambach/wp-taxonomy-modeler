@@ -225,6 +225,14 @@ interface RecordRepository
     public function recordRefsHeldAt(int $relationId): array;
 
     /**
+     * Which records hold at least one value on this relation — so a field can be moved or merged without hiding a value
+     * ([D-941](../../../docs/NewConcept/90-decision-log.md)); one query (`CD-7`).
+     *
+     * @return list<int> record ids
+     */
+    public function recordsWithValuesOn(int $relationId): array;
+
+    /**
      * Everything these nodes hold as data — the records and their values.
      *
      * ⚠️ **Das ist die Durchsetzung von [C102](../../../docs/NewConcept/10-domain-core.md), und die

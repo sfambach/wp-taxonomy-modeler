@@ -30,6 +30,45 @@ final class ImpossibleMove extends DomainError
         return new self(sprintf('#%d is not a child of «%s».', $nodeId, $owner));
     }
 
+    /**
+     * A field that would leave records with values outside its reach (D-941).
+     *
+     * @param list<int> $recordIds
+     */
+    public static function valuesWouldHide(string $field, string $node, array $recordIds): self
+    {
+        return new self(sprintf(
+            '«%s» at «%s» would hide the values of %d record(s) outside it: %s.',
+            $field,
+            $node,
+            count($recordIds),
+            implode(', ', array_slice($recordIds, 0, 20)) . (count($recordIds) > 20 ? ' …' : '')
+        ));
+    }
+
+    public static function noSuchField(int $relationId): self
+    {
+        return new self(sprintf('There is no field #%d.', $relationId));
+    }
+
+    /** Only a field with the same target can take another field's values (D-941). */
+    public static function notTheSameField(string $from, string $into): self
+    {
+        return new self(sprintf('«%s» and «%s» do not point at the same target, so one cannot take the other\'s values.', $from, $into));
+    }
+
+    /** @param list<int> $recordIds */
+    public static function bothFieldsHoldValues(string $from, string $into, array $recordIds): self
+    {
+        return new self(sprintf(
+            '%d record(s) hold values in both «%s» and «%s»: %s.',
+            count($recordIds),
+            $from,
+            $into,
+            implode(', ', array_slice($recordIds, 0, 20)) . (count($recordIds) > 20 ? ' …' : '')
+        ));
+    }
+
     public static function ofTheRoot(): self
     {
         return new self('The root has no parent and cannot be moved.');

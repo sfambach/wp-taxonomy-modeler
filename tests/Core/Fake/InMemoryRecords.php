@@ -326,6 +326,19 @@ final class InMemoryRecords implements RecordRepository
         return $this->recordVersions[$id] = 1 + ($this->recordVersions[$id] ?? 1);
     }
 
+    public function recordsWithValuesOn(int $relationId): array
+    {
+        $found = [];
+
+        foreach ($this->values as $stored) {
+            if ($stored->relationId === $relationId) {
+                $found[] = $stored->recordId;
+            }
+        }
+
+        return array_values(array_unique($found));
+    }
+
     public function recordRefsHeldAt(int $relationId): array
     {
         $aus = [];

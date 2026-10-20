@@ -581,6 +581,18 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(intval(...), $ids ?: []);
     }
 
+    public function recordsWithValuesOn(int $relationId): array
+    {
+        global $wpdb;
+
+        $ids = Query::column('Saetze mit Werten an einer Kante lesen', $wpdb->prepare(
+            'SELECT DISTINCT node_record_id FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
+            $relationId
+        ));
+
+        return array_map(intval(...), $ids ?: []);
+    }
+
     public function recordRefsHeldAt(int $relationId): array
     {
         global $wpdb;

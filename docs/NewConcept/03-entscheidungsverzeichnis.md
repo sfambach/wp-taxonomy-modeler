@@ -92,6 +92,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie liegt ein Verkauf? | [D-934](90-decision-log.md) — wie eine Bestellung: «Verkäufe» mit Positionen in «Verkaufte Artikel», Position → Exemplar oder Projekt; vom Käufer nur der eBay-Name | — |
 | Wie heisst eine Positionstabelle? | [D-939](90-decision-log.md) — wie ihre Tabelle mit «Pos» dahinter («Bestellungen Pos»); gilt für neue | — |
 | Wie ist der Baum unter `Model` geordnet? | [D-940](90-decision-log.md) — Hardware · Software · Bauteile · Projekte · Stock · Allgemein; Chips sind Bauteile; Revisionen wie Platine › Revision; deutsche Namen | — |
+| Wie zieht ein Feld samt Werten um? | [D-941](90-decision-log.md) — `move_field` (anderer Knoten, gleiche Kante) und `merge_field` (Werte an gleichartiges Feld) in `taxmod/apply`; verweigert, statt Werte zu verstecken | — |
 | Wie tief nennt eine Zusammenfassung verwiesene Sätze? | [D-935](90-decision-log.md) — zwei Stufen: das Board heisst «FIC · 386-SC-HG», der Hersteller darin mit seinen eigenen Worten, ohne weiteren Verweis | — |
 | Welche Kennzeichnung trägt ein Bauteil im Katalog? | [D-779](90-decision-log.md) — nur den allgemeinen «Typ» (74LS688, LM7905); Hersteller und Bestellnummer gehören in den kaufmännischen Teil | ~~D-772~~ *(«Hersteller» und «Teilenummer» an `Electronic Parts`)* |
 | Braucht es einen Zyklenwächter? | [D-497](90-decision-log.md) — nein: ein Feld auf ein Modell ist eine Aggregation, und die verweist, statt abzusteigen | ~~D-100~~ *(nur seine Kompositions-Hälfte)* |

@@ -85,6 +85,8 @@ Alles über `taxmod/apply` (move_node, rename_node), ein Auftrag je Schritt übe
 - **`merge_field {from, into, under?}`** — hängt die Werte eines Felds an ein gleichartiges anderes (optional nur für Sätze unter einem Knoten) und parkt das alte. Damit werden Teilenummer, Alternative Bezeichnungen, Kompatibilität eins.
 - **Hersteller Text → Verweis** ist ein dritter Fall: Freitext auf «Manufacturer»-Sätze abbilden, Unbekanntes melden statt raten.
 
+**Gebaut:** 0.1.26 ([D-941](../../NewConcept/90-decision-log.md)), Wächter `feld-umzug-check`; noch nicht live.
+
 Ohne diese Werkzeuge gingen 146 Chips beim Umzug ihre Teilenummern, Hersteller und Erscheinungsdaten «verloren» (unsichtbar).
 
 ### 5.3 Reihenfolge
