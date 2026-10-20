@@ -870,6 +870,16 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Seine Frage, 2026-10-20:** *«wenn model in modul umbenannt wird wäre forms ein Modul oder»* — **Mein Vorschlag (nicht entschieden):** ja, `tax_form` ist ein Modul, aber eine zweite Art: **Datenmodule** (Kontakt, Stock, Bauteile, Hardware, Software) halten Bestand; **Funktionsmodule** (Formulare, später Prozesse) halten Setup und bringen Code mit. Beide stehen unter dem Menüpunkt «Module»; im Baum bleibt Setup getrennt vom Bestand ([`pakete/formulare/konzept.md`](pakete/formulare/konzept.md) §2a).
 - **Gebaut:** nein.
 
+## INF-079 · Die Äste «PC» und «Hardware Project» aufräumen
+
+**Typ:** `WUNSCH` · **Status:** `OPEN` — 2026-10-20, vor dem Lager-Modul.
+
+> *«ok vielleicht sollten wir vorher etwas aufräumen die pc und bauteilspate sind etwas gewuchert»*
+
+- **Befund und Vorschlag:** [`pakete/aufraeumen/baum.md`](pakete/aufraeumen/baum.md) — zwölf Befunde (drei Orte für Konstanten, doppelte Bauformen, zwei Chip-Kataloge, zwei Revisionswege …), Ziel-Baum nach Modulen ([INF-078](#inf-078--model-in-module-umbenennen)).
+- **Offen:** A1–A4 dort.
+- **Gebaut:** nein.
+
 ---
 ## Erledigte Eingänge
 
