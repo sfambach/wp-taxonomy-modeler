@@ -133,7 +133,7 @@ erkannte Bestellung als JSON, Ids der geschriebenen Sätze). AR-1 betrifft das M
 | **M4** | Zugangsdaten in `wp-config.php` statt in der Datenbank | **ja** |
 | **M5** | Vorschläge in eigener Tabelle des Moduls (§6 A) | **ja** |
 | **M6** | Prüfseite zuerst eigene Admin-Seite, später Formular aus tax_form | **ja** |
-| **M7** | Umstellung von Earth: je Shop oder alles auf einmal | **je Shop**, eBay zuerst (die meisten Mails) |
+| **M7** | Umstellung von Earth: je Shop oder alles auf einmal | **je Shop**, Reichelt/Mouser zuerst; eBay erst nach Abgrenzung zum Modul `wp_tax_ebay` (eBay-API), sonst kommen eBay-Käufe doppelt |
 | **M8** | Python-Code als Vorlage ins Repo (`legacy/`, ohne Mails) | **ja** |
 
 ## 10 · Annahmen, die das Konzept nicht sagt
