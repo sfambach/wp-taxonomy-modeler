@@ -820,6 +820,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   - Formulare **legt der Eigentümer selbst an**; ein Formular erfasst Daten.
   - Dafür ein **eigenes Modul `tax_form`**.
   - Siehe [INF-078](#inf-078--model-in-module-umbenennen): Menüpunkt «Module».
+- **Sein Einwand zum Entwurf, 2026-10-20 (nicht entschieden):** *«Ja das ist kein wirklicher konflikt bin mir aber unsicher ob wir formulare in den baum hängen sollen oder ob daten wie formulare zusammegesetzt sind dort abgelegt werden weil das ja nichts mit den datenbenstand zu tun hat sonder eher setup ist. Ja für formulare brauchen wir dann berechtigungen das daten geändert werden können somit sollten dedizierete rechte für formulare oder prozesse gibt, ich vermute mal gruppenrechte, darf lesen schreiben ...»* — eingearbeitet im Entwurf §2a, §5a.
 - **Konzeptentwurf «tax_form», 2026-10-20 (nicht entschieden):** [`pakete/formulare/konzept.md`](pakete/formulare/konzept.md) — Formular als gespeicherte Auswahl über einem Zielknoten, als Satz im Modell, Absenden über denselben Weg wie `write-data`, Widerspruch zu D-253, sechs Fragen an den Eigentümer.
 - **Gebaut:** nein.
 

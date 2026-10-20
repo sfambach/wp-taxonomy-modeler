@@ -12,6 +12,11 @@ mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
 > *«im grunde muss ich ein formular anlegen können, formulare erfassen daten, hierfür bräuchten wir ein neue modul tax_form. generell
 > denke ich das wir in tax admin ein menüpunkt module vorsehen sollten und da reihen sich alle module ein»*
 
+> *«Ja das ist kein wirklicher konflikt bin mir aber unsicher ob wir formulare in den baum hängen sollen oder ob daten wie formulare
+> zusammegesetzt sind dort abgelegt werden weil das ja nichts mit den datenbenstand zu tun hat sonder eher setup ist. Ja für formulare
+> brauchen wir dann berechtigungen das daten geändert werden können somit sollten dedizierete rechte für formulare oder prozesse gibt,
+> ich vermute mal gruppenrechte, darf lesen schreiben ...»* — §2a, §5, §5a
+
 ---
 
 ## 1 · Was ein Formular ist — und was es heute schon gibt
@@ -59,6 +64,32 @@ flowchart TB
 - **Nicht ausgewählte Felder** bleiben leer oder bekommen die Vorbelegung des Knotens; ein Pflichtfeld des Knotens (`1..1`), das das
   Formular weglässt, braucht einen festen Wert — sonst kann das Formular nie speichern. Der Wächter beim Speichern des Formulars sagt das.
 
+## 2a · Setup, nicht Datenbestand — wo im Baum?
+
+Sein Einwand: ein Formular *«hat ja nichts mit den datenbenstand zu tun»*, es ist Setup. Drei Orte:
+
+```mermaid
+flowchart TB
+  subgraph T["Baum"]
+    MO["Model — Datenbestand<br/>Bauteile, Käufe, Verkäufe …"]
+    PR["Primitives — vom System Definiertes (D-511)"]
+    PR --> DT["Data Types"]
+    PR --> CO["Constants: Renderer, Konverter, Validatoren"]
+    PR --> SU["neu: Setup → Formulare (später Prozesse)"]
+  end
+  TB2["eigene Tabelle des Moduls, ausserhalb des Baums"]
+```
+
+| | **A · unter `Model`** | **B · unter `Primitives`, Ast «Setup»** | **C · eigene Tabelle** |
+|---|---|---|---|
+| Vermischt mit Daten | ja — sein Einwand | **nein**: `Primitives` ist schon der Ort für Definiertes ([D-511](../../NewConcept/90-decision-log.md), sein Wort dort: *«einen Knoten System einfügen»*) | nein |
+| Sicherung, Änderungsbuch, Maske, Connector | ja | **ja** | nein — alles neu |
+| `write-data` kann es ändern | ja, müsste abgewiesen werden | **nein**, wenn `write-data` nur Sätze unter `Model` nimmt | nein |
+
+**Vorschlag: B.** Der Ast «Setup» unter `Primitives` hält Formulare, später Prozesse — Setup im Baum, aber getrennt vom Bestand.
+*Nicht gemessen:* ob ein Ast unter `Primitives` Benutzersätze halten darf; `Constants` hält heute nur Knoten (D-511: *«keine
+Datensätze»*). Das wäre die eine Stelle im Code, die sich ändert.
+
 ## 3 · Absenden — derselbe Weg wie jede Änderung
 
 ```mermaid
@@ -93,6 +124,25 @@ Beschluss (`PR-2`), nicht eine stille Ausnahme.
 - **Vorschlag:** D-253 bleibt für das Zeichnen; ein Formular-Block ist die **eine** benannte Ausnahme, und er schreibt nur für
   angemeldete Benutzer mit `taxmod_write_data` ([D-936](../../NewConcept/90-decision-log.md)).
 - **Anonyme Besucher** (z. B. ein Kontaktformular) erst, wenn es einen Fall gibt — dann mit Spam-Schutz und eigener Entscheidung.
+- **Sein Wort:** *«das ist kein wirklicher konflikt»* — die Ausnahme braucht trotzdem eine Zeile im Entscheidungsbuch (`PR-3`).
+
+## 5a · Rechte: Gruppen, je Formular
+
+```mermaid
+flowchart LR
+  G["Gruppe = WordPress-Rolle<br/>z. B. «Einkauf», «Werkstatt»"] --> F["Formular «Wareneingang»<br/>Ansehen: Rollen · Ausfüllen: Rollen"]
+  A["Administrator"] -->|immer| F
+  F -->|nur über das Formular| D["Sätze am Zielknoten"]
+```
+
+- **Gruppen sind WordPress-Rollen** — die gibt es, sie lassen sich Benutzern geben, und `taxmod_data_writer` ([D-936](../../NewConcept/90-decision-log.md)) ist schon eine.
+- **Je Formular zwei Felder:** «Ansehen» und «Ausfüllen», jeweils eine Liste von Rollen. Geprüft am Rand vor allem anderen (`CD-5`).
+- **Ausfüllen gibt kein allgemeines Schreibrecht.** Wer ein Formular ausfüllen darf, schreibt nur das, was das Formular vorgibt —
+  nicht beliebige Sätze wie mit `write-data`. Darum ist das Recht am Formular, nicht am Benutzer.
+- **Formulare anlegen** ist Setup und bleibt bei `manage_options`.
+- Prozesse bekommen später dieselben zwei Felder.
+- **Offen, grösser als Formulare:** Lese- und Schreibrechte **je Knoten** im Datenbestand (wer darf Käufe sehen?). Heute: lesen
+  darf jeder mit `read-tree`, schreiben nur `apply`/`write-data`. Gehört in eine eigene Frage, nicht in dieses Modul.
 
 ## 6 · Formulare und Prozesse
 
@@ -128,9 +178,10 @@ flowchart LR
 | | Frage | Mein Vorschlag |
 |---|---|---|
 | **F1** | Ein Formular = gespeicherte Auswahl über **einem** Zielknoten, gezeichnet von den vorhandenen Renderern? | **ja** |
-| **F2** | Formulare als **Sätze** unter einem Knoten «Formulare»? | **ja** |
+| **F2** | Wo liegen Formulare: A unter `Model`, B Ast «Setup» unter `Primitives`, C eigene Tabelle (§2a)? | **B** |
 | **F3** | Neuer Typ `edge_ref` für «welches Feld»? | **ja**, Auswahl nur aus den Kanten des Ziels |
-| **F4** | Formular-Block im Beitrag, als benannte Ausnahme zu D-253, nur für Benutzer mit `taxmod_write_data`? | **ja**; anonym später |
+| **F4** | Formular-Block im Beitrag, als benannte Ausnahme zu D-253 (*«kein wirklicher konflikt»*)? | **ja**; anonym später |
+| **F4a** | Rechte je Formular: «Ansehen» und «Ausfüllen» als Listen von WordPress-Rollen (§5a)? | **ja** |
 | **F5** | `tax_form` als Ordner im Modeller-Repo statt eigenes Plugin? | **ja**, vorerst |
 | **F6** | Reihenfolge | **1** Knoten «Formulare», `edge_ref`, Admin-Seite unter «Module», Absenden · **2** Block · **3** Ereignis für Prozesse |
 
