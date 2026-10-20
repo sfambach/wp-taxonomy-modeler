@@ -1,6 +1,6 @@
 # Paket · Mail-Import («tax_mail») — Konzeptentwurf
 
-**Stand 2026-10-20. M1–M8 entschieden: [D-942](../../NewConcept/90-decision-log.md). Nichts gebaut.** Aus [INF-075](../../neues-konzept-eingang.md#inf-075--prozesse-und-formulare-im-modell-anlegen)
+**Stand 2026-10-20. M1–M8 entschieden: [D-942](../../NewConcept/90-decision-log.md). Gebaut: 0.0.1, nicht veröffentlicht, nicht installiert** (§11). Aus [INF-075](../../neues-konzept-eingang.md#inf-075--prozesse-und-formulare-im-modell-anlegen)
 (Fall «Eingang prüfen», Mail-Import in WordPress). Was er entscheiden soll, steht in §9; alles andere ist mein Vorschlag (`INFERRED`),
 bis es eine `D-<nnn>` hat (`PR-3`). Code des Moduls: [`sfambach/wp_tax_mail`](https://github.com/sfambach/wp_tax_mail) (von ihm angelegt am 2026-10-20).
 
@@ -174,3 +174,17 @@ erkannte Bestellung als JSON, Ids der geschriebenen Sätze). AR-1 betrifft das M
 - Beträge und Währungen wie heute im Python-Importer; Einheitenwert nach [D-929](../../NewConcept/90-decision-log.md), nicht neu erfunden.
 - Doppelte Bestellung = gleiche Bestellnummer und gleicher Shop.
 - Mails älter als der erste Lauf werden nicht nachgeholt, ausser er stellt ein Startdatum ein.
+
+## 11 · Gebaut (0.0.1) und was dabei angenommen wurde
+
+- **Gebaut:** IMAP-Client, Abruf (WP-Cron, Rhythmus einstellbar, Knopf), Vorschlagstabelle, Prüfseite «Eingang prüfen», Schreiben über
+  `write-data`, Parser Reichelt, Mouser, Conrad, AliExpress, JLCPCB (aus `legacy/` übertragen), deutsche Oberfläche.
+- **Geprüft:** Kern-Tests; Parser gegen den Python-Importer auf synthetischen Mails (gleiche Ergebnisse); Schreiben gegen ein lokales
+  WordPress 7.1.3 mit dem Modeller. **Nicht geprüft:** Strato-Postfach, echte Shop-Mails.
+- **Annahmen (`INFERRED`):**
+  - ein Vorschlag je Mail, nicht je Bestellung wie im Python-Importer; eine Versandmail ergänzt eine vorhandene Bestellung
+    (Sendungsnummer, «Eingegangen am»), oder bringt sie neu, wenn sie Positionen nennt (JLCPCB, Mouser);
+  - Doppelte nur über Plattform + Bestellnummer; der Abgleich über Artikelnummern aus dem Python-Importer fehlt noch;
+  - Conrad-Rechnungen, Stornos und Kundenservice-Mails werden angezeigt, aber nur verworfen;
+  - Ziel-Ids (Knoten, Felder, Währungen, Pflichtteile) stehen als Vorgabe im Code und in der Option `taxmail_targets`.
+
