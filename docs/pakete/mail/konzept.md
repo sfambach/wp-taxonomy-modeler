@@ -69,8 +69,8 @@ flowchart LR
   ein Tausch hinter einer Schnittstelle (`ImapStream`/`ImapClient`).
 - **Ob Strato ausgehende Verbindungen auf Port 993 zulässt, ist ungeprüft.** Erster Bauschritt ist darum ein Knopf
   «Verbindung testen» auf der Einstellungsseite, sonst nichts. Geht es nicht, ist das Konzept an dieser Stelle zu Ende (M3).
-- **Zugangsdaten:** Vorschlag in `wp-config.php` als Konstanten, nicht in der Datenbank — dann stehen sie in keiner Sicherung und
-  keinem Änderungsbuch (M4).
+- **Zugangsdaten:** in den Einstellungen des Moduls, das Passwort verschlüsselt gespeichert (Schlüssel aus dem Auth-Salt in
+  `wp-config.php`); Konstanten in `wp-config.php` gehen vor ([D-944](../../NewConcept/90-decision-log.md), ersetzt M4).
 - **Mails werden nicht gelöscht** — aufgeräumt wird durch Verschieben, siehe §3a.
 
 ## 3a · Postfach aufräumen
@@ -159,7 +159,7 @@ erkannte Bestellung als JSON, Ids der geschriebenen Sätze). AR-1 betrifft das M
 | **M1** | tax_mail als eigenes Plugin, getrennt vom Lager; Lager-F5 entfällt | **ja** |
 | **M2** | Neue Bestellungen nur als Vorschlag, schreiben erst nach Auswahl je Position | **ja** |
 | **M3** | IMAP per PHP-Bibliothek in WordPress, erster Schritt nur «Verbindung testen» | **ja** |
-| **M4** | Zugangsdaten in `wp-config.php` statt in der Datenbank | **ja** |
+| **M4** | Zugangsdaten in `wp-config.php` statt in der Datenbank | ~~ja~~ ersetzt durch D-944: Einstellungsfelder, Passwort verschlüsselt |
 | **M5** | Vorschläge in eigener Tabelle des Moduls (§6 A) | **ja** |
 | **M6** | Prüfseite zuerst eigene Admin-Seite, später Formular aus tax_form | **ja** |
 | **M7** | Umstellung von Earth: je Shop oder alles auf einmal | **je Shop**, Reichelt/Mouser zuerst; eBay erst nach Abgrenzung zum Modul `wp_tax_ebay` (eBay-API), sonst kommen eBay-Käufe doppelt |
