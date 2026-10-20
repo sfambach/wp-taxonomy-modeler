@@ -820,6 +820,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   - Formulare **legt der Eigentümer selbst an**; ein Formular erfasst Daten.
   - Dafür ein **eigenes Modul `tax_form`**.
   - Siehe [INF-078](#inf-078--model-in-module-umbenennen): Menüpunkt «Module».
+- **Konzeptentwurf «tax_form», 2026-10-20 (nicht entschieden):** [`pakete/formulare/konzept.md`](pakete/formulare/konzept.md) — Formular als gespeicherte Auswahl über einem Zielknoten, als Satz im Modell, Absenden über denselben Weg wie `write-data`, Widerspruch zu D-253, sechs Fragen an den Eigentümer.
 - **Gebaut:** nein.
 
 ## INF-074 · Angebote bei eBay einstellen, Verkaufstexte, Link zum laufenden Angebot
