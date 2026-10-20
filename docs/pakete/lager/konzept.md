@@ -18,6 +18,8 @@ alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`)
 
 > *«genaus geht produzierte ware in den bestand über»* — §3.7, Vorgang «Baulauf-Zugang»
 
+> *«vielleicht kann man eine linie zeigehn zwischen technische beschreibeibung und ebstand aber nur wenn das sinnvoll ist»* — §2
+
 ---
 
 ## 1 · Der Schnitt: Modell hält Daten, Modul hält Vorgänge
@@ -51,20 +53,41 @@ flowchart LR
 [D-232](../../NewConcept/90-decision-log.md)) — ein vierter wäre Code im Modeller und eine neue Speicherregel. Ein Knoten «Stock» unter
 `Model` braucht nichts davon. Das ist meine Lesart seines Wortes (F1).*
 
-## 2 · Was Bestand ist — zwei Sorten
+## 2 · Die Linie: technische Beschreibung | Bestand
 
 ```mermaid
-flowchart TB
-  BE["Bestand"] --> MW["Mengenware<br/>Bauteile, Kabel, eigene Platinen in Serie<br/>Menge je Lagerartikel"]
-  BE --> EZ["Einzelstücke<br/>PCs, Karten, Mainboards, Geräte zum Weiterverkauf<br/>ein Exemplar = ein Stück"]
-  MW --> LA["Lagerartikel → Bauteil / Modell / Projekt"]
-  EZ --> EX["Exemplar (D-867) → Modell"]
+flowchart LR
+  subgraph TE["Technische Beschreibung — was es ist"]
+    BT["Bauteil (Electronic Parts)"]
+    MO["Modell (Models)"]
+    PR["Projekt + Stückliste"]
+    EX["Exemplar: Seriennummer, BIOS, Umbauten (D-867)"]
+  end
+  subgraph BS["Bestand — was ich davon habe, wo, wofür (Stock)"]
+    LA["Lagerartikel"]
+    BW["Bewegungen · Reservierungen · Vorgänge"]
+    BK["Bestellungen · Käufe · Verkäufe · Bauläufe"]
+  end
+  LA -->|verweist auf genau eins| BT & MO & PR & EX
+  BW --> LA
+  BK --> LA
 ```
 
-- **Mengenware:** «7 × LM2930T-5.0». Gezählt wird je Lagerartikel.
-- **Einzelstück:** «dieser Escom-PC, Seriennummer …». Das Exemplar ([D-867](../../NewConcept/90-decision-log.md)) ist schon das Stück;
-  es bekommt nur, was ihm für den Bestand fehlt (§3.3). **Beides läuft durch dieselben Vorgänge und Bewegungen** — eine Bewegung
-  nennt entweder einen Lagerartikel mit Menge oder ein Exemplar mit ±1.
+**Ja, die Linie ist sinnvoll — sie ist sogar der Kern des Konzepts.** Die Regel:
+
+- **Links steht, was ein Ding ist** — gilt auch, wenn ich es nie besessen oder längst verkauft habe. Datenblatt, Pinbelegung,
+  Seriennummer, Reparaturen.
+- **Rechts steht, was ich damit tue** — Menge, Ort, Wert, wofür, wann rein, wann raus.
+- **Verweise gehen nur von rechts nach links.** Ein Bauteil, Modell oder Exemplar weiss nichts vom Lager; der Bestand erscheint links
+  nur als gerechnete Anzeige. Prüfbar mit einem Wächter: kein Feld eines technischen Knotens zielt unter «Stock».
+- **Der Lagerartikel ist die eine Brücke** über die Linie: jedes Ding, das Bestand hat, hat genau einen Lagerartikel.
+
+Zwei Sorten Bestand, **ein** Mechanismus:
+
+- **Mengenware:** Lagerartikel → Bauteil, Modell oder Projekt. «7 × LM2930T-5.0».
+- **Einzelstück:** Lagerartikel → Exemplar, Bestand immer 0 oder 1. «Dieser 286er, zum Verkauf» — PCs, Karten, Geräte zum Weiterverkauf.
+
+Bewegungen, Reservierungen, Käufe und Verkäufe nennen **immer den Lagerartikel**, nie Bauteil oder Exemplar direkt.
 
 ## 3 · Die Datenstrukturen unter «Stock»
 
@@ -88,7 +111,7 @@ flowchart TB
 ```
 
 Gruppenknoten (Stammdaten, Beschaffung, Lager, Fertigung, Verkauf) haben keine Felder. Jeder Satz hat «Bezeichnung» und «Beschreibung»
-von `Model` ([D-883](../../NewConcept/90-decision-log.md)). «Exemplare» bleiben, wo sie sind — sie sind Sammlung **und** Bestand.
+von `Model` ([D-883](../../NewConcept/90-decision-log.md)). «Exemplare» bleiben links, wo sie sind, ohne neues Feld.
 
 ### 3.1 Lagerorte
 
@@ -97,30 +120,27 @@ von `Model` ([D-883](../../NewConcept/90-decision-log.md)). «Exemplare» bleibe
 | Übergeordnet | Satzverweis → Lagerorte | 0..1 | Regal › Kiste › Fach |
 | Kurzzeichen | Text | 0..1 | was auf dem Etikett steht, z. B. «S1-03» |
 
-### 3.2 Lagerartikel — Mengenware
+### 3.2 Lagerartikel — die Brücke
 
-Ein Ding wird erst durch einen Lagerartikel-Satz mengengeführt. **Daten-Lösung statt Schalter im Code**; Bauteile und Modelle bleiben unberührt.
+Ein Ding hat erst durch einen Lagerartikel-Satz Bestand. **Daten-Lösung statt Schalter im Code**; die technische Seite bleibt unberührt.
 
 | Feld | Typ | Mult. | Zweck |
 |---|---|---|---|
-| Bauteil | Satzverweis → Electronic Parts | 0..1 | Zukaufteil — genau eins der drei |
+| Bauteil | Satzverweis → Electronic Parts | 0..1 | Zukaufteil — genau eins der vier |
 | Modell | Satzverweis → Models | 0..1 | Mengenware ohne Seriennummer: Kabel, Adapter, Lüfter |
 | Projekt | Satzverweis → Projekte | 0..1 | Eigenbau in Serie (Platine, Gerät) |
+| Exemplar | Satzverweis → Exemplare | 0..1 | Einzelstück — PC, Karte, Gerät; Bestand 0 oder 1 |
+| Verwendung | Konstante: Lager · Eigenbedarf · zum Verkauf · Sammlung · Ersatzteilspender | 0..1 | was ich damit vorhabe — lässt sich aus nichts rechnen |
 | Einheit | Konstante → Einheiten | 0..1 | leer = Stück |
-| Standard-Lagerort | Satzverweis → Lagerorte | 0..1 | Vorschlag beim Wareneingang |
+| Standard-Lagerort | Satzverweis → Lagerorte | 0..1 | Vorschlag beim Wareneingang; wo es wirklich liegt, sagen die Bewegungen |
 | Mindestbestand | Ganzzahl | 0..1 | darunter «nachbestellen» |
 
 **Nicht gespeichert:** Bestand, reserviert, frei, Durchschnittswert — gerechnet aus §3.5 und §3.6.
 
-### 3.3 Exemplare — Einzelstücke, zwei Felder dazu
+### 3.3 Exemplare — unverändert
 
-| Feld | Typ | Mult. | Zweck |
-|---|---|---|---|
-| Verwendung | Konstante: Sammlung · Eigenbedarf · zum Verkauf · Ersatzteilspender | 0..1 | was er damit vorhat — lässt sich aus nichts rechnen |
-| Lagerort | Satzverweis → Lagerorte | 0..1 | wo es steht |
-
-**Ob ein Exemplar im Bestand ist, wird gerechnet:** Summe seiner Bewegungen = 1 (gekauft und nicht verkauft, nicht zerlegt).
-Keine Statusspalte «verkauft», sonst stünde die Tatsache zweimal.
+Sie bleiben technische Beschreibung. **Ob ein Exemplar im Bestand ist, wird gerechnet:** Summe der Bewegungen seines Lagerartikels = 1.
+Keine Spalte «verkauft» am Exemplar — sonst stünde die Tatsache zweimal und auf der falschen Seite der Linie.
 
 ### 3.4 Bestellungen und Käufe — verschoben, plus Felder
 
@@ -129,7 +149,7 @@ Bestellungen und Käufe ([D-933](../../NewConcept/90-decision-log.md)) wandern u
 | Knoten | Feld | Typ | Mult. | Zweck |
 |---|---|---|---|---|
 | Bestellungen | Status | Konstante: Entwurf · bestellt · teilweise eingegangen · eingegangen · storniert | 0..1 | ein Bestellvorschlag ist eine Bestellung «Entwurf» |
-| Käufe | Lagerartikel | Satzverweis → Lagerartikel | 0..1 | Mengenware; für Einzelstücke zeigt der Kauf schon auf seine Exemplare ([D-897](../../NewConcept/90-decision-log.md)) |
+| Käufe | Lagerartikel | Satzverweis → Lagerartikel | 0..* | Mengenware: einer; Einzelstücke: je Exemplar einer. Ersetzt Kauf → Exemplare ([D-897](../../NewConcept/90-decision-log.md), A6) |
 | Käufe | Eingegangen | Dezimalzahl | 0..1 | bei Teillieferung; leer = alles |
 
 ### 3.5 Vorgänge und Bewegungen — der Kern
@@ -153,22 +173,20 @@ Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **
 
 | Feld | Typ | Mult. | Zweck |
 |---|---|---|---|
-| Lagerartikel | Satzverweis → Lagerartikel | 0..1 | Mengenware — genau eins von beiden |
-| Exemplar | Satzverweis → Exemplare | 0..1 | Einzelstück, Menge ist dann ±1 |
+| Lagerartikel | Satzverweis → Lagerartikel | 1..1 | Mengenware oder Einzelstück |
 | Menge | Dezimalzahl mit Vorzeichen | 1..1 | + Zugang, − Abgang |
 | Lagerort | Satzverweis → Lagerorte | 0..1 | |
 | Wert je Stück | Einheitenwert, Währung ([D-929](../../NewConcept/90-decision-log.md)) | 0..1 | Zugang: Einstandspreis; Abgang: Durchschnitt zum Buchungszeitpunkt |
 | Kauf | Satzverweis → Käufe | 0..1 | Herkunft eines Zugangs |
 | Gezählt | Dezimalzahl | 0..1 | nur Inventur; Menge ist die Differenz |
 
-**Bestand = Summe «Menge»** je Lagerartikel bzw. je Exemplar, in **einer** Abfrage für eine ganze Liste (`CD-7`).
+**Bestand = Summe «Menge»** je Lagerartikel, in **einer** Abfrage für eine ganze Liste (`CD-7`).
 
 ### 3.6 Reservierungen
 
 | Feld | Typ | Mult. | Zweck |
 |---|---|---|---|
-| Lagerartikel | Satzverweis → Lagerartikel | 0..1 | genau eins von beiden |
-| Exemplar | Satzverweis → Exemplare | 0..1 | «diese Karte kommt in jenen PC» |
+| Lagerartikel | Satzverweis → Lagerartikel | 1..1 | auch ein Einzelstück: «diese Karte kommt in jenen PC» |
 | Menge | Dezimalzahl | 1..1 | |
 | Baulauf / Projekt | Satzverweis | 0..1 je | wofür |
 | Status | Konstante: offen · entnommen · aufgehoben | 1..1 | |
@@ -184,7 +202,7 @@ Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **
 | Stückzahl | Ganzzahl | 1..1 | |
 | Status | Konstante: geplant · Teile reserviert · in Bau · fertig · abgebrochen | 1..1 | |
 | Begonnen am / Fertig am | Datum | 0..1 | |
-| Exemplare | Satzverweis → Exemplare | 0..* | wenn jedes gebaute Stück ein Einzelstück sein soll |
+| Exemplare | Satzverweis → Exemplare | 0..* | wenn jedes gebaute Stück ein Einzelstück sein soll (je Stück ein Lagerartikel) |
 
 **Die Stückliste wird nicht kopiert.** Bedarf = je `Part List Item` des Projekts ([D-774](../../NewConcept/90-decision-log.md):
 Bauteil, Anzahl, Bestückung) «Anzahl × Stückzahl», ohne «nicht bestücken»; das Bauteil führt über seinen Lagerartikel zum Bestand.
@@ -194,7 +212,7 @@ Stück» in der Zugangsbewegung.
 ### 3.8 Verkäufe — verschoben, plus ein Feld
 
 Verkäufe und Verkaufte Artikel ([D-934](../../NewConcept/90-decision-log.md)) wandern unter «Stock › Verkauf». «Verkaufte Artikel» hat
-schon «Exemplar» (0..1); neu **Lagerartikel** (0..1) für Mengenware. Gesetzt → der Verkauf bucht den Abgang, und «Einstandspreis je
+schon «Exemplar» (0..1); neu **Lagerartikel** (0..1), das «Exemplar» dort entfällt (A6). Gesetzt → der Verkauf bucht den Abgang, und «Einstandspreis je
 Stück» kommt aus dem Bestand.
 
 ## 4 · Die Vorgänge als Ablauf
@@ -213,11 +231,11 @@ flowchart LR
 
 | Vorgang | Auslöser | Was entsteht |
 |---|---|---|
-| **Wareneingang** | Bestellung eingegangen — ganz oder je Position; oder frei | Bewegung je Kauf: Lagerartikel mit Menge, oder je Exemplar +1 |
+| **Wareneingang** | Bestellung eingegangen — ganz oder je Position; oder frei | Bewegung je Lagerartikel des Kaufs |
 | **Verbrauch** | Artikel, Menge, optional Projekt | Bewegungen − |
 | **Baulauf** | Projekt + Stückzahl → reservieren → fertig | Entnahme − aus der Stückliste, Zugang + des fertigen Artikels |
-| **Verkauf** | Verkaufte Artikel | Bewegung − (Exemplar −1 oder Lagerartikel −n) |
-| **Zerlegung** | Exemplar wird Ersatzteilspender | Exemplar −1, gewonnene Teile + |
+| **Verkauf** | Verkaufte Artikel | Bewegung − |
+| **Zerlegung** | Einzelstück wird Ersatzteilspender | Einzelstück −1, gewonnene Teile + |
 | **Inventur** | gezählte Menge | Bewegung = gezählt − Bestand; **der Anfangsbestand ist eine Inventur**, nach Bedarf ([INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf), Schritt 1) |
 | **Umbuchung** | Lagerort wechseln | − am alten, + am neuen Ort |
 
@@ -244,6 +262,7 @@ Was beim Lesen der Entscheidungen auffiel — Tatsachen an zwei Orten oder zwei 
 | A2 | **Bestelldaten doppelt:** bei den 31 alten Käufen stehen Plattform, Händler, Datum an der Position, bei neuen an der Bestellung ([D-933](../../NewConcept/90-decision-log.md)) | je alter Kauf eine Bestellung anlegen, Felder am Kauf entfernen |
 | A3 | **Zwei Kataloge:** Käufe zeigen auf «Models», Stücklisten auf «Electronic Parts» | über den Lagerartikel zusammenführen (§3.2); «Modell» am Kauf bleibt für Sammlerkäufe |
 | A4 | **Händler als Text** an Käufen und Verkäufen, «Lieferant» als Knoten an der Preisangabe ([D-927](../../NewConcept/90-decision-log.md)) | offen lassen bis Stufe 2 — eBay-Verkäufer sind keine Lieferanten |
+| A6 | **Kauf → Exemplare** und **Verkaufte Artikel → Exemplar** greifen über die Linie direkt auf die Technik | durch den Lagerartikel ersetzen (§3.4, §3.8) |
 | A5 | **Bestellung «Bestand»** mit zehn gezählten Teilen (Auftrag vom 2026-10-19) | nach Stufe 1 in eine Inventur umbuchen, Bestellung entfernen |
 
 ## 7 · Beispieldaten aus seinem Bestand
@@ -268,7 +287,7 @@ Echt, ausser *(erfunden)*.
 | BUZ11 | 9 | 1,05 € |
 
 **Wareneingang Einzelstück, aus Mail** — Bestellung 27-14743-39156, eBay, «Retro PC Klassiker 286 … Bastlerware defekt», 96 € + 10,49 €
-Versand: Exemplar «286er Klassiker» +1, Wert 106,49 €, Verwendung *zum Verkauf (erfunden)*, Lagerort K1.
+Versand: Lagerartikel → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erfunden)*; Bewegung +1, Wert 106,49 €, Lagerort K1.
 
 **Wareneingang Mengenware, aus Mail** — Bestellung 18-15212-31076, eBay, Dupont-Kabel 30 cm: sechs Käufe → ein Vorgang, sechs Bewegungen
 (Blau, Weiss, Grün, Gelb je +50; Schwarz, Rot je +100). ⚠️ *Gekauft je Beutel, verbraucht je Kabel — Einheit (F6).*
@@ -303,8 +322,8 @@ Einzelstücke tragen ihren eigenen Wert.
 |---|---|---|
 | **F1** | «Stock» als Knoten unter `Model` oder als neuer Wurzelast (Code im Modeller)? | **unter `Model`** |
 | **F2** | Bestellungen, Käufe, Verkäufe unter «Stock» verschieben? | **ja**, Ids bleiben |
-| **F3** | Zwei Sorten Bestand: Lagerartikel (Menge) und Exemplar (Einzelstück)? | **ja** |
-| **F4** | Aufräumen A1–A3 vor dem Bau? | **ja**, A4 später, A5 nach Stufe 1 |
+| **F3** | Die Linie (§2): Technik verweist nie auf Bestand, der Lagerartikel ist die einzige Brücke, auch für Einzelstücke? | **ja**, mit Wächter |
+| **F4** | Aufräumen A1–A3 und A6 vor dem Bau? | **ja**, A4 später, A5 nach Stufe 1 |
 | **F5** | Mail-Import ins Repo `wp_tax_stock` holen? | **ja**, eigener Ordner, läuft weiter auf Earth |
 | **F6** | Einheiten (Beutel ↔ Stück) | **später**, Stufe 1 nur «Stück» |
 | **F7** | Reihenfolge | **1** Aufräumen, Knoten «Stock», Lagerartikel, Inventur, Wareneingang, Verbrauch, Bestandsliste · **2** Mail-Import mit Wareneingang und Verkauf · **3** Reservierung, Bedarf, Bauläufe · **4** Mindestbestand, Umbuchung, Zerlegung |
@@ -313,4 +332,4 @@ Einzelstücke tragen ihren eigenen Wert.
 
 - Mengen sind Dezimalzahlen (Meterware), angezeigt ohne Nachkommastellen, wenn ganz.
 - Ein Abgang darf den Bestand unter 0 drücken; die Maske warnt, sperrt nicht — der Bestand ist am Anfang lückenhaft.
-- Vorhandene Exemplare mit Kauf zählen als Bestand erst, wenn für sie eine Zugangsbewegung gebucht ist (Übernahme als Inventur in Stufe 1).
+- Vorhandene Exemplare zählen als Bestand erst, wenn sie einen Lagerartikel und eine Zugangsbewegung haben — Übernahme als Inventur, nur für Stücke, die er abgeben oder zählen will.
