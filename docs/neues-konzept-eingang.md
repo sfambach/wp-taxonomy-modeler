@@ -796,6 +796,7 @@ Anlass: Bestellungen ([D-933](NewConcept/90-decision-log.md)) und Verkäufe ([D-
   - Wareneingang und Verbrauch sind **Aktionen, ein Prozess** — nicht nur Sätze, die man von Hand anlegt.
   - Offen: ob der Bestand ein **eigenes Modul** wird, das das Modell als Datenstruktur nutzt, statt in den Modeller zu wandern.
 - **Vorschlag dazu (meiner, nicht entschieden):** ein eigenes Modul («Taxmod Stock», eigenes Plugin oder abtrennbarer Teil). Der Modeller bleibt Datenstruktur (Bauteile, Händler, Käufe, Datenblätter) und wird vom Modul nur gelesen; das Modul besitzt die Vorgänge — Wareneingang (auch aus einer Bestellung), Verbrauch, Inventur, Umbuchung — als **Buchungen**, der Bestand ist deren Summe. Später Lagerorte, Mindestbestand, Reservierung je Projekt. Berührt [INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen): ein Prozess mit Schritten und Regeln ist dort als Daten oder als Code offen.
+- **Konzeptentwurf «Taxmod Stock», 2026-10-20 (nicht entschieden):** [`pakete/lager/konzept.md`](pakete/lager/konzept.md) — Schnitt Daten/Vorgänge, Bestand als Summe der Bewegungen, Vorgänge, Lagerartikel per Zusatzfunktion, Bewertung, sechs Fragen an den Eigentümer.
 
 ## INF-075 · Prozesse und Formulare im Modell anlegen
 
