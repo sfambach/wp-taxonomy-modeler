@@ -283,7 +283,7 @@ Was beim Lesen der Entscheidungen auffiel — Tatsachen an zwei Orten oder zwei 
 | A3 | **Zwei Kataloge:** Käufe zeigen auf «Models», Stücklisten auf «Electronic Parts» | über den Material zusammenführen (§3.2); «Modell» am Kauf bleibt für Sammlerkäufe |
 | A4 | **Händler als Text** an Käufen und Verkäufen, «Lieferant» als Knoten an der Preisangabe ([D-927](../../NewConcept/90-decision-log.md)) | offen lassen bis Stufe 2 — eBay-Verkäufer sind keine Lieferanten |
 | A6 | **Kauf → Exemplare** und **Verkaufte Artikel → Exemplar** greifen über die Linie direkt auf die Technik | durch den Material ersetzen (§3.4, §3.8) |
-| A5 | **Bestellung «Bestand»** mit zehn gezählten Teilen (Auftrag vom 2026-10-19) | nach Stufe 1 in eine Inventur umbuchen, Bestellung entfernen |
+| A5 | **Bestellung «Bestand»** mit zehn gezählten Teilen (Auftrag vom 2026-10-19; live seit 2026-10-20: Bestellung 42549, Positionen 42499–42544, Bauteile 42459–42493). Die Positionen tragen Menge und Preis, aber **keinen Verweis auf das Bauteil** — «Modell» am Kauf zeigt nur auf «Models» (A3) | nach Stufe 1 in eine Inventur umbuchen, dabei je Position den Material auf das Bauteil anlegen; Bestellung entfernen |
 
 ## 7 · Beispieldaten aus seinem Bestand
 
