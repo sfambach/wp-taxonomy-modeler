@@ -816,6 +816,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Seine Einordnung, 2026-10-20 (nicht entschieden):** *«für formulare und prozesser bräuchten wir glaube ich erstmal ein konzept formulare bauen sollte mit den richtigen renderen ja schon möglich sein prozesse ist was neues»*
   - **Formulare:** sieht er als Sache der Renderer, kein neuer Mechanismus.
   - **Prozesse:** neu, brauchen zuerst ein eigenes Konzept. Nachsatz: *«verwendet aber formulare»* — ein Prozess nutzt Formulare.
+- **Seine Präzisierung, 2026-10-20 (nicht entschieden):** *«im grunde muss ich ein formular anlegen können, formulare erfassen daten, hierfür bräuchten wir ein neue modul tax_form. generell denke ich das wir in tax admin ein menüpunkt module vorsehen sollten und da reihen sich alle module ein»*
+  - Formulare **legt der Eigentümer selbst an**; ein Formular erfasst Daten.
+  - Dafür ein **eigenes Modul `tax_form`**.
+  - Siehe [INF-078](#inf-078--model-in-module-umbenennen): Menüpunkt «Module».
 - **Gebaut:** nein.
 
 ## INF-074 · Angebote bei eBay einstellen, Verkaufstexte, Link zum laufenden Angebot
@@ -860,6 +864,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Davor:** *«Was macht ein tax projekt/modell aus? eigene datetypen, modelle, konstanten und nun auch prozesse.»*
 - **Mein Verständnis (INFERRED):** ein Modul bündelt eigene Knoten, Konstanten und Vorgänge ([INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen)); Kontakt käme wieder unter den gemeinsamen Ast ([D-884](NewConcept/90-decision-log.md) stellte ihn daneben); ein Modul nutzt ein anderes über Aggregationen, nie durch Kopie.
 - **Offen:** Aufteilung der Module; nur ein Name oder auch eine Einheit, die Code mitbringt (Plugin wie `wp_tax_stock`); ob Sätze zwischen Modulen nur verwiesen werden dürfen.
+- **Sein Wunsch, 2026-10-20 (nicht entschieden):** im Tax-Admin ein **Menüpunkt «Module»**, unter dem sich alle Module einreihen (Anlass: Modul `tax_form`, [INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen)).
 - **Gebaut:** nein.
 
 ---
