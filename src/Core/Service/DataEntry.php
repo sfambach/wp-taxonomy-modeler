@@ -6,6 +6,9 @@ use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\NodeClass\Choice;
+use Taxmod\Core\Model\NodeClass\Constant;
+use Taxmod\Core\Model\NodeClass\Unit;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
@@ -25,15 +28,15 @@ use Taxmod\Core\Repository\RelationRepository;
 /**
  * Entering something against a model, and finding it again.
  *
- * ⚠️ **Where a value goes is not a choice either** (D-232). The attribute's target sits in a
- * branch, the branch says where the value is kept, and the author never picks:
+ * ⚠️ **Where a value goes is not a choice either** (D-232, D-938). A simple type or a choice
+ * answers for itself; for everything else the edge says where the value is kept:
  *
  * ```mermaid
  * flowchart LR
- *   T["the target's branch"] --> D["Data Types → inside the record, by path"]
- *   T --> K["Constants → a reference to a node"]
- *   T --> M["Model → a reference to a record"]
- *   T --> C["Compositions → records of its own"]
+ *   T["edge and target"] --> D["Data Types → inside the record, by path"]
+ *   T --> K["Constants, choices → a reference to a node"]
+ *   T --> M["aggregation → a reference to a record"]
+ *   T --> C["composition → records of its own"]
  * ```
  *
  * ⚠️ **Multiplicity plays no part in it.** Five integers are five **paths** in one record, not
@@ -739,9 +742,9 @@ final class DataEntry
      * müssen deren Werte irgendwo stehen, also in einem Teil; hat es nur **Kinder**, wählt man eines
      * davon aus.*
      *
-     * ⚠️ *Für alles, was **keine** Einstellung ist, antwortet weiter der Zweig — dort trennt er
-     * `Model` von `Compositions`, und das ist eine Frage des **Besitzes**, die dieses Ziel nicht
-     * beantworten kann ([D-133](../../../docs/NewConcept/90-decision-log.md)).*
+     * ⚠️ *Für alles, was **keine** Einstellung ist, antwortet die **Kante** — Komposition besitzt,
+     * Aggregation verweist ([D-938](../../../docs/NewConcept/90-decision-log.md)). Bis dahin antwortete
+     * der Zweig, und eine Komposition auf einen Knoten ausserhalb von `Compositions` bekam keinen Teil.*
      */
     private function ownsItsRecord(Relation $relation, Node $target): bool
     {
@@ -749,9 +752,13 @@ final class DataEntry
             return $this->hasOwnFields($target);
         }
 
-        $branch = $this->framework->branchOf($target);
+        if ($this->framework->isProtected($target)) {
+            return false;
+        }
 
-        return $branch !== null && $branch->storage() === Storage::OwnRecords;
+        $auswahl = in_array($target->klasse, [Choice::class, Constant::class, Unit::class], true);
+
+        return Storage::forField($relation->kind, $this->framework->branchOf($target), $auswahl) === Storage::OwnRecords;
     }
 
     /**
@@ -810,7 +817,7 @@ final class DataEntry
      * Start a **composed part** — a record of its own, owned by the holder.
      *
      * ⚠️ **This is what [D-232](../../../docs/NewConcept/90-decision-log.md) asks for and nothing had
-     * built.** *A target in `Compositions` gets **its own records***, and the reason underneath is the
+     * built.** *A composition gets **its own records** ([D-938](../../../docs/NewConcept/90-decision-log.md); until then: a target in `Compositions`)*, and the reason underneath is the
      * owner's own: **does the member need an identity?** *A row does — you point at it, order it,
      * delete a single one. A number in a list does not.* He drew the same line himself: *simple types
      * and composed types can just be stored there; where it gets harder is whole row types, whole
@@ -1189,9 +1196,8 @@ final class DataEntry
         $target = $this->nodes->byId($relation->toNodeId);
         $branch = $this->framework->branchOf($target);
 
-        // ⚠️ Refused rather than accommodated: a part is only a part where the branch says the value
-        // has records of its own. Anywhere else the value belongs *in* the holder's record and a part
-        // would be a second home for it.
+        // ⚠️ Refused rather than accommodated: a part is only a part where the edge owns it (D-938).
+        // Anywhere else the value belongs *in* the holder's record and a part would be a second home for it.
         if (! $this->ownsItsRecord($relation, $target)) {
             throw NotYetStorable::thatIsNotAComposedPart($relation->name);
         }

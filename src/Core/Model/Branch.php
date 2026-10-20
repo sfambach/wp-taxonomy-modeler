@@ -3,7 +3,11 @@
 namespace Taxmod\Core\Model;
 
 /**
- * The branch a node sits in — and with it three answers nobody sets by hand.
+ * The branch a node sits in — and with it the answers nobody sets by hand.
+ *
+ * ⚠️ **Where a value is kept is no longer one of them** ([D-938](../../../docs/NewConcept/90-decision-log.md)):
+ * the edge decides that, {@see Storage::forField()}. The branch still gives the kind a new edge gets
+ * when nobody names one ([D-890](../../../docs/NewConcept/90-decision-log.md)).
  *
  * ⚠️ **The relation kind is never asked.** The author picks a **target**; the kind follows from
  * where that target lives (sentence 5 of the core on one page, D-161). That removes the error
@@ -107,20 +111,6 @@ enum Branch: string
         return match ($this) {
             self::Model, self::Compositions                   => true,
             self::DataTypes, self::Constants, self::Combined  => false,
-        };
-    }
-
-    /** Where a value given through such an relation is kept (D-232). */
-    public function storage(): Storage
-    {
-        return match ($this) {
-            self::Model        => Storage::ExternalReference,
-            // ⚠️ *`Combined` speichert wie eine Zusammensetzung, **weil sein Wert aus mehreren
-            // Feldern besteht** und in eine Zeile nicht passt. Das ist die eine Frage, in der er
-            // den `Compositions` gleicht — und die einzige.*
-            self::Compositions, self::Combined => Storage::OwnRecords,
-            self::DataTypes    => Storage::InsideTheRecord,
-            self::Constants    => Storage::NodeRef,
         };
     }
 }

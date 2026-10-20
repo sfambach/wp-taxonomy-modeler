@@ -42,7 +42,7 @@ final class NotYetStorable extends DomainError
     public static function compositionsNeedTheirOwnRecords(string $attribute): self
     {
         return new self(sprintf(
-            '«%s» points into Compositions, and a composed part is a record of its own — not built yet.',
+            '«%s» is a composition, and a composed part is a record of its own — not built yet.',
             $attribute
         ));
     }
@@ -118,14 +118,14 @@ final class NotYetStorable extends DomainError
     }
 
     /**
-     * ⚠️ *A part exists only where the branch says the value has records of its own
-     * ([D-232](../../../docs/NewConcept/90-decision-log.md)). Anywhere else the value belongs **in**
+     * ⚠️ *A part exists only where the edge is a composition
+     * ([D-938](../../../docs/NewConcept/90-decision-log.md), replacing the branch of D-232). Anywhere else the value belongs **in**
      * the holder's record, and a part would be a second home for the same fact.*
      */
     public static function thatIsNotAComposedPart(string $attribute): self
     {
         return new self(sprintf(
-            '«%s» does not point into Compositions, so its value lives in the record itself.',
+            '«%s» is not a composition, so it holds no part of its own.',
             $attribute
         ));
     }

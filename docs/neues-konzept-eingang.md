@@ -846,6 +846,17 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Folge:** eine Komposition auf einen Knoten ausserhalb von `Compositions` — etwa unter einem Hauptast wie «Kontact» oder einem künftigen «Stock» — bekommt keine Teile.
 - **Offen:** soll die Art der Kante entscheiden, ob ein Teil entsteht (dann ist der Ast wirklich nur noch ein Ort), oder bleibt der Ast die Regel ([D-232](NewConcept/90-decision-log.md))?
 - **Entschieden:** [D-938](NewConcept/90-decision-log.md) — die Kante entscheidet.
+- **Gebaut:** ja, 0.1.25 (Schema 56), noch nicht live. `Storage::forField()` antwortet aus Kante und Ziel, `Branch::storage()` ist weg. Beim Upgrade werden Kompositionen, die auf Sätze ausserhalb von `Compositions` verweisen, zu Aggregationen (INFERRED, siehe D-938). Wächter `kante-entscheidet-check`: rot auf dem alten Stand, grün auf dem neuen. Im Browser nicht geprüft.
+
+## INF-078 · «Model» in «Module» umbenennen
+
+**Typ:** `IDEE` · **Status:** `OPEN` — 2026-10-20, beim Lager-Konzept.
+
+> *«vielleicht sollten wir modelle in module umbenennen. Module sind dann Kontakt, Stock, Bauteile, Hardware, Sorftware genaue aufteilung ist mir noch nicht klar, die module könen andere module nutzen»*
+
+- **Davor:** *«Was macht ein tax projekt/modell aus? eigene datetypen, modelle, konstanten und nun auch prozesse.»*
+- **Mein Verständnis (INFERRED):** ein Modul bündelt eigene Knoten, Konstanten und Vorgänge ([INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen)); Kontakt käme wieder unter den gemeinsamen Ast ([D-884](NewConcept/90-decision-log.md) stellte ihn daneben); ein Modul nutzt ein anderes über Aggregationen, nie durch Kopie.
+- **Offen:** Aufteilung der Module; nur ein Name oder auch eine Einheit, die Code mitbringt (Plugin wie `wp_tax_stock`); ob Sätze zwischen Modulen nur verwiesen werden dürfen.
 - **Gebaut:** nein.
 
 ---

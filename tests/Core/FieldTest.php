@@ -251,12 +251,24 @@ final class FieldTest extends TestCase
     }
 
     #[Test]
-    public function the_branch_decides_where_a_value_would_be_stored(): void
+    public function the_edge_decides_where_a_value_would_be_stored(): void
     {
-        self::assertSame(Storage::ExternalReference, Branch::Model->storage());
-        self::assertSame(Storage::OwnRecords, Branch::Compositions->storage());
-        self::assertSame(Storage::InsideTheRecord, Branch::DataTypes->storage());
-        self::assertSame(Storage::NodeRef, Branch::Constants->storage());
+        // ⚠️ *Hier stand «the branch decides» — [D-938](../../docs/NewConcept/90-decision-log.md) hat es umgedreht:
+        // Komposition besitzt, Aggregation verweist, wo das Ziel auch liegt.*
+        self::assertSame(Storage::OwnRecords, Storage::forField(RelationKind::Composition, Branch::Model, false));
+        self::assertSame(Storage::OwnRecords, Storage::forField(RelationKind::Composition, null, false));
+        self::assertSame(Storage::OwnRecords, Storage::forField(RelationKind::Composition, Branch::Compositions, false));
+        self::assertSame(Storage::ExternalReference, Storage::forField(RelationKind::Aggregation, Branch::Compositions, false));
+        self::assertSame(Storage::ExternalReference, Storage::forField(RelationKind::Aggregation, Branch::Model, false));
+    }
+
+    #[Test]
+    public function a_simple_type_and_a_choice_answer_for_themselves(): void
+    {
+        self::assertSame(Storage::InsideTheRecord, Storage::forField(RelationKind::Composition, Branch::DataTypes, false));
+        self::assertSame(Storage::NodeRef, Storage::forField(RelationKind::Aggregation, Branch::Constants, false));
+        self::assertSame(Storage::NodeRef, Storage::forField(RelationKind::Composition, Branch::Constants, false));
+        self::assertSame(Storage::NodeRef, Storage::forField(RelationKind::Composition, null, true));
     }
 
     #[Test]

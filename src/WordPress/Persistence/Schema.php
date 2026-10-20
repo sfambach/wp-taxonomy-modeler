@@ -451,7 +451,13 @@ final class Schema
      * ob nur das Jahr oder Monat und Jahr bekannt sind. Eine reine Ergänzung: `dbDelta` legt die Spalte an, in lebender und Schattentabelle;
      * eine Zeile ohne Angabe ist ganz bekannt, wie bisher — es wandert nichts.*
      */
-    public const VERSION = 55;
+    /**
+     * ⚠️ **Fassung 56: eine Komposition, die bisher nur verwies, wird Aggregation** ([D-938](../../../docs/NewConcept/90-decision-log.md)).
+     * *Seit D-938 entscheidet die Kante, ob ein Wert ein eigener Teil ist. Eine Komposition auf einen Knoten ausserhalb von
+     * `Compositions` und `Combined` hielt bis dahin nur Verweise auf fremde Sätze; liesse man sie Komposition, hielte der Kern diese
+     * Sätze für eigene Teile. Gemessen am Abzug vom 2026-10-01: keine solche Kante. Der Schritt ist die Versicherung für den lebenden Bestand.*
+     */
+    public const VERSION = 56;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -774,6 +780,10 @@ final class Schema
         // ⚠️ **Fassung 53: `settings_value.wert_kante_id` — ein Verweis auf ein Feld als Einstellungswert** ([D-752](../../../docs/NewConcept/90-decision-log.md)).
         // *Die Spalte legt `dbDelta` aus der Anweisung an; der Schatten muss seinen Spaltenplan vergessen.*
         self::placeWertKanteId();
+
+        // ⚠️ **Fassung 56: verweisende Kompositionen werden Aggregation** ([D-938](../../../docs/NewConcept/90-decision-log.md)).
+        // *Nach allem, was Kanten und Knoten umbaut — er liest die Kanten so, wie sie am Ende dastehen.*
+        self::keepReferencingCompositionsAsReferences();
 
         // ⚠️ **Ganz zuletzt, und als einzige Wanderung nach allem anderen** (Fassung 38,
         // [D-672](../../../docs/NewConcept/90-decision-log.md)): *sie ist die einzige, die den
@@ -4098,6 +4108,100 @@ final class Schema
      * und Verwaistes bleibt `null` — in der lebenden Tabelle gemessen leer, in der Schattentabelle
      * nicht (siehe die Anmerkung an {@see self::VERSION}).*
      */
+    /**
+     * Fassung 56: eine Komposition, deren Ziel weder unter `Compositions` noch unter `Combined`, `Data Types` oder `Constants`
+     * liegt und keine Auswahl ist, wird Aggregation — wenn sie Werte hält.
+     *
+     * ⚠️ *Bis [D-938](../../../docs/NewConcept/90-decision-log.md) entschied der Ast des Ziels, ob ein Teil entsteht; eine solche Kante
+     * schrieb darum Verweise. Ein Teil trägt keine Spur seines Besitzers (`node_records.relation_id` ist bei Teilen leer), also
+     * lässt sich am Satz nicht ablesen, was er war — **nur am Ort des Ziels**. Kanten ohne Werte bleiben Komposition: dort gilt
+     * die neue Regel von Anfang an.*
+     *
+     * ⚠️ *Die Abstammung in PHP und nicht in SQL: MySQL 5.7 kennt kein `WITH RECURSIVE` ([D-910](../../../docs/NewConcept/90-decision-log.md)),
+     * und die Knotentabelle ist klein. Idempotent: der zweite Lauf findet keine solche Kante mehr.*
+     */
+    private static function keepReferencingCompositionsAsReferences(): void
+    {
+        global $wpdb;
+
+        $knoten = self::table('nodes');
+        $kanten = self::table('relations');
+        $werte  = self::table('relation_records');
+
+        $vater = [];
+        $klasse = [];
+
+        foreach ((array) $wpdb->get_results("SELECT id, parent_node_id, klasse FROM {$knoten}", ARRAY_A) as $zeile) {
+            $vater[(int) $zeile['id']]  = $zeile['parent_node_id'] === null ? null : (int) $zeile['parent_node_id'];
+            $klasse[(int) $zeile['id']] = (string) $zeile['klasse'];
+        }
+
+        $eigeneAeste = [];
+
+        foreach (['taxmod_branch_compositions_id', 'taxmod_branch_combined_id', 'taxmod_branch_data_types_id', 'taxmod_branch_constants_id'] as $option) {
+            $id = (int) get_option($option, 0);
+
+            if ($id !== 0) {
+                $eigeneAeste[$id] = true;
+            }
+        }
+
+        $auswahl = [
+            \Taxmod\Core\Model\NodeClass\Choice::class,
+            \Taxmod\Core\Model\NodeClass\Constant::class,
+            \Taxmod\Core\Model\NodeClass\Unit::class,
+        ];
+
+        $kandidaten = (array) $wpdb->get_results(
+            "SELECT r.id, r.from_node_id, r.to_node_id, r.sort_order, r.version FROM {$kanten} r
+             WHERE r.kind = 'composition'
+               AND EXISTS (SELECT 1 FROM {$werte} v WHERE v.relation_id = r.id AND v.value_ref_kind = 'record')",
+            ARRAY_A
+        );
+
+        foreach ($kandidaten as $kante) {
+            $ziel = (int) $kante['to_node_id'];
+
+            if (in_array($klasse[$ziel] ?? '', $auswahl, true)) {
+                continue;
+            }
+
+            $x = $ziel;
+            $tiefe = 0;
+
+            while ($x !== null && ! isset($eigeneAeste[$x]) && $tiefe++ < 64) {
+                $x = $vater[$x] ?? null;
+            }
+
+            if ($x !== null && isset($eigeneAeste[$x])) {
+                continue;
+            }
+
+            // ⚠️ *`(from_node_id, kind, sort_order)` ist eindeutig: steht an der Stelle schon eine Aggregation, rückt diese ans Ende.*
+            $platz = (int) $kante['sort_order'];
+            $besetzt = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$kanten} WHERE from_node_id = %d AND kind = 'aggregation' AND sort_order = %d",
+                (int) $kante['from_node_id'],
+                $platz
+            ));
+
+            if ((int) $besetzt > 0) {
+                $platz = 1 + (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT MAX(sort_order) FROM {$kanten} WHERE from_node_id = %d",
+                    (int) $kante['from_node_id']
+                ));
+            }
+
+            $wpdb->update(
+                $kanten,
+                ['kind' => 'aggregation', 'sort_order' => $platz, 'version' => (int) $kante['version'] + 1],
+                ['id' => (int) $kante['id']],
+                ['%s', '%d', '%d'],
+                ['%d']
+            );
+        }
+    }
+
     private static function nameTheReferenceSpace(): void
     {
         global $wpdb;
