@@ -340,7 +340,7 @@ Einzelstücke tragen ihren eigenen Wert.
 
 | | Frage | Mein Vorschlag |
 |---|---|---|
-| **F1** | «Stock» als Ast unter `Model` oder als Hauptast daneben wie «Kontact» ([D-884](../../NewConcept/90-decision-log.md))? | **unter `Model`** — sonst gehen beim Verschieben die geerbten Felder verloren (§1) |
+| **F1** | «Stock» als Ast unter `Model` oder als Hauptast daneben wie «Kontact» ([D-884](../../NewConcept/90-decision-log.md))? | **unter `Model`** — sonst werden geerbte Werte beim Verschieben unsichtbar ([INF-076](../../neues-konzept-eingang.md)); passt auch zur Idee «Module» ([INF-078](../../neues-konzept-eingang.md)) |
 | **F2** | Bestellungen, Käufe, Verkäufe unter «Stock» verschieben? | **ja**, Ids bleiben |
 | **F3** | Material (§2): eigenes Ding mit Bestand, freier Bezug auf Art und/oder Ding, Technik verweist nie aufs Lager? | **ja**, mit Wächter |
 | **F3a** | «Bezug Ding» auf jeden Satz unter `Model` — Code im Modeller mit Suche | **ja**, als erster Bauschritt im Modeller |
