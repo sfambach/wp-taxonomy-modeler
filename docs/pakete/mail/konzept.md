@@ -91,6 +91,7 @@ flowchart LR
 - **Kein Löschen.** *«verschieben in anderen ordner ist ok aufräumen kann dann auch ich erstmal»* (2026-10-20): das Modul
   verschiebt nur; geleert werden die Ordner von Hand. Ein Papierkorb-Schalter kann später als eigene Einstellung dazukommen.
 - **Ordnernamen** in den Einstellungen; das Modul legt fehlende Ordner beim «Verbindung testen» an.
+- **Startpunkt** ([D-947](../../NewConcept/90-decision-log.md)): der erste Abruf merkt sich nur den Stand der INBOX; gelesen wird, was danach ankommt.
 - **Der Altbestand** (Mails, die der Python-Importer schon verarbeitet hat): ein einmaliger Lauf «Altbestand einsortieren», der
   jede Mail, deren Bestellnummer schon im Modell steht, nach «Importiert» schiebt — ohne Vorschlag.
 
