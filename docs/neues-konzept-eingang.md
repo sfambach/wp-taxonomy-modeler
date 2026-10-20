@@ -867,6 +867,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Mein Verständnis (INFERRED):** ein Modul bündelt eigene Knoten, Konstanten und Vorgänge ([INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen)); Kontakt käme wieder unter den gemeinsamen Ast ([D-884](NewConcept/90-decision-log.md) stellte ihn daneben); ein Modul nutzt ein anderes über Aggregationen, nie durch Kopie.
 - **Offen:** Aufteilung der Module; nur ein Name oder auch eine Einheit, die Code mitbringt (Plugin wie `wp_tax_stock`); ob Sätze zwischen Modulen nur verwiesen werden dürfen.
 - **Sein Wunsch, 2026-10-20 (nicht entschieden):** im Tax-Admin ein **Menüpunkt «Module»**, unter dem sich alle Module einreihen (Anlass: Modul `tax_form`, [INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen)).
+- **Seine Frage, 2026-10-20:** *«wenn model in modul umbenannt wird wäre forms ein Modul oder»* — **Mein Vorschlag (nicht entschieden):** ja, `tax_form` ist ein Modul, aber eine zweite Art: **Datenmodule** (Kontakt, Stock, Bauteile, Hardware, Software) halten Bestand; **Funktionsmodule** (Formulare, später Prozesse) halten Setup und bringen Code mit. Beide stehen unter dem Menüpunkt «Module»; im Baum bleibt Setup getrennt vom Bestand ([`pakete/formulare/konzept.md`](pakete/formulare/konzept.md) §2a).
 - **Gebaut:** nein.
 
 ---
