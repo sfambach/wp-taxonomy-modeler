@@ -63,6 +63,10 @@ flowchart LR
 - **Vorschlag: reine PHP-Bibliothek** über Composer, die IMAP selbst über eine TLS-Verbindung spricht (Kandidat `webklex/php-imap`,
   Version und Abhängigkeiten **nicht geprüft**). Kein fremdes WordPress-Plugin: die bekannten (z. B. Postie) machen Beiträge aus
   Mails, keine Taxmod-Sätze — Parser und Schreiben müssten wir trotzdem bauen.
+- **Gebaut (0.0.1), Abweichung vom Vorschlag oben, nicht entschieden:** statt `webklex/php-imap` ein eigener kleiner IMAP-Client
+  (`src/Core/Imap`, sieben Befehle). Grund: die Bibliothek zieht Carbon, Symfony HttpFoundation und Illuminate Pagination nach —
+  Pakete, die andere Plugins in anderer Version laden können, und WordPress hat keine Trennung dafür. Zurück zur Bibliothek ist
+  ein Tausch hinter einer Schnittstelle (`ImapStream`/`ImapClient`).
 - **Ob Strato ausgehende Verbindungen auf Port 993 zulässt, ist ungeprüft.** Erster Bauschritt ist darum ein Knopf
   «Verbindung testen» auf der Einstellungsseite, sonst nichts. Geht es nicht, ist das Konzept an dieser Stelle zu Ende (M3).
 - **Zugangsdaten:** Vorschlag in `wp-config.php` als Konstanten, nicht in der Datenbank — dann stehen sie in keiner Sicherung und
