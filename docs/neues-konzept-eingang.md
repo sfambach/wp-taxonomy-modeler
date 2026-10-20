@@ -808,6 +808,11 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Vorhanden:** Eingabe je Satz über den Komplex-Renderer ([D-758](NewConcept/90-decision-log.md)); Schreiben über `taxmod/apply` ([D-911](NewConcept/90-decision-log.md)).
 - **Offen:** was ein Prozess ist (Schritte über mehrere Sätze?), ob ein Formular selbst im Modell steht (Daten) oder Code ist, wo es läuft (Admin, Beitrag, Block).
+- **Seine Fragen, 2026-10-20:** *«Was macht ein tax projekt/modell aus? eigene datetypen, modelle, konstanten und nun auch prozesse.»* — *«die frage ist auch was ist ein prozess und kann man ihn im tax generell andenken und dann in den einzelnen modellen implementieren»* — *«Prozess abfolge von schritten ? Manipuliert/transformiert daten ?»*
+- **Vorschlag (meiner, nicht entschieden):**
+  - **Ein Prozess ist eine Abfolge von Schritten, die Sätze von einem Zustand in den nächsten bringt** (Bestellung «bestellt» → Wareneingang → Bestand +). Jeder Schritt **liest** eine Eingabe (ein Formular über einem Knoten), **prüft** Regeln und **schreibt** in einer Handlung — alles oder nichts, wie `taxmod/apply` ([D-911](NewConcept/90-decision-log.md)). Das **Ergebnis ist selbst ein Satz** (der Vorgang mit seinen Pos), damit nachvollziehbar bleibt, was geschah.
+  - **Allgemein im Tax, umgesetzt im Modell — nach dem Muster der Zusatzfunktionen** ([D-845](NewConcept/90-decision-log.md), `src/Core/Addon/`): ein Verhalten wird im Code registriert, erklärt selbst, wo es hängen darf, und wird an einem Knoten angeschaltet, mit eigenen Feldern. Das Tax kennt die Hülle (Name, Auslöser, Eingabeknoten, Schritte, Ergebnisknoten), ein Modul wie das Lager liefert die Schritte. Einfache Schritte später als Daten.
+  - Ein Tax-Modell bestünde dann aus: Datentypen, Modellen (Knoten mit Feldern), Konstanten, Sätzen — und Prozessen.
 - **Gebaut:** nein.
 
 ## INF-074 · Angebote bei eBay einstellen, Verkaufstexte, Link zum laufenden Angebot
@@ -833,13 +838,14 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-077 · Der Ast `Compositions` entscheidet im Code noch, ob ein Wert ein eigener Teil wird
 
-**Typ:** `LÜCKE` · **Status:** `OPEN` — gefunden am 2026-10-20 auf seine Frage *«der knoten kompositionen hat er noch eine funktion oder haben wir die jetzt abgeschafft bitte geanau prüfen in dokumenation und code»*.
+**Typ:** `LÜCKE` · **Status:** `DECIDED` ([D-938](NewConcept/90-decision-log.md)) — gefunden am 2026-10-20 auf seine Frage *«der knoten kompositionen hat er noch eine funktion oder haben wir die jetzt abgeschafft bitte geanau prüfen in dokumenation und code»*.
 
 - **Beschluss:** [D-890](NewConcept/90-decision-log.md) — sein Wort *«vorgabe ist composition benutzer kann aggregation wählen. Den compositions ast gibts aus meiner sicht nur noch aus historischen gründen prüfe das mal bitte»*; die Messung damals: *«Im Kode kennen ihn nur zwei Gerüste und der Rückfall für die Art — er ist ein Ort, kein Zwang.»* Abgeschafft hat ihn kein Beschluss.
 - **Gebaut (gelesen am 2026-10-20, nicht im Browser geprüft):** die Messung von D-890 war unvollständig. Ob ein Wert ein **eigener Teil** (Teilsatz, [D-577](NewConcept/90-decision-log.md)) wird, entscheidet nicht die Art der Kante, sondern der **Ast des Ziels**: `DataEntry::ownsItsRecord()` fragt `Branch::storage()`, und `OwnRecords` gilt nur für `Compositions` und `Combined`. `createPart()` und `attachPart()` lehnen sonst ab — *«does not point into Compositions, so its value lives in the record itself»*. Die Art der Kante (Komposition/Aggregation) steuert nur Darstellung und Auswahl.
 - **Weitere Stellen:** Rückfall der Art, wenn keine genannt wird (`ModelEditor::fallbackKind()`); die Gerüste `CompositionScaffold` und `UnitScaffold`; Rahmenknoten, geschützt und gesät.
 - **Folge:** eine Komposition auf einen Knoten ausserhalb von `Compositions` — etwa unter einem Hauptast wie «Kontact» oder einem künftigen «Stock» — bekommt keine Teile.
 - **Offen:** soll die Art der Kante entscheiden, ob ein Teil entsteht (dann ist der Ast wirklich nur noch ein Ort), oder bleibt der Ast die Regel ([D-232](NewConcept/90-decision-log.md))?
+- **Entschieden:** [D-938](NewConcept/90-decision-log.md) — die Kante entscheidet.
 - **Gebaut:** nein.
 
 ---

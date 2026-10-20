@@ -72,7 +72,7 @@ flowchart LR
   end
   subgraph BS["Bestand — was ich davon habe, wo, wofür (Stock)"]
     MA["Material"]
-    BW["Bewegungen · Reservierungen · Vorgänge"]
+    BW["Vorgänge Pos · Reservierungen · Vorgänge"]
     BK["Bestellungen · Käufe · Verkäufe · Bauläufe"]
   end
   MA -->|Bezug, optional| K
@@ -94,7 +94,7 @@ das war die Vermischung: die Lagerseite hätte die Arten der Technikseite einzel
 - **Der Bezug ist optional.** Lötzinn, Kabelbinder, Versandkartons sind Material ohne technische Beschreibung.
 - **Verweise gehen nur von rechts nach links.** Technik weiss nichts vom Lager; der Bestand erscheint dort nur als gerechnete Anzeige.
   Prüfbar mit einem Wächter: kein Feld eines Knotens ausserhalb «Stock» zielt auf einen Knoten in «Stock».
-- **Bewegungen, Reservierungen, Käufe, Verkäufe nennen immer das Material**, nie die Technik direkt.
+- **Vorgänge Pos, Reservierungen, Käufe, Verkäufe nennen immer das Material**, nie die Technik direkt.
 - **Mengenware und Einzelstück sind dasselbe Material**, nur die Menge ist anders: «LM2930T-5.0» hat 7, «dieser 286er» hat 0 oder 1.
 
 **Was das Modell für den freien Bezug heute hergibt** (gelesen in `NodesScreen::barredTargets()` und [D-790](../../NewConcept/90-decision-log.md), nicht im Browser geprüft):
@@ -122,7 +122,7 @@ flowchart TB
   BE --> BS["Bestellungen (verschoben)"]
   BE --> KA["Käufe (verschoben)"]
   LV --> VG["Vorgänge"]
-  LV --> BW["Bewegungen"]
+  LV --> BW["Vorgänge Pos"]
   LV --> RS["Reservierungen"]
   FE --> BL["Bauläufe"]
   VK --> VE["Verkäufe (verschoben)"]
@@ -134,7 +134,7 @@ von `Model` ([D-883](../../NewConcept/90-decision-log.md)), wenn «Stock» unter
 
 ### 3.1 Lagerorte — zuerst nur einer
 
-**Sein Wort:** *«zuerst nur ein block lagerplatz auf dem alles landet später vielleicht lagerplätze»*. Stufe 1 hat **einen** Lagerort-Satz «Lager»; alle Bewegungen landen dort, die Masken fragen nicht danach. Die Felder unten und «Lagerort» an Bewegungen und Material kommen erst, wenn er mehrere will — darum alle `0..1`, nichts muss umgebaut werden.
+**Sein Wort:** *«zuerst nur ein block lagerplatz auf dem alles landet später vielleicht lagerplätze»*. Stufe 1 hat **einen** Lagerort-Satz «Lager»; alle Vorgänge Pos landen dort, die Masken fragen nicht danach. Die Felder unten und «Lagerort» an Vorgänge Pos und Material kommen erst, wenn er mehrere will — darum alle `0..1`, nichts muss umgebaut werden.
 
 
 | Feld | Typ | Mult. | Zweck |
@@ -152,14 +152,14 @@ von `Model` ([D-883](../../NewConcept/90-decision-log.md)), wenn «Stock» unter
 | Einzelstück | Ja/Nein | 0..1 | Bestand nur 0 oder 1; die Maske bucht dann ±1 |
 | Verwendung | Konstante: Lager · Eigenbedarf · zum Verkauf · Sammlung · Ersatzteilspender | 0..1 | was ich damit vorhabe |
 | Einheit | Konstante → Einheiten | 0..1 | leer = Stück |
-| Standard-Lagerort | Satzverweis → Lagerorte | 0..1 | Vorschlag beim Wareneingang; wo es wirklich liegt, sagen die Bewegungen |
+| Standard-Lagerort | Satzverweis → Lagerorte | 0..1 | Vorschlag beim Wareneingang; wo es wirklich liegt, sagen die Vorgänge Pos |
 | Mindestbestand | Ganzzahl | 0..1 | darunter «nachbestellen» |
 
 **Nicht gespeichert:** Bestand, reserviert, frei, Durchschnittswert — gerechnet aus §3.5 und §3.6.
 
 ### 3.3 Exemplare — unverändert
 
-Sie bleiben technische Beschreibung. **Ob ein Exemplar im Bestand ist, wird gerechnet:** Summe der Bewegungen des Materials, das auf es zeigt = 1.
+Sie bleiben technische Beschreibung. **Ob ein Exemplar im Bestand ist, wird gerechnet:** Summe der Vorgänge Pos des Materials, das auf es zeigt = 1.
 Keine Spalte «verkauft» am Exemplar — sonst stünde die Tatsache zweimal und auf der falschen Seite der Linie.
 
 ### 3.4 Bestellungen und Käufe — verschoben, plus Felder
@@ -172,9 +172,9 @@ Bestellungen und Käufe ([D-933](../../NewConcept/90-decision-log.md)) wandern u
 | Käufe | Material | Satzverweis → Material | 0..* | Mengenware: einer; Einzelstücke: je Exemplar einer. Ersetzt Kauf → Exemplare ([D-897](../../NewConcept/90-decision-log.md), A6) |
 | Käufe | Eingegangen | Dezimalzahl | 0..1 | bei Teillieferung; leer = alles |
 
-### 3.5 Vorgänge und Bewegungen — der Kern
+### 3.5 Vorgänge und Vorgänge Pos — der Kern
 
-Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **Bewegungen** als Positionen — wie Bestellung → Käufe.
+Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **Vorgänge Pos** als Positionen — wie Bestellung → Käufe.
 
 **Vorgänge**
 
@@ -187,9 +187,9 @@ Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **
 | Verkauf | Satzverweis → Verkäufe | 0..1 | Verkauf |
 | Projekt | Satzverweis → Projekte | 0..1 | freier Verbrauch («für BT2PS2») |
 | Quelle | Konstante: von Hand · Mail-Import · Connector | 0..1 | wer gebucht hat |
-| Positionen | Satzverweis → Bewegungen | 0..* | |
+| Positionen | Satzverweis → Vorgänge Pos | 0..* | |
 
-**Bewegungen**
+**Vorgänge Pos** ([D-939](../../NewConcept/90-decision-log.md): Positionstabellen heissen wie ihre Tabelle mit «Pos»)
 
 | Feld | Typ | Mult. | Zweck |
 |---|---|---|---|
@@ -226,7 +226,7 @@ Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **
 
 **Die Stückliste wird nicht kopiert.** Bedarf = je `Part List Item` des Projekts ([D-774](../../NewConcept/90-decision-log.md):
 Bauteil, Anzahl, Bestückung) «Anzahl × Stückzahl», ohne «nicht bestücken»; das Bauteil führt über sein Material zum Bestand.
-Abweichungen beim Bau stehen in den Bewegungen der Entnahme. **Selbstkosten je Stück = Wert der Entnahme ÷ Stückzahl**, als «Wert je
+Abweichungen beim Bau stehen in den Vorgänge Pos der Entnahme. **Selbstkosten je Stück = Wert der Entnahme ÷ Stückzahl**, als «Wert je
 Stück» in der Zugangsbewegung.
 
 ### 3.8 Verkäufe — verschoben, plus ein Feld
@@ -241,7 +241,7 @@ Stück» kommt aus dem Bestand.
 flowchart LR
   MAIL["Bestellmail"] -->|Mail-Import| B["Bestellung: bestellt"]
   BED["Bedarf / von Hand"] --> E["Bestellung: Entwurf"] --> B
-  B -->|Zustellung| WE["Wareneingang: Bewegungen +"]
+  B -->|Zustellung| WE["Wareneingang: Vorgänge Pos +"]
   BL["Baulauf"] -->|Bedarf gegen frei| RS["Reservierungen"]
   BL -->|fehlt| E
   RS -->|fertig| EN["Entnahme −"] --> ZU["Zugang fertiger Artikel +"]
@@ -251,12 +251,12 @@ flowchart LR
 
 | Vorgang | Auslöser | Was entsteht |
 |---|---|---|
-| **Wareneingang** | Bestellung eingegangen — ganz oder je Position; oder frei | Bewegung je Material des Kaufs |
-| **Verbrauch** | Artikel, Menge, optional Projekt | Bewegungen − |
+| **Wareneingang** | Bestellung eingegangen — ganz oder je Position; oder frei | Pos-Zeile je Material des Kaufs |
+| **Verbrauch** | Artikel, Menge, optional Projekt | Vorgänge Pos − |
 | **Baulauf** | Projekt + Stückzahl → reservieren → fertig | Entnahme − aus der Stückliste, Zugang + des fertigen Artikels |
-| **Verkauf** | Verkaufte Artikel | Bewegung − |
+| **Verkauf** | Verkaufte Artikel | Pos-Zeile − |
 | **Zerlegung** | Einzelstück wird Ersatzteilspender | Einzelstück −1, gewonnene Teile + |
-| **Inventur** | gezählte Menge | Bewegung = gezählt − Bestand; **der Anfangsbestand ist eine Inventur**, nach Bedarf ([INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf), Schritt 1) |
+| **Inventur** | gezählte Menge | Pos-Zeile = gezählt − Bestand; **der Anfangsbestand ist eine Inventur**, nach Bedarf ([INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf), Schritt 1) |
 | **Umbuchung** | Lagerort wechseln | − am alten, + am neuen Ort |
 
 ## 5 · Mail-Import gehört ins Modul
@@ -307,9 +307,9 @@ Echt, ausser *(erfunden)*.
 | BUZ11 | 9 | 1,05 € |
 
 **Wareneingang Einzelstück, aus Mail** — Bestellung 27-14743-39156, eBay, «Retro PC Klassiker 286 … Bastlerware defekt», 96 € + 10,49 €
-Versand: Material → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erfunden)*; Bewegung +1, Wert 106,49 €.
+Versand: Material → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erfunden)*; Pos-Zeile +1, Wert 106,49 €.
 
-**Wareneingang Mengenware, aus Mail** — Bestellung 18-15212-31076, eBay, Dupont-Kabel 30 cm: sechs Käufe → ein Vorgang, sechs Bewegungen
+**Wareneingang Mengenware, aus Mail** — Bestellung 18-15212-31076, eBay, Dupont-Kabel 30 cm: sechs Käufe → ein Vorgang, sechs Vorgänge Pos
 (Blau, Weiss, Grün, Gelb je +50; Schwarz, Rot je +100). ⚠️ *Gekauft je Beutel, verbraucht je Kabel — Einheit (F6).*
 
 **Baulauf** — Kiselev-Backplane (18 Positionen, [D-912](../../NewConcept/90-decision-log.md)), Stückzahl 2 *(erfunden)*: Bedarf =
@@ -324,7 +324,7 @@ Versand: Material → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erf
 ## 8 · Bewertung
 
 **Gleitender Durchschnitt** für Mengenware: ein Abgang wird mit dem Durchschnitt zum Buchungszeitpunkt bewertet und dieser Wert in der
-Bewegung **gespeichert**, weil er sich später nicht zurückrechnen lässt (wie der Einstandspreis, [D-933](../../NewConcept/90-decision-log.md)).
+Pos-Zeile **gespeichert**, weil er sich später nicht zurückrechnen lässt (wie der Einstandspreis, [D-933](../../NewConcept/90-decision-log.md)).
 Einzelstücke tragen ihren eigenen Wert.
 
 ## 9 · Wo es läuft, und INF-075

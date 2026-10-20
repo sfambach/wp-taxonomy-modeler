@@ -24,6 +24,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 |---|---|---|
 | Wo liegt das Modell? | [D-007](90-decision-log.md) — eigene Tabellen dieses Plugins | ~~D-567~~ *(Vorschlag, die Basistabellen zu benennen — verworfen)* |
 | Wie liegt ein Datensatz in den Tabellen? | [D-577](90-decision-log.md), [D-578](90-decision-log.md) — `node_record` / `relation_record`, kein Pfad, gilt für alle Kantenarten | ~~D-083~~ ~~D-133~~ ~~D-232~~ ~~D-527~~ ~~D-530~~ |
+| Wann wird ein Wert ein eigener Teil-Satz? | [D-938](90-decision-log.md) — die Art der Kante: Komposition auf einen Knoten mit Sätzen → eigener Teil, Aggregation → Verweis; einfacher Typ bleibt im Satz, Auswahl/Konstante/Einheit ist ein Knotenverweis; der Ast gibt nur die Vorgabe-Art ([D-890](90-decision-log.md)) | — |
 | Wo liegt ein zusammengesetzter Wert in einem Datensatz, und wie werden es mehrere? | [D-759](90-decision-log.md) — in einem eigenen Teil-Satz, auf den der Besitzer zeigt; mehrere Teile sind mehrere Wertzeilen, `position` ordnet; Zeilen anhängen und entfernen (folgt [D-577](90-decision-log.md)) | ~~D-741~~ ~~D-742~~ *(innere Werte flach im Satz des Besitzers)* |
 | Wie zeichnet sich ein zusammengesetzter Knoten als Ganzes? | [D-758](90-decision-log.md) — Komplex-Renderer `complex`: feste Angaben, einfache Felder als Formular, komplexe `≤1` als Formular, `>1` als Tabelle, tiefer als Zusammenfassung | — |
 | Wem gehört ein Datensatz? | [D-667](90-decision-log.md) — dem Knoten, und wo er einer Verwendungsstelle gehört, nennt er ihre `relation_id`; `path` fällt | — |
@@ -89,6 +90,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie genau ist ein Datum? | [D-932](90-decision-log.md) — je Wert: nur Jahr, Monat und Jahr oder ganz; das Eingabefeld wählt weiter die Genauigkeit am Renderer ([D-737](90-decision-log.md)) | — |
 | Wie liegt ein Kauf, und was kostete ein Stück wirklich? | [D-933](90-decision-log.md) — eine Bestellung ist ein eigener Satz unter «Bestellungen» mit Versand, Zoll / Gebühren, Gesamtbetrag und Positionen; ein Kauf ist eine Position mit «Einstandspreis je Stück» (Stückpreis plus anteilige Kosten) | — |
 | Wie liegt ein Verkauf? | [D-934](90-decision-log.md) — wie eine Bestellung: «Verkäufe» mit Positionen in «Verkaufte Artikel», Position → Exemplar oder Projekt; vom Käufer nur der eBay-Name | — |
+| Wie heisst eine Positionstabelle? | [D-939](90-decision-log.md) — wie ihre Tabelle mit «Pos» dahinter («Bestellungen Pos»); gilt für neue | — |
 | Wie tief nennt eine Zusammenfassung verwiesene Sätze? | [D-935](90-decision-log.md) — zwei Stufen: das Board heisst «FIC · 386-SC-HG», der Hersteller darin mit seinen eigenen Worten, ohne weiteren Verweis | — |
 | Welche Kennzeichnung trägt ein Bauteil im Katalog? | [D-779](90-decision-log.md) — nur den allgemeinen «Typ» (74LS688, LM7905); Hersteller und Bestellnummer gehören in den kaufmännischen Teil | ~~D-772~~ *(«Hersteller» und «Teilenummer» an `Electronic Parts`)* |
 | Braucht es einen Zyklenwächter? | [D-497](90-decision-log.md) — nein: ein Feld auf ein Modell ist eine Aggregation, und die verweist, statt abzusteigen | ~~D-100~~ *(nur seine Kompositions-Hälfte)* |
