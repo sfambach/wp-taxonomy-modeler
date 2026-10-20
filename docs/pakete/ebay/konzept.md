@@ -92,7 +92,7 @@ flowchart LR
 - Vorschlag (mit tax_mail abgestimmt am 2026-10-20): **eBay kommt über die API, tax_mail lässt eBay-Mails aus.** Doppelte
   erkennen beide über Plattform + Bestellnummer im Modell. Berührt dort M7 («eBay zuerst»).
 - Vorbehalt: liefert die API seine **Käufe** nicht (§3), bleibt der eBay-Parser für Käufe bei tax_mail; Verkäufe trotzdem hier.
-- **Sein Wort im Mail-Thread, 2026-10-20:** *«jede neue mail anbindung ist eine art plugin oder parser den ich in den einstellungen aktivieren kann, parser ebay ist aus wenn tax_ebay aktiv ist»* — der eBay-Parser bleibt also in tax_mail, abschaltbar, und ist aus, solange tax_ebay aktiv ist. tax_ebay muss dafür nichts tun ausser aktiv zu sein; die Prüfung liegt in tax_mail.
+- **Sein Wort im Mail-Thread, 2026-10-20:** *«jede neue mail anbindung ist eine art plugin oder parser den ich in den einstellungen aktivieren kann, parser ebay ist aus wenn tax_ebay aktiv ist»* — der eBay-Parser bleibt also in tax_mail, abschaltbar, und ist aus, solange tax_ebay aktiv ist. Entschieden in [D-942](../../NewConcept/90-decision-log.md); tax_ebay meldet sich über den Filter `taxmail_blocked_parsers` (Schlüssel `ebay`) an. Gemeinsames Vorschlagsformat: `OrderProposal` in wp_tax_mail; für Verkäufe fehlen dort noch Gebühren, Versanddatum und Sendungsnummern (angefragt).
 - Übergang von Earth wie bei tax_mail §8: der Python-Importer schreibt eBay weiter, bis tax_ebay dasselbe liefert; nie beide
   gleichzeitig.
 
@@ -120,7 +120,7 @@ flowchart LR
 | **E2** | Erster Schritt nur Verbindung + Test, dann Verkäufe, dann Käufe | **ja** |
 | **E3** | Schlüssel in `wp-config.php`, Refresh-Token verschlüsselt als Option | **ja** |
 | **E4** | Kontolöschungs-Pflicht von eBay: Befreiung beantragen (nur eBay-Name gespeichert) | **ja**, Endpunkt nur wenn eBay ablehnt |
-| **E5** | eBay nur über die API; tax_mail schaltet seinen eBay-Parser ab, solange tax_ebay aktiv ist (§6) | **erledigt durch sein Wort im Mail-Thread**, D-Nummer vergibt der Mail-Thread |
+| **E5** | eBay nur über die API; tax_mail schaltet seinen eBay-Parser ab, solange tax_ebay aktiv ist (§6) | **entschieden: [D-942](../../NewConcept/90-decision-log.md)** |
 | **E6** | Gleiches Vorschlagsformat wie tax_mail, damit später eine gemeinsame Prüfseite geht | **ja** |
 | **E7** | Abruf stündlich per WP-Cron + Knopf «Jetzt abrufen» | **ja** |
 
