@@ -831,6 +831,17 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Offen:** was beim Verschieben geschehen soll — warnen und fragen wie bei [D-701](NewConcept/90-decision-log.md) und [D-033](NewConcept/90-decision-log.md) (Felder mitnehmen als eigene Felder am Knoten / Werte verwerfen / abbrechen), oder verbieten. Für das Lager ist es nicht nötig, wenn «Stock» unter `Model` steht.
 - **Gebaut:** nein.
 
+## INF-077 · Der Ast `Compositions` entscheidet im Code noch, ob ein Wert ein eigener Teil wird
+
+**Typ:** `LÜCKE` · **Status:** `OPEN` — gefunden am 2026-10-20 auf seine Frage *«der knoten kompositionen hat er noch eine funktion oder haben wir die jetzt abgeschafft bitte geanau prüfen in dokumenation und code»*.
+
+- **Beschluss:** [D-890](NewConcept/90-decision-log.md) — sein Wort *«vorgabe ist composition benutzer kann aggregation wählen. Den compositions ast gibts aus meiner sicht nur noch aus historischen gründen prüfe das mal bitte»*; die Messung damals: *«Im Kode kennen ihn nur zwei Gerüste und der Rückfall für die Art — er ist ein Ort, kein Zwang.»* Abgeschafft hat ihn kein Beschluss.
+- **Gebaut (gelesen am 2026-10-20, nicht im Browser geprüft):** die Messung von D-890 war unvollständig. Ob ein Wert ein **eigener Teil** (Teilsatz, [D-577](NewConcept/90-decision-log.md)) wird, entscheidet nicht die Art der Kante, sondern der **Ast des Ziels**: `DataEntry::ownsItsRecord()` fragt `Branch::storage()`, und `OwnRecords` gilt nur für `Compositions` und `Combined`. `createPart()` und `attachPart()` lehnen sonst ab — *«does not point into Compositions, so its value lives in the record itself»*. Die Art der Kante (Komposition/Aggregation) steuert nur Darstellung und Auswahl.
+- **Weitere Stellen:** Rückfall der Art, wenn keine genannt wird (`ModelEditor::fallbackKind()`); die Gerüste `CompositionScaffold` und `UnitScaffold`; Rahmenknoten, geschützt und gesät.
+- **Folge:** eine Komposition auf einen Knoten ausserhalb von `Compositions` — etwa unter einem Hauptast wie «Kontact» oder einem künftigen «Stock» — bekommt keine Teile.
+- **Offen:** soll die Art der Kante entscheiden, ob ein Teil entsteht (dann ist der Ast wirklich nur noch ein Ort), oder bleibt der Ast die Regel ([D-232](NewConcept/90-decision-log.md))?
+- **Gebaut:** nein.
+
 ---
 ## Erledigte Eingänge
 
