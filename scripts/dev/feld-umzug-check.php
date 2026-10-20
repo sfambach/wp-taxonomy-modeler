@@ -85,4 +85,13 @@ $pruefe(is_array($um) && $wert((int) $ref['f']) === 'Z80', 'after the node moved
 $zusammen = $apply->execute(['changes' => [['op' => 'merge_field', 'node' => $ref['neu'], 'field' => $ref['f'], 'into' => $ref['g']]]]);
 $pruefe(is_array($zusammen) && $wert((int) $ref['g']) === 'Z80' && $wert((int) $ref['f']) === null, 'merge_field moves the value onto the other field');
 
+global $wpdb;
+
+$verweis = $apply->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'n', 'node' => $ref['neu'], 'target' => $ref['alt'], 'name' => '__fu Nachfolger', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+    ['op' => 'retarget_field', 'node' => $ref['neu'], 'field' => '@n', 'target' => $ref['neu']],
+]]);
+$art = is_array($verweis) ? $wpdb->get_var($wpdb->prepare("SELECT kind FROM {$wpdb->prefix}taxmod_relations WHERE id = %d", $verweis['refs']['n'])) : null;
+$pruefe($art === 'aggregation', 'retarget_field keeps an aggregation an aggregation');
+
 exit($fehler === 0 ? 0 : 1);

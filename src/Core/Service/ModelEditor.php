@@ -1834,7 +1834,7 @@ final class ModelEditor
         return $aus;
     }
 
-    public function retargetField(int $ownerId, int $relationId, int $targetId): Relation
+    public function retargetField(int $ownerId, int $relationId, int $targetId, bool $keepKind = false): Relation
     {
         $relation   = $this->ownAttribute($ownerId, $relationId);
         $target = $this->nodes->byId($targetId);
@@ -1854,7 +1854,9 @@ final class ModelEditor
         // steht der Rückbau noch aus und wird nicht nebenbei entschieden (`PR-4`).*
         $moved = $relation->retargetedTo(
             $targetId,
-            $relation->isSetting() ? $relation->kind : $this->fallbackKind($target)
+            // ⚠️ *`$keepKind` für den Umbau nach D-940: «Nachfolger» bleibt eine Aggregation, wenn sein Ziel wandert —
+            // nach D-938 würde der Rückfall auf die Komposition aus jedem Verweis einen eigenen Teil machen.*
+            $relation->isSetting() || $keepKind ? $relation->kind : $this->fallbackKind($target)
         );
 
         if ($moved === $relation) {

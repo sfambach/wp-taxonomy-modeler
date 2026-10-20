@@ -119,7 +119,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, move_field {node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it, merge_field {node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field). Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, move_field {node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it, retarget_field {node, field, target} — points the field at another node and keeps its kind, merge_field {node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field). Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -133,7 +133,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'create_record', 'set_values', 'remove_record', 'set_list']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'set_list']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -456,6 +456,9 @@ final class ModelAbilities
             case 'move_field':
                 // ⚠️ *Gebaut für den Umbau nach D-940: das Feld wandert, die Werte bleiben an ihrer Kante (D-941).*
                 return $editor->moveFieldTo($at('node'), $at('field'), $this->node($at('to'))->id)->id;
+
+            case 'retarget_field':
+                return $editor->retargetField($at('node'), $at('field'), $this->node($at('target'))->id, true)->id;
 
             case 'merge_field':
                 return $editor->mergeField($at('node'), $at('field'), $at('into'), isset($change['under']) ? $this->node($at('under'))->id : null)->id;

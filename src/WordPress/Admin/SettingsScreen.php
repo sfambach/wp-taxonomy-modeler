@@ -44,6 +44,9 @@ final class SettingsScreen
 {
     public const ACTION = 'taxmod_settings';
 
+    /** Where a module registers its tab ([D-945](../../../docs/NewConcept/90-decision-log.md)). */
+    public const TABS_FILTER = 'taxmod_config_tabs';
+
     /** Which language stands for *everywhere* — the row stored without a locale. */
     public const NEUTRAL_LOCALE = 'taxmod_neutral_locale';
 
@@ -123,8 +126,27 @@ final class SettingsScreen
             return '';
         }
 
+        $reiter = self::moduleTabs();
+        $tab    = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
+
+        if (isset($reiter[$tab])) {
+            return '<div class="wrap">'
+                . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
+                . $this->tabBar($reiter, $tab)
+                . $this->notice()
+                . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
+                . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
+                . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
+                . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
+                // ⚠️ *Das Modul gibt fertiges, selbst escaptes HTML zurück (`CD-8`), wie jeder Renderer.*
+                . (string) ($reiter[$tab]['render'])()
+                . get_submit_button(__('Save', 'taxmod'))
+                . '</form></div>';
+        }
+
         $html = '<div class="wrap">'
             . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
+            . $this->tabBar($reiter, '')
             . $this->notice()
             . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
@@ -514,6 +536,21 @@ final class SettingsScreen
 
         check_admin_referer(self::ACTION, '_taxmod_nonce');
 
+        $reiter = self::moduleTabs();
+        $tab    = isset($_POST['tab']) ? sanitize_key(wp_unslash((string) $_POST['tab'])) : '';
+
+        // ⚠️ *Ein Modul prüft und bereinigt seine eigenen Felder; Berechtigung und Nonce sind oben schon geprüft (D-945).*
+        if (isset($reiter[$tab])) {
+            ($reiter[$tab]['save'])(wp_unslash($_POST));
+
+            wp_safe_redirect(add_query_arg(
+                ['page' => 'taxmod-settings', 'tab' => $tab, 'taxmod_saved' => '1'],
+                admin_url('admin.php')
+            ));
+
+            exit;
+        }
+
         // ⚠️ **Nach dem *Wert* gefragt und nicht nach dem *Dasein***
         // ([D-706](../../../docs/NewConcept/90-decision-log.md)). *Hier stand `isset()`, und mit dem
         // Schiebeschalter aus [D-695](../../../docs/NewConcept/90-decision-log.md) war das **immer
@@ -581,6 +618,57 @@ final class SettingsScreen
         ));
 
         exit;
+    }
+
+    /**
+     * The tabs the modules register — Stock, Mail, eBay — each with a title, its form and its save.
+     *
+     * ⚠️ **His choice ([D-945](../../../docs/NewConcept/90-decision-log.md)):** *«Tabs in Configuration»* — one tab
+     * «General» plus one per active module, so the WordPress menu does not grow with every module.*
+     *
+     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void}>
+     */
+    public static function moduleTabs(): array
+    {
+        $gemeldet = apply_filters(self::TABS_FILTER, []);
+        $reiter   = [];
+
+        foreach (is_array($gemeldet) ? $gemeldet : [] as $slug => $tab) {
+            $slug = sanitize_key((string) $slug);
+
+            if ($slug === '' || $slug === 'general' || ! is_array($tab) || ! is_callable($tab['render'] ?? null) || ! is_callable($tab['save'] ?? null)) {
+                continue;
+            }
+
+            $reiter[$slug] = [
+                'title'  => (string) ($tab['title'] ?? $slug),
+                'render' => $tab['render'],
+                'save'   => $tab['save'],
+            ];
+        }
+
+        return $reiter;
+    }
+
+    /** @param array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void}> $reiter */
+    private function tabBar(array $reiter, string $aktiv): string
+    {
+        if ($reiter === []) {
+            return '';
+        }
+
+        $link = static fn (string $slug, string $titel, bool $an): string => '<a href="' . esc_url(add_query_arg(
+            $slug === '' ? ['page' => 'taxmod-settings'] : ['page' => 'taxmod-settings', 'tab' => $slug],
+            admin_url('admin.php')
+        )) . '" class="nav-tab' . ($an ? ' nav-tab-active' : '') . '">' . esc_html($titel) . '</a>';
+
+        $html = '<nav class="nav-tab-wrapper">' . $link('', __('General', 'taxmod'), $aktiv === '');
+
+        foreach ($reiter as $slug => $tab) {
+            $html .= $link($slug, $tab['title'], $aktiv === $slug);
+        }
+
+        return $html . '</nav>';
     }
 
     private function notice(): string
