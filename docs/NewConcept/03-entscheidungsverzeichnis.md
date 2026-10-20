@@ -94,7 +94,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie ist der Baum unter `Model` geordnet? | [D-940](90-decision-log.md) — Hardware · Software · Bauteile · Projekte · Stock · Allgemein; Chips sind Bauteile; Revisionen wie Platine › Revision; deutsche Namen | — |
 | Wie zieht ein Feld samt Werten um? | [D-941](90-decision-log.md) — `move_field` (anderer Knoten, gleiche Kante) und `merge_field` (Werte an gleichartiges Feld) in `taxmod/apply`; verweigert, statt Werte zu verstecken | — |
 | Wo stehen die Zugangsdaten des Mail-Imports? | [D-944](90-decision-log.md) — in den Moduleinstellungen, Passwort verschlüsselt (Schlüssel aus dem Auth-Salt); Konstanten in `wp-config.php` gehen vor | ersetzt M4 aus [D-942](90-decision-log.md) |
-| Ab wann liest der Mail-Import Mails? | [D-947](90-decision-log.md) — ab einem Startpunkt; Altbestand per Knopf nach «Importiert», wenn die Bestellung schon im Modell steht | — |
+| Ab wann liest der Mail-Import Mails? | [D-947](90-decision-log.md), [D-948](90-decision-log.md) — ab einem Startpunkt; Altbestand per Knopf neu lesen: Bekanntes nach «Importiert», Unbekanntes als Vorschlag; einzelne Bestellung per Nummer | — |
 | Wo stellt man ein Modul ein? | [D-945](90-decision-log.md) — eigener Reiter auf «Configuration», gemeldet über `taxmod_config_tabs` | — |
 | Wie zeigt ein Feld auf einen anderen Knoten, ohne seine Art zu verlieren? | [D-946](90-decision-log.md) — `retarget_field` in `taxmod/apply` (INFERRED) | — |
 | Wie tief nennt eine Zusammenfassung verwiesene Sätze? | [D-935](90-decision-log.md) — zwei Stufen: das Board heisst «FIC · 386-SC-HG», der Hersteller darin mit seinen eigenen Worten, ohne weiteren Verweis | — |
