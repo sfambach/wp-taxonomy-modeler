@@ -98,7 +98,7 @@ flowchart LR
 
 ## 4 · Auslöser
 
-- **WP-Cron, einmal täglich**, und per Knopf von Hand — sein Wort 2026-10-20: *«einmal täglich reicht eigentlich und per knopf manuell auslösbar»*. Höchstens 60 Mails je Lauf, passt zu Stratos Zeitlimits.
+- **WP-Cron, einmal täglich**, und per Knopf von Hand — sein Wort 2026-10-20: *«einmal täglich reicht eigentlich und per knopf manuell auslösbar»*. Der Rhythmus ist in den Einstellungen wählbar (aus, stündlich, 2× täglich, täglich): *«ich würde sagen das machen wir einstellbar in der admin config zum modul»*. Höchstens 60 Mails je Lauf, passt zu Stratos Zeitlimits.
 - WP-Cron läuft nur bei Seitenaufrufen; bei gecachten Seiten (WP Super Cache) seltener. Darum zusätzlich **Knopf «Jetzt abrufen»**
   auf der Prüfseite. Ein echter Server-Cron bei Strato wäre besser, ob sein Paket ihn hat, ist ungeprüft.
 
