@@ -1,6 +1,6 @@
 # Paket · eBay-Anbindung («tax_ebay») — Konzeptentwurf
 
-**Stand 2026-10-20. Entwurf, nichts entschieden, nichts gebaut.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot)
+**Stand 2026-10-20. E1–E7 entschieden: [D-943](../../NewConcept/90-decision-log.md). Gebaut: nein.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot)
 und [INF-075](../../neues-konzept-eingang.md#inf-075--prozesse-und-formulare-im-modell-anlegen). Was er entscheiden soll, steht in §9;
 alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`). Code des Moduls:
 [`sfambach/wp_tax_ebay`](https://github.com/sfambach/wp_tax_ebay) (von ihm angelegt am 2026-10-20).
