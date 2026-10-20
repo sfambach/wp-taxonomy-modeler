@@ -1,6 +1,6 @@
 # Paket · eBay-Anbindung («tax_ebay») — Konzeptentwurf
 
-**Stand 2026-10-20. E1–E7 entschieden: [D-943](../../NewConcept/90-decision-log.md). Gebaut: Schritt 1 (§8) in wp_tax_ebay 0.0.2, nicht live, ungetestet gegen eBay.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot)
+**Stand 2026-10-20. E1–E7 entschieden: [D-943](../../NewConcept/90-decision-log.md). Gebaut: Schritt 1 (§8) in wp_tax_ebay 0.0.3, nicht live, ungetestet gegen eBay.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot)
 und [INF-075](../../neues-konzept-eingang.md#inf-075--prozesse-und-formulare-im-modell-anlegen). Was er entscheiden soll, steht in §9;
 alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`). Code des Moduls:
 [`sfambach/wp_tax_ebay`](https://github.com/sfambach/wp_tax_ebay) (von ihm angelegt am 2026-10-20).
@@ -133,4 +133,6 @@ Schlüssel kommen nicht in den Chat, sondern direkt in `wp-config.php`.
 - Nachgeholt wird so weit, wie die API zurückreicht (etwa 90 Tage); ältere Bestellungen bleiben beim Python-Importer.
 - Er ist privater Verkäufer (D-934); gewerbliche Besonderheiten (Rechnungen, Steuer) sind nicht vorgesehen.
 - **Schlüssel auch im Formular (0.0.2):** sein Wort zu tax_mail *«ja verschlüsselt einbauen»* (2026-10-20) für eBay übernommen (INFERRED): App-ID, Cert-ID (versiegelt) und RuName auf der Einstellungsseite eingebbar; Konstanten in `wp-config.php` haben Vorrang. Weicht von E3 «Schlüssel in `wp-config.php`» ab.
+- **Einstellungen als Reiter «eBay» unter Configuration (0.0.3)** nach [D-945](../../NewConcept/90-decision-log.md); Optionen `taxmod_ebay_keys`, `taxmod_ebay_connection`. Verbinden/Testen/Trennen sind Links mit Nonce, weil der Reiter im Formular des Kerns steht.
+- **Schritt 2a gebaut (nicht verdrahtet):** Verkäufe aus der Fulfillment API seit einem Änderungsdatum, Sendungen je versendeter Bestellung, Abbildung auf das gemeinsame Vorschlagsformat; Gebühren aus `totalMarketplaceFee` der Bestellung, die Finances API ist dafür vermutlich nicht nötig (ungeprüft). Wo geprüft wird, ist offen (Karte an ihn).
 - **Schritt 1, Annahmen beim Bau (INFERRED):** Schlüssel des Tokens aus dem Auth-Salt von `wp-config.php` abgeleitet (keine eigene Konstante); Verbindungstest über die Identity API (eBay-Name); Zustimmung nur für Lesen von Bestellungen, Gebühren und Konto; der Filter `taxmail_blocked_parsers` kommt erst mit Schritt 2, damit der eBay-Mail-Parser nicht aus ist, solange tax_ebay noch nichts abruft; Abrufintervall ebenfalls erst mit Schritt 2.
