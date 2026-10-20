@@ -884,6 +884,17 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Entschieden:** [D-940](NewConcept/90-decision-log.md) — *«a1-a4 ja»*; Werkzeuge dafür [D-941](NewConcept/90-decision-log.md).
 - **Gebaut:** `move_field` und `merge_field` in 0.1.26, nicht live. Der Umbau selbst: nein.
 
+## INF-080 · Einstellungen der Module im Taxmod-Konfigurationsmenü
+
+**Typ:** `VORSCHLAG` · **Status:** `OPEN` — 2026-10-20.
+
+> *«bezüglich tax configuration können wir entweder untermenüs unter config oder einfach tabs im config menü erstellen oder ne modul tab wo man die modul einstellungen vornehmen kann»*
+
+- **Heute (gelesen in `Plugin::registerMenu()`):** Menü «Taxonomy Modeller» mit den Unterseiten Configuration (`taxmod-settings`), Cleanup, Backup; keine Schnittstelle für Module.
+- **Vorschlag (INFERRED):** Tabs auf der Seite Configuration — «Allgemein» (heutiger Inhalt) plus je aktivem Modul ein Tab (Stock, Mail, eBay). Ein Modul meldet sich über den Filter `taxmod_config_tabs` mit `slug`, Titel, Ausgabe und Speichern; der Kern zeichnet die Reiter, prüft Berechtigung und Nonce (`CD-5`) und ruft das Speichern des Moduls auf. Adresse: `page=taxmod-settings&tab=<slug>`. Optionen des Moduls heißen `taxmod_<modul>_*`.
+- **Warum nicht Untermenüs:** jedes Modul verlängert das WordPress-Menü; Tabs halten alles auf einer Seite.
+- **Gebaut:** nein.
+
 ---
 ## Erledigte Eingänge
 
