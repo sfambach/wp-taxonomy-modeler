@@ -66,7 +66,7 @@ flowchart LR
   Endpunkt, oder Befreiung, wenn keine Käuferdaten gespeichert werden. D-934 speichert nur den eBay-Namen; ob das für die
   Befreiung reicht, ist ungeprüft (E4).
 - **Keine fremde Bibliothek nötig:** REST und XML über `wp_remote_request`. Reichen die Grenzen von eBay (Aufrufe je Tag) für
-  stündliche Abrufe eines privaten Kontos? Vermutlich weit, ungeprüft.
+  tägliche Abrufe eines privaten Kontos? Vermutlich weit, ungeprüft.
 
 ## 4 · Zugangsdaten
 
@@ -122,7 +122,7 @@ flowchart LR
 | **E4** | Kontolöschungs-Pflicht von eBay: Befreiung beantragen (nur eBay-Name gespeichert) | **ja**, Endpunkt nur wenn eBay ablehnt |
 | **E5** | eBay nur über die API; tax_mail schaltet seinen eBay-Parser ab, solange tax_ebay aktiv ist (§6) | **entschieden: [D-942](../../NewConcept/90-decision-log.md)** |
 | **E6** | Gleiches Vorschlagsformat wie tax_mail, damit später eine gemeinsame Prüfseite geht | **ja** |
-| **E7** | Abruf stündlich per WP-Cron + Knopf «Jetzt abrufen» | **ja** |
+| **E7** | Abruf einmal täglich per WP-Cron + Knopf «Jetzt abrufen» | **ja** — übernommen aus seinem Wort zum Mail-Modul (*«einmal täglich reicht eigentlich und per knopf manuell auslösbar»*, 2026-10-20); für eBay meine Annahme (INFERRED) |
 
 **Was er dafür tun muss:** ein Konto unter developer.ebay.com anlegen und dort eine App (Produktiv-Schlüssel) erzeugen. Die
 Schlüssel kommen nicht in den Chat, sondern direkt in `wp-config.php`.
