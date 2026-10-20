@@ -92,7 +92,7 @@ flowchart LR
 - Vorschlag (mit tax_mail abgestimmt am 2026-10-20): **eBay kommt über die API, tax_mail lässt eBay-Mails aus.** Doppelte
   erkennen beide über Plattform + Bestellnummer im Modell. Berührt dort M7 («eBay zuerst»).
 - Vorbehalt: liefert die API seine **Käufe** nicht (§3), bleibt der eBay-Parser für Käufe bei tax_mail; Verkäufe trotzdem hier.
-- **Sein Wort im Mail-Thread, 2026-10-20:** *«jede neue mail anbindung ist eine art plugin oder parser den ich in den einstellungen aktivieren kann, parser ebay ist aus wenn tax_ebay aktiv ist»* — der eBay-Parser bleibt also in tax_mail, abschaltbar, und ist aus, solange tax_ebay aktiv ist. Entschieden in [D-942](../../NewConcept/90-decision-log.md); tax_ebay meldet sich über den Filter `taxmail_blocked_parsers` (Schlüssel `ebay`) an. Gemeinsames Vorschlagsformat: `OrderProposal` in wp_tax_mail; für Verkäufe fehlen dort noch Gebühren, Versanddatum und Sendungsnummern (angefragt).
+- **Sein Wort im Mail-Thread, 2026-10-20:** *«jede neue mail anbindung ist eine art plugin oder parser den ich in den einstellungen aktivieren kann, parser ebay ist aus wenn tax_ebay aktiv ist»* — der eBay-Parser bleibt also in tax_mail, abschaltbar, und ist aus, solange tax_ebay aktiv ist. Entschieden in [D-942](../../NewConcept/90-decision-log.md); tax_ebay meldet sich über den Filter `taxmail_blocked_parsers` (Schlüssel `ebay`) an. Gemeinsames Vorschlagsformat: `OrderProposal` in wp_tax_mail; seit wp_tax_mail 6fbd6ad mit `fees`, `shipped_date`, `tracking` (optional); eBay-Artikelnummer = `article_number`. Wo das Format künftig liegt, ist offen.
 - Übergang von Earth wie bei tax_mail §8: der Python-Importer schreibt eBay weiter, bis tax_ebay dasselbe liefert; nie beide
   gleichzeitig.
 
