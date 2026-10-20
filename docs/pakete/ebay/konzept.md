@@ -122,7 +122,7 @@ flowchart LR
 | **E4** | Kontolöschungs-Pflicht von eBay: Befreiung beantragen (nur eBay-Name gespeichert) | **ja**, Endpunkt nur wenn eBay ablehnt |
 | **E5** | eBay nur über die API; tax_mail schaltet seinen eBay-Parser ab, solange tax_ebay aktiv ist (§6) | **entschieden: [D-942](../../NewConcept/90-decision-log.md)** |
 | **E6** | Gleiches Vorschlagsformat wie tax_mail, damit später eine gemeinsame Prüfseite geht | **ja** |
-| **E7** | Abruf einmal täglich per WP-Cron + Knopf «Jetzt abrufen» | **ja** — übernommen aus seinem Wort zum Mail-Modul (*«einmal täglich reicht eigentlich und per knopf manuell auslösbar»*, 2026-10-20); für eBay meine Annahme (INFERRED) |
+| **E7** | Abrufintervall **in den Einstellungen des Moduls wählbar**, Standard einmal täglich, dazu Knopf «Jetzt abrufen» | **ja** — aus seinen Worten zum Mail-Modul (*«einmal täglich reicht eigentlich und per knopf manuell auslösbar»*, *«ich würde sagen das machen wir einstellbar in der admin config zum modul»*, 2026-10-20); für eBay meine Annahme (INFERRED) |
 
 **Was er dafür tun muss:** ein Konto unter developer.ebay.com anlegen und dort eine App (Produktiv-Schlüssel) erzeugen. Die
 Schlüssel kommen nicht in den Chat, sondern direkt in `wp-config.php`.
