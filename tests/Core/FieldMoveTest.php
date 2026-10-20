@@ -146,6 +146,21 @@ final class FieldMoveTest extends TestCase
     }
 
     #[Test]
+    public function merging_under_a_node_keeps_the_old_field_even_when_nothing_else_holds_a_value(): void
+    {
+        $modelle  = $this->editor->createNode('Modelle', $this->model->id);
+        $software = $this->editor->createNode('Software', $modelle->id);
+        $this->editor->createNode('Hardware', $modelle->id);
+        $alt      = $this->editor->addField($modelle->id, $this->text()->id, 'Nachfolger');
+        $neu      = $this->editor->addField($software->id, $this->text()->id, 'Nachfolger');
+        $this->satzMit($software, $alt, 'Windows 95');
+
+        $this->editor->mergeField($modelle->id, $alt->id, $neu->id, $software->id);
+
+        self::assertCount(1, $this->relations->fieldRelationsOf([$modelle->id]), 'die Hardware braucht das Feld weiter');
+    }
+
+    #[Test]
     public function fields_with_different_targets_are_not_merged(): void
     {
         $knoten = $this->editor->createNode('Knoten', $this->model->id);

@@ -1786,7 +1786,9 @@ final class ModelEditor
                 }
             }
 
-            if ($draussen === []) {
+            // ⚠️ *Mit `$underNodeId` bleibt das Feld immer stehen — so steht es in D-941. Hier stand `$draussen === []`, und ein
+            // Feld, das ausserhalb noch keinen Wert hatte («Nachfolger» bei der Hardware), wurde geparkt, obwohl es dort gebraucht wird.*
+            if ($underNodeId === null) {
                 $this->removeField($ownerId, $alt->id);
             }
 
