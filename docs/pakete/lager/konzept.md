@@ -56,12 +56,11 @@ flowchart LR
 |---|---|---|
 | Vorbild | [D-884](../../NewConcept/90-decision-log.md): Kontact steht seit 2026-09-20 neben `Model`, «Verweise über Astgrenzen hinweg gehen weiter» | Hardware Project, PC, Messwesen |
 | Geerbte Felder | **keine** — «Bezeichnung», «Beschreibung», «Herkunftshinweis» hängen an `Model` ([D-883](../../NewConcept/90-decision-log.md)) und müssten an «Stock» neu angelegt werden | erbt sie wie alles unter `Model` |
-| Verschieben von Bestellungen, Käufen, Verkäufen | **ihre Werte in diesen Feldern hängen an den Kanten von `Model`** — nach dem Verschieben stünden sie ohne Feld da; braucht eine Umschreibung aller Sätze | Werte bleiben, nur der Ort ändert sich |
+| Verschieben von Bestellungen, Käufen, Verkäufen | ihre Werte hängen an den Kanten von `Model`; nach dem Verschieben bleiben sie gespeichert, aber **ohne Feld** — unsichtbar, bis die Felder an «Stock» stehen ([INF-076](../../neues-konzept-eingang.md#inf-076--ein-knoten-verlässt-den-bereich-seiner-geerbten-felder)) | nichts ändert sich ausser dem Ort |
 
 **Vorschlag: unter `Model`.** Es ist im Baum genauso ein eigener Ast, und nichts muss umgeschrieben werden. *Gemessen am 2026-10-20
 (`taxmod/read-tree`): Hauptäste sind Model, Compositions, Primitives, Kontact; Bestellungen, Käufe, Verkäufe, Verkaufte Artikel liegen
-direkt unter `Model`; die Käufe aus dem Auftrag vom 2026-10-19 schreiben «Bezeichnung» und «Herkunftshinweis». Dass die Werte nach
-einem Verschieben ohne Feld dastünden, habe ich aus dem Speichermodell geschlossen (Werte hängen an der Kante), nicht ausprobiert.*
+direkt unter `Model`; die Käufe aus dem Auftrag vom 2026-10-19 schreiben «Bezeichnung» und «Herkunftshinweis». Gelesen in `ModelEditor::reparent()`: Verschieben ändert nur Vater und Pfad, kein Wert wird gelöscht — **berichtigt**, zuerst stand hier «gehen verloren». Nicht ausprobiert.*
 
 ## 2 · Die Linie und das Material
 
@@ -133,7 +132,10 @@ flowchart TB
 Gruppenknoten (Stammdaten, Beschaffung, Lager, Fertigung, Verkauf) haben keine Felder. Jeder Satz erbt «Bezeichnung» und «Beschreibung»
 von `Model` ([D-883](../../NewConcept/90-decision-log.md)), wenn «Stock» unter `Model` steht (F1). «Exemplare» bleiben links, wo sie sind, ohne neues Feld.
 
-### 3.1 Lagerorte
+### 3.1 Lagerorte — zuerst nur einer
+
+**Sein Wort:** *«zuerst nur ein block lagerplatz auf dem alles landet später vielleicht lagerplätze»*. Stufe 1 hat **einen** Lagerort-Satz «Lager»; alle Bewegungen landen dort, die Masken fragen nicht danach. Die Felder unten und «Lagerort» an Bewegungen und Material kommen erst, wenn er mehrere will — darum alle `0..1`, nichts muss umgebaut werden.
+
 
 | Feld | Typ | Mult. | Zweck |
 |---|---|---|---|
@@ -287,7 +289,7 @@ Was beim Lesen der Entscheidungen auffiel — Tatsachen an zwei Orten oder zwei 
 
 Echt, ausser *(erfunden)*.
 
-**Lagerorte** *(erfunden)*: «Bauteileschrank» S1 › «Spannungsregler» S1-03, «Transistoren» S1-04; «Keller-Regal» K1.
+**Lagerort:** einer, «Lager».
 
 **Inventur 2026-10-19 — Mengenware, seine gezählten Teile**
 
@@ -305,7 +307,7 @@ Echt, ausser *(erfunden)*.
 | BUZ11 | 9 | 1,05 € |
 
 **Wareneingang Einzelstück, aus Mail** — Bestellung 27-14743-39156, eBay, «Retro PC Klassiker 286 … Bastlerware defekt», 96 € + 10,49 €
-Versand: Material → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erfunden)*; Bewegung +1, Wert 106,49 €, Lagerort K1.
+Versand: Material → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erfunden)*; Bewegung +1, Wert 106,49 €.
 
 **Wareneingang Mengenware, aus Mail** — Bestellung 18-15212-31076, eBay, Dupont-Kabel 30 cm: sechs Käufe → ein Vorgang, sechs Bewegungen
 (Blau, Weiss, Grün, Gelb je +50; Schwarz, Rot je +100). ⚠️ *Gekauft je Beutel, verbraucht je Kabel — Einheit (F6).*

@@ -820,6 +820,17 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Verkaufstexte** kämen aus dem Modell (Projekt, Platine, Exemplar, Messwerte) — dafür braucht es keine eBay-API.
 - **Gebaut:** nein. Hängt an [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf) (was ist verkaufbar) und an [D-934](NewConcept/90-decision-log.md) (Verkäufe).
 
+## INF-076 · Ein Knoten verlässt den Bereich seiner geerbten Felder
+
+**Typ:** `LÜCKE` · **Status:** `OPEN` — gefunden am 2026-10-20 beim Lager-Konzept ([`pakete/lager/konzept.md`](pakete/lager/konzept.md) §1).
+
+> *«warum das sollte so nicht sein»* — der Eigentümer, auf meinen Satz, beim Verschieben von Bestellungen aus `Model` heraus gingen die geerbten Felder verloren.
+
+- **Gelesen, nicht ausprobiert:** Verschieben schreibt nur Vater und Pfad um (`ModelEditor::move()` → `reparent()`); die Werte bleiben in ihren Zeilen, gebunden an die Kanten von `Model` («Bezeichnung», «Herkunftshinweis» …). Liegt der Knoten danach nicht mehr unter `Model`, gelten diese Kanten für ihn nicht — die Werte sind **nicht gelöscht, aber ohne Feld**: nicht sichtbar, nicht bearbeitbar, bis er zurückkommt.
+- **Mein «gehen verloren» war darum falsch** — sie werden unsichtbar, nicht gelöscht.
+- **Offen:** was beim Verschieben geschehen soll — warnen und fragen wie bei [D-701](NewConcept/90-decision-log.md) und [D-033](NewConcept/90-decision-log.md) (Felder mitnehmen als eigene Felder am Knoten / Werte verwerfen / abbrechen), oder verbieten. Für das Lager ist es nicht nötig, wenn «Stock» unter `Model` steht.
+- **Gebaut:** nein.
+
 ---
 ## Erledigte Eingänge
 
