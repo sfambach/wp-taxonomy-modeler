@@ -791,6 +791,11 @@ Anlass: Bestellungen ([D-933](NewConcept/90-decision-log.md)) und Verkäufe ([D-
   3. **Abgang** ist ein Satz unter einem neuen Knoten `Verbrauch`: Bauteil, Anzahl, Datum, optional Projekt, Hinweis.
   4. **Anzeige:** am Bauteil eine gerechnete Zeile «Bestand» — eine Abfrage für alle Bauteile einer Seite (`CD-7`). Das braucht Code; das Modell rechnet heute nicht.
   - Später, nicht Teil des ersten Schritts: Verkäufe als Abgang, Reservierung, Bedarf aus der Stückliste.
+- **Rückmeldung des Eigentümers zum Vorschlag, 2026-10-20 (nicht entschieden):**
+  > *«habe mir das schon irgendwie mehr all umfassender vorgestellt. Verbrauchen und We als aktion prozess, ich überlege aber weil tax eigentlich nur datenstruktur ist ob es hier ein tax stock modul oder sowas braucht»*
+  - Wareneingang und Verbrauch sind **Aktionen, ein Prozess** — nicht nur Sätze, die man von Hand anlegt.
+  - Offen: ob der Bestand ein **eigenes Modul** wird, das das Modell als Datenstruktur nutzt, statt in den Modeller zu wandern.
+- **Vorschlag dazu (meiner, nicht entschieden):** ein eigenes Modul («Taxmod Stock», eigenes Plugin oder abtrennbarer Teil). Der Modeller bleibt Datenstruktur (Bauteile, Händler, Käufe, Datenblätter) und wird vom Modul nur gelesen; das Modul besitzt die Vorgänge — Wareneingang (auch aus einer Bestellung), Verbrauch, Inventur, Umbuchung — als **Buchungen**, der Bestand ist deren Summe. Später Lagerorte, Mindestbestand, Reservierung je Projekt. Berührt [INF-075](#inf-075--prozesse-und-formulare-im-modell-anlegen): ein Prozess mit Schritten und Regeln ist dort als Daten oder als Code offen.
 
 ## INF-075 · Prozesse und Formulare im Modell anlegen
 
