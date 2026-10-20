@@ -82,16 +82,14 @@ flowchart LR
   IN["INBOX"] -->|übernommen| A["Taxmod/Importiert"]
   IN -->|verworfen| V["Taxmod/Verworfen"]
   IN -->|kein Parser| N["Taxmod/Nicht erkannt"]
-  A -.->|"nach N Monaten, nur wenn eingeschaltet"| P["Papierkorb"]
 ```
 
 - **Der Abruf verschiebt nichts.** Erst wenn er einen Vorschlag erledigt (übernommen oder verworfen), wandert die Mail in den
   passenden Ordner. Die INBOX zeigt damit genau das, was noch offen ist.
 - **Nicht erkannte Mails** wandern sofort nach «Nicht erkannt»; dort sieht er, für welchen Shop ein Parser fehlt.
 - **Werbung und Newsletter** desselben Shops (kein Bestellbezug) erkennt der Parser als «kein Beleg» und schiebt sie nach «Verworfen».
-- **Löschen nur als eigene Einstellung, standardmässig aus:** Mails in «Importiert»/«Verworfen», älter als N Monate, in den
-  Papierkorb des Postfachs — nie endgültig. Rechnungen können steuerlich aufbewahrungspflichtig sein; darum bleibt es aus, bis er
-  es einschaltet.
+- **Kein Löschen.** *«verschieben in anderen ordner ist ok aufräumen kann dann auch ich erstmal»* (2026-10-20): das Modul
+  verschiebt nur; geleert werden die Ordner von Hand. Ein Papierkorb-Schalter kann später als eigene Einstellung dazukommen.
 - **Ordnernamen** in den Einstellungen; das Modul legt fehlende Ordner beim «Verbindung testen» an.
 - **Der Altbestand** (Mails, die der Python-Importer schon verarbeitet hat): ein einmaliger Lauf «Altbestand einsortieren», der
   jede Mail, deren Bestellnummer schon im Modell steht, nach «Importiert» schiebt — ohne Vorschlag.
@@ -166,7 +164,7 @@ erkannte Bestellung als JSON, Ids der geschriebenen Sätze). AR-1 betrifft das M
 | **M6** | Prüfseite zuerst eigene Admin-Seite, später Formular aus tax_form | **ja** |
 | **M7** | Umstellung von Earth: je Shop oder alles auf einmal | **je Shop**, Reichelt/Mouser zuerst; eBay erst nach Abgrenzung zum Modul `wp_tax_ebay` (eBay-API), sonst kommen eBay-Käufe doppelt |
 | **M8** | Python-Code als Vorlage ins Repo (`legacy/`, ohne Mails) | **ja** |
-| **M9** | Postfach aufräumen nach §3a: Verschieben in Ordner, Löschen nur optional (Papierkorb, aus) | **ja** |
+| **M9** | Postfach aufräumen nach §3a: nur Verschieben in Ordner, kein Löschen | **ja** (2026-10-20) |
 
 ## 10 · Annahmen, die das Konzept nicht sagt
 
