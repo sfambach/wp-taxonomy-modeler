@@ -815,7 +815,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   - Ein Tax-Modell bestünde dann aus: Datentypen, Modellen (Knoten mit Feldern), Konstanten, Sätzen — und Prozessen.
 - **Seine Einordnung, 2026-10-20 (nicht entschieden):** *«für formulare und prozesser bräuchten wir glaube ich erstmal ein konzept formulare bauen sollte mit den richtigen renderen ja schon möglich sein prozesse ist was neues»*
   - **Formulare:** sieht er als Sache der Renderer, kein neuer Mechanismus.
-  - **Prozesse:** neu, brauchen zuerst ein eigenes Konzept.
+  - **Prozesse:** neu, brauchen zuerst ein eigenes Konzept. Nachsatz: *«verwendet aber formulare»* — ein Prozess nutzt Formulare.
 - **Gebaut:** nein.
 
 ## INF-074 · Angebote bei eBay einstellen, Verkaufstexte, Link zum laufenden Angebot
