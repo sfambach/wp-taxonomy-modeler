@@ -1,6 +1,6 @@
 # Aufräumen · Äste «PC» und «Hardware Project» — Befund und Vorschlag
 
-**Stand 2026-10-20. Befund gelesen, Vorschlag `INFERRED`, nichts entschieden, nichts gebaut.** Aus [INF-079](../../neues-konzept-eingang.md).
+**Stand 2026-10-20. A1–A4 entschieden ([D-940](../../NewConcept/90-decision-log.md)), nichts gebaut.** Aus [INF-079](../../neues-konzept-eingang.md).
 
 > *«ok vielleicht sollten wir vorher etwas aufräumen die pc und bauteilspate sind etwas gewuchert»* — der Eigentümer, 2026-10-20, vor dem Lager-Modul.
 

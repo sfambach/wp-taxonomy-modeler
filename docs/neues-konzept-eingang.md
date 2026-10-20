@@ -872,12 +872,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-079 · Die Äste «PC» und «Hardware Project» aufräumen
 
-**Typ:** `WUNSCH` · **Status:** `OPEN` — 2026-10-20, vor dem Lager-Modul.
+**Typ:** `WUNSCH` · **Status:** `DECIDED` ([D-940](NewConcept/90-decision-log.md)) — 2026-10-20, vor dem Lager-Modul.
 
 > *«ok vielleicht sollten wir vorher etwas aufräumen die pc und bauteilspate sind etwas gewuchert»*
 
 - **Befund und Vorschlag:** [`pakete/aufraeumen/baum.md`](pakete/aufraeumen/baum.md) — zwölf Befunde (drei Orte für Konstanten, doppelte Bauformen, zwei Chip-Kataloge, zwei Revisionswege …), Ziel-Baum nach Modulen ([INF-078](#inf-078--model-in-module-umbenennen)).
-- **Offen:** A1–A4 dort.
+- **Entschieden:** [D-940](NewConcept/90-decision-log.md) — *«a1-a4 ja»*.
 - **Gebaut:** nein.
 
 ---
