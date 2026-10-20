@@ -93,6 +93,7 @@ flowchart LR
 - **Ordnernamen** in den Einstellungen; das Modul legt fehlende Ordner beim «Verbindung testen» an.
 - **Startpunkt** ([D-947](../../NewConcept/90-decision-log.md)): der erste Abruf merkt sich nur den Stand der INBOX; gelesen wird, was danach ankommt.
 - **Der Altbestand** ([D-948](../../NewConcept/90-decision-log.md)): «Altbestand einsortieren» liest ihn scheibchenweise neu — Bestellung schon im Modell → «Importiert», sonst lesbar → Vorschlag, Rest bleibt. «Bestellung holen» holt die Mails einer Bestellnummer gezielt.
+- **Sortierregeln** ([D-949](../../NewConcept/90-decision-log.md)): Absender und/oder Betreff → Zielordner, beim Abruf und beim Altbestand; Grundregel Shop-Mail ohne Bestellung → «Verworfen». Eine Liste der häufigsten INBOX-Absender hilft beim Einrichten. Gebaut: nein.
 
 ## 4 · Auslöser
 
