@@ -67,8 +67,30 @@ flowchart LR
   «Verbindung testen» auf der Einstellungsseite, sonst nichts. Geht es nicht, ist das Konzept an dieser Stelle zu Ende (M3).
 - **Zugangsdaten:** Vorschlag in `wp-config.php` als Konstanten, nicht in der Datenbank — dann stehen sie in keiner Sicherung und
   keinem Änderungsbuch (M4).
-- **Mails bleiben im Postfach**, nichts wird gelöscht; markiert wird nur intern über die UID. Optional später: in einen Ordner
-  «importiert» verschieben.
+- **Mails werden nicht gelöscht** — aufgeräumt wird durch Verschieben, siehe §3a.
+
+## 3a · Postfach aufräumen
+
+> *«was noch fehlt ist aufräumen des postfachs das sollten wir gleich mitandenken»* (2026-10-20)
+
+```mermaid
+flowchart LR
+  IN["INBOX"] -->|übernommen| A["Taxmod/Importiert"]
+  IN -->|verworfen| V["Taxmod/Verworfen"]
+  IN -->|kein Parser| N["Taxmod/Nicht erkannt"]
+  A -.->|"nach N Monaten, nur wenn eingeschaltet"| P["Papierkorb"]
+```
+
+- **Der Abruf verschiebt nichts.** Erst wenn er einen Vorschlag erledigt (übernommen oder verworfen), wandert die Mail in den
+  passenden Ordner. Die INBOX zeigt damit genau das, was noch offen ist.
+- **Nicht erkannte Mails** wandern sofort nach «Nicht erkannt»; dort sieht er, für welchen Shop ein Parser fehlt.
+- **Werbung und Newsletter** desselben Shops (kein Bestellbezug) erkennt der Parser als «kein Beleg» und schiebt sie nach «Verworfen».
+- **Löschen nur als eigene Einstellung, standardmässig aus:** Mails in «Importiert»/«Verworfen», älter als N Monate, in den
+  Papierkorb des Postfachs — nie endgültig. Rechnungen können steuerlich aufbewahrungspflichtig sein; darum bleibt es aus, bis er
+  es einschaltet.
+- **Ordnernamen** in den Einstellungen; das Modul legt fehlende Ordner beim «Verbindung testen» an.
+- **Der Altbestand** (Mails, die der Python-Importer schon verarbeitet hat): ein einmaliger Lauf «Altbestand einsortieren», der
+  jede Mail, deren Bestellnummer schon im Modell steht, nach «Importiert» schiebt — ohne Vorschlag.
 
 ## 4 · Auslöser
 
@@ -140,6 +162,7 @@ erkannte Bestellung als JSON, Ids der geschriebenen Sätze). AR-1 betrifft das M
 | **M6** | Prüfseite zuerst eigene Admin-Seite, später Formular aus tax_form | **ja** |
 | **M7** | Umstellung von Earth: je Shop oder alles auf einmal | **je Shop**, Reichelt/Mouser zuerst; eBay erst nach Abgrenzung zum Modul `wp_tax_ebay` (eBay-API), sonst kommen eBay-Käufe doppelt |
 | **M8** | Python-Code als Vorlage ins Repo (`legacy/`, ohne Mails) | **ja** |
+| **M9** | Postfach aufräumen nach §3a: Verschieben in Ordner, Löschen nur optional (Papierkorb, aus) | **ja** |
 
 ## 10 · Annahmen, die das Konzept nicht sagt
 
