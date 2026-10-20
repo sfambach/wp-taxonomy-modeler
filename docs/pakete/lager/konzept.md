@@ -226,7 +226,13 @@ Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **
 
 **Die Stückliste wird nicht kopiert.** Bedarf = je `Part List Item` des Projekts ([D-774](../../NewConcept/90-decision-log.md):
 Bauteil, Anzahl, Bestückung) «Anzahl × Stückzahl», ohne «nicht bestücken»; das Bauteil führt über sein Material zum Bestand.
-Abweichungen beim Bau stehen in den Vorgänge Pos der Entnahme. **Selbstkosten je Stück = Wert der Entnahme ÷ Stückzahl**, als «Wert je
+Abweichungen beim Bau stehen in den Vorgänge Pos der Entnahme.
+
+**Bestand in der Stückliste** — *seine Frage: «die technik zeigt nie auf bestand das stimmt schon aber wie sieht es mit bauteillisten aus die den bestand einzeigen könnten ?»*
+Ja, als **gerechnete Spalte**, nicht als Feld: je Zeile sucht das Modul das Material, dessen «Bezug Ding» auf das Bauteil zeigt, und zeigt
+«Bestand · frei · fehlt für n Stück». Gespeichert wird nichts auf der Technikseite, die Linie bleibt. Dasselbe Muster wie «Verwiesen von»
+am Exemplar ([D-902](../../NewConcept/90-decision-log.md)): die Anzeige liest rückwärts, der Verweis zeigt vorwärts. Ohne Lager-Modul fehlt
+nur die Spalte. Gebaut: nein (INFERRED, wie die Spalte in die Stücklisten-Anzeige kommt: das Modul hängt sie über einen Filter an). **Selbstkosten je Stück = Wert der Entnahme ÷ Stückzahl**, als «Wert je
 Stück» in der Zugangsbewegung.
 
 ### 3.8 Verkäufe — verschoben, plus ein Feld
