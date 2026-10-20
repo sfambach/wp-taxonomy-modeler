@@ -1,6 +1,6 @@
 # Paket · Mail-Import («tax_mail») — Konzeptentwurf
 
-**Stand 2026-10-20. Entwurf, nichts entschieden, nichts gebaut.** Aus [INF-075](../../neues-konzept-eingang.md#inf-075--prozesse-und-formulare-im-modell-anlegen)
+**Stand 2026-10-20. M1–M8 entschieden: [D-942](../../NewConcept/90-decision-log.md). Nichts gebaut.** Aus [INF-075](../../neues-konzept-eingang.md#inf-075--prozesse-und-formulare-im-modell-anlegen)
 (Fall «Eingang prüfen», Mail-Import in WordPress). Was er entscheiden soll, steht in §9; alles andere ist mein Vorschlag (`INFERRED`),
 bis es eine `D-<nnn>` hat (`PR-3`). Code des Moduls: [`sfambach/wp_tax_mail`](https://github.com/sfambach/wp_tax_mail) (von ihm angelegt am 2026-10-20).
 
