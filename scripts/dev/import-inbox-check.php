@@ -27,6 +27,7 @@ use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ProposalLine;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Import\Duties;
+use Taxmod\WordPress\Import\Targets;
 use Taxmod\WordPress\Import\Inbox;
 use Taxmod\WordPress\Import\InboxSchema;
 use Taxmod\WordPress\Import\InboxScreen;
@@ -100,7 +101,16 @@ $pruefe($inbox->restart($zweite) === 1 && $zweite->neu, 'a restart forgets the o
 
 $reiter = SettingsScreen::moduleTabs();
 // ⚠️ *Seit D-961 steht die Zuständigkeitstabelle im Code; der Reiter trägt nur noch die Ziel-Ids.*
-$pruefe(isset($reiter['import']) && str_contains(($reiter['import']['render'])(), 'name="targets"') && ! str_contains(($reiter['import']['render'])(), 'duties['), 'the Import tab shows only the targets');
+$reiterSeite = isset($reiter['import']) ? ($reiter['import']['render'])() : '';
+$pruefe(str_contains($reiterSeite, 'name="targets"') && ! str_contains($reiterSeite, 'duties['), 'the Import tab shows only the targets');
+// ⚠️ *Sein Wunsch vom 2026-10-21: «die knoten die benötigt werden als felder … mit eingebbarer auswählbarerm knoten. jason kann genutzt werden um das ganze zu beschleunigen».*
+$pruefe(str_contains($reiterSeite, 'name="target[orders_node]"') && str_contains($reiterSeite, 'list="taxmod-import-node"') && str_contains($reiterSeite, 'name="target[order_fields][order_number]"'), 'each target is its own field, nodes picked from a list');
+$vorher = get_option(Targets::OPTION, null);
+($reiter['import']['save'])(['target' => ['orders_node' => '777', 'required_parts' => '11, x, 12'], 'targets' => '']);
+$pruefe(Targets::raw()['orders_node'] === 777 && Targets::raw()['required_parts'] === [11, 12], 'the fields are saved when no JSON is pasted');
+($reiter['import']['save'])(['target' => ['orders_node' => '777'], 'targets' => '{"orders_node": 888}']);
+$pruefe(Targets::raw()['orders_node'] === 888, 'pasted JSON wins over the fields');
+$vorher === null ? delete_option(Targets::OPTION) : update_option(Targets::OPTION, $vorher, false);
 
 echo $fehler === 0 ? "all green\n" : "{$fehler} failed\n";
 exit($fehler === 0 ? 0 : 1);

@@ -272,3 +272,9 @@ Auf die Liste aus dem Mail-Thread (§3.8, zweite Rückmeldung vom 2026-10-21):
 
 - Zuständigkeitstabelle aus dem Reiter in den Code ([D-961](../../NewConcept/90-decision-log.md)): `Duties::load()` = `DutyTable::initial()` + Filter `taxmod_import_duties`; die Option `taxmod_import_duties` wird mit Schemafassung 3 des Eingangs gelöscht.
 - Reiter «Import» ([D-960](../../NewConcept/90-decision-log.md)) trägt nur noch die Ziel-Ids, weil jede Installation anders nummeriert.
+
+## 10.3 Gebaut nach 0.1.39 (noch nicht eingespielt)
+
+- Reiter «Import» steht vor den Reitern der Module (Filter-Priorität 1). Sein Wunsch: *«der reiter import sollte möglicht vor den api modulen stehen»*.
+- Jedes Ziel hat ein eigenes Feld. Die Id kann man eintippen oder aus einer Liste wählen: Knoten aus dem Baum, Felder aus dem gewählten Bestellungs- bzw. Käufe-Knoten, geerbte eingeschlossen. Daneben steht der Name. Das JSON bleibt darunter als Schnellweg, und eingefügtes JSON gilt vor den Feldern. Sein Wunsch: *«knoten die benötigt werden als felder angezeigt werden mit eingebbarer auswählbarerm knoten. jason kann genutzt werden um das ganze zu beschleunigen»*.
+- **Annahme (`INFERRED`):** Herkunftswert, Mengen- und Einheitenfeld sowie Währungen bleiben reine Id-Felder ohne Liste. Es sind Satz-Ids bzw. Felder einer anderen Komposition, und eine Liste aller Sätze wäre zu lang.
