@@ -2287,6 +2287,7 @@ final class RenderingTest extends TestCase
         $quellen  = $this->editor->setMultiplicity($bauteil->id, $quellen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
         $position = $this->thing('Position');
         $welches  = $this->editor->addField($position->id, $bauteil->id, 'Part', RelationKind::Aggregation);
+        $anzahl   = $this->editor->addField($position->id, $this->type('Integer')->id, 'Anzahl');
         $liste    = $this->thing('Liste');
         $zeilen   = $this->editor->addField($liste->id, $position->id, 'zeilen', RelationKind::Composition);
         $zeilen   = $this->editor->setMultiplicity($liste->id, $zeilen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
@@ -2299,6 +2300,7 @@ final class RenderingTest extends TestCase
         $this->records->putValue(RelationRecord::direct($teil, $quellen->id, TypedValue::ofRecordReference($blatt), '', 0));
         $pos = $this->records->add(new NodeRecord(0, $position->id, 1, '2026-10-21 10:00:00', RecordType::User));
         $this->records->putValue(RelationRecord::direct($pos, $welches->id, TypedValue::ofRecordReference($teil)));
+        $this->records->putValue(RelationRecord::direct($pos, $anzahl->id, TypedValue::ofInt(1)));
         $satz = $this->records->add(new NodeRecord(0, $liste->id, 1, '2026-10-21 10:00:00', RecordType::User));
         $this->records->putValue(RelationRecord::direct($satz, $zeilen->id, TypedValue::ofRecordReference($pos), '', 0));
 
@@ -2312,6 +2314,7 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('LM7905', $gezeigt, 'der Verweis selbst');
         self::assertStringContainsString('>Quellen<', $gezeigt, 'eine Spalte mit dem Namen des Feldes');
+        self::assertMatchesRegularExpression('/>Part<.*>Anzahl<.*>Quellen</s', $gezeigt, 'am Ende der Zeile');
         self::assertMatchesRegularExpression('/href="https:\/\/example\.com\/lm79\.pdf"[^>]*>Datenblatt LM7905</', $gezeigt, 'die Quelle führt zu ihrer Adresse');
     }
 

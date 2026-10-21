@@ -692,7 +692,7 @@ final class Rendering implements Presets
     }
 
     /**
-     * Neben einem Satzverweis die gewählten Felder des verwiesenen Satzes als eigene Spalten — nur beim Anzeigen ([D-955](../../../docs/NewConcept/90-decision-log.md)).
+     * Zu einem Satzverweis die gewählten Felder des verwiesenen Satzes als eigene Spalten am Ende der Zeile — nur beim Anzeigen ([D-955](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Gebaut für die Stückliste: neben «Part» die Quellen des Bauteils (Datenblatt) oder seine Bestell-Nr. ([INF-084](../../../docs/neues-konzept-eingang.md)).
      * Die Wahl `target_columns` steht am Ziel des Verweises, an der Kante überschreibbar, wie `summary_fields`. Alle verwiesenen Sätze in einer
@@ -750,11 +750,11 @@ final class Rendering implements Presets
             }
         }
 
+        // ⚠️ *Die Spalten aus dem verwiesenen Satz stehen am Ende der Zeile — sein Wort: «datenblatt bitte ganz nach recht in der bom».*
         foreach ($zeilen as $i => $zeile) {
-            $neu = [];
+            $hinten = [];
 
             foreach ($zeile as $gezeichnet) {
-                $neu[] = $gezeichnet;
                 $feld  = $gezeichnet->relation;
                 $wert  = $zeilenWerte[$i][$feld->id] ?? null;
                 $ids   = $spaltenJeKante[$feld->id] ?? [];
@@ -772,11 +772,11 @@ final class Rendering implements Presets
                 }
 
                 foreach ($this->fieldsFor($spalten, $werte, Purpose::Display, '', $locale, $level, false, recordId: $satz) as $spalte) {
-                    $neu[] = $spalte;
+                    $hinten[] = $spalte;
                 }
             }
 
-            $zeilen[$i] = $neu;
+            $zeilen[$i] = [...$zeile, ...$hinten];
         }
 
         return $zeilen;
