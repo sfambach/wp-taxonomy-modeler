@@ -48,6 +48,7 @@ final class ImportWiring
         add_action('admin_post_' . InboxScreen::DISCARD, static fn () => (new InboxScreen())->handleDiscard());
         add_action('admin_post_' . InboxScreen::DISCARD_SELECTED, static fn () => (new InboxScreen())->handleDiscardSelected());
         add_action('admin_post_' . InboxScreen::FETCH, static fn () => (new InboxScreen())->handleFetch());
+        add_action('admin_post_' . InboxScreen::FETCH_ALL, static fn () => (new InboxScreen())->handleFetchAll());
         add_action('admin_post_' . InboxScreen::SEARCH, static fn () => (new InboxScreen())->handleSearch());
         add_action('admin_post_' . InboxScreen::BACKLOG, static fn () => (new InboxScreen())->handleBacklog());
         add_action('admin_post_' . InboxScreen::RESTART, static fn () => (new InboxScreen())->handleRestart());

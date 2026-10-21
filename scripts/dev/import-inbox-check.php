@@ -100,6 +100,16 @@ add_filter(Sources::FILTER, static fn (array $sources): array => [...$sources, $
 $pruefe($inbox->search($zweite, 'C-9') === 1, 'a forwarded copy (same order, kind and moment, other id) is filed once');
 $pruefe($inbox->restart($zweite) === 1 && $zweite->neu, 'a restart forgets the open proposal and lets the source undo its side');
 
+// ⚠️ *Sein Wunsch vom 2026-10-21: «ein button fetch all wäre auch nett» — every fetching source once, intervals aside.*
+$pruefe(str_contains((new InboxScreen())->render(), 'value="' . InboxScreen::FETCH_ALL . '"'), 'the inbox page has a «Fetch all» button');
+$laeufe = Inbox::lastRuns();
+unset($laeufe['__ib']);
+update_option('taxmod_import_last_run', $laeufe, false);
+$inbox->runDue();
+$pruefe(! isset(Inbox::lastRuns()['__ib']), 'the schedule skips a source without an interval');
+$inbox->runAll();
+$pruefe(isset(Inbox::lastRuns()['__ib']), '«Fetch all» runs it anyway');
+
 // ⚠️ *Sein Wunsch vom 2026-10-21: «selectierte einträge verwerfen» — one checkbox per group, one button for all of them.*
 $seite = (new InboxScreen())->render();
 $ids = implode(',', array_map(static fn (array $row): int => (int) $row['id'], $eigene[0]));

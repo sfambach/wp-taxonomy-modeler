@@ -36,6 +36,7 @@ final class InboxScreen
     public const DISCARD_SELECTED = 'taxmod_inbox_discard_selected';
     private const BULK_FORM = 'taxmod-inbox-bulk';
     public const FETCH = 'taxmod_inbox_fetch';
+    public const FETCH_ALL = 'taxmod_inbox_fetch_all';
     public const SEARCH = 'taxmod_inbox_search';
     public const BACKLOG = 'taxmod_inbox_backlog';
     public const RESTART = 'taxmod_inbox_restart';
@@ -120,7 +121,7 @@ final class InboxScreen
             $html .= '<tr><td>' . esc_html($source->label()) . '</td><td>' . esc_html($last) . '</td><td>' . $button . '</td></tr>';
         }
 
-        return $html . '</tbody></table>';
+        return $html . '</tbody></table>' . self::button(self::FETCH_ALL, 'all', __('Fetch all', 'taxmod'));
     }
 
     private static function button(string $action, string $source, string $label, string $before = '', string $confirm = ''): string
@@ -270,6 +271,18 @@ final class InboxScreen
         } catch (\Throwable $failure) {
             $this->finish($failure->getMessage());
         }
+    }
+
+    public function handleFetchAll(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        check_admin_referer(self::FETCH_ALL);
+
+        /* translators: %d: number of proposals */
+        $this->finish(sprintf(__('%d new proposals.', 'taxmod'), (new Inbox($this->table))->runAll()));
     }
 
     public function handleSearch(): void

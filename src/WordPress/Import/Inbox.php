@@ -99,31 +99,44 @@ final class Inbox
     /** The scheduled run: every fetching source whose interval has passed. */
     public function runDue(): void
     {
+        $this->runAll(true);
+    }
+
+    /**
+     * Every fetching source once, those responsible for new orders first, so a status from another source finds its
+     * order (his word, 2026-10-21: «api sollte vor email laufen und email sorgt für updates»). Without `$dueOnly` it is
+     * the «Fetch all» button (his word: «ein button fetch all wäre auch nett»).
+     *
+     * @return int how many proposals were filed
+     */
+    public function runAll(bool $dueOnly = false): int
+    {
         $last = self::lastRuns();
-        // A source that is responsible for new orders somewhere runs first, so a status from another source finds its
-        // order (his word, 2026-10-21: «api sollte vor email laufen und email sorgt für updates»).
         $ordering = array_values(array_filter(array_map(
             static fn (array $roles): ?string => $roles[DutyRole::Orders->value] ?? null,
             Duties::load()->toArray()
         )));
         $sources = Sources::all();
         uksort($sources, static fn (string $a, string $b): int => (int) ! in_array($a, $ordering, true) <=> (int) ! in_array($b, $ordering, true));
+        $filed = 0;
 
         foreach ($sources as $key => $source) {
-            if (! $source instanceof FetchingSource || $source->interval() <= 0) {
+            if (! $source instanceof FetchingSource) {
                 continue;
             }
 
-            if (time() - (int) ($last[$key]['at'] ?? 0) < $source->interval()) {
+            if ($dueOnly && ($source->interval() <= 0 || time() - (int) ($last[$key]['at'] ?? 0) < $source->interval())) {
                 continue;
             }
 
             try {
-                $this->run($source);
+                $filed += $this->run($source);
             } catch (\Throwable) {
                 // Remembered in the last run; the next source still runs.
             }
         }
+
+        return $filed;
     }
 
     /** @return array<string, array{at: int, filed: int, error: ?string}> */
