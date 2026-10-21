@@ -5,12 +5,14 @@ namespace Taxmod\WordPress\Import;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Import\BacklogSource;
 use Taxmod\Core\Import\ChangeListBuilder;
+use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\FetchingSource;
 use Taxmod\Core\Import\ImportSource;
 use Taxmod\Core\Import\InboxStatus;
 use Taxmod\Core\Import\Intake;
 use Taxmod\Core\Import\IntakeVerdict;
+use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalGroup;
 use Taxmod\Core\Import\ProposalKind;
@@ -181,6 +183,10 @@ final class InboxScreen
             }
         } else {
             $html .= '<p>' . esc_html(self::verdictLabel($verdict)) . '</p>';
+
+            if ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
+                $html .= $this->differences($proposal, $existing, $canTake);
+            }
         }
 
         if ($proposal->trackingNumbers !== []) {
@@ -193,6 +199,42 @@ final class InboxScreen
         }
 
         return $html . '<button class="button" name="action" value="' . esc_attr(self::DISCARD) . '">' . esc_html__('Discard', 'taxmod') . '</button></form></div>';
+    }
+
+    /**
+     * Model against source, field by field (D-964): an empty field is ticked, a conflict waits for his tick.
+     */
+    private function differences(OrderProposal $proposal, ExistingOrder $existing, bool $enabled): string
+    {
+        $differences = OrderComparison::between($proposal, $existing);
+
+        if ($differences === []) {
+            return '';
+        }
+
+        $html = '<table class="widefat striped" style="margin-bottom:.5em"><caption class="screen-reader-text">' . esc_html__('Model against source', 'taxmod') . '</caption><thead><tr>'
+            . '<th scope="col">' . esc_html__('Take', 'taxmod') . '</th><th scope="col">' . esc_html__('Field', 'taxmod') . '</th>'
+            . '<th scope="col">' . esc_html__('Model', 'taxmod') . '</th><th scope="col">' . esc_html__('Source', 'taxmod') . '</th></tr></thead><tbody>';
+
+        foreach ($differences as $role => $side) {
+            $html .= '<tr><td><input type="checkbox" name="fields[]" value="' . esc_attr($role) . '"' . checked(! $side['conflict'], true, false) . disabled($enabled, false, false)
+                . ' aria-label="' . esc_attr(self::fieldLabel($role)) . '"></td><td>' . esc_html(self::fieldLabel($role)) . ($side['conflict'] ? ' <strong>≠</strong>' : '') . '</td>'
+                . '<td>' . esc_html($side['model'] ?? '–') . '</td><td>' . esc_html($side['source']) . '</td></tr>';
+        }
+
+        return $html . '</tbody></table>';
+    }
+
+    private static function fieldLabel(string $role): string
+    {
+        return match ($role) {
+            'merchant'      => __('Merchant', 'taxmod'),
+            'ordered_at'    => __('Ordered on', 'taxmod'),
+            'shipping_cost' => __('Shipping', 'taxmod'),
+            'fees'          => __('Fees', 'taxmod'),
+            'total'         => __('Total', 'taxmod'),
+            default         => $role,
+        };
     }
 
     private function lines(OrderProposal $proposal, bool $enabled): string
@@ -334,7 +376,8 @@ final class InboxScreen
     public function handleTake(): void
     {
         $rows = $this->postedRows();
-        $result = $this->take($rows, array_map('absint', (array) ($_POST['lines'] ?? [])));
+        $fields = array_values(array_intersect(array_map('sanitize_key', (array) ($_POST['fields'] ?? [])), OrderComparison::ROLES));
+        $result = $this->take($rows, array_map('absint', (array) ($_POST['lines'] ?? [])), $fields);
 
         $this->finish($result === true ? __('Taken into the model.', 'taxmod') : $result);
     }
@@ -344,9 +387,10 @@ final class InboxScreen
      *
      * @param list<array<string, mixed>> $rows
      * @param list<int>|null $picked line indexes; `null` takes every line
+     * @param list<string>|null $fields order fields taken from the source (D-964); `null` takes only what the model leaves empty
      * @return true|string true when written, otherwise why not
      */
-    public function take(array $rows, ?array $picked): true|string
+    public function take(array $rows, ?array $picked, ?array $fields = null): true|string
     {
         if ($rows === [] || ! ModelGateway::available()) {
             return __('Nothing taken.', 'taxmod');
@@ -376,6 +420,10 @@ final class InboxScreen
                 $changes = $builder->newOrder($proposal, $lines, $originNote, $deliveredOn);
             } elseif ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
                 $changes = $builder->shipped($existing, $proposal->trackingNumbers);
+
+                if (Duties::load()->allows((string) $rows[0]['source'], $proposal->platform, DutyRole::Orders, array_keys(Sources::all()))) {
+                    $changes = [...$changes, ...$builder->completed($existing, $proposal, $fields ?? OrderComparison::fills($proposal, $existing))];
+                }
 
                 if ($deliveredOn !== null && ($existing->receivedAt === null || $existing->receivedAt === '')) {
                     $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
@@ -420,6 +468,11 @@ final class InboxScreen
         }
 
         $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide((string) $rows[0]['source'], $proposal, $existing);
+
+        // ⚠️ *A conflict is his choice (D-964); the run leaves that group for the page.*
+        if ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder && OrderComparison::hasConflict($proposal, $existing)) {
+            return false;
+        }
 
         return $verdict === IntakeVerdict::Update || ($verdict === IntakeVerdict::NewOrder && $proposal->kind !== ProposalKind::Sold);
     }

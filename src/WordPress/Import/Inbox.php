@@ -2,8 +2,8 @@
 
 namespace Taxmod\WordPress\Import;
 
-use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\BacklogSource;
+use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\EnrichingSource;
 use Taxmod\Core\Import\FetchBatch;
 use Taxmod\Core\Import\FetchingSource;

@@ -9,6 +9,7 @@ use Taxmod\Core\Import\ProposalLine;
 use Taxmod\Core\Import\ChangeListBuilder;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\Money;
+use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\TargetModel;
 use Taxmod\Core\Exception\WriteRefused;
 
@@ -70,6 +71,36 @@ final class ImportChangeListTest extends TestCase
         self::assertSame('12.3', Money::format(Money::toUnits('12.30')));
         self::assertSame('-0.05', Money::format(-500));
         self::assertSame('3', Money::format(30000));
+    }
+
+    public function testCompletionFillsEmptyFieldsAndOnlyPickedConflicts(): void
+    {
+        // The eBay case of 2026-10-21: no shipping and total in the model, a merchant that differs.
+        $existing = new ExistingOrder(7, values: ['merchant' => 'gxjs014', 'ordered_at' => '2026-09-28', 'fees' => '1 EUR']);
+        $proposal = new OrderProposal('eBay', '18-1', ProposalKind::Ordered, '2026-09-28 10:00:00', 'EUR', shippingCost: '4.50', total: '132.00', counterparty: 'gxjs014-de', fees: '1.00');
+
+        self::assertSame(['merchant', 'shipping_cost', 'total'], array_keys(OrderComparison::between($proposal, $existing)));
+        self::assertTrue(OrderComparison::between($proposal, $existing)['merchant']['conflict']);
+        self::assertSame(['shipping_cost', 'total'], OrderComparison::fills($proposal, $existing));
+
+        $builder = new ChangeListBuilder(self::target());
+        $filled = $builder->completed($existing, $proposal, OrderComparison::fills($proposal, $existing));
+        self::assertSame([['op' => 'set_values', 'record' => '7', 'values' => [
+            '109' => ['neu' => ['4234' => '4.5', '4236' => '8571']],
+            '111' => ['neu' => ['4234' => '132', '4236' => '8571']],
+        ]]], $filled);
+
+        $picked = $builder->completed($existing, $proposal, ['merchant']);
+        self::assertSame(['106' => 'gxjs014-de'], $picked[0]['values']);
+        self::assertSame([], $builder->completed($existing, $proposal, ['fees']), 'an equal field is not written');
+    }
+
+    public function testAConflictingAmountOverwritesThePartItHas(): void
+    {
+        $existing = new ExistingOrder(7, values: ['total' => '176 EUR']);
+        $proposal = new OrderProposal('eBay', '18-1', ProposalKind::Ordered, currency: 'EUR', total: '132');
+
+        self::assertSame(['0' => ['4234' => '132', '4236' => '8571']], (new ChangeListBuilder(self::target()))->completed($existing, $proposal, ['total'])[0]['values']['111']);
     }
 
     private static function target(): TargetModel

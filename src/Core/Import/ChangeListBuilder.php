@@ -100,6 +100,34 @@ final class ChangeListBuilder
         ]]];
     }
 
+    /**
+     * The order fields taken from the source (D-964): what the model leaves empty, and the conflicts he picked.
+     *
+     * @param list<string> $roles from {@see OrderComparison::ROLES}
+     * @return list<array<string, mixed>> empty when nothing is taken
+     */
+    public function completed(ExistingOrder $order, OrderProposal $proposal, array $roles): array
+    {
+        $differences = OrderComparison::between($proposal, $order);
+        $currency = $this->target->currency($proposal->currency);
+        $values = [];
+
+        foreach (array_intersect($roles, array_keys($differences)) as $role) {
+            $field = (string) $this->target->orderField($role);
+            $values[$field] = match ($role) {
+                'merchant'      => $proposal->counterparty,
+                'ordered_at'    => $proposal->orderDate,
+                'shipping_cost' => $this->amount($role, $proposal->shippingCost, $currency, true, $differences[$role]['model'] !== null),
+                'fees'          => $this->amount($role, $proposal->fees, $currency, true, $differences[$role]['model'] !== null),
+                'total'         => $this->amount($role, $proposal->total, $currency, true, $differences[$role]['model'] !== null),
+            };
+        }
+
+        $values = $this->withoutEmpty($values);
+
+        return $values === [] ? [] : [['op' => 'set_values', 'record' => (string) $order->recordId, 'values' => $values]];
+    }
+
     /** @return array<string, mixed> */
     private function purchaseValues(ProposalLine $line, int $currency, ?string $landedUnitPrice, string $originNote): array
     {
@@ -146,11 +174,12 @@ final class ChangeListBuilder
 
     /**
      * A unit value: amount and currency. A required part (1..1) already stands empty on a new record, so «0» fills
-     * it; an optional one does not exist yet, so a name («neu») creates it — same rule as the Python importer.
+     * it; an optional one does not exist yet, so a name («neu») creates it — same rule as the Python importer. A part
+     * the record already holds is overwritten through «0».
      *
      * @return array<string, array<string, string>>|null
      */
-    private function amount(string $role, ?string $amount, int $currency, bool $onOrder = false): ?array
+    private function amount(string $role, ?string $amount, int $currency, bool $onOrder = false, bool $replacesPart = false): ?array
     {
         $units = Money::toUnits($amount);
 
@@ -160,7 +189,8 @@ final class ChangeListBuilder
 
         $field = $onOrder ? $this->target->orderField($role) : $this->target->purchaseField($role);
 
-        return [in_array($field, $this->target->requiredParts, true) ? '0' : 'neu' => [
+        // ⚠️ *Overwriting what a record already holds is key «0» too (D-964), whether the part is required or not.*
+        return [$replacesPart || in_array($field, $this->target->requiredParts, true) ? '0' : 'neu' => [
             (string) $this->target->amountField => Money::format($units),
             (string) $this->target->unitField   => (string) $currency,
         ]];

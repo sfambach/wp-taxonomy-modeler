@@ -94,4 +94,15 @@ final class ImportIntakeTest extends TestCase
         self::assertSame('8.00', $merged->shippingCost);
         self::assertSame(ProposalKind::Ordered, $merged->kind);
     }
+
+    public function testOnlyTheResponsibleSourceCompletesAnExistingOrder(): void
+    {
+        $intake = new Intake(DutyTable::initial(), ['ebay', 'mail']);
+        $existing = new ExistingOrder(7);
+        $withTotal = new OrderProposal('eBay', '18-1', ProposalKind::Ordered, currency: 'EUR', total: '132');
+
+        self::assertSame(IntakeVerdict::Update, $intake->decide('ebay', $withTotal, $existing), 'the API is the truth for eBay (D-950)');
+        self::assertSame(IntakeVerdict::NotResponsible, $intake->decide('mail', $withTotal, $existing), 'the mail only brings status');
+        self::assertSame(IntakeVerdict::Nothing, $intake->decide('ebay', $withTotal, new ExistingOrder(7, values: ['total' => '132 EUR'])));
+    }
 }

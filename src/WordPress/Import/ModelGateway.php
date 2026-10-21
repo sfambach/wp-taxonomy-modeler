@@ -4,8 +4,10 @@ namespace Taxmod\WordPress\Import;
 
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\LooseMatch;
+use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\TargetModel;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use WP_Error;
 
 /**
@@ -101,7 +103,14 @@ final class ModelGateway
         $merchantField = $this->target->orderField('merchant');
         $orderedField = $this->target->orderField('ordered_at');
         $titleField = $this->target->orderField('title');
-        $orders = [];
+        $amountFields = [];
+
+        foreach (['shipping_cost', 'fees', 'total'] as $role) {
+            $amountFields[$this->target->orderField($role)] = $role;
+        }
+
+        $found = [];
+        $partIds = [];
         $this->platforms = [];
 
         foreach ((array) ($node['records'] ?? []) as $record) {
@@ -112,8 +121,16 @@ final class ModelGateway
             $merchant = null;
             $ordered = null;
             $title = '';
+            $parts = [];
 
             foreach ((array) ($record['values'] ?? []) as $value) {
+                if (isset($amountFields[(int) $value['relation_id']])) {
+                    $parts[$amountFields[(int) $value['relation_id']]] = (int) $value['value'];
+                    $partIds[] = (int) $value['value'];
+
+                    continue;
+                }
+
                 match ((int) $value['relation_id']) {
                     $platformField => $platform = (string) $value['value'],
                     $numberField   => $number = (string) $value['value'],
@@ -127,12 +144,63 @@ final class ModelGateway
             }
 
             if ($number !== '') {
-                $orders[self::key($platform, $number)] = new ExistingOrder((int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title));
+                $found[self::key($platform, $number)] = [(int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title), $parts];
                 $this->platforms[self::key($platform, $number)] = trim($platform);
             }
         }
 
+        // ⚠️ *The amounts are parts — records of their own. One read for all of them (`CD-7`), straight from the table,
+        // because read-node would hand back every amount record of the installation (D-964).*
+        $amounts = $this->amounts($partIds);
+        $orders = [];
+
+        foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts]) {
+            $values = array_filter([
+                'merchant'   => $merchant,
+                'ordered_at' => $ordered === null ? null : substr($ordered, 0, 10),
+            ], static fn (?string $value): bool => $value !== null && $value !== '');
+
+            foreach ($parts as $role => $partId) {
+                if (isset($amounts[$partId])) {
+                    $values[$role] = $amounts[$partId];
+                }
+            }
+
+            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values);
+        }
+
         return $orders;
+    }
+
+    /**
+     * @param list<int> $partIds
+     * @return array<int, string> part record id => «4.5 EUR»
+     */
+    private function amounts(array $partIds): array
+    {
+        $codes = array_flip($this->target->currencies);
+        $out = [];
+
+        foreach ((new WpdbRecordRepository())->valuesOfMany(array_values(array_unique($partIds))) as $partId => $values) {
+            $amount = null;
+            $unit = '';
+
+            foreach ($values as $value) {
+                if ($value->relationId === $this->target->amountField) {
+                    $amount = $value->value->rawValue();
+                } elseif ($value->relationId === $this->target->unitField) {
+                    $unit = (string) ($codes[(int) $value->value->rawValue()] ?? $value->value->rawValue());
+                }
+            }
+
+            $formatted = OrderComparison::amount($amount, $unit);
+
+            if ($formatted !== null) {
+                $out[(int) $partId] = $formatted;
+            }
+        }
+
+        return $out;
     }
 
     /**

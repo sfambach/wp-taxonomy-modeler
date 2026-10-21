@@ -9,8 +9,8 @@ namespace Taxmod\Core\Import;
  * ```mermaid
  * flowchart LR
  *   P["proposal"] --> E{"order in model?"}
- *   E -->|yes| S{"new tracking / delivery?"}
- *   S -->|yes, may bring status| U["Update"]
+ *   E -->|yes| S{"new tracking / delivery, or other order fields?"}
+ *   S -->|yes, may bring status / is the truth| U["Update"]
  *   S -->|no| N["Nothing"]
  *   E -->|no| O{"items, may bring orders?"}
  *   O -->|yes| W["NewOrder"]
@@ -39,13 +39,19 @@ final class Intake
     public function decide(string $source, OrderProposal $proposal, ?ExistingOrder $existing): IntakeVerdict
     {
         if ($existing !== null) {
-            if (! $this->bringsNews($proposal, $existing)) {
+            $status = $this->bringsNews($proposal, $existing);
+            // ⚠️ *D-964: the order fields come from the source that is responsible for new orders of the platform — the
+            // truth (D-950) — and from nobody else.*
+            $fields = OrderComparison::between($proposal, $existing) !== [];
+
+            if (! $status && ! $fields) {
                 return IntakeVerdict::Nothing;
             }
 
-            return $this->duties->allows($source, $proposal->platform, DutyRole::Status, $this->activeSources)
-                ? IntakeVerdict::Update
-                : IntakeVerdict::NotResponsible;
+            $mayStatus = $status && $this->duties->allows($source, $proposal->platform, DutyRole::Status, $this->activeSources);
+            $mayFields = $fields && $this->duties->allows($source, $proposal->platform, DutyRole::Orders, $this->activeSources);
+
+            return $mayStatus || $mayFields ? IntakeVerdict::Update : IntakeVerdict::NotResponsible;
         }
 
         if ($proposal->lines === [] || ! in_array($proposal->kind, self::ORDER_KINDS, true)) {
