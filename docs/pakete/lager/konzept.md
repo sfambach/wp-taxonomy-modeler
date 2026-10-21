@@ -261,7 +261,7 @@ vermutlich Bestellnummer und Position; das Fach notiert sie in der Inventurliste
 | # | Regel | Im Entwurf |
 |---|---|---|
 | R1 | Ein Kauf mit «Noch nicht näher bestimmt = Ja» geht nicht in den Wareneingang — erst bestimmen | die Maske Wareneingang sperrt ihn; «bestimmt» heisst: der Kauf hat ein Material (§3.4) |
-| R2 | Teil-Wareneingang (bestimmte Positionen buchen, andere noch offen)? | **offen** (F9) |
+| R2 | Teil-Wareneingang (bestimmte Positionen buchen, andere noch offen)? | **erlaubt** ([D-956](../../NewConcept/90-decision-log.md)) |
 | R3 | Konvolute werden flache Positionen, gleiche Teile mit Anzahl | je Position ein Kauf, beim Wareneingang je Kauf ein Posten |
 | R4 | Später bestimmen heisst denselben Kauf ändern, nie einen neuen anlegen | passt: der Posten entsteht erst beim Wareneingang, also nach dem Bestimmen |
 
@@ -425,8 +425,8 @@ dessen «Wert je Stück». Nichts muss beim Buchen eingefroren werden, weil der 
 | **F4** | Aufräumen A1–A3 und A6 vor dem Bau? | **ja**, A4 später, A5 nach Stufe 1 |
 | **F5** | Mail-Import ins Repo `wp_tax_stock` holen? | **ja**, eigener Ordner, läuft weiter auf Earth |
 | **F6** | Einheiten (Beutel ↔ Stück) | **später**, Stufe 1 nur «Stück» |
-| **F8** | Bestandsposten (§3.5a): Menge gerechnet aus den Pos-Zeilen, nicht als «Restmenge» gespeichert; Wert und Herkunft am Posten | **ja** |
-| **F9** | Teil-Wareneingang (R2): bestimmte Käufe einer Bestellung buchen, während andere noch unbestimmt sind? | **ja** — sonst blockiert ein unbestimmtes Teil eines Konvoluts die ganze Bestellung; Status «teilweise eingegangen» gibt es schon (§3.4) |
+| **F8** ✅ [D-956](../../NewConcept/90-decision-log.md) | Bestandsposten (§3.5a): Menge gerechnet aus den Pos-Zeilen, nicht als «Restmenge» gespeichert; Wert und Herkunft am Posten | **ja** |
+| **F9** ✅ [D-956](../../NewConcept/90-decision-log.md) | Teil-Wareneingang (R2): bestimmte Käufe einer Bestellung buchen, während andere noch unbestimmt sind? | **ja** — sonst blockiert ein unbestimmtes Teil eines Konvoluts die ganze Bestellung; Status «teilweise eingegangen» gibt es schon (§3.4) |
 | **F10** | Inventur-Posten nachträglich einem Kauf zuordnen statt die Menge doppelt einzubuchen (§3.5a, sein Wort) | **ja**, in Stufe 2 mit dem Mail-Import |
 | **F7** | Reihenfolge | **1** Aufräumen, Knoten «Stock», Material, Inventur, Wareneingang, Verbrauch, Bestandsliste · **2** Mail-Import mit Wareneingang und Verkauf · **3** Reservierung, Bedarf, Bauläufe · **4** Mindestbestand, Umbuchung, Zerlegung |
 

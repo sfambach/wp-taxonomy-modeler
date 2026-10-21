@@ -98,6 +98,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie räumt der Mail-Import die INBOX auf? | [D-949](90-decision-log.md) — Sortierregeln Absender/Betreff → Ordner, Grundregel Shop-Mail ohne Bestellung → «Verworfen»; nie löschen |
 | Wo stellt man ein Modul ein? | [D-945](90-decision-log.md) — eigener Reiter auf «Configuration», gemeldet über `taxmod_config_tabs` | — |
 | Wie zeigt ein Feld auf einen anderen Knoten, ohne seine Art zu verlieren? | [D-946](90-decision-log.md) — `retarget_field` in `taxmod/apply` (INFERRED) | — |
+| Wie behält der Lagerbestand seine Herkunft? | [D-956](90-decision-log.md) — Bestandsposten je Zugang, Menge gerechnet; Teil-Wareneingang erlaubt | — |
 | Wie tief nennt eine Zusammenfassung verwiesene Sätze? | [D-935](90-decision-log.md) — zwei Stufen: das Board heisst «FIC · 386-SC-HG», der Hersteller darin mit seinen eigenen Worten, ohne weiteren Verweis | — |
 | Welche Kennzeichnung trägt ein Bauteil im Katalog? | [D-779](90-decision-log.md) — nur den allgemeinen «Typ» (74LS688, LM7905); Hersteller und Bestellnummer gehören in den kaufmännischen Teil | ~~D-772~~ *(«Hersteller» und «Teilenummer» an `Electronic Parts`)* |
 | Braucht es einen Zyklenwächter? | [D-497](90-decision-log.md) — nein: ein Feld auf ein Modell ist eine Aggregation, und die verweist, statt abzusteigen | ~~D-100~~ *(nur seine Kompositions-Hälfte)* |
