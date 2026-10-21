@@ -30,12 +30,15 @@ final class DutyTable
         $this->rows = $clean;
     }
 
-    /** The starting rows from D-950 and the JLC concept (J2); everything else is open. */
+    /**
+     * The starting rows: where a platform has an API source, the API brings new orders and the mail only the status
+     * (D-950, generalised by D-965). Everything else is open; an inactive API source hands its roles on.
+     */
     public static function initial(): self
     {
         return new self([
             'eBay'   => [DutyRole::Orders->value => 'ebay', DutyRole::Status->value => 'mail'],
-            'JLCPCB' => [DutyRole::Prices->value => 'jlcpcb'],
+            'JLCPCB' => [DutyRole::Orders->value => 'jlcpcb', DutyRole::Status->value => 'mail', DutyRole::Prices->value => 'jlcpcb'],
         ]);
     }
 

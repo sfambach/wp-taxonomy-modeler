@@ -128,7 +128,7 @@ interface EnrichingSource extends ImportSource   // JLC: ergänzt Vorschläge an
 | Plattform | neue Bestellungen | Status (versandt, zugestellt) | Preise ergänzen |
 |---|---|---|---|
 | eBay | eBay-API ([D-950](../../NewConcept/90-decision-log.md)) | Mail | — |
-| JLCPCB | Mail | Mail | JLC-API (J2) |
+| JLCPCB | JLC-API ([D-965](../../NewConcept/90-decision-log.md)) | Mail | JLC-API (J2) |
 | Reichelt, Mouser … | Mail | Mail | — |
 
 - Die heutigen Filter `taxmail_blocked_parsers` und `taxmail_status_only_parsers` werden zu Zeilen dieser Tabelle. *Grund:*

@@ -105,4 +105,13 @@ final class ImportIntakeTest extends TestCase
         self::assertSame(IntakeVerdict::NotResponsible, $intake->decide('mail', $withTotal, $existing), 'the mail only brings status');
         self::assertSame(IntakeVerdict::Nothing, $intake->decide('ebay', $withTotal, new ExistingOrder(7, values: ['total' => '132 EUR'])));
     }
+
+    public function testTheJlcApiBringsJlcOrdersAndTheMailOnlyTheirStatus(): void
+    {
+        $duties = DutyTable::initial();
+
+        self::assertSame('jlcpcb', $duties->responsible('JLCPCB', DutyRole::Orders), 'D-965');
+        self::assertSame('mail', $duties->responsible('JLCPCB', DutyRole::Status));
+        self::assertTrue($duties->allows('mail', 'JLCPCB', DutyRole::Orders, ['mail']), 'without the JLC module the mail brings the orders');
+    }
 }
