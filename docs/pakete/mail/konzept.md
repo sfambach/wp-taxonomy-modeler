@@ -142,9 +142,9 @@ erkannte Bestellung als JSON, Ids der geschriebenen Sätze). AR-1 betrifft das M
 - **tax_stock:** tax_mail löst nach dem Schreiben ein Ereignis aus (WordPress-Action, z. B. `taxmail_order_written`,
   `taxmail_order_delivered`). tax_stock kann daraus einen Wareneingang vorschlagen. tax_mail ruft tax_stock nie direkt auf.
 
-- **tax_ebay** (eBay-API, `docs/pakete/ebay/konzept.md`): eBay-Käufe und -Verkäufe kommen über die API, tax_mail lässt
-  eBay-Mails aus — abgestimmt mit jenem Thread, nicht entschieden (M7). Vorbehalt: ob die API Käufe eines privaten Kontos liefert,
-  ist ungeprüft; sonst bleibt der eBay-Parser für Käufe hier. Doppelte erkennen beide über Plattform + Bestellnummer. **Das
+- **tax_ebay** (eBay-API, `docs/pakete/ebay/konzept.md`), entschieden in [D-950](../../NewConcept/90-decision-log.md): sobald die
+  API auf die Käufe zugreift, ist sie die Wahrheit für eBay-Käufe; tax_mail liefert für eBay dann nur noch den Status von
+  Neukäufen (versandt, zugestellt). Bis dahin liest der eBay-Parser hier auch Käufe. Doppelte erkennen beide über Plattform + Bestellnummer. **Das
   Vorschlagsformat (Bestellung + Positionen) ist in beiden Modulen gleich**, damit eine Prüfseite beide zeigen kann.
 
 ## 8 · Übergang von Earth
