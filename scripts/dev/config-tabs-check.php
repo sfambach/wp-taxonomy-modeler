@@ -45,7 +45,12 @@ $seite = (new SettingsScreen())->render();
 $pruefe(str_contains($seite, 'nav-tab-active') && str_contains($seite, '__ct-stock') && str_contains($seite, 'name="tab" value="stock"'), 'the module tab renders its form with the tab marker');
 // ⚠️ *D-963: der Kasten rechts, «wie man an die daten kommt und was man tun muss».*
 // ⚠️ *D-968: «warum haben die andern module nicht die version im reiter ?»*
-$pruefe(str_contains($seite, 'Stock, version 9.8.7'), 'a module version stands under the tab bar');
+$entwickler = get_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, false);
+update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, '0', true);
+$pruefe(! str_contains((new SettingsScreen())->render(), 'Stock, version 9.8.7'), 'without developer mode no version is shown');
+update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, '1', true);
+$pruefe(str_contains((new SettingsScreen())->render(), 'Stock, version 9.8.7'), 'in developer mode the module version stands under the tab bar');
+update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, $entwickler, true);
 $pruefe(str_contains($seite, '<aside class="postbox taxmod-guide"') && str_contains($seite, '__ct-guide') && strpos($seite, '__ct-stock') < strpos($seite, '__ct-guide'), 'a module guide stands as a box beside the form');
 
 unset($_GET['tab']);
