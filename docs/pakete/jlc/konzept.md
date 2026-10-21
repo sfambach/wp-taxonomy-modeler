@@ -139,3 +139,6 @@ flowchart LR
   wäre glaube ich nicht sinnvoll»* — sie geht an den Modeller ([D-064](../../NewConcept/90-decision-log.md),
   [INF-070](../../neues-konzept-eingang.md)). Das Modul liefert USD und das Bestelldatum. Hat ein Batch Schablonenaufträge, setzt es
   keinen Gesamtbetrag, weil die Schablonenpreise noch nicht gelesen werden und die Summe zu niedrig wäre.
+- **0.1.0 ([D-965](../../NewConcept/90-decision-log.md)):** JLC legt seine Bestellungen selbst in den Eingang (er: *«JLC legt selbst an»*,
+  *«gleiches verhalten überall wo wir api calls haben»*). Ersetzt J2 «nur Preise». Erster Lauf ein Jahr zurück, danach ab dem letzten Lauf
+  mit einem Tag Überlappung, vier Läufe am Tag. Positionstitel wie im Mail-Import («Leiterplatte …»).
