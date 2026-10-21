@@ -112,40 +112,31 @@ das war die Vermischung: die Lagerseite hätte die Arten der Technikseite einzel
 
 ## 3 · Die Datenstrukturen unter «Stock»
 
-*Gliederung nach seinem Vorschlag vom 2026-10-21 (zu F2): «Können wir nicht ast wareneingang machen kann auch unter stock sein we, bestand, wa ?»*
+**Flach, ohne Gruppenknoten** ([D-957](../../NewConcept/90-decision-log.md)). *Sein Wort (2026-10-21), nach dem Vorschlag
+Wareneingang · Bestand · Warenausgang: «hmm ok dann lassen wir die kategorien aber aus dem tax raus das ist später nur für die formulare
+und prozesse wichtig».*
 
 ```mermaid
 flowchart TB
-  ST["Stock"] --> WE["Wareneingang"]
-  ST --> BS["Bestand"]
-  ST --> WA["Warenausgang"]
-  ST --> FE["Fertigung"]
-  WE --> BE["Bestellungen (verschoben)"]
-  WE --> KA["Käufe (verschoben)"]
-  BS --> LA["Material"]
-  BS --> BP["Bestandsposten"]
-  BS --> LO["Lagerorte"]
-  BS --> RS["Reservierungen"]
-  WA --> VE["Verkäufe (verschoben)"]
-  WA --> VA["Verkaufte Artikel (verschoben)"]
-  FE --> BL["Bauläufe (Entnahme und Zugang)"]
-  ST --> VG["Vorgänge (Felder §3.5)"]
-  VG --> V1["Wareneingänge · Verbräuche · Inventuren · Umbuchungen · Baulauf-Buchungen"]
+  ST["Stock"] --> BE["Bestellungen (verschoben)"]
+  ST --> KA["Käufe (verschoben)"]
+  ST --> LA["Material"]
+  ST --> BP["Bestandsposten"]
+  ST --> LO["Lagerorte"]
+  ST --> RS["Reservierungen"]
+  ST --> VG["Vorgänge"]
   ST --> VP["Vorgänge Pos"]
+  ST --> BL["Bauläufe"]
+  ST --> VE["Verkäufe (verschoben)"]
+  ST --> VA["Verkaufte Artikel (verschoben)"]
 ```
 
-- **Der Ast sagt die Richtung.** Wareneingang = rein, Warenausgang = raus, Bestand = was da ist und wo. Der Baulauf bucht beides (Teile
-  raus, fertiges Gerät rein) und steht darum in einem eigenen Ast «Fertigung».
-- **Die Vorgänge sind ein Knoten mit Unterknoten je Art** (INFERRED): die Felder aus §3.5 hängen einmal an «Vorgänge», die Unterknoten
-  (Wareneingänge, Verbräuche, Inventuren, Umbuchungen, Baulauf-Buchungen) erben sie; das Feld «Art» entfällt, die Art ist der Knoten.
-  ⚠️ *Ein Knoten hat genau einen Vater: die Unterknoten können nicht zugleich unter «Vorgänge» und unter Wareneingang/Warenausgang
-  hängen. Zwei Wege: (a) «Vorgänge» unter «Stock», die Äste WE/WA zeigen nur Bestellungen, Käufe, Verkäufe; (b) je Ast ein eigener
-  Vorgangsknoten, die gemeinsamen Felder über einen Vorgänger unter «Stock», den die drei erben — das geht nur, wenn sie darunter
-  hängen. Vorschlag: **(a)**, Vorgänge Pos dazu; so zeigt es der Baum oben. Die Maske des Moduls ordnet die Vorgänge ohnehin nach Richtung
-  (Wareneingang buchen steht beim Wareneingang).* 
+- **Die Einteilung Wareneingang · Bestand · Warenausgang · Fertigung gehört dem Modul**, nicht dem Baum: Menü und Masken des Lagermoduls
+  ordnen danach. Im Modell steht jede Tabelle einmal direkt unter «Stock».
+- **Vorgänge bleiben ein Knoten mit dem Feld «Art»** (§3.5) — ohne Unterknoten je Art (INFERRED: Unterknoten wären wieder Kategorien im Baum).
 
-Gruppenknoten (Wareneingang, Bestand, Warenausgang, Fertigung) haben keine Felder. Jeder Satz erbt «Bezeichnung» und «Beschreibung»
-von `Model` ([D-883](../../NewConcept/90-decision-log.md)), wenn «Stock» unter `Model` steht (F1). «Exemplare» bleiben links, wo sie sind, ohne neues Feld.
+Jeder Satz erbt «Bezeichnung» und «Beschreibung» von `Model` ([D-883](../../NewConcept/90-decision-log.md)), wenn «Stock» unter
+`Model` steht (F1). «Exemplare» bleiben links, wo sie sind, ohne neues Feld.
 
 ### 3.1 Lagerorte — zuerst nur einer
 
@@ -431,7 +422,7 @@ dessen «Wert je Stück». Nichts muss beim Buchen eingefroren werden, weil der 
 | | Frage | Mein Vorschlag |
 |---|---|---|
 | **F1** | «Stock» als Ast unter `Model` oder als Hauptast daneben wie «Kontact» ([D-884](../../NewConcept/90-decision-log.md))? | **unter `Model`** — sonst werden geerbte Werte beim Verschieben unsichtbar ([INF-076](../../neues-konzept-eingang.md)); passt auch zur Idee «Module» ([INF-078](../../neues-konzept-eingang.md)) |
-| **F2** | Bestellungen, Käufe, Verkäufe unter «Stock» verschieben, gegliedert in Wareneingang · Bestand · Warenausgang · Fertigung (sein Vorschlag, §3)? Vorgänge als ein Knoten mit Unterknoten je Art (Weg a)? | **ja**, Ids bleiben; Weg (a) |
+| **F2** ✅ [D-957](../../NewConcept/90-decision-log.md) | Bestellungen, Käufe, Verkäufe unter «Stock» verschieben; flach, ohne Gruppenknoten — die Einteilung WE · Bestand · WA gehört den Masken | entschieden |
 | **F3** | Material (§2): eigenes Ding mit Bestand, freier Bezug auf Art und/oder Ding, Technik verweist nie aufs Lager? | **ja**, mit Wächter |
 | **F3a** | «Bezug Ding» auf jeden Satz unter `Model` — Code im Modeller mit Suche | **ja**, als erster Bauschritt im Modeller |
 | **F4** | Aufräumen A1–A3 und A6 vor dem Bau? | **ja**, A4 später, A5 nach Stufe 1 |
