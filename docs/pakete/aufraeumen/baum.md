@@ -99,3 +99,11 @@ Ohne diese Werkzeuge gingen 146 Chips beim Umzug ihre Teilenummern, Hersteller u
 | **4** | Mainboard-Reihen und -Revisionen: «Mainboards» hat schon «Revisionen» → Mainboard-Revisionen, Reihen → «Modelle»; nur noch der Ort (Geschwister von «Mainboards» wie Platine/Revision) — **schon im Muster**, nur Namen prüfen | nichts |
 
 **Namen Stufe 1 (INFERRED):** Internal → Intern · External → Extern · Enhancement Cards → Erweiterungskarten · Graphics → Grafikkarten · IO → I/O-Karten · Storage → Laufwerke · Harddisk → Festplatten · Floppy → Diskettenlaufwerke · Tape → Bandlaufwerke · RAM → Arbeitsspeicher · Games → Spiele · OS → Betriebssysteme · Tools → Werkzeuge · Line Types → Zeilentypen · Software Change → Softwareänderung · Constants → Konstanten · Hardware Project → Hardware-Projekte · Electronic Parts → Bauteile · Active → Aktiv · Resistor → Widerstände · Coil → Spulen · Condensator → Kondensatoren · Models → Modelle (bis Stufe 3). `Primitives` und seine Kinder bleiben (Rahmen).
+
+## Nachtrag 2026-10-21 · Verweise auf das leere «Modelle»
+
+⚠️ **Übersehen in Stufe 3:** fünf Felder zeigten weiter auf «Modelle» (149000103431), das seit Stufe 3 leer ist — Exemplare «Modell» (1..1),
+Käufe «Modell», Preisangaben «Modell», Kompatibilität «von» und «zu». Ihre Werte blieben gültig, aber die Auswahl bot keinen Satz mehr an;
+ein neues Exemplar liess sich nicht speichern. *Behoben mit 0.1.33: alle fünf zeigen per `retarget_field` auf `Model` («jeder Satz unter
+Model», [D-958](../../NewConcept/90-decision-log.md) F3a). Ob weitere Felder in tieferen Knoten auf «Modelle» zeigen, ist nicht geprüft —
+der Connector liest Felder nur je Knoten.*
