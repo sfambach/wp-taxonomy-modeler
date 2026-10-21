@@ -940,3 +940,16 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 ## INF-084 · Stückliste: Bestell-Nr. des Bauteils als eigene Spalte
 
 *Eingang 2026-10-21, aus [D-954](NewConcept/90-decision-log.md) (3).* Die Bestell-Nr. steht am Bauteil, die Stückliste zeigt aber nur die Felder der Position (Referenz, Part, Anzahl, Best., Hinweis). Eine Spalte aus einem Feld des **verwiesenen** Satzes kann die Tabelle heute nicht zeichnen. Offen: ob die Tabelle Felder des Ziels als Spalten bekommt (Einstellung an der Kante «Part»), oder ob die Bestell-Nr. anders erscheint. Bis dahin steht sie nur am Bauteil. *Nachtrag 2026-10-21: der Mechanismus ist seit [D-955](NewConcept/90-decision-log.md) da (`target_columns` an der Kante «Part»); offen bleibt nur, ob die Bestell-Nr. dort als Spalte erscheinen soll.*
+
+---
+
+## INF-085 · Fremdwährung zum Tageskurs in Euro
+
+**Typ:** `VORSCHLAG` · **Status:** `OPEN` — 2026-10-21.
+
+> *«dann müsste man mit dem tageskurs den euro betrag errechnen, das ist für mich wichtig für den wiederverkauf»* — *«das ist was generelles was wir in tax brauchen ein alleingang wäre glaube ich nicht sinnvoll»* — *«man könnte das natürlich einfach mit der paypal buchung abgleiche ... aber ... weiss nicht obd das wirklich so eine gute idee ist»*
+
+- **Entschieden (gelesen):** [D-064](NewConcept/90-decision-log.md) «An amount is stored in its own currency; a frozen rate is stored beside it; the converted figure is derived.» [D-067](NewConcept/90-decision-log.md): eine Bezugswährung, der eingefrorene Kurs zeigt immer auf sie. [D-929](NewConcept/90-decision-log.md): ein Preis ist ein Einheitswert mit Währung als Einheit.
+- **Gebaut:** nein — der Einheitswert hat Wert, Präfix, Einheit; kein Kursfeld, keine Kursquelle. [INF-070](#) (Anzeige in Besucherwährung) ist ein anderer Fall: Kurs von heute, nicht vom Kaufdatum.
+- **Vorschlag (INFERRED):** der Modeller rechnet um, nicht das Modul. Module liefern Betrag + Währung + Datum, wie heute. Kursquelle: EZB-Referenzkurs, letzter Wert am oder vor dem Datum (Wochenende), im Modeller zwischengespeichert. Der Kurs wird am Wert eingefroren (D-064), der Euro-Betrag abgeleitet.
+- **Offen für Stefan:** Kursquelle (EZB / tatsächlich gezahlter Euro-Betrag, z. B. PayPal-Buchung, vor EZB); welches Datum (Bestell- oder Zahlungsdatum).
