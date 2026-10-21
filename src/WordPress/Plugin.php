@@ -48,7 +48,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.36';
+    public const VERSION     = '0.1.37';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -72,6 +72,9 @@ final class Plugin
 
         // ⚠️ *Der Eingang der Import-Module (D-952, D-953): Tabelle, Seite «Inbox», Reiter «Import», Takt.*
         ImportWiring::boot($file);
+
+        // ⚠️ *Once, on `init` so the abilities and the front end see it too: the default language back on its texts (0.1.37).*
+        add_action('init', SettingsScreen::repairNeutralLocale(...));
 
         add_action('admin_menu', $plugin->registerMenu(...));
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));

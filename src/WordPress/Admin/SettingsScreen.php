@@ -49,6 +49,7 @@ final class SettingsScreen
 
     /** Which language stands for *everywhere* — the row stored without a locale. */
     public const NEUTRAL_LOCALE = 'taxmod_neutral_locale';
+    public const NEUTRAL_LOCALE_REPAIR = 'taxmod_neutral_locale_repair';
 
     /** How big the tree's glyphs are, in pixels. */
     public const ICON_SIZE = 'taxmod_icon_size';
@@ -316,7 +317,10 @@ final class SettingsScreen
      */
     private function localeRow(): string
     {
-        $offered = [get_locale() => get_locale()];
+        // ⚠️ *`en_US` and the stored value are always offered: WordPress does not list `en_US` as installed, so a select
+        // without it fell back to the site's language and every save of this tab moved the default language with it — the
+        // owner declared `en_US` (D-387), and on 2026-10-21 all names went blank.*
+        $offered = [get_locale() => get_locale(), 'en_US' => 'en_US', self::neutralLocale() => self::neutralLocale()];
 
         foreach (get_available_languages() as $one) {
             $offered[$one] = $one;
@@ -582,7 +586,7 @@ final class SettingsScreen
 
         // ⚠️ Checked against what is installed, not merely sanitised: a locale nobody has would make
         // every label fall through to the node name with no way to see why.
-        if ($locale !== '' && ($locale === get_locale() || in_array($locale, get_available_languages(), true))) {
+        if ($locale !== '' && in_array($locale, [get_locale(), 'en_US', self::neutralLocale(), ...get_available_languages()], true)) {
             update_option(self::NEUTRAL_LOCALE, $locale, true);
         }
 
@@ -699,6 +703,44 @@ final class SettingsScreen
         $site = get_locale();
 
         return $site === '' ? 'en_US' : $site;
+    }
+
+    /**
+     * Puts the default language back where the label texts are, once, after a save moved it away (see {@see self::localeRow()}).
+     *
+     * ⚠️ *Measured, not guessed: only when more texts stand under `en_US` than under the stored language — the language the
+     * owner declared (D-387). Anyone can change it again on the settings page.*
+     */
+    public static function repairNeutralLocale(): void
+    {
+        if ((int) get_option(self::NEUTRAL_LOCALE_REPAIR, 0) >= 1) {
+            return;
+        }
+
+        update_option(self::NEUTRAL_LOCALE_REPAIR, 1, true);
+
+        $stored = (string) get_option(self::NEUTRAL_LOCALE, '');
+
+        if ($stored === '' || $stored === 'en_US') {
+            return;
+        }
+
+        global $wpdb;
+
+        $texts = Schema::table('label_texts');
+
+        if (Schema::tableMissing($texts)) {
+            return;
+        }
+
+        $count = static fn (string $locale): int => (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$texts} WHERE locale = %s",
+            $locale
+        ));
+
+        if ($count('en_US') > $count($stored)) {
+            update_option(self::NEUTRAL_LOCALE, 'en_US', true);
+        }
     }
 
     /**
