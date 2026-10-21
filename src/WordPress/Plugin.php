@@ -48,7 +48,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.41';
+    public const VERSION     = '0.1.42';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -215,6 +215,9 @@ final class Plugin
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
         $this->compositionScaffold()->importOnce();
+        if (UnitScaffold::rateFieldId() === null) {
+            $this->unitScaffold()->ensureRateField();
+        }
     }
 
     /**
@@ -268,6 +271,9 @@ final class Plugin
         $this->baseScaffold()->importOnce();
         $this->unitScaffold()->importOnce();
         $this->compositionScaffold()->importOnce();
+        if (UnitScaffold::rateFieldId() === null) {
+            $this->unitScaffold()->ensureRateField();
+        }
     }
 
     public function registerMenu(): void
@@ -771,6 +777,15 @@ final class Plugin
      * ⚠️ *Herausgezogen, weil ihn seit [D-649](../../docs/NewConcept/90-decision-log.md) zwei
      * bekommen: der Bildschirm zum Zeichnen und {@see DataEntry} für die Vorbelegung.*
      */
+    /** Der Kurs am Einheitenwert und die Euro-Einheit aus den Import-Zielen (D-966); ohne beide wird nichts umgerechnet. */
+    private static function referenceCurrency(): ?\Taxmod\Core\Service\ReferenceCurrency
+    {
+        $rateField = UnitScaffold::rateFieldId();
+        $euro = \Taxmod\WordPress\Import\Targets::load()->currencies[\Taxmod\Core\Import\TargetModel::REFERENCE_CURRENCY] ?? null;
+
+        return $rateField === null || $euro === null ? null : new \Taxmod\Core\Service\ReferenceCurrency($rateField, (int) $euro);
+    }
+
     private function rendering(Labels $labels): Rendering
     {
         return new Rendering(
@@ -802,6 +817,7 @@ final class Plugin
             // ⚠️ *Die Mediathek (D-865): der Kern speichert die Id einer Datei, der Rand sagt Adresse, Titel und Vorschaubild.*
             media: new WpMediaLibrary(),
             addons: ShippedAddons::registry(),
+            referenceCurrency: self::referenceCurrency(),
             // ⚠️ **Schritt 4 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
             // Renderer zeichnen aus `settings_value` und dem Vertrag; `ModelValues` bleibt für das,
             // was noch nicht umgezogen ist — die erlaubten Kinder und die Vorgaben der Datensätze.*

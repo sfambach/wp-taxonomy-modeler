@@ -18,6 +18,7 @@ use Taxmod\Core\Import\ProposalGroup;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ResolvingSource;
 use Taxmod\Core\Import\SearchingSource;
+use Taxmod\WordPress\Currency\EcbRates;
 use Taxmod\WordPress\Plugin;
 use WP_Error;
 
@@ -406,7 +407,7 @@ final class InboxScreen
         }
 
         $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide((string) $rows[0]['source'], $proposal, $existing);
-        $builder = new ChangeListBuilder($targets);
+        $builder = new ChangeListBuilder($targets, new EcbRates());
         $label = Sources::find((string) $rows[0]['source'])?->label() ?? (string) $rows[0]['source'];
         $origins = array_filter(array_map(static fn (array $row): string => (string) (((array) json_decode((string) ($row['evidence'] ?? ''), true))['origin'] ?? ''), $rows));
         /* translators: 1: source, 2: date */

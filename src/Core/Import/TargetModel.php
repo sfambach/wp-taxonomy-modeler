@@ -12,6 +12,9 @@ use Taxmod\Core\Exception\WriteRefused;
  */
 final class TargetModel
 {
+    /** The reference currency of D-067: the ECB publishes its rates against the euro (D-966). */
+    public const REFERENCE_CURRENCY = 'EUR';
+
     /**
      * @param array<string, int> $orderFields role => relation id: title, origin, origin_note, order_number, platform,
      *        merchant, ordered_at, received_at, shipping_cost, fees, total, tracking, lines
@@ -19,6 +22,7 @@ final class TargetModel
      *        article_number, unit_price, total_price, landed_unit_price
      * @param array<string, int> $currencies ISO code => unit node id
      * @param list<int> $requiredParts unit-value fields with multiplicity 1..1 — their part exists on a new record
+     * @param int|null $rateField the unit value's frozen rate (D-966); `null` freezes nothing
      */
     public function __construct(
         public readonly int $ordersNode,
@@ -30,6 +34,7 @@ final class TargetModel
         public readonly array $purchaseFields,
         public readonly array $currencies,
         public readonly array $requiredParts = [],
+        public readonly ?int $rateField = null,
     ) {
     }
 

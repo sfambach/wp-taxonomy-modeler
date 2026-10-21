@@ -3,6 +3,7 @@
 namespace Taxmod\Core\Import;
 
 use Taxmod\Core\Exception\WriteRefused;
+use Taxmod\Core\Port\ExchangeRates;
 
 
 /**
@@ -19,13 +20,16 @@ use Taxmod\Core\Exception\WriteRefused;
  * The landed price per piece spreads shipping and fees over all items of the order by their price, picked or not —
  * leaving an item out does not make the others dearer.
  *
+ * An amount in a foreign currency carries the ECB rate of the order date beside it (D-064, D-966); the euro figure is
+ * derived on display, never stored.
+ *
  * @see docs/pakete/import/konzept.md §3.6
  */
 final class ChangeListBuilder
 {
     private const TITLE_LENGTH = 45;
 
-    public function __construct(private readonly TargetModel $target)
+    public function __construct(private readonly TargetModel $target, private readonly ?ExchangeRates $rates = null)
     {
     }
 
@@ -42,6 +46,7 @@ final class ChangeListBuilder
         }
 
         $currency = $this->target->currency($proposal->currency);
+        $rate = $this->frozenRate($proposal);
         $orderValues = $this->withoutEmpty([
             $this->target->orderField('title')        => $this->orderTitle($proposal, $pickedLines),
             $this->target->orderField('platform')     => $proposal->platform,
@@ -50,9 +55,9 @@ final class ChangeListBuilder
             $this->target->orderField('ordered_at')   => $proposal->orderDate,
             $this->target->orderField('origin')       => ['values' => [(string) $this->target->originDocumented]],
             $this->target->orderField('origin_note')  => $originNote,
-            $this->target->orderField('shipping_cost') => $this->amount('shipping_cost', $proposal->shippingCost, $currency, true),
-            $this->target->orderField('fees')         => $this->amount('fees', $proposal->fees, $currency, true),
-            $this->target->orderField('total')        => $this->amount('total', $proposal->total, $currency, true),
+            $this->target->orderField('shipping_cost') => $this->amount('shipping_cost', $proposal->shippingCost, $currency, $rate, true),
+            $this->target->orderField('fees')         => $this->amount('fees', $proposal->fees, $currency, $rate, true),
+            $this->target->orderField('total')        => $this->amount('total', $proposal->total, $currency, $rate, true),
             $this->target->orderField('tracking')     => $proposal->trackingNumbers === [] ? null : ['values' => $proposal->trackingNumbers],
             $this->target->orderField('received_at')  => $receivedDate,
         ]);
@@ -66,7 +71,7 @@ final class ChangeListBuilder
             $ref = 'p' . $index;
             $refs[] = '@' . $ref;
             $changes[] = ['op' => 'create_record', 'node' => $this->target->purchasesNode, 'ref' => $ref];
-            $changes[] = ['op' => 'set_values', 'record' => '@' . $ref, 'values' => $this->purchaseValues($line, $currency, $landed[$index] ?? null, $originNote)];
+            $changes[] = ['op' => 'set_values', 'record' => '@' . $ref, 'values' => $this->purchaseValues($line, $currency, $rate, $landed[$index] ?? null, $originNote)];
         }
 
         $orderValues[(string) $this->target->orderField('lines')] = ['values' => $refs];
@@ -110,6 +115,7 @@ final class ChangeListBuilder
     {
         $differences = OrderComparison::between($proposal, $order);
         $currency = $this->target->currency($proposal->currency);
+        $rate = $this->frozenRate($proposal);
         $values = [];
 
         foreach (array_intersect($roles, array_keys($differences)) as $role) {
@@ -117,9 +123,9 @@ final class ChangeListBuilder
             $values[$field] = match ($role) {
                 'merchant'      => $proposal->counterparty,
                 'ordered_at'    => $proposal->orderDate,
-                'shipping_cost' => $this->amount($role, $proposal->shippingCost, $currency, true, $differences[$role]['model'] !== null),
-                'fees'          => $this->amount($role, $proposal->fees, $currency, true, $differences[$role]['model'] !== null),
-                'total'         => $this->amount($role, $proposal->total, $currency, true, $differences[$role]['model'] !== null),
+                'shipping_cost' => $this->amount($role, $proposal->shippingCost, $currency, $rate, true, $differences[$role]['model'] !== null),
+                'fees'          => $this->amount($role, $proposal->fees, $currency, $rate, true, $differences[$role]['model'] !== null),
+                'total'         => $this->amount($role, $proposal->total, $currency, $rate, true, $differences[$role]['model'] !== null),
             };
         }
 
@@ -129,7 +135,7 @@ final class ChangeListBuilder
     }
 
     /** @return array<string, mixed> */
-    private function purchaseValues(ProposalLine $line, int $currency, ?string $landedUnitPrice, string $originNote): array
+    private function purchaseValues(ProposalLine $line, int $currency, ?string $rate, ?string $landedUnitPrice, string $originNote): array
     {
         $unit = Money::toUnits($line->unitPrice);
 
@@ -137,9 +143,9 @@ final class ChangeListBuilder
             $this->target->purchaseField('title')             => $line->title,
             $this->target->purchaseField('quantity')          => $line->quantity === null ? null : self::quantity($line->quantity),
             $this->target->purchaseField('article_number')    => $line->articleNumber,
-            $this->target->purchaseField('unit_price')        => $this->amount('unit_price', $line->unitPrice, $currency),
-            $this->target->purchaseField('total_price')       => $unit === null || $line->quantity === null ? null : $this->amount('total_price', Money::format((int) round($unit * $line->quantity)), $currency),
-            $this->target->purchaseField('landed_unit_price') => $this->amount('landed_unit_price', $landedUnitPrice, $currency),
+            $this->target->purchaseField('unit_price')        => $this->amount('unit_price', $line->unitPrice, $currency, $rate),
+            $this->target->purchaseField('total_price')       => $unit === null || $line->quantity === null ? null : $this->amount('total_price', Money::format((int) round($unit * $line->quantity)), $currency, $rate),
+            $this->target->purchaseField('landed_unit_price') => $this->amount('landed_unit_price', $landedUnitPrice, $currency, $rate),
             $this->target->purchaseField('origin')            => ['values' => [(string) $this->target->originDocumented]],
             $this->target->purchaseField('origin_note')       => $originNote,
         ]);
@@ -173,13 +179,13 @@ final class ChangeListBuilder
     }
 
     /**
-     * A unit value: amount and currency. A required part (1..1) already stands empty on a new record, so «0» fills
-     * it; an optional one does not exist yet, so a name («neu») creates it — same rule as the Python importer. A part
-     * the record already holds is overwritten through «0».
+     * A unit value: amount, currency and, in a foreign currency, the frozen rate. A required part (1..1) already stands
+     * empty on a new record, so «0» fills it; an optional one does not exist yet, so a name («neu») creates it — same
+     * rule as the Python importer. A part the record already holds is overwritten through «0».
      *
      * @return array<string, array<string, string>>|null
      */
-    private function amount(string $role, ?string $amount, int $currency, bool $onOrder = false, bool $replacesPart = false): ?array
+    private function amount(string $role, ?string $amount, int $currency, ?string $rate, bool $onOrder = false, bool $replacesPart = false): ?array
     {
         $units = Money::toUnits($amount);
 
@@ -189,11 +195,33 @@ final class ChangeListBuilder
 
         $field = $onOrder ? $this->target->orderField($role) : $this->target->purchaseField($role);
 
-        // ⚠️ *Overwriting what a record already holds is key «0» too (D-964), whether the part is required or not.*
-        return [$replacesPart || in_array($field, $this->target->requiredParts, true) ? '0' : 'neu' => [
+        $part = [
             (string) $this->target->amountField => Money::format($units),
             (string) $this->target->unitField   => (string) $currency,
-        ]];
+        ];
+
+        if ($rate !== null && $this->target->rateField !== null) {
+            $part[(string) $this->target->rateField] = $rate;
+        }
+
+        // ⚠️ *Overwriting what a record already holds is key «0» too (D-964), whether the part is required or not.*
+        return [$replacesPart || in_array($field, $this->target->requiredParts, true) ? '0' : 'neu' => $part];
+    }
+
+    /**
+     * The ECB quote of the order date; none in the reference currency (D-067: the rate is 1 and nothing is stored), none
+     * without a date, and none when no rate is known — the amount is then written without one rather than refused.
+     */
+    private function frozenRate(OrderProposal $proposal): ?string
+    {
+        $isoCode = strtoupper($proposal->currency);
+        $date = substr((string) $proposal->orderDate, 0, 10);
+
+        if ($isoCode === TargetModel::REFERENCE_CURRENCY || $this->rates === null || $this->target->rateField === null || $date === '') {
+            return null;
+        }
+
+        return $this->rates->quoteOn($isoCode, $date);
     }
 
     /**

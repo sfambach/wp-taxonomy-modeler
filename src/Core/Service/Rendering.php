@@ -157,6 +157,8 @@ final class Rendering implements Presets
         private readonly ?\Taxmod\Core\Addon\AddonRegistry $addons = null,
         /** ⚠️ *Die Mediathek des Randes (D-865): eine Datei wird mit ihrer Id gespeichert, Adresse und Vorschaubild reicht der Rand.* */
         private readonly ?\Taxmod\Core\Port\MediaLibrary $media = null,
+        /** ⚠️ *Für den abgeleiteten Euro-Betrag neben einem Betrag in fremder Währung (D-064, D-966); ohne ihn steht nur der Betrag.* */
+        private readonly ?ReferenceCurrency $referenceCurrency = null,
     ) {
     }
 
@@ -2282,7 +2284,54 @@ final class Rendering implements Presets
             );
         }
 
+        if ($this->referenceCurrency !== null && $purpose === Purpose::Display && isset($values[$this->referenceCurrency->rateFieldId])) {
+            $fields = [...$fields, ...$this->bezugsBetrag($relations, $values)];
+        }
+
         return $fields;
+    }
+
+    /**
+     * Der Euro-Betrag neben einem Betrag in fremder Währung, abgeleitet aus dem eingefrorenen Kurs (D-064, D-966) — nur zum Lesen.
+     *
+     * ⚠️ *Die Kante `kurs` ist versteckt, also kommt sie hier nicht an — nur ihr Wert. Steht ein Kurs da, ist die Währung nicht die
+     * Bezugswährung (D-067: dort wird keiner gespeichert); der Betrag ist die eine Dezimalzahl daneben, und dessen Kante trägt die
+     * Zeile, umbenannt in das Zeichen der Bezugswährung: «22.29 $ · € 19.16».*
+     *
+     * @param list<Relation>         $relations die sichtbaren Kanten dieses Teils
+     * @param array<int, TypedValue> $values
+     * @return list<RenderedField> eines oder keines
+     */
+    private function bezugsBetrag(array $relations, array $values): array
+    {
+        $kurs = $this->referenceCurrency === null ? null : ($values[$this->referenceCurrency->rateFieldId] ?? null);
+        $betraege = array_values(array_filter(
+            $relations,
+            static fn (Relation $relation): bool => ($values[$relation->id] ?? null)?->decimal !== null
+        ));
+
+        if ($kurs === null || $kurs->decimal === null || count($betraege) !== 1 || $this->referenceCurrency === null) {
+            return [];
+        }
+
+        $umgerechnet = ReferenceCurrency::converted((string) $values[$betraege[0]->id]->decimal, $kurs->decimal);
+        $einheit = $this->gemerkterKnoten($this->referenceCurrency->unitNodeId);
+
+        if ($umgerechnet === null || $einheit === null) {
+            return [];
+        }
+
+        $zeichen = (string) ($this->labels?->forNodes([$einheit], SeededRole::Symbol, '')[$einheit->id] ?? '');
+        $wort = $zeichen === '' ? $einheit->name : $zeichen;
+
+        return [new RenderedField(
+            $betraege[0]->renamedTo($wort),
+            SimpleType::Decimal,
+            'plain',
+            new RenderResult('<span class="taxmod-value">' . htmlspecialchars($umgerechnet, ENT_QUOTES) . '</span>'),
+            readOnly: true,
+            summary: $umgerechnet . ' ' . $wort,
+        )];
     }
 
     /**
@@ -4814,6 +4863,11 @@ final class Rendering implements Presets
             }
         }
 
+        // ⚠️ *Die Bezugswährung mit, damit ihr Zeichen da ist, wenn ein Betrag in fremder Währung umgerechnet wird (D-966).*
+        if ($innereKnoten !== [] && $this->referenceCurrency !== null) {
+            $innereKnoten[$this->referenceCurrency->unitNodeId] = true;
+        }
+
         foreach ($innereKnoten === [] ? [] : $this->gemerkteKnoten(array_keys($innereKnoten)) as $knoten) {
             $knotenNamen[$knoten->id] = $knoten->name;
         }
@@ -4944,7 +4998,8 @@ final class Rendering implements Presets
             }
         }
 
-        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen): string {
+        $bezugsWaehrung = $this->referenceCurrency;
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
             $ausWahl  = false;
@@ -4980,15 +5035,25 @@ final class Rendering implements Presets
             // Werte in ihrer Reihenfolge: «330 Ohm», «-20 20 Prozent».* *Auch ganz oben, wenn die Teile selbst gefragt sind — der Vergleich
             // nannte mehrere Takte eines Mainboards «#33615, #33616» (gemessen am 2026-10-17, D-925).*
             if ($feldIds === []) {
-                $zahlen  = [];
-                $praefix = '';
-                $einheit = '';
-                $sonst   = [];
+                $zahlen     = [];
+                $praefix    = '';
+                $einheit    = '';
+                $einheitId  = null;
+                $sonst      = [];
+                $kurs       = null;
+                $bezug      = $bezugsWaehrung;
 
                 foreach ($werte[$satzId] ?? [] as $zeile) {
                     $v = $zeile->value;
 
                     if ($v->isNothing() || $v->referenceSpace === ReferenceSpace::Record) {
+                        continue;
+                    }
+
+                    // ⚠️ *Der eingefrorene Kurs ist keine zweite Zahl des Betrags — sonst läse «22.29 $» als Bereich «22.29 … 1.16» (D-966).*
+                    if ($bezug !== null && $zeile->relationId === $bezug->rateFieldId) {
+                        $kurs = $v->decimal ?? ($v->int === null ? null : (string) $v->int);
+
                         continue;
                     }
 
@@ -4998,7 +5063,8 @@ final class Rendering implements Presets
                         if (isset($istPraefix[$v->reference])) {
                             $praefix = $knotenWort;
                         } elseif (isset($istEinheit[$v->reference])) {
-                            $einheit = $knotenWort;
+                            $einheit   = $knotenWort;
+                            $einheitId = $v->reference;
                         } else {
                             $sonst[] = $knotenWort;
                         }
@@ -5018,6 +5084,16 @@ final class Rendering implements Presets
                     count($zahlen) === 2   => $zahlen[0] . ' … ' . $zahlen[1],
                     default                => implode(' ', $zahlen),
                 };
+
+                // ⚠️ *Ein Betrag in fremder Währung mit eingefrorenem Kurs zeigt den Euro-Betrag dahinter: «22.29 $ (19.16 €)» (D-064, D-966).*
+                $umgerechnet = $bezug !== null && $kurs !== null && count($zahlen) === 1 && $praefix === '' && $einheitId !== null && $einheitId !== $bezug->unitNodeId
+                    ? ReferenceCurrency::converted($zahlen[0], $kurs)
+                    : null;
+                $bezugsZeichen = $bezug === null ? '' : (string) ($zeichen[$bezug->unitNodeId] ?? $knotenNamen[$bezug->unitNodeId] ?? '');
+
+                if ($umgerechnet !== null && $bezugsZeichen !== '') {
+                    $sonst = [...$sonst, '(' . $umgerechnet . ' ' . $bezugsZeichen . ')'];
+                }
 
                 $teile = array_values(array_filter(
                     [$betrag === '' ? '' : trim($betrag . ' ' . $praefix . $einheit), ...$sonst],

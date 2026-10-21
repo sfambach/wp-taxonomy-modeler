@@ -12,6 +12,7 @@ use Taxmod\Core\Import\Money;
 use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\TargetModel;
 use Taxmod\Core\Exception\WriteRefused;
+use Taxmod\Core\Port\ExchangeRates;
 
 final class ImportChangeListTest extends TestCase
 {
@@ -45,6 +46,45 @@ final class ImportChangeListTest extends TestCase
         self::assertSame(['values' => ['99']], $order['102']);
         self::assertSame(['neu' => ['4234' => '16.95', '4236' => '8571']], $order['111']);
         self::assertFalse(isset($order['110']));
+    }
+
+    public function testAForeignAmountCarriesTheRateOfTheOrderDate(): void
+    {
+        $rates = new class implements ExchangeRates {
+            /** @var list<string> */
+            public array $asked = [];
+
+            public function quoteOn(string $isoCode, string $date): ?string
+            {
+                $this->asked[] = $isoCode . ' ' . $date;
+
+                return '1.1634';
+            }
+        };
+        $proposal = new OrderProposal('JLCPCB', 'W1', ProposalKind::Ordered, '2026-09-21 01:02', 'USD', [
+            new ProposalLine('PCB', 5, '2.00'),
+        ], total: '22.29');
+
+        $changes = (new ChangeListBuilder(self::target(300), $rates))->newOrder($proposal, [0], '');
+
+        self::assertSame(['USD 2026-09-21'], $rates->asked, 'one rate per order, the order day');
+        self::assertSame(['0' => ['4234' => '2', '4236' => '8573', '300' => '1.1634']], $changes[2]['values']['205']);
+        self::assertSame(['neu' => ['4234' => '22.29', '4236' => '8573', '300' => '1.1634']], $changes[3]['values']['111']);
+    }
+
+    public function testNoRateInTheReferenceCurrencyOrWhenNoneIsKnown(): void
+    {
+        $none = new class implements ExchangeRates {
+            public function quoteOn(string $isoCode, string $date): ?string
+            {
+                return null;
+            }
+        };
+        $euro = new OrderProposal('Reichelt', '1', ProposalKind::Ordered, '2026-10-20', 'EUR', [new ProposalLine('LM317', 1, '0.50')]);
+        $dollar = new OrderProposal('JLCPCB', 'W1', ProposalKind::Ordered, '2026-10-20', 'USD', [new ProposalLine('PCB', 1, '2.00')]);
+
+        self::assertSame(['0' => ['4234' => '0.5', '4236' => '8571']], (new ChangeListBuilder(self::target(300), $none))->newOrder($euro, [0], '')[2]['values']['205']);
+        self::assertSame(['0' => ['4234' => '2', '4236' => '8573']], (new ChangeListBuilder(self::target(300), $none))->newOrder($dollar, [0], '')[2]['values']['205']);
     }
 
     public function testNothingPickedIsRefused(): void
@@ -95,6 +135,19 @@ final class ImportChangeListTest extends TestCase
         self::assertSame([], $builder->completed($existing, $proposal, ['fees']), 'an equal field is not written');
     }
 
+    public function testACompletedForeignAmountCarriesTheRateToo(): void
+    {
+        $rates = new class implements ExchangeRates {
+            public function quoteOn(string $isoCode, string $date): ?string
+            {
+                return $isoCode === 'USD' && $date === '2026-09-21' ? '1.1634' : null;
+            }
+        };
+        $proposal = new OrderProposal('JLCPCB', 'W1', ProposalKind::Ordered, '2026-09-21', 'USD', total: '22.29');
+
+        self::assertSame(['neu' => ['4234' => '22.29', '4236' => '8573', '300' => '1.1634']], (new ChangeListBuilder(self::target(300), $rates))->completed(new ExistingOrder(7), $proposal, ['total'])[0]['values']['111']);
+    }
+
     public function testAConflictingAmountOverwritesThePartItHas(): void
     {
         $existing = new ExistingOrder(7, values: ['total' => '176 EUR']);
@@ -103,7 +156,7 @@ final class ImportChangeListTest extends TestCase
         self::assertSame(['0' => ['4234' => '132', '4236' => '8571']], (new ChangeListBuilder(self::target()))->completed($existing, $proposal, ['total'])[0]['values']['111']);
     }
 
-    private static function target(): TargetModel
+    private static function target(?int $rateField = null): TargetModel
     {
         return new TargetModel(10, 20, 99, 4234, 4236, [
             'title' => 101, 'origin' => 102, 'origin_note' => 103, 'order_number' => 104, 'platform' => 105,
@@ -112,6 +165,6 @@ final class ImportChangeListTest extends TestCase
         ], [
             'title' => 201, 'origin' => 202, 'quantity' => 203, 'article_number' => 204, 'unit_price' => 205,
             'total_price' => 206, 'landed_unit_price' => 207, 'origin_note' => 208,
-        ], ['EUR' => 8571], [205, 206]);
+        ], ['EUR' => 8571, 'USD' => 8573], [205, 206], $rateField);
     }
 }

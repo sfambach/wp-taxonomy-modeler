@@ -83,6 +83,45 @@ final class UnitScaffold
         return $id === 0 ? null : $id;
     }
 
+    /**
+     * Die Kante `kurs` am Einheitenwert: der eingefrorene EZB-Kurs eines Betrags in fremder Währung (D-064, D-068, D-966).
+     *
+     * ⚠️ *Nicht über {@see self::VERSION}: eine neue Fassung liefe das ganze Gerüst noch einmal und brächte gelöschte Einheiten zurück
+     * (D-119). Die Kante hat ihre eigene Notiz und entsteht genau einmal.*
+     */
+    public const RATE_FIELD_OPTION = 'taxmod_unit_value_rate_field';
+
+    public static function rateFieldId(): ?int
+    {
+        $id = (int) get_option(self::RATE_FIELD_OPTION, 0);
+
+        return $id === 0 ? null : $id;
+    }
+
+    /**
+     * Legt `kurs` (decimal, 0..1, versteckt) am Einheitenwert an, einmal. Versteckt, weil nur der Import ihn füllt und ein
+     * Widerstandswert kein Kursfeld zeigen soll; gezeigt wird der abgeleitete Euro-Betrag (D-966).
+     */
+    public function ensureRateField(): void
+    {
+        $unitValueId = self::unitValueId();
+
+        if (self::rateFieldId() !== null || $unitValueId === null) {
+            return;
+        }
+
+        $unitValue = $this->editor->find($unitValueId);
+
+        if ($unitValue === null) {
+            return;
+        }
+
+        $rate = $this->field($unitValue, 'kurs', 'decimal');
+        $this->editor->setMultiplicity($rate->fromNodeId, $rate->id, Multiplicity::ZeroToOne);
+        $this->editor->hideField($rate->fromNodeId, $rate->id, true);
+        update_option(self::RATE_FIELD_OPTION, $rate->id, true);
+    }
+
     /** Raise it only to deliver something genuinely new; every raise re-enters every install. */
     public const VERSION = 6;
 

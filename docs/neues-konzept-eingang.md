@@ -945,7 +945,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-085 · Fremdwährung zum Tageskurs in Euro
 
-**Typ:** `VORSCHLAG` · **Status:** `OPEN` — 2026-10-21.
+**Typ:** `VORSCHLAG` · **Status:** `DECIDED` — 2026-10-21, [D-966](NewConcept/90-decision-log.md) («Nur EZB»).
 
 > *«dann müsste man mit dem tageskurs den euro betrag errechnen, das ist für mich wichtig für den wiederverkauf»* — *«das ist was generelles was wir in tax brauchen ein alleingang wäre glaube ich nicht sinnvoll»* — *«man könnte das natürlich einfach mit der paypal buchung abgleiche ... aber ... weiss nicht obd das wirklich so eine gute idee ist»*
 

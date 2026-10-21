@@ -2162,6 +2162,59 @@ final class RenderingTest extends TestCase
         self::assertSame('IC-Sockel · DIP-14', $steht);
     }
 
+    /** ⚠️ *D-966: «dann müsste man mit dem tageskurs den euro betrag errechnen».* */
+    #[Test]
+    public function an_amount_in_a_foreign_currency_shows_the_euro_amount_from_its_frozen_rate(): void
+    {
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $dollar    = $this->editor->createNode('Dollar', $einheiten->id);
+        $euro      = $this->editor->createNode('Euro', $einheiten->id);
+        $wertTyp   = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $dezimal   = $this->type('Decimal');
+        $wert      = $this->editor->addField($wertTyp->id, $dezimal->id, 'wert');
+        $einheit   = $this->editor->addField($wertTyp->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $kurs      = $this->editor->addField($wertTyp->id, $dezimal->id, 'kurs');
+        $kurs      = $this->editor->hideField($wertTyp->id, $kurs->id, true);
+        $kauf      = $this->thing('Kauf');
+        $preis     = $this->editor->addField($kauf->id, $wertTyp->id, 'preis');
+        $liste     = $this->thing('Liste');
+        $zeilen    = $this->editor->addField($liste->id, $kauf->id, 'zeilen', RelationKind::Composition);
+        $zeilen    = $this->editor->setMultiplicity($liste->id, $zeilen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+
+        $teil = $this->records->add(new NodeRecord(0, $wertTyp->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($teil, $wert->id, TypedValue::ofDecimal('22.29')));
+        $this->records->putValue(RelationRecord::direct($teil, $einheit->id, TypedValue::ofReference($dollar->id)));
+        $this->records->putValue(RelationRecord::direct($teil, $kurs->id, TypedValue::ofDecimal('1.1634')));
+        $k = $this->records->add(new NodeRecord(0, $kauf->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($k, $preis->id, TypedValue::ofRecordReference($teil)));
+        $satz = $this->records->add(new NodeRecord(0, $liste->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $zeilen->id, TypedValue::ofRecordReference($k), '', 0));
+
+        $zeichnen = function (?\Taxmod\Core\Service\ReferenceCurrency $bezug) use ($einheiten, $liste, $zeilen, $satz): string {
+            $rendering = new Rendering(
+                $this->nodes,
+                new FixedFramework($this->wurzel, $this->nodes->byId($this->wurzel->id + 1), $this->branchRoot, self::INSTALLATION, self::ROLE_IDS, ['units' => $einheiten]),
+                ShippedRenderers::registry(),
+                $this->typeNodes,
+                new Labels($this->labelStore, 'en_US'),
+                ShippedConverters::registry(),
+                resolver: $this->resolver,
+                relations: $this->relations,
+                records: $this->records,
+                addons: \Taxmod\Core\Addon\ShippedAddons::registry(),
+                referenceCurrency: $bezug,
+            );
+
+            return $rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', recordParts: $rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz)->markup;
+        };
+
+        $mit = $zeichnen(new \Taxmod\Core\Service\ReferenceCurrency($kurs->id, $euro->id));
+
+        self::assertMatchesRegularExpression('/>Euro<.*>19\.16</s', $mit, 'der Euro-Betrag als eigene Zeile, mit dem Zeichen der Bezugswährung');
+        self::assertStringNotContainsString('1.1634', $mit, 'der Kurs selbst bleibt versteckt');
+        self::assertStringNotContainsString('Euro', $zeichnen(null), 'ohne Bezugswährung nur der Betrag');
+    }
+
     #[Test]
     public function without_chosen_fields_a_summary_takes_the_first_text_field(): void
     {

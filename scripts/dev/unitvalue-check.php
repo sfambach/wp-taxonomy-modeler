@@ -155,8 +155,11 @@ foreach ($editor->fieldsOf($unitValue->id) as $relation) {
 echo '  (von der Wurzel geerbt und darum nicht gezählt: '
     . (implode(', ', array_keys($vonDerWurzel)) ?: 'nichts') . ")\n";
 
-// D-039: a unit value is value + optional prefix + unit. Three members, no more and no fewer.
-check('it has exactly the three members of D-039', count($members) === 3, implode(', ', array_keys($members)));
+// D-039: a unit value is value + optional prefix + unit. D-966 adds the frozen rate as a hidden fourth member (D-068:
+// the rate belongs to the money type), so the three visible ones are still all a form shows.
+$sichtbar = array_filter($members, static fn ($relation): bool => ! $relation->hide);
+check('it shows exactly the three members of D-039', count($sichtbar) === 3, implode(', ', array_keys($sichtbar)));
+check('  · and keeps the frozen rate hidden beside them (D-966)', isset($members['kurs']) && $members['kurs']->hide);
 check('  · wert', isset($members['wert']));
 check('  · prefix', isset($members['prefix']));
 check('  · einheit', isset($members['einheit']));

@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Import;
 
 use Taxmod\Core\Import\TargetModel;
+use Taxmod\WordPress\Persistence\UnitScaffold;
 
 /**
  * Where taken proposals go — once for every source (D-953, S5): node and relation ids, never names. Stored in an
@@ -78,6 +79,8 @@ final class Targets
             $ids((array) $merged['purchase_fields']),
             $ids((array) $merged['currencies']),
             array_values($ids((array) $merged['required_parts'])),
+            // The rate field is structure of the unit value, not a target to choose (D-068, D-966).
+            UnitScaffold::rateFieldId(),
         );
     }
 
