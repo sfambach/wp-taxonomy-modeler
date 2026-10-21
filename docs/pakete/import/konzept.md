@@ -251,3 +251,20 @@ Jeder Schritt endet mit etwas, das er bedienen kann (`PR-2`), und die Module ver
   - Ergänzende Quellen (JLC) laufen beim Ablegen eines fremden Vorschlags, nicht nachträglich über Bestellungen im Modell.
   - tax_mail behält bis zu seinem Umzug Tabelle und Prüfseite; beide Seiten laufen nebeneinander, bis tax_mail sich als Quelle anmeldet.
 
+### 10.1 · Nachtrag für den Umzug von tax_mail (Modeller 0.1.36)
+
+Auf die Liste aus dem Mail-Thread (§3.8, zweite Rückmeldung vom 2026-10-21):
+
+| | Bedarf | Gebaut |
+|---|---|---|
+| 1 | Vorschlag ohne Bestellnummer | `OrderProposal::$numberMissing` statt Präfix `ohne-Nr:`; `LooseMatch` (Verkäufer oder Titelanfang, 14 Tage, ohne Datum beides) im Kern; `ExistingOrder` trägt Verkäufer, Datum, Titel; `ModelGateway::findLoose()` |
+| 2 | Zusammenführen wie `ProposalMerger` | `ProposalGroup` übernimmt dessen Regeln samt Tests (Artikelnummern als Gleichstand-Brecher, Bestätigung → Art «bestellt», nummerierte Basis, Positionen vereinigen über `LineUnion`) |
+| 3 | dieselbe Mail unter anderer Id | Spalte `received_at` (Schemafassung 2), Abgleich Plattform + Nr. + Art + Empfangszeit; die Quelle liefert `received_at` im Beleg |
+| 4 | Übernehmen | Herkunftsnotiz aus dem Beleg (`origin`), sonst «aus dem Eingang (Quelle) am …»; Eingangsdatum aus der Zustellmeldung; Status-Update = Sendungsnummer und Zustellung zusammen |
+| 5 | Altbestand | Rolle `BacklogSource::backlog(?cursor, ModelLookup)`; Knopf auf der Seite «Inbox», 20 s je Klick; `ModelLookup` nur mit angemeldetem Benutzer |
+| 6 | «Bestellung holen» | Rolle `SearchingSource::search(text)`, Feld auf der Seite «Inbox» |
+| 7 | Neu beginnen | Knopf je Quelle: vergisst offene Vorschläge und Cursor, dann `RestartingSource::restart()` |
+
+- **Annahme (`INFERRED`):** die Knöpfe Altbestand, Suchen, Neu beginnen stehen auf der Seite «Inbox» bei der Quelle, nicht im Reiter «Import» — sie lösen einen Lauf aus, sie stellen nichts ein.
+- Die Seite «Inbox» zeigt einen Absturz als Text statt als weisse Seite (debug.log ist live aus).
+

@@ -5,12 +5,13 @@ namespace Taxmod\WordPress\Import;
 /**
  * The inbox table of the import modules: proposals, not model data (D-953, S3) — a proposal becomes data only when he
  * takes it. Its own schema version beside the model's, so an inbox change never walks the model's migrations (CD-6).
+ * Version 2 adds `received_at`: when the source received it, for the same mail under another id (§3.8).
  *
  * @see docs/pakete/import/konzept.md §3.3
  */
 final class InboxSchema
 {
-    public const VERSION = 1;
+    public const VERSION = 2;
     public const VERSION_OPTION = 'taxmod_inbox_schema_version';
 
     public static function table(): string
@@ -41,6 +42,7 @@ final class InboxSchema
   status varchar(20) NOT NULL,
   proposal longtext NOT NULL,
   evidence longtext NULL,
+  received_at datetime NULL,
   written longtext NULL,
   error text NULL,
   created_at datetime NOT NULL,

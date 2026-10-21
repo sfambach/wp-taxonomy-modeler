@@ -31,11 +31,22 @@ final class ImportWiring
 
         add_filter(SettingsScreen::TABS_FILTER, ImportTab::register(...));
         add_action('admin_menu', static function (): void {
-            add_submenu_page('taxmod', __('Inbox', 'taxmod'), __('Inbox', 'taxmod'), Plugin::CAPABILITY, InboxScreen::PAGE, static fn () => print (new InboxScreen())->render());
+            add_submenu_page('taxmod', __('Inbox', 'taxmod'), __('Inbox', 'taxmod'), Plugin::CAPABILITY, InboxScreen::PAGE, static function (): void {
+                // debug.log is off on the live site; a failure shows its text here instead of a white page.
+                try {
+                    print (new InboxScreen())->render();
+                } catch (\Throwable $failure) {
+                    print '<div class="wrap"><div class="notice notice-error"><p>' . esc_html(sprintf('%s: %s (%s:%d)', $failure::class,
+                        $failure->getMessage(), basename($failure->getFile()), $failure->getLine())) . '</p></div></div>';
+                }
+            });
         }, 11);
 
         add_action('admin_post_' . InboxScreen::TAKE, static fn () => (new InboxScreen())->handleTake());
         add_action('admin_post_' . InboxScreen::DISCARD, static fn () => (new InboxScreen())->handleDiscard());
         add_action('admin_post_' . InboxScreen::FETCH, static fn () => (new InboxScreen())->handleFetch());
+        add_action('admin_post_' . InboxScreen::SEARCH, static fn () => (new InboxScreen())->handleSearch());
+        add_action('admin_post_' . InboxScreen::BACKLOG, static fn () => (new InboxScreen())->handleBacklog());
+        add_action('admin_post_' . InboxScreen::RESTART, static fn () => (new InboxScreen())->handleRestart());
     }
 }

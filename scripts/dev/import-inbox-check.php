@@ -79,6 +79,25 @@ $pruefe(count($eigene) === 1 && count($eigene[0]) === 2, 'confirmation and shipp
 $seite = (new InboxScreen())->render();
 $pruefe(str_contains($seite, '__Shop A-1') && str_contains($seite, 'Test source') && str_contains($seite, 'Ihre Bestellung'), 'the inbox page shows the order once, with its source and evidence');
 
+$zweite = new class implements \Taxmod\Core\Import\SearchingSource, \Taxmod\Core\Import\RestartingSource {
+    public bool $neu = false;
+    public function key(): string { return '__ib2'; }
+    public function label(): string { return 'Second'; }
+    public function restart(): void { $this->neu = true; }
+    public function search(string $text): FetchBatch
+    {
+        $kopie = fn (string $id): IncomingProposal => new IncomingProposal(
+            new OrderProposal('__Mail', $text, ProposalKind::Ordered, lines: [new ProposalLine('X', 1.0)], source: '__ib2', externalId: $id),
+            ['received_at' => '2026-10-21 10:00:00']
+        );
+
+        return new FetchBatch([$kopie('orig'), $kopie('forwarded')], null);
+    }
+};
+add_filter(Sources::FILTER, static fn (array $sources): array => [...$sources, $zweite]);
+$pruefe($inbox->search($zweite, 'C-9') === 1, 'a forwarded copy (same order, kind and moment, other id) is filed once');
+$pruefe($inbox->restart($zweite) === 1 && $zweite->neu, 'a restart forgets the open proposal and lets the source undo its side');
+
 $reiter = SettingsScreen::moduleTabs();
 $pruefe(isset($reiter['import']) && str_contains(($reiter['import']['render'])(), 'name="duties[0][platform]"'), 'the Import tab shows the duty table');
 

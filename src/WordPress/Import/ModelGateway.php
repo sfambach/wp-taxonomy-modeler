@@ -3,6 +3,8 @@
 namespace Taxmod\WordPress\Import;
 
 use Taxmod\Core\Import\ExistingOrder;
+use Taxmod\Core\Import\LooseMatch;
+use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\TargetModel;
 use WP_Error;
 
@@ -16,6 +18,9 @@ final class ModelGateway
 {
     /** @var array<string, ExistingOrder>|null platform|number (lower case) => order */
     private ?array $orders = null;
+
+    /** @var array<string, string> platform|number => platform as written */
+    private array $platforms = [];
 
     public function __construct(private readonly TargetModel $target)
     {
@@ -58,6 +63,28 @@ final class ModelGateway
         return $this->orders[self::key($platform, $orderNumber)] ?? null;
     }
 
+    /** The order a proposal without a number belongs to, by seller or title within 14 days (LooseMatch). */
+    public function findLoose(OrderProposal $proposal): ExistingOrder|WP_Error|null
+    {
+        if ($this->orders === null) {
+            $loaded = $this->loadOrders();
+
+            if ($loaded instanceof WP_Error) {
+                return $loaded;
+            }
+
+            $this->orders = $loaded;
+        }
+
+        foreach ($this->orders as $key => $order) {
+            if (mb_strtolower($this->platforms[$key] ?? '') === mb_strtolower(trim($proposal->platform)) && LooseMatch::matchesOrder($proposal, $order)) {
+                return $order;
+            }
+        }
+
+        return null;
+    }
+
     /** @return array<string, ExistingOrder>|WP_Error */
     private function loadOrders(): array|WP_Error
     {
@@ -71,13 +98,20 @@ final class ModelGateway
         $numberField = $this->target->orderField('order_number');
         $trackingField = $this->target->orderField('tracking');
         $receivedField = $this->target->orderField('received_at');
+        $merchantField = $this->target->orderField('merchant');
+        $orderedField = $this->target->orderField('ordered_at');
+        $titleField = $this->target->orderField('title');
         $orders = [];
+        $this->platforms = [];
 
         foreach ((array) ($node['records'] ?? []) as $record) {
             $platform = '';
             $number = '';
             $tracking = [];
             $received = null;
+            $merchant = null;
+            $ordered = null;
+            $title = '';
 
             foreach ((array) ($record['values'] ?? []) as $value) {
                 match ((int) $value['relation_id']) {
@@ -85,12 +119,16 @@ final class ModelGateway
                     $numberField   => $number = (string) $value['value'],
                     $trackingField => $tracking[] = (string) $value['value'],
                     $receivedField => $received = (string) $value['value'],
+                    $merchantField => $merchant = (string) $value['value'],
+                    $orderedField  => $ordered = (string) $value['value'],
+                    $titleField    => $title .= ' ' . (string) $value['value'],
                     default        => null,
                 };
             }
 
             if ($number !== '') {
-                $orders[self::key($platform, $number)] = new ExistingOrder((int) $record['id'], $tracking, $received);
+                $orders[self::key($platform, $number)] = new ExistingOrder((int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title));
+                $this->platforms[self::key($platform, $number)] = trim($platform);
             }
         }
 

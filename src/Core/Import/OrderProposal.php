@@ -19,6 +19,8 @@ final class OrderProposal
      * @param list<string> $trackingNumbers
      * @param string|null $source key of the source that made it: 'mail', 'ebay', 'jlcpcb'
      * @param string|null $externalId the source's own id: Message-ID, eBay orderId, JLC batch number
+     * @param bool $numberMissing the source names no order number (a won auction, an invoice); $orderNumber is then
+     *        only the source's stand-in key, and the order is found by seller and title (LooseMatch)
      */
     public function __construct(
         public readonly string $platform,
@@ -35,6 +37,7 @@ final class OrderProposal
         public readonly array $trackingNumbers = [],
         public readonly ?string $source = null,
         public readonly ?string $externalId = null,
+        public readonly bool $numberMissing = false,
     ) {
     }
 
@@ -62,6 +65,7 @@ final class OrderProposal
             'tracking'      => $this->trackingNumbers,
             'source'        => $this->source,
             'external_id'   => $this->externalId,
+            'number_missing' => $this->numberMissing,
         ];
     }
 
@@ -85,6 +89,7 @@ final class OrderProposal
             array_values(array_map('strval', (array) ($row['tracking'] ?? []))),
             $text('source'),
             $text('external_id'),
+            (bool) ($row['number_missing'] ?? false),
         );
     }
 }

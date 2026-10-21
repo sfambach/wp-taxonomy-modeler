@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\Core\Import\InboxGrouping;
 use Taxmod\Core\Import\IncomingProposal;
 use Taxmod\Core\Import\InboxStatus;
 use Taxmod\Core\Import\OrderProposal;
@@ -25,7 +26,33 @@ final class InboxTable
         ));
     }
 
-    public function add(string $source, IncomingProposal $incoming): int
+    /** The same message under another id — a forwarded copy: same platform, order number, kind and moment received. */
+    public function hasSame(OrderProposal $proposal, string $receivedAt): bool
+    {
+        global $wpdb;
+
+        return trim($proposal->orderNumber) !== '' && (bool) $wpdb->get_var($wpdb->prepare(
+            'SELECT 1 FROM ' . InboxSchema::table() . ' WHERE platform = %s AND order_number = %s AND kind = %s AND received_at = %s LIMIT 1',
+            mb_substr($proposal->platform, 0, 64),
+            mb_substr($proposal->orderNumber, 0, 64),
+            $proposal->kind->value,
+            $receivedAt
+        ));
+    }
+
+    /** Forgets every open proposal of a source; returns how many went. */
+    public function forgetOpen(string $source): int
+    {
+        global $wpdb;
+
+        return (int) $wpdb->query($wpdb->prepare(
+            'DELETE FROM ' . InboxSchema::table() . ' WHERE source = %s AND status = %s',
+            $source,
+            InboxStatus::Open->value
+        ));
+    }
+
+    public function add(string $source, IncomingProposal $incoming, ?string $receivedAt = null): int
     {
         global $wpdb;
         $proposal = $incoming->proposal;
@@ -39,6 +66,7 @@ final class InboxTable
             'status'       => InboxStatus::Open->value,
             'proposal'     => (string) wp_json_encode($proposal->toArray()),
             'evidence'     => $incoming->evidence === [] ? null : wp_json_encode($incoming->evidence),
+            'received_at'  => $receivedAt,
             'created_at'   => current_time('mysql'),
         ]);
 
@@ -53,26 +81,29 @@ final class InboxTable
     }
 
     /**
-     * Open rows grouped by platform and order number, so the review page shows one order once.
+     * Open rows grouped by order (InboxGrouping), so the review page shows one order once.
      *
      * @return list<non-empty-list<array<string, mixed>>> `mixed` because these are database rows
      */
     public function openGroups(): array
     {
         global $wpdb;
-        $rows = $wpdb->get_results($wpdb->prepare(
+        $rows = [];
+
+        foreach ($wpdb->get_results($wpdb->prepare(
             'SELECT * FROM ' . InboxSchema::table() . ' WHERE status = %s ORDER BY id ASC',
             InboxStatus::Open->value
-        ), ARRAY_A) ?: [];
-        $groups = [];
-
-        foreach ($rows as $row) {
-            $number = trim((string) $row['order_number']);
-            $key = $number === '' ? 'row:' . $row['id'] : mb_strtolower(trim((string) $row['platform'])) . '|' . $number;
-            $groups[$key][] = $row;
+        ), ARRAY_A) ?: [] as $row) {
+            $rows[(int) $row['id']] = $row;
         }
 
-        return array_values($groups);
+        $proposals = array_map(static fn (array $row): OrderProposal => OrderProposal::fromArray((array) json_decode((string) $row['proposal'], true)), $rows);
+        $days = array_map(static fn (array $row): ?string => $row['received_at'] === null ? null : substr((string) $row['received_at'], 0, 10), $rows);
+
+        return array_map(
+            static fn (array $ids): array => array_map(static fn (int $id): array => $rows[$id], $ids),
+            InboxGrouping::group($proposals, $days)
+        );
     }
 
     /**

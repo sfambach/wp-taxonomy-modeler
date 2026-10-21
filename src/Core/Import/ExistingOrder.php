@@ -14,6 +14,9 @@ final class ExistingOrder
         public readonly int $recordId,
         public readonly array $trackingNumbers = [],
         public readonly ?string $receivedAt = null,
+        public readonly ?string $counterparty = null,
+        public readonly ?string $orderDate = null,
+        public readonly string $title = '',
     ) {
     }
 }

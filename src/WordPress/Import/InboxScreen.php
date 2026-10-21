@@ -3,9 +3,11 @@
 namespace Taxmod\WordPress\Import;
 
 use Taxmod\Core\Exception\DomainError;
+use Taxmod\Core\Import\BacklogSource;
 use Taxmod\Core\Import\ChangeListBuilder;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\FetchingSource;
+use Taxmod\Core\Import\ImportSource;
 use Taxmod\Core\Import\InboxStatus;
 use Taxmod\Core\Import\Intake;
 use Taxmod\Core\Import\IntakeVerdict;
@@ -13,6 +15,7 @@ use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalGroup;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ResolvingSource;
+use Taxmod\Core\Import\SearchingSource;
 use Taxmod\WordPress\Plugin;
 use WP_Error;
 
@@ -28,6 +31,10 @@ final class InboxScreen
     public const TAKE = 'taxmod_inbox_take';
     public const DISCARD = 'taxmod_inbox_discard';
     public const FETCH = 'taxmod_inbox_fetch';
+    public const SEARCH = 'taxmod_inbox_search';
+    public const BACKLOG = 'taxmod_inbox_backlog';
+    public const RESTART = 'taxmod_inbox_restart';
+    private const BACKLOG_BUDGET = 20;
     private const NOTICE = 'taxmod_inbox_notice';
 
     public function __construct(private readonly InboxTable $table = new InboxTable())
@@ -90,22 +97,31 @@ final class InboxScreen
                 wp_date('Y-m-d H:i', (int) $run['at']),
                 (int) $run['filed']
             ) . ($run['error'] !== null ? ' — ' . $run['error'] : '');
-            $button = $source instanceof FetchingSource
-                ? '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"><input type="hidden" name="action" value="' . esc_attr(self::FETCH) . '">'
-                    . '<input type="hidden" name="source" value="' . esc_attr($key) . '">' . wp_nonce_field(self::FETCH, '_wpnonce', true, false)
-                    . get_submit_button(__('Fetch now', 'taxmod'), 'secondary small', 'submit', false) . '</form>'
-                : '';
+            $button = ($source instanceof FetchingSource ? self::button(self::FETCH, $key, __('Fetch now', 'taxmod')) : '')
+                . ($source instanceof BacklogSource ? self::button(self::BACKLOG, $key, __('Sort the backlog', 'taxmod')) : '')
+                . ($source instanceof SearchingSource ? self::button(self::SEARCH, $key, __('Fetch order', 'taxmod'),
+                    '<input type="text" name="text" class="regular-text" style="width:12em" aria-label="' . esc_attr__('Order number or text', 'taxmod') . '"> ') : '')
+                . self::button(self::RESTART, $key, __('Start over from now', 'taxmod'), '', __('Forget the open proposals of this module and start over?', 'taxmod'));
             $html .= '<tr><td>' . esc_html($source->label()) . '</td><td>' . esc_html($last) . '</td><td>' . $button . '</td></tr>';
         }
 
         return $html . '</tbody></table>';
     }
 
+    private static function button(string $action, string $source, string $label, string $before = '', string $confirm = ''): string
+    {
+        return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline-block;margin:0 .5em .25em 0"'
+            . ($confirm === '' ? '' : ' onsubmit="return confirm(' . esc_attr((string) wp_json_encode($confirm)) . ')"') . '>'
+            . '<input type="hidden" name="action" value="' . esc_attr($action) . '"><input type="hidden" name="source" value="' . esc_attr($source) . '">'
+            . wp_nonce_field($action, '_wpnonce', true, false) . $before
+            . get_submit_button($label, 'secondary small', 'submit', false) . '</form>';
+    }
+
     /** @param non-empty-list<array<string, mixed>> $rows */
     private function group(array $rows, ?ModelGateway $model, Intake $intake): string
     {
         $proposal = self::merged($rows);
-        $existing = $model?->findOrder($proposal->platform, $proposal->orderNumber);
+        $existing = $model === null ? null : self::existing($model, $proposal);
         $ids = array_map(static fn (array $row): int => (int) $row['id'], $rows);
         $sources = Sources::all();
         $labels = array_unique(array_map(static fn (array $row): string => isset($sources[$row['source']]) ? $sources[$row['source']]->label() : (string) $row['source'], $rows));
@@ -185,12 +201,7 @@ final class InboxScreen
 
     public function handleFetch(): void
     {
-        if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
-        }
-
-        check_admin_referer(self::FETCH);
-        $source = Sources::find(isset($_POST['source']) ? sanitize_key(wp_unslash((string) $_POST['source'])) : '');
+        $source = $this->postedSource(self::FETCH);
 
         if (! $source instanceof FetchingSource) {
             $this->finish(__('This source cannot fetch.', 'taxmod'));
@@ -202,6 +213,70 @@ final class InboxScreen
         } catch (\Throwable $failure) {
             $this->finish($failure->getMessage());
         }
+    }
+
+    public function handleSearch(): void
+    {
+        $source = $this->postedSource(self::SEARCH);
+        $text = isset($_POST['text']) ? sanitize_text_field(wp_unslash((string) $_POST['text'])) : '';
+
+        if (! $source instanceof SearchingSource || $text === '') {
+            $this->finish(__('Nothing to look for.', 'taxmod'));
+        }
+
+        try {
+            /* translators: %d: number of proposals */
+            $this->finish(sprintf(__('%d new proposals.', 'taxmod'), (new Inbox($this->table))->search($source, $text)));
+        } catch (\Throwable $failure) {
+            $this->finish($failure->getMessage());
+        }
+    }
+
+    public function handleBacklog(): void
+    {
+        $source = $this->postedSource(self::BACKLOG);
+
+        if (! $source instanceof BacklogSource || ! ModelGateway::available()) {
+            $this->finish(__('This module has no backlog to sort.', 'taxmod'));
+        }
+
+        try {
+            $result = (new Inbox($this->table))->runBacklog($source, new GatewayLookup(new ModelGateway(Targets::load())), self::BACKLOG_BUDGET);
+            $this->finish(sprintf(
+                /* translators: %d: number of proposals */
+                __('Backlog: %d new proposals.', 'taxmod'),
+                $result['filed']
+            ) . ' ' . ($result['done'] ? __('The backlog is done.', 'taxmod') : __('More to sort — press the button again.', 'taxmod')));
+        } catch (\Throwable $failure) {
+            $this->finish($failure->getMessage());
+        }
+    }
+
+    public function handleRestart(): void
+    {
+        $source = $this->postedSource(self::RESTART);
+
+        if ($source === null) {
+            $this->finish(__('No such module.', 'taxmod'));
+        }
+
+        try {
+            /* translators: %d: number of proposals */
+            $this->finish(sprintf(__('Started over; %d open proposals forgotten.', 'taxmod'), (new Inbox($this->table))->restart($source)));
+        } catch (\Throwable $failure) {
+            $this->finish($failure->getMessage());
+        }
+    }
+
+    private function postedSource(string $action): ?ImportSource
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        check_admin_referer($action);
+
+        return Sources::find(isset($_POST['source']) ? sanitize_key(wp_unslash((string) $_POST['source'])) : '');
     }
 
     public function handleDiscard(): void
@@ -227,7 +302,7 @@ final class InboxScreen
         $targets = Targets::load();
         $model = new ModelGateway($targets);
         $proposal = self::merged($rows);
-        $existing = $model->findOrder($proposal->platform, $proposal->orderNumber);
+        $existing = self::existing($model, $proposal);
 
         if ($existing instanceof WP_Error) {
             $this->finish($existing->get_error_message());
@@ -236,19 +311,21 @@ final class InboxScreen
         $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide((string) $rows[0]['source'], $proposal, $existing);
         $builder = new ChangeListBuilder($targets);
         $label = Sources::find((string) $rows[0]['source'])?->label() ?? (string) $rows[0]['source'];
+        $origins = array_filter(array_map(static fn (array $row): string => (string) (((array) json_decode((string) ($row['evidence'] ?? ''), true))['origin'] ?? ''), $rows));
         /* translators: 1: source, 2: date */
-        $originNote = sprintf(__('Taken from the inbox (%1$s) on %2$s.', 'taxmod'), $label, wp_date('Y-m-d'));
+        $originNote = $origins !== [] ? implode(' ', array_unique($origins)) : sprintf(__('Taken from the inbox (%1$s) on %2$s.', 'taxmod'), $label, wp_date('Y-m-d'));
+        $deliveredRows = array_values(array_filter($rows, static fn (array $row): bool => $row['kind'] === ProposalKind::Delivered->value));
+        $deliveredOn = $deliveredRows === [] ? null : substr((string) ($deliveredRows[0]['received_at'] ?? current_time('mysql')), 0, 10);
 
         try {
             if ($verdict === IntakeVerdict::NewOrder && $proposal->kind !== ProposalKind::Sold) {
                 $picked = array_map('absint', (array) ($_POST['lines'] ?? []));
-                $delivered = $proposal->kind === ProposalKind::Delivered ? wp_date('Y-m-d') : null;
-                $changes = $builder->newOrder($proposal, array_values(array_intersect($picked, array_keys($proposal->lines))), $originNote, $delivered);
+                $changes = $builder->newOrder($proposal, array_values(array_intersect($picked, array_keys($proposal->lines))), $originNote, $deliveredOn);
             } elseif ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
                 $changes = $builder->shipped($existing, $proposal->trackingNumbers);
 
-                if ($proposal->kind === ProposalKind::Delivered && ($existing->receivedAt === null || $existing->receivedAt === '')) {
-                    $changes = [...$changes, ...$builder->delivered($existing, wp_date('Y-m-d'))];
+                if ($deliveredOn !== null && ($existing->receivedAt === null || $existing->receivedAt === '')) {
+                    $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
                 }
             } else {
                 $this->finish(self::verdictLabel($verdict));
@@ -292,6 +369,11 @@ final class InboxScreen
         if ($source instanceof ResolvingSource) {
             $source->resolved((array) json_decode((string) ($row['evidence'] ?? ''), true), $status);
         }
+    }
+
+    private static function existing(ModelGateway $model, OrderProposal $proposal): ExistingOrder|WP_Error|null
+    {
+        return $proposal->numberMissing ? $model->findLoose($proposal) : $model->findOrder($proposal->platform, $proposal->orderNumber);
     }
 
     /** @param non-empty-list<array<string, mixed>> $rows */
