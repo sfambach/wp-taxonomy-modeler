@@ -1,6 +1,6 @@
 # Paket · Gemeinsame Schnittstelle der Import-Module («Eingang») — Konzeptentwurf
 
-**Stand 2026-10-21. Entschieden: Verschlüsselung ([D-951](../../NewConcept/90-decision-log.md)) und Ort im Modeller ([D-952](../../NewConcept/90-decision-log.md)), S3–S7 ([D-953](../../NewConcept/90-decision-log.md)). Nichts gebaut.**
+**Stand 2026-10-21. Entschieden: Verschlüsselung ([D-951](../../NewConcept/90-decision-log.md)) und Ort im Modeller ([D-952](../../NewConcept/90-decision-log.md)), S3–S7 ([D-953](../../NewConcept/90-decision-log.md)). Gebaut: Schritt 1 (§6) im Modeller 0.1.31 — `Taxmod\Core\Import\SecretBox`, `OrderProposal`/`ProposalLine`/`ProposalKind`, `Taxmod\WordPress\Import\Vault`.**
 Eingang: [INF-083](../../neues-konzept-eingang.md#inf-083--gemeinsame-schnittstelle-für-import-module). Was er entscheiden
 soll, steht in §8; alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
 Betrifft: [`../mail/konzept.md`](../mail/konzept.md), [`../ebay/konzept.md`](../ebay/konzept.md), [`../jlc/konzept.md`](../jlc/konzept.md).
@@ -224,7 +224,8 @@ Jeder Schritt endet mit etwas, das er bedienen kann (`PR-2`), und die Module ver
 - Ein Benutzer prüft (er); Vorschläge sind nicht nach Benutzer getrennt.
 - «Keys und Passwörter» schliesst Tokens und Secrets ein; App-IDs, RuName, Server, Benutzernamen sind keine Geheimnisse und
   bleiben lesbar.
-- Der Kontext des Schlüssels wechselt beim Umzug von `taxmail-secret` / `taxebay-token` auf einen gemeinsamen je Quelle.
+- **Gebaut anders als oben in §6 Schritt 1 (INFERRED):** kein Umsiegeln. Der Tresor nimmt den Kontext als Parameter; tax_mail und tax_ebay behalten ihre Kontexte `taxmail-secret` / `taxebay-token`, also öffnet alles Gespeicherte unverändert. Der Tresor liest Text mit und ohne Präfix `sb1:` (tax_ebay schrieb keins) und schreibt immer mit.
+- Ein Modul prüft `class_exists(Taxmod\WordPress\Import\Vault::class)` und `Vault::API`; fehlt der Modeller oder ist er älter, zeigt das Modul einen Hinweis «Taxonomy Modeller ≥ 0.1.31 nötig» und tut nichts — die eigene Klasse ist gestrichen, nicht als Rückfall behalten.
 - Quellen dürfen weiter eigene Tabellen halten, wenn es nur ihr Protokoll betrifft (tax_mail: Startpunkt, Ordner).
 - Status-Updates an übernommenen Bestellungen sind Vorschläge der Art «aktualisieren» und gehen über dieselbe Prüfseite; ob sie
   ohne Prüfen geschrieben werden dürfen (z. B. Sendungsnummer), ist offen.
