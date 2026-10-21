@@ -68,14 +68,25 @@ interface ImportSource
     /** @return list<CredentialField> */
     public function credentials(): array;          // welche Zugangsdaten, welche davon geheim, welche Konstante geht vor
     public function testConnection(Credentials $c): ConnectionResult;
+}
+
+interface FetchingSource extends ImportSource    // Mail, eBay: findet selbst neue Bestellungen
+{
     public function fetch(Credentials $c, Cursor $since): FetchBatch;   // Vorschläge + neuer Cursor
 }
 
 interface EnrichingSource extends ImportSource   // JLC: ergänzt Vorschläge anderer Quellen
 {
+    /** @return list<string> Plattformen, deren Vorschläge sie ergänzt, z. B. ['JLCPCB'] */
+    public function enriches(): array;
     public function enrich(Proposal $p, Credentials $c): ?Proposal;
 }
 ```
+
+- **Abrufen und Ergänzen sind getrennte Rollen** (Rückmeldung aus dem JLC-Thread, 2026-10-21): die PCB-API von JLC hat keine
+  Bestellliste, nur Details je Batch-Nummer — sie kann kein `fetch()`. Der Eingang reicht ihr jeden Vorschlag einer *fremden*
+  Quelle (tax_mail, Plattform JLCPCB, Bestellnummer `W…`) und jede Bestellung im Modell ohne Preis; sie darf Preise und
+  Versandkosten an Positionen und Bestellung ergänzen, nichts anlegen. Eine Quelle darf beide Rollen haben.
 
 - Angemeldet wird eine Quelle über einen Filter (`taxmod_import_sources`), wie Parser in tax_mail ([D-942](../../NewConcept/90-decision-log.md)) und Reiter ([D-945](../../NewConcept/90-decision-log.md)).
 - **Was in der Quelle bleibt:** Protokoll (IMAP, REST, Signatur), Anmeldeablauf (eBay-OAuth mit Rückleitung), Abbildung der Antwort
