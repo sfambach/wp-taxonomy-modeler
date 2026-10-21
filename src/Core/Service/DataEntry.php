@@ -787,7 +787,12 @@ final class DataEntry
         // *Hier stand «liegt das Ziel in keinem Ast, gibt es dort keine Sätze» — seit [D-884](../../../docs/NewConcept/90-decision-log.md)
         // ist `Kontact` ein eigener Hauptast, und damit war **kein Verweis auf einen Kontakt mehr zu schreiben**, obwohl unter
         // `Manufacturer` 56 Sätze stehen (gemessen am 2026-09-20). **Ein Rahmenknoten bleibt verwehrt**: er benennt einen Ort.*
-        if ($this->framework->isProtected($target)) {
+        // ⚠️ **Ausnahme: ein Verweis auf die Wurzel `Model` heisst «jeder Satz unter Model»** ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a).
+        // *Das Anlegen erlaubte ihn seit 0.1.33, das Schreiben nicht — live gemessen am 2026-10-21: die erste Inventur scheiterte an
+        // «Bezug Ding», und kein Exemplar liess sich mehr mit «Modell» speichern. Gespeichert wird die Satz-Id, also hat das Ziel eine Antwort.*
+        $jederSatzUnterModel = $relation->kind === RelationKind::Aggregation && $this->framework->branchOf($target) === Branch::Model;
+
+        if ($this->framework->isProtected($target) && ! $jederSatzUnterModel) {
             throw NotYetStorable::thatBranchHasNoRecords($target->name);
         }
 

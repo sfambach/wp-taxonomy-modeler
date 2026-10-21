@@ -99,6 +99,20 @@ final class DataEntryTest extends TestCase
     }
 
     #[Test]
+    public function a_reference_onto_the_model_root_takes_any_record_under_model(): void
+    {
+        // ⚠️ *D-958 F3a, live am 2026-10-21 abgewiesen: «Model has no records of its own».*
+        $material = $this->editor->createNode('Material', $this->branchRoot['model']->id);
+        $bezug    = $this->editor->addField($material->id, $this->branchRoot['model']->id, 'Bezug Ding', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $teil     = $this->data->create($this->part->id);
+        $satz     = $this->data->create($material->id);
+
+        $this->data->put($satz->id, $bezug->id, TypedValue::ofRecordReference($teil->id));
+
+        self::assertSame($teil->id, $this->records->valuesOf($satz->id)[0]->value->reference);
+    }
+
+    #[Test]
     public function a_record_is_entered_against_a_model_node(): void
     {
         $record = $this->data->create($this->part->id);
