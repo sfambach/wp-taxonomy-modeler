@@ -925,3 +925,14 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Entwurf:** [`pakete/jlc/konzept.md`](pakete/jlc/konzept.md), Fragen J1–J6.
 
 ---
+
+## INF-083 · Gemeinsame Schnittstelle für Import-Module
+
+**Typ:** `VORSCHLAG` · **Status:** `OPEN` — 2026-10-21. Ort entschieden: [D-952](NewConcept/90-decision-log.md); Verschlüsselung: [D-951](NewConcept/90-decision-log.md).
+
+> *«irgendwie sollten wir dafür einen standard etablieren um andere apis mit einzubinden gemeinsames interface»*
+
+- **Befund (gelesen):** Tresor, Vorschlagsformat und Doppelten-Suche existieren in tax_mail und tax_ebay je einmal; JLC würde ein drittes Mal kopieren.
+- **Entwurf:** [`pakete/import/konzept.md`](pakete/import/konzept.md), Fragen S3–S7.
+
+---
