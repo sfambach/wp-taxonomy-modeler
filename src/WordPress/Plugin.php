@@ -47,7 +47,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.29';
+    public const VERSION     = '0.1.30';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */

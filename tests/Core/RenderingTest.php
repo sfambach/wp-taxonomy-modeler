@@ -2102,6 +2102,27 @@ final class RenderingTest extends TestCase
         self::assertMatchesRegularExpression('/value="' . $satzId . '" checked[^>]*> USA</', $bearbeiten);
     }
 
+    /** ⚠️ *D-954 Regel 4: ein Bauteil ohne eindeutigen Namen nennt seine Art — der Knoten selbst als Glied der Feldwahl.* */
+    #[Test]
+    public function a_summary_may_name_the_node_itself(): void
+    {
+        $sockel  = $this->thing('IC-Sockel');
+        $bauform = $this->editor->addField($sockel->id, $this->type('Text')->id, 'bauform');
+        $platine = $this->thing('Platine');
+        $teil    = $this->editor->addField($platine->id, $sockel->id, 'teil', RelationKind::Aggregation);
+
+        $satzId = $this->records->add(new NodeRecord(0, $sockel->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satzId, $bauform->id, TypedValue::ofText('DIP-14')));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($sockel, SummaryRenderer::FIELDS, [$sockel->id, $bauform->id]);
+        $this->neuZeichnen();
+
+        $gezeigt = $this->rendering->nodeAsForm($platine, [$teil], [$teil->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+
+        self::assertStringContainsString('IC-Sockel · DIP-14', $gezeigt);
+    }
+
     #[Test]
     public function without_chosen_fields_a_summary_takes_the_first_text_field(): void
     {
