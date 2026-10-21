@@ -240,7 +240,7 @@ Jeder Schritt endet mit etwas, das er bedienen kann (`PR-2`), und die Module ver
 - **Geprüft:** Kern-Tests; `import-inbox-check` gegen eine frische WordPress-Datenbank (MariaDB). **Nicht geprüft:** Übernehmen
   ins Modell — die frische Datenbank hat die Knoten «Bestellungen»/«Käufe» nicht; der Schreibweg ist der von tax_mail.
 - **Annahmen (`INFERRED`):**
-  - **Reiter «Import» statt «General»** für Zuständigkeitstabelle und Ziel-Knoten (S4, S5 sagten «General»): «General» ist
+  - **Reiter «Import» statt «General»** (bestätigt, D-960) für Zuständigkeitstabelle und Ziel-Knoten (S4, S5 sagten «General»): «General» ist
     die feste Einstellungstabelle des Modellers, ein eigener Reiter folgt dem Muster aus D-945. Wenn er «General» will,
     ziehen die zwei Blöcke um.
   - Ob ein Vorschlag neu oder ein Status-Update ist, entscheidet die **Prüfseite**, nicht der Abruf: ein Cron-Lauf hat
