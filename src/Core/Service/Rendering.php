@@ -546,6 +546,9 @@ final class Rendering implements Presets
     /** @var array<int, NodeRecord|null> Sätze, einmal je Zeichner gelesen — auch die, die es nicht gibt. */
     private array $gelesenSaetze = [];
 
+    /** Ein Glied der Feldwahl, das für den Namen des Knotens des Satzes steht — gesetzt von {@see SummaryWriter} (D-954 Regel 4). */
+    public const KNOTENNAME = -1;
+
     /** @var array<int, SimpleType|null> Der Typ je Feld, für {@see self::adressenVon()} — ein Feld ändert seinen Typ nicht während eines Laufs. */
     private array $feldTypGelesen = [];
 
@@ -4894,23 +4897,9 @@ final class Rendering implements Presets
             $alleFelder = $this->relations->fieldRelationsOf(array_values(array_unique($alleBesitzer)));
             $typen      = $this->typesOf($alleFelder);
 
-            // ⚠️ **Ein Glied der Feldwahl darf der Knoten selbst sein — dann steht sein Name in der Kurzzeile** ([D-954](../../../docs/NewConcept/90-decision-log.md)
-            // Regel 4): *«IC-Sockel · DIP-14» statt «14 St». Gemeint ist der Knoten des Satzes oder ein Vorfahr, von dem er erbt; eine Id, die
-            // dort zugleich ein Feld ist, bleibt das Feld.*
-            $feldIds = [];
-
-            foreach ($alleFelder as $feld) {
-                $feldIds[$feld->id] = true;
-            }
-
-            $arten = [];
-
-            foreach ($this->gemerkteKnoten(array_values(array_diff(array_unique($alleBesitzer), array_keys($feldIds)))) as $einer) {
-                $arten[$einer->id] = $einer->name;
-            }
-
-            foreach ($besitzerJeKnoten as $knotenId => $besitzer) {
-                $artNamen[$knotenId] = array_intersect_key($arten, array_flip($besitzer));
+            // *Der Name des Knotens jedes Satzes — für ein Glied {@see self::KNOTENNAME} der Feldwahl (D-954 Regel 4).*
+            foreach ($this->gemerkteKnoten(array_keys($knotenIds)) as $knoten) {
+                $artNamen[$knoten->id] = $knoten->name;
             }
             $nachBesitzer = [];
 
@@ -5025,8 +5014,8 @@ final class Rendering implements Presets
             }
 
             foreach ($feldIds as $feldId) {
-                if ($knotenId !== null && isset($artNamen[$knotenId][$feldId])) {
-                    $teile[] = $artNamen[$knotenId][$feldId];
+                if ($feldId === self::KNOTENNAME) {
+                    $teile[] = $knotenId === null ? '' : ($artNamen[$knotenId] ?? '');
 
                     continue;
                 }

@@ -2102,25 +2102,39 @@ final class RenderingTest extends TestCase
         self::assertMatchesRegularExpression('/value="' . $satzId . '" checked[^>]*> USA</', $bearbeiten);
     }
 
-    /** ⚠️ *D-954 Regel 4: ein Bauteil ohne eindeutigen Namen nennt seine Art — der Knoten selbst als Glied der Feldwahl.* */
+    /** ⚠️ *D-954 Regel 4: ein Bauteil ohne eindeutigen Namen nennt seine Art — das zusammengesetzte Feld in seiner eigenen Feldwahl steht für den Namen des Knotens.* */
     #[Test]
-    public function a_summary_may_name_the_node_itself(): void
+    public function a_composed_field_naming_itself_shows_the_name_of_the_node(): void
     {
-        $sockel  = $this->thing('IC-Sockel');
-        $bauform = $this->editor->addField($sockel->id, $this->type('Text')->id, 'bauform');
-        $platine = $this->thing('Platine');
-        $teil    = $this->editor->addField($platine->id, $sockel->id, 'teil', RelationKind::Aggregation);
+        // *Der Schreiber fragt erst, ob es den Typ «Zusammenfassung» gibt.*
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $sockel      = $this->thing('IC-Sockel');
+        $text        = $this->type('Text');
+        $bezeichnung = $this->editor->addField($sockel->id, $text->id, 'Bezeichnung');
+        $bauform     = $this->editor->addField($sockel->id, $text->id, 'Bauform');
 
         $satzId = $this->records->add(new NodeRecord(0, $sockel->id, 1, '2026-10-21 10:00:00', RecordType::User));
         $this->records->putValue(RelationRecord::direct($satzId, $bauform->id, TypedValue::ofText('DIP-14')));
 
         $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
-        $editor->setMembers($sockel, SummaryRenderer::FIELDS, [$sockel->id, $bauform->id]);
+        $editor->setMembers($sockel, SummaryRenderer::FIELDS, [$bezeichnung->id, $bauform->id], $bezeichnung);
         $this->neuZeichnen();
 
-        $gezeigt = $this->rendering->nodeAsForm($platine, [$teil], [$teil->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup;
+        $daten   = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges());
+        $schreib = new \Taxmod\Core\Service\SummaryWriter($this->records, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering, $daten);
 
-        self::assertStringContainsString('IC-Sockel · DIP-14', $gezeigt);
+        self::assertSame([$bezeichnung->id, $bauform->id], $this->rendering->zusammensetzungAn($bezeichnung, $sockel->id), 'die Feldwahl am Feld');
+        self::assertSame(1, $schreib->refresh([$satzId]));
+
+        $steht = '';
+
+        foreach ($this->records->valuesOf($satzId) as $zeile) {
+            if ($zeile->relationId === $bezeichnung->id) {
+                $steht = (string) $zeile->value->text;
+            }
+        }
+
+        self::assertSame('IC-Sockel · DIP-14', $steht);
     }
 
     #[Test]

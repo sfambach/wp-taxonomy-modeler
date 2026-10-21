@@ -95,7 +95,13 @@ final class SummaryWriter
                 $schluessel = $kante->id . ':' . $knotenId;
 
                 $saetzeJeFeld[$schluessel]['relation']  = $kante;
-                $saetzeJeFeld[$schluessel]['fields']    = $this->rendering->zusammensetzungAn($kante, $knotenId);
+                // ⚠️ **Nennt die Feldwahl das Feld selbst, steht dort der Name des Knotens** ([D-954](../../../docs/NewConcept/90-decision-log.md) Regel 4):
+                // *«IC-Sockel · DIP-14» statt «14 St». Ein Feld setzt sich nicht aus sich selbst zusammen, also ist das Glied frei; eine Knoten-Id
+                // ging nicht — die Glieder einer Feldwahl sind Kanten (gemessen am 2026-10-21: der Fremdschlüssel lehnte sie ab).*
+                $saetzeJeFeld[$schluessel]['fields']    = array_map(
+                    static fn (int $feld): int => $feld === $kante->id ? Rendering::KNOTENNAME : $feld,
+                    $this->rendering->zusammensetzungAn($kante, $knotenId)
+                );
                 $saetzeJeFeld[$schluessel]['records'][] = $satzId;
             }
         }
