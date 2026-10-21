@@ -123,7 +123,7 @@ interface EnrichingSource extends ImportSource   // JLC: ergänzt Vorschläge an
 ### 3.4 Doppelte und Zuständigkeit
 
 - **Doppelt = gleiche Plattform + gleiche Bestellnummer**, im Modell oder im Eingang. Einmal gebaut, ein Lesezugriff je Lauf (`CD-7`).
-- **Zuständigkeit je Plattform als Tabelle im Reiter «General» statt Filter zwischen Modulen:**
+- **Zuständigkeit je Plattform als Tabelle statt Filter zwischen Modulen — im Code, nicht im Reiter** ([D-961](../../NewConcept/90-decision-log.md), ersetzt «im Reiter General»): `DutyTable::initial()`, ein Modul ergänzt seine Zeile über den Filter `taxmod_import_duties`.
 
 | Plattform | neue Bestellungen | Status (versandt, zugestellt) | Preise ergänzen |
 |---|---|---|---|
@@ -132,7 +132,7 @@ interface EnrichingSource extends ImportSource   // JLC: ergänzt Vorschläge an
 | Reichelt, Mouser … | Mail | Mail | — |
 
 - Die heutigen Filter `taxmail_blocked_parsers` und `taxmail_status_only_parsers` werden zu Zeilen dieser Tabelle. *Grund:*
-  heute weiss nur der Code, wer wofür zuständig ist; die Tabelle kann er lesen und ändern (`PR-13`).
+  heute weiss nur der Code, wer wofür zuständig ist; die Tabelle steht an einer Stelle und ist lesbar (`PR-13`). Ändern ist ein Release, keine Einstellung (D-961).
 - Ist die zuständige Quelle nicht aktiv, fällt die Rolle an die nächste, die die Plattform kennt — wie heute: ohne tax_ebay
   liest der eBay-Parser von tax_mail auch Käufe ([D-950](../../NewConcept/90-decision-log.md)).
 
@@ -268,3 +268,7 @@ Auf die Liste aus dem Mail-Thread (§3.8, zweite Rückmeldung vom 2026-10-21):
 - **Annahme (`INFERRED`):** die Knöpfe Altbestand, Suchen, Neu beginnen stehen auf der Seite «Inbox» bei der Quelle, nicht im Reiter «Import» — sie lösen einen Lauf aus, sie stellen nichts ein.
 - Die Seite «Inbox» zeigt einen Absturz als Text statt als weisse Seite (debug.log ist live aus).
 
+## 10.2 Gebaut in 0.1.39
+
+- Zuständigkeitstabelle aus dem Reiter in den Code ([D-961](../../NewConcept/90-decision-log.md)): `Duties::load()` = `DutyTable::initial()` + Filter `taxmod_import_duties`; die Option `taxmod_import_duties` wird mit Schemafassung 3 des Eingangs gelöscht.
+- Reiter «Import» ([D-960](../../NewConcept/90-decision-log.md)) trägt nur noch die Ziel-Ids, weil jede Installation anders nummeriert.

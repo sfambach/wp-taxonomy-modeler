@@ -101,6 +101,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie behält der Lagerbestand seine Herkunft? | [D-956](90-decision-log.md) — Bestandsposten je Zugang, Menge gerechnet; Teil-Wareneingang erlaubt | — |
 | Wie ist der Lager-Ast «Stock» gegliedert? | [D-957](90-decision-log.md) — flach, ohne Gruppenknoten; WE · Bestand · WA ordnet nur das Modul | — |
 | Was gilt sonst fürs Lager (Ort, Material, Reihenfolge)? | [D-958](90-decision-log.md) — «Stock» unter Model, Material mit freiem Bezug, «Bezug Ding» zuerst, Stufen 1–4 | — |
+| Wo stehen die Einstellungen des Import-Eingangs? | [D-960](90-decision-log.md), [D-961](90-decision-log.md) — eigener Reiter «Import», darin nur die Ziel-Ids; die Zuständigkeitstabelle steht im Code (Filter `taxmod_import_duties`) | ersetzt S4/S5 («General», Tabelle im Reiter) aus [D-953](90-decision-log.md) |
 | Wie tief nennt eine Zusammenfassung verwiesene Sätze? | [D-935](90-decision-log.md) — zwei Stufen: das Board heisst «FIC · 386-SC-HG», der Hersteller darin mit seinen eigenen Worten, ohne weiteren Verweis | — |
 | Welche Kennzeichnung trägt ein Bauteil im Katalog? | [D-779](90-decision-log.md) — nur den allgemeinen «Typ» (74LS688, LM7905); Hersteller und Bestellnummer gehören in den kaufmännischen Teil | ~~D-772~~ *(«Hersteller» und «Teilenummer» an `Electronic Parts`)* |
 | Braucht es einen Zyklenwächter? | [D-497](90-decision-log.md) — nein: ein Feld auf ein Modell ist eine Aggregation, und die verweist, statt abzusteigen | ~~D-100~~ *(nur seine Kompositions-Hälfte)* |

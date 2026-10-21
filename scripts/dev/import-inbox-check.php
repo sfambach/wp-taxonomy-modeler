@@ -58,7 +58,7 @@ $quelle = new class implements FetchingSource {
     }
 };
 add_filter(Sources::FILTER, static fn (array $sources): array => [...$sources, $quelle, 'not a source']);
-update_option(Duties::OPTION, ['__Other' => ['orders' => '__other', 'status' => '__other']], false);
+add_filter(Duties::FILTER, static fn (array $rows): array => $rows + ['__Other' => ['orders' => '__other', 'status' => '__other']]);
 // The responsible source must be active for the row to block; register an empty one under that key.
 add_filter(Sources::FILTER, static fn (array $sources): array => [...$sources, new class implements \Taxmod\Core\Import\ImportSource {
     public function key(): string { return '__other'; }
@@ -99,7 +99,8 @@ $pruefe($inbox->search($zweite, 'C-9') === 1, 'a forwarded copy (same order, kin
 $pruefe($inbox->restart($zweite) === 1 && $zweite->neu, 'a restart forgets the open proposal and lets the source undo its side');
 
 $reiter = SettingsScreen::moduleTabs();
-$pruefe(isset($reiter['import']) && str_contains(($reiter['import']['render'])(), 'name="duties[0][platform]"'), 'the Import tab shows the duty table');
+// ⚠️ *Seit D-961 steht die Zuständigkeitstabelle im Code; der Reiter trägt nur noch die Ziel-Ids.*
+$pruefe(isset($reiter['import']) && str_contains(($reiter['import']['render'])(), 'name="targets"') && ! str_contains(($reiter['import']['render'])(), 'duties['), 'the Import tab shows only the targets');
 
 echo $fehler === 0 ? "all green\n" : "{$fehler} failed\n";
 exit($fehler === 0 ? 0 : 1);

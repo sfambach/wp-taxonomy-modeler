@@ -5,23 +5,21 @@ namespace Taxmod\WordPress\Import;
 use Taxmod\Core\Import\DutyTable;
 
 /**
- * The duty table as an option (D-953, S4); until he saves one, the starting rows of `DutyTable::initial()` apply.
+ * The duty table lives in code, not in a setting (D-961): the starting rows of `DutyTable::initial()`, and a module that
+ * takes over a role for a platform adds its row through {@see self::FILTER}.
  *
  * @see docs/pakete/import/konzept.md §3.4
  */
 final class Duties
 {
-    public const OPTION = 'taxmod_import_duties';
+    public const FILTER = 'taxmod_import_duties';
+    /** The option the «Import» tab wrote until 0.1.38; removed once by {@see InboxSchema::upgrade()}. */
+    public const RETIRED_OPTION = 'taxmod_import_duties';
 
     public static function load(): DutyTable
     {
-        $stored = get_option(self::OPTION, null);
+        $rows = apply_filters(self::FILTER, DutyTable::initial()->toArray());
 
-        return is_array($stored) ? new DutyTable($stored) : DutyTable::initial();
-    }
-
-    public static function save(DutyTable $table): void
-    {
-        update_option(self::OPTION, $table->toArray(), false);
+        return new DutyTable(is_array($rows) ? $rows : []);
     }
 }
