@@ -106,6 +106,8 @@ flowchart LR
 
 ## 8 · Bauschritte
 
+⚠️ **Reihenfolge geändert durch [D-950](../../NewConcept/90-decision-log.md):** Käufe vor Verkäufen, zuerst ein Abgleich «was fehlt im Modell». Die Liste unten ist der alte Stand.
+
 1. Plugin-Gerüst, Einstellungsseite, Knopf **«Mit eBay verbinden»** (OAuth) und **«Verbindung testen»** — sonst nichts.
 2. Verkäufe lesen → Vorschläge → Prüfseite → `write-data`.
 3. Gebühren aus der Finances API.
