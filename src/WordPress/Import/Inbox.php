@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\BacklogSource;
 use Taxmod\Core\Import\EnrichingSource;
 use Taxmod\Core\Import\FetchBatch;
@@ -99,8 +100,16 @@ final class Inbox
     public function runDue(): void
     {
         $last = self::lastRuns();
+        // A source that is responsible for new orders somewhere runs first, so a status from another source finds its
+        // order (his word, 2026-10-21: «api sollte vor email laufen und email sorgt für updates»).
+        $ordering = array_values(array_filter(array_map(
+            static fn (array $roles): ?string => $roles[DutyRole::Orders->value] ?? null,
+            Duties::load()->toArray()
+        )));
+        $sources = Sources::all();
+        uksort($sources, static fn (string $a, string $b): int => (int) ! in_array($a, $ordering, true) <=> (int) ! in_array($b, $ordering, true));
 
-        foreach (Sources::all() as $key => $source) {
+        foreach ($sources as $key => $source) {
             if (! $source instanceof FetchingSource || $source->interval() <= 0) {
                 continue;
             }

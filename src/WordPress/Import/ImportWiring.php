@@ -27,6 +27,7 @@ final class ImportWiring
         add_action(Inbox::SCHEDULE_HOOK, static function (): void {
             InboxSchema::upgrade();
             (new Inbox())->runDue();
+            AutoTake::run();
         });
 
         // Priority 1: the shared «Import» tab stands before the tabs of the modules that feed it.
@@ -45,6 +46,7 @@ final class ImportWiring
 
         add_action('admin_post_' . InboxScreen::TAKE, static fn () => (new InboxScreen())->handleTake());
         add_action('admin_post_' . InboxScreen::DISCARD, static fn () => (new InboxScreen())->handleDiscard());
+        add_action('admin_post_' . InboxScreen::DISCARD_SELECTED, static fn () => (new InboxScreen())->handleDiscardSelected());
         add_action('admin_post_' . InboxScreen::FETCH, static fn () => (new InboxScreen())->handleFetch());
         add_action('admin_post_' . InboxScreen::SEARCH, static fn () => (new InboxScreen())->handleSearch());
         add_action('admin_post_' . InboxScreen::BACKLOG, static fn () => (new InboxScreen())->handleBacklog());

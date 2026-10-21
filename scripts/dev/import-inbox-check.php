@@ -26,6 +26,7 @@ use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ProposalLine;
 use Taxmod\WordPress\Admin\SettingsScreen;
+use Taxmod\WordPress\Import\AutoTake;
 use Taxmod\WordPress\Import\Duties;
 use Taxmod\WordPress\Import\Targets;
 use Taxmod\WordPress\Import\Inbox;
@@ -99,6 +100,21 @@ add_filter(Sources::FILTER, static fn (array $sources): array => [...$sources, $
 $pruefe($inbox->search($zweite, 'C-9') === 1, 'a forwarded copy (same order, kind and moment, other id) is filed once');
 $pruefe($inbox->restart($zweite) === 1 && $zweite->neu, 'a restart forgets the open proposal and lets the source undo its side');
 
+// ⚠️ *Sein Wunsch vom 2026-10-21: «selectierte einträge verwerfen» — one checkbox per group, one button for all of them.*
+$seite = (new InboxScreen())->render();
+$ids = implode(',', array_map(static fn (array $row): int => (int) $row['id'], $eigene[0]));
+$pruefe(str_contains($seite, 'name="selected[]" value="' . $ids . '" form="taxmod-inbox-bulk"') && str_contains($seite, 'value="' . InboxScreen::DISCARD_SELECTED . '"'), 'each group has a checkbox for the bulk discard');
+$_POST = $_REQUEST = ['selected' => [$ids], '_wpnonce' => wp_create_nonce(InboxScreen::DISCARD_SELECTED)];
+add_filter('wp_redirect', static function (): never { throw new RuntimeException('__redirect'); });
+try {
+    (new InboxScreen())->handleDiscardSelected();
+} catch (RuntimeException $umgeleitet) {
+}
+$pruefe((new InboxTable())->openRows(array_map('intval', explode(',', $ids))) === [], 'the selected groups are discarded at once');
+$_POST = $_REQUEST = [];
+
+
+
 $reiter = SettingsScreen::moduleTabs();
 // ⚠️ *Seit D-961 steht die Zuständigkeitstabelle im Code; der Reiter trägt nur noch die Ziel-Ids.*
 $reiterSeite = isset($reiter['import']) ? ($reiter['import']['render'])() : '';
@@ -111,6 +127,21 @@ $pruefe(Targets::raw()['orders_node'] === 777 && Targets::raw()['required_parts'
 ($reiter['import']['save'])(['target' => ['orders_node' => '777'], 'targets' => '{"orders_node": 888}']);
 $pruefe(Targets::raw()['orders_node'] === 888, 'pasted JSON wins over the fields');
 $vorher === null ? delete_option(Targets::OPTION) : update_option(Targets::OPTION, $vorher, false);
+
+// ⚠️ *Sein Wunsch vom 2026-10-21 (D-962): «automatisch übernehmen», aber «mail warte auf eintrag» — off by default, and a
+// run without a user acts as the one who switched it on.*
+update_option(AutoTake::OPTION, 0, false);
+$pruefe(AutoTake::run() === 0, 'automatic taking is off until he switches it on');
+($reiter['import']['save'])(['auto_take' => '1', 'targets' => '']);
+$pruefe(AutoTake::user() === get_current_user_id() && str_contains(($reiter['import']['render'])(), 'name="auto_take" value="1" checked'), 'the switch remembers who turned it on');
+$alsWer = [];
+add_action('set_current_user', static function () use (&$alsWer): void { $alsWer[] = get_current_user_id(); });
+wp_set_current_user(0);
+$alsWer = [];
+AutoTake::run();
+$pruefe($alsWer === [1, 0], 'a run without a user acts as the one who switched it on, and leaves no user behind');
+wp_set_current_user(1);
+update_option(AutoTake::OPTION, 0, false);
 
 echo $fehler === 0 ? "all green\n" : "{$fehler} failed\n";
 exit($fehler === 0 ? 0 : 1);

@@ -56,7 +56,12 @@ final class ImportTab
             'purchase' => $this->fieldNames((int) $targets['purchases_node']),
         ];
 
-        $html = '<h2>' . esc_html__('Where taken orders go', 'taxmod') . '</h2><p>'
+        $html = '<h2>' . esc_html__('Take automatically', 'taxmod') . '</h2><p><label><input type="hidden" name="auto_take" value="0">'
+            . '<input type="checkbox" name="auto_take" value="1"' . checked(AutoTake::user() !== 0, true, false) . '> '
+            . esc_html__('Take new orders from the responsible source and status updates of existing orders without review. Anything else stays in the inbox; a status waits there until its order exists.', 'taxmod')
+            . '</label></p>';
+
+        $html .= '<h2>' . esc_html__('Where taken orders go', 'taxmod') . '</h2><p>'
             . esc_html__('Node and field ids for orders and purchases, the same for every module. Type an id or pick from the list; change them only when the tree was rebuilt.', 'taxmod') . '</p>';
 
         foreach ($lists as $list => $names) {
@@ -149,6 +154,10 @@ final class ImportTab
     /** @param array<string, mixed> $post already unslashed */
     public function save(array $post): void
     {
+        if (isset($post['auto_take'])) {
+            AutoTake::switchTo((string) $post['auto_take'] === '1');
+        }
+
         $json = trim(sanitize_textarea_field((string) ($post['targets'] ?? '')));
 
         if ($json !== '') {

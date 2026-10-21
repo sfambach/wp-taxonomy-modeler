@@ -278,3 +278,6 @@ Auf die Liste aus dem Mail-Thread (§3.8, zweite Rückmeldung vom 2026-10-21):
 - Reiter «Import» steht vor den Reitern der Module (Filter-Priorität 1). Sein Wunsch: *«der reiter import sollte möglicht vor den api modulen stehen»*.
 - Jedes Ziel hat ein eigenes Feld. Die Id kann man eintippen oder aus einer Liste wählen: Knoten aus dem Baum, Felder aus dem gewählten Bestellungs- bzw. Käufe-Knoten, geerbte eingeschlossen. Daneben steht der Name. Das JSON bleibt darunter als Schnellweg, und eingefügtes JSON gilt vor den Feldern. Sein Wunsch: *«knoten die benötigt werden als felder angezeigt werden mit eingebbarer auswählbarerm knoten. jason kann genutzt werden um das ganze zu beschleunigen»*.
 - **Annahme (`INFERRED`):** Herkunftswert, Mengen- und Einheitenfeld sowie Währungen bleiben reine Id-Felder ohne Liste. Es sind Satz-Ids bzw. Felder einer anderen Komposition, und eine Liste aller Sätze wäre zu lang.
+- Seite «Inbox»: Jede Gruppe hat ein Kästchen, dazu «Alle wählen» und «Auswahl verwerfen». Die Gruppen stehen in einem Raster, auf breiten Bildschirmen nebeneinander. Sein Wunsch: *«ne massen änderung wäre noch schön selectierte einträge verwerfen, spalte kann ruhig länger sein dafür mehr auf einer seite»*.
+- Automatisch übernehmen und die Reihenfolge API vor Mail: [D-962](../../NewConcept/90-decision-log.md), Klasse `AutoTake`.
+

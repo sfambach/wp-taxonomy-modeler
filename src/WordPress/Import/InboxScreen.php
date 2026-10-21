@@ -30,6 +30,8 @@ final class InboxScreen
     public const PAGE = 'taxmod-inbox';
     public const TAKE = 'taxmod_inbox_take';
     public const DISCARD = 'taxmod_inbox_discard';
+    public const DISCARD_SELECTED = 'taxmod_inbox_discard_selected';
+    private const BULK_FORM = 'taxmod-inbox-bulk';
     public const FETCH = 'taxmod_inbox_fetch';
     public const SEARCH = 'taxmod_inbox_search';
     public const BACKLOG = 'taxmod_inbox_backlog';
@@ -62,11 +64,21 @@ final class InboxScreen
 
         $intake = new Intake(Duties::load(), array_keys(Sources::all()));
 
+        // ⚠️ *Sein Wunsch vom 2026-10-21: «ne massen änderung wäre noch schön selectierte einträge verwerfen, spalte kann ruhig
+        // länger sein dafür mehr auf einer seite». The bulk form stands alone, because a group is a form of its own and forms
+        // do not nest; each group's checkbox joins it through `form=`.*
+        $html .= '<form method="post" id="' . self::BULK_FORM . '" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0 0 .75em">'
+            . wp_nonce_field(self::DISCARD_SELECTED, '_wpnonce', true, false)
+            . '<label style="margin-right:1em"><input type="checkbox" onclick="document.querySelectorAll(\'input[form=' . self::BULK_FORM . ']\').forEach(function(c){c.checked=this.checked}.bind(this))"> '
+            . esc_html__('Select all', 'taxmod') . '</label>'
+            . '<button class="button" name="action" value="' . esc_attr(self::DISCARD_SELECTED) . '">' . esc_html__('Discard selected', 'taxmod') . '</button></form>'
+            . '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(36em,1fr));gap:0 12px;align-items:start">';
+
         foreach ($groups as $rows) {
             $html .= $this->group($rows, $model, $intake);
         }
 
-        return $html . '</div>';
+        return $html . '</div></div>';
     }
 
     private function sourcesBlock(): string
@@ -126,7 +138,9 @@ final class InboxScreen
         $sources = Sources::all();
         $labels = array_unique(array_map(static fn (array $row): string => isset($sources[$row['source']]) ? $sources[$row['source']]->label() : (string) $row['source'], $rows));
 
-        $html = '<div class="postbox" style="padding:0 12px 12px;max-width:60em"><h2>' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber))
+        $html = '<div class="postbox" style="padding:0 12px 8px;margin-bottom:12px;min-width:0"><h2>'
+            . '<input type="checkbox" name="selected[]" value="' . esc_attr(implode(',', $ids)) . '" form="' . self::BULK_FORM . '" aria-label="'
+            . esc_attr__('Select', 'taxmod') . '" style="margin-right:.5em"> ' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber))
             . ' <small>· ' . esc_html(implode(', ', $labels)) . ' · ' . esc_html(self::kindLabel($proposal->kind)) . '</small></h2>';
 
         foreach ($rows as $row) {
@@ -291,12 +305,51 @@ final class InboxScreen
         $this->finish(__('Discarded.', 'taxmod'));
     }
 
+    public function handleDiscardSelected(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        check_admin_referer(self::DISCARD_SELECTED);
+        $ids = [];
+
+        foreach ((array) ($_POST['selected'] ?? []) as $group) {
+            foreach (explode(',', sanitize_text_field(wp_unslash((string) $group))) as $id) {
+                $ids[] = absint($id);
+            }
+        }
+
+        $rows = $this->table->openRows(array_values(array_unique(array_filter($ids))));
+
+        foreach ($rows as $row) {
+            $this->table->close((int) $row['id'], InboxStatus::Discarded);
+            self::tellSource($row, InboxStatus::Discarded);
+        }
+
+        /* translators: %d: number of proposals */
+        $this->finish(sprintf(__('%d discarded.', 'taxmod'), count($rows)));
+    }
+
     public function handleTake(): void
     {
         $rows = $this->postedRows();
+        $result = $this->take($rows, array_map('absint', (array) ($_POST['lines'] ?? [])));
 
+        $this->finish($result === true ? __('Taken into the model.', 'taxmod') : $result);
+    }
+
+    /**
+     * Takes one group into the model — by hand from the page, or by {@see AutoTake} with every line.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @param list<int>|null $picked line indexes; `null` takes every line
+     * @return true|string true when written, otherwise why not
+     */
+    public function take(array $rows, ?array $picked): true|string
+    {
         if ($rows === [] || ! ModelGateway::available()) {
-            $this->finish(__('Nothing taken.', 'taxmod'));
+            return __('Nothing taken.', 'taxmod');
         }
 
         $targets = Targets::load();
@@ -305,7 +358,7 @@ final class InboxScreen
         $existing = self::existing($model, $proposal);
 
         if ($existing instanceof WP_Error) {
-            $this->finish($existing->get_error_message());
+            return $existing->get_error_message();
         }
 
         $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide((string) $rows[0]['source'], $proposal, $existing);
@@ -319,8 +372,8 @@ final class InboxScreen
 
         try {
             if ($verdict === IntakeVerdict::NewOrder && $proposal->kind !== ProposalKind::Sold) {
-                $picked = array_map('absint', (array) ($_POST['lines'] ?? []));
-                $changes = $builder->newOrder($proposal, array_values(array_intersect($picked, array_keys($proposal->lines))), $originNote, $deliveredOn);
+                $lines = $picked === null ? array_keys($proposal->lines) : array_values(array_intersect($picked, array_keys($proposal->lines)));
+                $changes = $builder->newOrder($proposal, $lines, $originNote, $deliveredOn);
             } elseif ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
                 $changes = $builder->shipped($existing, $proposal->trackingNumbers);
 
@@ -328,16 +381,16 @@ final class InboxScreen
                     $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
                 }
             } else {
-                $this->finish(self::verdictLabel($verdict));
+                return self::verdictLabel($verdict);
             }
         } catch (DomainError $refused) {
-            $this->finish($refused->getMessage());
+            return $refused->getMessage();
         }
 
         $written = $changes === [] ? [] : $model->write($changes);
 
         if ($written instanceof WP_Error) {
-            $this->finish($written->get_error_message());
+            return $written->get_error_message();
         }
 
         foreach ($rows as $row) {
@@ -345,7 +398,30 @@ final class InboxScreen
             self::tellSource($row, InboxStatus::Imported);
         }
 
-        $this->finish(__('Taken into the model.', 'taxmod'));
+        return true;
+    }
+
+    /**
+     * Whether a group would be taken as it stands — what {@see AutoTake} asks before it takes.
+     *
+     * @param list<array<string, mixed>> $rows
+     */
+    public static function takeable(array $rows): bool
+    {
+        if ($rows === [] || ! ModelGateway::available()) {
+            return false;
+        }
+
+        $proposal = self::merged($rows);
+        $existing = self::existing(new ModelGateway(Targets::load()), $proposal);
+
+        if ($existing instanceof WP_Error) {
+            return false;
+        }
+
+        $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide((string) $rows[0]['source'], $proposal, $existing);
+
+        return $verdict === IntakeVerdict::Update || ($verdict === IntakeVerdict::NewOrder && $proposal->kind !== ProposalKind::Sold);
     }
 
     /** @return list<array<string, mixed>> */
