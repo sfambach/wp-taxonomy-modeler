@@ -280,4 +280,4 @@ Auf die Liste aus dem Mail-Thread (§3.8, zweite Rückmeldung vom 2026-10-21):
 - **Annahme (`INFERRED`):** Herkunftswert, Mengen- und Einheitenfeld sowie Währungen bleiben reine Id-Felder ohne Liste. Es sind Satz-Ids bzw. Felder einer anderen Komposition, und eine Liste aller Sätze wäre zu lang.
 - Seite «Inbox»: Jede Gruppe hat ein Kästchen, dazu «Alle wählen» und «Auswahl verwerfen». Die Gruppen stehen in einem Raster, auf breiten Bildschirmen nebeneinander. Sein Wunsch: *«ne massen änderung wäre noch schön selectierte einträge verwerfen, spalte kann ruhig länger sein dafür mehr auf einer seite»*.
 - Automatisch übernehmen und die Reihenfolge API vor Mail: [D-962](../../NewConcept/90-decision-log.md), Klasse `AutoTake`.
-
+- Kasten «How to connect» neben jedem Modul-Reiter: Schlüssel `guide` in `taxmod_config_tabs` ([D-963](../../NewConcept/90-decision-log.md)).

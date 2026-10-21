@@ -131,18 +131,29 @@ final class SettingsScreen
         $tab    = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
 
         if (isset($reiter[$tab])) {
-            return '<div class="wrap">'
-                . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
-                . $this->tabBar($reiter, $tab)
-                . $this->notice()
-                . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
+            // ⚠️ *Sein Wunsch vom 2026-10-21 (D-963): «bei jedem api modul einen kasten recht … der die ganze prozedure
+            // beschreibt wie man an die daten kommt und was man tun muss». The module gives the content, the page the place.*
+            $guide = $reiter[$tab]['guide'] === null ? '' : (string) ($reiter[$tab]['guide'])();
+            $form  = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"' . ($guide === '' ? '' : ' style="flex:1 1 36em;min-width:0"') . '>'
                 . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
                 . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
                 . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
                 // ⚠️ *Das Modul gibt fertiges, selbst escaptes HTML zurück (`CD-8`), wie jeder Renderer.*
                 . (string) ($reiter[$tab]['render'])()
                 . get_submit_button(__('Save', 'taxmod'))
-                . '</form></div>';
+                . '</form>';
+
+            return '<div class="wrap">'
+                . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
+                . $this->tabBar($reiter, $tab)
+                . $this->notice()
+                . ($guide === ''
+                    ? $form
+                    // ⚠️ *Das Modul gibt fertiges, selbst escaptes HTML zurück (`CD-8`), auch für den Kasten.*
+                    : '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">' . $form
+                        . '<aside class="postbox taxmod-guide" style="flex:0 1 24em;padding:0 12px 12px;margin-top:1em"><h2>'
+                        . esc_html__('How to connect', 'taxmod') . '</h2>' . $guide . '</aside></div>')
+                . '</div>';
         }
 
         $html = '<div class="wrap">'
@@ -630,7 +641,10 @@ final class SettingsScreen
      * ⚠️ **His choice ([D-945](../../../docs/NewConcept/90-decision-log.md)):** *«Tabs in Configuration»* — one tab
      * «General» plus one per active module, so the WordPress menu does not grow with every module.*
      *
-     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void}>
+     * ⚠️ *An optional `guide` (callable, returns escaped HTML) is drawn as a box beside the form: how to get the keys and
+     * what to do (D-963).*
+     *
+     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null}>
      */
     public static function moduleTabs(): array
     {
@@ -648,6 +662,7 @@ final class SettingsScreen
                 'title'  => (string) ($tab['title'] ?? $slug),
                 'render' => $tab['render'],
                 'save'   => $tab['save'],
+                'guide'  => is_callable($tab['guide'] ?? null) ? $tab['guide'] : null,
             ];
         }
 
