@@ -449,3 +449,21 @@ dessen «Wert je Stück». Nichts muss beim Buchen eingefroren werden, weil der 
 - Mengen sind Dezimalzahlen (Meterware), angezeigt ohne Nachkommastellen, wenn ganz.
 - Ein Abgang darf den Bestand unter 0 drücken; die Maske warnt, sperrt nicht — der Bestand ist am Anfang lückenhaft.
 - Vorhandene Exemplare zählen als Bestand erst, wenn sie ein Material und eine Zugangsbewegung haben — Übernahme als Inventur, nur für Stücke, die er abgeben oder zählen will.
+
+## 12 · Live seit 2026-10-21 (Stufe 1, Modell)
+
+Eingespielt am 2026-10-21, Backup `vor-ability-20261021-122741-jERarnxV13lr.zip`, Änderungsliste `/mnt/project-files/wp/taxmod-lager/stufe1-stock.json`. Alle Ids mit Präfix `149000`; Knoten- und Feld-Ids teilen sich den Zahlenraum.
+
+| Knoten | Id | Felder (Relation-Id) |
+|---|---|---|
+| Stock | 110120 | — |
+| Lagerorte | 110146 | Übergeordnet 110110 · Kurzzeichen 110111 · Satz «Lager» = 43122 |
+| Material | 110147 | Bezug Art 110112 · Bezug Ding 110113 · Einzelstück 110114 (Ja/Nein, 1..1 — der Modeller verlangt es) · Verwendung 110115 · Standard-Lagerort 110116 · Mindestbestand 110117 |
+| Bestandsposten | 110148 | Material 110118 · Kauf 110119 · Lagerort 110120 · Wert je Stück 110121 · Zustand 110122 · Eingegangen am 110123 |
+| Vorgänge | 110149 | Art 110124 · Datum 110125 · Bestellung 110126 · Verkauf 110127 · Projekt 110128 · Quelle 110129 · Positionen 110130 |
+| Vorgänge Pos | 110150 | Bestandsposten 110131 · Menge 110132 · Gezählt 110133 |
+| Bestellungen (verschoben) | 110051 | + Status 110134 |
+| Käufe (verschoben) | 109585 | + Material 110135 |
+| Konstanten | | Vorgangsarten 110121 (Wareneingang … Umbuchung = 110122–110129) · Verwendungen 110130 (110131–110135) · Bestellstatus 110136 (110137–110141) · Buchungsquellen 110142 (110143–110145) |
+
+*Nicht angelegt (INFERRED): «Eingegangen» (Menge) am Kauf — die eingegangene Menge ist die Summe seiner Bestandsposten. Reservierungen und Bauläufe folgen mit Stufe 3.*
