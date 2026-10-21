@@ -70,6 +70,9 @@ final class TableRenderer extends RendererNode
 
     public const NAME = 'table';
 
+    /** Die Einstellung am Ziel eines Verweises: Felder des verwiesenen Satzes als eigene Spalten (D-955). */
+    public const TARGET_COLUMNS = 'target_columns';
+
     public function name(): string
     {
         return self::NAME;

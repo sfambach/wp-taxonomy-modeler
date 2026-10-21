@@ -29,6 +29,15 @@ final class Category implements NodeClass
     #[Attribut(listOf: 'relation')]
     public array $summary_fields = [];
 
+    /**
+     * Welche Felder des verwiesenen Satzes eine Tabelle als eigene Spalten neben dem Verweis zeigt ([D-955](../../../../docs/NewConcept/90-decision-log.md)) —
+     * gesetzt am Ziel des Verweises, an der Kante überschreibbar. *Sein Wort: «in der bom links zu ihnen» (den Datenblättern des Bauteils).*
+     *
+     * @var list<int> Kanten-Ids
+     */
+    #[Attribut(listOf: 'relation')]
+    public array $target_columns = [];
+
     public static function allowedChildClasses(): array
     {
         return [];

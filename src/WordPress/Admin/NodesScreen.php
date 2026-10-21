@@ -342,6 +342,48 @@ final class NodesScreen
     }
 
     /**
+     * Die Sätze am Ende eines Weges als Tabelle für Leser — die Datenblätter einer Stückliste ([D-955](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «unter sonstiges Datenblätter dann nur noch eine Auflistung aller Datenblätter dieser BOM … eine Tabelle, die praktisch
+     * wieder nur dieses eine Feld darstellt und die Beschreibung». Gezeichnet wie eine Satztabelle, ohne Akte und ohne Vorspalten.*
+     *
+     * @param list<int> $path    Feld-Ids vom Hauptsatz bis zu den gesammelten Sätzen.
+     * @param list<int> $columns Felder der gesammelten Sätze, in ihrer Reihenfolge.
+     */
+    public function collectedForReaders(int $recordId, array $path, array $columns, int $whereField, int $whereValue, string $locale): string
+    {
+        $ids = $this->data->recordsAlong($recordId, $path, $whereField, $whereValue);
+
+        if ($ids === [] || $columns === []) {
+            return '';
+        }
+
+        $saetze = $this->data->recordsByIds($ids);
+        $erster = $saetze[$ids[0]] ?? null;
+        $knoten = $erster === null ? null : $this->editor->find($erster->nodeId);
+
+        if ($knoten === null) {
+            return '';
+        }
+
+        $felder = array_values(array_filter(array_map(fn (int $id): ?Relation => $this->editor->relationById($id), $columns)));
+        $werte  = $this->data->valuesOfMany($ids);
+        $zeilen = [];
+
+        foreach ($ids as $id) {
+            $gehalten = [];
+
+            foreach ($werte[$id] ?? [] as $wert) {
+                $gehalten[$wert->relationId] ??= $wert->value;
+            }
+
+            $zeilen[] = ['id' => $id, 'values' => $gehalten, 'lead' => [], 'acts' => [], 'submits' => new Submission(''), 'editable' => false];
+        }
+
+        return $this->rendering->recordsAsTable($knoten, $felder, $zeilen, '', '', false, Purpose::Display, $locale, Level::FrontEnd)->markup;
+    }
+
+    /**
      * Mehrere Sätze als Vergleich im Beitrag, einer davon der Hauptsatz ([D-916](../../../docs/NewConcept/90-decision-log.md), [D-920](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ```mermaid

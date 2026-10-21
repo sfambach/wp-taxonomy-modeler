@@ -36,6 +36,9 @@ final class RecordBlock
 
     public const COMPARISON = 'comparison';
 
+    /** Die Sätze am Ende eines Weges als Tabelle — die Datenblätter einer Stückliste (D-955). */
+    public const COLLECTED = 'collected';
+
     private const CACHE = 'taxmod_block_';
 
     private const ROUTES = 'taxmod/v1';
@@ -85,6 +88,10 @@ final class RecordBlock
                 'rowFields' => ['type' => 'string', 'default' => ''],
                 'value'     => ['type' => 'integer', 'default' => 0],
                 'groupBy'   => ['type' => 'integer', 'default' => 0],
+                // *Der Weg der Sammeltabelle als Feld-Ids, und der Filter am Ende (D-955).*
+                'path'       => ['type' => 'string', 'default' => ''],
+                'whereField' => ['type' => 'integer', 'default' => 0],
+                'whereValue' => ['type' => 'integer', 'default' => 0],
             ],
             'supports'        => ['html' => false, 'align' => ['wide', 'full']],
             'editor_script'   => self::SCRIPT,
@@ -210,7 +217,16 @@ final class RecordBlock
 
         // ⚠️ *Ein Satz, der fehlt, ist im Beitrag kein weisser Bildschirm: Lesern zeigt der Block nichts, Bearbeitern den Grund.*
         try {
-            $markup = $comparison
+            $markup = ($attributes['display'] ?? '') === self::COLLECTED
+                ? ($this->screen)()->collectedForReaders(
+                    $record,
+                    self::ids((string) ($attributes['path'] ?? '')),
+                    self::ids((string) ($attributes['rowFields'] ?? '')),
+                    absint($attributes['whereField'] ?? 0),
+                    absint($attributes['whereValue'] ?? 0),
+                    SettingsScreen::neutralLocale()
+                )
+                : ($comparison
                 ? ($this->screen)()->comparisonForReaders(
                     self::ids((string) ($attributes['records'] ?? '')),
                     $record,
@@ -226,7 +242,7 @@ final class RecordBlock
                     absint($attributes['groupBy'] ?? 0),
                     absint($attributes['columnLabel'] ?? 0),
                 )
-                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale());
+                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale()));
         } catch (\Throwable $e) {
             return current_user_can('edit_posts')
                 ? '<p class="taxmod-record-missing">' . esc_html(sprintf(

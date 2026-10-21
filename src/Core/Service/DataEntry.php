@@ -1895,6 +1895,54 @@ final class DataEntry
     }
 
     /**
+     * Die Sätze am Ende eines Weges über Satzverweise — je Schritt eine Abfrage (`CD-7`), jeder Satz einmal, in der Reihenfolge des Findens ([D-955](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Gebaut für die Datenblätter einer Stückliste: Revision → Positionen → Part → Quellen. Mit `$whereField` bleibt am Ende nur, wer
+     * dort auf den Knoten `$whereValue` zeigt (Art = Datenblatt).*
+     *
+     * @param  list<int> $path Feld-Ids, eines je Schritt.
+     * @return list<int>
+     */
+    public function recordsAlong(int $startId, array $path, int $whereField = 0, int $whereValue = 0): array
+    {
+        $saetze = [$startId];
+
+        foreach ($path as $feldId) {
+            $weiter = [];
+
+            foreach ($this->valuesOfMany($saetze) as $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    if ($zeile->relationId === $feldId && $zeile->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record && $zeile->value->reference !== null) {
+                        $weiter[$zeile->value->reference] = true;
+                    }
+                }
+            }
+
+            $saetze = array_keys($weiter);
+
+            if ($saetze === []) {
+                return [];
+            }
+        }
+
+        if ($whereField === 0) {
+            return $saetze;
+        }
+
+        $werte = $this->valuesOfMany($saetze);
+
+        return array_values(array_filter($saetze, static function (int $satz) use ($werte, $whereField, $whereValue): bool {
+            foreach ($werte[$satz] ?? [] as $zeile) {
+                if ($zeile->relationId === $whereField && $zeile->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node && $zeile->value->reference === $whereValue) {
+                    return true;
+                }
+            }
+
+            return false;
+        }));
+    }
+
+    /**
      * Mehrere Sätze nach Nummer (D-902).
      *
      * @param  list<int> $recordIds

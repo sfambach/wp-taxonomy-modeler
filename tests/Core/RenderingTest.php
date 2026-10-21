@@ -2235,6 +2235,63 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('> Winzling<', $sortiert, 'THT sagt nichts — das Paar sortiert');
     }
 
+    /** ⚠️ *D-955: neben «Part» die Datenblätter des Bauteils — eine Spalte aus dem verwiesenen Satz, und eine Quelle mit Adresse ist ein Link.* */
+    #[Test]
+    public function a_table_shows_chosen_fields_of_the_referenced_record_and_a_source_links_to_its_address(): void
+    {
+        $quelle   = $this->thing('Quelle');
+        $name     = $this->editor->addField($quelle->id, $this->type('Text')->id, 'name');
+        $adresse  = $this->editor->addField($quelle->id, $this->type('Media')->id, 'adresse');
+        $bauteil  = $this->thing('Bauteil');
+        $typ      = $this->editor->addField($bauteil->id, $this->type('Text')->id, 'typ');
+        $quellen  = $this->editor->addField($bauteil->id, $quelle->id, 'Quellen', RelationKind::Aggregation);
+        $quellen  = $this->editor->setMultiplicity($bauteil->id, $quellen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+        $position = $this->thing('Position');
+        $welches  = $this->editor->addField($position->id, $bauteil->id, 'Part', RelationKind::Aggregation);
+        $liste    = $this->thing('Liste');
+        $zeilen   = $this->editor->addField($liste->id, $position->id, 'zeilen', RelationKind::Composition);
+        $zeilen   = $this->editor->setMultiplicity($liste->id, $zeilen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+
+        $blatt = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($blatt, $name->id, TypedValue::ofText('Datenblatt LM7905')));
+        $this->records->putValue(RelationRecord::direct($blatt, $adresse->id, TypedValue::ofText('https://example.com/lm79.pdf')));
+        $teil = $this->records->add(new NodeRecord(0, $bauteil->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($teil, $typ->id, TypedValue::ofText('LM7905')));
+        $this->records->putValue(RelationRecord::direct($teil, $quellen->id, TypedValue::ofRecordReference($blatt), '', 0));
+        $pos = $this->records->add(new NodeRecord(0, $position->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($pos, $welches->id, TypedValue::ofRecordReference($teil)));
+        $satz = $this->records->add(new NodeRecord(0, $liste->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $zeilen->id, TypedValue::ofRecordReference($pos), '', 0));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($bauteil, SummaryRenderer::FIELDS, [$typ->id]);
+        $editor->setMembers($quelle, SummaryRenderer::FIELDS, [$name->id]);
+        $editor->setMembers($bauteil, \Taxmod\Core\Renderer\TableRenderer::TARGET_COLUMNS, [$quellen->id], $welches);
+        $this->neuZeichnen();
+
+        $gezeigt = $this->rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', recordParts: $this->rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz)->markup;
+
+        self::assertStringContainsString('LM7905', $gezeigt, 'der Verweis selbst');
+        self::assertStringContainsString('>Quellen<', $gezeigt, 'eine Spalte mit dem Namen des Feldes');
+        self::assertMatchesRegularExpression('/href="https:\/\/example\.com\/lm79\.pdf"[^>]*>Datenblatt LM7905</', $gezeigt, 'die Quelle führt zu ihrer Adresse');
+    }
+
+    /** ⚠️ *D-955: die Sammeltabelle für Leser — Sätze ohne Akte zeigen keine leeren Formulare und keine Aktspalte.* */
+    #[Test]
+    public function a_displayed_table_without_acts_has_no_forms(): void
+    {
+        $quelle = $this->thing('Quelle');
+        $name   = $this->editor->addField($quelle->id, $this->type('Text')->id, 'name');
+        $satz   = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-10-21 10:00:00', RecordType::User));
+
+        $tabelle = $this->rendering->recordsAsTable($quelle, [$name], [
+            ['id' => $satz, 'values' => [$name->id => TypedValue::ofText('Datenblatt LM7905')], 'lead' => [], 'acts' => [], 'submits' => new \Taxmod\Core\Renderer\Submission(''), 'editable' => false],
+        ], '', '', false, Purpose::Display, '', \Taxmod\Core\Renderer\Level::FrontEnd)->markup;
+
+        self::assertStringContainsString('Datenblatt LM7905', $tabelle);
+        self::assertStringNotContainsString('<form', $tabelle);
+    }
+
     /** ⚠️ *D-845: «Mehrere hinzufügen» ist eine Zusatzfunktion der mehrfachen Kante; ihr Feld sagt, worüber gewählt wird.* */
     #[Test]
     public function add_several_is_an_addon_of_the_many_edge(): void

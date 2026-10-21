@@ -546,6 +546,9 @@ final class Rendering implements Presets
     /** @var array<int, NodeRecord|null> Sätze, einmal je Zeichner gelesen — auch die, die es nicht gibt. */
     private array $gelesenSaetze = [];
 
+    /** @var array<int, SimpleType|null> Der Typ je Feld, für {@see self::adressenVon()} — ein Feld ändert seinen Typ nicht während eines Laufs. */
+    private array $feldTypGelesen = [];
+
     /** @var array<int, list<\Taxmod\Core\Model\RelationRecord>> Wertzeilen je Satz, einmal je Zeichner gelesen. */
     private array $gelesenSatzWerte = [];
 
@@ -635,6 +638,145 @@ final class Rendering implements Presets
         }
 
         return $aus;
+    }
+
+    /**
+     * Die Adresse je Satz, der eine trägt — der erste Wert eines Medienfelds ([D-955](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Ein angezeigter Verweis auf eine Quelle führt zu ihrer Datei, nicht zum Satz: sein Wort «in der bom links zu ihnen» (den
+     * Datenblättern). Aus den schon gelesenen Werten; die Felder in einer Abfrage (`CD-7`).*
+     *
+     * @param  list<int>          $satzIds
+     * @return array<int, string>
+     */
+    private function adressenVon(array $satzIds): array
+    {
+        if ($satzIds === [] || $this->relations === null) {
+            return [];
+        }
+
+        [, $werte] = $this->gemerkteSaetze($satzIds);
+        $feldIds   = [];
+
+        foreach ($werte as $zeilen) {
+            foreach ($zeilen as $zeile) {
+                $feldIds[$zeile->relationId] = true;
+            }
+        }
+
+        $fehlen = array_values(array_diff(array_keys($feldIds), array_keys($this->feldTypGelesen)));
+
+        if ($fehlen !== []) {
+            $this->feldTypGelesen += array_replace(array_fill_keys($fehlen, null), $this->typesOf(array_values($this->relations->byIds($fehlen))));
+        }
+
+        $typen = $this->feldTypGelesen;
+        $aus   = [];
+
+        foreach ($satzIds as $satzId) {
+            foreach ($werte[$satzId] ?? [] as $zeile) {
+                $text = trim((string) $zeile->value->text);
+
+                if ($text !== '' && ($typen[$zeile->relationId] ?? null) === SimpleType::Media) {
+                    $aus[$satzId] = $text;
+
+                    break;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
+    /**
+     * Neben einem Satzverweis die gewählten Felder des verwiesenen Satzes als eigene Spalten — nur beim Anzeigen ([D-955](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Gebaut für die Stückliste: neben «Part» die Quellen des Bauteils (Datenblatt) oder seine Bestell-Nr. ([INF-084](../../../docs/neues-konzept-eingang.md)).
+     * Die Wahl `target_columns` steht am Ziel des Verweises, an der Kante überschreibbar, wie `summary_fields`. Alle verwiesenen Sätze in einer
+     * Abfrage, die Spaltenfelder in einer (`CD-7`).*
+     *
+     * @param  list<list<RenderedField>>              $zeilen
+     * @param  list<list<Relation>>                   $zeilenFelder
+     * @param  list<array<int, mixed>>                $zeilenWerte
+     * @return list<list<RenderedField>>
+     */
+    private function mitSpaltenDesZiels(array $zeilen, array $zeilenFelder, array $zeilenWerte, string $locale, Level $level): array
+    {
+        if ($this->resolver === null || $this->relations === null) {
+            return $zeilen;
+        }
+
+        $spaltenJeKante = [];
+        $verwiesen      = [];
+
+        foreach ($zeilenFelder as $i => $felder) {
+            foreach ($felder as $feld) {
+                if ($feld->isSetting() || $feld->kind !== RelationKind::Aggregation) {
+                    continue;
+                }
+
+                if (! array_key_exists($feld->id, $spaltenJeKante)) {
+                    $ziel   = $this->gemerkterKnoten($feld->toNodeId);
+                    $glieder = $ziel === null ? [] : $this->resolver->listOf($ziel, TableRenderer::TARGET_COLUMNS, $feld);
+                    $spaltenJeKante[$feld->id] = array_values(array_filter(array_map(
+                        static fn ($glied): int => $glied->aktiv ? (int) $glied->reference : 0,
+                        $glieder
+                    )));
+                }
+
+                $wert = $zeilenWerte[$i][$feld->id] ?? null;
+
+                if ($spaltenJeKante[$feld->id] !== [] && $wert instanceof TypedValue && $wert->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
+                    $verwiesen[$wert->reference] = true;
+                }
+            }
+        }
+
+        $alleSpalten = array_values(array_unique(array_merge([], ...array_values($spaltenJeKante))));
+
+        if ($alleSpalten === []) {
+            return $zeilen;
+        }
+
+        $spaltenFelder = $this->relations->byIds($alleSpalten);
+        $fehlend       = array_values(array_filter(array_keys($verwiesen), fn (int $id): bool => ! isset($this->werteJeSatzGelesen[$id])));
+
+        if ($fehlend !== [] && $this->records !== null) {
+            foreach ($this->records->valuesOfMany($fehlend) + array_fill_keys($fehlend, []) as $id => $werte) {
+                $this->werteJeSatzGelesen[$id] ??= $werte;
+            }
+        }
+
+        foreach ($zeilen as $i => $zeile) {
+            $neu = [];
+
+            foreach ($zeile as $gezeichnet) {
+                $neu[] = $gezeichnet;
+                $feld  = $gezeichnet->relation;
+                $wert  = $zeilenWerte[$i][$feld->id] ?? null;
+                $ids   = $spaltenJeKante[$feld->id] ?? [];
+
+                if ($ids === []) {
+                    continue;
+                }
+
+                $spalten = array_values(array_filter(array_map(static fn (int $id): ?Relation => $spaltenFelder[$id] ?? null, $ids)));
+                $satz    = $wert instanceof TypedValue && $wert->referenceSpace === ReferenceSpace::Record ? (int) $wert->reference : 0;
+                $werte   = [];
+
+                foreach ($satz === 0 ? [] : ($this->werteJeSatzGelesen[$satz] ?? []) as $zeileWert) {
+                    $werte[$zeileWert->relationId] ??= $zeileWert->value;
+                }
+
+                foreach ($this->fieldsFor($spalten, $werte, Purpose::Display, '', $locale, $level, false, recordId: $satz) as $spalte) {
+                    $neu[] = $spalte;
+                }
+            }
+
+            $zeilen[$i] = $neu;
+        }
+
+        return $zeilen;
     }
 
     private function gemerkteSaetze(array $ids): array
@@ -2057,8 +2199,12 @@ final class Rendering implements Presets
                     // *Wohin der Linkdialog die Beschriftung schreibt: das Nachbarfeld derselben Zeile (D-857).*
                     captionName: isset($beschriftet[$relation->id]) && $fieldPrefix !== '' ? $fieldPrefix . '[' . $beschriftet[$relation->id] . ']' : '',
                     // *Beim Anzeigen führt ein Satzverweis zu seinem Satz (D-852); beim Bearbeiten steht dort der Wähler.*
-                    href: $purpose === Purpose::Display && $this->recordLink !== null && $value->referenceSpace === ReferenceSpace::Record && $value->reference !== null
-                        ? ($this->recordLink)($value->reference)
+                    // *Trägt der verwiesene Satz eine Adresse, führt der Link zu ihr (D-955).*
+                    href: $purpose === Purpose::Display && $value->referenceSpace === ReferenceSpace::Record && $value->reference !== null
+                        ? (isset($this->adressenVon([$value->reference])[$value->reference])
+                            ? (\Taxmod\Core\Renderer\MediaRenderer::fileOf($this->adressenVon([$value->reference])[$value->reference], $this->media)?->url
+                                ?? \Taxmod\Core\Renderer\MediaRenderer::absolute($this->adressenVon([$value->reference])[$value->reference]))
+                            : ($this->recordLink === null ? null : ($this->recordLink)($value->reference)))
                         : null,
                     // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
                     options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
@@ -2658,7 +2804,8 @@ final class Rendering implements Presets
             ));
 
             $vorne[] = $row['lead'];
-            $akte[]  = ControlMarkup::actsForm($formId, $row['submits'], $row['acts']);
+            // *Ohne Akte beim Anzeigen kein leeres Formular je Zeile — die Sammeltabelle für Leser (D-955).*
+            $akte[]  = $row['acts'] === [] && $purpose === Purpose::Display ? '' : ControlMarkup::actsForm($formId, $row['submits'], $row['acts']);
             // ⚠️ *Wohin die Anzahl eines 1..n-Teils führt: der Satz der Zeile, geöffnet an seiner Eingabe (D-825).*
             $links[] = (string) ($row['link'] ?? '');
         }
@@ -2675,7 +2822,7 @@ final class Rendering implements Presets
                 surroundings: new Surroundings(
                     records: $gezeichnet,
                     rowLead: $vorne,
-                    rowActs: $akte,
+                    rowActs: implode('', $akte) === '' ? [] : $akte,
                     rowLinks: $links
                 ),
                 // ⚠️ **Sonst käme der Umschalter nie an** (TASK-063). *Hier stand gar keine Angabe —
@@ -6899,10 +7046,23 @@ final class Rendering implements Presets
                 return null;
             }
 
-            $teile = [];
+            $teile    = [];
+            $adressen = $this->adressenVon(array_values(array_filter(array_map(
+                static fn (TypedValue $w): int => $w->referenceSpace === ReferenceSpace::Record ? (int) $w->reference : 0,
+                $werte
+            ))));
 
             foreach ($werte as $wert) {
-                $wort = RenderResult::escape($woerter[(int) $wert->reference] ?? '#' . (int) $wert->reference);
+                $roh  = $woerter[(int) $wert->reference] ?? '#' . (int) $wert->reference;
+                $wort = RenderResult::escape($roh);
+
+                // *Trägt der Satz eine Adresse, führt der Verweis dorthin (D-955).*
+                if (isset($adressen[(int) $wert->reference])) {
+                    $teile[] = \Taxmod\Core\Renderer\MediaRenderer::link($adressen[(int) $wert->reference], $roh, true, $this->media);
+
+                    continue;
+                }
+
                 $ziel = $this->recordLink === null || $wert->reference === null ? '' : ($this->recordLink)($wert->reference);
                 $teile[] = $ziel === '' ? $wort : '<a class="taxmod-record-link" href="' . RenderResult::escape($ziel) . '">' . $wort . '</a>';
             }
@@ -7272,6 +7432,10 @@ final class Rendering implements Presets
                 // ⚠️ *Der haltende Satz: eine Position liest die Vorbelegung ihres Filters aus der Stückliste (D-791 Schritt 3).*
                 ownerValues: $values
             );
+        }
+
+        if ($purpose === Purpose::Display) {
+            $zeilen = $this->mitSpaltenDesZiels($zeilen, $zeilenFelder, $zeilenWerte, $locale, $level);
         }
 
         $teile = $zeilen[0] ?? [];

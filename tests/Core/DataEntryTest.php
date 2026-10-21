@@ -107,6 +107,31 @@ final class DataEntryTest extends TestCase
         self::assertGreaterThan(0, $record->id);
     }
 
+    /** ⚠️ *D-955: die Datenblätter einer Stückliste — einem Weg über Satzverweise folgen, am Ende nach einem Knotenwert filtern.* */
+    #[Test]
+    public function records_along_a_path_are_collected_once_and_filtered_at_the_end(): void
+    {
+        $r = static fn (int $satz, int $feld, TypedValue $wert, int $pos = 0): \Taxmod\Core\Model\RelationRecord => \Taxmod\Core\Model\RelationRecord::direct($satz, $feld, $wert, '', $pos);
+
+        $start = $this->records->add(new \Taxmod\Core\Model\NodeRecord(0, $this->part->id, 1, '2026-10-21 10:00:00', \Taxmod\Core\Model\RecordType::User));
+        $a     = $this->records->add(new \Taxmod\Core\Model\NodeRecord(0, $this->part->id, 1, '2026-10-21 10:00:00', \Taxmod\Core\Model\RecordType::User));
+        $b     = $this->records->add(new \Taxmod\Core\Model\NodeRecord(0, $this->part->id, 1, '2026-10-21 10:00:00', \Taxmod\Core\Model\RecordType::User));
+        $blatt = $this->records->add(new \Taxmod\Core\Model\NodeRecord(0, $this->part->id, 1, '2026-10-21 10:00:00', \Taxmod\Core\Model\RecordType::User));
+        $web   = $this->records->add(new \Taxmod\Core\Model\NodeRecord(0, $this->part->id, 1, '2026-10-21 10:00:00', \Taxmod\Core\Model\RecordType::User));
+
+        $this->records->putValue($r($start, 11, TypedValue::ofRecordReference($a), 0));
+        $this->records->putValue($r($start, 11, TypedValue::ofRecordReference($b), 1));
+        $this->records->putValue($r($a, 12, TypedValue::ofRecordReference($blatt), 0));
+        $this->records->putValue($r($b, 12, TypedValue::ofRecordReference($blatt), 0));
+        $this->records->putValue($r($b, 12, TypedValue::ofRecordReference($web), 1));
+        $this->records->putValue($r($blatt, 13, TypedValue::ofReference(900)));
+        $this->records->putValue($r($web, 13, TypedValue::ofReference(901)));
+
+        self::assertSame([$blatt, $web], $this->data->recordsAlong($start, [11, 12]), 'jeder Satz einmal');
+        self::assertSame([$blatt], $this->data->recordsAlong($start, [11, 12], 13, 900), 'nur die Datenblätter');
+        self::assertSame([], $this->data->recordsAlong($start, [99]));
+    }
+
     #[Test]
     public function it_keeps_the_model_version_it_was_written_against(): void
     {
