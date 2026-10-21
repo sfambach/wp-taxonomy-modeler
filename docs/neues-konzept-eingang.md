@@ -835,7 +835,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Was eBay anbietet (nicht gemessen, aus allgemeinem Wissen):** Angebote einstellen über die Sell-APIs (Inventory API, oder die ältere Trading API mit `AddItem`); laufende eigene Angebote lesen, um von einem Satz auf das Angebot zu verlinken. Beides braucht einen eBay-Entwicklerzugang und die Zustimmung des Kontos (OAuth).
 - **Verkaufstexte** kämen aus dem Modell (Projekt, Platine, Exemplar, Messwerte) — dafür braucht es keine eBay-API.
-- **Eigenes Modul, sein Wort am 2026-10-20 (nicht entschieden):** *«wp_tax_ebay modul anbildung an ebay api»*. **Konzeptentwurf «tax_ebay»:** [`pakete/ebay/konzept.md`](pakete/ebay/konzept.md) — Verkäufe und Käufe über die eBay-API als Vorschläge, Prüfseite je Position, Schreiben über `write-data`, eBay nicht mehr über tax_mail; sieben Fragen E1–E7, entschieden in [D-943](NewConcept/90-decision-log.md). Code: [`sfambach/wp_tax_ebay`](https://github.com/sfambach/wp_tax_ebay).
+- **Eigenes Modul, sein Wort am 2026-10-20 (nicht entschieden):** *«wp_tax_ebay modul anbildung an ebay api»*. **Konzeptentwurf «tax_ebay»:** [`pakete/ebay/konzept.md`](pakete/ebay/konzept.md) — Verkäufe und Käufe über die eBay-API als Vorschläge, Prüfseite je Position, Schreiben über `write-data`, eBay nicht mehr über tax_mail; sieben Fragen E1–E7, entschieden in [D-943](NewConcept/90-decision-log.md). Code: [`sfambach/wp_tax_api_ebay`](https://github.com/sfambach/wp_tax_api_ebay).
 - **Gebaut:** nein. Hängt an [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf) (was ist verkaufbar) und an [D-934](NewConcept/90-decision-log.md) (Verkäufe).
 
 ## INF-076 · Ein Knoten verlässt den Bereich seiner geerbten Felder
