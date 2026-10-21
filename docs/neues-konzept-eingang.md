@@ -913,3 +913,15 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Vorschlag (INFERRED):** Module rechnen; ein gerechneter Feldtyp erst, wenn ein zweiter Fall ausserhalb des Lagers ihn braucht. Der Prozess Wareneingang mit Sperre gehört ohnehin ins Modul (§1).
 
 ---
+
+## INF-082 · JLCPCB über die API anbinden
+
+**Typ:** `VORSCHLAG` · **Status:** `OPEN` — 2026-10-21.
+
+> *«habe jetzt jlc api key»*
+
+- **Lesart (INFERRED):** JLCPCB-Bestellungen ins Modell bringen wie eBay ([`pakete/ebay/konzept.md`](pakete/ebay/konzept.md)).
+- **Befund aus der Doku (nicht gemessen):** die PCB-API hat keine Bestellliste, nur Details zu einer Bestellnummer — darum ergänzt das Modul die Preise, die in den JLC-Mails fehlen, statt Bestellungen selbst zu finden.
+- **Entwurf:** [`pakete/jlc/konzept.md`](pakete/jlc/konzept.md), Fragen J1–J6.
+
+---
