@@ -1,6 +1,6 @@
 # Paket · Lager («Taxmod Stock») — Konzeptentwurf
 
-**Stand 2026-10-20. Entwurf, nichts entschieden, nichts gebaut.** Aus [INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf)
+**Stand 2026-10-21. Entwurf, nichts entschieden, nichts gebaut.** Neu am 2026-10-21: Bestandsposten (Quanten), §3.5a. Aus [INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf)
 und [INF-075](../../neues-konzept-eingang.md#inf-075--prozesse-und-formulare-im-modell-anlegen). Was er entscheiden soll, steht in §10;
 alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`). Code des Moduls: [`sfambach/wp_tax_stock`](https://github.com/sfambach/wp_tax_stock).
 
@@ -19,6 +19,8 @@ alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`)
 > *«genaus geht produzierte ware in den bestand über»* — §3.7, Vorgang «Baulauf-Zugang»
 
 > *«vielleicht kann man eine linie zeigehn zwischen technische beschreibeibung und ebstand aber nur wenn das sinnvoll ist»* — §2
+
+> *«was mir aufgefallen ist wenn wir das we buchen verliert der bestand dann seine zuordnung zu dem we. wir müssten sowas wie quanten einfügen ein bestand mit bezug zum we/bestellung eindeutig zuorten barer bestand»* — *«die menge des bestandes würde sich dann aus den mengen der quanten ergeben bzw in den quanten»* (2026-10-21) — §3.5a
 
 > *«ich weiss nicht wir haben ja knoten damit wir relativ frei sind wäre nicht eine materil das bezug zu einem knoten hat das richtige und ein material kann wiederum bestand haben sonst vermixen wi rhier dinge kannst du das mal untersuchen»* — *«war nur ne idee lass uns das est konzipieren»* — §2, §3.2
 
@@ -123,6 +125,7 @@ flowchart TB
   BE --> KA["Käufe (verschoben)"]
   LV --> VG["Vorgänge"]
   LV --> BW["Vorgänge Pos"]
+  LV --> BP["Bestandsposten"]
   LV --> RS["Reservierungen"]
   FE --> BL["Bauläufe"]
   VK --> VE["Verkäufe (verschoben)"]
@@ -193,14 +196,71 @@ Jeder Wareneingang, Verbrauch, Verkauf, jede Inventur ist ein **Vorgang** mit **
 
 | Feld | Typ | Mult. | Zweck |
 |---|---|---|---|
-| Material | Satzverweis → Material | 1..1 | Mengenware oder Einzelstück |
+| Bestandsposten | Satzverweis → Bestandsposten | 1..1 | welcher Posten sich ändert (§3.5a); ein Zugang legt ihn an |
 | Menge | Dezimalzahl mit Vorzeichen | 1..1 | + Zugang, − Abgang |
-| Lagerort | Satzverweis → Lagerorte | 0..1 | |
-| Wert je Stück | Einheitenwert, Währung ([D-929](../../NewConcept/90-decision-log.md)) | 0..1 | Zugang: Einstandspreis; Abgang: Durchschnitt zum Buchungszeitpunkt |
-| Kauf | Satzverweis → Käufe | 0..1 | Herkunft eines Zugangs |
 | Gezählt | Dezimalzahl | 0..1 | nur Inventur; Menge ist die Differenz |
 
-**Bestand = Summe «Menge»** je Material, in **einer** Abfrage für eine ganze Liste (`CD-7`).
+*Geändert am 2026-10-21:* «Material», «Lagerort», «Wert je Stück» und «Kauf» stehen nicht mehr an der Pos-Zeile, sondern einmal am Bestandsposten — sonst stünde die Herkunft an jeder Zeile neu.
+
+**Bestand = Summe «Menge»** je Bestandsposten, je Material die Summe seiner Posten — in **einer** Abfrage für eine ganze Liste (`CD-7`).
+
+### 3.5a Bestandsposten (Quanten) — der Bestand behält seine Herkunft
+
+**Sein Befund:** nach dem Wareneingang ist der Bestand nur noch eine Summe je Material; welcher Teil aus welchem Wareneingang, welcher
+Bestellung, zu welchem Preis stammt, geht beim ersten Abgang verloren.
+
+```mermaid
+flowchart LR
+  K["Kauf<br/>(Position einer Bestellung)"] --> BP1["Bestandsposten 1<br/>Material · Lagerort · Wert je Stück"]
+  INV["Inventur"] --> BP2["Bestandsposten 2<br/>ohne Kauf"]
+  P1["Pos +50 (Wareneingang)"] --> BP1
+  P2["Pos −8 (Verbrauch)"] --> BP1
+  P3["Pos +13 (Inventur)"] --> BP2
+  BP1 & BP2 --> MA["Material: Bestand = Summe der Posten"]
+```
+
+- **Ein Bestandsposten ist eine Menge eines Materials mit einer Herkunft.** Jeder Zugang legt einen an; jeder Abgang nennt den Posten,
+  aus dem er kommt — nie eine anonyme Summe.
+- **Seine Menge wird nicht gespeichert, sondern gerechnet:** Summe der Pos-Zeilen, die ihn nennen. Ein Feld «Restmenge» stünde neben den
+  Bewegungen ein zweites Mal und liefe auseinander (Code-Standard: *«One place owns each piece of state»*). Das ist die Lesart von
+  *«ergeben aus den mengen»*; *«bzw in den quanten»* als gespeichertes Feld schlage ich nicht vor.
+- **Ein Einzelstück ist ein Posten mit Menge 1**; sein Material zeigt mit «Bezug Ding» auf das Exemplar (§2).
+- **Den Rückweg vom Exemplar zum Kauf gibt es schon:** «Verwiesen von» am geöffneten Satz ([D-902](../../NewConcept/90-decision-log.md):
+  *«Den Kauf sieht man am Exemplar über eine neue Zeile «Verwiesen von»»*). Ein eigenes Sprung-Feld am Exemplar braucht es nicht; der
+  Weg Exemplar → Material → Bestandsposten → Kauf ist zwei Schritte länger und gehört in die gerechnete Anzeige des Moduls.
+- **Die Bewertung wird einfacher:** ein Abgang trägt den «Wert je Stück» seines Postens. Der gleitende Durchschnitt (§8) entfällt.
+- **Umbuchung:** ganzer Posten → «Lagerort» am Posten ändern; Teilmenge → − am alten Posten, + an einem neuen mit demselben Kauf.
+
+**Bestandsposten**
+
+| Feld | Typ | Mult. | Zweck |
+|---|---|---|---|
+| Material | Satzverweis → Material | 1..1 | was es ist |
+| Kauf | Satzverweis → Käufe | 0..1 | Herkunft; leer bei Inventur, Baulauf-Zugang, Zerlegung |
+| Baulauf | Satzverweis → Bauläufe | 0..1 | Herkunft gefertigter Ware |
+| Lagerort | Satzverweis → Lagerorte | 0..1 | Stufe 1: leer = «Lager» (§3.1) |
+| Wert je Stück | Einheitenwert, Währung ([D-929](../../NewConcept/90-decision-log.md)) | 0..1 | Einstandspreis; aus dem Kauf, beim Baulauf Selbstkosten |
+| Zustand | Konstante, wie am Exemplar | 0..1 | für Mengenware («neu», «gebraucht») |
+| Eingegangen am | Datum | 1..1 | |
+
+**Gerechnet, nicht gespeichert:** Menge (Rest), reserviert, frei.
+
+**Kauf «Material» und Bestandsposten «Material» sind keine Dublette:** der Kauf sagt, was bestellt wurde, der Posten, was eingegangen ist
+— bei einer Falschlieferung weichen sie zu Recht ab. Der Wareneingang schlägt das Material des Kaufs vor.
+
+**Seine Regeln für den Wareneingang** (aus dem Konzept vom 2026-10-21, `/mnt/project-files/konzept-wareneingang-quanten.md`):
+
+| # | Regel | Im Entwurf |
+|---|---|---|
+| R1 | Ein Kauf mit «Noch nicht näher bestimmt = Ja» geht nicht in den Wareneingang — erst bestimmen | die Maske Wareneingang sperrt ihn; «bestimmt» heisst: der Kauf hat ein Material (§3.4) |
+| R2 | Teil-Wareneingang (bestimmte Positionen buchen, andere noch offen)? | **offen** (F9) |
+| R3 | Konvolute werden flache Positionen, gleiche Teile mit Anzahl | je Position ein Kauf, beim Wareneingang je Kauf ein Posten |
+| R4 | Später bestimmen heisst denselben Kauf ändern, nie einen neuen anlegen | passt: der Posten entsteht erst beim Wareneingang, also nach dem Bestimmen |
+
+⚠️ **«Noch nicht näher bestimmt» gerechnet statt gesetzt** (sein Vorschlag: *= «Modell leer»*) und **«Bestand je Modell» als Summenfeld**
+brauchen, wenn der Modeller sie zeigen soll, **gerechnete Felder im Modeller** — das widerspricht §1 («Der Modeller rechnet nicht»).
+Mein Vorschlag: **das Modul rechnet beides** und zeigt es über seine Anzeige (wie §3.7); das Ja/Nein-Feld bleibt bis dahin gesetzt.
+Ob der Modeller gerechnete Felder bekommt, ist eine eigene Frage: [INF-081](../../neues-konzept-eingang.md).
 
 ### 3.6 Reservierungen
 
@@ -257,13 +317,13 @@ flowchart LR
 
 | Vorgang | Auslöser | Was entsteht |
 |---|---|---|
-| **Wareneingang** | Bestellung eingegangen — ganz oder je Position; oder frei | Pos-Zeile je Material des Kaufs |
-| **Verbrauch** | Artikel, Menge, optional Projekt | Vorgänge Pos − |
+| **Wareneingang** | Bestellung eingegangen — nur bestimmte Käufe (R1), ganz oder je Position (F9); oder frei | je Kauf ein Bestandsposten und seine Pos-Zeile + |
+| **Verbrauch** | Material, Menge, optional Projekt; die Maske schlägt den ältesten Posten vor | Vorgänge Pos − am Posten |
 | **Baulauf** | Projekt + Stückzahl → reservieren → fertig | Entnahme − aus der Stückliste, Zugang + des fertigen Artikels |
 | **Verkauf** | Verkaufte Artikel | Pos-Zeile − |
 | **Zerlegung** | Einzelstück wird Ersatzteilspender | Einzelstück −1, gewonnene Teile + |
 | **Inventur** | gezählte Menge | Pos-Zeile = gezählt − Bestand; **der Anfangsbestand ist eine Inventur**, nach Bedarf ([INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf), Schritt 1) |
-| **Umbuchung** | Lagerort wechseln | − am alten, + am neuen Ort |
+| **Umbuchung** | Lagerort wechseln | ganzer Posten: Lagerort ändern; Teilmenge: − am alten Posten, + an neuem Posten mit gleicher Herkunft |
 
 ## 5 · Mail-Import gehört ins Modul
 
@@ -329,9 +389,8 @@ Versand: Material → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erf
 
 ## 8 · Bewertung
 
-**Gleitender Durchschnitt** für Mengenware: ein Abgang wird mit dem Durchschnitt zum Buchungszeitpunkt bewertet und dieser Wert in der
-Pos-Zeile **gespeichert**, weil er sich später nicht zurückrechnen lässt (wie der Einstandspreis, [D-933](../../NewConcept/90-decision-log.md)).
-Einzelstücke tragen ihren eigenen Wert.
+~~Gleitender Durchschnitt~~ — *ersetzt am 2026-10-21 durch die Bestandsposten (§3.5a)*: jeder Abgang nennt seinen Posten und trägt
+dessen «Wert je Stück». Nichts muss beim Buchen eingefroren werden, weil der Wert am Posten sich nicht ändert.
 
 ## 9 · Wo es läuft, und INF-075
 
@@ -353,10 +412,13 @@ Einzelstücke tragen ihren eigenen Wert.
 | **F4** | Aufräumen A1–A3 und A6 vor dem Bau? | **ja**, A4 später, A5 nach Stufe 1 |
 | **F5** | Mail-Import ins Repo `wp_tax_stock` holen? | **ja**, eigener Ordner, läuft weiter auf Earth |
 | **F6** | Einheiten (Beutel ↔ Stück) | **später**, Stufe 1 nur «Stück» |
+| **F8** | Bestandsposten (§3.5a): Menge gerechnet aus den Pos-Zeilen, nicht als «Restmenge» gespeichert; Wert und Herkunft am Posten | **ja** |
+| **F9** | Teil-Wareneingang (R2): bestimmte Käufe einer Bestellung buchen, während andere noch unbestimmt sind? | **ja** — sonst blockiert ein unbestimmtes Teil eines Konvoluts die ganze Bestellung; Status «teilweise eingegangen» gibt es schon (§3.4) |
 | **F7** | Reihenfolge | **1** Aufräumen, Knoten «Stock», Material, Inventur, Wareneingang, Verbrauch, Bestandsliste · **2** Mail-Import mit Wareneingang und Verkauf · **3** Reservierung, Bedarf, Bauläufe · **4** Mindestbestand, Umbuchung, Zerlegung |
 
 ## 11 · Annahmen, die das Konzept nicht sagt
 
+- Der Verbrauch schlägt den ältesten Posten vor (FIFO); er kann einen anderen wählen.
 - Mengen sind Dezimalzahlen (Meterware), angezeigt ohne Nachkommastellen, wenn ganz.
 - Ein Abgang darf den Bestand unter 0 drücken; die Maske warnt, sperrt nicht — der Bestand ist am Anfang lückenhaft.
 - Vorhandene Exemplare zählen als Bestand erst, wenn sie ein Material und eine Zugangsbewegung haben — Übernahme als Inventur, nur für Stücke, die er abgeben oder zählen will.

@@ -900,3 +900,16 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 ## Erledigte Eingänge
 
 *(noch keine)*
+
+## INF-081 · Gerechnete Felder im Modeller (abgeleitet, Summe)
+
+**Typ:** `FRAGE` · **Status:** `OFFEN` — 2026-10-21.
+
+> *«wenn wir das we buchen verliert der bestand dann seine zuordnung zu dem we. wir müssten sowas wie quanten einfügen»* — daraus im Konzept Wareneingang (`/mnt/project-files/konzept-wareneingang-quanten.md`) die Liste «Plugin-Erweiterungen, die dafür fehlen»: abgeleitetes Feld («Noch nicht näher bestimmt» = «Modell leer»), Summenfeld (Bestand je Modell), Prozess Wareneingang mit Sperre.
+
+- **Heute (gelesen):** der Modeller speichert nur, was gesetzt wird; gerechnet wird einzig die Anzeige «Verwiesen von» ([D-902](NewConcept/90-decision-log.md)), kein Feld.
+- **Lagerkonzept §1 (INFERRED, nicht entschieden):** der Modeller rechnet nicht, das Modul rechnet und zeigt ([`docs/pakete/lager/konzept.md`](pakete/lager/konzept.md) §3.5a, §3.7).
+- **Frage:** bekommt der Modeller gerechnete Felder als eigenen Feldtyp (Formel/Summe über Verweise), oder bleibt Rechnen Sache der Module?
+- **Vorschlag (INFERRED):** Module rechnen; ein gerechneter Feldtyp erst, wenn ein zweiter Fall ausserhalb des Lagers ihn braucht. Der Prozess Wareneingang mit Sperre gehört ohnehin ins Modul (§1).
+
+---
