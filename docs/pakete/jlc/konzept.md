@@ -1,6 +1,6 @@
 # Paket · JLCPCB-Anbindung («tax_api_jlcpcb») — Konzeptentwurf
 
-**Stand 2026-10-21. Nichts entschieden. Gebaut: Schritt 1 (§7) in wp_tax_api_jlcpcb 0.0.2, live seit 2026-10-21; sein Wort: *«connection test erfolgreich»* — Host `open.jlcpcb.com` und Signatur damit gemessen.** Steht auf dem gemeinsamen Eingang ([`../import/konzept.md`](../import/konzept.md), [D-951](../../NewConcept/90-decision-log.md), [D-952](../../NewConcept/90-decision-log.md)): tax_api_jlcpcb wird dort die erste Quelle (`EnrichingSource`). Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
+**Stand 2026-10-21. Nichts entschieden. Gebaut: Schritt 1 (§7) in wp_tax_api_jlcpcb 0.0.2, live seit 2026-10-21 (0.0.3 mit Probe-Liste der Bestellnummern freigegeben); sein Wort: *«connection test erfolgreich»* — Host `open.jlcpcb.com` und Signatur damit gemessen.** Steht auf dem gemeinsamen Eingang ([`../import/konzept.md`](../import/konzept.md), [D-951](../../NewConcept/90-decision-log.md), [D-952](../../NewConcept/90-decision-log.md)): tax_api_jlcpcb wird dort die erste Quelle (`EnrichingSource`). Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
 (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`). Eingang: [INF-082](../../neues-konzept-eingang.md#inf-082--jlcpcb-über-die-api-anbinden).
 Vorbild: [`../ebay/konzept.md`](../ebay/konzept.md) und [`../mail/konzept.md`](../mail/konzept.md).
 
@@ -40,9 +40,12 @@ flowchart LR
   R -->|übernehmen| W["write-data"]
 ```
 
-1. **Bestellnummer kommt aus der Mail** (oder von Hand im Reiter). Grund: die PCB-API hat **keine Bestellliste**, nur
-   «Details zu einer Batch-Nummer» (§3). Anders als bei eBay ([D-950](../../NewConcept/90-decision-log.md)) kann die API
-   hier nicht die Wahrheit über *welche* Bestellungen es gibt sein, nur über ihren Inhalt.
+1. **Bestellnummer kommt aus der Mail** (oder von Hand im Reiter). ⚠️ *Korrigiert 2026-10-21:* die Begründung «die PCB-API
+   hat **keine Bestellliste**» war falsch — die öffentliche API List nennt sie nicht, die Doku in seiner Konsole aber schon:
+   `/overseas/openapi/pcb/pageBatchInfoByOrderType` (Batch-Nummern `W…` nach Erstellzeit, Typ `order_pcb`/`order_steel`, nur
+   Nummer und Anzahl). Ob die API damit wie bei eBay ([D-950](../../NewConcept/90-decision-log.md)) die Wahrheit über
+   *welche* Bestellungen es gibt wird, ist offen — das widerspricht der Rolle «ergänzt nur» aus
+   [D-953](../../NewConcept/90-decision-log.md) und wäre seine Entscheidung. Gebaut ist die Liste nur als Probe (0.0.3).
 2. **Ergänzen:** zu jeder JLC-Bestellung im Vorschlag oder im Modell ohne Preis die Details abrufen: Kosten je Posten, Versand,
    Gesamt; dazu der Fertigungsstand, solange nicht versendet.
 3. **Abruf:** einmal täglich + Knopf «Jetzt abrufen», wie E7 bei eBay (INFERRED).
@@ -54,7 +57,8 @@ flowchart LR
 | PCB | **Query order details by batch number** — Bestellung, Lieferadresse, Kosten | Preise der Bestellung ⇒ Kern dieses Moduls |
 | PCB | Get PCB production process information (nach Order-ID, erst ab Fertigung) | Status «in Fertigung» |
 | PCB | Create order, Online quote, Upload gerber … | nicht genutzt (J5) |
-| 3D-Druck | Order list, Order details, Progress | einzige Bestellliste; nur falls er bei JLC3DP druckt |
+| PCB | **Paginated Query of Batch Information by Order Type** (`/overseas/openapi/pcb/pageBatchInfoByOrderType`, aus seiner Konsole) | Bestellnummern eines Zeitraums; Probe in 0.0.3 |
+| 3D-Druck | Order list, Order details, Progress | nur falls er bei JLC3DP druckt |
 | Components | Query Component Detail Data (nach C-Nummer) | Katalog: Daten, Preis, Bestand eines Bauteils per LCSC-/C-Nummer (später, J6) |
 | Components | Query Private Component Library | seine bei JLC gelagerten Teile (für Bestückung) ⇒ tax_stock, später |
 | Balance | Get Available Balance | Kontostand; Pfad nicht öffentlich, darum nicht der Verbindungstest |

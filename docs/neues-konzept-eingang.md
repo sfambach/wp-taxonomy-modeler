@@ -921,7 +921,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 > *«habe jetzt jlc api key»*
 
 - **Lesart (INFERRED):** JLCPCB-Bestellungen ins Modell bringen wie eBay ([`pakete/ebay/konzept.md`](pakete/ebay/konzept.md)).
-- **Befund aus der Doku (nicht gemessen):** die PCB-API hat keine Bestellliste, nur Details zu einer Bestellnummer — darum ergänzt das Modul die Preise, die in den JLC-Mails fehlen, statt Bestellungen selbst zu finden.
+- **Befund aus der Doku (nicht gemessen), ⚠️ korrigiert 2026-10-21:** ~~die PCB-API hat keine Bestellliste~~ — seine Konsolen-Doku nennt eine (`pageBatchInfoByOrderType`, nur Nummern); Preise kommen weiter nur aus den Details je Bestellnummer — darum ergänzt das Modul die Preise, die in den JLC-Mails fehlen, statt Bestellungen selbst zu finden.
 - **Entwurf:** [`pakete/jlc/konzept.md`](pakete/jlc/konzept.md), Fragen J1–J6.
 
 ---
