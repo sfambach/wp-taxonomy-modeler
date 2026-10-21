@@ -248,6 +248,14 @@ flowchart LR
 **Kauf «Material» und Bestandsposten «Material» sind keine Dublette:** der Kauf sagt, was bestellt wurde, der Posten, was eingegangen ist
 — bei einer Falschlieferung weichen sie zu Recht ab. Der Wareneingang schlägt das Material des Kaufs vor.
 
+**Inventur zuerst, Bestellung später — konsolidieren statt doppelt zählen.** *Sein Wort (2026-10-21, Transistor-Sortimentskasten):
+«wenn die später auf einer bestelleung auftauschen sollten wir die menge konsolidieren»*. Altbestand wird als Inventur gebucht (Posten
+ohne Kauf). Taucht derselbe Bestand später als importierter Kauf auf, ist das **kein Wareneingang**, sondern ein **Herkunft
+nachtragen**: der Kauf wird an den vorhandenen Inventur-Posten gehängt («Kauf» und «Wert je Stück» gesetzt), die Menge bleibt. Ist der
+Kauf grösser als der Posten, geht nur der Rest als Wareneingang. Die Maske Wareneingang zeigt je Kauf die Inventur-Posten ohne Kauf
+desselben Materials als Vorschlag «zuordnen statt einbuchen». *Anhaltspunkt: Etiketten im Kasten tragen Nummern wie `7268875-412`,
+vermutlich Bestellnummer und Position; das Fach notiert sie in der Inventurliste.*
+
 **Seine Regeln für den Wareneingang** (aus dem Konzept vom 2026-10-21, `/mnt/project-files/konzept-wareneingang-quanten.md`):
 
 | # | Regel | Im Entwurf |
@@ -322,6 +330,7 @@ flowchart LR
 | **Baulauf** | Projekt + Stückzahl → reservieren → fertig | Entnahme − aus der Stückliste, Zugang + des fertigen Artikels |
 | **Verkauf** | Verkaufte Artikel | Pos-Zeile − |
 | **Zerlegung** | Einzelstück wird Ersatzteilspender | Einzelstück −1, gewonnene Teile + |
+| **Herkunft nachtragen** | Kauf, dessen Bestand schon als Inventur gebucht ist | Kauf und Wert am Inventur-Posten gesetzt, keine Pos-Zeile; Überschuss als Wareneingang |
 | **Inventur** | gezählte Menge | Pos-Zeile = gezählt − Bestand; **der Anfangsbestand ist eine Inventur**, nach Bedarf ([INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf), Schritt 1) |
 | **Umbuchung** | Lagerort wechseln | ganzer Posten: Lagerort ändern; Teilmenge: − am alten Posten, + an neuem Posten mit gleicher Herkunft |
 
@@ -414,6 +423,7 @@ dessen «Wert je Stück». Nichts muss beim Buchen eingefroren werden, weil der 
 | **F6** | Einheiten (Beutel ↔ Stück) | **später**, Stufe 1 nur «Stück» |
 | **F8** | Bestandsposten (§3.5a): Menge gerechnet aus den Pos-Zeilen, nicht als «Restmenge» gespeichert; Wert und Herkunft am Posten | **ja** |
 | **F9** | Teil-Wareneingang (R2): bestimmte Käufe einer Bestellung buchen, während andere noch unbestimmt sind? | **ja** — sonst blockiert ein unbestimmtes Teil eines Konvoluts die ganze Bestellung; Status «teilweise eingegangen» gibt es schon (§3.4) |
+| **F10** | Inventur-Posten nachträglich einem Kauf zuordnen statt die Menge doppelt einzubuchen (§3.5a, sein Wort) | **ja**, in Stufe 2 mit dem Mail-Import |
 | **F7** | Reihenfolge | **1** Aufräumen, Knoten «Stock», Material, Inventur, Wareneingang, Verbrauch, Bestandsliste · **2** Mail-Import mit Wareneingang und Verkauf · **3** Reservierung, Bedarf, Bauläufe · **4** Mindestbestand, Umbuchung, Zerlegung |
 
 ## 11 · Annahmen, die das Konzept nicht sagt
