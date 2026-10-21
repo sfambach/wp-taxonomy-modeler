@@ -36,6 +36,7 @@ add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs 
 ]);
 
 $reiter = SettingsScreen::moduleTabs();
+$pruefe(array_key_first(SettingsScreen::moduleTabs()) === 'import', 'the Import tab stands before the module tabs');
 // ⚠️ *Seit dem Eingang der Import-Module meldet der Modeller selbst den Reiter «import» an (D-953); er steht vor dem Testmodul.*
 $pruefe(array_keys($reiter) === ['import', 'stock'], 'only a complete tab with its own slug is taken');
 
