@@ -1,6 +1,6 @@
 # Paket · JLCPCB-Anbindung («tax_api_jlcpcb») — Konzeptentwurf
 
-**Stand 2026-10-21. Nichts entschieden, nichts gebaut.** Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
+**Stand 2026-10-21. Nichts entschieden. Gebaut: Schritt 1 (§7) in wp_tax_api_jlcpcb 0.0.1, nicht live, ungetestet gegen JLC.** Steht auf dem gemeinsamen Eingang ([`../import/konzept.md`](../import/konzept.md), [D-951](../../NewConcept/90-decision-log.md), [D-952](../../NewConcept/90-decision-log.md)): tax_api_jlcpcb wird dort die erste Quelle (`EnrichingSource`). Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
 (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`). Eingang: [INF-082](../../neues-konzept-eingang.md#inf-082--jlcpcb-über-die-api-anbinden).
 Vorbild: [`../ebay/konzept.md`](../ebay/konzept.md) und [`../mail/konzept.md`](../mail/konzept.md).
 
@@ -57,7 +57,7 @@ flowchart LR
 | 3D-Druck | Order list, Order details, Progress | einzige Bestellliste; nur falls er bei JLC3DP druckt |
 | Components | Query Component Detail Data (nach C-Nummer) | Katalog: Daten, Preis, Bestand eines Bauteils per LCSC-/C-Nummer (später, J6) |
 | Components | Query Private Component Library | seine bei JLC gelagerten Teile (für Bestückung) ⇒ tax_stock, später |
-| Balance | Get Available Balance | **Verbindungstest** ohne Nebenwirkung (Schritt 1) |
+| Balance | Get Available Balance | Kontostand; Pfad nicht öffentlich, darum nicht der Verbindungstest |
 
 - **Technik:** nur HTTPS + `POST` mit JSON; Datumsangaben in China-Zeit (GMT+8), `yyyy-MM-dd HH:mm:ss`.
 - **Anmeldung:** keine Zustimmung im Browser wie bei eBay. Jede Anfrage wird mit HMAC-SHA256 über fünf Zeilen (Methode, Pfad,
@@ -70,13 +70,12 @@ flowchart LR
 ## 4 · Zugangsdaten — wohin der Schlüssel gehört
 
 - Drei Werte: **App-ID**, **AccessKey**, **SecretKey** (in der Konsole «tokenizationKey» genannt). Nie in den Chat, nie ins Repo.
-- **Wie bei tax_ebay 0.0.2 (INFERRED):** Reiter «JLC» unter Configuration ([D-945](../../NewConcept/90-decision-log.md)),
-  SecretKey mit libsodium versiegelt (Schlüssel aus dem Auth-Salt). Konstanten in `wp-config.php` haben Vorrang:
-  `TAXJLC_APP_ID`, `TAXJLC_ACCESS_KEY`, `TAXJLC_SECRET_KEY`.
-- **Bis das Modul läuft:** Schlüssel nur im Passwortmanager bzw. in der JLC-Konsole lassen; er kann ihn jederzeit neu erzeugen
-  (zwei Schlüssel je App für Wechsel).
-- **IP-Whitelist:** erst leer lassen; wenn die Verbindung steht, die ausgehende IP des Strato-Servers eintragen (sie zeigt der
-  Verbindungstest an).
+- **Geheimnisse immer verschlüsselt** ([D-951](../../NewConcept/90-decision-log.md)); das Formular dafür kommt mit dem Tresor des
+  Eingangs ([D-952](../../NewConcept/90-decision-log.md)), keine eigene Kopie im Modul.
+- **Bis dahin (0.0.1):** nur Konstanten in `wp-config.php` — `TAXJLCPCB_APP_ID`, `TAXJLCPCB_ACCESS_KEY`, `TAXJLCPCB_SECRET_KEY`
+  (Schema `TAX<QUELLE>_<FELD>` aus dem Eingangskonzept §3.1). Das Modul speichert selbst nichts; gelesen wird hinter
+  `CredentialSource`, damit der Umzug in den Tresor ein Tausch ist.
+- **IP-Whitelist:** erst leer lassen; wenn die Verbindung steht, die ausgehende IP des Strato-Servers eintragen.
 
 ## 5 · Abbildung auf das Modell
 
@@ -99,7 +98,7 @@ flowchart LR
 
 ## 7 · Bauschritte
 
-1. Gerüst, Reiter «JLC», Schlüssel speichern, **«Verbindung testen»** (Balance) — sonst nichts.
+1. Gerüst, Reiter «JLCPCB», Schlüssel aus `wp-config.php`, **«Verbindung testen»** (Bauteil C25804) — sonst nichts. **Gebaut 0.0.1.**
 2. Eine bekannte Bestellnummer von Hand abfragen und die Antwort zeigen ⇒ klärt §3 «ungeklärt».
 3. Ergänzung der JLC-Vorschläge von tax_mail → Prüfseite → `write-data`.
 4. Später: Fertigungsstand; Bauteildaten per C-Nummer (J6); private Teile → tax_stock.
@@ -108,9 +107,9 @@ flowchart LR
 
 | | Frage | Mein Vorschlag |
 |---|---|---|
-| **J1** | tax_api_jlcpcb als eigenes Plugin (Repo `sfambach/wp_tax_api_jlcpcb`, legt er an), schreibt nur über `write-data`, erst Vorschläge | **ja** |
+| **J1** | tax_api_jlcpcb als eigenes Plugin (Repo [`sfambach/wp_tax_api_jlcpcb`](https://github.com/sfambach/wp_tax_api_jlcpcb), von ihm angelegt am 2026-10-21), schreibt nur über `write-data`, erst Vorschläge | **ja** |
 | **J2** | Zweck zuerst: **Preise/Kosten zu Bestellungen ergänzen**, Bestellnummer aus tax_mail | **ja** |
-| **J3** | Schlüssel im Reiter «JLC», SecretKey verschlüsselt; Konstanten in `wp-config.php` gehen vor | **ja** |
+| **J3** | Schlüssel verschlüsselt | **entschieden: [D-951](../../NewConcept/90-decision-log.md)**; bis zum Tresor nur `wp-config.php` |
 | **J4** | Erst Verbindung + Test, dann Probe mit einer Bestellnummer, dann Ergänzung | **ja** |
 | **J5** | Nicht über die API bestellen | **ja** |
 | **J6** | Bauteildaten per C-Nummer in den Katalog — später, eigener Eingang | **später** |
@@ -120,3 +119,7 @@ flowchart LR
 - Ein JLCPCB-Konto (seins), Bestellungen über die Website; Währung USD.
 - «API-Key» heisst: er hat in der Konsole eine App mit Schlüsselpaar; die Freigabe der App (Partner-Antrag) ist durch.
 - Abrufintervall und Prüfseite wie bei tax_mail/tax_ebay; eine gemeinsame Prüfseite ist weiter offen.
+- **Schritt 1, Annahmen beim Bau (INFERRED):** Host `https://open.jlcpcb.com` und Pfad `/overseas/openapi/component/getComponentDetailByCode`
+  stammen aus einem fremden Client (KiCAD-MCP-Server), nicht aus JLCs Doku; überschreibbar mit `TAXJLCPCB_BASE_URL`. Der Test fragt
+  das Bauteil C25804 ab statt «Balance» — dessen Pfad steht nicht in der öffentlichen Doku. Die Signatur ist gegen das Beispiel der
+  Doku getestet.
