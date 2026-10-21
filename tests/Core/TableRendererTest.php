@@ -221,4 +221,33 @@ final class TableRendererTest extends TestCase
         self::assertTrue($this->renderer->fits(Node::create(1, 'irgendwas', null)));
         self::assertFalse($this->renderer->fits($this->name));
     }
+
+    /**
+     * ⚠️ *[D-954](../../docs/NewConcept/90-decision-log.md): eine Feldspalte, die in keiner Zeile etwas zeigt, fällt in der
+     * Anzeige weg — sein Befund an der Stückliste: «links voll rechts leer».*
+     */
+    #[Test]
+    public function a_column_empty_in_every_row_is_left_out_when_displaying(): void
+    {
+        $markup = $this->gezeichnet([
+            [$this->feld($this->name, 'Mehl'), $this->feld($this->menge, '')],
+            [$this->feld($this->name, 'Zucker'), $this->feld($this->menge, '<span></span>')],
+        ]);
+
+        self::assertStringNotContainsString('Menge', $markup, 'die leere Spalte hat keinen Kopf');
+        self::assertSame(2, substr_count($markup, '<td'), 'je Zeile nur die Zelle mit Inhalt');
+    }
+
+    /** ⚠️ *Eine Spalte mit nur einem Wert bleibt, die übrigen Zellen bleiben leer stehen.* */
+    #[Test]
+    public function a_column_with_one_value_stays(): void
+    {
+        $markup = $this->gezeichnet([
+            [$this->feld($this->name, 'Mehl'), $this->feld($this->menge, '')],
+            [$this->feld($this->name, 'Zucker'), $this->feld($this->menge, '100 g')],
+        ]);
+
+        self::assertStringContainsString('Menge', $markup);
+        self::assertSame(4, substr_count($markup, '<td'));
+    }
 }

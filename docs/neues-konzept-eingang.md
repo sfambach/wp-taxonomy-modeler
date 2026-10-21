@@ -936,3 +936,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Konzept:** [`pakete/import/konzept.md`](pakete/import/konzept.md), alle Fragen entschieden; gebaut: nein.
 
 ---
+
+## INF-084 · Stückliste: Bestell-Nr. des Bauteils als eigene Spalte
+
+*Eingang 2026-10-21, aus [D-954](NewConcept/90-decision-log.md) (3).* Die Bestell-Nr. steht am Bauteil, die Stückliste zeigt aber nur die Felder der Position (Referenz, Part, Anzahl, Best., Hinweis). Eine Spalte aus einem Feld des **verwiesenen** Satzes kann die Tabelle heute nicht zeichnen. Offen: ob die Tabelle Felder des Ziels als Spalten bekommt (Einstellung an der Kante «Part»), oder ob die Bestell-Nr. anders erscheint. Bis dahin steht sie nur am Bauteil.

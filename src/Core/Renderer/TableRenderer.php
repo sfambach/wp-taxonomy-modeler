@@ -144,6 +144,17 @@ final class TableRenderer extends RendererNode
             $zeilen[] = $this->zellen($felder, $context, $vorspalten, $spalten, $mitActs, $nummer, $usedRelations);
         }
 
+        // ⚠️ **In der Anzeige fällt eine Feldspalte weg, die in keiner Zeile etwas zeigt** ([D-954](../../../docs/NewConcept/90-decision-log.md)) —
+        // *sein Befund an der Stückliste der Backplane: «sieht sehr unruhig aus links voll rechts leer». In der Eingabe bleibt sie:
+        // dort ist die leere Zelle der Ort, an dem man den Wert einträgt.*
+        if ($context->purpose === Purpose::Display) {
+            $spalten = $this->ohneLeere($spalten, $zeilen, count($vorspalten));
+
+            if ($spalten === [] && $vorspalten === [] && ! $mitActs) {
+                return RenderResult::of('');
+            }
+        }
+
         // ⚠️ *Die Köpfe stehen in **einer** Liste, in der Reihenfolge der Zellen — waagerecht werden
         // sie eine Zeile, senkrecht die erste Spalte. Ohne Wort bleibt die Aktionsspalte
         // ([AR-2](../../../CLAUDE.md): der Kern macht keine Worte).*
@@ -176,6 +187,49 @@ final class TableRenderer extends RendererNode
             . '</table>',
             array_values(array_unique($usedRelations))
         );
+    }
+
+    /**
+     * Die Feldspalten ohne die, deren Zellen in allen Zeilen leer sind; die Zeilen verlieren dieselben Zellen.
+     *
+     * @param  array<int,string>                    $spalten
+     * @param  list<list<array{0:string,1:string}>> $zeilen  wird gekürzt
+     * @return array<int,string>
+     */
+    private function ohneLeere(array $spalten, array &$zeilen, int $vorne): array
+    {
+        $behalten = [];
+        $stelle   = $vorne;
+
+        foreach ($spalten as $relationId => $name) {
+            foreach ($zeilen as $zellen) {
+                if (! self::leer($zellen[$stelle][1])) {
+                    $behalten[$relationId] = $name;
+                    break;
+                }
+            }
+
+            if (! isset($behalten[$relationId])) {
+                foreach ($zeilen as $i => $zellen) {
+                    $zellen[$stelle] = null;
+                    $zeilen[$i]      = $zellen;
+                }
+            }
+
+            ++$stelle;
+        }
+
+        foreach ($zeilen as $i => $zellen) {
+            $zeilen[$i] = array_values(array_filter($zellen, static fn (?array $zelle): bool => $zelle !== null));
+        }
+
+        return $behalten;
+    }
+
+    /** Leer ist eine Zelle ohne Text und ohne Bild. */
+    private static function leer(string $markup): bool
+    {
+        return trim(html_entity_decode(strip_tags($markup))) === '' && ! str_contains($markup, '<img');
     }
 
     /**
