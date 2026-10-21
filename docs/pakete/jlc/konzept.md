@@ -1,6 +1,6 @@
 # Paket · JLCPCB-Anbindung («tax_api_jlcpcb») — Konzeptentwurf
 
-**Stand 2026-10-21. Nichts entschieden. Gebaut: Schritt 1 (§7) in wp_tax_api_jlcpcb 0.0.1, nicht live, ungetestet gegen JLC.** Steht auf dem gemeinsamen Eingang ([`../import/konzept.md`](../import/konzept.md), [D-951](../../NewConcept/90-decision-log.md), [D-952](../../NewConcept/90-decision-log.md)): tax_api_jlcpcb wird dort die erste Quelle (`EnrichingSource`). Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
+**Stand 2026-10-21. Nichts entschieden. Gebaut: Schritt 1 (§7) in wp_tax_api_jlcpcb 0.0.2, nicht live, ungetestet gegen JLC.** Steht auf dem gemeinsamen Eingang ([`../import/konzept.md`](../import/konzept.md), [D-951](../../NewConcept/90-decision-log.md), [D-952](../../NewConcept/90-decision-log.md)): tax_api_jlcpcb wird dort die erste Quelle (`EnrichingSource`). Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
 (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`). Eingang: [INF-082](../../neues-konzept-eingang.md#inf-082--jlcpcb-über-die-api-anbinden).
 Vorbild: [`../ebay/konzept.md`](../ebay/konzept.md) und [`../mail/konzept.md`](../mail/konzept.md).
 
@@ -72,9 +72,9 @@ flowchart LR
 - Drei Werte: **App-ID**, **AccessKey**, **SecretKey** (in der Konsole «tokenizationKey» genannt). Nie in den Chat, nie ins Repo.
 - **Geheimnisse immer verschlüsselt** ([D-951](../../NewConcept/90-decision-log.md)); das Formular dafür kommt mit dem Tresor des
   Eingangs ([D-952](../../NewConcept/90-decision-log.md)), keine eigene Kopie im Modul.
-- **Bis dahin (0.0.1):** nur Konstanten in `wp-config.php` — `TAXJLCPCB_APP_ID`, `TAXJLCPCB_ACCESS_KEY`, `TAXJLCPCB_SECRET_KEY`
-  (Schema `TAX<QUELLE>_<FELD>` aus dem Eingangskonzept §3.1). Das Modul speichert selbst nichts; gelesen wird hinter
-  `CredentialSource`, damit der Umzug in den Tresor ein Tausch ist.
+- **Gebaut (0.0.2):** App-ID, AccessKey, SecretKey im Reiter «JLCPCB»; der SecretKey versiegelt über `Vault::for('jlcpcb')` des
+  Modellers (0.1.31), Option `taxmod_jlcpcb_keys`. Konstanten `TAXJLCPCB_APP_ID`, `TAXJLCPCB_ACCESS_KEY`, `TAXJLCPCB_SECRET_KEY`
+  in `wp-config.php` gehen vor ([D-944](../../NewConcept/90-decision-log.md)); ohne Tresor (älterer Modeller) nur sie.
 - **IP-Whitelist:** erst leer lassen; wenn die Verbindung steht, die ausgehende IP des Strato-Servers eintragen.
 
 ## 5 · Abbildung auf das Modell
@@ -98,7 +98,7 @@ flowchart LR
 
 ## 7 · Bauschritte
 
-1. Gerüst, Reiter «JLCPCB», Schlüssel aus `wp-config.php`, **«Verbindung testen»** (Bauteil C25804) — sonst nichts. **Gebaut 0.0.1.**
+1. Gerüst, Reiter «JLCPCB», Schlüssel (Tresor oder `wp-config.php`), **«Verbindung testen»** (Bauteil C25804) — sonst nichts. **Gebaut 0.0.2.**
 2. Eine bekannte Bestellnummer von Hand abfragen und die Antwort zeigen ⇒ klärt §3 «ungeklärt».
 3. Ergänzung der JLC-Vorschläge von tax_mail → Prüfseite → `write-data`.
 4. Später: Fertigungsstand; Bauteildaten per C-Nummer (J6); private Teile → tax_stock.
