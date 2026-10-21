@@ -953,3 +953,14 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Gebaut:** nein — der Einheitswert hat Wert, Präfix, Einheit; kein Kursfeld, keine Kursquelle. [INF-070](#) (Anzeige in Besucherwährung) ist ein anderer Fall: Kurs von heute, nicht vom Kaufdatum.
 - **Vorschlag (INFERRED):** der Modeller rechnet um, nicht das Modul. Module liefern Betrag + Währung + Datum, wie heute. Kursquelle: EZB-Referenzkurs, letzter Wert am oder vor dem Datum (Wochenende), im Modeller zwischengespeichert. Der Kurs wird am Wert eingefroren (D-064), der Euro-Betrag abgeleitet.
 - **Offen für Stefan:** Kursquelle (EZB / tatsächlich gezahlter Euro-Betrag, z. B. PayPal-Buchung, vor EZB); welches Datum (Bestell- oder Zahlungsdatum).
+
+## INF-086 · Material: Nummer statt Name
+
+**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-21.
+
+> *«ich frage mich ob wir als material nicht eine nummer vergeb en sollten und der link zur hardware zeigt was es ist, ist aber nur laut gedacht»*
+
+- **Heute (gebaut, Stufe 1):** jedes Material trägt eine eigene «Bezeichnung» (z. B. «BC640») — bei einem Material mit «Bezug Ding» steht der Name damit **zweimal**: am Material und am Bauteil.
+- **Für die Nummer:** keine Dublette; umbenennen am Bauteil wirkt sofort im Lager; die Anzeige holt den Namen über «Bezug Ding» (Zusammenfassung oder die Anzeige des Moduls).
+- **Offen:** (a) welche Nummer — die Satz-Id gibt es schon und ist eindeutig, oder ein eigenes Schema wie «M-0001» fürs Etikett; (b) Material **ohne** Bezug (Lötzinn, Kartons) braucht dann trotzdem einen Namen — Bezeichnung nur dort.
+- **Mein Vorschlag (INFERRED):** Nummer = Satz-Id, Bezeichnung nur bei Material ohne Bezug; Anzeige «Nummer · Name aus dem Bezug».
