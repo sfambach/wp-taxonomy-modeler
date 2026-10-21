@@ -956,7 +956,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-086 · Material: Nummer statt Name
 
-**Typ:** `IDEE` · **Status:** `NICHT VERFOLGT` — 2026-10-21. *Auf die Antwort, dass man über «Bezug Ding» und «Verwiesen von» zwischen Material und Bauteil springen kann: «ok das passt vom konzept so». Das Material behält seinen Namen.*
+**Typ:** `IDEE` · **Status:** `DECIDED` ([D-967](NewConcept/90-decision-log.md)) — 2026-10-21, seine Wahl «Nummer» auf der Karte (mein erstes «nicht verfolgt» war eine Fehldeutung von «ok das passt vom konzept so»).
 
 > *«ich frage mich ob wir als material nicht eine nummer vergeb en sollten und der link zur hardware zeigt was es ist, ist aber nur laut gedacht»*
 

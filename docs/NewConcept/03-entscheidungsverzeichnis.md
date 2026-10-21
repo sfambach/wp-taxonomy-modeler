@@ -101,6 +101,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie behält der Lagerbestand seine Herkunft? | [D-956](90-decision-log.md) — Bestandsposten je Zugang, Menge gerechnet; Teil-Wareneingang erlaubt | — |
 | Wie ist der Lager-Ast «Stock» gegliedert? | [D-957](90-decision-log.md) — flach, ohne Gruppenknoten; WE · Bestand · WA ordnet nur das Modul | — |
 | Was gilt sonst fürs Lager (Ort, Material, Reihenfolge)? | [D-958](90-decision-log.md) — «Stock» unter Model, Material mit freiem Bezug, «Bezug Ding» zuerst, Stufen 1–4 | — |
+| Wie heisst ein Material? | [D-967](90-decision-log.md) — Nummer (Satz-Id) · Name aus «Bezug Ding»; eigene Bezeichnung nur ohne Bezug | — |
 | Wo stehen die Einstellungen des Import-Eingangs? | [D-960](90-decision-log.md), [D-961](90-decision-log.md) — eigener Reiter «Import», darin nur die Ziel-Ids; die Zuständigkeitstabelle steht im Code (Filter `taxmod_import_duties`) | ersetzt S4/S5 («General», Tabelle im Reiter) aus [D-953](90-decision-log.md) |
 | Übernimmt der Eingang von selbst? | [D-962](90-decision-log.md) — auf Schalter: neue Bestellungen der zuständigen Quelle und Status-Updates; API-Quellen laufen zuerst, ein Status wartet auf seine Bestellung | — |
 | Wo erklärt ein Modul, wie man es anbindet? | [D-963](90-decision-log.md) — Kasten rechts neben dem Reiter, Schlüssel `guide` in `taxmod_config_tabs` | — |
