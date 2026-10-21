@@ -15,6 +15,7 @@ use Taxmod\WordPress\Admin\BackupScreen;
 use Taxmod\WordPress\Admin\CleanupScreen;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
+use Taxmod\WordPress\Import\ImportWiring;
 use Taxmod\WordPress\Persistence\BaseScaffold;
 use Taxmod\WordPress\Persistence\CompositionScaffold;
 use Taxmod\WordPress\Persistence\Residue;
@@ -47,7 +48,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.34';
+    public const VERSION     = '0.1.35';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -68,6 +69,9 @@ final class Plugin
         $plugin = new self($file);
 
         register_activation_hook($file, $plugin->activate(...));
+
+        // ⚠️ *Der Eingang der Import-Module (D-952, D-953): Tabelle, Seite «Inbox», Reiter «Import», Takt.*
+        ImportWiring::boot($file);
 
         add_action('admin_menu', $plugin->registerMenu(...));
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));

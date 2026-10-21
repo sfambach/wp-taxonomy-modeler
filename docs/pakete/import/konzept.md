@@ -1,6 +1,6 @@
 # Paket · Gemeinsame Schnittstelle der Import-Module («Eingang») — Konzeptentwurf
 
-**Stand 2026-10-21. Entschieden: Verschlüsselung ([D-951](../../NewConcept/90-decision-log.md)) und Ort im Modeller ([D-952](../../NewConcept/90-decision-log.md)), S3–S7 ([D-953](../../NewConcept/90-decision-log.md)). Gebaut: Schritt 1 (§6) im Modeller 0.1.31 — `Taxmod\Core\Import\SecretBox`, `OrderProposal`/`ProposalLine`/`ProposalKind`, `Taxmod\WordPress\Import\Vault`.**
+**Stand 2026-10-21. Entschieden: Verschlüsselung ([D-951](../../NewConcept/90-decision-log.md)) und Ort im Modeller ([D-952](../../NewConcept/90-decision-log.md)), S3–S7 ([D-953](../../NewConcept/90-decision-log.md)). Gebaut: Schritt 1 (§6) im Modeller 0.1.31; Schritt 3 im Modeller (Fassung in §10) — `Taxmod\Core\Import\SecretBox`, `OrderProposal`/`ProposalLine`/`ProposalKind`, `Taxmod\WordPress\Import\Vault`.**
 Eingang: [INF-083](../../neues-konzept-eingang.md#inf-083--gemeinsame-schnittstelle-für-import-module). Was er entscheiden
 soll, steht in §8; alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
 Betrifft: [`../mail/konzept.md`](../mail/konzept.md), [`../ebay/konzept.md`](../ebay/konzept.md), [`../jlc/konzept.md`](../jlc/konzept.md).
@@ -229,3 +229,25 @@ Jeder Schritt endet mit etwas, das er bedienen kann (`PR-2`), und die Module ver
 - Quellen dürfen weiter eigene Tabellen halten, wenn es nur ihr Protokoll betrifft (tax_mail: Startpunkt, Ordner).
 - Status-Updates an übernommenen Bestellungen sind Vorschläge der Art «aktualisieren» und gehen über dieselbe Prüfseite; ob sie
   ohne Prüfen geschrieben werden dürfen (z. B. Sendungsnummer), ist offen.
+
+## 10 · Gebaut: Schritt 3 im Modeller, und was dabei angenommen wurde
+
+- **Gebaut:** Vertrag `ImportSource` mit den Rollen `FetchingSource`, `EnrichingSource`, `ResolvingSource`; `DutyTable` und
+  `Intake` (Doppelte über Plattform + Bestellnummer, Zuständigkeit); `ProposalGroup` (eine Bestellung einmal);
+  `ChangeListBuilder`, `Money`, `TargetModel` aus tax_mail übernommen. An der Grenze: Tabelle `taxmod_inbox` mit eigener
+  Schemafassung, Seite «Inbox» (Übernehmen je Position, Verwerfen, «Jetzt abrufen» je Quelle), Reiter «Import»,
+  stündlicher Takt, der jede abrufende Quelle nach ihrem eigenen Intervall laufen lässt.
+- **Geprüft:** Kern-Tests; `import-inbox-check` gegen eine frische WordPress-Datenbank (MariaDB). **Nicht geprüft:** Übernehmen
+  ins Modell — die frische Datenbank hat die Knoten «Bestellungen»/«Käufe» nicht; der Schreibweg ist der von tax_mail.
+- **Annahmen (`INFERRED`):**
+  - **Reiter «Import» statt «General»** für Zuständigkeitstabelle und Ziel-Knoten (S4, S5 sagten «General»): «General» ist
+    die feste Einstellungstabelle des Modellers, ein eigener Reiter folgt dem Muster aus D-945. Wenn er «General» will,
+    ziehen die zwei Blöcke um.
+  - Ob ein Vorschlag neu oder ein Status-Update ist, entscheidet die **Prüfseite**, nicht der Abruf: ein Cron-Lauf hat
+    keinen Benutzer und darf das Modell nicht lesen (D-936). Beim Abruf gilt nur «schon gesehen?» und die Zuständigkeit.
+  - Ziel-Ids: Startwerte sind die von tax_mail auf fambach.net gemessenen; eine von tax_mail gespeicherte Option
+    `taxmail_targets` wird übernommen. Geändert wird im Reiter als JSON — eine Auswahl im Baum wäre besser, ist aber nicht gebaut.
+  - **Verkäufe** (Art «sold») werden angezeigt, aber noch nicht übernommen: es gibt noch keine Ziel-Felder für «Verkäufe».
+  - Ergänzende Quellen (JLC) laufen beim Ablegen eines fremden Vorschlags, nicht nachträglich über Bestellungen im Modell.
+  - tax_mail behält bis zu seinem Umzug Tabelle und Prüfseite; beide Seiten laufen nebeneinander, bis tax_mail sich als Quelle anmeldet.
+
