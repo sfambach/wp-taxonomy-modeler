@@ -1,6 +1,6 @@
 # Paket · JLCPCB-Anbindung («tax_api_jlcpcb») — Konzeptentwurf
 
-**Stand 2026-10-21. Nichts entschieden. Gebaut: Schritt 1 (§7) in wp_tax_api_jlcpcb 0.0.2, live seit 2026-10-21 (0.0.3 mit Probe-Liste der Bestellnummern freigegeben); sein Wort: *«connection test erfolgreich»* — Host `open.jlcpcb.com` und Signatur damit gemessen.** Steht auf dem gemeinsamen Eingang ([`../import/konzept.md`](../import/konzept.md), [D-951](../../NewConcept/90-decision-log.md), [D-952](../../NewConcept/90-decision-log.md)): tax_api_jlcpcb wird dort die erste Quelle (`EnrichingSource`). Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
+**Stand 2026-10-21. Nichts entschieden. Gebaut: Schritt 1 (§7) in wp_tax_api_jlcpcb 0.0.2, live seit 2026-10-21 (0.0.3 Probe-Liste der Bestellnummern live; 0.0.4 Details V2 + Preisergänzung als `EnrichingSource`, gegen JLC ungetestet); sein Wort: *«connection test erfolgreich»* — Host `open.jlcpcb.com` und Signatur damit gemessen.** Steht auf dem gemeinsamen Eingang ([`../import/konzept.md`](../import/konzept.md), [D-951](../../NewConcept/90-decision-log.md), [D-952](../../NewConcept/90-decision-log.md)): tax_api_jlcpcb wird dort die erste Quelle (`EnrichingSource`). Was er entscheiden soll, steht in §8; alles andere ist mein Vorschlag
 (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`). Eingang: [INF-082](../../neues-konzept-eingang.md#inf-082--jlcpcb-über-die-api-anbinden).
 Vorbild: [`../ebay/konzept.md`](../ebay/konzept.md) und [`../mail/konzept.md`](../mail/konzept.md).
 
@@ -127,3 +127,9 @@ flowchart LR
   stammen aus einem fremden Client (KiCAD-MCP-Server), nicht aus JLCs Doku; überschreibbar mit `TAXJLCPCB_BASE_URL`. Der Test fragt
   das Bauteil C25804 ab statt «Balance» — dessen Pfad steht nicht in der öffentlichen Doku. Die Signatur ist gegen das Beispiel der
   Doku getestet.
+- **0.0.4, Annahmen beim Bau (INFERRED):** Details über «Query Order Details by Batch Number V2» (`/overseas/openapi/pcb/v2/order/detail`,
+  aus seiner Konsole); die Anschrift (Name, Strasse, Telefon) wird nicht gelesen. Stückpreis = `pcbOrderFeeInfo.totalFee` / `stencilCounts`
+  (JLC nennt die Platine «stencil»); Zollgebühr (`tariffMoney`) fliesst in den Gesamtbetrag, weil der Vorschlag kein eigenes Feld hat;
+  Bestelldatum aus der Batch-Nummer (`W` + yyyyMMdd…); Status 0 = storniert wie in V1 (V2 nennt keine Codes); Zuordnung Zeile ↔ Auftrag über
+  den Gerber-Namen nach derselben Normalisierung wie im JLCPCB-Parser von tax_mail; Schablonen (`steelOrderAggInfoList`) noch nicht gelesen.
+  Ergänzt werden nur leere Felder, Währung USD nur, wenn der Vorschlag noch keine Beträge hatte.
