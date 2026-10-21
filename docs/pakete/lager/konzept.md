@@ -337,7 +337,11 @@ flowchart LR
 | **Inventur** | gezählte Menge | Pos-Zeile = gezählt − Bestand; **der Anfangsbestand ist eine Inventur**, nach Bedarf ([INF-073](../../neues-konzept-eingang.md#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-platine-zum-verkauf), Schritt 1) |
 | **Umbuchung** | Lagerort wechseln | ganzer Posten: Lagerort ändern; Teilmenge: − am alten Posten, + an neuem Posten mit gleicher Herkunft |
 
-## 5 · Mail-Import gehört ins Modul
+## 5 · Mail-Import — liefert dem Lager zu
+
+⚠️ **Überholt am 2026-10-21:** der Mail-Import ist ein eigenes Modul `tax_mail` ([D-942](../../NewConcept/90-decision-log.md)), alle
+Import-Module teilen den «Eingang» im Modeller ([D-952](../../NewConcept/90-decision-log.md)). Das Lager holt ihn **nicht** zu sich (F5),
+sondern bucht aus dessen Vorschlägen: Zustellung → Wareneingang, Verkauf → Abgang. Was unten steht, ist die Abbildung, nicht der Ort.
 
 Der Import der Bestellmails (`einkauf@fambach.net`, Ordner `kaeufe-import` auf Earth, schreibt heute Bestellungen, Käufe und Verkäufe
 über den Connector) wird **der Eingang von Beschaffung und Verkauf** im Modul:
@@ -421,17 +425,17 @@ dessen «Wert je Stück». Nichts muss beim Buchen eingefroren werden, weil der 
 
 | | Frage | Mein Vorschlag |
 |---|---|---|
-| **F1** | «Stock» als Ast unter `Model` oder als Hauptast daneben wie «Kontact» ([D-884](../../NewConcept/90-decision-log.md))? | **unter `Model`** — sonst werden geerbte Werte beim Verschieben unsichtbar ([INF-076](../../neues-konzept-eingang.md)); passt auch zur Idee «Module» ([INF-078](../../neues-konzept-eingang.md)) |
+| **F1** ✅ [D-958](../../NewConcept/90-decision-log.md) | «Stock» als Ast unter `Model` oder als Hauptast daneben wie «Kontact» ([D-884](../../NewConcept/90-decision-log.md))? | **unter `Model`** — sonst werden geerbte Werte beim Verschieben unsichtbar ([INF-076](../../neues-konzept-eingang.md)); passt auch zur Idee «Module» ([INF-078](../../neues-konzept-eingang.md)) |
 | **F2** ✅ [D-957](../../NewConcept/90-decision-log.md) | Bestellungen, Käufe, Verkäufe unter «Stock» verschieben; flach, ohne Gruppenknoten — die Einteilung WE · Bestand · WA gehört den Masken | entschieden |
-| **F3** | Material (§2): eigenes Ding mit Bestand, freier Bezug auf Art und/oder Ding, Technik verweist nie aufs Lager? | **ja**, mit Wächter |
-| **F3a** | «Bezug Ding» auf jeden Satz unter `Model` — Code im Modeller mit Suche | **ja**, als erster Bauschritt im Modeller |
-| **F4** | Aufräumen A1–A3 und A6 vor dem Bau? | **ja**, A4 später, A5 nach Stufe 1 |
-| **F5** | Mail-Import ins Repo `wp_tax_stock` holen? | **ja**, eigener Ordner, läuft weiter auf Earth |
-| **F6** | Einheiten (Beutel ↔ Stück) | **später**, Stufe 1 nur «Stück» |
+| **F3** ✅ [D-958](../../NewConcept/90-decision-log.md) | Material (§2): eigenes Ding mit Bestand, freier Bezug auf Art und/oder Ding, Technik verweist nie aufs Lager? | **ja**, mit Wächter |
+| **F3a** ✅ [D-958](../../NewConcept/90-decision-log.md) | «Bezug Ding» auf jeden Satz unter `Model` — Code im Modeller mit Suche | **ja**, als erster Bauschritt im Modeller |
+| **F4** ✅ [D-958](../../NewConcept/90-decision-log.md) | Aufräumen A1–A3 und A6 vor dem Bau? | **ja**, A4 später, A5 nach Stufe 1 |
+| **F5** ✖ überholt | Mail-Import ins Repo `wp_tax_stock` holen? | **nein** — schon anders entschieden: eigenes Modul `tax_mail` ([D-942](../../NewConcept/90-decision-log.md)), gemeinsamer «Eingang» im Modeller ([D-952](../../NewConcept/90-decision-log.md)); das Lager liest dessen Vorschläge (§5) |
+| **F6** ✅ [D-958](../../NewConcept/90-decision-log.md) | Einheiten (Beutel ↔ Stück) | **später**, Stufe 1 nur «Stück» |
 | **F8** ✅ [D-956](../../NewConcept/90-decision-log.md) | Bestandsposten (§3.5a): Menge gerechnet aus den Pos-Zeilen, nicht als «Restmenge» gespeichert; Wert und Herkunft am Posten | **ja** |
 | **F9** ✅ [D-956](../../NewConcept/90-decision-log.md) | Teil-Wareneingang (R2): bestimmte Käufe einer Bestellung buchen, während andere noch unbestimmt sind? | **ja** — sonst blockiert ein unbestimmtes Teil eines Konvoluts die ganze Bestellung; Status «teilweise eingegangen» gibt es schon (§3.4) |
-| **F10** | Inventur-Posten nachträglich einem Kauf zuordnen statt die Menge doppelt einzubuchen (§3.5a, sein Wort) | **ja**, in Stufe 2 mit dem Mail-Import |
-| **F7** | Reihenfolge | **1** Aufräumen, Knoten «Stock», Material, Inventur, Wareneingang, Verbrauch, Bestandsliste · **2** Mail-Import mit Wareneingang und Verkauf · **3** Reservierung, Bedarf, Bauläufe · **4** Mindestbestand, Umbuchung, Zerlegung |
+| **F10** ✅ [D-958](../../NewConcept/90-decision-log.md) | Inventur-Posten nachträglich einem Kauf zuordnen statt die Menge doppelt einzubuchen (§3.5a, sein Wort) | **ja**, in Stufe 2 mit dem Mail-Import |
+| **F7** ✅ [D-958](../../NewConcept/90-decision-log.md) | Reihenfolge | **1** Aufräumen, Knoten «Stock», Material, Inventur, Wareneingang, Verbrauch, Bestandsliste · **2** Mail-Import mit Wareneingang und Verkauf · **3** Reservierung, Bedarf, Bauläufe · **4** Mindestbestand, Umbuchung, Zerlegung |
 
 ## 11 · Annahmen, die das Konzept nicht sagt
 
