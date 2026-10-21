@@ -381,6 +381,10 @@ Echt, ausser *(erfunden)*.
 | 2N7000 | 40 | 0,09 € |
 | BUZ11 | 9 | 1,05 € |
 
+**Inventur Transistor-Sortimentskasten (2026-10-21, wartet aufs Modul)** — 24 Fächer, 19 Transistortypen, Mengen geschätzt; Liste mit
+Fach, Menge, Etikettnummern und Satz-Ids: `/mnt/project-files/taxmod-we/transistor-sortimentskasten.md`. Wird als erste Inventur gebucht,
+sobald Stufe 1 live ist; Etiketten wie `7268875-412` sind der Anker für das Konsolidieren (F10).
+
 **Wareneingang Einzelstück, aus Mail** — Bestellung 27-14743-39156, eBay, «Retro PC Klassiker 286 … Bastlerware defekt», 96 € + 10,49 €
 Versand: Material → Exemplar «286er Klassiker», Verwendung *zum Verkauf (erfunden)*; Pos-Zeile +1, Wert 106,49 €.
 
