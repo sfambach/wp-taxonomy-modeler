@@ -283,3 +283,4 @@ Auf die Liste aus dem Mail-Thread (§3.8, zweite Rückmeldung vom 2026-10-21):
 - Kasten «How to connect» neben jedem Modul-Reiter: Schlüssel `guide` in `taxmod_config_tabs` ([D-963](../../NewConcept/90-decision-log.md)).
 - Vorhandene Bestellungen ergänzen ([D-964](../../NewConcept/90-decision-log.md)): `OrderComparison`, Tabelle «Model against source» auf der Seite «Inbox».
 - Knopf «Fetch all» auf der Seite «Inbox»: jede FetchingSource einmal, ohne Rücksicht auf ihren Takt, die für neue Bestellungen zuständigen zuerst ([D-962](../../NewConcept/90-decision-log.md)). Sein Wunsch: *«ein button fetch all wäre auch nett»*.
+- Version jedes Modul-Reiters unter der Reiterleiste: Schlüssel `version` in `taxmod_config_tabs` ([D-968](../../NewConcept/90-decision-log.md)).

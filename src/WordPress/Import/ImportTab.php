@@ -21,6 +21,7 @@ final class ImportTab
     {
         $tabs[self::SLUG] = [
             'title'  => __('Import', 'taxmod'),
+            'version' => \Taxmod\WordPress\Plugin::VERSION,
             'render' => static fn (): string => (new self())->render(),
             'save'   => static function (array $post): void {
                 (new self())->save($post);

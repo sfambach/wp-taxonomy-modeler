@@ -30,7 +30,7 @@ $pruefe = static function (bool $gut, string $was) use (&$fehler): void {
 };
 
 add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs + [
-    'stock'   => ['title' => 'Stock', 'render' => static fn (): string => '<p id="__ct-stock">stock settings</p>', 'save' => static function (array $post): void {}, 'guide' => static fn (): string => '<ol id="__ct-guide"><li>get a key</li></ol>'],
+    'stock'   => ['title' => 'Stock', 'render' => static fn (): string => '<p id="__ct-stock">stock settings</p>', 'save' => static function (array $post): void {}, 'guide' => static fn (): string => '<ol id="__ct-guide"><li>get a key</li></ol>', 'version' => '9.8.7'],
     'kaputt'  => ['title' => 'Broken', 'render' => static fn (): string => ''],
     'general' => ['title' => 'Clash', 'render' => static fn (): string => '', 'save' => static function (array $post): void {}],
 ]);
@@ -44,6 +44,8 @@ $_GET['tab'] = 'stock';
 $seite = (new SettingsScreen())->render();
 $pruefe(str_contains($seite, 'nav-tab-active') && str_contains($seite, '__ct-stock') && str_contains($seite, 'name="tab" value="stock"'), 'the module tab renders its form with the tab marker');
 // ⚠️ *D-963: der Kasten rechts, «wie man an die daten kommt und was man tun muss».*
+// ⚠️ *D-968: «warum haben die andern module nicht die version im reiter ?»*
+$pruefe(str_contains($seite, 'Stock, version 9.8.7'), 'a module version stands under the tab bar');
 $pruefe(str_contains($seite, '<aside class="postbox taxmod-guide"') && str_contains($seite, '__ct-guide') && strpos($seite, '__ct-stock') < strpos($seite, '__ct-guide'), 'a module guide stands as a box beside the form');
 
 unset($_GET['tab']);

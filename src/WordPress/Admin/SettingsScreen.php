@@ -146,6 +146,13 @@ final class SettingsScreen
             return '<div class="wrap">'
                 . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
                 . $this->tabBar($reiter, $tab)
+                // ⚠️ *Seine Frage vom 2026-10-21: «warum haben die andern module nicht die version im reiter ?» — one place for it (D-968).*
+                . ($reiter[$tab]['version'] === '' ? '' : '<p class="description">' . esc_html(sprintf(
+                    /* translators: 1: tab title, 2: version */
+                    __('%1$s, version %2$s', 'taxmod'),
+                    $reiter[$tab]['title'],
+                    $reiter[$tab]['version']
+                )) . '</p>')
                 . $this->notice()
                 . ($guide === ''
                     ? $form
@@ -642,9 +649,9 @@ final class SettingsScreen
      * «General» plus one per active module, so the WordPress menu does not grow with every module.*
      *
      * ⚠️ *An optional `guide` (callable, returns escaped HTML) is drawn as a box beside the form: how to get the keys and
-     * what to do (D-963).*
+     * what to do (D-963). An optional `version` (string) is shown under the tab bar (D-968).*
      *
-     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null}>
+     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null, version: string}>
      */
     public static function moduleTabs(): array
     {
@@ -663,6 +670,7 @@ final class SettingsScreen
                 'render' => $tab['render'],
                 'save'   => $tab['save'],
                 'guide'  => is_callable($tab['guide'] ?? null) ? $tab['guide'] : null,
+                'version' => sanitize_text_field((string) ($tab['version'] ?? '')),
             ];
         }
 
