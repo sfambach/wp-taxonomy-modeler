@@ -1,6 +1,6 @@
 # Paket · Gemeinsame Schnittstelle der Import-Module («Eingang») — Konzeptentwurf
 
-**Stand 2026-10-21. Entschieden: Verschlüsselung ([D-951](../../NewConcept/90-decision-log.md)) und Ort im Modeller ([D-952](../../NewConcept/90-decision-log.md)). Nichts gebaut.**
+**Stand 2026-10-21. Entschieden: Verschlüsselung ([D-951](../../NewConcept/90-decision-log.md)) und Ort im Modeller ([D-952](../../NewConcept/90-decision-log.md)), S3–S7 ([D-953](../../NewConcept/90-decision-log.md)). Nichts gebaut.**
 Eingang: [INF-083](../../neues-konzept-eingang.md#inf-083--gemeinsame-schnittstelle-für-import-module). Was er entscheiden
 soll, steht in §8; alles andere ist mein Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
 Betrifft: [`../mail/konzept.md`](../mail/konzept.md), [`../ebay/konzept.md`](../ebay/konzept.md), [`../jlc/konzept.md`](../jlc/konzept.md).
@@ -213,11 +213,11 @@ Jeder Schritt endet mit etwas, das er bedienen kann (`PR-2`), und die Module ver
 |---|---|---|
 | **S1** | Wo wohnt der Eingang: im Modeller, als eigenes Plugin `tax_import`, oder nur als Vertrag ohne gemeinsamen Code? | **entschieden: im Modeller ([D-952](../../NewConcept/90-decision-log.md))** |
 | **S2** | Geheimnisse immer verschlüsselt | **entschieden: [D-951](../../NewConcept/90-decision-log.md)** |
-| **S3** | Ein Vorschlagsformat, eine Tabelle, eine Prüfseite für alle Quellen | **ja** |
-| **S4** | Zuständigkeit je Plattform als sichtbare Tabelle statt Filter | **ja** |
-| **S5** | Ziel-Knoten einmal im Reiter «General», nicht je Quelle | **ja** |
-| **S6** | Namen `tax_api_<name>` für API-Module | **ja** |
-| **S7** | Reihenfolge §6: erst Tresor + Format, dann Tabelle/Prüfseite, JLC gleich auf dem Vertrag | **ja** |
+| **S3** | Ein Vorschlagsformat, eine Tabelle, eine Prüfseite für alle Quellen | **entschieden: [D-953](../../NewConcept/90-decision-log.md)** |
+| **S4** | Zuständigkeit je Plattform als sichtbare Tabelle statt Filter | **entschieden: [D-953](../../NewConcept/90-decision-log.md)** |
+| **S5** | Ziel-Knoten einmal im Reiter «General», nicht je Quelle | **entschieden: [D-953](../../NewConcept/90-decision-log.md)** |
+| **S6** | Namen `tax_api_<name>` für API-Module | **entschieden: [D-953](../../NewConcept/90-decision-log.md)** |
+| **S7** | Reihenfolge §6: erst Tresor + Format, dann Tabelle/Prüfseite, JLC gleich auf dem Vertrag | **entschieden: [D-953](../../NewConcept/90-decision-log.md)** |
 
 ## 9 · Annahmen, die das Konzept nicht sagt
 
