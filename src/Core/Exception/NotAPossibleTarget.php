@@ -20,6 +20,12 @@ final class NotAPossibleTarget extends DomainError
         return new self(sprintf('«%s» is a framework node and stands for a place, not for a thing in it.', $name));
     }
 
+    /** D-958 (F3a): auf die Wurzel `Model` zeigt nur ein Verweis — «jeder Satz unter Model» —, nie ein eigener Teil. */
+    public static function onlyAReferenceMayPointAtModel(string $name): self
+    {
+        return new self(sprintf('«%s» can only be the target of an aggregation: a reference to any record under it, not a part.', $name));
+    }
+
     /**
      * ⚠️ An inherited attribute belongs to an ancestor. Writing to its relation would change it for
      * every sibling too, and where a subtype's own narrowing would hang is not decided

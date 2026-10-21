@@ -1037,7 +1037,13 @@ final class NodesScreen
         // ⚠️ *Der eine Auswahlbaum der Seite, ausserhalb jedes Formulars — seine Zeilen schicken nie etwas ab (D-815). Dahinter die Körper der
         // Satzdialoge, einmal je gleichem Körper (D-866) — zuletzt, weil erst jetzt alle gezeichnet sind.*
         // ⚠️ *Das Wort für den Fall, dass eine nachgeladene Liste abgelaufen ist (D-898) — übersetzt hier, gelesen vom Skript.*
-        $worte = '<span hidden id="taxmod-words" data-reload-list="' . esc_attr__('This list is no longer available. Please reload the page.', 'taxmod') . '"></span>';
+        // ⚠️ *Wohin der Wähler über «jeden Satz unter Model» fragt (D-958) — Adresse samt Nonce einmal je Seite, nicht je Feld.*
+        $worte = '<span hidden id="taxmod-words" data-reload-list="' . esc_attr__('This list is no longer available. Please reload the page.', 'taxmod') . '"'
+            . ' data-record-search="' . esc_url(add_query_arg([
+                'action'        => self::RECORD_SEARCH_ACTION,
+                '_taxmod_nonce' => wp_create_nonce(self::RECORD_SEARCH_ACTION),
+            ], admin_url('admin-post.php'))) . '"'
+            . ' data-no-hits="' . esc_attr__('Nothing found.', 'taxmod') . '"></span>';
 
         return $html . $picker . $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)) . $worte . '</div>';
     }
@@ -1091,6 +1097,83 @@ final class NodesScreen
         echo $koerper; // phpcs:ignore WordPress.Security.EscapeOutput — gezeichnet und escaped beim Zeichnen der Seite
 
         exit;
+    }
+
+    /** Der Akt, unter dem der Wähler über «jeden Satz unter Model» seine Treffer holt ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a). */
+    public const RECORD_SEARCH_ACTION = 'taxmod_record_search';
+
+    /** Höchstens so viele Treffer je Anfrage — die Liste unter dem Suchfeld, keine Seite. */
+    private const SUCHTREFFER = 30;
+
+    /**
+     * Sätze unter `Model` suchen und als JSON geben: je Treffer Id und Wort ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a).
+     *
+     * ⚠️ *In der Reihenfolge von `CD-5`: Fähigkeit, Nonce, prüfen, säubern, dann eine Abfrage. Jedes Suchwort muss treffen — in einem
+     * Textwert des Satzes oder im Namen seines Knotens («Transistor BC547» findet den BC547 unter Transistor). Das Wort jedes Treffers
+     * rechnet dieselbe Zusammenfassung wie die Anzeige, damit Treffer und gewählter Satz gleich heissen.*
+     */
+    public function handleRecordSearch(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_send_json_error(['message' => __('You are not allowed to shape the model.', 'taxmod')], 403);
+        }
+
+        if (! check_admin_referer(self::RECORD_SEARCH_ACTION, '_taxmod_nonce')) {
+            wp_send_json_error([], 403);
+        }
+
+        $eingabe = isset($_GET['term']) ? sanitize_text_field(wp_unslash($_GET['term'])) : '';
+        $woerter = array_slice(array_values(array_filter(preg_split('/\s+/u', mb_strtolower(trim($eingabe))) ?: [], static fn (string $w): bool => mb_strlen($w) >= 2)), 0, 5);
+
+        if ($woerter === []) {
+            wp_send_json_success([]);
+        }
+
+        $model  = $this->framework->rootOf(Branch::Model);
+        $knoten = [];
+
+        foreach ($this->tree->rowsUnder($model, [$this->framework->trash()->id]) as $zeile) {
+            $knoten[$zeile['node']->id] = $zeile['node'];
+        }
+
+        $bedingungen = [];
+
+        foreach ($woerter as $wort) {
+            $treffen = [];
+
+            foreach ($knoten as $id => $k) {
+                if (str_contains(mb_strtolower($k->name), $wort)) {
+                    $treffen[] = $id;
+                }
+            }
+
+            $bedingungen[] = ['text' => $wort, 'nodes' => $treffen];
+        }
+
+        $records = new \Taxmod\WordPress\Persistence\WpdbRecordRepository();
+        $ids     = $records->recordsMatching(array_keys($knoten), $bedingungen, self::SUCHTREFFER);
+
+        if ($ids === []) {
+            wp_send_json_success([]);
+        }
+
+        // *Das Wort aus der Zusammenfassung über eine gedachte Kante auf `Model` — ohne Feldwahl, also das erste Textfeld je Satz.*
+        $kante = \Taxmod\Core\Model\Relation::attribute(0, $model->id, $model->id, \Taxmod\Core\Model\RelationKind::Aggregation, 'search', 0);
+        $worte = $this->rendering->summaryTextsOf([['relation' => $kante, 'records' => $ids]])[0] ?? [];
+        $nachSatz = [];
+
+        foreach ($records->byIds($ids) as $satz) {
+            $nachSatz[$satz->id] = $satz->nodeId;
+        }
+
+        $aus = [];
+
+        foreach ($ids as $id) {
+            $ort   = isset($nachSatz[$id], $knoten[$nachSatz[$id]]) ? $knoten[$nachSatz[$id]]->name : '';
+            $aus[] = ['id' => $id, 'word' => (string) ($worte[$id] ?? '#' . $id), 'node' => $ort];
+        }
+
+        wp_send_json_success($aus);
     }
 
     // ---------------------------------------------------------------- the tree
@@ -3331,8 +3414,10 @@ final class NodesScreen
             // verstehe nicht warum wir noch einen ausschluss haben … combined zählt definitiv nicht
             // dazu». Vier Knoten von 127 waren gesperrt, alle im `Primitives`-Zweig, und `Address`
             // hatte längst eine Kante auf einen davon — der Ausschluss schützte vor nichts.*
+            // ⚠️ **Die Wurzel `Model` ist wählbar** ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a) — *als Ziel eines Verweises
+            // heisst sie «jeder Satz unter Model». Eine Komposition dorthin weist der Kern ab, mit Grund.*
             if (isset($ueber[$knoten->id])
-                || ($ast !== null && $knoten->id === $this->framework->rootOf($ast)->id)
+                || ($ast !== null && $ast !== Branch::Model && $knoten->id === $this->framework->rootOf($ast)->id)
             ) {
                 $aus[] = $knoten->id;
             }

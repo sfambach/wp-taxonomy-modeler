@@ -266,6 +266,31 @@ final class RenderingTest extends TestCase
     }
 
     /**
+     * ⚠️ *[D-958](../../docs/NewConcept/90-decision-log.md), F3a: ein Verweis auf «jeden Satz unter Model» lädt kein Angebot — der Wähler
+     * sucht beim Rand. Ein Satz irgendwo im Modell darf darum nicht in der Seite stehen.*
+     */
+    #[Test]
+    public function a_reference_onto_model_searches_remotely_and_loads_no_records(): void
+    {
+        $model    = $this->branchRoot['model'];
+        $teil     = $this->thing('Transistor');
+        $name     = $this->editor->addField($teil->id, $this->type('Text')->id, 'name');
+        $satz     = $this->records->add(new NodeRecord(0, $teil->id, 1, '2026-10-21 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $name->id, TypedValue::ofText('BC547')));
+
+        $material = $this->thing('Material');
+        $ding     = $this->editor->addField($material->id, $model->id, 'Bezug Ding', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        $leer = $this->rendering->fieldsFor([$ding], [], Purpose::Edit, 'v');
+        self::assertStringContainsString('taxmod-record-remote', $leer[0]->result->markup);
+        self::assertStringNotContainsString('BC547', $leer[0]->result->markup, 'nichts unter Model wird vorab geladen');
+
+        $gewaehlt = $this->rendering->fieldsFor([$ding], [$ding->id => TypedValue::ofRecordReference($satz)], Purpose::Edit, 'v');
+        self::assertStringContainsString('BC547', $gewaehlt[0]->result->markup, 'der gewählte Satz steht mit seinem Wort da');
+    }
+
+    /**
      * ⚠️ *Sein Bild am 2026-09-22, BerryBase: unter «Nachfolge» stand «übernommen durch» ohne Auswahl — «fehlt da nicht was».
      * Das Ziel `Organisation` liegt unter `Kontakt`, einem Hauptast ohne Namen; die Frage «hält der Ast Daten» antwortete dort
      * mit nein. Seit [D-890](../../docs/NewConcept/90-decision-log.md) gibt es keinen benannten Ast mehr als Bedingung.*

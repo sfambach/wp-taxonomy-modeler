@@ -233,6 +233,18 @@ interface RecordRepository
     public function recordsWithValuesOn(int $relationId): array;
 
     /**
+     * Sätze dieser Knoten, die jede Bedingung erfüllen — die Suche hinter «jeder Satz unter Model» ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a).
+     *
+     * ⚠️ *Eine Bedingung ist ein Suchwort: es trifft, wenn ein Textwert des Satzes es enthält **oder** der Satz an einem der genannten
+     * Knoten steht (deren Name das Wort enthält — die Namen kennt der Aufrufer, die Tabelle nicht). Eine Abfrage (`CD-7`), neueste zuerst.*
+     *
+     * @param  list<int>                                     $nodeIds
+     * @param  list<array{text: string, nodes: list<int>}>   $conditions
+     * @return list<int> record ids
+     */
+    public function recordsMatching(array $nodeIds, array $conditions, int $limit): array;
+
+    /**
      * Everything these nodes hold as data — the records and their values.
      *
      * ⚠️ **Das ist die Durchsetzung von [C102](../../../docs/NewConcept/10-domain-core.md), und die

@@ -889,12 +889,12 @@ final class Rendering implements Presets
      * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
      * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
      */
-    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = '', string $link = ''): static
+    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = '', string $link = '', string $search = ''): static
     {
         $kopie              = clone $this;
         // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805), das des Dateiknopfs (D-846), das des Mülleimers an einer
-        // gesetzten Referenz (D-851) und das des Linkknopfs (D-857).*
-        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear, 'link' => $link];
+        // gesetzten Referenz (D-851), das des Linkknopfs (D-857) und das der Suche über «jeden Satz unter Model» (D-958).*
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear, 'link' => $link, 'search' => $search];
 
         return $kopie;
     }
@@ -2213,6 +2213,7 @@ final class Rendering implements Presets
                     options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
                     // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*
                     recordTree: $saetze['baum'][$relation->id] ?? [],
+                    searchesRemotely: isset($saetze['fern'][$relation->id]),
                     dialogWords: $this->dialogWords,
                     mediaLibrary: $this->media,
                     sharedBodies: $this->geteilteKoerper,
@@ -4647,7 +4648,7 @@ final class Rendering implements Presets
     private function summariesOf(array $relations, array $values, array $resolved, Purpose $purpose, array $types = [], array $ownerValues = [], array $mehrfach = [], array $feldwahl = []): array
     {
         // *`mehrfach`: je mehrfachem Verweis alle seine Sätze, damit jeder ein Wort bekommt und nicht nur der erste (D-859).*
-        $leer = ['worte' => [], 'angebot' => [], 'baum' => [], 'mehrfach' => []];
+        $leer = ['worte' => [], 'angebot' => [], 'baum' => [], 'mehrfach' => [], 'fern' => []];
 
         if ($this->records === null || $this->resolver === null) {
             return $leer;
@@ -4680,6 +4681,19 @@ final class Rendering implements Presets
 
         if ($purpose === Purpose::Edit) {
             foreach ($ziele as $ziel) {
+                // ⚠️ **«Jeder Satz unter Model» wird nicht geladen, sondern gesucht** ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a).
+                // *Das wären alle Sätze des Modells samt Werten auf jeder Seite mit einem solchen Feld — die Auswahl «Models» allein war
+                // schon 171 KB (D-898). Der Wähler fragt den Rand nach Treffern; geladen wird hier nur das Wort des gewählten Satzes.*
+                if ($this->framework->isProtected($ziel) && $this->framework->branchOf($ziel) === Branch::Model) {
+                    foreach ($betroffen as $relation) {
+                        if ($relation->toNodeId === $ziel->id) {
+                            $leer['fern'][$relation->id] = true;
+                        }
+                    }
+
+                    continue;
+                }
+
                 $unterZiel[$ziel->id] = [$ziel->id, ...array_map(static fn (Node $n): int => $n->id, $this->gemerkterUnterbaum($ziel))];
             }
         }

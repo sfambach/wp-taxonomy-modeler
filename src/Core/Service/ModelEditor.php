@@ -16,6 +16,7 @@ use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\Relation;
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\RelationRecord;
 use Taxmod\Core\Repository\Changelog;
@@ -724,8 +725,20 @@ final class ModelEditor
      * Astwurzeln — steht für einen Ort und nicht für ein Ding ([D-238](../../../docs/NewConcept/90-decision-log.md)), und **im Papierkorb**
      * steht nichts, worauf man zeigt.*
      */
-    private function targetIsPossible(Node $target): void
+    private function targetIsPossible(Node $target, RelationKind $kind): void
     {
+        // ⚠️ **Die Wurzel `Model` als Ziel einer Aggregation heisst «jeder Satz unter Model»** ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a).
+        // *Sein «ok» zum Lagerkonzept: das Material verweist mit «Bezug Ding» auf jedes konkrete Ding, gleich welcher Art. Gespeichert
+        // wird ohnehin die Satz-Id — die Frage nach der **einen** Speicherantwort (D-238, D-678) stellt sich für einen Verweis nicht.
+        // Eine Komposition dorthin bliebe ein Teil ohne Art und bleibt verboten.*
+        if ($this->isModelRoot($target)) {
+            if ($kind !== RelationKind::Aggregation) {
+                throw NotAPossibleTarget::onlyAReferenceMayPointAtModel($target->name);
+            }
+
+            return;
+        }
+
         if ($this->framework->isProtected($target)) {
             throw NotAPossibleTarget::itIsABranchRoot($target->name);
         }
@@ -733,6 +746,13 @@ final class ModelEditor
         if ($target->isDescendantOf($this->framework->trash())) {
             throw NotAPossibleTarget::itIsInTheTrash($target->name);
         }
+    }
+
+    /** Ob der Knoten die Wurzel des Astes `Model` ist — das einzige Rahmenziel, das eine Aggregation haben darf (D-958). */
+    private function isModelRoot(Node $node): bool
+    {
+        // *Über Schutz und Ast gefragt, nicht über `rootOf()`: ein Gerüst ohne `Model` hat schlicht keine solche Wurzel.*
+        return $this->framework->isProtected($node) && $this->framework->branchOf($node) === Branch::Model;
     }
 
     /**
@@ -751,8 +771,9 @@ final class ModelEditor
     {
         $owner  = $this->nodes->byId($ownerId);
         $target = $this->nodes->byId($targetId);
+        $kind ??= $this->fallbackKind($target);
 
-        $this->targetIsPossible($target);
+        $this->targetIsPossible($target, $kind);
 
         $relation = Relation::attribute(
             // ⚠️ *`0` heisst «die Tabelle vergibt sie» (TASK-004).*
@@ -761,7 +782,7 @@ final class ModelEditor
             $target->id,
             // ⚠️ **Die Angabe gewinnt; ohne sie gilt der Ast, und ohne Ast die Komposition**
             // ([D-618](../../../docs/NewConcept/90-decision-log.md), [D-890](../../../docs/NewConcept/90-decision-log.md)).
-            $kind ?? $this->fallbackKind($target),
+            $kind,
             $name,
             $this->relations->nextFieldPositionUnder($owner->id)
         );
@@ -1523,6 +1544,12 @@ final class ModelEditor
     public function setKind(int $ownerId, int $relationId, RelationKind $art): Relation
     {
         $relation = $this->ownAttribute($ownerId, $relationId);
+        $ziel     = $this->nodes->find($relation->toNodeId);
+
+        if ($ziel !== null && $this->isModelRoot($ziel) && $art !== RelationKind::Aggregation) {
+            throw NotAPossibleTarget::onlyAReferenceMayPointAtModel($ziel->name);
+        }
+
         $marked   = $relation->withKind($art);
 
         if ($marked === $relation) {
@@ -1841,7 +1868,7 @@ final class ModelEditor
         $relation   = $this->ownAttribute($ownerId, $relationId);
         $target = $this->nodes->byId($targetId);
 
-        $this->targetIsPossible($target);
+        $this->targetIsPossible($target, $relation->isSetting() || $keepKind ? $relation->kind : $this->fallbackKind($target));
 
         // ⚠️ **Eine Einstellungskante bleibt eine Einstellungskante** — *sein Befund am 2026-09-06:
         // «die Typzuordnung am Knoten `render with label` kann ich nicht auf diesen Typ ändern,

@@ -237,6 +237,11 @@ final class Surroundings
          */
         public readonly array $recordTree = [],
         /**
+         * Ob der Wähler seine Treffer beim Rand erfragt statt aus einem geladenen Baum — für ein Feld auf «jeden Satz unter Model»
+         * ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a). Wohin er fragt, weiss das Skript; der Kern kennt keine Adresse.
+         */
+        public readonly bool $searchesRemotely = false,
+        /**
          * Die Worte der Dialogknöpfe «OK» und «Abbrechen», vom Rand (`AR-2`) — jeder Dialog hat sie ([D-804](../../../docs/NewConcept/90-decision-log.md)).
          *
          * @var array{ok?: string, cancel?: string}

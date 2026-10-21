@@ -72,6 +72,10 @@ final class SummaryRenderer extends TypedFieldRenderer
 
     protected function input(RenderContext $context): string
     {
+        if ($context->surroundings->searchesRemotely) {
+            return $this->remote($context);
+        }
+
         // ⚠️ **Mit Baum ein Dialog statt einer langen Liste** ([D-791](../../../docs/NewConcept/90-decision-log.md), Zeile 149).
         if ($context->surroundings->recordTree !== []) {
             return $this->dialog($context);
@@ -99,6 +103,35 @@ final class SummaryRenderer extends TypedFieldRenderer
             ['class' => 'taxmod-summary-choice'],
             nothingWord: '—'
         );
+    }
+
+    /**
+     * Die Satzauswahl über «jeden Satz unter Model»: ein Suchfeld, dessen Treffer der Rand liefert, kein Dialog und kein Baum.
+     *
+     * ⚠️ *[D-958](../../../docs/NewConcept/90-decision-log.md), F3a: «Bezug Ding» mit Suche. Dieselbe Hülle wie die Schnellsuche vor dem
+     * Dialog (D-792, D-851), damit Treffer, Mülleimer und Selbstspeichern dieselben bleiben; die Auswahlknöpfe liegen verborgen — der
+     * leere für «nichts», der gewählte, und jeder genommene Treffer kommt als weiterer dazu.*
+     */
+    private function remote(RenderContext $context): string
+    {
+        $gewaehlt = $context->value->reference;
+        $name     = RenderResult::escape($context->fieldName);
+        $form     = $context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"';
+        $nichts   = $gewaehlt === null;
+        $wort     = $nichts ? '' : ($context->surroundings->refersTo ?? '#' . $gewaehlt);
+        $knopf    = static fn (string $wert, bool $an): string => '<label class="taxmod-record-choice"><input type="radio" name="' . $name . '" value="' . $wert . '"'
+            . ($an ? ' checked' : '') . $form . '></label>';
+        $loeschen = (string) ($context->surroundings->dialogWords['clear'] ?? '');
+        $suchwort = (string) ($context->surroundings->dialogWords['search'] ?? '');
+
+        return '<span class="taxmod-record-pick taxmod-record-remote' . ($nichts ? '' : ' taxmod-record-taken') . '">'
+            . '<span class="taxmod-record-choices" hidden>' . $knopf('', $nichts) . ($nichts ? '' : $knopf((string) $gewaehlt, true)) . '</span>'
+            . '<input type="search" class="taxmod-record-quick" autocomplete="off" placeholder="' . RenderResult::escape($suchwort) . '" aria-label="' . RenderResult::escape($suchwort) . '"' . ($nichts ? '' : ' hidden') . '>'
+            . '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . RenderResult::escape($wort) . '</span>'
+            . ($nichts ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear" style="color:#b32d2e" title="' . RenderResult::escape($loeschen) . '">'
+                . IconMarkup::dashicon('trash', $loeschen) . '</button>')
+            . '<span class="taxmod-record-hits" hidden></span>'
+            . '</span>';
     }
 
     /**

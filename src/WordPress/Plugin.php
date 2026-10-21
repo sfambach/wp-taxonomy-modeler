@@ -47,7 +47,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.32';
+    public const VERSION     = '0.1.33';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -87,6 +87,12 @@ final class Plugin
         add_action(
             'admin_post_' . NodesScreen::SHARED_BODY_ACTION,
             static fn () => $plugin->screen()->handleSharedBody()
+        );
+
+        // ⚠️ *Die Treffer für «jeden Satz unter Model» (D-958) — derselbe Rückweg.*
+        add_action(
+            'admin_post_' . NodesScreen::RECORD_SEARCH_ACTION,
+            static fn () => $plugin->screen()->handleRecordSearch()
         );
 
         // ⚠️ *Die Zeilen der geerbten Felder, auf Wunsch nachgeladen (D-871) — derselbe Rückweg.*
@@ -658,7 +664,7 @@ final class Plugin
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
-        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file from the media library', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'))->withSharedPicker()
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file from the media library', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'), __('Search all records — type at least two letters', 'taxmod'))->withSharedPicker()
             // ⚠️ *Und gleiche Satzdialoge stehen einmal als Vorlage (D-866) — die Seite gibt sie am Ende aus.*
             ->withSharedRecordBodies(new \Taxmod\Core\Renderer\SharedBodies())
             // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*

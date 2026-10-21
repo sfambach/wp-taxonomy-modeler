@@ -593,6 +593,39 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(intval(...), $ids ?: []);
     }
 
+    public function recordsMatching(array $nodeIds, array $conditions, int $limit): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $nodeIds))));
+
+        if ($ids === [] || $conditions === [] || $limit < 1) {
+            return [];
+        }
+
+        $sql    = 'SELECT r.id FROM ' . Schema::table('node_records') . ' r WHERE r.node_id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ')'
+            . " AND r.relation_id = 0 AND r.record_type <> 'settings'";
+        $params = $ids;
+
+        foreach ($conditions as $bedingung) {
+            $knoten = array_values(array_filter(array_map('intval', $bedingung['nodes'])));
+            $sql   .= ' AND (EXISTS (SELECT 1 FROM ' . Schema::table('relation_records') . ' v WHERE v.node_record_id = r.id AND v.value_text LIKE %s)';
+            $params[] = '%' . $wpdb->esc_like($bedingung['text']) . '%';
+
+            if ($knoten !== []) {
+                $sql   .= ' OR r.node_id IN (' . implode(',', array_fill(0, count($knoten), '%d')) . ')';
+                $params = [...$params, ...$knoten];
+            }
+
+            $sql .= ')';
+        }
+
+        $sql     .= ' ORDER BY r.id DESC LIMIT %d';
+        $params[] = $limit;
+
+        return array_map(intval(...), Query::column('Saetze unter Model suchen', $wpdb->prepare($sql, ...$params)) ?: []);
+    }
+
     public function recordRefsHeldAt(int $relationId): array
     {
         global $wpdb;

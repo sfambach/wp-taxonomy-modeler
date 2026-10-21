@@ -1341,8 +1341,72 @@
 		}, true );
 	} );
 
+	// ⚠️ **«Jeder Satz unter Model» fragt den Server** (D-958, F3a) — *dort steht kein Baum in der Seite; die Treffer kommen aus einer
+	// Suche, ab zwei Zeichen und kurz nach dem letzten Tastendruck, damit nicht jeder Buchstabe eine Anfrage wird.*
+	var fernWarten = null;
+
+	function fernTreffer( feld, wahl ) {
+		var liste  = wahl.querySelector( '.taxmod-record-hits' );
+		var worte  = document.getElementById( 'taxmod-words' );
+		var quelle = worte ? worte.getAttribute( 'data-record-search' ) : '';
+		var text   = feld.value.trim();
+
+		window.clearTimeout( fernWarten );
+
+		if ( ! liste || ! quelle || text.length < 2 ) {
+			if ( liste ) {
+				liste.innerHTML = '';
+				liste.hidden = true;
+			}
+
+			return;
+		}
+
+		fernWarten = window.setTimeout( function () {
+			fetch( quelle + '&term=' + encodeURIComponent( text ), { credentials: 'same-origin' } ).then( function ( antwort ) {
+				return antwort.ok ? antwort.json() : Promise.reject( antwort.status );
+			} ).then( function ( antwort ) {
+				// *Inzwischen weitergetippt: diese Antwort gilt nicht mehr.*
+				if ( feld.value.trim() !== text ) {
+					return;
+				}
+
+				liste.innerHTML = '';
+
+				( antwort && antwort.success ? antwort.data : [] ).forEach( function ( eintrag ) {
+					var treffer = document.createElement( 'button' );
+
+					treffer.type = 'button';
+					treffer.className = 'taxmod-record-hit';
+					treffer.textContent = eintrag.node ? eintrag.word + ' · ' + eintrag.node : eintrag.word;
+					treffer.setAttribute( 'data-taxmod-value', String( eintrag.id ) );
+					treffer.setAttribute( 'data-taxmod-word', eintrag.word );
+					liste.appendChild( treffer );
+				} );
+
+				if ( liste.children.length === 0 && worte.getAttribute( 'data-no-hits' ) ) {
+					var leer = document.createElement( 'span' );
+
+					leer.className = 'taxmod-record-nohit';
+					leer.textContent = worte.getAttribute( 'data-no-hits' );
+					liste.appendChild( leer );
+				}
+
+				liste.hidden = false;
+			} ).catch( function () {
+				liste.hidden = true;
+			} );
+		}, 250 );
+	}
+
 	function trefferZeigen( feld ) {
 		var wahl  = feld.closest( '.taxmod-record-pick' );
+
+		if ( wahl && wahl.classList.contains( 'taxmod-record-remote' ) ) {
+			fernTreffer( feld, wahl );
+
+			return;
+		}
 
 		// *Ist die Liste noch nicht geladen (D-898), kommt die Suche nach dem Laden noch einmal.*
 		koerperEinsetzen( wahl, function () { trefferZeigen( feld ); } );
@@ -1393,6 +1457,22 @@
 		}
 
 		var genommen = null;
+		var fern     = wahl.classList.contains( 'taxmod-record-remote' );
+
+		// *Ein Treffer der Serversuche hat noch keinen Auswahlknopf in der Seite — er bekommt einen, wie der leere gebaut (D-958).*
+		if ( fern && ! wahl.querySelector( '.taxmod-record-choice input[type="radio"][value="' + treffer.getAttribute( 'data-taxmod-value' ) + '"]' ) ) {
+			var vorbild = wahl.querySelector( '.taxmod-record-choice input[type="radio"]' );
+			var huelle  = document.createElement( 'label' );
+			var neu     = vorbild ? vorbild.cloneNode( false ) : null;
+
+			if ( neu ) {
+				neu.value = treffer.getAttribute( 'data-taxmod-value' );
+				neu.checked = false;
+				huelle.className = 'taxmod-record-choice';
+				huelle.appendChild( neu );
+				wahl.querySelector( '.taxmod-record-choices' ).appendChild( huelle );
+			}
+		}
 
 		wahl.querySelectorAll( '.taxmod-record-choice input[type="radio"]' ).forEach( function ( knopf ) {
 			if ( knopf.value === treffer.getAttribute( 'data-taxmod-value' ) ) {
@@ -1408,7 +1488,10 @@
 
 		var oeffner = wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' );
 
-		if ( oeffner ) {
+		if ( oeffner && fern ) {
+			oeffner.textContent = treffer.getAttribute( 'data-taxmod-word' ) || treffer.textContent;
+			oeffner.hidden = false;
+		} else if ( oeffner ) {
 			oeffner.textContent = treffer.textContent;
 			oeffner.className = 'button taxmod-record-dialog-open';
 		}
@@ -2033,6 +2116,8 @@
 
 		if ( oeffner ) {
 			oeffner.textContent = '—';
+			// *Ohne Wahl steht bei der Serversuche nur das Suchfeld (D-958).*
+			oeffner.hidden = wahl.classList.contains( 'taxmod-record-remote' );
 		}
 
 		wahl.classList.remove( 'taxmod-record-taken' );

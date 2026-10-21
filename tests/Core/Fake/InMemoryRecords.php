@@ -339,6 +339,47 @@ final class InMemoryRecords implements RecordRepository
         return array_values(array_unique($found));
     }
 
+    public function recordsMatching(array $nodeIds, array $conditions, int $limit): array
+    {
+        $aus = [];
+
+        foreach (array_reverse($this->ofNodesFlat($nodeIds)) as $satz) {
+            foreach ($conditions as $bedingung) {
+                $treffer = in_array($satz->nodeId, $bedingung['nodes'], true);
+
+                foreach ($this->valuesOf($satz->id) as $wert) {
+                    $treffer = $treffer || ($wert->value->text !== null && mb_stripos($wert->value->text, $bedingung['text']) !== false);
+                }
+
+                if (! $treffer) {
+                    continue 2;
+                }
+            }
+
+            $aus[] = $satz->id;
+        }
+
+        return array_slice($aus, 0, $limit);
+    }
+
+    /** @return list<\Taxmod\Core\Model\NodeRecord> */
+    private function ofNodesFlat(array $nodeIds): array
+    {
+        $aus = [];
+
+        foreach ($nodeIds as $id) {
+            foreach ($this->ofNode($id) as $satz) {
+                if ($satz->recordType !== \Taxmod\Core\Model\RecordType::Settings) {
+                    $aus[] = $satz;
+                }
+            }
+        }
+
+        usort($aus, static fn ($a, $b): int => $a->id <=> $b->id);
+
+        return $aus;
+    }
+
     public function recordRefsHeldAt(int $relationId): array
     {
         $aus = [];

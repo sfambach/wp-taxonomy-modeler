@@ -110,6 +110,12 @@ das war die Vermischung: die Lagerseite hätte die Arten der Technikseite einzel
 **Vorschlag:** zwei Felder am Material, **«Bezug Art»** (Knotenverweis, gibt es) und **«Bezug Ding»** (Satzverweis auf jeden Satz unter
 `Model`, braucht Code). Bis der Code da ist, reicht «Bezug Art» plus Bezeichnung; der 286er bekommt «Bezug Ding» nachgetragen.
 
+**Gebaut: 0.1.33** ([D-958](../../NewConcept/90-decision-log.md), F3a). Eine Aggregation darf auf die Wurzel `Model` zeigen («jeder Satz
+unter Model»), eine Komposition dorthin wird abgewiesen. Der Wähler lädt nichts vorab, sondern sucht beim Server; Wächter
+`bezug-ding-check`. *Annahmen (INFERRED): jedes Suchwort muss treffen — in einem Textwert des Satzes oder im Namen seines Knotens;
+Einstellungssätze und Sätze einer Verwendungsstelle zählen nicht mit; Werte der Teile eines Satzes werden nicht durchsucht; höchstens 30
+Treffer, neueste zuerst.*
+
 ## 3 · Die Datenstrukturen unter «Stock»
 
 **Flach, ohne Gruppenknoten** ([D-957](../../NewConcept/90-decision-log.md)). *Sein Wort (2026-10-21), nach dem Vorschlag
