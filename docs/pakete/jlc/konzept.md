@@ -133,3 +133,9 @@ flowchart LR
   Bestelldatum aus der Batch-Nummer (`W` + yyyyMMdd…); Status 0 = storniert wie in V1 (V2 nennt keine Codes); Zuordnung Zeile ↔ Auftrag über
   den Gerber-Namen nach derselben Normalisierung wie im JLCPCB-Parser von tax_mail; Schablonen (`steelOrderAggInfoList`) noch nicht gelesen.
   Ergänzt werden nur leere Felder, Währung USD nur, wenn der Vorschlag noch keine Beträge hatte.
+- **0.0.7 (gemessen an W2026092101021667):** Die API liefert nur USD, kein Währungs- und kein Euro-Feld; die Euro-Beträge der Website
+  rechnet JLC selbst. Die Batch-Nummer ist China-Zeit; das Bestelldatum wird in die Zeitzone der Seite umgerechnet (20.09. statt 21.09.).
+- **0.0.8:** Die Umrechnung in Euro gehört **nicht** in dieses Modul. Er: *«das ist was generelles was wir in tax brauchen ein alleingang
+  wäre glaube ich nicht sinnvoll»* — sie geht an den Modeller ([D-064](../../NewConcept/90-decision-log.md),
+  [INF-070](../../neues-konzept-eingang.md)). Das Modul liefert USD und das Bestelldatum. Hat ein Batch Schablonenaufträge, setzt es
+  keinen Gesamtbetrag, weil die Schablonenpreise noch nicht gelesen werden und die Summe zu niedrig wäre.
