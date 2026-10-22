@@ -12,6 +12,7 @@ use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Tree;
 use Taxmod\WordPress\Admin\BackupScreen;
+use Taxmod\WordPress\Admin\ChangeListImport;
 use Taxmod\WordPress\Admin\CleanupScreen;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
@@ -48,7 +49,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.44';
+    public const VERSION     = '0.1.45';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -119,6 +120,7 @@ final class Plugin
         // ⚠️ **Sichern und Einspielen** ([D-908](../../docs/NewConcept/90-decision-log.md)).
         add_action('admin_post_' . BackupScreen::DOWNLOAD_ACTION, static fn () => (new BackupScreen())->handleDownload());
         add_action('admin_post_' . BackupScreen::RESTORE_ACTION, static fn () => (new BackupScreen())->handleRestore());
+        add_action('admin_post_' . ChangeListImport::ACTION, static fn () => (new ChangeListImport($plugin->abilities(...)))->handle());
 
         // An upgrade must not depend on somebody remembering to deactivate and activate
         // again (`CD-6`). One option read per admin request, and the work happens only when
@@ -330,7 +332,7 @@ final class Plugin
             __('Backup', 'taxmod'),
             self::CAPABILITY,
             BackupScreen::PAGE,
-            static fn () => print (new BackupScreen())->render()
+            fn () => print (new BackupScreen())->render((new ChangeListImport($this->abilities(...)))->render())
         );
 
         // ⚠️ **An den eigenen Haken jeder Seite**, damit das Stilblatt nicht auf jeder Seite in

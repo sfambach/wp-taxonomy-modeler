@@ -340,21 +340,37 @@ final class ModelAbilities
     }
 
     /**
+     * Eine Änderungsliste aus einer hochgeladenen Datei ([D-973](../../docs/NewConcept/90-decision-log.md)) — derselbe Weg wie
+     * `apply`, eine Handlung je Datei.
+     *
+     * ⚠️ *Die Grenze je Aufruf gilt hier nicht: sie schützt die Anfrage über das Netz, und gerade dort brach eine grosse Liste
+     * am Webserver ab (HTTP 400 ab etwa 40 KB). Die Datei liegt schon auf dem Server.*
+     *
+     * @param list<mixed>        $changes
+     * @param array<string, int> $refs Was frühere Dateien desselben Pakets angelegt haben — «@ref» gilt über die Datei hinaus.
+     * @return array{applied: list<array{op: string, id: int|null}>, refs: array<string, int>, backup: string|null}
+     */
+    public function applyChangeList(array $changes, array $refs): array
+    {
+        return $this->apply(['changes' => $changes], false, $refs, PHP_INT_MAX);
+    }
+
+    /**
      * @param array<string, mixed> $input
+     * @param array<string, int>   $refs
      * @return array<string, mixed>
      */
-    private function apply(array $input, bool $onlyData = false): array
+    private function apply(array $input, bool $onlyData = false, array $refs = [], int $limit = self::MAX_CHANGES): array
     {
         global $wpdb;
 
         $changes = is_array($input['changes'] ?? null) ? array_values($input['changes']) : [];
 
-        if ($changes === [] || count($changes) > self::MAX_CHANGES) {
-            throw new \InvalidArgumentException(sprintf('Between 1 and %d changes per call.', self::MAX_CHANGES));
+        if ($changes === [] || count($changes) > $limit) {
+            throw new \InvalidArgumentException(sprintf('Between 1 and %d changes per call.', $limit));
         }
 
         $sicherung = ! $onlyData && ! empty($input['backup']) ? (new Backup())->safetyCopy('vor-ability') : null;
-        $refs      = [];
         $ergebnis  = [];
         $changelog = ($this->changelog)();
 

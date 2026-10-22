@@ -31,7 +31,8 @@ final class BackupScreen
     /** Der Bericht des Einspielens überlebt die Weiterleitung hier — für eine Adresszeile ist er zu lang. */
     private const REPORT = 'taxmod_backup_report_';
 
-    public function render(): string
+    /** @param string $more Weitere Abschnitte der Seite, schon maskiert — heute die Änderungslisten (D-973). */
+    public function render(string $more = ''): string
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
             return '';
@@ -57,7 +58,7 @@ final class BackupScreen
             . '<p><label><input type="checkbox" name="taxmod_confirm" value="1" required> '
             . esc_html__('Yes, replace the model on this site.', 'taxmod') . '</label></p>'
             . get_submit_button(__('Restore backup', 'taxmod'), 'delete', 'submit', false)
-            . '</form></div>';
+            . '</form>' . $more . '</div>';
     }
 
     public function handleDownload(): void

@@ -66,7 +66,7 @@ final class Backup
     private const PREFIX_SLOT = '{taxmod_prefix}';
 
     /** Der Ordner für die Sicherung, die jedes Einspielen vorher vom bestehenden Stand anlegt. */
-    private const SAFETY_DIR = 'taxmod-backups';
+    public const SAFETY_DIR = 'taxmod-backups';
 
     /**
      * Den ganzen Stand in eine ZIP-Datei schreiben.
