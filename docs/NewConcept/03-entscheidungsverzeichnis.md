@@ -106,6 +106,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Übernimmt der Eingang von selbst? | [D-962](90-decision-log.md) — auf Schalter: neue Bestellungen der zuständigen Quelle und Status-Updates; API-Quellen laufen zuerst, ein Status wartet auf seine Bestellung | — |
 | Wo erklärt ein Modul, wie man es anbindet? | [D-963](90-decision-log.md) — Kasten rechts neben dem Reiter, Schlüssel `guide` in `taxmod_config_tabs` | — |
 | Wo steht die Version eines Moduls? | [D-968](90-decision-log.md) — unter der Reiterleiste, gemeldet als `version` in `taxmod_config_tabs` | — |
+| Wie zeigt die Inbox Teilbestellungen eines Kaufs? | [D-970](90-decision-log.md) — ein Kasten, Reihenfolge nach Eingang; Schlüssel `bundle` der Quelle, sonst Plattform + Bestelldatum der vorhandenen Bestellung | — |
 | Ergänzt der Eingang eine Bestellung, die schon da ist? | [D-964](90-decision-log.md) — ja, aus der für neue Bestellungen zuständigen Quelle: Leeres füllen, Widersprüche je Feld zur Wahl; nur Bestellfelder, keine Positionen | — |
 | Wie tief nennt eine Zusammenfassung verwiesene Sätze? | [D-935](90-decision-log.md) — zwei Stufen: das Board heisst «FIC · 386-SC-HG», der Hersteller darin mit seinen eigenen Worten, ohne weiteren Verweis | — |
 | Welche Kennzeichnung trägt ein Bauteil im Katalog? | [D-779](90-decision-log.md) — nur den allgemeinen «Typ» (74LS688, LM7905); Hersteller und Bestellnummer gehören in den kaufmännischen Teil | ~~D-772~~ *(«Hersteller» und «Teilenummer» an `Electronic Parts`)* |

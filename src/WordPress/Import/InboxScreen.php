@@ -9,6 +9,7 @@ use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\FetchingSource;
 use Taxmod\Core\Import\ImportSource;
+use Taxmod\Core\Import\InboxBundles;
 use Taxmod\Core\Import\InboxStatus;
 use Taxmod\Core\Import\Intake;
 use Taxmod\Core\Import\IntakeVerdict;
@@ -78,8 +79,53 @@ final class InboxScreen
             . '<button class="button" name="action" value="' . esc_attr(self::DISCARD_SELECTED) . '">' . esc_html__('Discard selected', 'taxmod') . '</button></form>'
             . '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(36em,1fr));gap:0 12px;align-items:start">';
 
-        foreach ($groups as $rows) {
-            $html .= $this->group($rows, $model, $intake);
+        // ⚠️ *Sein Wunsch vom 2026-10-22: «das sind alles nachrichten zur gleichen bestellung hier ist die reihenfolge wichtig
+        // und wäre schön wenn das nur ein kasten wäre» (D-970).*
+        $groups = array_values(array_map(static function (array $rows): array {
+            usort($rows, static fn (array $a, array $b): int => [self::when($a), (int) $a['id']] <=> [self::when($b), (int) $b['id']]);
+
+            return $rows;
+        }, $groups));
+        $described = [];
+
+        foreach ($groups as $index => $rows) {
+            $proposal = self::merged($rows);
+            $existing = $model === null ? null : self::existing($model, $proposal);
+            $bundle = '';
+
+            foreach ($rows as $row) {
+                $bundle = $bundle !== '' ? $bundle : (string) (((array) json_decode((string) ($row['evidence'] ?? ''), true))['bundle'] ?? '');
+            }
+
+            $described[$index] = [
+                'platform'  => $proposal->platform,
+                'bundle'    => $bundle === '' ? null : $bundle,
+                'orderDate' => $existing instanceof ExistingOrder ? $existing->orderDate : null,
+                'first'     => self::when($rows[0]),
+            ];
+        }
+
+        foreach (InboxBundles::of($described) as $box) {
+            if (count($box) === 1) {
+                $html .= $this->group($groups[$box[0]], $model, $intake);
+
+                continue;
+            }
+
+            $head = $described[$box[0]];
+            $html .= '<div class="postbox" style="padding:0 12px 8px;margin-bottom:12px;min-width:0;grid-column:1/-1"><h2>' . esc_html(sprintf(
+                /* translators: 1: platform, 2: number of orders, 3: order date */
+                __('%1$s · %2$d orders of one purchase%3$s', 'taxmod'),
+                $head['platform'],
+                count($box),
+                $head['orderDate'] === null ? '' : ' · ' . substr($head['orderDate'], 0, 10)
+            )) . '</h2>';
+
+            foreach ($box as $index) {
+                $html .= $this->group($groups[$index], $model, $intake, true);
+            }
+
+            $html .= '</div>';
         }
 
         return $html . '</div></div>';
@@ -134,7 +180,7 @@ final class InboxScreen
     }
 
     /** @param non-empty-list<array<string, mixed>> $rows */
-    private function group(array $rows, ?ModelGateway $model, Intake $intake): string
+    private function group(array $rows, ?ModelGateway $model, Intake $intake, bool $inBox = false): string
     {
         $proposal = self::merged($rows);
         $existing = $model === null ? null : self::existing($model, $proposal);
@@ -142,10 +188,10 @@ final class InboxScreen
         $sources = Sources::all();
         $labels = array_unique(array_map(static fn (array $row): string => isset($sources[$row['source']]) ? $sources[$row['source']]->label() : (string) $row['source'], $rows));
 
-        $html = '<div class="postbox" style="padding:0 12px 8px;margin-bottom:12px;min-width:0"><h2>'
+        $html = ($inBox ? '<div style="border-top:1px solid #dcdcde;padding-top:4px;min-width:0"><h3>' : '<div class="postbox" style="padding:0 12px 8px;margin-bottom:12px;min-width:0"><h2>')
             . '<input type="checkbox" name="selected[]" value="' . esc_attr(implode(',', $ids)) . '" form="' . self::BULK_FORM . '" aria-label="'
             . esc_attr__('Select', 'taxmod') . '" style="margin-right:.5em"> ' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber))
-            . ' <small>· ' . esc_html(implode(', ', $labels)) . ' · ' . esc_html(self::kindLabel($proposal->kind)) . '</small></h2>';
+            . ' <small>· ' . esc_html(implode(', ', $labels)) . ' · ' . esc_html(self::kindLabel($proposal->kind)) . '</small>' . ($inBox ? '</h3>' : '</h2>');
 
         foreach ($rows as $row) {
             $evidence = (array) json_decode((string) ($row['evidence'] ?? ''), true);
@@ -225,6 +271,12 @@ final class InboxScreen
         }
 
         return $html . '</tbody></table>';
+    }
+
+    /** When a message came: as the source received it, else when the inbox filed it. */
+    private static function when(array $row): string
+    {
+        return (string) (($row['received_at'] ?? '') !== '' && $row['received_at'] !== null ? $row['received_at'] : $row['created_at']);
     }
 
     private static function fieldLabel(string $role): string

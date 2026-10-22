@@ -100,6 +100,15 @@ add_filter(Sources::FILTER, static fn (array $sources): array => [...$sources, $
 $pruefe($inbox->search($zweite, 'C-9') === 1, 'a forwarded copy (same order, kind and moment, other id) is filed once');
 $pruefe($inbox->restart($zweite) === 1 && $zweite->neu, 'a restart forgets the open proposal and lets the source undo its side');
 
+// ⚠️ *Sein Wunsch vom 2026-10-22 (D-970): «das sind alles nachrichten zur gleichen bestellung … wäre schön wenn das nur ein kasten wäre».*
+$tisch = new InboxTable();
+$spaeter = $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Cart', 'S-2', ProposalKind::Shipped, trackingNumbers: ['T2'], source: '__ib', externalId: 'k2'), ['bundle' => 'cart-1', 'subject' => '__second']), '2026-10-22 10:00:00');
+$frueher = $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Cart', 'S-1', ProposalKind::Shipped, trackingNumbers: ['T1'], source: '__ib', externalId: 'k1'), ['bundle' => 'cart-1', 'subject' => '__first']), '2026-10-22 09:00:00');
+$seite = (new InboxScreen())->render();
+$pruefe(substr_count($seite, '2 orders of one purchase') === 1 && strpos($seite, '__first') < strpos($seite, '__second'), 'sub-orders of one purchase share one box, in the order their mails came');
+$tisch->close($spaeter, \Taxmod\Core\Import\InboxStatus::Discarded);
+$tisch->close($frueher, \Taxmod\Core\Import\InboxStatus::Discarded);
+
 // ⚠️ *Sein Wunsch vom 2026-10-21: «ein button fetch all wäre auch nett» — every fetching source once, intervals aside.*
 $pruefe(str_contains((new InboxScreen())->render(), 'value="' . InboxScreen::FETCH_ALL . '"'), 'the inbox page has a «Fetch all» button');
 $laeufe = Inbox::lastRuns();
