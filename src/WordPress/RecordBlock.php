@@ -39,6 +39,9 @@ final class RecordBlock
     /** Die Sätze am Ende eines Weges als Tabelle — die Datenblätter einer Stückliste (D-955). */
     public const COLLECTED = 'collected';
 
+    /** The records of another node whose field `via` points at this record, as a table with `rowFields` as columns (D-916). */
+    public const REFERRERS = 'referrers';
+
     private const CACHE = 'taxmod_block_';
 
     private const ROUTES = 'taxmod/v1';
@@ -217,7 +220,14 @@ final class RecordBlock
 
         // ⚠️ *Ein Satz, der fehlt, ist im Beitrag kein weisser Bildschirm: Lesern zeigt der Block nichts, Bearbeitern den Grund.*
         try {
-            $markup = ($attributes['display'] ?? '') === self::COLLECTED
+            $markup = ($attributes['display'] ?? '') === self::REFERRERS
+                ? ($this->screen)()->referrersForReaders(
+                    $record,
+                    absint($attributes['via'] ?? 0),
+                    self::ids((string) ($attributes['rowFields'] ?? '')),
+                    SettingsScreen::neutralLocale()
+                )
+                : (($attributes['display'] ?? '') === self::COLLECTED
                 ? ($this->screen)()->collectedForReaders(
                     $record,
                     self::ids((string) ($attributes['path'] ?? '')),
@@ -242,7 +252,7 @@ final class RecordBlock
                     absint($attributes['groupBy'] ?? 0),
                     absint($attributes['columnLabel'] ?? 0),
                 )
-                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale()));
+                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale())));
         } catch (\Throwable $e) {
             return current_user_can('edit_posts')
                 ? '<p class="taxmod-record-missing">' . esc_html(sprintf(

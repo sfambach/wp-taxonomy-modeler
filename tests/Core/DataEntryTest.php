@@ -146,6 +146,24 @@ final class DataEntryTest extends TestCase
         self::assertSame([], $this->data->recordsAlong($start, [99]));
     }
 
+    /** ⚠️ *D-916 «Rückverweise»: die Käufe unter einer Platinen-Revision, nur über das gewählte Feld.* */
+    #[Test]
+    public function records_pointing_here_through_a_field_are_found_once_in_number_order(): void
+    {
+        $satz = fn (): int => $this->records->add(new \Taxmod\Core\Model\NodeRecord(0, $this->part->id, 1, '2026-10-22 10:00:00', \Taxmod\Core\Model\RecordType::User));
+        $revision = $satz();
+        $zweiter  = $satz();
+        $erster   = $satz();
+        $fremd    = $satz();
+
+        $this->records->putValue(\Taxmod\Core\Model\RelationRecord::direct($erster, 21, TypedValue::ofRecordReference($revision)));
+        $this->records->putValue(\Taxmod\Core\Model\RelationRecord::direct($zweiter, 21, TypedValue::ofRecordReference($revision)));
+        $this->records->putValue(\Taxmod\Core\Model\RelationRecord::direct($fremd, 22, TypedValue::ofRecordReference($revision)));
+
+        self::assertSame([$zweiter, $erster], $this->data->referrersVia($revision, 21));
+        self::assertSame([], $this->data->referrersVia($revision, 99));
+    }
+
     #[Test]
     public function it_keeps_the_model_version_it_was_written_against(): void
     {

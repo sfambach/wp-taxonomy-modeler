@@ -215,6 +215,25 @@
 		);
 	}
 
+	// D-916 «Rückverweise»: the records of another node whose chosen field points at this record, as a table.
+	function Referrers( props ) {
+		var a = props.attributes;
+		var referrer = ( props.node.referrers || [] ).filter( function ( r ) { return r.id === a.via; } )[ 0 ];
+		var owner = useNode( referrer ? referrer.owner : 0, false );
+
+		return el( 'div', null,
+			el( SelectControl, {
+				label: __( 'Records pointing here through', 'taxmod' ),
+				value: a.via,
+				options: [ { label: '—', value: 0 } ].concat( ( props.node.referrers || [] ).map( function ( r ) {
+					return { label: r.ownerName + ' → ' + r.name, value: r.id };
+				} ) ),
+				onChange: function ( v ) { props.setAttributes( { via: Number( v ), rowFields: '' } ); }
+			} ),
+			owner ? el( FieldChecks, { label: __( 'Columns', 'taxmod' ), node: owner, value: a.rowFields, onChange: function ( v ) { props.setAttributes( { rowFields: v } ); } } ) : null
+		);
+	}
+
 	function Edit( props ) {
 		var a = props.attributes;
 		var comparison = a.display === 'comparison';
@@ -232,7 +251,8 @@
 			value: a.display || 'record',
 			options: [
 				{ label: __( 'Record', 'taxmod' ), value: 'record' },
-				{ label: __( 'Comparison', 'taxmod' ), value: 'comparison' }
+				{ label: __( 'Comparison', 'taxmod' ), value: 'comparison' },
+				{ label: __( 'Referring records', 'taxmod' ), value: 'referrers' }
 			],
 			onChange: function ( v ) { props.setAttributes( { display: v } ); }
 		} );
@@ -242,7 +262,7 @@
 			onChange: function ( id ) { props.setAttributes( { node: id, record: 0, records: '', field: 0, via: 0, rowKey: 0, value: 0, groupBy: 0, rowFields: '', columnLabel: 0 } ); }
 		} );
 
-		var single = node && ! comparison ? [
+		var single = node && ! comparison && a.display !== 'referrers' ? [
 			el( ComboboxControl, {
 				key: 'record',
 				label: __( 'Record', 'taxmod' ),
@@ -259,6 +279,17 @@
 			} )
 		] : null;
 
+		var referring = node && a.display === 'referrers' ? [
+			el( ComboboxControl, {
+				key: 'record',
+				label: __( 'Record', 'taxmod' ),
+				value: a.record || null,
+				options: node.records.map( function ( r ) { return { value: r.id, label: r.label }; } ),
+				onChange: function ( v ) { props.setAttributes( { record: Number( v ) || 0 } ); }
+			} ),
+			el( Referrers, { key: 'via', attributes: a, setAttributes: props.setAttributes, node: node } )
+		] : null;
+
 		var naming = node && comparison ? el( SelectControl, {
 			label: __( 'Name the records by', 'taxmod' ),
 			help: __( 'Used in this list and above the columns.', 'taxmod' ),
@@ -268,7 +299,7 @@
 		} ) : null;
 
 		var panels = [
-			el( PanelBody, { key: 'what', title: __( 'Records', 'taxmod' ) }, display, picker, naming, single, node && comparison ? el( RecordList, { attributes: a, setAttributes: props.setAttributes, node: node } ) : null )
+			el( PanelBody, { key: 'what', title: __( 'Records', 'taxmod' ) }, display, picker, naming, single, referring, node && comparison ? el( RecordList, { attributes: a, setAttributes: props.setAttributes, node: node } ) : null )
 		];
 
 		if ( node && comparison ) {

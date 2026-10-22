@@ -352,8 +352,23 @@ final class NodesScreen
      */
     public function collectedForReaders(int $recordId, array $path, array $columns, int $whereField, int $whereValue, string $locale): string
     {
-        $ids = $this->data->recordsAlong($recordId, $path, $whereField, $whereValue);
+        return $this->recordsTableForReaders($this->data->recordsAlong($recordId, $path, $whereField, $whereValue), $columns, $locale);
+    }
 
+    /**
+     * Die Sätze, deren Feld `via` auf diesen Satz zeigt, als Tabelle für Leser — die Anzeige «Rückverweise» (D-916): etwa die Käufe
+     * unter einer Platinen-Revision. Felder des Ziels einer Spalte hängt die Tabelle über `target_columns` an (D-955).
+     *
+     * @param list<int> $columns
+     */
+    public function referrersForReaders(int $recordId, int $via, array $columns, string $locale): string
+    {
+        return $via === 0 ? '' : $this->recordsTableForReaders($this->data->referrersVia($recordId, $via), $columns, $locale);
+    }
+
+    /** @param list<int> $ids @param list<int> $columns */
+    private function recordsTableForReaders(array $ids, array $columns, string $locale): string
+    {
         if ($ids === [] || $columns === []) {
             return '';
         }

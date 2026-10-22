@@ -1900,6 +1900,28 @@ final class DataEntry
     }
 
     /**
+     * Die Sätze, die über das Feld `$fieldId` auf diesen Satz zeigen, in der Reihenfolge ihrer Nummern — die «Rückverweise» des
+     * Satz-Blocks (D-916). Eine Abfrage (`CD-7`).
+     *
+     * @return list<int>
+     */
+    public function referrersVia(int $recordId, int $fieldId): array
+    {
+        $ids = [];
+
+        foreach ($this->referrersOf($recordId) as $zeile) {
+            if ($zeile->relationId === $fieldId) {
+                $ids[$zeile->recordId] = true;
+            }
+        }
+
+        $ids = array_keys($ids);
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
      * Die Sätze am Ende eines Weges über Satzverweise — je Schritt eine Abfrage (`CD-7`), jeder Satz einmal, in der Reihenfolge des Findens ([D-955](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Gebaut für die Datenblätter einer Stückliste: Revision → Positionen → Part → Quellen. Mit `$whereField` bleibt am Ende nur, wer
