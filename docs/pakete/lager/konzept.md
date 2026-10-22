@@ -154,6 +154,14 @@ Jeder Satz erbt «Bezeichnung» und «Beschreibung» von `Model` ([D-883](../../
 | Übergeordnet | Satzverweis → Lagerorte | 0..1 | Regal › Kiste › Fach |
 | Kurzzeichen | Text | 0..1 | was auf dem Etikett steht, z. B. «S1-03» |
 
+**Abgelöst durch [D-972](../../NewConcept/90-decision-log.md) (2026-10-22):** vier Orte nach Typ — «Bauteile» (der Satz «Lager», 43122), «Platinen», «Verbrauchsmaterial», «Werkstatt/Geräte». Der Wareneingang schlägt den Ort vor und lässt ihn ändern:
+
+1. «Standard-Lagerort» des Materials, wenn gesetzt;
+2. sonst der Ort, der im Lager-Reiter für den Typ des Kaufs eingestellt ist (Platine · Verbrauch · Gerät · Bauteil);
+3. sonst «Bauteile».
+
+Der Typ kommt, bis die Kaufart ([D-969](../../NewConcept/90-decision-log.md)) gebaut ist, aus dem Zweig von «Modell» bzw. «Bezug Ding» (unter «Platine» → Platine); ohne Treffer Bauteil (INFERRED). Verbrauchsmaterial ist ein Material ohne Bezug; der Verbrauch sind Entnahmen. Geräte und Werkzeug werden Exemplare mit Kaufpreis, Kaufdatum und Garantie — gebaut: nein.
+
 ### 3.2 Material
 
 | Feld | Typ | Mult. | Zweck |
