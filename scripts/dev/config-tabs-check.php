@@ -53,6 +53,31 @@ $pruefe(str_contains((new SettingsScreen())->render(), 'Stock, version 9.8.7'), 
 update_option(\Taxmod\WordPress\Admin\NodesScreen::DEVELOPER_OPTION, $entwickler, true);
 $pruefe(str_contains($seite, '<aside class="postbox taxmod-guide"') && str_contains($seite, '__ct-guide') && strpos($seite, '__ct-stock') < strpos($seite, '__ct-guide'), 'a module guide stands as a box beside the form');
 
+// ⚠️ *D-981: «als standard und vielleicht an der gleichen stelle überall … also zugangsdaten, intervalle und ander einstellungen».*
+$abruf = new class implements \Taxmod\Core\Import\FetchingSource {
+    public function key(): string { return '__ct_src'; }
+    public function label(): string { return 'CT'; }
+    public function interval(): int { return 6 * HOUR_IN_SECONDS; }
+    public function fetch(?string $cursor): \Taxmod\Core\Import\FetchBatch { return new \Taxmod\Core\Import\FetchBatch([], null); }
+};
+add_filter(\Taxmod\WordPress\Import\Sources::FILTER, static fn (array $sources): array => [...$sources, $abruf]);
+add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs + [
+    'ctsrc' => ['title' => 'CT', 'source' => '__ct_src', 'credentials' => static fn (): string => '<p id="__ct-keys">keys</p>', 'test' => static fn (): string => 'connected', 'forget' => static function (): void {}, 'render' => static fn (): string => '<p id="__ct-rest">rest</p>', 'save' => static function (array $post): void {}],
+]);
+$_GET['tab'] = 'ctsrc';
+$seite = (new SettingsScreen())->render();
+$pruefe(strpos($seite, '__ct-keys') < strpos($seite, 'name="' . \Taxmod\WordPress\Import\FetchInterval::FIELD . '"') && strpos($seite, 'name="' . \Taxmod\WordPress\Import\FetchInterval::FIELD . '"') < strpos($seite, '__ct-rest'), 'a module tab shows access, fetch interval and settings in that order');
+// ⚠️ *«button test connection unter die einlogdaten und die mit einem save button versehen».*
+$feld = strpos($seite, 'name="' . \Taxmod\WordPress\Import\FetchInterval::FIELD . '"');
+$pruefe(strpos($seite, 'name="' . SettingsScreen::TEST . '"') > strpos($seite, '__ct-keys') && strpos($seite, 'name="' . SettingsScreen::TEST . '"') < $feld && substr_count(substr($seite, 0, $feld), 'type="submit"') === 3, 'the access data have their own Save and «Test connection» right below');
+$pruefe(str_contains($seite, 'name="' . SettingsScreen::FORGET . '"') && str_contains($seite, 'return confirm('), '«Delete access data» asks before it deletes');
+$vorherTakt = get_option(\Taxmod\WordPress\Import\FetchInterval::OPTION, null);
+\Taxmod\WordPress\Import\FetchInterval::save('__ct_src', 'daily');
+$pruefe(\Taxmod\WordPress\Import\FetchInterval::of($abruf) === DAY_IN_SECONDS, 'the chosen interval wins over the module\'s own');
+\Taxmod\WordPress\Import\FetchInterval::save('__ct_src', '');
+$pruefe(\Taxmod\WordPress\Import\FetchInterval::of($abruf) === 6 * HOUR_IN_SECONDS, 'without a choice the module\'s own interval counts');
+$vorherTakt === null ? delete_option(\Taxmod\WordPress\Import\FetchInterval::OPTION) : update_option(\Taxmod\WordPress\Import\FetchInterval::OPTION, $vorherTakt, false);
+
 unset($_GET['tab']);
 $seite = (new SettingsScreen())->render();
 $pruefe(str_contains($seite, 'nav-tab') && ! str_contains($seite, '__ct-stock') && str_contains($seite, 'neutral_locale'), 'General still shows the installation settings');

@@ -2,6 +2,9 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Import\FetchingSource;
+use Taxmod\WordPress\Import\FetchInterval;
+use Taxmod\WordPress\Import\Sources;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\ToggleMarkup;
 use Taxmod\WordPress\Persistence\Schema;
@@ -45,6 +48,10 @@ final class SettingsScreen
     public const ACTION = 'taxmod_settings';
 
     /** Where a module registers its tab ([D-945](../../../docs/NewConcept/90-decision-log.md)). */
+    /** The «Test connection» button and the transient that carries its answer to the next page (D-981). */
+    public const TEST = 'taxmod_test_connection';
+    public const FORGET = 'taxmod_forget_access';
+
     public const TABS_FILTER = 'taxmod_config_tabs';
 
     /** Which language stands for *everywhere* — the row stored without a locale. */
@@ -138,8 +145,20 @@ final class SettingsScreen
                 . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
                 . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
                 . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
+                // ⚠️ *Sein Wunsch vom 2026-10-23 (D-981): «als standard und vielleicht an der gleichen stelle überall … also
+                // zugangsdaten, intervalle und ander einstellungen». The page gives the order, the module the content; a part
+                // the module does not give is left out with its heading.*
                 // ⚠️ *Das Modul gibt fertiges, selbst escaptes HTML zurück (`CD-8`), wie jeder Renderer.*
-                . (string) ($reiter[$tab]['render'])()
+                // ⚠️ *Sein Wunsch vom 2026-10-23: «button test connection unter die einlogdaten und die mit einem save button versehen».*
+                . self::section(__('Access', 'taxmod'), $reiter[$tab]['credentials'] === null ? '' : (string) ($reiter[$tab]['credentials'])()
+                    . '<p>' . get_submit_button(__('Save', 'taxmod'), 'primary', 'submit', false)
+                    . ($reiter[$tab]['test'] === null ? '' : ' ' . get_submit_button(__('Test connection', 'taxmod'), 'secondary', self::TEST, false))
+                    // ⚠️ *«ja ein löschen button aber mit nachfrage wäre eine gute idee».*
+                    . ($reiter[$tab]['forget'] === null ? '' : ' ' . get_submit_button(__('Delete access data', 'taxmod'), 'delete', self::FORGET, false, [
+                        'onclick' => 'return confirm(' . wp_json_encode(__('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod')) . ')',
+                    ])) . '</p>')
+                . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle))
+                . self::section($reiter[$tab]['credentials'] === null && $quelle === null ? '' : __('Settings', 'taxmod'), (string) ($reiter[$tab]['render'])())
                 . get_submit_button(__('Save', 'taxmod'))
                 . '</form>';
 
@@ -564,7 +583,25 @@ final class SettingsScreen
 
         // ⚠️ *Ein Modul prüft und bereinigt seine eigenen Felder; Berechtigung und Nonce sind oben schon geprüft (D-945).*
         if (isset($reiter[$tab])) {
+            if (isset($_POST[self::FORGET]) && $reiter[$tab]['forget'] !== null) {
+                ($reiter[$tab]['forget'])();
+                set_transient(self::TEST . get_current_user_id(), __('The access data are deleted.', 'taxmod'), 60);
+                wp_safe_redirect(add_query_arg(['page' => 'taxmod-settings', 'tab' => $tab, 'taxmod_saved' => '1'], admin_url('admin.php')));
+
+                exit;
+            }
+
+            $quelle = self::fetchingSource($reiter[$tab]);
+
+            if ($quelle !== null && isset($_POST[FetchInterval::FIELD])) {
+                FetchInterval::save($quelle->key(), sanitize_key(wp_unslash((string) $_POST[FetchInterval::FIELD])));
+            }
+
             ($reiter[$tab]['save'])(wp_unslash($_POST));
+
+            if (isset($_POST[self::TEST]) && $reiter[$tab]['test'] !== null) {
+                set_transient(self::TEST . get_current_user_id(), (string) ($reiter[$tab]['test'])(), 60);
+            }
 
             wp_safe_redirect(add_query_arg(
                 ['page' => 'taxmod-settings', 'tab' => $tab, 'taxmod_saved' => '1'],
@@ -650,9 +687,14 @@ final class SettingsScreen
      * «General» plus one per active module, so the WordPress menu does not grow with every module.*
      *
      * ⚠️ *An optional `guide` (callable, returns escaped HTML) is drawn as a box beside the form: how to get the keys and
-     * what to do (D-963). An optional `version` (string) is shown under the tab bar in developer mode (D-968).*
+     * what to do (D-963). An optional `version` (string) is shown under the tab bar in developer mode (D-968). An optional
+     * `source` (the key of the module's fetching source) adds the fetch interval, and an optional `credentials` (callable,
+     * escaped HTML) the access data; the page draws them in one order for every module: access, fetching, settings (D-981).
+     * An optional `test` (callable, returns a plain sentence) puts «Test connection» beside the access data's own Save; it
+     * runs after the save, on what was just entered. An optional `forget` (callable) adds «Delete access data», asked
+     * before; it deletes and saves nothing else.*
      *
-     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null, version: string}>
+     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null, version: string, source: string, credentials: (callable(): string)|null, test: (callable(): string)|null, forget: (callable(): void)|null}>
      */
     public static function moduleTabs(): array
     {
@@ -672,10 +714,32 @@ final class SettingsScreen
                 'save'   => $tab['save'],
                 'guide'  => is_callable($tab['guide'] ?? null) ? $tab['guide'] : null,
                 'version' => sanitize_text_field((string) ($tab['version'] ?? '')),
+                'source' => sanitize_key((string) ($tab['source'] ?? '')),
+                'credentials' => is_callable($tab['credentials'] ?? null) ? $tab['credentials'] : null,
+                'test'   => is_callable($tab['test'] ?? null) ? $tab['test'] : null,
+                'forget' => is_callable($tab['forget'] ?? null) ? $tab['forget'] : null,
             ];
         }
 
         return $reiter;
+    }
+
+    /** One part of a module tab under its heading; nothing when the module gives nothing, no heading when there is none. */
+    private static function section(string $heading, string $html): string
+    {
+        if ($html === '') {
+            return '';
+        }
+
+        return ($heading === '' ? '' : '<h2>' . esc_html($heading) . '</h2>') . $html;
+    }
+
+    /** @param array{source: string} $tab */
+    private static function fetchingSource(array $tab): ?FetchingSource
+    {
+        $quelle = $tab['source'] === '' ? null : Sources::find($tab['source']);
+
+        return $quelle instanceof FetchingSource ? $quelle : null;
     }
 
     /** @param array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void}> $reiter */
@@ -705,8 +769,12 @@ final class SettingsScreen
             return '';
         }
 
+        $test = get_transient(self::TEST . get_current_user_id());
+        delete_transient(self::TEST . get_current_user_id());
+
         return '<div class="notice notice-success is-dismissible"><p>'
-            . esc_html__('Saved.', 'taxmod') . '</p></div>';
+            . esc_html__('Saved.', 'taxmod') . '</p></div>'
+            . (is_string($test) && $test !== '' ? '<div class="notice notice-info is-dismissible"><p>' . esc_html($test) . '</p></div>' : '');
     }
 
     /**

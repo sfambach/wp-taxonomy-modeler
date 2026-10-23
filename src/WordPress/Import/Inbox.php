@@ -125,7 +125,9 @@ final class Inbox
                 continue;
             }
 
-            if ($dueOnly && ($source->interval() <= 0 || time() - (int) ($last[$key]['at'] ?? 0) < $source->interval())) {
+            $interval = FetchInterval::of($source);
+
+            if ($dueOnly && ($interval <= 0 || time() - (int) ($last[$key]['at'] ?? 0) < $interval)) {
                 continue;
             }
 

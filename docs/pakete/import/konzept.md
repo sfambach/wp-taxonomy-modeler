@@ -158,7 +158,8 @@ interface EnrichingSource extends ImportSource   // JLC: ergänzt Vorschläge an
 - Ein Cron-Hook für alle; **Intervall je Quelle** im Reiter (aus, stündlich, 2× täglich, täglich; Standard täglich), dazu Knopf
   «Jetzt abrufen» je Quelle und «Alle abrufen» auf der Prüfseite. Sperre gegen doppelte Läufe, Zeitgrenze je Lauf (Strato).
 - **Reiter je Quelle** ([D-945](../../NewConcept/90-decision-log.md)) mit gemeinsamem Kopf: aktiv, Zugangsdaten (Tresor),
-  «Verbindung testen», Intervall, letzter Lauf + Fehler. Darunter, was nur die Quelle braucht.
+  «Verbindung testen», Intervall, letzter Lauf + Fehler. Darunter, was nur die Quelle braucht. Gebaut als feste Ordnung
+  Zugangsdaten → Abruftakt (vom Modeller gezeichnet) → übrige Einstellungen ([D-981](../../NewConcept/90-decision-log.md)).
 
 ### 3.8 Was tax_mail vom Eingang braucht (Rückmeldung aus dem Mail-Thread, 2026-10-21)
 
