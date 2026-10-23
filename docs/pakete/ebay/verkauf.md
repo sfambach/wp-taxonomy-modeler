@@ -1,6 +1,6 @@
 # Paket · eBay-Verkauf (tax_ebay, Teil 2): Angebote einstellen, Verkäufe versenden — Konzeptentwurf
 
-**Stand 2026-10-23. Nichts entschieden, nichts gebaut.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot).
+**Stand 2026-10-23. V1 = [D-975](../../NewConcept/90-decision-log.md), V2–V9 = [D-976](../../NewConcept/90-decision-log.md). Nichts gebaut.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot).
 Teil 1 (Käufe holen) steht in [`konzept.md`](konzept.md). Was er entscheiden soll, steht in §8 (V1–V9); alles andere ist mein
 Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
 
@@ -106,8 +106,7 @@ Neuer Knoten **«Angebote»** unter «Stock», ein Satz je eBay-Angebot (später
 Aufbau, Vorlage im eBay-Reiter einstellbar:
 
 1. **Kopf:** Bezeichnung, kurze Beschreibung (aus dem Beitrag-Auszug vorgeschlagen, editierbar).
-2. **Status-Block:** *geprüft* → «Von mir aufgebaut und in einem eigenen Projekt getestet.» / *ungeprüft* → «Unbestückt bzw. nicht
-   getestet, Verkauf als Bastlerware.» (Wortlaut `V4`).
+2. **Status-Block** ([D-976](../../NewConcept/90-decision-log.md)): *geprüft* → «Von mir selbst aufgebaut und geprüft.» / *ungeprüft* → «Gefertigt wie im Projekt des Entwicklers, nicht von mir geprüft. Fabrikationsmängel und Designfehler sind möglich.»
 3. **Lieferumfang** (aus dem Satz).
 4. **Footer** (einmal im Reiter gepflegt): Projektname, «Open-Source-Hardware, Dokumentation und Quellen liegen im Paket bei»,
    Lizenzhinweis (Hardware-Lizenz des Projekts, Markenhinweis), Versand/Abholung.
@@ -142,14 +141,14 @@ Davon hängt ab, welche Pflichtfelder das Angebot bekommt (`V1`).
 | | Frage | Mein Vorschlag |
 |---|---|---|
 | **V1** | Verkaufst du privat oder gewerblich bei eBay? | **entschieden: privat, vorerst ([D-975](../../NewConcept/90-decision-log.md))** |
-| **V2** | Nur Projektname im Angebot, Adressen nur im Beileger? | ja |
-| **V3** | Knoten «Angebote» unter «Stock» wie §4? | ja |
-| **V4** | Wortlaut geprüft/ungeprüft (bestückt? getestet?) | er formuliert |
-| **V5** | Bilder aus dem Beitrag vorschlagen, abwählbar? | ja |
-| **V6** | Festpreis oder auch Auktion? | erst nur Festpreis |
-| **V7** | Versandliste als eigene Seite oder im Eingang? | eigene Seite «Versand» |
-| **V8** | Versand an eBay melden (Sendungsnummer) aus dem Modeller? | ja |
-| **V9** | Reihenfolge | 1. Verkäufe holen + Versandliste, 2. Angebote einstellen, 3. Anzahl nachführen |
+| **V2** | Nur Projektname im Angebot, Adressen nur im Beileger? | **entschieden: ja** (D-976) |
+| **V3** | Knoten «Angebote» unter «Stock» wie §4? | **entschieden: ja** (D-976) |
+| **V4** | Wortlaut geprüft/ungeprüft | **entschieden** (D-976), siehe §5 |
+| **V5** | Bilder aus dem Beitrag vorschlagen, abwählbar? | **entschieden: ja** (D-976) |
+| **V6** | Festpreis oder auch Auktion? | **entschieden: erst nur Festpreis** (D-976) |
+| **V7** | Versandliste als eigene Seite oder im Eingang? | **entschieden: eigene Seite «Versand»** (D-976) |
+| **V8** | Versand an eBay melden (Sendungsnummer) aus dem Modeller? | **entschieden: ja** (D-976) |
+| **V9** | Reihenfolge | **entschieden: 1. Verkäufe holen + Versandliste, 2. Angebote einstellen, 3. Anzahl nachführen** (D-976) |
 
 ## 9 · Bauschritte (nach Entscheidung)
 
