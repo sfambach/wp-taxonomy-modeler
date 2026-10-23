@@ -141,7 +141,7 @@ final class SettingsScreen
             // ⚠️ *Sein Wunsch vom 2026-10-21 (D-963): «bei jedem api modul einen kasten recht … der die ganze prozedure
             // beschreibt wie man an die daten kommt und was man tun muss». The module gives the content, the page the place.*
             $guide = $reiter[$tab]['guide'] === null ? '' : (string) ($reiter[$tab]['guide'])();
-            $form  = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"' . ($guide === '' ? '' : ' style="flex:1 1 36em;min-width:0"') . '>'
+            $form  = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"' . ($guide === '' ? '' : ' style="flex:3 1 30em;min-width:0"') . '>'
                 . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
                 . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
                 . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
@@ -177,8 +177,9 @@ final class SettingsScreen
                 . ($guide === ''
                     ? $form
                     // ⚠️ *Das Modul gibt fertiges, selbst escaptes HTML zurück (`CD-8`), auch für den Kasten.*
+                    // ⚠️ *Sein Wunsch vom 2026-10-23: «schrift in der erklärbox ruhig größer aufteilung bildschirm 60% / 40%».*
                     : '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">' . $form
-                        . '<aside class="postbox taxmod-guide" style="flex:0 1 24em;padding:0 12px 12px;margin-top:1em"><h2>'
+                        . '<aside class="postbox taxmod-guide" style="flex:2 1 20em;min-width:0;padding:0 16px 16px;margin-top:1em;font-size:15px;line-height:1.6"><h2>'
                         . esc_html__('How to connect', 'taxmod') . '</h2>' . $guide . '</aside></div>')
                 . '</div>';
         }
