@@ -66,7 +66,7 @@ flowchart LR
 
 | Schritt | Aufruf | Bemerkung |
 |---|---|---|
-| einmalig | Geschäftsrichtlinien (Versand, Zahlung, Rücknahme) im eBay-Konto | Pflicht für die Inventory API; anlegen in «Mein eBay» oder per Account API |
+| einmalig | Geschäftsrichtlinien (Versand, Zahlung, Rücknahme) im eBay-Konto | Pflicht für die Inventory API; anlegen in «Mein eBay» oder per Account API. **Platinen: Versand 2,90 € mit Sendungsverfolgung** ([D-984](../../NewConcept/90-decision-log.md)) |
 | einmalig | Artikelstandort (`createInventoryLocation`) | nur Ort/PLZ |
 | je Angebot | `createOrReplaceInventoryItem` (SKU) | Titel, Beschreibung, Bilder (HTTPS-URLs), Zustand, Anzahl, Merkmale |
 | je Angebot | `createOffer` → `publishOffer` | Kategorie, Preis, Richtlinien → liefert die Angebotsnummer |
