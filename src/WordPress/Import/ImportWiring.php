@@ -45,6 +45,7 @@ final class ImportWiring
         }, 11);
 
         add_action('admin_post_' . InboxScreen::TAKE, static fn () => (new InboxScreen())->handleTake());
+        add_action('admin_post_' . InboxScreen::TAKE_BOX, static fn () => (new InboxScreen())->handleTakeBox());
         add_action('admin_post_' . InboxScreen::DISCARD, static fn () => (new InboxScreen())->handleDiscard());
         add_action('admin_post_' . InboxScreen::DISCARD_SELECTED, static fn () => (new InboxScreen())->handleDiscardSelected());
         add_action('admin_post_' . InboxScreen::FETCH, static fn () => (new InboxScreen())->handleFetch());

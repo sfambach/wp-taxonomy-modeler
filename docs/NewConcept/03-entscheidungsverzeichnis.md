@@ -108,6 +108,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wo steht die Version eines Moduls? | [D-968](90-decision-log.md) — unter der Reiterleiste, gemeldet als `version` in `taxmod_config_tabs` | — |
 | Wie zeigt die Inbox Teilbestellungen eines Kaufs? | [D-970](90-decision-log.md) — ein Kasten, Reihenfolge nach Eingang; Schlüssel `bundle` der Quelle, sonst Plattform + Bestelldatum der vorhandenen Bestellung | — |
 | Wohin übernimmt der Eingang Verkäufe? | [D-979](90-decision-log.md) — «Verkäufe» / «Verkaufte Artikel», eigene Ziel-Felder im Reiter «Import», Rollen von der Verkäuferseite | — |
+| In welcher Reihenfolge übernimmt der Eingang die Nachrichten einer Bestellung? | [D-980](90-decision-log.md) — nacheinander, wie sie kamen, jede ein eigener Akt; Datum aus der Nachricht; Kasten mit «Take all in order» | — |
 | Wann ist ein Bauteil von einem anderen Hersteller ein eigener Satz? | [D-971](90-decision-log.md) — aktive Teile nach Teilenummer (eigener Satz + Kompatibilität), passive nach Werten (gleiche Werte = ein Satz) | — |
 | Wohin bucht der Wareneingang? | [D-972](90-decision-log.md) — Standard-Lagerort des Materials, sonst Ort des Zweigs unter Model (Zuordnung Zweig → Ort im Lager-Reiter), ohne Bezug Verbrauchsmaterial, sonst «Bauteile»; änderbar | — |
 | Ergänzt der Eingang eine Bestellung, die schon da ist? | [D-964](90-decision-log.md) — ja, aus der für neue Bestellungen zuständigen Quelle: Leeres füllen, Widersprüche je Feld zur Wahl; nur Bestellfelder, keine Positionen | — |

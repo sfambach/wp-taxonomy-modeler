@@ -33,6 +33,7 @@ final class InboxScreen
 {
     public const PAGE = 'taxmod-inbox';
     public const TAKE = 'taxmod_inbox_take';
+    public const TAKE_BOX = 'taxmod_inbox_take_box';
     public const DISCARD = 'taxmod_inbox_discard';
     public const DISCARD_SELECTED = 'taxmod_inbox_discard_selected';
     private const BULK_FORM = 'taxmod-inbox-bulk';
@@ -121,6 +122,18 @@ final class InboxScreen
                 $head['orderDate'] === null ? '' : ' · ' . substr($head['orderDate'], 0, 10)
             )) . '</h2>';
 
+            $boxRows = array_merge(...array_map(static fn (int $index): array => $groups[$index], $box));
+            $boxIds = array_map(static fn (array $row): int => (int) $row['id'], $boxRows);
+            $html .= self::timeline($boxRows, true);
+
+            if ($model !== null) {
+                $html .= '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0 0 .5em">'
+                    . '<input type="hidden" name="proposals" value="' . esc_attr(implode(',', $boxIds)) . '">'
+                    . '<input type="hidden" name="groups" value="' . esc_attr(implode(';', array_map(static fn (int $index): string => implode(',', array_map(static fn (array $row): int => (int) $row['id'], $groups[$index])), $box))) . '">'
+                    . wp_nonce_field(self::nonceAction($boxIds), '_wpnonce', true, false)
+                    . '<button class="button button-primary" name="action" value="' . esc_attr(self::TAKE_BOX) . '">' . esc_html__('Take all in order', 'taxmod') . '</button></form>';
+            }
+
             foreach ($box as $index) {
                 $html .= $this->group($groups[$index], $model, $intake, true);
             }
@@ -193,14 +206,7 @@ final class InboxScreen
             . esc_attr__('Select', 'taxmod') . '" style="margin-right:.5em"> ' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber))
             . ' <small>· ' . esc_html(implode(', ', $labels)) . ' · ' . esc_html(self::kindLabel($proposal->kind)) . '</small>' . ($inBox ? '</h3>' : '</h2>');
 
-        foreach ($rows as $row) {
-            $evidence = (array) json_decode((string) ($row['evidence'] ?? ''), true);
-            $said = implode(' · ', array_filter(array_map('strval', array_intersect_key($evidence, array_flip(['subject', 'sender', 'received_at'])))));
-
-            if ($said !== '') {
-                $html .= '<p><small>' . esc_html($said) . '</small></p>';
-            }
-        }
+        $html .= $inBox ? '' : self::timeline($rows, false);
 
         if ($existing instanceof WP_Error) {
             $html .= '<p class="notice notice-error inline">' . esc_html($existing->get_error_message()) . '</p>';
@@ -274,6 +280,45 @@ final class InboxScreen
     }
 
     /** When a message came: as the source received it, else when the inbox filed it. */
+    /**
+     * Every message, oldest first, as one numbered list: when, order, what it says (D-970, D-980).
+     *
+     * @param list<array<string, mixed>> $rows
+     */
+    private static function timeline(array $rows, bool $withOrder): string
+    {
+        usort($rows, static fn (array $a, array $b): int => [self::when($a), (int) $a['id']] <=> [self::when($b), (int) $b['id']]);
+        $items = '';
+
+        foreach ($rows as $row) {
+            $evidence = (array) json_decode((string) ($row['evidence'] ?? ''), true);
+            $step = OrderProposal::fromArray((array) json_decode((string) $row['proposal'], true));
+            $parts = [substr(self::when($row), 0, 16)];
+
+            if ($withOrder) {
+                $parts[] = $step->orderNumber;
+            }
+
+            $parts[] = self::kindLabel($step->kind);
+
+            if ($step->trackingNumbers !== []) {
+                /* translators: %s: tracking numbers */
+                $parts[] = sprintf(__('tracking %s', 'taxmod'), implode(', ', $step->trackingNumbers));
+            }
+
+            $parts = [...$parts, ...array_filter(array_map('strval', array_intersect_key($evidence, array_flip(['subject', 'sender']))))];
+            $items .= '<li><small>' . esc_html(implode(' · ', array_filter($parts, static fn (string $part): bool => $part !== ''))) . '</small></li>';
+        }
+
+        return '<ol style="margin:.25em 0 .5em 1.5em">' . $items . '</ol>';
+    }
+
+    /** The proposal as the order it creates: tracking and delivery follow as steps of their own (D-980). */
+    private static function withoutStatus(OrderProposal $proposal): OrderProposal
+    {
+        return OrderProposal::fromArray(['tracking' => []] + $proposal->toArray());
+    }
+
     private static function when(array $row): string
     {
         return (string) (($row['received_at'] ?? '') !== '' && $row['received_at'] !== null ? $row['received_at'] : $row['created_at']);
@@ -448,6 +493,30 @@ final class InboxScreen
         $this->finish($result === true ? __('Taken into the model.', 'taxmod') : $result);
     }
 
+    /** Takes every order of one box, in the order their first messages came, every line of each (D-980). */
+    public function handleTakeBox(): void
+    {
+        $rows = $this->postedRows();
+        $byId = array_column($rows, null, 'id');
+        $failed = [];
+
+        foreach (explode(';', isset($_POST['groups']) ? sanitize_text_field(wp_unslash((string) $_POST['groups'])) : '') as $group) {
+            $groupRows = array_values(array_filter(array_map(static fn (string $id): ?array => $byId[absint($id)] ?? null, explode(',', $group))));
+
+            if ($groupRows === []) {
+                continue;
+            }
+
+            $result = $this->take($groupRows, null);
+
+            if ($result !== true) {
+                $failed[] = $result;
+            }
+        }
+
+        $this->finish($failed === [] ? __('Taken into the model.', 'taxmod') : implode(' ', array_unique($failed)));
+    }
+
     /**
      * Takes one group into the model — by hand from the page, or by {@see AutoTake} with every line.
      *
@@ -483,34 +552,79 @@ final class InboxScreen
         $origins = array_filter(array_map(static fn (array $row): string => (string) (((array) json_decode((string) ($row['evidence'] ?? ''), true))['origin'] ?? ''), $rows));
         /* translators: 1: source, 2: date */
         $originNote = $origins !== [] ? implode(' ', array_unique($origins)) : sprintf(__('Taken from the inbox (%1$s) on %2$s.', 'taxmod'), $label, wp_date('Y-m-d'));
-        $deliveredRows = array_values(array_filter($rows, static fn (array $row): bool => $row['kind'] === ProposalKind::Delivered->value));
-        $deliveredOn = $deliveredRows === [] ? null : substr((string) ($deliveredRows[0]['received_at'] ?? current_time('mysql')), 0, 10);
+        // ⚠️ *Sein Wunsch vom 2026-10-23: «eine box mit allen updates in der reihenfolge wie sie aufgetreten sind … und dann
+        // werden alle nacheinander eingespielt um das tracking zu haben» (D-980). The order itself comes from the merged
+        // proposal; every status message after it is its own write, in the order it arrived, so the record's history shows
+        // each step.*
+        usort($rows, static fn (array $a, array $b): int => [self::when($a), (int) $a['id']] <=> [self::when($b), (int) $b['id']]);
+        $written = [];
 
         try {
             if ($verdict === IntakeVerdict::NewOrder) {
                 $lines = $picked === null ? array_keys($proposal->lines) : array_values(array_intersect($picked, array_keys($proposal->lines)));
-                $changes = $builder->newOrder($proposal, $lines, $originNote, $deliveredOn);
-            } elseif ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
-                $changes = $builder->shipped($existing, $proposal->trackingNumbers);
+                $created = $model->write($builder->newOrder(self::withoutStatus($proposal), $lines, $originNote));
 
-                if (Duties::load()->allows((string) $rows[0]['source'], $proposal->platform, DutyRole::Orders, array_keys(Sources::all()))) {
-                    $changes = [...$changes, ...$builder->completed($existing, $proposal, $fields ?? OrderComparison::fills($proposal, $existing))];
+                if ($created instanceof WP_Error) {
+                    return $created->get_error_message();
                 }
 
-                if ($deliveredOn !== null && ($existing->receivedAt === null || $existing->receivedAt === '')) {
-                    $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
+                $written = $created;
+                $existing = new ExistingOrder((int) ($created['o'] ?? 0));
+            } elseif ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
+                if (Duties::load()->allows((string) $rows[0]['source'], $proposal->platform, DutyRole::Orders, array_keys(Sources::all()))) {
+                    $completed = $builder->completed($existing, $proposal, $fields ?? OrderComparison::fills($proposal, $existing));
+                    $result = $completed === [] ? [] : $model->write($completed);
+
+                    if ($result instanceof WP_Error) {
+                        return $result->get_error_message();
+                    }
                 }
             } else {
                 return self::verdictLabel($verdict);
             }
+
+            $shippedDone = $verdict === IntakeVerdict::NewOrder && $proposal->shippedDate !== null;
+
+            foreach ($rows as $row) {
+                $step = OrderProposal::fromArray((array) json_decode((string) $row['proposal'], true));
+                $changes = $builder->shipped($existing, $step->trackingNumbers);
+
+                // The date the message names, else the day it came (his word: «datum wird aus der nachricht genommen»).
+                if (! $shippedDone && $step->kind === ProposalKind::Shipped) {
+                    $changes = [...$changes, ...$builder->shippedOn($existing, substr($step->shippedDate ?? self::when($row), 0, 10))];
+                    $shippedDone = true;
+                }
+
+                $deliveredOn = $step->kind === ProposalKind::Delivered && ($existing->receivedAt === null || $existing->receivedAt === '')
+                    ? substr(self::when($row), 0, 10)
+                    : null;
+
+                if ($deliveredOn !== null) {
+                    $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
+                }
+
+                if ($changes === []) {
+                    continue;
+                }
+
+                $result = $model->write($changes);
+
+                if ($result instanceof WP_Error) {
+                    return $result->get_error_message();
+                }
+
+                $existing = new ExistingOrder(
+                    $existing->recordId,
+                    array_values(array_unique([...$existing->trackingNumbers, ...$step->trackingNumbers])),
+                    $deliveredOn ?? $existing->receivedAt,
+                    $existing->counterparty,
+                    $existing->orderDate,
+                    $existing->title,
+                    $existing->values,
+                );
+            }
         } catch (DomainError $refused) {
             return $refused->getMessage();
-        }
-
-        $written = $changes === [] ? [] : $model->write($changes);
-
-        if ($written instanceof WP_Error) {
-            return $written->get_error_message();
         }
 
         foreach ($rows as $row) {

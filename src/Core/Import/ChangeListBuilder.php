@@ -94,6 +94,18 @@ final class ChangeListBuilder
         ]]];
     }
 
+    /** @return list<array<string, mixed>> empty where the target has no «shipped on» — an order has none, a sale has */
+    public function shippedOn(ExistingOrder $order, string $date): array
+    {
+        if (! $this->target->hasOrderField('shipped_at')) {
+            return [];
+        }
+
+        return [['op' => 'set_values', 'record' => (string) $order->recordId, 'values' => [
+            (string) $this->target->orderField('shipped_at') => $date,
+        ]]];
+    }
+
     /**
      * @param list<string> $trackingNumbers
      * @return list<array<string, mixed>> empty when every number is already there

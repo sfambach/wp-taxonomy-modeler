@@ -106,6 +106,8 @@ $spaeter = $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Cart', 
 $frueher = $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Cart', 'S-1', ProposalKind::Shipped, trackingNumbers: ['T1'], source: '__ib', externalId: 'k1'), ['bundle' => 'cart-1', 'subject' => '__first']), '2026-10-22 09:00:00');
 $seite = (new InboxScreen())->render();
 $pruefe(substr_count($seite, '2 orders of one purchase') === 1 && strpos($seite, '__first') < strpos($seite, '__second'), 'sub-orders of one purchase share one box, in the order their mails came');
+// ⚠️ *Sein Wunsch vom 2026-10-23 (D-980): «eine box mit allen updates in der reihenfolge … und dann werden alle nacheinander eingespielt».*
+$pruefe(substr_count($seite, '__first') === 1 && str_contains($seite, 'S-1 · shipped · tracking T1') && str_contains($seite, 'value="' . InboxScreen::TAKE_BOX . '"') && has_action('admin_post_' . InboxScreen::TAKE_BOX) !== false, 'the box lists every message once, oldest first, and takes them all in order');
 $tisch->close($spaeter, \Taxmod\Core\Import\InboxStatus::Discarded);
 $tisch->close($frueher, \Taxmod\Core\Import\InboxStatus::Discarded);
 
