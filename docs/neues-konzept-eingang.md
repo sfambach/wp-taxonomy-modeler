@@ -1014,3 +1014,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Sein Wunsch:** *«für platinen bräuchten wir auch chargen glaube ich gleich version 2 bestellungen andere charge»*.
 - **Vorschlag (INFERRED):** Der Bestandsposten ist die Charge: ein Posten je Kauf, die Herkunft (Kauf → Bestellung, Datum) trennt zwei Bestellungen derselben Version ([D-956](NewConcept/90-decision-log.md)). Angezeigte Chargennummer = Bestellnummer; kein eigenes Feld.
+
+## INF-094 · Versandstufen für alle Verkaufsquellen
+
+**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, Thread «Taxmod eBay-Modul».
+
+- **Sein Wunsch:** *«und das später nicht nur für ebay sondern für alle aber das nur mal notieren»* — gemeint sind die Reiter Offen → Verpackt → Versendet → Empfangen der eBay-Versandseite ([D-985](NewConcept/90-decision-log.md)).
+- **Offen:** wo die Stufen dann leben (Modeller statt Modul-Option) und ob sie an der Bestellung im Modell stehen ([INF-087](#), [INF-088](#)).
