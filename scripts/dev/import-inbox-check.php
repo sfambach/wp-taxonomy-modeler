@@ -147,6 +147,15 @@ $pruefe(Targets::raw()['orders_node'] === 777 && Targets::raw()['required_parts'
 $pruefe(Targets::raw()['orders_node'] === 888, 'pasted JSON wins over the fields');
 $vorher === null ? delete_option(Targets::OPTION) : update_option(Targets::OPTION, $vorher, false);
 
+// ⚠️ *D-979: a sale goes to «Verkäufe» through its own targets, and stays in the inbox while they are not set.*
+$verkauf = new OrderProposal('eBay', 'S-1', ProposalKind::Sold, '2026-10-23', 'EUR', [new ProposalLine('Platine', 1, '10.00')]);
+$tor = new \Taxmod\WordPress\Import\ModelGateway(Targets::load());
+$pruefe($tor->side($verkauf)?->target->ordersNode === Targets::raw()['sales_node'] && $tor->side(new OrderProposal('eBay', 'K-1', ProposalKind::Ordered)) === $tor, 'a sale is looked up and written on the sales side, an order on the orders side');
+$pruefe(str_contains($reiterSeite, 'name="target[sale_fields][merchant]"') && str_contains($reiterSeite, 'name="target[sold_items_node]"'), 'the Import tab shows the sale targets');
+update_option(Targets::OPTION, ['sales_node' => 0], false);
+$pruefe((new \Taxmod\WordPress\Import\ModelGateway(Targets::load()))->side($verkauf) === null, 'without sale targets a sale is not taken');
+$vorher === null ? delete_option(Targets::OPTION) : update_option(Targets::OPTION, $vorher, false);
+
 // ⚠️ *Sein Wunsch vom 2026-10-21 (D-962): «automatisch übernehmen», aber «mail warte auf eintrag» — off by default, and a
 // run without a user acts as the one who switched it on.*
 update_option(AutoTake::OPTION, 0, false);

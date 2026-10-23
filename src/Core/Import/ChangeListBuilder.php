@@ -47,19 +47,20 @@ final class ChangeListBuilder
 
         $currency = $this->target->currency($proposal->currency);
         $rate = $this->frozenRate($proposal);
-        $orderValues = $this->withoutEmpty([
-            $this->target->orderField('title')        => $this->orderTitle($proposal, $pickedLines),
-            $this->target->orderField('platform')     => $proposal->platform,
-            $this->target->orderField('order_number') => $proposal->orderNumber,
-            $this->target->orderField('merchant')     => $proposal->counterparty,
-            $this->target->orderField('ordered_at')   => $proposal->orderDate,
-            $this->target->orderField('origin')       => ['values' => [(string) $this->target->originDocumented]],
-            $this->target->orderField('origin_note')  => $originNote,
-            $this->target->orderField('shipping_cost') => $this->amount('shipping_cost', $proposal->shippingCost, $currency, $rate, true),
-            $this->target->orderField('fees')         => $this->amount('fees', $proposal->fees, $currency, $rate, true),
-            $this->target->orderField('total')        => $this->amount('total', $proposal->total, $currency, $rate, true),
-            $this->target->orderField('tracking')     => $proposal->trackingNumbers === [] ? null : ['values' => $proposal->trackingNumbers],
-            $this->target->orderField('received_at')  => $receivedDate,
+        $orderValues = $this->onOrder([
+            'title'         => $this->orderTitle($proposal, $pickedLines),
+            'platform'      => $proposal->platform,
+            'order_number'  => $proposal->orderNumber,
+            'merchant'      => $proposal->counterparty,
+            'ordered_at'    => $proposal->orderDate,
+            'origin'        => ['values' => [(string) $this->target->originDocumented]],
+            'origin_note'   => $originNote,
+            'shipping_cost' => $this->amount('shipping_cost', $proposal->shippingCost, $currency, $rate, true),
+            'fees'          => $this->amount('fees', $proposal->fees, $currency, $rate, true),
+            'total'         => $this->amount('total', $proposal->total, $currency, $rate, true),
+            'tracking'      => $proposal->trackingNumbers === [] ? null : ['values' => $proposal->trackingNumbers],
+            'received_at'   => $receivedDate,
+            'shipped_at'    => $proposal->shippedDate,
         ]);
 
         $changes = [['op' => 'create_record', 'node' => $this->target->ordersNode, 'ref' => 'o']];
@@ -83,6 +84,11 @@ final class ChangeListBuilder
     /** @return list<array<string, mixed>> */
     public function delivered(ExistingOrder $order, string $date): array
     {
+        // A sale has no «received» date — the buyer's delivery is not his to record.
+        if (! $this->target->hasOrderField('received_at')) {
+            return [];
+        }
+
         return [['op' => 'set_values', 'record' => (string) $order->recordId, 'values' => [
             (string) $this->target->orderField('received_at') => $date,
         ]]];
@@ -138,17 +144,26 @@ final class ChangeListBuilder
     private function purchaseValues(ProposalLine $line, int $currency, ?string $rate, ?string $landedUnitPrice, string $originNote): array
     {
         $unit = Money::toUnits($line->unitPrice);
+        $values = [];
 
-        return $this->withoutEmpty([
-            $this->target->purchaseField('title')             => $line->title,
-            $this->target->purchaseField('quantity')          => $line->quantity === null ? null : self::quantity($line->quantity),
-            $this->target->purchaseField('article_number')    => $line->articleNumber,
-            $this->target->purchaseField('unit_price')        => $this->amount('unit_price', $line->unitPrice, $currency, $rate),
-            $this->target->purchaseField('total_price')       => $unit === null || $line->quantity === null ? null : $this->amount('total_price', Money::format((int) round($unit * $line->quantity)), $currency, $rate),
-            $this->target->purchaseField('landed_unit_price') => $this->amount('landed_unit_price', $landedUnitPrice, $currency, $rate),
-            $this->target->purchaseField('origin')            => ['values' => [(string) $this->target->originDocumented]],
-            $this->target->purchaseField('origin_note')       => $originNote,
-        ]);
+        // ⚠️ *A role the target does not name is left out, not refused: a sold item has no total and no landed price
+        // (D-977). The landed price of a sale would be the selling price plus shipping — not his cost.*
+        foreach ([
+            'title'             => $line->title,
+            'quantity'          => $line->quantity === null ? null : self::quantity($line->quantity),
+            'article_number'    => $line->articleNumber,
+            'unit_price'        => $this->amount('unit_price', $line->unitPrice, $currency, $rate),
+            'total_price'       => $unit === null || $line->quantity === null ? null : $this->amount('total_price', Money::format((int) round($unit * $line->quantity)), $currency, $rate),
+            'landed_unit_price' => $this->amount('landed_unit_price', $landedUnitPrice, $currency, $rate),
+            'origin'            => ['values' => [(string) $this->target->originDocumented]],
+            'origin_note'       => $originNote,
+        ] as $role => $value) {
+            if ($this->target->hasPurchaseField($role)) {
+                $values[$this->target->purchaseField($role)] = $value;
+            }
+        }
+
+        return $this->withoutEmpty($values);
     }
 
     /** @return array<int, string> line index => landed price per piece */
@@ -190,6 +205,10 @@ final class ChangeListBuilder
         $units = Money::toUnits($amount);
 
         if ($units === null) {
+            return null;
+        }
+
+        if (! ($onOrder ? $this->target->hasOrderField($role) : $this->target->hasPurchaseField($role))) {
             return null;
         }
 
@@ -235,6 +254,26 @@ final class ChangeListBuilder
         $more = count($pickedLines) > 1 ? sprintf(' (+%d)', count($pickedLines) - 1) : '';
 
         return trim($proposal->platform . ' ' . $proposal->orderNumber . ($first === '' ? '' : ' · ' . $first . $more));
+    }
+
+    /**
+     * The order's values by relation id. Title, platform and number are what the order is found by, so a target without
+     * them is refused; any other role the target does not name is left out.
+     *
+     * @param array<string, mixed> $byRole
+     * @return array<string, mixed>
+     */
+    private function onOrder(array $byRole): array
+    {
+        $values = [];
+
+        foreach ($byRole as $role => $value) {
+            if (in_array($role, ['title', 'platform', 'order_number'], true) || $this->target->hasOrderField($role)) {
+                $values[$this->target->orderField($role)] = $value;
+            }
+        }
+
+        return $this->withoutEmpty($values);
     }
 
     private static function shorten(string $text): string

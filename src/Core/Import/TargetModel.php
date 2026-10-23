@@ -23,6 +23,12 @@ final class TargetModel
      * @param array<string, int> $currencies ISO code => unit node id
      * @param list<int> $requiredParts unit-value fields with multiplicity 1..1 — their part exists on a new record
      * @param int|null $rateField the unit value's frozen rate (D-966); `null` freezes nothing
+     * @param array<string, int> $saleFields role => relation id on «Verkäufe» (D-934, D-977), the order roles read from
+     *        the seller's side: merchant is the buyer, ordered_at the day sold, shipping_cost the shipping the buyer paid;
+     *        shipped_at is the sale's own
+     * @param array<string, int> $soldItemFields role => relation id on «Verkaufte Artikel»: title, origin, origin_note,
+     *        quantity, article_number, unit_price
+     * @param list<int> $saleRequiredParts like $requiredParts, for the sale side
      */
     public function __construct(
         public readonly int $ordersNode,
@@ -35,7 +41,46 @@ final class TargetModel
         public readonly array $currencies,
         public readonly array $requiredParts = [],
         public readonly ?int $rateField = null,
+        public readonly int $salesNode = 0,
+        public readonly int $soldItemsNode = 0,
+        public readonly array $saleFields = [],
+        public readonly array $soldItemFields = [],
+        public readonly array $saleRequiredParts = [],
     ) {
+    }
+
+    /**
+     * Where a sale goes (D-977): the same shape with «Verkäufe» as the orders and «Verkaufte Artikel» as the purchases,
+     * so one builder and one lookup serve both. `null` while the sale targets are not set.
+     */
+    public function forSales(): ?self
+    {
+        if ($this->salesNode === 0 || $this->soldItemsNode === 0 || $this->saleFields === [] || $this->soldItemFields === []) {
+            return null;
+        }
+
+        return new self(
+            $this->salesNode,
+            $this->soldItemsNode,
+            $this->originDocumented,
+            $this->amountField,
+            $this->unitField,
+            $this->saleFields,
+            $this->soldItemFields,
+            $this->currencies,
+            $this->saleRequiredParts,
+            $this->rateField,
+        );
+    }
+
+    public function hasOrderField(string $role): bool
+    {
+        return isset($this->orderFields[$role]);
+    }
+
+    public function hasPurchaseField(string $role): bool
+    {
+        return isset($this->purchaseFields[$role]);
     }
 
     public function currency(string $isoCode): int

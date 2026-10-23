@@ -156,6 +156,48 @@ final class ImportChangeListTest extends TestCase
         self::assertSame(['0' => ['4234' => '132', '4236' => '8571']], (new ChangeListBuilder(self::target()))->completed($existing, $proposal, ['total'])[0]['values']['111']);
     }
 
+    public function testASaleGoesToTheSalesNodeWithoutTotalOrLandedPrice(): void
+    {
+        $proposal = new OrderProposal('eBay', '02-13629-54922', ProposalKind::Sold, '2025-09-24', 'EUR', [
+            new ProposalLine('greaseweazle 4.1', 2, '25.00', '12345'),
+        ], shippingCost: '4.50', total: '54.50', counterparty: 'ph_67684', fees: '0', shippedDate: '2025-09-25');
+
+        self::assertNull(self::target()->forSales(), 'no sale targets, no sales');
+
+        $changes = (new ChangeListBuilder(self::salesTarget()->forSales()))->newOrder($proposal, [0], 'Aus eBay.');
+
+        self::assertSame(['op' => 'create_record', 'node' => 30, 'ref' => 'o'], $changes[0]);
+        self::assertSame(['op' => 'create_record', 'node' => 40, 'ref' => 'p0'], $changes[1]);
+        self::assertSame([
+            '201' => 'greaseweazle 4.1',
+            '403' => '2',
+            '404' => '12345',
+            '405' => ['0' => ['4234' => '25', '4236' => '8571']],
+            '202' => ['values' => ['99']],
+            '208' => 'Aus eBay.',
+        ], $changes[2]['values'], 'a sold item has no total and no landed price; its price is a required part');
+
+        $sale = $changes[3]['values'];
+        self::assertSame('ph_67684', $sale['306']);
+        self::assertSame('2025-09-25', $sale['314']);
+        self::assertSame(['neu' => ['4234' => '4.5', '4236' => '8571']], $sale['309']);
+        self::assertSame(['values' => ['@p0']], $sale['313']);
+        self::assertSame([], (new ChangeListBuilder(self::salesTarget()->forSales()))->delivered(new ExistingOrder(7), '2025-09-30'), 'a sale has no received date');
+    }
+
+    private static function salesTarget(): TargetModel
+    {
+        $orders = self::target();
+
+        return new TargetModel(10, 20, 99, 4234, 4236, $orders->orderFields, $orders->purchaseFields, $orders->currencies, [205, 206], null, 30, 40, [
+            'title' => 101, 'origin' => 202, 'origin_note' => 208, 'order_number' => 304, 'platform' => 305,
+            'merchant' => 306, 'ordered_at' => 307, 'shipped_at' => 314, 'shipping_cost' => 309, 'fees' => 310,
+            'total' => 311, 'tracking' => 312, 'lines' => 313,
+        ], [
+            'title' => 201, 'origin' => 202, 'origin_note' => 208, 'quantity' => 403, 'article_number' => 404, 'unit_price' => 405,
+        ], [405]);
+    }
+
     private static function target(?int $rateField = null): TargetModel
     {
         return new TargetModel(10, 20, 99, 4234, 4236, [

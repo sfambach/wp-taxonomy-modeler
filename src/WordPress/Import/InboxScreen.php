@@ -211,7 +211,7 @@ final class InboxScreen
         }
 
         $verdict = $intake->decide((string) $rows[0]['source'], $proposal, $existing);
-        $canTake = $model !== null && ($verdict === IntakeVerdict::Update || ($verdict === IntakeVerdict::NewOrder && $proposal->kind !== ProposalKind::Sold));
+        $canTake = $model?->side($proposal) !== null && in_array($verdict, [IntakeVerdict::Update, IntakeVerdict::NewOrder], true);
 
         $html .= '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="proposals" value="' . esc_attr(implode(',', $ids)) . '">'
@@ -226,8 +226,8 @@ final class InboxScreen
                 $proposal->currency
             )) . '</p>';
 
-            if ($proposal->kind === ProposalKind::Sold) {
-                $html .= '<p>' . esc_html__('Sales cannot be taken over yet — the inbox has no target for them.', 'taxmod') . '</p>';
+            if ($model !== null && $model->side($proposal) === null) {
+                $html .= '<p>' . esc_html__('Sales cannot be taken over — set the sale targets in the «Import» tab.', 'taxmod') . '</p>';
             }
         } else {
             $html .= '<p>' . esc_html(self::verdictLabel($verdict)) . '</p>';
@@ -462,10 +462,16 @@ final class InboxScreen
             return __('Nothing taken.', 'taxmod');
         }
 
-        $targets = Targets::load();
-        $model = new ModelGateway($targets);
         $proposal = self::merged($rows);
-        $existing = self::existing($model, $proposal);
+        $root = new ModelGateway(Targets::load());
+        $model = $root->side($proposal);
+
+        if ($model === null) {
+            return __('Sales cannot be taken over — set the sale targets in the «Import» tab.', 'taxmod');
+        }
+
+        $targets = $model->target;
+        $existing = self::existing($root, $proposal);
 
         if ($existing instanceof WP_Error) {
             return $existing->get_error_message();
@@ -481,7 +487,7 @@ final class InboxScreen
         $deliveredOn = $deliveredRows === [] ? null : substr((string) ($deliveredRows[0]['received_at'] ?? current_time('mysql')), 0, 10);
 
         try {
-            if ($verdict === IntakeVerdict::NewOrder && $proposal->kind !== ProposalKind::Sold) {
+            if ($verdict === IntakeVerdict::NewOrder) {
                 $lines = $picked === null ? array_keys($proposal->lines) : array_values(array_intersect($picked, array_keys($proposal->lines)));
                 $changes = $builder->newOrder($proposal, $lines, $originNote, $deliveredOn);
             } elseif ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
@@ -527,9 +533,11 @@ final class InboxScreen
         }
 
         $proposal = self::merged($rows);
-        $existing = self::existing(new ModelGateway(Targets::load()), $proposal);
+        $root = new ModelGateway(Targets::load());
+        $model = $root->side($proposal);
+        $existing = $model === null ? null : self::existing($root, $proposal);
 
-        if ($existing instanceof WP_Error) {
+        if ($model === null || $existing instanceof WP_Error) {
             return false;
         }
 
@@ -540,7 +548,7 @@ final class InboxScreen
             return false;
         }
 
-        return $verdict === IntakeVerdict::Update || ($verdict === IntakeVerdict::NewOrder && $proposal->kind !== ProposalKind::Sold);
+        return in_array($verdict, [IntakeVerdict::Update, IntakeVerdict::NewOrder], true);
     }
 
     /** @return list<array<string, mixed>> */
@@ -566,9 +574,16 @@ final class InboxScreen
         }
     }
 
+    /** @param ModelGateway $model the gateway of the orders; a sale is looked up on its own side */
     private static function existing(ModelGateway $model, OrderProposal $proposal): ExistingOrder|WP_Error|null
     {
-        return $proposal->numberMissing ? $model->findLoose($proposal) : $model->findOrder($proposal->platform, $proposal->orderNumber);
+        $side = $model->side($proposal);
+
+        if ($side === null) {
+            return null;
+        }
+
+        return $proposal->numberMissing ? $side->findLoose($proposal) : $side->findOrder($proposal->platform, $proposal->orderNumber);
     }
 
     /** @param non-empty-list<array<string, mixed>> $rows */

@@ -48,8 +48,35 @@ final class Targets
             'total_price'       => 149000110049,
             'landed_unit_price' => 149000110065,
         ],
+        // Sales (D-934, D-977): measured with taxmod/read-node on fambach.net, 2026-10-23.
+        'sales_node'        => 149000110053,
+        'sold_items_node'   => 149000110052,
+        'sale_fields'       => [
+            'title'         => 149000103839,
+            'origin'        => 149000108187,
+            'origin_note'   => 149000108188,
+            'order_number'  => 149000110072,
+            'platform'      => 149000110073,
+            'merchant'      => 149000110074,
+            'ordered_at'    => 149000110075,
+            'shipped_at'    => 149000110076,
+            'shipping_cost' => 149000110077,
+            'fees'          => 149000110079,
+            'total'         => 149000110080,
+            'tracking'      => 149000110081,
+            'lines'         => 149000110082,
+        ],
+        'sold_item_fields'  => [
+            'title'          => 149000103839,
+            'origin'         => 149000108187,
+            'origin_note'    => 149000108188,
+            'quantity'       => 149000110067,
+            'article_number' => 149000110066,
+            'unit_price'     => 149000110068,
+        ],
         'currencies'        => ['EUR' => 8571, 'USD' => 8573, 'GBP' => 8582, 'AUD' => 149000109994],
         'required_parts'    => [149000110048, 149000110049],
+        'sale_required_parts' => [149000110068],
     ];
 
     /** @return array<string, mixed> the stored map over the defaults; `mixed` because it nests */
@@ -81,6 +108,11 @@ final class Targets
             array_values($ids((array) $merged['required_parts'])),
             // The rate field is structure of the unit value, not a target to choose (D-068, D-966).
             UnitScaffold::rateFieldId(),
+            (int) $merged['sales_node'],
+            (int) $merged['sold_items_node'],
+            $ids((array) $merged['sale_fields']),
+            $ids((array) $merged['sold_item_fields']),
+            array_values($ids((array) $merged['sale_required_parts'])),
         );
     }
 

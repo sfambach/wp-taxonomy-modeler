@@ -6,6 +6,7 @@ use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\LooseMatch;
 use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
+use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\TargetModel;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 use WP_Error;
@@ -24,8 +25,25 @@ final class ModelGateway
     /** @var array<string, string> platform|number => platform as written */
     private array $platforms = [];
 
-    public function __construct(private readonly TargetModel $target)
+    private ?self $sales = null;
+
+    public function __construct(public readonly TargetModel $target)
     {
+    }
+
+    /**
+     * The gateway a proposal is looked up and written through: a sale goes to «Verkäufe» (D-977), everything else to the
+     * orders. `null` for a sale while the sale targets are not set.
+     */
+    public function side(OrderProposal $proposal): ?self
+    {
+        if ($proposal->kind !== ProposalKind::Sold) {
+            return $this;
+        }
+
+        $sales = $this->target->forSales();
+
+        return $sales === null ? null : ($this->sales ??= new self($sales));
     }
 
     public static function available(): bool
@@ -98,14 +116,15 @@ final class ModelGateway
 
         $platformField = $this->target->orderField('platform');
         $numberField = $this->target->orderField('order_number');
-        $trackingField = $this->target->orderField('tracking');
-        $receivedField = $this->target->orderField('received_at');
+        // A role the target does not name (a sale has no «received») matches no relation.
+        $trackingField = $this->target->hasOrderField('tracking') ? $this->target->orderField('tracking') : -1;
+        $receivedField = $this->target->hasOrderField('received_at') ? $this->target->orderField('received_at') : -2;
         $merchantField = $this->target->orderField('merchant');
         $orderedField = $this->target->orderField('ordered_at');
         $titleField = $this->target->orderField('title');
         $amountFields = [];
 
-        foreach (['shipping_cost', 'fees', 'total'] as $role) {
+        foreach (array_filter(['shipping_cost', 'fees', 'total'], $this->target->hasOrderField(...)) as $role) {
             $amountFields[$this->target->orderField($role)] = $role;
         }
 

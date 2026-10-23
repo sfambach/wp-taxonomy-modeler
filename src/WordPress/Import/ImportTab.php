@@ -41,6 +41,8 @@ final class ImportTab
         return [
             'orders_node'       => ['node', __('Orders node', 'taxmod')],
             'purchases_node'    => ['node', __('Purchases node', 'taxmod')],
+            'sales_node'        => ['node', __('Sales node', 'taxmod')],
+            'sold_items_node'   => ['node', __('Sold items node', 'taxmod')],
             'origin_documented' => ['', __('Origin value «documented» (record id)', 'taxmod')],
             'amount_field'      => ['', __('Amount field of a line', 'taxmod')],
             'unit_field'        => ['', __('Unit field of a line', 'taxmod')],
@@ -55,6 +57,8 @@ final class ImportTab
             'node'     => $nodes,
             'order'    => $this->fieldNames((int) $targets['orders_node']),
             'purchase' => $this->fieldNames((int) $targets['purchases_node']),
+            'sale'     => $this->fieldNames((int) $targets['sales_node']),
+            'sold'     => $this->fieldNames((int) $targets['sold_items_node']),
         ];
 
         $html = '<h2>' . esc_html__('Take automatically', 'taxmod') . '</h2><p><label><input type="hidden" name="auto_take" value="0">'
@@ -63,7 +67,7 @@ final class ImportTab
             . '</label></p>';
 
         $html .= '<h2>' . esc_html__('Where taken orders go', 'taxmod') . '</h2><p>'
-            . esc_html__('Node and field ids for orders and purchases, the same for every module. Type an id or pick from the list; change them only when the tree was rebuilt.', 'taxmod') . '</p>';
+            . esc_html__('Node and field ids for orders, purchases and sales, the same for every module. Type an id or pick from the list; change them only when the tree was rebuilt.', 'taxmod') . '</p>';
 
         foreach ($lists as $list => $names) {
             $html .= '<datalist id="taxmod-import-' . esc_attr($list) . '">';
@@ -81,7 +85,14 @@ final class ImportTab
             $rows .= $this->row('target[' . $key . ']', $label, (int) $targets[$key], $list, $lists[$list] ?? []);
         }
 
-        foreach (['order_fields' => ['order', __('Order', 'taxmod')], 'purchase_fields' => ['purchase', __('Purchase', 'taxmod')]] as $group => [$list, $title]) {
+        $groups = [
+            'order_fields'     => ['order', __('Order', 'taxmod')],
+            'purchase_fields'  => ['purchase', __('Purchase', 'taxmod')],
+            'sale_fields'      => ['sale', __('Sale', 'taxmod')],
+            'sold_item_fields' => ['sold', __('Sold item', 'taxmod')],
+        ];
+
+        foreach ($groups as $group => [$list, $title]) {
             foreach ((array) $targets[$group] as $role => $id) {
                 $rows .= $this->row('target[' . $group . '][' . $role . ']', $title . ': ' . $role, (int) $id, $list, $lists[$list]);
             }
@@ -94,7 +105,11 @@ final class ImportTab
         $html .= '<table class="form-table" role="presentation"><tbody>' . $rows . '</tbody></table>'
             . '<p><label for="taxmod-import-required"><strong>' . esc_html__('Purchase fields a line must fill (ids, comma separated)', 'taxmod') . '</strong></label><br>'
             . '<input type="text" id="taxmod-import-required" name="target[required_parts]" class="regular-text" value="'
-            . esc_attr(implode(', ', array_map('intval', (array) $targets['required_parts']))) . '"></p>';
+            . esc_attr(implode(', ', array_map('intval', (array) $targets['required_parts']))) . '"></p>'
+            . '<p><label for="taxmod-import-sale-required"><strong>' . esc_html__('Sold item fields a line must fill (ids, comma separated)', 'taxmod') . '</strong></label><br>'
+            . '<input type="text" id="taxmod-import-sale-required" name="target[sale_required_parts]" class="regular-text" value="'
+            . esc_attr(implode(', ', array_map('intval', (array) $targets['sale_required_parts']))) . '"></p>'
+            . '<p class="description">' . esc_html__('A sale uses the order roles from the seller\'s side: merchant is the buyer, ordered_at the day sold, shipping_cost the shipping the buyer paid.', 'taxmod') . '</p>';
 
         return $html . '<details><summary>' . esc_html__('All at once as JSON', 'taxmod') . '</summary><p>'
             . esc_html__('Pasted JSON replaces the fields above. Left empty, the fields count.', 'taxmod') . '</p>'
@@ -173,8 +188,10 @@ final class ImportTab
 
         $fields = (array) ($post['target'] ?? []);
 
-        if (isset($fields['required_parts'])) {
-            $fields['required_parts'] = array_values(array_filter(array_map('trim', explode(',', (string) $fields['required_parts'])), 'is_numeric'));
+        foreach (['required_parts', 'sale_required_parts'] as $list) {
+            if (isset($fields[$list])) {
+                $fields[$list] = array_values(array_filter(array_map('trim', explode(',', (string) $fields[$list])), 'is_numeric'));
+            }
         }
 
         Targets::save($fields);

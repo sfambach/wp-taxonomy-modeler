@@ -147,6 +147,8 @@ interface EnrichingSource extends ImportSource   // JLC: ergänzt Vorschläge an
 - **Nur über `taxmod/write-data`** ([D-936](../../NewConcept/90-decision-log.md)), eine Liste, alles oder nichts.
 - **Ziel-Knoten und -Felder einmal im Reiter «General»** gewählt, nicht je Quelle (heute `taxmail_targets`) — Bestellungen,
   Käufe, Verkäufe sind für alle Quellen dieselben ([D-933](../../NewConcept/90-decision-log.md), [D-934](../../NewConcept/90-decision-log.md), Baum im Umbau [D-940](../../NewConcept/90-decision-log.md)).
+- **Verkäufe** (Art `sold`) gehen nach «Verkäufe» / «Verkaufte Artikel», mit eigenen Ziel-Feldern und denselben Rollen, von
+  der Verkäuferseite gelesen ([D-979](../../NewConcept/90-decision-log.md)).
 - Beträge als Einheitenwert ([D-929](../../NewConcept/90-decision-log.md)).
 - Danach **ein** Ereignis für alle: `taxmod_import_written` (Quelle, Plattform, Satz-Id, Art). tax_stock hört darauf, statt auf
   `taxmail_order_written`, `taxebay_*` und `taxapijlcpcb_*` einzeln.
