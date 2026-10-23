@@ -102,7 +102,9 @@ final class ImportIntakeTest extends TestCase
         $withTotal = new OrderProposal('eBay', '18-1', ProposalKind::Ordered, currency: 'EUR', total: '132');
 
         self::assertSame(IntakeVerdict::Update, $intake->decide('ebay', $withTotal, $existing), 'the API is the truth for eBay (D-950)');
-        self::assertSame(IntakeVerdict::NotResponsible, $intake->decide('mail', $withTotal, $existing), 'the mail only brings status');
+        self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', $withTotal, $existing), 'order fields are no news to a status source');
+        self::assertSame(IntakeVerdict::Update, $intake->decide('mail', new OrderProposal('eBay', '18-1', ProposalKind::Shipped, total: '132', trackingNumbers: ['T9']), $existing), 'its status part still counts');
+        self::assertSame(IntakeVerdict::NotResponsible, (new Intake(DutyTable::initial(), ['ebay', 'mail', 'other']))->decide('other', $withTotal, $existing), 'a source with no duty for the platform is not responsible');
         self::assertSame(IntakeVerdict::Nothing, $intake->decide('ebay', $withTotal, new ExistingOrder(7, values: ['total' => '132 EUR'])));
     }
 

@@ -48,10 +48,17 @@ final class Intake
                 return IntakeVerdict::Nothing;
             }
 
-            $mayStatus = $status && $this->duties->allows($source, $proposal->platform, DutyRole::Status, $this->activeSources);
+            $statusSource = $this->duties->allows($source, $proposal->platform, DutyRole::Status, $this->activeSources);
+            $mayStatus = $status && $statusSource;
             $mayFields = $fields && $this->duties->allows($source, $proposal->platform, DutyRole::Orders, $this->activeSources);
 
-            return $mayStatus || $mayFields ? IntakeVerdict::Update : IntakeVerdict::NotResponsible;
+            if ($mayStatus || $mayFields) {
+                return IntakeVerdict::Update;
+            }
+
+            // ⚠️ *Order fields a status source may not write are not news to it — «another module is responsible» would
+            // send him looking for one (2026-10-23, eBay 14-15322-23878).*
+            return ! $status && $statusSource ? IntakeVerdict::Nothing : IntakeVerdict::NotResponsible;
         }
 
         if ($proposal->lines === [] || ! in_array($proposal->kind, self::ORDER_KINDS, true)) {
