@@ -1,6 +1,6 @@
 # Paket · eBay-Verkauf (tax_ebay, Teil 2): Angebote einstellen, Verkäufe versenden — Konzeptentwurf
 
-**Stand 2026-10-23. V1 = [D-975](../../NewConcept/90-decision-log.md), V2–V9 = [D-976](../../NewConcept/90-decision-log.md). Nichts gebaut.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot).
+**Stand 2026-10-23. V1 = [D-975](../../NewConcept/90-decision-log.md), V2–V9 = [D-976](../../NewConcept/90-decision-log.md). Gebaut: Versandliste (§6) in wp_tax_api_ebay 0.0.15, ungetestet gegen einen echten Verkauf; Verkäufe in den Eingang warten auf Ziel-Felder im Modeller.** Aus [INF-074](../../neues-konzept-eingang.md#inf-074--angebote-bei-ebay-einstellen-verkaufstexte-link-zum-laufenden-angebot).
 Teil 1 (Käufe holen) steht in [`konzept.md`](konzept.md). Was er entscheiden soll, steht in §8 (V1–V9); alles andere ist mein
 Vorschlag (`INFERRED`), bis es eine `D-<nnn>` hat (`PR-3`).
 
