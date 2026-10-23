@@ -141,7 +141,7 @@ Davon hängt ab, welche Pflichtfelder das Angebot bekommt (`V1`).
 
 | | Frage | Mein Vorschlag |
 |---|---|---|
-| **V1** | Verkaufst du privat oder gewerblich bei eBay? | klären, bevor gebaut wird (§7) |
+| **V1** | Verkaufst du privat oder gewerblich bei eBay? | **entschieden: privat, vorerst ([D-975](../../NewConcept/90-decision-log.md))** |
 | **V2** | Nur Projektname im Angebot, Adressen nur im Beileger? | ja |
 | **V3** | Knoten «Angebote» unter «Stock» wie §4? | ja |
 | **V4** | Wortlaut geprüft/ungeprüft (bestückt? getestet?) | er formuliert |
