@@ -1028,3 +1028,4 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Seine Worte:** *«frage mich ob bestellunge nicht das gleich wie verkäufe sind»* — *«eine sind eingehende das andre ausgehende»*.
 - **Stand:** [D-933](NewConcept/90-decision-log.md) und [D-934](NewConcept/90-decision-log.md) — zwei Knoten, Verkäufe «nach dem Muster der Bestellungen». Zusammenlegen (ein Knoten, Feld «Richtung» ein/aus, Positionen gemeinsam) berührt Eingang ([D-979](NewConcept/90-decision-log.md)), Lager ([D-957](NewConcept/90-decision-log.md)) und [INF-094](#inf-094--versandstufen-für-alle-verkaufsquellen).
+- **Nachtrag, sein Wort:** *«dann könnten wir für beides eine maske machen der benutzer wählt ob eingehend oder ausgehen oder beide .. (keine einschränkung»* — eine Maske/Liste für beide Richtungen, Filter «eingehend / ausgehend / beide», ohne Einschränkung.
