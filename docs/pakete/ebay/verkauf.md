@@ -55,7 +55,7 @@ flowchart LR
 ```
 
 1. **Angebot anlegen** im Modeller: Platine/Projekt wählen, Anzahl, Preis, Status «geprüft / ungeprüft», Bilder.
-2. **Einstellen** per Knopf: tax_ebay baut Text (Vorlage + Footer) und stellt das Angebot ein; die eBay-Angebotsnummer kommt zurück
+2. **Einstellen** ([D-977](../../NewConcept/90-decision-log.md)): «Vorbereiten» legt das Angebot bei eBay unveröffentlicht an und zeigt die Vorschau; erst sein Klick «Bei eBay einstellen» veröffentlicht. Davor per Knopf: tax_ebay baut Text (Vorlage + Footer) und stellt das Angebot ein; die eBay-Angebotsnummer kommt zurück
    in den Satz.
 3. **Anzahl ändern** im Satz (verbraucht, woanders verkauft) → tax_ebay schickt die neue Anzahl an eBay. 0 = Angebot beenden.
 4. **Verkauf** kommt über die Verkäufe-Quelle (Teil 1, Fulfillment API — schon gebaut, nicht verdrahtet) in den Eingang.
