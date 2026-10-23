@@ -329,6 +329,8 @@ Stück» kommt aus dem Bestand.
 
 ## 4 · Die Vorgänge als Ablauf
 
+*Belegfluss, Bewegungstabelle, interne Bewegungen und Sperren im Einzelnen: [`prozesse.md`](prozesse.md) (Entwurf 2026-10-23).*
+
 ```mermaid
 flowchart LR
   MAIL["Bestellmail"] -->|Mail-Import| B["Bestellung: bestellt"]
