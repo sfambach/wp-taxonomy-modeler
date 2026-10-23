@@ -5100,7 +5100,8 @@ final class Rendering implements Presets
                     static fn (string $teil): bool => $teil !== ''
                 ));
 
-                return $teile === [] ? '#' . $satzId : implode(' ', $teile);
+                // ⚠️ *Ein leerer Teil eine Stufe tief hat kein Wort — nicht «#43780» (gemessen am 2026-10-23 an 41 Reichelt-Bauteilen).*
+                return $teile === [] ? ($stufe > 0 ? '' : '#' . $satzId) : implode(' ', $teile);
             }
 
             foreach ($feldIds as $feldId) {
@@ -5120,7 +5121,14 @@ final class Rendering implements Presets
                     } elseif ($zeile->value->referenceSpace === ReferenceSpace::Record) {
                         // *Zwei Stufen, dann Schluss (D-935) — ganz unten zählen nur die eigenen Worte des Satzes.*
                         if ($stufe < 2 && $zeile->value->reference !== null) {
-                            $teile[] = $wort($zeile->value->reference, [], $stufe + 1);
+                            $innen = $wort($zeile->value->reference, [], $stufe + 1);
+
+                            // *Ein Teil ohne Wort zählt nicht; hält das Feld einen zweiten, spricht der.*
+                            if ($innen === '') {
+                                continue;
+                            }
+
+                            $teile[] = $innen;
                         }
                     } elseif (! $zeile->value->isAReference()) {
                         $teile[] = $zeile->value->rawValue();

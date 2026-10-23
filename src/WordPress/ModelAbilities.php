@@ -493,7 +493,7 @@ final class ModelAbilities
                 foreach (is_array($change['values'] ?? null) ? $change['values'] : [] as $kante => $wert) {
                     $values[$this->resolve($kante, $refs, 'values')] = $this->resolveValues($wert, $refs);
                 }
-                $values   = $this->intoHeldParts($recordId, $values);
+                $values   = $this->intoHeldParts($recordId, $record->nodeId, $values);
                 $own      = isset($change['own_value']) ? (string) $change['own_value'] : null;
                 $locale   = sanitize_text_field((string) ($change['locale'] ?? ''));
 
@@ -563,25 +563,65 @@ final class ModelAbilities
      * Die Maske zeigt dessen Id und schreibt hinein; ein Aufrufer von aussen kennt sie nicht. Ohne diese Abbildung stünde neben dem
      * leeren Teil ein zweiter, und die Zusammenfassung läse den leeren.*
      *
+     * ⚠️ **An einem Feld mit höchstens einem Wert ist auch ein neuer Teil («neu») der gehaltene** — *gemessen am 2026-10-23: 41
+     * Bauteile aus dem Reichelt-Wareneingang trugen an Toleranz, Widerstandswert und Leistung je zwei Teile, den leeren vorbelegten
+     * und den geschriebenen, und ihre Bezeichnung las «#43780 · #43779 · 0207». Ein leerer gehaltener Teil wird gefüllt; hält er schon
+     * Werte, wird abgelehnt, statt einen zweiten anzulegen.*
+     *
      * @param array<int, mixed> $values
      * @return array<int, mixed>
      */
-    private function intoHeldParts(int $recordId, array $values): array
+    private function intoHeldParts(int $recordId, int $nodeId, array $values): array
     {
+        $entries  = $this->screen()->entries();
         $gehalten = [];
 
-        foreach ($this->screen()->entries()->valuesOf($recordId) as $zeile) {
+        foreach ($entries->valuesOf($recordId) as $zeile) {
             if ($zeile->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record && $zeile->value->reference !== null) {
                 $gehalten[$zeile->relationId] ??= $zeile->value->reference;
             }
         }
 
+        $einzeln = [];
+
+        foreach ($this->screen()->fieldsWithTypes($nodeId) as ['relation' => $r]) {
+            if (! $r->multiplicity->allowsMany()) {
+                $einzeln[$r->id] = $r->name;
+            }
+        }
+
         foreach ($values as $kante => $teile) {
-            if (is_array($teile) && array_key_exists(0, $teile) && ! isset($teile['values']) && isset($gehalten[$kante])) {
+            if (! is_array($teile) || isset($teile['values']) || ! isset($gehalten[$kante])) {
+                continue;
+            }
+
+            if (array_key_exists(0, $teile)) {
                 $teile[$gehalten[$kante]] = $teile[0];
                 unset($teile[0]);
-                $values[$kante] = $teile;
             }
+
+            if (isset($einzeln[$kante])) {
+                foreach (array_keys($teile) as $schluessel) {
+                    if (is_int($schluessel) || ctype_digit((string) $schluessel)) {
+                        continue;
+                    }
+
+                    $leer = true;
+
+                    foreach ($entries->valuesOf($gehalten[$kante]) as $zeile) {
+                        $leer = $leer && $zeile->value->isNothing();
+                    }
+
+                    if (! $leer) {
+                        throw new \InvalidArgumentException(sprintf('«%s» takes one part and record %d already holds part %d with values; write it with part key "0" instead of "%s".', $einzeln[$kante], $recordId, $gehalten[$kante], $schluessel));
+                    }
+
+                    $teile[$gehalten[$kante]] = $teile[$schluessel];
+                    unset($teile[$schluessel]);
+                }
+            }
+
+            $values[$kante] = $teile;
         }
 
         return $values;
