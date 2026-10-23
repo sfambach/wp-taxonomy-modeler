@@ -1021,3 +1021,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Sein Wunsch:** *«und das später nicht nur für ebay sondern für alle aber das nur mal notieren»* — gemeint sind die Reiter Offen → Verpackt → Versendet → Empfangen der eBay-Versandseite ([D-985](NewConcept/90-decision-log.md)).
 - **Offen:** wo die Stufen dann leben (Modeller statt Modul-Option) und ob sie an der Bestellung im Modell stehen ([INF-087](#), [INF-088](#)).
+
+## INF-095 · Bestellungen und Verkäufe ein Knoten mit Richtung?
+
+**Typ:** `FRAGE` · **Status:** `OFFEN` — 2026-10-23, Thread «Taxmod eBay-Modul».
+
+- **Seine Worte:** *«frage mich ob bestellunge nicht das gleich wie verkäufe sind»* — *«eine sind eingehende das andre ausgehende»*.
+- **Stand:** [D-933](NewConcept/90-decision-log.md) und [D-934](NewConcept/90-decision-log.md) — zwei Knoten, Verkäufe «nach dem Muster der Bestellungen». Zusammenlegen (ein Knoten, Feld «Richtung» ein/aus, Positionen gemeinsam) berührt Eingang ([D-979](NewConcept/90-decision-log.md)), Lager ([D-957](NewConcept/90-decision-log.md)) und [INF-094](#inf-094--versandstufen-für-alle-verkaufsquellen).
