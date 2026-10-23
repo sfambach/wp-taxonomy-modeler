@@ -90,7 +90,7 @@ Neuer Knoten **«Angebote»** unter «Stock», ein Satz je eBay-Angebot (später
 | Status | Auswahl «geprüft» / «ungeprüft» | er |
 | Anzahl angeboten | Zahl | er, jederzeit änderbar |
 | Preis | Einheitenwert (EUR) | er |
-| Bilder | Medien 0..* | **vorgeschlagen aus dem Beitrag** (seine Idee), abwählbar |
+| Bilder | Medien 0..* | **vorgeschlagen aus dem Beitrag, wenn einer da ist** (sein Wort), abwählbar; sonst wählt er aus der Mediathek |
 | Plattform, Angebotsnummer, Angebot seit, Zustand bei eBay | Text/Datum | tax_ebay schreibt zurück |
 
 - **Anzahl bleibt Handarbeit** (sein Wort). Später kann sie aus dem Lager kommen ([`../lager/konzept.md`](../lager/konzept.md),
