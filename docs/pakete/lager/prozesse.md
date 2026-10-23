@@ -312,6 +312,7 @@ Bestellungen        Status Feld 149000110134 → Bestellstatus 149000110136
 4. **Teilmenge je Kauf** (30 von 50 geliefert) erlauben? — *Empfehlung: ja, mit Feld «Eingegangen» am Kauf.* ([INF-090](../../neues-konzept-eingang.md))
 5. **Zustellung** bucht den Wareneingang nicht von selbst, er bleibt dein Schritt im Lager? — *Empfehlung: ja.* ([INF-091](../../neues-konzept-eingang.md))
 6. **Neue Felder am Vorgang:** Sendungsnummer und Meldungstext? — *Empfehlung: ja, beide.* ([INF-092](../../neues-konzept-eingang.md))
+7. **Chargen bei Platinen:** Ist der Bestandsposten die Charge (ein Posten je Kauf, also je Bestellung und Version), mit der Bestellnummer (z. B. JLC W…) als angezeigter Chargennummer, ohne eigenes Feld? — *Empfehlung: ja.* Sein Wunsch: *«für platinen bräuchten wir auch chargen glaube ich gleich version 2 bestellungen andere charge»*. ([INF-093](../../neues-konzept-eingang.md))
 
 ## Annahmen
 

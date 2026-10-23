@@ -1007,3 +1007,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 **Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP7.
 
 - **Vorschlag (INFERRED):** zwei Textfelder 0..1 an «Vorgänge»; die Sendungsnummer bleibt zusätzlich an der Bestellung ([D-933](NewConcept/90-decision-log.md), 0..*).
+
+## INF-093 · Chargen bei Platinen
+
+**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) Fragen 7.
+
+- **Sein Wunsch:** *«für platinen bräuchten wir auch chargen glaube ich gleich version 2 bestellungen andere charge»*.
+- **Vorschlag (INFERRED):** Der Bestandsposten ist die Charge: ein Posten je Kauf, die Herkunft (Kauf → Bestellung, Datum) trennt zwei Bestellungen derselben Version ([D-956](NewConcept/90-decision-log.md)). Angezeigte Chargennummer = Bestellnummer; kein eigenes Feld.
