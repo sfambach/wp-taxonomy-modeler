@@ -108,8 +108,27 @@ Aufbau, Vorlage im eBay-Reiter einstellbar:
 1. **Kopf:** Bezeichnung, kurze Beschreibung (aus dem Beitrag-Auszug vorgeschlagen, editierbar).
 2. **Status-Block** ([D-976](../../NewConcept/90-decision-log.md)): *geprüft* → «Von mir selbst aufgebaut und geprüft.» / *ungeprüft* → «Gefertigt wie im Projekt des Entwicklers, nicht von mir geprüft. Fabrikationsmängel und Designfehler sind möglich.»
 3. **Lieferumfang** (aus dem Satz).
-4. **Footer** (einmal im Reiter gepflegt): Projektname, «Open-Source-Hardware, Dokumentation und Quellen liegen im Paket bei»,
-   Lizenzhinweis (Hardware-Lizenz des Projekts, Markenhinweis), Versand/Abholung.
+4. **Footer** (einmal im Reiter gepflegt, Vorlage aus seinem Text vom 2026-10-23, geglättet; Platzhalter in `{…}` füllt tax_ebay):
+
+   > **Open-Source-Projekt, kein fertiges Produkt.** Die Platine stammt aus dem Open-Source-Projekt «{projekt}». Sie richtet
+   > sich an Leute, die sich mit der Materie auskennen oder einarbeiten wollen. Im Zweifel bitte nicht kaufen.
+   >
+   > **Wie der Preis entsteht:** Ich habe die Platinen im Mehrfachpack bestellt und brauche selbst nur eine. Im Preis stecken
+   > die Materialkosten von ca. {material} € je Platine, der anteilige Versand meiner Bestellung von {einkaufsversand} €,
+   > Verpackung und Versand zu dir{arbeit}. Was davon als Gewinn bleibt, könnt ihr euch selbst ausrechnen ;)
+   >
+   > **Versand:** Beim Kauf mehrerer Artikel fasse ich den Versand zusammen.
+   >
+   > **Privatverkauf:** Ich bin Privatperson und kann keine Garantie geben. Das Angebot ist nach bestem Wissen und Gewissen
+   > erstellt, mein Verkauf beruht auf Ehrlichkeit. Gibt es ein Problem, melde dich, ich helfe gern. Wünschst du eine
+   > Rücknahme, trägst du Hin- und Rückversand; bei diesen Preisen kann ich das Risiko nicht selbst tragen.
+   >
+   > Viel Spaß beim Bieten!
+
+   - `{material}` = Einstandspreis je Stück der Platine aus dem Modell ohne Versandanteil, `{einkaufsversand}` = Versandanteil
+     je Stück; beide aus dem Kauf, aus dem die Platine stammt (Feld «Einstandspreis je Stück»).
+   - `{arbeit}` nur bei *geprüft*: «, und die Zeit für Aufbau und Test».
+   - Lizenzhinweis (Hardware-Lizenz des Projekts, Markenhinweis) steht unter dem Footer.
 
 Keine Adresse, kein «fambach», kein «github.com» (§1). tax_ebay prüft den fertigen Text vor dem Einstellen auf `http`, `www.`,
 `.net`, `.com`, `github` und verweigert sonst.
