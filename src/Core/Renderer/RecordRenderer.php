@@ -85,12 +85,13 @@ final class RecordRenderer extends RendererNode
             return RenderResult::of('');
         }
 
-        $inside = '<div class="taxmod-record-head">'
+        // ⚠️ *A table for readers has no title (D-916, D-955); an empty head drew a blank bold line above it in the post.*
+        $inside = ($form->title === '' ? '' : '<div class="taxmod-record-head">'
             // ⚠️ **What a record *is* comes in as a finished sentence** (`AR-2`, [OQ-087](../../../docs/NewConcept/91-open-questions.md)):
             // *Record #12 · written against version 3* names an id and a version, and the core can
             // make neither the word nor the number formatting.
             . '<strong>' . RenderResult::escape($form->title) . '</strong>'
-            . '</div>'
+            . '</div>')
             . '<div class="taxmod-record-form">' . $form->body . '</div>';
 
         $diagnostic = $context->surroundings->sections[self::DIAGNOSTIC] ?? null;

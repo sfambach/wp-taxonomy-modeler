@@ -2385,6 +2385,7 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('Datenblatt LM7905', $tabelle);
         self::assertStringNotContainsString('<form', $tabelle);
+        self::assertStringNotContainsString('<strong></strong>', $tabelle, 'ohne Titel keine leere Kopfzeile');
     }
 
     /** ⚠️ *D-845: «Mehrere hinzufügen» ist eine Zusatzfunktion der mehrfachen Kante; ihr Feld sagt, worüber gewählt wird.* */
