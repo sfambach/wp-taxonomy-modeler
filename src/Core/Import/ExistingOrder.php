@@ -13,6 +13,7 @@ final class ExistingOrder
      * @param list<string> $trackingNumbers
      * @param array<string, string> $values order role => what the model holds, as {@see OrderComparison} reads it
      *                                      (an amount as «4.5 EUR», a date as «Y-m-d»)
+     * @param list<ExistingLine> $lines the purchases of the order (D-986)
      */
     public function __construct(
         public readonly int $recordId,
@@ -22,6 +23,7 @@ final class ExistingOrder
         public readonly ?string $orderDate = null,
         public readonly string $title = '',
         public readonly array $values = [],
+        public readonly array $lines = [],
     ) {
     }
 }

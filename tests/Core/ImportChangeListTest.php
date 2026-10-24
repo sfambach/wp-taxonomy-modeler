@@ -7,6 +7,7 @@ use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ProposalLine;
 use Taxmod\Core\Import\ChangeListBuilder;
+use Taxmod\Core\Import\ExistingLine;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\Money;
 use Taxmod\Core\Import\OrderComparison;
@@ -154,6 +155,43 @@ final class ImportChangeListTest extends TestCase
         $proposal = new OrderProposal('eBay', '18-1', ProposalKind::Ordered, currency: 'EUR', total: '132');
 
         self::assertSame(['0' => ['4234' => '132', '4236' => '8571']], (new ChangeListBuilder(self::target()))->completed($existing, $proposal, ['total'])[0]['values']['111']);
+    }
+
+    /** D-986: a purchase without prices gets the source's, matched by title; a price it holds stays. */
+    public function testEmptyItemPricesAreFilledFromTheSource(): void
+    {
+        $proposal = new OrderProposal('JLCPCB', 'W2', ProposalKind::Ordered, '2025-12-16', 'EUR', [
+            new ProposalLine('Board A', 10, '0.50'),
+            new ProposalLine('Board B', 5, '1.00'),
+        ], shippingCost: '2.00');
+        $existing = new ExistingOrder(7, lines: [
+            new ExistingLine(41, 'board a', ['unit_price' => 410, 'total_price' => 411]),
+            new ExistingLine(42, 'Board B', ['unit_price' => 420], ['unit_price']),
+            new ExistingLine(43, 'Board C'),
+        ]);
+
+        self::assertSame([41 => 0], OrderComparison::lineFills($proposal, $existing), 'B has a price, C is no source item');
+
+        $changes = (new ChangeListBuilder(self::target()))->completed($existing, $proposal, []);
+
+        self::assertCount(1, $changes);
+        self::assertSame('41', $changes[0]['record']);
+        self::assertSame(['0' => ['4234' => '0.5', '4236' => '8571']], $changes[0]['values']['205'], 'the empty part it holds is filled');
+        self::assertSame(['0' => ['4234' => '5', '4236' => '8571']], $changes[0]['values']['206']);
+        // shipping 2.00 over 10.00 of goods, half of it this item: (5 + 1) / 10
+        self::assertSame(['neu' => ['4234' => '0.6', '4236' => '8571']], $changes[0]['values']['207'], 'a part it lacks is created');
+    }
+
+    public function testTheOnlyItemOfAnOrderIsTheSourcesOnlyItemWhateverItsName(): void
+    {
+        $proposal = new OrderProposal('JLCPCB', 'W3', ProposalKind::Ordered, '2025-12-16', 'EUR', [new ProposalLine('1541II_PowerAdapter', 10, '0.20')]);
+        $existing = new ExistingOrder(7, lines: [new ExistingLine(41984, 'Leiterplatte 1541II_PowerAdapter (1)')]);
+
+        self::assertSame([41984 => 0], OrderComparison::lineFills($proposal, $existing));
+        self::assertSame([], OrderComparison::lineFills(
+            new OrderProposal('JLCPCB', 'W3', ProposalKind::Ordered, '2025-12-16', 'EUR', [new ProposalLine('X', 1, '1'), new ProposalLine('Y', 1, '1')]),
+            $existing
+        ), 'two source items and no title match: not guessed');
     }
 
     public function testASaleGoesToTheSalesNodeWithoutTotalOrLandedPrice(): void

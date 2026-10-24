@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\Core\Import\ExistingLine;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\LooseMatch;
 use Taxmod\Core\Import\OrderComparison;
@@ -122,6 +123,7 @@ final class ModelGateway
         $merchantField = $this->target->orderField('merchant');
         $orderedField = $this->target->orderField('ordered_at');
         $titleField = $this->target->orderField('title');
+        $linesField = $this->target->hasOrderField('lines') ? $this->target->orderField('lines') : -3;
         $amountFields = [];
 
         foreach (array_filter(['shipping_cost', 'fees', 'total'], $this->target->hasOrderField(...)) as $role) {
@@ -141,6 +143,7 @@ final class ModelGateway
             $ordered = null;
             $title = '';
             $parts = [];
+            $lines = [];
 
             foreach ((array) ($record['values'] ?? []) as $value) {
                 if (isset($amountFields[(int) $value['relation_id']])) {
@@ -158,22 +161,24 @@ final class ModelGateway
                     $merchantField => $merchant = (string) $value['value'],
                     $orderedField  => $ordered = (string) $value['value'],
                     $titleField    => $title .= ' ' . (string) $value['value'],
+                    $linesField    => $lines[] = (int) $value['value'],
                     default        => null,
                 };
             }
 
             if ($number !== '') {
-                $found[self::key($platform, $number)] = [(int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title), $parts];
+                $found[self::key($platform, $number)] = [(int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title), $parts, $lines];
                 $this->platforms[self::key($platform, $number)] = trim($platform);
             }
         }
 
         // ⚠️ *The amounts are parts — records of their own. One read for all of them (`CD-7`), straight from the table,
         // because read-node would hand back every amount record of the installation (D-964).*
-        $amounts = $this->amounts($partIds);
+        $purchases = $this->purchases(array_merge(...array_column($found, 7)));
+        $amounts = $this->amounts([...$partIds, ...array_merge(...array_map(static fn (array $line): array => array_values($line['parts']), array_values($purchases)))]);
         $orders = [];
 
-        foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts]) {
+        foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts, $lineIds]) {
             $values = array_filter([
                 'merchant'   => $merchant,
                 'ordered_at' => $ordered === null ? null : substr($ordered, 0, 10),
@@ -185,10 +190,55 @@ final class ModelGateway
                 }
             }
 
-            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values);
+            $existingLines = [];
+
+            foreach ($lineIds as $lineId) {
+                if (isset($purchases[$lineId])) {
+                    $line = $purchases[$lineId];
+                    $existingLines[] = new ExistingLine($lineId, $line['title'], $line['parts'], array_keys(array_filter($line['parts'], static fn (int $part): bool => isset($amounts[$part]))));
+                }
+            }
+
+            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values, $existingLines);
         }
 
         return $orders;
+    }
+
+    /**
+     * The purchases under the orders, with their title and price parts — one read for all (`CD-7`, D-986).
+     *
+     * @param list<int> $ids
+     * @return array<int, array{title: string, parts: array<string, int>}>
+     */
+    private function purchases(array $ids): array
+    {
+        $roles = [];
+
+        foreach (['unit_price', 'total_price', 'landed_unit_price'] as $role) {
+            if ($this->target->hasPurchaseField($role)) {
+                $roles[$this->target->purchaseField($role)] = $role;
+            }
+        }
+
+        $titleField = $this->target->hasPurchaseField('title') ? $this->target->purchaseField('title') : -1;
+        $out = [];
+
+        foreach ((new WpdbRecordRepository())->valuesOfMany(array_values(array_unique($ids))) as $id => $values) {
+            $line = ['title' => '', 'parts' => []];
+
+            foreach ($values as $value) {
+                if ($value->relationId === $titleField) {
+                    $line['title'] = (string) $value->value->rawValue();
+                } elseif (isset($roles[$value->relationId])) {
+                    $line['parts'][$roles[$value->relationId]] = (int) $value->value->rawValue();
+                }
+            }
+
+            $out[(int) $id] = $line;
+        }
+
+        return $out;
     }
 
     /**

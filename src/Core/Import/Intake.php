@@ -42,7 +42,7 @@ final class Intake
             $status = $this->bringsNews($proposal, $existing);
             // ⚠️ *D-964: the order fields come from the source that is responsible for new orders of the platform — the
             // truth (D-950) — and from nobody else.*
-            $fields = OrderComparison::between($proposal, $existing) !== [];
+            $fields = OrderComparison::between($proposal, $existing) !== [] || OrderComparison::lineFills($proposal, $existing) !== [];
 
             if (! $status && ! $fields) {
                 return IntakeVerdict::Nothing;

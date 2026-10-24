@@ -15,8 +15,9 @@ namespace Taxmod\Core\Import;
  *   D -->|no| C["conflict: his choice"]
  * ```
  *
- * ⚠️ *Order fields only. The items of an order (price per piece, a discount booked as a fee) are not compared — that
- * is the eBay case of 2026-10-21 the eBay thread corrected by hand (INFERRED: the decision named fields, not lines).*
+ * ⚠️ *The items of an order are only filled, never compared (D-986): a purchase whose prices are empty gets the source's
+ * prices, matched by title, or as the only item of a one-item order. A price the purchase already holds stays — a
+ * discount booked as a fee (the eBay case of 2026-10-21) is still corrected by hand.*
  *
  * @see docs/pakete/import/konzept.md §3.4
  */
@@ -56,6 +57,31 @@ final class OrderComparison
         return array_keys(array_filter(self::between($proposal, $existing), static fn (array $side): bool => ! $side['conflict']));
     }
 
+    /**
+     * The purchases whose prices the source fills (D-986): only where the purchase has none, and only where it can be
+     * told which source item it is.
+     *
+     * @return array<int, int> purchase record id => index into $proposal->lines
+     */
+    public static function lineFills(OrderProposal $proposal, ExistingOrder $existing): array
+    {
+        $fills = [];
+
+        foreach ($existing->lines as $line) {
+            if (in_array('unit_price', $line->filled, true)) {
+                continue;
+            }
+
+            $index = self::sourceLine($proposal, $existing, $line);
+
+            if ($index !== null && Money::toUnits($proposal->lines[$index]->unitPrice) !== null) {
+                $fills[$line->recordId] = $index;
+            }
+        }
+
+        return $fills;
+    }
+
     public static function hasConflict(OrderProposal $proposal, ExistingOrder $existing): bool
     {
         return array_filter(self::between($proposal, $existing), static fn (array $side): bool => $side['conflict']) !== [];
@@ -67,6 +93,25 @@ final class OrderComparison
         $units = Money::toUnits($amount);
 
         return $units === null ? null : Money::format($units) . ' ' . strtoupper(trim($currency));
+    }
+
+    private static function sourceLine(OrderProposal $proposal, ExistingOrder $existing, ExistingLine $line): ?int
+    {
+        $title = mb_strtolower(trim($line->title));
+        $matches = [];
+
+        foreach ($proposal->lines as $index => $candidate) {
+            if ($title !== '' && mb_strtolower(trim($candidate->title)) === $title) {
+                $matches[] = $index;
+            }
+        }
+
+        if (count($matches) === 1) {
+            return $matches[0];
+        }
+
+        // ⚠️ *One item on both sides is the same item, whatever each calls it — a mail and the API name a board differently.*
+        return $matches === [] && count($existing->lines) === 1 && count($proposal->lines) === 1 ? array_key_first($proposal->lines) : null;
     }
 
     private static function sourceValue(OrderProposal $proposal, string $role): ?string

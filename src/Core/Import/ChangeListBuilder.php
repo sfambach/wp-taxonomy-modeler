@@ -148,8 +148,60 @@ final class ChangeListBuilder
         }
 
         $values = $this->withoutEmpty($values);
+        $changes = $values === [] ? [] : [['op' => 'set_values', 'record' => (string) $order->recordId, 'values' => $values]];
 
-        return $values === [] ? [] : [['op' => 'set_values', 'record' => (string) $order->recordId, 'values' => $values]];
+        return [...$changes, ...$this->linePrices($order, $proposal, $currency, $rate)];
+    }
+
+    /**
+     * The empty prices of the order's purchases, from the source (D-986). Not a choice like the order fields: nothing
+     * the model holds is overwritten, so there is nothing to decide.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function linePrices(ExistingOrder $order, OrderProposal $proposal, int $currency, ?string $rate): array
+    {
+        $fills = OrderComparison::lineFills($proposal, $order);
+
+        if ($fills === []) {
+            return [];
+        }
+
+        $landed = $this->landedUnitPrices($proposal);
+        $byId = [];
+
+        foreach ($order->lines as $line) {
+            $byId[$line->recordId] = $line;
+        }
+
+        $changes = [];
+
+        foreach ($fills as $recordId => $index) {
+            $line = $byId[$recordId];
+            $source = $proposal->lines[$index];
+            $unit = Money::toUnits($source->unitPrice);
+            $values = [];
+
+            foreach ([
+                'unit_price'        => $source->unitPrice,
+                'total_price'       => $unit === null || $source->quantity === null ? null : Money::format((int) round($unit * $source->quantity)),
+                'landed_unit_price' => $landed[$index] ?? null,
+            ] as $role => $amount) {
+                if (in_array($role, $line->filled, true) || ! $this->target->hasPurchaseField($role)) {
+                    continue;
+                }
+
+                $values[$this->target->purchaseField($role)] = $this->amount($role, $amount, $currency, $rate, false, isset($line->parts[$role]));
+            }
+
+            $values = $this->withoutEmpty($values);
+
+            if ($values !== []) {
+                $changes[] = ['op' => 'set_values', 'record' => (string) $recordId, 'values' => $values];
+            }
+        }
+
+        return $changes;
     }
 
     /** @return array<string, mixed> */

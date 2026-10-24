@@ -261,12 +261,19 @@ final class InboxScreen
     private function differences(OrderProposal $proposal, ExistingOrder $existing, bool $enabled): string
     {
         $differences = OrderComparison::between($proposal, $existing);
+        $linePrices = count(OrderComparison::lineFills($proposal, $existing));
+        // ⚠️ *Empty item prices are filled, never chosen (D-986) — so a line says so, and there is no tick for it.*
+        $note = $linePrices === 0 ? '' : '<p>' . esc_html(sprintf(
+            /* translators: %d: number of purchases */
+            _n('The empty prices of %d purchase are filled from the source.', 'The empty prices of %d purchases are filled from the source.', $linePrices, 'taxmod'),
+            $linePrices
+        )) . '</p>';
 
         if ($differences === []) {
-            return '';
+            return $note;
         }
 
-        $html = '<table class="widefat striped" style="margin-bottom:.5em"><caption class="screen-reader-text">' . esc_html__('Model against source', 'taxmod') . '</caption><thead><tr>'
+        $html = $note . '<table class="widefat striped" style="margin-bottom:.5em"><caption class="screen-reader-text">' . esc_html__('Model against source', 'taxmod') . '</caption><thead><tr>'
             . '<th scope="col">' . esc_html__('Take', 'taxmod') . '</th><th scope="col">' . esc_html__('Field', 'taxmod') . '</th>'
             . '<th scope="col">' . esc_html__('Model', 'taxmod') . '</th><th scope="col">' . esc_html__('Source', 'taxmod') . '</th></tr></thead><tbody>';
 
