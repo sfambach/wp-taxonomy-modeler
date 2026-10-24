@@ -250,7 +250,7 @@
 			label: __( 'Display', 'taxmod' ),
 			value: a.display || 'record',
 			options: [
-				{ label: __( 'Record', 'taxmod' ), value: 'record' },
+				{ label: __( 'Form (one record, vertical)', 'taxmod' ), value: 'record' },
 				{ label: __( 'Comparison', 'taxmod' ), value: 'comparison' },
 				{ label: __( 'Referring records', 'taxmod' ), value: 'referrers' }
 			],
