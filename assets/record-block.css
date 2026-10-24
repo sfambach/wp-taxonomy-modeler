@@ -161,3 +161,33 @@
 .taxmod-record-block .taxmod-comparison-frame.is-more-right::after {
 	opacity: 1;
 }
+
+/* One record in a post reads like the post's own two-column tables (his word, 2026-10-24: «ich hätte erwartet das das mehr
+   wie die tabelle unten aussieht»): label and value in columns, a line under each row, empty fields left out. */
+.taxmod-record-block .taxmod-form {
+	display: table;
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.taxmod-record-block .taxmod-form-row {
+	display: table-row;
+}
+
+.taxmod-record-block .taxmod-form-row:has(> .taxmod-form-field > .taxmod-value:empty) {
+	display: none;
+}
+
+.taxmod-record-block .taxmod-form-label,
+.taxmod-record-block .taxmod-form-field {
+	display: table-cell;
+	padding: 0.3em 0.6em;
+	border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+	text-align: left;
+	vertical-align: top;
+}
+
+.taxmod-record-block .taxmod-form-label {
+	width: 40%;
+	font-weight: 600;
+}
