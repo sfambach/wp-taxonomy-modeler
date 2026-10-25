@@ -25,7 +25,7 @@ final class ListPage
     public static function heading(string $screen, string $version = Plugin::VERSION, string $plugin = 'Taxonomy Modeller'): string
     {
         return '<h1 class="wp-heading-inline" style="font-size:1.8em">' . esc_html($plugin) . ' › ' . esc_html($screen) . '</h1>'
-            . ' <span class="title-count" style="color:#646970">v' . esc_html($version) . '</span><hr class="wp-header-end">';
+            . ' <span class="taxmod-version" style="display:inline-block;vertical-align:middle;margin-left:.5em;padding:2px 8px;border-radius:10px;background:#2271b1;color:#fff;font-size:12px;font-weight:600">v' . esc_html($version) . '</span><hr class="wp-header-end">';
     }
 
     /**
@@ -43,7 +43,7 @@ final class ListPage
             $options .= '<option value="' . esc_attr($value) . '">' . esc_html($label) . '</option>';
         }
 
-        return '<div class="tablenav top"><form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions">'
+        return '<div class="tablenav top"><form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
             . wp_nonce_field($nonceAction, '_wpnonce', true, false)
             . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Bulk actions', 'taxmod') . '</label>'
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
@@ -140,7 +140,7 @@ final class ListPage
                 . esc_html($column[0]) . '</span><span class="sorting-indicators"><span class="sorting-indicator asc" aria-hidden="true"></span><span class="sorting-indicator desc" aria-hidden="true"></span></span></a></th>';
         }
 
-        $head .= '<th scope="col" class="manage-column" style="width:16em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
+        $head .= '<th scope="col" class="manage-column" style="width:21em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
         return '<style>.taxmod-list-toggle .dashicons{vertical-align:middle;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}</style>'
             . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
@@ -166,6 +166,22 @@ final class ListPage
             // ⚠️ *His word of 2026-10-25: «als richtigen Button aber ruhig mit diesen Pfeil nach unten»; the arrow turns when open.*
             . esc_html__('Details', 'taxmod') . ' <span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button> ' . $buttons . '</td></tr>'
             . '<tr class="taxmod-list-details"' . ($expanded ? '' : ' hidden') . '><td colspan="' . (count($cells) + 2) . '" style="padding:0 1em 1em">' . $details . '</td></tr>';
+    }
+
+    /**
+     * Asks before a bulk action, naming how many entries it reaches: a row that stands for several («;» between them)
+     * counts each. ⚠️ *His report of 2026-10-25: «Diese Sammelaktion hat nicht nur die selektierten Einträge genommen,
+     * sondern alle» — the page now says the number before anything happens.*
+     */
+    private static function confirmBulk(string $formId): string
+    {
+        $message = (string) wp_json_encode(__('Apply «%1$s» to %2$d entries?', 'taxmod'));
+        $none = (string) wp_json_encode(__('Nothing selected.', 'taxmod'));
+
+        return "var n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
+            . "var s=this.querySelector('select[name=action]');if(!s.value){return false}"
+            . 'if(n===0){alert(' . $none . ');return false}'
+            . 'return confirm(' . $message . ".replace('%1\$s',s.options[s.selectedIndex].text).replace('%2\$d',n))";
     }
 
     private static function toggleAll(bool $hidden): string

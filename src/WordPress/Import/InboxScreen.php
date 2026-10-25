@@ -173,8 +173,16 @@ final class InboxScreen
         $sources = Sources::all();
         $labels = array_unique(array_map(static fn (array $row): string => isset($sources[$row['source']]) ? $sources[$row['source']]->label() : (string) $row['source'], $rows));
 
+        $orders = count(explode(';', $selected));
+
         return ListPage::row(self::BULK_FORM, $selected, [
-            '<strong>' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber)) . '</strong><br><small>' . esc_html(implode(', ', $labels) . ' · ' . self::kindLabel($proposal->kind)) . '</small>',
+            '<strong>' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber)) . '</strong>'
+            // ⚠️ *A box is one row for several orders (D-970); the checkbox reaches all of them, so the row says how many.*
+            . ($orders > 1 ? ' <span class="count">(' . esc_html(sprintf(
+                /* translators: %d: number of orders */
+                _n('%d order', '%d orders', $orders, 'taxmod'),
+                $orders
+            )) . ')</span>' : '') . '<br><small>' . esc_html(implode(', ', $labels) . ' · ' . self::kindLabel($proposal->kind)) . '</small>',
             esc_html(substr(self::when($rows[0]), 0, 16)),
             esc_html(self::verdictLabel($verdict)),
         ], $buttons, $details);
