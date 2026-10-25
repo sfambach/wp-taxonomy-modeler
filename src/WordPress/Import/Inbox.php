@@ -5,11 +5,15 @@ namespace Taxmod\WordPress\Import;
 use Taxmod\Core\Import\BacklogSource;
 use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\EnrichingSource;
+use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\FetchBatch;
 use Taxmod\Core\Import\FetchingSource;
 use Taxmod\Core\Import\ImportSource;
+use Taxmod\Core\Import\IncomingProposal;
 use Taxmod\Core\Import\Intake;
+use Taxmod\Core\Import\IntakeVerdict;
 use Taxmod\Core\Import\ModelLookup;
+use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\RestartingSource;
 use Taxmod\Core\Import\SearchingSource;
@@ -35,6 +39,8 @@ final class Inbox
     private const CURSOR_OPTION = 'taxmod_import_cursor_';
     private const BACKLOG_OPTION = 'taxmod_import_backlog_';
     private const LAST_RUN_OPTION = 'taxmod_import_last_run';
+
+    private ?ModelGateway $model = null;
 
     public function __construct(private readonly InboxTable $table = new InboxTable())
     {
@@ -159,8 +165,13 @@ final class Inbox
             $proposal = $incoming->proposal;
             $receivedAt = self::moment($incoming->evidence['received_at'] ?? null);
 
-            if ($this->table->has($source->key(), (string) $proposal->externalId)
-                || ($receivedAt !== null && $this->table->hasSame($proposal, $receivedAt))
+            if ($this->table->has($source->key(), (string) $proposal->externalId)) {
+                $filed += (int) $this->reopenedForModel($source, $incoming, $intake);
+
+                continue;
+            }
+
+            if (($receivedAt !== null && $this->table->hasSame($proposal, $receivedAt))
                 || ! $intake->accepts($source->key(), $proposal)) {
                 continue;
             }
@@ -171,6 +182,34 @@ final class Inbox
         }
 
         return $filed;
+    }
+
+    /**
+     * A proposal handled before opens again when the model has empty fields or item prices the source now fills (D-986):
+     * the order taken from a mail had no prices, and the API that has them was seen once and never again. Only where
+     * the logged-in user may read the model — a scheduled run leaves it to «Fetch all».
+     */
+    private function reopenedForModel(ImportSource $source, IncomingProposal $incoming, Intake $intake): bool
+    {
+        $proposal = $incoming->proposal;
+        $id = $this->table->closedId($source->key(), (string) $proposal->externalId);
+
+        if ($id === null || $proposal->numberMissing || ! ModelGateway::available()) {
+            return false;
+        }
+
+        $this->model ??= new ModelGateway(Targets::load());
+        $existing = $this->model->side($proposal)?->findOrder($proposal->platform, $proposal->orderNumber);
+
+        if (! $existing instanceof ExistingOrder
+            || $intake->decide($source->key(), $proposal, $existing) !== IntakeVerdict::Update
+            || (OrderComparison::fills($proposal, $existing) === [] && OrderComparison::lineFills($proposal, $existing) === [])) {
+            return false;
+        }
+
+        $this->table->reopen($id, $incoming);
+
+        return true;
     }
 
     /** @param array<string, ImportSource> $sources */

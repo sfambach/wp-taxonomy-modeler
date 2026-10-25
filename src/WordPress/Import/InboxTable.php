@@ -26,6 +26,35 @@ final class InboxTable
         ));
     }
 
+    /** The handled row (taken or discarded) of an external id, if any — what a later fetch may open again (D-986). */
+    public function closedId(string $source, string $externalId): ?int
+    {
+        global $wpdb;
+
+        $id = $externalId === '' ? null : $wpdb->get_var($wpdb->prepare(
+            'SELECT id FROM ' . InboxSchema::table() . ' WHERE source = %s AND external_id = %s AND status <> %s ORDER BY id DESC LIMIT 1',
+            $source,
+            mb_substr($externalId, 0, 191),
+            InboxStatus::Open->value
+        ));
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /** Opens a handled row again with what the source says now. */
+    public function reopen(int $id, IncomingProposal $incoming): void
+    {
+        global $wpdb;
+
+        $wpdb->update(InboxSchema::table(), [
+            'status'     => InboxStatus::Open->value,
+            'proposal'   => (string) wp_json_encode($incoming->proposal->toArray()),
+            'evidence'   => $incoming->evidence === [] ? null : wp_json_encode($incoming->evidence),
+            'written'    => null,
+            'handled_at' => null,
+        ], ['id' => $id]);
+    }
+
     /** The same message under another id — a forwarded copy: same platform, order number, kind and moment received. */
     public function hasSame(OrderProposal $proposal, string $receivedAt): bool
     {

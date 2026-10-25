@@ -111,6 +111,12 @@ $pruefe(substr_count($seite, '__first') === 1 && str_contains($seite, 'S-1 · sh
 $tisch->close($spaeter, \Taxmod\Core\Import\InboxStatus::Discarded);
 $tisch->close($frueher, \Taxmod\Core\Import\InboxStatus::Discarded);
 
+// ⚠️ *D-986: ein schon behandelter Vorschlag kann wieder aufgehen, wenn die Quelle Leeres im Modell füllt (sein Wort: «ja bitte preis nachtragen»).*
+$pruefe($tisch->closedId('__ib', 'k1') === $frueher && $tisch->closedId('__ib', 'nie') === null, 'the handled row of an external id is found');
+$tisch->reopen($frueher, new IncomingProposal(new OrderProposal('__Cart', 'S-1', ProposalKind::Ordered, source: '__ib', externalId: 'k1')));
+$pruefe($tisch->openRows([$frueher]) !== [] && $tisch->closedId('__ib', 'k1') === null, 'a reopened row is open again, with what the source says now');
+$tisch->close($frueher, \Taxmod\Core\Import\InboxStatus::Discarded);
+
 // ⚠️ *Sein Wunsch vom 2026-10-21: «ein button fetch all wäre auch nett» — every fetching source once, intervals aside.*
 $pruefe(str_contains((new InboxScreen())->render(), 'value="' . InboxScreen::FETCH_ALL . '"'), 'the inbox page has a «Fetch all» button');
 $laeufe = Inbox::lastRuns();
