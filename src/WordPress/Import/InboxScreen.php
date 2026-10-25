@@ -21,6 +21,7 @@ use Taxmod\Core\Import\ProposalGroup;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ResolvingSource;
 use Taxmod\Core\Import\SearchingSource;
+use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Currency\EcbRates;
 use Taxmod\WordPress\Plugin;
 use WP_Error;
@@ -58,7 +59,7 @@ final class InboxScreen
             return '';
         }
 
-        $html = '<div class="wrap"><h1>' . esc_html__('Inbox', 'taxmod') . '</h1>' . $this->notice() . $this->sourcesBlock();
+        $html = '<div class="wrap">' . ListPage::heading(__('Inbox', 'taxmod')) . $this->notice() . $this->sourcesBlock();
         $groups = $this->table->openGroups();
 
         if ($groups === []) {
@@ -77,19 +78,12 @@ final class InboxScreen
         // «in der inbox soll die darstellung auch wie in ebay shipping sein sammelaktion wie sie in wp überlich sien» — one
         // WordPress list table, a row per order, bulk actions above it. The bulk form stands alone, because each row's details
         // hold a form of their own and forms do not nest; each row's checkbox joins it through `form=`.*
-        $html .= '<div class="tablenav top"><form method="post" id="' . self::BULK_FORM . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions">'
-            . wp_nonce_field(self::DISCARD_SELECTED, '_wpnonce', true, false)
-            . '<label class="screen-reader-text" for="taxmod-inbox-bulk-action">' . esc_html__('Bulk actions', 'taxmod') . '</label>'
-            . '<select name="action" id="taxmod-inbox-bulk-action"><option value="">' . esc_html__('Bulk actions', 'taxmod') . '</option>'
-            . '<option value="' . esc_attr(self::TAKE_SELECTED) . '">' . esc_html__('Take', 'taxmod') . '</option>'
-            . '<option value="' . esc_attr(self::DISCARD_SELECTED) . '">' . esc_html__('Discard', 'taxmod') . '</option></select> '
-            . get_submit_button(__('Apply', 'taxmod'), 'action', '', false) . '</form>'
-            . '<div class="tablenav-pages one-page"><span class="displaying-num">' . esc_html(sprintf(
-                /* translators: %d: number of orders */
-                _n('%d order', '%d orders', count($groups), 'taxmod'),
-                count($groups)
-            )) . '</span></div><br class="clear"></div>'
-            . '<table class="wp-list-table widefat fixed striped table-view-list"><thead>' . self::headings() . '</thead><tbody>';
+        $html .= ListPage::bulkBar(self::BULK_FORM, self::DISCARD_SELECTED, [self::TAKE_SELECTED => __('Take', 'taxmod'), self::DISCARD_SELECTED => __('Discard', 'taxmod')], sprintf(
+            /* translators: %d: number of orders */
+            _n('%d order', '%d orders', count($groups), 'taxmod'),
+            count($groups)
+        ));
+        $body = '';
 
         // ⚠️ *Sein Wunsch vom 2026-10-22: «das sind alles nachrichten zur gleichen bestellung hier ist die reihenfolge wichtig
         // und wäre schön wenn das nur ein kasten wäre» (D-970).*
@@ -122,7 +116,8 @@ final class InboxScreen
         foreach (InboxBundles::of($described) as $box) {
             if (count($box) === 1) {
                 $rows = $groups[$box[0]];
-                $html .= $this->row(self::ids($rows), $rows, $verdicts[$box[0]], $this->group($rows, $model, $intake, true));
+                [$details, $buttons] = $this->group($rows, $model, $intake, true);
+                $body .= $this->row(implode(',', self::ids($rows)), $rows, $verdicts[$box[0]], $details, $buttons);
 
                 continue;
             }
@@ -138,62 +133,51 @@ final class InboxScreen
                 $head['orderDate'] === null ? '' : ' · ' . substr($head['orderDate'], 0, 10)
             )) . '</h3>' . self::timeline($boxRows, true);
 
+            $buttons = '';
+
             if ($model !== null) {
-                $details .= '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0 0 .5em">'
+                $boxForm = 'taxmod-inbox-box-' . $boxIds[0];
+                $details .= '<form method="post" id="' . esc_attr($boxForm) . '" action="' . esc_url(admin_url('admin-post.php')) . '">'
                     . '<input type="hidden" name="proposals" value="' . esc_attr(implode(',', $boxIds)) . '">'
                     . '<input type="hidden" name="groups" value="' . esc_attr(implode(';', array_map(static fn (int $index): string => implode(',', self::ids($groups[$index])), $box))) . '">'
-                    . wp_nonce_field(self::nonceAction($boxIds), '_wpnonce', true, false)
-                    . '<button class="button button-primary" name="action" value="' . esc_attr(self::TAKE_BOX) . '">' . esc_html__('Take all in order', 'taxmod') . '</button></form>';
+                    . wp_nonce_field(self::nonceAction($boxIds), '_wpnonce', true, false) . '</form>';
+                $buttons = '<button class="button button-primary" form="' . esc_attr($boxForm) . '" name="action" value="' . esc_attr(self::TAKE_BOX) . '">' . esc_html__('Take all in order', 'taxmod') . '</button>';
             }
 
             foreach ($box as $index) {
-                $details .= $this->group($groups[$index], $model, $intake, true);
+                [$groupDetails, $groupButtons] = $this->group($groups[$index], $model, $intake, true);
+                $details .= $groupDetails . '<p style="text-align:right">' . $groupButtons . '</p>';
             }
 
             // ⚠️ *A box is taken in order of its messages (D-980): its checkbox carries each order's ids apart, «;» between orders.*
-            $html .= $this->row(
-                array_merge(...array_map(static fn (int $index): array => self::ids($groups[$index]), $box)),
+            $body .= $this->row(
+                implode(';', array_map(static fn (int $index): string => implode(',', self::ids($groups[$index])), $box)),
                 $boxRows,
                 $verdicts[$box[0]],
                 $details,
-                implode(';', array_map(static fn (int $index): string => implode(',', self::ids($groups[$index])), $box))
+                $buttons
             );
         }
 
-        return $html . '</tbody><tfoot>' . self::headings() . '</tfoot></table></div>';
-    }
-
-    private static function headings(): string
-    {
-        return '<tr><td class="manage-column column-cb check-column"><input type="checkbox" aria-label="' . esc_attr__('Select all', 'taxmod') . '"></td>'
-            . '<th scope="col" class="manage-column" style="width:16em">' . esc_html__('Order', 'taxmod') . '</th>'
-            . '<th scope="col" class="manage-column" style="width:9em">' . esc_html__('Received', 'taxmod') . '</th>'
-            . '<th scope="col" class="manage-column">' . esc_html__('Result', 'taxmod') . '</th>'
-            . '<th scope="col" class="manage-column" style="width:9em">' . esc_html__('Details', 'taxmod') . '</th></tr>';
+        return $html . ListPage::table([[__('Order', 'taxmod'), '16em'], [__('Received', 'taxmod'), '9em'], [__('Result', 'taxmod')]], $body) . '</div>';
     }
 
     /**
-     * One order (or one box of orders) as a list-table row: its checkbox joins the bulk form, its details open in place.
+     * One order (or one box of orders) as a list-table row (D-989): its buttons on the right, its details below.
      *
-     * @param list<int> $ids
      * @param non-empty-list<array<string, mixed>> $rows
      */
-    private function row(array $ids, array $rows, IntakeVerdict $verdict, string $details, string $selected = ''): string
+    private function row(string $selected, array $rows, IntakeVerdict $verdict, string $details, string $buttons): string
     {
         $proposal = self::merged($rows);
         $sources = Sources::all();
         $labels = array_unique(array_map(static fn (array $row): string => isset($sources[$row['source']]) ? $sources[$row['source']]->label() : (string) $row['source'], $rows));
 
-        return '<tr><th scope="row" class="check-column"><input type="checkbox" name="selected[]" value="' . esc_attr($selected === '' ? implode(',', $ids) : $selected)
-            . '" form="' . self::BULK_FORM . '" aria-label="' . esc_attr__('Select', 'taxmod') . '"></th>'
-            . '<td><strong>' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber)) . '</strong><br><small>' . esc_html(implode(', ', $labels) . ' · ' . self::kindLabel($proposal->kind)) . '</small></td>'
-            . '<td>' . esc_html(substr(self::when($rows[0]), 0, 16)) . '</td>'
-            . '<td>' . esc_html(self::verdictLabel($verdict)) . '</td>'
-            . '<td><button type="button" class="button-link" aria-expanded="false" onclick="var d=this.closest(\'tr\').nextElementSibling;d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden))">'
-            . esc_html__('Show and take', 'taxmod') . '</button></td></tr>'
-            // ⚠️ *His word of 2026-10-25: «das aufklappen/details bitte unterhalb der position anzeigen so dass wir mehr platz haben» —
-            // the details open as a row of their own across the whole table.*
-            . '<tr class="taxmod-inbox-details" hidden><td colspan="5" style="padding:0 1em 1em">' . $details . '</td></tr>';
+        return ListPage::row(self::BULK_FORM, $selected, [
+            '<strong>' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber)) . '</strong><br><small>' . esc_html(implode(', ', $labels) . ' · ' . self::kindLabel($proposal->kind)) . '</small>',
+            esc_html(substr(self::when($rows[0]), 0, 16)),
+            esc_html(self::verdictLabel($verdict)),
+        ], $buttons, $details);
     }
 
     /**
@@ -253,8 +237,11 @@ final class InboxScreen
             . get_submit_button($label, 'secondary small', 'submit', false) . '</form>';
     }
 
-    /** @param non-empty-list<array<string, mixed>> $rows */
-    private function group(array $rows, ?ModelGateway $model, Intake $intake, bool $inBox = false): string
+    /**
+     * @param non-empty-list<array<string, mixed>> $rows
+     * @return array{0: string, 1: string} the details, and the buttons that submit them from wherever they stand (D-989)
+     */
+    private function group(array $rows, ?ModelGateway $model, Intake $intake, bool $inBox = false): array
     {
         $proposal = self::merged($rows);
         $existing = $model === null ? null : self::existing($model, $proposal);
@@ -277,7 +264,8 @@ final class InboxScreen
         $verdict = $intake->decide((string) $rows[0]['source'], $proposal, $existing);
         $canTake = $model?->side($proposal) !== null && in_array($verdict, [IntakeVerdict::Update, IntakeVerdict::NewOrder], true);
 
-        $html .= '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
+        $form = 'taxmod-inbox-group-' . $ids[0];
+        $html .= '<form method="post" id="' . esc_attr($form) . '" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="proposals" value="' . esc_attr(implode(',', $ids)) . '">'
             . wp_nonce_field(self::nonceAction($ids), '_wpnonce', true, false);
 
@@ -306,11 +294,12 @@ final class InboxScreen
             $html .= '<p>' . esc_html(sprintf(__('Tracking: %s', 'taxmod'), implode(', ', $proposal->trackingNumbers))) . '</p>';
         }
 
-        if ($canTake) {
-            $html .= '<button class="button button-primary" name="action" value="' . esc_attr(self::TAKE) . '">' . esc_html__('Take', 'taxmod') . '</button> ';
-        }
+        // ⚠️ *His word of 2026-10-25: «Die Button möglichst immer rechts, Annehmen in der Tabelle» — the buttons stand in the
+        // row and reach this form through `form=`, so the ticks in the details still go with them.*
+        $buttons = ($canTake ? '<button class="button button-primary" form="' . esc_attr($form) . '" name="action" value="' . esc_attr(self::TAKE) . '">' . esc_html__('Take', 'taxmod') . '</button> ' : '')
+            . '<button class="button" form="' . esc_attr($form) . '" name="action" value="' . esc_attr(self::DISCARD) . '">' . esc_html__('Discard', 'taxmod') . '</button>';
 
-        return $html . '<button class="button" name="action" value="' . esc_attr(self::DISCARD) . '">' . esc_html__('Discard', 'taxmod') . '</button></form></div>';
+        return [$html . '</form></div>', $buttons];
     }
 
     /**

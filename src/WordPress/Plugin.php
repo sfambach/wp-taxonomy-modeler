@@ -49,7 +49,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.61';
+    public const VERSION     = '0.1.62';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -78,6 +78,9 @@ final class Plugin
         add_action('init', SettingsScreen::repairNeutralLocale(...));
 
         add_action('admin_menu', $plugin->registerMenu(...));
+        // ⚠️ *His word of 2026-10-25: «die Menü-Konfiguration für den Tax-Mod hätte ich gern an unterster Stelle» (D-989) —
+        // last of all, after every module has added its pages.*
+        add_action('admin_menu', self::configurationLast(...), PHP_INT_MAX);
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
 
         // ⚠️ **Der erste Rückweg vom Rand in den Kern** ([D-666](../../docs/NewConcept/90-decision-log.md),
@@ -276,6 +279,27 @@ final class Plugin
         if (UnitScaffold::rateFieldId() === null) {
             $this->unitScaffold()->ensureRateField();
         }
+    }
+
+    /** Moves «Configuration» to the foot of the modeller's menu, whichever module added its page after it. */
+    public static function configurationLast(): void
+    {
+        global $submenu;
+
+        if (! isset($submenu['taxmod']) || ! is_array($submenu['taxmod'])) {
+            return;
+        }
+
+        $last = [];
+
+        foreach ($submenu['taxmod'] as $position => $entry) {
+            if (($entry[2] ?? '') === 'taxmod-settings') {
+                $last[] = $entry;
+                unset($submenu['taxmod'][$position]);
+            }
+        }
+
+        $submenu['taxmod'] = [...array_values($submenu['taxmod']), ...$last];
     }
 
     public function registerMenu(): void

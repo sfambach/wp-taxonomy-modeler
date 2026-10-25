@@ -133,6 +133,14 @@ $ids = implode(',', array_map(static fn (array $row): int => (int) $row['id'], $
 $pruefe(str_contains($seite, 'name="selected[]" value="' . $ids . '" form="taxmod-inbox-bulk"') && str_contains($seite, 'value="' . InboxScreen::DISCARD_SELECTED . '"'), 'each group has a checkbox for the bulk actions');
 // ⚠️ *Sein Wunsch vom 2026-10-25: «in der inbox soll die darstellung auch wie in ebay shipping sein sammelaktion wie sie in wp überlich sien».*
 $pruefe(str_contains($seite, 'class="wp-list-table') && str_contains($seite, 'value="' . InboxScreen::TAKE_SELECTED . '"') && has_action('admin_post_' . InboxScreen::TAKE_SELECTED) !== false, 'the inbox is one list table with «Take» and «Discard» as bulk actions');
+// ⚠️ *Sein Wunsch vom 2026-10-25 (D-989): «Die Button möglichst immer rechts, Annehmen in der Tabelle … eine große Überschrift»,
+// «unten drunter zum Ausklappen überall … oben noch die Möglichkeit, alle auszuklappen».*
+$pruefe(str_contains($seite, 'Taxonomy Modeller › Inbox') && str_contains($seite, 'Expand all') && str_contains($seite, 'class="taxmod-list-details" hidden')
+    && preg_match('/<td style="text-align:right[^"]*">.*?form="taxmod-inbox-group-\d+" name="action" value="' . InboxScreen::DISCARD . '"/s', $seite) === 1, 'the inbox uses the shared list page: heading, expand all, buttons right in the row, details below');
+global $submenu;
+$submenu['taxmod'] = [['Modeller', 'x', 'taxmod'], ['Configuration', 'x', 'taxmod-settings'], ['Inbox', 'x', InboxScreen::PAGE]];
+\Taxmod\WordPress\Plugin::configurationLast();
+$pruefe(array_column($submenu['taxmod'], 2) === ['taxmod', InboxScreen::PAGE, 'taxmod-settings'], '«Configuration» stands last in the menu');
 $_POST = $_REQUEST = ['selected' => [$ids], '_wpnonce' => wp_create_nonce(InboxScreen::DISCARD_SELECTED)];
 add_filter('wp_redirect', static function (): never { throw new RuntimeException('__redirect'); });
 try {
