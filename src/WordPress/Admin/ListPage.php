@@ -72,11 +72,12 @@ final class ListPage
     }
 
     /**
-     * One row: its checkbox joins the bulk form, the buttons stand on the right after the toggle, the details open below.
+     * One row: its checkbox joins the bulk form, the buttons stand on the right after the toggle, the details open below —
+     * already open when the module's setting says so («Automatisch aufklappen», his wish of 2026-10-25).
      *
      * @param list<string> $cells HTML, escaped by the caller
      */
-    public static function row(string $formId, string $value, array $cells, string $buttons, string $details): string
+    public static function row(string $formId, string $value, array $cells, string $buttons, string $details, bool $expanded = false): string
     {
         $html = '<tr><th scope="row" class="check-column"><input type="checkbox" name="selected[]" value="' . esc_attr($value)
             . '" form="' . esc_attr($formId) . '" aria-label="' . esc_attr__('Select', 'taxmod') . '"></th>';
@@ -86,9 +87,9 @@ final class ListPage
         }
 
         return $html . '<td style="text-align:right;white-space:nowrap">'
-            . '<button type="button" class="button-link taxmod-list-toggle" aria-expanded="false" onclick="var d=this.closest(\'tr\').nextElementSibling;d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden))">'
+            . '<button type="button" class="button-link taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" onclick="var d=this.closest(\'tr\').nextElementSibling;d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden))">'
             . esc_html__('Details', 'taxmod') . ' ▾</button> ' . $buttons . '</td></tr>'
-            . '<tr class="taxmod-list-details" hidden><td colspan="' . (count($cells) + 2) . '" style="padding:0 1em 1em">' . $details . '</td></tr>';
+            . '<tr class="taxmod-list-details"' . ($expanded ? '' : ' hidden') . '><td colspan="' . (count($cells) + 2) . '" style="padding:0 1em 1em">' . $details . '</td></tr>';
     }
 
     private static function toggleAll(bool $hidden): string
