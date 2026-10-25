@@ -215,22 +215,25 @@
 		);
 	}
 
-	// D-916 «Rückverweise»: the records of another node whose chosen field points at this record, as a table.
-	function Referrers( props ) {
+	// D-991: the source apart from the display. «Through field» empty is the record itself; a field shows the records of another
+	// node whose field points here (D-916). The fields ticked are the ones shown, as form rows or as table columns.
+	function Source( props ) {
 		var a = props.attributes;
 		var referrer = ( props.node.referrers || [] ).filter( function ( r ) { return r.id === a.via; } )[ 0 ];
 		var owner = useNode( referrer ? referrer.owner : 0, false );
+		var shown = a.via ? owner : props.node;
 
 		return el( 'div', null,
 			el( SelectControl, {
-				label: __( 'Records pointing here through', 'taxmod' ),
+				label: __( 'Through field', 'taxmod' ),
+				help: __( 'Empty: this record. A field: the records pointing here through it.', 'taxmod' ),
 				value: a.via,
-				options: [ { label: '—', value: 0 } ].concat( ( props.node.referrers || [] ).map( function ( r ) {
+				options: [ { label: __( '— this record', 'taxmod' ), value: 0 } ].concat( ( props.node.referrers || [] ).map( function ( r ) {
 					return { label: r.ownerName + ' → ' + r.name, value: r.id };
 				} ) ),
-				onChange: function ( v ) { props.setAttributes( { via: Number( v ), rowFields: '' } ); }
+				onChange: function ( v ) { props.setAttributes( { via: Number( v ), rowFields: '', field: 0 } ); }
 			} ),
-			owner ? el( FieldChecks, { label: __( 'Columns', 'taxmod' ), node: owner, value: a.rowFields, onChange: function ( v ) { props.setAttributes( { rowFields: v } ); } } ) : null
+			shown ? el( FieldChecks, { label: __( 'Fields shown (none = all)', 'taxmod' ), node: shown, value: a.rowFields, onChange: function ( v ) { props.setAttributes( { rowFields: v } ); } } ) : ( a.via ? el( Spinner ) : null )
 		);
 	}
 
@@ -248,11 +251,11 @@
 
 		var display = el( SelectControl, {
 			label: __( 'Display', 'taxmod' ),
-			value: a.display || 'record',
+			value: a.display === 'referrers' ? 'table' : ( a.display || 'record' ),
 			options: [
-				{ label: __( 'Form (one record, vertical)', 'taxmod' ), value: 'record' },
-				{ label: __( 'Comparison', 'taxmod' ), value: 'comparison' },
-				{ label: __( 'Referring records', 'taxmod' ), value: 'referrers' }
+				{ label: __( 'Form (vertical)', 'taxmod' ), value: 'record' },
+				{ label: __( 'Table', 'taxmod' ), value: 'table' },
+				{ label: __( 'Comparison', 'taxmod' ), value: 'comparison' }
 			],
 			onChange: function ( v ) { props.setAttributes( { display: v } ); }
 		} );
@@ -262,7 +265,7 @@
 			onChange: function ( id ) { props.setAttributes( { node: id, record: 0, records: '', field: 0, via: 0, rowKey: 0, value: 0, groupBy: 0, rowFields: '', columnLabel: 0 } ); }
 		} );
 
-		var single = node && ! comparison && a.display !== 'referrers' ? [
+		var single = node && ! comparison ? [
 			el( ComboboxControl, {
 				key: 'record',
 				label: __( 'Record', 'taxmod' ),
@@ -270,24 +273,7 @@
 				options: node.records.map( function ( r ) { return { value: r.id, label: r.label }; } ),
 				onChange: function ( v ) { props.setAttributes( { record: Number( v ) || 0 } ); }
 			} ),
-			el( SelectControl, {
-				key: 'field',
-				label: __( 'Only this field', 'taxmod' ),
-				value: a.field,
-				options: fieldOptions( node, __( 'All fields', 'taxmod' ) ),
-				onChange: function ( v ) { props.setAttributes( { field: Number( v ) } ); }
-			} )
-		] : null;
-
-		var referring = node && a.display === 'referrers' ? [
-			el( ComboboxControl, {
-				key: 'record',
-				label: __( 'Record', 'taxmod' ),
-				value: a.record || null,
-				options: node.records.map( function ( r ) { return { value: r.id, label: r.label }; } ),
-				onChange: function ( v ) { props.setAttributes( { record: Number( v ) || 0 } ); }
-			} ),
-			el( Referrers, { key: 'via', attributes: a, setAttributes: props.setAttributes, node: node } )
+			el( Source, { key: 'source', attributes: a, setAttributes: props.setAttributes, node: node } )
 		] : null;
 
 		var naming = node && comparison ? el( SelectControl, {
@@ -299,7 +285,7 @@
 		} ) : null;
 
 		var panels = [
-			el( PanelBody, { key: 'what', title: __( 'Records', 'taxmod' ) }, display, picker, naming, single, referring, node && comparison ? el( RecordList, { attributes: a, setAttributes: props.setAttributes, node: node } ) : null )
+			el( PanelBody, { key: 'what', title: __( 'Records', 'taxmod' ) }, display, picker, naming, single, node && comparison ? el( RecordList, { attributes: a, setAttributes: props.setAttributes, node: node } ) : null )
 		];
 
 		if ( node && comparison ) {

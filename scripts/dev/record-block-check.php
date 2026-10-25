@@ -93,6 +93,24 @@ $eigene = $block->render(['display' => RecordBlock::COMPARISON, 'record' => $a, 
 $pruefe(substr_count($eigene, '<tr') - 1 === count($felder) && count($felder) > 0, 'gewählte Felder: eine Zeile je Feld (' . count($felder) . ')');
 $pruefe(preg_match('#<td class="taxmod-comparison-value[^"]*">\#\d+</td>#', $eigene) === 0, 'keine Satznummer statt eines Werts');
 
+// *D-991, sein Wort: «dass man Display von dem trennt … wenn da nichts ausgewählt ist, dann nimmt er das eigentliche Rekord».*
+$mitWerten = $wpdb->get_row(
+    "SELECT v.node_record_id AS satz, MIN(v.relation_id) AS feld, COUNT(DISTINCT v.relation_id) AS n FROM {$p}relation_records v
+       JOIN {$p}node_records r ON r.id = v.node_record_id AND r.relation_id = 0
+      WHERE v.value_text IS NOT NULL GROUP BY v.node_record_id HAVING n >= 2 ORDER BY v.node_record_id LIMIT 1"
+);
+
+if ($mitWerten === null) {
+    $pruefe(false, 'kein Satz mit zwei Textwerten — Form und Tabelle aus D-991 ungeprüft');
+} else {
+    $tabelle = $block->render(['display' => RecordBlock::TABLE, 'record' => (int) $mitWerten->satz]);
+    $eine    = $block->render(['display' => RecordBlock::TABLE, 'record' => (int) $mitWerten->satz, 'rowFields' => (string) $mitWerten->feld]);
+    $pruefe(str_contains($tabelle, '<table') && substr_count($tabelle, '<th') > substr_count($eine, '<th') && substr_count($eine, '<th') >= 1, 'Tabelle ohne «Über Feld»: der Satz selbst als eine Zeile; ohne Auswahl alle Spalten, sonst die gewählten');
+    $form = $block->render(['display' => 'record', 'record' => (int) $mitWerten->satz, 'rowFields' => (string) $mitWerten->feld]);
+    $voll = $block->render(['display' => 'record', 'record' => (int) $mitWerten->satz]);
+    $pruefe($form !== '' && strlen(strip_tags($form)) < strlen(strip_tags($voll)), 'Form mit gewählten Feldern zeigt nur diese');
+}
+
 // *Ein Feld mit mehreren Werten nennt alle — die Zusammenfassung allein nannte nur den ersten.*
 $viele = $wpdb->get_row(
     "SELECT v.node_record_id AS satz, v.relation_id AS feld, COUNT(*) AS n FROM {$p}relation_records v

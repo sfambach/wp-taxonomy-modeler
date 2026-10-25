@@ -41,6 +41,8 @@ final class RecordBlock
 
     /** The records of another node whose field `via` points at this record, as a table with `rowFields` as columns (D-916). */
     public const REFERRERS = 'referrers';
+    /** One table: the record itself as one row, or with `via` the records pointing here through it (D-991). */
+    public const TABLE = 'table';
 
     private const CACHE = 'taxmod_block_';
 
@@ -220,13 +222,18 @@ final class RecordBlock
 
         // ⚠️ *Ein Satz, der fehlt, ist im Beitrag kein weisser Bildschirm: Lesern zeigt der Block nichts, Bearbeitern den Grund.*
         try {
-            $markup = ($attributes['display'] ?? '') === self::REFERRERS
-                ? ($this->screen)()->referrersForReaders(
-                    $record,
-                    absint($attributes['via'] ?? 0),
-                    self::ids((string) ($attributes['rowFields'] ?? '')),
-                    SettingsScreen::neutralLocale()
-                )
+            // ⚠️ *His word of 2026-10-25 (D-991): «dass man Display von dem trennt … wenn da nichts ausgewählt ist, dann nimmt er das
+            // eigentliche Rekord. Und ansonsten bezieht er sich auf den Referring-Rekord». Display says how, `via` says which:
+            // empty is the record itself, a field the records pointing here through it. The old «referrers» is a table with `via`.*
+            $display = (string) ($attributes['display'] ?? '');
+            $via     = absint($attributes['via'] ?? 0);
+            $fields  = self::ids((string) ($attributes['rowFields'] ?? ''));
+            $markup = $display === self::REFERRERS || ($display === self::TABLE && $via !== 0)
+                ? ($this->screen)()->referrersForReaders($record, $via, $fields, SettingsScreen::neutralLocale())
+                : ($display === self::TABLE
+                ? ($this->screen)()->recordAsTableForReaders($record, $fields, SettingsScreen::neutralLocale())
+                : (($display === '' || $display === 'record') && $via !== 0
+                ? ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale())
                 : (($attributes['display'] ?? '') === self::COLLECTED
                 ? ($this->screen)()->collectedForReaders(
                     $record,
@@ -252,7 +259,7 @@ final class RecordBlock
                     absint($attributes['groupBy'] ?? 0),
                     absint($attributes['columnLabel'] ?? 0),
                 )
-                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale())));
+                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale(), $fields)))));
         } catch (\Throwable $e) {
             return current_user_can('edit_posts')
                 ? '<p class="taxmod-record-missing">' . esc_html(sprintf(

@@ -301,9 +301,11 @@ final class NodesScreen
      * Ein Satz, wie ein Leser ihn sieht — die Seite «Anzeige» der Vorschau ([D-547](../../../docs/NewConcept/90-decision-log.md)), für den Block im Beitrag ([D-912](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Dieselbe Zeichnung wie links in der Vorschau: `Purpose::Display` auf `Level::FrontEnd`, ohne Akte und ohne Links in die
-     * Verwaltung. Ein Feld gewählt, steht nur dieses da.*
+     * Verwaltung. Ein Feld gewählt, steht nur dieses da; Felder gewählt (D-991), stehen nur diese da.*
+     *
+     * @param list<int> $fields
      */
-    public function recordForReaders(int $recordId, int $onlyField, string $locale): string
+    public function recordForReaders(int $recordId, int $onlyField, string $locale, array $fields = []): string
     {
         $satz   = $this->data->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
         $knoten = $this->editor->find($satz->nodeId) ?? throw new \InvalidArgumentException("No node {$satz->nodeId}.");
@@ -324,6 +326,10 @@ final class NodesScreen
 
         if ($onlyField !== 0) {
             $gezeigte = array_values(array_filter($gezeigte, static fn (Relation $r): bool => $r->id === $onlyField));
+        }
+
+        if ($fields !== []) {
+            $gezeigte = array_values(array_filter($gezeigte, static fn (Relation $r): bool => in_array($r->id, $fields, true)));
         }
 
         return $this->rendering->nodeAsForm(
@@ -366,10 +372,36 @@ final class NodesScreen
         return $via === 0 ? '' : $this->recordsTableForReaders($this->data->referrersVia($recordId, $via), $columns, $locale);
     }
 
+    /**
+     * Die Sätze, deren Feld `via` auf diesen Satz zeigt, je als Form untereinander (D-991): Darstellung und Quelle getrennt.
+     *
+     * @param list<int> $fields
+     */
+    public function referrerFormsForReaders(int $recordId, int $via, array $fields, string $locale): string
+    {
+        $html = '';
+
+        foreach ($via === 0 ? [] : $this->data->referrersVia($recordId, $via) as $id) {
+            $html .= $this->recordForReaders($id, 0, $locale, $fields);
+        }
+
+        return $html;
+    }
+
+    /**
+     * Ein Satz als Tabelle mit einer Zeile (D-991): die Darstellung «Tabelle» ohne Feld, über das Sätze hierher zeigen.
+     *
+     * @param list<int> $columns
+     */
+    public function recordAsTableForReaders(int $recordId, array $columns, string $locale): string
+    {
+        return $this->recordsTableForReaders([$recordId], $columns, $locale);
+    }
+
     /** @param list<int> $ids @param list<int> $columns */
     private function recordsTableForReaders(array $ids, array $columns, string $locale): string
     {
-        if ($ids === [] || $columns === []) {
+        if ($ids === []) {
             return '';
         }
 
@@ -381,7 +413,10 @@ final class NodesScreen
             return '';
         }
 
-        $felder = array_values(array_filter(array_map(fn (int $id): ?Relation => $this->editor->relationById($id), $columns)));
+        // ⚠️ *No column ticked: every field the node shows (D-991), as the form does.*
+        $felder = $columns === []
+            ? $this->rendering->previewVisibilityFor($alle = $this->editor->fieldsOf($knoten->id), $this->rendering->settingsForUseSites($alle))['shown']
+            : array_values(array_filter(array_map(fn (int $id): ?Relation => $this->editor->relationById($id), $columns)));
         $werte  = $this->data->valuesOfMany($ids);
         $zeilen = [];
 
