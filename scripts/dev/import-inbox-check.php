@@ -130,7 +130,9 @@ $pruefe(isset(Inbox::lastRuns()['__ib']), '«Fetch all» runs it anyway');
 // ⚠️ *Sein Wunsch vom 2026-10-21: «selectierte einträge verwerfen» — one checkbox per group, one button for all of them.*
 $seite = (new InboxScreen())->render();
 $ids = implode(',', array_map(static fn (array $row): int => (int) $row['id'], $eigene[0]));
-$pruefe(str_contains($seite, 'name="selected[]" value="' . $ids . '" form="taxmod-inbox-bulk"') && str_contains($seite, 'value="' . InboxScreen::DISCARD_SELECTED . '"'), 'each group has a checkbox for the bulk discard');
+$pruefe(str_contains($seite, 'name="selected[]" value="' . $ids . '" form="taxmod-inbox-bulk"') && str_contains($seite, 'value="' . InboxScreen::DISCARD_SELECTED . '"'), 'each group has a checkbox for the bulk actions');
+// ⚠️ *Sein Wunsch vom 2026-10-25: «in der inbox soll die darstellung auch wie in ebay shipping sein sammelaktion wie sie in wp überlich sien».*
+$pruefe(str_contains($seite, 'class="wp-list-table') && str_contains($seite, 'value="' . InboxScreen::TAKE_SELECTED . '"') && has_action('admin_post_' . InboxScreen::TAKE_SELECTED) !== false, 'the inbox is one list table with «Take» and «Discard» as bulk actions');
 $_POST = $_REQUEST = ['selected' => [$ids], '_wpnonce' => wp_create_nonce(InboxScreen::DISCARD_SELECTED)];
 add_filter('wp_redirect', static function (): never { throw new RuntimeException('__redirect'); });
 try {

@@ -6,6 +6,7 @@ use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Import\BacklogSource;
 use Taxmod\Core\Import\ChangeListBuilder;
 use Taxmod\Core\Import\DutyRole;
+use Taxmod\Core\Import\ExistingLine;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\FetchingSource;
 use Taxmod\Core\Import\ImportSource;
@@ -36,6 +37,7 @@ final class InboxScreen
     public const TAKE_BOX = 'taxmod_inbox_take_box';
     public const DISCARD = 'taxmod_inbox_discard';
     public const DISCARD_SELECTED = 'taxmod_inbox_discard_selected';
+    public const TAKE_SELECTED = 'taxmod_inbox_take_selected';
     private const BULK_FORM = 'taxmod-inbox-bulk';
     public const FETCH = 'taxmod_inbox_fetch';
     public const FETCH_ALL = 'taxmod_inbox_fetch_all';
@@ -70,15 +72,23 @@ final class InboxScreen
 
         $intake = new Intake(Duties::load(), array_keys(Sources::all()));
 
-        // ⚠️ *Sein Wunsch vom 2026-10-21: «ne massen änderung wäre noch schön selectierte einträge verwerfen, spalte kann ruhig
-        // länger sein dafür mehr auf einer seite». The bulk form stands alone, because a group is a form of its own and forms
-        // do not nest; each group's checkbox joins it through `form=`.*
-        $html .= '<form method="post" id="' . self::BULK_FORM . '" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0 0 .75em">'
+        // ⚠️ *Sein Wunsch vom 2026-10-21: «ne massen änderung wäre noch schön selectierte einträge verwerfen», and on 2026-10-25:
+        // «in der inbox soll die darstellung auch wie in ebay shipping sein sammelaktion wie sie in wp überlich sien» — one
+        // WordPress list table, a row per order, bulk actions above it. The bulk form stands alone, because each row's details
+        // hold a form of their own and forms do not nest; each row's checkbox joins it through `form=`.*
+        $html .= '<div class="tablenav top"><form method="post" id="' . self::BULK_FORM . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions">'
             . wp_nonce_field(self::DISCARD_SELECTED, '_wpnonce', true, false)
-            . '<label style="margin-right:1em"><input type="checkbox" onclick="document.querySelectorAll(\'input[form=' . self::BULK_FORM . ']\').forEach(function(c){c.checked=this.checked}.bind(this))"> '
-            . esc_html__('Select all', 'taxmod') . '</label>'
-            . '<button class="button" name="action" value="' . esc_attr(self::DISCARD_SELECTED) . '">' . esc_html__('Discard selected', 'taxmod') . '</button></form>'
-            . '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(36em,1fr));gap:0 12px;align-items:start">';
+            . '<label class="screen-reader-text" for="taxmod-inbox-bulk-action">' . esc_html__('Bulk actions', 'taxmod') . '</label>'
+            . '<select name="action" id="taxmod-inbox-bulk-action"><option value="">' . esc_html__('Bulk actions', 'taxmod') . '</option>'
+            . '<option value="' . esc_attr(self::TAKE_SELECTED) . '">' . esc_html__('Take', 'taxmod') . '</option>'
+            . '<option value="' . esc_attr(self::DISCARD_SELECTED) . '">' . esc_html__('Discard', 'taxmod') . '</option></select> '
+            . get_submit_button(__('Apply', 'taxmod'), 'action', '', false) . '</form>'
+            . '<div class="tablenav-pages one-page"><span class="displaying-num">' . esc_html(sprintf(
+                /* translators: %d: number of orders */
+                _n('%d order', '%d orders', count($groups), 'taxmod'),
+                count($groups)
+            )) . '</span></div><br class="clear"></div>'
+            . '<table class="wp-list-table widefat fixed striped table-view-list"><thead>' . self::headings() . '</thead><tbody>';
 
         // ⚠️ *Sein Wunsch vom 2026-10-22: «das sind alles nachrichten zur gleichen bestellung hier ist die reihenfolge wichtig
         // und wäre schön wenn das nur ein kasten wäre» (D-970).*
@@ -88,6 +98,7 @@ final class InboxScreen
             return $rows;
         }, $groups));
         $described = [];
+        $verdicts = [];
 
         foreach ($groups as $index => $rows) {
             $proposal = self::merged($rows);
@@ -104,44 +115,89 @@ final class InboxScreen
                 'orderDate' => $existing instanceof ExistingOrder ? $existing->orderDate : null,
                 'first'     => self::when($rows[0]),
             ];
+            $verdicts[$index] = $intake->decide((string) $rows[0]['source'], $proposal, $existing instanceof ExistingOrder ? $existing : null);
         }
 
         foreach (InboxBundles::of($described) as $box) {
             if (count($box) === 1) {
-                $html .= $this->group($groups[$box[0]], $model, $intake);
+                $rows = $groups[$box[0]];
+                $html .= $this->row(self::ids($rows), $rows, $verdicts[$box[0]], $this->group($rows, $model, $intake, true));
 
                 continue;
             }
 
             $head = $described[$box[0]];
-            $html .= '<div class="postbox" style="padding:0 12px 8px;margin-bottom:12px;min-width:0;grid-column:1/-1"><h2>' . esc_html(sprintf(
+            $boxRows = array_merge(...array_map(static fn (int $index): array => $groups[$index], $box));
+            $boxIds = self::ids($boxRows);
+            $details = '<h3>' . esc_html(sprintf(
                 /* translators: 1: platform, 2: number of orders, 3: order date */
                 __('%1$s · %2$d orders of one purchase%3$s', 'taxmod'),
                 $head['platform'],
                 count($box),
                 $head['orderDate'] === null ? '' : ' · ' . substr($head['orderDate'], 0, 10)
-            )) . '</h2>';
-
-            $boxRows = array_merge(...array_map(static fn (int $index): array => $groups[$index], $box));
-            $boxIds = array_map(static fn (array $row): int => (int) $row['id'], $boxRows);
-            $html .= self::timeline($boxRows, true);
+            )) . '</h3>' . self::timeline($boxRows, true);
 
             if ($model !== null) {
-                $html .= '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0 0 .5em">'
+                $details .= '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0 0 .5em">'
                     . '<input type="hidden" name="proposals" value="' . esc_attr(implode(',', $boxIds)) . '">'
-                    . '<input type="hidden" name="groups" value="' . esc_attr(implode(';', array_map(static fn (int $index): string => implode(',', array_map(static fn (array $row): int => (int) $row['id'], $groups[$index])), $box))) . '">'
+                    . '<input type="hidden" name="groups" value="' . esc_attr(implode(';', array_map(static fn (int $index): string => implode(',', self::ids($groups[$index])), $box))) . '">'
                     . wp_nonce_field(self::nonceAction($boxIds), '_wpnonce', true, false)
                     . '<button class="button button-primary" name="action" value="' . esc_attr(self::TAKE_BOX) . '">' . esc_html__('Take all in order', 'taxmod') . '</button></form>';
             }
 
             foreach ($box as $index) {
-                $html .= $this->group($groups[$index], $model, $intake, true);
+                $details .= $this->group($groups[$index], $model, $intake, true);
             }
 
-            $html .= '</div>';
+            // ⚠️ *A box is taken in order of its messages (D-980): its checkbox carries each order's ids apart, «;» between orders.*
+            $html .= $this->row(
+                array_merge(...array_map(static fn (int $index): array => self::ids($groups[$index]), $box)),
+                $boxRows,
+                $verdicts[$box[0]],
+                $details,
+                implode(';', array_map(static fn (int $index): string => implode(',', self::ids($groups[$index])), $box))
+            );
         }
 
-        return $html . '</div></div>';
+        return $html . '</tbody><tfoot>' . self::headings() . '</tfoot></table></div>';
+    }
+
+    private static function headings(): string
+    {
+        return '<tr><td class="manage-column column-cb check-column"><input type="checkbox" aria-label="' . esc_attr__('Select all', 'taxmod') . '"></td>'
+            . '<th scope="col" class="manage-column" style="width:16em">' . esc_html__('Order', 'taxmod') . '</th>'
+            . '<th scope="col" class="manage-column" style="width:9em">' . esc_html__('Received', 'taxmod') . '</th>'
+            . '<th scope="col" class="manage-column" style="width:22%">' . esc_html__('Result', 'taxmod') . '</th>'
+            . '<th scope="col" class="manage-column">' . esc_html__('Details', 'taxmod') . '</th></tr>';
+    }
+
+    /**
+     * One order (or one box of orders) as a list-table row: its checkbox joins the bulk form, its details open in place.
+     *
+     * @param list<int> $ids
+     * @param non-empty-list<array<string, mixed>> $rows
+     */
+    private function row(array $ids, array $rows, IntakeVerdict $verdict, string $details, string $selected = ''): string
+    {
+        $proposal = self::merged($rows);
+        $sources = Sources::all();
+        $labels = array_unique(array_map(static fn (array $row): string => isset($sources[$row['source']]) ? $sources[$row['source']]->label() : (string) $row['source'], $rows));
+
+        return '<tr><th scope="row" class="check-column"><input type="checkbox" name="selected[]" value="' . esc_attr($selected === '' ? implode(',', $ids) : $selected)
+            . '" form="' . self::BULK_FORM . '" aria-label="' . esc_attr__('Select', 'taxmod') . '"></th>'
+            . '<td><strong>' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber)) . '</strong><br><small>' . esc_html(implode(', ', $labels) . ' · ' . self::kindLabel($proposal->kind)) . '</small></td>'
+            . '<td>' . esc_html(substr(self::when($rows[0]), 0, 16)) . '</td>'
+            . '<td>' . esc_html(self::verdictLabel($verdict)) . '</td>'
+            . '<td><details><summary>' . esc_html__('Show and take', 'taxmod') . '</summary>' . $details . '</details></td></tr>';
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<int>
+     */
+    private static function ids(array $rows): array
+    {
+        return array_map(static fn (array $row): int => (int) $row['id'], $rows);
     }
 
     private function sourcesBlock(): string
@@ -201,12 +257,9 @@ final class InboxScreen
         $sources = Sources::all();
         $labels = array_unique(array_map(static fn (array $row): string => isset($sources[$row['source']]) ? $sources[$row['source']]->label() : (string) $row['source'], $rows));
 
-        $html = ($inBox ? '<div style="border-top:1px solid #dcdcde;padding-top:4px;min-width:0"><h3>' : '<div class="postbox" style="padding:0 12px 8px;margin-bottom:12px;min-width:0"><h2>')
-            . '<input type="checkbox" name="selected[]" value="' . esc_attr(implode(',', $ids)) . '" form="' . self::BULK_FORM . '" aria-label="'
-            . esc_attr__('Select', 'taxmod') . '" style="margin-right:.5em"> ' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber))
-            . ' <small>· ' . esc_html(implode(', ', $labels)) . ' · ' . esc_html(self::kindLabel($proposal->kind)) . '</small>' . ($inBox ? '</h3>' : '</h2>');
-
-        $html .= $inBox ? '' : self::timeline($rows, false);
+        $html = '<div style="border-top:1px solid #dcdcde;padding-top:4px;min-width:0"><h4 style="margin:.5em 0">' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber))
+            . ' <small>· ' . esc_html(implode(', ', $labels)) . ' · ' . esc_html(self::kindLabel($proposal->kind)) . '</small></h4>'
+            . ($inBox && count($rows) === 1 ? '' : self::timeline($rows, false));
 
         if ($existing instanceof WP_Error) {
             $html .= '<p class="notice notice-error inline">' . esc_html($existing->get_error_message()) . '</p>';
@@ -261,13 +314,25 @@ final class InboxScreen
     private function differences(OrderProposal $proposal, ExistingOrder $existing, bool $enabled): string
     {
         $differences = OrderComparison::between($proposal, $existing);
-        $linePrices = count(OrderComparison::lineFills($proposal, $existing));
-        // ⚠️ *Empty item prices are filled, never chosen (D-986) — so a line says so, and there is no tick for it.*
-        $note = $linePrices === 0 ? '' : '<p>' . esc_html(sprintf(
-            /* translators: %d: number of purchases */
-            _n('The empty prices of %d purchase are filled from the source.', 'The empty prices of %d purchases are filled from the source.', $linePrices, 'taxmod'),
-            $linePrices
-        )) . '</p>';
+        $linePrices = OrderComparison::lineFills($proposal, $existing);
+        // ⚠️ *Empty item prices are filled, never chosen (D-986) — so they are listed, each with its price, without a tick.
+        // His question of 2026-10-25: «das sind nun die preise der gesamten bestellungen aber nicht der einzelpostionen stimmts?»*
+        $titles = array_column(array_map(static fn (ExistingLine $line): array => [$line->recordId, $line->title], $existing->lines), 1, 0);
+        $note = '';
+
+        foreach ($linePrices as $recordId => $index) {
+            $line = $proposal->lines[$index];
+            $note .= '<li>' . esc_html(sprintf(
+                /* translators: 1: purchase, 2: quantity, 3: price per piece, 4: currency */
+                __('%1$s: %2$s × %3$s %4$s', 'taxmod'),
+                $titles[$recordId] ?? (string) $recordId,
+                (string) $line->quantity,
+                (string) $line->unitPrice,
+                $proposal->currency
+            )) . '</li>';
+        }
+
+        $note = $note === '' ? '' : '<p>' . esc_html__('Item prices filled from the source (empty in the model):', 'taxmod') . '</p><ul style="list-style:disc;margin-left:1.5em">' . $note . '</ul>';
 
         if ($differences === []) {
             return $note;
@@ -489,6 +554,37 @@ final class InboxScreen
 
         /* translators: %d: number of proposals */
         $this->finish(sprintf(__('%d discarded.', 'taxmod'), count($rows)));
+    }
+
+    /**
+     * Takes the selected orders, each with every line and only what the model leaves empty — as {@see AutoTake} does. A
+     * box («;» between its orders) is taken in the order of its messages (D-980).
+     */
+    public function handleTakeSelected(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        check_admin_referer(self::DISCARD_SELECTED);
+        $taken = 0;
+        $failed = [];
+
+        foreach ((array) ($_POST['selected'] ?? []) as $selected) {
+            foreach (explode(';', sanitize_text_field(wp_unslash((string) $selected))) as $group) {
+                $rows = $this->table->openRows(array_values(array_unique(array_filter(array_map('absint', explode(',', $group))))));
+
+                if ($rows === []) {
+                    continue;
+                }
+
+                $result = $this->take($rows, null);
+                $result === true ? $taken++ : $failed[] = $result;
+            }
+        }
+
+        /* translators: %d: number of orders */
+        $this->finish(trim(sprintf(__('%d taken.', 'taxmod'), $taken) . ' ' . implode(' ', array_unique($failed))));
     }
 
     public function handleTake(): void
