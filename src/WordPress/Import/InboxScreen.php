@@ -14,6 +14,7 @@ use Taxmod\Core\Import\InboxBundles;
 use Taxmod\Core\Import\InboxStatus;
 use Taxmod\Core\Import\Intake;
 use Taxmod\Core\Import\IntakeVerdict;
+use Taxmod\Core\Import\Money;
 use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalGroup;
@@ -318,31 +319,23 @@ final class InboxScreen
     private function differences(OrderProposal $proposal, ExistingOrder $existing, bool $enabled): string
     {
         $differences = OrderComparison::between($proposal, $existing);
-        $linePrices = OrderComparison::lineFills($proposal, $existing);
-        // ⚠️ *Empty item prices are filled, never chosen (D-986) — so they are listed, each with its price, without a tick.
-        // His question of 2026-10-25: «das sind nun die preise der gesamten bestellungen aber nicht der einzelpostionen stimmts?»*
+        // ⚠️ *Every item the source names, with what it knows of it — his wish of 2026-10-25: «im Grunde ist mir wichtig zu sehen,
+        // welche Informationen für die Position zur Verfügung stehen». Empty item prices are filled, never chosen (D-986).*
+        $fills = OrderComparison::lineFills($proposal, $existing);
         $titles = array_column(array_map(static fn (ExistingLine $line): array => [$line->recordId, $line->title], $existing->lines), 1, 0);
-        $note = '';
+        $matched = [];
 
-        foreach ($linePrices as $recordId => $index) {
-            $line = $proposal->lines[$index];
-            $note .= '<li>' . esc_html(sprintf(
-                /* translators: 1: purchase, 2: quantity, 3: price per piece, 4: currency */
-                __('%1$s: %2$s × %3$s %4$s', 'taxmod'),
-                $titles[$recordId] ?? (string) $recordId,
-                (string) $line->quantity,
-                (string) $line->unitPrice,
-                $proposal->currency
-            )) . '</li>';
+        foreach ($fills as $recordId => $index) {
+            $matched[$index] = $titles[$recordId] ?? (string) $recordId;
         }
 
-        $note = $note === '' ? '' : '<p>' . esc_html__('Item prices filled from the source (empty in the model):', 'taxmod') . '</p><ul style="list-style:disc;margin-left:1.5em">' . $note . '</ul>';
+        $note = $proposal->lines === [] ? '' : $this->positions($proposal, $matched);
 
         if ($differences === []) {
             return $note;
         }
 
-        $html = $note . '<table class="widefat striped" style="margin-bottom:.5em"><caption class="screen-reader-text">' . esc_html__('Model against source', 'taxmod') . '</caption><thead><tr>'
+        $html = '<table class="widefat striped" style="margin-bottom:.5em"><caption class="screen-reader-text">' . esc_html__('Model against source', 'taxmod') . '</caption><thead><tr>'
             . '<th scope="col">' . esc_html__('Take', 'taxmod') . '</th><th scope="col">' . esc_html__('Field', 'taxmod') . '</th>'
             . '<th scope="col">' . esc_html__('Model', 'taxmod') . '</th><th scope="col">' . esc_html__('Source', 'taxmod') . '</th></tr></thead><tbody>';
 
@@ -350,6 +343,48 @@ final class InboxScreen
             $html .= '<tr><td><input type="checkbox" name="fields[]" value="' . esc_attr($role) . '"' . checked(! $side['conflict'], true, false) . disabled($enabled, false, false)
                 . ' aria-label="' . esc_attr(self::fieldLabel($role)) . '"></td><td>' . esc_html(self::fieldLabel($role)) . ($side['conflict'] ? ' <strong>≠</strong>' : '') . '</td>'
                 . '<td>' . esc_html($side['model'] ?? '–') . '</td><td>' . esc_html($side['source']) . '</td></tr>';
+        }
+
+        return $html . '</tbody></table>' . $note;
+    }
+
+    /**
+     * The source's items as a table: price each, line total and the landed price with shipping and fees spread over the
+     * items (D-933), each and in total. `$matched` names the purchase in the model whose empty prices an item fills.
+     *
+     * @param array<int, string> $matched line index => purchase title in the model
+     */
+    private function positions(OrderProposal $proposal, array $matched, ?bool $pick = null): string
+    {
+        $landed = ChangeListBuilder::landedUnitPrices($proposal);
+        $currency = ' ' . $proposal->currency;
+        $amount = static fn (?string $value): string => $value === null ? '–' : $value . $currency;
+        $times = static function (?string $each, ?float $quantity): ?string {
+            $units = Money::toUnits($each);
+
+            return $units === null || $quantity === null ? null : Money::format((int) round($units * $quantity));
+        };
+
+        $html = '<table class="widefat striped" style="margin:.5em 0"><caption class="screen-reader-text">' . esc_html__('Items', 'taxmod') . '</caption><thead><tr>'
+            . ($pick === null ? '' : '<th scope="col">' . esc_html__('Take', 'taxmod') . '</th>')
+            . '<th scope="col">' . esc_html__('Item', 'taxmod') . '</th>'
+            . ($matched === [] ? '' : '<th scope="col">' . esc_html__('Fills in the model', 'taxmod') . '</th>')
+            . '<th scope="col">' . esc_html__('Quantity', 'taxmod') . '</th><th scope="col">' . esc_html__('Price each', 'taxmod') . '</th>'
+            . '<th scope="col">' . esc_html__('Line total', 'taxmod') . '</th>'
+            . '<th scope="col">' . esc_html__('Landed each (with shipping and fees)', 'taxmod') . '</th><th scope="col">' . esc_html__('Landed total', 'taxmod') . '</th>'
+            . '<th scope="col">' . esc_html__('Article no.', 'taxmod') . '</th></tr></thead><tbody>';
+
+        foreach ($proposal->lines as $index => $line) {
+            $html .= '<tr>'
+                . ($pick === null ? '' : '<td><input type="checkbox" name="lines[]" value="' . esc_attr((string) $index) . '" checked' . disabled($pick, false, false) . ' aria-label="' . esc_attr($line->title) . '"></td>')
+                . '<td>' . esc_html($line->title) . '</td>'
+                . ($matched === [] ? '' : '<td>' . esc_html($matched[$index] ?? '–') . '</td>')
+                . '<td>' . esc_html($line->quantity === null ? '–' : (string) $line->quantity) . '</td>'
+                . '<td>' . esc_html($amount($line->unitPrice)) . '</td>'
+                . '<td>' . esc_html($amount($times($line->unitPrice, $line->quantity))) . '</td>'
+                . '<td>' . esc_html($amount($landed[$index] ?? null)) . '</td>'
+                . '<td>' . esc_html($amount($times($landed[$index] ?? null, $line->quantity))) . '</td>'
+                . '<td>' . esc_html((string) $line->articleNumber) . '</td></tr>';
         }
 
         return $html . '</tbody></table>';
@@ -414,20 +449,7 @@ final class InboxScreen
 
     private function lines(OrderProposal $proposal, bool $enabled): string
     {
-        $html = '<table class="widefat striped"><caption class="screen-reader-text">' . esc_html__('Items', 'taxmod') . '</caption><thead><tr>'
-            . '<th scope="col">' . esc_html__('Take', 'taxmod') . '</th><th scope="col">' . esc_html__('Item', 'taxmod') . '</th>'
-            . '<th scope="col">' . esc_html__('Quantity', 'taxmod') . '</th><th scope="col">' . esc_html__('Price each', 'taxmod') . '</th>'
-            . '<th scope="col">' . esc_html__('Article no.', 'taxmod') . '</th></tr></thead><tbody>';
-
-        foreach ($proposal->lines as $index => $line) {
-            $html .= '<tr><td><input type="checkbox" name="lines[]" value="' . esc_attr((string) $index) . '" checked' . disabled($enabled, false, false)
-                . ' aria-label="' . esc_attr($line->title) . '"></td><td>' . esc_html($line->title) . '</td>'
-                . '<td>' . esc_html($line->quantity === null ? '–' : (string) $line->quantity) . '</td>'
-                . '<td>' . esc_html($line->unitPrice === null ? '–' : $line->unitPrice . ' ' . $proposal->currency) . '</td>'
-                . '<td>' . esc_html((string) $line->articleNumber) . '</td></tr>';
-        }
-
-        return $html . '</tbody></table>';
+        return $this->positions($proposal, [], $enabled);
     }
 
     public function handleFetch(): void

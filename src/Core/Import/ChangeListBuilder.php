@@ -64,7 +64,7 @@ final class ChangeListBuilder
         ]);
 
         $changes = [['op' => 'create_record', 'node' => $this->target->ordersNode, 'ref' => 'o']];
-        $landed = $this->landedUnitPrices($proposal);
+        $landed = self::landedUnitPrices($proposal);
         $refs = [];
 
         foreach ($pickedLines as $index) {
@@ -167,7 +167,7 @@ final class ChangeListBuilder
             return [];
         }
 
-        $landed = $this->landedUnitPrices($proposal);
+        $landed = self::landedUnitPrices($proposal);
         $byId = [];
 
         foreach ($order->lines as $line) {
@@ -230,8 +230,12 @@ final class ChangeListBuilder
         return $this->withoutEmpty($values);
     }
 
-    /** @return array<int, string> line index => landed price per piece */
-    private function landedUnitPrices(OrderProposal $proposal): array
+    /**
+     * Price per piece plus its share of shipping and fees, spread by item value (D-933) — also what the inbox shows.
+     *
+     * @return array<int, string> line index => landed price per piece
+     */
+    public static function landedUnitPrices(OrderProposal $proposal): array
     {
         $lineTotals = [];
 
