@@ -93,9 +93,14 @@ cosmetic.
 
 Details, including the cloud VM with SQLite: [`AGENTS.md`](AGENTS.md).
 
+## Authors
+
+- **Stefan Fambach** (SteFam) – idea and concept, review and testing – https://www.fambach.net
+- **Claude** (Anthropic AI) – implementation, via Claude Code
+
 ## AI disclosure
 
-This plugin is built with AI assistance: the code and the concept documents are written largely by Claude (Anthropic) via Claude Code, earlier parts also with Cursor. Stefan Fambach specifies, decides, reviews and tests.
+This project is built with AI assistance. Stefan Fambach had the idea, wrote the concept and reviews and tests every change; the implementation (code and concept documents) is written largely by Claude (Anthropic) via Claude Code. Earlier parts were written with Cursor.
 
 ## License
 
