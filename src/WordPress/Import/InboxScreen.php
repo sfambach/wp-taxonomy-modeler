@@ -167,8 +167,8 @@ final class InboxScreen
         return '<tr><td class="manage-column column-cb check-column"><input type="checkbox" aria-label="' . esc_attr__('Select all', 'taxmod') . '"></td>'
             . '<th scope="col" class="manage-column" style="width:16em">' . esc_html__('Order', 'taxmod') . '</th>'
             . '<th scope="col" class="manage-column" style="width:9em">' . esc_html__('Received', 'taxmod') . '</th>'
-            . '<th scope="col" class="manage-column" style="width:22%">' . esc_html__('Result', 'taxmod') . '</th>'
-            . '<th scope="col" class="manage-column">' . esc_html__('Details', 'taxmod') . '</th></tr>';
+            . '<th scope="col" class="manage-column">' . esc_html__('Result', 'taxmod') . '</th>'
+            . '<th scope="col" class="manage-column" style="width:9em">' . esc_html__('Details', 'taxmod') . '</th></tr>';
     }
 
     /**
@@ -188,7 +188,11 @@ final class InboxScreen
             . '<td><strong>' . esc_html(trim($proposal->platform . ' ' . $proposal->orderNumber)) . '</strong><br><small>' . esc_html(implode(', ', $labels) . ' · ' . self::kindLabel($proposal->kind)) . '</small></td>'
             . '<td>' . esc_html(substr(self::when($rows[0]), 0, 16)) . '</td>'
             . '<td>' . esc_html(self::verdictLabel($verdict)) . '</td>'
-            . '<td><details><summary>' . esc_html__('Show and take', 'taxmod') . '</summary>' . $details . '</details></td></tr>';
+            . '<td><button type="button" class="button-link" aria-expanded="false" onclick="var d=this.closest(\'tr\').nextElementSibling;d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden))">'
+            . esc_html__('Show and take', 'taxmod') . '</button></td></tr>'
+            // ⚠️ *His word of 2026-10-25: «das aufklappen/details bitte unterhalb der position anzeigen so dass wir mehr platz haben» —
+            // the details open as a row of their own across the whole table.*
+            . '<tr class="taxmod-inbox-details" hidden><td colspan="5" style="padding:0 1em 1em">' . $details . '</td></tr>';
     }
 
     /**
