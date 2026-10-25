@@ -2210,7 +2210,7 @@ final class RenderingTest extends TestCase
 
         $mit = $zeichnen(new \Taxmod\Core\Service\ReferenceCurrency($kurs->id, $euro->id));
 
-        self::assertMatchesRegularExpression('/>Euro<.*>19\.16</s', $mit, 'der Euro-Betrag als eigene Zeile, mit dem Zeichen der Bezugswährung');
+        self::assertMatchesRegularExpression('/>Euro<.*>· Euro 19\.16</s', $mit, 'der Euro-Betrag als eigene Zeile, mit dem Zeichen der Bezugswährung, auch am Wert selbst (eine Zeile ohne Beschriftung)');
         self::assertStringNotContainsString('1.1634', $mit, 'der Kurs selbst bleibt versteckt');
         self::assertStringNotContainsString('Euro', $zeichnen(null), 'ohne Bezugswährung nur der Betrag');
     }

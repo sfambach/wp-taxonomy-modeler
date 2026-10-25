@@ -2328,9 +2328,11 @@ final class Rendering implements Presets
             $betraege[0]->renamedTo($wort),
             SimpleType::Decimal,
             'plain',
-            new RenderResult('<span class="taxmod-value">' . htmlspecialchars($umgerechnet, ENT_QUOTES) . '</span>'),
+            // ⚠️ *His screenshot of 2026-10-25 showed «0.527 $ 0.45»: in a part drawn as one line the label falls away, and with
+            // it the euro sign. The value carries its sign itself, after the separator the docblock promises.*
+            new RenderResult('<span class="taxmod-value">' . htmlspecialchars('· ' . ($zeichen === '' ? $umgerechnet . ' ' . $wort : $zeichen . ' ' . $umgerechnet), ENT_QUOTES) . '</span>'),
             readOnly: true,
-            summary: $umgerechnet . ' ' . $wort,
+            summary: $zeichen === '' ? $umgerechnet . ' ' . $wort : $zeichen . ' ' . $umgerechnet,
         )];
     }
 
