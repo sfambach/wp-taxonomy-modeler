@@ -142,7 +142,7 @@ final class ListPage
 
         $head .= '<th scope="col" class="manage-column" style="width:21em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
-        return '<style>.taxmod-list-toggle .dashicons{vertical-align:middle;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}</style>'
+        return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}.taxmod-list-toggle .dashicons{width:16px;height:16px;font-size:16px;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}</style>'
             . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
     }
 
