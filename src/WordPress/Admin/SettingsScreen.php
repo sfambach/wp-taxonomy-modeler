@@ -4,6 +4,8 @@ namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Import\FetchingSource;
 use Taxmod\WordPress\Import\FetchInterval;
+use Taxmod\WordPress\Import\ImportTab;
+use Taxmod\WordPress\Import\InboxScreen;
 use Taxmod\WordPress\Import\Sources;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\ToggleMarkup;
@@ -160,7 +162,8 @@ final class SettingsScreen
                 . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle))
                 . self::section($reiter[$tab]['credentials'] === null && $quelle === null ? '' : __('Settings', 'taxmod'), (string) ($reiter[$tab]['render'])())
                 . get_submit_button(__('Save', 'taxmod'))
-                . '</form>';
+                . '</form>'
+                . self::maintenance($reiter[$tab], $tab);
 
             return '<div class="wrap">'
                 . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
@@ -173,7 +176,7 @@ final class SettingsScreen
                     $reiter[$tab]['title'],
                     $reiter[$tab]['version']
                 )) . '</p>')
-                . $this->notice()
+                . $this->notice() . InboxScreen::pendingNotice()
                 . ($guide === ''
                     ? $form
                     // ⚠️ *Das Modul gibt fertiges, selbst escaptes HTML zurück (`CD-8`), auch für den Kasten.*
@@ -736,6 +739,24 @@ final class SettingsScreen
     }
 
     /** @param array{source: string} $tab */
+    /**
+     * Below the module's form, outside it, because its buttons are forms of their own: what one rarely needs (D-990). The
+     * «Import» tab holds it for every source, a module's tab for its own.
+     *
+     * @param array{source: string} $tab
+     */
+    private static function maintenance(array $tab, string $slug): string
+    {
+        $quellen = $slug === ImportTab::SLUG ? Sources::all() : array_filter([$tab['source'] === '' ? null : Sources::find($tab['source'])]);
+        $html = '';
+
+        foreach ($quellen as $quelle) {
+            $html .= ($slug === ImportTab::SLUG ? '<h3>' . esc_html($quelle->label()) . '</h3>' : '') . InboxScreen::maintenance($quelle);
+        }
+
+        return $html === '' ? '' : '<div style="flex:3 1 30em;min-width:0"><h2>' . esc_html__('Maintenance', 'taxmod') . '</h2>' . $html . '</div>';
+    }
+
     private static function fetchingSource(array $tab): ?FetchingSource
     {
         $quelle = $tab['source'] === '' ? null : Sources::find($tab['source']);

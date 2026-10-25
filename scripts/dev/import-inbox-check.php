@@ -137,6 +137,8 @@ $pruefe(str_contains($seite, 'class="wp-list-table') && str_contains($seite, 'va
 // «unten drunter zum Ausklappen überall … oben noch die Möglichkeit, alle auszuklappen».*
 $pruefe(str_contains($seite, 'Taxonomy Modeller › Inbox') && str_contains($seite, 'Expand all') && str_contains($seite, 'class="taxmod-list-details" hidden')
     && preg_match('/<td style="text-align:right[^"]*">.*?form="taxmod-inbox-group-\d+" name="action" value="' . InboxScreen::DISCARD . '"/s', $seite) === 1, 'the inbox uses the shared list page: heading, expand all, buttons right in the row, details below');
+// ⚠️ *Sein Wunsch vom 2026-10-25 (D-990): «die Felder nebeneinander … Name, last run … Button» und «Start-Over-Buttons … in die Konfiguration».*
+$pruefe(str_contains($seite, 'class="taxmod-source-tiles"') && ! str_contains($seite, 'value="' . InboxScreen::RESTART . '"') && str_contains(InboxScreen::maintenance(Sources::find('__ib')), 'value="' . InboxScreen::RESTART . '"'), 'the inbox shows the sources as tiles; «Start over» sits in the configuration');
 global $submenu;
 $submenu['taxmod'] = [['Modeller', 'x', 'taxmod'], ['Configuration', 'x', 'taxmod-settings'], ['Inbox', 'x', InboxScreen::PAGE]];
 \Taxmod\WordPress\Plugin::configurationLast();

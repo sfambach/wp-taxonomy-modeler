@@ -189,25 +189,29 @@ final class InboxScreen
         return array_map(static fn (array $row): int => (int) $row['id'], $rows);
     }
 
+    /**
+     * The sources as tiles side by side (D-990): «All» first with the counts and «Fetch all», then each module with its
+     * last run and «Fetch now». Starting over and the backlog moved to the module's configuration tab.
+     */
     private function sourcesBlock(): string
     {
         $sources = Sources::all();
-        $counts = $this->table->counts();
-        $html = '<p>' . esc_html(sprintf(
-            /* translators: 1: open, 2: taken, 3: discarded */
-            __('Open: %1$d · taken: %2$d · discarded: %3$d', 'taxmod'),
-            $counts[InboxStatus::Open->value] ?? 0,
-            $counts[InboxStatus::Imported->value] ?? 0,
-            $counts[InboxStatus::Discarded->value] ?? 0
-        )) . '</p>';
 
         if ($sources === []) {
-            return $html . '<p>' . esc_html__('No import module is active.', 'taxmod') . '</p>';
+            return '<p>' . esc_html__('No import module is active.', 'taxmod') . '</p>';
         }
 
+        $counts = $this->table->counts();
         $runs = Inbox::lastRuns();
-        $html .= '<table class="widefat striped" style="max-width:60em;margin-bottom:1em"><caption class="screen-reader-text">' . esc_html__('Sources', 'taxmod') . '</caption><thead><tr>'
-            . '<th scope="col">' . esc_html__('Source', 'taxmod') . '</th><th scope="col">' . esc_html__('Last run', 'taxmod') . '</th><th scope="col"></th></tr></thead><tbody>';
+        $latest = array_reduce(array_keys($sources), static fn (?array $carry, string $key): ?array => isset($runs[$key]) && ($carry === null || (int) $runs[$key]['at'] > (int) $carry['at']) ? $runs[$key] : $carry);
+        $html = '<div class="taxmod-source-tiles" style="display:flex;flex-wrap:wrap;gap:12px;margin:1em 0">'
+            . self::tile(__('All', 'taxmod'), $latest === null ? '–' : wp_date('Y-m-d H:i', (int) $latest['at']), esc_html(sprintf(
+                /* translators: 1: open, 2: taken, 3: discarded */
+                __('Open %1$d · taken %2$d · discarded %3$d', 'taxmod'),
+                $counts[InboxStatus::Open->value] ?? 0,
+                $counts[InboxStatus::Imported->value] ?? 0,
+                $counts[InboxStatus::Discarded->value] ?? 0
+            )), self::button(self::FETCH_ALL, 'all', __('Fetch all', 'taxmod')));
 
         foreach ($sources as $key => $source) {
             $run = $runs[$key] ?? null;
@@ -216,16 +220,55 @@ final class InboxScreen
                 __('%1$s, %2$d new', 'taxmod'),
                 wp_date('Y-m-d H:i', (int) $run['at']),
                 (int) $run['filed']
-            ) . ($run['error'] !== null ? ' — ' . $run['error'] : '');
-            $button = ($source instanceof FetchingSource ? self::button(self::FETCH, $key, __('Fetch now', 'taxmod')) : '')
-                . ($source instanceof BacklogSource ? self::button(self::BACKLOG, $key, __('Sort the backlog', 'taxmod')) : '')
-                . ($source instanceof SearchingSource ? self::button(self::SEARCH, $key, __('Fetch order', 'taxmod'),
-                    '<input type="text" name="text" class="regular-text" style="width:12em" aria-label="' . esc_attr__('Order number or text', 'taxmod') . '"> ') : '')
-                . self::button(self::RESTART, $key, __('Start over from now', 'taxmod'), '', __('Forget the open proposals of this module and start over?', 'taxmod'));
-            $html .= '<tr><td>' . esc_html($source->label()) . '</td><td>' . esc_html($last) . '</td><td>' . $button . '</td></tr>';
+            );
+            // ⚠️ *«Fetch order» was his open question of 2026-10-25 («was dieses Fetch-Order genauer ist»): it looks for one
+            // order by its number, also from before the starting point (D-948) — so it says so now.*
+            $html .= self::tile($source->label(), $last, $run !== null && $run['error'] !== null ? '<span style="color:#b32d2e">' . esc_html((string) $run['error']) . '</span>' : '',
+                ($source instanceof FetchingSource ? self::button(self::FETCH, $key, __('Fetch now', 'taxmod')) : '')
+                . ($source instanceof SearchingSource ? '<br>' . self::button(self::SEARCH, $key, __('Fetch this order', 'taxmod'),
+                    '<input type="text" name="text" style="width:10em" placeholder="' . esc_attr__('Order number', 'taxmod') . '" aria-label="' . esc_attr__('Order number', 'taxmod') . '"> ') : ''));
         }
 
-        return $html . '</tbody></table>' . self::button(self::FETCH_ALL, 'all', __('Fetch all', 'taxmod'));
+        return $html . '</div>';
+    }
+
+    private static function tile(string $name, string $lastRun, string $extra, string $buttons): string
+    {
+        return '<div class="postbox" style="flex:0 1 15em;margin:0;padding:8px 12px"><h3 style="margin:.2em 0 .4em;font-size:1.1em">' . esc_html($name) . '</h3>'
+            . '<p style="margin:0">' . esc_html__('Last run', 'taxmod') . ': ' . esc_html($lastRun) . '</p>'
+            . ($extra === '' ? '' : '<p style="margin:.2em 0">' . $extra . '</p>') . '<div style="margin-top:.5em">' . $buttons . '</div></div>';
+    }
+
+    /**
+     * What one rarely needs, for the module's configuration tab (D-990): sorting the backlog and starting over. His word:
+     * «diese Start-Over-Buttons … ist jetzt eher für die Entwicklung. Vielleicht könnten wir das einfach in die Konfiguration … mit reinstecken».
+     */
+    public static function maintenance(ImportSource $source): string
+    {
+        $key = $source->key();
+        $html = '';
+
+        if ($source instanceof BacklogSource) {
+            $html .= '<p>' . self::button(self::BACKLOG, $key, __('Sort the backlog', 'taxmod')) . '<br><span class="description">'
+                . esc_html__('Reads the messages from before the starting point: orders already in the model are put away, readable ones become proposals, the rest stays.', 'taxmod') . '</span></p>';
+        }
+
+        return $html . '<p>' . self::button(self::RESTART, $key, __('Start over from now', 'taxmod'), '', __('Forget the open proposals of this module and start over?', 'taxmod'))
+            . '<br><span class="description">' . esc_html__('Forgets the open proposals of this module and fetches only what comes after now.', 'taxmod') . '</span></p>';
+    }
+
+    /** The message of the last inbox action, once; the configuration tab shows it too when the action started there. */
+    public static function pendingNotice(): string
+    {
+        $message = get_transient(self::NOTICE . get_current_user_id());
+
+        if (! is_string($message) || $message === '') {
+            return '';
+        }
+
+        delete_transient(self::NOTICE . get_current_user_id());
+
+        return '<div class="notice notice-info is-dismissible"><p>' . esc_html($message) . '</p></div>';
     }
 
     private static function button(string $action, string $source, string $label, string $before = '', string $confirm = ''): string
@@ -838,21 +881,14 @@ final class InboxScreen
     private function finish(string $message): never
     {
         set_transient(self::NOTICE . get_current_user_id(), $message, 60);
-        wp_safe_redirect(add_query_arg(['page' => self::PAGE], admin_url('admin.php')));
+        // ⚠️ *Back to where the button stood: the inbox, or the module's configuration tab (D-990).*
+        wp_safe_redirect(wp_get_referer() ?: add_query_arg(['page' => self::PAGE], admin_url('admin.php')));
         exit;
     }
 
     private function notice(): string
     {
-        $message = get_transient(self::NOTICE . get_current_user_id());
-
-        if (! is_string($message) || $message === '') {
-            return '';
-        }
-
-        delete_transient(self::NOTICE . get_current_user_id());
-
-        return '<div class="notice notice-info is-dismissible"><p>' . esc_html($message) . '</p></div>';
+        return self::pendingNotice();
     }
 
     private static function verdictLabel(IntakeVerdict $verdict): string
