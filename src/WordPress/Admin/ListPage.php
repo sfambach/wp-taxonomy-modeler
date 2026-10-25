@@ -11,7 +11,7 @@ use Taxmod\WordPress\Plugin;
  *
  * ```mermaid
  * flowchart TB
- *   H["heading · where one is · version"] --> B["bulk actions · expand all · count"]
+ *   H["heading · where one is · version"] --> N["tabs · search"] --> B["bulk actions · filters · expand all · count"]
  *   B --> T["list table"]
  *   T --> R["row · cells · buttons right"]
  *   R --> D["details row · opens below"]
@@ -33,8 +33,9 @@ final class ListPage
      * row's details may hold a form of their own and forms do not nest; each row's checkbox joins it through `form=`.
      *
      * @param array<string, string> $actions action value => label
+     * @param string $filters from {@see self::filters()}, beside the bulk actions
      */
-    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count): string
+    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = ''): string
     {
         $options = '<option value="">' . esc_html__('Bulk actions', 'taxmod') . '</option>';
 
@@ -47,6 +48,7 @@ final class ListPage
             . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Bulk actions', 'taxmod') . '</label>'
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
             . get_submit_button(__('Apply', 'taxmod'), 'action', '', false) . '</form>'
+            . $filters
             . '<div class="alignleft actions">'
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . esc_html__('Expand all', 'taxmod') . '</button> '
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . esc_html__('Collapse all', 'taxmod') . '</button></div>'
@@ -54,16 +56,88 @@ final class ListPage
     }
 
     /**
-     * The table: a checkbox column first, the given columns, the actions column last.
+     * Tabs with counts, as WordPress draws them.
      *
-     * @param list<array{0: string, 1?: string}> $columns label, optional CSS width
+     * @param list<array{0: string, 1: string, 2?: int|null}> $tabs slug, label, optional count
+     * @param callable(string): string $url the address of a tab
+     */
+    public static function tabs(array $tabs, string $active, callable $url): string
+    {
+        $html = '<nav class="nav-tab-wrapper">';
+
+        foreach ($tabs as $tab) {
+            $html .= '<a class="nav-tab' . ($tab[0] === $active ? ' nav-tab-active' : '') . '" href="' . esc_url($url($tab[0])) . '">' . esc_html($tab[1])
+                . (isset($tab[2]) ? ' <span class="count">(' . (int) $tab[2] . ')</span>' : '') . '</a>';
+        }
+
+        return $html . '</nav>';
+    }
+
+    /**
+     * The search box on the right; a GET form of its own that the filters join through `form=`.
+     *
+     * @param array<string, string> $hidden query arguments to keep (page, tab, orderby …)
+     */
+    public static function searchBox(string $formId, string $value, string $placeholder, array $hidden, string $label = ''): string
+    {
+        $label = $label === '' ? __('Search', 'taxmod') : $label;
+        $html = '<form method="get" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin.php')) . '">';
+
+        foreach ($hidden as $name => $hiddenValue) {
+            $html .= '<input type="hidden" name="' . esc_attr($name) . '" value="' . esc_attr($hiddenValue) . '">';
+        }
+
+        return $html . '<p class="search-box"><label class="screen-reader-text" for="' . esc_attr($formId) . '-s">' . esc_html($label) . '</label>'
+            . '<input type="search" id="' . esc_attr($formId) . '-s" name="s" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '"> '
+            . get_submit_button($label, '', '', false, ['id' => $formId . '-submit']) . '</p></form>';
+    }
+
+    /**
+     * Filter drop-downs with their button, for {@see self::bulkBar()}; they submit the search form.
+     *
+     * @param list<array{0: string, 1: array<string, string>, 2: string, 3?: string}> $filters name, value => text, current, label
+     */
+    public static function filters(string $searchFormId, array $filters): string
+    {
+        $html = '<div class="alignleft actions">';
+
+        foreach ($filters as $filter) {
+            $id = $searchFormId . '-' . $filter[0];
+            $html .= '<label class="screen-reader-text" for="' . esc_attr($id) . '">' . esc_html($filter[3] ?? $filter[0]) . '</label>'
+                . '<select name="' . esc_attr($filter[0]) . '" id="' . esc_attr($id) . '" form="' . esc_attr($searchFormId) . '">';
+
+            foreach ($filter[1] as $value => $text) {
+                $html .= '<option value="' . esc_attr((string) $value) . '"' . ((string) $value === $filter[2] ? ' selected' : '') . '>' . esc_html($text) . '</option>';
+            }
+
+            $html .= '</select> ';
+        }
+
+        return $html . get_submit_button(__('Filter', 'taxmod'), '', 'filter_action', false, ['form' => $searchFormId]) . '</div>';
+    }
+
+    /**
+     * The table: a checkbox column first, the given columns, the actions column last. A column with a sort address is
+     * sortable; its state says whether the list is sorted by it now.
+     *
+     * @param list<array{0: string, 1?: string|null, 2?: string, 3?: ''|'asc'|'desc'}> $columns label, CSS width, sort address, state
      */
     public static function table(array $columns, string $rows): string
     {
         $head = '<tr><td class="manage-column column-cb check-column"><input type="checkbox" aria-label="' . esc_attr__('Select all', 'taxmod') . '"></td>';
 
         foreach ($columns as $column) {
-            $head .= '<th scope="col" class="manage-column"' . (isset($column[1]) ? ' style="width:' . esc_attr($column[1]) . '"' : '') . '>' . esc_html($column[0]) . '</th>';
+            $width = isset($column[1]) && $column[1] !== '' ? ' style="width:' . esc_attr($column[1]) . '"' : '';
+
+            if (! isset($column[2]) || $column[2] === '') {
+                $head .= '<th scope="col" class="manage-column"' . $width . '>' . esc_html($column[0]) . '</th>';
+
+                continue;
+            }
+
+            $state = $column[3] ?? '';
+            $head .= '<th scope="col" class="manage-column ' . ($state === '' ? 'sortable desc' : 'sorted ' . $state) . '"' . $width . '><a href="' . esc_url($column[2]) . '"><span>'
+                . esc_html($column[0]) . '</span><span class="sorting-indicators"><span class="sorting-indicator asc" aria-hidden="true"></span><span class="sorting-indicator desc" aria-hidden="true"></span></span></a></th>';
         }
 
         $head .= '<th scope="col" class="manage-column" style="width:16em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
