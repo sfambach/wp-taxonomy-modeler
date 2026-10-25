@@ -97,11 +97,11 @@ final class OrderComparison
 
     private static function sourceLine(OrderProposal $proposal, ExistingOrder $existing, ExistingLine $line): ?int
     {
-        $title = mb_strtolower(trim($line->title));
+        $title = self::lineTitle($line->title);
         $matches = [];
 
         foreach ($proposal->lines as $index => $candidate) {
-            if ($title !== '' && mb_strtolower(trim($candidate->title)) === $title) {
+            if ($title !== '' && self::lineTitle($candidate->title) === $title) {
                 $matches[] = $index;
             }
         }
@@ -112,6 +112,15 @@ final class OrderComparison
 
         // ⚠️ *One item on both sides is the same item, whatever each calls it — a mail and the API name a board differently.*
         return $matches === [] && count($existing->lines) === 1 && count($proposal->lines) === 1 ? array_key_first($proposal->lines) : null;
+    }
+
+    /**
+     * A title as both sides are compared: the mail import numbered its boards («Leiterplatte X (1)»), the API does not
+     * («Leiterplatte X») — measured 2026-10-25 at W2025121606561472.
+     */
+    private static function lineTitle(string $title): string
+    {
+        return mb_strtolower(trim(preg_replace('/\s*\(\d+\)$/u', '', trim($title)) ?? $title));
     }
 
     private static function sourceValue(OrderProposal $proposal, string $role): ?string

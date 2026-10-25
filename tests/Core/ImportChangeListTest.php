@@ -188,6 +188,10 @@ final class ImportChangeListTest extends TestCase
         $existing = new ExistingOrder(7, lines: [new ExistingLine(41984, 'Leiterplatte 1541II_PowerAdapter (1)')]);
 
         self::assertSame([41984 => 0], OrderComparison::lineFills($proposal, $existing));
+        self::assertSame([5 => 1], OrderComparison::lineFills(
+            new OrderProposal('JLCPCB', 'W3', ProposalKind::Ordered, '2025-12-16', 'EUR', [new ProposalLine('Leiterplatte A', 5, '1'), new ProposalLine('Leiterplatte 1541II_PowerAdapter', 10, '0.20')]),
+            new ExistingOrder(7, lines: [new ExistingLine(5, 'Leiterplatte 1541II_PowerAdapter (1)'), new ExistingLine(6, 'Leiterplatte B (2)')])
+        ), 'the number the mail import appended does not count');
         self::assertSame([], OrderComparison::lineFills(
             new OrderProposal('JLCPCB', 'W3', ProposalKind::Ordered, '2025-12-16', 'EUR', [new ProposalLine('X', 1, '1'), new ProposalLine('Y', 1, '1')]),
             $existing
