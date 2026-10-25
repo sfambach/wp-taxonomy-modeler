@@ -142,7 +142,8 @@ final class ListPage
 
         $head .= '<th scope="col" class="manage-column" style="width:16em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
-        return '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
+        return '<style>.taxmod-list-toggle .dashicons{vertical-align:middle;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}</style>'
+            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
     }
 
     /**
@@ -161,8 +162,9 @@ final class ListPage
         }
 
         return $html . '<td style="text-align:right;white-space:nowrap">'
-            . '<button type="button" class="button-link taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" onclick="var d=this.closest(\'tr\').nextElementSibling;d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden))">'
-            . esc_html__('Details', 'taxmod') . ' ▾</button> ' . $buttons . '</td></tr>'
+            . '<button type="button" class="button taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" onclick="var d=this.closest(\'tr\').nextElementSibling;d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden))">'
+            // ⚠️ *His word of 2026-10-25: «als richtigen Button aber ruhig mit diesen Pfeil nach unten»; the arrow turns when open.*
+            . esc_html__('Details', 'taxmod') . ' <span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button> ' . $buttons . '</td></tr>'
             . '<tr class="taxmod-list-details"' . ($expanded ? '' : ' hidden') . '><td colspan="' . (count($cells) + 2) . '" style="padding:0 1em 1em">' . $details . '</td></tr>';
     }
 
