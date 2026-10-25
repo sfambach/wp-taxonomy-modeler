@@ -191,3 +191,10 @@
 	width: 40%;
 	font-weight: 600;
 }
+
+/* «Daten anreichern» (D-993): the record and what points here read as one form, without a gap between them. */
+.taxmod-record-block .taxmod-record-enriched > *,
+.taxmod-record-block .taxmod-record-enriched .taxmod-form {
+	margin-top: 0;
+	margin-bottom: 0;
+}

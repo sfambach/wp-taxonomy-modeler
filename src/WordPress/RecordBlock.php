@@ -91,6 +91,9 @@ final class RecordBlock
                 'via'       => ['type' => 'integer', 'default' => 0],
                 'rowKey'    => ['type' => 'integer', 'default' => 0],
                 'rowFields' => ['type' => 'string', 'default' => ''],
+                // *Form mit «Through field»: den Satz selbst davor, mit diesen Feldern (D-993, «Daten anreichern»).*
+                'enrich'    => ['type' => 'boolean', 'default' => false],
+                'ownFields' => ['type' => 'string', 'default' => ''],
                 'value'     => ['type' => 'integer', 'default' => 0],
                 'groupBy'   => ['type' => 'integer', 'default' => 0],
                 // *Der Weg der Sammeltabelle als Feld-Ids, und der Filter am Ende (D-955).*
@@ -233,7 +236,12 @@ final class RecordBlock
                 : ($display === self::TABLE
                 ? ($this->screen)()->recordAsTableForReaders($record, $fields, SettingsScreen::neutralLocale())
                 : (($display === '' || $display === 'record') && $via !== 0
-                ? ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale())
+                // ⚠️ *His word of 2026-10-25 (D-993): «Wir könnten in Blogs sagen, Daten anreichern … Dann holt er sich zum einen die
+                // Daten für die Platine und zum anderen die angereicherten Daten» — one form: the record, then what points here.*
+                ? (empty($attributes['enrich'])
+                    ? ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale())
+                    : '<div class="taxmod-record-enriched">' . ($this->screen)()->recordForReaders($record, 0, SettingsScreen::neutralLocale(), self::ids((string) ($attributes['ownFields'] ?? '')))
+                        . ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale()) . '</div>')
                 : (($attributes['display'] ?? '') === self::COLLECTED
                 ? ($this->screen)()->collectedForReaders(
                     $record,

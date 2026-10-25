@@ -14,6 +14,7 @@
 	var Button = wp.components.Button;
 	var Placeholder = wp.components.Placeholder;
 	var Spinner = wp.components.Spinner;
+	var ToggleControl = wp.components.ToggleControl;
 	var ServerSideRender = wp.serverSideRender;
 
 	// One request per node and page load; the sidebar re-renders often.
@@ -233,7 +234,14 @@
 				} ) ),
 				onChange: function ( v ) { props.setAttributes( { via: Number( v ), rowFields: '', field: 0 } ); }
 			} ),
-			shown ? el( FieldChecks, { label: __( 'Fields shown (none = all)', 'taxmod' ), node: shown, value: a.rowFields, onChange: function ( v ) { props.setAttributes( { rowFields: v } ); } } ) : ( a.via ? el( Spinner ) : null )
+			shown ? el( FieldChecks, { label: __( 'Fields shown (none = all)', 'taxmod' ), node: shown, value: a.rowFields, onChange: function ( v ) { props.setAttributes( { rowFields: v } ); } } ) : ( a.via ? el( Spinner ) : null ),
+			// D-993 «Daten anreichern»: the record itself first, then what points here, as one form.
+			a.via && ( a.display || 'record' ) === 'record' ? el( ToggleControl, {
+				label: __( 'Enrich: show this record first', 'taxmod' ),
+				checked: !! a.enrich,
+				onChange: function ( v ) { props.setAttributes( { enrich: v } ); }
+			} ) : null,
+			a.via && a.enrich ? el( FieldChecks, { label: __( 'Fields of this record (none = all)', 'taxmod' ), node: props.node, value: a.ownFields, onChange: function ( v ) { props.setAttributes( { ownFields: v } ); } } ) : null
 		);
 	}
 
