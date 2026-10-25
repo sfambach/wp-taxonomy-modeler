@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace Taxmod\Tests\Core;
+use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\SummaryRenderer;
 
 use PHPUnit\Framework\Attributes\Test;
@@ -2190,7 +2191,7 @@ final class RenderingTest extends TestCase
         $satz = $this->records->add(new NodeRecord(0, $liste->id, 1, '2026-10-21 10:00:00', RecordType::User));
         $this->records->putValue(RelationRecord::direct($satz, $zeilen->id, TypedValue::ofRecordReference($k), '', 0));
 
-        $zeichnen = function (?\Taxmod\Core\Service\ReferenceCurrency $bezug) use ($einheiten, $liste, $zeilen, $satz): string {
+        $zeichnen = function (?\Taxmod\Core\Service\ReferenceCurrency $bezug, Level $level = Level::Admin) use ($einheiten, $liste, $zeilen, $satz): string {
             $rendering = new Rendering(
                 $this->nodes,
                 new FixedFramework($this->wurzel, $this->nodes->byId($this->wurzel->id + 1), $this->branchRoot, self::INSTALLATION, self::ROLE_IDS, ['units' => $einheiten]),
@@ -2205,8 +2206,19 @@ final class RenderingTest extends TestCase
                 referenceCurrency: $bezug,
             );
 
-            return $rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', recordParts: $rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz)->markup;
+            return $rendering->nodeAsForm($liste, [$zeilen], [], Purpose::Display, '', '', $level, recordParts: $rendering->partsOfRecord($satz, [$zeilen]), recordId: $satz)->markup;
         };
+
+        // ⚠️ *D-992, his word: «wenn jemand aus UK das liest, dass er das in Pfund liest zum Beispiel. Und bei US dann Dollar».*
+        $leser = static fn (\Taxmod\Core\Service\ReaderCurrency $r) => new \Taxmod\Core\Service\ReferenceCurrency($kurs->id, $euro->id, $r);
+        $deutsch = $zeichnen($leser(new \Taxmod\Core\Service\ReaderCurrency('EUR', '€', $euro->id, null)), Level::FrontEnd);
+        $britisch = $zeichnen($leser(new \Taxmod\Core\Service\ReaderCurrency('GBP', '£', null, '0.85')), Level::FrontEnd);
+        $amerikanisch = $zeichnen($leser(new \Taxmod\Core\Service\ReaderCurrency('USD', '$', $dollar->id, '1.08')), Level::FrontEnd);
+        self::assertStringContainsString('€ 19.16', $deutsch, 'deutscher Leser: der Betrag in Euro');
+        self::assertStringNotContainsString('22.29', $deutsch, 'deutscher Leser: der Dollarbetrag steht nicht daneben');
+        self::assertStringContainsString('£ 16.29', $britisch, 'britischer Leser: Euro zum heutigen Kurs in Pfund');
+        self::assertStringContainsString('$ 22.29', $amerikanisch, 'amerikanischer Leser: der ursprüngliche Dollarbetrag');
+        self::assertStringContainsString('22.29', $zeichnen($leser(new \Taxmod\Core\Service\ReaderCurrency('GBP', '£', null, '0.85'))), 'in der Verwaltung bleiben Betrag und Euro stehen');
 
         $mit = $zeichnen(new \Taxmod\Core\Service\ReferenceCurrency($kurs->id, $euro->id));
 

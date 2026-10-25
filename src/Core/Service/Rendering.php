@@ -2284,11 +2284,62 @@ final class Rendering implements Presets
             );
         }
 
+        // ⚠️ *His word of 2026-10-25 (D-992): «sollten in der Landeswährung sein … wenn jemand aus UK das liest, dass er das in
+        // Pfund liest zum Beispiel. Und bei US dann Dollar» — for readers one amount, in their currency, in place of the parts.*
+        $leser = $this->referenceCurrency?->reader;
+
+        if ($leser !== null && $purpose === Purpose::Display && $level === Level::FrontEnd && ($betrag = $this->leserBetrag($relations, $values, $leser)) !== null) {
+            return [$betrag];
+        }
+
         if ($this->referenceCurrency !== null && $purpose === Purpose::Display && isset($values[$this->referenceCurrency->rateFieldId])) {
             $fields = [...$fields, ...$this->bezugsBetrag($relations, $values)];
         }
 
         return $fields;
+    }
+
+    /**
+     * A unit value as the reader sees it (D-992): the one amount, in the reader's currency — the original where it is that
+     * currency already, otherwise through the euro: the frozen rate for a foreign amount, the amount itself for a euro one.
+     * Nothing where the currency is neither known nor convertible.
+     *
+     * @param list<Relation>         $relations
+     * @param array<int, TypedValue> $values
+     */
+    private function leserBetrag(array $relations, array $values, ReaderCurrency $reader): ?RenderedField
+    {
+        $bezug = $this->referenceCurrency;
+        $betraege = array_values(array_filter($relations, static fn (Relation $r): bool => ($values[$r->id] ?? null)?->decimal !== null && $r->id !== $bezug?->rateFieldId));
+
+        if ($bezug === null || count($betraege) !== 1) {
+            return null;
+        }
+
+        // ⚠️ *Only references to a node count as a unit: a record id may carry the same number.*
+        $einheiten = array_values(array_map(static fn (TypedValue $v): ?int => $v->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node ? $v->reference : null, $values));
+        $betrag = (string) $values[$betraege[0]->id]->decimal;
+        $kurs = $values[$bezug->rateFieldId] ?? null;
+
+        $gezeigt = match (true) {
+            $reader->unitNodeId !== null && in_array($reader->unitNodeId, $einheiten, true) => number_format((float) $betrag, 2, '.', ''),
+            $kurs !== null && $kurs->decimal !== null => ($euro = ReferenceCurrency::converted($betrag, $kurs->decimal)) === null ? null : $reader->fromEuro($euro),
+            in_array($bezug->unitNodeId, $einheiten, true) => $reader->fromEuro($betrag),
+            default => null,
+        };
+
+        if ($gezeigt === null) {
+            return null;
+        }
+
+        return new RenderedField(
+            $betraege[0]->renamedTo($reader->code),
+            SimpleType::Decimal,
+            'plain',
+            new RenderResult('<span class="taxmod-value">' . htmlspecialchars($reader->sign . ' ' . $gezeigt, ENT_QUOTES) . '</span>'),
+            readOnly: true,
+            summary: $reader->sign . ' ' . $gezeigt,
+        );
     }
 
     /**

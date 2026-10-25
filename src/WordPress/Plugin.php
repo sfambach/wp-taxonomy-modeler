@@ -49,7 +49,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.70';
+    public const VERSION     = '0.1.71';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -809,7 +809,12 @@ final class Plugin
         $rateField = UnitScaffold::rateFieldId();
         $euro = \Taxmod\WordPress\Import\Targets::load()->currencies[\Taxmod\Core\Import\TargetModel::REFERENCE_CURRENCY] ?? null;
 
-        return $rateField === null || $euro === null ? null : new \Taxmod\Core\Service\ReferenceCurrency($rateField, (int) $euro);
+        if ($rateField === null || $euro === null) {
+            return null;
+        }
+
+        // ⚠️ *Readers see one amount in the currency of the page's language (D-992); the admin keeps amount and euro.*
+        return new \Taxmod\Core\Service\ReferenceCurrency($rateField, (int) $euro, is_admin() ? null : \Taxmod\WordPress\Currency\ReaderCurrencies::forLocale(determine_locale()));
     }
 
     private function rendering(Labels $labels): Rendering

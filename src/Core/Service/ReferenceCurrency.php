@@ -13,6 +13,8 @@ final class ReferenceCurrency
     public function __construct(
         public readonly int $rateFieldId,
         public readonly int $unitNodeId,
+        /** ⚠️ *The reader's currency (D-992); set only where readers look, so the admin keeps amount and euro side by side.* */
+        public readonly ?ReaderCurrency $reader = null,
     ) {
     }
 

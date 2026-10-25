@@ -213,7 +213,7 @@ final class RecordBlock
 
         // ⚠️ *Der Stand des Modells ist die letzte Zeile des Änderungsbuchs: jede Änderung schreibt eine, also ändert jede den
         // Schlüssel (D-919). Ein veralteter Eintrag wird nie wieder gefragt und läuft ab.*
-        $key    = self::CACHE . md5((string) wp_json_encode([$attributes, SettingsScreen::neutralLocale(), Plugin::VERSION, self::dataStamp()]));
+        $key    = self::CACHE . md5((string) wp_json_encode([$attributes, SettingsScreen::neutralLocale(), determine_locale(), wp_date('Y-m-d'), Plugin::VERSION, self::dataStamp()]));
         $cached = get_transient($key);
 
         if (is_string($cached)) {
