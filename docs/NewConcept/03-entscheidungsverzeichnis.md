@@ -111,6 +111,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | In welcher Reihenfolge übernimmt der Eingang die Nachrichten einer Bestellung? | [D-980](90-decision-log.md) — nacheinander, wie sie kamen, jede ein eigener Akt; Datum aus der Nachricht; Kasten mit «Take all in order» | — |
 | Wie ist ein Modul-Reiter aufgebaut, und wo steht der Abruftakt? | [D-981](90-decision-log.md) — überall gleich: Zugangsdaten, Abruftakt (vom Modeller), übrige Einstellungen; Takt je Modul | — |
 | Was zeigt die Inbox, wenn eine Status-Quelle nur fremde Bestellfelder bringt? | [D-983](90-decision-log.md) — «nichts Neues», nicht «anderes Modul zuständig» | — |
+| Was passiert mit Inbox-Kästen ohne Neues, und wer spricht für einen Kasten mehrerer Quellen? | [D-994](90-decision-log.md) — schließen sich selbst als übernommen; die für Bestellungen zuständige Quelle entscheidet | — |
 | Wann ist ein Bauteil von einem anderen Hersteller ein eigener Satz? | [D-971](90-decision-log.md) — aktive Teile nach Teilenummer (eigener Satz + Kompatibilität), passive nach Werten (gleiche Werte = ein Satz) | — |
 | Wohin bucht der Wareneingang? | [D-972](90-decision-log.md) — Standard-Lagerort des Materials, sonst Ort des Zweigs unter Model (Zuordnung Zweig → Ort im Lager-Reiter), ohne Bezug Verbrauchsmaterial, sonst «Bauteile»; änderbar | — |
 | Ergänzt der Eingang eine Bestellung, die schon da ist? | [D-964](90-decision-log.md) — ja, aus der für neue Bestellungen zuständigen Quelle: Leeres füllen, Widersprüche je Feld zur Wahl; nur Bestellfelder, keine Positionen | — |

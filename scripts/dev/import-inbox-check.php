@@ -117,6 +117,21 @@ $tisch->reopen($frueher, new IncomingProposal(new OrderProposal('__Cart', 'S-1',
 $pruefe($tisch->openRows([$frueher]) !== [] && $tisch->closedId('__ib', 'k1') === null, 'a reopened row is open again, with what the source says now');
 $tisch->close($frueher, \Taxmod\Core\Import\InboxStatus::Discarded);
 
+// ⚠️ *Sein Wunsch vom 2026-10-26 (D-994): «entweder wir übernehmen sie automatisch (status update) aber sie da zu lassen nur
+// um sie verwerfen zu können ist irgendwie albern» und «acuh verstehe ich den zweiten eintag nicht».*
+add_filter(Duties::FILTER, static fn (array $rows): array => $rows + ['__Lead' => ['orders' => '__other', 'status' => '__ib']]);
+$posten = [
+    $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Lead', 'L-1', ProposalKind::Shipped, trackingNumbers: ['LT'], source: '__ib', externalId: 'l1'), ['subject' => '__mail']), '2026-10-26 09:00:00'),
+    $tisch->add('__other', new IncomingProposal(new OrderProposal('__Lead', 'L-1', ProposalKind::Shipped, trackingNumbers: ['LT'], source: '__other', externalId: 'l2'), []), '2026-10-26 10:00:00'),
+];
+$zeilen = $tisch->openRows($posten);
+$fuehrt = (new ReflectionMethod(InboxScreen::class, 'leadSource'))->invoke(null, $zeilen);
+$pruefe($fuehrt === '__other', 'a box speaks with the voice of the source responsible for orders, not of the first mail');
+$pruefe(str_contains((new ReflectionMethod(InboxScreen::class, 'timeline'))->invoke(null, $zeilen, false), 'Other · shipped'), 'a message without sender or subject is named by its source');
+$tor = new \Taxmod\WordPress\Import\ModelGateway(Targets::load());
+(new ReflectionProperty($tor, 'orders'))->setValue($tor, ['__lead|l-1' => new \Taxmod\Core\Import\ExistingOrder(1, ['LT'])]);
+$pruefe((new InboxScreen())->settle($zeilen, $tor, new \Taxmod\Core\Import\Intake(Duties::load(), array_keys(Sources::all()))) && $tisch->openRows($posten) === [], 'a box that brings nothing new to a known order closes itself instead of waiting to be discarded');
+
 // ⚠️ *Sein Wunsch vom 2026-10-21: «ein button fetch all wäre auch nett» — every fetching source once, intervals aside.*
 $pruefe(str_contains((new InboxScreen())->render(), 'value="' . InboxScreen::FETCH_ALL . '"'), 'the inbox page has a «Fetch all» button');
 $laeufe = Inbox::lastRuns();

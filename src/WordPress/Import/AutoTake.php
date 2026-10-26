@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\Core\Import\Intake;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -52,10 +53,18 @@ final class AutoTake
             $screen = new InboxScreen($table);
             $taken = 0;
 
+            $model = new ModelGateway(Targets::load());
+            $intake = new Intake(Duties::load(), array_keys(Sources::all()));
+
             foreach ($table->openGroups() as $rows) {
                 if (InboxScreen::takeable($rows) && $screen->take($rows, null) === true) {
                     $taken++;
+
+                    continue;
                 }
+
+                // Nothing new for an order the model has (D-994): closed, not counted as taken.
+                $screen->settle($rows, $model, $intake);
             }
 
             return $taken;

@@ -74,6 +74,15 @@ final class InboxScreen
 
         $intake = new Intake(Duties::load(), array_keys(Sources::all()));
 
+        // ⚠️ *Sein Befund vom 2026-10-26 (D-994): «sie da zu lassen nur um sie verwerfen zu können ist irgendwie albern».*
+        if ($model !== null) {
+            $groups = array_values(array_filter($groups, fn (array $rows): bool => ! $this->settle($rows, $model, $intake)));
+
+            if ($groups === []) {
+                return $html . '<p>' . esc_html__('Nothing to review.', 'taxmod') . '</p></div>';
+            }
+        }
+
         // ⚠️ *Sein Wunsch vom 2026-10-21: «ne massen änderung wäre noch schön selectierte einträge verwerfen», and on 2026-10-25:
         // «in der inbox soll die darstellung auch wie in ebay shipping sein sammelaktion wie sie in wp überlich sien» — one
         // WordPress list table, a row per order, bulk actions above it. The bulk form stands alone, because each row's details
@@ -110,7 +119,7 @@ final class InboxScreen
                 'orderDate' => $existing instanceof ExistingOrder ? $existing->orderDate : null,
                 'first'     => self::when($rows[0]),
             ];
-            $verdicts[$index] = $intake->decide((string) $rows[0]['source'], $proposal, $existing instanceof ExistingOrder ? $existing : null);
+            $verdicts[$index] = $intake->decide(self::leadSource($rows), $proposal, $existing instanceof ExistingOrder ? $existing : null);
         }
 
         foreach (InboxBundles::of($described) as $box) {
@@ -312,7 +321,7 @@ final class InboxScreen
             $html .= '<p><strong>' . esc_html(sprintf(__('Already in the model: record %d.', 'taxmod'), $existing->recordId)) . '</strong></p>';
         }
 
-        $verdict = $intake->decide((string) $rows[0]['source'], $proposal, $existing);
+        $verdict = $intake->decide(self::leadSource($rows), $proposal, $existing);
         $canTake = $model?->side($proposal) !== null && in_array($verdict, [IntakeVerdict::Update, IntakeVerdict::NewOrder], true);
 
         $form = 'taxmod-inbox-group-' . $ids[0];
@@ -444,7 +453,7 @@ final class InboxScreen
         foreach ($rows as $row) {
             $evidence = (array) json_decode((string) ($row['evidence'] ?? ''), true);
             $step = OrderProposal::fromArray((array) json_decode((string) $row['proposal'], true));
-            $parts = [substr(self::when($row), 0, 16)];
+            $parts = [substr(self::when($row), 0, 16), Sources::find((string) $row['source'])?->label() ?? (string) $row['source']];
 
             if ($withOrder) {
                 $parts[] = $step->orderNumber;
@@ -715,9 +724,9 @@ final class InboxScreen
             return $existing->get_error_message();
         }
 
-        $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide((string) $rows[0]['source'], $proposal, $existing);
+        $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide(self::leadSource($rows), $proposal, $existing);
         $builder = new ChangeListBuilder($targets, new EcbRates());
-        $label = Sources::find((string) $rows[0]['source'])?->label() ?? (string) $rows[0]['source'];
+        $label = Sources::find(self::leadSource($rows))?->label() ?? self::leadSource($rows);
         $origins = array_filter(array_map(static fn (array $row): string => (string) (((array) json_decode((string) ($row['evidence'] ?? ''), true))['origin'] ?? ''), $rows));
         /* translators: 1: source, 2: date */
         $originNote = $origins !== [] ? implode(' ', array_unique($origins)) : sprintf(__('Taken from the inbox (%1$s) on %2$s.', 'taxmod'), $label, wp_date('Y-m-d'));
@@ -740,7 +749,7 @@ final class InboxScreen
                 $written = $created;
                 $existing = new ExistingOrder((int) ($created['o'] ?? 0));
             } elseif ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder) {
-                if (Duties::load()->allows((string) $rows[0]['source'], $proposal->platform, DutyRole::Orders, array_keys(Sources::all()))) {
+                if (Duties::load()->allows(self::leadSource($rows), $proposal->platform, DutyRole::Orders, array_keys(Sources::all()))) {
                     $completed = $builder->completed($existing, $proposal, $fields ?? OrderComparison::fills($proposal, $existing));
                     $result = $completed === [] ? [] : $model->write($completed);
 
@@ -824,7 +833,7 @@ final class InboxScreen
             return false;
         }
 
-        $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide((string) $rows[0]['source'], $proposal, $existing);
+        $verdict = (new Intake(Duties::load(), array_keys(Sources::all())))->decide(self::leadSource($rows), $proposal, $existing);
 
         // ⚠️ *A conflict is his choice (D-964); the run leaves that group for the page.*
         if ($verdict === IntakeVerdict::Update && $existing instanceof ExistingOrder && OrderComparison::hasConflict($proposal, $existing)) {
@@ -872,10 +881,70 @@ final class InboxScreen
     /** @param non-empty-list<array<string, mixed>> $rows */
     private static function merged(array $rows): OrderProposal
     {
-        return ProposalGroup::merge(array_map(
-            static fn (array $row): OrderProposal => OrderProposal::fromArray((array) json_decode((string) $row['proposal'], true)),
-            $rows
-        ));
+        $proposal = static fn (array $row): OrderProposal => OrderProposal::fromArray((array) json_decode((string) $row['proposal'], true));
+        $lead = self::leadSource($rows);
+        $leading = array_values(array_filter($rows, static fn (array $row): bool => (string) $row['source'] === $lead));
+        $all = ProposalGroup::merge(array_map($proposal, $rows));
+
+        // ⚠️ *D-994: the order's data come from the source responsible for orders (the API is the truth, D-950); the others
+        // add their tracking numbers, and their messages still count one by one as steps (D-980).*
+        if (count($leading) === count($rows) || ! Duties::load()->allows($lead, $all->platform, DutyRole::Orders, array_keys(Sources::all()))) {
+            return $all;
+        }
+
+        return OrderProposal::fromArray(['tracking' => $all->trackingNumbers] + ProposalGroup::merge(array_map($proposal, $leading))->toArray());
+    }
+
+    /**
+     * Whose word decides for a group of several sources (D-994): the one responsible for new orders of the platform,
+     * else the one for its status, else the first.
+     *
+     * @param non-empty-list<array<string, mixed>> $rows
+     */
+    private static function leadSource(array $rows): string
+    {
+        $sources = array_values(array_unique(array_map(static fn (array $row): string => (string) $row['source'], $rows)));
+
+        if (count($sources) === 1) {
+            return $sources[0];
+        }
+
+        $platform = OrderProposal::fromArray((array) json_decode((string) $rows[0]['proposal'], true))->platform;
+        $duties = Duties::load();
+        $active = array_keys(Sources::all());
+
+        foreach ([DutyRole::Orders, DutyRole::Status] as $role) {
+            foreach ($sources as $source) {
+                if ($duties->allows($source, $platform, $role, $active)) {
+                    return $source;
+                }
+            }
+        }
+
+        return $sources[0];
+    }
+
+    /**
+     * Closes a group that can only be discarded (D-994): its order is in the model and it brings nothing that source may
+     * write. The source learns it as taken, so the mail module moves the mail on.
+     *
+     * @param non-empty-list<array<string, mixed>> $rows
+     */
+    public function settle(array $rows, ModelGateway $model, Intake $intake): bool
+    {
+        $proposal = self::merged($rows);
+        $existing = self::existing($model, $proposal);
+
+        if (! $existing instanceof ExistingOrder || ! in_array($intake->decide(self::leadSource($rows), $proposal, $existing), [IntakeVerdict::Nothing, IntakeVerdict::NotResponsible], true)) {
+            return false;
+        }
+
+        foreach ($rows as $row) {
+            $this->table->close((int) $row['id'], InboxStatus::Imported, []);
+            self::tellSource($row, InboxStatus::Imported);
+        }
+
+        return true;
     }
 
     /** @param list<int> $ids */
