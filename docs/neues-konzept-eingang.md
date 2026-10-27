@@ -1032,7 +1032,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-096 · Material und Bezug: zwei Dinge für dasselbe?
 
-**Typ:** `FRAGE` · **Status:** `OFFEN` — 2026-10-27, Thread «Taxmod Stock – Lagermodul».
+**Typ:** `FRAGE` · **Status:** `TEILWEISE ENTSCHIEDEN` ([D-995](NewConcept/90-decision-log.md): das Ding ist das Material) — 2026-10-27, Thread «Taxmod Stock – Lagermodul».
 
 - **Seine Worte:** *«wir sollten die position nicht als material übernehmen ... wir müssen mal über diese zweifaltige konzept nachdenken lager material und Bezug»*.
 - **Anlass:** Die eBay-Sammelbuchung vom 27.10. hat für jeden Kauf ohne Material ein neues Material angelegt; ohne «Modell» trug es die Kaufbezeichnung als Namen. Bei 37 Konvoluten ergab das «Materialien» wie *«1 x Intel CPU, 4 x Memory, 4 x … Maus»* (sein Wort: *«ist doch kein material ist eine zusammenstellung»*); sie wurden zurückgenommen.
