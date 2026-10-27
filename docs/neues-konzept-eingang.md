@@ -1029,3 +1029,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Seine Worte:** *«frage mich ob bestellunge nicht das gleich wie verkäufe sind»* — *«eine sind eingehende das andre ausgehende»*.
 - **Stand:** [D-933](NewConcept/90-decision-log.md) und [D-934](NewConcept/90-decision-log.md) — zwei Knoten, Verkäufe «nach dem Muster der Bestellungen». Zusammenlegen (ein Knoten, Feld «Richtung» ein/aus, Positionen gemeinsam) berührt Eingang ([D-979](NewConcept/90-decision-log.md)), Lager ([D-957](NewConcept/90-decision-log.md)) und [INF-094](#inf-094--versandstufen-für-alle-verkaufsquellen).
 - **Nachtrag, sein Wort:** *«dann könnten wir für beides eine maske machen der benutzer wählt ob eingehend oder ausgehen oder beide .. (keine einschränkung»* — eine Maske/Liste für beide Richtungen, Filter «eingehend / ausgehend / beide», ohne Einschränkung.
+
+## INF-096 · Material und Bezug: zwei Dinge für dasselbe?
+
+**Typ:** `FRAGE` · **Status:** `OFFEN` — 2026-10-27, Thread «Taxmod Stock – Lagermodul».
+
+- **Seine Worte:** *«wir sollten die position nicht als material übernehmen ... wir müssen mal über diese zweifaltige konzept nachdenken lager material und Bezug»*.
+- **Anlass:** Die eBay-Sammelbuchung vom 27.10. hat für jeden Kauf ohne Material ein neues Material angelegt; ohne «Modell» trug es die Kaufbezeichnung als Namen. Bei 37 Konvoluten ergab das «Materialien» wie *«1 x Intel CPU, 4 x Memory, 4 x … Maus»* (sein Wort: *«ist doch kein material ist eine zusammenstellung»*); sie wurden zurückgenommen.
+- **Stand:** [D-967](NewConcept/90-decision-log.md) — ein Material trägt eine Nummer, was es ist, sagt «Bezug»; eine eigene Bezeichnung nur ohne Bezug. [D-988](NewConcept/90-decision-log.md) — angezeigt wird der Name aus dem Bezug. Ein Material ohne Bezug, benannt nach der Kaufposition, ist nach beiden zulässig.
+- **Offen:** Braucht es das Material als eigenen Satz neben dem Bezug (Ding unter `Model`), oder zeigt der Bestandsposten direkt auf das Ding? Was geschieht mit einem Kauf, dessen Ding es im Modell noch nicht gibt?
