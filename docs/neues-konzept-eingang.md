@@ -1061,3 +1061,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   - *Verbrauch:* Kontaktspray, Diskette DD = Dinge; Basiseinheit am Ding (Stück, ml); «15 Stück» ist die Menge des Postens, die Packung gehört in den Einkauf.
   - *Software / Werkstatt:* Warlords II, Windows 95, Toshiba TV/DVD = Dinge; Lizenzkey und Seriennummer am Posten.
   - **Befund:** Trägt überall. Kosten: rund 319 neue Blätter im Baum, viele grob; der Baum braucht Klassen mit wenig Feldern (Verbrauch, Software, Werkzeug). Zustand (neu, gebraucht, defekt) gehört an den Posten. Ein Konvolut wird beim Wareneingang auf mehrere Dinge geteilt; das passt.
+- **Nachtrag, sein Wort (2026-10-27):** *«ok gibt es dennoch infos die aktuell im ding stehen die eigentlich in eine der kategorien gehören»* — gemessen am Live-Modell (read-node 402, 3634, 149000109995, 149000108212):
+  - **Einkauf:** Bauteile tragen «Bestell-Nr.» (Lieferanten-Artikelnummer, 0..*) am Ding. «Preisangaben» ist schon ein eigener Zweig (Modell/Bauteil, Lieferant, Plattform, Art, Preis je Stück) — der Sache nach bereits eine Einkaufs-Sicht.
+  - **Lager:** Bauteile tragen «Einsatz» am Ding; in der Skizze steht «Verwendung» unter Lager — Zuordnung offen.
+  - **Bestand, doppelt:** «Exemplare» (Modell 1..1, Seriennummer, Zustand, BIOS, Datecode, Eingebaut in; 72 Sätze) beschreibt dasselbe Stück wie der Lager-Posten. Zwei Stellen für ein Exemplar.
+  - Bleibt am Ding: Bezeichnung, Beschreibung, Bilder, Quellen, Herkunft, Bauform, Hersteller, Serie, Teilenummer, Alternative Bezeichnungen, Kompatibilität.
