@@ -1066,3 +1066,4 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   - **Lager:** Bauteile tragen «Einsatz» am Ding; in der Skizze steht «Verwendung» unter Lager — Zuordnung offen.
   - **Bestand, doppelt:** «Exemplare» (Modell 1..1, Seriennummer, Zustand, BIOS, Datecode, Eingebaut in; 72 Sätze) beschreibt dasselbe Stück wie der Lager-Posten. Zwei Stellen für ein Exemplar.
   - Bleibt am Ding: Bezeichnung, Beschreibung, Bilder, Quellen, Herkunft, Bauform, Hersteller, Serie, Teilenummer, Alternative Bezeichnungen, Kompatibilität.
+- **Nachtrag (2026-10-27):** Technische Daten bleiben am Ding und erben im Baum; nur gruppenunabhängige Sichten sind eigene Knoten — entschieden als [D-996](NewConcept/90-decision-log.md).
