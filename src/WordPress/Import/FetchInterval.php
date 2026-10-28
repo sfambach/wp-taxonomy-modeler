@@ -41,10 +41,28 @@ final class FetchInterval
         update_option(self::OPTION, $all, false);
     }
 
-    /** The field as a form-table row; escaped HTML (CD-8). */
-    public static function field(FetchingSource $source): string
+    /** How often a source runs, in words — for a module that only points to another's interval (D-1008). */
+    public static function describe(FetchingSource $source): string
     {
-        $labels = [
+        $chosen = self::chosen($source->key());
+
+        if ($chosen !== '') {
+            return self::labels()[$chosen];
+        }
+
+        $seconds = max(0, $source->interval());
+
+        return $seconds === 0 ? self::labels()['off'] : sprintf(
+            /* translators: %d: hours */
+            _n('every %d hour', 'every %d hours', max(1, intdiv($seconds, HOUR_IN_SECONDS)), 'taxmod'),
+            max(1, intdiv($seconds, HOUR_IN_SECONDS))
+        );
+    }
+
+    /** @return array<string, string> */
+    private static function labels(): array
+    {
+        return [
             ''               => __('as the module says', 'taxmod'),
             'off'            => __('off (only by hand)', 'taxmod'),
             'hourly'         => __('hourly', 'taxmod'),
@@ -52,6 +70,12 @@ final class FetchInterval
             'twicedaily'     => __('2× daily', 'taxmod'),
             'daily'          => __('daily', 'taxmod'),
         ];
+    }
+
+    /** The field as a form-table row; escaped HTML (CD-8). */
+    public static function field(FetchingSource $source): string
+    {
+        $labels = self::labels();
         $options = '';
 
         foreach ($labels as $value => $label) {

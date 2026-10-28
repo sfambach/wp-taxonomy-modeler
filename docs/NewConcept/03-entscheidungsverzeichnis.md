@@ -114,6 +114,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Was passiert mit Inbox-Kästen ohne Neues, und wer spricht für einen Kasten mehrerer Quellen? | [D-994](90-decision-log.md) — schließen sich selbst als übernommen; die für Bestellungen zuständige Quelle entscheidet | — |
 | Wo liegt der Mail-Leser eines Shops? | [D-1006](90-decision-log.md) — im Modul des Shops (`wp_tax_api_<shop>`); tax_mail nur Postfach | — |
 | Wie ist jede Modulseite aufgebaut? | [D-1007](90-decision-log.md) — Zugang · Abruf · Mail · Einstellungen · Wartung, überall gleich; Wartung nur im eigenen Reiter | ersetzt Teile von D-981/D-990 |
+| Liest ein Shop-Modul Mails, und darf die Mail Bestellungen anlegen? | [D-1015](90-decision-log.md) — Schalter je Modul; mit API wählbar «nur Updates» oder «ganze Wahrheit» | — |
 | Wann ist ein Bauteil von einem anderen Hersteller ein eigener Satz? | [D-971](90-decision-log.md) — aktive Teile nach Teilenummer (eigener Satz + Kompatibilität), passive nach Werten (gleiche Werte = ein Satz) | — |
 | Wohin bucht der Wareneingang? | [D-972](90-decision-log.md) — Standard-Lagerort des Materials, sonst Ort des Zweigs unter Model (Zuordnung Zweig → Ort im Lager-Reiter), ohne Bezug Verbrauchsmaterial, sonst «Bauteile»; änderbar | — |
 | Ergänzt der Eingang eine Bestellung, die schon da ist? | [D-964](90-decision-log.md) — ja, aus der für neue Bestellungen zuständigen Quelle: Leeres füllen, Widersprüche je Feld zur Wahl; nur Bestellfelder, keine Positionen | — |

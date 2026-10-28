@@ -50,7 +50,7 @@ Welche Mail zu welchem Shop gehört und was drinsteht, weiß allein das Modul de
 |---|---|---|
 | Zugang | Zugangsdaten, Speichern, «Test connection», «Delete access data» | ja |
 | Abruf | Abruftakt (Modeller) | ja |
-| **Mail** | Welche Mails das Modul erkennt (Bestellung, Versand, Zustellung, Storno, Rechnung …), aus `kinds()` seines Lesers; Hinweis, wenn das Mail-Modul fehlt. Ein/aus ist das Modul selbst (aktivieren/deaktivieren). | ja (0.1.81), Reiter-Schlüssel `reader` |
+| **Mail** | Welche Mails das Modul erkennt, aus `kinds()` seines Lesers; Schalter «Mails lesen»; Abruftakt des Mail-Moduls (nur Anzeige); mit API: «nur Updates» oder «ganze Wahrheit» ([D-1015](../../NewConcept/90-decision-log.md)) | ja (0.1.81, Wahl 0.1.85), Reiter-Schlüssel `reader`, Option `taxmod_mail_reading` |
 | Einstellungen | was nur das Modul hat (z. B. Amazon-Bestellhistorie) | ja |
 | Wartung | «Start over from now», «Sort the backlog» — nur noch im Reiter des eigenen Moduls | ja |
 

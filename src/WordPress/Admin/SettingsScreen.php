@@ -7,6 +7,7 @@ use Taxmod\Core\Import\Mail\OrderMailParser;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\WordPress\Import\FetchInterval;
 use Taxmod\WordPress\Import\ImportTab;
+use Taxmod\WordPress\Import\MailReading;
 use Taxmod\WordPress\Import\InboxScreen;
 use Taxmod\WordPress\Import\Sources;
 use Taxmod\Core\Model\SeededRole;
@@ -165,7 +166,7 @@ final class SettingsScreen
                         'onclick' => 'return confirm(' . wp_json_encode(__('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod')) . ')',
                     ])) . '</p>', $modul)
                 . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle), $modul)
-                . self::section(__('Mail', 'taxmod'), self::mailPart($reiter[$tab]['reader']), $modul)
+                . self::section(__('Mail', 'taxmod'), self::mailPart($reiter[$tab]), $modul)
                 . self::section($modul || $reiter[$tab]['credentials'] !== null || $quelle !== null ? __('Settings', 'taxmod') : '', (string) ($reiter[$tab]['render'])(), $modul)
                 . get_submit_button(__('Save', 'taxmod'))
                 . '</form>'
@@ -608,6 +609,10 @@ final class SettingsScreen
                 FetchInterval::save($quelle->key(), sanitize_key(wp_unslash((string) $_POST[FetchInterval::FIELD])));
             }
 
+            if ($reiter[$tab]['reader'] !== null) {
+                MailReading::save($reiter[$tab]['reader'], $reiter[$tab]['source'] !== '', wp_unslash($_POST));
+            }
+
             ($reiter[$tab]['save'])(wp_unslash($_POST));
 
             if (isset($_POST[self::TEST]) && $reiter[$tab]['test'] !== null) {
@@ -736,9 +741,16 @@ final class SettingsScreen
         return $reiter;
     }
 
-    /** Which mails the module reads, from its reader's own word (D-1007); the mailbox itself is the Mail module's. */
-    private static function mailPart(?OrderMailParser $reader): string
+    /**
+     * Which mails the module reads, from its reader's own word (D-1007), and his choices for them (D-1008): read or not,
+     * how often, and — with an API beside the mails — only updates or the whole truth.
+     *
+     * @param array{reader: OrderMailParser|null, source: string} $tab
+     */
+    private static function mailPart(array $tab): string
     {
+        $reader = $tab['reader'];
+
         if ($reader === null) {
             return '';
         }
@@ -749,9 +761,7 @@ final class SettingsScreen
             /* translators: %s: list of mail kinds, e.g. «order, shipped, delivered» */
             __('Reads these mails from the mailbox of the Mail module: %s.', 'taxmod'),
             $kinds
-        )) . '</p>' . (Sources::find('mail') === null
-            ? '<p class="description">' . esc_html__('The Mail module is not active, so no mails are read.', 'taxmod') . '</p>'
-            : '');
+        )) . '</p>' . MailReading::fields($reader, $tab['source'] !== '');
     }
 
     /** One part of a module tab under its heading; nothing when the module gives nothing, no heading when there is none. */
