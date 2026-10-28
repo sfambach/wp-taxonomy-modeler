@@ -229,6 +229,10 @@ verschrottet werden.»*
 
 [D-1008](../../NewConcept/90-decision-log.md). Reiter «Archiviert»: eingebuchte Bestellungen N Tage nach «Eingegangen am» (Vorgabe 30, Konfiguration › Lager), Bestellungen von vor dem Stichtag «Wareneingang ab» sofort. «Alle» = alles nicht Archivierte. Nichts wird gespeichert; die Stufe folgt aus den Daten wie WC2.
 
+## WC11 — Zurücknehmen
+
+[D-1009](../../NewConcept/90-decision-log.md). Jede Stufe geht zurück in die vorige: Versendet → Bestellt (Sendungsnummer entfernen), Angekommen → Versendet («Zurück»), Eingebucht → Angekommen («Zurück» mit Rückfrage: Bestandsposten und Wareneingangs-Vorgang werden gelöscht; verweigert, wenn ein Posten seither verbraucht oder gezählt wurde). Offen: Testbefund zurücksetzen, Sendungsnummer entfernen.
+
 ## Namen
 
 **Sein Wort:** *«Du musst übrigens nicht meinen Vokabular hier für diese Taxonomie übernehmen. Also das Ding und so weiter. Das
