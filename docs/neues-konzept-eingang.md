@@ -1086,3 +1086,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Gebaut, Entscheidung offen:** Stichtag «Wareneingang ab» (wp_tax_stock, Vorgabe 2026-10-01, INFERRED): ältere, nicht eingebuchte Bestellungen stehen nur unter «Alle». Seine Wahl zwischen Stichtag, Altersgrenze und Verwerfen im Eingang steht aus.
 - **Sein Wort (2026-10-28 19:31), zu den eingebuchten:** *«irgendwann haben wir wahrscheinlich 100 Millionen, 1000 da, vielleicht sollten wir dann noch einen Status archiviert schaffen oder so. Indem wir das dann verschieben könnten, wenn wir es nicht mehr brauchen.»*
 - **Offen:** ob «archiviert» ein Wert des Bestellstatus wird (dann von Hand oder per Sammelaktion gesetzt) oder aus Daten folgt (z. B. eingebucht und älter als N Tage); und ob Stichtag und Archiv dasselbe Werkzeug sind.
+
+
+## INF-099 · Material im Wareneingang: Wähler, Baum und Anlegen
+
+**Typ:** `FRAGE` · **Status:** `OPEN` — 2026-10-28, Thread «Taxmod Stock – Lagermodul».
+
+- **Sein Wort (21:48):** *«eigentlich haben wir doch den tax chooser in dem man suchen kann entweder über baum oder text das wäre hier doch das richtige das mit dem anlegen ist glaube ich noch nicht zuende gedacht»*
+- **Gebaut (wp_tax_stock 0.3.5):** die Wareneingangszeile zeigt den Satzwähler des Modellers (Wort mit Mülleimer oder Suchfeld), vorbelegt mit dem «Modell» des Kaufs; die Suche läuft nur über die Gruppen der Dinge, nicht über den Ast «Stock». «Neu anlegen» steht nicht mehr in der Zeile.
+- **Offen 1 — Baum:** für Sätze unter `Model` hat der Wähler nur die Textsuche ([D-958](NewConcept/90-decision-log.md) F3a: *«Bezug Ding» auf jeden Satz unter `Model`, mit Suche*); der ganze Baum war zu gross (D-898). Ein Baum, der die Sätze eines Knotens erst beim Aufklappen lädt, ist nicht entschieden.
+- **Offen 2 — Anlegen:** wo und wie ein fehlendes Material beim Wareneingang angelegt wird (im Wähler am Knoten, wie das «+» des Satzdialogs D-792, oder als eigener Schritt), ist nach seinem Wort «noch nicht zuende gedacht».
