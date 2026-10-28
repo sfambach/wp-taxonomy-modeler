@@ -1068,3 +1068,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   - Bleibt am Ding: Bezeichnung, Beschreibung, Bilder, Quellen, Herkunft, Bauform, Hersteller, Serie, Teilenummer, Alternative Bezeichnungen, Kompatibilität.
 - **Nachtrag (2026-10-27):** Technische Daten bleiben am Ding und erben im Baum; nur gruppenunabhängige Sichten sind eigene Knoten — entschieden als [D-996](NewConcept/90-decision-log.md).
 - **Nachtrag, sein Wort (2026-10-27), GUI:** *«finde die idee mit liste -> einzelansicht gut bin mir aber nicht sicher mit dem anwählen der sicht, könnten man auch gesamt öffnen und tabs für die jeweilige sicht kopf bleibt gleich»* — Liste (gemeinsames Tabellen-Template) → Klick öffnet das ganze Ding; Kopf fest, Sichten als Tabs. Eingabe und Massenansicht noch offen.
+
+## INF-097 · Ein eigenes Menü für die Cockpits?
+
+**Typ:** `IDEE` · **Status:** `DECIDED` ([D-1004](NewConcept/90-decision-log.md)) — 2026-10-28, Thread «Wareneingangs-Cockpit im Taxmod bauen».
+
+- **Sein Wort:** *«Ich weiß nicht, ob wir später vielleicht ein eigenes Menü erstellen sollen, das immer verfügbar ist für diese Module. Das sollten wir uns dann noch mal überlegen.»*
+- **Heute:** eBay-Versand und Wareneingang ([D-1001](NewConcept/90-decision-log.md)) sind Seiten unter dem Taxmod-Menü.
+- **Vorschlag (INFERRED):** ein Menüpunkt «Cockpits» (oder Einträge in der Admin-Leiste oben, auf jeder Seite erreichbar) mit Versand, Wareneingang und später weiteren Abläufen; Modell, Lager und Konfiguration bleiben unter Taxmod. Siehe [`pakete/lager/cockpit-wareneingang.md`](pakete/lager/cockpit-wareneingang.md) WC6.
+

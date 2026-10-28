@@ -15,7 +15,7 @@ $log       = file_get_contents('docs/NewConcept/90-decision-log.md');
 $questions = file_get_contents('docs/NewConcept/91-open-questions.md');
 
 // What the log actually defines: a row that starts a table line with the id.
-preg_match_all('/^\| (D-\d{3}) \|/m', $log, $m);
+preg_match_all('/^\| (D-\d{3,}) \|/m', $log, $m);
 $defined = array_flip($m[1]);
 
 preg_match_all('/^## (OQ-\d{3})/m', $questions, $q);
@@ -43,7 +43,7 @@ $danglingQ = [];
 foreach ($files as $f) {
     $text = (string) file_get_contents($f);
 
-    preg_match_all('/D-\d{3}/', $text, $d);
+    preg_match_all('/D-\d{3,}/', $text, $d);
 
     foreach (array_unique($d[0]) as $id) {
         if (! isset($defined[$id])) {
@@ -51,7 +51,7 @@ foreach ($files as $f) {
         }
     }
 
-    preg_match_all('/OQ-\d{3}/', $text, $o);
+    preg_match_all('/OQ-\d{3,}/', $text, $o);
 
     foreach (array_unique($o[0]) as $id) {
         if (! isset($asked[$id])) {
