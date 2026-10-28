@@ -3,7 +3,7 @@
 /**
  * Plugin Name:       Taxonomy Modeller
  * Description:       Build data models as a tree of nodes and relations — objects and their relationships, not relational tables.
- * Version:           0.1.83
+ * Version:           0.1.84
  * Requires at least: 6.4
  * Requires PHP:      8.2
  * Author:            Stefan Fambach (SteFam), Claude (Anthropic AI)

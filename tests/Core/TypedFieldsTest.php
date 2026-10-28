@@ -407,12 +407,22 @@ final class TypedFieldsTest extends TestCase
             $this->context(Purpose::Edit, TypedValue::nothing(), SimpleType::Int, [], 'v[7]')
         );
 
-        self::assertStringContainsString('pattern="-?\d+"', $result->markup);
+        self::assertStringContainsString('pattern="[+\-]?\d+"', $result->markup);
         self::assertStringContainsString('inputmode="numeric"', $result->markup);
 
         // ⚠️ Not `type="number"`: it reports an **empty value** for content it cannot parse, and
         // empty here means *clear this attribute* — a stray keystroke would delete a value.
         self::assertStringContainsString('type="text"', $result->markup);
+    }
+
+    #[Test]
+    public function a_number_takes_a_plus_sign_and_a_decimal_comma(): void
+    {
+        // ⚠️ His finding 2026-10-28: a tolerance typed as «-20» to «+20» lost the «+20» and every field after it.
+        self::assertSame('20', SimpleType::Decimal->valueFrom('+20')->decimal);
+        self::assertSame('1.5', SimpleType::Decimal->valueFrom('1,5')->decimal);
+        self::assertSame('-0.1', SimpleType::Decimal->valueFrom('-0,1')->decimal);
+        self::assertSame(20, SimpleType::Int->valueFrom('+20')->int);
     }
 
     #[Test]

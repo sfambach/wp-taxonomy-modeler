@@ -44,9 +44,12 @@ final class DecimalType extends SpecialisedType
         return 'value_decimal';
     }
 
+    // ⚠️ *Ein Vorzeichen «+» und das deutsche Komma werden angenommen und beim Lesen weggerechnet. Gemessen am 2026-10-28, sein
+    // Befund: «habe farad toleranz und kapa eingegeben aber wird nur toleranz angezeigt» — er tippte die Toleranz «-20» bis «+20»,
+    // «+20» wurde abgewiesen, und Kapazität und Spannung danach kamen nie an.*
     public function pattern(): ?string
     {
-        return '-?\d+(\.\d+)?';
+        return '[+\-]?\d+([.,]\d+)?';
     }
 
     public function inputMode(): ?string
@@ -64,6 +67,6 @@ final class DecimalType extends SpecialisedType
     {
         $this->mustMatchItsShape($characters);
 
-        return TypedValue::ofDecimal($characters);
+        return TypedValue::ofDecimal(str_replace(',', '.', ltrim($characters, '+')));
     }
 }

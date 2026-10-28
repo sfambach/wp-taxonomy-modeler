@@ -47,7 +47,7 @@ final class IntType extends SpecialisedType
 
     public function pattern(): ?string
     {
-        return '-?\d+';
+        return '[+\-]?\d+';
     }
 
     public function inputMode(): ?string
@@ -65,6 +65,6 @@ final class IntType extends SpecialisedType
     {
         $this->mustMatchItsShape($characters);
 
-        return TypedValue::ofInt((int) $characters);
+        return TypedValue::ofInt((int) ltrim($characters, '+'));
     }
 }

@@ -29,6 +29,7 @@ use Taxmod\Core\Renderer\ToggleRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\Core\Renderer\ChooserCellRenderer;
 use Taxmod\Core\Renderer\ChooserRenderer;
+use Taxmod\Core\Renderer\ReferenceRenderer;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\SelectMarkup;
@@ -2160,6 +2161,16 @@ final class Rendering implements Presets
             // der Typstandard sonst der Anzeige-Renderer wäre.*
             if ($istWahl && $moeglich === [] && $this->chosenRendererName($settings) === '' && $this->typeNodes->nodeId(SimpleType::NodeRef) === $relation->toNodeId) {
                 $renderer = $this->renderers->byName(ChooserRenderer::NAME);
+            }
+
+            // ⚠️ *Beim Bearbeiten ist ein Knotenverweis eine Wahl, auch wenn die Kette nur den Anzeige-Renderer fand. Gemessen am 2026-10-28,
+            // sein Befund an Kondensatoren: «bauform nicht auswählbar und condensator typ fehlt» — das Ziel trug den Renderer `form`, der
+            // keinen Knotenverweis zeichnet; übrig blieb `reference`, und der zeigt nur einen Namen. Wer `reference` ausdrücklich wählt
+            // (Base units), behält ihn.*
+            if ($istWahl && $moeglich !== [] && $renderer instanceof ReferenceRenderer && $this->chosenRendererName($settings) !== ReferenceRenderer::NAME) {
+                $renderer = $this->renderers->byName(ChooserRenderer::NAME);
+                // *Ein Baum im Formular nimmt die halbe Seite ein; er öffnet sich als Dialog wie der Satzwähler. Eine flache Liste bleibt ein Auswahlfeld.*
+                $settings = $this->hatEnkel($relation->toNodeId) ? [...$settings, ...ChooserRenderer::asDialog()] : $settings;
             }
 
             if ($renderer === null) {
@@ -5625,6 +5636,14 @@ final class Rendering implements Presets
      * er gebaut. *Sein Befund am 2026-09-11 an `Prefixes` mit `chooser-inline`: «warum kein auswahlfeld
      * angezeigt wird» — der Renderer bekam keinen Baum und zeichnete ein leeres Stück.*
      */
+    /** Ob unter den Kindern dieses Knotens noch Kinder stehen — dann ist die Wahl ein Baum und keine Liste. */
+    private function hatEnkel(int $nodeId): bool
+    {
+        $kinder = $this->gemerkteSichtbareKinder([$nodeId])[$nodeId] ?? [];
+
+        return $kinder !== [] && array_filter($this->gemerkteSichtbareKinder(array_map(static fn (Node $k): int => $k->id, $kinder))) !== [];
+    }
+
     /**
      * @param array<string, ResolvedSetting> $settings Die aufgelösten Angaben der Stelle — darunter `dialog` und `display_size` des Wählers.
      */

@@ -4496,6 +4496,49 @@ final class NodesScreen
         return __('Kept as an example.', 'taxmod');
     }
 
+    /**
+     * Einen Akt ganz schreiben oder gar nicht.
+     *
+     * ⚠️ *Gemessen am 2026-10-28 an Satz 45930: ein abgewiesener Wert mitten im Satz (Toleranz «+20») liess stehen, was davor
+     * geschrieben war, und verlor alles danach — der Satz zeigte «-20 %» und keine Kapazität. Ein Satz ist eine Eingabe; er kommt
+     * als Ganzes an oder die Meldung sagt, warum nicht. Unter der Klammer der Wächter ist schon eine Transaktion offen, darum ein
+     * Sicherungspunkt wie in {@see \Taxmod\WordPress\ModelAbilities}.*
+     *
+     * @return mixed was der Akt zurückgibt — die Akte des Bildschirms geben Verschiedenes zurück (`CD-4`).
+     */
+    private function savedWhole(callable $act): mixed
+    {
+        global $wpdb;
+
+        $eigene = ! defined('TAXMOD_NO_WRITE');
+
+        if ($eigene) {
+            $wpdb->query('START TRANSACTION');
+        }
+
+        $wpdb->query('SAVEPOINT taxmod_save_record');
+
+        try {
+            $outcome = $act();
+        } catch (\Throwable $e) {
+            $wpdb->query('ROLLBACK TO SAVEPOINT taxmod_save_record');
+
+            if ($eigene) {
+                $wpdb->query('ROLLBACK');
+            }
+
+            throw $e;
+        }
+
+        $wpdb->query('RELEASE SAVEPOINT taxmod_save_record');
+
+        if ($eigene) {
+            $wpdb->query('COMMIT');
+        }
+
+        return $outcome;
+    }
+
     private function saveRecord(int $nodeId): void
     {
         $recordId  = isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0;
@@ -7069,7 +7112,7 @@ final class NodesScreen
                 // ([D-679](../../../docs/NewConcept/90-decision-log.md)): *«was mir da einfällt wir
                 // könnten bei der preview eingabe einen button hinzufügen add as example».*
                 'add_example'    => $this->addExample($id),
-                'save_record'    => $this->saveRecord($id),
+                'save_record'    => $this->savedWhole(fn () => $this->saveRecord($id)),
                 // ⚠️ *Filtern schreibt nichts — es trägt die Filterzeile in die Adresse (D-768).*
                 'filter_records' => $this->rememberFilter($this->submittedFilter()),
                 'clear_filter'   => $this->rememberFilter(null),
