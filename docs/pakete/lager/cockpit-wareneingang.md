@@ -225,6 +225,10 @@ verschrottet werden.»*
 **Sein Wort:** *«ja menü für we/wa/lager»*. Ein eigener Menüpunkt (Arbeitstitel «Logistik») mit Wareneingang, Warenausgang
 (heute eBay-Versand) und Lager; Modell und Konfiguration bleiben unter Taxmod. Löst [INF-097](../../neues-konzept-eingang.md) ([D-1004](../../NewConcept/90-decision-log.md)).
 
+## WC10 — Archiv
+
+[D-1008](../../NewConcept/90-decision-log.md). Reiter «Archiviert»: eingebuchte Bestellungen N Tage nach «Eingegangen am» (Vorgabe 30, Konfiguration › Lager), Bestellungen von vor dem Stichtag «Wareneingang ab» sofort. «Alle» = alles nicht Archivierte. Nichts wird gespeichert; die Stufe folgt aus den Daten wie WC2.
+
 ## Namen
 
 **Sein Wort:** *«Du musst übrigens nicht meinen Vokabular hier für diese Taxonomie übernehmen. Also das Ding und so weiter. Das

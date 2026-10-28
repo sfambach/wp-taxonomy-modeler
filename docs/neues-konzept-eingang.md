@@ -1080,7 +1080,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-098 · Alte Bestellungen im Wareneingangs-Cockpit: Stichtag und Archiv
 
-**Typ:** `FRAGE` · **Status:** `OFFEN` — 2026-10-28, Thread «Wareneingangs-Cockpit im Taxmod bauen».
+**Typ:** `FRAGE` · **Status:** `DECIDED` ([D-1008](NewConcept/90-decision-log.md)) — 2026-10-28, Thread «Wareneingangs-Cockpit im Taxmod bauen».
 
 - **Anlass:** Die Amazon-Historie (2004–2026, über 1000 Bestellungen, tax_mail 0.5.x) kommt ohne «Eingegangen am» ins Modell und stünde damit ganz unter «Bestellt»/«Versendet», jede überfällig ([D-1001](NewConcept/90-decision-log.md) WC2/WC4).
 - **Gebaut, Entscheidung offen:** Stichtag «Wareneingang ab» (wp_tax_stock, Vorgabe 2026-10-01, INFERRED): ältere, nicht eingebuchte Bestellungen stehen nur unter «Alle». Seine Wahl zwischen Stichtag, Altersgrenze und Verwerfen im Eingang steht aus.
