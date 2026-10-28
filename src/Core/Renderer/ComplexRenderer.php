@@ -97,7 +97,7 @@ final class ComplexRenderer extends RendererNode
         }
 
         foreach ($mehrere as $part) {
-            $markup .= $this->block($part, $this->table($subject, $context, $part->rows, $part->rowActs, $used) . $part->after);
+            $markup .= $this->block($part, $this->table($subject, $context, $part->rows, $part->rowActs, $used, $part->siteSettings) . $part->after);
         }
 
         if ($markup === '') {
@@ -144,12 +144,13 @@ final class ComplexRenderer extends RendererNode
      * @param list<list<RenderedField>> $rows
      * @param list<string>              $rowActs je Zeile ihr Entfernen (D-758)
      * @param list<string>              $used
+     * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $siteSettings was an der Stelle des Teils eingestellt ist (D-999)
      */
-    private function table(Renderable $subject, RenderContext $context, array $rows, array $rowActs, array &$used): string
+    private function table(Renderable $subject, RenderContext $context, array $rows, array $rowActs, array &$used, array $siteSettings = []): string
     {
         $result = (new TableRenderer())->render(
             $subject,
-            $this->with($context, new Surroundings(
+            $this->with($context, settings: [...$context->settings, ...$siteSettings], surroundings: new Surroundings(
                 records: array_map(fn (array $row): array => $this->summarised($row, $context), $rows),
                 formId: $context->surroundings->formId,
                 rowActs: implode('', $rowActs) === '' ? [] : $rowActs,
@@ -272,12 +273,13 @@ final class ComplexRenderer extends RendererNode
             . $body . '</div>';
     }
 
-    private function with(RenderContext $context, Surroundings $surroundings): RenderContext
+    /** @param array<string, \Taxmod\Core\Model\ResolvedSetting>|null $settings */
+    private function with(RenderContext $context, Surroundings $surroundings, ?array $settings = null): RenderContext
     {
         return new RenderContext(
             purpose: $context->purpose,
             value: $context->value,
-            settings: $context->settings,
+            settings: $settings ?? $context->settings,
             locale: $context->locale,
             level: $context->level,
             editable: $context->editable,

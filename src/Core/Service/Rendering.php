@@ -2283,7 +2283,9 @@ final class Rendering implements Presets
                 // ⚠️ *Die Worte des Wertes, ohne Bedienelement — die Zusammenfassung eines tieferen Teils (D-758).*
                 $context->shown ?? $context->surroundings->refersTo ?? $this->wordsOf($value),
                 $tiefer['rowActs'] ?? [],
-                $tiefer['after'] ?? ''
+                $tiefer['after'] ?? '',
+                // ⚠️ *Was an der Stelle selbst eingestellt ist, reist mit den Zeilen (D-999).*
+                array_filter($resolved[$relation->id] ?? [], static fn (mixed $s): bool => $s instanceof ResolvedSetting && $s->fromOwnerId === $relation->id)
             );
         }
 
@@ -4674,7 +4676,9 @@ final class Rendering implements Presets
         // Satzverweis. Ein Behälter sagt, wie der Knoten seine Felder legt — nicht, wie ein Verweis auf seine Sätze aussieht.*
         $name = $this->rendererChosenAtEdge($relation, $resolved);
 
-        return $name === '' || $name === SummaryRenderer::NAME;
+        // ⚠️ *Eine ausdrücklich gewählte Tabelle ist dieselbe Tabelle wie ohne Wahl, nur mit Einstellungen an der Stelle — etwa ohne
+        // Kopfzeile (D-999). Ohne diese Zeile fiel die Quellenliste der Revision auf die Zusammenfassung zurück, sobald «table» dort stand.*
+        return $name === '' || $name === SummaryRenderer::NAME || $name === TableRenderer::NAME;
     }
 
     /**
@@ -4711,7 +4715,7 @@ final class Rendering implements Presets
         return $relation->kind === RelationKind::Aggregation
             && ! $relation->isSetting()
             && $relation->multiplicity->allowsMany()
-            && $this->rendererChosenAtEdge($relation, $resolved) === ''
+            && in_array($this->rendererChosenAtEdge($relation, $resolved), ['', TableRenderer::NAME], true)
             && $this->drawsAsSummary($relation, $type, $resolved);
     }
 

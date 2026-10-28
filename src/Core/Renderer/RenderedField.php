@@ -77,6 +77,15 @@ final class RenderedField
         public readonly array $rowActs = [],
         /** Was hinter den Zeilen steht — der Knopf, der eine hinzufügt (D-758). */
         public readonly string $after = '',
+        /**
+         * Was an dieser Stelle selbst eingestellt ist, für die Zeilen in {@see $rows} — etwa eine Tabelle ohne Kopfzeile (D-999).
+         *
+         * ⚠️ *Mitgegeben, weil {@see ComplexRenderer} die Zeilen selbst auslegt und nichts nachschlagen darf
+         * ([D-159](../../../docs/NewConcept/90-decision-log.md)); ohne sie galt dort nur, was am Halter eingestellt war.*
+         *
+         * @var array<string, \Taxmod\Core\Model\ResolvedSetting>
+         */
+        public readonly array $siteSettings = [],
     ) {
     }
 

@@ -74,6 +74,29 @@ $leser  = $plugin->screen()->recordForReaders((int) $geruest['refs']['r'], 0, ''
 $pruefe((bool) preg_match('~href="https://example\.com/gerber\.zip"[^>]*>__qu Webseite</a>~', $leser), 'the link to the website is named after its field');
 $pruefe((bool) preg_match('~href="https://example\.org/kopie\.zip"[^>]*>__qu Datei</a>~', $leser), 'and the file beside it, both at once');
 
+// ⚠️ *Die Liste der Quellen an einem Halter bleibt eine Tabelle ihrer Sätze, auch mit ausdrücklich gewählter Tabelle an der Stelle —
+// sonst fiel sie auf die Zusammenfassung zurück, und die Kopfzeile liess sich nicht abschalten (D-999).*
+$halter = $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'h', 'name' => '__qu Revision', 'parent' => $model],
+    ['op' => 'add_field', 'ref' => 'qs', 'node' => '@h', 'target' => $geruest['refs']['q'], 'name' => '__qu Quellen', 'kind' => 'aggregation', 'multiplicity' => '0..*'],
+    ['op' => 'set_setting', 'node' => '@h', 'attribute' => 'renderer', 'value' => 'complex'],
+    ['op' => 'set_setting', 'node' => $geruest['refs']['q'], 'field' => '@qs', 'attribute' => 'renderer', 'value' => 'table'],
+    ['op' => 'set_setting', 'node' => $geruest['refs']['q'], 'field' => '@qs', 'attribute' => 'with_label', 'value' => '0'],
+    ['op' => 'create_record', 'ref' => 'hr', 'node' => '@h'],
+    ['op' => 'set_values', 'record' => '@hr', 'values' => ['@qs' => ['values' => [(string) $geruest['refs']['r']]]]],
+]]);
+$pruefe(is_array($halter), 'a holder with a table of sources, without its head row' . (is_wp_error($halter) ? ' — ' . $halter->get_error_message() : ''));
+
+if (is_array($halter)) {
+    // *Ein frischer Bildschirm: der erste hat die Einstellungen vor dem Akt gelesen und behält sie für diesen Lauf.*
+    $plugin = $rc->newInstanceWithoutConstructor();
+    $rc->getProperty('file')->setValue($plugin, __FILE__);
+    $liste  = $plugin->screen()->recordForReaders((int) $halter['refs']['hr'], 0, '');
+    $pruefe(str_contains($liste, '<table') && ! str_contains($liste, 'taxmod-ref-list'), 'the sources stay a table of their records, not a list of summaries');
+    $pruefe(! str_contains($liste, '<thead>'), 'without a head row');
+    $pruefe((bool) preg_match('~>__qu Webseite</a>.*>__qu Datei</a>~s', $liste), 'and each row says what it is: website and file');
+}
+
 $falsch = $apply->execute(['changes' => [
     ['op' => 'set_setting', 'node' => $medium->id, 'field' => $geruest['refs']['web'], 'attribute' => 'gibt_es_nicht', 'value' => '1'],
 ]]);
