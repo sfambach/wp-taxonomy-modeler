@@ -2074,6 +2074,32 @@ final class RenderingTest extends TestCase
         self::assertStringNotContainsString('→', $amVater, 'am erklärenden Knoten ist der Weg leer');
     }
 
+    /** ⚠️ *D-999: «Webseite» und «Datei» sagen, was sie sind — der Feldname ist der Linktext, die Art wird nicht getippt.* */
+    #[Test]
+    public function a_media_field_may_show_its_own_name_as_link_text(): void
+    {
+        $quelle   = $this->thing('Quelle');
+        $medium   = $this->type('Media');
+        $webseite = $this->editor->addField($quelle->id, $medium->id, 'Webseite');
+        $datei    = $this->editor->addField($quelle->id, $medium->id, 'Datei');
+        $werte    = [$webseite->id => TypedValue::ofText('https://example.com/gerber.zip'), $datei->id => TypedValue::ofText('https://example.org/kopie.zip')];
+
+        $vorher = $this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display)->markup;
+
+        self::assertStringContainsString('>gerber (ZIP)<', $vorher, 'ohne Einstellung die aus der Adresse gerechnete Beschreibung');
+
+        $this->einstellung($webseite, \Taxmod\Core\Model\Type\MediaType::NAME_AS_LINK_TEXT, TypedValue::ofBool(true));
+
+        $nachher = $this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display)->markup;
+
+        self::assertMatchesRegularExpression('~href="https://example\.com/gerber\.zip"[^>]*>Webseite</a>~', $nachher, 'der Feldname ist der Linktext');
+        self::assertStringContainsString('>kopie (ZIP)<', $nachher, 'an der Verwendungsstelle eingestellt: das andere Feld bleibt, wie es war');
+
+        $this->einstellung($datei, \Taxmod\Core\Model\Type\MediaType::NAME_AS_LINK_TEXT, TypedValue::ofBool(true));
+
+        self::assertMatchesRegularExpression('~href="https://example\.org/kopie\.zip"[^>]*>Datei</a>~', $this->rendering->nodeAsForm($quelle, [$webseite, $datei], $werte, Purpose::Display)->markup);
+    }
+
     #[Test]
     public function with_node_appends_the_node_itself_to_the_path(): void
     {

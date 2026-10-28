@@ -843,6 +843,19 @@ final class NodesScreen
         return $this->attributes->setMembers($knoten, $attribut, $members, $kante);
     }
 
+    /** Eine einfache Einstellung am Knoten oder, mit Feld, an dieser Verwendungsstelle — wie die Maske sie schreibt (D-999). */
+    public function setSetting(int $nodeId, string $attribut, string $characters, ?int $fieldId = null): bool
+    {
+        $knoten = $this->editor->find($nodeId) ?? throw new \InvalidArgumentException("No node {$nodeId}.");
+        $kante  = $fieldId === null ? null : ($this->editor->relationById($fieldId) ?? throw new \InvalidArgumentException("No field {$fieldId}."));
+
+        if ($this->attributes === null) {
+            throw new \RuntimeException('Settings cannot be written here.');
+        }
+
+        return $this->attributes->put($knoten, $attribut, $characters, $kante, true);
+    }
+
     /** Der Schreibweg der Sätze, den auch die Maske benutzt — mit ihrem Nachlauf (D-885) und ihrer Vorbelegung (D-649). */
     public function entries(): DataEntry
     {

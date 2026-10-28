@@ -35,6 +35,16 @@ final class MediaType extends SpecialisedType
     public const NEW_TAB = 'new_tab';
 
     /**
+     * Ob der Link den Namen des Feldes trägt statt der Beschreibung der Datei ([D-999](../../../../docs/NewConcept/90-decision-log.md)) — sein
+     * Wort zu Quellen: *«quellen und dann art website/datei (beides ist auch möglich»*. *Zwei Medienfelder «Webseite» und «Datei»
+     * sagen so, was sie sind; die Art wird nicht getippt, sie ergibt sich aus dem, was gefüllt ist.*
+     */
+    #[\Taxmod\Core\Model\NodeClass\Attribut]
+    public bool $name_as_link_text = false;
+
+    public const NAME_AS_LINK_TEXT = 'name_as_link_text';
+
+    /**
      * Eine Datei der Mediathek steht als `media:<Id>` da, eine Adresse von draussen so, wie sie eingegeben wurde
      * ([D-865](../../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«id»*. *Eine Adresse mit eigenem Schema, damit ein Wert
      * weiterhin eine Adresse bleibt und keine zweite Spalte braucht.*

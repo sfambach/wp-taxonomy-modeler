@@ -2189,12 +2189,15 @@ final class Rendering implements Presets
                     // ⚠️ *Ein Benutzerverweis ist kein Knotenverweis — sein Wert ist Text
                     // ([D-171](../../../docs/NewConcept/90-decision-log.md)), also kommt sein Name aus
                     // der anderen Naht. **Dasselbe Feld**, weil es dieselbe Aussage ist.*
-                    refersTo: isset($beschriftet[$relation->id])
+                    refersTo: $type === SimpleType::Media && (($settings[\Taxmod\Core\Model\Type\MediaType::NAME_AS_LINK_TEXT] ?? null)?->value->asBool() ?? false)
+                        // *Der Feldname als Linktext (D-999): «Webseite», «Datei».*
+                        ? $relation->name
+                        : (isset($beschriftet[$relation->id])
                         // *Das Wort eines Mediums ist seine Beschriftung (D-856); leer heisst: die aus der Datei gerechnete.*
                         ? (string) (($values[$beschriftet[$relation->id]] ?? null)?->text ?? '')
                         : ($value->reference === null
                             ? ($userNames[$relation->id] ?? null)
-                            : ($names[$relation->id] ?? $saetze['worte'][$relation->id] ?? null)),
+                            : ($names[$relation->id] ?? $saetze['worte'][$relation->id] ?? null))),
                     // ⚠️ **Already known, so it is handed over rather than looked up** (D-445). A
                     // reference with no simple type behind it is a reference to a record: `typeOf()`
                     // answers `node_ref` for a constant and a real type for a data type, so `null`
