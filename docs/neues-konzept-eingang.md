@@ -1101,7 +1101,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-100 · Bestellnummer gehört zu einem Händler oder Hersteller
 
-**Typ:** `FRAGE` · **Status:** `OPEN` — 2026-10-28, Thread «Taxmod Stock – Lagermodul».
+**Typ:** `FRAGE` · **Status:** `DECIDED` — 2026-10-28, [D-1013](NewConcept/90-decision-log.md) («Lagersicht»).
 
 - **Sein Wort (23:13):** *«bestellnummer gehört doch eigentlich immer zu nem händler oder hersteller»*
 - **Entschieden (gelesen):** [D-954](NewConcept/90-decision-log.md) (3): *«Die Bezugsquelle (Mouser-Nummer usw.) ist ein eigenes Feld «Bestell-Nr.» an den Bauteilen»* — ein Feld ohne Angabe, wessen Nummer es ist. [D-779](NewConcept/90-decision-log.md): wer herstellt und unter welcher Nummer man kauft, gehört in den kaufmännischen Teil. [D-933](NewConcept/90-decision-log.md): der Kauf trägt die Artikelnummer, die Bestellung den Händler.
