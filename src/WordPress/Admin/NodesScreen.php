@@ -1112,6 +1112,16 @@ final class NodesScreen
                 'action'        => self::RECORD_SEARCH_ACTION,
                 '_taxmod_nonce' => wp_create_nonce(self::RECORD_SEARCH_ACTION),
             ], admin_url('admin-post.php'))) . '"'
+            // ⚠️ *Und woher der Baum daneben seine Knoten und die Sätze eines Knotens holt (D-1011) — beides erst, wenn er aufgeht.*
+            . ' data-record-nodes="' . esc_url(add_query_arg([
+                'action'      => self::RECORD_NODES_ACTION,
+                '_ajax_nonce' => wp_create_nonce(self::RECORD_NODES_ACTION),
+            ], admin_url('admin-post.php'))) . '"'
+            . ' data-record-branch="' . esc_url(add_query_arg([
+                'action'      => self::RECORD_BRANCH_ACTION,
+                '_ajax_nonce' => wp_create_nonce(self::RECORD_BRANCH_ACTION),
+            ], admin_url('admin-post.php'))) . '"'
+            . ' data-browse-title="' . esc_attr__('Choose from the tree', 'taxmod') . '"'
             . ' data-no-hits="' . esc_attr__('Nothing found.', 'taxmod') . '"></span>';
 
         return $html . $picker . $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)) . $worte . '</div>';
@@ -1170,6 +1180,13 @@ final class NodesScreen
 
     /** Der Akt, unter dem der Wähler über «jeden Satz unter Model» seine Treffer holt ([D-958](../../../docs/NewConcept/90-decision-log.md), F3a). */
     public const RECORD_SEARCH_ACTION = 'taxmod_record_search';
+
+    public const RECORD_NODES_ACTION = 'taxmod_record_nodes';
+
+    public const RECORD_BRANCH_ACTION = 'taxmod_record_branch';
+
+    /** Höchstens so viele Sätze zeigt ein Ast im Baum der Satzauswahl — wer mehr hat, sucht oder klickt tiefer (D-1011). */
+    private const ASTSAETZE = 300;
 
     /** Höchstens so viele Treffer je Anfrage — die Liste unter dem Suchfeld, keine Seite. */
     private const SUCHTREFFER = 30;
@@ -1240,6 +1257,92 @@ final class NodesScreen
         foreach ($ids as $id) {
             $ort   = isset($nachSatz[$id], $knoten[$nachSatz[$id]]) ? $knoten[$nachSatz[$id]]->name : '';
             $aus[] = ['id' => $id, 'word' => (string) ($worte[$id] ?? '#' . $id), 'node' => $ort];
+        }
+
+        wp_send_json_success($aus);
+    }
+
+    /**
+     * Die Knoten unter `Model` für den Baum neben der Suche — Id, Name, Tiefe, ohne Sätze ([D-1011](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort am 2026-10-28: «Erst Text, dann Baum». Der ganze Baum samt Sätzen war zu schwer (D-898, D-958); also kommen erst nur
+     * die Knoten, und die Sätze eines Knotens fragt {@see self::handleRecordBranch()}, wenn er angeklickt wird.*
+     */
+    public function handleRecordNodes(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_send_json_error([], 403);
+        }
+
+        if (! check_ajax_referer(self::RECORD_NODES_ACTION, false, false)) {
+            wp_send_json_error([], 403);
+        }
+
+        $aus = [];
+
+        foreach ($this->tree->rowsUnder($this->framework->rootOf(Branch::Model), [$this->framework->trash()->id]) as $zeile) {
+            if ($zeile['hidden'] ?? false) {
+                continue;
+            }
+
+            $aus[] = ['id' => $zeile['node']->id, 'name' => $zeile['node']->name, 'depth' => (int) $zeile['depth']];
+        }
+
+        wp_send_json_success($aus);
+    }
+
+    /**
+     * Die Sätze eines Knotens unter `Model` und seiner Unterknoten, mit dem Wort der Suche — höchstens {@see self::ASTSAETZE}
+     * ([D-1011](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    public function handleRecordBranch(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_send_json_error([], 403);
+        }
+
+        if (! check_ajax_referer(self::RECORD_BRANCH_ACTION, false, false)) {
+            wp_send_json_error([], 403);
+        }
+
+        $gefragt = isset($_GET['node']) ? absint($_GET['node']) : 0;
+        $knoten  = [];
+
+        foreach ($this->tree->rowsUnder($this->framework->rootOf(Branch::Model), [$this->framework->trash()->id]) as $zeile) {
+            $knoten[$zeile['node']->id] = $zeile['node'];
+        }
+
+        if (! isset($knoten[$gefragt])) {
+            wp_send_json_error([], 404);
+        }
+
+        $ast = [$gefragt];
+
+        foreach ($this->tree->rowsUnder($knoten[$gefragt], [$this->framework->trash()->id]) as $zeile) {
+            $ast[] = $zeile['node']->id;
+        }
+
+        $records = new \Taxmod\WordPress\Persistence\WpdbRecordRepository();
+        $ids     = [];
+        $ort     = [];
+
+        foreach ($records->ofNodes($ast) as $knotenId => $saetze) {
+            foreach ($saetze as $satz) {
+                if (count($ids) >= self::ASTSAETZE || $satz->recordType === \Taxmod\Core\Model\RecordType::Settings) {
+                    continue;
+                }
+
+                $ids[]          = $satz->id;
+                $ort[$satz->id] = $knotenId;
+            }
+        }
+
+        $kante = \Taxmod\Core\Model\Relation::attribute(0, $gefragt, $gefragt, \Taxmod\Core\Model\RelationKind::Aggregation, 'branch', 0);
+        $worte = $ids === [] ? [] : ($this->rendering->summaryTextsOf([['relation' => $kante, 'records' => $ids]])[0] ?? []);
+        $aus   = [];
+
+        foreach ($ids as $id) {
+            $aus[] = ['id' => $id, 'word' => (string) ($worte[$id] ?? '#' . $id), 'node' => $ort[$id] ?? 0];
         }
 
         wp_send_json_success($aus);

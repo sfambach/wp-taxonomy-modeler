@@ -106,9 +106,9 @@ final class SummaryRenderer extends TypedFieldRenderer
     }
 
     /**
-     * Die Satzauswahl über «jeden Satz unter Model»: ein Suchfeld, dessen Treffer der Rand liefert, kein Dialog und kein Baum.
+     * Die Satzauswahl über «jeden Satz unter Model»: ein Suchfeld, dessen Treffer der Rand liefert, und ein Knopf für den Baum, den das Skript erst beim Öffnen holt.
      *
-     * ⚠️ *[D-958](../../../docs/NewConcept/90-decision-log.md), F3a: «Bezug Ding» mit Suche. Dieselbe Hülle wie die Schnellsuche vor dem
+     * ⚠️ *[D-958](../../../docs/NewConcept/90-decision-log.md), F3a: «Bezug Ding» mit Suche; daneben seit D-1011 ein Baum, der erst beim Öffnen lädt. Dieselbe Hülle wie die Schnellsuche vor dem
      * Dialog (D-792, D-851), damit Treffer, Mülleimer und Selbstspeichern dieselben bleiben; die Auswahlknöpfe liegen verborgen — der
      * leere für «nichts», der gewählte, und jeder genommene Treffer kommt als weiterer dazu.*
      */
@@ -123,13 +123,19 @@ final class SummaryRenderer extends TypedFieldRenderer
             . ($an ? ' checked' : '') . $form . '></label>';
         $loeschen = (string) ($context->surroundings->dialogWords['clear'] ?? '');
         $suchwort = (string) ($context->surroundings->dialogWords['search'] ?? '');
+        $baumwort = (string) ($context->surroundings->dialogWords['tree'] ?? '');
 
         return '<span class="taxmod-record-pick taxmod-record-remote' . ($nichts ? '' : ' taxmod-record-taken') . '">'
             . '<span class="taxmod-record-choices" hidden>' . $knopf('', $nichts) . ($nichts ? '' : $knopf((string) $gewaehlt, true)) . '</span>'
             . '<input type="search" class="taxmod-record-quick" autocomplete="off" placeholder="' . RenderResult::escape($suchwort) . '" aria-label="' . RenderResult::escape($suchwort) . '"' . ($nichts ? '' : ' hidden') . '>'
+            // ⚠️ **Neben der Suche der Baum** ([D-1011](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «Erst Text, dann Baum». Der
+            // Knopf trägt keinen Baum: Knoten und Sätze holt das Skript erst, wenn er gedrückt und ein Knoten angeklickt wird.*
+            . ($baumwort === '' ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . RenderResult::escape($baumwort) . '">'
+                . IconMarkup::dashicon('networking', $baumwort) . '</button>')
             . '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . RenderResult::escape($wort) . '</span>'
-            . ($nichts ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear" style="color:#b32d2e" title="' . RenderResult::escape($loeschen) . '">'
-                . IconMarkup::dashicon('trash', $loeschen) . '</button>')
+            // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl aus Suche oder Baum zeigt ihn (D-1011).*
+            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape($loeschen) . '">'
+                . IconMarkup::dashicon('trash', $loeschen) . '</button>'
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
     }

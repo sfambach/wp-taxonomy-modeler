@@ -7,7 +7,8 @@
  *
  * ⚠️ **[D-958](../../docs/NewConcept/90-decision-log.md), F3a, his word:** *«rest of F's ist ok»* — «Bezug Ding» on every record under
  * `Model`, with a search. *A sandbox `__bd`: (1) an aggregation onto `Model` is taken, a composition refused; (2) the search finds a record
- * by a text value and by its node's name together; (3) without a nonce it answers nothing.*
+ * by a text value and by its node's name together; (3) without a nonce it answers nothing; (4) the tree beside it (D-1011) lists the nodes and
+ * a node's records.*
  */
 
 $wordpress = $argv[1] ?? (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress');
@@ -97,5 +98,36 @@ $pruefe(($antwort['success'] ?? false) && ($antwort['data'] ?? null) === [], 'a 
 
 $antwort = $frage(['term' => 'transistorzwerg']);
 $pruefe(! ($antwort['success'] ?? false), 'without a nonce it answers nothing');
+
+// ⚠️ *D-1011, sein Wort «Erst Text, dann Baum»: der Baum neben der Suche holt seine Knoten und die Sätze eines Knotens beim Rand.*
+$frageAn = static function (string $aktion, array $get): ?array {
+    $_GET = $get;
+    $_REQUEST = $get;
+    ob_start();
+
+    try {
+        do_action('admin_post_' . $aktion);
+    } catch (RuntimeException) {
+    }
+
+    $antwort = json_decode((string) ob_get_clean(), true);
+
+    return is_array($antwort) ? $antwort : null;
+};
+
+$knoten = $frageAn(NodesScreen::RECORD_NODES_ACTION, ['_ajax_nonce' => wp_create_nonce(NodesScreen::RECORD_NODES_ACTION)]);
+$namen  = array_column($knoten['data'] ?? [], 'name', 'id');
+$pruefe(($knoten['success'] ?? false) && ($namen[(int) $geruest['refs']['tr']] ?? '') === '__bd Transistorzwerg', 'the tree beside the search lists the nodes under Model');
+
+$astNonce = wp_create_nonce(NodesScreen::RECORD_BRANCH_ACTION);
+$ast      = $frageAn(NodesScreen::RECORD_BRANCH_ACTION, ['node' => (string) $geruest['refs']['tr'], '_ajax_nonce' => $astNonce]);
+$saetze   = array_column($ast['data'] ?? [], 'word', 'id');
+$pruefe(($ast['success'] ?? false) && str_contains((string) ($saetze[(int) $geruest['refs']['bc']] ?? ''), 'BC547QX'), 'a clicked node gives its records with their word');
+
+$fremd = $frageAn(NodesScreen::RECORD_BRANCH_ACTION, ['node' => '1', '_ajax_nonce' => $astNonce]);
+$pruefe(! ($fremd['success'] ?? false), 'a node outside Model gives nothing');
+
+$ohne = $frageAn(NodesScreen::RECORD_BRANCH_ACTION, ['node' => (string) $geruest['refs']['tr']]);
+$pruefe(! ($ohne['success'] ?? false), 'the branch without a nonce answers nothing');
 
 exit($fehler === 0 ? 0 : 1);

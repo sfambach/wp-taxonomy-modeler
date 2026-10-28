@@ -292,6 +292,27 @@ final class RenderingTest extends TestCase
     }
 
     /**
+     * ⚠️ *[D-1011](../../docs/NewConcept/90-decision-log.md), sein Wort: «Erst Text, dann Baum». Neben der Suche steht ein Knopf für den Baum —
+     * aber der Baum selbst steht nicht in der Seite, auch kein Knoten; das Skript holt ihn erst beim Öffnen.*
+     */
+    #[Test]
+    public function a_reference_onto_model_offers_a_tree_button_and_still_loads_nothing(): void
+    {
+        $model    = $this->branchRoot['model'];
+        $teil     = $this->thing('Transistorkiste');
+        $material = $this->thing('Material');
+        $ding     = $this->editor->addField($material->id, $model->id, 'Bezug Ding', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        $markup = $this->rendering->withDialogWords('OK', 'Cancel', 'Show the tree')->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result->markup;
+        self::assertStringContainsString('taxmod-record-browse', $markup);
+        self::assertStringNotContainsString($teil->name, $markup, 'kein Knoten des Baums steht vorab in der Seite');
+
+        $ohneWort = $this->rendering->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result->markup;
+        self::assertStringNotContainsString('taxmod-record-browse', $ohneWort, 'ohne Wort vom Rand kein Knopf');
+    }
+
+    /**
      * ⚠️ *Sein Bild am 2026-09-22, BerryBase: unter «Nachfolge» stand «übernommen durch» ohne Auswahl — «fehlt da nicht was».
      * Das Ziel `Organisation` liegt unter `Kontakt`, einem Hauptast ohne Namen; die Frage «hält der Ast Daten» antwortete dort
      * mit nein. Seit [D-890](../../docs/NewConcept/90-decision-log.md) gibt es keinen benannten Ast mehr als Bedingung.*

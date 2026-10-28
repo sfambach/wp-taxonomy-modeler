@@ -49,7 +49,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.81';
+    public const VERSION     = '0.1.82';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -104,6 +104,16 @@ final class Plugin
         add_action(
             'admin_post_' . NodesScreen::RECORD_SEARCH_ACTION,
             static fn () => $plugin->screen()->handleRecordSearch()
+        );
+
+        // ⚠️ *Der Baum neben dieser Suche: seine Knoten, und die Sätze eines Knotens beim Anklicken (D-1011).*
+        add_action(
+            'admin_post_' . NodesScreen::RECORD_NODES_ACTION,
+            static fn () => $plugin->screen()->handleRecordNodes()
+        );
+        add_action(
+            'admin_post_' . NodesScreen::RECORD_BRANCH_ACTION,
+            static fn () => $plugin->screen()->handleRecordBranch()
         );
 
         // ⚠️ *Die Zeilen der geerbten Felder, auf Wunsch nachgeladen (D-871) — derselbe Rückweg.*

@@ -2214,3 +2214,99 @@ fieldset.taxmod-read-only {
 	border: 1px solid #dcdcde;
 	border-radius: 2px;
 }
+
+/* ⚠️ Der Baum neben der Suche über «jeden Satz unter Model» (D-1011): ein Dialog je Seite, links die Knoten, rechts die Sätze des
+ * angeklickten Knotens. Vom Skript gebaut, darum eigene Klassen — die des Satzdialogs (D-805) tragen Verhalten, das hier nicht gilt. */
+.taxmod-browse[hidden] {
+    display: none;
+}
+
+.taxmod-browse-shade {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, .45);
+}
+
+.taxmod-browse-panel {
+    position: fixed;
+    z-index: 100001;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    width: min(52em, calc(100vw - 2em));
+    height: min(36em, calc(100vh - 4em));
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, .35);
+}
+
+.taxmod-browse-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .6em 1em;
+    border-bottom: 1px solid #dcdcde;
+    font-weight: 600;
+}
+
+.taxmod-browse-close {
+    background: none;
+    border: 0;
+    font-size: 1.6em;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.taxmod-browse-columns {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.taxmod-browse-nodes,
+.taxmod-browse-list {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    padding: .4em 0;
+}
+
+.taxmod-browse-nodes {
+    flex: 0 0 40%;
+    border-right: 1px solid #dcdcde;
+}
+
+.taxmod-browse-list {
+    flex: 1;
+}
+
+.taxmod-browse-node {
+    text-align: left;
+    background: none;
+    border: 0;
+    padding-top: .25em;
+    padding-bottom: .25em;
+    cursor: pointer;
+}
+
+.taxmod-browse-node[hidden] {
+    display: none;
+}
+
+.taxmod-browse-node:hover,
+.taxmod-browse-node:focus {
+    background: #f0f6fc;
+}
+
+.taxmod-browse-node.is-active {
+    background: #2271b1;
+    color: #fff;
+}
+
+/* *Ein verborgener Knopf in der Satzauswahl bleibt verborgen — `.button` setzt `display` und schlüge sonst das `hidden`-Attribut. */
+.taxmod-record-pick [hidden] {
+    display: none !important;
+}

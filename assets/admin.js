@@ -1491,6 +1491,14 @@
 		if ( oeffner && fern ) {
 			oeffner.textContent = treffer.getAttribute( 'data-taxmod-word' ) || treffer.textContent;
 			oeffner.hidden = false;
+			// *Gewählt: Wort und Mülleimer, Suche und Baum treten zurück — wie beim Laden einer gesetzten Referenz (D-851, D-1011).*
+			wahl.classList.add( 'taxmod-record-taken' );
+			wahl.querySelectorAll( '.taxmod-record-quick, .taxmod-record-browse' ).forEach( function ( teil ) {
+				teil.hidden = true;
+			} );
+			wahl.querySelectorAll( '.taxmod-record-clear' ).forEach( function ( teil ) {
+				teil.hidden = false;
+			} );
 		} else if ( oeffner ) {
 			oeffner.textContent = treffer.textContent;
 			oeffner.className = 'button taxmod-record-dialog-open';
@@ -2087,6 +2095,227 @@
 		} );
 	}
 
+	// ⚠️ **Der Baum neben der Suche über «jeden Satz unter Model»** ([D-1011](../docs/NewConcept/90-decision-log.md)) — *sein Wort am
+	// 2026-10-28: «eigentlich haben wir doch den tax chooser in dem man suchen kann entweder über baum oder text», und auf der Karte «Erst
+	// Text, dann Baum». Ein Dialog je Seite, vom Skript gebaut: links die Knoten (einmal geholt), rechts die Sätze des angeklickten Knotens
+	// samt Unterknoten (je Knoten einmal geholt). Ein Klick auf einen Satz wählt ihn wie ein Treffer der Suche und schliesst den Dialog.*
+	var baumKnoten = null;
+	var baumSaetze = {};
+	var baumFuer   = null;
+
+	function baumDialog() {
+		var vorhanden = document.querySelector( '.taxmod-browse' );
+
+		if ( vorhanden ) {
+			return vorhanden;
+		}
+
+		var worte  = document.getElementById( 'taxmod-words' );
+		var dialog = document.createElement( 'div' );
+
+		dialog.className = 'taxmod-browse';
+		dialog.hidden = true;
+		dialog.innerHTML = '<div class="taxmod-browse-shade"></div><div class="taxmod-browse-panel" role="dialog" aria-modal="true">'
+			+ '<div class="taxmod-browse-head"><span class="taxmod-browse-title"></span><button type="button" class="taxmod-browse-close" aria-label="×">&times;</button></div>'
+			+ '<div class="taxmod-browse-columns"><div class="taxmod-browse-nodes"></div><div class="taxmod-browse-list"></div></div></div>';
+		dialog.querySelector( '.taxmod-browse-title' ).textContent = worte ? ( worte.getAttribute( 'data-browse-title' ) || '' ) : '';
+		document.body.appendChild( dialog );
+
+		return dialog;
+	}
+
+	function baumZu() {
+		var dialog = document.querySelector( '.taxmod-browse' );
+
+		if ( dialog ) {
+			dialog.hidden = true;
+		}
+
+		if ( baumFuer ) {
+			var knopf = baumFuer.querySelector( '.taxmod-record-browse' );
+
+			if ( knopf && ! knopf.hidden ) {
+				knopf.focus();
+			}
+		}
+
+		baumFuer = null;
+	}
+
+	function holen( adresse, danach ) {
+		fetch( adresse, { credentials: 'same-origin' } ).then( function ( antwort ) {
+			return antwort.ok ? antwort.json() : Promise.reject( antwort.status );
+		} ).then( function ( antwort ) {
+			danach( antwort && antwort.success ? antwort.data : [] );
+		} ).catch( function () {
+			danach( null );
+		} );
+	}
+
+	function knotenZeichnen( dialog, reihen ) {
+		var spalte = dialog.querySelector( '.taxmod-browse-nodes' );
+
+		spalte.innerHTML = '';
+
+		reihen.forEach( function ( reihe, i ) {
+			var naechste = reihen[ i + 1 ];
+			var knopf    = document.createElement( 'button' );
+
+			knopf.type = 'button';
+			knopf.className = 'taxmod-browse-node';
+			knopf.setAttribute( 'data-node', String( reihe.id ) );
+			knopf.setAttribute( 'data-depth', String( reihe.depth ) );
+			knopf.style.paddingLeft = ( 0.4 + reihe.depth * 1.1 ) + 'em';
+			knopf.textContent = ( naechste && naechste.depth > reihe.depth ? '▸ ' : ' ' ) + reihe.name;
+			// *Zu Beginn steht die oberste Ebene; tiefer geht es durch Anklicken.*
+			knopf.hidden = reihe.depth > 1;
+			spalte.appendChild( knopf );
+		} );
+	}
+
+	function saetzeZeichnen( dialog, saetze ) {
+		var liste = dialog.querySelector( '.taxmod-browse-list' );
+		var worte = document.getElementById( 'taxmod-words' );
+
+		liste.innerHTML = '';
+
+		if ( saetze === null || saetze.length === 0 ) {
+			var leer = document.createElement( 'span' );
+
+			leer.className = 'taxmod-record-nohit';
+			leer.textContent = worte ? ( worte.getAttribute( 'data-no-hits' ) || '' ) : '';
+			liste.appendChild( leer );
+
+			return;
+		}
+
+		saetze.forEach( function ( satz ) {
+			var knopf = document.createElement( 'button' );
+
+			knopf.type = 'button';
+			knopf.className = 'taxmod-record-hit taxmod-browse-record';
+			knopf.textContent = satz.word;
+			knopf.setAttribute( 'data-taxmod-value', String( satz.id ) );
+			knopf.setAttribute( 'data-taxmod-word', satz.word );
+			liste.appendChild( knopf );
+		} );
+	}
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-browse' ) : null;
+		var worte = document.getElementById( 'taxmod-words' );
+
+		if ( ! knopf || ! worte || ! worte.getAttribute( 'data-record-nodes' ) ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+		baumFuer = knopf.closest( '.taxmod-record-pick' );
+
+		var dialog = baumDialog();
+
+		dialog.hidden = false;
+
+		if ( baumKnoten !== null ) {
+			return;
+		}
+
+		baumKnoten = [];
+		holen( worte.getAttribute( 'data-record-nodes' ), function ( reihen ) {
+			baumKnoten = reihen || [];
+			knotenZeichnen( dialog, baumKnoten );
+		} );
+	} );
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var ziel   = ereignis.target instanceof Element ? ereignis.target : null;
+		var dialog = ziel ? ziel.closest( '.taxmod-browse' ) : null;
+
+		if ( ! dialog ) {
+			return;
+		}
+
+		if ( ziel.closest( '.taxmod-browse-close' ) || ziel.classList.contains( 'taxmod-browse-shade' ) ) {
+			baumZu();
+
+			return;
+		}
+
+		var satz = ziel.closest( '.taxmod-browse-record' );
+
+		if ( satz && baumFuer ) {
+			// *Gewählt wird wie ein Treffer der Suche — derselbe Weg, also dasselbe Ergebnis (D-958).*
+			var liste = baumFuer.querySelector( '.taxmod-record-hits' );
+			var hit   = satz.cloneNode( true );
+
+			if ( liste ) {
+				liste.appendChild( hit );
+				trefferNehmen( hit );
+				hit.remove();
+			}
+
+			baumZu();
+
+			return;
+		}
+
+		var knoten = ziel.closest( '.taxmod-browse-node' );
+
+		if ( ! knoten ) {
+			return;
+		}
+
+		var tiefe = parseInt( knoten.getAttribute( 'data-depth' ) || '0', 10 );
+		var auf   = ! knoten.classList.contains( 'is-open' );
+		var lauf  = knoten.nextElementSibling;
+
+		dialog.querySelectorAll( '.taxmod-browse-node.is-active' ).forEach( function ( alt ) {
+			alt.classList.remove( 'is-active' );
+		} );
+		knoten.classList.add( 'is-active' );
+		knoten.classList.toggle( 'is-open', auf );
+
+		// *Auf: die Kinder zeigen; zu: alles darunter verbergen.*
+		while ( lauf && parseInt( lauf.getAttribute( 'data-depth' ) || '0', 10 ) > tiefe ) {
+			var eigene = parseInt( lauf.getAttribute( 'data-depth' ) || '0', 10 );
+
+			if ( auf ) {
+				lauf.hidden = eigene !== tiefe + 1;
+			} else {
+				lauf.hidden = true;
+				lauf.classList.remove( 'is-open' );
+			}
+
+			lauf = lauf.nextElementSibling;
+		}
+
+		var id    = knoten.getAttribute( 'data-node' );
+		var worte = document.getElementById( 'taxmod-words' );
+
+		if ( Object.prototype.hasOwnProperty.call( baumSaetze, id ) ) {
+			saetzeZeichnen( dialog, baumSaetze[ id ] );
+
+			return;
+		}
+
+		dialog.querySelector( '.taxmod-browse-list' ).textContent = '…';
+		holen( worte.getAttribute( 'data-record-branch' ) + '&node=' + encodeURIComponent( id ), function ( saetze ) {
+			baumSaetze[ id ] = saetze;
+
+			if ( knoten.classList.contains( 'is-active' ) ) {
+				saetzeZeichnen( dialog, saetze );
+			}
+		} );
+	} );
+
+	document.addEventListener( 'keydown', function ( ereignis ) {
+		var dialog = document.querySelector( '.taxmod-browse' );
+
+		if ( ereignis.key === 'Escape' && dialog && ! dialog.hidden ) {
+			baumZu();
+		}
+	} );
+
 	// ⚠️ **Der Mülleimer an einer gesetzten Referenz** (D-851) — *sein Wort: «bei den referenzen könnte höchstens delete stehen und dann eine
 	// neue wahl ermöglichen». Er wählt «nichts» (der leere Knopf des Dialogs) und gibt Suchfeld und Öffner wieder frei; gespeichert wird mit
 	// der Seite.*
@@ -2121,7 +2350,17 @@
 		}
 
 		wahl.classList.remove( 'taxmod-record-taken' );
-		knopf.remove();
+
+		// *Bei der Serversuche bleibt der Mülleimer im Markup, nur verborgen — die nächste Wahl braucht ihn wieder (D-1011).*
+		if ( wahl.classList.contains( 'taxmod-record-remote' ) ) {
+			knopf.hidden = true;
+		} else {
+			knopf.remove();
+		}
+
+		wahl.querySelectorAll( '.taxmod-record-browse' ).forEach( function ( baum ) {
+			baum.hidden = false;
+		} );
 
 		if ( feld ) {
 			feld.hidden = false;

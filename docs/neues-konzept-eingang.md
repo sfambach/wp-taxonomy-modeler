@@ -1090,9 +1090,9 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-099 · Material im Wareneingang: Wähler, Baum und Anlegen
 
-**Typ:** `FRAGE` · **Status:** `OPEN` — 2026-10-28, Thread «Taxmod Stock – Lagermodul».
+**Typ:** `FRAGE` · **Status:** `OPEN` (Anlegen), Baum `DECIDED` — 2026-10-28, Thread «Taxmod Stock – Lagermodul».
 
 - **Sein Wort (21:48):** *«eigentlich haben wir doch den tax chooser in dem man suchen kann entweder über baum oder text das wäre hier doch das richtige das mit dem anlegen ist glaube ich noch nicht zuende gedacht»*
 - **Gebaut (wp_tax_stock 0.3.5):** die Wareneingangszeile zeigt den Satzwähler des Modellers (Wort mit Mülleimer oder Suchfeld), vorbelegt mit dem «Modell» des Kaufs; die Suche läuft nur über die Gruppen der Dinge, nicht über den Ast «Stock». «Neu anlegen» steht nicht mehr in der Zeile.
-- **Offen 1 — Baum:** für Sätze unter `Model` hat der Wähler nur die Textsuche ([D-958](NewConcept/90-decision-log.md) F3a: *«Bezug Ding» auf jeden Satz unter `Model`, mit Suche*); der ganze Baum war zu gross (D-898). Ein Baum, der die Sätze eines Knotens erst beim Aufklappen lädt, ist nicht entschieden.
+- **Baum — entschieden ([D-1011](NewConcept/90-decision-log.md)):** seine Kartenwahl «Erst Text, dann Baum»; der Baum lädt Knoten und Sätze erst beim Öffnen.
 - **Offen 2 — Anlegen:** wo und wie ein fehlendes Material beim Wareneingang angelegt wird (im Wähler am Knoten, wie das «+» des Satzdialogs D-792, oder als eigener Schritt), ist nach seinem Wort «noch nicht zuende gedacht».
