@@ -77,6 +77,16 @@ $pruefe(\Taxmod\WordPress\Import\FetchInterval::of($abruf) === DAY_IN_SECONDS, '
 \Taxmod\WordPress\Import\FetchInterval::save('__ct_src', '');
 $pruefe(\Taxmod\WordPress\Import\FetchInterval::of($abruf) === 6 * HOUR_IN_SECONDS, 'without a choice the module\'s own interval counts');
 $vorherTakt === null ? delete_option(\Taxmod\WordPress\Import\FetchInterval::OPTION) : update_option(\Taxmod\WordPress\Import\FetchInterval::OPTION, $vorherTakt, false);
+// ⚠️ *D-1007: «das müsste man dann auch auf die die module verteieln» — «Start over» of a module stands only in its own tab.*
+$pruefe(str_contains($seite, 'value="__ct_src"'), 'a module tab shows the maintenance of its own source');
+add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs + [
+    'ctbare' => ['title' => 'Bare', 'source' => '__ct_bare', 'render' => static fn (): string => '', 'save' => static function (array $post): void {}],
+]);
+$_GET['tab'] = 'ctbare';
+$karg = (new SettingsScreen())->render();
+$pruefe(preg_match('#<h2>Access</h2>.*<h2>Fetching</h2>.*<h2>Settings</h2>.*<h2>Maintenance</h2>#s', $karg) === 1 && substr_count($karg, 'Nothing to set here for this module.') === 4, 'every module tab has the same four parts, an empty one says so');
+$_GET['tab'] = \Taxmod\WordPress\Import\ImportTab::SLUG;
+$pruefe(! str_contains((new SettingsScreen())->render(), 'value="__ct_src"'), 'the Import tab leaves a claimed source to its module');
 
 unset($_GET['tab']);
 $seite = (new SettingsScreen())->render();

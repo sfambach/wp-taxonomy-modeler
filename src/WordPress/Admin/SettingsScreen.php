@@ -143,7 +143,10 @@ final class SettingsScreen
             // ⚠️ *Sein Wunsch vom 2026-10-21 (D-963): «bei jedem api modul einen kasten recht … der die ganze prozedure
             // beschreibt wie man an die daten kommt und was man tun muss». The module gives the content, the page the place.*
             $guide = $reiter[$tab]['guide'] === null ? '' : (string) ($reiter[$tab]['guide'])();
-            $form  = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"' . ($guide === '' ? '' : ' style="flex:3 1 30em;min-width:0"') . '>'
+            // ⚠️ *Sein Wunsch vom 2026-10-28 (D-1007): «der aufbau der module seiten soll möglicht gleich sein für alle also
+            // gleiche breiche». A module's tab shows every part, an empty one with a line saying so.*
+            $modul = $reiter[$tab]['source'] !== '';
+            $form  = '<div' . ($guide === '' ? '' : ' style="flex:3 1 30em;min-width:0"') . '><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
                 . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
                 . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
                 . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
@@ -158,12 +161,13 @@ final class SettingsScreen
                     // ⚠️ *«ja ein löschen button aber mit nachfrage wäre eine gute idee».*
                     . ($reiter[$tab]['forget'] === null ? '' : ' ' . get_submit_button(__('Delete access data', 'taxmod'), 'delete', self::FORGET, false, [
                         'onclick' => 'return confirm(' . wp_json_encode(__('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod')) . ')',
-                    ])) . '</p>')
-                . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle))
-                . self::section($reiter[$tab]['credentials'] === null && $quelle === null ? '' : __('Settings', 'taxmod'), (string) ($reiter[$tab]['render'])())
+                    ])) . '</p>', $modul)
+                . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle), $modul)
+                . self::section($modul || $reiter[$tab]['credentials'] !== null || $quelle !== null ? __('Settings', 'taxmod') : '', (string) ($reiter[$tab]['render'])(), $modul)
                 . get_submit_button(__('Save', 'taxmod'))
                 . '</form>'
-                . self::maintenance($reiter[$tab], $tab);
+                . self::section(__('Maintenance', 'taxmod'), self::maintenance($reiter[$tab], $tab, $reiter), $modul)
+                . '</div>';
 
             return '<div class="wrap">'
                 . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
@@ -729,8 +733,12 @@ final class SettingsScreen
     }
 
     /** One part of a module tab under its heading; nothing when the module gives nothing, no heading when there is none. */
-    private static function section(string $heading, string $html): string
+    private static function section(string $heading, string $html, bool $always = false): string
     {
+        if ($html === '' && $always) {
+            $html = '<p class="description">' . esc_html__('Nothing to set here for this module.', 'taxmod') . '</p>';
+        }
+
         if ($html === '') {
             return '';
         }
@@ -738,23 +746,26 @@ final class SettingsScreen
         return ($heading === '' ? '' : '<h2>' . esc_html($heading) . '</h2>') . $html;
     }
 
-    /** @param array{source: string} $tab */
     /**
-     * Below the module's form, outside it, because its buttons are forms of their own: what one rarely needs (D-990). The
-     * «Import» tab holds it for every source, a module's tab for its own.
+     * Below the module's form, outside it, because its buttons are forms of their own: what one rarely needs (D-990). Each
+     * module's tab holds its own (D-1007); the «Import» tab only those of sources no tab claims.
      *
      * @param array{source: string} $tab
+     * @param array<string, array{source: string}> $tabs
      */
-    private static function maintenance(array $tab, string $slug): string
+    private static function maintenance(array $tab, string $slug, array $tabs): string
     {
-        $quellen = $slug === ImportTab::SLUG ? Sources::all() : array_filter([$tab['source'] === '' ? null : Sources::find($tab['source'])]);
+        $vergeben = array_column($tabs, 'source');
+        $quellen = $slug === ImportTab::SLUG
+            ? array_filter(Sources::all(), static fn ($quelle): bool => ! in_array($quelle->key(), $vergeben, true))
+            : array_filter([$tab['source'] === '' ? null : Sources::find($tab['source'])]);
         $html = '';
 
         foreach ($quellen as $quelle) {
             $html .= ($slug === ImportTab::SLUG ? '<h3>' . esc_html($quelle->label()) . '</h3>' : '') . InboxScreen::maintenance($quelle);
         }
 
-        return $html === '' ? '' : '<div style="flex:3 1 30em;min-width:0"><h2>' . esc_html__('Maintenance', 'taxmod') . '</h2>' . $html . '</div>';
+        return $html;
     }
 
     private static function fetchingSource(array $tab): ?FetchingSource
