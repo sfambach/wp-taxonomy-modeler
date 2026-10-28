@@ -84,7 +84,22 @@ add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs 
 ]);
 $_GET['tab'] = 'ctbare';
 $karg = (new SettingsScreen())->render();
-$pruefe(preg_match('#<h2>Access</h2>.*<h2>Fetching</h2>.*<h2>Settings</h2>.*<h2>Maintenance</h2>#s', $karg) === 1 && substr_count($karg, 'Nothing to set here for this module.') === 4, 'every module tab has the same four parts, an empty one says so');
+$pruefe(preg_match('#<h2>Access</h2>.*<h2>Fetching</h2>.*<h2>Mail</h2>.*<h2>Settings</h2>.*<h2>Maintenance</h2>#s', $karg) === 1 && substr_count($karg, 'Nothing to set here for this module.') === 5, 'every module tab has the same five parts, an empty one says so');
+// ⚠️ *D-1007: «Mail modul implementation (vielleicht noch welche mails )» — the part «Mail» names what the module's reader reads.*
+$leser = new class implements \Taxmod\Core\Import\Mail\OrderMailParser {
+    public function key(): string { return '__ct_shop'; }
+    public function shopName(): string { return 'Shop'; }
+    public function recognises(\Taxmod\Core\Import\Mail\MailMessage $mail): bool { return false; }
+    public function parse(\Taxmod\Core\Import\Mail\MailMessage $mail): \Taxmod\Core\Import\OrderProposal { throw new \Taxmod\Core\Import\Mail\ParserException('never'); }
+    public function kinds(): array { return [\Taxmod\Core\Import\ProposalKind::Ordered, \Taxmod\Core\Import\ProposalKind::Shipped]; }
+    public function version(): string { return '1.0.0'; }
+};
+add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs + [
+    'ctshop' => ['title' => 'Shop', 'reader' => $leser, 'render' => static fn (): string => '', 'save' => static function (array $post): void {}],
+]);
+$_GET['tab'] = 'ctshop';
+$laden = (new SettingsScreen())->render();
+$pruefe(str_contains($laden, 'Reads these mails from the mailbox of the Mail module: order, shipped.') && substr_count($laden, 'Nothing to set here for this module.') === 4, 'a shop module without a source still has all parts, and «Mail» lists what its reader reads');
 $_GET['tab'] = \Taxmod\WordPress\Import\ImportTab::SLUG;
 $pruefe(! str_contains((new SettingsScreen())->render(), 'value="__ct_src"'), 'the Import tab leaves a claimed source to its module');
 

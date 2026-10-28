@@ -3,6 +3,8 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Import\FetchingSource;
+use Taxmod\Core\Import\Mail\OrderMailParser;
+use Taxmod\Core\Import\ProposalKind;
 use Taxmod\WordPress\Import\FetchInterval;
 use Taxmod\WordPress\Import\ImportTab;
 use Taxmod\WordPress\Import\InboxScreen;
@@ -145,7 +147,7 @@ final class SettingsScreen
             $guide = $reiter[$tab]['guide'] === null ? '' : (string) ($reiter[$tab]['guide'])();
             // ⚠️ *Sein Wunsch vom 2026-10-28 (D-1007): «der aufbau der module seiten soll möglicht gleich sein für alle also
             // gleiche breiche». A module's tab shows every part, an empty one with a line saying so.*
-            $modul = $reiter[$tab]['source'] !== '';
+            $modul = $reiter[$tab]['source'] !== '' || $reiter[$tab]['reader'] !== null;
             $form  = '<div' . ($guide === '' ? '' : ' style="flex:3 1 30em;min-width:0"') . '><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
                 . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
                 . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
@@ -163,6 +165,7 @@ final class SettingsScreen
                         'onclick' => 'return confirm(' . wp_json_encode(__('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod')) . ')',
                     ])) . '</p>', $modul)
                 . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle), $modul)
+                . self::section(__('Mail', 'taxmod'), self::mailPart($reiter[$tab]['reader']), $modul)
                 . self::section($modul || $reiter[$tab]['credentials'] !== null || $quelle !== null ? __('Settings', 'taxmod') : '', (string) ($reiter[$tab]['render'])(), $modul)
                 . get_submit_button(__('Save', 'taxmod'))
                 . '</form>'
@@ -700,9 +703,9 @@ final class SettingsScreen
      * escaped HTML) the access data; the page draws them in one order for every module: access, fetching, settings (D-981).
      * An optional `test` (callable, returns a plain sentence) puts «Test connection» beside the access data's own Save; it
      * runs after the save, on what was just entered. An optional `forget` (callable) adds «Delete access data», asked
-     * before; it deletes and saves nothing else.*
+     * before; it deletes and saves nothing else. An optional `reader` (OrderMailParser) fills the part «Mail» (D-1007).*
      *
-     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null, version: string, source: string, credentials: (callable(): string)|null, test: (callable(): string)|null, forget: (callable(): void)|null}>
+     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null, version: string, source: string, credentials: (callable(): string)|null, test: (callable(): string)|null, forget: (callable(): void)|null, reader: OrderMailParser|null}>
      */
     public static function moduleTabs(): array
     {
@@ -726,10 +729,29 @@ final class SettingsScreen
                 'credentials' => is_callable($tab['credentials'] ?? null) ? $tab['credentials'] : null,
                 'test'   => is_callable($tab['test'] ?? null) ? $tab['test'] : null,
                 'forget' => is_callable($tab['forget'] ?? null) ? $tab['forget'] : null,
+                'reader' => ($tab['reader'] ?? null) instanceof OrderMailParser ? $tab['reader'] : null,
             ];
         }
 
         return $reiter;
+    }
+
+    /** Which mails the module reads, from its reader's own word (D-1007); the mailbox itself is the Mail module's. */
+    private static function mailPart(?OrderMailParser $reader): string
+    {
+        if ($reader === null) {
+            return '';
+        }
+
+        $kinds = implode(', ', array_map(static fn (ProposalKind $kind): string => InboxScreen::kindLabel($kind), $reader->kinds()));
+
+        return '<p>' . esc_html(sprintf(
+            /* translators: %s: list of mail kinds, e.g. «order, shipped, delivered» */
+            __('Reads these mails from the mailbox of the Mail module: %s.', 'taxmod'),
+            $kinds
+        )) . '</p>' . (Sources::find('mail') === null
+            ? '<p class="description">' . esc_html__('The Mail module is not active, so no mails are read.', 'taxmod') . '</p>'
+            : '');
     }
 
     /** One part of a module tab under its heading; nothing when the module gives nothing, no heading when there is none. */

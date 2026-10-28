@@ -1,0 +1,17 @@
+<?php declare(strict_types=1);
+
+namespace Taxmod\Core\Import\Mail;
+
+use Taxmod\Core\Import\OrderProposal;
+
+/**
+ * A shop whose one mail can confirm several orders — Amazon splits a checkout into orders by seller and delivery date
+ * and confirms them together. parse() stays the first order, for whoever only needs one.
+ *
+ * @see docs/pakete/import/module-schnitt.md
+ */
+interface MultiOrderMailParser extends OrderMailParser
+{
+    /** @return non-empty-list<OrderProposal> every order the mail names, in the mail's order */
+    public function parseAll(MailMessage $mail): array;
+}

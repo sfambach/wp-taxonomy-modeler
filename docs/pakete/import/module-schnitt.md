@@ -1,6 +1,6 @@
 # Paket · Eingang — jede Anbindung ein eigenes Modul
 
-**Stand 2026-10-28. Entschieden: [D-1006](../../NewConcept/90-decision-log.md), [D-1007](../../NewConcept/90-decision-log.md). Gebaut: §2a im Modeller 0.1.79; §2–§4 nein.**
+**Stand 2026-10-28. Entschieden: [D-1006](../../NewConcept/90-decision-log.md), [D-1007](../../NewConcept/90-decision-log.md). Gebaut: §2a im Modeller 0.1.79, Bereich «Mail» und §3 in 0.1.81; §2/§4 siehe dort.**
 Betrifft: [`konzept.md`](konzept.md), [`../mail/konzept.md`](../mail/konzept.md).
 
 **Sein Wort (2026-10-28):**
@@ -50,7 +50,7 @@ Welche Mail zu welchem Shop gehört und was drinsteht, weiß allein das Modul de
 |---|---|---|
 | Zugang | Zugangsdaten, Speichern, «Test connection», «Delete access data» | ja |
 | Abruf | Abruftakt (Modeller) | ja |
-| **Mail** | Liest das Modul Mails? an/aus, und welche Mails es erkennt (Bestellung, Versand, Zustellung, Storno, Rechnung …) | nein — kommt mit dem Umzug der Leser |
+| **Mail** | Welche Mails das Modul erkennt (Bestellung, Versand, Zustellung, Storno, Rechnung …), aus `kinds()` seines Lesers; Hinweis, wenn das Mail-Modul fehlt. Ein/aus ist das Modul selbst (aktivieren/deaktivieren). | ja (0.1.81), Reiter-Schlüssel `reader` |
 | Einstellungen | was nur das Modul hat (z. B. Amazon-Bestellhistorie) | ja |
 | Wartung | «Start over from now», «Sort the backlog» — nur noch im Reiter des eigenen Moduls | ja |
 
@@ -74,19 +74,21 @@ Der Mail-Vertrag zieht in den Modeller (Kern, [D-952](../../NewConcept/90-decisi
 Modeller abhängt, wie jedes andere Modul:
 
 ```php
-// SKETCH — Taxmod\Core\Import\Mail
-interface MailReader            // heute TaxMail\Core\Parser\OrderMailParser
+// CONTRACT — Taxmod\Core\Import\Mail
+interface OrderMailParser       // Name aus tax_mail behalten, damit der Umzug nur den Namensraum ändert
 {
     public function key(): string;          // = Schlüssel des Moduls
     public function shopName(): string;
     public function recognises(MailMessage $mail): bool;
-    public function parse(MailMessage $mail): OrderProposal; // mehrere Bestellungen: MultiMailReader
+    public function parse(MailMessage $mail): OrderProposal; // mehrere Bestellungen: MultiOrderMailParser
     /** @return list<ProposalKind> welche Mails es erkennt — für den Bereich «Mail» */
     public function kinds(): array;
+    /** Version des Moduls — ein neues Modul lässt «Nicht erkannt» neu lesen (§4a) */
+    public function version(): string;
 }
 ```
 
-Mit ihm ziehen `MailMessage`, `Text`, `LineCollector` und `ParserException` um. `MimeParser` und IMAP bleiben in tax_mail.
+Mit ihm ziehen `MailMessage`, `MimeParser`, `Text`, `LineCollector` und `ParserException` um — `MimeParser` auch, weil jedes Modul seine Musterbriefe (`.eml`) in den Tests lesen muss. IMAP bleibt in tax_mail.
 Ein Modul meldet seinen Leser über den Filter `taxmail_parsers` an (gibt es schon).
 
 **Die Quelle bleibt «mail».** Ein Vorschlag aus einer Mail trägt weiter `source = 'mail'`; die Zuständigkeit
