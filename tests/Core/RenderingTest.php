@@ -2189,6 +2189,29 @@ final class RenderingTest extends TestCase
         self::assertSame('IC-Sockel · DIP-14', $steht);
     }
 
+    /** ⚠️ *D-999: die Feldwahl eines Wählers an einer Aggregation setzt nichts zusammen — sonst stand «Gerber» als Text in den Quellen einer Quelle.* */
+    #[Test]
+    public function a_field_choice_at_an_aggregation_is_a_chooser_not_a_composition(): void
+    {
+        $this->typeNodes->remember(\Taxmod\Core\Model\SimpleType::Summary, $this->lookalike('Summary')->id);
+        $quelle    = $this->thing('Quelle');
+        $kategorie = $this->editor->addField($quelle->id, $this->type('Text')->id, 'Kategorie');
+        $quellen   = $this->editor->addField($quelle->id, $quelle->id, 'Quellen', RelationKind::Aggregation);
+
+        $satzId = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-10-28 14:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satzId, $kategorie->id, TypedValue::ofText('Gerber')));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($quelle, SummaryRenderer::FIELDS, [$kategorie->id], $quellen);
+        $this->neuZeichnen();
+
+        $daten   = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges());
+        $schreib = new \Taxmod\Core\Service\SummaryWriter($this->records, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->rendering, $daten);
+
+        self::assertSame([], $this->rendering->zusammensetzungAn($quellen, $quelle->id));
+        self::assertSame(0, $schreib->refresh([$satzId]), 'nothing written into the list of sources');
+    }
+
     /** ⚠️ *D-966: «dann müsste man mit dem tageskurs den euro betrag errechnen».* */
     #[Test]
     public function an_amount_in_a_foreign_currency_shows_the_euro_amount_from_its_frozen_rate(): void

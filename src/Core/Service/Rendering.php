@@ -4562,7 +4562,10 @@ final class Rendering implements Presets
      */
     public function zusammensetzungAn(Relation $relation, int $forNode): array
     {
-        if ($forNode <= 0 || $relation->isSetting() || $this->resolver === null) {
+        // ⚠️ *Ein Verweis auf Sätze wird nie zusammengesetzt — er hält Verweise, keinen Text (D-999). Gemessen an den Quellen: «Quellen» zeigt
+        // auf das Quellenverzeichnis selbst, also las sich die Feldwahl seiner Wähler («Kategorie») als «hier zusammengesetzt», und der
+        // Nachlauf schrieb «Gerber» als Text in das Feld — auf der Seite ein verwaistes «#».*
+        if ($forNode <= 0 || $relation->isSetting() || $relation->kind === RelationKind::Aggregation || $this->resolver === null) {
             return [];
         }
 
