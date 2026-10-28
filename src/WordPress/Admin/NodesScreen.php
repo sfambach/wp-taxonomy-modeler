@@ -183,6 +183,12 @@ final class NodesScreen
     /** Der Filter der Satztabelle — Kante ⇒ Zeichen, als ein Parameter ([D-768](../../../docs/NewConcept/90-decision-log.md)). */
     private const RECORD_FILTER = 'taxmod_record_filter';
 
+    /**
+     * Where a module offers an action on one record (D-998): `fn (array $actions, int $nodeId, int $recordId): array`,
+     * each action `['label' => string, 'url' => string, 'title' => ?string, 'new_tab' => ?bool]`. The modeller draws them.
+     */
+    public const RECORD_ACTIONS_FILTER = 'taxmod_record_actions';
+
     /** Der Satz, den die Vorschau zeigt und bearbeitet — gewählt in der Tabelle darunter ([D-785](../../../docs/NewConcept/90-decision-log.md)). */
     private const PREVIEW_RECORD = 'taxmod_preview_record';
 
@@ -2272,7 +2278,27 @@ final class NodesScreen
                     new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2'),
                 ]
             )
+            . $this->moduleActions($selected->id, $recordId)
             . '</div>';
+    }
+
+    /** The actions modules offer on this record, as link buttons beside the modeller's own (D-998). */
+    private function moduleActions(int $nodeId, int $recordId): string
+    {
+        $html = '';
+
+        foreach ((array) apply_filters(self::RECORD_ACTIONS_FILTER, [], $nodeId, $recordId) as $action) {
+            if (! is_array($action) || ! is_string($action['label'] ?? null) || ! is_string($action['url'] ?? null) || $action['url'] === '') {
+                continue;
+            }
+
+            $html .= ' <a class="button" href="' . esc_url($action['url']) . '"'
+                . (is_string($action['title'] ?? null) ? ' title="' . esc_attr($action['title']) . '"' : '')
+                . (($action['new_tab'] ?? false) === true ? ' target="_blank" rel="noopener"' : '')
+                . '>' . esc_html($action['label']) . '</a>';
+        }
+
+        return $html === '' ? '' : '<div class="taxmod-record-module-actions" style="margin-top:.5em">' . $html . '</div>';
     }
 
     /**
