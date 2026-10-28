@@ -1077,3 +1077,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Heute:** eBay-Versand und Wareneingang ([D-1001](NewConcept/90-decision-log.md)) sind Seiten unter dem Taxmod-Menü.
 - **Vorschlag (INFERRED):** ein Menüpunkt «Cockpits» (oder Einträge in der Admin-Leiste oben, auf jeder Seite erreichbar) mit Versand, Wareneingang und später weiteren Abläufen; Modell, Lager und Konfiguration bleiben unter Taxmod. Siehe [`pakete/lager/cockpit-wareneingang.md`](pakete/lager/cockpit-wareneingang.md) WC6.
 
+
+## INF-098 · Alte Bestellungen im Wareneingangs-Cockpit: Stichtag und Archiv
+
+**Typ:** `FRAGE` · **Status:** `OFFEN` — 2026-10-28, Thread «Wareneingangs-Cockpit im Taxmod bauen».
+
+- **Anlass:** Die Amazon-Historie (2004–2026, über 1000 Bestellungen, tax_mail 0.5.x) kommt ohne «Eingegangen am» ins Modell und stünde damit ganz unter «Bestellt»/«Versendet», jede überfällig ([D-1001](NewConcept/90-decision-log.md) WC2/WC4).
+- **Gebaut, Entscheidung offen:** Stichtag «Wareneingang ab» (wp_tax_stock, Vorgabe 2026-10-01, INFERRED): ältere, nicht eingebuchte Bestellungen stehen nur unter «Alle». Seine Wahl zwischen Stichtag, Altersgrenze und Verwerfen im Eingang steht aus.
+- **Sein Wort (2026-10-28 19:31), zu den eingebuchten:** *«irgendwann haben wir wahrscheinlich 100 Millionen, 1000 da, vielleicht sollten wir dann noch einen Status archiviert schaffen oder so. Indem wir das dann verschieben könnten, wenn wir es nicht mehr brauchen.»*
+- **Offen:** ob «archiviert» ein Wert des Bestellstatus wird (dann von Hand oder per Sammelaktion gesetzt) oder aus Daten folgt (z. B. eingebucht und älter als N Tage); und ob Stichtag und Archiv dasselbe Werkzeug sind.
