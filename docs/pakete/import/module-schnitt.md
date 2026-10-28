@@ -109,8 +109,16 @@ Ein Modul meldet seinen Leser über den Filter `taxmail_parsers` an (gibt es sch
 - **Amazon-Bestellhistorie** (`AmazonOrderHistory` + `ExportQueue`, 100 je Lauf, `restart()` spult zurück) wird im Amazon-Modul eine eigene Quelle bzw. ein eigener Abruf. Geschlossene Bestellungen bleiben `Shipped`, damit kein «Eingegangen am» erfunden wird.
 - **Ids bleiben:** Vorschläge aus der Historie tragen `source = 'mail'`, `external_id = 'amazon-export:<nr>'`. Das bleibt nach dem Umzug so, sonst wird doppelt abgelegt.
 
+### 4b · Gebaut am 2026-10-28
+
+- Modeller 0.1.81: Vertrag + Hilfsklassen (§3), Bereich «Mail» (Reiter-Schlüssel `reader`).
+- tax_mail 0.6.0: nur noch Postfach; Leser nur über `taxmail_parsers`; Tabelle «Mail connections» weg; ohne Shop-Modul kein Abruf; Nachprüfen von «Nicht erkannt» über Schlüssel + Version der Leser.
+- eBay 0.0.66, JLCPCB 0.1.11: Leser im Modul. Neu: `wp_tax_api_amazon`, `_aliexpress`, `_conrad`, `_mouser`, `_reichelt` je 0.0.1.
+- **Noch in tax_mail:** Amazon-Bestellhistorie (§4a, Ids bleiben), DHL-Etikettenmails, `CarrierNotice`. Umzug der Historie ins Amazon-Modul ist der nächste Schritt; DHL folgt danach.
+
 ## 5 · Annahmen, die er nicht gesagt hat
 
 - Ein Repo je Shop, Schema `wp_tax_api_<shop>` — auch für Shops, die heute nur Mails haben.
+- Ein Shop wird gelesen, solange sein Modul aktiv ist; einen eigenen Ein/Aus-Schalter gibt es nicht mehr. Ein früher abgeschalteter Leser läuft nach dem Umzug wieder.
 - Die Quelle der Mail-Vorschläge bleibt «mail» (§3), nicht der Shop.
 - Ein Shop-Modul ohne tax_mail lädt, liest aber keine Mails; ohne Modul bleibt eine Shop-Mail «Nicht erkannt».
