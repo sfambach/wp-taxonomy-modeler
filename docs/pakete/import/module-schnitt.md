@@ -100,6 +100,13 @@ Ein Modul meldet seinen Leser über den Filter `taxmail_parsers` an (gibt es sch
 3. tax_mail: «Mail connections» und Amazon-Upload raus; Reiter = Zugang · Abruf · Ordner · Sortierregeln.
 4. Je Schritt eine Version, eingespielt über die Upload-Warteschlange.
 
+### 4a · Was mitmuss (Mail-Thread, 2026-10-28, tax_mail 0.5.2)
+
+- **Nachprüfen von «Nicht erkannt»** (`MailSource::recheckUnrecognised`) hängt heute an tax_mails Version und den eingeschalteten Parsern. Künftig: Schlüssel **und Version** jedes über `taxmail_parsers` angemeldeten Lesers, sonst löst ein neues Modul kein Nachprüfen aus.
+- **`CarrierNotice`** (Paketdienst-Hinweise → «Verworfen») ist Postfach-Sortierung und bleibt in tax_mail.
+- **Amazon-Bestellhistorie** (`AmazonOrderHistory` + `ExportQueue`, 100 je Lauf, `restart()` spult zurück) wird im Amazon-Modul eine eigene Quelle bzw. ein eigener Abruf. Geschlossene Bestellungen bleiben `Shipped`, damit kein «Eingegangen am» erfunden wird.
+- **Ids bleiben:** Vorschläge aus der Historie tragen `source = 'mail'`, `external_id = 'amazon-export:<nr>'`. Das bleibt nach dem Umzug so, sonst wird doppelt abgelegt.
+
 ## 5 · Annahmen, die er nicht gesagt hat
 
 - Ein Repo je Shop, Schema `wp_tax_api_<shop>` — auch für Shops, die heute nur Mails haben.
