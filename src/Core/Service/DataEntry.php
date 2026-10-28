@@ -1639,6 +1639,62 @@ final class DataEntry
     }
 
     /**
+     * Einen Satz neben sich kopieren — mit allen Werten; was er als Teil besitzt (eine Komposition), wird mitkopiert, was er nur
+     * verweist, wird weiter verwiesen. Ein Akt.
+     *
+     * ⚠️ *Sein Wort am 2026-10-28: «record duplizieren fehlt 1% toleranz copieren und 6% draus machen» — ein Widerstand wie der andere,
+     * nur ein Wert anders. Die Kopie entsteht ohne Vorbelegung und ohne Pflichtteile, weil sie beides vom Original mitbringt.*
+     */
+    public function duplicate(int $recordId): NodeRecord
+    {
+        $satz = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+
+        $this->changelog?->beginAct();
+
+        try {
+            $kopie = $this->satzKopieren($satz);
+        } finally {
+            $this->changelog?->endAct();
+        }
+
+        $this->angefasst($kopie->id);
+
+        return $kopie;
+    }
+
+    private function satzKopieren(NodeRecord $satz): NodeRecord
+    {
+        $neu = new NodeRecord(0, $satz->nodeId, $satz->nodeVersion, $this->clock->now()->format('Y-m-d H:i:s'), $satz->recordType);
+        $id  = $this->records->add($neu);
+        $this->melden($id, 'record', 'record created', null, $this->satzZustand($neu), 1);
+
+        $model    = $this->nodes->byId($satz->nodeId);
+        $besessen = [];
+
+        foreach ($this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($model)) as $relation) {
+            $besessen[$relation->id] = $this->ownsItsRecord($relation, $this->nodes->byId($relation->toNodeId));
+        }
+
+        foreach ($this->records->valuesOf($satz->id) as $wert) {
+            $value = $wert->value;
+
+            // *Ein Teil gehört genau einem Besitzer (D-498) — die Kopie bekommt ihren eigenen, kein zweiter Verweis auf den alten.*
+            if (($besessen[$wert->relationId] ?? false) && $value->reference !== null && $value->referenceSpace !== ReferenceSpace::Node) {
+                $teil = $this->records->find($value->reference);
+
+                if ($teil !== null) {
+                    $value = TypedValue::ofRecordReference($this->satzKopieren($teil)->id);
+                }
+            }
+
+            $version = $this->records->putValue(RelationRecord::direct($id, $wert->relationId, $value, $wert->locale, $wert->position));
+            $this->melden($id, 'record_value', 'value copied', null, $this->wertZustand($id, $wert->relationId, $wert->locale, $value), $version);
+        }
+
+        return new NodeRecord($id, $neu->nodeId, $neu->nodeVersion, $neu->createdAt, $neu->recordType);
+    }
+
+    /**
      * Die **Art** eines bestehenden Datensatzes umstellen.
      *
      * ⚠️ **Sein Wort:** *«default / user / example muss einstellbar sein.»* *Gewaehlt wurde sie beim

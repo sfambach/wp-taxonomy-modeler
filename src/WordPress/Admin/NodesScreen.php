@@ -5122,6 +5122,15 @@ final class NodesScreen
                         icon: 'randomize',
                         opens: $this->moveRecordDialog($record, $vater, $kinder, $verluste[$record->id] ?? [])
                     ),
+                    // ⚠️ *«record duplizieren fehlt» (D-1012) — eine Kopie neben dem Satz, die sich gleich zum Bearbeiten öffnet.*
+                    new Control(
+                        'do',
+                        'duplicate_record',
+                        __('Duplicate', 'taxmod'),
+                        __('Copy this record with all its values beside itself — then change what differs', 'taxmod'),
+                        true,
+                        icon: 'admin-page'
+                    ),
                     new Control(
                         'do',
                         'delete_record',
@@ -7073,6 +7082,9 @@ final class NodesScreen
                 'unlink_part'    => $this->unlinkedPart($id),
                 // ⚠️ *Unter dieser Zeile eine gleicher Art einfügen (D-830).*
                 'insert_part'    => $this->insertedPart($id),
+                'duplicate_record' => $this->data->duplicate(
+                    isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
+                ),
                 'delete_record'  => $this->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 ),
@@ -7115,12 +7127,12 @@ final class NodesScreen
 
         // ⚠️ *Ein neuer Satz steht hinten — ohne diese Zeile landete er auf einer Seite, die niemand ansieht,
         // und «New record» sähe aus wie «nichts passiert» (D-763).*
-        if (in_array($do, ['add_record', 'add_example'], true)) {
+        if (in_array($do, ['add_record', 'add_example', 'duplicate_record'], true)) {
             $extra[self::RECORD_PAGE] = 'last';
         }
 
         // ⚠️ *Ein neuer Satz öffnet sich in der Vorschau, dort wird er ausgefüllt; ein gelöschter verlässt sie (D-785).*
-        if ($do === 'add_record' && isset($outcome) && $outcome instanceof NodeRecord) {
+        if (in_array($do, ['add_record', 'duplicate_record'], true) && isset($outcome) && $outcome instanceof NodeRecord) {
             $extra[self::PREVIEW_RECORD] = (string) $outcome->id;
         }
 

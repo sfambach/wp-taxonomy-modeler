@@ -112,6 +112,36 @@ final class DataEntryTest extends TestCase
         self::assertSame($teil->id, $this->records->valuesOf($satz->id)[0]->value->reference);
     }
 
+    /**
+     * ⚠️ *[D-1012](../../docs/NewConcept/90-decision-log.md), sein Wort: «record duplizieren fehlt 1% toleranz copieren und 6% draus machen».
+     * Die Kopie trägt dieselben Werte; ein Teil wird mitkopiert, nicht doppelt verwiesen; das Original bleibt, wie es war.*
+     */
+    #[Test]
+    public function a_duplicate_carries_the_values_and_its_own_copy_of_each_part(): void
+    {
+        $stueck = $this->editor->createNode('Stueck', $this->branchRoot['compositions']->id);
+        $menge  = $this->editor->addField($stueck->id, $this->text->id, 'menge');
+        $kante  = $this->editor->addField($this->part->id, $stueck->id, 'stueck');
+        $satz   = $this->data->create($this->part->id);
+        $this->data->put($satz->id, $this->description->id, TypedValue::ofText('220 Ohm 1 %'));
+        $teil   = $this->data->createPart($satz->id, $kante->id);
+        $this->data->put($teil->id, $menge->id, TypedValue::ofText('0,6 W'));
+
+        $kopie = $this->data->duplicate($satz->id);
+
+        $werte = [];
+
+        foreach ($this->records->valuesOf($kopie->id) as $zeile) {
+            $werte[$zeile->relationId] = $zeile->value;
+        }
+
+        self::assertNotSame($satz->id, $kopie->id);
+        self::assertSame($this->part->id, $kopie->nodeId);
+        self::assertSame('220 Ohm 1 %', $werte[$this->description->id]->text);
+        self::assertNotSame($teil->id, $werte[$kante->id]->reference, 'die Kopie hat ihren eigenen Teil');
+        self::assertSame('0,6 W', $this->records->valuesOf((int) $werte[$kante->id]->reference)[0]->value->text, 'mit dessen Werten');
+    }
+
     #[Test]
     public function a_record_is_entered_against_a_model_node(): void
     {
