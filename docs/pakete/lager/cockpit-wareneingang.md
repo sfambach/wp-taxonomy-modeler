@@ -231,7 +231,7 @@ verschrottet werden.»*
 
 ## WC11 — Zurücknehmen
 
-[D-1009](../../NewConcept/90-decision-log.md). Jede Stufe geht zurück in die vorige: Versendet → Bestellt (Sendungsnummer entfernen), Angekommen → Versendet («Zurück»), Eingebucht → Angekommen («Zurück» mit Rückfrage: Bestandsposten und Wareneingangs-Vorgang werden gelöscht; verweigert, wenn ein Posten seither verbraucht oder gezählt wurde). Offen: Testbefund zurücksetzen, Sendungsnummer entfernen.
+[D-1009](../../NewConcept/90-decision-log.md). Jede Stufe geht zurück in die vorige: Versendet → Bestellt (Sendungsnummer entfernen), Angekommen → Versendet («Zurück»), Eingebucht → Angekommen («Zurück» mit Rückfrage: Bestandsposten und Wareneingangs-Vorgang werden gelöscht; verweigert, wenn ein Posten seither verbraucht oder gezählt wurde). Offen: Testbefund zurücksetzen.
 
 ## Namen
 
