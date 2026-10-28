@@ -50,8 +50,10 @@ $pruefe = static function (bool $gut, string $was) use (&$fehler): void {
 };
 
 $geruest = $apply->execute(['changes' => [
-    ['op' => 'create_node', 'ref' => 'q', 'name' => '__qu Quelle', 'parent' => $model],
-    ['op' => 'add_field', 'ref' => 'name', 'node' => '@q', 'target' => $text->id, 'name' => '__qu Bezeichnung', 'multiplicity' => '0..1'],
+    // *Die Bezeichnung ist geerbt, wie an den echten Quellen — sie steht am Elternknoten.*
+    ['op' => 'create_node', 'ref' => 'p', 'name' => '__qu Ding', 'parent' => $model],
+    ['op' => 'add_field', 'ref' => 'name', 'node' => '@p', 'target' => $text->id, 'name' => '__qu Bezeichnung', 'multiplicity' => '0..1'],
+    ['op' => 'create_node', 'ref' => 'q', 'name' => '__qu Quelle', 'parent' => '@p'],
     ['op' => 'add_field', 'ref' => 'web', 'node' => '@q', 'target' => $medium->id, 'name' => '__qu Webseite', 'multiplicity' => '0..1'],
     ['op' => 'add_field', 'ref' => 'datei', 'node' => '@q', 'target' => $medium->id, 'name' => '__qu Datei', 'multiplicity' => '0..1'],
     ['op' => 'create_record', 'ref' => 'r', 'node' => '@q'],
@@ -95,6 +97,7 @@ if (is_array($halter)) {
     $pruefe(str_contains($liste, '<table') && ! str_contains($liste, 'taxmod-ref-list'), 'the sources stay a table of their records, not a list of summaries');
     $pruefe(! str_contains($liste, '<thead>'), 'without a head row');
     $pruefe((bool) preg_match('~>__qu Webseite</a>.*>__qu Datei</a>~s', $liste), 'and each row says what it is: website and file');
+    $pruefe((bool) preg_match('~Gerberdateien.*>__qu Webseite</a>~s', $liste), 'with the inherited name of the source in front');
 }
 
 $falsch = $apply->execute(['changes' => [

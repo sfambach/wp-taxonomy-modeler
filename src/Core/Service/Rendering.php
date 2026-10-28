@@ -7436,6 +7436,14 @@ final class Rendering implements Presets
 
         $innen = $unterbau[$relation->toNodeId] ?? [];
 
+        // ⚠️ *Eine Tabelle verwiesener Sätze zeigt auch ihre geerbten Felder, voran die Bezeichnung (D-999) — gemessen an den Quellen der
+        // Revision: die Zeile stand ohne Namen da, «Webseite · Gerber · Datei». Eine Abfrage je Liste, nicht je Zeile (`CD-7`).*
+        // *Nur beim Anzeigen: dort fallen leere Spalten weg (D-954); in der Eingabe stünden sonst alle geerbten Felder als leere Spalten.*
+        if ($verweisliste && $purpose === Purpose::Display && $this->relations !== null) {
+            $zielKnoten = $this->gemerkterKnoten($relation->toNodeId);
+            $innen      = $zielKnoten === null ? $innen : $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($zielKnoten));
+        }
+
         // ⚠️ **Was aus einem Teil gezeichnet wird, hängt daran, was der Teil ist.**
         //
         // ⚠️ *Ist die tragende Kante ein **Feld**, gehören die Einstellungen des Teils nicht in die
