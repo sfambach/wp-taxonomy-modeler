@@ -1096,3 +1096,14 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Gebaut (wp_tax_stock 0.3.5):** die Wareneingangszeile zeigt den Satzwähler des Modellers (Wort mit Mülleimer oder Suchfeld), vorbelegt mit dem «Modell» des Kaufs; die Suche läuft nur über die Gruppen der Dinge, nicht über den Ast «Stock». «Neu anlegen» steht nicht mehr in der Zeile.
 - **Baum — entschieden ([D-1011](NewConcept/90-decision-log.md)):** seine Kartenwahl «Erst Text, dann Baum»; der Baum lädt Knoten und Sätze erst beim Öffnen.
 - **Offen 2 — Anlegen:** wo und wie ein fehlendes Material beim Wareneingang angelegt wird (im Wähler am Knoten, wie das «+» des Satzdialogs D-792, oder als eigener Schritt), ist nach seinem Wort «noch nicht zuende gedacht».
+
+---
+
+## INF-100 · Bestellnummer gehört zu einem Händler oder Hersteller
+
+**Typ:** `FRAGE` · **Status:** `OPEN` — 2026-10-28, Thread «Taxmod Stock – Lagermodul».
+
+- **Sein Wort (23:13):** *«bestellnummer gehört doch eigentlich immer zu nem händler oder hersteller»*
+- **Entschieden (gelesen):** [D-954](NewConcept/90-decision-log.md) (3): *«Die Bezugsquelle (Mouser-Nummer usw.) ist ein eigenes Feld «Bestell-Nr.» an den Bauteilen»* — ein Feld ohne Angabe, wessen Nummer es ist. [D-779](NewConcept/90-decision-log.md): wer herstellt und unter welcher Nummer man kauft, gehört in den kaufmännischen Teil. [D-933](NewConcept/90-decision-log.md): der Kauf trägt die Artikelnummer, die Bestellung den Händler.
+- **Vorschlag (INFERRED):** «Bestell-Nr.» wird eine Zusammensetzung «Bezugsquelle» (0..*): Organisation (Händler oder Hersteller) + Nummer. Ein Bauteil kann so eine Herstellernummer und mehrere Händlernummern haben.
+- **Offen:** ob die Bezugsquelle am Bauteil steht oder als Lagersicht ([D-995](NewConcept/90-decision-log.md)) daneben; wie die vorhandenen Bestell-Nr.-Werte ihre Organisation bekommen.
