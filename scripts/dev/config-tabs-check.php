@@ -99,7 +99,7 @@ add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs 
 ]);
 $_GET['tab'] = 'ctshop';
 $laden = (new SettingsScreen())->render();
-$pruefe(str_contains($laden, 'Reads these mails from the mailbox of the Mail module: order, shipped.') && substr_count($laden, 'Nothing to set here for this module.') === 4, 'a shop module without a source still has all parts, and «Mail» lists what its reader reads');
+$pruefe(str_contains($laden, 'name="' . \Taxmod\WordPress\Import\MailReading::FIELD . '[kinds][ordered]" value="1" checked') && preg_match('#\[kinds\]\[delivered\]" value="1" disabled#', $laden) === 1 && substr_count($laden, 'Nothing to set here for this module.') === 4, 'a shop module without a source still has all parts, and «Mail» lists every kind of mail as a box, the unsupported ones greyed');
 // ⚠️ *D-1008: «bei mail sollten wir noch aktivieren, wie oft und wahrheit, nur update wahrheit aus api oder mail ganze wahrheit
 // (natürlich nur wenn api verfügbar ist)».*
 $pruefe(str_contains($laden, 'name="' . \Taxmod\WordPress\Import\MailReading::FIELD . '[on]"') && ! str_contains($laden, '[truth]'), 'a mail-only module can switch its mails off, and has no choice of truth');
@@ -111,6 +111,10 @@ $pruefe(str_contains((new SettingsScreen())->render(), 'value="' . \Taxmod\WordP
 $vorherLesen = get_option(\Taxmod\WordPress\Import\MailReading::OPTION, null);
 \Taxmod\WordPress\Import\MailReading::save($leser, true, [\Taxmod\WordPress\Import\MailReading::FIELD => ['on' => '1', 'truth' => 'all']]);
 $pruefe(\Taxmod\WordPress\Import\Duties::load()->responsible('Shop', \Taxmod\Core\Import\DutyRole::Orders) === 'mail', '«the whole truth» makes the mail responsible for new orders');
+\Taxmod\WordPress\Import\MailReading::save($leser, false, [\Taxmod\WordPress\Import\MailReading::FIELD => ['on' => '0', 'truth' => 'all']]);
+\Taxmod\WordPress\Import\MailReading::save($leser, false, [\Taxmod\WordPress\Import\MailReading::FIELD => ['on' => '1', 'kinds' => ['ordered' => '1']]]);
+$gefiltert = apply_filters('taxmail_parsers', [$leser]);
+$pruefe(\Taxmod\WordPress\Import\MailReading::unwanted('__ct_shop') === [\Taxmod\Core\Import\ProposalKind::Shipped] && ($gefiltert[0] ?? null) instanceof \Taxmod\Core\Import\Mail\KindFilter, 'an unticked kind is filtered out of the reader handed to the Mail module');
 \Taxmod\WordPress\Import\MailReading::save($leser, false, [\Taxmod\WordPress\Import\MailReading::FIELD => ['on' => '0', 'truth' => 'all']]);
 $pruefe(apply_filters('taxmail_parsers', [$leser]) === [] && \Taxmod\WordPress\Import\MailReading::truth('__ct_shop') === \Taxmod\WordPress\Import\MailReading::TRUTH_UPDATES, 'a switched-off reader is not handed to the Mail module; without an API there is no «whole truth» to choose');
 $vorherLesen === null ? delete_option(\Taxmod\WordPress\Import\MailReading::OPTION) : update_option(\Taxmod\WordPress\Import\MailReading::OPTION, $vorherLesen, false);

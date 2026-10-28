@@ -3,7 +3,9 @@
 namespace Taxmod\WordPress\Import;
 
 use Taxmod\Core\Import\DutyRole;
+use Taxmod\Core\Import\Mail\KindFilter;
 use Taxmod\Core\Import\Mail\OrderMailParser;
+use Taxmod\Core\Import\ProposalKind;
 
 /**
  * The part «Mail» of a shop module's tab (D-1008): whether its mails are read at all, how often the mailbox is fetched,
@@ -17,6 +19,10 @@ final class MailReading
     public const OPTION = 'taxmod_mail_reading';
     public const FIELD = 'taxmod_mail_reading';
 
+    /** Every kind of mail a shop sends that the inbox knows, in the order of an order's life (D-1016). */
+    public const KINDS = [ProposalKind::Ordered, ProposalKind::Shipped, ProposalKind::Delivered, ProposalKind::Cancelled,
+        ProposalKind::Refunded, ProposalKind::Invoice, ProposalKind::Sold];
+
     public const TRUTH_UPDATES = 'updates';
     public const TRUTH_ALL = 'all';
 
@@ -25,6 +31,19 @@ final class MailReading
         // Late, so a switched-off reader is gone whatever registered it, and the choice of truth wins over a module's row.
         add_filter('taxmail_parsers', self::withoutSwitchedOff(...), 1000);
         add_filter(Duties::FILTER, self::withTruth(...), 1000);
+    }
+
+    /**
+     * The kinds he unticked for this reader (D-1016); their mails go to «Verworfen».
+     *
+     * @return list<ProposalKind>
+     */
+    public static function unwanted(string $readerKey): array
+    {
+        return array_values(array_filter(array_map(
+            static fn (mixed $value): ?ProposalKind => ProposalKind::tryFrom((string) $value),
+            (array) (self::stored()[$readerKey]['unwanted'] ?? [])
+        )));
     }
 
     public static function isOn(string $readerKey): bool
@@ -48,8 +67,33 @@ final class MailReading
             'on'       => ($posted['on'] ?? '1') === '1',
             'truth'    => $hasApi && ($posted['truth'] ?? '') === self::TRUTH_ALL ? self::TRUTH_ALL : self::TRUTH_UPDATES,
             'platform' => $reader->shopName(),
+            // Only kinds the reader can read can be unticked; a ticked box is in the post, an unticked one is not.
+            'unwanted' => array_values(array_map(
+                static fn (ProposalKind $kind): string => $kind->value,
+                array_filter($reader->kinds(), static fn (ProposalKind $kind): bool => ! isset(((array) ($posted['kinds'] ?? []))[$kind->value]))
+            )),
         ];
         update_option(self::OPTION, $all, false);
+    }
+
+    /**
+     * Every kind of mail as a box (D-1016): ticked what the reader reads and he wants, unticked what he does not want,
+     * greyed out what the reader cannot read. Escaped HTML inside the module's form (CD-8).
+     */
+    public static function kindBoxes(OrderMailParser $reader): string
+    {
+        $unwanted = self::unwanted($reader->key());
+        $items = '';
+
+        foreach (self::KINDS as $kind) {
+            $reads = in_array($kind, $reader->kinds(), true);
+            $items .= '<li' . ($reads ? '' : ' style="opacity:.55"') . '><label><input type="checkbox" name="' . esc_attr(self::FIELD) . '[kinds][' . esc_attr($kind->value) . ']" value="1"'
+                . ($reads ? checked(! in_array($kind, $unwanted, true), true, false) : ' disabled') . '> ' . esc_html(InboxScreen::kindLabel($kind))
+                . ($reads ? '' : ' <span class="description">' . esc_html__('(not supported by this module)', 'taxmod') . '</span>') . '</label></li>';
+        }
+
+        return '<p>' . esc_html__('Mails this module reads from the mailbox of the Mail module. Untick what should not be processed; those mails go to «Verworfen».', 'taxmod')
+            . '</p><ul class="taxmod-mail-kinds">' . $items . '</ul>';
     }
 
     /** The fields inside the module's form; escaped HTML (CD-8). */
@@ -88,7 +132,18 @@ final class MailReading
      */
     public static function withoutSwitchedOff(array $parsers): array
     {
-        return array_values(array_filter($parsers, static fn (mixed $parser): bool => ! $parser instanceof OrderMailParser || self::isOn($parser->key())));
+        $kept = [];
+
+        foreach ($parsers as $parser) {
+            if (! $parser instanceof OrderMailParser) {
+                $kept[] = $parser;
+            } elseif (self::isOn($parser->key())) {
+                $unwanted = self::unwanted($parser->key());
+                $kept[] = $unwanted === [] ? $parser : new KindFilter($parser, $unwanted);
+            }
+        }
+
+        return $kept;
     }
 
     /**

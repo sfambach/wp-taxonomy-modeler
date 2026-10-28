@@ -4,7 +4,6 @@ namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Import\FetchingSource;
 use Taxmod\Core\Import\Mail\OrderMailParser;
-use Taxmod\Core\Import\ProposalKind;
 use Taxmod\WordPress\Import\FetchInterval;
 use Taxmod\WordPress\Import\ImportTab;
 use Taxmod\WordPress\Import\MailReading;
@@ -755,13 +754,11 @@ final class SettingsScreen
             return '';
         }
 
-        $kinds = implode(', ', array_map(static fn (ProposalKind $kind): string => InboxScreen::kindLabel($kind), $reader->kinds()));
-
-        return '<p>' . esc_html(sprintf(
-            /* translators: %s: list of mail kinds, e.g. «order, shipped, delivered» */
-            __('Reads these mails from the mailbox of the Mail module: %s.', 'taxmod'),
-            $kinds
-        )) . '</p>' . MailReading::fields($reader, $tab['source'] !== '');
+        // ⚠️ *Sein Wunsch vom 2026-10-28 (D-1016): «pro modul sollten die unterschiedlichen mails aufgelistet sein … alle die
+        // nicht supported sind ausgegraut», «der benutzer kann sie abwählen» und «dann werden diese mails in den ordner verworfen
+        // gelegt».*
+        return MailReading::kindBoxes($reader)
+            . MailReading::fields($reader, $tab['source'] !== '');
     }
 
     /** One part of a module tab under its heading; nothing when the module gives nothing, no heading when there is none. */
