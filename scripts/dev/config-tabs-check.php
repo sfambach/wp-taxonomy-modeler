@@ -84,7 +84,7 @@ add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs 
 ]);
 $_GET['tab'] = 'ctbare';
 $karg = (new SettingsScreen())->render();
-$pruefe(preg_match('#<h2>Access</h2>.*<h2>Fetching</h2>.*<h2>Mail</h2>.*<h2>Settings</h2>.*<h2>Maintenance</h2>#s', $karg) === 1 && substr_count($karg, 'Nothing to set here for this module.') === 5, 'every module tab has the same five parts, an empty one says so');
+$pruefe(preg_match('#<h2>Mail</h2>.*<h2>Access</h2>.*<h2>Fetching</h2>.*<h2>Settings</h2>.*<h2>Maintenance</h2>#s', $karg) === 1 && substr_count($karg, 'Nothing to set here for this module.') === 5, 'every module tab has the same five parts, Mail first (D-1021), an empty one says so');
 // ⚠️ *D-1007: «Mail modul implementation (vielleicht noch welche mails )» — the part «Mail» names what the module's reader reads.*
 $leser = new class implements \Taxmod\Core\Import\Mail\OrderMailParser {
     public function key(): string { return '__ct_shop'; }

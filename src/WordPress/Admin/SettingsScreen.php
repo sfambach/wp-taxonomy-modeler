@@ -156,6 +156,8 @@ final class SettingsScreen
                 // zugangsdaten, intervalle und ander einstellungen». The page gives the order, the module the content; a part
                 // the module does not give is left out with its heading.*
                 // ⚠️ *Das Modul gibt fertiges, selbst escaptes HTML zurück (`CD-8`), wie jeder Renderer.*
+                // ⚠️ *«kannst du die maileinstellungen in allen api modulen ganz oben hin machen ?» (D-1021).*
+                . self::section(__('Mail', 'taxmod'), self::mailPart($reiter[$tab]), $modul)
                 // ⚠️ *Sein Wunsch vom 2026-10-23: «button test connection unter die einlogdaten und die mit einem save button versehen».*
                 . self::section(__('Access', 'taxmod'), $reiter[$tab]['credentials'] === null ? '' : (string) ($reiter[$tab]['credentials'])()
                     . '<p>' . get_submit_button(__('Save', 'taxmod'), 'primary', 'submit', false)
@@ -165,7 +167,6 @@ final class SettingsScreen
                         'onclick' => 'return confirm(' . wp_json_encode(__('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod')) . ')',
                     ])) . '</p>', $modul)
                 . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle), $modul)
-                . self::section(__('Mail', 'taxmod'), self::mailPart($reiter[$tab]), $modul)
                 . self::section($modul || $reiter[$tab]['credentials'] !== null || $quelle !== null ? __('Settings', 'taxmod') : '', (string) ($reiter[$tab]['render'])(), $modul)
                 . get_submit_button(__('Save', 'taxmod'))
                 . '</form>'
