@@ -117,7 +117,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Liest ein Shop-Modul Mails, und darf die Mail Bestellungen anlegen? | [D-1015](90-decision-log.md) — Schalter je Modul; mit API wählbar «nur Updates» oder «ganze Wahrheit» | — |
 | Welche Mails verarbeitet ein Shop-Modul? | [D-1016](90-decision-log.md) — alle Arten als Häkchen, nicht unterstützte ausgegraut; abgewählte kommen nach «Verworfen» | — |
 | Wohin gehört eine Paket-Mail ohne Bestellnummer? | [D-1017](90-decision-log.md) — zur Bestellung mit derselben Sendungsnummer; ohne sie bringt sie nichts | — |
-| Liest das DHL-Modul Mails? | [D-1018](90-decision-log.md) — ja, «unterwegs»/«zugestellt»; zugeordnet über die Sendungsnummer, gleich bei welchem Shop | — |
+| Liest das DHL-Modul Mails? | [D-1020](90-decision-log.md) — ja, «unterwegs»/«zugestellt»; zugeordnet über die Sendungsnummer, gleich bei welchem Shop | — |
 | Wann ist ein Bauteil von einem anderen Hersteller ein eigener Satz? | [D-971](90-decision-log.md) — aktive Teile nach Teilenummer (eigener Satz + Kompatibilität), passive nach Werten (gleiche Werte = ein Satz) | — |
 | Wohin bucht der Wareneingang? | [D-972](90-decision-log.md) — Standard-Lagerort des Materials, sonst Ort des Zweigs unter Model (Zuordnung Zweig → Ort im Lager-Reiter), ohne Bezug Verbrauchsmaterial, sonst «Bauteile»; änderbar | — |
 | Ergänzt der Eingang eine Bestellung, die schon da ist? | [D-964](90-decision-log.md) — ja, aus der für neue Bestellungen zuständigen Quelle: Leeres füllen, Widersprüche je Feld zur Wahl; nur Bestellfelder, keine Positionen | — |

@@ -43,7 +43,7 @@ final class InboxGrouping
 
                 $other = $first($otherKey);
 
-                // A shared tracking number joins across shops: a carrier's mail does not know the shop (D-1018).
+                // A shared tracking number joins across shops: a carrier's mail does not know the shop (D-1020).
                 $sameParcel = LooseMatch::sharesTracking($loose->trackingNumbers, $other->trackingNumbers);
 
                 if (! $sameParcel && mb_strtolower($other->platform) !== mb_strtolower($loose->platform)) {

@@ -100,6 +100,6 @@ final class ImportGroupTest extends TestCase
             trackingNumbers: ['00340400000000000001'], numberMissing: true);
         $stranger = new OrderProposal('DHL', 'sendung:1', ProposalKind::Delivered, trackingNumbers: ['1'], numberMissing: true);
 
-        self::assertSame([[1, 2], [3]], InboxGrouping::group([1 => $order, 2 => $carrier, 3 => $stranger]), 'D-1018');
+        self::assertSame([[1, 2], [3]], InboxGrouping::group([1 => $order, 2 => $carrier, 3 => $stranger]), 'D-1020');
     }
 }
