@@ -97,6 +97,13 @@ final class ModelGateway
             $this->orders = $loaded;
         }
 
+        // ⚠️ *A tracking number names one parcel whatever shop sent it — a carrier's mail does not know the shop (D-1018).*
+        foreach ($this->orders as $order) {
+            if (LooseMatch::sharesTracking($proposal->trackingNumbers, $order->trackingNumbers)) {
+                return $order;
+            }
+        }
+
         foreach ($this->orders as $key => $order) {
             if (mb_strtolower($this->platforms[$key] ?? '') === mb_strtolower(trim($proposal->platform)) && LooseMatch::matchesOrder($proposal, $order)) {
                 return $order;

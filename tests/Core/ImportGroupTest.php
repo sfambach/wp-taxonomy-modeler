@@ -91,4 +91,15 @@ final class ImportGroupTest extends TestCase
 
         self::assertSame([[2, 1], [3]], InboxGrouping::group([1 => $won, 2 => $shipped, 3 => $other]));
     }
+
+    public function testACarrierMailJoinsTheOrderOfItsParcelWhateverTheShop(): void
+    {
+        $order = new OrderProposal('AliExpress', '3077100174357970', ProposalKind::Shipped, null, 'EUR',
+            [new ProposalLine('ESP32', 1.0)], trackingNumbers: ['00340400000000000001']);
+        $carrier = new OrderProposal('DHL', 'sendung:00340400000000000001', ProposalKind::Delivered,
+            trackingNumbers: ['00340400000000000001'], numberMissing: true);
+        $stranger = new OrderProposal('DHL', 'sendung:1', ProposalKind::Delivered, trackingNumbers: ['1'], numberMissing: true);
+
+        self::assertSame([[1, 2], [3]], InboxGrouping::group([1 => $order, 2 => $carrier, 3 => $stranger]), 'D-1018');
+    }
 }

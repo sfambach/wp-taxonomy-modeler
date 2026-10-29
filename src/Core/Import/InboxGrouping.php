@@ -43,14 +43,17 @@ final class InboxGrouping
 
                 $other = $first($otherKey);
 
-                if (mb_strtolower($other->platform) !== mb_strtolower($loose->platform)) {
+                // A shared tracking number joins across shops: a carrier's mail does not know the shop (D-1018).
+                $sameParcel = LooseMatch::sharesTracking($loose->trackingNumbers, $other->trackingNumbers);
+
+                if (! $sameParcel && mb_strtolower($other->platform) !== mb_strtolower($loose->platform)) {
                     continue;
                 }
 
                 $titles = implode(' ', array_map(static fn (ProposalLine $line): string => $line->title, $other->lines));
                 $date = $other->orderDate ?? ($receivedDays[$groups[$otherKey][0]] ?? null);
 
-                if (LooseMatch::sharesTracking($loose->trackingNumbers, $other->trackingNumbers) || LooseMatch::matches($loose, $other->counterparty, $date, $titles)) {
+                if ($sameParcel || LooseMatch::matches($loose, $other->counterparty, $date, $titles)) {
                     $groups[$otherKey][] = $groups[$key][0];
                     unset($groups[$key]);
                     break;
