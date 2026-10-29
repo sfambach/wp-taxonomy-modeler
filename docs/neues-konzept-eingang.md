@@ -1108,3 +1108,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Entschieden (gelesen):** [D-954](NewConcept/90-decision-log.md) (3): *«Die Bezugsquelle (Mouser-Nummer usw.) ist ein eigenes Feld «Bestell-Nr.» an den Bauteilen»* — ein Feld ohne Angabe, wessen Nummer es ist. [D-779](NewConcept/90-decision-log.md): wer herstellt und unter welcher Nummer man kauft, gehört in den kaufmännischen Teil. [D-933](NewConcept/90-decision-log.md): der Kauf trägt die Artikelnummer, die Bestellung den Händler.
 - **Vorschlag (INFERRED):** «Bestell-Nr.» wird eine Zusammensetzung «Bezugsquelle» (0..*): Organisation (Händler oder Hersteller) + Nummer. Ein Bauteil kann so eine Herstellernummer und mehrere Händlernummern haben.
 - **Offen:** ob die Bezugsquelle am Bauteil steht oder als Lagersicht ([D-995](NewConcept/90-decision-log.md)) daneben; wie die vorhandenen Bestell-Nr.-Werte ihre Organisation bekommen.
+
+### INF-101 · Bezugskosten am Kauf statt gespeichertem Einstandspreis (2026-10-29)
+
+- **Sein Wort:** *«ich hätte erwartet, dass du die Lieferkosten und Steuern anteilig als Feld da hast und daraus dann ja doch dann den Einstandspreis berechnest. Das wäre so mein Ansatz.»* — und *«Nee, nicht bauen»*.
+- **Entschieden (gelesen):** [D-933](NewConcept/90-decision-log.md): «Einstandspreis je Stück» wird **gespeichert**, «weil der Anteil am Versand bei mehreren Positionen sich nicht zurückrechnen lässt».
+- **Vorschlag (INFERRED):** am Kauf «Versand anteilig» und «Zoll/Gebühren anteilig» speichern; der Einstandspreis wird daraus gerechnet (Stückpreis + Anteile ÷ Anzahl) statt gespeichert — kein doppelter Fakt.
+- **Offen:** braucht ein Rechenfeld (nicht gebaut); alte Käufe mit eingerechnetem Versand bekommen Anteil 0; ob die Module (JLC, eBay, Eingang) dann die Anteile statt des Einstandspreises schreiben.
