@@ -2310,3 +2310,10 @@ fieldset.taxmod-read-only {
 .taxmod-record-pick [hidden] {
     display: none !important;
 }
+
+/* *Die Hilfe eines Werts im Wähler, klein hinter seinem Namen — 2026-10-29, Bauformen.* */
+.taxmod-tree-help {
+    margin-left: .6em;
+    color: #646970;
+    font-size: 12px;
+}

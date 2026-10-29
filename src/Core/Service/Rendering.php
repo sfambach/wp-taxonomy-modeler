@@ -2758,6 +2758,17 @@ final class Rendering implements Presets
             );
         }
 
+        // ⚠️ *Die Hilfe eines wählbaren Werts steht klein daneben — sein Wort am 2026-10-29 an den Bauformen: «die tht unterschiede
+        // kenne ich nicht … kannst das mal anpassen so das man das beim auswählen sieht». Nur an Konstanten: ein Ast, in den man
+        // verschiebt, trägt Hilfe für seine Seite, nicht für den Dialog. Einmal für alle Zeilen gefragt (`CD-7`).*
+        $konstanten = array_values(array_filter($nodes, static fn (Node $n): bool => $n->klasse === \Taxmod\Core\Model\NodeClass\Constant::class));
+
+        foreach ($this->labels?->helpFor($konstanten, $locale) ?? [] as $id => $hilfe) {
+            if (isset($cells[$id])) {
+                $cells[$id] = $cells[$id]->followedBy(RenderResult::of('<span class="taxmod-tree-help">' . RenderResult::escape($hilfe) . '</span>'));
+            }
+        }
+
         return $cells;
     }
 
