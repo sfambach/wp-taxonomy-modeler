@@ -2766,4 +2766,136 @@ final class RenderingTest extends TestCase
         self::assertSame([], $felder[0]->rows, 'mehrere Konstanten: keine Tabelle');
         self::assertSame([], $felder[1]->rows, 'ein einzelner Verweis: keine Tabelle');
     }
+
+    // --------------------------------------------------------- gerechnete Felder (D-1022)
+
+    /**
+     * Ein Rechenwerk am Kauf: Felder, Schreiber und Einsteller über denselben Speicher.
+     *
+     * @return array{0: \Taxmod\Core\Service\CalculationWriter, 1: DataEntry, 2: \Taxmod\Core\Service\SettingsEditor}
+     */
+    private function rechenwerk(): array
+    {
+        $daten = new DataEntry($this->records, $this->relations, $this->nodes, $this->framework, new \Taxmod\Tests\Core\Fake\FixedClock(), new \Taxmod\Tests\Core\Fake\RecordedChanges());
+        $einsteller = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), addons: \Taxmod\Core\Addon\ShippedAddons::registry());
+
+        return [new \Taxmod\Core\Service\CalculationWriter($this->records, $this->relations, $this->nodes, $this->framework, $this->typeNodes, $this->resolver, $daten), $daten, $einsteller];
+    }
+
+    /** @param list<array{0: string, 1: int}> $schritte */
+    private function formel(\Taxmod\Core\Service\SettingsEditor $einsteller, Relation $feld, array $schritte): void
+    {
+        $einsteller->putAddons(
+            $this->nodes->byId($feld->toNodeId),
+            array_map(static fn (array $s): array => ['name' => 'calculate', 'fields' => ['operation' => $s[0], 'field' => (string) $s[1]]], $schritte),
+            $feld
+        );
+    }
+
+    private function wertIn(int $satzId, int $feld): ?TypedValue
+    {
+        foreach ($this->records->valuesOf($satzId) as $zeile) {
+            if ($zeile->relationId === $feld) {
+                return $zeile->value;
+            }
+        }
+
+        return null;
+    }
+
+    /** ⚠️ *D-1022, sein Wort: «Lieferkosten und Steuern anteilig als Feld … und daraus dann den Einstandspreis berechnest», und «0 plus irgendwas ergibt ja irgendwas».* */
+    #[Test]
+    public function a_calculated_field_follows_its_steps_and_an_empty_share_counts_zero(): void
+    {
+        $kauf     = $this->thing('Kauf');
+        $anzahl   = $this->editor->addField($kauf->id, $this->type('Integer')->id, 'Anzahl');
+        $dezimal  = $this->type('Decimal');
+        $gesamt   = $this->editor->addField($kauf->id, $dezimal->id, 'Preis gesamt');
+        $versand  = $this->editor->addField($kauf->id, $dezimal->id, 'Versand anteilig');
+        $einstand = $this->editor->addField($kauf->id, $dezimal->id, 'Einstandspreis je Stück');
+        [$rechner, $daten, $einsteller] = $this->rechenwerk();
+
+        $this->formel($einsteller, $einstand, [['plus', $gesamt->id], ['plus', $versand->id], ['divided_by', $anzahl->id]]);
+        self::assertCount(3, $rechner->stepsOf($einstand));
+        self::assertSame([], $rechner->stepsOf($gesamt), 'ein Feld ohne Schritte wird eingegeben');
+
+        $satz = $daten->create($kauf->id)->id;
+        $daten->put($satz, $anzahl->id, TypedValue::ofInt(4));
+        $daten->put($satz, $gesamt->id, TypedValue::ofDecimal('27.96'));
+
+        self::assertSame(1, $rechner->refresh([$satz]));
+        self::assertSame('6.99', $this->wertIn($satz, $einstand->id)?->decimal, 'ohne Versand: Anteil null');
+        self::assertSame(0, $rechner->refresh([$satz]), 'unverändert wird nichts geschrieben');
+
+        $daten->put($satz, $versand->id, TypedValue::ofDecimal('2'));
+        $rechner->refresh([$satz]);
+        self::assertSame('7.49', $this->wertIn($satz, $einstand->id)?->decimal);
+
+        // *Ohne Anzahl kein Teiler: das Feld wird leer, nie bleibt die alte Zahl stehen.*
+        $daten->clear($satz, $anzahl->id);
+        $rechner->refresh([$satz]);
+        self::assertNull($this->wertIn($satz, $einstand->id));
+    }
+
+    /** ⚠️ *D-1022: ein Betrag mit Einheit rechnet mit seiner Zahl, das Ergebnis trägt seine Einheit; zwei Einheiten sind nicht rechenbar.* */
+    #[Test]
+    public function an_amount_is_calculated_into_a_part_of_the_same_kind_and_two_units_do_not_mix(): void
+    {
+        $betrag  = $this->thing('Einheitenwert');
+        $wert    = $this->editor->addField($betrag->id, $this->type('Decimal')->id, 'wert');
+        $einheit = $this->editor->addField($betrag->id, $this->type('Text')->id, 'einheit');
+        $kauf    = $this->thing('Kauf');
+        $anzahl  = $this->editor->addField($kauf->id, $this->type('Integer')->id, 'Anzahl');
+        $gesamt  = $this->editor->addField($kauf->id, $betrag->id, 'Preis gesamt', RelationKind::Composition);
+        $zoll    = $this->editor->addField($kauf->id, $betrag->id, 'Zoll anteilig', RelationKind::Composition);
+        $einstand = $this->editor->addField($kauf->id, $betrag->id, 'Einstandspreis je Stück', RelationKind::Composition);
+        [$rechner, $daten, $einsteller] = $this->rechenwerk();
+
+        $this->formel($einsteller, $einstand, [['plus', $gesamt->id], ['plus', $zoll->id], ['divided_by', $anzahl->id]]);
+
+        $satz = $daten->create($kauf->id)->id;
+        $daten->put($satz, $anzahl->id, TypedValue::ofInt(3));
+        // *Pflichtteile stehen leer da, sobald der Satz entsteht — ein leerer Zoll-Teil zählt null.*
+        $teil = (int) $this->wertIn($satz, $gesamt->id)?->reference;
+        $daten->put($teil, $wert->id, TypedValue::ofDecimal('10'));
+        $daten->put($teil, $einheit->id, TypedValue::ofText('USD'));
+
+        $rechner->refresh([$teil]);
+        $ergebnis = $this->wertIn($satz, $einstand->id);
+        self::assertNotNull($ergebnis?->reference, 'der Teil meldet seinen Satz, und dort entsteht ein Teil');
+        self::assertSame('3.3333', $this->wertIn($ergebnis->reference, $wert->id)?->decimal);
+        self::assertSame('USD', $this->wertIn($ergebnis->reference, $einheit->id)?->text, 'die Einheit des Betrags');
+
+        $andere = (int) $this->wertIn($satz, $zoll->id)?->reference;
+        $daten->put($andere, $wert->id, TypedValue::ofDecimal('1'));
+        $daten->put($andere, $einheit->id, TypedValue::ofText('EUR'));
+        $rechner->refresh([$satz]);
+        self::assertNull($this->wertIn((int) $this->wertIn($satz, $einstand->id)?->reference, $wert->id), 'USD und EUR: nicht rechenbar — der Pflichtteil bleibt, seine Zahl geht');
+
+        $daten->put($andere, $einheit->id, TypedValue::ofText('USD'));
+        $rechner->refresh([$satz]);
+        $ergebnis = $this->wertIn($satz, $einstand->id);
+        self::assertSame('3.6667', $this->wertIn((int) $ergebnis?->reference, $wert->id)?->decimal);
+    }
+
+    #[Test]
+    public function the_arithmetic_is_in_ten_thousandths_and_refuses_what_it_cannot_say(): void
+    {
+        self::assertSame(69900, \Taxmod\Core\Service\CalculationWriter::units('6.99000'));
+        self::assertSame(5838, \Taxmod\Core\Service\CalculationWriter::units('0.58375'));
+        self::assertSame(-15000, \Taxmod\Core\Service\CalculationWriter::units('-1.5'));
+        self::assertNull(\Taxmod\Core\Service\CalculationWriter::units('1,5'));
+        self::assertSame('0.5837', \Taxmod\Core\Service\CalculationWriter::format(5837));
+        self::assertSame('-3', \Taxmod\Core\Service\CalculationWriter::format(-30000));
+
+        [$rechner] = $this->rechenwerk();
+        $plus  = \Taxmod\Core\Addon\CalculationOperation::Plus;
+        $mal   = \Taxmod\Core\Addon\CalculationOperation::Times;
+        $durch = \Taxmod\Core\Addon\CalculationOperation::DividedBy;
+
+        self::assertSame(['units' => 75000, 'shape' => null], $rechner->rechnen([[$plus, 1], [$mal, 2]], [1 => TypedValue::ofDecimal('2.5'), 2 => TypedValue::ofInt(3)], []));
+        self::assertNull($rechner->rechnen([[$plus, 1], [$durch, 2]], [1 => TypedValue::ofInt(1), 2 => TypedValue::ofInt(0)], []), 'durch null');
+        self::assertNull($rechner->rechnen([[$plus, 1]], [], []), 'ohne einen Wert nichts');
+        self::assertNull($rechner->rechnen([[$plus, 1]], [1 => TypedValue::ofText('drei')], []), 'ein Text ist keine Zahl');
+    }
 }

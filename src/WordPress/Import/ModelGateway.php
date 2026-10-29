@@ -222,7 +222,7 @@ final class ModelGateway
     {
         $roles = [];
 
-        foreach (['unit_price', 'total_price', 'landed_unit_price'] as $role) {
+        foreach (['unit_price', 'total_price', 'landed_unit_price', 'shipping_share', 'fees_share'] as $role) {
             if ($this->target->hasPurchaseField($role)) {
                 $roles[$this->target->purchaseField($role)] = $role;
             }

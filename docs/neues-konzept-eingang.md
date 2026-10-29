@@ -904,7 +904,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-081 · Gerechnete Felder im Modeller (abgeleitet, Summe)
 
-**Typ:** `FRAGE` · **Status:** `OFFEN` — 2026-10-21.
+**Typ:** `FRAGE` · **Status:** `TEILWEISE ENTSCHIEDEN` — 2026-10-21; gerechnete Felder seit [D-1022](NewConcept/90-decision-log.md) (Rechenschritte `+ − × ÷` über Felder desselben Satzes). Offen bleiben Summen über Verweise (Bestand je Modell) und «Noch nicht näher bestimmt» als abgeleitetes Feld.
 
 > *«wenn wir das we buchen verliert der bestand dann seine zuordnung zu dem we. wir müssten sowas wie quanten einfügen»* — daraus im Konzept Wareneingang (`/mnt/project-files/konzept-wareneingang-quanten.md`) die Liste «Plugin-Erweiterungen, die dafür fehlen»: abgeleitetes Feld («Noch nicht näher bestimmt» = «Modell leer»), Summenfeld (Bestand je Modell), Prozess Wareneingang mit Sperre.
 
@@ -1116,4 +1116,5 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Vorschlag (INFERRED):** am Kauf «Versand anteilig» und «Zoll/Gebühren anteilig» speichern; der Einstandspreis wird daraus gerechnet (Stückpreis + Anteile ÷ Anzahl) statt gespeichert — kein doppelter Fakt.
 - **Sein Wort dazu:** *«den Einstandspreis kannst du ja trotzdem errechnen, weil 0 plus irgendwas ergibt ja irgendwas»* — alte Käufe mit eingerechnetem Versand bekommen Anteil 0, ihr Einstandspreis ist dann der Stückpreis, wie heute.
 - **Rechenfelder im Konzept (gelesen):** [D-130](NewConcept/90-decision-log.md) (Formel als Baum, `+ − × ÷`, Aggregate), [D-140](NewConcept/90-decision-log.md), [`60-calculation.md`](NewConcept/60-calculation.md) — alter Stand (D-568); offen als INF-081. Dies ist ein zweiter Fall ausserhalb des Lagers, den INF-081 als Auslöser nennt.
-- **Offen:** braucht ein Rechenfeld (nicht gebaut; Umsetzung in einem anderen Thread, sein Wort 18:13); ob die Module (JLC, eBay, Eingang) dann die Anteile statt des Einstandspreises schreiben.
+- **Entschieden:** [D-1022](NewConcept/90-decision-log.md) — Rechenfeld gebaut (0.1.91), Formel Preis je Stück + Anteile ÷ Anzahl; der Eingang schreibt die Anteile. ⚠️ *Abweichung vom Vorschlag oben: alte Käufe bekommen nicht Anteil 0, sondern den Anteil, der ihren gespeicherten Einstandspreis wieder ergibt (357 Käufe) — sonst hätte sich ihr Einstandspreis geändert.*
+- **Offen:** tax_stock schreibt beim Aufteilen eines Konvoluts den Einstandspreis des ersten Teils selbst — das überschreibt jetzt die Rechnung; dort entfällt der Schritt.

@@ -12,6 +12,7 @@ final class ShippedAddons
         $registry->add(new PickRowsAddon());
         $registry->add(new RangeValidator());
         $registry->add(new ShapeValidator());
+        $registry->add(new CalculationStep());
 
         return $registry;
     }

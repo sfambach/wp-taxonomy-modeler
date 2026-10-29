@@ -123,7 +123,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, move_field {node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it, retarget_field {node, field, target} — points the field at another node and keeps its kind, merge_field {node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field), set_label {node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it, set_setting {node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, move_field {node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it, retarget_field {node, field, target} — points the field at another node and keeps its kind, merge_field {node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field), set_label {node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it, set_addons {node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated, set_setting {node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -137,7 +137,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'set_list', 'set_setting', 'set_label']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'set_list', 'set_setting', 'set_label', 'set_addons']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -160,6 +160,7 @@ final class ModelAbilities
                                 'value'       => ['type' => 'string'],
                                 'role'        => ['type' => 'string', 'enum' => array_map(static fn (SeededRole $r): string => $r->value, SeededRole::cases())],
                                 'text'        => ['type' => 'string'],
+                                'addons'      => ['type' => 'array', 'items' => ['type' => 'object']],
                             ],
                             'required'   => ['op'],
                         ],
@@ -536,6 +537,24 @@ final class ModelAbilities
                 $nodeId = $this->node($at('node'))->id;
 
                 $screen->setSetting($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), (string) ($change['value'] ?? ''), isset($change['field']) ? $at('field') : null);
+
+                return $nodeId;
+
+            case 'set_addons':
+                // ⚠️ *Gebaut für die gerechneten Felder (D-1022): die Rechenschritte sind Zusatzfunktionen an der Kante, und die gab es
+                // bisher nur in der Maske.*
+                $nodeId = $this->node($at('node'))->id;
+                $addons = [];
+
+                foreach (is_array($change['addons'] ?? null) ? $change['addons'] : [] as $eintrag) {
+                    $felder = $this->resolveValues(is_array($eintrag['fields'] ?? null) ? $eintrag['fields'] : [], $refs);
+                    $addons[] = [
+                        'name'   => sanitize_key((string) ($eintrag['name'] ?? '')),
+                        'fields' => array_map(static fn (mixed $v): string => sanitize_text_field((string) $v), array_combine(array_map(static fn (mixed $k): string => sanitize_key((string) $k), array_keys($felder)), array_values($felder))),
+                    ];
+                }
+
+                $screen->setAddons($nodeId, $addons, isset($change['field']) ? $at('field') : null);
 
                 return $nodeId;
 

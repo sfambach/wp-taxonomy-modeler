@@ -17,8 +17,9 @@ use Taxmod\Core\Port\ExchangeRates;
  *   W --> L["@o.lines = [@p0 …]"]
  * ```
  *
- * The landed price per piece spreads shipping and fees over all items of the order by their price, picked or not —
- * leaving an item out does not make the others dearer.
+ * Shipping and fees are spread over all items of the order by their price, picked or not — leaving an item out does not
+ * make the others dearer. Each purchase gets its two shares; the landed price per piece is calculated from them in the
+ * model (D-1022), not written here.
  *
  * An amount in a foreign currency carries the ECB rate of the order date beside it (D-064, D-966); the euro figure is
  * derived on display, never stored.
@@ -64,7 +65,8 @@ final class ChangeListBuilder
         ]);
 
         $changes = [['op' => 'create_record', 'node' => $this->target->ordersNode, 'ref' => 'o']];
-        $landed = self::landedUnitPrices($proposal);
+        $shares = self::costShares($proposal);
+        $landed = $this->sharesKnown() ? [] : self::landedUnitPrices($proposal);
         $refs = [];
 
         foreach ($pickedLines as $index) {
@@ -72,7 +74,7 @@ final class ChangeListBuilder
             $ref = 'p' . $index;
             $refs[] = '@' . $ref;
             $changes[] = ['op' => 'create_record', 'node' => $this->target->purchasesNode, 'ref' => $ref];
-            $changes[] = ['op' => 'set_values', 'record' => '@' . $ref, 'values' => $this->purchaseValues($line, $currency, $rate, $landed[$index] ?? null, $originNote)];
+            $changes[] = ['op' => 'set_values', 'record' => '@' . $ref, 'values' => $this->purchaseValues($line, $currency, $rate, $shares[$index] ?? [], $landed[$index] ?? null, $originNote)];
         }
 
         $orderValues[(string) $this->target->orderField('lines')] = ['values' => $refs];
@@ -167,7 +169,8 @@ final class ChangeListBuilder
             return [];
         }
 
-        $landed = self::landedUnitPrices($proposal);
+        $shares = self::costShares($proposal);
+        $landed = $this->sharesKnown() ? [] : self::landedUnitPrices($proposal);
         $byId = [];
 
         foreach ($order->lines as $line) {
@@ -185,9 +188,17 @@ final class ChangeListBuilder
             foreach ([
                 'unit_price'        => $source->unitPrice,
                 'total_price'       => $unit === null || $source->quantity === null ? null : Money::format((int) round($unit * $source->quantity)),
+                'shipping_share'    => $shares[$index]['shipping'] ?? null,
+                'fees_share'        => $shares[$index]['fees'] ?? null,
                 'landed_unit_price' => $landed[$index] ?? null,
             ] as $role => $amount) {
                 if (in_array($role, $line->filled, true) || ! $this->target->hasPurchaseField($role)) {
+                    continue;
+                }
+
+                // ⚠️ *Shares only beside a price written from the same mail: an older price may already hold the shipping (D-933),
+                // and a share beside it would count it twice (D-1022).*
+                if (str_ends_with($role, '_share') && in_array('unit_price', $line->filled, true)) {
                     continue;
                 }
 
@@ -204,13 +215,16 @@ final class ChangeListBuilder
         return $changes;
     }
 
-    /** @return array<string, mixed> */
-    private function purchaseValues(ProposalLine $line, int $currency, ?string $rate, ?string $landedUnitPrice, string $originNote): array
+    /**
+     * @param  array{shipping?: ?string, fees?: ?string} $share
+     * @return array<string, mixed>
+     */
+    private function purchaseValues(ProposalLine $line, int $currency, ?string $rate, array $share, ?string $landedUnitPrice, string $originNote): array
     {
         $unit = Money::toUnits($line->unitPrice);
         $values = [];
 
-        // ⚠️ *A role the target does not name is left out, not refused: a sold item has no total and no landed price
+        // ⚠️ *A role the target does not name is left out, not refused: a sold item has no total and no cost shares
         // (D-977). The landed price of a sale would be the selling price plus shipping — not his cost.*
         foreach ([
             'title'             => $line->title,
@@ -218,6 +232,8 @@ final class ChangeListBuilder
             'article_number'    => $line->articleNumber,
             'unit_price'        => $this->amount('unit_price', $line->unitPrice, $currency, $rate),
             'total_price'       => $unit === null || $line->quantity === null ? null : $this->amount('total_price', Money::format((int) round($unit * $line->quantity)), $currency, $rate),
+            'shipping_share'    => $this->amount('shipping_share', $share['shipping'] ?? null, $currency, $rate),
+            'fees_share'        => $this->amount('fees_share', $share['fees'] ?? null, $currency, $rate),
             'landed_unit_price' => $this->amount('landed_unit_price', $landedUnitPrice, $currency, $rate),
             'origin'            => ['values' => [(string) $this->target->originDocumented]],
             'origin_note'       => $originNote,
@@ -231,7 +247,54 @@ final class ChangeListBuilder
     }
 
     /**
-     * Price per piece plus its share of shipping and fees, spread by item value (D-933) — also what the inbox shows.
+     * Whether the target names the cost shares. Without them the landed price is written as before (D-933); with them the
+     * model calculates it (D-1022) and it is not written.
+     */
+    private function sharesKnown(): bool
+    {
+        return $this->target->hasPurchaseField('shipping_share') || $this->target->hasPurchaseField('fees_share');
+    }
+
+    /**
+     * Each line's share of shipping and of fees, spread by item value (D-933, D-1022); a share of nothing is left out,
+     * since an empty share counts as zero in the landed price.
+     *
+     * @return array<int, array{shipping: ?string, fees: ?string}> line index => shares of the whole line
+     */
+    public static function costShares(OrderProposal $proposal): array
+    {
+        $lineTotals = [];
+
+        foreach ($proposal->lines as $index => $line) {
+            $unit = Money::toUnits($line->unitPrice);
+
+            if ($unit === null || $line->quantity === null || $line->quantity <= 0) {
+                return [];
+            }
+
+            $lineTotals[$index] = $unit * $line->quantity;
+        }
+
+        $sum = array_sum($lineTotals);
+        $spread = static function (int $extra, int|float $lineTotal) use ($sum, $lineTotals): ?string {
+            $share = (int) round($sum == 0 ? $extra / count($lineTotals) : $extra * $lineTotal / $sum);
+
+            return $share === 0 ? null : Money::format($share);
+        };
+        $shipping = Money::toUnits($proposal->shippingCost) ?? 0;
+        $fees = Money::toUnits($proposal->fees) ?? 0;
+        $shares = [];
+
+        foreach ($lineTotals as $index => $lineTotal) {
+            $shares[$index] = ['shipping' => $spread($shipping, $lineTotal), 'fees' => $spread($fees, $lineTotal)];
+        }
+
+        return $shares;
+    }
+
+    /**
+     * Price per piece plus its share of shipping and fees, spread by item value (D-933) — what the inbox shows; the model
+     * calculates the same from the shares (D-1022).
      *
      * @return array<int, string> line index => landed price per piece
      */

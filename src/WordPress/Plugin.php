@@ -49,7 +49,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.90';
+    public const VERSION     = '0.1.91';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -728,6 +728,13 @@ final class Plugin
                 'field:offered_field'   => __('field on the offered record', 'taxmod'),
                 'field:mode'            => __('then', 'taxmod'),
                 'field:pick_field'      => __('chosen by', 'taxmod'),
+                'addon:calculate'       => __('Calculate', 'taxmod'),
+                'field:operation'       => __('step', 'taxmod'),
+                'field:field'           => __('with field', 'taxmod'),
+                'enum:plus'             => '+',
+                'enum:minus'            => '−',
+                'enum:times'            => '×',
+                'enum:divided_by'       => '÷',
                 'enum:filter'           => __('filter', 'taxmod'),
                 'enum:sort'             => __('sort', 'taxmod'),
             ]);
@@ -750,6 +757,9 @@ final class Plugin
         // ⚠️ **Die Zusammenfassung wird bei jeder Änderung neu geschrieben** ([D-885](../../docs/NewConcept/90-decision-log.md),
         // sein Wort) — *auch, wenn ein Teil sich ändert: der Nachlauf sucht die Halter.*
         $data->afterWrite(function (array $saetze) use ($data, $rendering): void {
+            // ⚠️ *Erst rechnen, dann zusammenfassen: eine Zusammenfassung darf ein gerechnetes Feld nennen ([D-1022](../../docs/NewConcept/90-decision-log.md)).*
+            $this->calculationWriter($data)->refresh($saetze);
+
             (new \Taxmod\Core\Service\SummaryWriter(
                 new WpdbRecordRepository(),
                 new WpdbRelationRepository(),
@@ -761,7 +771,7 @@ final class Plugin
             ))->refresh($saetze);
         });
 
-        return new NodesScreen(
+        return (new NodesScreen(
             $this->editor(),
             new Tree(new WpdbNodeRepository()),
             $labels,
@@ -781,6 +791,21 @@ final class Plugin
             // Maske schreibt Attribute in `settings_value` — mit derselben Auflösung, die der Zeichner
             // liest, damit «nur Gesetztes» gegen dasselbe Bild geprüft wird.*
             $this->settingsEditor()
+        ))->withCalculations($this->calculationWriter($data));
+    }
+
+    /** Der Schreiber der gerechneten Felder ([D-1022](../../docs/NewConcept/90-decision-log.md)) — über denselben Schreibweg wie jeder Wert. */
+    public function calculationWriter(DataEntry $data): \Taxmod\Core\Service\CalculationWriter
+    {
+        return new \Taxmod\Core\Service\CalculationWriter(
+            new WpdbRecordRepository(),
+            new WpdbRelationRepository(),
+            new WpdbNodeRepository(),
+            $this->frameworkNodes(),
+            $this->typeNodes(),
+            $this->settingsResolver(),
+            $data,
+            UnitScaffold::rateFieldId()
         );
     }
 

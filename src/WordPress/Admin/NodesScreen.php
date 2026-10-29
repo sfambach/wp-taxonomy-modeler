@@ -6320,7 +6320,74 @@ final class NodesScreen
             $gewollt[] = ['name' => sanitize_key((string) ($angabe['name'] ?? '')), 'fields' => $felder];
         }
 
-        return $this->attributes->putAddons($node, $gewollt, $useSite) ? 1 : 0;
+        if (! $this->attributes->putAddons($node, $gewollt, $useSite)) {
+            return 0;
+        }
+
+        if ($useSite !== null) {
+            $this->formulaChanged($useSite);
+        }
+
+        return 1;
+    }
+
+    /** Der Schreiber der gerechneten Felder ([D-1022](../../../docs/NewConcept/90-decision-log.md)); ohne ihn wird nach einer Formel nichts gerechnet. */
+    private ?\Taxmod\Core\Service\CalculationWriter $calculations = null;
+
+    public function withCalculations(\Taxmod\Core\Service\CalculationWriter $calculations): self
+    {
+        $this->calculations = $calculations;
+
+        return $this;
+    }
+
+    /**
+     * Die Zusatzfunktionen einer Verwendungsstelle setzen, wie die Maske sie schickt — für die Fähigkeit `taxmod/apply`
+     * ([D-1022](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param list<array{name?: string, fields?: array<string, string>}> $addons
+     */
+    public function setAddons(int $nodeId, array $addons, ?int $fieldId = null): bool
+    {
+        $knoten = $this->editor->find($nodeId) ?? throw new \InvalidArgumentException("No node {$nodeId}.");
+        $kante  = $fieldId === null ? null : ($this->editor->relationById($fieldId) ?? throw new \InvalidArgumentException("No field {$fieldId}."));
+
+        if ($this->attributes === null) {
+            throw new \RuntimeException('Settings cannot be written here.');
+        }
+
+        if (! $this->attributes->putAddons($knoten, $addons, $kante)) {
+            return false;
+        }
+
+        if ($kante !== null) {
+            $this->formulaChanged($kante);
+        }
+
+        return true;
+    }
+
+    /**
+     * Nach geänderten Rechenschritten: das Feld ist gesperrt, solange es gerechnet wird, und jeder Satz wird neu gerechnet.
+     *
+     * ⚠️ *Sein Wort zum gerechneten Feld steht im Konzept als «read-only for the user» ([D-043](../../../docs/NewConcept/90-decision-log.md));
+     * die Sperre folgt den Schritten, damit Formel und Sperre nicht auseinanderlaufen.*
+     */
+    private function formulaChanged(Relation $kante): void
+    {
+        if ($this->calculations === null) {
+            return;
+        }
+
+        $gerechnet = $this->calculations->stepsOf($kante) !== [];
+
+        if ($kante->readOnly !== $gerechnet) {
+            $this->editor->setReadOnly($kante->fromNodeId, $kante->id, $gerechnet);
+        }
+
+        if ($gerechnet) {
+            $this->calculations->refreshNode($kante->fromNodeId);
+        }
     }
 
     /**

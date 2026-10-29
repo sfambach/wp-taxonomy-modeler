@@ -36,8 +36,11 @@ final class ImportChangeListTest extends TestCase
         self::assertSame('10', $purchase['203']);
         self::assertSame(['0' => ['4234' => '0.5', '4236' => '8571']], $purchase['205']);
         self::assertSame(['0' => ['4234' => '5', '4236' => '8571']], $purchase['206']);
-        // 5.95 shipping, half of the goods value is this item: (5.00 + 2.975) / 10; optional part, so a new one
-        self::assertSame(['neu' => ['4234' => '0.7975', '4236' => '8571']], $purchase['207']);
+        // 5.95 shipping, half of the goods value is this item: its share 2.975; optional part, so a new one. The landed
+        // price (5.00 + 2.975) / 10 is calculated in the model (D-1022), not written; no fees, no fee share.
+        self::assertSame(['neu' => ['4234' => '2.975', '4236' => '8571']], $purchase['209']);
+        self::assertArrayNotHasKey('207', $purchase);
+        self::assertArrayNotHasKey('210', $purchase);
 
         $order = $changes[3]['values'];
         self::assertSame('@o', $changes[3]['record']);
@@ -178,8 +181,34 @@ final class ImportChangeListTest extends TestCase
         self::assertSame('41', $changes[0]['record']);
         self::assertSame(['0' => ['4234' => '0.5', '4236' => '8571']], $changes[0]['values']['205'], 'the empty part it holds is filled');
         self::assertSame(['0' => ['4234' => '5', '4236' => '8571']], $changes[0]['values']['206']);
-        // shipping 2.00 over 10.00 of goods, half of it this item: (5 + 1) / 10
-        self::assertSame(['neu' => ['4234' => '0.6', '4236' => '8571']], $changes[0]['values']['207'], 'a part it lacks is created');
+        // shipping 2.00 over 10.00 of goods, half of it this item: a share of 1 beside the price written from the same mail
+        self::assertSame(['neu' => ['4234' => '1', '4236' => '8571']], $changes[0]['values']['209'], 'a part it lacks is created');
+        self::assertArrayNotHasKey('207', $changes[0]['values'], 'the landed price is calculated (D-1022)');
+    }
+
+    /** D-1022: without share fields the landed price is written as before. */
+    public function testWithoutShareFieldsTheLandedPriceIsWrittenAsBefore(): void
+    {
+        $proposal = new OrderProposal('Reichelt', 'I-1', ProposalKind::Ordered, '2026-10-20', 'EUR', [
+            new ProposalLine('LM317', 10, '0.50'),
+            new ProposalLine('Lochraster', 1, '5.00'),
+        ], shippingCost: '5.95');
+
+        $purchase = (new ChangeListBuilder(self::target(sharesAt: 0)))->newOrder($proposal, [0], '')[2]['values'];
+
+        self::assertSame(['neu' => ['4234' => '0.7975', '4236' => '8571']], $purchase['207']);
+        self::assertArrayNotHasKey('209', $purchase);
+    }
+
+    /** D-1022: an older price may already hold the shipping (D-933) — no share beside it. */
+    public function testNoShareBesideAPriceTheRecordAlreadyHolds(): void
+    {
+        $proposal = new OrderProposal('JLCPCB', 'W2', ProposalKind::Ordered, '2025-12-16', 'EUR', [new ProposalLine('Board A', 10, '0.50')], shippingCost: '2.00');
+        $existing = new ExistingOrder(7, lines: [new ExistingLine(41, 'board a', ['unit_price' => 410], ['unit_price'])]);
+
+        $changes = (new ChangeListBuilder(self::target()))->completed($existing, $proposal, []);
+
+        self::assertSame([], $changes, 'a line with a price is no line to fill, so it gets no share either');
     }
 
     public function testTheOnlyItemOfAnOrderIsTheSourcesOnlyItemWhateverItsName(): void
@@ -240,7 +269,7 @@ final class ImportChangeListTest extends TestCase
         ], [405]);
     }
 
-    private static function target(?int $rateField = null): TargetModel
+    private static function target(?int $rateField = null, int $sharesAt = 209): TargetModel
     {
         return new TargetModel(10, 20, 99, 4234, 4236, [
             'title' => 101, 'origin' => 102, 'origin_note' => 103, 'order_number' => 104, 'platform' => 105,
@@ -248,7 +277,7 @@ final class ImportChangeListTest extends TestCase
             'total' => 111, 'tracking' => 112, 'lines' => 113,
         ], [
             'title' => 201, 'origin' => 202, 'quantity' => 203, 'article_number' => 204, 'unit_price' => 205,
-            'total_price' => 206, 'landed_unit_price' => 207, 'origin_note' => 208,
+            'total_price' => 206, 'landed_unit_price' => 207, 'origin_note' => 208, 'shipping_share' => $sharesAt, 'fees_share' => $sharesAt === 0 ? 0 : $sharesAt + 1,
         ], ['EUR' => 8571, 'USD' => 8573], [205, 206], $rateField);
     }
 }
