@@ -2876,6 +2876,12 @@ final class RenderingTest extends TestCase
         $rechner->refresh([$satz]);
         $ergebnis = $this->wertIn($satz, $einstand->id);
         self::assertSame('3.6667', $this->wertIn((int) $ergebnis?->reference, $wert->id)?->decimal);
+
+        // *Gemessen auf fambach.net: ohne einen Betrag, nur mit Anzahl, ist der Einheitenwert nicht rechenbar — kein Abbruch.*
+        $leer = $daten->create($kauf->id)->id;
+        $daten->put($leer, $anzahl->id, TypedValue::ofInt(2));
+        $rechner->refresh([$leer]);
+        self::assertNull($this->wertIn((int) $this->wertIn($leer, $einstand->id)?->reference, $wert->id));
     }
 
     #[Test]

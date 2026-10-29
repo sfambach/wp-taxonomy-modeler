@@ -217,7 +217,8 @@ final class CalculationWriter
                     $muster ??= $teilId;
                 }
 
-                $gesehen = $gesehen || $zahl !== null;
+                // *Nur ein Summand trägt das Ergebnis — eine Anzahl allein ist kein Preis.*
+                $gesehen = $gesehen || ($zahl !== null && ($art === CalculationOperation::Plus || $art === CalculationOperation::Minus));
             }
 
             if ($zahl === null && ($art === CalculationOperation::Times || $art === CalculationOperation::DividedBy)) {
@@ -349,6 +350,12 @@ final class CalculationWriter
 
         // ⚠️ *Ein Betrag nur in einen Teil derselben Art wie die Beträge, aus denen er kommt — sonst wäre er nicht rechenbar.*
         if ($ergebnis !== null && $ergebnis['shape'] !== null && ($teilKnoten[$ergebnis['shape']] ?? null) !== $kante->toNodeId) {
+            $ergebnis = null;
+        }
+
+        // ⚠️ *Eine blosse Zahl nur in ein Feld eines einfachen Typs. Gemessen am 2026-10-29 auf fambach.net: ein Kauf ohne Stückpreis,
+        // aber mit Anzahl, ergab eine Zahl ohne Einheit, und die liess sich in den Einheitenwert nicht schreiben — das brach den Lauf ab.*
+        if ($ergebnis !== null && $ergebnis['shape'] === null && $this->typeNodes->typeOf($kante->toNodeId) === null) {
             $ergebnis = null;
         }
 
