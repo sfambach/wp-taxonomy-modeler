@@ -48,8 +48,8 @@ final class Targets
             'total_price'       => 149000110049,
             'landed_unit_price' => 149000110065,
             // Cost shares (D-1022): created with taxmod/apply on fambach.net, 2026-10-29.
-            'shipping_share'    => 0,
-            'fees_share'        => 0,
+            'shipping_share'    => 149000110184,
+            'fees_share'        => 149000110185,
         ],
         // Sales (D-934, D-977): measured with taxmod/read-node on fambach.net, 2026-10-23.
         'sales_node'        => 149000110053,
