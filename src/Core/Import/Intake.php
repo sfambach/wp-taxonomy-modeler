@@ -61,7 +61,9 @@ final class Intake
             return ! $status && $statusSource ? IntakeVerdict::Nothing : IntakeVerdict::NotResponsible;
         }
 
-        if ($proposal->lines === [] || ! in_array($proposal->kind, self::ORDER_KINDS, true)) {
+        // ⚠️ *A parcel mail without an order number only follows an order; it never starts one (D-1017).*
+        if ($proposal->lines === [] || ! in_array($proposal->kind, self::ORDER_KINDS, true)
+            || ($proposal->numberMissing && in_array($proposal->kind, [ProposalKind::Shipped, ProposalKind::Delivered], true))) {
             return IntakeVerdict::Nothing;
         }
 

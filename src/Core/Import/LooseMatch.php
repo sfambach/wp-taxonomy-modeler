@@ -5,7 +5,8 @@ namespace Taxmod\Core\Import;
 /**
  * A proposal without an order number — a won auction, an invoice — belongs to an order of the same platform with the
  * same seller or the same start of the item title, within 14 days; without a date on either side both must agree.
- * The rule of the Python importer, carried over from tax_mail so any source can use it.
+ * The rule of the Python importer, carried over from tax_mail so any source can use it. A parcel mail that names only
+ * its tracking number belongs to the order that carries that number, whatever its date or title (D-1017).
  *
  * @see docs/pakete/import/konzept.md §3.8
  */
@@ -37,6 +38,16 @@ final class LooseMatch
 
     public static function matchesOrder(OrderProposal $loose, ExistingOrder $order): bool
     {
-        return self::matches($loose, $order->counterparty, $order->orderDate, $order->title);
+        return self::sharesTracking($loose->trackingNumbers, $order->trackingNumbers)
+            || self::matches($loose, $order->counterparty, $order->orderDate, $order->title);
+    }
+
+    /**
+     * @param list<string> $loose
+     * @param list<string> $other
+     */
+    public static function sharesTracking(array $loose, array $other): bool
+    {
+        return $loose !== [] && array_intersect($loose, $other) !== [];
     }
 }

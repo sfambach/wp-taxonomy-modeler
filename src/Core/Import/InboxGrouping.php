@@ -50,7 +50,7 @@ final class InboxGrouping
                 $titles = implode(' ', array_map(static fn (ProposalLine $line): string => $line->title, $other->lines));
                 $date = $other->orderDate ?? ($receivedDays[$groups[$otherKey][0]] ?? null);
 
-                if (LooseMatch::matches($loose, $other->counterparty, $date, $titles)) {
+                if (LooseMatch::sharesTracking($loose->trackingNumbers, $other->trackingNumbers) || LooseMatch::matches($loose, $other->counterparty, $date, $titles)) {
                     $groups[$otherKey][] = $groups[$key][0];
                     unset($groups[$key]);
                     break;

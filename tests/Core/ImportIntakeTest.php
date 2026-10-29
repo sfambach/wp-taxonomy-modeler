@@ -9,6 +9,7 @@ use Taxmod\Core\Import\DutyTable;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\Intake;
 use Taxmod\Core\Import\IntakeVerdict;
+use Taxmod\Core\Import\LooseMatch;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalGroup;
 use Taxmod\Core\Import\ProposalKind;
@@ -115,5 +116,17 @@ final class ImportIntakeTest extends TestCase
         self::assertSame('jlcpcb', $duties->responsible('JLCPCB', DutyRole::Orders), 'D-965');
         self::assertSame('mail', $duties->responsible('JLCPCB', DutyRole::Status));
         self::assertTrue($duties->allows('mail', 'JLCPCB', DutyRole::Orders, ['mail']), 'without the JLC module the mail brings the orders');
+    }
+
+    #[Test]
+    public function a_parcel_mail_follows_the_order_with_its_tracking_number_and_never_starts_one(): void
+    {
+        $intake = new Intake(DutyTable::initial(), ['mail']);
+        $parcel = new OrderProposal('AliExpress', 'packstueck:00340434886114242631', ProposalKind::Shipped,
+            lines: [new ProposalLine('AT32F415RCT7', 1.0, null)], trackingNumbers: ['00340434886114242631'], numberMissing: true);
+
+        self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', $parcel, null), 'D-1017');
+        self::assertTrue(LooseMatch::matchesOrder($parcel, new ExistingOrder(7, ['00340434886114242631'])));
+        self::assertFalse(LooseMatch::matchesOrder($parcel, new ExistingOrder(7, ['LP1'])));
     }
 }
