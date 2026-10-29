@@ -1109,7 +1109,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Vorschlag (INFERRED):** «Bestell-Nr.» wird eine Zusammensetzung «Bezugsquelle» (0..*): Organisation (Händler oder Hersteller) + Nummer. Ein Bauteil kann so eine Herstellernummer und mehrere Händlernummern haben.
 - **Offen:** ob die Bezugsquelle am Bauteil steht oder als Lagersicht ([D-995](NewConcept/90-decision-log.md)) daneben; wie die vorhandenen Bestell-Nr.-Werte ihre Organisation bekommen.
 
-### INF-101 · Bezugskosten am Kauf statt gespeichertem Einstandspreis (2026-10-29)
+## INF-101 · Bezugskosten am Kauf statt gespeichertem Einstandspreis (2026-10-29)
 
 - **Sein Wort:** *«ich hätte erwartet, dass du die Lieferkosten und Steuern anteilig als Feld da hast und daraus dann ja doch dann den Einstandspreis berechnest. Das wäre so mein Ansatz.»* — und *«Nee, nicht bauen»*.
 - **Entschieden (gelesen):** [D-933](NewConcept/90-decision-log.md): «Einstandspreis je Stück» wird **gespeichert**, «weil der Anteil am Versand bei mehreren Positionen sich nicht zurückrechnen lässt».
