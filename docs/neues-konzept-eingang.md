@@ -1114,4 +1114,5 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Sein Wort:** *«ich hätte erwartet, dass du die Lieferkosten und Steuern anteilig als Feld da hast und daraus dann ja doch dann den Einstandspreis berechnest. Das wäre so mein Ansatz.»* — und *«Nee, nicht bauen»*.
 - **Entschieden (gelesen):** [D-933](NewConcept/90-decision-log.md): «Einstandspreis je Stück» wird **gespeichert**, «weil der Anteil am Versand bei mehreren Positionen sich nicht zurückrechnen lässt».
 - **Vorschlag (INFERRED):** am Kauf «Versand anteilig» und «Zoll/Gebühren anteilig» speichern; der Einstandspreis wird daraus gerechnet (Stückpreis + Anteile ÷ Anzahl) statt gespeichert — kein doppelter Fakt.
-- **Offen:** braucht ein Rechenfeld (nicht gebaut); alte Käufe mit eingerechnetem Versand bekommen Anteil 0; ob die Module (JLC, eBay, Eingang) dann die Anteile statt des Einstandspreises schreiben.
+- **Sein Wort dazu:** *«den Einstandspreis kannst du ja trotzdem errechnen, weil 0 plus irgendwas ergibt ja irgendwas»* — alte Käufe mit eingerechnetem Versand bekommen Anteil 0, ihr Einstandspreis ist dann der Stückpreis, wie heute.
+- **Offen:** braucht ein Rechenfeld (nicht gebaut); ob die Module (JLC, eBay, Eingang) dann die Anteile statt des Einstandspreises schreiben.
