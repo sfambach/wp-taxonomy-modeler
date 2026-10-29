@@ -6356,15 +6356,15 @@ final class NodesScreen
             throw new \RuntimeException('Settings cannot be written here.');
         }
 
-        if (! $this->attributes->putAddons($knoten, $addons, $kante)) {
-            return false;
-        }
+        $geschrieben = $this->attributes->putAddons($knoten, $addons, $kante);
 
+        // ⚠️ *Auch ohne Änderung wird neu gerechnet: dieselbe Formel noch einmal zu schicken ist der Weg, den Bestand nachzurechnen
+        // (gebraucht am 2026-10-29, als 0.1.93 die Wahl zwischen doppelten Werten änderte).*
         if ($kante !== null) {
             $this->formulaChanged($kante);
         }
 
-        return true;
+        return $geschrieben;
     }
 
     /**

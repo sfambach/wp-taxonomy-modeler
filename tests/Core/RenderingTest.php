@@ -2831,6 +2831,11 @@ final class RenderingTest extends TestCase
         $rechner->refresh([$satz]);
         self::assertSame('7.49', $this->wertIn($satz, $einstand->id)?->decimal);
 
+        // *Gemessen auf fambach.net: 84 Käufe tragen ein einwertiges Feld doppelt — es gilt der zuletzt geschriebene Wert.*
+        $this->records->putValue(new \Taxmod\Core\Model\RelationRecord($satz, $gesamt->id, '', TypedValue::ofDecimal('31.96')));
+        $rechner->refresh([$satz]);
+        self::assertSame('8.49', $this->wertIn($satz, $einstand->id)?->decimal);
+
         // *Ohne Anzahl kein Teiler: das Feld wird leer, nie bleibt die alte Zahl stehen.*
         $daten->clear($satz, $anzahl->id);
         $rechner->refresh([$satz]);

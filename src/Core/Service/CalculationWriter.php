@@ -499,7 +499,11 @@ final class CalculationWriter
     }
 
     /**
-     * Der erste Wert je Feld, ohne Sprache.
+     * Der letzte Wert je Feld, ohne Sprache.
+     *
+     * ⚠️ *Der letzte, nicht der erste: gemessen am 2026-10-29 auf fambach.net tragen 84 Käufe «Preis je Stück» und «Preis gesamt»
+     * zweimal, und ihr gespeicherter Einstandspreis war aus dem zuletzt geschriebenen Teil gerechnet. Mit dem ersten änderten sich
+     * 74 davon. Das Feld selbst ist einwertig — die Doppel sind ein Fehler im Bestand, kein zweiter Wert.*
      *
      * @param  list<RelationRecord>   $zeilen
      * @return array<int, TypedValue>
@@ -510,7 +514,7 @@ final class CalculationWriter
 
         foreach ($zeilen as $zeile) {
             if ($zeile->locale === '') {
-                $aus[$zeile->relationId] ??= $zeile->value;
+                $aus[$zeile->relationId] = $zeile->value;
             }
         }
 
