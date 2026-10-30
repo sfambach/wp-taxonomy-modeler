@@ -1,8 +1,7 @@
 # Lager: Einkauf — Bedarf, Bezugsquelle, Bestellung
 
 *Entwurf vom 2026-10-30, Thread «Bestellungen erstellen». Gehört zu [`konzept.md`](konzept.md),
-[`prozesse.md`](prozesse.md) und [`cockpit-wareneingang.md`](cockpit-wareneingang.md). Entschieden ist nur, was eine
-`D-<nnn>` trägt; der Rest ist `INFERRED` und wartet auf sein Wort ([INF-102](../../neues-konzept-eingang.md#inf-102--einkauf-bestellungen-anlegen-und-nachbestellen-2026-10-30)).*
+[`prozesse.md`](prozesse.md) und [`cockpit-wareneingang.md`](cockpit-wareneingang.md). Entschieden: E1–E6 wie vorgeschlagen, [D-1027](../../NewConcept/90-decision-log.md); Einzelheiten sind `INFERRED` ([INF-102](../../neues-konzept-eingang.md#inf-102--einkauf-bestellungen-anlegen-und-nachbestellen-2026-10-30)).*
 
 **Sein Auftrag** (2026-10-30):
 
@@ -144,14 +143,14 @@ falls ein Händler das anbietet) und danach «Als bestellt markieren» mit Feld 
 
 ## EK5 — Zu entscheiden
 
-| | Frage | Vorschlag |
+| | Frage | Entschieden ([D-1027](../../NewConcept/90-decision-log.md)) |
 |---|---|---|
 | **E1** | Bedarf und Bestellung: Weg A (trennen, Bedarf bleibt Klammer) oder Weg B (eine Bestellung, Händler je Kauf)? | **A** |
 | **E2** | Wo liegt der Bedarf: als Bestellung «Entwurf» ohne Händler (vorhandener Knoten, §3.4) oder als eigener Knoten «Bedarf» mit Positionen? | Bestellung «Entwurf» ohne Händler — kein neuer Knoten; neu nur ein Feld «Bedarf» am Kauf (Verweis auf die Entwurfs-Bestellung) |
 | **E3** | Menge im Knopf: aus Mindestbestand rechnen oder immer 1? | rechnen, wenn Mindestbestand gesetzt, sonst 1 |
 | **E4** | Bedarf aus Stücklisten (Projekt × Stückzahl − frei) schon jetzt oder erst mit den Bauläufen (Stufe 3)? | Knopf zuerst; Stückliste als nächster Schritt |
 | **E5** | Modul: `wp_tax_stock` oder eigenes? | `wp_tax_stock` — Material, Bestand und Bestellungen liegen dort |
-| **E6** | Teilesuche und Warenkorb über die API-Module (EK6): welcher Händler zuerst? | Mouser (Suche + Warenkorb per API, Schlüssel aus «My Mouser»); LCSC, sobald der API-Antrag genehmigt ist |
+| **E6** | Teilesuche und Warenkorb über die API-Module (EK6): welcher Händler zuerst? | Mouser (Suche + Warenkorb per API, Schlüssel aus «My Mouser») — **zum Schluss**, nach E1–E5; LCSC, sobald der API-Antrag genehmigt ist |
 
 ---
 

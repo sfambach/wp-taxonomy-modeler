@@ -1121,7 +1121,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-102 · Einkauf: Bestellungen anlegen und nachbestellen (2026-10-30)
 
-**Typ:** `FRAGE` · **Status:** `OPEN`
+**Typ:** `FRAGE` · **Status:** `DECIDED` — 2026-10-30, [D-1027](NewConcept/90-decision-log.md) («alle 6 so wie du es vorgeschalgen hast»).
 
 - **Sein Wort:** *«es geht darum bestellungen zu erstellen»* — *«also selbst zu bestellen»* — *«lass uns das erstmal designen … auch wäre bei jedem material ein button nachbestellen nett, da drücke ich dann drauf und kann das einer offnen bestellung hinzufügen oder eine neue bestelllung anlegen»*
 - **Sein Wort (19:18):** *«Das soll eher so, ja, Bedarf sein, … das soll noch nicht feststehen, von wem ich das bestelle»* — *«so kann man zum Beispiel alle Teile von einem Projekt zusammenbestellen, aber bei unterschiedlichen Lieferanten»*
