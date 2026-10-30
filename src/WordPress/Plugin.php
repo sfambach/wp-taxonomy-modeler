@@ -49,7 +49,10 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.95';
+    public const VERSION     = '0.1.96';
+
+    /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
+    public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -82,6 +85,17 @@ final class Plugin
         // last of all, after every module has added its pages.*
         add_action('admin_menu', self::configurationLast(...), PHP_INT_MAX);
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
+
+        // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
+        add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '') use ($plugin): string {
+            if ($recordId <= 0 || ! current_user_can(self::CAPABILITY)) {
+                return is_string($html) ? $html : '';
+            }
+
+            $plugin->enqueueStyle();
+
+            return $plugin->screen()->recordEditor($recordId, $returnTo);
+        }, 10, 3);
 
         // ⚠️ **Der erste Rückweg vom Rand in den Kern** ([D-666](../../docs/NewConcept/90-decision-log.md),
         // [D-627](../../docs/NewConcept/90-decision-log.md)) — *gemessen 0 REST-Routen und 0 AJAX,

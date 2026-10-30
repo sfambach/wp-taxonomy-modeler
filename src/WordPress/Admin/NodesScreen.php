@@ -192,6 +192,9 @@ final class NodesScreen
     /** Der Satz, den die Vorschau zeigt und bearbeitet — gewählt in der Tabelle darunter ([D-785](../../../docs/NewConcept/90-decision-log.md)). */
     private const PREVIEW_RECORD = 'taxmod_preview_record';
 
+    /** Where a record edited on a module's page goes back to after an act (D-1025). */
+    private const RETURN_TO = 'taxmod_return';
+
     /** Ein Satz, der über seinen Link geöffnet wird — der Knoten dazu wird beim Öffnen nachgeschlagen (D-852). */
     private const OPEN_RECORD = 'taxmod_open_record';
 
@@ -301,6 +304,67 @@ final class NodesScreen
         $types  = $this->rendering->typesFor($felder);
 
         return array_map(static fn (Relation $r): array => ['relation' => $r, 'type' => $types[$r->id] ?? null], $felder);
+    }
+
+    /**
+     * Ein Satz zum Bearbeiten an fremder Stelle — die Seite «Admin» der Vorschau samt «Speichern», für ein Modul ([D-1025](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «warum springt er zum bearbeiten in den tax wir haben doch die renderer dafür». Dieselbe Zeichnung und derselbe
+     * Akt wie in der Vorschau; nur der Rückweg ist `$returnTo`, damit man nach dem Speichern dort bleibt, wo man war.*
+     */
+    public function recordEditor(int $recordId, string $returnTo): string
+    {
+        $satz   = $this->data->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
+        $knoten = $this->editor->find($satz->nodeId) ?? throw new \InvalidArgumentException("No node {$satz->nodeId}.");
+        $felder = $this->editor->fieldsOf($knoten->id);
+
+        if ($felder === []) {
+            return '';
+        }
+
+        $held = [];
+
+        foreach ($this->data->valuesOf($recordId) as $wert) {
+            $held[$wert->relationId] = $wert->value;
+        }
+
+        $resolved = $this->rendering->settingsForUseSites($felder);
+        $formId   = 'taxmod-preview-record-' . $recordId;
+
+        return '<div class="taxmod-preview-side taxmod-record-editor" id="taxmod-preview-edit">'
+            . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
+                ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
+                ->withRecordCreation(...$this->recordCreation())
+                ->nodeAsForm(
+                    $knoten,
+                    $this->rendering->previewVisibilityFor($felder, $resolved)['shown'],
+                    $this->rendering->previewValuesFor($felder, $resolved, $held),
+                    Purpose::Edit,
+                    self::VALUE_FIELD . '[' . $recordId . ']',
+                    $this->localeFromRequest(),
+                    Level::Admin,
+                    true,
+                    $this->rendering->containerChosenFor($knoten) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
+                    $this->rendering->partsOfRecord($recordId, $felder),
+                    formId: $formId,
+                    recordId: $recordId
+                )->markup
+            . '<div class="taxmod-preview-acts">'
+            . ControlMarkup::actsForm(
+                $formId,
+                new Submission(
+                    admin_url('admin-post.php'),
+                    [
+                        'action'         => self::ACTION,
+                        'id'             => (string) $knoten->id,
+                        'node_record_id' => (string) $recordId,
+                        '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $knoten->id),
+                        self::RETURN_TO  => $returnTo,
+                    ]
+                ),
+                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
+            )
+            . '</div></div>';
     }
 
     /**
@@ -7279,6 +7343,13 @@ final class NodesScreen
 
         if (str_contains($adresse, self::PREVIEW_RECORD . '=')) {
             $adresse .= '#taxmod-preview-edit';
+        }
+
+        // ⚠️ *Bearbeitet auf der Seite eines Moduls (D-1025): zurück dorthin, mit der Meldung des Akts.*
+        $zurueck = isset($_POST[self::RETURN_TO]) ? wp_validate_redirect(esc_url_raw(wp_unslash((string) $_POST[self::RETURN_TO])), '') : '';
+
+        if ($zurueck !== '' && str_starts_with($zurueck, admin_url())) {
+            $adresse = add_query_arg('taxmod_message', $extra['taxmod_message'], $zurueck);
         }
 
         wp_safe_redirect($adresse);
