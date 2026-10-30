@@ -7498,6 +7498,13 @@ final class Rendering implements Presets
             return null;
         }
 
+        // ⚠️ *Eine leere Verweisliste zeigt beim Anzeigen nichts (D-1026). Ihre leere Zeile las die Werte des äusseren Satzes — die geerbten
+        // Felder haben dieselben Kanten —, und so stand unter «Quellen» der Satz selbst mit Titelbild und Bildern (sein Fund am 2026-10-30:
+        // «bilder sollten hier auch nur einmal bei bildern angezeigt werden»).*
+        if ($verweisliste && $teile === [] && $purpose === Purpose::Display) {
+            return null;
+        }
+
         $ziel = $this->gemerkterKnoten($relation->toNodeId);
 
         if ($ziel === null) {
@@ -7565,12 +7572,13 @@ final class Rendering implements Presets
             // also stehen sie im selben Vorrat wie die äusseren; hier stand `[]`, und die Adresse blieb leer (D-741).*
             $erlaubteWahl = $purpose === Purpose::Edit ? $this->allowedChoicesIn($ziel, $relation, $dieseFelder, $teil === null ? $values : $teil['werte']) : [];
 
-            $zeilenWerte[]  = $teil === null ? $values : $teil['werte'];
+            // *Die leere Zeile einer Verweisliste ist ein neuer Satz, kein Teil des äusseren: ohne dessen Werte (D-1026).*
+            $zeilenWerte[]  = $teil === null ? ($verweisliste ? [] : $values) : $teil['werte'];
             $zeilenFelder[] = $dieseFelder;
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
                 $teil === null
-                    ? $values
+                    ? ($verweisliste ? [] : $values)
                     : $teil['werte'],
                 $purpose,
                 // ⚠️ **Ein geliehener Teil hat keine Satz-Id, also nimmt er die Adresse des Knotens.**

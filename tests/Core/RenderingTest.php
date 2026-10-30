@@ -2703,6 +2703,26 @@ final class RenderingTest extends TestCase
     }
 
     #[Test]
+    public function an_empty_list_of_record_references_shows_nothing_and_never_the_record_itself(): void
+    {
+        [$bestellung, $positionen, $artikel] = $this->bestellungMitPositionen();
+        $this->einstellung($bestellung, 'renderer', TypedValue::ofText(ComplexRenderer::NAME));
+
+        // D-1026: the inner field shares its edge with one of the record's own (inherited fields do), so an empty row read the record.
+        $leer      = $this->records->add(new NodeRecord(0, $bestellung->id, 1, '2026-10-30 10:00:00', RecordType::User));
+        $rendering = $this->rendering->withPartActs('Add row', 'Remove this row', 'Add several', 'Insert', 'Unlink');
+        $werte     = [$artikel->id => TypedValue::ofText('Der Satz selbst')];
+        $teile     = $rendering->partsOfRecord($leer, [$positionen]);
+
+        $angezeigt  = $rendering->nodeAsForm($bestellung, [$positionen], $werte, Purpose::Display, '', recordParts: $teile, recordId: $leer)->markup;
+        $bearbeitet = $rendering->nodeAsForm($bestellung, [$positionen], $werte, Purpose::Edit, 'v[' . $leer . ']', recordParts: $teile, recordId: $leer)->markup;
+
+        self::assertStringNotContainsString('Der Satz selbst', $angezeigt, 'nichts vom Satz unter der leeren Liste');
+        self::assertStringNotContainsString('taxmod-table-row', $angezeigt, 'keine Zeile beim Anzeigen');
+        self::assertStringNotContainsString('Der Satz selbst', $bearbeitet, 'die leere Zeile beim Bearbeiten ist leer');
+    }
+
+    #[Test]
     public function under_the_complex_renderer_a_list_of_record_references_is_a_table_of_those_records(): void
     {
         [$bestellung, $positionen, $artikel, $satz, [$kauf1, $kauf2]] = $this->bestellungMitPositionen();
