@@ -1118,3 +1118,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Rechenfelder im Konzept (gelesen):** [D-130](NewConcept/90-decision-log.md) (Formel als Baum, `+ − × ÷`, Aggregate), [D-140](NewConcept/90-decision-log.md), [`60-calculation.md`](NewConcept/60-calculation.md) — alter Stand (D-568); offen als INF-081. Dies ist ein zweiter Fall ausserhalb des Lagers, den INF-081 als Auslöser nennt.
 - **Entschieden:** [D-1022](NewConcept/90-decision-log.md) — Rechenfeld gebaut (0.1.91), Formel Preis je Stück + Anteile ÷ Anzahl; der Eingang schreibt die Anteile. ⚠️ *Abweichung vom Vorschlag oben: alte Käufe bekommen nicht Anteil 0, sondern den Anteil, der ihren gespeicherten Einstandspreis wieder ergibt (357 Käufe) — sonst hätte sich ihr Einstandspreis geändert.*
 - **Offen:** tax_stock schreibt beim Aufteilen eines Konvoluts den Einstandspreis des ersten Teils selbst — das überschreibt jetzt die Rechnung; dort entfällt der Schritt.
+
+## INF-102 · Einkauf: Bestellungen anlegen und nachbestellen (2026-10-30)
+
+**Typ:** `FRAGE` · **Status:** `OPEN`
+
+- **Sein Wort:** *«es geht darum bestellungen zu erstellen»* — *«also selbst zu bestellen»* — *«lass uns das erstmal designen … auch wäre bei jedem material ein button nachbestellen nett, da drücke ich dann drauf und kann das einer offnen bestellung hinzufügen oder eine neue bestelllung anlegen»*
+- **Sein Wort (19:18):** *«Das soll eher so, ja, Bedarf sein, … das soll noch nicht feststehen, von wem ich das bestelle»* — *«so kann man zum Beispiel alle Teile von einem Projekt zusammenbestellen, aber bei unterschiedlichen Lieferanten»*
+- **Entschieden (gelesen):** [`pakete/lager/konzept.md`](pakete/lager/konzept.md) §3.4 — *«ein Bestellvorschlag ist eine Bestellung «Entwurf»»*; §3.2 Mindestbestand — *«darunter «nachbestellen»»*; [D-1013](NewConcept/90-decision-log.md) Bezugsquelle = Firma + Nummer; [D-958](NewConcept/90-decision-log.md) Mindestbestand in Stufe 4.
+- **Entwurf (INFERRED):** [`pakete/lager/einkauf.md`](pakete/lager/einkauf.md) — drei Schritte: Bedarf ohne Händler (Knopf «Nachbestellen» am Material, später Stückliste) → Bezugsquelle je Position wählen → je Händler bestellen; Bedarf bleibt Klammer über mehrere Händler-Bestellungen; Seite «Einkauf»; Fragen E1–E6.
+- **gebaut:** nein.
