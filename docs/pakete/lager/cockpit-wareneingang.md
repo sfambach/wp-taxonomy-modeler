@@ -12,7 +12,7 @@
 
 **Sein Wort dazu** (2026-10-28, 12:28): *«stufe ergibt sich aus mails und api, zusätliche stufe nach we tests für bestimmte warengruppengruppen wie hardware einkäufe bei ebay»*.
 
-**Der Kern in einem Satz:** Eine Seite «Wareneingang» im Menü «Logistik» zeigt jede Bestellung in genau einer Stufe —
+**Der Kern in einem Satz:** Eine Seite «Wareneingang» im Taxmod-Menü zeigt jede Bestellung in genau einer Stufe —
 **Bestellt → Versendet → Angekommen → Eingebucht** —, die Stufe wird aus Daten **gerechnet**, die es schon gibt, und gebucht
 wird mit dem Wareneingang, den das Lager schon hat.
 
@@ -224,6 +224,8 @@ verschrottet werden.»*
 
 **Sein Wort:** *«ja menü für we/wa/lager»*. Ein eigener Menüpunkt (Arbeitstitel «Logistik») mit Wareneingang, Warenausgang
 (heute eBay-Versand) und Lager; Modell und Konfiguration bleiben unter Taxmod. Löst [INF-097](../../neues-konzept-eingang.md) ([D-1004](../../NewConcept/90-decision-log.md)).
+
+**Ersetzt am 2026-10-30** ([D-1028](../../NewConcept/90-decision-log.md)): *«wieder alles in ein Menü packen, nicht in zwei. Das ist lästig.»* Wareneingang, Lager, Einkauf und eBay-Versand stehen unter dem Taxmod-Menü; die Seitenadresse `taxmod-logistik` des Wareneingangs bleibt.
 
 ## WC10 — Archiv
 

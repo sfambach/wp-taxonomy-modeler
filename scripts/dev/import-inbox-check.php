@@ -161,9 +161,10 @@ $vorlage = \Taxmod\WordPress\Admin\ListPage::tabs([['a', 'A', 3], ['b', 'B']], '
 $pruefe(str_contains($vorlage, 'nav-tab nav-tab-active') && str_contains($vorlage, '<span class="count">(3)</span>') && str_contains($vorlage, 'class="search-box"')
     && str_contains($vorlage, 'form="f"><option value="">All</option><option value="1" selected>') && str_contains($vorlage, 'class="manage-column sorted asc"') && str_contains($vorlage, 'class="manage-column sortable desc"'), 'the list page has tabs with counts, search, filters and sortable columns');
 global $submenu;
-$submenu['taxmod'] = [['Modeller', 'x', 'taxmod'], ['Configuration', 'x', 'taxmod-settings'], ['Inbox', 'x', InboxScreen::PAGE]];
-\Taxmod\WordPress\Plugin::configurationLast();
-$pruefe(array_column($submenu['taxmod'], 2) === ['taxmod', InboxScreen::PAGE, 'taxmod-settings'], '«Configuration» stands last in the menu');
+// ⚠️ *D-1028: «wieder alles in ein Menü packen, nicht in zwei» — die Module stehen vor der Wartung, Configuration ganz unten.*
+$submenu['taxmod'] = [['Modeller', 'x', 'taxmod'], ['Configuration', 'x', 'taxmod-settings'], ['Cleanup', 'x', 'taxmod-cleanup'], ['Backup', 'x', 'taxmod-backup'], ['Inbox', 'x', InboxScreen::PAGE], ['Wareneingang', 'x', 'taxmod-logistik']];
+\Taxmod\WordPress\Plugin::maintenanceLast();
+$pruefe(array_column($submenu['taxmod'], 2) === ['taxmod', InboxScreen::PAGE, 'taxmod-logistik', 'taxmod-cleanup', 'taxmod-backup', 'taxmod-settings'], 'the modules stand before Cleanup, Backup and Configuration, which is last');
 $_POST = $_REQUEST = ['selected' => [$ids], '_wpnonce' => wp_create_nonce(InboxScreen::DISCARD_SELECTED)];
 add_filter('wp_redirect', static function (): never { throw new RuntimeException('__redirect'); });
 try {

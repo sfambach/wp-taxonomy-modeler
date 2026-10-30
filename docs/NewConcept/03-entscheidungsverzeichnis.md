@@ -114,6 +114,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Was passiert mit Inbox-Kästen ohne Neues, und wer spricht für einen Kasten mehrerer Quellen? | [D-994](90-decision-log.md) — schließen sich selbst als übernommen; die für Bestellungen zuständige Quelle entscheidet | — |
 | Wo liegt der Mail-Leser eines Shops? | [D-1006](90-decision-log.md) — im Modul des Shops (`wp_tax_api_<shop>`); tax_mail nur Postfach | — |
 | Wie ist jede Modulseite aufgebaut? | [D-1007](90-decision-log.md), [D-1021](90-decision-log.md) — Mail · Zugang · Abruf · Einstellungen · Wartung, überall gleich; Wartung nur im eigenen Reiter | ersetzt Teile von D-981/D-990 |
+| Wie viele Admin-Menüs hat Taxmod? | [D-1028](90-decision-log.md) — eines, das des Modellers; Wareneingang, Lager, Einkauf und eBay-Versand darunter, dann Cleanup, Backup, Configuration | ersetzt D-1004 |
 | Liest ein Shop-Modul Mails, und darf die Mail Bestellungen anlegen? | [D-1015](90-decision-log.md) — Schalter je Modul; mit API wählbar «nur Updates» oder «ganze Wahrheit» | — |
 | Welche Mails verarbeitet ein Shop-Modul? | [D-1016](90-decision-log.md) — alle Arten als Häkchen, nicht unterstützte ausgegraut; abgewählte kommen nach «Verworfen» | — |
 | Wohin gehört eine Paket-Mail ohne Bestellnummer? | [D-1017](90-decision-log.md) — zur Bestellung mit derselben Sendungsnummer; ohne sie bringt sie nichts | — |

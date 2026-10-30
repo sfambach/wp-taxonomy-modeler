@@ -126,7 +126,7 @@ flowchart TB
 
 ---
 
-## EK4 — Seite «Einkauf» (unter «Logistik»)
+## EK4 — Seite «Einkauf» (im Taxmod-Menü, [D-1028](../../NewConcept/90-decision-log.md))
 
 Gemeinsames Tabellen-Template ([D-989](../../NewConcept/90-decision-log.md)), Reiter:
 

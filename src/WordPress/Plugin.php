@@ -49,7 +49,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.97';
+    public const VERSION     = '0.1.98';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -82,8 +82,8 @@ final class Plugin
 
         add_action('admin_menu', $plugin->registerMenu(...));
         // ⚠️ *His word of 2026-10-25: «die Menü-Konfiguration für den Tax-Mod hätte ich gern an unterster Stelle» (D-989) —
-        // last of all, after every module has added its pages.*
-        add_action('admin_menu', self::configurationLast(...), PHP_INT_MAX);
+        // last of all, after every module has added its pages; Cleanup and Backup go with it (D-1028).*
+        add_action('admin_menu', self::maintenanceLast(...), PHP_INT_MAX);
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
 
         // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
@@ -305,8 +305,8 @@ final class Plugin
         }
     }
 
-    /** Moves «Configuration» to the foot of the modeller's menu, whichever module added its page after it. */
-    public static function configurationLast(): void
+    /** Moves the maintenance pages — Cleanup, Backup, Configuration — to the foot of the one Taxmod menu, after every module's pages (D-1028). */
+    public static function maintenanceLast(): void
     {
         global $submenu;
 
@@ -314,16 +314,20 @@ final class Plugin
             return;
         }
 
+        $maintenance = [CleanupScreen::PAGE, BackupScreen::PAGE, 'taxmod-settings'];
         $last = [];
 
         foreach ($submenu['taxmod'] as $position => $entry) {
-            if (($entry[2] ?? '') === 'taxmod-settings') {
-                $last[] = $entry;
+            $at = array_search($entry[2] ?? '', $maintenance, true);
+
+            if ($at !== false) {
+                $last[$at] = $entry;
                 unset($submenu['taxmod'][$position]);
             }
         }
 
-        $submenu['taxmod'] = [...array_values($submenu['taxmod']), ...$last];
+        ksort($last);
+        $submenu['taxmod'] = [...array_values($submenu['taxmod']), ...array_values($last)];
     }
 
     public function registerMenu(): void
