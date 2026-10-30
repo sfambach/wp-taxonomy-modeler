@@ -31,4 +31,10 @@ interface MediaLibrary
      * @return array<int, MediaFile> Id ⇒ Datei, nur für die, die es gibt.
      */
     public function filesFor(array $ids): array;
+
+    /**
+     * Die Datei hinter `vault:<Schlüssel>` in der verschlüsselten Ablage ([D-1023](../../../docs/NewConcept/90-decision-log.md)), oder
+     * `null`, wenn es sie nicht gibt. **Darf wer die Seite sieht sie nicht öffnen, ist die Adresse leer** — dann steht nur ihr Name da.
+     */
+    public function document(string $key): ?MediaFile;
 }

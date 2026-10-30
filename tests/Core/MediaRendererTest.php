@@ -62,6 +62,11 @@ final class MediaRendererTest extends TestCase
                     10 => new MediaFile(10, 'https://example.org/up/20260605_220411.jpg', '20260605_220411', 'https://example.org/up/t.jpg', 'Platine bestückt oben'),
                 ], array_flip($ids));
             }
+
+            public function document(string $key): ?MediaFile
+            {
+                return $key === str_repeat('a', 32) ? new MediaFile(0, '/wp-admin/admin-post.php?action=taxmod_document', 'Rechnung.pdf') : null;
+            }
         };
 
         self::assertSame(7, MediaType::libraryIdOf(' media:7 '));
@@ -135,5 +140,32 @@ final class MediaRendererTest extends TestCase
     {
         self::assertStringContainsString('title="Delete"', ControlMarkup::button(new Control('do', 'trash', 'Delete', icon: 'trash')));
         self::assertStringNotContainsString('title=', ControlMarkup::button(new Control('do', 'add', 'Add')));
+    }
+
+    /** ⚠️ *D-1023: eine Datei der verschlüsselten Ablage ist nur für den ein Link, der sie öffnen darf.* */
+    #[Test]
+    public function a_vault_file_links_only_for_who_may_open_it(): void
+    {
+        $bibliothek = new class () implements MediaLibrary {
+            public function filesFor(array $ids): array
+            {
+                return [];
+            }
+
+            public function document(string $key): ?MediaFile
+            {
+                return match ($key) {
+                    str_repeat('a', 32) => new MediaFile(0, '/download?a', 'Rechnung.pdf'),
+                    str_repeat('c', 32) => new MediaFile(0, '', 'Geheim.pdf'),
+                    default => null,
+                };
+            }
+        };
+
+        self::assertSame(str_repeat('b', 32), MediaType::vaultKeyOf('vault:' . str_repeat('b', 32)));
+        self::assertStringContainsString('href="/download?a">Rechnung.pdf</a>', MediaRenderer::link('vault:' . str_repeat('a', 32), '', true, $bibliothek));
+        self::assertStringNotContainsString('href', MediaRenderer::link('vault:' . str_repeat('b', 32), '', true, $bibliothek));
+        self::assertStringNotContainsString('href', MediaRenderer::link('vault:' . str_repeat('a', 32)));
+        self::assertSame('<span class="taxmod-media taxmod-media-private">Geheim.pdf</span>', MediaRenderer::link('vault:' . str_repeat('c', 32), '', true, $bibliothek));
     }
 }

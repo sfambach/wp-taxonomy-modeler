@@ -5,6 +5,7 @@ namespace Taxmod\WordPress;
 use Taxmod\Core\Model\Type\MediaType;
 use Taxmod\Core\Port\MediaFile;
 use Taxmod\Core\Port\MediaLibrary;
+use Taxmod\WordPress\Import\Documents;
 use Taxmod\WordPress\Persistence\Schema;
 
 /**
@@ -43,6 +44,11 @@ final class WpMediaLibrary implements MediaLibrary
         }
 
         return $antwort;
+    }
+
+    public function document(string $key): ?MediaFile
+    {
+        return Documents::linkFor($key);
     }
 
     /** @return array<int, MediaFile> */

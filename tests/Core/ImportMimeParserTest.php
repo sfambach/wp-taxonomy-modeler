@@ -51,12 +51,25 @@ final class ImportMimeParserTest extends TestCase
         self::assertSame(['Artikel', 'Menge', 'LM317', '5'], $mail->lines());
     }
 
-    public function testAttachmentsAreSkipped(): void
+    public function testAttachmentsStayOutOfTheBodyAndAreKept(): void
     {
         $raw = "From: a@b.de\nContent-Type: multipart/mixed; boundary=x\n\n--x\nContent-Type: text/plain\n\nHallo\n"
             . "--x\nContent-Type: text/plain\nContent-Disposition: attachment; filename=r.txt\n\nRechnung\n--x--\n";
+        $mail = (new MimeParser())->parse(1, $raw);
 
-        self::assertSame(['Hallo'], (new MimeParser())->parse(1, $raw)->lines());
+        self::assertSame(['Hallo'], $mail->lines());
+        self::assertSame([['r.txt', 'text/plain']], array_map(static fn ($file): array => [$file->fileName, $file->mimeType], $mail->attachments));
+        self::assertSame([], $mail->pdfs());
+    }
+
+    public function testAnInvoicePdfIsDecodedWithItsName(): void
+    {
+        $raw = "From: a@b.de\nContent-Type: multipart/mixed; boundary=x\n\n--x\nContent-Type: text/html\n\n<p>Ihre Rechnung</p>\n"
+            . "--x\nContent-Type: application/pdf; name=\"x.pdf\"\nContent-Disposition: inline; filename*=utf-8''Rechnung%20M%C3%A4rz.pdf\n"
+            . "Content-Transfer-Encoding: base64\n\n" . base64_encode('%PDF-1.4 test') . "\n--x--\n";
+        $pdfs = (new MimeParser())->parse(1, $raw)->pdfs();
+
+        self::assertSame(['Rechnung März.pdf', '%PDF-1.4 test'], [$pdfs[0]->fileName, $pdfs[0]->content], 'D-1023');
     }
 
     public function testForwardedMailCountsAsTheOriginal(): void

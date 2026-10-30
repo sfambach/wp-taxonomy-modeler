@@ -7,7 +7,7 @@ use Exception;
 
 /**
  * Turns a raw mail (RFC 5322 + MIME) into a MailMessage: decoded headers, the first text and the first HTML body,
- * both in UTF-8. Attachments are skipped — the parsers read bodies only.
+ * both in UTF-8, and the attached files, decoded (D-1023: an invoice comes as a PDF).
  *
  * ```mermaid
  * flowchart LR
@@ -26,7 +26,8 @@ final class MimeParser
         [$headers, $body] = self::split($raw);
         $plain = '';
         $html = '';
-        $this->collect($headers, $body, $plain, $html);
+        $files = [];
+        $this->collect($headers, $body, $plain, $html, $files);
 
         // The shop parsers read the HTML as lines, as the Python importer did; plain text only when there is no HTML.
         $text = $html !== '' ? self::htmlToText($html) : str_replace("\r", '', $plain);
@@ -50,6 +51,7 @@ final class MimeParser
             $text,
             $html,
             trim($headers['message-id'] ?? ''),
+            $files,
         );
     }
 
@@ -65,27 +67,36 @@ final class MimeParser
         return trim(preg_replace('/\n\s*\n+/', "\n", $text) ?? $text);
     }
 
-    /** @param array<string, string> $headers */
-    private function collect(array $headers, string $body, string &$text, string &$html): void
+    /**
+     * @param array<string, string> $headers
+     * @param list<MailAttachment> $files
+     */
+    private function collect(array $headers, string $body, string &$text, string &$html, array &$files): void
     {
         [$type, $parameters] = self::contentType($headers['content-type'] ?? 'text/plain');
 
         if (str_starts_with($type, 'multipart/') && isset($parameters['boundary'])) {
             foreach (self::parts($body, $parameters['boundary']) as $part) {
                 [$partHeaders, $partBody] = self::split($part);
-                $this->collect($partHeaders, $partBody, $text, $html);
+                $this->collect($partHeaders, $partBody, $text, $html, $files);
             }
 
             return;
         }
 
-        if (str_starts_with(strtolower($headers['content-disposition'] ?? ''), 'attachment')) {
+        $name = self::fileName($headers, $parameters);
+
+        // A part with a file name that is not a body is a file — «attachment», or «inline» as some shops send a PDF.
+        if (str_starts_with(strtolower($headers['content-disposition'] ?? ''), 'attachment')
+            || ($name !== '' && $type !== 'text/plain' && $type !== 'text/html' && $type !== 'message/rfc822')) {
+            $files[] = new MailAttachment($name, $type, self::transferDecode($body, $headers['content-transfer-encoding'] ?? ''));
+
             return;
         }
 
         if ($type === 'message/rfc822') {
             [$innerHeaders, $innerBody] = self::split($body);
-            $this->collect($innerHeaders, $innerBody, $text, $html);
+            $this->collect($innerHeaders, $innerBody, $text, $html, $files);
 
             return;
         }
@@ -101,6 +112,31 @@ final class MimeParser
         } elseif ($type === 'text/html' && $html === '') {
             $html = $decoded;
         }
+    }
+
+    /**
+     * The name from Content-Disposition, else from Content-Type; RFC 2231 «filename*=utf-8''…» decoded.
+     *
+     * @param array<string, string> $headers
+     * @param array<string, string> $parameters of Content-Type
+     */
+    private static function fileName(array $headers, array $parameters): string
+    {
+        [, $disposition] = self::contentType($headers['content-disposition'] ?? '');
+
+        foreach ([$disposition, $parameters] as $source) {
+            if (isset($source['filename*']) && preg_match("/^([^']*)'[^']*'(.*)$/", $source['filename*'], $encoded) === 1) {
+                return self::toUtf8(rawurldecode($encoded[2]), $encoded[1]);
+            }
+
+            foreach (['filename', 'name'] as $key) {
+                if (($source[$key] ?? '') !== '') {
+                    return self::decodeHeader($source[$key]);
+                }
+            }
+        }
+
+        return '';
     }
 
     /** @return array{0: array<string, string>, 1: string} lower-case header names, unfolded; and the body */

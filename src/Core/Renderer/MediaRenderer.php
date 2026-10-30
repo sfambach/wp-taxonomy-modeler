@@ -61,6 +61,19 @@ final class MediaRenderer extends TypedFieldRenderer
     /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
     public static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?MediaLibrary $bibliothek = null): string
     {
+        $schluessel = MediaType::vaultKeyOf($adresse);
+
+        // ⚠️ *Eine Datei der verschlüsselten Ablage hat keine öffentliche Adresse (D-1023): den Link gibt der Rand nur dem, der sie
+        // öffnen darf; sonst steht ihr Name da.*
+        if ($schluessel !== null) {
+            $dokument = $bibliothek?->document($schluessel);
+            $wort = trim($beschriftung) !== '' ? trim($beschriftung) : ($dokument?->title ?? $adresse);
+
+            return $dokument === null || $dokument->url === ''
+                ? '<span class="taxmod-media taxmod-media-private">' . RenderResult::escape($wort) . '</span>'
+                : '<a class="taxmod-media taxmod-media-private" href="' . RenderResult::escape($dokument->url) . '">' . RenderResult::escape($wort) . '</a>';
+        }
+
         $wort  = trim($beschriftung) !== '' ? trim($beschriftung) : self::describe($adresse, $bibliothek);
         $datei = self::fileOf($adresse, $bibliothek);
 

@@ -57,6 +57,18 @@ final class MediaType extends SpecialisedType
         return preg_match('/^' . preg_quote(self::LIBRARY_SCHEME, '/') . '(\d+)$/', trim($adresse), $treffer) === 1 ? (int) $treffer[1] : null;
     }
 
+    /**
+     * Eine Datei der verschlüsselten Ablage steht als `vault:<Schlüssel>` da ([D-1023](../../../../docs/NewConcept/90-decision-log.md)) —
+     * sein Wort zu Rechnungen: *«ja das passt so»* auf «Ablage in einem gesperrten Ordner, jede Datei verschlüsselt, öffnen nur angemeldet».
+     */
+    public const VAULT_SCHEME = 'vault:';
+
+    /** Der Schlüssel einer Datei der Ablage, oder `null`. */
+    public static function vaultKeyOf(string $adresse): ?string
+    {
+        return preg_match('/^' . preg_quote(self::VAULT_SCHEME, '/') . '([0-9a-f]{32})$/', trim($adresse), $treffer) === 1 ? $treffer[1] : null;
+    }
+
     public static function libraryAddress(int $id): string
     {
         return self::LIBRARY_SCHEME . $id;

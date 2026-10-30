@@ -5,12 +5,13 @@ namespace Taxmod\Core\Import\Mail;
 use DateTimeImmutable;
 
 /**
- * One mail as a parser sees it: sender, subject, date and the readable body, already decoded.
+ * One mail as a parser sees it: sender, subject, date, the readable body and the attached files, already decoded.
  *
  * @see docs/pakete/import/module-schnitt.md
  */
 final class MailMessage
 {
+    /** @param list<MailAttachment> $attachments */
     public function __construct(
         public readonly int $uid,
         public readonly string $fromAddress,
@@ -19,6 +20,7 @@ final class MailMessage
         public readonly string $text,
         public readonly string $html,
         public readonly string $messageId = '',
+        public readonly array $attachments = [],
     ) {
     }
 
@@ -57,6 +59,12 @@ final class MailMessage
         }
 
         return $line;
+    }
+
+    /** @return list<MailAttachment> */
+    public function pdfs(): array
+    {
+        return array_values(array_filter($this->attachments, static fn (MailAttachment $file): bool => $file->isPdf()));
     }
 
     /** The part after «@», lower case — shops are recognised by it, as the Python importer did. */
