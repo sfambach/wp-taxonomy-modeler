@@ -14,6 +14,7 @@ final class ExistingOrder
      * @param array<string, string> $values order role => what the model holds, as {@see OrderComparison} reads it
      *                                      (an amount as «4.5 EUR», a date as «Y-m-d»)
      * @param list<ExistingLine> $lines the purchases of the order (D-986)
+     * @param list<string> $invoiceNumbers numbers of the records «Rechnung» linked to it (D-1024)
      */
     public function __construct(
         public readonly int $recordId,
@@ -24,6 +25,7 @@ final class ExistingOrder
         public readonly string $title = '',
         public readonly array $values = [],
         public readonly array $lines = [],
+        public readonly array $invoiceNumbers = [],
     ) {
     }
 }

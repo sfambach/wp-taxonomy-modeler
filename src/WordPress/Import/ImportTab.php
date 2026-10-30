@@ -43,6 +43,7 @@ final class ImportTab
             'purchases_node'    => ['node', __('Purchases node', 'taxmod')],
             'sales_node'        => ['node', __('Sales node', 'taxmod')],
             'sold_items_node'   => ['node', __('Sold items node', 'taxmod')],
+            'invoices_node'     => ['node', __('Invoices node', 'taxmod')],
             'origin_documented' => ['', __('Origin value «documented» (record id)', 'taxmod')],
             'amount_field'      => ['', __('Amount field of a line', 'taxmod')],
             'unit_field'        => ['', __('Unit field of a line', 'taxmod')],
@@ -59,6 +60,7 @@ final class ImportTab
             'purchase' => $this->fieldNames((int) $targets['purchases_node']),
             'sale'     => $this->fieldNames((int) $targets['sales_node']),
             'sold'     => $this->fieldNames((int) $targets['sold_items_node']),
+            'invoice'  => $this->fieldNames((int) $targets['invoices_node']),
         ];
 
         $html = '<h2>' . esc_html__('Take automatically', 'taxmod') . '</h2><p><label><input type="hidden" name="auto_take" value="0">'
@@ -67,7 +69,7 @@ final class ImportTab
             . '</label></p>';
 
         $html .= '<h2>' . esc_html__('Where taken orders go', 'taxmod') . '</h2><p>'
-            . esc_html__('Node and field ids for orders, purchases and sales, the same for every module. Type an id or pick from the list; change them only when the tree was rebuilt.', 'taxmod') . '</p>';
+            . esc_html__('Node and field ids for orders, purchases, sales and invoices, the same for every module. Type an id or pick from the list; change them only when the tree was rebuilt.', 'taxmod') . '</p>';
 
         foreach ($lists as $list => $names) {
             $html .= '<datalist id="taxmod-import-' . esc_attr($list) . '">';
@@ -90,12 +92,17 @@ final class ImportTab
             'purchase_fields'  => ['purchase', __('Purchase', 'taxmod')],
             'sale_fields'      => ['sale', __('Sale', 'taxmod')],
             'sold_item_fields' => ['sold', __('Sold item', 'taxmod')],
+            'invoice_fields'   => ['invoice', __('Invoice', 'taxmod')],
         ];
 
         foreach ($groups as $group => [$list, $title]) {
             foreach ((array) $targets[$group] as $role => $id) {
                 $rows .= $this->row('target[' . $group . '][' . $role . ']', $title . ': ' . $role, (int) $id, $list, $lists[$list]);
             }
+        }
+
+        foreach ((array) $targets['invoice_states'] as $state => $id) {
+            $rows .= $this->row('target[invoice_states][' . $state . ']', __('Invoice status', 'taxmod') . ' ' . $state . ' ' . __('(node id)', 'taxmod'), (int) $id, '', []);
         }
 
         foreach ((array) $targets['currencies'] as $code => $id) {

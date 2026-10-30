@@ -78,6 +78,11 @@ final class Intake
             return true;
         }
 
+        // An invoice the order does not have yet is news (D-1024).
+        if ($proposal->invoice !== null && ! in_array($proposal->invoice->number, $existing->invoiceNumbers, true)) {
+            return true;
+        }
+
         return $proposal->kind === ProposalKind::Delivered && ($existing->receivedAt === null || $existing->receivedAt === '');
     }
 }

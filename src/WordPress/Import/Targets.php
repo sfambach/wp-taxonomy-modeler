@@ -77,6 +77,22 @@ final class Targets
             'article_number' => 149000110066,
             'unit_price'     => 149000110068,
         ],
+        // Invoices (D-1024): 0 until the node «Rechnungen» exists.
+        'invoices_node'     => 0,
+        'invoice_fields'    => [
+            'title'          => 149000103839,
+            'origin'         => 149000108187,
+            'origin_note'    => 149000108188,
+            'number'         => 0,
+            'date'           => 0,
+            'merchant'       => 0,
+            'total'          => 0,
+            'status'         => 0,
+            'payment_method' => 0,
+            'document'       => 0,
+            'orders'         => 0,
+        ],
+        'invoice_states'    => ['open' => 0, 'paid' => 0],
         'currencies'        => ['EUR' => 8571, 'USD' => 8573, 'GBP' => 8582, 'AUD' => 149000109994],
         'required_parts'    => [149000110048, 149000110049],
         'sale_required_parts' => [149000110068],
@@ -116,6 +132,9 @@ final class Targets
             $ids((array) $merged['sale_fields']),
             $ids((array) $merged['sold_item_fields']),
             array_values($ids((array) $merged['sale_required_parts'])),
+            (int) $merged['invoices_node'],
+            $ids((array) $merged['invoice_fields']),
+            $ids((array) $merged['invoice_states']),
         );
     }
 

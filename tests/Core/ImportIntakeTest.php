@@ -129,4 +129,14 @@ final class ImportIntakeTest extends TestCase
         self::assertTrue(LooseMatch::matchesOrder($parcel, new ExistingOrder(7, ['00340434886114242631'])));
         self::assertFalse(LooseMatch::matchesOrder($parcel, new ExistingOrder(7, ['LP1'])));
     }
+
+    #[Test]
+    public function an_invoice_the_order_does_not_have_is_news(): void
+    {
+        $intake = new Intake(DutyTable::initial(), ['mail']);
+        $invoice = new OrderProposal('Conrad', '2020147197', ProposalKind::Invoice, invoice: new \Taxmod\Core\Import\InvoiceFacts('9791312484'));
+
+        self::assertSame(IntakeVerdict::Update, $intake->decide('mail', $invoice, new ExistingOrder(7)), 'D-1024');
+        self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', $invoice, new ExistingOrder(7, invoiceNumbers: ['9791312484'])));
+    }
 }

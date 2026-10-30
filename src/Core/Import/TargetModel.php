@@ -29,6 +29,10 @@ final class TargetModel
      * @param array<string, int> $soldItemFields role => relation id on «Verkaufte Artikel»: title, origin, origin_note,
      *        quantity, article_number, unit_price
      * @param list<int> $saleRequiredParts like $requiredParts, for the sale side
+     * @param int $invoicesNode «Rechnungen» (D-1024); 0 while it is not set
+     * @param array<string, int> $invoiceFields role => relation id: title, origin, origin_note, number, date, merchant,
+     *        total, status, payment_method, document, orders
+     * @param array<string, int> $paidStates 'open' and 'paid' => constant node id of the choice «Zahlstatus»
      */
     public function __construct(
         public readonly int $ordersNode,
@@ -46,6 +50,9 @@ final class TargetModel
         public readonly array $saleFields = [],
         public readonly array $soldItemFields = [],
         public readonly array $saleRequiredParts = [],
+        public readonly int $invoicesNode = 0,
+        public readonly array $invoiceFields = [],
+        public readonly array $paidStates = [],
     ) {
     }
 
@@ -71,6 +78,17 @@ final class TargetModel
             $this->saleRequiredParts,
             $this->rateField,
         );
+    }
+
+    /** Whether an invoice can be written: the node and the fields it is found by are set (D-1024). */
+    public function takesInvoices(): bool
+    {
+        return $this->invoicesNode > 0 && ($this->invoiceFields['number'] ?? 0) > 0 && ($this->invoiceFields['orders'] ?? 0) > 0;
+    }
+
+    public function hasInvoiceField(string $role): bool
+    {
+        return ($this->invoiceFields[$role] ?? 0) > 0;
     }
 
     public function hasOrderField(string $role): bool

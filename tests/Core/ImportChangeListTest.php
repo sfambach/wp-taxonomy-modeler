@@ -3,6 +3,7 @@
 namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Import\InvoiceFacts;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ProposalLine;
@@ -267,6 +268,26 @@ final class ImportChangeListTest extends TestCase
         ], [
             'title' => 201, 'origin' => 202, 'origin_note' => 208, 'quantity' => 403, 'article_number' => 404, 'unit_price' => 405,
         ], [405]);
+    }
+
+    public function testAnInvoiceBecomesItsOwnRecordLinkedToTheOrder(): void
+    {
+        $base = self::target();
+        $target = new TargetModel(10, 20, 99, 4234, 4236, $base->orderFields, $base->purchaseFields, $base->currencies, [205, 206], null,
+            invoicesNode: 50, invoiceFields: ['title' => 101, 'number' => 501, 'date' => 502, 'merchant' => 503, 'total' => 504, 'status' => 505,
+                'payment_method' => 506, 'document' => 507, 'orders' => 508], paidStates: ['open' => 60, 'paid' => 61]);
+        $proposal = new OrderProposal('Conrad', '2020147197', ProposalKind::Invoice, total: '61.17',
+            invoice: new InvoiceFacts('9791312484', '2026-10-27', true, 'PayPal', 'vault:' . str_repeat('a', 32)));
+        $changes = (new ChangeListBuilder($target))->invoice(new ExistingOrder(777), $proposal, 'From mail.');
+
+        self::assertSame(['op' => 'create_record', 'node' => 50, 'ref' => 'r'], $changes[0], 'D-1024');
+        self::assertSame([
+            '101' => 'Rechnung 9791312484 · Conrad 2020147197', '501' => '9791312484', '502' => '2026-10-27', '503' => 'Conrad',
+            '504' => ['neu' => ['4234' => '61.17', '4236' => '8571']], '505' => '61', '506' => 'PayPal', '507' => 'vault:' . str_repeat('a', 32),
+            '508' => ['values' => ['777']],
+        ], $changes[1]['values']);
+        self::assertSame([], (new ChangeListBuilder($target))->invoice(new ExistingOrder(777, invoiceNumbers: ['9791312484']), $proposal, ''), 'once');
+        self::assertSame([], (new ChangeListBuilder($base))->invoice(new ExistingOrder(777), $proposal, ''), 'without targets nothing');
     }
 
     private static function target(?int $rateField = null, int $sharesAt = 209): TargetModel

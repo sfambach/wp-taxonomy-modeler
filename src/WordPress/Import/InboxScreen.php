@@ -354,6 +354,17 @@ final class InboxScreen
             $html .= '<p>' . esc_html(sprintf(__('Tracking: %s', 'taxmod'), implode(', ', $proposal->trackingNumbers))) . '</p>';
         }
 
+        if ($proposal->invoice !== null) {
+            $paid = match ($proposal->invoice->paid) {
+                true    => __('paid', 'taxmod'),
+                false   => __('open', 'taxmod'),
+                default => __('payment not stated', 'taxmod'),
+            };
+            /* translators: 1: invoice number, 2: paid / open, 3: how it was paid */
+            $html .= '<p>' . esc_html(sprintf(__('Invoice %1$s: %2$s %3$s', 'taxmod'), $proposal->invoice->number, $paid, (string) $proposal->invoice->paymentMethod))
+                . ($proposal->invoice->document === null ? '' : ' · ' . esc_html__('PDF in the document store', 'taxmod')) . '</p>';
+        }
+
         // ⚠️ *His word of 2026-10-25: «Die Button möglichst immer rechts, Annehmen in der Tabelle» — the buttons stand in the
         // row and reach this form through `form=`, so the ticks in the details still go with them.*
         $buttons = ($canTake ? '<button class="button button-primary" form="' . esc_attr($form) . '" name="action" value="' . esc_attr(self::TAKE) . '">' . esc_html__('Take', 'taxmod') . '</button> ' : '')
@@ -471,6 +482,12 @@ final class InboxScreen
         }
 
         return '<ol style="margin:.25em 0 .5em 1.5em">' . $items . '</ol>';
+    }
+
+    /** An invoice without an amount of its own takes the order total the group read (D-1024). */
+    private static function withTotal(OrderProposal $step, OrderProposal $group): OrderProposal
+    {
+        return $step->total !== null ? $step : OrderProposal::fromArray(['total' => $group->total] + $step->toArray());
     }
 
     /** The proposal as the order it creates: tracking and delivery follow as steps of their own (D-980). */
@@ -781,11 +798,22 @@ final class InboxScreen
                     $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
                 }
 
-                if ($changes === []) {
+                // An invoice is a record of its own, linked to the order (D-1024); its own write, it creates a record.
+                $invoice = $builder->invoice($existing, $step->invoice === null ? $step : self::withTotal($step, $proposal), $originNote);
+
+                if ($invoice !== []) {
+                    $result = $model->write($invoice);
+
+                    if ($result instanceof WP_Error) {
+                        return $result->get_error_message();
+                    }
+                }
+
+                if ($changes === [] && $invoice === []) {
                     continue;
                 }
 
-                $result = $model->write($changes);
+                $result = $changes === [] ? [] : $model->write($changes);
 
                 if ($result instanceof WP_Error) {
                     return $result->get_error_message();
@@ -799,6 +827,8 @@ final class InboxScreen
                     $existing->orderDate,
                     $existing->title,
                     $existing->values,
+                    $existing->lines,
+                    $step->invoice === null ? $existing->invoiceNumbers : [...$existing->invoiceNumbers, $step->invoice->number],
                 );
             }
         } catch (DomainError $refused) {

@@ -53,6 +53,7 @@ final class ProposalGroup
             $first(static fn (OrderProposal $p): ?string => $p->source),
             $base->externalId,
             $base->numberMissing,
+            array_values(array_filter(array_map(static fn (OrderProposal $p): ?InvoiceFacts => $p->invoice, $proposals)))[0] ?? null,
         );
     }
 

@@ -83,6 +83,51 @@ final class ChangeListBuilder
         return $changes;
     }
 
+    /**
+     * A record «Rechnung» linked to the order (D-1024): number, date, merchant, amount, paid or open, the PDF.
+     *
+     * @return list<array<string, mixed>> empty when the target has no invoices or the order has this invoice already
+     */
+    public function invoice(ExistingOrder $order, OrderProposal $proposal, string $originNote): array
+    {
+        $invoice = $proposal->invoice;
+
+        if ($invoice === null || ! $this->target->takesInvoices() || in_array($invoice->number, $order->invoiceNumbers, true)) {
+            return [];
+        }
+
+        $state = $invoice->paid === null ? null : ($this->target->paidStates[$invoice->paid ? 'paid' : 'open'] ?? null);
+        $units = Money::toUnits($proposal->total);
+        $byRole = [
+            'title'          => trim('Rechnung ' . $invoice->number . ' · ' . $proposal->platform . ' ' . $proposal->orderNumber),
+            'origin'         => ['values' => [(string) $this->target->originDocumented]],
+            'origin_note'    => $originNote,
+            'number'         => $invoice->number,
+            'date'           => $invoice->date,
+            'merchant'       => $proposal->counterparty ?? $proposal->platform,
+            'total'          => $units === null ? null : ['neu' => [
+                (string) $this->target->amountField => Money::format($units),
+                (string) $this->target->unitField   => (string) $this->target->currency($proposal->currency),
+            ]],
+            'status'         => $state === null ? null : (string) $state,
+            'payment_method' => $invoice->paymentMethod,
+            'document'       => $invoice->document,
+            'orders'         => ['values' => [(string) $order->recordId]],
+        ];
+        $values = [];
+
+        foreach ($byRole as $role => $value) {
+            if ($this->target->hasInvoiceField($role)) {
+                $values[(string) $this->target->invoiceFields[$role]] = $value;
+            }
+        }
+
+        return [
+            ['op' => 'create_record', 'node' => $this->target->invoicesNode, 'ref' => 'r'],
+            ['op' => 'set_values', 'record' => '@r', 'values' => $this->withoutEmpty($values)],
+        ];
+    }
+
     /** @return list<array<string, mixed>> */
     public function delivered(ExistingOrder $order, string $date): array
     {

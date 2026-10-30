@@ -184,6 +184,11 @@ final class ModelGateway
         $purchases = $this->purchases(array_merge(...array_column($found, 7)));
         $amounts = $this->amounts([...$partIds, ...array_merge(...array_map(static fn (array $line): array => array_values($line['parts']), array_values($purchases)))]);
         $orders = [];
+        $invoices = $this->invoiceNumbers();
+
+        if ($invoices instanceof WP_Error) {
+            return $invoices;
+        }
 
         foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts, $lineIds]) {
             $values = array_filter([
@@ -206,10 +211,51 @@ final class ModelGateway
                 }
             }
 
-            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values, $existingLines);
+            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values, $existingLines, $invoices[$id] ?? []);
         }
 
         return $orders;
+    }
+
+    /**
+     * The numbers of the invoices each order has (D-1024), in one read of «Rechnungen» (`CD-7`).
+     *
+     * @return array<int, list<string>>|WP_Error order record id => invoice numbers
+     */
+    private function invoiceNumbers(): array|WP_Error
+    {
+        if (! $this->target->takesInvoices()) {
+            return [];
+        }
+
+        $node = $this->execute('taxmod/read-node', ['node' => $this->target->invoicesNode]);
+
+        if ($node instanceof WP_Error) {
+            return $node;
+        }
+
+        $numberField = $this->target->invoiceFields['number'];
+        $ordersField = $this->target->invoiceFields['orders'];
+        $numbers = [];
+
+        foreach ((array) ($node['records'] ?? []) as $record) {
+            $number = '';
+            $orders = [];
+
+            foreach ((array) ($record['values'] ?? []) as $value) {
+                match ((int) $value['relation_id']) {
+                    $numberField => $number = (string) $value['value'],
+                    $ordersField => $orders[] = (int) $value['value'],
+                    default      => null,
+                };
+            }
+
+            foreach ($number === '' ? [] : $orders as $order) {
+                $numbers[$order][] = $number;
+            }
+        }
+
+        return $numbers;
     }
 
     /**
