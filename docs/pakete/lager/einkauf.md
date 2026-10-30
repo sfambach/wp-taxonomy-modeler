@@ -169,4 +169,4 @@ falls ein Händler das anbietet) und danach «Als bestellt markieren» mit Feld 
 **Rückfall überall:** die Warenkorb-Liste (Art.-Nr. + Menge) für die Schnellbestellung bzw. den Stücklisten-Upload der Shops
 — Mouser, Farnell, Conrad und LCSC haben einen.
 
-**gebaut:** nichts davon. Bis es steht, legt der Thread «Bestellungen erstellen» Bedarfe von Hand über den Connector an.
+**gebaut:** E1–E5 ja (wp_tax_stock 0.4.0, Seite «Logistik › Einkauf», Knopf «Nachbestellen» im Kopf jedes Materials, Feld «Bedarf» an «Käufe»); E6 nein, kommt zum Schluss. ⚠️ *Abweichung im Kleinen (INFERRED): der Reiter «Bezugsquelle wählen» steht nicht eigen, sondern als Formular je Position im Reiter «Bedarf»; dazu ein Reiter «Verworfen» zum Wiederherstellen.*

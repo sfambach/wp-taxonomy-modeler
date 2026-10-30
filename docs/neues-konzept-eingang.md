@@ -1127,4 +1127,4 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Sein Wort (19:18):** *«Das soll eher so, ja, Bedarf sein, … das soll noch nicht feststehen, von wem ich das bestelle»* — *«so kann man zum Beispiel alle Teile von einem Projekt zusammenbestellen, aber bei unterschiedlichen Lieferanten»*
 - **Entschieden (gelesen):** [`pakete/lager/konzept.md`](pakete/lager/konzept.md) §3.4 — *«ein Bestellvorschlag ist eine Bestellung «Entwurf»»*; §3.2 Mindestbestand — *«darunter «nachbestellen»»*; [D-1013](NewConcept/90-decision-log.md) Bezugsquelle = Firma + Nummer; [D-958](NewConcept/90-decision-log.md) Mindestbestand in Stufe 4.
 - **Entwurf (INFERRED):** [`pakete/lager/einkauf.md`](pakete/lager/einkauf.md) — drei Schritte: Bedarf ohne Händler (Knopf «Nachbestellen» am Material, später Stückliste) → Bezugsquelle je Position wählen → je Händler bestellen; Bedarf bleibt Klammer über mehrere Händler-Bestellungen; Seite «Einkauf»; Fragen E1–E6.
-- **gebaut:** nein.
+- **gebaut:** E1–E5 ja (wp_tax_stock 0.4.0), E6 (Mouser-API) zum Schluss.
