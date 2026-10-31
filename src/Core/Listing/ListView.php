@@ -93,6 +93,24 @@ final class ListView
         return $kept;
     }
 
+    /**
+     * One page of the kept rows, so a list of thousands draws only what is seen (design 20).
+     *
+     * @template T
+     * @param list<T> $rows
+     * @return list<T>
+     */
+    public static function page(array $rows, int $page, int $perPage): array
+    {
+        return array_slice($rows, (self::clampPage($page, count($rows), $perPage) - 1) * max(1, $perPage), max(1, $perPage));
+    }
+
+    /** The page number made to fit: at least 1, at most the last page. */
+    public static function clampPage(int $page, int $total, int $perPage): int
+    {
+        return max(1, min($page, (int) ceil(max(1, $total) / max(1, $perPage))));
+    }
+
     /** @param list<string> $texts */
     private static function anyContains(array $texts, string $needle): bool
     {

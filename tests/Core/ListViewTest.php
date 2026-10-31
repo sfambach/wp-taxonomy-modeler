@@ -47,4 +47,12 @@ final class ListViewTest extends TestCase
         self::assertSame(['Quarz 8 MHz', 'NE555', 'LM2930T'], $names((new ListView($this->columns(), orderBy: 'stock', descending: true))->apply($this->rows())));
         self::assertSame(['LM2930T', 'NE555', 'Quarz 8 MHz'], $names((new ListView($this->columns(), orderBy: 'name'))->apply($this->rows())));
     }
+
+    #[Test]
+    public function a_page_out_of_range_shows_the_last_one(): void
+    {
+        self::assertSame([3], ListView::page([1, 2, 3], 9, 2));
+        self::assertSame([1, 2], ListView::page([1, 2, 3], 0, 2));
+        self::assertSame(1, ListView::clampPage(5, 0, 50));
+    }
 }

@@ -144,6 +144,31 @@ final class ListPage
         return $html . '<td style="text-align:right">' . get_submit_button(__('Filter', 'taxmod'), 'small', '', false, ['form' => $searchFormId]) . '</td></tr>';
     }
 
+    /**
+     * Page links under a list, WordPress style, and how long the page took to draw (design 20: measured as part of stage 1).
+     *
+     * @param callable(array<string, string>): string $url the list's address with these query values changed
+     */
+    public static function pagination(int $total, int $page, int $perPage, callable $url): string
+    {
+        $pages = (int) ceil(max(1, $total) / max(1, $perPage));
+        $page  = ListView::clampPage($page, $total, $perPage);
+        $took  = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (int) round((microtime(true) - (float) $_SERVER['REQUEST_TIME_FLOAT']) * 1000) : 0;
+        $html  = '<div class="tablenav bottom"><div class="alignleft actions"><span class="description">'
+            . esc_html(sprintf(/* translators: %d: milliseconds */ __('Drawn in %d ms', 'taxmod'), $took)) . '</span></div>';
+
+        if ($pages > 1) {
+            $link  = static fn (int $to, string $text, string $label): string => $to < 1 || $to > $pages || $to === $page
+                ? '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">' . $text . '</span>'
+                : '<a class="button" href="' . esc_url($url(['paged' => $to === 1 ? '' : (string) $to])) . '"><span class="screen-reader-text">' . esc_html($label) . '</span><span aria-hidden="true">' . $text . '</span></a>';
+            $html .= '<div class="tablenav-pages"><span class="pagination-links">' . $link(1, '«', __('First page', 'taxmod')) . ' ' . $link($page - 1, '‹', __('Previous page', 'taxmod'))
+                . ' <span class="paging-input">' . esc_html(sprintf(/* translators: 1: page, 2: pages */ __('%1$d of %2$d', 'taxmod'), $page, $pages)) . '</span> '
+                . $link($page + 1, '›', __('Next page', 'taxmod')) . ' ' . $link($pages, '»', __('Last page', 'taxmod')) . '</span></div>';
+        }
+
+        return $html . '<br class="clear"></div>';
+    }
+
     /** The button that shows or hides the filter row. */
     public static function filterToggle(): string
     {
