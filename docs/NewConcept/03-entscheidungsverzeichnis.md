@@ -122,6 +122,9 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wo liegen Rechnungen und andere Dokumente mit persönlichen Daten? | [D-1023](90-decision-log.md) — verschlüsselte Ablage des Modellers, `vault:<Schlüssel>` im Medienfeld, öffnen nur angemeldet | — |
 | Wie kommt eine Rechnung in den Taxmod? | [D-1024](90-decision-log.md) — eigener Datensatz «Rechnung» (Nr., Datum, Händler, Betrag, offen/bezahlt, Zahlungsart, PDF, Bestellungen) | — |
 | Rechnet der Modeller Felder? | [D-1022](90-decision-log.md) — ja: Rechenschritte `+ − × ÷` an der Kante, Ergebnis gespeichert und nach jeder Änderung neu geschrieben; erster Fall Einstandspreis = Preis je Stück + (Versand anteilig + Zoll/Gebühren anteilig) ÷ Anzahl | ändert D-933 |
+| Zeigt eine leere Verweisliste etwas? | [D-1026](90-decision-log.md) — nein: beim Anzeigen nichts, beim Bearbeiten eine leere Zeile; nie die Werte des Satzes selbst | berichtigt D-937, D-999 |
+| Wird der Stand eines Lager-Prozesses gespeichert? | [D-1035](90-decision-log.md) — ja: Schritt, Version, Verlauf; Zwischenspeichern ohne Buchung | ersetzt einen Satz von D-1001 |
+| Was heisst Zurücknehmen einer Buchung? | [D-1036](90-decision-log.md) — Storno mit Gegenbuchung, nie Löschen; protokolliert, komplett oder je Position | ersetzt D-1009 |
 | Wann ist ein Bauteil von einem anderen Hersteller ein eigener Satz? | [D-971](90-decision-log.md) — aktive Teile nach Teilenummer (eigener Satz + Kompatibilität), passive nach Werten (gleiche Werte = ein Satz) | — |
 | Wohin bucht der Wareneingang? | [D-972](90-decision-log.md) — Standard-Lagerort des Materials, sonst Ort des Zweigs unter Model (Zuordnung Zweig → Ort im Lager-Reiter), ohne Bezug Verbrauchsmaterial, sonst «Bauteile»; änderbar | — |
 | Ergänzt der Eingang eine Bestellung, die schon da ist? | [D-964](90-decision-log.md) — ja, aus der für neue Bestellungen zuständigen Quelle: Leeres füllen, Widersprüche je Feld zur Wahl; nur Bestellfelder, keine Positionen | — |

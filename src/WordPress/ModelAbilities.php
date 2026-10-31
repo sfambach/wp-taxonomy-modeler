@@ -10,6 +10,7 @@ use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SeededRole;
+use Taxmod\Core\Service\BlockUsage;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\Tree;
 use Taxmod\Core\Repository\Changelog;
@@ -17,6 +18,7 @@ use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\Backup;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
+use Taxmod\WordPress\Persistence\Query;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 
@@ -214,6 +216,56 @@ final class ModelAbilities
             'permission_callback' => $this->allowedToWriteData(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => false]],
         ]);
+
+        // *Vor und nach jedem Umbau an einem Renderer: welche Beiträge zeigen welchen Satz ([D-1052](../../docs/NewConcept/90-decision-log.md)).*
+        wp_register_ability('taxmod/block-usage', [
+            'label'               => __('List record block usage', 'taxmod'),
+            'description'         => __('Every taxmod/record block in posts and pages of any status: post id, title, status, type, display, node, record, records, field, via and row fields; also as CSV.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => ['type' => 'object', 'properties' => [], 'additionalProperties' => false],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->blockUsage()),
+            'permission_callback' => $this->allowed(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+    }
+
+    /** @return array{count: int, rows: list<array<string, int|string>>, csv: string} */
+    private function blockUsage(): array
+    {
+        global $wpdb;
+
+        $usage = new BlockUsage();
+        $posts = [];
+
+        foreach (Query::rows('Beiträge mit Satz-Block lesen', $wpdb->prepare(
+            "SELECT ID, post_title, post_status, post_type, post_content FROM {$wpdb->posts} WHERE post_type <> 'revision' AND post_content LIKE %s ORDER BY ID",
+            '%' . $wpdb->esc_like('<!-- wp:' . BlockUsage::BLOCK) . '%'
+        )) as $post) {
+            $posts[] = [
+                'id'     => (int) $post['ID'],
+                'title'  => (string) $post['post_title'],
+                'status' => (string) $post['post_status'],
+                'type'   => (string) $post['post_type'],
+                'blocks' => parse_blocks((string) $post['post_content']),
+            ];
+        }
+
+        $rows    = $usage->rows($posts);
+        $missing = $usage->recordsWithoutNode($rows);
+        $nodes   = [];
+
+        if ($missing !== []) {
+            foreach (Query::rows('Knoten der Sätze lesen', $wpdb->prepare(
+                'SELECT id, node_id FROM ' . Schema::table('node_records') . ' WHERE id IN (' . implode(',', array_fill(0, count($missing), '%d')) . ')',
+                ...$missing
+            )) as $row) {
+                $nodes[(int) $row['id']] = (int) $row['node_id'];
+            }
+        }
+
+        $rows = $usage->withNodes($rows, $nodes);
+
+        return ['count' => count($rows), 'rows' => $rows, 'csv' => $usage->csv($rows)];
     }
 
     public function allowed(mixed $input = null): bool
