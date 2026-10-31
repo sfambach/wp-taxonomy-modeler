@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress;
 
+use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Addon\ShippedAddons;
 use Taxmod\Core\Renderer\ResidueRenderer;
@@ -49,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.99';
+    public const VERSION     = '0.1.100';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -85,6 +86,7 @@ final class Plugin
         // last of all, after every module has added its pages; Cleanup and Backup go with it (D-1028).*
         add_action('admin_menu', self::maintenanceLast(...), PHP_INT_MAX);
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
+        add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
 
         // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
         add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '') use ($plugin): string {

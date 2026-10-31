@@ -2,6 +2,8 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Listing\ListColumn;
+use Taxmod\Core\Listing\ListView;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -21,6 +23,156 @@ use Taxmod\WordPress\Plugin;
  */
 final class ListPage
 {
+    /** The admin-post action that keeps a user's column choice (D-1054). */
+    public const COLUMNS_ACTION = 'taxmod_list_columns';
+
+    /** User meta: list id => the non-fixed column keys the user chose. */
+    private const COLUMNS_META = 'taxmod_list_columns';
+
+    /**
+     * The user's column choice for a list, or null for its starting set.
+     *
+     * @return list<string>|null
+     */
+    public static function chosenColumns(string $listId): ?array
+    {
+        $all = get_user_meta(get_current_user_id(), self::COLUMNS_META, true);
+
+        return is_array($all) && isset($all[$listId]) && is_array($all[$listId]) ? array_values(array_map('strval', $all[$listId])) : null;
+    }
+
+    /**
+     * A list as the request asks for it: the user's columns, the search `s`, the column filters `f[key]`, `orderby` and `order`.
+     *
+     * @param list<ListColumn> $columns
+     */
+    public static function view(string $listId, array $columns, string $defaultOrder = ''): ListView
+    {
+        $filters = [];
+
+        foreach ((array) ($_GET['f'] ?? []) as $key => $text) {
+            if (is_string($text)) {
+                $filters[sanitize_key((string) $key)] = sanitize_text_field(wp_unslash($text));
+            }
+        }
+
+        $orderBy = sanitize_key((string) ($_GET['orderby'] ?? ''));
+
+        return new ListView(
+            $columns,
+            self::chosenColumns($listId),
+            sanitize_text_field(wp_unslash((string) ($_GET['s'] ?? ''))),
+            $filters,
+            $orderBy === '' ? $defaultOrder : $orderBy,
+            sanitize_key((string) ($_GET['order'] ?? '')) === 'desc'
+        );
+    }
+
+    /**
+     * The button «Spalten»: a small form with one box per column that is not fixed, «Apply» and «Starting set». The choice is the
+     * user's own and stays for this list (design 7.2, 7.9).
+     */
+    public static function columnMenu(string $listId, ListView $view, string $returnUrl): string
+    {
+        $shown = array_map(static fn (ListColumn $c): string => $c->key, $view->visible());
+        $boxes = '';
+
+        foreach ($view->columns() as $column) {
+            if ($column->fixed) {
+                continue;
+            }
+
+            $boxes .= '<label style="display:block;white-space:nowrap"><input type="checkbox" name="columns[]" value="' . esc_attr($column->key) . '"'
+                . (in_array($column->key, $shown, true) ? ' checked' : '') . '> ' . esc_html($column->label) . '</label>';
+        }
+
+        if ($boxes === '') {
+            return '';
+        }
+
+        return '<details class="taxmod-columns alignleft actions" style="position:relative"><summary class="button">' . esc_html__('Columns', 'taxmod') . '</summary>'
+            . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="position:absolute;z-index:20;background:#fff;border:1px solid #c3c4c7;padding:8px 12px;margin-top:4px;max-height:60vh;overflow:auto;box-shadow:0 2px 6px rgba(0,0,0,.15)">'
+            . wp_nonce_field(self::COLUMNS_ACTION, '_wpnonce', true, false)
+            . '<input type="hidden" name="action" value="' . esc_attr(self::COLUMNS_ACTION) . '"><input type="hidden" name="list" value="' . esc_attr($listId) . '">'
+            . '<input type="hidden" name="return" value="' . esc_attr($returnUrl) . '">' . $boxes
+            . '<p style="margin:8px 0 0;white-space:nowrap">' . get_submit_button(__('Apply', 'taxmod'), 'primary small', 'apply', false) . ' '
+            . get_submit_button(__('Starting set', 'taxmod'), 'small', 'reset', false) . '</p></form></details>';
+    }
+
+    /** admin-post: capability → nonce → validate → sanitize → keep the choice → back to the list. */
+    public static function saveColumns(): void
+    {
+        if (! current_user_can('read')) {
+            wp_die(esc_html__('Not allowed.', 'taxmod'), '', ['response' => 403]);
+        }
+
+        check_admin_referer(self::COLUMNS_ACTION);
+
+        $list   = sanitize_key((string) ($_POST['list'] ?? ''));
+        $return = wp_validate_redirect(esc_url_raw(wp_unslash((string) ($_POST['return'] ?? ''))), admin_url());
+        $all    = get_user_meta(get_current_user_id(), self::COLUMNS_META, true);
+        $all    = is_array($all) ? $all : [];
+
+        if ($list !== '') {
+            if (isset($_POST['reset'])) {
+                unset($all[$list]);
+            } else {
+                $all[$list] = array_values(array_map('sanitize_key', array_map('strval', (array) wp_unslash($_POST['columns'] ?? []))));
+            }
+
+            update_user_meta(get_current_user_id(), self::COLUMNS_META, $all);
+        }
+
+        wp_safe_redirect($return);
+        exit;
+    }
+
+    /**
+     * The filter row under the column heads, one «contains» box per shown column, submitting the search form; hidden until
+     * «Filter row» opens it, or open while a filter is set (design 7.2).
+     */
+    public static function filterRow(string $searchFormId, ListView $view): string
+    {
+        $active = $view->filters();
+        $html   = '<tr class="taxmod-filter-row"' . ($active === [] ? ' hidden' : '') . ' style="background:#f6f7f7"><td></td>';
+
+        foreach ($view->visible() as $column) {
+            $html .= '<td><input type="search" name="f[' . esc_attr($column->key) . ']" value="' . esc_attr($active[$column->key] ?? '') . '" form="' . esc_attr($searchFormId)
+                . '" aria-label="' . esc_attr(sprintf(/* translators: %s: column */ __('Filter %s', 'taxmod'), $column->label)) . '" style="width:100%;min-width:4em"></td>';
+        }
+
+        return $html . '<td style="text-align:right">' . get_submit_button(__('Filter', 'taxmod'), 'small', '', false, ['form' => $searchFormId]) . '</td></tr>';
+    }
+
+    /** The button that shows or hides the filter row. */
+    public static function filterToggle(): string
+    {
+        return '<div class="alignleft actions"><button type="button" class="button" onclick="'
+            . esc_attr("this.closest('.wrap').querySelectorAll('.taxmod-filter-row').forEach(function(r){r.hidden=!r.hidden})") . '">'
+            . esc_html__('Filter row', 'taxmod') . '</button></div>';
+    }
+
+    /**
+     * The heads of the shown columns for {@see self::table()}: each sortable, a set filter marked with a dot.
+     *
+     * @param callable(array<string, string>): string $url the list's address with these query values changed
+     * @return list<array{0: string, 1: string, 2: string, 3: ''|'asc'|'desc'}>
+     */
+    public static function heads(ListView $view, callable $url): array
+    {
+        $active = $view->filters();
+        $heads  = [];
+
+        foreach ($view->visible() as $column) {
+            $current = $view->orderBy === $column->key;
+            $next    = $current && ! $view->descending ? 'desc' : 'asc';
+            $heads[] = [$column->label . (isset($active[$column->key]) ? ' •' : ''), $column->width, $url(['orderby' => $column->key, 'order' => $next === 'desc' ? 'desc' : '']),
+                $current ? ($view->descending ? 'desc' : 'asc') : ''];
+        }
+
+        return $heads;
+    }
+
     /** The heading: the plugin, then the screen one is on, then the version. */
     public static function heading(string $screen, string $version = Plugin::VERSION, string $plugin = 'Taxonomy Modeller'): string
     {
@@ -121,8 +273,9 @@ final class ListPage
      * sortable; its state says whether the list is sorted by it now.
      *
      * @param list<array{0: string, 1?: string|null, 2?: string, 3?: ''|'asc'|'desc'}> $columns label, CSS width, sort address, state
+     * @param string $filterRow from {@see self::filterRow()}, under the heads
      */
-    public static function table(array $columns, string $rows): string
+    public static function table(array $columns, string $rows, string $filterRow = ''): string
     {
         $head = '<tr><td class="manage-column column-cb check-column"><input type="checkbox" aria-label="' . esc_attr__('Select all', 'taxmod') . '"></td>';
 
@@ -143,7 +296,7 @@ final class ListPage
         $head .= '<th scope="col" class="manage-column" style="width:21em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
         return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 6px}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}</style>'
-            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
+            . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
     }
 
     /**
