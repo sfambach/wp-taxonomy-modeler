@@ -315,6 +315,25 @@ $vergleich = is_array($takte) ? wp_strip_all_tags(do_blocks('<!-- wp:taxmod/reco
 wp_set_current_user((int) ($admin[0] ?? 1));
 check('mehrere Einheitenwerte im Vergleich heissen «50 Taler, 60 Taler», nicht ihre Nummern', str_contains($vergleich, '50 __ab Taler, 60 __ab Taler'), is_wp_error($takte) ? $takte->get_error_message() : trim($vergleich));
 
+echo "Satz verschieben (D-1057)\n";
+
+$umzug = $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'kind', 'name' => '__ab Kind', 'parent' => $ergebnis['refs']['i']],
+    ['op' => 'create_record', 'ref' => 'wandert', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@wandert', 'values' => [(string) $ergebnis['refs']['f'] => 'wandert mit']],
+    ['op' => 'move_record', 'record' => '@wandert', 'node' => '@kind'],
+]]);
+$imKind = is_array($umzug) ? array_column($node->execute(['node' => $umzug['refs']['kind']])['records'] ?? [], null, 'id') : [];
+$gewandert = $imKind[$umzug['refs']['wandert'] ?? 0] ?? null;
+check('move_record hängt den Satz ins Kind, der Wert bleibt', $gewandert !== null && in_array('wandert mit', array_column($gewandert['values'], 'value'), true), is_wp_error($umzug) ? $umzug->get_error_message() : wp_json_encode($gewandert));
+
+$fallen = is_array($umzug) ? $apply->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'nurkind', 'node' => $umzug['refs']['kind'], 'target' => $text?->id ?? 0, 'name' => '__ab nur im Kind', 'multiplicity' => '0..1'],
+    ['op' => 'set_values', 'record' => $umzug['refs']['wandert'], 'values' => ['@nurkind' => 'fiele weg']],
+    ['op' => 'move_record', 'record' => $umzug['refs']['wandert'], 'node' => $ergebnis['refs']['i']],
+]]) : null;
+check('move_record weist ab, wenn ein Wert fiele', is_wp_error($fallen) && str_contains($fallen->get_error_message(), 'would drop values'), is_wp_error($fallen) ? $fallen->get_error_message() : 'kein Fehler');
+
 echo "Nur Daten (D-936)\n";
 
 $daten = wp_get_ability('taxmod/write-data');

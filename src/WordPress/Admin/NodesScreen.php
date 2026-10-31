@@ -4818,6 +4818,25 @@ final class NodesScreen
         return $text;
     }
 
+    /**
+     * Move a record to the parent or a child of its node, for `taxmod/apply` — refused when a value would fall (D-1057).
+     *
+     * ⚠️ *The screen announces lost values in its dialog; an op has no dialog, so it never drops one.*
+     */
+    public function moveRecordKeepingValues(int $recordId, int $targetId): NodeRecord
+    {
+        $verloren = array_map(static fn (Relation $r): string => $r->name, $this->data->lostOnMove($recordId, $targetId));
+
+        if ($verloren !== []) {
+            throw new \InvalidArgumentException(sprintf('move_record %d would drop values of: %s.', $recordId, implode(', ', $verloren)));
+        }
+
+        $danach = $this->data->moveRecord($recordId, $targetId);
+        $this->writePathFields($recordId, $danach->nodeId);
+
+        return $danach;
+    }
+
     /** Die Weg-Felder eines Satzes aus seinem Knoten rechnen und schreiben (D-755) — beim Speichern und nach dem Verschieben. */
     private function writePathFields(int $recordId, int $nodeId): void
     {
