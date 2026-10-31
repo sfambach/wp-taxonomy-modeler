@@ -968,7 +968,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-087 · Lieferereignisse als Vorgänge ohne Positionen
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, Prozesskonzept [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP3, LP7.
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1037](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, Prozesskonzept [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP3, LP7.
 
 > *«ja bitte möchte die bewegungen tracken vielleicht kannst du das allemein als bewegungstabelle abliegen in die wir auch interne bewegungen schreiben ?»*
 
@@ -977,47 +977,47 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 ## INF-088 · Bestellstatus: gespeichert oder aus Vorgängen gerechnet
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP4.
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1038](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP4.
 
 - **Heute:** Feld «Status» (149000110134) an «Bestellungen», gesetzt vom Wareneingang des Moduls.
 - **Vorschlag (INFERRED):** gespeichert lassen, nur ein Vorgang setzt es, im selben Akt; Werte «versendet» und «zugestellt» ergänzen. Rechnen bräuchte gerechnete Felder ([INF-081](#)).
 
 ## INF-089 · Umbuchung immer als Vorgang
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP5.
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1039](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP5.
 
 - **Heute (Konzept §4):** ganzer Posten → nur Lagerort ändern, ohne Vorgang; so wanderten am 2026-10-22 die 83 JLC-Posten nach «Platinen».
 - **Vorschlag (INFERRED):** jede Umbuchung ist ein Vorgang mit −n am alten und +n an einem neuen Posten, damit die Bewegung im Verlauf steht.
 
 ## INF-090 · Teilmenge innerhalb eines Kaufs
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP6.
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1040](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP6.
 
 - **Entschieden:** Teil-Wareneingang über Käufe ([D-956](NewConcept/90-decision-log.md)). Offen: 30 von 50 Stück eines Kaufs.
 - **Vorschlag (INFERRED):** erlauben, mit dem Feld «Eingegangen» am Kauf aus `pakete/lager/konzept.md` §3.4 (nicht gebaut).
 
 ## INF-091 · Zustellung bucht keinen Wareneingang
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP7.
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1041](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP7.
 
 - **Vorschlag (INFERRED):** «Zugestellt» ist eine Meldung; der Wareneingang bleibt ein Schritt im Lager-Reiter, wo die Sperren (R1) und der Lagerort-Vorschlag ([D-972](NewConcept/90-decision-log.md)) greifen.
 
 ## INF-092 · Sendungsnummer und Meldungstext am Vorgang
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP7.
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1042](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) LP7.
 
 - **Vorschlag (INFERRED):** zwei Textfelder 0..1 an «Vorgänge»; die Sendungsnummer bleibt zusätzlich an der Bestellung ([D-933](NewConcept/90-decision-log.md), 0..*).
 
 ## INF-093 · Chargen bei Platinen
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) Fragen 7.
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1043](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, [`pakete/lager/prozesse.md`](pakete/lager/prozesse.md) Fragen 7.
 
 - **Sein Wunsch:** *«für platinen bräuchten wir auch chargen glaube ich gleich version 2 bestellungen andere charge»*.
 - **Vorschlag (INFERRED):** Der Bestandsposten ist die Charge: ein Posten je Kauf, die Herkunft (Kauf → Bestellung, Datum) trennt zwei Bestellungen derselben Version ([D-956](NewConcept/90-decision-log.md)). Angezeigte Chargennummer = Bestellnummer; kein eigenes Feld.
 
 ## INF-094 · Versandstufen für alle Verkaufsquellen
 
-**Typ:** `IDEE` · **Status:** `OFFEN` — 2026-10-23, Thread «Taxmod eBay-Modul».
+**Typ:** `IDEE` · **Status:** `ENTSCHIEDEN` → [D-1044](NewConcept/90-decision-log.md) (31.10.) — 2026-10-23, Thread «Taxmod eBay-Modul».
 
 - **Sein Wunsch:** *«und das später nicht nur für ebay sondern für alle aber das nur mal notieren»* — gemeint sind die Reiter Offen → Verpackt → Versendet → Empfangen der eBay-Versandseite ([D-985](NewConcept/90-decision-log.md)).
 - **Offen:** wo die Stufen dann leben (Modeller statt Modul-Option) und ob sie an der Bestellung im Modell stehen ([INF-087](#), [INF-088](#)).
