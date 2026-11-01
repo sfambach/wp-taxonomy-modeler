@@ -2024,9 +2024,26 @@
 			return;
 		}
 
-		var rahmen = window.wp.media( { title: knopf.getAttribute( 'title' ) || '', multiple: false } );
+		// ⚠️ *Am mehrfachen Medienfeld wählt die Mediathek mehrere Dateien auf einmal (D-1077) — sein Wort: «mehfach auswahl bei bilder
+		// hinzufügen». Jede gewählte Datei wird eine eigene Zeile, wie nach «+»; das einfache Feld bleibt bei einer.*
+		var waehler = knopf.hasAttribute( 'data-taxmod-address' ) ? null : knopf.closest( '.taxmod-value-picker' );
+		var rahmen  = window.wp.media( { title: knopf.getAttribute( 'title' ) || '', multiple: waehler ? 'add' : false } );
 
 		rahmen.on( 'select', function () {
+			if ( waehler ) {
+				rahmen.state().get( 'selection' ).each( function ( eintrag ) {
+					var gewaehlt = eintrag.toJSON();
+
+					if ( gewaehlt.id ) {
+						wertZeileAnlegen( waehler, 'media:' + gewaehlt.id, gewaehlt.title || gewaehlt.filename || ( 'media:' + gewaehlt.id ) );
+					}
+				} );
+				ziel.adresse.value = '';
+				ziel.adresse.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+
+				return;
+			}
+
 			var datei = rahmen.state().get( 'selection' ).first().toJSON();
 
 			medienEintragen( ziel, datei.id ? 'media:' + datei.id : ( datei.url || '' ), ziel.titel && ziel.titel.value.trim() !== '' ? '' : ( datei.title || '' ) );
