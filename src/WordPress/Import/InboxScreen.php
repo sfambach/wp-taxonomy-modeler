@@ -774,7 +774,7 @@ final class InboxScreen
         try {
             if ($verdict === IntakeVerdict::NewOrder) {
                 $lines = $picked === null ? array_keys($proposal->lines) : array_values(array_intersect($picked, array_keys($proposal->lines)));
-                $created = $model->write($builder->newOrder(self::withoutStatus($proposal), $lines, $originNote));
+                $created = $model->write($builder->newOrder(SourcePictures::intoLibrary(self::withoutStatus($proposal)), $lines, $originNote));
 
                 if ($created instanceof WP_Error) {
                     return $created->get_error_message();

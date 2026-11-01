@@ -282,7 +282,7 @@ final class ChangeListBuilder
             'landed_unit_price' => $this->amount('landed_unit_price', $landedUnitPrice, $currency, $rate),
             'origin'            => ['values' => [(string) $this->target->originDocumented]],
             'origin_note'       => $originNote,
-            // The source's product picture, linked where it lies — a new purchase only, nothing it holds is replaced (D-1079).
+            // The source's product picture — the boundary has loaded it into the library by now; a new purchase only (D-1079).
             'images'            => $line->imageUrl === null ? null : ['values' => [$line->imageUrl]],
         ] as $role => $value) {
             if ($this->target->hasPurchaseField($role)) {

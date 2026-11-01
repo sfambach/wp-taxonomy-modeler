@@ -13,7 +13,7 @@ final class ProposalLine
      * @param string|null $unitPrice decimal string, never float — money keeps its digits
      * @param float|null $quantity null when the source does not say (JLCPCB review mails)
      * @param string|null $articleNumber the platform's number for the item: Reichelt/Mouser article number, eBay item id
-     * @param string|null $imageUrl the product picture the source shows, as an address from outside (D-865, D-1079)
+     * @param string|null $imageUrl the product picture the source shows: its address, or `media:<id>` once loaded (D-865, D-1079)
      */
     public function __construct(
         public readonly string $title,
