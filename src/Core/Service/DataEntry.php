@@ -1738,6 +1738,14 @@ final class DataEntry
             throw $anywhere ? NotYetStorable::notInTheTreeOf($ziel->name, $knoten->name) : NotYetStorable::notANeighbourOf($ziel->name, $knoten->name);
         }
 
+        // ⚠️ *Ein Verweis, der den Satz bisher wählen durfte, darf es danach auch noch — sonst zeigte er auf einen Satz ausserhalb
+        // seiner Auswahl («alle Sätze unter dem Ziel», D-753). Abgewiesen, nicht geräumt: der Verweis gehört einem anderen Satz.*
+        $gestrandet = array_map(static fn (Relation $r): string => $r->name, $this->strandedOnMove($recordId, $ziel->id));
+
+        if ($gestrandet !== []) {
+            throw NotYetStorable::wouldStrandReferences($satz->id, $ziel->name, implode(', ', array_unique($gestrandet)));
+        }
+
         $vorher = $this->satzZustand($satz);
         $danach = new NodeRecord($satz->id, $ziel->id, $ziel->version, $satz->createdAt, $satz->recordType, $satz->relationId);
 
@@ -1755,11 +1763,49 @@ final class DataEntry
 
             $version = $this->records->moveRecord($recordId, $ziel->id);
             $this->melden($recordId, 'record', 'record moved', $vorher, $this->satzZustand($danach), $version);
+
+            // ⚠️ *Der neue Knoten rechnet und setzt zusammen, was er rechnet und zusammensetzt (D-885, D-1022) — im selben Akt.*
+            $this->angefasst($recordId);
         } finally {
             $this->changelog?->endAct();
         }
 
         return $danach;
+    }
+
+    /**
+     * Die Felder fremder Sätze, die auf diesen Satz zeigen und ihn am Ziel nicht mehr wählen dürften (D-753, D-1073).
+     *
+     * ⚠️ *Nur, was vorher passte: ein Verweis, der schon heute ausserhalb seiner Auswahl zeigt, hält den Umzug nicht auf.*
+     *
+     * @return list<Relation>
+     */
+    public function strandedOnMove(int $recordId, int $targetNodeId): array
+    {
+        $satz = $this->records->find($recordId);
+
+        if ($satz === null) {
+            return [];
+        }
+
+        $alt  = $this->nodes->byId($satz->nodeId);
+        $neu  = $this->nodes->byId($targetNodeId);
+        $deckt = static fn (int $feldZiel, Node $knoten): bool => $feldZiel === $knoten->id || in_array($feldZiel, $knoten->ancestorIds(), true);
+        $aus  = [];
+
+        foreach ($this->records->referrersOf($recordId) as $zeile) {
+            $feld = $this->relations->byId($zeile->relationId);
+
+            if ($feld === null || $feld->isSetting() || $feld->kind !== RelationKind::Aggregation) {
+                continue;
+            }
+
+            if ($deckt($feld->toNodeId, $alt) && ! $deckt($feld->toNodeId, $neu)) {
+                $aus[$feld->id] = $feld;
+            }
+        }
+
+        return array_values($aus);
     }
 
     /**

@@ -142,6 +142,12 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('«%s» is not in the tree of «%s».', $target, $node));
     }
 
+    /** Ein Umzug liesse Verweise fremder Sätze ausserhalb ihrer Auswahl zeigen (D-1073). */
+    public static function wouldStrandReferences(int $recordId, string $target, string $fields): self
+    {
+        return new self(sprintf('Record %d cannot move to «%s»: it is still chosen in %s, which cannot choose it there.', $recordId, $target, $fields));
+    }
+
     /** Die Validatoren haben etwas auszusetzen — nichts wird gespeichert (D-760). */
     public static function refusedByValidators(string $liste): self
     {

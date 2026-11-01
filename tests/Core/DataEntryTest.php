@@ -768,6 +768,55 @@ final class DataEntryTest extends TestCase
         self::assertSame($fremd->id, $this->records->find($record->id)?->nodeId);
     }
 
+    /** ⚠️ *D-1073: ein fremder Verweis, der den Satz wählen durfte, muss es nach dem Umzug noch dürfen (D-753) — sonst abgewiesen.* */
+    #[Test]
+    public function a_record_does_not_move_out_of_reach_of_a_field_that_chose_it(): void
+    {
+        $fremd      = $this->editor->createNode('Fremd', $this->branchRoot['model']->id);
+        $halter     = $this->editor->createNode('Halter', $this->branchRoot['model']->id);
+        $verweis    = $this->editor->addField($halter->id, $this->part->id, 'Teil', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $record     = $this->data->create($this->part->id);
+        $halterSatz = $this->data->create($halter->id);
+        $this->data->put($halterSatz->id, $verweis->id, TypedValue::ofRecordReference($record->id));
+
+        self::assertSame(['Teil'], array_map(static fn ($r) => $r->name, $this->data->strandedOnMove($record->id, $fremd->id)));
+
+        $this->expectException(NotYetStorable::class);
+
+        $this->data->moveRecord($record->id, $fremd->id, true);
+    }
+
+    /** ⚠️ *D-1073: nach unten bleibt der Satz in der Auswahl des Verweises — der Umzug geht.* */
+    #[Test]
+    public function a_record_moves_into_a_child_while_a_field_still_reaches_it(): void
+    {
+        $child      = $this->editor->createNode('Sub', $this->part->id);
+        $halter     = $this->editor->createNode('Halter', $this->branchRoot['model']->id);
+        $verweis    = $this->editor->addField($halter->id, $this->part->id, 'Teil', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $record     = $this->data->create($this->part->id);
+        $halterSatz = $this->data->create($halter->id);
+        $this->data->put($halterSatz->id, $verweis->id, TypedValue::ofRecordReference($record->id));
+
+        self::assertSame($child->id, $this->data->moveRecord($record->id, $child->id)->nodeId);
+    }
+
+    /** ⚠️ *D-1073: der Umzug läuft durch den Nachlauf — Rechen- und Zusammenfassungsfelder des neuen Knotens werden geschrieben.* */
+    #[Test]
+    public function a_moved_record_runs_the_after_write_hook(): void
+    {
+        $child  = $this->editor->createNode('Sub', $this->part->id);
+        $record = $this->data->create($this->part->id);
+        $gerufen = [];
+        $this->data->afterWrite(static function (array $saetze) use (&$gerufen): void {
+            $gerufen = [...$gerufen, ...$saetze];
+        });
+
+        $this->data->moveRecord($record->id, $child->id);
+        $this->data->afterWrite(null);
+
+        self::assertContains($record->id, $gerufen);
+    }
+
     #[Test]
     public function a_record_does_not_move_into_another_branch(): void
     {
