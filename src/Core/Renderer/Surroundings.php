@@ -260,6 +260,12 @@ final class Surroundings
         public readonly ?\Taxmod\Core\Port\MediaLibrary $mediaLibrary = null,
         /** Wohin der Körper eines Satzdialogs geht, wenn die Seite ihn teilt (D-866); ohne: jeder Dialog trägt seinen eigenen. */
         public readonly ?SharedBodies $sharedBodies = null,
+        /**
+         * Je angebotener Konstante ihr Farbwert `#rrggbb` — nur für den Farb-Renderer gefüllt (D-1080).
+         *
+         * @var array<int, string>
+         */
+        public readonly array $swatches = [],
     ) {
     }
 

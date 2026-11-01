@@ -42,6 +42,10 @@ final class Constant implements NodeClass
     #[Attribut]
     public bool $with_label = false;
 
+    // ⚠️ *Der Farbwert einer Farbe (`#rrggbb`), den der Farb-Renderer im Kästchen zeigt (D-1080). Leer an jeder anderen Konstante.*
+    #[Attribut]
+    public ?string $color = null;
+
     public static function allowedChildClasses(): array
     {
         return [];

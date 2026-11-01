@@ -2191,6 +2191,8 @@ final class Rendering implements Presets
             }
 
             $value = $gewaehlt ?? TypedValue::nothing();
+            // ⚠️ *Der Farb-Renderer zeigt je Farbe ihr Kästchen (D-1080): die Farbwerte der angebotenen Konstanten, in einem Zug.*
+            $farbwerte = $renderer instanceof \Taxmod\Core\Renderer\ColorChoiceRenderer ? $this->farbwerteUnter($relation->toNodeId) : [];
 
             $context = new RenderContext(
                 purpose: $purpose,
@@ -2242,6 +2244,7 @@ final class Rendering implements Presets
                     dialogWords: $this->dialogWords,
                     mediaLibrary: $this->media,
                     sharedBodies: $this->geteilteKoerper,
+                    swatches: $farbwerte,
                     // ⚠️ **«Nichts» ist eine Möglichkeit nur dort, wo die Multiplizität es zulässt.**
                     //
                     // ⚠️ *Der Eigentümer: «`render` ist `1..1` in `DisplayOption`, sollte somit nicht die
@@ -8045,6 +8048,27 @@ final class Rendering implements Presets
         }
 
         return $walked;
+    }
+
+    /**
+     * Die Farbwerte (`color`) der sichtbaren Kinder einer Auswahl — für den Farb-Renderer (D-1080).
+     *
+     * @return array<int, string> Knoten-Id => `#rrggbb`
+     */
+    private function farbwerteUnter(int $choiceId): array
+    {
+        $kinder = $this->gemerkteSichtbareKinder([$choiceId])[$choiceId] ?? [];
+        $werte  = [];
+
+        foreach ($this->vonDenKnoten($kinder) as $id => $eigene) {
+            $hex = ($eigene['color'] ?? null)?->value->text ?? '';
+
+            if ($hex !== '') {
+                $werte[$id] = $hex;
+            }
+        }
+
+        return $werte;
     }
 
     private function optionsFor(array $relations): array

@@ -2808,3 +2808,37 @@
 			} );
 	} );
 }() );
+
+/**
+ * Das Kästchen des Farb-Renderers folgt der Wahl (D-1080): die Farbwerte stehen am Auswahlfeld.
+ */
+( function () {
+	'use strict';
+
+	document.addEventListener( 'change', function ( ereignis ) {
+		var feld = ereignis.target;
+		var werte;
+		var kaestchen;
+		var hex;
+
+		if ( ! feld || ! feld.matches || ! feld.matches( 'select[data-taxmod-swatches]' ) ) {
+			return;
+		}
+
+		try {
+			werte = JSON.parse( feld.getAttribute( 'data-taxmod-swatches' ) || '{}' ) || {};
+		} catch ( fehler ) {
+			werte = {};
+		}
+
+		kaestchen = feld.parentNode ? feld.parentNode.querySelector( '.taxmod-swatch' ) : null;
+		hex       = werte[ feld.value ] || '';
+
+		if ( ! kaestchen ) {
+			return;
+		}
+
+		kaestchen.style.background = /^#[0-9a-fA-F]{6}$/.test( hex ) ? hex : '';
+		kaestchen.style.border     = /^#[0-9a-fA-F]{6}$/.test( hex ) ? '1px solid #8c8f94' : '1px dashed #8c8f94';
+	} );
+}() );

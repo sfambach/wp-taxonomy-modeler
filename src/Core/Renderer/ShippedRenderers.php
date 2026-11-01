@@ -74,6 +74,8 @@ final class ShippedRenderers
         $registry->add(new MailtoRenderer(), SimpleType::Email);
         $registry->add(new DateTimeRenderer(), SimpleType::DateTime);
         $registry->add(new ColorRenderer(), SimpleType::Color);
+        // ⚠️ *Eine Farbe aus der Auswahl «Farben»: Name und Kästchen (D-1080). Angeboten, nicht Standard — gewählt am Knoten «Farben».*
+        $registry->add(new ColorChoiceRenderer());
 
         // ⚠️ **The first structural renderer** — chosen for what a subject **is** rather than for
         // what it holds, which is why it declares no type at all (D-098). Until it existed, a node
