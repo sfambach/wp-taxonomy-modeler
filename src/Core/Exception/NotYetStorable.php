@@ -136,6 +136,12 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('«%s» is neither the parent nor a child of «%s».', $target, $node));
     }
 
+    /** Ein Satz wandert nur innerhalb seines Baums (D-1073). */
+    public static function notInTheTreeOf(string $target, string $node): self
+    {
+        return new self(sprintf('«%s» is not in the tree of «%s».', $target, $node));
+    }
+
     /** Die Validatoren haben etwas auszusetzen — nichts wird gespeichert (D-760). */
     public static function refusedByValidators(string $liste): self
     {

@@ -4821,17 +4821,18 @@ final class NodesScreen
     /**
      * Move a record to the parent or a child of its node, for `taxmod/apply` — refused when a value would fall (D-1057).
      *
-     * ⚠️ *The screen announces lost values in its dialog; an op has no dialog, so it never drops one.*
+     * ⚠️ *The screen announces lost values in its dialog; an op has no dialog, so it never drops one — unless the caller has
+     * announced them itself and says so with `$drop` (D-1073: the stock's material page asks first).*
      */
-    public function moveRecordKeepingValues(int $recordId, int $targetId): NodeRecord
+    public function moveRecordKeepingValues(int $recordId, int $targetId, bool $anywhere = false, bool $drop = false): NodeRecord
     {
         $verloren = array_map(static fn (Relation $r): string => $r->name, $this->data->lostOnMove($recordId, $targetId));
 
-        if ($verloren !== []) {
+        if ($verloren !== [] && ! $drop) {
             throw new \InvalidArgumentException(sprintf('move_record %d would drop values of: %s.', $recordId, implode(', ', $verloren)));
         }
 
-        $danach = $this->data->moveRecord($recordId, $targetId);
+        $danach = $this->data->moveRecord($recordId, $targetId, $anywhere);
         $this->writePathFields($recordId, $danach->nodeId);
 
         return $danach;

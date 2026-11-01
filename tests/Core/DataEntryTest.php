@@ -757,6 +757,28 @@ final class DataEntryTest extends TestCase
         $this->data->moveRecord($record->id, $fremd->id);
     }
 
+    /** ⚠️ *Sein Wort (D-1073): «wo es abgelegt ist im tax baum das müsste ich ja auch ändern können» — in einem Schritt, im eigenen Ast.* */
+    #[Test]
+    public function a_record_moves_anywhere_in_its_branch_when_asked_to(): void
+    {
+        $fremd  = $this->editor->createNode('Fremd', $this->branchRoot['model']->id);
+        $record = $this->data->create($this->part->id);
+
+        self::assertSame($fremd->id, $this->data->moveRecord($record->id, $fremd->id, true)->nodeId);
+        self::assertSame($fremd->id, $this->records->find($record->id)?->nodeId);
+    }
+
+    #[Test]
+    public function a_record_does_not_move_into_another_branch(): void
+    {
+        $fremd  = $this->editor->createNode('Fremd', $this->branchRoot['compositions']->id);
+        $record = $this->data->create($this->part->id);
+
+        $this->expectException(NotYetStorable::class);
+
+        $this->data->moveRecord($record->id, $fremd->id, true);
+    }
+
     // ------------------------------------------------- Verweislisten als Tabelle (D-937, nach D-758 und D-498)
 
     /** ⚠️ *«Add row» an einer Verweisliste: ein eigener Satz am Ziel, in der Art des Besitzers, und ein Verweis darauf — ein Akt.* */

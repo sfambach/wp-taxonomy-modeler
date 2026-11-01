@@ -1719,8 +1719,12 @@ final class DataEntry
      * verschieben».* *Die Werte bleiben, denn sie hängen an Kanten, nicht am Knoten: nach unten sieht das Kind jedes Feld des
      * Vaters; nach oben bleiben Werte an Feldern, die der Vater nicht hat, in der Zeile stehen und werden erst wieder sichtbar,
      * wenn der Satz zurückkommt. Nur Nachbarn — Vater oder direktes Kind —, ein Schritt je Akt.*
+     *
+     * ⚠️ **`$anywhere`: in jeden Knoten desselben Astes** ([D-1073](../../../docs/NewConcept/90-decision-log.md)) — sein Wort
+     * 2026-11-01: *«wo es abgelegt ist im tax baum das müsste ich ja auch ändern können daraufhin müssen sich die felder ändern»*.
+     * *Für die Materialseite des Lagers; die Maske bleibt beim Schritt zu den Nachbarn.*
      */
-    public function moveRecord(int $recordId, int $targetNodeId): NodeRecord
+    public function moveRecord(int $recordId, int $targetNodeId, bool $anywhere = false): NodeRecord
     {
         $satz   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $knoten = $this->nodes->byId($satz->nodeId);
@@ -1730,8 +1734,8 @@ final class DataEntry
             return $satz;
         }
 
-        if ($knoten->parentNodeId !== $ziel->id && $ziel->parentNodeId !== $knoten->id) {
-            throw NotYetStorable::notANeighbourOf($ziel->name, $knoten->name);
+        if ($anywhere ? ($this->framework->branchOf($knoten) === null || $this->framework->branchOf($knoten) !== $this->framework->branchOf($ziel)) : ($knoten->parentNodeId !== $ziel->id && $ziel->parentNodeId !== $knoten->id)) {
+            throw $anywhere ? NotYetStorable::notInTheTreeOf($ziel->name, $knoten->name) : NotYetStorable::notANeighbourOf($ziel->name, $knoten->name);
         }
 
         $vorher = $this->satzZustand($satz);
