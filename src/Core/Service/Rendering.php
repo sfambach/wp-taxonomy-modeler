@@ -1241,6 +1241,15 @@ final class Rendering implements Presets
         return $kopie;
     }
 
+    /** Dieselbe Zeichnung ohne geteilte Körper — für ein Stück, das auf einer fremden Seite steht, die keine Vorlagen ausgibt (D-1075). */
+    public function withoutSharedRecordBodies(): static
+    {
+        $kopie                  = clone $this;
+        $kopie->geteilteKoerper = null;
+
+        return $kopie;
+    }
+
     /**
      * Die gesammelten Vorlagen — leer, wenn die Seite nicht teilt.
      *

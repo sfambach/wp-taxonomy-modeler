@@ -50,10 +50,13 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.111';
+    public const VERSION     = '0.1.112';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
+
+    /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form'])`: the node chooser dialog for a module's page (D-1075). */
+    public const NODE_CHOOSER_FILTER = 'taxmod_node_chooser';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -98,6 +101,26 @@ final class Plugin
 
             return $plugin->screen()->recordEditor($recordId, $returnTo);
         }, 10, 3);
+
+        // ⚠️ *Der Knoten-Wähler für Module (D-1075): dieselbe Ansicht wie im Modeller, das Modul fragt den Filter, nicht die Klassen.*
+        add_filter(self::NODE_CHOOSER_FILTER, static function (mixed $html, array $args = []) use ($plugin): string {
+            if (! current_user_can(self::CAPABILITY)) {
+                return is_string($html) ? $html : '';
+            }
+
+            $ids = static fn (mixed $liste): array => array_values(array_filter(array_map('absint', is_array($liste) ? $liste : []), static fn (int $id): bool => $id > 0));
+
+            $plugin->enqueueStyle();
+
+            return $plugin->screen()->nodeChooserForModule(
+                (string) preg_replace('/[^A-Za-z0-9_\-\[\]]/', '', (string) ($args['name'] ?? 'taxmod_node')),
+                absint($args['root'] ?? 0),
+                $ids($args['exclude'] ?? []),
+                $ids($args['unpickable'] ?? []),
+                empty($args['preselected']) ? null : absint($args['preselected']),
+                (string) preg_replace('/[^A-Za-z0-9_\-]/', '', (string) ($args['form'] ?? ''))
+            );
+        }, 10, 2);
 
         // ⚠️ **Der erste Rückweg vom Rand in den Kern** ([D-666](../../docs/NewConcept/90-decision-log.md),
         // [D-627](../../docs/NewConcept/90-decision-log.md)) — *gemessen 0 REST-Routen und 0 AJAX,

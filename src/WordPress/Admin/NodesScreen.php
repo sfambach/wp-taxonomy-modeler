@@ -3567,6 +3567,39 @@ final class NodesScreen
     }
 
     /**
+     * Der Knoten-Wähler für die Seite eines Moduls — dieselbe Ansicht wie im Modeller: Dialog, Suchfeld am Baum, ein Klick wählt (D-727, D-740, D-1075).
+     *
+     * ⚠️ *Sein Wort: «wir hatte in tax mal festegelgt dass es immer die gleich ansicht ist der tax chooser evtl müssen wir den noch erweitern
+     * um mehrer äste ein und auszuschlissen aber der ist immer die ansicht».* Ein Ast steht über `root`, ausgeschlossene Äste über `exclude`
+     * (mit allem darunter), sichtbare, aber nicht wählbare Knoten über `unpickable`.
+     *
+     * @param list<int> $exclude
+     * @param list<int> $unpickable
+     */
+    public function nodeChooserForModule(string $name, int $root, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = ''): string
+    {
+        $wurzel = $this->editor->find($root) ?? $this->framework->root();
+        $wahl   = $preselected === null ? null : $this->editor->find($preselected);
+
+        // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
+        return $this->rendering->withoutSharedRecordBodies()->nodeChooser(
+            $wurzel,
+            $name,
+            null,
+            $wahl?->id,
+            [...$exclude, $this->framework->trash()->id],
+            $unpickable,
+            $wahl?->name,
+            __('Nothing here can be chosen.', 'taxmod'),
+            ChooserRenderer::NAME,
+            $this->localeFromRequest(),
+            Level::Admin,
+            formId: $formId,
+            settings: ChooserRenderer::asDialog()
+        )->markup;
+    }
+
+    /**
      * Ein Öffner des gemeinsamen Auswahlbaums: das Feld, in das die Wahl geht, und — wo einer ist — der Akt, der danach abschickt.
      *
      * @param list<int> $barred Knoten, die hier nicht gewählt werden können.
