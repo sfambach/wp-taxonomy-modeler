@@ -34,6 +34,8 @@ use WP_Error;
  */
 final class InboxScreen
 {
+    /** The event the stock process listens for (D-1037): order record id, shipped|delivered, Y-m-d, mail|api, reference. */
+    public const STOCK_EVENT = 'taxmod_stock_event';
     public const PAGE = 'taxmod-inbox';
     public const TAKE = 'taxmod_inbox_take';
     public const TAKE_BOX = 'taxmod_inbox_take_box';
@@ -764,6 +766,7 @@ final class InboxScreen
         // each step.*
         usort($rows, static fn (array $a, array $b): int => [self::when($a), (int) $a['id']] <=> [self::when($b), (int) $b['id']]);
         $written = [];
+        $events = [];
 
         try {
             if ($verdict === IntakeVerdict::NewOrder) {
@@ -809,6 +812,18 @@ final class InboxScreen
                     $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
                 }
 
+                // ⚠️ *The order's status belongs to the stock process (D-1037, D-1038): the inbox only reports the event,
+                // once everything is written. Without a listener nothing happens.*
+                if (in_array($step->kind, [ProposalKind::Shipped, ProposalKind::Delivered], true) && $existing->recordId > 0) {
+                    $events[] = [
+                        $existing->recordId,
+                        $step->kind === ProposalKind::Shipped ? 'shipped' : 'delivered',
+                        substr($step->kind === ProposalKind::Shipped ? ($step->shippedDate ?? self::when($row)) : self::when($row), 0, 10),
+                        (string) ($row['source'] ?? '') === 'mail' ? 'mail' : 'api',
+                        (string) ($step->externalId ?? $row['id']),
+                    ];
+                }
+
                 // An invoice is a record of its own, linked to the order (D-1024); its own write, it creates a record.
                 $invoice = $builder->invoice($existing, $step->invoice === null ? $step : self::withTotal($step, $proposal), $originNote);
 
@@ -844,6 +859,10 @@ final class InboxScreen
             }
         } catch (DomainError $refused) {
             return $refused->getMessage();
+        }
+
+        foreach ($events as $event) {
+            do_action(self::STOCK_EVENT, ...$event);
         }
 
         foreach ($rows as $row) {

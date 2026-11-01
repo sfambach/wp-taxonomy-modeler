@@ -115,6 +115,8 @@ $amazon = $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Amz', 'Z
 $seite = (new InboxScreen())->render();
 $pruefe(str_contains($seite, 'Shipped on 2026-10-30'), 'a shipping mail without tracking shows when it was shipped');
 $tisch->close($amazon, \Taxmod\Core\Import\InboxStatus::Discarded);
+// ⚠️ *D-1037: the stock process listens for this name; renaming it silently cuts the order status off.*
+$pruefe(InboxScreen::STOCK_EVENT === 'taxmod_stock_event' && str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Import/InboxScreen.php'), 'do_action(self::STOCK_EVENT, ...$event)'), 'a taken shipping or delivery message is reported to the stock process');
 
 // ⚠️ *D-986: ein schon behandelter Vorschlag kann wieder aufgehen, wenn die Quelle Leeres im Modell füllt (sein Wort: «ja bitte preis nachtragen»).*
 $pruefe($tisch->closedId('__ib', 'k1') === $frueher && $tisch->closedId('__ib', 'nie') === null, 'the handled row of an external id is found');
