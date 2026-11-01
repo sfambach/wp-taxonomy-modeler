@@ -2233,6 +2233,51 @@ final class RenderingTest extends TestCase
         self::assertSame(0, $schreib->refresh([$satzId]), 'nothing written into the list of sources');
     }
 
+    /** ⚠️ *D-1078: «quellen sind nicht wirklich auswählbar da wird nur die beitragsnummer gezeigt suchen geht auch nicht».* */
+    #[Test]
+    public function a_list_of_sources_offers_names_and_a_searchable_dialog(): void
+    {
+        $text        = $this->type('Text');
+        $quelle      = $this->thing('Quelle');
+        $bezeichnung = $this->editor->addField($quelle->id, $text->id, 'Bezeichnung');
+        $kategorie   = $this->editor->addField($quelle->id, $text->id, 'Kategorie');
+        $material    = $this->thing('Material');
+        $quellen     = $this->editor->addField($material->id, $quelle->id, 'Quellen', RelationKind::Aggregation);
+        $quellen     = $this->editor->setMultiplicity($material->id, $quellen->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+
+        $ohne  = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-11-01 10:00:00', RecordType::User));
+        $blatt = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-11-01 10:00:00', RecordType::User));
+        $noch  = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-11-01 10:00:00', RecordType::User));
+        $gerb  = $this->records->add(new NodeRecord(0, $quelle->id, 1, '2026-11-01 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($ohne, $bezeichnung->id, TypedValue::ofText('github.com: v1.1')));
+        $this->records->putValue(RelationRecord::direct($blatt, $bezeichnung->id, TypedValue::ofText('LM7805 datasheet')));
+        $this->records->putValue(RelationRecord::direct($blatt, $kategorie->id, TypedValue::ofText('Datenblatt')));
+        $this->records->putValue(RelationRecord::direct($noch, $bezeichnung->id, TypedValue::ofText('NE555 datasheet')));
+        $this->records->putValue(RelationRecord::direct($noch, $kategorie->id, TypedValue::ofText('Datenblatt')));
+        $this->records->putValue(RelationRecord::direct($gerb, $bezeichnung->id, TypedValue::ofText('voltage-blaster-gerber')));
+        $this->records->putValue(RelationRecord::direct($gerb, $kategorie->id, TypedValue::ofText('Gerber')));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($quelle, SummaryRenderer::FIELDS, [$kategorie->id], $quellen);
+        $this->neuZeichnen();
+
+        $satz = $this->records->add(new NodeRecord(0, $material->id, 1, '2026-11-01 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $quellen->id, TypedValue::ofRecordReference($ohne), '', 0));
+
+        $rendering = $this->rendering->withPartActs('Add row', 'Remove this row')->withDialogWords('OK', 'Cancel', 'Tree', search: 'Search');
+        $html      = $rendering->nodeAsForm($material, [$quellen], [], Purpose::Edit, 'v[' . $satz . ']', recordParts: $rendering->partsOfRecord($satz, [$quellen]), recordId: $satz)->markup;
+
+        self::assertStringContainsString('taxmod-ref-rows', $html);
+        self::assertStringContainsString('>github.com: v1.1</option>', $html, 'ohne Kategorie der Name statt «#' . $ohne . '»');
+        self::assertStringContainsString('>LM7805 datasheet · Datenblatt</option>', $html, 'gleiche Kategorie: Name vorn');
+        self::assertStringContainsString('>Gerber</option>', $html, 'ein eindeutiges Wort bleibt');
+        self::assertStringNotContainsString('>#' . $ohne . '<', $html);
+        self::assertStringContainsString('taxmod-ref-take', $html, 'der Satzdialog an der Liste');
+        self::assertStringContainsString('class="taxmod-record-search"', $html, 'mit Suchfeld');
+        self::assertMatchesRegularExpression('/data-taxmod-search="[^"]*ne555[^"]*"><input type="checkbox" class="taxmod-ref-check" value="' . $noch . '">/', $html, 'gesucht wird auch im Namen');
+        self::assertDoesNotMatchRegularExpression('/class="taxmod-ref-check"[^>]*name=/', $html, 'Haken werden nicht geschickt');
+    }
+
     /** ⚠️ *D-966: «dann müsste man mit dem tageskurs den euro betrag errechnen».* */
     #[Test]
     public function an_amount_in_a_foreign_currency_shows_the_euro_amount_from_its_frozen_rate(): void

@@ -5385,6 +5385,29 @@ final class Rendering implements Presets
                 $aus['angebot'][$relation->id][$satzId] = $wort($satzId, $feldIds);
             }
 
+            // ⚠️ **Wer im Angebot kein eigenes Wort hat, trägt seinen Namen vorn** ([D-1078](../../../docs/NewConcept/90-decision-log.md)) — *sein
+            // Befund: «quellen sind nicht wirklich auswählbar da wird nur die beitragsnummer gezeigt suchen geht auch nicht». Die Feldwahl der
+            // Quellen ist «Kategorie»: 266 ohne Kategorie hiessen «#31204», die anderen alle «Datenblatt». Leer oder doppelt → «Name · Wort».*
+            if ($purpose === Purpose::Edit && ($aus['angebot'][$relation->id] ?? []) !== []) {
+                $haeufig = array_count_values($aus['angebot'][$relation->id]);
+
+                foreach ($aus['angebot'][$relation->id] as $satzId => $angebotWort) {
+                    $leerWort = $angebotWort === '' || $angebotWort === '#' . $satzId;
+
+                    if (! $leerWort && $haeufig[$angebotWort] < 2) {
+                        continue;
+                    }
+
+                    $name = $eigenesWort($satzId, [], 0, true);
+
+                    if ($name === '' || $name === '#' . $satzId || $name === $angebotWort) {
+                        continue;
+                    }
+
+                    $aus['angebot'][$relation->id][$satzId] = $leerWort ? $name : $name . SummaryRenderer::SEPARATOR . $angebotWort;
+                }
+            }
+
             // ⚠️ *Der gewählte Satz steht im Angebot, auch wenn er nicht unter dem Ziel liegt — sonst zeigt das Auswahlfeld eine Nummer.*
             if ($purpose === Purpose::Edit && $wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null && ! isset($aus['angebot'][$relation->id][$wert->reference])) {
                 $aus['angebot'][$relation->id][$wert->reference] = $wort($wert->reference, $feldIds);
@@ -7395,12 +7418,36 @@ final class Rendering implements Presets
                 . '</td></tr>';
         }
 
+        $html .= '</tbody></table>';
+
+        // ⚠️ **Suchen und Baum auch hier** ([D-1078](../../../docs/NewConcept/90-decision-log.md)) — *derselbe Satzdialog wie bei der Einzelwahl
+        // (D-791, D-805), je Satz ein Haken; «OK» setzt die Haken als Zeilen ein. Die Haken tragen keinen Namen: geschickt werden nur die Zeilen.*
+        $baum = $context->surroundings->recordTree;
+
+        if ($baum !== []) {
+            $knopf = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): string => '<label class="taxmod-record-choice' . ($passt ? ' taxmod-record-match' : '') . '"'
+                . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
+                . '<input type="checkbox" class="taxmod-ref-check" value="' . $wert . '"> ' . $wort . '</label>';
+            $suchwort = (string) ($this->dialogWords['search'] ?? '');
+            $ok       = (string) ($this->dialogWords['ok'] ?? 'OK');
+
+            $html .= \Taxmod\Core\Renderer\DialogMarkup::of(
+                'taxmod-ref-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $name),
+                IconMarkup::dashicon('search', $suchwort === '' ? $relation->name : $suchwort),
+                RenderResult::escape($relation->name),
+                '<div class="taxmod-record-tree">' . SummaryRenderer::browserBody($baum, $knopf, null, '', $this->dialogWords) . '</div>',
+                '<button type="button" class="button button-primary taxmod-ref-take">' . RenderResult::escape($ok) . '</button>',
+                'button ' . ControlMarkup::ICON_ONLY . ' taxmod-dialog-open taxmod-ref-browse',
+                cancel: (string) ($this->dialogWords['cancel'] ?? '')
+            );
+        }
+
         return [
             'renderer' => SummaryRenderer::NAME,
             'rows'     => [],
             'rowActs'  => [],
             'after'    => '',
-            'result'   => RenderResult::of($html . '</tbody></table>'),
+            'result'   => RenderResult::of('<div class="taxmod-ref-field">' . $html . '</div>'),
         ];
     }
 

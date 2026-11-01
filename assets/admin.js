@@ -1781,6 +1781,86 @@
 		}
 	} );
 
+	// ⚠️ **Der Satzdialog an mehrfachen Verweisen** (D-1078) — *«OK» setzt jeden Haken als Zeile ein: zuerst in leere Zeilen, dann darunter
+	// angehängt; was schon steht, kommt nicht doppelt. Danach sind die Haken leer, der Dialog zu, und eine Auswahl meldet die Änderung (D-854).*
+	document.addEventListener( 'click', function ( ereignis ) {
+		var abbruch = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-ref-field .taxmod-dialog-cancel' ) : null;
+
+		if ( abbruch ) {
+			abbruch.closest( '.taxmod-ref-field' ).querySelectorAll( '.taxmod-ref-check:checked' ).forEach( function ( haken ) {
+				haken.checked = false;
+			} );
+		}
+	} );
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-ref-take' ) : null;
+		var feld  = knopf ? knopf.closest( '.taxmod-ref-field' ) : null;
+		var tabelle = feld ? feld.querySelector( '.taxmod-ref-rows tbody' ) : null;
+
+		if ( ! tabelle ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+
+		var melder = null;
+
+		feld.querySelectorAll( '.taxmod-ref-check:checked' ).forEach( function ( haken ) {
+			var wert   = haken.value;
+			var zeilen = Array.prototype.slice.call( tabelle.querySelectorAll( '.taxmod-ref-row' ) );
+			var steht  = zeilen.some( function ( zeile ) {
+				var wahl = zeile.querySelector( 'select' );
+
+				return wahl && wahl.value === wert;
+			} );
+
+			haken.checked = false;
+
+			if ( steht || zeilen.length === 0 ) {
+				return;
+			}
+
+			var frei = zeilen.filter( function ( zeile ) {
+				var wahl = zeile.querySelector( 'select' );
+
+				return wahl && wahl.value === '';
+			} )[ 0 ];
+
+			if ( ! frei ) {
+				frei = zeilen[ zeilen.length - 1 ].cloneNode( true );
+				zeilen[ zeilen.length - 1 ].after( frei );
+			}
+
+			var wahl = frei.querySelector( 'select' );
+
+			if ( ! wahl ) {
+				return;
+			}
+
+			if ( ! wahl.querySelector( 'option[value="' + wert + '"]' ) ) {
+				var neu = document.createElement( 'option' );
+
+				neu.value       = wert;
+				neu.textContent = ( haken.parentElement ? haken.parentElement.textContent : wert ).trim();
+				wahl.appendChild( neu );
+			}
+
+			wahl.value = wert;
+			melder     = wahl;
+		} );
+
+		var schalter = feld.querySelector( '.taxmod-dialog-switch' );
+
+		if ( schalter ) {
+			schalter.checked = false;
+		}
+
+		if ( melder ) {
+			melder.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		}
+	} );
+
 	// ⚠️ **Die Zusatzfunktionen einer Stelle** (D-845). *Dieselbe Liste; ein neues Glied kommt aus der Vorlage seiner Funktion, mit einer
 	// eigenen Nummer in der Adresse. Der Mülleimer nimmt das Glied heraus; gespeichert wird mit der Seite, in der Reihenfolge der Liste.*
 	var addonZaehler = 0;
