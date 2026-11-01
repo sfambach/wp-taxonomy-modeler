@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Listing\ListColumn;
+use Taxmod\Core\Renderer\DialogMarkup;
 use Taxmod\Core\Listing\ListView;
 use Taxmod\WordPress\Plugin;
 
@@ -322,6 +323,40 @@ final class ListPage
 
         return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 6px}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}</style>'
             . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
+    }
+
+    /**
+     * A row or bar action that asks in a dialog before it is sent: the button opens the dialog, its fields go with the form
+     * the dialog sits in (or with `$form`), and only its own confirm button submits. Every list draws its dialog actions here,
+     * so they look the same everywhere ([D-1063](../../../docs/NewConcept/90-decision-log.md)). ⚠️ *His word, 2026-11-01:
+     * «wir sollten generell dialog aktionen einführen damit die immer gleich aussehen».*
+     *
+     * @param string $switch the dialog's id, unique on the page
+     * @param string $body   the dialog's fields, already escaped
+     */
+    public static function dialogAction(
+        string $switch,
+        string $opener,
+        string $title,
+        string $body,
+        string $submitName,
+        string $submitValue,
+        string $submitLabel,
+        string $form = '',
+    ): string {
+        $submit = '<button type="submit" class="button button-primary" name="' . esc_attr($submitName) . '" value="' . esc_attr($submitValue) . '"'
+            . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . '>' . esc_html($submitLabel) . '</button>';
+
+        return DialogMarkup::of(
+            $switch,
+            esc_html($opener),
+            esc_html($title),
+            '<span class="taxmod-dialog-body" style="display:block;padding:.75em 1em;white-space:normal;text-align:left">' . $body . '</span>',
+            $submit,
+            'button button-small taxmod-dialog-open',
+            '',
+            __('Cancel', 'taxmod')
+        );
     }
 
     /**
