@@ -104,13 +104,24 @@ final class ModelGateway
             }
         }
 
+        $parcels = [];
+
         foreach ($this->orders as $key => $order) {
-            if (mb_strtolower($this->platforms[$key] ?? '') === mb_strtolower(trim($proposal->platform)) && LooseMatch::matchesOrder($proposal, $order)) {
+            if (mb_strtolower($this->platforms[$key] ?? '') !== mb_strtolower(trim($proposal->platform))) {
+                continue;
+            }
+
+            if (LooseMatch::matchesOrder($proposal, $order)) {
                 return $order;
+            }
+
+            if (LooseMatch::parcelMatches($proposal, $order)) {
+                $parcels[] = $order;
             }
         }
 
-        return null;
+        // ⚠️ *Only an unambiguous order gets the parcel (D-1067): two candidates and the box waits for him.*
+        return count($parcels) === 1 ? $parcels[0] : null;
     }
 
     /** @return array<string, ExistingOrder>|WP_Error */

@@ -6,6 +6,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Import\DutyRole;
 use Taxmod\Core\Import\DutyTable;
+use Taxmod\Core\Import\ExistingLine;
 use Taxmod\Core\Import\ExistingOrder;
 use Taxmod\Core\Import\Intake;
 use Taxmod\Core\Import\IntakeVerdict;
@@ -128,6 +129,21 @@ final class ImportIntakeTest extends TestCase
         self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', $parcel, null), 'D-1017');
         self::assertTrue(LooseMatch::matchesOrder($parcel, new ExistingOrder(7, ['00340434886114242631'])));
         self::assertFalse(LooseMatch::matchesOrder($parcel, new ExistingOrder(7, ['LP1'])));
+    }
+
+    #[Test]
+    public function a_parcel_mail_naming_its_items_finds_the_order_without_tracking_they_belong_to(): void
+    {
+        $parcel = new OrderProposal('AliExpress', 'packstueck:00340434886114931443', ProposalKind::Shipped, shippedDate: '2026-10-30',
+            lines: [new ProposalLine('ESP8266 ESP32 Development Board Test...', 1.0, null), new ProposalLine('WCH LinkE Online Download Debugger S...', 1.0, null)],
+            trackingNumbers: ['00340434886114931443'], numberMissing: true);
+        $items = [new ExistingLine(11, 'ESP8266 ESP32 Development Board Test Shield'), new ExistingLine(12, 'WCH LinkE Online Download Debugger Support')];
+        $order = static fn (array $tracking = [], string $date = '2026-10-20', array $lines = []): ExistingOrder => new ExistingOrder(7, $tracking, null, null, $date, '', [], $lines === [] ? $items : $lines);
+
+        self::assertTrue(LooseMatch::parcelMatches($parcel, $order()), 'D-1067');
+        self::assertFalse(LooseMatch::parcelMatches($parcel, $order(['LP1'])), 'an order with tracking has its parcel');
+        self::assertFalse(LooseMatch::parcelMatches($parcel, $order([], '2026-07-01')), 'too old');
+        self::assertFalse(LooseMatch::parcelMatches($parcel, $order([], '2026-10-20', [$items[0]])), 'every item must be the order\'s');
     }
 
     #[Test]
