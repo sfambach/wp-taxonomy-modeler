@@ -120,6 +120,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wohin gehört eine Paket-Mail ohne Bestellnummer? | [D-1017](90-decision-log.md) — zur Bestellung mit derselben Sendungsnummer; ohne sie bringt sie nichts | — |
 | Liest das DHL-Modul Mails? | [D-1020](90-decision-log.md) — ja, «unterwegs»/«zugestellt»; zugeordnet über die Sendungsnummer, gleich bei welchem Shop | — |
 | Liest jemand Hermes-Mails? | [D-1064](90-decision-log.md) — ja, das Modul `wp_tax_api_hermes`, wie DHL; Hermes hat keine öffentliche API | — |
+| Was wird aus einer Paketmail, zu der keine Bestellung passt? | [D-1065](90-decision-log.md) — nach einstellbarer Frist verworfen, ab Werk 7 Tage | — |
 | Wo liegen Rechnungen und andere Dokumente mit persönlichen Daten? | [D-1023](90-decision-log.md) — verschlüsselte Ablage des Modellers, `vault:<Schlüssel>` im Medienfeld, öffnen nur angemeldet | — |
 | Wie kommt eine Rechnung in den Taxmod? | [D-1024](90-decision-log.md) — eigener Datensatz «Rechnung» (Nr., Datum, Händler, Betrag, offen/bezahlt, Zahlungsart, PDF, Bestellungen) | — |
 | Rechnet der Modeller Felder? | [D-1022](90-decision-log.md) — ja: Rechenschritte `+ − × ÷` an der Kante, Ergebnis gespeichert und nach jeder Änderung neu geschrieben; erster Fall Einstandspreis = Preis je Stück + (Versand anteilig + Zoll/Gebühren anteilig) ÷ Anzahl | ändert D-933 |

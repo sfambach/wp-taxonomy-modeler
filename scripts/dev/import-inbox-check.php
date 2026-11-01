@@ -138,6 +138,17 @@ $pruefe(str_contains((new ReflectionMethod(InboxScreen::class, 'timeline'))->inv
 $tor = new \Taxmod\WordPress\Import\ModelGateway(Targets::load());
 (new ReflectionProperty($tor, 'orders'))->setValue($tor, ['__lead|l-1' => new \Taxmod\Core\Import\ExistingOrder(1, ['LT'])]);
 $pruefe((new InboxScreen())->settle($zeilen, $tor, new \Taxmod\Core\Import\Intake(Duties::load(), array_keys(Sources::all()))) && $tisch->openRows($posten) === [], 'a box that brings nothing new to a known order closes itself instead of waiting to be discarded');
+// ⚠️ *D-1065, sein Wort 2026-11-01: «die liegen unbearbeitet in der inbox» — a parcel notice whose tracking number no order brought.*
+$alt = wp_date('Y-m-d H:i:s', time() - (InboxScreen::ORPHAN_DAYS_DEFAULT + 1) * DAY_IN_SECONDS);
+$neu = wp_date('Y-m-d H:i:s');
+$notiz = fn (string $id, string $wann): int => $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Dhl', 'sendung:' . $id, ProposalKind::Shipped, trackingNumbers: [$id], source: '__ib', externalId: $id, numberMissing: true), ['subject' => '__notice']), $wann);
+$waise = [$notiz('ZZ-ORPHAN-1', $alt)];
+$frisch = [$notiz('ZZ-ORPHAN-2', $neu)];
+$intake = new \Taxmod\Core\Import\Intake(Duties::load(), array_keys(Sources::all()));
+$pruefe(! (new InboxScreen())->settle($tisch->openRows($frisch), $tor, $intake) && $tisch->openRows($frisch) !== [], 'a fresh parcel notice without its order waits for the order');
+$pruefe((new InboxScreen())->settle($tisch->openRows($waise), $tor, $intake) && $tisch->openRows($waise) === [] && $tisch->closedId('__ib', 'ZZ-ORPHAN-1') !== null, 'a parcel notice no order claimed for a week is discarded');
+$pruefe(InboxScreen::orphanDays() === 7 && str_contains((string) (SettingsScreen::moduleTabs()['import']['render'])(), 'name="orphan_days" value="7"'), 'the waiting time is a setting in the Import tab, a week unless he changes it');
+$tisch->close($frisch[0], \Taxmod\Core\Import\InboxStatus::Discarded);
 
 // ⚠️ *Sein Wunsch vom 2026-10-21: «ein button fetch all wäre auch nett» — every fetching source once, intervals aside.*
 $pruefe(str_contains((new InboxScreen())->render(), 'value="' . InboxScreen::FETCH_ALL . '"'), 'the inbox page has a «Fetch all» button');

@@ -36,6 +36,9 @@ final class InboxScreen
 {
     /** The event the stock process listens for (D-1037): order record id, shipped|delivered, Y-m-d, mail|api, reference. */
     public const STOCK_EVENT = 'taxmod_stock_event';
+    /** Days a parcel notice waits for an order with its tracking number before it is discarded (D-1065); set in the Import tab. */
+    public const ORPHAN_DAYS_OPTION = 'taxmod_import_orphan_days';
+    public const ORPHAN_DAYS_DEFAULT = 7;
     public const PAGE = 'taxmod-inbox';
     public const TAKE = 'taxmod_inbox_take';
     public const TAKE_BOX = 'taxmod_inbox_take_box';
@@ -995,6 +998,15 @@ final class InboxScreen
         $proposal = self::merged($rows);
         $existing = self::existing($model, $proposal);
 
+        if ($existing === null && self::orphanedNotices($rows)) {
+            foreach ($rows as $row) {
+                $this->table->close((int) $row['id'], InboxStatus::Discarded);
+                self::tellSource($row, InboxStatus::Discarded);
+            }
+
+            return true;
+        }
+
         if (! $existing instanceof ExistingOrder || ! in_array($intake->decide(self::leadSource($rows), $proposal, $existing), [IntakeVerdict::Nothing, IntakeVerdict::NotResponsible], true)) {
             return false;
         }
@@ -1005,6 +1017,33 @@ final class InboxScreen
         }
 
         return true;
+    }
+
+    /**
+     * ⚠️ *A parcel notice names only a tracking number (D-1017); when no order has brought that number within
+     * {@see self::orphanDays()} days, none will, and the box would wait forever with «Nothing to take». Stefan, 2026-11-01:
+     * «die liegen unbearbeitet in der inbox», then «7 tage einstellbar wäre richtig» (D-1065).*
+     *
+     * @param list<array<string, mixed>> $rows
+     */
+    private static function orphanedNotices(array $rows): bool
+    {
+        $before = wp_date('Y-m-d H:i:s', time() - self::orphanDays() * DAY_IN_SECONDS);
+
+        foreach ($rows as $row) {
+            $step = OrderProposal::fromArray((array) json_decode((string) $row['proposal'], true));
+
+            if (! $step->numberMissing || ! in_array($step->kind, [ProposalKind::Shipped, ProposalKind::Delivered], true) || self::when($row) > $before) {
+                return false;
+            }
+        }
+
+        return $rows !== [];
+    }
+
+    public static function orphanDays(): int
+    {
+        return max(1, (int) get_option(self::ORPHAN_DAYS_OPTION, self::ORPHAN_DAYS_DEFAULT));
     }
 
     /** @param list<int> $ids */
