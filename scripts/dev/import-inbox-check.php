@@ -234,5 +234,19 @@ $pruefe($alsWer === [1, 0], 'a run without a user acts as the one who switched i
 wp_set_current_user(1);
 update_option(AutoTake::OPTION, 0, false);
 
+// ⚠️ *D-1066: «ok wir übernehmen bestellungen automatisch ein flag in den einstellungen der api module default gesetzt».*
+delete_option(AutoTake::MODULES_OPTION);
+$pruefe(AutoTake::moduleOn('__any') && str_contains(AutoTake::moduleField('__any'), 'value="1" checked'), 'every module takes automatically unless he switches it off');
+AutoTake::switchModule('__any', true);
+$pruefe(AutoTake::user() === get_current_user_id(), 'switching a module on remembers who the runs act as');
+AutoTake::switchModule('__any', false);
+$pruefe(! AutoTake::moduleOn('__any') && AutoTake::moduleOn('__other'), 'the flag is per module');
+$probe = $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Mail', 'M-1', ProposalKind::Ordered, source: '__ib', externalId: 'mo1'), []), $neu);
+$gruppe = $tisch->openRows([$probe]);
+$pruefe(InboxScreen::moduleOf($gruppe, ['__any' => ['source' => '__ib', 'reader' => null]]) === '__any' && InboxScreen::moduleOf($gruppe, ['__x' => ['source' => 'zz', 'reader' => null]]) === null, 'a group belongs to the module of its source');
+$tisch->close($probe, \Taxmod\Core\Import\InboxStatus::Discarded);
+delete_option(AutoTake::MODULES_OPTION);
+update_option(AutoTake::OPTION, 0, false);
+
 echo $fehler === 0 ? "all green\n" : "{$fehler} failed\n";
 exit($fehler === 0 ? 0 : 1);

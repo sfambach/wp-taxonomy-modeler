@@ -84,7 +84,7 @@ add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs 
 ]);
 $_GET['tab'] = 'ctbare';
 $karg = (new SettingsScreen())->render();
-$pruefe(preg_match('#<h2>Mail</h2>.*<h2>Access</h2>.*<h2>Fetching</h2>.*<h2>Settings</h2>.*<h2>Maintenance</h2>#s', $karg) === 1 && substr_count($karg, 'Nothing to set here for this module.') === 5, 'every module tab has the same five parts, Mail first (D-1021), an empty one says so');
+$pruefe(preg_match('#<h2>Mail</h2>.*<h2>Access</h2>.*<h2>Fetching</h2>.*<h2>Settings</h2>.*<h2>Maintenance</h2>#s', $karg) === 1 && substr_count($karg, 'Nothing to set here for this module.') === 4 && str_contains($karg, 'name="' . \Taxmod\WordPress\Import\AutoTake::MODULE_FIELD . '" value="1" checked'), 'every module tab has the same five parts, Mail first (D-1021), an empty one says so; «Settings» always carries the automatic-taking flag (D-1066)');
 // ⚠️ *D-1007: «Mail modul implementation (vielleicht noch welche mails )» — the part «Mail» names what the module's reader reads.*
 $leser = new class implements \Taxmod\Core\Import\Mail\OrderMailParser {
     public function key(): string { return '__ct_shop'; }
@@ -99,7 +99,7 @@ add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs 
 ]);
 $_GET['tab'] = 'ctshop';
 $laden = (new SettingsScreen())->render();
-$pruefe(str_contains($laden, 'name="' . \Taxmod\WordPress\Import\MailReading::FIELD . '[kinds][ordered]" value="1" checked') && preg_match('#\[kinds\]\[delivered\]" value="1" disabled#', $laden) === 1 && substr_count($laden, 'Nothing to set here for this module.') === 4, 'a shop module without a source still has all parts, and «Mail» lists every kind of mail as a box, the unsupported ones greyed');
+$pruefe(str_contains($laden, 'name="' . \Taxmod\WordPress\Import\MailReading::FIELD . '[kinds][ordered]" value="1" checked') && preg_match('#\[kinds\]\[delivered\]" value="1" disabled#', $laden) === 1 && substr_count($laden, 'Nothing to set here for this module.') === 3, 'a shop module without a source still has all parts, and «Mail» lists every kind of mail as a box, the unsupported ones greyed');
 // ⚠️ *D-1008: «bei mail sollten wir noch aktivieren, wie oft und wahrheit, nur update wahrheit aus api oder mail ganze wahrheit
 // (natürlich nur wenn api verfügbar ist)».*
 $pruefe(str_contains($laden, 'name="' . \Taxmod\WordPress\Import\MailReading::FIELD . '[on]"') && ! str_contains($laden, '[truth]'), 'a mail-only module can switch its mails off, and has no choice of truth');

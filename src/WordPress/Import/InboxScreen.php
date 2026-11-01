@@ -877,6 +877,33 @@ final class InboxScreen
     }
 
     /**
+     * The module tab a group belongs to (D-1066): the tab of its lead source, or — for mails, which all come through one
+     * source — the tab whose reader names the group's shop.
+     *
+     * @param non-empty-list<array<string, mixed>> $rows
+     * @param array<string, array{source: string, reader: \Taxmod\Core\Import\Mail\OrderMailParser|null}> $tabs
+     */
+    public static function moduleOf(array $rows, array $tabs): ?string
+    {
+        $lead = self::leadSource($rows);
+        $platform = mb_strtolower(self::merged($rows)->platform);
+
+        foreach ($tabs as $key => $tab) {
+            if ($tab['reader'] !== null && mb_strtolower($tab['reader']->shopName()) === $platform) {
+                return $key;
+            }
+        }
+
+        foreach ($tabs as $key => $tab) {
+            if ($tab['source'] !== '' && $tab['source'] === $lead) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Whether a group would be taken as it stands — what {@see AutoTake} asks before it takes.
      *
      * @param list<array<string, mixed>> $rows

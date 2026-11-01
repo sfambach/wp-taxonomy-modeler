@@ -4,6 +4,7 @@ namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Import\FetchingSource;
 use Taxmod\Core\Import\Mail\OrderMailParser;
+use Taxmod\WordPress\Import\AutoTake;
 use Taxmod\WordPress\Import\FetchInterval;
 use Taxmod\WordPress\Import\ImportTab;
 use Taxmod\WordPress\Import\MailReading;
@@ -167,7 +168,8 @@ final class SettingsScreen
                         'onclick' => 'return confirm(' . wp_json_encode(__('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod')) . ')',
                     ])) . '</p>', $modul)
                 . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle), $modul)
-                . self::section($modul || $reiter[$tab]['credentials'] !== null || $quelle !== null ? __('Settings', 'taxmod') : '', (string) ($reiter[$tab]['render'])(), $modul)
+                // ⚠️ *D-1066: «ein flag in den einstellungen der api module default gesetzt».*
+                . self::section($modul || $reiter[$tab]['credentials'] !== null || $quelle !== null ? __('Settings', 'taxmod') : '', ($modul ? AutoTake::moduleField($tab) : '') . (string) ($reiter[$tab]['render'])(), $modul)
                 . get_submit_button(__('Save', 'taxmod'))
                 . '</form>'
                 . self::section(__('Maintenance', 'taxmod'), self::maintenance($reiter[$tab], $tab, $reiter), $modul)
@@ -607,6 +609,10 @@ final class SettingsScreen
 
             if ($quelle !== null && isset($_POST[FetchInterval::FIELD])) {
                 FetchInterval::save($quelle->key(), sanitize_key(wp_unslash((string) $_POST[FetchInterval::FIELD])));
+            }
+
+            if (isset($_POST[AutoTake::MODULE_FIELD]) && ($reiter[$tab]['source'] !== '' || $reiter[$tab]['reader'] !== null)) {
+                AutoTake::switchModule($tab, (string) wp_unslash($_POST[AutoTake::MODULE_FIELD]) === '1');
             }
 
             if ($reiter[$tab]['reader'] !== null) {
