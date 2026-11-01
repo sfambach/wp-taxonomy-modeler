@@ -53,6 +53,21 @@ final class ImportChangeListTest extends TestCase
         self::assertFalse(isset($order['110']));
     }
 
+    public function testTheSourcesPictureGoesToTheNewPurchase(): void
+    {
+        $url = 'https://ae-pic-a1.aliexpress-media.com/kf/S0.jpg';
+        $proposal = new OrderProposal('AliExpress', '3077504275717970', ProposalKind::Ordered, '2026-10-31', 'EUR', [
+            new ProposalLine('100Pcs JST XH2.54', 1, '2.20', null, $url),
+            new ProposalLine('USB-C Kabel', 1, '1.00'),
+        ]);
+        $changes = (new ChangeListBuilder(self::target()))->newOrder($proposal, [0, 1], '');
+
+        self::assertSame(['values' => [$url]], $changes[2]['values']['211'], 'D-1079');
+        self::assertArrayNotHasKey('211', $changes[4]['values'], 'no picture, no value');
+        self::assertSame($url, ProposalLine::fromArray($proposal->lines[0]->toArray())->imageUrl);
+        self::assertArrayNotHasKey('image_url', $proposal->lines[1]->toArray());
+    }
+
     public function testAForeignAmountCarriesTheRateOfTheOrderDate(): void
     {
         $rates = new class implements ExchangeRates {
@@ -299,6 +314,7 @@ final class ImportChangeListTest extends TestCase
         ], [
             'title' => 201, 'origin' => 202, 'quantity' => 203, 'article_number' => 204, 'unit_price' => 205,
             'total_price' => 206, 'landed_unit_price' => 207, 'origin_note' => 208, 'shipping_share' => $sharesAt, 'fees_share' => $sharesAt === 0 ? 0 : $sharesAt + 1,
+            'images' => 211,
         ], ['EUR' => 8571, 'USD' => 8573], [205, 206], $rateField);
     }
 }

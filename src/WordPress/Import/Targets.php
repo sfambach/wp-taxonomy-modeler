@@ -50,6 +50,8 @@ final class Targets
             // Cost shares (D-1022): created with taxmod/apply on fambach.net, 2026-10-29.
             'shipping_share'    => 149000110184,
             'fees_share'        => 149000110185,
+            // «Bilder», 0..* media (D-1079): measured with taxmod/read-node on fambach.net, 2026-11-01.
+            'images'            => 149000108057,
         ],
         // Sales (D-934, D-977): measured with taxmod/read-node on fambach.net, 2026-10-23.
         'sales_node'        => 149000110053,

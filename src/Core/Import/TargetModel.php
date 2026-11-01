@@ -19,7 +19,8 @@ final class TargetModel
      * @param array<string, int> $orderFields role => relation id: title, origin, origin_note, order_number, platform,
      *        merchant, ordered_at, received_at, shipping_cost, fees, total, tracking, lines
      * @param array<string, int> $purchaseFields role => relation id: title, origin, origin_note, quantity,
-     *        article_number, unit_price, total_price, landed_unit_price (calculated, D-1022), shipping_share, fees_share
+     *        article_number, unit_price, total_price, landed_unit_price (calculated, D-1022), shipping_share, fees_share,
+     *        images (D-1079)
      * @param array<string, int> $currencies ISO code => unit node id
      * @param list<int> $requiredParts unit-value fields with multiplicity 1..1 — their part exists on a new record
      * @param int|null $rateField the unit value's frozen rate (D-966); `null` freezes nothing

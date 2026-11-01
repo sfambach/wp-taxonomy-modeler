@@ -15,7 +15,7 @@ final class LineCollector
     /** @var list<ProposalLine> */
     private array $lines = [];
 
-    public function add(string $title, ?float $quantity, ?float $unitPrice, ?string $articleNumber): void
+    public function add(string $title, ?float $quantity, ?float $unitPrice, ?string $articleNumber, ?string $imageUrl = null): void
     {
         foreach ($this->lines as $index => $existing) {
             $sameArticle = $articleNumber !== null && $existing->articleNumber === $articleNumber;
@@ -28,13 +28,14 @@ final class LineCollector
                     $quantity ?? $existing->quantity,
                     Text::decimal($unitPrice) ?? $existing->unitPrice,
                     $existing->articleNumber,
+                    $existing->imageUrl ?? $imageUrl,
                 );
 
                 return;
             }
         }
 
-        $this->lines[] = new ProposalLine($title, $quantity, Text::decimal($unitPrice), $articleNumber);
+        $this->lines[] = new ProposalLine($title, $quantity, Text::decimal($unitPrice), $articleNumber, $imageUrl);
     }
 
     /** @return list<ProposalLine> */
