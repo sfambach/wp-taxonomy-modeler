@@ -178,6 +178,7 @@ $vorlage = \Taxmod\WordPress\Admin\ListPage::tabs([['a', 'A', 3], ['b', 'B']], '
     . \Taxmod\WordPress\Admin\ListPage::table([['Order', '9em', '?orderby=o', 'asc'], ['Buyer', null, '?orderby=b']], '');
 $pruefe(str_contains($vorlage, 'nav-tab nav-tab-active') && str_contains($vorlage, '<span class="count">(3)</span>') && str_contains($vorlage, 'class="search-box"')
     && str_contains($vorlage, 'form="f"><option value="">All</option><option value="1" selected>') && str_contains($vorlage, 'class="manage-column sorted asc"') && str_contains($vorlage, 'class="manage-column sortable desc"'), 'the list page has tabs with counts, search, filters and sortable columns');
+$pruefe(str_contains($vorlage, '.wp-core-ui .taxmod-list .button{') && str_contains($vorlage, 'height:30px'), 'every button in a list has the one height (D-1068)');
 // D-1063: «wir sollten generell dialog aktionen einführen damit die immer gleich aussehen».
 $dialog = \Taxmod\WordPress\Admin\ListPage::dialogAction('d1', 'Close', 'Ask', '<input name="why">', 'do', 'close-7', 'Confirm');
 $pruefe(str_contains($dialog, 'class="taxmod-dialog-switch" id="d1"') && str_contains($dialog, '<input name="why">') && str_contains($dialog, 'name="do" value="close-7"') && str_contains($dialog, 'taxmod-dialog-cancel'), 'a dialog action is the shared dialog: switch, fields, confirm and cancel');

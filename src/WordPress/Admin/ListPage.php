@@ -321,7 +321,9 @@ final class ListPage
 
         $head .= '<th scope="col" class="manage-column" style="width:21em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
-        return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 6px}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}</style>'
+        return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 6px}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}'
+            // D-1068: one height for every button in a list, his word 2026-11-01 «button höhen us sollten generell definiert werden damit sie übgerall gleich aussehen».
+            . '.wp-core-ui .taxmod-list .button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:30px;min-height:30px;line-height:1;padding-top:0;padding-bottom:0;vertical-align:middle;font-size:13px}</style>'
             . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
     }
 
@@ -353,7 +355,7 @@ final class ListPage
             esc_html($title),
             '<span class="taxmod-dialog-body" style="display:block;padding:.75em 1em;white-space:normal;text-align:left">' . $body . '</span>',
             $submit,
-            'button button-small taxmod-dialog-open',
+            'button taxmod-dialog-open',
             '',
             __('Cancel', 'taxmod')
         );
