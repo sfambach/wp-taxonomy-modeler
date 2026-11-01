@@ -1128,3 +1128,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Entschieden (gelesen):** [`pakete/lager/konzept.md`](pakete/lager/konzept.md) §3.4 — *«ein Bestellvorschlag ist eine Bestellung «Entwurf»»*; §3.2 Mindestbestand — *«darunter «nachbestellen»»*; [D-1013](NewConcept/90-decision-log.md) Bezugsquelle = Firma + Nummer; [D-958](NewConcept/90-decision-log.md) Mindestbestand in Stufe 4.
 - **Entwurf (INFERRED):** [`pakete/lager/einkauf.md`](pakete/lager/einkauf.md) — drei Schritte: Bedarf ohne Händler (Knopf «Nachbestellen» am Material, später Stückliste) → Bezugsquelle je Position wählen → je Händler bestellen; Bedarf bleibt Klammer über mehrere Händler-Bestellungen; Seite «Einkauf»; Fragen E1–E6.
 - **gebaut:** E1–E5 ja (wp_tax_stock 0.4.0), E6 (Mouser-API) zum Schluss.
+
+## INF-103 · Lagerplatz-Etiketten drucken (2026-11-01)
+
+**Typ:** `IDEE` · **Status:** `OFFEN`
+
+> *«weiss mir noch eingefallen ist lagerplatz etiketten drucken nimm das nochmal als punkt auf»*
+
+- **Heute:** Lagerorte sind ein Baum (D-1059), mit Pfad «Obergeschoss › Box BT2PS2»; gedruckt wird nichts. Den 62-mm-Druck auf dem Brother QL-810W gibt es schon für Versandlabels (eBay-Modul, pdf.js).
+- **Offen für Stefan:** was auf dem Etikett steht (Pfad, Kurzname, Projekt, QR mit Link auf den Lagerort) und ob Material-Etiketten (INF-086) dazugehören.
