@@ -349,6 +349,11 @@ final class InboxScreen
             }
         }
 
+        if ($proposal->shippedDate !== null) {
+            /* translators: %s: date the parcel was shipped */
+            $html .= '<p>' . esc_html(sprintf(__('Shipped on %s', 'taxmod'), $proposal->shippedDate)) . '</p>';
+        }
+
         if ($proposal->trackingNumbers !== []) {
             /* translators: %s: tracking numbers */
             $html .= '<p>' . esc_html(sprintf(__('Tracking: %s', 'taxmod'), implode(', ', $proposal->trackingNumbers))) . '</p>';
@@ -471,6 +476,12 @@ final class InboxScreen
             }
 
             $parts[] = self::kindLabel($step->kind);
+
+            // ⚠️ *A shipping mail without a tracking number (Amazon) still says when; without it the box read «ordered» only.*
+            if ($step->kind === ProposalKind::Shipped && $step->shippedDate !== null) {
+                /* translators: %s: date the parcel was shipped */
+                $parts[] = sprintf(__('on %s', 'taxmod'), $step->shippedDate);
+            }
 
             if ($step->trackingNumbers !== []) {
                 /* translators: %s: tracking numbers */

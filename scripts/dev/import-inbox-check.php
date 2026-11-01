@@ -110,6 +110,11 @@ $pruefe(substr_count($seite, '2 orders of one purchase') === 1 && strpos($seite,
 $pruefe(substr_count($seite, '__first') === 1 && str_contains($seite, 'S-1 · shipped · tracking T1') && str_contains($seite, 'value="' . InboxScreen::TAKE_BOX . '"') && has_action('admin_post_' . InboxScreen::TAKE_BOX) !== false, 'the box lists every message once, oldest first, and takes them all in order');
 $tisch->close($spaeter, \Taxmod\Core\Import\InboxStatus::Discarded);
 $tisch->close($frueher, \Taxmod\Core\Import\InboxStatus::Discarded);
+// ⚠️ *2026-11-01, Amazon 305-2262414-5307511: a shipping mail without tracking still shows its date in the box.*
+$amazon = $tisch->add('__ib', new IncomingProposal(new OrderProposal('__Amz', 'Z-1', ProposalKind::Shipped, shippedDate: '2026-10-30', source: '__ib', externalId: 'z1'), ['subject' => '__versendet']), '2026-10-30 10:00:00');
+$seite = (new InboxScreen())->render();
+$pruefe(str_contains($seite, 'Shipped on 2026-10-30'), 'a shipping mail without tracking shows when it was shipped');
+$tisch->close($amazon, \Taxmod\Core\Import\InboxStatus::Discarded);
 
 // ⚠️ *D-986: ein schon behandelter Vorschlag kann wieder aufgehen, wenn die Quelle Leeres im Modell füllt (sein Wort: «ja bitte preis nachtragen»).*
 $pruefe($tisch->closedId('__ib', 'k1') === $frueher && $tisch->closedId('__ib', 'nie') === null, 'the handled row of an external id is found');
