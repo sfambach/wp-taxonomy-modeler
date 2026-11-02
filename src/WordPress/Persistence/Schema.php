@@ -479,6 +479,9 @@ final class Schema
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
+    /** Die Marke, dass Fassung 56 gelaufen ist — danach läuft sie nie wieder ([D-1097](../../../docs/NewConcept/90-decision-log.md)). */
+    public const FASSUNG56_DONE = 'taxmod_fassung56_shape';
+
     /** The counter version 1 allocated from. Read once during the upgrade, then removed. */
     private const RETIRED_COUNTER_OPTION = 'taxmod_model_last_id';
 
@@ -4118,11 +4121,29 @@ final class Schema
      * die neue Regel von Anfang an.*
      *
      * ⚠️ *Die Abstammung in PHP und nicht in SQL: MySQL 5.7 kennt kein `WITH RECURSIVE` ([D-910](../../../docs/NewConcept/90-decision-log.md)),
-     * und die Knotentabelle ist klein. Idempotent: der zweite Lauf findet keine solche Kante mehr.*
+     * und die Knotentabelle ist klein.*
+     *
+     * ⚠️ **Einmal, und nie wieder** ([D-1097](../../../docs/NewConcept/90-decision-log.md)). *«Idempotent» stimmte nur, solange
+     * niemand eine solche Komposition **gewollt** anlegt. Seit D-1097 sind «Positionen» unter `Model` Kompositionen mit
+     * Satzverweisen — genau, was dieser Schritt in Aggregationen zurückdrehte, still, beim nächsten Fassungssprung. Darum die
+     * Marke wie bei Fassung 52, und für eine Installation, die Fassung 56 schon hinter sich hat, gilt der Schritt als gelaufen,
+     * auch ohne Marke: sie hat ihn bei ihrem Aufstieg auf 56 getan. Bewacht von `fassung56-gesperrt-check`.*
      */
     private static function keepReferencingCompositionsAsReferences(): void
     {
         global $wpdb;
+
+        if (get_option(self::FASSUNG56_DONE, null) !== null) {
+            return;
+        }
+
+        if ((int) get_option(self::VERSION_OPTION, 0) >= 56) {
+            update_option(self::FASSUNG56_DONE, ['umgestellt' => 0, 'schon_auf' => (int) get_option(self::VERSION_OPTION, 0)], false);
+
+            return;
+        }
+
+        $umgestellt = 0;
 
         $knoten = self::table('nodes');
         $kanten = self::table('relations');
@@ -4199,7 +4220,10 @@ final class Schema
                 ['%s', '%d', '%d'],
                 ['%d']
             );
+            ++$umgestellt;
         }
+
+        update_option(self::FASSUNG56_DONE, ['umgestellt' => $umgestellt], false);
     }
 
     private static function nameTheReferenceSpace(): void

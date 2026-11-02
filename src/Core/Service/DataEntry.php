@@ -1618,10 +1618,31 @@ final class DataEntry
      * ⚠️ *Beides in **einer** Änderungsgruppe ([D-348](../../../docs/NewConcept/90-decision-log.md)):
      * der Zeiger und der Satz sind eine Handlung, und ein Rückgängig, das nur die Hälfte zurückholt,
      * wäre keines.*
+     *
+     * ⚠️ **Seine eigenen Teile gehen mit, rekursiv** ([D-535](../../../docs/NewConcept/90-decision-log.md): *«Löschen nimmt Werte
+     * und eigene Teile mit»*; [D-1097](../../../docs/NewConcept/90-decision-log.md): *«wird der kopf gelöscht stirbt auch dei
+     * postion»*). *Jeder Teil geht wie der Satz selbst in den Schatten, im selben Akt.*
+     *
+     * ⚠️ **Verweigert, solange ein Satz ausserhalb dieses Kopfes auf einen seiner Teile zeigt**
+     * ([D-1099](../../../docs/NewConcept/90-decision-log.md), *«f3 verweigern»*). *Verweise der Teile untereinander und vom Kopf
+     * hindern nicht (seine Form, INFERRED dort). Ein Verweis auf den Satz **selbst** hindert weiterhin nicht — D-1099 spricht von
+     * den Positionen, und das Verhalten davor bleibt ([D-604](../../../docs/NewConcept/90-decision-log.md) macht ihn sichtbar).*
+     *
+     * ```mermaid
+     * flowchart LR
+     *   K["Kopf"] --> T["eigene Teile, Ebene für Ebene, eine Abfrage je Ebene"]
+     *   T --> V{"fremder Verweis auf einen Teil?"}
+     *   V -->|ja| X["verweigert, nennt wer"]
+     *   V -->|nein| S["Kopf und Teile in den Schatten, ein Akt"]
+     * ```
      */
     public function removeRecord(int $recordId): void
     {
         $satz = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+
+        $teile = $this->eigeneTeileRekursiv($satz->id);
+
+        $this->fremdeVerweiseVerweigern($satz->id, $teile);
 
         $halter = $this->records->holdersOf([$satz->id])[$satz->id] ?? null;
 
@@ -1633,9 +1654,218 @@ final class DataEntry
             }
 
             $this->satzEntfernen($recordId);
+
+            foreach ($teile as $teil) {
+                $this->satzEntfernen($teil);
+            }
         } finally {
             $this->changelog?->endAct();
         }
+    }
+
+    /**
+     * Alle Teile, die dieser Satz besitzt, und deren Teile — Ebene für Ebene, **eine** Abfrage je Ebene und Repository (`CD-7`).
+     *
+     * ⚠️ *Ein Teil ist, worauf ein Satz über eine besitzende Kante zeigt ({@see self::ownsItsRecord()}, [D-938](../../../docs/NewConcept/90-decision-log.md)),
+     * nie ein Knotenverweis. Wer schon gesehen wurde, wird nicht noch einmal betreten — ein Kreis endet so von selbst.*
+     *
+     * @return list<int> Die Teil-Ids, oben zuerst; ohne den Satz selbst.
+     */
+    private function eigeneTeileRekursiv(int $recordId): array
+    {
+        $gesehen = [$recordId => true];
+        $teile   = [];
+        $ebene   = [$recordId];
+        $besitzt = [];
+
+        while ($ebene !== []) {
+            $werte = $this->records->valuesOfMany($ebene);
+            $offen = [];
+
+            foreach ($werte as $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    if (! isset($besitzt[$zeile->relationId]) && $zeile->value->reference !== null) {
+                        $offen[$zeile->relationId] = $zeile->relationId;
+                    }
+                }
+            }
+
+            $besitzt += $this->besitzendeKanten(array_values($offen));
+            $naechste = [];
+
+            foreach ($werte as $zeilen) {
+                foreach ($zeilen as $zeile) {
+                    $ziel = $zeile->value->reference;
+
+                    if ($ziel === null
+                        || $zeile->value->referenceSpace === ReferenceSpace::Node
+                        || ! ($besitzt[$zeile->relationId] ?? false)
+                        || isset($gesehen[$ziel])
+                    ) {
+                        continue;
+                    }
+
+                    $gesehen[$ziel] = true;
+                    $naechste[]     = $ziel;
+                }
+            }
+
+            // *Nur was es gibt: ein Verweis ins Leere ist kein Teil, den man löschen könnte.*
+            $ebene = array_keys($this->records->byIds($naechste));
+            $teile = [...$teile, ...$ebene];
+        }
+
+        return $teile;
+    }
+
+    /**
+     * Welche dieser Kanten ihren Satz besitzt — für alle in einem Zug: Kanten, Ziele und für Einstellungen deren eigene Felder.
+     *
+     * ⚠️ *Dieselbe Antwort wie {@see self::ownsItsRecord()}, nur ohne eine Abfrage je Kante (`CD-7`).*
+     *
+     * @param  list<int>         $relationIds
+     * @return array<int, bool>  Kanten-Id ⇒ besitzt; eine unbekannte Kante besitzt nichts.
+     */
+    private function besitzendeKanten(array $relationIds): array
+    {
+        if ($relationIds === []) {
+            return [];
+        }
+
+        $kanten = $this->relations->byIds($relationIds);
+        $ziele  = $this->nodes->byIds(array_values(array_unique(array_map(static fn (Relation $r): int => $r->toNodeId, $kanten))));
+        $mitFeldern = [];
+
+        $einstellungsZiele = [];
+
+        foreach ($kanten as $kante) {
+            if ($kante->isSetting()) {
+                $einstellungsZiele[$kante->toNodeId] = $kante->toNodeId;
+            }
+        }
+
+        if ($einstellungsZiele !== []) {
+            foreach ($this->relations->fieldRelationsOf(array_values($einstellungsZiele)) as $feld) {
+                $mitFeldern[$feld->fromNodeId] = true;
+            }
+        }
+
+        $aus = array_fill_keys($relationIds, false);
+
+        foreach ($kanten as $id => $kante) {
+            $ziel = $ziele[$kante->toNodeId] ?? null;
+
+            if ($ziel === null) {
+                continue;
+            }
+
+            $aus[$id] = $kante->isSetting()
+                ? isset($mitFeldern[$ziel->id])
+                : $this->ownsItsRecord($kante, $ziel);
+        }
+
+        return $aus;
+    }
+
+    /**
+     * [D-1099](../../../docs/NewConcept/90-decision-log.md): zeigt ein Satz ausserhalb dieses Kopfes auf einen seiner Teile, wird
+     * nicht gelöscht. Eine Abfrage für alle Teile, eine für die Namen der Felder (`CD-7`).
+     *
+     * @param list<int> $teile
+     */
+    private function fremdeVerweiseVerweigern(int $kopfId, array $teile): void
+    {
+        if ($teile === []) {
+            return;
+        }
+
+        $drinnen = array_fill_keys([$kopfId, ...$teile], true);
+        $fremd   = [];
+
+        foreach ($this->records->referrersOfMany($teile) as $teil => $zeilen) {
+            foreach ($zeilen as $zeile) {
+                if (! isset($drinnen[$zeile->recordId])) {
+                    $fremd[] = [(int) $teil, $zeile];
+                }
+            }
+        }
+
+        if ($fremd === []) {
+            return;
+        }
+
+        $namen = $this->relations->byIds(array_values(array_unique(array_map(static fn (array $f): int => $f[1]->relationId, $fremd))));
+        $wer   = [];
+
+        foreach ($fremd as [$teil, $zeile]) {
+            $wer[] = sprintf(
+                'part #%d ← record #%d («%s»)',
+                $teil,
+                $zeile->recordId,
+                $namen[$zeile->relationId]->name ?? '#' . $zeile->relationId
+            );
+        }
+
+        throw NotYetStorable::partsStillReferenced($kopfId, $wer);
+    }
+
+    /**
+     * Einen Teil an einen anderen Kopf hängen, über dasselbe Feld — **die Id bleibt**, also bleibt jeder Verweis auf ihn gültig.
+     *
+     * ⚠️ *[D-1098](../../../docs/NewConcept/90-decision-log.md), sein Wort: «f2 wecheln erlauben» — «der Teil wird umgehängt, nicht
+     * neu angelegt». Die Zeile beim alten Kopf geht, eine neue steht hinten in der Liste des neuen: ein Akt
+     * ([D-348](../../../docs/NewConcept/90-decision-log.md)). Meine Form (INFERRED dort): nur innerhalb desselben Feldes.*
+     */
+    public function movePart(int $partId, int $toRecordId, int $relationId): void
+    {
+        $this->records->find($partId) ?? throw NotYetStorable::noSuchRecord($partId);
+        $neu    = $this->records->find($toRecordId) ?? throw NotYetStorable::noSuchRecord($toRecordId);
+        $kante  = $this->relationOf($neu, $relationId);
+        $halter = $this->records->holdersOf([$partId])[$partId] ?? null;
+
+        if (! $this->ownsItsRecord($kante, $this->nodes->byId($kante->toNodeId))) {
+            throw NotYetStorable::thatIsNotAComposedPart($kante->name);
+        }
+
+        if ($halter === null || $halter->relationId !== $kante->id) {
+            throw NotYetStorable::notAPartOnThatField($partId, $kante->name);
+        }
+
+        if ($halter->recordId === $toRecordId) {
+            return;
+        }
+
+        if ($toRecordId === $partId || in_array($toRecordId, $this->eigeneTeileRekursiv($partId), true)) {
+            throw NotYetStorable::notAPartOnThatField($partId, $kante->name);
+        }
+
+        $dort = $this->valuesOn($toRecordId, $kante->id, '');
+
+        if (! $kante->multiplicity->allowsMany() && $dort !== []) {
+            throw NotYetStorable::fieldAlreadyHoldsItsPart($kante->name, $toRecordId);
+        }
+
+        $hinterste = -1;
+
+        foreach ($dort as $vorhanden) {
+            $hinterste = max($hinterste, $vorhanden->position);
+        }
+
+        $verweis = TypedValue::ofRecordReference($partId);
+
+        $this->changelog?->beginAct();
+
+        try {
+            $this->halterZeileLeeren($halter);
+
+            $version = $this->records->putValue(RelationRecord::direct($toRecordId, $kante->id, $verweis, '', $hinterste + 1));
+            $this->melden($toRecordId, 'record_value', 'part linked', null, $this->wertZustand($toRecordId, $kante->id, '', $verweis), $version);
+        } finally {
+            $this->changelog?->endAct();
+        }
+
+        $this->angefasst($halter->recordId);
+        $this->angefasst($toRecordId);
     }
 
     /**

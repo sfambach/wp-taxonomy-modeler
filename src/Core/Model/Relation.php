@@ -428,13 +428,17 @@ abstract class Relation extends Identity implements Renderable
      * ⚠️ *Gibt **dasselbe** Exemplar zurück, wenn sich nichts ändert
      * ([D-282](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    public function withKind(RelationKind $kind): self
+    /**
+     * The same relation as another kind, one version on — at `$sortOrder` when its old place is taken among the fields of that kind
+     * (the key is `UNIQUE(from_node_id, kind, sort_order)`).
+     */
+    public function withKind(RelationKind $kind, ?int $sortOrder = null): self
     {
         if ($kind === $this->kind) {
             return $this;
         }
 
-        return $this->copy(version: $this->version + 1, kind: $kind);
+        return $this->copy(version: $this->version + 1, kind: $kind, sortOrder: $sortOrder);
     }
 
     public function retargetedTo(int $targetId, RelationKind $kind): self

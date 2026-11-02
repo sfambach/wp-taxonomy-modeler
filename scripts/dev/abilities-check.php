@@ -334,6 +334,64 @@ $fallen = is_array($umzug) ? $apply->execute(['changes' => [
 ]]) : null;
 check('move_record weist ab, wenn ein Wert fiele', is_wp_error($fallen) && str_contains($fallen->get_error_message(), 'would drop values'), is_wp_error($fallen) ? $fallen->get_error_message() : 'kein Fehler');
 
+echo "Positionen als Komposition (D-1097, D-1098, D-1099)\n";
+
+$kopf = $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'kopf', 'name' => '__ab Kopf', 'parent' => $baum['root']],
+    ['op' => 'create_node', 'ref' => 'pos', 'name' => '__ab Pos', 'parent' => $baum['root']],
+    ['op' => 'add_field', 'ref' => 'pt', 'node' => '@pos', 'target' => $text?->id ?? 0, 'name' => '__ab Pos Text', 'multiplicity' => '0..1'],
+    ['op' => 'add_field', 'ref' => 'liste', 'node' => '@kopf', 'target' => '@pos', 'name' => '__ab Positionen', 'kind' => 'aggregation', 'multiplicity' => '0..*'],
+    ['op' => 'create_node', 'ref' => 'bestand', 'name' => '__ab Bestand', 'parent' => $baum['root']],
+    ['op' => 'add_field', 'ref' => 'kauf', 'node' => '@bestand', 'target' => '@pos', 'name' => '__ab Kauf', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+    ['op' => 'create_record', 'ref' => 'a', 'node' => '@kopf'],
+    ['op' => 'create_record', 'ref' => 'b', 'node' => '@kopf'],
+    ['op' => 'create_record', 'ref' => 'p1', 'node' => '@pos'],
+    ['op' => 'create_record', 'ref' => 'p2', 'node' => '@pos'],
+    ['op' => 'set_values', 'record' => '@a', 'values' => ['@liste' => ['values' => ['@p1', '@p2']]]],
+    ['op' => 'create_record', 'ref' => 's', 'node' => '@bestand'],
+    ['op' => 'set_values', 'record' => '@s', 'values' => ['@kauf' => '@p2']],
+]]);
+check('die Wiese für Köpfe und Positionen entsteht', is_array($kopf), is_wp_error($kopf) ? $kopf->get_error_message() : '');
+
+$k = is_array($kopf) ? $kopf['refs'] : [];
+$liste = static function (int $satz) use ($node, $k): array {
+    foreach ($node->execute(['node' => $k['kopf'] ?? 0])['records'] ?? [] as $r) {
+        if ($r['id'] === $satz) {
+            return array_values(array_map(static fn (array $w): int => (int) $w['value'], array_filter($r['values'], static fn (array $w): bool => $w['relation_id'] === (int) ($k['liste'] ?? 0))));
+        }
+    }
+
+    return [];
+};
+$feldArt = static function () use ($node, $k): string {
+    foreach ($node->execute(['node' => $k['kopf'] ?? 0])['fields'] ?? [] as $f) {
+        if ($f['relation_id'] === (int) ($k['liste'] ?? 0)) {
+            return (string) $f['kind'];
+        }
+    }
+
+    return '';
+};
+$gibt = static fn (int $satz): bool => (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('node_records') . ' WHERE id = %d', $satz)) === 1;
+
+$art = $apply->execute(['changes' => [['op' => 'set_kind', 'node' => $k['kopf'] ?? 0, 'field' => $k['liste'] ?? 0, 'kind' => 'composition']]]);
+check('set_kind stellt das Feld auf Komposition, die Werte bleiben', is_array($art) && $feldArt() === 'composition' && $liste((int) ($k['a'] ?? 0)) === [(int) ($k['p1'] ?? 0), (int) ($k['p2'] ?? 0)], is_wp_error($art) ? $art->get_error_message() : $feldArt());
+
+$keine = $apply->execute(['changes' => [['op' => 'set_kind', 'node' => $k['kopf'] ?? 0, 'field' => $k['liste'] ?? 0, 'kind' => 'setting']]]);
+check('set_kind nimmt «setting» nicht an', is_wp_error($keine) && $feldArt() === 'composition', is_wp_error($keine) ? '' : 'kein Fehler');
+
+$haengt = $apply->execute(['changes' => [['op' => 'move_part', 'part' => $k['p1'] ?? 0, 'to' => $k['b'] ?? 0, 'field' => $k['liste'] ?? 0]]]);
+check('move_part hängt die Position an den anderen Kopf, die Id bleibt', is_array($haengt) && $liste((int) ($k['a'] ?? 0)) === [(int) ($k['p2'] ?? 0)] && $liste((int) ($k['b'] ?? 0)) === [(int) ($k['p1'] ?? 0)], is_wp_error($haengt) ? $haengt->get_error_message() : wp_json_encode([$liste((int) ($k['a'] ?? 0)), $liste((int) ($k['b'] ?? 0))]));
+
+$verweigert = $apply->execute(['changes' => [['op' => 'remove_record', 'record' => $k['a'] ?? 0]]]);
+check('remove_record verweigert einen Kopf, auf dessen Position ein Bestandsposten zeigt, und nennt ihn', is_wp_error($verweigert) && str_contains($verweigert->get_error_message(), sprintf('record #%d', (int) ($k['s'] ?? 0))) && $gibt((int) ($k['a'] ?? 0)) && $gibt((int) ($k['p2'] ?? 0)), is_wp_error($verweigert) ? $verweigert->get_error_message() : 'kein Fehler');
+
+$weg = $apply->execute(['changes' => [['op' => 'remove_record', 'record' => $k['b'] ?? 0]]]);
+check('remove_record nimmt die Positionen des Kopfes mit', is_array($weg) && ! $gibt((int) ($k['b'] ?? 0)) && ! $gibt((int) ($k['p1'] ?? 0)), is_wp_error($weg) ? $weg->get_error_message() : '');
+
+$zurueck = $apply->execute(['changes' => [['op' => 'set_kind', 'node' => $k['kopf'] ?? 0, 'field' => $k['liste'] ?? 0, 'kind' => 'aggregation']]]);
+check('set_kind stellt zurück auf Aggregation', is_array($zurueck) && $feldArt() === 'aggregation', is_wp_error($zurueck) ? $zurueck->get_error_message() : $feldArt());
+
 echo "Nur Daten (D-936)\n";
 
 $daten = wp_get_ability('taxmod/write-data');

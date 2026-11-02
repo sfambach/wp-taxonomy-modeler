@@ -154,6 +154,33 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('Not saved — %s.', $liste));
     }
 
+    /**
+     * ⚠️ *[D-1099](../../../docs/NewConcept/90-decision-log.md), sein Wort «f3 verweigern»: ein Kopf, auf dessen Teil noch ein
+     * fremder Satz zeigt, wird nicht gelöscht — und die Meldung nennt, wer zeigt.*
+     *
+     * @param list<string> $wer Je Verweis «part #12 ← record #40 («Kauf»)».
+     */
+    public static function partsStillReferenced(int $recordId, array $wer): self
+    {
+        return new self(sprintf(
+            'Record %d cannot be deleted: its parts are still referenced — %s. Remove those references first.',
+            $recordId,
+            implode('; ', $wer)
+        ));
+    }
+
+    /** Ein Teil wechselt den Kopf nur innerhalb desselben Feldes (D-1098). */
+    public static function notAPartOnThatField(int $partId, string $attribute): self
+    {
+        return new self(sprintf('Record %d is not a part held through «%s».', $partId, $attribute));
+    }
+
+    /** Ein Feld mit höchstens einem Wert nimmt keinen zweiten Teil an (D-1098). */
+    public static function fieldAlreadyHoldsItsPart(string $attribute, int $recordId): self
+    {
+        return new self(sprintf('«%s» of record %d takes one part and already holds it.', $attribute, $recordId));
+    }
+
     public static function noSuchRecord(int $id): self
     {
         return new self(sprintf('There is no record %d.', $id));

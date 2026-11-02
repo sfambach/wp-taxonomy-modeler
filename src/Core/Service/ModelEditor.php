@@ -1550,7 +1550,21 @@ final class ModelEditor
             throw NotAPossibleTarget::onlyAReferenceMayPointAtModel($ziel->name);
         }
 
-        $marked   = $relation->withKind($art);
+        // ⚠️ *Der Schlüssel ist `UNIQUE(from_node_id, kind, sort_order)`: steht unter der neuen Art schon ein Feld an derselben Stelle,
+        // rückt dieses ans Ende — wie Fassung 56 es tat. Sonst scheiterte das Schreiben an der Datenbank, und der Wechsel
+        // Aggregation ↔ Komposition nach [D-1097](../../../docs/NewConcept/90-decision-log.md) hinge vom Zufall der Stelle ab.*
+        $platz = null;
+
+        if ($art !== $relation->kind) {
+            foreach ($this->relations->fieldRelationsOf([$relation->fromNodeId]) as $andere) {
+                if ($andere->id !== $relation->id && $andere->fromNodeId === $relation->fromNodeId && $andere->kind === $art && $andere->sortOrder === $relation->sortOrder) {
+                    $platz = $this->relations->nextFieldPositionUnder($relation->fromNodeId);
+                    break;
+                }
+            }
+        }
+
+        $marked   = $relation->withKind($art, $platz);
 
         if ($marked === $relation) {
             return $relation;

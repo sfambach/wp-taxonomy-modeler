@@ -61,7 +61,8 @@ final class ModelAbilities
 
     /** Was `write-data` annimmt: Sätze und Werte, kein Knoten, kein Feld, keine Einstellung. */
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
-    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record'];
+    // D-1098: a part changing its head is data too — the stock moves a purchase between a requirement and a supplier draft.
+    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part'];
 
     /**
      * @param \Closure(): NodesScreen $screen Erst beim Ausführen gebaut — das Registrieren läuft in jeder Anfrage.
@@ -126,7 +127,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, move_field {node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it, retarget_field {node, field, target} — points the field at another node and keeps its kind, merge_field {node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record}, move_record {record, node, anywhere?, drop?} — moves a record to the parent or a child of its node (with anywhere: to any node of its branch) and rewrites its path, calculated and summary fields; refused if a value would be dropped, unless drop is true, and always if a field of another record that chooses it could not choose it at the new node, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field), set_label {node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it, set_addons {node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated (also when the steps are unchanged — sending them again recalculates), set_setting {node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, move_field {node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it, retarget_field {node, field, target} — points the field at another node and keeps its kind, merge_field {node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record} — removes the record with its own parts, nested ones included; refused while a record outside it references one of its parts, naming who, move_part {part, to, field} — hangs a part held through field onto another record\'s list of the same field, keeping its id, set_kind {node, field, kind} — switches a field the node owns between aggregation and composition, the values stay, move_record {record, node, anywhere?, drop?} — moves a record to the parent or a child of its node (with anywhere: to any node of its branch) and rewrites its path, calculated and summary fields; refused if a value would be dropped, unless drop is true, and always if a field of another record that chooses it could not choose it at the new node, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field), set_label {node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it, set_addons {node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated (also when the steps are unchanged — sending them again recalculates), set_setting {node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -140,13 +141,14 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'set_list', 'set_setting', 'set_label', 'set_addons']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'set_kind', 'set_list', 'set_setting', 'set_label', 'set_addons']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
                                 'node'        => $ziel,
                                 'target'      => $ziel,
                                 'record'      => $ziel,
+                                'part'        => $ziel,
                                 'anywhere'    => ['type' => 'boolean'],
                                 'drop'        => ['type' => 'boolean'],
                                 'field'       => $ziel,
@@ -185,7 +187,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/write-data', [
             'label'               => __('Write records', 'taxmod'),
             'description'         => __(
-                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record on user records. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record, move_part on user records. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -203,6 +205,9 @@ final class ModelAbilities
                                 'ref'       => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'node'      => $ziel,
                                 'record'    => $ziel,
+                                'part'      => $ziel,
+                                'to'        => $ziel,
+                                'field'     => $ziel,
                                 'anywhere'  => ['type' => 'boolean'],
                                 'drop'      => ['type' => 'boolean'],
                                 'values'    => ['type' => 'object'],
@@ -580,6 +585,24 @@ final class ModelAbilities
 
                 return $recordId;
 
+            case 'move_part':
+                // ⚠️ *D-1098, his word «f2 wecheln erlauben»: the part is re-hung, not created anew — its id and every reference to it stay.*
+                $partId = $at('part');
+                $screen->entries()->movePart($partId, $at('to'), $at('field'));
+
+                return $partId;
+
+            case 'set_kind':
+                // ⚠️ *D-1097: «Positionen» become compositions without moving a value — both kinds store alike (D-587). Only the two
+                // kinds a person can choose; «setting» is not one (D-715).*
+                $kind = RelationKind::tryFrom((string) ($change['kind'] ?? ''));
+
+                if ($kind !== RelationKind::Aggregation && $kind !== RelationKind::Composition) {
+                    throw new \InvalidArgumentException('set_kind needs kind aggregation or composition.');
+                }
+
+                return $editor->setKind($at('node'), $at('field'), $kind)->id;
+
             case 'move_record':
                 // ⚠️ *Built to merge the two «Mikrocontroller» nodes: his choice on 2026-10-31, «Zusammenführen» (D-1057).*
                 // D-1073: «anywhere» moves within the branch in one step, «drop» lets announced values fall.
@@ -650,15 +673,16 @@ final class ModelAbilities
         $op = (string) ($change['op'] ?? '');
 
         if (! in_array($op, self::DATA_OPS, true)) {
-            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record and move_record are allowed here.");
+            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, move_record and move_part are allowed here.");
         }
 
         if (isset($change['record_type']) && (string) $change['record_type'] !== RecordType::User->value) {
             throw new \InvalidArgumentException('Only user records can be written here.');
         }
 
-        if ($op !== 'create_record') {
-            $recordId = $this->resolve($change['record'] ?? null, $refs, 'record');
+        // *move_part touches two records, the part and its new head; both must be user records.*
+        foreach ($op === 'create_record' ? [] : ($op === 'move_part' ? ['part', 'to'] : ['record']) as $key) {
+            $recordId = $this->resolve($change[$key] ?? null, $refs, $key);
             $record   = $this->screen()->entries()->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
 
             if ($record->recordType !== RecordType::User) {

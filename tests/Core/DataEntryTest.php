@@ -886,4 +886,173 @@ final class DataEntryTest extends TestCase
 
         $this->data->createReferencedRecord($satz->id, $kante->id);
     }
+    /**
+     * Ein Kopf mit zwei Positionen, die erste mit einem eigenen Teil — Komposition unter `Model` ([D-938](../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return array{kopf: int, erste: int, zweite: int, unterteil: int, positionen: Relation, betrag: Relation, pos: Node}
+     */
+    private function kopfMitPositionen(): array
+    {
+        $pos     = $this->editor->createNode('Pos', $this->branchRoot['model']->id);
+        $preis   = $this->editor->createNode('Preis', $this->branchRoot['model']->id);
+        $this->editor->addField($preis->id, $this->text->id, 'betrag');
+        $betrag  = $this->editor->addField($pos->id, $preis->id, 'preis', \Taxmod\Core\Model\RelationKind::Composition);
+        $positionen = $this->editor->addField($this->part->id, $pos->id, 'Positionen', \Taxmod\Core\Model\RelationKind::Composition);
+        $this->editor->setMultiplicity($this->part->id, $positionen->id, \Taxmod\Core\Model\Multiplicity::from('0..*'));
+
+        $kopf      = $this->data->create($this->part->id);
+        $erste     = $this->data->createPart($kopf->id, $positionen->id);
+        $zweite    = $this->data->createPart($kopf->id, $positionen->id);
+        $unterteil = $this->data->createPart($erste->id, $betrag->id);
+
+        return ['kopf' => $kopf->id, 'erste' => $erste->id, 'zweite' => $zweite->id, 'unterteil' => $unterteil->id, 'positionen' => $positionen, 'betrag' => $betrag, 'pos' => $pos];
+    }
+
+    /**
+     * ⚠️ *[D-535](../../docs/NewConcept/90-decision-log.md) «Löschen nimmt Werte und eigene Teile mit», [D-1097](../../docs/NewConcept/90-decision-log.md)
+     * «wird der kopf gelöscht stirbt auch dei postion» — auch der Teil eines Teils, und alles in einem Akt.*
+     */
+    #[Test]
+    public function deleting_a_head_takes_its_parts_and_their_parts_in_one_act(): void
+    {
+        $f = $this->kopfMitPositionen();
+        $vorher = count($this->buch->entries);
+        // *Auch die Pflichtteile, die beim Anlegen einer Position von selbst entstehen (Preis ist `1..1`).*
+        $alle = [];
+
+        foreach ($this->records->ofNodes([$this->part->id, $f['pos']->id, $f['betrag']->toNodeId]) as $saetze) {
+            foreach ($saetze as $satz) {
+                $alle[] = $satz->id;
+            }
+        }
+
+        $this->data->removeRecord($f['kopf']);
+
+        foreach (['kopf', 'erste', 'zweite', 'unterteil'] as $wer) {
+            self::assertNull($this->records->find($f[$wer]), "{$wer} ist fort");
+            self::assertSame([], $this->records->valuesOf($f[$wer]), "{$wer} hat keine Wertzeilen mehr");
+        }
+
+        $neu     = array_slice($this->buch->entries, $vorher);
+        $entfernt = array_map(static fn (array $e): int => $e[0], array_filter($neu, static fn (array $e): bool => $e[2] === 'record removed'));
+        sort($entfernt);
+        $erwartet = $alle;
+        sort($erwartet);
+
+        self::assertGreaterThanOrEqual(4, count($erwartet));
+
+        self::assertSame($erwartet, $entfernt, 'jeder Satz mit seiner Journalzeile');
+        self::assertCount(1, array_unique(array_map(static fn (array $e): int => $e[5], $neu)), 'eine Änderungsgruppe');
+        self::assertNotContains(null, array_map(static fn (array $e): ?int => $e[6], $neu), 'jede Zeile mit Version, also zurückholbar');
+    }
+
+    /** ⚠️ *[D-1099](../../docs/NewConcept/90-decision-log.md), sein Wort «f3 verweigern»: ein fremder Verweis auf eine Position hält den Kopf — und die Meldung nennt ihn.* */
+    #[Test]
+    public function a_head_whose_part_is_referenced_from_outside_is_not_deleted(): void
+    {
+        $f        = $this->kopfMitPositionen();
+        $bestand  = $this->editor->createNode('Bestand', $this->branchRoot['model']->id);
+        $kauf     = $this->editor->addField($bestand->id, $f['pos']->id, 'Kauf', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $posten   = $this->data->create($bestand->id);
+        $this->data->put($posten->id, $kauf->id, TypedValue::ofRecordReference($f['zweite']));
+        $vorher   = count($this->buch->entries);
+
+        try {
+            $this->data->removeRecord($f['kopf']);
+            self::fail('das Löschen hätte verweigert werden müssen');
+        } catch (NotYetStorable $e) {
+            self::assertStringContainsString(sprintf('part #%d', $f['zweite']), $e->getMessage());
+            self::assertStringContainsString(sprintf('record #%d', $posten->id), $e->getMessage());
+            self::assertStringContainsString('Kauf', $e->getMessage());
+        }
+
+        foreach (['kopf', 'erste', 'zweite', 'unterteil'] as $wer) {
+            self::assertNotNull($this->records->find($f[$wer]), "{$wer} steht noch");
+        }
+
+        self::assertCount($vorher, $this->buch->entries, 'nichts geschrieben');
+    }
+
+    /** ⚠️ *Verweise innerhalb des Kopfes hindern nicht (D-1099, seine Form INFERRED dort): Position zwei zeigt auf Position eins.* */
+    #[Test]
+    public function references_between_the_parts_of_one_head_do_not_hold_it(): void
+    {
+        $f     = $this->kopfMitPositionen();
+        $storno = $this->editor->addField($f['pos']->id, $f['pos']->id, 'Storno von', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $this->data->put($f['zweite'], $storno->id, TypedValue::ofRecordReference($f['erste']));
+
+        $this->data->removeRecord($f['kopf']);
+
+        self::assertNull($this->records->find($f['erste']));
+        self::assertNull($this->records->find($f['zweite']));
+    }
+
+    /** ⚠️ *Eine Aggregation besitzt nicht: was nur verwiesen wird, überlebt das Löschen ([D-1097](../../docs/NewConcept/90-decision-log.md), Umkehrung).* */
+    #[Test]
+    public function a_referenced_record_survives_its_referrer(): void
+    {
+        $kaeufe = $this->editor->createNode('Kaeufe', $this->branchRoot['model']->id);
+        $liste  = $this->editor->addField($this->part->id, $kaeufe->id, 'Liste', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $satz   = $this->data->create($this->part->id);
+        $kauf   = $this->data->createReferencedRecord($satz->id, $liste->id);
+
+        $this->data->removeRecord($satz->id);
+
+        self::assertNotNull($this->records->find($kauf->id));
+    }
+
+    /**
+     * ⚠️ *[D-1098](../../docs/NewConcept/90-decision-log.md), sein Wort «f2 wecheln erlauben»: der Teil wird umgehängt, nicht neu angelegt — seine
+     * Id und seine Werte bleiben, er steht hinten in der Liste des neuen Kopfes, und ein Akt.*
+     */
+    #[Test]
+    public function a_part_changes_its_head_and_keeps_its_id(): void
+    {
+        $f      = $this->kopfMitPositionen();
+        $andere = $this->data->create($this->part->id);
+        $schon  = $this->data->createPart($andere->id, $f['positionen']->id);
+        $vorher = count($this->buch->entries);
+
+        $this->data->movePart($f['erste'], $andere->id, $f['positionen']->id);
+
+        $liste = static fn (array $zeilen, int $kante): array => array_values(array_map(
+            static fn (RelationRecord $z): ?int => $z->value->reference,
+            array_filter($zeilen, static fn (RelationRecord $z): bool => $z->relationId === $kante)
+        ));
+
+        self::assertSame([$f['zweite']], $liste($this->records->valuesOf($f['kopf']), $f['positionen']->id), 'beim alten Kopf fort');
+        self::assertSame([$schon->id, $f['erste']], $liste($this->records->valuesOf($andere->id), $f['positionen']->id), 'beim neuen hinten');
+        self::assertSame($andere->id, $this->records->holdersOf([$f['erste']])[$f['erste']]->recordId);
+        self::assertNotNull($this->records->find($f['unterteil']), 'sein eigener Teil geht mit ihm');
+        self::assertCount(1, array_unique(array_map(static fn (array $e): int => $e[5], array_slice($this->buch->entries, $vorher))), 'ein Akt');
+    }
+
+    #[Test]
+    public function a_part_moves_only_within_its_own_field(): void
+    {
+        $f      = $this->kopfMitPositionen();
+        $andere = $this->data->create($this->part->id);
+
+        $this->expectException(NotYetStorable::class);
+        $this->expectExceptionMessage('is not a part held through «Positionen»');
+
+        // *Der Unterteil hängt an «preis», nicht an «Positionen».*
+        $this->data->movePart($f['unterteil'], $andere->id, $f['positionen']->id);
+    }
+
+    #[Test]
+    public function a_field_with_one_value_takes_no_second_part(): void
+    {
+        $f      = $this->kopfMitPositionen();
+        $andere = $this->data->create($f['pos']->id);
+
+        if ($this->records->valuesOf($andere->id) === []) {
+            $this->data->createPart($andere->id, $f['betrag']->id);
+        }
+
+        $this->expectException(NotYetStorable::class);
+        $this->expectExceptionMessage('takes one part and already holds it');
+
+        $this->data->movePart($f['unterteil'], $andere->id, $f['betrag']->id);
+    }
 }

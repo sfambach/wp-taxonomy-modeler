@@ -956,4 +956,35 @@ final class ModelEditorTest extends TestCase
         self::assertCount(1, $this->relations->fieldRelationsOf([$eltern->id]));
         self::assertSame([], $this->relations->fieldRelationsOf([$fremd->id]));
     }
+    /**
+     * ⚠️ *Der Schlüssel ist `UNIQUE(from_node_id, kind, sort_order)`. Steht unter der neuen Art schon ein Feld an derselben Stelle,
+     * rückt das umgestellte ans Ende, statt an der Datenbank zu scheitern — der Wechsel nach [D-1097](../../docs/NewConcept/90-decision-log.md).*
+     */
+    #[Test]
+    public function a_kind_change_onto_a_taken_place_moves_to_the_end(): void
+    {
+        $kopf = $this->editor->createNode('Bestellung', $this->root->id);
+        $pos  = $this->editor->createNode('Kauf', $this->root->id);
+        $feld = $this->editor->addField($kopf->id, $pos->id, 'Positionen', \Taxmod\Core\Model\RelationKind::Aggregation);
+        // *Ein Altbestand: eine Komposition an derselben Stelle (die Maske vergibt Stellen über alle Arten, also nur so herstellbar).*
+        $this->relations->add(\Taxmod\Core\Model\Relation::attribute(0, $kopf->id, $pos->id, \Taxmod\Core\Model\RelationKind::Composition, 'Alt', $feld->sortOrder));
+
+        $neu = $this->editor->setKind($kopf->id, $feld->id, \Taxmod\Core\Model\RelationKind::Composition);
+
+        self::assertSame(\Taxmod\Core\Model\RelationKind::Composition, $neu->kind);
+        self::assertSame($feld->sortOrder + 1, $neu->sortOrder);
+        self::assertSame($feld->version + 1, $neu->version, 'ein Schritt, eine Version');
+    }
+
+    #[Test]
+    public function a_kind_change_onto_a_free_place_keeps_it(): void
+    {
+        $kopf = $this->editor->createNode('Bestellung', $this->root->id);
+        $pos  = $this->editor->createNode('Kauf', $this->root->id);
+        $feld = $this->editor->addField($kopf->id, $pos->id, 'Positionen', \Taxmod\Core\Model\RelationKind::Aggregation);
+
+        $neu = $this->editor->setKind($kopf->id, $feld->id, \Taxmod\Core\Model\RelationKind::Composition);
+
+        self::assertSame($feld->sortOrder, $neu->sortOrder);
+    }
 }
