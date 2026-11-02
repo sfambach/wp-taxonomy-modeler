@@ -225,6 +225,14 @@ interface RecordRepository
     public function recordRefsHeldAt(int $relationId): array;
 
     /**
+     * Every user record of one node with the record its reference field points at — the parent links of a record tree
+     * ([D-1084](../../../docs/NewConcept/90-decision-log.md)); **one query** for all records and links (`CD-7`).
+     *
+     * @return array<int, int|null> Satz-Id ⇒ the record its first value on `$relationId` refers to, `null` where it holds none.
+     */
+    public function parentLinksOf(int $nodeId, int $relationId): array;
+
+    /**
      * Which records hold at least one value on this relation — so a field can be moved or merged without hiding a value
      * ([D-941](../../../docs/NewConcept/90-decision-log.md)); one query (`CD-7`).
      *

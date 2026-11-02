@@ -645,6 +645,34 @@ final class WpdbRecordRepository implements RecordRepository
         return $aus;
     }
 
+    public function parentLinksOf(int $nodeId, int $relationId): array
+    {
+        global $wpdb;
+
+        // ⚠️ *Records and links in one statement (`CD-7`, D-1084): a LEFT JOIN, so a record with an empty field is still there.*
+        $rows = Query::rows('Saetze eines Knotens mit ihrem Uebergeordneten lesen', $wpdb->prepare(
+            'SELECT r.id, v.value_ref FROM ' . Schema::table('node_records') . ' r
+             LEFT JOIN ' . Schema::table('relation_records') . " v
+               ON v.node_record_id = r.id AND v.relation_id = %d AND v.value_ref_kind = 'record'
+             WHERE r.node_id = %d AND r.relation_id = 0 AND r.record_type <> 'settings'
+             ORDER BY r.id ASC, v.position ASC, v.id ASC",
+            $relationId,
+            $nodeId
+        ));
+
+        $aus = [];
+
+        foreach ($rows as $row) {
+            $id = (int) $row['id'];
+
+            if (! array_key_exists($id, $aus) || $aus[$id] === null) {
+                $aus[$id] = $row['value_ref'] === null ? null : (int) $row['value_ref'];
+            }
+        }
+
+        return $aus;
+    }
+
     /** @param array<string,mixed> $row */
     private function hydrate(array $row): NodeRecord
     {

@@ -393,6 +393,27 @@ final class InMemoryRecords implements RecordRepository
         return $aus;
     }
 
+    public function parentLinksOf(int $nodeId, int $relationId): array
+    {
+        $aus = [];
+
+        foreach ($this->ofNode($nodeId) as $record) {
+            if ($record->recordType === RecordType::Settings) {
+                continue;
+            }
+
+            $aus[$record->id] = null;
+
+            foreach ($this->valuesOf($record->id) as $stored) {
+                if ($stored->relationId === $relationId && $stored->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record && $stored->value->reference !== null) {
+                    $aus[$record->id] ??= $stored->value->reference;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
     public function findByRelationValue(int $relationId, TypedValue $value): array
     {
         $found = [];

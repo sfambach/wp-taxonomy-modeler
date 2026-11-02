@@ -2799,9 +2799,12 @@ final class Rendering implements Presets
         // *The way to the chosen record stands open; the chosen record itself stays closed, as in the node chooser.*
         $seen = [];
 
-        for ($id = $chosen === null ? null : ($chain[$chosen] ?? null); $id !== null && isset($chain[$id]) && ! isset($seen[$id]); $id = $chain[$id]) {
+        $id = $chosen === null ? null : ($chain[$chosen] ?? null);
+
+        while ($id !== null && array_key_exists($id, $chain) && ! isset($seen[$id])) {
             $seen[$id]  = true;
             $offen[$id] = true;
+            $id         = $chain[$id];
         }
 
         $cell = $this->renderers->byName(ChooserCellRenderer::NAME);

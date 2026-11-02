@@ -3600,6 +3600,57 @@ final class NodesScreen
     }
 
     /**
+     * Der Satz-Wähler für die Seite eines Moduls — die Sätze eines Knotens als Baum über ihr «Übergeordnet»-Feld, in derselben Ansicht
+     * wie der Knoten-Wähler ([D-1084](../../../docs/NewConcept/90-decision-log.md), [D-1075](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «ja sätze im baum passen». Sätze und Verweise kommen in **einer** Abfrage ({@see \Taxmod\Core\Repository\RecordRepository::parentLinksOf()}),
+     * die Worte der Sätze in einem Lauf für alle ({@see \Taxmod\Core\Service\Rendering::summaryTextsOf()}); der Baum entsteht im Speicher
+     * ({@see \Taxmod\Core\Service\RecordTree::walk()}) — keine Abfrage je Ebene (`CD-7`).*
+     *
+     * @param list<int> $exclude
+     * @param list<int> $unpickable
+     */
+    public function recordChooserForModule(string $name, int $node, int $parentField, int $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = ''): string
+    {
+        if ($node <= 0 || $this->editor->find($node) === null) {
+            return '';
+        }
+
+        $records = new \Taxmod\WordPress\Persistence\WpdbRecordRepository();
+        $links   = $parentField > 0 ? $records->parentLinksOf($node, $parentField) : array_fill_keys(array_map(static fn ($r): int => $r->id, array_filter($records->ofNode($node), static fn ($r): bool => $r->recordType !== \Taxmod\Core\Model\RecordType::Settings)), null);
+
+        // *Ohne Feldwahl dasselbe Wort, das die Satzauswahl des Modellers zeigt (D-1011); mit `label_field` das Wort aus diesem Feld.*
+        $kante = \Taxmod\Core\Model\Relation::attribute(0, $node, $node, \Taxmod\Core\Model\RelationKind::Aggregation, 'record-chooser', 0);
+        $worte = $links === [] ? [] : ($this->rendering->summaryTextsOf([array_filter([
+            'relation' => $kante,
+            'records'  => array_keys($links),
+            'fields'   => $labelField > 0 ? [$labelField] : [],
+        ], static fn ($v): bool => $v !== [])])[0] ?? []);
+
+        $eintraege = [];
+
+        foreach ($links as $id => $parent) {
+            $wort        = trim((string) ($worte[$id] ?? ''));
+            $eintraege[] = new \Taxmod\Core\Model\RecordInTree($id, $parent, $wort === '' ? '#' . $id : $wort);
+        }
+
+        $zeilen = \Taxmod\Core\Service\RecordTree::walk($eintraege, $root > 0 ? $root : null, $exclude);
+
+        // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
+        return $this->rendering->withoutSharedRecordBodies()->recordChooser(
+            $zeilen,
+            $name,
+            $preselected,
+            $unpickable,
+            __('Nothing here can be chosen.', 'taxmod'),
+            $this->localeFromRequest(),
+            Level::Admin,
+            $formId,
+            ChooserRenderer::asDialog()
+        )->markup;
+    }
+
+    /**
      * Ein Öffner des gemeinsamen Auswahlbaums: das Feld, in das die Wahl geht, und — wo einer ist — der Akt, der danach abschickt.
      *
      * @param list<int> $barred Knoten, die hier nicht gewählt werden können.
