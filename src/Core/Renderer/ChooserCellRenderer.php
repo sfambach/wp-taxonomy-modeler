@@ -4,6 +4,7 @@ namespace Taxmod\Core\Renderer;
 
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\RecordInTree;
 use Taxmod\Core\Model\Relation;
 
 use Taxmod\Core\Model\SimpleType;
@@ -66,14 +67,15 @@ final class ChooserCellRenderer extends RendererNode
         return [];
     }
 
+    /** ⚠️ *And a record of a record tree ([D-1084](../../../docs/NewConcept/90-decision-log.md)): the same row, so the chooser looks the same.* */
     public function fits(Renderable $subject): bool
     {
-        return $subject instanceof Node;
+        return $subject instanceof Node || $subject instanceof RecordInTree;
     }
 
     public function render(Renderable $subject, RenderContext $context): RenderResult
     {
-        if (! $subject instanceof Node) {
+        if (! $this->fits($subject)) {
             return RenderResult::of('');
         }
 

@@ -4,6 +4,7 @@ namespace Taxmod\Core\Renderer;
 
 use Taxmod\Core\Model\Identity;
 use Taxmod\Core\Model\Node;
+use Taxmod\Core\Model\RecordInTree;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\SimpleType;
 
@@ -79,7 +80,8 @@ final class TreeNodeRenderer extends RendererNode
         // The owner: *there I would take the node name.* The modelling tree is where the model is
         // worked on, and its names are what one works with — so the cell needs nothing handed in,
         // and it can never read as nothing, because a node cannot exist without a name (D-022).
-        $shown = $subject instanceof Node ? $subject->name : '';
+        // ⚠️ *A record of a record tree has no name, only the word the boundary worked out for it (D-1084).*
+        $shown = $subject instanceof Node ? $subject->name : ($subject instanceof RecordInTree ? $subject->label() : '');
 
         // ⚠️ **An icon is a Dashicon key**, stored without the `dashicons-` prefix — the shape the
         // legacy used and the owner confirmed: *for now simply the stock WordPress offers.* Drawing

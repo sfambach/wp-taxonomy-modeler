@@ -12,6 +12,7 @@ use Taxmod\Core\Model\EdgeColumn;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordInTree;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\RelationKind;
@@ -2684,8 +2685,48 @@ final class Rendering implements Presets
         // the checked row is a property of the *chooser*, not of the node. *`cellsFor()` hands every
         // cell the same context apart from its own settings, which is exactly what is wanted here.*
         $cells = $this->cellsForChoosing($nodes, $fieldName, $chosen, $barred, $locale, $level, $formId);
-        $tree  = $this->renderers->byName(TreeRenderer::NAME)->render(
+
+        return $this->drawnChooser(
+            $this->drawnRows($walked, $cells, $this->foldsInPlace($walked)),
             $nodes[0] ?? Node::create(0, '', null),
+            $fieldName,
+            $chosen,
+            $chosenName,
+            $nothingToChoose,
+            $chooser,
+            $locale,
+            $level,
+            $trigger,
+            $confirm,
+            $settings
+        );
+    }
+
+    /**
+     * The drawn rows nested by the tree and put into the chooser — the half the node chooser and the record chooser share (D-1084).
+     *
+     * ⚠️ *One place for both, so a record tree looks and behaves like the node tree: same tree, same search field, same dialog
+     * ([D-1075](../../../docs/NewConcept/90-decision-log.md): «der ist immer die ansicht»).*
+     *
+     * @param list<DrawnRow>                 $rows
+     * @param array<string, ResolvedSetting> $settings
+     */
+    private function drawnChooser(
+        array $rows,
+        Renderable $subject,
+        string $fieldName,
+        ?int $chosen,
+        ?string $chosenName,
+        string $nothingToChoose,
+        string $chooser,
+        string $locale,
+        Level $level,
+        string $trigger,
+        string $confirm,
+        array $settings,
+    ): RenderResult {
+        $tree = $this->renderers->byName(TreeRenderer::NAME)->render(
+            $subject,
             new RenderContext(
                 purpose: Purpose::Edit,
                 value: TypedValue::nothing(),
@@ -2694,12 +2735,12 @@ final class Rendering implements Presets
                 // WICHTIG: Klapper fuer jede Zeile mit Kindern, damit der Dialog aussieht und sich
                 // verhaelt wie die Baumansicht. '#' statt einer Adresse: hier klappt das Skript,
                 // weil ein Seitenneuaufbau den Dialog schliessen wuerde.
-                surroundings: new Surroundings(rows: $this->drawnRows($walked, $cells, $this->foldsInPlace($walked))),
+                surroundings: new Surroundings(rows: $rows),
             )
         );
 
         return $this->renderers->byName($chooser)->render(
-            $nodes[0] ?? Node::create(0, '', null),
+            $subject,
             new RenderContext(
                 purpose: Purpose::Edit,
                 value: $chosen === null ? TypedValue::nothing() : TypedValue::ofReference($chosen),
@@ -2722,6 +2763,95 @@ final class Rendering implements Presets
                     sharedBodies: $this->geteilteKoerper,
                 ),
             )
+        );
+    }
+
+    /**
+     * A **record chooser** — the records of one node as a tree, in the node chooser's dialog ([D-1084](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *His word: «ja sätze im baum passen». The rows come from {@see RecordTree::walk()}; each row is the node chooser's own
+     * cell ({@see ChooserCellRenderer}), and tree, search field and dialog are the same ({@see self::drawnChooser()}). Every branch
+     * starts closed apart from the way to the preselected record — the rule of {@see self::closedApartFrom()}.*
+     *
+     * @param list<array{record: RecordInTree, depth: int, hasChildren: bool}> $walked
+     * @param list<int>                                                        $unpickable Shown, not offered.
+     * @param array<string, ResolvedSetting>                                   $settings   `dialog`, `display_size` — {@see ChooserRenderer::asDialog()}.
+     */
+    public function recordChooser(
+        array $walked,
+        string $fieldName,
+        ?int $chosen = null,
+        array $unpickable = [],
+        string $nothingToChoose = '',
+        string $locale = '',
+        Level $level = Level::Admin,
+        string $formId = '',
+        array $settings = [],
+    ): RenderResult {
+        $barred = array_fill_keys($unpickable, true);
+        $offen  = [];
+        $chain  = [];
+
+        foreach ($walked as $row) {
+            $chain[$row['record']->id] = $row['record']->parentId;
+        }
+
+        // *The way to the chosen record stands open; the chosen record itself stays closed, as in the node chooser.*
+        $seen = [];
+
+        for ($id = $chosen === null ? null : ($chain[$chosen] ?? null); $id !== null && isset($chain[$id]) && ! isset($seen[$id]); $id = $chain[$id]) {
+            $seen[$id]  = true;
+            $offen[$id] = true;
+        }
+
+        $cell = $this->renderers->byName(ChooserCellRenderer::NAME);
+        $rows = [];
+
+        foreach ($walked as $row) {
+            $record = $row['record'];
+            $rows[] = new DrawnRow(
+                $row['depth'],
+                $cell->render(
+                    $record,
+                    new RenderContext(
+                        purpose: Purpose::Edit,
+                        value: $chosen === null ? TypedValue::nothing() : TypedValue::ofReference($chosen),
+                        locale: $locale,
+                        level: $level,
+                        fieldName: $fieldName,
+                        surroundings: new Surroundings(
+                            actions: isset($barred[$record->id]) ? [new Control(ChooserCellRenderer::UNPICKABLE, '', '')] : [],
+                            formId: $formId,
+                        ),
+                    )
+                ),
+                $row['hasChildren'],
+                ! isset($offen[$record->id]),
+                $row['hasChildren'] ? '#' : null
+            );
+        }
+
+        $chosenName = null;
+
+        foreach ($walked as $row) {
+            if ($row['record']->id === $chosen) {
+                $chosenName = $row['record']->label();
+            }
+        }
+
+        return $this->drawnChooser(
+            $rows,
+            $walked[0]['record'] ?? new RecordInTree(0, null, ''),
+            $fieldName,
+            $chosen,
+            $chosenName,
+            $nothingToChoose,
+            ChooserRenderer::NAME,
+            $locale,
+            $level,
+            '',
+            '',
+            $settings
         );
     }
 
