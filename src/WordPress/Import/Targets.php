@@ -3,7 +3,9 @@
 namespace Taxmod\WordPress\Import;
 
 use Taxmod\Core\Import\TargetModel;
+use Taxmod\Core\Model\RelationKind;
 use Taxmod\WordPress\Persistence\UnitScaffold;
+use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 
 /**
  * Where taken proposals go — once for every source (D-953, S5): node and relation ids, never names. Stored in an
@@ -116,6 +118,8 @@ final class Targets
     {
         $merged = self::raw();
         $ids = static fn (array $map): array => array_map('intval', $map);
+        $orderFields = $ids((array) $merged['order_fields']);
+        $saleFields = $ids((array) $merged['sale_fields']);
 
         return new TargetModel(
             (int) $merged['orders_node'],
@@ -123,7 +127,7 @@ final class Targets
             (int) $merged['origin_documented'],
             (int) $merged['amount_field'],
             (int) $merged['unit_field'],
-            $ids((array) $merged['order_fields']),
+            $orderFields,
             $ids((array) $merged['purchase_fields']),
             $ids((array) $merged['currencies']),
             array_values($ids((array) $merged['required_parts'])),
@@ -131,13 +135,34 @@ final class Targets
             UnitScaffold::rateFieldId(),
             (int) $merged['sales_node'],
             (int) $merged['sold_items_node'],
-            $ids((array) $merged['sale_fields']),
+            $saleFields,
             $ids((array) $merged['sold_item_fields']),
             array_values($ids((array) $merged['sale_required_parts'])),
             (int) $merged['invoices_node'],
             $ids((array) $merged['invoice_fields']),
             $ids((array) $merged['invoice_states']),
+            self::compositionsAmong([$orderFields['lines'] ?? 0, $saleFields['lines'] ?? 0]),
         );
+    }
+
+    /**
+     * Which of these relations are compositions — read from the model on every load, never stored with the targets, so the
+     * import follows a switch of the kind (D-1097) without a change in the «Import» tab. One read for all (CD-7).
+     *
+     * @param list<int> $relationIds
+     * @return list<int>
+     */
+    private static function compositionsAmong(array $relationIds): array
+    {
+        $composed = [];
+
+        foreach ((new WpdbRelationRepository())->byIds(array_filter($relationIds)) as $relation) {
+            if ($relation->kind === RelationKind::Composition) {
+                $composed[] = $relation->id;
+            }
+        }
+
+        return $composed;
     }
 
     /** @param array<string, mixed> $map decoded from the tab; only known keys, only integers are kept */

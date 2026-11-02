@@ -4245,6 +4245,13 @@ final class NodesScreen
             }
         }
 
+        // ⚠️ *A field taking one part already holds it when the holder is new (D-541) — «0» or a name then means that part, not a
+        // second one, as {@see ModelAbilities::intoHeldParts()} says for the first level. Deeper down nothing did: an import writing
+        // a purchase as a part of its order (D-1097) left the required price empty beside a second, filled one.*
+        $einzeln = count($gehalten) === 1 && ! ($this->editor->relationById($relationId)?->multiplicity->allowsMany() ?? true)
+            ? (int) array_key_first($gehalten)
+            : 0;
+
         foreach ($submittedByPart as $rawPart => $inner) {
             $partId = absint($rawPart);
 
@@ -4252,7 +4259,13 @@ final class NodesScreen
                 continue;
             }
 
-            if ($partId === 0) {
+            if ($partId === 0 && $einzeln !== 0) {
+                if ((string) $rawPart !== '0' && ! $this->holdsNothing($einzeln)) {
+                    throw new \InvalidArgumentException(sprintf('Record %d already holds part %d with values; write it with part key "0" instead of "%s".', $holderId, $einzeln, (string) $rawPart));
+                }
+
+                $partId = $einzeln;
+            } elseif ($partId === 0) {
                 if (! $this->holdsSomething($this->withoutPresetUnit($inner))) {
                     continue;
                 }
@@ -4467,6 +4480,18 @@ final class NodesScreen
 
             return $relation === null || $relation->toNodeId !== $einheiten->id || ! $relation->multiplicity->requiresOne();
         }, ARRAY_FILTER_USE_BOTH);
+    }
+
+    /** Whether a held part is still empty — the one its holder's multiplicity made, not yet written. */
+    private function holdsNothing(int $partId): bool
+    {
+        foreach ($this->data->valuesOf($partId) as $row) {
+            if (! $row->value->isNothing()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** Ob in einer geschickten Liste irgendwo ein Zeichen steht — ein leerer neuer Teil wird nicht angelegt. */

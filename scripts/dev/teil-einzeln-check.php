@@ -10,7 +10,9 @@
  * geschriebenen —, und ihre Bezeichnung las «#43780 · #43779 · 0207».*
  *
  * *Eine eigene Wiese `__te`: (1) «neu» an einem 1..1-Feld mit leerem Pflichtteil füllt diesen, es bleibt ein Teil; (2) ein zweites
- * «neu», wenn der Teil schon Werte hält, wird abgelehnt; (3) «0» schreibt weiter in den gehaltenen Teil.*
+ * «neu», wenn der Teil schon Werte hält, wird abgelehnt; (3) «0» schreibt weiter in den gehaltenen Teil; (4) dasselbe eine Stufe
+ * tiefer: ein neuer Teil einer Liste (eine Position als Teil ihres Kopfes, D-1097) hält seinen Pflichtteil, und «0» darin füllt ihn,
+ * statt neben dem leeren einen zweiten anzulegen.*
  */
 
 $wordpress = $argv[1] ?? (getenv('WP_ROOT') ?: 'C:/Devel/Wordpress');
@@ -102,6 +104,42 @@ $null = $apply->execute(['changes' => [
 ]]);
 $gut = is_array($null) && $teileAm((int) $ref['r'], (int) $ref['komp']) === $vorher;
 printf("  %s «0» schreibt weiter in den gehaltenen Teil\n", $gut ? 'ok  ' : 'FAIL');
+$fehler += $gut ? 0 : 1;
+
+// (4) Eine Stufe tiefer — ein Kopf mit einer Liste von Positionen als Teilen, jede mit einem Pflichtteil.
+$tief = $apply->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'k', 'name' => '__te Kopf', 'parent' => $model],
+    ['op' => 'create_node', 'ref' => 'p', 'name' => '__te Position', 'parent' => $model],
+    ['op' => 'add_field', 'ref' => 'pk', 'node' => '@p', 'target' => $ref['m'], 'name' => '__te Preis', 'kind' => 'composition', 'multiplicity' => '1..1'],
+    ['op' => 'add_field', 'ref' => 'liste', 'node' => '@k', 'target' => '@p', 'name' => '__te Positionen', 'kind' => 'composition', 'multiplicity' => '0..*'],
+    ['op' => 'create_record', 'ref' => 'kr', 'node' => '@k'],
+]]);
+
+if (! is_array($tief)) {
+    printf("  FAIL die tiefe Wiese entsteht nicht — %s\n", is_wp_error($tief) ? $tief->get_error_message() : '?');
+    exit(1);
+}
+
+$t = $tief['refs'];
+$geschrieben = $apply->execute(['changes' => [
+    ['op' => 'set_values', 'record' => $t['kr'], 'values' => [(string) $t['liste'] => [
+        'p0' => [(string) $t['pk'] => ['0' => [(string) $ref['mt'] => 'fünf']]],
+        'p1' => [(string) $t['pk'] => ['neu' => [(string) $ref['mt'] => 'sieben']]],
+    ]]],
+]]);
+$positionen = $teileAm((int) $t['kr'], (int) $t['liste']);
+$preise     = array_map(static fn (int $position): array => $teileAm($position, (int) $t['pk']), $positionen);
+$werte      = array_map(static fn (array $teil): string => (string) $wpdb->get_var($wpdb->prepare(
+    "SELECT value_text FROM {$wpdb->prefix}taxmod_relation_records WHERE node_record_id = %d AND relation_id = %d",
+    $teil[0] ?? 0,
+    (int) $ref['mt']
+)), $preise);
+$gut = is_array($geschrieben) && count($positionen) === 2 && array_map('count', $preise) === [1, 1] && $werte === ['fünf', 'sieben'];
+printf(
+    "  %s in einem neuen Teil füllen «0» und «neu» den Pflichtteil, kein zweiter (%s)\n",
+    $gut ? 'ok  ' : 'FAIL',
+    is_array($geschrieben) ? count($positionen) . ' Positionen, Preisteile ' . implode('/', array_map('count', $preise)) . ', ' . implode(', ', $werte) : $geschrieben->get_error_message()
+);
 $fehler += $gut ? 0 : 1;
 
 exit($fehler === 0 ? 0 : 1);

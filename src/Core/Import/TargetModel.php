@@ -34,6 +34,8 @@ final class TargetModel
      * @param array<string, int> $invoiceFields role => relation id: title, origin, origin_note, number, date, merchant,
      *        total, status, payment_method, document, orders
      * @param array<string, int> $paidStates 'open' and 'paid' => constant node id of the choice «Zahlstatus»
+     * @param list<int> $compositions relation ids among the fields above that are compositions, as the model says at load
+     *        time (D-1097) — read, never configured: the kind belongs to the relation
      */
     public function __construct(
         public readonly int $ordersNode,
@@ -54,6 +56,7 @@ final class TargetModel
         public readonly int $invoicesNode = 0,
         public readonly array $invoiceFields = [],
         public readonly array $paidStates = [],
+        public readonly array $compositions = [],
     ) {
     }
 
@@ -78,6 +81,7 @@ final class TargetModel
             $this->currencies,
             $this->saleRequiredParts,
             $this->rateField,
+            compositions: $this->compositions,
         );
     }
 
@@ -90,6 +94,15 @@ final class TargetModel
     public function hasInvoiceField(string $role): bool
     {
         return ($this->invoiceFields[$role] ?? 0) > 0;
+    }
+
+    /**
+     * Whether the order's «lines» hold its purchases as parts (D-1097) rather than naming records of their own — the
+     * builder writes either shape, so an import runs before and after the switch.
+     */
+    public function linesAreParts(): bool
+    {
+        return $this->hasOrderField('lines') && in_array($this->orderFields['lines'], $this->compositions, true);
     }
 
     public function hasOrderField(string $role): bool

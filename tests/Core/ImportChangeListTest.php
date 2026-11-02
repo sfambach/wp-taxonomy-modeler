@@ -53,6 +53,60 @@ final class ImportChangeListTest extends TestCase
         self::assertFalse(isset($order['110']));
     }
 
+    public function testAComposedListWritesThePurchasesAsPartsOfTheOrder(): void
+    {
+        $proposal = new OrderProposal('Reichelt', 'I-123456', ProposalKind::Ordered, '2026-10-20', 'EUR', [
+            new ProposalLine('LM317', 10, '0.50', 'LM 317'),
+            new ProposalLine('Lochraster', 1, '5.00', 'H25PR'),
+        ], shippingCost: '5.95', total: '16.95', counterparty: 'reichelt elektronik');
+        $aggregated = (new ChangeListBuilder(self::target()))->newOrder($proposal, [0, 1], 'Aus Mail.');
+        $changes = (new ChangeListBuilder(self::composedTarget(self::target())))->newOrder($proposal, [0, 1], 'Aus Mail.');
+
+        self::assertSame([['op' => 'create_record', 'node' => 10, 'ref' => 'o'], 'set_values'], [$changes[0], $changes[1]['op']], 'D-1097: no purchase record of its own');
+        self::assertCount(2, $changes);
+        self::assertSame('@o', $changes[1]['record']);
+
+        $parts = $changes[1]['values']['113'];
+        self::assertSame(['p0', 'p1'], array_keys($parts), 'non-numeric keys: each a new part');
+        self::assertSame($aggregated[2]['values'], $parts['p0'], 'a part carries what the purchase record carried');
+        self::assertSame($aggregated[4]['values'], $parts['p1']);
+        self::assertSame(['0' => ['4234' => '0.5', '4236' => '8571']], $parts['p0']['205'], 'the required price is the part the new purchase holds');
+
+        $order = $changes[1]['values'];
+        unset($order['113']);
+        $before = $aggregated[5]['values'];
+        unset($before['113']);
+        self::assertSame($before, $order, 'the order\'s own values do not change with the kind');
+        self::assertSame(['values' => ['@p0', '@p1']], $aggregated[5]['values']['113'], 'an aggregation still names records');
+    }
+
+    public function testASaleWithComposedLinesWritesItsSoldItemsAsParts(): void
+    {
+        $proposal = new OrderProposal('eBay', '02-13629-54922', ProposalKind::Sold, '2025-09-24', 'EUR', [
+            new ProposalLine('greaseweazle 4.1', 2, '25.00', '12345'),
+        ], shippingCost: '4.50', total: '54.50', counterparty: 'ph_67684');
+
+        self::assertFalse(self::composedTarget(self::salesTarget(), [113])->forSales()->linesAreParts(), 'the order\'s kind is not the sale\'s');
+
+        $sales = self::composedTarget(self::salesTarget(), [313])->forSales();
+        $changes = (new ChangeListBuilder($sales))->newOrder($proposal, [0], 'Aus eBay.');
+
+        self::assertSame(['op' => 'create_record', 'node' => 30, 'ref' => 'o'], $changes[0]);
+        self::assertCount(2, $changes);
+        self::assertSame(['p0'], array_keys($changes[1]['values']['313']));
+        self::assertSame('greaseweazle 4.1', $changes[1]['values']['313']['p0']['201']);
+    }
+
+    /** @param list<int> $compositions */
+    private static function composedTarget(TargetModel $base, array $compositions = [113]): TargetModel
+    {
+        return new TargetModel(
+            $base->ordersNode, $base->purchasesNode, $base->originDocumented, $base->amountField, $base->unitField, $base->orderFields,
+            $base->purchaseFields, $base->currencies, $base->requiredParts, $base->rateField, $base->salesNode, $base->soldItemsNode,
+            $base->saleFields, $base->soldItemFields, $base->saleRequiredParts, compositions: $compositions,
+        );
+    }
+
     public function testTheSourcesPictureGoesToTheNewPurchase(): void
     {
         $url = 'https://ae-pic-a1.aliexpress-media.com/kf/S0.jpg';

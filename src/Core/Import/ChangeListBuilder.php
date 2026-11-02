@@ -8,13 +8,15 @@ use Taxmod\Core\Port\ExchangeRates;
 
 /**
  * Turns a reviewed proposal into the change list `taxmod/write-data` takes (D-936): an order record with the picked
- * items as purchase records, all in one act. Same shape the Python importer sent.
+ * items as purchase records, all in one act. Where the order's «lines» are a composition (D-1097) the purchases are
+ * parts written inside the order's values; where they are an aggregation, records of their own the order names.
  *
  * ```mermaid
  * flowchart LR
- *   O["create order @o"] --> V["values of @o"]
- *   P["create purchase @p0 … per picked item"] --> W["values of @pN"]
- *   W --> L["@o.lines = [@p0 …]"]
+ *   O["create order @o"] --> K{"lines a composition?"}
+ *   K -- yes --> T["values of @o, lines = {p0: purchase …}"]
+ *   K -- no --> P["create purchase @p0 … with its values"]
+ *   P --> L["values of @o, lines = [@p0 …]"]
  * ```
  *
  * Shipping and fees are spread over all items of the order by their price, picked or not — leaving an item out does not
@@ -67,17 +69,28 @@ final class ChangeListBuilder
         $changes = [['op' => 'create_record', 'node' => $this->target->ordersNode, 'ref' => 'o']];
         $shares = self::costShares($proposal);
         $landed = $this->sharesKnown() ? [] : self::landedUnitPrices($proposal);
-        $refs = [];
+        $asParts = $this->target->linesAreParts();
+        $lines = [];
 
         foreach ($pickedLines as $index) {
             $line = $proposal->lines[$index] ?? throw WriteRefused::because('no item ' . $index);
             $ref = 'p' . $index;
-            $refs[] = '@' . $ref;
+            $values = $this->purchaseValues($line, $currency, $rate, $shares[$index] ?? [], $landed[$index] ?? null, $originNote);
+
+            // ⚠️ *A composition holds its purchases as parts (D-1097): a non-numeric key adds one, written with the order in one
+            // set_values. The aggregation names records created beside it — both shapes stay, the model's kind picks.*
+            if ($asParts) {
+                $lines[$ref] = $values;
+
+                continue;
+            }
+
+            $lines[] = '@' . $ref;
             $changes[] = ['op' => 'create_record', 'node' => $this->target->purchasesNode, 'ref' => $ref];
-            $changes[] = ['op' => 'set_values', 'record' => '@' . $ref, 'values' => $this->purchaseValues($line, $currency, $rate, $shares[$index] ?? [], $landed[$index] ?? null, $originNote)];
+            $changes[] = ['op' => 'set_values', 'record' => '@' . $ref, 'values' => $values];
         }
 
-        $orderValues[(string) $this->target->orderField('lines')] = ['values' => $refs];
+        $orderValues[(string) $this->target->orderField('lines')] = $asParts ? $lines : ['values' => $lines];
         $changes[] = ['op' => 'set_values', 'record' => '@o', 'values' => $orderValues];
 
         return $changes;
