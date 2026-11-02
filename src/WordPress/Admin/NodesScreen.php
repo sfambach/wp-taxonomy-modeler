@@ -195,6 +195,16 @@ final class NodesScreen
     /** Where a record edited on a module's page goes back to after an act (D-1025). */
     private const RETURN_TO = 'taxmod_return';
 
+    /** Marks a save sent by the autosave in the background: answered as JSON instead of a redirect ([D-1089](../../../docs/NewConcept/90-decision-log.md)). */
+    public const QUIET = 'taxmod_quiet';
+
+    /**
+     * The acts a background save may finish without a new page: they only write values the form already shows (D-1089).
+     *
+     * ⚠️ *Every other act changes what the page is made of (a new record, a row, a move) and still sends the page to its address.*
+     */
+    private const QUIET_ACTS = ['put_setting', 'save_record'];
+
     /** Ein Satz, der über seinen Link geöffnet wird — der Knoten dazu wird beim Öffnen nachgeschlagen (D-852). */
     private const OPEN_RECORD = 'taxmod_open_record';
 
@@ -1187,7 +1197,9 @@ final class NodesScreen
             ], admin_url('admin-post.php'))) . '"'
             . ' data-browse-title="' . esc_attr__('Choose from the tree', 'taxmod') . '"'
             . ' data-browse-filter="' . esc_attr__('Search the tree …', 'taxmod') . '"'
-            . ' data-no-hits="' . esc_attr__('Nothing found.', 'taxmod') . '"></span>';
+            . ' data-no-hits="' . esc_attr__('Nothing found.', 'taxmod') . '"'
+            // ⚠️ *Was das Speichern im Hintergrund sagt, wenn keine Antwort kommt (D-1089).*
+            . ' data-save-failed="' . esc_attr__('Not saved — the connection failed. Your input is still here.', 'taxmod') . '"></span>';
 
         return $html . $picker . $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)) . $worte . '</div>';
     }
@@ -7457,7 +7469,29 @@ final class NodesScreen
             $adresse = add_query_arg('taxmod_message', $extra['taxmod_message'], $zurueck);
         }
 
+        if (! empty($_POST[self::QUIET])) {
+            $this->answerQuietly($do, $message, $adresse);
+        }
+
         wp_safe_redirect($adresse);
+        exit;
+    }
+
+    /**
+     * The answer to a background save: the page stays and keeps what was typed meanwhile ([D-1089](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *An act outside {@see self::QUIET_ACTS} still names the address the page must go to; the script goes there.*
+     */
+    private function answerQuietly(string $do, string $message, string $adresse): never
+    {
+        $ok = $message === 'ok';
+
+        wp_send_json([
+            'ok'      => $ok,
+            'message' => $ok ? __('Saved.', 'taxmod') : $message,
+            'goto'    => in_array($do, self::QUIET_ACTS, true) ? null : $adresse,
+        ]);
+
         exit;
     }
 

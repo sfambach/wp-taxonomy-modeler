@@ -1483,7 +1483,7 @@
 
 		// *Ohne Speichern-Knopf schickt die Wahl aus der Schnellsuche sich selbst (D-860).*
 		if ( genommen && autosaveAn( genommen ) ) {
-			autosaveSchicken( genommen );
+			autosaveSchicken( genommen, true );
 		}
 
 		var oeffner = wahl.querySelector( '.taxmod-dialog-open, .taxmod-record-dialog-open' );
@@ -1940,7 +1940,9 @@
 		return feld.closest( '.taxmod-switch-picker, .taxmod-addon-picker, .taxmod-settings-switches, .taxmod-setting-band, fieldset, li, tr' );
 	}
 
-	function autosaveSchicken( feld ) {
+	// *`neuZeichnen`: eine Satzwahl (Schnellsuche, Dialog, Mülleimer am Verweis) baut die Seite weiter neu auf — was ein Verweis nach sich
+	// zieht, zeichnet nur der Rand (D-1089).*
+	function autosaveSchicken( feld, neuZeichnen ) {
 		var formular = feld.form || feld.closest( 'form' );
 
 		if ( ! formular ) {
@@ -1960,13 +1962,124 @@
 			} );
 			var knopf = knoepfe.filter( function ( el ) { return el.classList.contains( 'taxmod-save' ); } )[ 0 ] || knoepfe[ 0 ] || null;
 
-			if ( formular.requestSubmit ) {
-				formular.requestSubmit( knopf || undefined );
-			} else {
-				formular.submit();
+			if ( neuZeichnen || ! hintergrundSpeichern( formular, knopf ) ) {
+				if ( formular.requestSubmit ) {
+					formular.requestSubmit( knopf || undefined );
+				} else {
+					formular.submit();
+				}
 			}
 		}, 150 );
 	}
+
+	// ⚠️ **Gespeichert wird im Hintergrund, die Seite bleibt stehen** (D-1089) — *sein Befund: «bei jeder eingabe speichert er erst lange
+	// wenn man dann neue information eingibt werden diese gelöscht weil die seite neu geladen wird». Das Formular wurde abgeschickt, der Rand
+	// leitete um, und die ganze Seite baute sich neu — mit allem, was inzwischen getippt war, verloren.* Jetzt geht dasselbe Formular mit
+	// demselben Knopf per `fetch`; der Rand antwortet mit einem Satz statt einer neuen Seite. Neu geladen wird nur, wenn er eine Adresse nennt
+	// (ein Akt, der den Aufbau ändert). Es läuft immer nur ein Speichern; was währenddessen dazukommt, geht danach als eines hinterher.
+	var speichertGerade = false;
+	var speichernDanach = null;
+
+	function hintergrundSpeichern( formular, knopf ) {
+		if ( typeof window.fetch !== 'function' || typeof window.FormData !== 'function' || ( formular.method || '' ).toLowerCase() !== 'post' ) {
+			return false;
+		}
+
+		if ( speichertGerade ) {
+			speichernDanach = { formular: formular, knopf: knopf };
+
+			return true;
+		}
+
+		var daten = new window.FormData( formular );
+
+		if ( knopf && knopf.name ) {
+			daten.append( knopf.name, knopf.value );
+		}
+
+		daten.append( 'taxmod_quiet', '1' );
+		speichertGerade = true;
+
+		window.fetch( formular.action, { method: 'POST', body: daten, credentials: 'same-origin' } )
+			.then( function ( antwort ) {
+				var art = antwort.headers.get( 'Content-Type' ) || '';
+
+				// *Ein Rand, der das Stille Speichern nicht kennt, leitet weiter wie bisher: dann dorthin, wie vorher.*
+				if ( art.indexOf( 'application/json' ) === -1 ) {
+					if ( antwort.ok && antwort.redirected ) {
+						speichernDanach = null;
+						speichertGerade = false;
+						window.location.href = antwort.url;
+
+						return null;
+					}
+
+					throw new Error( 'speichern' );
+				}
+
+				return antwort.json();
+			} )
+			.then( function ( ergebnis ) {
+				if ( ! ergebnis ) {
+					return;
+				}
+
+				if ( ergebnis.goto ) {
+					speichernDanach = null;
+					speichertGerade = false;
+					window.location.href = ergebnis.goto;
+
+					return;
+				}
+
+				meldung( ergebnis.message || '', !! ergebnis.ok );
+			} )
+			.catch( function () {
+				var worte = document.getElementById( 'taxmod-words' );
+
+				meldung( worte ? worte.getAttribute( 'data-save-failed' ) || '' : '', false );
+			} )
+			.then( function () {
+				speichertGerade = false;
+
+				if ( speichernDanach ) {
+					var naechstes = speichernDanach;
+
+					speichernDanach = null;
+					hintergrundSpeichern( naechstes.formular, naechstes.knopf );
+				}
+			} );
+
+		return true;
+	}
+
+	// *Dieselbe Meldung wie nach einem Akt mit neuer Seite (`taxmod-toast`), nur vom Skript gesetzt.*
+	function meldung( text, gut ) {
+		if ( text === '' ) {
+			return;
+		}
+
+		var alt = document.querySelectorAll( '.taxmod-toast' );
+
+		for ( var i = 0; i < alt.length; i++ ) {
+			alt[ i ].parentNode.removeChild( alt[ i ] );
+		}
+
+		var toast = document.createElement( 'div' );
+
+		toast.className = 'taxmod-toast ' + ( gut ? 'taxmod-toast-ok' : 'taxmod-toast-bad' );
+		toast.setAttribute( 'role', 'status' );
+		toast.textContent = text;
+		document.body.appendChild( toast );
+	}
+
+	// ⚠️ *Wer die Seite verlässt, während noch gespeichert wird, wird gefragt — sonst ginge die letzte Eingabe unterwegs verloren.*
+	window.addEventListener( 'beforeunload', function ( ereignis ) {
+		if ( speichertGerade || speichernDanach || autosaveWartet ) {
+			ereignis.preventDefault();
+			ereignis.returnValue = '';
+		}
+	} );
 
 	function autosaveMeint( feld ) {
 		if ( ! ( feld instanceof HTMLInputElement || feld instanceof HTMLSelectElement || feld instanceof HTMLTextAreaElement ) ) {
@@ -2023,7 +2136,7 @@
 			var gewaehlt = dialogWahl;
 
 			dialogWahl = null;
-			autosaveSchicken( gewaehlt );
+			autosaveSchicken( gewaehlt, true );
 		}
 	} );
 
@@ -2485,7 +2598,7 @@
 
 			// *Ohne Speichern-Knopf wird das Entfernen sofort geschrieben (D-860).*
 			if ( autosaveAn( leer ) ) {
-				autosaveSchicken( leer );
+				autosaveSchicken( leer, true );
 			}
 		}
 
