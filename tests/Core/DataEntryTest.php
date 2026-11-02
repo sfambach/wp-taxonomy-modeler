@@ -987,6 +987,77 @@ final class DataEntryTest extends TestCase
         self::assertNull($this->records->find($f['zweite']));
     }
 
+    /** ⚠️ *[D-1110](../../docs/NewConcept/90-decision-log.md), sein Wort «1-4»: auch die einzelne Position, auf die ein fremder Satz zeigt, bleibt — die Meldung wie bei D-1099.* */
+    #[Test]
+    public function a_part_referenced_from_outside_is_not_deleted_on_its_own(): void
+    {
+        $f       = $this->kopfMitPositionen();
+        $bestand = $this->editor->createNode('Bestand', $this->branchRoot['model']->id);
+        $kauf    = $this->editor->addField($bestand->id, $f['pos']->id, 'Kauf', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $posten  = $this->data->create($bestand->id);
+        $this->data->put($posten->id, $kauf->id, TypedValue::ofRecordReference($f['zweite']));
+        $vorher  = count($this->buch->entries);
+
+        try {
+            $this->data->removeRecord($f['zweite']);
+            self::fail('das Löschen hätte verweigert werden müssen');
+        } catch (NotYetStorable $e) {
+            self::assertStringContainsString(sprintf('Record %d cannot be deleted: its parts are still referenced', $f['zweite']), $e->getMessage());
+            self::assertStringContainsString(sprintf('part #%d ← record #%d («Kauf»)', $f['zweite'], $posten->id), $e->getMessage());
+        }
+
+        self::assertNotNull($this->records->find($f['zweite']), 'die Position steht noch');
+        self::assertCount($vorher, $this->buch->entries, 'nichts geschrieben');
+    }
+
+    /** ⚠️ *D-1110 auch eine Ebene tiefer: der Teil eines Teils, auf den ein fremder Satz zeigt, bleibt.* */
+    #[Test]
+    public function a_part_of_a_part_referenced_from_outside_is_not_deleted_on_its_own(): void
+    {
+        $f       = $this->kopfMitPositionen();
+        $fremder = $this->editor->createNode('Fremder', $this->branchRoot['model']->id);
+        $zeigt   = $this->editor->addField($fremder->id, $f['betrag']->toNodeId, 'Preisblick', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $satz    = $this->data->create($fremder->id);
+        $this->data->put($satz->id, $zeigt->id, TypedValue::ofRecordReference($f['unterteil']));
+
+        $this->expectException(NotYetStorable::class);
+
+        $this->data->removeRecord($f['unterteil']);
+    }
+
+    /** ⚠️ *D-1110, seine Form (INFERRED dort): ein Verweis vom eigenen Kopf oder von einer Geschwister-Position hindert nicht.* */
+    #[Test]
+    public function references_from_its_own_head_or_a_sibling_part_do_not_hold_a_part(): void
+    {
+        $f      = $this->kopfMitPositionen();
+        $storno = $this->editor->addField($f['pos']->id, $f['pos']->id, 'Storno von', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $haupt  = $this->editor->addField($this->part->id, $f['pos']->id, 'Hauptposition', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $this->data->put($f['zweite'], $storno->id, TypedValue::ofRecordReference($f['erste']));
+        $this->data->put($f['kopf'], $haupt->id, TypedValue::ofRecordReference($f['erste']));
+
+        $this->data->removeRecord($f['erste']);
+
+        self::assertNull($this->records->find($f['erste']));
+        self::assertNull($this->records->find($f['unterteil']), 'sein eigener Teil geht mit');
+        self::assertNotNull($this->records->find($f['kopf']));
+        self::assertNotNull($this->records->find($f['zweite']));
+    }
+
+    /** ⚠️ *Ein Satz, der kein Teil ist, wird weiterhin gelöscht, auch wenn auf ihn verwiesen wird (D-1110 gilt für Teile, D-604).* */
+    #[Test]
+    public function a_referenced_record_that_is_no_part_is_still_deleted(): void
+    {
+        $f       = $this->kopfMitPositionen();
+        $bestand = $this->editor->createNode('Bestand', $this->branchRoot['model']->id);
+        $blick   = $this->editor->addField($bestand->id, $this->part->id, 'Kopfblick', \Taxmod\Core\Model\RelationKind::Aggregation);
+        $posten  = $this->data->create($bestand->id);
+        $this->data->put($posten->id, $blick->id, TypedValue::ofRecordReference($f['kopf']));
+
+        $this->data->removeRecord($f['kopf']);
+
+        self::assertNull($this->records->find($f['kopf']));
+    }
+
     /** ⚠️ *Eine Aggregation besitzt nicht: was nur verwiesen wird, überlebt das Löschen ([D-1097](../../docs/NewConcept/90-decision-log.md), Umkehrung).* */
     #[Test]
     public function a_referenced_record_survives_its_referrer(): void

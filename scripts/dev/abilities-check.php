@@ -389,6 +389,13 @@ check('remove_record verweigert einen Kopf, auf dessen Position ein Bestandspost
 $weg = $apply->execute(['changes' => [['op' => 'remove_record', 'record' => $k['b'] ?? 0]]]);
 check('remove_record nimmt die Positionen des Kopfes mit', is_array($weg) && ! $gibt((int) ($k['b'] ?? 0)) && ! $gibt((int) ($k['p1'] ?? 0)), is_wp_error($weg) ? $weg->get_error_message() : '');
 
+// D-1110: dieselbe Sperre für die einzelne Position, dieselbe Meldung.
+$einzeln = $apply->execute(['changes' => [['op' => 'remove_record', 'record' => $k['p2'] ?? 0]]]);
+check('remove_record verweigert eine einzelne Position, auf die ein Bestandsposten zeigt, und nennt ihn (D-1110)', is_wp_error($einzeln) && str_contains($einzeln->get_error_message(), sprintf('part #%d ← record #%d («__ab Kauf»)', (int) ($k['p2'] ?? 0), (int) ($k['s'] ?? 0))) && $gibt((int) ($k['p2'] ?? 0)) && $liste((int) ($k['a'] ?? 0)) === [(int) ($k['p2'] ?? 0)], is_wp_error($einzeln) ? $einzeln->get_error_message() : 'kein Fehler');
+
+$frei = $apply->execute(['changes' => [['op' => 'remove_record', 'record' => $k['s'] ?? 0], ['op' => 'remove_record', 'record' => $k['p2'] ?? 0]]]);
+check('ohne den Bestandsposten geht die einzelne Position, und ihr Kopf führt sie nicht mehr (D-1110)', is_array($frei) && ! $gibt((int) ($k['p2'] ?? 0)) && $liste((int) ($k['a'] ?? 0)) === [], is_wp_error($frei) ? $frei->get_error_message() : wp_json_encode($liste((int) ($k['a'] ?? 0))));
+
 $zurueck = $apply->execute(['changes' => [['op' => 'set_kind', 'node' => $k['kopf'] ?? 0, 'field' => $k['liste'] ?? 0, 'kind' => 'aggregation']]]);
 check('set_kind stellt zurück auf Aggregation', is_array($zurueck) && $feldArt() === 'aggregation', is_wp_error($zurueck) ? $zurueck->get_error_message() : $feldArt());
 

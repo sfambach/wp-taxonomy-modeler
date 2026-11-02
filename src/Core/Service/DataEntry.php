@@ -1625,13 +1625,17 @@ final class DataEntry
      *
      * ⚠️ **Verweigert, solange ein Satz ausserhalb dieses Kopfes auf einen seiner Teile zeigt**
      * ([D-1099](../../../docs/NewConcept/90-decision-log.md), *«f3 verweigern»*). *Verweise der Teile untereinander und vom Kopf
-     * hindern nicht (seine Form, INFERRED dort). Ein Verweis auf den Satz **selbst** hindert weiterhin nicht — D-1099 spricht von
-     * den Positionen, und das Verhalten davor bleibt ([D-604](../../../docs/NewConcept/90-decision-log.md) macht ihn sichtbar).*
+     * hindern nicht (seine Form, INFERRED dort).*
+     *
+     * ⚠️ **Ist der Satz selbst ein Teil, gilt dieselbe Sperre für ihn** ([D-1110](../../../docs/NewConcept/90-decision-log.md),
+     * *«1-4»*): *ein Verweis von ausserhalb seines Kopfes verweigert; vom Kopf und von dessen anderen Teilen nicht (seine Form,
+     * INFERRED dort). Ein Verweis auf einen Satz, der kein Teil ist, hindert weiterhin nicht
+     * ([D-604](../../../docs/NewConcept/90-decision-log.md) macht ihn sichtbar).*
      *
      * ```mermaid
      * flowchart LR
-     *   K["Kopf"] --> T["eigene Teile, Ebene für Ebene, eine Abfrage je Ebene"]
-     *   T --> V{"fremder Verweis auf einen Teil?"}
+     *   K["Satz"] --> T["eigene Teile, Ebene für Ebene, eine Abfrage je Ebene"]
+     *   T --> V{"fremder Verweis auf einen Teil — oder, ist der Satz ein Teil, auf ihn?"}
      *   V -->|ja| X["verweigert, nennt wer"]
      *   V -->|nein| S["Kopf und Teile in den Schatten, ein Akt"]
      * ```
@@ -1769,23 +1773,48 @@ final class DataEntry
 
     /**
      * [D-1099](../../../docs/NewConcept/90-decision-log.md): zeigt ein Satz ausserhalb dieses Kopfes auf einen seiner Teile, wird
-     * nicht gelöscht. Eine Abfrage für alle Teile, eine für die Namen der Felder (`CD-7`).
+     * nicht gelöscht. [D-1110](../../../docs/NewConcept/90-decision-log.md): ist der Satz **selbst** ein Teil, gilt dieselbe Sperre
+     * für ihn — Verweise von seinem Kopf und von den Teilen dieses Kopfes hindern nicht (seine Form, INFERRED dort).
+     *
+     * ⚠️ *Eine Abfrage für die Verweise auf Satz und Teile zusammen, eine für die Namen der Felder; ist der Satz ein Teil, dazu die
+     * Kanten-Frage und die Teile seines Kopfes, Ebene für Ebene (`CD-7`).*
      *
      * @param list<int> $teile
      */
-    private function fremdeVerweiseVerweigern(int $kopfId, array $teile): void
+    private function fremdeVerweiseVerweigern(int $satzId, array $teile): void
     {
-        if ($teile === []) {
-            return;
+        $verweise = $this->records->referrersOfMany([$satzId, ...$teile]);
+        $drinnen  = array_fill_keys([$satzId, ...$teile], true);
+        $fremd    = [];
+
+        $aufSich = $verweise[$satzId] ?? [];
+
+        if ($aufSich !== []) {
+            $besitzt = $this->besitzendeKanten(array_values(array_unique(array_map(static fn (RelationRecord $z): int => $z->relationId, $aufSich))));
+            $kopf    = null;
+
+            foreach ($aufSich as $zeile) {
+                if ($besitzt[$zeile->relationId] ?? false) {
+                    $kopf = $zeile->recordId;
+                    break;
+                }
+            }
+
+            if ($kopf !== null) {
+                $familie = $drinnen + array_fill_keys([$kopf, ...$this->eigeneTeileRekursiv($kopf)], true);
+
+                foreach ($aufSich as $zeile) {
+                    if (! isset($familie[$zeile->recordId])) {
+                        $fremd[] = [$satzId, $zeile];
+                    }
+                }
+            }
         }
 
-        $drinnen = array_fill_keys([$kopfId, ...$teile], true);
-        $fremd   = [];
-
-        foreach ($this->records->referrersOfMany($teile) as $teil => $zeilen) {
-            foreach ($zeilen as $zeile) {
+        foreach ($teile as $teil) {
+            foreach ($verweise[$teil] ?? [] as $zeile) {
                 if (! isset($drinnen[$zeile->recordId])) {
-                    $fremd[] = [(int) $teil, $zeile];
+                    $fremd[] = [$teil, $zeile];
                 }
             }
         }
@@ -1806,7 +1835,7 @@ final class DataEntry
             );
         }
 
-        throw NotYetStorable::partsStillReferenced($kopfId, $wer);
+        throw NotYetStorable::partsStillReferenced($satzId, $wer);
     }
 
     /**
