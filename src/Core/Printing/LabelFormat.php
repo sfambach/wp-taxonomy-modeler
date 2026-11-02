@@ -18,7 +18,7 @@ final class LabelFormat
     }
 
     /**
-     * The formats shipped today: 62 mm roll (QL-810) with a 100 mm label, and the 102 mm roll (QL-1100), and 62 × 49 mm for the label holders on the places.
+     * The formats shipped today: 62 mm roll (QL-810) with a 100 mm label, and the 102 mm roll (QL-1100), and 62 × 50 mm for the label holders on the places.
      *
      * @return array<string, self>
      */
@@ -27,7 +27,7 @@ final class LabelFormat
         $formats = [
             new self('roll62', 100.0, 62.0, 62.0),
             new self('roll102', 102.0, 62.0, 102.0),
-            new self('holder62', 62.0, 49.0, 62.0),
+            new self('holder62', 62.0, 50.0, 62.0),
         ];
         return array_combine(array_map(static fn (self $format): string => $format->key, $formats), $formats);
     }

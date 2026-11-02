@@ -132,7 +132,7 @@ final class PrintingTest extends TestCase
     public function the_holder_label_puts_the_title_across_the_top(): void
     {
         $pdf = LabelDocument::render(LabelFormat::byKey('holder62'), [LabelContent::of(LabelPrefix::Place, 4711, 'R2-F3', 'Keller')]);
-        self::assertStringContainsString('/MediaBox [0 0 175.748 138.898]', $pdf);
+        self::assertStringContainsString('/MediaBox [0 0 175.748 141.732]', $pdf);
         self::assertSame(1, preg_match('/BT ([\d.]+) [\d.]+ Td \/F2 [\d.]+ Tf \(R2-F3\) Tj/', $pdf, $title));
         self::assertEqualsWithDelta(8.504, (float) $title[1], 0.01, 'the title starts at the left margin, not beside the QR code');
     }
