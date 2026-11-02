@@ -39,7 +39,7 @@ final class LabelDocument
     {
         $pdf = new PdfDocument();
         foreach ($labels as $label) {
-            $pdf->addPage($format->widthMm, $format->heightMm);
+            $pdf->addPage($format->widthMm, $format->heightMm, $format->turnedOnRoll());
             self::drawLabel($pdf, $format, $label);
         }
         return $pdf->render();

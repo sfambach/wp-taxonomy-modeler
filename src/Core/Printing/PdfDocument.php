@@ -17,12 +17,22 @@ final class PdfDocument
     /** Width of Omega («W» in the Symbol font), thousandths of the font size. */
     private const SYMBOL_OMEGA_WIDTH = 768;
 
-    /** @var list<array{width: float, height: float, content: string}> */
+    /** @var list<array{width: float, height: float, turned: bool, content: string}> */
     private array $pages = [];
 
-    public function addPage(float $widthMm, float $heightMm): void
+    /**
+     * A page drawn as width × height; turned, the sheet is height × width and the drawing is laid on it a quarter turn.
+     */
+    public function addPage(float $widthMm, float $heightMm, bool $turned = false): void
     {
-        $this->pages[] = ['width' => $widthMm * self::POINTS_PER_MM, 'height' => $heightMm * self::POINTS_PER_MM, 'content' => ''];
+        $width = $widthMm * self::POINTS_PER_MM;
+        $height = $heightMm * self::POINTS_PER_MM;
+        $this->pages[] = [
+            'width' => $width,
+            'height' => $height,
+            'turned' => $turned,
+            'content' => $turned ? sprintf("0 1 -1 0 %s 0 cm\n", self::number($height)) : '',
+        ];
     }
 
     /**
@@ -109,8 +119,8 @@ final class PdfDocument
             $kids[] = $pageId . ' 0 R';
             $objects[$pageId] = sprintf(
                 '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %s %s] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents %d 0 R >>',
-                self::number($page['width']),
-                self::number($page['height']),
+                self::number($page['turned'] ? $page['height'] : $page['width']),
+                self::number($page['turned'] ? $page['width'] : $page['height']),
                 $contentId,
             );
             $objects[$contentId] = sprintf("<< /Length %d >>\nstream\n%sendstream", strlen($page['content']), $page['content']);

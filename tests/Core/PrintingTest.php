@@ -132,7 +132,8 @@ final class PrintingTest extends TestCase
     public function the_holder_label_puts_the_title_across_the_top(): void
     {
         $pdf = LabelDocument::render(LabelFormat::byKey('holder62'), [LabelContent::of(LabelPrefix::Place, 4711, 'R2-F3', 'Keller')]);
-        self::assertStringContainsString('/MediaBox [0 0 175.748 141.732]', $pdf);
+        self::assertStringContainsString('/MediaBox [0 0 141.732 175.748]', $pdf, 'turned: 62 mm across the roll, 50 mm along it');
+        self::assertStringContainsString("0 1 -1 0 141.732 0 cm", $pdf);
         self::assertSame(1, preg_match('/BT ([\d.]+) [\d.]+ Td \/F2 [\d.]+ Tf \(R2-F3\) Tj/', $pdf, $title));
         self::assertEqualsWithDelta(8.504, (float) $title[1], 0.01, 'the title starts at the left margin, not beside the QR code');
     }
@@ -141,9 +142,18 @@ final class PrintingTest extends TestCase
     public function the_material_label_is_62_by_30_with_the_qr_code_beside_the_title(): void
     {
         $pdf = LabelDocument::render(LabelFormat::byKey('material62'), [LabelContent::of(LabelPrefix::Material, 149000112345, 'Widerstand 10 kΩ', '0603 · 1 %')]);
-        self::assertStringContainsString('/MediaBox [0 0 175.748 85.039]', $pdf);
+        self::assertStringContainsString('/MediaBox [0 0 85.039 175.748]', $pdf);
         self::assertSame(1, preg_match('/BT ([\d.]+) [\d.]+ Td \/F2 [\d.]+ Tf \(Widerstand\) Tj/', $pdf, $title));
         self::assertGreaterThan(40.0, (float) $title[1], 'the title starts right of the QR code');
+    }
+
+    #[Test]
+    public function only_a_label_as_wide_as_the_roll_is_turned(): void
+    {
+        self::assertFalse(LabelFormat::byKey('roll62')->turnedOnRoll());
+        self::assertTrue(LabelFormat::byKey('holder62')->turnedOnRoll());
+        self::assertTrue(LabelFormat::byKey('material62')->turnedOnRoll());
+        self::assertStringNotContainsString(' cm', LabelDocument::render(LabelFormat::byKey('roll62'), [LabelContent::sample()]));
     }
 
     #[Test]

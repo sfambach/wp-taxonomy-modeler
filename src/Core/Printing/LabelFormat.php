@@ -33,6 +33,14 @@ final class LabelFormat
         return array_combine(array_map(static fn (self $format): string => $format->key, $formats), $formats);
     }
 
+    /**
+     * The printer feeds a page with its height across the roll, so a label as wide as the roll is turned a quarter.
+     */
+    public function turnedOnRoll(): bool
+    {
+        return abs($this->widthMm - $this->rollMm) < 0.01 && abs($this->heightMm - $this->rollMm) >= 0.01;
+    }
+
     public static function byKey(string $key): self
     {
         $formats = self::shipped();
