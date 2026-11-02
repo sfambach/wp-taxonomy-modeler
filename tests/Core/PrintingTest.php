@@ -138,6 +138,15 @@ final class PrintingTest extends TestCase
     }
 
     #[Test]
+    public function the_material_label_is_62_by_30_with_the_qr_code_beside_the_title(): void
+    {
+        $pdf = LabelDocument::render(LabelFormat::byKey('material62'), [LabelContent::of(LabelPrefix::Material, 149000112345, 'Widerstand 10 kΩ', '0603 · 1 %')]);
+        self::assertStringContainsString('/MediaBox [0 0 175.748 85.039]', $pdf);
+        self::assertSame(1, preg_match('/BT ([\d.]+) [\d.]+ Td \/F2 [\d.]+ Tf \(Widerstand\) Tj/', $pdf, $title));
+        self::assertGreaterThan(40.0, (float) $title[1], 'the title starts right of the QR code');
+    }
+
+    #[Test]
     public function an_unknown_format_is_refused(): void
     {
         $this->expectException(\InvalidArgumentException::class);
