@@ -16,9 +16,34 @@ final class PrintTab
 {
     public const SLUG = 'printing';
 
+    /** The logistics module's filter for pages inside its navigation (wp_tax_stock, D-1085). */
+    public const LOGISTICS_FILTER = 'taxmod_logistics_pages';
+
+    public const LOGISTICS_SLUG = 'taxmod-printing';
+
     public static function boot(): void
     {
         add_filter(\Taxmod\WordPress\Admin\SettingsScreen::TABS_FILTER, self::register(...), 2);
+        // His word 2026-11-02: «hänge das aber auch nochmal ins logistik menüs einstellungen -> druck, gezeigt auf der rechten seite».
+        add_filter(self::LOGISTICS_FILTER, self::registerInLogistics(...));
+    }
+
+    /**
+     * The same page under Logistik › Einstellungen › Druck, drawn inside the logistics frame (D-1103).
+     *
+     * @param list<array<string, mixed>> $pages
+     * @return list<array<string, mixed>>
+     */
+    public static function registerInLogistics(array $pages): array
+    {
+        $pages[] = [
+            'slug'   => self::LOGISTICS_SLUG,
+            'label'  => __('Druck', 'taxmod'),
+            'area'   => 'settings',
+            'render' => static fn (): string => '<div class="wrap"><h1>' . esc_html__('Druck', 'taxmod') . '</h1>' . (new self())->render() . '</div>',
+        ];
+
+        return $pages;
     }
 
     /**
