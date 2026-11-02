@@ -131,7 +131,7 @@ final class LabelDocument
     private static function wrap(string $text, float $widthMm, float $maxPt, bool $bold, int $maxLines = self::TITLE_LINES): array
     {
         $words = preg_split('/\s+/u', trim($text)) ?: [$text];
-        for ($size = $maxPt; $size >= self::MIN_PT * 1.5; $size -= 0.5) {
+        for ($size = $maxPt; $size >= self::MIN_PT; $size -= 0.5) {
             $lines = [];
             $current = '';
             foreach ($words as $word) {

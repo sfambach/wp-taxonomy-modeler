@@ -14,6 +14,9 @@ final class PdfDocument
 {
     private const POINTS_PER_MM = 72 / 25.4;
 
+    /** Width of Omega («W» in the Symbol font), thousandths of the font size. */
+    private const SYMBOL_OMEGA_WIDTH = 768;
+
     /** @var list<array{width: float, height: float, content: string}> */
     private array $pages = [];
 
@@ -45,24 +48,44 @@ final class PdfDocument
         }
     }
 
-    /** Text with its baseline at $baselineMm from the top; UTF-8 in. */
+    /** Text with its baseline at $baselineMm from the top; UTF-8 in, Ω drawn from the Symbol font. */
     public function text(float $xMm, float $baselineMm, string $text, float $sizePt, bool $bold = false): void
     {
         $page = $this->currentHeight();
+        $shows = '';
+        foreach (self::runs($text) as [$symbol, $run]) {
+            $shows .= sprintf('/%s %s Tf (%s) Tj ', $symbol ? 'F3' : ($bold ? 'F2' : 'F1'), self::number($sizePt), self::escape($symbol ? str_repeat('W', mb_strlen($run)) : self::winAnsi($run)));
+        }
         $this->append(sprintf(
-            "BT /%s %s Tf %s %s Td (%s) Tj ET\n",
-            $bold ? 'F2' : 'F1',
-            self::number($sizePt),
+            "BT %s %s Td %sET\n",
             self::number($xMm * self::POINTS_PER_MM),
             self::number($page - $baselineMm * self::POINTS_PER_MM),
-            self::escape(self::winAnsi($text)),
+            $shows,
         ));
     }
 
     /** Width of UTF-8 text in millimetres. */
     public static function textWidthMm(string $text, float $sizePt, bool $bold = false): float
     {
-        return HelveticaMetrics::width(self::winAnsi($text), $sizePt, $bold) / self::POINTS_PER_MM;
+        $points = 0.0;
+        foreach (self::runs($text) as [$symbol, $run]) {
+            $points += $symbol ? mb_strlen($run) * self::SYMBOL_OMEGA_WIDTH * $sizePt / 1000 : HelveticaMetrics::width(self::winAnsi($run), $sizePt, $bold);
+        }
+        return $points / self::POINTS_PER_MM;
+    }
+
+    /**
+     * The text cut into runs for Helvetica and for the Symbol font, which alone carries the ohm sign.
+     *
+     * @return list<array{0: bool, 1: string}>
+     */
+    private static function runs(string $text): array
+    {
+        $runs = [];
+        foreach (preg_split('/([\x{03A9}\x{2126}]+)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: [] as $part) {
+            $runs[] = [preg_match('/^[\x{03A9}\x{2126}]+$/u', $part) === 1, $part];
+        }
+        return $runs;
     }
 
     public static function pointsToMm(float $points): float
@@ -76,15 +99,16 @@ final class PdfDocument
             1 => '<< /Type /Catalog /Pages 2 0 R >>',
             3 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
             4 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
+            5 => '<< /Type /Font /Subtype /Type1 /BaseFont /Symbol >>',
         ];
         $kids = [];
-        $next = 5;
+        $next = 6;
         foreach ($this->pages as $page) {
             $pageId = $next++;
             $contentId = $next++;
             $kids[] = $pageId . ' 0 R';
             $objects[$pageId] = sprintf(
-                '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %s %s] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>',
+                '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %s %s] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents %d 0 R >>',
                 self::number($page['width']),
                 self::number($page['height']),
                 $contentId,

@@ -110,6 +110,18 @@ final class PrintingTest extends TestCase
     }
 
     #[Test]
+    public function the_ohm_sign_comes_from_the_symbol_font(): void
+    {
+        $pdf = new PdfDocument();
+        $pdf->addPage(50, 20);
+        $pdf->text(1, 10, '10 kΩ', 10);
+        $rendered = $pdf->render();
+        self::assertStringContainsString('/F1 10 Tf (10 k) Tj /F3 10 Tf (W) Tj', $rendered);
+        self::assertStringContainsString('/BaseFont /Symbol', $rendered);
+        self::assertEqualsWithDelta(PdfDocument::textWidthMm('10 k', 10) + PdfDocument::pointsToMm(7.68), PdfDocument::textWidthMm('10 kΩ', 10), 0.001);
+    }
+
+    #[Test]
     public function a_title_too_long_for_the_label_is_cut_not_overflowing(): void
     {
         $pdf = LabelDocument::render(LabelFormat::byKey('roll62'), [new LabelContent('O-1', str_repeat('Überlang', 40))]);
@@ -120,8 +132,8 @@ final class PrintingTest extends TestCase
     public function the_holder_label_puts_the_title_across_the_top(): void
     {
         $pdf = LabelDocument::render(LabelFormat::byKey('holder62'), [LabelContent::of(LabelPrefix::Place, 4711, 'R2-F3', 'Keller')]);
-        self::assertStringContainsString('/MediaBox [0 0 175.748 147.402]', $pdf);
-        self::assertSame(1, preg_match('/BT \/F2 [\d.]+ Tf ([\d.]+) [\d.]+ Td \(R2-F3\) Tj/', $pdf, $title));
+        self::assertStringContainsString('/MediaBox [0 0 175.748 138.898]', $pdf);
+        self::assertSame(1, preg_match('/BT ([\d.]+) [\d.]+ Td \/F2 [\d.]+ Tf \(R2-F3\) Tj/', $pdf, $title));
         self::assertEqualsWithDelta(8.504, (float) $title[1], 0.01, 'the title starts at the left margin, not beside the QR code');
     }
 
