@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.123';
+    public const VERSION     = '0.1.124';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -87,6 +87,10 @@ final class Plugin
 
         // ⚠️ *Der Eingang der Import-Module (D-952, D-953): Tabelle, Seite «Inbox», Reiter «Import», Takt.*
         ImportWiring::boot($file);
+
+        // ⚠️ *Labels with QR code, stage 1: a PDF for the browser's print dialog, and the tab with its test prints (D-1032, D-1096).*
+        \Taxmod\WordPress\Printing\LabelPrint::boot();
+        \Taxmod\WordPress\Printing\PrintTab::boot();
 
         // ⚠️ *Once, on `init` so the abilities and the front end see it too: the default language back on its texts (0.1.37).*
         add_action('init', SettingsScreen::repairNeutralLocale(...));
