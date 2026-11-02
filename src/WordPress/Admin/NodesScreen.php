@@ -3623,7 +3623,13 @@ final class NodesScreen
      * @param list<int> $exclude
      * @param list<int> $unpickable
      */
-    public function recordChooserForModule(string $name, int $node, int $parentField, int $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = ''): string
+    /**
+     * D-1084, D-1090: the records of one node as a tree for a module — in the chooser's dialog, or with `$inline` on the page,
+     * where a click opens `$pickUrl` (`__ID__` stands for the record) and, with `$drag`, records can be dropped on records.
+     *
+     * @param array<int, string> $suffix record id → text after its word (a count, a mark)
+     */
+    public function recordChooserForModule(string $name, int $node, int $parentField, int $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = []): string
     {
         if ($node <= 0 || $this->editor->find($node) === null) {
             return '';
@@ -3644,13 +3650,14 @@ final class NodesScreen
 
         foreach ($links as $id => $parent) {
             $wort        = trim((string) ($worte[$id] ?? ''));
-            $eintraege[] = new \Taxmod\Core\Model\RecordInTree($id, $parent, $wort === '' ? '#' . $id : $wort);
+            $wort        = ($wort === '' ? '#' . $id : $wort) . (($suffix[$id] ?? '') === '' ? '' : ' ' . $suffix[$id]);
+            $eintraege[] = new \Taxmod\Core\Model\RecordInTree($id, $parent, $wort);
         }
 
         $zeilen = \Taxmod\Core\Service\RecordTree::walk($eintraege, $root > 0 ? $root : null, $exclude);
 
         // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
-        return $this->rendering->withoutSharedRecordBodies()->recordChooser(
+        $baum = $this->rendering->withoutSharedRecordBodies()->recordChooser(
             $zeilen,
             $name,
             $preselected,
@@ -3659,8 +3666,17 @@ final class NodesScreen
             $this->localeFromRequest(),
             Level::Admin,
             $formId,
-            ChooserRenderer::asDialog()
+            $inline ? [] : ChooserRenderer::asDialog()
         )->markup;
+
+        if (! $inline) {
+            return $baum;
+        }
+
+        // ⚠️ *D-1090: der Modeller meldet nur, was geschah (Wahl, Ablage); was daraus wird, entscheidet das Modul.*
+        return '<div class="taxmod-record-tree"'
+            . ($pickUrl === '' ? '' : ' data-taxmod-pick="' . esc_attr($pickUrl) . '"')
+            . ($drag ? ' data-taxmod-drag="1"' : '') . '>' . $baum . '</div>';
     }
 
     /**

@@ -2323,3 +2323,24 @@ fieldset.taxmod-read-only {
     color: #646970;
     font-size: 12px;
 }
+
+/* D-1090: der Satzbaum fest auf der Seite — die Wahl ist die hervorgehobene Zeile, kein Knopf; eine Ablage zeigt ihr Ziel. */
+.taxmod-record-tree .taxmod-chooser-row input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.taxmod-record-tree .taxmod-tree-row:has(input[type="radio"]:checked) {
+    background: #e8f0fb;
+}
+
+.taxmod-record-tree .taxmod-tree-row[draggable="true"] {
+    cursor: grab;
+}
+
+.taxmod-drop-over {
+    outline: 2px dashed #2271b1;
+    outline-offset: -2px;
+    background: #f0f6fc;
+}

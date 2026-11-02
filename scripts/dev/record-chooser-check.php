@@ -149,6 +149,14 @@ $tief   = $frage([]);
 $dann   = $wpdb->num_queries - $vorher;
 $pruefe($tiefe($tief, $vater) === 7 && $dann === $flach, "no query per level — {$flach} queries at depth 3, {$dann} at depth 7");
 
+// D-1090, his word «links baum rechts detail»: the same tree on the page, a click opens the record, records can be dropped on records.
+$fest = $frage(['inline' => true, 'pick_url' => admin_url('admin.php?page=lager&ort={id}'), 'drag' => true, 'preselected' => $r['regal'], 'suffix' => [$r['kiste'] => '(12)']]);
+$pruefe(! str_contains($fest, 'taxmod-dialog') && str_contains($fest, 'taxmod-chooser-open') && str_contains($fest, 'taxmod-tree-filter'), 'inline: no dialog, the tree with its search field on the page');
+$pruefe(str_contains($fest, 'data-taxmod-pick="') && str_contains($fest, 'ort=__ID__') && str_contains($fest, 'data-taxmod-drag="1"'), 'inline: the address a click opens and the drag switch');
+$pruefe(str_contains($fest, '__rc Kiste (12)') && $tiefe($fest, $r['kiste']) === 3, 'inline: the suffix follows the word, the order stays');
+$pruefe((bool) preg_match('~value="' . $r['regal'] . '"[^>]*checked|checked[^>]*value="' . $r['regal'] . '"~', $fest), 'inline: the opened record is the chosen one');
+$pruefe(wp_script_is('taxmod-admin', 'enqueued'), 'inline: the modeller\'s script comes along');
+
 wp_set_current_user(0);
 $pruefe($frage([]) === '', 'nothing for someone who may not shape the model');
 

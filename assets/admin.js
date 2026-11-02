@@ -3007,3 +3007,150 @@
 		kaestchen.style.border     = /^#[0-9a-fA-F]{6}$/.test( hex ) ? '1px solid #8c8f94' : '1px dashed #8c8f94';
 	} );
 }() );
+
+/**
+ * D-1090: der Satzbaum fest auf der Seite. Ein Klick öffnet den Satz (`data-taxmod-pick`, `__ID__` steht für ihn); mit
+ * `data-taxmod-drag` lassen sich Sätze auf Sätze ziehen. Der Modeller meldet nur — `taxmod-record-drop` mit `record`
+ * (gezogener Satz oder null), `target` (Ziel) und `item` (was ein Modul selbst mitgab, `application/x-taxmod-item`);
+ * was daraus wird, entscheidet das Modul.
+ *
+ * ⚠️ *Eine Regel gilt immer und deshalb hier: ein Satz landet nicht auf sich selbst und nicht in etwas, das unter ihm liegt.
+ * Der Baum ist im Dokument flach, darunter heisst: die folgenden Zeilen, solange sie tiefer stehen.*
+ */
+( function () {
+	'use strict';
+
+	var SATZ  = 'application/x-taxmod-record';
+	var DING  = 'application/x-taxmod-item';
+	var gezogen = null;
+
+	function idVon( zeile ) {
+		var knopf = zeile ? zeile.querySelector( 'input[type="radio"]' ) : null;
+
+		return knopf ? parseInt( knopf.value, 10 ) : null;
+	}
+
+	function darunter( zeile ) {
+		var tiefe = parseInt( zeile.getAttribute( 'data-depth' ) || '0', 10 );
+		var ids   = [];
+		var naechste = zeile.nextElementSibling;
+
+		while ( naechste && naechste.classList.contains( 'taxmod-tree-row' ) && parseInt( naechste.getAttribute( 'data-depth' ) || '0', 10 ) > tiefe ) {
+			ids.push( idVon( naechste ) );
+			naechste = naechste.nextElementSibling;
+		}
+
+		return ids;
+	}
+
+	function ziel( element ) {
+		var frei = element && element.closest ? element.closest( '[data-taxmod-drop-record]' ) : null;
+		var zeile;
+
+		if ( frei ) {
+			return { element: frei, id: parseInt( frei.getAttribute( 'data-taxmod-drop-record' ) || '0', 10 ) };
+		}
+
+		zeile = element && element.closest ? element.closest( '.taxmod-record-tree[data-taxmod-drag] .taxmod-tree-row' ) : null;
+
+		return zeile && idVon( zeile ) !== null ? { element: zeile, id: idVon( zeile ) } : null;
+	}
+
+	function erlaubt( wohin ) {
+		if ( ! gezogen ) {
+			return true;
+		}
+
+		return wohin.id !== gezogen.id && gezogen.unten.indexOf( wohin.id ) === -1;
+	}
+
+	function zeilenVorbereiten() {
+		document.querySelectorAll( '.taxmod-record-tree[data-taxmod-drag] .taxmod-tree-row' ).forEach( function ( zeile ) {
+			if ( idVon( zeile ) !== null ) {
+				zeile.setAttribute( 'draggable', 'true' );
+			}
+		} );
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', zeilenVorbereiten );
+	} else {
+		zeilenVorbereiten();
+	}
+
+	document.addEventListener( 'change', function ( ereignis ) {
+		var feld  = ereignis.target;
+		var baum  = feld && feld.closest ? feld.closest( '.taxmod-record-tree[data-taxmod-pick]' ) : null;
+
+		if ( ! baum || feld.type !== 'radio' ) {
+			return;
+		}
+
+		window.location.href = baum.getAttribute( 'data-taxmod-pick' ).split( '__ID__' ).join( encodeURIComponent( feld.value ) );
+	} );
+
+	document.addEventListener( 'dragstart', function ( ereignis ) {
+		var zeile = ereignis.target && ereignis.target.closest ? ereignis.target.closest( '.taxmod-record-tree[data-taxmod-drag] .taxmod-tree-row' ) : null;
+
+		gezogen = null;
+
+		if ( ! zeile || idVon( zeile ) === null ) {
+			return;
+		}
+
+		gezogen = { id: idVon( zeile ), unten: darunter( zeile ) };
+		ereignis.dataTransfer.effectAllowed = 'move';
+		ereignis.dataTransfer.setData( SATZ, String( gezogen.id ) );
+		ereignis.dataTransfer.setData( 'text/plain', String( gezogen.id ) );
+	} );
+
+	document.addEventListener( 'dragend', function () {
+		gezogen = null;
+		document.querySelectorAll( '.taxmod-drop-over' ).forEach( function ( markiert ) {
+			markiert.classList.remove( 'taxmod-drop-over' );
+		} );
+	} );
+
+	document.addEventListener( 'dragover', function ( ereignis ) {
+		var wohin = ziel( ereignis.target );
+		var typen = Array.prototype.slice.call( ereignis.dataTransfer ? ereignis.dataTransfer.types : [] );
+
+		if ( ! wohin || ( typen.indexOf( SATZ ) === -1 && typen.indexOf( DING ) === -1 ) || ! erlaubt( wohin ) ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+		ereignis.dataTransfer.dropEffect = 'move';
+		wohin.element.classList.add( 'taxmod-drop-over' );
+	} );
+
+	document.addEventListener( 'dragleave', function ( ereignis ) {
+		var wohin = ziel( ereignis.target );
+
+		if ( wohin && ! wohin.element.contains( ereignis.relatedTarget ) ) {
+			wohin.element.classList.remove( 'taxmod-drop-over' );
+		}
+	} );
+
+	document.addEventListener( 'drop', function ( ereignis ) {
+		var wohin = ziel( ereignis.target );
+		var satz;
+
+		if ( ! wohin || ! erlaubt( wohin ) ) {
+			return;
+		}
+
+		ereignis.preventDefault();
+		wohin.element.classList.remove( 'taxmod-drop-over' );
+		satz = ereignis.dataTransfer.getData( SATZ );
+		wohin.element.dispatchEvent( new CustomEvent( 'taxmod-record-drop', {
+			bubbles: true,
+			detail: {
+				record: satz === '' ? null : parseInt( satz, 10 ),
+				target: wohin.id,
+				item: ereignis.dataTransfer.getData( DING ) || null,
+			},
+		} ) );
+		gezogen = null;
+	} );
+}() );

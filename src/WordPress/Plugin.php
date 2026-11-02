@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.122';
+    public const VERSION     = '0.1.123';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -58,7 +58,11 @@ final class Plugin
     /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form'])`: the node chooser dialog for a module's page (D-1075). */
     public const NODE_CHOOSER_FILTER = 'taxmod_node_chooser';
 
-    /** `apply_filters(RECORD_CHOOSER_FILTER, '', ['name', 'node', 'parent_field', 'label_field', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form'])`: the records of one node as a tree, in the node chooser's dialog (D-1084). */
+    /**
+     * `apply_filters(RECORD_CHOOSER_FILTER, '', ['name', 'node', 'parent_field', 'label_field', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form'])`:
+     * the records of one node as a tree, in the node chooser's dialog (D-1084). With `inline` the tree stands on the page instead,
+     * `pick_url` (with `{id}`) opens a record on click, `drag` lets records be dropped on records, `suffix` (id → text) follows a word (D-1090).
+     */
     public const RECORD_CHOOSER_FILTER = 'taxmod_record_chooser';
     public const TEXT_DOMAIN = 'taxmod';
 
@@ -121,7 +125,11 @@ final class Plugin
                 $ids($args['exclude'] ?? []),
                 $ids($args['unpickable'] ?? []),
                 empty($args['preselected']) ? null : absint($args['preselected']),
-                (string) preg_replace('/[^A-Za-z0-9_\-]/', '', (string) ($args['form'] ?? ''))
+                (string) preg_replace('/[^A-Za-z0-9_\-]/', '', (string) ($args['form'] ?? '')),
+                ! empty($args['inline']),
+                esc_url_raw(str_replace('{id}', '__ID__', (string) ($args['pick_url'] ?? ''))),
+                ! empty($args['drag']),
+                array_map(static fn (mixed $text): string => sanitize_text_field((string) $text), array_filter(is_array($args['suffix'] ?? null) ? $args['suffix'] : [], 'is_scalar'))
             );
         }, 10, 2);
 
@@ -135,6 +143,10 @@ final class Plugin
 
             $plugin->enqueueStyle();
 
+            if (! empty($args['inline'])) {
+                $plugin->enqueueScript();
+            }
+
             return $plugin->screen()->recordChooserForModule(
                 (string) preg_replace('/[^A-Za-z0-9_\-\[\]]/', '', (string) ($args['name'] ?? 'taxmod_record')),
                 absint($args['node'] ?? 0),
@@ -144,7 +156,11 @@ final class Plugin
                 $ids($args['exclude'] ?? []),
                 $ids($args['unpickable'] ?? []),
                 empty($args['preselected']) ? null : absint($args['preselected']),
-                (string) preg_replace('/[^A-Za-z0-9_\-]/', '', (string) ($args['form'] ?? ''))
+                (string) preg_replace('/[^A-Za-z0-9_\-]/', '', (string) ($args['form'] ?? '')),
+                ! empty($args['inline']),
+                esc_url_raw(str_replace('{id}', '__ID__', (string) ($args['pick_url'] ?? ''))),
+                ! empty($args['drag']),
+                array_map(static fn (mixed $text): string => sanitize_text_field((string) $text), array_filter(is_array($args['suffix'] ?? null) ? $args['suffix'] : [], 'is_scalar'))
             );
         }, 10, 2);
 
