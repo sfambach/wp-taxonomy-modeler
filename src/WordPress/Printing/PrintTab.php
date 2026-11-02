@@ -63,6 +63,7 @@ final class PrintTab
         return match ($format->key) {
             'roll62'  => __('Place and box label, 62 mm roll (QL-810)', 'taxmod'),
             'roll102' => __('Place and box label, 102 mm roll (QL-1100)', 'taxmod'),
+            'holder62' => __('Place label for the label holders, 62 mm roll', 'taxmod'),
             default   => $format->key,
         };
     }

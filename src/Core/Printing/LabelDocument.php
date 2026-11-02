@@ -25,7 +25,10 @@ final class LabelDocument
     private const CODE_PT = 12.0;
     private const MIN_PT = 7.0;
     private const QR_SHARE = 0.45;
+    /** Below this width-to-height ratio the title goes across the top and the QR code below it. */
+    private const WIDE_RATIO = 1.5;
     private const TITLE_LINES = 2;
+    private const SUBTITLE_LINES = 4;
     /** QR rows overlap by this much, so no hairline seams show between them. */
     private const SEAM_MM = 0.02;
 
@@ -44,6 +47,10 @@ final class LabelDocument
 
     private static function drawLabel(PdfDocument $pdf, LabelFormat $format, LabelContent $label): void
     {
+        if ($format->widthMm < $format->heightMm * self::WIDE_RATIO) {
+            self::drawStacked($pdf, $format, $label);
+            return;
+        }
         $side = min($format->heightMm - 2 * self::MARGIN_MM, $format->widthMm * self::QR_SHARE);
         self::drawQr($pdf, QrCode::encode($label->code), self::MARGIN_MM, self::MARGIN_MM, $side);
 
@@ -64,6 +71,34 @@ final class LabelDocument
         }
 
         [$codeText, $codePt] = self::fit($label->code, $width, self::CODE_PT, false);
+        $pdf->text($x, $format->heightMm - self::MARGIN_MM, $codeText, $codePt);
+    }
+
+    /** Near-square labels (the place holders): title across the full width, QR code below left, the rest beside it. */
+    private static function drawStacked(PdfDocument $pdf, LabelFormat $format, LabelContent $label): void
+    {
+        $width = $format->widthMm - 2 * self::MARGIN_MM;
+        [$titleLines, $titlePt] = self::wrap($label->title, $width, self::TITLE_MAX_PT, true);
+        $lineMm = PdfDocument::pointsToMm($titlePt);
+        $baseline = self::MARGIN_MM;
+        foreach ($titleLines as $i => $line) {
+            $baseline = self::MARGIN_MM + $lineMm + $i * $lineMm * 1.15;
+            $pdf->text(self::MARGIN_MM, $baseline, $line, $titlePt, true);
+        }
+
+        $top = $baseline + self::GAP_MM / 2;
+        $side = $format->heightMm - self::MARGIN_MM - $top;
+        self::drawQr($pdf, QrCode::encode($label->code), self::MARGIN_MM, $top, $side);
+
+        $x = self::MARGIN_MM + $side + self::GAP_MM / 2;
+        $rest = $format->widthMm - $x - self::MARGIN_MM;
+        if ($label->subtitle !== '') {
+            [$subLines, $subPt] = self::wrap($label->subtitle, $rest, self::CODE_PT, false, self::SUBTITLE_LINES);
+            foreach ($subLines as $i => $line) {
+                $pdf->text($x, $top + PdfDocument::pointsToMm($subPt) * (1.4 + $i * 1.15), $line, $subPt);
+            }
+        }
+        [$codeText, $codePt] = self::fit($label->code, $rest, self::CODE_PT, false);
         $pdf->text($x, $format->heightMm - self::MARGIN_MM, $codeText, $codePt);
     }
 
@@ -89,11 +124,11 @@ final class LabelDocument
     }
 
     /**
-     * Largest size at which the words fill at most two lines; otherwise one line, fitted or cut.
+     * Largest size at which the words fill at most $maxLines lines; otherwise one line, fitted or cut.
      *
      * @return array{0: list<string>, 1: float}
      */
-    private static function wrap(string $text, float $widthMm, float $maxPt, bool $bold): array
+    private static function wrap(string $text, float $widthMm, float $maxPt, bool $bold, int $maxLines = self::TITLE_LINES): array
     {
         $words = preg_split('/\s+/u', trim($text)) ?: [$text];
         for ($size = $maxPt; $size >= self::MIN_PT * 1.5; $size -= 0.5) {
@@ -109,7 +144,7 @@ final class LabelDocument
                 $current = $candidate;
             }
             $lines[] = $current;
-            $fits = count($lines) <= self::TITLE_LINES;
+            $fits = count($lines) <= $maxLines;
             foreach ($lines as $line) {
                 $fits = $fits && PdfDocument::textWidthMm($line, $size, $bold) <= $widthMm;
             }
