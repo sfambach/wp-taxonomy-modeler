@@ -1816,6 +1816,8 @@ final class ModelEditor
             // ⚠️ *Mit `$underNodeId` bleibt das Feld immer stehen — so steht es in D-941. Hier stand `$draussen === []`, und ein
             // Feld, das ausserhalb noch keinen Wert hatte («Nachfolger» bei der Hardware), wurde geparkt, obwohl es dort gebraucht wird.*
             if ($underNodeId === null) {
+                // *Was das alte Feld nannte (Zusammenfassung, Spalten), nennt jetzt das neue (D-1080).*
+                $this->relations->handOverSettingReferences($alt->id, $neu->id);
                 $this->removeField($ownerId, $alt->id);
             }
 

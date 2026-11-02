@@ -110,6 +110,7 @@ final class FieldMoveTest extends TestCase
         self::assertSame($neu->id, $werte[0]->relationId);
         self::assertSame('Z80', $werte[0]->value->text);
         self::assertSame([], $this->relations->fieldRelationsOf([$hardware->id]), 'das alte Feld ist geparkt');
+        self::assertSame([[$alt->id, $neu->id]], $this->relations->handedOver, 'Einstellungen, die das alte Feld nannten, nennen das neue (D-1080)');
     }
 
     #[Test]

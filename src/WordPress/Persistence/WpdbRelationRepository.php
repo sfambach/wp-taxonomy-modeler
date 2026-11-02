@@ -538,10 +538,13 @@ final class WpdbRelationRepository implements RelationRepository
         // «Path»: *«Cannot delete or update a parent row: a foreign key constraint fails (settings_value … relation_id)»*. Eine Kante
         // mit Einstellungen an ihrer Stelle liess sich nie parken; erst ein Schalter am Weg-Feld hat es gezeigt. Zurück kommen sie
         // mit der Kante ({@see self::unparkSettings()}).
-        Shadow::keep('settings_value', 'relation_id = %d', [$relationId], true);
+        // ⚠️ *Und die Einstellungen, die das Feld als Wert nennen (`wert_kante_id`, etwa `summary_fields`) — gemessen am 2026-11-02 an
+        // der LED-Farbe: «Cannot delete or update a parent row … settings_value». Sie gehen mit in den Schatten und kommen mit zurück.*
+        Shadow::keep('settings_value', 'relation_id = %d OR wert_kante_id = %d', [$relationId, $relationId], true);
 
         Query::run('Einstellungen der geparkten Kante entfernen', $wpdb->prepare(
-            'DELETE FROM ' . Schema::table('settings_value') . ' WHERE relation_id = %d',
+            'DELETE FROM ' . Schema::table('settings_value') . ' WHERE relation_id = %d OR wert_kante_id = %d',
+            $relationId,
             $relationId
         ));
 
@@ -550,6 +553,20 @@ final class WpdbRelationRepository implements RelationRepository
             $relationId
         ));
     }
+    public function handOverSettingReferences(int $fromRelationId, int $toRelationId): void
+    {
+        global $wpdb;
+
+        // *Der alte Stand in den Schatten, dann vorwärts geschrieben (D-172) — zurückzunehmen wie jede Änderung.*
+        Shadow::keep('settings_value', 'wert_kante_id = %d', [$fromRelationId]);
+
+        Query::run('Feldverweise in Einstellungen übergeben', $wpdb->prepare(
+            'UPDATE ' . Schema::table('settings_value') . ' SET wert_kante_id = %d, version = version + 1 WHERE wert_kante_id = %d',
+            $toRelationId,
+            $fromRelationId
+        ));
+    }
+
     /**
      * Die Einstellungen einer geparkten Kante zurückholen — die Zeilen, die beim Parken in den Schatten gingen.
      *
@@ -570,10 +587,12 @@ final class WpdbRelationRepository implements RelationRepository
         $zeilen = Query::rows('Einstellungen der geparkten Kante suchen', $wpdb->prepare(
             "SELECT h.* FROM {$schatten} h
              INNER JOIN (
-                 SELECT id, MAX(version) AS version FROM {$schatten} WHERE relation_id = %d GROUP BY id
+                 SELECT id, MAX(version) AS version FROM {$schatten} WHERE relation_id = %d OR wert_kante_id = %d GROUP BY id
              ) neuste ON neuste.id = h.id AND neuste.version = h.version
-             WHERE h.relation_id = %d AND h.deleted = 1 AND h.archived_at >= %s
+             WHERE (h.relation_id = %d OR h.wert_kante_id = %d) AND h.deleted = 1 AND h.archived_at >= %s
                AND NOT EXISTS (SELECT 1 FROM {$lebend} l WHERE l.id = h.id)",
+            $relationId,
+            $relationId,
             $relationId,
             $relationId,
             $archivedAt

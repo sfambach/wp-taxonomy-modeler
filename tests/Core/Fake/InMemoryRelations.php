@@ -117,6 +117,14 @@ final class InMemoryRelations implements RelationRepository
         unset($this->rows[$relationId]);
     }
 
+    /** @var list<array{int, int}> */
+    public array $handedOver = [];
+
+    public function handOverSettingReferences(int $fromRelationId, int $toRelationId): void
+    {
+        $this->handedOver[] = [$fromRelationId, $toRelationId];
+    }
+
     public function unpark(int $relationId): ?Relation
     {
         $relation = $this->geparkt[$relationId] ?? null;

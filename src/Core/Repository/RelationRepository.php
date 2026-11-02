@@ -89,6 +89,14 @@ interface RelationRepository
     public function park(int $relationId, int $changeGroupId): void;
 
     /**
+     * Einstellungen, die ein Feld als Wert nennen (`summary_fields`, `target_columns` …), nennen künftig ein anderes.
+     *
+     * ⚠️ *Gebraucht beim Zusammenführen zweier Felder (D-941, D-1080): die Zusammenfassung «grün · LED 5 mm» las die LED-Farbe;
+     * ohne Übergabe verlöre sie die Farbe, und das Parken des alten Feldes scheiterte am Fremdschlüssel.*
+     */
+    public function handOverSettingReferences(int $fromRelationId, int $toRelationId): void;
+
+    /**
      * Die Umkehrung von {@see self::park()} — und ausdrücklich keine zweite Mechanik.
      *
      * @return Relation|null Die zurückgeholte Kante, oder `null`, wenn dort nichts geparkt liegt.

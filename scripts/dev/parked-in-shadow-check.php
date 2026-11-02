@@ -283,6 +283,32 @@ $lebendeDanach  = array_map(static fn ($e): int => $e->id, $relations->fieldRela
 check('die geparkte Liste kennt sie nicht mehr', ! in_array($kante->id, $geparkteDanach, true));
 check('die lebende Liste kennt sie wieder', in_array($kante->id, $lebendeDanach, true));
 
+echo "\n7 · Ein Feld, das eine Einstellung als Wert nennt, lässt sich parken und zurückholen (D-1080)\n";
+
+// ⚠️ *Gemessen am 2026-11-02 an der LED-Farbe: `summary_fields` nannte das Feld, und das Parken scheiterte am Fremdschlüssel
+// `wert_kante_id`. Die Einstellung geht mit in den Schatten und kommt mit zurück.*
+$genannt = $editor->addField($eigner->id, $typ->id, '__parkgenannt');
+$wpdb->insert(Schema::table('settings_value'), [
+    'version' => 1, 'node_id' => $eigner->id, 'klasse' => 'Category', 'attribut' => 'summary_fields', 'position' => 0, 'aktiv' => 1, 'wert_kante_id' => $genannt->id,
+]);
+$einstellung = (int) $wpdb->insert_id;
+
+try {
+    $editor->removeField($eigner->id, $genannt->id);
+    check('das genannte Feld lässt sich parken', ! in_array($genannt->id, array_map(static fn ($e): int => $e->id, $relations->fieldRelationsOf([$eigner->id])), true));
+} catch (\Throwable $fehler) {
+    check('das genannte Feld lässt sich parken', false, $fehler->getMessage());
+}
+
+$lebtNoch = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . Schema::table('settings_value') . ' WHERE id = %d', $einstellung));
+check('die Einstellung ist mit ihm im Schatten', $lebtNoch === 0);
+
+$editor->restoreField($eigner->id, $genannt->id);
+$zurueck = (int) $wpdb->get_var($wpdb->prepare('SELECT wert_kante_id FROM ' . Schema::table('settings_value') . ' WHERE id = %d', $einstellung));
+check('und kommt mit ihm zurück', $zurueck === $genannt->id, '#' . $zurueck);
+
+$wpdb->delete(Schema::table('settings_value'), ['id' => $einstellung]);
+
 echo "\n$ok OK, $bad FAIL\n";
 
 exit($bad === 0 ? 0 : 1);
