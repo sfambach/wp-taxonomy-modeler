@@ -2214,8 +2214,13 @@
 		dialog.hidden = true;
 		dialog.innerHTML = '<div class="taxmod-browse-shade"></div><div class="taxmod-browse-panel" role="dialog" aria-modal="true">'
 			+ '<div class="taxmod-browse-head"><span class="taxmod-browse-title"></span><button type="button" class="taxmod-browse-close" aria-label="×">&times;</button></div>'
+			+ '<input type="search" class="taxmod-browse-filter" autocomplete="off">'
 			+ '<div class="taxmod-browse-columns"><div class="taxmod-browse-nodes"></div><div class="taxmod-browse-list"></div></div></div>';
 		dialog.querySelector( '.taxmod-browse-title' ).textContent = worte ? ( worte.getAttribute( 'data-browse-title' ) || '' ) : '';
+		dialog.querySelector( '.taxmod-browse-filter' ).placeholder = worte ? ( worte.getAttribute( 'data-browse-filter' ) || '' ) : '';
+		dialog.querySelector( '.taxmod-browse-filter' ).addEventListener( 'input', function () {
+			knotenFiltern( dialog, this.value );
+		} );
 		document.body.appendChild( dialog );
 
 		return dialog;
@@ -2267,6 +2272,48 @@
 			// *Zu Beginn steht die oberste Ebene; tiefer geht es durch Anklicken.*
 			knopf.hidden = reihe.depth > 1;
 			spalte.appendChild( knopf );
+		} );
+	}
+
+	// D-1087: *das Suchfeld wie am Wähler (D-1075) — ein Treffer zeigt sich mit allen Knoten über ihm; leer heisst: wieder wie zu Beginn.*
+	function knotenFiltern( dialog, text ) {
+		var wort   = text.trim().toLowerCase();
+		var reihen = Array.prototype.slice.call( dialog.querySelectorAll( '.taxmod-browse-node' ) );
+
+		if ( wort === '' ) {
+			reihen.forEach( function ( reihe ) {
+				reihe.hidden = parseInt( reihe.getAttribute( 'data-depth' ) || '0', 10 ) > 1;
+				reihe.classList.remove( 'is-open' );
+			} );
+
+			return;
+		}
+
+		var zeigen = reihen.map( function () {
+			return false;
+		} );
+
+		reihen.forEach( function ( reihe, i ) {
+			if ( reihe.textContent.toLowerCase().indexOf( wort ) === -1 ) {
+				return;
+			}
+
+			zeigen[ i ] = true;
+			var tiefe = parseInt( reihe.getAttribute( 'data-depth' ) || '0', 10 );
+
+			for ( var j = i - 1; j >= 0 && tiefe > 0; j-- ) {
+				var oben = parseInt( reihen[ j ].getAttribute( 'data-depth' ) || '0', 10 );
+
+				if ( oben < tiefe ) {
+					zeigen[ j ] = true;
+					reihen[ j ].classList.add( 'is-open' );
+					tiefe = oben;
+				}
+			}
+		} );
+
+		reihen.forEach( function ( reihe, i ) {
+			reihe.hidden = ! zeigen[ i ];
 		} );
 	}
 
@@ -2388,6 +2435,11 @@
 
 		var id    = knoten.getAttribute( 'data-node' );
 		var worte = document.getElementById( 'taxmod-words' );
+
+		// D-1087: *ein Modul erfährt, welchen Ast er geöffnet hat — das Lager schlägt ihn für «Neues Material» vor.*
+		if ( baumFuer ) {
+			baumFuer.dispatchEvent( new CustomEvent( 'taxmod-browse-node', { bubbles: true, detail: { node: parseInt( id, 10 ) } } ) );
+		}
 
 		if ( Object.prototype.hasOwnProperty.call( baumSaetze, id ) ) {
 			saetzeZeichnen( dialog, baumSaetze[ id ] );

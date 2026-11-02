@@ -1186,6 +1186,7 @@ final class NodesScreen
                 '_ajax_nonce' => wp_create_nonce(self::RECORD_BRANCH_ACTION),
             ], admin_url('admin-post.php'))) . '"'
             . ' data-browse-title="' . esc_attr__('Choose from the tree', 'taxmod') . '"'
+            . ' data-browse-filter="' . esc_attr__('Search the tree …', 'taxmod') . '"'
             . ' data-no-hits="' . esc_attr__('Nothing found.', 'taxmod') . '"></span>';
 
         return $html . $picker . $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)) . $worte . '</div>';

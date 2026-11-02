@@ -2252,6 +2252,12 @@ fieldset.taxmod-read-only {
     font-weight: 600;
 }
 
+.taxmod-browse-filter {
+    margin: .5em 1em;
+    width: calc(100% - 2em);
+    box-sizing: border-box;
+}
+
 .taxmod-browse-close {
     background: none;
     border: 0;
