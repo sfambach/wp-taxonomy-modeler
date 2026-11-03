@@ -89,7 +89,7 @@ final class LabelPrint
     /**
      * @param array<string, mixed> $query
      */
-    private static function labelFrom(array $query): ?LabelContent
+    public static function labelFrom(array $query): ?LabelContent
     {
         $field = static fn (string $key): string => sanitize_text_field((string) ($query[$key] ?? ''));
         $code  = $field('code');

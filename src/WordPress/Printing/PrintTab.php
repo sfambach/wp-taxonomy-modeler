@@ -256,7 +256,7 @@ final class PrintTab
         return '<div class="notice notice-info"><p>' . esc_html($message) . '</p></div>';
     }
 
-    private static function formatName(LabelFormat $format): string
+    public static function formatName(LabelFormat $format): string
     {
         return match ($format->key) {
             'roll62'  => __('Place and box label, 62 mm roll (QL-810)', 'taxmod'),
@@ -265,6 +265,11 @@ final class PrintTab
             'material62' => __('Material label, 62 mm roll', 'taxmod'),
             default   => $format->key,
         };
+    }
+
+    public static function size(LabelFormat $format): string
+    {
+        return sprintf('%s × %s mm', self::millimetres($format->widthMm), self::millimetres($format->heightMm));
     }
 
     private static function millimetres(float $value): string

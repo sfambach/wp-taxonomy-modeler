@@ -100,6 +100,13 @@ $pruefe(wp_style_is('taxmod-admin', 'enqueued'), 'a page in the logistics frame 
 $logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['area'] ?? '') === 'print'));
 $pruefe(array_column($logistik, 'slug') === [PrintJobsScreen::PAGE, PrintTab::LOGISTICS_SLUG], 'Logistik › Druck holds «Aufträge», then «Etiketten» (D-1115)');
 
+// D-1120: one «Etikett drucken» for every module, through the filter.
+$knopf = (string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'O', 4711, 'Projektplatz 1', 'Keller › Regal 2');
+$pruefe(str_contains($knopf, 'value="O-4711"') && str_contains($knopf, 'value="holder62" selected'), 'a module gets «Etikett drucken» for a place, with the holder label preselected');
+$pruefe(str_contains($knopf, 'name="how" value="service"') && str_contains($knopf, 'value="pdf"') && str_contains($knopf, '_taxmod_label_nonce'), 'its dialog prints through the service or opens the PDF, with a nonce');
+$pruefe((string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'X', 1, 'x') === '', 'an unknown prefix gets no button');
+$pruefe(str_contains((string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'K', 9, 'Kiste 9'), 'value="roll62" selected'), 'a box starts with the 62 mm roll label');
+
 PrintService::revokeAccess();
 $pruefe($rufe('/print/pull', [], $token)->get_status() === 401 && ! is_file($datei), 'a removed access stops the service and its wake file');
 
