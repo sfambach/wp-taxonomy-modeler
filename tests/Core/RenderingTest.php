@@ -257,7 +257,7 @@ final class RenderingTest extends TestCase
         $impostor = $this->editor->createNode('text', $this->branchRoot['model']->id);
 
         $part = $this->thing('Part');
-        $relation = $this->editor->addField($part->id, $impostor->id, 'supplier');
+        $relation = $this->editor->addField($part->id, $impostor->id, 'supplier', \Taxmod\Core\Model\RelationKind::Aggregation);
 
         $fields = $this->rendering->fieldsFor([$relation], [], Purpose::Display, 'v');
 

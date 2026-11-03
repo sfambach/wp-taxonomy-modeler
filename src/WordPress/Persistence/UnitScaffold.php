@@ -440,7 +440,7 @@ final class UnitScaffold
         // Gerüst zog nach, nicht umgekehrt.*
         $unitValue = $this->ensureAnywhere(
             $this->framework->rootOf(Branch::Combined),
-            [$this->framework->rootOf(Branch::Compositions)],
+            [],
             'Einheitenwert',
             $created
         );

@@ -148,16 +148,15 @@ final class FieldTest extends TestCase
         return $this->editor->createNode($name, $this->branchRoot[$branch]->id);
     }
 
+    /** ⚠️ *D-1118 ersetzt die Ast-Vorgabe: ohne genannte Art ist ein neues Feld eine Komposition, auch unter `Model`; Aggregation wählt der Benutzer.* */
     #[Test]
-    public function a_target_in_model_is_reached_by_aggregation(): void
+    public function a_new_field_without_a_kind_is_a_composition_wherever_its_target_lies(): void
     {
-        // Something that stands on its own: a supplier is not owned by the order using it.
         $order    = $this->under('model', 'Order');
         $supplier = $this->under('model', 'Supplier');
 
-        $relation = $this->editor->addField($order->id, $supplier->id, 'supplied by');
-
-        self::assertSame(RelationKind::Aggregation, $relation->kind);
+        self::assertSame(RelationKind::Composition, $this->editor->addField($order->id, $supplier->id, 'supplied by')->kind);
+        self::assertSame(RelationKind::Aggregation, $this->editor->addField($order->id, $supplier->id, 'chosen', RelationKind::Aggregation)->kind, 'Aggregation, wenn gewählt');
     }
 
     #[Test]

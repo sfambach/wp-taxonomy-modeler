@@ -756,15 +756,17 @@ final class ModelEditor
     }
 
     /**
-     * Die Art, wenn der Benutzer keine nennt: die des Astes, und ohne Ast **Komposition**
-     * ([D-890](../../../docs/NewConcept/90-decision-log.md)).
+     * Die Art, wenn der Benutzer keine nennt: **Komposition**, wo das Ziel auch liegt ([D-1118](../../../docs/NewConcept/90-decision-log.md)).
      *
-     * ⚠️ *Sein Wort: «vorgabe ist composition benutzer kann aggregation wählen». Die Maske schickt die Art ohnehin mit
-     * ([D-618](../../../docs/NewConcept/90-decision-log.md)); dieser Rückfall gilt den Aufrufern, die keine nennen — Saat und Gerüste.*
+     * ⚠️ *Sein Wort: «vorgabe ist composition benutzer kann aggregation wählen» (D-890), auf der Karte «Komposition». Der Ast entscheidet
+     * nicht mehr; nur eine Konstante bleibt ein Verweis, und die Wurzel von `Model` darf nur eine Aggregation haben (D-958). Die Maske
+     * schickt die Art ohnehin mit ([D-618](../../../docs/NewConcept/90-decision-log.md)); dieser Rückfall gilt den Aufrufern, die keine nennen.*
      */
     private function fallbackKind(Node $target): RelationKind
     {
-        return $this->framework->branchOf($target)?->relationKind() ?? RelationKind::Composition;
+        return $this->isModelRoot($target) || $this->framework->branchOf($target) === Branch::Constants
+            ? RelationKind::Aggregation
+            : RelationKind::Composition;
     }
 
     private function addedField(int $ownerId, int $targetId, string $name, ?RelationKind $kind): Relation

@@ -73,11 +73,16 @@ $editor = new ModelEditor($nodes, $relations, $framework, $log);
 
 echo "\n== 1. The branches exist and are protected ==\n";
 foreach (Branch::cases() as $branch) {
+    // ⚠️ *`Compositions` ist kein Rahmenknoten mehr und wird nicht mehr gesät (D-1118).*
+    if ($branch === Branch::Compositions) {
+        continue;
+    }
+
     $node = $framework->rootOf($branch);
     check("{$branch->value} → «{$node->name}»", $node->id > 0 && $framework->isProtected($node));
 }
 
-echo "\n== 2. The branch decides the kind, and nobody chooses it ==\n";
+echo "\n== 2. Without a chosen kind a field is a composition; only a constant stays a reference (D-1118) ==\n";
 $order    = $editor->createNode('__p3 Order', $framework->rootOf(Branch::Model)->id);
 $supplier = $editor->createNode('__p3 Supplier', $framework->rootOf(Branch::Model)->id);
 $line     = $editor->createNode('__p3 Line', $framework->rootOf(Branch::Compositions)->id);
@@ -89,7 +94,7 @@ $byComposition  = $editor->addField($order->id, $line->id, 'lines');
 $byDataType     = $editor->addField($order->id, $text->id, 'note');
 $byConstant     = $editor->addField($order->id, $gram->id, 'unit');
 
-check('Model → aggregation', $byModel->kind === RelationKind::Aggregation, $byModel->kind->value);
+check('Model → composition (D-1118)', $byModel->kind === RelationKind::Composition, $byModel->kind->value);
 check('Compositions → composition', $byComposition->kind === RelationKind::Composition, $byComposition->kind->value);
 check('Data Types → composition', $byDataType->kind === RelationKind::Composition, $byDataType->kind->value);
 check('Constants → aggregation', $byConstant->kind === RelationKind::Aggregation, $byConstant->kind->value);

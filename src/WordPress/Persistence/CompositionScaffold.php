@@ -104,7 +104,8 @@ final class CompositionScaffold
      */
     public function import(): array
     {
-        $compositions = $this->framework->rootOf(Branch::Compositions);
+        // ⚠️ *Unter `Model`, seit es keinen Ast `Compositions` mehr gibt (D-1118) — die Kante entscheidet, nicht der Ort (D-938).*
+        $compositions = $this->framework->rootOf(Branch::Model);
         $created      = [];
 
         // ⚠️ **Looked up, not created.** `Einheitenwert` belongs to {@see UnitScaffold}, whose members
@@ -121,7 +122,6 @@ final class CompositionScaffold
         $bekannt   = UnitScaffold::unitValueId();
         $unitValue = ($bekannt === null ? null : $this->editor->find($bekannt))
             ?? $this->existing($this->framework->rootOf(Branch::Combined), 'Einheitenwert')
-            ?? $this->existing($compositions, 'Einheitenwert')
             ?? throw new \RuntimeException('«Einheitenwert» is not there yet — the unit scaffold has to run first.');
 
         $this->address($compositions, $created);

@@ -260,7 +260,8 @@ final class SeededFrameworkNodes implements FrameworkNodes
 
         $this->ensure(self::TRASH_OPTION, 'Trash', $root);
         $this->ensure(self::BRANCH_OPTIONS['model'], 'Model', $root);
-        $this->ensure(self::BRANCH_OPTIONS['compositions'], 'Compositions', $root);
+        // ⚠️ *`Compositions` wird nicht mehr angelegt (D-1118): sein Wort «Den compositions ast gibts aus meiner sicht nur noch aus
+        // historischen gründen» (D-890), und seit D-938 entscheidet die Kante. Ein bestehender bleibt ein gewöhnlicher Ordner.*
 
         $primitives = $this->ensure(self::PRIMITIVES_OPTION, 'Primitives', $root);
 
@@ -304,8 +305,11 @@ final class SeededFrameworkNodes implements FrameworkNodes
             (int) get_option(self::PRIMITIVES_OPTION, 0),
         ];
 
-        foreach (self::BRANCH_OPTIONS as $option) {
-            $ids[] = (int) get_option($option, 0);
+        foreach (self::BRANCH_OPTIONS as $value => $option) {
+            // ⚠️ *`Compositions` ist kein Rahmenknoten mehr (D-1118): er darf verschoben, umbenannt und gelöscht werden.*
+            if ($value !== Branch::Compositions->value) {
+                $ids[] = (int) get_option($option, 0);
+            }
         }
 
         return $ids;
