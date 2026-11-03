@@ -437,7 +437,7 @@ check('ein Gast darf keine Sätze schreiben', is_wp_error($daten?->execute(['cha
 wp_set_current_user((int) ($admin[0] ?? 1));
 check('der Administrator darf write-data auch', is_array($daten?->execute(['changes' => [['op' => 'create_record', 'node' => $ergebnis['refs']['i']]]])));
 
-// D-1130: «Kopieren» im Lager — dieselbe Kopie wie der Knopf am Satz (D-1012), über write-data, mit «ref» für die nächste Änderung.
+// D-1135: «Kopieren» im Lager — dieselbe Kopie wie der Knopf am Satz (D-1012), über write-data, mit «ref» für die nächste Änderung.
 $kopiert = $daten?->execute(['changes' => [
     ['op' => 'duplicate_record', 'ref' => 'k', 'record' => $ergebnis['refs']['r']],
     ['op' => 'set_values', 'record' => '@k', 'values' => []],
@@ -456,8 +456,8 @@ $wertVon = static function (int $satz) use ($node, $ergebnis): ?string {
 
     return null;
 };
-check('duplicate_record legt über write-data eine Kopie mit dem Wert des Originals an (D-1130)', $kopie > 0 && $kopie !== (int) $ergebnis['refs']['r'] && $wertVon($kopie) !== null && $wertVon($kopie) === $wertVon((int) $ergebnis['refs']['r']), is_wp_error($kopiert) ? $kopiert->get_error_message() : wp_json_encode([$kopie, $wertVon($kopie)]));
-check('duplicate_record kopiert keinen Einstellungssatz (D-1130)', is_wp_error($daten?->execute(['changes' => [['op' => 'duplicate_record', 'record' => $einstellung]]])));
+check('duplicate_record legt über write-data eine Kopie mit dem Wert des Originals an (D-1135)', $kopie > 0 && $kopie !== (int) $ergebnis['refs']['r'] && $wertVon($kopie) !== null && $wertVon($kopie) === $wertVon((int) $ergebnis['refs']['r']), is_wp_error($kopiert) ? $kopiert->get_error_message() : wp_json_encode([$kopie, $wertVon($kopie)]));
+check('duplicate_record kopiert keinen Einstellungssatz (D-1135)', is_wp_error($daten?->execute(['changes' => [['op' => 'duplicate_record', 'record' => $einstellung]]])));
 
 echo "Block im Beitrag (D-912)\n";
 

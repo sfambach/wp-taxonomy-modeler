@@ -55,4 +55,9 @@ foreach ([
     $fehler += $gut ? 0 : 1;
 }
 
+// D-1135: «teile platzart kann ich nicht auswählen» — a module page prints no dialog templates, so the editor carries its bodies.
+$leer = str_contains($markup, 'taxmod-record-stub') && ! str_contains($markup, 'taxmod-shared-body');
+printf("  %s Satz #%d: jeder Satzdialog bringt seinen Inhalt mit, kein Platzhalter ohne Vorlage\n", $leer ? 'FAIL' : 'ok  ', $satz);
+$fehler += $leer ? 1 : 0;
+
 exit($fehler === 0 ? 0 : 1);

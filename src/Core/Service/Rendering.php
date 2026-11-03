@@ -1270,6 +1270,15 @@ final class Rendering implements Presets
         return $kopie;
     }
 
+    /** Dieselbe Zeichnung, aber jeder Knotenbaum bringt seinen eigenen Wähler mit — für ein Stück auf einer fremden Seite, die den gemeinsamen nicht zeichnet (D-1135). */
+    public function withoutSharedPicker(): static
+    {
+        $kopie               = clone $this;
+        $kopie->sharedPicker = false;
+
+        return $kopie;
+    }
+
     /**
      * Ein Öffner des gemeinsamen Auswahlbaums: der Knopf mit dem, was das Skript braucht, und das versteckte Feld, in das die Wahl geht
      * ([D-815](../../../docs/NewConcept/90-decision-log.md), [D-821](../../../docs/NewConcept/90-decision-log.md)).

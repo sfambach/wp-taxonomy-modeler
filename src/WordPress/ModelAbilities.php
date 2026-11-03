@@ -62,7 +62,7 @@ final class ModelAbilities
     /** Was `write-data` annimmt: Sätze und Werte, kein Knoten, kein Feld, keine Einstellung. */
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
     // D-1098: a part changing its head is data too — the stock moves a purchase between a requirement and a supplier draft.
-    // D-1130: copying a record is data too — the stock copies a material and a storage place.
+    // D-1135: copying a record is data too — the stock copies a material and a storage place.
     private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'duplicate_record'];
 
     /**
@@ -594,7 +594,7 @@ final class ModelAbilities
                 return $partId;
 
             case 'duplicate_record':
-                // ⚠️ *D-1130, his word «die meisten objekt in tax sollten kopierbarsein»: the same copy as the record's button (D-1012)
+                // ⚠️ *D-1135, his word «die meisten objekt in tax sollten kopierbarsein»: the same copy as the record's button (D-1012)
                 // — every value, an own copy of each part; the id answers «ref», so the list can change the copy in the same act.*
                 return $screen->entries()->duplicate($at('record'))->id;
 

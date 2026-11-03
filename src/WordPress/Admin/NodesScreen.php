@@ -341,8 +341,10 @@ final class NodesScreen
         $resolved = $this->rendering->settingsForUseSites($felder);
         $formId   = 'taxmod-preview-record-' . $recordId;
 
+        // ⚠️ *Auf der Seite eines Moduls steht weder der gemeinsame Auswahlbaum noch die Vorlage der Satzdialoge — also zeichnet der
+        // Editor beides selbst (D-1135). Sein Befund an der Platzart: «teile platzart kann ich nicht auswählen» — der Dialog war leer.*
         return '<div class="taxmod-preview-side taxmod-record-editor" id="taxmod-preview-edit">'
-            . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
+            . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
                 ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
                 ->withRecordCreation(...$this->recordCreation())
                 ->nodeAsForm(
