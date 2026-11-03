@@ -62,7 +62,8 @@ final class ModelAbilities
     /** Was `write-data` annimmt: Sätze und Werte, kein Knoten, kein Feld, keine Einstellung. */
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
     // D-1098: a part changing its head is data too — the stock moves a purchase between a requirement and a supplier draft.
-    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part'];
+    // D-1130: copying a record is data too — the stock copies a material and a storage place.
+    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'duplicate_record'];
 
     /**
      * @param \Closure(): NodesScreen $screen Erst beim Ausführen gebaut — das Registrieren läuft in jeder Anfrage.
@@ -141,7 +142,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'set_kind', 'set_list', 'set_setting', 'set_label', 'set_addons']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'duplicate_record', 'set_kind', 'set_list', 'set_setting', 'set_label', 'set_addons']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -187,7 +188,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/write-data', [
             'label'               => __('Write records', 'taxmod'),
             'description'         => __(
-                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record, move_part on user records. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record, move_part, duplicate_record on user records. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -592,6 +593,11 @@ final class ModelAbilities
 
                 return $partId;
 
+            case 'duplicate_record':
+                // ⚠️ *D-1130, his word «die meisten objekt in tax sollten kopierbarsein»: the same copy as the record's button (D-1012)
+                // — every value, an own copy of each part; the id answers «ref», so the list can change the copy in the same act.*
+                return $screen->entries()->duplicate($at('record'))->id;
+
             case 'set_kind':
                 // ⚠️ *D-1097: «Positionen» become compositions without moving a value — both kinds store alike (D-587). Only the two
                 // kinds a person can choose; «setting» is not one (D-715).*
@@ -673,7 +679,7 @@ final class ModelAbilities
         $op = (string) ($change['op'] ?? '');
 
         if (! in_array($op, self::DATA_OPS, true)) {
-            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, move_record and move_part are allowed here.");
+            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, move_record, move_part and duplicate_record are allowed here.");
         }
 
         if (isset($change['record_type']) && (string) $change['record_type'] !== RecordType::User->value) {

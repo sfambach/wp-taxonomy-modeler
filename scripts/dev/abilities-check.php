@@ -437,6 +437,28 @@ check('ein Gast darf keine Sätze schreiben', is_wp_error($daten?->execute(['cha
 wp_set_current_user((int) ($admin[0] ?? 1));
 check('der Administrator darf write-data auch', is_array($daten?->execute(['changes' => [['op' => 'create_record', 'node' => $ergebnis['refs']['i']]]])));
 
+// D-1130: «Kopieren» im Lager — dieselbe Kopie wie der Knopf am Satz (D-1012), über write-data, mit «ref» für die nächste Änderung.
+$kopiert = $daten?->execute(['changes' => [
+    ['op' => 'duplicate_record', 'ref' => 'k', 'record' => $ergebnis['refs']['r']],
+    ['op' => 'set_values', 'record' => '@k', 'values' => []],
+]]);
+$kopie   = is_array($kopiert) ? (int) ($kopiert['refs']['k'] ?? 0) : 0;
+$wertVon = static function (int $satz) use ($node, $ergebnis): ?string {
+    foreach ($node->execute(['node' => $ergebnis['refs']['i']])['records'] ?? [] as $r) {
+        if ((int) $r['id'] === $satz) {
+            foreach ($r['values'] as $w) {
+                if ((int) $w['relation_id'] === (int) $ergebnis['refs']['f']) {
+                    return (string) $w['value'];
+                }
+            }
+        }
+    }
+
+    return null;
+};
+check('duplicate_record legt über write-data eine Kopie mit dem Wert des Originals an (D-1130)', $kopie > 0 && $kopie !== (int) $ergebnis['refs']['r'] && $wertVon($kopie) !== null && $wertVon($kopie) === $wertVon((int) $ergebnis['refs']['r']), is_wp_error($kopiert) ? $kopiert->get_error_message() : wp_json_encode([$kopie, $wertVon($kopie)]));
+check('duplicate_record kopiert keinen Einstellungssatz (D-1130)', is_wp_error($daten?->execute(['changes' => [['op' => 'duplicate_record', 'record' => $einstellung]]])));
+
 echo "Block im Beitrag (D-912)\n";
 
 check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));
