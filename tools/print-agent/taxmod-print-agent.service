@@ -1,0 +1,12 @@
+[Unit]
+Description=Taxmod print service (labels from WordPress to CUPS)
+After=network-online.target cups.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/share/taxmod-print-agent/taxmod_print_agent.py --config %h/.config/taxmod-print-agent/config.json
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

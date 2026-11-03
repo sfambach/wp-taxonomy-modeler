@@ -1,0 +1,13 @@
+{
+  "rest": "https://www.fambach.net/wp-json/taxmod/v1/",
+  "token": "from Configuration › Printing › Set up access",
+  "ntfy": "https://ntfy.sh/taxmod-…",
+  "wake_url": "https://www.fambach.net/wp-content/uploads/taxmod-print/….txt",
+  "printers": {
+    "62": "QL-810W_take",
+    "102": "QL-1100"
+  },
+  "formats": {
+    "holder62": {"PageSize": "62x50", "orientation-requested": "4"}
+  }
+}

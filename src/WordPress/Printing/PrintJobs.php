@@ -1,0 +1,173 @@
+<?php declare(strict_types=1);
+
+namespace Taxmod\WordPress\Printing;
+
+use Taxmod\Core\Printing\LabelContent;
+use Taxmod\Core\Printing\LabelFormat;
+use Taxmod\Core\Printing\PrintJobStatus;
+
+/**
+ * The print jobs in their table: queue one, let the service claim the waiting ones in one statement, take its result,
+ * cancel and print again. Every write is one statement for all rows it touches (CD-7).
+ *
+ * @see docs/NewConcept/90-decision-log.md D-1113
+ */
+final class PrintJobs
+{
+    /** Sent with a new job, after it is stored; {@see PrintWake} listens. */
+    public const QUEUED_ACTION = 'taxmod_print_job_queued';
+
+    public function queue(LabelFormat $format, LabelContent $label, bool $test): int
+    {
+        global $wpdb;
+
+        $wpdb->insert(PrintJobSchema::table(), [
+            'format'     => $format->key,
+            'code'       => $label->code,
+            'title'      => $label->title,
+            'subtitle'   => $label->subtitle,
+            'is_test'    => $test ? 1 : 0,
+            'status'     => PrintJobStatus::Queued->value,
+            'created_by' => get_current_user_id(),
+            'created_at' => current_time('mysql', true),
+        ]);
+        $id = (int) $wpdb->insert_id;
+        if ($id <= 0) {
+            throw new \RuntimeException('The print job could not be stored.');
+        }
+
+        do_action(self::QUEUED_ACTION, $id);
+
+        return $id;
+    }
+
+    /**
+     * Claims every waiting job, and every claim older than the limit, for one pull.
+     *
+     * @return list<array<string, string>>
+     */
+    public function claimWaiting(): array
+    {
+        global $wpdb;
+
+        $claim = bin2hex(random_bytes(8));
+        $now = current_time('mysql', true);
+        $stale = gmdate('Y-m-d H:i:s', time() - PrintJobStatus::CLAIM_LIMIT_SECONDS);
+        $table = PrintJobSchema::table();
+
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$table} SET status = %s, claim = %s, claimed_at = %s WHERE status = %s OR (status = %s AND claimed_at < %s)",
+            PrintJobStatus::Claimed->value,
+            $claim,
+            $now,
+            PrintJobStatus::Queued->value,
+            PrintJobStatus::Claimed->value,
+            $stale
+        ));
+
+        return array_map(
+            static fn (array $row): array => array_map('strval', $row),
+            (array) $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE claim = %s AND status = %s ORDER BY id", $claim, PrintJobStatus::Claimed->value), ARRAY_A)
+        );
+    }
+
+    /** The service's answer for a claimed job; false when the job is not claimed (any more). */
+    public function finish(int $id, bool $printed, string $message): bool
+    {
+        global $wpdb;
+
+        $table = PrintJobSchema::table();
+
+        return (int) $wpdb->query($wpdb->prepare(
+            "UPDATE {$table} SET status = %s, message = %s, finished_at = %s WHERE id = %d AND status = %s",
+            ($printed ? PrintJobStatus::Printed : PrintJobStatus::Failed)->value,
+            $message,
+            current_time('mysql', true),
+            $id,
+            PrintJobStatus::Claimed->value
+        )) === 1;
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return int how many were cancelled
+     */
+    public function cancel(array $ids): int
+    {
+        return $this->move($ids, array_filter(PrintJobStatus::cases(), static fn (PrintJobStatus $s): bool => $s->canBeCancelled()), PrintJobStatus::Cancelled);
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return int how many went back to the queue
+     */
+    public function queueAgain(array $ids): int
+    {
+        $moved = $this->move($ids, array_filter(PrintJobStatus::cases(), static fn (PrintJobStatus $s): bool => $s->canBeQueuedAgain()), PrintJobStatus::Queued);
+        if ($moved > 0) {
+            do_action(self::QUEUED_ACTION, 0);
+        }
+
+        return $moved;
+    }
+
+    /**
+     * The newest jobs first, optionally of one status.
+     *
+     * @return list<array<string, string>>
+     */
+    public function latest(int $limit, string $status = ''): array
+    {
+        global $wpdb;
+
+        $table = PrintJobSchema::table();
+        $sql = $status === ''
+            ? $wpdb->prepare("SELECT * FROM {$table} ORDER BY id DESC LIMIT %d", $limit)
+            : $wpdb->prepare("SELECT * FROM {$table} WHERE status = %s ORDER BY id DESC LIMIT %d", $status, $limit);
+
+        return array_map(static fn (array $row): array => array_map('strval', $row), (array) $wpdb->get_results($sql, ARRAY_A));
+    }
+
+    /**
+     * @return array<string, int> status => count
+     */
+    public function counts(): array
+    {
+        global $wpdb;
+
+        $table = PrintJobSchema::table();
+        $counts = [];
+        foreach ((array) $wpdb->get_results("SELECT status, COUNT(*) AS n FROM {$table} GROUP BY status", ARRAY_A) as $row) {
+            $counts[(string) $row['status']] = (int) $row['n'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @param list<int> $ids
+     * @param array<PrintJobStatus> $from
+     */
+    private function move(array $ids, array $from, PrintJobStatus $to): int
+    {
+        global $wpdb;
+
+        $ids = array_values(array_filter(array_map('intval', $ids), static fn (int $id): bool => $id > 0));
+        if ($ids === [] || $from === []) {
+            return 0;
+        }
+        $table = PrintJobSchema::table();
+        $idMarks = implode(',', array_fill(0, count($ids), '%d'));
+        $statusMarks = implode(',', array_fill(0, count($from), '%s'));
+        $values = array_merge(
+            [$to->value],
+            $ids,
+            array_map(static fn (PrintJobStatus $s): string => $s->value, array_values($from))
+        );
+
+        return (int) $wpdb->query($wpdb->prepare(
+            "UPDATE {$table} SET status = %s, claim = '', message = NULL, claimed_at = NULL, finished_at = NULL WHERE id IN ({$idMarks}) AND status IN ({$statusMarks})",
+            ...$values
+        ));
+    }
+}

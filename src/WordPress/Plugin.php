@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.133';
+    public const VERSION     = '0.1.134';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -91,6 +91,10 @@ final class Plugin
         // ⚠️ *Labels with QR code, stage 1: a PDF for the browser's print dialog, and the tab with its test prints (D-1032, D-1096).*
         \Taxmod\WordPress\Printing\LabelPrint::boot();
         \Taxmod\WordPress\Printing\PrintTab::boot();
+        \Taxmod\WordPress\Printing\PrintService::boot();
+        \Taxmod\WordPress\Printing\PrintRest::boot();
+        \Taxmod\WordPress\Printing\PrintJobsScreen::boot();
+        add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
 
         // ⚠️ *Once, on `init` so the abilities and the front end see it too: the default language back on its texts (0.1.37).*
         add_action('init', SettingsScreen::repairNeutralLocale(...));

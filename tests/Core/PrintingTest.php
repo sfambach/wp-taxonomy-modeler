@@ -157,6 +157,28 @@ final class PrintingTest extends TestCase
     }
 
     #[Test]
+    public function cancel_and_print_again_undo_each_other(): void
+    {
+        self::assertTrue(\Taxmod\Core\Printing\PrintJobStatus::Queued->canBeCancelled());
+        self::assertTrue(\Taxmod\Core\Printing\PrintJobStatus::Cancelled->canBeQueuedAgain());
+        self::assertFalse(\Taxmod\Core\Printing\PrintJobStatus::Claimed->canBeCancelled(), 'a fetched job is on its way to the printer');
+        self::assertTrue(\Taxmod\Core\Printing\PrintJobStatus::Printed->canBeQueuedAgain());
+        self::assertTrue(\Taxmod\Core\Printing\PrintJobStatus::Claimed->acceptsResult());
+        self::assertFalse(\Taxmod\Core\Printing\PrintJobStatus::Printed->acceptsResult());
+    }
+
+    #[Test]
+    public function only_the_token_itself_matches_its_hash(): void
+    {
+        $token = \Taxmod\Core\Printing\PrintServiceToken::generate();
+        $hash = \Taxmod\Core\Printing\PrintServiceToken::hash($token);
+        self::assertSame(48, strlen($token));
+        self::assertTrue(\Taxmod\Core\Printing\PrintServiceToken::matches($token, $hash));
+        self::assertFalse(\Taxmod\Core\Printing\PrintServiceToken::matches($token . 'x', $hash));
+        self::assertFalse(\Taxmod\Core\Printing\PrintServiceToken::matches('', ''));
+    }
+
+    #[Test]
     public function an_unknown_format_is_refused(): void
     {
         $this->expectException(\InvalidArgumentException::class);
