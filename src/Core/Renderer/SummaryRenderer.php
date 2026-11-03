@@ -239,7 +239,10 @@ final class SummaryRenderer extends TypedFieldRenderer
         }
 
         $wurzel    = RenderResult::escape((string) ($baum[0]['name'] ?? ''));
-        $baumWort  = (string) ($worte['tree'] ?? '');
+        // ⚠️ *Eine flache Auswahl — nur ein Knoten — zeigt keinen Baum und keinen Schalter dafür. Sein Wort am 2026-11-03: «bei flachen
+        // hierarchien darf der knoten links ruhig ausgeblendet werden» (D-1137).*
+        $flach     = count($baum) <= 1;
+        $baumWort  = $flach ? '' : (string) ($worte['tree'] ?? '');
         $werkzeuge = '<div class="taxmod-record-tools">'
             . '<input type="search" class="taxmod-record-search" autocomplete="off" aria-label="' . $wurzel . '">'
             . ($baumWort === '' ? '' : '<label class="taxmod-record-treeswitch" title="' . RenderResult::escape($baumWort) . '">'
@@ -287,10 +290,12 @@ final class SummaryRenderer extends TypedFieldRenderer
         }
 
         return $werkzeuge
+            . ($flach ? '<div class="taxmod-record-notree">' : '')
             . '<div class="taxmod-record-columns">'
             . '<div class="taxmod-record-nodes">' . $knoten . '</div>'
             . '<div class="taxmod-record-list">' . $liste . '</div>'
-            . '</div>';
+            . '</div>'
+            . ($flach ? '</div>' : '');
     }
 
     /**
