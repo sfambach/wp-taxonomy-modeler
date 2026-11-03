@@ -11,7 +11,7 @@ use Taxmod\WordPress\Plugin;
  * The «Printing» tab on the Configuration page (D-1085): the label formats, each with its test print in the browser and,
  * once the print service is set up, through the service (D-1096); and the service's access (stage 2 of D-1100).
  *
- * The same page stands under Logistik › Einstellungen › Druck (D-1103). In the Configuration its buttons submit the
+ * The same page stands under Logistik › Druck › Etiketten (D-1103, D-1115). In the Configuration its buttons submit the
  * page's own form and arrive in `save`; under Logistik the page brings a form of its own.
  *
  * @see docs/NewConcept/90-decision-log.md D-1113
@@ -40,7 +40,8 @@ final class PrintTab
     public static function boot(): void
     {
         add_filter(\Taxmod\WordPress\Admin\SettingsScreen::TABS_FILTER, self::register(...), 2);
-        // His word 2026-11-02: «hänge das aber auch nochmal ins logistik menüs einstellungen -> druck, gezeigt auf der rechten seite».
+        // His word 2026-11-02: «hänge das aber auch nochmal ins logistik menüs einstellungen -> druck, gezeigt auf der rechten seite»;
+        // 2026-11-03 its own area: «Würde menü druck machen dann unterpunkte aufträge, etiketten, ...» (D-1115).
         add_filter(self::LOGISTICS_FILTER, self::registerInLogistics(...));
         add_action('admin_post_' . self::ACTION, self::handle(...));
     }
@@ -93,7 +94,7 @@ final class PrintTab
     }
 
     /**
-     * The same page under Logistik › Einstellungen › Druck, drawn inside the logistics frame (D-1103).
+     * The same page under Logistik › Druck › Etiketten, drawn inside the logistics frame (D-1103, D-1115).
      *
      * @param list<array<string, mixed>> $pages
      * @return list<array<string, mixed>>
@@ -102,9 +103,9 @@ final class PrintTab
     {
         $pages[] = [
             'slug'   => self::LOGISTICS_SLUG,
-            'label'  => __('Druck', 'taxmod'),
-            'area'   => 'settings',
-            'render' => static fn (): string => '<div class="wrap"><h1>' . esc_html__('Druck', 'taxmod') . '</h1>'
+            'label'  => __('Etiketten', 'taxmod'),
+            'area'   => 'print',
+            'render' => static fn (): string => '<div class="wrap"><h1>' . esc_html__('Etiketten', 'taxmod') . '</h1>'
                 . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"><input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
                 . wp_nonce_field(self::ACTION, self::NONCE, true, false) . (new self())->render() . '</form></div>',
         ];

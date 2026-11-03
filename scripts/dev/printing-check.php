@@ -37,9 +37,9 @@ $pruefe = static function (bool $gut, string $was) use (&$fehler): void {
 $pruefe(isset(SettingsScreen::moduleTabs()[PrintTab::SLUG]), 'the Configuration page has a «Printing» tab');
 $pruefe(has_action('admin_post_' . LabelPrint::ACTION) !== false, 'the label PDF has its admin-post action');
 
-// ⚠️ *D-1103: dieselbe Seite unter Logistik › Einstellungen › Druck.*
+// ⚠️ *D-1103: dieselbe Seite auch in der Logistik, seit D-1115 unter Logistik › Druck › Etiketten.*
 $logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn ($p): bool => is_array($p) && ($p['slug'] ?? '') === PrintTab::LOGISTICS_SLUG));
-$pruefe(count($logistik) === 1 && $logistik[0]['area'] === 'settings', 'the printing page is announced under Logistik › Einstellungen');
+$pruefe(count($logistik) === 1 && $logistik[0]['area'] === 'print', 'the printing page is announced under Logistik › Druck (D-1115)');
 $pruefe(count($logistik) === 1 && str_contains((string) ($logistik[0]['render'])(), 'test=1'), 'it shows the same formats with their test prints');
 
 $_GET['tab'] = PrintTab::SLUG;

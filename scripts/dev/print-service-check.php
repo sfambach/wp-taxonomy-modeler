@@ -92,8 +92,8 @@ $pruefe($jobs->latest(1)[0]['format'] === 'roll62' && $jobs->latest(1)[0]['is_te
 $liste = (new PrintJobsScreen($jobs))->render();
 $pruefe(str_contains($liste, 'taxmod_print_jobs_cancel') && str_contains($liste, 'taxmod_print_jobs_again'), 'the job list has the bulk actions «Cancel» and «Print again»');
 $pruefe(has_action('admin_post_taxmod_print_jobs_cancel') !== false && has_action('admin_post_' . PrintTab::ACTION) !== false, 'the list and the page under Logistik have their admin-post actions');
-$logistik = array_column((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), 'slug');
-$pruefe(in_array(PrintJobsScreen::PAGE, $logistik, true), 'the job list is announced under Logistik');
+$logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['area'] ?? '') === 'print'));
+$pruefe(array_column($logistik, 'slug') === [PrintJobsScreen::PAGE, PrintTab::LOGISTICS_SLUG], 'Logistik › Druck holds «Aufträge», then «Etiketten» (D-1115)');
 
 PrintService::revokeAccess();
 $pruefe($rufe('/print/pull', [], $token)->get_status() === 401 && ! is_file($datei), 'a removed access stops the service and its wake file');

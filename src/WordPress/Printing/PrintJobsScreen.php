@@ -36,7 +36,8 @@ final class PrintJobsScreen
         foreach (self::DOINGS as $doing) {
             add_action('admin_post_' . self::ACTION . '_' . $doing, static fn () => (new self(new PrintJobs()))->handle($doing));
         }
-        add_filter(PrintTab::LOGISTICS_FILTER, self::registerInLogistics(...));
+        // Before «Etiketten» in the area «Druck» (D-1115).
+        add_filter(PrintTab::LOGISTICS_FILTER, self::registerInLogistics(...), 5);
     }
 
     public function __construct(private readonly PrintJobs $jobs)
@@ -51,8 +52,8 @@ final class PrintJobsScreen
     {
         $pages[] = [
             'slug'   => self::PAGE,
-            'label'  => __('Druckaufträge', 'taxmod'),
-            'area'   => 'settings',
+            'label'  => __('Aufträge', 'taxmod'),
+            'area'   => 'print',
             'render' => static fn (): string => (new self(new PrintJobs()))->render(),
         ];
 
