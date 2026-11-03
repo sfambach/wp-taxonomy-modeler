@@ -39,6 +39,10 @@ final class Targets
             'total'         => 149000110062,
             'tracking'      => 149000110063,
             'lines'         => 149000110064,
+            // Parcel announcements (D-1131): created with taxmod/apply on fambach.net, 2026-11-03.
+            'expected_delivery' => 149000110263,
+            'delivery_window'   => 149000110264,
+            'shipper'           => 149000110265,
         ],
         'purchase_fields'   => [
             'title'             => 149000103839,
