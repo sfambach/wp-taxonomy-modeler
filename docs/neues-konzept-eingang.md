@@ -1148,3 +1148,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Kern:** die Stufe ist eine Eigenschaft der Verwendung, kein Ast — dasselbe ESP32-Modul ist gekauft Bauteil, auf einer eigenen Platine Teil einer Baugruppe.
 - **Offen:** ob das ein Feld am Material wird, welche Werte, und wie es zur Umordnung des Materialbaums steht (Gespräch vom 2026-11-03).
 - **Nachtrag, sein Wort (2026-11-03):** *«weeiterhin haben wir parallel dazu weitere ansichten»* — die Sichten stehen neben dem Baum ([D-996](NewConcept/90-decision-log.md): *«Eigene Knoten sind nur die Sichten, deren Felder für alle Gruppen gleich sind»*); eine Umordnung des Materialbaums betrifft nur das Ding mit seinen technischen Daten. Offen: ob die Materialart am Kopf oder in einer Sicht (Lager/Einkauf) steht.
+
+## INF-105 · Herkunft an jedem Knoten überdenken (2026-11-03)
+
+**Typ:** `FRAGE` · **Status:** `OFFEN`
+
+> *«das mit der herkunft überall müssen wir nochmal überdenken»*
+
+- **Heute (gelesen, live 2026-11-03):** «Quellen», «Herkunft» und «Herkunftshinweis» sind an der Wurzel 402 erklärt und erscheinen dadurch an jedem Knoten, auch an Lagerorten und Lager-Sichten, wo sie nichts bedeuten.
+- **Offen für Stefan:** wo Herkunft gebraucht wird (Material, Import-Sätze?) und ob die drei Felder von 402 an diese Knoten wandern.
