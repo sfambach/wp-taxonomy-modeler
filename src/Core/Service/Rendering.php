@@ -2301,7 +2301,9 @@ final class Rendering implements Presets
                 // und der Renderer liess sich nicht mehr wechseln.
                 $tiefer === null
                     // ⚠️ *Das Ziel wird nur für einen Wähler-Renderer nachgeschlagen — sonst wäre es eine Abfrage je Feld (CD-7).*
-                    ? (($renderer instanceof ChooserRenderer
+                    // ⚠️ *Auch ein Auswahlfeld bietet nur die erlaubten an (D-783): in «Abmessung» stand an der Einheit `choice`, und es bot
+                    // die Gruppen «With prefix / Without prefix» statt «m» an — sein Befund: «das auswahlfeld wird nicht richtig gerendert» (D-1140).*
+                    ? (($renderer instanceof ChooserRenderer || ($renderer instanceof ChoiceRenderer && isset($allowedChoices[$relation->id]))
                         ? $this->chooserMarkup($this->gemerkterKnoten($relation->toNodeId), $renderer, $context->settings, $value, $context->fieldName, $formId, $locale, $level, $allowedChoices[$relation->id] ?? null, $relation->multiplicity->requiresOne())
                         : null) ?? $renderer->render($relation, $context))
                     : $this->chosenAndItsFields($relation, $type, $renderer, $context, $tiefer['result']),
@@ -5837,7 +5839,7 @@ final class Rendering implements Presets
      */
     private function chooserMarkup(?Node $target, Renderer $renderer, array $settings, TypedValue $value, string $fieldName, string $formId, string $locale, Level $level, ?array $erlaubt = null, bool $required = false): ?RenderResult
     {
-        if ($target === null || ! $renderer instanceof ChooserRenderer) {
+        if ($target === null || ! ($renderer instanceof ChooserRenderer || ($renderer instanceof ChoiceRenderer && $erlaubt !== null))) {
             return null;
         }
 
@@ -6735,8 +6737,13 @@ final class Rendering implements Presets
             return $auswahl;
         }
 
+        // ⚠️ **Eine einzige erlaubte Einheit steht als ihr Zeichen da, nicht als gesperrtes Auswahlfeld** — wie die gewählte Einheit
+        // (D-780). *Sein Befund an «Abmessung» am 2026-11-03: «einheitswert wird zu breit gerendert» — drei gesperrte «m - Meter»-Felder
+        // nebeneinander sprengten die Zeile (D-1140).*
+        $zeichen = $this->gemerkterWahlName($einzig, $settings, $target, $locale) ?? $options[$einzig];
+
         return new RenderResult(
-            $auswahl->markup
+            '<span class="taxmod-unit-fixed">' . RenderResult::escape($zeichen) . '</span>'
                 . '<input type="hidden" name="' . RenderResult::escape($fieldName) . '" value="' . $einzig . '"'
                 . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '>',
             $auswahl->usedRelations,

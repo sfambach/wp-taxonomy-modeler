@@ -1787,6 +1787,24 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     max-width: 100%;
 }
 
+/*
+ * ⚠️ Eine Zahl in einem kompakten Teil ist so breit wie eine Zahl, nicht wie ein Text (D-1140).
+ * *Sein Befund an «Abmessung» am 2026-11-03: «der basiswert wird zu breit gerendert» — `size="20"`
+ * dreimal nebeneinander sprengte die Zeile.*
+ */
+.taxmod-compact input[inputmode="decimal"],
+.taxmod-compact input[inputmode="numeric"] {
+    width: 7em;
+}
+
+/* Die einzige erlaubte Einheit als ihr Zeichen, ohne Auswahlfeld (D-1140). */
+.taxmod-unit-fixed {
+    display: inline-block;
+    padding: 0 .3em;
+    line-height: 30px;
+    white-space: nowrap;
+}
+
 /* Das Etikett bleibt bei seinem Feld und draengt sich nicht dazwischen. */
 .taxmod-compact-horizontal label {
     display: block;
