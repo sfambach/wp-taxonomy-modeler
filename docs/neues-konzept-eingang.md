@@ -1137,3 +1137,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Heute:** Lagerorte sind ein Baum (D-1059), mit Pfad «Obergeschoss › Box BT2PS2»; gedruckt wird nichts. Den 62-mm-Druck auf dem Brother QL-810W gibt es schon für Versandlabels (eBay-Modul, pdf.js).
 - **Offen für Stefan:** was auf dem Etikett steht (Pfad, Kurzname, Projekt, QR mit Link auf den Lagerort) und ob Material-Etiketten (INF-086) dazugehören.
+
+## INF-104 · Materialart als Eigenschaft quer zum Baum (2026-11-03)
+
+**Typ:** `IDEE` · **Status:** `OFFEN` — aufnehmen, nicht bauen.
+
+> *«es gibt bauteile, bautgruppen und fertigprodukte ? kannst du mal schauen wie die normal aufgeteit werden»* — auf den Vorschlag (Feld «Materialart» als Auswahl am Material): *«ja das kannst du mal aufnehmen aber nicht bauen.»*
+
+- **Üblich (Allgemeinwissen, z. B. SAP-Materialarten, INFERRED):** nach Fertigungsstufe Einzelteil/Bauteil · Baugruppe (Halbfabrikat) · Fertigprodukt; nach Herkunft Rohstoff/Hilfsstoff · Handelsware · Ersatzteil · Verpackung · Betriebsmittel.
+- **Kern:** die Stufe ist eine Eigenschaft der Verwendung, kein Ast — dasselbe ESP32-Modul ist gekauft Bauteil, auf einer eigenen Platine Teil einer Baugruppe.
+- **Offen:** ob das ein Feld am Material wird, welche Werte, und wie es zur Umordnung des Materialbaums steht (Gespräch vom 2026-11-03).
