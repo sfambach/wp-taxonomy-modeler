@@ -367,8 +367,9 @@ final class SummaryRenderer extends TypedFieldRenderer
         return '<span class="taxmod-record-pick' . ($nichts ? '' : ' taxmod-record-taken') . '">'
             . $suche
             . $dialog
-            . ($nichts ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear" style="color:#b32d2e" title="' . RenderResult::escape((string) ($context->surroundings->dialogWords['clear'] ?? '')) . '">'
-                . IconMarkup::dashicon('trash', (string) ($context->surroundings->dialogWords['clear'] ?? '')) . '</button>')
+            // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl im Dialog zeigt ihn und verbirgt das Suchfeld (D-1138).*
+            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape((string) ($context->surroundings->dialogWords['clear'] ?? '')) . '">'
+                . IconMarkup::dashicon('trash', (string) ($context->surroundings->dialogWords['clear'] ?? '')) . '</button>'
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
     }

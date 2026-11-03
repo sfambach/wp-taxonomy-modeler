@@ -431,6 +431,30 @@
 		} );
 	}
 
+	// ⚠️ **Gewählt: Wort und Mülleimer; nichts: Suchfeld** (D-851) — *auch nach einer Wahl im Dialog, nicht erst nach dem Speichern. Sein
+	// Befund am 2026-11-03: «warum bei palzarte eine box noch davor ist» — das Suchfeld blieb neben der frischen Wahl stehen (D-1138).*
+	// *Auf `window`, weil die Wahl im Dialog und das «Abbrechen» in zwei Teilen dieses Skripts stehen.*
+	window.taxmodWahlZeigen = function ( wahl ) {
+		if ( ! wahl || wahl.classList.contains( 'taxmod-record-remote' ) ) {
+			return;
+		}
+
+		var an       = wahl.querySelector( '.taxmod-record-tree input[type="radio"]:checked' );
+		var gesetzt  = !! an && an.value !== '';
+		var feld     = wahl.querySelector( '.taxmod-record-quick' );
+		var muell    = wahl.querySelector( '.taxmod-record-clear' );
+
+		wahl.classList.toggle( 'taxmod-record-taken', gesetzt );
+
+		if ( feld ) {
+			feld.hidden = gesetzt;
+		}
+
+		if ( muell ) {
+			muell.hidden = ! gesetzt;
+		}
+	};
+
 	function zuruecklegen( theSwitch ) {
 		var stand = gemerkt.get( theSwitch );
 		var chooser = theSwitch.closest( '.taxmod-chooser' );
@@ -455,6 +479,8 @@
 		if ( kopf && stand.kopf !== null ) {
 			kopf.innerHTML = stand.kopf;
 		}
+
+		window.taxmodWahlZeigen( chooser.closest( '.taxmod-record-pick' ) );
 	}
 
 	document.addEventListener( 'click', function ( event ) {
@@ -1544,6 +1570,8 @@
 			kopf.textContent = wort === '' ? '—' : wort;
 		}
 
+		window.taxmodWahlZeigen( knopf.closest( '.taxmod-record-pick' ) );
+
 		// ⚠️ *Der Dialog bleibt offen — geschlossen wird nur über «OK», «Abbrechen» oder das ✕ (D-804). «Abbrechen» nimmt die Wahl zurück.*
 	} );
 
@@ -2614,11 +2642,8 @@
 		wahl.classList.remove( 'taxmod-record-taken' );
 
 		// *Bei der Serversuche bleibt der Mülleimer im Markup, nur verborgen — die nächste Wahl braucht ihn wieder (D-1011).*
-		if ( wahl.classList.contains( 'taxmod-record-remote' ) ) {
-			knopf.hidden = true;
-		} else {
-			knopf.remove();
-		}
+		// *Der Mülleimer bleibt im Markup, nur verborgen — die nächste Wahl braucht ihn wieder (D-1011, D-1138).*
+		knopf.hidden = true;
 
 		wahl.querySelectorAll( '.taxmod-record-browse' ).forEach( function ( baum ) {
 			baum.hidden = false;
