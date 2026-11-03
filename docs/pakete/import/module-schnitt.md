@@ -116,6 +116,12 @@ Ein Modul meldet seinen Leser über den Filter `taxmail_parsers` an (gibt es sch
 - eBay 0.0.66, JLCPCB 0.1.11: Leser im Modul. Neu: `wp_tax_api_amazon`, `_aliexpress`, `_conrad`, `_mouser`, `_reichelt` je 0.0.1.
 - **Noch in tax_mail:** Amazon-Bestellhistorie (§4a, Ids bleiben), DHL-Etikettenmails, `CarrierNotice`. Umzug der Historie ins Amazon-Modul ist der nächste Schritt; DHL folgt danach.
 
+### 4c · Ankündigung an der Bestellung ([D-1131](../../NewConcept/90-decision-log.md))
+
+- Ein Leser darf an einem «versendet»-Vorschlag `expectedDelivery` (Y-m-d), `deliveryWindow` («HH:MM–HH:MM») und `shipper` mitgeben.
+- Der Eingang schreibt sie beim Übernehmen in die Bestellfelder der Rollen `expected_delivery`, `delivery_window`, `shipper`; die Meldungen laufen ältere zuerst, eine Verspätung ersetzt also Tag und Fenster. Der Versender wird nur gefüllt.
+- Solange eine Rolle keine Feld-Id hat (0), wird sie übergangen — der Code läuft vor den Feldern.
+
 ## 5 · Annahmen, die er nicht gesagt hat
 
 - Ein Repo je Shop, Schema `wp_tax_api_<shop>` — auch für Shops, die heute nur Mails haben.

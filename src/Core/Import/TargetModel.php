@@ -17,7 +17,8 @@ final class TargetModel
 
     /**
      * @param array<string, int> $orderFields role => relation id: title, origin, origin_note, order_number, platform,
-     *        merchant, ordered_at, received_at, shipping_cost, fees, total, tracking, lines
+     *        merchant, ordered_at, received_at, shipping_cost, fees, total, tracking, lines; expected_delivery,
+     *        delivery_window, shipper from parcel mails (D-1131), each optional
      * @param array<string, int> $purchaseFields role => relation id: title, origin, origin_note, quantity,
      *        article_number, unit_price, total_price, landed_unit_price (calculated, D-1022), shipping_share, fees_share,
      *        images (D-1079)
@@ -107,7 +108,8 @@ final class TargetModel
 
     public function hasOrderField(string $role): bool
     {
-        return isset($this->orderFields[$role]);
+        // ⚠️ *0 is «not configured yet», as on the purchase side — the announcement fields start that way (D-1131).*
+        return ($this->orderFields[$role] ?? 0) > 0;
     }
 
     public function hasPurchaseField(string $role): bool

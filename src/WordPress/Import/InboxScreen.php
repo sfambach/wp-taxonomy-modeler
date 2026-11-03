@@ -359,6 +359,16 @@ final class InboxScreen
             $html .= '<p>' . esc_html(sprintf(__('Shipped on %s', 'taxmod'), $proposal->shippedDate)) . '</p>';
         }
 
+        if ($proposal->expectedDelivery !== null) {
+            /* translators: 1: expected day, 2: hours of that day or nothing */
+            $html .= '<p>' . esc_html(trim(sprintf(__('Expected on %1$s %2$s', 'taxmod'), $proposal->expectedDelivery, (string) $proposal->deliveryWindow))) . '</p>';
+        }
+
+        if ($proposal->shipper !== null) {
+            /* translators: %s: who handed the parcel to the parcel service */
+            $html .= '<p>' . esc_html(sprintf(__('Shipper: %s', 'taxmod'), $proposal->shipper)) . '</p>';
+        }
+
         if ($proposal->trackingNumbers !== []) {
             /* translators: %s: tracking numbers */
             $html .= '<p>' . esc_html(sprintf(__('Tracking: %s', 'taxmod'), implode(', ', $proposal->trackingNumbers))) . '</p>';
@@ -815,6 +825,11 @@ final class InboxScreen
                     $changes = [...$changes, ...$builder->delivered($existing, $deliveredOn)];
                 }
 
+                // The announced day, its hours and the shipper (D-1131); the rows run oldest first, so a delay overwrites.
+                if ($step->kind === ProposalKind::Shipped) {
+                    $changes = [...$changes, ...$builder->announced($existing, $step)];
+                }
+
                 // ⚠️ *The order's status belongs to the stock process (D-1037, D-1038): the inbox only reports the event,
                 // once everything is written. Without a listener nothing happens.*
                 if (in_array($step->kind, [ProposalKind::Shipped, ProposalKind::Delivered], true) && $existing->recordId > 0) {
@@ -855,7 +870,9 @@ final class InboxScreen
                     $existing->counterparty,
                     $existing->orderDate,
                     $existing->title,
-                    $existing->values,
+                    ($existing->values['shipper'] ?? '') === '' && $step->shipper !== null
+                        ? ['shipper' => $step->shipper] + $existing->values
+                        : $existing->values,
                     $existing->lines,
                     $step->invoice === null ? $existing->invoiceNumbers : [...$existing->invoiceNumbers, $step->invoice->number],
                 );

@@ -178,6 +178,60 @@ final class ImportChangeListTest extends TestCase
         );
     }
 
+    public function testAnAnnouncementWritesTheDayItsHoursAndAnEmptyShipper(): void
+    {
+        $target = self::announcingTarget();
+        $notice = new OrderProposal('Hermes', 'sendung:H1', ProposalKind::Shipped, trackingNumbers: ['H1'], numberMissing: true,
+            expectedDelivery: '2025-04-01', deliveryWindow: '09:45–11:45', shipper: 'Cainiao');
+
+        self::assertSame(
+            [['op' => 'set_values', 'record' => '5', 'values' => ['114' => '2025-04-01', '115' => '09:45–11:45', '116' => 'Cainiao']]],
+            (new ChangeListBuilder($target))->announced(new ExistingOrder(5, ['H1']), $notice)
+        );
+        self::assertSame(
+            [['op' => 'set_values', 'record' => '5', 'values' => ['114' => '2025-04-01', '115' => '09:45–11:45']]],
+            (new ChangeListBuilder($target))->announced(new ExistingOrder(5, ['H1'], values: ['shipper' => 'AliExpress']), $notice),
+            'a shipper the order has stays'
+        );
+    }
+
+    public function testADelayWithoutHoursEmptiesTheOldHours(): void
+    {
+        $delay = new OrderProposal('Hermes', 'sendung:H1', ProposalKind::Shipped, expectedDelivery: '2021-12-22');
+
+        self::assertSame(
+            [['op' => 'set_values', 'record' => '5', 'values' => ['114' => '2021-12-22', '115' => '']]],
+            (new ChangeListBuilder(self::announcingTarget()))->announced(new ExistingOrder(5), $delay)
+        );
+    }
+
+    public function testNothingAnnouncedOrNoFieldsForItWritesNothing(): void
+    {
+        $notice = new OrderProposal('Hermes', 'sendung:H1', ProposalKind::Shipped, expectedDelivery: '2025-04-01', shipper: 'Cainiao');
+
+        self::assertSame([], (new ChangeListBuilder(self::target()))->announced(new ExistingOrder(5), $notice), 'fields not configured');
+        self::assertSame([], (new ChangeListBuilder(self::announcingTarget()))->announced(
+            new ExistingOrder(5),
+            new OrderProposal('Hermes', 'sendung:H1', ProposalKind::Shipped)
+        ));
+    }
+
+    public function testTheAnnouncementSurvivesTheInbox(): void
+    {
+        $notice = new OrderProposal('Hermes', 'sendung:H1', ProposalKind::Shipped, expectedDelivery: '2025-04-01', deliveryWindow: '09:45–11:45', shipper: 'Cainiao');
+        $back = OrderProposal::fromArray(json_decode((string) json_encode($notice->toArray()), true));
+
+        self::assertSame(['2025-04-01', '09:45–11:45', 'Cainiao'], [$back->expectedDelivery, $back->deliveryWindow, $back->shipper]);
+    }
+
+    private static function announcingTarget(): TargetModel
+    {
+        $base = self::target();
+
+        return new TargetModel(10, 20, 99, 4234, 4236, $base->orderFields + ['expected_delivery' => 114, 'delivery_window' => 115, 'shipper' => 116],
+            $base->purchaseFields, $base->currencies, [205, 206]);
+    }
+
     public function testMoneyRoundTrip(): void
     {
         self::assertSame(123400, Money::toUnits('12.34'));

@@ -142,6 +142,7 @@ final class ModelGateway
         $orderedField = $this->target->orderField('ordered_at');
         $titleField = $this->target->orderField('title');
         $linesField = $this->target->hasOrderField('lines') ? $this->target->orderField('lines') : -3;
+        $shipperField = $this->target->hasOrderField('shipper') ? $this->target->orderField('shipper') : -4;
         $amountFields = [];
 
         foreach (array_filter(['shipping_cost', 'fees', 'total'], $this->target->hasOrderField(...)) as $role) {
@@ -162,6 +163,7 @@ final class ModelGateway
             $title = '';
             $parts = [];
             $lines = [];
+            $shipper = null;
 
             foreach ((array) ($record['values'] ?? []) as $value) {
                 if (isset($amountFields[(int) $value['relation_id']])) {
@@ -180,12 +182,13 @@ final class ModelGateway
                     $orderedField  => $ordered = (string) $value['value'],
                     $titleField    => $title .= ' ' . (string) $value['value'],
                     $linesField    => $lines[] = (int) $value['value'],
+                    $shipperField  => $shipper = (string) $value['value'],
                     default        => null,
                 };
             }
 
             if ($number !== '') {
-                $found[self::key($platform, $number)] = [(int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title), $parts, $lines];
+                $found[self::key($platform, $number)] = [(int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title), $parts, $lines, $shipper];
                 $this->platforms[self::key($platform, $number)] = trim($platform);
             }
         }
@@ -201,8 +204,9 @@ final class ModelGateway
             return $invoices;
         }
 
-        foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts, $lineIds]) {
+        foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts, $lineIds, $shipper]) {
             $values = array_filter([
+                'shipper'    => $shipper,
                 'merchant'   => $merchant,
                 'ordered_at' => $ordered === null ? null : substr($ordered, 0, 10),
             ], static fn (?string $value): bool => $value !== null && $value !== '');

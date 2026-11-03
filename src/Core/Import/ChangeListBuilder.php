@@ -154,6 +154,36 @@ final class ChangeListBuilder
         ]]];
     }
 
+    /**
+     * What a parcel service announces (D-1131): the expected day with its hours, and who handed the parcel over. A later
+     * notice replaces the day and the hours, so a delay moves both; a day announced without hours empties the old hours.
+     * The shipper is only filled, never replaced. Fields the target does not have are left out.
+     *
+     * @return list<array<string, mixed>> empty when the message announces nothing or the target has none of the fields
+     */
+    public function announced(ExistingOrder $order, OrderProposal $notice): array
+    {
+        $values = [];
+
+        if ($notice->expectedDelivery !== null) {
+            $values += $this->roleValue('expected_delivery', $notice->expectedDelivery);
+            $values += $this->roleValue('delivery_window', $notice->deliveryWindow ?? '');
+        }
+
+        if ($notice->shipper !== null && $this->target->hasOrderField('shipper')
+            && trim($order->values['shipper'] ?? '') === '') {
+            $values += $this->roleValue('shipper', $notice->shipper);
+        }
+
+        return $values === [] ? [] : [['op' => 'set_values', 'record' => (string) $order->recordId, 'values' => $values]];
+    }
+
+    /** @return array<string, string> one field => value, or nothing where the target lacks the role */
+    private function roleValue(string $role, string $value): array
+    {
+        return $this->target->hasOrderField($role) ? [(string) $this->target->orderField($role) => $value] : [];
+    }
+
     /** @return list<array<string, mixed>> empty where the target has no «shipped on» — an order has none, a sale has */
     public function shippedOn(ExistingOrder $order, string $date): array
     {

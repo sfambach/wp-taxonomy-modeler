@@ -22,6 +22,9 @@ final class OrderProposal
      * @param bool $numberMissing the source names no order number (a won auction, an invoice); $orderNumber is then
      *        only the source's stand-in key, and the order is found by seller and title (LooseMatch)
      * @param InvoiceFacts|null $invoice the invoice this message is (D-1024); it becomes a record «Rechnung»
+     * @param string|null $expectedDelivery Y-m-d, the day a parcel service announces (D-1131)
+     * @param string|null $deliveryWindow «HH:MM–HH:MM», the hours it announces for that day (D-1131)
+     * @param string|null $shipper who handed the parcel over, as the parcel service names it (D-1131)
      */
     public function __construct(
         public readonly string $platform,
@@ -40,6 +43,9 @@ final class OrderProposal
         public readonly ?string $externalId = null,
         public readonly bool $numberMissing = false,
         public readonly ?InvoiceFacts $invoice = null,
+        public readonly ?string $expectedDelivery = null,
+        public readonly ?string $deliveryWindow = null,
+        public readonly ?string $shipper = null,
     ) {
     }
 
@@ -69,6 +75,9 @@ final class OrderProposal
             'external_id'   => $this->externalId,
             'number_missing' => $this->numberMissing,
             'invoice'       => $this->invoice?->toArray(),
+            'expected_delivery' => $this->expectedDelivery,
+            'delivery_window'   => $this->deliveryWindow,
+            'shipper'           => $this->shipper,
         ];
     }
 
@@ -94,6 +103,9 @@ final class OrderProposal
             $text('external_id'),
             (bool) ($row['number_missing'] ?? false),
             is_array($row['invoice'] ?? null) ? InvoiceFacts::fromArray($row['invoice']) : null,
+            $text('expected_delivery'),
+            $text('delivery_window'),
+            $text('shipper'),
         );
     }
 }
