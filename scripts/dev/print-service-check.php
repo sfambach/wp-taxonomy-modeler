@@ -85,6 +85,7 @@ $pruefe($jobs->cancel([$id]) === 1 && $jobs->cancel([$id]) === 0, 'a cancelled j
 $_GET['tab'] = PrintTab::SLUG;
 $seite = (new SettingsScreen())->render();
 $pruefe(str_contains($seite, 'value="test:holder62"'), 'with access set up, every format has «Test via print service»');
+$pruefe(str_contains($seite, 'How to connect') && str_contains($seite, 'taxmod_print_agent.py') && str_contains($seite, 'enable-linger'), 'the tab has the setup guide in its box (D-1116)');
 $pruefe(str_contains($seite, 'Renew access') && str_contains($seite, 'Remove access'), 'the access is renewed and removed through dialogs');
 PrintTab::act([PrintTab::DO => 'test:roll62']);
 $pruefe($jobs->latest(1)[0]['format'] === 'roll62' && $jobs->latest(1)[0]['is_test'] === '1', 'the test button queues a test job');

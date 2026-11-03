@@ -124,6 +124,8 @@ final class PrintTab
             'version' => \Taxmod\WordPress\Plugin::VERSION,
             'render'  => static fn (): string => (new self())->render(),
             'save'    => self::act(...),
+            // His word 2026-11-03: «Die anleitung gehört eigentlich in eine box in das config modul» (D-1116).
+            'guide'   => self::guide(...),
         ];
 
         return $tabs;
@@ -207,6 +209,25 @@ final class PrintTab
             . '<td>' . $state . '</td>'
             . '<td style="text-align:right;white-space:nowrap"><a class="button" href="' . esc_url(PrintJobsScreen::url()) . '">' . esc_html__('Print jobs', 'taxmod') . '</a> ' . $renew . $revoke . '</td>'
             . '</tr></tbody></table>' . $config;
+    }
+
+    /** The setup of the print service at home, step by step, in the box beside the tab (D-963, D-1116). */
+    public static function guide(): string
+    {
+        $raw = 'https://raw.githubusercontent.com/sfambach/wp-taxonomy-modeler/main/tools/print-agent';
+        $code = static fn (string $text): string => '<pre style="white-space:pre-wrap;font-size:.85em;background:#f6f7f7;padding:.5em">' . esc_html($text) . '</pre>';
+        $steps = [
+            esc_html__('Labels print through the browser without any of this. The print service is a small program on a PC at home with CUPS: it fetches the jobs and prints them with the right size and orientation, without a print dialog.', 'taxmod'),
+            esc_html__('Click «Set up access» below and copy the JSON it shows. It is shown only once; never post the token in a chat.', 'taxmod'),
+            esc_html__('On the PC, fetch the program:', 'taxmod') . $code("mkdir -p ~/.local/share/taxmod-print-agent ~/.config/taxmod-print-agent ~/.config/systemd/user\ncd ~/.local/share/taxmod-print-agent\ncurl -fsSLO {$raw}/taxmod_print_agent.py\ncurl -fsSL {$raw}/taxmod-print-agent.service -o ~/.config/systemd/user/taxmod-print-agent.service"),
+            esc_html__('Create ~/.config/taxmod-print-agent/config.json: the four lines from step 2, then the CUPS queue per roll width and, where the queue names a size differently, its PageSize (lpoptions -p <queue> -l | grep PageSize). Then chmod 600 on the file.', 'taxmod')
+                . $code("{\n  \"rest\": \"…\", \"token\": \"…\", \"ntfy\": \"…\", \"wake_url\": \"…\",\n  \"printers\": {\"62\": \"QL-810W_take\", \"102\": \"QL-1100\"},\n  \"formats\": {\"holder62\": {\"PageSize\": \"BrL053E03262D56\", \"orientation-requested\": \"4\"}}\n}"),
+            esc_html__('Start it, and keep it running without a login:', 'taxmod') . $code("systemctl --user daemon-reload\nsystemctl --user enable --now taxmod-print-agent\nloginctl enable-linger \"\$USER\""),
+            esc_html__('Click «Test via print service» at a format. The status above shows when the service was last heard of; the job list shows each job with the message of CUPS. Log: journalctl --user -u taxmod-print-agent -f', 'taxmod'),
+            esc_html__('After «Renew access» enter the new values and restart: systemctl --user restart taxmod-print-agent. Run only one print service per access; moving it to another PC means stopping it on the old one (systemctl --user disable --now taxmod-print-agent).', 'taxmod'),
+        ];
+
+        return '<ol>' . implode('', array_map(static fn (string $step): string => '<li>' . $step . '</li>', $steps)) . '</ol>';
     }
 
     private static function say(string $message): void
