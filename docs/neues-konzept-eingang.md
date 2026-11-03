@@ -1157,3 +1157,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Heute (gelesen, live 2026-11-03):** «Quellen», «Herkunft» und «Herkunftshinweis» sind an der Wurzel 402 erklärt und erscheinen dadurch an jedem Knoten, auch an Lagerorten und Lager-Sichten, wo sie nichts bedeuten.
 - **Offen für Stefan:** wo Herkunft gebraucht wird (Material, Import-Sätze?) und ob die drei Felder von 402 an diese Knoten wandern.
+
+## INF-106 · Materialliste: erst suchen, dann zeigen (2026-11-03)
+
+**Typ:** `IDEE` · **Status:** `OFFEN` — ausdrücklich nicht heute.
+
+> *«ach würde ich vorschlagen bei material nicht immer alle zu laden erst suchen dann zeigen massen ansicht natürlich immer noch ihren wert sollten das nochmal genauer durchdenken aber nicht heute»*
+
+- **Heute:** die Materialliste lädt alle Materialien (510) und blättert seitenweise.
+- **Offen für Stefan:** leere Liste bis zur Suche oder zum Filter, und wann die Massenansicht (alle) trotzdem gezeigt wird.
