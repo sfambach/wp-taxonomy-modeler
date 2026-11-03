@@ -179,6 +179,14 @@ final class PrintingTest extends TestCase
     }
 
     #[Test]
+    public function the_code_keeps_clear_of_the_bottom_edge(): void
+    {
+        $pdf = LabelDocument::render(LabelFormat::byKey('material62'), [LabelContent::of(LabelPrefix::Material, 4711, 'NE555', 'DIP-8')]);
+        self::assertSame(1, preg_match('/BT [\d.]+ ([\d.]+) Td \/F1 [\d.]+ Tf \(M-4711\) Tj/', $pdf, $code));
+        self::assertEqualsWithDelta(4.5 * 72 / 25.4, (float) $code[1], 0.01, 'the baseline 4.5 mm above the edge (D-1119)');
+    }
+
+    #[Test]
     public function an_unknown_format_is_refused(): void
     {
         $this->expectException(\InvalidArgumentException::class);

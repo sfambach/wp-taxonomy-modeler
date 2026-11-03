@@ -18,6 +18,8 @@ namespace Taxmod\Core\Printing;
 final class LabelDocument
 {
     private const MARGIN_MM = 3.0;
+    /** The code's baseline sits this much above the bottom margin: at 3 mm the QL-810 cut its foot (his test print 2026-11-03, D-1119). */
+    private const CODE_BOTTOM_MM = 4.5;
     private const GAP_MM = 3.0;
     private const QUIET_MODULES = 4;
     private const TITLE_MAX_PT = 28.0;
@@ -71,7 +73,7 @@ final class LabelDocument
         }
 
         [$codeText, $codePt] = self::fit($label->code, $width, self::CODE_PT, false);
-        $pdf->text($x, $format->heightMm - self::MARGIN_MM, $codeText, $codePt);
+        $pdf->text($x, $format->heightMm - self::CODE_BOTTOM_MM, $codeText, $codePt);
     }
 
     /** Near-square labels (the place holders): title across the full width, QR code below left, the rest beside it. */
@@ -99,7 +101,7 @@ final class LabelDocument
             }
         }
         [$codeText, $codePt] = self::fit($label->code, $rest, self::CODE_PT, false);
-        $pdf->text($x, $format->heightMm - self::MARGIN_MM, $codeText, $codePt);
+        $pdf->text($x, $format->heightMm - self::CODE_BOTTOM_MM, $codeText, $codePt);
     }
 
     private static function drawQr(PdfDocument $pdf, QrCode $qr, float $xMm, float $yMm, float $sideMm): void
