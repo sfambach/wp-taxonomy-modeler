@@ -37,13 +37,13 @@ $pruefe = static function (bool $gut, string $was) use (&$fehler): void {
 $pruefe(isset(SettingsScreen::moduleTabs()[PrintTab::SLUG]), 'the Configuration page has a «Printing» tab');
 $pruefe(has_action('admin_post_' . LabelPrint::ACTION) !== false, 'the label PDF has its admin-post action');
 
-// ⚠️ *D-1103: dieselbe Seite auch in der Logistik, seit D-1115 unter Logistik › Druck › Etiketten.*
+// ⚠️ *D-1103/D-1115: die Etiketten stehen unter Logistik › Druck › Etiketten; seit D-1117 nur noch dort, die Configuration hält den Zugang.*
 $logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn ($p): bool => is_array($p) && ($p['slug'] ?? '') === PrintTab::LOGISTICS_SLUG));
 $pruefe(count($logistik) === 1 && $logistik[0]['area'] === 'print', 'the printing page is announced under Logistik › Druck (D-1115)');
-$pruefe(count($logistik) === 1 && str_contains((string) ($logistik[0]['render'])(), 'test=1'), 'it shows the same formats with their test prints');
-
+$seite = count($logistik) === 1 ? (string) ($logistik[0]['render'])() : '';
 $_GET['tab'] = PrintTab::SLUG;
-$seite = (new SettingsScreen())->render();
+$konfiguration = (new SettingsScreen())->render();
+$pruefe(! str_contains($konfiguration, 'test=1') && str_contains($konfiguration, 'Logistik › Druck › Etiketten'), 'the Configuration tab holds no formats, it points to Logistik › Druck › Etiketten (D-1117)');
 foreach (LabelFormat::shipped() as $format) {
     $pruefe(str_contains($seite, 'format=' . $format->key) && str_contains($seite, 'test=1'), sprintf('format %s has a test print button', $format->key));
 }

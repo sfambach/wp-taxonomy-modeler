@@ -8,11 +8,12 @@ use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Plugin;
 
 /**
- * The «Printing» tab on the Configuration page (D-1085): the label formats, each with its test print in the browser and,
- * once the print service is set up, through the service (D-1096); and the service's access (stage 2 of D-1100).
+ * Two pages of printing, split like the API modules (D-1117): the «Printing» tab of the Configuration holds only the print
+ * service's access — Access, «Test connection», «Delete access data» and the guide in the box (D-1085, D-1116); the label
+ * formats with their test prints (D-1096) stand under Logistik › Druck › Etiketten (D-1115).
  *
- * The same page stands under Logistik › Druck › Etiketten (D-1103, D-1115). In the Configuration its buttons submit the
- * page's own form and arrive in `save`; under Logistik the page brings a form of its own.
+ * In the Configuration the buttons submit the page's own form and arrive in `save`; under Logistik the page brings a form
+ * of its own.
  *
  * @see docs/NewConcept/90-decision-log.md D-1113
  */
@@ -44,6 +45,13 @@ final class PrintTab
         // 2026-11-03 its own area: «Würde menü druck machen dann unterpunkte aufträge, etiketten, ...» (D-1115).
         add_filter(self::LOGISTICS_FILTER, self::registerInLogistics(...));
         add_action('admin_post_' . self::ACTION, self::handle(...));
+        // The logistics frame is another plugin's page: our dialogs need our stylesheet there ({@see Plugin::STYLE_ACTION}).
+        add_action('admin_enqueue_scripts', static function (): void {
+            $module = sanitize_text_field(wp_unslash((string) ($_GET['module'] ?? $_GET['page'] ?? '')));
+            if (in_array($module, [self::LOGISTICS_SLUG, PrintJobsScreen::PAGE], true)) {
+                do_action(Plugin::STYLE_ACTION);
+            }
+        });
     }
 
     /** admin-post from the page under Logistik: capability, nonce, then the same step as in the Configuration. */
@@ -74,12 +82,6 @@ final class PrintTab
 
             return;
         }
-        if ($doing === 'revoke') {
-            PrintService::revokeAccess();
-            self::say(__('The access of the print service is removed. Labels still print through the browser.', 'taxmod'));
-
-            return;
-        }
         if (str_starts_with($doing, 'test:')) {
             $formats = LabelFormat::shipped();
             $key = sanitize_key(substr($doing, 5));
@@ -94,7 +96,7 @@ final class PrintTab
     }
 
     /**
-     * The same page under Logistik › Druck › Etiketten, drawn inside the logistics frame (D-1103, D-1115).
+     * The label formats with their test prints under Logistik › Druck › Etiketten, drawn inside the logistics frame (D-1103, D-1115, D-1117).
      *
      * @param list<array<string, mixed>> $pages
      * @return list<array<string, mixed>>
@@ -107,7 +109,8 @@ final class PrintTab
             'area'   => 'print',
             'render' => static fn (): string => '<div class="wrap"><h1>' . esc_html__('Etiketten', 'taxmod') . '</h1>'
                 . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"><input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
-                . wp_nonce_field(self::ACTION, self::NONCE, true, false) . (new self())->render() . '</form></div>',
+                . wp_nonce_field(self::ACTION, self::NONCE, true, false) . (new self())->render()
+                . '<p class="description">' . esc_html(self::status()) . ' <a href="' . esc_url(self::configurationUrl()) . '">' . esc_html__('Access of the print service', 'taxmod') . '</a></p></form></div>',
         ];
 
         return $pages;
@@ -122,7 +125,12 @@ final class PrintTab
         $tabs[self::SLUG] = [
             'title'   => __('Printing', 'taxmod'),
             'version' => \Taxmod\WordPress\Plugin::VERSION,
-            'render'  => static fn (): string => (new self())->render(),
+            // His word 2026-11-03: «ich würde auch hier trennen die einstellungen bleiben im admin config die label haben wir ja jetzt im logistik menü» (D-1117).
+            'render'  => static fn (): string => '<p class="description">' . esc_html__('Label formats and test prints: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
+                . ' <a href="' . esc_url(PrintJobsScreen::url()) . '">' . esc_html__('Print jobs', 'taxmod') . '</a></p>',
+            'credentials' => static fn (): string => (new self())->servicePart(),
+            'test'    => self::status(...),
+            'forget'  => PrintService::revokeAccess(...),
             'save'    => self::act(...),
             // His word 2026-11-03: «Die anleitung gehört eigentlich in eine box in das config modul» (D-1116).
             'guide'   => self::guide(...),
@@ -152,11 +160,33 @@ final class PrintTab
             . '<th scope="col">' . esc_html__('Size', 'taxmod') . '</th>'
             . '<th scope="col">' . esc_html__('Roll width', 'taxmod') . '</th>'
             . '<th scope="col" style="text-align:right">' . esc_html__('Actions', 'taxmod') . '</th>'
-            . '</tr></thead><tbody>' . $rows . '</tbody></table>'
-            . $this->servicePart();
+            . '</tr></thead><tbody>' . $rows . '</tbody></table>';
     }
 
-    /** The print service: whether it is set up, when it was last heard of, its access, and the way to its jobs. */
+    /** One sentence on the print service: not set up, not heard of yet, or when it was last heard of, with what. Also «Test connection». */
+    public static function status(): string
+    {
+        $settings = PrintService::settings();
+
+        return $settings['token_hash'] === ''
+            ? __('Print service not set up. Labels print through the browser.', 'taxmod')
+            : ($settings['last_seen'] === ''
+                ? __('Print service set up, not heard of yet.', 'taxmod')
+                : sprintf(
+                    /* translators: 1: date and time UTC, 2: service version, 3: printers */
+                    __('Print service last heard of %1$s UTC · %2$s · printers: %3$s', 'taxmod'),
+                    $settings['last_seen'],
+                    $settings['agent'] !== '' ? $settings['agent'] : '?',
+                    $settings['printers'] !== [] ? implode(', ', $settings['printers']) : '—'
+                ));
+    }
+
+    private static function configurationUrl(): string
+    {
+        return add_query_arg(['page' => 'taxmod-settings', 'tab' => self::SLUG], admin_url('admin.php'));
+    }
+
+    /** The print service's access: its state, «Set up» / «Renew», and the JSON for its config once after renewing. */
     private function servicePart(): string
     {
         $settings = PrintService::settings();
@@ -164,18 +194,7 @@ final class PrintTab
         if ($token !== '') {
             delete_transient(self::NEW_TOKEN . get_current_user_id());
         }
-
-        $state = $settings['token_hash'] === ''
-            ? esc_html__('Not set up. Labels print through the browser.', 'taxmod')
-            : ($settings['last_seen'] === ''
-                ? esc_html__('Set up, not heard of yet.', 'taxmod')
-                : esc_html(sprintf(
-                    /* translators: 1: date and time UTC, 2: service version, 3: printers */
-                    __('Last heard of %1$s UTC · %2$s · printers: %3$s', 'taxmod'),
-                    $settings['last_seen'],
-                    $settings['agent'] !== '' ? $settings['agent'] : '?',
-                    $settings['printers'] !== [] ? implode(', ', $settings['printers']) : '—'
-                )));
+        $state = esc_html(self::status());
 
         $renew = ListPage::dialogAction(
             'taxmod-print-renew',
@@ -186,15 +205,6 @@ final class PrintTab
             'renew',
             __('Create access', 'taxmod')
         );
-        $revoke = $settings['token_hash'] === '' ? '' : ' ' . ListPage::dialogAction(
-            'taxmod-print-revoke',
-            __('Remove access', 'taxmod'),
-            __('Remove the access of the print service?', 'taxmod'),
-            esc_html__('The print service can no longer fetch jobs. Waiting jobs stay in the list. «Set up access» makes a new one.', 'taxmod'),
-            self::DO,
-            'revoke',
-            __('Remove access', 'taxmod')
-        );
 
         $config = $token === '' ? '' : '<p><strong>' . esc_html__('For the print service — copy into its config.json now:', 'taxmod') . '</strong></p>'
             . '<textarea readonly rows="7" class="large-text code" onclick="this.select()">' . esc_textarea((string) wp_json_encode([
@@ -204,10 +214,10 @@ final class PrintTab
                 'wake_url' => PrintService::wakeUrl(),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</textarea>';
 
-        return '<h2>' . esc_html__('Print service at home', 'taxmod') . '</h2>'
+        return self::message()
             . '<table class="widefat striped taxmod-print-service"><tbody><tr>'
             . '<td>' . $state . '</td>'
-            . '<td style="text-align:right;white-space:nowrap"><a class="button" href="' . esc_url(PrintJobsScreen::url()) . '">' . esc_html__('Print jobs', 'taxmod') . '</a> ' . $renew . $revoke . '</td>'
+            . '<td style="text-align:right;white-space:nowrap">' . $renew . '</td>'
             . '</tr></tbody></table>' . $config;
     }
 

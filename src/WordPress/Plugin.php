@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.136';
+    public const VERSION     = '0.1.137';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -68,6 +68,9 @@ final class Plugin
 
     /** What a person must be able to do before they may shape the model. */
     public const CAPABILITY = 'manage_options';
+
+    /** Action: load the modeller's stylesheet and script on the current admin page. */
+    public const STYLE_ACTION = 'taxmod_enqueue_admin_style';
 
     /** Was die Aktivierung abbrach — eine Option, weil der Hinweis erst im nächsten Aufruf erscheint. */
     public const ACTIVATION_FAILURE = 'taxmod_activation_failure';
@@ -105,6 +108,8 @@ final class Plugin
         add_action('admin_menu', self::maintenanceLast(...), PHP_INT_MAX);
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
         add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
+        // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
+        add_action(self::STYLE_ACTION, $plugin->enqueueStyle(...));
 
         // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
         add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '') use ($plugin): string {

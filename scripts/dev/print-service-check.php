@@ -82,17 +82,21 @@ $pruefe($jobs->cancel([$id]) === 1 && $jobs->latest(1)[0]['status'] === 'cancell
 $pruefe($jobs->queueAgain([$id]) === 1, '… and «Print again» undoes the cancel');
 $pruefe($jobs->cancel([$id]) === 1 && $jobs->cancel([$id]) === 0, 'a cancelled job is not cancelled twice');
 
+$etiketten = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['slug'] ?? '') === PrintTab::LOGISTICS_SLUG));
+$pruefe(str_contains((string) ($etiketten[0]['render'])(), 'value="test:holder62"'), 'with access set up, every format under Logistik › Druck › Etiketten has «Test via print service»');
 $_GET['tab'] = PrintTab::SLUG;
 $seite = (new SettingsScreen())->render();
-$pruefe(str_contains($seite, 'value="test:holder62"'), 'with access set up, every format has «Test via print service»');
 $pruefe(str_contains($seite, 'How to connect') && str_contains($seite, 'taxmod_print_agent.py') && str_contains($seite, 'enable-linger'), 'the tab has the setup guide in its box (D-1116)');
-$pruefe(str_contains($seite, 'Renew access') && str_contains($seite, 'Remove access'), 'the access is renewed and removed through dialogs');
+$pruefe(str_contains($seite, 'Renew access') && str_contains($seite, 'Delete access data') && str_contains($seite, 'Test connection'), 'the Configuration tab has Access like the API modules: renew in a dialog, «Test connection», «Delete access data» (D-1117)');
+$pruefe(str_contains(PrintTab::status(), 'heard of'), '«Test connection» says when the service was last heard of');
 PrintTab::act([PrintTab::DO => 'test:roll62']);
 $pruefe($jobs->latest(1)[0]['format'] === 'roll62' && $jobs->latest(1)[0]['is_test'] === '1', 'the test button queues a test job');
 
 $liste = (new PrintJobsScreen($jobs))->render();
 $pruefe(str_contains($liste, 'taxmod_print_jobs_cancel') && str_contains($liste, 'taxmod_print_jobs_again'), 'the job list has the bulk actions «Cancel» and «Print again»');
 $pruefe(has_action('admin_post_taxmod_print_jobs_cancel') !== false && has_action('admin_post_' . PrintTab::ACTION) !== false, 'the list and the page under Logistik have their admin-post actions');
+do_action(\Taxmod\WordPress\Plugin::STYLE_ACTION);
+$pruefe(wp_style_is('taxmod-admin', 'enqueued'), 'a page in the logistics frame can ask for the modeller\'s stylesheet, so its dialogs open as dialogs');
 $logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['area'] ?? '') === 'print'));
 $pruefe(array_column($logistik, 'slug') === [PrintJobsScreen::PAGE, PrintTab::LOGISTICS_SLUG], 'Logistik › Druck holds «Aufträge», then «Etiketten» (D-1115)');
 
