@@ -74,3 +74,4 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
 2. Menu: own top-level entry «Fertigung» or a tab under Logistik?
 3. Is the inspection step mandatory for every board, or chosen per order?
 4. ~~Repository~~ created by the owner 2026-11-04; built: 0.0.1 (orders, status per board, open positions, note; no bookings yet).
+5. Picking (D-1155): which place to take from when a part lies at several — the stock module answers per place; the list offers each place as its own line. FIFO by lot inside one place is the stock module's rule.
