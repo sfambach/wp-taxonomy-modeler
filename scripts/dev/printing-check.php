@@ -94,5 +94,16 @@ if ($fieldName !== '') {
     $pruefe(false, 'the check found a record with a text value to read');
 }
 
+// D-1161: a label handed to the preview renderer comes back as a PDF frame, with the examples or a record's words.
+$vorschau = (string) apply_filters('taxmod_label_preview', '', ['name' => 'Test', 'format' => ['key' => 'material62', 'w' => 62, 'h' => 30],
+    'layout' => '[{"type":"qr","field":"code","x":2,"y":2,"w":20,"example":"O-5"},{"type":"text","field":"title","x":24,"y":2,"w":36,"h":10,"example":"Beispiel"},{"type":"text","field":"leer","x":24,"y":14,"w":36,"h":6}]']);
+$pruefe(str_contains($vorschau, 'data:application/pdf;base64,') && str_contains(base64_decode((string) preg_replace('/^.*base64,([^#"]+).*$/s', '$1', $vorschau)), '(Beispiel) Tj'), 'the preview renderer draws the layout with its examples');
+$pruefe(str_contains($vorschau, 'leer'), 'the preview names a field that stays empty');
+$pruefe(str_contains((string) apply_filters('taxmod_label_preview', '', ['layout' => 'kaputt']), 'notice-error'), 'a broken layout says why instead of drawing');
+if ($fieldName !== '') {
+    $mitSatz = (string) apply_filters('taxmod_label_preview', '', ['format' => ['key' => 'material62', 'w' => 62, 'h' => 30], 'layout' => json_encode([['type' => 'text', 'field' => $fieldName, 'x' => 2, 'y' => 2, 'w' => 58, 'h' => 10], ['type' => 'text', 'field' => 'gibt es nicht', 'x' => 2, 'y' => 14, 'w' => 58, 'h' => 6]])], (int) $probe['record_id']);
+    $pruefe(str_contains($mitSatz, 'notice-warning') && str_contains($mitSatz, 'gibt es nicht'), 'with a record the preview warns about a field the record does not have');
+}
+
 echo $fehler === 0 ? "printing: all good\n" : "printing: $fehler failed\n";
 exit($fehler === 0 ? 0 : 1);
