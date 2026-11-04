@@ -24,7 +24,6 @@ final class PrintTab
     /** The logistics module's filter for pages inside its navigation (wp_tax_stock, D-1085). */
     public const LOGISTICS_FILTER = 'taxmod_logistics_pages';
 
-    public const LOGISTICS_SLUG = 'taxmod-printing';
 
     /** admin-post action of the page's own form under Logistik. */
     public const ACTION = 'taxmod_print_service';
@@ -41,14 +40,13 @@ final class PrintTab
     public static function boot(): void
     {
         add_filter(\Taxmod\WordPress\Admin\SettingsScreen::TABS_FILTER, self::register(...), 2);
-        // His word 2026-11-02: «hänge das aber auch nochmal ins logistik menüs einstellungen -> druck, gezeigt auf der rechten seite»;
-        // 2026-11-03 its own area: «Würde menü druck machen dann unterpunkte aufträge, etiketten, ...» (D-1115).
-        add_filter(self::LOGISTICS_FILTER, self::registerInLogistics(...));
+        // D-1165, his word 2026-11-04: «immer noch etiketten und etiketten vorlage» — the labels are records now, listed by the module
+        // that owns them; the modeller announces no second page «Etiketten» with fixed formats.
         add_action('admin_post_' . self::ACTION, self::handle(...));
         // The logistics frame is another plugin's page: our dialogs need our stylesheet there ({@see Plugin::STYLE_ACTION}).
         add_action('admin_enqueue_scripts', static function (): void {
             $module = sanitize_text_field(wp_unslash((string) ($_GET['module'] ?? $_GET['page'] ?? '')));
-            if (in_array($module, [self::LOGISTICS_SLUG, PrintJobsScreen::PAGE], true)) {
+            if ($module === PrintJobsScreen::PAGE) {
                 do_action(Plugin::STYLE_ACTION);
             }
         });
@@ -96,27 +94,6 @@ final class PrintTab
     }
 
     /**
-     * The label formats with their test prints under Logistik › Druck › Etiketten, drawn inside the logistics frame (D-1103, D-1115, D-1117).
-     *
-     * @param list<array<string, mixed>> $pages
-     * @return list<array<string, mixed>>
-     */
-    public static function registerInLogistics(array $pages): array
-    {
-        $pages[] = [
-            'slug'   => self::LOGISTICS_SLUG,
-            'label'  => __('Etiketten', 'taxmod'),
-            'area'   => 'print',
-            'render' => static fn (): string => '<div class="wrap"><h1>' . esc_html__('Etiketten', 'taxmod') . '</h1>'
-                . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"><input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
-                . wp_nonce_field(self::ACTION, self::NONCE, true, false) . (new self())->render()
-                . '<p class="description">' . esc_html(self::status()) . ' <a href="' . esc_url(self::configurationUrl()) . '">' . esc_html__('Access of the print service', 'taxmod') . '</a></p></form></div>',
-        ];
-
-        return $pages;
-    }
-
-    /**
      * @param array<string, array<string, mixed>> $tabs
      * @return array<string, array<string, mixed>>
      */
@@ -126,7 +103,7 @@ final class PrintTab
             'title'   => __('Printing', 'taxmod'),
             'version' => \Taxmod\WordPress\Plugin::VERSION,
             // His word 2026-11-03: «ich würde auch hier trennen die einstellungen bleiben im admin config die label haben wir ja jetzt im logistik menü» (D-1117).
-            'render'  => static fn (): string => '<p class="description">' . esc_html__('Label formats and test prints: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
+            'render'  => static fn (): string => '<p class="description">' . esc_html__('Labels with preview and test print: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
                 . ' <a href="' . esc_url(PrintJobsScreen::url()) . '">' . esc_html__('Print jobs', 'taxmod') . '</a></p>',
             'credentials' => static fn (): string => (new self())->servicePart(),
             'test'    => self::status(...),
@@ -137,30 +114,6 @@ final class PrintTab
         ];
 
         return $tabs;
-    }
-
-    public function render(): string
-    {
-        $service = PrintService::isSetUp();
-        $rows = '';
-        foreach (LabelFormat::shipped() as $format) {
-            $rows .= '<tr><td>' . esc_html(self::formatName($format)) . '</td>'
-                . '<td>' . esc_html(sprintf('%s × %s mm', self::millimetres($format->widthMm), self::millimetres($format->heightMm))) . '</td>'
-                . '<td>' . esc_html(sprintf('%s mm', self::millimetres($format->rollMm))) . '</td>'
-                . '<td class="taxmod-actions" style="text-align:right"><a class="button" target="_blank" rel="noopener" href="' . esc_url(LabelPrint::url($format->key)) . '">'
-                . esc_html__('Test print', 'taxmod') . '</a>'
-                . ($service ? ' <button type="submit" class="button" name="' . esc_attr(self::DO) . '" value="' . esc_attr('test:' . $format->key) . '">' . esc_html__('Test via print service', 'taxmod') . '</button>' : '')
-                . '</td></tr>';
-        }
-
-        return self::message()
-            . '<p class="description">' . esc_html__('«Test print» opens the label as PDF in a new tab, to print from the browser. «Test via print service» sends it to the print service at home. Test prints use made-up values and change nothing.', 'taxmod') . '</p>'
-            . '<table class="widefat striped taxmod-print-formats"><caption class="screen-reader-text">' . esc_html__('Label formats', 'taxmod') . '</caption><thead><tr>'
-            . '<th scope="col">' . esc_html__('Label', 'taxmod') . '</th>'
-            . '<th scope="col">' . esc_html__('Size', 'taxmod') . '</th>'
-            . '<th scope="col">' . esc_html__('Roll width', 'taxmod') . '</th>'
-            . '<th scope="col" style="text-align:right">' . esc_html__('Actions', 'taxmod') . '</th>'
-            . '</tr></thead><tbody>' . $rows . '</tbody></table>';
     }
 
     /** One sentence on the print service: not set up, not heard of yet, or when it was last heard of, with what. Also «Test connection». */
@@ -179,11 +132,6 @@ final class PrintTab
                     $settings['agent'] !== '' ? $settings['agent'] : '?',
                     $settings['printers'] !== [] ? implode(', ', $settings['printers']) : '—'
                 ));
-    }
-
-    private static function configurationUrl(): string
-    {
-        return add_query_arg(['page' => 'taxmod-settings', 'tab' => self::SLUG], admin_url('admin.php'));
     }
 
     /** The print service's access: its state, «Set up» / «Renew», and the JSON for its config once after renewing. */

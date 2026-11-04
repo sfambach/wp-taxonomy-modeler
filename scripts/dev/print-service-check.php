@@ -99,8 +99,6 @@ $knopf = \Taxmod\WordPress\Printing\LabelButton::render('O', 4712, 'Vorlagenfach
 $pruefe(str_contains($knopf, 'name="document"') && str_contains($knopf, 'Platz') && ! str_contains($knopf, 'name="format"'), 'a module\'s template replaces the format choice in the label dialog');
 
 
-$etiketten = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['slug'] ?? '') === PrintTab::LOGISTICS_SLUG));
-$pruefe(str_contains((string) ($etiketten[0]['render'])(), 'value="test:holder62"'), 'with access set up, every format under Logistik › Druck › Etiketten has «Test via print service»');
 $_GET['tab'] = PrintTab::SLUG;
 $seite = (new SettingsScreen())->render();
 $pruefe(str_contains($seite, 'How to connect') && str_contains($seite, 'taxmod_print_agent.py') && str_contains($seite, 'enable-linger'), 'the tab has the setup guide in its box (D-1116)');
@@ -111,11 +109,11 @@ $pruefe($jobs->latest(1)[0]['format'] === 'roll62' && $jobs->latest(1)[0]['is_te
 
 $liste = (new PrintJobsScreen($jobs))->render();
 $pruefe(str_contains($liste, 'taxmod_print_jobs_cancel') && str_contains($liste, 'taxmod_print_jobs_again'), 'the job list has the bulk actions «Cancel» and «Print again»');
-$pruefe(has_action('admin_post_taxmod_print_jobs_cancel') !== false && has_action('admin_post_' . PrintTab::ACTION) !== false, 'the list and the page under Logistik have their admin-post actions');
+$pruefe(has_action('admin_post_taxmod_print_jobs_cancel') !== false && has_action('admin_post_' . PrintTab::ACTION) !== false, 'the list and the print settings have their admin-post actions');
 do_action(\Taxmod\WordPress\Plugin::STYLE_ACTION);
 $pruefe(wp_style_is('taxmod-admin', 'enqueued'), 'a page in the logistics frame can ask for the modeller\'s stylesheet, so its dialogs open as dialogs');
 $logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['area'] ?? '') === 'print'));
-$pruefe(array_column($logistik, 'slug') === [PrintJobsScreen::PAGE, PrintTab::LOGISTICS_SLUG], 'Logistik › Druck holds «Aufträge», then «Etiketten» (D-1115)');
+$pruefe(array_column($logistik, 'slug') === [PrintJobsScreen::PAGE], 'Logistik › Druck holds «Aufträge» from the modeller; «Etiketten» is the module\'s (D-1115, D-1165)');
 
 // D-1120: one «Etikett drucken» for every module, through the filter.
 $knopf = (string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'O', 4711, 'Projektplatz 1', 'Keller › Regal 2');

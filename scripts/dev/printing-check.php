@@ -37,17 +37,12 @@ $pruefe = static function (bool $gut, string $was) use (&$fehler): void {
 $pruefe(isset(SettingsScreen::moduleTabs()[PrintTab::SLUG]), 'the Configuration page has a «Printing» tab');
 $pruefe(has_action('admin_post_' . LabelPrint::ACTION) !== false, 'the label PDF has its admin-post action');
 
-// ⚠️ *D-1103/D-1115: die Etiketten stehen unter Logistik › Druck › Etiketten; seit D-1117 nur noch dort, die Configuration hält den Zugang.*
-$logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn ($p): bool => is_array($p) && ($p['slug'] ?? '') === PrintTab::LOGISTICS_SLUG));
-$pruefe(count($logistik) === 1 && $logistik[0]['area'] === 'print', 'the printing page is announced under Logistik › Druck (D-1115)');
-$seite = count($logistik) === 1 ? (string) ($logistik[0]['render'])() : '';
+// ⚠️ *D-1165: die Etiketten sind Sätze und stehen beim Modul, das sie führt; der Modeller meldet keine zweite Seite «Etiketten» mit festen Formaten an.*
+$logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn ($p): bool => is_array($p) && ($p['area'] ?? '') === 'print'));
+$pruefe(array_column($logistik, 'slug') === [\Taxmod\WordPress\Printing\PrintJobsScreen::PAGE], 'the modeller announces only «Aufträge» under Logistik › Druck, no page of fixed formats (D-1165)');
 $_GET['tab'] = PrintTab::SLUG;
 $konfiguration = (new SettingsScreen())->render();
 $pruefe(! str_contains($konfiguration, 'test=1') && str_contains($konfiguration, 'Logistik › Druck › Etiketten'), 'the Configuration tab holds no formats, it points to Logistik › Druck › Etiketten (D-1117)');
-foreach (LabelFormat::shipped() as $format) {
-    $pruefe(str_contains($seite, 'format=' . $format->key) && str_contains($seite, 'test=1'), sprintf('format %s has a test print button', $format->key));
-}
-$pruefe(substr_count($seite, '_taxmod_nonce=') >= count(LabelFormat::shipped()), 'every test print link carries a nonce');
 
 $url = LabelPrint::url('roll62', LabelContent::of(LabelPrefix::Place, 77, 'Fach 3 · Kleinteile', 'Keller'));
 parse_str((string) wp_parse_url($url, PHP_URL_QUERY), $query);
