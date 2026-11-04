@@ -19,7 +19,7 @@ use Taxmod\WordPress\Plugin;
  */
 final class LabelButton
 {
-    /** Filter: `(string $html, string $prefix 'O'|'M'|'E'|'K', int $id, string $title, string $subtitle): string`. */
+    /** Filter: `(string $html, string $prefix 'O'|'M'|'E'|'K', int $id, string $title, string $subtitle, int $copies = 1): string`. */
     public const FILTER = 'taxmod_label_button';
 
     public const ACTION = 'taxmod_label_queue';
@@ -29,13 +29,16 @@ final class LabelButton
     /** The format a label of this kind starts with in the dialog. */
     private const DEFAULT_FORMAT = ['O' => 'holder62', 'K' => 'roll62', 'M' => 'material62', 'E' => 'material62'];
 
+    /** More copies than this in one go is a typo, not a wish. */
+    public const MAX_COPIES = 50;
+
     public static function boot(): void
     {
-        add_filter(self::FILTER, static fn (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = ''): string => self::render($prefix, $id, $title, $subtitle), 10, 5);
+        add_filter(self::FILTER, static fn (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1): string => self::render($prefix, $id, $title, $subtitle, $copies), 10, 6);
         add_action('admin_post_' . self::ACTION, self::handle(...));
     }
 
-    public static function render(string $prefix, int $id, string $title, string $subtitle = ''): string
+    public static function render(string $prefix, int $id, string $title, string $subtitle = '', int $copies = 1): string
     {
         $kind = LabelPrefix::tryFrom($prefix);
         if ($kind === null || $id <= 0 || trim($title) === '' || ! current_user_can(Plugin::CAPABILITY)) {
@@ -56,6 +59,9 @@ final class LabelButton
 
         $body = '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Format', 'taxmod') . '</span>'
             . '<select name="format">' . $options . '</select></label>'
+            // D-1152, his word 2026-11-04: «Bei etikett druck anzahl mit aufnehmen» — the module says how many to start with.
+            . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Anzahl', 'taxmod') . '</span>'
+            . '<input type="number" name="copies" min="1" max="' . self::MAX_COPIES . '" step="1" value="' . self::copies($copies) . '" style="width:6em"></label>'
             . '<span style="display:block">' . esc_html($label->code . ' · ' . $label->title . ($label->subtitle === '' ? '' : ' · ' . $label->subtitle)) . '</span>'
             . ($service ? '' : '<span class="description" style="display:block;margin-top:.5em">' . esc_html__('No print service set up: the label opens as PDF to print from the browser.', 'taxmod') . '</span>');
 
@@ -98,18 +104,29 @@ final class LabelButton
             wp_die(esc_html__('A label needs a known format, a code like O-123 and a title.', 'taxmod'), '', ['response' => 400]);
         }
 
+        $copies = self::copies((int) ($post['copies'] ?? 1));
+
         if (($post['how'] ?? '') === 'service' && PrintService::isSetUp()) {
-            $id = (new PrintJobs())->queue($format, $label, false);
+            $jobs = new PrintJobs();
+            for ($n = 0; $n < $copies; $n++) {
+                $id = $jobs->queue($format, $label, false);
+            }
             wp_safe_redirect(add_query_arg('taxmod_label_job', $id, wp_get_referer() ?: PrintJobsScreen::url()));
             exit;
         }
 
-        $pdf = LabelDocument::render($format, [$label]);
+        $pdf = LabelDocument::render($format, array_fill(0, $copies, $label));
         nocache_headers();
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="' . sanitize_file_name('label-' . $label->code . '.pdf') . '"');
         header('Content-Length: ' . (string) strlen($pdf));
         echo $pdf; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- binary PDF, not HTML.
         exit;
+    }
+
+    /** 1 … {@see self::MAX_COPIES}: what a module asked for or a person typed, held to what a printer run can mean. */
+    public static function copies(int $wanted): int
+    {
+        return max(1, min(self::MAX_COPIES, $wanted));
     }
 }

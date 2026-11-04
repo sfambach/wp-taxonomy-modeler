@@ -63,5 +63,10 @@ $pruefe($druck->pdfFor(['format' => 'a4', 'test' => '1']) instanceof WP_Error, '
 $pruefe($druck->pdfFor(['format' => 'roll62', 'code' => 'X-1', 'title' => 'x']) instanceof WP_Error, 'a code without a fixed prefix is refused');
 $pruefe($druck->pdfFor(['format' => 'roll62', 'code' => 'O-1', 'title' => '']) instanceof WP_Error, 'a label without a title is refused');
 
+// D-1152: the label dialog asks how many, starting with what the module says, held to 1 … 50.
+$knopf = \Taxmod\WordPress\Printing\LabelButton::render('K', 77, 'Kiste', '', 2);
+$pruefe(str_contains($knopf, 'name="copies"') && str_contains($knopf, 'value="2"'), 'the label dialog offers «Anzahl», preset by the module');
+$pruefe(\Taxmod\WordPress\Printing\LabelButton::copies(0) === 1 && \Taxmod\WordPress\Printing\LabelButton::copies(500) === 50, 'the number of copies stays between 1 and 50');
+
 echo $fehler === 0 ? "printing: all good\n" : "printing: $fehler failed\n";
 exit($fehler === 0 ? 0 : 1);
