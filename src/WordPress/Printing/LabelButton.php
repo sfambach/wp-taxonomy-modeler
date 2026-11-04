@@ -26,6 +26,8 @@ final class LabelButton
      *
      * D-1153: `$template` = `['name' => 'Platz', 'format' => ['key', 'w', 'h', 'roll'], 'layout' => JSON, 'values' => [field ⇒ text]]` —
      * the label is then drawn from that layout; `code`, `title` and `subtitle` are among its values.
+     * D-1160: with `'record' => id` the modeller reads the fields the layout names from that record itself; what the module
+     * passes in `values` only fills what the record has no field for.
      */
     public const FILTER = 'taxmod_label_button';
 
@@ -39,8 +41,13 @@ final class LabelButton
     /** More copies than this in one go is a typo, not a wish. */
     public const MAX_COPIES = 50;
 
-    public static function boot(): void
+    /** @var (\Closure(int, list<string>): array{values: array<string, string>, unknown: list<string>, node: int})|null */
+    private static ?\Closure $recordValues = null;
+
+    /** @param (\Closure(int, list<string>): array{values: array<string, string>, unknown: list<string>, node: int})|null $recordValues */
+    public static function boot(?\Closure $recordValues = null): void
     {
+        self::$recordValues = $recordValues;
         add_filter(self::FILTER, static fn (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []): string => self::render($prefix, $id, $title, $subtitle, $copies, $template), 10, 7);
         add_action('admin_post_' . self::ACTION, self::handle(...));
     }
@@ -174,6 +181,12 @@ final class LabelButton
             return null;
         }
         $values = LabelTemplate::valuesOf($label);
+        $record = (int) ($template['record'] ?? 0);
+        if ($record > 0) {
+            $layout = json_decode((string) ($template['layout'] ?? ''), true);
+            $fields = is_array($layout) ? array_values(array_filter(array_map(static fn (mixed $e): string => is_array($e) ? (string) ($e['field'] ?? $e['feld'] ?? '') : '', $layout))) : [];
+            $values = self::recordValues($record, $fields)['values'] + $values;
+        }
         foreach (is_array($template['values'] ?? null) ? $template['values'] : [] as $field => $value) {
             if (is_scalar($value) && ! isset($values[(string) $field])) {
                 $values[(string) $field] = sanitize_text_field((string) $value);
@@ -189,6 +202,17 @@ final class LabelButton
         } catch (\InvalidArgumentException) {
             return null;
         }
+    }
+
+    /**
+     * D-1160: the record's own words for these fields; nothing where the modeller was booted without its screen.
+     *
+     * @param list<string> $fields
+     * @return array{values: array<string, string>, unknown: list<string>, node: int}
+     */
+    public static function recordValues(int $record, array $fields): array
+    {
+        return self::$recordValues === null || $record <= 0 ? ['values' => [], 'unknown' => [], 'node' => 0] : (self::$recordValues)($record, $fields);
     }
 
     /** 1 … {@see self::MAX_COPIES}: what a module asked for or a person typed, held to what a printer run can mean. */

@@ -3648,6 +3648,51 @@ final class NodesScreen
      *
      * @param array<int, string> $suffix record id → text after its word (a count, a mark)
      */
+    /**
+     * D-1160, his word 2026-11-04: «ich übergebe dann im Grunde diesen Etikett einen Knoten, und sagt, drucken, dann holt er sich
+     * die entsprechenden Felder aus dem Knoten raus» — the words of one record for the fields a label layout names, by field name
+     * (as on the screen, any case) or by field id; a reference gives the word of the record it points at. All fields in one run.
+     *
+     * @param list<string> $fields what the layout names
+     * @return array{values: array<string, string>, unknown: list<string>, node: int} field as named ⇒ text; names that match no field
+     */
+    public function labelValues(int $record, array $fields): array
+    {
+        $found = $this->data->find($record);
+
+        if ($found === null) {
+            return ['values' => [], 'unknown' => $fields, 'node' => 0];
+        }
+
+        $byName = [];
+        foreach ($this->fieldsWithTypes($found->nodeId) as ['relation' => $relation]) {
+            $byName[mb_strtolower(trim($relation->name))] ??= $relation->id;
+            $byName[(string) $relation->id] = $relation->id;
+        }
+
+        $jobs = $named = $unknown = [];
+        foreach (array_values(array_unique($fields)) as $i => $field) {
+            $id = $byName[mb_strtolower(trim($field))] ?? 0;
+            if ($id === 0) {
+                $unknown[] = $field;
+                continue;
+            }
+            // ⚠️ *Each field its own made-up edge, so the answer keeps them apart (it is keyed by edge id).*
+            $edge         = \Taxmod\Core\Model\Relation::attribute($i + 1, $found->nodeId, $found->nodeId, \Taxmod\Core\Model\RelationKind::Aggregation, 'label', 0);
+            $jobs[]       = ['relation' => $edge, 'records' => [$record], 'fields' => [$id]];
+            $named[$i + 1] = $field;
+        }
+
+        $values = [];
+        foreach ($jobs === [] ? [] : $this->rendering->summaryTextsOf($jobs) as $edge => $texts) {
+            if (isset($named[$edge])) {
+                $values[$named[$edge]] = trim((string) ($texts[$record] ?? ''));
+            }
+        }
+
+        return ['values' => $values, 'unknown' => $unknown, 'node' => $found->nodeId];
+    }
+
     public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = []): string
     {
         if ($node <= 0 || $this->editor->find($node) === null) {

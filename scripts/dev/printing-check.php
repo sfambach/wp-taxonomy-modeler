@@ -68,5 +68,31 @@ $knopf = \Taxmod\WordPress\Printing\LabelButton::render('K', 77, 'Kiste', '', 2)
 $pruefe(str_contains($knopf, 'name="copies"') && str_contains($knopf, 'value="2"'), 'the label dialog offers «Anzahl», preset by the module');
 $pruefe(\Taxmod\WordPress\Printing\LabelButton::copies(0) === 1 && \Taxmod\WordPress\Printing\LabelButton::copies(500) === 50, 'the number of copies stays between 1 and 50');
 
+// D-1160: the label reads the fields its layout names from the record itself, by name in any case or by id.
+global $wpdb;
+$probe = $wpdb->get_row("SELECT v.node_record_id AS record_id, v.relation_id, r.node_id FROM {$wpdb->prefix}taxmod_relation_records v JOIN {$wpdb->prefix}taxmod_node_records r ON r.id = v.node_record_id WHERE v.value_text IS NOT NULL AND v.value_text <> '' LIMIT 1", ARRAY_A);
+$fieldName = '';
+if (is_array($probe)) {
+    $rc = new ReflectionClass(\Taxmod\WordPress\Plugin::class);
+    $ctor = $rc->getConstructor();
+    $plugin = $rc->newInstanceWithoutConstructor();
+    $ctor->setAccessible(true);
+    $ctor->invoke($plugin, WP_PLUGIN_DIR . '/wp-taxonomy-modeler/wp-taxonomy-modeler.php');
+    foreach ($plugin->screen()->fieldsWithTypes((int) $probe['node_id']) as ['relation' => $relation]) {
+        $fieldName = $relation->id === (int) $probe['relation_id'] ? $relation->name : $fieldName;
+    }
+}
+if ($fieldName !== '') {
+    $read = \Taxmod\WordPress\Printing\LabelButton::recordValues((int) $probe['record_id'], [mb_strtoupper($fieldName), (string) $probe['relation_id'], 'gibt es nicht']);
+    $pruefe(($read['values'][mb_strtoupper($fieldName)] ?? '') !== '' && $read['values'][mb_strtoupper($fieldName)] === ($read['values'][(string) $probe['relation_id']] ?? null), 'a label field is read from the record, by name in any case or by id');
+    $pruefe($read['unknown'] === ['gibt es nicht'], 'a name that matches no field is reported, not guessed');
+    $template = ['name' => 'Test', 'format' => ['key' => 'material62', 'w' => 62, 'h' => 30], 'record' => (int) $probe['record_id'],
+        'layout' => json_encode([['type' => 'text', 'field' => $fieldName, 'x' => 2, 'y' => 2, 'w' => 58, 'h' => 10]])];
+    $filled = \Taxmod\WordPress\Printing\LabelButton::filled(LabelContent::of(LabelPrefix::Material, (int) $probe['record_id'], 'x'), $template);
+    $pruefe($filled !== null && ($filled->values[$fieldName] ?? '') === $read['values'][mb_strtoupper($fieldName)], 'a label given a record prints that record\'s field');
+} else {
+    $pruefe(false, 'the check found a record with a text value to read');
+}
+
 echo $fehler === 0 ? "printing: all good\n" : "printing: $fehler failed\n";
 exit($fehler === 0 ? 0 : 1);

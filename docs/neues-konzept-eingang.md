@@ -1199,3 +1199,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Heute:** Ein Material hat eine Basiseinheit, die Bezugsquelle einen Packungsinhalt. Eine Leiste mit 40 Pins, von der Stücke abgebrochen werden, lässt sich so nicht abbilden. Die Stückliste bräuchte «2 × 20 Pins», das Lager zählt aber «Leisten».
 - **Vorschlag (nicht entschieden):** Basiseinheit = Pin, die Leiste ist die Packung (40). Der Verbrauch wird in Pins gebucht. Bei Buchsenleisten kommt je Schnitt ein Verlust-Pin dazu, als Eigenschaft des Materials («Verlust je Schnitt»). Angebrochene Leisten sind dann einfach ein Rest in Pins.
 - **Offen für Stefan:** Reicht das Zählen in Pins? Wie viel geht beim Abbrechen verloren? Gilt das auch für andere Ware, zum Beispiel Kabel, Schrumpfschlauch oder Litze ([D-1061](NewConcept/90-decision-log.md))?
+
+## INF-110 · Etiketten-Designer und View-Knoten für Etiketten über mehrere Sätze (2026-11-04)
+
+**Typ:** `IDEE` · **Status:** `OFFEN`
+
+> *«Und später können wir uns dann einfach ein Etikett praktisch zusammenbauen. Wir wählen Knoten und sagen, wo was hinkommt auf dem Etikett, irgendwie ein Designer oder so. … wenn wir mehr als ein Objekt irgendwie haben, ja, dann heißt das, wir müssen wahrscheinlich irgendeine View oder so erstellen. View-Knoten, ja. Der mehrere Objekte miteinander verheiratet und dann würden wir den Etikett wieder diesen View-Knoten geben oder so. Ist aber nur gesponnen»*.
+
+- **Heute:** Ein Etikett ist ein Satz mit Layout-JSON; der Modeller liest die genannten Felder aus einem Satz, ein Verweis gibt das Wort des verwiesenen Satzes (eine Stufe, [D-1160](NewConcept/90-decision-log.md)).
+- **Vorschlag (nicht entschieden):** Designer = Kästen auf der Etikettfläche ziehen, Feld aus dem gewählten Knoten wählen, schreibt dasselbe JSON. View-Knoten = ein Knoten, der Felder mehrerer verbundener Sätze zu einer Zeile zusammenführt; das Etikett liest dann aus ihm.
+- **Offen für Stefan:** Reicht der eine Verweis-Schritt erst einmal? Wann der Designer?

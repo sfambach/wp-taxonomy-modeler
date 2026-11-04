@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.158';
+    public const VERSION     = '0.1.159';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -97,7 +97,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\PrintService::boot();
         \Taxmod\WordPress\Printing\PrintRest::boot();
         \Taxmod\WordPress\Printing\PrintJobsScreen::boot();
-        \Taxmod\WordPress\Printing\LabelButton::boot();
+        // D-1160: the label reads the fields its layout names from the record itself.
+        \Taxmod\WordPress\Printing\LabelButton::boot(static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields));
         add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
 
         // ⚠️ *Once, on `init` so the abilities and the front end see it too: the default language back on its texts (0.1.37).*
