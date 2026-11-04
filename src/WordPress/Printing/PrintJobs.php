@@ -18,7 +18,8 @@ final class PrintJobs
     public const QUEUED_ACTION = 'taxmod_print_job_queued';
 
     /** D-1153: `$document` is a {@see \Taxmod\Core\Printing\FilledLabel} as JSON; the service then draws it instead of the fixed layout. */
-    public function queue(LabelFormat $format, LabelContent $label, bool $test, ?string $document = null): int
+    /** D-1162: `$copies` in one job — the service gets one PDF with that many pages, so they come out together. */
+    public function queue(LabelFormat $format, LabelContent $label, bool $test, ?string $document = null, int $copies = 1): int
     {
         global $wpdb;
 
@@ -28,6 +29,7 @@ final class PrintJobs
             'title'      => $label->title,
             'subtitle'   => $label->subtitle,
             'document'   => $document,
+            'copies'     => max(1, min(LabelButton::MAX_COPIES, $copies)),
             'is_test'    => $test ? 1 : 0,
             'status'     => PrintJobStatus::Queued->value,
             'created_by' => get_current_user_id(),

@@ -62,6 +62,8 @@ final class PrintRest
         $formats = LabelFormat::shipped();
         $jobs = [];
         foreach ($this->jobs->claimWaiting() as $row) {
+            // D-1162: the copies as pages of one PDF — one job at the printer, the labels come out together.
+            $copies = max(1, (int) ($row['copies'] ?? 1));
             // D-1153: a job from a template carries its own size and layout.
             if (($row['document'] ?? '') !== '' && $row['document'] !== null) {
                 try {
@@ -71,14 +73,14 @@ final class PrintRest
                     continue;
                 }
                 $format = $filled->format;
-                $pdf    = $filled->render();
+                $pdf    = $filled->render($copies);
             } else {
                 $format = $formats[$row['format']] ?? null;
                 if ($format === null) {
                     $this->jobs->finish((int) $row['id'], false, 'Unknown label format ' . $row['format']);
                     continue;
                 }
-                $pdf = LabelDocument::render($format, [new LabelContent($row['code'], $row['title'], $row['subtitle'])]);
+                $pdf = LabelDocument::render($format, array_fill(0, $copies, new LabelContent($row['code'], $row['title'], $row['subtitle'])));
             }
             $jobs[] = [
                 'id'     => (int) $row['id'],
@@ -86,6 +88,7 @@ final class PrintRest
                 'roll'   => $format->rollMm,
                 'test'   => $row['is_test'] === '1',
                 'code'   => $row['code'],
+                'copies' => $copies,
                 'pdf'    => base64_encode($pdf),
             ];
         }

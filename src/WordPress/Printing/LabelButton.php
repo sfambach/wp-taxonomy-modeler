@@ -132,9 +132,7 @@ final class LabelButton
             }
             if (($post['how'] ?? '') === 'service' && PrintService::isSetUp()) {
                 $jobs = new PrintJobs();
-                for ($n = 0; $n < $copies; $n++) {
-                    $id = $jobs->queue($filled->format, $label, false, $filled->toJson());
-                }
+                $id = $jobs->queue($filled->format, $label, false, $filled->toJson(), $copies);
                 wp_safe_redirect(add_query_arg('taxmod_label_job', $id, wp_get_referer() ?: PrintJobsScreen::url()));
                 exit;
             }
@@ -150,9 +148,7 @@ final class LabelButton
 
         if (($post['how'] ?? '') === 'service' && PrintService::isSetUp()) {
             $jobs = new PrintJobs();
-            for ($n = 0; $n < $copies; $n++) {
-                $id = $jobs->queue($format, $label, false);
-            }
+            $id = $jobs->queue($format, $label, false, null, $copies);
             wp_safe_redirect(add_query_arg('taxmod_label_job', $id, wp_get_referer() ?: PrintJobsScreen::url()));
             exit;
         }

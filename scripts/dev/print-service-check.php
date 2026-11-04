@@ -90,6 +90,11 @@ $mitVorlage = $jobs->queue($gefuellt->format, new LabelContent('O-4712', 'Vorlag
 $geholtV = array_values(array_filter((array) ($rufe('/print/pull', [], $token)->get_data()['jobs'] ?? []), static fn (array $j): bool => $j['id'] === $mitVorlage));
 $pruefe(count($geholtV) === 1 && str_contains((string) base64_decode($geholtV[0]['pdf']), '(Vorlagenfach) Tj') && $geholtV[0]['format'] === 'material62', 'a job from a template is drawn from its layout and keeps its format key');
 $jobs->finish($mitVorlage, true, 'check');
+// D-1162: copies travel in one job, as pages of one PDF, so the labels come out together.
+$mehrere = $jobs->queue($gefuellt->format, new LabelContent('O-4712', 'Vorlagenfach', 'Kurz'), true, $gefuellt->toJson(), 3);
+$geholtM = array_values(array_filter((array) ($rufe('/print/pull', [], $token)->get_data()['jobs'] ?? []), static fn (array $j): bool => $j['id'] === $mehrere));
+$pruefe(count($geholtM) === 1 && $geholtM[0]['copies'] === 3 && substr_count((string) base64_decode($geholtM[0]['pdf']), '/Type /Page ') === 3, 'three copies are one job with a PDF of three pages');
+$jobs->finish($mehrere, true, 'check');
 $knopf = \Taxmod\WordPress\Printing\LabelButton::render('O', 4712, 'Vorlagenfach', 'Kurz', 1, ['name' => 'Platz', 'format' => ['key' => 'holder62', 'w' => 62, 'h' => 50, 'roll' => 62], 'layout' => $vorlage->layout->toJson()]);
 $pruefe(str_contains($knopf, 'name="document"') && str_contains($knopf, 'Platz') && ! str_contains($knopf, 'name="format"'), 'a module\'s template replaces the format choice in the label dialog');
 
