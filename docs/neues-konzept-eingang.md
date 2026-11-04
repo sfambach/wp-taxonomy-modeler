@@ -1189,3 +1189,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Heute:** Einheitliche Kachel und die Zusatzfunktion «Kennzahl» am Knoten ([D-1149](NewConcept/90-decision-log.md)); das Cockpit zeigt alle gewählten Kennzahlen. Gewählt ist noch keine.
 - **Vorschlag (nicht entschieden):** die Liste in [`pakete/kacheln/konzept.md`](pakete/kacheln/konzept.md) §4 — Wareneingänge, Verbrauch, Bestellungen und Ausgaben je Monat als Startkennzahlen; Überfällig, Unter Mindestbestand, Bestandswert als Modul-Kacheln.
 - **Offen für Stefan:** welche Startkennzahlen; nur Cockpit oder auch je Bereichs-Übersicht; Schwellen/Ampeln (Design 4.20); Summen über Positionen mit dem Datum des Kopfs; Quoten und Differenzen (Defektquote, Ergebnis); Umrechnung der Währungen.
+
+## INF-109 · Teilbare Ware: Stiftleisten, Buchsenleisten (2026-11-04)
+
+**Typ:** `IDEE` · **Status:** `OFFEN`
+
+> *«diese Pins, ja, die müsste ich wahrscheinlich mal durchziehen. Das ist Stück, also das ist Einheitsware, ne? Da sind ein so ein Stück hat 40 Pins von dem Pin-Header-Geschichten. Und dafür haben wir, glaube ich, noch gar keine Abbildungsmöglichkeit. Und dann knapst man sich immer was ab. Und wenn es Buchsen sind, geht immer eine Buchse verloren.»*
+
+- **Heute:** Ein Material hat eine Basiseinheit, die Bezugsquelle einen Packungsinhalt. Eine Leiste mit 40 Pins, von der Stücke abgebrochen werden, lässt sich so nicht abbilden. Die Stückliste bräuchte «2 × 20 Pins», das Lager zählt aber «Leisten».
+- **Vorschlag (nicht entschieden):** Basiseinheit = Pin, die Leiste ist die Packung (40). Der Verbrauch wird in Pins gebucht. Bei Buchsenleisten kommt je Schnitt ein Verlust-Pin dazu, als Eigenschaft des Materials («Verlust je Schnitt»). Angebrochene Leisten sind dann einfach ein Rest in Pins.
+- **Offen für Stefan:** Reicht das Zählen in Pins? Wie viel geht beim Abbrechen verloren? Gilt das auch für andere Ware, zum Beispiel Kabel, Schrumpfschlauch oder Litze ([D-1061](NewConcept/90-decision-log.md))?
