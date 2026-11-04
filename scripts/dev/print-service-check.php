@@ -82,6 +82,18 @@ $pruefe($jobs->cancel([$id]) === 1 && $jobs->latest(1)[0]['status'] === 'cancell
 $pruefe($jobs->queueAgain([$id]) === 1, '… and «Print again» undoes the cancel');
 $pruefe($jobs->cancel([$id]) === 1 && $jobs->cancel([$id]) === 0, 'a cancelled job is not cancelled twice');
 
+// D-1153: a job from a template carries its own layout, and the service gets that drawing.
+\Taxmod\WordPress\Printing\PrintJobSchema::upgrade();
+$vorlage = \Taxmod\Core\Printing\LabelTemplate::shipped()['material'];
+$gefuellt = new \Taxmod\Core\Printing\FilledLabel($vorlage->format, $vorlage->layout, ['code' => 'O-4712', 'title' => 'Vorlagenfach', 'subtitle' => 'Kurz'], $vorlage->name());
+$mitVorlage = $jobs->queue($gefuellt->format, new LabelContent('O-4712', 'Vorlagenfach', 'Kurz'), true, $gefuellt->toJson());
+$geholtV = array_values(array_filter((array) ($rufe('/print/pull', [], $token)->get_data()['jobs'] ?? []), static fn (array $j): bool => $j['id'] === $mitVorlage));
+$pruefe(count($geholtV) === 1 && str_contains((string) base64_decode($geholtV[0]['pdf']), '(Vorlagenfach) Tj') && $geholtV[0]['format'] === 'material62', 'a job from a template is drawn from its layout and keeps its format key');
+$jobs->finish($mitVorlage, true, 'check');
+$knopf = \Taxmod\WordPress\Printing\LabelButton::render('O', 4712, 'Vorlagenfach', 'Kurz', 1, ['name' => 'Platz', 'format' => ['key' => 'holder62', 'w' => 62, 'h' => 50, 'roll' => 62], 'layout' => $vorlage->layout->toJson()]);
+$pruefe(str_contains($knopf, 'name="document"') && str_contains($knopf, 'Platz') && ! str_contains($knopf, 'name="format"'), 'a module\'s template replaces the format choice in the label dialog');
+
+
 $etiketten = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['slug'] ?? '') === PrintTab::LOGISTICS_SLUG));
 $pruefe(str_contains((string) ($etiketten[0]['render'])(), 'value="test:holder62"'), 'with access set up, every format under Logistik › Druck › Etiketten has «Test via print service»');
 $_GET['tab'] = PrintTab::SLUG;

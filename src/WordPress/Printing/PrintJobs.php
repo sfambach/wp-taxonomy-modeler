@@ -17,7 +17,8 @@ final class PrintJobs
     /** Sent with a new job, after it is stored; {@see PrintWake} listens. */
     public const QUEUED_ACTION = 'taxmod_print_job_queued';
 
-    public function queue(LabelFormat $format, LabelContent $label, bool $test): int
+    /** D-1153: `$document` is a {@see \Taxmod\Core\Printing\FilledLabel} as JSON; the service then draws it instead of the fixed layout. */
+    public function queue(LabelFormat $format, LabelContent $label, bool $test, ?string $document = null): int
     {
         global $wpdb;
 
@@ -26,6 +27,7 @@ final class PrintJobs
             'code'       => $label->code,
             'title'      => $label->title,
             'subtitle'   => $label->subtitle,
+            'document'   => $document,
             'is_test'    => $test ? 1 : 0,
             'status'     => PrintJobStatus::Queued->value,
             'created_by' => get_current_user_id(),

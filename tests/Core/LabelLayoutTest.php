@@ -4,6 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Printing\FilledLabel;
 use Taxmod\Core\Printing\LabelContent;
 use Taxmod\Core\Printing\LabelDocument;
 use Taxmod\Core\Printing\LabelFormat;
@@ -71,5 +72,19 @@ final class LabelLayoutTest extends TestCase
             self::assertStringContainsString('(Werkzeug) Tj', $pdf, $template->key);
             self::assertStringContainsString('(O-47786) Tj', $pdf, $template->key);
         }
+    }
+
+    #[Test]
+    public function a_filled_label_travels_as_json_and_prints_the_same(): void
+    {
+        $template = LabelTemplate::shipped()['platz'];
+        $filled   = new FilledLabel($template->format, $template->layout, ['code' => 'O-47786', 'title' => 'Werkzeug', 'subtitle' => 'A1-S1'], $template->name());
+        $back     = FilledLabel::fromJson($filled->toJson());
+
+        self::assertEquals($filled, $back);
+        self::assertSame('O-47786', $back->code());
+        self::assertSame(3, substr_count($back->render(3), '/Type /Page '));
+        $this->expectException(\InvalidArgumentException::class);
+        FilledLabel::fromJson('{"format":{"key":"x","w":10,"h":10},"layout":[{"type":"qr","field":"code","x":0,"y":0,"w":30}],"values":{}}');
     }
 }

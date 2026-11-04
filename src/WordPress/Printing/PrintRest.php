@@ -62,12 +62,24 @@ final class PrintRest
         $formats = LabelFormat::shipped();
         $jobs = [];
         foreach ($this->jobs->claimWaiting() as $row) {
-            $format = $formats[$row['format']] ?? null;
-            if ($format === null) {
-                $this->jobs->finish((int) $row['id'], false, 'Unknown label format ' . $row['format']);
-                continue;
+            // D-1153: a job from a template carries its own size and layout.
+            if (($row['document'] ?? '') !== '' && $row['document'] !== null) {
+                try {
+                    $filled = \Taxmod\Core\Printing\FilledLabel::fromJson((string) $row['document']);
+                } catch (\InvalidArgumentException $e) {
+                    $this->jobs->finish((int) $row['id'], false, 'Broken label: ' . $e->getMessage());
+                    continue;
+                }
+                $format = $filled->format;
+                $pdf    = $filled->render();
+            } else {
+                $format = $formats[$row['format']] ?? null;
+                if ($format === null) {
+                    $this->jobs->finish((int) $row['id'], false, 'Unknown label format ' . $row['format']);
+                    continue;
+                }
+                $pdf = LabelDocument::render($format, [new LabelContent($row['code'], $row['title'], $row['subtitle'])]);
             }
-            $pdf = LabelDocument::render($format, [new LabelContent($row['code'], $row['title'], $row['subtitle'])]);
             $jobs[] = [
                 'id'     => (int) $row['id'],
                 'format' => $format->key,

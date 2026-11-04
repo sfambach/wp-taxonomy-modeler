@@ -10,7 +10,8 @@ namespace Taxmod\WordPress\Printing;
  */
 final class PrintJobSchema
 {
-    public const VERSION = 1;
+    /** 2: `document`, a label drawn from a template (D-1153). */
+    public const VERSION = 2;
     public const VERSION_OPTION = 'taxmod_print_schema_version';
 
     public static function table(): string
@@ -36,6 +37,7 @@ final class PrintJobSchema
   code varchar(64) NOT NULL,
   title varchar(255) NOT NULL,
   subtitle varchar(255) NOT NULL DEFAULT '',
+  document longtext NULL,
   is_test tinyint(1) NOT NULL DEFAULT 0,
   status varchar(16) NOT NULL,
   claim varchar(32) NOT NULL DEFAULT '',
