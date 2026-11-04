@@ -38,6 +38,9 @@ final class ChooserRenderer extends RendererNode
 
     public const DIALOG = 'dialog';
 
+    /** The opener's class when it shows the choice itself, not a trigger of its own. */
+    public const SHOWS_CHOICE = 'taxmod-chooser-shows';
+
     public const CANDIDATES = 'candidates';
 
     public const TRIGGER = 'trigger';
@@ -174,6 +177,9 @@ final class ChooserRenderer extends RendererNode
             $current,
             '<span class="taxmod-chooser-tree">' . $koerper . '</span>',
             $confirm?->body ?? '',
+            // *Ein Öffner ohne eigenen Auslöser zeigt die Wahl selbst; das Skript schreibt eine neue Wahl hinein. Sein Befund am 2026-11-04:
+            // «nach auswahl wird platzart nicht angezeigt aber gesetzt wird es».*
+            $trigger === null || $trigger->body === '' ? 'button taxmod-icon-button taxmod-dialog-open ' . self::SHOWS_CHOICE : 'button taxmod-icon-button taxmod-dialog-open',
             ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
             cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? '')
         ));

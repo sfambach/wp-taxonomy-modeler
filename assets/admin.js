@@ -825,6 +825,14 @@
 				kopf.textContent = text.textContent;
 			}
 
+			// *Sein Befund am 2026-11-04: «nach auswahl wird platzart nicht angezeigt aber gesetzt wird es» -- ein Oeffner, der die Wahl
+			// zeigt, traegt sie sofort; «Abbrechen» legt ihn zurueck wie den Kopf.*
+			var zeigt = chooser.querySelector( ':scope > .taxmod-chooser-shows' );
+
+			if ( zeigt && text ) {
+				zeigt.textContent = text.textContent;
+			}
+
 			return;
 		}
 

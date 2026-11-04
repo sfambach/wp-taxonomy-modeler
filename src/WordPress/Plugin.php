@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.155';
+    public const VERSION     = '0.1.156';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -156,11 +156,9 @@ final class Plugin
 
             $ids = static fn (mixed $liste): array => array_values(array_filter(array_map('absint', is_array($liste) ? $liste : []), static fn (int $id): bool => $id > 0));
 
+            // *Auch der Dialog braucht das Skript: es schreibt die Wahl in den Öffner (sein Befund 2026-11-04 an «Neuer Unterort»).*
             $plugin->enqueueStyle();
-
-            if (! empty($args['inline'])) {
-                $plugin->enqueueScript();
-            }
+            $plugin->enqueueScript();
 
             return $plugin->screen()->recordChooserForModule(
                 (string) preg_replace('/[^A-Za-z0-9_\-\[\]]/', '', (string) ($args['name'] ?? 'taxmod_record')),

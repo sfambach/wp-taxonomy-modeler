@@ -150,6 +150,8 @@ final class RecordTreeTest extends TestCase
         self::assertStringContainsString('taxmod-chooser-fixed', $html);
         self::assertMatchesRegularExpression('~data-depth="3" style="display:none"~', $html, 'Kiste lies under the chosen, closed Regal');
         self::assertDoesNotMatchRegularExpression('~data-depth="2" style="display:none"~', $html, 'the way to the chosen record stands open');
+        // His report 2026-11-04: «nach auswahl wird platzart nicht angezeigt aber gesetzt wird es» — the opener shows the choice, so the script writes a new one into it.
+        self::assertStringContainsString('taxmod-dialog-open ' . ChooserRenderer::SHOWS_CHOICE . '"', $html);
     }
 
     #[Test]
