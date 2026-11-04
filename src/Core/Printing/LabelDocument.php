@@ -47,6 +47,54 @@ final class LabelDocument
         return $pdf->render();
     }
 
+    /**
+     * D-1153: the labels drawn by a layout that a person wrote — each element reads its field from the record's values.
+     *
+     * ⚠️ *A field the record does not have stays empty; a QR code without a value is left out rather than encoding nothing.*
+     *
+     * @param list<array<string, string>> $records one map field ⇒ text per label
+     */
+    public static function renderLayout(LabelFormat $format, LabelLayout $layout, array $records): string
+    {
+        if (! $layout->fitsOn($format)) {
+            throw new \InvalidArgumentException(sprintf('An element of the layout reaches past the %s × %s mm label.', $format->widthMm, $format->heightMm));
+        }
+
+        $pdf = new PdfDocument();
+        foreach ($records as $values) {
+            $pdf->addPage($format->widthMm, $format->heightMm, $format->turnedOnRoll());
+            foreach ($layout->elements as $element) {
+                $text = trim((string) ($values[$element->field] ?? ''));
+                if ($text === '') {
+                    continue;
+                }
+                if ($element->type === LabelElement::QR) {
+                    self::drawQr($pdf, QrCode::encode($text), $element->xMm, $element->yMm, min($element->widthMm, $element->heightMm));
+                    continue;
+                }
+                self::drawBox($pdf, $element, $text);
+            }
+        }
+        return $pdf->render();
+    }
+
+    private static function drawBox(PdfDocument $pdf, LabelElement $box, string $text): void
+    {
+        $maxPt = $box->maxPt;
+        do {
+            [$lines, $size] = $box->lines > 1 ? self::wrap($text, $box->widthMm, $maxPt, $box->bold, $box->lines) : self::fit($text, $box->widthMm, $maxPt, $box->bold);
+            $lines  = is_array($lines) ? $lines : [$lines];
+            $lineMm = PdfDocument::pointsToMm($size);
+            $tall   = $lineMm * (1 + (count($lines) - 1) * 1.15);
+            $maxPt  = $size - 0.5;
+        } while ($tall > $box->heightMm && $maxPt >= self::MIN_PT);
+
+        $first = $box->atBottom ? $box->yMm + $box->heightMm - (count($lines) - 1) * $lineMm * 1.15 : $box->yMm + $lineMm;
+        foreach ($lines as $i => $line) {
+            $pdf->text($box->xMm, $first + $i * $lineMm * 1.15, $line, $size, $box->bold);
+        }
+    }
+
     private static function drawLabel(PdfDocument $pdf, LabelFormat $format, LabelContent $label): void
     {
         if ($format->widthMm < $format->heightMm * self::WIDE_RATIO) {

@@ -10,3 +10,5 @@ lines of text, so it works whatever a place or box turns out to be in the storag
 Concept: [D-1032](../../../docs/NewConcept/90-decision-log.md) (labels with QR, prefixes O/M/E/K),
 [D-1096](../../../docs/NewConcept/90-decision-log.md) (every printout has a test print),
 [D-1113](../../../docs/NewConcept/90-decision-log.md) (the print service, stage 2).
+
+Since [D-1153](../../../docs/NewConcept/90-decision-log.md) a label can also be drawn from a **layout written as JSON** (`LabelLayout`, `LabelElement`) filled from a record's values (`LabelDocument::renderLayout`); `LabelTemplate::shipped()` holds today's labels as such layouts, one per purpose.
