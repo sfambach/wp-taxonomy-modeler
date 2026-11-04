@@ -216,7 +216,7 @@ final class SummaryRenderer extends TypedFieldRenderer
      *
      * @param list<array{depth: int, name: string, records: array<int, string>, search?: array<int, string>, match?: array<int, true>, add?: string, addWord?: string}> $baum
      * @param \Closure(string, bool, string, string=, bool=): string $knopf Ein Auswahlknopf: Wert, gewählt, Wort, Suchtext, Treffer
-     * @param array{ok?: string, cancel?: string, tree?: string} $worte
+     * @param array{ok?: string, cancel?: string, tree?: string, search?: string} $worte
      */
     public static function browserBody(array $baum, \Closure $knopf, ?int $gewaehlt, string $vorn, array $worte): string
     {
@@ -244,7 +244,9 @@ final class SummaryRenderer extends TypedFieldRenderer
         $flach     = count($baum) <= 1;
         $baumWort  = $flach ? '' : (string) ($worte['tree'] ?? '');
         $werkzeuge = '<div class="taxmod-record-tools">'
-            . '<input type="search" class="taxmod-record-search" autocomplete="off" aria-label="' . $wurzel . '">'
+            // *Ein leeres Feld ohne Wort sah aus wie ein Versehen — es sagt, dass es sucht (D-1164).*
+            . '<input type="search" class="taxmod-record-search" autocomplete="off" aria-label="' . $wurzel . '"'
+            . ((string) ($worte['search'] ?? '') === '' ? '' : ' placeholder="' . RenderResult::escape((string) $worte['search']) . '"') . '>'
             . ($baumWort === '' ? '' : '<label class="taxmod-record-treeswitch" title="' . RenderResult::escape($baumWort) . '">'
                 . '<input type="checkbox" class="taxmod-record-treetoggle" checked>' . IconMarkup::dashicon('networking', $baumWort) . '</label>')
             . '</div>';

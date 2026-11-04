@@ -1154,6 +1154,34 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     cursor: pointer;
 }
 
+/* ⚠️ Der Baumschalter ist ein Symbolknopf, kein sichtbares Häkchen (D-1164): an = hinterlegt. */
+.taxmod-record-treeswitch {
+    position: relative;
+    padding: .2em;
+    border-radius: 3px;
+}
+
+.taxmod-record-treeswitch .taxmod-record-treetoggle {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+}
+
+.taxmod-record-treeswitch:has(.taxmod-record-treetoggle:checked) {
+    background: #dcdcde;
+}
+
+.taxmod-record-treeswitch:has(.taxmod-record-treetoggle:focus-visible) {
+    outline: 2px solid #2271b1;
+}
+
+/* Steht rechts nur ein Knoten, ist seine Überschrift doppelt — der Knoten links ist schon markiert (D-1164). */
+.taxmod-record-list:has(.taxmod-record-group-off) .taxmod-record-group-name {
+    display: none;
+}
+
 .taxmod-record-columns {
     display: grid;
     grid-template-columns: minmax(12em, 1fr) minmax(0, 2fr);

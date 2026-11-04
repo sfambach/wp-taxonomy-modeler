@@ -578,6 +578,12 @@
 
 		var panel = panelOf( target );
 
+		window.setTimeout( function () {
+			if ( window.taxmodKnotenVorwaehlen ) {
+				window.taxmodKnotenVorwaehlen( target.closest( '.taxmod-chooser' ) );
+			}
+		}, 0 );
+
 		if ( ! panel ) {
 			return;
 		}
@@ -1206,6 +1212,15 @@
 
 		var woerter = suchwoerter( feld.value );
 
+		// *Gesucht wird über alle Knoten; leer geht es zurück zum Knoten der Wahl (D-1164).*
+		baum.querySelectorAll( '.taxmod-record-group-off, .taxmod-record-node.is-active' ).forEach( function ( teil ) {
+			teil.classList.remove( 'taxmod-record-group-off', 'is-active' );
+		} );
+
+		if ( woerter.length === 0 && window.taxmodKnotenVorwaehlen ) {
+			window.taxmodKnotenVorwaehlen( baum.parentNode );
+		}
+
 		baum.querySelectorAll( '.taxmod-record-choice[data-taxmod-search]' ).forEach( function ( wahl ) {
 			wahl.hidden = ! passt( wahl.getAttribute( 'data-taxmod-search' ) || '', woerter );
 		} );
@@ -1343,7 +1358,13 @@
 
 			var gewaehlt = wert === '' ? null : teil.querySelector( '.taxmod-tree-row input[type="radio"][value="' + wert + '"]' );
 
+			var ort = platz.parentNode;
+
 			platz.replaceWith( teil );
+
+			if ( window.taxmodKnotenVorwaehlen && ort instanceof Element ) {
+				window.taxmodKnotenVorwaehlen( ort.closest( '.taxmod-chooser' ) || ort );
+			}
 
 			// *In einem Knotenbaum den Ast der Wahl aufklappen: jede Zeile darüber mit geringerer Tiefe ist ein Vorfahr.*
 			var zeile = gewaehlt ? gewaehlt.closest( '.taxmod-tree-row' ) : null;
@@ -2856,9 +2877,13 @@
 			return;
 		}
 
+		knotenZeigen( baum, name );
+	} );
+
+	// ⚠️ **Rechts nur die Sätze des links gewählten Knotens** (D-1164) — sein Wort am 2026-11-04: «normal rechts nur auflistung und baum
+	// links mit unterknoten». *Bis dahin zeigte ein Knoten auch die Gruppen aller Knoten darunter, und beim Öffnen standen alle da.*
+	function knotenZeigen( baum, name ) {
 		var nummer = name.getAttribute( 'data-taxmod-group' );
-		var drin = false;
-		var tiefe = -1;
 
 		baum.querySelectorAll( '.taxmod-record-node.is-active' ).forEach( function ( alt ) {
 			alt.classList.remove( 'is-active' );
@@ -2866,19 +2891,35 @@
 		name.classList.add( 'is-active' );
 
 		baum.querySelectorAll( '.taxmod-record-group' ).forEach( function ( gruppe ) {
-			var eigene = parseInt( gruppe.getAttribute( 'data-taxmod-depth' ) || '0', 10 );
+			gruppe.classList.toggle( 'taxmod-record-group-off', gruppe.getAttribute( 'data-taxmod-group' ) !== nummer );
+		} );
+	}
 
-			if ( gruppe.getAttribute( 'data-taxmod-group' ) === nummer ) {
-				drin = true;
-				tiefe = eigene;
-			} else if ( drin && eigene <= tiefe ) {
-				drin = false;
-				tiefe = -2;
+	// *Beim Öffnen steht der Knoten der Wahl schon gewählt da, ohne Wahl der erste mit Sätzen — nicht die ganze Liste.*
+	window.taxmodKnotenVorwaehlen = function ( wurzel ) {
+		if ( ! wurzel ) {
+			return;
+		}
+
+		wurzel.querySelectorAll( '.taxmod-record-tree' ).forEach( function ( baum ) {
+			if ( baum.querySelector( '.taxmod-record-node.is-active' ) || baum.querySelector( '.taxmod-record-notree' ) || baum.classList.contains( 'taxmod-record-notree' ) ) {
+				return;
 			}
 
-			gruppe.classList.toggle( 'taxmod-record-group-off', ! drin );
+			var an     = baum.querySelector( '.taxmod-record-group input[type="radio"]:checked' );
+			var gruppe = an && an.value !== '' ? an.closest( '.taxmod-record-group' ) : null;
+
+			gruppe = gruppe || Array.prototype.find.call( baum.querySelectorAll( '.taxmod-record-group' ), function ( g ) {
+				return !! g.querySelector( '.taxmod-record-choice' );
+			} );
+
+			var name = gruppe ? baum.querySelector( '.taxmod-record-node[data-taxmod-group="' + gruppe.getAttribute( 'data-taxmod-group' ) + '"]' ) : null;
+
+			if ( name ) {
+				knotenZeigen( baum, name );
+			}
 		} );
-	} );
+	};
 
 	// ⚠️ **Der Baum lässt sich ausschalten** (D-805) — sein Wort: «can be switched on and off». *Aus: nur die Liste, alle Gruppen.*
 	document.addEventListener( 'change', function ( ereignis ) {
@@ -2895,6 +2936,10 @@
 		}
 
 		baum.classList.toggle( 'taxmod-record-notree', ! schalter.checked );
+
+		if ( schalter.checked && window.taxmodKnotenVorwaehlen ) {
+			window.taxmodKnotenVorwaehlen( baum.parentNode );
+		}
 
 		if ( ! schalter.checked ) {
 			baum.querySelectorAll( '.taxmod-record-group-off' ).forEach( function ( gruppe ) {
