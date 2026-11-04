@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Import\BacklogSource;
 use Taxmod\Core\Import\ChangeListBuilder;
@@ -23,6 +24,7 @@ use Taxmod\Core\Import\ResolvingSource;
 use Taxmod\Core\Import\SearchingSource;
 use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Currency\EcbRates;
+use Taxmod\WordPress\Persistence\WriteLock;
 use Taxmod\WordPress\Plugin;
 use WP_Error;
 
@@ -747,6 +749,31 @@ final class InboxScreen
      * @return true|string true when written, otherwise why not
      */
     public function take(array $rows, ?array $picked, ?array $fields = null): true|string
+    {
+        // ⚠️ *D-1148: two people — or a person and AutoTake — taking the same message would both find no order and both create one.
+        // So one take at a time, and inside it the rows are read again: what somebody else took in the meantime is no longer open.*
+        try {
+            return WriteLock::around('inbox', function () use ($rows, $picked, $fields): true|string {
+                $ids  = array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $rows);
+                $open = $ids === [] ? [] : $this->table->openRows($ids);
+
+                if (count($open) < count(array_unique($ids))) {
+                    return __('Somebody else took or discarded this message in the meantime. Nothing was written.', 'taxmod');
+                }
+
+                return $this->takeOpen($open, $picked, $fields);
+            });
+        } catch (ConcurrentChange $busy) {
+            return $busy->getMessage();
+        }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows still open, read inside the lock
+     * @param list<int>|null $picked
+     * @param list<string>|null $fields
+     */
+    private function takeOpen(array $rows, ?array $picked, ?array $fields): true|string
     {
         if ($rows === [] || ! ModelGateway::available()) {
             return __('Nothing taken.', 'taxmod');

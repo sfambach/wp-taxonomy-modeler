@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Exception\NodeNotFound;
 use Taxmod\Core\Exception\NotYetStorable;
@@ -9,6 +10,7 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeClass\Contracts;
 use Taxmod\Core\Model\NodeRecord;
+use Taxmod\Core\Model\RecordStamp;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\RelationKind;
@@ -23,6 +25,7 @@ use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ControlMarkup;
 use Taxmod\Core\Renderer\ChooserRenderer;
+use Taxmod\Core\Renderer\ConflictDialog;
 use Taxmod\Core\Renderer\Dialog;
 use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
@@ -198,6 +201,12 @@ final class NodesScreen
     /** Marks a save sent by the autosave in the background: answered as JSON instead of a redirect ([D-1089](../../../docs/NewConcept/90-decision-log.md)). */
     public const QUIET = 'taxmod_quiet';
 
+    /** The versions a record form read — record and parts, `id:version,…` (D-1148). */
+    public const RECORD_VERSIONS = 'taxmod_record_versions';
+
+    /** The key of a conflicting save kept for «Save mine anyway» (D-1148). */
+    private const CONFLICT = 'taxmod_conflict';
+
     /**
      * The acts a background save may finish without a new page: they only write values the form already shows (D-1089).
      *
@@ -372,6 +381,7 @@ final class NodesScreen
                         'action'         => self::ACTION,
                         'id'             => (string) $knoten->id,
                         'node_record_id' => (string) $recordId,
+                        self::RECORD_VERSIONS => $this->stampFor($recordId),
                         '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $knoten->id),
                         self::RETURN_TO  => $returnTo,
                     ]
@@ -2466,6 +2476,7 @@ final class NodesScreen
                         'action'         => self::ACTION,
                         'id'             => (string) $selected->id,
                         'node_record_id' => (string) $recordId,
+                        self::RECORD_VERSIONS => $this->stampFor($recordId),
                         '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $selected->id),
                         ...array_filter($this->circumstances()),
                     ]
@@ -5420,6 +5431,7 @@ final class NodesScreen
                         'action'        => self::ACTION,
                         'id'            => (string) $selected->id,
                         'node_record_id'     => (string) $record->id,
+                        self::RECORD_VERSIONS => $record->id . ':' . $record->version,
                         '_taxmod_nonce' => wp_create_nonce(self::ACTION . '_' . $selected->id),
                         ...array_filter($this->circumstances()),
                     ]
@@ -7405,7 +7417,13 @@ final class NodesScreen
                 // ([D-679](../../../docs/NewConcept/90-decision-log.md)): *«was mir da einfällt wir
                 // könnten bei der preview eingabe einen button hinzufügen add as example».*
                 'add_example'    => $this->addExample($id),
-                'save_record'    => $this->savedWhole(fn () => $this->saveRecord($id)),
+                // ⚠️ *D-1148: first the check against what the form read, inside the same transaction as the write.*
+                'save_record'    => $this->savedWhole(function () use ($id): void {
+                    $this->data->claim($this->submittedStamp());
+                    $this->saveRecord($id);
+                }),
+                // ⚠️ *«Save mine anyway» from the conflict dialog: the kept input, written over the newer state — one act, undoable.*
+                'save_record_anyway' => $this->savedWhole(fn () => $this->saveKeptInput($id)),
                 // ⚠️ *Filtern schreibt nichts — es trägt die Filterzeile in die Adresse (D-768).*
                 'filter_records' => $this->rememberFilter($this->submittedFilter()),
                 'clear_filter'   => $this->rememberFilter(null),
@@ -7421,12 +7439,12 @@ final class NodesScreen
                 'duplicate_record' => $this->data->duplicate(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 ),
-                'delete_record'  => $this->data->removeRecord(
+                'delete_record'  => $this->claimed()->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
                 ),
                 'move_record'    => $target === 0
                     ? __('No target chosen — the record stays where it is.', 'taxmod')
-                    : $this->movedRecord($id, isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0, $target),
+                    : $this->claimed()->movedRecord($id, isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0, $target),
                 default          => throw new \InvalidArgumentException('Unknown action.'),
             };
 
@@ -7446,6 +7464,10 @@ final class NodesScreen
                     implode(', ', $outcome->leftBehind)
                 );
             }
+        } catch (ConcurrentChange $conflict) {
+            // ⚠️ *D-1148: nothing was written. The input is kept for the dialog, which offers the current state or «save mine anyway».*
+            $message  = __('Somebody else saved this record in the meantime. Nothing was written.', 'taxmod');
+            $konflikt = $this->keepConflictingInput($do);
         } catch (DomainError $error) {
             // Exceptions inside the core, translated at the boundary (`CD-10`). The message is
             // the domain's own words, so it survives the redirect rather than being replaced by
@@ -7460,6 +7482,10 @@ final class NodesScreen
         // Everything now happens **at** a node, so the person stays there rather than being
         // sent back to a screen with nothing selected.
         $extra = ['taxmod_message' => rawurlencode($message)];
+
+        if (isset($konflikt) && $konflikt !== '') {
+            $extra[self::CONFLICT] = $konflikt;
+        }
 
         // ⚠️ *Ein neuer Satz steht hinten — ohne diese Zeile landete er auf einer Seite, die niemand ansieht,
         // und «New record» sähe aus wie «nichts passiert» (D-763).*
@@ -7515,7 +7541,7 @@ final class NodesScreen
         }
 
         if (! empty($_POST[self::QUIET])) {
-            $this->answerQuietly($do, $message, $adresse);
+            $this->answerQuietly($do, $message, $adresse, isset($konflikt));
         }
 
         wp_safe_redirect($adresse);
@@ -7527,14 +7553,17 @@ final class NodesScreen
      *
      * ⚠️ *An act outside {@see self::QUIET_ACTS} still names the address the page must go to; the script goes there.*
      */
-    private function answerQuietly(string $do, string $message, string $adresse): never
+    private function answerQuietly(string $do, string $message, string $adresse, bool $conflict = false): never
     {
         $ok = $message === 'ok';
 
         wp_send_json([
             'ok'      => $ok,
             'message' => $ok ? __('Saved.', 'taxmod') : $message,
-            'goto'    => in_array($do, self::QUIET_ACTS, true) ? null : $adresse,
+            // ⚠️ *A conflict goes to the page with its dialog (D-1148); staying would let the next autosave meet the same refusal.*
+            'goto'    => in_array($do, self::QUIET_ACTS, true) && ! $conflict ? null : $adresse,
+            // ⚠️ *The versions after this save, so the form's next autosave carries them and does not collide with itself (D-1148).*
+            'versions' => $ok && $do === 'save_record' ? $this->stampFor(isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0) : null,
         ]);
 
         exit;
@@ -7865,6 +7894,122 @@ final class NodesScreen
             . '</form>';
     }
 
+    /** What the form read (D-1148); a form without the field — an old tab — is not checked, as before. */
+    private function submittedStamp(): RecordStamp
+    {
+        return RecordStamp::parse(isset($_POST[self::RECORD_VERSIONS]) ? sanitize_text_field(wp_unslash((string) $_POST[self::RECORD_VERSIONS])) : '');
+    }
+
+    /** This screen after the check of what the row read — for the acts on a whole record, delete and move (D-1148). */
+    private function claimed(): self
+    {
+        $this->data->claim($this->submittedStamp());
+
+        return $this;
+    }
+
+    /**
+     * The versions of a record and of every part it shows, as the form carries them (D-1148).
+     *
+     * ⚠️ *A part belongs to its head (composition): somebody changing a part changes what this form shows, so its version is in the
+     * stamp too. Asked for one record — the one open in the form — so the page does not pay it per row.*
+     */
+    private function stampFor(int $recordId): string
+    {
+        $satz = $recordId > 0 ? $this->data->find($recordId) : null;
+
+        if ($satz === null) {
+            return '';
+        }
+
+        $ids     = [$recordId];
+        $sammeln = static function (array $teile) use (&$sammeln, &$ids): void {
+            foreach ($teile as $liste) {
+                foreach ($liste as $teil) {
+                    $ids[] = (int) $teil['id'];
+                    $sammeln($teil['teile'] ?? []);
+                }
+            }
+        };
+
+        $sammeln($this->rendering->partsOfRecord($recordId, $this->editor->fieldsOf($satz->nodeId)));
+
+        return $this->data->stampOf(array_values(array_unique($ids)))->text();
+    }
+
+    /**
+     * Keep the refused input for «Save mine anyway» — per person and for an hour, then it is gone (D-1148).
+     *
+     * @return string the key the dialog names, empty when there is nothing to keep
+     */
+    private function keepConflictingInput(string $do): string
+    {
+        if ($do !== 'save_record') {
+            return '';
+        }
+
+        // ⚠️ *Lower case, because the key comes back through `sanitize_key()`, and the option cache knows names only as written.*
+        $key = strtolower(wp_generate_password(12, false));
+
+        set_transient(self::CONFLICT . '_' . get_current_user_id() . '_' . $key, [
+            'node_record_id'      => isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0,
+            self::VALUE_FIELD     => isset($_POST[self::VALUE_FIELD]) && is_array($_POST[self::VALUE_FIELD]) ? $_POST[self::VALUE_FIELD] : [],
+            self::OWN_VALUE_FIELD => isset($_POST[self::OWN_VALUE_FIELD]) ? (string) $_POST[self::OWN_VALUE_FIELD] : null,
+            'record_type'         => isset($_POST['record_type']) ? (string) $_POST['record_type'] : null,
+            'label_locale'        => isset($_POST['label_locale']) ? (string) $_POST['label_locale'] : null,
+        ], HOUR_IN_SECONDS);
+
+        return $key;
+    }
+
+    /** «Save mine anyway»: the kept input goes through the same save, now without the check — the person has seen the conflict. */
+    private function saveKeptInput(int $nodeId): void
+    {
+        $key  = isset($_POST[self::CONFLICT]) ? sanitize_key(wp_unslash((string) $_POST[self::CONFLICT])) : '';
+        $name = self::CONFLICT . '_' . get_current_user_id() . '_' . $key;
+        $kept = $key === '' ? false : get_transient($name);
+
+        if (! is_array($kept)) {
+            throw NotYetStorable::refusedByValidators(__('The kept input is no longer there — please enter it again.', 'taxmod'));
+        }
+
+        delete_transient($name);
+
+        foreach ($kept as $feld => $wert) {
+            if ($wert !== null) {
+                $_POST[$feld] = $wert;
+            }
+        }
+
+        $this->saveRecord($nodeId);
+    }
+
+    /** The one conflict dialog (D-1148, D-804): what happened, the current state behind it, and the way to write one's own input anyway. */
+    private function conflictDialog(): string
+    {
+        $key  = isset($_GET[self::CONFLICT]) ? sanitize_key(wp_unslash((string) $_GET[self::CONFLICT])) : '';
+        $node = isset($_GET['taxmod_node']) ? absint($_GET['taxmod_node']) : 0;
+
+        if ($key === '' || $node === 0 || get_transient(self::CONFLICT . '_' . get_current_user_id() . '_' . $key) === false) {
+            return '';
+        }
+
+        $formular = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
+            . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
+            . '<input type="hidden" name="id" value="' . esc_attr((string) $node) . '">'
+            . '<input type="hidden" name="' . esc_attr(self::CONFLICT) . '" value="' . esc_attr($key) . '">'
+            . wp_nonce_field(self::ACTION . '_' . $node, '_taxmod_nonce', true, false)
+            . '<button type="submit" class="button" name="do" value="save_record_anyway">' . esc_html__('Save my input anyway', 'taxmod') . '</button>'
+            . '</form>';
+
+        return ConflictDialog::markup(
+            __('Saved by somebody else', 'taxmod'),
+            __('This record was changed by somebody else after you opened it. Nothing of yours was written. The page now shows the current state; your input is kept for an hour.', 'taxmod'),
+            $formular,
+            __('Show the current state', 'taxmod')
+        );
+    }
+
     private function notice(): string
     {
         if (! isset($_GET['taxmod_message'])) {
@@ -7876,7 +8021,8 @@ final class NodesScreen
 
         return '<div class="taxmod-toast' . ($ok ? ' taxmod-toast-ok' : ' taxmod-toast-bad') . '" role="status">'
             . esc_html($ok ? __('Done.', 'taxmod') : $message)
-            . '</div>';
+            . '</div>'
+            . $this->conflictDialog();
     }
 
     /**

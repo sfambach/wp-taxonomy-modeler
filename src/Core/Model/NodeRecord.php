@@ -56,6 +56,11 @@ final class NodeRecord
          * Normalfall — jeder Satz, den es vor Fassung 37 gab.*
          */
         public readonly int $relationId = 0,
+        /**
+         * The row's change counter — what a form read, so its save can tell whether somebody wrote in between
+         * ([D-089](../../../docs/NewConcept/90-decision-log.md), [D-1148](../../../docs/NewConcept/90-decision-log.md)).
+         */
+        public readonly int $version = 1,
     ) {
     }
 }

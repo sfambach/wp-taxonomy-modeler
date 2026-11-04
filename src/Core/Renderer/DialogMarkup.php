@@ -32,6 +32,8 @@ final class DialogMarkup
         string $ok = '',
         /** Das Wort für «Abbrechen», vom Rand — in jedem Fuss, der noch keines hat (D-804). */
         string $cancel = '',
+        /** Open when the page arrives — a dialog that answers what just happened, like a conflict (D-1148). */
+        bool $open = false,
     ): string {
         $id = RenderResult::escape($switch);
 
@@ -50,8 +52,9 @@ final class DialogMarkup
         return '<span class="taxmod-chooser">'
             . RenderResult::htmlTag('input', [
                 'type'  => 'checkbox',
-                'class' => 'taxmod-dialog-switch',
-                'id'    => $switch,
+                'class'   => 'taxmod-dialog-switch',
+                'id'      => $switch,
+                'checked' => $open,
             ])
             // ⚠️ *Ein Öffner, der nur ein Symbol ist, trägt dessen Namen als Tooltip (D-847).*
             . '<label class="' . RenderResult::escape($openerClass) . '" for="' . $id . '"'

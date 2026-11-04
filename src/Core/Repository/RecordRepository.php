@@ -206,6 +206,26 @@ interface RecordRepository
     public function moveRecord(int $id, int $nodeId): ?int;
 
     /**
+     * The change counters of these records — what a save compares with what its form read
+     * ([D-1148](../../../docs/NewConcept/90-decision-log.md)); one query (`CD-7`).
+     *
+     * ⚠️ *`$lock` holds the rows until the transaction ends, so a second writer of the same record waits and then sees the raised
+     * version instead of passing the same check at the same moment.*
+     *
+     * @param  list<int>       $ids
+     * @return array<int, int> record id ⇒ version; a record that is gone has no entry.
+     */
+    public function versionsOf(array $ids, bool $lock = false): array;
+
+    /**
+     * Raise a record's version because something it owns changed — a value, a part ([D-089](../../../docs/NewConcept/90-decision-log.md):
+     * «`version` is bumped by any write to an identity or to the rows it owns»; [D-1148](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @return int|null The new version; `null` when the record does not exist.
+     */
+    public function touch(int $id): ?int;
+
+    /**
      * Records whose value at one relation equals this one, wherever in the record it sits.
      *
      * ⚠️ **This is what `relation_id` is for** (D-134) — the question *which parts are 4k7* asked

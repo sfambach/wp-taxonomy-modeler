@@ -2362,3 +2362,13 @@ fieldset.taxmod-read-only {
     outline-offset: -2px;
     background: #f0f6fc;
 }
+
+/* D-1148: the conflict dialog opens by itself; its opener is not a control of its own. */
+.taxmod-conflict .taxmod-conflict-opener {
+    display: none;
+}
+
+.taxmod-conflict .taxmod-dialog-foot form {
+    display: inline;
+    margin: 0;
+}

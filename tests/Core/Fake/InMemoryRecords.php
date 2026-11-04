@@ -294,6 +294,34 @@ final class InMemoryRecords implements RecordRepository
      * ⚠️ *Die Version zaehlt mit, weil der echte Speicher es tut — sonst koennte ein Kerntest nicht
      * zeigen, dass ein Umstellen dieselbe Buchfuehrung bekommt wie jede andere Aenderung.*
      */
+    public function versionsOf(array $ids, bool $lock = false): array
+    {
+        $aus = [];
+
+        foreach ($ids as $id) {
+            if (isset($this->records[(int) $id])) {
+                $aus[(int) $id] = $this->recordVersions[(int) $id] ?? 1;
+            }
+        }
+
+        return $aus;
+    }
+
+    public function touch(int $id): ?int
+    {
+        if (! isset($this->records[$id])) {
+            return null;
+        }
+
+        return $this->recordVersions[$id] = 1 + ($this->recordVersions[$id] ?? 1);
+    }
+
+    /** What another person's save does to the stored row — the conflict a test needs. */
+    public function writtenElsewhere(int $id): void
+    {
+        $this->touch($id);
+    }
+
     public function moveRecord(int $id, int $nodeId): ?int
     {
         $satz = $this->records[$id] ?? null;

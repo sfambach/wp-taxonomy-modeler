@@ -4,6 +4,7 @@ namespace Taxmod\Tests\Core;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\NotYetStorable;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\Node;
@@ -96,6 +97,90 @@ final class DataEntryTest extends TestCase
         $this->gram = $this->editor->createNode('Gramm', $this->branchRoot['constants']->id);
 
         $this->description = $this->editor->addField($this->part->id, $this->text->id, 'description');
+    }
+
+    /**
+     * ⚠️ *[D-1148](../../docs/NewConcept/90-decision-log.md): two people, one record. The second save carries what it read, and since the
+     * first one wrote in between, it is refused and nothing of it is written.*
+     */
+    #[Test]
+    public function a_save_that_read_an_older_version_is_refused_and_writes_nothing(): void
+    {
+        $satz    = $this->data->create($this->part->id);
+        $gelesen = $this->data->stampOf([$satz->id]);
+        $andere  = $this->otherPerson();
+
+        $andere->claim($andere->stampOf([$satz->id]));
+        $andere->put($satz->id, $this->description->id, TypedValue::ofText('first'));
+
+        try {
+            $this->data->claim($gelesen);
+            self::fail('the stale save passed');
+        } catch (ConcurrentChange $e) {
+            self::assertSame([$satz->id], array_keys($e->records), 'the conflict names the record that moved on');
+        }
+
+        self::assertSame('first', $this->records->valuesOf($satz->id)[0]->value->text, 'the first save stands');
+    }
+
+    /** ⚠️ *A save of many fields is one change to the record: its version moves once, so the form's next autosave matches again.* */
+    #[Test]
+    public function one_save_raises_the_record_version_once_and_the_fresh_stamp_passes(): void
+    {
+        $satz   = $this->data->create($this->part->id);
+        $vorher = $this->data->stampOf([$satz->id])->versions[$satz->id];
+        $menge  = $this->editor->addField($this->part->id, $this->text->id, 'menge');
+        $andere = $this->otherPerson();
+
+        $andere->put($satz->id, $this->description->id, TypedValue::ofText('a'));
+        $andere->put($satz->id, $menge->id, TypedValue::ofText('b'));
+
+        $nachher = $this->data->stampOf([$satz->id]);
+
+        self::assertSame($vorher + 1, $nachher->versions[$satz->id]);
+        $this->data->claim($nachher);
+        $this->addToAssertionCount(1);
+    }
+
+    /** ⚠️ *A part belongs to its head (composition): the form carries the part's version too, so a change there is a conflict as well.* */
+    #[Test]
+    public function a_change_to_a_part_is_a_conflict_for_the_form_that_shows_it(): void
+    {
+        $stueck = $this->editor->createNode('Stueck', $this->branchRoot['compositions']->id);
+        $menge  = $this->editor->addField($stueck->id, $this->text->id, 'menge');
+        $kante  = $this->editor->addField($this->part->id, $stueck->id, 'stueck');
+        $satz   = $this->data->create($this->part->id);
+        $teil   = $this->data->createPart($satz->id, $kante->id);
+        $form   = $this->data->stampOf([$satz->id, $teil->id]);
+
+        $this->otherPerson()->put($teil->id, $menge->id, TypedValue::ofText('3'));
+
+        $this->expectException(ConcurrentChange::class);
+        $this->data->claim($form);
+    }
+
+    #[Test]
+    public function a_record_removed_meanwhile_is_a_conflict_too(): void
+    {
+        $satz = $this->data->create($this->part->id);
+        $form = $this->data->stampOf([$satz->id]);
+
+        $this->otherPerson()->removeRecord($satz->id);
+
+        try {
+            $this->data->claim($form);
+            self::fail('a save onto a removed record passed');
+        } catch (ConcurrentChange $e) {
+            self::assertSame([$satz->id => null], $e->records);
+        }
+    }
+
+    /** A second request on the same storage — what another person's browser is. */
+    private function otherPerson(): DataEntry
+    {
+        $framework = new FixedFramework($this->nodes->find(1) ?? throw new \LogicException('no root'), $this->nodes->find(2) ?? throw new \LogicException('no trash'), $this->branchRoot);
+
+        return new DataEntry($this->records, $this->relations, $this->nodes, $framework, new FixedClock(), new RecordedChanges());
     }
 
     #[Test]

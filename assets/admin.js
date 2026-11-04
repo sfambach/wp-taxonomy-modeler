@@ -2060,6 +2060,18 @@
 					return;
 				}
 
+				// *D-1148: the versions after this save — the next autosave carries them, or it would collide with itself.*
+				if ( ergebnis.versions ) {
+					Array.prototype.forEach.call(
+						document.querySelectorAll( 'input[name="taxmod_record_versions"]' ),
+						function ( feld ) {
+							if ( feld.form === formular || formular.contains( feld ) ) {
+								feld.value = ergebnis.versions;
+							}
+						}
+					);
+				}
+
 				meldung( ergebnis.message || '', !! ergebnis.ok );
 			} )
 			.catch( function () {

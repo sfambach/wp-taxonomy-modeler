@@ -50,7 +50,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $row = Query::row('Datensatz lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records')
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records')
                 . ' WHERE id = %d',
             $id
         ));
@@ -69,7 +69,7 @@ final class WpdbRecordRepository implements RecordRepository
         }
 
         $rows = Query::rows('Datensätze lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records')
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records')
                 . ' WHERE id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ')',
             ...$ids
         ));
@@ -97,7 +97,7 @@ final class WpdbRecordRepository implements RecordRepository
         global $wpdb;
 
         $rows = Query::rows('Datensaetze des Knotens lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records') . '
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records') . '
              WHERE node_id = %d AND relation_id = 0 ORDER BY id ASC',
             $nodeId
         ));
@@ -128,7 +128,7 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Datensaetze der Knoten lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records') . '
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM ' . Schema::table('node_records') . '
              WHERE node_id IN (' . $platzhalter . ') AND relation_id = 0 ORDER BY id ASC',
             ...$ids
         ));
@@ -503,6 +503,62 @@ final class WpdbRecordRepository implements RecordRepository
         return $neu;
     }
 
+    public function versionsOf(array $ids, bool $lock = false): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map(intval(...), $ids), static fn (int $id): bool => $id > 0)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // ⚠️ *`FOR UPDATE` is the current read and holds the rows to the end of the transaction (D-1148): a second save of the same
+        // record waits here until the first has committed, and then sees the version the first one raised — the check and the write
+        // cannot interleave. SQLite has no row locks and serialises every write anyway, so there the plain read is the same answer.*
+        $sperre = $lock && ! self::onSqlite() ? ' FOR UPDATE' : '';
+        $rows   = Query::rows('Versionen der Sätze lesen', $wpdb->prepare(
+            'SELECT id, version FROM ' . Schema::table('node_records') . ' WHERE id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ')' . $sperre,
+            ...$ids
+        ));
+        $aus    = [];
+
+        foreach ($rows as $row) {
+            $aus[(int) $row['id']] = (int) $row['version'];
+        }
+
+        return $aus;
+    }
+
+    public function touch(int $id): ?int
+    {
+        global $wpdb;
+
+        $version = Query::value('Version des Datensatzes vor dem Stempeln lesen', $wpdb->prepare(
+            'SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d' . (self::onSqlite() ? '' : ' FOR UPDATE'),
+            $id
+        ));
+
+        if ($version === null) {
+            return null;
+        }
+
+        // ⚠️ *Like every other raise of a version: the state it leaves goes to the shadow first, so `(id, version)` stays a key there.*
+        Shadow::keepOne('node_records', $id);
+
+        $neu = 1 + (int) $version;
+
+        $wpdb->update(Schema::table('node_records'), ['version' => $neu], ['id' => $id], ['%d'], ['%d']);
+
+        return $neu;
+    }
+
+    /** The cloud VM runs WordPress on the SQLite drop-in; it knows no `FOR UPDATE` and needs none. */
+    private static function onSqlite(): bool
+    {
+        return defined('DB_ENGINE') && DB_ENGINE === 'sqlite';
+    }
+
     public function moveRecord(int $id, int $nodeId): ?int
     {
         global $wpdb;
@@ -689,6 +745,7 @@ final class WpdbRecordRepository implements RecordRepository
             // ⚠️ *Aus demselben Grund abgesichert wie die Zeile darüber, und mit derselben Vorgabe:
             // «gehört dem Knoten» ([D-667](../../../docs/NewConcept/90-decision-log.md)).*
             (int) ($row['relation_id'] ?? 0),
+            (int) ($row['version'] ?? 1),
         );
     }
 
@@ -708,7 +765,7 @@ final class WpdbRecordRepository implements RecordRepository
         }
 
         $row = Query::row('Satz der Verwendungsstelle lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM '
                 . Schema::table('node_records') . ' WHERE relation_id = %d ORDER BY id ASC LIMIT 1',
             $relationId
         ));
@@ -729,7 +786,7 @@ final class WpdbRecordRepository implements RecordRepository
         }
 
         $row = Query::row('Satz des Erben zur geerbten Kante lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM '
                 . Schema::table('node_records') . ' WHERE node_id = %d AND relation_id = %d ORDER BY id ASC LIMIT 1',
             $nodeId,
             $relationId
@@ -751,7 +808,7 @@ final class WpdbRecordRepository implements RecordRepository
         $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
 
         $rows = Query::rows('Saetze der Verwendungsstellen lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM '
                 . Schema::table('node_records') . '
              WHERE relation_id IN (' . $platzhalter . ') ORDER BY id ASC',
             ...$ids
@@ -837,7 +894,7 @@ final class WpdbRecordRepository implements RecordRepository
         }
 
         $rows = Query::rows('Saetze an den Adressen Knoten x Kante lesen', $wpdb->prepare(
-            'SELECT id, node_id, node_version, created_at, record_type, relation_id FROM '
+            'SELECT id, version, node_id, node_version, created_at, record_type, relation_id FROM '
                 . Schema::table('node_records') . '
              WHERE node_id IN (' . implode(',', array_fill(0, count($knoten), '%d')) . ')
                AND relation_id IN (' . implode(',', array_fill(0, count($kanten), '%d')) . ')

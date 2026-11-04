@@ -3,6 +3,8 @@
 namespace Taxmod\Core\Service;
 
 use Taxmod\Core\Exception\NotYetStorable;
+use Taxmod\Core\Exception\ConcurrentChange;
+use Taxmod\Core\Model\RecordStamp;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\FrozenState;
 use Taxmod\Core\Model\Node;
@@ -142,6 +144,70 @@ final class DataEntry
         ?int $version,
     ): void {
         $this->changelog?->record($ownerId, $ownerKind, $what, $before, $after, $version);
+
+        // ⚠️ *Only a change that changed something moves the record (like `Identity::$version`): the same value saved again — every
+        // autosave of an untouched field — must not turn the next person's save into a conflict.*
+        if ($before !== $after) {
+            $this->stamped($ownerId, $ownerKind);
+        }
+    }
+
+    /**
+     * Records whose version this request has already raised — once per record is enough to tell any other reader (D-1148).
+     *
+     * @var array<int, true>
+     */
+    private array $gestempelt = [];
+
+    /**
+     * A value or a part changed, so the record that owns it changes its version ([D-089](../../../docs/NewConcept/90-decision-log.md),
+     * [D-1148](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *A `record` entry raised the version itself (create, move, retype, remove); only a `record_value` entry needs the touch. Once
+     * per request: a save of twelve fields is one change to the record, not twelve.*
+     */
+    private function stamped(int $recordId, string $ownerKind): void
+    {
+        if ($recordId <= 0 || isset($this->gestempelt[$recordId])) {
+            return;
+        }
+
+        $this->gestempelt[$recordId] = true;
+
+        if ($ownerKind === 'record_value') {
+            $this->records->touch($recordId);
+        }
+    }
+
+    /**
+     * Refuse the write when any of these records moved on since they were read ([D-1148](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Called first in the act, inside its transaction: the rows stay locked to the commit, so two saves of one record cannot both
+     * pass. Nothing is written when it refuses, and the exception names what changed for the conflict dialog.*
+     *
+     * @throws ConcurrentChange
+     */
+    public function claim(RecordStamp $stamp): void
+    {
+        if ($stamp->isEmpty()) {
+            return;
+        }
+
+        $changed = $stamp->changedAgainst($this->records->versionsOf($stamp->ids(), true));
+
+        if ($changed !== []) {
+            throw ConcurrentChange::onRecords($changed);
+        }
+    }
+
+    /**
+     * The versions of these records as stored now — what a form carries, and what a quiet save hands back to it.
+     *
+     * @param list<int> $ids
+     */
+    public function stampOf(array $ids): RecordStamp
+    {
+        return new RecordStamp($this->records->versionsOf($ids));
     }
 
     /**

@@ -3,6 +3,8 @@
 namespace Taxmod\WordPress;
 
 use Taxmod\Core\Model\IdentitySpace;
+use Taxmod\Core\Exception\ConcurrentChange;
+use Taxmod\Core\Model\RecordStamp;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
@@ -219,11 +221,21 @@ final class ModelAbilities
                             'additionalProperties' => false,
                         ],
                     ],
+                    // ⚠️ *D-1148: the versions the caller read — a record that moved on since refuses the whole list (`taxmod_conflict`).*
+                    'expect'  => [
+                        'type'  => 'array',
+                        'items' => [
+                            'type'       => 'object',
+                            'properties' => ['record' => ['type' => 'integer', 'minimum' => 1], 'version' => ['type' => 'integer', 'minimum' => 1]],
+                            'required'   => ['record', 'version'],
+                            'additionalProperties' => false,
+                        ],
+                    ],
                 ],
                 'required'   => ['changes'],
                 'additionalProperties' => false,
             ],
-            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->apply(is_array($input) ? ['changes' => $input['changes'] ?? null] : [], true)),
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->apply(is_array($input) ? ['changes' => $input['changes'] ?? null, 'expect' => $input['expect'] ?? null] : [], true)),
             'permission_callback' => $this->allowedToWriteData(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => false]],
         ]);
@@ -336,6 +348,13 @@ final class ModelAbilities
         try {
             return $work();
         } catch (\Throwable $e) {
+            // ⚠️ *A conflict has its own code (D-1148), so a module can show the conflict dialog instead of a plain refusal.*
+            $konflikt = $e instanceof ConcurrentChange ? $e : ($e->getPrevious() instanceof ConcurrentChange ? $e->getPrevious() : null);
+
+            if ($konflikt !== null) {
+                return new \WP_Error('taxmod_conflict', $konflikt->getMessage(), ['records' => $konflikt->records]);
+            }
+
             return new \WP_Error('taxmod_refused', $e->getMessage());
         }
     }
@@ -399,7 +418,7 @@ final class ModelAbilities
                 ];
             }
 
-            $saetze[] = ['id' => $record->id, 'record_type' => $record->recordType->value, 'values' => $zeilen];
+            $saetze[] = ['id' => $record->id, 'version' => $record->version, 'record_type' => $record->recordType->value, 'values' => $zeilen];
         }
 
         return [
@@ -455,8 +474,12 @@ final class ModelAbilities
 
         $wpdb->query('SAVEPOINT taxmod_apply');
         $changelog->beginAct();
+        $erwartet = RecordStamp::fromList(is_array($input['expect'] ?? null) ? array_values(array_filter($input['expect'], 'is_array')) : []);
 
         try {
+            // ⚠️ *First, inside the transaction, so the rows stay held to the commit (D-1148).*
+            $this->screen()->entries()->claim($erwartet);
+
             foreach ($changes as $stelle => $change) {
                 try {
                     if ($onlyData) {
@@ -488,7 +511,10 @@ final class ModelAbilities
             $changelog->endAct();
         }
 
-        return ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung];
+        $beruehrt = array_values(array_unique([...$erwartet->ids(), ...array_filter(array_column($ergebnis, 'id'), 'is_int')]));
+
+        // ⚠️ *The versions after the write, for the records the caller named or touched — its next change list can expect them (D-1148).*
+        return ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'versions' => $onlyData ? $this->screen()->entries()->stampOf($beruehrt)->versions : []];
     }
 
     /**
