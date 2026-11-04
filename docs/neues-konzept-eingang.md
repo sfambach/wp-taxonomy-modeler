@@ -1166,3 +1166,14 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Heute:** die Materialliste lädt alle Materialien (510) und blättert seitenweise.
 - **Offen für Stefan:** leere Liste bis zur Suche oder zum Filter, und wann die Massenansicht (alle) trotzdem gezeigt wird.
+
+## INF-107 · RFID/NFC-Tags an Platz und Material; Drucker mit Thermotransfer (2026-11-04)
+
+**Typ:** `IDEE` · **Status:** `OFFEN`
+
+> *«ok hast du ander vorschläge für drucker die auch cups können auch wäre thermo trasfer nett aber optional und ich denke über rfid nach»*, dann *«im grunde könnten wir einfach die id des tags einmal lesen oder wenn wir lesen könne wir auch schreiben. Id hinterlegen hinter platz,material ... oder beschreiben wenn wir schon lesen»*, dann *«ja nimm das mal mit auf und ich schaue mir die drucker an»*.
+
+- **Heute:** Etiketten mit Klartext und QR ([D-1032](NewConcept/90-decision-log.md)), Druck über CUPS ([D-1113](NewConcept/90-decision-log.md)). Kein Tag, kein Feld für eine Tag-ID.
+- **Vorschlag (nicht entschieden):** NFC-Sticker (NTAG213/215) zuerst: beschrieben mit demselben Inhalt wie der QR, die Tag-ID optional am Platz bzw. Material hinterlegt. UHF-RFID erst, wenn Inventur im Vorbeigehen gewünscht ist; dafür ein USB-Leser/-Schreiber, kein RFID-Drucker.
+- **Drucker:** Stefan sieht sich CUPS-fähige Drucker mit Thermotransfer an (TSC TE200/TE210, Godex G500, Zebra ZD421t; RFID-Druck nur Zebra …R, und der Chip wird nicht über CUPS, sondern roh per ZPL beschrieben).
+- **Offen für Stefan:** NFC oder UHF; nur ID lesen oder auch beschreiben; an welchen Knoten das Feld sitzt; welcher Drucker.
