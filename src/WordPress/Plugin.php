@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.152';
+    public const VERSION     = '0.1.153';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -841,6 +841,17 @@ final class Plugin
                 'enum:divided_by'       => '÷',
                 'enum:filter'           => __('filter', 'taxmod'),
                 'enum:sort'             => __('sort', 'taxmod'),
+                // *The key figure as a tile (D-1149).*
+                'addon:metric'          => __('Key figure (tile)', 'taxmod'),
+                'field:title'           => __('title', 'taxmod'),
+                'field:measure'         => __('counts', 'taxmod'),
+                'field:value_field'     => __('sum of field', 'taxmod'),
+                'field:date_field'      => __('month from field', 'taxmod'),
+                'field:filter_field'    => __('only where field', 'taxmod'),
+                'field:filter_value'    => __('equals', 'taxmod'),
+                'field:months'          => __('months shown', 'taxmod'),
+                'enum:count'            => __('records', 'taxmod'),
+                'enum:sum'              => __('sum', 'taxmod'),
             ]);
 
         // ⚠️ *Ein Exemplar, weil der Nachlauf es selbst wieder braucht: geschriebene Zusammenfassungen gehen denselben Weg

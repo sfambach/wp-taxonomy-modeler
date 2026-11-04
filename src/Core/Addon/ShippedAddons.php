@@ -13,6 +13,7 @@ final class ShippedAddons
         $registry->add(new RangeValidator());
         $registry->add(new ShapeValidator());
         $registry->add(new CalculationStep());
+        $registry->add(new MetricAddon());
 
         return $registry;
     }

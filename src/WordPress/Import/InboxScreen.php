@@ -228,14 +228,22 @@ final class InboxScreen
         $counts = $this->table->counts();
         $runs = Inbox::lastRuns();
         $latest = array_reduce(array_keys($sources), static fn (?array $carry, string $key): ?array => isset($runs[$key]) && ($carry === null || (int) $runs[$key]['at'] > (int) $carry['at']) ? $runs[$key] : $carry);
-        $html = '<div class="taxmod-source-tiles" style="display:flex;flex-wrap:wrap;gap:12px;margin:1em 0">'
-            . self::tile(__('All', 'taxmod'), $latest === null ? '–' : wp_date('Y-m-d H:i', (int) $latest['at']), esc_html(sprintf(
-                /* translators: 1: open, 2: taken, 3: discarded */
-                __('Open %1$d · taken %2$d · discarded %3$d', 'taxmod'),
-                $counts[InboxStatus::Open->value] ?? 0,
-                $counts[InboxStatus::Imported->value] ?? 0,
-                $counts[InboxStatus::Discarded->value] ?? 0
-            )), self::button(self::FETCH_ALL, 'all', __('Fetch all', 'taxmod')));
+        $tiles = [new \Taxmod\Core\Tile\Tile(
+            __('All', 'taxmod'),
+            '',
+            null,
+            [
+                __('Last run', 'taxmod') . ': ' . ($latest === null ? '–' : wp_date('Y-m-d H:i', (int) $latest['at'])),
+                sprintf(
+                    /* translators: 1: open, 2: taken, 3: discarded */
+                    __('Open %1$d · taken %2$d · discarded %3$d', 'taxmod'),
+                    $counts[InboxStatus::Open->value] ?? 0,
+                    $counts[InboxStatus::Imported->value] ?? 0,
+                    $counts[InboxStatus::Discarded->value] ?? 0
+                ),
+            ],
+            actions: self::button(self::FETCH_ALL, 'all', __('Fetch all', 'taxmod'))
+        )];
 
         foreach ($sources as $key => $source) {
             $run = $runs[$key] ?? null;
@@ -245,22 +253,23 @@ final class InboxScreen
                 wp_date('Y-m-d H:i', (int) $run['at']),
                 (int) $run['filed']
             );
+            $failed = $run !== null && $run['error'] !== null;
             // ⚠️ *«Fetch order» was his open question of 2026-10-25 («was dieses Fetch-Order genauer ist»): it looks for one
             // order by its number, also from before the starting point (D-948) — so it says so now.*
-            $html .= self::tile($source->label(), $last, $run !== null && $run['error'] !== null ? '<span style="color:#b32d2e">' . esc_html((string) $run['error']) . '</span>' : '',
-                ($source instanceof FetchingSource ? self::button(self::FETCH, $key, __('Fetch now', 'taxmod')) : '')
-                . ($source instanceof SearchingSource ? '<br>' . self::button(self::SEARCH, $key, __('Fetch this order', 'taxmod'),
-                    '<input type="text" name="text" style="width:10em" placeholder="' . esc_attr__('Order number', 'taxmod') . '" aria-label="' . esc_attr__('Order number', 'taxmod') . '"> ') : ''));
+            // *The shared tile since D-1149: a failed run is the red tile with its message as a line.*
+            $tiles[] = new \Taxmod\Core\Tile\Tile(
+                $source->label(),
+                '',
+                null,
+                array_values(array_filter([__('Last run', 'taxmod') . ': ' . $last, $failed ? (string) $run['error'] : ''])),
+                $failed ? \Taxmod\Core\Tile\TileTone::Alert : \Taxmod\Core\Tile\TileTone::Normal,
+                actions: ($source instanceof FetchingSource ? self::button(self::FETCH, $key, __('Fetch now', 'taxmod')) : '')
+                    . ($source instanceof SearchingSource ? self::button(self::SEARCH, $key, __('Fetch this order', 'taxmod'),
+                        '<input type="text" name="text" style="width:10em" placeholder="' . esc_attr__('Order number', 'taxmod') . '" aria-label="' . esc_attr__('Order number', 'taxmod') . '"> ') : '')
+            );
         }
 
-        return $html . '</div>';
-    }
-
-    private static function tile(string $name, string $lastRun, string $extra, string $buttons): string
-    {
-        return '<div class="postbox" style="flex:0 1 15em;margin:0;padding:8px 12px"><h3 style="margin:.2em 0 .4em;font-size:1.1em">' . esc_html($name) . '</h3>'
-            . '<p style="margin:0">' . esc_html__('Last run', 'taxmod') . ': ' . esc_html($lastRun) . '</p>'
-            . ($extra === '' ? '' : '<p style="margin:.2em 0">' . $extra . '</p>') . '<div style="margin-top:.5em">' . $buttons . '</div></div>';
+        return \Taxmod\WordPress\Admin\Tiles::grid($tiles);
     }
 
     /**

@@ -1179,3 +1179,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Nachtrag 2026-11-04:** *«es geht mir nicht ums Beschreiben, sondern es geht darum, dass der Chip schon in dem Etikett ist. Und da gibt es, glaube ich, keine DK-Rollen für»* — also Etikettenrollen mit eingebettetem Chip (Inlay), deren ID gelesen und hinterlegt wird. Ungeprüft: für DK keine bekannt; generische Thermorollen mit NFC-Inlay gibt es für 4-Zoll-Drucker (z. B. iDPRT iD880).
 - **Seine Richtung 2026-11-04:** QL-Drucker behalten, NFC-Sticker (NTAG213) aufs Etikett oder dahinter — *«Okay, die letzte Lösung jetzt dann. Muss mal gucken, was die kosten.»* Noch kein Beschluss.
 - **Offen für Stefan:** NFC oder UHF; nur ID lesen oder auch beschreiben; an welchen Knoten das Feld sitzt; welcher Drucker.
+
+## INF-108 · Kennzahlen-Kacheln: welche, wo, mit welchen Schwellen (2026-11-04)
+
+**Typ:** `IDEE` · **Status:** `OFFEN`
+
+> *«da sollte man überlegen, was man in so eine Teils reinmachen kann und was vielleicht noch sinnvoll ist, so ein Lagerdurchsatz oder Eingangsstatistik über die Monate und all sowas. Vielleicht könnte sich damit ja mal ein Thread beschäftigen, was so interessante Kenndaten sind, auch für das Cockpit dann.»*
+
+- **Heute:** Einheitliche Kachel und die Zusatzfunktion «Kennzahl» am Knoten ([D-1149](NewConcept/90-decision-log.md)); das Cockpit zeigt alle gewählten Kennzahlen. Gewählt ist noch keine.
+- **Vorschlag (nicht entschieden):** die Liste in [`pakete/kacheln/konzept.md`](pakete/kacheln/konzept.md) §4 — Wareneingänge, Verbrauch, Bestellungen und Ausgaben je Monat als Startkennzahlen; Überfällig, Unter Mindestbestand, Bestandswert als Modul-Kacheln.
+- **Offen für Stefan:** welche Startkennzahlen; nur Cockpit oder auch je Bereichs-Übersicht; Schwellen/Ampeln (Design 4.20); Summen über Positionen mit dem Datum des Kopfs; Quoten und Differenzen (Defektquote, Ergebnis); Umrechnung der Währungen.

@@ -171,7 +171,7 @@ $pruefe(str_contains($seite, 'class="wp-list-table') && str_contains($seite, 'va
 $pruefe(str_contains($seite, 'Taxonomy Modeller › Inbox') && str_contains($seite, 'Expand all') && str_contains($seite, 'class="taxmod-list-details" hidden')
     && preg_match('/<td style="text-align:right[^"]*">.*?form="taxmod-inbox-group-\d+" name="action" value="' . InboxScreen::DISCARD . '"/s', $seite) === 1, 'the inbox uses the shared list page: heading, expand all, buttons right in the row, details below');
 // ⚠️ *Sein Wunsch vom 2026-10-25 (D-990): «die Felder nebeneinander … Name, last run … Button» und «Start-Over-Buttons … in die Konfiguration».*
-$pruefe(str_contains($seite, 'class="taxmod-source-tiles"') && ! str_contains($seite, 'value="' . InboxScreen::RESTART . '"') && str_contains(InboxScreen::maintenance(Sources::find('__ib')), 'value="' . InboxScreen::RESTART . '"'), 'the inbox shows the sources as tiles; «Start over» sits in the configuration');
+$pruefe(str_contains($seite, 'class="taxmod-tiles"') && ! str_contains($seite, 'value="' . InboxScreen::RESTART . '"') && str_contains(InboxScreen::maintenance(Sources::find('__ib')), 'value="' . InboxScreen::RESTART . '"'), 'the inbox shows the sources as the shared tiles (D-1149); «Start over» sits in the configuration');
 $vorlage = \Taxmod\WordPress\Admin\ListPage::tabs([['a', 'A', 3], ['b', 'B']], 'a', static fn (string $t): string => '?tab=' . $t)
     . \Taxmod\WordPress\Admin\ListPage::searchBox('f', 'x', 'p', ['page' => 'p'])
     . \Taxmod\WordPress\Admin\ListPage::filters('f', [['paid', ['' => 'All', '1' => 'Paid'], '1']])
