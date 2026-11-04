@@ -86,7 +86,8 @@ final class TileGrid
         return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    private static function style(): string
+    /** The style of tiles, the period bar and the period chart, once per page — empty after the first call. */
+    public static function style(): string
     {
         if (self::$styled) {
             return '';
@@ -106,6 +107,17 @@ final class TileGrid
             . '.taxmod-tile-bar{flex:1;min-width:4px;background:#c5d9ed}.taxmod-tile-bar.is-current{background:#2271b1}'
             . '.taxmod-tile-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:8px}'
             . '.taxmod-tile.is-empty{border-left-color:#c3c4c7;color:#646970;min-width:120px}.taxmod-tile.is-empty .taxmod-tile-figure{font-size:20px}'
-            . '.taxmod-tile.is-alert{border-left-color:#d63638}.taxmod-tile.is-alert .taxmod-tile-figure{color:#d63638}</style>';
+            . '.taxmod-tile.is-alert{border-left-color:#d63638}.taxmod-tile.is-alert .taxmod-tile-figure{color:#d63638}'
+            . '.taxmod-period{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:16px}'
+            . '.taxmod-period-name{font-size:1.3em;font-weight:600;margin:0 8px}'
+            . '.taxmod-period .button.is-chosen{background:#2271b1;border-color:#2271b1;color:#fff}'
+            . '.taxmod-chart{margin:16px 0 0;padding:12px 16px;background:#fff;border:1px solid #c3c4c7;max-width:960px}'
+            . '.taxmod-chart svg{display:block;width:100%;height:160px}.taxmod-chart text{font-size:10px;fill:#646970;text-anchor:middle}'
+            . '.taxmod-chart .s0{fill:#2271b1}.taxmod-chart .s1{fill:#d63638}.taxmod-chart .is-mark{fill:#f0f6fc}'
+            . '.taxmod-chart figcaption{display:flex;gap:16px;font-size:12px;color:#646970}'
+            . '.taxmod-chart-key::before{content:"";display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:middle}'
+            . '.taxmod-chart-key.s0::before{background:#2271b1}.taxmod-chart-key.s1::before{background:#d63638}'
+            . '.taxmod-panels{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px}.taxmod-panel{flex:1 1 320px;max-width:640px}'
+            . '.taxmod-panel h3{margin:0 0 8px}</style>';
     }
 }

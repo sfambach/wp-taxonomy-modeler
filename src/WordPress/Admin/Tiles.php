@@ -12,6 +12,8 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\SettingsResolver;
 use Taxmod\Core\Tile\MonthlySeries;
+use Taxmod\Core\Tile\Period;
+use Taxmod\Core\Tile\PeriodSpan;
 use Taxmod\Core\Tile\Tile;
 use Taxmod\Core\Tile\TileGrid;
 use Taxmod\Core\Tile\TileTone;
@@ -57,18 +59,19 @@ final class Tiles
     }
 
     /**
-     * The key figures as tiles — of the whole model, or only of the nodes given and every node below them.
+     * The key figures as tiles — of the whole model, or only of the nodes given and every node below them; per month, or
+     * for one period of the period view against the one before it (D-1167).
      *
      * @param list<int>|null $under
      * @return list<Tile>
      */
-    public static function metrics(?array $under = null): array
+    public static function metrics(?array $under = null, ?Period $period = null): array
     {
         $tiles = [];
 
         foreach (self::chosenMetrics($under) as [$node, $metric]) {
             try {
-                $tiles[] = self::metricTile($node, $metric);
+                $tiles[] = $period === null ? self::metricTile($node, $metric) : self::periodTile($node, $metric, $period);
             } catch (\RuntimeException $e) {
                 // *A figure whose query fails says so on its tile; the others still stand.*
                 $tiles[] = new Tile(self::titleOf($node, $metric), self::nodeUrl($node->id), '–', [$e->getMessage()], TileTone::Alert);
@@ -79,9 +82,70 @@ final class Tiles
     }
 
     /** The key figures as a grid with the heading «Kennzahlen», or nothing when none is chosen. */
-    public static function metricsGrid(?array $under = null): string
+    public static function metricsGrid(?array $under = null, ?Period $period = null): string
     {
-        return self::grid(self::metrics($under), __('Key figures', 'taxmod'));
+        return self::grid(self::metrics($under, $period), __('Key figures', 'taxmod'));
+    }
+
+    /** The query keys of the period view: which span, and a day inside the period. */
+    public const SPAN = 'span';
+    public const DAY  = 'day';
+
+    /** The period the request asks for; today's day when it names none or a wrong one. */
+    public static function periodFromRequest(PeriodSpan $default = PeriodSpan::Day): Period
+    {
+        $span = PeriodSpan::tryFrom(sanitize_key((string) ($_GET[self::SPAN] ?? ''))) ?? $default;
+        $day  = sanitize_text_field(wp_unslash((string) ($_GET[self::DAY] ?? '')));
+
+        try {
+            return Period::of($span, $day);
+        } catch (\InvalidArgumentException) {
+            return Period::of($span, current_time('Y-m-d'));
+        }
+    }
+
+    /**
+     * The switch of the period view (D-1167): day, month or year, back, today, forward — plain links, so every view has its
+     * own address and the browser's back button works.
+     */
+    public static function periodBar(Period $period, string $base): string
+    {
+        $link = static fn (PeriodSpan $span, string $day): string => esc_url(add_query_arg([self::SPAN => $span->value, self::DAY => $day], $base));
+        $html = TileGrid::style() . '<nav class="taxmod-period" aria-label="' . esc_attr__('Period', 'taxmod') . '">';
+
+        $words = ['day' => __('Day', 'taxmod'), 'month' => __('Month', 'taxmod'), 'year' => __('Year', 'taxmod')];
+
+        foreach (PeriodSpan::cases() as $span) {
+            $html .= '<a class="button' . ($span === $period->span ? ' is-chosen' : '') . '" href="' . $link($span, $period->start()) . '"'
+                . ($span === $period->span ? ' aria-current="true"' : '') . '>' . esc_html($words[$span->value]) . '</a>';
+        }
+
+        $html .= '<a class="button" href="' . $link($period->span, $period->previous()->start()) . '" aria-label="' . esc_attr__('Earlier', 'taxmod') . '">‹</a>'
+            . '<span class="taxmod-period-name">' . esc_html(self::periodName($period)) . '</span>'
+            . '<a class="button" href="' . $link($period->span, $period->next()->start()) . '" aria-label="' . esc_attr__('Later', 'taxmod') . '">›</a>'
+            . '<a class="button" href="' . $link($period->span, current_time('Y-m-d')) . '">' . esc_html__('Today', 'taxmod') . '</a>';
+
+        return $html . '</nav>';
+    }
+
+    /** What a period is called on a tile, a heading or a step of its chart. */
+    public static function periodName(Period $period): string
+    {
+        $at = (int) strtotime($period->start() . ' 00:00:00 UTC');
+
+        return match ($period->span) {
+            PeriodSpan::Day   => wp_date(get_option('date_format') ?: 'Y-m-d', $at, new \DateTimeZone('UTC')),
+            PeriodSpan::Month => wp_date('F Y', $at, new \DateTimeZone('UTC')),
+            PeriodSpan::Year  => wp_date('Y', $at, new \DateTimeZone('UTC')),
+        };
+    }
+
+    /** The label of one step of a period's chart: a day «4.11.», a month «Nov». */
+    public static function stepName(Period $period, string $step): string
+    {
+        $at = (int) strtotime(($period->span === PeriodSpan::Year ? $step . '-01' : $step) . ' 00:00:00 UTC');
+
+        return wp_date($period->span === PeriodSpan::Year ? 'M' : 'j.n.', $at, new \DateTimeZone('UTC'));
     }
 
     /**
@@ -139,7 +203,8 @@ final class Tiles
     {
         $months  = (int) (($metric->settings['months'] ?? null)?->text ?? 12) ?: 12;
         $current = current_time('Y-m');
-        $series  = MonthlySeries::of(self::monthly($node, $metric, $months, $current), $current, $months);
+        $start   = gmdate('Y-m-01', (int) strtotime($current . '-01 -' . (max(1, min(36, $months)) - 1) . ' months'));
+        $series  = MonthlySeries::of(self::sumsPerStep($node, $metric, '%Y-%m', $start, null), $current, $months);
         $sum     = MetricMeasure::tryFrom((string) (($metric->settings['measure'] ?? null)?->text ?? '')) === MetricMeasure::Sum;
         $format  = static fn (float $v): string => number_format_i18n($v, $sum && fmod($v, 1.0) !== 0.0 ? 2 : 0);
         $lines   = [];
@@ -171,6 +236,42 @@ final class Tiles
         );
     }
 
+    /** D-1167: the figure of one period, the one before it as a line, and its steps as bars. */
+    private static function periodTile(Node $node, ChosenAddon $metric, Period $period): Tile
+    {
+        $before = $period->previous();
+        $from   = min($before->start(), $period->chartStart());
+        $days   = self::sumsPerStep($node, $metric, '%Y-%m-%d', $from, $period->end());
+        $sum    = MetricMeasure::tryFrom((string) (($metric->settings['measure'] ?? null)?->text ?? '')) === MetricMeasure::Sum;
+        $format = static fn (float $v): string => number_format_i18n($v, $sum && fmod($v, 1.0) !== 0.0 ? 2 : 0);
+        $now    = 0.0;
+        $then   = 0.0;
+        $steps  = array_fill_keys($period->steps(), 0.0);
+
+        foreach ($days as $day => $value) {
+            $now  += $period->contains($day) ? $value : 0.0;
+            $then += $before->contains($day) ? $value : 0.0;
+
+            if (isset($steps[$period->stepOf($day)])) {
+                $steps[$period->stepOf($day)] += $value;
+            }
+        }
+
+        $labels = array_map(static fn (string $step, float $v): string => self::stepName($period, $step) . ': ' . $format($v), array_keys($steps), array_values($steps));
+        $trend  = $now <=> $then;
+
+        return new Tile(
+            self::titleOf($node, $metric),
+            self::nodeUrl($node->id),
+            $format($now),
+            [sprintf(__('Before: %s', 'taxmod'), $format($then))],
+            $now == 0 && $then == 0 ? TileTone::Empty : TileTone::Normal,
+            array_values($steps),
+            $labels,
+            [1 => '▲', 0 => '', -1 => '▼'][$trend] . ' ' . self::periodName($period),
+        );
+    }
+
     private static function titleOf(Node $node, ChosenAddon $metric): string
     {
         $title = trim((string) (($metric->settings['title'] ?? null)?->text ?? ''));
@@ -187,9 +288,12 @@ final class Tiles
      * One query (`CD-7`, MySQL 5.7, no `WITH RECURSIVE`): the records of the node and below it, the filter as `EXISTS`, per
      * record its date and value as the **last** row of a single-valued field (D-1022, 0.1.93), a reference followed one step.
      *
-     * @return array<string, float> month «YYYY-MM» => count or sum
+     * @param string      $step  the SQL `DATE_FORMAT` of a step: «%Y-%m» per month, «%Y-%m-%d» per day
+     * @param string      $from  first day counted, «YYYY-MM-DD»
+     * @param string|null $until first day no longer counted, null for open
+     * @return array<string, float> step => count or sum
      */
-    private static function monthly(Node $node, ChosenAddon $metric, int $months, string $current): array
+    private static function sumsPerStep(Node $node, ChosenAddon $metric, string $step, string $from, ?string $until): array
     {
         global $wpdb;
 
@@ -200,7 +304,7 @@ final class Tiles
         $sumOf   = $field('value_field');
         $filter  = $field('filter_field');
         $sum     = MetricMeasure::tryFrom((string) (($metric->settings['measure'] ?? null)?->text ?? '')) === MetricMeasure::Sum;
-        $start   = gmdate('Y-m-01 00:00:00', (int) strtotime($current . '-01 -' . (max(1, min(36, $months)) - 1) . ' months'));
+        $format  = $step === '%Y-%m-%d' ? '%%Y-%%m-%%d' : '%%Y-%%m';
 
         $at = $date === 0 ? 'r.created_at' : "COALESCE(
                 (SELECT d.value_date FROM {$values} d WHERE d.node_record_id = r.id AND d.relation_id = {$date} AND d.locale = '' AND d.value_date IS NOT NULL ORDER BY d.id DESC LIMIT 1),
@@ -225,15 +329,22 @@ final class Tiles
             $params  = [$wanted, $wanted, $wanted];
         }
 
-        $params[] = $start;
-        $sql      = "SELECT DATE_FORMAT(x.at, '%%Y-%%m') AS month, SUM(x.v) AS total FROM (
+        $params[] = $from . ' 00:00:00';
+        $end      = '';
+
+        if ($until !== null) {
+            $params[] = $until . ' 00:00:00';
+            $end      = ' AND x.at < %s';
+        }
+
+        $sql = "SELECT DATE_FORMAT(x.at, '{$format}') AS step, SUM(x.v) AS total FROM (
                 SELECT {$at} AS at, {$value} AS v FROM {$records} r WHERE {$where}
-            ) x WHERE x.at >= %s GROUP BY month";
+            ) x WHERE x.at >= %s{$end} GROUP BY step";
 
         $out = [];
 
-        foreach (Query::rows('Kennzahl je Monat zaehlen', $wpdb->prepare($sql, ...$params)) as $row) {
-            $out[(string) $row['month']] = (float) $row['total'];
+        foreach (Query::rows('Kennzahl je Zeitraum zaehlen', $wpdb->prepare($sql, ...$params)) as $row) {
+            $out[(string) $row['step']] = (float) $row['total'];
         }
 
         return $out;

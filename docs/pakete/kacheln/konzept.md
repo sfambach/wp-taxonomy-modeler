@@ -106,3 +106,29 @@ A module can show only those of its nodes with `Tiles::metricsGrid([nodeIds])`.
 - Sums over positions with the head's date (e.g. quantities of receipt lines) — needs «date from the holding record».
 - Ratios and differences (Defektquote, Ergebnis), and currency conversion of sums.
 - Tiles per role and own selections (design 6.2).
+
+## 6 · The period view («Zeitraum», D-1167)
+
+His word, 2026-11-04: *«eine Zeitraumübersicht und dann macht man einen Umschalter über den Zeitraum und einen einzelnen
+Tag, kann ich die Tage vor- und zurückwählen. Oder einen Monat oder ein Jahr»* — the sketch was approved with *«ok sieht gut aus»*.
+
+```mermaid
+flowchart LR
+  B["switch: Day · Month · Year · ‹ · Today · ›"] --> P["Period (start … end, previous)"]
+  P --> M["module: what happened (Lager: Vorgänge)"]
+  P --> K["key figures of the model for the same period"]
+  M --> T["tiles against the period before"] & C["chart in / out"] & L["list + most moved"]
+```
+
+- **Shared, in the modeller:** `Period` (day, month, year; previous, next, steps of its chart), the switch
+  (`Tiles::periodBar`, plain links with `span` and `day`, so every view has its own address), the chart (`PeriodChart`,
+  inline SVG, two series) and every key figure for a period (`Tiles::metrics($under, $period)`: the figure of the period,
+  the one before as a line, a bar per step). Any module can build a period view from these.
+- **In the stock module:** Logistik › Cockpit › «Zeitraum». Tiles per kind of Vorgang and for the quantity in and out,
+  orders by their date, each against the period before; the chart «Zugang / Abgang»; the Vorgänge of the period (newest
+  first, at most 50) and the ten things moved most; then the key figures.
+- ⚠️ `INFERRED`, not in the sketch's words: a day is charted as **the fourteen days ending on it**, not by hour — a Vorgang
+  carries a date without a time, so hours would put everything at midnight. An Umbuchung or a Box-Umlagerung counts as a
+  Vorgang but neither in nor out (it moves between places); reservation lines and a Storno with what it cancels are left out,
+  as in the stock itself.
+- Not built from the sketch (open, INF-108): spending per merchant, «Neues Material», the list «Auffällig».

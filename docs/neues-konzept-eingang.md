@@ -1188,6 +1188,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Heute:** Einheitliche Kachel und die Zusatzfunktion «Kennzahl» am Knoten ([D-1149](NewConcept/90-decision-log.md)); das Cockpit zeigt alle gewählten Kennzahlen. Gewählt ist noch keine.
 - **Vorschlag (nicht entschieden):** die Liste in [`pakete/kacheln/konzept.md`](pakete/kacheln/konzept.md) §4 — Wareneingänge, Verbrauch, Bestellungen und Ausgaben je Monat als Startkennzahlen; Überfällig, Unter Mindestbestand, Bestandswert als Modul-Kacheln.
+- **Zeitraum (2026-11-04, [D-1167](NewConcept/90-decision-log.md)):** gebaut ohne «Ausgaben je Händler», «Neues Material» und «Auffällig» aus der Skizze — offen, ob und mit welcher Regel (Ausgaben: Bestelldatum oder Eingangsdatum? Auffällig: welche Schwelle?).
 - **Offen für Stefan:** welche Startkennzahlen; nur Cockpit oder auch je Bereichs-Übersicht; Schwellen/Ampeln (Design 4.20); Summen über Positionen mit dem Datum des Kopfs; Quoten und Differenzen (Defektquote, Ergebnis); Umrechnung der Währungen.
 
 ## INF-109 · Teilbare Ware: Stiftleisten, Buchsenleisten (2026-11-04)

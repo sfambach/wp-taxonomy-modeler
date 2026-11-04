@@ -42,6 +42,8 @@ use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
+use Taxmod\Core\Tile\Period;
+use Taxmod\Core\Tile\PeriodSpan;
 use Taxmod\Core\Tile\TileTone;
 use Taxmod\WordPress\Admin\Tiles;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
@@ -141,6 +143,28 @@ check('zwölf Balken, der letzte ist dieser Monat; älter als das Fenster zählt
 check('die Kachel führt zum Knoten', str_contains((string) $we?->url, 'taxmod_node=' . $vorgang->id));
 $nurHier = static fn (array $kacheln): bool => array_filter($kacheln, static fn ($k): bool => $k->label === '__kz Wareneingänge') !== [];
 check('eingegrenzt auf einen Ast: der eigene zeigt sie, ein fremder nicht', $nurHier(Tiles::metrics([$vorgang->id])) && ! $nurHier(Tiles::metrics([$editor->createNode('__kz leer', $model->id)->id])));
+
+echo "Zeitraum (D-1167)\n";
+$imZeitraum = static function (Period $p) use ($vorgang): ?\Taxmod\Core\Tile\Tile {
+    foreach (Tiles::metrics([$vorgang->id], $p) as $k) {
+        if ($k->label === '__kz Wareneingänge') {
+            return $k;
+        }
+    }
+
+    return null;
+};
+$diesen = Period::of(PeriodSpan::Month, current_time('Y-m') . '-15');
+$m      = $imZeitraum($diesen);
+check('Monat: dieser Monat 2, der davor 1 als Zeile', $m?->figure === '2' && in_array(sprintf(__('Before: %s', 'taxmod'), '1'), $m->lines, true), (string) $m?->figure . ' ' . implode(' | ', $m?->lines ?? []));
+check('Monat: ein Balken je Tag, beide am 15.', count($m?->bars ?? []) === count($diesen->steps()) && ($m?->bars[14] ?? null) === 2.0, implode(',', $m?->bars ?? []));
+$t = $imZeitraum(Period::of(PeriodSpan::Day, current_time('Y-m') . '-15'));
+check('Tag: der 15. zählt 2, der 14. nichts; vierzehn Balken', $t?->figure === '2' && in_array(sprintf(__('Before: %s', 'taxmod'), '0'), $t->lines, true) && count($t->bars) === Period::DAY_STEPS, (string) $t?->figure);
+$j = $imZeitraum(Period::of(PeriodSpan::Year, current_time('Y-m') . '-15'));
+check('Jahr: zwölf Balken, die Summe ist das Jahr', count($j?->bars ?? []) === 12 && (string) array_sum($j?->bars ?? []) === (string) $j?->figure, (string) $j?->figure);
+check('ein Tag ohne Sätze ist grau', $imZeitraum(Period::of(PeriodSpan::Day, '2001-01-01'))?->tone === TileTone::Empty);
+$leiste = Tiles::periodBar($diesen, admin_url('admin.php?page=x'));
+check('die Leiste: Tag, Monat, Jahr, zurück, vor, heute — der gewählte markiert', substr_count($leiste, '<a class="button') === 6 && str_contains($leiste, 'aria-current="true"') && str_contains($leiste, 'day=' . $diesen->previous()->start()), $leiste);
 
 echo "Summe über einen Teil, Datum über einen Verweis\n";
 
