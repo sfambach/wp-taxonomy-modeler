@@ -1323,6 +1323,44 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     text-align: left;
 }
 
+/* ⚠️ Einfachauswahl: das ausgegraute Feld mit der Wahl, rechts das Baumsymbol (D-1163) — sein Wort: «bei einfacher auswahl ein
+ * ausgegrautes feld … und recht daneben … das baum symbol». Dieselbe Optik wie `.taxmod-chosen`; das Skript setzt nach einer Wahl
+ * `button` zurück auf den Öffner, darum hier mit der Klasse zusammen überschrieben. */
+.taxmod-chooser.taxmod-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+}
+
+.taxmod-pick > label.taxmod-dialog-open,
+.taxmod-pick > label.taxmod-record-dialog-open,
+.taxmod-pick > label.button.taxmod-dialog-open,
+.taxmod-pick > label.button.taxmod-record-dialog-open {
+    display: inline-block;
+    box-sizing: border-box;
+    min-width: 12em;
+    min-height: 30px;
+    margin: 0;
+    padding: 3px 8px;
+    line-height: 22px;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    background: #f0f0f1;
+    color: #2c3338;
+    box-shadow: none;
+    font-weight: 400;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.taxmod-pick > label.taxmod-dialog-open:hover,
+.taxmod-pick > label.taxmod-record-dialog-open:hover {
+    background: #e3e3e3;
+}
+
 /* ⚠️ Die ganze Zeile ist klickbar (D-788): der Zeiger sagt es, das Überfahren zeigt, welche; die geöffnete bleibt hinterlegt. */
 .taxmod-table tr:has(> * a.taxmod-record-open) {
     cursor: pointer;

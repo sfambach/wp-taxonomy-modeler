@@ -171,17 +171,21 @@ final class ChooserRenderer extends RendererNode
             }
         }
 
+        $eigener = $trigger !== null && $trigger->body !== '';
+
         return RenderResult::of(DialogMarkup::of(
             $switch,
-            $trigger === null || $trigger->body === '' ? $current : $trigger->body,
+            $eigener ? $trigger->body : $current,
             $current,
             '<span class="taxmod-chooser-tree">' . $koerper . '</span>',
             $confirm?->body ?? '',
             // *Ein Öffner ohne eigenen Auslöser zeigt die Wahl selbst; das Skript schreibt eine neue Wahl hinein. Sein Befund am 2026-11-04:
             // «nach auswahl wird platzart nicht angezeigt aber gesetzt wird es».*
-            $trigger === null || $trigger->body === '' ? 'button taxmod-icon-button taxmod-dialog-open ' . self::SHOWS_CHOICE : 'button taxmod-icon-button taxmod-dialog-open',
+            $eigener ? 'button taxmod-icon-button taxmod-dialog-open' : 'taxmod-dialog-open ' . self::SHOWS_CHOICE,
             ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
-            cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? '')
+            cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? ''),
+            // *Ohne eigenen Auslöser ist der Öffner das ausgegraute Feld, rechts daneben der Baum (D-1163).*
+            tree: $eigener ? null : (string) ($context->surroundings->dialogWords['tree'] ?? '')
         ));
     }
 }

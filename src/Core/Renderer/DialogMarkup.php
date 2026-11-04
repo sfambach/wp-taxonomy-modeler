@@ -34,6 +34,8 @@ final class DialogMarkup
         string $cancel = '',
         /** Open when the page arrives — a dialog that answers what just happened, like a conflict (D-1148). */
         bool $open = false,
+        /** Name of the tree button beside a chooser's field; set, the opener looks like a locked field and the tree opens the dialog (D-1163). */
+        ?string $tree = null,
     ): string {
         $id = RenderResult::escape($switch);
 
@@ -49,7 +51,13 @@ final class DialogMarkup
             $foot .= '<label class="button taxmod-dialog-cancel" for="' . $id . '">' . RenderResult::escape($cancel) . '</label>';
         }
 
-        return '<span class="taxmod-chooser">'
+        // ⚠️ **Einfachauswahl: ein ausgegrautes Feld, rechts das Baumsymbol** ([D-1163](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort am
+        // 2026-11-04: «bei einfacher auswahl ein ausgegrautes feld erwarten und recht daneben … das baum symbol das öffnet den dialog». Beide
+        // beschriften den Schalter, also öffnet auch ein Klick ins Feld.*
+        $baum = $tree === null ? '' : '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-pick-tree" for="' . $id . '"'
+            . ($tree === '' ? '' : ' title="' . RenderResult::escape($tree) . '"') . '>' . IconMarkup::dashicon('networking', $tree) . '</label>';
+
+        return '<span class="taxmod-chooser' . ($tree === null ? '' : ' taxmod-pick') . '">'
             . RenderResult::htmlTag('input', [
                 'type'  => 'checkbox',
                 'class'   => 'taxmod-dialog-switch',
@@ -60,6 +68,7 @@ final class DialogMarkup
             . '<label class="' . RenderResult::escape($openerClass) . '" for="' . $id . '"'
             . (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : '')
             . '>' . $opener . '</label>'
+            . $baum
             . '<span class="taxmod-dialog">'
             . '<span class="taxmod-dialog-shade"></span>'
             . '<span class="taxmod-dialog-panel">'

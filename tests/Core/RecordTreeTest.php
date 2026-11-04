@@ -152,6 +152,10 @@ final class RecordTreeTest extends TestCase
         self::assertDoesNotMatchRegularExpression('~data-depth="2" style="display:none"~', $html, 'the way to the chosen record stands open');
         // His report 2026-11-04: «nach auswahl wird platzart nicht angezeigt aber gesetzt wird es» — the opener shows the choice, so the script writes a new one into it.
         self::assertStringContainsString('taxmod-dialog-open ' . ChooserRenderer::SHOWS_CHOICE . '"', $html);
+        // D-1163, his word 2026-11-04: «bei einfacher auswahl ein ausgegrautes feld … und recht daneben … das baum symbol das öffnet den dialog».
+        self::assertStringContainsString('class="taxmod-chooser taxmod-pick"', $html);
+        self::assertMatchesRegularExpression('~<label class="button taxmod-icon-button taxmod-pick-tree" for="[^"]+"[^>]*><span class="[^"]*dashicons-networking~', $html);
+        self::assertStringNotContainsString('taxmod-record-quick', $html, 'no stray search field before the dialog');
     }
 
     #[Test]

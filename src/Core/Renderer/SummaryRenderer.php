@@ -349,23 +349,16 @@ final class SummaryRenderer extends TypedFieldRenderer
             $jetzt,
             '<div class="taxmod-record-tree">' . $koerper . '</div>',
             '',
-            $nichts ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-record-dialog-open',
+            'taxmod-record-dialog-open',
             ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
-            cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? '')
+            cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? ''),
+            tree: (string) ($context->surroundings->dialogWords['tree'] ?? '')
         );
 
-        // ⚠️ **Das Suchfeld vor dem Dialog** ([D-792](../../../docs/NewConcept/90-decision-log.md), Zeile 153) — *sein Wort: «free text
-        // field user can enter something and then a list appears below … if he cannot find anything he can choose a button and gets the
-        // dialog». Tippen zeigt darunter die passenden Sätze aus dem Baum; ein Klick wählt. Der Knopf daneben ist der Dialog. Ohne Skript
-        // und ohne Namen schickt das Feld nichts und tut nichts — der Dialog bleibt der Weg.*
-        // ⚠️ **Steht schon ein Satz da, steht dort kein leeres Suchfeld** ([D-851](../../../docs/NewConcept/90-decision-log.md)) — *sein Befund
-        // am Mainboard: «was sollen die felder?», und sein Vorschlag: «bei den referenzen könnte höchstens delete stehen und dann eine neue
-        // wahl ermöglichen». Also: gewählt → Wort und Mülleimer; der Mülleimer wählt «nichts» und gibt Suchfeld und Dialog frei.*
-        $suche = '<input type="search" class="taxmod-record-quick" autocomplete="off" aria-label="' . RenderResult::escape((string) ($baum[0]['name'] ?? '')) . '"'
-            . ($nichts ? '' : ' hidden') . '>';
-
+        // ⚠️ **Kein Suchfeld mehr vor dem Dialog** ([D-1163](../../../docs/NewConcept/90-decision-log.md), ersetzt D-792 Zeile 153 hier) — *sein
+        // Befund am 2026-11-04: «da erscheint ein Feld … weiß nicht, ob das eigentlich hidden sein soll», und sein Wunsch: «bei einfacher auswahl
+        // ein ausgegrautes feld … und recht daneben … das baum symbol das öffnet den dialog». Gesucht wird im Dialog (D-791 Schritt 2).*
         return '<span class="taxmod-record-pick' . ($nichts ? '' : ' taxmod-record-taken') . '">'
-            . $suche
             . $dialog
             // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl im Dialog zeigt ihn und verbirgt das Suchfeld (D-1138).*
             . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape((string) ($context->surroundings->dialogWords['clear'] ?? '')) . '">'
