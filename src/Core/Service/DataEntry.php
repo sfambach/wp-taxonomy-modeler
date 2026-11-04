@@ -2394,6 +2394,62 @@ final class DataEntry
     }
 
     /**
+     * Ein geerbtes Feld an diesem Knoten verstecken oder wieder zeigen — für ihn und seinen Unterbaum.
+     *
+     * ⚠️ **[D-1144](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«die relation müsste überschreibbar sein»*.
+     * *Dieselbe Adresse wie {@see self::moveFieldAt()}: der Satz `Knoten × Kante`, darin `hidden`. Die Kante des Besitzers
+     * bleibt, wie sie ist; die Werte des Feldes auch.*
+     *
+     * @return bool Ob etwas geschrieben wurde — `false`, solange Fassung 57 die Einstellung nicht angelegt hat.
+     */
+    public function hideFieldAt(int $nodeId, int $relationId, bool $hide): bool
+    {
+        $kante = (new FieldVisibility($this->records, $this->relations, $this->nodes, $this->framework))->hiddenRelation();
+
+        if ($kante === null) {
+            return false;
+        }
+
+        $this->fieldRelationOf($nodeId, $relationId);
+
+        $traeger = $this->nodes->byId($nodeId);
+
+        $this->changelog?->beginAct();
+
+        try {
+            $satz = $this->records->ofRelationAt($nodeId, $relationId);
+
+            if ($satz === null) {
+                $neu    = new NodeRecord(0, $nodeId, $traeger->version, $this->clock->now()->format('Y-m-d H:i:s'), RecordType::Settings, $relationId);
+                $satzId = $this->records->add($neu);
+                $this->melden($satzId, 'record', 'record created', null, $this->satzZustand($neu), 1);
+            } else {
+                $satzId = $satz->id;
+            }
+
+            $wert      = TypedValue::ofBool($hide);
+            $vorhanden = $this->valuesOn($satzId, $kante->id, '');
+            $version   = $this->records->putValue(
+                $vorhanden === []
+                    ? RelationRecord::direct($satzId, $kante->id, $wert, '')
+                    : new RelationRecord($satzId, $kante->id, '', $wert, $vorhanden[0]->id, $vorhanden[0]->position)
+            );
+            $this->melden(
+                $satzId,
+                'record_value',
+                'value set',
+                $this->wertZustand($satzId, $kante->id, '', $vorhanden[0]->value ?? null),
+                $this->wertZustand($satzId, $kante->id, '', $wert),
+                $version
+            );
+        } finally {
+            $this->changelog?->endAct();
+        }
+
+        return true;
+    }
+
+    /**
      * Eine Feldzeile an diesem Knoten um einen Schritt verschieben — auch eine geerbte.
      *
      * ⚠️ **[D-698](../../../docs/NewConcept/90-decision-log.md), sein Wort:** *«würde sagen kind darf

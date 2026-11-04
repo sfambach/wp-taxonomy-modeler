@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.148';
+    public const VERSION     = '0.1.149';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -384,6 +384,10 @@ final class Plugin
         if (UnitScaffold::rateFieldId() === null) {
             $this->unitScaffold()->ensureRateField();
         }
+
+        // ⚠️ *Nach der Saat: `install()` lief vor ihr, ohne Wurzel, und der Abzug kennt die Einstellung `hidden` noch nicht
+        // ([D-1144](../../docs/NewConcept/90-decision-log.md)). Steht sie, tut der Aufruf nichts.*
+        Schema::declareHiddenAtRoot();
     }
 
     /** Moves the maintenance pages — Cleanup, Backup, Configuration — to the foot of the one Taxmod menu, after every module's pages (D-1028). */

@@ -471,6 +471,16 @@ abstract class Relation extends Identity implements Renderable
 
         return $this->copy(version: $this->version + 1, hide: $hide);
     }
+
+    /**
+     * Dieselbe Kante, wie sie an einem Knoten gilt, der sie für sich versteckt oder wieder zeigt
+     * ([D-1144](../../../docs/NewConcept/90-decision-log.md)) — **ohne** neue Version: die Kante selbst ist unverändert,
+     * gespeichert wird so eine Kopie nie.
+     */
+    public function asSeenWithHide(bool $hide): self
+    {
+        return $hide === $this->hide ? $this : $this->copy(hide: $hide);
+    }
     /**
      * Dieselbe Kante mit einer anderen Multiplizität, eine Version weiter.
      *

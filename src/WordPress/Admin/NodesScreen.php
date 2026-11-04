@@ -3158,17 +3158,21 @@ final class NodesScreen
                 // ⚠️ *Das Auge sagt, was der **Klick** tut, nicht was der Zustand ist — dieselbe Regel
                 // wie in der Baumzeile, damit nicht jedes Auge im Schirm eine Rückfrage ist.*
                 //
-                // ⚠️ **Nur an der eigenen Deklaration.** *Ein geerbtes Feld ist dieselbe Kante; es hier
-                // zu verstecken hiesse, es überall zu verstecken. Wer das will, sagt es dort, wo das
-                // Feld erklärt ist.*
+                // ⚠️ **Auch an einem geerbten Feld** ([D-1144](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort:
+                // «die relation müsste überschreibbar sein». Am Besitzer schaltet das Auge die Spalte der Kante; an jedem
+                // anderen Knoten gilt es nur für diesen Knoten und seinen Unterbaum, die Kante bleibt, wie sie ist.*
                 new Control(
                     'do',
                     'toggle_field_hide',
                     $relation->hide ? __('Show', 'taxmod') : __('Hide', 'taxmod'),
-                    $relation->hide
-                        ? __('Show this field again — it is hidden from forms and from the preview', 'taxmod')
-                        : __('Hide this field — it stays in the model and is not drawn', 'taxmod'),
-                    $own,
+                    $own
+                        ? ($relation->hide
+                            ? __('Show this field again — it is hidden from forms and from the preview', 'taxmod')
+                            : __('Hide this field — it stays in the model and is not drawn', 'taxmod'))
+                        : ($relation->hide
+                            ? __('Show this inherited field again here and below', 'taxmod')
+                            : __('Hide this inherited field here and below — elsewhere it stays', 'taxmod')),
+                    true,
                     icon: $relation->hide ? 'visibility' : 'hidden'
                 ),
                 // ⚠️ **Die Diskette der Zeile ist weg, und das ist sein Wunsch von zweimal:** *«biete
@@ -7331,7 +7335,7 @@ final class NodesScreen
                 // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
                 // because an inherited attribute belongs to the ancestor and renaming it from a
                 // descendant would rename it for every other user, silently.
-                'toggle_field_hide' => $this->editor->hideField($id, $relation),
+                'toggle_field_hide' => $this->toggledFieldHide($id, $relation),
                 // ⚠️ **Der einzige Akt auf dieser Seite, der nichts schreibt**
                 // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Er ändert einen **Umstand**
                 // — wer gerade wohin sieht — und Umstände reisen in der Adresse
@@ -7866,6 +7870,27 @@ final class NodesScreen
         return '<div class="taxmod-toast' . ($ok ? ' taxmod-toast-ok' : ' taxmod-toast-bad') . '" role="status">'
             . esc_html($ok ? __('Done.', 'taxmod') : $message)
             . '</div>';
+    }
+
+    /**
+     * Das Auge an der Feldzeile: am Besitzer die Spalte der Kante, sonst das Verstecken an diesem Knoten
+     * ([D-1144](../../../docs/NewConcept/90-decision-log.md)).
+     */
+    private function toggledFieldHide(int $nodeId, int $relationId): Relation|bool
+    {
+        foreach ($this->editor->fieldsOf($nodeId) as $zeile) {
+            if ($zeile->id !== $relationId) {
+                continue;
+            }
+
+            if ($zeile->fromNodeId === $nodeId) {
+                return $this->editor->hideField($nodeId, $relationId);
+            }
+
+            return $this->data->hideFieldAt($nodeId, $relationId, ! $zeile->hide);
+        }
+
+        return $this->editor->hideField($nodeId, $relationId);
     }
 
     /**

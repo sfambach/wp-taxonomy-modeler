@@ -821,7 +821,17 @@ final class ModelEditor
 
         // ⚠️ **In der Reihenfolge, die an diesem Knoten gilt** ([D-698](../../../docs/NewConcept/90-decision-log.md)):
         // *ein Kind darf geerbte Felder anordnen; steht nichts, gilt die Reihenfolge der Besitzer.*
-        return $this->fieldOrder()?->orderedAt($nodeId, $zeilen) ?? $zeilen;
+        $geordnet = $this->fieldOrder()?->orderedAt($nodeId, $zeilen) ?? $zeilen;
+
+        // ⚠️ **Wie an diesem Knoten versteckt** ([D-1144](../../../docs/NewConcept/90-decision-log.md)): *ein Knoten darf
+        // ein geerbtes Feld für sich und seinen Unterbaum verstecken oder wieder zeigen; die Spalte des Besitzers bleibt.*
+        return $this->fieldVisibility()?->appliedAt($nodeId, $geordnet) ?? $geordnet;
+    }
+
+    /** Das Verstecken an einem Knoten braucht die Sätze — ohne sie gilt die Spalte des Besitzers. */
+    public function fieldVisibility(): ?FieldVisibility
+    {
+        return $this->records === null ? null : new FieldVisibility($this->records, $this->relations, $this->nodes, $this->framework);
     }
 
     /** Die Anordnung braucht die Sätze — ohne sie gilt die Reihenfolge der Besitzer. */

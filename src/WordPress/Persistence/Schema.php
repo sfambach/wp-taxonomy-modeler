@@ -457,7 +457,7 @@ final class Schema
      * `Compositions` und `Combined` hielt bis dahin nur Verweise auf fremde Sätze; liesse man sie Komposition, hielte der Kern diese
      * Sätze für eigene Teile. Gemessen am Abzug vom 2026-10-01: keine solche Kante. Der Schritt ist die Versicherung für den lebenden Bestand.*
      */
-    public const VERSION = 56;
+    public const VERSION = 57;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -757,6 +757,9 @@ final class Schema
         // ⚠️ **Fassung 45: die Einstellung `position` an der Wurzel — ein Kind ordnet geerbte Felder**
         // ([D-698](../../../docs/NewConcept/90-decision-log.md), TASK-087).
         self::declarePositionAtRoot();
+
+        // ⚠️ **Fassung 57: die Einstellung `hidden` an der Wurzel** ([D-1144](../../../docs/NewConcept/90-decision-log.md)).
+        self::declareHiddenAtRoot();
 
         // ⚠️ **Fassung 46: jeder Knoten bekommt seine Klasse** ([D-716](../../../docs/NewConcept/90-decision-log.md),
         // [D-719](../../../docs/NewConcept/90-decision-log.md), TASK-092). *Nach `dbDelta`, weil die
@@ -3103,6 +3106,57 @@ final class Schema
         $editor->setMultiplicity($wurzel, $kante->id, \Taxmod\Core\Model\Multiplicity::ZeroToOne);
 
         update_option('taxmod_fassung45_shape', ['position' => $kante->id, 'an' => $wurzel], false);
+    }
+
+    /**
+     * Fassung 57: die Einstellung `hidden` an der Wurzel — ein Knoten versteckt ein geerbtes Feld für sich und seinen
+     * Unterbaum ([D-1144](../../../docs/NewConcept/90-decision-log.md)). *Wie `position` (Fassung 45) gelesen und geschrieben
+     * im Satz `Knoten × Kante` ({@see \Taxmod\Core\Service\FieldVisibility}). Nichts wandert: kein Bestand trägt eine.*
+     */
+    public static function declareHiddenAtRoot(): void
+    {
+        global $wpdb;
+
+        $nodes = self::table('nodes');
+
+        if (self::tableMissing($nodes) || self::tableMissing(self::table('relations_named'))) {
+            return;
+        }
+
+        // ⚠️ *Auf einer frischen Installation steht noch keine Wurzel: gesät wird erst nach `install()`. Dann ist
+        // hier nichts nachzuziehen, und `root()` würfe, statt «keine» zu sagen ([D-909](../../../docs/NewConcept/90-decision-log.md)).*
+        if ((int) get_option(SeededFrameworkNodes::ROOT_OPTION, 0) === 0) {
+            return;
+        }
+
+        $log       = new WpdbChangelog(new SystemClock());
+        $knoten    = new WpdbNodeRepository();
+        $kanten    = new WpdbRelationRepository();
+        $framework = new SeededFrameworkNodes($knoten, $kanten, $log);
+        $wurzel    = $framework->root()->id;
+        $boolean   = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$nodes} WHERE implemented_by = %s ORDER BY id LIMIT 1", \Taxmod\Core\Model\Type\BoolType::class));
+
+        if ($wurzel === 0 || $boolean === 0) {
+            return;
+        }
+
+        $schonDa = (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM ' . self::table('relations_named') . " WHERE from_node_id = %d AND name = %s AND kind = 'setting'",
+            $wurzel,
+            'hidden'
+        ));
+
+        if ($schonDa > 0) {
+            return;
+        }
+
+        $editor = new \Taxmod\Core\Service\ModelEditor($knoten, $kanten, $framework, $log, new WpdbLabelRepository(), new WpdbRecordRepository());
+
+        // ⚠️ *`1..1`, weil die Zielklasse es so will ([D-713](../../../docs/NewConcept/90-decision-log.md): «bool = 1..1»).
+        // Ein Satz `Knoten × Kante` entsteht ohnehin erst, wenn jemand das Auge drückt — wo keiner steht, gilt die Spalte.*
+        $kante = $editor->addField($wurzel, $boolean, 'hidden', \Taxmod\Core\Model\RelationKind::Setting);
+
+        update_option('taxmod_fassung57_shape', ['hidden' => $kante->id, 'an' => $wurzel], false);
     }
 
     /**

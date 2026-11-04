@@ -112,12 +112,12 @@ $knoepfeAuf = static function (int $nodeId): array {
     $ctor->invoke($plugin, __FILE__);
 
     preg_match_all(
-        '#<button[^>]*value="toggle_field_hide"[^>]*>.*?</button>#s',
+        '#<input type="hidden" name="relation" value="(\d+)">(?:(?!</form>).)*?(<button[^>]*value="toggle_field_hide"[^>]*>.*?</button>)#s',
         $plugin->screen()->render(),
         $treffer
     );
 
-    return $treffer[0];
+    return array_combine(array_map('intval', $treffer[1]), $treffer[2]);
 };
 
 $hide = static fn (int $relationId): int => (int) $GLOBALS['wpdb']->get_var($GLOBALS['wpdb']->prepare(
@@ -126,8 +126,8 @@ $hide = static fn (int $relationId): int => (int) $GLOBALS['wpdb']->get_var($GLO
 ));
 
 // ── Eine eigene Wiese: ein Vater mit einem Feld, ein Kind mit einem eigenen ─
-// ⚠️ *Beides wird gebraucht — der Vater liefert das **geerbte** Feld, an dem der Schalter stumm sein
-// muss, das Kind das eigene, an dem er wirkt. Aus seinem Bestand genommen wäre beides eine Annahme
+// ⚠️ *Beides wird gebraucht — der Vater liefert das **geerbte** Feld, an dem der Schalter seit D-1144
+// die Einstellung des Knotens schreibt und nicht die Spalte, das Kind das eigene, an dem er die Spalte schaltet. Aus seinem Bestand genommen wäre beides eine Annahme
 // über Zeilen, die er jederzeit ändern darf.*
 $gebaut = [];
 
@@ -148,14 +148,16 @@ try {
 
     check('der Schalter wird gezeichnet', $sichtbar !== [], count($sichtbar) . ' gefunden');
 
-    $bedienbar = array_values(array_filter($sichtbar, static fn (string $b): bool => ! str_contains($b, 'disabled')));
+    $bedienbar = array_filter($sichtbar, static fn (string $b): bool => ! str_contains($b, 'disabled'));
 
-    // ⚠️ **Nur an der eigenen Deklaration.** *Ein geerbtes Feld ist **dieselbe Kante** — es hier zu
-    // verstecken hiesse, es überall zu verstecken; wer das will, sagt es dort, wo das Feld erklärt
-    // ist. Die Wiese garantiert mindestens ein geerbtes, also ist die Zusage nie leer wahr.*
+    // ⚠️ **Geändert am 2026-11-04 mit [D-1144](../../docs/NewConcept/90-decision-log.md), sichtbar:** *bis dahin war
+    // nur das eigene Feld bedienbar — «es hier zu verstecken hiesse, es überall zu verstecken». Seit D-1144 schreibt das
+    // Auge an einem geerbten Feld die Einstellung `hidden` am Knoten, nicht die Spalte; die Kante bleibt, wie sie ist.
+    // Dass das stimmt, prüft `field-hide-at-node-check.php`. Hier bleibt: jede Zeile ist bedienbar, und die Wiese hat
+    // mindestens eine geerbte, also ist die Zusage nie leer wahr.*
     check(
-        'nur das eigene Feld ist bedienbar, die geerbten nicht',
-        count($bedienbar) === 1 && count($sichtbar) >= 2,
+        'jedes Feld ist bedienbar, auch das geerbte (D-1144)',
+        count($bedienbar) === count($sichtbar) && count($sichtbar) >= 2 && isset($bedienbar[$eigenes->id]),
         count($bedienbar) . ' bedienbar von ' . count($sichtbar)
     );
 
@@ -170,22 +172,19 @@ try {
     // eine Zählung über das ganze Markup hängt an jedem anderen Auge, das der Schirm sonst noch zeigt.*
     check(
         'sichtbar zeigt er das durchgestrichene Auge',
-        str_contains($bedienbar[0] ?? '', 'dashicons-hidden')
+        str_contains($bedienbar[$eigenes->id] ?? '', 'dashicons-hidden')
     );
 
     $editor->hideField($kind->id, $eigenes->id, true);
 
     check('nach dem Verstecken steht es so in der Spalte', $hide($eigenes->id) === 1);
 
-    $versteckteKnoepfe = array_values(array_filter(
-        $knoepfeAuf($kind->id),
-        static fn (string $b): bool => ! str_contains($b, 'disabled')
-    ));
+    $versteckteKnoepfe = $knoepfeAuf($kind->id);
 
     check(
         'das Symbol wechselt von «hidden» auf «visibility»',
-        str_contains($versteckteKnoepfe[0] ?? '', 'dashicons-visibility')
-            && ! str_contains($versteckteKnoepfe[0] ?? '', 'dashicons-hidden')
+        str_contains($versteckteKnoepfe[$eigenes->id] ?? '', 'dashicons-visibility')
+            && ! str_contains($versteckteKnoepfe[$eigenes->id] ?? '', 'dashicons-hidden')
     );
 
     echo "\n== 3. Und es wird beim Zeichnen wirklich gelesen ==\n";

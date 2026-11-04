@@ -401,10 +401,13 @@ echo "== 0 · Das Gerüst: die Typen stehen, kein Einstellungsast mehr, der Best
 // ([D-712](../../docs/NewConcept/90-decision-log.md)), der Ast `Settings` ist in den Schatten gewandert
 // ([D-718](../../docs/NewConcept/90-decision-log.md)), die Rollen wohnen unter `Constants` ([D-719](../../docs/NewConcept/90-decision-log.md)).
 // Was bleibt, ist die Einstellungskante `position` an der Wurzel — bis Modell 2.4 entschieden ist.*
+// ⚠️ **Geändert am 2026-11-04 mit [D-1144](../../docs/NewConcept/90-decision-log.md), sichtbar:** *dazu kommt `hidden`,
+// dieselbe Adresse wie `position` — ein Knoten versteckt ein geerbtes Feld für sich und seinen Unterbaum.*
 check('den Ast Settings gibt es nicht mehr (D-718)', get_option('taxmod_branch_settings_id', null) === null && (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}nodes_named WHERE name = 'Settings' AND parent_node_id = {$wurzel->id}") === 0);
 check('die Rollen wohnen unter Constants (D-719, «K3c unter constants»)', (int) $wpdb->get_var('SELECT parent_node_id FROM ' . Schema::table('nodes') . ' WHERE id = ' . (int) get_option('taxmod_roles_id', 0)) === $framework->rootOf(Branch::Constants)->id);
 $lebendeEinstellungskanten = $wpdb->get_col("SELECT name FROM {$p}relations_named WHERE kind = 'setting'") ?: [];
-check('genau eine Einstellungskante lebt noch: position an der Wurzel — bis Modell 2.4 entschieden ist', $lebendeEinstellungskanten === ['position'], implode(',', $lebendeEinstellungskanten));
+sort($lebendeEinstellungskanten);
+check('genau zwei Einstellungskanten leben noch: position und hidden an der Wurzel (D-698, D-1144)', $lebendeEinstellungskanten === ['hidden', 'position'], implode(',', $lebendeEinstellungskanten));
 check('keine Renderer-Knoten mehr: keine Option taxmod_render_*, kein Knoten mit einer Renderer-Klasse', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE 'taxmod\\_render\\_%'") === 0 && (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . Schema::table('nodes') . " WHERE implemented_by LIKE '%Renderer%'") === 0);
 check('keine Einstellungssätze mehr — nur die Stellen geerbter Felder (Modell 2.2) dürfen einen tragen', (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}node_records r WHERE r.record_type = 'settings' AND NOT EXISTS (SELECT 1 FROM {$p}relation_records v WHERE v.node_record_id = r.id)") === 0);
 foreach ([['nodes', 'settings_record_id'], ['relations', 'settings_record_id'], ['relations', 'target_settings_record_id']] as [$tabelle, $spalte]) {
