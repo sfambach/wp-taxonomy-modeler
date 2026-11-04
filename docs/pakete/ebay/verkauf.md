@@ -143,6 +143,35 @@ Anzahl, Versandart, Bezahlt am. Knöpfe: **Beileger drucken**, **Sendungsnummer 
 liest tax_ebay **nur für diese Seite** aus eBay und speichert sie nicht im Modell (wie in Teil 1: keine Adressen).
 Paketschein selbst bleibt bei eBay/DHL — eBay-Versandetiketten gibt es nicht über die öffentliche API für .de (`INFERRED`, ungeprüft).
 
+### 6.1 · Erneut versenden ([D-1168](../../NewConcept/90-decision-log.md))
+
+```mermaid
+---
+config:
+  theme: dark
+  themeVariables:
+    mainBkg: "#1e1e1e"
+    background: "#1e1e1e"
+    primaryColor: "#1e1e1e"
+    classText: "#ffffff"
+    textColor: "#ffffff"
+    lineColor: "#ffffff"
+---
+flowchart LR
+  V["Versendet / Empfangen"] -->|"Send again: Grund, Ware, Nummer"| O["Offen"]
+  O --> P["Verpackt"] --> V2["Versendet (neue Nummer)"]
+  O -.->|"Take resend back"| V
+  O -->|"Ware"| VB["Vorgang Verbrauch, Grund Verlust, Bezug Verkauf"]
+```
+
+Geht ein Paket verloren (oder kommt beschädigt/zurück), öffnet «Send again» in den Details den gemeinsamen Dialog: Grund, neue
+Sendungsnummer (darf später kommen), Bestandsposten + Menge der zweiten Ware, Notiz. Die zweite Ware geht als **Verlust** aus dem
+Lager (Verbrauch mit Bezug = Verkauf). Das Paket steht wieder in «Offen»; die alte Nummer steht durchgestrichen daneben, die neue
+wird beim Paketdienst abgefragt und am Verkauf ergänzt. eBay erfährt nichts — die neue Nummer dort von Hand eintragen.
+«Take resend back» storniert den Verlust und stellt die Stufe wieder her.
+
+**gebaut:** ja (eBay 0.0.69, Lager 0.45.0).
+
 ## 7 · Was er rechtlich klären sollte (keine Rechtsberatung)
 
 - **Gewerblich oder privat:** Wer regelmäßig selbst gebaute Platinen verkauft, gilt schnell als Unternehmer. Dann gelten
