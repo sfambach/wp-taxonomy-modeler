@@ -46,7 +46,12 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
 
 - **Per position = exceptions only:** a board marked «bestückt» lists the parts-list positions still missing (s7vrm: the coil).
   The parts list is never copied.
-- Status «fertig» on the order asks (dialog) to book the withdrawal at the logistics module and to create the card.
+- **Completion per board ([D-1143](../../NewConcept/90-decision-log.md)):** when a board is «fertig», one dialog books at the
+  logistics module (a) the consumption of its parts (transaction «Verbrauch», reference = order, D-1088) and (b) the receipt of the
+  finished board as **its own material** (reference = revision, INFERRED). The receipt lands in **quality inspection**
+  (Zustand «in Prüfung», not available, not sellable). Inspection passed → released to regular stock or sale; failed → repair
+  (INFERRED: rework is a new order position, not a new order).
+- Status «fertig» on the order closes it once every board is completed or cancelled.
 - Every step undoable, dialogs, shared table template (project rules).
 
 ## 3 · Migration
@@ -60,4 +65,5 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
 
 1. s7vrm: is the coil a board of its own or a part? (decides the first order's data)
 2. Menu: own top-level entry «Fertigung» or a tab under Logistik?
-3. Repository `sfambach/wp_tax_manufacturing` must be created by the owner.
+3. Is the inspection step mandatory for every board, or chosen per order?
+4. Repository `sfambach/wp_tax_manufacturing` must be created by the owner.
