@@ -55,4 +55,13 @@ final class ListViewTest extends TestCase
         self::assertSame([1, 2], ListView::page([1, 2, 3], 0, 2));
         self::assertSame(1, ListView::clampPage(5, 0, 50));
     }
+
+    #[Test]
+    public function only_a_search_or_a_column_filter_narrows_a_list(): void
+    {
+        self::assertFalse((new ListView($this->columns()))->narrowed());
+        self::assertFalse((new ListView($this->columns(), search: '  ', filters: ['group' => ' ', 'nope' => 'x']))->narrowed());
+        self::assertTrue((new ListView($this->columns(), search: 'ne'))->narrowed());
+        self::assertTrue((new ListView($this->columns(), filters: ['group' => 'quar']))->narrowed());
+    }
 }

@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.150';
+    public const VERSION     = '0.1.151';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -109,6 +109,7 @@ final class Plugin
         add_action('admin_menu', self::maintenanceLast(...), PHP_INT_MAX);
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
         add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
+        add_action('wp_ajax_' . ListPage::DETAILS_ACTION, [ListPage::class, 'details']);
         // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
         add_action(self::STYLE_ACTION, $plugin->enqueueStyle(...));
 

@@ -17,8 +17,12 @@ use Taxmod\WordPress\Plugin;
  *   H["heading · where one is · version"] --> N["tabs · search"] --> B["bulk actions · filters · expand all · count"]
  *   B --> T["list table"]
  *   T --> R["row · cells · buttons right"]
- *   R --> D["details row · opens below"]
+ *   R --> D["details row · opens below · drawn when opened"]
  * ```
+ *
+ * D-1147: a long list waits for a search before it draws a row ({@see self::waitsForSearch()}), and a row's details may be
+ * drawn only when they are opened ({@see self::lazyDetails()}): the page asks admin-ajax, the module answers through
+ * {@see self::DETAILS_FILTER}.
  *
  * @see docs/NewConcept/90-decision-log.md D-989
  */
@@ -26,6 +30,15 @@ final class ListPage
 {
     /** The admin-post action that keeps a user's column choice (D-1054). */
     public const COLUMNS_ACTION = 'taxmod_list_columns';
+
+    /** The admin-ajax action that draws one row's details when it is opened (D-1147). */
+    public const DETAILS_ACTION = 'taxmod_list_details';
+
+    /** The filter a module answers to draw the details of its rows: `(null, string $source, array<string, string> $args)` → HTML or null. */
+    public const DETAILS_FILTER = 'taxmod_list_details';
+
+    /** The query value that asks a list waiting for a search to show everything, page by page (D-1147). */
+    public const SHOW_ALL = 'all';
 
     /** User meta: list id => the non-fixed column keys the user chose. */
     private const COLUMNS_META = 'taxmod_list_columns';
@@ -98,6 +111,84 @@ final class ListPage
             . '<input type="hidden" name="return" value="' . esc_attr($returnUrl) . '">' . $boxes
             . '<p style="margin:8px 0 0;white-space:nowrap">' . get_submit_button(__('Apply', 'taxmod'), 'primary small', 'apply', false) . ' '
             . get_submit_button(__('Starting set', 'taxmod'), 'small', 'reset', false) . '</p></form></details>';
+    }
+
+    /** Whether the request asks a list waiting for a search to show all of it (D-1147). */
+    public static function showsAll(): bool
+    {
+        return sanitize_key((string) ($_GET[self::SHOW_ALL] ?? '')) === '1';
+    }
+
+    /**
+     * D-1147: a list that waits for a search draws no row until the user searched, set a column filter, narrowed it with a
+     * filter of the page (`$narrowed`) or asked for everything. ⚠️ *His word, 2026-11-04: «umso mehr Materialien wir brauchen,
+     * umso länger braucht es das erste Mal, diese Materialliste zu öffnen … dass man einen Suchbegriff eingibt und dass dann nur
+     * das Gesuchte kommt, anstatt alles».*
+     */
+    public static function waitsForSearch(ListView $view, bool $narrowed = false): bool
+    {
+        return ! $view->narrowed() && ! $narrowed && ! self::showsAll();
+    }
+
+    /**
+     * The one row a waiting list shows: what to do, and «Show all» for the mass view, which stays paged.
+     *
+     * @param int      $columns the shown columns, without checkbox and actions
+     * @param int|null $total   how many entries «Show all» brings, when that is known without drawing them
+     */
+    public static function searchPrompt(int $columns, string $allUrl, ?int $total = null): string
+    {
+        $all = $total === null ? __('Show all', 'taxmod') : sprintf(/* translators: %d: number of entries */ __('Show all (%d)', 'taxmod'), $total);
+
+        return '<tr class="no-items taxmod-list-prompt"><td class="colspanchange" colspan="' . esc_attr((string) ($columns + 2)) . '">'
+            . '<span class="dashicons dashicons-search" aria-hidden="true"></span> '
+            . esc_html__('Enter a search term or set a filter: only what matches is loaded.', 'taxmod')
+            . ' <a class="button" href="' . esc_url($allUrl) . '">' . esc_html($all) . '</a></td></tr>';
+    }
+
+    /**
+     * The details of a row, drawn when the row is opened (D-1147): a placeholder the page fills from admin-ajax. The module
+     * answers {@see self::DETAILS_FILTER} for `$source`, checks its own capability, and returns the HTML.
+     *
+     * @param array<string, string|int> $args what the module needs to draw this row's details again
+     */
+    public static function lazyDetails(string $source, array $args): string
+    {
+        return '<div class="taxmod-list-lazy" data-url="' . esc_url(admin_url('admin-ajax.php')) . '" data-source="' . esc_attr(sanitize_key($source)) . '"'
+            . ' data-args="' . esc_attr((string) wp_json_encode(array_map('strval', $args))) . '" data-nonce="' . esc_attr(wp_create_nonce(self::DETAILS_ACTION)) . '">'
+            . '<span class="spinner is-active" aria-hidden="true"></span> <span class="description">' . esc_html__('Loading …', 'taxmod') . '</span></div>';
+    }
+
+    /** admin-ajax: capability → nonce → validate → sanitize → the module draws → JSON. */
+    public static function details(): void
+    {
+        if (! current_user_can('read')) {
+            wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
+        }
+
+        check_ajax_referer(self::DETAILS_ACTION, 'nonce');
+
+        $source  = sanitize_key((string) wp_unslash($_POST['source'] ?? ''));
+        $decoded = json_decode((string) wp_unslash($_POST['args'] ?? '{}'), true);
+        $args    = [];
+
+        foreach (is_array($decoded) ? $decoded : [] as $key => $value) {
+            if (is_scalar($value)) {
+                $args[sanitize_key((string) $key)] = sanitize_text_field((string) $value);
+            }
+        }
+
+        try {
+            $html = $source === '' ? null : apply_filters(self::DETAILS_FILTER, null, $source, $args);
+        } catch (\Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()], 500);
+        }
+
+        if (! is_string($html)) {
+            wp_send_json_error(['message' => __('These details are not available.', 'taxmod')], 404);
+        }
+
+        wp_send_json_success(['html' => $html]);
     }
 
     /** admin-post: capability → nonce → validate → sanitize → keep the choice → back to the list. */
@@ -323,7 +414,8 @@ final class ListPage
 
         return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 6px}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}'
             // D-1068: one height for every button in a list, his word 2026-11-01 «button höhen us sollten generell definiert werden damit sie übgerall gleich aussehen».
-            . '.wp-core-ui .taxmod-list .button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:30px;min-height:30px;line-height:1;padding-top:0;padding-bottom:0;vertical-align:middle;font-size:13px}</style>'
+            . '.wp-core-ui .taxmod-list .button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:30px;min-height:30px;line-height:1;padding-top:0;padding-bottom:0;vertical-align:middle;font-size:13px}'
+            . self::detailsStyle() . '</style>' . self::detailsScript()
             . '<table class="wp-list-table widefat fixed striped table-view-list taxmod-list"><thead>' . $head . $filterRow . '</thead><tbody>' . $rows . '</tbody><tfoot>' . $head . '</tfoot></table>';
     }
 
@@ -363,7 +455,8 @@ final class ListPage
 
     /**
      * One row: its checkbox joins the bulk form, the buttons stand on the right after the toggle, the details open below —
-     * already open when the module's setting says so («Automatisch aufklappen», his wish of 2026-10-25).
+     * already open when the module's setting says so («Automatisch aufklappen», his wish of 2026-10-25). `$details` may be
+     * {@see self::lazyDetails()}: then they are drawn when opened (D-1147).
      *
      * @param list<string> $cells HTML, escaped by the caller
      */
@@ -377,11 +470,12 @@ final class ListPage
         }
 
         return $html . '<td style="text-align:right;white-space:nowrap">'
-            . '<button type="button" class="button taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" title="' . esc_attr__('Details', 'taxmod') . '" aria-label="' . esc_attr__('Details', 'taxmod') . '" onclick="var d=this.closest(\'tr\').nextElementSibling;d.hidden=!d.hidden;this.setAttribute(\'aria-expanded\',String(!d.hidden))">'
+            . '<button type="button" class="button taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" title="' . esc_attr__('Details', 'taxmod') . '" aria-label="' . esc_attr__('Details', 'taxmod') . '" onclick="taxmodListShow(this)">'
             // ⚠️ *His words: 2026-10-25 «als richtigen Button aber ruhig mit diesen Pfeil nach unten», 2026-10-28 «Der Pfeil im Button
             // ist immer noch komisch. Kannst du nicht irgendwie ein Icon nehmen?» — so the button is the icon alone; it turns when open.*
             . '<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button> ' . $buttons . '</td></tr>'
-            . '<tr class="taxmod-list-details"' . ($expanded ? '' : ' hidden') . '><td colspan="' . (count($cells) + 2) . '" style="padding:0 1em 1em">' . $details . '</td></tr>';
+            . '<tr class="taxmod-list-details"' . ($expanded ? '' : ' hidden') . '><td colspan="' . (count($cells) + 2) . '">'
+            . (trim($details) === '' ? '' : '<div class="taxmod-list-panel">' . $details . '</div>') . '</td></tr>';
     }
 
     /**
@@ -402,9 +496,54 @@ final class ListPage
 
     private static function toggleAll(bool $hidden): string
     {
-        $flag = $hidden ? 'true' : 'false';
+        return "this.closest('.wrap').querySelectorAll('.taxmod-list-toggle').forEach(function(b){taxmodListShow(b," . ($hidden ? 'false' : 'true') . ')})';
+    }
 
-        return "this.closest('.wrap').querySelectorAll('.taxmod-list-details').forEach(function(d){d.hidden=" . $flag . '});'
-            . "this.closest('.wrap').querySelectorAll('.taxmod-list-toggle').forEach(function(b){b.setAttribute('aria-expanded','" . ($hidden ? 'false' : 'true') . "')})";
+    /**
+     * D-1147: the details read as a panel under their row, the open row stands out, and the stripes count a row with its
+     * details as one. ⚠️ *His word, 2026-11-04: «meist sieht es nicht so gut aus».* *Measured: with a details row after every
+     * row, WordPress' `nth-child(odd)` striped every visible row alike.*
+     */
+    private static function detailsStyle(): string
+    {
+        return '.taxmod-list.striped>tbody:has(>tr.taxmod-list-details)>tr{background:transparent}'
+            . '.taxmod-list.striped>tbody:has(>tr.taxmod-list-details)>tr:nth-child(4n+1),.taxmod-list.striped>tbody:has(>tr.taxmod-list-details)>tr:nth-child(4n+2){background:#f6f7f7}'
+            . '.taxmod-list>tbody>tr.taxmod-list-open>*,.taxmod-list>tbody>tr.taxmod-list-open+tr.taxmod-list-details>td{background:#f0f6fc}'
+            . '.taxmod-list>tbody>tr.taxmod-list-open>th{box-shadow:inset 4px 0 0 #2271b1}'
+            . '.taxmod-list>tbody>tr.taxmod-list-details>td{padding:0 12px 12px 12px;border-top:0}'
+            . '.taxmod-list-panel{background:#fff;border:1px solid #dcdcde;border-left:4px solid #2271b1;border-radius:4px;padding:12px 16px;box-shadow:0 1px 2px rgba(0,0,0,.05);overflow-x:auto}'
+            . '.taxmod-list-panel>:first-child{margin-top:0}.taxmod-list-panel>:last-child{margin-bottom:0}'
+            . '.taxmod-list-panel h3,.taxmod-list-panel h4{margin:.8em 0 .4em;font-size:13px;text-transform:uppercase;letter-spacing:.03em;color:#50575e}'
+            . '.taxmod-list-lazy{display:flex;align-items:center;gap:6px;min-height:30px}.taxmod-list-lazy .spinner{float:none;margin:0}'
+            . '.taxmod-list-lazy[data-state="done"]{display:block;min-height:0}'
+            . '.taxmod-list-prompt>td{padding:28px 12px!important;text-align:center;color:#50575e;font-size:14px}.taxmod-list-prompt .dashicons{vertical-align:middle;color:#8c8f94}'
+            . '.taxmod-list-prompt .button{margin-left:8px}';
+    }
+
+    /**
+     * Opening a row, once for the page: a row's details drawn on opening are fetched then, at most four at a time, and their
+     * scripts run (D-1147). Rows the page opens on its own («Automatisch aufklappen») load as soon as the page stands.
+     */
+    private static function detailsScript(): string
+    {
+        $failed = (string) wp_json_encode(__('The details could not be loaded.', 'taxmod'));
+        $retry  = (string) wp_json_encode(__('Try again', 'taxmod'));
+
+        return '<script>window.taxmodListShow||(function(){var queue=[],running=0;'
+            . 'function next(){if(running>=4||!queue.length){return}var el=queue.shift();running++;'
+            . 'var body=new URLSearchParams({action:' . wp_json_encode(self::DETAILS_ACTION) . ',source:el.dataset.source,args:el.dataset.args,nonce:el.dataset.nonce});'
+            . 'fetch(el.dataset.url,{method:"POST",credentials:"same-origin",body:body}).then(function(r){return r.json()}).then(function(j){'
+            . 'if(!j||!j.success){throw new Error(j&&j.data&&j.data.message||"")}el.innerHTML=j.data.html;el.dataset.state="done";'
+            . 'el.querySelectorAll("script").forEach(function(o){var n=document.createElement("script");n.textContent=o.textContent;o.replaceWith(n)});'
+            . 'el.dispatchEvent(new CustomEvent("taxmod:details",{bubbles:true}))}).catch(function(e){el.dataset.state="failed";'
+            . 'el.innerHTML="";var p=document.createElement("span");p.className="description";p.textContent=' . $failed . '+(e&&e.message?" ("+e.message+")":"");'
+            . 'var b=document.createElement("button");b.type="button";b.className="button button-small";b.textContent=' . $retry . ';'
+            . 'b.onclick=function(){delete el.dataset.state;load(el)};el.append(p," ",b)}).finally(function(){running--;next()})}'
+            . 'function load(el){if(el.dataset.state){return}el.dataset.state="loading";queue.push(el);next()}'
+            . 'window.taxmodListShow=function(b,show){var row=b.closest("tr"),d=row.nextElementSibling;if(!d||!d.classList.contains("taxmod-list-details")){return}'
+            . 'if(show===undefined){show=d.hidden}d.hidden=!show;b.setAttribute("aria-expanded",String(show));row.classList.toggle("taxmod-list-open",show);'
+            . 'if(show){d.querySelectorAll(".taxmod-list-lazy").forEach(load)}};'
+            . 'function start(){document.querySelectorAll(".taxmod-list-toggle[aria-expanded=true]").forEach(function(b){taxmodListShow(b,true)})}'
+            . 'document.readyState==="loading"?document.addEventListener("DOMContentLoaded",start):setTimeout(start)})();</script>';
     }
 }

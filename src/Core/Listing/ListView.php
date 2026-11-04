@@ -57,6 +57,15 @@ final class ListView
     }
 
     /**
+     * Whether the user asked for something: a search or a column filter. A list that waits for a search draws no rows
+     * until then (D-1147), so the first visit costs nothing however long the list grows.
+     */
+    public function narrowed(): bool
+    {
+        return trim($this->search) !== '' || $this->filters() !== [];
+    }
+
+    /**
      * @template T of array{cells: array<string, string>, sort?: array<string, int|float|string>, words?: list<string>}
      * @param list<T> $rows cells as plain text per column key; `sort` overrides a cell's text for ordering, `words` adds search text
      * @return list<T>
