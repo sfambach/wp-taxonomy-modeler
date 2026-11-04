@@ -44,8 +44,15 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
 | | Offene Positionen | → Part List Item | 0..* |
 | | Exemplar | → finished card (D-1114) | 0..1 |
 
-- **Per position = exceptions only:** a board marked «bestückt» lists the parts-list positions still missing (s7vrm: the coil).
-  The parts list is never copied.
+- **Demand list ([D-1145](../../NewConcept/90-decision-log.md)):** per board the board itself and every position, «Anzahl ×
+  Stückzahl», against the order's box: what lies in it and below it is there. «Best.» = nein drops out; an option can be
+  «nicht verwenden». *Replaces the ticks «missing positions» of 0.0.1/0.0.2.*
+- **Fitted as a count ([D-1146](../../NewConcept/90-decision-log.md)):** per position, on how many boards it is fitted
+  (0 … Stückzahl). «Platinen bestückt» = the smallest count over the used positions, calculated, not chosen — so the
+  assembly status of the table above is no longer stored. Saving books the difference as consumption from the box;
+  taking a count back books it back. «Fehlt» = what the remaining boards need and the box does not hold.
+  Model (INFERRED): composition «Bestückt» (Position → Part List Item, Platinen Integer) on the assembly, «Geprüft» and
+  «Fertig» as counts on the assembly.
 - **Completion per board ([D-1143](../../NewConcept/90-decision-log.md)):** when a board is «fertig», one dialog books at the
   logistics module (a) the consumption of its parts (transaction «Verbrauch», reference = order, D-1088) and (b) the receipt of the
   finished board as **its own material** (reference = revision, INFERRED). The receipt lands in **quality inspection**
