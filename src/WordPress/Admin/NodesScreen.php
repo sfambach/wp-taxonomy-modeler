@@ -346,6 +346,8 @@ final class NodesScreen
         return '<div class="taxmod-preview-side taxmod-record-editor" id="taxmod-preview-edit">'
             . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
                 ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
+                // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
+                ->withJumps($this->jumpAddress(...), __('Open the matching records', 'taxmod'))
                 ->withRecordCreation(...$this->recordCreation())
                 ->nodeAsForm(
                     $knoten,
@@ -5460,11 +5462,7 @@ final class NodesScreen
 
         // ⚠️ *Die Worte der Knöpfe an mehrfachen Teilen (D-758) — der Kern macht keine (`AR-2`).*
         return $html . $blaettern . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withJumps(
-            // ⚠️ *Ein Sprung ist ein Aufruf des Zielknotens mit gesetztem Filter und ab Seite 1 (D-769).*
-            fn (int $ziel, int $feld, string $wert): string => $this->backTo($ziel, [
-                self::RECORD_FILTER => self::encodeFilter([$feld => $wert]),
-                self::RECORD_PAGE   => null,
-            ]),
+            $this->jumpAddress(...),
             __('Open the matching records', 'taxmod')
         // ⚠️ *Derselbe Weg zum Anlegen wie in der Vorschau — sonst unterschiede sich der Satzdialog von «neuer Satz» von dem der Vorschau und
         // liesse sich nicht teilen (D-866; gemessen: 107 und 58 KB für dasselbe Feld «Nachfolger»).*
@@ -7691,6 +7689,15 @@ final class NodesScreen
         }
 
         return $offen === [] ? null : implode(',', array_keys($offen));
+    }
+
+    /** Ein Sprung ist ein Aufruf des Zielknotens mit gesetztem Filter und ab Seite 1 ([D-769](../../../docs/NewConcept/90-decision-log.md)). */
+    private function jumpAddress(int $ziel, int $feld, string $wert): string
+    {
+        return $this->backTo($ziel, [
+            self::RECORD_FILTER => self::encodeFilter([$feld => $wert]),
+            self::RECORD_PAGE   => null,
+        ]);
     }
 
     private function backTo(?int $nodeId, array $extra = []): string

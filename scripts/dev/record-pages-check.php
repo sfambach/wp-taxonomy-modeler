@@ -309,7 +309,7 @@ if ($sprungTyp !== null) {
     $attrs    = new \Taxmod\Core\Service\SettingsEditor(new WpdbSettingsRepository(), $nodes, $resolver, \Taxmod\Core\Renderer\ShippedRenderers::registry(), \Taxmod\Core\Converter\ShippedConverters::registry(), $log);
 
     $ziel   = $editor->createNode('__rp Sprungziel', $framework->rootOf(Branch::Model)->id);
-    $von    = $editor->addField($ziel->id, $wiese->id, 'von');
+    $von    = $editor->addField($ziel->id, $wiese->id, 'von', \Taxmod\Core\Model\RelationKind::Aggregation);
     $sprung = $editor->addField($wiese->id, $sprungTyp, 'sprung');
     $typKnoten = $nodes->byId($sprungTyp);
 
@@ -329,7 +329,9 @@ if ($sprungTyp !== null) {
     parse_str((string) parse_url($adresse, PHP_URL_QUERY), $sprungAbfrage);
     check('der Sprung führt zum Zielknoten', (int) ($sprungAbfrage['taxmod_node'] ?? 0) === $ziel->id, $adresse);
     check('und trägt einen Filter, aber keine Seitenzahl', isset($sprungAbfrage['taxmod_record_filter']) && ! isset($sprungAbfrage['taxmod_record_page']), $adresse);
-    check('der Sprung speichert nichts', (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . $wpdb->prefix . 'taxmod_relation_records WHERE relation_id = %d', $sprung->id)) === 0);
+    $modulFormular = (string) apply_filters(Plugin::RECORD_EDITOR_FILTER, '', $zwoelf[0], admin_url('admin.php?page=modul'));
+    check('auch das Formular auf der Seite eines Moduls trägt den Sprung (D-1025)', str_contains($modulFormular, 'class="taxmod-jump" href="'));
+    check('der Sprung speichert nichts',(int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . $wpdb->prefix . 'taxmod_relation_records WHERE relation_id = %d', $sprung->id)) === 0);
 
     $_GET['taxmod_record_filter'] = (string) ($sprungAbfrage['taxmod_record_filter'] ?? '');
     [$m] = seite($ziel->id);
