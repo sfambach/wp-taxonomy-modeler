@@ -66,4 +66,4 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
 1. ~~s7vrm: is the coil a board of its own or a part?~~ A part on every board, his word 2026-11-04: *«alles bestückt bis auf die Spule … eventuell müsste man die durchmessen»* — every board «bestückt», the coil an open position, the note on the board.
 2. Menu: own top-level entry «Fertigung» or a tab under Logistik?
 3. Is the inspection step mandatory for every board, or chosen per order?
-4. ~~Repository~~ created by the owner 2026-11-04; built: 0.0.1 (orders, status per board, open positions, note; no bookings yet). `sfambach/wp_tax_manufacturing` must be created by the owner.
+4. ~~Repository~~ created by the owner 2026-11-04; built: 0.0.1 (orders, status per board, open positions, note; no bookings yet).
