@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.153';
+    public const VERSION     = '0.1.154';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -166,7 +166,8 @@ final class Plugin
                 (string) preg_replace('/[^A-Za-z0-9_\-\[\]]/', '', (string) ($args['name'] ?? 'taxmod_record')),
                 absint($args['node'] ?? 0),
                 absint($args['parent_field'] ?? 0),
-                absint($args['label_field'] ?? 0),
+                // *D-1150: auch eine Liste von Feldern — ihre Worte nacheinander (Kurzzeichen, dann Bezeichnung).*
+                is_array($args['label_field'] ?? null) ? $ids($args['label_field']) : absint($args['label_field'] ?? 0),
                 absint($args['root'] ?? 0),
                 $ids($args['exclude'] ?? []),
                 $ids($args['unpickable'] ?? []),

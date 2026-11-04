@@ -3648,7 +3648,7 @@ final class NodesScreen
      *
      * @param array<int, string> $suffix record id → text after its word (a count, a mark)
      */
-    public function recordChooserForModule(string $name, int $node, int $parentField, int $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = []): string
+    public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = []): string
     {
         if ($node <= 0 || $this->editor->find($node) === null) {
             return '';
@@ -3662,7 +3662,7 @@ final class NodesScreen
         $worte = $links === [] ? [] : ($this->rendering->summaryTextsOf([array_filter([
             'relation' => $kante,
             'records'  => array_keys($links),
-            'fields'   => $labelField > 0 ? [$labelField] : [],
+            'fields'   => is_array($labelField) ? array_values($labelField) : ($labelField > 0 ? [$labelField] : []),
         ], static fn ($v): bool => $v !== [])])[0] ?? []);
 
         $eintraege = [];
