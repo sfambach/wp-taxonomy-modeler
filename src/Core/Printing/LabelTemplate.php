@@ -52,15 +52,15 @@ final class LabelTemplate
     {
         $formats = LabelFormat::shipped();
         $wide    = static fn (float $w, float $h, float $qr): string => json_encode([
-            ['type' => 'qr', 'field' => 'code', 'x' => 3, 'y' => 3, 'w' => $qr, 'h' => $qr],
-            ['type' => 'text', 'field' => 'title', 'x' => 6 + $qr, 'y' => 3, 'w' => $w - 9 - $qr, 'h' => min(22.0, $h * 0.4), 'pt' => 28, 'bold' => true, 'lines' => 2],
-            ['type' => 'text', 'field' => 'subtitle', 'x' => 6 + $qr, 'y' => 3 + min(22.0, $h * 0.4) + 1, 'w' => $w - 9 - $qr, 'h' => max(5.0, $h * 0.2), 'pt' => 14],
+            ['type' => 'qr', 'field' => 'code', 'x' => 3, 'y' => 3, 'w' => $qr, 'h' => $qr, 'example' => 'M-12345'],
+            ['type' => 'text', 'field' => 'title', 'x' => 6 + $qr, 'y' => 3, 'w' => $w - 9 - $qr, 'h' => min(22.0, $h * 0.4), 'pt' => 28, 'bold' => true, 'lines' => 2, 'example' => 'Widerstand 10 kΩ'],
+            ['type' => 'text', 'field' => 'subtitle', 'x' => 6 + $qr, 'y' => 3 + min(22.0, $h * 0.4) + 1, 'w' => $w - 9 - $qr, 'h' => max(5.0, $h * 0.2), 'pt' => 14, 'example' => '0805 · 1 %'],
             ['type' => 'text', 'field' => 'code', 'x' => 6 + $qr, 'y' => $h - 4.5 - 5, 'w' => $w - 9 - $qr, 'h' => 5, 'pt' => 12, 'bottom' => true],
         ], JSON_THROW_ON_ERROR);
         $holder = json_encode([
-            ['type' => 'text', 'field' => 'title', 'x' => 3, 'y' => 3, 'w' => 56, 'h' => 12, 'pt' => 28, 'bold' => true, 'lines' => 2],
-            ['type' => 'qr', 'field' => 'code', 'x' => 3, 'y' => 16, 'w' => 31, 'h' => 31],
-            ['type' => 'text', 'field' => 'subtitle', 'x' => 36, 'y' => 17, 'w' => 23, 'h' => 20, 'pt' => 12, 'lines' => 4],
+            ['type' => 'text', 'field' => 'title', 'x' => 3, 'y' => 3, 'w' => 56, 'h' => 12, 'pt' => 28, 'bold' => true, 'lines' => 2, 'example' => 'Schublade 1'],
+            ['type' => 'qr', 'field' => 'code', 'x' => 3, 'y' => 16, 'w' => 31, 'h' => 31, 'example' => 'O-12345'],
+            ['type' => 'text', 'field' => 'subtitle', 'x' => 36, 'y' => 17, 'w' => 23, 'h' => 20, 'pt' => 12, 'lines' => 4, 'example' => 'A1-S1'],
             ['type' => 'text', 'field' => 'code', 'x' => 36, 'y' => 40.5, 'w' => 23, 'h' => 5, 'pt' => 12, 'bottom' => true],
         ], JSON_THROW_ON_ERROR);
 

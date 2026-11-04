@@ -20,7 +20,7 @@ namespace Taxmod\Core\Printing;
  */
 final class LabelLayout
 {
-    private const ALIASES = ['typ' => 'type', 'feld' => 'field', 'b' => 'w', 'fett' => 'bold', 'zeilen' => 'lines', 'unten' => 'bottom'];
+    private const ALIASES = ['typ' => 'type', 'feld' => 'field', 'b' => 'w', 'fett' => 'bold', 'zeilen' => 'lines', 'unten' => 'bottom', 'beispiel' => 'example'];
 
     /** @param list<LabelElement> $elements */
     public function __construct(public readonly array $elements)
@@ -62,6 +62,7 @@ final class LabelLayout
                 (bool) ($element['bold'] ?? false),
                 (int) $number('lines', 1.0),
                 (bool) ($element['bottom'] ?? false),
+                is_scalar($element['example'] ?? null) ? trim((string) $element['example']) : '',
             );
         }
 
@@ -85,6 +86,24 @@ final class LabelLayout
         }
 
         return true;
+    }
+
+    /**
+     * D-1154, his word 2026-11-04: «ich dachte im jsaon ein feld mit beispiel» — the example values the layout itself carries,
+     * the first one written for a field winning.
+     *
+     * @return array<string, string> field ⇒ example
+     */
+    public function examples(): array
+    {
+        $out = [];
+        foreach ($this->elements as $e) {
+            if ($e->example !== '' && ! isset($out[$e->field])) {
+                $out[$e->field] = $e->example;
+            }
+        }
+
+        return $out;
     }
 
     /** @return list<string> the fields the layout reads, in order, each once */

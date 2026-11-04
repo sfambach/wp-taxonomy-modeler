@@ -34,6 +34,18 @@ final class LabelLayoutTest extends TestCase
     }
 
     #[Test]
+    public function the_layout_carries_its_own_examples(): void
+    {
+        $layout = LabelLayout::fromJson('[{"type":"qr","field":"code","x":2,"y":2,"w":20,"example":"O-12345"},'
+            . '{"typ":"text","feld":"kurzzeichen","x":24,"y":2,"b":30,"beispiel":"A1-S1"},{"type":"text","field":"code","x":24,"y":10,"w":30,"example":"O-9"},'
+            . '{"type":"text","field":"projekt","x":24,"y":20,"w":30}]');
+
+        self::assertSame(['code' => 'O-12345', 'kurzzeichen' => 'A1-S1'], $layout->examples());
+        self::assertEquals($layout, LabelLayout::fromJson($layout->toJson()));
+        self::assertStringContainsString('"example":"A1-S1"', $layout->toJson());
+    }
+
+    #[Test]
     public function a_broken_layout_is_refused_with_its_reason(): void
     {
         foreach (['{"type":"text"}', '[]', '[{"type":"barcode","field":"code","w":5}]', '[{"type":"text","w":5}]', 'nicht json'] as $broken) {

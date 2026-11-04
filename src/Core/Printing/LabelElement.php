@@ -25,6 +25,8 @@ final class LabelElement
         public readonly int $lines = 1,
         /** A text sits at the top of its box, or with its last line on the bottom edge. */
         public readonly bool $atBottom = false,
+        /** D-1154: the text preview and test print show where no record fills the field. */
+        public readonly string $example = '',
     ) {
         if ($type !== self::TEXT && $type !== self::QR) {
             throw new \InvalidArgumentException(sprintf('Unknown label element "%s".', $type));
@@ -54,6 +56,7 @@ final class LabelElement
             'bold'   => $this->bold ?: null,
             'lines'  => $this->lines > 1 ? $this->lines : null,
             'bottom' => $this->atBottom ?: null,
+            'example' => $this->example === '' ? null : $this->example,
         ], static fn (mixed $value): bool => $value !== null);
     }
 }
