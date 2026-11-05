@@ -303,8 +303,9 @@ final class ListPage
      *
      * @param array<string, string> $actions action value => label
      * @param string $filters from {@see self::filters()}, beside the bulk actions
+     * @param bool $expandable false for a list whose rows open their own view instead (D-1183): no «Expand all»
      */
-    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = ''): string
+    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true): string
     {
         $options = '<option value="">' . esc_html__('Bulk actions', 'taxmod') . '</option>';
 
@@ -318,9 +319,9 @@ final class ListPage
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
             . get_submit_button(__('Apply', 'taxmod'), 'action', '', false) . '</form>'
             . $filters
-            . '<div class="alignleft actions">'
+            . (! $expandable ? '' : '<div class="alignleft actions">'
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . esc_html__('Expand all', 'taxmod') . '</button> '
-            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . esc_html__('Collapse all', 'taxmod') . '</button></div>'
+            . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(true)) . '">' . esc_html__('Collapse all', 'taxmod') . '</button></div>')
             . '<div class="tablenav-pages one-page"><span class="displaying-num">' . esc_html($count) . '</span></div><br class="clear"></div>';
     }
 
