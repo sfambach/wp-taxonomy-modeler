@@ -469,6 +469,12 @@ final class ListPage
             $html .= '<td>' . $cell . '</td>';
         }
 
+        // His word 2026-11-05: «die aufklapp logik soll es nicht mehr geben sondern man klickt auf das item und bekommt eine
+        // teilview des listeneintrags» — a row without details has no toggle; its link opens the entry's own view.
+        if ($details === '') {
+            return $html . '<td style="text-align:right;white-space:nowrap">' . $buttons . '</td></tr>';
+        }
+
         return $html . '<td style="text-align:right;white-space:nowrap">'
             . '<button type="button" class="button taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" title="' . esc_attr__('Details', 'taxmod') . '" aria-label="' . esc_attr__('Details', 'taxmod') . '" onclick="taxmodListShow(this)">'
             // ⚠️ *His words: 2026-10-25 «als richtigen Button aber ruhig mit diesen Pfeil nach unten», 2026-10-28 «Der Pfeil im Button
