@@ -3676,18 +3676,19 @@ final class NodesScreen
      *
      * ⚠️ *Sein Wort: «wir hatte in tax mal festegelgt dass es immer die gleich ansicht ist der tax chooser evtl müssen wir den noch erweitern
      * um mehrer äste ein und auszuschlissen aber der ist immer die ansicht».* Ein Ast steht über `root`, ausgeschlossene Äste über `exclude`
-     * (mit allem darunter), sichtbare, aber nicht wählbare Knoten über `unpickable`.
+     * (mit allem darunter), sichtbare, aber nicht wählbare Knoten über `unpickable`. Mit `$inline` steht der Baum fest auf der Seite und ein
+     * Klick öffnet `$pickUrl` (`__ID__` steht für den Knoten, D-1174).
      *
      * @param list<int> $exclude
      * @param list<int> $unpickable
      */
-    public function nodeChooserForModule(string $name, int $root, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = ''): string
+    public function nodeChooserForModule(string $name, int $root, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = ''): string
     {
         $wurzel = $this->editor->find($root) ?? $this->framework->root();
         $wahl   = $preselected === null ? null : $this->editor->find($preselected);
 
         // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
-        return $this->rendering->withoutSharedRecordBodies()->nodeChooser(
+        $baum = $this->rendering->withoutSharedRecordBodies()->nodeChooser(
             $wurzel,
             $name,
             null,
@@ -3700,8 +3701,11 @@ final class NodesScreen
             $this->localeFromRequest(),
             Level::Admin,
             formId: $formId,
-            settings: ChooserRenderer::asDialog()
+            settings: $inline ? [] : ChooserRenderer::asDialog()
         )->markup;
+
+        // ⚠️ *D-1174: fest auf der Seite wie der Satzbaum (D-1090) — ein Klick öffnet `$pickUrl`, dasselbe Skript wie dort.*
+        return $inline ? '<div class="taxmod-record-tree"' . ($pickUrl === '' ? '' : ' data-taxmod-pick="' . esc_attr($pickUrl) . '"') . '>' . $baum . '</div>' : $baum;
     }
 
     /**

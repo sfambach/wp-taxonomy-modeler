@@ -50,12 +50,12 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.166';
+    public const VERSION     = '0.1.167';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
 
-    /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form'])`: the node chooser dialog for a module's page (D-1075). */
+    /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form', 'inline', 'pick_url'])`: the node chooser dialog for a module's page (D-1075); with `inline` the tree stands on the page and a click opens `pick_url`, `{id}` for the node (D-1174). */
     public const NODE_CHOOSER_FILTER = 'taxmod_node_chooser';
 
     /**
