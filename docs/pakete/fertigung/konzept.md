@@ -76,6 +76,7 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
 4. ~~Repository~~ created by the owner 2026-11-04; built: 0.0.1 (orders, status per board, open positions, note; no bookings yet).
 5. Picking (D-1155): which place to take from when a part lies at several — the stock module answers per place; the list offers each place as its own line. FIFO by lot inside one place is the stock module's rule.
 6. Receipt of finished boards (D-1143), built 0.0.11 — **assumed, not said by him** (he was away, «so viel machen wie möglich ohne … fragen»):
+   - **confirmed D-1176 (2026-11-05):** box first, name = revision + «bestückt»;
    - the finished board is a material of its own, one record per revision in a node «Bestückte Platinen» under Hardware-Projekte, made at the first finished board;
    - «Fertig» rising books a receipt of that material into the order's box, lot condition «ungeprüft»; lowering it gives it back;
    - «Fertig» cannot exceed the boards with every used position fitted;
