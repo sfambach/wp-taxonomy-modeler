@@ -5088,6 +5088,8 @@ final class NodesScreen
             'below_min'   => __('below the minimum of {min}', 'taxmod'),
             'above_max'   => __('above the maximum of {max}', 'taxmod'),
             'wrong_shape' => __('«{value}» does not have the required shape', 'taxmod'),
+            /* translators: {line} and {column} are where the JSON text first goes wrong. */
+            'invalid_json' => __('invalid JSON in line {line}, column {column}', 'taxmod'),
             default       => $complaint->validator . ': ' . $complaint->key,
         };
 

@@ -168,6 +168,8 @@ final class ShippedRenderers
 
         // Eligible everywhere they fit, default nowhere.
         $registry->add(new TextareaRenderer());
+        // ⚠️ *Der Code-Editor (D-1180): mehrzeilig mit Sprache für die Hervorhebung; geprüft wird von `syntax`.*
+        $registry->add(new CodeRenderer());
         $registry->add(new SpinnerRenderer());
         $registry->add(new SliderRenderer());
 

@@ -2454,3 +2454,18 @@ fieldset.taxmod-read-only {
     display: inline;
     margin: 0;
 }
+
+/* Code field (D-1180): read view keeps line breaks and indentation. */
+pre.taxmod-code {
+	margin: 0;
+	white-space: pre-wrap;
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	max-height: 24em;
+	overflow: auto;
+}
+
+.taxmod-code + .CodeMirror,
+.CodeMirror.taxmod-code {
+	border: 1px solid #8c8f94;
+}

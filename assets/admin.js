@@ -3311,3 +3311,92 @@
 		gezogen = null;
 	} );
 }() );
+
+/**
+ * Der Code-Editor (D-1180): jedes Textfeld mit `data-taxmod-code` wird ein CodeMirror in seiner Sprache.
+ *
+ * ⚠️ *Der Editor schreibt bei jeder Änderung ins Textfeld zurück — gespeichert wird weiter das Textfeld, auch wenn es über
+ * `form="…"` ausserhalb seines Formulars steht. Felder, die später erscheinen (Dialoge, nachgeladene Details), werden beim
+ * Erscheinen hergerichtet.*
+ */
+( function () {
+	'use strict';
+
+	var MODI = {
+		json: 'application/json',
+		xml: 'application/xml',
+		css: 'text/css',
+		zpl: 'text/plain',
+	};
+
+	function herrichten( feld ) {
+		var grund = window.taxmodCodeEditor;
+		var sprache = feld.getAttribute( 'data-taxmod-code' ) || 'json';
+		var einstellungen;
+		var editor;
+
+		if ( feld.taxmodCode || ! grund || ! window.wp || ! window.wp.codeEditor ) {
+			return;
+		}
+
+		feld.taxmodCode = true;
+		einstellungen = Object.assign( {}, grund );
+		einstellungen.codemirror = Object.assign( {}, grund.codemirror || {}, {
+			mode: MODI[ sprache ] || 'text/plain',
+			lint: sprache === 'json',
+			gutters: sprache === 'json' ? [ 'CodeMirror-lint-markers' ] : [],
+			lineNumbers: true,
+			readOnly: feld.disabled || feld.readOnly,
+		} );
+
+		editor = window.wp.codeEditor.initialize( feld, einstellungen ).codemirror;
+		editor.setSize( null, Math.max( 3, parseInt( feld.getAttribute( 'rows' ) || '12', 10 ) ) * 1.5 + 'em' );
+		editor.on( 'change', function () {
+			editor.save();
+			feld.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		} );
+
+		// ⚠️ *In einem zugeklappten Abschnitt oder geschlossenen Dialog misst CodeMirror null Breite — beim Sichtbarwerden neu zeichnen.*
+		if ( window.IntersectionObserver ) {
+			new IntersectionObserver( function ( eintraege ) {
+				if ( eintraege.some( function ( e ) { return e.isIntersecting; } ) ) {
+					editor.refresh();
+				}
+			} ).observe( editor.getWrapperElement() );
+		}
+	}
+
+	function alleIn( wurzel ) {
+		var felder;
+		var i;
+
+		if ( ! wurzel || ! wurzel.querySelectorAll ) {
+			return;
+		}
+
+		if ( wurzel.matches && wurzel.matches( 'textarea[data-taxmod-code]' ) ) {
+			herrichten( wurzel );
+		}
+
+		felder = wurzel.querySelectorAll( 'textarea[data-taxmod-code]' );
+
+		for ( i = 0; i < felder.length; i++ ) {
+			herrichten( felder[ i ] );
+		}
+	}
+
+	function los() {
+		alleIn( document );
+		new MutationObserver( function ( aenderungen ) {
+			aenderungen.forEach( function ( aenderung ) {
+				aenderung.addedNodes.forEach( alleIn );
+			} );
+		} ).observe( document.body, { childList: true, subtree: true } );
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', los );
+	} else {
+		los();
+	}
+}() );
