@@ -37,6 +37,11 @@ final class Unit implements NodeClass
     #[Attribut]
     public ?\Taxmod\Core\Model\Setting\Conversion $umrechnung = null;
 
+    // ⚠️ *Sein Wort zum Displaynamen «0.91 ″» ([D-1175](../../../../docs/NewConcept/90-decision-log.md)): das Zeichen steht ohne Abstand an
+    // der Zahl, «0,91″». Die Einheit sagt es selbst, damit keine Einheit am Namen erkannt wird.*
+    #[Attribut]
+    public bool $ohne_abstand = false;
+
     public static function allowedChildClasses(): array
     {
         return [];

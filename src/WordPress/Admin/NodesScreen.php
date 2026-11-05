@@ -3625,6 +3625,7 @@ final class NodesScreen
             new Control('word:hint:erlaubte_praefixe', '', __('Which prefixes this unit offers, e.g. p n µ m for Farad. None: every prefix.', 'taxmod')),
             new Control('word:hint:mit_praefix', '', __('Whether this unit takes a prefix at all — Ohm does, Percent does not.', 'taxmod')),
             new Control('word:hint:symbol', '', __('The short sign of the unit, e.g. Ω or %.', 'taxmod')),
+            new Control('word:hint:ohne_abstand', '', __('Whether the sign follows the number without a space, e.g. 0,91″ instead of 0,91 ″.', 'taxmod')),
         ];
     }
 
@@ -3677,7 +3678,7 @@ final class NodesScreen
      * ⚠️ *Sein Wort: «wir hatte in tax mal festegelgt dass es immer die gleich ansicht ist der tax chooser evtl müssen wir den noch erweitern
      * um mehrer äste ein und auszuschlissen aber der ist immer die ansicht».* Ein Ast steht über `root`, ausgeschlossene Äste über `exclude`
      * (mit allem darunter), sichtbare, aber nicht wählbare Knoten über `unpickable`. Mit `$inline` steht der Baum fest auf der Seite und ein
-     * Klick öffnet `$pickUrl` (`__ID__` steht für den Knoten, D-1174).
+     * Klick öffnet `$pickUrl` (`__ID__` steht für den Knoten, D-1175).
      *
      * @param list<int> $exclude
      * @param list<int> $unpickable
@@ -3704,7 +3705,7 @@ final class NodesScreen
             settings: $inline ? [] : ChooserRenderer::asDialog()
         )->markup;
 
-        // ⚠️ *D-1174: fest auf der Seite wie der Satzbaum (D-1090) — ein Klick öffnet `$pickUrl`, dasselbe Skript wie dort.*
+        // ⚠️ *D-1175: fest auf der Seite wie der Satzbaum (D-1090) — ein Klick öffnet `$pickUrl`, dasselbe Skript wie dort.*
         return $inline ? '<div class="taxmod-record-tree"' . ($pickUrl === '' ? '' : ' data-taxmod-pick="' . esc_attr($pickUrl) . '"') . '>' . $baum . '</div>' : $baum;
     }
 

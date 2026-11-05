@@ -50,12 +50,12 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.167';
+    public const VERSION     = '0.1.168';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
 
-    /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form', 'inline', 'pick_url'])`: the node chooser dialog for a module's page (D-1075); with `inline` the tree stands on the page and a click opens `pick_url`, `{id}` for the node (D-1174). */
+    /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form', 'inline', 'pick_url'])`: the node chooser dialog for a module's page (D-1075); with `inline` the tree stands on the page and a click opens `pick_url`, `{id}` for the node (D-1175). */
     public const NODE_CHOOSER_FILTER = 'taxmod_node_chooser';
 
     /**
@@ -973,6 +973,22 @@ final class Plugin
         return new \Taxmod\Core\Service\ReferenceCurrency($rateField, (int) $euro, is_admin() ? null : \Taxmod\WordPress\Currency\ReaderCurrencies::forLocale(determine_locale()));
     }
 
+    /** Das Dezimalzeichen der Website-Sprache (D-1175); ohne intl der Punkt für Englisch, sonst das Komma. */
+    private static function siteDecimalSeparator(): string
+    {
+        $locale = (string) get_locale();
+
+        if (class_exists(\NumberFormatter::class)) {
+            $zeichen = (new \NumberFormatter($locale, \NumberFormatter::DECIMAL))->getSymbol(\NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
+
+            if (is_string($zeichen) && $zeichen !== '') {
+                return $zeichen;
+            }
+        }
+
+        return str_starts_with($locale, 'en') ? '.' : ',';
+    }
+
     private function rendering(Labels $labels): Rendering
     {
         return new Rendering(
@@ -1005,6 +1021,9 @@ final class Plugin
             media: new WpMediaLibrary(),
             addons: ShippedAddons::registry(),
             referenceCurrency: self::referenceCurrency(),
+            // ⚠️ *Das Dezimalzeichen gerechneter Namen nach der Sprache der Website, nicht des Angemeldeten — der Name wird gespeichert
+            // und muss für jeden gleich lauten ([D-1175](../../docs/NewConcept/90-decision-log.md)).*
+            decimalSeparator: self::siteDecimalSeparator(),
             // ⚠️ **Schritt 4 des Bauplans** ([D-712](../../docs/NewConcept/90-decision-log.md)): *die
             // Renderer zeichnen aus `settings_value` und dem Vertrag; `ModelValues` bleibt für das,
             // was noch nicht umgezogen ist — die erlaubten Kinder und die Vorgaben der Datensätze.*

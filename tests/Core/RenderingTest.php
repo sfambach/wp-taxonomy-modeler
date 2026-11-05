@@ -2688,6 +2688,52 @@ final class RenderingTest extends TestCase
         self::assertSame('FIC' . SummaryRenderer::SEPARATOR . '386-SC-HG', $texte[$board->id][$pc] ?? null, 'die Wahl des Boards samt seinem Hersteller, zwei Stufen tief');
     }
 
+    /** ⚠️ *D-1175: «0.91 ″» im gerechneten Namen eines Displays — das Dezimalzeichen sagt der Rand, die Einheit ihren Abstand.* */
+    #[Test]
+    public function a_derived_name_writes_the_decimal_separator_the_boundary_gives(): void
+    {
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $zoll      = $this->editor->createNode('Zoll', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $wertTyp   = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $wert      = $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $einheit   = $this->editor->addField($wertTyp->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $display   = $this->thing('Display');
+        $diagonale = $this->editor->addField($display->id, $wertTyp->id, 'diagonale');
+
+        $teil = $this->records->add(new NodeRecord(0, $wertTyp->id, 1, '2026-11-05 07:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($teil, $wert->id, TypedValue::ofDecimal('0.910')));
+        $this->records->putValue(RelationRecord::direct($teil, $einheit->id, TypedValue::ofReference($zoll->id)));
+        $satz = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-05 07:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $diagonale->id, TypedValue::ofRecordReference($teil)));
+
+        $name = function (string $dezimal) use ($einheiten, $diagonale, $satz): ?string {
+            $rendering = new Rendering(
+                $this->nodes,
+                new FixedFramework($this->wurzel, $this->nodes->byId($this->wurzel->id + 1), $this->branchRoot, self::INSTALLATION, self::ROLE_IDS, ['units' => $einheiten]),
+                ShippedRenderers::registry(),
+                $this->typeNodes,
+                new Labels($this->labelStore, 'en_US'),
+                ShippedConverters::registry(),
+                resolver: $this->resolver,
+                relations: $this->relations,
+                records: $this->records,
+                addons: \Taxmod\Core\Addon\ShippedAddons::registry(),
+                decimalSeparator: $dezimal,
+            );
+
+            return $rendering->summaryTextsOf([['relation' => $diagonale, 'records' => [$satz], 'fields' => [$diagonale->id]]])[$diagonale->id][$satz] ?? null;
+        };
+
+        self::assertSame('0.91 Zoll', $name('.'), 'ohne Angabe des Randes bleibt der Punkt, die Nullen am Ende fallen');
+        self::assertSame('0,91 Zoll', $name(','), 'mit dem Komma der deutschen Website');
+
+        // *Die Einheit sagt selbst, dass ihr Zeichen ohne Abstand an der Zahl steht — keine Einheit wird mit Namen erkannt.*
+        (new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry()))->put($zoll, Rendering::OHNE_ABSTAND, '1');
+        $this->resolver->forget();
+
+        self::assertSame('0,91Zoll', $name(','), 'mit «ohne_abstand» an der Einheit');
+    }
+
     /** ⚠️ *Zeile 8 (D-760): der Validator der Stelle sieht den Wert, bevor er gespeichert wird.* */
     #[Test]
     public function the_validators_of_a_use_site_complain_about_a_value_outside_its_bounds(): void

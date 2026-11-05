@@ -161,6 +161,12 @@ final class Rendering implements Presets
         private readonly ?\Taxmod\Core\Port\MediaLibrary $media = null,
         /** ⚠️ *Für den abgeleiteten Euro-Betrag neben einem Betrag in fremder Währung (D-064, D-966); ohne ihn steht nur der Betrag.* */
         private readonly ?ReferenceCurrency $referenceCurrency = null,
+        /**
+         * ⚠️ *Das Dezimalzeichen in gerechneten Namen ([D-1175](../../../docs/NewConcept/90-decision-log.md)): «0,91″» statt
+         * «0.91 ″». Welches Zeichen gilt, sagt der Rand nach der Sprache der Website; der Kern entscheidet keine Sprache (`CD-1`).
+         * Ohne Angabe bleibt der Punkt, wie gespeichert.*
+         */
+        private readonly string $decimalSeparator = '.',
     ) {
     }
 
@@ -552,6 +558,9 @@ final class Rendering implements Presets
 
     /** Ein Glied der Feldwahl, das für den Namen des Knotens des Satzes steht — gesetzt von {@see SummaryWriter} (D-954 Regel 4). */
     public const KNOTENNAME = -1;
+
+    /** Einstellung einer Einheit: ihr Zeichen steht ohne Abstand an der Zahl («0,91″», D-1175). */
+    public const OHNE_ABSTAND = 'ohne_abstand';
 
     /** @var array<int, SimpleType|null> Der Typ je Feld, für {@see self::adressenVon()} — ein Feld ändert seinen Typ nicht während eines Laufs. */
     private array $feldTypGelesen = [];
@@ -5140,6 +5149,20 @@ final class Rendering implements Presets
         $zeichenKnoten = array_values(array_intersect_key($bekannte, $istPraefix + $istEinheit));
         $zeichen       = $zeichenKnoten === [] ? [] : ($this->labels?->forNodes($zeichenKnoten, SeededRole::Symbol, '') ?? []);
 
+        // ⚠️ *Eine Einheit, deren Zeichen ohne Abstand an der Zahl steht («0,91″», [D-1175](../../../docs/NewConcept/90-decision-log.md)),
+        // sagt das selbst mit der Einstellung `ohne_abstand` — keine Einheit wird hier mit Namen erkannt.*
+        $ohneAbstand = [];
+
+        foreach ($zeichenKnoten as $knoten) {
+            if (isset($istEinheit[$knoten->id]) && $this->resolver !== null) {
+                if (($this->resolver->ownOf($knoten)[self::OHNE_ABSTAND] ?? null)?->value->asBool() === true) {
+                    $ohneAbstand[$knoten->id] = true;
+                }
+            }
+        }
+
+        $dezimal = $this->decimalSeparator;
+
         $felder = [];
 
         foreach ($betroffen as $relation) {
@@ -5247,7 +5270,7 @@ final class Rendering implements Presets
         }
 
         $bezugsWaehrung = $this->referenceCurrency;
-        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung): string {
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
             $ausWahl  = false;
@@ -5284,6 +5307,7 @@ final class Rendering implements Presets
             // nannte mehrere Takte eines Mainboards «#33615, #33616» (gemessen am 2026-10-17, D-925).*
             if ($feldIds === []) {
                 $zahlen     = [];
+                $roheZahlen = [];
                 $praefix    = '';
                 $einheit    = '';
                 $einheitId  = null;
@@ -5318,7 +5342,9 @@ final class Rendering implements Presets
                         }
                     } elseif ($v->decimal !== null || $v->int !== null) {
                         $roh      = $v->decimal ?? (string) $v->int;
-                        $zahlen[] = str_contains($roh, '.') ? rtrim(rtrim($roh, '0'), '.') : $roh;
+                        $zahl     = str_contains($roh, '.') ? rtrim(rtrim($roh, '0'), '.') : $roh;
+                        $roheZahlen[] = $zahl;
+                        $zahlen[]     = $dezimal === '.' ? $zahl : str_replace('.', $dezimal, $zahl);
                     } elseif (! $v->isAReference()) {
                         $sonst[] = $v->rawValue();
                     }
@@ -5335,16 +5361,16 @@ final class Rendering implements Presets
 
                 // ⚠️ *Ein Betrag in fremder Währung mit eingefrorenem Kurs zeigt den Euro-Betrag dahinter: «22.29 $ (19.16 €)» (D-064, D-966).*
                 $umgerechnet = $bezug !== null && $kurs !== null && count($zahlen) === 1 && $praefix === '' && $einheitId !== null && $einheitId !== $bezug->unitNodeId
-                    ? ReferenceCurrency::converted($zahlen[0], $kurs)
+                    ? ReferenceCurrency::converted($roheZahlen[0], $kurs)
                     : null;
                 $bezugsZeichen = $bezug === null ? '' : (string) ($zeichen[$bezug->unitNodeId] ?? $knotenNamen[$bezug->unitNodeId] ?? '');
 
                 if ($umgerechnet !== null && $bezugsZeichen !== '') {
-                    $sonst = [...$sonst, '(' . $umgerechnet . ' ' . $bezugsZeichen . ')'];
+                    $sonst = [...$sonst, '(' . ($dezimal === '.' ? $umgerechnet : str_replace('.', $dezimal, $umgerechnet)) . ' ' . $bezugsZeichen . ')'];
                 }
 
                 $teile = array_values(array_filter(
-                    [$betrag === '' ? '' : trim($betrag . ' ' . $praefix . $einheit), ...$sonst],
+                    [$betrag === '' ? '' : trim($betrag . ($praefix === '' && $einheitId !== null && isset($ohneAbstand[$einheitId]) ? '' : ' ') . $praefix . $einheit), ...$sonst],
                     static fn (string $teil): bool => $teil !== ''
                 ));
 
