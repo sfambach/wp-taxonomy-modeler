@@ -1316,17 +1316,24 @@ final class Rendering implements Presets
     /** Das Wort dazu, für den Screenreader und den Titel (`AR-2`). */
     private string $newRecordWord = '';
 
+    /** Die Worte des Felds im Dialog, in dem man den neuen Satz gleich benennt (D-1171) — leer: nur das «+». */
+    private string $newNameWord = '';
+
+    private string $createWord = '';
+
     /**
      * Dieselbe Zeichnung, aber mit einem Weg zum Anlegen im Satzdialog ([D-792](../../../docs/NewConcept/90-decision-log.md), Zeile 154) —
      * *sein Wort: «if the part does not exists he needs to enter a new one».*
      *
      * @param \Closure(int): string $url Knoten ⇒ Adresse seiner Seite
      */
-    public function withRecordCreation(\Closure $url, string $word): static
+    public function withRecordCreation(\Closure $url, string $word, string $newName = '', string $create = ''): static
     {
         $kopie                = clone $this;
         $kopie->newRecordUrl  = $url;
         $kopie->newRecordWord = $word;
+        $kopie->newNameWord   = $newName;
+        $kopie->createWord    = $create;
 
         return $kopie;
     }
@@ -5731,6 +5738,10 @@ final class Rendering implements Presets
                 // *Wo ein neuer Satz entstehen kann — die Seite des Knotens, vom Rand (Zeile 154).*
                 'add'     => $this->newRecordUrl === null ? '' : ($this->newRecordUrl)($knoten->id),
                 'addWord' => $this->newRecordWord,
+                // *Wo der neue Satz gleich im Dialog benannt wird (D-1171): der Knoten und die zwei Worte.*
+                'node'       => $knoten->id,
+                'newWord'    => $this->newRecordUrl === null ? '' : $this->newNameWord,
+                'createWord' => $this->createWord,
             ];
             $etwas    = $eigene !== [];
 

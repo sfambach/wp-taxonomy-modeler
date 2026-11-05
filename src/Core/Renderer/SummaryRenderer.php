@@ -214,7 +214,7 @@ final class SummaryRenderer extends TypedFieldRenderer
      * «can be switched on and off», «collapse or expand when i clicking on a non dataset node». Ein Knoten ist ein aufklappbarer Ast; ein
      * Klick auf seinen Namen zeigt rechts seine Sätze und die aller darunter. Ohne Skript stehen alle Gruppen rechts untereinander.*
      *
-     * @param list<array{depth: int, name: string, records: array<int, string>, search?: array<int, string>, match?: array<int, true>, add?: string, addWord?: string}> $baum
+     * @param list<array{depth: int, name: string, records: array<int, string>, search?: array<int, string>, match?: array<int, true>, add?: string, addWord?: string, node?: int, newWord?: string, createWord?: string}> $baum
      * @param \Closure(string, bool, string, string=, bool=): string $knopf Ein Auswahlknopf: Wert, gewählt, Wort, Suchtext, Treffer
      * @param array{ok?: string, cancel?: string, tree?: string, search?: string} $worte
      */
@@ -281,6 +281,17 @@ final class SummaryRenderer extends TypedFieldRenderer
                 foreach ($zeile['records'] as $satzId => $wort) {
                     $liste .= $knopf((string) (int) $satzId, (int) $satzId === $gewaehlt, RenderResult::escape((string) $wort), (string) ($zeile['search'][$satzId] ?? ''), isset($zeile['match'][$satzId]));
                 }
+            }
+
+            // ⚠️ **Fehlt der Satz, tippt man ihn hier** ([D-1171](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «man soll auch eine
+            // neue eingeben können zum beispiel in bauteil». Das Feld hat keinen Namen und schickt nichts mit dem Formular; das Skript legt den
+            // Satz an und wählt ihn.*
+            if ((string) ($zeile['newWord'] ?? '') !== '' && (int) ($zeile['node'] ?? 0) > 0) {
+                $neu    = RenderResult::escape((string) $zeile['newWord']);
+                $liste .= '<div class="taxmod-record-new" data-taxmod-node="' . (int) $zeile['node'] . '">'
+                    . '<input type="text" class="taxmod-record-new-name" autocomplete="off" placeholder="' . $neu . '" aria-label="' . $neu . '">'
+                    . '<button type="button" class="button taxmod-record-new-go">' . RenderResult::escape((string) ($zeile['createWord'] ?? '')) . '</button>'
+                    . '</div>';
             }
 
             $liste .= '</div>';

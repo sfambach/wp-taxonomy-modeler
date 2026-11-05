@@ -2958,6 +2958,73 @@
 		}
 	} );
 
+	// ⚠️ **Ein neuer Satz direkt im Dialog** (D-1171) — sein Wort: «man soll auch eine neue eingeben können zum beispiel in bauteil».
+	// *Name tippen, «Anlegen» oder Enter: der Server legt den Satz am Knoten der Gruppe an, er steht in der Liste und ist gewählt — wie ein
+	// Klick auf einen vorhandenen. Gespeichert wird die Wahl wie jede andere mit «OK»; der Satz selbst ist schon da und lässt sich auf
+	// seiner Seite ergänzen oder löschen.*
+	function neuAnlegen( feld ) {
+		var platz   = feld.closest( '.taxmod-record-new' );
+		var baum    = feld.closest( '.taxmod-record-tree' );
+		var worte   = document.getElementById( 'taxmod-words' );
+		var adresse = worte ? worte.getAttribute( 'data-record-create' ) || '' : '';
+		var name    = feld.value.trim();
+
+		if ( ! platz || ! baum || adresse === '' || name === '' || platz.classList.contains( 'is-busy' ) ) {
+			return;
+		}
+
+		var vorbild = baum.querySelector( '.taxmod-record-list input[type="radio"], .taxmod-record-list input[type="checkbox"]' );
+		var daten   = new FormData();
+
+		daten.append( 'node', platz.getAttribute( 'data-taxmod-node' ) || '' );
+		daten.append( 'name', name );
+		platz.classList.add( 'is-busy' );
+
+		fetch( adresse, { method: 'POST', body: daten, credentials: 'same-origin' } ).then( function ( antwort ) {
+			return antwort.json();
+		} ).then( function ( antwort ) {
+			platz.classList.remove( 'is-busy' );
+
+			if ( ! antwort || ! antwort.success || ! vorbild ) {
+				window.alert( antwort && antwort.data && antwort.data.message ? antwort.data.message : ( worte.getAttribute( 'data-save-failed' ) || '' ) );
+
+				return;
+			}
+
+			var knopf = vorbild.cloneNode( false );
+			var huelle = document.createElement( 'label' );
+
+			knopf.value   = String( antwort.data.id );
+			knopf.checked = true;
+			huelle.className = 'taxmod-record-choice';
+			huelle.setAttribute( 'data-taxmod-search', String( antwort.data.word ).toLowerCase() );
+			huelle.appendChild( knopf );
+			huelle.appendChild( document.createTextNode( ' ' + antwort.data.word ) );
+			platz.parentNode.insertBefore( huelle, platz );
+			feld.value = '';
+			knopf.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		} ).catch( function () {
+			platz.classList.remove( 'is-busy' );
+			window.alert( worte.getAttribute( 'data-save-failed' ) || '' );
+		} );
+	}
+
+	document.addEventListener( 'click', function ( ereignis ) {
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-new-go' ) : null;
+
+		if ( knopf ) {
+			ereignis.preventDefault();
+			neuAnlegen( knopf.parentNode.querySelector( '.taxmod-record-new-name' ) );
+		}
+	} );
+
+	document.addEventListener( 'keydown', function ( ereignis ) {
+		if ( ereignis.key === 'Enter' && ereignis.target instanceof HTMLInputElement && ereignis.target.classList.contains( 'taxmod-record-new-name' ) ) {
+			ereignis.preventDefault();
+			neuAnlegen( ereignis.target );
+		}
+	} );
+
 	// ⚠️ **Ein mitlaufender waagerechter Balken unter jeder breiten Satztabelle** (D-807) — sein Befund: «no scrollbar, and records are
 	// shrinked to size of the page». *Der echte Balken des Satzformulars liegt am Ende einer langen Tabelle; dieser steht unten am Fenster,
 	// solange die Tabelle im Blick ist, und rollt dasselbe.*

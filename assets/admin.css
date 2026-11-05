@@ -1286,6 +1286,22 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     text-decoration: none;
 }
 
+/* ⚠️ Ein neuer Satz direkt im Dialog (D-1171): Name und «Anlegen» unter der Liste der Gruppe, Knopf rechts. */
+.taxmod-record-new {
+    display: flex;
+    gap: .4em;
+    margin: .5em 0 .2em;
+}
+
+.taxmod-record-new-name {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.taxmod-record-new.is-busy {
+    opacity: .6;
+}
+
 /* ⚠️ Der Dialog der Satzauswahl (D-791): der Baum der Knoten als Äste, darin je Satz ein Auswahlknopf. */
 .taxmod-record-tree {
     display: block;

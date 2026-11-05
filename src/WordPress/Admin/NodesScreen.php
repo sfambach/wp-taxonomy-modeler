@@ -1209,6 +1209,11 @@ final class NodesScreen
                 'action'      => self::RECORD_BRANCH_ACTION,
                 '_ajax_nonce' => wp_create_nonce(self::RECORD_BRANCH_ACTION),
             ], admin_url('admin-post.php'))) . '"'
+            // ⚠️ *Und wohin ein neuer Satz aus dem Dialog geht (D-1171).*
+            . ' data-record-create="' . esc_url(add_query_arg([
+                'action'      => self::RECORD_CREATE_ACTION,
+                '_ajax_nonce' => wp_create_nonce(self::RECORD_CREATE_ACTION),
+            ], admin_url('admin-post.php'))) . '"'
             . ' data-browse-title="' . esc_attr__('Choose from the tree', 'taxmod') . '"'
             . ' data-browse-filter="' . esc_attr__('Search the tree …', 'taxmod') . '"'
             . ' data-no-hits="' . esc_attr__('Nothing found.', 'taxmod') . '"'
@@ -1437,6 +1442,74 @@ final class NodesScreen
         }
 
         wp_send_json_success($aus);
+    }
+
+    /** Der Akt, unter dem der Satzdialog an einem Knoten einen neuen Satz mit Namen anlegt ([D-1171](../../../docs/NewConcept/90-decision-log.md)). */
+    public const RECORD_CREATE_ACTION = 'taxmod_record_create';
+
+    /**
+     * Einen neuen Satz aus dem Satzdialog anlegen und als JSON geben: Id und Wort ([D-1171](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Sein Wort: «man soll auch eine neue eingeben können zum beispiel in bauteil». Der Name geht in das erste Pflichtfeld des Knotens,
+     * das Text hält und hier nicht gerechnet wird ([D-888](../../../docs/NewConcept/90-decision-log.md)); hat der Knoten keins, bleibt das
+     * «+» mit der Seite des Knotens. Ein Akt, eine Änderungsnummer — rückgängig wie jedes Anlegen.*
+     */
+    public function handleRecordCreate(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_send_json_error(['message' => __('You are not allowed to shape the model.', 'taxmod')], 403);
+        }
+
+        if (! check_ajax_referer(self::RECORD_CREATE_ACTION, false, false)) {
+            wp_send_json_error(['message' => __('This page is out of date. Please reload it.', 'taxmod')], 403);
+        }
+
+        $gefragt = isset($_POST['node']) ? absint($_POST['node']) : 0;
+        $name    = isset($_POST['name']) ? trim(sanitize_text_field(wp_unslash($_POST['name']))) : '';
+
+        if ($name === '') {
+            wp_send_json_error(['message' => __('Enter a name first.', 'taxmod')], 400);
+        }
+
+        $unterModel = false;
+
+        foreach ($this->tree->rowsUnder($this->framework->rootOf(Branch::Model), [$this->framework->trash()->id]) as $zeile) {
+            $unterModel = $unterModel || $zeile['node']->id === $gefragt;
+        }
+
+        if (! $unterModel) {
+            wp_send_json_error(['message' => __('No records can be created here.', 'taxmod')], 404);
+        }
+
+        $namensfeld = null;
+
+        foreach ($this->fieldsWithTypes($gefragt) as ['relation' => $r, 'type' => $type]) {
+            if ($namensfeld === null && $type === SimpleType::Text && $r->kind === RelationKind::Composition && $r->multiplicity === Multiplicity::ExactlyOne
+                && ! $r->readOnly && ! $this->rendering->zusammengesetztHier($r, $gefragt)) {
+                $namensfeld = $r;
+            }
+        }
+
+        if ($namensfeld === null) {
+            wp_send_json_error(['message' => __('This node has no name field — use + to create the record on its page.', 'taxmod')], 409);
+        }
+
+        $this->changelog->beginAct();
+
+        try {
+            $satz = $this->savedWhole(function () use ($gefragt, $namensfeld, $name): NodeRecord {
+                $satz = $this->data->create($gefragt, RecordType::User);
+                $this->writeRecord($gefragt, $satz->id, wp_slash([$namensfeld->id => $name]), null, null, self::neutralLocale());
+
+                return $satz;
+            });
+        } catch (DomainError $error) {
+            wp_send_json_error(['message' => $error->getMessage()], 422);
+        } finally {
+            $this->changelog->endAct();
+        }
+
+        wp_send_json_success(['id' => $satz->id, 'word' => $name]);
     }
 
     // ---------------------------------------------------------------- the tree
@@ -5671,7 +5744,7 @@ final class NodesScreen
     /**
      * Der Weg zum Anlegen eines Satzes aus dem Satzdialog: die Seite des Knotens und das Wort dazu (D-792, Zeile 154).
      *
-     * @return array{0: \Closure(int): string, 1: string}
+     * @return array{0: \Closure(int): string, 1: string, 2: string, 3: string}
      */
     private function recordCreation(): array
     {
@@ -5679,6 +5752,9 @@ final class NodesScreen
             // ⚠️ *Ein neuer Satz entsteht auf der Seite seines Knotens — ohne Filter, Seite und geöffneten Satz von hier.*
             fn (int $knoten): string => $this->backTo($knoten, [self::PREVIEW_RECORD => null, self::RECORD_PAGE => null, self::RECORD_FILTER => null]),
             __('Add a new record here — opens in a new tab; reload this page afterwards', 'taxmod'),
+            // *Dazu das Feld im Dialog selbst (D-1171): Name tippen, «Anlegen», und der neue Satz ist gewählt.*
+            __('New here …', 'taxmod'),
+            __('Create', 'taxmod'),
         ];
     }
 

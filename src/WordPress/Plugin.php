@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.165';
+    public const VERSION     = '0.1.166';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -211,6 +211,11 @@ final class Plugin
         add_action(
             'admin_post_' . NodesScreen::RECORD_BRANCH_ACTION,
             static fn () => $plugin->screen()->handleRecordBranch()
+        );
+        // ⚠️ *Ein neuer Satz aus dem Satzdialog, mit Namen (D-1171).*
+        add_action(
+            'admin_post_' . NodesScreen::RECORD_CREATE_ACTION,
+            static fn () => $plugin->screen()->handleRecordCreate()
         );
 
         // ⚠️ *Die Zeilen der geerbten Felder, auf Wunsch nachgeladen (D-871) — derselbe Rückweg.*
