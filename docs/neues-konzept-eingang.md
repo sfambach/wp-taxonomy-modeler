@@ -1199,6 +1199,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Heute:** Ein Material hat eine Basiseinheit, die Bezugsquelle einen Packungsinhalt. Eine Leiste mit 40 Pins, von der Stücke abgebrochen werden, lässt sich so nicht abbilden. Die Stückliste bräuchte «2 × 20 Pins», das Lager zählt aber «Leisten».
 - **Vorschlag (nicht entschieden):** Basiseinheit = Pin, die Leiste ist die Packung (40). Der Verbrauch wird in Pins gebucht. Bei Buchsenleisten kommt je Schnitt ein Verlust-Pin dazu, als Eigenschaft des Materials («Verlust je Schnitt»). Angebrochene Leisten sind dann einfach ein Rest in Pins.
+- **2026-11-05, sein Wort:** *«pins hört sich richtig an ist aber einwenig komisch in der handabung»*. Vorschlag für die Handhabung (nicht entschieden): gezählt wird in Pins, gezeigt und eingegeben wird aber in Leisten und Rest, also «3 Leisten + 12 Pins». Der Wareneingang bucht ganze Leisten, die Stückliste nennt «2 × 20 Pins», und das Bestücken bucht die Pins plus einen Verlust-Pin je Schnitt bei Buchsen.
 - **Offen für Stefan:** Reicht das Zählen in Pins? Wie viel geht beim Abbrechen verloren? Gilt das auch für andere Ware, zum Beispiel Kabel, Schrumpfschlauch oder Litze ([D-1061](NewConcept/90-decision-log.md))?
 
 ## INF-110 · Etiketten-Designer und View-Knoten für Etiketten über mehrere Sätze (2026-11-04)
