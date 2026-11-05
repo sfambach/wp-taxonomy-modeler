@@ -40,7 +40,7 @@ final class Unit implements NodeClass
     // ⚠️ *Sein Wort zum Displaynamen «0.91 ″» ([D-1175](../../../../docs/NewConcept/90-decision-log.md)): das Zeichen steht ohne Abstand an
     // der Zahl, «0,91″». Die Einheit sagt es selbst, damit keine Einheit am Namen erkannt wird.*
     #[Attribut]
-    public bool $ohne_abstand = false;
+    public bool $direkt_an_zahl = false;
 
     public static function allowedChildClasses(): array
     {

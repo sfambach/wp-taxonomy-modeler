@@ -2728,10 +2728,10 @@ final class RenderingTest extends TestCase
         self::assertSame('0,91 Zoll', $name(','), 'mit dem Komma der deutschen Website');
 
         // *Die Einheit sagt selbst, dass ihr Zeichen ohne Abstand an der Zahl steht — keine Einheit wird mit Namen erkannt.*
-        (new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry()))->put($zoll, Rendering::OHNE_ABSTAND, '1');
+        (new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry()))->put($zoll, Rendering::DIREKT_AN_ZAHL, '1');
         $this->resolver->forget();
 
-        self::assertSame('0,91Zoll', $name(','), 'mit «ohne_abstand» an der Einheit');
+        self::assertSame('0,91Zoll', $name(','), 'mit «direkt_an_zahl» an der Einheit');
     }
 
     /** ⚠️ *Zeile 8 (D-760): der Validator der Stelle sieht den Wert, bevor er gespeichert wird.* */

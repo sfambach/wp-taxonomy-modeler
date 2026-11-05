@@ -3625,7 +3625,7 @@ final class NodesScreen
             new Control('word:hint:erlaubte_praefixe', '', __('Which prefixes this unit offers, e.g. p n µ m for Farad. None: every prefix.', 'taxmod')),
             new Control('word:hint:mit_praefix', '', __('Whether this unit takes a prefix at all — Ohm does, Percent does not.', 'taxmod')),
             new Control('word:hint:symbol', '', __('The short sign of the unit, e.g. Ω or %.', 'taxmod')),
-            new Control('word:hint:ohne_abstand', '', __('Whether the sign follows the number without a space, e.g. 0,91″ instead of 0,91 ″.', 'taxmod')),
+            new Control('word:hint:direkt_an_zahl', '', __('Sign directly after the number, without a space: 0,91″. Off by default, because the SI and DIN 1338 put a space between number and unit (5 V, 33 µF); the exceptions are the angle signs ° ′ ″, which are also used for inch.', 'taxmod')),
         ];
     }
 

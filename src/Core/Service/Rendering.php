@@ -560,7 +560,7 @@ final class Rendering implements Presets
     public const KNOTENNAME = -1;
 
     /** Einstellung einer Einheit: ihr Zeichen steht ohne Abstand an der Zahl («0,91″», D-1175). */
-    public const OHNE_ABSTAND = 'ohne_abstand';
+    public const DIREKT_AN_ZAHL = 'direkt_an_zahl';
 
     /** @var array<int, SimpleType|null> Der Typ je Feld, für {@see self::adressenVon()} — ein Feld ändert seinen Typ nicht während eines Laufs. */
     private array $feldTypGelesen = [];
@@ -5150,12 +5150,12 @@ final class Rendering implements Presets
         $zeichen       = $zeichenKnoten === [] ? [] : ($this->labels?->forNodes($zeichenKnoten, SeededRole::Symbol, '') ?? []);
 
         // ⚠️ *Eine Einheit, deren Zeichen ohne Abstand an der Zahl steht («0,91″», [D-1175](../../../docs/NewConcept/90-decision-log.md)),
-        // sagt das selbst mit der Einstellung `ohne_abstand` — keine Einheit wird hier mit Namen erkannt.*
+        // sagt das selbst mit der Einstellung `direkt_an_zahl` — keine Einheit wird hier mit Namen erkannt.*
         $ohneAbstand = [];
 
         foreach ($zeichenKnoten as $knoten) {
             if (isset($istEinheit[$knoten->id]) && $this->resolver !== null) {
-                if (($this->resolver->ownOf($knoten)[self::OHNE_ABSTAND] ?? null)?->value->asBool() === true) {
+                if (($this->resolver->ownOf($knoten)[self::DIREKT_AN_ZAHL] ?? null)?->value->asBool() === true) {
                     $ohneAbstand[$knoten->id] = true;
                 }
             }
