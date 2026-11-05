@@ -72,7 +72,7 @@ The «Bauläufe» of the stock draft ([`../lager/konzept.md`](../lager/konzept.m
 
 1. ~~s7vrm: is the coil a board of its own or a part?~~ A part on every board, his word 2026-11-04: *«alles bestückt bis auf die Spule … eventuell müsste man die durchmessen»* — every board «bestückt», the coil an open position, the note on the board.
 2. Menu: own top-level entry «Fertigung» or a tab under Logistik?
-3. Is the inspection step mandatory for every board, or chosen per order?
+3. ~~Is the inspection step mandatory?~~ Yes, D-1177 2026-11-05: «prüfung ist pflicht».
 4. ~~Repository~~ created by the owner 2026-11-04; built: 0.0.1 (orders, status per board, open positions, note; no bookings yet).
 5. Picking (D-1155): which place to take from when a part lies at several — the stock module answers per place; the list offers each place as its own line. FIFO by lot inside one place is the stock module's rule.
 6. Receipt of finished boards (D-1143), built 0.0.11 — **assumed, not said by him** (he was away, «so viel machen wie möglich ohne … fragen»):
