@@ -341,11 +341,58 @@ final class SummaryRenderer extends TypedFieldRenderer
     /** @param list<array<string, mixed>> $baum */
     private function dialogAround(RenderContext $context, array $baum, ?int $gewaehlt, string $koerper): string
     {
+        return self::around($context->surroundings->formId, $context->fieldName, $context->surroundings->refersTo, $context->surroundings->dialogWords, $baum, $gewaehlt, $koerper);
+    }
+
+    /**
+     * Dieselbe Satzauswahl für ein Modul, das sein Formular selbst zeichnet: ausgegrautes Feld, Baum, Dialog mit «Neu hier …»
+     * ([D-1182](../../../docs/NewConcept/90-decision-log.md)) — sein Wort am 2026-11-05 an den Bezugsquellen: «müsste tree chooser sein mehr
+     * als eine ebene und man müsste neu eingeben können». *Vorher baute jedes Modul ein eigenes Auswahlfeld mit Gruppen.*
+     *
+     * @param list<array{depth: int, name: string, records: array<int, string>, node?: int, newWord?: string, createWord?: string}> $baum
+     * @param array<string, string> $worte ok, cancel, tree, clear, search
+     */
+    public static function pick(string $fieldName, string $formId, array $baum, ?int $gewaehlt, array $worte, bool $mayBeNothing = true): string
+    {
+        $name  = RenderResult::escape($fieldName);
+        $form  = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
+        $knopf = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): string => '<label class="taxmod-record-choice' . ($passt ? ' taxmod-record-match' : '') . '"'
+            . ($suche === '' ? '' : ' data-taxmod-search="' . RenderResult::escape($suche) . '"') . '>'
+            . '<input type="radio" name="' . $name . '" value="' . $wert . '"' . ($an ? ' checked' : '') . $form . '> ' . $wort . '</label>';
+
+        foreach ($baum as $i => $zeile) {
+            $suche = [];
+
+            foreach ($zeile['records'] as $satzId => $wort) {
+                $suche[$satzId] ??= mb_strtolower($wort . ' ' . $zeile['name']);
+            }
+
+            $baum[$i]['search'] ??= $suche;
+        }
+
+        $steht = false;
+
+        foreach ($baum as $zeile) {
+            $steht = $steht || ($gewaehlt !== null && isset($zeile['records'][$gewaehlt]));
+        }
+
+        $vorn = $mayBeNothing || $gewaehlt === null ? $knopf('', $gewaehlt === null, '—') : '';
+
+        if ($gewaehlt !== null && ! $steht) {
+            $vorn .= $knopf((string) $gewaehlt, true, RenderResult::escape('#' . $gewaehlt));
+        }
+
+        return self::around($formId, $fieldName, null, $worte, $baum, $gewaehlt, self::browserBody($baum, $knopf, $gewaehlt, $vorn, $worte));
+    }
+
+    /** @param array<string, string> $worte */
+    private static function around(string $formId, string $fieldName, ?string $refersTo, array $worte, array $baum, ?int $gewaehlt, string $koerper): string
+    {
         // ⚠️ *Ohne gewählten Satz steht nur das Zeichen «—» — dann ist der Öffner ein Zeichenknopf: randlos, und sein Name steht für
         // den Vorleser dabei, wie beim Knotenwähler ({@see ChooserRenderer}; `icon-button-check`). Der Name ist der Knoten, aus dem
-        // gewählt wird — die Wurzel des Baums; `render()` ist in {@see TypedFieldRenderer} endgültig und reicht das Feld nicht herein.*
+        // gewählt wird — die Wurzel des Baums.*
         // ⚠️ *Ohne Wort der Umgebung das Wort aus dem Baum des Dialogs, zuletzt die Nummer — ein gewählter Satz zeigt nie «—» (D-810).*
-        $wort = $context->surroundings->refersTo;
+        $wort = $refersTo;
 
         foreach ($gewaehlt === null || $wort !== null ? [] : $baum as $zeile) {
             $wort ??= isset($zeile['records'][$gewaehlt]) ? (string) $zeile['records'][$gewaehlt] : null;
@@ -357,15 +404,15 @@ final class SummaryRenderer extends TypedFieldRenderer
             : RenderResult::escape($wort ?? '#' . $gewaehlt);
 
         $dialog = DialogMarkup::of(
-            'taxmod-record-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $context->surroundings->formId . $context->fieldName),
+            'taxmod-record-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $fieldName),
             $jetzt,
             $jetzt,
             '<div class="taxmod-record-tree">' . $koerper . '</div>',
             '',
             'taxmod-record-dialog-open',
-            ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
-            cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? ''),
-            tree: (string) ($context->surroundings->dialogWords['tree'] ?? '')
+            ok: (string) ($worte['ok'] ?? ''),
+            cancel: (string) ($worte['cancel'] ?? ''),
+            tree: (string) ($worte['tree'] ?? '')
         );
 
         // ⚠️ **Kein Suchfeld mehr vor dem Dialog** ([D-1163](../../../docs/NewConcept/90-decision-log.md), ersetzt D-792 Zeile 153 hier) — *sein
@@ -374,8 +421,8 @@ final class SummaryRenderer extends TypedFieldRenderer
         return '<span class="taxmod-record-pick' . ($nichts ? '' : ' taxmod-record-taken') . '">'
             . $dialog
             // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl im Dialog zeigt ihn und verbirgt das Suchfeld (D-1138).*
-            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape((string) ($context->surroundings->dialogWords['clear'] ?? '')) . '">'
-                . IconMarkup::dashicon('trash', (string) ($context->surroundings->dialogWords['clear'] ?? '')) . '</button>'
+            . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape((string) ($worte['clear'] ?? '')) . '">'
+                . IconMarkup::dashicon('trash', (string) ($worte['clear'] ?? '')) . '</button>'
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
     }

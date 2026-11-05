@@ -2965,7 +2965,8 @@
 	function neuAnlegen( feld ) {
 		var platz   = feld.closest( '.taxmod-record-new' );
 		var baum    = feld.closest( '.taxmod-record-tree' );
-		var worte   = document.getElementById( 'taxmod-words' );
+		// *Die Adresse steht am Wortträger der Seite oder, in einem Modul, an einem eigenen (D-1182).*
+		var worte   = document.querySelector( '[data-record-create]' ) || document.getElementById( 'taxmod-words' );
 		var adresse = worte ? worte.getAttribute( 'data-record-create' ) || '' : '';
 		var name    = feld.value.trim();
 
