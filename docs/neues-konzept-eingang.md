@@ -1191,7 +1191,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Zeitraum (2026-11-04, [D-1167](NewConcept/90-decision-log.md)):** gebaut ohne «Ausgaben je Händler», «Neues Material» und «Auffällig» aus der Skizze — offen, ob und mit welcher Regel (Ausgaben: Bestelldatum oder Eingangsdatum? Auffällig: welche Schwelle?).
 - **Offen für Stefan:** welche Startkennzahlen; nur Cockpit oder auch je Bereichs-Übersicht; Schwellen/Ampeln (Design 4.20); Summen über Positionen mit dem Datum des Kopfs; Quoten und Differenzen (Defektquote, Ergebnis); Umrechnung der Währungen.
 
-## INF-109 · Teilbare Ware: Stiftleisten, Buchsenleisten (2026-11-04)
+## INF-109 · Teilbare Ware: Stiftleisten, Buchsenleisten (2026-11-04) — entschieden D-1178
 
 **Typ:** `IDEE` · **Status:** `OFFEN`
 
