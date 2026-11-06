@@ -30,6 +30,11 @@ final class UnitValue implements NodeClass
 
     public const ERLAUBTE_EINHEITEN = 'erlaubte_einheiten';
 
+    // ⚠️ *Sein Wort zum Displaynamen «20 Zeichen · 4 Zeichen» ([D-1189](../../../../docs/NewConcept/90-decision-log.md)): «4x20 würde mir
+    // reichen». Zwei Zahlen sind sonst ein Bereich «4 … 20»; ein Knoten wie «Raster» sagt hier «×».*
+    #[Attribut]
+    public string $zahlen_verbinder = '';
+
     public static function allowedChildClasses(): array
     {
         return [];

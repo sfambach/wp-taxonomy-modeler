@@ -562,6 +562,9 @@ final class Rendering implements Presets
     /** Einstellung einer Einheit: ihr Zeichen steht ohne Abstand an der Zahl («0,91″», D-1175). */
     public const DIREKT_AN_ZAHL = 'direkt_an_zahl';
 
+    /** Einstellung eines Einheitenwert-Knotens: womit seine zwei Zahlen verbunden werden («×» für ein Raster, D-1189). */
+    public const ZAHLEN_VERBINDER = 'zahlen_verbinder';
+
     /** @var array<int, SimpleType|null> Der Typ je Feld, für {@see self::adressenVon()} — ein Feld ändert seinen Typ nicht während eines Laufs. */
     private array $feldTypGelesen = [];
 
@@ -5163,6 +5166,7 @@ final class Rendering implements Presets
 
         $dezimal = $this->decimalSeparator;
 
+
         $felder = [];
 
         foreach ($betroffen as $relation) {
@@ -5269,8 +5273,22 @@ final class Rendering implements Presets
             }
         }
 
+        // ⚠️ *Zwei Zahlen eines Teils verbindet sein Knoten selbst, wenn er es sagt (`zahlen_verbinder`, [D-1189](../../../docs/NewConcept/90-decision-log.md)):
+        // ein Raster «4×20 Zeichen» statt des Bereichs «4 … 20». Ohne Angabe bleibt der Bereich.*
+        $verbinder = [];
+
+        if ($this->resolver !== null && $knotenIds !== []) {
+            foreach ($this->gemerkteKnoten(array_keys($knotenIds)) as $knoten) {
+                $text = ($this->resolver->ownOf($knoten)[self::ZAHLEN_VERBINDER] ?? null)?->value->text;
+
+                if ($text !== null && $text !== '') {
+                    $verbinder[$knoten->id] = $text;
+                }
+            }
+        }
+
         $bezugsWaehrung = $this->referenceCurrency;
-        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal): string {
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal, $verbinder): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
             $ausWahl  = false;
@@ -5353,6 +5371,8 @@ final class Rendering implements Presets
                 // ⚠️ *Zwei Zahlen sind ein Bereich: gleich gross mit verschiedenem Vorzeichen «±20», sonst «-20 … 80»; eine Zahl steht allein.
                 // Präfix und Einheit folgen als Zeichen: «±20 %», «33 µF», «250 mW» (D-797).*
                 $betrag = match (true) {
+                    count($zahlen) === 2 && $knotenId !== null && isset($verbinder[$knotenId])
+                                           => $zahlen[0] . $verbinder[$knotenId] . $zahlen[1],
                     count($zahlen) === 2 && ltrim($zahlen[0], '-') === ltrim($zahlen[1], '-') && str_starts_with($zahlen[0], '-') !== str_starts_with($zahlen[1], '-')
                                            => '±' . ltrim($zahlen[0], '-'),
                     count($zahlen) === 2   => $zahlen[0] . ' … ' . $zahlen[1],
