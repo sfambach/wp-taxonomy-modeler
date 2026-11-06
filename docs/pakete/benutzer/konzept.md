@@ -50,6 +50,6 @@ Unter dem Modeller, Wartungsbereich ([S2](../../gestaltung-und-architektur.md)):
 ## Angenommen / offen
 
 - **G1** Gruppen als Sätze im Modell statt als WordPress-Rollen (Alternative: Rollen über eine Taxmod-Seite pflegen — dann ohne Rückgängig und Versionen).
-- **G2** Etikettendruck: erst der Drucker des Benutzers, wenn er die Rollenbreite des Etiketts hat, sonst der Drucker der Etikettenvorlage.
+- **G2** Etikettendruck: erst der Drucker des Benutzers, wenn er die Rollenbreite des Etiketts (Feld «Rolle», 149000110356) hat, sonst der Drucker der Etikettenvorlage. Braucht ein neues Feld «Rolle (mm)» am Drucker (Modelländerung zu D-1189); eingehängt an der einen Stelle, die einem Etikett den Drucker gibt (`LabelButton::filled()` im Modeller), damit jedes Modul es bekommt.
 - **G3** Dezimalzeichen gilt nur im Admin; Leser der Website sehen weiter die Website-Sprache.
 - **G4** Rechte sind ein Satz je Gruppe, keine Verbote; mehrere Gruppen addieren sich.
