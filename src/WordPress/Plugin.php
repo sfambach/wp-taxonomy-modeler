@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.191';
+    public const VERSION     = '0.1.192';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -603,6 +603,18 @@ final class Plugin
             (string) (@filemtime($this->path('assets/confirm-dialog.js')) ?: self::VERSION),
             true
         );
+        // The message field beside the heading (D-1203): what just happened, in one place, with the last messages behind it.
+        wp_enqueue_script(
+            'taxmod-messages',
+            plugins_url('assets/messages.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            [],
+            (string) (@filemtime($this->path('assets/messages.js')) ?: self::VERSION),
+            true
+        );
+        wp_add_inline_script('taxmod-messages', 'window.taxmodMessageWords=' . wp_json_encode([
+            'none'   => __('No messages yet.', 'taxmod'),
+            'recent' => __('Recent messages', 'taxmod'),
+        ]) . ';', 'before');
         wp_add_inline_script('taxmod-confirm', 'window.taxmodConfirmWords=' . wp_json_encode([
             'title'  => __('Please confirm', 'taxmod'),
             'ok'     => __('Confirm', 'taxmod'),

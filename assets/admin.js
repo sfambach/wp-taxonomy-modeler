@@ -2128,6 +2128,13 @@
 			return;
 		}
 
+		// D-1203: where the page has the message field beside its heading, the message goes there.
+		if ( window.taxmodMessage && document.querySelector( '.taxmod-messages' ) ) {
+			window.taxmodMessage( text, gut ? 'ok' : 'bad' );
+
+			return;
+		}
+
 		var alt = document.querySelectorAll( '.taxmod-toast' );
 
 		for ( var i = 0; i < alt.length; i++ ) {

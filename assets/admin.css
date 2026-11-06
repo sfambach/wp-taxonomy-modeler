@@ -2542,3 +2542,70 @@ pre.taxmod-code {
 .taxmod-bulk-asks > .taxmod-chooser > .taxmod-dialog-open {
 	display: none;
 }
+
+/* D-1203: the message field beside the heading — one line, fixed size, so the heading never moves. */
+.taxmod-messages {
+	position: relative;
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: 1em;
+}
+.taxmod-messages-last {
+	display: block;
+	width: 32em;
+	max-width: 50vw;
+	height: 30px;
+	padding: 0 .8em 0 1.6em;
+	overflow: hidden;
+	border: 1px solid #c3c4c7;
+	border-left: 4px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+	color: #50575e;
+	font-size: 13px;
+	line-height: 28px;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background-color .6s;
+}
+.taxmod-messages-last::before {
+	content: "\25BE";
+	position: absolute;
+	left: .7em;
+	color: #8c8f94;
+}
+.taxmod-messages.is-ok .taxmod-messages-last { border-left-color: #00a32a; }
+.taxmod-messages.is-bad .taxmod-messages-last { border-left-color: #d63638; }
+.taxmod-messages.is-info .taxmod-messages-last { border-left-color: #2271b1; }
+.taxmod-messages.is-fresh.is-ok .taxmod-messages-last { background: #edfaef; }
+.taxmod-messages.is-fresh.is-bad .taxmod-messages-last { background: #fcf0f1; }
+.taxmod-messages.is-fresh.is-info .taxmod-messages-last { background: #f0f6fc; }
+.taxmod-messages-list {
+	position: absolute;
+	z-index: 100001;
+	top: 34px;
+	left: 0;
+	width: 32em;
+	max-width: 80vw;
+	max-height: 20em;
+	margin: 0;
+	padding: .4em 0;
+	overflow-y: auto;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+	box-shadow: 0 3px 12px rgba(0, 0, 0, .15);
+	list-style: none;
+}
+.taxmod-messages-list li {
+	margin: 0;
+	padding: .3em .9em .3em .7em;
+	border-left: 3px solid transparent;
+	font-size: 12px;
+	white-space: pre-wrap;
+}
+.taxmod-messages-list li.is-ok { border-left-color: #00a32a; }
+.taxmod-messages-list li.is-bad { border-left-color: #d63638; }
+.taxmod-messages-list li.is-info { border-left-color: #2271b1; }

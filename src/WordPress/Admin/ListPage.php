@@ -300,7 +300,19 @@ final class ListPage
         $title = esc_html($plugin) . ' › ' . esc_html($screen);
 
         return '<h1 class="wp-heading-inline" style="font-size:1.8em">' . ($hint === '' ? $title : HintMarkup::behind($title, $hint)) . '</h1>'
-            . ' <span class="taxmod-version" style="display:inline-block;vertical-align:middle;margin-left:.5em;padding:2px 8px;border-radius:10px;background:#2271b1;color:#fff;font-size:12px;font-weight:600">v' . esc_html($version) . '</span><hr class="wp-header-end">';
+            . ' <span class="taxmod-version" style="display:inline-block;vertical-align:middle;margin-left:.5em;padding:2px 8px;border-radius:10px;background:#2271b1;color:#fff;font-size:12px;font-weight:600">v' . esc_html($version) . '</span>'
+            . self::messages() . '<hr class="wp-header-end">';
+    }
+
+    /**
+     * The message field beside the heading (D-1203): one line with the last message, the recent ones open below it —
+     * written by `assets/messages.js`, so an act that does not reload the page still says what it did. ⚠️ *His word,
+     * 2026-11-06: «oben neben die Überschrift, aber so, dass es nicht verzerrt … dass man die letzten Nachrichten noch sehen kann».*
+     */
+    public static function messages(): string
+    {
+        return '<span class="taxmod-messages" role="status" aria-live="polite"><button type="button" class="taxmod-messages-last" aria-expanded="false"></button>'
+            . '<ol class="taxmod-messages-list" hidden></ol></span>';
     }
 
     /**
