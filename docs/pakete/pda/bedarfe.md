@@ -34,8 +34,18 @@ One row per process, grouped by module. Columns:
 
 *No need reported yet.*
 
+## 4 · Scanning (cross-cutting, Modeller)
+
+| # | Process | Steps on the PDA | Data / booking | Reported | Later / maybe |
+|---|---|---|---|---|---|
+| X-1 | **Scan a code** and jump to / act on the record | scan → recognise the record → offer the module's targets | same reader as the scanner test page: core `ScannedCode::read()` (O/K/M/E id per [D-1032](../../NewConcept/90-decision-log.md), bare record id, `taxmod_open_record` link, any separator incl. «ß» from US layout on a German keyboard) and filter `taxmod_scan_links` for module targets (stock: place/box, material) — [D-1203](../../NewConcept/90-decision-log.md) | 2026-11-06, thread «Scanner-Testseite» | scan context, e.g. place first, then material = transfer (open) |
+
+Hardware at hand: Eyoyo barcode/QR scanner, keyboard input.
+
 ## Open (cross-cutting, undecided)
 
 - Device and form: browser page on a phone/handheld or own app — open.
 - Scanning: which codes (label QR from the print module, manufacturer barcodes) — open.
+- Scan input: keyboard wedge (as the Eyoyo) vs. camera — open.
+- Scan context (what a second scan means after the first) — open.
 - Offline operation — open.
