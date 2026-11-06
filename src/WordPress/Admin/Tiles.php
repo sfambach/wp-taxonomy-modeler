@@ -19,6 +19,7 @@ use Taxmod\Core\Tile\TileGrid;
 use Taxmod\Core\Tile\TileTone;
 use Taxmod\WordPress\Persistence\Ancestry;
 use Taxmod\WordPress\Persistence\MetricSums;
+use Taxmod\WordPress\Persistence\TileCounts;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
 use Taxmod\WordPress\Persistence\WpdbRelationRepository;
 use Taxmod\WordPress\Persistence\WpdbSettingsRepository;
@@ -47,6 +48,22 @@ final class Tiles
         $safe = array_map(static fn (Tile $t): Tile => $t->url === '' ? $t : new Tile($t->label, esc_url_raw($t->url), $t->figure, $t->lines, $t->tone, $t->bars, $t->barLabels, $t->trend, $t->actions), $tiles);
 
         return TileGrid::of($safe, $heading);
+    }
+
+    /** The scope of counts read from the model's records; every write to them forgets them (D-1198). */
+    public const MODEL = TileCounts::MODEL;
+
+    /**
+     * Counts for tiles, kept until the data under them change (D-1198): `$source` names what is counted, unique within the
+     * scope and carrying whatever else the counts depend on (a day, a filter); a module counts model records under
+     * {@see self::MODEL}.
+     *
+     * @param callable(): array<string, int|float> $count
+     * @return array<string, int|float>
+     */
+    public static function cachedCounts(string $scope, string $source, callable $count): array
+    {
+        return TileCounts::remember($scope, $source, $count);
     }
 
     /** A tile with a count: «0» is the shrunk empty form (design 6.3), null means the tile has no figure. */
@@ -203,7 +220,7 @@ final class Tiles
         $months  = (int) (($metric->settings['months'] ?? null)?->text ?? 12) ?: 12;
         $current = current_time('Y-m');
         $start   = gmdate('Y-m-01', (int) strtotime($current . '-01 -' . (max(1, min(36, $months)) - 1) . ' months'));
-        $series  = MonthlySeries::of(MetricSums::perStep($node, $metric, '%Y-%m', $start, null), $current, $months);
+        $series  = MonthlySeries::of(self::sums($node, $metric, '%Y-%m', $start, null), $current, $months);
         $sum     = MetricMeasure::tryFrom((string) (($metric->settings['measure'] ?? null)?->text ?? '')) === MetricMeasure::Sum;
         $format  = static fn (float $v): string => number_format_i18n($v, $sum && fmod($v, 1.0) !== 0.0 ? 2 : 0);
         $lines   = [];
@@ -240,7 +257,7 @@ final class Tiles
     {
         $before = $period->previous();
         $from   = min($before->start(), $period->chartStart());
-        $days   = MetricSums::perStep($node, $metric, '%Y-%m-%d', $from, $period->end());
+        $days   = self::sums($node, $metric, '%Y-%m-%d', $from, $period->end());
         $sum    = MetricMeasure::tryFrom((string) (($metric->settings['measure'] ?? null)?->text ?? '')) === MetricMeasure::Sum;
         $format = static fn (float $v): string => number_format_i18n($v, $sum && fmod($v, 1.0) !== 0.0 ? 2 : 0);
         $now    = 0.0;
@@ -269,6 +286,19 @@ final class Tiles
             $labels,
             [1 => '▲', 0 => '', -1 => '▼'][$trend] . ' ' . self::periodName($period),
         );
+    }
+
+    /**
+     * A key figure's steps, kept until a record changes (D-1198); its settings are part of the key, so a changed figure is
+     * counted anew.
+     *
+     * @return array<string, float>
+     */
+    private static function sums(Node $node, ChosenAddon $metric, string $step, string $from, ?string $until): array
+    {
+        $source = 'metric.' . $node->id . '.' . $metric->objectId . '.' . md5((string) wp_json_encode($metric->settings)) . '.' . $step . '.' . $from . '.' . ($until ?? '');
+
+        return array_map('floatval', TileCounts::remember(TileCounts::MODEL, $source, static fn (): array => MetricSums::perStep($node, $metric, $step, $from, $until)));
     }
 
     private static function titleOf(Node $node, ChosenAddon $metric): string

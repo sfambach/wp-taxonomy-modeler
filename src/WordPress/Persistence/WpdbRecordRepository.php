@@ -25,6 +25,8 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
+        TileCounts::forget(TileCounts::MODEL);
+
         $wpdb->insert(
             Schema::table('node_records'),
             [
@@ -370,6 +372,8 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
+        TileCounts::forget(TileCounts::MODEL);
+
         $spalten = [
             'node_record_id'     => $value->recordId,
             'relation_id'       => $value->relationId,
@@ -431,6 +435,8 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
+        TileCounts::forget(TileCounts::MODEL);
+
         // ⚠️ *Vor dem Löschen gelesen: die Version, die diese Änderung erzeugt hat, ist die, mit der
         // die Zeile in den Schatten geht — das Aufheben zählt sie nicht hoch.*
         $version = $this->versionOfValues('id = %d', [$id]);
@@ -469,6 +475,8 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
+        TileCounts::forget(TileCounts::MODEL);
+
         $version = Query::value('Version des Datensatzes vor dem Entfernen lesen', $wpdb->prepare(
             'SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d',
             $id
@@ -493,6 +501,8 @@ final class WpdbRecordRepository implements RecordRepository
     public function retypeRecord(int $id, RecordType $kind): ?int
     {
         global $wpdb;
+
+        TileCounts::forget(TileCounts::MODEL);
 
         $version = Query::value('Version des Datensatzes vor dem Umstellen lesen', $wpdb->prepare(
             'SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d',
@@ -578,6 +588,8 @@ final class WpdbRecordRepository implements RecordRepository
     {
         global $wpdb;
 
+        TileCounts::forget(TileCounts::MODEL);
+
         $version = Query::value('Version des Datensatzes vor dem Verschieben lesen', $wpdb->prepare(
             'SELECT version FROM ' . Schema::table('node_records') . ' WHERE id = %d',
             $id
@@ -605,6 +617,8 @@ final class WpdbRecordRepository implements RecordRepository
     public function forgetValue(int $recordId, int $relationId, string $locale): ?int
     {
         global $wpdb;
+
+        TileCounts::forget(TileCounts::MODEL);
 
         $version = $this->versionOfValues(
             'node_record_id = %d AND relation_id = %d AND locale = %s',
@@ -850,6 +864,8 @@ final class WpdbRecordRepository implements RecordRepository
     public function forgetNodes(array $nodeIds): array
     {
         global $wpdb;
+
+        TileCounts::forget(TileCounts::MODEL);
 
         $ids = array_values(array_unique(array_map(intval(...), $nodeIds)));
 

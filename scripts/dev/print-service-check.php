@@ -107,7 +107,22 @@ $pruefe(str_contains(PrintTab::status(), 'heard of'), '«Test connection» says 
 PrintTab::act([PrintTab::DO => 'test:roll62']);
 $pruefe($jobs->latest(1)[0]['format'] === 'roll62' && $jobs->latest(1)[0]['is_test'] === '1', 'the test button queues a test job');
 
+// D-1198: the counts per status are kept until a write, and every write forgets them before it returns.
+$gezaehlt = $jobs->counts();
+$pruefe(get_transient('taxmod_tiles_' . md5('print_jobs|' . ((array) get_option('taxmod_tile_generation', []))['print_jobs'] . '|status')) === $gezaehlt, 'the counts per status are kept after the first count');
+$neu = $jobs->queue(LabelFormat::byKey('holder62'), new LabelContent('O-4713', 'Zählfach', 'print-service-check'), true);
+$pruefe(($jobs->counts()['queued'] ?? 0) === ($gezaehlt['queued'] ?? 0) + 1, 'a new job is counted at once: queueing forgot the kept counts');
+$jobs->cancel([$neu]);
+$pruefe(($jobs->counts()['queued'] ?? 0) === ($gezaehlt['queued'] ?? 0) && ($jobs->counts()['cancelled'] ?? 0) === ($gezaehlt['cancelled'] ?? 0) + 1, 'a status change is counted at once: cancelling forgot them too');
+
 $liste = (new PrintJobsScreen($jobs))->render();
+$pruefe(str_contains($liste, 'class="taxmod-tiles"'), 'the job list has tiles on top (D-1198)');
+$pruefe(str_contains($liste, 'Active') && str_contains($liste, 'Printed') && str_contains($liste, 'Failed') && str_contains($liste, 'status=active'), 'the tiles Active, Printed and Failed filter the list');
+$pruefe(str_contains($liste, 'taxmod-page-section'), 'the list stands in the standard page (D-1196)');
+$_GET['status'] = 'active';
+$aktiv = (new PrintJobsScreen($jobs))->render();
+unset($_GET['status']);
+$pruefe(! str_contains($aktiv, '>O-4713<'), '«Active» shows only waiting and fetched jobs');
 $pruefe(str_contains($liste, 'taxmod_print_jobs_cancel') && str_contains($liste, 'taxmod_print_jobs_again'), 'the job list has the bulk actions «Cancel» and «Print again»');
 $pruefe(has_action('admin_post_taxmod_print_jobs_cancel') !== false && has_action('admin_post_' . PrintTab::ACTION) !== false, 'the list and the print settings have their admin-post actions');
 do_action(\Taxmod\WordPress\Plugin::STYLE_ACTION);

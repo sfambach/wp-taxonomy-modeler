@@ -41,6 +41,8 @@ final class Restore
      */
     public static function previous(string $liveTable, int $id): bool
     {
+        TileCounts::forget(TileCounts::MODEL);
+
         global $wpdb;
 
         $schatten = self::shadowFor($liveTable);
@@ -171,6 +173,8 @@ final class Restore
      */
     public static function group(int $changeGroupId): array
     {
+        TileCounts::forget(TileCounts::MODEL);
+
         global $wpdb;
 
         $zeilen = $wpdb->get_results($wpdb->prepare(

@@ -4,6 +4,7 @@ namespace Taxmod\WordPress\Printing;
 
 use Taxmod\Core\Printing\PrintJobStatus;
 use Taxmod\WordPress\Admin\ListPage;
+use Taxmod\WordPress\Admin\Tiles;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -25,6 +26,9 @@ final class PrintJobsScreen
     private const FORM = 'taxmod-print-jobs-bulk';
 
     private const LIMIT = 200;
+
+    /** The filter of the tile «Active»: waiting or fetched, not yet answered. */
+    private const ACTIVE = 'active';
 
     public static function boot(): void
     {
@@ -68,18 +72,19 @@ final class PrintJobsScreen
     public function render(): string
     {
         $status = sanitize_key((string) ($_GET['status'] ?? ''));
-        $status = PrintJobStatus::tryFrom($status)?->value ?? '';
+        $status = $status === self::ACTIVE ? $status : (PrintJobStatus::tryFrom($status)?->value ?? '');
         $counts = $this->jobs->counts();
         $rows = '';
 
-        foreach ($this->jobs->latest(self::LIMIT, $status) as $job) {
+        foreach ($this->jobs->latest(self::LIMIT, ...($status === self::ACTIVE ? self::activeStatuses() : [$status])) as $job) {
             $rows .= $this->row($job);
         }
         if ($rows === '') {
             $rows = '<tr><td colspan="9">' . esc_html__('No print jobs.', 'taxmod') . '</td></tr>';
         }
 
-        $options = ['' => __('All statuses', 'taxmod')];
+        $active = array_sum(array_map(static fn (string $s): int => $counts[$s] ?? 0, self::activeStatuses()));
+        $options = ['' => __('All statuses', 'taxmod'), self::ACTIVE => __('Active', 'taxmod') . ' (' . $active . ')'];
         foreach (PrintJobStatus::cases() as $case) {
             $options[$case->value] = self::statusLabel($case) . ' (' . ($counts[$case->value] ?? 0) . ')';
         }
@@ -89,8 +94,7 @@ final class PrintJobsScreen
             . (isset($_GET['module']) ? '<input type="hidden" name="module" value="' . esc_attr(sanitize_key((string) $_GET['module'])) . '">' : '')
             . '</form>';
 
-        return '<div class="wrap">' . ListPage::heading(__('Print jobs', 'taxmod'))
-            . self::notice()
+        return ListPage::page(__('Print jobs', 'taxmod'), $this->tiles($counts, $active), [['html' => self::notice()
             . '<p class="description">' . esc_html__('Jobs for the print service at home. A job waits until the service fetches it; «Print again» sends a printed, failed or cancelled job once more.', 'taxmod') . '</p>'
             . $search
             . ListPage::bulkBar(self::FORM, self::ACTION, [
@@ -106,8 +110,32 @@ final class PrintJobsScreen
                 [__('Status', 'taxmod'), '9em'],
                 [__('Queued', 'taxmod'), '11em'],
                 [__('Message', 'taxmod')],
-            ], $rows)
-            . '</div>';
+            ], $rows)]]);
+    }
+
+    /**
+     * D-1198, his word 2026-11-06: «druck auftäge oben wie überall tiles aufträge aktive, gedruckt, fehler mit anzahl» —
+     * a click filters the list below.
+     *
+     * @param array<string, int> $counts
+     * @return list<\Taxmod\Core\Tile\Tile>
+     */
+    private function tiles(array $counts, int $active): array
+    {
+        $filter = static fn (string $status): string => add_query_arg('status', $status, remove_query_arg(['taxmod_print_done', 'taxmod_print_n']));
+        $failed = $counts[PrintJobStatus::Failed->value] ?? 0;
+
+        return [
+            Tiles::counted(__('Active', 'taxmod'), $active, $filter(self::ACTIVE)),
+            Tiles::counted(__('Printed', 'taxmod'), $counts[PrintJobStatus::Printed->value] ?? 0, $filter(PrintJobStatus::Printed->value)),
+            Tiles::counted(__('Failed', 'taxmod'), $failed, $filter(PrintJobStatus::Failed->value), [], $failed > 0),
+        ];
+    }
+
+    /** @return list<string> */
+    private static function activeStatuses(): array
+    {
+        return [PrintJobStatus::Queued->value, PrintJobStatus::Claimed->value];
     }
 
     /** admin-post: a bulk action on `selected[]`, or one row's button on `job`. */

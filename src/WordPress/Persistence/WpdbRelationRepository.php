@@ -528,6 +528,8 @@ final class WpdbRelationRepository implements RelationRepository
             $relationId
         ));
 
+        TileCounts::forget(TileCounts::MODEL);
+
         Query::run('Wertzeilen der geparkten Kante entfernen', $wpdb->prepare(
             'DELETE FROM ' . Schema::table('relation_records') . ' WHERE relation_id = %d',
             $relationId

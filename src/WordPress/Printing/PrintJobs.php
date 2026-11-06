@@ -5,10 +5,12 @@ namespace Taxmod\WordPress\Printing;
 use Taxmod\Core\Printing\LabelContent;
 use Taxmod\Core\Printing\LabelFormat;
 use Taxmod\Core\Printing\PrintJobStatus;
+use Taxmod\WordPress\Persistence\TileCounts;
 
 /**
  * The print jobs in their table: queue one, let the service claim the waiting ones in one statement, take its result,
- * cancel and print again. Every write is one statement for all rows it touches (CD-7).
+ * cancel and print again. Every write is one statement for all rows it touches (CD-7), and forgets the counts per status
+ * before it returns (D-1198).
  *
  * @see docs/NewConcept/90-decision-log.md D-1113
  */
@@ -36,6 +38,7 @@ final class PrintJobs
             'created_at' => current_time('mysql', true),
         ]);
         $id = (int) $wpdb->insert_id;
+        TileCounts::forget(TileCounts::PRINT_JOBS);
         if ($id <= 0) {
             throw new \RuntimeException('The print job could not be stored.');
         }
@@ -59,7 +62,7 @@ final class PrintJobs
         $stale = gmdate('Y-m-d H:i:s', time() - PrintJobStatus::CLAIM_LIMIT_SECONDS);
         $table = PrintJobSchema::table();
 
-        $wpdb->query($wpdb->prepare(
+        $claimed = (int) $wpdb->query($wpdb->prepare(
             "UPDATE {$table} SET status = %s, claim = %s, claimed_at = %s WHERE status = %s OR (status = %s AND claimed_at < %s)",
             PrintJobStatus::Claimed->value,
             $claim,
@@ -68,6 +71,9 @@ final class PrintJobs
             PrintJobStatus::Claimed->value,
             $stale
         ));
+        if ($claimed > 0) {
+            TileCounts::forget(TileCounts::PRINT_JOBS);
+        }
 
         return array_map(
             static fn (array $row): array => array_map('strval', $row),
@@ -82,14 +88,19 @@ final class PrintJobs
 
         $table = PrintJobSchema::table();
 
-        return (int) $wpdb->query($wpdb->prepare(
+        $finished = (int) $wpdb->query($wpdb->prepare(
             "UPDATE {$table} SET status = %s, message = %s, finished_at = %s WHERE id = %d AND status = %s",
             ($printed ? PrintJobStatus::Printed : PrintJobStatus::Failed)->value,
             $message,
             current_time('mysql', true),
             $id,
             PrintJobStatus::Claimed->value
-        )) === 1;
+        ));
+        if ($finished > 0) {
+            TileCounts::forget(TileCounts::PRINT_JOBS);
+        }
+
+        return $finished === 1;
     }
 
     /**
@@ -116,36 +127,42 @@ final class PrintJobs
     }
 
     /**
-     * The newest jobs first, optionally of one status.
+     * The newest jobs first, optionally only of the statuses given.
      *
      * @return list<array<string, string>>
      */
-    public function latest(int $limit, string $status = ''): array
+    public function latest(int $limit, string ...$statuses): array
     {
         global $wpdb;
 
         $table = PrintJobSchema::table();
-        $sql = $status === ''
+        $statuses = array_values(array_filter($statuses, static fn (string $s): bool => $s !== ''));
+        $marks = implode(',', array_fill(0, count($statuses), '%s'));
+        $sql = $statuses === []
             ? $wpdb->prepare("SELECT * FROM {$table} ORDER BY id DESC LIMIT %d", $limit)
-            : $wpdb->prepare("SELECT * FROM {$table} WHERE status = %s ORDER BY id DESC LIMIT %d", $status, $limit);
+            : $wpdb->prepare("SELECT * FROM {$table} WHERE status IN ({$marks}) ORDER BY id DESC LIMIT %d", ...[...$statuses, $limit]);
 
         return array_map(static fn (array $row): array => array_map('strval', $row), (array) $wpdb->get_results($sql, ARRAY_A));
     }
 
     /**
+     * Kept until the next write (D-1198).
+     *
      * @return array<string, int> status => count
      */
     public function counts(): array
     {
-        global $wpdb;
+        return TileCounts::remember(TileCounts::PRINT_JOBS, 'status', static function (): array {
+            global $wpdb;
 
-        $table = PrintJobSchema::table();
-        $counts = [];
-        foreach ((array) $wpdb->get_results("SELECT status, COUNT(*) AS n FROM {$table} GROUP BY status", ARRAY_A) as $row) {
-            $counts[(string) $row['status']] = (int) $row['n'];
-        }
+            $table = PrintJobSchema::table();
+            $counts = [];
+            foreach ((array) $wpdb->get_results("SELECT status, COUNT(*) AS n FROM {$table} GROUP BY status", ARRAY_A) as $row) {
+                $counts[(string) $row['status']] = (int) $row['n'];
+            }
 
-        return $counts;
+            return $counts;
+        });
     }
 
     /**
@@ -169,9 +186,14 @@ final class PrintJobs
             array_map(static fn (PrintJobStatus $s): string => $s->value, array_values($from))
         );
 
-        return (int) $wpdb->query($wpdb->prepare(
+        $moved = (int) $wpdb->query($wpdb->prepare(
             "UPDATE {$table} SET status = %s, claim = '', message = NULL, claimed_at = NULL, finished_at = NULL WHERE id IN ({$idMarks}) AND status IN ({$statusMarks})",
             ...$values
         ));
+        if ($moved > 0) {
+            TileCounts::forget(TileCounts::PRINT_JOBS);
+        }
+
+        return $moved;
     }
 }

@@ -69,6 +69,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | | Regel | Beschluss |
 |---|---|---|
 | C1 | Jede Kachel aus dem gemeinsamen Baustein (`Taxmod\Core\Tile\*`, `Admin\Tiles`): Name oben, große Zahl, kurze Zeilen, optional Monatsbalken, Knöpfe rechts unten; 0 = klein und grau, Handlungsbedarf = rot. Kennzahlen sind Daten am Knoten (Zusatzfunktion `metric`), nicht Code. | [D-1149](NewConcept/90-decision-log.md), [D-1167](NewConcept/90-decision-log.md) |
+| C2 | Eine Zahl auf einer Kachel, die eine Abfrage kostet, wird gemerkt: `Tiles::cachedCounts($bereich, $quelle, $zählung)` (Modell-Datensätze: `Tiles::MODEL`). Vergessen wird nur in der einen Datenklasse der Tabelle, bei jedem Schreiben, nie in einem Bildschirm. | [D-1198](NewConcept/90-decision-log.md) |
 
 ## 6 · Verhalten
 
