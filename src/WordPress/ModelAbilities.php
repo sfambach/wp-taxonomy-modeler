@@ -480,10 +480,15 @@ final class ModelAbilities
                 continue;
             }
 
-            $target = $this->targetOf($screen, $nodes, $c['field']);
+            $target = $this->node($this->targetOf($screen, $nodes, $c['field']));
+            $places = [$target->id];
             $tree   = [];
 
-            foreach ($records->parentLinksOf($target, $c['parent_field']) as $record => $parent) {
+            foreach ((new Tree(new Persistence\WpdbNodeRepository()))->rowsUnder($target, [$framework->trash()->id]) as $row) {
+                $places[] = $row['node']->id;
+            }
+
+            foreach ($records->parentLinksOf($places, $c['parent_field']) as $record => $parent) {
                 $tree[] = new RecordInTree($record, $parent, '');
             }
 

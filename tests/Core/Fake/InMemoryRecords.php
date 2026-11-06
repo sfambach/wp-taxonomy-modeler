@@ -449,11 +449,11 @@ final class InMemoryRecords implements RecordRepository
         return $aus;
     }
 
-    public function parentLinksOf(int $nodeId, int $relationId): array
+    public function parentLinksOf(int|array $nodeId, int $relationId): array
     {
         $aus = [];
 
-        foreach ($this->ofNode($nodeId) as $record) {
+        foreach (array_merge(...array_map(fn (int $n): array => $this->ofNode($n), (array) $nodeId)) as $record) {
             if ($record->recordType === RecordType::Settings) {
                 continue;
             }

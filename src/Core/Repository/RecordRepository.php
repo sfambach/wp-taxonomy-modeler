@@ -248,9 +248,13 @@ interface RecordRepository
      * Every user record of one node with the record its reference field points at — the parent links of a record tree
      * ([D-1084](../../../docs/NewConcept/90-decision-log.md)); **one query** for all records and links (`CD-7`).
      *
+     * ⚠️ *Several nodes for `within` ([D-1209](../../../docs/NewConcept/90-decision-log.md)): a place may live in a child node of the
+     * field's target, and its sub-places with it.*
+     *
+     * @param  int|list<int> $nodeId
      * @return array<int, int|null> Satz-Id ⇒ the record its first value on `$relationId` refers to, `null` where it holds none.
      */
-    public function parentLinksOf(int $nodeId, int $relationId): array;
+    public function parentLinksOf(int|array $nodeId, int $relationId): array;
 
     /**
      * Which records hold at least one value on this relation — so a field can be moved or merged without hiding a value

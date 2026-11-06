@@ -803,19 +803,25 @@ final class WpdbRecordRepository implements RecordRepository
         return $aus;
     }
 
-    public function parentLinksOf(int $nodeId, int $relationId): array
+    public function parentLinksOf(int|array $nodeId, int $relationId): array
     {
         global $wpdb;
+
+        $nodes = array_values(array_unique(array_filter(array_map('intval', (array) $nodeId))));
+
+        if ($nodes === []) {
+            return [];
+        }
 
         // ⚠️ *Records and links in one statement (`CD-7`, D-1084): a LEFT JOIN, so a record with an empty field is still there.*
         $rows = Query::rows('Saetze eines Knotens mit ihrem Uebergeordneten lesen', $wpdb->prepare(
             'SELECT r.id, v.value_ref FROM ' . Schema::table('node_records') . ' r
              LEFT JOIN ' . Schema::table('relation_records') . " v
                ON v.node_record_id = r.id AND v.relation_id = %d AND v.value_ref_kind = 'record'
-             WHERE r.node_id = %d AND r.relation_id = 0 AND r.record_type <> 'settings'
+             WHERE r.node_id IN (" . implode(',', array_fill(0, count($nodes), '%d')) . ") AND r.relation_id = 0 AND r.record_type <> 'settings'
              ORDER BY r.id ASC, v.position ASC, v.id ASC",
             $relationId,
-            $nodeId
+            ...$nodes
         ));
 
         $aus = [];

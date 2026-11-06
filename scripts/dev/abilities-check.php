@@ -493,8 +493,8 @@ if (is_array($orte)) {
     $ohneKind = $query->execute(['node' => $ergebnis['refs']['i'], 'subtree' => false, 'where' => [['field' => (int) $ergebnis['refs']['f'], 'op' => 'eq', 'value' => '__ab Kiste']]]);
     check('subtree false lässt die Kindknoten aus', is_array($ohneKind) && $ohneKind['total'] === 0, wp_json_encode($ohneKind));
 
-    $wort = $query->execute(['search' => '__ab NE5']);
-    check('search findet ein Wort unter Model', is_array($wort) && in_array($r['ding'], array_column($wort['records'], 'id'), true), wp_json_encode($wort));
+    $wort = $query->execute(['node' => $ergebnis['refs']['i'], 'search' => '__ab NE5']);
+    check('search findet ein Wort in irgendeinem Text', is_array($wort) && in_array($r['ding'], array_column($wort['records'], 'id'), true), wp_json_encode($wort));
 
     $ref = $query->execute(['node' => $ergebnis['refs']['i'], 'where' => [['field' => $r['ort'], 'op' => 'in', 'values' => [$r['haus'], $r['kiste']]], ['field' => (int) $ergebnis['refs']['f'], 'op' => 'contains', 'value' => 'lm3']]]);
     check('in auf einen Verweis und contains ohne Gross/Klein, zusammen', is_array($ref) && array_column($ref['records'], 'id') === [$r['anderes']], wp_json_encode($ref));
