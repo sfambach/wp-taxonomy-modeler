@@ -15,7 +15,7 @@ ist (V1); ob jedes `<select>` ein Baum sein müsste (A4); Multiplizitäten gegen
 | P1.1 ✅ | Module greifen an der Tür vorbei in die Persistenz des Modellers (`WpdbRecordRepository`). | Lager `ModelGateway` (4), `Plugin` (2); Fertigung `ModelGateway` (1) | Modeller bietet eine öffentliche Tür (`Taxmod\WordPress\ModelDoor`) mit allem, was die Kopien heute können (`table`, `fields`, `tree`, `recordsMatching`, `recordsOf`, `nodesOf`, `records`, schreiben über `write-data`). |
 | P1.2 ✅ | Dieselbe Tür zweimal kopiert, dazu `Table`. | Lager + Fertigung `ModelGateway`, `Core/Table` | Nach P1.1 löschen, beide Module nutzen die Tür des Modellers. |
 | P1.3 | SQL auf Modelltabellen außerhalb der Persistenzschicht. | Modeller `RecordBlock` (3), `Admin/Tiles` (2, Kennzahl je Zeitraum), `SettingsScreen` (2), `WpMediaLibrary` (1), `ModelAbilities` (7), `Import/SourcePictures` (1) | Abfragen in die Repositories/`Query`-Schicht verschieben; Bildschirme fragen Methoden. |
-| P1.4 | Transaktion mit Savepoint zweimal von Hand gebaut. | `ModelAbilities::apply`, `NodesScreen` (Satz speichern) | Eine `Transaction::run(callable)` in `Persistence`. |
+| P1.4 ✅ 0.1.177 | Transaktion mit Savepoint zweimal von Hand gebaut. | `ModelAbilities::apply`, `NodesScreen` (Satz speichern) | Erledigt: `Persistence\Transaction::whole($savepoint, $act)`, beide rufen sie. |
 | P1.5 ✅ | Ability direkt statt über eine Tür. | JLCPCB `ReorderPage` | Über die Tür aus P1.1. |
 | P1.6 | Eigenes SQL, geduldet: Mail `LegacyProposals` (Altbestand, nur Umzug), DHL `Tracker` (liest WP-Transients). | | Mail: mit dem Altbestand löschen. DHL: über `get_transient`/eigene Option statt SQL. |
 

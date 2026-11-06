@@ -23,6 +23,7 @@ use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\Query;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
+use Taxmod\WordPress\Persistence\Transaction;
 
 /**
  * Das Modell über die WordPress-Abilities lesen und ändern — damit es online gepflegt werden kann, auch von einem KI-Werkzeug ([D-911](../../docs/NewConcept/90-decision-log.md)).
@@ -452,8 +453,6 @@ final class ModelAbilities
      */
     private function apply(array $input, bool $onlyData = false, array $refs = [], int $limit = self::MAX_CHANGES): array
     {
-        global $wpdb;
-
         $changes = is_array($input['changes'] ?? null) ? array_values($input['changes']) : [];
 
         if ($changes === [] || count($changes) > $limit) {
@@ -464,49 +463,32 @@ final class ModelAbilities
         $ergebnis  = [];
         $changelog = ($this->changelog)();
 
-        // ⚠️ *Unter der Klammer der Wächter ist schon eine Transaktion offen, und ein zweites `START TRANSACTION` bestätigte
-        // sie stillschweigend (`scripts/dev/lib/no-write.php`). Darum der Sicherungspunkt — die eigene Transaktion nur, wo keine steht.*
-        $eigene = ! defined('TAXMOD_NO_WRITE');
-
-        if ($eigene) {
-            $wpdb->query('START TRANSACTION');
-        }
-
-        $wpdb->query('SAVEPOINT taxmod_apply');
         $changelog->beginAct();
         $erwartet = RecordStamp::fromList(is_array($input['expect'] ?? null) ? array_values(array_filter($input['expect'], 'is_array')) : []);
 
         try {
-            // ⚠️ *First, inside the transaction, so the rows stay held to the commit (D-1148).*
-            $this->screen()->entries()->claim($erwartet);
+            Transaction::whole('taxmod_apply', function () use ($erwartet, $changes, $onlyData, &$refs, &$ergebnis): void {
+                // ⚠️ *First, inside the transaction, so the rows stay held to the commit (D-1148).*
+                $this->screen()->entries()->claim($erwartet);
 
-            foreach ($changes as $stelle => $change) {
-                try {
-                    if ($onlyData) {
-                        $this->refuseUnlessData(is_array($change) ? $change : [], $refs);
+                foreach ($changes as $stelle => $change) {
+                    try {
+                        if ($onlyData) {
+                            $this->refuseUnlessData(is_array($change) ? $change : [], $refs);
+                        }
+
+                        $id = $this->applyOne(is_array($change) ? $change : [], $refs);
+                    } catch (\Throwable $e) {
+                        throw new \RuntimeException(sprintf('Change %d (%s) refused, nothing was written: %s', $stelle, (string) ($change['op'] ?? '?'), $e->getMessage()), 0, $e);
                     }
 
-                    $id = $this->applyOne(is_array($change) ? $change : [], $refs);
-                } catch (\Throwable $e) {
-                    throw new \RuntimeException(sprintf('Change %d (%s) refused, nothing was written: %s', $stelle, (string) ($change['op'] ?? '?'), $e->getMessage()), 0, $e);
+                    if (isset($change['ref']) && $id !== null) {
+                        $refs[(string) $change['ref']] = $id;
+                    }
+
+                    $ergebnis[] = ['op' => (string) $change['op'], 'id' => $id];
                 }
-
-                if (isset($change['ref']) && $id !== null) {
-                    $refs[(string) $change['ref']] = $id;
-                }
-
-                $ergebnis[] = ['op' => (string) $change['op'], 'id' => $id];
-            }
-
-            $wpdb->query($eigene ? 'COMMIT' : 'RELEASE SAVEPOINT taxmod_apply');
-        } catch (\Throwable $e) {
-            $wpdb->query('ROLLBACK TO SAVEPOINT taxmod_apply');
-
-            if ($eigene) {
-                $wpdb->query('ROLLBACK');
-            }
-
-            throw $e;
+            });
         } finally {
             $changelog->endAct();
         }

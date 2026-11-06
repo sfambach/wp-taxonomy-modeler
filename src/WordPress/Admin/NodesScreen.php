@@ -49,6 +49,7 @@ use Taxmod\Core\Service\DataEntry;
 use Taxmod\Core\Service\Labels;
 use Taxmod\Core\Service\Rendering;
 use Taxmod\Core\Service\Tree;
+use Taxmod\WordPress\Persistence\Transaction;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -4846,41 +4847,13 @@ final class NodesScreen
      * ⚠️ *Gemessen am 2026-10-28 an Satz 45930: ein abgewiesener Wert mitten im Satz (Toleranz «+20») liess stehen, was davor
      * geschrieben war, und verlor alles danach — der Satz zeigte «-20 %» und keine Kapazität. Ein Satz ist eine Eingabe; er kommt
      * als Ganzes an oder die Meldung sagt, warum nicht. Unter der Klammer der Wächter ist schon eine Transaktion offen, darum ein
-     * Sicherungspunkt wie in {@see \Taxmod\WordPress\ModelAbilities}.*
+     * Sicherungspunkt — {@see Transaction}.*
      *
      * @return mixed was der Akt zurückgibt — die Akte des Bildschirms geben Verschiedenes zurück (`CD-4`).
      */
     private function savedWhole(callable $act): mixed
     {
-        global $wpdb;
-
-        $eigene = ! defined('TAXMOD_NO_WRITE');
-
-        if ($eigene) {
-            $wpdb->query('START TRANSACTION');
-        }
-
-        $wpdb->query('SAVEPOINT taxmod_save_record');
-
-        try {
-            $outcome = $act();
-        } catch (\Throwable $e) {
-            $wpdb->query('ROLLBACK TO SAVEPOINT taxmod_save_record');
-
-            if ($eigene) {
-                $wpdb->query('ROLLBACK');
-            }
-
-            throw $e;
-        }
-
-        $wpdb->query('RELEASE SAVEPOINT taxmod_save_record');
-
-        if ($eigene) {
-            $wpdb->query('COMMIT');
-        }
-
-        return $outcome;
+        return Transaction::whole('taxmod_save_record', $act);
     }
 
     private function saveRecord(int $nodeId): void
