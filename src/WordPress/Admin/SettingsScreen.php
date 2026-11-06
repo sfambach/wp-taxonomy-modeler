@@ -13,6 +13,7 @@ use Taxmod\WordPress\Import\Sources;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Renderer\ToggleMarkup;
 use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -886,18 +887,7 @@ final class SettingsScreen
             return;
         }
 
-        global $wpdb;
-
-        $texts = Schema::table('label_texts');
-
-        if (Schema::tableMissing($texts)) {
-            return;
-        }
-
-        $count = static fn (string $locale): int => (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$texts} WHERE locale = %s",
-            $locale
-        ));
+        $count = static fn (string $locale): int => WpdbLabelRepository::textsIn($locale);
 
         if ($count('en_US') > $count($stored)) {
             update_option(self::NEUTRAL_LOCALE, 'en_US', true);

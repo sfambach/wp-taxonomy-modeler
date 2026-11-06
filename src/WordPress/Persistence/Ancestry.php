@@ -51,6 +51,17 @@ final class Ancestry
     }
 
     /**
+     * The ids of these nodes and every node below them, in one query.
+     *
+     * @param list<int> $roots
+     * @return list<int>
+     */
+    public static function descendantIds(array $roots): array
+    {
+        return array_map('intval', Query::column('Aeste lesen', self::descendants($roots)));
+    }
+
+    /**
      * Knoten und alles unter ihnen, als Anweisung, die Nummern liefert — auch unter einem Knoten ohne Weg zur Wurzel.
      *
      * ⚠️ *Ohne die Wurzelbedingung aus {@see self::paths()}: ein verwaister Ast soll sich ganz entfernen lassen, wie mit

@@ -2,8 +2,8 @@
 
 /**
  * Design guard: measures the Taxmod repositories against the shared design and architecture rules
- * (docs/gestaltung-und-architektur.md, D-1186). Report only — it does not fail yet, because the
- * first audit found violations; each rule becomes a failing check once its findings are fixed.
+ * (docs/gestaltung-und-architektur.md, D-1186). Report only unless --fail; the rules already kept are failing in
+ * design-guard-check.php, the rest join it once their findings are fixed.
  *
  * Usage: php scripts/dev/design-guard.php [--fail] [--only=G1,G2] <repo> [<repo> …]
  *        (no repo: this repository plus every sibling directory named wp_tax_*)
@@ -31,11 +31,35 @@ const SHARED_BLOCKS = '#/src/(WordPress/Admin/(ListPage|Tiles)|Core/Tile/TileGri
 /** Classes of the modeller allowed to hold SQL: the persistence layer and the one owner of each own table. */
 const MODELLER_DATA_ACCESS = '#/src/WordPress/(Persistence/|Import/(InboxTable|InboxSchema)\.php|Printing/(PrintJobs|PrintJobSchema)\.php|Currency/(EcbRates|RateSchema)\.php)#';
 
+/**
+ * The queries in `$c` that read or write the model's own tables. A query on a table WordPress owns ($wpdb->options, posts,
+ * postmeta, users, usermeta, terms) is exempt (D-1186): the rule is about one place per own table, not about WordPress.
+ */
+function ownTableQueries(string $c): int
+{
+    preg_match_all('/\$wpdb->(get_\w+|query|insert|update|delete|replace)\(|\bQuery::(rows|row|value|column|run)\(/', $c, $hits, PREG_OFFSET_CAPTURE);
+    $count = 0;
+
+    foreach ($hits[0] as [$hit, $at]) {
+        $line = ltrim(substr($c, (int) strrpos(substr($c, 0, $at), "\n"), 200));
+
+        if (str_starts_with($line, '//') || str_starts_with($line, '*')) {
+            continue;
+        }
+
+        $statement = substr($c, $at, (int) (strpos($c, ';', $at) ?: strlen($c)) - $at);
+        $count    += preg_match('/\$wpdb->(options|posts|postmeta|users|usermeta|terms|term_taxonomy|term_relationships)\b/', $statement) === 1
+            && ! str_contains($statement, 'Schema::table') ? 0 : 1;
+    }
+
+    return $count;
+}
+
 $rules = [
     'G1 confirm()'      => ['D-804, D-1063', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/(?<!::)\bconfirm\(/', $c)],
     'G2 own <h1>'       => ['D-989', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/^(?!.*<body).*<h1[ >]/m', $c)], // a print sheet is its own document
     'G3 inline style/script' => ['D-1068', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/<(style|script)[ >]/', $c)],
-    'G4 SQL outside data layer' => ['D-1186', static fn (string $f, string $c): int => preg_match(MODELLER_DATA_ACCESS, $f) ? 0 : preg_match_all('/\$wpdb->(get_\w+|query|insert|update|delete|replace)\(|\bQuery::(rows|row|value|column|run)\(/', $c)],
+    'G4 SQL outside data layer' => ['D-1186', static fn (string $f, string $c): int => preg_match(MODELLER_DATA_ACCESS, $f) || str_ends_with($f, 'LegacyProposals.php') ? 0 : ownTableQueries($c)], // LegacyProposals: the mail module's one-time move out of its old table (audit P1.6)
     'G5 modeller internals' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module ? preg_match_all('/Taxmod\\\\WordPress\\\\Persistence\\\\/', $c) : 0],
     'G6 ability outside gateway' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module && ! str_ends_with($f, 'ModelGateway.php') ? preg_match_all("/wp_get_ability\(\s*'taxmod\//", $c) : 0],
     'G7 style= attribute' => ['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],

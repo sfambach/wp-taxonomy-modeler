@@ -6,7 +6,7 @@ use Taxmod\Core\Model\Type\MediaType;
 use Taxmod\Core\Port\MediaFile;
 use Taxmod\Core\Port\MediaLibrary;
 use Taxmod\WordPress\Import\Documents;
-use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 
 /**
  * Die eine Stelle, an der eine gespeicherte Mediathek-Id (`media:<Id>`) nach WordPress gefragt wird ([D-865](../../docs/NewConcept/90-decision-log.md)).
@@ -54,12 +54,7 @@ final class WpMediaLibrary implements MediaLibrary
     /** @return array<int, MediaFile> */
     private function alle(): array
     {
-        global $wpdb;
-
-        $werte = $wpdb->get_col($wpdb->prepare(
-            'SELECT DISTINCT value_text FROM ' . Schema::table('relation_records') . ' WHERE value_text LIKE %s',
-            $wpdb->esc_like(MediaType::LIBRARY_SCHEME) . '%'
-        ));
+        $werte = (new WpdbRecordRepository())->textsStartingWith(MediaType::LIBRARY_SCHEME);
         $ids = [];
 
         foreach ((array) $werte as $wert) {

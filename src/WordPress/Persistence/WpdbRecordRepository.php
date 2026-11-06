@@ -58,6 +58,21 @@ final class WpdbRecordRepository implements RecordRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
+    /**
+     * Every distinct text value that starts with `$prefix` — e.g. the media library addresses the model points at.
+     *
+     * @return list<string>
+     */
+    public function textsStartingWith(string $prefix): array
+    {
+        global $wpdb;
+
+        return array_map('strval', Query::column('Texte mit Anfang lesen', $wpdb->prepare(
+            'SELECT DISTINCT value_text FROM ' . Schema::table('relation_records') . ' WHERE value_text LIKE %s',
+            $wpdb->esc_like($prefix) . '%'
+        )));
+    }
+
     public function byIds(array $ids): array
     {
         global $wpdb;

@@ -141,6 +141,38 @@ final class WpdbNodeRepository implements NodeRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
+    /**
+     * The nodes whose name contains `$search`, those with records first — the record block's node search.
+     *
+     * @return list<array{id: int, name: string, parent: string, records: int}>
+     */
+    public function named(string $search, int $limit): array
+    {
+        global $wpdb;
+
+        $nodes   = Schema::table('nodes_named');
+        $records = Schema::table('node_records');
+        $rows    = Query::rows('Knoten nach Namen suchen', $wpdb->prepare(
+            "SELECT n.id, n.name, p.name AS parent, COALESCE(c.records, 0) AS records
+               FROM {$nodes} n
+               LEFT JOIN {$nodes} p ON p.id = n.parent_node_id
+               LEFT JOIN (SELECT node_id, COUNT(*) AS records FROM {$records}
+                           WHERE relation_id = 0 AND record_type = 'user' GROUP BY node_id) c ON c.node_id = n.id
+              WHERE n.name LIKE %s
+              ORDER BY records = 0, n.name
+              LIMIT %d",
+            '%' . $wpdb->esc_like($search) . '%',
+            $limit
+        ));
+
+        return array_map(static fn (array $row): array => [
+            'id'      => (int) $row['id'],
+            'name'    => (string) $row['name'],
+            'parent'  => (string) ($row['parent'] ?? ''),
+            'records' => (int) $row['records'],
+        ], $rows);
+    }
+
     public function byIds(array $ids): array
     {
         global $wpdb;

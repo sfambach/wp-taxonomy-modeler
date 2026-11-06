@@ -37,6 +37,19 @@ use Taxmod\Core\Repository\LabelRepository;
  */
 final class WpdbLabelRepository implements LabelRepository
 {
+    /** How many label texts are stored in `$locale` — 0 before the table exists. */
+    public static function textsIn(string $locale): int
+    {
+        global $wpdb;
+
+        $texts = Schema::table('label_texts');
+
+        return Schema::tableMissing($texts) ? 0 : (int) Query::value('Texte einer Sprache zaehlen', $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$texts} WHERE locale = %s",
+            $locale
+        ));
+    }
+
     /** Welche Spalte in `label_texts` welche Rolle trägt. */
     public static function columnFor(SeededRole $role): string
     {

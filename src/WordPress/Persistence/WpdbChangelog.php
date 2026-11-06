@@ -35,6 +35,12 @@ final class WpdbChangelog implements Changelog
 
     private ?int $openAct = null;
 
+    /** The model's state as one number — the newest change; a cache keyed on it is stale once anything was written. */
+    public static function stamp(): string
+    {
+        return (string) Query::value('Stand des Modells lesen', 'SELECT MAX(id) FROM ' . Schema::table('changelog'));
+    }
+
     public function __construct(private readonly Clock $clock)
     {
     }

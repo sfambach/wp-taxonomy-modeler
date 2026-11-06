@@ -6,8 +6,9 @@ use Taxmod\Core\Renderer\ComparisonPosition;
 use Taxmod\Core\Renderer\HintMarkup;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
-use Taxmod\WordPress\Persistence\Query;
-use Taxmod\WordPress\Persistence\Schema;
+use Taxmod\WordPress\Persistence\WpdbChangelog;
+use Taxmod\WordPress\Persistence\WpdbNodeRepository;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 
 /**
  * Der Block `taxmod/record` — ein Satz aus dem Modell im Beitrag, wie die Seite «Anzeige» der Vorschau ihn zeigt ([D-912](../../docs/NewConcept/90-decision-log.md)).
@@ -136,12 +137,8 @@ final class RecordBlock
             'permission_callback' => $mayEdit,
             'args'                => ['id' => ['type' => 'integer', 'required' => true, 'sanitize_callback' => 'absint']],
             'callback'            => static function (\WP_REST_Request $request): \WP_REST_Response|\WP_Error {
-                global $wpdb;
-
-                $node = (int) Query::value('Knoten des Satzes lesen', $wpdb->prepare(
-                    'SELECT node_id FROM ' . Schema::table('node_records') . ' WHERE id = %d',
-                    absint($request->get_param('id'))
-                ));
+                $id   = absint($request->get_param('id'));
+                $node = (int) ((new WpdbRecordRepository())->byIds([$id])[$id]->nodeId ?? 0);
 
                 return $node === 0
                     ? new \WP_Error('taxmod_no_record', __('No such record.', 'taxmod'), ['status' => 404])
@@ -174,34 +171,9 @@ final class RecordBlock
     /** @return list<array{id: int, name: string, parent: string, records: int}> */
     private static function nodesNamed(string $search): array
     {
-        global $wpdb;
-
         $search = trim($search);
 
-        if ($search === '') {
-            return [];
-        }
-
-        $nodes   = Schema::table('nodes_named');
-        $records = Schema::table('node_records');
-        $rows    = Query::rows('Knoten fuer den Block suchen', $wpdb->prepare(
-            "SELECT n.id, n.name, p.name AS parent, COALESCE(c.records, 0) AS records
-               FROM {$nodes} n
-               LEFT JOIN {$nodes} p ON p.id = n.parent_node_id
-               LEFT JOIN (SELECT node_id, COUNT(*) AS records FROM {$records}
-                           WHERE relation_id = 0 AND record_type = 'user' GROUP BY node_id) c ON c.node_id = n.id
-              WHERE n.name LIKE %s
-              ORDER BY records = 0, n.name
-              LIMIT 25",
-            '%' . $wpdb->esc_like($search) . '%'
-        ));
-
-        return array_map(static fn (array $row): array => [
-            'id'      => (int) $row['id'],
-            'name'    => (string) $row['name'],
-            'parent'  => (string) ($row['parent'] ?? ''),
-            'records' => (int) $row['records'],
-        ], $rows);
+        return $search === '' ? [] : (new WpdbNodeRepository())->named($search, 25);
     }
 
     /** @param array<string, mixed> $attributes */
@@ -295,7 +267,7 @@ final class RecordBlock
 
     private static function dataStamp(): string
     {
-        return (string) Query::value('Stand des Modells lesen', 'SELECT MAX(id) FROM ' . Schema::table('changelog'));
+        return WpdbChangelog::stamp();
     }
 
     /**

@@ -24,6 +24,7 @@ use Taxmod\WordPress\Persistence\Query;
 use Taxmod\WordPress\Persistence\Schema;
 use Taxmod\WordPress\Persistence\SeededFrameworkNodes;
 use Taxmod\WordPress\Persistence\Transaction;
+use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 
 /**
  * Das Modell über die WordPress-Abilities lesen und ändern — damit es online gepflegt werden kann, auch von einem KI-Werkzeug ([D-911](../../docs/NewConcept/90-decision-log.md)).
@@ -278,13 +279,8 @@ final class ModelAbilities
         $missing = $usage->recordsWithoutNode($rows);
         $nodes   = [];
 
-        if ($missing !== []) {
-            foreach (Query::rows('Knoten der Sätze lesen', $wpdb->prepare(
-                'SELECT id, node_id FROM ' . Schema::table('node_records') . ' WHERE id IN (' . implode(',', array_fill(0, count($missing), '%d')) . ')',
-                ...$missing
-            )) as $row) {
-                $nodes[(int) $row['id']] = (int) $row['node_id'];
-            }
+        foreach ($missing === [] ? [] : (new WpdbRecordRepository())->byIds($missing) as $id => $record) {
+            $nodes[(int) $id] = (int) $record->nodeId;
         }
 
         $rows = $usage->withNodes($rows, $nodes);
