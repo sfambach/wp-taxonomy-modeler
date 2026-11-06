@@ -147,6 +147,12 @@ final class LabelButton
                 $document['values'] = (is_array($document['values'] ?? null) ? $document['values'] : []);
                 $document['values'][$field] = sanitize_text_field((string) $texts[(string) $post['variant']]);
             }
+            // The record's own words for the fields the layout names, read now (see chooser()); they win, as in filled().
+            $record = absint($post['record'] ?? 0);
+            if ($record > 0) {
+                $fields = array_values(array_filter(array_map(static fn (mixed $e): string => is_array($e) ? (string) ($e['field'] ?? $e['feld'] ?? '') : '', (array) ($document['layout'] ?? []))));
+                $document['values'] = self::recordValues($record, $fields)['values'] + (is_array($document['values'] ?? null) ? $document['values'] : []);
+            }
             $post['document'] = (string) json_encode($document);
         }
 
@@ -247,9 +253,12 @@ final class LabelButton
         }
         $chosen   = (int) ($template['chosen'] ?? array_key_first($choices));
         $labels   = '';
-        $hidden   = '';
+        // ⚠️ *His wish 2026-11-06 «druck button pro positon»: a list draws one dialog per row, so the record's own words are read
+        // when the label is printed, not when the dialog is drawn — no query per row (CD-7).*
+        $record   = absint($template['record'] ?? 0);
+        $hidden   = $record > 0 ? '<input type="hidden" name="record" value="' . $record . '">' : '';
         foreach ($choices as $id => $choice) {
-            $filled = is_array($choice) ? self::filled($label, $choice) : null;
+            $filled = is_array($choice) ? self::filled($label, array_merge($choice, ['record' => 0])) : null;
             if ($filled === null) {
                 continue;
             }
