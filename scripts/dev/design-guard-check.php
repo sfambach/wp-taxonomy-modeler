@@ -8,7 +8,7 @@
  *     php scripts/dev/design-guard-check.php   (this repository and every wp_tax_* beside it)
  */
 
-const CLEAN_RULES = ['G1', 'G2', 'G4', 'G5', 'G6'];
+const CLEAN_RULES = ['G1', 'G2', 'G4', 'G5', 'G6', 'G9'];
 
 passthru(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/design-guard.php') . ' --fail --only=' . implode(',', CLEAN_RULES), $code);
 

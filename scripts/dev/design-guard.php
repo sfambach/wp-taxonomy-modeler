@@ -55,6 +55,28 @@ function ownTableQueries(string $c): int
     return $count;
 }
 
+/**
+ * Flat selects over a tree (A4, his word 2026-11-06 «sollte tree chooser mit suche sein»): a `<select>` whose options are places,
+ * groups or paths. A select that only stands in for the modeller's chooser when it is missing (`$chooser !== '' ? … :`, `?:`)
+ * is the fallback and exempt.
+ */
+function flatTreeSelects(string $c): int
+{
+    preg_match_all('/<select\b/', $c, $hits, PREG_OFFSET_CAPTURE);
+    $count = 0;
+
+    foreach ($hits[0] as [, $at]) {
+        $end      = strpos($c, '</select>', $at);
+        $options  = substr($c, $at, ($end === false ? 400 : $end - $at));
+        $before   = substr($c, max(0, $at - 400), min(400, $at));
+        $tree     = preg_match('/places\(|\$places\b|groupOptions\(|\$groups\b|->path\(/', $options) === 1;
+        $fallback = preg_match('/!== \'\' \?|=== \'\' \?|\?:|\$inline \?|return \$choice;/', $before) === 1;
+        $count   += $tree && ! $fallback ? 1 : 0;
+    }
+
+    return $count;
+}
+
 $rules = [
     'G1 confirm()'      => ['D-804, D-1063', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/(?<!::)\bconfirm\(/', $c)],
     'G2 own <h1>'       => ['D-989', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/^(?!.*<body).*<h1[ >]/m', $c)], // a print sheet is its own document
@@ -62,6 +84,7 @@ $rules = [
     'G4 SQL outside data layer' => ['D-1186', static fn (string $f, string $c): int => preg_match(MODELLER_DATA_ACCESS, $f) || str_ends_with($f, 'LegacyProposals.php') ? 0 : ownTableQueries($c)], // LegacyProposals: the mail module's one-time move out of its old table (audit P1.6)
     'G5 modeller internals' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module ? preg_match_all('/Taxmod\\\\WordPress\\\\Persistence\\\\/', $c) : 0],
     'G6 ability outside gateway' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module && ! str_ends_with($f, 'ModelGateway.php') ? preg_match_all("/wp_get_ability\(\s*'taxmod\//", $c) : 0],
+    'G9 flat select over a tree' => ['D-1186, D-1182', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : flatTreeSelects($c)],
     'G7 style= attribute' => ['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
 ];
 
