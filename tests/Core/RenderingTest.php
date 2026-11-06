@@ -2159,6 +2159,14 @@ final class RenderingTest extends TestCase
 
         self::assertStringContainsString('Microsoft · USA', $gezeigt, 'die Felder des Knotens, in ihrer Reihenfolge');
 
+        // ⚠️ *Neu gewählt in anderer Reihenfolge: die Wahl ordnet die Liste (D-1194).*
+        $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$land->id, $name->id]);
+        $this->neuZeichnen();
+
+        self::assertStringContainsString('USA · Microsoft', $this->rendering->nodeAsForm($os, [$wer], [$wer->id => TypedValue::ofRecordReference($satzId)], Purpose::Display)->markup, 'die Reihenfolge der Wahl');
+        $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$name->id, $land->id]);
+        $this->neuZeichnen();
+
         // ⚠️ *An der Kante überschrieben: nur das Land.*
         $editor->setMembers($hersteller, SummaryRenderer::FIELDS, [$land->id], $wer);
         $this->neuZeichnen();
@@ -2774,7 +2782,7 @@ final class RenderingTest extends TestCase
 
         self::assertSame('4 … 20 Zeichen', $name(), 'ohne Verbinder sind zwei Zahlen ein Bereich');
         (new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry()))->put($raster, Rendering::ZAHLEN_VERBINDER, '×');
-        self::assertSame('4×20 Zeichen', $name(), 'der Knoten «Raster» sagt «×»');
+        self::assertSame('4 × 20 Zeichen', $name(), 'der Knoten «Raster» sagt «×», gesetzt wie ein Malzeichen (D-1194)');
     }
 
     /** ⚠️ *Zeile 8 (D-760): der Validator der Stelle sieht den Wert, bevor er gespeichert wird.* */

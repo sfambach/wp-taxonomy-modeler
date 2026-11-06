@@ -5274,7 +5274,8 @@ final class Rendering implements Presets
         }
 
         // ⚠️ *Zwei Zahlen eines Teils verbindet sein Knoten selbst, wenn er es sagt (`zahlen_verbinder`, [D-1189](../../../docs/NewConcept/90-decision-log.md)):
-        // ein Raster «4×20 Zeichen» statt des Bereichs «4 … 20». Ohne Angabe bleibt der Bereich.*
+        // ein Raster «20 × 4 Zeichen» statt des Bereichs «4 … 20». Das Zeichen steht zwischen zwei Leerzeichen wie ein Malzeichen nach SI/DIN 1338
+        // ([D-1194](../../../docs/NewConcept/90-decision-log.md)); die Einstellung schneidet Leerzeichen ab. Ohne Angabe bleibt der Bereich.*
         $verbinder = [];
 
         if ($this->resolver !== null && $knotenIds !== []) {
@@ -5372,7 +5373,7 @@ final class Rendering implements Presets
                 // Präfix und Einheit folgen als Zeichen: «±20 %», «33 µF», «250 mW» (D-797).*
                 $betrag = match (true) {
                     count($zahlen) === 2 && $knotenId !== null && isset($verbinder[$knotenId])
-                                           => $zahlen[0] . $verbinder[$knotenId] . $zahlen[1],
+                                           => $zahlen[0] . ' ' . trim($verbinder[$knotenId]) . ' ' . $zahlen[1],
                     count($zahlen) === 2 && ltrim($zahlen[0], '-') === ltrim($zahlen[1], '-') && str_starts_with($zahlen[0], '-') !== str_starts_with($zahlen[1], '-')
                                            => '±' . ltrim($zahlen[0], '-'),
                     count($zahlen) === 2   => $zahlen[0] . ' … ' . $zahlen[1],

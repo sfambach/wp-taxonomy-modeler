@@ -234,6 +234,20 @@ final class SettingsEditor
             $geaendert++;
         }
 
+        // ⚠️ *Die Reihenfolge der Wahl ist die Reihenfolge der Liste ([D-1194](../../../docs/NewConcept/90-decision-log.md)). Gemessen am
+        // 2026-11-06: an «Displays» kam «Auflösung» als Neues ans Ende des Namens, obwohl es an dritter Stelle gewählt war.*
+        $stelle = 0;
+        $danach = count($wanted);
+
+        foreach ($this->resolver->listOf($node, $attribut, $edge) as $glied) {
+            $platz = $glied->reference === null ? false : array_search($glied->reference, $wanted, true);
+            $soll  = $platz === false ? $danach + $stelle++ : $platz;
+
+            if ($glied->position !== $soll && $this->setListEntry($node, $attribut, $glied->rowId, null, $soll, $edge)) {
+                $geaendert++;
+            }
+        }
+
         return $geaendert;
     }
 
