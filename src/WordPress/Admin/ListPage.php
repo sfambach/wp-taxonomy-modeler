@@ -305,6 +305,35 @@ final class ListPage
     }
 
     /**
+     * The pictures of a list's rows (D-1204): nothing when the Configuration has them off; else each media id as a small
+     * thumbnail that loads only when scrolled to. The attachments are read in one go first, so a long list costs one
+     * query, not one per row (CD-7).
+     *
+     * @param array<int, int> $media row key → attachment id (0: none)
+     * @return array<int, string> row key → `<img>` or ''
+     */
+    public static function thumbnails(array $media): array
+    {
+        if (! SettingsScreen::showsListImages()) {
+            return array_map(static fn (): string => '', $media);
+        }
+
+        $ids = array_values(array_unique(array_filter($media)));
+
+        if ($ids !== []) {
+            _prime_post_caches($ids, false, true);
+        }
+
+        return array_map(static fn (int $id): string => $id > 0 ? (string) wp_get_attachment_image($id, [40, 40], false, ['class' => 'taxmod-list-thumb', 'loading' => 'lazy', 'decoding' => 'async', 'alt' => '']) : '', $media);
+    }
+
+    /** Whether lists draw a picture column at all (D-1204). */
+    public static function showsImages(): bool
+    {
+        return SettingsScreen::showsListImages();
+    }
+
+    /**
      * The message field beside the heading (D-1203): one line with the last message, the recent ones open below it —
      * written by `assets/messages.js`, so an act that does not reload the page still says what it did. ⚠️ *His word,
      * 2026-11-06: «oben neben die Überschrift, aber so, dass es nicht verzerrt … dass man die letzten Nachrichten noch sehen kann».*

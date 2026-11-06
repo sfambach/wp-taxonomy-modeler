@@ -35,6 +35,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | S7 | Reiter, die Stufen eines Prozesses in fester Reihenfolge sind, werden Prozess-Kacheln (Pfeile, die ineinandergreifen, mit Zahl) über `ListPage::steps`; Ansichten daneben (Archiv, Alle) bleiben Reiter rechts davon. Reiter ohne Reihenfolge bleiben `ListPage::tabs`. | [D-1197](NewConcept/90-decision-log.md) |
 | S8 | Sammelaktionen nur in der einen Auswahl der Liste («--», dann alle Aktionen) mit Knopf «Sammelaktion ausführen»; wirkt nur auf angehakte Zeilen. Aktionen mit Dialog über `ListPage::bulkBar(…, $asking)`, keine eigenen Knöpfe daneben. | [D-1202](NewConcept/90-decision-log.md) |
 | S9 | Meldungen nur im Meldungsfeld neben der Überschrift (`ListPage::heading`), mit Liste der letzten Meldungen; nie in die Zeile, nie ein Neuladen nur für eine Meldung. Aus dem Skript: `taxmodMessage(text, tone)` oder Ereignis `taxmod:message` `{text, ok}`. | [D-1203](NewConcept/90-decision-log.md) |
+| S10 | Bilder in Listen nur über `ListPage::thumbnails($media)` (Schalter der Konfiguration, ein Zug für die Seite, lazy); das Titelbild eines Satzes liest nur eine Stelle je Modul, nie das Feld direkt. | [D-1204](NewConcept/90-decision-log.md) |
 
 ## 2 · Liste
 

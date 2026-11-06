@@ -82,6 +82,8 @@ final class SettingsScreen
      * Diagnose. Der Entwicklermodus zeigt, was sonst niemanden angeht.*
      */
     public const SHOW_TRASH = 'taxmod_show_trash';
+    /** D-1204: whether overview lists show each entry's picture — on unless switched off. */
+    public const LIST_IMAGES = 'taxmod_list_images';
 
     /** Wie viele Datensätze die Knotenseite je Seite zeichnet ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
     public const RECORDS_PER_PAGE = 'taxmod_records_per_page';
@@ -222,6 +224,7 @@ final class SettingsScreen
             . $this->developerDetailRows()
             . $this->localeRow()
             . $this->trashRow()
+            . $this->listImagesRow()
             . $this->recordsPerPageRow()
             . $this->treeClickRow()
             . $this->autosaveRow()
@@ -348,6 +351,22 @@ final class SettingsScreen
      * vorher dastand — und weil mit dem Abschnitt auch `Clear` verschwindet
      * ([D-693](../../../docs/NewConcept/90-decision-log.md)).
      */
+    private function listImagesRow(): string
+    {
+        // His word 2026-11-06: «Bildanzeigen oder Bild nicht anzeigen … wenn es zu viel ist, dauert es wahrscheinlich zu lange … Standardmäßig machen wir es mal ein.»
+        return $this->row(
+            __('Pictures in lists', 'taxmod'),
+            ToggleMarkup::input('list_images', self::showsListImages()),
+            __('Shows a small picture of each entry in the overview lists of every module, where the entry has one. Switch it off when long lists load too slowly.', 'taxmod')
+        );
+    }
+
+    /** D-1204: on by default; every list asks here, so one switch holds for all modules. */
+    public static function showsListImages(): bool
+    {
+        return get_option(self::LIST_IMAGES, '1') !== '0';
+    }
+
     private function trashRow(): string
     {
         return $this->row(
@@ -648,6 +667,7 @@ final class SettingsScreen
         // Frage nicht mitgewandert.*
         update_option(NodesScreen::DEVELOPER_OPTION, self::angehakt('developer') ? '1' : '0', true);
         update_option(self::SHOW_TRASH, self::angehakt('show_trash') ? '1' : '0', true);
+        update_option(self::LIST_IMAGES, self::angehakt('list_images') ? '1' : '0', true);
 
         // ⚠️ **Nur, wenn das Formular die Zeilen auch trug** ([D-705](../../../docs/NewConcept/90-decision-log.md)).
         // *Sie stehen nur da, während der Modus an ist — **ohne diesen Merker könnte das Speichern

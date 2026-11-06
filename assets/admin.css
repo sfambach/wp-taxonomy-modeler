@@ -2609,3 +2609,13 @@ pre.taxmod-code {
 .taxmod-messages-list li.is-ok { border-left-color: #00a32a; }
 .taxmod-messages-list li.is-bad { border-left-color: #d63638; }
 .taxmod-messages-list li.is-info { border-left-color: #2271b1; }
+
+/* D-1204: the picture of a list row — small and square, so rows keep their height. */
+.taxmod-list-thumb {
+	display: block;
+	width: 40px;
+	height: 40px;
+	object-fit: cover;
+	border-radius: 3px;
+	background: #f0f0f1;
+}
