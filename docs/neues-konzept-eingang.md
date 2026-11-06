@@ -1221,3 +1221,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Heute:** Ein Verkauf ([D-934](NewConcept/90-decision-log.md)) berührt den Bestand nicht — keine Reservierung, kein Warenausgang, kein Material am verkauften Artikel; Verkäufe gibt es nur über eBay; die Versandstufen leben im eBay-Modul. [D-1044](NewConcept/90-decision-log.md) (Warenausgang als Prozess) ist nicht gebaut.
 - **Konzeptentwurf:** [`pakete/verkauf/konzept.md`](pakete/verkauf/konzept.md) — Ablauf Angebot → Verkauf → Reservierung → Versendet = Warenausgang → Empfangen, eigenes Modul `wp_tax_sales`, Fragen VK1–VK7.
 - **Gebaut:** nein.
+
+## INF-112 · Benutzer, Gruppen, Rechte und eigene Einstellungen
+
+**Typ:** `WUNSCH` · **Status:** `OFFEN` — 2026-11-06, Thread «Benutzer, Gruppen und Rechte im Taxmod».
+
+> *«default drucker im benutzer hinterlegen benutzer menü in den einstellungen, gruppen, rechte, benutzer und eigene benutzer einstellungen wie drucker dezimal anzeige»*.
+
+- **Heute:** jede Seite und jede Ability prüft `manage_options`; einzige eigene Rolle `taxmod_data_writer` ([D-936](NewConcept/90-decision-log.md)); Dezimalzeichen nur aus der Website-Sprache ([D-1175](NewConcept/90-decision-log.md)); Drucker nur an der Etikettenvorlage.
+- **Konzeptentwurf:** [`pakete/benutzer/konzept.md`](pakete/benutzer/konzept.md) — Benutzer bleiben WordPress, Rechte im Code, Gruppen und Benutzereinstellungen als Sätze im Modell; Annahmen G1–G4.
+- **Gebaut:** nein.
