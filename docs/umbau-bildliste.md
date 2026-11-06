@@ -17,7 +17,7 @@ Reihenfolge so, dass nach jedem Schritt alles läuft (alter und neuer Zustand).
 
 | # | Schritt | Wo | Prüfung |
 |---|---|---|---|
-| 1 | **Alle Leser über die eine Stelle.** `StockService::titleImages` (D-1204) liefert «erstes Bild», solange das Titelbild-Feld leer ist, sonst noch das Feld. Materialkopf (`StockPage`, liest `title_image` heute direkt) darauf umstellen. | Lager | neuer Check: kein Zugriff auf das Titelbild-Feld außer an der Stelle |
+| 1 | **Die eine Stelle umstellen.** Materialkopf und Listen lesen schon nur über `StockService::titleImages($records)` (Lager 0.58.9). Nur diese Methode ändert sich: Titelbild-Feld, solange gefüllt, sonst erstes Bild der Liste. | Lager | neuer Check: kein Zugriff auf das Titelbild-Feld außer in `titleImages` |
 | 2 | **Satztabelle (D-878):** ein mehrfaches Medienfeld zeigt das erste Bild klein plus die Anzahl, statt nur der Anzahl. | Modeller `Rendering` | bestehende Render-Checks anpassen (sichtbarer Teil des Umbaus, PR-9) |
 | 3 | **Verschieben in der Maske:** je Bild ↑ / ↓ und «Als Titelbild» (setzt auf Platz 1). Schreibt nur `position`, als eine Änderung; rückgängig über die Geschichte. | Modeller Maske + `admin.js` | Check: Reihenfolge bleibt nach Speichern; Rückgängig stellt sie her |
 | 4 | **Migration, erst trocken:** je Satz mit Titelbild-Wert: steht das Bild schon in «Bilder» → nach vorn; sonst an Platz 1 einfügen, Rest rückt nach. Trockenlauf zählt Sätze und Fälle, Stefan sieht die Zahl. | Modelländerung per Release-Schritt ([[taxmod-einspielen]]) | idempotent: zweiter Lauf ändert nichts |
