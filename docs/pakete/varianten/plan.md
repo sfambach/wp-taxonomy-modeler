@@ -32,6 +32,6 @@ Each step ends with something the owner can operate, and both test runs stay gre
 
 ## Open (for the owner)
 
-- May a variant override a non-flag field all the same, e.g. its own picture (Woo allows that)? Assumed **no** until he says so.
+- ~~Own picture?~~ Answered 2026-11-06: *«eigenes bild wäre möglich»* — the pictures carry the flag, and a variant without its own shows the parent's. Every flag field falls back to the parent when the variant leaves it empty. The pins field already exists and gets the flag.
 - Purchase and bill of materials: does a BOM position name a variant, or may it say «any variant» (InvenTree)? Assumed: it names a variant.
 - Re-soldering pins: rebook from «ohne» to «mit» as a transfer between variants? Assumed yes, as a stock transaction.
