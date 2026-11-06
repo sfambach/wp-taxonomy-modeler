@@ -129,3 +129,33 @@ Jede Etappe endet mit etwas, das er bedienen kann ([PR-2](../../../CLAUDE.md)).
 | **VK5** | Welche Kanäle ausser eBay? (Kleinanzeigen, direkt/bar, Forum, eigener Shop später) | Kanal = Auswahl am Verkauf, erweiterbar |
 | **VK6** | Zahlung mitführen (bezahlt am, Zahlweg)? | ja, Zahlstatus + Zahlweg |
 | **VK7** | [INF-095](../../neues-konzept-eingang.md#inf-095--bestellungen-und-verkäufe-ein-knoten-mit-richtung): Bestellungen und Verkäufe bleiben zwei Knoten? | ja, zwei Knoten, gleiches Template |
+
+## 8 · Was heisst «einen Verkauf buchen»? (Vorschlag, 2026-11-06)
+
+**Sein Wort:** *«Idee ist das wir zuerst versuchen das zu buchen was schon verkauft ist, davor definieren was bedeutet das
+überhaupt? Dann sehen wir was noch fehlt auch wird noch bestand fehlen»*.
+
+Ein Verkauf ist **gebucht**, wenn alle drei gelten (`INFERRED`, bis er es bestätigt):
+
+1. **Material:** jeder verkaufte Artikel zeigt auf sein Material — leere Platine = Material der Platinen-Revision, aufgebaute
+   Platine = Material «… bestückt» ([D-1176](../../NewConcept/90-decision-log.md)), Einzelstück = Exemplar.
+2. **Warenausgang:** je Artikel ein Vorgang der Art «Verkauf» mit Bezug = Verkauf und Pos − aus einem Bestandsposten
+   (D-956: *«jeder Abgang nennt seinen Posten»*). Die Summe der Abgänge = verkaufte Anzahl.
+3. **Einstand:** der Einstandspreis je Stück des Postens steht am verkauften Artikel.
+
+Eine **bestückte** Platine geht nicht direkt ab: zuerst bucht die Fertigung Verbrauch der Teile und Zugang «… bestückt»
+([D-1143](../../NewConcept/90-decision-log.md)), dann geht dieser Posten als Verkauf ab.
+
+### 8.1 · Probebuchung des Bestands vom 2026-11-06 (gelesen, nichts geschrieben)
+
+Gelesen über `taxmod/read-node`: 80 Verkäufe, 82 verkaufte Artikel (eBay, 07/2025–11/2026), 538 Bestandsposten. Ergebnis in
+`/mnt/project-files/taxmod-verkauf/probebuchung.csv`.
+
+- **Kein** verkaufter Artikel hat ein Material; das Feld gibt es an «Verkaufte Artikel» nicht. Kein Verkauf hat «Versendet am».
+- Die Platinen-Posten (JLC) sind am 2026-10-22 mit der **ganzen gekauften Menge** eingebucht (z. B. greaseweazle 5 + 20); kein
+  Verkauf ist abgegangen. Der Bestand ist darum zu hoch.
+- 8 von 15 Artikeln finden einen Platinen-Posten; greaseweazle: 26 verkauft gegen 25 eingebucht → mindestens eine Bestellung fehlt.
+- **Ohne Posten:** Monotech Double ROM, USB-RS232-Mausadapter, C64 1541-USB, 2-MB-EMS, EPROM-Emulator, 16-Bit-Riser — Bestand fehlt.
+- Bestückte Verkäufe (greaseweazle aufgebaut, ISA-Blaster, ISA-Boot, Mini-ISA-ROM …) haben keine Fertigung; die Teile wurden damals
+  nicht erfasst.
+- Die Zuordnung Artikel → Posten ist meine (Namensvergleich), Mini-ISA-ROM → ISA-BOOT-ROM unsicher.
