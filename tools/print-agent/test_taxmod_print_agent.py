@@ -44,6 +44,19 @@ class AgentTest(unittest.TestCase):
         self.assertIn("PageSize=62x52", command)
         self.assertNotIn("orientation-requested=4", command)
 
+    def test_a_job_with_its_printer_brings_queue_and_options(self):
+        job = {"id": 3, "roll": 40, "format": "phomemo40x30", "queue": "Phomemo_M220L", "options": {"PageSize": "w40h30"}}
+        command = agent.lp_command(config(formats={"phomemo40x30": {"PageSize": "w50h30"}}), job, "f.pdf")
+        self.assertEqual(command[:3], ["lp", "-d", "Phomemo_M220L"])
+        self.assertIn("PageSize=w40h30", command)
+        self.assertNotIn("PageSize=w50h30", command)
+
+    def test_a_queue_or_option_that_is_not_a_plain_name_fails_the_job(self):
+        for job in ({"queue": "-h evil"}, {"queue": "Q", "options": {"PageSize": "a b"}}, {"queue": "Q", "options": {"--x": "1"}}):
+            service = agent.Agent(config(), run=lambda *a, **k: self.fail("lp must not run"))
+            ok, _ = service.print_job({"id": 4, "roll": 40, "format": "x", "pdf": base64.b64encode(b"%PDF-").decode(), **job})
+            self.assertFalse(ok)
+
     def test_a_roll_without_printer_fails_the_job_not_the_service(self):
         service = agent.Agent(config(), run=lambda *a, **k: self.fail("lp must not run"))
         ok, message = service.print_job({"id": 2, "roll": 102.0, "format": "roll102", "pdf": base64.b64encode(b"%PDF-").decode()})

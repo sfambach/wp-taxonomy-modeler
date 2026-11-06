@@ -35,6 +35,17 @@ final class PdfDocument
         ];
     }
 
+    /** D-1190: what follows is drawn moved sideways by $dxMm until {@see self::endShift()}. */
+    public function beginShift(float $dxMm): void
+    {
+        $this->append(sprintf("q 1 0 0 1 %s 0 cm\n", self::number($dxMm * self::POINTS_PER_MM)));
+    }
+
+    public function endShift(): void
+    {
+        $this->append("Q\n");
+    }
+
     /**
      * Filled black rectangles as one path, so touching rectangles show no hairline seams; origin top left, millimetres.
      *

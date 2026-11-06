@@ -26,6 +26,8 @@ final class LabelButton
      *
      * D-1153: `$template` = `['name' => 'Platz', 'format' => ['key', 'w', 'h', 'roll'], 'layout' => JSON, 'values' => [field ⇒ text]]` —
      * the label is then drawn from that layout; `code`, `title` and `subtitle` are among its values.
+     * D-1190: `'printer' => ['queue', 'options', 'turn', 'name']` where the label names its printer — the job then carries
+     * that queue and those CUPS options to the print service.
      * D-1160: with `'record' => id` the modeller reads the fields the layout names from that record itself; what the module
      * passes in `values` only fills what the record has no field for.
      */
@@ -77,7 +79,7 @@ final class LabelButton
                 ? '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Format', 'taxmod') . '</span>'
                     . '<select name="format">' . $options . '</select></label>'
                 : '<span style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Vorlage', 'taxmod') . '</span>'
-                    . esc_html(trim($filled->templateName . ' · ' . PrintTab::size($filled->format), ' ·')) . '</span>')
+                    . esc_html(trim($filled->templateName . ' · ' . PrintTab::size($filled->format) . ($filled->printer === null ? '' : ' · ' . ($filled->printer->name !== '' ? $filled->printer->name : $filled->printer->queue)), ' ·')) . '</span>')
             // D-1152, his word 2026-11-04: «Bei etikett druck anzahl mit aufnehmen» — the module says how many to start with.
             . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Anzahl', 'taxmod') . '</span>'
             . '<input type="number" name="copies" min="1" max="' . self::MAX_COPIES . '" step="1" value="' . self::copies($copies) . '" style="width:6em"></label>'
@@ -194,6 +196,7 @@ final class LabelButton
                 'layout'   => json_decode((string) ($template['layout'] ?? ''), true),
                 'values'   => $values,
                 'template' => (string) ($template['name'] ?? ''),
+                'printer'  => is_array($template['printer'] ?? null) ? $template['printer'] : null,
             ]));
         } catch (\InvalidArgumentException) {
             return null;

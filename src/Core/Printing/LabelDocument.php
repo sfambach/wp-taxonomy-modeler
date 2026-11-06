@@ -63,19 +63,36 @@ final class LabelDocument
         $pdf = new PdfDocument();
         foreach ($records as $values) {
             $pdf->addPage($format->widthMm, $format->heightMm, $format->turnedOnRoll());
-            foreach ($layout->elements as $element) {
-                $text = trim((string) ($values[$element->field] ?? ''));
-                if ($text === '') {
-                    continue;
+            // D-1190: a printer that starts its lines part-way along the head gets the drawing moved back by that much, the part
+            // that falls off the left drawn again at the right end of its line — on paper it lands where the layout says.
+            $shifts = $format->offsetMm > 0.0 && $format->lineMm > $format->offsetMm ? [-$format->offsetMm, $format->lineMm - $format->offsetMm] : [0.0];
+            foreach ($shifts as $dx) {
+                if ($dx !== 0.0) {
+                    $pdf->beginShift($dx);
                 }
-                if ($element->type === LabelElement::QR) {
-                    self::drawQr($pdf, QrCode::encode($text), $element->xMm, $element->yMm, min($element->widthMm, $element->heightMm));
-                    continue;
+                self::drawElements($pdf, $layout, $values);
+                if ($dx !== 0.0) {
+                    $pdf->endShift();
                 }
-                self::drawBox($pdf, $element, $text);
             }
         }
         return $pdf->render();
+    }
+
+    /** @param array<string, string> $values */
+    private static function drawElements(PdfDocument $pdf, LabelLayout $layout, array $values): void
+    {
+        foreach ($layout->elements as $element) {
+            $text = trim((string) ($values[$element->field] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+            if ($element->type === LabelElement::QR) {
+                self::drawQr($pdf, QrCode::encode($text), $element->xMm, $element->yMm, min($element->widthMm, $element->heightMm));
+                continue;
+            }
+            self::drawBox($pdf, $element, $text);
+        }
     }
 
     private static function drawBox(PdfDocument $pdf, LabelElement $box, string $text): void

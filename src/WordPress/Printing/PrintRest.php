@@ -63,7 +63,8 @@ final class PrintRest
         $jobs = [];
         foreach ($this->jobs->claimWaiting() as $row) {
             // D-1162: the copies as pages of one PDF — one job at the printer, the labels come out together.
-            $copies = max(1, (int) ($row['copies'] ?? 1));
+            $copies  = max(1, (int) ($row['copies'] ?? 1));
+            $printer = null;
             // D-1153: a job from a template carries its own size and layout.
             if (($row['document'] ?? '') !== '' && $row['document'] !== null) {
                 try {
@@ -72,8 +73,9 @@ final class PrintRest
                     $this->jobs->finish((int) $row['id'], false, 'Broken label: ' . $e->getMessage());
                     continue;
                 }
-                $format = $filled->format;
-                $pdf    = $filled->render($copies);
+                $format  = $filled->format;
+                $pdf     = $filled->render($copies);
+                $printer = $filled->printer;
             } else {
                 $format = $formats[$row['format']] ?? null;
                 if ($format === null) {
@@ -82,7 +84,8 @@ final class PrintRest
                 }
                 $pdf = LabelDocument::render($format, array_fill(0, $copies, new LabelContent($row['code'], $row['title'], $row['subtitle'])));
             }
-            $jobs[] = [
+            // D-1190: a label whose template names a printer carries its queue and options; the service no longer guesses them.
+            $jobs[] = ($printer === null ? [] : ['queue' => $printer->queue, 'options' => $printer->options]) + [
                 'id'     => (int) $row['id'],
                 'format' => $format->key,
                 'roll'   => $format->rollMm,

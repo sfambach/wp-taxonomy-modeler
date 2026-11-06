@@ -15,6 +15,7 @@ import base64
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -23,7 +24,7 @@ import time
 import urllib.error
 import urllib.request
 
-VERSION = "taxmod-print-agent 0.1.0"
+VERSION = "taxmod-print-agent 0.2.0"
 TOKEN_HEADER = "X-Taxmod-Print-Token"
 
 # Per label format: the CUPS options. The browser test showed the Brother driver wants landscape for labels as wide
@@ -41,9 +42,10 @@ log = logging.getLogger("taxmod-print-agent")
 def load_config(path: str) -> dict:
     with open(os.path.expanduser(path), encoding="utf-8") as handle:
         config = json.load(handle)
-    for key in ("rest", "token", "printers"):
+    for key in ("rest", "token"):
         if not config.get(key):
             raise ValueError(f"config.json needs «{key}»")
+    config.setdefault("printers", {})
     config.setdefault("ntfy", "")
     config.setdefault("wake_url", "")
     config.setdefault("wake_seconds", 300)
@@ -63,9 +65,23 @@ def printer_for(config: dict, roll_mm: float) -> str:
     return queue
 
 
+# D-1190: queue and options can come from WordPress, so they are held to plain names before they reach lp.
+PLAIN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,126}$")
+
+
+def plain(text: str, what: str) -> str:
+    if not PLAIN.match(text):
+        raise ValueError(f"{what} «{text}» is not a plain name")
+    return text
+
+
 def lp_command(config: dict, job: dict, pdf_path: str) -> list[str]:
-    command = ["lp", "-d", printer_for(config, float(job["roll"])), "-t", f"taxmod-{job['id']}-{job.get('code', '')}"]
-    for name, value in config["formats"].get(job["format"], {}).items():
+    """D-1190: a job whose label names its printer brings queue and CUPS options; otherwise roll width and format decide."""
+    queue = plain(str(job["queue"]), "queue") if job.get("queue") else printer_for(config, float(job["roll"]))
+    command = ["lp", "-d", queue, "-t", f"taxmod-{job['id']}-{job.get('code', '')}"]
+    options = job["options"] if isinstance(job.get("options"), dict) and job["options"] else config["formats"].get(job["format"], {})
+    for name, value in options.items():
+        name, value = plain(str(name), "option"), plain(str(value), "value") if value != "" else ""
         command += ["-o", f"{name}={value}" if value != "" else name]
     return command + [pdf_path]
 

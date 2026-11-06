@@ -14,6 +14,9 @@ final class LabelFormat
         public readonly float $widthMm,
         public readonly float $heightMm,
         public readonly float $rollMm,
+        public readonly ?bool $turned = null,
+        public readonly float $offsetMm = 0.0,
+        public readonly float $lineMm = 0.0,
     ) {
     }
 
@@ -34,10 +37,14 @@ final class LabelFormat
     }
 
     /**
-     * The printer feeds a page with its height across the roll, so a label as wide as the roll is turned a quarter.
+     * The Brother driver feeds a page with its height across the roll, so a label as wide as the roll is turned a quarter —
+     * unless its printer says otherwise (D-1190: the Phomemo takes the label as it is).
      */
     public function turnedOnRoll(): bool
     {
+        if ($this->turned !== null) {
+            return $this->turned;
+        }
         return abs($this->widthMm - $this->rollMm) < 0.01 && abs($this->heightMm - $this->rollMm) >= 0.01;
     }
 

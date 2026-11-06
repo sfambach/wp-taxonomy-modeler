@@ -3,7 +3,8 @@
 namespace Taxmod\Core\Printing;
 
 /**
- * One label as a module hands it over: the size, the layout of its template and the values of its record (D-1153).
+ * One label as a module hands it over: the size, the layout of its template, the values of its record (D-1153) and the
+ * printer its template names (D-1190).
  *
  * ⚠️ *It travels as JSON — in the dialog's form and in a print job — so the print service draws exactly what the person saw,
  * even if the template changes before the job is fetched.*
@@ -18,6 +19,7 @@ final class FilledLabel
         public readonly LabelLayout $layout,
         public readonly array $values,
         public readonly string $templateName = '',
+        public readonly ?LabelPrinter $printer = null,
     ) {
         if (! $layout->fitsOn($format)) {
             throw new \InvalidArgumentException(sprintf('An element of the layout reaches past the %s × %s mm label.', $format->widthMm, $format->heightMm));
@@ -42,12 +44,17 @@ final class FilledLabel
 
     public function toJson(): string
     {
+        $format = ['key' => $this->format->key, 'w' => $this->format->widthMm, 'h' => $this->format->heightMm, 'roll' => $this->format->rollMm];
+        if ($this->format->turned !== null) {
+            $format['turn'] = $this->format->turned;
+        }
+
         return json_encode([
-            'format'   => ['key' => $this->format->key, 'w' => $this->format->widthMm, 'h' => $this->format->heightMm, 'roll' => $this->format->rollMm],
+            'format'   => $format,
             'layout'   => json_decode($this->layout->toJson(), true, 8, JSON_THROW_ON_ERROR),
             'values'   => $this->values,
             'template' => $this->templateName,
-        ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        ] + ($this->printer === null ? [] : ['printer' => $this->printer->toArray()]), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
     public static function fromJson(string $json): self
@@ -70,11 +77,16 @@ final class FilledLabel
             }
         }
 
+        $printer = is_array($raw['printer'] ?? null) && trim((string) ($raw['printer']['queue'] ?? '')) !== '' ? LabelPrinter::fromArray($raw['printer']) : null;
+        // D-1190: whether the label is turned is the printer's word; without one the roll decides as before.
+        $turned = is_bool($format['turn'] ?? null) ? $format['turn'] : $printer?->turnsLabel;
+
         return new self(
-            new LabelFormat($key, $size('w'), $size('h'), $size('roll') > 0.0 ? $size('roll') : $size('w')),
+            new LabelFormat($key, $size('w'), $size('h'), $size('roll') > 0.0 ? $size('roll') : $size('w'), $turned, $printer?->offsetMm ?? 0.0, $printer?->lineMm ?? 0.0),
             LabelLayout::fromJson(json_encode($raw['layout'] ?? null, JSON_THROW_ON_ERROR)),
             $values,
             (string) ($raw['template'] ?? ''),
+            $printer,
         );
     }
 }

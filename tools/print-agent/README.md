@@ -42,6 +42,14 @@ fallback, and otherwise calls WordPress once an hour as a sign of life.
    journalctl --user -u taxmod-print-agent -f
    ```
 
+## Printers from the model (D-1190)
+
+A label that names a printer (Logistik › Drucker, field «Drucker» on the label) brings the CUPS queue and its
+«Druckoptionen» with the job; `printers` and `formats` in `config.json` are then not read for it. Queue and options must
+be plain names (letters, digits, `_ . -`), or the job fails. The queue must exist on the PC that runs the service
+(`lpstat -p`), e.g. `Phomemo_M220L` for the Phomemo M22L with `PageSize=w40h30`. The M22L on the M220 driver starts its lines 21 mm along
+a 38 mm line; «Versatz (mm)» and «Zeilenlänge (mm)» of the printer make WordPress draw the label moved back by that much.
+
 ## Formats
 
 Each label format brings CUPS options; the defaults are in `DEFAULT_FORMATS` in the script, and
