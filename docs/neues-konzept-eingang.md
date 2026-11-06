@@ -1235,5 +1235,6 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Vorschlag C, Farbe am Bestandsposten (nicht entschieden):** Das Material bleibt eins, und der Posten trägt Farbe/Bestückung wie heute schon «Zustand». Das ist am billigsten. Eine Bestellung, eine Stückliste oder ein Mindestbestand je Farbe geht damit aber nicht.
 - **2026-11-06, sein Gedanke:** *«ob das nicht evtl eigenschaft der charge sein könnte aber nur so ein gedanke»*. Charge = Bestandsposten, das ist Vorschlag C.
 - **2026-11-06, sein Nachsatz:** *«gibt ja noch mit ohne pin, oder ander pinbelegung»*. ⚠️ *Meine Einordnung (INFERRED): Eine andere Pinbelegung ist nicht austauschbar, und eine Stückliste muss sie unterscheiden. Das spricht für A. «Stifte gelötet» lässt sich dagegen am Stück nachholen wie ein Zustand, das spricht für C am Posten. Denkbar ist beides zusammen: Farbe und Pinbelegung als Variante (A), Bestückung am Posten (C).*
+- **2026-11-06, sein Wort zur Mischung:** *«hmm nee wenn gehen wir einen weg»* — also nur ein Weg, keine Mischung aus A und C.
 - **Offen für Stefan:** A, B oder C? Rechnet sich die Bezeichnung der Variante, oder wird sie gepflegt? Darf eine Variante ein Feld des Modells überschreiben, zum Beispiel ein eigenes Bild? Kommt «Displayfarbe» in «Farben» auf?
 - **Gebaut:** nein.
