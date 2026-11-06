@@ -31,7 +31,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | S3 | Jeder Hauptpunkt der Navigation öffnet eine Übersicht mit Kacheln in seine Unterpunkte; ein Klick auf eine Gruppe klappt sie im Menü auf. | [D-1128](NewConcept/90-decision-log.md), [D-1134](NewConcept/90-decision-log.md) |
 | S4 | Modulseite in der Konfiguration: eigener Reiter über `taxmod_config_tabs`; Bereiche immer **Zugang · Abruf · Mail · Einstellungen · Wartung**, ein leerer Bereich mit einem Satz; Abruftakt zeichnet der Modeller; «How to connect» liefert das Modul, zeichnet der Modeller. | [D-945](NewConcept/90-decision-log.md), [D-981](NewConcept/90-decision-log.md), [D-1007](NewConcept/90-decision-log.md), [D-963](NewConcept/90-decision-log.md) |
 | S5 | Kein `<style>`/`<script>` und kein `style="…"` in Seiten: Aussehen steht zentral im CSS des Modellers (`assets/admin.css`), Verhalten in seinem JS. Ausnahme nur für eigene Druckbögen (Etikett, Packzettel), die als eigenes Dokument laufen. | [D-1068](NewConcept/90-decision-log.md) («die Listen-Vorlage legt sie einmal fest») |
-| S6 | Standardgerüst jeder Seite: Überschrift (Reiter) → Kacheln → Sektionen untereinander (Detail, Liste, Liste …), über `ListPage::page($screen, $tiles, $sections)`. Keine Seite ordnet ihre Teile selbst nebeneinander. | [D-1196](NewConcept/90-decision-log.md) |
+| S6 | Standardgerüst jeder Seite: Überschrift (Reiter) → Kacheln → Sektionen untereinander (Detail, Liste, Liste …), über `ListPage::page($screen, $tiles, $sections)`. Keine Seite ordnet ihre Teile selbst nebeneinander. Umstellung zuerst im Logistik-Modul. | [D-1196](NewConcept/90-decision-log.md) |
 
 ## 2 · Liste
 
