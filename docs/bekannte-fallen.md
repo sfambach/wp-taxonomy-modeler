@@ -93,3 +93,82 @@ an der echten.
 
 ⚠️ *Das allgemeine Muster: **ein Rückgängig, das weiter reicht als die Änderung.** `git checkout`
 kennt nur den letzten Commit, nicht die letzte Absicht.*
+
+---
+
+## pCloud auf dem Quellordner
+
+*Aus `AGENTS.md` hierher verschoben am 2026-11-06 ([D-1210](NewConcept/90-decision-log.md)): es betrifft nur die frühere Windows-Maschine, und `AGENTS.md` wird vor jeder Aufgabe gelesen. Wortlaut unverändert.*
+
+#### ⚠️ Watch out: a cloud client on the source folder
+
+**2026-08-24 — a file vanished mid-session.** `src/WordPress/Admin/NodesScreen.php` was rewritten,
+and moments later it lay on disk as `NodesScreen [conflicted].php`. The class stopped loading, the
+admin screen died with a fatal error, and a `git add -A` recorded the **deletion** in a commit.
+
+**`[conflicted]` is pCloud's naming**, `pCloud.exe` was running, and pCloud's own database lists
+`C:\Devel`. The owner has since excluded the source folder. ⚠️ *He also notes he only backs up
+and never restores from the cloud — which makes the mechanism less obvious, because a one-way
+backup should not rename a local file. What is certain is that the rename happened and that no
+other candidate uses that naming.*
+
+#### ⚠️ 2026-08-25 — it happened again, and the mechanism is now known
+
+**Twice in one session.** `docs/NewConcept/95-roadmap.md` was written, reported as written, and then
+**reverted** — the two most recent additions simply gone, lying beside it as
+`95-roadmap (conflicted).md`. Restored, and minutes later the same file was **replaced outright** by
+`95-roadmap [conflicted].md`. Both naming styles, round brackets and square, in one session.
+
+**The cause was traced rather than guessed, and the exclusion was never the problem.** Read out of
+`%LOCALAPPDATA%\pCloud\data.db`:
+
+| What the database says | |
+|---|---|
+| `syncfolder` | `localpath=C:\Devel`, `synctype=7` — a **sync pair**, and a two-way one |
+| `setting.ignorepaths` | contains `C:\Devel\Wordpress\source;` — ⚠️ **the owner's exclusion is there and is correct** |
+| `localfile` | holds `95-roadmap.md`, `90-decision-log.md` and `NodesScreen.php` **twice each** — once under `Wordpress/source/…` and once under `Wordpress/wp-content/plugins/…` |
+
+⚠️ **The exclusion cannot work here, and pCloud says so itself.** Its own
+*Backup/Sync Exclusions* dialog carries the sentence *"Items that are already part of a backup or
+sync will not be affected."* **`C:\Devel` is already a sync pair**, so adding
+`C:\Devel\Wordpress\source` to the list changes nothing about it: the list keeps **new** items out
+and removes nothing from an existing sync. **The owner did the right thing in the wrong place, and
+the wrongness is not discoverable from the list — which shows the path and looks like it is in
+force.**
+
+⚠️ **A second door is open as well, and it would survive a fix to the first.**
+`wp-content/plugins/wp-taxonomy-tree` is an **NTFS junction** pointing at
+`source/wp-taxonomy-tree`. pCloud's index holds `95-roadmap.md`, `90-decision-log.md` and
+`NodesScreen.php` **twice each** — once under `Wordpress/source/…`, once under
+`Wordpress/wp-content/plugins/…` — so the same bytes are reachable by a path the exclusion never
+names. **Three more junctions in that folder have the same exposure**: `budget-translator`,
+`wp-auto-correction`, `wp-changelog`.
+
+**Everything that looked inexplicable falls out of those two:** why excluding `source` changed
+nothing, and why *a one-way backup should not rename a local file* — it is not a backup, it is a
+**two-way sync pair** (`synctype=7`).
+
+**So the fix is the sync pair, not another exclusion.** Remove or narrow the `C:\Devel` sync;
+excluding `wp-content\plugins` as well only closes the junction door and leaves the first one
+open. ⚠️ *And the general lesson outlives pCloud: an exclusion list that cannot reach into an
+existing sync is a setting that reads as protection and is not one.*
+
+**And the rule that follows is the expensive one, which stands whatever the cause: verify after
+writing.** Every documentation edit in that session was re-checked with a `grep` for its own content
+before committing, and that is the only reason the loss was caught at all. ⚠️ *Two additions were
+already gone by the time the check ran.* A fatal error announces itself; a reverted paragraph does
+not.
+
+**Two rules that follow, and they are cheap:**
+
+- **Never delete-and-recreate a file that already exists** — overwrite it. The rapid
+  delete/create pair is what looked like a conflict.
+- **Read `git status` before committing.** `git add -A` turns a file somebody else renamed into
+  a committed deletion, and nothing warns you.
+
+⚠️ **Whether this also hurt the previous round is unknown and probably unknowable.** The history
+was searched: no `[conflicted]` file was ever committed, and the deleted-then-re-added paths are
+the deliberate rules reorganisation. **But git only sees commits** — a file broken and repaired
+before the next one leaves no trace, and that is exactly what *the assistant is hallucinating and
+we keep going in circles* would feel like from the outside. Recorded as a possibility, not a
+finding.

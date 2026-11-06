@@ -19,13 +19,7 @@ governs how things are decided, changed and documented from here on.
 down [the working list](docs/NewConcept/97-implementation-plan.md#the-working-list), where the
 owner's posted changes are appended in the order he asks for them.
 
-⚠️ **No counts in this file.** *Two stood here and both were wrong — «25 open questions» when 67 of
-them said «Closed» in their own text, and «459 decisions» when there were 548. **A count in a rules
-file is a changelog.** What matters is guarded instead: `references-check` fails on a `D-`/`OQ-` id
-that was never written, `superseded-check` on a live claim resting on a withdrawn one,
-`rules-index-check` on a rule missing from the index, `concept-drift-check` on a model document
-changing without a reason, and `confirmed-quote-check` on a decision called confirmed that carries
-no sentence of his.*
+⚠️ **No counts in this file** — a count in a rules file is a changelog. What matters is guarded instead (`references-check`, `superseded-check`, `rules-index-check`, `concept-drift-check`, `confirmed-quote-check`).
 
 ---
 
@@ -42,7 +36,7 @@ no sentence of his.*
 | **PR-8** | **Rule hygiene** applies to this file — see the last section. |
 | **PR-9** | **What works keeps working: both test runs are green before anything is committed** ([D-564](docs/NewConcept/90-decision-log.md)) — the **core** run under PHPUnit, which loads no WordPress, and the **boundary** run against a real database. **Every package adds its checks to the net**; a package nothing guards is one the next may quietly break. **A check guards the *current* target state, never a past one** — when the concept changes the check changes with it, **but changing or deleting a check is a visible part of that concept change** and never happens in passing. See [`tests/README.md`](tests/README.md). *Warum, und was es gekostet hat: [D-564](docs/NewConcept/90-decision-log.md).* |
 | **PR-13** | **The yardstick for a specification is whether a person can check it, not whether the AI can build from it** ([D-566](docs/NewConcept/90-decision-log.md)). **If the only reader who can hold the model is the thing that also writes the code, nobody can check the code.** *Warum, und was es gekostet hat: [D-566](docs/NewConcept/90-decision-log.md).* |
-| **PR-10** | **Look it up before you say it. No claim about the concept without a quotation from it.** Whenever an answer turns on *what was decided* — a mechanism, a rule, where something belongs — read the source and **quote the sentence**, with its `D-<nnn>`. Recalling it is not reading it. ⚠️ **Und das Gegenstück, teurer erkauft: eine Messung am Code ist keine Antwort auf eine Konzeptfrage.** *Der Code ist der **Ist**-Stand und hinkt jeder Entscheidung hinterher. Wer «so ist es gebaut» sagt, wo «so haben wir es entschieden» gefragt war, gibt eine **falsche** Antwort, keine vorläufige. Also: erst der Beschluss mit seiner `D-<nnn>`, und der Ist-Stand nur als **eigene, benannte Zeile** («gebaut: nein»). Am 2026-09-05 an einem Abend dreimal verkehrt herum beantwortet — Renderer-Wähler, sprachneutrale Zeile, Installationsbildschirm —, jedes Mal hat der Eigentümer es gemerkt und nicht ich.* *Warum, und was es gekostet hat: [D-572](docs/NewConcept/90-decision-log.md), [D-645](docs/NewConcept/90-decision-log.md).* |
+| **PR-10** | **Look it up before you say it. No claim about the concept without a quotation from it.** Whenever an answer turns on *what was decided* — a mechanism, a rule, where something belongs — read the source and **quote the sentence**, with its `D-<nnn>`. Recalling it is not reading it. ⚠️ **Und das Gegenstück: eine Messung am Code ist keine Antwort auf eine Konzeptfrage.** Erst der Beschluss mit seiner `D-<nnn>`, der Ist-Stand nur als **eigene, benannte Zeile** («gebaut: nein»). *Warum, und was es gekostet hat: [D-572](docs/NewConcept/90-decision-log.md), [D-645](docs/NewConcept/90-decision-log.md).* |
 
 Dev environment (Laragon on Windows, SQLite on the cloud VM): [`AGENTS.md`](AGENTS.md).
 
@@ -92,16 +86,13 @@ WordPress bootstrap. WordPress reaches *into* it, never the other way round.
 
 **An architecture rule needs a basis that can be checked: a decision id, or a measurement plus
 the owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)). If the basis falls, the
-rule is deleted in the same commit. ⚠️ *The second form was added on 2026-09-01 because both rules
-below had **true content and dead citations** — `AR-2` rested on a withdrawn decision. A measurement
-survives its own justification: «not one occurrence» can be re-run, a decision from ten days ago
-cannot.* This is the rule that keeps
+rule is deleted in the same commit. This is the rule that keeps
 this file from turning back into a frozen snapshot of a model we have outgrown.
 
 | | Rule | Basis |
 |---|---|---|
-| **AR-1** | **The model is stored in tables owned by this plugin**, not in WordPress posts, postmeta, terms or CPTs. ⚠️ **Measured 2026-09-01: `wp_insert_post`, `get_post_meta`, `wp_insert_term`, `register_post_type` and six more — *not one occurrence* in `src/`, against 13 own tables.** *The table list that stood here is gone: it named `settings`, which is dying ([D-529](docs/NewConcept/90-decision-log.md)), and omitted `records` and `record_values`. Naming the tables is deliberately **not** part of this rule any more — the table concept is under review ([D-568](docs/NewConcept/90-decision-log.md), [`docs/review-tabellen.md`](docs/review-tabellen.md)), and a rule that names them would freeze the errors it inherited.* | **measurement + owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)) |
-| **AR-2** | **Nothing user-visible is hard-coded.** Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the model, per locale. The two never share a mechanism. ⚠️ **Measured 2026-09-01: 195 text-domain calls at the boundary; in the whole core exactly one display-shaped string, and it is the *initial name* of a shipped node, which the owner may rename.** *The open edge is a different one and belongs to the new concept: shipped names arrive in one language, and `labels.locale` is filled in 4 of 47 rows.* | **measurement + owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)) |
+| **AR-1** | **The model is stored in tables owned by this plugin**, not in WordPress posts, postmeta, terms or CPTs. ⚠️ **Measured 2026-09-01: `wp_insert_post`, `get_post_meta`, `wp_insert_term`, `register_post_type` and six more — *not one occurrence* in `src/`, against 13 own tables.** The tables are deliberately not named here — the table concept is under review ([`docs/review-tabellen.md`](docs/review-tabellen.md)). | **measurement + owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)) |
+| **AR-2** | **Nothing user-visible is hard-coded.** Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the model, per locale. The two never share a mechanism. ⚠️ **Measured 2026-09-01: 195 text-domain calls at the boundary; in the whole core exactly one display-shaped string, and it is the *initial name* of a shipped node, which the owner may rename.** | **measurement + owner's confirmation** ([D-569](docs/NewConcept/90-decision-log.md)) |
 
 That is the **complete** list. Everything else about the model — what a node is, whether an
 attribute is an edge, whether a type is data or code, where the renderer runs — is **open**

@@ -57,8 +57,12 @@ const IMMER_GELESEN = [
  * ⚠️ **Die Decke steht bewusst genau auf dem heutigen Stand und nicht darüber.** *Sie ist kein
  * Vorrat, sondern ein Widerstand: die nächste Zeile, die dazukommt, macht diesen Lauf wieder rot und
  * verlangt dieselbe Frage wie vorher — **was kommt dafür weg?** Eine Decke mit Luft darin wäre keine.*
+ *
+ * ⚠️ **Am 2026-11-06 auf 41197 Bytes (40.2 KB) gesenkt** ([D-1210](../../docs/NewConcept/90-decision-log.md), sein
+ * «ok bitte umsetzen» auf die Liste zum Tokenverbrauch): Anekdoten aus `CLAUDE.md` gestrichen (sie stehen in den
+ * Entscheidungen, auf die die Regeln zeigen), die pCloud-Geschichte aus `AGENTS.md` nach `docs/bekannte-fallen.md`.*
  */
-const DECKE = 47652;
+const DECKE = 41197;
 
 $wurzel = dirname(__DIR__, 2);
 
