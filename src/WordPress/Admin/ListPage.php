@@ -304,6 +304,26 @@ final class ListPage
     }
 
     /**
+     * The standard page (D-1194, his word 2026-11-06 «kacheln oben dann untereinander die seiten sections»): the heading, the
+     * tabs if any, the tiles, then the sections one below the other — a detail, a list, another list. Each section is drawn by
+     * its own building block; this only orders them, so every Taxmod page reads the same from top to bottom.
+     *
+     * @param list<\Taxmod\Core\Tile\Tile>        $tiles
+     * @param list<array{title?: string, html: string}> $sections `html` already escaped (CD-8)
+     */
+    public static function page(string $screen, array $tiles, array $sections, string $version = Plugin::VERSION, string $plugin = 'Taxonomy Modeller', string $hint = '', string $tabs = ''): string
+    {
+        $html = '<div class="wrap taxmod-page">' . self::heading($screen, $version, $plugin, $hint) . $tabs . ($tiles === [] ? '' : Tiles::grid($tiles));
+
+        foreach ($sections as $section) {
+            $title = (string) ($section['title'] ?? '');
+            $html .= '<section class="taxmod-page-section">' . ($title === '' ? '' : '<h2>' . esc_html($title) . '</h2>') . $section['html'] . '</section>';
+        }
+
+        return $html . '</div>';
+    }
+
+    /**
      * Bulk actions on the left, «Expand all» beside them, the count on the right. The form stands alone, because each
      * row's details may hold a form of their own and forms do not nest; each row's checkbox joins it through `form=`.
      *

@@ -2469,3 +2469,12 @@ pre.taxmod-code {
 .CodeMirror.taxmod-code {
 	border: 1px solid #8c8f94;
 }
+
+/* D-1194: the standard page — heading, tiles, then the sections one below the other. */
+.taxmod-page-section {
+	margin-top: 1.5em;
+}
+
+.taxmod-page-section > h2:first-child {
+	margin-top: 0;
+}
