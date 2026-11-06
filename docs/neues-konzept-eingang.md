@@ -1222,7 +1222,7 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Konzeptentwurf:** [`pakete/verkauf/konzept.md`](pakete/verkauf/konzept.md) — Ablauf Angebot → Verkauf → Reservierung → Versendet = Warenausgang → Empfangen, eigenes Modul `wp_tax_sales`, Fragen VK1–VK7.
 - **Gebaut:** nein.
 
-## INF-113 · Materialvarianten: gleiches Material in Farben oder bestückt/unbestückt (2026-11-06)
+## INF-113 · Materialvarianten: gleiches Material in Farben oder bestückt/unbestückt (2026-11-06) — entschieden D-1208
 
 **Typ:** `IDEE` · **Status:** `OFFEN`, aus dem Thread zur Display-Kiste.
 
