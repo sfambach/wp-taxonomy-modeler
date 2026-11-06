@@ -1211,3 +1211,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Heute:** Ein Etikett ist ein Satz mit Layout-JSON; der Modeller liest die genannten Felder aus einem Satz, ein Verweis gibt das Wort des verwiesenen Satzes (eine Stufe, [D-1160](NewConcept/90-decision-log.md)).
 - **Vorschlag (nicht entschieden):** Designer = Kästen auf der Etikettfläche ziehen, Feld aus dem gewählten Knoten wählen, schreibt dasselbe JSON. View-Knoten = ein Knoten, der Felder mehrerer verbundener Sätze zu einer Zeile zusammenführt; das Etikett liest dann aus ihm.
 - **Offen für Stefan:** Reicht der eine Verweis-Schritt erst einmal? Wann der Designer?
+
+## INF-111 · Verkauf als eigener Fachbereich
+
+**Typ:** `WUNSCH` · **Status:** `OFFEN` — 2026-11-06, Thread «Verkauf im Taxmod aufbauen».
+
+> *«ich denke wir brauchen noch einen thread der sich um den verkauf kümmert»*.
+
+- **Heute:** Ein Verkauf ([D-934](NewConcept/90-decision-log.md)) berührt den Bestand nicht — keine Reservierung, kein Warenausgang, kein Material am verkauften Artikel; Verkäufe gibt es nur über eBay; die Versandstufen leben im eBay-Modul. [D-1044](NewConcept/90-decision-log.md) (Warenausgang als Prozess) ist nicht gebaut.
+- **Konzeptentwurf:** [`pakete/verkauf/konzept.md`](pakete/verkauf/konzept.md) — Ablauf Angebot → Verkauf → Reservierung → Versendet = Warenausgang → Empfangen, eigenes Modul `wp_tax_sales`, Fragen VK1–VK7.
+- **Gebaut:** nein.
