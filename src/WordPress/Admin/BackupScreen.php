@@ -117,6 +117,9 @@ final class BackupScreen
             @set_time_limit(600);
         }
 
+        // *A restored model may stand on an older schema: the next admin request runs the upgrade steps again (D-1187).*
+        delete_option(Plugin::UP_TO_DATE_OPTION);
+
         try {
             $result = (new Backup())->restore((string) $upload['tmp_name']);
         } catch (\Throwable $e) {

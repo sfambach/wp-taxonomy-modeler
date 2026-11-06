@@ -46,6 +46,10 @@ final class ImportWiring
             });
         }, 11);
 
+        if (! Plugin::handlesAdminActions()) {
+            return;
+        }
+
         add_action('admin_post_' . InboxScreen::TAKE, static fn () => (new InboxScreen())->handleTake());
         add_action('admin_post_' . InboxScreen::TAKE_BOX, static fn () => (new InboxScreen())->handleTakeBox());
         add_action('admin_post_' . InboxScreen::DISCARD, static fn () => (new InboxScreen())->handleDiscard());

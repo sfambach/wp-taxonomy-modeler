@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.172';
+    public const VERSION     = '0.1.173';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -74,6 +74,9 @@ final class Plugin
 
     /** Was die Aktivierung abbrach — eine Option, weil der Hinweis erst im nächsten Aufruf erscheint. */
     public const ACTIVATION_FAILURE = 'taxmod_activation_failure';
+
+    /** The release whose upgrade steps have run here; a restore forgets it, so the next admin request checks again (D-1187). */
+    public const UP_TO_DATE_OPTION = 'taxmod_up_to_date';
 
     /** Was den letzten Umbau der Tabellen abbrach — `null`, solange keiner scheiterte. */
     private ?string $upgradeFailure = null;
@@ -109,9 +112,11 @@ final class Plugin
         // ⚠️ *His word of 2026-10-25: «die Menü-Konfiguration für den Tax-Mod hätte ich gern an unterster Stelle» (D-989) —
         // last of all, after every module has added its pages; Cleanup and Backup go with it (D-1028).*
         add_action('admin_menu', self::maintenanceLast(...), PHP_INT_MAX);
-        add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
-        add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
-        add_action('wp_ajax_' . ListPage::DETAILS_ACTION, [ListPage::class, 'details']);
+        // ⚠️ *The handlers of admin-post.php and admin-ajax.php only where those answer (D-1187): naming their screens'
+        // constants compiled about 1 MB of admin screens on every page view, and fambach.net has no opcode cache.*
+        if (self::handlesAdminActions()) {
+            self::wireAdminActions($plugin);
+        }
         // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
         add_action(self::STYLE_ACTION, $plugin->enqueueStyle(...));
 
@@ -180,6 +185,54 @@ final class Plugin
             );
         }, 10, 2);
 
+        // An upgrade must not depend on somebody remembering to deactivate and activate
+        // again (`CD-6`). One option read per admin request, and the work happens only when
+        // the stored version is behind.
+        add_action('admin_init', $plugin->ensureUpToDate(...));
+
+        // ⚠️ **Seitenvorlagen als Startmuster** ([D-870](../../docs/NewConcept/90-decision-log.md)) — *nur in der Verwaltung und für die
+        // REST-Schnittstelle, über die der Block-Editor die Muster holt; der öffentliche Aufruf liest nichts.*
+        // ⚠️ *Seit D-1187 erst, wenn der Editor die Muster wirklich abfragt — vorher las jeder Verwaltungsaufruf, jeder
+        // Heartbeat und jede REST-Anfrage das Modell dafür.*
+        add_filter('rest_pre_dispatch', static function (mixed $result, \WP_REST_Server $server, \WP_REST_Request $request) use ($plugin): mixed {
+            if ($plugin->upgradeFailure === null && str_starts_with($request->get_route(), '/wp/v2/block-patterns')) {
+                $plugin->starterPatterns()->register();
+            }
+
+            return $result;
+        }, 10, 3);
+
+        // ⚠️ **Das Modell online pflegen** ([D-911](../../docs/NewConcept/90-decision-log.md)) — *über die Abilities, die der
+        // WordPress-Connector als Werkzeuge zeigt. Ohne die Abilities-API (vor WordPress 6.9) feuern die Haken nie.*
+        add_action('wp_abilities_api_categories_init', static fn () => $plugin->abilities()->registerCategory());
+        add_action('wp_abilities_api_init', static fn () => $plugin->abilities()->register());
+        // *As a class-string callable: `ModelAbilities::ensureDataRole(...)` compiled the whole class on every request (D-1187).*
+        add_action('init', [ModelAbilities::class, 'ensureDataRole']);
+
+        // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
+        add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
+        add_action('rest_api_init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->registerRoutes());
+    }
+
+    /**
+     * Whether this request can reach an `admin_post_*` or `wp_ajax_*` handler: admin-post.php, admin-ajax.php, or the CLI the
+     * boundary checks run in (D-1187). Modules ask the same question before wiring their own handlers.
+     */
+    public static function handlesAdminActions(): bool
+    {
+        if (PHP_SAPI === 'cli') {
+            return true;
+        }
+
+        return is_admin() && in_array($GLOBALS['pagenow'] ?? '', ['admin-post.php', 'admin-ajax.php'], true);
+    }
+
+    private static function wireAdminActions(self $plugin): void
+    {
+        add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
+        add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
+        add_action('wp_ajax_' . ListPage::DETAILS_ACTION, [ListPage::class, 'details']);
+
         // ⚠️ **Der erste Rückweg vom Rand in den Kern** ([D-666](../../docs/NewConcept/90-decision-log.md),
         // [D-627](../../docs/NewConcept/90-decision-log.md)) — *gemessen 0 REST-Routen und 0 AJAX,
         // bevor dies hier stand. Er liefert den Einstellungsbereich **einer** Feldzeile nach, damit
@@ -236,26 +289,6 @@ final class Plugin
         add_action('admin_post_' . BackupScreen::DOWNLOAD_ACTION, static fn () => (new BackupScreen())->handleDownload());
         add_action('admin_post_' . BackupScreen::RESTORE_ACTION, static fn () => (new BackupScreen())->handleRestore());
         add_action('admin_post_' . ChangeListImport::ACTION, static fn () => (new ChangeListImport($plugin->abilities(...)))->handle());
-
-        // An upgrade must not depend on somebody remembering to deactivate and activate
-        // again (`CD-6`). One option read per admin request, and the work happens only when
-        // the stored version is behind.
-        add_action('admin_init', $plugin->ensureUpToDate(...));
-
-        // ⚠️ **Seitenvorlagen als Startmuster** ([D-870](../../docs/NewConcept/90-decision-log.md)) — *nur in der Verwaltung und für die
-        // REST-Schnittstelle, über die der Block-Editor die Muster holt; der öffentliche Aufruf liest nichts.*
-        add_action('admin_init', static fn () => $plugin->upgradeFailure === null && $plugin->starterPatterns()->register());
-        add_action('rest_api_init', static fn () => $plugin->starterPatterns()->register());
-
-        // ⚠️ **Das Modell online pflegen** ([D-911](../../docs/NewConcept/90-decision-log.md)) — *über die Abilities, die der
-        // WordPress-Connector als Werkzeuge zeigt. Ohne die Abilities-API (vor WordPress 6.9) feuern die Haken nie.*
-        add_action('wp_abilities_api_categories_init', static fn () => $plugin->abilities()->registerCategory());
-        add_action('wp_abilities_api_init', static fn () => $plugin->abilities()->register());
-        add_action('init', ModelAbilities::ensureDataRole(...));
-
-        // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
-        add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
-        add_action('rest_api_init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->registerRoutes());
     }
 
     public function abilities(): ModelAbilities
@@ -286,6 +319,14 @@ final class Plugin
         // *Ohne diesen Fang war ein Fehler hier ein weisser Bildschirm in jedem wp-admin-Aufruf — und auf einer Website ohne
         // Dateizugang kein Rückweg. So bleibt die Verwaltung bedienbar, der Hinweis nennt den Fehler, und die Seite «Backup»
         // kann einen funktionierenden Stand einspielen.*
+        $this->upgradeFailure = ((string) get_option(self::ACTIVATION_FAILURE, '')) ?: null;
+
+        // ⚠️ *Once per release and not per request (D-1187): the checks below are cheap, but asking them compiled the schema,
+        // the seed and the scaffolds — about 400 KB of PHP — on every admin page and every heartbeat.*
+        if ($this->upgradeFailure === null && get_option(self::UP_TO_DATE_OPTION, '') === self::VERSION) {
+            return;
+        }
+
         try {
             $this->bringUpToDate();
         } catch (\Throwable $e) {
@@ -296,7 +337,11 @@ final class Plugin
 
         if ($this->upgradeFailure !== null) {
             add_action('admin_notices', $this->reportUpgradeFailure(...));
+
+            return;
         }
+
+        update_option(self::UP_TO_DATE_OPTION, self::VERSION, true);
     }
 
     public function reportUpgradeFailure(): void
@@ -348,6 +393,7 @@ final class Plugin
         try {
             $this->installFresh();
             delete_option(self::ACTIVATION_FAILURE);
+            delete_option(self::UP_TO_DATE_OPTION);
         } catch (\Throwable $e) {
             update_option(self::ACTIVATION_FAILURE, $e->getMessage(), false);
         }
