@@ -84,6 +84,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | W1 | Fachbegriffe der Lagerwirtschaft (Material, Bestandsposten, Charge, Wareneingang, Warenausgang, Reklamation), nicht Gesprächswörter. | [D-1005](NewConcept/90-decision-log.md) |
 | W2 | Nichts Sichtbares hart kodiert: Software-Texte über die Text-Domain, Knotennamen als Labels im Modell. | `AR-2` ([`CLAUDE.md`](../CLAUDE.md)) |
 | W3 | Zahlen mit dem Dezimalzeichen der Website-Sprache, Leerzeichen zwischen Zahl und Einheit (SI/DIN 1338). | [D-1175](NewConcept/90-decision-log.md) |
+| W4 | Repositorien der Logistik-Module heißen `wp_tax_log_<name>` (z. B. `wp_tax_log_sales`); Umzug nach und nach, Ordner und Daten bleiben. Welche Anbindungen dazugehören, ist offen. | [D-1188](NewConcept/90-decision-log.md) |
 
 ## 8 · Architektur
 
