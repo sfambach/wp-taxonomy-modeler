@@ -39,7 +39,8 @@ $reiter = SettingsScreen::moduleTabs();
 $pruefe(array_key_first(SettingsScreen::moduleTabs()) === 'import', 'the Import tab stands before the module tabs');
 // ⚠️ *Seit dem Eingang der Import-Module meldet der Modeller selbst den Reiter «import» an (D-953); er steht vor dem Testmodul.*
 // ⚠️ *Seit dem 2026-11-02 meldet der Modeller auch «printing» an (D-1032, D-1096); er steht nach «import».*
-$pruefe(array_keys($reiter) === ['import', 'printing', 'stock'], 'only a complete tab with its own slug is taken');
+// ⚠️ *Seit D-1206 meldet der Modeller auch «scanner» an, eine eigene Seite ohne `render`/`save`; sie steht nach «printing».*
+$pruefe(array_keys($reiter) === ['import', 'printing', 'scanner', 'stock'], 'only a complete tab with its own slug is taken');
 
 $_GET['tab'] = 'stock';
 $seite = (new SettingsScreen())->render();

@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.193';
+    public const VERSION     = '0.1.194';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -100,6 +100,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\PrintService::boot();
         \Taxmod\WordPress\Printing\PrintRest::boot();
         \Taxmod\WordPress\Printing\PrintJobsScreen::boot();
+        // D-1206: the scanner's test page, a tab of the Configuration.
+        \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
         \Taxmod\WordPress\Printing\LabelButton::boot(static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields));
         \Taxmod\WordPress\Printing\LabelPreview::boot();

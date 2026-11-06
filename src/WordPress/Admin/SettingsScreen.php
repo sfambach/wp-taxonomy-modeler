@@ -145,6 +145,14 @@ final class SettingsScreen
         $reiter = self::moduleTabs();
         $tab    = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
 
+        if (isset($reiter[$tab]) && $reiter[$tab]['page'] !== null) {
+            return '<div class="wrap">'
+                . ListPage::heading(__('Configuration', 'taxmod'))
+                . $this->tabBar($reiter, $tab)
+                . (string) ($reiter[$tab]['page'])()
+                . '</div>';
+        }
+
         if (isset($reiter[$tab])) {
             // ⚠️ *Sein Wunsch vom 2026-10-21 (D-963): «bei jedem api modul einen kasten recht … der die ganze prozedure
             // beschreibt wie man an die daten kommt und was man tun muss». The module gives the content, the page the place.*
@@ -735,9 +743,11 @@ final class SettingsScreen
      * escaped HTML) the access data; the page draws them in one order for every module: access, fetching, settings (D-981).
      * An optional `test` (callable, returns a plain sentence) puts «Test connection» beside the access data's own Save; it
      * runs after the save, on what was just entered. An optional `forget` (callable) adds «Delete access data», asked
-     * before; it deletes and saves nothing else. An optional `reader` (OrderMailParser) fills the part «Mail» (D-1007).*
+     * before; it deletes and saves nothing else. An optional `reader` (OrderMailParser) fills the part «Mail» (D-1007).
+     * A `page` (callable, escaped HTML) instead of `render` and `save` makes the tab a page of its own, without the
+     * settings form and its «Save» — a test page such as the scanner's (D-1206).*
      *
-     * @return array<string, array{title: string, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null, version: string, source: string, credentials: (callable(): string)|null, test: (callable(): string)|null, forget: (callable(): void)|null, reader: OrderMailParser|null}>
+     * @return array<string, array{title: string, page: (callable(): string)|null, render: callable(): string, save: callable(array<string, mixed>): void, guide: (callable(): string)|null, version: string, source: string, credentials: (callable(): string)|null, test: (callable(): string)|null, forget: (callable(): void)|null, reader: OrderMailParser|null}>
      */
     public static function moduleTabs(): array
     {
@@ -747,14 +757,18 @@ final class SettingsScreen
         foreach (is_array($gemeldet) ? $gemeldet : [] as $slug => $tab) {
             $slug = sanitize_key((string) $slug);
 
-            if ($slug === '' || $slug === 'general' || ! is_array($tab) || ! is_callable($tab['render'] ?? null) || ! is_callable($tab['save'] ?? null)) {
+            // D-1206: a tab with `page` is a page of its own (the scanner test) and needs neither `render` nor `save`.
+            $seite = is_array($tab) && is_callable($tab['page'] ?? null) ? $tab['page'] : null;
+
+            if ($slug === '' || $slug === 'general' || ! is_array($tab) || ($seite === null && (! is_callable($tab['render'] ?? null) || ! is_callable($tab['save'] ?? null)))) {
                 continue;
             }
 
             $reiter[$slug] = [
                 'title'  => (string) ($tab['title'] ?? $slug),
-                'render' => $tab['render'],
-                'save'   => $tab['save'],
+                'page'   => $seite,
+                'render' => $seite === null ? $tab['render'] : static fn (): string => '',
+                'save'   => $seite === null ? $tab['save'] : static function (array $post): void {},
                 'guide'  => is_callable($tab['guide'] ?? null) ? $tab['guide'] : null,
                 'version' => sanitize_text_field((string) ($tab['version'] ?? '')),
                 'source' => sanitize_key((string) ($tab['source'] ?? '')),
