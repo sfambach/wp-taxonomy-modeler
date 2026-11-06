@@ -28,6 +28,8 @@ final class LabelButton
      * the label is then drawn from that layout; `code`, `title` and `subtitle` are among its values.
      * D-1191: `'printer' => ['queue', 'roll', 'turn', 'options', 'turn_options', 'sizes', 'offset', 'line', 'name']` — the printer
      * whose roll the label fits; the job then carries its queue and the CUPS options for this label to the print service.
+     * D-1192: `'choices' => [id => template]`, `'chosen' => id`, `'printers' => [id => printer + 'allows' => [template ids]]` —
+     * the dialog offers the labels to choose from, the chosen one first, and the printers whose loaded roll allows it.
      * D-1160: with `'record' => id` the modeller reads the fields the layout names from that record itself; what the module
      * passes in `values` only fills what the record has no field for.
      */
@@ -64,7 +66,8 @@ final class LabelButton
         do_action(Plugin::STYLE_ACTION);
 
         $label = LabelContent::of($kind, $id, $title, $subtitle);
-        $filled = self::filled($label, $template);
+        $chooser = self::chooser($label, $template);
+        $filled = $chooser === null ? self::filled($label, $template) : null;
         $default = self::DEFAULT_FORMAT[$kind->value];
         $options = '';
         foreach (LabelFormat::shipped() as $format) {
@@ -75,11 +78,11 @@ final class LabelButton
         $switch = 'taxmod-label-' . strtolower($kind->value) . '-' . $id;
         $queued = (int) ($_GET['taxmod_label_job'] ?? 0);
 
-        $body = ($filled === null
+        $body = ($chooser !== null ? $chooser['html'] : ($filled === null
                 ? '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Format', 'taxmod') . '</span>'
                     . '<select name="format">' . $options . '</select></label>'
                 : '<span style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Vorlage', 'taxmod') . '</span>'
-                    . esc_html(trim($filled->templateName . ' · ' . PrintTab::size($filled->format) . ($filled->printer === null ? '' : ' · ' . ($filled->printer->name !== '' ? $filled->printer->name : $filled->printer->queue)), ' ·')) . '</span>')
+                    . esc_html(trim($filled->templateName . ' · ' . PrintTab::size($filled->format) . ($filled->printer === null ? '' : ' · ' . ($filled->printer->name !== '' ? $filled->printer->name : $filled->printer->queue)), ' ·')) . '</span>'))
             // D-1152, his word 2026-11-04: «Bei etikett druck anzahl mit aufnehmen» — the module says how many to start with.
             . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Anzahl', 'taxmod') . '</span>'
             . '<input type="number" name="copies" min="1" max="' . self::MAX_COPIES . '" step="1" value="' . self::copies($copies) . '" style="width:6em"></label>'
@@ -96,6 +99,7 @@ final class LabelButton
             . '<input type="hidden" name="title" value="' . esc_attr($label->title) . '">'
             . '<input type="hidden" name="subtitle" value="' . esc_attr($label->subtitle) . '">'
             . ($filled === null ? '' : '<input type="hidden" name="document" value="' . esc_attr($filled->toJson()) . '">')
+            . ($chooser === null ? '' : $chooser['hidden'])
             . \Taxmod\Core\Renderer\DialogMarkup::of(
                 $switch,
                 esc_html__('Etikett drucken', 'taxmod'),
@@ -120,6 +124,24 @@ final class LabelButton
 
         $post = wp_unslash($_POST);
         $copies = self::copies((int) ($post['copies'] ?? 1));
+
+        // D-1192: the label and the printer chosen in the dialog; a printer whose roll does not allow the label is refused.
+        if (isset($post['choice'])) {
+            $choice   = absint($post['choice']);
+            $document = json_decode((string) (((array) ($post['documents'] ?? []))[$choice] ?? ''), true);
+            $printer  = (string) ($post['printer'] ?? '');
+            if (! is_array($document)) {
+                wp_die(esc_html__('Unknown label.', 'taxmod'), '', ['response' => 400]);
+            }
+            if ($printer !== '') {
+                $raw = json_decode((string) (((array) ($post['printers'] ?? []))[absint($printer)] ?? ''), true);
+                if (! is_array($raw) || ! in_array($choice, array_map('intval', (array) ($raw['allows'] ?? [])), true)) {
+                    wp_die(esc_html__('This printer has no roll for this label.', 'taxmod'), '', ['response' => 400]);
+                }
+                $document['printer'] = $raw;
+            }
+            $post['document'] = (string) json_encode($document);
+        }
 
         // D-1153: a label from a template brings its own size and layout.
         if (is_string($post['document'] ?? null) && $post['document'] !== '') {
@@ -201,6 +223,70 @@ final class LabelButton
         } catch (\InvalidArgumentException) {
             return null;
         }
+    }
+
+    /**
+     * D-1192: the label and printer chosen in the dialog — one select each, the chosen label first, the printers its roll allows.
+     * Every label is filled here, so what prints is what the dialog showed; a small script keeps the printer list to the label.
+     *
+     * @param array<string, mixed> $template
+     * @return array{html: string, hidden: string}|null
+     */
+    private static function chooser(LabelContent $label, array $template): ?array
+    {
+        $choices = is_array($template['choices'] ?? null) ? $template['choices'] : [];
+        if ($choices === []) {
+            return null;
+        }
+        $chosen   = (int) ($template['chosen'] ?? array_key_first($choices));
+        $labels   = '';
+        $hidden   = '';
+        foreach ($choices as $id => $choice) {
+            $filled = is_array($choice) ? self::filled($label, $choice) : null;
+            if ($filled === null) {
+                continue;
+            }
+            $labels .= '<option value="' . (int) $id . '"' . selected((int) $id, $chosen, false) . '>' . esc_html(trim($filled->templateName . ' · ' . PrintTab::size($filled->format), ' ·')) . '</option>';
+            $hidden .= '<input type="hidden" name="documents[' . (int) $id . ']" value="' . esc_attr($filled->toJson()) . '">';
+        }
+        if ($labels === '') {
+            return null;
+        }
+
+        $printers = '<option value="" data-allows="*">' . esc_html__('Ohne Drucker (wie bisher)', 'taxmod') . '</option>';
+        $first    = true;
+        foreach (is_array($template['printers'] ?? null) ? $template['printers'] : [] as $id => $printer) {
+            $allows = array_map('intval', (array) ($printer['allows'] ?? []));
+            $pick   = $first && in_array($chosen, $allows, true);
+            $first  = $first && ! $pick;
+            $printers .= '<option value="' . (int) $id . '" data-allows="' . esc_attr(implode(' ', $allows)) . '"' . ($pick ? ' selected' : '') . '>'
+                . esc_html(trim((string) ($printer['name'] ?? '') . ' · ' . (string) ($printer['roll_name'] ?? ''), ' ·')) . '</option>';
+            $hidden .= '<input type="hidden" name="printers[' . (int) $id . ']" value="' . esc_attr((string) json_encode($printer)) . '">';
+        }
+
+        $html = '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Etikett', 'taxmod') . '</span>'
+            . '<select name="choice" data-taxmod-label-choice>' . $labels . '</select></label>'
+            . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Drucker', 'taxmod') . '</span>'
+            . '<select name="printer" data-taxmod-label-printer>' . $printers . '</select></label>'
+            . self::chooserScript();
+
+        return ['html' => $html, 'hidden' => $hidden];
+    }
+
+    /** Once per page: a printer whose loaded roll does not allow the chosen label cannot be picked. */
+    private static function chooserScript(): string
+    {
+        static $done = false;
+        if ($done) {
+            return '';
+        }
+        $done = true;
+
+        return '<script>(function(){function sync(form,pick){var l=form.querySelector("[data-taxmod-label-choice]"),p=form.querySelector("[data-taxmod-label-printer]");if(!l||!p){return;}'
+            . 'var keep=null;Array.prototype.forEach.call(p.options,function(o){var a=(o.getAttribute("data-allows")||"").split(" ");o.disabled=a.indexOf("*")<0&&a.indexOf(l.value)<0;if(!o.disabled&&o.value!==""&&keep===null){keep=o;}});'
+            . 'if(pick||(p.selectedOptions.length&&p.selectedOptions[0].disabled)){p.value=keep?keep.value:"";}}'
+            . 'document.addEventListener("change",function(e){if(e.target.matches&&e.target.matches("[data-taxmod-label-choice]")){sync(e.target.form,true);}});'
+            . 'document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll("[data-taxmod-label-choice]").forEach(function(l){sync(l.form,false);});});})();</script>';
     }
 
     /**

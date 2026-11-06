@@ -64,6 +64,14 @@ final class LabelPrinterTest extends TestCase
     }
 
     #[Test]
+    public function the_roll_loaded_in_the_printer_decides_over_the_roll_the_label_names(): void
+    {
+        $label = self::label(self::BROTHER, 62, 30, 102);
+        self::assertSame(62.0, $label->format->rollMm, 'D-1192');
+        self::assertTrue($label->format->turnedOnRoll());
+    }
+
+    #[Test]
     public function the_printer_travels_with_the_job(): void
     {
         $again = FilledLabel::fromJson(self::label(self::PHOMEMO)->toJson());

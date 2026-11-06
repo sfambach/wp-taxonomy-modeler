@@ -82,8 +82,11 @@ final class FilledLabel
         // as its roll (D-1108).
         $turned = is_bool($format['turn'] ?? null) ? $format['turn'] : ($printer !== null && ! $printer->turnsLabel ? false : null);
 
+        // D-1192: the roll loaded in the printer is the roll the label is printed on.
+        $roll = $printer !== null && $printer->rollMm > 0.0 ? $printer->rollMm : ($size('roll') > 0.0 ? $size('roll') : $size('w'));
+
         return new self(
-            new LabelFormat($key, $size('w'), $size('h'), $size('roll') > 0.0 ? $size('roll') : $size('w'), $turned, $printer?->offsetMm ?? 0.0, $printer?->lineMm ?? 0.0),
+            new LabelFormat($key, $size('w'), $size('h'), $roll, $turned, $printer?->offsetMm ?? 0.0, $printer?->lineMm ?? 0.0),
             LabelLayout::fromJson(json_encode($raw['layout'] ?? null, JSON_THROW_ON_ERROR)),
             $values,
             (string) ($raw['template'] ?? ''),
