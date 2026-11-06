@@ -486,6 +486,20 @@ final class ListPage
     }
 
     /**
+     * The attribute that makes a form, button or link ask first in the shared dialog (`assets/confirm-dialog.js`) — the one
+     * way a Taxmod page asks before it acts; never `window.confirm` (D-804, D-1063, D-1186).
+     */
+    public static function confirm(string $message): string
+    {
+        // A module page that is not the modeller's own still gets the dialog's script and look (as `LabelButton` does).
+        if (! wp_script_is('taxmod-confirm')) {
+            do_action(Plugin::STYLE_ACTION);
+        }
+
+        return ' data-taxmod-confirm="' . esc_attr($message) . '"';
+    }
+
+    /**
      * Asks before a bulk action, naming how many entries it reaches: a row that stands for several («;» between them)
      * counts each. ⚠️ *His report of 2026-10-25: «Diese Sammelaktion hat nicht nur die selektierten Einträge genommen,
      * sondern alle» — the page now says the number before anything happens.*
@@ -495,10 +509,10 @@ final class ListPage
         $message = (string) wp_json_encode(__('Apply «%1$s» to %2$d entries?', 'taxmod'));
         $none = (string) wp_json_encode(__('Nothing selected.', 'taxmod'));
 
-        return "var n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
+        return "if(this.dataset.taxmodOk){delete this.dataset.taxmodOk;return true}var f=this,n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
             . "var s=this.querySelector('select[name=action]');if(!s.value){return false}"
             . 'if(n===0){alert(' . $none . ');return false}'
-            . 'return confirm(' . $message . ".replace('%1\$s',s.options[s.selectedIndex].text).replace('%2\$d',n))";
+            . 'taxmodConfirm(' . $message . ".replace('%1\$s',s.options[s.selectedIndex].text).replace('%2\$d',n),function(){f.dataset.taxmodOk=1;f.requestSubmit()});return false";
     }
 
     private static function toggleAll(bool $hidden): string

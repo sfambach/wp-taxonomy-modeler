@@ -165,7 +165,7 @@ final class SettingsScreen
                     . ($reiter[$tab]['test'] === null ? '' : ' ' . get_submit_button(__('Test connection', 'taxmod'), 'secondary', self::TEST, false))
                     // ⚠️ *«ja ein löschen button aber mit nachfrage wäre eine gute idee».*
                     . ($reiter[$tab]['forget'] === null ? '' : ' ' . get_submit_button(__('Delete access data', 'taxmod'), 'delete', self::FORGET, false, [
-                        'onclick' => 'return confirm(' . wp_json_encode(__('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod')) . ')',
+                        'data-taxmod-confirm' => __('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod'),
                     ])) . '</p>', $modul)
                 . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle), $modul)
                 // ⚠️ *D-1066: «ein flag in den einstellungen der api module default gesetzt».*

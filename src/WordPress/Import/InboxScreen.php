@@ -307,7 +307,7 @@ final class InboxScreen
     private static function button(string $action, string $source, string $label, string $before = '', string $confirm = ''): string
     {
         return '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline-block;margin:0 .5em .25em 0"'
-            . ($confirm === '' ? '' : ' onsubmit="return confirm(' . esc_attr((string) wp_json_encode($confirm)) . ')"') . '>'
+            . ($confirm === '' ? '' : \Taxmod\WordPress\Admin\ListPage::confirm($confirm)) . '>'
             . '<input type="hidden" name="action" value="' . esc_attr($action) . '"><input type="hidden" name="source" value="' . esc_attr($source) . '">'
             . wp_nonce_field($action, '_wpnonce', true, false) . $before
             . get_submit_button($label, 'secondary small', 'submit', false) . '</form>';

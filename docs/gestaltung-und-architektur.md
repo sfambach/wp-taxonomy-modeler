@@ -48,7 +48,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 |---|---|---|
 | K1 | Alle Knöpfe einer Seite haben dieselbe Höhe, zentral festgelegt — auch «kleine» Knöpfe und Dialog-Öffner. Knöpfe stehen rechts. | [D-1068](NewConcept/90-decision-log.md), [D-989](NewConcept/90-decision-log.md) |
 | K2 | Ein Dialog hat unten «OK»/«Bestätigen» und «Abbrechen», schließt nur darüber oder über ✕, nie per Klick daneben; alle Dialoge haben eine Gestalt, gezeichnet an einer Stelle. | [D-804](NewConcept/90-decision-log.md), [D-730](NewConcept/90-decision-log.md) |
-| K3 | Eine Aktion, die vor dem Absenden fragt oder eine Auswahl braucht (Grund, Ort, Menge), ist dieser Dialog über `ListPage::dialogAction` — **kein `confirm()` des Browsers**, kein überfrachtetes Feld in der Zeile. | [D-1063](NewConcept/90-decision-log.md) |
+| K3 | Eine Aktion, die vor dem Absenden fragt oder eine Auswahl braucht (Grund, Ort, Menge), ist dieser Dialog über `ListPage::dialogAction`; eine reine Rückfrage trägt `ListPage::confirm($text)` (gemeinsamer Bestätigungsdialog, `assets/confirm-dialog.js`) — **kein `confirm()` des Browsers**, kein überfrachtetes Feld in der Zeile. | [D-1063](NewConcept/90-decision-log.md) |
 
 ## 4 · Auswahl und Formular
 

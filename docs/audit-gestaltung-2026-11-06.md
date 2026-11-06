@@ -23,7 +23,7 @@ ist (V1); ob jedes `<select>` ein Baum sein müsste (A4); Multiplizitäten gegen
 
 | # | Befund | Wo | Umbau |
 |---|---|---|---|
-| P2.1 | Browser-`confirm()` statt des gemeinsamen Dialogs. | Lager `InboundPage`, `PurchasePage`, `ContactsPage`; eBay `ShippingScreen`; Modeller `SettingsScreen`, `InboxScreen` | `ListPage::dialogAction` (K3). |
+| P2.1 ✅ | Browser-`confirm()` statt des gemeinsamen Dialogs. | Lager `InboundPage`, `PurchasePage`, `ContactsPage`; eBay `ShippingScreen`; Modeller `SettingsScreen`, `InboxScreen` | `ListPage::dialogAction` (K3). |
 | P2.2 | Eigenes `<h1>` statt `ListPage::heading()`. | Lager 3 (Fehlerseiten), Fertigung 1, eBay 3, JLCPCB 1, Modeller 5 (Settings, Cleanup, Nodes, Backup) | `heading()`; Fehlerseite als gemeinsamer Baustein. |
 | P2.3 | `<style>`/`<script>` in Seiten. | Lager `StockPage` (5), `LogisticsShell` (2); Modeller `NodesScreen`, `ChangeListImport`, `Plugin`; Fertigung/eBay nur Druckbögen (erlaubt) | Nach `assets/admin.css`/`admin.js` des Modellers. |
 | P2.4 | `style="…"` statt Klassen. | Lager 206, Modeller 127, Fertigung 38, eBay 34, JLCPCB 4, DHL 3, Mail 1 | Schrittweise CSS-Klassen im Modeller; zuerst Knöpfe/Abstände (K1). |
@@ -40,6 +40,8 @@ ist (V1); ob jedes `<select>` ein Baum sein müsste (A4); Multiplizitäten gegen
 Fertigung 0.0.17, JLCPCB 0.1.12. Das Gedächtnis gelesener Knoten gehört der Tür, nicht der Anfrage: ein
 anfrageweites Gedächtnis machte `stock-check` rot (eine Schreibung über `taxmod/apply` blieb ungesehen). `Table`
 bleibt je Modul (40 Zeilen Werteklasse), weil der Kern der Module ohne den Modeller getestet wird.
+
+P2.1 erledigt: Modeller 0.1.175 (`ListPage::confirm`, auch die Sammelaktionen), Lager 0.57.3, eBay 0.0.70; Regel `G1` ist sauber.
 
 ## Reihenfolge
 

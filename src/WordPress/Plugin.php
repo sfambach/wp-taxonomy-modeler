@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.1.174';
+    public const VERSION     = '0.1.175';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -594,6 +594,20 @@ final class Plugin
         );
 
         $this->enqueueScript();
+
+        // The shared confirm dialog (D-1186): small, and on every page that has the stylesheet, so no page needs `window.confirm`.
+        wp_enqueue_script(
+            'taxmod-confirm',
+            plugins_url('assets/confirm-dialog.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            [],
+            (string) (@filemtime($this->path('assets/confirm-dialog.js')) ?: self::VERSION),
+            true
+        );
+        wp_add_inline_script('taxmod-confirm', 'window.taxmodConfirmWords=' . wp_json_encode([
+            'title'  => __('Please confirm', 'taxmod'),
+            'ok'     => __('Confirm', 'taxmod'),
+            'cancel' => __('Cancel', 'taxmod'),
+        ]) . ';', 'before');
     }
 
     /**
