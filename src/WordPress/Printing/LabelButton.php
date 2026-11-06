@@ -42,6 +42,9 @@ final class LabelButton
     /** The format a label of this kind starts with in the dialog. */
     private const DEFAULT_FORMAT = ['O' => 'holder62', 'K' => 'roll62', 'M' => 'material62', 'E' => 'material62'];
 
+    /** D-1207: the option switching the preview in the dialog off; on unless set to '0'. */
+    public const PREVIEW_OPTION = 'taxmod_label_preview_in_dialog';
+
     /** More copies than this in one go is a typo, not a wish. */
     public const MAX_COPIES = 50;
 
@@ -86,7 +89,8 @@ final class LabelButton
             . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Anzahl', 'taxmod') . '</span>'
             . '<input type="number" name="copies" min="1" max="' . self::MAX_COPIES . '" step="1" value="' . self::copies($copies) . '" style="width:6em"></label>'
             . '<span style="display:block">' . esc_html($label->code . ' · ' . $label->title . ($label->subtitle === '' ? '' : ' · ' . $label->subtitle)) . '</span>'
-            . ($service ? '' : '<span class="description" style="display:block;margin-top:.5em">' . esc_html__('No print service set up: the label opens as PDF to print from the browser.', 'taxmod') . '</span>');
+            . ($service ? '' : '<span class="description" style="display:block;margin-top:.5em">' . esc_html__('No print service set up: the label opens as PDF to print from the browser.', 'taxmod') . '</span>')
+            . self::previewBox();
 
         $foot = ($service ? '<button type="submit" class="button button-primary" name="how" value="service">' . esc_html__('Print', 'taxmod') . '</button>' : '')
             . '<button type="submit" class="button' . ($service ? '' : ' button-primary') . '" name="how" value="pdf" formtarget="_blank">' . esc_html__('Open as PDF', 'taxmod') . '</button>';
@@ -383,6 +387,47 @@ final class LabelButton
             . 'say((j&&j.data&&j.data.message)||' . wp_json_encode(__('The label could not be printed.', 'taxmod')) . ',!!(j&&j.success));'
             . 'if(j&&j.success){var sw=f.querySelector(".taxmod-dialog-switch");if(sw){sw.checked=false;}}})'
             . '.catch(function(){say(' . wp_json_encode(__('The label could not be printed.', 'taxmod')) . ',false);}).then(function(){b.disabled=false;});},true);})();</script>';
+    }
+
+    public static function previewShown(): bool
+    {
+        return (string) get_option(self::PREVIEW_OPTION, '1') !== '0';
+    }
+
+    /**
+     * D-1207, his wish 2026-11-06: «etiketten vorschau im druck dialog, ausschaltbar über config» — the label as it would print,
+     * drawn when the dialog opens and again when a choice in it changes. The dialog posts itself as «Open as PDF» with one copy
+     * and shows the answer, so the preview is the print path itself (D-1161) and a list of rows renders nothing until one opens.
+     */
+    private static function previewBox(): string
+    {
+        if (! self::previewShown()) {
+            return '';
+        }
+
+        return '<span data-taxmod-label-preview style="display:block;margin-top:.75em"><span style="display:block;font-weight:600">' . esc_html__('Vorschau', 'taxmod') . '</span>'
+            . '<iframe title="' . esc_attr__('Label preview', 'taxmod') . '" style="display:block;width:100%;max-width:320px;height:200px;border:1px solid #c3c4c7;background:#fff"></iframe>'
+            . '<span class="description" data-taxmod-label-preview-note style="display:block"></span></span>'
+            . self::previewScript();
+    }
+
+    /** Once per page: fetch the dialog's own PDF (one copy) into its preview frame, on opening and on each change. */
+    private static function previewScript(): string
+    {
+        static $done = false;
+        if ($done) {
+            return '';
+        }
+        $done = true;
+
+        return '<script>(function(){var timers=new WeakMap();function show(f){var box=f&&f.querySelector("[data-taxmod-label-preview]");if(!box||!window.fetch||!window.FormData){return;}'
+            . 'var frame=box.querySelector("iframe"),note=box.querySelector("[data-taxmod-label-preview-note]"),data=new FormData(f);data.set("how","pdf");data.set("copies","1");note.textContent=' . wp_json_encode(__('Wird gezeichnet …', 'taxmod')) . ';'
+            . 'fetch(f.getAttribute("action"),{method:"POST",body:data,credentials:"same-origin"}).then(function(r){var pdf=(r.headers.get("Content-Type")||"").indexOf("application/pdf")===0;return r.ok&&pdf?r.blob():Promise.reject();})'
+            . '.then(function(b){if(frame.dataset.url){URL.revokeObjectURL(frame.dataset.url);}frame.dataset.url=URL.createObjectURL(b);frame.src=frame.dataset.url+"#toolbar=0&navpanes=0&view=Fit";note.textContent="";})'
+            . '.catch(function(){note.textContent=' . wp_json_encode(__('Die Vorschau lässt sich nicht zeichnen.', 'taxmod')) . ';});}'
+            . 'function later(f){clearTimeout(timers.get(f));timers.set(f,setTimeout(function(){show(f);},250));}'
+            . 'document.addEventListener("change",function(e){var t=e.target,f=t&&t.form;if(!f||!f.querySelector("[data-taxmod-label-preview]")){return;}'
+            . 'if(t.classList.contains("taxmod-dialog-switch")){if(t.checked){later(f);}return;}if(t.name!=="copies"){later(f);}});})();</script>';
     }
 
     /** Once per page: a printer whose loaded roll does not allow the chosen label cannot be picked. */

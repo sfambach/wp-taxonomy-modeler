@@ -74,6 +74,11 @@ final class PrintTab
         $doing = sanitize_text_field((string) ($post[self::DO] ?? ''));
         $user = get_current_user_id();
 
+        // D-1207: only the Configuration's form carries the switch; the page under Logistik leaves it as it is.
+        if (isset($post[LabelButton::PREVIEW_OPTION])) {
+            update_option(LabelButton::PREVIEW_OPTION, (string) $post[LabelButton::PREVIEW_OPTION] === '1' ? '1' : '0', false);
+        }
+
         if ($doing === 'renew') {
             set_transient(self::NEW_TOKEN . $user, PrintService::renewAccess(), 15 * MINUTE_IN_SECONDS);
             self::say(__('New access created. Enter it in the print service now; it is shown only this once. The old access no longer works.', 'taxmod'));
@@ -103,7 +108,7 @@ final class PrintTab
             'title'   => __('Printing', 'taxmod'),
             'version' => \Taxmod\WordPress\Plugin::VERSION,
             // His word 2026-11-03: «ich würde auch hier trennen die einstellungen bleiben im admin config die label haben wir ja jetzt im logistik menü» (D-1117).
-            'render'  => static fn (): string => '<p class="description">' . esc_html__('Labels with preview and test print: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
+            'render'  => static fn (): string => self::previewSetting() . '<p class="description">' . esc_html__('Labels with preview and test print: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
                 . ' <a href="' . esc_url(PrintJobsScreen::url()) . '">' . esc_html__('Print jobs', 'taxmod') . '</a></p>',
             'credentials' => static fn (): string => (new self())->servicePart(),
             'test'    => self::status(...),
@@ -114,6 +119,13 @@ final class PrintTab
         ];
 
         return $tabs;
+    }
+
+    /** D-1207: «Vorschau im Druckdialog», on by default. */
+    private static function previewSetting(): string
+    {
+        return '<p><input type="hidden" name="' . esc_attr(LabelButton::PREVIEW_OPTION) . '" value="0"><label><input type="checkbox" name="' . esc_attr(LabelButton::PREVIEW_OPTION) . '" value="1"'
+            . checked(LabelButton::previewShown(), true, false) . '> ' . esc_html__('Vorschau des Etiketts im Druckdialog zeigen', 'taxmod') . '</label></p>';
     }
 
     /** One sentence on the print service: not set up, not heard of yet, or when it was last heard of, with what. Also «Test connection». */

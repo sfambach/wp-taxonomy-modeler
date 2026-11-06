@@ -61,6 +61,15 @@ $pruefe($druck->pdfFor(['format' => 'roll62', 'code' => 'O-1', 'title' => '']) i
 // D-1152: the label dialog asks how many, starting with what the module says, held to 1 … 50.
 $knopf = \Taxmod\WordPress\Printing\LabelButton::render('K', 77, 'Kiste', '', 2);
 $pruefe(str_contains($knopf, 'name="copies"') && str_contains($knopf, 'value="2"'), 'the label dialog offers «Anzahl», preset by the module');
+// D-1207: the preview in the dialog, switched off and on again in the Configuration's printing tab.
+$vorschau = \Taxmod\WordPress\Printing\LabelButton::PREVIEW_OPTION;
+$pruefe(str_contains($knopf, 'data-taxmod-label-preview') && str_contains($knopf, '<iframe'), 'D-1207: the label dialog shows a preview frame by default');
+\Taxmod\WordPress\Printing\PrintTab::act([$vorschau => '0']);
+$pruefe(! str_contains(\Taxmod\WordPress\Printing\LabelButton::render('K', 78, 'Kiste', '', 1), 'data-taxmod-label-preview'), 'D-1207: switched off in the Configuration, the dialog has no preview');
+\Taxmod\WordPress\Printing\PrintTab::act([]);
+$pruefe(get_option($vorschau) === '0', 'D-1207: a save without the switch (the page under Logistik) leaves it as it is');
+\Taxmod\WordPress\Printing\PrintTab::act([$vorschau => '1']);
+$pruefe(str_contains(\Taxmod\WordPress\Printing\LabelButton::render('K', 79, 'Kiste', '', 1), 'data-taxmod-label-preview'), 'D-1207: switched on again, the preview is back');
 $pruefe(\Taxmod\WordPress\Printing\LabelButton::copies(0) === 1 && \Taxmod\WordPress\Printing\LabelButton::copies(500) === 50, 'the number of copies stays between 1 and 50');
 
 // D-1160: the label reads the fields its layout names from the record itself, by name in any case or by id.
