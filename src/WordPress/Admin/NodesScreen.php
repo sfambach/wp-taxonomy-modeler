@@ -706,7 +706,7 @@ final class NodesScreen
 
     /**
      * Die Worte dieser Sätze, wie die Suche sie zeigt — über eine gedachte Kante auf `$at`, ohne Feldwahl, also das erste Textfeld
-     * je Satz; alle in einem Lauf (`CD-7`, [D-1208](../../../docs/NewConcept/90-decision-log.md)).
+     * je Satz; alle in einem Lauf (`CD-7`, [D-1209](../../../docs/NewConcept/90-decision-log.md)).
      *
      * @param  list<int> $ids
      * @return array<int, string> Satz-Id ⇒ Wort
@@ -723,7 +723,7 @@ final class NodesScreen
     }
 
     /**
-     * Je Feld die Worte der Sätze dafür, für eine Abfrage von aussen ([D-1208](../../../docs/NewConcept/90-decision-log.md)) — derselbe
+     * Je Feld die Worte der Sätze dafür, für eine Abfrage von aussen ([D-1209](../../../docs/NewConcept/90-decision-log.md)) — derselbe
      * Weg wie der Vergleich.
      *
      * @param  list<int>      $ids

@@ -130,7 +130,7 @@ final class ModelAbilities
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
-        // *D-1208: ask for the records that matter instead of reading a whole node — «is anything stored under Alex?» once meant 561 lots.*
+        // *D-1209: ask for the records that matter instead of reading a whole node — «is anything stored under Alex?» once meant 561 lots.*
         wp_register_ability('taxmod/query', [
             'label'               => __('Query records', 'taxmod'),
             'description'         => __('Records of a node (and its subtree unless subtree is false) that meet every condition, one page of them with the total. where: list of {field: relation id, op: eq | in | contains | empty | not_empty | within, value or values}; eq and in compare the stored value (text, number, date YYYY-MM-DD, or the id a reference points at), contains a text ignoring case; within {field, value: record id, parent_field} matches a reference to that record or any record below it by its parent field (e.g. a storage place and its sub-places). search: a word in any text value. fields: relation ids or names to answer with, as the words the screen shows; without fields each record comes with its own word only. A part (e.g. a position of a transaction) names its head as part_of. Without node the search covers everything under Model. limit 1–500 (default 50), offset.', 'taxmod'),
@@ -453,7 +453,7 @@ final class ModelAbilities
     }
 
     /**
-     * The records a question needs and only the fields it names (D-1208): conditions in one query, the words in one run.
+     * The records a question needs and only the fields it names (D-1209): conditions in one query, the words in one run.
      *
      * @param array<string, mixed> $input
      * @return array{total: int, offset: int, records: list<array{id: int, node: int, word: string, part_of?: int, values?: array<string, string>}>, unknown_fields?: list<string>}

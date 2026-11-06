@@ -6,7 +6,7 @@ use Taxmod\Core\Model\RecordInTree;
 
 /**
  * What `taxmod/query` was asked, checked once and put into the shape the record table answers — so a reader fetches the
- * records it needs and not a whole node (D-1208).
+ * records it needs and not a whole node (D-1209).
  *
  * ```mermaid
  * flowchart LR
@@ -19,7 +19,7 @@ use Taxmod\Core\Model\RecordInTree;
  * ⚠️ *A condition compares the **stored** value: text, number, date or the id a reference points at. A part (a composition)
  * is a record of its own; its inner values are not reached from here.*
  *
- * @see docs/NewConcept/90-decision-log.md D-1208
+ * @see docs/NewConcept/90-decision-log.md D-1209
  */
 final class RecordQuery
 {

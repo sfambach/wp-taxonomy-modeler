@@ -4,6 +4,7 @@ namespace Taxmod\WordPress\Printing;
 
 use Taxmod\Core\Printing\LabelPrefix;
 use Taxmod\Core\Printing\ScannedCode;
+use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Persistence\WpdbNodeRepository;
@@ -31,6 +32,9 @@ final class ScannerTab
 {
     public const SLUG = 'scanner';
 
+    /** The page under Logistik › Einstellungen (D-1211), announced through the logistics module's filter. */
+    public const LOGISTICS_SLUG = 'taxmod-scanner';
+
     /**
      * Where a module adds its links for a scanned record: `(array<string, string> $links, string $kind, int $record)`,
      * label → URL; `$kind` is the code's letter (O, M, E, K) or '' for a bare id.
@@ -55,6 +59,17 @@ final class ScannerTab
 
             return $tabs;
         }, 3);
+        // D-1211, his word 2026-11-06: «solle in einstellung zweig des logistik menüs sein» — the same page under Logistik › Einstellungen.
+        add_filter(PrintTab::LOGISTICS_FILTER, static function (array $pages) use ($screen): array {
+            $pages[] = [
+                'slug'   => self::LOGISTICS_SLUG,
+                'label'  => __('Scanner', 'taxmod'),
+                'area'   => 'settings',
+                'render' => static fn (): string => '<div class="wrap">' . ListPage::heading(__('Scanner', 'taxmod')) . (new self($screen))->page() . '</div>',
+            ];
+
+            return $pages;
+        });
     }
 
     /** @param \Closure(): NodesScreen $screen */
@@ -73,14 +88,32 @@ final class ScannerTab
 
         return '<p class="description">' . esc_html__('Scan a label, or type its code, and press Enter. The scanner works as a keyboard; the field is ready for the next scan straight away.', 'taxmod') . '</p>'
             . '<form method="get" action="' . esc_url(admin_url('admin.php')) . '" class="taxmod-scan-form">'
-            . '<input type="hidden" name="page" value="taxmod-settings">'
-            . '<input type="hidden" name="tab" value="' . esc_attr(self::SLUG) . '">'
+            . self::address()
             . '<input type="hidden" name="' . esc_attr(self::NONCE) . '" value="' . esc_attr(wp_create_nonce(self::ACTION)) . '">'
             . '<label class="screen-reader-text" for="taxmod-scan-code">' . esc_html__('Scanned code', 'taxmod') . '</label>'
             . '<input type="text" id="taxmod-scan-code" name="' . esc_attr(self::FIELD) . '" value="" class="regular-text taxmod-scan-code" autocomplete="off" autofocus placeholder="' . esc_attr__('e.g. M-123', 'taxmod') . '">'
             . get_submit_button(__('Look up', 'taxmod'), 'primary', '', false)
             . '</form>'
             . ($typed === '' ? '' : ($asked ? $this->result($typed) : '<div class="notice notice-error inline"><p>' . esc_html__('The link has expired. Scan again.', 'taxmod') . '</p></div>'));
+    }
+
+    /**
+     * The page the form returns to: the one it stands on, the Configuration's tab or the page under Logistik (D-1211), so
+     * the next scan lands where the field was.
+     */
+    private static function address(): string
+    {
+        $html = '';
+
+        foreach (['page' => 'taxmod-settings', 'tab' => self::SLUG, 'module' => ''] as $key => $fallback) {
+            $value = isset($_GET['page']) ? sanitize_text_field(wp_unslash((string) ($_GET[$key] ?? ''))) : $fallback;
+
+            if ($value !== '') {
+                $html .= '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr($value) . '">';
+            }
+        }
+
+        return $html;
     }
 
     /** What the scan names; the raw keystrokes stay visible so a wrong keyboard layout on the scanner shows itself. */

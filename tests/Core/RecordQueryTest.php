@@ -13,7 +13,7 @@ use Taxmod\Core\Service\RecordQuery;
 use Taxmod\Tests\Core\Fake\InMemoryRecords;
 
 /**
- * Records found by their values instead of reading a whole node ([D-1208](../../docs/NewConcept/90-decision-log.md)).
+ * Records found by their values instead of reading a whole node ([D-1209](../../docs/NewConcept/90-decision-log.md)).
  *
  * ⚠️ *His trigger: «is anything stored under Alex?» meant 561 lots and every transaction. The answer must come from the
  * question, not from the node.*

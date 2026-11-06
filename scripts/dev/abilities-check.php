@@ -459,7 +459,7 @@ $wertVon = static function (int $satz) use ($node, $ergebnis): ?string {
 check('duplicate_record legt über write-data eine Kopie mit dem Wert des Originals an (D-1135)', $kopie > 0 && $kopie !== (int) $ergebnis['refs']['r'] && $wertVon($kopie) !== null && $wertVon($kopie) === $wertVon((int) $ergebnis['refs']['r']), is_wp_error($kopiert) ? $kopiert->get_error_message() : wp_json_encode([$kopie, $wertVon($kopie)]));
 check('duplicate_record kopiert keinen Einstellungssatz (D-1135)', is_wp_error($daten?->execute(['changes' => [['op' => 'duplicate_record', 'record' => $einstellung]]])));
 
-echo "Abfragen statt ganzer Knoten (D-1208)\n";
+echo "Abfragen statt ganzer Knoten (D-1209)\n";
 
 $query = wp_get_ability('taxmod/query');
 check('query ist registriert und nur lesend', $query !== null && ($query->get_meta()['annotations']['readonly'] ?? false) === true);
