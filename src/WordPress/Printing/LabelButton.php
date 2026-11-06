@@ -76,7 +76,6 @@ final class LabelButton
         }
         $service = PrintService::isSetUp();
         $switch = 'taxmod-label-' . strtolower($kind->value) . '-' . $id;
-        $queued = (int) ($_GET['taxmod_label_job'] ?? 0);
 
         $body = ($chooser !== null ? $chooser['html'] : ($filled === null
                 ? '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Format', 'taxmod') . '</span>'
@@ -111,14 +110,14 @@ final class LabelButton
                 __('Cancel', 'taxmod')
             )
             . '</form>'
-            . ($queued > 0 ? ' <span class="description">' . esc_html(sprintf(/* translators: %d: job number */ __('Job %d is waiting for the print service.', 'taxmod'), $queued)) . '</span>' : '');
+            . self::sendScript();
     }
 
     /** admin-post: capability, nonce, validate, then queue for the service or hand out the PDF. */
     public static function handle(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot print labels.', 'taxmod'), '', ['response' => 403]);
+            self::fail(esc_html__('You cannot print labels.', 'taxmod'), 403, ['taxmod_ajax' => $_POST['taxmod_ajax'] ?? '']);
         }
         check_admin_referer(self::ACTION, self::NONCE);
 
@@ -131,12 +130,12 @@ final class LabelButton
             $document = json_decode((string) (((array) ($post['documents'] ?? []))[$choice] ?? ''), true);
             $printer  = (string) ($post['printer'] ?? '');
             if (! is_array($document)) {
-                wp_die(esc_html__('Unknown label.', 'taxmod'), '', ['response' => 400]);
+                self::fail(esc_html__('Unknown label.', 'taxmod'), 400, $post ?? []);
             }
             if ($printer !== '') {
                 $raw = json_decode((string) (((array) ($post['printers'] ?? []))[absint($printer)] ?? ''), true);
                 if (! is_array($raw) || ! in_array($choice, array_map('intval', (array) ($raw['allows'] ?? [])), true)) {
-                    wp_die(esc_html__('This printer has no roll for this label.', 'taxmod'), '', ['response' => 400]);
+                    self::fail(esc_html__('This printer has no roll for this label.', 'taxmod'), 400, $post ?? []);
                 }
                 $document['printer'] = $raw;
             }
@@ -161,15 +160,16 @@ final class LabelButton
             try {
                 $filled = FilledLabel::fromJson($post['document']);
             } catch (\InvalidArgumentException $e) {
-                wp_die(esc_html($e->getMessage()), '', ['response' => 400]);
+                self::fail(esc_html($e->getMessage()), 400, $post ?? []);
             }
             $label = LabelPrint::labelFrom($filled->values);
             if ($label === null) {
-                wp_die(esc_html__('A label needs a known format, a code like O-123 and a title.', 'taxmod'), '', ['response' => 400]);
+                self::fail(esc_html__('A label needs a known format, a code like O-123 and a title.', 'taxmod'), 400, $post ?? []);
             }
             if (($post['how'] ?? '') === 'service' && PrintService::isSetUp()) {
                 $jobs = new PrintJobs();
                 $id = $jobs->queue($filled->format, $label, false, $filled->toJson(), $copies);
+                self::answerQueued($post, $id);
                 wp_safe_redirect(add_query_arg('taxmod_label_job', $id, wp_get_referer() ?: PrintJobsScreen::url()));
                 exit;
             }
@@ -180,17 +180,40 @@ final class LabelButton
         $format = $formats[sanitize_key((string) ($post['format'] ?? ''))] ?? null;
         $label = LabelPrint::labelFrom($post);
         if ($format === null || $label === null) {
-            wp_die(esc_html__('A label needs a known format, a code like O-123 and a title.', 'taxmod'), '', ['response' => 400]);
+            self::fail(esc_html__('A label needs a known format, a code like O-123 and a title.', 'taxmod'), 400, $post ?? []);
         }
 
         if (($post['how'] ?? '') === 'service' && PrintService::isSetUp()) {
             $jobs = new PrintJobs();
             $id = $jobs->queue($format, $label, false, null, $copies);
+            self::answerQueued($post, $id);
             wp_safe_redirect(add_query_arg('taxmod_label_job', $id, wp_get_referer() ?: PrintJobsScreen::url()));
             exit;
         }
 
         self::sendPdf(LabelDocument::render($format, array_fill(0, $copies, $label)), $label->code);
+    }
+
+    /**
+     * His word 2026-11-06: «lädt er danach die seite neu nur um eine meldung anzuzeigen … wäre auch gut wenn er deswegen die seite
+     * nicht neuladen muss» — a print sent from the dialog's script is answered with the message alone.
+     *
+     * @param array<string, mixed> $post
+     */
+    private static function answerQueued(array $post, int $job): void
+    {
+        if (! empty($post['taxmod_ajax'])) {
+            wp_send_json_success(['message' => sprintf(/* translators: %d: job number */ __('Job %d is waiting for the print service.', 'taxmod'), $job)]);
+        }
+    }
+
+    /** @param array<string, mixed> $post */
+    private static function fail(string $message, int $status, array $post): never
+    {
+        if (! empty($post['taxmod_ajax'])) {
+            wp_send_json_error(['message' => wp_strip_all_tags($message)], $status);
+        }
+        wp_die($message, '', ['response' => $status]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped by the caller.
     }
 
     private static function sendPdf(string $pdf, string $code): never
@@ -335,6 +358,31 @@ final class LabelButton
         return '<input type="hidden" name="variant_field" value="' . esc_attr($field) . '">'
             . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html((string) ($template['variants']['label'] ?? $field)) . '</span>'
             . '<select name="variant">' . $html . '</select></label>';
+    }
+
+    /**
+     * Once per page: «Print» sends the form in the background, closes the dialog and hands the answer to the page's message
+     * place as the event `taxmod:message` ({text, ok}); a page without one (nobody cancels the event) shows the shared
+     * `taxmod-toast`. Without the script the form posts and the page comes back as before.
+     */
+    private static function sendScript(): string
+    {
+        static $done = false;
+        if ($done) {
+            return '';
+        }
+        $done = true;
+
+        return '<script>(function(){function toast(t,ok){document.querySelectorAll(".taxmod-toast").forEach(function(o){o.parentNode.removeChild(o);});'
+            . 'var d=document.createElement("div");d.className="taxmod-toast "+(ok?"taxmod-toast-ok":"taxmod-toast-bad");d.setAttribute("role","status");d.textContent=t;document.body.appendChild(d);}'
+            . 'function say(t,ok){var ev=new CustomEvent("taxmod:message",{detail:{text:t,ok:ok},cancelable:true});if(document.dispatchEvent(ev)){toast(t,ok);}}'
+            . 'document.addEventListener("submit",function(e){var f=e.target,b=e.submitter;if(!f||!b||b.name!=="how"||b.value!=="service"){return;}'
+            . 'var a=f.querySelector("input[name=action]");if(!a||a.value!==' . wp_json_encode(self::ACTION) . '||!window.fetch||!window.FormData){return;}'
+            . 'e.preventDefault();var data=new FormData(f);data.append("how","service");data.append("taxmod_ajax","1");b.disabled=true;'
+            . 'fetch(f.getAttribute("action"),{method:"POST",body:data,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){'
+            . 'say((j&&j.data&&j.data.message)||' . wp_json_encode(__('The label could not be printed.', 'taxmod')) . ',!!(j&&j.success));'
+            . 'if(j&&j.success){var sw=f.querySelector(".taxmod-dialog-switch");if(sw){sw.checked=false;}}})'
+            . '.catch(function(){say(' . wp_json_encode(__('The label could not be printed.', 'taxmod')) . ',false);}).then(function(){b.disabled=false;});},true);})();</script>';
     }
 
     /** Once per page: a printer whose loaded roll does not allow the chosen label cannot be picked. */
