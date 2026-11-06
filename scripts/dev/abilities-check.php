@@ -136,6 +136,33 @@ check('der Wert steht unverändert im Satz, Schrägstrich und ein einzelnes «<�
 $gruppen = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT change_group_id FROM ' . Schema::table('changelog') . ' WHERE id > %d', $vorher));
 check('die ganze Liste hat eine Änderungsnummer', count($gruppen) === 1 && $gruppen[0] !== null, wp_json_encode($gruppen));
 
+echo "Sparsam lesen (D-1210)\n";
+
+$zweiterSatz = $apply->execute(['brief' => true, 'changes' => [
+    ['op' => 'create_record', 'ref' => 'r2', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@r2', 'values' => [(string) $ergebnis['refs']['f'] => 'zwei']],
+]]);
+check('apply mit brief antwortet nur mit Zahl und Refs', is_array($zweiterSatz) && ($zweiterSatz['count'] ?? 0) === 2 && ! isset($zweiterSatz['applied']) && isset($zweiterSatz['refs']['r2']), wp_json_encode($zweiterSatz));
+
+$seite = $node->execute(['node' => $ergebnis['refs']['i'], 'limit' => 1, 'offset' => 1]);
+check('read-node zählt alle Sätze und liefert eine Seite', is_array($seite) && $seite['total_records'] === 2 && count($seite['records']) === 1 && $seite['records'][0]['id'] === ($zweiterSatz['refs']['r2'] ?? 0), wp_json_encode($seite['records'] ?? null));
+
+$struktur = $node->execute(['node' => $ergebnis['refs']['i'], 'records' => false]);
+check('read-node ohne Sätze liefert die Struktur und die Zahl', is_array($struktur) && $struktur['records'] === [] && $struktur['total_records'] === 2 && $struktur['fields'] !== []);
+
+$knapp = $node->execute(['node' => $ergebnis['refs']['i'], 'compact' => true, 'fields' => [$ergebnis['refs']['f']]]);
+$knappSatz = is_array($knapp) ? array_column($knapp['records'], null, 'id')[$ergebnis['refs']['r']] ?? null : null;
+check('read-node kompakt: Wert unter der Relation-Id, ohne Typ und Benutzer-Satzart', is_array($knappSatz) && ((array) $knappSatz['v'])[(string) $ergebnis['refs']['f']] === 'C:\\Pfad «Hallo» < 120°' && ! isset($knappSatz['record_type']), wp_json_encode($knappSatz));
+check('read-node mit fields nennt nur diese Felder', is_array($knapp) && array_column($knapp['fields'], 'relation_id') === [$ergebnis['refs']['f']]);
+check('read-node kompakt ist kürzer', is_array($knapp) && strlen((string) wp_json_encode($knapp)) < strlen((string) wp_json_encode($node->execute(['node' => $ergebnis['refs']['i']]))));
+
+$gesucht = $tree->execute(['name' => '__AB KIND', 'compact' => true]);
+check('read-tree findet nach Name über alle Ebenen, Spalten einmal', is_array($gesucht) && $gesucht['columns'][0] === 'id' && array_column($gesucht['rows'], 0) === [$ergebnis['refs']['k']], wp_json_encode($gesucht));
+
+$hilfe = wp_get_ability('taxmod/help');
+$text1 = $hilfe?->execute(['op' => 'set_values']);
+check('help erklärt eine Op, die apply nur noch nennt', is_array($text1) && str_contains((string) ($text1['set_values'] ?? ''), 'record') && ! str_contains((string) $apply->get_description(), '{record, values'), wp_json_encode($text1));
+
 echo "Alles oder nichts\n";
 
 // ⚠️ *Die Namen stehen in den Beschriftungen, nicht in `nodes` — also über read-tree gezählt, wie ein Aufrufer sie sieht.*

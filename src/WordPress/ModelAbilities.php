@@ -57,6 +57,39 @@ final class ModelAbilities
     /** So viele Ebenen liefert `read-tree` höchstens — mehr wäre eine Antwort, die niemand liest. */
     private const MAX_TREE_DEPTH = 12;
 
+    /**
+     * What each op of `apply` takes and refuses — read on demand through `taxmod/help`, so the schema every session loads stays short (D-1210).
+     *
+     * ⚠️ *Plain English for the caller, not user-visible text: the texts are read by a model, not shown on a screen.*
+     */
+    private const OP_HELP = [
+        'create_node' => '{name, parent, class?}',
+        'rename_node' => '{node, name}',
+        'trash_node' => '{node}',
+        'move_node' => '{node, parent} — hangs the node and its subtree under another parent',
+        'add_field' => '{node, target, name?, kind?, multiplicity?}',
+        'rename_field' => '{node, field, name}',
+        'remove_field' => '{node, field} — parks a field the node owns, with its values',
+        'move_field' => '{node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it',
+        'retarget_field' => '{node, field, target} — points the field at another node and keeps its kind',
+        'merge_field' => '{node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays',
+        'create_record' => '{node, record_type?}',
+        'set_values' => '{record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}',
+        'remove_record' => '{record} — removes the record with its own parts, nested ones included; refused while a record outside it references one of its parts, naming who',
+        'move_part' => '{part, to, field} — hangs a part held through field onto another record\'s list of the same field, keeping its id',
+        'set_kind' => '{node, field, kind} — switches a field the node owns between aggregation and composition, the values stay',
+        'set_multiplicity' => '{node, field, multiplicity} — sets how often a field the node owns may hold a value (1..1 makes it mandatory), the values stay',
+        'move_record' => '{record, node, anywhere?, drop?} — moves a record to the parent or a child of its node (with anywhere: to any node of its branch) and rewrites its path, calculated and summary fields; refused if a value would be dropped, unless drop is true, and always if a field of another record that chooses it could not choose it at the new node',
+        'set_list' => '{node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field)',
+        'set_label' => '{node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it',
+        'set_addons' => '{node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated (also when the steps are unchanged — sending them again recalculates); name metric on a node with fields title, measure (count, sum), value_field, date_field, filter_field (fields of the node), filter_value and months makes a key figure shown as a tile per month',
+        'set_setting' => '{node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it.',
+        'duplicate_record' => '{record} — copies a record with its values and own parts next to itself.',
+    ];
+
+    /** So viele Sätze liefert eine Seite von `read-node` höchstens. */
+    private const MAX_RECORDS_PAGE = 1000;
+
     /** So viele Änderungen nimmt ein Aufruf — darüber teilt der Aufrufer. */
     private const MAX_CHANGES = 500;
 
@@ -100,13 +133,16 @@ final class ModelAbilities
 
         wp_register_ability('taxmod/read-tree', [
             'label'               => __('Read the model tree', 'taxmod'),
-            'description'         => __('Lists the nodes under a node (default: the root) with id, name, parent, class and depth. The trash is left out.', 'taxmod'),
+            'description'         => __('Lists the nodes under a node (default: the root) with id, name, parent, class and depth. The trash is left out. Saves tokens: name (part of the name, searches the whole depth unless depth is given), class, compact (columns once, rows as lists, without class and hidden).', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
                 'properties' => [
-                    'root'  => $id + ['description' => __('Start node id; empty means the root.', 'taxmod')],
-                    'depth' => ['type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_TREE_DEPTH, 'default' => 3],
+                    'root'    => $id + ['description' => __('Start node id; empty means the root.', 'taxmod')],
+                    'depth'   => ['type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_TREE_DEPTH, 'default' => 3],
+                    'name'    => ['type' => 'string', 'description' => __('Only nodes whose name contains this text, case ignored.', 'taxmod')],
+                    'class'   => ['type' => 'string', 'description' => __('Only nodes of this class (short name as in the rows).', 'taxmod')],
+                    'compact' => ['type' => 'boolean', 'default' => false],
                 ],
                 'additionalProperties' => false,
             ],
@@ -117,15 +153,22 @@ final class ModelAbilities
 
         wp_register_ability('taxmod/read-node', [
             'label'               => __('Read a node', 'taxmod'),
-            'description'         => __('One node with its children, its fields (relation id, name, target, kind, multiplicity, simple type) and its records with their values.', 'taxmod'),
+            'description'         => __('One node with its children, its fields (relation id, name, target, kind, multiplicity, simple type) and its records with their values; total_records counts them all. Saves tokens: records false (structure only), limit and offset (a page of records), fields (only these relation ids), compact (values as {relation_id: value}, a list where a field holds several, "relation_id@locale" only off the neutral locale).', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
-                'properties' => ['node' => $id],
+                'properties' => [
+                    'node'    => $id,
+                    'records' => ['type' => 'boolean', 'default' => true],
+                    'limit'   => ['type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_RECORDS_PAGE],
+                    'offset'  => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
+                    'fields'  => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1]],
+                    'compact' => ['type' => 'boolean', 'default' => false],
+                ],
                 'required'   => ['node'],
                 'additionalProperties' => false,
             ],
-            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->readNode((int) (is_array($input) ? ($input['node'] ?? 0) : 0))),
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->readNode((int) (is_array($input) ? ($input['node'] ?? 0) : 0), is_array($input) ? $input : [])),
             'permission_callback' => $this->allowedToRead(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
@@ -158,7 +201,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node {name, parent, class?}, rename_node {node, name}, trash_node {node}, move_node {node, parent} — hangs the node and its subtree under another parent, add_field {node, target, name?, kind?, multiplicity?}, rename_field {node, field, name}, remove_field {node, field} — parks a field the node owns, with its values, move_field {node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it, retarget_field {node, field, target} — points the field at another node and keeps its kind, merge_field {node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays, create_record {node, record_type?}, set_values {record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}, remove_record {record} — removes the record with its own parts, nested ones included; refused while a record outside it references one of its parts, naming who, move_part {part, to, field} — hangs a part held through field onto another record\'s list of the same field, keeping its id, set_kind {node, field, kind} — switches a field the node owns between aggregation and composition, the values stay, set_multiplicity {node, field, multiplicity} — sets how often a field the node owns may hold a value (1..1 makes it mandatory), the values stay, move_record {record, node, anywhere?, drop?} — moves a record to the parent or a child of its node (with anywhere: to any node of its branch) and rewrites its path, calculated and summary fields; refused if a value would be dropped, unless drop is true, and always if a field of another record that chooses it could not choose it at the new node, set_list {node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field), set_label {node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it, set_addons {node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated (also when the steps are unchanged — sending them again recalculates); name metric on a node with fields title, measure (count, sum), value_field, date_field, filter_field (fields of the node), filter_value and months makes a key figure shown as a tile per month, set_setting {node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -204,6 +247,7 @@ final class ModelAbilities
                         ],
                     ],
                     'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('Save the whole model to uploads/taxmod-backups first.', 'taxmod')],
+                    'brief'   => ['type' => 'boolean', 'default' => false],
                 ],
                 'required'   => ['changes'],
                 'additionalProperties' => false,
@@ -211,6 +255,20 @@ final class ModelAbilities
             'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->apply(is_array($input) ? $input : [])),
             'permission_callback' => $this->allowed(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => false]],
+        ]);
+
+        wp_register_ability('taxmod/help', [
+            'label'               => __('Explain an op of apply', 'taxmod'),
+            'description'         => __('What one op of taxmod/apply takes and refuses; without op, all of them.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => ['op' => ['type' => 'string', 'enum' => array_keys(self::OP_HELP)]],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->help(is_array($input) ? (string) ($input['op'] ?? '') : '')),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
 
         // ⚠️ **Daten schreiben, ohne das Modell ändern zu dürfen** ([D-936](../../docs/NewConcept/90-decision-log.md)) — *für den
@@ -390,7 +448,11 @@ final class ModelAbilities
     {
         $framework = $this->framework();
         $root      = isset($input['root']) ? $this->node((int) $input['root']) : $framework->root();
-        $depth     = max(1, min(self::MAX_TREE_DEPTH, (int) ($input['depth'] ?? 3)));
+        $name      = mb_strtolower(trim((string) ($input['name'] ?? '')));
+        $klasse    = trim((string) ($input['class'] ?? ''));
+        // ⚠️ *A name search looks through the whole branch unless the caller limits it — the point is not to page through levels (D-1210).*
+        $depth     = max(1, min(self::MAX_TREE_DEPTH, (int) ($input['depth'] ?? ($name !== '' ? self::MAX_TREE_DEPTH : 3))));
+        $compact   = ! empty($input['compact']);
         $tree      = new Tree(new Persistence\WpdbNodeRepository());
         $rows      = [];
 
@@ -399,21 +461,39 @@ final class ModelAbilities
                 continue;
             }
 
-            $rows[] = $this->nodeRow($row['node']) + ['depth' => $row['depth'], 'has_children' => $row['hasChildren']];
+            $zeile = $this->nodeRow($row['node']) + ['depth' => $row['depth'], 'has_children' => $row['hasChildren']];
+
+            if (($name !== '' && ! str_contains(mb_strtolower((string) $zeile['name']), $name)) || ($klasse !== '' && $zeile['class'] !== $klasse)) {
+                continue;
+            }
+
+            $rows[] = $compact ? [$zeile['id'], $zeile['name'], $zeile['parent'], $zeile['depth'], $zeile['has_children']] : $zeile;
         }
 
-        return ['root' => $root->id, 'rows' => $rows];
+        return $compact
+            ? ['root' => $root->id, 'columns' => ['id', 'name', 'parent', 'depth', 'has_children'], 'rows' => $rows]
+            : ['root' => $root->id, 'rows' => $rows];
     }
 
     /** @return array<string, mixed> */
-    private function readNode(int $id): array
+    /**
+     * @param array<string, mixed> $input `records`, `limit`, `offset`, `fields`, `compact` — each one only shortens the answer (D-1210).
+     */
+    private function readNode(int $id, array $input = []): array
     {
         $node    = $this->node($id);
         $screen  = $this->screen();
         $entries = $screen->entries();
         $felder  = [];
 
+        $nur     = array_map('intval', is_array($input['fields'] ?? null) ? $input['fields'] : []);
+        $compact = ! empty($input['compact']);
+
         foreach ($screen->fieldsWithTypes($id) as ['relation' => $r, 'type' => $type]) {
+            if ($nur !== [] && ! in_array($r->id, $nur, true)) {
+                continue;
+            }
+
             $felder[] = [
                 'relation_id'  => $r->id,
                 'name'         => $r->name,
@@ -426,13 +506,33 @@ final class ModelAbilities
         }
 
         $records = $entries->recordsOf($id);
-        $werte   = $entries->valuesOfMany(array_map(static fn ($r): int => $r->id, $records));
+        $gesamt  = count($records);
+        $seite   = [];
+
+        if (($input['records'] ?? true) !== false) {
+            $limit = isset($input['limit']) ? max(1, min(self::MAX_RECORDS_PAGE, (int) $input['limit'])) : null;
+            $seite = array_slice($records, max(0, (int) ($input['offset'] ?? 0)), $limit);
+        }
+
+        $werte   = $seite === [] ? [] : $entries->valuesOfMany(array_map(static fn ($r): int => $r->id, $seite));
+        $neutral = $compact ? SettingsScreen::neutralLocale() : '';
         $saetze  = [];
 
-        foreach ($records as $record) {
+        foreach ($seite as $record) {
             $zeilen = [];
 
             foreach ($werte[$record->id] ?? [] as $wert) {
+                if ($nur !== [] && ! in_array($wert->relationId, $nur, true)) {
+                    continue;
+                }
+
+                if ($compact) {
+                    $schluessel = (string) $wert->relationId . ($wert->locale !== '' && $wert->locale !== $neutral ? '@' . $wert->locale : '');
+                    $roh        = $wert->value->rawValue();
+                    $zeilen[$schluessel] = array_key_exists($schluessel, $zeilen) ? [...(array) $zeilen[$schluessel], $roh] : $roh;
+                    continue;
+                }
+
                 $zeilen[] = [
                     'relation_id' => $wert->relationId,
                     'locale'      => $wert->locale,
@@ -441,14 +541,17 @@ final class ModelAbilities
                 ];
             }
 
-            $saetze[] = ['id' => $record->id, 'version' => $record->version, 'record_type' => $record->recordType->value, 'values' => $zeilen];
+            $saetze[] = $compact
+                ? ['id' => $record->id, 'version' => $record->version] + ($record->recordType === RecordType::User ? [] : ['record_type' => $record->recordType->value]) + ['v' => (object) $zeilen]
+                : ['id' => $record->id, 'version' => $record->version, 'record_type' => $record->recordType->value, 'values' => $zeilen];
         }
 
         return [
-            'node'     => $this->nodeRow($node),
-            'children' => array_map($this->nodeRow(...), $this->editor()->childrenOf($id)),
-            'fields'   => $felder,
-            'records'  => $saetze,
+            'node'          => $this->nodeRow($node),
+            'children'      => array_map($this->nodeRow(...), $this->editor()->childrenOf($id)),
+            'fields'        => $felder,
+            'records'       => $saetze,
+            'total_records' => $gesamt,
         ];
     }
 
@@ -658,7 +761,12 @@ final class ModelAbilities
         $beruehrt = array_values(array_unique([...$erwartet->ids(), ...array_filter(array_column($ergebnis, 'id'), 'is_int')]));
 
         // ⚠️ *The versions after the write, for the records the caller named or touched — its next change list can expect them (D-1148).*
-        return ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'versions' => $onlyData ? $this->screen()->entries()->stampOf($beruehrt)->versions : []];
+        $versionen = $onlyData ? $this->screen()->entries()->stampOf($beruehrt)->versions : [];
+
+        // ⚠️ *brief: the caller already holds its list; echoing every op back is tokens for nothing (D-1210).*
+        return ! empty($input['brief'])
+            ? ['count' => count($ergebnis), 'refs' => $refs, 'backup' => $sicherung, 'versions' => $versionen]
+            : ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'versions' => $versionen];
     }
 
     /**
@@ -1000,6 +1108,16 @@ final class ModelAbilities
         }
 
         throw new \InvalidArgumentException("Unknown class {$given}.");
+    }
+
+    /** @return array<string, string> op => what it takes and refuses */
+    private function help(string $op): array
+    {
+        if ($op === '') {
+            return self::OP_HELP;
+        }
+
+        return [$op => self::OP_HELP[$op] ?? throw new \InvalidArgumentException(sprintf('No op %s.', $op))];
     }
 
     /** @return array<string, mixed> */
