@@ -711,6 +711,79 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(intval(...), Query::column('Saetze unter Model suchen', $wpdb->prepare($sql, ...$params)) ?: []);
     }
 
+    public function recordsWhere(array $nodeIds, array $conditions, int $limit, int $offset): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $nodeIds))));
+
+        if ($ids === [] || $limit < 1) {
+            return ['total' => 0, 'ids' => []];
+        }
+
+        $werte  = Schema::table('relation_records');
+        // ⚠️ *Parts count too (a position of a transaction is a part of its head, D-1097): only settings records stay out.*
+        $where  = 'r.node_id IN (' . implode(',', array_fill(0, count($ids), '%d')) . ") AND r.record_type <> 'settings'";
+        $params = $ids;
+
+        foreach ($conditions as $bedingung) {
+            $feld   = (int) $bedingung['field'];
+            $values = array_values(array_map('strval', $bedingung['values']));
+            $aufFeld = $feld > 0 ? ' AND v.relation_id = %d' : '';
+            $exists  = 'EXISTS (SELECT 1 FROM ' . $werte . ' v WHERE v.node_record_id = r.id' . $aufFeld;
+
+            if ($bedingung['op'] === 'empty' || $bedingung['op'] === 'not_empty') {
+                $where .= ($bedingung['op'] === 'empty' ? ' AND NOT ' : ' AND ') . $exists . ')';
+                $params = [...$params, ...($feld > 0 ? [$feld] : [])];
+
+                continue;
+            }
+
+            if ($bedingung['op'] === 'contains') {
+                $where .= ' AND ' . $exists . ' AND v.value_text LIKE %s)';
+                $params = [...$params, ...($feld > 0 ? [$feld] : []), '%' . $wpdb->esc_like($values[0] ?? '') . '%'];
+
+                continue;
+            }
+
+            // *eq / in: the value as the column it can be stored in — text always, a whole number also as number and reference,
+            // a decimal as decimal, a day as date.*
+            $zahlen = array_values(array_filter($values, static fn (string $v): bool => preg_match('/^-?\d+$/', $v) === 1));
+            $dez    = array_values(array_filter($values, static fn (string $v): bool => is_numeric($v)));
+            $tage   = array_values(array_filter($values, static fn (string $v): bool => preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) === 1));
+            $oder   = ['v.value_text IN (' . implode(',', array_fill(0, count($values), '%s')) . ')'];
+            $teil   = $values;
+
+            if ($zahlen !== []) {
+                $oder[] = 'v.value_int IN (' . implode(',', array_fill(0, count($zahlen), '%d')) . ')';
+                $oder[] = 'v.value_ref IN (' . implode(',', array_fill(0, count($zahlen), '%d')) . ')';
+                $teil   = [...$teil, ...$zahlen, ...$zahlen];
+            }
+
+            if ($dez !== []) {
+                $oder[] = 'v.value_decimal IN (' . implode(',', array_fill(0, count($dez), '%s')) . ')';
+                $teil   = [...$teil, ...$dez];
+            }
+
+            if ($tage !== []) {
+                $oder[] = 'DATE(v.value_date) IN (' . implode(',', array_fill(0, count($tage), '%s')) . ')';
+                $teil   = [...$teil, ...$tage];
+            }
+
+            $where .= ' AND ' . $exists . ' AND (' . implode(' OR ', $oder) . '))';
+            $params = [...$params, ...($feld > 0 ? [$feld] : []), ...$teil];
+        }
+
+        $von   = ' FROM ' . Schema::table('node_records') . ' r WHERE ' . $where;
+        $total = (int) Query::value('Saetze nach Bedingungen zaehlen', $wpdb->prepare('SELECT COUNT(*)' . $von, ...$params));
+        $seite = $total === 0 ? [] : Query::column('Saetze nach Bedingungen lesen', $wpdb->prepare(
+            'SELECT r.id' . $von . ' ORDER BY r.id ASC LIMIT %d OFFSET %d',
+            ...[...$params, $limit, max(0, $offset)]
+        ));
+
+        return ['total' => $total, 'ids' => array_map(intval(...), $seite ?: [])];
+    }
+
     public function recordRefsHeldAt(int $relationId): array
     {
         global $wpdb;

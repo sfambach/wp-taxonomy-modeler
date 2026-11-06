@@ -273,6 +273,19 @@ interface RecordRepository
     public function recordsMatching(array $nodeIds, array $conditions, int $limit): array;
 
     /**
+     * Sätze dieser Knoten, deren Felder jede Bedingung erfüllen, eine Seite davon und wie viele es insgesamt sind — für
+     * `taxmod/query` ([D-1208](../../../docs/NewConcept/90-decision-log.md)). Zwei Abfragen, gleich wie viele Bedingungen (`CD-7`).
+     *
+     * ⚠️ *`eq`/`in` vergleichen den gespeicherten Wert (Text, Zahl, Datum oder die Id eines Verweises), `contains` einen Text
+     * ohne Rücksicht auf Gross und Klein; Feld 0 heisst «irgendein Textwert des Satzes».*
+     *
+     * @param  list<int>                                                  $nodeIds
+     * @param  list<array{field: int, op: string, values: list<string>}>  $conditions
+     * @return array{total: int, ids: list<int>} ids aufsteigend
+     */
+    public function recordsWhere(array $nodeIds, array $conditions, int $limit, int $offset): array;
+
+    /**
      * Everything these nodes hold as data — the records and their values.
      *
      * ⚠️ **Das ist die Durchsetzung von [C102](../../../docs/NewConcept/10-domain-core.md), und die

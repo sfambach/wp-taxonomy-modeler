@@ -5,15 +5,18 @@ namespace Taxmod\WordPress;
 use Taxmod\Core\Model\IdentitySpace;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Model\RecordStamp;
+use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\Label;
 use Taxmod\Core\Model\Multiplicity;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\NodeClass\Contracts;
+use Taxmod\Core\Model\RecordInTree;
 use Taxmod\Core\Model\RecordType;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\SeededRole;
 use Taxmod\Core\Service\BlockUsage;
 use Taxmod\Core\Service\ModelEditor;
+use Taxmod\Core\Service\RecordQuery;
 use Taxmod\Core\Service\Tree;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\WordPress\Admin\NodesScreen;
@@ -123,6 +126,29 @@ final class ModelAbilities
                 'additionalProperties' => false,
             ],
             'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->readNode((int) (is_array($input) ? ($input['node'] ?? 0) : 0))),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
+        // *D-1208: ask for the records that matter instead of reading a whole node — «is anything stored under Alex?» once meant 561 lots.*
+        wp_register_ability('taxmod/query', [
+            'label'               => __('Query records', 'taxmod'),
+            'description'         => __('Records of a node (and its subtree unless subtree is false) that meet every condition, one page of them with the total. where: list of {field: relation id, op: eq | in | contains | empty | not_empty | within, value or values}; eq and in compare the stored value (text, number, date YYYY-MM-DD, or the id a reference points at), contains a text ignoring case; within {field, value: record id, parent_field} matches a reference to that record or any record below it by its parent field (e.g. a storage place and its sub-places). search: a word in any text value. fields: relation ids or names to answer with, as the words the screen shows; without fields each record comes with its own word only. A part (e.g. a position of a transaction) names its head as part_of. Without node the search covers everything under Model. limit 1–500 (default 50), offset.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => [
+                    'node'    => $id,
+                    'subtree' => ['type' => 'boolean', 'default' => true],
+                    'where'   => ['type' => 'array', 'items' => ['type' => 'object']],
+                    'search'  => ['type' => 'string'],
+                    'fields'  => ['type' => 'array', 'items' => ['type' => ['integer', 'string']]],
+                    'limit'   => ['type' => 'integer', 'minimum' => 1, 'maximum' => RecordQuery::MAX_LIMIT, 'default' => RecordQuery::DEFAULT_LIMIT],
+                    'offset'  => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
+                ],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->query(is_array($input) ? $input : [])),
             'permission_callback' => $this->allowedToRead(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
@@ -424,6 +450,141 @@ final class ModelAbilities
             'fields'   => $felder,
             'records'  => $saetze,
         ];
+    }
+
+    /**
+     * The records a question needs and only the fields it names (D-1208): conditions in one query, the words in one run.
+     *
+     * @param array<string, mixed> $input
+     * @return array{total: int, offset: int, records: list<array{id: int, node: int, word: string, part_of?: int, values?: array<string, string>}>, unknown_fields?: list<string>}
+     */
+    private function query(array $input): array
+    {
+        $q         = RecordQuery::from($input);
+        $framework = $this->framework();
+        $start     = (int) ($input['node'] ?? 0) > 0 ? $this->node((int) $input['node']) : $framework->rootOf(Branch::Model);
+        $nodes     = [$start->id];
+
+        if ($q->subtree) {
+            foreach ((new Tree(new Persistence\WpdbNodeRepository()))->rowsUnder($start, [$framework->trash()->id]) as $row) {
+                $nodes[] = $row['node']->id;
+            }
+        }
+
+        $records  = new WpdbRecordRepository();
+        $screen   = $this->screen();
+        $resolved = [];
+
+        foreach ($q->conditions as $i => $c) {
+            if ($c['op'] !== 'within') {
+                continue;
+            }
+
+            $target = $this->targetOf($screen, $nodes, $c['field']);
+            $tree   = [];
+
+            foreach ($records->parentLinksOf($target, $c['parent_field']) as $record => $parent) {
+                $tree[] = new RecordInTree($record, $parent, '');
+            }
+
+            $resolved[$i] = RecordQuery::within($tree, (int) $c['values'][0]);
+        }
+
+        $page  = $records->recordsWhere($nodes, $q->forTable($resolved), $q->limit, $q->offset);
+        $ids   = $page['ids'];
+        $words = $screen->recordWords($ids, $start->id);
+        $at    = [];
+
+        $parts = [];
+
+        foreach ($ids === [] ? [] : $records->byIds($ids) as $id => $record) {
+            $at[(int) $id] = (int) $record->nodeId;
+
+            if ($record->relationId !== 0) {
+                $parts[(int) $id] = $record->relationId;
+            }
+        }
+
+        // *A part names its head, so «which transaction is this position of» needs no second call.*
+        $heads = [];
+
+        foreach ($parts === [] ? [] : $records->holdersOf(array_keys($parts)) as $id => $holder) {
+            if ($holder->relationId === $parts[(int) $id]) {
+                $heads[(int) $id] = $holder->recordId;
+            }
+        }
+
+        $values  = [];
+        $unknown = [];
+
+        if ($q->fields !== [] && $ids !== []) {
+            $felder = [];
+
+            foreach (array_values(array_unique($at)) as $node) {
+                foreach ($screen->fieldsWithTypes($node) as ['relation' => $r]) {
+                    $felder[$r->id] ??= $r;
+                }
+            }
+
+            $chosen = [];
+
+            foreach ($q->fields as $asked) {
+                $found = null;
+
+                foreach ($felder as $r) {
+                    if ($r->id === $asked || (is_string($asked) && mb_strtolower(trim($r->name)) === mb_strtolower($asked))) {
+                        $found = $r;
+                        break;
+                    }
+                }
+
+                if ($found === null) {
+                    $unknown[] = (string) $asked;
+                } else {
+                    $chosen[$found->id] = $found;
+                }
+            }
+
+            foreach ($chosen === [] ? [] : $screen->fieldTexts($ids, array_values($chosen)) as $feld => $texts) {
+                foreach ($texts as $record => $text) {
+                    if ($text !== '') {
+                        $values[(int) $record][$chosen[$feld]->name] = $text;
+                    }
+                }
+            }
+        }
+
+        $rows = [];
+
+        foreach ($ids as $id) {
+            $row = ['id' => $id, 'node' => $at[$id] ?? 0, 'word' => trim((string) ($words[$id] ?? ''))] + (isset($heads[$id]) ? ['part_of' => $heads[$id]] : []);
+
+            if ($q->fields !== []) {
+                $row['values'] = $values[$id] ?? [];
+            }
+
+            $rows[] = $row;
+        }
+
+        return ['total' => $page['total'], 'offset' => $q->offset, 'records' => $rows] + ($unknown === [] ? [] : ['unknown_fields' => $unknown]);
+    }
+
+    /**
+     * The node a reference field points at, from the fields of the nodes asked — `within` walks that node's records.
+     *
+     * @param list<int> $nodes
+     */
+    private function targetOf(NodesScreen $screen, array $nodes, int $field): int
+    {
+        foreach ($nodes as $node) {
+            foreach ($screen->fieldsWithTypes($node) as ['relation' => $r]) {
+                if ($r->id === $field) {
+                    return $r->toNodeId;
+                }
+            }
+        }
+
+        throw new \InvalidArgumentException(sprintf('within: field %d is not a field of node %d or below it.', $field, $nodes[0] ?? 0));
     }
 
     /**

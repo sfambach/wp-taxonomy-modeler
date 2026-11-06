@@ -459,6 +459,52 @@ $wertVon = static function (int $satz) use ($node, $ergebnis): ?string {
 check('duplicate_record legt über write-data eine Kopie mit dem Wert des Originals an (D-1135)', $kopie > 0 && $kopie !== (int) $ergebnis['refs']['r'] && $wertVon($kopie) !== null && $wertVon($kopie) === $wertVon((int) $ergebnis['refs']['r']), is_wp_error($kopiert) ? $kopiert->get_error_message() : wp_json_encode([$kopie, $wertVon($kopie)]));
 check('duplicate_record kopiert keinen Einstellungssatz (D-1135)', is_wp_error($daten?->execute(['changes' => [['op' => 'duplicate_record', 'record' => $einstellung]]])));
 
+echo "Abfragen statt ganzer Knoten (D-1208)\n";
+
+$query = wp_get_ability('taxmod/query');
+check('query ist registriert und nur lesend', $query !== null && ($query->get_meta()['annotations']['readonly'] ?? false) === true);
+
+$orte = $query === null ? null : $apply->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'oben', 'node' => $ergebnis['refs']['i'], 'target' => $ergebnis['refs']['i'], 'name' => '__ab Übergeordnet', 'kind' => 'aggregation'],
+    ['op' => 'add_field', 'ref' => 'ort', 'node' => $ergebnis['refs']['i'], 'target' => $ergebnis['refs']['i'], 'name' => '__ab Lagerort', 'kind' => 'aggregation'],
+    ['op' => 'create_record', 'ref' => 'haus', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@haus', 'values' => [(string) $ergebnis['refs']['f'] => '__ab Haus']],
+    ['op' => 'create_record', 'ref' => 'alex', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@alex', 'values' => [(string) $ergebnis['refs']['f'] => '__ab Alex', '@oben' => '@haus']],
+    ['op' => 'create_record', 'ref' => 'kiste', 'node' => $ergebnis['refs']['k']],
+    ['op' => 'set_values', 'record' => '@kiste', 'values' => [(string) $ergebnis['refs']['f'] => '__ab Kiste', '@oben' => '@alex']],
+    ['op' => 'create_record', 'ref' => 'ding', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@ding', 'values' => [(string) $ergebnis['refs']['f'] => '__ab NE555', '@ort' => '@kiste']],
+    ['op' => 'create_record', 'ref' => 'anderes', 'node' => $ergebnis['refs']['i']],
+    ['op' => 'set_values', 'record' => '@anderes', 'values' => [(string) $ergebnis['refs']['f'] => '__ab LM317', '@ort' => '@haus']],
+]]);
+check('die Orte für die Abfrage stehen', is_array($orte), is_wp_error($orte) ? $orte->get_error_message() : '');
+
+if (is_array($orte)) {
+    $r     = $orte['refs'];
+    $unter = $query->execute(['node' => $ergebnis['refs']['i'], 'where' => [['field' => $r['ort'], 'op' => 'within', 'value' => $r['alex'], 'parent_field' => $r['oben']]], 'fields' => ['__ab Lagerort']]);
+    check('within findet, was unter dem Ort liegt, auch im Unterort eines Kindknotens', is_array($unter) && $unter['total'] === 1 && ($unter['records'][0]['id'] ?? 0) === $r['ding'], wp_json_encode($unter));
+    check('die Antwort nennt nur das gefragte Feld, als Wort', is_array($unter) && ($unter['records'][0]['values'] ?? null) === ['__ab Lagerort' => '__ab Kiste'], wp_json_encode($unter['records'][0] ?? null));
+    check('jeder Satz kommt mit seinem Wort', is_array($unter) && ($unter['records'][0]['word'] ?? '') === '__ab NE555', wp_json_encode($unter['records'][0] ?? null));
+
+    $alle = $query->execute(['node' => $ergebnis['refs']['i'], 'where' => [['field' => $r['ort'], 'op' => 'within', 'value' => $r['haus'], 'parent_field' => $r['oben']]], 'limit' => 1]);
+    check('eine Seite und die Gesamtzahl', is_array($alle) && $alle['total'] === 2 && count($alle['records']) === 1, wp_json_encode($alle));
+
+    $ohneKind = $query->execute(['node' => $ergebnis['refs']['i'], 'subtree' => false, 'where' => [['field' => (int) $ergebnis['refs']['f'], 'op' => 'eq', 'value' => '__ab Kiste']]]);
+    check('subtree false lässt die Kindknoten aus', is_array($ohneKind) && $ohneKind['total'] === 0, wp_json_encode($ohneKind));
+
+    $wort = $query->execute(['search' => '__ab NE5']);
+    check('search findet ein Wort unter Model', is_array($wort) && in_array($r['ding'], array_column($wort['records'], 'id'), true), wp_json_encode($wort));
+
+    $ref = $query->execute(['node' => $ergebnis['refs']['i'], 'where' => [['field' => $r['ort'], 'op' => 'in', 'values' => [$r['haus'], $r['kiste']]], ['field' => (int) $ergebnis['refs']['f'], 'op' => 'contains', 'value' => 'lm3']]]);
+    check('in auf einen Verweis und contains ohne Gross/Klein, zusammen', is_array($ref) && array_column($ref['records'], 'id') === [$r['anderes']], wp_json_encode($ref));
+
+    $leer = $query->execute(['node' => $ergebnis['refs']['i'], 'where' => [['field' => $r['ort'], 'op' => 'empty']], 'fields' => ['gibt es nicht']]);
+    check('empty findet Sätze ohne Wert und ein unbekanntes Feld wird genannt', is_array($leer) && $leer['total'] >= 3 && ($leer['unknown_fields'] ?? []) === ['gibt es nicht'], wp_json_encode($leer));
+
+    check('eine falsche Frage wird mit Grund abgewiesen', is_wp_error($query->execute(['node' => $ergebnis['refs']['i'], 'where' => [['field' => $r['ort'], 'op' => 'like', 'value' => 'x']]])));
+}
+
 echo "Block im Beitrag (D-912)\n";
 
 check('der Block taxmod/record ist registriert', WP_Block_Type_Registry::get_instance()->is_registered('taxmod/record'));

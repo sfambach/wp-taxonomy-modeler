@@ -390,6 +390,34 @@ final class InMemoryRecords implements RecordRepository
         return array_slice($aus, 0, $limit);
     }
 
+    public function recordsWhere(array $nodeIds, array $conditions, int $limit, int $offset): array
+    {
+        $aus = [];
+
+        foreach ($this->ofNodesFlat($nodeIds) as $satz) {
+            foreach ($conditions as $bedingung) {
+                $werte = array_values(array_filter(
+                    $this->valuesOf($satz->id),
+                    static fn ($w): bool => $bedingung['field'] === 0 || $w->relationId === $bedingung['field']
+                ));
+                $treffer = match ($bedingung['op']) {
+                    'empty'     => $werte === [],
+                    'not_empty' => $werte !== [],
+                    'contains'  => array_filter($werte, static fn ($w): bool => $w->value->text !== null && mb_stripos($w->value->text, $bedingung['values'][0]) !== false) !== [],
+                    default     => array_filter($werte, static fn ($w): bool => in_array($w->value->rawValue(), $bedingung['values'], true)) !== [],
+                };
+
+                if (! $treffer) {
+                    continue 2;
+                }
+            }
+
+            $aus[] = $satz->id;
+        }
+
+        return ['total' => count($aus), 'ids' => array_slice($aus, $offset, $limit)];
+    }
+
     /** @return list<\Taxmod\Core\Model\NodeRecord> */
     private function ofNodesFlat(array $nodeIds): array
     {

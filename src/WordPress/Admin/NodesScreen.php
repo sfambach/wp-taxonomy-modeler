@@ -705,6 +705,37 @@ final class NodesScreen
     }
 
     /**
+     * Die Worte dieser Sätze, wie die Suche sie zeigt — über eine gedachte Kante auf `$at`, ohne Feldwahl, also das erste Textfeld
+     * je Satz; alle in einem Lauf (`CD-7`, [D-1208](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * @param  list<int> $ids
+     * @return array<int, string> Satz-Id ⇒ Wort
+     */
+    public function recordWords(array $ids, int $at): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $kante = Relation::attribute(0, $at, $at, \Taxmod\Core\Model\RelationKind::Aggregation, 'search', 0);
+
+        return array_map('strval', $this->rendering->summaryTextsOf([['relation' => $kante, 'records' => $ids]])[0] ?? []);
+    }
+
+    /**
+     * Je Feld die Worte der Sätze dafür, für eine Abfrage von aussen ([D-1208](../../../docs/NewConcept/90-decision-log.md)) — derselbe
+     * Weg wie der Vergleich.
+     *
+     * @param  list<int>      $ids
+     * @param  list<Relation> $felder
+     * @return array<int, array<int, string>> Feld-Id ⇒ Satz-Id ⇒ Text
+     */
+    public function fieldTexts(array $ids, array $felder): array
+    {
+        return $this->comparisonFieldTexts($ids, $felder);
+    }
+
+    /**
      * Je Feld die Worte der Sätze dafür — der Weg der Zusammenfassung mit genau diesem einen Feld ({@see Rendering::summaryTextsOf()}).
      *
      * ⚠️ *Ein Satz oder Teil ohne Wert bekommt dort seine Nummer («#31521») — hier ist das eine leere Zelle. Ein Datum ohne Uhrzeit verliert
