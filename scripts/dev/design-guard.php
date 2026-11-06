@@ -33,7 +33,7 @@ const MODELLER_DATA_ACCESS = '#/src/WordPress/(Persistence/|Import/(InboxTable|I
 
 $rules = [
     'G1 confirm()'      => ['D-804, D-1063', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/(?<!::)\bconfirm\(/', $c)],
-    'G2 own <h1>'       => ['D-989', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/<h1[ >]/', $c)],
+    'G2 own <h1>'       => ['D-989', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/^(?!.*<body).*<h1[ >]/m', $c)], // a print sheet is its own document
     'G3 inline style/script' => ['D-1068', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/<(style|script)[ >]/', $c)],
     'G4 SQL outside data layer' => ['D-1186', static fn (string $f, string $c): int => preg_match(MODELLER_DATA_ACCESS, $f) ? 0 : preg_match_all('/\$wpdb->(get_\w+|query|insert|update|delete|replace)\(|\bQuery::(rows|row|value|column|run)\(/', $c)],
     'G5 modeller internals' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module ? preg_match_all('/Taxmod\\\\WordPress\\\\Persistence\\\\/', $c) : 0],

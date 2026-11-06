@@ -40,7 +40,7 @@ final class BackupScreen
 
         $post = esc_url(admin_url('admin-post.php'));
 
-        return '<div class="wrap"><h1>' . esc_html__('Backup', 'taxmod') . '</h1>'
+        return '<div class="wrap">' . ListPage::heading(__('Backup', 'taxmod'))
             . $this->report()
             . '<h2>' . esc_html__('Download', 'taxmod') . '</h2>'
             . '<p>' . esc_html__('One ZIP file with every table of the model, its settings and every media file a value points at.', 'taxmod') . '</p>'

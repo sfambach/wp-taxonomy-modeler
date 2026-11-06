@@ -176,7 +176,7 @@ final class SettingsScreen
                 . '</div>';
 
             return '<div class="wrap">'
-                . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
+                . ListPage::heading(__('Configuration', 'taxmod'))
                 . $this->tabBar($reiter, $tab)
                 // ⚠️ *Seine Frage vom 2026-10-21: «warum haben die andern module nicht die version im reiter ?» — one place for it (D-968).*
                 // ⚠️ *Nur im Entwicklermodus: «kannst du die version mit in den reiter schreiben (wird mit Tax developer mode eingeschaltet)».*
@@ -198,7 +198,7 @@ final class SettingsScreen
         }
 
         $html = '<div class="wrap">'
-            . '<h1>' . esc_html__('Taxonomy Modeller — configuration', 'taxmod') . '</h1>'
+            . ListPage::heading(__('Configuration', 'taxmod'))
             . $this->tabBar($reiter, '')
             . $this->notice()
             . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'

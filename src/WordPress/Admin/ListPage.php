@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Renderer\HintMarkup;
 use Taxmod\Core\Listing\ListColumn;
 use Taxmod\Core\Renderer\DialogMarkup;
 use Taxmod\Core\Listing\ListView;
@@ -290,10 +291,15 @@ final class ListPage
         return $heads;
     }
 
-    /** The heading: the plugin, then the screen one is on, then the version. */
-    public static function heading(string $screen, string $version = Plugin::VERSION, string $plugin = 'Taxonomy Modeller'): string
+    /**
+     * The heading: the plugin, then the screen one is on, then the version — the only `<h1>` a Taxmod screen draws (D-989,
+     * D-1186). A `$hint` is the screen's explanation behind the question mark (D-661).
+     */
+    public static function heading(string $screen, string $version = Plugin::VERSION, string $plugin = 'Taxonomy Modeller', string $hint = ''): string
     {
-        return '<h1 class="wp-heading-inline" style="font-size:1.8em">' . esc_html($plugin) . ' › ' . esc_html($screen) . '</h1>'
+        $title = esc_html($plugin) . ' › ' . esc_html($screen);
+
+        return '<h1 class="wp-heading-inline" style="font-size:1.8em">' . ($hint === '' ? $title : HintMarkup::behind($title, $hint)) . '</h1>'
             . ' <span class="taxmod-version" style="display:inline-block;vertical-align:middle;margin-left:.5em;padding:2px 8px;border-radius:10px;background:#2271b1;color:#fff;font-size:12px;font-weight:600">v' . esc_html($version) . '</span><hr class="wp-header-end">';
     }
 

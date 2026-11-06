@@ -26,7 +26,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 
 | | Regel | Beschluss |
 |---|---|---|
-| S1 | Überschrift nur über `ListPage::heading()`: groß, «Taxonomy Modeller › Seite», mit Version. Kein eigenes `<h1>`. | [D-989](NewConcept/90-decision-log.md), [D-913](NewConcept/90-decision-log.md) |
+| S1 | Überschrift nur über `ListPage::heading()`: groß, «Taxonomy Modeller › Seite», mit Version. Kein eigenes `<h1>`; eine Erklärung zur Seite steht hinter dem Fragezeichen (`hint:`, D-661). Ausnahme: ein Druckblatt, das ein eigenes HTML-Dokument ist. | [D-989](NewConcept/90-decision-log.md), [D-913](NewConcept/90-decision-log.md) |
 | S2 | Ein Menü: alles unter dem Modeller, Logistik mit eigener Navigation links; Wartung (Cleanup, Backup, Configuration) zuletzt. | [D-1028](NewConcept/90-decision-log.md), [D-1053](NewConcept/90-decision-log.md) |
 | S3 | Jeder Hauptpunkt der Navigation öffnet eine Übersicht mit Kacheln in seine Unterpunkte; ein Klick auf eine Gruppe klappt sie im Menü auf. | [D-1128](NewConcept/90-decision-log.md), [D-1134](NewConcept/90-decision-log.md) |
 | S4 | Modulseite in der Konfiguration: eigener Reiter über `taxmod_config_tabs`; Bereiche immer **Zugang · Abruf · Mail · Einstellungen · Wartung**, ein leerer Bereich mit einem Satz; Abruftakt zeichnet der Modeller; «How to connect» liefert das Modul, zeichnet der Modeller. | [D-945](NewConcept/90-decision-log.md), [D-981](NewConcept/90-decision-log.md), [D-1007](NewConcept/90-decision-log.md), [D-963](NewConcept/90-decision-log.md) |
