@@ -140,6 +140,13 @@ final class LabelButton
                 }
                 $document['printer'] = $raw;
             }
+            // D-1199: the text chosen for the variant field, as the dialog showed it for this label.
+            $field = (string) ($post['variant_field'] ?? '');
+            $texts = (array) (((array) ($post['variants'] ?? []))[$choice] ?? []);
+            if (preg_match('/^[a-z0-9_]{1,32}$/', $field) === 1 && isset($post['variant']) && array_key_exists((string) $post['variant'], $texts)) {
+                $document['values'] = (is_array($document['values'] ?? null) ? $document['values'] : []);
+                $document['values'][$field] = sanitize_text_field((string) $texts[(string) $post['variant']]);
+            }
             $post['document'] = (string) json_encode($document);
         }
 
@@ -248,6 +255,10 @@ final class LabelButton
             }
             $labels .= '<option value="' . (int) $id . '"' . selected((int) $id, $chosen, false) . '>' . esc_html(trim($filled->templateName . ' · ' . PrintTab::size($filled->format), ' ·')) . '</option>';
             $hidden .= '<input type="hidden" name="documents[' . (int) $id . ']" value="' . esc_attr($filled->toJson()) . '">';
+            // D-1199: the texts a label may print in one of its fields, one per choice in the dialog — the module fills them.
+            foreach (self::variantsOf($choice) as $key => $variant) {
+                $hidden .= '<input type="hidden" name="variants[' . (int) $id . '][' . esc_attr($key) . ']" value="' . esc_attr($variant['text']) . '">';
+            }
         }
         if ($labels === '') {
             return null;
@@ -268,9 +279,53 @@ final class LabelButton
             . '<select name="choice" data-taxmod-label-choice>' . $labels . '</select></label>'
             . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Drucker', 'taxmod') . '</span>'
             . '<select name="printer" data-taxmod-label-printer>' . $printers . '</select></label>'
+            . self::variantChooser($template)
             . self::chooserScript();
 
         return ['html' => $html, 'hidden' => $hidden];
+    }
+
+    /**
+     * D-1199: `variants` = {field, label, chosen, options: {key: {name, text}}} — what a module offers to print in one field.
+     *
+     * @param mixed $template
+     * @return array<string, array{name: string, text: string}>
+     */
+    private static function variantsOf(mixed $template): array
+    {
+        $options = is_array($template) && is_array($template['variants']['options'] ?? null) ? $template['variants']['options'] : [];
+        $out     = [];
+        foreach ($options as $key => $option) {
+            if (is_array($option) && preg_match('/^[a-z0-9_]{0,32}$/', (string) $key) === 1) {
+                $out[(string) $key] = ['name' => (string) ($option['name'] ?? $key), 'text' => (string) ($option['text'] ?? '')];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * D-1199, his choice «Auswahl im Druckdialog»: one select for what the label prints in its variant field, preselected as the
+     * module says; nothing where no label offers one.
+     *
+     * @param array<string, mixed> $template
+     */
+    private static function variantChooser(array $template): string
+    {
+        $options = self::variantsOf($template);
+        $field   = (string) ($template['variants']['field'] ?? '');
+        if ($options === [] || preg_match('/^[a-z0-9_]{1,32}$/', $field) !== 1) {
+            return '';
+        }
+        $chosen = (string) ($template['variants']['chosen'] ?? array_key_first($options));
+        $html   = '';
+        foreach ($options as $key => $option) {
+            $html .= '<option value="' . esc_attr($key) . '"' . selected($key, $chosen, false) . '>' . esc_html($option['name']) . '</option>';
+        }
+
+        return '<input type="hidden" name="variant_field" value="' . esc_attr($field) . '">'
+            . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html((string) ($template['variants']['label'] ?? $field)) . '</span>'
+            . '<select name="variant">' . $html . '</select></label>';
     }
 
     /** Once per page: a printer whose loaded roll does not allow the chosen label cannot be picked. */
