@@ -34,4 +34,4 @@ Each step ends with something the owner can operate, and both test runs stay gre
 
 - ~~Own picture?~~ Answered 2026-11-06: *«eigenes bild wäre möglich»* — the pictures carry the flag, and a variant without its own shows the parent's. Every flag field falls back to the parent when the variant leaves it empty. The pins field already exists and gets the flag.
 - Purchase and bill of materials: does a BOM position name a variant, or may it say «any variant» (InvenTree)? Assumed: it names a variant.
-- Re-soldering pins: rebook from «ohne» to «mit» as a transfer between variants? Assumed yes, as a stock transaction.
+- ~~Re-soldering pins?~~ Answered 2026-11-06: *«anlöten von pins ist ein umbuchen wobei ich eher auslöte»* — soldering pins on or off is a rebooking between variants. Flag fields named: pictures, with/without pins, pin assignment.
