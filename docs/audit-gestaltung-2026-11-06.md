@@ -12,11 +12,11 @@ ist (V1); ob jedes `<select>` ein Baum sein müsste (A4); Multiplizitäten gegen
 
 | # | Befund | Wo | Umbau |
 |---|---|---|---|
-| P1.1 | Module greifen an der Tür vorbei in die Persistenz des Modellers (`WpdbRecordRepository`). | Lager `ModelGateway` (4), `Plugin` (2); Fertigung `ModelGateway` (1) | Modeller bietet eine öffentliche Tür (`Taxmod\WordPress\ModelDoor`) mit allem, was die Kopien heute können (`table`, `fields`, `tree`, `recordsMatching`, `recordsOf`, `nodesOf`, `records`, schreiben über `write-data`). |
-| P1.2 | Dieselbe Tür zweimal kopiert, dazu `Table`. | Lager + Fertigung `ModelGateway`, `Core/Table` | Nach P1.1 löschen, beide Module nutzen die Tür des Modellers. |
+| P1.1 ✅ | Module greifen an der Tür vorbei in die Persistenz des Modellers (`WpdbRecordRepository`). | Lager `ModelGateway` (4), `Plugin` (2); Fertigung `ModelGateway` (1) | Modeller bietet eine öffentliche Tür (`Taxmod\WordPress\ModelDoor`) mit allem, was die Kopien heute können (`table`, `fields`, `tree`, `recordsMatching`, `recordsOf`, `nodesOf`, `records`, schreiben über `write-data`). |
+| P1.2 ✅ | Dieselbe Tür zweimal kopiert, dazu `Table`. | Lager + Fertigung `ModelGateway`, `Core/Table` | Nach P1.1 löschen, beide Module nutzen die Tür des Modellers. |
 | P1.3 | SQL auf Modelltabellen außerhalb der Persistenzschicht. | Modeller `RecordBlock` (3), `Admin/Tiles` (2, Kennzahl je Zeitraum), `SettingsScreen` (2), `WpMediaLibrary` (1), `ModelAbilities` (7), `Import/SourcePictures` (1) | Abfragen in die Repositories/`Query`-Schicht verschieben; Bildschirme fragen Methoden. |
 | P1.4 | Transaktion mit Savepoint zweimal von Hand gebaut. | `ModelAbilities::apply`, `NodesScreen` (Satz speichern) | Eine `Transaction::run(callable)` in `Persistence`. |
-| P1.5 | Ability direkt statt über eine Tür. | JLCPCB `ReorderPage` | Über die Tür aus P1.1. |
+| P1.5 ✅ | Ability direkt statt über eine Tür. | JLCPCB `ReorderPage` | Über die Tür aus P1.1. |
 | P1.6 | Eigenes SQL, geduldet: Mail `LegacyProposals` (Altbestand, nur Umzug), DHL `Tracker` (liest WP-Transients). | | Mail: mit dem Altbestand löschen. DHL: über `get_transient`/eigene Option statt SQL. |
 
 ## P2 · Aus einem Guss (S1, S5, K1–K3)
@@ -35,6 +35,11 @@ ist (V1); ob jedes `<select>` ein Baum sein müsste (A4); Multiplizitäten gegen
 | P3.1 | HTTP-Schicht viermal kopiert (`HttpRequest`, `HttpResponse`, `HttpTransport`, `WpHttpTransport`). | eBay, DHL, GLS, JLCPCB | Einmal im Modeller (`Taxmod\Core\Http`, `Taxmod\WordPress\Http`). |
 | P3.2 | Sendungsverfolgung DHL/GLS ähnlich gebaut (`Tracker`, `StoredAccess`, `Stage`, `Event`, `TrackingClient`), < 80 % gleich. | DHL, GLS | Gemeinsamen Tracking-Vertrag im Modeller prüfen, bevor DPD/Hermes API bekommen. |
 | P3.3 | Sehr große Dateien. | Modeller `Rendering` 8 400, `NodesScreen` 8 215, `Schema` 5 039; Lager `StockPage` 3 421, `StockService` 2 377 Zeilen | Beim Anfassen teilen, nicht als eigener Umbau. |
+
+**Stand 2026-11-06 vormittags:** P1.1, P1.2, P1.5 erledigt — Modeller 0.1.174 (`ModelDoor`), Lager 0.57.2,
+Fertigung 0.0.17, JLCPCB 0.1.12. Das Gedächtnis gelesener Knoten gehört der Tür, nicht der Anfrage: ein
+anfrageweites Gedächtnis machte `stock-check` rot (eine Schreibung über `taxmod/apply` blieb ungesehen). `Table`
+bleibt je Modul (40 Zeilen Werteklasse), weil der Kern der Module ohne den Modeller getestet wird.
 
 ## Reihenfolge
 

@@ -90,13 +90,23 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | | Regel | Beschluss |
 |---|---|---|
 | R1 | **Eine Stelle je Tabelle/Objektgefüge.** Im Modeller hält nur die Persistenzschicht (`src/WordPress/Persistence/`) SQL auf Modelltabellen; jede eigene Tabelle (Eingang, Druckaufträge, Kurse) hat genau eine Klasse. Bildschirme, Blöcke, Abilities und Kacheln fragen diese Schicht, statt `Query::*`/`$wpdb` selbst zu benutzen. | [D-1186](NewConcept/90-decision-log.md), `CD-7`, [D-910](NewConcept/90-decision-log.md) |
-| R2 | **Ein Modul hat eine Tür zum Modell**: Abilities (`taxmod/read-node`, `read-tree`, `write-data`) und Filter des Modellers, gebündelt in einer Klasse. Kein Modul benutzt `Taxmod\WordPress\Persistence\*`, kein Modul ruft `wp_get_ability('taxmod/…')` an der Tür vorbei. | [D-1186](NewConcept/90-decision-log.md), [D-936](NewConcept/90-decision-log.md), [D-911](NewConcept/90-decision-log.md) |
+| R2 | **Ein Modul hat eine Tür zum Modell**: Abilities (`taxmod/read-node`, `read-tree`, `write-data`) und Filter des Modellers, gebündelt in der Tür des Modellers `Taxmod\WordPress\ModelDoor` (seit 0.1.174; das Modul wickelt nur die Antwort in seinen Kern und benennt Fehler). Kein Modul benutzt `Taxmod\WordPress\Persistence\*`, kein Modul ruft `wp_get_ability('taxmod/…')` an der Tür vorbei. | [D-1186](NewConcept/90-decision-log.md), [D-936](NewConcept/90-decision-log.md), [D-911](NewConcept/90-decision-log.md) |
 | R3 | **Kein Code doppelt über Repos.** Was zwei Module brauchen (HTTP-Transport, Tür zum Modell, Tabellen-Hilfe), liegt einmal im Modeller und wird von dort benutzt. | [D-952](NewConcept/90-decision-log.md), CLAUDE.md «Duplicating a fact» |
 | R4 | Schichten: WordPress am Rand, der Kern ruft kein WordPress; Fehler als Ausnahme im Kern, `WP_Error` am Rand; Ausgabe wird zurückgegeben, nicht ge-`echo`t. | `CD-1`, `CD-8`, `CD-10` |
 | R5 | Je Anbindung ein Modul `wp_tax_api_<quelle>`; `tax_mail` nur Postfach. Leser über `taxmail_parsers`, Vertrag im Modeller. | [D-1006](NewConcept/90-decision-log.md) |
 | R6 | Zugangsdaten immer verschlüsselt (Tresor), nie im Klartext in Option, Log, Meldung; Dokumente mit persönlichen Daten in der verschlüsselten Ablage. | [D-951](NewConcept/90-decision-log.md), [D-1023](NewConcept/90-decision-log.md) |
 | R7 | Etiketten druckt der Modeller; ein Modul gibt nur Satz und Etikett. | [D-1160](NewConcept/90-decision-log.md) |
 | R8 | Vor jedem neuen Knoten/Feld/Mechanismus prüfen, ob ein vorhandener es schon abdeckt (Daten vor Code). | Arbeitsmodell §5 |
+
+## 9 · Leistung
+
+| | Regel | Beschluss |
+|---|---|---|
+| P1 | Was eine Anfrage nicht braucht, wird nicht geladen: Handler von `admin-post`/`admin-ajax` nur dort verdrahten (`Plugin::handlesAdminActions()`, Module fragen dasselbe); Einstellungen auf `admin_init`/`rest_api_init`, nicht `init`; Hook-Namen nicht als Konstanten großer Bildschirmklassen lesen. | [D-1187](NewConcept/90-decision-log.md) |
+| P2 | Umbau, Saat und Gerüste laufen einmal je Release (`taxmod_up_to_date`), nie bei jedem Aufruf. | [D-1187](NewConcept/90-decision-log.md) |
+| P3 | Kein N+1: kein SQL in einer Schleife, Baumweg einmal an einer Stelle; ein Knoten wird je Anfrage höchstens einmal gelesen (die Tür merkt ihn sich). | `CD-7`, [D-910](NewConcept/90-decision-log.md), [D-454](NewConcept/90-decision-log.md) |
+| P4 | Lange Listen warten auf Suche, Details und Baumdialoge werden erst beim Öffnen geholt. | [D-1147](NewConcept/90-decision-log.md), [D-1011](NewConcept/90-decision-log.md) |
+| P5 | SQL läuft auf MySQL 5.7 (kein `WITH RECURSIVE`, kein MySQL-8-SQL). | [D-910](NewConcept/90-decision-log.md) |
 
 ---
 
@@ -107,6 +117,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 3. Kein `$wpdb`/`Query::*` außerhalb der Datenschicht, keine Persistenz-Klasse im Modul.
 4. Keine Datei aus einem anderen Repo kopiert.
 5. Jeder Schritt zurücknehmbar; Fachbegriffe; Texte über die Text-Domain.
+6. Nichts Neues auf `init` oder in jeder Anfrage, was nur eine Seite braucht (P1).
 
 ## Wächter
 
