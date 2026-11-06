@@ -26,8 +26,8 @@ final class LabelButton
      *
      * D-1153: `$template` = `['name' => 'Platz', 'format' => ['key', 'w', 'h', 'roll'], 'layout' => JSON, 'values' => [field ⇒ text]]` —
      * the label is then drawn from that layout; `code`, `title` and `subtitle` are among its values.
-     * D-1190: `'printer' => ['queue', 'options', 'turn', 'name']` where the label names its printer — the job then carries
-     * that queue and those CUPS options to the print service.
+     * D-1191: `'printer' => ['queue', 'roll', 'turn', 'options', 'turn_options', 'sizes', 'offset', 'line', 'name']` — the printer
+     * whose roll the label fits; the job then carries its queue and the CUPS options for this label to the print service.
      * D-1160: with `'record' => id` the modeller reads the fields the layout names from that record itself; what the module
      * passes in `values` only fills what the record has no field for.
      */

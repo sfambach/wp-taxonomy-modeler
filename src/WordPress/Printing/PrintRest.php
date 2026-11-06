@@ -84,8 +84,8 @@ final class PrintRest
                 }
                 $pdf = LabelDocument::render($format, array_fill(0, $copies, new LabelContent($row['code'], $row['title'], $row['subtitle'])));
             }
-            // D-1190: a label whose template names a printer carries its queue and options; the service no longer guesses them.
-            $jobs[] = ($printer === null ? [] : ['queue' => $printer->queue, 'options' => $printer->options]) + [
+            // D-1191: a label printed on a printer of the model carries its queue and options; the service no longer guesses them.
+            $jobs[] = ($printer === null ? [] : ['queue' => $printer->queue, 'options' => $printer->optionsFor($format)]) + [
                 'id'     => (int) $row['id'],
                 'format' => $format->key,
                 'roll'   => $format->rollMm,

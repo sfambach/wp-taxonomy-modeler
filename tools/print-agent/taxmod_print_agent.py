@@ -76,7 +76,7 @@ def plain(text: str, what: str) -> str:
 
 
 def lp_command(config: dict, job: dict, pdf_path: str) -> list[str]:
-    """D-1190: a job whose label names its printer brings queue and CUPS options; otherwise roll width and format decide."""
+    """D-1191: a job printed on a printer of the model brings queue and CUPS options; otherwise roll width and format decide."""
     queue = plain(str(job["queue"]), "queue") if job.get("queue") else printer_for(config, float(job["roll"]))
     command = ["lp", "-d", queue, "-t", f"taxmod-{job['id']}-{job.get('code', '')}"]
     options = job["options"] if isinstance(job.get("options"), dict) and job["options"] else config["formats"].get(job["format"], {})

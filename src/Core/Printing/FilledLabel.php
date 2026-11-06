@@ -4,7 +4,7 @@ namespace Taxmod\Core\Printing;
 
 /**
  * One label as a module hands it over: the size, the layout of its template, the values of its record (D-1153) and the
- * printer its template names (D-1190).
+ * printer it goes to (D-1191).
  *
  * ⚠️ *It travels as JSON — in the dialog's form and in a print job — so the print service draws exactly what the person saw,
  * even if the template changes before the job is fetched.*
@@ -78,8 +78,9 @@ final class FilledLabel
         }
 
         $printer = is_array($raw['printer'] ?? null) && trim((string) ($raw['printer']['queue'] ?? '')) !== '' ? LabelPrinter::fromArray($raw['printer']) : null;
-        // D-1190: whether the label is turned is the printer's word; without one the roll decides as before.
-        $turned = is_bool($format['turn'] ?? null) ? $format['turn'] : $printer?->turnsLabel;
+        // D-1191: a printer that does not turn labels takes every label as it is; one that does, or none, turns a label as wide
+        // as its roll (D-1108).
+        $turned = is_bool($format['turn'] ?? null) ? $format['turn'] : ($printer !== null && ! $printer->turnsLabel ? false : null);
 
         return new self(
             new LabelFormat($key, $size('w'), $size('h'), $size('roll') > 0.0 ? $size('roll') : $size('w'), $turned, $printer?->offsetMm ?? 0.0, $printer?->lineMm ?? 0.0),
