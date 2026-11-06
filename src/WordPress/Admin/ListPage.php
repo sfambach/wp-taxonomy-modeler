@@ -352,6 +352,34 @@ final class ListPage
     }
 
     /**
+     * The stages of a process as arrow tiles that grip into each other, in their order, each with its count (D-1197);
+     * views beside the process (archive, all) follow as plain tabs.
+     *
+     * @param list<array{0: string, 1: string, 2?: int|null}> $steps slug, label, optional count — in process order
+     * @param list<array{0: string, 1: string, 2?: int|null}> $beside slug, label, optional count
+     * @param callable(string): string $url the address of a step or tab
+     */
+    public static function steps(array $steps, string $active, callable $url, array $beside = []): string
+    {
+        $html = '<nav class="taxmod-steps" aria-label="' . esc_attr__('Process', 'taxmod') . '"><ol>';
+
+        foreach ($steps as $step) {
+            $html .= '<li><a class="taxmod-step' . ($step[0] === $active ? ' is-active' : '') . (($step[2] ?? null) === 0 ? ' is-empty' : '') . '" href="' . esc_url($url($step[0])) . '"'
+                . ($step[0] === $active ? ' aria-current="step"' : '') . '><span class="taxmod-step-label">' . esc_html($step[1]) . '</span>'
+                . (isset($step[2]) ? '<span class="taxmod-step-count">' . esc_html(number_format_i18n((int) $step[2])) . '</span>' : '') . '</a></li>';
+        }
+
+        $html .= '</ol>';
+
+        foreach ($beside as $tab) {
+            $html .= '<a class="nav-tab taxmod-steps-beside' . ($tab[0] === $active ? ' nav-tab-active' : '') . '" href="' . esc_url($url($tab[0])) . '">' . esc_html($tab[1])
+                . (isset($tab[2]) ? ' <span class="count">(' . (int) $tab[2] . ')</span>' : '') . '</a>';
+        }
+
+        return $html . '</nav>';
+    }
+
+    /**
      * Tabs with counts, as WordPress draws them.
      *
      * @param list<array{0: string, 1: string, 2?: int|null}> $tabs slug, label, optional count

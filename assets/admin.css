@@ -2478,3 +2478,61 @@ pre.taxmod-code {
 .taxmod-page-section > h2:first-child {
 	margin-top: 0;
 }
+
+/* D-1197: process stages as arrow tiles that grip into each other. */
+.taxmod-steps {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 16px;
+	margin: 12px 0;
+}
+.taxmod-steps ol {
+	display: flex;
+	flex-wrap: wrap;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.taxmod-steps li {
+	margin: 0 -12px 0 0;
+}
+.taxmod-step {
+	display: flex;
+	flex-direction: column;
+	min-width: 120px;
+	padding: 8px 28px 8px 24px;
+	background: #dcdcde;
+	color: #1d2327;
+	text-decoration: none;
+	/* The border cannot survive a clip, so the arrows are told apart by the gap between them. */
+	clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
+}
+.taxmod-steps li:first-child .taxmod-step {
+	padding-left: 16px;
+	clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+}
+.taxmod-step:hover,
+.taxmod-step:focus {
+	background: #f0f6fc;
+	color: #2271b1;
+}
+.taxmod-step.is-active {
+	background: #2271b1;
+	color: #fff;
+}
+.taxmod-step.is-empty .taxmod-step-count {
+	opacity: .5;
+}
+.taxmod-step-label {
+	font-size: 13px;
+}
+.taxmod-step-count {
+	font-size: 22px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+.taxmod-steps-beside {
+	float: none;
+	margin: 0;
+}
