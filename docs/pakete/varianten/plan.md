@@ -30,6 +30,14 @@ A variant is a record of its own, with its own id (D-995: the material number is
 
 Each step ends with something the owner can operate, and both test runs stay green (PR-9).
 
+## How variants are shown (proposal, his question 2026-11-06: «wie stellen wir die varienten da unter dem vater material als eigenes material ??»)
+
+- Each variant is a material of its own: own number «48476-1», own label/QR, found by the search on its own.
+- Material list and group stock: one row per parent with the summed stock; the variants open beneath it (indented rows with colour/pins and their own stock). A material without variants stays one row.
+- Parent's detail page (standard page, D-1196): head, then a section «Varianten» as a list (one row each, own stock, print, book).
+- Variant's detail page: head says «Variante von 48476 …» with a link; fields from the parent are shown but locked.
+- Model screen: the variants stand under their parent in the record list of the same node.
+
 ## Open (for the owner)
 
 - ~~Own picture?~~ Answered 2026-11-06: *«eigenes bild wäre möglich»* — the pictures carry the flag, and a variant without its own shows the parent's. Every flag field falls back to the parent when the variant leaves it empty. The pins field already exists and gets the flag.
