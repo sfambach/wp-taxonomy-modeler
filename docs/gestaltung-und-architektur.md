@@ -33,6 +33,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | S5 | Kein `<style>`/`<script>` und kein `style="…"` in Seiten: Aussehen steht zentral im CSS des Modellers (`assets/admin.css`), Verhalten in seinem JS. Ausnahme nur für eigene Druckbögen (Etikett, Packzettel), die als eigenes Dokument laufen. | [D-1068](NewConcept/90-decision-log.md) («die Listen-Vorlage legt sie einmal fest») |
 | S6 | Standardgerüst jeder Seite: Überschrift (Reiter) → Kacheln → Sektionen untereinander (Detail, Liste, Liste …), über `ListPage::page($screen, $tiles, $sections)`. Keine Seite ordnet ihre Teile selbst nebeneinander. Umstellung zuerst in allem, was im Logistik-Menü steht (Lager, Verkauf, Fertigung, Anbindungsseiten). | [D-1196](NewConcept/90-decision-log.md) |
 | S7 | Reiter, die Stufen eines Prozesses in fester Reihenfolge sind, werden Prozess-Kacheln (Pfeile, die ineinandergreifen, mit Zahl) über `ListPage::steps`; Ansichten daneben (Archiv, Alle) bleiben Reiter rechts davon. Reiter ohne Reihenfolge bleiben `ListPage::tabs`. | [D-1197](NewConcept/90-decision-log.md) |
+| S8 | Sammelaktionen nur in der einen Auswahl der Liste («--», dann alle Aktionen) mit Knopf «Sammelaktion ausführen»; wirkt nur auf angehakte Zeilen. Aktionen mit Dialog über `ListPage::bulkBar(…, $asking)`, keine eigenen Knöpfe daneben. | [D-1202](NewConcept/90-decision-log.md) |
 
 ## 2 · Liste
 

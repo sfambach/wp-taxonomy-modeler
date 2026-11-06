@@ -330,20 +330,31 @@ final class ListPage
      * @param array<string, string> $actions action value => label
      * @param string $filters from {@see self::filters()}, beside the bulk actions
      * @param bool $expandable false for a list whose rows open their own view instead (D-1183): no «Expand all»
+     * @param array<string, array{0: string, 1: string}> $asking dialog switch → choice label, the dialog ({@see self::dialogAction()} joining
+     *                                                     `$formId`): chosen and run, the dialog opens for the rows ticked
      */
-    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true): string
+    public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = []): string
     {
-        $options = '<option value="">' . esc_html__('Bulk actions', 'taxmod') . '</option>';
+        // His word 2026-11-06: «-- , drucken ... und was wir noch für aktionen haben in das selekt und dann bulk ation asuführen
+        // button (nimmt nur selektierte einträge» — every action of the list stands in the one choice (D-1202).
+        $options = '<option value="">--</option>';
+        $dialogs = '';
 
         foreach ($actions as $value => $label) {
             $options .= '<option value="' . esc_attr($value) . '">' . esc_html($label) . '</option>';
+        }
+
+        foreach ($asking as $switch => [$label, $dialog]) {
+            $options .= '<option value="ask:' . esc_attr($switch) . '" data-taxmod-ask="' . esc_attr($switch) . '">' . esc_html($label) . '</option>';
+            $dialogs .= $dialog;
         }
 
         return '<div class="tablenav top"><form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
             . wp_nonce_field($nonceAction, '_wpnonce', true, false)
             . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Bulk actions', 'taxmod') . '</label>'
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
-            . get_submit_button(__('Apply', 'taxmod'), 'action', '', false) . '</form>'
+            . get_submit_button(__('Run bulk action', 'taxmod'), 'action', '', false) . '</form>'
+            . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>')
             . $filters
             . (! $expandable ? '' : '<div class="alignleft actions">'
             . '<button type="button" class="button" onclick="' . esc_attr(self::toggleAll(false)) . '">' . esc_html__('Expand all', 'taxmod') . '</button> '
@@ -563,9 +574,11 @@ final class ListPage
         $message = (string) wp_json_encode(__('Apply «%1$s» to %2$d entries?', 'taxmod'));
         $none = (string) wp_json_encode(__('Nothing selected.', 'taxmod'));
 
-        return "if(this.dataset.taxmodOk){delete this.dataset.taxmodOk;return true}var f=this,n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
-            . "var s=this.querySelector('select[name=action]');if(!s.value){return false}"
+        // A dialog's own confirm button has a name and has already asked; only the bar's button asks here.
+        return "if(this.dataset.taxmodOk||(event.submitter&&event.submitter.name)){delete this.dataset.taxmodOk;return true}var f=this,n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
+            . "var s=this.querySelector('select');if(!s.value){return false}"
             . 'if(n===0){alert(' . $none . ');return false}'
+            . "var o=s.options[s.selectedIndex];if(o.dataset.taxmodAsk){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
             . 'taxmodConfirm(' . $message . ".replace('%1\$s',s.options[s.selectedIndex].text).replace('%2\$d',n),function(){f.dataset.taxmodOk=1;f.requestSubmit()});return false";
     }
 

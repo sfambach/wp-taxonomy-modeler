@@ -2536,3 +2536,9 @@ pre.taxmod-code {
 	float: none;
 	margin: 0;
 }
+
+/* D-1202: a bulk action that asks opens its dialog from the choice; its own opener is not shown. */
+.taxmod-bulk-asks > .alignleft > .taxmod-chooser > .taxmod-dialog-open,
+.taxmod-bulk-asks > .taxmod-chooser > .taxmod-dialog-open {
+	display: none;
+}
