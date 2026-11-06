@@ -168,6 +168,28 @@ final class ModelDoor
     }
 
     /**
+     * The records whose field `$relation` points at one of these records, in one query — the few records of a large node
+     * that belong to one thing, instead of the whole node (D-1195).
+     *
+     * @param list<int> $records
+     * @return list<int>
+     */
+    public function referrers(array $records, int $relation): array
+    {
+        $out = [];
+
+        foreach ($records === [] ? [] : (new WpdbRecordRepository())->referrersOfMany($records) as $values) {
+            foreach ($values as $value) {
+                if ($value->relationId === $relation) {
+                    $out[$value->recordId] = true;
+                }
+            }
+        }
+
+        return array_keys($out);
+    }
+
+    /**
      * The user records of these nodes, at most `$limit`, with the node each lives in.
      *
      * @param list<int> $nodes
