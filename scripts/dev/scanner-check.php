@@ -1,7 +1,8 @@
 <?php declare(strict_types=1);
 
 /**
- * The scanner's test page: a tab of the Configuration with one focused field; a scanned code shows its record.
+ * The scanner's test page: a tab of the Configuration and a page under Logistik › Einstellungen, with one focused field; a
+ * scanned code shows its record.
  *
  *     php scripts/dev/scanner-check.php [path/to/wordpress]
  *
@@ -70,5 +71,17 @@ $_GET['_taxmod_scan_nonce'] = 'x';
 $pruefe(str_contains((new SettingsScreen())->render(), 'The link has expired') , 'without its nonce nothing is looked up');
 
 unset($_GET['tab'], $_GET['code'], $_GET['_taxmod_scan_nonce']);
+
+// D-1211, his word: «solle in einstellung zweig des logistik menüs sein».
+$seite = null;
+foreach ((array) apply_filters(\Taxmod\WordPress\Printing\PrintTab::LOGISTICS_FILTER, []) as $eintrag) {
+    $seite = ($eintrag['slug'] ?? '') === ScannerTab::LOGISTICS_SLUG ? $eintrag : $seite;
+}
+$pruefe(is_array($seite) && ($seite['area'] ?? '') === 'settings' && is_callable($seite['render'] ?? null), 'the scanner is announced as a page under Logistik › Einstellungen');
+$_GET['page']   = 'taxmod-lager-modul';
+$_GET['module'] = ScannerTab::LOGISTICS_SLUG;
+$logistik = is_array($seite) ? (string) ($seite['render'])() : '';
+$pruefe(str_contains($logistik, 'id="taxmod-scan-code"') && str_contains($logistik, 'name="module" value="' . ScannerTab::LOGISTICS_SLUG . '"') && ! str_contains($logistik, 'value="taxmod-settings"'), 'there the field scans back into the same page');
+unset($_GET['page'], $_GET['module']);
 
 exit($fehler === 0 ? 0 : 1);
