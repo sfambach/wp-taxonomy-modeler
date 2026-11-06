@@ -110,6 +110,17 @@ final class PrintingTest extends TestCase
     }
 
     #[Test]
+    public function signs_win_ansi_lacks_print_as_their_nearest_not_as_a_question_mark(): void
+    {
+        $pdf = new PdfDocument();
+        $pdf->addPage(50, 20);
+        $pdf->text(1, 10, 'LCD · 2,4″ · −5 V', 10);
+        $rendered = $pdf->render();
+        self::assertStringContainsString("(LCD \xB7 2,4\" \xB7 -5 V) Tj", $rendered);
+        self::assertStringNotContainsString('?', substr($rendered, (int) strpos($rendered, 'BT')));
+    }
+
+    #[Test]
     public function the_ohm_sign_comes_from_the_symbol_font(): void
     {
         $pdf = new PdfDocument();

@@ -171,9 +171,18 @@ final class PdfDocument
         return rtrim(rtrim(sprintf('%.3F', $value), '0'), '.');
     }
 
+    /**
+     * Signs WinAnsi lacks, written with the nearest it has — without this they print as «?» (his find 2026-11-06: «inch wird
+     * … als ? ausgedruckt»; the computed display names write the inch as ″).
+     */
+    private const STAND_INS = [
+        '″' => '"', '′' => "'", '‴' => "'''", '−' => '-', '‐' => '-', '‑' => '-', '‒' => '-', '⁄' => '/', '∕' => '/',
+        "\u{2009}" => ' ', "\u{202F}" => ' ', "\u{2007}" => ' ', "\u{200B}" => '', '≤' => '<=', '≥' => '>=', '≈' => '~', '→' => '->', '←' => '<-',
+    ];
+
     private static function winAnsi(string $utf8): string
     {
-        return mb_convert_encoding($utf8, 'Windows-1252', 'UTF-8');
+        return mb_convert_encoding(strtr($utf8, self::STAND_INS), 'Windows-1252', 'UTF-8');
     }
 
     private static function escape(string $text): string
