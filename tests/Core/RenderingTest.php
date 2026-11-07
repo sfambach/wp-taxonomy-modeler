@@ -2785,6 +2785,39 @@ final class RenderingTest extends TestCase
         self::assertSame('4 × 20 Zeichen', $name(), 'der Knoten «Raster» sagt «×», gesetzt wie ein Malzeichen (D-1194)');
     }
 
+    /** ⚠️ *D-1215, sein Wort: «bei der versogungspannung ist nur 3.3 5v zu sehen das ist unschön», und «... ist auch ok».* */
+    #[Test]
+    public function a_unit_value_shown_to_readers_is_its_name_not_its_bare_parts(): void
+    {
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $volt      = $this->editor->createNode('V', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $raster    = $this->editor->createNode('Bereich', $this->branchRoot['compositions']->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $von       = $this->editor->addField($raster->id, $this->type('Decimal')->id, 'von');
+        $bis       = $this->editor->addField($raster->id, $this->type('Decimal')->id, 'bis');
+        $einheit   = $this->editor->addField($raster->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $display   = $this->thing('Display');
+        $feld      = $this->editor->addField($display->id, $raster->id, 'Versorgungsspannung');
+        $teil = $this->records->add(new NodeRecord(0, $raster->id, 1, '2026-11-06 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($teil, $von->id, TypedValue::ofDecimal('3.3')));
+        $this->records->putValue(RelationRecord::direct($teil, $bis->id, TypedValue::ofDecimal('5')));
+        $this->records->putValue(RelationRecord::direct($teil, $einheit->id, TypedValue::ofReference($volt->id)));
+        $satz = $this->records->add(new NodeRecord(0, $display->id, 1, '2026-11-06 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $feld->id, TypedValue::ofRecordReference($teil)));
+        $this->einstellung($raster, 'renderer', TypedValue::ofText(CompactRenderer::NAME));
+        $this->einstellung($raster, CompactRenderer::LABEL, TypedValue::ofText('0'));
+        $this->resolver->forget();
+        $rendering = new Rendering($this->nodes, new FixedFramework($this->wurzel, $this->nodes->byId($this->wurzel->id + 1), $this->branchRoot, self::INSTALLATION, self::ROLE_IDS, ['units' => $einheiten]), ShippedRenderers::registry(), $this->typeNodes, new Labels($this->labelStore, 'en_US'), ShippedConverters::registry(), resolver: $this->resolver, relations: $this->relations, records: $this->records, addons: \Taxmod\Core\Addon\ShippedAddons::registry());
+        $felder = $this->editor->fieldsOf($display->id);
+        $werte  = [$feld->id => TypedValue::ofRecordReference($teil)];
+        $html   = $rendering->nodeAsForm($display, $felder, $werte, Purpose::Display, '', '', \Taxmod\Core\Renderer\Level::FrontEnd, false, '', $rendering->partsOfRecord($satz, $felder), recordId: $satz)->markup;
+
+        self::assertStringContainsString('3.3 … 5 V', $html, 'der Bereich mit Verbinder und Einheit, wie sein Name');
+        self::assertStringNotContainsString('taxmod-compact', $html, 'nicht die drei nackten Teile nebeneinander');
+
+        $bearbeitet = $rendering->nodeAsForm($display, $felder, $werte, Purpose::Edit, 'v', '', \Taxmod\Core\Renderer\Level::Admin, true, '', $rendering->partsOfRecord($satz, $felder), recordId: $satz)->markup;
+        self::assertStringContainsString('taxmod-compact', $bearbeitet, 'beim Bearbeiten bleiben die Teile eingebbar');
+    }
+
     /** ⚠️ *Zeile 8 (D-760): der Validator der Stelle sieht den Wert, bevor er gespeichert wird.* */
     #[Test]
     public function the_validators_of_a_use_site_complain_about_a_value_outside_its_bounds(): void

@@ -2058,7 +2058,10 @@ final class Rendering implements Presets
             // «warum sieht das anders aus als summary bei Hersteller» — der Nachfolger zeigt auf «Software», das Kinder hat, und ist
             // darum nach D-540 eine Knotenauswahl; der Satz darin wurde als Nummer gezeichnet. Der Raum des Wertes entscheidet die Anzeige.*
             // ⚠️ *Nicht an einer Komposition: dort zeigt der Verweis auf den eigenen Teil, und der wird gezeichnet, nicht zusammengefasst (D-577).*
-            $satzverweis = ! $verweisTabelle && $gewaehlt?->referenceSpace === ReferenceSpace::Record && $relation->kind !== RelationKind::Composition;
+            // ⚠️ *Ausser beim Anzeigen eines Einheitenwerts: dort ist sein Name der Wert, «3,3 … 5 V» statt der nackten Teile «3.3 5 V»
+            // (D-1215, sein Wort: «bei der versogungspannung ist nur 3.3 5v zu sehen das ist unschön»).*
+            $satzverweis = ! $verweisTabelle && $gewaehlt?->referenceSpace === ReferenceSpace::Record
+                && ($relation->kind !== RelationKind::Composition || ($purpose === Purpose::Display && $this->gemerkterKnoten($relation->toNodeId)?->klasse === \Taxmod\Core\Model\NodeClass\UnitValue::class));
 
             if ($satzverweis && ! $renderer instanceof SummaryRenderer) {
                 $renderer = $this->renderers->byName(SummaryRenderer::NAME);
