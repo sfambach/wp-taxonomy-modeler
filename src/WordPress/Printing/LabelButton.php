@@ -80,7 +80,9 @@ final class LabelButton
         $service = PrintService::isSetUp();
         $switch = 'taxmod-label-' . strtolower($kind->value) . '-' . $id;
 
-        $body = ($chooser !== null ? $chooser['html'] : ($filled === null
+        // His wish 2026-11-07: «vorschaubild im druckdialog nach rechts zumindest für desktop» — options left, preview right; on a
+        // narrow screen the preview stays below (assets/admin.css).
+        $body = '<span class="taxmod-label-dialog"><span class="taxmod-label-dialog-options">' . ($chooser !== null ? $chooser['html'] : ($filled === null
                 ? '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Format', 'taxmod') . '</span>'
                     . '<select name="format">' . $options . '</select></label>'
                 : '<span style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Vorlage', 'taxmod') . '</span>'
@@ -90,7 +92,7 @@ final class LabelButton
             . '<input type="number" name="copies" min="1" max="' . self::MAX_COPIES . '" step="1" value="' . self::copies($copies) . '" style="width:6em"></label>'
             . '<span style="display:block">' . esc_html($label->code . ' · ' . $label->title . ($label->subtitle === '' ? '' : ' · ' . $label->subtitle)) . '</span>'
             . ($service ? '' : '<span class="description" style="display:block;margin-top:.5em">' . esc_html__('No print service set up: the label opens as PDF to print from the browser.', 'taxmod') . '</span>')
-            . self::previewBox();
+            . '</span>' . self::previewBox() . '</span>';
 
         $foot = ($service ? '<button type="submit" class="button button-primary" name="how" value="service">' . esc_html__('Print', 'taxmod') . '</button>' : '')
             . '<button type="submit" class="button' . ($service ? '' : ' button-primary') . '" name="how" value="pdf" formtarget="_blank">' . esc_html__('Open as PDF', 'taxmod') . '</button>';
@@ -405,7 +407,7 @@ final class LabelButton
             return '';
         }
 
-        return '<span data-taxmod-label-preview style="display:block;margin-top:.75em"><span style="display:block;font-weight:600">' . esc_html__('Vorschau', 'taxmod') . '</span>'
+        return '<span class="taxmod-label-dialog-preview" data-taxmod-label-preview><span style="display:block;font-weight:600">' . esc_html__('Vorschau', 'taxmod') . '</span>'
             . '<iframe title="' . esc_attr__('Label preview', 'taxmod') . '" style="display:block;width:100%;max-width:320px;height:200px;border:1px solid #c3c4c7;background:#fff"></iframe>'
             . '<span class="description" data-taxmod-label-preview-note style="display:block"></span></span>'
             . self::previewScript();

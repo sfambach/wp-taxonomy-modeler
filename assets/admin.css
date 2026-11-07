@@ -2628,6 +2628,8 @@ pre.taxmod-code {
 	object-fit: cover;
 	border-radius: 3px;
 	background: #f0f0f1;
+}
+
 /* D-1206: the scanner test page — one wide field, the record's buttons on the right. */
 .taxmod-scan-form {
 	display: flex;
@@ -2644,4 +2646,41 @@ pre.taxmod-code {
 	display: flex;
 	justify-content: flex-end;
 	gap: .5em;
+}
+
+/* ── The label dialog: options left, preview right ───────────────────────────
+ *
+ * His wish 2026-11-07: «vorschaubild im druckdialog nach rechts zumindest für
+ * desktop». Below the admin's own phone break (782px) the preview stays under
+ * the options, as before. */
+.taxmod-label-dialog,
+.taxmod-label-dialog-options,
+.taxmod-label-dialog-preview {
+    display: block;
+}
+
+.taxmod-label-dialog-preview {
+    margin-top: .75em;
+}
+
+@media (min-width: 783px) {
+    .taxmod-dialog-panel:has(.taxmod-label-dialog-preview) {
+        width: min(52em, calc(100vw - 2em));
+    }
+
+    .taxmod-label-dialog {
+        display: flex;
+        gap: 1.25em;
+        align-items: flex-start;
+    }
+
+    .taxmod-label-dialog-options {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .taxmod-label-dialog-preview {
+        flex: 0 0 320px;
+        margin-top: 0;
+    }
 }
