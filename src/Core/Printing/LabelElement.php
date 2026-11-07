@@ -27,6 +27,10 @@ final class LabelElement
         public readonly bool $atBottom = false,
         /** D-1154: the text preview and test print show where no record fills the field. */
         public readonly string $example = '',
+        /** D-1217: a component value in its short code («24K», «4N7»). */
+        public readonly bool $short = false,
+        /** D-1217: the text stands in the middle of its box. */
+        public readonly bool $centred = false,
     ) {
         if ($type !== self::TEXT && $type !== self::QR) {
             throw new \InvalidArgumentException(sprintf('Unknown label element "%s".', $type));
@@ -40,6 +44,16 @@ final class LabelElement
         if ($maxPt <= 0.0 || $lines < 1) {
             throw new \InvalidArgumentException(sprintf('«%s» needs a size and at least one line.', $field));
         }
+    }
+
+    /**
+     * D-1217: «Widerstandswert|Kapazität» — the first of these fields the record has a value for.
+     *
+     * @return list<string>
+     */
+    public function alternatives(): array
+    {
+        return array_values(array_filter(array_map('trim', explode('|', $this->field)), static fn (string $f): bool => $f !== ''));
     }
 
     /** @return array<string, string|float|int|bool> */
@@ -57,6 +71,8 @@ final class LabelElement
             'lines'  => $this->lines > 1 ? $this->lines : null,
             'bottom' => $this->atBottom ?: null,
             'example' => $this->example === '' ? null : $this->example,
+            'short'  => $this->short ?: null,
+            'center' => $this->centred ?: null,
         ], static fn (mixed $value): bool => $value !== null);
     }
 }

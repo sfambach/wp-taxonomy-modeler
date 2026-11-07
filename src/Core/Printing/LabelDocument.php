@@ -84,6 +84,15 @@ final class LabelDocument
     {
         foreach ($layout->elements as $element) {
             $text = trim((string) ($values[$element->field] ?? ''));
+            foreach ($text === '' ? $element->alternatives() : [] as $field) {
+                $text = trim((string) ($values[$field] ?? ''));
+                if ($text !== '') {
+                    break;
+                }
+            }
+            if ($text !== '' && $element->short) {
+                $text = ShortValue::of($text);
+            }
             if ($text === '') {
                 continue;
             }
@@ -108,7 +117,8 @@ final class LabelDocument
 
         $first = $box->atBottom ? $box->yMm + $box->heightMm - (count($lines) - 1) * $lineMm * 1.15 : $box->yMm + $lineMm;
         foreach ($lines as $i => $line) {
-            $pdf->text($box->xMm, $first + $i * $lineMm * 1.15, $line, $size, $box->bold);
+            $x = $box->centred ? $box->xMm + max(0.0, ($box->widthMm - PdfDocument::textWidthMm($line, $size, $box->bold)) / 2) : $box->xMm;
+            $pdf->text($x, $first + $i * $lineMm * 1.15, $line, $size, $box->bold);
         }
     }
 

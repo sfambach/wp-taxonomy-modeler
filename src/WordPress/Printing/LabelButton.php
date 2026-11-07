@@ -155,7 +155,7 @@ final class LabelButton
             // The record's own words for the fields the layout names, read now (see chooser()); they win, as in filled().
             $record = absint($post['record'] ?? 0);
             if ($record > 0) {
-                $fields = array_values(array_filter(array_map(static fn (mixed $e): string => is_array($e) ? (string) ($e['field'] ?? $e['feld'] ?? '') : '', (array) ($document['layout'] ?? []))));
+                $fields = self::layoutFields((array) ($document['layout'] ?? []));
                 $document['values'] = self::recordValues($record, $fields)['values'] + (is_array($document['values'] ?? null) ? $document['values'] : []);
             }
             $post['document'] = (string) json_encode($document);
@@ -246,7 +246,7 @@ final class LabelButton
         $record = (int) ($template['record'] ?? 0);
         if ($record > 0) {
             $layout = json_decode((string) ($template['layout'] ?? ''), true);
-            $fields = is_array($layout) ? array_values(array_filter(array_map(static fn (mixed $e): string => is_array($e) ? (string) ($e['field'] ?? $e['feld'] ?? '') : '', $layout))) : [];
+            $fields = is_array($layout) ? self::layoutFields($layout) : [];
             $values = self::recordValues($record, $fields)['values'] + $values;
         }
         foreach (is_array($template['values'] ?? null) ? $template['values'] : [] as $field => $value) {
@@ -463,5 +463,26 @@ final class LabelButton
     public static function copies(int $wanted): int
     {
         return max(1, min(self::MAX_COPIES, $wanted));
+    }
+
+    /**
+     * The fields a layout reads; «Widerstandswert|Kapazität» names each of them (D-1217).
+     *
+     * @param array<mixed> $layout
+     * @return list<string>
+     */
+    private static function layoutFields(array $layout): array
+    {
+        $fields = [];
+        foreach ($layout as $element) {
+            $field = is_array($element) ? (string) ($element['field'] ?? $element['feld'] ?? '') : '';
+            foreach (explode('|', $field) as $one) {
+                if (trim($one) !== '') {
+                    $fields[] = trim($one);
+                }
+            }
+        }
+
+        return array_values(array_unique($fields));
     }
 }

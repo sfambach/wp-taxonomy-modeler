@@ -20,7 +20,7 @@ namespace Taxmod\Core\Printing;
  */
 final class LabelLayout
 {
-    private const ALIASES = ['typ' => 'type', 'feld' => 'field', 'b' => 'w', 'fett' => 'bold', 'zeilen' => 'lines', 'unten' => 'bottom', 'beispiel' => 'example'];
+    private const ALIASES = ['typ' => 'type', 'feld' => 'field', 'b' => 'w', 'fett' => 'bold', 'zeilen' => 'lines', 'unten' => 'bottom', 'beispiel' => 'example', 'kurz' => 'short', 'mitte' => 'center'];
 
     /** @param list<LabelElement> $elements */
     public function __construct(public readonly array $elements)
@@ -63,6 +63,8 @@ final class LabelLayout
                 (int) $number('lines', 1.0),
                 (bool) ($element['bottom'] ?? false),
                 is_scalar($element['example'] ?? null) ? trim((string) $element['example']) : '',
+                (bool) ($element['short'] ?? false),
+                (bool) ($element['center'] ?? false),
             );
         }
 
@@ -106,9 +108,9 @@ final class LabelLayout
         return $out;
     }
 
-    /** @return list<string> the fields the layout reads, in order, each once */
+    /** @return list<string> the fields the layout reads, in order, each once — every alternative of «a|b» on its own */
     public function fields(): array
     {
-        return array_values(array_unique(array_map(static fn (LabelElement $e): string => $e->field, $this->elements)));
+        return array_values(array_unique(array_merge(...array_map(static fn (LabelElement $e): array => $e->alternatives(), $this->elements))));
     }
 }
