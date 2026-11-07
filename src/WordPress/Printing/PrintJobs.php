@@ -49,6 +49,22 @@ final class PrintJobs
     }
 
     /**
+     * D-1221: the state of one job and what the service said about it, or null when there is no such job.
+     *
+     * @return array{0: PrintJobStatus, 1: string}|null
+     */
+    public function statusOf(int $id): ?array
+    {
+        global $wpdb;
+
+        $table = PrintJobSchema::table();
+        $row   = $wpdb->get_row($wpdb->prepare("SELECT status, message FROM {$table} WHERE id = %d", $id), ARRAY_A);
+        $state = is_array($row) ? PrintJobStatus::tryFrom((string) $row['status']) : null;
+
+        return $state === null ? null : [$state, (string) ($row['message'] ?? '')];
+    }
+
+    /**
      * Claims every waiting job, and every claim older than the limit, for one pull.
      *
      * @return list<array<string, string>>

@@ -72,7 +72,9 @@ $pruefe(PrintService::settings()['agent'] === 'check 1.0' && PrintService::setti
 $zweiter = $rufe('/print/pull', [], $token)->get_data()['jobs'] ?? [];
 $pruefe(array_filter($zweiter, static fn (array $j): bool => $j['id'] === $id) === [], 'a claimed job is not handed over twice');
 
+$pruefe(($jobs->statusOf($id)[0] ?? null) === \Taxmod\Core\Printing\PrintJobStatus::Claimed, 'D-1221: the dialog sees a fetched job as not yet printed');
 $pruefe($rufe('/print/jobs/' . $id . '/result', ['ok' => true, 'message' => 'request id is QL-1'], $token)->get_status() === 200, 'the service answers the job');
+$pruefe(($jobs->statusOf($id) ?? []) === [\Taxmod\Core\Printing\PrintJobStatus::Printed, 'request id is QL-1'] && $jobs->statusOf(PHP_INT_MAX) === null, 'D-1221: … and as printed once the service has answered; an unknown job has no state');
 $zeile = $jobs->latest(1)[0];
 $pruefe($zeile['status'] === 'printed' && $zeile['message'] === 'request id is QL-1', 'the job is printed, with the message of CUPS');
 $pruefe($rufe('/print/jobs/' . $id . '/result', ['ok' => false], $token)->get_status() === 409, 'a second answer is refused');

@@ -8,6 +8,7 @@ use Taxmod\Core\Printing\LabelDocument;
 use Taxmod\Core\Printing\LabelFormat;
 use Taxmod\Core\Printing\LabelPrefix;
 use Taxmod\Core\Printing\LabelTemplate;
+use Taxmod\Core\Printing\PrintJobStatus;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -39,6 +40,9 @@ final class LabelButton
 
     private const NONCE = '_taxmod_label_nonce';
 
+    /** D-1221: the dialog asks for the state of the job it sent until the service has printed it. */
+    public const STATUS_ACTION = 'taxmod_label_job_status';
+
     /** The format a label of this kind starts with in the dialog. */
     private const DEFAULT_FORMAT = ['O' => 'holder62', 'K' => 'roll62', 'M' => 'material62', 'E' => 'material62'];
 
@@ -57,6 +61,7 @@ final class LabelButton
         self::$recordValues = $recordValues;
         add_filter(self::FILTER, static fn (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []): string => self::render($prefix, $id, $title, $subtitle, $copies, $template), 10, 7);
         add_action('admin_post_' . self::ACTION, self::handle(...));
+        add_action('wp_ajax_' . self::STATUS_ACTION, self::status(...));
     }
 
     /** @param array<string, mixed> $template */
@@ -209,8 +214,35 @@ final class LabelButton
     private static function answerQueued(array $post, int $job): void
     {
         if (! empty($post['taxmod_ajax'])) {
-            wp_send_json_success(['message' => sprintf(/* translators: %d: job number */ __('Job %d is waiting for the print service.', 'taxmod'), $job)]);
+            wp_send_json_success(['message' => sprintf(/* translators: %d: job number */ __('Job %d is waiting for the print service.', 'taxmod'), $job), 'job' => $job]);
         }
+    }
+
+    /**
+     * D-1221, his word 2026-11-07: «gedruckt ist es schon» while the page still said the job was waiting — admin-ajax: capability,
+     * nonce, then the state of one job and the message to show once it has an end.
+     */
+    public static function status(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_send_json_error(['message' => __('You cannot print labels.', 'taxmod')], 403);
+        }
+        check_ajax_referer(self::ACTION, self::NONCE);
+
+        $job   = absint(wp_unslash($_POST['job'] ?? 0));
+        $found = $job > 0 ? (new PrintJobs())->statusOf($job) : null;
+        if ($found === null) {
+            wp_send_json_error(['message' => __('The print job is gone.', 'taxmod')], 404);
+        }
+
+        [$state, $note] = $found;
+        $message = match ($state) {
+            PrintJobStatus::Printed   => sprintf(/* translators: %d: job number */ __('Job %d is printed.', 'taxmod'), $job),
+            PrintJobStatus::Failed    => sprintf(/* translators: 1: job number, 2: what the service said */ __('Job %1$d failed: %2$s', 'taxmod'), $job, $note),
+            PrintJobStatus::Cancelled => sprintf(/* translators: %d: job number */ __('Job %d was cancelled.', 'taxmod'), $job),
+            default                   => '',
+        };
+        wp_send_json_success(['status' => $state->value, 'done' => $message !== '', 'ok' => $state === PrintJobStatus::Printed, 'message' => $message]);
     }
 
     /** @param array<string, mixed> $post */
@@ -382,12 +414,16 @@ final class LabelButton
         return '<script>(function(){function toast(t,ok){document.querySelectorAll(".taxmod-toast").forEach(function(o){o.parentNode.removeChild(o);});'
             . 'var d=document.createElement("div");d.className="taxmod-toast "+(ok?"taxmod-toast-ok":"taxmod-toast-bad");d.setAttribute("role","status");d.textContent=t;document.body.appendChild(d);}'
             . 'function say(t,ok){var ev=new CustomEvent("taxmod:message",{detail:{text:t,ok:ok},cancelable:true});if(document.dispatchEvent(ev)){toast(t,ok);}}'
+            . 'function watch(f,job,n){if(n>=40){return;}setTimeout(function(){var d=new FormData();d.append("action",' . wp_json_encode(self::STATUS_ACTION) . ');d.append("job",job);'
+            . 'var nn=f.querySelector("input[name=' . self::NONCE . ']");if(nn){d.append(' . wp_json_encode(self::NONCE) . ',nn.value);}'
+            . 'fetch(' . wp_json_encode(admin_url('admin-ajax.php')) . ',{method:"POST",body:d,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){'
+            . 'if(!j||!j.success){return;}if(j.data.done){say(j.data.message,!!j.data.ok);}else{watch(f,job,n+1);}}).catch(function(){});},3000);}'
             . 'document.addEventListener("submit",function(e){var f=e.target,b=e.submitter;if(!f||!b||b.name!=="how"||b.value!=="service"){return;}'
             . 'var a=f.querySelector("input[name=action]");if(!a||a.value!==' . wp_json_encode(self::ACTION) . '||!window.fetch||!window.FormData){return;}'
             . 'e.preventDefault();var data=new FormData(f);data.append("how","service");data.append("taxmod_ajax","1");b.disabled=true;'
             . 'fetch(f.getAttribute("action"),{method:"POST",body:data,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){'
             . 'say((j&&j.data&&j.data.message)||' . wp_json_encode(__('The label could not be printed.', 'taxmod')) . ',!!(j&&j.success));'
-            . 'if(j&&j.success){var sw=f.querySelector(".taxmod-dialog-switch");if(sw){sw.checked=false;}}})'
+            . 'if(j&&j.success){var sw=f.querySelector(".taxmod-dialog-switch");if(sw){sw.checked=false;}if(j.data.job){watch(f,j.data.job,0);}}})'
             . '.catch(function(){say(' . wp_json_encode(__('The label could not be printed.', 'taxmod')) . ',false);}).then(function(){b.disabled=false;});},true);})();</script>';
     }
 
