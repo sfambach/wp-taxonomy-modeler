@@ -93,6 +93,13 @@ final class LabelPrinterTest extends TestCase
     }
 
     #[Test]
+    public function the_preview_shows_the_label_as_it_lands_on_paper(): void
+    {
+        // D-1228, his word 2026-11-07 «vorschau klappt noch nicht ganz»: the moved and wrapped drawing is for the printer only.
+        self::assertStringNotContainsString(' cm', self::label(self::PHOMEMO)->render(1, true));
+    }
+
+    #[Test]
     public function a_queue_that_is_not_a_plain_name_is_refused(): void
     {
         $this->expectException(\InvalidArgumentException::class);

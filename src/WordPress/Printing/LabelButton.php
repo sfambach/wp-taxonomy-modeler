@@ -184,7 +184,7 @@ final class LabelButton
                 wp_safe_redirect(add_query_arg('taxmod_label_job', $id, wp_get_referer() ?: PrintJobsScreen::url()));
                 exit;
             }
-            self::sendPdf($filled->render($copies), $label->code);
+            self::sendPdf($filled->render($copies, ! empty($post['preview'])), $label->code);
         }
 
         $formats = LabelFormat::shipped();
@@ -459,7 +459,7 @@ final class LabelButton
         $done = true;
 
         return '<script>(function(){var timers=new WeakMap();function show(f){var box=f&&f.querySelector("[data-taxmod-label-preview]");if(!box||!window.fetch||!window.FormData){return;}'
-            . 'var frame=box.querySelector("iframe"),note=box.querySelector("[data-taxmod-label-preview-note]"),data=new FormData(f);data.set("how","pdf");data.set("copies","1");note.textContent=' . wp_json_encode(__('Wird gezeichnet …', 'taxmod')) . ';'
+            . 'var frame=box.querySelector("iframe"),note=box.querySelector("[data-taxmod-label-preview-note]"),data=new FormData(f);data.set("how","pdf");data.set("copies","1");data.set("preview","1");note.textContent=' . wp_json_encode(__('Wird gezeichnet …', 'taxmod')) . ';'
             . 'fetch(f.getAttribute("action"),{method:"POST",body:data,credentials:"same-origin"}).then(function(r){var pdf=(r.headers.get("Content-Type")||"").indexOf("application/pdf")===0;return r.ok&&pdf?r.blob():Promise.reject();})'
             . '.then(function(b){if(frame.dataset.url){URL.revokeObjectURL(frame.dataset.url);}frame.dataset.url=URL.createObjectURL(b);frame.src=frame.dataset.url+"#toolbar=0&navpanes=0&view=Fit";note.textContent="";})'
             . '.catch(function(){note.textContent=' . wp_json_encode(__('Die Vorschau lässt sich nicht zeichnen.', 'taxmod')) . ';});}'

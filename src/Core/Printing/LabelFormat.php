@@ -36,6 +36,12 @@ final class LabelFormat
         return array_combine(array_map(static fn (self $format): string => $format->key, $formats), $formats);
     }
 
+    /** D-1228: the label as a person sees it — without the move a printer that starts part-way along its head needs. */
+    public function asSeen(): self
+    {
+        return new self($this->key, $this->widthMm, $this->heightMm, $this->rollMm, $this->turned);
+    }
+
     /**
      * The Brother driver feeds a page with its height across the roll, so a label as wide as the roll is turned a quarter —
      * unless its printer says otherwise (D-1190: the Phomemo takes the label as it is).

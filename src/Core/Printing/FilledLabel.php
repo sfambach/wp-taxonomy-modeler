@@ -37,9 +37,10 @@ final class FilledLabel
     }
 
     /** @param int<1, max> $copies */
-    public function render(int $copies = 1): string
+    public function render(int $copies = 1, bool $asSeen = false): string
     {
-        return LabelDocument::renderLayout($this->format, $this->layout, array_fill(0, max(1, $copies), $this->values));
+        // D-1228: the dialog's preview shows the label as it lands on paper, not the drawing moved for the printer.
+        return LabelDocument::renderLayout($asSeen ? $this->format->asSeen() : $this->format, $this->layout, array_fill(0, max(1, $copies), $this->values));
     }
 
     public function toJson(): string
