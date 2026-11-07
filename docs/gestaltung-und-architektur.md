@@ -36,6 +36,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | S8 | Sammelaktionen nur in der einen Auswahl der Liste («--», dann alle Aktionen) mit Knopf «Sammelaktion ausführen»; wirkt nur auf angehakte Zeilen. Aktionen mit Dialog über `ListPage::bulkBar(…, $asking)`, keine eigenen Knöpfe daneben. | [D-1202](NewConcept/90-decision-log.md) |
 | S9 | Meldungen nur im Meldungsfeld neben der Überschrift (`ListPage::heading`), mit Liste der letzten Meldungen; nie in die Zeile, nie ein Neuladen nur für eine Meldung. Aus dem Skript: `taxmodMessage(text, tone)` oder Ereignis `taxmod:message` `{text, ok}`. | [D-1203](NewConcept/90-decision-log.md) |
 | S10 | Bilder in Listen nur über `ListPage::thumbnails($media)` (Schalter der Konfiguration, ein Zug für die Seite, lazy); das Titelbild eines Satzes liest nur eine Stelle je Modul, nie das Feld direkt. | [D-1204](NewConcept/90-decision-log.md) |
+| S11 | Infokasten zu Formular/Detail rechts daneben (ab 1100 px, sonst darüber) nur über `ListPage::beside($main, $facts)`; keine eigenen Grid-Styles. | [D-1220](NewConcept/90-decision-log.md) |
 
 ## 2 · Liste
 

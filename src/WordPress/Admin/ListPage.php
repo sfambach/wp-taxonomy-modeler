@@ -334,6 +334,19 @@ final class ListPage
     }
 
     /**
+     * A form or detail with its facts in a box to the right (D-1220) — from 1100 px wide; narrower, the box stands above.
+     * ⚠️ *His word, 2026-11-07: «die erklärbox ginge locker rechts hin».* The one exception to «sections one below the
+     * other» (D-1196): the box belongs to the section, it is not a section of its own.
+     *
+     * @param string $main  the form or detail, already escaped
+     * @param string $facts the box's content, already escaped
+     */
+    public static function beside(string $main, string $facts): string
+    {
+        return '<div class="taxmod-beside"><div class="taxmod-beside-facts">' . $facts . '</div><div class="taxmod-beside-main">' . $main . '</div></div>';
+    }
+
+    /**
      * The message field beside the heading (D-1203): one line with the last message, the recent ones open below it —
      * written by `assets/messages.js`, so an act that does not reload the page still says what it did. ⚠️ *His word,
      * 2026-11-06: «oben neben die Überschrift, aber so, dass es nicht verzerrt … dass man die letzten Nachrichten noch sehen kann».*

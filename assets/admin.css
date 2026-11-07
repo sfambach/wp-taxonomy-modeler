@@ -2684,3 +2684,27 @@ pre.taxmod-code {
         margin-top: 0;
     }
 }
+
+/* D-1220: facts in a box beside the form — right from 1100 px, above it when narrower. */
+.taxmod-beside-facts {
+	max-width: 60em;
+	margin-bottom: 1em;
+}
+@media (min-width: 1100px) {
+	.taxmod-beside {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(18em, 34em);
+		gap: 16px;
+		align-items: start;
+	}
+	.taxmod-beside > .taxmod-beside-facts {
+		grid-column: 2;
+		grid-row: 1;
+		margin: 0;
+	}
+	.taxmod-beside > .taxmod-beside-main {
+		grid-column: 1;
+		grid-row: 1;
+		min-width: 0;
+	}
+}
