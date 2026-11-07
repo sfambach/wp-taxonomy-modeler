@@ -1,6 +1,6 @@
 # Umbau: eine Bildliste, erstes Bild = Titelbild
 
-Beschluss: [D-1205](NewConcept/90-decision-log.md). Stand: Schritte 1–3 und das Werkzeug der Migration gebaut (Modeller 0.2.3, Lager 0.59.1); **Migration live: nein**.
+Beschluss: [D-1205](NewConcept/90-decision-log.md). Stand: Schritte 1–3 und das Werkzeug der Migration gebaut (Modeller 0.2.3, Lager 0.59.1); **Migration live 2026-11-07:** 64 Sätze übernommen, Feld «Titelbild» geparkt, Sicherung `vor-ability-20261107-095602`.
 
 ```mermaid
 flowchart LR
