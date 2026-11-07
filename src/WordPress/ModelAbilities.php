@@ -201,7 +201,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -249,6 +249,7 @@ final class ModelAbilities
                     ],
                     'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('Save the whole model to uploads/taxmod-backups first.', 'taxmod')],
                     'brief'   => ['type' => 'boolean', 'default' => false],
+                    'dry_run' => ['type' => 'boolean', 'default' => false],
                 ],
                 'required'   => ['changes'],
                 'additionalProperties' => false,
@@ -725,6 +726,12 @@ final class ModelAbilities
             throw new \InvalidArgumentException(sprintf('Between 1 and %d changes per call.', $limit));
         }
 
+        // ⚠️ *Der Trockenlauf vor einem Umbau (D-1205): dieselben Prüfungen, kein Schreiben, nur die Zahlen. Nur für merge_field, weil nur
+        // dort die Zahl gefragt war; jede andere Op würde stillschweigend «geprüft» heissen, ohne geprüft zu sein.*
+        if (! empty($input['dry_run'])) {
+            return ['dry_run' => array_map(fn (mixed $change): array => $this->mergePreview(is_array($change) ? $change : [], $refs), $changes)];
+        }
+
         $sicherung = ! $onlyData && ! empty($input['backup']) ? (new Backup())->safetyCopy('vor-ability') : null;
         $ergebnis  = [];
         $changelog = ($this->changelog)();
@@ -768,6 +775,28 @@ final class ModelAbilities
         return ! empty($input['brief'])
             ? ['count' => count($ergebnis), 'refs' => $refs, 'backup' => $sicherung, 'versions' => $versionen]
             : ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'versions' => $versionen];
+    }
+
+    /**
+     * @param array<string, mixed> $change
+     * @param array<string, int>   $refs
+     * @return array{op: string, records: int, both: int, duplicates: int}
+     */
+    private function mergePreview(array $change, array $refs): array
+    {
+        if ((string) ($change['op'] ?? '') !== 'merge_field') {
+            throw new \InvalidArgumentException('dry_run is only for merge_field.');
+        }
+
+        $at = fn (string $key): int => $this->resolve($change[$key] ?? null, $refs, $key);
+
+        return ['op' => 'merge_field'] + $this->editor()->mergeFieldPreview(
+            $at('node'),
+            $at('field'),
+            $at('into'),
+            isset($change['under']) ? $this->node($at('under'))->id : null,
+            ! empty($change['first'])
+        );
     }
 
     /**

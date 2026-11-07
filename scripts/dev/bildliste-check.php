@@ -72,6 +72,11 @@ $liste = static function (int $satz, int $kante) use ($wpdb): array {
     )));
 };
 
+$trocken = $apply->execute(['dry_run' => true, 'changes' => [['op' => 'merge_field', 'node' => $ref['n'], 'field' => $ref['t'], 'into' => $ref['b'], 'first' => true]]]);
+$pruefe(is_array($trocken) && ($trocken['dry_run'][0] ?? null) === ['op' => 'merge_field', 'records' => 2, 'both' => 1, 'duplicates' => 1], 'the dry run counts records, records in both fields and doubled pictures — ' . wp_json_encode($trocken));
+$pruefe($liste((int) $ref['r'], (int) $ref['t']) === ['media:3'], 'the dry run wrote nothing');
+$pruefe(is_wp_error($apply->execute(['dry_run' => true, 'changes' => [['op' => 'rename_node', 'node' => $ref['n'], 'name' => 'x']]])), 'a dry run of any other op is refused');
+
 $ohne = $apply->execute(['changes' => [['op' => 'merge_field', 'node' => $ref['n'], 'field' => $ref['t'], 'into' => $ref['b']]]]);
 $pruefe(is_wp_error($ohne), 'without first a record holding both fields is still refused (D-941)');
 

@@ -1811,28 +1811,7 @@ final class ModelEditor
         $this->changelog->beginAct();
 
         try {
-            $alt  = $this->ownAttribute($ownerId, $relationId);
-            $neu  = $this->relations->byId($intoRelationId) ?? throw ImpossibleMove::noSuchField($intoRelationId);
-
-            if ($neu->id === $alt->id || $neu->toNodeId !== $alt->toNodeId) {
-                throw ImpossibleMove::notTheSameField($alt->name, $neu->name);
-            }
-
-            $saetze   = $this->recordsHolding($alt->id);
-            $draussen = $underNodeId === null ? [] : $this->recordsOutside($saetze, $this->nodes->byId($underNodeId));
-            $saetze   = array_values(array_diff($saetze, $draussen));
-
-            $nichtImZiel = $this->recordsOutside($saetze, $this->nodes->byId($neu->fromNodeId));
-
-            if ($nichtImZiel !== []) {
-                throw ImpossibleMove::valuesWouldHide($neu->name, $this->nodes->byId($neu->fromNodeId)->name, $nichtImZiel);
-            }
-
-            $beide = array_values(array_intersect($saetze, $this->recordsHolding($neu->id)));
-
-            if ($beide !== [] && ! $first) {
-                throw ImpossibleMove::bothFieldsHoldValues($alt->name, $neu->name, $beide);
-            }
+            [$alt, $neu, $saetze] = $this->mergePlan($ownerId, $relationId, $intoRelationId, $underNodeId, $first);
 
             if ($saetze !== [] && $this->records !== null) {
                 foreach ($this->records->valuesOfMany($saetze) as $werte) {
@@ -1861,6 +1840,66 @@ final class ModelEditor
         } finally {
             $this->changelog->endAct();
         }
+    }
+
+    /**
+     * Was `mergeField` täte, ohne zu schreiben — dieselben Prüfungen, dieselben Weigerungen ([D-1205](../../../docs/NewConcept/90-decision-log.md)):
+     * der Trockenlauf vor einem Umbau, dessen Zahl der Eigentümer sehen will.
+     *
+     * @return array{records: int, both: int, duplicates: int} Sätze mit Werten im alten Feld; davon mit Werten auch im neuen; davon mit
+     *         einem Wert, der in beiden steht.
+     */
+    public function mergeFieldPreview(int $ownerId, int $relationId, int $intoRelationId, ?int $underNodeId = null, bool $first = false): array
+    {
+        [$alt, $neu, $saetze, $beide] = $this->mergePlan($ownerId, $relationId, $intoRelationId, $underNodeId, $first);
+        $doppelt = 0;
+
+        foreach ($beide === [] || $this->records === null ? [] : $this->records->valuesOfMany($beide) as $werte) {
+            $je = [$alt->id => [], $neu->id => []];
+
+            foreach ($werte as $wert) {
+                if (isset($je[$wert->relationId])) {
+                    $je[$wert->relationId][] = $wert->locale . "\0" . (string) $wert->value->rawValue();
+                }
+            }
+
+            $doppelt += array_intersect($je[$alt->id], $je[$neu->id]) === [] ? 0 : 1;
+        }
+
+        return ['records' => count($saetze), 'both' => count($beide), 'duplicates' => $doppelt];
+    }
+
+    /**
+     * Die Prüfungen von `mergeField`, einmal: dasselbe Ziel, kein Satz ausserhalb des Zielfelds, ohne `$first` kein Satz in beiden.
+     *
+     * @return array{0: Relation, 1: Relation, 2: list<int>, 3: list<int>} altes Feld, neues Feld, betroffene Sätze, davon in beiden
+     */
+    private function mergePlan(int $ownerId, int $relationId, int $intoRelationId, ?int $underNodeId, bool $first): array
+    {
+        $alt  = $this->ownAttribute($ownerId, $relationId);
+        $neu  = $this->relations->byId($intoRelationId) ?? throw ImpossibleMove::noSuchField($intoRelationId);
+
+        if ($neu->id === $alt->id || $neu->toNodeId !== $alt->toNodeId) {
+            throw ImpossibleMove::notTheSameField($alt->name, $neu->name);
+        }
+
+        $saetze   = $this->recordsHolding($alt->id);
+        $draussen = $underNodeId === null ? [] : $this->recordsOutside($saetze, $this->nodes->byId($underNodeId));
+        $saetze   = array_values(array_diff($saetze, $draussen));
+
+        $nichtImZiel = $this->recordsOutside($saetze, $this->nodes->byId($neu->fromNodeId));
+
+        if ($nichtImZiel !== []) {
+            throw ImpossibleMove::valuesWouldHide($neu->name, $this->nodes->byId($neu->fromNodeId)->name, $nichtImZiel);
+        }
+
+        $beide = array_values(array_intersect($saetze, $this->recordsHolding($neu->id)));
+
+        if ($beide !== [] && ! $first) {
+            throw ImpossibleMove::bothFieldsHoldValues($alt->name, $neu->name, $beide);
+        }
+
+        return [$alt, $neu, $saetze, $beide];
     }
 
     /**
