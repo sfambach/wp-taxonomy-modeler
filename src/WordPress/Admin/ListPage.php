@@ -532,6 +532,9 @@ final class ListPage
 
         $head .= '<th scope="col" class="manage-column" style="width:21em;text-align:right">' . esc_html__('Actions', 'taxmod') . '</th></tr>';
 
+        // D-1227: every list sorts, groups and filters by the same head, drawn by one script over the rows drawn here.
+        wp_enqueue_script(Plugin::LIST_HEAD_SCRIPT);
+
         return '<style>.taxmod-list-toggle{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0 6px}.taxmod-list-toggle .dashicons{width:20px;height:20px;font-size:20px;line-height:1;transition:transform .15s}.taxmod-list-toggle[aria-expanded="true"] .dashicons{transform:rotate(180deg)}'
             // D-1068: one height for every button in a list, his word 2026-11-01 «button höhen us sollten generell definiert werden damit sie übgerall gleich aussehen».
             . '.wp-core-ui .taxmod-list .button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:30px;min-height:30px;line-height:1;padding-top:0;padding-bottom:0;vertical-align:middle;font-size:13px}'
@@ -659,7 +662,15 @@ final class ListPage
             . '.taxmod-list-lazy{display:flex;align-items:center;gap:6px;min-height:30px}.taxmod-list-lazy .spinner{float:none;margin:0}'
             . '.taxmod-list-lazy[data-state="done"]{display:block;min-height:0}'
             . '.taxmod-list-prompt>td{padding:28px 12px!important;text-align:center;color:#50575e;font-size:14px}.taxmod-list-prompt .dashicons{vertical-align:middle;color:#8c8f94}'
-            . '.taxmod-list-prompt .button{margin-left:8px}';
+            . '.taxmod-list-prompt .button{margin-left:8px}'
+            // D-1227: the bar above every list, and the group rows.
+            . '.taxmod-list-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}.taxmod-list-head-search{min-width:16em}'
+            . '.taxmod-list-head .displaying-num{margin-left:auto;color:#50575e}.taxmod-list-head-group select{vertical-align:middle}'
+            . '.taxmod-filter-row-client input{width:100%;min-width:4em}'
+            . '.taxmod-list>tbody>tr.taxmod-list-group>td{background:#f0f0f1;padding:4px 10px;border-top:1px solid #dcdcde}'
+            . '.taxmod-list-group-toggle{background:none;border:0;padding:2px 0;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:13px}'
+            . '.taxmod-list-group-toggle .dashicons{transition:transform .15s}.taxmod-list-group-toggle[aria-expanded="false"] .dashicons{transform:rotate(-90deg)}'
+            . '.taxmod-list-group-count{color:#50575e}';
     }
 
     /**

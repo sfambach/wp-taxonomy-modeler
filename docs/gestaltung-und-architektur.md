@@ -43,7 +43,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | | Regel | Beschluss |
 |---|---|---|
 | L1 | Jede Liste ist das gemeinsame Template `ListPage`: WordPress-Listentabelle, Häkchen, Sammelaktionen oben (`bulkBar`), Suche/Filter, Knöpfe **rechts** in der Zeile. | [D-989](NewConcept/90-decision-log.md) |
-| L2 | Spaltenwahl je Benutzer, Filterzeile unter den Köpfen, Seitenblättern — im Template, nie je Seite. | [D-1054](NewConcept/90-decision-log.md) |
+| L2 | Spaltenwahl je Benutzer, Filterzeile unter den Köpfen, Seitenblättern — im Template, nie je Seite. Jede Liste hat über `ListPage::table()` denselben Kopf: Gesamtfilter, «Gruppieren nach», Filterzeile, Sortieren an jedem Spaltenkopf (`assets/list-head.js`); keine Seite baut das selbst. Zeilen, die zu einer Zeile gehören, tragen `taxmod-list-more`; eine Zelle sortiert nach `data-taxmod-sort`, wenn sie es trägt. | [D-1054](NewConcept/90-decision-log.md), [D-1227](NewConcept/90-decision-log.md) |
 | L3 | Was eine Zeile als Aktion hat und für mehrere Sinn ergibt, gibt es auch als Sammelaktion, überall gleich aussehend. | [D-1127](NewConcept/90-decision-log.md) |
 | L4 | Lange Listen warten auf eine Suche («Alle anzeigen» als Massenansicht); Details erst beim Aufklappen per `ListPage::lazyDetails` / Filter `taxmod_list_details`. | [D-1147](NewConcept/90-decision-log.md) |
 | L5 | Hat ein Eintrag Positionen, öffnet ein Klick seine **Detailansicht** (Kopf mit Daten und Knöpfen, darunter die Positionen, «Zurück zu …»); Aufklappen ist dann weg. | [D-1183](NewConcept/90-decision-log.md), [D-997](NewConcept/90-decision-log.md) |

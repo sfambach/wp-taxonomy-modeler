@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.11';
+    public const VERSION     = '0.2.12';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -71,6 +71,9 @@ final class Plugin
 
     /** Action: load the modeller's stylesheet and script on the current admin page. */
     public const STYLE_ACTION = 'taxmod_enqueue_admin_style';
+
+    /** D-1227: the script handle of the one table head (sort, group, filter) that `ListPage::table()` enqueues. */
+    public const LIST_HEAD_SCRIPT = 'taxmod-list-head';
 
     /** Was die Aktivierung abbrach — eine Option, weil der Hinweis erst im nächsten Aufruf erscheint. */
     public const ACTIVATION_FAILURE = 'taxmod_activation_failure';
@@ -121,6 +124,8 @@ final class Plugin
         }
         // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
         add_action(self::STYLE_ACTION, $plugin->enqueueStyle(...));
+        // D-1227: the one table head of every list, registered here and enqueued by `ListPage::table()` where a list is drawn.
+        add_action('admin_enqueue_scripts', $plugin->registerListHead(...));
 
         // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
         add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '') use ($plugin): string {
@@ -688,6 +693,29 @@ final class Plugin
 
         echo '<textarea id="taxmod-wplink-target" hidden aria-hidden="true"></textarea>';
         \_WP_Editors::wp_link_dialog();
+    }
+
+    /** D-1227: sort, group and filter on every list, the script `ListPage::table()` asks for. */
+    public function registerListHead(): void
+    {
+        wp_register_script(
+            self::LIST_HEAD_SCRIPT,
+            plugins_url('assets/list-head.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            [],
+            (string) (@filemtime($this->path('assets/list-head.js')) ?: self::VERSION),
+            true
+        );
+        wp_add_inline_script(self::LIST_HEAD_SCRIPT, 'window.taxmodListHeadWords=' . wp_json_encode([
+            'search'       => __('Filter the whole table …', 'taxmod'),
+            'group'        => __('Group by', 'taxmod'),
+            'noGroup'      => __('No grouping', 'taxmod'),
+            'empty'        => __('(empty)', 'taxmod'),
+            'filterRow'    => __('Filter row', 'taxmod'),
+            /* translators: %s: column */
+            'filterColumn' => __('Filter %s', 'taxmod'),
+            /* translators: 1: rows shown, 2: rows in the list */
+            'count'        => __('%1$d of %2$d', 'taxmod'),
+        ]) . ';', 'before');
     }
 
     /** A path inside the plugin folder, from the file `boot()` was given. */
