@@ -29,6 +29,7 @@ final class PrintingTest extends TestCase
         self::assertSame('M-12', LabelPrefix::Material->code(12));
         self::assertSame('E-12', LabelPrefix::Copy->code(12));
         self::assertSame('K-12', LabelPrefix::Box->code(12));
+        self::assertSame('P-12', LabelPrefix::Lot->code(12));
     }
 
     #[Test]

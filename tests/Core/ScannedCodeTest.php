@@ -21,6 +21,7 @@ final class ScannedCodeTest extends TestCase
             'place'                    => ['O-43949', LabelPrefix::Place, 43949],
             'box'                      => ['K-12', LabelPrefix::Box, 12],
             'copy'                     => ['E-7', LabelPrefix::Copy, 7],
+            'lot'                      => ['P-50573', LabelPrefix::Lot, 50573],
             'small letter'             => ['m-5', LabelPrefix::Material, 5],
             'German layout, US scanner' => ['Mß48284', LabelPrefix::Material, 48284],
             'question mark'            => ['O?3', LabelPrefix::Place, 3],

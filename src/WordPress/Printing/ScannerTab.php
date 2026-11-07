@@ -181,6 +181,7 @@ final class ScannerTab
             LabelPrefix::Box      => __('Box', 'taxmod'),
             LabelPrefix::Material => __('Material', 'taxmod'),
             LabelPrefix::Copy     => __('Copy', 'taxmod'),
+            LabelPrefix::Lot      => __('Stock lot', 'taxmod'),
             null                  => __('Record id', 'taxmod'),
         };
     }

@@ -3,9 +3,9 @@
 namespace Taxmod\Core\Printing;
 
 /**
- * The fixed letter in front of the id on a label: what kind of thing the scanned code opens (D-1032).
+ * The fixed letter in front of the id on a label: what kind of thing the scanned code opens (D-1032, D-1223).
  *
- * @see docs/NewConcept/90-decision-log.md D-1032
+ * @see docs/NewConcept/90-decision-log.md D-1032, D-1223
  */
 enum LabelPrefix: string
 {
@@ -13,6 +13,8 @@ enum LabelPrefix: string
     case Material = 'M';
     case Copy = 'E';
     case Box = 'K';
+    /** D-1223: a stock lot — one batch of one material. */
+    case Lot = 'P';
 
     public function code(int $id): string
     {

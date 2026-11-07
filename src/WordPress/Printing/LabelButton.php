@@ -44,7 +44,7 @@ final class LabelButton
     public const STATUS_ACTION = 'taxmod_label_job_status';
 
     /** The format a label of this kind starts with in the dialog. */
-    private const DEFAULT_FORMAT = ['O' => 'holder62', 'K' => 'roll62', 'M' => 'material62', 'E' => 'material62'];
+    private const DEFAULT_FORMAT = ['O' => 'holder62', 'K' => 'roll62', 'M' => 'material62', 'E' => 'material62', 'P' => 'material62'];
 
     /** D-1207: the option switching the preview in the dialog off; on unless set to '0'. */
     public const PREVIEW_OPTION = 'taxmod_label_preview_in_dialog';
