@@ -51,6 +51,12 @@ fits; the job brings queue and options, and `printers`/`formats` in `config.json
 options must be plain names (letters, digits, `_ . -`), or the job fails. The M22L on the M220 driver starts its lines
 21 mm along a 38 mm line; «Versatz (mm)» and «Zeilenlänge (mm)» of the printer make WordPress draw the label moved back.
 
+## Printers without a Linux driver
+
+Drivers written for such printers live in [sfambach/cups_drivers](https://github.com/sfambach/cups_drivers)
+(ORGBRO X1, [D-1216](../../docs/NewConcept/90-decision-log.md)); once installed, the printer is a CUPS queue like any
+other.
+
 ## Formats
 
 Each label format brings CUPS options; the defaults are in `DEFAULT_FORMATS` in the script, and
