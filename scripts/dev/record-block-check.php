@@ -109,6 +109,15 @@ if ($mitWerten === null) {
     $form = $block->render(['display' => 'record', 'record' => (int) $mitWerten->satz, 'rowFields' => (string) $mitWerten->feld]);
     $voll = $block->render(['display' => 'record', 'record' => (int) $mitWerten->satz]);
     $pruefe($form !== '' && strlen(strip_tags($form)) < strlen(strip_tags($voll)), 'Form mit gewählten Feldern zeigt nur diese');
+
+    // *D-1214, sein Wort: «so dass man einschliessen oder ausschliessen wählen kann».*
+    $ohne      = $block->render(['display' => 'record', 'record' => (int) $mitWerten->satz, 'rowFields' => (string) $mitWerten->feld, 'excludeFields' => true]);
+    $ohneSpalte = $block->render(['display' => RecordBlock::TABLE, 'record' => (int) $mitWerten->satz, 'rowFields' => (string) $mitWerten->feld, 'excludeFields' => true]);
+    $pruefe(
+        $ohne !== '' && strlen(strip_tags($ohne)) < strlen(strip_tags($voll)) && strip_tags($ohne) !== strip_tags($form),
+        'Form mit «ausblenden» zeigt alle Felder ausser den gewählten (D-1214)'
+    );
+    $pruefe(substr_count($ohneSpalte, '<th') === substr_count($tabelle, '<th') - 1, 'Tabelle mit «ausblenden» hat genau die gewählte Spalte weniger (D-1214)');
 }
 
 // *Ein Feld mit mehreren Werten nennt alle — die Zusammenfassung allein nannte nur den ersten.*

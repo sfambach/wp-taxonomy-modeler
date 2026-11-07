@@ -92,6 +92,8 @@ final class RecordBlock
                 'via'       => ['type' => 'integer', 'default' => 0],
                 'rowKey'    => ['type' => 'integer', 'default' => 0],
                 'rowFields' => ['type' => 'string', 'default' => ''],
+                // *Die angehakten Felder ausblenden statt zeigen: «alle ausser …» (D-1214).*
+                'excludeFields' => ['type' => 'boolean', 'default' => false],
                 // *Form mit «Through field»: den Satz selbst davor, mit diesen Feldern (D-993, «Daten anreichern»).*
                 'enrich'    => ['type' => 'boolean', 'default' => false],
                 'ownFields' => ['type' => 'string', 'default' => ''],
@@ -203,17 +205,20 @@ final class RecordBlock
             $display = (string) ($attributes['display'] ?? '');
             $via     = absint($attributes['via'] ?? 0);
             $fields  = self::ids((string) ($attributes['rowFields'] ?? ''));
+            // ⚠️ *His word of 2026-11-07 (D-1214): «der block sollte angepasst werden so dass man einschliessen oder ausschliessen
+            // wählen kann». Only where the ticks pick shown fields — the comparison's row labels and the collected columns stay lists.*
+            $except  = !empty($attributes['excludeFields']);
             $markup = $display === self::REFERRERS || ($display === self::TABLE && $via !== 0)
-                ? ($this->screen)()->referrersForReaders($record, $via, $fields, SettingsScreen::neutralLocale())
+                ? ($this->screen)()->referrersForReaders($record, $via, $fields, SettingsScreen::neutralLocale(), $except)
                 : ($display === self::TABLE
-                ? ($this->screen)()->recordAsTableForReaders($record, $fields, SettingsScreen::neutralLocale())
+                ? ($this->screen)()->recordAsTableForReaders($record, $fields, SettingsScreen::neutralLocale(), $except)
                 : (($display === '' || $display === 'record') && $via !== 0
                 // ⚠️ *His word of 2026-10-25 (D-993): «Wir könnten in Blogs sagen, Daten anreichern … Dann holt er sich zum einen die
                 // Daten für die Platine und zum anderen die angereicherten Daten» — one form: the record, then what points here.*
                 ? (empty($attributes['enrich'])
-                    ? ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale())
-                    : '<div class="taxmod-record-enriched">' . ($this->screen)()->recordForReaders($record, 0, SettingsScreen::neutralLocale(), self::ids((string) ($attributes['ownFields'] ?? '')))
-                        . ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale()) . '</div>')
+                    ? ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale(), $except)
+                    : '<div class="taxmod-record-enriched">' . ($this->screen)()->recordForReaders($record, 0, SettingsScreen::neutralLocale(), self::ids((string) ($attributes['ownFields'] ?? '')), $except)
+                        . ($this->screen)()->referrerFormsForReaders($record, $via, $fields, SettingsScreen::neutralLocale(), $except) . '</div>')
                 : (($attributes['display'] ?? '') === self::COLLECTED
                 ? ($this->screen)()->collectedForReaders(
                     $record,
@@ -239,7 +244,7 @@ final class RecordBlock
                     absint($attributes['groupBy'] ?? 0),
                     absint($attributes['columnLabel'] ?? 0),
                 )
-                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale(), $fields)))));
+                : ($this->screen)()->recordForReaders($record, absint($attributes['field'] ?? 0), SettingsScreen::neutralLocale(), $fields, $except)))));
         } catch (\Throwable $e) {
             return current_user_can('edit_posts')
                 ? '<p class="taxmod-record-missing">' . esc_html(sprintf(

@@ -234,14 +234,24 @@
 				} ) ),
 				onChange: function ( v ) { props.setAttributes( { via: Number( v ), rowFields: '', field: 0 } ); }
 			} ),
-			shown ? el( FieldChecks, { label: __( 'Fields shown (none = all)', 'taxmod' ), node: shown, value: a.rowFields, onChange: function ( v ) { props.setAttributes( { rowFields: v } ); } } ) : ( a.via ? el( Spinner ) : null ),
+			// D-1214: the ticks either pick the fields shown or the ones left out.
+			el( SelectControl, {
+				label: __( 'Ticked fields', 'taxmod' ),
+				value: a.excludeFields ? 'exclude' : 'include',
+				options: [
+					{ label: __( 'Show only these (none = all)', 'taxmod' ), value: 'include' },
+					{ label: __( 'Hide these, show all others', 'taxmod' ), value: 'exclude' }
+				],
+				onChange: function ( v ) { props.setAttributes( { excludeFields: v === 'exclude' } ); }
+			} ),
+			shown ? el( FieldChecks, { label: a.excludeFields ? __( 'Fields hidden', 'taxmod' ) : __( 'Fields shown (none = all)', 'taxmod' ), node: shown, value: a.rowFields, onChange: function ( v ) { props.setAttributes( { rowFields: v } ); } } ) : ( a.via ? el( Spinner ) : null ),
 			// D-993 «Daten anreichern»: the record itself first, then what points here, as one form.
 			a.via && ( a.display || 'record' ) === 'record' ? el( ToggleControl, {
 				label: __( 'Enrich: show this record first', 'taxmod' ),
 				checked: !! a.enrich,
 				onChange: function ( v ) { props.setAttributes( { enrich: v } ); }
 			} ) : null,
-			a.via && a.enrich ? el( FieldChecks, { label: __( 'Fields of this record (none = all)', 'taxmod' ), node: props.node, value: a.ownFields, onChange: function ( v ) { props.setAttributes( { ownFields: v } ); } } ) : null
+			a.via && a.enrich ? el( FieldChecks, { label: a.excludeFields ? __( 'Fields of this record hidden', 'taxmod' ) : __( 'Fields of this record (none = all)', 'taxmod' ), node: props.node, value: a.ownFields, onChange: function ( v ) { props.setAttributes( { ownFields: v } ); } } ) : null
 		);
 	}
 

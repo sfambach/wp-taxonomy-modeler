@@ -396,11 +396,12 @@ final class NodesScreen
      * Ein Satz, wie ein Leser ihn sieht — die Seite «Anzeige» der Vorschau ([D-547](../../../docs/NewConcept/90-decision-log.md)), für den Block im Beitrag ([D-912](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Dieselbe Zeichnung wie links in der Vorschau: `Purpose::Display` auf `Level::FrontEnd`, ohne Akte und ohne Links in die
-     * Verwaltung. Ein Feld gewählt, steht nur dieses da; Felder gewählt (D-991), stehen nur diese da.*
+     * Verwaltung. Ein Feld gewählt, steht nur dieses da; Felder gewählt (D-991), stehen nur diese da — oder, mit `$except`,
+     * alle ausser diesen (D-1214).*
      *
      * @param list<int> $fields
      */
-    public function recordForReaders(int $recordId, int $onlyField, string $locale, array $fields = []): string
+    public function recordForReaders(int $recordId, int $onlyField, string $locale, array $fields = [], bool $except = false): string
     {
         $satz   = $this->data->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
         $knoten = $this->editor->find($satz->nodeId) ?? throw new \InvalidArgumentException("No node {$satz->nodeId}.");
@@ -424,7 +425,7 @@ final class NodesScreen
         }
 
         if ($fields !== []) {
-            $gezeigte = array_values(array_filter($gezeigte, static fn (Relation $r): bool => in_array($r->id, $fields, true)));
+            $gezeigte = array_values(array_filter($gezeigte, static fn (Relation $r): bool => in_array($r->id, $fields, true) !== $except));
         }
 
         return $this->rendering->nodeAsForm(
@@ -462,9 +463,9 @@ final class NodesScreen
      *
      * @param list<int> $columns
      */
-    public function referrersForReaders(int $recordId, int $via, array $columns, string $locale): string
+    public function referrersForReaders(int $recordId, int $via, array $columns, string $locale, bool $except = false): string
     {
-        return $via === 0 ? '' : $this->recordsTableForReaders($this->data->referrersVia($recordId, $via), $columns, $locale);
+        return $via === 0 ? '' : $this->recordsTableForReaders($this->data->referrersVia($recordId, $via), $columns, $locale, $except);
     }
 
     /**
@@ -472,12 +473,12 @@ final class NodesScreen
      *
      * @param list<int> $fields
      */
-    public function referrerFormsForReaders(int $recordId, int $via, array $fields, string $locale): string
+    public function referrerFormsForReaders(int $recordId, int $via, array $fields, string $locale, bool $except = false): string
     {
         $html = '';
 
         foreach ($via === 0 ? [] : $this->data->referrersVia($recordId, $via) as $id) {
-            $html .= $this->recordForReaders($id, 0, $locale, $fields);
+            $html .= $this->recordForReaders($id, 0, $locale, $fields, $except);
         }
 
         return $html;
@@ -488,13 +489,13 @@ final class NodesScreen
      *
      * @param list<int> $columns
      */
-    public function recordAsTableForReaders(int $recordId, array $columns, string $locale): string
+    public function recordAsTableForReaders(int $recordId, array $columns, string $locale, bool $except = false): string
     {
-        return $this->recordsTableForReaders([$recordId], $columns, $locale);
+        return $this->recordsTableForReaders([$recordId], $columns, $locale, $except);
     }
 
     /** @param list<int> $ids @param list<int> $columns */
-    private function recordsTableForReaders(array $ids, array $columns, string $locale): string
+    private function recordsTableForReaders(array $ids, array $columns, string $locale, bool $except = false): string
     {
         if ($ids === []) {
             return '';
@@ -508,9 +509,13 @@ final class NodesScreen
             return '';
         }
 
-        // ⚠️ *No column ticked: every field the node shows (D-991), as the form does.*
-        $felder = $columns === []
-            ? $this->rendering->previewVisibilityFor($alle = $this->editor->fieldsOf($knoten->id), $this->rendering->settingsForUseSites($alle))['shown']
+        // ⚠️ *No column ticked: every field the node shows (D-991), as the form does. With `$except` the ticked ones are the
+        // columns left out of that (D-1214).*
+        $felder = $columns === [] || $except
+            ? array_values(array_filter(
+                $this->rendering->previewVisibilityFor($alle = $this->editor->fieldsOf($knoten->id), $this->rendering->settingsForUseSites($alle))['shown'],
+                static fn (Relation $r): bool => !in_array($r->id, $columns, true)
+            ))
             : array_values(array_filter(array_map(fn (int $id): ?Relation => $this->editor->relationById($id), $columns)));
         $werte  = $this->data->valuesOfMany($ids);
         $zeilen = [];
