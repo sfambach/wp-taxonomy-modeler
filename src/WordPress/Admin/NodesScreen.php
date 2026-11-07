@@ -72,6 +72,9 @@ final class NodesScreen
 {
     private const ACTION = 'taxmod_node';
 
+    /** D-1222: the layout field that names the node of the record — what the part is. */
+    public const LABEL_NODE_FIELD = 'node';
+
     /**
      * The form field the record's values arrive under, as `taxmod_value[<relation id>]`.
      *
@@ -3786,8 +3789,13 @@ final class NodesScreen
             $byName[(string) $relation->id] = $relation->id;
         }
 
-        $jobs = $named = $unknown = [];
+        $jobs = $named = $unknown = $values = [];
         foreach (array_values(array_unique($fields)) as $i => $field) {
+            // D-1222: «node» is what the part is — the name of the node its record belongs to («LED», «Widerstand»).
+            if (mb_strtolower(trim($field)) === self::LABEL_NODE_FIELD && ! isset($byName[self::LABEL_NODE_FIELD])) {
+                $values[$field] = trim((string) ($this->editor->find($found->nodeId)?->name ?? ''));
+                continue;
+            }
             $id = $byName[mb_strtolower(trim($field))] ?? 0;
             if ($id === 0) {
                 $unknown[] = $field;
@@ -3799,7 +3807,6 @@ final class NodesScreen
             $named[$i + 1] = $field;
         }
 
-        $values = [];
         foreach ($jobs === [] ? [] : $this->rendering->summaryTextsOf($jobs) as $edge => $texts) {
             if (isset($named[$edge])) {
                 $values[$named[$edge]] = trim((string) ($texts[$record] ?? ''));
