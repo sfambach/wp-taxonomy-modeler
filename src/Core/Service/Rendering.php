@@ -7418,8 +7418,21 @@ final class Rendering implements Presets
             if ($werte !== [] && $this->typeAt($relation) === SimpleType::Media && $this->inSatztabelle) {
                 // ⚠️ **In der Tabelle nur die Anzahl** ([D-878](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«records titelbild
                 // anzuzeigen ist ganz nett, die andern stören aber eher also nur anzahl zeigen»*. Ein einzelnes Medium (Titelbild) bleibt Bild.*
+                // ⚠️ **Das erste Bild ist das Titelbild** ([D-1205](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«bei eBay ist
+                // es ja so, dass die Bilder alle in einen Haufen sind, nur eins ist als Titelbild markiert»*. Es steht vor der Anzahl.*
+                $titel = '';
+
+                foreach ($werte as $wert) {
+                    $adresse = trim((string) $wert->text);
+
+                    if (\Taxmod\Core\Renderer\MediaRenderer::fileOf($adresse, $this->media)?->isImage() === true) {
+                        $titel = \Taxmod\Core\Renderer\MediaRenderer::link($adresse, '', $this->mediaOpensNewTab([$relation], $relation->id), $this->media) . ' ';
+                        break;
+                    }
+                }
+
                 return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
-                    '<span class="taxmod-value taxmod-media-count">' . \Taxmod\Core\Renderer\IconMarkup::dashicon('format-gallery') . ' ' . count($werte) . '</span>'
+                    '<span class="taxmod-value taxmod-media-count">' . $titel . \Taxmod\Core\Renderer\IconMarkup::dashicon('format-gallery') . ' ' . count($werte) . '</span>'
                 )];
             }
 
@@ -7517,7 +7530,8 @@ final class Rendering implements Presets
             return $medium ? \Taxmod\Core\Renderer\MediaRenderer::describe((string) $wert->rawValue(), $bibliothek) : (string) $wert->rawValue();
         };
 
-        $html = '<span class="taxmod-switch-picker taxmod-value-picker"><ol class="taxmod-switch-cascade">';
+        // *Eine Bildliste trägt die Marke, an der der Rand «Als Titelbild» anbietet (D-1205): das erste Bild ist das Titelbild.*
+        $html = '<span class="taxmod-switch-picker taxmod-value-picker"' . ($medium ? ' data-taxmod-pictures="1"' : '') . '><ol class="taxmod-switch-cascade">';
 
         foreach ($werte as $platz => $wert) {
             $roh   = (string) ($wert->reference ?? $wert->rawValue());

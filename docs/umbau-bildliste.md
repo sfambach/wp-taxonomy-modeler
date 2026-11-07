@@ -1,6 +1,6 @@
 # Umbau: eine Bildliste, erstes Bild = Titelbild
 
-Beschluss: [D-1205](NewConcept/90-decision-log.md). Stand: geplant, **gebaut: nein**.
+Beschluss: [D-1205](NewConcept/90-decision-log.md). Stand: Schritte 1–3 und das Werkzeug der Migration gebaut (Modeller 0.2.3, Lager 0.58.11); **Migration live: nein**.
 
 ```mermaid
 flowchart LR
@@ -19,8 +19,8 @@ Reihenfolge so, dass nach jedem Schritt alles läuft (alter und neuer Zustand).
 |---|---|---|---|
 | 1 | **Die eine Stelle umstellen.** Materialkopf und Listen lesen schon nur über `StockService::titleImages($records)` (Lager 0.58.9). Nur diese Methode ändert sich: Titelbild-Feld, solange gefüllt, sonst erstes Bild der Liste. | Lager | neuer Check: kein Zugriff auf das Titelbild-Feld außer in `titleImages` |
 | 2 | **Satztabelle (D-878):** ein mehrfaches Medienfeld zeigt das erste Bild klein plus die Anzahl, statt nur der Anzahl. | Modeller `Rendering` | bestehende Render-Checks anpassen (sichtbarer Teil des Umbaus, PR-9) |
-| 3 | **Verschieben in der Maske:** je Bild ↑ / ↓ und «Als Titelbild» (setzt auf Platz 1). Schreibt nur `position`, als eine Änderung; rückgängig über die Geschichte. | Modeller Maske + `admin.js` | Check: Reihenfolge bleibt nach Speichern; Rückgängig stellt sie her |
-| 4 | **Migration, erst trocken:** je Satz mit Titelbild-Wert: steht das Bild schon in «Bilder» → nach vorn; sonst an Platz 1 einfügen, Rest rückt nach. Trockenlauf zählt Sätze und Fälle, Stefan sieht die Zahl. | Modelländerung per Release-Schritt ([[taxmod-einspielen]]) | idempotent: zweiter Lauf ändert nichts |
+| 3 | **Verschieben in der Maske:** je Bild ↑ / ↓ (gab es schon, D-842) und neu ein Stern «Als Titelbild» (setzt auf Platz 1). Schreibt nur `position`, als eine Änderung; rückgängig über die Geschichte. | Modeller Maske + `admin.js` | Check: Reihenfolge bleibt nach Speichern; Rückgängig stellt sie her |
+| 4 | **Migration, erst trocken:** `merge_field {node: Model, field: 108056, into: 108057, first: true}` — Titelbild an Platz 1, Rest rückt nach, ein doppeltes steht einmal; danach ist 108056 geparkt (Schritt 5 fällt damit zusammen). Trockenlauf = Zählung per Lese-Abfrage vorab, Stefan sieht die Zahl. | Modelländerung per Release-Schritt ([[taxmod-einspielen]]) | `bildliste-check` |
 | 5 | **Feld «Titelbild» weg:** erst verstecken (D-1144), nach Sichtung löschen. Fallback in Schritt 1 entfällt. | Modell | Check aus Schritt 1 wird streng |
 | 6 | **Schreiber nachziehen:** `scripts/dev/bt2ps2-platinen.php` (setzt Titelbild), Lager `Structure` (`title_image`), Briefs für WP-Upload und Medien-Thread: `media:<id>` in «Bilder», Titelbild = Platz 1. | Modeller, Lager, Briefs | design-guard vor Commit |
 | 7 | Release Modeller + Lager an WP-Upload; danach Migration live. | WP-Upload-Thread | PHP-Log sauber |

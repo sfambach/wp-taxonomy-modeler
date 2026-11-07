@@ -1115,11 +1115,21 @@ ol.taxmod-switch-cascade > li.taxmod-switch-chosen {
     min-width: 12em;
 }
 
+/* D-1205: the star of a picture list; filled at the first picture, the title picture. */
+ol.taxmod-switch-cascade .taxmod-title-picture {
+    color: #dba617;
+}
+
+ol.taxmod-switch-cascade .taxmod-title-picture:disabled {
+    opacity: 1;
+}
+
 ol.taxmod-switch-cascade:empty {
     display: none;
 }
 
 ol.taxmod-switch-cascade .taxmod-list-move,
+ol.taxmod-switch-cascade .taxmod-title-picture,
 ol.taxmod-switch-cascade .taxmod-list-remove,
 .taxmod-switch-add .taxmod-list-add {
     min-height: 0;

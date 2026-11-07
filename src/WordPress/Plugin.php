@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.2';
+    public const VERSION     = '0.2.3';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -662,6 +662,10 @@ final class Plugin
             (string) (@filemtime($this->path('assets/admin.js')) ?: self::VERSION),
             true
         );
+        wp_add_inline_script('taxmod-admin', 'window.taxmodPictureWords=' . wp_json_encode([
+            'title' => __('Make title picture', 'taxmod'),
+            'is'    => __('Title picture', 'taxmod'),
+        ]) . ';', 'before');
 
         // ⚠️ *Der Code-Editor (D-1180) ist der von WordPress — CodeMirror mit Hervorhebung und JSON-Prüfung beim Tippen. Wer die
         // Hervorhebung im Profil abgeschaltet hat, bekommt `false` und behält das schlichte Textfeld.*

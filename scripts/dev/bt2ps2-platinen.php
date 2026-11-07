@@ -22,7 +22,7 @@ const PROJEKT = 30753;                                   // Satz «ESP32 BT2PS2�
 const PLATINE = 149000105261, REVISION = 149000105262;
 const P_NAME = 149000105893, P_ART = 149000105894, P_BESCHREIBUNG = 149000105895, P_REVISIONEN = 149000107282;
 const R_VERSION = 149000105897, R_BESTUECKUNG = 149000105898, R_GERBER = 149000105899, R_AUFWAND = 149000105900, R_FERTIGER = 149000105902;
-const TITELBILD = 149000108056, BILDER = 149000108057, PROJ_PLATINEN = 149000107283;
+const BILDER = 149000108057, PROJ_PLATINEN = 149000107283;
 const EIGENE = 149000105254, SMD = 149000104322, THT = 149000104330, MITTEL = 149000105259, EINFACH = 149000105258;
 // ⚠️ *Sein KiCad-Ordner; unter Linux über die Umgebungsvariable `PLATINEN_ROOT`.*
 define('QUELLE', getenv('PLATINEN_ROOT') ?: 'C:/Devel/Platinen/projekte');
@@ -95,8 +95,8 @@ foreach ($platinen as $pl) {
     $data->put($satz->id, P_ART, TypedValue::ofReference(EIGENE));
     $data->put($satz->id, P_BESCHREIBUNG, TypedValue::ofText($pl['beschreibung']));
     $data->appendValue($satz->id, P_REVISIONEN, TypedValue::ofRecordReference($rev->id));
-    $data->put($satz->id, TITELBILD, TypedValue::ofText($titel));
-    foreach ($bilder as $b) $data->appendValue($satz->id, BILDER, TypedValue::ofText($b));
+    // D-1205: one picture list, the first picture is the title picture.
+    foreach (array_values(array_unique([$titel, ...$bilder])) as $b) $data->appendValue($satz->id, BILDER, TypedValue::ofText($b));
 
     $data->appendValue(PROJEKT, PROJ_PLATINEN, TypedValue::ofRecordReference($satz->id));
     echo "  geschrieben: Platine {$satz->id}, Revision {$rev->id}, am Projekt " . PROJEKT . "\n";

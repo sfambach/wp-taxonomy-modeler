@@ -72,7 +72,7 @@ final class ModelAbilities
         'remove_field' => '{node, field} — parks a field the node owns, with its values',
         'move_field' => '{node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it',
         'retarget_field' => '{node, field, target} — points the field at another node and keeps its kind',
-        'merge_field' => '{node, field, into, under?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays',
+        'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
         'create_record' => '{node, record_type?}',
         'set_values' => '{record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}',
         'remove_record' => '{record} — removes the record with its own parts, nested ones included; refused while a record outside it references one of its parts, naming who',
@@ -229,6 +229,7 @@ final class ModelAbilities
                                 'to'          => $ziel,
                                 'into'        => $ziel,
                                 'under'       => $ziel,
+                                'first'       => ['type' => 'boolean'],
                                 'class'       => ['type' => 'string'],
                                 'kind'        => ['type' => 'string', 'enum' => array_map(static fn (RelationKind $k): string => $k->value, RelationKind::cases())],
                                 'multiplicity' => ['type' => 'string', 'enum' => array_map(static fn (Multiplicity $m): string => $m->value, Multiplicity::cases())],
@@ -830,7 +831,7 @@ final class ModelAbilities
                 return $editor->retargetField($at('node'), $at('field'), $this->node($at('target'))->id, true)->id;
 
             case 'merge_field':
-                return $editor->mergeField($at('node'), $at('field'), $at('into'), isset($change['under']) ? $this->node($at('under'))->id : null)->id;
+                return $editor->mergeField($at('node'), $at('field'), $at('into'), isset($change['under']) ? $this->node($at('under'))->id : null, ! empty($change['first']))->id;
 
             case 'create_record':
                 $type = isset($change['record_type']) ? RecordType::from((string) $change['record_type']) : RecordType::User;

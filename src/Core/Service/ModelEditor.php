@@ -1800,8 +1800,13 @@ final class ModelEditor
      *
      * ⚠️ *Verweigert statt zu raten: ein anderes Ziel, ein Satz ausserhalb des Zielfelds, oder ein Satz, der in beiden Feldern
      * schon Werte hat. Mit `$underNodeId` nur die Sätze unter diesem Knoten; dann bleibt das alte Feld für die übrigen.*
+     *
+     * ⚠️ **Mit `$first` kommen die Werte vorne in die Liste** ([D-1205](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
+     * *«verschieben der bilder muss dann mögich sein»*, gebraucht für «Titelbild» → «Bilder»: das Titelbild wird das erste Bild. *Dann
+     * darf ein Satz in beiden Feldern Werte haben; die des Zielfelds rücken nach, und ein Wert, der dort schon steht, steht nur
+     * einmal da — an der vorderen Stelle.*
      */
-    public function mergeField(int $ownerId, int $relationId, int $intoRelationId, ?int $underNodeId = null): Relation
+    public function mergeField(int $ownerId, int $relationId, int $intoRelationId, ?int $underNodeId = null, bool $first = false): Relation
     {
         $this->changelog->beginAct();
 
@@ -1825,12 +1830,17 @@ final class ModelEditor
 
             $beide = array_values(array_intersect($saetze, $this->recordsHolding($neu->id)));
 
-            if ($beide !== []) {
+            if ($beide !== [] && ! $first) {
                 throw ImpossibleMove::bothFieldsHoldValues($alt->name, $neu->name, $beide);
             }
 
             if ($saetze !== [] && $this->records !== null) {
                 foreach ($this->records->valuesOfMany($saetze) as $werte) {
+                    if ($first) {
+                        $this->mergeInFront($werte, $alt->id, $neu->id);
+                        continue;
+                    }
+
                     foreach ($werte as $wert) {
                         if ($wert->relationId === $alt->id && $wert->id !== null) {
                             $this->records->putValue(new RelationRecord($wert->recordId, $neu->id, $wert->locale, $wert->value, $wert->id, $wert->position));
@@ -1850,6 +1860,46 @@ final class ModelEditor
             return $neu;
         } finally {
             $this->changelog->endAct();
+        }
+    }
+
+    /**
+     * Ein Satz: die Werte des alten Felds an den Anfang des neuen, je Sprache; die des neuen rücken nach, ein doppelter fällt weg.
+     *
+     * @param list<RelationRecord> $werte alle Werte des Satzes, nach Stelle geordnet
+     */
+    private function mergeInFront(array $werte, int $altId, int $neuId): void
+    {
+        $vorne  = [];
+        $hinten = [];
+
+        foreach ($werte as $wert) {
+            if ($wert->id === null) {
+                continue;
+            }
+
+            if ($wert->relationId === $altId) {
+                $vorne[$wert->locale][] = $wert;
+            } elseif ($wert->relationId === $neuId) {
+                $hinten[$wert->locale][] = $wert;
+            }
+        }
+
+        foreach ($vorne as $locale => $alte) {
+            $gesehen = [];
+            $stelle  = 0;
+
+            foreach ([...$alte, ...($hinten[$locale] ?? [])] as $wert) {
+                $roh = (string) $wert->value->rawValue();
+
+                if (isset($gesehen[$roh])) {
+                    $this->records->forgetValueById((int) $wert->id);
+                    continue;
+                }
+
+                $gesehen[$roh] = true;
+                $this->records->putValue(new RelationRecord($wert->recordId, $neuId, $wert->locale, $wert->value, $wert->id, $stelle++));
+            }
         }
     }
 

@@ -1707,8 +1707,52 @@
 		wertPfeileSetzen( liste );
 	}
 
+	// ⚠️ **Das erste Bild ist das Titelbild** (D-1205) — sein Wort: «verschieben der bilder muss dann mögich sein». *Jede Zeile einer
+	// Bildliste bekommt einen Stern; er setzt sie an Platz 1. Gespeichert wird die Reihenfolge der Zeilen, wie bei den Pfeilen.*
+	function titelSterne( liste ) {
+		var waehler = liste.closest( '[data-taxmod-pictures]' );
+		var worte   = window.taxmodPictureWords || { title: 'Make title picture', is: 'Title picture' };
+
+		if ( ! waehler ) {
+			return;
+		}
+
+		liste.querySelectorAll( 'li.taxmod-switch-chosen' ).forEach( function ( eintrag, stelle ) {
+			var stern = eintrag.querySelector( '.taxmod-title-picture' );
+
+			if ( ! stern ) {
+				var bild = document.createElement( 'span' );
+
+				stern = document.createElement( 'button' );
+				stern.type = 'button';
+				stern.className = 'button taxmod-icon-button taxmod-title-picture';
+				bild.className = 'taxmod-icon dashicons';
+				bild.setAttribute( 'aria-hidden', 'true' );
+				stern.appendChild( bild );
+				eintrag.insertBefore( stern, eintrag.querySelector( '.taxmod-list-move' ) );
+			}
+
+			stern.disabled = stelle === 0;
+			stern.title = stelle === 0 ? worte.is : worte.title;
+			stern.setAttribute( 'aria-label', stern.title );
+			stern.firstChild.className = 'taxmod-icon dashicons dashicons-' + ( stelle === 0 ? 'star-filled' : 'star-empty' );
+		} );
+	}
+
+	function alleTitelSterne() {
+		document.querySelectorAll( '[data-taxmod-pictures] .taxmod-switch-cascade' ).forEach( titelSterne );
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', alleTitelSterne );
+	} else {
+		alleTitelSterne();
+	}
+
 	function wertPfeileSetzen( liste ) {
 		var gewaehlte = liste.querySelectorAll( 'li.taxmod-switch-chosen' );
+
+		titelSterne( liste );
 
 		gewaehlte.forEach( function ( eintrag, stelle ) {
 			eintrag.querySelectorAll( '.taxmod-list-move' ).forEach( function ( pfeil ) {
@@ -2821,13 +2865,17 @@
 	// ⚠️ **Die Pfeile einer geordneten Schalterliste** (D-794) — sein Wort: «more ordered by arrows». *Eine gewählte Zeile tauscht mit
 	// ihrer gewählten Nachbarin; danach werden die verborgenen Stellen der Reihe nach neu gezählt und mit der Seite gespeichert.*
 	document.addEventListener( 'click', function ( ereignis ) {
-		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-list-move' ) : null;
+		var knopf = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-list-move, .taxmod-title-picture' ) : null;
 
 		if ( ! knopf ) {
 			return;
 		}
 
 		ereignis.preventDefault();
+
+		if ( knopf.classList.contains( 'taxmod-title-picture' ) ) {
+			knopf.setAttribute( 'data-taxmod-move', 'top' );
+		}
 
 		var zeile = knopf.closest( 'li' );
 		var liste = zeile ? zeile.parentElement : null;
@@ -2836,7 +2884,13 @@
 			return;
 		}
 
-		if ( knopf.getAttribute( 'data-taxmod-move' ) === 'up' ) {
+		if ( knopf.getAttribute( 'data-taxmod-move' ) === 'top' ) {
+			var erste = liste.querySelector( 'li.taxmod-switch-chosen' );
+
+			if ( erste && erste !== zeile ) {
+				liste.insertBefore( zeile, erste );
+			}
+		} else if ( knopf.getAttribute( 'data-taxmod-move' ) === 'up' ) {
 			var davor = zeile.previousElementSibling;
 
 			if ( davor && davor.classList.contains( 'taxmod-switch-chosen' ) ) {
@@ -2867,6 +2921,8 @@
 				pfeil.style.opacity = gesperrt ? '.35' : '';
 			} );
 		} );
+
+		titelSterne( liste );
 
 		if ( ! knopf.disabled ) {
 			knopf.focus();
