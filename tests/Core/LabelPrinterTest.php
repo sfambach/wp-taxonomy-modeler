@@ -100,6 +100,15 @@ final class LabelPrinterTest extends TestCase
     }
 
     #[Test]
+    public function cups_tries_a_failed_job_again_only_when_the_printer_says_so(): void
+    {
+        // D-1234, his word 2026-11-08: «Konfigurationsmäßig ein- und ausschalten und standardmäßig ist erstmal aus».
+        self::assertFalse(self::label(self::PHOMEMO)->printer->retries);
+        $again = FilledLabel::fromJson(self::label(self::PHOMEMO + ['retry' => '1'])->toJson());
+        self::assertTrue($again->printer?->retries);
+    }
+
+    #[Test]
     public function a_queue_that_is_not_a_plain_name_is_refused(): void
     {
         $this->expectException(\InvalidArgumentException::class);

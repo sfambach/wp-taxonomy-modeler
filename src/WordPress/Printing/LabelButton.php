@@ -243,7 +243,9 @@ final class LabelButton
             PrintJobStatus::Cancelled => sprintf(/* translators: %d: job number */ __('Job %d was cancelled.', 'taxmod'), $job),
             default                   => '',
         };
-        wp_send_json_success(['status' => $state->value, 'done' => $message !== '', 'ok' => $state === PrintJobStatus::Printed, 'message' => $message]);
+        // D-1234: while CUPS holds it, what CUPS says — shown, and the dialog keeps watching.
+        $waiting = $state === PrintJobStatus::Sent && $note !== '' ? sprintf(/* translators: 1: job number, 2: what CUPS said */ __('Job %1$d at the printer: %2$s', 'taxmod'), $job, $note) : '';
+        wp_send_json_success(['status' => $state->value, 'done' => $message !== '', 'ok' => $state === PrintJobStatus::Printed, 'message' => $message, 'waiting' => $waiting]);
     }
 
     /** @param array<string, mixed> $post */
@@ -415,10 +417,10 @@ final class LabelButton
         return '<script>(function(){function toast(t,ok){document.querySelectorAll(".taxmod-toast").forEach(function(o){o.parentNode.removeChild(o);});'
             . 'var d=document.createElement("div");d.className="taxmod-toast "+(ok?"taxmod-toast-ok":"taxmod-toast-bad");d.setAttribute("role","status");d.textContent=t;document.body.appendChild(d);}'
             . 'function say(t,ok){var ev=new CustomEvent("taxmod:message",{detail:{text:t,ok:ok},cancelable:true});if(document.dispatchEvent(ev)){toast(t,ok);}}'
-            . 'function watch(f,job,n){if(n>=40){return;}setTimeout(function(){var d=new FormData();d.append("action",' . wp_json_encode(self::STATUS_ACTION) . ');d.append("job",job);'
+            . 'function watch(f,job,n){if(n>=200){return;}setTimeout(function(){var d=new FormData();d.append("action",' . wp_json_encode(self::STATUS_ACTION) . ');d.append("job",job);'
             . 'var nn=f.querySelector("input[name=' . self::NONCE . ']");if(nn){d.append(' . wp_json_encode(self::NONCE) . ',nn.value);}'
             . 'fetch(' . wp_json_encode(admin_url('admin-ajax.php')) . ',{method:"POST",body:d,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(j){'
-            . 'if(!j||!j.success){return;}if(j.data.done){say(j.data.message,!!j.data.ok);}else{watch(f,job,n+1);}}).catch(function(){});},3000);}'
+            . 'if(!j||!j.success){return;}if(j.data.done){say(j.data.message,!!j.data.ok);return;}if(j.data.waiting&&j.data.waiting!==f.dataset.waiting){f.dataset.waiting=j.data.waiting;say(j.data.waiting,false);}watch(f,job,n+1);}).catch(function(){});},3000);}'
             . 'document.addEventListener("submit",function(e){var f=e.target,b=e.submitter;if(!f||!b||b.name!=="how"||b.value!=="service"){return;}'
             . 'var a=f.querySelector("input[name=action]");if(!a||a.value!==' . wp_json_encode(self::ACTION) . '||!window.fetch||!window.FormData){return;}'
             . 'e.preventDefault();var data=new FormData(f);data.append("how","service");data.append("taxmod_ajax","1");b.disabled=true;'

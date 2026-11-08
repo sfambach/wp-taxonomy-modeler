@@ -24,7 +24,7 @@ import time
 import urllib.error
 import urllib.request
 
-VERSION = "taxmod-print-agent 0.2.0"
+VERSION = "taxmod-print-agent 0.3.0"
 TOKEN_HEADER = "X-Taxmod-Print-Token"
 
 # Per label format: the CUPS options. The browser test showed the Brother driver wants landscape for labels as wide
@@ -50,6 +50,9 @@ def load_config(path: str) -> dict:
     config.setdefault("wake_url", "")
     config.setdefault("wake_seconds", 300)
     config.setdefault("alive_seconds", 3600)
+    # D-1234: how long a job is watched in CUPS after lp took it, and how often it is looked at.
+    config.setdefault("watch_seconds", 900)
+    config.setdefault("watch_every", 5)
     formats = dict(DEFAULT_FORMATS)
     for key, options in (config.get("formats") or {}).items():
         formats[key] = options
@@ -86,6 +89,27 @@ def lp_command(config: dict, job: dict, pdf_path: str) -> list[str]:
     return command + [pdf_path]
 
 
+# D-1234: what CUPS says about one job — «request id is Phomemo_M220L-228 (1 file(s))», and ipptool's job attributes.
+REQUEST_ID = re.compile(r"request id is (\S+)-(\d+)")
+JOB_TEST = "/usr/share/cups/ipptool/get-job-attributes.test"
+
+
+def cups_job(output: str) -> tuple[str, int] | None:
+    found = REQUEST_ID.search(output or "")
+    return (found.group(1), int(found.group(2))) if found else None
+
+
+def job_state(output: str) -> tuple[str, str]:
+    """job-state and job-printer-state-message from «ipptool -tv»; ('', '') when neither is there."""
+    values = {}
+    for line in (output or "").splitlines():
+        name, _, value = line.strip().partition(" = ")
+        key = name.split(" (")[0]
+        if key in ("job-state", "job-printer-state-message"):
+            values[key] = value.strip()
+    return values.get("job-state", ""), values.get("job-printer-state-message", "")
+
+
 class WordPress:
     def __init__(self, config: dict):
         self.base = config["rest"].rstrip("/") + "/"
@@ -103,10 +127,12 @@ class WordPress:
 
 
 class Agent:
-    def __init__(self, config: dict, run=subprocess.run):
+    def __init__(self, config: dict, run=subprocess.run, spawn=None, sleep=time.sleep):
         self.config = config
         self.wordpress = WordPress(config)
         self.run = run
+        self.sleep = sleep
+        self.spawn = spawn or (lambda work: threading.Thread(target=work, daemon=True).start())
         self.wake = threading.Event()
         self.lock = threading.Lock()
 
@@ -120,11 +146,50 @@ class Agent:
             jobs = answer.get("jobs", [])
             for job in jobs:
                 ok, message = self.print_job(job)
-                try:
-                    self.wordpress.call(f"print/jobs/{job['id']}/result", {"ok": ok, "message": message})
-                except urllib.error.URLError as error:
-                    log.error("job %s: answer not delivered: %s", job["id"], error)
+                taken = cups_job(message) if ok else None
+                if taken is None:
+                    self.answer(job["id"], "result", {"ok": ok, "message": message})
+                    continue
+                # D-1234: lp only took it; the job is printed when CUPS says so, not before.
+                self.answer(job["id"], "progress", {"message": f"CUPS {taken[0]}-{taken[1]}"})
+                self.spawn(lambda job=job, taken=taken: self.watch(job, taken[0], taken[1]))
             return len(jobs)
+
+    def answer(self, job_id: int, step: str, body: dict) -> None:
+        try:
+            self.wordpress.call(f"print/jobs/{job_id}/{step}", body)
+        except urllib.error.URLError as error:
+            log.error("job %s: %s not delivered: %s", job_id, step, error)
+
+    def state_of(self, number: int) -> tuple[str, str]:
+        try:
+            done = self.run(["ipptool", "-tv", f"ipp://localhost/jobs/{number}", JOB_TEST], capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.SubprocessError) as error:
+            return "", str(error)
+        return job_state(done.stdout)
+
+    def watch(self, job: dict, queue: str, number: int) -> None:
+        """D-1234: follows one CUPS job to its end. Retrying off (the default): the first failure ends it as failed."""
+        name, said, retry = f"{queue}-{number}", "", bool(job.get("retry"))
+        deadline = time.monotonic() + int(self.config["watch_seconds"])
+        while time.monotonic() < deadline:
+            state, message = self.state_of(number)
+            if state == "completed":
+                self.answer(job["id"], "result", {"ok": True, "message": f"Sent to the printer ({name})"})
+                return
+            if state in ("aborted", "canceled"):
+                self.answer(job["id"], "result", {"ok": False, "message": f"{message or state} ({name})"})
+                return
+            failed = state == "pending-held" or (state == "pending" and message != "")
+            if failed and not retry:
+                self.run(["cancel", name], capture_output=True, text=True, timeout=30)
+                self.answer(job["id"], "result", {"ok": False, "message": f"{message or 'CUPS held the job'} ({name})"})
+                return
+            if message and message != said:
+                said = message
+                self.answer(job["id"], "progress", {"message": f"{message} ({name})"})
+            self.sleep(int(self.config["watch_every"]))
+        self.answer(job["id"], "result", {"ok": False, "message": f"No end after {self.config['watch_seconds']} s: {said or 'no word from CUPS'} ({name})"})
 
     def print_job(self, job: dict) -> tuple[bool, str]:
         try:

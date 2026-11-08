@@ -9,7 +9,11 @@ namespace Taxmod\Core\Printing;
  * stateDiagram-v2
  *   [*] --> queued
  *   queued --> claimed: service pulls
- *   claimed --> printed: service reports ok
+ *   claimed --> sent: CUPS took it (D-1234)
+ *   sent --> sent: what CUPS says while it waits
+ *   sent --> printed: CUPS sent it to the printer
+ *   sent --> failed: CUPS gave it up, or failed once with retrying off
+ *   claimed --> printed: service reports ok (a service before D-1234)
  *   claimed --> failed: service reports an error
  *   claimed --> queued: claim older than the limit
  *   queued --> cancelled: owner cancels
@@ -18,12 +22,14 @@ namespace Taxmod\Core\Printing;
  *   cancelled --> queued: owner prints again
  * ```
  *
- * @see docs/NewConcept/90-decision-log.md D-1113
+ * @see docs/NewConcept/90-decision-log.md D-1113, D-1234
  */
 enum PrintJobStatus: string
 {
     case Queued = 'queued';
     case Claimed = 'claimed';
+    /** D-1234: CUPS has the job; the service watches it to its end. */
+    case Sent = 'sent';
     case Printed = 'printed';
     case Failed = 'failed';
     case Cancelled = 'cancelled';
@@ -44,6 +50,6 @@ enum PrintJobStatus: string
 
     public function acceptsResult(): bool
     {
-        return $this === self::Claimed;
+        return $this === self::Claimed || $this === self::Sent;
     }
 }

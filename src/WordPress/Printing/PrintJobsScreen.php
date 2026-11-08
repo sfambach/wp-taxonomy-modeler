@@ -135,7 +135,7 @@ final class PrintJobsScreen
     /** @return list<string> */
     private static function activeStatuses(): array
     {
-        return [PrintJobStatus::Queued->value, PrintJobStatus::Claimed->value];
+        return [PrintJobStatus::Queued->value, PrintJobStatus::Claimed->value, PrintJobStatus::Sent->value];
     }
 
     /** admin-post: a bulk action on `selected[]`, or one row's button on `job`. */
@@ -198,6 +198,7 @@ final class PrintJobsScreen
         return match ($status) {
             PrintJobStatus::Queued    => __('Waiting', 'taxmod'),
             PrintJobStatus::Claimed   => __('Fetched', 'taxmod'),
+            PrintJobStatus::Sent      => __('At the printer', 'taxmod'),
             PrintJobStatus::Printed   => __('Printed', 'taxmod'),
             PrintJobStatus::Failed    => __('Failed', 'taxmod'),
             PrintJobStatus::Cancelled => __('Cancelled', 'taxmod'),

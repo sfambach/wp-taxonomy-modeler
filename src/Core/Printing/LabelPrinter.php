@@ -36,6 +36,7 @@ final class LabelPrinter
         public readonly float $rollMm = 0.0,
         public readonly array $turnOptions = [],
         public readonly array $sizes = [],
+        public readonly bool $retries = false,
     ) {
         if (preg_match(self::NAME, $queue) !== 1) {
             throw new \InvalidArgumentException(sprintf('«%s» is not a CUPS queue name.', $queue));
@@ -83,11 +84,11 @@ final class LabelPrinter
         return $page === null ? $options : ['PageSize' => $page] + $options;
     }
 
-    /** @return array{queue: string, options: array<string, string>, turn: bool, name: string, offset: float, line: float, roll: float, turn_options: array<string, string>, sizes: array<string, string>} */
+    /** @return array{queue: string, options: array<string, string>, turn: bool, name: string, offset: float, line: float, roll: float, turn_options: array<string, string>, sizes: array<string, string>, retry: bool} */
     public function toArray(): array
     {
         return ['queue' => $this->queue, 'options' => $this->options, 'turn' => $this->turnsLabel, 'name' => $this->name, 'offset' => $this->offsetMm,
-            'line' => $this->lineMm, 'roll' => $this->rollMm, 'turn_options' => $this->turnOptions, 'sizes' => $this->sizes];
+            'line' => $this->lineMm, 'roll' => $this->rollMm, 'turn_options' => $this->turnOptions, 'sizes' => $this->sizes, 'retry' => $this->retries];
     }
 
     /**
@@ -108,18 +109,21 @@ final class LabelPrinter
             return $out;
         };
         $mm   = static fn (string $key): float => is_numeric(str_replace(',', '.', (string) ($raw[$key] ?? ''))) ? max(0.0, (float) str_replace(',', '.', (string) $raw[$key])) : 0.0;
+        $yes  = static fn (mixed $given): bool => $given === true || $given === 1 || in_array(strtolower((string) $given), ['1', 'true', 'ja', 'yes'], true);
         $turn = $raw['turn'] ?? false;
 
         return new self(
             trim((string) ($raw['queue'] ?? '')),
             $map($raw['options'] ?? []),
-            $turn === true || $turn === 1 || in_array(strtolower((string) $turn), ['1', 'true', 'ja', 'yes'], true),
+            $yes($turn),
             trim((string) ($raw['name'] ?? '')),
             $mm('offset'),
             $mm('line'),
             $mm('roll'),
             $map($raw['turn_options'] ?? []),
             $map($raw['sizes'] ?? []),
+            // D-1234: whether CUPS may try a failed job again by itself; off unless the printer says so.
+            $yes($raw['retry'] ?? false),
         );
     }
 

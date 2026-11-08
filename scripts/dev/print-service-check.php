@@ -73,6 +73,10 @@ $zweiter = $rufe('/print/pull', [], $token)->get_data()['jobs'] ?? [];
 $pruefe(array_filter($zweiter, static fn (array $j): bool => $j['id'] === $id) === [], 'a claimed job is not handed over twice');
 
 $pruefe(($jobs->statusOf($id)[0] ?? null) === \Taxmod\Core\Printing\PrintJobStatus::Claimed, 'D-1221: the dialog sees a fetched job as not yet printed');
+// D-1234: CUPS took it — the job is at the printer, not printed, and what CUPS says while it waits is kept.
+$pruefe($rufe('/print/jobs/' . $id . '/progress', ['message' => 'CUPS QL-1'], $token)->get_status() === 200, 'D-1234: the service says CUPS took the job');
+$pruefe(($jobs->statusOf($id) ?? []) === [\Taxmod\Core\Printing\PrintJobStatus::Sent, 'CUPS QL-1'], 'D-1234: … and the dialog sees it at the printer, not printed');
+$pruefe($rufe('/print/jobs/' . PHP_INT_MAX . '/progress', ['message' => 'x'], $token)->get_status() === 409, 'D-1234: progress for a job not with the service is refused');
 $pruefe($rufe('/print/jobs/' . $id . '/result', ['ok' => true, 'message' => 'request id is QL-1'], $token)->get_status() === 200, 'the service answers the job');
 $pruefe(($jobs->statusOf($id) ?? []) === [\Taxmod\Core\Printing\PrintJobStatus::Printed, 'request id is QL-1'] && $jobs->statusOf(PHP_INT_MAX) === null, 'D-1221: … and as printed once the service has answered; an unknown job has no state');
 $zeile = $jobs->latest(1)[0];

@@ -177,6 +177,9 @@ final class PrintingTest extends TestCase
         self::assertTrue(\Taxmod\Core\Printing\PrintJobStatus::Printed->canBeQueuedAgain());
         self::assertTrue(\Taxmod\Core\Printing\PrintJobStatus::Claimed->acceptsResult());
         self::assertFalse(\Taxmod\Core\Printing\PrintJobStatus::Printed->acceptsResult());
+        // D-1234: a job CUPS holds is still with the service; its end comes later.
+        self::assertTrue(\Taxmod\Core\Printing\PrintJobStatus::Sent->acceptsResult());
+        self::assertFalse(\Taxmod\Core\Printing\PrintJobStatus::Sent->canBeCancelled());
     }
 
     #[Test]

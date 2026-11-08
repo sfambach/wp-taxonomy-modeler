@@ -68,3 +68,12 @@ is added with `brpapertoollpr_ql810w -P <queue> -n 62x30 -w 62 -h 30`. Find the 
 ## Tests
 
 `python3 -m unittest discover tools/print-agent`
+
+## Job status (D-1234, 0.3.0)
+
+`lp` taking a job is not the end. The service tells WordPress «at the printer» with the CUPS job number
+(`print/jobs/{id}/progress`), then watches the job with `ipptool` (`job-state`, `job-printer-state-message`)
+every `watch_every` seconds for at most `watch_seconds`, and answers printed or failed with CUPS' reason.
+
+A printer with «Automatisch wiederholen» off (the default) fails a job on its first error and cancels it in CUPS,
+so a label never comes out minutes later and out of order. Needs `ipptool` (package `cups-ipp-utils`).

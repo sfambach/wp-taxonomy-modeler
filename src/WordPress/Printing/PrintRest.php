@@ -42,6 +42,13 @@ final class PrintRest
             'permission_callback' => self::authorised(...),
             'args'                => ['id' => ['validate_callback' => static fn ($v): bool => is_numeric($v) && (int) $v > 0]],
         ]);
+        // D-1234: between «CUPS took it» and the end, the service says what CUPS says.
+        register_rest_route(self::ROUTES, '/print/jobs/(?P<id>\d+)/progress', [
+            'methods'             => 'POST',
+            'callback'            => $this->progress(...),
+            'permission_callback' => self::authorised(...),
+            'args'                => ['id' => ['validate_callback' => static fn ($v): bool => is_numeric($v) && (int) $v > 0]],
+        ]);
     }
 
     public static function authorised(\WP_REST_Request $request): bool|\WP_Error
@@ -85,7 +92,7 @@ final class PrintRest
                 $pdf = LabelDocument::render($format, array_fill(0, $copies, new LabelContent($row['code'], $row['title'], $row['subtitle'])));
             }
             // D-1191: a label printed on a printer of the model carries its queue and options; the service no longer guesses them.
-            $jobs[] = ($printer === null ? [] : ['queue' => $printer->queue, 'options' => $printer->optionsFor($format)]) + [
+            $jobs[] = ($printer === null ? [] : ['queue' => $printer->queue, 'options' => $printer->optionsFor($format), 'retry' => $printer->retries]) + [
                 'id'     => (int) $row['id'],
                 'format' => $format->key,
                 'roll'   => $format->rollMm,
@@ -97,6 +104,18 @@ final class PrintRest
         }
 
         return new \WP_REST_Response(['jobs' => $jobs]);
+    }
+
+    public function progress(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    {
+        $id      = (int) $request->get_param('id');
+        $message = sanitize_textarea_field((string) $request->get_param('message'));
+
+        if (! $this->jobs->progress($id, substr($message, 0, 2000))) {
+            return new \WP_Error('taxmod_print_job', __('This job is not with the print service.', 'taxmod'), ['status' => 409]);
+        }
+
+        return new \WP_REST_Response(['id' => $id, 'status' => 'sent']);
     }
 
     public function result(\WP_REST_Request $request): \WP_REST_Response|\WP_Error

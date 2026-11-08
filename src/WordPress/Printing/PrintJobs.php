@@ -97,7 +97,31 @@ final class PrintJobs
         );
     }
 
-    /** The service's answer for a claimed job; false when the job is not claimed (any more). */
+    /**
+     * D-1234: CUPS took the job, or says why it still waits; false when the job is not with the service (any more).
+     */
+    public function progress(int $id, string $message): bool
+    {
+        global $wpdb;
+
+        $table = PrintJobSchema::table();
+        $moved = (int) $wpdb->query($wpdb->prepare(
+            "UPDATE {$table} SET status = %s, message = %s WHERE id = %d AND status IN (%s, %s)",
+            PrintJobStatus::Sent->value,
+            $message,
+            $id,
+            PrintJobStatus::Claimed->value,
+            PrintJobStatus::Sent->value
+        ));
+        if ($moved > 0) {
+            TileCounts::forget(TileCounts::PRINT_JOBS);
+        }
+
+        // MySQL counts only changed rows: the same message twice changes nothing, and the job is still with the service.
+        return $moved === 1 || ($this->statusOf($id)[0] ?? null) === PrintJobStatus::Sent;
+    }
+
+    /** The service's answer for a claimed or sent job; false when the job is not with the service (any more). */
     public function finish(int $id, bool $printed, string $message): bool
     {
         global $wpdb;
@@ -105,12 +129,13 @@ final class PrintJobs
         $table = PrintJobSchema::table();
 
         $finished = (int) $wpdb->query($wpdb->prepare(
-            "UPDATE {$table} SET status = %s, message = %s, finished_at = %s WHERE id = %d AND status = %s",
+            "UPDATE {$table} SET status = %s, message = %s, finished_at = %s WHERE id = %d AND status IN (%s, %s)",
             ($printed ? PrintJobStatus::Printed : PrintJobStatus::Failed)->value,
             $message,
             current_time('mysql', true),
             $id,
-            PrintJobStatus::Claimed->value
+            PrintJobStatus::Claimed->value,
+            PrintJobStatus::Sent->value
         ));
         if ($finished > 0) {
             TileCounts::forget(TileCounts::PRINT_JOBS);
