@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.17';
+    public const VERSION     = '0.2.18';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -213,6 +213,8 @@ final class Plugin
         // WordPress-Connector als Werkzeuge zeigt. Ohne die Abilities-API (vor WordPress 6.9) feuern die Haken nie.*
         add_action('wp_abilities_api_categories_init', static fn () => $plugin->abilities()->registerCategory());
         add_action('wp_abilities_api_init', static fn () => $plugin->abilities()->register());
+        // D-1235: the print jobs as abilities — the print thread reads what CUPS did and prints again.
+        add_action('wp_abilities_api_init', static fn () => (new \Taxmod\WordPress\Printing\PrintAbilities())->register());
         // *As a class-string callable: `ModelAbilities::ensureDataRole(...)` compiled the whole class on every request (D-1187).*
         add_action('init', [ModelAbilities::class, 'ensureDataRole']);
 

@@ -145,6 +145,17 @@ $pruefe(str_contains($knopf, 'name="how" value="service"') && str_contains($knop
 $pruefe((string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'X', 1, 'x') === '', 'an unknown prefix gets no button');
 $pruefe(str_contains((string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'K', 9, 'Kiste 9'), 'value="roll62" selected'), 'a box starts with the 62 mm roll label');
 
+// D-1235: the print thread reads the jobs and prints again through abilities.
+if (function_exists('wp_get_ability') && wp_get_ability('taxmod/print-jobs') !== null) {
+    $gelesen = wp_get_ability('taxmod/print-jobs')->execute(['limit' => 5]);
+    $pruefe(is_array($gelesen) && in_array($id, array_column($gelesen['jobs'] ?? [], 'id'), true) && isset($gelesen['service']['last_seen']), 'D-1235: print-jobs lists the newest jobs and when the service was seen');
+    $nochmal = wp_get_ability('taxmod/print-job')->execute(['ids' => [$id], 'action' => 'again']);
+    $pruefe(($nochmal['moved'] ?? 0) === 1 && ($jobs->statusOf($id)[0] ?? null) === \Taxmod\Core\Printing\PrintJobStatus::Queued, 'D-1235: print-job again puts a printed job back into the queue');
+    $jobs->cancel([$id]);
+} else {
+    echo "print-service: no Abilities API here, D-1235 not checked\n";
+}
+
 PrintService::revokeAccess();
 $pruefe($rufe('/print/pull', [], $token)->get_status() === 401 && ! is_file($datei), 'a removed access stops the service and its wake file');
 
