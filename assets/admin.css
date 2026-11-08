@@ -480,6 +480,17 @@ details.taxmod-page-block > summary {
     border-radius: 3px;
 }
 
+/* D-1230: a framed button that carries only an icon (Drucken, Umbuchen, Ausbuchen …) stands next to
+   text buttons. Without text it has no baseline of its own and WordPress aligns its bottom edge to the
+   neighbours' baseline, so it sat higher than the row (his screenshot 2026-11-08, place header). A
+   zero-width character gives it the same baseline as a text button; the icon then sits at the text's middle. */
+.button:has(> span > .taxmod-icon:only-child)::after {
+    content: "\200b";
+}
+.button > span > .taxmod-icon:only-child {
+    vertical-align: middle;
+}
+
 /* ── How big an icon is drawn: one sum, one place ─────────────────────────────
  *
  * ⚠️ **The size the owner picked on the installation screen was reaching nothing.**

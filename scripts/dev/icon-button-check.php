@@ -472,6 +472,9 @@ check(
 
 echo "\n";
 
+// D-1230: an icon-only framed button stands on the same line as its text neighbours.
+check('an icon-only button gets the baseline of a text button', str_contains($bodyOf($css, '.button:has(> span > .taxmod-icon:only-child)::after'), '\\200b'));
+
 if ($failed === 0) {
     echo "all green\n";
 
