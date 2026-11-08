@@ -1252,3 +1252,9 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **2026-11-08, ergänzt:** Arbeitsplatz statt oben/unten, Drucker je Arbeitsplatz, Wechsel jederzeit über eine Benutzereinstellung.
 - **Entwurf:** [pakete/arbeitsplatz/konzept.md](pakete/arbeitsplatz/konzept.md).
 - **Gebaut:** nein. Abschalten eines Druckers: [D-1231](NewConcept/90-decision-log.md).
+
+## INF-115 · Posten aufteilen und zusammenbuchen, Split-Nummer an der Charge (2026-11-08)
+
+- **2026-11-08, sein Wunsch** (4,7 kΩ 0805, Ali-Posten 52891, 150 St. in zwei Magazinen): *«Da würde ich eine bei der Charge eine Split-Nummer einfügen, dass wir wissen, dass die gleiche Charge. Aber in unterschiedlicher Split und dass man die zusammenbuchen könnte wieder.»*
+- **Entwurf:** [pakete/lager/aufteilen.md](pakete/lager/aufteilen.md). **Offen:** S1–S4 dort; Prüfung durch den Design-Wächter.
+- **Gebaut:** nein.
