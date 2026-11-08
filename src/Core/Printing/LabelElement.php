@@ -27,7 +27,7 @@ final class LabelElement
         public readonly bool $atBottom = false,
         /** D-1154: the text preview and test print show where no record fills the field. */
         public readonly string $example = '',
-        /** D-1217: a component value in its short code («24K», «4N7»). */
+        /** D-1217, D-1236: a component value in its short code («24k», «4n7»). */
         public readonly bool $short = false,
         /** D-1217: the text stands in the middle of its box. */
         public readonly bool $centred = false,
