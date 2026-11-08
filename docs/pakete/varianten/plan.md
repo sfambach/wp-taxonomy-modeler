@@ -1,6 +1,6 @@
 # Material variants: plan (D-1208)
 
-Status: **steps 1–3 built** (Modeller 0.2.31); steps 4–8 open. Basis: [D-1208](../../NewConcept/90-decision-log.md), entry [INF-113](../../neues-konzept-eingang.md).
+Status: **steps 1–4 built** (Modeller 0.2.32); steps 5–8 open. Basis: [D-1208](../../NewConcept/90-decision-log.md), entry [INF-113](../../neues-konzept-eingang.md).
 
 ## The model
 
@@ -22,7 +22,7 @@ A variant is a record of its own, with its own id (D-995: the material number is
 | 1 | Add-on «Je Variante» on an edge, like «Rechnen» (D-1022) | Modeller core `Addon` | core test: flag set/unset, shipped add-on listed |
 | 2 | Relation «Variante von» between records: one parent, no cycle, no variant of a variant | Modeller core + persistence | core test: invariants refused with a reason |
 | 3 | Reading with fallback: a variant's empty non-flag field comes from its parent, for a whole batch in one read (CD-7) | `ModelDoor` / record reads, one place | boundary check: list of variants costs one extra read, not one per row |
-| 4 | Writing: non-flag fields locked on a variant; flag fields locked on the parent | Modeller write path | boundary check |
+| 4 | Writing: non-flag fields locked on a variant ~~; flag fields locked on the parent~~ (struck: his answer on pictures, below, has the parent's flag values as the fallback) | Modeller write path | boundary check |
 | 5 | Name of a variant: parent name + flag values («OLED 0,91″ 128×32 · weiß · mit Pins») and shown number «parent-n» | Modeller, computed | core test |
 | 6 | Model screen: «Varianten erzeugen» at a record (choose values per flag field, all combinations or single), list of variants under the record | `NodesScreen` | boundary check |
 | 7 | Stock: the thing is the variant; receiving a material that has variants asks for the variant; material list and group stock show the sum at the parent | `wp_tax_stock` | stock-check |
@@ -34,7 +34,13 @@ Each step ends with something the owner can operate, and both test runs stay gre
 
 - `read-node` names the add-ons chosen at each field (`addons`), from the modeller's one resolver.
 - `ModelDoor::records()` and `ModelDoor::valuesOf()` hand a module the values a variant shows; parents outside the list cost one more read for all of them (`scripts/dev/varianten-check.php`).
-- The modeller's own screens and `read-node` still show the stored values: the variant's own fields only. Locking the others is step 4.
+- The modeller's own screens and `read-node` still show the stored values: the variant's own fields only.
+
+## Built in step 4
+
+- `DataEntry` refuses a value on a parent's field at a variant, with the parent's number in the message; a value the variant already holds may be sent again unchanged (a form sends every field back). Clearing is never refused, so old values of a record that became a variant can be cleaned up.
+- Saving «Variante von» checks the three rules of `Variants::complaints`.
+- Not built: the modeller's form does not yet show the parent's fields locked; that comes with the variant list in step 6.
 - ⚠️ Assumed: «Variante von» is an **aggregation** to the material's own node. Found while building: a *composition* from a node to itself makes `create_record` loop without end (pre-existing, not caused by variants).
 
 ## How variants are shown (proposal, his question 2026-11-06: «wie stellen wir die varienten da unter dem vater material als eigenes material ??»)

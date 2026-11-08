@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.31';
+    public const VERSION     = '0.2.32';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -995,6 +995,8 @@ final class Plugin
             // ⚠️ *Die Vorbelegung eines Feldes, gefragt beim **ersten Schreiben**
             // ([D-609](../../docs/NewConcept/90-decision-log.md), [D-649](../../docs/NewConcept/90-decision-log.md)).
             // Derselbe Zeichenlauf, damit Typ und Kette nicht zweimal aufgelöst werden.*
+            $rendering,
+            // D-1208: which fields a variant holds itself, from the same resolver.
             $rendering
         );
 

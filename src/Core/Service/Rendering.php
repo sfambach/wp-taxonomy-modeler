@@ -86,7 +86,7 @@ use Taxmod\Core\Port\Users;
  *
  * @see docs/NewConcept/30-renderer.md
  */
-final class Rendering implements Presets
+final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 {
     public function __construct(
         private readonly NodeRepository $nodes,

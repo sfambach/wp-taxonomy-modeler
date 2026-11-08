@@ -197,6 +197,21 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('The setting «%s» has no relation written down yet, so nothing can be stored at it.', $key));
     }
 
+    /** A variant holds only its «Je Variante» fields; every other one is its parent's (D-1208). */
+    public static function thatFieldIsTheParents(string $attribute, int $parent): self
+    {
+        return new self(sprintf('«%s» is read from the parent #%d — change it there, or mark the field «Je Variante».', $attribute, $parent));
+    }
+
+    public static function thatCannotBeAVariant(int $record, int $parent, \Taxmod\Core\Model\VariantComplaint $why): self
+    {
+        return new self(sprintf('#%d cannot be a variant of #%d: %s', $record, $parent, match ($why) {
+            \Taxmod\Core\Model\VariantComplaint::OfItself        => 'a record is no variant of itself.',
+            \Taxmod\Core\Model\VariantComplaint::ParentIsVariant => 'the parent is a variant itself.',
+            \Taxmod\Core\Model\VariantComplaint::HasVariants     => 'it has variants of its own.',
+        }));
+    }
+
     public static function notAFieldOfThisModel(int $relationId, string $model): self
     {
         return new self(sprintf('Field %d does not belong to «%s» or anything it inherits from.', $relationId, $model));

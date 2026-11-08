@@ -87,7 +87,97 @@ final class DataEntry
          * bisher, nur ohne Vorbelegung.*
          */
         private readonly ?Presets $presets = null,
+        /** D-1208: which fields carry «Variante von» and «Je Variante». Without it nothing is locked. */
+        private readonly ?\Taxmod\Core\Port\FieldAddons $addons = null,
     ) {
+    }
+
+    /** @var array<int, array{variantOf: int, own: array<int, true>}> node id → its variant fields, asked once */
+    private array $variantFields = [];
+
+    /**
+     * Refuse a value a variant does not hold itself, and a parent link that breaks the rules (D-1208): one parent, no
+     * variant of a variant, no variant of itself.
+     */
+    private function refuseNotOwn(NodeRecord $record, Relation $relation, ?TypedValue $value = null): void
+    {
+        ['variantOf' => $variantOf, 'own' => $own] = $this->variantFieldsOf($record->nodeId);
+
+        if ($variantOf === 0 || isset($own[$relation->id])) {
+            return;
+        }
+
+        if ($relation->id === $variantOf) {
+            $parent = $value === null || $value->isNothing() ? 0 : (int) ($value->reference ?? $value->int ?? 0);
+            $known  = [];
+
+            foreach ($parent === 0 ? [] : $this->valuesOn($parent, $variantOf, '') as $row) {
+                $known[$parent] = (int) ($row->value->reference ?? $row->value->int ?? 0);
+            }
+
+            foreach ($this->records->findByRelationValue($variantOf, TypedValue::ofRecordReference($record->id)) as $child) {
+                $known[$child] = $record->id;
+            }
+
+            foreach (\Taxmod\Core\Model\Variants::complaints($record->id, $parent, array_filter($known)) as $why) {
+                throw NotYetStorable::thatCannotBeAVariant($record->id, $parent, $why);
+            }
+
+            unset($this->parentOf[$record->id]);
+
+            return;
+        }
+
+        if (! array_key_exists($record->id, $this->parentOf)) {
+            $this->parentOf[$record->id] = 0;
+
+            foreach ($this->valuesOn($record->id, $variantOf, '') as $row) {
+                $this->parentOf[$record->id] = (int) ($row->value->reference ?? $row->value->int ?? 0);
+            }
+        }
+
+        $parent = $this->parentOf[$record->id];
+
+        if ($parent === 0) {
+            return;
+        }
+
+        // A form sends every field back; a value already stored is no change, so it does not block the save.
+        foreach ($value === null ? [] : $this->valuesOn($record->id, $relation->id, '') as $row) {
+            if ($row->value->rawValue() === $value->rawValue()) {
+                return;
+            }
+        }
+
+        throw NotYetStorable::thatFieldIsTheParents($relation->name, $parent);
+    }
+
+    /** @var array<int, int> record id → its parent, 0 for none; read once per record and write path (CD-7) */
+    private array $parentOf = [];
+
+    /** @return array{variantOf: int, own: array<int, true>} */
+    private function variantFieldsOf(int $nodeId): array
+    {
+        if (isset($this->variantFields[$nodeId])) {
+            return $this->variantFields[$nodeId];
+        }
+
+        $variantOf = 0;
+        $own       = [];
+        $model     = $this->addons === null ? null : $this->nodes->byId($nodeId);
+        $fields    = $model === null ? [] : $this->relations->fieldRelationsOf($this->framework->inheritanceOwnersOf($model));
+
+        foreach ($fields === [] ? [] : $this->addons->addonNamesAt(array_values($fields)) as $relation => $names) {
+            if (in_array(\Taxmod\Core\Addon\VariantOfAddon::NAME, $names, true)) {
+                $variantOf = (int) $relation;
+            }
+
+            if (in_array(\Taxmod\Core\Addon\VariantAddon::NAME, $names, true)) {
+                $own[(int) $relation] = true;
+            }
+        }
+
+        return $this->variantFields[$nodeId] = ['variantOf' => $variantOf, 'own' => $own];
     }
 
     /**
@@ -467,7 +557,7 @@ final class DataEntry
      */
     public function put(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
-        $relation      = $this->writableRelation($recordId, $relationId);
+        $relation      = $this->writableRelation($recordId, $relationId, $value);
         $vorhanden = $this->valuesOn($recordId, $relation->id, $locale);
 
         // ⚠️ **Eindeutig heisst geprüft** ([D-735](../../../docs/NewConcept/90-decision-log.md)): *über den Index der Kante,
@@ -600,6 +690,7 @@ final class DataEntry
         $satz   = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
 
         $this->refuseUnwritable($letzte, $satz->recordType);
+        $this->refuseNotOwn($satz, $kette[0], count($kette) === 1 ? $value : null);
 
         $vorhanden = $this->valuesOn($recordId, $letzte->id, $locale);
 
@@ -717,7 +808,7 @@ final class DataEntry
      */
     public function appendValue(int $recordId, int $relationId, TypedValue $value, string $locale = ''): void
     {
-        $relation     = $this->writableRelation($recordId, $relationId);
+        $relation     = $this->writableRelation($recordId, $relationId, $value);
         $hinterste = -1;
 
         // ⚠️ **Eindeutig gilt auch beim Anhängen** ([D-838](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «nur zu einem eine platine
@@ -777,12 +868,13 @@ final class DataEntry
      * ⚠️ **Herausgezogen, damit `put()` und {@see appendValue()} nicht zwei Sätze Wächter haben.**
      * *Zwei Kopien einer Prüfung sind zwei Orte, an denen die nächste Regel vergessen wird.*
      */
-    private function writableRelation(int $recordId, int $relationId): Relation
+    private function writableRelation(int $recordId, int $relationId, ?TypedValue $value = null): Relation
     {
         $record = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
         $relation   = $this->relationOf($record, $relationId);
 
         $this->refuseUnwritable($relation, $record->recordType);
+        $this->refuseNotOwn($record, $relation, $value);
 
         return $relation;
     }

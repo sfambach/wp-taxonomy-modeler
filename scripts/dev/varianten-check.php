@@ -90,7 +90,9 @@ $built = $apply->execute(['changes' => [
     ['op' => 'create_record', 'ref' => 'v2', 'node' => '@m'],
     ['op' => 'set_values', 'record' => '@v2', 'values' => ['@von' => '@p']],
     ['op' => 'create_record', 'ref' => 'v3', 'node' => '@m'],
-    ['op' => 'set_values', 'record' => '@v3', 'values' => ['@von' => '@p', '@farbe' => 'gelb', '@name' => 'stray own name']],
+    // A value of its own from before it became a variant (as the displays of step 8 will have).
+    ['op' => 'set_values', 'record' => '@v3', 'values' => ['@name' => 'stray own name']],
+    ['op' => 'set_values', 'record' => '@v3', 'values' => ['@von' => '@p', '@farbe' => 'gelb']],
 ]]);
 
 check('apply builds the material with three variants', is_array($built), is_wp_error($built) ? $built->get_error_message() : '');
@@ -127,6 +129,30 @@ $forThree = $wpdb->num_queries - $before;
 check('valuesOf shows the same as records', ($one[$ref['v1']] ?? null) == ($records[$ref['v1']] ?? null), wp_json_encode($one));
 check('valuesOf reads the parent outside the list', ($three[$ref['v2']][$ref['name']] ?? []) === ['OLED 0,91'] && ($three[$ref['v2']][$ref['farbe']] ?? []) === ['blau'], wp_json_encode($three));
 check('three variants cost no more reads than one (CD-7)', $forThree <= $forOne, "one: $forOne, three: $forThree");
+
+echo "Writing (step 4)\n";
+
+$set = static fn (int $record, array $values): mixed => $apply->execute(['changes' => [['op' => 'set_values', 'record' => $record, 'values' => $values]]]);
+$why = static fn (mixed $answer): string => is_wp_error($answer) ? $answer->get_error_message() : 'accepted';
+
+$answer = $set($ref['v1'], [(string) $ref['name'] => 'own name']);
+check('a variant refuses a value on its parent\'s field', is_wp_error($answer) && str_contains($why($answer), 'parent'), $why($answer));
+$answer = $set($ref['v1'], [(string) $ref['farbe'] => 'grün']);
+check('a variant takes a value on a «Je Variante» field', ! is_wp_error($answer), $why($answer));
+$answer = $set($ref['v3'], [(string) $ref['name'] => 'stray own name']);
+check('an unchanged value a variant already holds does not block a save', ! is_wp_error($answer), $why($answer));
+$answer = $set($ref['v1'], [(string) $ref['von'] => (string) $ref['v1']]);
+check('a record is no variant of itself', is_wp_error($answer), $why($answer));
+$answer = $set($ref['p'], [(string) $ref['von'] => (string) $ref['v1']]);
+check('a record with variants is no variant', is_wp_error($answer), $why($answer));
+$answer = $apply->execute(['changes' => [
+    ['op' => 'create_record', 'ref' => 'v4', 'node' => $ref['m']],
+    ['op' => 'set_values', 'record' => '@v4', 'values' => [(string) $ref['von'] => (string) $ref['v1']]],
+]]);
+check('no variant of a variant', is_wp_error($answer), $why($answer));
+$answer = $set($ref['p'], [(string) $ref['name'] => 'OLED 0,96']);
+$shown  = (new ModelDoor())->records($ref['m']);
+check('a change at the parent shows at every variant', ! is_wp_error($answer) && ($shown[$ref['v2']][$ref['name']] ?? []) === ['OLED 0,96'], $why($answer));
 
 echo "\n$ok ok, $bad failed\n";
 exit($bad === 0 ? 0 : 1);
