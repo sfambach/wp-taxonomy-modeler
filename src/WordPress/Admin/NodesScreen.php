@@ -3809,7 +3809,9 @@ final class NodesScreen
 
         foreach ($jobs === [] ? [] : $this->rendering->summaryTextsOf($jobs) as $edge => $texts) {
             if (isset($named[$edge])) {
-                $values[$named[$edge]] = trim((string) ($texts[$record] ?? ''));
+                $text = trim((string) ($texts[$record] ?? ''));
+                // ⚠️ *An empty field reads «#<record>» in a summary; on a label it is empty, so «Farbe|Typ» falls through to the next one.*
+                $values[$named[$edge]] = $text === '#' . $record ? '' : $text;
             }
         }
 
