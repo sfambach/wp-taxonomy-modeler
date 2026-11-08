@@ -543,6 +543,29 @@ final class ListPage
     }
 
     /**
+     * The icons of the recurring acts, one place for all lists ([D-1230](../../../docs/NewConcept/90-decision-log.md)) — his word
+     * 2026-11-08: «generell drucken knopf durch icon drucker ersetzten wie löschen durch papierkorb und vielleicht gibts ja auch was
+     * für umbuchen zwei gegenläufige pfeile», «dann gleich noch ein icon für ausbuchen». Dashicon keys without their prefix.
+     */
+    public const ICON_PRINT = 'printer';
+    public const ICON_TRANSFER = 'leftright';
+    public const ICON_BOOK_OUT = 'migrate';
+    public const ICON_DELETE = 'trash';
+
+    /** An icon in place of a button's word; the word stays for the screen reader and as the tooltip. */
+    public static function icon(string $icon, string $label): string
+    {
+        return '<span title="' . esc_attr($label) . '">' . \Taxmod\Core\Renderer\IconMarkup::dashicon($icon) . '</span>'
+            . '<span class="screen-reader-text">' . esc_html($label) . '</span>';
+    }
+
+    /** A button that is a link, drawn as its icon. */
+    public static function iconLink(string $icon, string $label, string $url): string
+    {
+        return '<a class="button" href="' . esc_url($url) . '" title="' . esc_attr($label) . '">' . self::icon($icon, $label) . '</a>';
+    }
+
+    /**
      * A row or bar action that asks in a dialog before it is sent: the button opens the dialog, its fields go with the form
      * the dialog sits in (or with `$form`), and only its own confirm button submits. Every list draws its dialog actions here,
      * so they look the same everywhere ([D-1063](../../../docs/NewConcept/90-decision-log.md)). ⚠️ *His word, 2026-11-01:
@@ -560,13 +583,14 @@ final class ListPage
         string $submitValue,
         string $submitLabel,
         string $form = '',
+        string $icon = '',
     ): string {
         $submit = '<button type="submit" class="button button-primary" name="' . esc_attr($submitName) . '" value="' . esc_attr($submitValue) . '"'
             . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . '>' . esc_html($submitLabel) . '</button>';
 
         return DialogMarkup::of(
             $switch,
-            esc_html($opener),
+            $icon === '' ? esc_html($opener) : self::icon($icon, $opener),
             esc_html($title),
             '<span class="taxmod-dialog-body" style="display:block;padding:.75em 1em;white-space:normal;text-align:left">' . $body . '</span>',
             $submit,

@@ -112,7 +112,8 @@ final class LabelButton
             . ($chooser === null ? '' : $chooser['hidden'])
             . \Taxmod\Core\Renderer\DialogMarkup::of(
                 $switch,
-                esc_html__('Etikett drucken', 'taxmod'),
+                // D-1230: the printer instead of the word, in every module that asks for this button.
+                \Taxmod\WordPress\Admin\ListPage::icon(\Taxmod\WordPress\Admin\ListPage::ICON_PRINT, __('Etikett drucken', 'taxmod')),
                 esc_html__('Print a label', 'taxmod'),
                 '<span class="taxmod-dialog-body" style="display:block;padding:.75em 1em;white-space:normal;text-align:left">' . $body . '</span>',
                 $foot,
