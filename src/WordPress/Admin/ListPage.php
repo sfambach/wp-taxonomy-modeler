@@ -115,6 +115,12 @@ final class ListPage
     }
 
     /** Whether the request asks a list waiting for a search to show all of it (D-1147). */
+    /** Forgets every list's chosen columns of the current user (D-1232, his Benutzereinstellungen). */
+    public static function resetColumns(): void
+    {
+        delete_user_meta(get_current_user_id(), self::COLUMNS_META);
+    }
+
     public static function showsAll(): bool
     {
         return sanitize_key((string) ($_GET[self::SHOW_ALL] ?? '')) === '1';
