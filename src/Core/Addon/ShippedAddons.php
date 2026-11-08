@@ -16,6 +16,7 @@ final class ShippedAddons
         $registry->add(new CalculationStep());
         $registry->add(new MetricAddon());
         $registry->add(new VariantAddon());
+        $registry->add(new VariantOfAddon());
 
         return $registry;
     }
