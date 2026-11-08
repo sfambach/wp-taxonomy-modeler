@@ -40,7 +40,7 @@ final class PrintAbilities
 
         wp_register_ability('taxmod/print-label', [
             'label'               => __('Print a label', 'taxmod'),
-            'description'         => __('Queues one label for the print service, built as the label dialog builds it: code (M-<material> or P-<lot>), label (record id of a label template), printer (record id; empty: the first whose roll allows the label), copies. dry_run: true answers what would print and queues nothing. Returns the job id; follow it with taxmod/print-jobs.', 'taxmod'),
+            'description'         => __('Queues one label for the print service, built as the label dialog builds it: code (M-<material>, P-<lot>, O-/K-<place>), label (record id of a label template), printer (record id; empty: the first whose roll allows the label), copies. dry_run: true answers what would print and queues nothing. Returns the job id; follow it with taxmod/print-jobs.', 'taxmod'),
             'category'            => ModelAbilities::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -94,7 +94,7 @@ final class PrintAbilities
         if (! is_array($found) || ! is_array($found['template'] ?? null)) {
             return new \WP_Error('taxmod_print_label', __('No such label for this code, or the printer has no roll for it.', 'taxmod'), ['status' => 400]);
         }
-        $label  = new LabelContent($code, (string) ($found['title'] ?? $code));
+        $label  = new LabelContent($code, (string) ($found['title'] ?? $code), (string) ($found['subtitle'] ?? ''));
         $filled = LabelButton::filled($label, $found['template']);
         if ($filled === null) {
             return new \WP_Error('taxmod_print_label', __('The label could not be filled.', 'taxmod'), ['status' => 400]);
