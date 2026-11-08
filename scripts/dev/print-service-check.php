@@ -154,6 +154,13 @@ if (function_exists('wp_get_ability') && wp_get_ability('taxmod/print-jobs') !==
     $jobs->cancel([$id]);
     $falsch = wp_get_ability('taxmod/print-label')->execute(['code' => 'X-1', 'label' => 1]);
     $pruefe($falsch instanceof \WP_Error, 'D-1235: print-label refuses a code no module knows');
+    // D-1239: dry_run with pdf answers the label to look at and queues nothing.
+    $modul = static fn (?array $found, string $prefix, int $id): ?array => $prefix === 'E' && $id === 999999 ? ['title' => 'Probe', 'template' => ['name' => 'Probe', 'format' => ['key' => 'p40x12', 'w' => 40, 'h' => 12, 'roll' => 12], 'layout' => '[{"type":"text","field":"title","x":1,"y":1,"w":38,"h":10}]']] : $found;
+    add_filter('taxmod_label_for', $modul, 5, 3);
+    $vorJobs = count($jobs->latest(50));
+    $probe   = wp_get_ability('taxmod/print-label')->execute(['code' => 'E-999999', 'label' => 1, 'dry_run' => true, 'pdf' => true]);
+    remove_filter('taxmod_label_for', $modul, 5);
+    $pruefe(is_array($probe) && ($probe['job'] ?? null) === 0 && str_starts_with((string) base64_decode((string) ($probe['pdf'] ?? ''), true), '%PDF') && count($jobs->latest(50)) === $vorJobs, 'D-1239: print-label dry_run with pdf answers the PDF and queues nothing');
 } else {
     echo "print-service: no Abilities API here, D-1235 not checked\n";
 }

@@ -40,7 +40,7 @@ final class PrintAbilities
 
         wp_register_ability('taxmod/print-label', [
             'label'               => __('Print a label', 'taxmod'),
-            'description'         => __('Queues one label for the print service, built as the label dialog builds it: code (M-<material>, P-<lot>, O-/K-<place>), label (record id of a label template), printer (record id; empty: the first whose roll allows the label), copies. dry_run: true answers what would print and queues nothing. Returns the job id; follow it with taxmod/print-jobs.', 'taxmod'),
+            'description'         => __('Queues one label for the print service, built as the label dialog builds it: code (M-<material>, P-<lot>, O-/K-<place>), label (record id of a label template), printer (record id; empty: the first whose roll allows the label), copies. dry_run: true answers what would print and queues nothing. pdf: true adds the label as base64 PDF, drawn as it lands on paper — to look at instead of a test print (D-1239). Returns the job id; follow it with taxmod/print-jobs.', 'taxmod'),
             'category'            => ModelAbilities::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -50,6 +50,7 @@ final class PrintAbilities
                     'printer' => ['type' => 'integer', 'minimum' => 1],
                     'copies'  => ['type' => 'integer', 'minimum' => 1, 'maximum' => LabelButton::MAX_COPIES, 'default' => 1],
                     'dry_run' => ['type' => 'boolean', 'default' => false],
+                    'pdf'     => ['type' => 'boolean', 'default' => false],
                 ],
                 'required'   => ['code', 'label'],
                 'additionalProperties' => false,
@@ -100,6 +101,10 @@ final class PrintAbilities
             return new \WP_Error('taxmod_print_label', __('The label could not be filled.', 'taxmod'), ['status' => 400]);
         }
         $answer = ['code' => $code, 'title' => $label->title, 'label' => $filled->templateName, 'queue' => $filled->printer?->queue ?? '', 'copies' => $copies, 'values' => $filled->values];
+        if (! empty($input['pdf'])) {
+            // D-1239: one copy, as the dialog's preview draws it (D-1228) — what to look at before paper is spent.
+            $answer['pdf'] = base64_encode($filled->render(1, true));
+        }
         if (! empty($input['dry_run'])) {
             return $answer + ['job' => 0];
         }
