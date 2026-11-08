@@ -1244,3 +1244,9 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **2026-11-06:** *«ok kopie finde ich auch doof»* — D (Kopie) fällt weg. Übrig bleiben B in der Bedienung von Woo (Kind-Satz «Variante von», Lesen mit Rückfall auf den Vater, Flag «je Variante» an der Kante) und C (Charge).
 - **Offen für Stefan:** A, B oder C? Rechnet sich die Bezeichnung der Variante, oder wird sie gepflegt? Darf eine Variante ein Feld des Modells überschreiben, zum Beispiel ein eigenes Bild? Kommt «Displayfarbe» in «Farben» auf?
 - **Gebaut:** nein.
+
+## INF-114 · Standort beim Einloggen und Drucker je Standort (2026-11-08)
+
+- **2026-11-08, sein Wunsch:** *«vermerke, ob ich mich oben oder unten befinde beim Einloggen. Sodass ich in meinem persönlichen Einstellungen zuweisen kann, welche Drucker oben gültig sind und welche»* [unten].
+- **Offen:** Wo der Standort gewählt wird (Login, Kopfzeile), wo die Zuordnung Drucker ↔ Standort liegt (Benutzereinstellungen im Lager), was ohne Standort gilt.
+- **Gebaut:** nein. Abschalten eines Druckers: [D-1231](NewConcept/90-decision-log.md).
