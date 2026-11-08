@@ -23,6 +23,7 @@ $claims = [
     'it adds a filter row where the server draws none'   => str_contains($script, 'taxmod-filter-row-client'),
     'it keeps the rows that belong to a row together'    => str_contains($script, 'taxmod-list-more') && str_contains($script, 'taxmod-list-details'),
     'a cell may name its sort value'                     => str_contains($script, 'data-taxmod-sort'),
+    'the bulk bar above joins the head (D-1240)'        => str_contains($script, 'taxmod-list-head-actions') && str_contains($script, "'tablenav'"),
     'a hidden row loses its tick'                        => str_contains($script, 'box.checked = false'),
     'the plugin registers it under one handle'           => str_contains($plugin, "LIST_HEAD_SCRIPT = 'taxmod-list-head'") && str_contains($plugin, 'wp_register_script(') && str_contains($plugin, "'assets/list-head.js'"),
     'its words are translatable'                         => str_contains($plugin, 'window.taxmodListHeadWords'),

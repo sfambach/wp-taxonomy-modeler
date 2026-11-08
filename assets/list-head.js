@@ -409,7 +409,40 @@
 			count.textContent = shown === all.length ? '' : word( 'count', '%1$d of %2$d' ).replace( '%1$d', shown ).replace( '%2$d', all.length );
 		}
 
-		if ( all.length < 2 ) {
+		// His word 2026-11-08: «können wir die gruppen aktionen rechts neben die gruppierung machen und alle andere aus der zeile
+		// drüber auch» — the bar of bulk actions, expand/collapse and count that `ListPage::bulkBar()` draws above the list joins
+		// this bar, right of «Group by»; its count stands at the far right.
+		var above = table.previousElementSibling;
+
+		while ( above && ( above.tagName === 'STYLE' || above.tagName === 'SCRIPT' ) ) {
+			above = above.previousElementSibling;
+		}
+
+		var moved = false;
+
+		if ( above && above.classList.contains( 'tablenav' ) && above.classList.contains( 'top' ) ) {
+			var actions = element( 'div', 'taxmod-list-head-actions' );
+			var total = above.querySelector( '.displaying-num' );
+
+			Array.prototype.slice.call( above.children ).forEach( function ( child ) {
+				if ( child.tagName === 'BR' || child.classList.contains( 'tablenav-pages' ) ) {
+					return;
+				}
+
+				actions.appendChild( child );
+			} );
+			count.before( actions );
+
+			if ( total ) {
+				total.classList.add( 'taxmod-list-head-total' );
+				bar.appendChild( total );
+			}
+
+			above.remove();
+			moved = true;
+		}
+
+		if ( all.length < 2 && ! moved ) {
 			// Nothing to sort or group by: the head still sorts once rows come, the bar waits.
 			bar.hidden = true;
 		}

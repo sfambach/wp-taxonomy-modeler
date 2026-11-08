@@ -697,7 +697,8 @@ final class ListPage
             . '.taxmod-list-prompt .button{margin-left:8px}'
             // D-1227: the bar above every list, and the group rows.
             . '.taxmod-list-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}.taxmod-list-head-search{min-width:16em}'
-            . '.taxmod-list-head .displaying-num{margin-left:auto;color:#50575e}.taxmod-list-head-group select{vertical-align:middle}'
+            . '.taxmod-list-head-count:empty{display:none}.taxmod-list-head-count{color:#50575e}.taxmod-list-head-total{margin-left:auto;color:#50575e}'
+            . '.taxmod-list-head-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.taxmod-list-head-actions>.actions{float:none;padding:0;margin:0;display:flex;align-items:center;gap:4px;overflow:visible}.taxmod-list-head-group select{vertical-align:middle}'
             . '.taxmod-filter-row-client input{width:100%;min-width:4em}'
             . '.taxmod-list>tbody>tr.taxmod-list-group>td{background:#f0f0f1;padding:4px 10px;border-top:1px solid #dcdcde}'
             . '.taxmod-list-group-toggle{background:none;border:0;padding:2px 0;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:13px}'
