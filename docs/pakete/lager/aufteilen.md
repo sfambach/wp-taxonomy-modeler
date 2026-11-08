@@ -24,7 +24,7 @@ flowchart LR
 
 | Was | Wo | Warum |
 |---|---|---|
-| **Teilposten** | ein gewöhnlicher Posten mit zwei neuen Feldern: «Teil von» (Verweis → Posten, 0..1) und «Split» (Zahl, 0..1) | Ein Teilposten bekommt eigenes Etikett, eigenen Ort und eigene Abgänge, also ist er ein Posten. Herkunft (Kauf), Material, Datum und Zustand übernimmt er vom Ursprung |
+| **Teilposten** | ein gewöhnlicher Posten mit zwei neuen Feldern: «Teil von» (Verweis → Posten, 0..1) und «Split» (Zahl, 0..1) | Ein Teilposten bekommt eigenes Etikett und eigene Abgänge, also ist er ein Posten. Herkunft (Kauf), Material, Datum und Zustand werden **nicht kopiert**, sondern vom Ursprung gelesen, an einer Stelle (Satz-Rückfall aus [D-1208](../../NewConcept/90-decision-log.md) Schritt 3, sonst in `StockService`) |
 | **Charge** | wird nicht gespeichert, sondern gerechnet: Charge des Ursprungs, beim Teilposten mit «/Split» dahinter (52891/2) | ein Fakt an einer Stelle; der Ursprung behält seine Nummer ohne Split (= Split 1) |
 | **Split-Nummer** | die nächste freie Nummer unter demselben Ursprung, nie wiederverwendet | ein gedrucktes Etikett «52891/2» bleibt eindeutig, auch wenn 2 schon zusammengebucht ist |
 | **Teil eines Teils** | hängt immer am Ursprung, nicht am Teilposten | keine Ketten 52891/2/1; die Charge bleibt einstufig |
@@ -33,14 +33,14 @@ flowchart LR
 
 | Vorgang | Zeilen | Regeln |
 |---|---|---|
-| **Aufteilen** (neue Art, eine Menge) | − Menge am Ursprung, + Menge am neuen Teilposten, beide am selben Ort; optional gleich ein anderer Ort für den Teilposten | Menge > 0 und kleiner als das, was dort liegt. Der Bestand des Materials ändert sich nicht |
+| **Aufteilen** (neue Art, eine Menge) | − Menge am Ursprung, + Menge am neuen Teilposten, beide am selben Ort | Menge > 0 und kleiner als das, was dort liegt. Der Bestand des Materials ändert sich nicht. Eine Menge an einen anderen Ort bringen bleibt «Umbuchen» ([D-1039](../../NewConcept/90-decision-log.md)) und erzeugt nie einen Teilposten |
 | **Zusammenbuchen** (neue Art) | − alles am Teilposten, + dieselbe Menge am Ziel | nur gleiche Charge (Ursprung + seine Teile); Ziel ist der Ursprung oder ein anderer Teil, Ort des Ziels |
 
 Beide sind Vorgänge wie jede Umbuchung: im Verlauf sichtbar und mit «Stornieren» rückgängig ([D-1036](../../NewConcept/90-decision-log.md)). Ein leerer Teilposten bleibt als Satz stehen, wird aber nicht mehr angezeigt.
 
 ## Oberfläche
 
-- **Bestand-Tab des Materials:** pro Posten ein Icon «Aufteilen» (Menge, optional Ort); an einem Teilposten zusätzlich «Zusammenbuchen» (Ziel vorgewählt: Ursprung).
+- **Bestand-Tab des Materials:** pro Posten ein Icon «Aufteilen» (Menge); an einem Teilposten zusätzlich «Zusammenbuchen» (Ziel vorgewählt: Ursprung). Icons als `ListPage::ICON_SPLIT` (`editor-unlink`) und `ICON_MERGE` (`admin-links`) im Modeller neben D-1230; Dialoge über `dialogAction`, Ergebnis ins Meldungsfeld (D-1203); Sammelaktion, falls nötig, in der einen Sammelauswahl (D-1202).
 - **Liste:** Teilposten stehen direkt unter ihrem Ursprung, Spalte «Charge» zeigt 52891 · 52891/2.
 - **Etikett pro Posten** ([D-1223](../../NewConcept/90-decision-log.md)) druckt die Charge mit Split.
 - **FIFO und Verbrauch** zählen Teilposten wie Posten; Reihenfolge nach dem Datum des Ursprungs, dann Split.
@@ -50,4 +50,5 @@ Beide sind Vorgänge wie jede Umbuchung: im Verlauf sichtbar und mit «Storniere
 - **S1** Teilposten als eigener Posten (Vorschlag), statt nur einer Unterteilung innerhalb des Postens. Grund: Ort, Etikett und Abgänge brauchen einen eigenen Satz.
 - **S2** Der Ursprung zählt selbst als Split 1 und behält die Nummer ohne Zusatz.
 - **S3** Zusammenbuchen auch zwischen zwei Teilen (2 → 3), nicht nur zurück zum Ursprung.
-- **S4** Beim Aufteilen kann man gleich einen anderen Ort wählen (Aufteilen + Umbuchen in einem Vorgang).
+- **S4** ~~Aufteilen + Umbuchen in einem Schritt~~ gestrichen nach Design-Prüfung: zwei Wege zum selben Zustand.
+- **S0 (zuerst)** Braucht es Teilposten überhaupt? Sind die Magazine eigene Plätze (Unterplätze der Box), reicht «Umbuchen» einer Teilmenge, und Zusammenbuchen ist Umbuchen zurück — heute schon möglich. Teilposten nur, wenn zwei Teile **am selben Platz** getrennt bleiben oder ein eigenes Etikett brauchen. Design-Thread hat Stefan gefragt.
