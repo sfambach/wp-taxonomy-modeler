@@ -152,6 +152,8 @@ if (function_exists('wp_get_ability') && wp_get_ability('taxmod/print-jobs') !==
     $nochmal = wp_get_ability('taxmod/print-job')->execute(['ids' => [$id], 'action' => 'again']);
     $pruefe(($nochmal['moved'] ?? 0) === 1 && ($jobs->statusOf($id)[0] ?? null) === \Taxmod\Core\Printing\PrintJobStatus::Queued, 'D-1235: print-job again puts a printed job back into the queue');
     $jobs->cancel([$id]);
+    $falsch = wp_get_ability('taxmod/print-label')->execute(['code' => 'X-1', 'label' => 1]);
+    $pruefe($falsch instanceof \WP_Error, 'D-1235: print-label refuses a code no module knows');
 } else {
     echo "print-service: no Abilities API here, D-1235 not checked\n";
 }
