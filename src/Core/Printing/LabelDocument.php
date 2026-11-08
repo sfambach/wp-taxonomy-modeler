@@ -83,6 +83,10 @@ final class LabelDocument
     private static function drawElements(PdfDocument $pdf, LabelLayout $layout, array $values): void
     {
         foreach ($layout->elements as $element) {
+            if ($element->type === LabelElement::LINE) {
+                $pdf->rectangles([[$element->xMm, $element->yMm, $element->widthMm, $element->heightMm]]);
+                continue;
+            }
             $text = trim((string) ($values[$element->field] ?? ''));
             foreach ($text === '' ? $element->alternatives() : [] as $field) {
                 $text = trim((string) ($values[$field] ?? ''));
@@ -117,7 +121,8 @@ final class LabelDocument
 
         $first = $box->atBottom ? $box->yMm + $box->heightMm - (count($lines) - 1) * $lineMm * 1.15 : $box->yMm + $lineMm;
         foreach ($lines as $i => $line) {
-            $x = $box->centred ? $box->xMm + max(0.0, ($box->widthMm - PdfDocument::textWidthMm($line, $size, $box->bold)) / 2) : $box->xMm;
+            $room = max(0.0, $box->widthMm - PdfDocument::textWidthMm($line, $size, $box->bold));
+            $x    = $box->xMm + ($box->flushRight ? $room : ($box->centred ? $room / 2 : 0.0));
             $pdf->text($x, $first + $i * $lineMm * 1.15, $line, $size, $box->bold);
         }
     }

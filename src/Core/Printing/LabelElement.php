@@ -3,14 +3,16 @@
 namespace Taxmod\Core\Printing;
 
 /**
- * One thing on a label — a text or a QR code — in a box measured in mm from the top left corner (D-1153).
+ * One thing on a label — a text, a QR code or a line — in a box measured in mm from the top left corner (D-1153).
  *
- * @see docs/NewConcept/90-decision-log.md D-1153
+ * @see docs/NewConcept/90-decision-log.md D-1153, D-1237
  */
 final class LabelElement
 {
     public const TEXT = 'text';
     public const QR   = 'qr';
+    /** D-1237: a black bar over its box and nothing else — a cut mark between two labels on one. */
+    public const LINE = 'line';
 
     public function __construct(
         public readonly string $type,
@@ -31,11 +33,13 @@ final class LabelElement
         public readonly bool $short = false,
         /** D-1217: the text stands in the middle of its box. */
         public readonly bool $centred = false,
+        /** D-1237: the text ends on the right edge of its box. */
+        public readonly bool $flushRight = false,
     ) {
-        if ($type !== self::TEXT && $type !== self::QR) {
+        if (! in_array($type, [self::TEXT, self::QR, self::LINE], true)) {
             throw new \InvalidArgumentException(sprintf('Unknown label element "%s".', $type));
         }
-        if ($field === '') {
+        if ($field === '' && $type !== self::LINE) {
             throw new \InvalidArgumentException('A label element needs a field.');
         }
         if ($widthMm <= 0.0 || $heightMm <= 0.0 || $xMm < 0.0 || $yMm < 0.0) {
@@ -53,6 +57,10 @@ final class LabelElement
      */
     public function alternatives(): array
     {
+        if ($this->type === self::LINE) {
+            return [];
+        }
+
         return array_values(array_filter(array_map('trim', explode('|', $this->field)), static fn (string $f): bool => $f !== ''));
     }
 
@@ -61,7 +69,7 @@ final class LabelElement
     {
         return array_filter([
             'type'   => $this->type,
-            'field'  => $this->field,
+            'field'  => $this->field === '' ? null : $this->field,
             'x'      => $this->xMm,
             'y'      => $this->yMm,
             'w'      => $this->widthMm,
@@ -73,6 +81,7 @@ final class LabelElement
             'example' => $this->example === '' ? null : $this->example,
             'short'  => $this->short ?: null,
             'center' => $this->centred ?: null,
+            'right'  => $this->flushRight ?: null,
         ], static fn (mixed $value): bool => $value !== null);
     }
 }

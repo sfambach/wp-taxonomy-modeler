@@ -54,4 +54,21 @@ final class ShortValueTest extends TestCase
         self::assertStringContainsString('(0603) Tj', $pdf);
         self::assertStringContainsString('"short":true', $layout->toJson());
     }
+
+    #[Test]
+    public function two_labels_on_one_with_a_cut_line_between(): void
+    {
+        $layout = LabelLayout::fromJson('[{"type":"text","field":"Widerstandswert","x":0.5,"y":3,"w":9,"h":5,"pt":11,"short":true},'
+            . '{"type":"line","x":19.9,"y":0,"w":0.2,"h":12},'
+            . '{"type":"text","field":"Widerstandswert","x":30,"y":3,"w":9.5,"h":5,"pt":11,"short":true,"right":true}]');
+        self::assertSame(['Widerstandswert'], $layout->fields());
+        self::assertTrue($layout->elements[2]->flushRight);
+        self::assertSame('line', $layout->elements[1]->type);
+
+        $pdf = LabelDocument::renderLayout(new LabelFormat('x1smd40', 40, 12, 12), $layout, [['Widerstandswert' => '30 kΩ']]);
+        self::assertSame(2, substr_count($pdf, '(30k) Tj'));
+        self::assertStringContainsString(' re', $pdf);
+        self::assertStringContainsString('"right":true', $layout->toJson());
+        self::assertStringNotContainsString('"field":""', $layout->toJson());
+    }
 }

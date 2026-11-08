@@ -20,7 +20,7 @@ namespace Taxmod\Core\Printing;
  */
 final class LabelLayout
 {
-    private const ALIASES = ['typ' => 'type', 'feld' => 'field', 'b' => 'w', 'fett' => 'bold', 'zeilen' => 'lines', 'unten' => 'bottom', 'beispiel' => 'example', 'kurz' => 'short', 'mitte' => 'center'];
+    private const ALIASES = ['typ' => 'type', 'feld' => 'field', 'b' => 'w', 'fett' => 'bold', 'zeilen' => 'lines', 'unten' => 'bottom', 'beispiel' => 'example', 'kurz' => 'short', 'mitte' => 'center', 'rechts' => 'right', 'linie' => 'line'];
 
     /** @param list<LabelElement> $elements */
     public function __construct(public readonly array $elements)
@@ -65,6 +65,7 @@ final class LabelLayout
                 is_scalar($element['example'] ?? null) ? trim((string) $element['example']) : '',
                 (bool) ($element['short'] ?? false),
                 (bool) ($element['center'] ?? false),
+                (bool) ($element['right'] ?? false),
             );
         }
 
@@ -100,7 +101,7 @@ final class LabelLayout
     {
         $out = [];
         foreach ($this->elements as $e) {
-            if ($e->example !== '' && ! isset($out[$e->field])) {
+            if ($e->example !== '' && $e->field !== '' && ! isset($out[$e->field])) {
                 $out[$e->field] = $e->example;
             }
         }
