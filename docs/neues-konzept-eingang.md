@@ -1249,4 +1249,6 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **2026-11-08, sein Wunsch:** *«vermerke, ob ich mich oben oder unten befinde beim Einloggen. Sodass ich in meinem persönlichen Einstellungen zuweisen kann, welche Drucker oben gültig sind und welche»* [unten].
 - **Offen:** Wo der Standort gewählt wird (Login, Kopfzeile), wo die Zuordnung Drucker ↔ Standort liegt (Benutzereinstellungen im Lager), was ohne Standort gilt.
+- **2026-11-08, ergänzt:** Arbeitsplatz statt oben/unten, Drucker je Arbeitsplatz, Wechsel jederzeit über eine Benutzereinstellung.
+- **Entwurf:** [pakete/arbeitsplatz/konzept.md](pakete/arbeitsplatz/konzept.md).
 - **Gebaut:** nein. Abschalten eines Druckers: [D-1231](NewConcept/90-decision-log.md).
