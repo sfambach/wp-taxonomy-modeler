@@ -20,4 +20,10 @@ enum LabelPrefix: string
     {
         return $this->value . '-' . $id;
     }
+
+    /** A code as a label carries it: a known letter, a dash, the id. */
+    public static function isCode(string $code): bool
+    {
+        return preg_match('/^([A-Z])-\d+$/', $code, $match) === 1 && self::tryFrom($match[1]) !== null;
+    }
 }

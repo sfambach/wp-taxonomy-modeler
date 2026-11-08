@@ -5,6 +5,7 @@ namespace Taxmod\WordPress\Printing;
 use Taxmod\Core\Printing\LabelContent;
 use Taxmod\Core\Printing\LabelDocument;
 use Taxmod\Core\Printing\LabelFormat;
+use Taxmod\Core\Printing\LabelPrefix;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -94,7 +95,8 @@ final class LabelPrint
         $field = static fn (string $key): string => sanitize_text_field((string) ($query[$key] ?? ''));
         $code  = $field('code');
         $title = $field('title');
-        if (preg_match('/^[OMEK]-\d+$/', $code) !== 1 || $title === '') {
+        // D-1223: every prefix is a label code — the lot's P- was refused here, so its preview and print failed (2026-11-08).
+        if (! LabelPrefix::isCode($code) || $title === '') {
             return null;
         }
         return new LabelContent($code, $title, $field('subtitle'));

@@ -70,4 +70,15 @@ final class ScannedCodeTest extends TestCase
         self::assertSame('M-48284', ScannedCode::read('mß48284')?->code());
         self::assertSame('31', ScannedCode::read('31')?->code());
     }
+
+    #[Test]
+    public function every_prefix_makes_a_label_code(): void
+    {
+        // D-1223, his word 2026-11-08 «Die Vorschau lässt sich nicht zeichnen» on P-53221: the lot's letter was refused.
+        foreach (\Taxmod\Core\Printing\LabelPrefix::cases() as $prefix) {
+            self::assertTrue(\Taxmod\Core\Printing\LabelPrefix::isCode($prefix->code(53221)), $prefix->value);
+        }
+        self::assertFalse(\Taxmod\Core\Printing\LabelPrefix::isCode('X-1'));
+        self::assertFalse(\Taxmod\Core\Printing\LabelPrefix::isCode('P-'));
+    }
 }
