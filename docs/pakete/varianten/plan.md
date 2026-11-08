@@ -1,6 +1,6 @@
 # Material variants: plan (D-1208)
 
-Status: **planned, not built.** Basis: [D-1208](../../NewConcept/90-decision-log.md), entry [INF-113](../../neues-konzept-eingang.md).
+Status: **steps 1–3 built** (Modeller 0.2.31); steps 4–8 open. Basis: [D-1208](../../NewConcept/90-decision-log.md), entry [INF-113](../../neues-konzept-eingang.md).
 
 ## The model
 
@@ -29,6 +29,13 @@ A variant is a record of its own, with its own id (D-995: the material number is
 | 8 | Data: displays 48476 / 49379 / 49364 become one parent with three variants; «Displayfarbe» (149000110375) goes into «Farben» (D-1080) | WP-Upload order | owner checks the live data |
 
 Each step ends with something the owner can operate, and both test runs stay green (PR-9).
+
+## Built in step 3, and what was assumed
+
+- `read-node` names the add-ons chosen at each field (`addons`), from the modeller's one resolver.
+- `ModelDoor::records()` and `ModelDoor::valuesOf()` hand a module the values a variant shows; parents outside the list cost one more read for all of them (`scripts/dev/varianten-check.php`).
+- The modeller's own screens and `read-node` still show the stored values: the variant's own fields only. Locking the others is step 4.
+- ⚠️ Assumed: «Variante von» is an **aggregation** to the material's own node. Found while building: a *composition* from a node to itself makes `create_record` loop without end (pre-existing, not caused by variants).
 
 ## How variants are shown (proposal, his question 2026-11-06: «wie stellen wir die varienten da unter dem vater material als eigenes material ??»)
 

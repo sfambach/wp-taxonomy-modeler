@@ -885,6 +885,17 @@ final class Rendering implements Presets
     }
 
     /**
+     * The names of the add-ons chosen at each of these edges, from the resolver the drawing reads (D-1208).
+     *
+     * @param  list<Relation> $relations
+     * @return array<int, list<string>> relation id → add-on names; edges without one are left out
+     */
+    public function addonNamesAt(array $relations): array
+    {
+        return $this->resolver?->addonNamesAt($relations) ?? [];
+    }
+
+    /**
      * Dieselbe Zeichnung, aber mit Sprung-Feldern, die eine Adresse haben ([D-769](../../../docs/NewConcept/90-decision-log.md)).
      *
      * @param \Closure(int, int, string): string $url  Zielknoten, Filterfeld am Ziel, eingesetzter Wert ⇒ Adresse

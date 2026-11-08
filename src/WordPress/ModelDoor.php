@@ -2,8 +2,11 @@
 
 namespace Taxmod\WordPress;
 
+use Taxmod\Core\Addon\VariantAddon;
+use Taxmod\Core\Addon\VariantOfAddon;
 use Taxmod\Core\Exception\ModelDoorRefused;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Model\Variants;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 
 /**
@@ -31,13 +34,14 @@ final class ModelDoor
     private array $trees = [];
 
     /**
-     * The records of a node with their raw values.
+     * The records of a node with their raw values — a variant with the values it shows (D-1208).
      *
      * @return array<int, array<int, list<string>>> record id → relation id → values
      */
     public function records(int $node): array
     {
-        $out = [];
+        $out    = [];
+        $addons = [];
 
         foreach ($this->readNode($node)['records'] ?? [] as $record) {
             $values = [];
@@ -49,13 +53,17 @@ final class ModelDoor
             $out[(int) $record['id']] = $values;
         }
 
-        return $out;
+        foreach ($this->readNode($node)['fields'] ?? [] as $field) {
+            $addons[(int) $field['relation_id']] = array_map('strval', (array) ($field['addons'] ?? []));
+        }
+
+        return $this->shown($out, $addons);
     }
 
     /**
      * The fields of a node as the modeller lists them, inherited ones included — from the same read as its records.
      *
-     * @return array<int, array{name: string, target: int, type: string|null, kind: string, multiplicity: string}> relation id → field
+     * @return array<int, array{name: string, target: int, type: string|null, kind: string, multiplicity: string, addons: list<string>}> relation id → field
      */
     public function fields(int $node): array
     {
@@ -68,6 +76,7 @@ final class ModelDoor
                 'type'         => isset($field['type']) ? (string) $field['type'] : null,
                 'kind'         => (string) ($field['kind'] ?? ''),
                 'multiplicity' => (string) ($field['multiplicity'] ?? ''),
+                'addons'       => array_map('strval', (array) ($field['addons'] ?? [])),
             ];
         }
 
@@ -215,12 +224,78 @@ final class ModelDoor
     }
 
     /**
-     * Only these records with their values, in one query — for a few records of a node too large to read whole.
+     * Only these records with their values, in one query — for a few records of a node too large to read whole. A variant
+     * comes with the values it shows (D-1208).
      *
      * @param list<int> $records
      * @return array<int, array<int, list<string>>> record id → relation id → values
      */
     public function valuesOf(array $records): array
+    {
+        $out = $this->rawValuesOf($records);
+
+        if ($out === []) {
+            return [];
+        }
+
+        $relations = array_keys(array_replace(...array_values($out)));
+
+        return $this->shown($out, self::addonsOf($relations));
+    }
+
+    /**
+     * The add-on names chosen at these fields, asked of the modeller's one resolver (D-1208).
+     *
+     * @param list<int> $relations
+     * @return array<int, list<string>> relation id → add-on names
+     */
+    private static function addonsOf(array $relations): array
+    {
+        $answer = $relations === [] ? [] : apply_filters(Plugin::FIELD_ADDONS_FILTER, [], $relations);
+
+        return is_array($answer) ? $answer : [];
+    }
+
+    /**
+     * What a variant shows instead of its raw values: its parent's on every field but the «Je Variante» ones (D-1208). A
+     * parent outside `$values` costs one more read for all of them together (CD-7).
+     *
+     * @param array<int, array<int, list<string>>> $values record → relation → values
+     * @param array<int, list<string>>             $addons relation → add-on names
+     * @return array<int, array<int, list<string>>>
+     */
+    private function shown(array $values, array $addons): array
+    {
+        $variantOf = 0;
+        $flagged   = [];
+
+        foreach ($addons as $relation => $names) {
+            if (in_array(VariantOfAddon::NAME, $names, true)) {
+                $variantOf = (int) $relation;
+            }
+
+            if (in_array(VariantAddon::NAME, $names, true)) {
+                $flagged[] = (int) $relation;
+            }
+        }
+
+        $parents = $variantOf === 0 ? [] : Variants::parents($values, $variantOf);
+
+        if ($parents === []) {
+            return $values;
+        }
+
+        $missing = array_values(array_diff(array_unique(array_values($parents)), array_keys($values)));
+        $known   = array_intersect_key($values, array_flip($parents)) + $this->rawValuesOf($missing);
+
+        return Variants::shown($values, $known, $variantOf, $flagged);
+    }
+
+    /**
+     * @param list<int> $records
+     * @return array<int, array<int, list<string>>> record id → relation id → values, as stored
+     */
+    private function rawValuesOf(array $records): array
     {
         $out = [];
 

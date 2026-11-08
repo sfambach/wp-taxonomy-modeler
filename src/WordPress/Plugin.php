@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.30';
+    public const VERSION     = '0.2.31';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -71,6 +71,9 @@ final class Plugin
 
     /** Action: load the modeller's stylesheet and script on the current admin page. */
     public const STYLE_ACTION = 'taxmod_enqueue_admin_style';
+
+    /** Answers `ModelDoor` which add-ons are chosen at a list of fields (D-1208): relation ids in, relation id → names out. */
+    public const FIELD_ADDONS_FILTER = 'taxmod_field_addons';
 
     /** D-1227: the script handle of the one table head (sort, group, filter) that `ListPage::table()` enqueues. */
     public const LIST_HEAD_SCRIPT = 'taxmod-list-head';
@@ -107,6 +110,10 @@ final class Plugin
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
         \Taxmod\WordPress\Printing\LabelButton::boot(static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields));
+        // D-1208: a module's door asks which fields are «Variante von» and «Je Variante», from the one resolver.
+        add_filter(self::FIELD_ADDONS_FILTER, static fn (array $answer, array $relations): array => $plugin->settingsResolver()->addonNamesAt(
+            array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
+        ), 10, 2);
         \Taxmod\WordPress\Printing\LabelPreview::boot();
         add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
 

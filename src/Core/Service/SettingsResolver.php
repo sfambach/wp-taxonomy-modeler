@@ -707,6 +707,34 @@ final class SettingsResolver
         return $aus;
     }
 
+    /**
+     * The names of the add-ons chosen at each of these edges — so a reader outside the modeller can tell which field is
+     * «Variante von» and which carry «Je Variante» (D-1208). The targets and their settings are read once for all edges (CD-7).
+     *
+     * @param  list<Relation> $relations
+     * @return array<int, list<string>> relation id → add-on names; edges without one are left out
+     */
+    public function addonNamesAt(array $relations): array
+    {
+        $relations = array_values(array_filter($relations, static fn (Relation $r): bool => ! $r->isSetting()));
+        $this->preloadUseSites($relations);
+        $aus = [];
+
+        foreach ($relations as $relation) {
+            $ziel = $this->known[$relation->toNodeId] ?? null;
+
+            foreach ($ziel === null ? [] : $this->addonsAt($ziel, $relation) as $gewaehlt) {
+                $name = $this->addons?->byClass($gewaehlt->klasse)?->name();
+
+                if ($name !== null) {
+                    $aus[$relation->id][] = $name;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
     /** @var list<\Taxmod\Core\Model\Setting\SettingsValue>|null Jede gewählte Zusatzfunktion im Modell, einmal je Lauf gelesen (`CD-7`). */
     private ?array $addonRows = null;
 

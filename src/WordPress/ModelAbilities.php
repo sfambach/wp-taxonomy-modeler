@@ -491,7 +491,7 @@ final class ModelAbilities
         $nur     = array_map('intval', is_array($input['fields'] ?? null) ? $input['fields'] : []);
         $compact = ! empty($input['compact']);
 
-        foreach ($screen->fieldsWithTypes($id) as ['relation' => $r, 'type' => $type]) {
+        foreach ($screen->fieldsWithTypes($id) as ['relation' => $r, 'type' => $type, 'addons' => $addons]) {
             if ($nur !== [] && ! in_array($r->id, $nur, true)) {
                 continue;
             }
@@ -504,7 +504,7 @@ final class ModelAbilities
                 'kind'         => $r->kind->value,
                 'multiplicity' => $r->multiplicity->value,
                 'type'         => $type?->value,
-            ];
+            ] + ($addons === [] ? [] : ['addons' => $addons]);
         }
 
         $records = $entries->recordsOf($id);

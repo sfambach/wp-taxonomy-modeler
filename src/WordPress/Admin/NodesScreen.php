@@ -319,14 +319,15 @@ final class NodesScreen
     /**
      * Die Felder eines Knotens mit ihrem einfachen Typ — für die Abilities, aus demselben Zeichenlauf wie die Maske ([D-911](../../../docs/NewConcept/90-decision-log.md)).
      *
-     * @return list<array{relation: Relation, type: SimpleType|null}>
+     * @return list<array{relation: Relation, type: SimpleType|null, addons: list<string>}> `addons`: the names of the add-ons chosen at the edge
      */
     public function fieldsWithTypes(int $nodeId): array
     {
         $felder = $this->editor->fieldsOf($nodeId);
         $types  = $this->rendering->typesFor($felder);
+        $addons = $this->rendering->addonNamesAt($felder);
 
-        return array_map(static fn (Relation $r): array => ['relation' => $r, 'type' => $types[$r->id] ?? null], $felder);
+        return array_map(static fn (Relation $r): array => ['relation' => $r, 'type' => $types[$r->id] ?? null, 'addons' => $addons[$r->id] ?? []], $felder);
     }
 
     /**
