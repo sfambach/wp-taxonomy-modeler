@@ -27,9 +27,9 @@ final class ShortValueTest extends TestCase
         self::assertSame('1M', ShortValue::of('1 MΩ'));
         self::assertSame('100n', ShortValue::of('100 nF'));
         self::assertSame('4n7', ShortValue::of('4,7 nF'));
-        self::assertSame('10u', ShortValue::of('10 µF'));
+        self::assertSame('10µ', ShortValue::of('10 µF'));
         self::assertSame('22p', ShortValue::of('22 pF'));
-        self::assertSame('4u7', ShortValue::of('4,7 µH'));
+        self::assertSame('4µ7', ShortValue::of('4,7 µH'));
     }
 
     #[Test]
