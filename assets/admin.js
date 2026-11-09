@@ -2453,6 +2453,7 @@
 		dialog.querySelector( '.taxmod-browse-filter' ).placeholder = worte ? ( worte.getAttribute( 'data-browse-filter' ) || '' ) : '';
 		dialog.querySelector( '.taxmod-browse-filter' ).addEventListener( 'input', function () {
 			knotenFiltern( dialog, this.value );
+			saetzeSuchen( dialog, this );
 		} );
 		document.body.appendChild( dialog );
 
@@ -2550,6 +2551,36 @@
 		} );
 	}
 
+	// D-1285, sein Bericht 2026-11-09 «findet kostanten aber nicht jst-xh stecker»: das Suchfeld im Baum findet auch die Sätze
+	// selbst, über dieselbe Suche wie das Feld daneben — die Treffer stehen rechts, die passenden Gruppen links.
+	var baumWarten = null;
+
+	function saetzeSuchen( dialog, feld ) {
+		var worte  = document.getElementById( 'taxmod-words' );
+		var quelle = worte ? worte.getAttribute( 'data-record-search' ) : '';
+		var text   = feld.value.trim();
+
+		window.clearTimeout( baumWarten );
+
+		if ( ! quelle || text.length < 2 ) {
+			dialog.querySelector( '.taxmod-browse-list' ).innerHTML = '';
+
+			return;
+		}
+
+		baumWarten = window.setTimeout( function () {
+			holen( quelle + '&term=' + encodeURIComponent( text ), function ( saetze ) {
+				if ( feld.value.trim() !== text ) {
+					return;
+				}
+
+				saetzeZeichnen( dialog, saetze === null ? null : saetze.filter( function ( satz ) {
+					return /^[0-9]+$/.test( String( satz.id ) );
+				} ) );
+			} );
+		}, 250 );
+	}
+
 	function saetzeZeichnen( dialog, saetze ) {
 		var liste = dialog.querySelector( '.taxmod-browse-list' );
 		var worte = document.getElementById( 'taxmod-words' );
@@ -2571,7 +2602,7 @@
 
 			knopf.type = 'button';
 			knopf.className = 'taxmod-record-hit taxmod-browse-record';
-			knopf.textContent = satz.word;
+			knopf.textContent = satz.node ? satz.word + ' · ' + satz.node : satz.word;
 			knopf.setAttribute( 'data-taxmod-value', String( satz.id ) );
 			knopf.setAttribute( 'data-taxmod-word', satz.word );
 			liste.appendChild( knopf );
