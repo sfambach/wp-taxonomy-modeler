@@ -73,7 +73,7 @@ final class ModelAbilities
         'move_field' => '{node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it',
         'retarget_field' => '{node, field, target} — points the field at another node and keeps its kind',
         'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
-        'create_record' => '{node, record_type?}',
+        'create_record' => '{node, record_type?, values?, locale?} — values as for set_values, written in the same act',
         'set_values' => '{record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}',
         'remove_record' => '{record} — removes the record with its own parts, nested ones included; refused while a record outside it references one of its parts, naming who',
         'move_part' => '{part, to, field} — hangs a part held through field onto another record\'s list of the same field, keeping its id',
@@ -868,7 +868,15 @@ final class ModelAbilities
             case 'create_record':
                 $type = isset($change['record_type']) ? RecordType::from((string) $change['record_type']) : RecordType::User;
 
-                return $screen->entries()->create($this->node($at('node'))->id, $type)->id;
+                $created = $screen->entries()->create($this->node($at('node'))->id, $type)->id;
+
+                // D-1276: values sent with create_record were ignored without a word, though the call said «applied» — now they
+                // are written in the same act, as a set_values right after would.
+                if (is_array($change['values'] ?? null) && $change['values'] !== []) {
+                    $this->applyOne(['op' => 'set_values', 'record' => $created] + array_intersect_key($change, array_flip(['values', 'own_value', 'locale'])), $refs);
+                }
+
+                return $created;
 
             case 'set_values':
                 $recordId = $at('record');

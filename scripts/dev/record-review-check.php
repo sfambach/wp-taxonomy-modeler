@@ -134,6 +134,14 @@ $door->markForReview([$ref['alt']]);
 check('a module marks a record it made with what it could derive', RecordReviews::among([$ref['alt']]) === [$ref['alt']]);
 RecordReviews::clear($ref['alt']);
 
+// D-1276: values sent with create_record are written, not dropped while the call says «applied».
+$made  = wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'create_record', 'ref' => 'withvals', 'node' => $ref['h'], 'values' => [(string) $ref['name'] => 'Made at once', (string) $ref['maker'] => (string) $ref['alt']]]]]);
+$given = is_array($made) ? (new ModelDoor())->valuesOf([(int) $made['refs']['withvals']]) : [];
+check('create_record writes the values sent with it', str_contains(wp_json_encode($given), 'Made at once'), is_wp_error($made) ? $made->get_error_message() : wp_json_encode($given));
+if (is_array($made)) {
+    wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'remove_record', 'record' => (int) $made['refs']['withvals']]]]);
+}
+
 $pointing = $door->referrersOf([$ref['alt'], $ref['kid']]);
 check('the door names who points at a record, through any field', $pointing === [$ref['alt'] => [$ref['kid']]], wp_json_encode($pointing));
 
