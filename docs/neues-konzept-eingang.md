@@ -1259,3 +1259,12 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **2026-11-09, seine Korrektur:** *«Ich habe bestands split fälschlicher weise als chargen split bezeichnet, bitte mal schauen und ändern»* — geteilt wird der Bestandsposten, nicht die Charge.
 - **Entwurf:** [pakete/lager/aufteilen.md](pakete/lager/aufteilen.md). **Offen:** S1–S4 dort; Prüfung durch den Design-Wächter.
 - **Gebaut:** nein.
+
+## INF-116 · Kauf-Details im Wareneingang: Bestell-/Produkt-Link, Pins und Maße (2026-11-09)
+
+- **2026-11-09, sein Wunsch** (Wareneingang › Bestellung, zwei Edge-Connector-Bestellungen nicht unterscheidbar): *«um zu entscheiden ob etwas angekommen ist ist das wenig info … zum einen einen link zur aliexpress bestellung wäre nett zum andren alle informationen die schon eingeordnet werden könne, pins abmessung oder sowas … frage dich was du bräuchtest um es weiter zu prozessieren»*.
+- **Richtung Architektur-Thread (09.11.):** Link-Vorlagen («Bestell-Link», «Produkt-Link» mit `{nr}`) sind Daten am Plattform-Satz im Modell, kein Code. ⚠️ *Gemessen: «Plattform» ist heute ein Textfeld an Bestellung und Kauf, es gibt keinen Plattform-Knoten mit Sätzen.*
+- **2026-11-09, seine Antwort** (Pins/Maße als Felder am Kauf?): *«Vielleicht kann man der benutzer mit den zusatz infos ja schon eine warengruppe zuordnen daraus ergeben sich felder, wenn was gefunden wird auch ruhig schon eine vorschlagen, bin mir nicht sicher was zugordnet werden kann wenn der freitext mehr hergibt ist es vielleicht schon ok»* — also keine eigenen Felder am Kauf; stattdessen schon vor dem Einbuchen eine Warengruppe zuordnen (die Felder kommen aus der Gruppe), mit Vorschlag aus dem Freitext; sonst reicht ein reicherer Freitext.
+- **Offen:** Wo die Warengruppe vor dem Einbuchen hängt (am Kauf über «Modell»/neues Material, wie beim Einbuchen heute?) und wer den Vorschlag rechnet (Mail-Leser/Ali-Import oder Lager).
+- **Offen:** Plattform als eigener Knoten (Sätze AliExpress, Amazon, eBay …) mit den Link-Vorlagen — erst nach Rückmeldung an den Architektur-Thread.
+- **Gebaut:** Bild, volle Bezeichnung, Beschreibung, Art, Anschluss, Artikelnummer je Kauf im Bestellungsdetail (Lager, siehe Commit).
