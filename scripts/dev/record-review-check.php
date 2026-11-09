@@ -203,6 +203,18 @@ $found = wp_get_ability('taxmod/query')->execute(['node' => $ref['h'], 'where' =
 $word  = (string) (is_array($found) ? ($found['records'][0]['word'] ?? '') : '');
 check('empty summary fields fall back to the name', $word === 'Quick Maker GmbH', wp_json_encode($found));
 
+// D-1281: also when the node asked about has no choice of its own and the choice sits at the record's node below it (query on a parent branch).
+$below = wp_get_ability('taxmod/apply')->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'branch', 'name' => '__rv Branch', 'parent' => $model->id],
+    ['op' => 'add_field', 'ref' => 'bname', 'node' => '@branch', 'name' => 'Label', 'target' => $text?->id ?? 0, 'kind' => 'composition', 'multiplicity' => '0..1'],
+    ['op' => 'add_field', 'ref' => 'bnote', 'node' => '@branch', 'name' => 'Note', 'target' => $text?->id ?? 0, 'kind' => 'composition', 'multiplicity' => '0..1'],
+    ['op' => 'create_node', 'ref' => 'child', 'name' => '__rv Child', 'parent' => '@branch'],
+    ['op' => 'set_list', 'node' => '@child', 'attribute' => 'summary_fields', 'members' => ['@bnote']],
+    ['op' => 'create_record', 'ref' => 'c', 'node' => '@child', 'values' => ['@bname' => 'Child by name']],
+]]);
+$foundBelow = is_array($below) ? wp_get_ability('taxmod/query')->execute(['node' => (int) ($below['refs']['branch'] ?? 0), 'search' => 'Child by name']) : null;
+check('a choice at the record\'s own node falls back to the name too', (string) ($foundBelow['records'][0]['word'] ?? '') === 'Child by name', wp_json_encode($foundBelow ?? $below));
+
 wp_set_current_user(0);
 $denied = $send('admin_post_' . NodesScreen::RECORD_CREATE_ACTION, ['node' => (string) $ref['h'], 'name' => 'x']);
 check('without the capability nothing is created', str_contains($denied, '"success":false'), $denied);

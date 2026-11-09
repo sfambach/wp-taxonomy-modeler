@@ -5590,7 +5590,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $wortOderName = static function (int $satzId, array $feldIds, bool $mitgebracht) use ($wort, $eigenesWort): string {
             $gesagt = $wort($satzId, $feldIds);
 
-            if ($mitgebracht || $feldIds === [] || $gesagt !== '#' . $satzId) {
+            if ($mitgebracht || $gesagt !== '#' . $satzId) {
                 return $gesagt;
             }
 
