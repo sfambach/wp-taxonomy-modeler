@@ -236,7 +236,7 @@ final class SettingsScreen
             . $this->recordsPerPageRow()
             . $this->treeClickRow()
             . $this->autosaveRow()
-            . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('The glyphs in the tree and on its buttons.', 'taxmod'))
+            . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('Every icon of Taxmod and its modules: the tree, the buttons, the lists.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</tbody></table>'
             . get_submit_button(__('Save', 'taxmod'))

@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.45';
+    public const VERSION     = '0.2.46';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -656,6 +656,15 @@ final class Plugin
             // person clicking Reload expects. It becomes `self::VERSION` when the screen settles.*
             (string) (@filemtime($this->path('assets/admin.css')) ?: self::VERSION)
         );
+
+        // D-1269 (D-397, D-495): the icon size he picks reaches every page with this stylesheet, a module's page too, not
+        // only the modeller's own wrapper — before, a module page fell back to the file's 17px whatever he had chosen.
+        static $sized = false;
+
+        if (! $sized) {
+            $sized = true;
+            wp_add_inline_style('taxmod-admin', ':root{--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px}');
+        }
 
         $this->enqueueScript();
 
