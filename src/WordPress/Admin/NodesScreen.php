@@ -394,7 +394,7 @@ final class NodesScreen
                 ),
                 [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
             )
-            . '</div></div>';
+            . '</div></div>' . RecordPick::words();
     }
 
     /**
@@ -431,6 +431,12 @@ final class NodesScreen
 
         foreach ($this->rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId) as $field) {
             $out[$field->relation->id] = $field->result->markup;
+        }
+
+        // D-1271: a chooser among these controls may create a record from its dialog; the address rides with the first control.
+        if ($out !== []) {
+            $first       = array_key_first($out);
+            $out[$first] .= RecordPick::words();
         }
 
         return $out;

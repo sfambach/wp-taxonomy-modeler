@@ -38,8 +38,11 @@ final class RecordPick
         ], $mayBeNothing) . self::words();
     }
 
-    /** The modeller's script and stylesheet, and where the script creates a record from the dialog — once per page. */
-    private static function words(): string
+    /**
+     * The modeller's script and stylesheet, and where the script creates a record from the dialog — once per page. Every module
+     * form that can draw a record dialog draws this carrier (D-1271): without it «Create» in the dialog did nothing at all.
+     */
+    public static function words(): string
     {
         if (self::$wordsDrawn) {
             return '';

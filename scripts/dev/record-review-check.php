@@ -120,6 +120,10 @@ check('read-node leaves the other unflagged', array_key_exists($ref['alt'], $fla
 check('the form shows «Review needed»', str_contains(NodesScreen::reviewNote($quick), 'taxmod-review-needed'));
 check('no note on a reviewed record', NodesScreen::reviewNote($ref['alt']) === '');
 
+// D-1271: a module's form carries the address «Create» in a record dialog posts to; without it the button did nothing.
+$editor = (string) apply_filters(\Taxmod\WordPress\Plugin::RECORD_EDITOR_FILTER, '', $quick, admin_url());
+check('a module\'s record form tells the dialog where to create', str_contains($editor, 'data-record-create='), substr($editor, -200));
+
 $door = new ModelDoor();
 $door->markForReview([$ref['alt']]);
 check('a module marks a record it made with what it could derive', RecordReviews::among([$ref['alt']]) === [$ref['alt']]);
