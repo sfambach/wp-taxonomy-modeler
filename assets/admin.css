@@ -2200,6 +2200,11 @@ fieldset.taxmod-read-only {
     max-width: 100%;
 }
 
+/* ── The buttons of a form a page draws itself (ListPage::form): below the fields, in the field column ── */
+.taxmod-form-actions {
+    margin: .8em 0 0 calc(min(11em, 30%) + .5em);
+}
+
 /* ── Ein geschachteltes Formular: Trennzeile mit dem Namen, die Felder darunter links (D-725) ────── */
 .taxmod-form-group {
     border-top: 1px solid #dcdcde;

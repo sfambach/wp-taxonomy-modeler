@@ -353,6 +353,33 @@ final class ListPage
     }
 
     /**
+     * A form a page draws itself — an act such as «Verbrauch buchen», not a record — in the layout of the modeller's form
+     * renderer (`FormRenderer`): label column, field column, the hint as the «?» beside the field, the button below. A record
+     * is still edited with `taxmod_record_editor` (D-1025); this is for everything else, so every form looks the same.
+     *
+     * @param list<array{label: string, control: string, hint?: string, for?: string}> $rows `label` and `hint` plain text,
+     *        `control` escaped HTML (CD-8), `for` the id of the control the label names
+     * @param string $actions escaped HTML: the submit button and any other button, in the row below the fields
+     */
+    public static function form(array $rows, string $actions = ''): string
+    {
+        $out = '';
+
+        foreach ($rows as $row) {
+            $for  = (string) ($row['for'] ?? '');
+            $out .= '<div class="taxmod-form-row">'
+                . ($for === ''
+                    ? '<span class="taxmod-form-label">' . esc_html($row['label']) . '</span>'
+                    : '<label class="taxmod-form-label" for="' . esc_attr($for) . '">' . esc_html($row['label']) . '</label>')
+                . '<span class="taxmod-form-field">' . $row['control'] . '</span>'
+                . \Taxmod\Core\Renderer\HintMarkup::icon((string) ($row['hint'] ?? ''))
+                . '</div>';
+        }
+
+        return '<div class="taxmod-form">' . $out . ($actions === '' ? '' : '<div class="taxmod-form-actions">' . $actions . '</div>') . '</div>';
+    }
+
+    /**
      * The message field beside the heading (D-1203): one line with the last message, the recent ones open below it —
      * written by `assets/messages.js`, so an act that does not reload the page still says what it did. ⚠️ *His word,
      * 2026-11-06: «oben neben die Überschrift, aber so, dass es nicht verzerrt … dass man die letzten Nachrichten noch sehen kann».*
