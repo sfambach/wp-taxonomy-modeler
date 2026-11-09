@@ -358,6 +358,7 @@ final class NodesScreen
         // ⚠️ *Auf der Seite eines Moduls steht weder der gemeinsame Auswahlbaum noch die Vorlage der Satzdialoge — also zeichnet der
         // Editor beides selbst (D-1135). Sein Befund an der Platzart: «teile platzart kann ich nicht auswählen» — der Dialog war leer.*
         return '<div class="taxmod-preview-side taxmod-record-editor" id="taxmod-preview-edit">'
+            . self::reviewNote($recordId)
             . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
                 ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
                 // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
@@ -455,7 +456,19 @@ final class NodesScreen
             }
         }
 
-        return array_map(static fn (TypedValue $v): string => $v->rawValue(), $this->rendering->valuesFrom($felder, $typed));
+        $out   = array_map(static fn (TypedValue $v): string => $v->rawValue(), $this->rendering->valuesFrom($felder, $typed));
+        $types = $this->rendering->typesFor($felder);
+
+        // A record chooser (the manufacturer of a material) has no simple type: what it sends is the chosen record's id.
+        foreach ($felder as $relation) {
+            $chosen = $typed[$relation->id] ?? '';
+
+            if (! isset($out[$relation->id]) && ($types[$relation->id] ?? null) === null && ctype_digit($chosen) && (int) $chosen > 0) {
+                $out[$relation->id] = $chosen;
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -1547,6 +1560,19 @@ final class NodesScreen
         wp_send_json_success($aus);
     }
 
+    /**
+     * «Review nötig» above the form of a record created with its name only (D-1255); saving the form clears it.
+     */
+    public static function reviewNote(int $recordId): string
+    {
+        if ($recordId <= 0 || \Taxmod\WordPress\Persistence\RecordReviews::among([$recordId]) === []) {
+            return '';
+        }
+
+        return '<p class="taxmod-review-needed">' . \Taxmod\Core\Renderer\IconMarkup::dashicon('flag', __('Review needed', 'taxmod'))
+            . ' ' . esc_html__('Review needed: created with its name only. Check the fields and save once to confirm.', 'taxmod') . '</p>';
+    }
+
     /** Der Akt, unter dem der Satzdialog an einem Knoten einen neuen Satz mit Namen anlegt ([D-1171](../../../docs/NewConcept/90-decision-log.md)). */
     public const RECORD_CREATE_ACTION = 'taxmod_record_create';
 
@@ -1603,6 +1629,8 @@ final class NodesScreen
             $satz = $this->savedWhole(function () use ($gefragt, $namensfeld, $name): NodeRecord {
                 $satz = $this->data->create($gefragt, RecordType::User);
                 $this->writeRecord($gefragt, $satz->id, wp_slash([$namensfeld->id => $name]), null, null, self::neutralLocale());
+                // D-1255: a record with only its name needs a review, until it is saved once in the full form.
+                \Taxmod\WordPress\Persistence\RecordReviews::mark($satz->id);
 
                 return $satz;
             });
@@ -2545,6 +2573,7 @@ final class NodesScreen
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
+                . ($formId === '' ? '' : self::reviewNote($satz))
                 . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
                     fn (int $satz): string => $this->recordAddress($satz)
@@ -7631,6 +7660,8 @@ final class NodesScreen
                 'save_record'    => $this->savedWhole(function () use ($id): void {
                     $this->data->claim($this->submittedStamp());
                     $this->saveRecord($id);
+                    // D-1255: saved once in the full form is reviewed.
+                    \Taxmod\WordPress\Persistence\RecordReviews::clear(isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0);
                 }),
                 // ⚠️ *«Save mine anyway» from the conflict dialog: the kept input, written over the newer state — one act, undoable.*
                 'save_record_anyway' => $this->savedWhole(fn () => $this->saveKeptInput($id)),

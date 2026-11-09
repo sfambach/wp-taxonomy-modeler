@@ -291,6 +291,28 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('BC547', $gewaehlt[0]->result->markup, 'der gewählte Satz steht mit seinem Wort da');
     }
 
+    /** D-1255: a chosen record in a form opens in a new tab to complete it; nothing without a choice. */
+    #[Test]
+    public function a_chosen_record_in_a_form_opens_in_a_new_tab(): void
+    {
+        $teil = $this->thing('Hersteller');
+        $name = $this->editor->addField($teil->id, $this->type('Text')->id, 'name');
+        $satz = $this->records->add(new NodeRecord(0, $teil->id, 1, '2026-11-09 10:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $name->id, TypedValue::ofText('Quick Maker')));
+
+        $material = $this->thing('Material');
+        $ding     = $this->editor->addField($material->id, $teil->id, 'Hersteller', RelationKind::Aggregation);
+        $this->neuZeichnen();
+
+        $offen = $this->rendering->withDialogWords('OK', 'Cancel', open: 'Open')->withRecordLinks(static fn (int $id): string => 'https://x.test/r/' . $id);
+
+        $gewaehlt = $offen->fieldsFor([$ding], [$ding->id => TypedValue::ofRecordReference($satz)], Purpose::Edit, 'v')[0]->result->markup;
+        self::assertStringContainsString('href="https://x.test/r/' . $satz . '" target="_blank"', $gewaehlt);
+
+        $leer = $offen->fieldsFor([$ding], [], Purpose::Edit, 'v')[0]->result->markup;
+        self::assertStringNotContainsString('taxmod-record-open', $leer);
+    }
+
     /**
      * ⚠️ *[D-1011](../../docs/NewConcept/90-decision-log.md), sein Wort: «Erst Text, dann Baum». Neben der Suche steht ein Knopf für den Baum —
      * aber der Baum selbst steht nicht in der Seite, auch kein Knoten; das Skript holt ihn erst beim Öffnen.*

@@ -517,6 +517,8 @@ final class ModelAbilities
         }
 
         $werte   = $seite === [] ? [] : $entries->valuesOfMany(array_map(static fn ($r): int => $r->id, $seite));
+        // D-1255: which of them still need a review, in one query.
+        $pruefen = array_flip(\Taxmod\WordPress\Persistence\RecordReviews::among(array_map(static fn ($r): int => $r->id, $seite)));
         $neutral = $compact ? SettingsScreen::neutralLocale() : '';
         $saetze  = [];
 
@@ -543,9 +545,10 @@ final class ModelAbilities
                 ];
             }
 
+            $review   = isset($pruefen[$record->id]) ? ['needs_review' => true] : [];
             $saetze[] = $compact
-                ? ['id' => $record->id, 'version' => $record->version] + ($record->recordType === RecordType::User ? [] : ['record_type' => $record->recordType->value]) + ['v' => (object) $zeilen]
-                : ['id' => $record->id, 'version' => $record->version, 'record_type' => $record->recordType->value, 'values' => $zeilen];
+                ? ['id' => $record->id, 'version' => $record->version] + ($record->recordType === RecordType::User ? [] : ['record_type' => $record->recordType->value]) + $review + ['v' => (object) $zeilen]
+                : ['id' => $record->id, 'version' => $record->version, 'record_type' => $record->recordType->value] + $review + ['values' => $zeilen];
         }
 
         return [

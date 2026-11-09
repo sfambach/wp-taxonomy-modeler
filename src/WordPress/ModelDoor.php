@@ -84,6 +84,17 @@ final class ModelDoor
     }
 
     /**
+     * The records among these that still need a review: created with their name only, not yet saved in the full form (D-1255).
+     *
+     * @param list<int> $records
+     * @return list<int>
+     */
+    public function needingReview(array $records): array
+    {
+        return Persistence\RecordReviews::among($records);
+    }
+
+    /**
      * The modeller's own controls for these fields of `$node` (D-1250) — a quantity is the unit-value control it is in the
      * material, never an input of the module's own. Posted as `$prefix[relation id]`; read back with {@see typed()}.
      *

@@ -2794,3 +2794,11 @@ pre.taxmod-code {
 	font-size: 12px;
 	white-space: nowrap;
 }
+
+/* ── D-1255: a record created with its name only, until it is saved once in the full form ── */
+.taxmod-review-needed {
+    margin: 0 0 .6em;
+    padding: .3em .6em;
+    border-left: 4px solid #dba617;
+    background: #fcf9e8;
+}

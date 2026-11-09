@@ -456,8 +456,11 @@ final class Schema
      * *Seit D-938 entscheidet die Kante, ob ein Wert ein eigener Teil ist. Eine Komposition auf einen Knoten ausserhalb von
      * `Compositions` und `Combined` hielt bis dahin nur Verweise auf fremde Sätze; liesse man sie Komposition, hielte der Kern diese
      * Sätze für eigene Teile. Gemessen am Abzug vom 2026-10-01: keine solche Kante. Der Schritt ist die Versicherung für den lebenden Bestand.*
+     *
+     * ⚠️ **Fassung 58: `record_reviews`** ([D-1255](../../../docs/NewConcept/90-decision-log.md)) — *welcher schnell angelegte Satz
+     * noch «Review nötig» trägt.*
      */
-    public const VERSION = 57;
+    public const VERSION = 58;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -595,7 +598,7 @@ final class Schema
     /** @return list<string> The table names, without the WordPress prefix. */
     public static function tableNames(): array
     {
-        return ['labels', 'label_texts', 'changelog', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
+        return ['labels', 'label_texts', 'changelog', 'record_reviews', ...self::LIVE_TABLES, ...self::SHADOW_TABLES];
     }
 
     public static function table(string $name): string
@@ -4996,6 +4999,13 @@ final class Schema
                 PRIMARY KEY  (id,version),
                 KEY archived_at (archived_at),
                 KEY from_node_id (from_node_id)
+            ) {$charset};",
+
+            // D-1255: the records created with a name only that still need a review.
+            "CREATE TABLE {$t('record_reviews')} (
+                node_record_id bigint(20) unsigned NOT NULL,
+                since datetime NOT NULL,
+                PRIMARY KEY  (node_record_id)
             ) {$charset};",
 
             "CREATE TABLE {$t('node_records_history')} (

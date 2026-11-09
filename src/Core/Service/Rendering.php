@@ -916,12 +916,12 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
      * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
      */
-    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = '', string $link = '', string $search = ''): static
+    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = '', string $link = '', string $search = '', string $open = ''): static
     {
         $kopie              = clone $this;
         // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805), das des Dateiknopfs (D-846), das des Mülleimers an einer
         // gesetzten Referenz (D-851), das des Linkknopfs (D-857) und das der Suche über «jeden Satz unter Model» (D-958).*
-        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear, 'link' => $link, 'search' => $search];
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear, 'link' => $link, 'search' => $search, 'open' => $open];
 
         return $kopie;
     }
@@ -2278,7 +2278,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                             ? (\Taxmod\Core\Renderer\MediaRenderer::fileOf($this->adressenVon([$value->reference])[$value->reference], $this->media)?->url
                                 ?? \Taxmod\Core\Renderer\MediaRenderer::absolute($this->adressenVon([$value->reference])[$value->reference]))
                             : ($this->recordLink === null ? null : ($this->recordLink)($value->reference)))
-                        : null,
+                        // D-1255: in the form, the chosen record opens beside the chooser, so a record created with its name only can be completed.
+                        : ($purpose === Purpose::Edit && $value->referenceSpace === ReferenceSpace::Record && $value->reference !== null && $this->recordLink !== null
+                            ? ($this->recordLink)($value->reference)
+                            : null),
                     // ⚠️ *Ohne Knotenangebot die Sätze des Ziels, zusammengefasst — der Wähler der Zusammenfassung (D-753).*
                     options: $angebot !== [] ? $angebot : ($saetze['angebot'][$relation->id] ?? []),
                     // ⚠️ *Dieselben Sätze als Baum ihrer Knoten — der Dialog der Satzauswahl (D-791).*

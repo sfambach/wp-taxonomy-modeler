@@ -86,6 +86,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | V3 | Die meisten Objekte lassen sich kopieren; die Kopie ist ein Schritt und lässt sich zurücknehmen. | [D-1130](NewConcept/90-decision-log.md) |
 | V4 | Gleichzeitiges Arbeiten: ein Satz samt Teilen ist die Einheit, seine Version der Wächter. | [D-1148](NewConcept/90-decision-log.md) |
 | V5 | Kein Akt endet auf einer leeren Seite: jeder admin-post-/ajax-Handler läuft in `ListPage::act()`, jede Ablehnung über `ListPage::fail()` (Nonce: `ListPage::nonce()`, ajax: `ListPage::json()` / `ListPage::ajaxNonce()`); die Meldung steht im Meldungsfeld der Ausgangsseite, sonst Fehlerseite mit «Zurück». Kein nacktes `wp_die()`. | [D-1254](NewConcept/90-decision-log.md) |
+| V6 | Ein schnell angelegter Satz (nur Name) trägt «Review nötig», bis er einmal im vollen Formular gespeichert ist. Module zeigen die Markierung über `ModelDoor::needingReview()` und bieten den Absprung zum vollen Formular; keine eigene Statusspalte. | [D-1255](NewConcept/90-decision-log.md) |
 
 ## 7 · Sprache
 

@@ -133,6 +133,7 @@ final class SummaryRenderer extends TypedFieldRenderer
             . ($baumwort === '' ? '' : '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-browse"' . ($nichts ? '' : ' hidden') . ' title="' . RenderResult::escape($baumwort) . '">'
                 . IconMarkup::dashicon('networking', $baumwort) . '</button>')
             . '<span class="taxmod-record-dialog-open taxmod-record-word"' . ($nichts ? ' hidden' : '') . '>' . RenderResult::escape($wort) . '</span>'
+            . self::openChosen($context->surroundings->href, $context->surroundings->dialogWords, $nichts)
             // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl aus Suche oder Baum zeigt ihn (D-1011).*
             . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape($loeschen) . '">'
                 . IconMarkup::dashicon('trash', $loeschen) . '</button>'
@@ -339,9 +340,9 @@ final class SummaryRenderer extends TypedFieldRenderer
     }
 
     /** @param list<array<string, mixed>> $baum */
-    private function dialogAround(RenderContext $context, array $baum, ?int $gewaehlt, string $koerper): string
+    private function dialogAround(RenderContext $context, array $baum, ?int $gewaehlt, string $koerper, ?string $href = null): string
     {
-        return self::around($context->surroundings->formId, $context->fieldName, $context->surroundings->refersTo, $context->surroundings->dialogWords, $baum, $gewaehlt, $koerper);
+        return self::around($context->surroundings->formId, $context->fieldName, $context->surroundings->refersTo, $context->surroundings->dialogWords, $baum, $gewaehlt, $koerper, $context->surroundings->href);
     }
 
     /**
@@ -386,7 +387,7 @@ final class SummaryRenderer extends TypedFieldRenderer
     }
 
     /** @param array<string, string> $worte */
-    private static function around(string $formId, string $fieldName, ?string $refersTo, array $worte, array $baum, ?int $gewaehlt, string $koerper): string
+    private static function around(string $formId, string $fieldName, ?string $refersTo, array $worte, array $baum, ?int $gewaehlt, string $koerper, ?string $href = null): string
     {
         // ⚠️ *Ohne gewählten Satz steht nur das Zeichen «—» — dann ist der Öffner ein Zeichenknopf: randlos, und sein Name steht für
         // den Vorleser dabei, wie beim Knotenwähler ({@see ChooserRenderer}; `icon-button-check`). Der Name ist der Knoten, aus dem
@@ -420,10 +421,22 @@ final class SummaryRenderer extends TypedFieldRenderer
         // ein ausgegrautes feld … und recht daneben … das baum symbol das öffnet den dialog». Gesucht wird im Dialog (D-791 Schritt 2).*
         return '<span class="taxmod-record-pick' . ($nichts ? '' : ' taxmod-record-taken') . '">'
             . $dialog
+            . self::openChosen($href, $worte, $nichts)
             // *Der Mülleimer steht immer da, ohne Wahl verborgen — eine Wahl im Dialog zeigt ihn und verbirgt das Suchfeld (D-1138).*
             . '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-clear"' . ($nichts ? ' hidden' : '') . ' style="color:#b32d2e" title="' . RenderResult::escape((string) ($worte['clear'] ?? '')) . '">'
                 . IconMarkup::dashicon('trash', (string) ($worte['clear'] ?? '')) . '</button>'
             . '<span class="taxmod-record-hits" hidden></span>'
             . '</span>';
+    }
+
+    /** The chosen record, opened in a new tab to complete it (D-1255); nothing without a choice or an address. */
+    /** @param array<string, string> $worte */
+    private static function openChosen(?string $ziel, array $worte, bool $nichts): string
+    {
+        $wort = (string) ($worte['open'] ?? '');
+
+        return $nichts || $ziel === null || $ziel === '' || $wort === '' ? ''
+            : '<a class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-record-open" href="' . RenderResult::escape($ziel) . '" target="_blank" rel="noopener" title="' . RenderResult::escape($wort) . '">'
+                . IconMarkup::dashicon('edit', $wort) . '</a>';
     }
 }
