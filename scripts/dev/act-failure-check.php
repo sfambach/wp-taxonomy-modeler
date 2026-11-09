@@ -77,6 +77,15 @@ $to = $went(static fn () => ListPage::fail('x'));
 check('without an address it goes back to the referring page', str_ends_with($to, 'page=from-here'), $to);
 ListPage::messages();
 
+$_SERVER['HTTP_REFERER'] = admin_url('admin.php?page=the-order');
+$to = $went(static fn () => ListPage::fail('x', admin_url('admin-ajax.php?action=positions')));
+check('a form drawn by ajax goes back to the page, not to the ajax call', str_ends_with($to, 'page=the-order'), $to);
+ListPage::messages();
+
+$_REQUEST['_wpnonce'] = 'stale';
+$to = $went(static fn () => ListPage::nonce('taxmod_something', '_wpnonce'));
+check('a stale form nonce goes back with a message', str_ends_with($to, 'page=the-order') && str_contains(ListPage::messages(), 'open too long'), $to);
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 ob_end_flush();
 exit($bad === 0 ? 0 : 1);

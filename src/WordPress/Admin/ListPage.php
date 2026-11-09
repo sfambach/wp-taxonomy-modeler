@@ -536,11 +536,63 @@ final class ListPage
         wp_die(esc_html($message), esc_html__('Taxonomy Modeller', 'taxmod'), ['response' => 200, 'link_url' => esc_url($to), 'link_text' => esc_html__('Back', 'taxmod')]);
     }
 
+    /**
+     * An admin-ajax handler (D-1254): anything thrown becomes an error answer the page shows in its message field, never «0» or
+     * an empty page.
+     */
+    public static function json(callable $work): void
+    {
+        try {
+            $work();
+        } catch (\Throwable $e) {
+            error_log('Taxmod ajax act failed: ' . $e::class . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            self::jsonFailure($e->getMessage(), 500);
+        }
+    }
+
+    /** The nonce of a form, checked so that a stale page is said, not died on (D-1254). */
+    public static function nonce(string $action, string $field = '_wpnonce'): void
+    {
+        if (wp_verify_nonce(sanitize_text_field(wp_unslash((string) ($_REQUEST[$field] ?? ''))), $action) === false) {
+            self::fail(self::stale());
+        }
+    }
+
+    /** The nonce of an ajax call; a stale page gets an answer it can show, not «-1» (D-1254). */
+    public static function ajaxNonce(string $action): void
+    {
+        $nonce = sanitize_text_field(wp_unslash((string) ($_REQUEST['_ajax_nonce'] ?? $_REQUEST['_wpnonce'] ?? '')));
+
+        if (wp_verify_nonce($nonce, $action) === false) {
+            self::jsonFailure(self::stale(), 403);
+        }
+    }
+
+    private static function jsonFailure(string $message, int $status): never
+    {
+        wp_send_json_error(['message' => $message, 'html' => '<div class="notice notice-error inline"><p>' . esc_html($message) . '</p></div>'], $status);
+    }
+
+    private static function stale(): string
+    {
+        return __('The page was open too long or the form is no longer valid. Reload it and try again.', 'taxmod');
+    }
+
+    /**
+     * Where an act goes back to. ⚠️ *A form drawn by an ajax call names that call as its referer (found by the stock module at
+     * the receipt positions); then the browser's own referer, the page it stands on, is the way back.*
+     */
     private static function backTo(string $back): string
     {
-        $to = $back !== '' ? $back : (string) wp_get_referer();
+        $named = $back !== '' ? $back : (string) wp_get_referer();
 
-        return $to !== '' ? $to : admin_url();
+        if ($named !== '' && ! str_contains($named, 'admin-post.php') && ! str_contains($named, 'admin-ajax.php')) {
+            return $named;
+        }
+
+        $page = esc_url_raw(wp_unslash((string) ($_SERVER['HTTP_REFERER'] ?? '')));
+
+        return $page !== '' && ! str_contains($page, 'admin-ajax.php') && wp_validate_redirect($page, '') !== '' ? $page : admin_url();
     }
 
     private static function takeFailure(): string
