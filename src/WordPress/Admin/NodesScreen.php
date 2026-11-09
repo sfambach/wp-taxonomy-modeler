@@ -373,7 +373,9 @@ final class NodesScreen
                     $this->localeFromRequest(),
                     Level::Admin,
                     true,
-                    $this->rendering->containerChosenFor($knoten) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
+                    // D-1278: a module's edit form is not the preview of D-748 — it is a form, one field under the other,
+                    // never the one-row table a node chose for showing its records (his finding at «Mäuse»).
+                    $this->rendering->editContainerFor($knoten),
                     $this->rendering->partsOfRecord($recordId, $felder),
                     formId: $formId,
                     recordId: $recordId

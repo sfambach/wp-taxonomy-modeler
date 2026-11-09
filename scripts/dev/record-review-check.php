@@ -124,6 +124,13 @@ check('no note on a reviewed record', NodesScreen::reviewNote($ref['alt']) === '
 $editor = (string) apply_filters(\Taxmod\WordPress\Plugin::RECORD_EDITOR_FILTER, '', $quick, admin_url());
 check('a module\'s record form tells the dialog where to create', str_contains($editor, 'data-record-create='), substr($editor, -200));
 
+// D-1278: a node that chose a table for showing its records still gets a form when one of them is edited in a module.
+$tabled = wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_setting', 'node' => $ref['h'], 'attribute' => 'renderer', 'value' => 'table']]]);
+check('the test node chooses a table', is_array($tabled), is_wp_error($tabled) ? $tabled->get_error_message() : '');
+$tableEditor = (string) apply_filters(\Taxmod\WordPress\Plugin::RECORD_EDITOR_FILTER, '', $quick, admin_url());
+check('its record is still edited as a form, field under field', str_contains($tableEditor, 'taxmod-form-row') && ! str_contains($tableEditor, '<table class="taxmod-table'), substr($tableEditor, 0, 300));
+wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_setting', 'node' => $ref['h'], 'attribute' => 'renderer', 'value' => '']]]);
+
 // D-1274: a chooser among a module's field controls brings its dialog body with it, not only a stub for a template that page lacks.
 $controls = (array) apply_filters(\Taxmod\WordPress\Plugin::FIELD_CONTROLS_FILTER, [], $ref['h'], [$ref['maker']], 'rv', 'rv-form');
 $chooser  = (string) ($controls[$ref['maker']] ?? '');

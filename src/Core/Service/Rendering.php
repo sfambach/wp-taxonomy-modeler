@@ -4684,6 +4684,20 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     }
 
     /**
+     * The container a form for editing one record of this node uses (D-1278): the node's chosen one when it lays out a form
+     * (form, complex), else the form — a table or a compact row shows many records side by side and, around one record being
+     * edited, became a single row cut off on the right.
+     */
+    public function editContainerFor(Node $node): string
+    {
+        $chosen = $this->chosenRendererName($this->withModelValues([], $node));
+
+        return in_array($chosen, [\Taxmod\Core\Renderer\FormRenderer::NAME, \Taxmod\Core\Renderer\ComplexRenderer::NAME], true)
+            ? $chosen
+            : \Taxmod\Core\Renderer\FormRenderer::NAME;
+    }
+
+    /**
      * Der Wert eines Weg-Feldes: die Namen vom erklärenden Vater bis zum Vater des Knotens, mit dem Knoten
      * selbst, wo `with_node` gilt (D-751).
      *
