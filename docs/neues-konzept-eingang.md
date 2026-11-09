@@ -1273,3 +1273,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** [D-1249](NewConcept/90-decision-log.md) legt die Link-Vorlagen an den Kontakt der Firma. ⚠️ *Gemessen: «Plattform» an der Bestellung ist ein Textfeld; das Lager findet die Firma über den gleichen Namen (Groß-/Kleinschreibung egal).*
 - **Offen:** Das Textfeld zu einem Verweis auf den Kontakt umbauen (Import-Ziele, vorhandene Bestellungen umstellen). Vom Architektur-Thread vorgemerkt, nicht jetzt bauen.
+
+## INF-118 · Kits und Sortimente: als Ganzes gekauft, als Einzelsorten gelagert (2026-11-09)
+
+- **Anlass, sein Wort:** *«was ich mich frage ist kits bilden wir irgendwie nocch nicht richtig ab wir legen sie zwar in tütchen aber eigentlich sind sie als kits gekauft»*. Fall: AliExpress-Set 56849 / Kauf 56858 (13 Sorten × 5 Stück), im WE in 13 Posten aufgeteilt.
+- **Gemessen:** kein Beschluss zu Kit/Sortiment im Decision-Log. Heute ist ein Kit ein Material mit Sortiment-Bezeichnung und leeren Werten (LED-Sortiment, 56849) plus ein beweglicher Lagerort (Tütchen) mit Einzelposten.
+- **Optionen (Karte an Stefan, 09.11.):**
+  1. Kit als Material mit Inhaltsliste (Material + Menge je Sorte). Bestand nur bei den Sorten; das WE löst ein Kit in seine Sorten auf; nachbestellt wird das Kit. *Empfehlung des Architektur-Threads.*
+  2. Kit als eigenes Lagergut (ein Posten), Entnahme einzelner Sorten bucht aus dem Kit.
+  3. Kein eigenes Ding: Tütchen + Bezug zum Kauf reicht.
+- **Offen:** seine Wahl.
