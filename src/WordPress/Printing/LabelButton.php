@@ -353,7 +353,10 @@ final class LabelButton
         }
 
         $html = '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Etikett', 'taxmod') . '</span>'
-            . '<select name="choice" data-taxmod-label-choice>' . $labels . '</select></label>'
+            . '<select name="choice" data-taxmod-label-choice>' . $labels . '</select>'
+            // D-1284: the module says where the preselected label comes from (a Bauform, a group), shown beneath the choice.
+            . (trim((string) ($template['origin'] ?? '')) === '' ? '' : '<span class="description" style="display:block">' . esc_html(trim((string) $template['origin'])) . '</span>')
+            . '</label>'
             . '<label style="display:block;margin-bottom:.5em"><span style="display:block;font-weight:600">' . esc_html__('Drucker', 'taxmod') . '</span>'
             . '<select name="printer" data-taxmod-label-printer>' . $printers . '</select></label>'
             . self::variantChooser($template)

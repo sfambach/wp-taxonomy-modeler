@@ -85,6 +85,15 @@ final class ModelDoor
     }
 
     /**
+     * D-1284: the node a field points to, read by the field's own id — a module names a field, not the node beneath it (one
+     * query, no node read). 0 when the field is unknown.
+     */
+    public function targetOf(int $relation): int
+    {
+        return (new Persistence\WpdbRelationRepository())->byId($relation)?->toNodeId ?? 0;
+    }
+
+    /**
      * The records among these that still need a review: created with their name only, not yet saved in the full form (D-1255).
      *
      * @param list<int> $records
