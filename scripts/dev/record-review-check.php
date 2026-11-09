@@ -197,6 +197,12 @@ foreach (wp_get_ability('taxmod/read-node')->execute(['node' => $ref['h']])['rec
 check('the full form saved', $saved === 'Quick Maker GmbH', $saved);
 check('after one save it no longer needs a review', RecordReviews::among([$quick]) === []);
 
+// D-1281: a record whose chosen summary fields are empty is called by its name, not «#<id>».
+wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_list', 'node' => $ref['h'], 'attribute' => 'summary_fields', 'members' => [$ref['maker']]]]]);
+$found = wp_get_ability('taxmod/query')->execute(['node' => $ref['h'], 'where' => [['field' => $ref['name'], 'op' => 'eq', 'value' => 'Quick Maker GmbH']]]);
+$word  = (string) (is_array($found) ? ($found['records'][0]['word'] ?? '') : '');
+check('empty summary fields fall back to the name', $word === 'Quick Maker GmbH', wp_json_encode($found));
+
 wp_set_current_user(0);
 $denied = $send('admin_post_' . NodesScreen::RECORD_CREATE_ACTION, ['node' => (string) $ref['h'], 'name' => 'x']);
 check('without the capability nothing is created', str_contains($denied, '"success":false'), $denied);

@@ -5584,16 +5584,30 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $aus = $leer;
 
+        // D-1281: sind die gewählten Felder eines Satzes leer, heisst er wie ohne Wahl (erstes Textfeld mit Wert), nicht «#<id>» — sein
+        // Wort «schauen wo evtl noch nummern drinne stehen und das beheben»; rund 650 Materialien hiessen so, obwohl die Bezeichnung stand.
+        // Nur, wo die Wahl aus dem Modell kommt: wer die Felder selbst mitbringt (Vergleich, eine Zelle je Feld), bekommt weiter die leere Zelle.
+        $wortOderName = static function (int $satzId, array $feldIds, bool $mitgebracht) use ($wort, $eigenesWort): string {
+            $gesagt = $wort($satzId, $feldIds);
+
+            if ($mitgebracht || $feldIds === [] || $gesagt !== '#' . $satzId) {
+                return $gesagt;
+            }
+
+            return $eigenesWort($satzId, [], 0, true);
+        };
+
         foreach ($betroffen as $relation) {
             $feldIds = $felder[$relation->id] ?? [];
+            $mitgebracht = array_key_exists($relation->id, $feldwahl);
             $wert    = $values[$relation->id] ?? null;
 
             if ($wert?->referenceSpace === ReferenceSpace::Record && $wert->reference !== null) {
-                $aus['worte'][$relation->id] = $wort($wert->reference, $feldIds);
+                $aus['worte'][$relation->id] = $wortOderName($wert->reference, $feldIds, $mitgebracht);
             }
 
             foreach ($mehrfach[$relation->id] ?? [] as $weiterer) {
-                $aus['mehrfach'][$relation->id][$weiterer] = $wort($weiterer, $feldIds);
+                $aus['mehrfach'][$relation->id][$weiterer] = $wortOderName($weiterer, $feldIds, $mitgebracht);
             }
 
             // ⚠️ **Die Vorbelegung** ([D-791](../../../docs/NewConcept/90-decision-log.md) Schritt 3): *«filter» lässt nur passende
@@ -5615,7 +5629,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     continue;
                 }
 
-                $aus['angebot'][$relation->id][$satzId] = $wort($satzId, $feldIds);
+                $aus['angebot'][$relation->id][$satzId] = $wortOderName($satzId, $feldIds, $mitgebracht);
             }
 
             // ⚠️ **Wer im Angebot kein eigenes Wort hat, trägt seinen Namen vorn** ([D-1078](../../../docs/NewConcept/90-decision-log.md)) — *sein
