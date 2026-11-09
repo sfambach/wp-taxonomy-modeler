@@ -68,6 +68,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | A5 | Einen Satz bearbeitet ein Modul mit dem Formular des Modellers (`taxmod_record_editor`), nicht mit einem nachgebauten. | [D-1025](NewConcept/90-decision-log.md) |
 | A6 | Pflicht ist die Multiplizität: 1..1 und 1..n sind Pflicht; vor dem Durchsetzen abgleichen — wo Daten leer sind, wird das Feld 0..1/0..n. Kein eigenes «mandatory». | [D-405](NewConcept/90-decision-log.md), [D-1070](NewConcept/90-decision-log.md) |
 | A7 | Komposition nur, wenn das Teil mit dem Kopf stirbt; sonst Aggregation. | [D-498](NewConcept/90-decision-log.md) |
+| A8 | Ein Wert, für den das Modell ein Feld oder einen Typ hat (Menge = Einheitswert, Material, Lagerort, Kontakt …), wird mit genau diesem Feld und seinem Steuerelement erfasst, nie mit einem eigenen Eingabefeld, Typ oder Option. Nicht Erkanntes bleibt leer, kein erfundener Vorgabewert. Aktionsformulare ordnen die Felder mit `ListPage::form`. | [D-1250](NewConcept/90-decision-log.md) |
 
 ## 5 · Kachel
 
