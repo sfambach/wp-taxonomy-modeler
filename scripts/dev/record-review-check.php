@@ -157,6 +157,22 @@ $removed = wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'remo
 check('a record another points at by aggregation can be removed', is_array($removed), is_wp_error($removed) ? $removed->get_error_message() : '');
 check('the pointing row is left as it was', ($door->referrersOf([$ref['alt']])[$ref['alt']] ?? []) === [$ref['kid']], wp_json_encode($door->referrersOf([$ref['alt']])));
 
+// D-1280: an empty unit-value part has no word in the record block (Lager «Technische Daten»), not its number.
+global $wpdb;
+$unitValueNode = (int) $wpdb->get_var($wpdb->prepare('SELECT id FROM ' . $wpdb->prefix . 'taxmod_nodes WHERE klasse = %s ORDER BY id LIMIT 1', \Taxmod\Core\Model\NodeClass\UnitValue::class));
+$withPart      = $unitValueNode === 0 ? null : wp_get_ability('taxmod/apply')->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'amount', 'node' => $ref['h'], 'target' => $unitValueNode, 'name' => '__rv Amount', 'kind' => 'composition', 'multiplicity' => '0..1'],
+    ['op' => 'create_record', 'ref' => 'emptyPart', 'node' => $unitValueNode],
+]]);
+
+if (is_array($withPart)) {
+    $wpdb->insert($wpdb->prefix . 'taxmod_relation_records', ['node_record_id' => $ref['kid'], 'relation_id' => $withPart['refs']['amount'], 'locale' => '', 'position' => 0, 'value_ref' => $withPart['refs']['emptyPart'], 'value_ref_kind' => 'record']);
+    $block = render_block(['blockName' => 'taxmod/record', 'attrs' => ['record' => $ref['kid'], 'rowFields' => (string) $withPart['refs']['amount']], 'innerBlocks' => []]);
+    check('an empty unit-value part shows no number', ! str_contains($block, '#' . $withPart['refs']['emptyPart']), $block);
+} else {
+    check('an empty unit-value part shows no number', false, 'no unit-value node to test with');
+}
+
 echo "\n== saving the full form clears ==\n";
 
 $action = (string) (new ReflectionClass(NodesScreen::class))->getConstant('ACTION');

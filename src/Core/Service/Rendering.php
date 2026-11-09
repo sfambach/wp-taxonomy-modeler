@@ -5426,8 +5426,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     static fn (string $teil): bool => $teil !== ''
                 ));
 
-                // ⚠️ *Ein leerer Teil eine Stufe tief hat kein Wort — nicht «#43780» (gemessen am 2026-10-23 an 41 Reichelt-Bauteilen).*
-                return $teile === [] ? ($stufe > 0 ? '' : '#' . $satzId) : implode(' ', $teile);
+                // ⚠️ *Ein leerer Teil hat kein Wort — nicht «#43780» (gemessen am 2026-10-23 an 41 Reichelt-Bauteilen, eine Stufe tief).
+                // D-1280: auch ganz oben; im Satz-Block las er «#45705» als kaputten Verweis.*
+                return implode(' ', $teile);
             }
 
             foreach ($feldIds as $feldId) {
