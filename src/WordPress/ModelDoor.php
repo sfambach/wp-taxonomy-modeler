@@ -84,6 +84,34 @@ final class ModelDoor
     }
 
     /**
+     * The modeller's own controls for these fields of `$node` (D-1250) — a quantity is the unit-value control it is in the
+     * material, never an input of the module's own. Posted as `$prefix[relation id]`; read back with {@see typed()}.
+     *
+     * @param list<int>          $relations
+     * @param array<int, string> $values characters by relation id where there is no record yet; leave out what is not known
+     * @return array<int, string> relation id → control markup, escaped
+     */
+    public function controls(int $node, array $relations, string $prefix, string $formId = '', int $record = 0, array $values = []): array
+    {
+        $controls = apply_filters(Plugin::FIELD_CONTROLS_FILTER, [], $node, $relations, $prefix, $formId, $record, $values);
+
+        return is_array($controls) ? $controls : [];
+    }
+
+    /**
+     * What was typed into {@see controls()}, as raw values for {@see write()}; an empty field is left out.
+     *
+     * @param array<int|string, mixed> $submitted `$_POST[$prefix]`, as posted
+     * @return array<int, string> relation id → raw value
+     */
+    public function typed(int $node, array $submitted): array
+    {
+        $values = apply_filters(Plugin::TYPED_VALUES_FILTER, [], $node, $submitted);
+
+        return is_array($values) ? $values : [];
+    }
+
+    /**
      * Every node under `$root` with its name and parent.
      *
      * @return array<int, array{name: string, parent: int, class: string, hidden: bool}>

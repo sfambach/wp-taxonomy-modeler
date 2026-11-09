@@ -397,6 +397,68 @@ final class NodesScreen
     }
 
     /**
+     * The modeller's own controls for some fields of a node, for a module's form (D-1250): the same renderer, type and
+     * converter as in the record editor, so a quantity is the unit-value field it is everywhere else. Values come from
+     * `$recordId`, or `$values` (as a person would type them, «10 St») where there is no record yet; a missing value stays empty.
+     *
+     * @param list<int>          $relations
+     * @param array<int, string> $values    characters by relation id, for a record not yet written
+     * @return array<int, string> relation id → control markup, escaped; posted as `prefix[relation id]`
+     */
+    public function fieldControls(int $nodeId, array $relations, string $prefix, string $formId = '', int $recordId = 0, array $values = []): array
+    {
+        $gefragt = array_flip($relations);
+        $felder  = array_values(array_filter($this->editor->fieldsOf($nodeId), static fn (Relation $r): bool => isset($gefragt[$r->id])));
+
+        if ($felder === []) {
+            return [];
+        }
+
+        $held = [];
+
+        foreach ($recordId > 0 ? $this->data->valuesOf($recordId) : [] as $wert) {
+            $held[$wert->relationId] ??= $wert->value;
+        }
+
+        $typed = array_filter(array_map('strval', $values), static fn (string $one): bool => $one !== '');
+
+        foreach ($typed === [] ? [] : $this->rendering->valuesFrom($felder, $typed) as $relationId => $value) {
+            $held[$relationId] = $value;
+        }
+
+        $out = [];
+
+        foreach ($this->rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId) as $field) {
+            $out[$field->relation->id] = $field->result->markup;
+        }
+
+        return $out;
+    }
+
+    /**
+     * What was typed into those controls, as raw values for `taxmod/write-data` — the converter's way back, so «10 St» is
+     * stored as the unit value it means. An empty field is left out: unanswered, never a made-up default (D-1250).
+     *
+     * @param array<int|string, mixed> $submitted relation id → characters, as posted (slashed)
+     * @return array<int, string> relation id → raw value
+     */
+    public function typedValues(int $nodeId, array $submitted): array
+    {
+        $felder = $this->editor->fieldsOf($nodeId);
+        $typed  = [];
+
+        foreach ($submitted as $relationId => $roh) {
+            $zeichen = is_array($roh) ? '' : self::typedText((string) $roh);
+
+            if ($zeichen !== '') {
+                $typed[absint($relationId)] = $zeichen;
+            }
+        }
+
+        return array_map(static fn (TypedValue $v): string => $v->rawValue(), $this->rendering->valuesFrom($felder, $typed));
+    }
+
+    /**
      * Ein Satz, wie ein Leser ihn sieht — die Seite «Anzeige» der Vorschau ([D-547](../../../docs/NewConcept/90-decision-log.md)), für den Block im Beitrag ([D-912](../../../docs/NewConcept/90-decision-log.md)).
      *
      * ⚠️ *Dieselbe Zeichnung wie links in der Vorschau: `Purpose::Display` auf `Level::FrontEnd`, ohne Akte und ohne Links in die
