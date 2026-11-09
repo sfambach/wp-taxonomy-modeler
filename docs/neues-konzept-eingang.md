@@ -1283,3 +1283,13 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
   2. Kit als eigenes Lagergut (ein Posten), Entnahme einzelner Sorten bucht aus dem Kit.
   3. Kein eigenes Ding: Tütchen + Bezug zum Kauf reicht.
 - **Offen:** seine Wahl.
+
+## INF-119 · Ware in Gebrauch: aus dem Lager genommen, aber noch Bestand (2026-11-09)
+
+- **Anlass, sein Wort:** *«was ist mit kabeln dich ich zum gebrauch aus dem lager nehme, sind im grunde bestand aber in benutzung, sowas wie ne reservierung»*, dann *«man könnte sie umlagern in einen benutzungsbreiche ... ist aber nicht so dolle»*.
+- **Gemessen:** kein Beschluss zu «in Gebrauch» im Decision-Log. Vorhanden sind Reservierung ([D-1082](NewConcept/90-decision-log.md), [D-1088](NewConcept/90-decision-log.md)), Orte und bewegliche Orte ([D-1030](NewConcept/90-decision-log.md)) und Umbuchen ([D-1233](NewConcept/90-decision-log.md)).
+- **Optionen (Karte an Stefan, 09.11.):**
+  1. «In Gebrauch» wie eine Reservierung: der Posten bleibt an seinem Heimatort, die Menge ist nicht verfügbar, «Zurückgelegt» hebt es auf. *Empfehlung des Architektur-Threads.*
+  2. Als Verbrauch ausbuchen; eine Rückgabe ist ein neuer Zugang.
+  3. Umbuchen auf einen Ort «In Benutzung» — von ihm verworfen («nicht so dolle»).
+- **Seine Wahl:** «Erstmal offen lassen». Nichts wird gebaut.
