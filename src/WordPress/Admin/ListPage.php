@@ -813,6 +813,8 @@ final class ListPage
     public const ICON_TRANSFER = 'leftright';
     public const ICON_BOOK_OUT = 'migrate';
     public const ICON_DELETE = 'trash';
+    /** D-1273: «Kopieren», the same glyph the modeller's own «Duplicate» draws. */
+    public const ICON_COPY = 'admin-page';
 
     /** An icon in place of a button's word; the word stays for the screen reader and as the tooltip. */
     public static function icon(string $icon, string $label): string
