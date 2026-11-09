@@ -743,6 +743,33 @@ final class ListPage
     }
 
     /**
+     * A bulk dialog that sends nothing (his wish 2026-11-09 «platz für alle wählen»): its button writes the value chosen in the
+     * dialog into the field `$field[…]` of every ticked row of the page and says how many — the rows are saved with their own
+     * form. Its body holds the field `$from` the value is taken from. For {@see self::bulkBar()}'s `$asking`.
+     *
+     * @param string $body the dialog's fields, already escaped
+     */
+    public static function fillAction(string $switch, string $title, string $body, string $field, string $from, string $label): string
+    {
+        $fill = '<label class="button button-primary taxmod-dialog-ok" for="' . esc_attr($switch) . '" data-taxmod-fill="' . esc_attr($field) . '"'
+            . ' data-taxmod-fill-from="' . esc_attr($from) . '"'
+            /* translators: %d: number of rows the chosen value was written into */
+            . ' data-taxmod-fill-done="' . esc_attr__('%d rows set — saved with the form.', 'taxmod') . '"'
+            . ' data-taxmod-fill-none="' . esc_attr__('Nothing selected.', 'taxmod') . '">' . esc_html($label) . '</label>';
+
+        return DialogMarkup::of(
+            $switch,
+            esc_html($title),
+            esc_html($title),
+            '<span class="taxmod-dialog-body" style="display:block;padding:.75em 1em;white-space:normal;text-align:left">' . $body . '</span>',
+            $fill,
+            'button taxmod-dialog-open',
+            '',
+            __('Cancel', 'taxmod')
+        );
+    }
+
+    /**
      * One row: its checkbox joins the bulk form, the buttons stand on the right after the toggle, the details open below —
      * already open when the module's setting says so («Automatisch aufklappen», his wish of 2026-10-25). `$details` may be
      * {@see self::lazyDetails()}: then they are drawn when opened (D-1147).
@@ -800,8 +827,10 @@ final class ListPage
         // A dialog's own confirm button has a name and has already asked; only the bar's button asks here.
         return "if(this.dataset.taxmodOk||(event.submitter&&event.submitter.name)){delete this.dataset.taxmodOk;return true}var f=this,n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
             . "var s=this.querySelector('select');if(!s.value){return false}"
+            // A dialog that only fills the ticked rows of a form ({@see self::fillAction()}) counts those rows itself.
+            . "var o=s.options[s.selectedIndex];if(o.dataset.taxmodAsk&&document.querySelector('[data-taxmod-fill][for=\"'+o.dataset.taxmodAsk+'\"]')){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
             . 'if(n===0){alert(' . $none . ');return false}'
-            . "var o=s.options[s.selectedIndex];if(o.dataset.taxmodAsk){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
+            . "if(o.dataset.taxmodAsk){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
             . 'taxmodConfirm(' . $message . ".replace('%1\$s',s.options[s.selectedIndex].text).replace('%2\$d',n),function(){f.dataset.taxmodOk=1;f.requestSubmit()});return false";
     }
 

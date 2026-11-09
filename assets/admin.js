@@ -3464,3 +3464,80 @@
 		los();
 	}
 }() );
+
+/**
+ * His wish 2026-11-09 «platz für alle wählen»: a bulk dialog's button with `data-taxmod-fill` writes the value chosen in the
+ * dialog (the field named in `data-taxmod-fill-from`) into the field `<fill>[…]` of every row whose own checkbox is ticked —
+ * a choice of the tree, a select or a plain field — and says how many (D-1203). Nothing is sent; the rows' form saves them.
+ */
+( function () {
+	'use strict';
+
+	function chosen( dialog, from ) {
+		var radio = dialog.querySelector( 'input[type=radio][name="' + from + '"]:checked' );
+		var field = radio || dialog.querySelector( '[name="' + from + '"]' );
+
+		return field ? field.value : '';
+	}
+
+	function put( row, name, value ) {
+		var fields = row.querySelectorAll( '[name^="' + name + '["]' );
+		var done = false;
+
+		fields.forEach( function ( field ) {
+			if ( field.type === 'radio' ) {
+				if ( field.value !== value ) {
+					return;
+				}
+
+				field.checked = true;
+				// The chooser shows its choice in its opener (D-1163).
+				var chooser = field.closest( '.taxmod-chooser' );
+				var word = field.parentNode.textContent.trim();
+
+				if ( chooser && word !== '' ) {
+					chooser.querySelectorAll( ':scope > .taxmod-dialog-open, .taxmod-chooser-current' ).forEach( function ( shown ) {
+						shown.textContent = word;
+					} );
+				}
+			} else if ( field.type !== 'checkbox' ) {
+				field.value = value;
+			} else {
+				return;
+			}
+
+			field.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+			done = true;
+		} );
+
+		return done;
+	}
+
+	document.addEventListener( 'click', function ( event ) {
+		var button = event.target.closest ? event.target.closest( '[data-taxmod-fill]' ) : null;
+
+		if ( ! button ) {
+			return;
+		}
+
+		var dialog = button.closest( '.taxmod-dialog' ) || button.parentNode;
+		var value = chosen( dialog, button.dataset.taxmodFillFrom );
+		var count = 0;
+
+		document.querySelectorAll( 'tr' ).forEach( function ( row ) {
+			var tick = row.querySelector( ':scope > .check-column input[type=checkbox]' );
+
+			if ( tick && tick.checked && ! tick.disabled && value !== '' && put( row, button.dataset.taxmodFill, value ) ) {
+				count++;
+			}
+		} );
+
+		var text = count === 0 ? button.dataset.taxmodFillNone : button.dataset.taxmodFillDone.replace( '%d', String( count ) );
+
+		if ( window.taxmodMessage ) {
+			window.taxmodMessage( text, count === 0 ? 'bad' : 'ok' );
+		} else {
+			window.alert( text );
+		}
+	} );
+}() );
