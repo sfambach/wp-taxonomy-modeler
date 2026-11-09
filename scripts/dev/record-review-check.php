@@ -117,6 +117,11 @@ check('read-node leaves the other unflagged', array_key_exists($ref['alt'], $fla
 check('the form shows «Review needed»', str_contains(NodesScreen::reviewNote($quick), 'taxmod-review-needed'));
 check('no note on a reviewed record', NodesScreen::reviewNote($ref['alt']) === '');
 
+$door = new ModelDoor();
+$door->markForReview([$ref['alt']]);
+check('a module marks a record it made with what it could derive', RecordReviews::among([$ref['alt']]) === [$ref['alt']]);
+RecordReviews::clear($ref['alt']);
+
 echo "\n== saving the full form clears ==\n";
 
 $action = (string) (new ReflectionClass(NodesScreen::class))->getConstant('ACTION');

@@ -96,6 +96,23 @@ final class ModelDoor
     }
 
     /**
+     * Mark records a module created with only what it could derive as «Review needed» (D-1255); saving them once in the full form
+     * clears the mark. Needs the capability to write data.
+     *
+     * @param list<int> $records
+     */
+    public function markForReview(array $records): void
+    {
+        if (! current_user_can(ModelAbilities::DATA_CAPABILITY) && ! current_user_can(Plugin::CAPABILITY)) {
+            throw ModelDoorRefused::because('Not allowed to mark records for review.');
+        }
+
+        foreach (array_unique(array_map('intval', $records)) as $record) {
+            Persistence\RecordReviews::mark($record);
+        }
+    }
+
+    /**
      * The group properties modules have declared (D-1259): a label alone is a yes/no, `['label' => …, 'type' => 'id']` holds an id.
      *
      * @return array<string, array{label: string, type: string}>
