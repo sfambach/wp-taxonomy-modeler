@@ -1260,11 +1260,16 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Entwurf:** [pakete/lager/aufteilen.md](pakete/lager/aufteilen.md). **Offen:** S1–S4 dort; Prüfung durch den Design-Wächter.
 - **Gebaut:** nein.
 
-## INF-116 · Kauf-Details im Wareneingang: Bestell-/Produkt-Link, Pins und Maße (2026-11-09)
+## INF-116 · Kauf-Details im Wareneingang: Bestell-/Produkt-Link, Pins und Maße (2026-11-09) — entschieden: D-1249, D-1251
 
 - **2026-11-09, sein Wunsch** (Wareneingang › Bestellung, zwei Edge-Connector-Bestellungen nicht unterscheidbar): *«um zu entscheiden ob etwas angekommen ist ist das wenig info … zum einen einen link zur aliexpress bestellung wäre nett zum andren alle informationen die schon eingeordnet werden könne, pins abmessung oder sowas … frage dich was du bräuchtest um es weiter zu prozessieren»*.
 - **Richtung Architektur-Thread (09.11.):** Link-Vorlagen («Bestell-Link», «Produkt-Link» mit `{nr}`) sind Daten am Plattform-Satz im Modell, kein Code. ⚠️ *Gemessen: «Plattform» ist heute ein Textfeld an Bestellung und Kauf, es gibt keinen Plattform-Knoten mit Sätzen.*
 - **2026-11-09, seine Antwort** (Pins/Maße als Felder am Kauf?): *«Vielleicht kann man der benutzer mit den zusatz infos ja schon eine warengruppe zuordnen daraus ergeben sich felder, wenn was gefunden wird auch ruhig schon eine vorschlagen, bin mir nicht sicher was zugordnet werden kann wenn der freitext mehr hergibt ist es vielleicht schon ok»* — also keine eigenen Felder am Kauf; stattdessen schon vor dem Einbuchen eine Warengruppe zuordnen (die Felder kommen aus der Gruppe), mit Vorschlag aus dem Freitext; sonst reicht ein reicherer Freitext.
-- **Offen:** Wo die Warengruppe vor dem Einbuchen hängt (am Kauf über «Modell»/neues Material, wie beim Einbuchen heute?) und wer den Vorschlag rechnet (Mail-Leser/Ali-Import oder Lager).
-- **Offen:** Plattform als eigener Knoten (Sätze AliExpress, Amazon, eBay …) mit den Link-Vorlagen — erst nach Rückmeldung an den Architektur-Thread.
+- **Entschieden ([D-1251](NewConcept/90-decision-log.md)):** Material am Kauf über «Modell»/neues Material schon in «Bestellt»/«Versendet»; den Vorschlag rechnen Mail-Leser/Ali-Import. Sein Wort: *«Hört sich gut an der vorschlag»*.
+- **Entschieden ([D-1249](NewConcept/90-decision-log.md)):** Link-Vorlagen am Kontakt der Firma, kein eigener Plattform-Knoten.
 - **Gebaut:** Bild, volle Bezeichnung, Beschreibung, Art, Anschluss, Artikelnummer je Kauf im Bestellungsdetail (Lager, siehe Commit).
+
+## INF-117 · «Plattform» an der Bestellung als Verweis auf den Kontakt (2026-11-09)
+
+- **Anlass:** [D-1249](NewConcept/90-decision-log.md) legt die Link-Vorlagen an den Kontakt der Firma. ⚠️ *Gemessen: «Plattform» an der Bestellung ist ein Textfeld; das Lager findet die Firma über den gleichen Namen (Groß-/Kleinschreibung egal).*
+- **Offen:** Das Textfeld zu einem Verweis auf den Kontakt umbauen (Import-Ziele, vorhandene Bestellungen umstellen). Vom Architektur-Thread vorgemerkt, nicht jetzt bauen.

@@ -2562,6 +2562,49 @@ pre.taxmod-code {
 	float: none;
 	margin: 0;
 }
+/* His wish 2026-11-09: the view over every stage, a narrow arrow under the stages and as wide as they are. */
+.taxmod-steps-process {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+/* With the arrow under them the stages share the width and stay on one line, from left to right. */
+.taxmod-steps-process ol {
+	flex-wrap: nowrap;
+	padding-right: 12px;
+}
+.taxmod-steps-process li {
+	flex: 1 1 0;
+	min-width: 0;
+}
+.taxmod-steps-process .taxmod-step {
+	min-width: 0;
+	white-space: nowrap;
+}
+.taxmod-steps-all {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	padding: 3px 28px 3px 16px;
+	background: #dcdcde;
+	color: #1d2327;
+	text-decoration: none;
+	clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
+}
+.taxmod-steps-all:hover,
+.taxmod-steps-all:focus {
+	background: #f0f6fc;
+	color: #2271b1;
+}
+.taxmod-steps-all.is-active {
+	background: #2271b1;
+	color: #fff;
+}
+.taxmod-steps-all-count {
+	font-weight: 600;
+}
 
 /* D-1202: a bulk action that asks opens its dialog from the choice; its own opener is not shown. */
 .taxmod-bulk-asks > .alignleft > .taxmod-chooser > .taxmod-dialog-open,
