@@ -2563,7 +2563,11 @@
 		window.clearTimeout( baumWarten );
 
 		if ( ! quelle || text.length < 2 ) {
-			dialog.querySelector( '.taxmod-browse-list' ).innerHTML = '';
+			// *Nur eigene Suchtreffer weg — die Sätze einer angeklickten Gruppe bleiben stehen.*
+			if ( dialog.getAttribute( 'data-search-hits' ) === '1' ) {
+				dialog.querySelector( '.taxmod-browse-list' ).innerHTML = '';
+				dialog.removeAttribute( 'data-search-hits' );
+			}
 
 			return;
 		}
@@ -2577,11 +2581,13 @@
 				saetzeZeichnen( dialog, saetze === null ? null : saetze.filter( function ( satz ) {
 					return /^[0-9]+$/.test( String( satz.id ) );
 				} ) );
+				dialog.setAttribute( 'data-search-hits', '1' );
 			} );
 		}, 250 );
 	}
 
 	function saetzeZeichnen( dialog, saetze ) {
+		dialog.removeAttribute( 'data-search-hits' );
 		var liste = dialog.querySelector( '.taxmod-browse-list' );
 		var worte = document.getElementById( 'taxmod-words' );
 

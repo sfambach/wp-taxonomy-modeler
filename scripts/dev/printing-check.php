@@ -109,5 +109,18 @@ if ($fieldName !== '') {
     $pruefe(str_contains($mitSatz, 'notice-warning') && str_contains($mitSatz, 'gibt es nicht'), 'with a record the preview warns about a field the record does not have');
 }
 
+// D-1284: the module may say where the preselected label comes from; the chooser shows it beneath, and nothing without it.
+$wahl  = ['name' => 'Klein', 'format' => ['key' => 'material62', 'w' => 27, 'h' => 12], 'layout' => '[{"type":"text","field":"title","x":1,"y":1,"w":25,"h":5}]'];
+$mit   = \Taxmod\WordPress\Printing\LabelButton::render('M', 81, 'Ding', '', 1, $wahl + ['choices' => [5 => $wahl], 'chosen' => 5, 'origin' => 'Vorgewählt nach Bauform: SMD']);
+$ohne  = \Taxmod\WordPress\Printing\LabelButton::render('M', 82, 'Ding', '', 1, $wahl + ['choices' => [5 => $wahl], 'chosen' => 5]);
+$pruefe(str_contains($mit, '>Vorgewählt nach Bauform: SMD</span>') && str_contains($ohne, 'data-taxmod-label-choice') && ! str_contains($ohne, 'Vorgewählt'), 'D-1284: the label dialog names the origin of its preselection when given, and nothing otherwise');
+// D-1284: a module reads the node a field points to by the field's id.
+global $wpdb;
+$feld = $wpdb->get_row("SELECT id, to_node_id FROM " . \Taxmod\WordPress\Persistence\Schema::table('relations') . " WHERE to_node_id > 0 ORDER BY id LIMIT 1", ARRAY_A);
+$pruefe(is_array($feld) && (new \Taxmod\WordPress\ModelDoor())->targetOf((int) $feld['id']) === (int) $feld['to_node_id'] && (new \Taxmod\WordPress\ModelDoor())->targetOf(PHP_INT_MAX) === 0, 'D-1284: ModelDoor::targetOf answers the target of a field, 0 for an unknown one');
+// D-1285: the tree dialog's search asks the same record search as the quick field, and keeps a clicked group's records.
+$js = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.js');
+$pruefe(preg_match("/function saetzeSuchen\\(.{0,400}data-record-search/s", $js) === 1 && str_contains($js, "saetzeSuchen( dialog, this )") && str_contains($js, "getAttribute( 'data-search-hits' ) === '1'"), 'D-1285: the tree dialog searches records through data-record-search and clears only its own hits');
+
 echo $fehler === 0 ? "printing: all good\n" : "printing: $fehler failed\n";
 exit($fehler === 0 ? 0 : 1);
