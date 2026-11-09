@@ -128,6 +128,11 @@ RecordReviews::clear($ref['alt']);
 $pointing = $door->referrersOf([$ref['alt'], $ref['kid']]);
 check('the door names who points at a record, through any field', $pointing === [$ref['alt'] => [$ref['kid']]], wp_json_encode($pointing));
 
+// D-1270: removing a record empties only a row that owns it; a row that merely points at it stays.
+$removed = wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'remove_record', 'record' => $ref['alt']]]]);
+check('a record another points at by aggregation can be removed', is_array($removed), is_wp_error($removed) ? $removed->get_error_message() : '');
+check('the pointing row is left as it was', ($door->referrersOf([$ref['alt']])[$ref['alt']] ?? []) === [$ref['kid']], wp_json_encode($door->referrersOf([$ref['alt']])));
+
 echo "\n== saving the full form clears ==\n";
 
 $action = (string) (new ReflectionClass(NodesScreen::class))->getConstant('ACTION');

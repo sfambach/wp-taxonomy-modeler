@@ -1806,13 +1806,17 @@ final class DataEntry
 
         $this->fremdeVerweiseVerweigern($satz->id, $teile);
 
-        $halter = $this->records->holdersOf([$satz->id])[$satz->id] ?? null;
+        // D-1270: only a row that *owns* the record is emptied with it. A row that merely points at it (an aggregation, e.g.
+        // the place of a booking line) stays as it is; emptying it falsified the stock (measured by the Lager thread, D-1093).
+        $verweise = $this->records->referrersOfMany([$satz->id])[$satz->id] ?? [];
+        $besitzt  = $this->besitzendeKanten(array_values(array_unique(array_map(static fn (RelationRecord $z): int => $z->relationId, $verweise))));
+        $halter   = array_values(array_filter($verweise, static fn (RelationRecord $z): bool => $besitzt[$z->relationId] ?? false));
 
         $this->changelog?->beginAct();
 
         try {
-            if ($halter !== null) {
-                $this->halterZeileLeeren($halter);
+            foreach ($halter as $zeile) {
+                $this->halterZeileLeeren($zeile);
             }
 
             $this->satzEntfernen($recordId);
