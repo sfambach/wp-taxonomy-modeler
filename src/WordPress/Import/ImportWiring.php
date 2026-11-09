@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Import;
 
-use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -31,11 +30,11 @@ final class ImportWiring
         });
 
         // Priority 1: the shared «Import» tab stands before the tabs of the modules that feed it.
-        add_filter(SettingsScreen::TABS_FILTER, ImportTab::register(...), 1);
+        add_filter(Plugin::CONFIG_TABS_FILTER, ImportTab::register(...), 1);
         MailReading::boot();
         Documents::boot();
         add_action('admin_menu', static function (): void {
-            add_submenu_page('taxmod', __('Inbox', 'taxmod'), __('Inbox', 'taxmod'), Plugin::CAPABILITY, InboxScreen::PAGE, static function (): void {
+            add_submenu_page('taxmod', __('Inbox', 'taxmod'), __('Inbox', 'taxmod'), Plugin::CAPABILITY, Plugin::INBOX_PAGE, static function (): void {
                 // debug.log is off on the live site; a failure shows its text here instead of a white page.
                 try {
                     print (new InboxScreen())->render();

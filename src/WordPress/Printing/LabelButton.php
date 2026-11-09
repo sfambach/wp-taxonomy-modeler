@@ -34,7 +34,7 @@ final class LabelButton
      * D-1160: with `'record' => id` the modeller reads the fields the layout names from that record itself; what the module
      * passes in `values` only fills what the record has no field for.
      */
-    public const FILTER = 'taxmod_label_button';
+    public const FILTER = Plugin::LABEL_BUTTON_FILTER;
 
     public const ACTION = 'taxmod_label_queue';
 
@@ -56,10 +56,14 @@ final class LabelButton
     private static ?\Closure $recordValues = null;
 
     /** @param (\Closure(int, list<string>): array{values: array<string, string>, unknown: list<string>, node: int})|null $recordValues */
-    public static function boot(?\Closure $recordValues = null): void
+    public static function useRecordValues(?\Closure $recordValues): void
     {
         self::$recordValues = $recordValues;
-        add_filter(self::FILTER, static fn (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []): string => self::render($prefix, $id, $title, $subtitle, $copies, $template), 10, 7);
+    }
+
+    /** Only where admin-post.php and admin-ajax.php answer; the filter itself is registered by the plugin's boot (D-1187). */
+    public static function wireActions(): void
+    {
         add_action('admin_post_' . self::ACTION, self::handle(...));
         add_action('wp_ajax_' . self::STATUS_ACTION, self::status(...));
     }

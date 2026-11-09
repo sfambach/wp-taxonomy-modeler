@@ -41,7 +41,7 @@ final class InboxScreen
     /** Days a parcel notice waits for an order with its tracking number before it is discarded (D-1065); set in the Import tab. */
     public const ORPHAN_DAYS_OPTION = 'taxmod_import_orphan_days';
     public const ORPHAN_DAYS_DEFAULT = 7;
-    public const PAGE = 'taxmod-inbox';
+    public const PAGE = \Taxmod\WordPress\Plugin::INBOX_PAGE;
     public const TAKE = 'taxmod_inbox_take';
     public const TAKE_BOX = 'taxmod_inbox_take_box';
     public const DISCARD = 'taxmod_inbox_discard';

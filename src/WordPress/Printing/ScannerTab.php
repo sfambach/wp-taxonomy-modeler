@@ -50,7 +50,7 @@ final class ScannerTab
     /** @param \Closure(): NodesScreen $screen */
     public static function boot(\Closure $screen): void
     {
-        add_filter(SettingsScreen::TABS_FILTER, static function (array $tabs) use ($screen): array {
+        add_filter(Plugin::CONFIG_TABS_FILTER, static function (array $tabs) use ($screen): array {
             $tabs[self::SLUG] = [
                 'title'   => __('Scanner', 'taxmod'),
                 'version' => Plugin::VERSION,

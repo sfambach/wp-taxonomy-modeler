@@ -58,7 +58,7 @@ final class SettingsScreen
     public const TEST = 'taxmod_test_connection';
     public const FORGET = 'taxmod_forget_access';
 
-    public const TABS_FILTER = 'taxmod_config_tabs';
+    public const TABS_FILTER = \Taxmod\WordPress\Plugin::CONFIG_TABS_FILTER;
 
     /** Which language stands for *everywhere* — the row stored without a locale. */
     public const NEUTRAL_LOCALE = 'taxmod_neutral_locale';

@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.32';
+    public const VERSION     = '0.2.33';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -84,6 +84,14 @@ final class Plugin
     /** The release whose upgrade steps have run here; a restore forgets it, so the next admin request checks again (D-1187). */
     public const UP_TO_DATE_OPTION = 'taxmod_up_to_date';
 
+    /**
+     * Hook names and page addresses the boot names on every request; owned here, where they cost nothing, and named by their
+     * screens as aliases — naming them through the screens compiled those screens on every page view (D-1187).
+     */
+    public const CONFIG_TABS_FILTER = 'taxmod_config_tabs';
+    public const LABEL_BUTTON_FILTER = 'taxmod_label_button';
+    public const INBOX_PAGE = 'taxmod-inbox';
+
     /** Was den letzten Umbau der Tabellen abbrach — `null`, solange keiner scheiterte. */
     private ?string $upgradeFailure = null;
 
@@ -109,7 +117,12 @@ final class Plugin
         // D-1206: the scanner's test page, a tab of the Configuration.
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
-        \Taxmod\WordPress\Printing\LabelButton::boot(static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields));
+        $labelValues = static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields);
+        add_filter(self::LABEL_BUTTON_FILTER, static function (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []) use ($labelValues): string {
+            \Taxmod\WordPress\Printing\LabelButton::useRecordValues($labelValues);
+
+            return \Taxmod\WordPress\Printing\LabelButton::render($prefix, $id, $title, $subtitle, $copies, $template);
+        }, 10, 7);
         // D-1208: a module's door asks which fields are «Variante von» and «Je Variante», from the one resolver.
         add_filter(self::FIELD_ADDONS_FILTER, static fn (array $answer, array $relations): array => $plugin->settingsResolver()->addonNamesAt(
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
@@ -117,8 +130,6 @@ final class Plugin
         \Taxmod\WordPress\Printing\LabelPreview::boot();
         add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
 
-        // ⚠️ *Once, on `init` so the abilities and the front end see it too: the default language back on its texts (0.1.37).*
-        add_action('init', SettingsScreen::repairNeutralLocale(...));
 
         add_action('admin_menu', $plugin->registerMenu(...));
         // ⚠️ *His word of 2026-10-25: «die Menü-Konfiguration für den Tax-Mod hätte ich gern an unterster Stelle» (D-989) —
@@ -128,6 +139,8 @@ final class Plugin
         // constants compiled about 1 MB of admin screens on every page view, and fambach.net has no opcode cache.*
         if (self::handlesAdminActions()) {
             self::wireAdminActions($plugin);
+            \Taxmod\WordPress\Printing\LabelButton::useRecordValues($labelValues);
+            \Taxmod\WordPress\Printing\LabelButton::wireActions();
         }
         // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
         add_action(self::STYLE_ACTION, $plugin->enqueueStyle(...));
@@ -222,8 +235,6 @@ final class Plugin
         add_action('wp_abilities_api_init', static fn () => $plugin->abilities()->register());
         // D-1235: the print jobs as abilities — the print thread reads what CUPS did and prints again.
         add_action('wp_abilities_api_init', static fn () => (new \Taxmod\WordPress\Printing\PrintAbilities())->register());
-        // *As a class-string callable: `ModelAbilities::ensureDataRole(...)` compiled the whole class on every request (D-1187).*
-        add_action('init', [ModelAbilities::class, 'ensureDataRole']);
 
         // ⚠️ **Ein Satz aus dem Modell im Beitrag** ([D-912](../../docs/NewConcept/90-decision-log.md)).
         add_action('init', static fn () => (new RecordBlock($plugin->screen(...), $plugin->file))->register());
@@ -376,6 +387,11 @@ final class Plugin
 
     private function bringUpToDate(): void
     {
+        // Once per release, not on every `init` (D-1187): the role is stored with the site, and the default language was put
+        // back on its texts once (0.1.37); both compiled their whole class on every request.
+        ModelAbilities::ensureDataRole();
+        SettingsScreen::repairNeutralLocale();
+
         $before = (int) get_option(Schema::VERSION_OPTION, 0);
 
         Schema::ensureCurrent();

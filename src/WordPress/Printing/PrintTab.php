@@ -39,7 +39,7 @@ final class PrintTab
 
     public static function boot(): void
     {
-        add_filter(\Taxmod\WordPress\Admin\SettingsScreen::TABS_FILTER, self::register(...), 2);
+        add_filter(Plugin::CONFIG_TABS_FILTER, self::register(...), 2);
         // D-1165, his word 2026-11-04: «immer noch etiketten und etiketten vorlage» — the labels are records now, listed by the module
         // that owns them; the modeller announces no second page «Etiketten» with fixed formats.
         add_action('admin_post_' . self::ACTION, self::handle(...));
