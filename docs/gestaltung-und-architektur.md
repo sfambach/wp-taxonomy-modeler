@@ -69,6 +69,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | A6 | Pflicht ist die Multiplizität: 1..1 und 1..n sind Pflicht; vor dem Durchsetzen abgleichen — wo Daten leer sind, wird das Feld 0..1/0..n. Kein eigenes «mandatory». | [D-405](NewConcept/90-decision-log.md), [D-1070](NewConcept/90-decision-log.md) |
 | A7 | Komposition nur, wenn das Teil mit dem Kopf stirbt; sonst Aggregation. | [D-498](NewConcept/90-decision-log.md) |
 | A8 | Ein Wert, für den das Modell ein Feld oder einen Typ hat (Menge = Einheitswert, Material, Lagerort, Kontakt …), wird mit genau diesem Feld und seinem Steuerelement erfasst, nie mit einem eigenen Eingabefeld, Typ oder Option. Nicht Erkanntes bleibt leer, kein erfundener Vorgabewert. Das Steuerelement liefert `ModelDoor::controls()`, zurückgelesen mit `ModelDoor::typed()`; die Zeilen ordnet `ListPage::form`. | [D-1250](NewConcept/90-decision-log.md) |
+| A9 | Eine Eigenschaft einer Gruppe (z. B. «nach WE testen», Standard-Lagerort, Gefahrgut) ist eine vererbte Knoten-Einstellung: anmelden über `taxmod_node_properties`, lesen über `ModelDoor::propertiesOf()`, setzen über `ModelDoor::setProperty()`. Keine Zweig-Tabelle in Einstellungen, kein eigenes Feld an jedem Satz. | [D-1259](NewConcept/90-decision-log.md) |
 
 ## 5 · Kachel
 

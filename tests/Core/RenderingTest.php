@@ -291,6 +291,38 @@ final class RenderingTest extends TestCase
         self::assertStringContainsString('BC547', $gewaehlt[0]->result->markup, 'der gewählte Satz steht mit seinem Wort da');
     }
 
+    /** D-1259: a property a module declares is set at a group, inherited below, overridden further down and dropped again. */
+    #[Test]
+    public function a_group_property_is_inherited_until_a_node_below_says_otherwise(): void
+    {
+        $material = $this->thing('Material');
+        $bauteile = $this->editor->createNode('Bauteile', $material->id);
+        $kabel    = $this->editor->createNode('Kabel', $bauteile->id);
+        $lose     = $this->editor->createNode('Lose', $this->branchRoot['model']->id);
+
+        $eigenschaften = new \Taxmod\Core\Model\Setting\NodeProperties(['test_after_inbound' => 'bool', 'default_place' => 'id', 'Bad Key' => 'bool']);
+        $editor        = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry(), properties: $eigenschaften);
+        $gilt          = fn (string $key): array => $eigenschaften->inherited(
+            [$this->nodes->find($material->id), $this->nodes->find($bauteile->id), $this->nodes->find($kabel->id), $this->nodes->find($lose->id)],
+            $this->settings->valuesNamed($key),
+            $key
+        );
+
+        $editor->put($material, 'test_after_inbound', '1');
+        $editor->put($kabel, 'test_after_inbound', '0');
+        $editor->put($bauteile, 'default_place', '4711');
+
+        self::assertSame([$material->id => true, $bauteile->id => true, $kabel->id => false, $lose->id => null], $gilt('test_after_inbound'));
+        self::assertSame([$material->id => null, $bauteile->id => 4711, $kabel->id => 4711, $lose->id => null], $gilt('default_place'));
+
+        $editor->put($kabel, 'test_after_inbound', '');
+        self::assertTrue($gilt('test_after_inbound')[$kabel->id], 'empty drops the own value, the group holds again');
+
+        self::assertFalse($eigenschaften->declares('Bad Key'));
+        $this->expectException(\Taxmod\Core\Exception\SettingDoesNotApply::class);
+        $editor->put($material, 'undeclared_property', '1');
+    }
+
     /** D-1255: a chosen record in a form opens in a new tab to complete it; nothing without a choice. */
     #[Test]
     public function a_chosen_record_in_a_form_opens_in_a_new_tab(): void

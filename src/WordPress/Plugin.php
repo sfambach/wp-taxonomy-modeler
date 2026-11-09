@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.41';
+    public const VERSION     = '0.2.42';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -60,6 +60,14 @@ final class Plugin
 
     /** `apply_filters(TYPED_VALUES_FILTER, [], $node, $submitted)`: what was typed into those controls, as raw values for write-data (D-1250). */
     public const TYPED_VALUES_FILTER = 'taxmod_typed_values';
+
+    /**
+     * `apply_filters(NODE_PROPERTIES_FILTER, [])`: the properties modules declare for groups of the model (D-1259), `key => label` for a
+     * yes/no or `key => ['label' => …, 'type' => 'id']` for a record or node id. A module adds its own, e.g.
+     * `$p['stock_test_after_inbound'] = __('Test after goods-in', 'taxmod-stock')`; read and set them through
+     * {@see ModelDoor::propertiesOf()} and {@see ModelDoor::setProperty()}.
+     */
+    public const NODE_PROPERTIES_FILTER = 'taxmod_node_properties';
 
     /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form', 'inline', 'pick_url'])`: the node chooser dialog for a module's page (D-1075); with `inline` the tree stands on the page and a click opens `pick_url`, `{id}` for the node (D-1175). */
     public const NODE_CHOOSER_FILTER = 'taxmod_node_chooser';
@@ -874,7 +882,9 @@ final class Plugin
             ShippedConverters::registry(),
             $this->changelog(),
             // ⚠️ *Damit eine gewählte Zusatzfunktion ihren Namen findet (D-845).*
-            ShippedAddons::registry()
+            ShippedAddons::registry(),
+            // D-1259: what modules declare for groups is settable at a node like any setting.
+            ModelDoor::propertyTypes()
         );
     }
 

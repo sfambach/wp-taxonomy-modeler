@@ -6,6 +6,7 @@ use Taxmod\Core\Addon\VariantAddon;
 use Taxmod\Core\Addon\VariantOfAddon;
 use Taxmod\Core\Exception\ModelDoorRefused;
 use Taxmod\Core\Model\RecordType;
+use Taxmod\Core\Model\Setting\NodeProperties;
 use Taxmod\Core\Model\Variants;
 use Taxmod\WordPress\Persistence\WpdbRecordRepository;
 
@@ -92,6 +93,67 @@ final class ModelDoor
     public function needingReview(array $records): array
     {
         return Persistence\RecordReviews::among($records);
+    }
+
+    /**
+     * The group properties modules have declared (D-1259): a label alone is a yes/no, `['label' => …, 'type' => 'id']` holds an id.
+     *
+     * @return array<string, array{label: string, type: string}>
+     */
+    public static function properties(): array
+    {
+        $out = [];
+
+        foreach ((array) apply_filters(Plugin::NODE_PROPERTIES_FILTER, []) as $key => $declared) {
+            $key   = sanitize_key((string) $key);
+            $label = is_array($declared) ? (string) ($declared['label'] ?? '') : (string) $declared;
+            $type  = is_array($declared) && ($declared['type'] ?? '') === NodeProperties::ID ? NodeProperties::ID : NodeProperties::YES_NO;
+
+            if ($key !== '' && $label !== '') {
+                $out[$key] = ['label' => $label, 'type' => $type];
+            }
+        }
+
+        return $out;
+    }
+
+    /** The declared properties as the core knows them: key → type. */
+    public static function propertyTypes(): NodeProperties
+    {
+        return new NodeProperties(array_map(static fn (array $p): string => $p['type'], self::properties()));
+    }
+
+    /**
+     * Whether a group property holds at each of these nodes — its own value or the nearest ancestor's, null where none says (D-1259).
+     * Two queries for any number of nodes (CD-7).
+     *
+     * @param list<int> $nodes
+     * @return array<int, bool|int|null> node id → value: a yes/no as bool, an id as int
+     */
+    public function propertiesOf(array $nodes, string $key): array
+    {
+        $found = (new Persistence\WpdbNodeRepository())->byIds(array_values(array_unique(array_map('intval', $nodes))));
+
+        return self::propertyTypes()->inherited(array_values($found), (new Persistence\WpdbSettingsRepository())->valuesNamed($key), $key);
+    }
+
+    /**
+     * Set a group property at one node: a bool for a yes/no, an int for an id; null drops the node's own value so it inherits
+     * again (D-1259). One act, undoable.
+     */
+    public function setProperty(int $node, string $key, bool|int|null $value): void
+    {
+        if (! isset(self::properties()[$key])) {
+            throw ModelDoorRefused::because('No module declared the property ' . $key . '.');
+        }
+
+        $this->nodes = [];
+        $this->trees = [];
+        $this->execute('taxmod/apply', ['changes' => [['op' => 'set_setting', 'node' => $node, 'attribute' => $key, 'value' => match (true) {
+            $value === null => '',
+            is_bool($value) => $value ? '1' : '0',
+            default         => (string) $value,
+        }]]]);
     }
 
     /**

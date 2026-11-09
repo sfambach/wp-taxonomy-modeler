@@ -50,6 +50,8 @@ final class SettingsEditor
         private readonly ?Changelog $changelog = null,
         /** ⚠️ *Damit eine Zusatzfunktion («preset», «range») einen Namen findet (D-845) — wie `renderers` und `converters`.* */
         private readonly ?\Taxmod\Core\Addon\AddonRegistry $addons = null,
+        /** D-1259: the yes/no properties modules declare for groups — settable at any node, never at an edge. */
+        private readonly ?\Taxmod\Core\Model\Setting\NodeProperties $properties = null,
     ) {
     }
 
@@ -83,7 +85,8 @@ final class SettingsEditor
         bool $holdHere = false,
     ): bool {
         $erklaert = $this->declarationOf($node, $attribut, $edge);
-        $wert     = $this->parse($erklaert, $characters);
+        // D-1259: an empty property is no word of its own — the node inherits again.
+        $wert     = $erklaert->declaredBy === \Taxmod\Core\Model\Setting\NodeProperties::class && trim($characters) === '' ? null : $this->parse($erklaert, $characters);
 
         if ($erklaert->type === AttributeType::Object) {
             return $this->putObject($node, $erklaert, $characters, $edge, $holdHere);
@@ -632,6 +635,10 @@ final class SettingsEditor
             }
         }
 
+        if ($edge === null && ($erklaert = $this->properties?->declaration($attribut)) !== null) {
+            return $erklaert;
+        }
+
         throw SettingDoesNotApply::named($attribut);
     }
 
@@ -642,7 +649,8 @@ final class SettingsEditor
      */
     private function carrierOf(Node $node, AttributeDeclaration $erklaert, ?Relation $edge): array
     {
-        if (Contracts::of($node->klasse)->attribute($erklaert->name) !== null || is_subclass_of($erklaert->declaredBy, \Taxmod\Core\Addon\Addon::class)) {
+        if (Contracts::of($node->klasse)->attribute($erklaert->name) !== null || is_subclass_of($erklaert->declaredBy, \Taxmod\Core\Addon\Addon::class)
+            || $erklaert->declaredBy === \Taxmod\Core\Model\Setting\NodeProperties::class) {
             return ['nodeId' => $node->id, 'objectId' => null];
         }
 
