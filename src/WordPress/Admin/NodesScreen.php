@@ -801,6 +801,17 @@ final class NodesScreen
     }
 
     /**
+     * The fields a field is composed of at this node — a computed «Bezeichnung» ([D-888](../../../docs/NewConcept/90-decision-log.md));
+     * the field's own id among them stands for the node's name. Empty when the field is typed by the user.
+     *
+     * @return list<int>
+     */
+    public function composedOf(Relation $relation, int $at): array
+    {
+        return $this->rendering->zusammensetzungAn($relation, $at);
+    }
+
+    /**
      * Die Worte dieser Sätze, wie die Suche sie zeigt — über eine gedachte Kante auf `$at`, ohne Feldwahl, also das erste Textfeld
      * je Satz; alle in einem Lauf (`CD-7`, [D-1209](../../../docs/NewConcept/90-decision-log.md)).
      *

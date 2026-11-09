@@ -215,6 +215,14 @@ $below = wp_get_ability('taxmod/apply')->execute(['changes' => [
 $foundBelow = is_array($below) ? wp_get_ability('taxmod/query')->execute(['node' => (int) ($below['refs']['branch'] ?? 0), 'search' => 'Child by name']) : null;
 check('a choice at the record\'s own node falls back to the name too', (string) ($foundBelow['records'][0]['word'] ?? '') === 'Child by name', wp_json_encode($foundBelow ?? $below));
 
+// D-1288: who points at a record, before it is removed; and what a computed field is made of.
+$refs = wp_get_ability('taxmod/referrers')->execute(['records' => [(int) $ref['alt']]]);
+check('referrers name the record pointing at it', in_array((int) $ref['kid'], array_column($refs['referrers'][(int) $ref['alt']] ?? [], 'record'), true), wp_json_encode($refs));
+$setl = wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_list', 'node' => $ref['h'], 'field' => $ref['name'], 'attribute' => 'summary_fields', 'members' => [$ref['name']]]]]);
+$read     = wp_get_ability('taxmod/read-node')->execute(['node' => $ref['h'], 'records' => false]);
+$composed = array_values(array_filter(is_array($read) ? $read['fields'] : [], static fn (array $f): bool => $f['relation_id'] === (int) $ref['name']))[0]['composed_of'] ?? null;
+check('read-node says what a computed field is made of', $composed === [(int) $ref['name']], wp_json_encode([$setl, $composed]));
+
 wp_set_current_user(0);
 $denied = $send('admin_post_' . NodesScreen::RECORD_CREATE_ACTION, ['node' => (string) $ref['h'], 'name' => 'x']);
 check('without the capability nothing is created', str_contains($denied, '"success":false'), $denied);

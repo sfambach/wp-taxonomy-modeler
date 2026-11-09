@@ -153,7 +153,7 @@ final class ModelAbilities
 
         wp_register_ability('taxmod/read-node', [
             'label'               => __('Read a node', 'taxmod'),
-            'description'         => __('One node with its children, its fields (relation id, name, target, kind, multiplicity, simple type) and its records with their values; total_records counts them all. Saves tokens: records false (structure only), limit and offset (a page of records), fields (only these relation ids), compact (values as {relation_id: value}, a list where a field holds several, "relation_id@locale" only off the neutral locale).', 'taxmod'),
+            'description'         => __('One node with its children, its fields (relation id, name, target, kind, multiplicity, simple type) and its records with their values; total_records counts them all. Saves tokens: records false (structure only), limit and offset (a page of records), fields (only these relation ids), compact (values as {relation_id: value}, a list where a field holds several, "relation_id@locale" only off the neutral locale). A field computed at this node (e.g. Bezeichnung) names its parts in composed_of — its own id there stands for the node name; a value written to it is overwritten.', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -328,6 +328,22 @@ final class ModelAbilities
             'meta'                => ['public' => true, 'annotations' => ['readonly' => false, 'destructive' => false, 'idempotent' => false]],
         ]);
 
+        // *D-1288: before a record is removed, who points at it — a pointer to the record itself survives the removal (D-1270).*
+        wp_register_ability('taxmod/referrers', [
+            'label'               => __('List referrers', 'taxmod'),
+            'description'         => __('For each given record id, every record that points at it: the pointing record, its node and the field (relation id). Read this before remove_record: a pointer to the record itself is not cleared by the removal.', 'taxmod'),
+            'category'            => self::CATEGORY,
+            'input_schema'        => [
+                'type'       => 'object',
+                'properties' => ['records' => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1], 'minItems' => 1, 'maxItems' => 500]],
+                'required'   => ['records'],
+                'additionalProperties' => false,
+            ],
+            'execute_callback'    => fn (mixed $input = null) => $this->guarded(fn (): array => $this->referrers(array_values(array_unique(array_map('intval', is_array($input['records'] ?? null) ? $input['records'] : []))))),
+            'permission_callback' => $this->allowedToRead(...),
+            'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
+        ]);
+
         // *Vor und nach jedem Umbau an einem Renderer: welche Beiträge zeigen welchen Satz ([D-1052](../../docs/NewConcept/90-decision-log.md)).*
         wp_register_ability('taxmod/block-usage', [
             'label'               => __('List record block usage', 'taxmod'),
@@ -338,6 +354,41 @@ final class ModelAbilities
             'permission_callback' => $this->allowed(...),
             'meta'                => ['public' => true, 'annotations' => ['readonly' => true, 'destructive' => false, 'idempotent' => true]],
         ]);
+    }
+
+    /**
+     * @param  list<int> $ids
+     * @return array{referrers: array<int, list<array{record: int, node: int, field: int}>>}
+     */
+    private function referrers(array $ids): array
+    {
+        $repository = new WpdbRecordRepository();
+        $found      = $ids === [] ? [] : $repository->referrersOfMany($ids);
+        $holders    = [];
+
+        foreach ($found as $values) {
+            foreach ($values as $value) {
+                $holders[$value->recordId] = true;
+            }
+        }
+
+        $nodes = [];
+
+        foreach ($holders === [] ? [] : $repository->byIds(array_keys($holders)) as $id => $record) {
+            $nodes[(int) $id] = (int) $record->nodeId;
+        }
+
+        $out = [];
+
+        foreach ($ids as $id) {
+            $out[$id] = [];
+
+            foreach ($found[$id] ?? [] as $value) {
+                $out[$id][] = ['record' => $value->recordId, 'node' => $nodes[$value->recordId] ?? 0, 'field' => $value->relationId];
+            }
+        }
+
+        return ['referrers' => $out];
     }
 
     /** @return array{count: int, rows: list<array<string, int|string>>, csv: string} */
@@ -504,7 +555,9 @@ final class ModelAbilities
                 'kind'         => $r->kind->value,
                 'multiplicity' => $r->multiplicity->value,
                 'type'         => $type?->value,
-            ] + ($addons === [] ? [] : ['addons' => $addons]);
+            ] + ($addons === [] ? [] : ['addons' => $addons])
+              // D-1288: a computed field says what it is made of here, or a write to it is silently overwritten.
+              + (($aus = $screen->composedOf($r, $id)) === [] ? [] : ['composed_of' => $aus]);
         }
 
         $records = $entries->recordsOf($id);
