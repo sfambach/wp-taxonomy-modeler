@@ -328,6 +328,26 @@ final class ModelDoor
     }
 
     /**
+     * Which records point at these records through any field, in one query (D-1268) — so a module can tell whether a record
+     * it is about to remove is still referred to anywhere, also by fields of other modules it does not know.
+     *
+     * @param list<int> $records
+     * @return array<int, list<int>> referred record id → the records pointing at it; a record nobody refers to is absent
+     */
+    public function referrersOf(array $records): array
+    {
+        $out = [];
+
+        foreach ($records === [] ? [] : (new WpdbRecordRepository())->referrersOfMany($records) as $referred => $values) {
+            foreach ($values as $value) {
+                $out[(int) $referred][$value->recordId] = true;
+            }
+        }
+
+        return array_map(array_keys(...), $out);
+    }
+
+    /**
      * The user records of these nodes, at most `$limit`, with the node each lives in.
      *
      * @param list<int> $nodes

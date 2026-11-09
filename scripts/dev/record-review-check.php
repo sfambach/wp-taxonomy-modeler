@@ -59,6 +59,9 @@ $built = wp_get_ability('taxmod/apply')->execute(['changes' => [
     ['op' => 'add_field', 'ref' => 'name', 'node' => '@h', 'target' => $text?->id ?? 0, 'name' => '__rv Name', 'kind' => 'composition', 'multiplicity' => '1..1'],
     ['op' => 'create_record', 'ref' => 'alt', 'node' => '@h'],
     ['op' => 'set_values', 'record' => '@alt', 'values' => ['@name' => 'Made in full']],
+    ['op' => 'add_field', 'ref' => 'maker', 'node' => '@h', 'target' => '@h', 'name' => '__rv Maker', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+    ['op' => 'create_record', 'ref' => 'kid', 'node' => '@h'],
+    ['op' => 'set_values', 'record' => '@kid', 'values' => ['@name' => 'Made by alt', '@maker' => '@alt']],
 ]]);
 
 check('the test node is built', is_array($built), is_wp_error($built) ? $built->get_error_message() : '');
@@ -121,6 +124,9 @@ $door = new ModelDoor();
 $door->markForReview([$ref['alt']]);
 check('a module marks a record it made with what it could derive', RecordReviews::among([$ref['alt']]) === [$ref['alt']]);
 RecordReviews::clear($ref['alt']);
+
+$pointing = $door->referrersOf([$ref['alt'], $ref['kid']]);
+check('the door names who points at a record, through any field', $pointing === [$ref['alt'] => [$ref['kid']]], wp_json_encode($pointing));
 
 echo "\n== saving the full form clears ==\n";
 
