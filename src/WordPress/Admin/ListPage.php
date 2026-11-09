@@ -485,8 +485,76 @@ final class ListPage
      */
     public static function messages(): string
     {
+        $failed = self::takeFailure();
+
         return '<span class="taxmod-messages" role="status" aria-live="polite"><button type="button" class="taxmod-messages-last" aria-expanded="false"></button>'
-            . '<ol class="taxmod-messages-list" hidden></ol></span>';
+            . '<ol class="taxmod-messages-list" hidden></ol></span>'
+            . ($failed === '' ? '' : '<div class="notice notice-error"><p>' . esc_html($failed) . '</p></div>');
+    }
+
+    /** Transient prefix: the failure of the last act of this user, shown once on the page it returns to (D-1254). */
+    private const FAILURE = 'taxmod_act_failure_';
+
+    /**
+     * Run an act of an admin-post or admin-ajax handler so that a failure never ends on an empty page (D-1254): any exception
+     * becomes a message in the message field of the page the act came from. `$work` returns where to go on success.
+     *
+     * ⚠️ *His word, 2026-11-09, at eBay's «Shipped» ending on an empty page: «fehler dürfen auftreten sollten wir aber abfangen
+     * fehler meldung erstellen und rücksprung link bieten».*
+     *
+     * @param callable(): string $work the address to go to afterwards; empty for the page the act came from
+     */
+    public static function act(callable $work, string $back = ''): never
+    {
+        try {
+            $to = $work();
+        } catch (\Throwable $e) {
+            // The cause belongs in the log; the person gets the message and the way back.
+            error_log('Taxmod act failed: ' . $e::class . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            self::fail($e->getMessage(), $back);
+        }
+
+        wp_safe_redirect($to !== '' ? $to : self::backTo($back));
+        exit;
+    }
+
+    /**
+     * End an act with a message and a way back (D-1254): back to the page it came from, the message in its message field; where
+     * a page was already sent, a short error page with a «Back» link instead of an empty one.
+     */
+    public static function fail(string $message, string $back = ''): never
+    {
+        $message = $message !== '' ? $message : __('The action could not be completed.', 'taxmod');
+        $to      = self::backTo($back);
+
+        if (! headers_sent() && get_current_user_id() > 0) {
+            set_transient(self::FAILURE . get_current_user_id(), mb_substr($message, 0, 500), 5 * MINUTE_IN_SECONDS);
+            wp_safe_redirect($to);
+            exit;
+        }
+
+        wp_die(esc_html($message), esc_html__('Taxonomy Modeller', 'taxmod'), ['response' => 200, 'link_url' => esc_url($to), 'link_text' => esc_html__('Back', 'taxmod')]);
+    }
+
+    private static function backTo(string $back): string
+    {
+        $to = $back !== '' ? $back : (string) wp_get_referer();
+
+        return $to !== '' ? $to : admin_url();
+    }
+
+    private static function takeFailure(): string
+    {
+        $user = get_current_user_id();
+        $text = $user > 0 ? get_transient(self::FAILURE . $user) : false;
+
+        if (! is_string($text) || $text === '') {
+            return '';
+        }
+
+        delete_transient(self::FAILURE . $user);
+
+        return $text;
     }
 
     /**
