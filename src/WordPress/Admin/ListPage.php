@@ -44,6 +44,12 @@ final class ListPage
     /** User meta: list id => the non-fixed column keys the user chose. */
     private const COLUMNS_META = 'taxmod_list_columns';
 
+    /** The admin-ajax action that keeps how a side tree was left: its open branches (his wish 2026-11-09). */
+    public const TREE_STATE_ACTION = 'taxmod_tree_state';
+
+    /** User meta: tree id => `chosen` (the branch last opened) and `open` (the branches folded open). */
+    private const TREE_STATE_META = 'taxmod_tree_state';
+
     /**
      * The user's column choice for a list, or null for its starting set.
      *
@@ -115,6 +121,99 @@ final class ListPage
     }
 
     /** Whether the request asks a list waiting for a search to show all of it (D-1147). */
+    /**
+     * How the user left a side tree: the branch last chosen and the branches open.
+     *
+     * @return array{chosen: int, open: list<int>}
+     */
+    public static function treeState(string $tree): array
+    {
+        $all   = get_user_meta(get_current_user_id(), self::TREE_STATE_META, true);
+        $state = is_array($all) && isset($all[$tree]) && is_array($all[$tree]) ? $all[$tree] : [];
+
+        return ['chosen' => absint($state['chosen'] ?? 0), 'open' => array_values(array_filter(array_map('absint', (array) ($state['open'] ?? []))))];
+    }
+
+    /**
+     * The branch a side tree shows: the one the request names, kept for next time — or, when it names none, the one he
+     * left. *His word 2026-11-09: «hier fange ich immer neu an … der zuletzt göffnete ast und das offenen äste gespeichert».*
+     */
+    public static function treeChosen(string $tree, int $chosen): int
+    {
+        if ($chosen > 0) {
+            self::keepTreeState($tree, ['chosen' => $chosen]);
+
+            return $chosen;
+        }
+
+        return self::treeState($tree)['chosen'];
+    }
+
+    /**
+     * A tree in the left column, the same for every module (architecture thread 2026-11-09, D-1186): the title, the page's
+     * own buttons, «Expand all» and «Collapse all», then the tree. The open branches are kept per user and set again when
+     * he comes back; `assets/side-tree.js` does both.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   L["page load"] --> S["stored open branches"] --> T["tree drawn open as left"]
+     *   F["fold, expand all, collapse all"] --> K["kept in user meta"]
+     * ```
+     *
+     * @param string $chooser the tree, escaped HTML — the modeller's node or record chooser drawn inline
+     * @param string $buttons escaped HTML beside the title, e.g. «+ New place»
+     * @param string $class   a class of the module's own for the box
+     */
+    public static function sideTree(string $tree, string $title, string $chooser, string $buttons = '', string $class = ''): string
+    {
+        wp_enqueue_script(Plugin::SIDE_TREE_SCRIPT);
+
+        $tool = static fn (string $act, string $icon, string $word): string => '<button type="button" class="button button-small taxmod-icon-button taxmod-side-tree-' . $act . '" title="' . esc_attr($word) . '">'
+            . \Taxmod\Core\Renderer\IconMarkup::dashicon($icon, $word) . '</button>';
+
+        return '<div class="taxmod-side-tree' . ($class === '' ? '' : ' ' . esc_attr($class)) . '" data-taxmod-tree="' . esc_attr($tree) . '"'
+            . ' data-taxmod-tree-open="' . esc_attr((string) wp_json_encode(self::treeState($tree)['open'])) . '"'
+            . ' data-taxmod-tree-save="' . esc_url(add_query_arg(['action' => self::TREE_STATE_ACTION, '_ajax_nonce' => wp_create_nonce(self::TREE_STATE_ACTION)], admin_url('admin-ajax.php'))) . '">'
+            . '<div class="taxmod-side-tree-head"><p class="taxmod-shell-title">' . esc_html($title) . '</p>'
+            . '<span class="taxmod-side-tree-tools">' . $buttons . $tool('expand', 'arrow-down-alt2', __('Expand all', 'taxmod')) . $tool('collapse', 'arrow-up-alt2', __('Collapse all', 'taxmod')) . '</span></div>'
+            . $chooser . '</div>';
+    }
+
+    /** admin-ajax: logged in → nonce → validate → sanitize → keep the open branches of one side tree. */
+    public static function saveTreeState(): void
+    {
+        if (! current_user_can('read')) {
+            wp_send_json_error(['message' => __('Not allowed.', 'taxmod')], 403);
+        }
+
+        check_ajax_referer(self::TREE_STATE_ACTION);
+
+        $tree = sanitize_key((string) wp_unslash($_POST['tree'] ?? ''));
+
+        if ($tree === '') {
+            wp_send_json_error(['message' => __('No tree named.', 'taxmod')], 400);
+        }
+
+        self::keepTreeState($tree, ['open' => array_values(array_unique(array_filter(array_map('absint', (array) wp_unslash($_POST['open'] ?? [])))))]);
+        wp_send_json_success();
+    }
+
+    /** Forgets how every side tree was left (Benutzereinstellungen). */
+    public static function resetTreeStates(): void
+    {
+        delete_user_meta(get_current_user_id(), self::TREE_STATE_META);
+    }
+
+    /** @param array{chosen?: int, open?: list<int>} $change */
+    private static function keepTreeState(string $tree, array $change): void
+    {
+        $all = get_user_meta(get_current_user_id(), self::TREE_STATE_META, true);
+        $all = is_array($all) ? $all : [];
+
+        $all[$tree] = $change + (is_array($all[$tree] ?? null) ? $all[$tree] : []);
+        update_user_meta(get_current_user_id(), self::TREE_STATE_META, $all);
+    }
+
     /** Forgets every list's chosen columns of the current user (D-1232, his Benutzereinstellungen). */
     public static function resetColumns(): void
     {

@@ -2724,3 +2724,30 @@ pre.taxmod-code {
 		min-width: 0;
 	}
 }
+
+/* ListPage::sideTree() — the tree in the left column: title, the page's buttons and expand/collapse all in one line. */
+.taxmod-side-tree-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	margin: 0 8px 6px 0;
+	padding-left: 12px;
+}
+
+.taxmod-side-tree-head .taxmod-shell-title {
+	margin: 0;
+}
+
+.taxmod-side-tree-tools {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.wp-core-ui .taxmod-side-tree-tools .button-small {
+	padding: 0 6px;
+	font-size: 12px;
+	white-space: nowrap;
+}

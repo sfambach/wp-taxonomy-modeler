@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.34';
+    public const VERSION     = '0.2.35';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -77,6 +77,9 @@ final class Plugin
 
     /** D-1227: the script handle of the one table head (sort, group, filter) that `ListPage::table()` enqueues. */
     public const LIST_HEAD_SCRIPT = 'taxmod-list-head';
+
+    /** The script of `ListPage::sideTree()`: expand and collapse all, and the open branches kept per user. */
+    public const SIDE_TREE_SCRIPT = 'taxmod-side-tree';
 
     /** Was die Aktivierung abbrach — eine Option, weil der Hinweis erst im nächsten Aufruf erscheint. */
     public const ACTIVATION_FAILURE = 'taxmod_activation_failure';
@@ -259,6 +262,7 @@ final class Plugin
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
         add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
         add_action('wp_ajax_' . ListPage::DETAILS_ACTION, [ListPage::class, 'details']);
+        add_action('wp_ajax_' . ListPage::TREE_STATE_ACTION, [ListPage::class, 'saveTreeState']);
 
         // ⚠️ **Der erste Rückweg vom Rand in den Kern** ([D-666](../../docs/NewConcept/90-decision-log.md),
         // [D-627](../../docs/NewConcept/90-decision-log.md)) — *gemessen 0 REST-Routen und 0 AJAX,
@@ -720,9 +724,17 @@ final class Plugin
         \_WP_Editors::wp_link_dialog();
     }
 
-    /** D-1227: sort, group and filter on every list, the script `ListPage::table()` asks for. */
+    /** D-1227: sort, group and filter on every list, the script `ListPage::table()` asks for; beside it the side tree's (`ListPage::sideTree()`). */
     public function registerListHead(): void
     {
+        wp_register_script(
+            self::SIDE_TREE_SCRIPT,
+            plugins_url('assets/side-tree.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            [],
+            (string) (@filemtime($this->path('assets/side-tree.js')) ?: self::VERSION),
+            true
+        );
+
         wp_register_script(
             self::LIST_HEAD_SCRIPT,
             plugins_url('assets/list-head.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
