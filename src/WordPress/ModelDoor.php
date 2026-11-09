@@ -138,6 +138,17 @@ final class ModelDoor
     }
 
     /**
+     * The values these nodes carry themselves, without inheritance (D-1259) — a form shows «own» apart from «as above». One query.
+     *
+     * @param list<int> $nodes
+     * @return array<int, bool|int> node id → own value; nodes without one are left out
+     */
+    public function ownPropertiesOf(array $nodes, string $key): array
+    {
+        return array_intersect_key(self::propertyTypes()->own((new Persistence\WpdbSettingsRepository())->valuesNamed($key), $key), array_flip(array_map('intval', $nodes)));
+    }
+
+    /**
      * Set a group property at one node: a bool for a yes/no, an int for an id; null drops the node's own value so it inherits
      * again (D-1259). One act, undoable.
      */

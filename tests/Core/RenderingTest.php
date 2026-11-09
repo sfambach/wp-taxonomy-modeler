@@ -314,6 +314,7 @@ final class RenderingTest extends TestCase
 
         self::assertSame([$material->id => true, $bauteile->id => true, $kabel->id => false, $lose->id => null], $gilt('test_after_inbound'));
         self::assertSame([$material->id => null, $bauteile->id => 4711, $kabel->id => 4711, $lose->id => null], $gilt('default_place'));
+        self::assertSame([$material->id => true, $kabel->id => false], $eigenschaften->own($this->settings->valuesNamed('test_after_inbound'), 'test_after_inbound'), 'own values, apart from inherited ones');
 
         $editor->put($kabel, 'test_after_inbound', '');
         self::assertTrue($gilt('test_after_inbound')[$kabel->id], 'empty drops the own value, the group holds again');

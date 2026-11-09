@@ -58,13 +58,7 @@ final class NodeProperties
      */
     public function inherited(array $nodes, array $rows, string $key): array
     {
-        $own = [];
-
-        foreach ($rows as $row) {
-            if ($row->klasse === self::class && $row->attribut === $key && $row->aktiv && $row->relationId === null && $row->nodeId !== null && $row->value->int !== null) {
-                $own[$row->nodeId] = ($this->types[$key] ?? self::YES_NO) === self::ID ? $row->value->int : $row->value->int === 1;
-            }
-        }
+        $own = $this->own($rows, $key);
 
         $out = [];
 
@@ -81,5 +75,24 @@ final class NodeProperties
         }
 
         return $out;
+    }
+
+    /**
+     * The values nodes carry themselves, without inheritance — so a form can tell «own yes» from «yes from above».
+     *
+     * @param list<SettingsValue> $rows the rows named after the key, from anywhere in the model
+     * @return array<int, bool|int> node id → own value; nodes without one are left out
+     */
+    public function own(array $rows, string $key): array
+    {
+        $own = [];
+
+        foreach ($rows as $row) {
+            if ($row->klasse === self::class && $row->attribut === $key && $row->aktiv && $row->relationId === null && $row->nodeId !== null && $row->value->int !== null) {
+                $own[$row->nodeId] = ($this->types[$key] ?? self::YES_NO) === self::ID ? $row->value->int : $row->value->int === 1;
+            }
+        }
+
+        return $own;
     }
 }

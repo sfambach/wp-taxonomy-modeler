@@ -76,6 +76,12 @@ check('set at the group, it holds below', $test[$ref['m']] === true && $test[$re
 check('a node below can say otherwise', $test[$ref['k']] === false, wp_json_encode($test));
 check('an id is inherited as a number', $place === [$ref['m'] => null, $ref['b'] => 4711, $ref['k'] => 4711], wp_json_encode($place));
 
+$door->setProperty($ref['b'], 'np_test_after_inbound', true);
+$own = $door->ownPropertiesOf($all, 'np_test_after_inbound');
+ksort($own);
+check('an own value equal to the inherited one is still told apart', $own === [$ref['m'] => true, $ref['b'] => true, $ref['k'] => false], wp_json_encode($door->ownPropertiesOf($all, 'np_test_after_inbound')));
+$door->setProperty($ref['b'], 'np_test_after_inbound', null);
+
 $door->setProperty($ref['k'], 'np_test_after_inbound', null);
 check('null drops the own value, the group holds again', $door->propertiesOf([$ref['k']], 'np_test_after_inbound') === [$ref['k'] => true]);
 
