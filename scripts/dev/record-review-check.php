@@ -124,6 +124,11 @@ check('no note on a reviewed record', NodesScreen::reviewNote($ref['alt']) === '
 $editor = (string) apply_filters(\Taxmod\WordPress\Plugin::RECORD_EDITOR_FILTER, '', $quick, admin_url());
 check('a module\'s record form tells the dialog where to create', str_contains($editor, 'data-record-create='), substr($editor, -200));
 
+// D-1274: a chooser among a module's field controls brings its dialog body with it, not only a stub for a template that page lacks.
+$controls = (array) apply_filters(\Taxmod\WordPress\Plugin::FIELD_CONTROLS_FILTER, [], $ref['h'], [$ref['maker']], 'rv', 'rv-form');
+$chooser  = (string) ($controls[$ref['maker']] ?? '');
+check('a module\'s record chooser lists the records in its dialog', str_contains($chooser, 'Made in full') && ! str_contains($chooser, 'taxmod-record-stub'), substr($chooser, 0, 300));
+
 $door = new ModelDoor();
 $door->markForReview([$ref['alt']]);
 check('a module marks a record it made with what it could derive', RecordReviews::among([$ref['alt']]) === [$ref['alt']]);

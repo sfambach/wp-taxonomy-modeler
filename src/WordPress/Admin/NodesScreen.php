@@ -429,7 +429,11 @@ final class NodesScreen
 
         $out = [];
 
-        foreach ($this->rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId) as $field) {
+        // D-1274: on a module's page there is neither the shared dialog template nor the shared tree, so the controls draw both
+        // themselves, like the record editor (D-1135); with a stub only, the manufacturer dialog showed nothing but «—».
+        $rendering = $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withRecordCreation(...$this->recordCreation());
+
+        foreach ($rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId) as $field) {
             $out[$field->relation->id] = $field->result->markup;
         }
 
