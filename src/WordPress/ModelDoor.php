@@ -402,6 +402,21 @@ final class ModelDoor
     }
 
     /**
+     * D-1291: the words of these fields of these records, as the modeller's screen shows them — a price with its unit — in one
+     * run (CD-7). A module shows them as they are and formats no value itself.
+     *
+     * @param list<int> $records
+     * @param list<int> $relations
+     * @return array<int, array<int, string>> relation id → record id → word
+     */
+    public function fieldWords(array $records, array $relations): array
+    {
+        $answer = $records === [] || $relations === [] ? [] : apply_filters(Plugin::FIELD_WORDS_FILTER, [], $records, $relations);
+
+        return is_array($answer) ? $answer : [];
+    }
+
+    /**
      * The add-on names chosen at these fields, asked of the modeller's one resolver (D-1208).
      *
      * @param list<int> $relations

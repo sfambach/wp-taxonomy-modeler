@@ -118,6 +118,10 @@ $pruefe(str_contains($mit, '>Vorgewählt nach Bauform: SMD</span>') && str_conta
 global $wpdb;
 $feld = $wpdb->get_row("SELECT id, to_node_id FROM " . \Taxmod\WordPress\Persistence\Schema::table('relations') . " WHERE to_node_id > 0 ORDER BY id LIMIT 1", ARRAY_A);
 $pruefe(is_array($feld) && (new \Taxmod\WordPress\ModelDoor())->targetOf((int) $feld['id']) === (int) $feld['to_node_id'] && (new \Taxmod\WordPress\ModelDoor())->targetOf(PHP_INT_MAX) === 0, 'D-1284: ModelDoor::targetOf answers the target of a field, 0 for an unknown one');
+// D-1291: a module asks the modeller's words for fields of records through the door, one answer per field and record.
+$einSatz = (int) $wpdb->get_var("SELECT id FROM " . \Taxmod\WordPress\Persistence\Schema::table('records') . " ORDER BY id LIMIT 1");
+$worte   = (new \Taxmod\WordPress\ModelDoor())->fieldWords([$einSatz], [(int) $feld['id']]);
+$pruefe(is_array($worte) && (new \Taxmod\WordPress\ModelDoor())->fieldWords([], [1]) === [] && has_filter(\Taxmod\WordPress\Plugin::FIELD_WORDS_FILTER), 'D-1291: ModelDoor::fieldWords asks the one renderer, nothing for nothing');
 // D-1285: the tree dialog's search asks the same record search as the quick field, and keeps a clicked group's records.
 $js = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.js');
 $pruefe(preg_match("/function saetzeSuchen\\(.{0,400}data-record-search/s", $js) === 1 && str_contains($js, "saetzeSuchen( dialog, this )") && str_contains($js, "getAttribute( 'data-search-hits' ) === '1'"), 'D-1285: the tree dialog searches records through data-record-search and clears only its own hits');

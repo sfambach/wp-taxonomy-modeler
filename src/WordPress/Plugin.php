@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.58';
+    public const VERSION     = '0.2.59';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -88,6 +88,9 @@ final class Plugin
 
     /** Answers `ModelDoor` which add-ons are chosen at a list of fields (D-1208): relation ids in, relation id → names out. */
     public const FIELD_ADDONS_FILTER = 'taxmod_field_addons';
+
+    /** D-1291: answers `ModelDoor` the words of fields of records, as the screen shows them (a price with its unit). */
+    public const FIELD_WORDS_FILTER = 'taxmod_field_words';
 
     /** D-1227: the script handle of the one table head (sort, group, filter) that `ListPage::table()` enqueues. */
     public const LIST_HEAD_SCRIPT = 'taxmod-list-head';
@@ -144,6 +147,11 @@ final class Plugin
         add_filter(self::FIELD_ADDONS_FILTER, static fn (array $answer, array $relations): array => $plugin->settingsResolver()->addonNamesAt(
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
         ), 10, 2);
+        // D-1291: a module's door asks the words of fields, from the one renderer — «0,044 €», never its own number format.
+        add_filter(self::FIELD_WORDS_FILTER, static fn (array $answer, array $records, array $relations): array => $plugin->screen()->fieldTexts(
+            array_values(array_map('intval', $records)),
+            array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
+        ), 10, 3);
         \Taxmod\WordPress\Printing\LabelPreview::boot();
         add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
 
