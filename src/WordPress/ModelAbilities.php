@@ -65,6 +65,7 @@ final class ModelAbilities
     private const OP_HELP = [
         'create_node' => '{name, parent, class?}',
         'rename_node' => '{node, name}',
+        'set_class' => '{node, class} — switches the node to another class, as the page does; refused unless the parent allows it and it allows every child; settings the new class does not declare fall (D-733)',
         'trash_node' => '{node}',
         'move_node' => '{node, parent} — hangs the node and its subtree under another parent',
         'add_field' => '{node, target, name?, kind?, multiplicity?}',
@@ -215,7 +216,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'set_label', 'set_addons']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'set_label', 'set_addons']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -879,6 +880,12 @@ final class ModelAbilities
 
             case 'rename_node':
                 return $editor->rename($at('node'), $name)->id;
+
+            case 'set_class':
+                // ⚠️ *Gebaut, weil eine Konstante Unterarten bekommen soll und die Klasse bisher nur in der Maske wechselte (D-1297).*
+                $klasse = $this->nodeClass((string) ($change['class'] ?? '')) ?? throw new \InvalidArgumentException('set_class needs a class.');
+
+                return $screen->changeClass($this->node($at('node'))->id, $klasse)->id;
 
             case 'trash_node':
                 return $editor->moveToTrash($at('node'))->id;

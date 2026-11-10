@@ -223,6 +223,16 @@ $read     = wp_get_ability('taxmod/read-node')->execute(['node' => $ref['h'], 'r
 $composed = array_values(array_filter(is_array($read) ? $read['fields'] : [], static fn (array $f): bool => $f['relation_id'] === (int) $ref['name']))[0]['composed_of'] ?? null;
 check('read-node says what a computed field is made of', $composed === [(int) $ref['name']], wp_json_encode([$setl, $composed]));
 
+$wahl  = wp_get_ability('taxmod/apply')->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'w', 'name' => '__rv Arten', 'parent' => $model->id, 'class' => 'Choice'],
+    ['op' => 'create_node', 'ref' => 'k', 'name' => '__rv Verbrauch', 'parent' => '@w', 'class' => 'Constant'],
+    ['op' => 'set_class', 'node' => '@k', 'class' => 'Choice'],
+    ['op' => 'create_node', 'ref' => 'u', 'name' => '__rv Verlust', 'parent' => '@k', 'class' => 'Constant'],
+]]);
+check('set_class lets a constant take sub-kinds (D-1297)', is_array($wahl) && (new WpdbNodeRepository())->byId((int) $wahl['refs']['k'])->klasse === \Taxmod\Core\Model\NodeClass\Choice::class, is_wp_error($wahl) ? $wahl->get_error_message() : '');
+$zurueck = is_array($wahl) ? wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_class', 'node' => (int) $wahl['refs']['k'], 'class' => 'Gibtsnicht']]]) : null;
+check('set_class refuses an unknown class', is_wp_error($zurueck), wp_json_encode($zurueck));
+
 wp_set_current_user(0);
 $denied = $send('admin_post_' . NodesScreen::RECORD_CREATE_ACTION, ['node' => (string) $ref['h'], 'name' => 'x']);
 check('without the capability nothing is created', str_contains($denied, '"success":false'), $denied);

@@ -811,6 +811,15 @@ final class NodesScreen
         return $this->rendering->zusammensetzungAn($relation, $at);
     }
 
+    /** D-733 as the page does it — the class first, then the settings the new contract does not declare fall (D-1297). */
+    public function changeClass(int $nodeId, string $klasse): \Taxmod\Core\Model\Node
+    {
+        $gewechselt = $this->editor->changeClass($nodeId, $klasse);
+        $this->attributes?->dropWhatDoesNotApply($gewechselt);
+
+        return $gewechselt;
+    }
+
     /**
      * Die Worte dieser Sätze, wie die Suche sie zeigt — über eine gedachte Kante auf `$at`, ohne Feldwahl, also das erste Textfeld
      * je Satz; alle in einem Lauf (`CD-7`, [D-1209](../../../docs/NewConcept/90-decision-log.md)).
