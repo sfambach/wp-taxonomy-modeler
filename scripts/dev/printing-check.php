@@ -134,6 +134,9 @@ $wertSatz = (int) (is_array($gefunden) ? ($gefunden['records'][0]['id'] ?? 0) : 
 $tuer     = (new \Taxmod\WordPress\ModelDoor())->labelValues($wertSatz, ['node', '__kein Feld__']);
 wp_set_current_user($vorher);
 $pruefe(($tuer['unknown'] ?? null) === ['__kein Feld__'] && isset($tuer['values']['node']) && $tuer['node'] > 0, 'D-1295: ModelDoor::labelValues answers the node name and names unknown fields ');
+// D-1160: the record's words reach the label on every path, not only through admin-post (the print-label ability had none).
+$leser = (new ReflectionProperty(\Taxmod\WordPress\Printing\LabelButton::class, 'recordValues'))->getValue();
+$pruefe($leser instanceof \Closure, 'D-1160: the label reads record values outside admin-post too (ability, REST)');
 // D-1294: a finished job reaches the service as it was queued; something that is not a PDF is refused.
 \Taxmod\WordPress\Printing\PrintJobSchema::upgrade();
 $fertig = "%PDF-1.4\n%check D-1294\n";

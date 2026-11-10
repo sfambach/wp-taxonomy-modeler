@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.64';
+    public const VERSION     = '0.2.65';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -141,11 +141,12 @@ final class Plugin
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
         $labelValues = static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields);
+        // ⚠️ *Set at boot, not only for admin-post: the print-label ability and REST answered with code, title and subtitle alone,
+        // because neither path set it (D-1160; found by the labels thread on 2026-11-10). A closure only, nothing is read here.*
+        \Taxmod\WordPress\Printing\LabelButton::useRecordValues($labelValues);
         // D-1295: the labels module asks the same words through the door (D-1292).
         add_filter(self::LABEL_VALUES_FILTER, static fn (mixed $answer, int $record, array $fields): array => $labelValues($record, array_values(array_map('strval', $fields))), 10, 3);
-        add_filter(self::LABEL_BUTTON_FILTER, static function (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []) use ($labelValues): string {
-            \Taxmod\WordPress\Printing\LabelButton::useRecordValues($labelValues);
-
+        add_filter(self::LABEL_BUTTON_FILTER, static function (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []): string {
             return \Taxmod\WordPress\Printing\LabelButton::render($prefix, $id, $title, $subtitle, $copies, $template);
         }, 10, 7);
         // D-1208: a module's door asks which fields are «Variante von» and «Je Variante», from the one resolver.
@@ -169,7 +170,6 @@ final class Plugin
         // constants compiled about 1 MB of admin screens on every page view, and fambach.net has no opcode cache.*
         if (self::handlesAdminActions()) {
             self::wireAdminActions($plugin);
-            \Taxmod\WordPress\Printing\LabelButton::useRecordValues($labelValues);
             \Taxmod\WordPress\Printing\LabelButton::wireActions();
         }
         // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
