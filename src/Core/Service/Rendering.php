@@ -929,6 +929,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     /** Ob die Seite den einen Auswahlbaum zeichnet — dann öffnet ein ganzer Knotenbaum ihn, statt einen eigenen zu tragen (D-815). */
     private bool $sharedPicker = false;
 
+    /** @var array<int, true> Kanten, an denen ein Modulformular ausdrücklich eine Wahl verlangt (D-1298). */
+    private array $wahlVerlangt = [];
+
     /**
      * Der Abschnitt einer Einstellung: wer sie erklärt — ein Schlüssel, das Wort macht der Rand (`AR-2`). Sein Wort: «rules als kategorie
      * und dann darunter jump field».
@@ -1294,6 +1297,21 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     }
 
     /** Dieselbe Zeichnung, aber jeder Knotenbaum bringt seinen eigenen Wähler mit — für ein Stück auf einer fremden Seite, die den gemeinsamen nicht zeichnet (D-1135). */
+    /**
+     * Diese Kanten zeichnen beim Bearbeiten den Wähler, auch wo die Kette `reference` gewählt hat — ein Modulformular hat einen Ast
+     * zum Wählen genannt ([D-1298](../../../docs/NewConcept/90-decision-log.md)). Gemessen: «Art» am Vorgang zielt unter
+     * `Constants`, das dort `reference` erbt, und zeigte im Formular nur einen leeren Namen.
+     *
+     * @param list<int> $relationIds
+     */
+    public function withChoiceAt(array $relationIds): static
+    {
+        $kopie               = clone $this;
+        $kopie->wahlVerlangt = array_fill_keys($relationIds, true);
+
+        return $kopie;
+    }
+
     public function withoutSharedPicker(): static
     {
         $kopie               = clone $this;
@@ -2219,7 +2237,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             // sein Befund an Kondensatoren: «bauform nicht auswählbar und condensator typ fehlt» — das Ziel trug den Renderer `form`, der
             // keinen Knotenverweis zeichnet; übrig blieb `reference`, und der zeigt nur einen Namen. Wer `reference` ausdrücklich wählt
             // (Base units), behält ihn.*
-            if ($istWahl && $moeglich !== [] && $renderer instanceof ReferenceRenderer && $this->chosenRendererName($settings) !== ReferenceRenderer::NAME) {
+            if ($istWahl && $moeglich !== [] && $renderer instanceof ReferenceRenderer && ($this->chosenRendererName($settings) !== ReferenceRenderer::NAME || isset($this->wahlVerlangt[$relation->id]))) {
                 $renderer = $this->renderers->byName(ChooserRenderer::NAME);
                 // *Ein Baum im Formular nimmt die halbe Seite ein; er öffnet sich als Dialog wie der Satzwähler. Eine flache Liste bleibt ein Auswahlfeld.*
                 $settings = $this->hatEnkel($relation->toNodeId) ? [...$settings, ...ChooserRenderer::asDialog()] : $settings;

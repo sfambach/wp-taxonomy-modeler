@@ -70,7 +70,7 @@ check('an empty field is left out', ! isset($door->typed($ref['k'], [$ref['count
 check('a field the node does not have is left out', ! isset($typed[999]));
 
 $arten = wp_get_ability('taxmod/apply')->execute(['changes' => [
-    ['op' => 'create_node', 'ref' => 'a', 'name' => '__fc Arten', 'parent' => wp_get_ability('taxmod/read-tree')->execute(['depth' => 1])['root'], 'class' => 'Choice'],
+    ['op' => 'create_node', 'ref' => 'a', 'name' => '__fc Arten', 'parent' => 410, 'class' => 'Choice'],
     ['op' => 'create_node', 'ref' => 'ein', 'name' => '__fc Eingang', 'parent' => '@a', 'class' => 'Constant'],
     ['op' => 'create_node', 'ref' => 'v', 'name' => '__fc Verbrauch', 'parent' => '@a', 'class' => 'Choice'],
     ['op' => 'create_node', 'ref' => 'bb', 'name' => '__fc Betriebsbedarf', 'parent' => '@v', 'class' => 'Constant'],

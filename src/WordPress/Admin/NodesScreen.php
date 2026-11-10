@@ -443,7 +443,10 @@ final class NodesScreen
 
         // D-1274: on a module's page there is neither the shared dialog template nor the shared tree, so the controls draw both
         // themselves, like the record editor (D-1135); with a stub only, the manufacturer dialog showed nothing but «—».
-        $rendering = $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withRecordCreation(...$this->recordCreation());
+        // D-1298: a module's form asks for these fields to fill them in, so a node reference is a choice here even where the chain chose
+        // `reference` for showing it.
+        $rendering = $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withRecordCreation(...$this->recordCreation())
+            ->withChoiceAt(array_map(static fn (Relation $r): int => $r->id, $felder));
 
         foreach ($rendering->fieldsFor($felder, $held, Purpose::Edit, $prefix, $this->localeFromRequest(), Level::Admin, true, $formId) as $field) {
             $out[$field->relation->id] = $field->result->markup;
