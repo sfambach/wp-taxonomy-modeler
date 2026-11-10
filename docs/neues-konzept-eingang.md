@@ -1299,3 +1299,10 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Anlass, sein Wort:** *«Haben die Dienststecker groß rund eigentlich eine Gruppe irgendwie, zu der sie zusammengehören?»*, *«Natürlich nicht nur die Stecker, auch die Buchsen dazu.»*, dann *«wir könnten später noch entscheiden, ob wir bei Steckverbinder vielleicht noch einen Unterknoten dazu machen, aber sehe ich jetzt nicht. Lassen wir erstmal weg. Behalten wir mal im Hinterkopf.»*
 - **Gemessen:** alle Steckverbinder liegen flach unter `Steckverbinder` 149000104423; die Familie sagt heute der Steckertyp «DIN rund» 149000104369. Der Ali-Thread hat dazu die Serie «DIN rund (IEC 60130-9)» 68248 an 20 Sätze gesetzt — ob sie bleibt, liegt als Karte bei ihm (Steckertyp und Serie sagten dasselbe; bei JST XH wurde die Serie deshalb entfernt, [D-1286](NewConcept/90-decision-log.md)).
 - **Offen:** ob ein Unterknoten je Familie kommt. Dagegen spricht, dass er dasselbe sagte wie der Steckertyp (vgl. [D-773](NewConcept/90-decision-log.md), Montageart). Nichts wird gebaut.
+
+## INF-121 · Erbt ein Unterknoten die Zusammensetzung der Bezeichnung? (2026-11-10)
+
+- **Anlass:** unter `Module` 149000104428 neu angelegt `Stromversorgung` 149000110433 mit drei Unterknoten; `Module` setzt seine Bezeichnung aus Typ und Hersteller zusammen, die neuen Knoten nicht — das neue Material 68369 stand ohne Bezeichnung da (gemeldet vom Ali-Thread).
+- **Gemessen (Code):** eine Feldwahl `summary_fields` gilt nur an dem Knoten, an dem sie steht; `SettingsResolver::listOf()` liest keine Vorfahren. [D-888](NewConcept/90-decision-log.md) sagt «am Knoten zur Kante», nichts über Kinder.
+- **Behelf (kein Beschluss):** die Liste an jedem neuen Knoten setzen (`set_list … field=Bezeichnung`), wie bei `Steckverbinder`.
+- **Offen:** ob ein Unterknoten die Liste seines Vaters erbt, solange er keine eigene hat. Folge, wenn ja: jeder Unterknoten ohne eigene Liste bekäme auf einmal gerechnete Namen — vorher messen, welche. Braucht Stefans Wort.
