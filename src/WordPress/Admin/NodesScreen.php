@@ -406,12 +406,22 @@ final class NodesScreen
      *
      * @param list<int>          $relations
      * @param array<int, string> $values    characters by relation id, for a record not yet written
+     * @param array<int, int>    $roots     relation id → a node below the field's target, the only branch offered (D-1298)
      * @return array<int, string> relation id → control markup, escaped; posted as `prefix[relation id]`
      */
-    public function fieldControls(int $nodeId, array $relations, string $prefix, string $formId = '', int $recordId = 0, array $values = []): array
+    public function fieldControls(int $nodeId, array $relations, string $prefix, string $formId = '', int $recordId = 0, array $values = [], array $roots = []): array
     {
         $gefragt = array_flip($relations);
         $felder  = array_values(array_filter($this->editor->fieldsOf($nodeId), static fn (Relation $r): bool => isset($gefragt[$r->id])));
+
+        // D-1298: only in memory and only for this form — the field keeps its target; a root outside it is not narrowed to.
+        $felder = array_map(
+            static fn (Relation $r): Relation => ($roots[$r->id] ?? 0) > 0 && $roots[$r->id] !== $r->toNodeId
+                && in_array($roots[$r->id], (new \Taxmod\WordPress\Persistence\WpdbNodeRepository())->subtreeIds($r->toNodeId), true)
+                ? $r->retargetedTo($roots[$r->id], $r->kind)
+                : $r,
+            $felder
+        );
 
         if ($felder === []) {
             return [];

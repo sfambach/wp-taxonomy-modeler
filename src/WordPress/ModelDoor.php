@@ -199,11 +199,13 @@ final class ModelDoor
      *
      * @param list<int>          $relations
      * @param array<int, string> $values characters by relation id where there is no record yet; leave out what is not known
+     * @param array<int, int>    $roots  relation id → a node below the field's target: the chooser offers only that branch (D-1298);
+     *                                   a node outside the target is ignored. The handler still checks what came back.
      * @return array<int, string> relation id → control markup, escaped
      */
-    public function controls(int $node, array $relations, string $prefix, string $formId = '', int $record = 0, array $values = []): array
+    public function controls(int $node, array $relations, string $prefix, string $formId = '', int $record = 0, array $values = [], array $roots = []): array
     {
-        $controls = apply_filters(Plugin::FIELD_CONTROLS_FILTER, [], $node, $relations, $prefix, $formId, $record, $values);
+        $controls = apply_filters(Plugin::FIELD_CONTROLS_FILTER, [], $node, $relations, $prefix, $formId, $record, $values, $roots);
 
         return is_array($controls) ? $controls : [];
     }

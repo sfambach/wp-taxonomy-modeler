@@ -69,6 +69,22 @@ check('typed values come back raw, unslashed', ($typed[$ref['name']] ?? null) ==
 check('an empty field is left out', ! isset($door->typed($ref['k'], [$ref['count'] => ''])[$ref['count']]));
 check('a field the node does not have is left out', ! isset($typed[999]));
 
+$arten = wp_get_ability('taxmod/apply')->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'a', 'name' => '__fc Arten', 'parent' => wp_get_ability('taxmod/read-tree')->execute(['depth' => 1])['root'], 'class' => 'Choice'],
+    ['op' => 'create_node', 'ref' => 'ein', 'name' => '__fc Eingang', 'parent' => '@a', 'class' => 'Constant'],
+    ['op' => 'create_node', 'ref' => 'v', 'name' => '__fc Verbrauch', 'parent' => '@a', 'class' => 'Choice'],
+    ['op' => 'create_node', 'ref' => 'bb', 'name' => '__fc Betriebsbedarf', 'parent' => '@v', 'class' => 'Constant'],
+    ['op' => 'add_field', 'ref' => 'art', 'node' => $ref['k'], 'target' => '@a', 'name' => '__fc Art', 'kind' => 'aggregation', 'multiplicity' => '0..1'],
+]]);
+$ar     = is_array($arten) ? $arten['refs'] : [];
+$ganz   = $ar === [] ? '' : ($door->controls($ref['k'], [$ar['art']], 'buy')[$ar['art']] ?? '');
+$engen  = $ar === [] ? '' : ($door->controls($ref['k'], [$ar['art']], 'buy', '', 0, [], [$ar['art'] => $ar['v']])[$ar['art']] ?? '');
+$fremd  = $ar === [] ? '' : ($door->controls($ref['k'], [$ar['art']], 'buy', '', 0, [], [$ar['art'] => $ref['k']])[$ar['art']] ?? '');
+check('without a root the chooser offers the whole target', str_contains($ganz, '__fc Eingang') && str_contains($ganz, '__fc Betriebsbedarf'), $ganz);
+check('a root narrows the chooser to its branch (D-1298)', str_contains($engen, '__fc Betriebsbedarf') && ! str_contains($engen, '__fc Eingang'), $engen);
+check('only leaves are offered, not the branch itself', $ar !== [] && ! str_contains($engen, 'value="' . $ar['v'] . '"'), $engen);
+check('a root outside the target is ignored', str_contains($fremd, '__fc Eingang'), $fremd);
+
 wp_set_current_user(0);
 check('without the capability no control is drawn', $door->controls($ref['k'], [$ref['count']], 'buy') === []);
 

@@ -50,12 +50,12 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.62';
+    public const VERSION     = '0.2.63';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
 
-    /** `apply_filters(FIELD_CONTROLS_FILTER, [], $node, $relations, $prefix, $formId, $record, $values)`: the modeller's controls for some fields (D-1250). */
+    /** `apply_filters(FIELD_CONTROLS_FILTER, [], $node, $relations, $prefix, $formId, $record, $values, $roots)`: the modeller's controls for some fields (D-1250). */
     public const FIELD_CONTROLS_FILTER = 'taxmod_field_controls';
 
     /** `apply_filters(TYPED_VALUES_FILTER, [], $node, $submitted)`: what was typed into those controls, as raw values for write-data (D-1250). */
@@ -189,15 +189,15 @@ final class Plugin
         }, 10, 3);
 
         // D-1250: a module's form uses the modeller's own field controls and reads them back the same way.
-        add_filter(self::FIELD_CONTROLS_FILTER, static function (mixed $controls, int $node = 0, array $relations = [], string $prefix = '', string $formId = '', int $record = 0, array $values = []) use ($plugin): array {
+        add_filter(self::FIELD_CONTROLS_FILTER, static function (mixed $controls, int $node = 0, array $relations = [], string $prefix = '', string $formId = '', int $record = 0, array $values = [], array $roots = []) use ($plugin): array {
             if ($node <= 0 || $prefix === '' || ! current_user_can(self::CAPABILITY)) {
                 return is_array($controls) ? $controls : [];
             }
 
             $plugin->enqueueStyle();
 
-            return $plugin->screen()->fieldControls($node, array_map('absint', $relations), $prefix, $formId, $record, $values);
-        }, 10, 7);
+            return $plugin->screen()->fieldControls($node, array_map('absint', $relations), $prefix, $formId, $record, $values, array_map('absint', $roots));
+        }, 10, 8);
         add_filter(self::TYPED_VALUES_FILTER, static fn (mixed $values, int $node = 0, array $submitted = []): array => $node <= 0
             ? (is_array($values) ? $values : [])
             : $plugin->screen()->typedValues($node, $submitted), 10, 3);
