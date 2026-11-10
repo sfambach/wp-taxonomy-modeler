@@ -49,6 +49,44 @@ final class PrintJobs
     }
 
     /**
+     * D-1294: a job that arrives finished — the module that prints renders the PDF (all its pages) and says how it is delivered.
+     *
+     * @param array{queue?: string, options?: list<string>, retry?: int, roll?: int|float} $delivery the printer queue and options
+     *        (D-1191) and the roll width in mm, handed to the service as they are
+     */
+    public function queuePdf(string $pdf, string $format, string $code, string $title, int $copies, array $delivery, bool $test = false): int
+    {
+        global $wpdb;
+
+        if ($pdf === '' || ! str_starts_with($pdf, '%PDF')) {
+            throw new \InvalidArgumentException('A print job needs a PDF.');
+        }
+
+        $wpdb->insert(PrintJobSchema::table(), [
+            'format'     => mb_substr($format, 0, 32),
+            'code'       => mb_substr($code, 0, 64),
+            'title'      => mb_substr($title, 0, 255),
+            'subtitle'   => '',
+            'pdf'        => $pdf,
+            'delivery'   => (string) wp_json_encode($delivery),
+            'copies'     => max(1, $copies),
+            'is_test'    => $test ? 1 : 0,
+            'status'     => PrintJobStatus::Queued->value,
+            'created_by' => get_current_user_id(),
+            'created_at' => current_time('mysql', true),
+        ]);
+        $id = (int) $wpdb->insert_id;
+        TileCounts::forget(TileCounts::PRINT_JOBS);
+        if ($id <= 0) {
+            throw new \RuntimeException('The print job could not be stored.');
+        }
+
+        do_action(self::QUEUED_ACTION, $id);
+
+        return $id;
+    }
+
+    /**
      * D-1221: the state of one job and what the service said about it, or null when there is no such job.
      *
      * @return array{0: PrintJobStatus, 1: string}|null
@@ -180,8 +218,8 @@ final class PrintJobs
         $statuses = array_values(array_filter($statuses, static fn (string $s): bool => $s !== ''));
         $marks = implode(',', array_fill(0, count($statuses), '%s'));
         $sql = $statuses === []
-            ? $wpdb->prepare("SELECT * FROM {$table} ORDER BY id DESC LIMIT %d", $limit)
-            : $wpdb->prepare("SELECT * FROM {$table} WHERE status IN ({$marks}) ORDER BY id DESC LIMIT %d", ...[...$statuses, $limit]);
+            ? $wpdb->prepare("SELECT id, format, code, title, subtitle, document, copies, is_test, status, claim, message, created_by, created_at, claimed_at, finished_at FROM {$table} ORDER BY id DESC LIMIT %d", $limit)
+            : $wpdb->prepare("SELECT id, format, code, title, subtitle, document, copies, is_test, status, claim, message, created_by, created_at, claimed_at, finished_at FROM {$table} WHERE status IN ({$marks}) ORDER BY id DESC LIMIT %d", ...[...$statuses, $limit]);
 
         return array_map(static fn (array $row): array => array_map('strval', $row), (array) $wpdb->get_results($sql, ARRAY_A));
     }

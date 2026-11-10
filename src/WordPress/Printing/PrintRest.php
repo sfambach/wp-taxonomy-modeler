@@ -15,6 +15,9 @@ use Taxmod\Core\Printing\LabelFormat;
  */
 final class PrintRest
 {
+    /** D-1294: `apply_filters(RENDER_FILTER, null, $row)` — the labels module renders a stored job that has no PDF yet: ['pdf' => …, 'format', 'roll', 'queue', 'options', 'retry']. */
+    public const RENDER_FILTER = 'taxmod_print_render';
+
     public const ROUTES = 'taxmod/v1';
 
     public const TOKEN_HEADER = 'X-Taxmod-Print-Token';
@@ -72,6 +75,35 @@ final class PrintRest
             // D-1162: the copies as pages of one PDF — one job at the printer, the labels come out together.
             $copies  = max(1, (int) ($row['copies'] ?? 1));
             $printer = null;
+            // D-1294: a finished job is handed on as it is; the module that printed it said how.
+            if (($row['pdf'] ?? '') !== '' && $row['pdf'] !== null) {
+                $delivery = json_decode((string) ($row['delivery'] ?? ''), true);
+                $delivery = is_array($delivery) ? $delivery : [];
+                $jobs[]   = array_intersect_key($delivery, ['queue' => true, 'options' => true, 'retry' => true]) + [
+                    'id'     => (int) $row['id'],
+                    'format' => $row['format'],
+                    'roll'   => $delivery['roll'] ?? null,
+                    'test'   => $row['is_test'] === '1',
+                    'code'   => $row['code'],
+                    'copies' => $copies,
+                    'pdf'    => base64_encode((string) $row['pdf']),
+                ];
+                continue;
+            }
+            // D-1294: an older job without its PDF is rendered by the module that owns the labels, when one answers.
+            $fromModule = apply_filters(self::RENDER_FILTER, null, $row);
+            if (is_array($fromModule) && is_string($fromModule['pdf'] ?? null) && $fromModule['pdf'] !== '') {
+                $jobs[] = array_intersect_key($fromModule, ['queue' => true, 'options' => true, 'retry' => true]) + [
+                    'id'     => (int) $row['id'],
+                    'format' => (string) ($fromModule['format'] ?? $row['format']),
+                    'roll'   => $fromModule['roll'] ?? null,
+                    'test'   => $row['is_test'] === '1',
+                    'code'   => $row['code'],
+                    'copies' => $copies,
+                    'pdf'    => base64_encode($fromModule['pdf']),
+                ];
+                continue;
+            }
             // D-1153: a job from a template carries its own size and layout.
             if (($row['document'] ?? '') !== '' && $row['document'] !== null) {
                 try {

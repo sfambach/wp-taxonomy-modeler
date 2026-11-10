@@ -126,5 +126,25 @@ $pruefe(is_array($worte) && (new \Taxmod\WordPress\ModelDoor())->fieldWords([], 
 $js = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.js');
 $pruefe(preg_match("/function saetzeSuchen\\(.{0,400}data-record-search/s", $js) === 1 && str_contains($js, "saetzeSuchen( dialog, this )") && str_contains($js, "getAttribute( 'data-search-hits' ) === '1'"), 'D-1285: the tree dialog searches records through data-record-search and clears only its own hits');
 
+// D-1294: a finished job reaches the service as it was queued; something that is not a PDF is refused.
+\Taxmod\WordPress\Printing\PrintJobSchema::upgrade();
+$fertig = "%PDF-1.4\n%check D-1294\n";
+$jobId  = (new \Taxmod\WordPress\ModelDoor())->queuePrint($fertig, 'x40x30', 'M-1', 'D-1294 check', 2, ['queue' => 'QL810W', 'options' => ['-o', 'media=62x30'], 'roll' => 62]);
+$geholt = null;
+foreach ((array) ((new \Taxmod\WordPress\Printing\PrintRest(new \Taxmod\WordPress\Printing\PrintJobs()))->pull(new \WP_REST_Request('POST', '/taxmod/v1/print/pull'))->get_data()['jobs'] ?? []) as $job) {
+    if ((int) $job['id'] === $jobId) {
+        $geholt = $job;
+    }
+}
+$pruefe(is_array($geholt) && base64_decode((string) $geholt['pdf']) === $fertig && $geholt['queue'] === 'QL810W' && $geholt['roll'] === 62 && $geholt['copies'] === 2, 'D-1294: a finished job reaches the service unchanged, with its queue and roll');
+try {
+    (new \Taxmod\WordPress\ModelDoor())->queuePrint('not a pdf', 'x', 'M-1', 't');
+    $pruefe(false, 'D-1294: something that is not a PDF is refused');
+} catch (\InvalidArgumentException) {
+    $pruefe(true, 'D-1294: something that is not a PDF is refused');
+}
+(new \Taxmod\WordPress\Printing\PrintJobs())->finish($jobId, true, 'check');
+$wpdb->delete(\Taxmod\WordPress\Printing\PrintJobSchema::table(), ['id' => $jobId]);
+
 echo $fehler === 0 ? "printing: all good\n" : "printing: $fehler failed\n";
 exit($fehler === 0 ? 0 : 1);

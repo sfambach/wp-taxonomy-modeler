@@ -402,6 +402,17 @@ final class ModelDoor
     }
 
     /**
+     * D-1294: queue a finished print job — the module renders the PDF with all its pages; the print service fetches it as it is.
+     *
+     * @param array{queue?: string, options?: list<string>, retry?: int, roll?: int|float} $delivery printer queue, options (D-1191), roll width in mm
+     * @return int the job's id
+     */
+    public function queuePrint(string $pdf, string $format, string $code, string $title, int $copies = 1, array $delivery = [], bool $test = false): int
+    {
+        return (new Printing\PrintJobs())->queuePdf($pdf, $format, $code, $title, $copies, $delivery, $test);
+    }
+
+    /**
      * D-1291: the words of these fields of these records, as the modeller's screen shows them — a price with its unit — in one
      * run (CD-7). A module shows them as they are and formats no value itself.
      *
