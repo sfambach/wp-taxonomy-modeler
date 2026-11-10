@@ -402,6 +402,20 @@ final class ModelDoor
     }
 
     /**
+     * D-1295: the words of one record for the fields a label names — by field name (any case) or id, «node» for the node's
+     * name; a reference gives the word of the record it points at, an empty field is empty (D-1160, D-1222).
+     *
+     * @param list<string> $fields
+     * @return array{values: array<string, string>, unknown: list<string>, node: int}
+     */
+    public function labelValues(int $record, array $fields): array
+    {
+        $answer = apply_filters(Plugin::LABEL_VALUES_FILTER, null, $record, $fields);
+
+        return is_array($answer) ? $answer : ['values' => [], 'unknown' => $fields, 'node' => 0];
+    }
+
+    /**
      * D-1294: queue a finished print job — the module renders the PDF with all its pages; the print service fetches it as it is.
      *
      * @param array{queue?: string, options?: list<string>, retry?: int, roll?: int|float} $delivery printer queue, options (D-1191), roll width in mm

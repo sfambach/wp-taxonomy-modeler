@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.60';
+    public const VERSION     = '0.2.61';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -91,6 +91,9 @@ final class Plugin
 
     /** D-1291: answers `ModelDoor` the words of fields of records, as the screen shows them (a price with its unit). */
     public const FIELD_WORDS_FILTER = 'taxmod_field_words';
+
+    /** D-1295: answers `ModelDoor` the words of one record for the fields a label names (D-1160, D-1222). */
+    public const LABEL_VALUES_FILTER = 'taxmod_label_values';
 
     /** D-1227: the script handle of the one table head (sort, group, filter) that `ListPage::table()` enqueues. */
     public const LIST_HEAD_SCRIPT = 'taxmod-list-head';
@@ -138,6 +141,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
         $labelValues = static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields);
+        // D-1295: the labels module asks the same words through the door (D-1292).
+        add_filter(self::LABEL_VALUES_FILTER, static fn (mixed $answer, int $record, array $fields): array => $labelValues($record, array_values(array_map('strval', $fields))), 10, 3);
         add_filter(self::LABEL_BUTTON_FILTER, static function (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []) use ($labelValues): string {
             \Taxmod\WordPress\Printing\LabelButton::useRecordValues($labelValues);
 
