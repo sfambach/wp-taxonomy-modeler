@@ -130,8 +130,9 @@ final class RecordRenderer extends RendererNode
 
         return '<form method="post" action="' . RenderResult::escape($submits->action) . '">'
             . ControlMarkup::hidden($submits)
+            // D-1308: the buttons above the fields, as the toolbar.
+            . ($buttons === '' ? '' : '<div class="taxmod-record-acts taxmod-toolbar" role="toolbar">' . $buttons . '</div>')
             . $inside
-            . ($buttons === '' ? '' : '<div class="taxmod-record-acts">' . $buttons . '</div>')
             . '</form>';
     }
 }

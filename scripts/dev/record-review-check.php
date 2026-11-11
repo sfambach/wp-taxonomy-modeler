@@ -233,6 +233,10 @@ check('set_class lets a constant take sub-kinds (D-1297)', is_array($wahl) && (n
 $zurueck = is_array($wahl) ? wp_get_ability('taxmod/apply')->execute(['changes' => [['op' => 'set_class', 'node' => (int) $wahl['refs']['k'], 'class' => 'Gibtsnicht']]]) : null;
 check('set_class refuses an unknown class', is_wp_error($zurueck), wp_json_encode($zurueck));
 
+$editor = (string) apply_filters(\Taxmod\WordPress\Plugin::RECORD_EDITOR_FILTER, '', (int) $ref['kid'], '/x', [['<a class="button" id="__rv-modul">Etikett</a>']]);
+$leiste = strpos($editor, 'taxmod-toolbar');
+check('a module\'s record editor has its toolbar above the fields, save first, the module\'s button in it (D-1308)', $leiste !== false && $leiste < strpos($editor, 'taxmod-node') && strpos($editor, '💾') < strpos($editor, '__rv-modul') && strpos($editor, '__rv-modul') < strpos($editor, 'taxmod-node'), substr($editor, 0, 400));
+
 wp_set_current_user(0);
 $denied = $send('admin_post_' . NodesScreen::RECORD_CREATE_ACTION, ['node' => (string) $ref['h'], 'name' => 'x']);
 check('without the capability nothing is created', str_contains($denied, '"success":false'), $denied);

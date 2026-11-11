@@ -85,6 +85,9 @@ $rules = [
     'G5 modeller internals' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module ? preg_match_all('/Taxmod\\\\WordPress\\\\Persistence\\\\/', $c) : 0],
     'G6 ability outside gateway' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module && ! str_ends_with($f, 'ModelGateway.php') ? preg_match_all("/wp_get_ability\(\s*'taxmod\//", $c) : 0],
     'G9 flat select over a tree' => ['D-1186, D-1182', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : flatTreeSelects($c)],
+    // D-1308: «Save» stands in the toolbar above the form (ListPage::toolbar, Control::saving), not as a WordPress submit row below it.
+    // A single act beside its one input (scan, upload a file) is not a save and is not counted. Measured, not failing yet.
+    'G10 save button below a form' => ['D-1308', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all("/submit_button\\(\\s*(?:esc_html)?__\\(\\s*'(?:Save|Speichern)/", $c)],
     'G7 style= attribute' => ['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
 ];
 

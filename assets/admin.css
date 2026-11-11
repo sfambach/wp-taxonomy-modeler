@@ -683,7 +683,41 @@ details.taxmod-page-block > summary {
 .taxmod-record-acts {
     display: flex;
     gap: .2em;
-    margin-top: .5em;
+    margin-bottom: .5em;
+}
+
+/* ── D-1308: the one toolbar above a form or page — left, grouped, a thin divider between the groups ─────────
+ * His word, 2026-11-11: «die Buttons oben wie so eine Toolbar … ganz lieber oben links», «Jede neue Funktion reiht sich
+ * dann praktisch in diese Toolbar ein». */
+.taxmod-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .4em;
+    margin: 0 0 .8em;
+}
+
+.taxmod-toolbar-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3em;
+}
+
+.taxmod-toolbar-group > form {
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+    margin: 0;
+}
+
+.taxmod-toolbar-sep {
+    align-self: stretch;
+    width: 1px;
+    min-height: 24px;
+    margin: 0 .3em;
+    background: #c3c4c7;
 }
 
 /* ⚠️ *Which renderer drew what* — scaffolding (D-344), so it is faint and sits apart from the form
@@ -985,7 +1019,7 @@ a.taxmod-tree-fold-box {
     display: flex;
     align-items: center;
     gap: .6em;
-    margin-top: .6em;
+    margin-bottom: .6em;
 }
 
 /* ⚠️ Die Knopfzeile unter den Teilen in einer Höhe (sein Bild: «sieht noch nicht so gut aus»): «+», «Add several», die Art, Speichern
@@ -2200,10 +2234,6 @@ fieldset.taxmod-read-only {
     max-width: 100%;
 }
 
-/* ── The buttons of a form a page draws itself (ListPage::form): below the fields, in the field column ── */
-.taxmod-form-actions {
-    margin: .8em 0 0 calc(min(11em, 30%) + .5em);
-}
 
 /* ── Ein geschachteltes Formular: Trennzeile mit dem Namen, die Felder darunter links (D-725) ────── */
 .taxmod-form-group {

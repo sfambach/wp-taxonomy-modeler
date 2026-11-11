@@ -458,8 +458,31 @@ final class ListPage
      *
      * @param list<array{label: string, control: string, hint?: string, for?: string}> $rows `label` and `hint` plain text,
      *        `control` escaped HTML (CD-8), `for` the id of the control the label names
-     * @param string $actions escaped HTML: the submit button and any other button, in the row below the fields
+     * @param string $actions escaped HTML: the submit button and any other button, in the toolbar above the fields (D-1308)
      */
+    /**
+     * D-1308: the one bar of buttons above a form or a page — left-aligned, grouped by what the buttons do, a divider between
+     * the groups. ⚠️ *His word, 2026-11-11: «im Grunde ist das auf jeder Seite, dass man die Buttons oben wie so eine Toolbar
+     * arrangiert. Und nicht mehr unten … ganz lieber oben links», «Jede neue Funktion reiht sich dann praktisch in diese Toolbar
+     * ein».* Saving comes first, with the diskette (`Control::saving`).
+     *
+     * @param list<string|list<string>> $groups escaped HTML; each entry one group (a string or a list of buttons), empty groups fall away
+     */
+    public static function toolbar(array $groups): string
+    {
+        $parts = [];
+
+        foreach ($groups as $group) {
+            $html = is_array($group) ? implode(' ', array_filter($group, static fn (string $one): bool => trim($one) !== '')) : $group;
+
+            if (trim($html) !== '') {
+                $parts[] = '<span class="taxmod-toolbar-group">' . $html . '</span>';
+            }
+        }
+
+        return $parts === [] ? '' : '<div class="taxmod-toolbar" role="toolbar">' . implode('<span class="taxmod-toolbar-sep" aria-hidden="true"></span>', $parts) . '</div>';
+    }
+
     public static function form(array $rows, string $actions = ''): string
     {
         $out = '';
@@ -475,7 +498,8 @@ final class ListPage
                 . '</div>';
         }
 
-        return '<div class="taxmod-form">' . $out . ($actions === '' ? '' : '<div class="taxmod-form-actions">' . $actions . '</div>') . '</div>';
+        // D-1308: the buttons stand above the fields, as the toolbar.
+        return '<div class="taxmod-form">' . self::toolbar([$actions]) . $out . '</div>';
     }
 
     /**

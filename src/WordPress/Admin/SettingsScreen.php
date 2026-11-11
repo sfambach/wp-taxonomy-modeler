@@ -164,6 +164,8 @@ final class SettingsScreen
                 . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
                 . '<input type="hidden" name="tab" value="' . esc_attr($tab) . '">'
                 . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
+                // D-1308: the save on top, as the toolbar.
+                . ListPage::toolbar([\Taxmod\Core\Renderer\ControlMarkup::button(\Taxmod\Core\Renderer\Control::saving('submit', '1', __('Save', 'taxmod'), __('Save the settings on this page', 'taxmod')))])
                 // ⚠️ *Sein Wunsch vom 2026-10-23 (D-981): «als standard und vielleicht an der gleichen stelle überall … also
                 // zugangsdaten, intervalle und ander einstellungen». The page gives the order, the module the content; a part
                 // the module does not give is left out with its heading.*
@@ -172,8 +174,8 @@ final class SettingsScreen
                 . self::section(__('Mail', 'taxmod'), self::mailPart($reiter[$tab]), $modul)
                 // ⚠️ *Sein Wunsch vom 2026-10-23: «button test connection unter die einlogdaten und die mit einem save button versehen».*
                 . self::section(__('Access', 'taxmod'), $reiter[$tab]['credentials'] === null ? '' : (string) ($reiter[$tab]['credentials'])()
-                    . '<p>' . get_submit_button(__('Save', 'taxmod'), 'primary', 'submit', false)
-                    . ($reiter[$tab]['test'] === null ? '' : ' ' . get_submit_button(__('Test connection', 'taxmod'), 'secondary', self::TEST, false))
+                    // D-1308: «Save» stands once, in the toolbar on top; the same form, so it saves the access data too.
+                    . '<p>' . ($reiter[$tab]['test'] === null ? '' : ' ' . get_submit_button(__('Test connection', 'taxmod'), 'secondary', self::TEST, false))
                     // ⚠️ *«ja ein löschen button aber mit nachfrage wäre eine gute idee».*
                     . ($reiter[$tab]['forget'] === null ? '' : ' ' . get_submit_button(__('Delete access data', 'taxmod'), 'delete', self::FORGET, false, [
                         'data-taxmod-confirm' => __('Delete the access data of this module? It cannot fetch until they are entered again.', 'taxmod'),
@@ -181,7 +183,6 @@ final class SettingsScreen
                 . self::section(__('Fetching', 'taxmod'), ($quelle = self::fetchingSource($reiter[$tab])) === null ? '' : FetchInterval::field($quelle), $modul)
                 // ⚠️ *D-1066: «ein flag in den einstellungen der api module default gesetzt».*
                 . self::section($modul || $reiter[$tab]['credentials'] !== null || $quelle !== null ? __('Settings', 'taxmod') : '', ($modul ? AutoTake::moduleField($tab) : '') . (string) ($reiter[$tab]['render'])(), $modul)
-                . get_submit_button(__('Save', 'taxmod'))
                 . '</form>'
                 . self::section(__('Maintenance', 'taxmod'), self::maintenance($reiter[$tab], $tab, $reiter), $modul)
                 . '</div>';
@@ -215,6 +216,8 @@ final class SettingsScreen
             . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
             . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
+            // D-1308: the save on top, as the toolbar.
+            . ListPage::toolbar([\Taxmod\Core\Renderer\ControlMarkup::button(\Taxmod\Core\Renderer\Control::saving('submit', '1', __('Save', 'taxmod'), __('Save the settings on this page', 'taxmod')))])
             // ⚠️ **Drei Spalten auf sein Wort** ([D-695](../../../docs/NewConcept/90-decision-log.md)):
             // *«tablle links label, schalter/wert, recht erklärung».* **Und nicht `form-table`**,
             // *deren zwei Spalten es gar nicht anders könnten.*
@@ -239,7 +242,6 @@ final class SettingsScreen
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('Every icon of Taxmod and its modules: the tree, the buttons, the lists.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</tbody></table>'
-            . get_submit_button(__('Save', 'taxmod'))
             . '</form>'
             // ⚠️ *Ausserhalb des Formulars, weil nichts davon abgeschickt wird.
             //  Ein Anzeigeblock innerhalb eines Formulars lädt dazu ein, ihn für einstellbar zu halten.*

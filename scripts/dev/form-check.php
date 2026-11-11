@@ -39,8 +39,13 @@ check('each field is a form row with label and field', substr_count($html, 'clas
 check('a label names its control', str_contains($html, '<label class="taxmod-form-label" for="q">'));
 check('the label is escaped', str_contains($html, 'Menge &lt;1&gt;'));
 check('the hint is the «?» of the renderer, not a line of text', substr_count($html, 'taxmod-hint') >= 1 && str_contains($html, 'Wie viele'));
-check('the buttons stand below the fields', str_ends_with($html, '<div class="taxmod-form-actions"><button class="button button-primary">Buchen</button></div></div>'));
-check('the stylesheet places the buttons', str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css'), '.taxmod-form-actions'));
+// D-1308 (changed with the concept, PR-9): the buttons stand above the fields, as the toolbar — before, this checked «below».
+check('the buttons stand above the fields, in the toolbar (D-1308)', strpos($html, 'class="taxmod-toolbar"') !== false && strpos($html, 'class="taxmod-toolbar"') < strpos($html, 'taxmod-form-row') && str_contains($html, 'Buchen</button>'));
+$bar = ListPage::toolbar([['<button>💾</button>'], '', ['<button>A</button>', '<button>B</button>'], '<a>X</a>']);
+check('the toolbar draws a group per entry, a divider between them, empty groups fall away', substr_count($bar, 'taxmod-toolbar-group') === 3 && substr_count($bar, 'taxmod-toolbar-sep') === 2, $bar);
+check('no buttons, no toolbar', ListPage::toolbar(['', []]) === '');
+$css = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
+check('the stylesheet places the toolbar on the left', str_contains($css, '.taxmod-toolbar {') && str_contains($css, 'justify-content: flex-start') && ! str_contains($css, '.taxmod-form-actions'));
 
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);

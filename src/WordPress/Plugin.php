@@ -50,9 +50,9 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.66';
+    public const VERSION     = '0.2.67';
 
-    /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
+    /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
 
     /** `apply_filters(FIELD_CONTROLS_FILTER, [], $node, $relations, $prefix, $formId, $record, $values, $roots)`: the modeller's controls for some fields (D-1250). */
@@ -180,15 +180,15 @@ final class Plugin
         add_action('admin_enqueue_scripts', $plugin->registerListHead(...));
 
         // ⚠️ *Ein Satz zum Bearbeiten auf der Seite eines Moduls (D-1025): das Modul fragt den Filter, nicht die Klassen.*
-        add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '') use ($plugin): string {
+        add_filter(self::RECORD_EDITOR_FILTER, static function (mixed $html, int $recordId = 0, string $returnTo = '', array $toolbar = []) use ($plugin): string {
             if ($recordId <= 0 || ! current_user_can(self::CAPABILITY)) {
                 return is_string($html) ? $html : '';
             }
 
             $plugin->enqueueStyle();
 
-            return $plugin->screen()->recordEditor($recordId, $returnTo);
-        }, 10, 3);
+            return $plugin->screen()->recordEditor($recordId, $returnTo, array_values(array_filter($toolbar, static fn (mixed $group): bool => is_string($group) || is_array($group))));
+        }, 10, 4);
 
         // D-1250: a module's form uses the modeller's own field controls and reads them back the same way.
         add_filter(self::FIELD_CONTROLS_FILTER, static function (mixed $controls, int $node = 0, array $relations = [], string $prefix = '', string $formId = '', int $record = 0, array $values = [], array $roots = []) use ($plugin): array {

@@ -38,6 +38,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | S10 | Bilder in Listen nur über `ListPage::thumbnails($media)` (Schalter der Konfiguration, ein Zug für die Seite, lazy); das Titelbild eines Satzes liest nur eine Stelle je Modul, nie das Feld direkt. | [D-1204](NewConcept/90-decision-log.md) |
 | S11 | Infokasten zu Formular/Detail rechts daneben (ab 1100 px, sonst darüber) nur über `ListPage::beside($main, $facts)`; keine eigenen Grid-Styles. | [D-1220](NewConcept/90-decision-log.md) |
 | S12 | Wiederkehrende Akte in Listen als Icon mit Wort als Tooltip, nur über `ListPage::icon`/`iconLink`/`dialogAction(…, $icon)` und die Konstanten `ICON_PRINT`, `ICON_TRANSFER`, `ICON_BOOK_OUT`, `ICON_DELETE`, `ICON_COPY`; kein eigenes Dashicon für denselben Akt. | [D-1230](NewConcept/90-decision-log.md) |
+| S13 | Knöpfe einer Seite oder eines Formulars nur in der einen Toolbar oben links: `ListPage::toolbar($gruppen)` — je Gruppe eine Funktion (Speichern 💾 vorne über `Control::saving`, dann Anlegen, Bearbeiten/Prozess, Drucken, Modul-Aktionen, Löschen zuletzt), Trenner dazwischen; neue Funktionen reihen sich ein. Formulare über `ListPage::form()` bekommen sie selbst; der Satz-Editor nimmt Modul-Knöpfe als viertes Argument von `taxmod_record_editor`. Kein Knopf unter dem Formular (Wächter `G10`). | [D-1308](NewConcept/90-decision-log.md) |
 
 ## 2 · Liste
 
@@ -53,7 +54,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 
 | | Regel | Beschluss |
 |---|---|---|
-| K1 | Alle Knöpfe einer Seite haben dieselbe Höhe, zentral festgelegt — auch «kleine» Knöpfe und Dialog-Öffner. Knöpfe stehen rechts. | [D-1068](NewConcept/90-decision-log.md), [D-989](NewConcept/90-decision-log.md) |
+| K1 | Alle Knöpfe einer Seite haben dieselbe Höhe, zentral festgelegt — auch «kleine» Knöpfe und Dialog-Öffner. In Listenzeilen stehen Knöpfe rechts; über Formularen und Seiten stehen sie oben links in der Toolbar (S13). | [D-1068](NewConcept/90-decision-log.md), [D-989](NewConcept/90-decision-log.md), [D-1308](NewConcept/90-decision-log.md) |
 | K2 | Ein Dialog hat unten «OK»/«Bestätigen» und «Abbrechen», schließt nur darüber oder über ✕, nie per Klick daneben; alle Dialoge haben eine Gestalt, gezeichnet an einer Stelle. | [D-804](NewConcept/90-decision-log.md), [D-730](NewConcept/90-decision-log.md) |
 | K3 | Eine Aktion, die vor dem Absenden fragt oder eine Auswahl braucht (Grund, Ort, Menge), ist dieser Dialog über `ListPage::dialogAction`; eine reine Rückfrage trägt `ListPage::confirm($text)` (gemeinsamer Bestätigungsdialog, `assets/confirm-dialog.js`) — **kein `confirm()` des Browsers**, kein überfrachtetes Feld in der Zeile. | [D-1063](NewConcept/90-decision-log.md) |
 

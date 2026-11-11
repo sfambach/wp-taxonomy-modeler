@@ -336,7 +336,8 @@ final class NodesScreen
      * ⚠️ *Sein Wort: «warum springt er zum bearbeiten in den tax wir haben doch die renderer dafür». Dieselbe Zeichnung und derselbe
      * Akt wie in der Vorschau; nur der Rückweg ist `$returnTo`, damit man nach dem Speichern dort bleibt, wo man war.*
      */
-    public function recordEditor(int $recordId, string $returnTo): string
+    /** @param list<string|list<string>> $toolbar the module's own button groups, after «Save» (D-1308) */
+    public function recordEditor(int $recordId, string $returnTo, array $toolbar = []): string
     {
         $satz   = $this->data->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
         $knoten = $this->editor->find($satz->nodeId) ?? throw new \InvalidArgumentException("No node {$satz->nodeId}.");
@@ -359,6 +360,22 @@ final class NodesScreen
         // Editor beides selbst (D-1135). Sein Befund an der Platzart: «teile platzart kann ich nicht auswählen» — der Dialog war leer.*
         return '<div class="taxmod-preview-side taxmod-record-editor" id="taxmod-preview-edit">'
             . self::reviewNote($recordId)
+            // D-1308: the save above the form, as the toolbar.
+            . '<div class="taxmod-preview-acts">' . ListPage::toolbar([ControlMarkup::actsForm(
+                $formId,
+                new Submission(
+                    admin_url('admin-post.php'),
+                    [
+                        'action'         => self::ACTION,
+                        'id'             => (string) $knoten->id,
+                        'node_record_id' => (string) $recordId,
+                        self::RECORD_VERSIONS => $this->stampFor($recordId),
+                        '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $knoten->id),
+                        self::RETURN_TO  => $returnTo,
+                    ]
+                ),
+                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
+            ), ...$toolbar]) . '</div>'
             . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
                 ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
                 // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
@@ -380,23 +397,7 @@ final class NodesScreen
                     formId: $formId,
                     recordId: $recordId
                 )->markup
-            . '<div class="taxmod-preview-acts">'
-            . ControlMarkup::actsForm(
-                $formId,
-                new Submission(
-                    admin_url('admin-post.php'),
-                    [
-                        'action'         => self::ACTION,
-                        'id'             => (string) $knoten->id,
-                        'node_record_id' => (string) $recordId,
-                        self::RECORD_VERSIONS => $this->stampFor($recordId),
-                        '_taxmod_nonce'  => wp_create_nonce(self::ACTION . '_' . $knoten->id),
-                        self::RETURN_TO  => $returnTo,
-                    ]
-                ),
-                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
-            )
-            . '</div></div>' . RecordPick::words();
+            . '</div>' . RecordPick::words();
     }
 
     /**
@@ -2619,6 +2620,8 @@ final class NodesScreen
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
                 . ($formId === '' ? '' : self::reviewNote($satz))
+                // D-1308: the buttons above the form, as the toolbar.
+                . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId))
                 . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
                     fn (int $satz): string => $this->recordAddress($satz)
@@ -2638,7 +2641,6 @@ final class NodesScreen
                     // ⚠️ *Damit die Zeilen eines mehrfachen Feldes wissen, aus welchem Satz sie lesen (D-842).*
                     recordId: $satz
                 )->markup
-                . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId))
                 . '</div>';
         }
 
@@ -2716,9 +2718,9 @@ final class NodesScreen
     {
         $satz = $this->data->find($recordId);
 
-        return '<div class="taxmod-preview-acts">'
-            . ($satz === null ? '' : $this->recordTypeChoice($satz->recordType, $formId, $this->framework->branchOf($selected)))
-            . ControlMarkup::actsForm(
+        // D-1308: one toolbar — save | the kind of record | a new record | what the modules offer.
+        return '<div class="taxmod-preview-acts">' . ListPage::toolbar([
+            ControlMarkup::actsForm(
                 $formId,
                 new Submission(
                     admin_url('admin-post.php'),
@@ -2731,13 +2733,12 @@ final class NodesScreen
                         ...array_filter($this->circumstances()),
                     ]
                 ),
-                [
-                    Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')),
-                    new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2'),
-                ]
-            )
-            . $this->moduleActions($selected->id, $recordId)
-            . '</div>';
+                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
+            ),
+            $satz === null ? '' : $this->recordTypeChoice($satz->recordType, $formId, $this->framework->branchOf($selected)),
+            ControlMarkup::button(new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2', $formId)),
+            $this->moduleActions($selected->id, $recordId),
+        ]) . '</div>';
     }
 
     /** The actions modules offer on this record, as link buttons beside the modeller's own (D-998). */
@@ -2756,7 +2757,7 @@ final class NodesScreen
                 . '>' . esc_html($action['label']) . '</a>';
         }
 
-        return $html === '' ? '' : '<div class="taxmod-record-module-actions" style="margin-top:.5em">' . $html . '</div>';
+        return $html === '' ? '' : '<span class="taxmod-record-module-actions">' . $html . '</span>';
     }
 
     /**
