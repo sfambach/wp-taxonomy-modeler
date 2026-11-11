@@ -40,6 +40,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | S12 | Wiederkehrende Akte in Listen als Icon mit Wort als Tooltip, nur über `ListPage::icon`/`iconLink`/`dialogAction(…, $icon)` und die Konstanten `ICON_PRINT`, `ICON_TRANSFER`, `ICON_BOOK_OUT`, `ICON_DELETE`, `ICON_COPY`; kein eigenes Dashicon für denselben Akt. | [D-1230](NewConcept/90-decision-log.md) |
 | S13 | Knöpfe einer Seite oder eines Formulars nur in der einen Toolbar oben links: `ListPage::toolbar($gruppen)` — je Gruppe eine Funktion (Speichern 💾 vorne über `Control::saving`, dann Anlegen, Bearbeiten/Prozess, Drucken, Modul-Aktionen, Löschen zuletzt), Trenner dazwischen; neue Funktionen reihen sich ein. Formulare über `ListPage::form()` bekommen sie selbst; der Satz-Editor nimmt Modul-Knöpfe als viertes Argument von `taxmod_record_editor`. Kein Knopf unter dem Formular (Wächter `G10`). | [D-1308](NewConcept/90-decision-log.md) |
 | S14 | Einen Satz oder eine Seite im Dialog ansehen nur über `ListPage::viewDialog($schalter, $öffner, $titel, $url)` — Rahmen lädt erst beim Öffnen, «Open fully» im neuen Tab. Kein eigener iframe-Dialog im Modul. | [D-1309](NewConcept/90-decision-log.md) |
+| S15 | Abhängige Felder (zeigen sich nur bei einem Wert eines anderen Feldes im selben Formular) nur über `ListPage::shownBy($feld, $wert, $html)`; kein eigenes Skript im Modul. | [D-1311](NewConcept/90-decision-log.md) |
 
 ## 2 · Liste
 

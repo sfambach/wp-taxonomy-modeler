@@ -475,10 +475,24 @@ final class ListPage
     }
 
     /**
-     * D-1309: the loader of view dialogs. Also queued with every module page's style (`Plugin::STYLE_ACTION`), because rows
+     * D-1311: a part of a form that shows only while the field `$field` of the same form has the value `$value` — such as the
+     * boards of the project chosen above. Hidden, its fields are disabled and not sent; without the script every part shows,
+     * so the server still takes only what belongs to the chosen value. One place for dependent fields (D-1186).
+     *
+     * @param string $html escaped HTML
+     */
+    public static function shownBy(string $field, string $value, string $html): string
+    {
+        self::pageScripts();
+
+        return '<div data-taxmod-shown-by="' . esc_attr($field) . '" data-taxmod-shown-for="' . esc_attr($value) . '">' . $html . '</div>';
+    }
+
+    /**
+     * D-1309, D-1311: the loaders of view dialogs and dependent fields. Also queued with every module page's style (`Plugin::STYLE_ACTION`), because rows
      * that arrive later by ajax queue it where nothing is printed any more.
      */
-    public static function viewDialogScript(): void
+    public static function pageScripts(): void
     {
         if (! function_exists('wp_enqueue_script')) {
             return;
@@ -488,6 +502,7 @@ final class ListPage
         $base = WP_PLUGIN_DIR . '/' . basename(dirname(__DIR__, 3)) . '/x.php';
         wp_enqueue_style('taxmod-admin', plugins_url('assets/admin.css', $base), ['dashicons', 'buttons'], Plugin::VERSION);
         wp_enqueue_script('taxmod-view-dialog', plugins_url('assets/view-dialog.js', $base), [], Plugin::VERSION, true);
+        wp_enqueue_script('taxmod-shown-by', plugins_url('assets/shown-by.js', $base), [], Plugin::VERSION, true);
     }
 
     /**
@@ -500,7 +515,7 @@ final class ListPage
      */
     public static function viewDialog(string $switch, string $opener, string $title, string $url, string $icon = ''): string
     {
-        self::viewDialogScript();
+        self::pageScripts();
 
         $frame = '<iframe class="taxmod-view-dialog-frame" data-src="' . esc_url($url) . '" title="' . esc_attr($title) . '"></iframe>';
 

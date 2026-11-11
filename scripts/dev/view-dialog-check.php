@@ -45,5 +45,12 @@ check('the loader sets src from data-src when the dialog opens', str_contains($j
 $icon = ListPage::viewDialog('kauf-1', 'Kauf', 'Kauf', $url, 'visibility');
 check('with an icon the opener is an icon button', str_contains($icon, 'taxmod-icon-button') && str_contains($icon, 'dashicons-visibility'), $icon);
 
+// D-1311: dependent fields.
+$part = ListPage::shownBy('project', '42', '<input type="checkbox" name="board[]" value="7">');
+check('a dependent part names its field and value', str_contains($part, 'data-taxmod-shown-by="project"') && str_contains($part, 'data-taxmod-shown-for="42"') && str_contains($part, 'name="board[]"'));
+check('its loader is queued', wp_script_is('taxmod-shown-by', 'enqueued'));
+$shown = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/shown-by.js');
+check('hidden parts disable their fields, so they are not sent', str_contains($shown, 'field.disabled = ! shown'));
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);
