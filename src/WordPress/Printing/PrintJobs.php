@@ -225,6 +225,40 @@ final class PrintJobs
     }
 
     /**
+     * D-1307: removes the finished jobs older than `$days`, measured at their end or, without one (cancelled), at their creation.
+     * Waiting and claimed jobs stay, whatever their age.
+     *
+     * @return int how many were removed
+     */
+    public function purge(int $days, ?\DateTimeImmutable $now = null): int
+    {
+        global $wpdb;
+
+        if ($days <= 0) {
+            return 0;
+        }
+        $limit = ($now ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('-' . $days . ' days')->format('Y-m-d H:i:s');
+        $finished = array_values(array_map(
+            static fn (PrintJobStatus $s): string => $s->value,
+            array_filter(PrintJobStatus::cases(), static fn (PrintJobStatus $s): bool => $s->isFinished())
+        ));
+        if ($finished === []) {
+            return 0;
+        }
+        $table = PrintJobSchema::table();
+        $marks = implode(',', array_fill(0, count($finished), '%s'));
+        $removed = (int) $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$table} WHERE status IN ({$marks}) AND COALESCE(finished_at, created_at) < %s",
+            ...[...$finished, $limit]
+        ));
+        if ($removed > 0) {
+            TileCounts::forget(TileCounts::PRINT_JOBS);
+        }
+
+        return $removed;
+    }
+
+    /**
      * Kept until the next write (D-1198).
      *
      * @return array<string, int> status => count

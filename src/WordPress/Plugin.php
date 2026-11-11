@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.65';
+    public const VERSION     = '0.2.66';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo)`: the record's edit form for a module's page (D-1025). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -135,6 +135,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\LabelPrint::boot();
         \Taxmod\WordPress\Printing\PrintTab::boot();
         \Taxmod\WordPress\Printing\PrintService::boot();
+        // D-1307: finished print jobs are removed after the days set under Configuration › Printing.
+        \Taxmod\WordPress\Printing\PrintJobRetention::boot($file);
         \Taxmod\WordPress\Printing\PrintRest::boot();
         \Taxmod\WordPress\Printing\PrintJobsScreen::boot();
         // D-1206: the scanner's test page, a tab of the Configuration.

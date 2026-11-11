@@ -78,6 +78,10 @@ final class PrintTab
         if (isset($post[LabelButton::PREVIEW_OPTION])) {
             update_option(LabelButton::PREVIEW_OPTION, (string) $post[LabelButton::PREVIEW_OPTION] === '1' ? '1' : '0', false);
         }
+        // D-1307: likewise only the Configuration's form carries the days.
+        if (isset($post[PrintJobRetention::OPTION]) && is_numeric($post[PrintJobRetention::OPTION])) {
+            PrintJobRetention::save(absint($post[PrintJobRetention::OPTION]));
+        }
 
         if ($doing === 'renew') {
             set_transient(self::NEW_TOKEN . $user, PrintService::renewAccess(), 15 * MINUTE_IN_SECONDS);
@@ -108,7 +112,7 @@ final class PrintTab
             'title'   => __('Printing', 'taxmod'),
             'version' => \Taxmod\WordPress\Plugin::VERSION,
             // His word 2026-11-03: «ich würde auch hier trennen die einstellungen bleiben im admin config die label haben wir ja jetzt im logistik menü» (D-1117).
-            'render'  => static fn (): string => self::previewSetting() . '<p class="description">' . esc_html__('Labels with preview and test print: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
+            'render'  => static fn (): string => self::previewSetting() . self::retentionSetting() . '<p class="description">' . esc_html__('Labels with preview and test print: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
                 . ' <a href="' . esc_url(PrintJobsScreen::url()) . '">' . esc_html__('Print jobs', 'taxmod') . '</a></p>',
             'credentials' => static fn (): string => (new self())->servicePart(),
             'test'    => self::status(...),
@@ -119,6 +123,14 @@ final class PrintTab
         ];
 
         return $tabs;
+    }
+
+    /** D-1307: «Druckaufträge löschen nach … Tagen», 7 by default, 0 never. */
+    private static function retentionSetting(): string
+    {
+        return '<p><label>' . esc_html__('Erledigte Druckaufträge löschen nach', 'taxmod')
+            . ' <input type="number" class="small-text" min="0" max="' . esc_attr((string) PrintJobRetention::MAX_DAYS) . '" step="1" name="' . esc_attr(PrintJobRetention::OPTION) . '" value="' . esc_attr((string) PrintJobRetention::days()) . '"> '
+            . esc_html__('Tagen (0 = nie)', 'taxmod') . '</label></p>';
     }
 
     /** D-1207: «Vorschau im Druckdialog», on by default. */

@@ -22,7 +22,7 @@ namespace Taxmod\Core\Printing;
  *   cancelled --> queued: owner prints again
  * ```
  *
- * @see docs/NewConcept/90-decision-log.md D-1113, D-1234
+ * @see docs/NewConcept/90-decision-log.md D-1113, D-1234, D-1307
  */
 enum PrintJobStatus: string
 {
@@ -44,6 +44,12 @@ enum PrintJobStatus: string
 
     /** «Print again» undoes a cancel and repeats a print (every step undoable, his rule of 2026-10-28). */
     public function canBeQueuedAgain(): bool
+    {
+        return in_array($this, [self::Printed, self::Failed, self::Cancelled], true);
+    }
+
+    /** D-1307: the job has ended and may be removed once its time is up; a waiting or claimed one never is. */
+    public function isFinished(): bool
     {
         return in_array($this, [self::Printed, self::Failed, self::Cancelled], true);
     }

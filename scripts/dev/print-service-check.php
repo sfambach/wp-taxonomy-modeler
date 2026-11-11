@@ -165,6 +165,33 @@ if (function_exists('wp_get_ability') && wp_get_ability('taxmod/print-jobs') !==
     echo "print-service: no Abilities API here, D-1235 not checked\n";
 }
 
+// D-1307: finished jobs older than the days set go, waiting ones stay however old; 0 keeps them all.
+global $wpdb;
+$tabelle = \Taxmod\WordPress\Printing\PrintJobSchema::table();
+$alt = gmdate('Y-m-d H:i:s', time() - 9 * DAY_IN_SECONDS);
+$jung = gmdate('Y-m-d H:i:s', time() - 2 * DAY_IN_SECONDS);
+$lege = static function (string $status, string $erstellt, ?string $ende) use ($wpdb, $tabelle): int {
+    $wpdb->insert($tabelle, ['format' => 'x', 'code' => 'M-1', 'title' => '__purge', 'status' => $status, 'created_at' => $erstellt, 'finished_at' => $ende]);
+
+    return (int) $wpdb->insert_id;
+};
+$altGedruckt = $lege('printed', $alt, $alt);
+$altStorniert = $lege('cancelled', $alt, null);
+$jungGedruckt = $lege('printed', $alt, $jung);
+$altWartend = $lege('queued', $alt, null);
+$altGeholt = $lege('claimed', $alt, null);
+$da = static fn (int $id): bool => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tabelle} WHERE id = %d", $id)) === 1;
+$pruefe($jobs->purge(0) === 0 && $da($altGedruckt), 'D-1307: 0 days keeps every job');
+$jobs->purge(7);
+$pruefe(! $da($altGedruckt) && ! $da($altStorniert), 'D-1307: a printed and a cancelled job older than 7 days are gone');
+$pruefe($da($jungGedruckt) && $da($altWartend) && $da($altGeholt), 'D-1307: a younger finished job and old waiting or claimed jobs stay');
+$wpdb->query($wpdb->prepare("DELETE FROM {$tabelle} WHERE id IN (%d, %d, %d)", $jungGedruckt, $altWartend, $altGeholt));
+$tageVorher = get_option(\Taxmod\WordPress\Printing\PrintJobRetention::OPTION, null);
+PrintTab::act([\Taxmod\WordPress\Printing\PrintJobRetention::OPTION => '12']);
+$pruefe(\Taxmod\WordPress\Printing\PrintJobRetention::days() === 12 && str_contains(PrintTab::register([])[PrintTab::SLUG]['render'](), 'value="12"'), 'D-1307: the Printing tab stores and shows the days');
+$tageVorher === null ? delete_option(\Taxmod\WordPress\Printing\PrintJobRetention::OPTION) : update_option(\Taxmod\WordPress\Printing\PrintJobRetention::OPTION, $tageVorher, false);
+$pruefe(\Taxmod\WordPress\Printing\PrintJobRetention::days() === (int) ($tageVorher ?? 7), 'D-1307: without a setting it is 7 days');
+
 PrintService::revokeAccess();
 $pruefe($rufe('/print/pull', [], $token)->get_status() === 401 && ! is_file($datei), 'a removed access stops the service and its wake file');
 

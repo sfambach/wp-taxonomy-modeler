@@ -183,6 +183,17 @@ final class PrintingTest extends TestCase
     }
 
     #[Test]
+    public function only_a_finished_job_may_be_removed_after_its_days(): void
+    {
+        // D-1307: what is still on its way never disappears, however old.
+        $finished = array_values(array_map(
+            static fn (\Taxmod\Core\Printing\PrintJobStatus $s): string => $s->value,
+            array_filter(\Taxmod\Core\Printing\PrintJobStatus::cases(), static fn (\Taxmod\Core\Printing\PrintJobStatus $s): bool => $s->isFinished())
+        ));
+        self::assertSame(['printed', 'failed', 'cancelled'], $finished);
+    }
+
+    #[Test]
     public function only_the_token_itself_matches_its_hash(): void
     {
         $token = \Taxmod\Core\Printing\PrintServiceToken::generate();
