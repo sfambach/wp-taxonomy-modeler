@@ -2832,3 +2832,22 @@ pre.taxmod-code {
     border-left: 4px solid #dba617;
     background: #fcf9e8;
 }
+
+/* D-1309: a view dialog is as wide as the page it shows. */
+.taxmod-view-dialog .taxmod-dialog-panel {
+    width: min(94vw, 1150px);
+    max-width: none;
+}
+
+.taxmod-view-dialog-frame {
+    display: block;
+    width: 100%;
+    height: 75vh;
+    border: 0;
+}
+
+.taxmod-view-dialog-open {
+    cursor: pointer;
+    color: var(--wp-admin-theme-color, #2271b1);
+    text-decoration: underline;
+}

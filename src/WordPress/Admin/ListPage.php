@@ -452,15 +452,6 @@ final class ListPage
     }
 
     /**
-     * A form a page draws itself — an act such as «Verbrauch buchen», not a record — in the layout of the modeller's form
-     * renderer (`FormRenderer`): label column, field column, the hint as the «?» beside the field, the button below. A record
-     * is still edited with `taxmod_record_editor` (D-1025); this is for everything else, so every form looks the same.
-     *
-     * @param list<array{label: string, control: string, hint?: string, for?: string}> $rows `label` and `hint` plain text,
-     *        `control` escaped HTML (CD-8), `for` the id of the control the label names
-     * @param string $actions escaped HTML: the submit button and any other button, in the toolbar above the fields (D-1308)
-     */
-    /**
      * D-1308: the one bar of buttons above a form or a page — left-aligned, grouped by what the buttons do, a divider between
      * the groups. ⚠️ *His word, 2026-11-11: «im Grunde ist das auf jeder Seite, dass man die Buttons oben wie so eine Toolbar
      * arrangiert. Und nicht mehr unten … ganz lieber oben links», «Jede neue Funktion reiht sich dann praktisch in diese Toolbar
@@ -483,6 +474,47 @@ final class ListPage
         return $parts === [] ? '' : '<div class="taxmod-toolbar" role="toolbar">' . implode('<span class="taxmod-toolbar-sep" aria-hidden="true"></span>', $parts) . '</div>';
     }
 
+    /**
+     * D-1309: another page shown in a dialog, so the reader looks at a record without leaving the list. A purchase in the stock
+     * is the first one ⚠️ *(his word, 2026-11-11: «beim Bestand steht beim Kauf … eine ID, aber kein Link zum Kauf … dass man
+     * sich's angucken kann. Und auch das Bild»)*. The frame loads only when the dialog opens (`assets/view-dialog.js`), and
+     * «Open fully» opens the page in a new tab. One place for every such dialog: a module draws none of its own (D-1186).
+     *
+     * @param string $opener plain text, or the label of `$icon`
+     * @param string $url    the page to show; it is drawn as it is, so it brings its own images and buttons
+     */
+    public static function viewDialog(string $switch, string $opener, string $title, string $url, string $icon = ''): string
+    {
+        if (function_exists('wp_enqueue_script')) {
+            // Built from the plugin folder, not the real path: the plugin may reach wp-content through a junction (see RecordPick).
+            $base = WP_PLUGIN_DIR . '/' . basename(dirname(__DIR__, 3)) . '/x.php';
+            wp_enqueue_style('taxmod-admin', plugins_url('assets/admin.css', $base), ['dashicons', 'buttons'], Plugin::VERSION);
+            wp_enqueue_script('taxmod-view-dialog', plugins_url('assets/view-dialog.js', $base), [], Plugin::VERSION, true);
+        }
+
+        $frame = '<iframe class="taxmod-view-dialog-frame" data-src="' . esc_url($url) . '" title="' . esc_attr($title) . '"></iframe>';
+
+        return '<span class="taxmod-view-dialog">' . DialogMarkup::of(
+            $switch,
+            $icon === '' ? esc_html($opener) : self::icon($icon, $opener),
+            esc_html($title),
+            $frame,
+            '<a class="button" href="' . esc_url($url) . '" target="_blank" rel="noopener">' . esc_html__('Open fully', 'taxmod') . '</a>',
+            $icon === '' ? 'taxmod-dialog-open taxmod-view-dialog-open' : 'button taxmod-icon-button taxmod-dialog-open',
+            '',
+            __('Close', 'taxmod')
+        ) . '</span>';
+    }
+
+    /**
+     * A form a page draws itself — an act such as «Verbrauch buchen», not a record — in the layout of the modeller's form
+     * renderer (`FormRenderer`): label column, field column, the hint as the «?» beside the field, the button below. A record
+     * is still edited with `taxmod_record_editor` (D-1025); this is for everything else, so every form looks the same.
+     *
+     * @param list<array{label: string, control: string, hint?: string, for?: string}> $rows `label` and `hint` plain text,
+     *        `control` escaped HTML (CD-8), `for` the id of the control the label names
+     * @param string $actions escaped HTML: the submit button and any other button, in the toolbar above the fields (D-1308)
+     */
     public static function form(array $rows, string $actions = ''): string
     {
         $out = '';
