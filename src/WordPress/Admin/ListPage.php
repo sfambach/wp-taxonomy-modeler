@@ -475,9 +475,24 @@ final class ListPage
     }
 
     /**
-     * D-1309: another page shown in a dialog, so the reader looks at a record without leaving the list. A purchase in the stock
-     * is the first one ⚠️ *(his word, 2026-11-11: «beim Bestand steht beim Kauf … eine ID, aber kein Link zum Kauf … dass man
-     * sich's angucken kann. Und auch das Bild»)*. The frame loads only when the dialog opens (`assets/view-dialog.js`), and
+     * D-1309: the loader of view dialogs. Also queued with every module page's style (`Plugin::STYLE_ACTION`), because rows
+     * that arrive later by ajax queue it where nothing is printed any more.
+     */
+    public static function viewDialogScript(): void
+    {
+        if (! function_exists('wp_enqueue_script')) {
+            return;
+        }
+
+        // Built from the plugin folder, not the real path: the plugin may reach wp-content through a junction (see RecordPick).
+        $base = WP_PLUGIN_DIR . '/' . basename(dirname(__DIR__, 3)) . '/x.php';
+        wp_enqueue_style('taxmod-admin', plugins_url('assets/admin.css', $base), ['dashicons', 'buttons'], Plugin::VERSION);
+        wp_enqueue_script('taxmod-view-dialog', plugins_url('assets/view-dialog.js', $base), [], Plugin::VERSION, true);
+    }
+
+    /**
+     * D-1309: another page shown in a dialog, so the reader looks at a record without leaving the list. The material of a
+     * goods receipt is the first one (D-1069). The frame loads only when the dialog opens (`assets/view-dialog.js`), and
      * «Open fully» opens the page in a new tab. One place for every such dialog: a module draws none of its own (D-1186).
      *
      * @param string $opener plain text, or the label of `$icon`
@@ -485,12 +500,7 @@ final class ListPage
      */
     public static function viewDialog(string $switch, string $opener, string $title, string $url, string $icon = ''): string
     {
-        if (function_exists('wp_enqueue_script')) {
-            // Built from the plugin folder, not the real path: the plugin may reach wp-content through a junction (see RecordPick).
-            $base = WP_PLUGIN_DIR . '/' . basename(dirname(__DIR__, 3)) . '/x.php';
-            wp_enqueue_style('taxmod-admin', plugins_url('assets/admin.css', $base), ['dashicons', 'buttons'], Plugin::VERSION);
-            wp_enqueue_script('taxmod-view-dialog', plugins_url('assets/view-dialog.js', $base), [], Plugin::VERSION, true);
-        }
+        self::viewDialogScript();
 
         $frame = '<iframe class="taxmod-view-dialog-frame" data-src="' . esc_url($url) . '" title="' . esc_attr($title) . '"></iframe>';
 

@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.68';
+    public const VERSION     = '0.2.69';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -176,6 +176,7 @@ final class Plugin
         }
         // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
         add_action(self::STYLE_ACTION, $plugin->enqueueStyle(...));
+        add_action(self::STYLE_ACTION, [ListPage::class, 'viewDialogScript']);
         // D-1227: the one table head of every list, registered here and enqueued by `ListPage::table()` where a list is drawn.
         add_action('admin_enqueue_scripts', $plugin->registerListHead(...));
 

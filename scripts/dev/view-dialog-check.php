@@ -37,6 +37,9 @@ check('the frame waits for the dialog: data-src, no src', str_contains($html, 'd
 check('the title is escaped', str_contains($html, 'Kauf &lt;57143&gt;'));
 check('the page can be opened fully in a new tab', str_contains($html, 'target="_blank"') && str_contains($html, 'href="' . esc_url($url) . '"'));
 check('the loader is queued', wp_script_is('taxmod-view-dialog', 'enqueued'));
+wp_dequeue_script('taxmod-view-dialog');
+do_action(\Taxmod\WordPress\Plugin::STYLE_ACTION);
+check('a module page queues the loader with its style, for rows that arrive by ajax', wp_script_is('taxmod-view-dialog', 'enqueued'));
 $js = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/view-dialog.js');
 check('the loader sets src from data-src when the dialog opens', str_contains($js, 'taxmod-dialog-switch') && str_contains($js, "setAttribute( 'src'"));
 $icon = ListPage::viewDialog('kauf-1', 'Kauf', 'Kauf', $url, 'visibility');
