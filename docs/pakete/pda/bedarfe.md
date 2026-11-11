@@ -25,6 +25,7 @@ One row per process, grouped by module. Columns:
 | # | Process | Steps on the PDA | Data / booking | Reported | Later / maybe |
 |---|---|---|---|---|---|
 | M-1 | **Pick parts for a manufacturing order** into the order's project container | position by position: go to storage place → confirm quantity (type or scan) → part is moved into the order's project container | same as the on-screen pick list: stock filters `taxmod_stock_places_of` (where) and `taxmod_stock_book_pick` (move) | 2026-11-04, thread «Fertigung» | enter «assembled» count per position at the workbench ([D-1146](../../NewConcept/90-decision-log.md)) |
+| M-2 | **Build one board** (RF process): tick off what is already assembled, to see what is still missing | the board's parts list, position by position → tick when assembled; each tick raises «assembled» of that position by one board | same field as the GUI (assembled count per position, [D-1146](../../NewConcept/90-decision-log.md)); in the GUI the count is raised directly as today | 2026-11-11, thread «Fertigung», spec `taxmod-fertigung/spezifikation-fertigungsprozess.md` §4 | — |
 
 ## 2 · Stock (`wp_tax_stock`)
 
