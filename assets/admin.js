@@ -1026,12 +1026,16 @@
 		var id = form.querySelector( 'input[name="id"]' );
 		var nonce = form.querySelector( 'input[name="_taxmod_nonce"]' );
 
-		if ( ! form.action || ! id || ! nonce ) {
+		var ziel = form.getAttribute( 'action' );
+
+		if ( ! ziel || ! id || ! nonce ) {
 			return null;
 		}
 
-		return form.action
-			+ ( form.action.indexOf( '?' ) === -1 ? '?' : '&' )
+		ziel = new URL( ziel, window.location.href ).href;
+
+		return ziel
+			+ ( ziel.indexOf( '?' ) === -1 ? '?' : '&' )
 			+ 'action=' + encodeURIComponent( HOL )
 			+ '&id=' + encodeURIComponent( id.value )
 			+ '&relation=' + encodeURIComponent( kante )
@@ -2101,7 +2105,8 @@
 		daten.append( 'taxmod_quiet', '1' );
 		speichertGerade = true;
 
-		window.fetch( formular.action, { method: 'POST', body: daten, credentials: 'same-origin' } )
+		// *`formular.action` is the field named «action» when the form carries one (admin-post) — read the attribute.*
+		window.fetch( new URL( formular.getAttribute( 'action' ) || '', window.location.href ).href, { method: 'POST', body: daten, credentials: 'same-origin' } )
 			.then( function ( antwort ) {
 				var art = antwort.headers.get( 'Content-Type' ) || '';
 

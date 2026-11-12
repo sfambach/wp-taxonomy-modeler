@@ -47,5 +47,8 @@ check('no buttons, no toolbar', ListPage::toolbar(['', []]) === '');
 $css = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
 check('the stylesheet places the toolbar on the left', str_contains($css, '.taxmod-toolbar {') && str_contains($css, 'justify-content: flex-start') && ! str_contains($css, '.taxmod-form-actions'));
 
+$js = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.js');
+check('background save reads the form\'s action attribute, not form.action (a field named «action» shadows it)', ! preg_match('/\b(formular|form)\.action\b/', $js));
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);
