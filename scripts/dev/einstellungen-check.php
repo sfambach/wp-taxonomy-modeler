@@ -424,7 +424,8 @@ foreach (['int', 'decimal', 'text', 'bool', 'email', 'datetime', 'color'] as $na
     check("der einfache Typ «{$name}» steht im Baum", isset($seeded[$name]));
 }
 if (count(array_intersect_key($seeded, array_flip(['int', 'decimal', 'text', 'bool', 'email', 'datetime', 'color']))) < 7) {
-    echo "\n{$passed} ok, {$failed} failed\n";
+    
+echo "\n{$passed} ok, {$failed} failed\n";
     exit(1);
 }
 
@@ -1736,5 +1737,13 @@ foreach ($knotenNamenVorher as $id => $n) {
     $zurueckGezaehlt += (string) $wpdb->get_var($wpdb->prepare("SELECT name FROM {$p}nodes_named WHERE id = %d", $id)) === $n ? 1 : 0;
 }
 check('die Namen stehen wieder da', $zurueckGezaehlt === count($knotenNamenVorher));
+echo "\n== B3: eine Feldkopie nimmt die Angaben ihrer Stelle und das «wie oft» mit ==\n";
+$vorlage = $editor->addField($modellKnoten->id, $seeded['text']->id, '__es kopiervorlage');
+$vorlage = $editor->setMultiplicity($modellKnoten->id, $vorlage->id, \Taxmod\Core\Model\Multiplicity::ZeroToMany);
+(new WpdbSettingsRepository())->addValue(\Taxmod\Core\Model\Setting\SettingsValue::atNode($seeded['text']->id, 'TextType', '__es_probe', \Taxmod\Core\Model\TypedValue::ofText('x'), $vorlage->id, 1, true));
+$kopie = $editor->duplicateField($modellKnoten->id, $vorlage->id, '__es kopie');
+$anKopie = array_filter((new WpdbSettingsRepository())->valuesOfNodes([$seeded['text']->id])[$seeded['text']->id] ?? [], static fn ($z): bool => $z->relationId === $kopie->id && $z->attribut === '__es_probe');
+check('die Kopie trägt die Angabe ihrer Stelle', count($anKopie) === 1);
+check('die Kopie hält gleich viele wie die Vorlage', $kopie->multiplicity === \Taxmod\Core\Model\Multiplicity::ZeroToMany);
 echo "\n{$passed} ok, {$failed} failed\n";
 exit($failed === 0 ? 0 : 1);

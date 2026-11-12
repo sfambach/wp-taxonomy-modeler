@@ -634,6 +634,14 @@ final class ModelEditor
         // Knotens: eine Einstellungskante, die als Komposition zurückkommt, ist keine Kopie.
         $copy = $this->addField($ownerId, $relation->toNodeId, $name, $relation->kind);
 
+        // ⚠️ *A copy carries what is set at its use site — allowed units and every other field setting — and how many it holds; his
+        // report 2026-11-12: copying a field lost its unit settings (Gesamtkonzept B3).*
+        $this->carrySettingsDown($relation, $copy);
+
+        if ($copy->multiplicity != $relation->multiplicity) {
+            $copy = $this->setMultiplicity($ownerId, $copy->id, $relation->multiplicity);
+        }
+
         return $copy;
     }
 
