@@ -2105,7 +2105,7 @@
 		daten.append( 'taxmod_quiet', '1' );
 		speichertGerade = true;
 
-		// *`formular.action` is the field named «action» when the form carries one (admin-post) — read the attribute.*
+		// *The form's action property is the field named «action» when the form carries one (admin-post) — read the attribute.*
 		window.fetch( new URL( formular.getAttribute( 'action' ) || '', window.location.href ).href, { method: 'POST', body: daten, credentials: 'same-origin' } )
 			.then( function ( antwort ) {
 				var art = antwort.headers.get( 'Content-Type' ) || '';
