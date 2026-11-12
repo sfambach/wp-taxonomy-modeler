@@ -3516,7 +3516,8 @@ final class NodesScreen
                     __('To parent', 'taxmod'),
                     __('Move this field up to the parent — it keeps its values, and every sibling inherits it from now on', 'taxmod'),
                     $own && $selected->parentNodeId !== null && $selected->parentNodeId !== $this->framework->root()->id,
-                    icon: 'arrow-up-alt'
+                    // D-1312: ⤒ / ⤓ move between levels, ˄ / ˅ only reorder — he pressed the wrong one (2026-11-12).
+                    glyph: '⤒'
                 ),
                 new Control(
                     'do',
@@ -3524,7 +3525,7 @@ final class NodesScreen
                     __('To children', 'taxmod'),
                     __('Move this field down into chosen children — each gets its own copy, and this one is parked', 'taxmod'),
                     $own && $kinderDesKnotens !== [],
-                    icon: 'arrow-down-alt',
+                    glyph: '⤓',
                     // ⚠️ *Der Dialog nur, wo die Aktion geht (D-869) — sonst stand je Feldzeile ein leerer, gesperrter Dialog, gemessen an «CPUs»
                     // 71-mal zu rund 800 Byte. Der ausgegraute Knopf bleibt.*
                     opens: $own && $kinderDesKnotens !== [] ? $this->pushToChildrenDialog($relation, $kinderDesKnotens) : null

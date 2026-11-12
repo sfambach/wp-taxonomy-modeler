@@ -50,5 +50,8 @@ check('the stylesheet places the toolbar on the left', str_contains($css, '.taxm
 $js = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.js');
 check('background save reads the form\'s action attribute, not form.action (a field named «action» shadows it)', ! preg_match('/\b(formular|form)\.action\b/', $js));
 
+$nodes = (string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Admin/NodesScreen.php');
+check('moving a field between levels uses ⤒ / ⤓, not the arrows of the order (D-1312)', (bool) preg_match("/'field_to_parent',.*?glyph: '⤒'/s", $nodes) && (bool) preg_match("/'field_to_children',.*?glyph: '⤓'/s", $nodes));
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);
