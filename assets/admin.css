@@ -2851,3 +2851,17 @@ pre.taxmod-code {
     color: var(--wp-admin-theme-color, #2271b1);
     text-decoration: underline;
 }
+
+/* D-1313: a long dialog stays one panel — head and buttons in view, only the content between them scrolls.
+   His word, 2026-11-12: the white panel ended before the content and the buttons sat on the shade. */
+.taxmod-dialog-head,
+.taxmod-dialog-foot {
+    flex: 0 0 auto;
+    background: #fff;
+}
+
+.taxmod-dialog-panel > :not(.taxmod-dialog-head):not(.taxmod-dialog-foot) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
