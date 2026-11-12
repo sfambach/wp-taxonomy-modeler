@@ -88,6 +88,8 @@ $rules = [
     // D-1308: «Save» stands in the toolbar above the form (ListPage::toolbar, Control::saving), not as a WordPress submit row below it.
     // A single act beside its one input (scan, upload a file) is not a save and is not counted. Measured, not failing yet.
     'G10 save button below a form' => ['D-1308', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all("/submit_button\\(\\s*(?:esc_html)?__\\(\\s*'(?:Save|Speichern)/", $c)],
+    // D-1316: a module file that draws a record editor draws a back link too — counted per file, one finding per file without one.
+    'G11 record page without back link' => ['D-1316', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : (str_contains($c, "apply_filters('taxmod_record_editor'") && ! str_contains($c, 'ListPage::back(') ? 1 : 0)],
     'G7 style= attribute' => ['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
 ];
 

@@ -905,6 +905,17 @@ final class ListPage
     }
 
     /** A button that is a link, drawn as its icon. */
+    /**
+     * D-1316: the back link of a page — ← as the first group of the toolbar (D-1308), on every page that is not a top list.
+     * ⚠️ *His word, 2026-11-12: «Rücksprung sollte natürlich überall vorhanden sein».* The page knows where back is (the list it
+     * came from), so it passes the address; the record editor's «return to» is where a save lands, not where back is.
+     */
+    public static function back(string $url, string $label = ''): string
+    {
+        return '<a class="button taxmod-icon-button taxmod-back" href="' . esc_url($url) . '" title="' . esc_attr($label === '' ? __('Back', 'taxmod') : $label) . '">'
+            . self::icon('arrow-left-alt', $label === '' ? __('Back', 'taxmod') : $label) . '</a>';
+    }
+
     public static function iconLink(string $icon, string $label, string $url): string
     {
         return '<a class="button" href="' . esc_url($url) . '" title="' . esc_attr($label) . '">' . self::icon($icon, $label) . '</a>';

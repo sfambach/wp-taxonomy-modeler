@@ -53,5 +53,8 @@ check('background save reads the form\'s action attribute, not form.action (a fi
 $nodes = (string) file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Admin/NodesScreen.php');
 check('moving a field between levels uses ⤒ / ⤓, not the arrows of the order (D-1312)', (bool) preg_match("/'field_to_parent',.*?glyph: '⤒'/s", $nodes) && (bool) preg_match("/'field_to_children',.*?glyph: '⤓'/s", $nodes));
 
+$back = ListPage::back('https://example.org/wp-admin/admin.php?page=x&a=1&b=2');
+check('the back link is ← with its address, as an icon button (D-1316)', str_contains($back, 'dashicons-arrow-left-alt') && str_contains($back, 'taxmod-back') && str_contains($back, '&#038;b=2'), $back);
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);
