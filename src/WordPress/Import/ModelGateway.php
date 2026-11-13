@@ -143,6 +143,7 @@ final class ModelGateway
         $titleField = $this->target->orderField('title');
         $linesField = $this->target->hasOrderField('lines') ? $this->target->orderField('lines') : -3;
         $shipperField = $this->target->hasOrderField('shipper') ? $this->target->orderField('shipper') : -4;
+        $shippedField = $this->target->hasOrderField('shipped_at') ? $this->target->orderField('shipped_at') : -5;
         $amountFields = [];
 
         foreach (array_filter(['shipping_cost', 'fees', 'total'], $this->target->hasOrderField(...)) as $role) {
@@ -164,6 +165,8 @@ final class ModelGateway
             $parts = [];
             $lines = [];
             $shipper = null;
+            // '' where the target has a «shipped on» and it is empty, null where it has none — only the first makes a mail news.
+            $shipped = $shippedField > 0 ? '' : null;
 
             foreach ((array) ($record['values'] ?? []) as $value) {
                 if (isset($amountFields[(int) $value['relation_id']])) {
@@ -183,12 +186,13 @@ final class ModelGateway
                     $titleField    => $title .= ' ' . (string) $value['value'],
                     $linesField    => $lines[] = (int) $value['value'],
                     $shipperField  => $shipper = (string) $value['value'],
+                    $shippedField  => $shipped = (string) $value['value'],
                     default        => null,
                 };
             }
 
             if ($number !== '') {
-                $found[self::key($platform, $number)] = [(int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title), $parts, $lines, $shipper];
+                $found[self::key($platform, $number)] = [(int) $record['id'], $tracking, $received, $merchant, $ordered, trim($title), $parts, $lines, $shipper, $shipped];
                 $this->platforms[self::key($platform, $number)] = trim($platform);
             }
         }
@@ -204,7 +208,7 @@ final class ModelGateway
             return $invoices;
         }
 
-        foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts, $lineIds, $shipper]) {
+        foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts, $lineIds, $shipper, $shipped]) {
             $values = array_filter([
                 'shipper'    => $shipper,
                 'merchant'   => $merchant,
@@ -226,7 +230,7 @@ final class ModelGateway
                 }
             }
 
-            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values, $existingLines, $invoices[$id] ?? []);
+            $orders[$key] = new ExistingOrder($id, $tracking, $received, $merchant, $ordered, $title, $values, $existingLines, $invoices[$id] ?? [], $shipped);
         }
 
         return $orders;

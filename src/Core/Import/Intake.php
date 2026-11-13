@@ -83,6 +83,12 @@ final class Intake
             return true;
         }
 
+        // ⚠️ *A «shipped» mail without a tracking number (Amazon «Versendet») is news while the order has an empty shipping date (a target without one — purchases — leaves it null and unchanged) —
+        // before, it counted as nothing new, so neither the date nor the event came (Gesamtkonzept E1, found 2026-11-12).*
+        if ($proposal->kind === ProposalKind::Shipped && $existing->shippedAt === '') {
+            return true;
+        }
+
         return $proposal->kind === ProposalKind::Delivered && ($existing->receivedAt === null || $existing->receivedAt === '');
     }
 }
