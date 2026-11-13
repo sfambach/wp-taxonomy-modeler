@@ -99,6 +99,10 @@ try {
 
 check('an undeclared property is refused', $refused !== '', $refused);
 
+$child = $door->createChild($ref['m'], 'np child');
+check('createChild makes a node below the parent (D-1331)', isset($door->children($ref['m'])[$child]), wp_json_encode($door->children($ref['m'])));
+check('the child takes the group property of its parent', $door->propertiesOf([$child], 'np_test_after_inbound') === [$child => true]);
+
 wp_set_current_user(0);
 $refused = '';
 
@@ -109,6 +113,16 @@ try {
 }
 
 check('without the capability nothing is written', $refused !== '', $refused);
+
+$refused = '';
+
+try {
+    $door->createChild($ref['m'], 'np refused');
+} catch (\Taxmod\Core\Exception\ModelDoorRefused $e) {
+    $refused = $e->getMessage();
+}
+
+check('without the capability no node is created', $refused !== '', $refused);
 
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);

@@ -194,6 +194,20 @@ final class ModelDoor
     }
 
     /**
+     * Create a node below `$parent` with the parent's default child class (D-716) — a module's «+ new subgroup» (D-1331).
+     * One act, undoable; the name is a label the person typed, never a value the module made up.
+     */
+    public function createChild(int $parent, string $name): int
+    {
+        $this->nodes = [];
+        $this->trees = [];
+        $answer = $this->execute('taxmod/apply', ['changes' => [['op' => 'create_node', 'parent' => $parent, 'name' => $name]]]);
+        $id     = (int) ($answer['applied'][0]['id'] ?? 0);
+
+        return $id > 0 ? $id : throw ModelDoorRefused::because('The modeller created no node below ' . $parent . '.');
+    }
+
+    /**
      * The modeller's own controls for these fields of `$node` (D-1250) — a quantity is the unit-value control it is in the
      * material, never an input of the module's own. Posted as `$prefix[relation id]`; read back with {@see typed()}.
      *
