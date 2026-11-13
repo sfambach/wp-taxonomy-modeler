@@ -1306,3 +1306,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Gemessen (Code):** eine Feldwahl `summary_fields` gilt nur an dem Knoten, an dem sie steht; `SettingsResolver::listOf()` liest keine Vorfahren. [D-888](NewConcept/90-decision-log.md) sagt «am Knoten zur Kante», nichts über Kinder.
 - **Behelf (kein Beschluss):** die Liste an jedem neuen Knoten setzen (`set_list … field=Bezeichnung`), wie bei `Steckverbinder`.
 - **Offen:** ob ein Unterknoten die Liste seines Vaters erbt, solange er keine eigene hat. Folge, wenn ja: jeder Unterknoten ohne eigene Liste bekäme auf einmal gerechnete Namen — vorher messen, welche. Braucht Stefans Wort.
+
+### Fertigung: Vorgangsart beim Verbrauch eines Fertigungsauftrags (13.11.2026)
+
+- **Anlass:** Der Lager-Thread meldet, dass `taxmod_stock_book_build` die Art «Verbrauch» selbst bucht und kein Blatt darunter ([D-1297](NewConcept/90-decision-log.md): Betriebsbedarf, Verlust/Schwund, Defekt/Ausschuss, Projekt, Privat). Ausschuss läuft schon über «Defekt/Ausschuss» (D-1302).
+- **Offen (Stefan):** Soll der Verbrauch beim Bau unter «Projekt» (149000110421) gebucht werden, oder bleibt er bei «Verbrauch»? Bis zur Antwort bleibt es bei «Verbrauch».
