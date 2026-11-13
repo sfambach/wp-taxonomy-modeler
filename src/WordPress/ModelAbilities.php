@@ -84,6 +84,7 @@ final class ModelAbilities
         'set_list' => '{node, attribute, members: [relation or node ids]} — sets a list setting of the node itself (e.g. summary_fields) to exactly these members; with field {set_list, node: target of the field, field, attribute, members} only at that use site (e.g. erlaubte_einheiten of a unit-value field)',
         'set_label' => '{node, role, text, locale?} — sets one label of the node (role help, select, form …) as the labels box would; empty text removes it',
         'set_addons' => '{node, field?, addons: [{name, fields: {attribute: text or @ref}}]} — replaces the add-on functions of the node or, with field, of that use site (node then being the target of the field), in this order; name calculate with fields operation (plus, minus, times, divided_by) and field (a field of the record) makes the field a calculated one: read-only, every record recalculated (also when the steps are unchanged — sending them again recalculates); name metric on a node with fields title, measure (count, sum), value_field, date_field, filter_field (fields of the node), filter_value and months makes a key figure shown as a tile per month',
+        'hide_field'  => '{node, field, hidden} — the eye at a field row: at the field\'s owner it hides the field everywhere, at any other node only there and below (D-1144); hidden true or false.',
         'set_setting' => '{node, attribute, value, field?} — sets one plain setting (e.g. with_label, name_as_link_text) as the screen would; with field only at that use site, node then being the target of the field; an empty value removes it.',
         'duplicate_record' => '{record} — copies a record with its values and own parts next to itself.',
     ];
@@ -202,7 +203,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
+                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -216,7 +217,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'set_label', 'set_addons']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons']],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -1011,6 +1012,31 @@ final class ModelAbilities
                 $nodeId = $this->node($at('node'))->id;
 
                 $screen->setSetting($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), (string) ($change['value'] ?? ''), isset($change['field']) ? $at('field') : null);
+
+                return $nodeId;
+
+            case 'hide_field':
+                // D-1348: the eye of D-1144 for an agent — hiding an inherited field at a subgroup was only possible in the screen.
+                $nodeId = $this->node($at('node'))->id;
+                $field  = $at('field');
+                $hidden = filter_var($change['hidden'] ?? null, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? throw new \InvalidArgumentException('hide_field needs hidden true or false.');
+                $owned  = null;
+
+                foreach ($editor->fieldsOf($nodeId) as $row) {
+                    if ($row->id === $field) {
+                        $owned = $row->fromNodeId === $nodeId;
+                    }
+                }
+
+                if ($owned === null) {
+                    throw new \InvalidArgumentException('hide_field: the node has no such field.');
+                }
+
+                if ($owned) {
+                    $editor->hideField($nodeId, $field, $hidden);
+                } elseif (! $screen->entries()->hideFieldAt($nodeId, $field, $hidden)) {
+                    throw new \RuntimeException('hide_field: this model has no «hidden» setting at its root (D-1144), so a node cannot hide an inherited field.');
+                }
 
                 return $nodeId;
 
