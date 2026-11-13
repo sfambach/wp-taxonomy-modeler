@@ -37,6 +37,9 @@ final class PrintTab
 
     private const MESSAGE = 'taxmod_print_message_';
 
+    /** D-1336: the name of a new print service, e.g. the computer it runs on. */
+    private const SERVICE_NAME = 'taxmod_print_service_name';
+
     public static function boot(): void
     {
         add_filter(Plugin::CONFIG_TABS_FILTER, self::register(...), 2);
@@ -83,9 +86,33 @@ final class PrintTab
             PrintJobRetention::save(absint($post[PrintJobRetention::OPTION]));
         }
 
-        if ($doing === 'renew') {
-            set_transient(self::NEW_TOKEN . $user, PrintService::renewAccess(), 15 * MINUTE_IN_SECONDS);
-            self::say(__('New access created. Enter it in the print service now; it is shown only this once. The old access no longer works.', 'taxmod'));
+        // D-1336: one print service per computer, each with its own token.
+        if ($doing === 'add') {
+            try {
+                [, $token] = PrintService::addService(substr(sanitize_text_field((string) ($post[self::SERVICE_NAME] ?? '')), 0, 64));
+            } catch (\RuntimeException) {
+                self::say(sprintf(/* translators: %d: number */ __('At most %d print services.', 'taxmod'), PrintService::MAX_SERVICES));
+
+                return;
+            }
+            set_transient(self::NEW_TOKEN . $user, $token, 15 * MINUTE_IN_SECONDS);
+            self::say(__('New print service added. Enter its access on that computer now; it is shown only this once.', 'taxmod'));
+
+            return;
+        }
+        if (str_starts_with($doing, 'renew:')) {
+            $token = PrintService::renewService(substr($doing, 6));
+            if ($token !== null) {
+                set_transient(self::NEW_TOKEN . $user, $token, 15 * MINUTE_IN_SECONDS);
+                self::say(__('New access created. Enter it in the print service now; it is shown only this once. The old access no longer works.', 'taxmod'));
+            }
+
+            return;
+        }
+        if (str_starts_with($doing, 'remove:')) {
+            if (PrintService::removeService(substr($doing, 7))) {
+                self::say(__('Print service removed; its access no longer works.', 'taxmod'));
+            }
 
             return;
         }
@@ -140,25 +167,33 @@ final class PrintTab
             . checked(LabelButton::previewShown(), true, false) . '> ' . esc_html__('Vorschau des Etiketts im Druckdialog zeigen', 'taxmod') . '</label></p>';
     }
 
-    /** One sentence on the print service: not set up, not heard of yet, or when it was last heard of, with what. Also «Test connection». */
+    /** One sentence per print service: not set up, not heard of yet, or when it was last heard of, with what. Also «Test connection». */
     public static function status(): string
     {
-        $settings = PrintService::settings();
+        $services = PrintService::settings()['services'];
+        if ($services === []) {
+            return __('Print service not set up. Labels print through the browser.', 'taxmod');
+        }
 
-        return $settings['token_hash'] === ''
-            ? __('Print service not set up. Labels print through the browser.', 'taxmod')
-            : ($settings['last_seen'] === ''
-                ? __('Print service set up, not heard of yet.', 'taxmod')
-                : sprintf(
-                    /* translators: 1: date and time UTC, 2: service version, 3: printers */
-                    __('Print service last heard of %1$s UTC · %2$s · printers: %3$s', 'taxmod'),
-                    $settings['last_seen'],
-                    $settings['agent'] !== '' ? $settings['agent'] : '?',
-                    $settings['printers'] !== [] ? implode(', ', $settings['printers']) : '—'
-                ));
+        return implode(' · ', array_map(static fn (array $service): string => self::serviceState($service), $services));
     }
 
-    /** The print service's access: its state, «Set up» / «Renew», and the JSON for its config once after renewing. */
+    /** @param array{name: string, last_seen: string, agent: string, host: string, printers: list<string>, queues: list<string>} $service */
+    private static function serviceState(array $service): string
+    {
+        return $service['last_seen'] === ''
+            ? sprintf(/* translators: %s: name */ __('%s: set up, not heard of yet.', 'taxmod'), PrintService::nameOf($service))
+            : sprintf(
+                /* translators: 1: name, 2: date and time UTC, 3: service version, 4: printers */
+                __('%1$s: last heard of %2$s UTC · %3$s · printers: %4$s', 'taxmod'),
+                PrintService::nameOf($service),
+                $service['last_seen'],
+                $service['agent'] !== '' ? $service['agent'] : '?',
+                $service['queues'] !== [] ? implode(', ', $service['queues']) : ($service['printers'] !== [] ? implode(', ', $service['printers']) : '—')
+            );
+    }
+
+    /** The print services, one row each with «New access» and «Remove», «Add print service», and the JSON once after either. */
     private function servicePart(): string
     {
         $settings = PrintService::settings();
@@ -166,15 +201,37 @@ final class PrintTab
         if ($token !== '') {
             delete_transient(self::NEW_TOKEN . get_current_user_id());
         }
-        $state = esc_html(self::status());
 
-        $renew = ListPage::dialogAction(
-            'taxmod-print-renew',
-            $settings['token_hash'] === '' ? __('Set up access', 'taxmod') : __('Renew access', 'taxmod'),
-            __('New access for the print service', 'taxmod'),
-            esc_html__('A new token, push topic and wake file are made and shown once. A print service with the old access stops at once until it gets the new one.', 'taxmod'),
+        $rows = '';
+        foreach ($settings['services'] as $key => $service) {
+            $name = PrintService::nameOf($service);
+            $rows .= '<tr><td>' . esc_html(self::serviceState($service)) . '</td><td style="text-align:right;white-space:nowrap">'
+                . ListPage::dialogAction(
+                    'taxmod-print-renew-' . $key,
+                    __('New access', 'taxmod'),
+                    sprintf(/* translators: %s: name */ __('New access for %s', 'taxmod'), $name),
+                    esc_html__('A new token is made and shown once. This print service stops at once until it gets the new one; the others go on.', 'taxmod'),
+                    self::DO,
+                    'renew:' . $key,
+                    __('Create access', 'taxmod')
+                ) . ' ' . ListPage::dialogAction(
+                    'taxmod-print-remove-' . $key,
+                    __('Remove', 'taxmod'),
+                    sprintf(/* translators: %s: name */ __('Remove %s', 'taxmod'), $name),
+                    esc_html__('Its access stops working at once. Jobs for its printers wait until another print service serves them.', 'taxmod'),
+                    self::DO,
+                    'remove:' . $key,
+                    __('Remove', 'taxmod')
+                ) . '</td></tr>';
+        }
+        $add = ListPage::dialogAction(
+            'taxmod-print-add',
+            __('Add print service', 'taxmod'),
+            __('New print service', 'taxmod'),
+            esc_html__('One print service per computer with printers. It fetches only the jobs for the printers CUPS has on that computer.', 'taxmod')
+                . '<br><label>' . esc_html__('Name, e.g. the computer', 'taxmod') . ' <input type="text" name="' . esc_attr(self::SERVICE_NAME) . '" maxlength="64"></label>',
             self::DO,
-            'renew',
+            'add',
             __('Create access', 'taxmod')
         );
 
@@ -187,26 +244,23 @@ final class PrintTab
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</textarea>';
 
         return self::message()
-            . '<table class="widefat striped taxmod-print-service"><tbody><tr>'
-            . '<td>' . $state . '</td>'
-            . '<td style="text-align:right;white-space:nowrap">' . $renew . '</td>'
-            . '</tr></tbody></table>' . $config;
+            . '<table class="widefat striped taxmod-print-service"><tbody>' . $rows
+            . '<tr><td>' . ($rows === '' ? esc_html(self::status()) : '') . '</td><td style="text-align:right;white-space:nowrap">' . $add . '</td></tr>'
+            . '</tbody></table>' . $config;
     }
 
     /** The setup of the print service at home, step by step, in the box beside the tab (D-963, D-1116). */
     public static function guide(): string
     {
-        $raw = 'https://raw.githubusercontent.com/sfambach/wp-taxonomy-modeler/main/tools/print-agent';
         $code = static fn (string $text): string => '<pre style="white-space:pre-wrap;font-size:.85em;background:#f6f7f7;padding:.5em">' . esc_html($text) . '</pre>';
+        $release = 'https://github.com/sfambach/taxmod_printservice/releases/latest';
         $steps = [
-            esc_html__('Labels print through the browser without any of this. The print service is a small program on a PC at home with CUPS: it fetches the jobs and prints them with the right size and orientation, without a print dialog.', 'taxmod'),
-            esc_html__('Click «Set up access» below and copy the JSON it shows. It is shown only once; never post the token in a chat.', 'taxmod'),
-            esc_html__('On the PC, fetch the program:', 'taxmod') . $code("mkdir -p ~/.local/share/taxmod-print-agent ~/.config/taxmod-print-agent ~/.config/systemd/user\ncd ~/.local/share/taxmod-print-agent\ncurl -fsSLO {$raw}/taxmod_print_agent.py\ncurl -fsSL {$raw}/taxmod-print-agent.service -o ~/.config/systemd/user/taxmod-print-agent.service"),
-            esc_html__('Create ~/.config/taxmod-print-agent/config.json: the four lines from step 2, then the CUPS queue per roll width and, where the queue names a size differently, its PageSize (lpoptions -p <queue> -l | grep PageSize). Then chmod 600 on the file.', 'taxmod')
-                . $code("{\n  \"rest\": \"…\", \"token\": \"…\", \"ntfy\": \"…\", \"wake_url\": \"…\",\n  \"printers\": {\"62\": \"QL-810W_take\", \"102\": \"QL-1100\"},\n  \"formats\": {\"holder62\": {\"PageSize\": \"BrL053E03262D56\", \"orientation-requested\": \"4\"}}\n}"),
-            esc_html__('Start it, and keep it running without a login:', 'taxmod') . $code("systemctl --user daemon-reload\nsystemctl --user enable --now taxmod-print-agent\nloginctl enable-linger \"\$USER\""),
-            esc_html__('Click «Test via print service» at a format. The status above shows when the service was last heard of; the job list shows each job with the message of CUPS. Log: journalctl --user -u taxmod-print-agent -f', 'taxmod'),
-            esc_html__('After «Renew access» enter the new values and restart: systemctl --user restart taxmod-print-agent. Run only one print service per access; moving it to another PC means stopping it on the old one (systemctl --user disable --now taxmod-print-agent).', 'taxmod'),
+            esc_html__('Labels print through the browser without any of this. The print service is a small program on a Linux PC with CUPS: it fetches the jobs and prints them with the right size and orientation, without a print dialog. Each PC with printers runs its own and fetches only the jobs for its own printers (D-1336).', 'taxmod'),
+            esc_html__('Click «Add print service» below, name it after the PC, and copy the JSON it shows. It is shown only once; never post the token in a chat.', 'taxmod'),
+            sprintf(esc_html__('On the PC, install the package from %s:', 'taxmod'), '<a href="' . esc_url($release) . '">taxmod_printservice</a>') . $code("sudo apt install ./taxmod-printservice_<version>_all.deb\ntaxmod-printservice setup"),
+            esc_html__('setup writes ~/.config/taxmod-print-agent/config.json the first time: put the four lines from step 2 into it and run setup again. It starts the service and keeps it running without a login.', 'taxmod'),
+            esc_html__('The printers, their CUPS queues and options stand in the model (Logistik › Drucker). A job goes to the PC whose CUPS has its queue; a queue no service reports is marked in the job list.', 'taxmod'),
+            esc_html__('Log: journalctl --user -u taxmod-printservice -f. Update: taxmod-printservice update (asks for the Linux password).', 'taxmod'),
         ];
 
         return '<ol>' . implode('', array_map(static fn (string $step): string => '<li>' . $step . '</li>', $steps)) . '</ol>';

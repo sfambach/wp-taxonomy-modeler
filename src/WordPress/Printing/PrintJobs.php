@@ -31,6 +31,7 @@ final class PrintJobs
             'title'      => $label->title,
             'subtitle'   => $label->subtitle,
             'document'   => $document,
+            'queue'      => self::queueOfDocument($document),
             'copies'     => max(1, min(LabelButton::MAX_COPIES, $copies)),
             'is_test'    => $test ? 1 : 0,
             'status'     => PrintJobStatus::Queued->value,
@@ -69,6 +70,7 @@ final class PrintJobs
             'subtitle'   => '',
             'pdf'        => $pdf,
             'delivery'   => (string) wp_json_encode($delivery),
+            'queue'      => mb_substr((string) ($delivery['queue'] ?? ''), 0, 127),
             'copies'     => max(1, $copies),
             'is_test'    => $test ? 1 : 0,
             'status'     => PrintJobStatus::Queued->value,
@@ -103,11 +105,13 @@ final class PrintJobs
     }
 
     /**
-     * Claims every waiting job, and every claim older than the limit, for one pull.
+     * Claims every waiting job, and every claim older than the limit, for one pull. D-1336: a service that names its CUPS
+     * queues gets only the jobs for those, and the jobs that name none; a service that names none gets every job.
      *
+     * @param list<string> $queues
      * @return list<array<string, string>>
      */
-    public function claimWaiting(): array
+    public function claimWaiting(array $queues = [], string $by = ''): array
     {
         global $wpdb;
 
@@ -116,14 +120,19 @@ final class PrintJobs
         $stale = gmdate('Y-m-d H:i:s', time() - PrintJobStatus::CLAIM_LIMIT_SECONDS);
         $table = PrintJobSchema::table();
 
+        $queues = array_values(array_unique(array_filter(array_map('strval', $queues), static fn (string $q): bool => $q !== '')));
+        $mine = $queues === [] ? '' : " AND (queue = '' OR queue IN (" . implode(',', array_fill(0, count($queues), '%s')) . '))';
+
         $claimed = (int) $wpdb->query($wpdb->prepare(
-            "UPDATE {$table} SET status = %s, claim = %s, claimed_at = %s WHERE status = %s OR (status = %s AND claimed_at < %s)",
+            "UPDATE {$table} SET status = %s, claim = %s, claimed_at = %s, claimed_by = %s WHERE (status = %s OR (status = %s AND claimed_at < %s)){$mine}",
             PrintJobStatus::Claimed->value,
             $claim,
             $now,
+            mb_substr($by, 0, 64),
             PrintJobStatus::Queued->value,
             PrintJobStatus::Claimed->value,
-            $stale
+            $stale,
+            ...$queues
         ));
         if ($claimed > 0) {
             TileCounts::forget(TileCounts::PRINT_JOBS);
@@ -218,8 +227,8 @@ final class PrintJobs
         $statuses = array_values(array_filter($statuses, static fn (string $s): bool => $s !== ''));
         $marks = implode(',', array_fill(0, count($statuses), '%s'));
         $sql = $statuses === []
-            ? $wpdb->prepare("SELECT id, format, code, title, subtitle, document, copies, is_test, status, claim, message, created_by, created_at, claimed_at, finished_at FROM {$table} ORDER BY id DESC LIMIT %d", $limit)
-            : $wpdb->prepare("SELECT id, format, code, title, subtitle, document, copies, is_test, status, claim, message, created_by, created_at, claimed_at, finished_at FROM {$table} WHERE status IN ({$marks}) ORDER BY id DESC LIMIT %d", ...[...$statuses, $limit]);
+            ? $wpdb->prepare("SELECT id, format, code, title, subtitle, document, copies, is_test, status, claim, message, created_by, created_at, claimed_at, finished_at, queue, claimed_by FROM {$table} ORDER BY id DESC LIMIT %d", $limit)
+            : $wpdb->prepare("SELECT id, format, code, title, subtitle, document, copies, is_test, status, claim, message, created_by, created_at, claimed_at, finished_at, queue, claimed_by FROM {$table} WHERE status IN ({$marks}) ORDER BY id DESC LIMIT %d", ...[...$statuses, $limit]);
 
         return array_map(static fn (array $row): array => array_map('strval', $row), (array) $wpdb->get_results($sql, ARRAY_A));
     }
@@ -256,6 +265,19 @@ final class PrintJobs
         }
 
         return $removed;
+    }
+
+    /** D-1336: the queue of the printer a template job goes to, or '' when the label names none. */
+    private static function queueOfDocument(?string $document): string
+    {
+        if ($document === null || $document === '') {
+            return '';
+        }
+        try {
+            return mb_substr(\Taxmod\Core\Printing\FilledLabel::fromJson($document)->printer?->queue ?? '', 0, 127);
+        } catch (\InvalidArgumentException|\JsonException) {
+            return '';
+        }
     }
 
     /**

@@ -67,11 +67,18 @@ final class PrintRest
             static fn ($p): string => sanitize_text_field((string) $p),
             array_values(array_filter((array) $request->get_param('printers'), 'is_scalar'))
         );
-        PrintService::seen(sanitize_text_field((string) $request->get_param('agent')), $printers);
+        // D-1336: the CUPS queues of this computer; plain names only, as the service hands them to lp.
+        $queues = array_values(array_filter(
+            array_map(static fn ($q): string => (string) $q, array_filter((array) $request->get_param('queues'), 'is_scalar')),
+            static fn (string $q): bool => preg_match('/^[A-Za-z0-9][A-Za-z0-9_.\-]{0,126}$/', $q) === 1
+        ));
+        $service = (string) PrintService::serviceOf((string) $request->get_header(self::TOKEN_HEADER));
+        PrintService::seen(sanitize_text_field((string) $request->get_param('agent')), $printers, $service, sanitize_text_field((string) $request->get_param('host')), $queues);
+        $who = PrintService::settings()['services'][$service] ?? null;
 
         $formats = LabelFormat::shipped();
         $jobs = [];
-        foreach ($this->jobs->claimWaiting() as $row) {
+        foreach ($this->jobs->claimWaiting($queues, $who === null ? '' : PrintService::nameOf($who)) as $row) {
             // D-1162: the copies as pages of one PDF — one job at the printer, the labels come out together.
             $copies  = max(1, (int) ($row['copies'] ?? 1));
             $printer = null;

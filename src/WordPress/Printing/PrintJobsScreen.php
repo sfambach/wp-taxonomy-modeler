@@ -171,7 +171,8 @@ final class PrintJobsScreen
 
         $details = '<dl style="display:grid;grid-template-columns:max-content 1fr;gap:.25em 1em;margin:.5em 0">'
             . '<dt>' . esc_html__('Second line', 'taxmod') . '</dt><dd>' . esc_html($job['subtitle'] !== '' ? $job['subtitle'] : '—') . '</dd>'
-            . '<dt>' . esc_html__('Fetched by the service', 'taxmod') . '</dt><dd>' . esc_html($job['claimed_at'] !== '' ? $job['claimed_at'] . ' UTC' : '—') . '</dd>'
+            . '<dt>' . esc_html__('Printer queue', 'taxmod') . '</dt><dd>' . esc_html(($job['queue'] ?? '') !== '' ? $job['queue'] : '—') . '</dd>'
+            . '<dt>' . esc_html__('Fetched by the service', 'taxmod') . '</dt><dd>' . esc_html($job['claimed_at'] !== '' ? $job['claimed_at'] . ' UTC' . (($job['claimed_by'] ?? '') !== '' ? ' · ' . $job['claimed_by'] : '') : '—') . '</dd>'
             . '<dt>' . esc_html__('Finished', 'taxmod') . '</dt><dd>' . esc_html($job['finished_at'] !== '' ? $job['finished_at'] . ' UTC' : '—') . '</dd>'
             . '</dl>';
 
@@ -180,10 +181,21 @@ final class PrintJobsScreen
             esc_html($job['format']),
             esc_html($job['code']),
             esc_html($job['title']) . ($job['is_test'] === '1' ? ' <span class="description">(' . esc_html__('test', 'taxmod') . ')</span>' : ''),
-            esc_html(self::statusLabel($status)),
+            esc_html(self::statusLabel($status)) . self::unserved($status, (string) ($job['queue'] ?? '')),
             esc_html($job['created_at'] . ' UTC'),
             esc_html($job['message']),
         ], $buttons, $details);
+    }
+
+    /** D-1336: a waiting job for a queue no print service reports would wait for ever; the list says so. */
+    private static function unserved(PrintJobStatus $status, string $queue): string
+    {
+        $served = PrintService::servedQueues();
+        if ($status !== PrintJobStatus::Queued || $queue === '' || $served === null || ! PrintService::isSetUp() || in_array($queue, $served, true)) {
+            return '';
+        }
+
+        return '<br><span class="description" style="color:#b32d2e">' . esc_html__('no print service for this queue', 'taxmod') . '</span>';
     }
 
     private function button(int $id, string $doing, string $label): string

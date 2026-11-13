@@ -192,6 +192,25 @@ $pruefe(\Taxmod\WordPress\Printing\PrintJobRetention::days() === 12 && str_conta
 $tageVorher === null ? delete_option(\Taxmod\WordPress\Printing\PrintJobRetention::OPTION) : update_option(\Taxmod\WordPress\Printing\PrintJobRetention::OPTION, $tageVorher, false);
 $pruefe(\Taxmod\WordPress\Printing\PrintJobRetention::days() === (int) ($tageVorher ?? 7), 'D-1307: without a setting it is 7 days');
 
+// D-1336: one print service per computer, each with its own token, each fetching only the jobs for its own CUPS queues.
+[$kellerKey, $kellerToken] = PrintService::addService('keller');
+$pruefe(count(PrintService::settings()['services']) === 2 && $rufe('/print/pull', [], $kellerToken)->get_status() === 200, 'D-1336: a second print service has its own token');
+$fuerEarth = $jobs->queuePdf('%PDF-1.4 earth', 'x', 'M-1', '__queue', 1, ['queue' => 'Phomemo_M220L']);
+$fuerKeller = $jobs->queuePdf('%PDF-1.4 keller', 'x', 'M-2', '__queue', 1, ['queue' => 'QL-1100']);
+$ohneQueue = $jobs->queuePdf('%PDF-1.4 any', 'x', 'M-3', '__queue', 1, []);
+$ids = static fn (WP_REST_Response $r): array => array_map(static fn (array $j): int => (int) $j['id'], (array) ($r->get_data()['jobs'] ?? []));
+$keller = $ids($rufe('/print/pull', ['agent' => 'taxmod-print-agent 0.5.0', 'host' => 'keller', 'queues' => ['QL-1100', 'QL-810W_take']], $kellerToken));
+$pruefe(in_array($fuerKeller, $keller, true) && in_array($ohneQueue, $keller, true) && ! in_array($fuerEarth, $keller, true), 'D-1336: a service gets the jobs for its queues and those for none, not another computer\'s');
+$pruefe(($jobs->statusOf($fuerEarth)[0] ?? null) === \Taxmod\Core\Printing\PrintJobStatus::Queued, 'D-1336: the other computer\'s job keeps waiting');
+$earth = $ids($rufe('/print/pull', ['agent' => 'taxmod-print-agent 0.5.0', 'host' => 'earth', 'queues' => ['Phomemo_M220L']], $token));
+$pruefe($earth === [$fuerEarth], 'D-1336: the computer with that queue fetches it');
+$pruefe((string) $wpdb->get_var($wpdb->prepare("SELECT claimed_by FROM {$tabelle} WHERE id = %d", $fuerKeller)) === 'keller', 'D-1336: the job says which service fetched it');
+$niemand = $jobs->queuePdf('%PDF-1.4 none', 'x', 'M-4', '__queue', 1, ['queue' => 'Nirgends']);
+$liste = (new PrintJobsScreen($jobs))->render();
+$pruefe(str_contains($liste, 'no print service for this queue'), 'D-1336: a job for a queue no service reports is marked in the list');
+$pruefe(PrintService::removeService($kellerKey) && $rufe('/print/pull', [], $kellerToken)->get_status() === 401 && $rufe('/print/pull', [], $token)->get_status() === 200, 'D-1336: removing one service stops only its token');
+$wpdb->query("DELETE FROM {$tabelle} WHERE title = '__queue'");
+
 PrintService::revokeAccess();
 $pruefe($rufe('/print/pull', [], $token)->get_status() === 401 && ! is_file($datei), 'a removed access stops the service and its wake file');
 

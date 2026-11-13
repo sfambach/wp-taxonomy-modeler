@@ -12,9 +12,11 @@ final class PrintJobSchema
 {
     /**
      * 2: `document`, a label drawn from a template (D-1153). 3: `copies`, one job prints them together (D-1162). 4: `pdf` and
-     * `delivery`, a job that arrives finished from the module that prints (D-1294).
+     * `delivery`, a job that arrives finished from the module that prints (D-1294). 5: `queue`, the CUPS queue the job is
+     * for, so each print service fetches only the jobs for its own printers, and `claimed_by`, the service that fetched it
+     * (D-1336).
      */
-    public const VERSION = 4;
+    public const VERSION = 5;
     public const VERSION_OPTION = 'taxmod_print_schema_version';
 
     public static function table(): string
@@ -52,9 +54,12 @@ final class PrintJobSchema
   created_at datetime NOT NULL,
   claimed_at datetime NULL,
   finished_at datetime NULL,
+  queue varchar(127) NOT NULL DEFAULT '',
+  claimed_by varchar(64) NOT NULL DEFAULT '',
   PRIMARY KEY  (id),
   KEY status (status),
-  KEY claim (claim)
+  KEY claim (claim),
+  KEY queue (queue)
 ) %s;",
             self::table(),
             $wpdb->get_charset_collate()

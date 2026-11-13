@@ -140,7 +140,8 @@ final class PrintAbilities
                 'code'        => (string) $row['code'],
                 'title'       => (string) $row['title'],
                 'label'       => (string) ($document['template'] ?? $row['format']),
-                'queue'       => (string) ($document['printer']['queue'] ?? ''),
+                'queue'       => (string) (($row['queue'] ?? '') !== '' ? $row['queue'] : ($document['printer']['queue'] ?? '')),
+                'claimed_by'  => (string) ($row['claimed_by'] ?? ''),
                 'copies'      => (int) $row['copies'],
                 'message'     => (string) ($row['message'] ?? ''),
                 'created_at'  => (string) $row['created_at'],
@@ -149,7 +150,12 @@ final class PrintAbilities
             ];
         }
 
-        return ['service' => ['agent' => $service['agent'], 'last_seen' => $service['last_seen'], 'printers' => $service['printers']], 'jobs' => $jobs];
+        // D-1336: every print service with what it serves; `service` stays the one heard of last.
+        $services = array_values(array_map(static fn (array $s): array => [
+            'name' => PrintService::nameOf($s), 'agent' => $s['agent'], 'last_seen' => $s['last_seen'], 'queues' => $s['queues'],
+        ], $service['services']));
+
+        return ['service' => ['agent' => $service['agent'], 'last_seen' => $service['last_seen'], 'printers' => $service['printers']], 'services' => $services, 'jobs' => $jobs];
     }
 
     /**
