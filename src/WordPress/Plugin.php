@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.82';
+    public const VERSION     = '0.2.83';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -71,6 +71,9 @@ final class Plugin
      * {@see ModelDoor::propertiesOf()} and {@see ModelDoor::setProperty()}.
      */
     public const NODE_PROPERTIES_FILTER = 'taxmod_node_properties';
+
+    /** The group property that orders bills of materials (D-1341), declared by the modeller itself. */
+    public const BOM_RANK = 'bom_rank';
 
     /** `apply_filters(NODE_CHOOSER_FILTER, '', ['name', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form', 'inline', 'pick_url'])`: the node chooser dialog for a module's page (D-1075); with `inline` the tree stands on the page and a click opens `pick_url`, `{id}` for the node (D-1175). */
     public const NODE_CHOOSER_FILTER = 'taxmod_node_chooser';
@@ -162,6 +165,8 @@ final class Plugin
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
         ), 10, 2);
         // D-1291: a module's door asks the words of fields, from the one renderer — «0,044 €», never its own number format.
+        // D-1341: the rank that orders bills of materials is a group property like a module's, declared here once.
+        add_filter(self::NODE_PROPERTIES_FILTER, static fn (mixed $declared): array => (is_array($declared) ? $declared : []) + [self::BOM_RANK => ['label' => __('Rank in bills of materials', 'taxmod'), 'type' => \Taxmod\Core\Model\Setting\NodeProperties::NUMBER]]);
         add_filter(self::FIELD_WORDS_FILTER, static fn (array $answer, array $records, array $relations): array => $plugin->screen()->fieldTexts(
             array_values(array_map('intval', $records)),
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))

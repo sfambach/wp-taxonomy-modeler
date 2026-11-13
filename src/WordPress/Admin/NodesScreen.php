@@ -404,6 +404,52 @@ final class NodesScreen
     }
 
     /**
+     * Parts in a reader's view ordered by the «Rang in Stücklisten» of the record each part points at (D-1341): the rank is a group
+     * property (D-1259), inherited, so one setting at «Widerstände» orders every bill of materials. Parts without a rank keep their
+     * stored order behind the ranked ones. Three queries for any number of parts (CD-7).
+     *
+     * @param array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>> $parts relation id → parts
+     * @return array<int, list<array{id: int, nodeId: int, werte: array<int, TypedValue>, teile: array}>>
+     */
+    public static function rankedParts(array $parts): array
+    {
+        $target = [];
+
+        foreach ($parts as $list) {
+            foreach ($list as $part) {
+                foreach ($part['werte'] as $value) {
+                    if ($value->reference !== null && $value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Record) {
+                        $target[$part['id']] = $value->reference;
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($target === [] || ! isset(\Taxmod\WordPress\ModelDoor::properties()[\Taxmod\WordPress\Plugin::BOM_RANK])) {
+            return $parts;
+        }
+
+        $nodeOf = [];
+
+        foreach ((new \Taxmod\WordPress\Persistence\WpdbRecordRepository())->byIds(array_values(array_unique($target))) as $id => $record) {
+            $nodeOf[$id] = $record->nodeId;
+        }
+
+        $ranks = $nodeOf === [] ? [] : (new \Taxmod\WordPress\ModelDoor())->propertiesOf(array_values(array_unique($nodeOf)), \Taxmod\WordPress\Plugin::BOM_RANK);
+        $rank  = static fn (array $part): int => $ranks[$nodeOf[$target[$part['id']] ?? 0] ?? 0] ?? PHP_INT_MAX;
+
+        foreach ($parts as $relationId => $list) {
+            $order = array_flip(array_column($list, 'id'));
+            usort($list, static fn (array $a, array $b): int => [$rank($a), $order[$a['id']]] <=> [$rank($b), $order[$b['id']]]);
+            $parts[$relationId] = $list;
+        }
+
+        return $parts;
+    }
+
+    /**
      * The fields a module changes only through its own dialog (D-1334), checked: a field of the node, a label, an address.
      *
      * @return array<int, array{label: string, url: string}> relation id → the module's button
@@ -600,7 +646,7 @@ final class NodesScreen
             Level::FrontEnd,
             false,
             $this->rendering->containerChosenFor($knoten) ? '' : \Taxmod\Core\Renderer\TableRenderer::NAME,
-            $this->rendering->partsOfRecord($recordId, $felder),
+            self::rankedParts($this->rendering->partsOfRecord($recordId, $felder)),
             recordId: $recordId
         )->markup;
     }

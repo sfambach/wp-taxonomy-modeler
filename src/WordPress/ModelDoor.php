@@ -133,7 +133,7 @@ final class ModelDoor
         foreach ((array) apply_filters(Plugin::NODE_PROPERTIES_FILTER, []) as $key => $declared) {
             $key   = sanitize_key((string) $key);
             $label = is_array($declared) ? (string) ($declared['label'] ?? '') : (string) $declared;
-            $type  = is_array($declared) && ($declared['type'] ?? '') === NodeProperties::ID ? NodeProperties::ID : NodeProperties::YES_NO;
+            $type  = is_array($declared) && in_array($declared['type'] ?? '', [NodeProperties::ID, NodeProperties::NUMBER], true) ? (string) $declared['type'] : NodeProperties::YES_NO;
 
             if ($key !== '' && $label !== '') {
                 $out[$key] = ['label' => $label, 'type' => $type];
