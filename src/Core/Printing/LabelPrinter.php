@@ -21,6 +21,9 @@ final class LabelPrinter
     /** The key of the size entry that stands for every size: «*=w{B}h{H}». */
     private const ANY_SIZE = '*';
 
+    /** D-1333: the longest pause between two jobs, in seconds. */
+    public const MAX_PAUSE = 600;
+
     /**
      * @param array<string, string> $options     CUPS option ⇒ value for every label; '' for an option without value
      * @param array<string, string> $turnOptions the same, added for a label turned on its page
@@ -37,7 +40,11 @@ final class LabelPrinter
         public readonly array $turnOptions = [],
         public readonly array $sizes = [],
         public readonly bool $retries = false,
+        public readonly int $pauseSeconds = 0,
     ) {
+        if ($pauseSeconds < 0 || $pauseSeconds > self::MAX_PAUSE) {
+            throw new \InvalidArgumentException(sprintf('A pause of %d s is not between 0 and %d.', $pauseSeconds, self::MAX_PAUSE));
+        }
         if (preg_match(self::NAME, $queue) !== 1) {
             throw new \InvalidArgumentException(sprintf('«%s» is not a CUPS queue name.', $queue));
         }
@@ -84,11 +91,11 @@ final class LabelPrinter
         return $page === null ? $options : ['PageSize' => $page] + $options;
     }
 
-    /** @return array{queue: string, options: array<string, string>, turn: bool, name: string, offset: float, line: float, roll: float, turn_options: array<string, string>, sizes: array<string, string>, retry: bool} */
+    /** @return array{queue: string, options: array<string, string>, turn: bool, name: string, offset: float, line: float, roll: float, turn_options: array<string, string>, sizes: array<string, string>, retry: bool, pause: int} */
     public function toArray(): array
     {
         return ['queue' => $this->queue, 'options' => $this->options, 'turn' => $this->turnsLabel, 'name' => $this->name, 'offset' => $this->offsetMm,
-            'line' => $this->lineMm, 'roll' => $this->rollMm, 'turn_options' => $this->turnOptions, 'sizes' => $this->sizes, 'retry' => $this->retries];
+            'line' => $this->lineMm, 'roll' => $this->rollMm, 'turn_options' => $this->turnOptions, 'sizes' => $this->sizes, 'retry' => $this->retries, 'pause' => $this->pauseSeconds];
     }
 
     /**
@@ -124,6 +131,8 @@ final class LabelPrinter
             $map($raw['sizes'] ?? []),
             // D-1234: whether CUPS may try a failed job again by itself; off unless the printer says so.
             $yes($raw['retry'] ?? false),
+            // D-1333: seconds the service waits after each job on this printer; the Phomemo swallows labels sent too fast.
+            max(0, min(self::MAX_PAUSE, (int) round((float) str_replace(',', '.', (string) ($raw['pause'] ?? 0))))),
         );
     }
 

@@ -109,6 +109,16 @@ final class LabelPrinterTest extends TestCase
     }
 
     #[Test]
+    public function the_pause_after_each_job_travels_with_the_printer_and_stays_in_range(): void
+    {
+        // D-1333, his word 2026-11-13 «mach mal max 10sec pause».
+        self::assertSame(0, self::label(self::PHOMEMO)->printer->pauseSeconds);
+        self::assertSame(10, FilledLabel::fromJson(self::label(self::PHOMEMO + ['pause' => '10'])->toJson())->printer?->pauseSeconds);
+        self::assertSame(LabelPrinter::MAX_PAUSE, self::label(self::PHOMEMO + ['pause' => '99999'])->printer->pauseSeconds);
+        self::assertSame(0, self::label(self::PHOMEMO + ['pause' => '-5'])->printer->pauseSeconds);
+    }
+
+    #[Test]
     public function a_queue_that_is_not_a_plain_name_is_refused(): void
     {
         $this->expectException(\InvalidArgumentException::class);
