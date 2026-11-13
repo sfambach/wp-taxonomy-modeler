@@ -35,6 +35,8 @@ final class PrintTab
 
     private const NEW_TOKEN = 'taxmod_print_token_';
 
+    private const NEW_CODE = 'taxmod_print_code_';
+
     private const MESSAGE = 'taxmod_print_message_';
 
     /** D-1336: the name of a new print service, e.g. the computer it runs on. */
@@ -96,7 +98,18 @@ final class PrintTab
                 return;
             }
             set_transient(self::NEW_TOKEN . $user, $token, 15 * MINUTE_IN_SECONDS);
-            self::say(__('New print service added. Enter its access on that computer now; it is shown only this once.', 'taxmod'));
+            set_transient(self::NEW_CODE . $user, (string) PrintService::pairingCode((string) array_key_last(PrintService::settings()['services'])), 15 * MINUTE_IN_SECONDS);
+            self::say(__('New print service added. Enter its pairing code on that computer now (or the JSON below); both are shown only this once.', 'taxmod'));
+
+            return;
+        }
+        // D-1351: a one-time code to couple the print service from its own page.
+        if (str_starts_with($doing, 'pair:')) {
+            $code = PrintService::pairingCode(substr($doing, 5));
+            if ($code !== null) {
+                set_transient(self::NEW_CODE . $user, $code, 15 * MINUTE_IN_SECONDS);
+                self::say(__('Pairing code created. Enter it in «Taxmod Druckdienst» on that computer within 15 minutes; it works once.', 'taxmod'));
+            }
 
             return;
         }
@@ -202,11 +215,24 @@ final class PrintTab
             delete_transient(self::NEW_TOKEN . get_current_user_id());
         }
 
+        $code = (string) get_transient(self::NEW_CODE . get_current_user_id());
+        if ($code !== '') {
+            delete_transient(self::NEW_CODE . get_current_user_id());
+        }
+
         $rows = '';
         foreach ($settings['services'] as $key => $service) {
             $name = PrintService::nameOf($service);
             $rows .= '<tr><td>' . esc_html(self::serviceState($service)) . '</td><td style="text-align:right;white-space:nowrap">'
                 . ListPage::dialogAction(
+                    'taxmod-print-pair-' . $key,
+                    __('Pairing code', 'taxmod'),
+                    sprintf(/* translators: %s: name */ __('Pairing code for %s', 'taxmod'), $name),
+                    esc_html__('A code for the page «Taxmod Druckdienst» on that computer, valid 15 minutes and once. Pairing gives the service a new token; its old one stops working.', 'taxmod'),
+                    self::DO,
+                    'pair:' . $key,
+                    __('Create code', 'taxmod')
+                ) . ' ' . ListPage::dialogAction(
                     'taxmod-print-renew-' . $key,
                     __('New access', 'taxmod'),
                     sprintf(/* translators: %s: name */ __('New access for %s', 'taxmod'), $name),
@@ -243,7 +269,10 @@ final class PrintTab
                 'wake_url' => PrintService::wakeUrl(),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</textarea>';
 
-        return self::message()
+        $pairing = $code === '' ? '' : '<p><strong>' . esc_html__('Pairing code — enter it in «Taxmod Druckdienst» on that computer within 15 minutes:', 'taxmod') . '</strong> '
+            . '<code style="font-size:1.4em;letter-spacing:.1em">' . esc_html($code) . '</code></p>';
+
+        return self::message() . $pairing
             . '<table class="widefat striped taxmod-print-service"><tbody>' . $rows
             . '<tr><td>' . ($rows === '' ? esc_html(self::status()) : '') . '</td><td style="text-align:right;white-space:nowrap">' . $add . '</td></tr>'
             . '</tbody></table>' . $config;
@@ -256,9 +285,9 @@ final class PrintTab
         $release = 'https://github.com/sfambach/taxmod_printservice/releases/latest';
         $steps = [
             esc_html__('Labels print through the browser without any of this. The print service is a small program on a Linux PC with CUPS: it fetches the jobs and prints them with the right size and orientation, without a print dialog. Each PC with printers runs its own and fetches only the jobs for its own printers (D-1336).', 'taxmod'),
-            esc_html__('Click «Add print service» below, name it after the PC, and copy the JSON it shows. It is shown only once; never post the token in a chat.', 'taxmod'),
+            esc_html__('Click «Add print service» below and name it after the PC. It shows a pairing code (and the JSON for config.json), each only once; never post the token in a chat.', 'taxmod'),
             sprintf(esc_html__('On the PC, install the package from %s:', 'taxmod'), '<a href="' . esc_url($release) . '">taxmod_printservice</a>') . $code("sudo apt install ./taxmod-printservice_<version>_all.deb\ntaxmod-printservice setup"),
-            esc_html__('setup writes ~/.config/taxmod-print-agent/config.json the first time: put the four lines from step 2 into it and run setup again. It starts the service and keeps it running without a login.', 'taxmod'),
+            esc_html__('Open «Taxmod Druckdienst» from the menu (on a computer without a desktop: taxmod-printservice pair https://… CODE) and enter the pairing code from step 2. Then run taxmod-printservice setup once: it starts the service and keeps it running without a login.', 'taxmod'),
             esc_html__('The printers, their CUPS queues and options stand in the model (Logistik › Drucker). A job goes to the PC whose CUPS has its queue; a queue no service reports is marked in the job list.', 'taxmod'),
             esc_html__('Log: journalctl --user -u taxmod-printservice -f. Update: taxmod-printservice update (asks for the Linux password).', 'taxmod'),
         ];

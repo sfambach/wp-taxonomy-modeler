@@ -44,7 +44,7 @@ final class PrintService
      *
      * @return array{token_hash: string, topic: string, wake: string, last_seen: string, agent: string, printers: list<string>,
      *     services: array<string, array{name: string, token_hash: string, last_seen: string, agent: string, host: string,
-     *     printers: list<string>, queues: list<string>}>}
+     *     printers: list<string>, queues: list<string>, pair_hash: string, pair_until: int}>}
      */
     public static function settings(): array
     {
@@ -108,6 +108,58 @@ final class PrintService
         return [$key, $token];
     }
 
+    /** How long a pairing code holds, in seconds. */
+    public const PAIRING_SECONDS = 900;
+
+    /** Letters that cannot be mistaken for each other when typed from the screen. */
+    private const PAIRING_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    /**
+     * D-1351: a one-time code for one service, valid {@see self::PAIRING_SECONDS}; typed into the print service's page, it
+     * brings the access there without copying the token. Only its hash is kept.
+     */
+    public static function pairingCode(string $key): ?string
+    {
+        $settings = self::settings();
+        if (! isset($settings['services'][$key])) {
+            return null;
+        }
+        $code = '';
+        for ($i = 0; $i < 8; $i++) {
+            $code .= self::PAIRING_LETTERS[random_int(0, strlen(self::PAIRING_LETTERS) - 1)];
+        }
+        $settings['services'][$key]['pair_hash'] = PrintServiceToken::hash($code);
+        $settings['services'][$key]['pair_until'] = time() + self::PAIRING_SECONDS;
+        self::store($settings);
+
+        return substr($code, 0, 4) . '-' . substr($code, 4);
+    }
+
+    /**
+     * D-1351: the service whose code this is, with a fresh token; the code is spent. Null for a wrong, used or old code.
+     *
+     * @return array{0: string, 1: string}|null key and token
+     */
+    public static function pair(string $code): ?array
+    {
+        $code = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $code));
+        if (strlen($code) !== 8) {
+            return null;
+        }
+        $settings = self::settings();
+        foreach ($settings['services'] as $key => $service) {
+            if ($service['pair_until'] >= time() && PrintServiceToken::matches($code, $service['pair_hash'])) {
+                $settings['services'][$key]['pair_hash'] = '';
+                $settings['services'][$key]['pair_until'] = 0;
+                self::store($settings);
+
+                return [(string) $key, (string) self::renewService((string) $key)];
+            }
+        }
+
+        return null;
+    }
+
     /** A new token for one service; its old one stops working at once. Null when there is no such service. */
     public static function renewService(string $key): ?string
     {
@@ -120,6 +172,15 @@ final class PrintService
         self::store($settings);
 
         return $token;
+    }
+
+    public static function rename(string $key, string $name): void
+    {
+        $settings = self::settings();
+        if (isset($settings['services'][$key])) {
+            $settings['services'][$key]['name'] = $name;
+            self::store($settings);
+        }
     }
 
     public static function removeService(string $key): bool
@@ -243,6 +304,8 @@ final class PrintService
             'host'       => (string) ($service['host'] ?? ''),
             'printers'   => array_values(array_map('strval', (array) ($service['printers'] ?? []))),
             'queues'     => array_values(array_map('strval', (array) ($service['queues'] ?? []))),
+            'pair_hash'  => (string) ($service['pair_hash'] ?? ''),
+            'pair_until' => (int) ($service['pair_until'] ?? 0),
         ];
     }
 

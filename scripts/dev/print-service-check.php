@@ -211,6 +211,24 @@ $pruefe(str_contains($liste, 'no print service for this queue'), 'D-1336: a job 
 $pruefe(PrintService::removeService($kellerKey) && $rufe('/print/pull', [], $kellerToken)->get_status() === 401 && $rufe('/print/pull', [], $token)->get_status() === 200, 'D-1336: removing one service stops only its token');
 $wpdb->query("DELETE FROM {$tabelle} WHERE title = '__queue'");
 
+// D-1351: a print service couples itself with a one-time code instead of a copied token.
+[$paarKey] = PrintService::addService('');
+$code = (string) PrintService::pairingCode($paarKey);
+$pruefe(preg_match('/^[A-Z2-9]{4}-[A-Z2-9]{4}$/', $code) === 1, 'D-1351: a pairing code is eight letters, easy to type');
+$falsch = $rufe('/print/pair', ['code' => 'AAAA-AAAA'], '');
+$pruefe($falsch->get_status() === 403, 'D-1351: a wrong code is refused');
+$gepaart = $rufe('/print/pair', ['code' => strtolower($code), 'host' => 'kellerserver'], '');
+$neuToken = (string) ($gepaart->get_data()['token'] ?? '');
+$pruefe($gepaart->get_status() === 200 && $neuToken !== '' && ($gepaart->get_data()['name'] ?? '') === 'kellerserver', 'D-1351: the right code brings a token and names the service after its host');
+$pruefe($rufe('/print/pull', [], $neuToken)->get_status() === 200, 'D-1351: the paired service can pull');
+$pruefe($rufe('/print/pair', ['code' => $code], '')->get_status() === 403, 'D-1351: a code works once');
+$pauseJob = $jobs->queuePdf('%PDF-1.4 pause', 'x', 'M-5', '__queue', 1, ['queue' => 'Phomemo_M220L', 'pause' => 20]);
+$mitPause = array_values(array_filter((array) ($rufe('/print/pull', ['queues' => ['Phomemo_M220L']], $neuToken)->get_data()['jobs'] ?? []), static fn (array $j): bool => $j['id'] === $pauseJob));
+$pruefe(($mitPause[0]['pause'] ?? null) === 20, 'D-1333: the printer\'s pause goes with the job to the service');
+$wpdb->query("DELETE FROM {$tabelle} WHERE title = '__queue'");
+PrintService::removeService($paarKey);
+delete_transient('taxmod_print_pair_failed');
+
 PrintService::revokeAccess();
 $pruefe($rufe('/print/pull', [], $token)->get_status() === 401 && ! is_file($datei), 'a removed access stops the service and its wake file');
 

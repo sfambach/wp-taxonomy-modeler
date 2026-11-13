@@ -45,6 +45,12 @@ final class PrintRest
             'permission_callback' => self::authorised(...),
             'args'                => ['id' => ['validate_callback' => static fn ($v): bool => is_numeric($v) && (int) $v > 0]],
         ]);
+        // D-1351: a print service couples itself with the one-time code; no token yet, so no token check.
+        register_rest_route(self::ROUTES, '/print/pair', [
+            'methods'             => 'POST',
+            'callback'            => $this->pair(...),
+            'permission_callback' => '__return_true',
+        ]);
         // D-1234: between «CUPS took it» and the end, the service says what CUPS says.
         register_rest_route(self::ROUTES, '/print/jobs/(?P<id>\d+)/progress', [
             'methods'             => 'POST',
@@ -86,7 +92,7 @@ final class PrintRest
             if (($row['pdf'] ?? '') !== '' && $row['pdf'] !== null) {
                 $delivery = json_decode((string) ($row['delivery'] ?? ''), true);
                 $delivery = is_array($delivery) ? $delivery : [];
-                $jobs[]   = array_intersect_key($delivery, ['queue' => true, 'options' => true, 'retry' => true]) + [
+                $jobs[]   = array_intersect_key($delivery, ['queue' => true, 'options' => true, 'retry' => true, 'pause' => true]) + [
                     'id'     => (int) $row['id'],
                     'format' => $row['format'],
                     'roll'   => $delivery['roll'] ?? null,
@@ -100,7 +106,7 @@ final class PrintRest
             // D-1294: an older job without its PDF is rendered by the module that owns the labels, when one answers.
             $fromModule = apply_filters(self::RENDER_FILTER, null, $row);
             if (is_array($fromModule) && is_string($fromModule['pdf'] ?? null) && $fromModule['pdf'] !== '') {
-                $jobs[] = array_intersect_key($fromModule, ['queue' => true, 'options' => true, 'retry' => true]) + [
+                $jobs[] = array_intersect_key($fromModule, ['queue' => true, 'options' => true, 'retry' => true, 'pause' => true]) + [
                     'id'     => (int) $row['id'],
                     'format' => (string) ($fromModule['format'] ?? $row['format']),
                     'roll'   => $fromModule['roll'] ?? null,
@@ -143,6 +149,38 @@ final class PrintRest
         }
 
         return new \WP_REST_Response(['jobs' => $jobs]);
+    }
+
+    /** Wrong codes in one hour before pairing stops until the hour is over; a code has 32^8 values and holds 15 minutes. */
+    public const PAIRING_TRIES = 20;
+
+    public function pair(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    {
+        $failed = (int) get_transient('taxmod_print_pair_failed');
+        if ($failed >= self::PAIRING_TRIES) {
+            return new \WP_Error('taxmod_print_pair', __('Too many wrong pairing codes; try again in an hour.', 'taxmod'), ['status' => 429]);
+        }
+        $paired = PrintService::pair(sanitize_text_field((string) $request->get_param('code')));
+        if ($paired === null) {
+            set_transient('taxmod_print_pair_failed', $failed + 1, HOUR_IN_SECONDS);
+
+            return new \WP_Error('taxmod_print_pair', __('Unknown, used or expired pairing code.', 'taxmod'), ['status' => 403]);
+        }
+        [$key, $token] = $paired;
+        $settings = PrintService::settings();
+        $service = $settings['services'][$key];
+        if ($service['name'] === '') {
+            PrintService::rename($key, substr(sanitize_text_field((string) $request->get_param('host')), 0, 64));
+            $service = PrintService::settings()['services'][$key];
+        }
+
+        return new \WP_REST_Response([
+            'rest'     => rest_url(self::ROUTES . '/'),
+            'token'    => $token,
+            'ntfy'     => PrintService::NTFY_SERVER . '/' . $settings['topic'],
+            'wake_url' => PrintService::wakeUrl(),
+            'name'     => PrintService::nameOf($service),
+        ]);
     }
 
     public function progress(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
