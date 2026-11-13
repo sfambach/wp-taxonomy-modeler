@@ -22,6 +22,7 @@ use Taxmod\Core\Import\ProposalGroup;
 use Taxmod\Core\Import\ProposalKind;
 use Taxmod\Core\Import\ResolvingSource;
 use Taxmod\Core\Import\SearchingSource;
+use Taxmod\Core\Import\StatusDate;
 use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Currency\EcbRates;
 use Taxmod\WordPress\Persistence\WriteLock;
@@ -538,6 +539,20 @@ final class InboxScreen
         return (string) (($row['received_at'] ?? '') !== '' && $row['received_at'] !== null ? $row['received_at'] : $row['created_at']);
     }
 
+    /**
+     * The day a status step of this message happened, or null: an order export filed today did not ship or arrive today
+     * (D-1250/A8, D-1350).
+     *
+     * @param array<string, mixed> $row `mixed`: a row of the inbox table
+     */
+    private static function dated(array $row, ?string $named): ?string
+    {
+        $evidence = (array) json_decode((string) ($row['evidence'] ?? ''), true);
+
+        return StatusDate::of($named, isset($row['received_at']) ? (string) $row['received_at'] : null, (string) $row['created_at'],
+            ! empty($evidence[StatusDate::ARCHIVE]));
+    }
+
     private static function fieldLabel(string $role): string
     {
         return match ($role) {
@@ -849,12 +864,13 @@ final class InboxScreen
 
                 // The date the message names, else the day it came (his word: «datum wird aus der nachricht genommen»).
                 if (! $shippedDone && $step->kind === ProposalKind::Shipped) {
-                    $changes = [...$changes, ...$builder->shippedOn($existing, substr($step->shippedDate ?? self::when($row), 0, 10))];
+                    $shippedOn = self::dated($row, $step->shippedDate);
+                    $changes = $shippedOn === null ? $changes : [...$changes, ...$builder->shippedOn($existing, $shippedOn)];
                     $shippedDone = true;
                 }
 
                 $deliveredOn = $step->kind === ProposalKind::Delivered && ($existing->receivedAt === null || $existing->receivedAt === '')
-                    ? substr(self::when($row), 0, 10)
+                    ? self::dated($row, null)
                     : null;
 
                 if ($deliveredOn !== null) {
@@ -872,7 +888,8 @@ final class InboxScreen
                     $events[] = [
                         $existing->recordId,
                         $step->kind === ProposalKind::Shipped ? 'shipped' : 'delivered',
-                        substr($step->kind === ProposalKind::Shipped ? ($step->shippedDate ?? self::when($row)) : self::when($row), 0, 10),
+                        // The stock process moves the status on and reads no date from it; an archive message has none (D-1350).
+                        self::dated($row, $step->kind === ProposalKind::Shipped ? $step->shippedDate : null) ?? '',
                         (string) ($row['source'] ?? '') === 'mail' ? 'mail' : 'api',
                         (string) ($step->externalId ?? $row['id']),
                     ];
