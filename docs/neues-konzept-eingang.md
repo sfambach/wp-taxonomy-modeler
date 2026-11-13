@@ -1310,4 +1310,4 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 ## INF-122 · Fertigung: Vorgangsart beim Verbrauch eines Fertigungsauftrags (2026-11-13)
 
 - **Anlass:** Der Lager-Thread meldet, dass `taxmod_stock_book_build` die Art «Verbrauch» selbst bucht und kein Blatt darunter ([D-1297](NewConcept/90-decision-log.md): Betriebsbedarf, Verlust/Schwund, Defekt/Ausschuss, Projekt, Privat). Ausschuss läuft schon über «Defekt/Ausschuss» (D-1302).
-- **Offen (Stefan):** Soll der Verbrauch beim Bau unter «Projekt» (149000110421) gebucht werden, oder bleibt er bei «Verbrauch»? Bis zur Antwort bleibt es bei «Verbrauch».
+- **Entschieden:** D-1330 (Stefans Karte 13.11.): «Projekt».
