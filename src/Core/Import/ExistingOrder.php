@@ -26,7 +26,7 @@ final class ExistingOrder
         public readonly array $values = [],
         public readonly array $lines = [],
         public readonly array $invoiceNumbers = [],
-        /** When the order left the seller: '' = the target has the field and it is empty, null = the target has no such field. */
+        /** When the order left the seller: '' = the field is empty, null = the target has no such field (both: not known as shipped). */
         public readonly ?string $shippedAt = null,
     ) {
     }

@@ -83,9 +83,11 @@ final class Intake
             return true;
         }
 
-        // ⚠️ *A «shipped» mail without a tracking number (Amazon «Versendet») is news while the order has an empty shipping date (a target without one — purchases — leaves it null and unchanged) —
-        // before, it counted as nothing new, so neither the date nor the event came (Gesamtkonzept E1, found 2026-11-12).*
-        if ($proposal->kind === ProposalKind::Shipped && $existing->shippedAt === '') {
+        // ⚠️ *A «shipped» mail without a tracking number (Amazon «Versendet») is news while the order has no shipping date — an
+        // empty field, or none at all (purchase orders: their status lives in the stock module, which hears the event, D-1038). Before,
+        // it counted as nothing new, so neither the date nor the event came (Gesamtkonzept E1, D-1326). A mail whose tracking number is
+        // known already brought its event the first time.*
+        if ($proposal->kind === ProposalKind::Shipped && $proposal->trackingNumbers === [] && ($existing->shippedAt === null || $existing->shippedAt === '')) {
             return true;
         }
 

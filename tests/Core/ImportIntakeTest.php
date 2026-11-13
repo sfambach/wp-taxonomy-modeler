@@ -71,7 +71,8 @@ final class ImportIntakeTest extends TestCase
 
         self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', self::order('Reichelt', ProposalKind::Shipped, ['T1']), $existing));
         self::assertSame(IntakeVerdict::Update, $intake->decide('mail', self::order('Reichelt', ProposalKind::Shipped, []), new ExistingOrder(7, [], shippedAt: '')), 'a shipping mail without a tracking number brings the date');
-        self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', self::order('Reichelt', ProposalKind::Shipped, []), new ExistingOrder(7)), 'a target without a shipping date: unchanged');
+        self::assertSame(IntakeVerdict::Update, $intake->decide('mail', self::order('Reichelt', ProposalKind::Shipped, []), new ExistingOrder(7)), 'a purchase order without the field: news, so the stock hears the event');
+        self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', self::order('Reichelt', ProposalKind::Shipped, []), new ExistingOrder(7, [], shippedAt: '2026-10-01')), 'the date is there: nothing new');
         self::assertSame(IntakeVerdict::Update, $intake->decide('mail', self::order('Reichelt', ProposalKind::Shipped, ['T2']), $existing));
         self::assertSame(IntakeVerdict::Update, $intake->decide('mail', self::order('eBay', ProposalKind::Delivered), $existing));
         self::assertSame(IntakeVerdict::Nothing, $intake->decide('mail', self::order('eBay', ProposalKind::Delivered), new ExistingOrder(7, [], '2026-10-01')));
