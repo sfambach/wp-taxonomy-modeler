@@ -376,7 +376,7 @@ final class NodesScreen
                         self::RETURN_TO  => $returnTo,
                     ]
                 ),
-                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
+                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')), $this->moveRecordControl($satz, $knoten)]
             ), ...$toolbar]) . '</div>'
             . $this->claimedRows($recordId, $felder, $claimed)
             . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
@@ -5449,6 +5449,26 @@ final class NodesScreen
      * @param list<Node>     $kinder  die Kinder des gewählten Knotens — für alle Sätze der Seite dieselben, also einmal gelesen
      * @param list<Relation> $verloren was dieser Satz beim Vater verlöre — für die ganze Seite in einem Zug bestimmt (D-764)
      */
+    /**
+     * «Move» for one record on a module's page — the same dialog as in the modeller's record table (D-756), so a material
+     * moves into a group just created below its own without leaving the module (D-1343).
+     */
+    private function moveRecordControl(NodeRecord $record, Node $node): Control
+    {
+        $parent = $node->parentNodeId === null ? null : $this->editor->find($node->parentNodeId);
+        $parent = $parent !== null && ! $this->framework->isProtected($parent) ? $parent : null;
+
+        return new Control(
+            'do',
+            'move_record',
+            __('Move', 'taxmod'),
+            __('Move this record up to the parent or down into a child — its values travel with it', 'taxmod'),
+            true,
+            icon: 'randomize',
+            opens: $this->moveRecordDialog($record, $parent, $this->editor->childrenOf($node->id), $parent === null ? [] : $this->data->lostOnMove($record->id, $parent->id))
+        );
+    }
+
     private function moveRecordDialog(NodeRecord $record, ?Node $parent, array $kinder, array $verloren): Dialog
     {
         $body   = '';

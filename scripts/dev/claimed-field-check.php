@@ -45,6 +45,7 @@ $text  = (new WpdbNodeRepository())->byImplementations([TextType::class])[TextTy
 
 $built = wp_get_ability('taxmod/apply')->execute(['changes' => [
     ['op' => 'create_node', 'ref' => 'n', 'name' => '__cf Platz', 'parent' => $model->id],
+    ['op' => 'create_node', 'ref' => 'sub', 'name' => '__cf Unterplatz', 'parent' => '@n'],
     ['op' => 'add_field', 'ref' => 'kind', 'node' => '@n', 'target' => $text?->id ?? 0, 'name' => '__cf Art'],
     ['op' => 'add_field', 'ref' => 'note', 'node' => '@n', 'target' => $text?->id ?? 0, 'name' => '__cf Notiz'],
     ['op' => 'create_record', 'ref' => 'r', 'node' => '@n'],
@@ -57,7 +58,7 @@ if (! is_array($built)) {
     exit(1);
 }
 
-['n' => $node, 'kind' => $kind, 'note' => $note, 'r' => $record] = $built['refs'];
+['n' => $node, 'sub' => $sub, 'kind' => $kind, 'note' => $note, 'r' => $record] = $built['refs'];
 
 add_filter(Plugin::CLAIMED_FIELDS_FILTER, static fn (array $claims, int $recordId): array => $recordId === $record
     ? $claims + [$kind => ['label' => 'Art wechseln …', 'url' => 'https://example.test/dialog?r=' . $record], 999999 => ['label' => 'x', 'url' => 'https://example.test/']]
@@ -86,6 +87,27 @@ foreach (wp_get_ability('taxmod/read-node')->execute(['node' => $node])['records
 $encoded = (string) wp_json_encode($values);
 check('a form save leaves the claimed field alone', str_contains($encoded, 'Regal') && ! str_contains($encoded, 'Box'), $encoded);
 check('a form save writes the other field', str_contains($encoded, 'neu'), $encoded);
+
+check('the record editor offers «Move» into a child (D-1343)', str_contains($editor, 'taxmod-move-record-' . $record) && str_contains($editor, 'name="target" value="' . $sub . '"'));
+
+$redirected = '';
+$catch      = static function (string $to) use (&$redirected): string {
+    $redirected = $to;
+    throw new RuntimeException('redirect');
+};
+add_filter('wp_redirect', $catch, 1);
+$_POST = $_REQUEST = ['action' => 'taxmod_node', 'id' => (string) $node, 'node_record_id' => (string) $record, 'do' => 'move_record', 'target' => (string) $sub, '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $node), 'taxmod_return' => admin_url('admin.php?page=x')];
+
+try {
+    $plugin->screen()->handlePost();
+} catch (RuntimeException) {
+} finally {
+    remove_filter('wp_redirect', $catch, 1);
+    $_POST = $_REQUEST = [];
+}
+
+$moved = (new \Taxmod\WordPress\Persistence\WpdbRecordRepository())->byIds([$record])[$record] ?? null;
+check('moving from the record editor puts the record into the child', $moved !== null && $moved->nodeId === $sub, $redirected);
 
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);
