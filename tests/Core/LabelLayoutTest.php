@@ -59,6 +59,18 @@ final class LabelLayoutTest extends TestCase
     }
 
     #[Test]
+    public function a_text_too_long_for_its_lines_still_wraps_and_cuts_only_the_last(): void
+    {
+        // D-1354, his word 2026-11-13 «auf dem Etikett ist es abgeschnitten. Die Beschreibung. Eigentlich soll die umbrechen».
+        $layout = LabelLayout::fromJson('[{"type":"text","field":"Beschreibung","x":18.5,"y":16.5,"w":20,"h":7,"pt":7,"lines":2}]');
+        $pdf = LabelDocument::renderLayout(LabelFormat::byKey('material62'), $layout, [['Beschreibung' => 'Laut Amazon-Angebot: Loscrew M4 Schrauben, Flachkopfschrauben, 765 Stück, Edelstahl, Muttern']]);
+
+        self::assertStringContainsString('(Laut) Tj', $pdf);
+        self::assertSame(2, substr_count($pdf, ' Tj'));
+        self::assertStringContainsString("\x85) Tj", $pdf);
+    }
+
+    #[Test]
     public function the_values_of_a_record_fill_the_layout(): void
     {
         $layout = LabelLayout::fromJson('[{"type":"qr","field":"code","x":3,"y":3,"w":24},{"type":"text","field":"kurzzeichen","x":30,"y":3,"w":29,"h":8,"pt":14,"bold":true},'

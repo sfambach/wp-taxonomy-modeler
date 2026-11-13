@@ -206,7 +206,7 @@ final class LabelDocument
     }
 
     /**
-     * Largest size at which the words fill at most $maxLines lines; otherwise one line, fitted or cut.
+     * Largest size at which the words fill at most $maxLines lines; otherwise $maxLines lines at the smallest size, the last cut.
      *
      * @return array{0: list<string>, 1: float}
      */
@@ -234,8 +234,22 @@ final class LabelDocument
                 return [$lines, $size];
             }
         }
-        [$line, $size] = self::fit($text, $widthMm, $maxPt, $bold);
-        return [[$line], $size];
+        // D-1354: too long even at the smallest size — keep wrapping over every line it may take and cut only the last one.
+        $lines = [];
+        $current = '';
+        foreach ($words as $word) {
+            $candidate = $current === '' ? $word : $current . ' ' . $word;
+            if ($current !== '' && PdfDocument::textWidthMm($candidate, self::MIN_PT, $bold) > $widthMm) {
+                $lines[] = $current;
+                $current = $word;
+                continue;
+            }
+            $current = $candidate;
+        }
+        $lines[] = $current;
+        $kept = array_slice($lines, 0, $maxLines - 1);
+        $kept[] = implode(' ', array_slice($lines, $maxLines - 1));
+        return [array_map(static fn (string $line): string => self::fit($line, $widthMm, self::MIN_PT, $bold)[0], $kept), self::MIN_PT];
     }
 
     /**
