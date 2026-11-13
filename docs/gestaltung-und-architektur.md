@@ -42,6 +42,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | S14 | Einen Satz oder eine Seite im Dialog ansehen nur über `ListPage::viewDialog($schalter, $öffner, $titel, $url)` — Rahmen lädt erst beim Öffnen, «Open fully» im neuen Tab. Kein eigener iframe-Dialog im Modul. | [D-1309](NewConcept/90-decision-log.md) |
 | S15 | Abhängige Felder (zeigen sich nur bei einem Wert eines anderen Feldes im selben Formular) nur über `ListPage::shownBy($feld, $wert, $html)`; kein eigenes Skript im Modul. | [D-1311](NewConcept/90-decision-log.md) |
 | S16 | Jede Seite, die keine oberste Liste ist, hat den Rücksprung ← als erste Gruppe der Toolbar: `ListPage::back($url)`, Ziel ist die Liste, von der man kam. Wächter `G11` (Satzseite ohne Rücksprung). | [D-1316](NewConcept/90-decision-log.md) |
+| S18 | Ein Feld, das ein Modul nur über seinen eigenen Dialog ändern lässt (z. B. die Art eines belegten Platzes), beansprucht es über den Filter `taxmod_claimed_fields`: der Satz-Editor zeigt es nur zum Lesen mit dem Knopf des Moduls, und Speichern über das Formular lässt es stehen. Kein Sperren nach Namen oder Knoten. Prüfung `claimed-field-check`. | [D-1334](NewConcept/90-decision-log.md) |
 
 ## 2 · Liste
 

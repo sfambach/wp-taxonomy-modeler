@@ -353,8 +353,10 @@ final class NodesScreen
             $held[$wert->relationId] = $wert->value;
         }
 
+        $claimed  = $this->claimedFields($recordId, $knoten->id);
         $resolved = $this->rendering->settingsForUseSites($felder);
         $formId   = 'taxmod-preview-record-' . $recordId;
+        $shown    = array_values(array_filter($this->rendering->previewVisibilityFor($felder, $resolved)['shown'], static fn (Relation $one): bool => ! isset($claimed[$one->id])));
 
         // ⚠️ *Auf der Seite eines Moduls steht weder der gemeinsame Auswahlbaum noch die Vorlage der Satzdialoge — also zeichnet der
         // Editor beides selbst (D-1135). Sein Befund an der Platzart: «teile platzart kann ich nicht auswählen» — der Dialog war leer.*
@@ -376,6 +378,7 @@ final class NodesScreen
                 ),
                 [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
             ), ...$toolbar]) . '</div>'
+            . $this->claimedRows($recordId, $felder, $claimed)
             . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
                 ->withRecordLinks(fn (int $andererSatz): string => $this->recordAddress($andererSatz))
                 // ⚠️ *Ohne die Adresse blieb ein Sprung (D-769) im Formular eines Moduls eine leere Zeile — gemessen an Satz 46700, «Kompatibilität».*
@@ -383,7 +386,7 @@ final class NodesScreen
                 ->withRecordCreation(...$this->recordCreation())
                 ->nodeAsForm(
                     $knoten,
-                    $this->rendering->previewVisibilityFor($felder, $resolved)['shown'],
+                    $shown,
                     $this->rendering->previewValuesFor($felder, $resolved, $held),
                     Purpose::Edit,
                     self::VALUE_FIELD . '[' . $recordId . ']',
@@ -398,6 +401,60 @@ final class NodesScreen
                     recordId: $recordId
                 )->markup
             . '</div>' . RecordPick::words();
+    }
+
+    /**
+     * The fields a module changes only through its own dialog (D-1334), checked: a field of the node, a label, an address.
+     *
+     * @return array<int, array{label: string, url: string}> relation id → the module's button
+     */
+    private function claimedFields(int $recordId, int $nodeId): array
+    {
+        $asked  = $recordId > 0 ? apply_filters(\Taxmod\WordPress\Plugin::CLAIMED_FIELDS_FILTER, [], $recordId, $nodeId) : [];
+        $fields = [];
+
+        foreach ($this->editor->fieldsOf($nodeId) as $relation) {
+            $fields[$relation->id] = true;
+        }
+
+        $out = [];
+
+        foreach (is_array($asked) ? $asked : [] as $relationId => $claim) {
+            $label = is_array($claim) ? trim((string) ($claim['label'] ?? '')) : '';
+            $url   = is_array($claim) ? (string) ($claim['url'] ?? '') : '';
+
+            if (isset($fields[(int) $relationId]) && $label !== '' && $url !== '') {
+                $out[(int) $relationId] = ['label' => $label, 'url' => $url];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * A claimed field as the record shows it, with the module's button instead of a control (D-1334).
+     *
+     * @param list<Relation>                                 $felder
+     * @param array<int, array{label: string, url: string}> $claimed
+     */
+    private function claimedRows(int $recordId, array $felder, array $claimed): string
+    {
+        $relations = array_values(array_filter($felder, static fn (Relation $r): bool => isset($claimed[$r->id])));
+
+        if ($relations === []) {
+            return '';
+        }
+
+        $words = $this->fieldTexts([$recordId], $relations);
+        $rows  = '';
+
+        foreach ($relations as $relation) {
+            $rows .= '<p class="taxmod-claimed-field"><strong>' . esc_html($relation->name) . ':</strong> '
+                . esc_html((string) ($words[$relation->id][$recordId] ?? '—')) . ' '
+                . '<a class="button" href="' . esc_url($claimed[$relation->id]['url']) . '">' . esc_html($claimed[$relation->id]['label']) . '</a></p>';
+        }
+
+        return '<div class="taxmod-claimed-fields">' . $rows . '</div>';
     }
 
     /**
@@ -2612,16 +2669,18 @@ final class NodesScreen
         // die Vorschau die eine, die es tut. Ohne Satz (nur Vorgaben) bleibt sie ohne Namen.*
         $satz     = (int) ($seen['record'] ?? 0);
         $formular = $satz === 0 ? '' : 'taxmod-preview-record-' . $satz;
+        $claimed  = $this->claimedFields($satz, $selected->id);
+        $changeable = array_values(array_filter($visibility['shown'], static fn (Relation $one): bool => ! isset($claimed[$one->id])));
 
         foreach ([
             [__('Display', 'taxmod'), Purpose::Display, false, Level::FrontEnd, $visibility['shown'], '', ''],
-            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $visibility['shown'], '', $formular],
+            [__('Admin', 'taxmod'), Purpose::Edit, true, Level::Admin, $changeable, '', $formular],
         ] as [$title, $purpose, $editable, $level, $gezeigte, $breite, $formId]) {
             $html .= '<div class="taxmod-preview-side' . $breite . '"' . ($formId === '' ? '' : ' id="taxmod-preview-edit"') . '>'
                 . '<h4>' . esc_html($title) . '</h4>'
                 . ($formId === '' ? '' : self::reviewNote($satz))
                 // D-1308: the buttons above the form, as the toolbar.
-                . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId))
+                . ($formId === '' ? '' : $this->previewActs($selected, $satz, $formId) . $this->claimedRows($satz, $relations, $claimed))
                 . $this->rendering->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))->withRecordLinks(
                     // ⚠️ *Die Seite des Knotens, dem der Satz gehört, mit ihm in der Vorschau (D-852).*
                     fn (int $satz): string => $this->recordAddress($satz)
@@ -5062,6 +5121,9 @@ final class NodesScreen
         if ($recordId !== 0 && isset($submitted[$recordId]) && is_array($submitted[$recordId])) {
             $submitted = $submitted[$recordId];
         }
+
+        // D-1334: a field a module claimed is changed only through its dialog — a stale or forged form value is dropped here.
+        $submitted = array_diff_key($submitted, $this->claimedFields($recordId, $nodeId));
 
         $this->writeRecord(
             $nodeId,

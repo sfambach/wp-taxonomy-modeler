@@ -42,71 +42,71 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:36](../../CLAUDE.md) | 16 |
-| **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:37](../../CLAUDE.md) | 14 |
-| **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:38](../../CLAUDE.md) | 16 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:39](../../CLAUDE.md) | 75 |
-| **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:40](../../CLAUDE.md) | 1 |
-| **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:41](../../CLAUDE.md) | 5 |
-| **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:42](../../CLAUDE.md) | **nie** |
-| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:43](../../CLAUDE.md) | 21 |
-| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:45](../../CLAUDE.md) | 24 |
-| **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:44](../../CLAUDE.md) | 3 |
+| **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:30](../../CLAUDE.md) | 16 |
+| **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:31](../../CLAUDE.md) | 14 |
+| **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:32](../../CLAUDE.md) | 16 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:33](../../CLAUDE.md) | 76 |
+| **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:34](../../CLAUDE.md) | 1 |
+| **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:35](../../CLAUDE.md) | 5 |
+| **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:36](../../CLAUDE.md) | **nie** |
+| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:37](../../CLAUDE.md) | 22 |
+| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:39](../../CLAUDE.md) | 24 |
+| **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:38](../../CLAUDE.md) | 3 |
 
 ## CD — Code — wie geschrieben wird
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 89 |
-| **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:69](../../CLAUDE.md) | 1 |
-| **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:70](../../CLAUDE.md) | 1 |
-| **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:71](../../CLAUDE.md) | **nie** |
-| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:72](../../CLAUDE.md) | 25 |
-| **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:73](../../CLAUDE.md) | 17 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:74](../../CLAUDE.md) | 149 |
-| **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:75](../../CLAUDE.md) | 4 |
-| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:76](../../CLAUDE.md) | 29 |
-| **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:77](../../CLAUDE.md) | 5 |
-| **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:78](../../CLAUDE.md) | 3 |
-| **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:79](../../CLAUDE.md) | 7 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 92 |
+| **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:63](../../CLAUDE.md) | 1 |
+| **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:64](../../CLAUDE.md) | 2 |
+| **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
+| **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:66](../../CLAUDE.md) | 28 |
+| **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:67](../../CLAUDE.md) | 21 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 199 |
+| **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 15 |
+| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 29 |
+| **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 8 |
+| **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:72](../../CLAUDE.md) | 5 |
+| **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:73](../../CLAUDE.md) | 7 |
 
 ## AR — Architektur — was gebaut wird (braucht je eine Entscheidung)
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:103](../../CLAUDE.md) | 22 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:104](../../CLAUDE.md) | 96 |
+| **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:94](../../CLAUDE.md) | 22 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:95](../../CLAUDE.md) | 97 |
 
 ## DC — Dokumentation im Code
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **DC1** | Comments explain why, not what. If a comment restates the code, delete one of them — usually the comment. | [CLAUDE.md:120](../../CLAUDE.md) | **nie** |
-| **DC2** | Every class and interface gets a short docblock: one sentence of purpose, plus the concept document it implements (@see docs/NewConcept/10-domain-c… | [CLAUDE.md:121](../../CLAUDE.md) | **nie** |
-| **DC3** | @param / @return only where the type declaration cannot say it — array shapes, generics, units, ranges. Never as an echo of the signature. | [CLAUDE.md:122](../../CLAUDE.md) | **nie** |
-| **DC4** | For a flow that is genuinely hard to see from one file — a registry lookup, a resolution walk, a graph traversal — put a small mermaid diagram in t… | [CLAUDE.md:123](../../CLAUDE.md) | **nie** |
-| **DC5** | Each top-level source folder has a README.md: what lives here, what it must not depend on, where its concept document is. Short. This is the docume… | [CLAUDE.md:124](../../CLAUDE.md) | **nie** |
+| **DC1** | Comments explain why, not what. If a comment restates the code, delete one of them — usually the comment. | [CLAUDE.md:111](../../CLAUDE.md) | **nie** |
+| **DC2** | Every class and interface gets a short docblock: one sentence of purpose, plus the concept document it implements (@see docs/NewConcept/10-domain-c… | [CLAUDE.md:112](../../CLAUDE.md) | **nie** |
+| **DC3** | @param / @return only where the type declaration cannot say it — array shapes, generics, units, ranges. Never as an echo of the signature. | [CLAUDE.md:113](../../CLAUDE.md) | **nie** |
+| **DC4** | For a flow that is genuinely hard to see from one file — a registry lookup, a resolution walk, a graph traversal — put a small mermaid diagram in t… | [CLAUDE.md:114](../../CLAUDE.md) | **nie** |
+| **DC5** | Each top-level source folder has a README.md: what lives here, what it must not depend on, where its concept document is. Short. This is the docume… | [CLAUDE.md:115](../../CLAUDE.md) | **nie** |
 
 ## V — Vision und Umfang
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **V1** | The model consists of nodes and edges. | [00-vision-and-scope.md:26](00-vision-and-scope.md) | 15 |
-| **V2** | The nodes sit in a tree. | [00-vision-and-scope.md:27](00-vision-and-scope.md) | 1 |
+| **V1** | The model consists of nodes and edges. | [00-vision-and-scope.md:26](00-vision-and-scope.md) | 17 |
+| **V2** | The nodes sit in a tree. | [00-vision-and-scope.md:27](00-vision-and-scope.md) | 2 |
 | **V3** | The tree represents the inheritance hierarchy only — nothing else. | [00-vision-and-scope.md:28](00-vision-and-scope.md) | 8 |
 | **V4** | The root node has no parent. Every other node inherits from its ancestors. | [00-vision-and-scope.md:29](00-vision-and-scope.md) | 1 |
 | **V5** | Fundamentally all nodes are the same. Confirmed 2026-08-23 with a nuance from the owner: there are specialisations, but that statement was about th… | [00-vision-and-scope.md:30](00-vision-and-scope.md) | 23 |
 | **V6** | There are a few special nodes, for data types and for calculations. | [00-vision-and-scope.md:31](00-vision-and-scope.md) | 6 |
 | **V7** | Those special nodes are created in the configuration. | [00-vision-and-scope.md:32](00-vision-and-scope.md) | 15 |
 | **V8** | Essentially every node has: one renderer (responsible for display), one converter (may manipulate the output), and one or more validators (check wh… | [00-vision-and-scope.md:33](00-vision-and-scope.md) | 20 |
-| **V9** | The validator concept is deliberately special: a validator can, at the same time, offer a way to correct the invalid data. | [00-vision-and-scope.md:34](00-vision-and-scope.md) | 30 |
+| **V9** | The validator concept is deliberately special: a validator can, at the same time, offer a way to correct the invalid data. | [00-vision-and-scope.md:34](00-vision-and-scope.md) | 31 |
 
 ## C — Modellkern
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **C1** | Model contains Bauteil (Passiv, Halbleiter, Elektromechanik, Sonstige), Bauteilliste, Kontakt, Platine, Bauteillisten Position. | [01-standard-tree.md:88](01-standard-tree.md) | 14 |
-| **C2** | Implementation holds Bauteile, BOM, Lieferanten — actual instances. | [01-standard-tree.md:89](01-standard-tree.md) | 23 |
+| **C1** | Model contains Bauteil (Passiv, Halbleiter, Elektromechanik, Sonstige), Bauteilliste, Kontakt, Platine, Bauteillisten Position. | [01-standard-tree.md:88](01-standard-tree.md) | 15 |
+| **C2** | Implementation holds Bauteile, BOM, Lieferanten — actual instances. | [01-standard-tree.md:89](01-standard-tree.md) | 24 |
 | **C3** | Konstanten also holds Bauformen and Bauteil Monatge Typen (sic). | [01-standard-tree.md:90](01-standard-tree.md) | 7 |
 | **C4** | The file's own notes list four known live inconsistencies, including a typo and a soft-trashed node. | [01-standard-tree.md:91](01-standard-tree.md) | 10 |
 | **C5** | The attributes that appear only through specialisation — an integer node carrying min, max, step — are stored generically, in the settings table. | [10-domain-core.md:1135](10-domain-core.md) | 9 |
@@ -221,8 +221,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 4 |
-| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 2 |
+| **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 5 |
+| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 3 |
 | **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 1 |
 | **P4** | These are the base tables for storing the model data later: nodes, settings, relations. → amended to nodes, settings, labels, relations by D-019. | [50-wordpress-persistence.md:29](50-wordpress-persistence.md) | 16 |
 | **P5** | There will not be a database table per model. The data have to be stored some other way. | [50-wordpress-persistence.md:109](50-wordpress-persistence.md) | 9 |
@@ -250,8 +250,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 112 |
-| **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 4 |
+| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 115 |
+| **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 7 |
 | **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 8 |
 | **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
 | **R5** | A renderer may work with trees and call other renderers. | [30-renderer.md:92](30-renderer.md) | 2 |
@@ -346,9 +346,9 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **K1** | Switching a prefix — gram to kilogram — has to change the value with it. An internal conversion, handled differently again in the interface. | [60-calculation.md:28](60-calculation.md) | 4 |
-| **K2** | There are computed values assembled from other fields. Hidden fields may be added up and the result shown in another field. | [60-calculation.md:29](60-calculation.md) | 6 |
-| **K3** | A parts list has a total price, which comes from the prices of its positions, each of which comes from quantity × unit price. | [60-calculation.md:30](60-calculation.md) | 16 |
+| **K1** | Switching a prefix — gram to kilogram — has to change the value with it. An internal conversion, handled differently again in the interface. | [60-calculation.md:28](60-calculation.md) | 6 |
+| **K2** | There are computed values assembled from other fields. Hidden fields may be added up and the result shown in another field. | [60-calculation.md:29](60-calculation.md) | 7 |
+| **K3** | A parts list has a total price, which comes from the prices of its positions, each of which comes from quantity × unit price. | [60-calculation.md:30](60-calculation.md) | 17 |
 | **K4** | Elsewhere, averages or sums are wanted. | [60-calculation.md:31](60-calculation.md) | 1 |
 | **K5** | In the old concept a calculation could also be a transformation — a text transformation, say. The owner asks for this to be questioned. | [60-calculation.md:32](60-calculation.md) | 4 |
 | **K6** | There is a difference between calculations in the model and calculations for display. A parts list may get a frontend footer that sums quantity and… | [60-calculation.md:33](60-calculation.md) | 6 |
@@ -363,14 +363,14 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **M1** | Changing a unit or a description changes only the output. The node is the same one that was used; the data stay the same. | [70-migration.md:31](70-migration.md) | 3 |
+| **M1** | Changing a unit or a description changes only the output. The node is the same one that was used; the data stay the same. | [70-migration.md:31](70-migration.md) | 4 |
 | **M2** | Therefore the data must hold a reference to the node id, never to the name. Rename the node and every output changes — the data do not. | [70-migration.md:32](70-migration.md) | 1 |
 | **M3** | Documents are not part of this concept. An exported PDF is detached from the model; regenerating it later would simply look different. There is no … | [70-migration.md:33](70-migration.md) | 2 |
-| **M4** | Replacing a node with a different one is another matter. That changes the model version and produces a conflict in existing data, which the user ha… | [70-migration.md:34](70-migration.md) | 4 |
+| **M4** | Replacing a node with a different one is another matter. That changes the model version and produces a conflict in existing data, which the user ha… | [70-migration.md:34](70-migration.md) | 6 |
 | **M5** | Data made of id references are not human-readable. One cannot look into the database the way one can with a relational one. That is already true of… | [70-migration.md:35](70-migration.md) | 3 |
 | **M6** | Two surfaces follow: data entry in the admin — choose a model, see its data — and the conflict resolver. | [70-migration.md:36](70-migration.md) | 13 |
 | **M7** | The conflict resolver shows which models have conflicts with their data and lets the user resolve them. Afterwards the model has no conflicts and t… | [70-migration.md:37](70-migration.md) | 1 |
-| **M8** | Resolution can run in several stages. If the model changed repeatedly and structural problems accumulated, they are resolved one after another unti… | [70-migration.md:38](70-migration.md) | 7 |
+| **M8** | Resolution can run in several stages. If the model changed repeatedly and structural problems accumulated, they are resolved one after another unti… | [70-migration.md:38](70-migration.md) | 8 |
 | **M9** | All data must be exportable and re-importable — and that includes the tree. With the tree present, the assignment is present too. | [70-migration.md:134](70-migration.md) | 7 |
 | **M10** | Alternatively, or in addition, the data may be written in plain text: store Stück as the word as well, so that it can be resolved back afterwards. | [70-migration.md:135](70-migration.md) | 1 |
 | **M11** | The one problem: if Stück no longer exists as a unit value, the import has to resolve it — either map it to another node, or create a node and bind… | [70-migration.md:136](70-migration.md) | 5 |
@@ -390,11 +390,11 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **A1** | Complex Datatypes › Unit type is composed of Menge + Base unit + Praefix. | [01-standard-tree.md:43](01-standard-tree.md) | 2 |
+| **A1** | Complex Datatypes › Unit type is composed of Menge + Base unit + Praefix. | [01-standard-tree.md:43](01-standard-tree.md) | 11 |
 | **A2** | Complex Datatypes › quantity › Preis is composed of Wert + Währung. | [01-standard-tree.md:44](01-standard-tree.md) | 3 |
-| **A3** | Basiseinheiten splits into With prefix and Without prefix; Kelvin, Celsius and Stück sit under the latter. Children inherit Praefix and Kuerzel fro… | [01-standard-tree.md:45](01-standard-tree.md) | 2 |
-| **A4** | Attributes appear as children of their owning node (Bauteilliste › Name, Bauart, Position). | [01-standard-tree.md:46](01-standard-tree.md) | **nie** |
-| **A5** | Eigene Datentypen exists as a branch beside Simple/Complex. | [01-standard-tree.md:47](01-standard-tree.md) | **nie** |
+| **A3** | Basiseinheiten splits into With prefix and Without prefix; Kelvin, Celsius and Stück sit under the latter. Children inherit Praefix and Kuerzel fro… | [01-standard-tree.md:45](01-standard-tree.md) | 4 |
+| **A4** | Attributes appear as children of their owning node (Bauteilliste › Name, Bauart, Position). | [01-standard-tree.md:46](01-standard-tree.md) | 5 |
+| **A5** | Eigene Datentypen exists as a branch beside Simple/Complex. | [01-standard-tree.md:47](01-standard-tree.md) | 2 |
 
 ## B — Standardbaum — Inhalt
 
@@ -402,9 +402,9 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 |---|---|---|---|
 | **B1** | Relationstypen is a branch of the tree — relation kinds stored as nodes. | [01-standard-tree.md:55](01-standard-tree.md) | 4 |
 | **B2** | Seven kinds, not three: plus has_type, defaultvalue_from, calc, ref_scope. | [01-standard-tree.md:56](01-standard-tree.md) | 5 |
-| **B3** | Kilogramm listed as a base unit with prefix. | [01-standard-tree.md:57](01-standard-tree.md) | 2 |
-| **B4** | Praefix and Kuerzel on parent and on every child. | [01-standard-tree.md:58](01-standard-tree.md) | **nie** |
-| **B5** | Simple Datatypes contains display_node_name. | [01-standard-tree.md:59](01-standard-tree.md) | 2 |
+| **B3** | Kilogramm listed as a base unit with prefix. | [01-standard-tree.md:57](01-standard-tree.md) | 5 |
+| **B4** | Praefix and Kuerzel on parent and on every child. | [01-standard-tree.md:58](01-standard-tree.md) | 2 |
+| **B5** | Simple Datatypes contains display_node_name. | [01-standard-tree.md:59](01-standard-tree.md) | 3 |
 | **B6** | Währung beside Basiseinheiten, not under a common root. | [01-standard-tree.md:60](01-standard-tree.md) | 2 |
 | **B7** | calc has no counterpart in the new concept. V6 mentions special nodes for calculations and nothing had been designed since. The old tree also has a… | [01-standard-tree.md:79](01-standard-tree.md) | 5 |
 | **B8** | The old concept let a calculation also be a transformation — text transformation and the like. | [01-standard-tree.md:80](01-standard-tree.md) | **nie** |
@@ -413,7 +413,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **S6** | with rows 5 and 8, which were blocked on OQ-092's column until D-413 delivered it. | [90-decision-log.md:661](90-decision-log.md) | 5 |
+| **S6** | with rows 5 and 8, which were blocked on OQ-092's column until D-413 delivered it. | [90-decision-log.md:661](90-decision-log.md) | 7 |
 
 ## Q — Aus der Altlast übernommene Frage
 

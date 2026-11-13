@@ -50,10 +50,13 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.79';
+    public const VERSION     = '0.2.80';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
+
+    /** `apply_filters(CLAIMED_FIELDS_FILTER, [], $recordId, $nodeId)`: relation id → ['label' => button text, 'url' => the module's dialog] — fields a module changes only through its own dialog; the record editor shows them read-only with that button and its save leaves them alone (D-1334). */
+    public const CLAIMED_FIELDS_FILTER = 'taxmod_claimed_fields';
 
     /** `apply_filters(FIELD_CONTROLS_FILTER, [], $node, $relations, $prefix, $formId, $record, $values, $roots)`: the modeller's controls for some fields (D-1250). */
     public const FIELD_CONTROLS_FILTER = 'taxmod_field_controls';
