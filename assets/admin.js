@@ -639,7 +639,8 @@
 	 * Sein Befund: "da muss man erst enter druecken damit es filtert". Das Feld hier traegt einen
 	 * Namen -- der Server sucht (siehe TreeRenderer und NodesScreen::searchTerm) -- und jede
 	 * Eingabe wuerde sonst sofort die Seite neu laden. Deshalb wartet dieses Skript, bis eine
-	 * halbe Sekunde lang nichts mehr getippt wurde, und schickt das Formular dann selbst ab.
+	 * halbe Sekunde lang nichts mehr getippt wurde, und schickt das Formular dann selbst ab --
+	 * seit D-1340 ohne Neuladen: assets/live.js tauscht nur den Baum.
 	 */
 	( function () {
 		var WARTEZEIT = 500;
@@ -668,64 +669,8 @@
 			}, WARTEZEIT );
 		} );
 
-		// ⚠️ **Der Fokus bleibt im Feld, sonst wuerde jede Pause beim Tippen den naechsten
-		// Buchstaben irgendwo anders hinschreiben.** Dieselbe Bauart wie die Bildlaufposition oben:
-		// einmal lesen, bevor irgendetwas anderes den Zustand veraendern kann, und die Marke steht
-		// in der Session, nicht in der Adresse -- ein zweiter Tab soll nicht den Fokus des ersten
-		// erben.
-		var MARKE = 'taxmod.suchfokus';
-
-		document.addEventListener( 'submit', function ( event ) {
-			var formular = event.target;
-
-			if ( ! formular || ! formular.matches || ! formular.matches( '.taxmod-tree-searchform' ) ) {
-				return;
-			}
-
-			var feld = formular.querySelector( '.taxmod-tree-filter[name]' );
-
-			if ( ! feld ) {
-				return;
-			}
-
-			try {
-				window.sessionStorage.setItem( MARKE, String( feld.selectionStart ) );
-			} catch ( e ) {
-				// Nichts zu tun: das Feld bekommt beim Laden dann keinen Fokus.
-			}
-		} );
-
-		function fokusWiederherstellen() {
-			var marke = null;
-
-			try {
-				marke = window.sessionStorage.getItem( MARKE );
-				window.sessionStorage.removeItem( MARKE );
-			} catch ( e ) {
-				return;
-			}
-
-			if ( marke === null ) {
-				return;
-			}
-
-			var feld = document.querySelector( '.taxmod-tree-filter[name]' );
-
-			if ( ! feld ) {
-				return;
-			}
-
-			var position = parseInt( marke, 10 ) || feld.value.length;
-
-			feld.focus();
-			feld.setSelectionRange( position, position );
-		}
-
-		if ( document.readyState === 'loading' ) {
-			document.addEventListener( 'DOMContentLoaded', fokusWiederherstellen );
-		} else {
-			fokusWiederherstellen();
-		}
+		// ⚠️ *Die Fokusmarke in der Session ist mit D-1340 gegangen: das Formular laedt die Seite nicht mehr
+		// (assets/live.js), das Feld bleibt dasselbe Element mit Fokus und Schreibmarke.*
 	} )();
 
 	/**
@@ -947,6 +892,11 @@
 	} else {
 		klappzustandAnwenden( document );
 	}
+
+	// Ein getauschter Bereich (D-1340) kommt ohne Klappzustand an -- derselbe Weg wie beim Laden.
+	document.addEventListener( 'taxmod:replaced', function ( ereignis ) {
+		klappzustandAnwenden( ereignis.target );
+	} );
 
 } )();
 

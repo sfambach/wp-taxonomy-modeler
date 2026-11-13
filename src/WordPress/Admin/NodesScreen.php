@@ -1320,13 +1320,20 @@ final class NodesScreen
         // «add node with + is currently not working». Gemessen: dieses `<form method="get">` umschloss die ganze Tabelle,
         // also stand jedes Zeilenformular darin. **Ein Browser verwirft ein Formular im Formular** — das «+» schickte die
         // Suche ab statt `add_child`, und ebenso jeder andere Knopf der Zeile. Der Server sah den Fehler nie.*
-        $left .= '<form method="get" id="' . self::TREE_SEARCH_FORM . '" class="taxmod-tree-searchform">'
+        //
+        // ⚠️ **Die Suche lädt die Seite nicht mehr neu** ([D-1340](../../../docs/NewConcept/90-decision-log.md)). *Sein Wort:
+        // «beim suchen baut die seite dauernd neu auf schon getippt filter verschwinden». `data-taxmod-live` nennt den Bereich,
+        // den `assets/live.js` aus der Antwort austauscht; der Server sucht weiter allein, ohne Skript lädt Enter wie bisher.*
+        $left .= '<form method="get" id="' . self::TREE_SEARCH_FORM . '" class="taxmod-tree-searchform"'
+            . ' data-taxmod-live="' . self::TREE_LIVE . '">'
             . '<input type="hidden" name="page" value="taxmod">'
             . '<input type="hidden" name="taxmod_node" value="'
             . esc_attr(isset($_GET['taxmod_node']) ? (string) absint($_GET['taxmod_node']) : '') . '">'
             . $this->circumstanceFields()
             . '</form>'
-            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht, $root);
+            . '<div id="' . self::TREE_LIVE . '">'
+            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht, $root)
+            . '</div>';
         // ⚠️ **Der Papierkorb steht nur, wenn die Einstellung es sagt**
         // ([D-693](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «trash sollte auch
         // sichtbar unsichtbar schaltbar sein in dein einstellungen». **Eine Option und kein
@@ -7432,6 +7439,9 @@ final class NodesScreen
 
     /** Die Id des Suchformulars am Baum — das Suchfeld steht ausserhalb und nennt es (kein Formular im Formular). */
     private const TREE_SEARCH_FORM = 'taxmod-tree-search';
+
+    /** The tree's rows and search field, swapped in place by a search (D-1340). */
+    private const TREE_LIVE = 'taxmod-tree-live';
 
     /** Der Name des Akts, unter dem der Rand den Einstellungsbereich nachfordert. */
     public const FRAGMENT_ACTION = 'taxmod_field_settings';

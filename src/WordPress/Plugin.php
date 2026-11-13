@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.81';
+    public const VERSION     = '0.2.82';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -103,6 +103,9 @@ final class Plugin
 
     /** The script of `ListPage::sideTree()`: expand and collapse all, and the open branches kept per user. */
     public const SIDE_TREE_SCRIPT = 'taxmod-side-tree';
+
+    /** The live building block (D-1340): a form marked `data-taxmod-live` swaps one area instead of loading the page. */
+    public const LIVE_SCRIPT = 'taxmod-live';
 
     /** Was die Aktivierung abbrach — eine Option, weil der Hinweis erst im nächsten Aufruf erscheint. */
     public const ACTIVATION_FAILURE = 'taxmod_activation_failure';
@@ -701,6 +704,14 @@ final class Plugin
             plugins_url('assets/messages.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
             [],
             (string) (@filemtime($this->path('assets/messages.js')) ?: self::VERSION),
+            true
+        );
+        // The live building block (D-1340): a search answers without loading the page, and what is typed stays.
+        wp_enqueue_script(
+            self::LIVE_SCRIPT,
+            plugins_url('assets/live.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            [],
+            (string) (@filemtime($this->path('assets/live.js')) ?: self::VERSION),
             true
         );
         wp_add_inline_script('taxmod-messages', 'window.taxmodMessageWords=' . wp_json_encode([
