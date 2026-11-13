@@ -222,8 +222,8 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **P1** | The nodes are to be stored relationally. | [50-wordpress-persistence.md:26](50-wordpress-persistence.md) | 5 |
-| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 3 |
-| **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 1 |
+| **P2** | In addition, settings per node, stored generically in a settings table — a node may have settings. | [50-wordpress-persistence.md:27](50-wordpress-persistence.md) | 4 |
+| **P3** | Likewise a table for the relations. | [50-wordpress-persistence.md:28](50-wordpress-persistence.md) | 2 |
 | **P4** | These are the base tables for storing the model data later: nodes, settings, relations. → amended to nodes, settings, labels, relations by D-019. | [50-wordpress-persistence.md:29](50-wordpress-persistence.md) | 16 |
 | **P5** | There will not be a database table per model. The data have to be stored some other way. | [50-wordpress-persistence.md:109](50-wordpress-persistence.md) | 9 |
 | **P6** | How exactly is not yet defined. | [50-wordpress-persistence.md:110](50-wordpress-persistence.md) | 1 |
@@ -250,7 +250,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 115 |
+| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 118 |
 | **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 7 |
 | **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 8 |
 | **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
@@ -390,7 +390,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **A1** | Complex Datatypes › Unit type is composed of Menge + Base unit + Praefix. | [01-standard-tree.md:43](01-standard-tree.md) | 11 |
+| **A1** | Complex Datatypes › Unit type is composed of Menge + Base unit + Praefix. | [01-standard-tree.md:43](01-standard-tree.md) | 13 |
 | **A2** | Complex Datatypes › quantity › Preis is composed of Wert + Währung. | [01-standard-tree.md:44](01-standard-tree.md) | 3 |
 | **A3** | Basiseinheiten splits into With prefix and Without prefix; Kelvin, Celsius and Stück sit under the latter. Children inherit Praefix and Kuerzel fro… | [01-standard-tree.md:45](01-standard-tree.md) | 4 |
 | **A4** | Attributes appear as children of their owning node (Bauteilliste › Name, Bauart, Position). | [01-standard-tree.md:46](01-standard-tree.md) | 5 |
@@ -407,7 +407,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **B5** | Simple Datatypes contains display_node_name. | [01-standard-tree.md:59](01-standard-tree.md) | 3 |
 | **B6** | Währung beside Basiseinheiten, not under a common root. | [01-standard-tree.md:60](01-standard-tree.md) | 2 |
 | **B7** | calc has no counterpart in the new concept. V6 mentions special nodes for calculations and nothing had been designed since. The old tree also has a… | [01-standard-tree.md:79](01-standard-tree.md) | 5 |
-| **B8** | The old concept let a calculation also be a transformation — text transformation and the like. | [01-standard-tree.md:80](01-standard-tree.md) | **nie** |
+| **B8** | The old concept let a calculation also be a transformation — text transformation and the like. | [01-standard-tree.md:80](01-standard-tree.md) | 3 |
 
 ## S — Speicher
 
