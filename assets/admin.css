@@ -2583,6 +2583,22 @@ pre.taxmod-code {
 .taxmod-step-label {
 	font-size: 13px;
 }
+/* D-1346: a process with more than one end — the ends as half-high arrows, stacked. */
+.taxmod-steps-ends {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.taxmod-steps-ends .taxmod-step {
+	flex-direction: row;
+	align-items: baseline;
+	gap: 6px;
+	padding-top: 2px;
+	padding-bottom: 2px;
+}
+.taxmod-steps-ends .taxmod-step-count {
+	font-size: 14px;
+}
 .taxmod-step-count {
 	font-size: 22px;
 	font-weight: 600;

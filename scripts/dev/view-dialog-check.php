@@ -52,5 +52,10 @@ check('its loader is queued', wp_script_is('taxmod-shown-by', 'enqueued'));
 $shown = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/shown-by.js');
 check('hidden parts disable their fields, so they are not sent', str_contains($shown, 'field.disabled = ! shown'));
 
+$steps = ListPage::steps([['a', 'Angelegt', 2], ['b', 'In Arbeit', 1], [['done', 'Fertiggestellt', 4], ['cancelled', 'Abgebrochen', 0]]], 'cancelled', static fn (string $s): string => '?s=' . $s);
+check('a process may end in two ways, stacked in one place (D-1346)', substr_count($steps, 'taxmod-steps-ends') === 1 && substr_count($steps, '<a class="taxmod-step') === 4, $steps);
+check('the open end is marked', str_contains($steps, 'is-active is-empty" href="?s=cancelled"'), $steps);
+check('stacked ends have their style', str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css'), '.taxmod-steps-ends'));
+
 echo $bad === 0 ? "\nall green\n" : "\n$bad failed\n";
 exit($bad === 0 ? 0 : 1);

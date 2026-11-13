@@ -754,19 +754,24 @@ final class ListPage
      * views beside the process follow as plain tabs. The view over the whole process («all») is a narrow arrow under the stages,
      * as wide as they are, marked like a stage when it is the open one (his wish 2026-11-09).
      *
-     * @param list<array{0: string, 1: string, 2?: int|null}> $steps slug, label, optional count — in process order
+     * @param list<array{0: string, 1: string, 2?: int|null}|list<array{0: string, 1: string, 2?: int|null}>> $steps slug, label, optional
+     *        count — in process order; the last may be a list of steps, the ends a process can take side by side (half-high arrows
+     *        stacked, e.g. «done» and «cancelled», D-1346)
      * @param list<array{0: string, 1: string, 2?: int|null}> $beside slug, label, optional count
      * @param callable(string): string $url the address of a step or tab
      * @param array{0: string, 1: string, 2?: int|null}|array{} $all slug, label, optional count of the view over every stage
      */
     public static function steps(array $steps, string $active, callable $url, array $beside = [], array $all = []): string
     {
-        $html = '<nav class="taxmod-steps" aria-label="' . esc_attr__('Process', 'taxmod') . '">' . ($all === [] ? '' : '<div class="taxmod-steps-process">') . '<ol>';
+        $html  = '<nav class="taxmod-steps" aria-label="' . esc_attr__('Process', 'taxmod') . '">' . ($all === [] ? '' : '<div class="taxmod-steps-process">') . '<ol>';
+        $arrow = static fn (array $step): string => '<a class="taxmod-step' . ($step[0] === $active ? ' is-active' : '') . (($step[2] ?? null) === 0 ? ' is-empty' : '') . '" href="' . esc_url($url($step[0])) . '"'
+            . ($step[0] === $active ? ' aria-current="step"' : '') . '><span class="taxmod-step-label">' . esc_html($step[1]) . '</span>'
+            . (isset($step[2]) ? '<span class="taxmod-step-count">' . esc_html(number_format_i18n((int) $step[2])) . '</span>' : '') . '</a>';
 
         foreach ($steps as $step) {
-            $html .= '<li><a class="taxmod-step' . ($step[0] === $active ? ' is-active' : '') . (($step[2] ?? null) === 0 ? ' is-empty' : '') . '" href="' . esc_url($url($step[0])) . '"'
-                . ($step[0] === $active ? ' aria-current="step"' : '') . '><span class="taxmod-step-label">' . esc_html($step[1]) . '</span>'
-                . (isset($step[2]) ? '<span class="taxmod-step-count">' . esc_html(number_format_i18n((int) $step[2])) . '</span>' : '') . '</a></li>';
+            $html .= is_array($step[0] ?? null)
+                ? '<li class="taxmod-steps-ends">' . implode('', array_map($arrow, $step)) . '</li>'
+                : '<li>' . $arrow($step) . '</li>';
         }
 
         $html .= '</ol>';
