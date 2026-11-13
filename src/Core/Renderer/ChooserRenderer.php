@@ -48,6 +48,15 @@ final class ChooserRenderer extends RendererNode
     public const CONFIRM = 'confirm';
 
     /**
+     * The switches already handed out in this request. A page with several dialogs choosing the same field (Lager's
+     * «Umbuchen» on every lot row, report 2026-11-13 «auswahl ziel/nach nicht möglich») would otherwise give each the
+     * same id, and every opener and «OK» would work the first dialog's switch.
+     *
+     * @var array<string, int>
+     */
+    private static array $issued = [];
+
+    /**
      * Die Angabe, mit der ein Aufrufer den Dialog verlangt — die Wähler der Knotenseite (Elternknoten, Ziel
      * eines Felds), die kein Knoten einstellt.
      *
@@ -56,6 +65,14 @@ final class ChooserRenderer extends RendererNode
     public static function asDialog(): array
     {
         return [self::DIALOG => new ResolvedSetting(self::DIALOG, TypedValue::ofBool(true), 0, true)];
+    }
+
+    /** The first keeps the plain id; a repeat gets «-2», «-3» … */
+    private static function unique(string $switch): string
+    {
+        $count = self::$issued[$switch] = (self::$issued[$switch] ?? 0) + 1;
+
+        return $count === 1 ? $switch : $switch . '-' . $count;
     }
 
     public function name(): string
@@ -101,7 +118,7 @@ final class ChooserRenderer extends RendererNode
             );
         }
 
-        $switch = 'taxmod-dialog-' . $subject->id . '-' . preg_replace('/[^a-z0-9_-]/i', '', $context->fieldName);
+        $switch = self::unique('taxmod-dialog-' . $subject->id . '-' . preg_replace('/[^a-z0-9_-]/i', '', $context->fieldName));
 
         if ($context->surroundings->refersTo !== null) {
             $current = RenderResult::escape($context->surroundings->refersTo);
