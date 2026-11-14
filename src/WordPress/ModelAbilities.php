@@ -249,7 +249,7 @@ final class ModelAbilities
                             'required'   => ['op'],
                         ],
                     ],
-                    'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('Save the whole model to uploads/taxmod-backups first.', 'taxmod')],
+                    'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('Save the model tables to uploads/taxmod-backups first (without media files, which the change does not touch).', 'taxmod')],
                     'brief'   => ['type' => 'boolean', 'default' => false],
                     'dry_run' => ['type' => 'boolean', 'default' => false],
                 ],
@@ -790,7 +790,7 @@ final class ModelAbilities
             return ['dry_run' => array_map(fn (mixed $change): array => $this->mergePreview(is_array($change) ? $change : [], $refs), $changes)];
         }
 
-        $sicherung = ! $onlyData && ! empty($input['backup']) ? (new Backup())->safetyCopy('vor-ability') : null;
+        $sicherung = ! $onlyData && ! empty($input['backup']) ? (new Backup())->safetyCopy('vor-ability', false) : null;
         $ergebnis  = [];
         $changelog = ($this->changelog)();
 

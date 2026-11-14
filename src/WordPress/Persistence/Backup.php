@@ -73,7 +73,7 @@ final class Backup
      *
      * @return array{file: string, media_missing: list<int>} Pfad der Datei und Ids, deren Datei fehlt.
      */
-    public function export(string $file): array
+    public function export(string $file, bool $withMedia = true): array
     {
         self::zipIsAvailable();
 
@@ -95,7 +95,10 @@ final class Backup
             $zip->addFile($path, 'tables/' . $table . '.ndjson');
         }
 
-        [$media, $missing] = $this->collectMedia($zip);
+        // D-1364: a safety copy before an agent's change needs the tables only — the change touches no file, and the files stay
+        // on disk; packing the whole media library took longer than the ability's 60 s. Restored on the same site, the
+        // `media:<id>` references stay as they are (no map, no rewrite).
+        [$media, $missing] = $withMedia ? $this->collectMedia($zip) : [[], 0];
 
         $zip->addFromString('manifest.json', (string) wp_json_encode([
             'format'      => self::FORMAT,
@@ -446,7 +449,7 @@ final class Backup
      *
      * ⚠️ *Öffentlich, seit auch eine Änderung über die Abilities vorher sichern kann ([D-911](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    public function safetyCopy(string $anlass = 'vor-einspielen'): string
+    public function safetyCopy(string $anlass = 'vor-einspielen', bool $withMedia = true): string
     {
         $uploads = wp_upload_dir();
         $dir     = trailingslashit($uploads['basedir']) . self::SAFETY_DIR;
@@ -462,7 +465,7 @@ final class Backup
 
         $file = $dir . '/' . sanitize_file_name($anlass) . '-' . gmdate('Ymd-His') . '-' . wp_generate_password(12, false) . '.zip';
 
-        $this->export($file);
+        $this->export($file, $withMedia);
 
         return $file;
     }

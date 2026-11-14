@@ -150,6 +150,26 @@ foreach ([
     @unlink($bent);
 }
 
+// D-1364: the safety copy before an agent's change carries the tables, not the media files — packing those ran past 60 s.
+$safety = (new Backup())->safetyCopy('backup-check', false);
+$szip   = new ZipArchive();
+$sopen  = $szip->open($safety) === true;
+$sman   = $sopen ? json_decode((string) $szip->getFromName('manifest.json'), true) : [];
+$files  = 0;
+
+for ($i = 0; $sopen && $i < $szip->numFiles; $i++) {
+    $files += str_starts_with((string) $szip->getNameIndex($i), 'tables/') ? 0 : (($szip->getNameIndex($i) === 'manifest.json') ? 0 : 1);
+}
+
+check('die Sicherheitskopie vor einer Änderung hat alle Tabellen', $sopen && array_diff(Schema::tableNames(), array_keys($sman['tables'] ?? [])) === []);
+check('… und keine Mediendateien', $sopen && ($sman['media'] ?? null) === [] && $files === 0, $files . ' andere Dateien');
+
+if ($sopen) {
+    $szip->close();
+}
+
+@unlink($safety);
+
 check('das Modell ist unberührt', (int) Query::value('Knoten zählen', 'SELECT COUNT(*) FROM ' . Schema::table('nodes')) === $nodesBefore);
 
 @unlink($file);
