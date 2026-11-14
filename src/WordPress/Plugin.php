@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.94';
+    public const VERSION     = '0.2.95';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -81,7 +81,7 @@ final class Plugin
     /**
      * `apply_filters(RECORD_CHOOSER_FILTER, '', ['name', 'node', 'parent_field', 'label_field', 'root', 'exclude' => [], 'unpickable' => [], 'preselected', 'form'])`:
      * the records of one node as a tree, in the node chooser's dialog (D-1084). With `inline` the tree stands on the page instead,
-     * `pick_url` (with `{id}`) opens a record on click, `drag` lets records be dropped on records, `suffix` (id → text) follows a word (D-1090).
+     * `pick_url` (with `{id}`) opens a record on click, `drag` lets records be dropped on records, `suffix` (id → text) follows a word (D-1090), `preferred` (record ids) stand on top in a group «Preferred» (D-1360).
      */
     public const RECORD_CHOOSER_FILTER = 'taxmod_record_chooser';
     public const TEXT_DOMAIN = 'taxmod';
@@ -266,7 +266,8 @@ final class Plugin
                 ! empty($args['inline']),
                 esc_url_raw(str_replace('{id}', '__ID__', (string) ($args['pick_url'] ?? ''))),
                 ! empty($args['drag']),
-                array_map(static fn (mixed $text): string => sanitize_text_field((string) $text), array_filter(is_array($args['suffix'] ?? null) ? $args['suffix'] : [], 'is_scalar'))
+                array_map(static fn (mixed $text): string => sanitize_text_field((string) $text), array_filter(is_array($args['suffix'] ?? null) ? $args['suffix'] : [], 'is_scalar')),
+                $ids($args['preferred'] ?? [])
             );
         }, 10, 2);
 

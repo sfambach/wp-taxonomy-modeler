@@ -167,6 +167,29 @@ final class RecordTreeTest extends TestCase
         self::assertStringContainsString('&lt;b&gt;Fach&lt;/b&gt; &amp;', $html);
     }
 
+    #[Test]
+    public function preferredRecordsStandOnTopInAnOpenGroupNothingCanPick(): void
+    {
+        $rows = RecordTree::walk([
+            new RecordInTree(1, null, 'Erdgeschoss'),
+            new RecordInTree(2, 1, 'Regal'),
+            new RecordInTree(3, 2, 'Fach 3'),
+            new RecordInTree(4, null, 'Obergeschoss'),
+            new RecordInTree(5, 4, 'Fach 3'),
+        ]);
+        $top = RecordTree::preferredOnTop($rows, [5, 3, 99], 'Preferred');
+
+        self::assertSame(RecordTree::PREFERRED_GROUP, $top[0]['record']->id);
+        self::assertSame(['★ Obergeschoss › Fach 3', '★ Erdgeschoss › Regal › Fach 3'], [$top[1]['record']->label(), $top[2]['record']->label()], 'in the order given, each with its way; an id the tree lacks is left out');
+        self::assertSame(array_slice($top, 3), $rows, 'the tree below stays whole');
+        self::assertSame($rows, RecordTree::preferredOnTop($rows, [], 'Preferred'), 'nothing preferred, nothing changes');
+
+        $html = $this->rendering()->recordChooser($top, 'location', null, [RecordTree::PREFERRED_GROUP])->markup;
+        self::assertStringNotContainsString('value="-1"', $html, 'the group cannot be picked');
+        self::assertStringContainsString('data-fold="auf"', explode('★', $html)[0], 'and stands open');
+        self::assertSame(2, substr_count($html, 'value="5"'), 'a preferred record can be picked on top and in the tree');
+    }
+
     private function rendering(): Rendering
     {
         $relations = new InMemoryRelations();

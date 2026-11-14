@@ -4069,7 +4069,7 @@ final class NodesScreen
         return ['values' => $values, 'unknown' => $unknown, 'node' => $found->nodeId];
     }
 
-    public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = []): string
+    public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = [], array $preferred = []): string
     {
         if ($node <= 0 || $this->editor->find($node) === null) {
             return '';
@@ -4095,13 +4095,14 @@ final class NodesScreen
         }
 
         $zeilen = \Taxmod\Core\Service\RecordTree::walk($eintraege, $root > 0 ? $root : null, $exclude);
+        $zeilen = \Taxmod\Core\Service\RecordTree::preferredOnTop($zeilen, $preferred, __('Preferred', 'taxmod'));
 
         // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
         $baum = $this->rendering->withoutSharedRecordBodies()->recordChooser(
             $zeilen,
             $name,
             $preselected,
-            $unpickable,
+            [...$unpickable, \Taxmod\Core\Service\RecordTree::PREFERRED_GROUP],
             __('Nothing here can be chosen.', 'taxmod'),
             $this->localeFromRequest(),
             Level::Admin,

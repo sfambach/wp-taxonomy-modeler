@@ -2864,6 +2864,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // *The way to the chosen record stands open; the chosen record itself stays closed, as in the node chooser.*
         $seen = [];
 
+        // *A group above the tree (a negative id, D-1360) stands open: it is there to be seen first.*
+        foreach (array_keys($chain) as $zeile) {
+            if ($zeile < 0) {
+                $offen[$zeile] = true;
+            }
+        }
+
         $id = $chosen === null ? null : ($chain[$chosen] ?? null);
 
         while ($id !== null && array_key_exists($id, $chain) && ! isset($seen[$id])) {

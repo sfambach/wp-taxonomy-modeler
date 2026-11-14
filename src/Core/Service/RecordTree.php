@@ -140,4 +140,49 @@ final class RecordTree
 
         return false;
     }
+
+    /**
+     * D-1360: the records a module prefers (a material's default places) stand once more on top, in a group of their own,
+     * each with its way through the tree so two «Fach 3» can be told apart; the tree below stays whole. Only records the tree
+     * offers count, in the order given. The group is a row with a negative id that nothing can pick.
+     *
+     * @param  list<array{record: RecordInTree, depth: int, hasChildren: bool}> $rows
+     * @param  list<int>                                                                                $preferred
+     * @return list<array{record: RecordInTree, depth: int, hasChildren: bool}>
+     */
+    public static function preferredOnTop(array $rows, array $preferred, string $groupWord): array
+    {
+        $byId = [];
+
+        foreach ($rows as $row) {
+            $byId[$row['record']->id] = $row['record'];
+        }
+
+        $top = [];
+
+        foreach (array_unique($preferred) as $id) {
+            if ($id <= 0 || ! isset($byId[$id])) {
+                continue;
+            }
+
+            $way  = [];
+            $seen = [];
+
+            for ($at = $byId[$id]; $at !== null && ! isset($seen[$at->id]); $at = $at->parentId === null ? null : ($byId[$at->parentId] ?? null)) {
+                $seen[$at->id] = true;
+                array_unshift($way, $at->label());
+            }
+
+            $top[] = ['record' => new RecordInTree($id, self::PREFERRED_GROUP, '★ ' . implode(' › ', $way)), 'depth' => 1, 'hasChildren' => false];
+        }
+
+        if ($top === []) {
+            return $rows;
+        }
+
+        return [['record' => new RecordInTree(self::PREFERRED_GROUP, null, $groupWord), 'depth' => 0, 'hasChildren' => true], ...$top, ...$rows];
+    }
+
+    /** The id of the «Preferred» group row in a record chooser — no record has it, nothing can pick it. */
+    public const PREFERRED_GROUP = -1;
 }

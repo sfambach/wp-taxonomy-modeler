@@ -49,6 +49,13 @@ $claims = [
     'a second chooser for the same field has its own'      => $switch($second) !== '' && $switch($second) !== $switch($first),
     'its tree button and «OK» work its own switch'         => $opens($second, $switch($second)),
 ];
+// D-1360: preferred records stand once more on top, in an open group nothing can pick (the way through the tree: RecordTreeTest).
+$any           = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}taxmod_node_records WHERE node_id = %d AND relation_id = 0 AND record_type <> 'settings' ORDER BY id DESC LIMIT 1", (int) $tree->node));
+$withPreferred = (string) apply_filters(Plugin::RECORD_CHOOSER_FILTER, '', ['name' => 'location', 'node' => (int) $tree->node, 'parent_field' => (int) $tree->parent, 'preferred' => [$any]]);
+$claims['a preferred record stands in a group on top']   = $any > 0 && strpos($withPreferred, '★ ') !== false && strpos($withPreferred, '★ ') < strpos($withPreferred, 'value="' . $any . '"', strpos($withPreferred, '★ ') + 1) + 1 && str_contains($withPreferred, 'id="taxmod-choice-location--1"');
+$claims['  · the group cannot be picked']                 = ! str_contains($withPreferred, 'value="-1"');
+$claims['  · the record still stands in the tree below']  = substr_count($withPreferred, 'value="' . $any . '"') === 2;
+$claims['without preferred records nothing changes']      = ! str_contains($first, '★ ');
 $bad = 0;
 
 foreach ($claims as $claim => $holds) {
