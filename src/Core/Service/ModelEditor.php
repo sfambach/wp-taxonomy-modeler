@@ -19,6 +19,8 @@ use Taxmod\Core\Model\Relation;
 use Taxmod\Core\Model\Branch;
 use Taxmod\Core\Model\RelationKind;
 use Taxmod\Core\Model\RelationRecord;
+use Taxmod\Core\Model\ReferenceSpace;
+use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\Core\Repository\FrameworkNodes;
 use Taxmod\Core\Model\Label;
@@ -1988,7 +1990,7 @@ final class ModelEditor
         return $aus;
     }
 
-    public function retargetField(int $ownerId, int $relationId, int $targetId, bool $keepKind = false): Relation
+    public function retargetField(int $ownerId, int $relationId, int $targetId, bool $keepKind = false, bool $dropUnfitValues = false): Relation
     {
         $relation   = $this->ownAttribute($ownerId, $relationId);
         $target = $this->nodes->byId($targetId);
@@ -2017,6 +2019,14 @@ final class ModelEditor
             return $relation;
         }
 
+        // D-1371: values stored in the old shape (a number where a part is now expected, or the reverse) were left behind
+        // without a word. Measured 2026-11-14: «Adern» went from Int to a unit value, and cable 50261 then held «40» and a part.
+        $unfit = $this->unfitValueIdsOf($moved);
+
+        if ($unfit !== [] && ! $dropUnfitValues) {
+            throw NotAPossibleTarget::storedValuesWouldNotFit(count($unfit));
+        }
+
         $this->changelog->record(
             $relation->id,
             'relation',
@@ -2027,8 +2037,66 @@ final class ModelEditor
         );
 
         $this->relations->save($moved, $relation->version);
+        $this->forgetValues($unfit);
 
         return $moved;
+    }
+
+    /**
+     * Removes the values of a field that do not fit its target (D-1371) — what an earlier retarget left behind.
+     *
+     * @return int how many values were removed
+     */
+    public function dropUnfitValues(int $ownerId, int $relationId): int
+    {
+        $unfit = $this->unfitValueIdsOf($this->ownAttribute($ownerId, $relationId));
+        $this->forgetValues($unfit);
+
+        return count($unfit);
+    }
+
+    /**
+     * The stored values of a field whose shape its target rules out: a field on a data type holds plain values, a composition on
+     * any other node holds parts (record references). Any other field has no shape this can judge and is left alone.
+     *
+     * @return list<int> value row ids
+     */
+    private function unfitValueIdsOf(Relation $relation): array
+    {
+        if ($this->records === null) {
+            return [];
+        }
+
+        $branch = $this->framework->branchOf($this->nodes->byId($relation->toNodeId));
+        $fits   = match (true) {
+            $branch === Branch::DataTypes                  => static fn (TypedValue $v): bool => $v->reference === null,
+            $relation->kind === RelationKind::Composition  => static fn (TypedValue $v): bool => $v->referenceSpace === ReferenceSpace::Record,
+            default                                        => null,
+        };
+
+        if ($fits === null) {
+            return [];
+        }
+
+        $aus = [];
+
+        foreach ($this->records->valuesOfMany($this->records->recordsWithValuesOn($relation->id)) as $werte) {
+            foreach ($werte as $wert) {
+                if ($wert->relationId === $relation->id && $wert->id !== null && ! $fits($wert->value)) {
+                    $aus[] = $wert->id;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
+    /** @param list<int> $valueIds */
+    private function forgetValues(array $valueIds): void
+    {
+        foreach ($valueIds as $id) {
+            $this->records?->forgetValueById($id);
+        }
     }
 
     public function renameField(int $ownerId, int $relationId, string $name): Relation

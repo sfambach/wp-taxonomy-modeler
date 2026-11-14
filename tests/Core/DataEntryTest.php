@@ -99,6 +99,31 @@ final class DataEntryTest extends TestCase
         $this->description = $this->editor->addField($this->part->id, $this->text->id, 'description');
     }
 
+    /** D-1371: a field that now holds parts refuses to keep the plain values of its old target, or drops them when asked. */
+    #[Test]
+    public function retargeting_a_field_with_values_of_the_old_shape_is_refused_unless_they_are_dropped(): void
+    {
+        $adern   = $this->editor->addField($this->part->id, $this->text->id, 'adern');
+        $wertTyp = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $satz    = $this->data->create($this->part->id);
+        $this->data->put($satz->id, $adern->id, TypedValue::ofText('40'));
+
+        try {
+            $this->editor->retargetField($this->part->id, $adern->id, $wertTyp->id, true);
+            self::fail('the retarget left a plain value on a part field');
+        } catch (\Taxmod\Core\Exception\NotAPossibleTarget $e) {
+            self::assertStringContainsString('1 stored value', $e->getMessage());
+        }
+
+        self::assertSame($this->text->id, $this->relations->byId($adern->id)->toNodeId, 'refused means nothing moved');
+
+        $this->editor->retargetField($this->part->id, $adern->id, $wertTyp->id, true, true);
+
+        self::assertSame($wertTyp->id, $this->relations->byId($adern->id)->toNodeId);
+        self::assertSame([], array_values(array_filter($this->records->valuesOf($satz->id), fn ($v): bool => $v->relationId === $adern->id)), 'the old number is gone');
+        self::assertSame(0, $this->editor->dropUnfitValues($this->part->id, $adern->id), 'nothing left to drop');
+    }
+
     /**
      * ⚠️ *[D-1148](../../docs/NewConcept/90-decision-log.md): two people, one record. The second save carries what it read, and since the
      * first one wrote in between, it is refused and nothing of it is written.*

@@ -20,6 +20,15 @@ final class NotAPossibleTarget extends DomainError
         return new self(sprintf('«%s» is a framework node and stands for a place, not for a thing in it.', $name));
     }
 
+    /** D-1371: values stored in the old shape would be left on the field — a number where parts now belong, or the reverse. */
+    public static function storedValuesWouldNotFit(int $count): self
+    {
+        return new self(sprintf(
+            '%d stored values of this field no longer fit its new target. Read them first, then retarget with drop_values, or convert them.',
+            $count
+        ));
+    }
+
     /** D-958 (F3a): auf die Wurzel `Model` zeigt nur ein Verweis — «jeder Satz unter Model» —, nie ein eigener Teil. */
     public static function onlyAReferenceMayPointAtModel(string $name): self
     {
