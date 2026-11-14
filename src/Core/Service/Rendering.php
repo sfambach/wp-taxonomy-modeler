@@ -6651,6 +6651,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             foreach ($kinder as $kind) {
                 $kandidaten[$kind->id] = $namen[$kind->id] ?? $kind->name;
             }
+
+            // D-1359: candidates gathered from several groups (the units under «With prefix» and «Without prefix») have no order of
+            // their own — the tree's order is per group — so they are offered alphabetically. Children of one parent keep the order
+            // set in the model (prefixes by magnitude).
+            if (count(array_unique(array_map(static fn (Node $kind): ?int => $kind->parentNodeId, $kinder))) > 1) {
+                uasort($kandidaten, static fn (string $a, string $b): int => strnatcasecmp($a, $b));
+            }
         }
 
         $an     = [];
