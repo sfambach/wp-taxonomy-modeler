@@ -211,16 +211,27 @@ final class SettingsEditor
         $vorhanden  = [];
         $geaendert  = 0;
 
-        foreach ($this->resolver->listOf($node, $attribut, $edge) as $glied) {
-            if ($glied->reference !== null) {
+        $alle = $this->resolver->listOf($node, $attribut, $edge);
+
+        // D-1369: what is not wanted is switched off — at an edge also a member that is on only in the node's list, by an overlay.
+        foreach ($alle as $glied) {
+            if ($glied->reference !== null && $glied->aktiv && ! in_array($glied->reference, $wanted, true)
+                && $this->setListEntry($node, $attribut, $glied->rowId, false, null, $edge)) {
+                $geaendert++;
+            }
+        }
+
+        foreach ($alle as $glied) {
+            // D-1369: at an edge only a row of that edge counts as chosen there. A row of the node's own list (the chooser's
+            // words) is not, and an unchanged overlay is never written — so a wanted member that stood only in the node's list was
+            // silently left out. Measured 2026-11-14: «Kabelenden» was in Kabel's word list, the composition of «Bezeichnung» never got it.
+            if ($glied->reference !== null && ($edge === null || $glied->setHere)) {
                 $vorhanden[$glied->reference] = $glied;
             }
         }
 
         foreach ($vorhanden as $verweis => $glied) {
-            $soll = in_array($verweis, $wanted, true);
-
-            if ($glied->aktiv !== $soll && $this->setListEntry($node, $attribut, $glied->rowId, $soll, null, $edge)) {
+            if (! $glied->aktiv && in_array($verweis, $wanted, true) && $this->setListEntry($node, $attribut, $glied->rowId, true, null, $edge)) {
                 $geaendert++;
             }
         }

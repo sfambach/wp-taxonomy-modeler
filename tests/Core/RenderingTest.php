@@ -2832,6 +2832,28 @@ final class RenderingTest extends TestCase
         self::assertSame('Kabel' . SummaryRenderer::SEPARATOR . 'KF2510' . SummaryRenderer::SEPARATOR . '2 polig' . SummaryRenderer::SEPARATOR . '0,1 m', $texte[$satz] ?? null);
     }
 
+    /** D-1369: a member that already stands in the node's own list is still written at the edge when it is chosen there. */
+    #[Test]
+    public function choosing_at_an_edge_what_the_node_list_already_holds_composes_it(): void
+    {
+        $text   = $this->type('Text');
+        $ende   = $this->thing('Steckseite');
+        $kabel  = $this->thing('Kabel');
+        $name   = $this->editor->addField($kabel->id, $text->id, 'bezeichnung');
+        $enden  = $this->editor->addField($kabel->id, $ende->id, 'kabelenden', RelationKind::Composition);
+        $laenge = $this->editor->addField($kabel->id, $text->id, 'laenge');
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($kabel, SummaryRenderer::FIELDS, [$name->id, $enden->id, $laenge->id]);
+        $editor->setMembers($kabel, SummaryRenderer::FIELDS, [$name->id, $laenge->id], $name);
+        $this->neuZeichnen();
+        self::assertSame([$name->id, $laenge->id], $this->rendering->zusammensetzungAn($name, $kabel->id));
+
+        $editor->setMembers($kabel, SummaryRenderer::FIELDS, [$name->id, $enden->id, $laenge->id], $name);
+        $this->neuZeichnen();
+        self::assertSame([$name->id, $enden->id, $laenge->id], $this->rendering->zusammensetzungAn($name, $kabel->id), 'the ends join the composition');
+    }
+
     /** D-1367: a node's own field choice beats its ancestor's at the target; only a choice at the edge speaks for all. */
     #[Test]
     public function a_records_own_node_chooses_its_words_before_the_target_does(): void
