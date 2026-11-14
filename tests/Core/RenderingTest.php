@@ -2799,16 +2799,26 @@ final class RenderingTest extends TestCase
     {
         $text   = $this->type('Text');
         $ende   = $this->thing('Steckseite');
-        $typ    = $this->editor->addField($ende->id, $text->id, 'steckertyp');
-        $pole   = $this->editor->addField($ende->id, $text->id, 'polzahl');
+        $arten  = $this->thing('Steckertypen');
+        $kf     = $this->editor->createNode('KF2510', $arten->id);
+        $typ    = $this->editor->addField($ende->id, $arten->id, 'steckertyp', RelationKind::Aggregation);
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $polig     = $this->editor->createNode('polig', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $wertTyp   = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $wert      = $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $einheit   = $this->editor->addField($wertTyp->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $pole   = $this->editor->addField($ende->id, $wertTyp->id, 'polzahl');
         $kabel  = $this->thing('Kabel');
         $name   = $this->editor->addField($kabel->id, $text->id, 'bezeichnung');
         $enden  = $this->editor->addField($kabel->id, $ende->id, 'kabelenden', RelationKind::Composition);
         $laenge = $this->editor->addField($kabel->id, $text->id, 'laenge');
 
         $teil = $this->records->add(new NodeRecord(0, $ende->id, 1, '2026-11-14 15:00:00', RecordType::User));
-        $this->records->putValue(RelationRecord::direct($teil, $typ->id, TypedValue::ofText('KF2510')));
-        $this->records->putValue(RelationRecord::direct($teil, $pole->id, TypedValue::ofText('2 polig')));
+        $this->records->putValue(RelationRecord::direct($teil, $typ->id, TypedValue::ofReference($kf->id)));
+        $zahl = $this->records->add(new NodeRecord(0, $wertTyp->id, 1, '2026-11-14 15:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($zahl, $wert->id, TypedValue::ofDecimal('2')));
+        $this->records->putValue(RelationRecord::direct($zahl, $einheit->id, TypedValue::ofReference($polig->id)));
+        $this->records->putValue(RelationRecord::direct($teil, $pole->id, TypedValue::ofRecordReference($zahl)));
         $satz = $this->records->add(new NodeRecord(0, $kabel->id, 1, '2026-11-14 15:00:00', RecordType::User));
         $this->records->putValue(RelationRecord::direct($satz, $enden->id, TypedValue::ofRecordReference($teil)));
         $this->records->putValue(RelationRecord::direct($satz, $laenge->id, TypedValue::ofText('0,1 m')));
