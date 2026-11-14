@@ -63,9 +63,9 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
 | **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:66](../../CLAUDE.md) | 28 |
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:67](../../CLAUDE.md) | 21 |
-| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 199 |
+| **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 200 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 15 |
-| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 29 |
+| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 30 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 8 |
 | **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:72](../../CLAUDE.md) | 5 |
 | **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:73](../../CLAUDE.md) | 7 |
@@ -366,7 +366,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **M1** | Changing a unit or a description changes only the output. The node is the same one that was used; the data stay the same. | [70-migration.md:31](70-migration.md) | 4 |
 | **M2** | Therefore the data must hold a reference to the node id, never to the name. Rename the node and every output changes — the data do not. | [70-migration.md:32](70-migration.md) | 1 |
 | **M3** | Documents are not part of this concept. An exported PDF is detached from the model; regenerating it later would simply look different. There is no … | [70-migration.md:33](70-migration.md) | 2 |
-| **M4** | Replacing a node with a different one is another matter. That changes the model version and produces a conflict in existing data, which the user ha… | [70-migration.md:34](70-migration.md) | 6 |
+| **M4** | Replacing a node with a different one is another matter. That changes the model version and produces a conflict in existing data, which the user ha… | [70-migration.md:34](70-migration.md) | 7 |
 | **M5** | Data made of id references are not human-readable. One cannot look into the database the way one can with a relational one. That is already true of… | [70-migration.md:35](70-migration.md) | 3 |
 | **M6** | Two surfaces follow: data entry in the admin — choose a model, see its data — and the conflict resolver. | [70-migration.md:36](70-migration.md) | 13 |
 | **M7** | The conflict resolver shows which models have conflicts with their data and lets the user resolve them. Afterwards the model has no conflicts and t… | [70-migration.md:37](70-migration.md) | 1 |
