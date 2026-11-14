@@ -2751,6 +2751,48 @@ final class RenderingTest extends TestCase
         self::assertSame('FIC' . SummaryRenderer::SEPARATOR . '386-SC-HG', $texte[$board->id][$pc] ?? null, 'die Wahl des Boards samt seinem Hersteller, zwei Stufen tief');
     }
 
+    /** D-1365: a cable's two ends both speak in its name, joined by « / », the same end once. */
+    #[Test]
+    public function every_record_a_field_holds_speaks_in_a_derived_name(): void
+    {
+        $text    = $this->type('Text');
+        $ende    = $this->thing('Steckseite');
+        $typ     = $this->editor->addField($ende->id, $text->id, 'steckertyp');
+        $kabel   = $this->thing('Kabel');
+        $enden   = $this->editor->addField($kabel->id, $ende->id, 'kabelenden', RelationKind::Composition);
+        $laenge  = $this->editor->addField($kabel->id, $text->id, 'laenge');
+
+        $teil = function (string $was) use ($ende, $typ): int {
+            $id = $this->records->add(new NodeRecord(0, $ende->id, 1, '2026-11-14 13:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($id, $typ->id, TypedValue::ofText($was)));
+
+            return $id;
+        };
+        $satz = function (array $teile) use ($kabel, $enden, $laenge): int {
+            $id = $this->records->add(new NodeRecord(0, $kabel->id, 1, '2026-11-14 13:00:00', RecordType::User));
+
+            foreach ($teile as $stelle => $t) {
+                $this->records->putValue(RelationRecord::direct($id, $enden->id, TypedValue::ofRecordReference($t), '', $stelle));
+            }
+
+            $this->records->putValue(RelationRecord::direct($id, $laenge->id, TypedValue::ofText('1 m')));
+
+            return $id;
+        };
+        $usb   = $satz([$teil('USB-A'), $teil('Micro-USB')]);
+        $gleich = $satz([$teil('KF2510'), $teil('KF2510')]);
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($kabel, SummaryRenderer::FIELDS, [$enden->id, $laenge->id]);
+        $this->neuZeichnen();
+
+        $feld  = \Taxmod\Core\Model\Relation::attribute(99, $kabel->id, $kabel->id, RelationKind::Aggregation, 'name', 0);
+        $texte = $this->rendering->summaryTextsOf([['relation' => $feld, 'records' => [$usb, $gleich]]])[99] ?? [];
+
+        self::assertSame('USB-A / Micro-USB' . SummaryRenderer::SEPARATOR . '1 m', $texte[$usb] ?? null, 'both ends, in their order');
+        self::assertSame('KF2510' . SummaryRenderer::SEPARATOR . '1 m', $texte[$gleich] ?? null, 'the same end once');
+    }
+
     /** ⚠️ *D-1175: «0.91 ″» im gerechneten Namen eines Displays — das Dezimalzeichen sagt der Rand, die Einheit ihren Abstand.* */
     #[Test]
     public function a_derived_name_writes_the_decimal_separator_the_boundary_gives(): void

@@ -556,6 +556,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     /** @var array<int, NodeRecord|null> Sätze, einmal je Zeichner gelesen — auch die, die es nicht gibt. */
     private array $gelesenSaetze = [];
 
+    /** D-1365: between the words of the several records one field holds, inside a derived name. */
+    public const LIST_JOINER = ' / ';
+
     /** Ein Glied der Feldwahl, das für den Namen des Knotens des Satzes steht — gesetzt von {@see SummaryWriter} (D-954 Regel 4). */
     public const KNOTENNAME = -1;
 
@@ -5463,6 +5466,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     continue;
                 }
 
+                // D-1365: the records a field holds all speak, joined by « / » and each word once (a cable «USB-A / Micro-USB»);
+                // a plain value or a node still gives the first only.
+                $satzWorte = [];
+
                 foreach ($werte[$satzId] ?? [] as $zeile) {
                     if ($zeile->relationId !== $feldId || $zeile->value->isNothing()) {
                         continue;
@@ -5475,18 +5482,22 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                         if ($stufe < 2 && $zeile->value->reference !== null) {
                             $innen = $wort($zeile->value->reference, [], $stufe + 1);
 
-                            // *Ein Teil ohne Wort zählt nicht; hält das Feld einen zweiten, spricht der.*
-                            if ($innen === '') {
-                                continue;
+                            // *Ein Teil ohne Wort zählt nicht.*
+                            if ($innen !== '') {
+                                $satzWorte[$innen] = true;
                             }
-
-                            $teile[] = $innen;
                         }
+
+                        continue;
                     } elseif (! $zeile->value->isAReference()) {
                         $teile[] = $zeile->value->rawValue();
                     }
 
                     break;
+                }
+
+                if ($satzWorte !== []) {
+                    $teile[] = implode(self::LIST_JOINER, array_keys($satzWorte));
                 }
             }
 
