@@ -49,6 +49,19 @@ final class ListViewTest extends TestCase
     }
 
     #[Test]
+    public function a_star_stands_for_any_characters_in_search_and_filters(): void
+    {
+        $names = static fn (array $rows): array => array_map(static fn (array $r): string => $r['cells']['name'], $rows);
+
+        // D-1357, his word 2026-11-14: «Als Wildcard hätte ich gerne das Sternchen.»
+        self::assertSame(['LM2930T'], $names((new ListView($this->columns(), search: 'lm*30'))->apply($this->rows())));
+        self::assertSame(['Quarz 8 MHz'], $names((new ListView($this->columns(), filters: ['name' => 'q*mhz']))->apply($this->rows())));
+        self::assertSame([], $names((new ListView($this->columns(), filters: ['name' => 'mhz*q']))->apply($this->rows())), 'the pieces in their order');
+        self::assertSame([], $names((new ListView($this->columns(), search: 'lm%30'))->apply($this->rows())), '«%» is a character, not a wildcard');
+        self::assertCount(3, (new ListView($this->columns(), search: '*'))->apply($this->rows()), 'a lone star matches everything');
+    }
+
+    #[Test]
     public function a_page_out_of_range_shows_the_last_one(): void
     {
         self::assertSame([3], ListView::page([1, 2, 3], 9, 2));

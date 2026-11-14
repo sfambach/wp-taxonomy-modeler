@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Persistence;
 
+use Taxmod\Core\Listing\Wildcard;
 use Taxmod\Core\Model\NodeRecord;
 use Taxmod\Core\Model\ReferenceSpace;
 use Taxmod\Core\Model\RecordType;
@@ -695,7 +696,7 @@ final class WpdbRecordRepository implements RecordRepository
         foreach ($conditions as $bedingung) {
             $knoten = array_values(array_filter(array_map('intval', $bedingung['nodes'])));
             $sql   .= ' AND (EXISTS (SELECT 1 FROM ' . Schema::table('relation_records') . ' v WHERE v.node_record_id = r.id AND v.value_text LIKE %s)';
-            $params[] = '%' . $wpdb->esc_like($bedingung['text']) . '%';
+            $params[] = self::likeOf($bedingung['text']);
 
             if ($knoten !== []) {
                 $sql   .= ' OR r.node_id IN (' . implode(',', array_fill(0, count($knoten), '%d')) . ')';
@@ -741,7 +742,7 @@ final class WpdbRecordRepository implements RecordRepository
 
             if ($bedingung['op'] === 'contains') {
                 $where .= ' AND ' . $exists . ' AND v.value_text LIKE %s)';
-                $params = [...$params, ...($feld > 0 ? [$feld] : []), '%' . $wpdb->esc_like($values[0] ?? '') . '%'];
+                $params = [...$params, ...($feld > 0 ? [$feld] : []), self::likeOf($values[0] ?? '')];
 
                 continue;
             }
@@ -1020,5 +1021,13 @@ final class WpdbRecordRepository implements RecordRepository
         }
 
         return $aus;
+    }
+
+    /** D-1357: a «contains» term as a LIKE pattern — each piece escaped, «*» becomes «%»; the pattern goes only into prepare(). */
+    private static function likeOf(string $term): string
+    {
+        global $wpdb;
+
+        return '%' . implode('%', array_map(static fn (string $part): string => $wpdb->esc_like($part), Wildcard::parts($term))) . '%';
     }
 }

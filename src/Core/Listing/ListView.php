@@ -4,8 +4,8 @@ namespace Taxmod\Core\Listing;
 
 /**
  * What a list shows, the same for every list (D-1054, design 7.2): the columns the user chose — or the starting set —, the rows
- * the search and the column filters keep, in the chosen order. Search and filters always mean «contains», ignoring case; the
- * search looks at every column, shown or not.
+ * the search and the column filters keep, in the chosen order. Search and filters always mean «contains», ignoring case, with «*» for any
+ * characters ({@see Wildcard}); the search looks at every column, shown or not.
  *
  * ```mermaid
  * flowchart LR
@@ -124,7 +124,7 @@ final class ListView
     private static function anyContains(array $texts, string $needle): bool
     {
         foreach ($texts as $text) {
-            if (mb_stripos($text, $needle) !== false) {
+            if (Wildcard::matches($text, $needle)) {
                 return true;
             }
         }

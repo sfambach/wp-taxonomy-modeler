@@ -44,6 +44,46 @@
 		} catch ( e ) {}
 	}
 
+	/**
+	 * D-1357: «contains», ignoring case, «*» for any characters — the same rule as `src/Core/Listing/Wildcard.php`, which the
+	 * server uses; change both or neither.
+	 */
+	function matches( text, term ) {
+		var at = 0;
+		var haystack = text.toLocaleLowerCase();
+
+		return term.trim().toLocaleLowerCase().split( '*' ).every( function ( part ) {
+			if ( part === '' ) {
+				return true;
+			}
+
+			var found = haystack.indexOf( part, at );
+
+			if ( found === -1 ) {
+				return false;
+			}
+
+			at = found + part.length;
+
+			return true;
+		} );
+	}
+
+	/**
+	 * D-1357: the page's own search (`ListPage::searchBox()`, a form with `s`) for a list on the page itself, not in a row's
+	 * details; null where there is none. His word 2026-11-14: «Die Filterzeile oben … scheint nicht zu funktionieren» — a
+	 * list that waits for a search (D-1147) or pages has rows the bar cannot see, so its term goes to the server.
+	 */
+	function serverSearchOf( table, position ) {
+		if ( String( position ) !== '0' ) {
+			return null;
+		}
+
+		var field = ( table.closest( '.wrap' ) || document ).querySelector( 'p.search-box input[name="s"]' );
+
+		return field && field.form ? field : null;
+	}
+
 	function isMore( row ) {
 		if ( row.classList.contains( 'taxmod-list-details' ) || row.classList.contains( 'taxmod-list-more' ) ) {
 			return true;
@@ -191,6 +231,33 @@
 		var count = element( 'span', 'taxmod-list-head-count displaying-num' );
 		bar.append( search, groupLabel );
 
+		// One search field, not two: the page's own box hides, its term stands here, Enter asks the server; typing still narrows
+		// the drawn rows at once. A term the server already applied is not applied again here — the server also looks at words
+		// the row does not show.
+		var server = serverSearchOf( table, position );
+
+		if ( server ) {
+			search.value = server.value;
+			search.dataset.server = server.value;
+			search.placeholder = server.placeholder || search.placeholder;
+			// WordPress styles p.search-box as flex, which outranks the hidden attribute.
+			server.closest( 'p.search-box' ).style.display = 'none';
+			search.addEventListener( 'keydown', function ( event ) {
+				if ( event.key !== 'Enter' ) {
+					return;
+				}
+
+				event.preventDefault();
+				server.value = search.value;
+
+				if ( server.form.requestSubmit ) {
+					server.form.requestSubmit();
+				} else {
+					server.form.submit();
+				}
+			} );
+		}
+
 		// A filter row of its own where the server draws none.
 		var filters = [];
 
@@ -275,7 +342,7 @@
 		var collapsed = {};
 
 		function draw() {
-			var needle = search.value.trim().toLocaleLowerCase();
+			var needle = search.dataset.server !== undefined && search.value === search.dataset.server ? '' : search.value.trim();
 			var active = filters.filter( function ( input ) {
 				return input.value.trim() !== '';
 			} );
@@ -334,9 +401,9 @@
 			units.forEach( function ( unit ) {
 				var text = unit.rows.map( function ( row ) {
 					return row.textContent;
-				} ).join( ' ' ).toLocaleLowerCase();
-				var keep = ( needle === '' || text.indexOf( needle ) !== -1 ) && active.every( function ( input ) {
-					return cellText( unit, +input.dataset.column ).toLocaleLowerCase().indexOf( input.value.trim().toLocaleLowerCase() ) !== -1;
+				} ).join( ' ' );
+				var keep = ( needle === '' || matches( text, needle ) ) && active.every( function ( input ) {
+					return matches( cellText( unit, +input.dataset.column ), input.value );
 				} );
 
 				if ( groupBy !== null ) {
@@ -442,7 +509,7 @@
 			moved = true;
 		}
 
-		if ( all.length < 2 && ! moved ) {
+		if ( all.length < 2 && ! moved && ! server ) {
 			// Nothing to sort or group by: the head still sorts once rows come, the bar waits.
 			bar.hidden = true;
 		}
