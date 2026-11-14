@@ -2793,6 +2793,35 @@ final class RenderingTest extends TestCase
         self::assertSame('KF2510' . SummaryRenderer::SEPARATOR . '1 m', $texte[$gleich] ?? null, 'the same end once');
     }
 
+    /** D-1366: a composed field (D-888) speaks its parts in their own words, as the chooser does. */
+    #[Test]
+    public function a_composed_field_names_its_parts_by_their_own_choice(): void
+    {
+        $text   = $this->type('Text');
+        $ende   = $this->thing('Steckseite');
+        $typ    = $this->editor->addField($ende->id, $text->id, 'steckertyp');
+        $pole   = $this->editor->addField($ende->id, $text->id, 'polzahl');
+        $kabel  = $this->thing('Kabel');
+        $name   = $this->editor->addField($kabel->id, $text->id, 'bezeichnung');
+        $enden  = $this->editor->addField($kabel->id, $ende->id, 'kabelenden', RelationKind::Composition);
+        $laenge = $this->editor->addField($kabel->id, $text->id, 'laenge');
+
+        $teil = $this->records->add(new NodeRecord(0, $ende->id, 1, '2026-11-14 15:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($teil, $typ->id, TypedValue::ofText('KF2510')));
+        $this->records->putValue(RelationRecord::direct($teil, $pole->id, TypedValue::ofText('2 polig')));
+        $satz = $this->records->add(new NodeRecord(0, $kabel->id, 1, '2026-11-14 15:00:00', RecordType::User));
+        $this->records->putValue(RelationRecord::direct($satz, $enden->id, TypedValue::ofRecordReference($teil)));
+        $this->records->putValue(RelationRecord::direct($satz, $laenge->id, TypedValue::ofText('0,1 m')));
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($ende, SummaryRenderer::FIELDS, [$typ->id, $pole->id]);
+        $this->neuZeichnen();
+
+        $texte = $this->rendering->summaryTextsOf([['relation' => $name, 'records' => [$satz], 'fields' => [Rendering::KNOTENNAME, $enden->id, $laenge->id]]])[$name->id] ?? [];
+
+        self::assertSame('Kabel' . SummaryRenderer::SEPARATOR . 'KF2510' . SummaryRenderer::SEPARATOR . '2 polig' . SummaryRenderer::SEPARATOR . '0,1 m', $texte[$satz] ?? null);
+    }
+
     /** D-1367: a node's own field choice beats its ancestor's at the target; only a choice at the edge speaks for all. */
     #[Test]
     public function a_records_own_node_chooses_its_words_before_the_target_does(): void
