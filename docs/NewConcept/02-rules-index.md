@@ -250,7 +250,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 118 |
+| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 119 |
 | **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 7 |
 | **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 8 |
 | **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
@@ -405,7 +405,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **B3** | Kilogramm listed as a base unit with prefix. | [01-standard-tree.md:57](01-standard-tree.md) | 5 |
 | **B4** | Praefix and Kuerzel on parent and on every child. | [01-standard-tree.md:58](01-standard-tree.md) | 2 |
 | **B5** | Simple Datatypes contains display_node_name. | [01-standard-tree.md:59](01-standard-tree.md) | 3 |
-| **B6** | Währung beside Basiseinheiten, not under a common root. | [01-standard-tree.md:60](01-standard-tree.md) | 2 |
+| **B6** | Währung beside Basiseinheiten, not under a common root. | [01-standard-tree.md:60](01-standard-tree.md) | 3 |
 | **B7** | calc has no counterpart in the new concept. V6 mentions special nodes for calculations and nothing had been designed since. The old tree also has a… | [01-standard-tree.md:79](01-standard-tree.md) | 5 |
 | **B8** | The old concept let a calculation also be a transformation — text transformation and the like. | [01-standard-tree.md:80](01-standard-tree.md) | 3 |
 
