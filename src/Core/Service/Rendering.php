@@ -5236,12 +5236,20 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             }
 
             $gewaehlt = [];
+            $anKante  = false;
 
             foreach ($this->resolver->listOf($ziel, SummaryRenderer::FIELDS, $relation) as $glied) {
+                $anKante = $anKante || $glied->setHere;
+
                 if ($glied->aktiv && $glied->reference !== null) {
                     $gewaehlt[] = $glied->reference;
                 }
             }
+
+            // D-1367: only a choice made at the edge speaks for every record. Without one, the list at the target is just the nearest
+            // ancestor's default, and a record's own node (or a node between it and the target) with its own list must win. Measured
+            // 2026-11-14: «Kabel» chose [Bezeichnung], and «USB-Kabel»'s own [Bezeichnung, Kabelenden, Länge] was never asked.
+            $gewaehlt = $anKante ? $gewaehlt : [];
 
             // ⚠️ *Wer die Felder selbst mitbringt, bekommt sie auch — der Weg von {@see self::summaryTextsOf()} (D-885).*
             // ⚠️ *Eine leere Liste heisst «die Worte des Satzes selbst», nicht «keine Wahl» (D-902): wer die verweisenden Sätze benennt,

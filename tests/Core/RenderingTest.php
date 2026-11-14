@@ -2793,6 +2793,50 @@ final class RenderingTest extends TestCase
         self::assertSame('KF2510' . SummaryRenderer::SEPARATOR . '1 m', $texte[$gleich] ?? null, 'the same end once');
     }
 
+    /** D-1367: a node's own field choice beats its ancestor's at the target; only a choice at the edge speaks for all. */
+    #[Test]
+    public function a_records_own_node_chooses_its_words_before_the_target_does(): void
+    {
+        $text   = $this->type('Text');
+        $ende   = $this->thing('Steckseite');
+        $typ    = $this->editor->addField($ende->id, $text->id, 'steckertyp');
+        $kabel  = $this->thing('Kabel');
+        $usb    = $this->editor->createNode('USB-Kabel', $kabel->id);
+        $enden  = $this->editor->addField($kabel->id, $ende->id, 'kabelenden', RelationKind::Composition);
+        $laenge = $this->editor->addField($kabel->id, $text->id, 'laenge');
+        $lager  = $this->thing('Lager');
+        $bezug  = $this->editor->addField($lager->id, $kabel->id, 'material', RelationKind::Aggregation);
+
+        $satz = function (Node $unter) use ($ende, $typ, $enden, $laenge): int {
+            $teil = $this->records->add(new NodeRecord(0, $ende->id, 1, '2026-11-14 15:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($teil, $typ->id, TypedValue::ofText('USB-A')));
+            $id = $this->records->add(new NodeRecord(0, $unter->id, 1, '2026-11-14 15:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($id, $enden->id, TypedValue::ofRecordReference($teil)));
+            $this->records->putValue(RelationRecord::direct($id, $laenge->id, TypedValue::ofText('1 m')));
+
+            return $id;
+        };
+        $amKabel = $satz($kabel);
+        $amUsb   = $satz($usb);
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($kabel, SummaryRenderer::FIELDS, [$laenge->id]);
+        $editor->setMembers($usb, SummaryRenderer::FIELDS, [$enden->id, $laenge->id]);
+        $this->neuZeichnen();
+
+        $texte = $this->rendering->summaryTextsOf([['relation' => $bezug, 'records' => [$amKabel, $amUsb]]])[$bezug->id] ?? [];
+
+        self::assertSame('1 m', $texte[$amKabel] ?? null, 'the target\'s own record takes the target\'s choice');
+        self::assertSame('USB-A' . SummaryRenderer::SEPARATOR . '1 m', $texte[$amUsb] ?? null, 'the child\'s own choice wins over its ancestor\'s');
+
+        $editor->setMembers($kabel, SummaryRenderer::FIELDS, [$enden->id], $bezug);
+        $this->neuZeichnen();
+
+        $texte = $this->rendering->summaryTextsOf([['relation' => $bezug, 'records' => [$amUsb]]])[$bezug->id] ?? [];
+
+        self::assertSame('USB-A', $texte[$amUsb] ?? null, 'a choice at the edge speaks for every record');
+    }
+
     /** ⚠️ *D-1175: «0.91 ″» im gerechneten Namen eines Displays — das Dezimalzeichen sagt der Rand, die Einheit ihren Abstand.* */
     #[Test]
     public function a_derived_name_writes_the_decimal_separator_the_boundary_gives(): void
