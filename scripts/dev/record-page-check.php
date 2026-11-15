@@ -58,6 +58,7 @@ $check('the process arrows with links are unchanged', str_contains(ListPage::ste
 
 $css = (string) @file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
 $check('the forward button is pushed right in the stylesheet', str_contains($css, ':has(> .taxmod-record-forward)'));
+$check('the status arrows share the full width evenly, with room to the edge (D-1383)', (bool) preg_match('/\.taxmod-steps\.is-status li \{[^}]*flex: 1 1 0/', $css) && (bool) preg_match('/\.taxmod-steps\.is-status \{[^}]*margin: 12px 8px/', $css));
 
 echo $failed === 0 ? "record-page-check: all claims hold\n" : "record-page-check: {$failed} FAIL\n";
 exit($failed === 0 ? 0 : 1);

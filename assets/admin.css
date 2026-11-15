@@ -2906,3 +2906,30 @@ details.taxmod-record-section > summary {
 .taxmod-toolbar-sep:has(+ .taxmod-toolbar-group > .taxmod-record-forward) {
     display: none;
 }
+
+/* His wish 2026-11-15: the status arrows of a single record span the full width, evenly, with a little room to the edge, as high as the list's arrows with their counts. */
+.taxmod-steps.is-status {
+    margin: 12px 8px;
+}
+
+.taxmod-steps.is-status ol {
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+}
+
+.taxmod-steps.is-status li {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.taxmod-steps.is-status .taxmod-step {
+    box-sizing: border-box;
+    min-width: 0;
+    height: 100%;
+    min-height: 62px;
+    justify-content: center;
+}
+
+.taxmod-steps.is-status .taxmod-steps-ends .taxmod-step {
+    min-height: 30px;
+}
