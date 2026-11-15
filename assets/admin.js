@@ -1490,6 +1490,11 @@
 			}
 		} );
 
+		// *Eine Wahl aus der Schnellsuche löst kein «change» aus — wer vom Feld abhängt (D-1311), hört auf dieses Ereignis.*
+		if ( genommen ) {
+			genommen.dispatchEvent( new CustomEvent( 'taxmod-record-picked', { bubbles: true } ) );
+		}
+
 		// *Ohne Speichern-Knopf schickt die Wahl aus der Schnellsuche sich selbst (D-860).*
 		if ( genommen && autosaveAn( genommen ) ) {
 			autosaveSchicken( genommen, true );

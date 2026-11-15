@@ -23,6 +23,10 @@
 	document.addEventListener( 'change', function () {
 		apply( document );
 	} );
+	// A record picked from the quick search is checked by script, which fires no «change».
+	document.addEventListener( 'taxmod-record-picked', function () {
+		apply( document );
+	} );
 	document.addEventListener( 'DOMContentLoaded', function () {
 		apply( document );
 	} );
