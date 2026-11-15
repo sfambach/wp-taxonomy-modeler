@@ -197,6 +197,29 @@ final class DataEntry
         $this->nachSchreiben = $was;
     }
 
+    /**
+     * D-1391: the derived fields (calculated, summary) of these records written anew — for a change of the settings they derive from,
+     * which touches no record itself. Same follow-up as a write, once for all.
+     *
+     * @param list<int> $recordIds
+     */
+    public function rewriteDerivedOf(array $recordIds): void
+    {
+        $recordIds = array_values(array_filter(array_unique($recordIds), static fn (int $id): bool => $id > 0));
+
+        if ($this->nachSchreiben === null || $this->imNachlauf || $recordIds === []) {
+            return;
+        }
+
+        $this->imNachlauf = true;
+
+        try {
+            ($this->nachSchreiben)($recordIds);
+        } finally {
+            $this->imNachlauf = false;
+        }
+    }
+
     /** Ein Satz wurde angefasst — der Nachlauf bekommt ihn, einmal und ohne sich selbst zu wecken. */
     private function angefasst(int $recordId): void
     {

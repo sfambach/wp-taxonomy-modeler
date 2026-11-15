@@ -622,6 +622,26 @@ final class ModelAbilities
      * @param array<string, mixed> $input
      * @return array{total: int, offset: int, records: list<array{id: int, node: int, word: string, part_of?: int, values?: array<string, string>}>, unknown_fields?: list<string>}
      */
+    /** D-1391: the records at and below a node, their derived fields written anew in one follow-up. */
+    private function rewriteNamesUnder(NodesScreen $screen, \Taxmod\Core\Model\Node $node): void
+    {
+        $nodes = [$node->id];
+
+        foreach ((new Tree(new Persistence\WpdbNodeRepository()))->rowsUnder($node, [$this->framework()->trash()->id]) as $row) {
+            $nodes[] = $row['node']->id;
+        }
+
+        $ids = [];
+
+        foreach ((new WpdbRecordRepository())->ofNodes($nodes) as $records) {
+            foreach ($records as $record) {
+                $ids[] = $record->id;
+            }
+        }
+
+        $screen->entries()->rewriteDerivedOf($ids);
+    }
+
     private function query(array $input): array
     {
         $q         = RecordQuery::from($input);
@@ -1011,7 +1031,13 @@ final class ModelAbilities
                 $nodeId  = $this->node($at('node'))->id;
                 $members = array_map(fn (mixed $m): int => $this->resolve($m, $refs, 'members'), is_array($change['members'] ?? null) ? $change['members'] : []);
 
-                $screen->setListMembers($nodeId, sanitize_key((string) ($change['attribute'] ?? '')), $members, isset($change['field']) ? $at('field') : null);
+                $attribute = sanitize_key((string) ($change['attribute'] ?? ''));
+                $screen->setListMembers($nodeId, $attribute, $members, isset($change['field']) ? $at('field') : null);
+
+                // D-1391: a list that names derive from rewrites the names of every record at and below the node (D-1390 left them old).
+                if (in_array($attribute, [\Taxmod\Core\Renderer\SummaryRenderer::FIELDS, \Taxmod\Core\Model\NodeClass\Category::RASTER_FELDER], true)) {
+                    $this->rewriteNamesUnder($screen, $this->node($nodeId));
+                }
 
                 return $nodeId;
 

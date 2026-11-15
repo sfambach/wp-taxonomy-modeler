@@ -207,6 +207,19 @@ $gewaehlt = (int) $wpdb->get_var($wpdb->prepare(
 check('set_list setzt die Feldwahl des Knotens', is_array($liste0) && $gewaehlt === 1, is_wp_error($liste0) ? $liste0->get_error_message() : (string) $gewaehlt);
 check('eine unbekannte Einstellung wird abgewiesen', is_wp_error($apply->execute(['changes' => [['op' => 'set_list', 'node' => $ergebnis['refs']['i'], 'attribute' => 'gibt_es_nicht', 'members' => []]]])));
 
+// D-1391: a summary list set by an agent rewrites the names of the records at once, not only at their next save.
+$name1391 = $apply->execute(['changes' => [
+    ['op' => 'add_field', 'ref' => 'n', 'node' => $ergebnis['refs']['i'], 'target' => $text?->id ?? 0, 'name' => '__ab Name'],
+    ['op' => 'set_list', 'node' => $ergebnis['refs']['i'], 'field' => '@n', 'attribute' => 'summary_fields', 'members' => ['@n', $ergebnis['refs']['f']]],
+]]);
+$geschrieben1391 = is_array($name1391) ? (string) $wpdb->get_var($wpdb->prepare(
+    'SELECT value_text FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d AND relation_id = %d',
+    $ergebnis['refs']['r'],
+    $name1391['refs']['n']
+)) : '';
+
+check('set_list einer Zusammensetzung schreibt die Namen gleich neu (D-1391)', str_contains($geschrieben1391, '__ab Initiative') && str_contains($geschrieben1391, 'Hallo'), is_wp_error($name1391) ? $name1391->get_error_message() : $geschrieben1391);
+
 echo "Feld mit Multiplizität (D-914)\n";
 
 $liste = $apply->execute(['changes' => [

@@ -927,6 +927,24 @@ final class DataEntryTest extends TestCase
         self::assertContains($record->id, $gerufen);
     }
 
+    /** D-1391: a settings change rewrites the derived fields of the records it names, once for all, each record once. */
+    #[Test]
+    public function rewriting_derived_fields_runs_the_hook_once_for_all(): void
+    {
+        $a = $this->data->create($this->part->id);
+        $b = $this->data->create($this->part->id);
+        $rufe = [];
+        $this->data->afterWrite(static function (array $saetze) use (&$rufe): void {
+            $rufe[] = $saetze;
+        });
+
+        $this->data->rewriteDerivedOf([$a->id, $b->id, $a->id, 0]);
+        $this->data->rewriteDerivedOf([]);
+        $this->data->afterWrite(null);
+
+        self::assertSame([[$a->id, $b->id]], $rufe);
+    }
+
     #[Test]
     public function a_record_does_not_move_into_another_branch(): void
     {
