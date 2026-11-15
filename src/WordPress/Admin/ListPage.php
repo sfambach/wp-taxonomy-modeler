@@ -758,15 +758,17 @@ final class ListPage
      *        count — in process order; the last may be a list of steps, the ends a process can take side by side (half-high arrows
      *        stacked, e.g. «done» and «cancelled», D-1346)
      * @param list<array{0: string, 1: string, 2?: int|null}> $beside slug, label, optional count
-     * @param callable(string): string $url the address of a step or tab
+     * @param (callable(string): string)|null $url the address of a step or tab; null draws the arrows as a display of a
+     *        record's status, without links (D-1376)
      * @param array{0: string, 1: string, 2?: int|null}|array{} $all slug, label, optional count of the view over every stage
      */
-    public static function steps(array $steps, string $active, callable $url, array $beside = [], array $all = []): string
+    public static function steps(array $steps, string $active, ?callable $url, array $beside = [], array $all = []): string
     {
-        $html  = '<nav class="taxmod-steps" aria-label="' . esc_attr__('Process', 'taxmod') . '">' . ($all === [] ? '' : '<div class="taxmod-steps-process">') . '<ol>';
-        $arrow = static fn (array $step): string => '<a class="taxmod-step' . ($step[0] === $active ? ' is-active' : '') . (($step[2] ?? null) === 0 ? ' is-empty' : '') . '" href="' . esc_url($url($step[0])) . '"'
+        $html  = '<nav class="taxmod-steps' . ($url === null ? ' is-status' : '') . '" aria-label="' . esc_attr__('Process', 'taxmod') . '">' . ($all === [] ? '' : '<div class="taxmod-steps-process">') . '<ol>';
+        $arrow = static fn (array $step): string => ($url === null ? '<span' : '<a') . ' class="taxmod-step' . ($step[0] === $active ? ' is-active' : '') . (($step[2] ?? null) === 0 ? ' is-empty' : '') . '"'
+            . ($url === null ? '' : ' href="' . esc_url($url($step[0])) . '"')
             . ($step[0] === $active ? ' aria-current="step"' : '') . '><span class="taxmod-step-label">' . esc_html($step[1]) . '</span>'
-            . (isset($step[2]) ? '<span class="taxmod-step-count">' . esc_html(number_format_i18n((int) $step[2])) . '</span>' : '') . '</a>';
+            . (isset($step[2]) ? '<span class="taxmod-step-count">' . esc_html(number_format_i18n((int) $step[2])) . '</span>' : '') . ($url === null ? '</span>' : '</a>');
 
         foreach ($steps as $step) {
             $html .= is_array($step[0] ?? null)
@@ -776,18 +778,70 @@ final class ListPage
 
         $html .= '</ol>';
 
-        if ($all !== []) {
+        if ($all !== [] && $url !== null) {
             $html .= '<a class="taxmod-steps-all' . ($all[0] === $active ? ' is-active' : '') . '" href="' . esc_url($url($all[0])) . '"'
                 . ($all[0] === $active ? ' aria-current="step"' : '') . '><span class="taxmod-step-label">' . esc_html($all[1]) . '</span>'
                 . (isset($all[2]) ? ' <span class="taxmod-steps-all-count">' . esc_html(number_format_i18n((int) $all[2])) . '</span>' : '') . '</a></div>';
         }
 
-        foreach ($beside as $tab) {
+        foreach ($url === null ? [] : $beside as $tab) {
             $html .= '<a class="nav-tab taxmod-steps-beside' . ($tab[0] === $active ? ' nav-tab-active' : '') . '" href="' . esc_url($url($tab[0])) . '">' . esc_html($tab[1])
                 . (isset($tab[2]) ? ' <span class="count">(' . (int) $tab[2] . ')</span>' : '') . '</a>';
         }
 
         return $html . '</nav>';
+    }
+
+    /**
+     * D-1376: the one layout of a single record with a status — Fertigungsauftrag first, then every such page when it is next
+     * touched. ⚠️ *His word, 2026-11-15: «Pfeil nach rechts geht's weiter im Prozess und Pfeil nach links geht's zurück … der
+     * Button steht immer links».* A module brings only the content; the order is fixed here (D-1186).
+     *
+     * ```mermaid
+     * flowchart TB
+     *   T[title] --> S[status arrows, display only] --> B["toolbar: ← back · side actions · forward →"] --> F[master data] --> X[sections]
+     * ```
+     *
+     * @param list<array{0: string, 1: string, 2?: int|null}|list<array{0: string, 1: string, 2?: int|null}>> $steps as for {@see self::steps()}
+     * @param string       $back     escaped HTML of the left button, from {@see self::stepButton()}: the previous status, or «← list»
+     *                               when there is none — the place is never empty
+     * @param string       $forward  escaped HTML of the main button (next status →), or '' at the end of the process
+     * @param list<string> $actions  escaped HTML, the side actions between the two
+     * @param string       $details  escaped HTML of the master data, e.g. {@see self::form()} or the record editor
+     * @param list<array{title: string, html: string, open?: bool}> $sections what belongs to the current status first (open), earlier
+     *        ones folded (`open` false); `title` plain text, `html` escaped
+     */
+    public static function record(string $title, array $steps, string $active, string $back, string $forward, array $actions, string $details, array $sections = []): string
+    {
+        $html = '<div class="taxmod-record-page">'
+            . '<h2 class="taxmod-record-page-title">' . esc_html($title) . '</h2>'
+            . self::steps($steps, $active, null)
+            . self::toolbar([$back, $actions, $forward === '' ? '' : '<span class="taxmod-record-forward">' . $forward . '</span>'])
+            . $details;
+
+        foreach ($sections as $section) {
+            $html .= ($section['open'] ?? true)
+                ? '<section class="taxmod-record-section"><h3>' . esc_html($section['title']) . '</h3>' . $section['html'] . '</section>'
+                : '<details class="taxmod-record-section"><summary>' . esc_html($section['title']) . '</summary>' . $section['html'] . '</details>';
+        }
+
+        return $html . '</div>';
+    }
+
+    /**
+     * D-1376: a step button with its arrow inside — «← label» back, «label →» forward (primary). A link with `$url`, else a submit
+     * button that sends `$name` = `$value` (with `$form`, the form it belongs to). A step that needs a question first is a
+     * {@see self::dialogAction()} instead, labelled the same way.
+     */
+    public static function stepButton(string $label, bool $forward, string $url = '', string $name = '', string $value = '', string $form = ''): string
+    {
+        $text  = $forward ? $label . ' →' : '← ' . $label;
+        $class = 'button' . ($forward ? ' button-primary' : '');
+
+        return $url !== ''
+            ? '<a class="' . $class . '" href="' . esc_url($url) . '">' . esc_html($text) . '</a>'
+            : '<button type="submit" class="' . $class . '" name="' . esc_attr($name) . '" value="' . esc_attr($value) . '"'
+                . ($form === '' ? '' : ' form="' . esc_attr($form) . '"') . '>' . esc_html($text) . '</button>';
     }
 
     /**

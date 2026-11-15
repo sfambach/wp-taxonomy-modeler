@@ -2884,3 +2884,25 @@ pre.taxmod-code {
     min-height: 0;
     overflow: auto;
 }
+
+/* ── D-1376: the single record with a status — forward on the right, status arrows without links ───────── */
+.taxmod-toolbar .taxmod-toolbar-group:has(> .taxmod-record-forward) {
+    margin-left: auto;
+}
+
+.taxmod-steps.is-status .taxmod-step {
+    cursor: default;
+}
+
+.taxmod-record-section {
+    margin: 1.2em 0 0;
+}
+
+details.taxmod-record-section > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.taxmod-toolbar-sep:has(+ .taxmod-toolbar-group > .taxmod-record-forward) {
+    display: none;
+}
