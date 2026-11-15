@@ -2944,6 +2944,51 @@ final class RenderingTest extends TestCase
         self::assertSame('0,91Zoll', $name(','), 'mit «direkt_an_zahl» an der Einheit');
     }
 
+    /** D-1389, his word 2026-11-15: «raster mass sollte default bei präfix milli haben also mm». */
+    #[Test]
+    public function an_empty_unit_value_shows_the_prefix_its_field_presets(): void
+    {
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $meter     = $this->editor->createNode('m', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $praefixe  = $this->editor->createNode('Prefixes', $this->branchRoot['constants']->id);
+        $milli     = $this->editor->createNode('milli', $praefixe->id, \Taxmod\Core\Model\NodeClass\Constant::class);
+        $this->editor->createNode('kilo', $praefixe->id, \Taxmod\Core\Model\NodeClass\Constant::class);
+        $laenge    = $this->editor->createNode('Länge', $this->branchRoot['compositions']->id, \Taxmod\Core\Model\NodeClass\UnitValue::class);
+        $this->editor->addField($laenge->id, $this->type('Decimal')->id, 'zahl');
+        $this->editor->addField($laenge->id, $praefixe->id, 'praefix', RelationKind::Aggregation);
+        $this->editor->addField($laenge->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $display   = $this->thing('Display');
+        $feld      = $this->editor->addField($display->id, $laenge->id, 'raster');
+        $settings  = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $settings->put($meter, 'mit_praefix', '1');
+        $settings->put($laenge, \Taxmod\Core\Model\NodeClass\UnitValue::ERLAUBTE_EINHEITEN, (string) $meter->id, $feld);
+
+        $markup = function () use ($einheiten, $praefixe, $feld): string {
+            $this->resolver->forget();
+            $rendering = new Rendering(
+                $this->nodes,
+                new FixedFramework($this->wurzel, $this->nodes->byId($this->wurzel->id + 1), $this->branchRoot, self::INSTALLATION, self::ROLE_IDS, ['units' => $einheiten, 'prefixes' => $praefixe]),
+                ShippedRenderers::registry(),
+                $this->typeNodes,
+                new Labels($this->labelStore, 'en_US'),
+                ShippedConverters::registry(),
+                resolver: $this->resolver,
+                relations: $this->relations,
+                records: $this->records,
+            );
+
+            return $rendering->fieldsFor([$feld], [], Purpose::Edit, 'v')[0]->result->markup;
+        };
+
+        $selected = static fn (string $html, int $id): bool => (bool) preg_match('/<option[^>]*value="' . $id . '"[^>]*selected/', $html);
+
+        self::assertFalse($selected($markup(), $milli->id), 'without a preset no prefix is chosen');
+
+        $settings->put($laenge, \Taxmod\Core\Model\NodeClass\UnitValue::VORGABE_PRAEFIX, (string) $milli->id, $feld);
+
+        self::assertTrue($selected($markup(), $milli->id), 'the field presets «milli», the empty part shows it');
+    }
+
     /** ⚠️ *D-1189, sein Wort: «20 Zeichen · 4 Zeichen sind 4 zeilen a 20 zeichen 4x20 würde mir reichen».* */
     #[Test]
     public function a_grid_joins_its_two_numbers_with_the_sign_its_node_names(): void

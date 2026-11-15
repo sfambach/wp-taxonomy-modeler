@@ -30,6 +30,16 @@ final class UnitValue implements NodeClass
 
     public const ERLAUBTE_EINHEITEN = 'erlaubte_einheiten';
 
+    /**
+     * Welcher Präfix in der Maske vorgewählt steht, solange der Teil keinen trägt — änderbar, nicht gespeichert, bevor eine Zahl
+     * dasteht ([D-1389](../../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «raster mass sollte default bei präfix milli
+     * haben also mm».* Gesetzt am Feld (der Verwendungsstelle), wie {@see self::$erlaubte_einheiten}.
+     */
+    #[Attribut(refersTo: Constant::class, from: Anchor::Prefixes)]
+    public ?int $vorgabe_praefix = null;
+
+    public const VORGABE_PRAEFIX = 'vorgabe_praefix';
+
     // ⚠️ *Sein Wort zum Displaynamen «20 Zeichen · 4 Zeichen» ([D-1189](../../../../docs/NewConcept/90-decision-log.md)): «4x20 würde mir
     // reichen». Zwei Zahlen sind sonst ein Bereich «4 … 20»; ein Knoten wie «Raster» sagt hier «×».*
     #[Attribut]

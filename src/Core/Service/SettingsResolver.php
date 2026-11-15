@@ -267,6 +267,33 @@ final class SettingsResolver
         return $aus;
     }
 
+    /**
+     * The node a scalar reference setting names at a node or, with an edge, at that use site — the edge's row first, then the
+     * node's own (D-1389). The resolved settings give the word; a preset needs the id, and a name is no address (`CD · Prohibited`).
+     */
+    public function referenceAt(Node $node, string $attribut, ?Relation $edge = null): ?int
+    {
+        $erklaert = Contracts::of($node->klasse)->attribute($attribut);
+
+        if ($erklaert === null || $erklaert->list) {
+            return null;
+        }
+
+        $this->preload([$node]);
+
+        $rows = $this->rows[$node->id] ?? [];
+
+        foreach ($edge === null ? [null] : [$edge->id, null] as $edgeId) {
+            foreach ($this->rowsFor($rows, $erklaert, $edgeId) as $row) {
+                if ($row->value->reference !== null) {
+                    return (int) $row->value->reference;
+                }
+            }
+        }
+
+        return null;
+    }
+
     /** @var array<int, \Taxmod\Core\Model\Relation|null> Kanten, einmal je Auflösung gelesen — auch die, die es nicht gibt. */
     private array $gemerkteKanten = [];
 

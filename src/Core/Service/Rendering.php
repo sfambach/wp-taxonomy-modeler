@@ -6849,6 +6849,41 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
     }
 
     /**
+     * The values of a part as the form draws them: an empty prefix shows the one the use site presets (D-1389), if the unit takes
+     * prefixes and allows that one. Nothing is written — a part without a number is not created (see `withoutPresetUnit`).
+     *
+     * @param list<Relation>         $felder
+     * @param array<int, TypedValue> $werte
+     * @param array<int, list<int>>  $erlaubt what {@see self::allowedChoicesIn()} said for these fields
+     * @return array<int, TypedValue>
+     */
+    private function withPresetPrefix(Node $ziel, Relation $traeger, array $felder, array $werte, array $erlaubt): array
+    {
+        $praefixe = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Prefixes);
+
+        if ($this->resolver === null || $praefixe === null) {
+            return $werte;
+        }
+
+        foreach ($felder as $feld) {
+            if ($feld->toNodeId !== $praefixe->id || ! (($werte[$feld->id] ?? null)?->isNothing() ?? true)) {
+                continue;
+            }
+
+            $vorgabe = $this->resolver->referenceAt($ziel, \Taxmod\Core\Model\NodeClass\UnitValue::VORGABE_PRAEFIX, $traeger);
+
+            // *A unit without prefixes gets an empty list here, and a list that leaves the preset out wins over it.*
+            if ($vorgabe === null || (isset($erlaubt[$feld->id]) && ! in_array((int) $vorgabe, $erlaubt[$feld->id], true))) {
+                continue;
+            }
+
+            $werte[$feld->id] = TypedValue::ofReference((int) $vorgabe);
+        }
+
+        return $werte;
+    }
+
+    /**
      * Ein Wähler, der nur die erlaubten Knoten anbietet — als Auswahlfeld, gleich wie tief sie im Ziel liegen (D-783).
      *
      * ⚠️ *Sein Wort: «only Ohms allowed, and so this is preselected and not changeable». Bei genau einem erlaubten Knoten zeichnet
@@ -7952,11 +7987,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             // *Die leere Zeile einer Verweisliste ist ein neuer Satz, kein Teil des äusseren: ohne dessen Werte (D-1026).*
             $zeilenWerte[]  = $teil === null ? ($verweisliste ? [] : $values) : $teil['werte'];
             $zeilenFelder[] = $dieseFelder;
+            // D-1389: a preset prefix only stands in the drawn form; the values of the part stay as they are.
+            $gezeichnet = $purpose === Purpose::Edit
+                ? $this->withPresetPrefix($ziel, $relation, $dieseFelder, $teil === null ? ($verweisliste ? [] : $values) : $teil['werte'], $erlaubteWahl)
+                : ($teil === null ? ($verweisliste ? [] : $values) : $teil['werte']);
             $zeilen[] = $this->fieldsFor(
                 $dieseFelder,
-                $teil === null
-                    ? ($verweisliste ? [] : $values)
-                    : $teil['werte'],
+                $gezeichnet,
                 $purpose,
                 // ⚠️ **Ein geliehener Teil hat keine Satz-Id, also nimmt er die Adresse des Knotens.**
                 // *`taxmod_value[<Trägerkante>][<innere Kante>]` ist die zweistufige Form, die

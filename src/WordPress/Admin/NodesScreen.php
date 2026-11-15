@@ -4915,9 +4915,15 @@ final class NodesScreen
     private function withoutPresetUnit(array $inner): array
     {
         $einheiten = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Units);
+        // D-1389: a prefix alone is no value either — the form may show a preset one beside an empty number.
+        $praefixe  = $this->framework->anchor(\Taxmod\Core\Model\NodeClass\Anchor::Prefixes);
 
-        return $einheiten === null ? $inner : array_filter($inner, function (mixed $wert, int|string $kante) use ($einheiten): bool {
+        return $einheiten === null ? $inner : array_filter($inner, function (mixed $wert, int|string $kante) use ($einheiten, $praefixe): bool {
             $relation = absint($kante) === 0 ? null : $this->editor->relationById(absint($kante));
+
+            if ($relation !== null && $praefixe !== null && $relation->toNodeId === $praefixe->id) {
+                return false;
+            }
 
             return $relation === null || $relation->toNodeId !== $einheiten->id || ! $relation->multiplicity->requiresOne();
         }, ARRAY_FILTER_USE_BOTH);
