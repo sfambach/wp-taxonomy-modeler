@@ -19,6 +19,7 @@ $check = static function (string $claim, bool $holds) use (&$failed): void {
 
 $check('the quick search announces a picked record', str_contains($admin, "new CustomEvent( 'taxmod-record-picked', { bubbles: true } )"));
 $check('a shown-by part listens to a picked record', str_contains($shown, "addEventListener( 'taxmod-record-picked'"));
+$check('a field belonging to the form by its form attribute counts', str_contains($shown, 'form.elements'));
 $check('a shown-by part still listens to change', str_contains($shown, "addEventListener( 'change'"));
 
 echo $failed === 0 ? "shown-by-check: all claims hold\n" : "shown-by-check: {$failed} FAIL\n";

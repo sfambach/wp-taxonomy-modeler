@@ -4,8 +4,16 @@
  */
 ( function () {
 	function value( form, name ) {
-		var checked = form.querySelector( '[name="' + name + '"]:checked' );
-		var field = checked || form.querySelector( 'select[name="' + name + '"], input[name="' + name + '"]:not([type=radio]):not([type=checkbox])' );
+		// A field may stand outside its form and belong to it by its form attribute (a chooser tree beside the dialog's form).
+		var fields = form.elements ? Array.prototype.filter.call( form.elements, function ( field ) {
+			return field.name === name;
+		} ) : Array.prototype.slice.call( form.querySelectorAll( '[name="' + name + '"]' ) );
+		var checked = fields.filter( function ( field ) {
+			return ( field.type === 'radio' || field.type === 'checkbox' ) && field.checked;
+		} )[ 0 ];
+		var field = checked || fields.filter( function ( one ) {
+			return one.tagName === 'SELECT' || ( one.tagName === 'INPUT' && one.type !== 'radio' && one.type !== 'checkbox' );
+		} )[ 0 ];
 		return field ? field.value : '';
 	}
 
