@@ -38,6 +38,19 @@ final class Category implements NodeClass
     #[Attribut(listOf: 'relation')]
     public array $target_columns = [];
 
+    /**
+     * Zwei Felder, die im Namen als Raster stehen: das erste die Reihen, das zweite die Gesamtzahl — der Name liest
+     * «Reihen×(Gesamt/Reihen)» statt der Gesamtzahl, ohne Reihen «1×Gesamt» ([D-1390](../../../../docs/NewConcept/90-decision-log.md),
+     * [D-1327](../../../../docs/NewConcept/90-decision-log.md)). *Sein Wort: «reihen sieht man nicht und zeilen gibts auch nur die polzahl».*
+     * Gesetzt am Knoten, geerbt nach unten; der nächste Vorfahr mit einer Angabe gewinnt.
+     *
+     * @var list<int> Kanten-Ids: [Reihen, Gesamt]
+     */
+    #[Attribut(listOf: 'relation')]
+    public array $raster_felder = [];
+
+    public const RASTER_FELDER = 'raster_felder';
+
     public static function allowedChildClasses(): array
     {
         return [];

@@ -5269,6 +5269,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $erstesTextfeld     = [];
         $feldwahlJeKnoten   = [];
+        $rasterJeKnoten     = [];
         $textfelderJeKnoten = [];
         $artNamen           = [];
 
@@ -5299,6 +5300,28 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
                     if ($gewaehlt !== []) {
                         $feldwahlJeKnoten[$knoten->id] = $gewaehlt;
+                        break;
+                    }
+                }
+
+                // D-1390: the nearest owner naming two grid fields (rows, total) makes the total read «rows×(total/rows)».
+                foreach (array_reverse($besitzerJeKnoten[$knoten->id]) as $besitzerId) {
+                    $besitzer = $besitzerId === $knoten->id ? $knoten : $this->gemerkterKnoten($besitzerId);
+
+                    if ($besitzer === null) {
+                        continue;
+                    }
+
+                    $paar = [];
+
+                    foreach ($this->resolver->listOf($besitzer, \Taxmod\Core\Model\NodeClass\Category::RASTER_FELDER) as $glied) {
+                        if ($glied->aktiv && $glied->reference !== null) {
+                            $paar[] = (int) $glied->reference;
+                        }
+                    }
+
+                    if (count($paar) === 2) {
+                        $rasterJeKnoten[$knoten->id] = $paar;
                         break;
                     }
                 }
@@ -5356,7 +5379,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         $bezugsWaehrung = $this->referenceCurrency;
-        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal, $verbinder): string {
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal, $verbinder, $rasterJeKnoten): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
             $ausWahl  = false;
@@ -5467,7 +5490,66 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 return implode(' ', $teile);
             }
 
+            // D-1390: the first number of the part a field holds — the rows and the total of a grid.
+            $zahlIn = static function (int $feldId) use ($werte, $satzId): ?string {
+                foreach ($werte[$satzId] ?? [] as $zeile) {
+                    if ($zeile->relationId !== $feldId || $zeile->value->referenceSpace !== ReferenceSpace::Record || $zeile->value->reference === null) {
+                        continue;
+                    }
+
+                    foreach ($werte[$zeile->value->reference] ?? [] as $teil) {
+                        if ($teil->value->int !== null) {
+                            return (string) $teil->value->int;
+                        }
+
+                        if ($teil->value->decimal !== null) {
+                            $roh = $teil->value->decimal;
+
+                            return str_contains($roh, '.') ? rtrim(rtrim($roh, '0'), '.') : $roh;
+                        }
+                    }
+                }
+
+                return null;
+            };
+
+            [$reihenFeld, $gesamtFeld] = $knotenId !== null && isset($rasterJeKnoten[$knotenId]) && in_array($rasterJeKnoten[$knotenId][1], $feldIds, true)
+                ? $rasterJeKnoten[$knotenId]
+                : [null, null];
+
             foreach ($feldIds as $feldId) {
+                if ($feldId === $reihenFeld) {
+                    continue;
+                }
+
+                if ($feldId === $gesamtFeld) {
+                    $gesamt = $zahlIn($feldId);
+                    $reihen = $zahlIn((int) $reihenFeld) ?? '1';
+                    $wortDa = count($teile);
+
+                    foreach ($werte[$satzId] ?? [] as $zeile) {
+                        if ($zeile->relationId === $feldId && $zeile->value->referenceSpace === ReferenceSpace::Record && $zeile->value->reference !== null && $stufe < 2) {
+                            $innen = $wort($zeile->value->reference, [], $stufe + 1);
+
+                            // *Only a whole split replaces the number; an uneven one keeps the total as it stands — nothing is invented.*
+                            if ($gesamt !== null && ctype_digit($gesamt) && ctype_digit($reihen) && (int) $reihen > 0 && (int) $gesamt % (int) $reihen === 0
+                                && str_starts_with($innen, $gesamt)) {
+                                $innen = $reihen . '×' . intdiv((int) $gesamt, (int) $reihen) . substr($innen, strlen($gesamt));
+                            }
+
+                            if ($innen !== '') {
+                                $teile[] = $innen;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    if (count($teile) > $wortDa) {
+                        continue;
+                    }
+                }
+
                 if ($feldId === self::KNOTENNAME) {
                     $teile[] = $knotenId === null ? '' : ($artNamen[$knotenId] ?? '');
 

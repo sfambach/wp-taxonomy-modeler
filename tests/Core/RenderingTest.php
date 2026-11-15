@@ -2832,6 +2832,56 @@ final class RenderingTest extends TestCase
         self::assertSame('Kabel' . SummaryRenderer::SEPARATOR . 'KF2510' . SummaryRenderer::SEPARATOR . '2 polig' . SummaryRenderer::SEPARATOR . '0,1 m', $texte[$satz] ?? null);
     }
 
+    /** D-1390: a node naming two grid fields (rows, total) reads the total as «rows×(total/rows)»; without rows «1×total». */
+    #[Test]
+    public function a_grid_pair_names_the_total_as_rows_times_per_row(): void
+    {
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $polig     = $this->editor->createNode('polig', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $wertTyp   = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $wert      = $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $einheit   = $this->editor->addField($wertTyp->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $verbinder = $this->thing('Verbinder');
+        $leiste    = $this->editor->createNode('Stiftleiste', $verbinder->id);
+        $name      = $this->editor->addField($verbinder->id, $this->type('Text')->id, 'bezeichnung');
+        $pole      = $this->editor->addField($verbinder->id, $wertTyp->id, 'polzahl');
+        $reihen    = $this->editor->addField($verbinder->id, $wertTyp->id, 'reihen');
+
+        $zahl = function (string $n, bool $mitEinheit) use ($wertTyp, $wert, $einheit, $polig): int {
+            $id = $this->records->add(new NodeRecord(0, $wertTyp->id, 1, '2026-11-15 22:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($id, $wert->id, TypedValue::ofDecimal($n)));
+
+            if ($mitEinheit) {
+                $this->records->putValue(RelationRecord::direct($id, $einheit->id, TypedValue::ofReference($polig->id)));
+            }
+
+            return $id;
+        };
+        $satz = function (string $gesamt, ?string $zeilen) use ($leiste, $pole, $reihen, $zahl): int {
+            $id = $this->records->add(new NodeRecord(0, $leiste->id, 1, '2026-11-15 22:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($id, $pole->id, TypedValue::ofRecordReference($zahl($gesamt, true))));
+
+            if ($zeilen !== null) {
+                $this->records->putValue(RelationRecord::direct($id, $reihen->id, TypedValue::ofRecordReference($zahl($zeilen, false))));
+            }
+
+            return $id;
+        };
+        $zwei   = $satz('40', '2');
+        $ohne   = $satz('40', null);
+        $schief = $satz('7', '2');
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($verbinder, \Taxmod\Core\Model\NodeClass\Category::RASTER_FELDER, [$reihen->id, $pole->id]);
+        $this->neuZeichnen();
+
+        $texte = $this->rendering->summaryTextsOf([['relation' => $name, 'records' => [$zwei, $ohne, $schief], 'fields' => [Rendering::KNOTENNAME, $pole->id]]])[$name->id] ?? [];
+
+        self::assertSame('Stiftleiste' . SummaryRenderer::SEPARATOR . '2×20 polig', $texte[$zwei] ?? null, 'two rows');
+        self::assertSame('Stiftleiste' . SummaryRenderer::SEPARATOR . '1×40 polig', $texte[$ohne] ?? null, 'no rows = one row');
+        self::assertSame('Stiftleiste' . SummaryRenderer::SEPARATOR . '7 polig', $texte[$schief] ?? null, 'an uneven split keeps the total');
+    }
+
     /** D-1369: a member that already stands in the node's own list is still written at the edge when it is chosen there. */
     #[Test]
     public function choosing_at_an_edge_what_the_node_list_already_holds_composes_it(): void
