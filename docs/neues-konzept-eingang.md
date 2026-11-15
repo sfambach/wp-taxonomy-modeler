@@ -1311,3 +1311,14 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Der Lager-Thread meldet, dass `taxmod_stock_book_build` die Art «Verbrauch» selbst bucht und kein Blatt darunter ([D-1297](NewConcept/90-decision-log.md): Betriebsbedarf, Verlust/Schwund, Defekt/Ausschuss, Projekt, Privat). Ausschuss läuft schon über «Defekt/Ausschuss» (D-1302).
 - **Entschieden:** D-1330 (Stefans Karte 13.11.): «Projekt».
+
+## INF-123 · Stückpreis am Kauf: gespeichert oder gerechnet? (2026-11-15)
+
+- **Anlass:** [D-1374](NewConcept/90-decision-log.md) (Kauf-Anzahl zählt Stück). Der Ali-Export-Import hatte Packungspreise als Stückpreis gespeichert; Gesamtpreis und Anzahl waren richtig.
+- **Gemessen (Code):** «Preis je Stück» ist am Kauf **gespeichert**, neben «Preis gesamt» und «Anzahl» — eine doppelte Tatsache. Geschrieben vom Mail-Import (Pflichtteil), von `Purchasing` und `Bookings` im Lager; gelesen u. a. vom Wareneingang und als Ersatz für den Einstandspreis.
+- **Offen:** ob der Stückpreis aus Gesamt / Anzahl gerechnet wird (dann fällt das Feld als Eingabe weg) oder gespeichert bleibt, weil Händler ihn auf den Beleg schreiben und Rundung den Gesamtpreis nicht immer trifft. Braucht Stefans Wort.
+
+## INF-124 · Einstellungen › Lager über den Formular-Renderer? (2026-11-15)
+
+- **Anlass:** Die Preiswarnung ([D-1375](NewConcept/90-decision-log.md)) kam als Feld in den Lager-Reiter. Der Reiter ist von Hand gebaut (`<p><label>`-Zeilen), nicht über den Formular-Renderer; das neue Feld folgt seinen Nachbarn, damit der Reiter in sich einheitlich bleibt (Architektur 15.11.).
+- **Offen:** ob der ganze Reiter auf den Formular-Renderer umgestellt wird — als eigener Schritt, nicht nebenbei.
