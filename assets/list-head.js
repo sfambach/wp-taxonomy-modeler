@@ -45,14 +45,29 @@
 	}
 
 	/**
+	 * D-1378: the one spelling a search compares, as `Wildcard::canonical()` — «µ» is «u», «Ω» is «ohm», no space between a number
+	 * and what follows, a decimal comma is a point. Change both or neither.
+	 */
+	function canonical( text ) {
+		return text
+			.toLocaleLowerCase()
+			.replace( /[\u00B5\u03BC]/g, 'u' )
+			.replace( /[\u2126\u03A9\u03C9]/g, 'ohm' )
+			.replace( /(\d)[\s\u00A0\u2009\u202F]+(?=[^\d\s])/g, '$1' )
+			.replace( /(\d),(?=\d)/g, '$1.' );
+	}
+
+	/**
 	 * D-1357: «contains», ignoring case, «*» for any characters — the same rule as `src/Core/Listing/Wildcard.php`, which the
 	 * server uses; change both or neither.
 	 */
 	function matches( text, term ) {
 		var at = 0;
-		var haystack = text.toLocaleLowerCase();
+		var haystack = canonical( text );
 
-		return term.trim().toLocaleLowerCase().split( '*' ).every( function ( part ) {
+		return term.trim().split( '*' ).every( function ( part ) {
+			part = canonical( part );
+
 			if ( part === '' ) {
 				return true;
 			}

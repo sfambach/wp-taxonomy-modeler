@@ -49,6 +49,20 @@ $claims = [
     '«_» typed is a plain character, not «one»'           => ! $found(mb_substr($text, 0, 1) . '_' . mb_substr($text, 2, 3)),
 ];
 
+// D-1378: a stored «10 µF» is found by «10 uf» — the micro sign spelled as typed, the space optional.
+$micro = $wpdb->get_row(
+    "SELECT n.id AS record, n.node_id AS node, v.value_text AS text FROM {$wpdb->prefix}taxmod_relation_records v"
+    . " JOIN {$wpdb->prefix}taxmod_node_records n ON n.id = v.node_record_id"
+    . " WHERE n.relation_id = 0 AND v.value_text REGEXP '[0-9] ?\u{00B5}' LIMIT 1"
+);
+
+if ($micro !== null && preg_match('/(\d+) ?\x{00B5}(\p{L})/u', (string) $micro->text, $m) === 1) {
+    $typed = $m[1] . 'u' . mb_strtoupper($m[2]);
+    $claims["D-1378: «{$typed}» finds the stored «{$m[0]}»"] = in_array((int) $micro->record, (new WpdbRecordRepository())->recordsMatching([(int) $micro->node], [['text' => $typed, 'nodes' => []]], 1000), true);
+} else {
+    echo "  SKIP no stored text with a micro sign after a number\n";
+}
+
 $failed = 0;
 
 foreach ($claims as $claim => $holds) {

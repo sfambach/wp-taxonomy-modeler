@@ -45,7 +45,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:30](../../CLAUDE.md) | 16 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:31](../../CLAUDE.md) | 14 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:32](../../CLAUDE.md) | 16 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:33](../../CLAUDE.md) | 76 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:33](../../CLAUDE.md) | 77 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:34](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:35](../../CLAUDE.md) | 5 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:36](../../CLAUDE.md) | **nie** |

@@ -695,8 +695,9 @@ final class WpdbRecordRepository implements RecordRepository
 
         foreach ($conditions as $bedingung) {
             $knoten = array_values(array_filter(array_map('intval', $bedingung['nodes'])));
-            $sql   .= ' AND (EXISTS (SELECT 1 FROM ' . Schema::table('relation_records') . ' v WHERE v.node_record_id = r.id AND v.value_text LIKE %s)';
-            $params[] = self::likeOf($bedingung['text']);
+            [$like, $muster] = self::likeAny('v.value_text')($bedingung['text']);
+            $sql   .= ' AND (EXISTS (SELECT 1 FROM ' . Schema::table('relation_records') . ' v WHERE v.node_record_id = r.id AND ' . $like . ')';
+            $params = [...$params, ...$muster];
 
             if ($knoten !== []) {
                 $sql   .= ' OR r.node_id IN (' . implode(',', array_fill(0, count($knoten), '%d')) . ')';
@@ -741,8 +742,9 @@ final class WpdbRecordRepository implements RecordRepository
             }
 
             if ($bedingung['op'] === 'contains') {
-                $where .= ' AND ' . $exists . ' AND v.value_text LIKE %s)';
-                $params = [...$params, ...($feld > 0 ? [$feld] : []), self::likeOf($values[0] ?? '')];
+                [$like, $muster] = self::likeAny('v.value_text')((string) ($values[0] ?? ''));
+                $where .= ' AND ' . $exists . ' AND ' . $like . ')';
+                $params = [...$params, ...($feld > 0 ? [$feld] : []), ...$muster];
 
                 continue;
             }
@@ -1023,11 +1025,40 @@ final class WpdbRecordRepository implements RecordRepository
         return $aus;
     }
 
-    /** D-1357: a «contains» term as a LIKE pattern — each piece escaped, «*» becomes «%»; the pattern goes only into prepare(). */
-    private static function likeOf(string $term): string
+    /**
+     * D-1357, D-1378: a «contains» term as LIKE patterns — each piece escaped, «*» becomes «%», one pattern per way the stored text may
+     * spell it (Wildcard::spellings: «10 uf» also as «10 µF»). The patterns go only into prepare(); the caller ORs them.
+     *
+     * @return list<string>
+     */
+    private static function likesOf(string $term): array
     {
         global $wpdb;
 
-        return '%' . implode('%', array_map(static fn (string $part): string => $wpdb->esc_like($part), Wildcard::parts($term))) . '%';
+        $patterns = ['%'];
+
+        foreach (Wildcard::parts($term) as $part) {
+            $weiter = [];
+
+            foreach ($patterns as $vorne) {
+                foreach (Wildcard::spellings($part) as $spelling) {
+                    $weiter[] = $vorne . $wpdb->esc_like($spelling) . '%';
+                }
+            }
+
+            $patterns = array_slice($weiter, 0, 48);
+        }
+
+        return $patterns;
+    }
+
+    /** D-1378: «column LIKE one of the spellings» with its placeholders, for prepare(). */
+    private static function likeAny(string $column): \Closure
+    {
+        return static function (string $term) use ($column): array {
+            $patterns = self::likesOf($term);
+
+            return ['(' . implode(' OR ', array_fill(0, count($patterns), $column . ' LIKE %s')) . ')', $patterns];
+        };
     }
 }
