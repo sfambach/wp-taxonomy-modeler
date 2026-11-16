@@ -20,8 +20,10 @@ final class DailyBackup
     public static function boot(string $file): void
     {
         register_deactivation_hook($file, static fn () => wp_clear_scheduled_hook(self::SCHEDULE_HOOK));
-        add_action('admin_init', static function (): void {
-            if (! wp_next_scheduled(self::SCHEDULE_HOOK)) {
+        // ⚠️ *Also in the cron process, not only on an admin page: after an update through the updater nobody had opened
+        // wp-admin, and the night stayed unplanned (16.11.2026). The hourly import fetch brings a cron run within the hour.*
+        add_action('init', static function (): void {
+            if ((is_admin() || wp_doing_cron()) && ! wp_next_scheduled(self::SCHEDULE_HOOK)) {
                 wp_schedule_event(self::nextNight(), 'daily', self::SCHEDULE_HOOK);
             }
         });
@@ -44,7 +46,8 @@ final class DailyBackup
     {
         $latest = self::latest();
 
-        if (! wp_doing_cron() || ($latest !== null && time() - strtotime($latest['at']) < self::AT_MOST_EVERY)) {
+        // An administrator may start it by hand (Easy MCP «run cron event»); a visitor's request never.
+        if (! (wp_doing_cron() || current_user_can('manage_options')) || ($latest !== null && time() - strtotime($latest['at']) < self::AT_MOST_EVERY)) {
             return null;
         }
 

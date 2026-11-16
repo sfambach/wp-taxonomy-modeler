@@ -32,7 +32,8 @@ function check(string $what, bool $passed, string $detail = ''): void
 }
 
 check('the night is scheduled', has_action(DailyBackup::SCHEDULE_HOOK) !== false);
-check('outside the cron process nothing is copied', DailyBackup::run() === null);
+wp_set_current_user(0);
+check('a visitor\'s request copies nothing', DailyBackup::run() === null);
 
 $before = DailyBackup::latest();
 $made   = null;
