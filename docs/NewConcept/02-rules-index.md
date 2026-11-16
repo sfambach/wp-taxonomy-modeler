@@ -258,7 +258,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R6** | A node is handed to the registry, not to a renderer directly. The registry looks up the node's default renderer and that renderer renders the node. | [30-renderer.md:93](30-renderer.md) | 3 |
 | **R7** | The renderer then reads the node's attributes. Attributes point at nodes; those nodes have their own renderers, which render them. The descent repe… | [30-renderer.md:94](30-renderer.md) | 6 |
 | **R8** | Three display levels: the admin module (where models are rendered), Gutenberg blocks (fill data, make it available to the site), and the frontend (… | [30-renderer.md:95](30-renderer.md) | 6 |
-| **R9** | A renderer — an integer renderer, say — must carry options for these different circumstances. | [30-renderer.md:96](30-renderer.md) | 3 |
+| **R9** | A renderer — an integer renderer, say — must carry options for these different circumstances. | [30-renderer.md:96](30-renderer.md) | 6 |
 | **R10** | Every renderer must support editable / not editable. | [30-renderer.md:97](30-renderer.md) | 3 |
 | **R11** | A renderer must honour whether a node is visible (hide), as set on the attributes. Held, and by a mechanism that makes the renderer's part of it em… | [30-renderer.md:98](30-renderer.md) | 9 |
 | **R12** | The registry is the one place where all renderers are registered. | [30-renderer.md:295](30-renderer.md) | 8 |

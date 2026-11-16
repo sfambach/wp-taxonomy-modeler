@@ -116,6 +116,7 @@ Baustein noch nicht kann, wird **im Baustein** ergänzt und wirkt dann auf alle 
 | R6 | Zugangsdaten immer verschlüsselt (Tresor), nie im Klartext in Option, Log, Meldung; Dokumente mit persönlichen Daten in der verschlüsselten Ablage. | [D-951](NewConcept/90-decision-log.md), [D-1023](NewConcept/90-decision-log.md) |
 | R7 | Etiketten druckt der Modeller; ein Modul gibt nur Satz und Etikett. | [D-1160](NewConcept/90-decision-log.md) |
 | R8 | Vor jedem neuen Knoten/Feld/Mechanismus prüfen, ob ein vorhandener es schon abdeckt (Daten vor Code). | Arbeitsmodell §5 |
+| R9 | **Ein Modul nennt Knoten, Felder und Werte über ihren Rollennamen, nie über eine Id.** Die Ids stehen an einer Stelle: `ModelDoor::roles()` (Option `taxmod_roles`, auf fambach.net ergänzt aus `roles-live.json`); Module melden ihre Rollen über `taxmod_roles` an und übernehmen beim Umzug ihre eigene Tabelle mit `ModelDoor::adoptRoles()`. Rollennamen sind global: gleicher Name, gleiche Sache. Wächter `G13` (gemessen). | [D-1394](NewConcept/90-decision-log.md), CLAUDE.md «Duplicating a fact», «Special-casing … a specific node» |
 
 ## 9 · Leistung
 
