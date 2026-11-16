@@ -101,7 +101,7 @@ function bareDies(string $c): int
 $rules = [
     'G1 confirm()'      => ['D-804, D-1063', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/(?<!::)\bconfirm\(/', $c)],
     'G2 own <h1>'       => ['D-989', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/^(?!.*<body).*<h1[ >]/m', $c)], // a print sheet is its own document
-    'G3 inline style/script' => ['D-1068', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/<(style|script)[ >]/', $c)],
+    'G3 inline style/script' => ['D-1068', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/<(style|script)[ >]|\\son(click|change|submit|input|key\\w+)=/', $c)],
     'G4 SQL outside data layer' => ['D-1186', static fn (string $f, string $c): int => preg_match(MODELLER_DATA_ACCESS, $f) || str_ends_with($f, 'LegacyProposals.php') ? 0 : ownTableQueries($c)], // LegacyProposals: the mail module's one-time move out of its old table (audit P1.6)
     'G5 modeller internals' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module ? preg_match_all('/Taxmod\\\\WordPress\\\\Persistence\\\\/', $c) : 0],
     'G6 ability outside gateway' => ['D-1186', static fn (string $f, string $c, bool $module): int => $module && ! str_ends_with($f, 'ModelGateway.php') ? preg_match_all("/wp_get_ability\(\s*'taxmod\//", $c) : 0],
