@@ -45,12 +45,12 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR1** | Source of truth is the current package documentation and the active decisions (docs/arbeitsmodell.md §16). docs/NewConcept/ and docs/legacy/ are bo… | [CLAUDE.md:30](../../CLAUDE.md) | 16 |
 | **PR2** | There is no lock. A concept is either finished — then it is built — or outdated — then it is replaced, with a reason (D-565). There is no third sta… | [CLAUDE.md:31](../../CLAUDE.md) | 14 |
 | **PR3** | Nothing is decided until it is in 90-decision-log.md with a D-<nnn> id. A decision reached in chat and not written down did not happen. | [CLAUDE.md:32](../../CLAUDE.md) | 16 |
-| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:33](../../CLAUDE.md) | 77 |
+| **PR4** | Unclear stays unclear. Anything undecided becomes an entry in docs/neues-konzept-eingang.md — the old question sheet is closed with the concept it … | [CLAUDE.md:33](../../CLAUDE.md) | 78 |
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:34](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:35](../../CLAUDE.md) | 5 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:36](../../CLAUDE.md) | **nie** |
 | **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:37](../../CLAUDE.md) | 23 |
-| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:39](../../CLAUDE.md) | 24 |
+| **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:39](../../CLAUDE.md) | 26 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:38](../../CLAUDE.md) | 3 |
 
 ## CD — Code — wie geschrieben wird
@@ -64,7 +64,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD5** | At the boundary, in this order, every time: capability check → nonce → validate → sanitize → act → escape on output. No exceptions, not even for ad… | [CLAUDE.md:66](../../CLAUDE.md) | 29 |
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:67](../../CLAUDE.md) | 21 |
 | **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 202 |
-| **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 15 |
+| **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 16 |
 | **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 30 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 8 |
 | **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:72](../../CLAUDE.md) | 5 |
@@ -252,7 +252,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 |---|---|---|---|
 | **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 119 |
 | **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 7 |
-| **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 8 |
+| **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 9 |
 | **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
 | **R5** | A renderer may work with trees and call other renderers. | [30-renderer.md:92](30-renderer.md) | 2 |
 | **R6** | A node is handed to the registry, not to a renderer directly. The registry looks up the node's default renderer and that renderer renders the node. | [30-renderer.md:93](30-renderer.md) | 3 |
