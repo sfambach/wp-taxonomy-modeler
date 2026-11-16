@@ -909,6 +909,18 @@ final class ListPage
     }
 
     /**
+     * A read-only table — facts, a history, the lines of a form — in the one shape (plan-dubletten row 8); a list with selection
+     * and actions is {@see self::table()}.
+     *
+     * @param list<array{0: string, 1?: string}> $columns label and optionally `GridMarkup::NUMBER`
+     * @param list<list<string>>                 $rows    cells as escaped HTML
+     */
+    public static function grid(array $columns, array $rows, string $empty = '', string $class = ''): string
+    {
+        return \Taxmod\Core\Renderer\GridMarkup::table($columns, $rows, $empty, $class);
+    }
+
+    /**
      * The table: a checkbox column first, the given columns, the actions column last. A column with a sort address is
      * sortable; its state says whether the list is sorted by it now.
      *

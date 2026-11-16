@@ -2942,3 +2942,7 @@ details.taxmod-record-section > summary {
 .taxmod-steps.is-status .taxmod-steps-ends .taxmod-step {
     min-height: 30px;
 }
+
+/* ListPage::grid — the one read-only table (plan-dubletten row 8). */
+.taxmod-grid { width: auto; max-width: 60em; }
+.taxmod-grid .is-number { text-align: right; white-space: nowrap; }
