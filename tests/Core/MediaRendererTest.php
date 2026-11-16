@@ -67,6 +67,11 @@ final class MediaRendererTest extends TestCase
             {
                 return $key === str_repeat('a', 32) ? new MediaFile(0, '/wp-admin/admin-post.php?action=taxmod_document', 'Rechnung.pdf') : null;
             }
+
+            public function postStateOf(string $address): string
+            {
+                return '';
+            }
         };
 
         self::assertSame(7, MediaType::libraryIdOf(' media:7 '));
@@ -160,6 +165,11 @@ final class MediaRendererTest extends TestCase
                     default => null,
                 };
             }
+
+            public function postStateOf(string $address): string
+            {
+                return '';
+            }
         };
 
         self::assertSame(str_repeat('b', 32), MediaType::vaultKeyOf('vault:' . str_repeat('b', 32)));
@@ -167,5 +177,31 @@ final class MediaRendererTest extends TestCase
         self::assertStringNotContainsString('href', MediaRenderer::link('vault:' . str_repeat('b', 32), '', true, $bibliothek));
         self::assertStringNotContainsString('href', MediaRenderer::link('vault:' . str_repeat('a', 32)));
         self::assertSame('<span class="taxmod-media taxmod-media-private">Geheim.pdf</span>', MediaRenderer::link('vault:' . str_repeat('c', 32), '', true, $bibliothek));
+    }
+
+    /** ⚠️ *D-1413: ein nicht veröffentlichter eigener Beitrag sagt seinen Status neben dem Link; ein veröffentlichter nichts.* */
+    #[Test]
+    public function an_unpublished_post_shows_its_state_beside_the_link(): void
+    {
+        $bibliothek = new class () implements MediaLibrary {
+            public function filesFor(array $ids): array
+            {
+                return [];
+            }
+
+            public function document(string $key): ?MediaFile
+            {
+                return null;
+            }
+
+            public function postStateOf(string $address): string
+            {
+                return $address === 'https://example.org/?p=12492' ? 'Entwurf' : '';
+            }
+        };
+
+        self::assertStringEndsWith('</a> <span class="taxmod-media-state">Entwurf</span>', MediaRenderer::link('https://example.org/?p=12492', 'MIDI HAT', true, $bibliothek));
+        self::assertStringEndsWith('</a>', MediaRenderer::link('https://example.org/hallo/', 'Hallo', true, $bibliothek));
+        self::assertStringEndsWith('</a>', MediaRenderer::link('https://example.org/?p=12492', 'MIDI HAT'));
     }
 }

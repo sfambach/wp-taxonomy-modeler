@@ -95,9 +95,14 @@ final class MediaRenderer extends TypedFieldRenderer
             return '<a class="taxmod-media" href="' . RenderResult::escape($ziel) . '"' . $auf . '>' . RenderResult::escape($wort) . '</a>';
         }
 
+        // ⚠️ *Ein eigener Beitrag, der nicht veröffentlicht ist, sagt es neben dem Link (D-1413) — sein Wort: «muss ersichtlich sein
+        // sowohl in der suche als auch dann im objekt».*
+        $status = $bibliothek?->postStateOf($adresse) ?? '';
+
         // *Ob in einem neuen Tab, sagt die Einstellung `new_tab` (D-858); Vorgabe ja.*
         return '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '"' . ($neuerTab ? ' target="_blank" rel="noopener"' : '') . '>'
-            . RenderResult::escape($wort) . '</a>';
+            . RenderResult::escape($wort) . '</a>'
+            . ($status === '' ? '' : ' <span class="taxmod-media-state">' . RenderResult::escape($status) . '</span>');
     }
 
     /**

@@ -2946,3 +2946,15 @@ details.taxmod-record-section > summary {
 /* ListPage::grid — the one read-only table (plan-dubletten row 8). */
 .taxmod-grid { width: auto; max-width: 60em; }
 .taxmod-grid .is-number { text-align: right; white-space: nowrap; }
+
+/* D-1413: ein nicht veröffentlichter eigener Beitrag sagt seinen Status neben dem Link. */
+.taxmod-media-state {
+	display: inline-block;
+	padding: 0 6px;
+	border-radius: 2px;
+	background: #f0f0f1;
+	color: #50575e;
+	font-size: 11px;
+	line-height: 18px;
+	vertical-align: middle;
+}

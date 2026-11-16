@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.121';
+    public const VERSION     = '0.2.122';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -325,6 +325,8 @@ final class Plugin
         add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
         add_action('wp_ajax_' . ListPage::DETAILS_ACTION, [ListPage::class, 'details']);
         add_action('wp_ajax_' . ListPage::TREE_STATE_ACTION, [ListPage::class, 'saveTreeState']);
+        // D-1413: the link dialog's search on taxmod pages finds unpublished posts too, by title, and names their state.
+        \Taxmod\WordPress\Admin\LinkSearch::wire();
 
         // ⚠️ **Der erste Rückweg vom Rand in den Kern** ([D-666](../../docs/NewConcept/90-decision-log.md),
         // [D-627](../../docs/NewConcept/90-decision-log.md)) — *gemessen 0 REST-Routen und 0 AJAX,

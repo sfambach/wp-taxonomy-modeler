@@ -22,6 +22,9 @@ final class WpMediaLibrary implements MediaLibrary
     /** @var array<int, MediaFile|null>|null Id ⇒ Datei; `null` als Wert heisst: gefragt, keine da. */
     private ?array $bekannt = null;
 
+    /** @var array<string, string>|null Adresse ⇒ Statuswort eines eigenen Beitrags (D-1413); leer heisst veröffentlicht oder fremd. */
+    private ?array $stati = null;
+
     public function filesFor(array $ids): array
     {
         if ($this->bekannt === null) {
@@ -49,6 +52,106 @@ final class WpMediaLibrary implements MediaLibrary
     public function document(string $key): ?MediaFile
     {
         return Documents::linkFor($key);
+    }
+
+    /**
+     * ⚠️ *Wie die Dateien: beim ersten Mal jede eigene Adresse, die im Modell steht, in zwei Abfragen (Ids, dann Titelnamen) — nie eine je
+     * Link (`CD-7`). Eine Adresse, die noch in keinem Wert stand, wird einzeln gefragt.*
+     */
+    public function postStateOf(string $address): string
+    {
+        $address = trim($address);
+
+        if ($this->stati === null) {
+            $this->stati = $this->postStates((new WpdbRecordRepository())->textsStartingWith('http'));
+        }
+
+        if (! array_key_exists($address, $this->stati)) {
+            $this->stati += $this->postStates([$address]);
+        }
+
+        return $this->stati[$address] ?? '';
+    }
+
+    /**
+     * @param  array<int, string>    $adressen
+     * @return array<string, string> Adresse ⇒ Statuswort, für jede gefragte Adresse.
+     */
+    private function postStates(array $adressen): array
+    {
+        $eigener = self::hostOf(home_url('/'));
+        $ids     = [];
+        $namen   = [];
+
+        foreach ($adressen as $adresse) {
+            $adresse = trim((string) $adresse);
+
+            if ($adresse === '' || self::hostOf($adresse) !== $eigener) {
+                continue;
+            }
+
+            parse_str((string) parse_url($adresse, PHP_URL_QUERY), $frage);
+            $id = (int) ($frage['p'] ?? $frage['page_id'] ?? 0);
+
+            if ($id > 0) {
+                $ids[$adresse] = $id;
+                continue;
+            }
+
+            $weg  = trim((string) parse_url($adresse, PHP_URL_PATH), '/');
+            $name = $weg === '' ? '' : sanitize_title(basename($weg));
+
+            if ($name !== '' && ! str_starts_with($weg, 'wp-')) {
+                $namen[$adresse] = $name;
+            }
+        }
+
+        $beitraege = [];
+
+        if ($ids !== []) {
+            _prime_post_caches(array_values(array_unique($ids)), false, false);
+
+            foreach ($ids as $adresse => $id) {
+                $beitraege[$adresse] = get_post($id);
+            }
+        }
+
+        if ($namen !== []) {
+            $gefunden = get_posts([
+                'post_name__in'          => array_values(array_unique($namen)),
+                'post_type'              => 'any',
+                'post_status'            => 'any',
+                'posts_per_page'         => -1,
+                'suppress_filters'       => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+            ]);
+            $jeName = [];
+
+            foreach ($gefunden as $post) {
+                $jeName[$post->post_name][] = $post;
+            }
+
+            // *Ein Name, den mehrere Beiträge tragen, sagt nichts Sicheres — dann lieber kein Wort als ein falsches.*
+            foreach ($namen as $adresse => $name) {
+                $beitraege[$adresse] = count($jeName[$name] ?? []) === 1 ? $jeName[$name][0] : null;
+            }
+        }
+
+        $stati = array_fill_keys(array_map('strval', $adressen), '');
+
+        foreach ($beitraege as $adresse => $post) {
+            if ($post instanceof \WP_Post && $post->post_type !== 'attachment' && $post->post_status !== 'publish') {
+                $stati[(string) $adresse] = (string) (get_post_status_object($post->post_status)?->label ?? $post->post_status);
+            }
+        }
+
+        return $stati;
+    }
+
+    private static function hostOf(string $adresse): string
+    {
+        return (string) preg_replace('/^www\./', '', strtolower((string) parse_url($adresse, PHP_URL_HOST)));
     }
 
     /** @return array<int, MediaFile> */

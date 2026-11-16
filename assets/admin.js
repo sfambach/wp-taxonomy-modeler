@@ -2368,6 +2368,13 @@
 	} );
 
 	if ( window.jQuery ) {
+		// ⚠️ *D-1413: die Suche des Dialogs fragt als Taxmod-Seite — dann findet sie auch Entwürfe, nur im Titel, mit Status.*
+		window.jQuery.ajaxPrefilter( function ( optionen ) {
+			if ( typeof optionen.data === 'string' && optionen.data.indexOf( 'action=wp-link-ajax' ) !== -1 && document.getElementById( 'taxmod-wplink-target' ) ) {
+				optionen.data += '&taxmod_link=1';
+			}
+		} );
+
 		window.jQuery( document ).on( 'wplink-close', function () {
 			var ablage = document.getElementById( 'taxmod-wplink-target' );
 			var ziel   = linkZiel;

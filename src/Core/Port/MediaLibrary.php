@@ -37,4 +37,11 @@ interface MediaLibrary
      * `null`, wenn es sie nicht gibt. **Darf wer die Seite sieht sie nicht öffnen, ist die Adresse leer** — dann steht nur ihr Name da.
      */
     public function document(string $key): ?MediaFile;
+
+    /**
+     * Das Wort für den Status des eigenen Beitrags hinter dieser Adresse — «Entwurf», «Privat», «Geplant» … —, oder leer, wenn er
+     * veröffentlicht ist oder die Adresse auf keinen eigenen Beitrag zeigt ([D-1413](../../../docs/NewConcept/90-decision-log.md)).
+     * *Das Wort kommt übersetzt vom Rand (`AR-2`).*
+     */
+    public function postStateOf(string $address): string;
 }
