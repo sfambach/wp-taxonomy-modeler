@@ -13,4 +13,7 @@ enum CalculationOperation: string
     case Minus = 'minus';
     case Times = 'times';
     case DividedBy = 'divided_by';
+
+    /** D-1393: the field only where nothing has given a value yet — «empty = the material's» (D-1335). */
+    case Otherwise = 'otherwise';
 }

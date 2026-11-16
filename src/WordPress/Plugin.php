@@ -1074,6 +1074,8 @@ final class Plugin
                 'enum:minus'            => '−',
                 'enum:times'            => '×',
                 'enum:divided_by'       => '÷',
+                'enum:otherwise'        => __('otherwise', 'taxmod'),
+                'field:via'             => __('on the record chosen in', 'taxmod'),
                 'enum:filter'           => __('filter', 'taxmod'),
                 'enum:sort'             => __('sort', 'taxmod'),
                 // *The key figure as a tile (D-1149).*

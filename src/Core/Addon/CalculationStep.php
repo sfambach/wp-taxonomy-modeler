@@ -32,6 +32,13 @@ final class CalculationStep implements Addon
     #[Attribut(refersTo: 'relation', fieldsFrom: FieldSource::Owner)]
     public ?int $field = null;
 
+    /**
+     * D-1393: a reference field of this record — the step then reads `field` on the record it points at (the material of a BOM line).
+     * Empty: the field of this record itself.
+     */
+    #[Attribut(refersTo: 'relation', fieldsFrom: FieldSource::Owner)]
+    public ?int $via = null;
+
     public function name(): string
     {
         return self::NAME;

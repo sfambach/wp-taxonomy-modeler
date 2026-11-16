@@ -129,6 +129,22 @@ final class CalculationWriter
 
         $werte = $this->records->valuesOfMany($saetze);
         $teile = $this->records->valuesOfMany($this->teilVerweise($werte));
+
+        // D-1393: a step through a reference reads the referenced record's field, often itself a part (a unit value) — one level more,
+        // loaded once for all (`CD-7`).
+        $mitVia = false;
+
+        foreach ($formelnJeKnoten as $formeln) {
+            foreach ($formeln as ['steps' => $schritte]) {
+                foreach ($schritte as $schritt) {
+                    $mitVia = $mitVia || isset($schritt[2]);
+                }
+            }
+        }
+
+        if ($mitVia) {
+            $teile += $this->records->valuesOfMany(array_values(array_diff($this->teilVerweise($teile), array_keys($teile))));
+        }
         $teilKnoten = [];
 
         foreach ($this->records->byIds(array_keys($teile)) as $teil) {
@@ -182,7 +198,7 @@ final class CalculationWriter
      * ⚠️ *Ein leeres Feld in `+` oder `−` zählt null — sein Wort: «0 plus irgendwas ergibt ja irgendwas». In `×` oder `÷` macht es das
      * Ergebnis unrechenbar, ebenso ein Text, zwei Einheiten oder eine Division durch null. Ganz ohne einen Wert gibt es nichts.*
      *
-     * @param  list<array{0: CalculationOperation, 1: int}> $schritte
+     * @param  list<array{0: CalculationOperation, 1: int, 2?: int}> $schritte
      * @param  array<int, TypedValue>                        $nachFeld
      * @param  array<int, list<RelationRecord>>              $teile
      * @param  array<int, int>                               $teilKnoten
@@ -195,9 +211,19 @@ final class CalculationWriter
         $einheit = null;
         $gesehen = false;
 
-        foreach ($schritte as [$art, $feld]) {
-            $wert = $nachFeld[$feld] ?? null;
+        foreach ($schritte as $schritt) {
+            [$art, $feld] = $schritt;
+            $wert = isset($schritt[2]) ? $this->durch($nachFeld[$schritt[2]] ?? null, $feld, $teile) : ($nachFeld[$feld] ?? null);
             $zahl = null;
+
+            // D-1393: «otherwise» counts only while no value has been seen; then it adds like «+».
+            if ($art === CalculationOperation::Otherwise) {
+                if ($gesehen) {
+                    continue;
+                }
+
+                $art = CalculationOperation::Plus;
+            }
 
             if ($wert !== null && ! $wert->isNothing()) {
                 $operand = $this->operand($wert, $teile);
@@ -240,6 +266,20 @@ final class CalculationWriter
         }
 
         return $gesehen ? ['units' => $summe, 'shape' => $muster] : null;
+    }
+
+    /**
+     * D-1393: the value of `$feld` on the record a reference points at — from the records already loaded.
+     *
+     * @param array<int, list<RelationRecord>> $teile
+     */
+    private function durch(?TypedValue $verweis, int $feld, array $teile): ?TypedValue
+    {
+        if ($verweis === null || $verweis->referenceSpace !== \Taxmod\Core\Model\ReferenceSpace::Record || $verweis->reference === null) {
+            return null;
+        }
+
+        return $this->nachFeld($teile[$verweis->reference] ?? [])[$feld] ?? null;
     }
 
     /** Eine Zahl in Zehntausendsteln als Text, ohne Nullen am Ende — wie der Import sie schreibt. */
@@ -485,7 +525,7 @@ final class CalculationWriter
         return $aus;
     }
 
-    /** @return array{0: CalculationOperation, 1: int}|null */
+    /** @return array{0: CalculationOperation, 1: int, 2?: int}|null */
     private function schritt(ChosenAddon $gewaehlt): ?array
     {
         if ($gewaehlt->klasse !== CalculationStep::class || ! $gewaehlt->setHere) {
@@ -493,9 +533,14 @@ final class CalculationWriter
         }
 
         $feld = ($gewaehlt->settings['field'] ?? null)?->reference;
+        $via  = ($gewaehlt->settings['via'] ?? null)?->reference;
         $art = CalculationOperation::tryFrom((string) (($gewaehlt->settings['operation'] ?? null)?->text ?? '')) ?? CalculationOperation::Plus;
 
-        return $feld === null ? null : [$art, $feld];
+        if ($feld === null) {
+            return null;
+        }
+
+        return $via === null ? [$art, (int) $feld] : [$art, (int) $feld, (int) $via];
     }
 
     /**

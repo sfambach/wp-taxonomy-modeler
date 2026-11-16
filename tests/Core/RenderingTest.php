@@ -3381,6 +3381,46 @@ final class RenderingTest extends TestCase
         self::assertNull($this->wertIn((int) $this->wertIn($leer, $einstand->id)?->reference, $wert->id));
     }
 
+    /** D-1393 (for D-1335): a step reads a field of the record a reference points at, and «otherwise» fills in only while nothing came. */
+    #[Test]
+    public function a_step_reads_through_a_reference_and_otherwise_fills_the_gap(): void
+    {
+        $betrag  = $this->thing('Einheitenwert');
+        $wert    = $this->editor->addField($betrag->id, $this->type('Decimal')->id, 'wert');
+        $einheit = $this->editor->addField($betrag->id, $this->type('Text')->id, 'einheit');
+        $leiste  = $this->thing('Stiftleiste');
+        $pole    = $this->editor->addField($leiste->id, $betrag->id, 'Polzahl', RelationKind::Composition);
+        $zeile   = $this->thing('Stücklistenzeile');
+        $teil    = $this->editor->addField($zeile->id, $leiste->id, 'Part', RelationKind::Aggregation);
+        $anzahl  = $this->editor->addField($zeile->id, $this->type('Integer')->id, 'Anzahl');
+        $stueck  = $this->editor->addField($zeile->id, $betrag->id, 'Polzahl', RelationKind::Composition);
+        $gesamt  = $this->editor->addField($zeile->id, $betrag->id, 'Pins gesamt', RelationKind::Composition);
+        [$rechner, $daten, $einsteller] = $this->rechenwerk();
+
+        $einsteller->putAddons($this->nodes->byId($gesamt->toNodeId), [
+            ['name' => 'calculate', 'fields' => ['operation' => 'plus', 'field' => (string) $stueck->id]],
+            ['name' => 'calculate', 'fields' => ['operation' => 'otherwise', 'field' => (string) $pole->id, 'via' => (string) $teil->id]],
+            ['name' => 'calculate', 'fields' => ['operation' => 'times', 'field' => (string) $anzahl->id]],
+        ], $gesamt);
+
+        $material = $daten->create($leiste->id)->id;
+        $mPole    = (int) $this->wertIn($material, $pole->id)?->reference;
+        $daten->put($mPole, $wert->id, TypedValue::ofDecimal('40'));
+        $daten->put($mPole, $einheit->id, TypedValue::ofText('polig'));
+
+        $satz = $daten->create($zeile->id)->id;
+        $daten->put($satz, $teil->id, TypedValue::ofRecordReference($material));
+        $daten->put($satz, $anzahl->id, TypedValue::ofInt(2));
+        $rechner->refresh([$satz]);
+        self::assertSame('80', $this->wertIn((int) $this->wertIn($satz, $gesamt->id)?->reference, $wert->id)?->decimal, 'empty at the line: the material\'s 40 pins');
+
+        $sPole = (int) $this->wertIn($satz, $stueck->id)?->reference;
+        $daten->put($sPole, $wert->id, TypedValue::ofDecimal('2'));
+        $daten->put($sPole, $einheit->id, TypedValue::ofText('polig'));
+        $rechner->refresh([$satz]);
+        self::assertSame('4', $this->wertIn((int) $this->wertIn($satz, $gesamt->id)?->reference, $wert->id)?->decimal, 'a piece of 2 at the line wins');
+    }
+
     #[Test]
     public function the_arithmetic_is_in_ten_thousandths_and_refuses_what_it_cannot_say(): void
     {
