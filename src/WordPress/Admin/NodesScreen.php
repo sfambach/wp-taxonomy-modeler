@@ -3920,6 +3920,7 @@ final class NodesScreen
             new Control('word:hint:wahl_unter', '', __('Which branches this choice offers for records of this group: the nodes named and everything below them. None: the whole list.', 'taxmod')),
             new Control('word:hint:wahl_vorgabe', '', __('The choice that stands chosen for a new record of this group; it can be changed.', 'taxmod')),
             new Control('word:hint:raster_felder', '', __('Two fields that a record\'s name shows as a grid: first the rows, then the total. The name then reads rows×(total/rows), e.g. 2×20 polig; without rows 1×40.', 'taxmod')),
+            new Control('word:hint:mass_felder', '', __('Fields that a record\'s name shows as one measure, in this order: the numbers joined by ×, the shared unit once, e.g. 6 × 6 × 13 mm. An empty field drops out.', 'taxmod')),
             new Control('word:hint:zahlen_verbinder', '', __('What joins the two numbers of such a value in a record\'s name: × for a grid (20 × 4 characters). It always stands between two spaces, as SI and DIN 1338 write a multiplication sign. Empty: they read as a range, 4 … 20.', 'taxmod')),
         ];
     }

@@ -2882,6 +2882,54 @@ final class RenderingTest extends TestCase
         self::assertSame('Stiftleiste' . SummaryRenderer::SEPARATOR . '7 polig', $texte[$schief] ?? null, 'an uneven split keeps the total');
     }
 
+    /** D-1399: measure fields read as one word «6 × 6 × 13 mm»; an empty one drops out, a different unit keeps its own word. */
+    #[Test]
+    public function measure_fields_join_their_numbers_and_write_the_unit_once(): void
+    {
+        $einheiten = $this->editor->createNode('Base units', $this->branchRoot['constants']->id);
+        $mm        = $this->editor->createNode('mm', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $cm        = $this->editor->createNode('cm', $einheiten->id, \Taxmod\Core\Model\NodeClass\Unit::class);
+        $wertTyp   = $this->editor->createNode('Einheitenwert', $this->branchRoot['compositions']->id);
+        $wert      = $this->editor->addField($wertTyp->id, $this->type('Decimal')->id, 'wert');
+        $einheit   = $this->editor->addField($wertTyp->id, $einheiten->id, 'einheit', RelationKind::Aggregation);
+        $schalter  = $this->thing('Schalter');
+        $taster    = $this->editor->createNode('Taster', $schalter->id);
+        $name      = $this->editor->addField($schalter->id, $this->type('Text')->id, 'bezeichnung');
+        $laenge    = $this->editor->addField($schalter->id, $wertTyp->id, 'laenge');
+        $breite    = $this->editor->addField($schalter->id, $wertTyp->id, 'breite');
+        $hoehe     = $this->editor->addField($schalter->id, $wertTyp->id, 'hoehe');
+
+        $zahl = function (string $n, Node $unit) use ($wertTyp, $wert, $einheit): int {
+            $id = $this->records->add(new NodeRecord(0, $wertTyp->id, 1, '2026-11-16 11:00:00', RecordType::User));
+            $this->records->putValue(RelationRecord::direct($id, $wert->id, TypedValue::ofDecimal($n)));
+            $this->records->putValue(RelationRecord::direct($id, $einheit->id, TypedValue::ofReference($unit->id)));
+
+            return $id;
+        };
+        $satz = function (array $masse) use ($taster, $zahl): int {
+            $id = $this->records->add(new NodeRecord(0, $taster->id, 1, '2026-11-16 11:00:00', RecordType::User));
+
+            foreach ($masse as [$feld, $n, $unit]) {
+                $this->records->putValue(RelationRecord::direct($id, $feld->id, TypedValue::ofRecordReference($zahl($n, $unit))));
+            }
+
+            return $id;
+        };
+        $drei    = $satz([[$laenge, '6', $mm], [$breite, '6', $mm], [$hoehe, '4.3', $mm]]);
+        $zwei    = $satz([[$laenge, '6', $mm], [$breite, '6', $mm]]);
+        $gemischt = $satz([[$laenge, '6', $mm], [$hoehe, '1', $cm]]);
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($schalter, \Taxmod\Core\Model\NodeClass\Category::MASS_FELDER, [$laenge->id, $breite->id, $hoehe->id]);
+        $this->neuZeichnen();
+
+        $texte = $this->rendering->summaryTextsOf([['relation' => $name, 'records' => [$drei, $zwei, $gemischt], 'fields' => [Rendering::KNOTENNAME, $laenge->id, $breite->id, $hoehe->id]]])[$name->id] ?? [];
+
+        self::assertSame('Taster' . SummaryRenderer::SEPARATOR . '6 × 6 × 4.3 mm', $texte[$drei] ?? null, 'three measures, one unit');
+        self::assertSame('Taster' . SummaryRenderer::SEPARATOR . '6 × 6 mm', $texte[$zwei] ?? null, 'an empty measure drops out');
+        self::assertSame('Taster' . SummaryRenderer::SEPARATOR . '6 mm × 1 cm', $texte[$gemischt] ?? null, 'different units keep their own word');
+    }
+
     /** D-1369: a member that already stands in the node's own list is still written at the edge when it is chosen there. */
     #[Test]
     public function choosing_at_an_edge_what_the_node_list_already_holds_composes_it(): void

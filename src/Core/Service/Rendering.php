@@ -5284,6 +5284,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $erstesTextfeld     = [];
         $feldwahlJeKnoten   = [];
         $rasterJeKnoten     = [];
+        $massJeKnoten       = [];
         $textfelderJeKnoten = [];
         $artNamen           = [];
 
@@ -5336,6 +5337,28 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
                     if (count($paar) === 2) {
                         $rasterJeKnoten[$knoten->id] = $paar;
+                        break;
+                    }
+                }
+
+                // D-1399: the nearest owner naming measure fields makes them one word «6 × 6 × 13 mm».
+                foreach (array_reverse($besitzerJeKnoten[$knoten->id]) as $besitzerId) {
+                    $besitzer = $besitzerId === $knoten->id ? $knoten : $this->gemerkterKnoten($besitzerId);
+
+                    if ($besitzer === null) {
+                        continue;
+                    }
+
+                    $masse = [];
+
+                    foreach ($this->resolver->listOf($besitzer, \Taxmod\Core\Model\NodeClass\Category::MASS_FELDER) as $glied) {
+                        if ($glied->aktiv && $glied->reference !== null) {
+                            $masse[] = (int) $glied->reference;
+                        }
+                    }
+
+                    if ($masse !== []) {
+                        $massJeKnoten[$knoten->id] = $masse;
                         break;
                     }
                 }
@@ -5393,7 +5416,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         $bezugsWaehrung = $this->referenceCurrency;
-        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal, $verbinder, $rasterJeKnoten): string {
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal, $verbinder, $rasterJeKnoten, $massJeKnoten): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
             $ausWahl  = false;
@@ -5531,8 +5554,54 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 ? $rasterJeKnoten[$knotenId]
                 : [null, null];
 
+            $massFelder = $knotenId !== null && isset($massJeKnoten[$knotenId])
+                ? array_values(array_intersect($massJeKnoten[$knotenId], $feldIds))
+                : [];
+            $massDa = false;
+
             foreach ($feldIds as $feldId) {
                 if ($feldId === $reihenFeld) {
+                    continue;
+                }
+
+                // D-1399: the measure fields speak once, where the first of them stands: numbers joined by « × » (D-1194), the unit once.
+                if (in_array($feldId, $massFelder, true)) {
+                    if ($massDa) {
+                        continue;
+                    }
+
+                    $massDa = true;
+                    $worte  = [];
+                    $zahlen = [];
+                    $reste  = [];
+
+                    foreach ($massFelder as $massFeld) {
+                        foreach ($werte[$satzId] ?? [] as $zeile) {
+                            if ($zeile->relationId !== $massFeld || $zeile->value->referenceSpace !== ReferenceSpace::Record || $zeile->value->reference === null || $stufe >= 2) {
+                                continue;
+                            }
+
+                            $innen = $wort($zeile->value->reference, [], $stufe + 1);
+
+                            if ($innen !== '') {
+                                $roh      = $zahlIn($massFeld);
+                                $zahl     = $roh === null ? null : str_replace('.', $dezimal, $roh);
+                                $worte[]  = $innen;
+                                $zahlen[] = (string) $zahl;
+                                $reste[]  = $zahl !== null && str_starts_with($innen, $zahl) ? substr($innen, strlen($zahl)) : null;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    // *One unit for all only when every part has a number and the same rest; otherwise each part keeps its own word.*
+                    $eineEinheit = $worte !== [] && ! in_array(null, $reste, true) && count(array_unique($reste)) === 1;
+
+                    if ($worte !== []) {
+                        $teile[] = $eineEinheit ? implode(' × ', $zahlen) . $reste[0] : implode(' × ', $worte);
+                    }
+
                     continue;
                 }
 

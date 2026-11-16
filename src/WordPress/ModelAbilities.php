@@ -1035,7 +1035,7 @@ final class ModelAbilities
                 $screen->setListMembers($nodeId, $attribute, $members, isset($change['field']) ? $at('field') : null);
 
                 // D-1391: a list that names derive from rewrites the names of every record at and below the node (D-1390 left them old).
-                if (in_array($attribute, [\Taxmod\Core\Renderer\SummaryRenderer::FIELDS, \Taxmod\Core\Model\NodeClass\Category::RASTER_FELDER], true)) {
+                if (in_array($attribute, [\Taxmod\Core\Renderer\SummaryRenderer::FIELDS, \Taxmod\Core\Model\NodeClass\Category::RASTER_FELDER, \Taxmod\Core\Model\NodeClass\Category::MASS_FELDER], true)) {
                     $this->rewriteNamesUnder($screen, $this->node($nodeId));
                 }
 

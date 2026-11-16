@@ -52,6 +52,18 @@ final class Category implements NodeClass
     public const RASTER_FELDER = 'raster_felder';
 
     /**
+     * D-1399: fields that a record's name shows as one measure — their numbers joined by « × » and the shared unit once:
+     * «6 × 6 × 13 mm» instead of «6 mm · 6 mm · 13 mm». An empty field drops out; parts with different units keep their own.
+     * Set at the node, inherited down; the nearest owner naming fields wins.
+     *
+     * @var list<int> Kanten-Ids in the order they are written, e.g. [Länge, Breite, Höhe]
+     */
+    #[Attribut(listOf: 'relation')]
+    public array $mass_felder = [];
+
+    public const MASS_FELDER = 'mass_felder';
+
+    /**
      * D-1379: at the use site (this node, a field), which branches a choice offers — the nodes named and everything below them; empty: the
      * whole target. Inherited down, the nearest owner naming it wins. *His case: a resistor in «THT» chooses only THT packages.*
      *
