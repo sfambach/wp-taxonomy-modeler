@@ -3274,6 +3274,28 @@
 		return zeile && idVon( zeile ) !== null ? { element: zeile, id: idVon( zeile ) } : null;
 	}
 
+	// D-1095: in einem Baum mit `data-taxmod-drag-order` heisst das obere Viertel einer Zeile «davor», das untere «danach»,
+	// die Mitte «hinein». Nur ein gezogener Satz wird eingereiht, nie ein Ding eines Moduls.
+	function lage( wohin, ereignis ) {
+		var baum = wohin.element.closest ? wohin.element.closest( '.taxmod-record-tree[data-taxmod-drag-order]' ) : null;
+		var r, y;
+
+		if ( ! baum || ! gezogen || ! wohin.element.classList.contains( 'taxmod-tree-row' ) ) {
+			return 'into';
+		}
+
+		r = wohin.element.getBoundingClientRect();
+		y = ( ereignis.clientY - r.top ) / ( r.height || 1 );
+
+		return y < 0.25 ? 'before' : ( y > 0.75 ? 'after' : 'into' );
+	}
+
+	function markieren( element, wo ) {
+		element.classList.toggle( 'taxmod-drop-over', wo === 'into' );
+		element.classList.toggle( 'taxmod-drop-before', wo === 'before' );
+		element.classList.toggle( 'taxmod-drop-after', wo === 'after' );
+	}
+
 	function erlaubt( wohin ) {
 		if ( ! gezogen ) {
 			return true;
@@ -3324,8 +3346,8 @@
 
 	document.addEventListener( 'dragend', function () {
 		gezogen = null;
-		document.querySelectorAll( '.taxmod-drop-over' ).forEach( function ( markiert ) {
-			markiert.classList.remove( 'taxmod-drop-over' );
+		document.querySelectorAll( '.taxmod-drop-over, .taxmod-drop-before, .taxmod-drop-after' ).forEach( function ( markiert ) {
+			markieren( markiert, '' );
 		} );
 	} );
 
@@ -3339,27 +3361,28 @@
 
 		ereignis.preventDefault();
 		ereignis.dataTransfer.dropEffect = 'move';
-		wohin.element.classList.add( 'taxmod-drop-over' );
+		markieren( wohin.element, lage( wohin, ereignis ) );
 	} );
 
 	document.addEventListener( 'dragleave', function ( ereignis ) {
 		var wohin = ziel( ereignis.target );
 
 		if ( wohin && ! wohin.element.contains( ereignis.relatedTarget ) ) {
-			wohin.element.classList.remove( 'taxmod-drop-over' );
+			markieren( wohin.element, '' );
 		}
 	} );
 
 	document.addEventListener( 'drop', function ( ereignis ) {
 		var wohin = ziel( ereignis.target );
-		var satz;
+		var satz, wo;
 
 		if ( ! wohin || ! erlaubt( wohin ) ) {
 			return;
 		}
 
 		ereignis.preventDefault();
-		wohin.element.classList.remove( 'taxmod-drop-over' );
+		wo = lage( wohin, ereignis );
+		markieren( wohin.element, '' );
 		satz = ereignis.dataTransfer.getData( SATZ );
 		wohin.element.dispatchEvent( new CustomEvent( 'taxmod-record-drop', {
 			bubbles: true,
@@ -3367,6 +3390,7 @@
 				record: satz === '' ? null : parseInt( satz, 10 ),
 				target: wohin.id,
 				item: ereignis.dataTransfer.getData( DING ) || null,
+				where: wo,
 			},
 		} ) );
 		gezogen = null;

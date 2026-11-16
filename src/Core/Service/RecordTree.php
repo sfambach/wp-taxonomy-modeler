@@ -52,7 +52,15 @@ final class RecordTree
         }
 
         // *Siblings in the order a person reads them: by their word, naturally («Fach 2» before «Fach 10»), then by id.*
+        // *D-1095: a sibling with its own rank stands before those without, by rank; the rest follow by word.*
         $order = static function (int $a, int $b) use ($byId): int {
+            $rankA = $byId[$a]->rank;
+            $rankB = $byId[$b]->rank;
+
+            if ($rankA !== null || $rankB !== null) {
+                return $rankA === null ? 1 : ($rankB === null ? -1 : ($rankA <=> $rankB ?: strnatcasecmp($byId[$a]->label(), $byId[$b]->label()) ?: $a <=> $b));
+            }
+
             return strnatcasecmp($byId[$a]->label(), $byId[$b]->label()) ?: $a <=> $b;
         };
 

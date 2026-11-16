@@ -56,6 +56,20 @@ final class RecordTreeTest extends TestCase
         );
     }
 
+    /** D-1095: a sibling with its own rank stands first, by rank; the others follow by word. */
+    #[Test]
+    public function siblings_with_a_rank_stand_first_in_rank_order(): void
+    {
+        $rows = RecordTree::walk([
+            new RecordInTree(1, null, 'Alpha'),
+            new RecordInTree(2, null, 'Beta', 2),
+            new RecordInTree(3, null, 'Gamma', 1),
+            new RecordInTree(4, null, 'Delta'),
+        ]);
+
+        self::assertSame([3, 2, 1, 4], array_map(static fn (array $r): int => $r['record']->id, $rows));
+    }
+
     #[Test]
     public function siblings_sort_naturally(): void
     {

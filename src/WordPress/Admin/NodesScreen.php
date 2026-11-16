@@ -4070,7 +4070,7 @@ final class NodesScreen
         return ['values' => $values, 'unknown' => $unknown, 'node' => $found->nodeId];
     }
 
-    public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = [], array $preferred = []): string
+    public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = [], array $preferred = [], array $rank = [], bool $rankable = false): string
     {
         if ($node <= 0 || $this->editor->find($node) === null) {
             return '';
@@ -4092,7 +4092,7 @@ final class NodesScreen
         foreach ($links as $id => $parent) {
             $wort        = trim((string) ($worte[$id] ?? ''));
             $wort        = ($wort === '' ? '#' . $id : $wort) . (($suffix[$id] ?? '') === '' ? '' : ' ' . $suffix[$id]);
-            $eintraege[] = new \Taxmod\Core\Model\RecordInTree($id, $parent, $wort);
+            $eintraege[] = new \Taxmod\Core\Model\RecordInTree($id, $parent, $wort, isset($rank[$id]) ? (int) $rank[$id] : null);
         }
 
         $zeilen = \Taxmod\Core\Service\RecordTree::walk($eintraege, $root > 0 ? $root : null, $exclude);
@@ -4118,7 +4118,7 @@ final class NodesScreen
         // ⚠️ *D-1090: der Modeller meldet nur, was geschah (Wahl, Ablage); was daraus wird, entscheidet das Modul.*
         return '<div class="taxmod-record-tree"'
             . ($pickUrl === '' ? '' : ' data-taxmod-pick="' . esc_attr($pickUrl) . '"')
-            . ($drag ? ' data-taxmod-drag="1"' : '') . '>' . $baum . '</div>';
+            . ($drag ? ' data-taxmod-drag="1"' : '') . ($drag && $rankable ? ' data-taxmod-drag-order="1"' : '') . '>' . $baum . '</div>';
     }
 
     /**

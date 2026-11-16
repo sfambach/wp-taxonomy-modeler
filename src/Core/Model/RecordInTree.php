@@ -19,6 +19,8 @@ final class RecordInTree implements Renderable
         /** The record this one hangs under, as its «Übergeordnet» field says; `null` where the field is empty. */
         public readonly ?int $parentId,
         private readonly string $word,
+        /** D-1095: its own rank among its siblings, as the module names it; `null` where none is set. */
+        public readonly ?int $rank = null,
     ) {
     }
 

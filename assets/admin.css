@@ -2501,6 +2501,15 @@ fieldset.taxmod-read-only {
     background: #f0f6fc;
 }
 
+/* D-1095: «davor» / «danach» — a line above or below the row, where the dragged place will stand among its siblings. */
+.taxmod-drop-before {
+    box-shadow: inset 0 2px 0 #2271b1;
+}
+
+.taxmod-drop-after {
+    box-shadow: inset 0 -2px 0 #2271b1;
+}
+
 /* D-1148: the conflict dialog opens by itself; its opener is not a control of its own. */
 .taxmod-conflict .taxmod-conflict-opener {
     display: none;

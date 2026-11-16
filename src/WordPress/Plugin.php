@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.108';
+    public const VERSION     = '0.2.109';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -267,7 +267,10 @@ final class Plugin
                 esc_url_raw(str_replace('{id}', '__ID__', (string) ($args['pick_url'] ?? ''))),
                 ! empty($args['drag']),
                 array_map(static fn (mixed $text): string => sanitize_text_field((string) $text), array_filter(is_array($args['suffix'] ?? null) ? $args['suffix'] : [], 'is_scalar')),
-                $ids($args['preferred'] ?? [])
+                $ids($args['preferred'] ?? []),
+                // *D-1095: the module's own order of siblings — record → rank; with it a row also takes «before»/«after» drops.*
+                array_map('intval', array_filter(is_array($args['rank'] ?? null) ? $args['rank'] : [], 'is_numeric')),
+                ! empty($args['rank_drop'])
             );
         }, 10, 2);
 
