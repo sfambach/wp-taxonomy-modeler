@@ -60,10 +60,23 @@ final class WpMediaLibrary implements MediaLibrary
      */
     public function postStateOf(string $address): string
     {
+        // ⚠️ *Ein Besucher sieht nie «Entwurf» — das Wort nur für den, der Beiträge bearbeiten darf (Architektur, 16.11.).*
+        if (! current_user_can('edit_posts')) {
+            return '';
+        }
+
         $address = trim($address);
 
+        // ⚠️ *Nur Adressen des eigenen Rechners vorladen, nicht jeden Datenblatt- und Shop-Link (Ladezeit, Architektur 16.11.).*
         if ($this->stati === null) {
-            $this->stati = $this->postStates((new WpdbRecordRepository())->textsStartingWith('http'));
+            $repository = new WpdbRecordRepository();
+            $vorladen   = [];
+
+            foreach (self::ownPrefixes() as $praefix) {
+                $vorladen = array_merge($vorladen, $repository->textsStartingWith($praefix));
+            }
+
+            $this->stati = $this->postStates($vorladen);
         }
 
         if (! array_key_exists($address, $this->stati)) {
@@ -147,6 +160,21 @@ final class WpMediaLibrary implements MediaLibrary
         }
 
         return $stati;
+    }
+
+    /** @return list<string> Der Anfang jeder Adresse auf diesen Rechner: http und https, mit und ohne «www.». */
+    private static function ownPrefixes(): array
+    {
+        $rechner = self::hostOf(home_url('/'));
+        $praefixe = [];
+
+        foreach (['https://', 'http://'] as $schema) {
+            foreach (['', 'www.'] as $www) {
+                $praefixe[] = $schema . $www . $rechner . '/';
+            }
+        }
+
+        return $praefixe;
     }
 
     private static function hostOf(string $adresse): string

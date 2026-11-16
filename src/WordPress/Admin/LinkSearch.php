@@ -41,7 +41,8 @@ final class LinkSearch
             return $args;
         }
 
-        $args['post_status'] = self::STATI;
+        // ⚠️ *Private Beiträge nur für den, der sie lesen darf (Architektur, 16.11.).*
+        $args['post_status'] = current_user_can('read_private_posts') ? self::STATI : array_values(array_diff(self::STATI, ['private']));
 
         // *Nur im Titel: ein Linkziel sucht man bei seinem Namen; im Text findet ein deutsches Wort fast jeden Beitrag.*
         if (isset($args['s']) && trim((string) $args['s']) !== '') {
