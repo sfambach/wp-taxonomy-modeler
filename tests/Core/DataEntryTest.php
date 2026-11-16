@@ -1254,4 +1254,28 @@ final class DataEntryTest extends TestCase
 
         $this->data->movePart($f['unterteil'], $andere->id, $f['betrag']->id);
     }
+
+    /** D-1404: the parts of a field stored in a new order; ids, holders and own parts stay, one act; a wrong list is refused. */
+    #[Test]
+    public function parts_are_stored_in_a_new_order(): void
+    {
+        $f      = $this->kopfMitPositionen();
+        $dritte = $this->data->createPart($f['kopf'], $f['positionen']->id);
+        $vorher = count($this->buch->entries);
+
+        $this->data->reorderValues($f['kopf'], $f['positionen']->id, [$dritte->id, $f['erste'], $f['zweite']]);
+
+        $liste = array_values(array_map(
+            static fn (RelationRecord $z): ?int => $z->value->reference,
+            array_filter($this->records->valuesOf($f['kopf']), static fn (RelationRecord $z): bool => $z->relationId === $f['positionen']->id)
+        ));
+
+        self::assertSame([$dritte->id, $f['erste'], $f['zweite']], $liste);
+        self::assertSame($f['kopf'], $this->records->holdersOf([$f['erste']])[$f['erste']]->recordId);
+        self::assertNotNull($this->records->find($f['unterteil']), 'its own part stays');
+        self::assertCount(1, array_unique(array_map(static fn (array $e): int => $e[5], array_slice($this->buch->entries, $vorher))), 'one act');
+
+        $this->expectException(NotYetStorable::class);
+        $this->data->reorderValues($f['kopf'], $f['positionen']->id, [$f['erste'], $f['zweite']]);
+    }
 }

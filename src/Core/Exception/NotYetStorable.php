@@ -175,6 +175,12 @@ final class NotYetStorable extends DomainError
         return new self(sprintf('Record %d is not a part held through «%s».', $partId, $attribute));
     }
 
+    /** D-1404: a new order names exactly the references the field holds, each once. */
+    public static function orderDoesNotMatch(string $attribute, int $recordId): self
+    {
+        return new self(sprintf('The order for «%s» of record %d must name exactly the records or nodes the field holds, each once.', $attribute, $recordId));
+    }
+
     /** Ein Feld mit höchstens einem Wert nimmt keinen zweiten Teil an (D-1098). */
     public static function fieldAlreadyHoldsItsPart(string $attribute, int $recordId): self
     {

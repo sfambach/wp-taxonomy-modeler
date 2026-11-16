@@ -2083,6 +2083,51 @@ final class DataEntry
     }
 
     /**
+     * D-1404: the references a field holds in a new order — the pin rows of a display stored as pin 1 … 8, then the SD pins. The rows are
+     * written anew at the positions of the list; ids and every reference to them stay. One act.
+     *
+     * @param list<int> $order the record or node ids the field holds, each once, in the order wanted
+     */
+    public function reorderValues(int $recordId, int $relationId, array $order): void
+    {
+        $satz  = $this->records->find($recordId) ?? throw NotYetStorable::noSuchRecord($recordId);
+        $kante = $this->relationOf($satz, $relationId);
+        $zeilen = [];
+
+        foreach ($this->valuesOn($recordId, $kante->id, '') as $zeile) {
+            if (! $zeile->value->isAReference() || $zeile->value->reference === null) {
+                throw NotYetStorable::orderDoesNotMatch($kante->name, $recordId);
+            }
+
+            $zeilen[$zeile->value->reference] = $zeile;
+        }
+
+        $order = array_map('intval', $order);
+
+        if (count($order) !== count($zeilen) || count(array_unique($order)) !== count($order) || array_diff($order, array_keys($zeilen)) !== []) {
+            throw NotYetStorable::orderDoesNotMatch($kante->name, $recordId);
+        }
+
+        $this->changelog?->beginAct();
+
+        try {
+            foreach ($zeilen as $zeile) {
+                $this->halterZeileLeeren($zeile);
+            }
+
+            foreach ($order as $stelle => $id) {
+                $wert    = $zeilen[$id]->value;
+                $version = $this->records->putValue(RelationRecord::direct($recordId, $kante->id, $wert, '', $stelle));
+                $this->melden($recordId, 'record_value', 'value reordered', null, $this->wertZustand($recordId, $kante->id, '', $wert), $version);
+            }
+        } finally {
+            $this->changelog?->endAct();
+        }
+
+        $this->angefasst($recordId);
+    }
+
+    /**
      * Einen Satz neben sich kopieren — mit allen Werten; was er als Teil besitzt (eine Komposition), wird mitkopiert, was er nur
      * verweist, wird weiter verwiesen. Ein Akt.
      *
