@@ -1329,5 +1329,5 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Beschlossen:** [D-172](NewConcept/90-decision-log.md) (Undo als neuer Schritt nach vorn), [D-348](NewConcept/90-decision-log.md)/[D-470](NewConcept/90-decision-log.md) (ein Akt = eine Änderungsnummer).
 - **Gemessen (Code, 0.2.118):** gebaut: nein — es gibt keine Rücknahme eines Akts über seine Nummer. Die `*_history`-Tabellen halten jede alte Zeile; aus dem Papierkorb holt man Knoten zurück (`trash_node`). Für `remove_record`, `remove_field`, `merge_field` und jede Wertänderung gibt es keinen Weg zurück ausser von Hand aus den Schatten oder aus der Nachtsicherung.
 - **Entschieden:** [D-1410](NewConcept/90-decision-log.md) — Undo je Änderungsnummer über `undo_act`, für alle Ops von apply und write-data (gebaut 0.2.121).
-- **Offen:** Eintrag «Rückgängig» in der Geschichte (Oberfläche) und `labels_history`.
+- **Gebaut:** Seite «Changes» mit «Undo» je Zeile und in der Sammelauswahl. **Offen:** `labels_history`.
 

@@ -352,4 +352,41 @@ final class WpdbChangelog implements Changelog
             (string) $last['what']
         );
     }
+
+    /**
+     * The latest acts, newest first: number, first moment, who, how many rows, the verbs, and the act that took it back (D-1410).
+     *
+     * @return list<array<string, string|null>>
+     */
+    public static function latestActs(int $limit): array
+    {
+        global $wpdb;
+
+        $journal = Schema::table('changelog');
+
+        $acts = Query::rows('die letzten Akte lesen', $wpdb->prepare(
+            "SELECT change_group_id AS act, MIN(at) AS at, MAX(by_user_id) AS by_user, COUNT(*) AS n,
+                    GROUP_CONCAT(DISTINCT what ORDER BY what SEPARATOR ', ') AS whats
+             FROM {$journal} WHERE change_group_id IS NOT NULL
+             GROUP BY change_group_id ORDER BY change_group_id DESC LIMIT %d",
+            $limit
+        ));
+
+        if ($acts === []) {
+            return [];
+        }
+
+        $ids     = array_map(static fn (array $a): int => (int) $a['act'], $acts);
+        $plaetze = implode(',', array_fill(0, count($ids), '%d'));
+        $durch   = [];
+
+        foreach (Query::rows('Rücknahmen lesen', $wpdb->prepare(
+            "SELECT owner_id, change_group_id FROM {$journal} WHERE what = 'act undone' AND owner_id IN ({$plaetze})",
+            ...$ids
+        )) as $zeile) {
+            $durch[(int) $zeile['owner_id']] = (string) $zeile['change_group_id'];
+        }
+
+        return array_map(static fn (array $a): array => $a + ['undone_by' => $durch[(int) $a['act']] ?? null], $acts);
+    }
 }

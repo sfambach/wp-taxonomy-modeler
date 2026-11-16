@@ -150,6 +150,7 @@ final class Plugin
         \Taxmod\WordPress\Persistence\DailyBackup::boot($file);
         \Taxmod\WordPress\Printing\PrintRest::boot();
         \Taxmod\WordPress\Printing\PrintJobsScreen::boot();
+        \Taxmod\WordPress\Admin\ChangesScreen::boot();
         // D-1206: the scanner's test page, a tab of the Configuration.
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
