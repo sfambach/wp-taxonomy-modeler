@@ -95,7 +95,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **V2** | The nodes sit in a tree. | [00-vision-and-scope.md:27](00-vision-and-scope.md) | 2 |
 | **V3** | The tree represents the inheritance hierarchy only — nothing else. | [00-vision-and-scope.md:28](00-vision-and-scope.md) | 8 |
 | **V4** | The root node has no parent. Every other node inherits from its ancestors. | [00-vision-and-scope.md:29](00-vision-and-scope.md) | 1 |
-| **V5** | Fundamentally all nodes are the same. Confirmed 2026-08-23 with a nuance from the owner: there are specialisations, but that statement was about th… | [00-vision-and-scope.md:30](00-vision-and-scope.md) | 23 |
+| **V5** | Fundamentally all nodes are the same. Confirmed 2026-08-23 with a nuance from the owner: there are specialisations, but that statement was about th… | [00-vision-and-scope.md:30](00-vision-and-scope.md) | 24 |
 | **V6** | There are a few special nodes, for data types and for calculations. | [00-vision-and-scope.md:31](00-vision-and-scope.md) | 6 |
 | **V7** | Those special nodes are created in the configuration. | [00-vision-and-scope.md:32](00-vision-and-scope.md) | 15 |
 | **V8** | Essentially every node has: one renderer (responsible for display), one converter (may manipulate the output), and one or more validators (check wh… | [00-vision-and-scope.md:33](00-vision-and-scope.md) | 20 |

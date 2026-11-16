@@ -77,6 +77,26 @@ function flatTreeSelects(string $c): int
     return $count;
 }
 
+/** `wp_die(` calls in `$c` that are not the fallback of the modeller's ListPage::fail (D-1254). */
+function bareDies(string $c): int
+{
+    preg_match_all('/\bwp_die\(/', $c, $hits, PREG_OFFSET_CAPTURE);
+    $count = 0;
+
+    foreach ($hits[0] as [, $at]) {
+        $line   = ltrim(substr($c, (int) strrpos(substr($c, 0, $at), "\n"), 200));
+        $before = substr($c, max(0, $at - 400), min(400, $at));
+
+        if (str_starts_with($line, '//') || str_starts_with($line, '*') || str_starts_with($line, '/*')) {
+            continue;
+        }
+
+        $count += preg_match('/ListPage::fail\(|method_exists\([^)]*ListPage/', $before) === 1 ? 0 : 1;
+    }
+
+    return $count;
+}
+
 $rules = [
     'G1 confirm()'      => ['D-804, D-1063', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/(?<!::)\bconfirm\(/', $c)],
     'G2 own <h1>'       => ['D-989', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all('/^(?!.*<body).*<h1[ >]/m', $c)], // a print sheet is its own document
@@ -90,7 +110,10 @@ $rules = [
     'G10 save button below a form' => ['D-1308', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all("/submit_button\\(\\s*(?:esc_html)?__\\(\\s*'(?:Save|Speichern)/", $c)],
     // D-1316: a module file that draws a record editor draws a back link too — counted per file, one finding per file without one.
     'G11 record page without back link' => ['D-1316', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : (str_contains($c, "apply_filters('taxmod_record_editor'") && ! str_contains($c, 'ListPage::back(') ? 1 : 0)],
-    'G7 style= attribute' => ['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
+    // D-1254 (V5): a refusal goes through ListPage::fail/act. A wp_die that only stands in when ListPage is missing (fallback right
+    // after `ListPage::fail(` or a `method_exists(…ListPage…)`) is exempt. Measured, not failing yet.
+    'G12 bare wp_die' => ['D-1254', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : bareDies($c)],
+    'G7 style= attribute' =>['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
 ];
 
 if ($only !== []) {
