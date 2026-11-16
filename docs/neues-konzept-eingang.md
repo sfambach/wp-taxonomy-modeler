@@ -1337,3 +1337,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Anlass:** Stefan sah die Platzansicht im Lager als «leere graue Seite»: *«sie ist nicht grau keine fehlermeldung er scrollt nur ganz nach unten»*. `assets/admin.js` stellt den gemerkten Scrollstand der vorigen Seite wieder her («stay», [D-807](NewConcept/90-decision-log.md)); ist die neue Seite kürzer, klemmt der Browser ans Seitenende.
 - **Behoben im Lager:** 0.64.107 hängt an den Link des Platzbaums einen Anker; ein Anker geht vor ([D-788](NewConcept/90-decision-log.md)).
 - **Offen:** ob der Modeller den Scrollstand nur noch auf derselben Ansicht wiederherstellt (dann braucht kein Modul mehr einen Anker). D-807 «stay» gilt für Baumklicks bewusst; die Grenze «dieselbe Ansicht» ist noch nicht beschlossen.
+
+## INF-127 · Migration nur über wp-admin, REST/MCP gesperrt bis dahin (2026-11-16)
+
+- **Anlass:** Nach dem Einspielen von 0.2.122 (Schema 58 → 59) lehnten REST- und MCP-Zugriffe ab («schema 58, expected 59, open wp-admin once»), bis ein Aufruf über admin_init die Migration lief (WP-Upload, 16.11. 20:57).
+- **Offen:** ob die Migration auch beim ersten REST- oder Ability-Aufruf laufen soll. Dazu kommt: debug.log auf dem Server wird seit 21.07. nicht mehr geschrieben, Fehler lassen sich dort nicht belegen.
