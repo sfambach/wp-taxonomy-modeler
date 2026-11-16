@@ -3039,6 +3039,49 @@ final class RenderingTest extends TestCase
         self::assertTrue($selected($markup(), $milli->id), 'the field presets «milli», the empty part shows it');
     }
 
+    /** D-1379: a group narrows a choice to its branches and presets one; a group without a word offers everything. */
+    #[Test]
+    public function a_group_offers_only_its_branches_of_a_choice_and_presets_one(): void
+    {
+        $formen  = $this->editor->createNode('Bauformen', $this->branchRoot['constants']->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+        $smd     = $this->editor->createNode('SMD', $formen->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+        $tht     = $this->editor->createNode('THT', $formen->id, \Taxmod\Core\Model\NodeClass\Choice::class);
+        $o0603   = $this->editor->createNode('0603', $smd->id, \Taxmod\Core\Model\NodeClass\Constant::class);
+        $allg    = $this->editor->createNode('THT allgemein', $tht->id, \Taxmod\Core\Model\NodeClass\Constant::class);
+        $axial   = $this->editor->createNode('axial', $tht->id, \Taxmod\Core\Model\NodeClass\Constant::class);
+        $bauteil = $this->thing('Widerstände');
+        $feld    = $this->editor->addField($bauteil->id, $formen->id, 'Bauform', RelationKind::Aggregation);
+        $gruppe  = $this->editor->createNode('THT-Widerstände', $bauteil->id);
+        $settings = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+
+        $markup = function (int $knoten) use ($feld): string {
+            $this->resolver->forget();
+            $rendering = new Rendering(
+                $this->nodes,
+                $this->framework,
+                ShippedRenderers::registry(),
+                $this->typeNodes,
+                new Labels($this->labelStore, 'en_US'),
+                ShippedConverters::registry(),
+                resolver: $this->resolver,
+                relations: $this->relations,
+                records: $this->records,
+            );
+
+            return $rendering->fieldsFor([$feld], [], Purpose::Edit, 'v', forNode: $knoten)[0]->result->markup;
+        };
+        $bietet   = static fn (string $html, int $id): bool => (bool) preg_match('/<option[^>]*value="' . $id . '"/', $html);
+        $gewaehlt = static fn (string $html, int $id): bool => (bool) preg_match('/<option[^>]*value="' . $id . '"[^>]*selected/', $html);
+
+        $settings->setMembers($bauteil, \Taxmod\Core\Model\NodeClass\Category::WAHL_UNTER, [$tht->id], $feld);
+        $settings->setMembers($bauteil, \Taxmod\Core\Model\NodeClass\Category::WAHL_VORGABE, [$allg->id], $feld);
+
+        $html = $markup($gruppe->id);
+        self::assertTrue($bietet($html, $axial->id), 'a THT package is offered below the group');
+        self::assertFalse($bietet($html, $o0603->id), 'an SMD package is not');
+        self::assertTrue($gewaehlt($html, $allg->id), 'the preset stands chosen while the record holds none');
+    }
+
     /** ⚠️ *D-1189, sein Wort: «20 Zeichen · 4 Zeichen sind 4 zeilen a 20 zeichen 4x20 würde mir reichen».* */
     #[Test]
     public function a_grid_joins_its_two_numbers_with_the_sign_its_node_names(): void

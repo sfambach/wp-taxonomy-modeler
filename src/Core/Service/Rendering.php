@@ -2129,6 +2129,20 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
             $moeglich = $wahl[$relation->id] ?? [];
 
+            // D-1379: the record's group narrows a choice to its branches and may preset one.
+            if ($istWahl && $forNode > 0 && $moeglich !== []) {
+                [$zweige, $vorgabe] = $this->wahlDerGruppe($forNode, $relation);
+
+                if ($zweige !== []) {
+                    $moeglich = $this->unterZweigen($zweige);
+                    $allowedChoices[$relation->id] = array_map('intval', array_keys($moeglich));
+                }
+
+                if ($purpose === Purpose::Edit && ($gewaehlt === null || $gewaehlt->isNothing()) && $vorgabe !== null && isset($moeglich[$vorgabe])) {
+                    $gewaehlt = TypedValue::ofReference($vorgabe);
+                }
+            }
+
             // ⚠️ **Für den Renderer sagt die Registratur, was es gibt — nicht der Baum**
             // ([D-603](../../../docs/NewConcept/90-decision-log.md)): *«wofür ein Konverter oder ein
             // Renderer taugt, bleibt im Kode — `handles()` an der Klasse»*, und `eligibleFor()`
@@ -6976,6 +6990,73 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @param list<int>                      $erlaubt
      * @param array<string, ResolvedSetting> $settings
      */
+    /**
+     * D-1379: the branches and the preset a choice has at the record's group — the nearest owner naming them wins, each on its own.
+     *
+     * @return array{0: list<int>, 1: ?int}
+     */
+    private function wahlDerGruppe(int $forNode, Relation $relation): array
+    {
+        $knoten = $this->gemerkterKnoten($forNode);
+
+        if ($knoten === null || $this->resolver === null) {
+            return [[], null];
+        }
+
+        $zweige  = null;
+        $vorgabe = null;
+
+        foreach (array_reverse($this->framework->inheritanceOwnersOf($knoten)) as $besitzerId) {
+            $besitzer = $besitzerId === $knoten->id ? $knoten : $this->gemerkterKnoten($besitzerId);
+
+            if ($besitzer === null) {
+                continue;
+            }
+
+            $aktiv = static fn (array $glieder): array => array_values(array_map(
+                static fn ($glied): int => (int) $glied->reference,
+                array_filter($glieder, static fn ($glied): bool => $glied->aktiv && $glied->reference !== null)
+            ));
+
+            if ($zweige === null) {
+                $hier   = $aktiv($this->resolver->listOf($besitzer, \Taxmod\Core\Model\NodeClass\Category::WAHL_UNTER, $relation));
+                $zweige = $hier === [] ? null : $hier;
+            }
+
+            if ($vorgabe === null) {
+                $vorgabe = $aktiv($this->resolver->listOf($besitzer, \Taxmod\Core\Model\NodeClass\Category::WAHL_VORGABE, $relation))[0] ?? null;
+            }
+
+            if ($zweige !== null && $vorgabe !== null) {
+                break;
+            }
+        }
+
+        return [$zweige ?? [], $vorgabe];
+    }
+
+    /**
+     * D-1379: what a choice offers under these branches — every node below them, in tree order; the branches themselves are the
+     * grouping, as the target is (one subtree read per branch, few by nature).
+     *
+     * @param  list<int>          $zweige
+     * @return array<int, string>
+     */
+    private function unterZweigen(array $zweige): array
+    {
+        $aus = [];
+
+        foreach ($this->gemerkteKnoten($zweige) as $zweig) {
+            foreach ($this->nodes->subtreeOf($zweig) as $knoten) {
+                if (! $knoten->hide) {
+                    $aus[$knoten->id] = $knoten->name;
+                }
+            }
+        }
+
+        return $aus;
+    }
+
     private function allowedChoiceMarkup(Node $target, array $erlaubt, ?int $gewaehlt, string $fieldName, string $formId, string $locale, Level $level, array $settings, bool $required = false): RenderResult
     {
         $ids    = $gewaehlt === null || in_array($gewaehlt, $erlaubt, true) ? $erlaubt : [...$erlaubt, $gewaehlt];

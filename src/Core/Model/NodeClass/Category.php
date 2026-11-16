@@ -51,6 +51,27 @@ final class Category implements NodeClass
 
     public const RASTER_FELDER = 'raster_felder';
 
+    /**
+     * D-1379: at the use site (this node, a field), which branches a choice offers — the nodes named and everything below them; empty: the
+     * whole target. Inherited down, the nearest owner naming it wins. *His case: a resistor in «THT» chooses only THT packages.*
+     *
+     * @var list<int> Knoten
+     */
+    #[Attribut(listOf: 'node')]
+    public array $wahl_unter = [];
+
+    public const WAHL_UNTER = 'wahl_unter';
+
+    /**
+     * D-1379: at the use site, the choice that stands chosen while the record holds none — saved with the record, changeable.
+     *
+     * @var list<int> one node; the first counts
+     */
+    #[Attribut(listOf: 'node')]
+    public array $wahl_vorgabe = [];
+
+    public const WAHL_VORGABE = 'wahl_vorgabe';
+
     public static function allowedChildClasses(): array
     {
         return [];
