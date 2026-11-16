@@ -88,9 +88,6 @@ final class SettingsScreen
     /** Wie viele Datensätze die Knotenseite je Seite zeichnet ([D-763](../../../docs/NewConcept/90-decision-log.md)). */
     public const RECORDS_PER_PAGE = 'taxmod_records_per_page';
 
-    /** The choices for {@see abilityBackupRow()}; 0 copies every time (D-1406). */
-    private const ABILITY_BACKUP_MINUTES = [0, 10, 30, 60, 120];
-
     /** Ob ein Klick im Baum die Seite stehen lässt oder nach oben springt ([D-807](../../../docs/NewConcept/90-decision-log.md)). */
     public const TREE_CLICK = 'taxmod_tree_click';
 
@@ -242,7 +239,6 @@ final class SettingsScreen
             . $this->recordsPerPageRow()
             . $this->treeClickRow()
             . $this->autosaveRow()
-            . $this->abilityBackupRow()
             . $this->sizeRow(self::ICON_SIZE, __('Icon size', 'taxmod'), self::defaultIconSize(), __('Every icon of Taxmod and its modules: the tree, the buttons, the lists.', 'taxmod'))
             . $this->sizeRow(self::FONT_SIZE, __('Text size', 'taxmod'), self::defaultFontSize(), __('The names in the tree. The owner asked for these two together, because a 17px glyph beside 13px text reads as a mistake.', 'taxmod'))
             . '</tbody></table>'
@@ -434,25 +430,6 @@ final class SettingsScreen
             __('Records per page', 'taxmod'),
             \Taxmod\Core\Renderer\SelectMarkup::of('records_per_page', $options, (string) self::recordsPerPage(), false),
             __('How many records a node page draws at once. Drawing a record costs time; the rest are a page away.', 'taxmod')
-        );
-    }
-
-    /** How long a safety copy an ability made stands for the next change lists (D-1406). */
-    private function abilityBackupRow(): string
-    {
-        $options = [];
-
-        foreach (self::ABILITY_BACKUP_MINUTES as $minutes) {
-            $options[$minutes] = $minutes === 0
-                ? __('Every time', 'taxmod')
-                /* translators: %d: minutes */
-                : sprintf(_n('%d minute', '%d minutes', $minutes, 'taxmod'), $minutes);
-        }
-
-        return $this->row(
-            __('Backup before AI changes', 'taxmod'),
-            \Taxmod\Core\Renderer\SelectMarkup::of('ability_backup_minutes', $options, (string) \Taxmod\WordPress\Persistence\Backup::abilityMinutes(), false),
-            __('An AI change list that asks for a backup gets a new full copy only when the last one is older than this. A full copy takes about half a minute and holds the site meanwhile. Before deleting, merging or trashing, a new copy is always made.', 'taxmod')
         );
     }
 
@@ -728,12 +705,6 @@ final class SettingsScreen
             if (in_array($asked, self::SIZES, true)) {
                 update_option($option, $asked, true);
             }
-        }
-
-        $minuten = isset($_POST['ability_backup_minutes']) ? absint($_POST['ability_backup_minutes']) : -1;
-
-        if (in_array($minuten, self::ABILITY_BACKUP_MINUTES, true)) {
-            update_option(\Taxmod\WordPress\Persistence\Backup::ABILITY_MINUTES, $minuten, false);
         }
 
         $jeSeite = isset($_POST['records_per_page']) ? absint($_POST['records_per_page']) : 0;

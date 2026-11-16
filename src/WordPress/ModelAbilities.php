@@ -21,7 +21,6 @@ use Taxmod\Core\Service\Tree;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\WordPress\Admin\NodesScreen;
 use Taxmod\WordPress\Admin\SettingsScreen;
-use Taxmod\WordPress\Persistence\Backup;
 use Taxmod\WordPress\Persistence\WpdbLabelRepository;
 use Taxmod\WordPress\Persistence\Query;
 use Taxmod\WordPress\Persistence\Schema;
@@ -251,7 +250,7 @@ final class ModelAbilities
                             'required'   => ['op'],
                         ],
                     ],
-                    'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('Save the model tables to uploads/taxmod-backups first (without media files, which the change does not touch). A copy younger than the limit under Configuration › General stands instead, except before remove_record, remove_field, merge_field or trash_node; the answer says which copy holds and from when.', 'taxmod')],
+                    'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('No copy is made per change list; the answer names the nightly full copy (uploads/taxmod-backups, the newest seven kept) and when it was made.', 'taxmod')],
                     'brief'   => ['type' => 'boolean', 'default' => false],
                     'dry_run' => ['type' => 'boolean', 'default' => false],
                 ],
@@ -812,12 +811,11 @@ final class ModelAbilities
             return ['dry_run' => array_map(fn (mixed $change): array => $this->mergePreview(is_array($change) ? $change : [], $refs), $changes)];
         }
 
-        // ⚠️ *A full copy took half a minute live; a young one stands for the next change lists, except before throwing
-        // something away (D-1406).*
-        $kopie     = ! $onlyData && ! empty($input['backup'])
-            ? (new Backup())->forAbility(array_map(static fn (mixed $change): string => is_array($change) ? (string) ($change['op'] ?? '') : '', $changes))
-            : null;
-        $sicherung = $kopie['file'] ?? null;
+        // ⚠️ *No copy per change list any more (D-1407): a full copy took half a minute live; the nightly one stands, and the
+        // answer names it.*
+        $nacht     = ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::latest() : null;
+        $sicherung = $nacht['file'] ?? null;
+        $warnung   = ! $onlyData && ! empty($input['backup']) ? \Taxmod\WordPress\Persistence\DailyBackup::warning($nacht) : null;
         $ergebnis  = [];
         $changelog = ($this->changelog)();
 
@@ -858,8 +856,8 @@ final class ModelAbilities
 
         // ⚠️ *brief: the caller already holds its list; echoing every op back is tokens for nothing (D-1210).*
         return ! empty($input['brief'])
-            ? ['count' => count($ergebnis), 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $kopie['made'] ?? null, 'backup_at' => $kopie['at'] ?? null, 'versions' => $versionen]
-            : ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $kopie['made'] ?? null, 'backup_at' => $kopie['at'] ?? null, 'versions' => $versionen];
+            ? ['count' => count($ergebnis), 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]
+            : ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen];
     }
 
     /**

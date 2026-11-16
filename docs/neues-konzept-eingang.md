@@ -1322,3 +1322,11 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Die Preiswarnung ([D-1375](NewConcept/90-decision-log.md)) kam als Feld in den Lager-Reiter. Der Reiter ist von Hand gebaut (`<p><label>`-Zeilen), nicht über den Formular-Renderer; das neue Feld folgt seinen Nachbarn, damit der Reiter in sich einheitlich bleibt (Architektur 15.11.).
 - **Offen:** ob der ganze Reiter auf den Formular-Renderer umgestellt wird — als eigener Schritt, nicht nebenbei.
+
+## INF-125 · Undo je Änderungsnummer ist beschlossen, aber nicht gebaut (2026-11-16)
+
+- **Anlass:** Stefan will keine Sicherung je Änderung mehr, nur eine nächtliche ([D-1407](NewConcept/90-decision-log.md)); was über die eigenen Werkzeuge geändert wird, soll rückgängig machbar sein: *«Und wenn wir da noch Lücken haben, dann müssen wir unsere Tool verbessern.»*
+- **Beschlossen:** [D-172](NewConcept/90-decision-log.md) (Undo als neuer Schritt nach vorn), [D-348](NewConcept/90-decision-log.md)/[D-470](NewConcept/90-decision-log.md) (ein Akt = eine Änderungsnummer).
+- **Gemessen (Code, 0.2.118):** gebaut: nein — es gibt keine Rücknahme eines Akts über seine Nummer. Die `*_history`-Tabellen halten jede alte Zeile; aus dem Papierkorb holt man Knoten zurück (`trash_node`). Für `remove_record`, `remove_field`, `merge_field` und jede Wertänderung gibt es keinen Weg zurück ausser von Hand aus den Schatten oder aus der Nachtsicherung.
+- **Offen:** Umfang und Reihenfolge des Baus von D-172 (welche Ops zuerst), mit dem Architektur-Thread.
+

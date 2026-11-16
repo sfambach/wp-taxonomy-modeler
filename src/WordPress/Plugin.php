@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.117';
+    public const VERSION     = '0.2.118';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -146,6 +146,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\PrintService::boot();
         // D-1307: finished print jobs are removed after the days set under Configuration › Printing.
         \Taxmod\WordPress\Printing\PrintJobRetention::boot($file);
+        // D-1407: one full copy of the model a night, instead of one before every AI change.
+        \Taxmod\WordPress\Persistence\DailyBackup::boot($file);
         \Taxmod\WordPress\Printing\PrintRest::boot();
         \Taxmod\WordPress\Printing\PrintJobsScreen::boot();
         // D-1206: the scanner's test page, a tab of the Configuration.
