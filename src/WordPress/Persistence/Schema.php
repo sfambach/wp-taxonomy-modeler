@@ -4398,7 +4398,8 @@ final class Schema
         foreach ($quellen as [$name, $spalte]) {
             $tabelle = self::table($name);
 
-            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $tabelle)) !== $tabelle) {
+            // *Since version 34 `labels` is flat and has no `owner_id`; reading it there was an «Unknown column» on every migration.*
+            if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $tabelle)) !== $tabelle || ! self::hasColumn($tabelle, $spalte)) {
                 continue;
             }
 
