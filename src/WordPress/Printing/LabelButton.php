@@ -258,7 +258,7 @@ final class LabelButton
         if (! empty($post['taxmod_ajax'])) {
             wp_send_json_error(['message' => wp_strip_all_tags($message)], $status);
         }
-        wp_die($message, '', ['response' => $status]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped by the caller.
+        \Taxmod\WordPress\Admin\ListPage::fail(html_entity_decode(wp_strip_all_tags($message), ENT_QUOTES));
     }
 
     private static function sendPdf(string $pdf, string $code): never

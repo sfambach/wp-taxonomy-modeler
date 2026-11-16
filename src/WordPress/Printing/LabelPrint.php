@@ -43,14 +43,14 @@ final class LabelPrint
     public function handle(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot print labels.', 'taxmod'), '', ['response' => 403]);
+            \Taxmod\WordPress\Admin\ListPage::fail(__('You cannot print labels.', 'taxmod'));
         }
 
-        check_admin_referer(self::ACTION, self::NONCE);
+        \Taxmod\WordPress\Admin\ListPage::nonce(self::ACTION, self::NONCE);
 
         $pdf = $this->pdfFor(wp_unslash($_GET));
         if ($pdf instanceof \WP_Error) {
-            wp_die(esc_html($pdf->get_error_message()), '', ['response' => 400]);
+            \Taxmod\WordPress\Admin\ListPage::fail($pdf->get_error_message());
         }
         $code = isset($_GET['code']) ? sanitize_text_field(wp_unslash((string) $_GET['code'])) : 'test';
 

@@ -87,7 +87,8 @@ function bareDies(string $c): int
         $line   = ltrim(substr($c, (int) strrpos(substr($c, 0, $at), "\n"), 200));
         $before = substr($c, max(0, $at - 400), min(400, $at));
 
-        if (str_starts_with($line, '//') || str_starts_with($line, '*') || str_starts_with($line, '/*')) {
+        // A line that names its reason (`// G12: …`, with owner) is shown on purpose, e.g. a fragment fetched by script.
+        if (str_starts_with($line, '//') || str_starts_with($line, '*') || str_starts_with($line, '/*') || str_contains(strtok($line, "\n"), '// G12:')) {
             continue;
         }
 

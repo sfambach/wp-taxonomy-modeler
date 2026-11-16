@@ -105,21 +105,21 @@ final class Documents
     public static function handleDownload(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You may not open this document.', 'taxmod'), '', ['response' => 403]);
+            \Taxmod\WordPress\Admin\ListPage::fail(__('You may not open this document.', 'taxmod'));
         }
 
         $key = sanitize_key((string) wp_unslash($_GET['key'] ?? ''));
-        check_admin_referer(self::ACTION . '_' . $key);
+        \Taxmod\WordPress\Admin\ListPage::nonce(self::ACTION . '_' . $key);
         $meta = self::meta($key);
 
         if ($meta === null) {
-            wp_die(esc_html__('This document is not there, or it no longer opens with this site\'s keys.', 'taxmod'), '', ['response' => 404]);
+            \Taxmod\WordPress\Admin\ListPage::fail(__('This document is not there, or it no longer opens with this site\'s keys.', 'taxmod'));
         }
 
         try {
             $content = self::box()->open((string) file_get_contents(self::folder() . '/' . $key . '.bin'));
         } catch (SecretDoesNotOpen) {
-            wp_die(esc_html__('This document is not there, or it no longer opens with this site\'s keys.', 'taxmod'), '', ['response' => 404]);
+            \Taxmod\WordPress\Admin\ListPage::fail(__('This document is not there, or it no longer opens with this site\'s keys.', 'taxmod'));
         }
 
         nocache_headers();

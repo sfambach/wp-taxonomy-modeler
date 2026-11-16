@@ -617,10 +617,10 @@ final class SettingsScreen
     public function handlePost(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot change these.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot change these.', 'taxmod'));
         }
 
-        check_admin_referer(self::ACTION, '_taxmod_nonce');
+        ListPage::nonce(self::ACTION, '_taxmod_nonce');
 
         $reiter = self::moduleTabs();
         $tab    = isset($_POST['tab']) ? sanitize_key(wp_unslash((string) $_POST['tab'])) : '';

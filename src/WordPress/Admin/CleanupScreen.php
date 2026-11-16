@@ -296,7 +296,7 @@ final class CleanupScreen
     public function handlePost(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot tidy this up.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot tidy this up.', 'taxmod'));
         }
 
         // ⚠️ *Two values are read **before** the nonce because the nonce is built out of them — the
@@ -305,7 +305,7 @@ final class CleanupScreen
         $act    = isset($_POST['do']) ? sanitize_key(wp_unslash($_POST['do'])) : '';
         $target = isset($_POST['taxmod_target']) ? absint($_POST['taxmod_target']) : 0;
 
-        check_admin_referer(self::ACTION . '_' . $act . '_' . $target, '_taxmod_nonce');
+        ListPage::nonce(self::ACTION . '_' . $act . '_' . $target, '_taxmod_nonce');
 
         $this->changelog->beginAct();
 

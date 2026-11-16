@@ -1527,7 +1527,7 @@ final class NodesScreen
     public function handleSharedBody(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]);
+            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
         check_admin_referer(self::SHARED_BODY_ACTION, '_taxmod_nonce');
@@ -1536,7 +1536,7 @@ final class NodesScreen
         $koerper    = preg_match('/^b[0-9a-f]{12}$/', $schluessel) === 1 ? get_transient('taxmod_body_' . $schluessel) : false;
 
         if (! is_string($koerper)) {
-            wp_die(esc_html__('This list is no longer available. Please reload the page.', 'taxmod'), '', ['response' => 404]);
+            wp_die(esc_html__('This list is no longer available. Please reload the page.', 'taxmod'), '', ['response' => 404]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
         header('Content-Type: text/html; charset=utf-8');
@@ -7554,7 +7554,7 @@ final class NodesScreen
     public function handleInheritedFields(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]);
+            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
         $id = isset($_GET['id']) ? absint($_GET['id']) : 0;
@@ -7564,7 +7564,7 @@ final class NodesScreen
         $knoten = $this->editor->find($id);
 
         if ($knoten === null) {
-            wp_die(esc_html__('No such node.', 'taxmod'), '', ['response' => 404]);
+            wp_die(esc_html__('No such node.', 'taxmod'), '', ['response' => 404]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
         header('Content-Type: text/html; charset=utf-8');
@@ -7589,7 +7589,7 @@ final class NodesScreen
     public function handleFieldSettings(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]);
+            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
         $id = isset($_GET['id']) ? absint($_GET['id']) : 0;
@@ -7610,7 +7610,7 @@ final class NodesScreen
         $knoten = $this->editor->find($id);
 
         if ($kante === null || $knoten === null) {
-            wp_die(esc_html__('No such field here.', 'taxmod'), '', ['response' => 404]);
+            wp_die(esc_html__('No such field here.', 'taxmod'), '', ['response' => 404]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
         // ⚠️ *Ausgegeben wird, was der Kern zeichnet — der Rand hängt nichts an. `wp_kses_post()`
@@ -7650,12 +7650,12 @@ final class NodesScreen
     public function handlePost(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You are not allowed to shape the model.', 'taxmod'));
         }
 
         $id = isset($_POST['id']) ? absint($_POST['id']) : 0;
 
-        check_admin_referer(self::ACTION . '_' . $id, '_taxmod_nonce');
+        ListPage::nonce(self::ACTION . '_' . $id, '_taxmod_nonce');
 
 
         // ⚠️ **`do` may arrive as an array**, because a settings row's act names its key in the

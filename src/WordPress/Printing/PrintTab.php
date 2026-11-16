@@ -61,9 +61,9 @@ final class PrintTab
     public static function handle(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot change the printing settings.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot change the printing settings.', 'taxmod'));
         }
-        check_admin_referer(self::ACTION, self::NONCE);
+        ListPage::nonce(self::ACTION, self::NONCE);
         self::act(wp_unslash($_POST));
         wp_safe_redirect(wp_get_referer() ?: admin_url());
         exit;
