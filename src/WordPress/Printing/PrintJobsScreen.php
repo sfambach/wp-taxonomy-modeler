@@ -142,9 +142,9 @@ final class PrintJobsScreen
     public function handle(string $doing): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot manage print jobs.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot manage print jobs.', 'taxmod'));
         }
-        check_admin_referer(self::ACTION);
+        ListPage::nonce(self::ACTION);
 
         $ids = isset($_REQUEST['job'])
             ? [absint(wp_unslash((string) $_REQUEST['job']))]

@@ -64,10 +64,10 @@ final class BackupScreen
     public function handleDownload(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot download this backup.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot download this backup.', 'taxmod'));
         }
 
-        check_admin_referer(self::DOWNLOAD_ACTION, '_taxmod_nonce');
+        ListPage::nonce(self::DOWNLOAD_ACTION, '_taxmod_nonce');
 
         require_once ABSPATH . 'wp-admin/includes/file.php';
 
@@ -96,10 +96,10 @@ final class BackupScreen
     public function handleRestore(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot restore a backup.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot restore a backup.', 'taxmod'));
         }
 
-        check_admin_referer(self::RESTORE_ACTION, '_taxmod_nonce');
+        ListPage::nonce(self::RESTORE_ACTION, '_taxmod_nonce');
 
         if (! isset($_POST['taxmod_confirm']) || sanitize_key(wp_unslash($_POST['taxmod_confirm'])) !== '1') {
             $this->redirectWith(['error' => __('Nothing was restored: the confirmation was not ticked.', 'taxmod')]);

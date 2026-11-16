@@ -89,10 +89,10 @@ final class ChangeListImport
     public function handle(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot import change lists.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot import change lists.', 'taxmod'));
         }
 
-        check_admin_referer(self::ACTION, '_taxmod_nonce');
+        ListPage::nonce(self::ACTION, '_taxmod_nonce');
 
         $pending = get_transient(self::PENDING . get_current_user_id());
         $weiter  = isset($_POST['taxmod_continue']) && is_array($pending) && is_readable((string) ($pending['file'] ?? ''));

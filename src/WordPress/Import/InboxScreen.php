@@ -589,10 +589,10 @@ final class InboxScreen
     public function handleFetchAll(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
-        check_admin_referer(self::FETCH_ALL);
+        ListPage::nonce(self::FETCH_ALL);
 
         /* translators: %d: number of proposals */
         $this->finish(sprintf(__('%d new proposals.', 'taxmod'), (new Inbox($this->table))->runAll()));
@@ -654,10 +654,10 @@ final class InboxScreen
     private function postedSource(string $action): ?ImportSource
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
-        check_admin_referer($action);
+        ListPage::nonce($action);
 
         return Sources::find(isset($_POST['source']) ? sanitize_key(wp_unslash((string) $_POST['source'])) : '');
     }
@@ -677,10 +677,10 @@ final class InboxScreen
     public function handleDiscardSelected(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
-        check_admin_referer(self::DISCARD_SELECTED);
+        ListPage::nonce(self::DISCARD_SELECTED);
         $ids = [];
 
         foreach ((array) ($_POST['selected'] ?? []) as $group) {
@@ -707,10 +707,10 @@ final class InboxScreen
     public function handleTakeSelected(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
-        check_admin_referer(self::DISCARD_SELECTED);
+        ListPage::nonce(self::DISCARD_SELECTED);
         $taken = 0;
         $failed = [];
 
@@ -1007,11 +1007,11 @@ final class InboxScreen
     private function postedRows(): array
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
-            wp_die(esc_html__('You cannot do this.', 'taxmod'), '', ['response' => 403]);
+            ListPage::fail(__('You cannot do this.', 'taxmod'));
         }
 
         $ids = array_values(array_filter(array_map('absint', explode(',', isset($_POST['proposals']) ? sanitize_text_field(wp_unslash((string) $_POST['proposals'])) : ''))));
-        check_admin_referer(self::nonceAction($ids));
+        ListPage::nonce(self::nonceAction($ids));
 
         return $this->table->openRows($ids);
     }
