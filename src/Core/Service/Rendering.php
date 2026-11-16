@@ -5285,6 +5285,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $feldwahlJeKnoten   = [];
         $rasterJeKnoten     = [];
         $massJeKnoten       = [];
+        $kantenWahl         = [];
         $textfelderJeKnoten = [];
         $artNamen           = [];
 
@@ -5367,6 +5368,35 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $alleFelder = $this->relations->fieldRelationsOf(array_values(array_unique($alleBesitzer)));
             $typen      = $this->typesOf($alleFelder);
 
+            // D-1402: a choice made at the edge a part is reached through speaks for the part's word inside a name too — the pin rows of a
+            // display read their signals «GND / VCC / SCL / SDA», while elsewhere they keep their own word.
+            foreach ($alleFelder as $feld) {
+                if ($feld->isSetting() || isset($typen[$feld->id])) {
+                    continue;
+                }
+
+                $ziel = $this->gemerkterKnoten($feld->toNodeId);
+
+                if ($ziel === null) {
+                    continue;
+                }
+
+                $gewaehlt = [];
+                $anKante  = false;
+
+                foreach ($this->resolver->listOf($ziel, SummaryRenderer::FIELDS, $feld) as $glied) {
+                    $anKante = $anKante || $glied->setHere;
+
+                    if ($glied->aktiv && $glied->reference !== null) {
+                        $gewaehlt[] = (int) $glied->reference;
+                    }
+                }
+
+                if ($anKante && $gewaehlt !== []) {
+                    $kantenWahl[$feld->id] = $gewaehlt;
+                }
+            }
+
             // *Der Name des Knotens jedes Satzes — für ein Glied {@see self::KNOTENNAME} der Feldwahl (D-954 Regel 4).*
             foreach ($this->gemerkteKnoten(array_keys($knotenIds)) as $knoten) {
                 $artNamen[$knoten->id] = $knoten->name;
@@ -5416,7 +5446,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         $bezugsWaehrung = $this->referenceCurrency;
-        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal, $verbinder, $rasterJeKnoten, $massJeKnoten): string {
+        $eigenesWort = static function (int $satzId, array $feldIds, int $stufe = 0, bool $ohneWahl = false) use (&$wort, &$eigenesWort, $werte, $saetze, $erstesTextfeld, $feldwahlJeKnoten, $textfelderJeKnoten, $knotenNamen, $zeichen, $istPraefix, $istEinheit, $artNamen, $bezugsWaehrung, $ohneAbstand, $dezimal, $verbinder, $rasterJeKnoten, $massJeKnoten, $kantenWahl): string {
             $teile    = [];
             $knotenId = ($saetze[$satzId] ?? null)?->nodeId;
             $ausWahl  = false;
@@ -5653,7 +5683,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     } elseif ($zeile->value->referenceSpace === ReferenceSpace::Record) {
                         // *Zwei Stufen, dann Schluss (D-935) — ganz unten zählen nur die eigenen Worte des Satzes.*
                         if ($stufe < 2 && $zeile->value->reference !== null) {
-                            $innen = $wort($zeile->value->reference, [], $stufe + 1);
+                            $innen = $wort($zeile->value->reference, $kantenWahl[$feldId] ?? [], $stufe + 1);
 
                             // *Ein Teil ohne Wort zählt nicht.*
                             if ($innen !== '') {

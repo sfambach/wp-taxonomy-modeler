@@ -2930,6 +2930,47 @@ final class RenderingTest extends TestCase
         self::assertSame('Taster' . SummaryRenderer::SEPARATOR . '6 mm × 1 cm', $texte[$gemischt] ?? null, 'different units keep their own word');
     }
 
+    /** D-1402: a part inside a name speaks with the choice made at the edge it is reached through; without one, its own word. */
+    #[Test]
+    public function a_part_inside_a_name_takes_the_choice_of_its_edge(): void
+    {
+        $text      = $this->type('Text');
+        $reihe     = $this->thing('Pinbelegung');
+        $pin       = $this->editor->addField($reihe->id, $text->id, 'pin');
+        $signal    = $this->editor->addField($reihe->id, $text->id, 'signal');
+        $display   = $this->thing('Display');
+        $name      = $this->editor->addField($display->id, $text->id, 'bezeichnung');
+        $belegung  = $this->editor->addField($display->id, $reihe->id, 'pinbelegung', RelationKind::Composition);
+        $stecker   = $this->thing('Stecker');
+        $sName     = $this->editor->addField($stecker->id, $text->id, 'bezeichnung');
+        $sBelegung = $this->editor->addField($stecker->id, $reihe->id, 'pinbelegung', RelationKind::Composition);
+
+        $satz = function (Node $an, $feld) use ($reihe, $pin, $signal): int {
+            $id = $this->records->add(new NodeRecord(0, $an->id, 1, '2026-11-16 16:00:00', RecordType::User));
+
+            foreach ([['1', 'GND'], ['2', 'VCC']] as [$p, $s]) {
+                $teil = $this->records->add(new NodeRecord(0, $reihe->id, 1, '2026-11-16 16:00:00', RecordType::User));
+                $this->records->putValue(RelationRecord::direct($teil, $pin->id, TypedValue::ofText($p)));
+                $this->records->putValue(RelationRecord::direct($teil, $signal->id, TypedValue::ofText($s)));
+                $this->records->putValue(RelationRecord::direct($id, $feld->id, TypedValue::ofRecordReference($teil)));
+            }
+
+            return $id;
+        };
+        $oled = $satz($display, $belegung);
+        $atx  = $satz($stecker, $sBelegung);
+
+        $editor = new SettingsEditor($this->settings, $this->nodes, $this->resolver, ShippedRenderers::registry(), ShippedConverters::registry());
+        $editor->setMembers($reihe, SummaryRenderer::FIELDS, [$signal->id], $belegung);
+        $this->neuZeichnen();
+
+        $texte = $this->rendering->summaryTextsOf([['relation' => $name, 'records' => [$oled], 'fields' => [$belegung->id]]])[$name->id] ?? [];
+        self::assertSame('GND' . Rendering::LIST_JOINER . 'VCC', $texte[$oled] ?? null, 'the edge chooses the signal');
+
+        $texte = $this->rendering->summaryTextsOf([['relation' => $sName, 'records' => [$atx], 'fields' => [$sBelegung->id]]])[$sName->id] ?? [];
+        self::assertSame('1' . Rendering::LIST_JOINER . '2', $texte[$atx] ?? null, 'another edge keeps the own word');
+    }
+
     /** D-1369: a member that already stands in the node's own list is still written at the edge when it is chosen there. */
     #[Test]
     public function choosing_at_an_edge_what_the_node_list_already_holds_composes_it(): void
