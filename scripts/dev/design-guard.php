@@ -117,6 +117,15 @@ $rules = [
     // D-1394: a module names a role (ModelDoor::roles()), never a model id. Counts 12-digit model ids in src/. Measured; failing
     // once the first module has moved to the shared role table.
     'G13 model id in code' => ['D-1394', static fn (string $f, string $c): int => preg_match_all('/(?<![\\d.])1490001\\d{5}(?!\\d)/', $c)],
+    // D-1403 (the page template, his word 16.11. «keine buttons für alles dafür für angeharkt, keine bulk funktion ? toolbar wieder
+    // vergessen»): an act on ticked rows is a choice of the bulk selection (ListPage::bulkBar), never a button of its own — so no
+    // button label speaks of «the ticked ones» (a dialog title inside a bulk choice may). Measured, failing once the last finding is fixed.
+    'G14 own button for ticked rows' => ['D-1403', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : preg_match_all("/(?:<button[^\\n]*?>'\\s*\\.\\s*esc_html|submit_button\\(\\s*(?:esc_html)?)__\\(\\s*'(?:Angehakte|Ausgewählte|Checked|Selected|Ticked)\\b/u", $c)],
+    // D-1403: a list whose rows carry a tick has the one bar of the template — the bulk selection — in the same file.
+    'G15 ticked list without bulk bar' => ['D-1403', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : (preg_match('/check-column[^\n]*<input type=\\?"checkbox"/', $c) === 1 && ! str_contains($c, 'ListPage::bulkBar(') ? 1 : 0)],
+    // His word 16.11. «wir hatten ein seitentemplate festgelegt»: a module page is framed by ListPage::page (list pages) or
+    // ListPage::record (a single record, D-1373), not by its own `<div class="wrap">`. Measured, failing once the last is moved.
+    'G16 page without the template' => ['D-1373, D-1186', static fn (string $f, string $c, bool $module): int => $module && ! preg_match(SHARED_BLOCKS, $f) ? preg_match_all('/<div class=.?"wrap\b/', $c) : 0],
     'G7 style= attribute' =>['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
 ];
 
