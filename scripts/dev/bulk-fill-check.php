@@ -49,6 +49,8 @@ $check('it says how many rows it set', str_contains($dialog, 'data-taxmod-fill-d
 $bar = ListPage::bulkBar('fill-form', 'fill-nonce', [], '2', '', false, ['fill-x' => ['Place for all …', $dialog]]);
 $check('the bulk bar offers it as an asking action', str_contains($bar, 'value="ask:fill-x"') && str_contains($bar, 'data-taxmod-fill="place"'));
 $check('a filling dialog opens without counting selected[]: the rows of another form count themselves', str_contains($bar, '[data-taxmod-fill][for=') && strpos($bar, '[data-taxmod-fill][for=') < strpos($bar, 'n===0'));
+$own = ListPage::bulkBar('own-form', 'own-nonce', [], '2', '', false, ['own-x' => ['Arrived …', '<span>dialog</span>', true]]);
+$check('D-1403: an asking action marked as counting its own rows opens without counting selected[]', str_contains($own, 'data-taxmod-own="1"') && str_contains($own, 'o.dataset.taxmodOwn') && strpos($own, 'o.dataset.taxmodOwn') < strpos($own, 'n===0'));
 $js = (string) @file_get_contents(dirname(__DIR__, 2) . '/assets/admin.js');
 $check('the shared script writes into every ticked row and reports it', str_contains($js, "closest( '[data-taxmod-fill]' )") && str_contains($js, 'taxmodFillDone') && str_contains($js, ':scope > .check-column input[type=checkbox]'));
 

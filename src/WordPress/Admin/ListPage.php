@@ -717,8 +717,9 @@ final class ListPage
      * @param array<string, string> $actions action value => label
      * @param string $filters from {@see self::filters()}, beside the bulk actions
      * @param bool $expandable false for a list whose rows open their own view instead (D-1183): no «Expand all»
-     * @param array<string, array{0: string, 1: string}> $asking dialog switch → choice label, the dialog ({@see self::dialogAction()} joining
-     *                                                     `$formId`): chosen and run, the dialog opens for the rows ticked
+     * @param array<string, array{0: string, 1: string, 2?: bool}> $asking dialog switch → choice label, the dialog ({@see self::dialogAction()} joining
+     *                                                     `$formId`): chosen and run, the dialog opens for the rows ticked; with `true` third
+     *                                                     the dialog opens at once and its own form counts its rows (D-1403)
      */
     public static function bulkBar(string $formId, string $nonceAction, array $actions, string $count, string $filters = '', bool $expandable = true, array $asking = []): string
     {
@@ -731,8 +732,10 @@ final class ListPage
             $options .= '<option value="' . esc_attr($value) . '">' . esc_html($label) . '</option>';
         }
 
-        foreach ($asking as $switch => [$label, $dialog]) {
-            $options .= '<option value="ask:' . esc_attr($switch) . '" data-taxmod-ask="' . esc_attr($switch) . '">' . esc_html($label) . '</option>';
+        foreach ($asking as $switch => $ask) {
+            [$label, $dialog] = $ask;
+            // D-1403: a dialog that submits another form (a receipt form with its own ticks) opens without the bar's count.
+            $options .= '<option value="ask:' . esc_attr($switch) . '" data-taxmod-ask="' . esc_attr($switch) . '"' . (($ask[2] ?? false) ? ' data-taxmod-own="1"' : '') . '>' . esc_html($label) . '</option>';
             $dialogs .= $dialog;
         }
 
@@ -1101,7 +1104,7 @@ final class ListPage
         return "if(this.dataset.taxmodOk||(event.submitter&&event.submitter.name)){delete this.dataset.taxmodOk;return true}var f=this,n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
             . "var s=this.querySelector('select');if(!s.value){return false}"
             // A dialog that only fills the ticked rows of a form ({@see self::fillAction()}) counts those rows itself.
-            . "var o=s.options[s.selectedIndex];if(o.dataset.taxmodAsk&&document.querySelector('[data-taxmod-fill][for=\"'+o.dataset.taxmodAsk+'\"]')){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
+            . "var o=s.options[s.selectedIndex];if(o.dataset.taxmodAsk&&(o.dataset.taxmodOwn||document.querySelector('[data-taxmod-fill][for=\"'+o.dataset.taxmodAsk+'\"]'))){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
             . 'if(n===0){alert(' . $none . ');return false}'
             . "if(o.dataset.taxmodAsk){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
             . 'taxmodConfirm(' . $message . ".replace('%1\$s',s.options[s.selectedIndex].text).replace('%2\$d',n),function(){f.dataset.taxmodOk=1;f.requestSubmit()});return false";
