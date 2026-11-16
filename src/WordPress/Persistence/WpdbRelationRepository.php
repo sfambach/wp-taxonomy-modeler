@@ -204,8 +204,9 @@ final class WpdbRelationRepository implements RelationRepository
                     'multiplicity' => $relation->multiplicity->value,
                     'read_only'    => $relation->readOnly ? 1 : 0,
                     'is_unique'    => $relation->unique ? 1 : 0,
+                    'created_by_group_id' => ActStamp::for('relations', 'created_by_group_id'),
                 ],
-                ['%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%d']
+                ['%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d']
             );
 
             $relation = $relation->withAssignedId((int) $wpdb->insert_id);
@@ -228,8 +229,9 @@ final class WpdbRelationRepository implements RelationRepository
                 'multiplicity' => $relation->multiplicity->value,
                 'read_only'    => $relation->readOnly ? 1 : 0,
                 'is_unique'    => $relation->unique ? 1 : 0,
+                'created_by_group_id' => ActStamp::for('relations', 'created_by_group_id'),
             ],
-            ['%d', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%d']
+            ['%d', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d']
         );
 
         $this->writeName($relation, true);
@@ -612,6 +614,8 @@ final class WpdbRelationRepository implements RelationRepository
             }
 
             $spalten['version'] = (int) $zeile['version'] + 1;
+            // *Zurückgeholt ist angelegt: das Undo dieses Akts parkt sie wieder (D-1410).*
+            $spalten['created_by_group_id'] = ActStamp::for('settings_value', 'created_by_group_id');
 
             $wpdb->insert($lebend, $spalten, array_fill(0, count($spalten), '%s'));
 
@@ -668,6 +672,8 @@ final class WpdbRelationRepository implements RelationRepository
         }
 
         $spalten['version'] = (int) $zeile['version'] + 1;
+        // *Zurückgeholt ist angelegt: das Undo dieses Akts parkt sie wieder (D-1410).*
+        $spalten['created_by_group_id'] = ActStamp::for('relations', 'created_by_group_id');
 
         $wpdb->insert(Schema::table('relations'), $spalten, array_fill(0, count($spalten), '%s'));
 
@@ -754,6 +760,8 @@ final class WpdbRelationRepository implements RelationRepository
             }
 
             $spalten['version'] = (int) $zeile['version'] + 1;
+            // *Zurückgeholt ist angelegt: das Undo dieses Akts parkt sie wieder (D-1410).*
+            $spalten['created_by_group_id'] = ActStamp::for('relation_records', 'created_by_group_id');
 
             $wpdb->insert($lebend, $spalten, array_fill(0, count($spalten), '%s'));
 

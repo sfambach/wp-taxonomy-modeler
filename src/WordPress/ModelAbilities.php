@@ -76,6 +76,7 @@ final class ModelAbilities
         'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
         'create_record' => '{node, record_type?, values?, locale?} — values as for set_values, written in the same act',
         'set_values' => '{record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}',
+        'undo_act' => '{act} — takes back change number act (the "act" of an earlier answer) as a new change: what it created is removed, what it changed or deleted gets its state from before, labels their text. Refused, naming the change, if another change wrote the same data since — take that back first; nothing is undone in part. Through write-data only a change that wrote records alone (D-1410)',
         'remove_record' => '{record} — removes the record with its own parts, nested ones included; refused while a record outside it references one of its parts, naming who',
         'reorder_values' => '{record, field, order: [record or node ids]} — stores the references the field holds in this order (e.g. pin rows by pin number); order must name exactly what the field holds, each once (D-1404)',
         'move_part' => '{part, to, field} — hangs a part held through field onto another record\'s list of the same field, keeping its id',
@@ -106,7 +107,10 @@ final class ModelAbilities
     // D-1073: moving a record is data too — the stock's material page moves a material to another group.
     // D-1098: a part changing its head is data too — the stock moves a purchase between a requirement and a supplier draft.
     // D-1135: copying a record is data too — the stock copies a material and a storage place.
-    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record'];
+    private const DATA_OPS = ['create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'undo_act'];
+
+    /** Whether the running change list came through `write-data` — an undo there may only take back record rows (D-1410). */
+    private bool $onlyRecords = false;
 
     /**
      * @param \Closure(): NodesScreen $screen Erst beim Ausführen gebaut — das Registrieren läuft in jeder Anfrage.
@@ -204,7 +208,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/apply', [
             'label'               => __('Change the model', 'taxmod'),
             'description'         => __(
-                'Applies a list of changes as one act (one change number, all or nothing). Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
+                'Applies a list of changes as one act (one change number, all or nothing). The answer names its change number as "act"; undo_act {act} takes a change back. Ops: create_node, rename_node, trash_node, move_node, add_field, rename_field, remove_field, move_field, retarget_field, merge_field, create_record, set_values, remove_record, move_part, reorder_values, duplicate_record, set_kind, set_multiplicity, move_record, set_list, set_label, set_addons, set_setting, hide_field. Fields and rules of one op: taxmod/help {op}. Any op may carry "ref"; later ops use "@ref" in place of an id. Values are typed as on the admin screen. brief: true answers with the count and the refs only. dry_run: true writes nothing and answers what each merge_field would move (records, both, duplicates); only merge_field.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -218,7 +222,8 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
+                                'act'         => ['type' => 'integer', 'minimum' => 1],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
                                 'parent'      => $ziel,
@@ -281,7 +286,7 @@ final class ModelAbilities
         wp_register_ability('taxmod/write-data', [
             'label'               => __('Write records', 'taxmod'),
             'description'         => __(
-                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record, move_part, reorder_values, duplicate_record on user records. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
+                'Like taxmod/apply, but only for data: create_record, set_values, remove_record, move_record, move_part, reorder_values, duplicate_record on user records, and undo_act {act} for a change that wrote records only. Nodes, fields and settings cannot be changed here. One change number, all or nothing; "ref" and "@ref" work as in apply.',
                 'taxmod'
             ),
             'category'            => self::CATEGORY,
@@ -296,6 +301,7 @@ final class ModelAbilities
                             'type'       => 'object',
                             'properties' => [
                                 'op'        => ['type' => 'string', 'enum' => self::DATA_OPS],
+                                'act'       => ['type' => 'integer', 'minimum' => 1],
                                 'ref'       => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'node'      => $ziel,
                                 'record'    => $ziel,
@@ -820,6 +826,8 @@ final class ModelAbilities
         $changelog = ($this->changelog)();
 
         $changelog->beginAct();
+        $this->onlyRecords = $onlyData;
+        $akt               = null;
         $erwartet = RecordStamp::fromList(is_array($input['expect'] ?? null) ? array_values(array_filter($input['expect'], 'is_array')) : []);
 
         try {
@@ -845,8 +853,12 @@ final class ModelAbilities
                     $ergebnis[] = ['op' => (string) $change['op'], 'id' => $id];
                 }
             });
+
+            // *The number of this act, for its undo (D-1410); null when nothing was journaled.*
+            $akt = $changelog->currentAct();
         } finally {
             $changelog->endAct();
+            $this->onlyRecords = false;
         }
 
         $beruehrt = array_values(array_unique([...$erwartet->ids(), ...array_filter(array_column($ergebnis, 'id'), 'is_int')]));
@@ -856,8 +868,8 @@ final class ModelAbilities
 
         // ⚠️ *brief: the caller already holds its list; echoing every op back is tokens for nothing (D-1210).*
         return ! empty($input['brief'])
-            ? ['count' => count($ergebnis), 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]
-            : ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen];
+            ? ['count' => count($ergebnis), 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen]
+            : ['applied' => $ergebnis, 'act' => $akt, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $nacht === null ? null : false, 'backup_at' => $nacht['at'] ?? null, 'backup_warning' => $warnung, 'versions' => $versionen];
     }
 
     /**
@@ -1002,6 +1014,9 @@ final class ModelAbilities
 
                 return $recordId;
 
+            case 'undo_act':
+                return \Taxmod\WordPress\Persistence\Restore::act((int) ($change['act'] ?? 0), ($this->changelog)(), $this->onlyRecords)['undone_by'];
+
             case 'move_part':
                 // ⚠️ *D-1098, his word «f2 wecheln erlauben»: the part is re-hung, not created anew — its id and every reference to it stay.*
                 $partId = $at('part');
@@ -1132,15 +1147,15 @@ final class ModelAbilities
         $op = (string) ($change['op'] ?? '');
 
         if (! in_array($op, self::DATA_OPS, true)) {
-            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, move_record, move_part, reorder_values and duplicate_record are allowed here.");
+            throw new \InvalidArgumentException("{$op} changes the model; only create_record, set_values, remove_record, move_record, move_part, reorder_values, duplicate_record and undo_act are allowed here.");
         }
 
         if (isset($change['record_type']) && (string) $change['record_type'] !== RecordType::User->value) {
             throw new \InvalidArgumentException('Only user records can be written here.');
         }
 
-        // *move_part touches two records, the part and its new head; both must be user records.*
-        foreach ($op === 'create_record' ? [] : ($op === 'move_part' ? ['part', 'to'] : ['record']) as $key) {
+        // *move_part touches two records, the part and its new head; both must be user records. undo_act checks its rows itself.*
+        foreach (in_array($op, ['create_record', 'undo_act'], true) ? [] : ($op === 'move_part' ? ['part', 'to'] : ['record']) as $key) {
             $recordId = $this->resolve($change[$key] ?? null, $refs, $key);
             $record   = $this->screen()->entries()->find($recordId) ?? throw new \InvalidArgumentException("No record {$recordId}.");
 

@@ -41,8 +41,9 @@ final class WpdbRecordRepository implements RecordRepository
                 // ⚠️ *`0` heisst «gehört dem Knoten» — der Normalfall und jeder Satz vor Fassung 37
                 // ([D-667](../../../docs/NewConcept/90-decision-log.md)).*
                 'relation_id'  => $record->relationId,
+                'created_by_group_id' => ActStamp::for('node_records', 'created_by_group_id'),
             ],
-            ['%d', '%d', '%s', '%s', '%d']
+            ['%d', '%d', '%s', '%s', '%d', '%d']
         );
 
         return (int) $wpdb->insert_id;
@@ -395,7 +396,11 @@ final class WpdbRecordRepository implements RecordRepository
         $formate = ['%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s'];
 
         if ($value->id === null) {
-            $wpdb->insert(Schema::table('relation_records'), $spalten, $formate);
+            $wpdb->insert(
+                Schema::table('relation_records'),
+                [...$spalten, 'created_by_group_id' => ActStamp::for('relation_records', 'created_by_group_id')],
+                [...$formate, '%d']
+            );
 
             // ⚠️ *Die Spalte hat die Vorgabe `1`, also ist das die Version der neuen Zeile — gelesen
             // aus dem Schema und nicht geraten ({@see Schema}).*

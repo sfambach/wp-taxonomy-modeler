@@ -459,8 +459,13 @@ final class Schema
      *
      * ⚠️ **Fassung 58: `record_reviews`** ([D-1255](../../../docs/NewConcept/90-decision-log.md)) — *welcher schnell angelegte Satz
      * noch «Review nötig» trägt.*
+     *
+     * ⚠️ **Fassung 59: jede Zeile kennt den Akt, der sie angelegt hat, jede Schattenzeile den, der sie abgelegt hat**
+     * ([D-1410](../../../docs/NewConcept/90-decision-log.md)) — *`created_by_group_id` an den sechs lebenden Tabellen und ihren
+     * Schatten, `archived_by_group_id` nur im Schatten. Damit nimmt {@see Restore::act()} einen Akt über seine Nummer zurück. Reine
+     * Ergänzung: `dbDelta` legt die Spalten an, der Bestand bleibt `NULL` und damit unumkehrbar, wie die alten Journalzeilen.*
      */
-    public const VERSION = 58;
+    public const VERSION = 59;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -552,7 +557,7 @@ final class Schema
     public const SHADOW_TABLES = ['nodes_history', 'relations_history', 'node_records_history', 'relation_records_history', 'settings_object_history', 'settings_value_history'];
 
     /** Spalten, die **nur** der Schatten hat und die die Prüfung deshalb übergeht. */
-    public const SHADOW_ONLY = ['deleted', 'archived_at'];
+    public const SHADOW_ONLY = ['deleted', 'archived_at', 'archived_by_group_id'];
 
     /**
      * Spalten, die **nur eine bestimmte** Schattentabelle hat — Tabellenname => Spalten.
@@ -4725,7 +4730,9 @@ final class Schema
                 sort_order int(10) unsigned NOT NULL DEFAULT 0,
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 klasse varchar(191) NOT NULL DEFAULT '',
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
+                KEY created_by_group_id (created_by_group_id),
                 KEY label_id (label_id),
                 KEY implemented_by (implemented_by),
                 UNIQUE KEY one_place (parent_node_id,sort_order)
@@ -4749,7 +4756,9 @@ final class Schema
                 hide tinyint(1) unsigned NOT NULL DEFAULT 0,
                 read_only tinyint(1) unsigned NOT NULL DEFAULT 0,
                 is_unique tinyint(1) unsigned NOT NULL DEFAULT 0,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
+                KEY created_by_group_id (created_by_group_id),
                 UNIQUE KEY one_place (from_node_id,kind,sort_order),
                 KEY to_node_id (to_node_id),
                 KEY label_id (label_id)
@@ -4847,7 +4856,9 @@ final class Schema
                 created_at datetime NOT NULL,
                 record_type varchar(20) NOT NULL DEFAULT 'user',
                 relation_id bigint(20) unsigned NOT NULL DEFAULT 0,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
+                KEY created_by_group_id (created_by_group_id),
                 KEY node_id (node_id),
                 KEY relation_id (relation_id),
                 KEY record_type (record_type)
@@ -4873,7 +4884,9 @@ final class Schema
                 value_ref bigint(20) unsigned DEFAULT NULL,
                 value_ref_kind varchar(20) DEFAULT NULL,
                 value_precision varchar(10) DEFAULT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
+                KEY created_by_group_id (created_by_group_id),
                 KEY of_field (node_record_id,relation_id,locale),
                 KEY relation_id (relation_id),
                 KEY value_ref (value_ref)
@@ -4905,7 +4918,11 @@ final class Schema
                 klasse varchar(191) NOT NULL DEFAULT '',
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
+                archived_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id,version),
+                KEY created_by_group_id (created_by_group_id),
+                KEY archived_by_group_id (archived_by_group_id),
                 KEY archived_at (archived_at)
             ) {$charset};",
 
@@ -4917,7 +4934,9 @@ final class Schema
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 version int(10) unsigned NOT NULL DEFAULT 1,
                 klasse varchar(191) NOT NULL,
-                PRIMARY KEY  (id)
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
+                PRIMARY KEY  (id),
+                KEY created_by_group_id (created_by_group_id)
             ) {$charset};",
 
             // ⚠️ *Genau ein Träger (`node_id` oder `settings_object_id`), die Kante nur als Zusatz,
@@ -4939,7 +4958,9 @@ final class Schema
                 wert_knoten_id bigint(20) unsigned DEFAULT NULL,
                 wert_settings_object_id bigint(20) unsigned DEFAULT NULL,
                 wert_kante_id bigint(20) unsigned DEFAULT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
+                KEY created_by_group_id (created_by_group_id),
                 KEY node_id (node_id),
                 KEY settings_object_id (settings_object_id),
                 KEY relation_id (relation_id),
@@ -4954,7 +4975,11 @@ final class Schema
                 klasse varchar(191) NOT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
+                archived_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id,version),
+                KEY created_by_group_id (created_by_group_id),
+                KEY archived_by_group_id (archived_by_group_id),
                 KEY archived_at (archived_at)
             ) {$charset};",
 
@@ -4976,7 +5001,11 @@ final class Schema
                 wert_kante_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
+                archived_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id,version),
+                KEY created_by_group_id (created_by_group_id),
+                KEY archived_by_group_id (archived_by_group_id),
                 KEY archived_at (archived_at)
             ) {$charset};",
 
@@ -4996,7 +5025,11 @@ final class Schema
                 is_unique tinyint(1) unsigned NOT NULL DEFAULT 0,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
+                archived_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id,version),
+                KEY created_by_group_id (created_by_group_id),
+                KEY archived_by_group_id (archived_by_group_id),
                 KEY archived_at (archived_at),
                 KEY from_node_id (from_node_id)
             ) {$charset};",
@@ -5018,7 +5051,11 @@ final class Schema
                 relation_id bigint(20) unsigned NOT NULL DEFAULT 0,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
+                archived_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id,version),
+                KEY created_by_group_id (created_by_group_id),
+                KEY archived_by_group_id (archived_by_group_id),
                 KEY archived_at (archived_at)
             ) {$charset};",
 
@@ -5040,7 +5077,11 @@ final class Schema
                 parked_by_group_id bigint(20) unsigned DEFAULT NULL,
                 deleted tinyint(1) unsigned NOT NULL DEFAULT 0,
                 archived_at datetime NOT NULL,
+                created_by_group_id bigint(20) unsigned DEFAULT NULL,
+                archived_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id,version),
+                KEY created_by_group_id (created_by_group_id),
+                KEY archived_by_group_id (archived_by_group_id),
                 KEY archived_at (archived_at),
                 KEY of_record (node_record_id)
             ) {$charset};",

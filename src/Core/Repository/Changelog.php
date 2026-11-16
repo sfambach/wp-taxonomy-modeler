@@ -39,6 +39,9 @@ interface Changelog
     /** Close the innermost act; the outermost close ends the grouping. */
     public function endAct(): void;
 
+    /** The number of the act that is open now, once its first row stands; null outside an act (D-1410). */
+    public function currentAct(): ?int;
+
     /**
      * Write one row.
      *

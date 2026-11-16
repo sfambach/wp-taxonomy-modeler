@@ -57,8 +57,23 @@ final class WpdbChangelog implements Changelog
         }
 
         if ($this->depth === 0) {
+            // ⚠️ *Rows the act wrote after its last journal row, or an act that wrote and journaled nothing: they still get a
+            // number, so nothing a tool wrote stands outside every act (D-1410).*
+            if (ActStamp::hasPending()) {
+                $this->depth = 1;
+                $this->record(0, 'installation', 'rows written', null, null, null);
+                $this->depth = 0;
+            }
+
             $this->openAct = null;
+            ActStamp::close();
         }
+    }
+
+    /** The number of the act that is open now, once its first row stands — the number an undo takes (D-1410). */
+    public function currentAct(): ?int
+    {
+        return $this->openAct;
     }
 
     public function record(
@@ -109,6 +124,8 @@ final class WpdbChangelog implements Changelog
         );
 
         if ($changeGroupId !== null) {
+            ActStamp::settle($changeGroupId, $this->depth > 0);
+
             return $changeGroupId;
         }
 
@@ -126,6 +143,8 @@ final class WpdbChangelog implements Changelog
         if ($this->depth > 0) {
             $this->openAct ??= $opened;
         }
+
+        ActStamp::settle($opened, $this->depth > 0);
 
         return $opened;
     }
@@ -194,6 +213,8 @@ final class WpdbChangelog implements Changelog
         ));
 
         if ($changeGroupId !== null) {
+            ActStamp::settle($changeGroupId, $this->depth > 0);
+
             return $changeGroupId;
         }
 
@@ -209,6 +230,8 @@ final class WpdbChangelog implements Changelog
         if ($this->depth > 0) {
             $this->openAct ??= $opened;
         }
+
+        ActStamp::settle($opened, $this->depth > 0);
 
         return $opened;
     }

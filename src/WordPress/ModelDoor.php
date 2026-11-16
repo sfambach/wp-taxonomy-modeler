@@ -566,7 +566,7 @@ final class ModelDoor
 
     /**
      * @param list<array<string, mixed>> $changes
-     * @return array<string, mixed> the modeller's answer, with the new ids under `refs`
+     * @return array<string, mixed> the modeller's answer, with the new ids under `refs` and its change number under `act` (D-1410)
      */
     public function write(array $changes): array
     {
@@ -574,6 +574,17 @@ final class ModelDoor
         $this->trees = [];
 
         return $this->execute('taxmod/write-data', ['changes' => $changes]);
+    }
+
+    /**
+     * Take back a change this module wrote, by the number its answer named as `act` (D-1410). Refused, naming the other change, when
+     * the same records were written since; only a change that wrote records alone.
+     *
+     * @return array<string, mixed> the modeller's answer; its `act` is the undo's own number
+     */
+    public function undo(int $act): array
+    {
+        return $this->write([['op' => 'undo_act', 'act' => $act]]);
     }
 
     /** @return array<string, mixed> */

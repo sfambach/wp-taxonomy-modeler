@@ -29,7 +29,11 @@ final class WpdbSettingsRepository implements SettingsRepository
     {
         global $wpdb;
 
-        $wpdb->insert(Schema::table('settings_object'), ['version' => $object->version, 'klasse' => $object->klasse], ['%d', '%s']);
+        $wpdb->insert(
+            Schema::table('settings_object'),
+            ['version' => $object->version, 'klasse' => $object->klasse, 'created_by_group_id' => ActStamp::for('settings_object', 'created_by_group_id')],
+            ['%d', '%s', '%d']
+        );
 
         return $object->withAssignedId((int) $wpdb->insert_id);
     }
@@ -70,7 +74,11 @@ final class WpdbSettingsRepository implements SettingsRepository
 
         [$spalten, $formate] = $this->columnsOf($value);
 
-        $wpdb->insert(Schema::table('settings_value'), $spalten, $formate);
+        $wpdb->insert(
+            Schema::table('settings_value'),
+            [...$spalten, 'created_by_group_id' => ActStamp::for('settings_value', 'created_by_group_id')],
+            [...$formate, '%d']
+        );
 
         if ($wpdb->last_error !== '') {
             throw new \RuntimeException('Einstellungszeile schreiben: ' . $wpdb->last_error);

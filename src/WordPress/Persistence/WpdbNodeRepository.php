@@ -224,8 +224,10 @@ final class WpdbNodeRepository implements NodeRepository
             'hide'           => $node->hide ? 1 : 0,
             // ⚠️ *Die Knotenklasse kommt mit der Zeile und bleibt (Fassung 46, [D-716](../../../docs/NewConcept/90-decision-log.md)).*
             'klasse'         => $node->klasse,
+            // *Der Akt, der die Zeile anlegt — sein Undo entfernt sie wieder (D-1410).*
+            'created_by_group_id' => ActStamp::for('nodes', 'created_by_group_id'),
         ];
-        $formate = ['%d', '%s', '%d', '%d', '%d', '%s'];
+        $formate = ['%d', '%s', '%d', '%d', '%d', '%s', '%d'];
 
         if ($node->id !== 0) {
             $spalten = ['id' => $node->id, ...$spalten];

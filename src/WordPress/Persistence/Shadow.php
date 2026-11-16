@@ -86,14 +86,17 @@ final class Shadow
         // ⚠️ *Die Spaltennamen kommen aus `information_schema` und nie von aussen — trotzdem
         // durchgelassen nur, was wie ein Spaltenname aussieht (`CD-6`: nichts Variables ohne
         // Vorbereitung, und was nicht vorbereitbar ist, wird eingeschränkt).*
-        $sql = 'INSERT INTO ' . Schema::table($schatten) . " ({$liste}, deleted, archived_at)
-                SELECT {$liste}, %d, %s FROM " . Schema::table($liveTable) . " WHERE {$where}
-                ON DUPLICATE KEY UPDATE {$neu}, deleted = VALUES(deleted), archived_at = VALUES(archived_at)";
+        // ⚠️ *`archived_by_group_id`: der Akt, der die Zeile hier ablegt — die Schattenzeile ist sein Vorher, und
+        // {@see Restore::act()} findet sie über diese Nummer (D-1410).*
+        $sql = 'INSERT INTO ' . Schema::table($schatten) . " ({$liste}, deleted, archived_at, archived_by_group_id)
+                SELECT {$liste}, %d, %s, %d FROM " . Schema::table($liveTable) . " WHERE {$where}
+                ON DUPLICATE KEY UPDATE {$neu}, deleted = VALUES(deleted), archived_at = VALUES(archived_at), archived_by_group_id = VALUES(archived_by_group_id)";
 
         $written = $wpdb->query($wpdb->prepare(
             $sql,
             $deleted ? 1 : 0,
             gmdate('Y-m-d H:i:s'),
+            ActStamp::for($schatten, 'archived_by_group_id'),
             ...$args
         ));
 
@@ -115,6 +118,18 @@ final class Shadow
     public static function keepOne(string $liveTable, int $id, bool $deleted = false): int
     {
         return self::keep($liveTable, 'id = %d', [$id], $deleted);
+    }
+
+    /**
+     * Die Spalten, die eine lebende Zeile mit ihrer Schattenzeile teilt — was ein Zurückschreiben aus dem Schatten setzen darf.
+     *
+     * @return list<string>
+     */
+    public static function columnsOf(string $liveTable): array
+    {
+        $schatten = self::shadowFor($liveTable) ?? throw new \InvalidArgumentException("«{$liveTable}» hat keinen Schatten.");
+
+        return self::sharedColumns($liveTable, $schatten);
     }
 
     /** Der Schatten zu einer lebenden Tabelle, oder `null`, wenn sie keinen hat. */

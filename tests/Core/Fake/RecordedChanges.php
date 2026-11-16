@@ -40,6 +40,11 @@ final class RecordedChanges implements Changelog
         }
     }
 
+    public function currentAct(): ?int
+    {
+        return $this->openAct;
+    }
+
     public function record(
         int $ownerId,
         string $ownerKind,
