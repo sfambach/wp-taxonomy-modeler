@@ -114,6 +114,9 @@ $rules = [
     // D-1254 (V5): a refusal goes through ListPage::fail/act. A wp_die that only stands in when ListPage is missing (fallback right
     // after `ListPage::fail(` or a `method_exists(…ListPage…)`) is exempt. Measured, not failing yet.
     'G12 bare wp_die' => ['D-1254', static fn (string $f, string $c): int => preg_match(SHARED_BLOCKS, $f) ? 0 : bareDies($c)],
+    // D-1394: a module names a role (ModelDoor::roles()), never a model id. Counts 12-digit model ids in src/. Measured; failing
+    // once the first module has moved to the shared role table.
+    'G13 model id in code' => ['D-1394', static fn (string $f, string $c): int => preg_match_all('/(?<![\\d.])1490001\\d{5}(?!\\d)/', $c)],
     'G7 style= attribute' =>['D-1068', static fn (string $f, string $c): int => preg_match_all('/style=\\\\?["\']/', $c)],
 ];
 

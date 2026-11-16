@@ -150,6 +150,37 @@ final class ModelDoor
     }
 
     /**
+     * The roles of this site (D-1394): which node, field or value a module means by `board_revision`, `revision_layers` …
+     * A module names roles, never ids; a role not set throws `RoleMissing`.
+     */
+    public static function roles(): \Taxmod\Core\Role\RoleMap
+    {
+        return Roles::current();
+    }
+
+    /**
+     * Take a module's own role table into the shared one (D-1394), once per module release while it moves over. Nothing set
+     * is overwritten; a role set to another id comes back as a conflict.
+     *
+     * @param array<string, mixed> $roles {nodes: {name: id}, fields: {…}, values: {…}}
+     * @return list<array{group: string, key: string, stored: int, offered: int}>
+     */
+    public static function adoptRoles(array $roles): array
+    {
+        return Roles::adopt($roles);
+    }
+
+    /**
+     * The required roles modules declared over `taxmod_roles` that this site has not set.
+     *
+     * @return list<array{module: string, group: string, key: string}>
+     */
+    public static function missingRoles(): array
+    {
+        return Roles::missing();
+    }
+
+    /**
      * Whether a group property holds at each of these nodes — its own value or the nearest ancestor's, null where none says (D-1259).
      * Two queries for any number of nodes (CD-7).
      *
