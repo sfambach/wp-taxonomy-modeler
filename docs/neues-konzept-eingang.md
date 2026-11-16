@@ -1331,3 +1331,9 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Entschieden:** [D-1410](NewConcept/90-decision-log.md) — Undo je Änderungsnummer über `undo_act`, für alle Ops von apply und write-data (gebaut 0.2.121).
 - **Gebaut:** Seite «Changes» mit «Undo» je Zeile und in der Sammelauswahl. **Offen:** `labels_history`.
 
+
+## INF-126 · Scrollstand beim Wechsel auf eine andere Seite (2026-11-16)
+
+- **Anlass:** Stefan sah die Platzansicht im Lager als «leere graue Seite»: *«sie ist nicht grau keine fehlermeldung er scrollt nur ganz nach unten»*. `assets/admin.js` stellt den gemerkten Scrollstand der vorigen Seite wieder her («stay», [D-807](NewConcept/90-decision-log.md)); ist die neue Seite kürzer, klemmt der Browser ans Seitenende.
+- **Behoben im Lager:** 0.64.107 hängt an den Link des Platzbaums einen Anker; ein Anker geht vor ([D-788](NewConcept/90-decision-log.md)).
+- **Offen:** ob der Modeller den Scrollstand nur noch auf derselben Ansicht wiederherstellt (dann braucht kein Modul mehr einen Anker). D-807 «stay» gilt für Baumklicks bewusst; die Grenze «dieselbe Ansicht» ist noch nicht beschlossen.
