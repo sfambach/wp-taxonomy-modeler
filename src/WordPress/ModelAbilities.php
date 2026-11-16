@@ -251,7 +251,7 @@ final class ModelAbilities
                             'required'   => ['op'],
                         ],
                     ],
-                    'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('Save the model tables to uploads/taxmod-backups first (without media files, which the change does not touch).', 'taxmod')],
+                    'backup'  => ['type' => 'boolean', 'default' => false, 'description' => __('Save the model tables to uploads/taxmod-backups first (without media files, which the change does not touch). A copy younger than the limit under Configuration › General stands instead, except before remove_record, remove_field, merge_field or trash_node; the answer says which copy holds and from when.', 'taxmod')],
                     'brief'   => ['type' => 'boolean', 'default' => false],
                     'dry_run' => ['type' => 'boolean', 'default' => false],
                 ],
@@ -812,7 +812,12 @@ final class ModelAbilities
             return ['dry_run' => array_map(fn (mixed $change): array => $this->mergePreview(is_array($change) ? $change : [], $refs), $changes)];
         }
 
-        $sicherung = ! $onlyData && ! empty($input['backup']) ? (new Backup())->safetyCopy('vor-ability', false) : null;
+        // ⚠️ *A full copy took half a minute live; a young one stands for the next change lists, except before throwing
+        // something away (D-1406).*
+        $kopie     = ! $onlyData && ! empty($input['backup'])
+            ? (new Backup())->forAbility(array_map(static fn (mixed $change): string => is_array($change) ? (string) ($change['op'] ?? '') : '', $changes))
+            : null;
+        $sicherung = $kopie['file'] ?? null;
         $ergebnis  = [];
         $changelog = ($this->changelog)();
 
@@ -853,8 +858,8 @@ final class ModelAbilities
 
         // ⚠️ *brief: the caller already holds its list; echoing every op back is tokens for nothing (D-1210).*
         return ! empty($input['brief'])
-            ? ['count' => count($ergebnis), 'refs' => $refs, 'backup' => $sicherung, 'versions' => $versionen]
-            : ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'versions' => $versionen];
+            ? ['count' => count($ergebnis), 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $kopie['made'] ?? null, 'backup_at' => $kopie['at'] ?? null, 'versions' => $versionen]
+            : ['applied' => $ergebnis, 'refs' => $refs, 'backup' => $sicherung, 'backup_made' => $kopie['made'] ?? null, 'backup_at' => $kopie['at'] ?? null, 'versions' => $versionen];
     }
 
     /**

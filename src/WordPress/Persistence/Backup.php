@@ -57,6 +57,8 @@ final class Backup
         'taxmod_icon_size',
         'taxmod_font_size',
         'taxmod_show_trash',
+        self::ABILITY_MINUTES,
+        self::ABILITY_LAST,
     ];
 
     /** Der SHA-1 einer eingespielten Datei an ihrem Mediathek-Eintrag — damit ein zweites Einspielen sie wiederfindet. */
@@ -67,6 +69,12 @@ final class Backup
 
     /** Der Ordner für die Sicherung, die jedes Einspielen vorher vom bestehenden Stand anlegt. */
     public const SAFETY_DIR = 'taxmod-backups';
+
+    /** How many minutes a safety copy made for an ability stands for the next ones (D-1406). */
+    public const ABILITY_MINUTES = 'taxmod_ability_backup_minutes';
+
+    /** The last safety copy made for an ability: its file and when. */
+    private const ABILITY_LAST = 'taxmod_ability_backup_last';
 
     /**
      * Den ganzen Stand in eine ZIP-Datei schreiben.
@@ -439,6 +447,35 @@ final class Backup
             'options'  => array_map('strval', (array) ($manifest['options'] ?? [])),
             'media'    => array_values((array) ($manifest['media'] ?? [])),
         ];
+    }
+
+    /**
+     * The safety copy an ability's change list stands on: a new one, or the last one while it is young enough (D-1406).
+     *
+     * @param list<string> $ops
+     * @return array{file: string, made: bool, at: string}
+     */
+    public function forAbility(array $ops): array
+    {
+        $last   = get_option(self::ABILITY_LAST, []);
+        $file   = is_array($last) ? (string) ($last['file'] ?? '') : '';
+        $at     = is_array($last) && isset($last['at']) ? (int) $last['at'] : null;
+        $now    = time();
+
+        if (! \Taxmod\Core\Service\AbilityBackupRule::needsNewCopy($ops, $at, $file !== '' && is_file($file), $now, self::abilityMinutes())) {
+            return ['file' => $file, 'made' => false, 'at' => gmdate('c', (int) $at)];
+        }
+
+        $file = $this->safetyCopy('vor-ability', false);
+        update_option(self::ABILITY_LAST, ['file' => $file, 'at' => $now], false);
+
+        return ['file' => $file, 'made' => true, 'at' => gmdate('c', $now)];
+    }
+
+    /** The limit in minutes; 0 copies every time. */
+    public static function abilityMinutes(): int
+    {
+        return max(0, (int) get_option(self::ABILITY_MINUTES, \Taxmod\Core\Service\AbilityBackupRule::DEFAULT_MINUTES));
     }
 
     /**
