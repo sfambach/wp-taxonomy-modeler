@@ -23,7 +23,7 @@ namespace Taxmod\Core\Import;
  */
 final class OrderComparison
 {
-    public const ROLES = ['merchant', 'ordered_at', 'shipping_cost', 'fees', 'total'];
+    public const ROLES = ['platform', 'merchant', 'ordered_at', 'shipping_cost', 'fees', 'total'];
     private const AMOUNTS = ['shipping_cost', 'fees', 'total'];
 
     /** @return array<string, array{model: ?string, source: string, conflict: bool}> role => both sides, only where they differ */
@@ -34,14 +34,16 @@ final class OrderComparison
         foreach (self::ROLES as $role) {
             $source = self::sourceValue($proposal, $role);
 
-            if ($source === null) {
+            // D-1405: the platform is compared only where the model reports it — an order found by platform and number has it.
+            if ($source === null || ($role === 'platform' && ! array_key_exists('platform', $existing->values))) {
                 continue;
             }
 
             $model = $existing->values[$role] ?? null;
             $model = $model === null || trim($model) === '' ? null : self::normalised($role, $model);
 
-            if ($model === $source) {
+            // D-1405: the platform is a name, «amazon» and «Amazon» are the same shop.
+            if ($model === $source || ($role === 'platform' && $model !== null && mb_strtolower($model) === mb_strtolower($source))) {
                 continue;
             }
 
@@ -126,6 +128,7 @@ final class OrderComparison
     private static function sourceValue(OrderProposal $proposal, string $role): ?string
     {
         $value = match ($role) {
+            'platform'      => $proposal->platform,
             'merchant'      => $proposal->counterparty,
             'ordered_at'    => $proposal->orderDate,
             'shipping_cost' => self::amount($proposal->shippingCost, $proposal->currency),

@@ -81,7 +81,19 @@ final class ModelGateway
             $this->orders = $loaded;
         }
 
-        return $this->orders[self::key($platform, $orderNumber)] ?? null;
+        return $this->orders[self::key($platform, $orderNumber)] ?? $this->orderWithoutPlatform($platform, $orderNumber);
+    }
+
+    /**
+     * D-1405: an order made in the Einkauf before the mail came names no platform. It is the same order only when its merchant
+     * is empty or is the platform itself — the number alone is not enough. What it lacks is then filled (D-964, D-1250).
+     */
+    private function orderWithoutPlatform(string $platform, string $orderNumber): ?ExistingOrder
+    {
+        $order = trim($platform) === '' ? null : ($this->orders[self::key('', $orderNumber)] ?? null);
+        $merchant = mb_strtolower(trim((string) ($order?->counterparty ?? '')));
+
+        return $order !== null && ($merchant === '' || $merchant === mb_strtolower(trim($platform))) ? $order : null;
     }
 
     /** The order a proposal without a number belongs to, by seller or title within 14 days (LooseMatch). */
@@ -209,7 +221,7 @@ final class ModelGateway
         }
 
         foreach ($found as $key => [$id, $tracking, $received, $merchant, $ordered, $title, $parts, $lineIds, $shipper, $shipped]) {
-            $values = array_filter([
+            $values = ['platform' => $this->platforms[$key] ?? ''] + array_filter([
                 'shipper'    => $shipper,
                 'merchant'   => $merchant,
                 'ordered_at' => $ordered === null ? null : substr($ordered, 0, 10),

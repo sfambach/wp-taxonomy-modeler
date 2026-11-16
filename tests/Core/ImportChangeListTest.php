@@ -263,6 +263,18 @@ final class ImportChangeListTest extends TestCase
         self::assertSame([], $builder->completed($existing, $proposal, ['fees']), 'an equal field is not written');
     }
 
+    public function testAnEinkaufOrderWithoutPlatformGetsThePlatformAndKeepsItsMerchant(): void
+    {
+        // D-1405, Amazon 305-3086478-0229130: the Einkauf order names «Amazon» as merchant and no platform; the mail names
+        // the seller. The platform is filled, the merchant stays and is his choice.
+        $existing = new ExistingOrder(85066, values: ['platform' => '', 'merchant' => 'Amazon']);
+        $proposal = new OrderProposal('Amazon', '305-3086478-0229130', ProposalKind::Ordered, counterparty: 'wanruixiaodian');
+
+        self::assertSame(['platform'], OrderComparison::fills($proposal, $existing));
+        self::assertTrue(OrderComparison::hasConflict($proposal, $existing));
+        self::assertNotContains('platform', OrderComparison::fills($proposal, new ExistingOrder(1, values: ['platform' => 'amazon'])), 'the same shop in other case is no news');
+    }
+
     public function testACompletedForeignAmountCarriesTheRateToo(): void
     {
         $rates = new class implements ExchangeRates {

@@ -138,6 +138,15 @@ $pruefe(str_contains((new ReflectionMethod(InboxScreen::class, 'timeline'))->inv
 $tor = new \Taxmod\WordPress\Import\ModelGateway(Targets::load());
 (new ReflectionProperty($tor, 'orders'))->setValue($tor, ['__lead|l-1' => new \Taxmod\Core\Import\ExistingOrder(1, ['LT'])]);
 $pruefe((new InboxScreen())->settle($zeilen, $tor, new \Taxmod\Core\Import\Intake(Duties::load(), array_keys(Sources::all()))) && $tisch->openRows($posten) === [], 'a box that brings nothing new to a known order closes itself instead of waiting to be discarded');
+// D-1405, Amazon 305-3086478-0229130: an Einkauf order without platform is the mail's order only when its merchant is empty or the platform.
+$einkauf = new \Taxmod\WordPress\Import\ModelGateway(Targets::load());
+(new ReflectionProperty($einkauf, 'orders'))->setValue($einkauf, [
+    '|e-1' => new \Taxmod\Core\Import\ExistingOrder(11, counterparty: 'Amazon'),
+    '|e-2' => new \Taxmod\Core\Import\ExistingOrder(12, counterparty: 'Reichelt'),
+    '|e-3' => new \Taxmod\Core\Import\ExistingOrder(13),
+]);
+$pruefe($einkauf->findOrder('Amazon', 'E-1')?->recordId === 11 && $einkauf->findOrder('Amazon', 'E-3')?->recordId === 13 && $einkauf->findOrder('Amazon', 'E-2') === null,
+    'D-1405: an order without platform is found by its number only when its merchant is empty or the mail\'s platform');
 // ⚠️ *D-1065, sein Wort 2026-11-01: «die liegen unbearbeitet in der inbox» — a parcel notice whose tracking number no order brought.*
 $alt = wp_date('Y-m-d H:i:s', time() - (InboxScreen::ORPHAN_DAYS_DEFAULT + 1) * DAY_IN_SECONDS);
 $neu = wp_date('Y-m-d H:i:s');

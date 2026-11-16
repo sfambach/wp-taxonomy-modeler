@@ -229,6 +229,7 @@ final class ChangeListBuilder
         foreach (array_intersect($roles, array_keys($differences)) as $role) {
             $field = (string) $this->target->orderField($role);
             $values[$field] = match ($role) {
+                'platform'      => $proposal->platform,
                 'merchant'      => $proposal->counterparty,
                 'ordered_at'    => $proposal->orderDate,
                 'shipping_cost' => $this->amount($role, $proposal->shippingCost, $currency, $rate, true, $differences[$role]['model'] !== null),

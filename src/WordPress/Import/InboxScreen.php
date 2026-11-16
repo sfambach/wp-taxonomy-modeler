@@ -556,6 +556,7 @@ final class InboxScreen
     private static function fieldLabel(string $role): string
     {
         return match ($role) {
+            'platform'      => __('Platform', 'taxmod'),
             'merchant'      => __('Merchant', 'taxmod'),
             'ordered_at'    => __('Ordered on', 'taxmod'),
             'shipping_cost' => __('Shipping', 'taxmod'),
