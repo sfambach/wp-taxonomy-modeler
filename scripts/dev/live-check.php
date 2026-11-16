@@ -29,6 +29,14 @@ $claims = [
     'the tree search form names the live area'            => str_contains($nodes, "data-taxmod-live=\"' . self::TREE_LIVE") && str_contains($nodes, "'<div id=\"' . self::TREE_LIVE . '\">'"),
     'the fold state is applied to a swapped tree'         => str_contains($admin, "'taxmod:replaced'"),
     'no focus marker is left behind for the next page'    => ! str_contains($admin, 'taxmod.suchfokus'),
+    // D-1408: the projection — an act does not load the page, only what differs is put in place.
+    'an act is sent in the background, after every other submit listener' => str_contains($live, "window.addEventListener( 'submit'") && str_contains($live, 'event.defaultPrevented'),
+    'the answer is put in place row by row, focus untouched' => str_contains($live, 'function morphChildren') && str_contains($live, 'old === document.activeElement'),
+    'another page is navigated to, a file is downloaded'     => str_contains($live, 'pageOf( answer.url ) !== pageOf( window.location.href )') && str_contains($live, 'function download'),
+    'a failed background act submits the form as before'      => str_contains($live, "setAttribute( 'data-taxmod-reload'"),
+    'a save in a dialog brings the page up to date on close'  => str_contains($admin, "'taxmod:saved'") && str_contains($live, "'taxmod:saved'") && str_contains($live, "'taxmod-dialog-switch'"),
+    'a page in a view dialog tells its opener'                => str_contains($live, "'taxmod:frame-saved'"),
+    'notices of a page put in place reach the message field'  => str_contains((string) @file_get_contents($root . '/assets/messages.js'), "'taxmod:replaced'"),
 ];
 
 foreach ($claims as $claim => $holds) {

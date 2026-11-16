@@ -2106,6 +2106,11 @@
 				}
 
 				meldung( ergebnis.message || '', !! ergebnis.ok );
+
+				// D-1408: the page behind a dialog learns that something was saved (assets/live.js brings it up to date).
+				if ( ergebnis.ok ) {
+					formular.dispatchEvent( new CustomEvent( 'taxmod:saved', { bubbles: true, detail: { form: formular } } ) );
+				}
 			} )
 			.catch( function () {
 				var worte = document.getElementById( 'taxmod-words' );

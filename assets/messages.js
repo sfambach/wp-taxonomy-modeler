@@ -166,6 +166,15 @@
 		gather( field );
 	}
 
+	// D-1408: a page put in place by assets/live.js brings its notices like a reload did; they move into the field.
+	document.addEventListener( 'taxmod:replaced', function () {
+		var field = document.querySelector( '.taxmod-messages' );
+
+		if ( field ) {
+			gather( field );
+		}
+	} );
+
 	if ( document.readyState === 'loading' ) {
 		document.addEventListener( 'DOMContentLoaded', start );
 	} else {
