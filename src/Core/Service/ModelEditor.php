@@ -84,6 +84,35 @@ final class ModelEditor
     ) {
     }
 
+    /** @var \Psr\EventDispatcher\EventDispatcherInterface|null Where model changes are sent; by default the one listener that writes the chronicle. */
+    private ?\Psr\EventDispatcher\EventDispatcherInterface $events = null;
+
+    /** Send model changes to this dispatcher instead of the chronicle's own (renderer plan step 3, D-1424). */
+    public function sendingTo(\Psr\EventDispatcher\EventDispatcherInterface $events): static
+    {
+        $this->events = $events;
+
+        return $this;
+    }
+
+    /**
+     * A change in the model, sent as its event; the chronicle's listener writes it and names the act (plan step 3, D-631).
+     * Same parameters as {@see \Taxmod\Core\Repository\Changelog::record()}, so every report stays row for row what it was.
+     */
+    private function report(int $ownerId, string $ownerKind, string $what, ?string $before, ?string $after, ?int $version, ?int $changeGroupId = null): int
+    {
+        return $this->dispatched(\Taxmod\Core\Event\ModelChanged::of($ownerKind, $ownerId, $what, $before, $after, $version, $changeGroupId))->act();
+    }
+
+    /** @template T of object @param T $event @return T */
+    private function dispatched(object $event): object
+    {
+        $this->events ??= \Taxmod\Core\Event\JournalListener::dispatcherFor($this->changelog);
+        $this->events->dispatch($event);
+
+        return $event;
+    }
+
     /**
      * @param class-string<\Taxmod\Core\Model\NodeClass\NodeClass>|null $klasse Die Knotenklasse — oder
      *        `null` für die Vorwahl der Vaterklasse ([D-716](../../../docs/NewConcept/90-decision-log.md),
@@ -144,7 +173,7 @@ final class ModelEditor
             $this->nodes->nextPositionUnder($parent->id),
             $klasse
         ));
-        $this->changelog->record($node->id, 'node', 'created', null, $this->state($node), $node->version);
+        $this->report($node->id, 'node', 'created', null, $this->state($node), $node->version);
 
         // ⚠️ *Hier stand `materialise($parent, $node)` — [D-423](../../../docs/NewConcept/90-decision-log.md)s
         // Kopie dessen, was das Elternteil in der `settings`-Tabelle **auflöste**. Die Tabelle ist
@@ -189,7 +218,7 @@ final class ModelEditor
         }
 
         $this->nodes->save($neu, $node->version);
-        $this->changelog->record($id, 'node', 'class changed', $this->state($node), $this->state($neu), $neu->version);
+        $this->report($id, 'node', 'class changed', $this->state($node), $this->state($neu), $neu->version);
 
         return $neu;
     }
@@ -206,7 +235,7 @@ final class ModelEditor
         }
 
         $this->nodes->save($renamed, $node->version);
-        $this->changelog->record($id, 'node', 'renamed', $this->state($node), $this->state($renamed), $renamed->version);
+        $this->report($id, 'node', 'renamed', $this->state($node), $this->state($renamed), $renamed->version);
 
         return $renamed;
     }
@@ -238,7 +267,7 @@ final class ModelEditor
         }
 
         $this->nodes->save($marked, $node->version);
-        $this->changelog->record(
+        $this->report(
             $id,
             'node',
             'implemented by',
@@ -335,7 +364,7 @@ final class ModelEditor
             throw MultiplicityNotAllowed::byTarget($multiplicity->value, Contracts::of($ziel->klasse)->key);
         }
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             'multiplicity set',
@@ -363,7 +392,7 @@ final class ModelEditor
             return $relation;
         }
 
-        $this->changelog->record($relation->id, 'relation', 'unique set', $relation->unique ? '1' : '0', $geaendert->unique ? '1' : '0', $geaendert->version);
+        $this->report($relation->id, 'relation', 'unique set', $relation->unique ? '1' : '0', $geaendert->unique ? '1' : '0', $geaendert->version);
         $this->relations->save($geaendert, $relation->version);
 
         return $geaendert;
@@ -378,7 +407,7 @@ final class ModelEditor
             return $relation;
         }
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             'read only set',
@@ -402,7 +431,7 @@ final class ModelEditor
             return $relation;
         }
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             $wanted ? 'field hidden' : 'field shown',
@@ -442,7 +471,7 @@ final class ModelEditor
         }
 
         $this->nodes->save($versteckt, $node->version);
-        $this->changelog->record(
+        $this->report(
             $node->id,
             'node',
             $wanted ? 'hidden' : 'shown',
@@ -800,7 +829,7 @@ final class ModelEditor
         );
 
         $relation = $this->relations->add($relation);
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             'attribute added',
@@ -1074,7 +1103,7 @@ final class ModelEditor
 
         // ⚠️ *One entry for the act, against the trash — the individual nodes keep their own history,
         // which is the point of keeping the changelog at all.*
-        $this->changelog->record(
+        $this->report(
             $trash->id,
             'node',
             'trash cleared',
@@ -1197,7 +1226,7 @@ final class ModelEditor
         $this->nodes->moveSubtree($node->path, $grandparent->path);
 
         // The bracket opens here and the parking joins it, so both are one act (D-348).
-        $group = $this->changelog->recordMany($promoted);
+        $group = $this->dispatched(new \Taxmod\Core\Event\ChangedTogether($promoted))->act();
 
         if ($promoted === []) {
             $group = null;
@@ -1229,7 +1258,7 @@ final class ModelEditor
         }
 
         $this->nodes->save($moved, $node->version);
-        $this->changelog->record($id, 'node', 'reordered', (string) $node->sortOrder, (string) $moved->sortOrder, $moved->version);
+        $this->report($id, 'node', 'reordered', (string) $node->sortOrder, (string) $moved->sortOrder, $moved->version);
     }
 
     /**
@@ -1447,7 +1476,7 @@ final class ModelEditor
 
         $relation = $this->ownAttribute($ownerId, $relationId);
 
-        $group = $this->changelog->record(
+        $group = $this->report(
             $relation->id,
             'relation',
             'attribute removed',
@@ -1493,7 +1522,7 @@ final class ModelEditor
             // hätte die Zeile die Version von gestern getragen.*
             $zurueck = $this->relations->unpark($relation->id) ?? $revived;
 
-            $this->changelog->record(
+            $this->report(
                 $relation->id,
                 'relation',
                 'attribute restored',
@@ -1592,7 +1621,7 @@ final class ModelEditor
             return $relation;
         }
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             $art === RelationKind::Setting
@@ -1628,7 +1657,7 @@ final class ModelEditor
 
         $moved = $relation->withOwner($parent->id, $this->relations->nextFieldPositionUnder($parent->id));
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             'field moved to parent',
@@ -1786,7 +1815,7 @@ final class ModelEditor
 
         $moved = $relation->withOwner($neu->id, $this->relations->nextFieldPositionUnder($neu->id));
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             'field moved',
@@ -2027,7 +2056,7 @@ final class ModelEditor
             throw NotAPossibleTarget::storedValuesWouldNotFit(count($unfit));
         }
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             'field retargeted',
@@ -2104,7 +2133,7 @@ final class ModelEditor
         $relation    = $this->ownAttribute($ownerId, $relationId);
         $renamed = $relation->renamedTo($name);
 
-        $this->changelog->record(
+        $this->report(
             $relation->id,
             'relation',
             'attribute renamed',
@@ -2270,7 +2299,7 @@ final class ModelEditor
 
         // ⚠️ *Die Version des **letzten** Schreibvorgangs, nicht die des Zwischenschritts auf die
         // freie Stelle: die Änderung, die hier gemeldet wird, ist der fertige Tausch.*
-        $this->changelog->record($subjectId, $kind, 'reordered', (string) $here, (string) $there, $letzte);
+        $this->report($subjectId, $kind, 'reordered', (string) $here, (string) $there, $letzte);
     }
 
     /**
@@ -2313,7 +2342,7 @@ final class ModelEditor
 
         $this->nodes->save($moved, $node->version);
         $this->nodes->moveSubtree($node->path, $moved->path);
-        $this->changelog->record($id, 'node', $verb, $this->state($node), $this->state($moved), $moved->version, $changeGroup);
+        $this->report($id, 'node', $verb, $this->state($node), $this->state($moved), $moved->version, $changeGroup);
 
         return $moved;
     }

@@ -51,3 +51,12 @@ flowchart LR
 - Zusage `core-has-no-hooks-check`: grün (mit Gegenprobe).
 
 **Angenommen** (*INFERRED*): A5 — die Kennung hängt am Ereignis über eine Schnittstelle `Named`, nicht an einer Basisklasse; `ListenerProvider::heard()` erlaubt dem Aussender in Schritt 4, eine unbekannte Kennung weiter zu werfen (Plan: «eine unbekannte Kennung wirft weiterhin»).
+
+### Schritt 3 · Modellereignisse — gebaut 17.11.2026
+
+- `ModelChanged` mit den vier Arten `NodeChanged`, `EdgeChanged`, `NodeRecordChanged`, `EdgeRecordChanged` (D-631); `ChangedTogether` für das Sammelschreiben beim Parken; `JournalListener` schreibt ins Änderungsbuch und gibt die Aktnummer zurück.
+- `ModelEditor`, `Labels`, `DataEntry`, `SettingsEditor` senden statt selbst zu schreiben (`report()`); `sendingTo()` nimmt einen anderen Dispatcher an, ohne ihn schreibt der eigene Aufzeichnungs-Listener.
+- Zusage `journal-parity-check`: dieselbe Folge schreibt dieselben Zeilen wie der Code vor Schritt 3 (Referenz auf frischer DB geschrieben, auf frischer und gewanderter DB gleich).
+- Die Zeilen, «die `DataEntry` bisher schuldig blieb» (Plan §4): schon seit TASK-056 geschrieben (`DataEntry::melden()`); die Referenz enthält sie (`record`, `record_value`).
+
+**Angenommen** (*INFERRED*): A6 — `SettingsEditor` sendet mit, obwohl der Plan nur drei Dienste nennt: er schreibt ins selbe Buch, ein vierter Weg daran vorbei wäre die Lücke, die Schritt 3 schliesst. A7 — die Ereignisse tragen in Schritt 3 noch keine `Address` (an vielen Meldestellen ist nur die Kante oder der Satz bekannt, nicht der Knoten); sie kommt, wo Schritt 5 sammelt. A8 — Ein gemeinsamer Dispatcher für das ganze Plugin entsteht in Schritt 4, wo die Auslöser ihn brauchen.

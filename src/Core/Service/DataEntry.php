@@ -92,6 +92,35 @@ final class DataEntry
     ) {
     }
 
+    /** @var \Psr\EventDispatcher\EventDispatcherInterface|null Where model changes are sent; by default the one listener that writes the chronicle. */
+    private ?\Psr\EventDispatcher\EventDispatcherInterface $events = null;
+
+    /** Send model changes to this dispatcher instead of the chronicle's own (renderer plan step 3, D-1424). */
+    public function sendingTo(\Psr\EventDispatcher\EventDispatcherInterface $events): static
+    {
+        $this->events = $events;
+
+        return $this;
+    }
+
+    /**
+     * A change in the model, sent as its event; the chronicle's listener writes it and names the act (plan step 3, D-631).
+     * Same parameters as {@see \Taxmod\Core\Repository\Changelog::record()}, so every report stays row for row what it was.
+     */
+    private function report(int $ownerId, string $ownerKind, string $what, ?string $before, ?string $after, ?int $version, ?int $changeGroupId = null): int
+    {
+        return $this->dispatched(\Taxmod\Core\Event\ModelChanged::of($ownerKind, $ownerId, $what, $before, $after, $version, $changeGroupId))->act();
+    }
+
+    /** @template T of object @param T $event @return T */
+    private function dispatched(object $event): object
+    {
+        $this->events ??= \Taxmod\Core\Event\JournalListener::dispatcherFor($this->changelog ?? throw new \LogicException('No chronicle.'));
+        $this->events->dispatch($event);
+
+        return $event;
+    }
+
     /** @var array<int, array{variantOf: int, own: array<int, true>}> node id → its variant fields, asked once */
     private array $variantFields = [];
 
@@ -256,7 +285,9 @@ final class DataEntry
         ?string $after,
         ?int $version,
     ): void {
-        $this->changelog?->record($ownerId, $ownerKind, $what, $before, $after, $version);
+        if ($this->changelog !== null) {
+            $this->report($ownerId, $ownerKind, $what, $before, $after, $version);
+        }
 
         // ⚠️ *Only a change that changed something moves the record (like `Identity::$version`): the same value saved again — every
         // autosave of an untouched field — must not turn the next person's save into a conflict.*

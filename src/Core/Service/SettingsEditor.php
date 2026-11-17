@@ -55,6 +55,35 @@ final class SettingsEditor
     ) {
     }
 
+    /** @var \Psr\EventDispatcher\EventDispatcherInterface|null Where model changes are sent; by default the one listener that writes the chronicle. */
+    private ?\Psr\EventDispatcher\EventDispatcherInterface $events = null;
+
+    /** Send model changes to this dispatcher instead of the chronicle's own (renderer plan step 3, D-1424). */
+    public function sendingTo(\Psr\EventDispatcher\EventDispatcherInterface $events): static
+    {
+        $this->events = $events;
+
+        return $this;
+    }
+
+    /**
+     * A change in the model, sent as its event; the chronicle's listener writes it and names the act (plan step 3, D-631).
+     * Same parameters as {@see \Taxmod\Core\Repository\Changelog::record()}, so every report stays row for row what it was.
+     */
+    private function report(int $ownerId, string $ownerKind, string $what, ?string $before, ?string $after, ?int $version, ?int $changeGroupId = null): int
+    {
+        return $this->dispatched(\Taxmod\Core\Event\ModelChanged::of($ownerKind, $ownerId, $what, $before, $after, $version, $changeGroupId))->act();
+    }
+
+    /** @template T of object @param T $event @return T */
+    private function dispatched(object $event): object
+    {
+        $this->events ??= \Taxmod\Core\Event\JournalListener::dispatcherFor($this->changelog ?? throw new \LogicException('No chronicle.'));
+        $this->events->dispatch($event);
+
+        return $event;
+    }
+
     /** Ob der Vertrag dieses Attribut an diesem Knoten kennt — am Knoten selbst oder am gewählten Renderer. */
     public function knows(Node $node, string $attribut, ?Relation $edge = null): bool
     {
@@ -777,7 +806,11 @@ final class SettingsEditor
     /** Ins Buch, mit der Version der Zeile, die der Akt erzeugt hat (D-536). */
     private function note(Node $node, string $attribut, ?Relation $edge, ?TypedValue $vorher, ?TypedValue $nachher, ?int $version = null): void
     {
-        $this->changelog?->record(
+        if ($this->changelog === null) {
+            return;
+        }
+
+        $this->report(
             $edge?->id ?? $node->id,
             $edge === null ? 'node' : 'relation',
             'setting ' . $attribut,

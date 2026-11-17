@@ -85,26 +85,37 @@ $apply([['op' => 'remove_field', 'node' => $r['a'], 'field' => $r['g']]]);
 $apply([['op' => 'trash_node', 'node' => $r['b']]]);
 
 // ── Read back, ids replaced by names ────────────────────────────────────────
-$namen = [];
+//
+// ⚠️ *Nodes, edges and records count in **separate** id spaces (TASK-004): the same number can be a node and an edge. So
+// every id is named within its space, read from the key in front of it — never from one table for all.*
+$namen = [
+    'node'   => [(int) $r['a'] => 'GRUPPE', (int) $r['b'] => 'KIND', (int) $r['c'] => 'ENKEL', (int) $model->id => 'MODEL'],
+    'edge'   => [(int) $r['f'] => 'FARBE', (int) $r['g'] => 'NOTIZ'],
+    'record' => [(int) $r['r'] => 'SATZ', (int) $k['k'] => 'KOPIE'],
+];
 
-foreach (['a' => 'GRUPPE', 'b' => 'KIND', 'c' => 'ENKEL', 'f' => 'FARBE', 'g' => 'NOTIZ', 'r' => 'SATZ'] as $ref => $name) {
-    $namen[(int) $r[$ref]] = $name;
-}
-
-$namen[(int) $k['k']] = 'KOPIE';
-$namen[(int) $model->id] = 'MODEL';
+/** Which id space a key in a frozen state or an owner kind names. */
+$raum = static fn (string $key): string => match ($key) {
+    'id', 'to', 'node', 'parent' => 'node',
+    'relation'                   => 'edge',
+    'record', 'record_value'     => 'record',
+    default                      => 'other',
+};
 
 $zeilen = $wpdb->get_results($wpdb->prepare(
     "SELECT change_group_id, owner_id, owner_kind, what, version, before_state, after_state FROM {$table} WHERE id > %d ORDER BY id",
     $start
 ), ARRAY_A) ?: [];
 
-// Every further id the run met (values, edge records): named by the order it appears in.
+// Every further id the run met (the text type, values): named by its space and the order it appears in.
 $fremd  = [];
 $gruppe = [];
-krsort($namen);
 
-$ersetzen = static function (?string $text) use (&$namen, &$fremd): string {
+$name = static function (string $space, int $id) use (&$namen, &$fremd): string {
+    return $namen[$space][$id] ?? ($fremd[$space . $id] ??= 'ID' . (count($fremd) + 1));
+};
+
+$ersetzen = static function (?string $text) use ($name, $raum): string {
     if ($text === null) {
         return '∅';
     }
@@ -114,11 +125,11 @@ $ersetzen = static function (?string $text) use (&$namen, &$fremd): string {
     // *The locale of a label is the site's (D-645), not the act's.*
     $text = (string) preg_replace('/locale=[a-z]{2}_[A-Z]{2}/', 'locale=·', $text);
 
-    return (string) preg_replace_callback('/(?<![0-9.])[0-9]{3,}(?![0-9.])/', static function (array $m) use (&$namen, &$fremd): string {
-        $id = (int) $m[0];
-
-        return $namen[$id] ?? ($fremd[$id] ??= 'ID' . (count($fremd) + 1));
-    }, preg_replace('/"(at|by_user_id|created_at|updated_at)":"?[^,"}]*"?/', '"$1":·', $text));
+    return (string) preg_replace_callback(
+        '/\b([a-z_]+)=([0-9]+)\b/',
+        static fn (array $m): string => $raum($m[1]) === 'other' ? $m[0] : $m[1] . '=' . $name($raum($m[1]), (int) $m[2]),
+        $text
+    );
 };
 
 $aus = [];
@@ -128,7 +139,7 @@ foreach ($zeilen as $zeile) {
     $aus[] = implode(' | ', [
         $gruppe[$zeile['change_group_id']],
         $zeile['owner_kind'],
-        $ersetzen((string) $zeile['owner_id']),
+        $name($raum($zeile['owner_kind']), (int) $zeile['owner_id']),
         $zeile['what'],
         'v' . ($zeile['version'] ?? '∅'),
         $ersetzen($zeile['before_state']),

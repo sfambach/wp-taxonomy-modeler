@@ -76,6 +76,35 @@ final class Labels
     ) {
     }
 
+    /** @var \Psr\EventDispatcher\EventDispatcherInterface|null Where model changes are sent; by default the one listener that writes the chronicle. */
+    private ?\Psr\EventDispatcher\EventDispatcherInterface $events = null;
+
+    /** Send model changes to this dispatcher instead of the chronicle's own (renderer plan step 3, D-1424). */
+    public function sendingTo(\Psr\EventDispatcher\EventDispatcherInterface $events): static
+    {
+        $this->events = $events;
+
+        return $this;
+    }
+
+    /**
+     * A change in the model, sent as its event; the chronicle's listener writes it and names the act (plan step 3, D-631).
+     * Same parameters as {@see \Taxmod\Core\Repository\Changelog::record()}, so every report stays row for row what it was.
+     */
+    private function report(int $ownerId, string $ownerKind, string $what, ?string $before, ?string $after, ?int $version, ?int $changeGroupId = null): int
+    {
+        return $this->dispatched(\Taxmod\Core\Event\ModelChanged::of($ownerKind, $ownerId, $what, $before, $after, $version, $changeGroupId))->act();
+    }
+
+    /** @template T of object @param T $event @return T */
+    private function dispatched(object $event): object
+    {
+        $this->events ??= \Taxmod\Core\Event\JournalListener::dispatcherFor($this->changelog ?? throw new \LogicException('No chronicle.'));
+        $this->events->dispatch($event);
+
+        return $event;
+    }
+
     /**
      * What to show for a node, in a role and a locale.
      *
@@ -380,7 +409,7 @@ final class Labels
             'text'   => $text,
         ])->write();
 
-        $this->changelog->record(
+        $this->report(
             $label->ownerId,
             // ⚠️ **Der Raum wird gelesen, nicht mehr erraten** (`INF-035`, Fassung 31). *Hier stand
             // «gibt es einen Knoten mit dieser Nummer? dann `node`, sonst `relation`» — ein Griff, der
