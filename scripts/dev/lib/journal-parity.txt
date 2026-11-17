@@ -1,0 +1,23 @@
+G1 | node | GRUPPE | created | v1 | ∅ | id=GRUPPE version=1 path=·.MODEL.GRUPPE name=__jp Gruppe
+G1 | node | GRUPPE | setting renderer | v1 | ∅ | form
+G1 | node | KIND | created | v1 | ∅ | id=KIND version=1 path=·.MODEL.GRUPPE.KIND name=__jp Kind
+G1 | node | KIND | setting renderer | v1 | ∅ | form
+G1 | node | ENKEL | created | v1 | ∅ | id=ENKEL version=1 path=·.MODEL.GRUPPE.KIND.ENKEL name=__jp Enkel
+G1 | node | ENKEL | setting renderer | v1 | ∅ | form
+G1 | relation | FARBE | attribute added | v1 | ∅ | __jp Gruppe: __jp Farbe → Text (composition)
+G1 | relation | NOTIZ | attribute added | v1 | ∅ | __jp Gruppe: __jp Notiz → Text (composition)
+G1 | record | SATZ | record created | v1 | ∅ | node=KIND node_version=1 record_type=user
+G1 | record_value | SATZ | value set | v1 | ∅ | record=SATZ relation=FARBE locale= type=text value=rot
+G2 | node | KIND | renamed | v2 | id=KIND version=1 path=·.MODEL.GRUPPE.KIND name=__jp Kind | id=KIND version=2 path=·.MODEL.GRUPPE.KIND name=__jp Kind neu
+G3 | relation | FARBE | attribute renamed | v2 | to=ID1 kind=composition parked=0 name=__jp Farbe | to=ID1 kind=composition parked=0 name=__jp Farbton
+G4 | relation | FARBE | multiplicity set | v3 | to=ID1 kind=composition parked=0 name=__jp Farbton | to=ID1 kind=composition parked=0 name=__jp Farbton
+G5 | relation | NOTIZ | field hidden | v2 | to=ID1 kind=composition parked=0 name=__jp Notiz | to=ID1 kind=composition parked=0 name=__jp Notiz
+G6 | node | KIND | label set | v1 | ∅ | role=help number=one locale=· text=__jp Hilfe
+G7 | node | GRUPPE | setting jp_flag | v1 | ∅ | 1
+G8 | record_value | SATZ | value set | v2 | record=SATZ relation=FARBE locale= type=text value=rot | record=SATZ relation=FARBE locale= type=text value=blau
+G9 | record | KOPIE | record created | v1 | ∅ | node=KIND node_version=1 record_type=user
+G9 | record_value | KOPIE | value copied | v1 | ∅ | record=KOPIE relation=FARBE locale= type=text value=blau
+G10 | record | KOPIE | record removed | v1 | node=KIND node_version=1 record_type=user | ∅
+G11 | node | ENKEL | moved | v2 | id=ENKEL version=1 path=·.MODEL.GRUPPE.KIND.ENKEL name=__jp Enkel | id=ENKEL version=2 path=·.MODEL.GRUPPE.ENKEL name=__jp Enkel
+G12 | relation | NOTIZ | attribute removed | v2 | to=ID1 kind=composition parked=0 name=__jp Notiz | to=ID1 kind=composition parked=0 name=__jp Notiz
+G13 | node | KIND | parked | v3 | id=KIND version=2 path=·.MODEL.GRUPPE.KIND name=__jp Kind neu | id=KIND version=3 path=·.·.KIND name=__jp Kind neu

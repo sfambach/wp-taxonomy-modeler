@@ -42,3 +42,12 @@ flowchart LR
 | A2 | Der Knoten einer Feldzeilen-Adresse ist der **Knoten der Seite** (die Verwendungsstelle), nicht der Besitzer einer geerbten Kante. | Ein Akt an einer geerbten Zeile wirkt «hier und darunter» (`toggle_field_hide`). |
 | A3 | Ein Feldname in der Adresse ist ein Schlüssel `[a-z0-9_:-]`, kein Text. | Die Adresse wird so ohne Escape gezeichnet; die Ratsche zählt Escapes im Kern. |
 | A4 | Die Beschwerde trägt in Schritt 1 Knoten und Kante; den Satz setzt Schritt 5, wo gesammelt wird. | Plan §4: «Sonst ändert sich nichts.» |
+
+### Schritt 2 · PSR-14 — gebaut 17.11.2026
+
+- `psr/event-dispatcher` ^1.0 als Abhängigkeit (drei Schnittstellen, kein Code; die Freigabe-Pipeline installiert sie mit `--no-dev`).
+- `Taxmod\Core\Event\Dispatcher`, `ListenerProvider` (Anmeldung nach Klasse und, bei einem `Named`-Ereignis, nach Kennung), `Named`.
+- **Noch sendet niemand**; das Plugin verhält sich unverändert.
+- Zusage `core-has-no-hooks-check`: grün (mit Gegenprobe).
+
+**Angenommen** (*INFERRED*): A5 — die Kennung hängt am Ereignis über eine Schnittstelle `Named`, nicht an einer Basisklasse; `ListenerProvider::heard()` erlaubt dem Aussender in Schritt 4, eine unbekannte Kennung weiter zu werfen (Plan: «eine unbekannte Kennung wirft weiterhin»).

@@ -4271,7 +4271,7 @@ final class NodesScreen
             $title,
             IconMarkup::dashicon($icon) . '<span class="screen-reader-text">' . esc_html($label) . '</span>'
         )
-            . ($act === '' ? '' : '<button type="submit" name="do" value="' . esc_attr($act) . '"' . ($address === null ? '' : ' data-taxmod-address="' . esc_attr($address->token()) . '"') . ' class="taxmod-pick-submit" hidden' . $form . '>' . esc_html($label) . '</button>');
+            . ($act === '' ? '' : '<button type="submit" name="do" value="' . esc_attr($act) . '" class="taxmod-pick-submit" hidden' . ($address === null ? '' : ' data-taxmod-address="' . esc_attr($address->token()) . '"') . $form . '>' . esc_html($label) . '</button>');
     }
 
     /** @var list<int>|null Einmal je Seite ({@see barredTargets()}), nicht je Feldzeile. */
