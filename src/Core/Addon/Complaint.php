@@ -35,6 +35,13 @@ final class Complaint
         public readonly string $validator,
         public readonly string $key,
         public readonly array $values = [],
+        /** Where the complaint belongs, so it can stand at its field (plan step 1, [D-1424](../../../docs/NewConcept/90-decision-log.md)). */
+        public readonly ?\Taxmod\Core\Event\Address $address = null,
     ) {
+    }
+
+    public function at(\Taxmod\Core\Event\Address $address): self
+    {
+        return new self($this->validator, $this->key, $this->values, $address);
     }
 }

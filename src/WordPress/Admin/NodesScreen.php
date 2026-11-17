@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Admin;
 
+use Taxmod\Core\Event\Address;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Exception\NodeNotFound;
@@ -389,7 +390,7 @@ final class NodesScreen
                         self::RETURN_TO  => $returnTo,
                     ]
                 ),
-                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod')), $this->moveRecordControl($satz, $knoten)]
+                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))->at(Address::ofRecord($knoten->id, $recordId)), $this->moveRecordControl($satz, $knoten)]
             ), ...$toolbar]) . '</div>'
             . $this->claimedRows($recordId, $felder, $claimed)
             . $this->rendering->withoutSharedRecordBodies()->withoutSharedPicker()->withPartActs(__('Add row', 'taxmod'), __('Remove this row', 'taxmod'), __('Add several', 'taxmod'), __('Insert a row below this one', 'taxmod'), __('Remove from this list — the record itself stays', 'taxmod'))
@@ -2144,8 +2145,10 @@ final class NodesScreen
      */
     private function rowActions(array $row, string $mode, bool $hidden = false, bool $showHidden = false): array
     {
+        $stelle = Address::ofNode($row['node']->id);
+
         if ($mode === 'trash') {
-            return [new Control('do', 'restore', __('Restore', 'taxmod'), __('Put it back where it came from', 'taxmod'))];
+            return [(new Control('do', 'restore', __('Restore', 'taxmod'), __('Put it back where it came from', 'taxmod')))->at($stelle)];
         }
 
         // ⚠️ **The eye, and it is the first thing in the row.** The owner: *before the plus, so nobody
@@ -2178,7 +2181,8 @@ final class NodesScreen
                 // A protected node stays visible: the framework's own nodes are how a person finds
                 // anything at all ([D-194](../../../docs/NewConcept/90-decision-log.md)).
                 ! $this->framework->isProtected($row['node']),
-                icon: $hidden ? 'visibility' : 'hidden'
+                icon: $hidden ? 'visibility' : 'hidden',
+                address: $stelle
             );
         }
 
@@ -2200,7 +2204,7 @@ final class NodesScreen
             // ⚠️ **Ein «+», und es fragt erst** ([D-730](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «im baum erstellt
             // automatisch kategorie knoten … nur ein + bei beiden … es kommt ein dialog hoch, lässt den benutzer den type des
             // knoten wählen und mit ok anlegen / abbruch auch möglich».* Derselbe Dialog wie im Kopf der Seite.
-            new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id)),
+            new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($row['node'], 'taxmod-add-' . $row['node']->id), address: $stelle),
             // ⚠️ **Duplicate, asked for three times** — the owner, in the end plainly: *duplicating
             // `my_int` does not work, no button in the tree nor in the head.* The title says what does
             // **not** come along, because a copy that silently dropped forty children would be a
@@ -2213,10 +2217,11 @@ final class NodesScreen
                 // A protected node cannot be copied: a second Trash would give the framework two
                 // places to look and one of them would be wrong (D-194).
                 ! $this->framework->isProtected($row['node']),
-                icon: 'admin-page'
+                icon: 'admin-page',
+                address: $stelle
             ),
-            new Control('do', 'up', __('Up', 'taxmod'), __('Move up among its siblings', 'taxmod'), ! $row['isFirst'], icon: 'arrow-up-alt2'),
-            new Control('do', 'down', __('Down', 'taxmod'), __('Move down among its siblings', 'taxmod'), ! $row['isLast'], icon: 'arrow-down-alt2'),
+            new Control('do', 'up', __('Up', 'taxmod'), __('Move up among its siblings', 'taxmod'), ! $row['isFirst'], icon: 'arrow-up-alt2', address: $stelle),
+            new Control('do', 'down', __('Down', 'taxmod'), __('Move down among its siblings', 'taxmod'), ! $row['isLast'], icon: 'arrow-down-alt2', address: $stelle),
             new Control(
                 'do',
                 'trash_node',
@@ -2230,7 +2235,8 @@ final class NodesScreen
                 // destroying — the trash is a place (D-123) — but it is the one act in this row
                 // that removes a node from where it was.*
                 destroys: true,
-                icon: 'trash'
+                icon: 'trash',
+                address: $stelle
             ),
         ];
     }
@@ -2323,7 +2329,8 @@ final class NodesScreen
                 true,
                 $button[4] ?? false,
                 $button[3] ?? '',
-                iconWithLabel: $button[5] ?? false
+                iconWithLabel: $button[5] ?? false,
+                address: $id > 0 ? Address::ofNode($id) : null
             ));
         }
 
@@ -2876,10 +2883,10 @@ final class NodesScreen
                         ...array_filter($this->circumstances()),
                     ]
                 ),
-                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))]
+                [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))->at($recordId > 0 ? Address::ofRecord($selected->id, $recordId) : Address::ofNode($selected->id))]
             ),
             $satz === null ? '' : $this->recordTypeChoice($satz->recordType, $formId, $this->framework->branchOf($selected)),
-            ControlMarkup::button(new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2', $formId)),
+            ControlMarkup::button(new Control('do', 'add_record', __('New record', 'taxmod'), __('Start a new record against this node and open it here', 'taxmod'), true, false, 'plus-alt2', $formId, address: Address::ofNode($selected->id))),
             $this->moduleActions($selected->id, $recordId),
         ]) . '</div>';
     }
@@ -3145,7 +3152,7 @@ final class NodesScreen
             . $this->form(
                 $selected->id,
                 [],
-                ControlMarkup::button(new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id)))
+                ControlMarkup::button(new Control('do', 'add_child', __('Add child', 'taxmod'), __('Add a child under this node', 'taxmod'), icon: 'plus-alt2', opens: $this->newChildDialog($selected, 'taxmod-add-head-' . $selected->id), address: Address::ofNode($selected->id)))
             )
             // ⚠️ **The save button submits the settings panel from outside it.** `form="…"` is plain
             // HTML — a button may name the form it belongs to — so nothing needs scripting.
@@ -3170,7 +3177,7 @@ final class NodesScreen
                 __('Save every setting on this page', 'taxmod'),
                 true,
                 self::pageForm($selected),
-            ))
+            )->at(Address::ofNode($selected->id)))
             . $this->form(
                 $selected->id,
                 // ⚠️ **Der Papierkorbknopf steht hier nur, solange niemand den Knoten benutzt**
@@ -3351,7 +3358,8 @@ final class NodesScreen
             'move',
             __('Move this node under another', 'taxmod'),
             'move',
-            __('Move', 'taxmod')
+            __('Move', 'taxmod'),
+            Address::ofNode($node->id)
         );
     }
 
@@ -3445,7 +3453,8 @@ final class NodesScreen
                 true,
                 '',
                 '',
-                true
+                true,
+                address: Address::ofNode($selected->id)
             ))
             . ControlMarkup::button(new Control(
                 'do',
@@ -3453,7 +3462,8 @@ final class NodesScreen
                 __('Trash it only', 'taxmod'),
                 __('The fields stay and point at nothing', 'taxmod'),
                 true,
-                true
+                true,
+                address: Address::ofNode($selected->id)
             ))
             . '</span>'
             . '</span></span></span>';
@@ -3692,6 +3702,10 @@ final class NodesScreen
                     'trash'
                 ),
             ];
+
+            // *Jeder Akt der Zeile nennt die Stelle: der Knoten der Seite und die Kante des Feldes (Plan Schritt 1, D-1424).*
+            $kante                  = Address::ofEdge($selected->id, $relation->id);
+            $actions[$relation->id] = array_map(static fn (Control $c): Control => $c->name === 'do' ? $c->at($kante) : $c, $actions[$relation->id]);
 
             $submits[$relation->id] = new Submission(
                 admin_url('admin-post.php'),
@@ -4241,6 +4255,7 @@ final class NodesScreen
         string $title,
         string $icon,
         string $label,
+        ?Address $address = null,
     ): string {
         $form = $formId === '' ? '' : ' form="' . esc_attr($formId) . '"';
 
@@ -4256,7 +4271,7 @@ final class NodesScreen
             $title,
             IconMarkup::dashicon($icon) . '<span class="screen-reader-text">' . esc_html($label) . '</span>'
         )
-            . ($act === '' ? '' : '<button type="submit" name="do" value="' . esc_attr($act) . '" class="taxmod-pick-submit" hidden' . $form . '>' . esc_html($label) . '</button>');
+            . ($act === '' ? '' : '<button type="submit" name="do" value="' . esc_attr($act) . '"' . ($address === null ? '' : ' data-taxmod-address="' . esc_attr($address->token()) . '"') . ' class="taxmod-pick-submit" hidden' . $form . '>' . esc_html($label) . '</button>');
     }
 
     /** @var list<int>|null Einmal je Seite ({@see barredTargets()}), nicht je Feldzeile. */
@@ -4287,7 +4302,8 @@ final class NodesScreen
                 'retarget_field',
                 __('Change what this field points at', 'taxmod'),
                 'networking',
-                __('Change type', 'taxmod')
+                __('Change type', 'taxmod'),
+                Address::ofEdge($selected->id, $relation->id)
             );
         }
 
@@ -4577,7 +4593,8 @@ final class NodesScreen
                 // ⚠️ *Nicht mehr blau (D-861): «führend» war meine Einordnung, nicht seine — sein Wort: «gibts einen grund warum der button blau ist ?».*
                 false,
                 // *Wort und «+» (D-861) — sein Wort: «gleiche für add field».*
-                iconWithLabel: true
+                iconWithLabel: true,
+                address: Address::ofNode($selected->id)
             ))
         );
     }
@@ -5576,7 +5593,8 @@ final class NodesScreen
             __('Move this record up to the parent or down into a child — its values travel with it', 'taxmod'),
             true,
             icon: 'randomize',
-            opens: $this->moveRecordDialog($record, $parent, $this->editor->childrenOf($node->id), $parent === null ? [] : $this->data->lostOnMove($record->id, $parent->id))
+            opens: $this->moveRecordDialog($record, $parent, $this->editor->childrenOf($node->id), $parent === null ? [] : $this->data->lostOnMove($record->id, $parent->id)),
+            address: Address::ofRecord($node->id, $record->id)
         );
     }
 
@@ -5918,7 +5936,7 @@ final class NodesScreen
                     // kind of thing that later gets stored».*
                     ...$this->ownValueCell($selected, $record, $werteJeSatz[$record->id] ?? []),
                 ],
-                'acts'   => [
+                'acts'   => array_map(static fn (Control $c): Control => $c->at(Address::ofRecord($selected->id, $record->id)), [
                     // ⚠️ *Speichern nur, wo die Zeile selbst noch etwas trägt — der eigene Wert eines einfachen Datentyps (D-785).*
                     ...($istEinfacherTyp ? [Control::saving('do', 'save_record', __('Save', 'taxmod'), __('Write these values', 'taxmod'))] : []),
                     // ⚠️ **Das Loeschen aus [D-653](../../../docs/NewConcept/90-decision-log.md)**
@@ -5953,7 +5971,7 @@ final class NodesScreen
                         true,
                         'trash'
                     ),
-                ],
+                ]),
                 'submits' => new Submission(
                     admin_url('admin-post.php'),
                     [
@@ -5987,8 +6005,8 @@ final class NodesScreen
             'values'  => $filterWerte,
             'lead'    => $vorspalten,
             'acts'    => [
-                new Control('do', 'filter_records', __('Filter', 'taxmod'), __('Show only the records whose fields match what is filled in here', 'taxmod'), true, false, 'filter'),
-                new Control('do', 'clear_filter', __('Reset filter', 'taxmod'), __('Show all records again', 'taxmod'), $filterWerte !== [], false, 'dismiss'),
+                new Control('do', 'filter_records', __('Filter', 'taxmod'), __('Show only the records whose fields match what is filled in here', 'taxmod'), true, false, 'filter', address: Address::ofNode($selected->id)),
+                new Control('do', 'clear_filter', __('Reset filter', 'taxmod'), __('Show all records again', 'taxmod'), $filterWerte !== [], false, 'dismiss', address: Address::ofNode($selected->id)),
             ],
             'submits' => new Submission(
                 admin_url('admin-post.php'),
@@ -8442,7 +8460,7 @@ final class NodesScreen
                 (int) $t[3],
                 (int) $t[4]
             )) . '</span> '
-            . ControlMarkup::button(new Control('do', 'move', __('I confirm — move it', 'taxmod'), __('The entries go to the shadow and can be brought back from there.', 'taxmod'), true, true, 'trash'))
+            . ControlMarkup::button(new Control('do', 'move', __('I confirm — move it', 'taxmod'), __('The entries go to the shadow and can be brought back from there.', 'taxmod'), true, true, 'trash', address: Address::ofNode($selected->id)))
             . '</form>';
     }
 

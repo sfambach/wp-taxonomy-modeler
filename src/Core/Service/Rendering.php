@@ -6133,7 +6133,13 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $einstellungen[$key] = $resolved->value;
         }
 
-        return $this->addons->complaintsAbout($value, $this->typeAt($relation), $gewaehlt, $einstellungen);
+        // *Jede Beschwerde nennt ihre Stelle — Knoten und Kante —, damit sie später an ihrem Feld stehen kann (Plan Schritt 1, D-1424).*
+        $stelle = \Taxmod\Core\Event\Address::ofEdge($relation->fromNodeId, $relation->id);
+
+        return array_map(
+            static fn (\Taxmod\Core\Addon\Complaint $eine): \Taxmod\Core\Addon\Complaint => $eine->at($stelle),
+            $this->addons->complaintsAbout($value, $this->typeAt($relation), $gewaehlt, $einstellungen)
+        );
     }
 
     /**
