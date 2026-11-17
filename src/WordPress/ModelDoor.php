@@ -28,6 +28,9 @@ use Taxmod\WordPress\Persistence\WpdbRecordRepository;
  */
 final class ModelDoor
 {
+    /** @var (\Closure(): \Taxmod\Core\Repository\Changelog)|null the modeller's one changelog, handed in at boot (D-1419) */
+    private static ?\Closure $changelog = null;
+
     /** @var array<int, array<string, mixed>> node id → the answer of `read-node` */
     private array $nodes = [];
 
@@ -574,6 +577,42 @@ final class ModelDoor
         $this->trees = [];
 
         return $this->execute('taxmod/write-data', ['changes' => $changes]);
+    }
+
+    /** Plugin boot hands in its one changelog; a second copy could not hold the act open for the first (D-1419). */
+    public static function useChangelog(\Closure $changelog): void
+    {
+        self::$changelog ??= $changelog;
+    }
+
+    /**
+     * Several writes of a module — its own and those it asks other modules for through their filters — as one change number,
+     * whole or not at all (D-1419, D-1410): the answer's `act` takes all of them back with one `undo_act`. A write that fails
+     * rolls back every write before it in the bracket.
+     *
+     * ```mermaid
+     * flowchart LR
+     *   B[beginAct] --> T["Transaction::whole"] --> W1[write] --> W2["filter → write"] --> E[endAct]
+     *   W2 -->|throws| R["rollback all"] --> E
+     * ```
+     *
+     * @template T
+     * @param callable(): T $work
+     * @return array{result: T, act: ?int} act: null when nothing was written
+     */
+    public static function inAct(callable $work): array
+    {
+        $changelog = (self::$changelog ?? throw ModelDoorRefused::because('The modeller has not handed in its changelog — is it active?'))();
+        $changelog->beginAct();
+
+        try {
+            $result = Persistence\Transaction::whole('taxmod_module_act', $work);
+            $act    = $changelog->currentAct();
+        } finally {
+            $changelog->endAct();
+        }
+
+        return ['result' => $result, 'act' => $act];
     }
 
     /**

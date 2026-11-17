@@ -138,6 +138,9 @@ final class Plugin
     {
         $plugin = new self($file);
 
+        // D-1419: a module's several writes as one act need the one changelog the abilities write to.
+        ModelDoor::useChangelog($plugin->changelog(...));
+
         register_activation_hook($file, $plugin->activate(...));
 
         // ⚠️ *Der Eingang der Import-Module (D-952, D-953): Tabelle, Seite «Inbox», Reiter «Import», Takt.*
