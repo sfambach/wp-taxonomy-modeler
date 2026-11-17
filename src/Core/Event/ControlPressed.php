@@ -23,6 +23,9 @@ final class ControlPressed implements Named
 
     private ?int $stay = null;
 
+    /** @var list<\Taxmod\Core\Addon\Complaint> */
+    private array $complaints = [];
+
     public function __construct(
         private readonly string $name,
         public readonly ?Address $address = null,
@@ -67,5 +70,17 @@ final class ControlPressed implements Named
     public function stay(): ?int
     {
         return $this->stay;
+    }
+
+    /** What the act's listeners had to complain about — all of them, each with its place (plan step 5, D-632). */
+    public function complain(\Taxmod\Core\Addon\Complaint ...$complaints): void
+    {
+        array_push($this->complaints, ...$complaints);
+    }
+
+    /** @return list<\Taxmod\Core\Addon\Complaint> */
+    public function complaints(): array
+    {
+        return $this->complaints;
     }
 }

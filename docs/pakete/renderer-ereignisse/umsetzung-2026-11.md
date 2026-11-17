@@ -69,3 +69,11 @@ flowchart LR
 - `SettingsScreen` und `CleanupScreen` (Plan §4) haben keinen Verteiler: `SettingsScreen` liest kein `do`, `CleanupScreen` einen einzigen Akt; nichts umzustellen.
 
 **Angenommen** (*INFERRED*): A9 — die Anmeldungen stehen in `handlePost()` selbst, weil sie die gelesenen Eingaben brauchen; ein gemeinsamer Dispatcher fürs Plugin (A8) folgt erst, wenn ein zweiter Zuhörer dazukommt (Schritt 8, Protokoll). A10 — die Adresse des Ereignisses ist Knoten (+ Kante, wenn `relation` gesendet wird); der Satz kommt in Schritt 5.
+
+### Schritt 5 · Fehler sammeln — gebaut 17.11.2026
+
+- `Taxmod\Core\Exception\RefusedByValidators` trägt alle Beschwerden eines Speicherns; `ControlPressed::complain()/complaints()` sammelt sie für den Akt.
+- `saveRecord()` gibt jeder Beschwerde den Satz zur Adresse (Knoten · Kante · Satz); `handlePost()` legt sie eine Stunde für die Person ab (`taxmod_complaints`), die nächste Seite zeigt jede einmal, als Zeile mit `data-taxmod-address`.
+- Zusage `complaint-address-check`: grün.
+
+**Angenommen** (*INFERRED*): A11 — in Schritt 5 stehen die Beschwerden als Liste in der Meldung, jede mit Adresse; **am Feld** gezeichnet werden sie mit der Beschreibung in Schritt 6 (`FeldBeschreibung.meldungen`, Plan §3), weil sie sonst einen zweiten Zeichenweg neben dem alten bräuchten (D-638). A12 — wer aus einem Modul speichert (`RETURN_TO`), bekommt weiter nur den Satz; die Liste gibt es auf der Knotenseite.

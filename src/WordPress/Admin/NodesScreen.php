@@ -226,6 +226,9 @@ final class NodesScreen
     /** The key of a conflicting save kept for «Save mine anyway» (D-1148). */
     private const CONFLICT = 'taxmod_conflict';
 
+    /** The key under which the complaints of the last act wait for the page (plan step 5, D-632). */
+    private const COMPLAINTS = 'taxmod_complaints';
+
     /**
      * The acts a background save may finish without a new page: they only write values the form already shows (D-1089).
      *
@@ -5364,6 +5367,7 @@ final class NodesScreen
         );
 
         $beschwerden = [];
+        $gesammelt   = [];
 
         foreach ($typedIn as $relationId => $characters) {
             $type = $types[$relationId] ?? null;
@@ -5374,11 +5378,13 @@ final class NodesScreen
 
             foreach ($this->rendering->complaintsFor($attributes[$relationId], $values[$relationId] ?? $type->valueFrom($characters)) as $complaint) {
                 $beschwerden[] = $attributes[$relationId]->name . ': ' . $this->complaintText($complaint);
+                // *Jede Beschwerde behält ihre Stelle, jetzt mit dem Satz (Plan Schritt 5, D-632).*
+                $gesammelt[]   = $complaint->address !== null && $recordId > 0 ? $complaint->at($complaint->address->withRecord($recordId)) : $complaint;
             }
         }
 
         if ($beschwerden !== []) {
-            throw NotYetStorable::refusedByValidators(implode('; ', $beschwerden));
+            throw new \Taxmod\Core\Exception\RefusedByValidators(sprintf('Not saved — %s.', implode('; ', $beschwerden)), $gesammelt);
         }
 
         if ($recordId !== 0 && $gewaehlteArt !== null) {
@@ -8047,6 +8053,10 @@ final class NodesScreen
                     implode(', ', $outcome->leftBehind)
                 );
             }
+        } catch (\Taxmod\Core\Exception\RefusedByValidators $abgewiesen) {
+            // *Alle Beschwerden des Akts sammelt sein Ereignis; sie überleben den Seitenwechsel mit ihrer Adresse (Plan Schritt 5, D-632).*
+            $message = $abgewiesen->getMessage();
+            ($pressed ?? null)?->complain(...$abgewiesen->complaints);
         } catch (ConcurrentChange $conflict) {
             // ⚠️ *D-1148: nothing was written. The input is kept for the dialog, which offers the current state or «save mine anyway».*
             $message  = __('Somebody else saved this record in the meantime. Nothing was written.', 'taxmod');
@@ -8068,6 +8078,10 @@ final class NodesScreen
 
         if (isset($konflikt) && $konflikt !== '') {
             $extra[self::CONFLICT] = $konflikt;
+        }
+
+        if (isset($pressed) && $pressed->complaints() !== []) {
+            $extra[self::COMPLAINTS] = $this->keptComplaints($pressed->complaints());
         }
 
         // ⚠️ *Ein neuer Satz steht hinten — ohne diese Zeile landete er auf einer Seite, die niemand ansieht,
@@ -8604,8 +8618,52 @@ final class NodesScreen
 
         return '<div class="taxmod-toast' . ($ok ? ' taxmod-toast-ok' : ' taxmod-toast-bad') . '" role="status">'
             . esc_html($ok ? __('Done.', 'taxmod') : $message)
+            . $this->complaintList()
             . '</div>'
             . $this->conflictDialog();
+    }
+
+    /**
+     * Keeps the complaints of an act for the next page, each with its address and its words — one hour, for this person only.
+     *
+     * @param list<\Taxmod\Core\Addon\Complaint> $complaints
+     */
+    private function keptComplaints(array $complaints): string
+    {
+        $key = strtolower(wp_generate_password(12, false));
+
+        set_transient(self::COMPLAINTS . '_' . get_current_user_id() . '_' . $key, array_map(
+            fn (\Taxmod\Core\Addon\Complaint $c): array => ['address' => $c->address?->token() ?? '', 'text' => $this->complaintText($c)],
+            $complaints
+        ), HOUR_IN_SECONDS);
+
+        return $key;
+    }
+
+    /** The kept complaints, once: one line each, carrying its address so it can stand at its field (plan step 6). */
+    private function complaintList(): string
+    {
+        $key = isset($_GET[self::COMPLAINTS]) ? sanitize_key(wp_unslash((string) $_GET[self::COMPLAINTS])) : '';
+
+        if ($key === '') {
+            return '';
+        }
+
+        $name  = self::COMPLAINTS . '_' . get_current_user_id() . '_' . $key;
+        $liste = get_transient($name);
+        delete_transient($name);
+
+        if (! is_array($liste) || $liste === []) {
+            return '';
+        }
+
+        $html = '';
+
+        foreach ($liste as $eine) {
+            $html .= '<li data-taxmod-address="' . esc_attr((string) ($eine['address'] ?? '')) . '">' . esc_html((string) ($eine['text'] ?? '')) . '</li>';
+        }
+
+        return '<ul class="taxmod-complaints">' . $html . '</ul>';
     }
 
     /**
