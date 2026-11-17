@@ -465,7 +465,15 @@ final class Schema
      * Schatten, `archived_by_group_id` nur im Schatten. Damit nimmt {@see Restore::act()} einen Akt über seine Nummer zurück. Reine
      * Ergänzung: `dbDelta` legt die Spalten an, der Bestand bleibt `NULL` und damit unumkehrbar, wie die alten Journalzeilen.*
      */
-    public const VERSION = 59;
+    /**
+     * ⚠️ **Fassung 60: Indizes nach den Fragen, die gestellt werden** ([D-1426](../../../docs/NewConcept/90-decision-log.md), Prüfung
+     * 2026-11-17 DB1/DB3/DB4). *Ein Feldwert wird über Feld und Wert gesucht (`field_ref`, `field_int`, `field_text` statt `relation_id`
+     * allein), die Sätze eines Knotens über Knoten und Verwendungsstelle (`node_field` statt `node_id`), das Änderungsbuch über Eigentümer
+     * und seinen Raum (`owner` statt `owner_id`). `label_texts.label_id` steckt schon in `one_row`, `node_records.record_type` wird nie
+     * allein gefragt. Reine Index-Arbeit: `dbDelta` legt die neuen an, {@see self::dropOutgrownKeys()} nimmt die alten weg; es wandert
+     * keine Zeile.*
+     */
+    public const VERSION = 60;
 
     /**
      * Das Wort, das die Kantentabelle für den Baum benutzt hat, bis Fassung 28 (TASK-018).
@@ -691,6 +699,7 @@ final class Schema
         self::shortenRangeKeys();
         self::moveTestFlagIntoKind();
         self::dropTheOneValueKey();
+        self::dropOutgrownKeys();
         self::moveMultiplicityOntoTheRelation();
         self::nameTheReferenceSpace();
         self::dropIdentitiesTable();
@@ -4084,6 +4093,47 @@ final class Schema
      * ⚠️ *An seine Stelle tritt `of_field (node_record_id, relation_id, locale)` — **kein eindeutiger**, sondern
      * der Index für die Frage, die es jetzt gibt: «alle Werte dieses Feldes in diesem Datensatz».*
      */
+    /**
+     * Fassung 60 ([D-1426](../../../docs/NewConcept/90-decision-log.md)): die Indizes, die ein breiterer mit derselben ersten Spalte ersetzt
+     * oder die nie allein gefragt werden. *Nach `dbDelta`, damit der breitere schon steht, wenn der schmale fällt.*
+     */
+    private static function dropOutgrownKeys(): void
+    {
+        global $wpdb;
+
+        $outgrown = [
+            'relation_records' => ['relation_id', 'field_ref'],
+            'node_records'     => ['node_id', 'node_field'],
+            'changelog'        => ['owner_id', 'owner'],
+            'label_texts'      => ['label_id', 'one_row'],
+        ];
+        $alone = ['node_records' => 'record_type'];
+
+        $exists = static fn (string $table, string $index): bool => (int) $wpdb->get_var($wpdb->prepare(
+            'SELECT COUNT(*) FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s',
+            $table,
+            $index
+        )) > 0;
+
+        foreach ($outgrown as $name => [$old, $wider]) {
+            $table = self::table($name);
+
+            // Only where the wider one stands — dbDelta refuses an index silently, and the table must never be left with neither.
+            if ($exists($table, $old) && $exists($table, $wider)) {
+                $wpdb->query("ALTER TABLE {$table} DROP INDEX {$old}");
+            }
+        }
+
+        foreach ($alone as $name => $index) {
+            $table = self::table($name);
+
+            if ($exists($table, $index)) {
+                $wpdb->query("ALTER TABLE {$table} DROP INDEX {$index}");
+            }
+        }
+    }
+
     private static function dropTheOneValueKey(): void
     {
         global $wpdb;
@@ -4822,8 +4872,7 @@ final class Schema
                 text_help mediumtext DEFAULT NULL,
                 text_symbol mediumtext DEFAULT NULL,
                 PRIMARY KEY  (id),
-                UNIQUE KEY one_row (label_id,locale,number),
-                KEY label_id (label_id)
+                UNIQUE KEY one_row (label_id,locale,number)
             ) {$charset};",
 
             // owner_kind is stored alongside because the changelog outlives what it refers
@@ -4844,7 +4893,7 @@ final class Schema
                 after_state mediumtext DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY change_group_id (change_group_id),
-                KEY owner_id (owner_id),
+                KEY owner (owner_id,owner_kind),
                 KEY at (at)
             ) {$charset};",
 
@@ -4860,9 +4909,8 @@ final class Schema
                 created_by_group_id bigint(20) unsigned DEFAULT NULL,
                 PRIMARY KEY  (id),
                 KEY created_by_group_id (created_by_group_id),
-                KEY node_id (node_id),
-                KEY relation_id (relation_id),
-                KEY record_type (record_type)
+                KEY node_field (node_id,relation_id),
+                KEY relation_id (relation_id)
             ) {$charset};",
 
             // ⚠️ **Der Pfad ist mit Fassung 39 gefallen** ([D-667](../../../docs/NewConcept/90-decision-log.md),
@@ -4889,7 +4937,9 @@ final class Schema
                 PRIMARY KEY  (id),
                 KEY created_by_group_id (created_by_group_id),
                 KEY of_field (node_record_id,relation_id,locale),
-                KEY relation_id (relation_id),
+                KEY field_ref (relation_id,value_ref),
+                KEY field_int (relation_id,value_int),
+                KEY field_text (relation_id,value_text(64)),
                 KEY value_ref (value_ref)
             ) {$charset};",
 
