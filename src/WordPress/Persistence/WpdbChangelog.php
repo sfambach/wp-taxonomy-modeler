@@ -282,7 +282,7 @@ final class WpdbChangelog implements Changelog
 
         $before = Query::value('Pfad vor dem Parken lesen', $wpdb->prepare(
             'SELECT before_state FROM ' . Schema::table('changelog') . '
-             WHERE owner_kind = 'node' AND owner_id = %d AND what = %s
+             WHERE owner_kind = \'node\' AND owner_id = %d AND what = %s
              ORDER BY id DESC LIMIT 1',
             $ownerId,
             'parked'
