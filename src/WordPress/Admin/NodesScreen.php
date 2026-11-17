@@ -1428,9 +1428,16 @@ final class NodesScreen
         // ⚠️ **Der Auswahlbaum steht nicht mehr in der Seite, nur seine Adresse** (Ladezeit S1, nach D-898). *Gemessen 17.11.: alle
         // 837 Knoten, ~360 KB in jeder Knotenseite, meist ungeöffnet. Er wird beim ersten Öffnen geholt. Früher hier zuerst gezeichnet,
         // weil sein Lauf die Einstellungen aller Knoten für die Detailhälfte vorlud (D-814) — die Messzeile (S0) zeigt, was das jetzt kostet.*
-        $picker = $selected === null ? '' : $this->sharedPickerStub();
+        // ⚠️ **Fragt das Skript nur den Baum, wird nur der Baum gezeichnet** (Ladezeit S2, D-1417). *Ein Dreieck und die Suche tauschen nur
+        // die linke Hälfte; Detail, Auswahlbaum und Satzdialoge würden gezeichnet und weggeworfen.*
+        $nurBaum = self::asksTreeOnly();
+        $picker  = $selected === null || $nurBaum ? '' : $this->sharedPickerStub();
 
         $html  = '<div class="wrap" data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '"'
+            // ⚠️ *Ladezeit S2/S3 (D-1417): ein Link dieser Seite lädt sie nicht neu — `assets/live.js` holt sie im Hintergrund und setzt das
+            // Geänderte ein; ein Dreieck holt nur den Baum. Der Faltzustand der Adresse gilt für jeden Link, auch einen älteren (F1: die URL
+            // bleibt sein Träger, nachgeführt per replaceState).*
+            . ' data-taxmod-live-links data-taxmod-fold-part="' . self::TREE_PANE . '" data-taxmod-carry="taxmod_collapsed"'
             // ⚠️ *Automatisch speichern steht an der Seite (D-854); das Skript liest es dort, wie schon den Baumklick.*
             . ' data-taxmod-autosave="' . (SettingsScreen::autosaves() ? 'on' : 'off') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
@@ -1460,11 +1467,11 @@ final class NodesScreen
         $html .= '<table style="width:100%;border:0;table-layout:fixed"><tr style="vertical-align:top">'
             // ⚠️ *27 zu 73 — erst «mach mal die baumansicht etwas breiter» (40 %), dann nach seinem Bildschirmfoto «baum kann 2/3 so breit sein wie jetzt» (D-776).*
             . '<td style="width:27%;padding:0 1.5em 0 0">'
-            . '<div class="taxmod-tree-pane" style="' . $pane . ';padding-right:.6em">' . $left . '</div>'
+            . '<div class="taxmod-tree-pane" id="' . self::TREE_PANE . '" style="' . $pane . ';padding-right:.6em">' . $left . '</div>'
             . '</td>'
             . '<td style="width:73%;padding:0">'
             . '<div class="taxmod-detail-pane" style="' . $pane . ';padding-right:.6em">'
-            . $times->measure(__('Detail', 'taxmod'), fn (): string => $this->detail($selected, $rows, $root))
+            . ($nurBaum ? '' : $times->measure(__('Detail', 'taxmod'), fn (): string => $this->detail($selected, $rows, $root)))
             . '</div></td>'
             . '</tr></table>';
 
@@ -1497,7 +1504,7 @@ final class NodesScreen
             // ⚠️ *Was das Speichern im Hintergrund sagt, wenn keine Antwort kommt (D-1089).*
             . ' data-save-failed="' . esc_attr__('Not saved — the connection failed. Your input is still here.', 'taxmod') . '"></span>';
 
-        $html .= $picker . $times->measure(__('Record dialogs', 'taxmod'), fn (): string => $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...))) . $worte;
+        $html .= $picker . ($nurBaum ? '' : $times->measure(__('Record dialogs', 'taxmod'), fn (): string => $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)))) . $worte;
 
         return $html . $times->line(strlen($html)) . '</div>';
     }
@@ -7558,6 +7565,21 @@ final class NodesScreen
 
     /** The tree's rows and search field, swapped in place by a search (D-1340). */
     private const TREE_LIVE = 'taxmod-tree-live';
+
+    /** The left half — tree, search, trash — swapped in place by a fold triangle (Ladezeit S2, D-1417). */
+    private const TREE_PANE = 'taxmod-tree-pane';
+
+    /**
+     * Whether `assets/live.js` asked for nothing but the tree: its header names the parts it will take from the answer (D-1417).
+     * A plain page load sends none and gets everything.
+     */
+    private static function asksTreeOnly(): bool
+    {
+        $asked = isset($_SERVER['HTTP_X_TAXMOD_LIVE']) ? sanitize_text_field(wp_unslash((string) $_SERVER['HTTP_X_TAXMOD_LIVE'])) : '';
+        $parts = array_values(array_filter(explode(' ', $asked)));
+
+        return $parts !== [] && array_diff($parts, [self::TREE_PANE, self::TREE_LIVE]) === [];
+    }
 
     /** Der Name des Akts, unter dem der Rand den Einstellungsbereich nachfordert. */
     public const FRAGMENT_ACTION = 'taxmod_field_settings';

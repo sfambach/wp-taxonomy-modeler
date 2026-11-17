@@ -1,6 +1,6 @@
 # Paket · Ladezeit — Baum nur teilweise laden
 
-**Stand 2026-11-17.** Freigegeben vom Architektur-Thread (17.11.): F1 — die URL bleibt Träger des Faltzustands, nachgeführt per `history.replaceState`; F3 — S0+S1, dann S2+S3, dann S4+S5. **Gebaut: S0+S1** ([D-1416](../../NewConcept/90-decision-log.md), Branch, Grenzlauf offen).
+**Stand 2026-11-17.** Freigegeben vom Architektur-Thread (17.11.): F1 — die URL bleibt Träger des Faltzustands, nachgeführt per `history.replaceState`; F3 — S0+S1, dann S2+S3, dann S4+S5. **Gebaut: S0+S1** ([D-1416](../../NewConcept/90-decision-log.md), live als Modeller 0.2.124), **S2+S3** ([D-1417](../../NewConcept/90-decision-log.md), Branch).
 
 Sein Wort (17.11.): *«besonders das initiale Laden dauert sehr lange, der Baum wird einmal komplett bei jedem
 Seitenaufbau geladen; evtl. könnte man nur die Teile laden, die gebraucht werden, und updaten, wenn sich was ändert»*.

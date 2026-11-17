@@ -80,7 +80,8 @@
 
 		running[ targetId ] = control;
 
-		return window.fetch( url, { credentials: 'same-origin', signal: control.signal } )
+		// *The header names the part this answer is wanted for; a page may then draw only that (Ladezeit S2, D-1417).*
+		return window.fetch( url, { credentials: 'same-origin', headers: { 'X-Taxmod-Live': targetId }, signal: control.signal } )
 			.then( function ( answer ) {
 				if ( ! answer.ok ) {
 					throw new Error( String( answer.status ) );
@@ -527,4 +528,144 @@
 
 		frame.setAttribute( 'data-taxmod-loaded', '1' );
 	}, true );
+
+	/* ------------------------------------------------------------------------------------------------------------------
+	 * Ladezeit S2/S3 (D-1417): on a page marked `data-taxmod-live-links` a link to the same page does not load it. His word
+	 * 2026-11-17: «der baum wird einmal komplett bei jedem seitenaufbau geladen … nur die teile laden die gebraucht werden».
+	 * A fold triangle (`.taxmod-tree-fold-box`) fetches only the part the page names in `data-taxmod-fold-part`, says so in a
+	 * header, and puts that part in place; any other link fetches the page and puts it in place like an act (D-1408), as a new
+	 * history entry. The parameters in `data-taxmod-carry` are taken from the address, so an older link keeps the fold state.
+	 *
+	 * ```mermaid
+	 * flowchart LR
+	 *   T[triangle] --> P[fetch, header: part] --> S[morph the part] --> R[replaceState]
+	 *   L[link] --> C[carry fold state] --> F[fetch page] --> M[morph .wrap] --> H[pushState]
+	 *   P -- fails --> N[normal load]
+	 *   F -- fails --> N
+	 * ```
+	 * ---------------------------------------------------------------------------------------------------------------- */
+	var navigating = null;
+	var pushed     = false;
+
+	function sameView( link ) {
+		var page = link.closest( '.wrap[data-taxmod-live-links]' );
+
+		if ( ! page || ( link.getAttribute( 'target' ) || '' ) !== '' || link.hasAttribute( 'download' ) || link.hasAttribute( 'data-taxmod-reload' ) ) {
+			return null;
+		}
+
+		var url = new URL( link.href, window.location.href );
+
+		if ( url.origin !== window.location.origin || url.pathname !== window.location.pathname || pageOf( url.href ) !== pageOf( window.location.href ) ) {
+			return null;
+		}
+
+		// *A link to a spot on this very page is the browser's.*
+		if ( url.hash && url.href.split( '#' )[ 0 ] === window.location.href.split( '#' )[ 0 ] ) {
+			return null;
+		}
+
+		return { page: page, url: url };
+	}
+
+	function carry( page, url ) {
+		var now = new URL( window.location.href ).searchParams;
+
+		( page.getAttribute( 'data-taxmod-carry' ) || '' ).split( ' ' ).forEach( function ( name ) {
+			if ( name !== '' && now.get( name ) !== null ) {
+				url.searchParams.set( name, now.get( name ) );
+			}
+		} );
+	}
+
+	function go( url, part ) {
+		if ( navigating ) {
+			navigating.abort();
+		}
+
+		navigating = new AbortController();
+
+		var init = { credentials: 'same-origin', signal: navigating.signal };
+
+		if ( part ) {
+			init.headers = { 'X-Taxmod-Live': part };
+		}
+
+		window.fetch( url, init )
+			.then( function ( answer ) {
+				if ( ! answer.ok || pageOf( answer.url ) !== pageOf( url ) ) {
+					throw new Error( String( answer.status ) );
+				}
+
+				return answer.text();
+			} )
+			.then( function ( html ) {
+				navigating = null;
+
+				if ( ! part ) {
+					window.history.pushState( { taxmod: true }, '', url );
+					pushed = true;
+					place( html, '' );
+					// *What a page load would do besides drawing — an anchor, a jump — is the page's own business.*
+					document.dispatchEvent( new CustomEvent( 'taxmod:navigated', { detail: { url: url } } ) );
+
+					return;
+				}
+
+				var doc   = new DOMParser().parseFromString( html, 'text/html' );
+				var ids   = part.split( ' ' );
+				var found = ids.every( function ( id ) {
+					return document.getElementById( id ) && doc.getElementById( id );
+				} );
+
+				if ( ! found ) {
+					throw new Error( 'missing ' + part );
+				}
+
+				ids.forEach( function ( id ) {
+					morph( document.getElementById( id ), document.importNode( doc.getElementById( id ), true ) );
+				} );
+				window.history.replaceState( window.history.state, '', url );
+				document.getElementById( ids[ 0 ] ).dispatchEvent( new CustomEvent( 'taxmod:replaced', { bubbles: true, detail: { url: url } } ) );
+			} )
+			.catch( function ( error ) {
+				if ( error && error.name === 'AbortError' ) {
+					return;
+				}
+
+				navigating = null;
+				window.location.href = url;
+			} );
+	}
+
+	// *On window, like the submit above: a link another script takes over (confirm, inherited rows) has said so before this decides.*
+	window.addEventListener( 'click', function ( event ) {
+		if ( event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || ! window.fetch || ! window.DOMParser ) {
+			return;
+		}
+
+		var link  = event.target instanceof Element ? event.target.closest( 'a[href]' ) : null;
+		var found = link ? sameView( link ) : null;
+
+		if ( ! found ) {
+			return;
+		}
+
+		event.preventDefault();
+
+		var fold = link.matches( '.taxmod-tree-fold-box' ) ? ( found.page.getAttribute( 'data-taxmod-fold-part' ) || '' ) : '';
+
+		if ( ! fold ) {
+			carry( found.page, found.url );
+		}
+
+		go( found.url.toString(), fold );
+	} );
+
+	// *Back and forward through entries this block made: the page for that address, put in place.*
+	window.addEventListener( 'popstate', function () {
+		if ( pushed ) {
+			refresh();
+		}
+	} );
 } )();

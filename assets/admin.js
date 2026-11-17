@@ -251,7 +251,7 @@
 
 	// *Die Wahl steht an der Seite (`data-taxmod-tree-click`); gemerkt wird nur, dass der nächste Aufbau aus einem Baumklick kommt.*
 	document.addEventListener( 'click', function ( ereignis ) {
-		var link = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-tree-pane a[href]' ) : null;
+		var link = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-tree-pane a[href]:not(.taxmod-tree-fold-box)' ) : null;
 		var seite = link ? link.closest( '[data-taxmod-tree-click]' ) : null;
 
 		if ( ! seite || seite.getAttribute( 'data-taxmod-tree-click' ) !== 'jump' ) {
@@ -354,6 +354,28 @@
 	window.addEventListener( 'load', function () {
 		restore();
 		watch();
+	} );
+
+	// ⚠️ **Ein Klick, der die Seite nicht mehr neu lädt** (Ladezeit S3, D-1417) — *`assets/live.js` setzt sie an Ort und Stelle; der Ort
+	// bleibt, wie er war. Nur was ein Neuladen sonst täte, geschieht hier: ein Anker der neuen Adresse (D-788) und «springen» nach einem
+	// Baumklick (D-807).*
+	document.addEventListener( 'taxmod:navigated', function () {
+		var sprung = false;
+
+		try {
+			sprung = window.sessionStorage.getItem( SPRUNG ) === '1';
+			window.sessionStorage.removeItem( SPRUNG );
+		} catch ( e ) {
+			sprung = false;
+		}
+
+		var anker = window.location.hash ? document.getElementById( window.location.hash.slice( 1 ) ) : null;
+
+		if ( anker ) {
+			anker.scrollIntoView( { block: 'start' } );
+		} else if ( sprung ) {
+			window.scrollTo( 0, 0 );
+		}
 	} );
 } )();
 

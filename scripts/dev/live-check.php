@@ -37,6 +37,13 @@ $claims = [
     'a save in a dialog brings the page up to date on close'  => str_contains($admin, "'taxmod:saved'") && str_contains($live, "'taxmod:saved'") && str_contains($live, "'taxmod-dialog-switch'"),
     'a page in a view dialog tells its opener'                => str_contains($live, "'taxmod:frame-saved'"),
     'notices of a page put in place reach the message field'  => str_contains((string) @file_get_contents($root . '/assets/messages.js'), "'taxmod:replaced'"),
+    // D-1417 (Ladezeit S2/S3): a link of the model page does not load it; a fold triangle fetches only the tree.
+    'the model page marks its links live and names the fold part' => str_contains($nodes, "data-taxmod-live-links data-taxmod-fold-part=\"' . self::TREE_PANE") && str_contains($nodes, "id=\"' . self::TREE_PANE . '\""),
+    'a fold triangle fetches only the tree and says so'           => str_contains($live, "link.matches( '.taxmod-tree-fold-box' )") && str_contains($live, "'X-Taxmod-Live': part"),
+    'a page asked for the tree draws no detail'                   => str_contains($nodes, 'function asksTreeOnly') && str_contains($nodes, "(\$nurBaum ? '' : \$times->measure(__('Detail'"),
+    'any other link puts the page in place as a history entry'    => str_contains($live, 'history.pushState') && str_contains($live, "'popstate'"),
+    'an older link keeps the fold state of the address'           => str_contains($live, 'function carry') && str_contains($nodes, 'data-taxmod-carry="taxmod_collapsed"'),
+    'a jump and an anchor still happen after a tree click'        => str_contains($admin, "'taxmod:navigated'") && str_contains($live, "'taxmod:navigated'"),
 ];
 
 foreach ($claims as $claim => $holds) {
