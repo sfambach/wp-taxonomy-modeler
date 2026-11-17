@@ -77,3 +77,16 @@ flowchart LR
 - Zusage `complaint-address-check`: grün.
 
 **Angenommen** (*INFERRED*): A11 — in Schritt 5 stehen die Beschwerden als Liste in der Meldung, jede mit Adresse; **am Feld** gezeichnet werden sie mit der Beschreibung in Schritt 6 (`FeldBeschreibung.meldungen`, Plan §3), weil sie sonst einen zweiten Zeichenweg neben dem alten bräuchten (D-638). A12 — wer aus einem Modul speichert (`RETURN_TO`), bekommt weiter nur den Satz; die Liste gibt es auf der Knotenseite.
+
+### Schritt 6a · Die Beschreibung als Objekte — gebaut 17.11.2026
+
+- `Taxmod\Core\Description`: `PageDescription`, `SectionDescription`, `RowDescription`, `FieldDescription`, `ControlDescription`, `Message` (Plan §3, englische Namen nach `CD-9`). Kein Markup; JSON nur über `toJson()/fromJson()`.
+- Zusage «description-roundtrip»: `tests/Core/DescriptionTest` (Kernlauf, braucht kein WordPress) — Struktur → JSON → Struktur ist dasselbe Objekt.
+- **Noch nichts zeichnet daraus.** Kein zweiter Zeichenweg neben dem alten (D-638).
+
+### Schritt 6b/6c · offen — Vorschlag fürs Gate
+
+| | Inhalt | Umfang (gemessen 17.11.) |
+|---|---|---|
+| 6b | Der zweite, winzige Zeichner (D-636) als Prüfung, nicht als Oberfläche: baut aus `PageDescription` schlichtes HTML und vergleicht Felder, Werte, Reihenfolge, Bedienelemente mit der Seite | klein |
+| 6c | Die Knotenseite zieht **in einem Zug** um (D-637, D-638): `Rendering` liefert für sie die Beschreibung statt HTML, `ListPage` wird der Rand-Zeichner (D-1424 *INFERRED*), Meldungen am Feld (A11); Ratsche fällt | gross: `NodesScreen` 8 728 Zeilen, `Rendering` 8 838, 54 Kern-Dateien mit HTML |
