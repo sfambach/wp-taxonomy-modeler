@@ -1541,7 +1541,11 @@ final class NodesScreen
             return null;
         }
 
-        set_transient('taxmod_body_' . $schluessel, $koerper, DAY_IN_SECONDS);
+        // Review 2026-11-17 (E8): written only when missing — the key is the content's hash, so a body already there is this one,
+        // and every write would make the drawing run's read memory forget.
+        if (get_transient('taxmod_body_' . $schluessel) === false) {
+            set_transient('taxmod_body_' . $schluessel, $koerper, DAY_IN_SECONDS);
+        }
 
         return add_query_arg([
             'action'        => self::SHARED_BODY_ACTION,
