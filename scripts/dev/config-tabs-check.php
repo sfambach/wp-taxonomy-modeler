@@ -29,7 +29,9 @@ $pruefe = static function (bool $gut, string $was) use (&$fehler): void {
     $fehler += $gut ? 0 : 1;
 };
 
-add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => $tabs + [
+// ⚠️ *Grenzlauf 2026-11-17 (D-1427): ist das Lager-Modul aktiv, meldet es selbst «stock» an — der Prüfreiter tritt an seine Stelle,
+// sonst prüfte der Wächter das echte Modul statt seiner Attrappe.*
+add_filter(SettingsScreen::TABS_FILTER, static fn (array $tabs): array => array_diff_key($tabs, ['stock' => true]) + [
     'stock'   => ['title' => 'Stock', 'render' => static fn (): string => '<p id="__ct-stock">stock settings</p>', 'save' => static function (array $post): void {}, 'guide' => static fn (): string => '<ol id="__ct-guide"><li>get a key</li></ol>', 'version' => '9.8.7'],
     'kaputt'  => ['title' => 'Broken', 'render' => static fn (): string => ''],
     'general' => ['title' => 'Clash', 'render' => static fn (): string => '', 'save' => static function (array $post): void {}],
