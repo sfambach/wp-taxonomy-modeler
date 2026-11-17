@@ -7,7 +7,8 @@ namespace Taxmod\WordPress\Persistence;
  *
  * ⚠️ *Under the guards' clamp a transaction is already open, and a second `START TRANSACTION` would commit it silently
  * (`scripts/dev/lib/no-write.php`). Hence the savepoint, and the own transaction only where none stands.* The ability
- * `taxmod/apply` and the record save of the model screen had each written this by hand.
+ * `taxmod/apply` and the record save of the model screen had each written this by hand. Since D-1419 it nests: a module's
+ * {@see \Taxmod\WordPress\ModelDoor::inAct()} holds several `write-data` calls, each with its own inner savepoint.
  *
  * ```mermaid
  * flowchart LR
@@ -20,6 +21,9 @@ namespace Taxmod\WordPress\Persistence;
  */
 final class Transaction
 {
+    /** How many are open in this request: only the outermost starts and commits; an inner one is a savepoint of its own (D-1419). */
+    private static int $depth = 0;
+
     /**
      * @template T
      * @param callable(): T $act
@@ -34,7 +38,9 @@ final class Transaction
             throw new \InvalidArgumentException('A savepoint is a lower-case word: ' . $savepoint);
         }
 
-        $own = ! defined('TAXMOD_NO_WRITE');
+        $own       = self::$depth === 0 && ! defined('TAXMOD_NO_WRITE');
+        // ⚠️ *A nested act under the same name would replace the outer savepoint, and the outer rollback would then miss it.*
+        $savepoint = $savepoint . '_' . self::$depth;
 
         if ($own) {
             $wpdb->query('START TRANSACTION');
@@ -42,9 +48,12 @@ final class Transaction
 
         $wpdb->query('SAVEPOINT ' . $savepoint);
 
+        ++self::$depth;
+
         try {
             $outcome = $act();
         } catch (\Throwable $e) {
+            --self::$depth;
             $wpdb->query('ROLLBACK TO SAVEPOINT ' . $savepoint);
 
             if ($own) {
@@ -54,6 +63,7 @@ final class Transaction
             throw $e;
         }
 
+        --self::$depth;
         $wpdb->query('RELEASE SAVEPOINT ' . $savepoint);
 
         if ($own) {
