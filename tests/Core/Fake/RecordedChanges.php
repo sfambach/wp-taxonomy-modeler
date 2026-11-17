@@ -102,8 +102,8 @@ final class RecordedChanges implements Changelog
     {
         $group = null;
 
-        foreach ($this->entries as [$id, , $verb, , , $g]) {
-            if ($id === $ownerId && $verb === $what) {
+        foreach ($this->entries as [$id, $kind, $verb, , , $g]) {
+            if ($id === $ownerId && $kind === 'node' && $verb === $what) {
                 $group = $g;
             }
         }
@@ -131,8 +131,8 @@ final class RecordedChanges implements Changelog
      */
     public function pathBeforeLastParking(int $ownerId): ?string
     {
-        foreach (array_reverse($this->entries) as [$id, , $what, $before]) {
-            if ($id === $ownerId && $what === 'parked' && $before !== null) {
+        foreach (array_reverse($this->entries) as [$id, $kind, $what, $before]) {
+            if ($id === $ownerId && $kind === 'node' && $what === 'parked' && $before !== null) {
                 return FrozenState::parse($before)?->field('path');
             }
         }
