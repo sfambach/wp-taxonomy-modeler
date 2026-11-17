@@ -345,6 +345,12 @@ final class Plugin
             static fn () => $plugin->screen()->handleSharedBody()
         );
 
+        // ⚠️ *Der gemeinsame Auswahlbaum, beim ersten Öffnen geholt (Ladezeit S1).*
+        add_action(
+            'admin_post_' . NodesScreen::SHARED_PICK_ACTION,
+            static fn () => $plugin->screen()->handleSharedPick()
+        );
+
         // ⚠️ *Die Treffer für «jeden Satz unter Model» (D-958) — derselbe Rückweg.*
         add_action(
             'admin_post_' . NodesScreen::RECORD_SEARCH_ACTION,

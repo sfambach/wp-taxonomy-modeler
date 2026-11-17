@@ -55,6 +55,14 @@ final class Query
         self::$read = [];
     }
 
+    /** How many statements this request has sent to the database so far — for the drawing times of the developer mode (Ladezeit S0). */
+    public static function asked(): int
+    {
+        global $wpdb;
+
+        return isset($wpdb->num_queries) ? (int) $wpdb->num_queries : 0;
+    }
+
     /** Ob gerade behalten wird — dann lohnt es, eine Frage breiter zu stellen und die Antwort für die nächsten mitzunehmen. */
     public static function isRemembering(): bool
     {

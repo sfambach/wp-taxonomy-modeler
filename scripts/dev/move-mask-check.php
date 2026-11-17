@@ -301,11 +301,20 @@ try {
     // ⚠️ **Geändert am 2026-09-15 mit [D-815](../../docs/NewConcept/90-decision-log.md), sichtbar:** *hier stand «der Verschiebedialog
     // trägt seinen Knopf innen». Seither steht der Akt `move` versteckt beim Öffner, und «OK» des gemeinsamen Baums schickt ihn ab —
     // der Knopf kann also nicht mehr weggenommen werden, bevor gewählt ist.*
+    // ⚠️ **Geändert am 2026-11-17 mit Ladezeit S1, sichtbar:** *der gemeinsame Baum steht nicht mehr in der Seite, nur eine leere
+    // Vorlage mit Adresse (D-898-Weg); sein «OK» kommt mit dem geholten Baum. Geprüft wird darum beides: die Vorlage in der Seite und
+    // der Baum, den der Akt `taxmod_shared_pick` ausliefert.*
+    $rc     = new ReflectionClass(Plugin::class);
+    $plugin = $rc->newInstanceWithoutConstructor();
+    $rc->getProperty('file')->setValue($plugin, __FILE__);
+    $geholt = (new ReflectionMethod($plugin->screen(), 'sharedPickerTree'))->invoke($plugin->screen());
+
     check(
         'der gemeinsame Baum hat «OK», und der Akt move steht beim Öffner bereit',
-        (bool) preg_match('/class="taxmod-shared-pick".*?taxmod-dialog-ok/s', $markup)
+        (bool) preg_match('/class="taxmod-shared-pick"><template class="taxmod-shared-body" data-taxmod-body="pick" data-taxmod-src="[^"]*taxmod_shared_pick/', $markup)
+            && str_contains($geholt, 'taxmod-dialog-ok')
             && (bool) preg_match('/name="do" value="move" class="taxmod-pick-submit" hidden/', $markup),
-        'kein OK im gemeinsamen Baum oder kein versteckter Akt move'
+        'keine Vorlage mit Adresse, kein OK im geholten Baum oder kein versteckter Akt move'
     );
 
     check(

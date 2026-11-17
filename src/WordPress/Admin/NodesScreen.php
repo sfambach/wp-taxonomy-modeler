@@ -1241,6 +1241,8 @@ final class NodesScreen
     {
         $root  = $this->framework->root();
         $trash = $this->framework->trash();
+        $times = new DrawingTimes();
+        $tree  = __('Tree', 'taxmod');
 
         // Two queries for the whole tree, whatever its depth — the traversal is solved once,
         // in Tree, and this screen only draws what comes back (`CD-7`).
@@ -1295,8 +1297,10 @@ final class NodesScreen
         // was er ausdrücklich so wollte.*
         $this->foldStateForLinks = self::foldState($collapsed);
 
-        $rows      = $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden, $this->showsRoot());
-        $parked    = $this->tree->rowsUnder($trash, [], $collapsed, $showHidden);
+        [$rows, $parked] = $times->measure($tree, fn (): array => [
+            $this->tree->rowsUnder($root, [$trash->id], $collapsed, $showHidden, $this->showsRoot()),
+            $this->tree->rowsUnder($trash, [], $collapsed, $showHidden),
+        ]);
 
         // ⚠️ **`hide` finally does something** ([D-396](../../../docs/NewConcept/90-decision-log.md)).
         // The owner: *I would have a use for `hide` on a node for the first time — I would like to hide
@@ -1351,7 +1355,7 @@ final class NodesScreen
         $gesucht = $this->searchTerm();
 
         if ($gesucht !== '') {
-            $rows = $this->matching($this->tree->rowsUnder($root, [$trash->id], [], $showHidden, $this->showsRoot()), $gesucht);
+            $rows = $times->measure($tree, fn (): array => $this->matching($this->tree->rowsUnder($root, [$trash->id], [], $showHidden, $this->showsRoot()), $gesucht));
         }
 
         // WICHTIG: Ein Suchfeld, nicht zwei. Der Baum zeichnet es selbst (der Kern kennt keine
@@ -1378,7 +1382,7 @@ final class NodesScreen
             . $this->circumstanceFields()
             . '</form>'
             . '<div id="' . self::TREE_LIVE . '">'
-            . $this->table($rows, 'tree', $collapsed, $selected, $gesucht, $root)
+            . $times->measure($tree, fn (): string => $this->table($rows, 'tree', $collapsed, $selected, $gesucht, $root))
             . '</div>';
         // ⚠️ **Der Papierkorb steht nur, wenn die Einstellung es sagt**
         // ([D-693](../../../docs/NewConcept/90-decision-log.md)). *Der Eigentümer: «trash sollte auch
@@ -1414,16 +1418,17 @@ final class NodesScreen
                 );
             }
 
-            $left .= $this->table($parked, 'trash', $collapsed, $selected);
+            $left .= $times->measure($tree, fn (): string => $this->table($parked, 'trash', $collapsed, $selected));
             $left .= '</div>';
         }
 
         // ⚠️ **The chosen sizes reach the stylesheet as custom properties** — the file stays static
         // and cacheable, and the two numbers a person picked ride on the page ([D-397](../../../docs/NewConcept/90-decision-log.md)).
         // *The alternative was a `<style>` block again, which is what the stylesheet was extracted from.*
-        // ⚠️ *Zuerst gezeichnet und hinten eingesetzt: sein Lauf lädt die Einstellungen aller Knoten in einem Zug, die die
-        // Detailhälfte danach nur noch liest (D-814). Gemessen: zuletzt gezeichnet waren es 165 statt 130 Abfragen.*
-        $picker = $selected === null ? '' : $this->sharedPicker();
+        // ⚠️ **Der Auswahlbaum steht nicht mehr in der Seite, nur seine Adresse** (Ladezeit S1, nach D-898). *Gemessen 17.11.: alle
+        // 837 Knoten, ~360 KB in jeder Knotenseite, meist ungeöffnet. Er wird beim ersten Öffnen geholt. Früher hier zuerst gezeichnet,
+        // weil sein Lauf die Einstellungen aller Knoten für die Detailhälfte vorlud (D-814) — die Messzeile (S0) zeigt, was das jetzt kostet.*
+        $picker = $selected === null ? '' : $this->sharedPickerStub();
 
         $html  = '<div class="wrap" data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '"'
             // ⚠️ *Automatisch speichern steht an der Seite (D-854); das Skript liest es dort, wie schon den Baumklick.*
@@ -1459,7 +1464,7 @@ final class NodesScreen
             . '</td>'
             . '<td style="width:73%;padding:0">'
             . '<div class="taxmod-detail-pane" style="' . $pane . ';padding-right:.6em">'
-            . $this->detail($selected, $rows, $root)
+            . $times->measure(__('Detail', 'taxmod'), fn (): string => $this->detail($selected, $rows, $root))
             . '</div></td>'
             . '</tr></table>';
 
@@ -1492,7 +1497,9 @@ final class NodesScreen
             // ⚠️ *Was das Speichern im Hintergrund sagt, wenn keine Antwort kommt (D-1089).*
             . ' data-save-failed="' . esc_attr__('Not saved — the connection failed. Your input is still here.', 'taxmod') . '"></span>';
 
-        return $html . $picker . $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...)) . $worte . '</div>';
+        $html .= $picker . $times->measure(__('Record dialogs', 'taxmod'), fn (): string => $this->rendering->sharedRecordBodies($this->grosseKoerperAuslagern(...))) . $worte;
+
+        return $html . $times->line(strlen($html)) . '</div>';
     }
 
     /** Ab welcher Grösse ein Satzdialog-Körper nachgeladen wird statt in der Seite zu stehen ([D-898](../../../docs/NewConcept/90-decision-log.md)). */
@@ -3948,10 +3955,43 @@ final class NodesScreen
      * Feldzeile ein eigener Dialog. **Der Dialog braucht Skript** ([D-821](../../../docs/NewConcept/90-decision-log.md), «3 ok»):
      * welche Zeile gewählt hat, was gesperrt und was offen ist, trägt der Öffner und liest das Skript.*
      */
-    private function sharedPicker(): string
+    /**
+     * Where the shared tree is drawn now: an empty template with its address, fetched by `assets/admin.js` the first time an opener
+     * is clicked — the D-898 way, the same script (Ladezeit S1, architecture thread 17.11.: «kein zweiter Holmechanismus»).
+     */
+    private function sharedPickerStub(): string
     {
-        return '<div class="taxmod-shared-pick">'
-            . $this->rendering->nodeChooser(
+        $adresse = add_query_arg([
+            'action'        => self::SHARED_PICK_ACTION,
+            'taxmod_locale' => $this->localeFromRequest(),
+            '_taxmod_nonce' => wp_create_nonce(self::SHARED_PICK_ACTION),
+        ], admin_url('admin-post.php'));
+
+        return '<div class="taxmod-shared-pick"><template class="taxmod-shared-body" data-taxmod-body="pick" data-taxmod-src="' . esc_url($adresse) . '"></template></div>';
+    }
+
+    /** The act under which the script fetches the shared tree (Ladezeit S1). */
+    public const SHARED_PICK_ACTION = 'taxmod_shared_pick';
+
+    /** admin-post: capability → nonce → the shared tree, drawn now — nothing stored, so it is never stale (Ladezeit S1). */
+    public function handleSharedPick(): void
+    {
+        if (! current_user_can(Plugin::CAPABILITY)) {
+            wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
+        }
+
+        check_admin_referer(self::SHARED_PICK_ACTION, '_taxmod_nonce');
+
+        header('Content-Type: text/html; charset=utf-8');
+
+        echo \Taxmod\WordPress\Persistence\WpdbLabelRepository::whileDrawing(fn (): string => \Taxmod\WordPress\Persistence\Query::remembering(fn (): string => $this->sharedPickerTree())); // phpcs:ignore WordPress.Security.EscapeOutput — escaped while drawn
+
+        exit;
+    }
+
+    private function sharedPickerTree(): string
+    {
+        return $this->rendering->nodeChooser(
                 $this->framework->root(),
                 self::PICK_FIELD,
                 null,
@@ -3964,8 +4004,7 @@ final class NodesScreen
                 $this->localeFromRequest(),
                 Level::Admin,
                 settings: ChooserRenderer::asDialog()
-            )->markup
-            . '</div>';
+            )->markup;
     }
 
     /**

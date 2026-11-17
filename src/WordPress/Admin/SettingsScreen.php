@@ -284,6 +284,7 @@ final class SettingsScreen
         'taxmod_dev_writes'          => 'dev_writes',
         'taxmod_dev_settings_record' => 'dev_settings_record',
         'taxmod_dev_root_toggle'     => 'dev_root_toggle',
+        DrawingTimes::OPTION         => 'dev_timing',
     ];
 
     /** Ob ein einzelner Haken zieht — **und er zieht nur, während der Modus an ist**. */
@@ -320,6 +321,10 @@ final class SettingsScreen
             'taxmod_dev_root_toggle'     => [
                 __('· «Show the root»', 'taxmod'),
                 __('The view switch in the tree that reveals the root itself. It is needed to give the root a field that every branch inherits, and it is meant for a moment, not for every day.', 'taxmod'),
+            ],
+            DrawingTimes::OPTION         => [
+                __('· Drawing times', 'taxmod'),
+                __('A line under the model page: how long each part took to draw, how many database queries it asked and how big the page is. For measuring load times.', 'taxmod'),
             ],
         ];
 

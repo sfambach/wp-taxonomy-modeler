@@ -81,6 +81,32 @@
 		}
 	}
 
+	/**
+	 * ⚠️ **Der Baum steht nicht in der Seite, nur seine Adresse** (Ladezeit S1, nach D-898) — *gemessen 17.11.: ~360 KB in jeder
+	 * Knotenseite. Beim ersten Öffnen holt ihn derselbe Weg wie einen grossen Satzdialog-Körper; danach klickt der Öffner noch einmal.*
+	 */
+	function geholt( huelle, oeffner ) {
+		var vorlage = huelle.querySelector( 'template.taxmod-shared-body' );
+
+		if ( ! vorlage ) {
+			return true;
+		}
+
+		if ( vorlage.getAttribute( 'data-taxmod-src' ) && typeof window.taxmodBodyReady === 'function'
+			&& ! window.taxmodBodyReady( vorlage, function () {
+				if ( ! vorlage.getAttribute( 'data-taxmod-src' ) ) {
+					oeffner.click();
+				}
+			} ) ) {
+			return false;
+		}
+
+		huelle.appendChild( vorlage.content.cloneNode( true ) );
+		huelle.removeChild( vorlage );
+
+		return true;
+	}
+
 	document.addEventListener( 'click', function ( event ) {
 		var oeffner = event.target instanceof Element ? event.target.closest( '.taxmod-pick-open' ) : null;
 
@@ -91,6 +117,11 @@
 		event.preventDefault();
 
 		var huelle   = document.querySelector( '.taxmod-shared-pick' );
+
+		if ( huelle && ! geholt( huelle, oeffner ) ) {
+			return;
+		}
+
 		var schalter = huelle ? huelle.querySelector( '.taxmod-dialog-switch' ) : null;
 
 		if ( ! schalter ) {
@@ -1237,6 +1268,9 @@
 
 		return false;
 	}
+
+	// *Auch der gemeinsame Auswahlbaum holt sich so (Ladezeit S1) — ein Holweg, nicht zwei.*
+	window.taxmodBodyReady = vorlageBereit;
 
 	function koerperEinsetzen( wurzel, danach ) {
 		if ( ! wurzel ) {

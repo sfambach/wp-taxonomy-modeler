@@ -122,6 +122,8 @@ foreach (TAXMOD_REFERENCE_PAGES as $id => $name) {
         $haeufigste . '-mal: ' . substr((string) key($formen), 0, 160)
     );
     check('der gemeinsame Auswahlbaum steht genau einmal da (D-815)', substr_count($markup, 'class="taxmod-shared-pick"') === 1, (string) substr_count($markup, 'class="taxmod-shared-pick"'));
+    // ⚠️ *Neu mit Ladezeit S1 (sichtbar): der gemeinsame Auswahlbaum steht nur als leere Vorlage mit Adresse da — gemessen vorher ~360 KB.*
+    check('der gemeinsame Auswahlbaum wird beim Öffnen geholt (Ladezeit S1)', (bool) preg_match('/class="taxmod-shared-pick"><template class="taxmod-shared-body" data-taxmod-body="pick" data-taxmod-src="[^"]+"><\/template><\/div>/', $markup), 'Baum steht in der Seite');
 
     // ⚠️ *Neu mit D-898 (sichtbar geändert): keine Satzdialog-Vorlage über 20 KB steht in der Seite — die grossen werden nachgeladen.
     // Gemessen vorher: «Models» 171 KB auf der CPU-Seite.*
