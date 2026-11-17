@@ -3303,7 +3303,7 @@ final class Schema
             return;
         }
 
-        if (get_option('taxmod_fassung48_shape', null) !== null) {
+        if (get_option('taxmod_fassung48_shape', null) !== null || self::alreadyPast(48)) {
             return;
         }
 
@@ -3380,7 +3380,7 @@ final class Schema
             return;
         }
 
-        if (get_option('taxmod_fassung49_shape', null) !== null) {
+        if (get_option('taxmod_fassung49_shape', null) !== null || self::alreadyPast(49)) {
             return;
         }
 
@@ -3510,6 +3510,19 @@ final class Schema
     }
 
     /**
+     * Whether the stored schema already stood at this version before the current jump — then its one-time step has run.
+     *
+     * ⚠️ *Measured in the boundary run of 2026-11-17 ({@see scripts/dev/fassungssprung-check.php}): on a database whose
+     * `taxmod_fassung49_shape` option was missing, the jump 59 → 60 ran Fassung 49 again, and its step 3 dropped every setting
+     * relation but `position` — the `hidden` relation of Fassung 57 among them ([D-1426](../../../docs/NewConcept/90-decision-log.md)).
+     * An option alone is not enough to tell a step it has run; the stored version is the second witness, as for Fassung 56.*
+     */
+    private static function alreadyPast(int $fassung): bool
+    {
+        return (int) get_option(self::VERSION_OPTION, 0) >= $fassung;
+    }
+
+    /**
      * Fassung 50: jedes Einstellungsobjekt der beiden alten Wählerklassen wird eines der Klasse `chooser`; wer den
      * Dialog hatte, bekommt `dialog = true`, damit sich nichts ändert, was er sieht ([D-727](../../../docs/NewConcept/90-decision-log.md)).
      *
@@ -3520,7 +3533,7 @@ final class Schema
     {
         global $wpdb;
 
-        if (self::tableMissing(self::table('settings_object')) || get_option('taxmod_fassung50_chooser', null) !== null) {
+        if (self::tableMissing(self::table('settings_object')) || get_option('taxmod_fassung50_chooser', null) !== null || self::alreadyPast(50)) {
             return;
         }
 
@@ -3585,7 +3598,7 @@ final class Schema
     {
         global $wpdb;
 
-        if (self::tableMissing(self::table('settings_value')) || get_option('taxmod_fassung52_use_parent_label', null) !== null) {
+        if (self::tableMissing(self::table('settings_value')) || get_option('taxmod_fassung52_use_parent_label', null) !== null || self::alreadyPast(52)) {
             return;
         }
 
