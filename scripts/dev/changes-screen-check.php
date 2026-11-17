@@ -19,6 +19,8 @@ define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
+// *Wie im Admin: die Seite zeichnet ihre Knöpfe mit `get_submit_button()` (Grenzlauf 2026-11-17, D-1426 — lief nur, wo etwas anderes template.php schon geladen hatte).*
+require_once ABSPATH . 'wp-admin/includes/template.php';
 
 use Taxmod\Core\Model\Branch;
 use Taxmod\WordPress\Admin\ChangesScreen;

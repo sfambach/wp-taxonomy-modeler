@@ -128,11 +128,11 @@ foreach ($zeilen as $z) {
     // Schreibweise des Buches.*
     $anfang = mb_substr(trim(explode('|', $z)[3] ?? ''), 0, 120);
 
-    if (
-        str_contains($anfang, 'Überholt durch')
-        || str_contains($anfang, 'Superseded by')
-        || str_contains($anfang, 'superseded by')
-    ) {
+    // ⚠️ **Eine halbe Ablösung ist keine Rücknahme** (Grenzlauf 2026-11-17, [D-1426](../../docs/NewConcept/90-decision-log.md)).
+    // *Am 2026-10-20 bekam [D-232](../../docs/NewConcept/90-decision-log.md) vorn «Storage half superseded by D-938» —
+    // richtig, denn nur die Speicherhälfte fiel. Gezählt wurde sie ab da als ganz zurückgenommen, und acht geltende
+    // Berufungen auf ihre geltende Hälfte hoben die Zahl von 101 auf 109; das Laufskript meldete es als grün.*
+    if (preg_match('/(?<!half )(?<!Teils )(?:Überholt durch|[Ss]uperseded by)/u', $anfang) === 1) {
         $ueberholt[$t[1]] = true;
     }
 }

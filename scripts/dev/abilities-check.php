@@ -293,7 +293,8 @@ check('move_node unter das eigene Kind wird abgewiesen', is_wp_error($zurueck));
 wp_set_current_user(0);
 $preis = is_array($geld) ? wp_strip_all_tags(do_blocks('<!-- wp:taxmod/record {"record":' . $ergebnis['refs']['r'] . ',"field":' . $geld['refs']['preis'] . '} /-->')) : '';
 wp_set_current_user((int) ($admin[0] ?? 1));
-check('ein Preis als Einheitenwert zeigt Betrag und Währung', str_contains($preis, '29.28') && str_contains($preis, '__ab Taler'), trim($preis));
+// ⚠️ *Der Betrag steht in der Schreibweise der Seite: auf einer deutschen «29,28» (Grenzlauf 2026-11-17, D-1426 — vorher nur auf englischen grün).*
+check('ein Preis als Einheitenwert zeigt Betrag und Währung', str_contains($preis, number_format_i18n(29.28, 2)) && str_contains($preis, '__ab Taler'), trim($preis));
 
 $nur = is_array($geld) ? $apply->execute(['changes' => [[
     'op'        => 'set_list',
