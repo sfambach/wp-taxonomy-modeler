@@ -48,6 +48,28 @@ final class DispatcherTest extends TestCase
         self::assertFalse($provider->heard(new Pressed('unknown')));
     }
 
+    public function testAPressedControlCarriesItsAnswerAndWhereToStand(): void
+    {
+        $provider = new ListenerProvider();
+        $provider->listen(\Taxmod\Core\Event\ControlPressed::class, static fn (\Taxmod\Core\Event\ControlPressed $e): mixed => $e->answer($e->stayAt(42)), 'add_child');
+
+        $pressed = (new Dispatcher($provider))->dispatch(new \Taxmod\Core\Event\ControlPressed('add_child', \Taxmod\Core\Event\Address::ofNode(7)));
+
+        self::assertSame(42, $pressed->outcome());
+        self::assertSame(42, $pressed->stay());
+        self::assertFalse($provider->heard(new \Taxmod\Core\Event\ControlPressed('unknown')));
+    }
+
+    public function testTwoListenersForOneActAreAFault(): void
+    {
+        $provider = new ListenerProvider();
+        $provider->listen(\Taxmod\Core\Event\ControlPressed::class, static fn (\Taxmod\Core\Event\ControlPressed $e): mixed => $e->answer(1), 'x');
+        $provider->listen(\Taxmod\Core\Event\ControlPressed::class, static fn (\Taxmod\Core\Event\ControlPressed $e): mixed => $e->answer(2), 'x');
+
+        $this->expectException(\LogicException::class);
+        (new Dispatcher($provider))->dispatch(new \Taxmod\Core\Event\ControlPressed('x'));
+    }
+
     public function testANameNeedsANamedEvent(): void
     {
         $this->expectException(\InvalidArgumentException::class);

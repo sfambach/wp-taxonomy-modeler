@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Admin;
 
 use Taxmod\Core\Event\Address;
+use Taxmod\Core\Event\ControlPressed;
 use Taxmod\Core\Exception\ConcurrentChange;
 use Taxmod\Core\Exception\DomainError;
 use Taxmod\Core\Exception\NodeNotFound;
@@ -7850,87 +7851,89 @@ final class NodesScreen
         $this->changelog->beginAct();
 
         try {
-            $outcome = match ($do) {
-                // ⚠️ *Ohne Namen heisst das Kind «New node» — der Dialog verlangt keinen (D-730); `add_child_here` ist darin aufgegangen.*
-                'add_child'      => $stay = $this->createdChild($name === '' ? __('New node', 'taxmod') : $name, $id)->id,
-                // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
-                // whose whole point is *and now I want to work on that* — it makes a node with a
-                // placeholder name, so leaving the parent selected means the very next thing a
-                // person does is hunt for what they just made.
-                // ⚠️ **The copy becomes the selected node**, for the same reason `add_child_here`
-                // does: the point of duplicating is *and now I want to work on that one*, and it
-                // carries the original's name, so leaving the original selected would show two
-                // identical rows and no way to tell which is which.
-                // ⚠️ *`$stay` keeps the node selected. Hiding it does not deselect it — with **show
-                // hidden** off the row vanishes from the tree while its detail page stays open, and
-                // that is the one arrangement in which the act can be undone by the same button.*
-                'toggle_hide'    => $stay = $this->toggleHidden($id),
-                'duplicate'      => $stay = $this->editor->duplicate($id)->id,
-                'rename'         => $this->editor->rename($id, $name),
-                'move'           => $this->movedTo($id, $target),
-                // ⚠️ **Dieselbe Spalte, andere Geschwisterliste** ([D-435](../../../docs/NewConcept/90-decision-log.md)):
-                // ein Knoten ordnet seine Vererbungskante, ein Attribut seine eigene.
-                'field_up'   => $this->movedFieldRow($id, $relation, -1),
-                'field_down' => $this->movedFieldRow($id, $relation, 1),
-                'up'             => $this->editor->moveUp($id),
-                'down'           => $this->editor->moveDown($id),
-                'restore'        => $this->editor->restore($id),
-                // ⚠️ **Der endgueltige Akt** ([Zeile 10](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)),
-                // auf seine Bitte: *bau mal einen Button hinter Trash Label clear damit wir aufraeumen
-                // koennen.* **Was bleibt, ist Absicht**: Identitaeten ([D-340](../../../docs/NewConcept/90-decision-log.md))
-                // und Changelog ([D-065](../../../docs/NewConcept/90-decision-log.md)) ueberleben die Sache.
-                'clear_trash'    => $this->clearedTrash(),
-                'trash'          => $this->editor->moveToTrash($id),
-                // ⚠️ **Der zweite Akt ist die Zusage aus dem Dialog** ([D-604](../../../docs/NewConcept/90-decision-log.md),
-                // TASK-037). *Er ist ein **eigener** Akt und kein Häkchen an `trash`: was ein Benutzer
-                // bestätigt hat, steht damit im Änderungsbuch unter eigenem Namen, und ein alter
-                // Knopf, der nur `trash` kennt, kann die Verwendungen nicht versehentlich mitnehmen.*
-                'trash_with_uses' => $this->editor->moveToTrash($id, true),
-                'trash_node'     => $this->editor->moveToTrashPromotingChildren($id),
-                // WICHTIG: Leerer Name heisst «nimm den des Zielknotens» (TASK-026). Entschieden
-                // wird es hier und nicht im Kern: welcher Name gemeint ist, ist eine Frage der
-                // Maske, und addField() soll weiter genau das anlegen, was man ihm sagt.
-                'add_field'  => $this->editor->addField(
+            // *Jede Kennung eine Anmeldung, nicht ein Zweig: der Anbieter wählt nach Klasse und Kennung (Plan Schritt 4, D-633, D-1424).*
+            $acts = new \Taxmod\Core\Event\ListenerProvider();
+
+            // ⚠️ *Ohne Namen heisst das Kind «New node» — der Dialog verlangt keinen (D-730); `add_child_here` ist darin aufgegangen.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($e->stayAt($this->createdChild($name === '' ? __('New node', 'taxmod') : $name, $id)->id)), 'add_child');
+            // ⚠️ **The new node becomes the selected one.** The `+` in a row is the one act
+            // whose whole point is *and now I want to work on that* — it makes a node with a
+            // placeholder name, so leaving the parent selected means the very next thing a
+            // person does is hunt for what they just made.
+            // ⚠️ **The copy becomes the selected node**, for the same reason `add_child_here`
+            // does: the point of duplicating is *and now I want to work on that one*, and it
+            // carries the original's name, so leaving the original selected would show two
+            // identical rows and no way to tell which is which.
+            // ⚠️ *`$stay` keeps the node selected. Hiding it does not deselect it — with **show
+            // hidden** off the row vanishes from the tree while its detail page stays open, and
+            // that is the one arrangement in which the act can be undone by the same button.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($e->stayAt($this->toggleHidden($id))), 'toggle_hide');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($e->stayAt($this->editor->duplicate($id)->id)), 'duplicate');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->rename($id, $name)), 'rename');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->movedTo($id, $target)), 'move');
+            // ⚠️ **Dieselbe Spalte, andere Geschwisterliste** ([D-435](../../../docs/NewConcept/90-decision-log.md)):
+            // ein Knoten ordnet seine Vererbungskante, ein Attribut seine eigene.
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->movedFieldRow($id, $relation, -1)), 'field_up');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->movedFieldRow($id, $relation, 1)), 'field_down');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->moveUp($id)), 'up');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->moveDown($id)), 'down');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->restore($id)), 'restore');
+            // ⚠️ **Der endgueltige Akt** ([Zeile 10](../../../docs/NewConcept/97-implementation-plan.md#the-working-list)),
+            // auf seine Bitte: *bau mal einen Button hinter Trash Label clear damit wir aufraeumen
+            // koennen.* **Was bleibt, ist Absicht**: Identitaeten ([D-340](../../../docs/NewConcept/90-decision-log.md))
+            // und Changelog ([D-065](../../../docs/NewConcept/90-decision-log.md)) ueberleben die Sache.
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->clearedTrash()), 'clear_trash');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->moveToTrash($id)), 'trash');
+            // ⚠️ **Der zweite Akt ist die Zusage aus dem Dialog** ([D-604](../../../docs/NewConcept/90-decision-log.md),
+            // TASK-037). *Er ist ein **eigener** Akt und kein Häkchen an `trash`: was ein Benutzer
+            // bestätigt hat, steht damit im Änderungsbuch unter eigenem Namen, und ein alter
+            // Knopf, der nur `trash` kennt, kann die Verwendungen nicht versehentlich mitnehmen.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->moveToTrash($id, true)), 'trash_with_uses');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->moveToTrashPromotingChildren($id)), 'trash_node');
+            // WICHTIG: Leerer Name heisst «nimm den des Zielknotens» (TASK-026). Entschieden
+            // wird es hier und nicht im Kern: welcher Name gemeint ist, ist eine Frage der
+            // Maske, und addField() soll weiter genau das anlegen, was man ihm sagt.
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->addField(
                     $id,
                     $pointsAt,
                     $name === '' ? ($this->editor->find($pointsAt)?->name ?? '') : $name,
                     // WICHTIG: Die Art kommt aus der Zeile und nicht aus dem Ast -- TASK-053,
                     // D-618: "der benutzer legt fest".
                     $relationKind
-                ),
-                // Parked, not purged — D-123's two stages, so it can come back.
-                // WICHTIG: Den Typ eines eigenen Feldes aendern -- TASK-029. Sein Regel fuer die
-                // Daten: "sollten keine Daten da sein einfach aendern, wenn Daten da sind neue
-                // Version und Konflikt". Die Kante wird ueber ihre Version gespeichert, also
-                // meldet ein gleichzeitiger Umbau sich als Konflikt statt still zu gewinnen.
-                'retarget_field' => $this->editor->retargetField($id, $relation, $this->retargetTo($relation)),
-                'remove_field'  => $this->editor->removeField($id, $relation),
-                'field_to_parent'   => $this->editor->moveFieldToParent($id, $relation),
-                'field_to_children' => $children === []
+                )), 'add_field');
+            // Parked, not purged — D-123's two stages, so it can come back.
+            // WICHTIG: Den Typ eines eigenen Feldes aendern -- TASK-029. Sein Regel fuer die
+            // Daten: "sollten keine Daten da sein einfach aendern, wenn Daten da sind neue
+            // Version und Konflikt". Die Kante wird ueber ihre Version gespeichert, also
+            // meldet ein gleichzeitiger Umbau sich als Konflikt statt still zu gewinnen.
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->retargetField($id, $relation, $this->retargetTo($relation))), 'retarget_field');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->removeField($id, $relation)), 'remove_field');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->moveFieldToParent($id, $relation)), 'field_to_parent');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($children === []
                     ? __('No child chosen — the field stays where it is.', 'taxmod')
-                    : $this->editor->pushFieldToChildren($id, $relation, $children),
-                'restore_field' => $this->editor->restoreField($id, $relation),
-                // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
-                // because an inherited attribute belongs to the ancestor and renaming it from a
-                // descendant would rename it for every other user, silently.
-                'toggle_field_hide' => $this->toggledFieldHide($id, $relation),
-                // ⚠️ **Der einzige Akt auf dieser Seite, der nichts schreibt**
-                // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Er ändert einen **Umstand**
-                // — wer gerade wohin sieht — und Umstände reisen in der Adresse
-                // ([D-389](../../../docs/NewConcept/90-decision-log.md)). Der Rückgabewert ist die neue
-                // Menge, und {@see backTo()} nimmt sie unten als `$extra` auf; ohne diesen Umweg würde
-                // {@see circumstances()} die **alte** Menge fortschreiben und der Klick bliebe wirkungslos.*
-                self::TOGGLE_ROW_SETTINGS => $this->rememberOpenRows($this->openFieldRowsToggled($relation)),
-                // ⚠️ *`save_field` stand hier und ist mit der Diskette der Zeile gegangen — Name und «wie
-                // oft» kommen jetzt mit dem Seitenformular ({@see self::saveFieldRows()}).*
-                // ⚠️ **Eine Zeile mehr** — *auf sein Bestehen, dass `Display Option` `1..*` ist: «somit
-                // muss ich Zeilen hinzufügen können». Ein Teil ist eine Zeile
-                // ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere Teile sind mehrere
-                // Renderer, für das Farbschema ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
-                // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an relation
-                // with the same name, and inventing a suffix is writing user-visible text — which
-                // goes through the text domain at the boundary (`AR-2`) and never in `Taxmod\Core`.
-                'duplicate_field' => $this->editor->duplicateField(
+                    : $this->editor->pushFieldToChildren($id, $relation, $children)), 'field_to_children');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->restoreField($id, $relation)), 'restore_field');
+            // ⚠️ **Renamed only where it is declared** (D-376) — the act refuses it otherwise,
+            // because an inherited attribute belongs to the ancestor and renaming it from a
+            // descendant would rename it for every other user, silently.
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->toggledFieldHide($id, $relation)), 'toggle_field_hide');
+            // ⚠️ **Der einzige Akt auf dieser Seite, der nichts schreibt**
+            // ([D-666](../../../docs/NewConcept/90-decision-log.md)). *Er ändert einen **Umstand**
+            // — wer gerade wohin sieht — und Umstände reisen in der Adresse
+            // ([D-389](../../../docs/NewConcept/90-decision-log.md)). Der Rückgabewert ist die neue
+            // Menge, und {@see backTo()} nimmt sie unten als `$extra` auf; ohne diesen Umweg würde
+            // {@see circumstances()} die **alte** Menge fortschreiben und der Klick bliebe wirkungslos.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->rememberOpenRows($this->openFieldRowsToggled($relation))), self::TOGGLE_ROW_SETTINGS);
+            // ⚠️ *`save_field` stand hier und ist mit der Diskette der Zeile gegangen — Name und «wie
+            // oft» kommen jetzt mit dem Seitenformular ({@see self::saveFieldRows()}).*
+            // ⚠️ **Eine Zeile mehr** — *auf sein Bestehen, dass `Display Option` `1..*` ist: «somit
+            // muss ich Zeilen hinzufügen können». Ein Teil ist eine Zeile
+            // ([D-546](../../../docs/NewConcept/90-decision-log.md)), und mehrere Teile sind mehrere
+            // Renderer, für das Farbschema ([D-548](../../../docs/NewConcept/90-decision-log.md)).*
+            // ⚠️ **The «(copy)» comes from here, not from the core.** [D-281] refuses an relation
+            // with the same name, and inventing a suffix is writing user-visible text — which
+            // goes through the text domain at the boundary (`AR-2`) and never in `Taxmod\Core`.
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->duplicateField(
                     $id,
                     $relation,
                     sprintf(
@@ -7938,85 +7941,95 @@ final class NodesScreen
                         __('%s (copy)', 'taxmod'),
                         $this->editor->ownAttribute($id, $relation)->name
                     )
-                )->id,
-                // ⚠️ **`$relation` decides the owner** (D-381): the same three acts serve a node and a use site,
-                // and a write meant for one attribute must not land on the type it points at.
-                // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the
-                // panel is one form, so there is no single key to write — every changed value is.
-                // ⚠️ **And the labels come with it**, on the owner's word — *labels should be saved
-                // with the page too* ([D-488](../../../docs/NewConcept/90-decision-log.md)).
-                //
-                // ⚠️ **Ein Name, nicht zwei.** *Es standen kurz `put_setting` und `put_labels` hier, weil
-                // es zwei Knöpfe gab. Der eigene Knopf des Labels-Bereichs ist weg — der Eigentümer, auf
-                // die Frage «soll er weg»: «zu 1: ja» — und damit schickte **niemand** mehr `put_labels`.
-                // **Ein Akt, den kein Knopf abschickt, ist toter Code**, und `CLAUDE.md` verbietet ihn
-                // ausdrücklich. Er ist mit seiner Konstante `LabelsRenderer::WRITE` verschwunden.*
-                'put_setting'    => $this->saveNodePage($id, $relation, $name, $labelLocale),
-                // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
-                // eligible set is what the screen offers, and an unusual choice is a special case
-                // rather than an error. A name no renderer answers to is the error.
-                // ⚠️ **Geschrieben, wo es gelesen wird** ([D-543](../../../docs/NewConcept/90-decision-log.md)).
-                // *Hier stand `settings->put()` — die alte Tabelle. Und {@see \Taxmod\Core\Service\ModelValues}
-                // liest aus Datensätzen und **gewinnt**, also blieb jede Wahl an den 26 Knoten, die
-                // ihren Renderer im Datensatz tragen, **spurlos**. Der Eigentümer hat es gesehen: «den
-                // Render kann ich noch nicht setzen» — und es war kein fehlender Renderer, sondern ein
-                // Schreiber an der alten Stelle.*
-                // ⚠️ *Hier standen die Zeilen-Akte `empty_setting` und `reset_setting`. Ihre Knöpfe
-                // sind mit dem Einstellungsbereich gegangen ([D-520](../../../docs/NewConcept/90-decision-log.md)) —
-                // `einstellungen-check.php` misst, dass kein `do[<key>]` mehr auf der Seite steht — und ihr
-                // Ziel, die `settings`-Tabelle, mit [D-579](../../../docs/NewConcept/90-decision-log.md).*
-                // ⚠️ *An die Kante, seit [D-528](../../../docs/NewConcept/90-decision-log.md). Ein
-                // unbekannter Wert wird verworfen und nicht geraten — die vier Konstanten sind die
-                // ganze Liste ([D-351](../../../docs/NewConcept/90-decision-log.md)).*
-                'put_multiplicity' => $this->editor->setMultiplicity(
+                )->id), 'duplicate_field');
+            // ⚠️ **`$relation` decides the owner** (D-381): the same three acts serve a node and a use site,
+            // and a write meant for one attribute must not land on the type it points at.
+            // ⚠️ **The whole panel at once** (D-392): the button sits in the page head and the
+            // panel is one form, so there is no single key to write — every changed value is.
+            // ⚠️ **And the labels come with it**, on the owner's word — *labels should be saved
+            // with the page too* ([D-488](../../../docs/NewConcept/90-decision-log.md)).
+            //
+            // ⚠️ **Ein Name, nicht zwei.** *Es standen kurz `put_setting` und `put_labels` hier, weil
+            // es zwei Knöpfe gab. Der eigene Knopf des Labels-Bereichs ist weg — der Eigentümer, auf
+            // die Frage «soll er weg»: «zu 1: ja» — und damit schickte **niemand** mehr `put_labels`.
+            // **Ein Akt, den kein Knopf abschickt, ist toter Code**, und `CLAUDE.md` verbietet ihn
+            // ausdrücklich. Er ist mit seiner Konstante `LabelsRenderer::WRITE` verschwunden.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->saveNodePage($id, $relation, $name, $labelLocale)), 'put_setting');
+            // ⚠️ Checked against what **exists**, not against what is eligible (D-360): the
+            // eligible set is what the screen offers, and an unusual choice is a special case
+            // rather than an error. A name no renderer answers to is the error.
+            // ⚠️ **Geschrieben, wo es gelesen wird** ([D-543](../../../docs/NewConcept/90-decision-log.md)).
+            // *Hier stand `settings->put()` — die alte Tabelle. Und {@see \Taxmod\Core\Service\ModelValues}
+            // liest aus Datensätzen und **gewinnt**, also blieb jede Wahl an den 26 Knoten, die
+            // ihren Renderer im Datensatz tragen, **spurlos**. Der Eigentümer hat es gesehen: «den
+            // Render kann ich noch nicht setzen» — und es war kein fehlender Renderer, sondern ein
+            // Schreiber an der alten Stelle.*
+            // ⚠️ *Hier standen die Zeilen-Akte `empty_setting` und `reset_setting`. Ihre Knöpfe
+            // sind mit dem Einstellungsbereich gegangen ([D-520](../../../docs/NewConcept/90-decision-log.md)) —
+            // `einstellungen-check.php` misst, dass kein `do[<key>]` mehr auf der Seite steht — und ihr
+            // Ziel, die `settings`-Tabelle, mit [D-579](../../../docs/NewConcept/90-decision-log.md).*
+            // ⚠️ *An die Kante, seit [D-528](../../../docs/NewConcept/90-decision-log.md). Ein
+            // unbekannter Wert wird verworfen und nicht geraten — die vier Konstanten sind die
+            // ganze Liste ([D-351](../../../docs/NewConcept/90-decision-log.md)).*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->editor->setMultiplicity(
                     $id,
                     $relation,
                     Multiplicity::tryFrom($settingValue)
                         ?? throw new \InvalidArgumentException('Keine solche Multiplizitaet.')
-                ),
-                // ⚠️ **Die Art kommt vom Benutzer** ([D-651](../../../docs/NewConcept/90-decision-log.md),
-                // [D-653](../../../docs/NewConcept/90-decision-log.md)). *`fromStorage()` und nicht
-                // `from()`: was keine der drei Arten ist, ist keine Angabe — dann raet der Rand nicht,
-                // sondern nimmt den benannten Rueckfall des Kerns. **Ein Ausnahmefehler waere hier
-                // falsch**, weil ein alter Reiter ohne das Feld sonst mit «Unknown action» abbraeche,
-                // statt zu tun, was er bisher tat. Dieselbe Form wie bei `relation_kind`.*
-                'add_record'     => $this->data->create($id, $recordType),
-                // ⚠️ **Sein Vorschlag, an der Stelle, an der die Eingabe ohnehin steht**
-                // ([D-679](../../../docs/NewConcept/90-decision-log.md)): *«was mir da einfällt wir
-                // könnten bei der preview eingabe einen button hinzufügen add as example».*
-                'add_example'    => $this->addExample($id),
-                // ⚠️ *D-1148: first the check against what the form read, inside the same transaction as the write.*
-                'save_record'    => $this->savedWhole(function () use ($id): void {
+                )), 'put_multiplicity');
+            // ⚠️ **Die Art kommt vom Benutzer** ([D-651](../../../docs/NewConcept/90-decision-log.md),
+            // [D-653](../../../docs/NewConcept/90-decision-log.md)). *`fromStorage()` und nicht
+            // `from()`: was keine der drei Arten ist, ist keine Angabe — dann raet der Rand nicht,
+            // sondern nimmt den benannten Rueckfall des Kerns. **Ein Ausnahmefehler waere hier
+            // falsch**, weil ein alter Reiter ohne das Feld sonst mit «Unknown action» abbraeche,
+            // statt zu tun, was er bisher tat. Dieselbe Form wie bei `relation_kind`.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->data->create($id, $recordType)), 'add_record');
+            // ⚠️ **Sein Vorschlag, an der Stelle, an der die Eingabe ohnehin steht**
+            // ([D-679](../../../docs/NewConcept/90-decision-log.md)): *«was mir da einfällt wir
+            // könnten bei der preview eingabe einen button hinzufügen add as example».*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->addExample($id)), 'add_example');
+            // ⚠️ *D-1148: first the check against what the form read, inside the same transaction as the write.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->savedWhole(function () use ($id): void {
                     $this->data->claim($this->submittedStamp());
                     $this->saveRecord($id);
                     // D-1255: saved once in the full form is reviewed.
                     \Taxmod\WordPress\Persistence\RecordReviews::clear(isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0);
-                }),
-                // ⚠️ *«Save mine anyway» from the conflict dialog: the kept input, written over the newer state — one act, undoable.*
-                'save_record_anyway' => $this->savedWhole(fn () => $this->saveKeptInput($id)),
-                // ⚠️ *Filtern schreibt nichts — es trägt die Filterzeile in die Adresse (D-768).*
-                'filter_records' => $this->rememberFilter($this->submittedFilter()),
-                'clear_filter'   => $this->rememberFilter(null),
-                // ⚠️ *Zeilen eines mehrfachen Teilfeldes (D-758, D-577).*
-                'add_part'       => $this->addedPart($id),
-                // ⚠️ *Mehrere Zeilen auf einmal, je gewähltem Satz eine (D-806).*
-                'add_parts'      => $this->addedParts($id),
-                'remove_part'    => $this->removedPart($id),
-                // ⚠️ *Aus einer Verweisliste nehmen, der Satz bleibt (D-937).*
-                'unlink_part'    => $this->unlinkedPart($id),
-                // ⚠️ *Unter dieser Zeile eine gleicher Art einfügen (D-830).*
-                'insert_part'    => $this->insertedPart($id),
-                'duplicate_record' => $this->data->duplicate(
+                })), 'save_record');
+            // ⚠️ *«Save mine anyway» from the conflict dialog: the kept input, written over the newer state — one act, undoable.*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->savedWhole(fn () => $this->saveKeptInput($id))), 'save_record_anyway');
+            // ⚠️ *Filtern schreibt nichts — es trägt die Filterzeile in die Adresse (D-768).*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->rememberFilter($this->submittedFilter())), 'filter_records');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->rememberFilter(null)), 'clear_filter');
+            // ⚠️ *Zeilen eines mehrfachen Teilfeldes (D-758, D-577).*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->addedPart($id)), 'add_part');
+            // ⚠️ *Mehrere Zeilen auf einmal, je gewähltem Satz eine (D-806).*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->addedParts($id)), 'add_parts');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->removedPart($id)), 'remove_part');
+            // ⚠️ *Aus einer Verweisliste nehmen, der Satz bleibt (D-937).*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->unlinkedPart($id)), 'unlink_part');
+            // ⚠️ *Unter dieser Zeile eine gleicher Art einfügen (D-830).*
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->insertedPart($id)), 'insert_part');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->data->duplicate(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
-                ),
-                'delete_record'  => $this->claimed()->data->removeRecord(
+                )), 'duplicate_record');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($this->claimed()->data->removeRecord(
                     isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0
-                ),
-                'move_record'    => $target === 0
+                )), 'delete_record');
+            $acts->listen(ControlPressed::class, fn (ControlPressed $e): mixed => $e->answer($target === 0
                     ? __('No target chosen — the record stays where it is.', 'taxmod')
-                    : $this->claimed()->movedRecord($id, isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0, $target),
-                default          => throw new \InvalidArgumentException('Unknown action.'),
-            };
+                    : $this->claimed()->movedRecord($id, isset($_POST['node_record_id']) ? absint($_POST['node_record_id']) : 0, $target)), 'move_record');
+
+            $pressed = new ControlPressed($do, $id > 0 ? ($relation > 0 ? Address::ofEdge($id, $relation) : Address::ofNode($id)) : null);
+
+            // *Eine unbekannte Kennung wirft weiterhin (Plan §4, do-parity-check).*
+            if (! $acts->heard($pressed)) {
+                throw new \InvalidArgumentException('Unknown action.');
+            }
+
+            (new \Taxmod\Core\Event\Dispatcher($acts))->dispatch($pressed);
+
+            $outcome = $pressed->outcome();
+            $stay    = $pressed->stay() ?? $stay;
 
             // ⚠️ A restore that leaves children behind must say so — it is the one outcome
             // where *done* would be a lie (D-347).

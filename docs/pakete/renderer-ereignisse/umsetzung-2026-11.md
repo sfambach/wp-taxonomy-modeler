@@ -60,3 +60,12 @@ flowchart LR
 - Die Zeilen, «die `DataEntry` bisher schuldig blieb» (Plan §4): schon seit TASK-056 geschrieben (`DataEntry::melden()`); die Referenz enthält sie (`record`, `record_value`).
 
 **Angenommen** (*INFERRED*): A6 — `SettingsEditor` sendet mit, obwohl der Plan nur drei Dienste nennt: er schreibt ins selbe Buch, ein vierter Weg daran vorbei wäre die Lücke, die Schritt 3 schliesst. A7 — die Ereignisse tragen in Schritt 3 noch keine `Address` (an vielen Meldestellen ist nur die Kante oder der Satz bekannt, nicht der Knoten); sie kommt, wo Schritt 5 sammelt. A8 — Ein gemeinsamer Dispatcher für das ganze Plugin entsteht in Schritt 4, wo die Auslöser ihn brauchen.
+
+### Schritt 4 · Auslöser statt `match` — gebaut 17.11.2026
+
+- `Taxmod\Core\Event\ControlPressed` («Bedienelement betätigt», `Named`, mit `Address`, Antwort und «wo stehen bleiben»).
+- `NodesScreen::handlePost()`: die 39 Zweige des `match ($do)` sind 39 Anmeldungen `listen(ControlPressed::class, …, '<kennung>')`; eine unbekannte Kennung wirft weiter («Unknown action.»). Klammer (`beginAct`/`endAct`) und Fehlerbehandlung unverändert.
+- Zusage `do-parity-check`: grün. **Ratsche sichtbar geändert:** «arms of the node page dispatcher» zählt 0, wenn kein `match ($do)` mehr da ist (vorher Abbruch mit Exit 2), Decke 38 → 0.
+- `SettingsScreen` und `CleanupScreen` (Plan §4) haben keinen Verteiler: `SettingsScreen` liest kein `do`, `CleanupScreen` einen einzigen Akt; nichts umzustellen.
+
+**Angenommen** (*INFERRED*): A9 — die Anmeldungen stehen in `handlePost()` selbst, weil sie die gelesenen Eingaben brauchen; ein gemeinsamer Dispatcher fürs Plugin (A8) folgt erst, wenn ein zweiter Zuhörer dazukommt (Schritt 8, Protokoll). A10 — die Adresse des Ereignisses ist Knoten (+ Kante, wenn `relation` gesendet wird); der Satz kommt in Schritt 5.

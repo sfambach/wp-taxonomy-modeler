@@ -10,12 +10,12 @@
 
 const ROOT = __DIR__ . '/../..';
 
-/** Measured 2026-11-17 on main 7b92449f. */
+/** Measured 2026-11-17 on main 7b92449f; the dispatcher arms fell to 0 with plan step 4 the same day. */
 const CEILINGS = [
     'core files with HTML tags'          => 54,
     'RenderResult::escape() in the core' => 249,
     'hook calls in the core'             => 0,
-    'arms of the node page dispatcher'   => 38,
+    'arms of the node page dispatcher'   => 0,
     'modeller pages without the template' => 9,
 ];
 
@@ -58,15 +58,13 @@ foreach (phpFiles(ROOT . '/src/Core') as $file) {
     }
 }
 
-// The dispatcher of the node page: one arm per `do` value, until the plan's step 3 makes them listeners.
+// The dispatcher of the node page: one arm per `do` value. Step 4 (2026-11-17) made them listeners, so the count is 0 and its
+// ceiling followed; a `match ($do)` that comes back counts its arms again and turns this red.
 $nodes = (string) file_get_contents(ROOT . '/src/WordPress/Admin/NodesScreen.php');
 
-if (preg_match('/match \(\$do\) \{(.*?)\n\s*\};/s', $nodes, $match) !== 1) {
-    fwrite(STDERR, "The dispatcher «match (\$do)» was not found — the measurement no longer fits the code.\n");
-    exit(2);
-}
-
-$counts['arms of the node page dispatcher'] = preg_match_all('/^\s*(\'[^\']+\'\s*,\s*)*\'[^\']+\'\s*=>/m', $match[1]);
+$counts['arms of the node page dispatcher'] = preg_match('/match \(\$do\) \{(.*?)\n\s*\};/s', $nodes, $match) === 1
+    ? preg_match_all('/^\s*(\'[^\']+\'\s*,\s*)*\'[^\']+\'\s*=>/m', $match[1])
+    : 0;
 
 // G16 for the modeller itself: the design guard only asks modules (review 2026-11-17, R-5).
 foreach (phpFiles(ROOT . '/src/WordPress') as $file) {
