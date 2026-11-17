@@ -109,18 +109,8 @@ $ersetzen = static function (?string $text) use (&$namen, &$fremd): string {
         return '∅';
     }
 
-    // *A path is a chain of ids, each perhaps with its space in front: a segment is named by the id it ends with, the rest is «·».*
-    $text = (string) preg_replace_callback('/path=([0-9.]+)/', static function (array $m) use (&$namen): string {
-        return 'path=' . implode('.', array_map(static function (string $teil) use (&$namen): string {
-            foreach ($namen as $id => $name) {
-                if ($teil === (string) $id || (strlen($teil) > 6 && str_ends_with($teil, (string) $id))) {
-                    return $name;
-                }
-            }
-
-            return '·';
-        }, explode('.', $m[1])));
-    }, $text);
+    // *A path is a chain of sort keys, not of ids, and they differ per database: what stays is its depth.*
+    $text = (string) preg_replace_callback('/path=([0-9.]+)/', static fn (array $m): string => 'path=' . implode('.', array_fill(0, substr_count($m[1], '.') + 1, '·')), $text);
     // *The locale of a label is the site's (D-645), not the act's.*
     $text = (string) preg_replace('/locale=[a-z]{2}_[A-Z]{2}/', 'locale=·', $text);
 
