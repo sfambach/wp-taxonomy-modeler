@@ -57,7 +57,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 92 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 93 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:63](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:64](../../CLAUDE.md) | 2 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
