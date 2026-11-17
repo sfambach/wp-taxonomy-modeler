@@ -49,7 +49,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **PR6** | Documentation style per 98-documentation-style.md: one small mermaid diagram per Sachverhalt, explanation beneath, code only where detail demands i… | [CLAUDE.md:34](../../CLAUDE.md) | 1 |
 | **PR7** | Report faithfully. If something is unverified, say so. If a step was skipped, say so. Never present a plausible reconstruction as a finding. | [CLAUDE.md:35](../../CLAUDE.md) | 5 |
 | **PR8** | Rule hygiene applies to this file — see the last section. | [CLAUDE.md:36](../../CLAUDE.md) | **nie** |
-| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:37](../../CLAUDE.md) | 23 |
+| **PR9** | What works keeps working: both test runs are green before anything is committed (D-564) — the core run under PHPUnit, which loads no WordPress, and… | [CLAUDE.md:37](../../CLAUDE.md) | 24 |
 | **PR10** | Look it up before you say it. No claim about the concept without a quotation from it. Whenever an answer turns on what was decided — a mechanism, a… | [CLAUDE.md:39](../../CLAUDE.md) | 26 |
 | **PR13** | The yardstick for a specification is whether a person can check it, not whether the AI can build from it (D-566). If the only reader who can hold t… | [CLAUDE.md:38](../../CLAUDE.md) | 3 |
 
@@ -366,7 +366,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **M1** | Changing a unit or a description changes only the output. The node is the same one that was used; the data stay the same. | [70-migration.md:31](70-migration.md) | 4 |
 | **M2** | Therefore the data must hold a reference to the node id, never to the name. Rename the node and every output changes — the data do not. | [70-migration.md:32](70-migration.md) | 1 |
 | **M3** | Documents are not part of this concept. An exported PDF is detached from the model; regenerating it later would simply look different. There is no … | [70-migration.md:33](70-migration.md) | 2 |
-| **M4** | Replacing a node with a different one is another matter. That changes the model version and produces a conflict in existing data, which the user ha… | [70-migration.md:34](70-migration.md) | 7 |
+| **M4** | Replacing a node with a different one is another matter. That changes the model version and produces a conflict in existing data, which the user ha… | [70-migration.md:34](70-migration.md) | 8 |
 | **M5** | Data made of id references are not human-readable. One cannot look into the database the way one can with a relational one. That is already true of… | [70-migration.md:35](70-migration.md) | 3 |
 | **M6** | Two surfaces follow: data entry in the admin — choose a model, see its data — and the conflict resolver. | [70-migration.md:36](70-migration.md) | 13 |
 | **M7** | The conflict resolver shows which models have conflicts with their data and lets the user resolve them. Afterwards the model has no conflicts and t… | [70-migration.md:37](70-migration.md) | 1 |
