@@ -1358,3 +1358,9 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Die Kalkulation beim «Fertigung abschließen» ([D-1425](NewConcept/90-decision-log.md)) bildet den Teilepreis aus den verbrauchten Teilen. Die Spalte «Ausschuss» der Bestückung bucht zusätzlich verlorene Teile aus.
 - **Offen:** ob der Ausschuss in den Preis der fertigen Platinen eingeht (echte Kosten) oder getrennt bleibt. Bis zur Antwort: nicht eingerechnet, in der Aufschlüsselung als eigene Zeile «Ausschuss (nicht eingerechnet)» gezeigt.
+
+## INF-133 · Doppelte Klassen `Table` und `ModelGateway::ask()` in den Modulen (2026-11-17)
+
+- **Anlass:** Code-Review R-10. `Table` steht gleich in Lager, Fertigung und Etikett. `ask()` (übersetzt `ModelDoorRefused` in den Modulfehler) steht gleich in den `ModelGateway`-Klassen von Lager, Fertigung und Verkauf.
+- **Stand (Architektur 17.11.):** Die Dublette wird geduldet, jede Klasse bleibt in ihrem Modul. Gründe: kleine, stabile Wertklassen; ein gemeinsames Composer-Paket wäre eine neue Abhängigkeit mit eigenem Release-Weg; Injektion am Rand passt nicht, weil `Table` im Modul-Kern gebraucht wird. Den Modeller selbst können Modul-Kerne nicht laden (Release-CI ohne Modeller, vgl. Verkauf «RoleMap not found»).
+- **Offen:** ob später ein gemeinsames Modul-Paket kommt. Bis dahin: Änderungen an `Table` oder `ask()` in allen betroffenen Modulen gleich nachziehen.
