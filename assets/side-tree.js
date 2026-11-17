@@ -18,37 +18,18 @@
 		return pick ? pick.value : '';
 	}
 
-	function depthOf( row ) {
-		return parseInt( row.getAttribute( 'data-depth' ) || '0', 10 );
-	}
-
 	/**
 	 * Draws the tree with `wanted` open: true opens every branch, false closes every one, an object of ids opens those and
-	 * keeps what the page already opened (the way to the chosen branch).
+	 * keeps what the page already opened (the way to the chosen branch). Which rows show is the modeller's one walk
+	 * (`window.taxmodTreeShow`, admin.js, Ladezeit S5 D-1418).
 	 */
 	function draw( box, wanted ) {
-		var stack = [];
+		if ( typeof window.taxmodTreeShow !== 'function' ) {
+			return;
+		}
 
-		rows( box ).forEach( function ( row ) {
-			var depth = depthOf( row );
-
-			while ( stack.length && stack[ stack.length - 1 ].depth >= depth ) {
-				stack.pop();
-			}
-
-			var above   = stack[ stack.length - 1 ];
-			var visible = ! above || ( above.visible && above.open );
-			var fold    = row.querySelector( '.taxmod-tree-fold' );
-			var open    = !! fold && ( wanted === true || ( wanted !== false && ( wanted[ idOf( row ) ] === true || fold.getAttribute( 'data-fold' ) === 'auf' ) ) );
-
-			row.style.display = visible ? 'flex' : 'none';
-
-			if ( fold ) {
-				fold.setAttribute( 'data-fold', open ? 'auf' : 'zu' );
-				fold.innerHTML = open ? '▾' : '▸';
-			}
-
-			stack.push( { depth: depth, open: open, visible: visible } );
+		window.taxmodTreeShow( box, typeof wanted === 'boolean' ? wanted : function ( row ) {
+			return wanted[ idOf( row ) ] === true ? true : undefined;
 		} );
 	}
 

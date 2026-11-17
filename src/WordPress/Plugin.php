@@ -345,10 +345,10 @@ final class Plugin
             static fn () => $plugin->screen()->handleSharedBody()
         );
 
-        // ⚠️ *Der gemeinsame Auswahlbaum, beim ersten Öffnen geholt (Ladezeit S1).*
+        // ⚠️ *Teile der Knotenseite, beim ersten Öffnen geholt: der gemeinsame Auswahlbaum, «Used by» (Ladezeit S1/S4).*
         add_action(
-            'admin_post_' . NodesScreen::SHARED_PICK_ACTION,
-            static fn () => $plugin->screen()->handleSharedPick()
+            'admin_post_' . NodesScreen::PAGE_PART_ACTION,
+            static fn () => $plugin->screen()->handlePagePart()
         );
 
         // ⚠️ *Die Treffer für «jeden Satz unter Model» (D-958) — derselbe Rückweg.*

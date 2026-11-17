@@ -63,48 +63,56 @@
 			mitWeg( vater[ gewaehlt ] );
 		}
 
-		var sichtbar = {};
+		var nummer = 0;
 
-		for ( i = 0; i < zeilen.length; i++ ) {
-			var eigen = ids[ i ];
-			var oben  = vater[ eigen ];
+		baumZeigen( huelle, function () {
+			return auf[ ids[ nummer++ ] ] === true;
+		} );
+	}
 
-			sichtbar[ eigen ] = oben === null || ( sichtbar[ oben ] === true && auf[ oben ] === true );
-			zeilen[ i ].style.display = sichtbar[ eigen ] ? 'flex' : 'none';
+	/**
+	 * ⚠️ **Welche Zeilen eines Baums zu sehen sind, steht an einer Stelle** (Ladezeit S5, D-1418) — *bisher je einmal hier, im Seitenbaum
+	 * der Module (`side-tree.js`) und im Satzbaum.* Der Baum ist flach im Dokument, jede Zeile kennt ihre Tiefe; eine Zeile ist zu sehen,
+	 * wenn alle über ihr offen sind. `offen`: true öffnet alles, false schliesst alles, eine Funktion (Zeile, Klapper) sagt es je Zeile —
+	 * sie wird für jede Zeile in Reihenfolge gefragt —, ohne Angabe gilt, was der Klapper sagt.
+	 */
+	function baumZeigen( wurzel, offen ) {
+		var stapel = [];
 
-			var klapper = zeilen[ i ].querySelector( '.taxmod-tree-fold' );
+		Array.prototype.forEach.call( wurzel.querySelectorAll( '.taxmod-tree-row' ), function ( zeile ) {
+			var tiefe = parseInt( zeile.getAttribute( 'data-depth' ) || '0', 10 );
+
+			while ( stapel.length && stapel[ stapel.length - 1 ].tiefe >= tiefe ) {
+				stapel.pop();
+			}
+
+			var oben     = stapel[ stapel.length - 1 ];
+			var sichtbar = ! oben || ( oben.sichtbar && oben.auf );
+			var klapper  = zeile.querySelector( '.taxmod-tree-fold' );
+			var gefragt  = typeof offen === 'function' ? offen( zeile, klapper ) : offen;
+			var auf      = !! klapper && ( gefragt === true || ( gefragt !== false && klapper.getAttribute( 'data-fold' ) === 'auf' ) );
+
+			zeile.style.display = sichtbar ? 'flex' : 'none';
 
 			if ( klapper ) {
-				klapper.setAttribute( 'data-fold', auf[ eigen ] === true ? 'auf' : 'zu' );
-				klapper.innerHTML = auf[ eigen ] === true ? '▾' : '▸';
+				klapper.setAttribute( 'data-fold', auf ? 'auf' : 'zu' );
+				klapper.innerHTML = auf ? '▾' : '▸';
 			}
-		}
+
+			stapel.push( { tiefe: tiefe, auf: auf, sichtbar: sichtbar } );
+		} );
 	}
+
+	window.taxmodTreeShow = baumZeigen;
 
 	/**
 	 * ⚠️ **Der Baum steht nicht in der Seite, nur seine Adresse** (Ladezeit S1, nach D-898) — *gemessen 17.11.: ~360 KB in jeder
 	 * Knotenseite. Beim ersten Öffnen holt ihn derselbe Weg wie einen grossen Satzdialog-Körper; danach klickt der Öffner noch einmal.*
 	 */
 	function geholt( huelle, oeffner ) {
-		var vorlage = huelle.querySelector( 'template.taxmod-shared-body' );
-
-		if ( ! vorlage ) {
-			return true;
-		}
-
-		if ( vorlage.getAttribute( 'data-taxmod-src' ) && typeof window.taxmodBodyReady === 'function'
-			&& ! window.taxmodBodyReady( vorlage, function () {
-				if ( ! vorlage.getAttribute( 'data-taxmod-src' ) ) {
-					oeffner.click();
-				}
-			} ) ) {
-			return false;
-		}
-
-		huelle.appendChild( vorlage.content.cloneNode( true ) );
-		huelle.removeChild( vorlage );
-
-		return true;
+		return typeof window.taxmodLaterPart !== 'function' || window.taxmodLaterPart( huelle, function () {
+			oeffner.click();
+		} );
 	}
 
 	document.addEventListener( 'click', function ( event ) {
@@ -1291,8 +1299,44 @@
 		return false;
 	}
 
-	// *Auch der gemeinsame Auswahlbaum holt sich so (Ladezeit S1) — ein Holweg, nicht zwei.*
-	window.taxmodBodyReady = vorlageBereit;
+	/**
+	 * ⚠️ **Ein Teil der Seite, der erst beim Brauchen kommt** (Ladezeit S1/S4) — *der gemeinsame Auswahlbaum, «Used by»: im Halter steht
+	 * nur eine Vorlage mit Adresse. Steht sie geladen da, tritt ihr Inhalt an ihre Stelle und es geht weiter (true); sonst wird sie
+	 * geholt — derselbe Weg wie ein grosser Satzdialog-Körper — und `danach` läuft, sobald sie da ist. Ein Holweg, nicht zwei.*
+	 */
+	function spaeterTeil( halter, danach ) {
+		var vorlage = halter.querySelector( ':scope > template.taxmod-shared-body' );
+
+		if ( ! vorlage ) {
+			return true;
+		}
+
+		if ( ! vorlageBereit( vorlage, function () {
+			if ( ! vorlage.getAttribute( 'data-taxmod-src' ) && typeof danach === 'function' ) {
+				danach();
+			}
+		} ) ) {
+			return false;
+		}
+
+		halter.insertBefore( vorlage.content.cloneNode( true ), vorlage );
+		halter.removeChild( vorlage );
+
+		return true;
+	}
+
+	window.taxmodLaterPart = spaeterTeil;
+
+	// *Ein zugeklappter Block, dessen Inhalt erst beim Öffnen kommt (Ladezeit S4: «Used by»). `toggle` steigt nicht auf, darum im Einfang.*
+	document.addEventListener( 'toggle', function ( ereignis ) {
+		var block = ereignis.target;
+
+		if ( block instanceof HTMLDetailsElement && block.open ) {
+			spaeterTeil( block, function () {
+				spaeterTeil( block );
+			} );
+		}
+	}, true );
 
 	function koerperEinsetzen( wurzel, danach ) {
 		if ( ! wurzel ) {

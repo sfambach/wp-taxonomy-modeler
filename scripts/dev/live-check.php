@@ -42,7 +42,10 @@ $claims = [
     'a fold triangle fetches only the tree and says so'           => str_contains($live, "link.matches( '.taxmod-tree-fold-box' )") && str_contains($live, "'X-Taxmod-Live': part"),
     'a page asked for the tree draws no detail'                   => str_contains($nodes, 'function asksTreeOnly') && str_contains($nodes, "(\$nurBaum ? '' : \$times->measure(__('Detail'"),
     'any other link puts the page in place as a history entry'    => str_contains($live, 'history.pushState') && str_contains($live, "'popstate'"),
-    'an older link keeps the fold state of the address'           => str_contains($live, 'function carry') && str_contains($nodes, 'data-taxmod-carry="taxmod_collapsed"'),
+    'an older link keeps the fold state of the address'           => str_contains($live, 'function carry') && str_contains($nodes, 'data-taxmod-carry="taxmod_collapsed taxmod_hidden"'),
+    'a shut block fetches its content when opened, through the one loader' => str_contains($admin, 'window.taxmodLaterPart = spaeterTeil') && str_contains($admin, "addEventListener( 'toggle'") && str_contains($nodes, 'function laterPart'),
+    'which rows of a tree show is walked in one place'          => str_contains($admin, 'window.taxmodTreeShow = baumZeigen') && str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'window.taxmodTreeShow(') && ! str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'stack.push'),
+    'the drawing times split the detail into its blocks'        => str_contains($nodes, 'private function block(') && substr_count($nodes, '$this->block(__(') >= 6,
     'a jump and an anchor still happen after a tree click'        => str_contains($admin, "'taxmod:navigated'") && str_contains($live, "'taxmod:navigated'"),
 ];
 

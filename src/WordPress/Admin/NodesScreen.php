@@ -151,6 +151,19 @@ final class NodesScreen
      */
     private ?string $foldStateForLinks = null;
 
+    /** What this drawing took, part by part (Ladezeit S0); the detail half adds its blocks (S4). */
+    private ?DrawingTimes $times = null;
+
+    /**
+     * One block of the detail half, measured when the developer mode asks for it.
+     *
+     * @param callable(): string $draw
+     */
+    private function block(string $name, callable $draw): string
+    {
+        return $this->times === null ? $draw() : $this->times->measure(sprintf(/* translators: %s: a block of the node page */ __('Detail: %s', 'taxmod'), $name), $draw);
+    }
+
     /**
      * Für welchen Knoten der Weg schon einmal geöffnet wurde.
      *
@@ -1241,7 +1254,7 @@ final class NodesScreen
     {
         $root  = $this->framework->root();
         $trash = $this->framework->trash();
-        $times = new DrawingTimes();
+        $times = $this->times = new DrawingTimes();
         $tree  = __('Tree', 'taxmod');
 
         // Two queries for the whole tree, whatever its depth — the traversal is solved once,
@@ -1437,7 +1450,7 @@ final class NodesScreen
             // ⚠️ *Ladezeit S2/S3 (D-1417): ein Link dieser Seite lädt sie nicht neu — `assets/live.js` holt sie im Hintergrund und setzt das
             // Geänderte ein; ein Dreieck holt nur den Baum. Der Faltzustand der Adresse gilt für jeden Link, auch einen älteren (F1: die URL
             // bleibt sein Träger, nachgeführt per replaceState).*
-            . ' data-taxmod-live-links data-taxmod-fold-part="' . self::TREE_PANE . '" data-taxmod-carry="taxmod_collapsed"'
+            . ' data-taxmod-live-links data-taxmod-fold-part="' . self::TREE_PANE . '" data-taxmod-carry="taxmod_collapsed taxmod_hidden"'
             // ⚠️ *Automatisch speichern steht an der Seite (D-854); das Skript liest es dort, wie schon den Baumklick.*
             . ' data-taxmod-autosave="' . (SettingsScreen::autosaves() ? 'on' : 'off') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
@@ -2399,7 +2412,7 @@ final class NodesScreen
             // honestly about derived facts.*
             PageSlot::Acts->value => new Section(
                 '',
-                $this->head($selected, $root)
+                $this->block(__('Head', 'taxmod'), fn (): string => $this->head($selected, $root))
             ),
 
             // ⚠️ **Labels sit in `display` and R20a names no slot for them** — an assumption, and
@@ -2423,7 +2436,7 @@ final class NodesScreen
                 // und es hätte zwei Wege zum selben Wert gegeben, die auseinanderlaufen können. **Der
                 // Renderer wird jetzt in der Wertspalte des Einstellungsblocks gesetzt**, wie jede
                 // andere Angabe des Modells.*
-                $this->labelsPanel($selected)
+                $this->block(__('Labels', 'taxmod'), fn (): string => $this->labelsPanel($selected))
             ),
 
             // ⚠️ **No band heading, because the panel carries its own** — with the `?` on it. Two
@@ -2434,14 +2447,14 @@ final class NodesScreen
                 // ⚠️ **Der Einstellungsbereich des Knotens aus dem Vertrag** (Schritt 4 des Bauplans):
                 // *seine Attribute, der gewählte Renderer, dessen Attribute — über den Feldern.
                 // Leer, solange kein Auflöser verdrahtet ist.*
-                $this->rendering->settingsPanelForNode(
+                $this->block(__('Settings', 'taxmod'), fn (): string => $this->rendering->settingsPanelForNode(
                     $selected,
                     self::SETTING_FIELD,
                     self::pageForm($selected),
                     $this->settingsPanelWords(),
                     $this->localeFromRequest()
-                )
-                . $this->attributes($selected, $rows)
+                ))
+                . $this->block(__('Fields', 'taxmod'), fn (): string => $this->attributes($selected, $rows))
             ),
 
             // ⚠️ **The slot has been empty since Package 4 and it was not idle, it was blocked —
@@ -2450,7 +2463,7 @@ final class NodesScreen
             // for it because it is the only surface on which `hide` and `read_only` show an effect.*
             PageSlot::Preview->value => new Section(
                 '',
-                $this->previewPanel($selected)
+                $this->block(__('Preview', 'taxmod'), fn (): string => $this->previewPanel($selected))
             ),
 
             // ⚠️ **Der Abschnitt hält **eine** Richtung, und das ist [D-199](../../../docs/NewConcept/90-decision-log.md)s
@@ -2470,7 +2483,7 @@ final class NodesScreen
         return $this->rendering->nodeAsPage($selected, $sections)->markup
             // ⚠️ *Ein eigener Name für den Satzblock, damit er waagerecht scrollt statt die Seite zu dehnen — sein Befund: «scrollbar for records
             // disappeared webside is again stretched to wide» (D-777, verloren mit D-785).*
-            . '<div class="taxmod-page-block taxmod-records-block">' . $this->recordsPanel($selected) . '</div>'
+            . '<div class="taxmod-page-block taxmod-records-block">' . $this->block(__('Records', 'taxmod'), fn (): string => $this->recordsPanel($selected)) . '</div>'
             // ⚠️ **«Used by» ganz unten und zugeklappt** (D-781) — sein Wort: «den Used by Bereich ganz nach unten und
             // macht den ausklappbar, standardmäßig eingeklappt».
             . '<div class="taxmod-page-block"><details class="taxmod-used-by-block">' . $this->usedByPanel($selected) . '</details></div>';
@@ -3005,13 +3018,20 @@ final class NodesScreen
      */
     private function usedByPanel(Node $selected): string
     {
-        $relations = $this->editor->usedBy($selected->id);
-
-        $html = '<summary style="cursor:pointer">' . $this->heading(
+        // ⚠️ **Zugeklappt, also erst beim Öffnen gezeichnet** (Ladezeit S4). *Der Block steht seit je in einem geschlossenen `<details>`;
+        // seine Abfragen liefen trotzdem bei jedem Knotenklick.*
+        return '<summary style="cursor:pointer">' . $this->heading(
             __('Used by', 'taxmod'),
             __('Which attributes of other nodes are typed by this one. Everything going out of this node is in the attributes above; this is the direction that appears nowhere else, and it is what would break if this node were deleted.', 'taxmod'),
             'strong'
-        ) . '</summary>';
+        ) . '</summary>' . $this->laterPart(self::PART_USED_BY, ['node' => (string) $selected->id]);
+    }
+
+    /** What «Used by» lists, drawn when the block is opened (Ladezeit S4). */
+    private function usedByList(Node $selected): string
+    {
+        $relations = $this->editor->usedBy($selected->id);
+        $html      = '';
 
         if ($relations === []) {
             // ⚠️ *Gesagt statt weggelassen: «nichts verweist hierher» und «ich habe nicht
@@ -3037,7 +3057,9 @@ final class NodesScreen
                     // verschwiegen — eine Kante ohne ihren Knoten ist ein Befund
                     // ([D-485](../../../docs/NewConcept/90-decision-log.md)) und keine leere Zeile.*
                     ? '<span class="taxmod-nothing">#' . (int) $relation->fromNodeId . '</span>'
-                    : '<a href="' . esc_url($this->backTo($owner->id)) . '" class="taxmod-used-by-link">'
+                    // ⚠️ *Drawn in its own request (Ladezeit S4), so not `backTo()`: that builds on the address of this request. The
+                    // view state comes from the page's address when clicked (`data-taxmod-carry`, D-1417).*
+                    : '<a href="' . esc_url(add_query_arg(['page' => 'taxmod', 'taxmod_node' => $owner->id], admin_url('admin.php'))) . '" class="taxmod-used-by-link">'
                         . esc_html($owner->name) . '</a>')
                 . '</li>';
         }
@@ -3963,35 +3985,63 @@ final class NodesScreen
      * welche Zeile gewählt hat, was gesperrt und was offen ist, trägt der Öffner und liest das Skript.*
      */
     /**
-     * Where the shared tree is drawn now: an empty template with its address, fetched by `assets/admin.js` the first time an opener
-     * is clicked — the D-898 way, the same script (Ladezeit S1, architecture thread 17.11.: «kein zweiter Holmechanismus»).
+     * A part of the page that is not drawn with it: an empty template with its address, fetched by `assets/admin.js` when first
+     * needed — the D-898 way, the same script (Ladezeit S1/S4, architecture thread 17.11.: «kein zweiter Holmechanismus»).
+     *
+     * @param array<string, string> $args what the part needs besides its name, e.g. the node
      */
-    private function sharedPickerStub(): string
+    private function laterPart(string $part, array $args = []): string
     {
         $adresse = add_query_arg([
-            'action'        => self::SHARED_PICK_ACTION,
+            'action'        => self::PAGE_PART_ACTION,
+            'part'          => $part,
             'taxmod_locale' => $this->localeFromRequest(),
-            '_taxmod_nonce' => wp_create_nonce(self::SHARED_PICK_ACTION),
-        ], admin_url('admin-post.php'));
+            '_taxmod_nonce' => wp_create_nonce(self::PAGE_PART_ACTION),
+        ] + $args, admin_url('admin-post.php'));
 
-        return '<div class="taxmod-shared-pick"><template class="taxmod-shared-body" data-taxmod-body="pick" data-taxmod-src="' . esc_url($adresse) . '"></template></div>';
+        return '<template class="taxmod-shared-body" data-taxmod-body="' . esc_attr($part . ($args === [] ? '' : '-' . implode('-', $args))) . '" data-taxmod-src="' . esc_url($adresse) . '"></template>';
     }
 
-    /** The act under which the script fetches the shared tree (Ladezeit S1). */
-    public const SHARED_PICK_ACTION = 'taxmod_shared_pick';
+    /** Where the shared tree is drawn now: only its address (Ladezeit S1, D-1416). */
+    private function sharedPickerStub(): string
+    {
+        return '<div class="taxmod-shared-pick">' . $this->laterPart(self::PART_PICK) . '</div>';
+    }
 
-    /** admin-post: capability → nonce → the shared tree, drawn now — nothing stored, so it is never stale (Ladezeit S1). */
-    public function handleSharedPick(): void
+    /** The act under which the script fetches a part of the model page drawn later (Ladezeit S1/S4). */
+    public const PAGE_PART_ACTION = 'taxmod_page_part';
+
+    /** The shared node tree (D-815). */
+    private const PART_PICK = 'pick';
+
+    /** «Used by» of a node — shut on the page, drawn when opened. */
+    private const PART_USED_BY = 'used-by';
+
+    /** admin-post: capability → nonce → validate → the part, drawn now — nothing stored, so it is never stale. */
+    public function handlePagePart(): void
     {
         if (! current_user_can(Plugin::CAPABILITY)) {
             wp_die(esc_html__('You are not allowed to shape the model.', 'taxmod'), '', ['response' => 403]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
         }
 
-        check_admin_referer(self::SHARED_PICK_ACTION, '_taxmod_nonce');
+        check_admin_referer(self::PAGE_PART_ACTION, '_taxmod_nonce');
+
+        $part = isset($_GET['part']) ? sanitize_key(wp_unslash((string) $_GET['part'])) : '';
+        $node = isset($_GET['node']) ? $this->editor->find(absint($_GET['node'])) : null;
+
+        $draw = match (true) {
+            $part === self::PART_PICK                      => fn (): string => $this->sharedPickerTree(),
+            $part === self::PART_USED_BY && $node !== null => fn (): string => $this->usedByList($node),
+            default                                        => null,
+        };
+
+        if ($draw === null) {
+            wp_die(esc_html__('This list is no longer available. Please reload the page.', 'taxmod'), '', ['response' => 404]); // G12: fragment fetched by script; a redirect would put a whole page into its slot (owner: review thread, D-1392)
+        }
 
         header('Content-Type: text/html; charset=utf-8');
 
-        echo \Taxmod\WordPress\Persistence\WpdbLabelRepository::whileDrawing(fn (): string => \Taxmod\WordPress\Persistence\Query::remembering(fn (): string => $this->sharedPickerTree())); // phpcs:ignore WordPress.Security.EscapeOutput — escaped while drawn
+        echo \Taxmod\WordPress\Persistence\WpdbLabelRepository::whileDrawing(fn (): string => \Taxmod\WordPress\Persistence\Query::remembering($draw)); // phpcs:ignore WordPress.Security.EscapeOutput — escaped while drawn
 
         exit;
     }
