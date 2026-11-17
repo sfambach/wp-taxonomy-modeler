@@ -284,7 +284,15 @@ final class InboxScreen
 
         if ($source instanceof BacklogSource) {
             $html .= '<p>' . self::button(self::BACKLOG, $key, __('Sort the backlog', 'taxmod')) . '<br><span class="description">'
-                . esc_html__('Reads the messages from before the starting point: orders already in the model are put away, readable ones become proposals, the rest stays.', 'taxmod') . '</span></p>';
+                . esc_html__('Reads the messages from before the starting point: orders already in the model are put away, readable ones become proposals, the rest stays.', 'taxmod') . '</span>';
+            $error = Inbox::backlogError($key);
+
+            if ($error !== null) {
+                /* translators: %s: time and message of the failure */
+                $html .= '<br><span class="description">' . esc_html(sprintf(__('The hourly run could not sort the backlog: %s', 'taxmod'), $error)) . '</span>';
+            }
+
+            $html .= '</p>';
         }
 
         return $html . '<p>' . self::button(self::RESTART, $key, __('Start over from now', 'taxmod'), '', __('Forget the open proposals of this module and start over?', 'taxmod'))

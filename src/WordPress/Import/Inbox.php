@@ -17,6 +17,7 @@ use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\RestartingSource;
 use Taxmod\Core\Import\SearchingSource;
+use Taxmod\WordPress\Plugin;
 
 /**
  * Runs a source and files what it brings: once per external id and once per message (a forwarded copy), only what the
@@ -38,7 +39,10 @@ final class Inbox
     public const SCHEDULE_HOOK = 'taxmod_import_fetch';
     private const CURSOR_OPTION = 'taxmod_import_cursor_';
     private const BACKLOG_OPTION = 'taxmod_import_backlog_';
+    private const BACKLOG_ERROR_OPTION = 'taxmod_import_backlog_error_';
     private const LAST_RUN_OPTION = 'taxmod_import_last_run';
+    /** What the hourly run gives the backlog; the source cuts its own slices shorter. */
+    public const BACKLOG_STRETCH_SECONDS = 15;
 
     private ?ModelGateway $model = null;
 
@@ -80,7 +84,66 @@ final class Inbox
             update_option(self::BACKLOG_OPTION . $source->key(), $cursor, false);
         } while ($cursor !== null && time() - $started < $budgetSeconds);
 
+        delete_option(self::BACKLOG_ERROR_OPTION . $source->key());
+
         return ['filed' => $filed, 'done' => $cursor === null];
+    }
+
+    /**
+     * One stretch of every source's backlog with the hourly run, so the mailbox empties without the button (D-1421). It
+     * reads the model, so it acts as the user the automatic take acts as; without one it waits for the button. The
+     * cursor is the button's: both go on where the other stopped.
+     *
+     * @return int how many proposals were filed
+     */
+    public function sortBacklogs(int $budgetSeconds): int
+    {
+        $user = AutoTake::user();
+
+        if ($user === 0) {
+            return 0;
+        }
+
+        $before = get_current_user_id();
+
+        if ($before === 0) {
+            wp_set_current_user($user);
+        }
+
+        try {
+            if (! current_user_can(Plugin::CAPABILITY) || ! ModelGateway::available()) {
+                return 0;
+            }
+
+            $filed = 0;
+
+            foreach (Sources::all() as $source) {
+                if (! $source instanceof BacklogSource) {
+                    continue;
+                }
+
+                try {
+                    $filed += $this->runBacklog($source, new GatewayLookup(new ModelGateway(Targets::load())), $budgetSeconds)['filed'];
+                } catch (\Throwable $failure) {
+                    // Kept beside the button, not in the last run: that one's time decides when the next fetch is due.
+                    update_option(self::BACKLOG_ERROR_OPTION . $source->key(), wp_date('Y-m-d H:i') . ' — ' . $failure->getMessage(), false);
+                }
+            }
+
+            return $filed;
+        } finally {
+            if ($before === 0) {
+                wp_set_current_user(0);
+            }
+        }
+    }
+
+    /** The failure of the last hourly backlog stretch, with its time; null after a stretch that went through. */
+    public static function backlogError(string $key): ?string
+    {
+        $error = get_option(self::BACKLOG_ERROR_OPTION . $key, '');
+
+        return is_string($error) && $error !== '' ? $error : null;
     }
 
     public function search(SearchingSource $source, string $text): int
@@ -94,6 +157,7 @@ final class Inbox
         $forgotten = $this->table->forgetOpen($source->key());
         delete_option(self::CURSOR_OPTION . $source->key());
         delete_option(self::BACKLOG_OPTION . $source->key());
+        delete_option(self::BACKLOG_ERROR_OPTION . $source->key());
 
         if ($source instanceof RestartingSource) {
             $source->restart();
