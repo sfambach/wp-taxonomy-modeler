@@ -1348,3 +1348,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Anlass:** Für den Schritt «Test» der Fertigung ([D-1419](NewConcept/90-decision-log.md)) schreibt das Lager 0.64.110 ([D-1420](NewConcept/90-decision-log.md)) das Ergebnis in den vorhandenen Prüfbericht am Posten, einer je Posten, den Verlauf geben die Änderungsnummern.
 - **Beschlossen war:** [D-1304](NewConcept/90-decision-log.md) «Ein Test ist ein eigener Satz (Prüfprotokoll), mehrere je Posten». Gebaut ist seit [D-1342](NewConcept/90-decision-log.md) einer je Posten.
 - **Offen:** ob ein erneuter Test (nach Reparatur) einen eigenen Satz bekommt (Modelländerung) oder ob der Verlauf über die Änderungsnummern reicht. Bis dahin gilt der gebaute Stand.
+
+## INF-129 · Modeller-Oberfläche ohne deutsche Übersetzung (2026-11-17)
+
+- **Anlass:** Stefan sieht in der Fertigung englische Knöpfe der gemeinsamen Bausteine («Run bulk action», «Cancel»). Der Modeller schreibt seine Texte englisch über die Textdomain `taxmod`, eine Übersetzungsdatei (.po/.mo) gibt es im Repository nicht. Die Module schreiben ihre Texte direkt deutsch.
+- **Offen:** ob der Modeller eine deutsche Übersetzungsdatei bekommt (und wer sie pflegt) oder ob die Ausgangssprache wechselt. Bis dahin bleibt es, wie es ist; kein Modul übersetzt Modeller-Texte selbst.
