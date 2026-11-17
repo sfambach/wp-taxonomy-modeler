@@ -55,11 +55,6 @@ final class ReferenceRenderer extends TypedFieldRenderer
 
     public const WITH_PARENT = 'use_parent_label';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::NodeRef];

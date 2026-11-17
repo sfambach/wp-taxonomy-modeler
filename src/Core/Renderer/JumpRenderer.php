@@ -16,11 +16,6 @@ final class JumpRenderer extends TypedFieldRenderer
 {
     public const NAME = 'jump';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Jump];

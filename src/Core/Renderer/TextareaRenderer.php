@@ -31,11 +31,6 @@ final class TextareaRenderer extends TypedFieldRenderer
 
     public const NAME = 'textarea';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Text];

@@ -22,11 +22,6 @@ final class MailtoRenderer extends TypedFieldRenderer
 {
     public const NAME = 'mailto';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Email];

@@ -29,11 +29,6 @@ final class CodeRenderer extends TypedFieldRenderer
 
     private const DEFAULT_ROWS = '12';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Text];

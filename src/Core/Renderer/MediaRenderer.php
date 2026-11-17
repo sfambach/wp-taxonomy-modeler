@@ -23,19 +23,10 @@ final class MediaRenderer extends TypedFieldRenderer
 {
     public const NAME = 'media';
 
-
-
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Media];
     }
-
-
 
     protected function display(RenderContext $context): string
     {
@@ -56,7 +47,6 @@ final class MediaRenderer extends TypedFieldRenderer
 
         return $id === null || $bibliothek === null ? null : ($bibliothek->filesFor([$id])[$id] ?? null);
     }
-
 
     /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
     public static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?MediaLibrary $bibliothek = null): string

@@ -74,11 +74,6 @@ final class SettingsRenderer extends RendererNode
         return 'taxmod-settings-' . $subject->id;
     }
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

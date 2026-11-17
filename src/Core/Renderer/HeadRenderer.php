@@ -74,11 +74,6 @@ final class HeadRenderer extends RendererNode
      */
     private const ORDER = [self::NODE, self::SYSTEM];
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

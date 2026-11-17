@@ -112,11 +112,6 @@ final class CompactRenderer extends RendererNode
     public const HORIZONTAL = Orientation::Horizontal->value;
     public const VERTICAL   = Orientation::Vertical->value;
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

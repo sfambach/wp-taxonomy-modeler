@@ -58,11 +58,6 @@ final class LabelsRenderer extends RendererNode
     // nicht gibt, ist toter Code** — und wer den Bereich in ein Formular hängen will, nennt jetzt
     // dasselbe `put_setting` wie die Einstellungen daneben.*
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

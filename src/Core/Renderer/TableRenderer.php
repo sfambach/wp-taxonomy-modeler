@@ -73,11 +73,6 @@ final class TableRenderer extends RendererNode
     /** Die Einstellung am Ziel eines Verweises: Felder des verwiesenen Satzes als eigene Spalten (D-955). */
     public const TARGET_COLUMNS = 'target_columns';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     /**
      * ⚠️ *Auch beim Bearbeiten: eine Tabelle von drei Datensätzen bleibt eine Tabelle, wenn man in
      * ihr etwas ändert. Was sich unterscheidet, hat der Abstieg schon gezeichnet.*

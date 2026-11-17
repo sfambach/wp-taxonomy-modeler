@@ -18,11 +18,6 @@ final class SpinnerRenderer extends TypedFieldRenderer
 {
     public const NAME = 'spinner';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Int, SimpleType::Decimal];

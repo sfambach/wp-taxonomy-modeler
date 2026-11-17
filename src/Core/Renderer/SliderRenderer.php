@@ -24,11 +24,6 @@ final class SliderRenderer extends TypedFieldRenderer
 {
     public const NAME = 'slider';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Int, SimpleType::Decimal];

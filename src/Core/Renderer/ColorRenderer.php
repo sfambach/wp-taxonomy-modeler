@@ -24,11 +24,6 @@ final class ColorRenderer extends TypedFieldRenderer
 {
     public const NAME = 'color';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Color];

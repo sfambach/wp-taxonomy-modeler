@@ -134,11 +134,6 @@ final class FieldRowRenderer extends RendererNode
         return 'taxmod-field-settings-' . $relation->id;
     }
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     /**
      * ⚠️ **Both, and the distinction is the name.** The row *shows* an attribute — the target, the
      * kind, where it comes from — and the one thing on it that is a **value being edited** is the
