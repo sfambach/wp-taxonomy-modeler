@@ -600,6 +600,22 @@ final class ListPage
     }
 
     /**
+     * The hook callback of an admin-post handler, run through {@see self::act()}: `add_action('admin_post_x', ListPage::acting($handler))`.
+     * A handler that returns nothing goes back to the page it came from (or `$back`); one that returns an address goes there.
+     * The one wrapper instead of a copy in each module (D-1409).
+     */
+    public static function acting(callable $handler, string $back = ''): \Closure
+    {
+        return static function () use ($handler, $back): void {
+            self::act(static function () use ($handler): string {
+                $to = $handler();
+
+                return is_string($to) ? $to : '';
+            }, $back);
+        };
+    }
+
+    /**
      * End an act with a message and a way back (D-1254): back to the page it came from, the message in its message field; where
      * a page was already sent, a short error page with a «Back» link instead of an empty one.
      */
