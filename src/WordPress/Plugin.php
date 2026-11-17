@@ -107,6 +107,9 @@ final class Plugin
     /** The script of `ListPage::sideTree()`: expand and collapse all, and the open branches kept per user. */
     public const SIDE_TREE_SCRIPT = 'taxmod-side-tree';
 
+    /** Which rows of a tree show — the one walk the shared tree and the side tree depend on (Ladezeit S5, D-1418). */
+    public const TREE_SHOW_SCRIPT = 'taxmod-tree-show';
+
     /** The live building block (D-1340): a form marked `data-taxmod-live` swaps one area instead of loading the page. */
     public const LIVE_SCRIPT = 'taxmod-live';
 
@@ -776,10 +779,11 @@ final class Plugin
             add_action('admin_footer', [$this, 'printLinkDialog']);
         }
 
+        $this->registerTreeShow();
         wp_enqueue_script(
             'taxmod-admin',
             plugins_url('assets/admin.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
-            [],
+            [self::TREE_SHOW_SCRIPT],
             (string) (@filemtime($this->path('assets/admin.js')) ?: self::VERSION),
             true
         );
@@ -811,13 +815,30 @@ final class Plugin
         \_WP_Editors::wp_link_dialog();
     }
 
+    /** Registered once by whichever needs it first — admin.js or the side tree (D-1418). */
+    private function registerTreeShow(): void
+    {
+        if (wp_script_is(self::TREE_SHOW_SCRIPT, 'registered')) {
+            return;
+        }
+
+        wp_register_script(
+            self::TREE_SHOW_SCRIPT,
+            plugins_url('assets/tree-show.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
+            [],
+            (string) (@filemtime($this->path('assets/tree-show.js')) ?: self::VERSION),
+            true
+        );
+    }
+
     /** D-1227: sort, group and filter on every list, the script `ListPage::table()` asks for; beside it the side tree's (`ListPage::sideTree()`). */
     public function registerListHead(): void
     {
+        $this->registerTreeShow();
         wp_register_script(
             self::SIDE_TREE_SCRIPT,
             plugins_url('assets/side-tree.js', WP_PLUGIN_DIR . '/' . basename(dirname($this->file)) . '/' . basename($this->file)),
-            [],
+            [self::TREE_SHOW_SCRIPT],
             (string) (@filemtime($this->path('assets/side-tree.js')) ?: self::VERSION),
             true
         );

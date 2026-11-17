@@ -44,7 +44,9 @@ $claims = [
     'any other link puts the page in place as a history entry'    => str_contains($live, 'history.pushState') && str_contains($live, "'popstate'"),
     'an older link keeps the fold state of the address'           => str_contains($live, 'function carry') && str_contains($nodes, 'data-taxmod-carry="taxmod_collapsed taxmod_hidden"'),
     'a shut block fetches its content when opened, through the one loader' => str_contains($admin, 'window.taxmodLaterPart = spaeterTeil') && str_contains($admin, "addEventListener( 'toggle'") && str_contains($nodes, 'function laterPart'),
-    'which rows of a tree show is walked in one place'          => str_contains($admin, 'window.taxmodTreeShow = baumZeigen') && str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'window.taxmodTreeShow(') && ! str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'stack.push'),
+    'which rows of a tree show is walked in one place'          => str_contains((string) @file_get_contents($root . '/assets/tree-show.js'), 'window.taxmodTreeShow = baumZeigen') && str_contains($admin, 'window.taxmodTreeShow(') && str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'window.taxmodTreeShow(') && ! str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'stack.push'),
+    'side-tree.js and admin.js depend on tree-show'             => (bool) preg_match('/self::SIDE_TREE_SCRIPT,\s*plugins_url\([^;]*?\[self::TREE_SHOW_SCRIPT\]/s', $plugin) && (bool) preg_match("/'taxmod-admin',\s*plugins_url\('assets\/admin\.js'[^;]*?\[self::TREE_SHOW_SCRIPT\]/s", $plugin) && str_contains($plugin, "'assets/tree-show.js'"),
+    'a missing walk is said in the console, not silent'         => str_contains((string) @file_get_contents($root . '/assets/side-tree.js'), 'console.error'),
     'the drawing times split the detail into its blocks'        => str_contains($nodes, 'private function block(') && substr_count($nodes, '$this->block(__(') >= 6,
     'a jump and an anchor still happen after a tree click'        => str_contains($admin, "'taxmod:navigated'") && str_contains($live, "'taxmod:navigated'"),
 ];

@@ -21,10 +21,13 @@
 	/**
 	 * Draws the tree with `wanted` open: true opens every branch, false closes every one, an object of ids opens those and
 	 * keeps what the page already opened (the way to the chosen branch). Which rows show is the modeller's one walk
-	 * (`window.taxmodTreeShow`, admin.js, Ladezeit S5 D-1418).
+	 * (`window.taxmodTreeShow`, assets/tree-show.js, a dependency of this script, Ladezeit S5 D-1418).
 	 */
 	function draw( box, wanted ) {
 		if ( typeof window.taxmodTreeShow !== 'function' ) {
+			// *A dependency, so this means the page is broken — say so instead of leaving the tree silently unfolded.*
+			window.console.error( 'taxmod side tree: assets/tree-show.js is not loaded' );
+
 			return;
 		}
 
