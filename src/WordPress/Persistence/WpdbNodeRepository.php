@@ -57,6 +57,15 @@ final class WpdbNodeRepository implements NodeRepository
      * Aufrufer die gewählte Sprache, ohne dass eine Verdrahtung sich ändert, und ein Wächter kann
      * eine Sprache festnageln, statt sie aus der Umgebung zu erben.*
      */
+    /** @var array<string, string> name arguments ⇒ the prepared statement for every node (Befund 8) */
+    private array $allNodesSql = [];
+
+    /** @var list<array<string, mixed>>|null the rows the index below was laid out from */
+    private ?array $nodeRows = null;
+
+    /** @var array<int, array<string, mixed>> node id ⇒ its row, while remembering */
+    private array $nodeRowById = [];
+
     public function __construct(private readonly ?string $locale = null)
     {
     }
@@ -124,13 +133,24 @@ final class WpdbNodeRepository implements NodeRepository
         global $wpdb;
 
         if (Query::isRemembering()) {
-            foreach (Query::rows('Alle Knoten lesen', $wpdb->prepare($this->selectNodes('WHERE 1 = %d'), ...[...$this->nameArgs(), 1])) as $row) {
-                if ((int) $row['id'] === $id) {
-                    return $this->hydrate($row);
-                }
+            // Review 2026-11-17 (Befund 8): the statement is prepared once per locale and the rows are laid out by id once per
+            // answer, instead of rebuilding 3 KB of SQL and walking every row on each call. A write makes the memory forget,
+            // so a new answer arrives as a different array and is laid out anew.
+            $args = $this->nameArgs();
+            $key  = implode("\0", $args);
+            $sql  = $this->allNodesSql[$key] ??= (string) $wpdb->prepare($this->selectNodes('WHERE 1 = %d'), ...[...$args, 1]);
+            $rows = Query::rows('Alle Knoten lesen', $sql);
+
+            if ($this->nodeRows !== $rows) {
+                $this->nodeRowById = array_column($rows, null, 'id');
             }
 
-            return null;
+            // Kept even when equal, so the next call meets the same array and compares in no time.
+            $this->nodeRows = $rows;
+
+            $row = $this->nodeRowById[$id] ?? null;
+
+            return $row === null ? null : $this->hydrate($row);
         }
 
         $row = Query::row('Knoten lesen', $wpdb->prepare(

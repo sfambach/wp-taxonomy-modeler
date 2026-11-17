@@ -188,13 +188,16 @@ final class RecordBlock
             return '';
         }
 
-        // ⚠️ *Der Stand des Modells ist die letzte Zeile des Änderungsbuchs: jede Änderung schreibt eine, also ändert jede den
-        // Schlüssel (D-919). Ein veralteter Eintrag wird nie wieder gefragt und läuft ab.*
-        $key    = self::CACHE . md5((string) wp_json_encode([$attributes, SettingsScreen::neutralLocale(), determine_locale(), wp_date('Y-m-d'), Plugin::VERSION, self::dataStamp()]));
+        // ⚠️ *Der Stand des Modells ist die letzte Zeile des Änderungsbuchs: jede Änderung schreibt eine, also macht jede den
+        // gespeicherten Block ungültig (D-919).*
+        // Review 2026-11-17 (E6): one entry per block and language, the state beside the drawing — a key with the state in it left a
+        // new option behind after every change until it ran out.
+        $key    = self::CACHE . md5((string) wp_json_encode([$attributes, SettingsScreen::neutralLocale(), determine_locale(), Plugin::VERSION]));
+        $state  = wp_date('Y-m-d') . '/' . self::dataStamp();
         $cached = get_transient($key);
 
-        if (is_string($cached)) {
-            return $cached;
+        if (is_array($cached) && ($cached[0] ?? null) === $state && is_string($cached[1] ?? null)) {
+            return $cached[1];
         }
 
         // ⚠️ *Ein Satz, der fehlt, ist im Beitrag kein weisser Bildschirm: Lesern zeigt der Block nichts, Bearbeitern den Grund.*
@@ -259,7 +262,7 @@ final class RecordBlock
         // *Ein breiter Vergleich scrollt in sich, nicht die Seite.*
         $inner = $comparison ? '<div class="taxmod-comparison-wrap">' . $markup . '</div>' : self::withoutHints($markup);
         $html  = '<div ' . get_block_wrapper_attributes(['class' => 'taxmod-record-block']) . '>' . $inner . '</div>';
-        set_transient($key, $html, DAY_IN_SECONDS);
+        set_transient($key, [$state, $html], DAY_IN_SECONDS);
 
         return $html;
     }
