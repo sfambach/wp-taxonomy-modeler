@@ -119,7 +119,7 @@ interface Changelog
     public function actAround(int $ownerId, string $what): array;
 
     /**
-     * Where a node stood the last time it was parked, or null if it never was.
+     * Where a node stood the last time it was parked, or null if it never was. Only rows of a node count (DB1).
      *
      * ⚠️ **This makes the changelog load-bearing rather than decorative.** The old path is
      * written there and nowhere else — deliberately, so that no `parked_from` column duplicates
@@ -129,7 +129,8 @@ interface Changelog
     public function pathBeforeLastParking(int $ownerId): ?string;
 
     /**
-     * When this subject appeared, when it last changed, and who did it.
+     * When this node appeared, when it last changed, and who did it — only its own rows, not those of a relation or record
+     * with the same number (DB1).
      *
      * ⚠️ **Two rows, not the whole history.** The owner wants *creation, last change, change owner* on
      * the page, and reading every act to find two of them would be a query that grows with the age of

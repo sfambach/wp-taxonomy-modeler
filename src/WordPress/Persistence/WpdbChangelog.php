@@ -236,6 +236,11 @@ final class WpdbChangelog implements Changelog
         return $opened;
     }
 
+    /*
+     * ⚠️ Review 2026-11-17 (DB1): nodes, relations and records count in separate spaces since TASK-004, so an owner id alone may
+     * name a relation or a record as well; every caller of these three means a node, and they now say so.
+     */
+
     public function actAround(int $ownerId, string $what): array
     {
         global $wpdb;
@@ -244,7 +249,7 @@ final class WpdbChangelog implements Changelog
 
         $group = Query::value('Aenderungsgruppe lesen', $wpdb->prepare(
             "SELECT change_group_id FROM {$table}
-             WHERE owner_id = %d AND what = %s
+             WHERE owner_kind = 'node' AND owner_id = %d AND what = %s
              ORDER BY id DESC LIMIT 1",
             $ownerId,
             $what
@@ -277,7 +282,7 @@ final class WpdbChangelog implements Changelog
 
         $before = Query::value('Pfad vor dem Parken lesen', $wpdb->prepare(
             'SELECT before_state FROM ' . Schema::table('changelog') . '
-             WHERE owner_id = %d AND what = %s
+             WHERE owner_kind = 'node' AND owner_id = %d AND what = %s
              ORDER BY id DESC LIMIT 1',
             $ownerId,
             'parked'
@@ -317,7 +322,7 @@ final class WpdbChangelog implements Changelog
         // ⚠️ **Ordered by `id` and not by `at`.** Two acts in the same second are ordinary — a save
         // writes several rows — and a timestamp cannot order them. The id is the sequence.
         $first = Query::row('ersten Eintrag lesen', $wpdb->prepare(
-            'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_id = %d ORDER BY id ASC LIMIT 1',
+            'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_kind = \'node\' AND owner_id = %d ORDER BY id ASC LIMIT 1',
             $ownerId
         ));
 
@@ -326,7 +331,7 @@ final class WpdbChangelog implements Changelog
         }
 
         $last = Query::row('letzten Eintrag lesen', $wpdb->prepare(
-            'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_id = %d ORDER BY id DESC LIMIT 1',
+            'SELECT at, by_user_id, what FROM ' . $table . ' WHERE owner_kind = \'node\' AND owner_id = %d ORDER BY id DESC LIMIT 1',
             $ownerId
         )) ?? $first;
 
