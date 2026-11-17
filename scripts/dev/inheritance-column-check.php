@@ -56,6 +56,7 @@ require $root . '/wp-load.php';
 // ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
 // alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
 require __DIR__ . '/lib/no-write.php';
+require_once __DIR__ . '/lib/installation.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\Persistence\Schema;
@@ -321,7 +322,7 @@ $ohneKnoten = count($abgeloest) - $lebendeAusDemSchatten;
 
 check(
     'jede abgeloeste Kante im Schatten zeigt auf einen Knoten der Wanderung',
-    count($abgeloest) > 0 && $lebendeAusDemSchatten > 0,
+    (count($abgeloest) > 0 && $lebendeAusDemSchatten > 0) || (count($abgeloest) === 0 && taxmodNachDerWanderungAngelegt(28)),
     count($abgeloest) . ' Schattenzeilen, davon ' . $lebendeAusDemSchatten . ' auf lebende Knoten und '
         . $ohneKnoten . ' auf seither geloeschte'
 );

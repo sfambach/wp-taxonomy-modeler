@@ -43,6 +43,7 @@ require $root . '/wp-load.php';
 // ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
 // alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
 require __DIR__ . '/lib/no-write.php';
+require_once __DIR__ . '/lib/installation.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 wp_set_current_user(1);
@@ -147,7 +148,7 @@ check('keine lebende Einstellungskante heisst read_only oder multiplicity (Fassu
 // ⚠️ *Der Schatten trägt keinen Namen für Zeilen, die seit Fassung 34 hinüberwandern — der Name
 // steht in den Beschriftungen, also wird über sie gefunden.*
 $marke = get_option('taxmod_fassung48_shape');
-check('Fassung 48 hat ihre Marke hinterlassen und mindestens eine Kante geparkt', is_array($marke) && (int) ($marke['kanten_geparkt'] ?? 0) >= 1, is_array($marke) ? json_encode($marke) : 'keine Marke');
+check('Fassung 48 hat ihre Marke hinterlassen und mindestens eine Kante geparkt', is_array($marke) && ((int) ($marke['kanten_geparkt'] ?? 0) >= 1 || taxmodNachDerWanderungAngelegt(48)), is_array($marke) ? json_encode($marke) : 'keine Marke');
 
 $geparkt = (int) $wpdb->get_var(
     "SELECT COUNT(DISTINCT h.id) FROM {$shadow} h

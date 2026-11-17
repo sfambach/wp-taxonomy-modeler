@@ -553,6 +553,11 @@ final class Plugin
         // ⚠️ *Nach der Saat: `install()` lief vor ihr, ohne Wurzel, und der Abzug kennt die Einstellung `hidden` noch nicht
         // ([D-1144](../../docs/NewConcept/90-decision-log.md)). Steht sie, tut der Aufruf nichts.*
         Schema::declareHiddenAtRoot();
+
+        // ⚠️ *Die lesbaren Sichten tragen die Standardsprache in sich und entstanden in `install()` oben, bevor der Abzug sie setzte —
+        // auf einer deutschen Website mit `de_DE` statt `en_US`, und jeder Knoten hiess dort leer, bis zur nächsten Fassung (die
+        // Knotensuche des Datensatzblocks fand nichts). Gemessen im Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)).*
+        Schema::buildTheReadableViews();
     }
 
     /** Moves the maintenance pages — Cleanup, Backup, Configuration — to the foot of the one Taxmod menu, after every module's pages (D-1028). */
