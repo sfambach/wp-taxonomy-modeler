@@ -52,6 +52,7 @@ final class Backup
      */
     private const OPTIONS_KEPT = [
         'taxmod_schema_version',
+        'taxmod_installed_at_schema',
         'taxmod_developer',
         'taxmod_developer_mode',
         'taxmod_icon_size',

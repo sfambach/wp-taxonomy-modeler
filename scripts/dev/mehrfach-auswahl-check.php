@@ -31,7 +31,7 @@ wp_set_current_user(1);
 $p = $wpdb->prefix . 'taxmod_';
 
 // *Ein Satz mit einem mehrfachen Feld, das auf einen Knoten ohne eigene Sätze zeigt (eine Auswahl) — der erste, den die Tabellen hergeben.*
-$fund = $wpdb->get_row(
+$suche = static fn (): ?object => $wpdb->get_row(
     "SELECT r.id AS satz, r.node_id AS knoten, k.id AS kante
        FROM {$p}relations k
        JOIN {$p}nodes z ON z.id = k.to_node_id AND z.klasse LIKE '%Choice'
@@ -41,6 +41,26 @@ $fund = $wpdb->get_row(
       WHERE k.multiplicity IN ('0..*', '1..*') AND k.kind = 'aggregation' AND k.hide = 0 AND k.from_node_id = 402
       ORDER BY r.id LIMIT 1"
 );
+
+$fund = $suche();
+
+// ⚠️ *Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)): ohne diese Gestalt im Bestand legt der Wächter sie selbst an —
+// eine Auswahl mit zwei Konstanten, ein mehrfaches Feld an «Model» darauf, ein Satz darunter mit beiden Werten.*
+if ($fund === null) {
+    require_once __DIR__ . '/lib/beispiel.php';
+
+    taxmodBeispiel([
+        ['op' => 'create_node', 'ref' => 'wahl', 'name' => '__ma Wahl', 'parent' => (int) get_option('taxmod_branch_constants_id'), 'class' => 'Choice'],
+        ['op' => 'create_node', 'ref' => 'a', 'name' => '__ma Erste', 'parent' => '@wahl', 'class' => 'Constant'],
+        ['op' => 'create_node', 'ref' => 'b', 'name' => '__ma Zweite', 'parent' => '@wahl', 'class' => 'Constant'],
+        ['op' => 'add_field', 'ref' => 'feld', 'node' => 402, 'target' => '@wahl', 'name' => '__ma Feld', 'kind' => 'aggregation', 'multiplicity' => '0..*'],
+        ['op' => 'create_node', 'ref' => 'ding', 'name' => '__ma Ding', 'parent' => 402],
+        ['op' => 'create_record', 'ref' => 's', 'node' => '@ding'],
+        ['op' => 'set_values', 'record' => '@s', 'values' => ['@feld' => ['values' => ['@a', '@b']]]],
+    ]);
+
+    $fund = $suche();
+}
 
 if ($fund === null) {
     echo "  FAIL kein Satz mit einem mehrfachen Auswahlfeld gefunden — der Wächter prüft nichts\n";

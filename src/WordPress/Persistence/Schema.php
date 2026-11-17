@@ -495,6 +495,15 @@ final class Schema
 
     public const VERSION_OPTION = 'taxmod_schema_version';
 
+    /**
+     * Die Fassung, mit der diese Installation **angelegt** wurde — fehlt sie, ist sie älter als die Marke.
+     *
+     * ⚠️ *Gebaut für den Grenzlauf ([D-1427](../../../docs/NewConcept/90-decision-log.md)): die Wächter der Wanderungen verlangten
+     * Spuren einer Wanderung, die es in einer frischen Installation nie gab, und waren dort rot, obwohl nichts fehlte. Mit der Marke
+     * sagen sie den Fall, statt ihn grün oder rot zu färben.*
+     */
+    public const BORN_AT_OPTION = 'taxmod_installed_at_schema';
+
     /** Die Marke, dass Fassung 56 gelaufen ist — danach läuft sie nie wieder ([D-1097](../../../docs/NewConcept/90-decision-log.md)). */
     public const FASSUNG56_DONE = 'taxmod_fassung56_shape';
 
@@ -635,6 +644,11 @@ final class Schema
     public static function install(): void
     {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+        // *Ohne Fassung gab es hier noch nie Tabellen: die Installation entsteht jetzt (BORN_AT_OPTION). `add_option` überschreibt nie.*
+        if ((int) get_option(self::VERSION_OPTION, 0) === 0) {
+            add_option(self::BORN_AT_OPTION, self::VERSION, '', false);
+        }
 
         // ⚠️ **Before `dbDelta`, and that order is the whole trick.** *`dbDelta` compares a table
         // against a `CREATE TABLE` and **adds** what is missing — it has no notion of a rename. Run

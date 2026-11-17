@@ -82,14 +82,26 @@ wp_set_current_user(1);
 echo "seitenlast — Abfragen und Markup der Bezugsseiten (D-814, D-818)\n";
 
 // ⚠️ *Ein erster Aufruf zum Aufwärmen: er lädt Klassen und Optionen, die jede echte Anfrage ebenso lädt, aber nicht zweimal zählen soll.*
-seite(array_key_first(TAXMOD_REFERENCE_PAGES));
+seite(27);
 
 $p = $wpdb->prefix . 'taxmod_';
+
+// ⚠️ *Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)): die Bezugsseiten sind Knoten **seines** Modells. Steht keiner
+// von ihnen da, ist dies nicht sein Modell (eine frische Datenbank) — dann zählt nur die Saatseite, und die übrigen sagen sichtbar, warum
+// sie fehlen. Fehlt in seinem Modell einer, bleibt es rot wie bisher.*
+$seinModell = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$p}nodes WHERE id IN (" . implode(',', array_map('intval', array_keys(TAXMOD_REFERENCE_PAGES))) . ") AND id > 1000"
+) > 0;
 
 foreach (TAXMOD_REFERENCE_PAGES as $id => $name) {
     echo "\n== {$name} (#{$id}) ==\n";
 
     $da = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$p}nodes WHERE id = %d", $id));
+
+    if ($da !== 1 && ! $seinModell && $id > 1000) {
+        echo "  --   nicht sein Modell: die Bezugsseite steht nur dort\n";
+        continue;
+    }
 
     check('die Bezugsseite gibt es', $da === 1, 'Knoten fehlt — die Liste in D-818 ist zu erneuern');
 

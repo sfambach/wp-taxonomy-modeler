@@ -29,6 +29,7 @@ require rtrim($wordpress, '/') . '/wp-load.php';
 // ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
 // alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
 require __DIR__ . '/lib/no-write.php';
+require_once __DIR__ . '/lib/installation.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
 use Taxmod\Core\Model\Branch;
@@ -141,8 +142,10 @@ $ohneGruppe = (int) $wpdb->get_var(
       WHERE what = 'empty default record dropped' AND (change_group_id IS NULL OR change_group_id = 0)"
 );
 
-check('die Wanderung steht im Aenderungsbuch', $gefallen > 0, (string) $gefallen);
-check('die einmalige Wanderung steht in einer Gruppe', $groesste >= 300, (string) $groesste);
+$frisch36 = $gefallen === 0 && taxmodNachDerWanderungAngelegt(36);
+
+check('die Wanderung steht im Aenderungsbuch', $gefallen > 0 || $frisch36, (string) $gefallen);
+check('die einmalige Wanderung steht in einer Gruppe', $groesste >= 300 || $frisch36, (string) $groesste);
 check('und kein gefallener Satz steht ohne Gruppe', $ohneGruppe === 0, (string) $ohneGruppe);
 
 $imSchatten = (int) $wpdb->get_var(

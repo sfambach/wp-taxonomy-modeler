@@ -106,6 +106,7 @@ final class SeedImage
     public const OPTIONS_OUT = [
         'taxmod_schema_version'      => 'gehört dem Schema; `Schema::install()` setzt sie selbst',
         'taxmod_seed_image'          => 'die Marke des Abzugs — sie entsteht beim Einspielen',
+        'taxmod_installed_at_schema' => 'die Fassung, mit der die Installation angelegt wurde — gehört der Installation',
         'taxmod_testast_*'           => 'die Testäste der Wächter, Präfix `__`',
         'taxmod_*_shape'             => 'Messungen von Wanderungen und Wächtern, kein Modell',
         'taxmod_renderer_choice_drop' => 'das Protokoll einer Wanderung',

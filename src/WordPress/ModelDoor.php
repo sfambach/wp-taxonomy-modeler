@@ -558,6 +558,16 @@ final class ModelDoor
     }
 
     /**
+     * The modeller's read memory around one drawn page (D-814): the same statement asked twice while `$work` runs is answered
+     * once, and any write makes it forget. A module draws its pages inside it instead of reaching into the persistence layer
+     * (D-1186, design guard G5).
+     */
+    public static function remembering(callable $work): mixed
+    {
+        return Persistence\Query::remembering($work);
+    }
+
+    /**
      * @param list<array<string, mixed>> $changes
      * @return array<string, mixed> the modeller's answer, with the new ids under `refs` and its change number under `act` (D-1410)
      */

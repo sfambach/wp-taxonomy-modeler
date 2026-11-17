@@ -156,6 +156,7 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Wie kommen `validator` und `read_only` an einen Knoten? | [D-593](90-decision-log.md) — als Einstellungskanten wie der Renderer; frei setzbar ([D-461](90-decision-log.md)) | ~~D-409~~ |
 | Ist ein einfacher Typ ein Knoten oder eine Klasse? | [D-620](90-decision-log.md) — beides, und es ist **dasselbe**: die Klasse ist die des Knotens ([D-484](90-decision-log.md)) | ~~D-036~~ |
 | Darf ein benutzter Knoten gelöscht werden? | [D-604](90-decision-log.md) — nur nach Rückfrage; bleibende Verweise sind am Feld sichtbar | — |
+| Was leert das Entfernen eines Satzes? | [D-1270](90-decision-log.md) — nur die Wertzeile, die ihn besitzt; Verweise bleiben stehen | ~~D-653~~ |
 
 ## Renderer
 
@@ -221,6 +222,27 @@ Bewacht von `scripts/dev/decision-index-check.php`.
 | Gibt es eine Einstellungstafel unter der Feldzeile? | [D-666](90-decision-log.md) — ja, seit 2026-09-06: unter der Zeile, zugeklappt, und erst beim Aufklappen gelesen | ~~D-381~~ ~~D-385~~ ~~D-390~~ ~~D-517~~ ~~D-520~~ |
 | Wann wird eine Liste von Häkchen geschrieben? | [D-299](90-decision-log.md), [D-300](90-decision-log.md) — eine Erlaubnisliste ist **ein** Wert und wird als Gruppe gespeichert | ~~D-298~~ |
 | Wer darf was? | [D-292](90-decision-log.md) — Rollen sind eingebaut, der Administrator darf praktisch alles; Laufzeit-Erweiterung je Ast ([D-204](90-decision-log.md)) | — |
+| Wie sieht eine Einfachauswahl aus? | [D-1163](90-decision-log.md) — ausgegrautes Feld mit der Wahl, rechts das Baumsymbol; beide öffnen den Dialog | ~~D-792~~ *(nur der Satzdialog)* |
+| Wo stehen Meldungen? | [D-1203](90-decision-log.md) — im Meldungsfeld oben neben der Überschrift, ein Klick zeigt die letzten | ~~D-1196~~ *(nur der Toast als Ort)* |
+| Was bringt ein Modeller-Formular auf einer Modulseite mit? | [D-1271](90-decision-log.md) — die Adresse für «Create»; [D-1274](90-decision-log.md) — den vollständigen Satzdialog | ~~D-1171~~ *(für Module)* ~~D-1250~~ *(Satzdialog)* |
+
+## Module (Lager, Fertigung, Etiketten)
+
+| Frage | gilt heute | abgelöst |
+|---|---|---|
+| Wie gross ist das Halter-Etikett? | [D-1106](90-decision-log.md) — 62 × 50 mm | ~~D-1102~~ ~~D-1105~~ |
+| Woraus besteht ein Etikett? | [D-1159](90-decision-log.md) — ein Satz je Etikett mit Druckformat, Massen, Rolle, Anzahl und Layout; keine Formatsätze | ~~D-1157~~ ~~D-1153~~ *(nur die Formatsätze)* |
+| Wo steht, was einem Material fehlt? | [D-1112](90-decision-log.md) — ein eigenes Feld; «Weitere Merkmale» fällt weg | ~~D-1081~~ *(Merkmal-Hälfte)* |
+| Wo steht der Hersteller? | [D-1257](90-decision-log.md) — ein Feld «Hersteller» (0..1) am Knoten «Material» | ~~D-1256~~ *(Ort)* |
+| Wie gelten Eigenschaften einer Materialgruppe? | [D-1259](90-decision-log.md) — als Knoten-Einstellungen, die sich vererben | ~~D-1002~~ ~~D-1111~~ *(Zweig-Tabellen)* |
+| Wie tief ist die Logistik-Navigation? | [D-1121](90-decision-log.md) — beliebig viele Ebenen | ~~D-1115~~ |
+| Was steht im Logistikmenü? | [D-1241](90-decision-log.md) — nur «Cockpit» | ~~D-1167~~ *(Menüform)* |
+| Wie hält eine Platzart ihre Masse? | [D-1136](90-decision-log.md) — Feld «Abmessung» auf «Dimension» | ~~D-1123~~ *(drei Zahlenfelder)* |
+| Was geschieht beim Löschen eines Lagerorts? | [D-1272](90-decision-log.md) — alles wird in den übergeordneten Ort umgebucht, rückgängig machbar | ~~D-1267~~ |
+| Was steht unter einem eingebuchten Kauf? | [D-1283](90-decision-log.md) — die Bestellnummer, verlinkt zur Plattform | ~~D-1263~~ |
+| Wie läuft ein Fertigungsauftrag? | [D-1300](90-decision-log.md) — Angelegt → Bereitstellung → In Fertigung → Fertiggestellt; [D-1146](90-decision-log.md) — bestückt je Position | ~~D-1142~~ ~~D-1145~~ *(Teile)* |
+| Wann ist eine fertige Platine frei? | [D-1342](90-decision-log.md) — QK-Status, abgeleitet; der feste Platz «Wareneingang Produktion» bleibt | ~~D-1176~~ *(Zugang ins Gebinde)* ~~D-1303~~ *(nur die Stufen)* |
+| Was ist ein Test einer Platine? | [D-1304](90-decision-log.md) — ein eigener Satz (Prüfprotokoll), mehrere je Posten | ~~D-1177~~ *(Prüfung als Zahl)* |
 
 ## Verfahren
 

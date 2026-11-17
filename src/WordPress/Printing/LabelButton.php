@@ -454,7 +454,7 @@ final class LabelButton
         }
 
         return '<span class="taxmod-label-dialog-preview" data-taxmod-label-preview><span style="display:block;font-weight:600">' . esc_html__('Vorschau', 'taxmod') . '</span>'
-            . '<iframe title="' . esc_attr__('Label preview', 'taxmod') . '" style="display:block;width:100%;max-width:320px;height:200px;border:1px solid #c3c4c7;background:#fff"></iframe>'
+            . '<iframe title="' . esc_attr__('Label preview', 'taxmod') . '" class="taxmod-label-preview-frame"></iframe>'
             . '<span class="description" data-taxmod-label-preview-note style="display:block"></span></span>'
             . self::previewScript();
     }

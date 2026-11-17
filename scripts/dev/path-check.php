@@ -51,6 +51,7 @@ require $root . '/wp-load.php';
 // ⚠️ **Kein Wächter schreibt in das Modell des Eigentümers** — die Klammer dreht am Ende
 // alles zurück, auch nach einem Abbruch. Siehe `lib/no-write.php` und `tests/README.md`.
 require __DIR__ . '/lib/no-write.php';
+require_once __DIR__ . '/lib/installation.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Model\RelationKind;
@@ -231,7 +232,7 @@ $standWerte = get_option('taxmod_relationpath_shape', []);
 
 check(
     'die Fassung hat ihre Zahlen hinterlassen',
-    is_array($standWerte) && isset($standWerte['rows'], $standWerte['relations'], $standWerte['sum'])
+    (is_array($standWerte) && isset($standWerte['rows'], $standWerte['relations'], $standWerte['sum'])) || taxmodNachDerWanderungAngelegt(39)
 );
 
 printf(
@@ -327,7 +328,7 @@ $stand = get_option('taxmod_nodepath_shape', []);
 
 check(
     'die Fassung hat ihre Zahlen hinterlassen',
-    is_array($stand) && isset($stand['wege'], $stand['tree'], $stand['depths'])
+    (is_array($stand) && isset($stand['wege'], $stand['tree'], $stand['depths'])) || taxmodNachDerWanderungAngelegt(35)
 );
 
 $journal = Schema::table('changelog');
@@ -349,7 +350,7 @@ $ohneVersion = (int) $wpdb->get_var(
 // mit ihnen. **Eine feste Zahl auf seinen Bestand ist ein Waechter, der ihm sein eigenes Aufraeumen
 // als Verlust meldet.** Die Zahl von damals steht in `taxmod_nodepath_shape`; hier steht sie zum
 // Nachlesen und nicht als Bedingung.*
-check('die Knoten haben ihren alten Weg ins Journal bekommen', $gemeldet > 0, "$gemeldet Zeilen");
+check('die Knoten haben ihren alten Weg ins Journal bekommen', $gemeldet > 0 || taxmodNachDerWanderungAngelegt(35), "$gemeldet Zeilen");
 
 printf(
     "       gemessen: %d Meldungen heute, %s Knoten bei der Wanderung\n",
@@ -498,14 +499,16 @@ $journal = (int) $wpdb->get_var(
     'SELECT COUNT(*) FROM ' . Schema::table('changelog') . " WHERE what = 'field type dropped'"
 );
 
-check('jede gefallene Marke hat eine Journalzeile', $journal > 0, (string) $journal);
+$frisch33 = $journal === 0 && taxmodNachDerWanderungAngelegt(33);
+
+check('jede gefallene Marke hat eine Journalzeile', $journal > 0 || $frisch33, (string) $journal);
 
 check(
     'und alle unter genau einer Aenderungsgruppe',
     (int) $wpdb->get_var(
         'SELECT COUNT(DISTINCT change_group_id) FROM ' . Schema::table('changelog')
             . " WHERE what = 'field type dropped'"
-    ) === 1
+    ) === 1 || $frisch33
 );
 
 // ⚠️ *[D-634](../../docs/NewConcept/90-decision-log.md): die Version ist ein Pflichtwert. Eine

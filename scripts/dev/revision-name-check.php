@@ -60,6 +60,31 @@ $fehler = 0;
 $letzte = $fund("NOT {$haeltEindeutig}");
 $mitte  = $fund($haeltEindeutig);
 
+// ⚠️ *Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)): ohne diese Gestalt im Bestand legt der Wächter sie selbst an —
+// ein Gerät zeigt auf ein Board, das Board hält eindeutig seine Revision.*
+if ($letzte === null) {
+    require_once __DIR__ . '/lib/beispiel.php';
+
+    $text = taxmodSaatKnoten(\Taxmod\Core\Model\Branch::DataTypes, 'Text');
+    $refs = taxmodBeispiel([
+        ['op' => 'create_node', 'ref' => 'rev', 'name' => '__rn Revision', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'revname', 'node' => '@rev', 'target' => $text, 'name' => '__rn Name', 'kind' => 'aggregation'],
+        ['op' => 'create_node', 'ref' => 'board', 'name' => '__rn Board', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'boardname', 'node' => '@board', 'target' => $text, 'name' => '__rn Name', 'kind' => 'aggregation'],
+        ['op' => 'add_field', 'ref' => 'halt', 'node' => '@board', 'target' => '@rev', 'name' => '__rn Rev', 'kind' => 'aggregation'],
+        ['op' => 'create_node', 'ref' => 'geraet', 'name' => '__rn Gerät', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'brett', 'node' => '@geraet', 'target' => '@board', 'name' => '__rn Brett', 'kind' => 'aggregation'],
+        ['op' => 'create_record', 'ref' => 'r', 'node' => '@rev'],
+        ['op' => 'set_values', 'record' => '@r', 'values' => ['@revname' => 'A']],
+        ['op' => 'create_record', 'ref' => 'b', 'node' => '@board'],
+        ['op' => 'set_values', 'record' => '@b', 'values' => ['@boardname' => '__rn 386-SC', '@halt' => '@r']],
+        ['op' => 'create_record', 'ref' => 'g', 'node' => '@geraet'],
+        ['op' => 'set_values', 'record' => '@g', 'values' => ['@brett' => '@b']],
+    ]);
+    $editor->setUnique($refs['board'], $refs['halt'], true);
+    $letzte = $fund("NOT {$haeltEindeutig}");
+}
+
 if ($letzte === null) {
     echo "  FAIL keine Revision gefunden — der Wächter prüft nichts\n";
     exit(1);

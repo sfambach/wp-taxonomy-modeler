@@ -54,11 +54,20 @@ $screen = (new ReflectionMethod(Plugin::class, 'screen'))->invoke($plugin);
 $editor = (new ReflectionMethod(Plugin::class, 'editor'))->invoke($plugin);
 $fw     = (new ReflectionMethod(Plugin::class, 'frameworkNodes'))->invoke($plugin);
 
-/** Renders one node's page. */
-$pageOf = static function (int $id) use ($screen): string {
+/**
+ * Renders one node's page, with its «Used by» as the loader fetches it.
+ *
+ * ⚠️ **Nachgezogen mit [D-1418](../../docs/NewConcept/90-decision-log.md), sichtbar nach `PR-9` (Grenzlauf 2026-11-17, D-1427).** *Seither
+ * hält die Seite nur den zugeklappten Kopf, und der Inhalt kommt beim Öffnen als Stück `used-by` (`taxmod_page_part`). Gelesen wurde
+ * weiter nur die Seite, und fünf Zusagen waren rot, ohne dass sich an «Used by» etwas geändert hatte. Jetzt: die Seite und das
+ * Stück, das `handlePagePart()` für diesen Knoten ausgibt.*
+ */
+$pageOf = static function (int $id) use ($screen, $editor): string {
     $_GET['taxmod_node'] = (string) $id;
 
-    return $screen->render();
+    $node = $editor->find($id);
+
+    return $screen->render() . ($node === null ? '' : (new ReflectionMethod($screen, 'usedByList'))->invoke($screen, $node));
 };
 
 global $wpdb;

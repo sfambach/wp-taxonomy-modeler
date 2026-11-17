@@ -86,13 +86,19 @@ $values  = Schema::table('settings_value');
 
 echo "1 · Form\n";
 
-$objektSpalten = ['id', 'version', 'klasse'];
-$zeilenSpalten = ['id', 'version', 'node_id', 'settings_object_id', 'relation_id', 'klasse', 'attribut', 'position', 'aktiv', 'wert_int', 'wert_decimal', 'wert_text', 'wert_knoten_id', 'wert_settings_object_id', 'wert_kante_id'];
+// ⚠️ **Nachgezogen am 2026-11-17 mit [D-1410](../../docs/NewConcept/90-decision-log.md), sichtbar nach `PR-9` ([D-1427](../../docs/NewConcept/90-decision-log.md)).**
+// *Seit «Rückgängig je Änderungsnummer» trägt jede lebende Zeile den Akt, der sie anlegte (`created_by_group_id`), und jede
+// Schattenzeile dazu den Akt, der sie ablegte (`archived_by_group_id`). Der Wächter verlangte die Form von vorher und war seither rot;
+// gemeldet hat es niemand, weil das Laufskript jeden Wächter grün las.*
+$objektSpalten = ['id', 'version', 'klasse', 'created_by_group_id'];
+$zeilenSpalten = ['id', 'version', 'node_id', 'settings_object_id', 'relation_id', 'klasse', 'attribut', 'position', 'aktiv', 'wert_int', 'wert_decimal', 'wert_text', 'wert_knoten_id', 'wert_settings_object_id', 'wert_kante_id', 'created_by_group_id'];
+$ohneAkt       = static fn (array $spalten): array => array_values(array_diff($spalten, ['created_by_group_id']));
+$schatten      = static fn (array $spalten): array => [...$ohneAkt($spalten), 'deleted', 'archived_at', 'created_by_group_id', 'archived_by_group_id'];
 
-check('settings_object hat seine drei Spalten', spalten($objects) === $objektSpalten, implode(',', spalten($objects)));
-check('settings_value hat seine vierzehn Spalten', spalten($values) === $zeilenSpalten, implode(',', spalten($values)));
-check('settings_object_history trägt dieselben, dazu deleted und archived_at', spalten(Schema::table('settings_object_history')) === [...$objektSpalten, 'deleted', 'archived_at']);
-check('settings_value_history trägt dieselben, dazu deleted und archived_at', spalten(Schema::table('settings_value_history')) === [...$zeilenSpalten, 'deleted', 'archived_at']);
+check('settings_object hat seine vier Spalten', spalten($objects) === $objektSpalten, implode(',', spalten($objects)));
+check('settings_value hat seine sechzehn Spalten', spalten($values) === $zeilenSpalten, implode(',', spalten($values)));
+check('settings_object_history trägt dieselben, dazu deleted, archived_at und den ablegenden Akt', spalten(Schema::table('settings_object_history')) === $schatten($objektSpalten), implode(',', spalten(Schema::table('settings_object_history'))));
+check('settings_value_history trägt dieselben, dazu deleted, archived_at und den ablegenden Akt', spalten(Schema::table('settings_value_history')) === $schatten($zeilenSpalten), implode(',', spalten(Schema::table('settings_value_history'))));
 check('beide stehen in der Schattenliste', in_array('settings_value', Schema::LIVE_TABLES, true) && in_array('settings_object', Schema::LIVE_TABLES, true));
 
 if ($bad > 0) {

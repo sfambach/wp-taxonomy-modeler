@@ -71,8 +71,12 @@ function taxmodSupersessions(array $rows): array
     foreach ($rows as $killer => $line) {
         // ⚠️ *Auf denselben Satz begrenzt: `[^.|]{0,110}` stoppt an einem Punkt und an einer Zellwand,
         // damit «ersetzt D-x» kein `D-y` aus drei Nebensätzen später aufsammelt.*
+        //
+        // ⚠️ **Ganzes Wort, und «ersetzt nichts» ist keine Ablösung** (Grenzlauf 2026-11-17, [D-1427](../../../docs/NewConcept/90-decision-log.md)).
+        // *Gemessen zwei Fehlalarme: [D-1244](../../../docs/NewConcept/90-decision-log.md) «über**setzt**e Taxmod seit D-1187» und
+        // [D-1058](../../../docs/NewConcept/90-decision-log.md) «ersetzt nichts; ergänzt D-956» standen als Ablösungen im Index.*
         if (! preg_match_all(
-            '/(?<before>[^.|]{0,40})(?:[Ss]upersedes|überholt|ersetzt)[^.|]{0,110}?(?<victim>D-\d+)/u',
+            '/(?<before>[^.|]{0,40})(?<!\p{L})(?:[Ss]upersedes|überholt|ersetzt)(?!\s+nichts)[^.|]{0,110}?(?<victim>D-\d+)/u',
             $line,
             $hit,
             PREG_SET_ORDER

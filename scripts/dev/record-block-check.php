@@ -51,6 +51,52 @@ $abfragen = static function (callable $tun) use ($wpdb): array {
     return [$aus, $wpdb->num_queries - $vorher];
 };
 
+// ⚠️ *Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)): fehlt eine der Gestalten im Bestand, legt der Wächter sie
+// selbst an — drei Sätze mit zwei Textwerten, einem mehrfachen Auswahlfeld und zwei Verweisen auf andere Sätze.*
+$fehltGestalt = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$p}relation_records v JOIN {$p}node_records r ON r.id = v.node_record_id AND r.record_type = 'user' AND r.relation_id = 0
+      WHERE v.value_ref_kind = 'node' GROUP BY v.node_record_id, v.relation_id HAVING COUNT(*) >= 2 LIMIT 1"
+) === 0 || (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$p}relation_records v JOIN {$p}relation_records k ON k.node_record_id = v.node_record_id AND k.value_ref_kind = 'record'
+        AND k.relation_id <> v.relation_id WHERE v.value_ref_kind = 'record'"
+) === 0;
+
+if ($fehltGestalt) {
+    require_once __DIR__ . '/lib/beispiel.php';
+
+    $text     = taxmodSaatKnoten(\Taxmod\Core\Model\Branch::DataTypes, 'Text');
+    $aenderung = [
+        ['op' => 'create_node', 'ref' => 'wahl', 'name' => '__rb Wahl', 'parent' => (int) get_option('taxmod_branch_constants_id'), 'class' => 'Choice'],
+        ['op' => 'create_node', 'ref' => 'k1', 'name' => '__rb Erste', 'parent' => '@wahl', 'class' => 'Constant'],
+        ['op' => 'create_node', 'ref' => 'k2', 'name' => '__rb Zweite', 'parent' => '@wahl', 'class' => 'Constant'],
+        ['op' => 'create_node', 'ref' => 'ziel', 'name' => '__rb Ziel', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'zielname', 'node' => '@ziel', 'target' => $text, 'name' => '__rb Name', 'kind' => 'aggregation'],
+        ['op' => 'create_record', 'ref' => 'z1', 'node' => '@ziel'],
+        ['op' => 'set_values', 'record' => '@z1', 'values' => ['@zielname' => '__rb Ziel eins']],
+        ['op' => 'create_record', 'ref' => 'z2', 'node' => '@ziel'],
+        ['op' => 'set_values', 'record' => '@z2', 'values' => ['@zielname' => '__rb Ziel zwei']],
+        ['op' => 'create_node', 'ref' => 'ding', 'name' => '__rb Ding', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'name', 'node' => '@ding', 'target' => $text, 'name' => '__rb Name', 'kind' => 'aggregation'],
+        ['op' => 'add_field', 'ref' => 'notiz', 'node' => '@ding', 'target' => $text, 'name' => '__rb Notiz', 'kind' => 'aggregation'],
+        ['op' => 'add_field', 'ref' => 'mehr', 'node' => '@ding', 'target' => '@wahl', 'name' => '__rb Mehr', 'kind' => 'aggregation', 'multiplicity' => '0..*'],
+        ['op' => 'add_field', 'ref' => 'erst', 'node' => '@ding', 'target' => '@ziel', 'name' => '__rb Erster', 'kind' => 'aggregation'],
+        ['op' => 'add_field', 'ref' => 'zweit', 'node' => '@ding', 'target' => '@ziel', 'name' => '__rb Zweiter', 'kind' => 'aggregation'],
+    ];
+
+    foreach ([1, 2, 3] as $n) {
+        $aenderung[] = ['op' => 'create_record', 'ref' => "d{$n}", 'node' => '@ding'];
+        $aenderung[] = ['op' => 'set_values', 'record' => "@d{$n}", 'values' => [
+            '@name'  => "__rb Ding {$n}",
+            '@notiz' => "__rb Notiz {$n}",
+            '@mehr'  => ['values' => ['@k1', '@k2']],
+            '@erst'  => '@z1',
+            '@zweit' => '@z2',
+        ]];
+    }
+
+    taxmodBeispiel($aenderung);
+}
+
 $drei = $wpdb->get_col(
     "SELECT r.id FROM {$p}node_records r
       WHERE r.record_type = 'user' AND r.relation_id = 0

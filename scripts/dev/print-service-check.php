@@ -107,15 +107,22 @@ $pruefe(str_contains($knopf, 'name="document"') && str_contains($knopf, 'Platz')
 
 $_GET['tab'] = PrintTab::SLUG;
 $seite = (new SettingsScreen())->render();
-$pruefe(str_contains($seite, 'How to connect') && str_contains($seite, 'taxmod_print_agent.py') && str_contains($seite, 'enable-linger'), 'the tab has the setup guide in its box (D-1116)');
-$pruefe(str_contains($seite, 'Renew access') && str_contains($seite, 'Delete access data') && str_contains($seite, 'Test connection'), 'the Configuration tab has Access like the API modules: renew in a dialog, «Test connection», «Delete access data» (D-1117)');
+// ⚠️ *Nachgezogen mit [D-1332](../../docs/NewConcept/90-decision-log.md) und [D-1336](../../docs/NewConcept/90-decision-log.md), sichtbar nach `PR-9`
+// (Grenzlauf 2026-11-17, D-1427): der Dienst ist seither ein `.deb`-Paket, das sich mit einem Kopplungscode verbindet und mit
+// `taxmod-printservice setup` ohne Anmeldung weiterläuft — das Python-Skript und `enable-linger` der Anleitung von D-1116 gibt es nicht
+// mehr. Und jeder Rechner hat seinen eigenen Dienst: «Add print service» statt des einen «Renew access» von D-1117.*
+$pruefe(str_contains($seite, 'How to connect') && str_contains($seite, '.deb') && str_contains($seite, 'taxmod-printservice setup'), 'the tab has the setup guide in its box (D-1116, the package of D-1332)');
+$pruefe(str_contains($seite, 'Add print service') && str_contains($seite, 'Delete access data') && str_contains($seite, 'Test connection'), 'the Configuration tab has Access like the API modules: a service per PC added in a dialog, «Test connection», «Delete access data» (D-1117, D-1336)');
 $pruefe(str_contains(PrintTab::status(), 'heard of'), '«Test connection» says when the service was last heard of');
 PrintTab::act([PrintTab::DO => 'test:roll62']);
 $pruefe($jobs->latest(1)[0]['format'] === 'roll62' && $jobs->latest(1)[0]['is_test'] === '1', 'the test button queues a test job');
 
 // D-1198: the counts per status are kept until a write, and every write forgets them before it returns.
 $gezaehlt = $jobs->counts();
-$pruefe(get_transient('taxmod_tiles_' . md5('print_jobs|' . ((array) get_option('taxmod_tile_generation', []))['print_jobs'] . '|status')) === $gezaehlt, 'the counts per status are kept after the first count');
+// *Seit 0.2.131 (review DB7) ein Eintrag je Bereich und Quelle, die Generation neben den Zahlen — gelesen wie `TileCounts` es schreibt
+// (Grenzlauf 2026-11-17, D-1427; vorher der Schlüssel mit der Generation darin).*
+$gemerkt = get_transient('taxmod_tiles_' . md5('print_jobs|status'));
+$pruefe(is_array($gemerkt) && ($gemerkt['counts'] ?? null) === $gezaehlt && ($gemerkt['generation'] ?? null) === (((array) get_option('taxmod_tile_generation', []))['print_jobs'] ?? 0), 'the counts per status are kept after the first count');
 $neu = $jobs->queue(LabelFormat::byKey('holder62'), new LabelContent('O-4713', 'Zählfach', 'print-service-check'), true);
 $pruefe(($jobs->counts()['queued'] ?? 0) === ($gezaehlt['queued'] ?? 0) + 1, 'a new job is counted at once: queueing forgot the kept counts');
 $jobs->cancel([$neu]);

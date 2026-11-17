@@ -261,7 +261,8 @@ $say($ohne === 0, 'jedes Formular schickt den Faltzustand mit');
 // Sprachwechsel klappte den Baum zu.*
 $say(
     ! str_contains($seite, 'taxmod-locale')
-        || preg_match('/class="taxmod-locale".{0,600}?taxmod_collapsed=/s', $seite) === 1,
+        // *Die Klasse steht seit dem einen Auswahlfeld (SelectMarkup) neben `taxmod-choice`; gesucht wird sie als Wort (Grenzlauf 2026-11-17, D-1427).*
+        || preg_match('/class="[^"]*\btaxmod-locale\b[^"]*".{0,600}?taxmod_collapsed=/s', $seite) === 1,
     'auch die Sprachwahl traegt ihn in ihrer Adresse'
 );
 
@@ -301,11 +302,13 @@ echo "\n== der Auswahldialog faengt zu an, gleich wie die Seite steht ==\n";
 
 /** Die Zeilen genau eines Dialogs, an seinem Feldnamen erkannt: Id => [sichtbar, Klappmarke]. */
 $dialogZeilen = static function (string $markup, string $feld): array {
-    $ab = strpos($markup, '-' . $feld . '"');
-
-    if ($ab === false) {
+    // *Ein zweiter Wähler desselben Feldes in einem Lauf heisst «-2», «-3» … (die Schalter-Ids, report 2026-11-13) — ein Abruf des
+    // Stücks ist im Browser ein eigener Aufruf, hier derselbe Prozess.*
+    if (preg_match('/-' . preg_quote($feld, '/') . '(?:-\d+)?"/', $markup, $anker, PREG_OFFSET_CAPTURE) !== 1) {
         return [];
     }
+
+    $ab = $anker[0][1];
 
     $baum = strpos($markup, '<span class="taxmod-chooser-tree">', $ab);
 
@@ -343,8 +346,18 @@ $dialogZeilen = static function (string $markup, string $feld): array {
 $_GET['taxmod_collapsed'] = 'none';
 $_GET['taxmod_node']      = (string) $ast->id;
 
+// ⚠️ **Nachgezogen mit [D-1418](../../docs/NewConcept/90-decision-log.md), sichtbar nach `PR-9` (Grenzlauf 2026-11-17, D-1427).** *Der gemeinsame
+// Baum steht seither nicht mehr auf der Seite, sondern wird beim Öffnen als Stück `pick` nachgeladen (`taxmod_page_part`). Gesucht wurde
+// er weiter auf der Seite, und die fünf Zusagen darunter waren rot, ohne dass der Baum anders faltete. Gelesen wird jetzt das Stück,
+// das der Lader holt — dasselbe, das `handlePagePart()` ausgibt.*
+$gemeinsamerBaum = static function () use ($plugin): string {
+    $screen = $plugin->screen();
+
+    return (new ReflectionMethod($screen, 'sharedPickerTree'))->invoke($screen);
+};
+
 $seiteWeit = $plugin->screen()->render();
-$weit      = $dialogZeilen($seiteWeit, 'taxmod_pick');
+$weit      = $dialogZeilen($gemeinsamerBaum(), 'taxmod_pick');
 
 printf("       %d Zeilen im gemeinsamen Baum\n", count($weit));
 
@@ -376,7 +389,8 @@ $say(
 // ⚠️ *Das ist die eigentliche Zusage: **zwei Seitenzustaende, ein Baum.***
 unset($_GET['taxmod_collapsed']);
 
-$frischerDialog = $dialogZeilen($plugin->screen()->render(), 'taxmod_pick');
+$plugin->screen()->render();
+$frischerDialog = $dialogZeilen($gemeinsamerBaum(), 'taxmod_pick');
 
 $say($frischerDialog === $weit, 'der Baum sieht gleich aus, ob die Seite offen oder zu ist');
 

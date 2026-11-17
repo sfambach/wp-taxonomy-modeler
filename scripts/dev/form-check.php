@@ -16,6 +16,8 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
+// ⚠️ **No check writes into the owner's model** — the bracket rolls everything back at the end (Grenzlauf 2026-11-17, D-1427: this run had none).
+require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\Admin\ListPage;
@@ -41,7 +43,7 @@ check('the label is escaped', str_contains($html, 'Menge &lt;1&gt;'));
 check('the hint is the «?» of the renderer, not a line of text', substr_count($html, 'taxmod-hint') >= 1 && str_contains($html, 'Wie viele'));
 // D-1308 (changed with the concept, PR-9): the buttons stand above the fields, as the toolbar — before, this checked «below».
 check('the buttons stand above the fields, in the toolbar (D-1308)', strpos($html, 'class="taxmod-toolbar"') !== false && strpos($html, 'class="taxmod-toolbar"') < strpos($html, 'taxmod-form-row') && str_contains($html, 'Buchen</button>'));
-$bar = ListPage::toolbar([['<button>💾</button>'], '', ['<button>A</button>', '<button>B</button>'], '<a>X</a>']);
+$bar = ListPage::toolbar([['<button>' . \Taxmod\Core\Renderer\Control::SAVE_GLYPH . '</button>'], '', ['<button>A</button>', '<button>B</button>'], '<a>X</a>']);
 check('the toolbar draws a group per entry, a divider between them, empty groups fall away', substr_count($bar, 'taxmod-toolbar-group') === 3 && substr_count($bar, 'taxmod-toolbar-sep') === 2, $bar);
 check('no buttons, no toolbar', ListPage::toolbar(['', []]) === '');
 $css = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
