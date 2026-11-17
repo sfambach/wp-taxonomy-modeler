@@ -1374,3 +1374,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Anlass:** Code-Review R-10. `Table` steht gleich in Lager, Fertigung und Etikett. `ask()` (übersetzt `ModelDoorRefused` in den Modulfehler) steht gleich in den `ModelGateway`-Klassen von Lager, Fertigung und Verkauf.
 - **Stand (Architektur 17.11.):** Die Dublette wird geduldet, jede Klasse bleibt in ihrem Modul. Gründe: kleine, stabile Wertklassen; ein gemeinsames Composer-Paket wäre eine neue Abhängigkeit mit eigenem Release-Weg; Injektion am Rand passt nicht, weil `Table` im Modul-Kern gebraucht wird. Den Modeller selbst können Modul-Kerne nicht laden (Release-CI ohne Modeller, vgl. Verkauf «RoleMap not found»).
 - **Offen:** ob später ein gemeinsames Modul-Paket kommt. Bis dahin: Änderungen an `Table` oder `ask()` in allen betroffenen Modulen gleich nachziehen.
+
+## INF-134 · Kits: Zielplatz und Beipack (2026-11-17)
+
+- **Anlass:** Kits ([D-1428](NewConcept/90-decision-log.md)) gehen nicht über «Test».
+- **Offen:** (a) auf welchen Platz der Zugang der fertigen Kits gebucht wird (im Abschluss-Dialog wählen, oder ein fester Platz «Fertigware»); (b) ob Beipackzettel, Anleitung und Tüte Positionen des Kits sind (Stückliste der Revision erweitern oder eigene Kit-Positionen). Bis zur Antwort: Platz im Dialog wählen, Positionen nur aus der Stückliste der Revision.
