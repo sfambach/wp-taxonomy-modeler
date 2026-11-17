@@ -1242,7 +1242,7 @@ final class Plugin
     }
 
     /** Das Dezimalzeichen der Website-Sprache (D-1175); ohne intl der Punkt für Englisch, sonst das Komma. */
-    private static function siteDecimalSeparator(): string
+    public static function siteDecimalSeparator(): string
     {
         $locale = (string) get_locale();
 

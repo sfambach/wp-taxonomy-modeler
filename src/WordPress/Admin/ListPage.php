@@ -937,6 +937,19 @@ final class ListPage
     }
 
     /**
+     * A number as the reader sees it: the site's decimal sign (D-1175), no trailing zeros; a stored decimal (string) only
+     * changes its sign. The one formatter of every module page (review 2026-11-17, R-2).
+     *
+     * @param int<0, 12> $places for a float, how many decimals at most
+     */
+    public static function number(float|int|string $value, int $places = 3): string
+    {
+        $stored = is_string($value) ? $value : \Taxmod\Core\Renderer\DecimalText::stored((float) $value, $places);
+
+        return \Taxmod\Core\Renderer\DecimalText::shown($stored, \Taxmod\WordPress\Plugin::siteDecimalSeparator());
+    }
+
+    /**
      * The table: a checkbox column first, the given columns, the actions column last. A column with a sort address is
      * sortable; its state says whether the list is sorted by it now.
      *

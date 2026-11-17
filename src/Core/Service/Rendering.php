@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace Taxmod\Core\Service;
+use Taxmod\Core\Renderer\DecimalText;
 use Taxmod\Core\Renderer\SummaryRenderer;
 
 use Taxmod\Core\Converter\Converter;
@@ -5520,7 +5521,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                         $roh      = $v->decimal ?? (string) $v->int;
                         $zahl     = str_contains($roh, '.') ? rtrim(rtrim($roh, '0'), '.') : $roh;
                         $roheZahlen[] = $zahl;
-                        $zahlen[]     = $dezimal === '.' ? $zahl : str_replace('.', $dezimal, $zahl);
+                        $zahlen[]     = DecimalText::shown($zahl, $dezimal);
                     } elseif (! $v->isAReference()) {
                         $sonst[] = $v->rawValue();
                     }
@@ -5544,7 +5545,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 $bezugsZeichen = $bezug === null ? '' : (string) ($zeichen[$bezug->unitNodeId] ?? $knotenNamen[$bezug->unitNodeId] ?? '');
 
                 if ($umgerechnet !== null && $bezugsZeichen !== '') {
-                    $sonst = [...$sonst, '(' . ($dezimal === '.' ? $umgerechnet : str_replace('.', $dezimal, $umgerechnet)) . ' ' . $bezugsZeichen . ')'];
+                    $sonst = [...$sonst, '(' . DecimalText::shown($umgerechnet, $dezimal) . ' ' . $bezugsZeichen . ')'];
                 }
 
                 $teile = array_values(array_filter(
@@ -5615,7 +5616,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
                             if ($innen !== '') {
                                 $roh      = $zahlIn($massFeld);
-                                $zahl     = $roh === null ? null : str_replace('.', $dezimal, $roh);
+                                $zahl     = $roh === null ? null : DecimalText::shown($roh, $dezimal);
                                 $worte[]  = $innen;
                                 $zahlen[] = (string) $zahl;
                                 $reste[]  = $zahl !== null && str_starts_with($innen, $zahl) ? substr($innen, strlen($zahl)) : null;
