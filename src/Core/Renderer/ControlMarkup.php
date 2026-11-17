@@ -85,6 +85,7 @@ final class ControlMarkup
             . ($control->form === '' ? '' : ' form="' . RenderResult::escape($control->form) . '"')
             . ' name="' . RenderResult::escape($control->name) . '"'
             . ' value="' . RenderResult::escape($control->value) . '"'
+            . self::address($control)
             // ⚠️ **Ein Symbolknopf zeigt beim Darüberfahren seinen Namen** ([D-847](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
             // *«knöpfe grundsätzlich ein icon verwenden wenn es eins gibt und rechts vom feld. Tooltip knopf beschreibung/name».* Ohne eigenen
             // Titel ist es die Beschriftung, die das Symbol ersetzt.
@@ -124,7 +125,7 @@ final class ControlMarkup
     {
         $dialog = $control->opens ?? throw new \LogicException('Kein Dialog.');
         $icon   = $control->icon !== '';
-        $ok     = new Control($control->name, $control->value, $dialog->confirm, '', $usable, $control->destroys, '', $control->form, true);
+        $ok     = new Control($control->name, $control->value, $dialog->confirm, '', $usable, $control->destroys, '', $control->form, true, address: $control->address);
 
         return DialogMarkup::of(
             $dialog->id,
@@ -134,6 +135,12 @@ final class ControlMarkup
             self::button($ok) . '<label class="button taxmod-dialog-cancel" for="' . RenderResult::escape($dialog->id) . '">' . RenderResult::escape($dialog->cancel) . '</label>',
             ($icon || $control->glyph !== '') ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-dialog-open'
         );
+    }
+
+    /** The address token needs no escaping: {@see \Taxmod\Core\Event\Address} admits only safe characters. */
+    private static function address(Control $control): string
+    {
+        return $control->address === null ? '' : ' data-taxmod-address="' . $control->address->token() . '"';
     }
 
     private static function face(Control $control, bool $icon): string

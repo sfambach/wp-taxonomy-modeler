@@ -165,6 +165,28 @@ final class Control
          * ([D-861](../../../docs/NewConcept/90-decision-log.md)). Ohne: ein Symbol ersetzt das Wort (D-847).
          */
         public readonly bool $iconWithLabel = false,
+        /** Which node, edge, record or field the act is about (plan step 1, [D-1424](../../../docs/NewConcept/90-decision-log.md)). */
+        public readonly ?\Taxmod\Core\Event\Address $address = null,
     ) {
+    }
+
+    /** The same act, about this place. */
+    public function at(\Taxmod\Core\Event\Address $address): self
+    {
+        return new self(
+            $this->name,
+            $this->value,
+            $this->label,
+            $this->title,
+            $this->available,
+            $this->destroys,
+            $this->icon,
+            $this->form,
+            $this->leads,
+            $this->glyph,
+            $this->opens,
+            $this->iconWithLabel,
+            $address,
+        );
     }
 }

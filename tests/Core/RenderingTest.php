@@ -3268,6 +3268,8 @@ final class RenderingTest extends TestCase
         self::assertCount(1, $beschwerden);
         self::assertSame('below_min', $beschwerden[0]->key);
         self::assertSame('3', $beschwerden[0]->values['min']);
+        // *Die Beschwerde nennt ihre Stelle — Knoten und Kante (Plan Schritt 1, D-1424).*
+        self::assertSame('node=' . $menge->fromNodeId . ';edge=' . $menge->id, $beschwerden[0]->address?->token());
     }
 
     #[Test]
