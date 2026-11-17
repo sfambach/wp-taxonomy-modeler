@@ -2958,3 +2958,7 @@ details.taxmod-record-section > summary {
 	line-height: 18px;
 	vertical-align: middle;
 }
+
+/* Grenzlauf 2026-11-17 (D-1427, icon-button): sizes live in the stylesheet, never as an inline style — the version badge of the page head and the label preview. */
+.taxmod-version{display:inline-block;vertical-align:middle;margin-left:.5em;padding:2px 8px;border-radius:10px;background:#2271b1;color:#fff;font-size:12px;font-weight:600}
+.taxmod-label-preview-frame{display:block;width:100%;max-width:320px;height:200px;border:1px solid #c3c4c7;background:#fff}

@@ -96,7 +96,11 @@ function seite(int $nodeId): string
     $plugin = $rc->newInstanceWithoutConstructor();
     $rc->getProperty('file')->setValue($plugin, __FILE__);
 
-    return $plugin->screen()->render();
+    $screen = $plugin->screen();
+
+    // ⚠️ *Der gemeinsame Baum kommt seit [D-1418](../../docs/NewConcept/90-decision-log.md) als nachgeladenes Stück `pick`; die Seite und das
+    // Stück zusammen sind, was der Browser zeigt (Grenzlauf 2026-11-17, D-1427, `PR-9`).*
+    return $screen->render() . (new ReflectionMethod($screen, 'sharedPickerTree'))->invoke($screen);
 }
 
 /**

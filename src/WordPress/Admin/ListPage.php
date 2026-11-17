@@ -247,7 +247,7 @@ final class ListPage
         $all = $total === null ? __('Show all', 'taxmod') : sprintf(/* translators: %d: number of entries */ __('Show all (%d)', 'taxmod'), $total);
 
         return '<tr class="no-items taxmod-list-prompt"><td class="colspanchange" colspan="' . esc_attr((string) ($columns + 2)) . '">'
-            . '<span class="dashicons dashicons-search" aria-hidden="true"></span> '
+            . \Taxmod\Core\Renderer\IconMarkup::dashicon('search') . ' '
             . esc_html__('Enter a search term or set a filter: only what matches is loaded.', 'taxmod')
             . ' <a class="button" href="' . esc_url($allUrl) . '">' . esc_html($all) . '</a></td></tr>';
     }
@@ -405,7 +405,7 @@ final class ListPage
         $title = esc_html($plugin) . ' › ' . esc_html($screen);
 
         return '<h1 class="wp-heading-inline" style="font-size:1.8em">' . ($hint === '' ? $title : HintMarkup::behind($title, $hint)) . '</h1>'
-            . ' <span class="taxmod-version" style="display:inline-block;vertical-align:middle;margin-left:.5em;padding:2px 8px;border-radius:10px;background:#2271b1;color:#fff;font-size:12px;font-weight:600">v' . esc_html($version) . '</span>'
+            . ' <span class="taxmod-version">v' . esc_html($version) . '</span>'
             . self::messages() . '<hr class="wp-header-end">';
     }
 
@@ -1112,7 +1112,7 @@ final class ListPage
             . '<button type="button" class="button taxmod-list-toggle" aria-expanded="' . ($expanded ? 'true' : 'false') . '" title="' . esc_attr__('Details', 'taxmod') . '" aria-label="' . esc_attr__('Details', 'taxmod') . '" onclick="taxmodListShow(this)">'
             // ⚠️ *His words: 2026-10-25 «als richtigen Button aber ruhig mit diesen Pfeil nach unten», 2026-10-28 «Der Pfeil im Button
             // ist immer noch komisch. Kannst du nicht irgendwie ein Icon nehmen?» — so the button is the icon alone; it turns when open.*
-            . '<span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button> ' . $buttons . '</td></tr>'
+            . \Taxmod\Core\Renderer\IconMarkup::dashicon('arrow-down-alt2') . '</button> ' . $buttons . '</td></tr>'
             . '<tr class="taxmod-list-details"' . ($expanded ? '' : ' hidden') . '><td colspan="' . (count($cells) + 2) . '">'
             . (trim($details) === '' ? '' : '<div class="taxmod-list-panel">' . $details . '</div>') . '</td></tr>';
     }

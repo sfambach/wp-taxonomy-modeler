@@ -16,6 +16,8 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
+// ⚠️ **No check writes into the owner's model** — the bracket rolls everything back at the end (Grenzlauf 2026-11-17, D-1427: this run had none).
+require __DIR__ . '/lib/no-write.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\WordPress\Admin\ListPage;

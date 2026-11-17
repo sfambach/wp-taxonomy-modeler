@@ -38,15 +38,15 @@ final class MetricSums
 
         $at = $date === 0 ? 'r.created_at' : "COALESCE(
                 (SELECT d.value_date FROM {$values} d WHERE d.node_record_id = r.id AND d.relation_id = {$date} AND d.locale = '' AND d.value_date IS NOT NULL ORDER BY d.id DESC LIMIT 1),
-                (SELECT MIN(e.value_date) FROM {$values} d JOIN {$values} e ON e.node_record_id = d.value_ref
-                  WHERE d.node_record_id = r.id AND d.relation_id = {$date} AND d.value_ref_kind = 'record' AND e.value_date IS NOT NULL))";
+                (SELECT MIN(teil.value_date) FROM {$values} d JOIN {$values} teil ON teil.node_record_id = d.value_ref
+                  WHERE d.node_record_id = r.id AND d.relation_id = {$date} AND d.value_ref_kind = 'record' AND teil.value_date IS NOT NULL))";
 
         $value = ! $sum || $sumOf === 0 ? '1' : "COALESCE(
                 (SELECT COALESCE(s.value_decimal, s.value_int) FROM {$values} s WHERE s.node_record_id = r.id AND s.relation_id = {$sumOf} AND s.locale = ''
                   AND COALESCE(s.value_decimal, s.value_int) IS NOT NULL ORDER BY s.id DESC LIMIT 1),
-                (SELECT COALESCE(e.value_decimal, e.value_int) FROM {$values} s JOIN {$values} e ON e.node_record_id = s.value_ref
-                  WHERE s.node_record_id = r.id AND s.relation_id = {$sumOf} AND s.value_ref_kind = 'record' AND COALESCE(e.value_decimal, e.value_int) IS NOT NULL
-                  ORDER BY s.id DESC, e.position, e.id LIMIT 1),
+                (SELECT COALESCE(teil.value_decimal, teil.value_int) FROM {$values} s JOIN {$values} teil ON teil.node_record_id = s.value_ref
+                  WHERE s.node_record_id = r.id AND s.relation_id = {$sumOf} AND s.value_ref_kind = 'record' AND COALESCE(teil.value_decimal, teil.value_int) IS NOT NULL
+                  ORDER BY s.id DESC, teil.position, teil.id LIMIT 1),
                 0)";
 
         $where  = 'r.node_id IN (' . Ancestry::descendants([$node->id]) . ") AND r.relation_id = 0 AND r.record_type <> 'settings'";

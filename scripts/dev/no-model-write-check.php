@@ -53,6 +53,23 @@ $ausnahmen = [
     // Kindprozess hat eine **eigene** Verbindung und sähe von einer offenen Umklammerung des
     // Elternprozesses nichts — der Knoten, auf den er postet, wäre für ihn nicht da.
     'labels-page-save-check.php' => 'Kindprozess mit eigener Verbindung',
+    // ⚠️ *Grenzlauf 2026-11-17 (D-1427): der Lauf führt die Schritte eines Fassungssprungs wirklich aus, und eine Tabellenänderung
+    // bestätigt MySQL sofort — eine Klammer gäbe es dafür nicht. Er sagt selbst: nur auf einer Prüf-Datenbank ([D-1426](../../docs/NewConcept/90-decision-log.md)).*
+    'fassungssprung-check.php' => 'Tabellenänderungen eines Fassungssprungs, nur auf einer Prüf-Datenbank',
+];
+
+/**
+ * Was zwischen `wp-load` und der Klammer stehen darf — und nur das.
+ *
+ * ⚠️ *Grenzlauf 2026-11-17 (D-1427): zwei Läufe heben **vor** der Klammer ihre Tabelle auf die Fassung, mit Grund — ein `CREATE TABLE`
+ * in ihr würde sie bestätigen. Gemeldet waren sie als «zu spät», obwohl genau das die Klammer schützt. Erlaubt ist darum der Lader und
+ * der Fassungsschritt, keine andere Anweisung.*
+ */
+$vorDerKlammer = [
+    "require dirname(__DIR__, 2) . '/vendor/autoload.php';",
+    "require __DIR__ . '/../../vendor/autoload.php';",
+    '\\Taxmod\\WordPress\\Persistence\\Schema::ensureCurrent();',
+    '\\Taxmod\\WordPress\\Printing\\PrintJobSchema::upgrade();',
 ];
 
 $rot = 0;
@@ -110,7 +127,7 @@ foreach (glob($verzeichnis . '/*-check.php') ?: [] as $pfad) {
     for ($i = $wpLoad + 1, $n = count($zeilen); $i < $n; $i++) {
         $zeile = trim($zeilen[$i]);
 
-        if ($zeile === '' || str_starts_with($zeile, '//') || str_starts_with($zeile, '*') || str_starts_with($zeile, '/*')) {
+        if ($zeile === '' || str_starts_with($zeile, '//') || str_starts_with($zeile, '*') || str_starts_with($zeile, '/*') || in_array($zeile, $vorDerKlammer, true)) {
             continue;
         }
 

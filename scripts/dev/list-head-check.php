@@ -17,9 +17,14 @@ $failed   = 0;
 
 $wildcard = null;
 
-if (preg_match('/function matches\( text, term \) \{.*?\n\t\}\n/s', $script, $m) === 1 && trim((string) shell_exec('command -v node')) !== '') {
+// ⚠️ *Mit `canonical()`, die `matches()` seit D-1378 ruft (eine Schreibweise für Einheiten). Ohne sie brach node mit «canonical is not
+// defined» ab und die Zusage war rot, ohne dass die Leiste falsch suchte — gemessen im Grenzlauf 2026-11-17 (D-1427).*
+if (preg_match('/function canonical\( text \) \{.*?\n\t\}\n/s', $script, $c) === 1
+    && preg_match('/function matches\( text, term \) \{.*?\n\t\}\n/s', $script, $m) === 1
+    && trim((string) shell_exec('command -v node')) !== ''
+) {
     $cases    = "[matches('LM2930T','lm*30'),matches('Quarz 8 MHz','q*mhz'),matches('Quarz 8 MHz','mhz*q'),matches('LM2930T','lm%30'),matches('x','*')].join(',')";
-    $wildcard = trim((string) shell_exec('node -e ' . escapeshellarg($m[0] . 'console.log(' . $cases . ')') . ' 2>&1'));
+    $wildcard = trim((string) shell_exec('node -e ' . escapeshellarg($c[0] . $m[0] . 'console.log(' . $cases . ')') . ' 2>&1'));
 }
 
 $claims = [
