@@ -373,17 +373,7 @@ final class ModelDoor
      */
     public function referrers(array $records, int $relation): array
     {
-        $out = [];
-
-        foreach ($records === [] ? [] : (new WpdbRecordRepository())->referrersOfMany($records) as $values) {
-            foreach ($values as $value) {
-                if ($value->relationId === $relation) {
-                    $out[$value->recordId] = true;
-                }
-            }
-        }
-
-        return array_keys($out);
+        return $records === [] ? [] : (new WpdbRecordRepository())->referringRecords($records, $relation);
     }
 
     /**
