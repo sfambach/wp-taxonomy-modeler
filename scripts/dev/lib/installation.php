@@ -21,5 +21,10 @@ function taxmodNachDerWanderungAngelegt(int $fassung): bool
         return true;
     }
 
+    if ($geboren === 0) {
+        echo "  --   Geburtsfassung unbekannt (angelegt vor 0.2.132): eine Test-Datenbank, die nie gewandert ist, nennt sie mit\n"
+            . "       «wp option add " . \Taxmod\WordPress\Persistence\Schema::BORN_AT_OPTION . " <Fassung>» — die Fassung, mit der sie angelegt wurde\n";
+    }
+
     return false;
 }

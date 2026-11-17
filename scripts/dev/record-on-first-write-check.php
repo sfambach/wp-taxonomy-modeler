@@ -214,7 +214,8 @@ $in    = $meine === [] ? (string) $ziel->id : implode(',', $meine);
 
 $wpdb->query("DELETE FROM {$p}relation_records WHERE node_record_id IN (SELECT id FROM {$p}node_records WHERE node_id IN ({$in}))");
 $wpdb->query("DELETE FROM {$p}node_records WHERE node_id IN ({$in})");
-$wpdb->query("DELETE FROM {$p}labels WHERE owner_id IN ({$in})");
+// *Seit Fassung 34 trägt der Knoten seine Beschriftung (`label_id`); `labels.owner_id` gibt es nicht mehr (Grenzlauf 2026-11-17, D-1427).*
+$wpdb->query("DELETE FROM {$p}labels WHERE id IN (SELECT label_id FROM {$p}nodes WHERE id IN ({$in}))");
 $wpdb->query("DELETE FROM {$p}relations WHERE from_node_id IN ({$in}) OR to_node_id IN ({$in})");
 $wpdb->query("DELETE FROM {$p}nodes WHERE id IN ({$in})");
 
