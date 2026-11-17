@@ -32,7 +32,7 @@ $fehler = 0;
 
 $mitHilfe = "EXISTS (SELECT 1 FROM {$p}label_texts t WHERE t.label_id = z.label_id AND t.text_help <> '')";
 
-$fund = $wpdb->get_row(
+$suche = static fn (): ?object => $wpdb->get_row(
     "SELECT r.id AS satz, t.text_help AS hilfe
        FROM {$p}node_records r
        JOIN {$p}relations k ON k.from_node_id = r.node_id AND k.kind = 'aggregation' AND k.hide = 0
@@ -40,6 +40,25 @@ $fund = $wpdb->get_row(
        JOIN {$p}label_texts t ON t.label_id = z.label_id AND t.text_help <> ''
       WHERE r.record_type = 'user' ORDER BY r.id DESC LIMIT 1"
 );
+
+$fund = $suche();
+
+// ⚠️ *Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)): auf einer Datenbank ohne diese Gestalt legt der Wächter sie
+// selbst an — ein Feld auf einen Knoten mit Hilfe und einen Satz daran —, statt «prüft nichts» zu melden.*
+if ($fund === null) {
+    require_once __DIR__ . '/lib/beispiel.php';
+
+    taxmodBeispiel([
+        ['op' => 'create_node', 'ref' => 'ziel', 'name' => '__ht Ziel', 'parent' => 402],
+        ['op' => 'set_label', 'node' => '@ziel', 'role' => 'help', 'text' => '__ht Hilfe am Ziel'],
+        ['op' => 'create_node', 'ref' => 'traeger', 'name' => '__ht Träger', 'parent' => 402],
+        ['op' => 'set_label', 'node' => '@traeger', 'role' => 'help', 'text' => '__ht Hilfe am Träger'],
+        ['op' => 'add_field', 'node' => '@traeger', 'target' => '@ziel', 'name' => '__ht Feld', 'kind' => 'aggregation'],
+        ['op' => 'create_record', 'node' => '@traeger'],
+    ]);
+
+    $fund = $suche();
+}
 
 if ($fund === null) {
     echo "  FAIL kein Satz mit einem Feld auf einen Knoten mit Hilfe — der Wächter prüft nichts\n";

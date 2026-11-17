@@ -10,7 +10,7 @@
         "node_records": 111,
         "relation_records": 6
     },
-    "pruefsumme": "ca3f7961e4f78ade8c2986b4438fded9ce35fce197857029a96956391fdbbc7b",
+    "pruefsumme": "c5eb8f38c757de346e12e5179b0e905b3b2e60f12eb97813753e98ad740970cf",
     "optionen": {
         "taxmod_base_scaffold": "6",
         "taxmod_branch_combined_id": "3984",
@@ -893,7 +893,7 @@
                 "text_form": null,
                 "text_table": null,
                 "text_select": null,
-                "text_help": null,
+                "text_help": "A list of the parts a thing is built from: one row per part, with its quantity.",
                 "text_symbol": null
             },
             {

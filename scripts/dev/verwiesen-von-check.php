@@ -49,7 +49,7 @@ $eigenstaendig = "NOT EXISTS (SELECT 1 FROM {$p}relation_records hh JOIN {$p}rel
 
 $fehler = 0;
 
-$aggregation = $wpdb->get_row(
+$sucheAggregation = static fn (): ?object => $wpdb->get_row(
     "SELECT v.value_ref AS ziel, v.node_record_id AS von FROM {$p}relation_records v
        JOIN {$p}relations k ON k.id = v.relation_id AND k.kind = 'aggregation' AND k.hide = 0
        JOIN {$p}node_records r ON r.id = v.node_record_id AND r.record_type = 'user'
@@ -60,13 +60,41 @@ $aggregation = $wpdb->get_row(
                         WHERE ah.value_ref = v.node_record_id AND ah.value_ref_kind = 'record') DESC, v.id DESC LIMIT 1"
 );
 
-$teil = $wpdb->get_row(
+$aggregation = $sucheAggregation();
+
+$sucheTeil = static fn (): ?object => $wpdb->get_row(
     "SELECT v.value_ref AS ziel, h.node_record_id AS von FROM {$p}relation_records v
        JOIN {$p}relation_records h ON h.value_ref = v.node_record_id AND h.value_ref_kind = 'record'
        JOIN {$p}relations hk ON hk.id = h.relation_id AND hk.kind = 'composition'
        JOIN {$p}node_records r ON r.id = h.node_record_id AND r.record_type = 'user'
       WHERE v.value_ref_kind = 'record' ORDER BY v.id DESC LIMIT 1"
 );
+
+$teil = $sucheTeil();
+
+// ⚠️ *Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)): ohne diese Gestalt im Bestand legt der Wächter sie selbst an —
+// ein Ziel mit einem Satz, ein Satz, der über eine Aggregation auf ihn zeigt, und ein Halter, dessen Teil auf ihn zeigt.*
+if ($aggregation === null || $teil === null) {
+    require_once __DIR__ . '/lib/beispiel.php';
+
+    taxmodBeispiel([
+        ['op' => 'create_node', 'ref' => 'ziel', 'name' => '__vv Ziel', 'parent' => 402],
+        ['op' => 'create_record', 'ref' => 'y', 'node' => '@ziel'],
+        ['op' => 'create_node', 'ref' => 'von', 'name' => '__vv Von', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'verweis', 'node' => '@von', 'target' => '@ziel', 'name' => '__vv Verweis', 'kind' => 'aggregation'],
+        ['op' => 'create_record', 'ref' => 'x', 'node' => '@von'],
+        ['op' => 'set_values', 'record' => '@x', 'values' => ['@verweis' => '@y']],
+        ['op' => 'create_node', 'ref' => 'teilknoten', 'name' => '__vv Teil', 'parent' => (int) get_option('taxmod_branch_compositions_id')],
+        ['op' => 'add_field', 'ref' => 'teilverweis', 'node' => '@teilknoten', 'target' => '@ziel', 'name' => '__vv Teilverweis', 'kind' => 'aggregation'],
+        ['op' => 'create_node', 'ref' => 'halter', 'name' => '__vv Halter', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'halt', 'node' => '@halter', 'target' => '@teilknoten', 'name' => '__vv Halt', 'kind' => 'composition'],
+        ['op' => 'create_record', 'ref' => 'h', 'node' => '@halter'],
+        ['op' => 'set_values', 'record' => '@h', 'values' => ['@halt' => ['neu' => ['@teilverweis' => '@y']]]],
+    ]);
+
+    $aggregation ??= $sucheAggregation();
+    $teil        ??= $sucheTeil();
+}
 
 foreach (['über eine Aggregation' => $aggregation, 'über einen Teil' => $teil] as $wie => $fund) {
     if ($fund === null) {

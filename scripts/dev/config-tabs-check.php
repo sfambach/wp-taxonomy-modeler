@@ -71,8 +71,13 @@ $seite = (new SettingsScreen())->render();
 $pruefe(strpos($seite, '__ct-keys') < strpos($seite, 'name="' . \Taxmod\WordPress\Import\FetchInterval::FIELD . '"') && strpos($seite, 'name="' . \Taxmod\WordPress\Import\FetchInterval::FIELD . '"') < strpos($seite, '__ct-rest'), 'a module tab shows access, fetch interval and settings in that order');
 // ⚠️ *«button test connection unter die einlogdaten und die mit einem save button versehen».*
 $feld = strpos($seite, 'name="' . \Taxmod\WordPress\Import\FetchInterval::FIELD . '"');
-$pruefe(strpos($seite, 'name="' . SettingsScreen::TEST . '"') > strpos($seite, '__ct-keys') && strpos($seite, 'name="' . SettingsScreen::TEST . '"') < $feld && substr_count(substr($seite, 0, $feld), 'type="submit"') === 3, 'the access data have their own Save and «Test connection» right below');
-$pruefe(str_contains($seite, 'name="' . SettingsScreen::FORGET . '"') && str_contains($seite, 'return confirm('), '«Delete access data» asks before it deletes');
+// ⚠️ *Nachgezogen mit [D-1308](../../docs/NewConcept/90-decision-log.md), sichtbar nach `PR-9` (Grenzlauf 2026-11-17, D-1427): «Save» steht seither
+// einmal oben in der Werkzeugleiste und speichert dasselbe Formular, die Zugangsdaten mit. Verlangt waren drei Knöpfe vor dem Intervall.*
+$leiste = strpos($seite, 'class="taxmod-toolbar"');
+$pruefe($leiste !== false && $leiste < strpos($seite, '__ct-keys') && str_contains(substr($seite, $leiste, 600), \Taxmod\Core\Renderer\Control::SAVE_GLYPH)
+    && strpos($seite, 'name="' . SettingsScreen::TEST . '"') > strpos($seite, '__ct-keys') && strpos($seite, 'name="' . SettingsScreen::TEST . '"') < $feld, 'the access data are saved by the one Save on top (D-1308), «Test connection» right below them');
+// *Gefragt wird im einen Dialog aller Taxmod-Seiten (`data-taxmod-confirm`, assets/confirm-dialog.js) statt mit `confirm()` (Grenzlauf 2026-11-17, D-1427).*
+$pruefe(preg_match('/name="' . preg_quote(SettingsScreen::FORGET, '/') . '"[^>]*data-taxmod-confirm="[^"]+"/', $seite) === 1, '«Delete access data» asks before it deletes');
 $vorherTakt = get_option(\Taxmod\WordPress\Import\FetchInterval::OPTION, null);
 \Taxmod\WordPress\Import\FetchInterval::save('__ct_src', 'daily');
 $pruefe(\Taxmod\WordPress\Import\FetchInterval::of($abruf) === DAY_IN_SECONDS, 'the chosen interval wins over the module\'s own');

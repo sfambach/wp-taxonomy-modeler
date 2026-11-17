@@ -131,6 +131,16 @@ $vorher = get_current_user_id();
 wp_set_current_user((int) (get_users(['role' => 'administrator', 'number' => 1, 'fields' => 'ID'])[0] ?? 1));
 $gefunden = wp_get_ability('taxmod/query')->execute(['search' => 'e', 'limit' => 1]);
 $wertSatz = (int) (is_array($gefunden) ? ($gefunden['records'][0]['id'] ?? 0) : 0);
+
+// *Ohne einen Satz im Bestand ein eigener (Grenzlauf 2026-11-17, D-1427: auf einer frischen Datenbank prüfte die Zusage nichts und war rot).*
+if ($wertSatz === 0) {
+    require_once __DIR__ . '/lib/beispiel.php';
+
+    $wertSatz = taxmodBeispiel([
+        ['op' => 'create_node', 'ref' => 'k', 'name' => '__pr Etikettknoten', 'parent' => (int) get_option('taxmod_branch_model_id')],
+        ['op' => 'create_record', 'ref' => 's', 'node' => '@k'],
+    ])['s'] ?? 0;
+}
 $tuer     = (new \Taxmod\WordPress\ModelDoor())->labelValues($wertSatz, ['node', '__kein Feld__']);
 wp_set_current_user($vorher);
 $pruefe(($tuer['unknown'] ?? null) === ['__kein Feld__'] && isset($tuer['values']['node']) && $tuer['node'] > 0, 'D-1295: ModelDoor::labelValues answers the node name and names unknown fields ');

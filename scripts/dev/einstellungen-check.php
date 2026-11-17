@@ -1236,7 +1236,9 @@ $vlName     = static fn (int $kauf): string => 'taxmod_value[' . $vlSatz->id . '
 $vlAkt      = static fn (array|string $do, array $werte = []): bool => abschicken(['do' => $do, 'id' => (string) $vlBestell->id, 'node_record_id' => (string) $vlSatz->id, 'taxmod_value' => [(string) $vlSatz->id => $werte], '_taxmod_nonce' => wp_create_nonce('taxmod_node_' . $vlBestell->id)]);
 $vlSeite    = preg_replace('/<dialog\b.*?<\/dialog>/s', '', seite($vlBestell->id, null, $vlSatz->id)) ?? '';
 // *Nur die bearbeitbare Seite der Vorschau — darunter steht der Satzblock mit seiner eigenen Tabelle.*
-$vlEdit     = (string) explode('taxmod-preview-acts', (string) (explode('id="taxmod-preview-edit"', $vlSeite)[1] ?? ''))[0];
+// ⚠️ *Seit [D-1308](../../docs/NewConcept/90-decision-log.md) steht die Werkzeugleiste vorn auf der Seite; geschnitten wird am Satzblock
+// (Grenzlauf 2026-11-17, D-1427, `PR-9`).*
+$vlEdit     = (string) explode('taxmod-records-block', (string) (explode('id="taxmod-preview-edit"', $vlSeite)[1] ?? ''))[0];
 check(
     'eine Verweisliste unter `complex`: Überschrift, eine Tabelle, je verwiesenem Satz eine Zeile mit seinen Feldern, bearbeitbar (D-937)',
     str_contains($vlEdit, '<h4 class="taxmod-complex-heading">__es vl positionen')
@@ -1358,8 +1360,9 @@ $plugin = $rc->newInstanceWithoutConstructor();
 $rc->getProperty('file')->setValue($plugin, __FILE__);
 $screen = $plugin->screen();
 $markup = $screen->render();
-// ⚠️ *Seit D-807 trägt der Rahmen die Wahl für den Baumklick, seit D-854 auch, ob automatisch gespeichert wird.*
-check('render() liefert Markup, mit Grössen, Baumklick und Autosave am Rahmen', (bool) preg_match('#^<div class="wrap" data-taxmod-tree-click="(?:stay|jump)" data-taxmod-autosave="(?:on|off)" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
+// ⚠️ *Seit D-807 trägt der Rahmen die Wahl für den Baumklick, seit D-854 auch, ob automatisch gespeichert wird; seit [D-1417](../../docs/NewConcept/90-decision-log.md)
+// dazwischen die Angaben für das Nachladen des Baums (Grenzlauf 2026-11-17, D-1427, `PR-9`).*
+check('render() liefert Markup, mit Grössen, Baumklick und Autosave am Rahmen', (bool) preg_match('#^<div class="wrap" data-taxmod-tree-click="(?:stay|jump)"[^>]* data-taxmod-autosave="(?:on|off)" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
 // ⚠️ *Ein «+» mehr als Zeilen: das im Kopf der Seite (D-730, 2026-09-12); `add_child_here` ist darin aufgegangen.*
 // *Gezählt je Zeilenformular des Baums, nicht über die ganze Seite — der Kopf trägt sein eigenes «+» und seinen eigenen Papierkorb.*
 preg_match_all('/style="display:flex;gap:\.2em">(.*?)<\/form>/s', $markup, $zeilenFormulare);

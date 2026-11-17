@@ -59,7 +59,7 @@ if ($typKnoten === null) {
 // Beschreibung, nicht die Spannung).*
 // *Zwei Wege führen zu einem geschriebenen Text (D-885, D-888): ein Feld vom Typ «Zusammenfassung», und ein Feld, an dessen
 // Knoten eine Liste zur Kante steht («hier wird es zusammengesetzt»). Der Wächter nimmt beides.*
-$kandidaten = $wpdb->get_results($wpdb->prepare(
+$sucheKandidaten = static fn (): array => $wpdb->get_results($wpdb->prepare(
     "SELECT v.node_record_id AS satz, v.relation_id AS kante, v.value_text AS text
        FROM {$p}relation_records v
        JOIN {$p}node_records r ON r.id = v.node_record_id
@@ -72,6 +72,27 @@ $kandidaten = $wpdb->get_results($wpdb->prepare(
       ORDER BY v.node_record_id LIMIT 50",
     $typKnoten
 ));
+$kandidaten = $sucheKandidaten();
+
+// ⚠️ *Grenzlauf 2026-11-17 ([D-1427](../../docs/NewConcept/90-decision-log.md)): ohne geschriebene Zusammenfassung im Bestand legt der Wächter
+// sie selbst an — ein Ding mit einem Teil, dessen Zahl die Zusammenfassung trägt.*
+if ($kandidaten === []) {
+    require_once __DIR__ . '/lib/beispiel.php';
+
+    taxmodBeispiel([
+        ['op' => 'create_node', 'ref' => 'teil', 'name' => '__zf Teil', 'parent' => (int) get_option('taxmod_branch_compositions_id')],
+        ['op' => 'add_field', 'ref' => 'wert', 'node' => '@teil', 'target' => taxmodSaatKnoten(\Taxmod\Core\Model\Branch::DataTypes, 'Decimal'), 'name' => '__zf Wert', 'kind' => 'aggregation'],
+        ['op' => 'create_node', 'ref' => 'ding', 'name' => '__zf Ding', 'parent' => 402],
+        ['op' => 'add_field', 'ref' => 'halt', 'node' => '@ding', 'target' => '@teil', 'name' => '__zf Halt', 'kind' => 'composition'],
+        ['op' => 'add_field', 'node' => '@ding', 'target' => $typKnoten, 'name' => '__zf Zusammenfassung', 'kind' => 'aggregation'],
+        ['op' => 'set_list', 'node' => '@ding', 'attribute' => 'summary_fields', 'members' => ['@halt']],
+        ['op' => 'set_list', 'node' => '@teil', 'attribute' => 'summary_fields', 'members' => ['@wert']],
+        ['op' => 'create_record', 'ref' => 'd', 'node' => '@ding'],
+        ['op' => 'set_values', 'record' => '@d', 'values' => ['@halt' => ['neu' => ['@wert' => '4.7']]]],
+    ]);
+
+    $kandidaten = $sucheKandidaten();
+}
 
 check('es gibt Sätze mit geschriebener Zusammenfassung', $kandidaten !== []);
 
