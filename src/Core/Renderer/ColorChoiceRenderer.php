@@ -15,11 +15,6 @@ final class ColorChoiceRenderer extends RendererNode
 {
     public const NAME = 'color-choice';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

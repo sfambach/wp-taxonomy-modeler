@@ -28,11 +28,6 @@ final class CheckboxRenderer extends TypedFieldRenderer
 {
     public const NAME = 'checkbox';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Bool];

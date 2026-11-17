@@ -21,11 +21,6 @@ final class PlainRenderer extends RendererNode
 {
     public const NAME = 'plain';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit, Purpose::Search];

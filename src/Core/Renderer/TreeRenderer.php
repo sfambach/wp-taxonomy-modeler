@@ -38,11 +38,6 @@ final class TreeRenderer extends RendererNode
     /** How far one level indents. */
     private const STEP = 1.4;
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display];

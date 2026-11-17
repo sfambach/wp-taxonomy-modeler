@@ -45,11 +45,6 @@ final class RepeatableRenderer extends RendererNode
     /** Der Name, unter dem «einen weiteren hinzufügen» ankommt. */
     public const ADD = 'repeatable:add';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     /**
      * ⚠️ *Für **jeden** Zweck: eine Liste von drei Werten ist auch beim Lesen eine Liste von drei
      * Werten. Was sich zwischen Anzeigen und Bearbeiten ändert, sind die Steuerelemente — und die

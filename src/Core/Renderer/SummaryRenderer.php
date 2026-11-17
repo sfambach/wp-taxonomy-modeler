@@ -32,11 +32,6 @@ final class SummaryRenderer extends TypedFieldRenderer
 
     public const SEPARATOR = ' · ';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     /** Kein einfacher Typ: gezeichnet wird ein Verweis auf einen Satz, und den gibt es nur an einer Aggregation. */
     public function handles(): array
     {

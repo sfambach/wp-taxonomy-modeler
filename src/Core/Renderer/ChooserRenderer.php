@@ -75,11 +75,6 @@ final class ChooserRenderer extends RendererNode
         return $count === 1 ? $switch : $switch . '-' . $count;
     }
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Edit];

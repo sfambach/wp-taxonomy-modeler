@@ -35,11 +35,6 @@ final class DateTimeRenderer extends TypedFieldRenderer
     /** The granularity setting — a free key, deliberately named apart from decimal precision. */
     public const PRECISION = 'date_precision';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::DateTime];

@@ -52,11 +52,6 @@ final class UserRefRenderer extends TypedFieldRenderer
 {
     public const NAME = 'user';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::UserRef];

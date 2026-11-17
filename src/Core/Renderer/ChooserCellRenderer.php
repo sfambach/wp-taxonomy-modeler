@@ -50,11 +50,6 @@ final class ChooserCellRenderer extends RendererNode
      */
     public const UNPICKABLE = 'unpickable';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     /** ⚠️ **Edit only.** A row that shows a node and cannot be chosen is the tree's cell, not this. */
     public function supports(): array
     {

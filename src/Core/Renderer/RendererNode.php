@@ -38,6 +38,14 @@ use Taxmod\Core\Model\Node;
 abstract class RendererNode extends Node implements Renderer
 {
     /**
+     * Every renderer is named by its own `NAME`; the name is said here once instead of in each of them (D-1409).
+     */
+    public function name(): string
+    {
+        return static::NAME;
+    }
+
+    /**
      * ⚠️ *Die Vorgabe ist «nein», weil sie für achtzehn von einundzwanzig Renderern stimmt: ein
      * Textfeld, ein Schalter, eine Tabelle brauchen keine Menge. **Wer eine braucht, sagt es** —
      * heute die drei Auswahl-Renderer ({@see Renderer::needsSomethingToChooseFrom()}).*

@@ -41,11 +41,6 @@ final class FormRenderer extends RendererNode
 {
     public const NAME = 'form';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

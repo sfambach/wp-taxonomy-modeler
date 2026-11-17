@@ -46,11 +46,6 @@ final class TreeNodeRenderer extends RendererNode
 {
     public const NAME = 'tree-node';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     /**
      * ⚠️ **Display, and it is not a hedge.** A row **shows** a node; nothing in it is a value being
      * edited. The buttons are **acts** — renaming goes through `ModelEditor::rename()` — and an act

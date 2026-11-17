@@ -17,11 +17,6 @@ final class FieldRenderer extends TypedFieldRenderer
 {
     public const NAME = 'field';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [

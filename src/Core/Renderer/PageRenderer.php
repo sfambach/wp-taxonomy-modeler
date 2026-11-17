@@ -49,11 +49,6 @@ final class PageRenderer extends RendererNode
      */
     public const NAME = 'page';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

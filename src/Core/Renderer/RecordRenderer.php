@@ -56,11 +56,6 @@ final class RecordRenderer extends RendererNode
     /** Where the *which renderer drew what* list is looked for. Absent outside developer mode. */
     public const DIAGNOSTIC = 'diagnostic';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

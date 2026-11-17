@@ -52,11 +52,6 @@ final class ChoiceRenderer extends RendererNode
 {
     public const NAME = 'choice';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function supports(): array
     {
         return [Purpose::Display, Purpose::Edit];

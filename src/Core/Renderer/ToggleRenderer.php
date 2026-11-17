@@ -39,11 +39,6 @@ final class ToggleRenderer extends TypedFieldRenderer
 {
     public const NAME = 'toggle';
 
-    public function name(): string
-    {
-        return self::NAME;
-    }
-
     public function handles(): array
     {
         return [SimpleType::Bool];
