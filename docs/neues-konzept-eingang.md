@@ -1342,3 +1342,9 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Nach dem Einspielen von 0.2.122 (Schema 58 → 59) lehnten REST- und MCP-Zugriffe ab («schema 58, expected 59, open wp-admin once»), bis ein Aufruf über admin_init die Migration lief (WP-Upload, 16.11. 20:57).
 - **Offen:** ob die Migration auch beim ersten REST- oder Ability-Aufruf laufen soll. Dazu kommt: debug.log auf dem Server wird seit 21.07. nicht mehr geschrieben, Fehler lassen sich dort nicht belegen.
+
+## INF-128 · Ein Prüfbericht je Posten oder mehrere Prüf-Sätze? (2026-11-17)
+
+- **Anlass:** Für den Schritt «Test» der Fertigung ([D-1419](NewConcept/90-decision-log.md)) schreibt das Lager 0.64.110 ([D-1420](NewConcept/90-decision-log.md)) das Ergebnis in den vorhandenen Prüfbericht am Posten, einer je Posten, den Verlauf geben die Änderungsnummern.
+- **Beschlossen war:** [D-1304](NewConcept/90-decision-log.md) «Ein Test ist ein eigener Satz (Prüfprotokoll), mehrere je Posten». Gebaut ist seit [D-1342](NewConcept/90-decision-log.md) einer je Posten.
+- **Offen:** ob ein erneuter Test (nach Reparatur) einen eigenen Satz bekommt (Modelländerung) oder ob der Verlauf über die Änderungsnummern reicht. Bis dahin gilt der gebaute Stand.
