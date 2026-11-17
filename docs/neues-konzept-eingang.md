@@ -1379,3 +1379,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Kits ([D-1428](NewConcept/90-decision-log.md)) gehen nicht über «Test».
 - **Offen:** (a) auf welchen Platz der Zugang der fertigen Kits gebucht wird (im Abschluss-Dialog wählen, oder ein fester Platz «Fertigware»); (b) ob Beipackzettel, Anleitung und Tüte Positionen des Kits sind (Stückliste der Revision erweitern oder eigene Kit-Positionen). Bis zur Antwort: Platz im Dialog wählen, Positionen nur aus der Stückliste der Revision.
+
+## INF-135 · Saat «Parts List» trägt einen Tabellentext «Test 4» (2026-11-17)
+
+- **Anlass:** Grenzlauf ([D-1427](NewConcept/90-decision-log.md)). In der Saat (`data/saat.json`) hat die Beschriftung von «Parts List» in de_DE den Tabellentext «Test 4». Er sieht nach liegengebliebenem Testinhalt aus.
+- **Offen:** ob er durch «Stückliste» ersetzt oder geleert wird. Das ändert die Saat und ihre Prüfsumme, deshalb nicht nebenbei. Bis zur Antwort bleibt er unverändert.
