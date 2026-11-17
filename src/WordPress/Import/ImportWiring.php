@@ -25,7 +25,10 @@ final class ImportWiring
         });
         add_action(Inbox::SCHEDULE_HOOK, static function (): void {
             InboxSchema::upgrade();
-            (new Inbox())->runDue();
+            $inbox = new Inbox();
+            $inbox->runDue();
+            // Before the take, so an order the backlog offers is taken in the same run (D-1421).
+            $inbox->sortBacklogs(Inbox::BACKLOG_STRETCH_SECONDS);
             AutoTake::run();
         });
 

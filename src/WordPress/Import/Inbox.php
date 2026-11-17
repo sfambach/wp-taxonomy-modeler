@@ -17,6 +17,7 @@ use Taxmod\Core\Import\OrderComparison;
 use Taxmod\Core\Import\OrderProposal;
 use Taxmod\Core\Import\RestartingSource;
 use Taxmod\Core\Import\SearchingSource;
+use Taxmod\WordPress\Plugin;
 
 /**
  * Runs a source and files what it brings: once per external id and once per message (a forwarded copy), only what the
@@ -39,6 +40,8 @@ final class Inbox
     private const CURSOR_OPTION = 'taxmod_import_cursor_';
     private const BACKLOG_OPTION = 'taxmod_import_backlog_';
     private const LAST_RUN_OPTION = 'taxmod_import_last_run';
+    /** What the hourly run gives the backlog; the source cuts its own slices shorter. */
+    public const BACKLOG_STRETCH_SECONDS = 15;
 
     private ?ModelGateway $model = null;
 
@@ -81,6 +84,54 @@ final class Inbox
         } while ($cursor !== null && time() - $started < $budgetSeconds);
 
         return ['filed' => $filed, 'done' => $cursor === null];
+    }
+
+    /**
+     * One stretch of every source's backlog with the hourly run, so the mailbox empties without the button (D-1421). It
+     * reads the model, so it acts as the user the automatic take acts as; without one it waits for the button. The
+     * cursor is the button's: both go on where the other stopped.
+     *
+     * @return int how many proposals were filed
+     */
+    public function sortBacklogs(int $budgetSeconds): int
+    {
+        $user = AutoTake::user();
+
+        if ($user === 0) {
+            return 0;
+        }
+
+        $before = get_current_user_id();
+
+        if ($before === 0) {
+            wp_set_current_user($user);
+        }
+
+        try {
+            if (! current_user_can(Plugin::CAPABILITY) || ! ModelGateway::available()) {
+                return 0;
+            }
+
+            $filed = 0;
+
+            foreach (Sources::all() as $source) {
+                if (! $source instanceof BacklogSource) {
+                    continue;
+                }
+
+                try {
+                    $filed += $this->runBacklog($source, new GatewayLookup(new ModelGateway(Targets::load())), $budgetSeconds)['filed'];
+                } catch (\Throwable) {
+                    // The button shows the failure when he sorts by hand; the next source and the take still run.
+                }
+            }
+
+            return $filed;
+        } finally {
+            if ($before === 0) {
+                wp_set_current_user(0);
+            }
+        }
     }
 
     public function search(SearchingSource $source, string $text): int
