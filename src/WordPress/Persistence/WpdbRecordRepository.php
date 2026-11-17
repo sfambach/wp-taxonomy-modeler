@@ -329,6 +329,36 @@ final class WpdbRecordRepository implements RecordRepository
         return $aus;
     }
 
+    /**
+     * The records whose field `$relation` points at one of these records — ids only, the field asked in the statement
+     * (review 2026-11-17, Befund 12: {@see \Taxmod\WordPress\ModelDoor::referrers()} read every reference with its values and
+     * filtered the field afterwards).
+     *
+     * @param list<int> $recordIds
+     * @return list<int>
+     */
+    public function referringRecords(array $recordIds, int $relationId): array
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $recordIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $platzhalter = implode(',', array_fill(0, count($ids), '%d'));
+
+        return array_map('intval', Query::column('Verweisende Datensaetze eines Feldes lesen', $wpdb->prepare(
+            'SELECT DISTINCT node_record_id
+             FROM ' . Schema::table('relation_records') . '
+             WHERE value_ref_kind = \'record\' AND relation_id = %d AND value_ref IN (' . $platzhalter . ')
+             ORDER BY node_record_id ASC',
+            $relationId,
+            ...$ids
+        )));
+    }
+
     public function holdersOf(array $recordIds): array
     {
         global $wpdb;
