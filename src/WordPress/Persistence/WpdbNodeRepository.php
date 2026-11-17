@@ -49,14 +49,6 @@ final class WpdbNodeRepository implements NodeRepository
      */
     private const COLUMNS = "n.id, n.version, COALESCE(t.text_name, d.text_name, '') AS name, a.path, n.implemented_by, n.parent_node_id, n.sort_order, n.hide, n.klasse";
 
-    /**
-     * In welcher Sprache dieser Speicher Namen liest und schreibt.
-     *
-     * ⚠️ **`null` heisst «die, die oben gewählt ist»** ({@see SettingsScreen::requestedLocale()}),
-     * und ausserhalb eines Bildschirms ist das die Standardsprache. *So bekommt jeder vorhandene
-     * Aufrufer die gewählte Sprache, ohne dass eine Verdrahtung sich ändert, und ein Wächter kann
-     * eine Sprache festnageln, statt sie aus der Umgebung zu erben.*
-     */
     /** @var array<string, string> name arguments ⇒ the prepared statement for every node (Befund 8) */
     private array $allNodesSql = [];
 
@@ -66,6 +58,14 @@ final class WpdbNodeRepository implements NodeRepository
     /** @var array<int, array<string, mixed>> node id ⇒ its row, while remembering */
     private array $nodeRowById = [];
 
+    /**
+     * In welcher Sprache dieser Speicher Namen liest und schreibt.
+     *
+     * ⚠️ **`null` heisst «die, die oben gewählt ist»** ({@see SettingsScreen::requestedLocale()}),
+     * und ausserhalb eines Bildschirms ist das die Standardsprache. *So bekommt jeder vorhandene
+     * Aufrufer die gewählte Sprache, ohne dass eine Verdrahtung sich ändert, und ein Wächter kann
+     * eine Sprache festnageln, statt sie aus der Umgebung zu erben.*
+     */
     public function __construct(private readonly ?string $locale = null)
     {
     }
