@@ -1353,3 +1353,8 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 
 - **Anlass:** Stefan sieht in der Fertigung englische Knöpfe der gemeinsamen Bausteine («Run bulk action», «Cancel»). Der Modeller schreibt seine Texte englisch über die Textdomain `taxmod`, eine Übersetzungsdatei (.po/.mo) gibt es im Repository nicht. Die Module schreiben ihre Texte direkt deutsch.
 - **Offen:** ob der Modeller eine deutsche Übersetzungsdatei bekommt (und wer sie pflegt) oder ob die Ausgangssprache wechselt. Bis dahin bleibt es, wie es ist; kein Modul übersetzt Modeller-Texte selbst.
+
+## INF-132 · Ausschuss im Teilepreis der Fertigung? (2026-11-17)
+
+- **Anlass:** Die Kalkulation beim «Fertigung abschließen» ([D-1425](NewConcept/90-decision-log.md)) bildet den Teilepreis aus den verbrauchten Teilen. Die Spalte «Ausschuss» der Bestückung bucht zusätzlich verlorene Teile aus.
+- **Offen:** ob der Ausschuss in den Preis der fertigen Platinen eingeht (echte Kosten) oder getrennt bleibt. Bis zur Antwort: nicht eingerechnet, in der Aufschlüsselung als eigene Zeile «Ausschuss (nicht eingerechnet)» gezeigt.
