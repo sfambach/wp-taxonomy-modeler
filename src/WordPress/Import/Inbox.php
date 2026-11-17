@@ -39,6 +39,7 @@ final class Inbox
     public const SCHEDULE_HOOK = 'taxmod_import_fetch';
     private const CURSOR_OPTION = 'taxmod_import_cursor_';
     private const BACKLOG_OPTION = 'taxmod_import_backlog_';
+    private const BACKLOG_ERROR_OPTION = 'taxmod_import_backlog_error_';
     private const LAST_RUN_OPTION = 'taxmod_import_last_run';
     /** What the hourly run gives the backlog; the source cuts its own slices shorter. */
     public const BACKLOG_STRETCH_SECONDS = 15;
@@ -83,6 +84,8 @@ final class Inbox
             update_option(self::BACKLOG_OPTION . $source->key(), $cursor, false);
         } while ($cursor !== null && time() - $started < $budgetSeconds);
 
+        delete_option(self::BACKLOG_ERROR_OPTION . $source->key());
+
         return ['filed' => $filed, 'done' => $cursor === null];
     }
 
@@ -121,8 +124,9 @@ final class Inbox
 
                 try {
                     $filed += $this->runBacklog($source, new GatewayLookup(new ModelGateway(Targets::load())), $budgetSeconds)['filed'];
-                } catch (\Throwable) {
-                    // The button shows the failure when he sorts by hand; the next source and the take still run.
+                } catch (\Throwable $failure) {
+                    // Kept beside the button, not in the last run: that one's time decides when the next fetch is due.
+                    update_option(self::BACKLOG_ERROR_OPTION . $source->key(), wp_date('Y-m-d H:i') . ' — ' . $failure->getMessage(), false);
                 }
             }
 
@@ -132,6 +136,14 @@ final class Inbox
                 wp_set_current_user(0);
             }
         }
+    }
+
+    /** The failure of the last hourly backlog stretch, with its time; null after a stretch that went through. */
+    public static function backlogError(string $key): ?string
+    {
+        $error = get_option(self::BACKLOG_ERROR_OPTION . $key, '');
+
+        return is_string($error) && $error !== '' ? $error : null;
     }
 
     public function search(SearchingSource $source, string $text): int
@@ -145,6 +157,7 @@ final class Inbox
         $forgotten = $this->table->forgetOpen($source->key());
         delete_option(self::CURSOR_OPTION . $source->key());
         delete_option(self::BACKLOG_OPTION . $source->key());
+        delete_option(self::BACKLOG_ERROR_OPTION . $source->key());
 
         if ($source instanceof RestartingSource) {
             $source->restart();
