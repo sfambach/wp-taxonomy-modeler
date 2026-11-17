@@ -46,16 +46,19 @@ final class TileCounts
      */
     public static function remember(string $scope, string $source, callable $count): array
     {
-        $key    = self::key($scope, $source);
-        $cached = get_transient($key);
+        // Review 2026-11-17 (DB7): one entry per scope and source, the generation beside the counts — a key with the generation in
+        // it left a new option behind after every write until it ran out, many a day with the hourly imports.
+        $key        = self::key($scope, $source);
+        $generation = self::generations()[$scope] ?? 0;
+        $cached     = get_transient($key);
 
-        if (is_array($cached)) {
-            return $cached;
+        if (is_array($cached) && ($cached['generation'] ?? null) === $generation && is_array($cached['counts'] ?? null)) {
+            return $cached['counts'];
         }
 
         $counts = array_map(static fn (int|float|string $v): int|float => is_string($v) ? +$v : $v, $count());
         unset(self::$forgotten[$scope]);
-        set_transient($key, $counts, self::LIFETIME);
+        set_transient($key, ['generation' => $generation, 'counts' => $counts], self::LIFETIME);
 
         return $counts;
     }
@@ -80,7 +83,7 @@ final class TileCounts
 
     private static function key(string $scope, string $source): string
     {
-        return self::PREFIX . md5($scope . '|' . (self::generations()[$scope] ?? 0) . '|' . $source);
+        return self::PREFIX . md5($scope . '|' . $source);
     }
 
     /** @return array<string, int> */

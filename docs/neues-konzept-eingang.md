@@ -1354,6 +1354,16 @@ Anlass: [INF-073](#inf-073--bestand-und-fertigung-vom-wareneingang-über-die-pla
 - **Anlass:** Stefan sieht in der Fertigung englische Knöpfe der gemeinsamen Bausteine («Run bulk action», «Cancel»). Der Modeller schreibt seine Texte englisch über die Textdomain `taxmod`, eine Übersetzungsdatei (.po/.mo) gibt es im Repository nicht. Die Module schreiben ihre Texte direkt deutsch.
 - **Offen:** ob der Modeller eine deutsche Übersetzungsdatei bekommt (und wer sie pflegt) oder ob die Ausgangssprache wechselt. Bis dahin bleibt es, wie es ist; kein Modul übersetzt Modeller-Texte selbst.
 
+## INF-130 · Änderungsbuch und Verlaufstabellen wachsen ohne Grenze (2026-11-17)
+
+- **Anlass:** Prüfung vom 17.11. (`review-fable-2026-11-17.md`, DB2): `changelog` und alle `*_history`-Tabellen werden nie aufgeräumt; jeder Eintrag trägt Vorher und Nachher als `mediumtext`. Das ist für Undo gewollt ([D-1410](NewConcept/90-decision-log.md)), verlängert aber jede Nachtsicherung und jeden Restore.
+- **Offen (Frage an Stefan):** ob es eine Aufbewahrungsregel geben soll, z. B. Vorher/Nachher nach n Monaten leeren und nur die letzten n Akte rücknehmbar halten. Bis dahin bleibt alles stehen.
+
+## INF-131 · Textsuche in Sätzen ist ein voller Durchlauf (2026-11-17)
+
+- **Anlass:** Prüfung vom 17.11. (DB6): `value_text LIKE '%…%'` je Bedingung liest alle Werte. Bei heutiger Grösse (rund 18 500 Sätze) unauffällig.
+- **Offen:** ab welcher Grösse ein Volltextindex oder eine eigene Suchspalte nötig wird. Nur vorgemerkt, nichts gebaut.
+
 ## INF-132 · Ausschuss im Teilepreis der Fertigung? (2026-11-17)
 
 - **Anlass:** Die Kalkulation beim «Fertigung abschließen» ([D-1425](NewConcept/90-decision-log.md)) bildet den Teilepreis aus den verbrauchten Teilen. Die Spalte «Ausschuss» der Bestückung bucht zusätzlich verlorene Teile aus.
