@@ -200,6 +200,14 @@ final class InMemoryRecords implements RecordRepository
         ));
     }
 
+    public function nodeReferrers(int $nodeId): array
+    {
+        return array_values(array_filter(
+            $this->values,
+            static fn ($wert): bool => $wert->value->reference === $nodeId && $wert->value->referenceSpace === \Taxmod\Core\Model\ReferenceSpace::Node
+        ));
+    }
+
     public function referrersOfMany(array $recordIds): array
     {
         $aus = [];

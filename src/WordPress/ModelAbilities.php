@@ -73,6 +73,7 @@ final class ModelAbilities
         'move_field' => '{node, field, to} — declares the field at another node, values stay; refused if a record with values would end up outside it',
         'retarget_field' => '{node, field, target, drop_values?} — points the field at another node and keeps its kind; refused while stored values would not fit the new target (a plain value on a part field or the reverse), unless drop_values: true removes them (D-1371)',
         'drop_unfit_values' => '{node, field} — removes the stored values of the field that do not fit its target, e.g. numbers left on a field that now holds unit-value parts (D-1371)',
+        'merge_constant' => '{from, into} — a doubled constant: every value (records and settings) that chose from chooses into, a value that would then stand twice in the same field falls, from goes to the trash; one change number, so undo_act takes it back. Refused if from has children, is a field target, or a field holding it cannot choose into (retarget_field first) (D-1458)',
         'merge_field' => '{node, field, into, under?, first?} — moves the values of the field onto another field with the same target and parks it; refused if a record would end up outside «into» or already holds values there; with under only records below that node, and the field stays; with first the values go to the front of the other field\'s list, its own values move back and a value already there stands only once (D-1205)',
         'create_record' => '{node, record_type?, values?, locale?} — values as for set_values, written in the same act',
         'set_values' => '{record, values: {relation_id or @ref: text or @ref, or {values: [text, ...]} for a field taking several, or {part key: {inner relation_id: text}} for parts — key \"0\" fills the part the record already holds there, any other non-numeric key adds a new part}, own_value?, record_type?, locale?}',
@@ -222,7 +223,7 @@ final class ModelAbilities
                         'items'    => [
                             'type'       => 'object',
                             'properties' => [
-                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
+                                'op'          => ['type' => 'string', 'enum' => ['create_node', 'rename_node', 'set_class', 'trash_node', 'move_node', 'add_field', 'rename_field', 'remove_field', 'move_field', 'merge_field', 'merge_constant', 'retarget_field', 'drop_unfit_values', 'create_record', 'set_values', 'remove_record', 'move_record', 'move_part', 'reorder_values', 'duplicate_record', 'set_kind', 'set_multiplicity', 'set_list', 'set_setting', 'hide_field', 'set_label', 'set_addons', 'undo_act']],
                                 'act'         => ['type' => 'integer', 'minimum' => 1],
                                 'ref'         => ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'],
                                 'name'        => ['type' => 'string'],
@@ -966,6 +967,11 @@ final class ModelAbilities
                 $editor->dropUnfitValues($at('node'), $at('field'));
 
                 return $at('field');
+
+            case 'merge_constant':
+                $editor->mergeConstant($this->node($at('from'))->id, $this->node($at('into'))->id);
+
+                return $this->node($at('into'))->id;
 
             case 'merge_field':
                 return $editor->mergeField($at('node'), $at('field'), $at('into'), isset($change['under']) ? $this->node($at('under'))->id : null, ! empty($change['first']))->id;

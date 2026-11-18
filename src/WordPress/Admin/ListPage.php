@@ -1018,6 +1018,8 @@ final class ListPage
     public const ICON_EDIT = 'edit';
     public const ICON_NOT_STORED = 'no';
     public const ICON_NEW = 'plus-alt2';
+    /** «Zurücknehmen» of a receipt row (Lager, announced with D-1458). */
+    public const ICON_UNDO = 'undo';
 
     /** An icon in place of a button's word; the word stays for the screen reader and as the tooltip. */
     public static function icon(string $icon, string $label): string
