@@ -70,6 +70,25 @@ $pruefe((bool) preg_match('~type="radio"[^>]*name="material\[gruppe\]"~', $html)
 $pruefe(str_contains($html, 'form="lager-form"'), 'and to the module\'s form');
 $pruefe((bool) preg_match('~value="' . $geruest['refs']['a'] . '"[^>]*checked|checked[^>]*value="' . $geruest['refs']['a'] . '"~', $html), 'the preselected node is chosen');
 
+// ⚠️ *[D-1447](../../docs/NewConcept/90-decision-log.md): asked with `shared`, the tree stands once per page — each chooser holds a
+// placeholder with its own choice, and the module takes the tree as a template. Not asked, nothing changes.*
+$geteilt = static fn (string $name, int $wahl, bool $shared = true, string $form = 'lager-form'): string => (string) apply_filters(Plugin::NODE_CHOOSER_FILTER, '', [
+    'name' => $name, 'root' => $geruest['refs']['g'], 'preselected' => $wahl, 'form' => $form, 'shared' => $shared,
+]);
+$stueck  = static fn (string $html): string => preg_match('/data-taxmod-body="(b[0-9a-f]{12})"/', $html, $m) === 1 ? $m[1] : '';
+$eins    = $geteilt('gruppe[1]', $geruest['refs']['a']);
+$zwei    = $geteilt('gruppe[2]', $geruest['refs']['b']);
+$pruefe(! str_contains($eins, 'taxmod-tree-row') && str_contains($eins, 'name="gruppe[1]"') && str_contains($eins, 'value="' . $geruest['refs']['a'] . '"'),
+    'shared: the chooser holds a placeholder with its choice, not the tree');
+$pruefe($stueck($eins) !== '' && $stueck($eins) === $stueck($zwei), 'shared: two choosers with different choices name the same tree');
+$vorlagen = (string) apply_filters(Plugin::SHARED_TEMPLATES_FILTER, '');
+$pruefe(substr_count($vorlagen, '<template class="taxmod-shared-body"') === 1 && str_contains($vorlagen, 'data-taxmod-body="' . $stueck($eins) . '"'),
+    'shared: the module gets that tree once, as a template');
+$pruefe((string) apply_filters(Plugin::SHARED_TEMPLATES_FILTER, '') === '', 'shared: a template is handed out once');
+$pruefe(str_contains($geteilt('gruppe[3]', $geruest['refs']['a'], true, ''), 'taxmod-tree-row'), 'shared without a form: the tree stays in the piece');
+$pruefe(str_contains($geteilt('gruppe[4]', $geruest['refs']['a'], false), 'taxmod-tree-row') && (string) apply_filters(Plugin::SHARED_TEMPLATES_FILTER, '') === '',
+    'not asked: the tree stays in the piece, as before');
+
 wp_set_current_user(0);
 $pruefe((string) apply_filters(Plugin::NODE_CHOOSER_FILTER, '', ['root' => $geruest['refs']['g']]) === '', 'nothing for someone who may not shape the model');
 

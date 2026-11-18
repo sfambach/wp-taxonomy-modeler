@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.138';
+    public const VERSION     = '0.2.139';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -84,6 +84,12 @@ final class Plugin
      * `pick_url` (with `{id}`) opens a record on click, `drag` lets records be dropped on records, `suffix` (id → text) follows a word (D-1090), `preferred` (record ids) stand on top in a group «Preferred» (D-1360).
      */
     public const RECORD_CHOOSER_FILTER = 'taxmod_record_chooser';
+
+    /**
+     * `apply_filters(SHARED_TEMPLATES_FILTER, '')`: the trees of the choosers a module asked for with `'shared' => true` (and a
+     * `form`) since its last call, as templates for the end of its piece — each equal tree once, however many rows open it.
+     */
+    public const SHARED_TEMPLATES_FILTER = 'taxmod_shared_templates';
     public const TEXT_DOMAIN = 'taxmod';
 
     /** What a person must be able to do before they may shape the model. */
@@ -225,7 +231,12 @@ final class Plugin
 
             $plugin->enqueueStyle();
 
-            return $plugin->screen()->nodeChooserForModule(
+            // *Ein geteilter Baum wird vom Skript eingesetzt (D-866).*
+            if (! empty($args['shared'])) {
+                $plugin->enqueueScript();
+            }
+
+            return $plugin->chooserScreen()->nodeChooserForModule(
                 (string) preg_replace('/[^A-Za-z0-9_\-\[\]]/', '', (string) ($args['name'] ?? 'taxmod_node')),
                 absint($args['root'] ?? 0),
                 $ids($args['exclude'] ?? []),
@@ -234,8 +245,7 @@ final class Plugin
                 (string) preg_replace('/[^A-Za-z0-9_\-]/', '', (string) ($args['form'] ?? '')),
                 ! empty($args['inline']),
                 esc_url_raw(str_replace('{id}', '__ID__', (string) ($args['pick_url'] ?? ''))),
-                ! empty($args['drag']),
-                array_map(static fn (mixed $text): string => sanitize_text_field((string) $text), array_filter(is_array($args['suffix'] ?? null) ? $args['suffix'] : [], 'is_scalar'))
+                ! empty($args['shared'])
             );
         }, 10, 2);
 
@@ -251,7 +261,7 @@ final class Plugin
             $plugin->enqueueStyle();
             $plugin->enqueueScript();
 
-            return $plugin->screen()->recordChooserForModule(
+            return $plugin->chooserScreen()->recordChooserForModule(
                 (string) preg_replace('/[^A-Za-z0-9_\-\[\]]/', '', (string) ($args['name'] ?? 'taxmod_record')),
                 absint($args['node'] ?? 0),
                 absint($args['parent_field'] ?? 0),
@@ -269,9 +279,15 @@ final class Plugin
                 $ids($args['preferred'] ?? []),
                 // *D-1095: the module's own order of siblings — record → rank; with it a row also takes «before»/«after» drops.*
                 array_map('intval', array_filter(is_array($args['rank'] ?? null) ? $args['rank'] : [], 'is_numeric')),
-                ! empty($args['rank_drop'])
+                ! empty($args['rank_drop']),
+                ! empty($args['shared'])
             );
         }, 10, 2);
+
+        // ⚠️ *Wähler mit `shared` stehen nur als Platzhalter in der Seite des Moduls; ihre Bäume holt es hier ab — einmal je gleichem
+        // Baum (D-866), ein grosser nur als Adresse (D-898) — und setzt sie ans Ende seines Stücks, ausserhalb jedes Formulars.*
+        add_filter(self::SHARED_TEMPLATES_FILTER, static fn (mixed $html): string => (is_string($html) ? $html : '')
+            . (current_user_can(self::CAPABILITY) ? $plugin->chooserScreen()->moduleTemplates() : ''));
 
         // An upgrade must not depend on somebody remembering to deactivate and activate
         // again (`CD-6`). One option read per admin request, and the work happens only when
@@ -1061,6 +1077,28 @@ final class Plugin
             // fielen sie auf und gehen mit.*
             $this->changelog()
         );
+    }
+
+    /** @var array{0: int, 1: NodesScreen}|null The screen that draws the choosers of modules and the state of writing it was built at ({@see self::chooserScreen()}). */
+    private ?array $chooserScreen = null;
+
+    /**
+     * One screen for every chooser a module asks for in a request — until something is written, then a new one.
+     *
+     * ⚠️ *Measured 2026-11-18 on the stock's «Angekommen»: a chooser per purchase row, and each built the whole screen anew —
+     * 27 statements a row before anything was drawn. One screen lets the rows share what they read
+     * ({@see NodesScreen::recordChooserForModule()}). **What it read is only good until the next write**
+     * ({@see Persistence\Query::writes()}): a module that writes and then draws a chooser in the same request gets a fresh screen.*
+     */
+    public function chooserScreen(): NodesScreen
+    {
+        $now = Persistence\Query::writes();
+
+        if ($this->chooserScreen === null || $this->chooserScreen[0] !== $now) {
+            $this->chooserScreen = [$now, $this->screen()];
+        }
+
+        return $this->chooserScreen[1];
     }
 
     /**

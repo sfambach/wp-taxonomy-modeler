@@ -2835,7 +2835,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             }
         }
 
-        $id = $chosen === null ? null : ($chain[$chosen] ?? null);
+        // ⚠️ *Shared (D-866), the way to the choice stays shut, as in the node chooser: the script opens it when it puts the body in —
+        // so fields with different choices share one template.*
+        $geteilt = $this->geteilteKoerper !== null && $formId !== '';
+        $id      = $chosen === null || $geteilt ? null : ($chain[$chosen] ?? null);
 
         while ($id !== null && array_key_exists($id, $chain) && ! isset($seen[$id])) {
             $seen[$id]  = true;

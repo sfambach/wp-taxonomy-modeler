@@ -1410,6 +1410,10 @@
 		} );
 	}
 
+	// *Auch ein Skript, das eine Wahl setzt, ohne dass der Wähler je angefasst wurde («Lagerort für alle», die Vorwahl eines Moduls),
+	// braucht den Baum: es ruft dies mit dem Stück und macht in `danach` weiter, wenn ein Körper erst geholt werden musste.*
+	window.taxmodPutBodies = koerperEinsetzen;
+
 	[ 'click', 'focusin' ].forEach( function ( art ) {
 		document.addEventListener( art, function ( ereignis ) {
 			var wahl = ereignis.target instanceof Element ? ereignis.target.closest( '.taxmod-record-pick, .taxmod-chooser' ) : null;
@@ -3626,21 +3630,59 @@
 		var dialog = button.closest( '.taxmod-dialog' ) || button.parentNode;
 		var value = chosen( dialog, button.dataset.taxmodFillFrom );
 		var count = 0;
+		var waiting = 0;
+		var told = false;
+
+		function tell() {
+			if ( waiting > 0 || told ) {
+				return;
+			}
+
+			told = true;
+
+			var text = count === 0 ? button.dataset.taxmodFillNone : button.dataset.taxmodFillDone.replace( '%d', String( count ) );
+
+			if ( window.taxmodMessage ) {
+				window.taxmodMessage( text, count === 0 ? 'bad' : 'ok' );
+			} else {
+				window.alert( text );
+			}
+		}
 
 		document.querySelectorAll( 'tr' ).forEach( function ( row ) {
 			var tick = row.querySelector( ':scope > .check-column input[type=checkbox]' );
 
-			if ( tick && tick.checked && ! tick.disabled && value !== '' && put( row, button.dataset.taxmodFill, value ) ) {
-				count++;
+			if ( ! tick || ! tick.checked || tick.disabled || value === '' ) {
+				return;
 			}
+
+			// A row's chooser that shares its tree with the page (D-866) holds only a placeholder until it is opened: the tree is
+			// put in first, fetched where it is large (D-898), and the value is written once it stands there.
+			var stub = row.querySelector( '.taxmod-record-stub[data-taxmod-name^="' + button.dataset.taxmodFill + '["]' );
+			var held = false;
+
+			if ( stub && window.taxmodPutBodies ) {
+				var holder = stub.parentNode;
+
+				window.taxmodPutBodies( holder, function () {
+					if ( held ) {
+						waiting--;
+						count += put( row, button.dataset.taxmodFill, value ) ? 1 : 0;
+						tell();
+					}
+				} );
+
+				if ( holder.querySelector( '.taxmod-record-stub' ) && document.querySelector( 'template.taxmod-shared-body[data-taxmod-body="' + stub.getAttribute( 'data-taxmod-body' ) + '"][data-taxmod-src]' ) ) {
+					held = true;
+					waiting++;
+
+					return;
+				}
+			}
+
+			count += put( row, button.dataset.taxmodFill, value ) ? 1 : 0;
 		} );
 
-		var text = count === 0 ? button.dataset.taxmodFillNone : button.dataset.taxmodFillDone.replace( '%d', String( count ) );
-
-		if ( window.taxmodMessage ) {
-			window.taxmodMessage( text, count === 0 ? 'bad' : 'ok' );
-		} else {
-			window.alert( text );
-		}
+		tell();
 	} );
 }() );

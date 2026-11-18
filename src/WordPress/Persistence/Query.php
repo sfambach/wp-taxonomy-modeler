@@ -49,6 +49,20 @@ final class Query
     /** Wie tief gerade in {@see self::remembering()} gearbeitet wird — ausserhalb wird nichts behalten. */
     private static int $depth = 0;
 
+    /** Wie viele schreibende Anweisungen dieser Aufruf seit dem ersten {@see self::writes()} gesehen hat. */
+    private static int $written = 0;
+
+    /**
+     * Ein Stand, der sich mit jeder schreibenden Anweisung ändert — wer über mehrere Stücke einer Seite hinweg etwas Gelesenes
+     * behält, vergleicht ihn und liest nach einem Schreiben neu.
+     */
+    public static function writes(): int
+    {
+        self::watchWrites();
+
+        return self::$written;
+    }
+
     /** Das Gedächtnis leeren — jede schreibende Anweisung tut es von selbst. */
     public static function forget(): void
     {
@@ -222,6 +236,7 @@ final class Query
         add_filter('query', static function (string $sql): string {
             if (preg_match('/^\s*(SELECT|WITH|SHOW|EXPLAIN|DESCRIBE)\b/i', $sql) !== 1) {
                 self::forget();
+                self::$written++;
             }
 
             return $sql;
