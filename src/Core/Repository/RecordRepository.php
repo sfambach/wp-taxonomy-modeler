@@ -138,6 +138,13 @@ interface RecordRepository
      * @return array<int, list<RelationRecord>>    Satz-Id ⇒ die Zeilen, die auf ihn zeigen.
      */
     public function referrersOfMany(array $recordIds): array;
+
+    /**
+     * Every value row that points at this **node** — a chosen constant, in records and in settings alike (D-1458, `CD-7`: one query).
+     *
+     * @return list<RelationRecord>
+     */
+    public function nodeReferrers(int $nodeId): array;
     /**
      * Eine Wertzeile schreiben — und **sagen, welche Version dabei entstanden ist**.
      *

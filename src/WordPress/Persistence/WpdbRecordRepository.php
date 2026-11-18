@@ -300,6 +300,21 @@ final class WpdbRecordRepository implements RecordRepository
         return array_map(fn (array $r): RelationRecord => $this->valueFromRow($r), $rows);
     }
 
+    public function nodeReferrers(int $nodeId): array
+    {
+        global $wpdb;
+
+        $rows = Query::rows('Verweise auf einen Knoten lesen', $wpdb->prepare(
+            'SELECT id, node_record_id, relation_id, locale, position, value_int, value_decimal, value_text, value_date, value_ref, value_ref_kind, value_precision
+             FROM ' . Schema::table('relation_records') . '
+             WHERE value_ref_kind = \'node\' AND value_ref = %d
+             ORDER BY relation_id ASC, node_record_id ASC, position ASC',
+            $nodeId
+        ));
+
+        return array_map(fn (array $r): RelationRecord => $this->valueFromRow($r), $rows);
+    }
+
     public function referrersOfMany(array $recordIds): array
     {
         global $wpdb;

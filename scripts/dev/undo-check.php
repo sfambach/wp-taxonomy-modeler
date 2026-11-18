@@ -120,6 +120,7 @@ wp_set_current_user((int) ($admin[0] ?? 1));
 $plugin = (new ReflectionClass(Plugin::class))->newInstanceWithoutConstructor();
 (new ReflectionProperty($plugin, 'file'))->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-modeler.php');
 $model = (new ReflectionMethod($plugin, 'frameworkNodes'))->invoke($plugin)->rootOf(Branch::Model);
+$konst = (new ReflectionMethod($plugin, 'frameworkNodes'))->invoke($plugin)->rootOf(Branch::Constants);
 $text  = (new WpdbNodeRepository())->byImplementations([TextType::class])[TextType::class] ?? null;
 
 echo "\n== 1. The model ==\n";
@@ -157,6 +158,33 @@ roundTrip('set_label', [['op' => 'set_label', 'node' => $r['b'], 'role' => 'help
 roundTrip('set_setting', [['op' => 'set_setting', 'node' => $r['a'], 'attribute' => 'un_flag', 'value' => '1']]);
 roundTrip('remove_field', [['op' => 'remove_field', 'node' => $r['a'], 'field' => $r['g']]]);
 roundTrip('merge_field', [['op' => 'merge_field', 'node' => $r['a'], 'field' => $r['g'], 'into' => $r['f']]]);
+
+// D-1458: a doubled constant — the record that chose the double chooses the other, the double goes to the trash.
+$liste = wp_get_ability('taxmod/apply')->execute(['changes' => [
+    ['op' => 'create_node', 'ref' => 'l', 'name' => '__un Bauform', 'parent' => $konst->id],
+    ['op' => 'create_node', 'ref' => 'x', 'name' => '__un THT', 'parent' => '@l'],
+    ['op' => 'create_node', 'ref' => 'y', 'name' => '__un DIP', 'parent' => '@l'],
+    ['op' => 'add_field', 'ref' => 'h', 'node' => $r['a'], 'target' => '@l', 'name' => '__un Bauform'],
+    ['op' => 'create_record', 'ref' => 't', 'node' => $r['b'], 'values' => ['@h' => '@y']],
+]]);
+check('the constants are built', is_array($liste), is_wp_error($liste) ? $liste->get_error_message() : '');
+
+if (is_array($liste)) {
+    $l = $liste['refs'];
+    $gewaehlt = static fn (): int => (int) $wpdb->get_var($wpdb->prepare(
+        'SELECT value_ref FROM ' . Schema::table('relation_records') . ' WHERE node_record_id = %d AND relation_id = %d AND value_ref_kind = \'node\'',
+        $l['t'],
+        $l['h']
+    ));
+    check('merge_constant: the record chose the double', $gewaehlt() === (int) $l['y'], (string) $gewaehlt());
+    [$akt, $fehler] = run('taxmod/apply', [['op' => 'merge_constant', 'from' => $l['y'], 'into' => $l['x']]]);
+    check('merge_constant: the record now chooses the other', $akt > 0 && $gewaehlt() === (int) $l['x'], $fehler . ' ' . $gewaehlt());
+    [$undo, $fehler] = run('taxmod/apply', [['op' => 'undo_act', 'act' => $akt]]);
+    check('merge_constant: undo brings the choice back', $undo > 0 && $gewaehlt() === (int) $l['y'], $fehler);
+    roundTrip('merge_constant', [['op' => 'merge_constant', 'from' => $l['y'], 'into' => $l['x']]]);
+    [, $fehler] = run('taxmod/apply', [['op' => 'merge_constant', 'from' => $l['l'], 'into' => $l['x']]]);
+    check('merge_constant: a list with children is refused', $fehler !== '', 'accepted');
+}
 
 echo "\n== 2. Records ==\n";
 

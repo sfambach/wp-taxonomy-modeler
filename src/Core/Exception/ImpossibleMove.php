@@ -52,6 +52,12 @@ final class ImpossibleMove extends DomainError
     }
 
     /** Only a field with the same target can take another field's values (D-941). */
+    /** D-1458 */
+    public static function constantNotMergeable(string $from, string $why): self
+    {
+        return new self(sprintf('«%s» cannot be merged: %s', $from, $why));
+    }
+
     public static function notTheSameField(string $from, string $into): self
     {
         return new self(sprintf('«%s» and «%s» do not point at the same target, so one cannot take the other\'s values.', $from, $into));

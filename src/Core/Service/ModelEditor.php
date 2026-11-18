@@ -1845,6 +1845,90 @@ final class ModelEditor
      * darf ein Satz in beiden Feldern Werte haben; die des Zielfelds rücken nach, und ein Wert, der dort schon steht, steht nur
      * einmal da — an der vorderen Stelle.*
      */
+    /**
+     * Merge a doubled constant into another: every value that chose `$from` chooses `$into`, a row that would then stand twice falls,
+     * and `$from` goes to the trash — one act, so one undo ([D-1458](../../../docs/NewConcept/90-decision-log.md)).
+     *
+     * ⚠️ *Refused, naming why, when `$from` has children, is the target of a field, is a framework node, or when a field holding it
+     * could not hold `$into` (its target is not above `$into`) — then that field is retargeted first.*
+     *
+     * @return array{moved: int, dropped: int} rows that now choose `$into`; rows dropped because they already held it
+     */
+    public function mergeConstant(int $fromId, int $intoId): array
+    {
+        $from = $this->nodes->byId($fromId);
+        $into = $this->nodes->byId($intoId);
+
+        if ($from->id === $into->id) {
+            throw ImpossibleMove::constantNotMergeable($from->name, 'it is the same node');
+        }
+
+        if ($this->framework->isProtected($from) || $this->framework->isProtected($into)) {
+            throw NodeIsProtected::named($this->framework->isProtected($from) ? $from->name : $into->name);
+        }
+
+        if ($this->nodes->childrenOf($from) !== []) {
+            throw ImpossibleMove::constantNotMergeable($from->name, 'it has children');
+        }
+
+        if ($this->usedBy($from->id) !== []) {
+            throw ImpossibleMove::constantNotMergeable($from->name, 'a field points at it as its target');
+        }
+
+        if ($this->records === null) {
+            return ['moved' => 0, 'dropped' => 0];
+        }
+
+        $zeilen = $this->records->nodeReferrers($from->id);
+        $felder = [];
+
+        foreach ($zeilen as $zeile) {
+            $felder[$zeile->relationId] ??= $this->relations->byId($zeile->relationId);
+        }
+
+        foreach ($felder as $feld) {
+            $ziel = $feld === null ? null : $this->nodes->byId($feld->toNodeId);
+
+            if ($ziel !== null && $into->id !== $ziel->id && ! $into->isDescendantOf($ziel)) {
+                throw ImpossibleMove::constantNotMergeable($from->name, sprintf('the field «%s» chooses below «%s», and «%s» is not there', $feld->name, $ziel->name, $into->name));
+            }
+        }
+
+        // Which record already holds `$into` in the same field and locale — that row would stand twice (D-530).
+        $schon = [];
+
+        foreach ($this->records->nodeReferrers($into->id) as $zeile) {
+            $schon[$zeile->recordId . "\0" . $zeile->relationId . "\0" . $zeile->locale] = true;
+        }
+
+        $this->changelog->beginAct();
+
+        try {
+            $moved   = 0;
+            $dropped = 0;
+
+            foreach ($zeilen as $zeile) {
+                $schluessel = $zeile->recordId . "\0" . $zeile->relationId . "\0" . $zeile->locale;
+
+                if (isset($schon[$schluessel]) && $zeile->id !== null) {
+                    $this->records->forgetValueById($zeile->id);
+                    $dropped++;
+                    continue;
+                }
+
+                $this->records->putValue(new RelationRecord($zeile->recordId, $zeile->relationId, $zeile->locale, TypedValue::ofReference($into->id), $zeile->id, $zeile->position));
+                $schon[$schluessel] = true;
+                $moved++;
+            }
+
+            $this->moveToTrash($from->id);
+
+            return ['moved' => $moved, 'dropped' => $dropped];
+        } finally {
+            $this->changelog->endAct();
+        }
+    }
+
     public function mergeField(int $ownerId, int $relationId, int $intoRelationId, ?int $underNodeId = null, bool $first = false): Relation
     {
         $this->changelog->beginAct();
