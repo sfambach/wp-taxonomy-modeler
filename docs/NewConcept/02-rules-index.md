@@ -6,7 +6,7 @@ steht in der Datei, auf die verwiesen wird, und nur dort wird sie geändert.
 
 ⚠️ **Warum es dieses Verzeichnis gibt.** *Der Eigentümer konnte den Regelsatz nicht übergeben:
 «hätte ein Problem den aktuellen Regelsatz zu übergeben, da er Chaos enthält». Gemessen war das
-Chaos nicht Altlast — **306 Regeln in 17 Räumen, die meisten davon lebendig zitiert** —,
+Chaos nicht Altlast — **307 Regeln in 17 Räumen, die meisten davon lebendig zitiert** —,
 sondern **Streuung**: sie stehen in 15 verschiedenen Dateien, und **keine Stelle listete sie auf.**
 Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 
@@ -27,14 +27,14 @@ Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 | **I** | Sprachen und Übersetzung | 10 |
 | **K** | Rechnen | 12 |
 | **M** | Migration | 22 |
-| **A** | Standardbaum — Aufbau | 5 |
+| **A** | Standardbaum — Aufbau | 6 |
 | **B** | Standardbaum — Inhalt | 8 |
 | **S** | Speicher | 1 |
 | **Q** | Aus der Altlast übernommene Frage | 1 |
 | **O** | *ohne Namen — dieser Raum ist nirgends erklärt* | 3 |
-| | **Summe** | **306** |
+| | **Summe** | **307** |
 
-Bei **7** Regeln liess sich keine Definitionszeile erkennen, nur eine Erwähnung — dort steht die Regel
+Bei **8** Regeln liess sich keine Definitionszeile erkennen, nur eine Erwähnung — dort steht die Regel
 vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 ---
@@ -396,6 +396,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **A3** | Basiseinheiten splits into With prefix and Without prefix; Kelvin, Celsius and Stück sit under the latter. Children inherit Praefix and Kuerzel fro… | [01-standard-tree.md:45](01-standard-tree.md) | 4 |
 | **A4** | Attributes appear as children of their owning node (Bauteilliste › Name, Bauart, Position). | [01-standard-tree.md:46](01-standard-tree.md) | 5 |
 | **A5** | Eigene Datentypen exists as a branch beside Simple/Complex. | [01-standard-tree.md:47](01-standard-tree.md) | 2 |
+| **A14** | (same gate, 18.11.) — the renderer classes keep their names and place in the core, because the model stores them (settings_value.klasse, nodes.klas… | [90-decision-log.md:1716](90-decision-log.md) | **nie** |
 
 ## B — Standardbaum — Inhalt
 
@@ -428,5 +429,5 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 |---|---|---|---|
 | **O1** | the ratchet counts HTML only outside comments; a mermaid <br/> in a docblock is documentation (DC-4), not markup, so the ceiling falls with it (a l… | [90-decision-log.md:1716](90-decision-log.md) | 1 |
 | **O2** | the escapes in the core go to 0 as well: plan.md «Escape im Kern … fällt mit dem HTML weg» and «87 Escape-Aufrufe fallen weg»; otherwise double or … | [90-decision-log.md:1716](90-decision-log.md) | **nie** |
-| **O3** | the tiles (Tile/) move with the pages: D-638 «alle Seiten, alle Renderer». | [90-decision-log.md:1716](90-decision-log.md) | 1 |
+| **O3** | the tiles (Tile/) move with the pages: D-638 «alle Seiten, alle Renderer». A14 (same gate, 18.11.) — the renderer classes keep their names and plac… | [90-decision-log.md:1716](90-decision-log.md) | 1 |
 
