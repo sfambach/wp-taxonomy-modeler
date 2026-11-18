@@ -1094,7 +1094,7 @@ final class Plugin
         // Exemplar**, damit nicht zwei Auflösungen nebeneinander stehen.*
         // ⚠️ *Jeder Dialog bekommt «OK» und «Abbrechen» — die Worte kommen von hier, weil der Kern keine macht (D-804, `AR-2`).*
         // ⚠️ *Und ganze Knotenbäume öffnen den einen Auswahlbaum, den diese Seite zeichnet (D-815) — nur hier, weil nur hier einer steht.*
-        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file from the media library', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'), __('Search all records — type at least two letters', 'taxmod'), __('Open the chosen record in a new tab to complete it', 'taxmod'))->withSharedPicker()
+        $rendering = $this->rendering($labels)->withDialogWords(__('OK', 'taxmod'), __('Cancel', 'taxmod'), __('Show the tree', 'taxmod'), __('Choose a file from the media library', 'taxmod'), __('Remove this choice', 'taxmod'), __('Choose a link — also to your own pages and posts', 'taxmod'), __('Search all records — type at least two letters', 'taxmod'), __('Open the chosen record in a new tab to complete it', 'taxmod'), /* translators: %s: what the dialog chooses, e.g. a field (D-1436) */ __('Choose: %s', 'taxmod'))->withSharedPicker()
             // ⚠️ *Und gleiche Satzdialoge stehen einmal als Vorlage (D-866) — die Seite gibt sie am Ende aus.*
             ->withSharedRecordBodies(new \Taxmod\Core\Renderer\SharedBodies())
             // ⚠️ *Die Worte der Zusatzfunktionen (D-845) — der Kern kennt nur ihre Schlüssel (`AR-2`).*

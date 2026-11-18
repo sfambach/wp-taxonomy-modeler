@@ -25,6 +25,8 @@ final class DialogBox implements Describes
         public readonly bool $open = false,
         /** The word of a tree button beside the opener; `null`: none. */
         public readonly ?string $tree = null,
+        /** The title, verb + subject (D-1436), where the head is a chooser's current choice; empty: the head is the title. */
+        public readonly string $title = '',
     ) {
     }
 
@@ -33,6 +35,8 @@ final class DialogBox implements Describes
         return [
             'dialog'       => $this->switch,
             'opener'       => $this->opener instanceof Describes ? $this->opener->toArray() : $this->opener,
+            // *Reading order: the title bar stands above the current choice (D-1436).*
+            'title'        => $this->title,
             'head'         => $this->head instanceof Describes ? $this->head->toArray() : $this->head,
             'body'         => $this->body instanceof Describes ? $this->body->toArray() : $this->body,
             'foot'         => $this->foot instanceof Describes ? $this->foot->toArray() : $this->foot,

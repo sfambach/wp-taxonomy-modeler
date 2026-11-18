@@ -123,11 +123,11 @@ final class ChooserRenderer extends RendererNode
             default                                   => CurrentChoice::nothing($subject->label()),
         };
 
-        return $this->overlay($switch, $current, $context->surroundings->sections[self::TRIGGER] ?? null, $tree, $context);
+        return $this->overlay($switch, $current, $context->surroundings->sections[self::TRIGGER] ?? null, $tree, $context, $subject->label());
     }
 
     /** Der Dialog — die eine Form aus {@see DialogBox}; der Fuss ist das Bestätigen des Aufrufers, wo er eines gibt. */
-    private function overlay(string $switch, CurrentChoice $current, ?Section $trigger, Section $tree, RenderContext $context): RenderResult
+    private function overlay(string $switch, CurrentChoice $current, ?Section $trigger, Section $tree, RenderContext $context, string $what): RenderResult
     {
         $confirm = $context->surroundings->sections[self::CONFIRM] ?? null;
 
@@ -145,8 +145,16 @@ final class ChooserRenderer extends RendererNode
             ok: (string) ($context->surroundings->dialogWords['ok'] ?? ''),
             cancel: (string) ($context->surroundings->dialogWords['cancel'] ?? ''),
             // *Ohne eigenen Auslöser ist der Öffner das ausgegraute Feld, rechts daneben der Baum (D-1163).*
-            tree: $eigener ? null : (string) ($context->surroundings->dialogWords['tree'] ?? '')
+            tree: $eigener ? null : (string) ($context->surroundings->dialogWords['tree'] ?? ''),
+            // *D-1436: the head shows the choice; the title says what is chosen.*
+            title: self::title((string) ($context->surroundings->dialogWords['choose'] ?? ''), $what)
         ));
+    }
+
+    /** «Choose: Lagerort» — the word from the edge (AR-2) around what is chosen; without a word, what is chosen alone (D-1436). */
+    public static function title(string $choose, string $what): string
+    {
+        return $choose === '' || ! str_contains($choose, '%s') ? $what : sprintf($choose, $what);
     }
 
     /**

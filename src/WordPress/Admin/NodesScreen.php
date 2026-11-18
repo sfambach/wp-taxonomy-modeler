@@ -3437,9 +3437,10 @@ final class NodesScreen
             . '<label class="taxmod-dialog-shade" for="' . esc_attr($switch) . '"></label>'
             . '<span class="taxmod-dialog-panel">'
             . '<span class="taxmod-dialog-head">'
-            . '<span class="taxmod-chooser-current">' . esc_html(sprintf(
+            // D-1436: the title bar says what this dialog does.
+            . '<span class="taxmod-dialog-title" role="heading" aria-level="2">' . esc_html(sprintf(
                 /* translators: %s: the name of the node being trashed. */
-                __('«%s» is used', 'taxmod'),
+                __('Trash «%s» — it is used', 'taxmod'),
                 $selected->name
             )) . '</span>'
             . '<label class="taxmod-dialog-close" for="' . esc_attr($switch) . '">&times;</label>'

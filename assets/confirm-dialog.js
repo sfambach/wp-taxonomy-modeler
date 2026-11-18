@@ -43,7 +43,10 @@
 			button.type = 'button';
 		} );
 		close.title = words.cancel;
-		head.appendChild( element( 'span', 'taxmod-chooser-current', words.title ) );
+		var title = element( 'span', 'taxmod-dialog-title', words.title );
+		title.setAttribute( 'role', 'heading' );
+		title.setAttribute( 'aria-level', '2' );
+		head.appendChild( title );
 		head.appendChild( close );
 		foot.appendChild( ok );
 		foot.appendChild( cancel );
