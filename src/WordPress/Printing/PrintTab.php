@@ -2,15 +2,13 @@
 
 namespace Taxmod\WordPress\Printing;
 
-use Taxmod\Core\Printing\LabelContent;
-use Taxmod\Core\Printing\LabelFormat;
 use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Plugin;
 
 /**
  * Two pages of printing, split like the API modules (D-1117): the «Printing» tab of the Configuration holds only the print
- * service's access — Access, «Test connection», «Delete access data» and the guide in the box (D-1085, D-1116); the label
- * formats with their test prints (D-1096) stand under Logistik › Druck › Etiketten (D-1115).
+ * service's access — Access, «Test connection», «Delete access data» and the guide in the box (D-1085, D-1116). The fixed
+ * formats, their test prints and the dialog's preview switch belong to the labels module (D-1439).
  *
  * In the Configuration the buttons submit the page's own form and arrive in `save`; under Logistik the page brings a form
  * of its own.
@@ -79,10 +77,6 @@ final class PrintTab
         $doing = sanitize_text_field((string) ($post[self::DO] ?? ''));
         $user = get_current_user_id();
 
-        // D-1207: only the Configuration's form carries the switch; the page under Logistik leaves it as it is.
-        if (isset($post[LabelButton::PREVIEW_OPTION])) {
-            update_option(LabelButton::PREVIEW_OPTION, (string) $post[LabelButton::PREVIEW_OPTION] === '1' ? '1' : '0', false);
-        }
         // D-1307: likewise only the Configuration's form carries the days.
         if (isset($post[PrintJobRetention::OPTION]) && is_numeric($post[PrintJobRetention::OPTION])) {
             PrintJobRetention::save(absint($post[PrintJobRetention::OPTION]));
@@ -129,17 +123,6 @@ final class PrintTab
 
             return;
         }
-        if (str_starts_with($doing, 'test:')) {
-            $formats = LabelFormat::shipped();
-            $key = sanitize_key(substr($doing, 5));
-            if (! isset($formats[$key]) || ! PrintService::isSetUp()) {
-                self::say(__('No test print: unknown format or no print service set up.', 'taxmod'));
-
-                return;
-            }
-            $id = (new PrintJobs())->queue($formats[$key], LabelContent::sample(), true);
-            self::say(sprintf(/* translators: %d: job number */ __('Test print queued as job %d. The print service fetches it as soon as it is woken.', 'taxmod'), $id));
-        }
     }
 
     /**
@@ -152,7 +135,7 @@ final class PrintTab
             'title'   => __('Printing', 'taxmod'),
             'version' => \Taxmod\WordPress\Plugin::VERSION,
             // His word 2026-11-03: «ich würde auch hier trennen die einstellungen bleiben im admin config die label haben wir ja jetzt im logistik menü» (D-1117).
-            'render'  => static fn (): string => self::previewSetting() . self::retentionSetting() . '<p class="description">' . esc_html__('Labels with preview and test print: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
+            'render'  => static fn (): string => self::retentionSetting() . '<p class="description">' . esc_html__('Labels with preview and test print: Logistik › Druck › Etiketten; the jobs: Logistik › Druck › Aufträge.', 'taxmod')
                 . ' <a href="' . esc_url(PrintJobsScreen::url()) . '">' . esc_html__('Print jobs', 'taxmod') . '</a></p>',
             'credentials' => static fn (): string => (new self())->servicePart(),
             'test'    => self::status(...),
@@ -171,13 +154,6 @@ final class PrintTab
         return '<p><label>' . esc_html__('Erledigte Druckaufträge löschen nach', 'taxmod')
             . ' <input type="number" class="small-text" min="0" max="' . esc_attr((string) PrintJobRetention::MAX_DAYS) . '" step="1" name="' . esc_attr(PrintJobRetention::OPTION) . '" value="' . esc_attr((string) PrintJobRetention::days()) . '"> '
             . esc_html__('Tagen (0 = nie)', 'taxmod') . '</label></p>';
-    }
-
-    /** D-1207: «Vorschau im Druckdialog», on by default. */
-    private static function previewSetting(): string
-    {
-        return '<p><input type="hidden" name="' . esc_attr(LabelButton::PREVIEW_OPTION) . '" value="0"><label><input type="checkbox" name="' . esc_attr(LabelButton::PREVIEW_OPTION) . '" value="1"'
-            . checked(LabelButton::previewShown(), true, false) . '> ' . esc_html__('Vorschau des Etiketts im Druckdialog zeigen', 'taxmod') . '</label></p>';
     }
 
     /** One sentence per print service: not set up, not heard of yet, or when it was last heard of, with what. Also «Test connection». */
@@ -309,26 +285,5 @@ final class PrintTab
         delete_transient(self::MESSAGE . get_current_user_id());
 
         return '<div class="notice notice-info"><p>' . esc_html($message) . '</p></div>';
-    }
-
-    public static function formatName(LabelFormat $format): string
-    {
-        return match ($format->key) {
-            'roll62'  => __('Place and box label, 62 mm roll (QL-810)', 'taxmod'),
-            'roll102' => __('Place and box label, 102 mm roll (QL-1100)', 'taxmod'),
-            'holder62' => __('Place label for the label holders, 62 mm roll', 'taxmod'),
-            'material62' => __('Small label for materials, places and drawers, 62 mm roll', 'taxmod'),
-            default   => $format->key,
-        };
-    }
-
-    public static function size(LabelFormat $format): string
-    {
-        return sprintf('%s × %s mm', self::millimetres($format->widthMm), self::millimetres($format->heightMm));
-    }
-
-    private static function millimetres(float $value): string
-    {
-        return rtrim(rtrim(number_format($value, 1, '.', ''), '0'), '.');
     }
 }

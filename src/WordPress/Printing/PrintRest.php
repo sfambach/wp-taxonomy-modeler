@@ -2,10 +2,6 @@
 
 namespace Taxmod\WordPress\Printing;
 
-use Taxmod\Core\Printing\LabelContent;
-use Taxmod\Core\Printing\LabelDocument;
-use Taxmod\Core\Printing\LabelFormat;
-
 /**
  * The two calls of the print service (D-1032): «pull» claims every waiting job and hands it over with its PDF, and
  * tells WordPress the service is alive; «result» answers one job. The service proves itself with its token in the
@@ -82,12 +78,10 @@ final class PrintRest
         PrintService::seen(sanitize_text_field((string) $request->get_param('agent')), $printers, $service, sanitize_text_field((string) $request->get_param('host')), $queues);
         $who = PrintService::settings()['services'][$service] ?? null;
 
-        $formats = LabelFormat::shipped();
         $jobs = [];
         foreach ($this->jobs->claimWaiting($queues, $who === null ? '' : PrintService::nameOf($who)) as $row) {
             // D-1162: the copies as pages of one PDF — one job at the printer, the labels come out together.
             $copies  = max(1, (int) ($row['copies'] ?? 1));
-            $printer = null;
             // D-1294: a finished job is handed on as it is; the module that printed it said how.
             if (($row['pdf'] ?? '') !== '' && $row['pdf'] !== null) {
                 $delivery = json_decode((string) ($row['delivery'] ?? ''), true);
@@ -117,35 +111,8 @@ final class PrintRest
                 ];
                 continue;
             }
-            // D-1153: a job from a template carries its own size and layout.
-            if (($row['document'] ?? '') !== '' && $row['document'] !== null) {
-                try {
-                    $filled = \Taxmod\Core\Printing\FilledLabel::fromJson((string) $row['document']);
-                } catch (\InvalidArgumentException $e) {
-                    $this->jobs->finish((int) $row['id'], false, 'Broken label: ' . $e->getMessage());
-                    continue;
-                }
-                $format  = $filled->format;
-                $pdf     = $filled->render($copies);
-                $printer = $filled->printer;
-            } else {
-                $format = $formats[$row['format']] ?? null;
-                if ($format === null) {
-                    $this->jobs->finish((int) $row['id'], false, 'Unknown label format ' . $row['format']);
-                    continue;
-                }
-                $pdf = LabelDocument::render($format, array_fill(0, $copies, new LabelContent($row['code'], $row['title'], $row['subtitle'])));
-            }
-            // D-1191: a label printed on a printer of the model carries its queue and options; the service no longer guesses them.
-            $jobs[] = ($printer === null ? [] : ['queue' => $printer->queue, 'options' => $printer->optionsFor($format), 'retry' => $printer->retries, 'pause' => $printer->pauseSeconds]) + [
-                'id'     => (int) $row['id'],
-                'format' => $format->key,
-                'roll'   => $format->rollMm,
-                'test'   => $row['is_test'] === '1',
-                'code'   => $row['code'],
-                'copies' => $copies,
-                'pdf'    => base64_encode($pdf),
-            ];
+            // D-1296: the modeller draws no labels any more; without the labels module an older job cannot be printed.
+            $this->jobs->finish((int) $row['id'], false, __('The labels module is missing: this job has no PDF and nothing can draw it.', 'taxmod'));
         }
 
         return new \WP_REST_Response(['jobs' => $jobs]);

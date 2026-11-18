@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.134';
+    public const VERSION     = '0.2.136';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -124,7 +124,6 @@ final class Plugin
      * screens as aliases — naming them through the screens compiled those screens on every page view (D-1187).
      */
     public const CONFIG_TABS_FILTER = 'taxmod_config_tabs';
-    public const LABEL_BUTTON_FILTER = 'taxmod_label_button';
     public const INBOX_PAGE = 'taxmod-inbox';
 
     /** Was den letzten Umbau der Tabellen abbrach — `null`, solange keiner scheiterte. */
@@ -146,8 +145,7 @@ final class Plugin
         // ⚠️ *Der Eingang der Import-Module (D-952, D-953): Tabelle, Seite «Inbox», Reiter «Import», Takt.*
         ImportWiring::boot($file);
 
-        // ⚠️ *Labels with QR code, stage 1: a PDF for the browser's print dialog, and the tab with its test prints (D-1032, D-1096).*
-        \Taxmod\WordPress\Printing\LabelPrint::boot();
+        // D-1296, D-1439: labels are drawn by the labels module only; the modeller keeps the print jobs, the service and the tab.
         \Taxmod\WordPress\Printing\PrintTab::boot();
         \Taxmod\WordPress\Printing\PrintService::boot();
         // D-1307: finished print jobs are removed after the days set under Configuration › Printing.
@@ -161,14 +159,8 @@ final class Plugin
         \Taxmod\WordPress\Printing\ScannerTab::boot($plugin->screen(...));
         // D-1160: the label reads the fields its layout names from the record itself.
         $labelValues = static fn (int $record, array $fields): array => $plugin->screen()->labelValues($record, $fields);
-        // ⚠️ *Set at boot, not only for admin-post: the print-label ability and REST answered with code, title and subtitle alone,
-        // because neither path set it (D-1160; found by the labels thread on 2026-11-10). A closure only, nothing is read here.*
-        \Taxmod\WordPress\Printing\LabelButton::useRecordValues($labelValues);
         // D-1295: the labels module asks the same words through the door (D-1292).
         add_filter(self::LABEL_VALUES_FILTER, static fn (mixed $answer, int $record, array $fields): array => $labelValues($record, array_values(array_map('strval', $fields))), 10, 3);
-        add_filter(self::LABEL_BUTTON_FILTER, static function (mixed $html, string $prefix = '', int $id = 0, string $title = '', string $subtitle = '', int $copies = 1, array $template = []): string {
-            return \Taxmod\WordPress\Printing\LabelButton::render($prefix, $id, $title, $subtitle, $copies, $template);
-        }, 10, 7);
         // D-1208: a module's door asks which fields are «Variante von» and «Je Variante», from the one resolver.
         add_filter(self::FIELD_ADDONS_FILTER, static fn (array $answer, array $relations): array => $plugin->settingsResolver()->addonNamesAt(
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
@@ -180,7 +172,6 @@ final class Plugin
             array_values(array_map('intval', $records)),
             array_values((new WpdbRelationRepository())->byIds(array_map('intval', $relations)))
         ), 10, 3);
-        \Taxmod\WordPress\Printing\LabelPreview::boot();
         add_action('admin_init', \Taxmod\WordPress\Printing\PrintJobSchema::upgrade(...));
 
 
@@ -192,7 +183,6 @@ final class Plugin
         // constants compiled about 1 MB of admin screens on every page view, and fambach.net has no opcode cache.*
         if (self::handlesAdminActions()) {
             self::wireAdminActions($plugin);
-            \Taxmod\WordPress\Printing\LabelButton::wireActions();
         }
         // A page of the modeller drawn in another plugin's frame (Logistik) asks for the stylesheet here: dialogs, list buttons.
         add_action(self::STYLE_ACTION, $plugin->enqueueStyle(...));
