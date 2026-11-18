@@ -2505,7 +2505,8 @@ final class NodesScreen
             . '<div class="taxmod-page-block taxmod-records-block">' . $this->block(__('Records', 'taxmod'), fn (): string => $this->recordsPanel($selected)) . '</div>'
             // ⚠️ **«Used by» ganz unten und zugeklappt** (D-781) — sein Wort: «den Used by Bereich ganz nach unten und
             // macht den ausklappbar, standardmäßig eingeklappt».
-            . '<div class="taxmod-page-block"><details class="taxmod-used-by-block">' . $this->usedByPanel($selected) . '</details></div>';
+            . '<div class="taxmod-page-block"><details class="taxmod-used-by-block">' . $this->usedByPanel($selected) . '</details></div>'
+            . (($log = $this->changelogPanel($selected)) === '' ? '' : '<div class="taxmod-page-block taxmod-changelog-block">' . $log . '</div>');
     }
 
     /**
@@ -3153,10 +3154,18 @@ final class NodesScreen
         // — nicht der Knoten und nicht der Ast.» **Wer eine Einstellung will, gibt der Kante die Art**
         // (TASK-053, [D-618](../../../docs/NewConcept/90-decision-log.md)); ein zweiter Ort für
         // dieselbe Aussage wäre die Doppelung, die diese Entscheidung beseitigt hat.*
-        $node = $pageForm . '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required'
-            . ' form="' . esc_attr(self::pageForm($selected)) . '">'
-            // ⚠️ **Dasselbe «+» wie im Baum, mit demselben Dialog** ([D-730](../../../docs/NewConcept/90-decision-log.md)): *Name und
-            // Klasse werden im Dialog gewählt, die Klasse nur aus dem Erlaubten ([D-716](../../../docs/NewConcept/90-decision-log.md), Anforderung 6.3).*
+        // ⚠️ **D-1453: eine Toolbar-Zeile, Speichern ganz links, der Papierkorb ganz rechts** — sein Wort 18.11.: «die Buttonleiste
+        // kommt einzeln oben drüber, so als Toolbar … Der Mülleimer ganz nach rechts und das Speichern ganz nach links». Name und Klasse
+        // stehen seitdem oben in der Box «Labels» ({@see self::nameRow()}).*
+        $node = $pageForm
+            . ControlMarkup::button(Control::saving(
+                'do',
+                SettingsRenderer::WRITE,
+                __('Save', 'taxmod'),
+                __('Save every setting on this page', 'taxmod'),
+                true,
+                self::pageForm($selected),
+            )->at(Address::ofNode($selected->id)))
             . $this->form(
                 $selected->id,
                 [],
@@ -3178,14 +3187,6 @@ final class NodesScreen
             // ⚠️ *This one was the only one of five that got the slot right, and it says nothing about
             // care: it got it right because it was written out with all ten arguments. The other four
             // were short calls and counted wrong. {@see Control::saving()} removes the counting.*
-            . ControlMarkup::button(Control::saving(
-                'do',
-                SettingsRenderer::WRITE,
-                __('Save', 'taxmod'),
-                __('Save every setting on this page', 'taxmod'),
-                true,
-                self::pageForm($selected),
-            )->at(Address::ofNode($selected->id)))
             . $this->form(
                 $selected->id,
                 // ⚠️ **Der Papierkorbknopf steht hier nur, solange niemand den Knoten benutzt**
@@ -3194,10 +3195,10 @@ final class NodesScreen
                 // Knoten, der verwendet wird, darf nicht einfach so gelöscht werden».*
                 array_values(array_filter([
                     ['duplicate', '', __('Copy this node beside itself, with its own settings and fields — not its children and not its records', 'taxmod'), 'admin-page'],
+                    ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
                     $this->editor->usedBy($selected->id) === []
                         ? ['trash', '', __('Trash this node and everything under it', 'taxmod'), 'trash', true]
                         : null,
-                    ['trash_node', '', __('Its children move up to its parent, and lose what they inherited from it', 'taxmod'), 'editor-outdent', true],
                 ])),
                 // ⚠️ **The move button *is* the dialog's opener** — the owner: *button move with dialog
                 // tree chooser*, and then *nicht inline*. So the chooser no longer sits beside a move
@@ -3207,8 +3208,8 @@ final class NodesScreen
             );
 
         return \Taxmod\WordPress\Draw\Markup::of($this->rendering->headFor($selected, [
-            HeadRenderer::NODE   => new Section(__('Node', 'taxmod'), $node),
-            HeadRenderer::SYSTEM => new Section(__('System', 'taxmod'), $this->constants($selected)),
+            HeadRenderer::NODE   => new Section('', '<div class="taxmod-head-toolbar">' . $node . '</div>'),
+            HeadRenderer::SYSTEM => new Section('', $this->constants($selected)),
         ]));
     }
 
@@ -3238,37 +3239,14 @@ final class NodesScreen
      */
     private function constants(Node $selected): string
     {
-        // ⚠️ **Die eigene Klasse ist hier wählbar** ([D-733](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort am 2026-09-12:
-        // «wir müssen typ wechsel möglich machen ist lästig immer den knoten zu löschen und wieder anzulegen».* Bis dahin
-        // stand sie fest (2.1.4), und der Wähler im Kopf meinte die Klasse des **neuen Kindes** — das bleibt so.*
-        $html = '<span class="taxmod-chip" title="' . esc_attr__('Given when the node was created. It may be changed to any class the parent allows and the children fit; settings the new class does not declare are dropped. The «+» in the head names the class of a new child.', 'taxmod') . '">'
-            . '<span class="taxmod-chip-label">' . esc_html__('Class', 'taxmod') . '</span> '
-            . $this->ownClassSwitch($selected) . '</span>';
-
+        // ⚠️ *D-1453, sein Wort 18.11.: «eine schmalere, also nicht so hohe Box. Als erstes ID, Pfad und Version» — die Klasse steht
+        // seitdem bei Name und Labels, Angelegt und Geändert in der Box «Changelog» ganz unten ({@see self::changelogPanel()}).*
         $chips = [
-            [__('Path', 'taxmod'), $selected->path, __('Where it hangs in the tree. Derived from the relations and never edited.', 'taxmod')],
             [__('Id', 'taxmod'), (string) $selected->id, __('Handed out once and never reissued.', 'taxmod')],
-            [__('Version', 'taxmod'), (string) $selected->version, __('Rises when the model changes, so a record can say what it was written against.', 'taxmod')],
+            [__('Path', 'taxmod'), $selected->path, __('Where it hangs in the tree. Derived from the relations and never edited.', 'taxmod')],
+            [__('Version', 'taxmod'), (string) $selected->version, __('The version of the node itself: it rises when its class, its place or its order changes. Labels count their own versions.', 'taxmod')],
         ];
-
-        $history = $this->changelog->summaryOf($selected->id);
-
-        if ($history->createdAt !== null) {
-            $chips[] = [
-                __('Created', 'taxmod'),
-                $this->when($history->createdAt, $history->createdBy),
-                __('The first entry in the changelog. Read from there and stored nowhere else.', 'taxmod'),
-            ];
-        }
-
-        if ($history->changedAt !== null) {
-            $chips[] = [
-                __('Changed', 'taxmod'),
-                $this->when($history->changedAt, $history->changedBy)
-                    . ($history->lastAct === null ? '' : ' · ' . $history->lastAct),
-                __('The last entry in the changelog, and what it was.', 'taxmod'),
-            ];
-        }
+        $html = '';
 
         foreach ($chips as [$label, $value, $why]) {
             $html .= '<span class="taxmod-chip" title="' . esc_attr($why) . '">'
@@ -3277,6 +3255,45 @@ final class NodesScreen
         }
 
         return $html;
+    }
+
+    /** D-1453: the node's name and its own class, at the top of the box «Labels». */
+    private function nameRow(Node $selected): string
+    {
+        return '<div class="taxmod-name-row">'
+            . '<label class="taxmod-name-row-name"><span class="taxmod-chip-label">' . esc_html__('Name', 'taxmod') . '</span> '
+            . '<input type="text" name="name" value="' . esc_attr($selected->name) . '" required form="' . esc_attr(self::pageForm($selected)) . '"></label>'
+            . '<span class="taxmod-name-row-class" title="' . esc_attr__('Given when the node was created. It may be changed to any class the parent allows and the children fit; settings the new class does not declare are dropped.', 'taxmod') . '">'
+            . '<span class="taxmod-chip-label">' . esc_html__('Class of this node', 'taxmod') . '</span> ' . $this->ownClassSwitch($selected) . '</span>'
+            . '</div>';
+    }
+
+    /** D-1453, sein Wort 18.11.: «created und changed, die packen wir ganz runter unter alles andere als neue Box und machen da Changelog draus». */
+    private function changelogPanel(Node $selected): string
+    {
+        $history = $this->changelog->summaryOf($selected->id);
+        $rows    = [];
+
+        if ($history->createdAt !== null) {
+            $rows[] = [__('Created', 'taxmod'), $this->when($history->createdAt, $history->createdBy)];
+        }
+
+        if ($history->changedAt !== null) {
+            $rows[] = [__('Changed', 'taxmod'), $this->when($history->changedAt, $history->changedBy) . ($history->lastAct === null ? '' : ' · ' . $history->lastAct)];
+        }
+
+        if ($rows === []) {
+            return '';
+        }
+
+        $html = '';
+
+        foreach ($rows as [$label, $value]) {
+            $html .= '<span class="taxmod-chip"><span class="taxmod-chip-label">' . esc_html($label) . '</span> ' . esc_html($value) . '</span>';
+        }
+
+        return $this->heading(__('Changelog', 'taxmod'), __('The first and the last entry in the changelog of this node. Read from there and stored nowhere else.', 'taxmod'))
+            . '<div class="taxmod-changelog-row">' . $html . '</div>';
     }
 
     /**
@@ -3548,6 +3565,9 @@ final class NodesScreen
                 // the text domain is the boundary's (`AR-2`), so they travel with the controls.
                 new Control('word:own', '', __('own', 'taxmod')),
                 new Control('word:inherited', '', __('inherited', 'taxmod')),
+                // D-1453: an inherited field's name leads to the node that declares it.
+                new Control('word:owner_href', '', $own ? '' : $this->backTo($relation->fromNodeId)),
+                new Control('word:owner_name', '', $own ? '' : sprintf(/* translators: %s: node name */ __('declared in: %s', 'taxmod'), (string) $this->editor->find($relation->fromNodeId)?->name)),
                 new Control('word:settings', '', __('Settings of this use site', 'taxmod')),
                 // ⚠️ **Die drei Sätze der Sperre** ([D-689](../../../docs/NewConcept/90-decision-log.md)): *Herkunft in
                 // Worten, der Haken, und der Grund einer automatischen Wahl — mit `%s` für den Namen.*
@@ -4733,7 +4753,7 @@ final class NodesScreen
             __('What this node is called, in the language chosen on the left. Leave a field empty and the grey text is what will be shown instead — in the end, the node\'s own name.', 'taxmod')
         );
 
-        return $html . \Taxmod\WordPress\Draw\Markup::of($this->rendering->labelsPanelFor(
+        return $html . $this->nameRow($selected) . \Taxmod\WordPress\Draw\Markup::of($this->rendering->labelsPanelFor(
             $selected,
             $slots,
             // ⚠️ **Kein eigener Knopf mehr — der Eigentümer hat entschieden.** *Er stand hier eine

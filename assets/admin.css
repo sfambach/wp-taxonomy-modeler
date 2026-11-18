@@ -3032,3 +3032,84 @@ details.taxmod-record-section > summary {
 .taxmod-trash-uses {
     padding: .7em .8em;
 }
+
+/* ── D-1453: the node page's head — one toolbar line, then id · path · version; name and class in «Labels»; changelog at the bottom ── */
+.taxmod-head-toolbar {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: .3em;
+}
+
+.taxmod-head-toolbar .taxmod-acts {
+    display: contents;
+}
+
+.taxmod-head-toolbar .taxmod-acts:last-child > :last-child {
+    margin-left: auto;
+}
+
+.taxmod-head-system {
+    padding-top: .2em;
+    padding-bottom: .2em;
+}
+
+.taxmod-name-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5em 1.2em;
+    margin: 0 0 .8em;
+}
+
+.taxmod-name-row-name {
+    display: flex;
+    align-items: center;
+    gap: .5em;
+    flex: 1 1 18em;
+}
+
+.taxmod-name-row-name input[type="text"] {
+    flex: 1;
+    min-width: 8em;
+}
+
+.taxmod-name-row-class {
+    display: flex;
+    align-items: center;
+    gap: .5em;
+}
+
+.taxmod-changelog-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3em .9em;
+    font-size: .85em;
+    color: #646970;
+}
+
+.taxmod-field-owner-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+}
+
+/* D-1451: the acts of a list row — every button and dialog opener the same framed square, its icon in the middle. */
+.taxmod-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.wp-core-ui .taxmod-row-actions .button,
+.taxmod-row-actions label.button {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}

@@ -106,8 +106,8 @@ final class EdgeDrawer implements Drawer
             $piece instanceof SharedBody => $this->sharedBody($piece),
             $piece instanceof OrderedChoice => $this->orderedChoice($piece),
             $piece instanceof CompactView => $this->compact($piece),
-            $piece instanceof HeadView   => $piece->rows === [] ? '' : '<table class="taxmod-head"><tbody>' . implode('', array_map(fn (array $r): string => '<tr><th scope="row" class="taxmod-head-label">'
-                . self::e($r['title']) . '</th><td class="taxmod-head-' . self::e($r['key']) . '">' . $this->part($r['body']) . '</td></tr>', $piece->rows)) . '</tbody></table>',
+            $piece instanceof HeadView   => $piece->rows === [] ? '' : '<table class="taxmod-head"><tbody>' . implode('', array_map(fn (array $r): string => '<tr>' . ($r['title'] === '' ? '<td colspan="2"' : '<th scope="row" class="taxmod-head-label">'
+                . self::e($r['title']) . '</th><td') . ' class="taxmod-head-' . self::e($r['key']) . '">' . $this->part($r['body']) . '</td></tr>', $piece->rows)) . '</tbody></table>',
             $piece instanceof PageView   => $piece->blocks === [] ? '' : '<div class="taxmod-page">' . implode('', array_map($this->pageBlock(...), $piece->blocks)) . '</div>',
             $piece instanceof RepeatableList => '<ul class="taxmod-repeatable">' . implode('', array_map(fn (array $e): string => '<li class="taxmod-repeatable-entry">'
                 . '<span class="taxmod-repeatable-value">' . $this->draw($e['value']) . '</span>'
@@ -469,8 +469,10 @@ final class EdgeDrawer implements Drawer
                 . $this->part($f->targetChooser) . '</span>'
             : $flex . Html::tag('a', ['href' => $f->targetHref, 'class' => 'taxmod-field-target-link taxmod-chosen', 'style' => 'flex:1;min-width:8em'])
                 . self::e($f->target) . '</a>' . $this->part($f->targetChooser) . '</span>';
+        // ⚠️ *D-1453, sein Wort 18.11.: «wenn man … vorne auf den Namen [klickt], dass man auf dem Knoten landet, der es definiert».*
         $name   = $f->renameAs === null
-            ? '<strong>' . self::e($f->name) . '</strong>'
+            ? ($f->ownerHref === null ? '<strong>' . self::e($f->name) . '</strong>'
+                : Html::tag('a', ['href' => $f->ownerHref, 'class' => 'taxmod-field-owner-link', 'title' => $f->ownerName]) . '<strong>' . self::e($f->name) . '</strong></a>')
             : Html::tag('input', ['type' => 'text', 'class' => 'taxmod-field-rename', 'name' => $f->renameAs, 'value' => $f->name, 'aria-required' => 'true', 'style' => 'width:100%', 'form' => $f->renameForm]);
         $schloss = ! $f->locked ? '' : ' ' . Html::tag('span', ['class' => 'taxmod-locked', 'title' => $f->lockedReason]) . '&#128274; ' . self::e($f->lockedWord) . '</span>';
         $knoepfe = $f->actsForm === '' ? '' : '<form method="post" id="' . self::e($f->actsForm) . '" action="' . self::e($f->actsAt) . '" class="taxmod-acts">'
