@@ -512,8 +512,9 @@ final class ListPage
      *
      * @param string $opener plain text, or the label of `$icon`
      * @param string $url    the page to show; it is drawn as it is, so it brings its own images and buttons
+     * @param bool   $button a text opener drawn as a button instead of a link — among a row's other buttons (his finding 2026-11-18)
      */
-    public static function viewDialog(string $switch, string $opener, string $title, string $url, string $icon = ''): string
+    public static function viewDialog(string $switch, string $opener, string $title, string $url, string $icon = '', bool $button = false): string
     {
         self::pageScripts();
 
@@ -525,7 +526,11 @@ final class ListPage
             esc_html($title),
             $frame,
             '<a class="button" href="' . esc_url($url) . '" target="_blank" rel="noopener">' . esc_html__('Open fully', 'taxmod') . '</a>',
-            $icon === '' ? 'taxmod-dialog-open taxmod-view-dialog-open' : 'button taxmod-icon-button taxmod-dialog-open',
+            match (true) {
+                $icon !== '' => 'button taxmod-icon-button taxmod-dialog-open',
+                $button      => 'button taxmod-dialog-open taxmod-view-dialog-open',
+                default      => 'taxmod-dialog-open taxmod-view-dialog-open',
+            },
             '',
             __('Close', 'taxmod')
         ) . '</span>';

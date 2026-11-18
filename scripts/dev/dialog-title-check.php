@@ -35,7 +35,7 @@ wp_set_current_user(1);
 use Taxmod\WordPress\Draw\DialogMarkup;
 
 /** Titel aus einem Wort, Stand 18.11.2026 — nur sinkend. */
-const ONE_WORD_CEILING = ['wp_tax_stock' => 5, 'wp_tax_manufacturing' => 0, 'wp_tax_log_sales' => 0, 'wp_tax_label' => 0, 'wp_tax_ebay' => 0, 'wp_tax_api_ebay' => 0];
+const ONE_WORD_CEILING = ['wp_tax_stock' => 0, 'wp_tax_manufacturing' => 0, 'wp_tax_log_sales' => 0, 'wp_tax_label' => 0, 'wp_tax_ebay' => 0, 'wp_tax_api_ebay' => 0];
 
 $failed = 0;
 $say    = static function (bool $ok, string $what) use (&$failed): void {

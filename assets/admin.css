@@ -1660,9 +1660,10 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
 .taxmod-dialog-panel {
     position: fixed;
     z-index: 100001;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    /* D-1445: centred without a transform — a transform would make this panel the frame of a dialog opened inside it. */
+    inset: 0;
+    margin: auto;
+    height: fit-content;
     display: flex;
     flex-direction: column;
     /* D-1436: as wide as its content, never narrower than a form row, never wider than the screen. */
@@ -1725,30 +1726,8 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     color: inherit;
 }
 
-/* D-1436: a tree chooser inside a dialog stands in place — no second dialog over the first. */
-.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog {
-    display: block;
-}
-
-.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog-open,
-.taxmod-dialog-panel .taxmod-chooser > .taxmod-pick-tree,
-.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-shade,
-.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel > .taxmod-dialog-head,
-.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel > .taxmod-dialog-foot {
-    display: none;
-}
-
-.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel {
-    position: static;
-    transform: none;
-    width: auto;
-    min-width: 16em;
-    max-width: none;
-    max-height: 16em;
-    border: 1px solid #8c8f94;
-    border-radius: 3px;
-    box-shadow: none;
-}
+/* D-1445: a chooser in a dialog is the field with the tree button like everywhere (D-1163, D-1444); it opens its own dialog
+ * over the first. A tree that stands in place is asked for by the caller (`inline`) and drawn without an opener. */
 
 /* D-1436: a number and its unit, one piece; the unit stands there even when it is the only one. */
 .taxmod-number-unit {
@@ -2459,9 +2438,10 @@ fieldset.taxmod-read-only {
 .taxmod-browse-panel {
     position: fixed;
     z-index: 100001;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    /* D-1445: centred without a transform — a transform would make this panel the frame of a dialog opened inside it. */
+    inset: 0;
+    margin: auto;
+    height: fit-content;
     display: flex;
     flex-direction: column;
     width: min(52em, calc(100vw - 2em));
