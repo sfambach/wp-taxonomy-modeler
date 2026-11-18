@@ -629,7 +629,7 @@ final class ModelDoor
     /** @return array<string, mixed> */
     private function readNode(int $node): array
     {
-        return $this->nodes[$node] ??= $this->execute('taxmod/read-node', ['node' => $node]);
+        return $this->nodes[$node] ??= $this->execute('taxmod/read-node', ['node' => $node, 'used_by' => false]);
     }
 
     /** @return array<string, mixed> */
