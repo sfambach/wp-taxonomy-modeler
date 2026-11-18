@@ -29,7 +29,15 @@ final class RenderResult
         public readonly string $markup,
         public readonly array $usedRelations = [],
         public readonly mixed $condition = null,
+        /** What the markup shows, where the renderer described it (6c); `null` while it still draws itself. */
+        public readonly ?\Taxmod\Core\Description\Describes $piece = null,
     ) {
+    }
+
+    /** The description of this result — the drawn markup carried along where nothing described it yet (A15). */
+    public function piece(): \Taxmod\Core\Description\Describes
+    {
+        return $this->piece ?? new \Taxmod\Core\Description\Drawn($this->markup);
     }
 
     public static function of(string $markup, int ...$usedRelations): self
@@ -49,6 +57,7 @@ final class RenderResult
             $this->markup . $next->markup,
             array_values(array_unique([...$this->usedRelations, ...$next->usedRelations])),
             $this->condition ?? $next->condition,
+            $this->piece === null && $next->piece === null ? null : new \Taxmod\Core\Description\Sequence($this->piece(), $next->piece()),
         );
     }
 
@@ -68,7 +77,9 @@ final class RenderResult
     {
         return new self(
             (self::$drawer ?? throw new \LogicException('No drawer: the edge registers one with the autoloader.'))->draw($piece),
-            array_values($usedRelations)
+            array_values($usedRelations),
+            null,
+            $piece
         );
     }
 

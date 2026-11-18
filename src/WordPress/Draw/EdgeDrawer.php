@@ -9,6 +9,7 @@ use Taxmod\Core\Description\Choosing;
 use Taxmod\Core\Description\Carried;
 use Taxmod\Core\Description\Describes;
 use Taxmod\Core\Description\DialogBox;
+use Taxmod\Core\Description\Drawn;
 use Taxmod\Core\Description\Hint;
 use Taxmod\Core\Description\Icon;
 use Taxmod\Core\Description\Drawer;
@@ -40,6 +41,7 @@ final class EdgeDrawer implements Drawer
     public function draw(Describes $piece): string
     {
         return match (true) {
+            $piece instanceof Drawn      => $piece->markup,
             $piece instanceof ShownValue => $this->shown($piece),
             $piece instanceof ValueInput => $this->input($piece),
             $piece instanceof Locked     => '<fieldset disabled class="taxmod-read-only">' . $this->draw($piece->inner) . '</fieldset>',

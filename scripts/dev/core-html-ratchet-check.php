@@ -19,6 +19,7 @@ const CEILINGS = [
     'arms of the node page dispatcher'   => 0,
     'modeller pages without the template' => 9,
     'old names bridged for the modules'  => 10,
+    'core files handing markup through'  => 1,
 ];
 
 const HTML_TAG = '/<(div|span|a|table|tr|td|th|p|ul|ol|li|input|select|option|label|form|button|details|summary|img|strong|em|h[1-6]|br|textarea|nav|section|fieldset|legend|dl|dt|dd|code|small|time|figure|svg|template)[ >\/"\']/';
@@ -57,6 +58,12 @@ $where  = array_fill_keys(array_keys(CEILINGS), []);
 foreach (phpFiles(ROOT . '/src/Core') as $file) {
     $code = withoutComments((string) file_get_contents($file));
     $name = substr($file, strlen(ROOT) + 1);
+
+    // A15: markup a part still draws itself, carried in a description (`Drawn`) — scaffolding of 6c, 0 at the merge.
+    if (preg_match('/\bDrawn\b/', $code) && ! str_ends_with($name, 'Description/Drawn.php')) {
+        $counts['core files handing markup through']++;
+        $where['core files handing markup through'][] = $name;
+    }
 
     if (preg_match(HTML_TAG, $code)) {
         $counts['core files with HTML tags']++;
