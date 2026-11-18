@@ -6,13 +6,13 @@ Hilfetext, Vorgabe). Hier wird daraus das Blockmarkup eines **Startmusters**, da
 
 ```mermaid
 flowchart LR
-  V["Seitenvorlage (Modell)"] --> P["StarterPattern → Blockmarkup"]
-  P --> R["Rand: WpStarterPatterns meldet es an"]
+  V["Seitenvorlage (Modell)"] --> P["StarterPattern: Gliederung"]
+  P --> R["Rand: WpStarterPatterns baut Blockmarkup, meldet es an"]
 ```
 
 | Datei | Was |
 |---|---|
-| [`StarterPattern.php`](StarterPattern.php) | Vorlage → Blockmarkup; die Feldnamen des Knotens als Vertrag |
+| [`StarterPattern.php`](StarterPattern.php) | Gliederung der Vorlage; die Feldnamen des Knotens als Vertrag |
 | [`PatternSection.php`](PatternSection.php) | ein Abschnitt |
 
 **Darf nicht abhängen von:** WordPress (`CD-1`). Das Zerlegen eines vorhandenen Beitrags in Abschnitte (`parse_blocks`) und

@@ -10,10 +10,11 @@
 
 const ROOT = __DIR__ . '/../..';
 
-/** Measured 2026-11-17 on main 7b92449f; the dispatcher arms fell to 0 with plan step 4 the same day. */
+/** Measured 2026-11-17 on main 7b92449f; the dispatcher arms fell to 0 with plan step 4 the same day; 2026-11-18 the comments
+ * stopped counting (D-1429 O1: 54 → 43, 249 → 247) and the starter pattern drew its block markup at the edge (→ 42). */
 const CEILINGS = [
-    'core files with HTML tags'          => 54,
-    'RenderResult::escape() in the core' => 249,
+    'core files with HTML tags'          => 42,
+    'RenderResult::escape() in the core' => 247,
     'hook calls in the core'             => 0,
     'arms of the node page dispatcher'   => 0,
     'modeller pages without the template' => 9,
@@ -37,11 +38,23 @@ function phpFiles(string $dir): array
     return $out;
 }
 
+/** The code without its comments: a mermaid `<br/>` in a docblock is documentation (DC-4), not markup (D-1429, O1). */
+function withoutComments(string $code): string
+{
+    $out = '';
+
+    foreach (token_get_all($code) as $token) {
+        $out .= is_array($token) ? (in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true) ? '' : $token[1]) : $token;
+    }
+
+    return $out;
+}
+
 $counts = array_fill_keys(array_keys(CEILINGS), 0);
 $where  = array_fill_keys(array_keys(CEILINGS), []);
 
 foreach (phpFiles(ROOT . '/src/Core') as $file) {
-    $code = (string) file_get_contents($file);
+    $code = withoutComments((string) file_get_contents($file));
     $name = substr($file, strlen(ROOT) + 1);
 
     if (preg_match(HTML_TAG, $code)) {

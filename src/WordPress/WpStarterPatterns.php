@@ -55,7 +55,7 @@ final class WpStarterPatterns
 
             register_block_pattern($name, [
                 'title'      => $vorlage->name,
-                'content'    => $vorlage->markup(),
+                'content'    => self::blockMarkup($vorlage),
                 // ⚠️ *Das macht es zum Startmuster: der Editor bietet es beim neuen Beitrag an.*
                 'blockTypes' => ['core/post-content'],
                 'postTypes'  => ['post'],
@@ -162,5 +162,36 @@ final class WpStarterPatterns
         }
 
         return $aus;
+    }
+
+    /** Das Blockmarkup des Musters, wie der Block-Editor es einsetzt: Vorspann, dann je Abschnitt Überschrift und Vorgabe. */
+    public static function blockMarkup(StarterPattern $muster): string
+    {
+        $teile = trim($muster->lead) === '' ? [] : [trim($muster->lead)];
+
+        foreach ($muster->sections as $abschnitt) {
+            $teile[] = self::heading($abschnitt->heading, $abschnitt->level);
+            // *Was die Vorlage unter der Überschrift vorgibt, steht so da, wie sie es vorgibt; ohne Vorgabe ein leerer Absatz, der den Hilfetext
+            // als Platzhalter zeigt.*
+            $teile[] = trim($abschnitt->preset) !== '' ? trim($abschnitt->preset) : self::paragraph($abschnitt->hint);
+        }
+
+        return implode("\n\n", $teile);
+    }
+
+    private static function heading(string $text, int $level): string
+    {
+        $ebene = max(1, min(6, $level));
+
+        return '<!-- wp:heading' . ($ebene === 2 ? '' : ' {"level":' . $ebene . '}') . " -->\n"
+            . '<h' . $ebene . ' class="wp-block-heading">' . htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</h' . $ebene . ">\n"
+            . '<!-- /wp:heading -->';
+    }
+
+    private static function paragraph(string $hint): string
+    {
+        $attribute = trim($hint) === '' ? '' : ' ' . json_encode(['placeholder' => trim($hint)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+
+        return '<!-- wp:paragraph' . $attribute . " -->\n<p></p>\n<!-- /wp:paragraph -->";
     }
 }

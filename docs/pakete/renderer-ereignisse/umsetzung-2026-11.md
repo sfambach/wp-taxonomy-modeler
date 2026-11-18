@@ -137,3 +137,37 @@ Ziel: Ratsche **0 Kern-HTML-Dateien, 0 Escapes im Kern, 0 Seiten ohne Vorlage**.
 - O1: Ratsche ignoriert Kommentare — **ja (D-1429)**
 - O2: Escapes im Kern auch auf 0 — **ja (D-1429)**
 - O3: Kacheln ziehen mit — **ja (D-1429)**
+
+### Schritt 6c · Entwurf des Wortschatzes (vor dem Bau, fürs Gate)
+
+**Messung 18.11., die den Weg festlegt:** die Klassen der Renderer stehen **im Modell** — `settings_value.klasse` und `nodes.klasse` tragen `Taxmod\Core\Renderer\CompactRenderer`, `…\ChooserRenderer`, `…\ReferenceRenderer` usw. **A14:** die Renderer-Klassen behalten Namen und Ort im Kern (keine Datenwanderung); sie **beschreiben** künftig statt zu zeichnen. Der Rand bekommt je Beschreibungsart einen Zeichner. Dasselbe gilt für `StarterPattern` (`implemented_by`).
+
+```mermaid
+flowchart LR
+  R["Kern: Renderer-Klasse (Name im Modell)"] -->|beschreibt| D["Beschreibung"]
+  D --> E["Rand: Zeichner je Art"] --> H[HTML]
+  D --> P["Mini-Zeichner (Prüfung)"]
+```
+
+Was heute im Kern gezeichnet wird, nach Art (Tags gezählt ohne Kommentare):
+
+| Art | heute | Beschreibung (neu, ohne Markup) |
+|---|---|---|
+| Wert anzeigen | Plain, Field, Reference, UserRef, Color, Choice, ColorChoice, Jump, Mailto, Media | `FieldDescription` + `display`: Text, Link, Farbe, Bild, Liste |
+| Wert eingeben | Field, Textarea, Code, Spinner, Slider, DateTime, Toggle/Checkbox, Select, Media, Chooser, ChooserCell, Compact | `FieldDescription` + `input`: Art, Name (Einreich-Vertrag des Kerns), Pflicht, Breite, Muster, min/max/Schritt, Optionen |
+| Wiederholt, Rest | Repeatable, Residue | `ListDescription` (Einträge) |
+| Bausteine | ControlMarkup, SelectMarkup, ToggleMarkup, IconMarkup, HintMarkup, DialogMarkup, ConflictDialog, GridMarkup, SharedBodies | `ControlDescription` (gibt es), `DialogDescription`, `Hint`, Icon als Name; Raster/geteilte Körper sind Zeichner-Sache |
+| Zeilen, Tabellen | FieldRow, Table, ComparisonTable, Head | `TableDescription` (Spalten, Zeilen aus Feldern/Text/Bedienelementen, Blättern, Filter) |
+| Baum | Tree, TreeNode | `TreeDescription` (Knoten: Tiefe, Name, Link, gefaltet, Bedienelemente) |
+| Blöcke | Form, Record, Page, Complex, Settings, Labels, Summary | `SectionDescription` (gibt es) + Kinder |
+| Kacheln | TileGrid, PeriodChart | `TileDescription`, `ChartDescription` (Reihen, Werte) |
+| Seitenaufbau | Rendering (21 span, 18 input, 13 button …) | liefert `PageDescription` |
+
+Am Gate bestätigt (18.11., D-1429 A14), mit Bedingung: eine neue Art nur, wenn mindestens zwei Stellen sie brauchen (D-1296). Regeln, die der Entwurf hält:
+
+- Jede Beschreibung trägt **nur Text und Werte**, nie Markup; Escapen nur am Rand (D-1429 O2).
+- **Keine Tag-Namen als Art** («div», «span»): sonst wäre der Mini-Zeichner ein HTML-Kopierer und D-636 bewiese nichts.
+- Was nur Aussehen ist (Klassen, Raster, Dashicons), entscheidet der Rand-Zeichner; der Kern nennt Bedeutung (z. B. `destroys`, `available`, Icon-Name).
+- Der Name eines Eingabefelds bleibt Kern-Sache: `Submission` liest ihn zurück, er ist ein Vertrag, kein Aussehen.
+
+**Bau-Reihenfolge innerhalb von 6c** (jeder Commit: Kern + Grenzlauf beide DBs grün, PR-9): Wortschatz-Klassen + Mini-Zeichner + Inventar erweitern → Rand-Zeichner je Art → Renderer einer Art nach der anderen umstellen (alte Zeichnung derselben Art fällt im selben Commit) → Rendering → Seiten → Decken 0.

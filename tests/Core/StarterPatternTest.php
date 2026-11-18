@@ -6,6 +6,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Page\PatternSection;
 use Taxmod\Core\Page\StarterPattern;
+use Taxmod\WordPress\WpStarterPatterns;
 
 /**
  * Eine Seitenvorlage wird ein Startmuster (D-870).
@@ -24,7 +25,7 @@ final class StarterPatternTest extends TestCase
             new PatternSection('Jumper', 3),
         ]);
 
-        $markup = $muster->markup();
+        $markup = WpStarterPatterns::blockMarkup($muster);
 
         self::assertStringStartsWith('<!-- wp:paragraph --><p>Vorspann</p>', $markup);
         self::assertStringContainsString("<!-- wp:heading {\"level\":1} -->\n<h1 class=\"wp-block-heading\">Ansichten</h1>", $markup);

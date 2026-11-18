@@ -12,12 +12,12 @@ namespace Taxmod\Core\Page;
  *
  * ```mermaid
  * flowchart LR
- *   M["Seitenvorlage im Modell · Abschnitte"] --> S["StarterPattern::markup()"]
+ *   M["Seitenvorlage im Modell · Abschnitte"] --> S["Rand: WpStarterPatterns::blockMarkup()"]
  *   S --> W["Rand: register_block_pattern · core/post-content"]
  *   W --> B["neuer Beitrag: «Mit welcher Vorlage beginnen?»"]
  * ```
  *
- * ⚠️ *Der Kern baut nur Blockmarkup aus Text (`CD-1`); das Zerlegen eines bestehenden Beitrags und das Anmelden bei WordPress macht der Rand.*
+ * ⚠️ *Der Kern hält nur die Gliederung; das Blockmarkup baut der Rand (D-1429, Renderer 6c: kein HTML im Kern). Die Klasse bleibt hier, weil ihr Name im Modell steht (`implemented_by`).*
  *
  * @see docs/neues-konzept-eingang.md
  */
@@ -42,36 +42,5 @@ final class StarterPattern
         public readonly string $lead,
         public readonly array $sections,
     ) {
-    }
-
-    /** Das Blockmarkup des Musters, wie der Block-Editor es einsetzt. */
-    public function markup(): string
-    {
-        $teile = trim($this->lead) === '' ? [] : [trim($this->lead)];
-
-        foreach ($this->sections as $abschnitt) {
-            $teile[] = self::heading($abschnitt->heading, $abschnitt->level);
-            // *Was die Vorlage unter der Überschrift vorgibt, steht so da, wie sie es vorgibt; ohne Vorgabe ein leerer Absatz, der den Hilfetext
-            // als Platzhalter zeigt.*
-            $teile[] = trim($abschnitt->preset) !== '' ? trim($abschnitt->preset) : self::paragraph($abschnitt->hint);
-        }
-
-        return implode("\n\n", $teile);
-    }
-
-    private static function heading(string $text, int $level): string
-    {
-        $ebene = max(1, min(6, $level));
-
-        return '<!-- wp:heading' . ($ebene === 2 ? '' : ' {"level":' . $ebene . '}') . " -->\n"
-            . '<h' . $ebene . ' class="wp-block-heading">' . htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</h' . $ebene . ">\n"
-            . '<!-- /wp:heading -->';
-    }
-
-    private static function paragraph(string $hint): string
-    {
-        $attribute = trim($hint) === '' ? '' : ' ' . json_encode(['placeholder' => trim($hint)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
-
-        return '<!-- wp:paragraph' . $attribute . " -->\n<p></p>\n<!-- /wp:paragraph -->";
     }
 }
