@@ -96,7 +96,7 @@ final class EdgeDrawer implements Drawer
             $piece instanceof Control    => ControlMarkup::button($piece),
             $piece instanceof ActsForm   => ControlMarkup::actsForm($piece->id, $piece->submits, $piece->controls),
             $piece instanceof Carried    => ControlMarkup::carried($piece),
-            $piece instanceof DialogBox  => DialogMarkup::of($piece->switch, $this->part($piece->opener), $this->part($piece->head), $this->part($piece->body), $this->part($piece->foot), $piece->openerClass, $piece->ok, $piece->cancel, $piece->open, $piece->tree),
+            $piece instanceof DialogBox  => DialogMarkup::of($piece->switch, $this->part($piece->opener), $this->part($piece->head), $this->part($piece->body), $this->part($piece->foot), $piece->openerClass, $piece->ok, $piece->cancel, $piece->open, $piece->tree, title: $piece->title),
             $piece instanceof AddChosen  => SelectMarkup::add($piece, $piece->purpose === ChoicePurpose::AddonCandidate ? 'taxmod-addon-add' : 'taxmod-list-add'),
             $piece instanceof NodeInTree => $this->nodeInTree($piece),
             $piece instanceof PickableNode => $this->pickable($piece),

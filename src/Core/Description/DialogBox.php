@@ -25,6 +25,8 @@ final class DialogBox implements Describes
         public readonly bool $open = false,
         /** The word of a tree button beside the opener; `null`: none. */
         public readonly ?string $tree = null,
+        /** The title, verb + subject (D-1436), where the head is a chooser's current choice; empty: the head is the title. */
+        public readonly string $title = '',
     ) {
     }
 
@@ -41,6 +43,7 @@ final class DialogBox implements Describes
             'cancel'       => $this->cancel,
             'open'         => $this->open,
             'tree'         => $this->tree,
+            'title'        => $this->title,
         ];
     }
 }

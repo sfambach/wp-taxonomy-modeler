@@ -360,7 +360,9 @@ final class SummaryRenderer extends TypedFieldRenderer
                 'taxmod-record-dialog-open',
                 ok: (string) ($worte['ok'] ?? ''),
                 cancel: (string) ($worte['cancel'] ?? ''),
-                tree: (string) ($worte['tree'] ?? '')
+                tree: (string) ($worte['tree'] ?? ''),
+                // *D-1436: the head shows the choice; the title says what is chosen — the tree's root.*
+                title: ChooserRenderer::title((string) ($worte['choose'] ?? ''), (string) ($baum[0]['name'] ?? ''))
             ),
             ! $nichts,
             $href,

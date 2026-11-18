@@ -11,14 +11,21 @@ namespace Taxmod\WordPress\Draw;
  * ({@see ControlMarkup::button()}) zeichneten sonst dieselben sieben Tags zweimal — und das Stylesheet
  * kennt genau diese Klassen.*
  *
+ * ⚠️ **Jeder Dialog sagt, was er tut** ([D-1436](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort 18.11.: «jeder Dialog sollte eine
+ * Überschrift haben, damit der Benutzer genau weiß, was er jetzt macht».* Der Kopf ist eine farbige Titelleiste; ein Dialog ohne Titel
+ * trägt {@see self::UNTITLED}, an der der Wächter `dialog-title-check` ihn findet.
+ *
  * @see docs/NewConcept/90-decision-log.md D-730
  */
 final class DialogMarkup
 {
+    /** Die Klasse eines Dialogs ohne Titel — gezählt vom Wächter, nie gestaltet. */
+    public const UNTITLED = 'taxmod-dialog-untitled';
+
     /**
      * @param string $switch Die `id` des Schalters — eindeutig auf der Seite.
      * @param string $opener Was als Öffner steht (Wort, Icon, der gewählte Name).
-     * @param string $head   Was links im Kopf steht; das Schliessen-Kreuz kommt von hier.
+     * @param string $head   Der Titel, fertig gezeichnet — oder, wo `$title` gesetzt ist, die aktuelle Wahl unter der Titelleiste.
      * @param string $body   Der Inhalt der Tafel, fertig gezeichnet.
      * @param string $foot   Bestätigen und Abbruch — leer, wo der Dialog nur zeigt.
      */
@@ -39,6 +46,8 @@ final class DialogMarkup
         ?string $tree = null,
         /** The opener's description for its tooltip; empty: an icon-only opener shows its name (D-847). */
         string $openerTitle = '',
+        /** The title as text (verb + subject, D-1436), where `$head` is not the title but the current choice of a chooser. */
+        string $title = '',
     ): string {
         $id = Html::escape($switch);
 
@@ -73,13 +82,16 @@ final class DialogMarkup
                 : (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : ''))
             . '>' . $opener . '</label>'
             . $baum
-            . '<span class="taxmod-dialog">'
+            . '<span class="taxmod-dialog' . (trim(strip_tags($title !== '' ? $title : $head)) === '' ? ' ' . self::UNTITLED : '') . '">'
             . '<span class="taxmod-dialog-shade"></span>'
             . '<span class="taxmod-dialog-panel">'
+            // *Die Wahl bleibt in `.taxmod-chooser-current`, denn dort schreibt das Skript eine neue hinein.*
             . '<span class="taxmod-dialog-head">'
-            . '<span class="taxmod-chooser-current">' . $head . '</span>'
+            . '<span class="taxmod-dialog-title" role="heading" aria-level="2">'
+            . ($title !== '' ? Html::escape($title) : '<span class="taxmod-chooser-current">' . $head . '</span>') . '</span>'
             . '<label class="taxmod-dialog-close taxmod-dialog-cancel" for="' . $id . '"' . ($cancel === '' ? '' : ' title="' . Html::escape($cancel) . '"') . '>&times;</label>'
             . '</span>'
+            . ($title !== '' ? '<span class="taxmod-dialog-current"><span class="taxmod-chooser-current">' . $head . '</span></span>' : '')
             . $body
             . ($foot === '' ? '' : '<span class="taxmod-dialog-foot">' . $foot . '</span>')
             . '</span></span></span>';

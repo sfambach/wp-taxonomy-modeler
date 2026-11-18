@@ -920,12 +920,12 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * Dieselbe Zeichnung, aber jeder Dialog mit «OK» und «Abbrechen» ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they
      * should have buttons ok/confirm, cancel … this is a general rule for all dialogs».*
      */
-    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = '', string $link = '', string $search = '', string $open = ''): static
+    public function withDialogWords(string $ok, string $cancel, string $tree = '', string $upload = '', string $clear = '', string $link = '', string $search = '', string $open = '', string $choose = ''): static
     {
         $kopie              = clone $this;
         // *Dazu das Wort des Schalters für den Baum im Satzdialog (D-805), das des Dateiknopfs (D-846), das des Mülleimers an einer
         // gesetzten Referenz (D-851), das des Linkknopfs (D-857) und das der Suche über «jeden Satz unter Model» (D-958).*
-        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear, 'link' => $link, 'search' => $search, 'open' => $open];
+        $kopie->dialogWords = ['ok' => $ok, 'cancel' => $cancel, 'tree' => $tree, 'upload' => $upload, 'clear' => $clear, 'link' => $link, 'search' => $search, 'open' => $open, 'choose' => $choose];
 
         return $kopie;
     }

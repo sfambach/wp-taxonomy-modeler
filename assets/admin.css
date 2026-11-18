@@ -1665,20 +1665,56 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
-    width: min(38em, calc(100vw - 2em));
-    max-height: min(34em, calc(100vh - 4em));
+    /* D-1436: as wide as its content, never narrower than a form row, never wider than the screen. */
+    width: max-content;
+    min-width: min(30em, calc(100vw - 2em));
+    max-width: min(60em, calc(100vw - 2em));
+    max-height: calc(100vh - 4em);
     background: #fff;
     border-radius: 4px;
+    overflow: hidden;
     box-shadow: 0 8px 40px rgba(0, 0, 0, .35);
 }
 
+/* D-1436: the head is a window's title bar — coloured, the title in words, not in a box that looks like a field. */
 .taxmod-dialog-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: .6em;
-    padding: .5em .7em;
+    padding: .55em .8em;
+    background: var(--wp-admin-theme-color, #2271b1);
+    color: #fff;
+}
+
+.taxmod-dialog-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.taxmod-dialog-head .taxmod-chooser-current {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    min-width: 0;
+    cursor: default;
+}
+
+/* A chooser's current choice, under the title bar. */
+.taxmod-dialog-current {
+    display: block;
+    padding: .45em .8em;
     border-bottom: 1px solid #dcdcde;
+    color: #50575e;
+}
+
+.taxmod-dialog-current .taxmod-chooser-current {
+    border: 0;
+    padding: 0;
+    background: none;
+    cursor: default;
 }
 
 .taxmod-dialog-close {
@@ -1686,7 +1722,43 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     font-size: 1.4em;
     line-height: 1;
     padding: 0 .2em;
-    color: #646970;
+    color: inherit;
+}
+
+/* D-1436: a tree chooser inside a dialog stands in place — no second dialog over the first. */
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog {
+    display: block;
+}
+
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog-open,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-pick-tree,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-shade,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel > .taxmod-dialog-head,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel > .taxmod-dialog-foot {
+    display: none;
+}
+
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel {
+    position: static;
+    transform: none;
+    width: auto;
+    min-width: 16em;
+    max-width: none;
+    max-height: 16em;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    box-shadow: none;
+}
+
+/* D-1436: a number and its unit, one piece; the unit stands there even when it is the only one. */
+.taxmod-number-unit {
+    display: inline-flex;
+    align-items: center;
+    gap: .4em;
+}
+
+.taxmod-number-unit-fixed {
+    color: #50575e;
 }
 
 /* ⚠️ **Ein Dialog vor dem Akt** (D-730): Felder untereinander, Bestätigen und Abbruch rechts im Fuss. */
@@ -2885,10 +2957,13 @@ pre.taxmod-code {
 .taxmod-dialog-head,
 .taxmod-dialog-foot {
     flex: 0 0 auto;
+}
+
+.taxmod-dialog-foot {
     background: #fff;
 }
 
-.taxmod-dialog-panel > :not(.taxmod-dialog-head):not(.taxmod-dialog-foot) {
+.taxmod-dialog-panel > :not(.taxmod-dialog-head):not(.taxmod-dialog-foot):not(.taxmod-dialog-current) {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
@@ -2962,3 +3037,8 @@ details.taxmod-record-section > summary {
 /* Grenzlauf 2026-11-17 (D-1427, icon-button): sizes live in the stylesheet, never as an inline style — the version badge of the page head and the label preview. */
 .taxmod-version{display:inline-block;vertical-align:middle;margin-left:.5em;padding:2px 8px;border-radius:10px;background:#2271b1;color:#fff;font-size:12px;font-weight:600}
 .taxmod-label-preview-frame{display:block;width:100%;max-width:320px;height:200px;border:1px solid #c3c4c7;background:#fff}
+
+/* D-1436: the trash question breathes like every dialog body. */
+.taxmod-trash-uses {
+    padding: .7em .8em;
+}

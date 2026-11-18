@@ -51,4 +51,45 @@ final class DialogNumber implements Renderable
             surroundings: new Surroundings(formId: $formId),
         )));
     }
+
+    /**
+     * A quantity with its unit as one piece (D-1436): the number, then the unit — a choice where there are several, the word alone
+     * (with its value sent hidden) where there is one, so «Stück» always stands there. A decimal quantity is a text field for decimals.
+     *
+     * @param array<string, string> $units unit value → its word, in order
+     */
+    public static function withUnit(
+        string $name,
+        int|float|null $value,
+        string $unitName,
+        array $units,
+        string $chosen = '',
+        string $formId = '',
+        string $label = '',
+        bool $decimal = false,
+        int $min = 0,
+        int $max = PHP_INT_MAX,
+    ): string {
+        $form   = $formId === '' ? '' : ' form="' . Html::escape($formId) . '"';
+        $number = $decimal
+            ? '<input type="text" inputmode="decimal" class="small-text" name="' . Html::escape($name) . '" value="' . Html::escape($value === null ? '' : (string) $value) . '"'
+                . ($label === '' ? '' : ' aria-label="' . Html::escape($label) . '"') . $form . '>'
+            : self::input($name, $value === null ? null : (int) $value, $min, $max, $formId, $label);
+        $chosen = array_key_exists($chosen, $units) ? $chosen : (string) array_key_first($units);
+
+        if (count($units) <= 1) {
+            $unit = '<span class="taxmod-number-unit-fixed">' . Html::escape($units[$chosen] ?? '') . '</span>'
+                . '<input type="hidden" name="' . Html::escape($unitName) . '" value="' . Html::escape($chosen) . '"' . $form . '>';
+        } else {
+            $unit = '<select name="' . Html::escape($unitName) . '"' . $form . '>';
+
+            foreach ($units as $key => $word) {
+                $unit .= '<option value="' . Html::escape((string) $key) . '"' . ((string) $key === $chosen ? ' selected' : '') . '>' . Html::escape($word) . '</option>';
+            }
+
+            $unit .= '</select>';
+        }
+
+        return '<span class="taxmod-number-unit">' . $number . $unit . '</span>';
+    }
 }
