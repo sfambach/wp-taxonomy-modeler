@@ -58,7 +58,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 91 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 90 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:63](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:64](../../CLAUDE.md) | 2 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
@@ -76,7 +76,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:94](../../CLAUDE.md) | 22 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:95](../../CLAUDE.md) | 99 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:95](../../CLAUDE.md) | 94 |
 
 ## DC — Dokumentation im Code
 
@@ -251,7 +251,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 119 |
+| **R1** | Display happens only through a renderer. No other path produces output. This is a hard rule. | [30-renderer.md:78](30-renderer.md) | 117 |
 | **R2** | There are several renderers, producing different representations of the same thing. | [30-renderer.md:79](30-renderer.md) | 10 |
 | **R3** | A renderer always receives a node — or possibly a set of nodes. Explicitly stated as not yet certain. | [30-renderer.md:80](30-renderer.md) | 9 |
 | **R4** | There is a renderer for every kind of display. The point is that no display logic is implemented twice. | [30-renderer.md:91](30-renderer.md) | 8 |
@@ -278,11 +278,11 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **R25** | A chooser is given two nodes: a branch node, whose subtree it shows, and a default node, down to whose children the tree is expanded. | [30-renderer.md:814](30-renderer.md) | 7 |
 | **R26** | The user picks from those children — but may also move into any other branch that is on screen. | [30-renderer.md:815](30-renderer.md) | 1 |
 | **R27** | The branch node is what scopes the choice: picking any node means the whole tree; picking a model means the models branch is put in front. | [30-renderer.md:816](30-renderer.md) | 3 |
-| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 50 |
+| **R28** | If a selection has zero or one entry, then only that one entry or nothing can be the answer. | [30-renderer.md:860](30-renderer.md) | 49 |
 | **R29** | Whether nothing is allowed follows from the multiplicity: 0..1 and 0.. may be empty; 1 and 1.. must always have a selection. | [30-renderer.md:861](30-renderer.md) | 14 |
 | **R30** | So with multiplicity 1 or 1.. and exactly one available entry, that entry is selected and the field greyed out. | [30-renderer.md:862](30-renderer.md) | 12 |
 | **R31** | With no available entry there is nothing to choose and the control is disabled. | [30-renderer.md:863](30-renderer.md) | 7 |
-| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 36 |
+| **R32** | This principle is to be held for all inputs, not only this one. | [30-renderer.md:864](30-renderer.md) | 35 |
 | **R33** | A node can have several converters. | [30-renderer.md:958](30-renderer.md) | 7 |
 | **R34** | One thing they could do: show a number as binary, hexadecimal, octal or in Roman numerals. | [30-renderer.md:959](30-renderer.md) | 10 |
 | **R35** | "Whether this form is really hung on as a converter, I am not sure — but we should keep it in mind. Storing the twelve is one thing, showing it as … | [30-renderer.md:960](30-renderer.md) | 2 |
