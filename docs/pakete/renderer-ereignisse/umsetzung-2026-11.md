@@ -84,9 +84,49 @@ flowchart LR
 - Zusage «description-roundtrip»: `tests/Core/DescriptionTest` (Kernlauf, braucht kein WordPress) — Struktur → JSON → Struktur ist dasselbe Objekt.
 - **Noch nichts zeichnet daraus.** Kein zweiter Zeichenweg neben dem alten (D-638).
 
-### Schritt 6b/6c · offen — Vorschlag fürs Gate
+### Schritt 6b/6c · offen — Vorschlag fürs Gate (6c: siehe unten, Umfang erweitert)
 
 | | Inhalt | Umfang (gemessen 17.11.) |
 |---|---|---|
 | 6b | Der zweite, winzige Zeichner (D-636) als Prüfung, nicht als Oberfläche: baut aus `PageDescription` schlichtes HTML und vergleicht Felder, Werte, Reihenfolge, Bedienelemente mit der Seite | klein |
 | 6c | Die Knotenseite zieht **in einem Zug** um (D-637, D-638): `Rendering` liefert für sie die Beschreibung statt HTML, `ListPage` wird der Rand-Zeichner (D-1424 *INFERRED*), Meldungen am Feld (A11); Ratsche fällt | gross: `NodesScreen` 8 728 Zeilen, `Rendering` 8 838, 54 Kern-Dateien mit HTML |
+
+### Schritt 6c · Plan (Architektur 17.11.: «alle Modeller-Seiten und alle Kern-HTML-Dateien in einem Zug»)
+
+```mermaid
+flowchart LR
+  K["Kern: Rendering + Renderer"] -->|PageDescription| Z["Rand-Zeichner (aus ListPage)"] --> H[HTML]
+  Z2["6b: Mini-Zeichner"] -->|Vergleich| K
+```
+
+Ziel: Ratsche **0 Kern-HTML-Dateien, 0 Escapes im Kern, 0 Seiten ohne Vorlage**. Ein Branch (`claude/project-thread-mmhezm`, erst nach dem Merge von 5 + 6a). Zwischenstände dürfen unvollständig sein (D-635); gemergt wird nur komplett, mit Bildschirmfoto-Gate (D-638: nie zwei Zeichenwege auf main).
+
+**Umfang (gemessen 18.11.)**
+
+| Gruppe | Dateien | Escapes |
+|---|---|---|
+| nur Kommentare (Mermaid `<br/>`, Doku-`<tr>`) | FrozenState, SettingShape, ScannedCode, ModelEditor, Control, RenderResult, Surroundings | 0 |
+| Gutenberg-Inhalt, keine Seite | Page/StarterPattern | 0 |
+| Bausteine | ControlMarkup, DialogMarkup, GridMarkup, HintMarkup, IconMarkup, SelectMarkup, ToggleMarkup, SharedBodies, ConflictDialog | 34 |
+| Feld-Zeichner | Choice, ChooserCell, Chooser, Code, ColorChoice, Color, DateTime, Field, Jump, Mailto, Media, Plain, Reference, Repeatable, Residue, Slider, Spinner, Textarea, TypedField, UserRef | 49 |
+| Zusammengesetzte | FieldRow, Form, Record, Table, Tree, TreeNode, Head, Page, Labels, Settings, Summary, ComparisonTable, Compact, Complex | 102 |
+| Kacheln | Tile/TileGrid, Tile/PeriodChart | 0 |
+| Seitenaufbau | Service/Rendering (8 838 Zeilen) | 55 |
+| Seiten ohne Vorlage (9) | SettingsScreen ×3, NodesScreen, CleanupScreen, BackupScreen, ScannerTab, InboxScreen, ImportWiring (Fehlerhinweis) | – |
+
+**Reihenfolge**
+
+1. **Prüfung ehrlich machen** (benannte Prüfungsänderung, PR-9): Ratsche zählt Tags nur ausserhalb von Kommentaren. Grund: Mermaid-`<br/>` ist DC-4-Doku, kein Markup. Fällt 54 → 47. StarterPattern zieht an den Rand (`WpStarterPatterns`) → 46.
+2. **6b zuerst**: Mini-Zeichner + `page-parity-check` (Felder, Werte, Reihenfolge, Bedienelemente, Adressen). Referenz: heutige Seiten aller Modeller-Seiten auf frischer + gewanderter DB.
+3. **Rand-Zeichner**: `ListPage` wird Zeichner für `PageDescription`; Bausteine (Gruppe «Bausteine») ziehen hinein, Kern behält nur Beschreibungsklassen.
+4. **Feld-Zeichner**: je Feldart eine Beschreibung (`FieldDescription` mit Art + Wert + Steuerelementen), gezeichnet am Rand.
+5. **Zusammengesetzte + Kacheln** → `SectionDescription`/`RowDescription`; Kacheln als eigene Beschreibung.
+6. **Rendering** liefert für alle Seiten nur noch `PageDescription`; Meldungen am Feld per Adresse (A11).
+7. **Seiten**: alle 9 auf die Vorlage (`ListPage`), Toolbar eine Zeile (UI-Regel).
+8. **Abschluss**: Decken auf 0/0/0 (benannt), Kern + Grenzlauf beide DBs grün, `page-parity-check` grün, Bildschirmfotos vorher/nachher je Seite → Architektur-Gate → Merge → WP-Upload.
+
+**Offen fürs Gate**
+
+- O1: Ratsche ignoriert Kommentare — ok?
+- O2: Escapes im Kern auch auf 0 (folgt aus 0 HTML), oder eigene Decke behalten?
+- O3: Kacheln (`Tile/`) gehören zur Seite → mit umziehen (Vorschlag ja).
