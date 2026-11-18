@@ -54,6 +54,9 @@ final class FieldRow implements Describes
         public readonly string $settingsRow,
         /** The field's own settings beneath it; `null`: none. */
         public readonly Describes|string|null $settings,
+        /** D-1453: where an inherited field is declared — the boundary's address and the owner's name; null on an own field. */
+        public readonly ?string $ownerHref = null,
+        public readonly string $ownerName = '',
     ) {
     }
 
@@ -91,6 +94,8 @@ final class FieldRow implements Describes
             'columns'        => $this->columns,
             'settings_row'   => $this->settingsRow,
             'settings'       => $teil($this->settings),
+            'owner_href'     => $this->ownerHref,
+            'owner_name'     => $this->ownerName,
         ];
     }
 }

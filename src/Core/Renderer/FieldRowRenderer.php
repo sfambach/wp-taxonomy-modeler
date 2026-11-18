@@ -220,8 +220,22 @@ final class FieldRowRenderer extends RendererNode
             $fold,
             8 + ($wert === null ? 0 : 1) + ($haken === null ? 0 : 1),
             self::settingsRowFor($subject),
-            $bereich === null || ! $bereich->shows() ? null : $teil($bereich)
+            $bereich === null || ! $bereich->shows() ? null : $teil($bereich),
+            $this->given($context, 'owner_href'),
+            $this->given($context, 'owner_name') ?? ''
         ));
+    }
+
+    /** A string the boundary handed in, or null where it sent none (D-1453: the owner of an inherited field). */
+    private function given(RenderContext $context, string $key): ?string
+    {
+        foreach ($context->surroundings->actions as $control) {
+            if ($control->name === 'word:' . $key) {
+                return $control->label === '' ? null : $control->label;
+            }
+        }
+
+        return null;
     }
 
     /** A word the boundary translated, or the key itself where it did not send one. */
