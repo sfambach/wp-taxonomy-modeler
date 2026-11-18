@@ -272,7 +272,7 @@ final class SummaryRenderer extends TypedFieldRenderer
      * @param list<array{depth: int, name: string, records: array<int, string>}> $baum
      * @param array{ok?: string, cancel?: string, tree?: string}                 $worte
      */
-    public static function multiDialog(array $baum, string $name, string $formId, string $schalter, string $oeffner, string $bestaetigen, array $worte): DialogBox
+    public static function multiDialog(array $baum, string $name, string $formId, string $schalter, \Taxmod\Core\Description\Describes $oeffner, \Taxmod\Core\Description\Describes $bestaetigen, array $worte): DialogBox
     {
         $knopf = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): RecordChoice => RecordChoice::several($name, $formId, $wert, $wort, $suche, $passt);
 

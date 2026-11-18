@@ -12,8 +12,11 @@ final class Hint implements Describes
     /** Between several hints that share one mark. */
     public const JOIN = ' · ';
 
-    public function __construct(public readonly string $text)
-    {
+    public function __construct(
+        public readonly string $text,
+        /** Small beside what it explains, as text — not behind a question mark. */
+        public readonly bool $beside = false,
+    ) {
     }
 
     /** @param list<string> $hints the non-empty ones, joined */
@@ -27,6 +30,6 @@ final class Hint implements Describes
 
     public function toArray(): array
     {
-        return ['hint' => $this->text];
+        return ['hint' => $this->text, 'beside' => $this->beside];
     }
 }

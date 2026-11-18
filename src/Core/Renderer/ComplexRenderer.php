@@ -97,7 +97,7 @@ final class ComplexRenderer extends RendererNode
             $bloecke[] = [
                 'heading' => $part->relation->name,
                 'hint'    => $part->hint,
-                'body'    => [...$this->table($subject, $context, $part->rows, $part->rowActs, $used, $part->siteSettings), ...($part->after === '' ? [] : [$part->after])],
+                'body'    => [...$this->table($subject, $context, $part->rows, $part->rowActs, $used, $part->siteSettings), ...($part->after === null ? [] : [$part->after])],
             ];
         }
 

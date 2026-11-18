@@ -15,6 +15,20 @@ use Taxmod\Core\Description\PickableNode;
 use Taxmod\Core\Description\RecordBrowser;
 use Taxmod\Core\Description\RecordChoice;
 use Taxmod\Core\Description\RecordPicker;
+use Taxmod\Core\Description\FixedUnit;
+use Taxmod\Core\Description\InheritedMark;
+use Taxmod\Core\Description\Words;
+use Taxmod\Core\Description\PartAdd;
+use Taxmod\Core\Description\PickOpener;
+use Taxmod\Core\Description\OverrideTick;
+use Taxmod\Core\Description\InheritedValue;
+use Taxmod\Core\Description\KindConfirm;
+use Taxmod\Core\Description\SettingList;
+use Taxmod\Core\Description\ShownList;
+use Taxmod\Core\Description\ValueChain;
+use Taxmod\Core\Description\AddonChain;
+use Taxmod\Core\Description\AddonEntry;
+use Taxmod\Core\Description\ReferenceList;
 use Taxmod\Core\Description\RecordView;
 use Taxmod\Core\Description\SettingOrigin;
 use Taxmod\Core\Description\SettingRow;
@@ -78,7 +92,7 @@ final class EdgeDrawer implements Drawer
             $piece instanceof Sequence   => implode('', array_map($this->draw(...), $piece->pieces)),
             $piece instanceof Choosing   => $this->choosing($piece),
             $piece instanceof Icon       => $piece->character ? IconMarkup::glyph($piece->symbol, $piece->label) : IconMarkup::dashicon($piece->symbol, $piece->label),
-            $piece instanceof Hint       => HintMarkup::icon($piece->text),
+            $piece instanceof Hint       => $piece->beside ? '<span class="taxmod-tree-help">' . self::e($piece->text) . '</span>' : HintMarkup::icon($piece->text),
             $piece instanceof MediaLink  => $piece->asValue ? self::valueSpan(self::mediaLink($piece)) : self::mediaLink($piece),
             $piece instanceof MediaButtons => self::mediaButtons($piece),
             $piece instanceof MediaPicker => $this->mediaPicker($piece),
@@ -116,6 +130,26 @@ final class EdgeDrawer implements Drawer
             $piece instanceof RecordChoice => self::recordChoice($piece),
             $piece instanceof RecordBrowser => $this->recordBrowser($piece),
             $piece instanceof RecordPicker => $this->recordPicker($piece),
+            $piece instanceof FixedUnit  => '<span class="taxmod-unit-fixed">' . self::e($piece->sign) . '</span><input type="hidden" name="' . self::e($piece->name) . '" value="' . $piece->unit . '"'
+                . ($piece->form === '' ? '' : ' form="' . self::e($piece->form) . '"') . '>',
+            $piece instanceof InheritedMark => '<em class="taxmod-inherited"' . ($piece->word === '' ? '' : ' title="' . self::e($piece->word) . '"') . '>↑</em>',
+            $piece instanceof Words      => self::e($piece->text),
+            $piece instanceof PartAdd    => '<div class="taxmod-part-add">' . ($piece->add === null ? '' : $this->draw($piece->add)) . ($piece->several === null ? '' : $this->draw($piece->several)) . '</div>',
+            $piece instanceof PickOpener => PickOpenerMarkup::of($piece),
+            $piece instanceof OverrideTick => '<label class="taxmod-override-act"><input type="checkbox" class="taxmod-override" name="' . self::e($piece->name) . '" value="1"'
+                . ($piece->ticked ? ' checked' : '') . ($piece->form === '' ? '' : ' form="' . self::e($piece->form) . '"') . ' title="' . self::e($piece->title) . '"></label>',
+            $piece instanceof InheritedValue => '<span class="taxmod-setting-locked' . ($piece->automatic ? ' taxmod-setting-automatic' : '') . '">'
+                . '<span class="taxmod-setting-locked-control">' . $this->draw($piece->control) . '</span>'
+                . ' <em class="' . ($piece->automatic ? 'taxmod-automatic' : 'taxmod-inherited') . '">' . self::e($piece->sentence) . '</em></span>',
+            $piece instanceof KindConfirm => '<label class="taxmod-kind-confirm"><input type="checkbox" name="' . self::e($piece->name) . '" value="1"'
+                . ($piece->form === '' ? '' : ' form="' . self::e($piece->form) . '"') . '> ' . self::e($piece->confirmWord) . '</label>'
+                . '<em class="taxmod-kind-pending description">' . self::e($piece->pending) . '</em>',
+            $piece instanceof SettingList => $this->settingList($piece),
+            $piece instanceof ShownList  => $this->shownList($piece),
+            $piece instanceof ValueChain => $this->valueChain($piece),
+            $piece instanceof AddonChain => $this->addonChain($piece),
+            $piece instanceof AddonEntry => $this->addonEntry($piece),
+            $piece instanceof ReferenceList => $this->referenceList($piece),
             default                      => throw new \InvalidArgumentException('Nothing draws a ' . $piece::class . '.'),
         };
     }
@@ -201,6 +235,139 @@ final class EdgeDrawer implements Drawer
             . ($b->flat ? '</div>' : '');
 
         return $b->inDialog ? '<div class="taxmod-record-tree">' . $koerper . '</div>' : $koerper;
+    }
+
+    private function referenceList(ReferenceList $l): string
+    {
+        $knopf = fn (string $art, string $farbe, string $symbol, string $wort): string => '<button type="button" class="button taxmod-icon-button taxmod-ref-' . $art . '" style="color:' . $farbe . '"'
+            . ($wort === '' ? '' : ' title="' . self::e($wort) . '"') . '>' . $this->draw(Icon::named($symbol, $wort)) . '</button>';
+        $html  = '<table class="taxmod-ref-rows"><tbody>'
+            . '<input type="hidden" name="' . self::e($l->name) . '" value=""' . ($l->form === '' ? '' : ' form="' . self::e($l->form) . '"') . '>';
+
+        foreach ($l->lines as $zeile) {
+            $html .= '<tr class="taxmod-ref-row"><td>' . $this->draw($zeile) . '</td><td class="taxmod-table-acts">'
+                . $knopf('add', '#1d2327', 'plus-alt2', $l->insertWord) . $knopf('remove', '#b32d2e', 'trash', $l->removeWord) . '</td></tr>';
+        }
+
+        $html .= '</tbody></table>';
+
+        if ($l->browser !== null) {
+            $html .= $this->draw(new DialogBox(
+                'taxmod-ref-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $l->form . $l->name),
+                Icon::named('search', $l->searchWord === '' ? $l->fieldName : $l->searchWord),
+                self::e($l->fieldName),
+                $l->browser,
+                '<button type="button" class="button button-primary taxmod-ref-take">' . self::e($l->okWord) . '</button>',
+                'button taxmod-icon-button taxmod-dialog-open taxmod-ref-browse',
+                cancel: $l->cancelWord
+            ));
+        }
+
+        return '<div class="taxmod-ref-field">' . $html . '</div>';
+    }
+
+    private function addonChain(AddonChain $k): string
+    {
+        $form = $k->form === '' ? '' : ' form="' . self::e($k->form) . '"';
+        $html = '<span class="taxmod-switch-picker taxmod-addon-picker">'
+            . '<input type="hidden" name="' . self::e($k->name . '[present]') . '" value="1"' . $form . '>';
+
+        if ($k->inherited !== []) {
+            $html .= '<ul class="taxmod-addon-inherited description">'
+                . implode('', array_map(fn (string $titel): string => '<li>' . self::e($titel) . ' <em>' . self::e($k->inheritedWord) . '</em></li>', $k->inherited))
+                . '</ul>';
+        }
+
+        // *Die Vorlage trägt ihre Adressen nur als `data-taxmod-name` — ein Name in einer Vorlage stünde für jede Funktion gleich da;
+        // das Skript macht beim Einfügen Namen daraus.*
+        $vorlagen = implode('', array_map(fn (AddonEntry $e): string => '<template class="taxmod-addon-template" data-taxmod-addon="' . self::e($e->addon) . '">'
+            . str_replace(' name="', ' data-taxmod-name="', $this->addonEntry($e)) . '</template>', $k->templates));
+
+        return $html . '<ol class="taxmod-switch-cascade">' . implode('', array_map($this->addonEntry(...), $k->entries))
+            . '</ol><span class="taxmod-switch-add">' . $this->draw($k->candidates) . $this->draw($k->add) . '</span>' . $vorlagen . '</span>';
+    }
+
+    private function addonEntry(AddonEntry $e): string
+    {
+        $form = $e->form === '' ? '' : ' form="' . self::e($e->form) . '"';
+        $html = '<li class="taxmod-switch-chosen taxmod-addon-entry" data-taxmod-id="' . self::e($e->addon) . '">'
+            . '<input type="hidden" name="' . self::e($e->name . '[name]') . '" value="' . self::e($e->addon) . '"' . $form . '>'
+            . '<span class="taxmod-switch-name">' . self::e($e->title) . '</span> ';
+
+        foreach ($e->fields as $feld) {
+            $name  = self::e($feld->name);
+            $html .= '<label class="taxmod-addon-field">' . self::e($feld->label) . ' '
+                . match (true) {
+                    $feld->value instanceof Choosing => $this->draw($feld->value),
+                    is_bool($feld->value)            => '<input type="hidden" name="' . $name . '" value="0"' . $form . '><input type="checkbox" name="' . $name . '" value="1"' . ($feld->value ? ' checked' : '') . $form . '>',
+                    default                          => '<input type="text" size="10" name="' . $name . '" value="' . self::e($feld->value) . '"' . $form . '>',
+                }
+                . '</label> ';
+        }
+
+        return $html . $this->chainButtons($e->title, $e->first, $e->last) . '</li>';
+    }
+
+    /** Up, down and the bin of one link in a chain; the end that cannot move is greyed (D-370). */
+    private function chainButtons(string $wort, bool $erstes, bool $letztes): string
+    {
+        $knopf = fn (string $art, string $symbol, string $zusatz, string $farbe): string => '<button type="button" class="button taxmod-icon-button taxmod-list-' . $art . '"' . $zusatz . ' style="color:' . $farbe . '">'
+            . $this->draw(Icon::named($symbol, $wort)) . '</button>';
+
+        return $knopf('move', 'arrow-up-alt2', ' data-taxmod-move="up"' . ($erstes ? ' disabled' : ''), $erstes ? '#1d2327;opacity:.35' : '#1d2327')
+            . $knopf('move', 'arrow-down-alt2', ' data-taxmod-move="down"' . ($letztes ? ' disabled' : ''), $letztes ? '#1d2327;opacity:.35' : '#1d2327')
+            . $knopf('remove', 'trash', '', '#b32d2e');
+    }
+
+    private function shownList(ShownList $l): string
+    {
+        $einer = fn (MediaLink|ShownValue $w): string => $w instanceof MediaLink ? self::mediaLink($w)
+            : ($w->target === '' ? self::e($w->text) : '<a class="taxmod-record-link" href="' . self::e($w->target) . '">' . self::e($w->text) . '</a>');
+
+        if ($l->count !== null) {
+            return '<span class="taxmod-value taxmod-media-count">' . ($l->pictures === [] ? '' : self::mediaLink($l->pictures[0]) . ' ')
+                . $this->draw(Icon::named('format-gallery')) . ' ' . $l->count . '</span>';
+        }
+
+        if ($l->media) {
+            return '<span class="taxmod-value taxmod-media-list">' . implode(' ', array_map($einer, $l->pictures))
+                . ($l->pictures !== [] && $l->items !== [] ? '<br>' : '') . implode('<br>', array_map($einer, $l->items)) . '</span>';
+        }
+
+        return '<span class="taxmod-value taxmod-ref-list">' . implode('<br>', array_map($einer, $l->items)) . '</span>';
+    }
+
+    private function valueChain(ValueChain $k): string
+    {
+        $form = $k->form === '' ? '' : ' form="' . self::e($k->form) . '"';
+        $html = '<span class="taxmod-switch-picker taxmod-value-picker"' . ($k->pictures ? ' data-taxmod-pictures="1"' : '') . '><ol class="taxmod-switch-cascade">';
+        $zahl = count($k->entries);
+
+        foreach ($k->entries as $platz => $glied) {
+            $html .= '<li class="taxmod-switch-chosen" data-taxmod-id="' . self::e($glied['value']) . '">'
+                . '<input type="hidden" class="taxmod-switch-member" name="' . self::e($k->name) . '" value="' . self::e($glied['value']) . '"' . $form . '>'
+                . '<span class="taxmod-switch-name">' . self::e($glied['word']) . '</span> '
+                . $this->chainButtons($glied['word'], $platz === 0, $platz === $zahl - 1) . '</li>';
+        }
+
+        $html .= '</ol><span class="taxmod-switch-add">';
+        $html .= $k->candidates !== null ? $this->draw($k->candidates)
+            : '<input type="text" class="taxmod-value-new" name="' . self::e($k->name) . '" data-taxmod-name="' . self::e($k->name) . '"' . $form . ' size="30">'
+                . ($k->buttons === null ? '' : $this->draw($k->buttons));
+
+        return $html . $this->draw($k->add) . '</span></span>';
+    }
+
+    private function settingList(SettingList $l): string
+    {
+        $form = $l->form === '' ? '' : ' form="' . self::e($l->form) . '"';
+
+        return '<ul class="taxmod-setting-list">' . implode('', array_map(static fn (array $z): string => '<li class="taxmod-setting-list-entry' . ($z['inherited'] ? ' taxmod-setting-list-inherited' : '') . '">'
+            . '<input type="hidden" name="' . self::e($z['name']) . '[aktiv]" value="0"' . $form . '>'
+            . '<label><input type="checkbox" name="' . self::e($z['name']) . '[aktiv]" value="1"' . ($z['active'] ? ' checked' : '') . $form . '> '
+            . self::e($z['word']) . '</label> '
+            . '<input type="number" class="taxmod-setting-list-position" name="' . self::e($z['name']) . '[position]" value="' . $z['position'] . '" min="0" step="1"' . $form . '>'
+            . '</li>', $l->entries)) . '</ul>';
     }
 
     private function recordPicker(RecordPicker $p): string

@@ -1092,55 +1092,44 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         $wort    = fn (string $schluessel, string $sonst): string => $this->addonWords[$schluessel] ?? $sonst;
         $prefix  = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_addons', $fieldPrefix, 1);
-        $form    = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
         $gewaehlt = $this->resolver->addonsAt($knoten, $kante);
         $eigene  = array_values(array_filter($gewaehlt, static fn (\Taxmod\Core\Addon\ChosenAddon $eine): bool => $eine->setHere));
-        $geerbt  = $eigene === [] ? $gewaehlt : [];
+        $geerbt  = [];
 
-        $html = '<span class="taxmod-switch-picker taxmod-addon-picker">'
-            . '<input type="hidden" name="' . RenderResult::escape($prefix . '[present]') . '" value="1"' . $form . '>';
-
-        if ($geerbt !== []) {
-            $html .= '<ul class="taxmod-addon-inherited description">';
-
-            foreach ($geerbt as $eine) {
-                $addon = $this->addons->byClass($eine->klasse);
-                $html .= '<li>' . RenderResult::escape($addon === null ? $eine->klasse : $wort('addon:' . $addon->name(), $addon->name()))
-                    . ' <em>' . RenderResult::escape($wort('inherited', '')) . '</em></li>';
-            }
-
-            $html .= '</ul>';
+        foreach ($eigene === [] ? $gewaehlt : [] as $eine) {
+            $addon    = $this->addons->byClass($eine->klasse);
+            $geerbt[] = $addon === null ? $eine->klasse : $wort('addon:' . $addon->name(), $addon->name());
         }
 
-        $html .= '<ol class="taxmod-switch-cascade">';
+        $glieder = [];
 
         foreach ($eigene as $stelle => $eine) {
             $addon = $this->addons->byClass($eine->klasse);
 
             if ($addon !== null) {
-                $html .= $this->addonEntry($addon, $eine->settings, $prefix . '[' . $stelle . ']', $form, $knoten, $kante, $stelle === 0, $stelle === count($eigene) - 1);
+                $glieder[] = $this->addonEntry($addon, $eine->settings, $prefix . '[' . $stelle . ']', $formId, $knoten, $kante, $stelle === 0, $stelle === count($eigene) - 1);
             }
         }
 
-        $vorlagen = '';
+        $vorlagen = [];
         $wahlen   = [];
 
         foreach ($this->addons->forSites($orte) as $addon) {
             $wahlen[$addon->name()] = $wort('addon:' . $addon->name(), $addon->name());
-            $vorlagen .= '<template class="taxmod-addon-template" data-taxmod-addon="' . RenderResult::escape($addon->name()) . '">'
-                // *Die Vorlage trägt ihre Adressen nur als `data-taxmod-name` — ein Name in einer Vorlage stünde für jede Funktion gleich da;
-                // das Skript macht beim Einfügen Namen daraus.*
-                . str_replace(' name="', ' data-taxmod-name="', $this->addonEntry($addon, [], $prefix . '[__glied__]', $form, $knoten, $kante, false, false))
-                . '</template>';
+            $vorlagen[]             = $this->addonEntry($addon, [], $prefix . '[__glied__]', $formId, $knoten, $kante, false, false);
         }
 
         // *Das eine Auswahlfeld (Choosing): ohne wählbare Funktion ausgegraut, der «+» mit (D-380, D-370).*
-        $html .= '</ol><span class="taxmod-switch-add">'
-            . RenderResult::draw(Choosing::offer('', $wahlen, null, true, trim($form) === '' ? '' : (string) preg_replace('/^ form="(.*)"$/', '$1', $form), ChoicePurpose::AddonCandidate))
-            . RenderResult::draw(AddChosen::beside($wahlen, $wort('add', '+'), ChoicePurpose::AddonCandidate))
-            . '</span>' . $vorlagen . '</span>';
-
-        return RenderResult::of($html);
+        return RenderResult::described(new \Taxmod\Core\Description\AddonChain(
+            $prefix,
+            $formId,
+            $geerbt,
+            $wort('inherited', ''),
+            $glieder,
+            $vorlagen,
+            Choosing::offer('', $wahlen, null, true, $formId, ChoicePurpose::AddonCandidate),
+            AddChosen::beside($wahlen, $wort('add', '+'), ChoicePurpose::AddonCandidate),
+        ));
     }
 
     /**
@@ -1148,22 +1137,17 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      *
      * @param array<string, TypedValue> $werte
      */
-    private function addonEntry(\Taxmod\Core\Addon\Addon $addon, array $werte, string $name, string $form, Node $knoten, ?Relation $kante, bool $erstes, bool $letztes): string
+    private function addonEntry(\Taxmod\Core\Addon\Addon $addon, array $werte, string $name, string $formId, Node $knoten, ?Relation $kante, bool $erstes, bool $letztes): \Taxmod\Core\Description\AddonEntry
     {
-        $wort  = fn (string $schluessel, string $sonst): string => $this->addonWords[$schluessel] ?? $sonst;
-        $titel = $wort('addon:' . $addon->name(), $addon->name());
-        $html  = '<li class="taxmod-switch-chosen taxmod-addon-entry" data-taxmod-id="' . RenderResult::escape($addon->name()) . '">'
-            . '<input type="hidden" name="' . RenderResult::escape($name . '[name]') . '" value="' . RenderResult::escape($addon->name()) . '"' . $form . '>'
-            . '<span class="taxmod-switch-name">' . RenderResult::escape($titel) . '</span> ';
+        $wort   = fn (string $schluessel, string $sonst): string => $this->addonWords[$schluessel] ?? $sonst;
+        $felder = [];
 
         foreach (\Taxmod\Core\Model\NodeClass\Contracts::ofValueClass($addon::class)->attributes as $feldName => $erklaert) {
-            $wert     = $werte[$feldName] ?? $erklaert->default;
-            $feld     = RenderResult::escape($name . '[fields][' . $feldName . ']');
-            $beschrift = RenderResult::escape($wort('field:' . $feldName, $feldName));
-            $html    .= '<label class="taxmod-addon-field">' . $beschrift . ' ';
+            $wert = $werte[$feldName] ?? $erklaert->default;
+            $feld = $name . '[fields][' . $feldName . ']';
 
             if ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::RelationRef) {
-                $html .= RenderResult::draw(Choosing::offer(html_entity_decode($feld, ENT_QUOTES), $this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $kante), $wert?->reference === null ? null : (string) $wert->reference, true, (string) preg_replace('/^ form="(.*)"$/', '$1', $form)));
+                $wertUnten = Choosing::offer($feld, $this->addonFieldCandidates($erklaert->fieldsFrom, $knoten, $kante), $wert?->reference === null ? null : (string) $wert->reference, true, $formId);
             } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Enum) {
                 $faelle = [];
 
@@ -1171,24 +1155,17 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     $faelle[$fall] = $wort('enum:' . $fall, $fall);
                 }
 
-                $html .= RenderResult::draw(Choosing::offer(html_entity_decode($feld, ENT_QUOTES), $faelle, $wert?->text, false, (string) preg_replace('/^ form="(.*)"$/', '$1', $form)));
+                $wertUnten = Choosing::offer($feld, $faelle, $wert?->text, false, $formId);
             } elseif ($erklaert->type === \Taxmod\Core\Model\NodeClass\AttributeType::Bool) {
-                $html .= '<input type="hidden" name="' . $feld . '" value="0"' . $form . '><input type="checkbox" name="' . $feld . '" value="1"' . ((bool) $wert?->rawValue() ? ' checked' : '') . $form . '>';
+                $wertUnten = (bool) $wert?->rawValue();
             } else {
-                $html .= '<input type="text" size="10" name="' . $feld . '" value="' . RenderResult::escape((string) ($wert?->rawValue() ?? '')) . '"' . $form . '>';
+                $wertUnten = (string) ($wert?->rawValue() ?? '');
             }
 
-            $html .= '</label> ';
+            $felder[] = new \Taxmod\Core\Description\AddonField($wort('field:' . $feldName, $feldName), $feld, $wertUnten);
         }
 
-        return $html
-            . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"' . ($erstes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-            . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-up-alt2', $titel)) . '</button>'
-            . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"' . ($letztes ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-            . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-down-alt2', $titel)) . '</button>'
-            . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
-            . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $titel)) . '</button>'
-            . '</li>';
+        return new \Taxmod\Core\Description\AddonEntry($addon->name(), $wort('addon:' . $addon->name(), $addon->name()), $name, $formId, $felder, $erstes, $letztes);
     }
 
     /**
@@ -1322,37 +1299,6 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         $kopie->sharedPicker = false;
 
         return $kopie;
-    }
-
-    /**
-     * Ein Öffner des gemeinsamen Auswahlbaums: der Knopf mit dem, was das Skript braucht, und das versteckte Feld, in das die Wahl geht
-     * ([D-815](../../../docs/NewConcept/90-decision-log.md), [D-821](../../../docs/NewConcept/90-decision-log.md)).
-     *
-     * @param list<int> $barred Hier nicht wählbar.
-     * @param list<int> $open   Beim Öffnen offen stehende Äste (D-615).
-     * @param string    $face   Was der Knopf zeigt — fertiges, sicheres Markup.
-     */
-    public static function pickOpener(
-        string $field,
-        string $formId,
-        ?int $chosen,
-        ?int $initial,
-        array $barred,
-        array $open,
-        string $title,
-        string $face,
-        string $class = 'button taxmod-icon-button taxmod-pick-open',
-        bool $showsName = false,
-    ): string {
-        return '<button type="button" class="' . RenderResult::escape($class) . '"'
-            . ' data-field="' . RenderResult::escape($field) . '"'
-            . ' data-chosen="' . ($chosen === null ? '' : $chosen) . '"'
-            . ' data-barred="' . implode(',', array_map('intval', $barred)) . '"'
-            . ' data-open="' . implode(',', array_map('intval', $open)) . '"'
-            . ($showsName ? ' data-names="1"' : '')
-            . ' title="' . RenderResult::escape($title) . '">' . $face . '</button>'
-            . '<input type="hidden" name="' . RenderResult::escape($field) . '" value="' . ($initial === null ? '' : $initial) . '"'
-            . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '>';
     }
 
     /** @var (\Closure(int): string)|null Die Adresse, unter der man an einem Knoten einen neuen Satz anlegt — vom Rand (D-792, Zeile 154). */
@@ -2390,7 +2336,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // ⚠️ *Die Worte des Wertes, ohne Bedienelement — die Zusammenfassung eines tieferen Teils (D-758).*
                 $context->shown ?? $context->surroundings->refersTo ?? $this->wordsOf($value),
                 $tiefer['rowActs'] ?? [],
-                $tiefer['after'] ?? '',
+                $tiefer['after'] ?? null,
                 // ⚠️ *Was an der Stelle selbst eingestellt ist, reist mit den Zeilen (D-999).*
                 array_filter($resolved[$relation->id] ?? [], static fn (mixed $s): bool => $s instanceof ResolvedSetting && $s->fromOwnerId === $relation->id)
             );
@@ -2448,7 +2394,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             $betraege[0]->renamedTo($reader->code),
             SimpleType::Decimal,
             'plain',
-            new RenderResult('<span class="taxmod-value">' . htmlspecialchars($reader->sign . ' ' . $gezeigt, ENT_QUOTES) . '</span>'),
+            RenderResult::described(new \Taxmod\Core\Description\ShownValue($reader->sign . ' ' . $gezeigt)),
             readOnly: true,
             summary: $reader->sign . ' ' . $gezeigt,
         );
@@ -2493,7 +2439,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             'plain',
             // ⚠️ *His screenshot of 2026-10-25 showed «0.527 $ 0.45»: in a part drawn as one line the label falls away, and with
             // it the euro sign. The value carries its sign itself, after the separator the docblock promises.*
-            new RenderResult('<span class="taxmod-value">' . htmlspecialchars('· ' . ($zeichen === '' ? $umgerechnet . ' ' . $wort : $zeichen . ' ' . $umgerechnet), ENT_QUOTES) . '</span>'),
+            RenderResult::described(new \Taxmod\Core\Description\ShownValue('· ' . ($zeichen === '' ? $umgerechnet . ' ' . $wort : $zeichen . ' ' . $umgerechnet))),
             readOnly: true,
             summary: $zeichen === '' ? $umgerechnet . ' ' . $wort : $zeichen . ' ' . $umgerechnet,
         )];
@@ -3000,7 +2946,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
         foreach ($this->labels?->helpFor($konstanten, $locale) ?? [] as $id => $hilfe) {
             if (isset($cells[$id])) {
-                $cells[$id] = $cells[$id]->followedBy(RenderResult::of('<span class="taxmod-tree-help">' . RenderResult::escape($hilfe) . '</span>'));
+                $cells[$id] = $cells[$id]->followedBy(RenderResult::described(new \Taxmod\Core\Description\Hint($hilfe, beside: true)));
             }
         }
 
@@ -3631,7 +3577,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                                 // ⚠️ *Der Haken zuerst, als eigene Spalte — sein Wort am 2026-09-10; leer, wo nichts gesperrt ist.*
                                 FieldRowRenderer::OVERRIDE => new Section(
                                     '',
-                                    $this->overrideHakenMarkup(
+                                    '',
+                                    piece: $this->overrideTick(
                                         $gezeichneterWert,
                                         $sperre,
                                         $valuePrefix === '' ? '' : $valuePrefix . '[' . $relation->id . ']',
@@ -3641,7 +3588,8 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                                 ),
                                 FieldRowRenderer::VALUE => new Section(
                                     '',
-                                    $this->wertspalteMarkup(
+                                    '',
+                                    piece: $this->valueColumn(
                                         $gezeichneterWert,
                                         $sperre,
                                         $valuePrefix === '' ? '' : $valuePrefix . '[' . $relation->id . ']',
@@ -3734,77 +3682,100 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * @param array{von: string, wert: string}|null $sperre
      * @param list<Control> $woerter
      */
-    private function wertspalteMarkup(array $gezeichnet, ?array $sperre, string $feldName, string $formId, array $woerter): string
+    private function valueColumn(array $gezeichnet, ?array $sperre, string $feldName, string $formId, array $woerter): ?\Taxmod\Core\Description\Describes
     {
         if ($gezeichnet === []) {
-            return '';
+            return null;
         }
 
-        $markup = $gezeichnet[0]->result->markup;
+        $stueck = $gezeichnet[0]->result->piece();
 
         if ($sperre === null || $feldName === '') {
-            return $markup;
+            return $stueck;
         }
 
-        // ⚠️ *Nur das **erste** Auswahlfeld ist die Wahl — darunter zeichnet die Zelle die
-        // Untereinstellungen des Gewählten, und die haben ihre eigenen gewählten Einträge. **Automatisch
-        // ist die Zeile, wenn das Auswahlfeld etwas anderes als gewählt zeigt als die Kette liefert**:
-        // dann hat {@see RendererRegistry::chosenFor()} den geerbten Namen verworfen und den
-        // Typ-Standard eingesetzt, und genau der steht als gewählt da.*
-        $automatisch = false;
+        $automatisch = $this->automatischGewaehlt($stueck, $sperre);
 
-        if (preg_match('/<select\b[^>]*>.*?<\/select>/s', $markup, $wahl) === 1
-            && preg_match('/<option value="([^"]*)"[^>]*\bselected\b[^>]*>([^<]*)</', $wahl[0], $gewaehlt) === 1
-        ) {
-            $automatisch = ! in_array(trim($gewaehlt[1]), $sperre['kandidaten'], true)
-                && ! in_array(trim(html_entity_decode($gewaehlt[2])), $sperre['kandidaten'], true);
-        }
-        $satz        = $automatisch
-            ? $this->satzAus($woerter, 'automatic', $sperre['wert'])
-            : $this->satzAus($woerter, 'inherited_from', $sperre['von']);
         // ⚠️ *Der Haken steht nicht mehr hier, sondern vorn in der Zeile, als eigene Spalte
-        // ({@see self::overrideHakenMarkup()}) — sein Wort: «als richtige spalte».*
-        return '<span class="taxmod-setting-locked' . ($automatisch ? ' taxmod-setting-automatic' : '') . '">'
-            . '<span class="taxmod-setting-locked-control">' . $markup . '</span>'
-            . ' <em class="' . ($automatisch ? 'taxmod-automatic' : 'taxmod-inherited') . '">' . RenderResult::escape($satz) . '</em>'
-            . '</span>';
+        // ({@see self::overrideTick()}) — sein Wort: «als richtige spalte».*
+        return new \Taxmod\Core\Description\InheritedValue(
+            $stueck,
+            $automatisch,
+            $automatisch ? $this->satzAus($woerter, 'automatic', $sperre['wert']) : $this->satzAus($woerter, 'inherited_from', $sperre['von'])
+        );
     }
 
     /**
-     * Der Haken «hier überschreibe ich» für die erste Spalte der Zeile — leer, wo nichts gesperrt ist.
+     * Der Haken «hier überschreibe ich» für die erste Spalte der Zeile — keiner, wo nichts gesperrt ist.
      *
      * ⚠️ **Sein Wort am 2026-09-10:** *«das override tickfeld mal an den anfang der setting zeile und als
      * richtige spalte».* *Derselbe Haken wie vorher, dieselbe Adresse (`<Feld>_override[...]`), nur nicht
      * mehr hinter dem Steuerelement. Ob er vorgesetzt ist, sagt dasselbe Merkmal wie bei der Wertspalte:
      * ein geerbter Eintrag, den die Stelle nicht zulässt, ist automatisch ersetzt ([D-688](../../../docs/NewConcept/90-decision-log.md)).*
      */
-    private function overrideHakenMarkup(array $gezeichnet, ?array $sperre, string $feldName, string $formId, array $woerter): string
+    private function overrideTick(array $gezeichnet, ?array $sperre, string $feldName, string $formId, array $woerter): ?\Taxmod\Core\Description\OverrideTick
     {
         if ($gezeichnet === [] || $sperre === null || $feldName === '') {
-            return '';
+            return null;
         }
 
-        $automatisch = $this->automatischGewaehlt($gezeichnet[0]->result->markup, $sperre);
-        $override    = (string) preg_replace('/^([A-Za-z_]+)/', '$1_override', $feldName);
-
-        return '<label class="taxmod-override-act">'
-            . '<input type="checkbox" class="taxmod-override" name="' . RenderResult::escape($override) . '" value="1"'
-            . ($automatisch ? ' checked' : '')
-            . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"')
-            . ' title="' . RenderResult::escape($this->wortAus($woerter, 'override')) . '"></label>';
+        return new \Taxmod\Core\Description\OverrideTick(
+            (string) preg_replace('/^([A-Za-z_]+)/', '$1_override', $feldName),
+            $formId,
+            $this->automatischGewaehlt($gezeichnet[0]->result->piece(), $sperre),
+            $this->wortAus($woerter, 'override')
+        );
     }
 
-    /** Ob der gezeichnete Wähler einen Eintrag zeigt, den die Sperre nicht als geerbten Kandidaten kennt (D-688). */
-    private function automatischGewaehlt(string $markup, array $sperre): bool
+    /**
+     * Ob der Wähler einen Eintrag als gewählt zeigt, den die Sperre nicht als geerbten Kandidaten kennt (D-688).
+     *
+     * ⚠️ *Nur das **erste** Auswahlfeld ist die Wahl — darunter stehen die Untereinstellungen des Gewählten mit ihren eigenen gewählten
+     * Einträgen. **Automatisch ist die Zeile, wenn das Auswahlfeld etwas anderes als gewählt zeigt als die Kette liefert**: dann hat
+     * {@see RendererRegistry::chosenFor()} den geerbten Namen verworfen und den Typ-Standard eingesetzt. Gelesen an der Beschreibung des
+     * Auswahlfelds (A19), nicht mehr an seinem Markup.*
+     */
+    private function automatischGewaehlt(\Taxmod\Core\Description\Describes $stueck, array $sperre): bool
     {
-        if (preg_match('/<select\b[^>]*>.*?<\/select>/s', $markup, $wahl) !== 1
-            || preg_match('/<option value="([^"]*)"[^>]*\bselected\b[^>]*>([^<]*)</', $wahl[0], $gewaehlt) !== 1
-        ) {
+        $wahl = self::firstChoosing($stueck);
+
+        if ($wahl === null) {
             return false;
         }
 
-        return ! in_array(trim($gewaehlt[1]), $sperre['kandidaten'], true)
-            && ! in_array(trim(html_entity_decode($gewaehlt[2])), $sperre['kandidaten'], true);
+        $gewaehlt = null;
+
+        if ($wahl->mayBeNothing && ($wahl->now === null || $wahl->now === '')) {
+            $gewaehlt = ['', $wahl->nothingWord];
+        } else {
+            foreach ($wahl->options as $wert => $wort) {
+                // *R30: mit genau einer Möglichkeit ist sie die Antwort und steht gewählt da.*
+                if ($wahl->now === (string) $wert || ($wahl->decided && ! $wahl->mayBeNothing && count($wahl->options) === 1)) {
+                    $gewaehlt = [(string) $wert, $wort];
+                    break;
+                }
+            }
+        }
+
+        return $gewaehlt !== null
+            && ! in_array(trim($gewaehlt[0]), $sperre['kandidaten'], true)
+            && ! in_array(trim($gewaehlt[1]), $sperre['kandidaten'], true);
+    }
+
+    /** Das erste Auswahlfeld eines beschriebenen Steuerelements, in der Reihenfolge, in der es dasteht. */
+    private static function firstChoosing(\Taxmod\Core\Description\Describes $stueck): ?\Taxmod\Core\Description\Choosing
+    {
+        if ($stueck instanceof \Taxmod\Core\Description\Choosing) {
+            return $stueck;
+        }
+
+        foreach ($stueck instanceof \Taxmod\Core\Description\Sequence ? $stueck->pieces : ($stueck instanceof \Taxmod\Core\Description\Locked ? [$stueck->inner] : []) as $teil) {
+            if (($wahl = self::firstChoosing($teil)) !== null) {
+                return $wahl;
+            }
+        }
+
+        return null;
     }
 
     /** Ein Satz des Randes mit `%s` für einen Namen — oder der Name allein, wo der Rand keinen schickte. */
@@ -3858,14 +3829,11 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             )
         );
 
-        $markup = $auswahl->markup;
-
         if ($wartend) {
-            $markup .= '<label class="taxmod-kind-confirm">'
-                . '<input type="checkbox" name="' . RenderResult::escape($rowSettings . '[' . self::KIND_CONFIRM_KEY . ']') . '" value="1"'
-                . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '> '
-                . RenderResult::escape($this->wortAus($woerter, 'kind_confirm')) . '</label>'
-                . '<em class="taxmod-kind-pending description">' . RenderResult::escape($satz) . '</em>';
+            $auswahl = RenderResult::described(new \Taxmod\Core\Description\Sequence(
+                $auswahl->piece(),
+                new \Taxmod\Core\Description\KindConfirm($rowSettings . '[' . self::KIND_CONFIRM_KEY . ']', $formId, $this->wortAus($woerter, 'kind_confirm'), $satz)
+            ));
         }
 
         return new RenderedSetting(
@@ -3873,7 +3841,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             SettingShape::ARegisteredName,
             null,
             $setting,
-            $wartend ? RenderResult::of($markup) : $auswahl,
+            $auswahl,
             ChoiceRenderer::NAME
         );
     }
@@ -6211,7 +6179,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             if ($this->sharedPicker) {
                 $name = $gewaehlt === null ? null : $this->gemerkterKnoten($gewaehlt)?->name;
 
-                return RenderResult::of(self::pickOpener(
+                return RenderResult::described(new \Taxmod\Core\Description\PickOpener(
                     $fieldName,
                     $formId,
                     $gewaehlt,
@@ -6220,10 +6188,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     [],
                     $name ?? '',
                     // ⚠️ *Ohne Wahl trägt der Öffner kein lesbares Wort — der Name des Gegenstands steht für den Vorleser dabei, wie im Wähler selbst.*
-                    $name === null
-                        ? '<span class="taxmod-nothing">—</span><span class="screen-reader-text">' . RenderResult::escape($target->name) . '</span>'
-                        : RenderResult::escape($name),
-                    'button taxmod-dialog-open taxmod-pick-open',
+                    $name === null ? \Taxmod\Core\Description\CurrentChoice::nothing($target->name) : \Taxmod\Core\Description\CurrentChoice::named($name),
                     true
                 ));
             }
@@ -6790,7 +6755,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         ));
 
         if ($erklaert->list && $fieldPrefix !== '') {
-            $gezeichnet = new RenderResult($gezeichnet->markup . $this->listMarkup($subject, $erklaert, $fieldPrefix, $formId), $gezeichnet->usedRelations, $gezeichnet->condition);
+            $liste      = $this->settingList($subject, $erklaert, $fieldPrefix, $formId);
+            $mitListe   = $liste === null ? null : RenderResult::described(new \Taxmod\Core\Description\Sequence($gezeichnet->piece(), $liste));
+            $gezeichnet = $mitListe === null ? $gezeichnet : new RenderResult($mitListe->markup, $gezeichnet->usedRelations, $gezeichnet->condition, $mitListe->piece);
         }
 
         return new RenderedSetting($key, $shape, null, $setting, $gezeichnet, $renderer->name(), $subjectType, band: $erklaert->band);
@@ -6804,39 +6771,34 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
      * *Die Felder heissen `<prefix>_list[<attribut>][<zeile>][aktiv|position]`; aus
      * `taxmod_field_setting[7]` wird `taxmod_field_setting_list[7]` — dieselbe Adresse, ein Wort weiter.*
      */
-    private function listMarkup(Renderable $subject, \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert, string $fieldPrefix, string $formId): string
+    private function settingList(Renderable $subject, \Taxmod\Core\Model\NodeClass\AttributeDeclaration $erklaert, string $fieldPrefix, string $formId): ?\Taxmod\Core\Description\SettingList
     {
         if ($this->resolver === null || ! ($subject instanceof Node || $subject instanceof Relation)) {
-            return '';
+            return null;
         }
 
         $knoten = $subject instanceof Node ? $subject : $this->gemerkterKnoten($subject->toNodeId);
 
         if ($knoten === null) {
-            return '';
+            return null;
         }
 
         $glieder = $this->resolver->listOf($knoten, $erklaert->name, $subject instanceof Relation ? $subject : null);
 
         if ($glieder === []) {
-            return '';
+            return null;
         }
 
         $prefix = (string) preg_replace('/^([A-Za-z0-9_]+)/', '$1_list', $fieldPrefix, 1) . '[' . $erklaert->name . ']';
-        $form   = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
-        $html   = '<ul class="taxmod-setting-list">';
+        $zeilen = array_map(static fn ($glied): array => [
+            'name'      => $prefix . '[' . $glied->rowId . ']',
+            'word'      => $glied->word,
+            'active'    => $glied->aktiv,
+            'position'  => $glied->position,
+            'inherited' => ! $glied->setHere,
+        ], $glieder);
 
-        foreach ($glieder as $glied) {
-            $name  = $prefix . '[' . $glied->rowId . ']';
-            $html .= '<li class="taxmod-setting-list-entry' . ($glied->setHere ? '' : ' taxmod-setting-list-inherited') . '">'
-                . '<input type="hidden" name="' . RenderResult::escape($name) . '[aktiv]" value="0"' . $form . '>'
-                . '<label><input type="checkbox" name="' . RenderResult::escape($name) . '[aktiv]" value="1"' . ($glied->aktiv ? ' checked' : '') . $form . '> '
-                . RenderResult::escape($glied->word) . '</label> '
-                . '<input type="number" class="taxmod-setting-list-position" name="' . RenderResult::escape($name) . '[position]" value="' . $glied->position . '" min="0" step="1"' . $form . '>'
-                . '</li>';
-        }
-
-        return $html . '</ul>';
+        return new \Taxmod\Core\Description\SettingList($formId, array_values($zeilen));
     }
 
     /**
@@ -7186,13 +7148,9 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // nebeneinander sprengten die Zeile (D-1140).*
         $zeichen = $this->gemerkterWahlName($einzig, $settings, $target, $locale) ?? $options[$einzig];
 
-        return new RenderResult(
-            '<span class="taxmod-unit-fixed">' . RenderResult::escape($zeichen) . '</span>'
-                . '<input type="hidden" name="' . RenderResult::escape($fieldName) . '" value="' . $einzig . '"'
-                . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '>',
-            $auswahl->usedRelations,
-            $auswahl->condition
-        );
+        $fest = RenderResult::described(new \Taxmod\Core\Description\FixedUnit($zeichen, $fieldName, $einzig, $formId));
+
+        return new RenderResult($fest->markup, $auswahl->usedRelations, $auswahl->condition, $fest->piece);
     }
 
     /**
@@ -7806,41 +7764,39 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // anzuzeigen ist ganz nett, die andern stören aber eher also nur anzahl zeigen»*. Ein einzelnes Medium (Titelbild) bleibt Bild.*
                 // ⚠️ **Das erste Bild ist das Titelbild** ([D-1205](../../../docs/NewConcept/90-decision-log.md)) — sein Wort: *«bei eBay ist
                 // es ja so, dass die Bilder alle in einen Haufen sind, nur eins ist als Titelbild markiert»*. Es steht vor der Anzahl.*
-                $titel = '';
+                $titel = null;
 
                 foreach ($werte as $wert) {
                     $adresse = trim((string) $wert->text);
 
                     if (\Taxmod\Core\Renderer\MediaRenderer::fileOf($adresse, $this->media)?->isImage() === true) {
-                        $titel = \Taxmod\Core\Renderer\MediaRenderer::link($adresse, '', $this->mediaOpensNewTab([$relation], $relation->id), $this->media) . ' ';
+                        $titel = \Taxmod\Core\Renderer\MediaRenderer::linkTo($adresse, '', $this->mediaOpensNewTab([$relation], $relation->id), $this->media);
                         break;
                     }
                 }
 
-                return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
-                    '<span class="taxmod-value taxmod-media-count">' . $titel . \Taxmod\Core\Renderer\RenderResult::draw(\Taxmod\Core\Description\Icon::named('format-gallery')) . ' ' . count($werte) . '</span>'
+                return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => null, 'result' => RenderResult::described(
+                    new \Taxmod\Core\Description\ShownList([], true, $titel === null ? [] : [$titel], count($werte))
                 )];
             }
 
             if ($werte !== [] && $this->typeAt($relation) === SimpleType::Media) {
                 $neuerTab = $this->mediaOpensNewTab([$relation], $relation->id);
-                $bilder   = '';
+                $bilder   = [];
                 $dateien  = [];
 
                 foreach ($werte as $wert) {
                     $adresse = trim((string) $wert->text);
-                    $link    = \Taxmod\Core\Renderer\MediaRenderer::link($adresse, '', $neuerTab, $this->media);
+                    $link    = \Taxmod\Core\Renderer\MediaRenderer::linkTo($adresse, '', $neuerTab, $this->media);
 
                     if (\Taxmod\Core\Renderer\MediaRenderer::fileOf($adresse, $this->media)?->isImage() === true) {
-                        $bilder .= $link . ' ';
+                        $bilder[] = $link;
                     } else {
                         $dateien[] = $link;
                     }
                 }
 
-                return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
-                    '<span class="taxmod-value taxmod-media-list">' . trim($bilder) . ($bilder !== '' && $dateien !== [] ? '<br>' : '') . implode('<br>', $dateien) . '</span>'
-                )];
+                return ['renderer' => \Taxmod\Core\Renderer\MediaRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => null, 'result' => RenderResult::described(new \Taxmod\Core\Description\ShownList($dateien, true, $bilder))];
             }
 
             // ⚠️ **Auch mehrere Konstanten stehen alle da** (D-900) — *gemessen am 2026-09-21 an der Netzwerkkarte #37641: drei
@@ -7855,12 +7811,10 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 $knoten = $this->gemerkteKnoten(array_map(static fn (TypedValue $w): int => (int) $w->reference, $aufKnoten));
                 $namen  = $this->labels?->forNodes(array_values($knoten), SeededRole::Select, $context->locale) ?? [];
 
-                return ['renderer' => SummaryRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of(
-                    '<span class="taxmod-value taxmod-ref-list">' . implode('<br>', array_map(
-                        static fn (TypedValue $w): string => RenderResult::escape($namen[(int) $w->reference] ?? $knoten[(int) $w->reference]->name ?? '#' . (int) $w->reference),
-                        $aufKnoten
-                    )) . '</span>'
-                )];
+                return ['renderer' => SummaryRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => null, 'result' => RenderResult::described(new \Taxmod\Core\Description\ShownList(array_map(
+                    static fn (TypedValue $w): \Taxmod\Core\Description\ShownValue => new \Taxmod\Core\Description\ShownValue($namen[(int) $w->reference] ?? $knoten[(int) $w->reference]->name ?? '#' . (int) $w->reference, \Taxmod\Core\Description\ValueKind::Record),
+                    $aufKnoten
+                )))];
             }
 
             if ($werte === [] || ! $verweise) {
@@ -7875,20 +7829,19 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
             foreach ($werte as $wert) {
                 $roh  = $woerter[(int) $wert->reference] ?? '#' . (int) $wert->reference;
-                $wort = RenderResult::escape($roh);
 
                 // *Trägt der Satz eine Adresse, führt der Verweis dorthin (D-955).*
                 if (isset($adressen[(int) $wert->reference])) {
-                    $teile[] = \Taxmod\Core\Renderer\MediaRenderer::link($adressen[(int) $wert->reference], $roh, true, $this->media);
+                    $teile[] = \Taxmod\Core\Renderer\MediaRenderer::linkTo($adressen[(int) $wert->reference], $roh, true, $this->media);
 
                     continue;
                 }
 
                 $ziel = $this->recordLink === null || $wert->reference === null ? '' : ($this->recordLink)($wert->reference);
-                $teile[] = $ziel === '' ? $wort : '<a class="taxmod-record-link" href="' . RenderResult::escape($ziel) . '">' . $wort . '</a>';
+                $teile[] = new \Taxmod\Core\Description\ShownValue($roh, \Taxmod\Core\Description\ValueKind::Record, $ziel);
             }
 
-            return ['renderer' => SummaryRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => '', 'result' => RenderResult::of('<span class="taxmod-value taxmod-ref-list">' . implode('<br>', $teile) . '</span>')];
+            return ['renderer' => SummaryRenderer::NAME, 'rows' => [], 'rowActs' => [], 'after' => null, 'result' => RenderResult::described(new \Taxmod\Core\Description\ShownList($teile))];
         }
 
         if ($purpose !== Purpose::Edit || ! $editable || $fieldPrefix === '') {
@@ -7903,7 +7856,6 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         }
 
         $name    = $fieldPrefix . '[' . $relation->id . '][values][]';
-        $form    = $formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"';
         $angebot = $context->surroundings->options;
         $medium  = $this->typeAt($relation) === SimpleType::Media;
         $bibliothek = $this->media;
@@ -7916,27 +7868,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             return $medium ? \Taxmod\Core\Renderer\MediaRenderer::describe((string) $wert->rawValue(), $bibliothek) : (string) $wert->rawValue();
         };
 
-        // *Eine Bildliste trägt die Marke, an der der Rand «Als Titelbild» anbietet (D-1205): das erste Bild ist das Titelbild.*
-        $html = '<span class="taxmod-switch-picker taxmod-value-picker"' . ($medium ? ' data-taxmod-pictures="1"' : '') . '><ol class="taxmod-switch-cascade">';
-
-        foreach ($werte as $platz => $wert) {
-            $roh   = (string) ($wert->reference ?? $wert->rawValue());
-            $wort  = $wortVon($wert);
-            $html .= '<li class="taxmod-switch-chosen" data-taxmod-id="' . RenderResult::escape($roh) . '">'
-                . '<input type="hidden" class="taxmod-switch-member" name="' . RenderResult::escape($name) . '" value="' . RenderResult::escape($roh) . '"' . $form . '>'
-                . '<span class="taxmod-switch-name">' . RenderResult::escape($wort) . '</span>'
-                . ' <button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="up"'
-                . ($platz === 0 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-up-alt2', $wort)) . '</button>'
-                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-move" data-taxmod-move="down"'
-                . ($platz === count($werte) - 1 ? ' disabled style="color:#1d2327;opacity:.35"' : ' style="color:#1d2327"') . '>'
-                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('arrow-down-alt2', $wort)) . '</button>'
-                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-list-remove" style="color:#b32d2e">'
-                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $wort)) . '</button>'
-                . '</li>';
-        }
-
-        $html .= '</ol><span class="taxmod-switch-add">';
+        $glieder = array_map(static fn (TypedValue $wert): array => ['value' => (string) ($wert->reference ?? $wert->rawValue()), 'word' => $wortVon($wert)], $werte);
         $genommen = array_map(static fn (TypedValue $wert): string => (string) ($wert->reference ?? $wert->rawValue()), $werte);
 
         // ⚠️ *Eine eindeutige Kante bietet nicht an, was schon ein anderer Satz hält (D-838) — sein Befund: «zusätzliche pcb [speichert] nicht».
@@ -7957,29 +7889,27 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // ⚠️ *Bleibt nichts zu wählen, sind Auswahl und «+» ausgegraut — sein Wort: «eine leere auswahl müssen wir denke ich nicht anzeigen
         // bzw ausgrauen» — und das ist die bestehende Regel: D-380 «select fields always greyed out when there is no entry», D-370 eine unmögliche
         // Handlung ist ausgegraut, nicht weg. Hier von Hand gebaut, weil die Liste nicht durch den ChoiceRenderer geht; ein gesperrtes Feld wird nicht geschickt.*
-        if ($waehlt) {
-            // *Das eine Auswahlfeld (Choosing) — ohne freie Wahl gesperrt und ausgegraut, der «+» mit.*
-            $html .= RenderResult::draw(Choosing::offer($name, array_map('strval', $frei), null, true, $formId, ChoicePurpose::ValueCandidate));
-        } else {
-            // *Alles andere wird geschrieben: ein Feld für den nächsten Wert, in der Gestalt seines Typs.*
-            $html .= '<input type="text" class="taxmod-value-new" name="' . RenderResult::escape($name) . '" data-taxmod-name="' . RenderResult::escape($name) . '"' . $form . ' size="30">';
-
-            // ⚠️ *Ein mehrfaches Medienfeld bekommt dieselben Knöpfe wie ein einfaches (D-858): Mediathek und Linkdialog füllen das Feld
-            // für den nächsten Wert.*
-            if ($medium) {
-                $html .= \Taxmod\Core\Renderer\MediaRenderer::buttons('', '', $this->dialogWords, true);
-            }
-        }
-
-        $html .= RenderResult::draw($waehlt ? AddChosen::beside($frei, $relation->name) : AddChosen::beside(['x' => ''], $relation->name)) . '</span></span>';
+        // *Das eine Auswahlfeld (Choosing) — ohne freie Wahl gesperrt und ausgegraut, der «+» mit. Alles andere wird geschrieben: ein Feld für
+        // den nächsten Wert, in der Gestalt seines Typs.* ⚠️ *Ein mehrfaches Medienfeld bekommt dieselben Knöpfe wie ein einfaches (D-858):
+        // Mediathek und Linkdialog füllen das Feld für den nächsten Wert. Eine Bildliste trägt die Marke, an der der Rand «Als Titelbild»
+        // anbietet (D-1205): das erste Bild ist das Titelbild.*
+        $kette = new \Taxmod\Core\Description\ValueChain(
+            $name,
+            $formId,
+            $medium,
+            $glieder,
+            $waehlt ? Choosing::offer($name, array_map('strval', $frei), null, true, $formId, ChoicePurpose::ValueCandidate) : null,
+            ! $waehlt && $medium ? \Taxmod\Core\Renderer\MediaRenderer::buttonsFor('', '', $this->dialogWords, true) : null,
+            $waehlt ? AddChosen::beside($frei, $relation->name) : AddChosen::beside(['x' => ''], $relation->name),
+        );
 
         return [
             'renderer' => $context->surroundings->options !== [] ? SummaryRenderer::NAME : 'field',
             // *Keine Zeilen für den Behälter: die Liste ist ein Bedienelement wie jedes andere und steht bei den einfachen Feldern.*
             'rows'     => [],
             'rowActs'  => [],
-            'after'    => '',
-            'result'   => RenderResult::of($html),
+            'after'    => null,
+            'result'   => RenderResult::described($kette),
         ];
     }
 
@@ -8004,11 +7934,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             }
         }
 
-        $einfuegen = (string) ($this->partActs['insert'] ?? '');
-        $entfernen = (string) ($this->partActs['remove'] ?? '');
-        $html      = '<table class="taxmod-ref-rows"><tbody>'
-            // *Damit eine ganz geleerte Liste ankommt und gelöscht wird.*
-            . '<input type="hidden" name="' . RenderResult::escape($name) . '" value=""' . ($formId === '' ? '' : ' form="' . RenderResult::escape($formId) . '"') . '>';
+        $zeilen = [];
 
         foreach ($werte === [] ? [null] : $werte as $wert) {
             $jetzt    = $wert?->reference;
@@ -8018,45 +7944,41 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 $optionen = [$jetzt => (string) ($woerter[$jetzt] ?? '#' . $jetzt)] + $optionen;
             }
 
-            $html .= '<tr class="taxmod-ref-row"><td>'
-                . RenderResult::draw(Choosing::offer($name, $optionen, $jetzt === null ? null : (string) $jetzt, true, $formId, ChoicePurpose::ReferenceRow))
-                . '</td><td class="taxmod-table-acts">'
-                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-ref-add" style="color:#1d2327"' . ($einfuegen === '' ? '' : ' title="' . RenderResult::escape($einfuegen) . '"') . '>'
-                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('plus-alt2', $einfuegen)) . '</button>'
-                . '<button type="button" class="button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-ref-remove" style="color:#b32d2e"' . ($entfernen === '' ? '' : ' title="' . RenderResult::escape($entfernen) . '"') . '>'
-                . RenderResult::draw(\Taxmod\Core\Description\Icon::named('trash', $entfernen)) . '</button>'
-                . '</td></tr>';
+            $zeilen[] = Choosing::offer($name, $optionen, $jetzt === null ? null : (string) $jetzt, true, $formId, ChoicePurpose::ReferenceRow);
         }
-
-        $html .= '</tbody></table>';
 
         // ⚠️ **Suchen und Baum auch hier** ([D-1078](../../../docs/NewConcept/90-decision-log.md)) — *derselbe Satzdialog wie bei der Einzelwahl
         // (D-791, D-805), je Satz ein Haken; «OK» setzt die Haken als Zeilen ein. Die Haken tragen keinen Namen: geschickt werden nur die Zeilen.*
-        $baum = $context->surroundings->recordTree;
-
-        if ($baum !== []) {
-            $knopf = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): \Taxmod\Core\Description\RecordChoice => \Taxmod\Core\Description\RecordChoice::forRows($wert, $wort, $suche, $passt);
-            $suchwort = (string) ($this->dialogWords['search'] ?? '');
-            $ok       = (string) ($this->dialogWords['ok'] ?? 'OK');
-
-            $html .= \Taxmod\Core\Renderer\RenderResult::draw(new \Taxmod\Core\Description\DialogBox(
-                'taxmod-ref-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $name),
-                RenderResult::draw(\Taxmod\Core\Description\Icon::named('search', $suchwort === '' ? $relation->name : $suchwort)),
-                RenderResult::escape($relation->name),
-                SummaryRenderer::browserBody($baum, $knopf, null, [], $this->dialogWords),
-                '<button type="button" class="button button-primary taxmod-ref-take">' . RenderResult::escape($ok) . '</button>',
-                'button ' . \Taxmod\Core\Renderer\Look::ICON_ONLY . ' taxmod-dialog-open taxmod-ref-browse',
-                cancel: (string) ($this->dialogWords['cancel'] ?? '')
-            ));
-        }
+        $baum    = $context->surroundings->recordTree;
+        $knopf   = static fn (string $wert, bool $an, string $wort, string $suche = '', bool $passt = false): \Taxmod\Core\Description\RecordChoice => \Taxmod\Core\Description\RecordChoice::forRows($wert, $wort, $suche, $passt);
+        $liste   = new \Taxmod\Core\Description\ReferenceList(
+            $name,
+            $formId,
+            $zeilen,
+            (string) ($this->partActs['insert'] ?? ''),
+            (string) ($this->partActs['remove'] ?? ''),
+            $baum === [] ? null : SummaryRenderer::browserBody($baum, $knopf, null, [], $this->dialogWords),
+            $relation->name,
+            (string) ($this->dialogWords['search'] ?? ''),
+            (string) ($this->dialogWords['ok'] ?? 'OK'),
+            (string) ($this->dialogWords['cancel'] ?? ''),
+        );
 
         return [
             'renderer' => SummaryRenderer::NAME,
             'rows'     => [],
             'rowActs'  => [],
-            'after'    => '',
-            'result'   => RenderResult::of('<div class="taxmod-ref-field">' . $html . '</div>'),
+            'after'    => null,
+            'result'   => RenderResult::described($liste),
         ];
+    }
+
+    /** Der Teil und dahinter, was eine Zeile hinzufügt (D-758) — ein Ergebnis, mit den Kanten und der Bedingung des Teils. */
+    private function mitDanach(RenderResult $teil, \Taxmod\Core\Description\PartAdd $danach): RenderResult
+    {
+        $beide = RenderResult::described(new \Taxmod\Core\Description\Sequence($teil->piece(), $danach));
+
+        return new RenderResult($beide->markup, $teil->usedRelations, $teil->condition, $beide->piece);
     }
 
     /** @var array<int, list<\Taxmod\Core\Model\RelationRecord>> Die Werte eines Satzes, einmal je Zeichenlauf gelesen (`CD-7`). */
@@ -8211,9 +8133,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
             $vorspalten[] = $teil === null || ($teil['id'] ?? 0) !== 0
                 ? []
-                : ['' => '<em class="taxmod-inherited"'
-                    . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"')
-                    . '>↑</em>'];
+                : ['' => new \Taxmod\Core\Description\InheritedMark($wort)];
 
             // WICHTIG: Die Felder des *gewaehlten* Knotens, nicht die des Kantenziels (D-584).
             // Die Kante zeigt auf den Basisknoten «Renderer»; im Datensatz steht «compact», und
@@ -8329,7 +8249,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
         // *Nur beim Bearbeiten, nur an einer Komposition mit mehreren, nur mit Worten vom Rand (`AR-2`). Der Halter ist der Satz, dessen
         // Name zuletzt im Präfix steht — ein Teil, den es noch nicht gibt (`0`), bekommt keine eigenen Kinder.*
         $akte   = [];
-        $danach = '';
+        $danach = null;
 
         // ⚠️ *Und an einer Verweisliste unter dem Komplex-Renderer (D-937): dort nimmt der Mülleimer nur den Verweis weg.*
         if ($purpose === Purpose::Edit && $editable && $this->partActs !== [] && $fieldPrefix !== ''
@@ -8380,7 +8300,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // ⚠️ **Mehrere hinzufügen** ([D-806](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «i select multiple parts and for
                 // each part a item is created … propose a button to add multiple». Nur, wo die Kante sagt, über welches Feld gewählt wird
                 // (`pick_field`); der Dialog ist der Satzdialog mit Baum und Liste, je Satz ein Haken; «bestätigen» schickt `add_parts`.*
-                $mehrere  = '';
+                $mehrere  = null;
                 $wahlFeld = ($this->partActs['many'] ?? '') === '' || $verweisliste ? null : $this->pickFieldOf($relation);
 
                 if ($wahlFeld !== null) {
@@ -8390,15 +8310,15 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     $schluessel = $halter . '-' . $relation->id;
 
                     if ($wahlBaum !== []) {
-                        $mehrere = RenderResult::draw(SummaryRenderer::multiDialog(
+                        $mehrere = SummaryRenderer::multiDialog(
                             $wahlBaum,
                             'taxmod_multi[' . $schluessel . '][]',
                             $formId,
                             'taxmod-multi-dialog-' . preg_replace('/[^a-z0-9_-]/i', '', $formId . $schluessel),
-                            RenderResult::draw(\Taxmod\Core\Description\Icon::named('plus-alt', $this->partActs['many'])) . ' ' . RenderResult::escape($this->partActs['many']),
-                            RenderResult::draw(new \Taxmod\Core\Renderer\Control('do[' . $schluessel . ']', 'add_parts', $this->partActs['many'], '', true, false, '', $formId, true)),
+                            new \Taxmod\Core\Description\Sequence(\Taxmod\Core\Description\Icon::named('plus-alt', $this->partActs['many']), new \Taxmod\Core\Description\Words(' ' . $this->partActs['many'])),
+                            new \Taxmod\Core\Renderer\Control('do[' . $schluessel . ']', 'add_parts', $this->partActs['many'], '', true, false, '', $formId, true),
                             $this->dialogWords
-                        ));
+                        );
                     }
                 }
 
@@ -8406,9 +8326,11 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // «zweimal plus». Jede Zeile trägt ihr eigenes «+» (D-830); unter der letzten eingefügt ist dasselbe wie hinten angehängt.
                 // Ohne Zeile gäbe es sonst keinen Weg zur ersten.*
                 $zeilenDa = array_filter($teilIds, static fn (int $id): bool => $id !== 0) !== [];
-                $danach   = '<div class="taxmod-part-add">' . ($zeilenDa && ($this->partActs['insert'] ?? '') !== '' && ! $verweisliste ? '' : RenderResult::draw(
-                    new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . ']', 'add_part', $this->partActs['add'], '', true, false, 'plus-alt2', $formId)
-                )) . $mehrere . '</div>';
+                $danach   = new \Taxmod\Core\Description\PartAdd(
+                    $zeilenDa && ($this->partActs['insert'] ?? '') !== '' && ! $verweisliste ? null
+                        : new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . ']', 'add_part', $this->partActs['add'], '', true, false, 'plus-alt2', $formId),
+                    $mehrere
+                );
             }
         }
 
@@ -8436,7 +8358,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
             'rows'     => $zeilen,
             'rowActs'  => $akte,
             'after'    => $danach,
-            'result'   => new RenderResult($gezeichnet->markup . $danach, $gezeichnet->usedRelations, $gezeichnet->condition),
+            'result'   => $danach === null ? $gezeichnet : $this->mitDanach($gezeichnet, $danach),
         ];
     }
 

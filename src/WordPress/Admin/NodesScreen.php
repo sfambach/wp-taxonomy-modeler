@@ -33,6 +33,7 @@ use Taxmod\Core\Renderer\FieldRowRenderer;
 use Taxmod\Core\Renderer\HeadRenderer;
 use Taxmod\WordPress\Draw\HintMarkup;
 use Taxmod\WordPress\Draw\IconMarkup;
+use Taxmod\WordPress\Draw\PickOpenerMarkup;
 use Taxmod\Core\Renderer\Level;
 use Taxmod\Core\Renderer\PageSlot;
 use Taxmod\Core\Renderer\Purpose;
@@ -4263,18 +4264,9 @@ final class NodesScreen
     ): string {
         $form = $formId === '' ? '' : ' form="' . esc_attr($formId) . '"';
 
-        // ⚠️ *Der Öffner selbst ist an einer Stelle gebaut ({@see Rendering::pickOpener()}) — der Kern braucht ihn ebenso für einen Verweis auf
+        // ⚠️ *Der Öffner selbst ist an einer Stelle gebaut ({@see PickOpenerMarkup}) — der Kern braucht ihn ebenso für einen Verweis auf
         // einen ganzen Baum; hier kommen nur das Icon mit Wort und der Akt dahinter dazu.*
-        return Rendering::pickOpener(
-            $field,
-            $formId,
-            $chosen,
-            $initial,
-            $barred,
-            $open,
-            $title,
-            IconMarkup::dashicon($icon) . '<span class="screen-reader-text">' . esc_html($label) . '</span>'
-        )
+        return PickOpenerMarkup::of(new \Taxmod\Core\Description\PickOpener($field, $formId, $chosen, $initial, $barred, $open, $title, \Taxmod\Core\Description\Icon::named($icon, $label)))
             . ($act === '' ? '' : '<button type="submit" name="do" value="' . esc_attr($act) . '" class="taxmod-pick-submit" hidden' . ($address === null ? '' : ' data-taxmod-address="' . esc_attr($address->token()) . '"') . $form . '>' . esc_html($label) . '</button>');
     }
 

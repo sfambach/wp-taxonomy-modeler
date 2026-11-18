@@ -210,7 +210,7 @@ final class TableRenderer extends RendererNode
         // ⚠️ *Auch hier über die Spaltenliste: fehlt einer Zeile eine Vorspalte, bleibt die Zelle
         // leer statt wegzufallen.*
         foreach ($vorspalten as $kopf) {
-            $vorne[] = (string) ($context->surroundings->rowLead[$nummer][$kopf] ?? '');
+            $vorne[] = $context->surroundings->rowLead[$nummer][$kopf] ?? '';
         }
 
         foreach (array_keys($spalten) as $relationId) {
@@ -236,7 +236,7 @@ final class TableRenderer extends RendererNode
             && ! $feld->relation->isSetting()
             && $feld->relation->multiplicity->allowsMany()
             && $feld->rowActs === []
-            && $feld->after === '';
+            && $feld->after === null;
     }
 
     /** Die Anzahl der Sätze eines 1..n-Teils, mit dem Link der Zeile, wo einer mitkommt (D-825). */

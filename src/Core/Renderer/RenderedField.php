@@ -76,7 +76,7 @@ final class RenderedField
          */
         public readonly array $rowActs = [],
         /** Was hinter den Zeilen steht — der Knopf, der eine hinzufügt (D-758). */
-        public readonly string $after = '',
+        public readonly ?\Taxmod\Core\Description\Describes $after = null,
         /**
          * Was an dieser Stelle selbst eingestellt ist, für die Zeilen in {@see $rows} — etwa eine Tabelle ohne Kopfzeile (D-999).
          *
