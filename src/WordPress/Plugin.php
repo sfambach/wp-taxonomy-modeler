@@ -50,7 +50,7 @@ use Taxmod\WordPress\Persistence\WpdbRelationRepository;
  */
 final class Plugin
 {
-    public const VERSION     = '0.2.138';
+    public const VERSION     = '0.2.139';
 
     /** `apply_filters(RECORD_EDITOR_FILTER, '', $recordId, $returnTo, $toolbar)`: the record's edit form for a module's page (D-1025); `$toolbar` = the module's own button groups (escaped HTML), placed after «Save» in the one toolbar (D-1308). */
     public const RECORD_EDITOR_FILTER = 'taxmod_record_editor';
@@ -1079,14 +1079,6 @@ final class Plugin
         );
     }
 
-    /**
-     * The modelling screen, wired.
-     *
-     * ⚠️ **Public so that a boundary check can render it.** A fatal error reached the screen on
-     * 2026-08-25 — a control group handed in as a string where a list was expected — and **nothing
-     * guarded it**: the boundary runs exercise services, and `render()` was the one thing with no
-     * check at all. `PR-9` asks every package to add to the net, so it does.
-     */
     /** @var array{0: int, 1: NodesScreen}|null The screen that draws the choosers of modules and the state of writing it was built at ({@see self::chooserScreen()}). */
     private ?array $chooserScreen = null;
 
@@ -1109,6 +1101,14 @@ final class Plugin
         return $this->chooserScreen[1];
     }
 
+    /**
+     * The modelling screen, wired.
+     *
+     * ⚠️ **Public so that a boundary check can render it.** A fatal error reached the screen on
+     * 2026-08-25 — a control group handed in as a string where a list was expected — and **nothing
+     * guarded it**: the boundary runs exercise services, and `render()` was the one thing with no
+     * check at all. `PR-9` asks every package to add to the net, so it does.
+     */
     public function screen(): NodesScreen
     {
         // ⚠️ *Dasselbe Exemplar des Changelogs wie ueberall ([D-470](../../docs/NewConcept/90-decision-log.md)),
