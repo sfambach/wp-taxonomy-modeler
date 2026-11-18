@@ -35,9 +35,9 @@ final class AddonChain implements Describes
             'inherited'      => $this->inherited,
             'inherited_word' => $this->inheritedWord,
             'entries'        => array_map(static fn (AddonEntry $e): array => $e->toArray(), $this->entries),
-            'templates'      => array_map(static fn (AddonEntry $e): array => $e->toArray(), $this->templates),
             'candidates'     => $this->candidates->toArray(),
             'add'            => $this->add->toArray(),
+            'templates'      => array_map(static fn (AddonEntry $e): array => $e->toArray(), $this->templates),
         ];
     }
 }

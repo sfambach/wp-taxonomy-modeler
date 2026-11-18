@@ -209,7 +209,7 @@ final class Control implements \Taxmod\Core\Description\Describes
             'form'            => $this->form,
             'leads'           => $this->leads,
             'glyph'           => $this->glyph,
-            'opens'           => $this->opens === null ? null : ['id' => $this->opens->id, 'title' => $this->opens->title, 'confirm' => $this->opens->confirm, 'cancel' => $this->opens->cancel],
+            'opens'           => $this->opens === null ? null : ['id' => $this->opens->id, 'title' => $this->opens->title, 'body' => $this->opens->body, 'confirm' => $this->opens->confirm, 'cancel' => $this->opens->cancel],
             'icon_with_label' => $this->iconWithLabel,
             'address'         => $this->address?->token(),
         ];

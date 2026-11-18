@@ -36,11 +36,12 @@ final class SettingRow implements Describes
 
     public function toArray(): array
     {
+        // In reading order (A22): the key with its hint, then the control.
         return [
             'setting'       => $this->key,
+            'hint'          => $this->hint,
             'control'       => $this->control?->toArray(),
             'undrawn'       => $this->undrawn,
-            'hint'          => $this->hint,
             'origin'        => $this->origin->value,
             'origin_text'   => $this->originText,
             'locked'        => $this->locked,

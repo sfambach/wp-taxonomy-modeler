@@ -3,6 +3,7 @@
 namespace Taxmod\WordPress\Draw;
 
 use Taxmod\Core\Description\Describes;
+use Taxmod\Core\Description\Drawer;
 use Taxmod\Core\Renderer\RenderResult;
 
 /**
@@ -12,7 +13,8 @@ use Taxmod\Core\Renderer\RenderResult;
  */
 final class Markup
 {
-    private static ?EdgeDrawer $drawer = null;
+    /** The page-parity check (A22) puts a recording drawer in front of the edge drawer here. */
+    private static ?Drawer $drawer = null;
 
     public static function of(RenderResult|Describes|null $what): string
     {

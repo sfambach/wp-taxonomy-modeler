@@ -31,10 +31,10 @@ final class RecordBranch implements Describes
     {
         return [
             'branch'      => $this->name,
+            'count'       => $this->count,
             'depth'       => $this->depth,
             'open'        => $this->open,
             'choices'     => array_map(static fn (RecordChoice $c): array => $c->toArray(), $this->choices),
-            'count'       => $this->count,
             'add_at'      => $this->addAt,
             'add_word'    => $this->addWord,
             'new_at'      => $this->newAt,

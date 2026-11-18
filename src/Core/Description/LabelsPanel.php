@@ -35,11 +35,13 @@ final class LabelsPanel implements Describes
 
     public function toArray(): array
     {
+        // In reading order (A22): the locale first, then the short slots in one line, the long ones beneath.
         return [
-            'labels'        => array_map(static fn (LabelSlot $s): array => get_object_vars($s), $this->slots),
-            'editing'       => $this->editing,
-            'locale_title'  => $this->localeTitle,
+            'labels'        => $this->localeTitle,
             'locale_picker' => $this->localePicker instanceof Describes ? $this->localePicker->toArray() : $this->localePicker,
+            'short'         => array_map(static fn (LabelSlot $s): array => get_object_vars($s), array_values(array_filter($this->slots, static fn (LabelSlot $s): bool => ! $s->isLong))),
+            'long'          => array_map(static fn (LabelSlot $s): array => get_object_vars($s), array_values(array_filter($this->slots, static fn (LabelSlot $s): bool => $s->isLong))),
+            'editing'       => $this->editing,
             'form'          => $this->formId,
             'action'        => $this->action,
             'carried'       => $this->carried,

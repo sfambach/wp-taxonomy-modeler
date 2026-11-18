@@ -33,14 +33,14 @@ final class TableView implements Describes
     {
         $teil = static fn (Describes|string|null $d): mixed => $d instanceof Describes ? $d->toArray() : $d;
 
+        // In reading order (A22): the heads above the rows.
         return [
-            'table'        => array_map(static fn (array $r): array => [
+            'table'        => ['lead_heads' => $this->leadHeads, 'column_heads' => $this->columnHeads],
+            'rows'         => array_map(static fn (array $r): array => [
                 'lead'  => array_map($teil, $r['lead']),
                 'cells' => array_map($teil, $r['cells']),
                 'acts'  => $teil($r['acts']),
             ], $this->rows),
-            'lead_heads'   => $this->leadHeads,
-            'column_heads' => $this->columnHeads,
             'with_acts'    => $this->withActs,
             'orientation'  => $this->orientation->value,
             'with_heads'   => $this->withHeads,

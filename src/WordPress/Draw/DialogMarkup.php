@@ -37,6 +37,8 @@ final class DialogMarkup
         bool $open = false,
         /** Name of the tree button beside a chooser's field; set, the opener looks like a locked field and the tree opens the dialog (D-1163). */
         ?string $tree = null,
+        /** The opener's description for its tooltip; empty: an icon-only opener shows its name (D-847). */
+        string $openerTitle = '',
     ): string {
         $id = Html::escape($switch);
 
@@ -67,7 +69,8 @@ final class DialogMarkup
             ])
             // ⚠️ *Ein Öffner, der nur ein Symbol ist, trägt dessen Namen als Tooltip (D-847).*
             . '<label class="' . Html::escape($openerClass) . '" for="' . $id . '"'
-            . (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : '')
+            . ($openerTitle !== '' ? ' title="' . Html::escape($openerTitle) . '"'
+                : (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : ''))
             . '>' . $opener . '</label>'
             . $baum
             . '<span class="taxmod-dialog">'
