@@ -2,6 +2,11 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\MediaButtons;
+use Taxmod\Core\Description\MediaLink;
+use Taxmod\Core\Description\MediaLook;
+use Taxmod\Core\Description\MediaPicker;
+use Taxmod\Core\Description\ShownValue;
 use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\Type\MediaType;
 use Taxmod\Core\Port\MediaFile;
@@ -28,16 +33,13 @@ final class MediaRenderer extends TypedFieldRenderer
         return [SimpleType::Media];
     }
 
-    protected function display(RenderContext $context): string
+    protected function display(RenderContext $context): ShownValue|MediaLink
     {
         $adresse = $context->value->isNothing() ? '' : trim((string) $context->value->text);
 
-        if ($adresse === '') {
-            return $this->createHtmlValueSpan('');
-        }
-
-        // *Mit Beschriftungsfeld ist die Beschriftung der Linktext (D-856); leer bleibt es die aus der Datei gerechnete.*
-        return $this->createHtmlValueSpan(self::link($adresse, (string) ($context->surroundings->refersTo ?? ''), self::opensNewTab($context), $context->surroundings->mediaLibrary));
+        return $adresse === ''
+            ? new ShownValue('')
+            : self::linkTo($adresse, (string) ($context->surroundings->refersTo ?? ''), self::opensNewTab($context), $context->surroundings->mediaLibrary)->asValue();
     }
 
     /** Die Datei der Mediathek hinter `media:<Id>`, oder `null` — für eine Adresse von draussen oder ohne Naht (D-865). */
@@ -51,6 +53,11 @@ final class MediaRenderer extends TypedFieldRenderer
     /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
     public static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?MediaLibrary $bibliothek = null): string
     {
+        return RenderResult::draw(self::linkTo($adresse, $beschriftung, $neuerTab, $bibliothek));
+    }
+
+    public static function linkTo(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?MediaLibrary $bibliothek = null): MediaLink
+    {
         $schluessel = MediaType::vaultKeyOf($adresse);
 
         // ⚠️ *Eine Datei der verschlüsselten Ablage hat keine öffentliche Adresse (D-1023): den Link gibt der Rand nur dem, der sie
@@ -60,8 +67,8 @@ final class MediaRenderer extends TypedFieldRenderer
             $wort = trim($beschriftung) !== '' ? trim($beschriftung) : ($dokument?->title ?? $adresse);
 
             return $dokument === null || $dokument->url === ''
-                ? '<span class="taxmod-media taxmod-media-private">' . RenderResult::escape($wort) . '</span>'
-                : '<a class="taxmod-media taxmod-media-private" href="' . RenderResult::escape($dokument->url) . '">' . RenderResult::escape($wort) . '</a>';
+                ? new MediaLink(MediaLook::PrivateUnreadable, $wort)
+                : new MediaLink(MediaLook::Private, $wort, $dokument->url);
         }
 
         $wort  = trim($beschriftung) !== '' ? trim($beschriftung) : self::describe($adresse, $bibliothek);
@@ -69,30 +76,19 @@ final class MediaRenderer extends TypedFieldRenderer
 
         // ⚠️ *Eine Id, zu der die Mediathek nichts sagt, steht als das da, was gespeichert ist — kein erfundenes Wort (`AR-2`).*
         if (MediaType::libraryIdOf($adresse) !== null && $datei === null) {
-            return '<span class="taxmod-media taxmod-media-missing">' . RenderResult::escape($wort) . '</span>';
+            return new MediaLink(MediaLook::Missing, $wort);
         }
 
-        $ziel = $datei === null ? self::absolute($adresse) : $datei->url;
-        $auf  = $neuerTab ? ' target="_blank" rel="noopener"' : '';
-
-        // *Ein Bild zeigt sein Vorschaubild; der Klick öffnet das ganze Bild (D-865).*
-        if ($datei !== null && $datei->isImage()) {
-            return '<a class="taxmod-media taxmod-media-image" href="' . RenderResult::escape($ziel) . '" title="' . RenderResult::escape($wort) . '"' . $auf . '>'
-                . '<img class="taxmod-media-thumb" src="' . RenderResult::escape($datei->thumbnail) . '" alt="' . RenderResult::escape($wort) . '" loading="lazy"></a>';
-        }
-
+        // *Ein Bild zeigt sein Vorschaubild; der Klick öffnet das ganze Bild (D-865). Ob in einem neuen Tab, sagt `new_tab` (D-858).*
         if ($datei !== null) {
-            return '<a class="taxmod-media" href="' . RenderResult::escape($ziel) . '"' . $auf . '>' . RenderResult::escape($wort) . '</a>';
+            return $datei->isImage()
+                ? new MediaLink(MediaLook::Image, $wort, $datei->url, $datei->thumbnail, $neuerTab)
+                : new MediaLink(MediaLook::File, $wort, $datei->url, newTab: $neuerTab);
         }
 
         // ⚠️ *Ein eigener Beitrag, der nicht veröffentlicht ist, sagt es neben dem Link (D-1413) — sein Wort: «muss ersichtlich sein
         // sowohl in der suche als auch dann im objekt».*
-        $status = $bibliothek?->postStateOf($adresse) ?? '';
-
-        // *Ob in einem neuen Tab, sagt die Einstellung `new_tab` (D-858); Vorgabe ja.*
-        return '<a class="taxmod-media" href="' . RenderResult::escape(self::absolute($adresse)) . '"' . ($neuerTab ? ' target="_blank" rel="noopener"' : '') . '>'
-            . RenderResult::escape($wort) . '</a>'
-            . ($status === '' ? '' : ' <span class="taxmod-media-state">' . RenderResult::escape($status) . '</span>');
+        return new MediaLink(MediaLook::Address, $wort, self::absolute($adresse), newTab: $neuerTab, state: $bibliothek?->postStateOf($adresse) ?? '');
     }
 
     /**
@@ -150,24 +146,18 @@ final class MediaRenderer extends TypedFieldRenderer
         return $rechner !== '' ? $rechner . $pfad : $adresse;
     }
 
-    protected function input(RenderContext $context): string
+    protected function input(RenderContext $context): MediaPicker
     {
         $adresse = $context->value->isNothing() ? '' : (string) $context->value->text;
-        $form    = $context->surroundings->formId === '' ? '' : ' form="' . RenderResult::escape($context->surroundings->formId) . '"';
-        $link    = '<input type="text" inputmode="url" class="taxmod-media-link" name="' . RenderResult::escape($context->fieldName) . '"'
-            . ' value="' . RenderResult::escape($adresse) . '" size="30"' . $form . '>';
+        $waehlt  = $context->fieldName !== '' && $context->surroundings->refersTo === null;
 
-        // ⚠️ *Mit Beschriftungsfeld stehen die Knöpfe und der Link rechts hinter der Zeile, nicht am Feld (D-856, D-858) — sein Wort: «alle
-        // buttons bitte nach rechts».*
-        if ($context->fieldName === '' || $context->surroundings->refersTo !== null) {
-            return $link;
-        }
-
-        return '<span class="taxmod-media-input">'
-            . $link
-            . self::buttons($context->fieldName, '', $context->surroundings->dialogWords, self::opensNewTab($context))
-            . ($adresse === '' ? '' : ' ' . $this->display($context))
-            . '</span>';
+        return new MediaPicker(
+            $context->fieldName,
+            $adresse,
+            $context->surroundings->formId,
+            $waehlt ? self::buttonsFor($context->fieldName, '', $context->surroundings->dialogWords, self::opensNewTab($context)) : null,
+            $waehlt && $adresse !== '' ? self::linkTo(trim($adresse), (string) ($context->surroundings->refersTo ?? ''), self::opensNewTab($context), $context->surroundings->mediaLibrary)->asValue() : null,
+        );
     }
 
     /** Ob ein Link in einem neuen Tab öffnet — die Einstellung `new_tab` am Medienfeld, Vorgabe ja ([D-858](../../../docs/NewConcept/90-decision-log.md)). */
@@ -186,16 +176,12 @@ final class MediaRenderer extends TypedFieldRenderer
      */
     public static function buttons(string $adresseName, string $beschriftungName, array $worte, bool $neuerTab): string
     {
-        $daten = ($adresseName === '' ? '' : ' data-taxmod-address="' . RenderResult::escape($adresseName) . '"')
-            . ($beschriftungName === '' ? '' : ' data-taxmod-caption="' . RenderResult::escape($beschriftungName) . '"')
-            . ' data-taxmod-newtab="' . ($neuerTab ? '1' : '0') . '"';
-        $knopf = static function (string $klasse, string $symbol, string $wort) use ($daten): string {
-            return '<button type="button" class="button ' . Look::ICON_ONLY . ' ' . $klasse . '" style="color:#1d2327"'
-                . ($wort === '' ? '' : ' title="' . RenderResult::escape($wort) . '"') . $daten . '>'
-                . RenderResult::draw(\Taxmod\Core\Description\Icon::named($symbol, $wort)) . '</button>';
-        };
+        return RenderResult::draw(self::buttonsFor($adresseName, $beschriftungName, $worte, $neuerTab));
+    }
 
-        return $knopf('taxmod-media-library', 'media-default', (string) ($worte['upload'] ?? ''))
-            . $knopf('taxmod-media-wplink', 'admin-links', (string) ($worte['link'] ?? ''));
+    /** @param array<string, string> $worte */
+    public static function buttonsFor(string $adresseName, string $beschriftungName, array $worte, bool $neuerTab): MediaButtons
+    {
+        return new MediaButtons($adresseName, $beschriftungName, (string) ($worte['upload'] ?? ''), (string) ($worte['link'] ?? ''), $neuerTab);
     }
 }

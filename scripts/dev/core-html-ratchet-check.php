@@ -11,13 +11,14 @@
 const ROOT = __DIR__ . '/../..';
 
 /** Measured 2026-11-17 on main 7b92449f; the dispatcher arms fell to 0 with plan step 4 the same day; 2026-11-18 the comments
- * stopped counting (D-1429 O1: 54 → 43, 249 → 247) and the starter pattern drew its block markup at the edge (→ 42); the typed values describe and the edge draws them (→ 34, 228); choices, switches and moments too, select and switch markup at the edge (→ 30, 213); the building blocks (button, dialog, icon, hint, grid, conflict) draw at the edge (→ 24, 186). */
+ * stopped counting (D-1429 O1: 54 → 43, 249 → 247) and the starter pattern drew its block markup at the edge (→ 42); the typed values describe and the edge draws them (→ 34, 228); choices, switches and moments too, select and switch markup at the edge (→ 30, 213); the building blocks (button, dialog, icon, hint, grid, conflict) draw at the edge (→ 24, 186); the tiles too (→ 22); media links, buttons and picker (→ 21, 167). */
 const CEILINGS = [
-    'core files with HTML tags'          => 24,
-    'RenderResult::escape() in the core' => 186,
+    'core files with HTML tags'          => 21,
+    'RenderResult::escape() in the core' => 167,
     'hook calls in the core'             => 0,
     'arms of the node page dispatcher'   => 0,
     'modeller pages without the template' => 9,
+    'old names bridged for the modules'  => 10,
 ];
 
 const HTML_TAG = '/<(div|span|a|table|tr|td|th|p|ul|ol|li|input|select|option|label|form|button|details|summary|img|strong|em|h[1-6]|br|textarea|nav|section|fieldset|legend|dl|dt|dd|code|small|time|figure|svg|template)[ >\/"\']/';
@@ -92,6 +93,9 @@ foreach (phpFiles(ROOT . '/src/WordPress') as $file) {
         $where['modeller pages without the template'][] = substr($file, strlen(ROOT) + 1);
     }
 }
+
+// A17, D-1430: the drawing classes that left the core keep their old name for the modules, in one list; it may only shrink.
+$counts['old names bridged for the modules'] = preg_match_all("/^\s*'Taxmod\\\\\\\\Core\\\\\\\\[^']+'\s*=>/m", (string) file_get_contents(ROOT . '/src/WordPress/Draw/FormerNames.php'));
 
 $red = 0;
 

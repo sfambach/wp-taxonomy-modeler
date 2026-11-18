@@ -1,6 +1,9 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Tile;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Tile\Tile;
+use Taxmod\Core\Tile\TileTone;
 
 /**
  * The one look of every tile in the modeller and its modules (D-1149): a row that wraps, each tile a link with its figure,

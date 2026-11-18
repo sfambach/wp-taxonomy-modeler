@@ -15,7 +15,7 @@ use Taxmod\Core\Tile\MonthlySeries;
 use Taxmod\Core\Tile\Period;
 use Taxmod\Core\Tile\PeriodSpan;
 use Taxmod\Core\Tile\Tile;
-use Taxmod\Core\Tile\TileGrid;
+use Taxmod\WordPress\Draw\TileGrid;
 use Taxmod\Core\Tile\TileTone;
 use Taxmod\WordPress\Persistence\Ancestry;
 use Taxmod\WordPress\Persistence\MetricSums;

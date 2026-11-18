@@ -5,8 +5,9 @@ One look for every tile in the modeller and its modules, and the arithmetic of a
 | File | What |
 |---|---|
 | [`Tile.php`](Tile.php), [`TileTone.php`](TileTone.php) | one tile: label, figure, lines, bars, actions, where a click leads |
-| [`TileGrid.php`](TileGrid.php) | the markup of a row of tiles, with its style once per page |
 | [`MonthlySeries.php`](MonthlySeries.php) | values per month over a window ending now; months without records count 0 |
+
+The markup of a row of tiles and of the period chart is drawn at the edge since renderer step 6c (D-1429 O3): [`../../WordPress/Draw/TileGrid.php`](../../WordPress/Draw/TileGrid.php), [`../../WordPress/Draw/PeriodChart.php`](../../WordPress/Draw/PeriodChart.php).
 
 The key figure itself is an add-on function on a node: [`../Addon/MetricAddon.php`](../Addon/MetricAddon.php). Its query lives at the
 boundary (`src/WordPress/Admin/Tiles.php`), because it needs the database.

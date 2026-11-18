@@ -9,10 +9,10 @@ use Taxmod\Core\Addon\MetricAddon;
 use Taxmod\Core\Addon\ShippedAddons;
 use Taxmod\Core\Tile\MonthlySeries;
 use Taxmod\Core\Tile\Period;
-use Taxmod\Core\Tile\PeriodChart;
+use Taxmod\WordPress\Draw\PeriodChart;
 use Taxmod\Core\Tile\PeriodSpan;
 use Taxmod\Core\Tile\Tile;
-use Taxmod\Core\Tile\TileGrid;
+use Taxmod\WordPress\Draw\TileGrid;
 use Taxmod\Core\Tile\TileTone;
 
 /**

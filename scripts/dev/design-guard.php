@@ -26,7 +26,7 @@ if ($repos === []) {
 }
 
 /** The shared building blocks themselves: they are the one place that draws a heading, a dialog, a style. */
-const SHARED_BLOCKS = '#/src/(WordPress/Admin/(ListPage|Tiles)|Core/Tile/TileGrid)\.php$#';
+const SHARED_BLOCKS = '#/src/WordPress/(Admin/(ListPage|Tiles)|Draw/TileGrid)\.php$#';
 
 /** Classes of the modeller allowed to hold SQL: the persistence layer and the one owner of each own table. */
 const MODELLER_DATA_ACCESS = '#/src/WordPress/(Persistence/|Import/(InboxTable|InboxSchema)\.php|Printing/(PrintJobs|PrintJobSchema)\.php|Currency/(EcbRates|RateSchema)\.php)#';

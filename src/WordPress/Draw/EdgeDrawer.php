@@ -14,6 +14,10 @@ use Taxmod\Core\Description\Icon;
 use Taxmod\Core\Description\Drawer;
 use Taxmod\Core\Description\InputKind;
 use Taxmod\Core\Description\Locked;
+use Taxmod\Core\Description\MediaButtons;
+use Taxmod\Core\Description\MediaLink;
+use Taxmod\Core\Description\MediaLook;
+use Taxmod\Core\Description\MediaPicker;
 use Taxmod\Core\Description\Sequence;
 use Taxmod\Core\Description\ShownValue;
 use Taxmod\Core\Description\ValueInput;
@@ -43,6 +47,9 @@ final class EdgeDrawer implements Drawer
             $piece instanceof Choosing   => $this->choosing($piece),
             $piece instanceof Icon       => $piece->character ? IconMarkup::glyph($piece->symbol, $piece->label) : IconMarkup::dashicon($piece->symbol, $piece->label),
             $piece instanceof Hint       => HintMarkup::icon($piece->text),
+            $piece instanceof MediaLink  => $piece->asValue ? self::valueSpan(self::mediaLink($piece)) : self::mediaLink($piece),
+            $piece instanceof MediaButtons => self::mediaButtons($piece),
+            $piece instanceof MediaPicker => $this->mediaPicker($piece),
             $piece instanceof Control    => ControlMarkup::button($piece),
             $piece instanceof ActsForm   => ControlMarkup::actsForm($piece->id, $piece->submits, $piece->controls),
             $piece instanceof Carried    => ControlMarkup::carried($piece),
@@ -150,6 +157,44 @@ final class EdgeDrawer implements Drawer
         return '<span class="taxmod-swatch" style="display:inline-block;width:1em;height:1em;vertical-align:middle;margin-right:.3em;'
             . (self::isPatchable($hex) ? 'border:1px solid #8c8f94;background:' . self::e($hex) : 'border:1px dashed #8c8f94')
             . '"></span>';
+    }
+
+    private static function mediaLink(MediaLink $link): string
+    {
+        $auf  = $link->newTab ? ' target="_blank" rel="noopener"' : '';
+        $wort = self::e($link->word);
+
+        return match ($link->look) {
+            MediaLook::Private           => '<a class="taxmod-media taxmod-media-private" href="' . self::e($link->url) . '">' . $wort . '</a>',
+            MediaLook::PrivateUnreadable => '<span class="taxmod-media taxmod-media-private">' . $wort . '</span>',
+            MediaLook::Missing           => '<span class="taxmod-media taxmod-media-missing">' . $wort . '</span>',
+            MediaLook::Image             => '<a class="taxmod-media taxmod-media-image" href="' . self::e($link->url) . '" title="' . $wort . '"' . $auf . '>'
+                . '<img class="taxmod-media-thumb" src="' . self::e($link->thumbnail) . '" alt="' . $wort . '" loading="lazy"></a>',
+            MediaLook::File              => '<a class="taxmod-media" href="' . self::e($link->url) . '"' . $auf . '>' . $wort . '</a>',
+            MediaLook::Address           => '<a class="taxmod-media" href="' . self::e($link->url) . '"' . $auf . '>' . $wort . '</a>'
+                . ($link->state === '' ? '' : ' <span class="taxmod-media-state">' . self::e($link->state) . '</span>'),
+        };
+    }
+
+    private static function mediaButtons(MediaButtons $knoepfe): string
+    {
+        $daten = ($knoepfe->addressField === '' ? '' : ' data-taxmod-address="' . self::e($knoepfe->addressField) . '"')
+            . ($knoepfe->captionField === '' ? '' : ' data-taxmod-caption="' . self::e($knoepfe->captionField) . '"')
+            . ' data-taxmod-newtab="' . ($knoepfe->newTab ? '1' : '0') . '"';
+        $knopf = static fn (string $klasse, string $symbol, string $wort): string => '<button type="button" class="button ' . ControlMarkup::ICON_ONLY . ' ' . $klasse . '" style="color:#1d2327"'
+            . ($wort === '' ? '' : ' title="' . self::e($wort) . '"') . $daten . '>' . IconMarkup::dashicon($symbol, $wort) . '</button>';
+
+        return $knopf('taxmod-media-library', 'media-default', $knoepfe->libraryWord) . $knopf('taxmod-media-wplink', 'admin-links', $knoepfe->linkWord);
+    }
+
+    private function mediaPicker(MediaPicker $feld): string
+    {
+        $link = '<input type="text" inputmode="url" class="taxmod-media-link" name="' . self::e($feld->name) . '"'
+            . ' value="' . self::e($feld->address) . '" size="30"' . ($feld->form === '' ? '' : ' form="' . self::e($feld->form) . '"') . '>';
+
+        return $feld->buttons === null
+            ? $link
+            : '<span class="taxmod-media-input">' . $link . self::mediaButtons($feld->buttons) . ($feld->current === null ? '' : ' ' . $this->draw($feld->current)) . '</span>';
     }
 
     private static function momentType(string $precision): string

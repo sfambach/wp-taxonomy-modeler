@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Tile;
+namespace Taxmod\WordPress\Draw;
 
 /**
  * The chart of the period view (D-1167): per step one bar for each series, side by side, scaled to the largest value, as
