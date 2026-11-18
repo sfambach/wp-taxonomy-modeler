@@ -46,6 +46,12 @@ $js = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/view-dialog.js')
 check('the loader sets src from data-src when the dialog opens', str_contains($js, 'taxmod-dialog-switch') && str_contains($js, "setAttribute( 'src'"));
 $icon = ListPage::viewDialog('kauf-1', 'Kauf', 'Kauf', $url, 'visibility');
 check('with an icon the opener is an icon button', str_contains($icon, 'taxmod-icon-button') && str_contains($icon, 'dashicons-visibility'), $icon);
+$framed = ListPage::viewDialog('kauf-2', 'Material', 'Material bearbeiten: X', $url, 'edit', true);
+check('his finding 2026-11-18 18:24: an icon among a row\'s buttons is framed like them, not borderless', str_contains($framed, 'class="button taxmod-dialog-open taxmod-view-dialog-open"') && ! str_contains($framed, 'taxmod-icon-button'), $framed);
+check('his finding 18:25: the icon opener carries its word as tooltip on itself', preg_match('/<label[^>]*taxmod-dialog-open[^>]*title="Material"/', $framed) === 1 || preg_match('/<label[^>]*title="Material"[^>]*taxmod-dialog-open/', $framed) === 1, $framed);
+$act = ListPage::dialogAction('nicht-1', 'Nicht einlagern', 'Ohne Lager abschließen', '', 'booking', 'x', 'OK', '', ListPage::ICON_NOT_STORED);
+check('a dialog act drawn as an icon carries its word as tooltip on the opener', preg_match('/<label[^>]*title="Nicht einlagern"/', $act) === 1, $act);
+check('the row acts are squares of one size', str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css'), '.wp-core-ui .taxmod-row-actions .button:has(> span > .taxmod-icon:only-child)'));
 
 // D-1311: dependent fields.
 $part = ListPage::shownBy('project', '42', '<input type="checkbox" name="board[]" value="7">');

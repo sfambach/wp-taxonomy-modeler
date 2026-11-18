@@ -526,13 +526,17 @@ final class ListPage
             esc_html($title),
             $frame,
             '<a class="button" href="' . esc_url($url) . '" target="_blank" rel="noopener">' . esc_html__('Open fully', 'taxmod') . '</a>',
+            // His finding 2026-11-18 18:24 «wieder unterschiedliche Größen»: an icon among a row's buttons is framed like them.
             match (true) {
-                $icon !== '' => 'button taxmod-icon-button taxmod-dialog-open',
-                $button      => 'button taxmod-dialog-open taxmod-view-dialog-open',
-                default      => 'taxmod-dialog-open taxmod-view-dialog-open',
+                $icon !== '' && $button => 'button taxmod-dialog-open taxmod-view-dialog-open',
+                $icon !== ''            => 'button taxmod-icon-button taxmod-dialog-open',
+                $button                 => 'button taxmod-dialog-open taxmod-view-dialog-open',
+                default                 => 'taxmod-dialog-open taxmod-view-dialog-open',
             },
             '',
-            __('Close', 'taxmod')
+            __('Close', 'taxmod'),
+            // His finding 18:25 «Tooltip … funktioniert auch nicht»: the word on the opener itself, not only on the icon inside.
+            openerTitle: $icon === '' ? '' : $opener
         ) . '</span>';
     }
 
@@ -1010,9 +1014,9 @@ final class ListPage
     /** D-1273: «Kopieren», the same glyph the modeller's own «Duplicate» draws. */
     public const ICON_COPY = 'admin-page';
     /** D-1451: the row acts of the stock's receipt lists — store, edit, not stored, new. */
-    public const ICON_STORE = 'download';
+    public const ICON_STORE = 'archive';
     public const ICON_EDIT = 'edit';
-    public const ICON_NOT_STORED = 'dismiss';
+    public const ICON_NOT_STORED = 'no';
     public const ICON_NEW = 'plus-alt2';
 
     /** An icon in place of a button's word; the word stays for the screen reader and as the tooltip. */
@@ -1070,7 +1074,8 @@ final class ListPage
             $submit,
             'button taxmod-dialog-open',
             '',
-            __('Cancel', 'taxmod')
+            __('Cancel', 'taxmod'),
+            openerTitle: $icon === '' ? '' : $opener
         );
     }
 

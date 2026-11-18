@@ -1439,6 +1439,25 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     white-space: normal;
 }
 
+/* *Sein Befund 18.11. 18:24 «wieder unterschiedliche Größen»: die Aktionen einer Zeile (`.taxmod-row-actions`) als gleich grosse,
+ * gerahmte Quadrate — ein `<button>` und ein `<label>` gleich, das Icon mittig, ein Wortknopf behält seine Breite.* */
+.wp-core-ui .taxmod-row-actions .button:has(> span > .taxmod-icon:only-child) {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    margin: 0;
+}
+
+.wp-core-ui .taxmod-row-actions .button:has(> span > .taxmod-icon:only-child)::after {
+    content: none;
+}
+
 /* ⚠️ Einfachauswahl: das ausgegraute Feld mit der Wahl, rechts das Baumsymbol (D-1163) — sein Wort: «bei einfacher auswahl ein
  * ausgegrautes feld … und recht daneben … das baum symbol». Dieselbe Optik wie `.taxmod-chosen`; das Skript setzt nach einer Wahl
  * `button` zurück auf den Öffner, darum hier mit der Klasse zusammen überschrieben. */
