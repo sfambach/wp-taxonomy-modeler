@@ -2,8 +2,6 @@
 
 namespace Taxmod\WordPress\Printing;
 
-use Taxmod\Core\Printing\LabelContent;
-use Taxmod\Core\Printing\LabelFormat;
 use Taxmod\Core\Printing\PrintJobStatus;
 use Taxmod\WordPress\Persistence\TileCounts;
 
@@ -18,36 +16,6 @@ final class PrintJobs
 {
     /** Sent with a new job, after it is stored; {@see PrintWake} listens. */
     public const QUEUED_ACTION = 'taxmod_print_job_queued';
-
-    /** D-1153: `$document` is a {@see \Taxmod\Core\Printing\FilledLabel} as JSON; the service then draws it instead of the fixed layout. */
-    /** D-1162: `$copies` in one job — the service gets one PDF with that many pages, so they come out together. */
-    public function queue(LabelFormat $format, LabelContent $label, bool $test, ?string $document = null, int $copies = 1): int
-    {
-        global $wpdb;
-
-        $wpdb->insert(PrintJobSchema::table(), [
-            'format'     => $format->key,
-            'code'       => $label->code,
-            'title'      => $label->title,
-            'subtitle'   => $label->subtitle,
-            'document'   => $document,
-            'queue'      => self::queueOfDocument($document),
-            'copies'     => max(1, min(LabelButton::MAX_COPIES, $copies)),
-            'is_test'    => $test ? 1 : 0,
-            'status'     => PrintJobStatus::Queued->value,
-            'created_by' => get_current_user_id(),
-            'created_at' => current_time('mysql', true),
-        ]);
-        $id = (int) $wpdb->insert_id;
-        TileCounts::forget(TileCounts::PRINT_JOBS);
-        if ($id <= 0) {
-            throw new \RuntimeException('The print job could not be stored.');
-        }
-
-        do_action(self::QUEUED_ACTION, $id);
-
-        return $id;
-    }
 
     /**
      * D-1294: a job that arrives finished — the module that prints renders the PDF (all its pages) and says how it is delivered.
@@ -265,19 +233,6 @@ final class PrintJobs
         }
 
         return $removed;
-    }
-
-    /** D-1336: the queue of the printer a template job goes to, or '' when the label names none. */
-    private static function queueOfDocument(?string $document): string
-    {
-        if ($document === null || $document === '') {
-            return '';
-        }
-        try {
-            return mb_substr(\Taxmod\Core\Printing\FilledLabel::fromJson($document)->printer?->queue ?? '', 0, 127);
-        } catch (\InvalidArgumentException|\JsonException) {
-            return '';
-        }
     }
 
     /**

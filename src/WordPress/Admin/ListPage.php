@@ -1128,7 +1128,7 @@ final class ListPage
      */
     public static function confirm(string $message): string
     {
-        // A module page that is not the modeller's own still gets the dialog's script and look (as `LabelButton` does).
+        // A module page that is not the modeller's own still gets the dialog's script and look (as the labels module's button does).
         if (! wp_script_is('taxmod-confirm')) {
             do_action(Plugin::STYLE_ACTION);
         }

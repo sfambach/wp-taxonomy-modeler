@@ -21,8 +21,6 @@ require __DIR__ . '/lib/no-write.php';
 require_once ABSPATH . 'wp-admin/includes/template.php';
 require __DIR__ . '/../../vendor/autoload.php';
 
-use Taxmod\Core\Printing\LabelContent;
-use Taxmod\Core\Printing\LabelFormat;
 use Taxmod\WordPress\Admin\SettingsScreen;
 use Taxmod\WordPress\Printing\PrintJobs;
 use Taxmod\WordPress\Printing\PrintJobsScreen;
@@ -59,14 +57,18 @@ $pruefe($rufe('/print/pull', [], 'falsch')->get_status() === 401, 'a wrong token
 $jobs = new PrintJobs();
 $datei = trailingslashit(wp_upload_dir()['basedir']) . 'taxmod-print/' . PrintService::settings()['wake'] . '.txt';
 $zaehler = (int) @file_get_contents($datei);
-$id = $jobs->queue(LabelFormat::byKey('holder62'), new LabelContent('O-4711', 'Prüffach', 'print-service-check'), true);
+// D-1296: the modeller draws no label; a job arrives as the labels module queues it, with its finished PDF (D-1294).
+\Taxmod\WordPress\Printing\PrintJobSchema::upgrade();
+$probePdf = "%PDF-1.4\n%print-service-check\n";
+$id = $jobs->queuePdf($probePdf, 'holder62', 'O-4711', 'Prüffach', 1, ['roll' => 62, 'queue' => 'QL-810W_take', 'pause' => 5], true);
 $pruefe((int) @file_get_contents($datei) === $zaehler + 1, 'a new job raises the counter in the wake file');
 $pruefe(str_starts_with(PrintService::wakeUrl(), wp_upload_dir()['baseurl']), 'the wake file is a static file under uploads');
 
 $antwort = $rufe('/print/pull', ['agent' => 'check 1.0', 'printers' => ['62 mm: QL-810W_take']], $token);
 $geholt = array_values(array_filter((array) ($antwort->get_data()['jobs'] ?? []), static fn (array $j): bool => $j['id'] === $id));
 $pruefe($antwort->get_status() === 200 && count($geholt) === 1, 'the pull hands over the waiting job');
-$pruefe(count($geholt) === 1 && str_starts_with((string) base64_decode($geholt[0]['pdf']), '%PDF-') && $geholt[0]['roll'] === 62.0 && $geholt[0]['test'] === true, 'with its PDF, roll width and test mark');
+$pruefe(count($geholt) === 1 && base64_decode($geholt[0]['pdf']) === $probePdf && (float) $geholt[0]['roll'] === 62.0 && $geholt[0]['test'] === true, 'with its PDF, roll width and test mark');
+$pruefe(count($geholt) === 1 && ($geholt[0]['pause'] ?? null) === 5 && ($geholt[0]['queue'] ?? '') === 'QL-810W_take', 'D-1333: the printer\'s pause and queue travel with the job');
 $pruefe(PrintService::settings()['agent'] === 'check 1.0' && PrintService::settings()['printers'] === ['62 mm: QL-810W_take'], 'the pull tells WordPress the service is alive and which printers it serves');
 
 $zweiter = $rufe('/print/pull', [], $token)->get_data()['jobs'] ?? [];
@@ -88,22 +90,12 @@ $pruefe($jobs->cancel([$id]) === 1 && $jobs->latest(1)[0]['status'] === 'cancell
 $pruefe($jobs->queueAgain([$id]) === 1, '… and «Print again» undoes the cancel');
 $pruefe($jobs->cancel([$id]) === 1 && $jobs->cancel([$id]) === 0, 'a cancelled job is not cancelled twice');
 
-// D-1153: a job from a template carries its own layout, and the service gets that drawing.
-\Taxmod\WordPress\Printing\PrintJobSchema::upgrade();
-$vorlage = \Taxmod\Core\Printing\LabelTemplate::shipped()['material'];
-$gefuellt = new \Taxmod\Core\Printing\FilledLabel($vorlage->format, $vorlage->layout, ['code' => 'O-4712', 'title' => 'Vorlagenfach', 'subtitle' => 'Kurz'], $vorlage->name());
-$mitVorlage = $jobs->queue($gefuellt->format, new LabelContent('O-4712', 'Vorlagenfach', 'Kurz'), true, $gefuellt->toJson());
-$geholtV = array_values(array_filter((array) ($rufe('/print/pull', [], $token)->get_data()['jobs'] ?? []), static fn (array $j): bool => $j['id'] === $mitVorlage));
-$pruefe(count($geholtV) === 1 && str_contains((string) base64_decode($geholtV[0]['pdf']), '(Vorlagenfach) Tj') && $geholtV[0]['format'] === 'material62', 'a job from a template is drawn from its layout and keeps its format key');
-$jobs->finish($mitVorlage, true, 'check');
-// D-1162: copies travel in one job, as pages of one PDF, so the labels come out together.
-$mehrere = $jobs->queue($gefuellt->format, new LabelContent('O-4712', 'Vorlagenfach', 'Kurz'), true, $gefuellt->toJson(), 3);
+// D-1162: copies travel in one job, so the labels come out together. *The template job, the pages of the PDF and the dialog's
+// template choice were drawn by the modeller until D-1296; they are the labels module's now and checked there (PR-9).*
+$mehrere = $jobs->queuePdf($probePdf, 'material62', 'O-4712', 'Vorlagenfach', 3, ['roll' => 62], true);
 $geholtM = array_values(array_filter((array) ($rufe('/print/pull', [], $token)->get_data()['jobs'] ?? []), static fn (array $j): bool => $j['id'] === $mehrere));
-$pruefe(count($geholtM) === 1 && $geholtM[0]['copies'] === 3 && substr_count((string) base64_decode($geholtM[0]['pdf']), '/Type /Page ') === 3, 'three copies are one job with a PDF of three pages');
+$pruefe(count($geholtM) === 1 && $geholtM[0]['copies'] === 3 && $geholtM[0]['format'] === 'material62', 'three copies are one job, with its format key');
 $jobs->finish($mehrere, true, 'check');
-$knopf = \Taxmod\WordPress\Printing\LabelButton::render('O', 4712, 'Vorlagenfach', 'Kurz', 1, ['name' => 'Platz', 'format' => ['key' => 'holder62', 'w' => 62, 'h' => 50, 'roll' => 62], 'layout' => $vorlage->layout->toJson()]);
-$pruefe(str_contains($knopf, 'name="document"') && str_contains($knopf, 'Platz') && ! str_contains($knopf, 'name="format"'), 'a module\'s template replaces the format choice in the label dialog');
-
 
 $_GET['tab'] = PrintTab::SLUG;
 $seite = (new SettingsScreen())->render();
@@ -114,8 +106,8 @@ $seite = (new SettingsScreen())->render();
 $pruefe(str_contains($seite, 'How to connect') && str_contains($seite, '.deb') && str_contains($seite, 'taxmod-printservice setup'), 'the tab has the setup guide in its box (D-1116, the package of D-1332)');
 $pruefe(str_contains($seite, 'Add print service') && str_contains($seite, 'Delete access data') && str_contains($seite, 'Test connection'), 'the Configuration tab has Access like the API modules: a service per PC added in a dialog, «Test connection», «Delete access data» (D-1117, D-1336)');
 $pruefe(str_contains(PrintTab::status(), 'heard of'), '«Test connection» says when the service was last heard of');
-PrintTab::act([PrintTab::DO => 'test:roll62']);
-$pruefe($jobs->latest(1)[0]['format'] === 'roll62' && $jobs->latest(1)[0]['is_test'] === '1', 'the test button queues a test job');
+// D-1439: the test prints of the fixed formats moved to the labels module's printer page; the tab offers none (PR-9, moved).
+$pruefe(! str_contains($seite, 'test:roll62'), 'D-1439: the Configuration tab has no test print of a fixed format');
 
 // D-1198: the counts per status are kept until a write, and every write forgets them before it returns.
 $gezaehlt = $jobs->counts();
@@ -123,7 +115,7 @@ $gezaehlt = $jobs->counts();
 // (Grenzlauf 2026-11-17, D-1427; vorher der Schlüssel mit der Generation darin).*
 $gemerkt = get_transient('taxmod_tiles_' . md5('print_jobs|status'));
 $pruefe(is_array($gemerkt) && ($gemerkt['counts'] ?? null) === $gezaehlt && ($gemerkt['generation'] ?? null) === (((array) get_option('taxmod_tile_generation', []))['print_jobs'] ?? 0), 'the counts per status are kept after the first count');
-$neu = $jobs->queue(LabelFormat::byKey('holder62'), new LabelContent('O-4713', 'Zählfach', 'print-service-check'), true);
+$neu = $jobs->queuePdf($probePdf, 'holder62', 'O-4713', 'Zählfach', 1, ['roll' => 62], true);
 $pruefe(($jobs->counts()['queued'] ?? 0) === ($gezaehlt['queued'] ?? 0) + 1, 'a new job is counted at once: queueing forgot the kept counts');
 $jobs->cancel([$neu]);
 $pruefe(($jobs->counts()['queued'] ?? 0) === ($gezaehlt['queued'] ?? 0) && ($jobs->counts()['cancelled'] ?? 0) === ($gezaehlt['cancelled'] ?? 0) + 1, 'a status change is counted at once: cancelling forgot them too');
@@ -141,16 +133,11 @@ $pruefe(has_action('admin_post_taxmod_print_jobs_cancel') !== false && has_actio
 do_action(\Taxmod\WordPress\Plugin::STYLE_ACTION);
 $pruefe(wp_style_is('taxmod-admin', 'enqueued'), 'a page in the logistics frame can ask for the modeller\'s stylesheet, so its dialogs open as dialogs');
 $logistik = array_values(array_filter((array) apply_filters(PrintTab::LOGISTICS_FILTER, []), static fn (array $p): bool => ($p['area'] ?? '') === 'print'));
-$pruefe(array_column($logistik, 'slug') === [PrintJobsScreen::PAGE], 'Logistik › Druck holds «Aufträge» from the modeller; «Etiketten» is the module\'s (D-1115, D-1165)');
+$eigene  = array_values(array_filter(array_column($logistik, 'slug'), static fn (string $slug): bool => ! str_starts_with($slug, 'taxmod-label-')));
+$pruefe($eigene === [PrintJobsScreen::PAGE], 'Logistik › Druck holds «Aufträge» from the modeller; «Etiketten» is the module\'s (D-1115, D-1165)');
 
-// D-1120: one «Etikett drucken» for every module, through the filter.
-$knopf = (string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'O', 4711, 'Projektplatz 1', 'Keller › Regal 2');
-$pruefe(str_contains($knopf, 'value="O-4711"') && str_contains($knopf, 'value="holder62" selected'), 'a module gets «Etikett drucken» for a place, with the holder label preselected');
-// D-1230, his word «drucken knopf durch icon drucker ersetzten»: the opener is the printer, the word stays for the screen reader.
-$pruefe(str_contains($knopf, 'dashicons-printer') && str_contains($knopf, '<span class="screen-reader-text">Etikett drucken</span>'), 'D-1230: «Etikett drucken» is drawn as the printer icon');
-$pruefe(str_contains($knopf, 'name="how" value="service"') && str_contains($knopf, 'value="pdf"') && str_contains($knopf, '_taxmod_label_nonce'), 'its dialog prints through the service or opens the PDF, with a nonce');
-$pruefe((string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'X', 1, 'x') === '', 'an unknown prefix gets no button');
-$pruefe(str_contains((string) apply_filters(\Taxmod\WordPress\Printing\LabelButton::FILTER, '', 'K', 9, 'Kiste 9'), 'value="roll62" selected'), 'a box starts with the 62 mm roll label');
+// D-1120, D-1230: «Etikett drucken» is the labels module's answer to «taxmod_label_button»; the modeller gives none (D-1296).
+$pruefe(! has_filter('taxmod_label_button') || defined('TAXMOD_LABEL_VERSION'), 'D-1296: the modeller answers no «taxmod_label_button» of its own');
 
 // D-1235: the print thread reads the jobs and prints again through abilities.
 if (function_exists('wp_get_ability') && wp_get_ability('taxmod/print-jobs') !== null) {
@@ -159,15 +146,8 @@ if (function_exists('wp_get_ability') && wp_get_ability('taxmod/print-jobs') !==
     $nochmal = wp_get_ability('taxmod/print-job')->execute(['ids' => [$id], 'action' => 'again']);
     $pruefe(($nochmal['moved'] ?? 0) === 1 && ($jobs->statusOf($id)[0] ?? null) === \Taxmod\Core\Printing\PrintJobStatus::Queued, 'D-1235: print-job again puts a printed job back into the queue');
     $jobs->cancel([$id]);
-    $falsch = wp_get_ability('taxmod/print-label')->execute(['code' => 'X-1', 'label' => 1]);
-    $pruefe($falsch instanceof \WP_Error, 'D-1235: print-label refuses a code no module knows');
-    // D-1239: dry_run with pdf answers the label to look at and queues nothing.
-    $modul = static fn (?array $found, string $prefix, int $id): ?array => $prefix === 'E' && $id === 999999 ? ['title' => 'Probe', 'template' => ['name' => 'Probe', 'format' => ['key' => 'p40x12', 'w' => 40, 'h' => 12, 'roll' => 12], 'layout' => '[{"type":"text","field":"title","x":1,"y":1,"w":38,"h":10}]']] : $found;
-    add_filter('taxmod_label_for', $modul, 5, 3);
-    $vorJobs = count($jobs->latest(50));
-    $probe   = wp_get_ability('taxmod/print-label')->execute(['code' => 'E-999999', 'label' => 1, 'dry_run' => true, 'pdf' => true]);
-    remove_filter('taxmod_label_for', $modul, 5);
-    $pruefe(is_array($probe) && ($probe['job'] ?? null) === 0 && str_starts_with((string) base64_decode((string) ($probe['pdf'] ?? ''), true), '%PDF') && count($jobs->latest(50)) === $vorJobs, 'D-1239: print-label dry_run with pdf answers the PDF and queues nothing');
+    // D-1239: «print-label» with dry_run and pdf is the labels module's «taxmod-label/print» now (D-1296, PR-9, moved).
+    $pruefe(wp_get_ability('taxmod/print-label') === null, 'D-1296: print-label left the modeller');
 } else {
     echo "print-service: no Abilities API here, D-1235 not checked\n";
 }
