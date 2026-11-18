@@ -902,6 +902,8 @@ a.taxmod-tree-fold-box {
 
 .taxmod-tree-node {
     display: flex;
+    /* D-1449: the row's buttons go under the name when the third of the page is too narrow — never cut off at the edge. */
+    flex-wrap: wrap;
     gap: .5em;
     align-items: center;
 }
