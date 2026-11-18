@@ -181,12 +181,13 @@ $pruefe(str_contains($seite, 'Taxonomy Modeller › Inbox') && str_contains($sei
     && preg_match('/<td style="text-align:right[^"]*">.*?form="taxmod-inbox-group-\d+" name="action" value="' . InboxScreen::DISCARD . '"/s', $seite) === 1, 'the inbox uses the shared list page: heading, expand all, buttons right in the row, details below');
 // ⚠️ *Sein Wunsch vom 2026-10-25 (D-990): «die Felder nebeneinander … Name, last run … Button» und «Start-Over-Buttons … in die Konfiguration».*
 $pruefe(str_contains($seite, 'class="taxmod-tiles"') && ! str_contains($seite, 'value="' . InboxScreen::RESTART . '"') && str_contains(InboxScreen::maintenance(Sources::find('__ib')), 'value="' . InboxScreen::RESTART . '"'), 'the inbox shows the sources as the shared tiles (D-1149); «Start over» sits in the configuration');
+// D-1462: a choice now asks on change (onchange on the select), so the check allows attributes between form and the options.
 $vorlage = \Taxmod\WordPress\Admin\ListPage::tabs([['a', 'A', 3], ['b', 'B']], 'a', static fn (string $t): string => '?tab=' . $t)
     . \Taxmod\WordPress\Admin\ListPage::searchBox('f', 'x', 'p', ['page' => 'p'])
     . \Taxmod\WordPress\Admin\ListPage::filters('f', [['paid', ['' => 'All', '1' => 'Paid'], '1']])
     . \Taxmod\WordPress\Admin\ListPage::table([['Order', '9em', '?orderby=o', 'asc'], ['Buyer', null, '?orderby=b']], '');
 $pruefe(str_contains($vorlage, 'nav-tab nav-tab-active') && str_contains($vorlage, '<span class="count">(3)</span>') && str_contains($vorlage, 'class="search-box"')
-    && str_contains($vorlage, 'form="f"><option value="">All</option><option value="1" selected>') && str_contains($vorlage, 'class="manage-column sorted asc"') && str_contains($vorlage, 'class="manage-column sortable desc"'), 'the list page has tabs with counts, search, filters and sortable columns');
+    && preg_match('/form="f"[^>]*><option value="">All<\/option><option value="1" selected>/', $vorlage) === 1 && str_contains($vorlage, 'class="manage-column sorted asc"') && str_contains($vorlage, 'class="manage-column sortable desc"'), 'the list page has tabs with counts, search, filters and sortable columns');
 $pruefe(str_contains($vorlage, '.wp-core-ui .taxmod-list .button{') && str_contains($vorlage, 'height:30px'), 'every button in a list has the one height (D-1068)');
 // D-1063: «wir sollten generell dialog aktionen einführen damit die immer gleich aussehen».
 $dialog = \Taxmod\WordPress\Admin\ListPage::dialogAction('d1', 'Close', 'Ask', '<input name="why">', 'do', 'close-7', 'Confirm');

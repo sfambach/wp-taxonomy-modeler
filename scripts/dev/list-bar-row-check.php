@@ -22,6 +22,7 @@ if ($root === '' || ! is_readable($root . '/wp-load.php')) {
 define('WP_USE_THEMES', false);
 require $root . '/wp-load.php';
 require __DIR__ . '/lib/no-write.php';
+require_once ABSPATH . 'wp-admin/includes/admin.php';
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Taxmod\Core\Listing\ListColumn;
