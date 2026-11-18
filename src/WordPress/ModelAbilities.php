@@ -161,7 +161,7 @@ final class ModelAbilities
 
         wp_register_ability('taxmod/read-node', [
             'label'               => __('Read a node', 'taxmod'),
-            'description'         => __('One node with its children, its fields (relation id, name, target, kind, multiplicity, simple type), used_by (the fields that choose from this node: relation id, name, owning node) and its records with their values; total_records counts them all. Saves tokens: records false (structure only), limit and offset (a page of records), fields (only these relation ids), compact (values as {relation_id: value}, a list where a field holds several, "relation_id@locale" only off the neutral locale). A field computed at this node (e.g. Bezeichnung) names its parts in composed_of — its own id there stands for the node name; a value written to it is overwritten.', 'taxmod'),
+            'description'         => __('One node with its children, its fields (relation id, name, target, kind, multiplicity, simple type), used_by (the fields that choose from this node: relation id, name, owning node; used_by false leaves it out) and its records with their values; total_records counts them all. Saves tokens: records false (structure only), limit and offset (a page of records), fields (only these relation ids), compact (values as {relation_id: value}, a list where a field holds several, "relation_id@locale" only off the neutral locale). A field computed at this node (e.g. Bezeichnung) names its parts in composed_of — its own id there stands for the node name; a value written to it is overwritten.', 'taxmod'),
             'category'            => self::CATEGORY,
             'input_schema'        => [
                 'type'       => 'object',
@@ -172,6 +172,7 @@ final class ModelAbilities
                     'offset'  => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
                     'fields'  => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1]],
                     'compact' => ['type' => 'boolean', 'default' => false],
+                    'used_by' => ['type' => 'boolean', 'default' => true],
                 ],
                 'required'   => ['node'],
                 'additionalProperties' => false,
@@ -619,7 +620,8 @@ final class ModelAbilities
             'children'      => array_map($this->nodeRow(...), $this->editor()->childrenOf($id)),
             'fields'        => $felder,
             // D-1458: the fields that choose from this node — a merge or a retarget needs them, and nothing else reads backwards.
-            'used_by'       => array_map(static fn ($r): array => ['relation_id' => $r->id, 'name' => $r->name, 'node' => $r->fromNodeId], $this->editor()->usedBy($id)),
+            // A module's door asks without it: one query per node read, which no drawing needs (measured 18.11., +8 on «Angekommen»).
+            'used_by'       => ($input['used_by'] ?? true) === false ? [] : array_map(static fn ($r): array => ['relation_id' => $r->id, 'name' => $r->name, 'node' => $r->fromNodeId], $this->editor()->usedBy($id)),
             'records'       => $saetze,
             'total_records' => $gesamt,
         ];
