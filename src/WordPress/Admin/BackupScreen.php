@@ -40,8 +40,7 @@ final class BackupScreen
 
         $post = esc_url(admin_url('admin-post.php'));
 
-        return '<div class="wrap">' . ListPage::heading(__('Backup', 'taxmod'))
-            . $this->report()
+        return ListPage::page(__('Backup', 'taxmod'), [], [['html' => $this->report()
             . '<h2>' . esc_html__('Download', 'taxmod') . '</h2>'
             . '<p>' . esc_html__('One ZIP file with every table of the model, its settings and every media file a value points at.', 'taxmod') . '</p>'
             . '<form method="post" action="' . $post . '">'
@@ -58,7 +57,7 @@ final class BackupScreen
             . '<p><label><input type="checkbox" name="taxmod_confirm" value="1" required> '
             . esc_html__('Yes, replace the model on this site.', 'taxmod') . '</label></p>'
             . get_submit_button(__('Restore backup', 'taxmod'), 'delete', 'submit', false)
-            . '</form>' . $more . '</div>';
+            . '</form>' . $more]]);
     }
 
     public function handleDownload(): void

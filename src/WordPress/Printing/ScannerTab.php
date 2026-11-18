@@ -65,7 +65,7 @@ final class ScannerTab
                 'slug'   => self::LOGISTICS_SLUG,
                 'label'  => __('Scanner', 'taxmod'),
                 'area'   => 'settings',
-                'render' => static fn (): string => '<div class="wrap">' . ListPage::heading(__('Scanner', 'taxmod')) . (new self($screen))->page() . '</div>',
+                'render' => static fn (): string => ListPage::page(__('Scanner', 'taxmod'), [], [['html' => (new self($screen))->page()]]),
             ];
 
             return $pages;

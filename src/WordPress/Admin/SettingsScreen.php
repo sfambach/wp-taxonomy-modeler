@@ -146,11 +146,7 @@ final class SettingsScreen
         $tab    = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
 
         if (isset($reiter[$tab]) && $reiter[$tab]['page'] !== null) {
-            return '<div class="wrap">'
-                . ListPage::heading(__('Configuration', 'taxmod'))
-                . $this->tabBar($reiter, $tab)
-                . (string) ($reiter[$tab]['page'])()
-                . '</div>';
+            return ListPage::page(__('Configuration', 'taxmod'), [], [['html' => (string) ($reiter[$tab]['page'])()]], tabs: $this->tabBar($reiter, $tab));
         }
 
         if (isset($reiter[$tab])) {
@@ -187,9 +183,7 @@ final class SettingsScreen
                 . self::section(__('Maintenance', 'taxmod'), self::maintenance($reiter[$tab], $tab, $reiter), $modul)
                 . '</div>';
 
-            return '<div class="wrap">'
-                . ListPage::heading(__('Configuration', 'taxmod'))
-                . $this->tabBar($reiter, $tab)
+            return ListPage::page(__('Configuration', 'taxmod'), [], [['html' => ''
                 // ⚠️ *Seine Frage vom 2026-10-21: «warum haben die andern module nicht die version im reiter ?» — one place for it (D-968).*
                 // ⚠️ *Nur im Entwicklermodus: «kannst du die version mit in den reiter schreiben (wird mit Tax developer mode eingeschaltet)».*
                 . ($reiter[$tab]['version'] === '' || ! self::inDeveloperMode() ? '' : '<p class="description">' . esc_html(sprintf(
@@ -205,14 +199,10 @@ final class SettingsScreen
                     // ⚠️ *Sein Wunsch vom 2026-10-23: «schrift in der erklärbox ruhig größer aufteilung bildschirm 60% / 40%».*
                     : '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">' . $form
                         . '<aside class="postbox taxmod-guide" style="flex:2 1 20em;min-width:0;padding:0 16px 16px;margin-top:1em;font-size:1.15em;line-height:1.6"><h2>'
-                        . esc_html__('How to connect', 'taxmod') . '</h2>' . $guide . '</aside></div>')
-                . '</div>';
+                        . esc_html__('How to connect', 'taxmod') . '</h2>' . $guide . '</aside></div>')]], tabs: $this->tabBar($reiter, $tab));
         }
 
-        $html = '<div class="wrap">'
-            . ListPage::heading(__('Configuration', 'taxmod'))
-            . $this->tabBar($reiter, '')
-            . $this->notice()
+        $html = $this->notice()
             . '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">'
             . '<input type="hidden" name="action" value="' . esc_attr(self::ACTION) . '">'
             . wp_nonce_field(self::ACTION, '_taxmod_nonce', true, false)
@@ -245,10 +235,9 @@ final class SettingsScreen
             . '</form>'
             // ⚠️ *Ausserhalb des Formulars, weil nichts davon abgeschickt wird.
             //  Ein Anzeigeblock innerhalb eines Formulars lädt dazu ein, ihn für einstellbar zu halten.*
-            . $this->facts()
-            . '</div>';
+            . $this->facts();
 
-        return $html;
+        return ListPage::page(__('Configuration', 'taxmod'), [], [['html' => $html]], tabs: $this->tabBar($reiter, ''));
     }
 
     /**

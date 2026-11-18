@@ -80,22 +80,20 @@ final class CleanupScreen
             return '';
         }
 
-        return '<div class="wrap">'
-            // ⚠️ *Die Erklärung stand als Absatz unter der Überschrift und wurde nach dem dritten
-            // Besuch nicht mehr gelesen. Seit [D-661](../../../docs/NewConcept/90-decision-log.md)
-            // steht sie hinter dem Fragezeichen — für den, der sie sucht.*
-            . ListPage::heading(
-                __('Cleanup', 'taxmod'),
-                hint: __('What deletion left behind. Nothing here is tidied on its own: each of these was deliberately left alone at the moment of the change, because tidying silently would have been worse. Removing one is a decision, and it cannot be undone.', 'taxmod')
-            )
-            . $this->notice()
-            . $this->renderer->render([
+        return ListPage::page(
+            __('Cleanup', 'taxmod'),
+            [],
+            [['html' => $this->notice() . $this->renderer->render([
                 $this->valuesWithoutRelation(),
                 $this->nodesWithoutConnections(),
                 $this->recordsWithoutNode(),
                 $this->emptyRecordsWithoutHistory(),
-            ])
-            . '</div>';
+            ])]],
+            // ⚠️ *Die Erklärung stand als Absatz unter der Überschrift und wurde nach dem dritten
+            // Besuch nicht mehr gelesen. Seit [D-661](../../../docs/NewConcept/90-decision-log.md)
+            // steht sie hinter dem Fragezeichen — für den, der sie sucht.*
+            hint: __('What deletion left behind. Nothing here is tidied on its own: each of these was deliberately left alone at the moment of the change, because tidying silently would have been worse. Removing one is a decision, and it cannot be undone.', 'taxmod')
+        );
     }
 
     /*

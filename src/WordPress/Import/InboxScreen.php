@@ -67,11 +67,17 @@ final class InboxScreen
             return '';
         }
 
-        $html = '<div class="wrap">' . ListPage::heading(__('Inbox', 'taxmod')) . $this->notice() . $this->sourcesBlock();
+        return ListPage::page(__('Inbox', 'taxmod'), [], [['html' => $this->content()]]);
+    }
+
+    /** What the page shows below its heading: the sources, then the orders waiting. */
+    private function content(): string
+    {
+        $html = $this->notice() . $this->sourcesBlock();
         $groups = $this->table->openGroups();
 
         if ($groups === []) {
-            return $html . '<p>' . esc_html__('Nothing to review.', 'taxmod') . '</p></div>';
+            return $html . '<p>' . esc_html__('Nothing to review.', 'taxmod') . '</p>';
         }
 
         $model = ModelGateway::available() ? new ModelGateway(Targets::load()) : null;
@@ -87,7 +93,7 @@ final class InboxScreen
             $groups = array_values(array_filter($groups, fn (array $rows): bool => ! $this->settle($rows, $model, $intake)));
 
             if ($groups === []) {
-                return $html . '<p>' . esc_html__('Nothing to review.', 'taxmod') . '</p></div>';
+                return $html . '<p>' . esc_html__('Nothing to review.', 'taxmod') . '</p>';
             }
         }
 
@@ -176,7 +182,7 @@ final class InboxScreen
             );
         }
 
-        return $html . ListPage::table([[__('Order', 'taxmod'), '16em'], [__('Received', 'taxmod'), '9em'], [__('Result', 'taxmod')]], $body) . '</div>';
+        return $html . ListPage::table([[__('Order', 'taxmod'), '16em'], [__('Received', 'taxmod'), '9em'], [__('Result', 'taxmod')]], $body);
     }
 
     /**

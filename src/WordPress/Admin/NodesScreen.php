@@ -1454,7 +1454,7 @@ final class NodesScreen
         $nurBaum = self::asksTreeOnly();
         $picker  = $selected === null || $nurBaum ? '' : $this->sharedPickerStub();
 
-        $html  = '<div class="wrap" data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '"'
+        $attributes = ' data-taxmod-tree-click="' . (SettingsScreen::treeClickJumps() ? 'jump' : 'stay') . '"'
             // ⚠️ *Ladezeit S2/S3 (D-1417): ein Link dieser Seite lädt sie nicht neu — `assets/live.js` holt sie im Hintergrund und setzt das
             // Geänderte ein; ein Dreieck holt nur den Baum. Der Faltzustand der Adresse gilt für jeden Link, auch einen älteren (F1: die URL
             // bleibt sein Träger, nachgeführt per replaceState).*
@@ -1462,9 +1462,8 @@ final class NodesScreen
             // ⚠️ *Automatisch speichern steht an der Seite (D-854); das Skript liest es dort, wie schon den Baumklick.*
             . ' data-taxmod-autosave="' . (SettingsScreen::autosaves() ? 'on' : 'off') . '" style="'
             . '--taxmod-icon:' . SettingsScreen::defaultIconSize() . 'px;'
-            . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px">';
-        $html .= ListPage::heading(__('Model', 'taxmod'));
-        $html .= $this->notice() . ($selected === null ? '' : $this->movePendingForm($selected));
+            . '--taxmod-font:' . SettingsScreen::defaultFontSize() . 'px"';
+        $html = $this->notice() . ($selected === null ? '' : $this->movePendingForm($selected));
         // The owner's proportions: a third for the tree, two thirds for the detail.
         //
         // ⚠️ **Each half scrolls on its own and the page itself does not.** The owner asked for the
@@ -1527,7 +1526,7 @@ final class NodesScreen
 
         $html .= $picker . ($nurBaum ? '' : $times->measure(__('Record dialogs', 'taxmod'), fn (): string => \Taxmod\WordPress\Draw\SharedTemplates::of($this->rendering->sharedRecordBodies(), new \Taxmod\WordPress\Draw\EdgeDrawer(), $this->grosseKoerperAuslagern(...)))) . $worte;
 
-        return $html . $times->line(strlen($html)) . '</div>';
+        return ListPage::page(__('Model', 'taxmod'), [], [['html' => $html . $times->line(strlen($html))]], attributes: $attributes);
     }
 
     /** Ab welcher Grösse ein Satzdialog-Körper nachgeladen wird statt in der Seite zu stehen ([D-898](../../../docs/NewConcept/90-decision-log.md)). */

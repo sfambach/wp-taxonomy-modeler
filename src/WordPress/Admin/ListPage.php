@@ -713,10 +713,11 @@ final class ListPage
      *
      * @param list<\Taxmod\Core\Tile\Tile>        $tiles
      * @param list<array{title?: string, html: string}> $sections `html` already escaped (CD-8)
+     * @param string $attributes further attributes of the page element, already escaped — the node page carries its script switches there
      */
-    public static function page(string $screen, array $tiles, array $sections, string $version = Plugin::VERSION, string $plugin = 'Taxonomy Modeller', string $hint = '', string $tabs = ''): string
+    public static function page(string $screen, array $tiles, array $sections, string $version = Plugin::VERSION, string $plugin = 'Taxonomy Modeller', string $hint = '', string $tabs = '', string $attributes = ''): string
     {
-        $html = '<div class="wrap taxmod-page">' . self::heading($screen, $version, $plugin, $hint) . $tabs . ($tiles === [] ? '' : Tiles::grid($tiles));
+        $html = '<div class="wrap taxmod-page"' . $attributes . '>' . self::heading($screen, $version, $plugin, $hint) . $tabs . ($tiles === [] ? '' : Tiles::grid($tiles));
 
         foreach ($sections as $section) {
             $title = (string) ($section['title'] ?? '');

@@ -17,7 +17,7 @@ const CEILINGS = [
     'escapes in the core'                => 0,
     'hook calls in the core'             => 0,
     'arms of the node page dispatcher'   => 0,
-    'modeller pages without the template' => 9,
+    'modeller pages without the template' => 0,
     // D-1431: +1 for `DialogNumber` (A17); falls with the next releases of Lager and Etiketten.
     'old names bridged for the modules'  => 11,
     'core files handing markup through'  => 0,

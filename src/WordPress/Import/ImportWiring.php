@@ -2,6 +2,7 @@
 
 namespace Taxmod\WordPress\Import;
 
+use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\WordPress\Plugin;
 
 /**
@@ -42,8 +43,8 @@ final class ImportWiring
                 try {
                     print (new InboxScreen())->render();
                 } catch (\Throwable $failure) {
-                    print '<div class="wrap"><div class="notice notice-error"><p>' . esc_html(sprintf('%s: %s (%s:%d)', $failure::class,
-                        $failure->getMessage(), basename($failure->getFile()), $failure->getLine())) . '</p></div></div>';
+                    print ListPage::page(__('Inbox', 'taxmod'), [], [['html' => '<div class="notice notice-error"><p>' . esc_html(sprintf('%s: %s (%s:%d)', $failure::class,
+                        $failure->getMessage(), basename($failure->getFile()), $failure->getLine())) . '</p></div>']]);
                 }
             });
         }, 11);
