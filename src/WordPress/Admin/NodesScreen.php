@@ -490,7 +490,8 @@ final class NodesScreen
             $label = is_array($claim) ? trim((string) ($claim['label'] ?? '')) : '';
             $url   = is_array($claim) ? (string) ($claim['url'] ?? '') : '';
 
-            if (isset($fields[(int) $relationId]) && $label !== '' && $url !== '') {
+            // An empty address: read-only without a button, the module's page offers the dialog itself (Stefan 2026-11-18, «Rolle wechseln» doppelt).
+            if (isset($fields[(int) $relationId]) && $label !== '') {
                 $out[(int) $relationId] = ['label' => $label, 'url' => $url];
             }
         }
@@ -517,8 +518,8 @@ final class NodesScreen
 
         foreach ($relations as $relation) {
             $rows .= '<p class="taxmod-claimed-field"><strong>' . esc_html($relation->name) . ':</strong> '
-                . esc_html((string) ($words[$relation->id][$recordId] ?? '—')) . ' '
-                . '<a class="button" href="' . esc_url($claimed[$relation->id]['url']) . '">' . esc_html($claimed[$relation->id]['label']) . '</a></p>';
+                . esc_html((string) ($words[$relation->id][$recordId] ?? '—'))
+                . ($claimed[$relation->id]['url'] === '' ? '' : ' <a class="button" href="' . esc_url($claimed[$relation->id]['url']) . '">' . esc_html($claimed[$relation->id]['label']) . '</a>') . '</p>';
         }
 
         return '<div class="taxmod-claimed-fields">' . $rows . '</div>';
