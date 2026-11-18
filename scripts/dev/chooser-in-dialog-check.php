@@ -1,7 +1,10 @@
 <?php declare(strict_types=1);
 
 /**
- * Ein Wähler im Dialog ist das Feld mit dem Baumknopf wie überall; ein Baum an Ort und Stelle hat keinen Öffner (D-1445).
+ * Ein Wähler in einem Dialog steht immer an Ort und Stelle, ohne zweiten Dialog (D-1467, ersetzt D-1444/D-1445 für Dialoge); außerhalb
+ * eines Dialogs ist er das Feld mit dem Baumknopf (D-1163). Ein Baum an Ort und Stelle hat keinen Öffner.
+ *
+ * ⚠️ *Sein Wort 2026-11-18 22:49: «in dialogen bitte immer inline sonst machen wir dialog kaskade».* Frühere Fassung (D-1445):
  *
  * ⚠️ *Sein Befund 2026-11-18 12:25: «würde erwarten das hier der tax chooser nicht inline sind wir haben ja den button».* Das
  * Stylesheet stellte jeden Wähler in einem Dialog als Baum dar und verbarg Feld und Knopf — der Aufrufer konnte es nicht abstellen
@@ -9,7 +12,7 @@
  *
  * ```text
  * CONTRACT
- * Stylesheet   keine Regel verbirgt Öffner oder Baumknopf eines Wählers in einem Dialog
+ * Stylesheet   in einem Dialog steht der Baum des Wählers da, Öffner und Baumknopf sind verborgen (D-1467)
  * Stylesheet   die Tafel steht ohne transform (sonst wäre sie der Rahmen eines Dialogs in ihr)
  * inline       der Baum steht da, ohne Öffner, ohne Baumknopf, ohne zweiten Dialog
  * nicht inline Feld + Baumknopf, der den eigenen Dialog öffnet
@@ -17,7 +20,7 @@
  *
  * Usage: php scripts/dev/chooser-in-dialog-check.php
  *
- * @see docs/NewConcept/90-decision-log.md D-1445
+ * @see docs/NewConcept/90-decision-log.md D-1467, D-1445
  */
 
 define('WP_ADMIN', true);
@@ -38,7 +41,8 @@ $say    = static function (bool $ok, string $what) use (&$failed): void {
 
 echo "\n== Stylesheet ==\n";
 $css = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/admin.css');
-$say(preg_match('/\.taxmod-dialog-panel[^{]*\.taxmod-chooser\s*>\s*\.taxmod-(dialog-open|pick-tree)/', $css) !== 1, 'keine Regel verbirgt Öffner oder Baumknopf eines Wählers im Dialog');
+$say(preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog-open,\s*\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-pick-tree,[^{]*\{\s*display:\s*none;/', $css) === 1
+    && preg_match('/\.taxmod-dialog-panel \.taxmod-chooser > \.taxmod-dialog \{\s*display:\s*block;/', $css) === 1, 'D-1467: im Dialog steht der Baum, Öffner und Baumknopf sind verborgen');
 $say(preg_match('/\.taxmod-dialog-panel\s*\{[^}]*transform\s*:/', $css) !== 1, 'die Tafel steht ohne transform');
 
 echo "\n== Wähler ==\n";

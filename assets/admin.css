@@ -1743,8 +1743,33 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     color: inherit;
 }
 
-/* D-1445: a chooser in a dialog is the field with the tree button like everywhere (D-1163, D-1444); it opens its own dialog
- * over the first. A tree that stands in place is asked for by the caller (`inline`) and drawn without an opener. */
+/* D-1467 (replaces D-1444/D-1445 for dialogs): a chooser inside a dialog always stands in place — no second dialog over the
+ * first. His word 18.11. 22:49: «in dialogen bitte immer inline sonst machen wir dialog kaskade». In a form outside a dialog
+ * it stays the field with the tree button (D-1163). */
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog {
+    display: block;
+}
+
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog-open,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-pick-tree,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-shade,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel > .taxmod-dialog-head,
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel > .taxmod-dialog-foot {
+    display: none;
+}
+
+.taxmod-dialog-panel .taxmod-chooser > .taxmod-dialog > .taxmod-dialog-panel {
+    position: static;
+    inset: auto;
+    margin: 0;
+    width: auto;
+    min-width: 16em;
+    max-width: none;
+    max-height: 16em;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    box-shadow: none;
+}
 
 /* D-1436: a number and its unit, one piece; the unit stands there even when it is the only one. */
 .taxmod-number-unit {
