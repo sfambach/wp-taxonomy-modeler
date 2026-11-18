@@ -126,6 +126,8 @@ $felder  = is_array($gelesen) ? array_column($gelesen['fields'], null, 'relation
 $feld    = $felder[$ergebnis['refs']['f']] ?? null;
 
 check('read-node findet das Kind', is_array($gelesen) && in_array($ergebnis['refs']['k'], array_column($gelesen['children'], 'id'), true));
+$text_gelesen = $text === null ? null : $node->execute(['node' => $text->id, 'records' => false]);
+check('read-node nennt in used_by die Felder, die auf den Knoten zeigen (D-1458)', is_array($text_gelesen) && in_array($ergebnis['refs']['f'], array_column($text_gelesen['used_by'] ?? [], 'relation_id'), true));
 check('read-node findet das Feld mit seinem Typ', ($feld['name'] ?? '') === '__ab Titel' && ($feld['type'] ?? '') === 'text', wp_json_encode($feld));
 
 $satz  = is_array($gelesen) ? array_column($gelesen['records'], null, 'id')[$ergebnis['refs']['r']] ?? null : null;
