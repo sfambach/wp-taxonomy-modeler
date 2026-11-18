@@ -1429,6 +1429,16 @@ ol.taxmod-switch-cascade .taxmod-list-remove,
     text-align: left;
 }
 
+/* *D-1448, sein Wort 18.11. 17:57: «Material … könnte ja auch ruhig umbrechen» — ein Wähler mit `taxmod-record-wrap` bricht seinen Namen um, statt ihn abzuschneiden.* */
+.taxmod-record-pick.taxmod-record-wrap .taxmod-record-dialog-open,
+.taxmod-record-pick.taxmod-record-wrap .taxmod-dialog-open {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    max-width: 100%;
+    white-space: normal;
+}
+
 /* ⚠️ Einfachauswahl: das ausgegraute Feld mit der Wahl, rechts das Baumsymbol (D-1163) — sein Wort: «bei einfacher auswahl ein
  * ausgegrautes feld … und recht daneben … das baum symbol». Dieselbe Optik wie `.taxmod-chosen`; das Skript setzt nach einer Wahl
  * `button` zurück auf den Öffner, darum hier mit der Klasse zusammen überschrieben. */
