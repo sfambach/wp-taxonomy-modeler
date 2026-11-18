@@ -48,6 +48,7 @@ $built = wp_get_ability('taxmod/apply')->execute(['changes' => [
     ['op' => 'create_node', 'ref' => 'sub', 'name' => '__cf Unterplatz', 'parent' => '@n'],
     ['op' => 'add_field', 'ref' => 'kind', 'node' => '@n', 'target' => $text?->id ?? 0, 'name' => '__cf Art'],
     ['op' => 'add_field', 'ref' => 'note', 'node' => '@n', 'target' => $text?->id ?? 0, 'name' => '__cf Notiz'],
+    ['op' => 'add_field', 'ref' => 'quiet', 'node' => '@n', 'target' => $text?->id ?? 0, 'name' => '__cf Ohne Knopf'],
     ['op' => 'create_record', 'ref' => 'r', 'node' => '@n'],
     ['op' => 'set_values', 'record' => '@r', 'values' => ['@kind' => 'Regal', '@note' => 'alt']],
 ]]);
@@ -58,16 +59,18 @@ if (! is_array($built)) {
     exit(1);
 }
 
-['n' => $node, 'sub' => $sub, 'kind' => $kind, 'note' => $note, 'r' => $record] = $built['refs'];
+['n' => $node, 'sub' => $sub, 'kind' => $kind, 'note' => $note, 'quiet' => $quiet, 'r' => $record] = $built['refs'];
 
 add_filter(Plugin::CLAIMED_FIELDS_FILTER, static fn (array $claims, int $recordId): array => $recordId === $record
-    ? $claims + [$kind => ['label' => 'Art wechseln …', 'url' => 'https://example.test/dialog?r=' . $record], 999999 => ['label' => 'x', 'url' => 'https://example.test/']]
+    ? $claims + [$kind => ['label' => 'Art wechseln …', 'url' => 'https://example.test/dialog?r=' . $record], $quiet => ['label' => 'Ohne wechseln', 'url' => ''], 999999 => ['label' => 'x', 'url' => 'https://example.test/']]
     : $claims, 10, 2);
 
 $editor = (string) apply_filters(Plugin::RECORD_EDITOR_FILTER, '', $record, admin_url('admin.php?page=x'), []);
 check('the claimed field shows the module button', str_contains($editor, 'taxmod-claimed-field') && str_contains($editor, 'example.test/dialog'), substr($editor, 0, 300));
 check('the claimed field shows its value', str_contains($editor, 'Regal'));
 check('the claimed field has no control', ! str_contains($editor, 'taxmod_value[' . $record . '][' . $kind . ']'));
+check('a claim without address has no control', ! str_contains($editor, 'taxmod_value[' . $record . '][' . $quiet . ']'));
+check('a claim without address shows no button', ! str_contains($editor, 'Ohne wechseln'));
 check('the other field keeps its control', str_contains($editor, 'taxmod_value[' . $record . '][' . $note . ']'));
 check('a claim on a field the node lacks is ignored', ! str_contains($editor, 'https://example.test/"'));
 
