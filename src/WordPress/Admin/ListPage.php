@@ -742,7 +742,7 @@ final class ListPage
     {
         // His word 2026-11-06: «-- , drucken ... und was wir noch für aktionen haben in das selekt und dann bulk ation asuführen
         // button (nimmt nur selektierte einträge» — every action of the list stands in the one choice (D-1202).
-        $options = '<option value="">--</option>';
+        $options = '<option value="">' . esc_html__('Bulk actions') . '</option>';
         $dialogs = '';
 
         foreach ($actions as $value => $label) {
@@ -756,11 +756,12 @@ final class ListPage
             $dialogs .= $dialog;
         }
 
+        // WordPress's own words, untranslated here, so the bar reads like every other admin list (D-1433 G).
         return '<div class="tablenav top"><form method="post" id="' . esc_attr($formId) . '" action="' . esc_url(admin_url('admin-post.php')) . '" class="alignleft actions bulkactions" onsubmit="' . esc_attr(self::confirmBulk($formId)) . '">'
             . wp_nonce_field($nonceAction, '_wpnonce', true, false)
-            . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Bulk actions', 'taxmod') . '</label>'
+            . '<label class="screen-reader-text" for="' . esc_attr($formId) . '-action">' . esc_html__('Select bulk action') . '</label>'
             . '<select name="action" id="' . esc_attr($formId) . '-action">' . $options . '</select> '
-            . get_submit_button(__('Run bulk action', 'taxmod'), 'action', '', false) . '</form>'
+            . get_submit_button(__('Apply'), 'action', '', false) . '</form>'
             . ($dialogs === '' ? '' : '<div class="taxmod-bulk-asks">' . $dialogs . '</div>')
             . $filters
             . (! $expandable ? '' : '<div class="alignleft actions">'
