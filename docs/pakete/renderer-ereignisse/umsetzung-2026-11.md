@@ -91,6 +91,13 @@ flowchart LR
 | 6b | Der zweite, winzige Zeichner (D-636) als Prüfung, nicht als Oberfläche: baut aus `PageDescription` schlichtes HTML und vergleicht Felder, Werte, Reihenfolge, Bedienelemente mit der Seite | klein |
 | 6c | Die Knotenseite zieht **in einem Zug** um (D-637, D-638): `Rendering` liefert für sie die Beschreibung statt HTML, `ListPage` wird der Rand-Zeichner (D-1424 *INFERRED*), Meldungen am Feld (A11); Ratsche fällt | gross: `NodesScreen` 8 728 Zeilen, `Rendering` 8 838, 54 Kern-Dateien mit HTML |
 
+### Schritt 6b · Der zweite Zeichner — gebaut 18.11.2026
+
+- `tests/Support/PlainDrawer`: schlichtes HTML allein aus `PageDescription` (D-636). Liegt unter `tests/`, nicht im Kern (keine Kern-HTML-Datei mehr, Ratsche unverändert).
+- `tests/Support/PageInventory`: Inhalt einer Seite in Reihenfolge (Felder, Werte, Bedienelemente, Meldungen) — aus der Beschreibung (`of`) oder aus beliebigem HTML (`read`) nach einem festen Vertrag (`data-taxmod-field`, `button[name]`, `data-taxmod-message`).
+- Zusage im Kernlauf: `tests/Core/PlainDrawerTest` — gezeichnet = beschrieben; fehlendes oder zusätzliches Stück fällt auf; fremdes Markup (Tabelle, Select) wird nur über den Vertrag gelesen.
+- **A13**: Den Vergleich an echten Seiten (`page-parity-check`, Rand-Zeichner = Mini-Zeichner = Beschreibung je Modeller-Seite, beide DBs) kann es erst geben, wenn eine Seite eine Beschreibung liefert — er wird in 6c Schritt 3 scharf geschaltet, nicht vorher.
+
 ### Schritt 6c · Plan (Architektur 17.11.: «alle Modeller-Seiten und alle Kern-HTML-Dateien in einem Zug»)
 
 ```mermaid
@@ -117,7 +124,7 @@ Ziel: Ratsche **0 Kern-HTML-Dateien, 0 Escapes im Kern, 0 Seiten ohne Vorlage**.
 **Reihenfolge**
 
 1. **Prüfung ehrlich machen** (benannte Prüfungsänderung, PR-9): Ratsche zählt Tags nur ausserhalb von Kommentaren. Grund: Mermaid-`<br/>` ist DC-4-Doku, kein Markup. Fällt 54 → 47. StarterPattern zieht an den Rand (`WpStarterPatterns`) → 46.
-2. **6b zuerst**: Mini-Zeichner + `page-parity-check` (Felder, Werte, Reihenfolge, Bedienelemente, Adressen). Referenz: heutige Seiten aller Modeller-Seiten auf frischer + gewanderter DB.
+2. **6b zuerst** (gebaut 18.11.): Mini-Zeichner + Inventar. `page-parity-check` wird mit dem Rand-Zeichner (Schritt 3) scharf.
 3. **Rand-Zeichner**: `ListPage` wird Zeichner für `PageDescription`; Bausteine (Gruppe «Bausteine») ziehen hinein, Kern behält nur Beschreibungsklassen.
 4. **Feld-Zeichner**: je Feldart eine Beschreibung (`FieldDescription` mit Art + Wert + Steuerelementen), gezeichnet am Rand.
 5. **Zusammengesetzte + Kacheln** → `SectionDescription`/`RowDescription`; Kacheln als eigene Beschreibung.
@@ -125,8 +132,8 @@ Ziel: Ratsche **0 Kern-HTML-Dateien, 0 Escapes im Kern, 0 Seiten ohne Vorlage**.
 7. **Seiten**: alle 9 auf die Vorlage (`ListPage`), Toolbar eine Zeile (UI-Regel).
 8. **Abschluss**: Decken auf 0/0/0 (benannt), Kern + Grenzlauf beide DBs grün, `page-parity-check` grün, Bildschirmfotos vorher/nachher je Seite → Architektur-Gate → Merge → WP-Upload.
 
-**Offen fürs Gate**
+**Am Gate entschieden (18.11., D-1429)**
 
-- O1: Ratsche ignoriert Kommentare — ok?
-- O2: Escapes im Kern auch auf 0 (folgt aus 0 HTML), oder eigene Decke behalten?
-- O3: Kacheln (`Tile/`) gehören zur Seite → mit umziehen (Vorschlag ja).
+- O1: Ratsche ignoriert Kommentare — **ja (D-1429)**
+- O2: Escapes im Kern auch auf 0 — **ja (D-1429)**
+- O3: Kacheln ziehen mit — **ja (D-1429)**

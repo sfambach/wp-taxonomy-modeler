@@ -6,7 +6,7 @@ steht in der Datei, auf die verwiesen wird, und nur dort wird sie geändert.
 
 ⚠️ **Warum es dieses Verzeichnis gibt.** *Der Eigentümer konnte den Regelsatz nicht übergeben:
 «hätte ein Problem den aktuellen Regelsatz zu übergeben, da er Chaos enthält». Gemessen war das
-Chaos nicht Altlast — **303 Regeln in 16 Räumen, die meisten davon lebendig zitiert** —,
+Chaos nicht Altlast — **306 Regeln in 17 Räumen, die meisten davon lebendig zitiert** —,
 sondern **Streuung**: sie stehen in 15 verschiedenen Dateien, und **keine Stelle listete sie auf.**
 Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 
@@ -31,9 +31,10 @@ Vor einer Aufgabe konnte niemand wissen, welche Regeln für sie gelten.*
 | **B** | Standardbaum — Inhalt | 8 |
 | **S** | Speicher | 1 |
 | **Q** | Aus der Altlast übernommene Frage | 1 |
-| | **Summe** | **303** |
+| **O** | *ohne Namen — dieser Raum ist nirgends erklärt* | 3 |
+| | **Summe** | **306** |
 
-Bei **4** Regeln liess sich keine Definitionszeile erkennen, nur eine Erwähnung — dort steht die Regel
+Bei **7** Regeln liess sich keine Definitionszeile erkennen, nur eine Erwähnung — dort steht die Regel
 vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 ---
@@ -84,7 +85,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **DC1** | Comments explain why, not what. If a comment restates the code, delete one of them — usually the comment. | [CLAUDE.md:111](../../CLAUDE.md) | **nie** |
 | **DC2** | Every class and interface gets a short docblock: one sentence of purpose, plus the concept document it implements (@see docs/NewConcept/10-domain-c… | [CLAUDE.md:112](../../CLAUDE.md) | **nie** |
 | **DC3** | @param / @return only where the type declaration cannot say it — array shapes, generics, units, ranges. Never as an echo of the signature. | [CLAUDE.md:113](../../CLAUDE.md) | **nie** |
-| **DC4** | For a flow that is genuinely hard to see from one file — a registry lookup, a resolution walk, a graph traversal — put a small mermaid diagram in t… | [CLAUDE.md:114](../../CLAUDE.md) | **nie** |
+| **DC4** | For a flow that is genuinely hard to see from one file — a registry lookup, a resolution walk, a graph traversal — put a small mermaid diagram in t… | [CLAUDE.md:114](../../CLAUDE.md) | 1 |
 | **DC5** | Each top-level source folder has a README.md: what lives here, what it must not depend on, where its concept document is. Short. This is the docume… | [CLAUDE.md:115](../../CLAUDE.md) | **nie** |
 
 ## V — Vision und Umfang
@@ -420,4 +421,12 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **Q59** | )"; OQ Q18, Q3 | [03-legacy-inspiration.md:60](03-legacy-inspiration.md) | **nie** |
+
+## O — *ohne Namen*
+
+| Regel | Was sie sagt | Steht in | Zitiert |
+|---|---|---|---|
+| **O1** | the ratchet counts HTML only outside comments; a mermaid <br/> in a docblock is documentation (DC-4), not markup, so the ceiling falls with it (a l… | [90-decision-log.md:1716](90-decision-log.md) | 1 |
+| **O2** | the escapes in the core go to 0 as well: plan.md «Escape im Kern … fällt mit dem HTML weg» and «87 Escape-Aufrufe fallen weg»; otherwise double or … | [90-decision-log.md:1716](90-decision-log.md) | **nie** |
+| **O3** | the tiles (Tile/) move with the pages: D-638 «alle Seiten, alle Renderer». | [90-decision-log.md:1716](90-decision-log.md) | 1 |
 
