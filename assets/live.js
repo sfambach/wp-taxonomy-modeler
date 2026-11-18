@@ -452,19 +452,125 @@
 		return true;
 	}
 
+	/*
+	 * D-1434: one click acts once. A form being sent sends nothing more and its button is locked; each sent form carries a one-time
+	 * mark the server uses up (`OnceMark`), so a second request — a double click on a page without this script, the back button —
+	 * acts no more and goes where the first went. After a live act the form gets a fresh mark, it may act again.
+	 */
+	function freshMark() {
+		if ( window.crypto && window.crypto.randomUUID ) {
+			return window.crypto.randomUUID();
+		}
+
+		return Date.now().toString( 36 ) + '-' + Math.random().toString( 36 ).slice( 2 ) + Math.random().toString( 36 ).slice( 2 );
+	}
+
+	function markOf( form ) {
+		var field = form.querySelector( 'input[name="_taxmod_once"]' );
+
+		if ( ! field ) {
+			field      = document.createElement( 'input' );
+			field.type = 'hidden';
+			field.name = '_taxmod_once';
+			form.appendChild( field );
+		}
+
+		if ( ! field.value ) {
+			field.value = freshMark();
+		}
+
+		return field;
+	}
+
+	function lock( form, submitter ) {
+		form.setAttribute( 'aria-busy', 'true' );
+
+		if ( submitter && 'disabled' in submitter ) {
+			submitter.setAttribute( 'data-taxmod-locked', '' );
+			// *After the submit event: a button disabled now is still sent with the form, the browser took it already.*
+			setTimeout( function () {
+				submitter.disabled = true;
+			}, 0 );
+		}
+	}
+
+	function unlock( form, renew ) {
+		form.removeAttribute( 'aria-busy' );
+		document.querySelectorAll( '[data-taxmod-locked]' ).forEach( function ( button ) {
+			if ( button.form === form ) {
+				button.disabled = false;
+				button.removeAttribute( 'data-taxmod-locked' );
+			}
+		} );
+
+		if ( renew ) {
+			markOf( form ).value = freshMark();
+		}
+	}
+
+	// *Capture on window, before every other listener: a form already on its way is not sent twice, whoever would send it.*
+	window.addEventListener( 'submit', function ( event ) {
+		var form = event.target;
+
+		if ( ! form || ( form.getAttribute( 'method' ) || 'get' ).toLowerCase() !== 'post' ) {
+			return;
+		}
+
+		if ( form.getAttribute( 'aria-busy' ) === 'true' ) {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+
+			return;
+		}
+
+		markOf( form );
+	}, true );
+
+	// *Back to a page from the browser's cache: its forms may be sent again — the server knows the mark and acts no more.*
+	window.addEventListener( 'pageshow', function ( event ) {
+		if ( event.persisted ) {
+			document.querySelectorAll( 'form[aria-busy="true"]' ).forEach( function ( form ) {
+				unlock( form, false );
+			} );
+		}
+	} );
+
 	// *On window: every listener of the document (confirm dialog, quiet save) has spoken before this one decides.*
 	window.addEventListener( 'submit', function ( event ) {
 		var form      = event.target;
 		var submitter = event.submitter || null;
+		var post      = form && ( form.getAttribute( 'method' ) || 'get' ).toLowerCase() === 'post';
 
-		if ( event.defaultPrevented || ! window.fetch || ! window.DOMParser || ! form || ! liveAct( form, submitter ) ) {
+		if ( event.defaultPrevented || ! form ) {
+			return;
+		}
+
+		if ( ! window.fetch || ! window.DOMParser || ! liveAct( form, submitter ) ) {
+			// *Sent the usual way (D-1434): locked while the page goes. An answer that leaves the page standing — a download, a new tab —
+			// frees the form after a while with a fresh mark; until then a second click is caught, here or by the server.*
+			if ( post ) {
+				if ( ( form.getAttribute( 'target' ) || '' ) === '' && ! ( submitter && ( submitter.getAttribute( 'formtarget' ) || '' ) !== '' ) ) {
+					lock( form, submitter );
+				}
+
+				setTimeout( function () {
+					unlock( form, true );
+				}, 8000 );
+			}
+
 			return;
 		}
 
 		event.preventDefault();
 
-		act( form, submitter ).catch( function () {
-			form.removeAttribute( 'aria-busy' );
+		if ( post ) {
+			lock( form, submitter );
+		}
+
+		act( form, submitter ).then( function () {
+			unlock( form, true );
+		} ).catch( function () {
+			unlock( form, false );
 			form.setAttribute( 'data-taxmod-reload', '' );
 
 			if ( submitter && form.requestSubmit ) {

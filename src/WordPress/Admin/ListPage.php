@@ -624,6 +624,9 @@ final class ListPage
         $message = $message !== '' ? $message : __('The action could not be completed.', 'taxmod');
         $to      = self::backTo($back);
 
+        // D-1434: a failed act did nothing, so the same form may try again.
+        OnceMark::giveBack();
+
         if (! headers_sent() && get_current_user_id() > 0) {
             set_transient(self::FAILURE . get_current_user_id(), mb_substr($message, 0, 500), 5 * MINUTE_IN_SECONDS);
             wp_safe_redirect($to);

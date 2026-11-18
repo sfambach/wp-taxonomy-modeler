@@ -327,6 +327,8 @@ final class Plugin
 
     private static function wireAdminActions(self $plugin): void
     {
+        // D-1434: one click acts once — for every admin-post act, before its handler runs.
+        add_action('admin_init', [\Taxmod\WordPress\Admin\OnceMark::class, 'guard'], 0);
         add_action('admin_post_taxmod_node', $plugin->handleNodeAction(...));
         add_action('admin_post_' . ListPage::COLUMNS_ACTION, [ListPage::class, 'saveColumns']);
         add_action('wp_ajax_' . ListPage::DETAILS_ACTION, [ListPage::class, 'details']);
