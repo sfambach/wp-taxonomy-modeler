@@ -4100,13 +4100,14 @@ final class NodesScreen
      * @param list<int> $exclude
      * @param list<int> $unpickable
      */
-    public function nodeChooserForModule(string $name, int $root, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = ''): string
+    public function nodeChooserForModule(string $name, int $root, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $shared = false): string
     {
         $wurzel = $this->editor->find($root) ?? $this->framework->root();
         $wahl   = $preselected === null ? null : $this->editor->find($preselected);
 
-        // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
-        $baum = \Taxmod\WordPress\Draw\Markup::of($this->rendering->withoutSharedRecordBodies()->nodeChooser(
+        // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen; es sei denn, das
+        // Modul sagt `shared` und gibt die Vorlagen selbst aus ({@see self::moduleTemplates()}).*
+        $baum = \Taxmod\WordPress\Draw\Markup::of($this->forModule($shared && ! $inline && $formId !== '')->nodeChooser(
             $wurzel,
             $name,
             null,
@@ -4194,10 +4195,24 @@ final class NodesScreen
         return ['values' => $values, 'unknown' => $unknown, 'node' => $found->nodeId];
     }
 
-    public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = [], array $preferred = [], array $rank = [], bool $rankable = false): string
+    /** @var array<string, array{0: array<int, int|null>, 1: array<int, string>}> {@see self::recordsAsTree()}, once per request */
+    private array $recordTrees = [];
+
+    /**
+     * The records of a node with their parent and their word — read once per request, not once per chooser.
+     *
+     * ⚠️ *Measured 2026-11-18 on the stock's «Angekommen»: one place chooser per purchase row, each reading the same places and
+     * their words again — 13 statements a row.*
+     *
+     * @param int|list<int> $labelField
+     * @return array{0: array<int, int|null>, 1: array<int, string>} record ⇒ parent, record ⇒ word
+     */
+    private function recordsAsTree(int $node, int $parentField, int|array $labelField): array
     {
-        if ($node <= 0 || $this->editor->find($node) === null) {
-            return '';
+        $key = $node . '/' . $parentField . '/' . implode(',', (array) $labelField);
+
+        if (isset($this->recordTrees[$key])) {
+            return $this->recordTrees[$key];
         }
 
         $records = new \Taxmod\WordPress\Persistence\WpdbRecordRepository();
@@ -4211,6 +4226,49 @@ final class NodesScreen
             'fields'   => is_array($labelField) ? array_values($labelField) : ($labelField > 0 ? [$labelField] : []),
         ], static fn ($v): bool => $v !== [])])[0] ?? []);
 
+        return $this->recordTrees[$key] = [$links, $worte];
+    }
+
+    /**
+     * The chooser bodies modules share on their page (D-866), until the module takes them as templates.
+     *
+     * ⚠️ *Of the request, not of this screen: the screen that draws the choosers is built anew after a write
+     * ({@see \Taxmod\WordPress\Plugin::chooserScreen()}), and a placeholder already on the page must still find its template.*
+     */
+    private static ?\Taxmod\Core\Renderer\SharedBodies $moduleBodies = null;
+
+    /** @var array<int, Rendering> the drawings of {@see self::forModule()}: 1 sharing, 0 not — kept, so the choosers of a page share what they read */
+    private array $moduleDrawings = [];
+
+    /** The drawing for a module's chooser: its tree in the piece itself, or — asked by the module — once per page as a template. */
+    private function forModule(bool $shared): Rendering
+    {
+        return $this->moduleDrawings[(int) $shared] ??= $shared
+            ? $this->rendering->withSharedRecordBodies(self::$moduleBodies ??= new \Taxmod\Core\Renderer\SharedBodies())
+            : $this->rendering->withoutSharedRecordBodies();
+    }
+
+    /**
+     * The templates of the choosers a module drew with `shared` since it last asked — for the end of its piece, outside every
+     * form; a large one only as an address the script fetches when a chooser opens (D-898), the same way as on the model page.
+     */
+    public function moduleTemplates(): string
+    {
+        $bodies             = self::$moduleBodies?->bodies() ?? [];
+        self::$moduleBodies = null;
+        unset($this->moduleDrawings[1]);
+
+        return $bodies === [] ? '' : \Taxmod\WordPress\Draw\SharedTemplates::of($bodies, new \Taxmod\WordPress\Draw\EdgeDrawer(), $this->grosseKoerperAuslagern(...));
+    }
+
+    public function recordChooserForModule(string $name, int $node, int $parentField, int|array $labelField = 0, int $root = 0, array $exclude = [], array $unpickable = [], ?int $preselected = null, string $formId = '', bool $inline = false, string $pickUrl = '', bool $drag = false, array $suffix = [], array $preferred = [], array $rank = [], bool $rankable = false, bool $shared = false): string
+    {
+        if ($node <= 0 || $this->editor->find($node) === null) {
+            return '';
+        }
+
+        [$links, $worte] = $this->recordsAsTree($node, $parentField, $labelField);
+
         $eintraege = [];
 
         foreach ($links as $id => $parent) {
@@ -4222,8 +4280,9 @@ final class NodesScreen
         $zeilen = \Taxmod\Core\Service\RecordTree::walk($eintraege, $root > 0 ? $root : null, $exclude);
         $zeilen = \Taxmod\Core\Service\RecordTree::preferredOnTop($zeilen, $preferred, __('Preferred', 'taxmod'));
 
-        // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen.*
-        $baum = \Taxmod\WordPress\Draw\Markup::of($this->rendering->withoutSharedRecordBodies()->recordChooser(
+        // ⚠️ *Die Seite des Moduls gibt keine geteilten Vorlagen aus (D-866) — der Baum muss im Stück selbst stehen; es sei denn, das
+        // Modul sagt `shared` und gibt die Vorlagen selbst aus ({@see self::moduleTemplates()}).*
+        $baum = \Taxmod\WordPress\Draw\Markup::of($this->forModule($shared && ! $inline && $formId !== '')->recordChooser(
             $zeilen,
             $name,
             $preselected,
