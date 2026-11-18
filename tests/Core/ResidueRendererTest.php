@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ResidueEntry;
 use Taxmod\Core\Renderer\ResidueGroup;
-use Taxmod\Core\Renderer\ResidueRenderer;
+use Taxmod\WordPress\Draw\ResidueMarkup;
 use Taxmod\Core\Renderer\Submission;
 
 /**
@@ -17,11 +17,11 @@ use Taxmod\Core\Renderer\Submission;
  */
 final class ResidueRendererTest extends TestCase
 {
-    private ResidueRenderer $renderer;
+    private ResidueMarkup $renderer;
 
     protected function setUp(): void
     {
-        $this->renderer = new ResidueRenderer();
+        $this->renderer = new ResidueMarkup();
     }
 
     private function entry(string $what, string $act, int $id): ResidueEntry

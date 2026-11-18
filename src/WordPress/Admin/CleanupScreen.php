@@ -6,7 +6,7 @@ use Taxmod\Core\Model\Node;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\Core\Renderer\ResidueEntry;
 use Taxmod\Core\Renderer\ResidueGroup;
-use Taxmod\Core\Renderer\ResidueRenderer;
+use Taxmod\WordPress\Draw\ResidueMarkup;
 use Taxmod\Core\Renderer\Submission;
 use Taxmod\Core\Repository\Changelog;
 use Taxmod\WordPress\Persistence\Residue;
@@ -26,7 +26,7 @@ use Taxmod\WordPress\Plugin;
  *   A["orphaned overrides · D-156"] --> R["Residue · measures"]
  *   B["values whose relation is gone · D-159"] --> R
  *   C["nodes with no connections"] --> R
- *   R --> S["this screen"] --> V["ResidueRenderer · the shape"]
+ *   R --> S["this screen"] --> V["ResidueMarkup · the shape"]
  * ```
  *
  * ⚠️ **Three sources and no fourth, because D-247 names three.** *A repair surface that grew a
@@ -67,7 +67,7 @@ final class CleanupScreen
 
     public function __construct(
         private readonly Residue $residue,
-        private readonly ResidueRenderer $renderer,
+        private readonly ResidueMarkup $renderer,
         // ⚠️ **The same object everything else writes history through** — a second one would open a
         // bracket nobody writes into ([D-470](../../../docs/NewConcept/90-decision-log.md)).
         private readonly Changelog $changelog,

@@ -1,6 +1,10 @@
 <?php declare(strict_types=1);
 
-namespace Taxmod\Core\Renderer;
+namespace Taxmod\WordPress\Draw;
+
+use Taxmod\Core\Renderer\RenderResult;
+use Taxmod\Core\Renderer\ResidueEntry;
+use Taxmod\Core\Renderer\ResidueGroup;
 
 /**
  * The repair surface's list — **it owns the shape of what Cleanup shows**.
@@ -29,9 +33,11 @@ namespace Taxmod\Core\Renderer;
  * through that door would mean inventing a `Renderable` for a row that names an owner which no
  * longer exists.*
  *
+ * ⚠️ *Drawn at the edge since renderer step 6c (D-1429 O3, D-638): only the cleanup screen draws it, and the model names no such renderer.*
+ *
  * @see docs/NewConcept/20-interaction.md
  */
-final class ResidueRenderer
+final class ResidueMarkup
 {
     /** Marks the list, so a stylesheet can hold what is common to it (D-463, «commonalities in CSS»). */
     public const CLASS_NAME = 'taxmod-residue';
@@ -91,8 +97,8 @@ final class ResidueRenderer
                 'action' => $entry->submits->action,
                 'style'  => 'margin:0;flex:none',
             ])
-            . RenderResult::draw(\Taxmod\Core\Description\Carried::of($entry->submits))
-            . RenderResult::draw($entry->act)
+            . ControlMarkup::carried(\Taxmod\Core\Description\Carried::of($entry->submits))
+            . ControlMarkup::button($entry->act)
             . '</form>';
     }
 }

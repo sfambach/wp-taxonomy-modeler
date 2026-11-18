@@ -5,10 +5,12 @@ namespace Taxmod\WordPress\Draw;
 use Taxmod\Core\Description\ActsForm;
 use Taxmod\Core\Description\AddChosen;
 use Taxmod\Core\Description\ChoicePurpose;
+use Taxmod\Core\Description\ComplexView;
 use Taxmod\Core\Description\Choosing;
 use Taxmod\Core\Description\Carried;
 use Taxmod\Core\Description\CurrentChoice;
 use Taxmod\Core\Description\NodeInTree;
+use Taxmod\Core\Description\PartCount;
 use Taxmod\Core\Description\PickableNode;
 use Taxmod\Core\Description\RecordBrowser;
 use Taxmod\Core\Description\RecordChoice;
@@ -17,9 +19,11 @@ use Taxmod\Core\Description\SettingOrigin;
 use Taxmod\Core\Description\SettingRow;
 use Taxmod\Core\Description\SettingsPanel;
 use Taxmod\Core\Description\SharedBody;
+use Taxmod\Core\Description\TableView;
 use Taxmod\Core\Description\TreeChoice;
 use Taxmod\Core\Description\TreeLine;
 use Taxmod\Core\Description\TreeView;
+use Taxmod\Core\Description\UnfoldingSummary;
 use Taxmod\Core\Description\Describes;
 use Taxmod\Core\Description\DialogBox;
 use Taxmod\Core\Description\Drawn;
@@ -28,6 +32,7 @@ use Taxmod\Core\Description\Hint;
 use Taxmod\Core\Description\Icon;
 use Taxmod\Core\Description\Drawer;
 use Taxmod\Core\Description\InputKind;
+use Taxmod\Core\Description\LabelsPanel;
 use Taxmod\Core\Description\Locked;
 use Taxmod\Core\Description\MediaButtons;
 use Taxmod\Core\Description\MediaLink;
@@ -81,6 +86,12 @@ final class EdgeDrawer implements Drawer
             $piece instanceof TreeChoice => $this->treeChoice($piece),
             $piece instanceof CurrentChoice => self::current($piece),
             $piece instanceof SharedBody => $this->sharedBody($piece),
+            $piece instanceof ComplexView => $this->complex($piece),
+            $piece instanceof UnfoldingSummary => '<details class="taxmod-complex-link"><summary>' . self::e($piece->words) . '</summary>' . $this->draw($piece->part) . '</details>',
+            $piece instanceof TableView  => $this->table($piece),
+            $piece instanceof PartCount  => $piece->href === '' ? '<span class="taxmod-part-count">' . $piece->count . '</span>'
+                : '<a class="taxmod-part-count" href="' . self::e($piece->href) . '">' . $piece->count . '</a>',
+            $piece instanceof LabelsPanel => $this->labels($piece),
             $piece instanceof FieldRow   => $this->fieldRow($piece),
             $piece instanceof SettingsPanel => $this->settings($piece),
             $piece instanceof SettingRow => $this->setting($piece),
@@ -299,6 +310,160 @@ final class EdgeDrawer implements Drawer
 
         return $zeile . $leiste . ($f->settings === null ? ''
             : '<tr class="taxmod-field-settings-row" id="' . self::e($f->settingsRow) . '"><td colspan="' . $f->columns . '">' . $this->part($f->settings) . '</td></tr>');
+    }
+
+    private function labels(LabelsPanel $l): string
+    {
+        $kurz = '';
+        $lang = '';
+
+        foreach ($l->slots as $slot) {
+            $rolle = '<code style="font-size:.9em">' . self::e($slot->role) . '</code>';
+
+            if ($slot->isLong) {
+                $lang .= '<div class="taxmod-labels-long" style="display:flex;flex-direction:column;gap:.15em">' . $rolle
+                    . (! $l->editing ? '<span>' . self::e($slot->shown) . '</span>'
+                        : '<textarea name="' . self::e($slot->fieldName) . '" rows="2" placeholder="' . self::e($slot->shown) . '"'
+                            . ($l->formId === '' ? '' : ' form="' . self::e($l->formId) . '"')
+                            . ' style="width:100%">' . self::e($slot->stored ?? '') . '</textarea>')
+                    . '</div>';
+
+                continue;
+            }
+
+            $kurz .= '<label style="display:flex;flex-direction:column;gap:.15em;' . ($slot->translatable ? 'flex:1 1 8em;min-width:7em' : 'flex:0 0 5em') . '">' . $rolle
+                . (! $l->editing ? '<span>' . self::e($slot->shown) . '</span>'
+                    : RenderResult::htmlTag('input', [
+                        'type' => 'text', 'name' => $slot->fieldName, 'value' => $slot->stored ?? '', 'placeholder' => $slot->shown,
+                        'title' => $slot->note === '' ? null : $slot->note, 'form' => $l->formId, 'style' => 'width:100%',
+                    ]))
+                . '</label>';
+        }
+
+        $sprache = $l->localeTitle === null ? '' : '<div class="taxmod-labels-locale" style="display:flex;flex-direction:column;gap:.15em;flex:0 0 8em">'
+            . '<code style="font-size:.9em">' . self::e($l->localeTitle) . '</code>' . $this->part($l->localePicker ?? '') . '</div>';
+        $innen = ($kurz === '' ? '' : '<div class="taxmod-labels-short" style="display:flex;gap:.8em;align-items:flex-end;flex-wrap:wrap;margin:.4em 0">' . $sprache . $kurz . '</div>')
+            . ($kurz !== '' && $lang !== '' ? '<div style="height:.7em"></div>' : '')
+            . $lang;
+        $knoepfe = $l->acts === [] ? '' : '<div style="display:flex;gap:.2em;margin-top:.5em">' . implode('', array_map($this->draw(...), $l->acts)) . '</div>';
+
+        $eingabe = match (true) {
+            $l->action === null => $innen,
+            $l->formId !== ''   => $this->draw(new Carried($l->carried, $l->formId)) . $innen . $knoepfe,
+            default             => '<form method="post" action="' . self::e($l->action) . '">' . $this->draw(new Carried($l->carried)) . $innen . $knoepfe . '</form>',
+        };
+
+        return '<div class="taxmod-labels">' . $eingabe . '</div>';
+    }
+
+    private function table(TableView $t): string
+    {
+        $zeilen = [];
+
+        foreach ($t->rows as $zeile) {
+            $zeilen[] = [
+                array_map(fn (Describes|string $z): string => $this->part($z), $zeile['lead']),
+                array_map(fn (Describes|string $z): string => $this->part($z), $zeile['cells']),
+                $zeile['acts'] === null ? null : $this->part($zeile['acts']),
+            ];
+        }
+
+        $spalten = array_keys($t->columnHeads);
+
+        // An empty column is left out when showing (D-954); when editing the empty cell is where the value goes.
+        if ($t->dropEmptyColumns) {
+            $spalten = array_values(array_filter($spalten, static function (int $i) use ($zeilen): bool {
+                foreach ($zeilen as $zeile) {
+                    if (self::shows($zeile[1][$i])) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }));
+
+            if ($spalten === [] && $t->leadHeads === [] && ! $t->withActs) {
+                return '';
+            }
+        }
+
+        $koepfe = array_map(self::e(...), $t->leadHeads);
+
+        foreach ($spalten as $i) {
+            $koepfe[] = self::e($t->columnHeads[$i]['name']) . HintMarkup::icon($t->columnHeads[$i]['hint']);
+        }
+
+        if ($t->withActs) {
+            $koepfe[] = '';
+        }
+
+        $zellen = [];
+
+        foreach ($zeilen as [$vorne, $mitte, $acts]) {
+            $reihe = array_map(static fn (string $m): array => ['taxmod-table-lead', $m], $vorne);
+
+            foreach ($spalten as $i) {
+                $reihe[] = ['taxmod-table-cell', $mitte[$i]];
+            }
+
+            if ($t->withActs) {
+                $reihe[] = ['taxmod-table-acts', (string) $acts];
+            }
+
+            $zellen[] = $reihe;
+        }
+
+        $rumpf = '';
+
+        if ($t->orientation->isVertical()) {
+            foreach ($koepfe as $stelle => $name) {
+                $reihe = $t->withHeads ? '<th class="taxmod-table-head" scope="row">' . $name . '</th>' : '';
+
+                foreach ($zellen as $zeile) {
+                    $reihe .= '<td class="' . $zeile[$stelle][0] . '">' . $zeile[$stelle][1] . '</td>';
+                }
+
+                $rumpf .= '<tr class="taxmod-table-row">' . $reihe . '</tr>';
+            }
+
+            $innen = '<tbody>' . $rumpf . '</tbody>';
+        } else {
+            foreach ($zellen as $zeile) {
+                $rumpf .= '<tr class="taxmod-table-row">' . implode('', array_map(static fn (array $z): string => '<td class="' . $z[0] . '">' . $z[1] . '</td>', $zeile)) . '</tr>';
+            }
+
+            $innen = (! $t->withHeads ? '' : '<thead><tr>' . implode('', array_map(static fn (string $k): string => '<th class="taxmod-table-head" scope="col">' . $k . '</th>', $koepfe)) . '</tr></thead>')
+                . '<tbody>' . $rumpf . '</tbody>';
+        }
+
+        return '<table class="taxmod-table taxmod-table-' . $t->orientation->value . '">' . $innen . '</table>';
+    }
+
+    /** Whether drawn markup shows anything: text, or a picture. */
+    private static function shows(string $markup): bool
+    {
+        return ! (trim(html_entity_decode(strip_tags($markup))) === '' && ! str_contains($markup, '<img'));
+    }
+
+    /** A block that draws nothing is left out, and so is the whole when nothing is left. */
+    private function complex(ComplexView $k): string
+    {
+        $markup = '';
+
+        foreach ($k->fixed as $wort => $wert) {
+            $markup .= '<span class="taxmod-complex-fixed-item"><span class="taxmod-complex-fixed-label">' . self::e((string) $wort) . '</span> ' . $this->part($wert) . '</span>';
+        }
+
+        $markup = $markup === '' ? '' : '<div class="taxmod-complex-fixed">' . $markup . '</div>';
+
+        foreach ($k->blocks as $block) {
+            $innen = implode('', array_map(fn (Describes|string $d): string => $this->part($d), $block['body']));
+
+            $markup .= $block['heading'] === null || $innen === '' ? $innen
+                : '<div class="taxmod-complex-block"><h4 class="taxmod-complex-heading">' . self::e($block['heading']) . HintMarkup::icon($block['hint']) . '</h4>' . $innen . '</div>';
+        }
+
+        return $markup === '' ? '' : '<div class="taxmod-node">' . $markup . '</div>';
     }
 
     private function sharedBody(SharedBody $platz): string

@@ -56,7 +56,7 @@ final class ComparisonTableTest extends TestCase
     #[Test]
     public function the_main_column_is_marked_and_a_group_names_its_term_once(): void
     {
-        $html = ComparisonTable::render(
+        $html = \Taxmod\WordPress\Draw\ComparisonTableMarkup::render(
             self::COLUMNS,
             2,
             ComparisonPosition::Front,
@@ -77,7 +77,7 @@ final class ComparisonTableTest extends TestCase
     #[Test]
     public function labels_and_values_are_escaped(): void
     {
-        $html = ComparisonTable::render([['id' => 1, 'label' => '<b>x</b>']], 1, ComparisonPosition::Front, [], [['labels' => ['a&b'], 'cells' => [1 => '<i>']]], 'M', 'V');
+        $html = \Taxmod\WordPress\Draw\ComparisonTableMarkup::render([['id' => 1, 'label' => '<b>x</b>']], 1, ComparisonPosition::Front, [], [['labels' => ['a&b'], 'cells' => [1 => '<i>']]], 'M', 'V');
 
         self::assertStringNotContainsString('<b>', $html);
         self::assertStringContainsString('a&amp;b', $html);
@@ -87,7 +87,7 @@ final class ComparisonTableTest extends TestCase
     #[Test]
     public function a_grouped_table_heads_each_group_once_and_joins_the_labels(): void
     {
-        $html = ComparisonTable::render(
+        $html = \Taxmod\WordPress\Draw\ComparisonTableMarkup::render(
             self::COLUMNS,
             2,
             ComparisonPosition::Middle,

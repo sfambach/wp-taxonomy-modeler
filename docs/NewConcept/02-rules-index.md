@@ -58,7 +58,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
-| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 90 |
+| **CD1** | ). Declares the interfaces it needs; the boundary fulfils them (D-170). | [01-glossary.md:104](01-glossary.md) | 89 |
 | **CD2** | Every PHP file starts with <?php declare(strict_types=1); as the first line. No closing ?> in pure-PHP files. | [CLAUDE.md:63](../../CLAUDE.md) | 1 |
 | **CD3** | Class loading via Composer PSR-4. No require_once for classes. | [CLAUDE.md:64](../../CLAUDE.md) | 2 |
 | **CD4** | Type everything that can be typed: properties, parameters, returns. mixed needs a reason in a comment. | [CLAUDE.md:65](../../CLAUDE.md) | 1 |
@@ -66,7 +66,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | **CD6** | Custom tables: $wpdb->prefix . 'taxmod_<name>', created via dbDelta() on activation, guarded by a stored schema version option so upgrades are dete… | [CLAUDE.md:67](../../CLAUDE.md) | 21 |
 | **CD7** | No N+1. No SQL inside a loop, no recursive function that queries per level. Tree traversal is solved once, in one place, and every caller uses it. | [CLAUDE.md:68](../../CLAUDE.md) | 203 |
 | **CD8** | Presentation code returns strings. No echo inside renderers, loops, shortcodes or hooks. Use ob_start() / ob_get_clean() only when a third-party AP… | [CLAUDE.md:69](../../CLAUDE.md) | 16 |
-| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 30 |
+| **CD9** | Names say what the thing is. Rename when the word lies. No abbreviations that need a lookup, and no data / info / manager / helper as a whole name. | [CLAUDE.md:70](../../CLAUDE.md) | 29 |
 | **CD10** | Errors: exceptions inside the core, translated to WP_Error at the boundary. Never a bare false to signal failure. Never silence an exception withou… | [CLAUDE.md:71](../../CLAUDE.md) | 8 |
 | **CD11** | Versioning: semantic MAJOR.MINOR.PATCH, starting at 0.0.1. MAJOR moves only for an official release. Plugin header, PHP version constant, package.j… | [CLAUDE.md:72](../../CLAUDE.md) | 5 |
 | **CD12** | Gutenberg blocks live in the taxmod/ namespace — taxmod/<slug>, keyword taxmod (D-337). The human-readable block title is not a token: it is a tran… | [CLAUDE.md:73](../../CLAUDE.md) | 7 |
@@ -76,7 +76,7 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 | Regel | Was sie sagt | Steht in | Zitiert |
 |---|---|---|---|
 | **AR1** | The model is stored in tables owned by this plugin, not in WordPress posts, postmeta, terms or CPTs. Measured 2026-09-01: wp_insert_post, get_post_… | [CLAUDE.md:94](../../CLAUDE.md) | 22 |
-| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:95](../../CLAUDE.md) | 94 |
+| **AR2** | Nothing user-visible is hard-coded. Software strings go through the WordPress text domain; the names of user-created nodes are labels stored in the… | [CLAUDE.md:95](../../CLAUDE.md) | 95 |
 
 ## DC — Dokumentation im Code
 
@@ -429,5 +429,5 @@ vermutlich im Fliesstext und sollte eine eigene Zeile bekommen.
 |---|---|---|---|
 | **O1** | the ratchet counts HTML only outside comments; a mermaid <br/> in a docblock is documentation (DC-4), not markup, so the ceiling falls with it (a l… | [90-decision-log.md:1716](90-decision-log.md) | 1 |
 | **O2** | the escapes in the core go to 0 as well: plan.md «Escape im Kern … fällt mit dem HTML weg» and «87 Escape-Aufrufe fallen weg»; otherwise double or … | [90-decision-log.md:1716](90-decision-log.md) | **nie** |
-| **O3** | the tiles (Tile/) move with the pages: D-638 «alle Seiten, alle Renderer». A14 (same gate, 18.11.) — the renderer classes keep their names and plac… | [90-decision-log.md:1716](90-decision-log.md) | 1 |
+| **O3** | the tiles (Tile/) move with the pages: D-638 «alle Seiten, alle Renderer». A14 (same gate, 18.11.) — the renderer classes keep their names and plac… | [90-decision-log.md:1716](90-decision-log.md) | 4 |
 

@@ -827,7 +827,7 @@ final class NodesScreen
             ? $this->comparisonOwnRows(array_column($spalten, 'id'), $felder, $rowFields)
             : $this->comparisonReferrerRows(array_column($spalten, 'id'), $via, $rowKey, $rowFields, $valueField, $groupBy);
 
-        return \Taxmod\Core\Renderer\ComparisonTable::render($spalten, $mainId, $position, $koepfe, $zeilen, $mainWord, $otherWord);
+        return \Taxmod\WordPress\Draw\ComparisonTableMarkup::render($spalten, $mainId, $position, $koepfe, $zeilen, $mainWord, $otherWord);
     }
 
     /**

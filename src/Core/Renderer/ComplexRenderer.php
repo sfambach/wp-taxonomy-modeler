@@ -2,6 +2,10 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\ComplexView;
+use Taxmod\Core\Description\ShownValue;
+use Taxmod\Core\Description\UnfoldingSummary;
+use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Model\Node;
 use Taxmod\Core\Model\SimpleType;
 
@@ -82,57 +86,41 @@ final class ComplexRenderer extends RendererNode
             }
         }
 
-        $markup = $this->fixed($context);
         $used   = [];
-
-        $markup .= $this->form($subject, $context, $einfach, $used);
+        $bloecke = [['heading' => null, 'hint' => '', 'body' => $this->form($subject, $context, $einfach, $used)]];
 
         foreach ($einzeln as $part) {
-            $markup .= $this->block($part, $this->form($subject, $context, $this->summarised($part->rows[0] ?? [], $context), $used));
+            $bloecke[] = ['heading' => $part->relation->name, 'hint' => $part->hint, 'body' => $this->form($subject, $context, $this->summarised($part->rows[0] ?? [], $context), $used)];
         }
 
         foreach ($mehrere as $part) {
-            $markup .= $this->block($part, $this->table($subject, $context, $part->rows, $part->rowActs, $used, $part->siteSettings) . $part->after);
+            $bloecke[] = [
+                'heading' => $part->relation->name,
+                'hint'    => $part->hint,
+                'body'    => [...$this->table($subject, $context, $part->rows, $part->rowActs, $used, $part->siteSettings), ...($part->after === '' ? [] : [$part->after])],
+            ];
         }
 
-        if ($markup === '') {
-            return RenderResult::of('');
-        }
-
-        return new RenderResult('<div class="taxmod-node">' . $markup . '</div>', array_values(array_unique($used)));
-    }
-
-    /**
-     * Die festen Angaben — Nummer, Version, Art —, wie der Aufrufer sie hereinreicht: Wort und Wert, in einer Zeile.
-     *
-     * ⚠️ *Dieselbe Naht wie die Vorspalten der Tabelle: die Worte kommen vom Rand (`AR-2`), der Wert als fertiges Markup.*
-     */
-    private function fixed(RenderContext $context): string
-    {
-        $chips = '';
-
-        foreach ($context->surroundings->rowLead[0] ?? [] as $wort => $wert) {
-            $chips .= '<span class="taxmod-complex-fixed-item"><span class="taxmod-complex-fixed-label">'
-                . RenderResult::escape((string) $wort) . '</span> ' . $wert . '</span>';
-        }
-
-        return $chips === '' ? '' : '<div class="taxmod-complex-fixed">' . $chips . '</div>';
+        // ⚠️ *Die festen Angaben — Nummer, Version, Art — wie der Aufrufer sie hereinreicht: Wort und Wert, in einer Zeile; dieselbe Naht wie
+        // die Vorspalten der Tabelle, die Worte kommen vom Rand (`AR-2`).*
+        return RenderResult::described(new ComplexView($context->surroundings->rowLead[0] ?? [], $bloecke), ...array_values(array_unique($used)));
     }
 
     /**
      * @param list<RenderedField> $parts
      * @param list<string>        $used
      */
-    private function form(Renderable $subject, RenderContext $context, array $parts, array &$used): string
+    /** @return list<\Taxmod\Core\Description\Describes> */
+    private function form(Renderable $subject, RenderContext $context, array $parts, array &$used): array
     {
         if ($parts === []) {
-            return '';
+            return [];
         }
 
         $result = (new FormRenderer())->render($subject, $this->with($context, new Surroundings(parts: $parts, formId: $context->surroundings->formId)));
         $used   = [...$used, ...$result->usedRelations];
 
-        return $result->markup;
+        return [$result->piece()];
     }
 
     /**
@@ -141,7 +129,8 @@ final class ComplexRenderer extends RendererNode
      * @param list<string>              $used
      * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $siteSettings was an der Stelle des Teils eingestellt ist (D-999)
      */
-    private function table(Renderable $subject, RenderContext $context, array $rows, array $rowActs, array &$used, array $siteSettings = []): string
+    /** @return list<\Taxmod\Core\Description\Describes> */
+    private function table(Renderable $subject, RenderContext $context, array $rows, array $rowActs, array &$used, array $siteSettings = []): array
     {
         $result = (new TableRenderer())->render(
             $subject,
@@ -153,7 +142,7 @@ final class ComplexRenderer extends RendererNode
         );
         $used   = [...$used, ...$result->usedRelations];
 
-        return $result->markup;
+        return [$result->piece()];
     }
 
     /**
@@ -187,12 +176,7 @@ final class ComplexRenderer extends RendererNode
                     $field->relation,
                     $field->type,
                     self::NAME,
-                    new RenderResult(
-                        '<details class="taxmod-complex-link"><summary>'
-                        . RenderResult::escape($worte)
-                        . '</summary>' . $field->result->markup . '</details>',
-                        $field->result->usedRelations
-                    ),
+                    RenderResult::described(new UnfoldingSummary($worte, $field->result->piece()), ...$field->result->usedRelations),
                     $field->readOnly,
                     $field->valueId,
                     $field->hint,
@@ -220,7 +204,7 @@ final class ComplexRenderer extends RendererNode
             $field->relation,
             $field->type,
             self::NAME,
-            new RenderResult('<span class="taxmod-value">' . RenderResult::escape($worte) . '</span>', $field->result->usedRelations),
+            RenderResult::described(new ShownValue($worte, ValueKind::Text), ...$field->result->usedRelations),
             true,
             $field->valueId,
             $field->hint,
@@ -255,17 +239,6 @@ final class ComplexRenderer extends RendererNode
         }
 
         return implode(' · ', $worte);
-    }
-
-    private function block(RenderedField $part, string $body): string
-    {
-        if ($body === '') {
-            return '';
-        }
-
-        return '<div class="taxmod-complex-block"><h4 class="taxmod-complex-heading">'
-            . RenderResult::escape($part->relation->name) . RenderResult::draw(new \Taxmod\Core\Description\Hint($part->hint)) . '</h4>'
-            . $body . '</div>';
     }
 
     /** @param array<string, \Taxmod\Core\Model\ResolvedSetting>|null $settings */

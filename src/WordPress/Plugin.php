@@ -5,7 +5,7 @@ namespace Taxmod\WordPress;
 use Taxmod\WordPress\Admin\ListPage;
 use Taxmod\Core\Converter\ShippedConverters;
 use Taxmod\Core\Addon\ShippedAddons;
-use Taxmod\Core\Renderer\ResidueRenderer;
+use Taxmod\WordPress\Draw\ResidueMarkup;
 use Taxmod\Core\Renderer\ShippedRenderers;
 use Taxmod\Core\Service\ModelEditor;
 use Taxmod\Core\Service\DataEntry;
@@ -914,7 +914,7 @@ final class Plugin
                 // über dieselbe Methode wie `clearTrash()` — nicht über ein eigenes `DELETE`.*
                 new WpdbRecordRepository()
             ),
-            new ResidueRenderer(),
+            new ResidueMarkup(),
             $this->changelog()
         );
     }

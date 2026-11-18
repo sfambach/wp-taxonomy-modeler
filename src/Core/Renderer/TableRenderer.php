@@ -2,6 +2,8 @@
 
 namespace Taxmod\Core\Renderer;
 
+use Taxmod\Core\Description\PartCount;
+use Taxmod\Core\Description\TableView;
 use Taxmod\Core\Model\Node;
 
 /**
@@ -144,94 +146,35 @@ final class TableRenderer extends RendererNode
 
         // ⚠️ **In der Anzeige fällt eine Feldspalte weg, die in keiner Zeile etwas zeigt** ([D-954](../../../docs/NewConcept/90-decision-log.md)) —
         // *sein Befund an der Stückliste der Backplane: «sieht sehr unruhig aus links voll rechts leer». In der Eingabe bleibt sie:
-        // dort ist die leere Zelle der Ort, an dem man den Wert einträgt.*
-        if ($context->purpose === Purpose::Display) {
-            $spalten = $this->ohneLeere($spalten, $zeilen, count($vorspalten));
-
-            if ($spalten === [] && $vorspalten === [] && ! $mitActs) {
-                return RenderResult::of('');
-            }
-        }
-
-        // ⚠️ *Die Köpfe stehen in **einer** Liste, in der Reihenfolge der Zellen — waagerecht werden
-        // sie eine Zeile, senkrecht die erste Spalte. Ohne Wort bleibt die Aktionsspalte
-        // ([AR-2](../../../CLAUDE.md): der Kern macht keine Worte).*
-        // ⚠️ **Der Kopf trägt das Fragezeichen der Hilfe, wie die Formularzeile** ([D-662](../../../docs/NewConcept/90-decision-log.md):
-        // *«überall dort, wo help label ist»*). *Aufgefallen, als die Vorschau ohne gewählten Behälter zur Tabelle
-        // wurde (D-748) und der Wächter zur Hilfe rot wurde: die Tabelle hatte nie eines gezeichnet. Die Köpfe sind
-        // ab hier fertiges Markup — Name entwertet, Zeichen dahinter.*
+        // dort ist die leere Zelle der Ort, an dem man den Wert einträgt.* Ob eine Zelle etwas zeigt, beantwortet der Zeichner.
+        //
+        // ⚠️ *Die Köpfe stehen in der Reihenfolge der Zellen — waagerecht eine Zeile, senkrecht die erste Spalte. Ohne Wort bleibt die
+        // Aktionsspalte ([AR-2](../../../CLAUDE.md)).* ⚠️ **Der Kopf trägt das Fragezeichen der Hilfe, wie die Formularzeile**
+        // ([D-662](../../../docs/NewConcept/90-decision-log.md): *«überall dort, wo help label ist»*). ⚠️ *Fehlt die Einstellung
+        // `with_label`, wird der Kopf gezeichnet — eine Tabelle ohne Spaltennamen ist schlechter zu lesen als eine mit.*
         $hinweise = $this->hints($datensaetze);
-        $koepfe   = array_map(static fn (string $kopf): string => RenderResult::escape($kopf), $vorspalten);
+        $koepfe   = [];
 
         foreach ($spalten as $relationId => $name) {
-            $koepfe[] = RenderResult::escape($name) . RenderResult::draw(new \Taxmod\Core\Description\Hint($hinweise[$relationId] ?? ''));
+            $koepfe[] = ['name' => $name, 'hint' => $hinweise[$relationId] ?? ''];
         }
 
-        if ($mitActs) {
-            $koepfe[] = '';
-        }
-
-        $lage = Orientation::fromContext($context);
-
-        // ⚠️ *Fehlt die Einstellung, wird der Kopf gezeichnet — eine Tabelle ohne Spaltennamen ist
-        // schlechter zu lesen als eine mit.*
-        $mitKopf = $context->setting('with_label')?->asBool() !== false;
-
-        return new RenderResult(
-            '<table class="taxmod-table taxmod-table-' . $lage->value . '">'
-            . ($lage->isVertical()
-                ? $this->senkrecht($koepfe, $zeilen, $mitKopf)
-                : $this->waagerecht($koepfe, $zeilen, $mitKopf))
-            . '</table>',
-            array_values(array_unique($usedRelations))
+        return RenderResult::described(
+            new TableView(
+                $vorspalten,
+                $koepfe,
+                $zeilen,
+                $mitActs,
+                Orientation::fromContext($context),
+                $context->setting('with_label')?->asBool() !== false,
+                $context->purpose === Purpose::Display
+            ),
+            ...array_values(array_unique($usedRelations))
         );
     }
 
     /**
-     * Die Feldspalten ohne die, deren Zellen in allen Zeilen leer sind; die Zeilen verlieren dieselben Zellen.
-     *
-     * @param  array<int,string>                    $spalten
-     * @param  list<list<array{0:string,1:string}>> $zeilen  wird gekürzt
-     * @return array<int,string>
-     */
-    private function ohneLeere(array $spalten, array &$zeilen, int $vorne): array
-    {
-        $behalten = [];
-        $stelle   = $vorne;
-
-        foreach ($spalten as $relationId => $name) {
-            foreach ($zeilen as $zellen) {
-                if (! self::leer($zellen[$stelle][1])) {
-                    $behalten[$relationId] = $name;
-                    break;
-                }
-            }
-
-            if (! isset($behalten[$relationId])) {
-                foreach ($zeilen as $i => $zellen) {
-                    $zellen[$stelle] = null;
-                    $zeilen[$i]      = $zellen;
-                }
-            }
-
-            ++$stelle;
-        }
-
-        foreach ($zeilen as $i => $zellen) {
-            $zeilen[$i] = array_values(array_filter($zellen, static fn (?array $zelle): bool => $zelle !== null));
-        }
-
-        return $behalten;
-    }
-
-    /** Leer ist eine Zelle ohne Text und ohne Bild. */
-    private static function leer(string $markup): bool
-    {
-        return trim(html_entity_decode(strip_tags($markup))) === '' && ! str_contains($markup, '<img');
-    }
-
-    /**
-     * Die Zellen **eines** Datensatzes, in der Reihenfolge der Spaltenliste — Klasse und Markup je Zelle.
+     * Die Zellen **eines** Datensatzes, in der Reihenfolge der Spaltenliste.
      *
      * ⚠️ **Über die Spaltenliste und nicht über die vorhandenen Felder.** *Fehlt einem Datensatz ein
      * Feld, muss die Zelle **leer** erscheinen und nicht wegfallen — sonst verrutscht die ganze Zeile,
@@ -241,7 +184,7 @@ final class TableRenderer extends RendererNode
      * @param  list<string>              $vorspalten
      * @param  array<int,string>         $spalten
      * @param  list<string>              $usedRelations gesammelt über alle Datensätze
-     * @return list<array{0:string,1:string}> je Zelle: CSS-Klasse, fertiges Markup
+     * @return array{lead: list<\Taxmod\Core\Description\Describes|string>, cells: list<\Taxmod\Core\Description\Describes|string>, acts: \Taxmod\Core\Description\Describes|string|null}
      */
     private function zellen(
         array $felder,
@@ -261,24 +204,21 @@ final class TableRenderer extends RendererNode
             }
         }
 
-        $zellen = [];
+        $vorne = [];
+        $mitte = [];
 
         // ⚠️ *Auch hier über die Spaltenliste: fehlt einer Zeile eine Vorspalte, bleibt die Zelle
         // leer statt wegzufallen.*
         foreach ($vorspalten as $kopf) {
-            $zellen[] = ['taxmod-table-lead', (string) ($context->surroundings->rowLead[$nummer][$kopf] ?? '')];
+            $vorne[] = (string) ($context->surroundings->rowLead[$nummer][$kopf] ?? '');
         }
 
         foreach (array_keys($spalten) as $relationId) {
             $feld     = $nachKante[$relationId] ?? null;
-            $zellen[] = ['taxmod-table-cell', $feld !== null && self::zaehltNur($feld) ? $this->anzahl($feld, $context, $nummer) : ($feld?->result->markup ?? '')];
+            $mitte[] = $feld !== null && self::zaehltNur($feld) ? $this->anzahl($feld, $context, $nummer) : ($feld?->result->piece() ?? '');
         }
 
-        if ($mitActs) {
-            $zellen[] = ['taxmod-table-acts', (string) ($context->surroundings->rowActs[$nummer] ?? '')];
-        }
-
-        return $zellen;
+        return ['lead' => $vorne, 'cells' => $mitte, 'acts' => $mitActs ? (string) ($context->surroundings->rowActs[$nummer] ?? '') : null];
     }
 
     /**
@@ -300,80 +240,12 @@ final class TableRenderer extends RendererNode
     }
 
     /** Die Anzahl der Sätze eines 1..n-Teils, mit dem Link der Zeile, wo einer mitkommt (D-825). */
-    private function anzahl(RenderedField $feld, RenderContext $context, int|string $nummer): string
+    private function anzahl(RenderedField $feld, RenderContext $context, int|string $nummer): PartCount
     {
-        $zahl = (string) count(array_filter($feld->rows, static fn ($zeile): bool => ($zeile['id'] ?? 1) !== 0));
-        $link = (string) ($context->surroundings->rowLinks[$nummer] ?? '');
-
-        return $link === ''
-            ? '<span class="taxmod-part-count">' . $zahl . '</span>'
-            : '<a class="taxmod-part-count" href="' . RenderResult::escape($link) . '">' . $zahl . '</a>';
-    }
-
-    /**
-     * Kopf oben, darunter eine Zeile je Datensatz — die Vorgabe.
-     *
-     * @param list<string>                          $koepfe
-     * @param list<list<array{0:string,1:string}>>  $zeilen
-     */
-    private function waagerecht(array $koepfe, array $zeilen, bool $mitKopf): string
-    {
-        $kopf = '';
-
-        if ($mitKopf) {
-            $zellen = '';
-
-            foreach ($koepfe as $name) {
-                $zellen .= '<th class="taxmod-table-head" scope="col">' . $name . '</th>';
-            }
-
-            $kopf = '<thead><tr>' . $zellen . '</tr></thead>';
-        }
-
-        $rumpf = '';
-
-        foreach ($zeilen as $zellenDerZeile) {
-            $zellen = '';
-
-            foreach ($zellenDerZeile as [$klasse, $markup]) {
-                $zellen .= '<td class="' . $klasse . '">' . $markup . '</td>';
-            }
-
-            $rumpf .= '<tr class="taxmod-table-row">' . $zellen . '</tr>';
-        }
-
-        return $kopf . '<tbody>' . $rumpf . '</tbody>';
-    }
-
-    /**
-     * Kopf links, rechts daneben eine **Spalte** je Datensatz.
-     *
-     * ⚠️ **Kein `thead`, und das ist kein Versehen.** *Ein `thead` steht für eine Kopf**zeile**; hier
-     * ist der Kopf eine Spalte, und jede Zeile trägt ihre eigene Überschrift als `th scope="row"`.
-     * Ein `thead` um die erste Spalte gäbe es im HTML nicht — es gibt keine Spaltengruppe, die Zellen
-     * enthält.*
-     *
-     * @param list<string>                          $koepfe
-     * @param list<list<array{0:string,1:string}>>  $zeilen die Zellen je **Datensatz**
-     */
-    private function senkrecht(array $koepfe, array $zeilen, bool $mitKopf): string
-    {
-        $rumpf = '';
-
-        foreach ($koepfe as $stelle => $name) {
-            $zellen = $mitKopf
-                ? '<th class="taxmod-table-head" scope="row">' . $name . '</th>'
-                : '';
-
-            foreach ($zeilen as $zellenDerZeile) {
-                [$klasse, $markup] = $zellenDerZeile[$stelle];
-                $zellen           .= '<td class="' . $klasse . '">' . $markup . '</td>';
-            }
-
-            $rumpf .= '<tr class="taxmod-table-row">' . $zellen . '</tr>';
-        }
-
-        return '<tbody>' . $rumpf . '</tbody>';
+        return new PartCount(
+            count(array_filter($feld->rows, static fn ($zeile): bool => ($zeile['id'] ?? 1) !== 0)),
+            (string) ($context->surroundings->rowLinks[$nummer] ?? '')
+        );
     }
 
     /**
