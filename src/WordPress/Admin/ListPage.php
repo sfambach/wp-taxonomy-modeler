@@ -1190,9 +1190,9 @@ final class ListPage
         return "if(this.dataset.taxmodOk||(event.submitter&&event.submitter.name)){delete this.dataset.taxmodOk;return true}var f=this,n=0;document.querySelectorAll('input[name=\"selected[]\"][form=\"" . esc_js($formId) . "\"]:checked').forEach(function(c){n+=c.value.split(';').length});"
             . "var s=this.querySelector('select');if(!s.value){return false}"
             // A dialog that only fills the ticked rows of a form ({@see self::fillAction()}) counts those rows itself.
-            . "var o=s.options[s.selectedIndex];if(o.dataset.taxmodAsk&&(o.dataset.taxmodOwn||document.querySelector('[data-taxmod-fill][for=\"'+o.dataset.taxmodAsk+'\"]'))){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
+            . "var o=s.options[s.selectedIndex];if(o.dataset.taxmodAsk&&(o.dataset.taxmodOwn||document.querySelector('[data-taxmod-fill][for=\"'+o.dataset.taxmodAsk+'\"]'))){var w=document.getElementById(o.dataset.taxmodAsk);w.checked=true;w.dispatchEvent(new Event('change',{bubbles:true}));return false}"
             . 'if(n===0){alert(' . $none . ');return false}'
-            . "if(o.dataset.taxmodAsk){document.getElementById(o.dataset.taxmodAsk).checked=true;return false}"
+            . "if(o.dataset.taxmodAsk){var w=document.getElementById(o.dataset.taxmodAsk);w.checked=true;w.dispatchEvent(new Event('change',{bubbles:true}));return false}"
             . 'taxmodConfirm(' . $message . ".replace('%1\$s',s.options[s.selectedIndex].text).replace('%2\$d',n),function(){f.dataset.taxmodOk=1;f.requestSubmit()});return false";
     }
 
