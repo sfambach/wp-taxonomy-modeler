@@ -199,11 +199,11 @@ final class Surroundings
          * ⚠️ *Gleich lang wie {@see self::$records} und in derselben Reihenfolge. Fehlt ein Eintrag,
          * bleibt die Zelle leer — **eine Zeile darf nicht verrutschen**, das sieht wie Daten aus.*
          *
-         * @var list<array<string,string>>
+         * @var list<array<string, \Taxmod\Core\Description\Describes|string>>
          */
         public readonly array $rowLead = [],
         /**
-         * Die Bedienelemente **hinter** den Feldern, je Zeile, schon gezeichnet.
+         * Die Bedienelemente **hinter** den Feldern, je Zeile, beschrieben — `null`, wo eine Zeile keine trägt.
          *
          * ⚠️ *Je Zeile und nicht je Tabelle: {@see self::$actions} gilt für das Ganze, hier hat jede
          * Zeile ihre eigenen — ein Speichern gehört zu **einem** Datensatz und darf nicht zwei schreiben.*
@@ -211,7 +211,7 @@ final class Surroundings
          * ⚠️ *Sie tragen ihr Formular selbst mit, denn ein `<tr>` darf kein `<form>` umschliessen — die
          * Wertfelder nennen es über `form="…"`, genau wie in der Feldzeile.*
          *
-         * @var list<string>
+         * @var list<\Taxmod\Core\Description\Describes|null>
          */
         public readonly array $rowActs = [],
         /**

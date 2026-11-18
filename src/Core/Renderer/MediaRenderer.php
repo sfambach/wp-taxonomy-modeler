@@ -50,12 +50,7 @@ final class MediaRenderer extends TypedFieldRenderer
         return $id === null || $bibliothek === null ? null : ($bibliothek->filesFor([$id])[$id] ?? null);
     }
 
-    /** Der gezeichnete Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
-    public static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?MediaLibrary $bibliothek = null): string
-    {
-        return RenderResult::draw(self::linkTo($adresse, $beschriftung, $neuerTab, $bibliothek));
-    }
-
+    /** Der Link: die Beschriftung, sonst die aus der Datei gerechnete Beschreibung ([D-846](../../../docs/NewConcept/90-decision-log.md), [D-856](../../../docs/NewConcept/90-decision-log.md)). */
     public static function linkTo(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?MediaLibrary $bibliothek = null): MediaLink
     {
         $schluessel = MediaType::vaultKeyOf($adresse);
@@ -174,12 +169,6 @@ final class MediaRenderer extends TypedFieldRenderer
      *
      * @param array<string, string> $worte Die Worte vom Rand: `upload` (Mediathek) und `link` (Linkdialog).
      */
-    public static function buttons(string $adresseName, string $beschriftungName, array $worte, bool $neuerTab): string
-    {
-        return RenderResult::draw(self::buttonsFor($adresseName, $beschriftungName, $worte, $neuerTab));
-    }
-
-    /** @param array<string, string> $worte */
     public static function buttonsFor(string $adresseName, string $beschriftungName, array $worte, bool $neuerTab): MediaButtons
     {
         return new MediaButtons($adresseName, $beschriftungName, (string) ($worte['upload'] ?? ''), (string) ($worte['link'] ?? ''), $neuerTab);

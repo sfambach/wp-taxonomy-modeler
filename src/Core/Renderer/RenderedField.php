@@ -70,9 +70,9 @@ final class RenderedField
          */
         public readonly string $summary = '',
         /**
-         * Je Zeile in {@see $rows} ihr Knopf zum Entfernen, als fertiges Markup — leer, wo keiner gilt (D-758).
+         * Je Zeile in {@see $rows} ihr Knopf zum Entfernen, beschrieben — `null`, wo keiner gilt (D-758).
          *
-         * @var list<string>
+         * @var list<\Taxmod\Core\Description\Describes|null>
          */
         public readonly array $rowActs = [],
         /** Was hinter den Zeilen steht — der Knopf, der eine hinzufügt (D-758). */

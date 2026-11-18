@@ -40,9 +40,9 @@ final class MediaRendererTest extends TestCase
     #[Test]
     public function the_caption_is_the_link_text_and_without_one_the_file_speaks(): void
     {
-        self::assertStringContainsString('>Schaltplan Rev. B</a>', MediaRenderer::link('https://example.org/plan_b.pdf', 'Schaltplan Rev. B'));
-        self::assertStringContainsString('>plan b (PDF)</a>', MediaRenderer::link('https://example.org/plan_b.pdf', '  '));
-        self::assertStringContainsString('href="https://www.google.de"', MediaRenderer::link('www.google.de'));
+        self::assertStringContainsString('>Schaltplan Rev. B</a>', self::link('https://example.org/plan_b.pdf', 'Schaltplan Rev. B'));
+        self::assertStringContainsString('>plan b (PDF)</a>', self::link('https://example.org/plan_b.pdf', '  '));
+        self::assertStringContainsString('href="https://www.google.de"', self::link('www.google.de'));
     }
 
     /** ⚠️ *D-865, sein Wort: «id» — eine Datei der Mediathek steht als `media:<Id>`, der Rand sagt Adresse, Titel und Vorschaubild.* */
@@ -78,26 +78,26 @@ final class MediaRendererTest extends TestCase
         self::assertNull(MediaType::libraryIdOf('https://example.org/media:7'));
         self::assertSame('media:7', MediaType::libraryAddress(7));
 
-        $bild = MediaRenderer::link('media:7', '', true, $bibliothek);
+        $bild = self::link('media:7', '', true, $bibliothek);
         self::assertStringContainsString('href="https://example.org/up/platine.jpg"', $bild);
         self::assertStringContainsString('<img class="taxmod-media-thumb" src="https://example.org/up/platine-150x150.jpg" alt="Platine oben"', $bild);
 
-        self::assertStringContainsString('>Schaltplan</a>', MediaRenderer::link('media:8', '', true, $bibliothek), 'kein Bild: der Titel ist der Linktext');
-        self::assertStringContainsString('>Rev. B</a>', MediaRenderer::link('media:8', 'Rev. B', true, $bibliothek), 'die Beschriftung gewinnt');
+        self::assertStringContainsString('>Schaltplan</a>', self::link('media:8', '', true, $bibliothek), 'kein Bild: der Titel ist der Linktext');
+        self::assertStringContainsString('>Rev. B</a>', self::link('media:8', 'Rev. B', true, $bibliothek), 'die Beschriftung gewinnt');
         self::assertSame('Schaltplan', MediaRenderer::describe('media:8', $bibliothek));
 
         // ⚠️ *D-879, sein Wort: «bilder haben eigentlich immer eine caption/titel» — die Bildunterschrift vor dem Titel, der meist der
         // Dateiname der Kamera ist.*
         self::assertSame('Platine bestückt oben', MediaRenderer::describe('media:10', $bibliothek));
-        self::assertStringContainsString('alt="Platine bestückt oben"', MediaRenderer::link('media:10', '', true, $bibliothek));
+        self::assertStringContainsString('alt="Platine bestückt oben"', self::link('media:10', '', true, $bibliothek));
 
         // *Eine Id ohne Datei zeigt, was gespeichert ist, und ist kein Link ins Leere.*
-        $fehlt = MediaRenderer::link('media:9', '', true, $bibliothek);
+        $fehlt = self::link('media:9', '', true, $bibliothek);
         self::assertStringContainsString('taxmod-media-missing', $fehlt);
         self::assertStringNotContainsString('href=', $fehlt);
 
         // *Ohne Naht bleibt die gespeicherte Adresse stehen — nichts wird erfunden.*
-        self::assertStringContainsString('media:7', MediaRenderer::link('media:7'));
+        self::assertStringContainsString('media:7', self::link('media:7'));
     }
 
     /** ⚠️ *Sein Wort: «das folder symbol oder datei symbol für den knopf verwenden und den knopf nach rechts».* */
@@ -135,8 +135,8 @@ final class MediaRendererTest extends TestCase
     #[Test]
     public function without_new_tab_the_link_opens_in_place(): void
     {
-        self::assertStringNotContainsString('target=', MediaRenderer::link('https://example.org/a', 'A', false));
-        self::assertStringContainsString('target="_blank"', MediaRenderer::link('https://example.org/a', 'A'));
+        self::assertStringNotContainsString('target=', self::link('https://example.org/a', 'A', false));
+        self::assertStringContainsString('target="_blank"', self::link('https://example.org/a', 'A'));
     }
 
     /** ⚠️ *Sein Wort: «knöpfe grundsätzlich ein icon verwenden wenn es eins gibt und rechts vom feld. Tooltip knopf beschreibung/name».* */
@@ -173,10 +173,10 @@ final class MediaRendererTest extends TestCase
         };
 
         self::assertSame(str_repeat('b', 32), MediaType::vaultKeyOf('vault:' . str_repeat('b', 32)));
-        self::assertStringContainsString('href="/download?a">Rechnung.pdf</a>', MediaRenderer::link('vault:' . str_repeat('a', 32), '', true, $bibliothek));
-        self::assertStringNotContainsString('href', MediaRenderer::link('vault:' . str_repeat('b', 32), '', true, $bibliothek));
-        self::assertStringNotContainsString('href', MediaRenderer::link('vault:' . str_repeat('a', 32)));
-        self::assertSame('<span class="taxmod-media taxmod-media-private">Geheim.pdf</span>', MediaRenderer::link('vault:' . str_repeat('c', 32), '', true, $bibliothek));
+        self::assertStringContainsString('href="/download?a">Rechnung.pdf</a>', self::link('vault:' . str_repeat('a', 32), '', true, $bibliothek));
+        self::assertStringNotContainsString('href', self::link('vault:' . str_repeat('b', 32), '', true, $bibliothek));
+        self::assertStringNotContainsString('href', self::link('vault:' . str_repeat('a', 32)));
+        self::assertSame('<span class="taxmod-media taxmod-media-private">Geheim.pdf</span>', self::link('vault:' . str_repeat('c', 32), '', true, $bibliothek));
     }
 
     /** ⚠️ *D-1413: ein nicht veröffentlichter eigener Beitrag sagt seinen Status neben dem Link; ein veröffentlichter nichts.* */
@@ -200,8 +200,13 @@ final class MediaRendererTest extends TestCase
             }
         };
 
-        self::assertStringEndsWith('</a> <span class="taxmod-media-state">Entwurf</span>', MediaRenderer::link('https://example.org/?p=12492', 'MIDI HAT', true, $bibliothek));
-        self::assertStringEndsWith('</a>', MediaRenderer::link('https://example.org/hallo/', 'Hallo', true, $bibliothek));
-        self::assertStringEndsWith('</a>', MediaRenderer::link('https://example.org/?p=12492', 'MIDI HAT'));
+        self::assertStringEndsWith('</a> <span class="taxmod-media-state">Entwurf</span>', self::link('https://example.org/?p=12492', 'MIDI HAT', true, $bibliothek));
+        self::assertStringEndsWith('</a>', self::link('https://example.org/hallo/', 'Hallo', true, $bibliothek));
+        self::assertStringEndsWith('</a>', self::link('https://example.org/?p=12492', 'MIDI HAT'));
+    }
+
+    private static function link(string $adresse, string $beschriftung = '', bool $neuerTab = true, ?\Taxmod\Core\Port\MediaLibrary $bibliothek = null): string
+    {
+        return (new \Taxmod\WordPress\Draw\EdgeDrawer())->draw(MediaRenderer::linkTo($adresse, $beschriftung, $neuerTab, $bibliothek));
     }
 }

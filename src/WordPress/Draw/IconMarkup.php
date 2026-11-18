@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Draw;
 
-use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Das eine Stück Code, das weiss, wie ein Icon geschrieben wird.
@@ -11,7 +10,7 @@ use Taxmod\Core\Renderer\RenderResult;
  * sind irgendwie nicht richtig aligned, die Grösse stimmt nicht … das Speichern-Symbol ist wieder
  * nach oben verschoben.»* **Ein Fehler, der wiederkommt, nachdem er einzeln behoben wurde, ist kein
  * Serienfehler, sondern ein fehlender Ort** — dieselbe Diagnose, aus der
- * {@see \Taxmod\Core\Renderer\RenderResult::htmlTag()} entstand ([D-465](../../../docs/NewConcept/90-decision-log.md)).
+ * {@see \Taxmod\Core\Renderer\Html::tag()} entstand ([D-465](../../../docs/NewConcept/90-decision-log.md)).
  *
  * ⚠️ **Seine Vermutung war nachprüfbar falsch, und das ist der Grund, warum hier gemessen und nicht
  * getauscht wurde.** *Er hielt unterschiedliche `viewBox`-Werte oder ein schlechtes Icon-Set für die
@@ -73,7 +72,7 @@ final class IconMarkup
             return '';
         }
 
-        return '<span class="' . self::NAME . ' dashicons dashicons-' . RenderResult::escape($key) . '"'
+        return '<span class="' . self::NAME . ' dashicons dashicons-' . Html::escape($key) . '"'
             . self::naming($label) . '></span>';
     }
 
@@ -97,7 +96,7 @@ final class IconMarkup
         }
 
         return '<span class="' . self::NAME . ' ' . self::GLYPH . '"' . self::naming($label) . '>'
-            . RenderResult::escape($character) . '</span>';
+            . Html::escape($character) . '</span>';
     }
 
     /**
@@ -111,6 +110,6 @@ final class IconMarkup
     {
         return $label === ''
             ? ' aria-hidden="true"'
-            : ' aria-label="' . RenderResult::escape($label) . '"';
+            : ' aria-label="' . Html::escape($label) . '"';
     }
 }

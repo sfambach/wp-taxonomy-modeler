@@ -14,7 +14,7 @@ const ROOT = __DIR__ . '/../..';
  * stopped counting (D-1429 O1: 54 → 43, 249 → 247) and the starter pattern drew its block markup at the edge (→ 42); the typed values describe and the edge draws them (→ 34, 228); choices, switches and moments too, select and switch markup at the edge (→ 30, 213); the building blocks (button, dialog, icon, hint, grid, conflict) draw at the edge (→ 24, 186); the tiles too (→ 22); media links, buttons and picker (→ 21, 167). */
 const CEILINGS = [
     'core files with HTML tags'                 => 0,
-    'RenderResult::escape() in the core' => 0,
+    'escapes in the core'                => 0,
     'hook calls in the core'             => 0,
     'arms of the node page dispatcher'   => 0,
     'modeller pages without the template' => 9,
@@ -70,7 +70,8 @@ foreach (phpFiles(ROOT . '/src/Core') as $file) {
         $where['core files with HTML tags'][] = $name;
     }
 
-    $counts['RenderResult::escape() in the core'] += substr_count($code, 'RenderResult::escape(');
+    // *Since 6c the escaping lives at the edge (`Draw\Html`); any way of escaping in the core counts.*
+    $counts['escapes in the core'] += preg_match_all('/\b(?:RenderResult::escape|Html::escape|htmlspecialchars|esc_html|esc_attr)\s*\(/', $code);
     $hooks = preg_match_all('/\b(add_action|add_filter|do_action|apply_filters)\s*\(/', $code);
 
     if ($hooks > 0) {

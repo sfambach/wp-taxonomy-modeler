@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Draw;
 
-use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * The one dialog for «somebody else saved in the meantime» — the modeller's record form and every module show the same
@@ -29,9 +28,9 @@ final class ConflictDialog
         return '<div class="taxmod-conflict">' . DialogMarkup::of(
             self::SWITCH,
             '',
-            RenderResult::escape($head),
-            '<span class="taxmod-dialog-body"><p>' . RenderResult::escape($text) . '</p></span>',
-            $anyway . '<label class="button button-primary taxmod-dialog-ok" for="' . self::SWITCH . '">' . RenderResult::escape($current) . '</label>',
+            Html::escape($head),
+            '<span class="taxmod-dialog-body"><p>' . Html::escape($text) . '</p></span>',
+            $anyway . '<label class="button button-primary taxmod-dialog-ok" for="' . self::SWITCH . '">' . Html::escape($current) . '</label>',
             'taxmod-conflict-opener',
             open: true,
         ) . '</div>';

@@ -3119,7 +3119,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
 
             $vorne[] = $row['lead'];
             // *Ohne Akte beim Anzeigen kein leeres Formular je Zeile — die Sammeltabelle für Leser (D-955).*
-            $akte[]  = $row['acts'] === [] && $purpose === Purpose::Display ? '' : RenderResult::draw(new \Taxmod\Core\Description\ActsForm($formId, $row['submits'], $row['acts']));
+            $akte[]  = $row['acts'] === [] && $purpose === Purpose::Display ? null : new \Taxmod\Core\Description\ActsForm($formId, $row['submits'], $row['acts']);
             // ⚠️ *Wohin die Anzahl eines 1..n-Teils führt: der Satz der Zeile, geöffnet an seiner Eingabe (D-825).*
             $links[] = (string) ($row['link'] ?? '');
         }
@@ -3136,7 +3136,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 surroundings: new Surroundings(
                     records: $gezeichnet,
                     rowLead: $vorne,
-                    rowActs: implode('', $akte) === '' ? [] : $akte,
+                    rowActs: array_filter($akte) === [] ? [] : $akte,
                     rowLinks: $links
                 ),
                 // ⚠️ **Sonst käme der Umschalter nie an** (TASK-063). *Hier stand gar keine Angabe —
@@ -8262,21 +8262,18 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                 // bleibt, nur der Verweis geht. Der Knopf nennt Halter, Kante und Satz, weil ein verwiesener Satz mehrere Halter haben kann.
                 // Kein «+» je Zeile: «darunter einfügen» (D-830) legt einen Teil an, den es hier nicht gibt; neue Zeilen kommen über «Add row».*
                 if ($verweisliste) {
-                    $akte[] = $teilId === 0 || $halter === 0 ? '' : RenderResult::draw(
-                        new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . '-' . $teilId . ']', 'unlink_part', ($this->partActs['unlink'] ?? '') === '' ? $this->partActs['remove'] : $this->partActs['unlink'], '', true, true, 'trash', $formId)
-                    );
+                    $akte[] = $teilId === 0 || $halter === 0 ? null
+                        : new \Taxmod\Core\Renderer\Control('do[' . $halter . '-' . $relation->id . '-' . $teilId . ']', 'unlink_part', ($this->partActs['unlink'] ?? '') === '' ? $this->partActs['remove'] : $this->partActs['unlink'], '', true, true, 'trash', $formId);
 
                     continue;
                 }
 
                 // ⚠️ *Erst das «+», das direkt unter dieser Zeile eine gleicher Art einfügt (D-830), dann der Mülleimer — sein Wort: «bitte + und
                 // müll tauschen erst + dann müll» (D-831).*
-                $akte[] = $teilId === 0 ? '' : (($this->partActs['insert'] ?? '') === '' ? '' : RenderResult::draw(
-                        new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'insert_part', $this->partActs['insert'], '', true, false, 'plus-alt2', $formId)
-                    ))
-                    . RenderResult::draw(
-                        new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId)
-                    );
+                $akte[] = $teilId === 0 ? null : new \Taxmod\Core\Description\Sequence(...[
+                    ...(($this->partActs['insert'] ?? '') === '' ? [] : [new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'insert_part', $this->partActs['insert'], '', true, false, 'plus-alt2', $formId)]),
+                    new \Taxmod\Core\Renderer\Control('do[' . $teilId . ']', 'remove_part', $this->partActs['remove'], '', true, true, 'trash', $formId),
+                ]);
             }
 
             // ⚠️ **Hinter «+» und Mülleimer der gezeichnete Link** ([D-856](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
@@ -8290,9 +8287,11 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     $neuerTab   = $this->mediaOpensNewTab($felder, $medium);
                     $teilPrefix = $fieldPrefix . '[' . $relation->id . '][' . ($teilIds[$i] ?? 0) . ']';
                     // ⚠️ *Sein Wort: «alle buttons bitte nach rechts» (D-858): Mediathek und Linkdialog vor «+» und Mülleimer, der Link dahinter.*
-                    $akte[$i]   = \Taxmod\Core\Renderer\MediaRenderer::buttons($teilPrefix . '[' . $medium . ']', $teilPrefix . '[' . $beschriftung . ']', $this->dialogWords, $neuerTab)
-                        . $akt
-                        . ($adresse === '' ? '' : ' ' . \Taxmod\Core\Renderer\MediaRenderer::link($adresse, (string) (($werte[$beschriftung] ?? null)?->text ?? ''), $neuerTab, $this->media));
+                    $akte[$i]   = new \Taxmod\Core\Description\Sequence(...[
+                        \Taxmod\Core\Renderer\MediaRenderer::buttonsFor($teilPrefix . '[' . $medium . ']', $teilPrefix . '[' . $beschriftung . ']', $this->dialogWords, $neuerTab),
+                        ...($akt === null ? [] : [$akt]),
+                        ...($adresse === '' ? [] : [new \Taxmod\Core\Description\Words(' '), \Taxmod\Core\Renderer\MediaRenderer::linkTo($adresse, (string) (($werte[$beschriftung] ?? null)?->text ?? ''), $neuerTab, $this->media)]),
+                    ]);
                 }
             }
 
@@ -8348,7 +8347,7 @@ final class Rendering implements Presets, \Taxmod\Core\Port\FieldAddons
                     // ⚠️ **`node_records` ist der Platz, den der Table-Renderer für mehrere Zeilen hat, und
                     // er stand leer** — *der Grund, warum eine Einstellung mit `1..*` trotzdem nur eine
                     // Zeile zeigte. `parts` bleibt daneben für die Behälter, die nur einen Satz kennen.*
-                    surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId, rowLead: $vorspalten, rowActs: implode('', $akte) === '' ? [] : $akte),
+                    surroundings: new Surroundings(parts: $teile, records: $zeilen, formId: $formId, rowLead: $vorspalten, rowActs: array_filter($akte) === [] ? [] : $akte),
                 )
             );
 

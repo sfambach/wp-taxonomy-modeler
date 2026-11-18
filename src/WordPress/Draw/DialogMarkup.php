@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Draw;
 
-use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Die eine Form eines Dialogs: ein geklipptes Häkchen als Schalter, ein Öffner, eine Schattenfläche, die Tafel —
@@ -39,35 +38,35 @@ final class DialogMarkup
         /** Name of the tree button beside a chooser's field; set, the opener looks like a locked field and the tree opens the dialog (D-1163). */
         ?string $tree = null,
     ): string {
-        $id = RenderResult::escape($switch);
+        $id = Html::escape($switch);
 
         // ⚠️ **Die Regel für jeden Dialog** ([D-804](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort: «they should have buttons
         // ok/confirm, cancel if not a button or the cross … is pressed then the dialog does not close».* Die Schattenfläche schliesst nicht
         // mehr; «OK» und «Abbrechen» sind Beschriftungen des Schalters, also schliessen sie ohne Skript. «Abbrechen» und das ✕ tragen die
         // Klasse, an der das Skript die Wahl von vorher zurücklegt.
         if ($foot === '' && $ok !== '') {
-            $foot = '<label class="button button-primary taxmod-dialog-ok" for="' . $id . '">' . RenderResult::escape($ok) . '</label>';
+            $foot = '<label class="button button-primary taxmod-dialog-ok" for="' . $id . '">' . Html::escape($ok) . '</label>';
         }
 
         if ($cancel !== '' && ! str_contains($foot, 'taxmod-dialog-cancel')) {
-            $foot .= '<label class="button taxmod-dialog-cancel" for="' . $id . '">' . RenderResult::escape($cancel) . '</label>';
+            $foot .= '<label class="button taxmod-dialog-cancel" for="' . $id . '">' . Html::escape($cancel) . '</label>';
         }
 
         // ⚠️ **Einfachauswahl: ein ausgegrautes Feld, rechts das Baumsymbol** ([D-1163](../../../docs/NewConcept/90-decision-log.md)) — *sein Wort am
         // 2026-11-04: «bei einfacher auswahl ein ausgegrautes feld erwarten und recht daneben … das baum symbol das öffnet den dialog». Beide
         // beschriften den Schalter, also öffnet auch ein Klick ins Feld.*
         $baum = $tree === null ? '' : '<label class="button ' . ControlMarkup::ICON_ONLY . ' taxmod-pick-tree" for="' . $id . '"'
-            . ($tree === '' ? '' : ' title="' . RenderResult::escape($tree) . '"') . '>' . RenderResult::draw(\Taxmod\Core\Description\Icon::named('networking', $tree)) . '</label>';
+            . ($tree === '' ? '' : ' title="' . Html::escape($tree) . '"') . '>' . IconMarkup::dashicon('networking', $tree) . '</label>';
 
         return '<span class="taxmod-chooser' . ($tree === null ? '' : ' taxmod-pick') . '">'
-            . RenderResult::htmlTag('input', [
+            . Html::tag('input', [
                 'type'  => 'checkbox',
                 'class'   => 'taxmod-dialog-switch',
                 'id'      => $switch,
                 'checked' => $open,
             ])
             // ⚠️ *Ein Öffner, der nur ein Symbol ist, trägt dessen Namen als Tooltip (D-847).*
-            . '<label class="' . RenderResult::escape($openerClass) . '" for="' . $id . '"'
+            . '<label class="' . Html::escape($openerClass) . '" for="' . $id . '"'
             . (str_contains($openerClass, ControlMarkup::ICON_ONLY) && preg_match('/aria-label="([^"]*)"/', $opener, $name) === 1 ? ' title="' . $name[1] . '"' : '')
             . '>' . $opener . '</label>'
             . $baum
@@ -76,7 +75,7 @@ final class DialogMarkup
             . '<span class="taxmod-dialog-panel">'
             . '<span class="taxmod-dialog-head">'
             . '<span class="taxmod-chooser-current">' . $head . '</span>'
-            . '<label class="taxmod-dialog-close taxmod-dialog-cancel" for="' . $id . '"' . ($cancel === '' ? '' : ' title="' . RenderResult::escape($cancel) . '"') . '>&times;</label>'
+            . '<label class="taxmod-dialog-close taxmod-dialog-cancel" for="' . $id . '"' . ($cancel === '' ? '' : ' title="' . Html::escape($cancel) . '"') . '>&times;</label>'
             . '</span>'
             . $body
             . ($foot === '' ? '' : '<span class="taxmod-dialog-foot">' . $foot . '</span>')

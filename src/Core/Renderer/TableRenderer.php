@@ -218,7 +218,7 @@ final class TableRenderer extends RendererNode
             $mitte[] = $feld !== null && self::zaehltNur($feld) ? $this->anzahl($feld, $context, $nummer) : ($feld?->result->piece() ?? '');
         }
 
-        return ['lead' => $vorne, 'cells' => $mitte, 'acts' => $mitActs ? (string) ($context->surroundings->rowActs[$nummer] ?? '') : null];
+        return ['lead' => $vorne, 'cells' => $mitte, 'acts' => $mitActs ? ($context->surroundings->rowActs[$nummer] ?? '') : null];
     }
 
     /**

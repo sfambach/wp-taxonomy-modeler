@@ -26,6 +26,7 @@ use Taxmod\Core\Model\SimpleType;
 use Taxmod\Core\Model\TypedValue;
 use Taxmod\Core\Renderer\Control;
 use Taxmod\WordPress\Draw\ControlMarkup;
+use Taxmod\WordPress\Draw\Html;
 use Taxmod\Core\Renderer\ChooserRenderer;
 use Taxmod\WordPress\Draw\ConflictDialog;
 use Taxmod\Core\Renderer\Dialog;
@@ -6431,7 +6432,7 @@ final class NodesScreen
      *
      * ⚠️ **The renderer's markup goes out as it is, and that is deliberate.** `CD-5` ends with
      * *escape on output*, and it has already happened: a renderer escapes with
-     * {@see \Taxmod\Core\Renderer\RenderResult::escape()} before returning, because markup that
+     * {@see \Taxmod\Core\Renderer\Html::escape()} before returning, because markup that
      * left unescaped would have no second chance (`CD-1` bars it from `esc_html()`). **Escaping it
      * again here would print the tags instead of the field.** Everything this method adds around
      * it — names, types, words — is escaped in the ordinary way.

@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Draw;
 
-use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Das eine Stück Code, das weiss, wie eine Erklärung hinter ein Fragezeichen kommt.
@@ -49,7 +48,7 @@ use Taxmod\Core\Renderer\RenderResult;
  * wieder herauspulen müsste. **Der Umzug ist eine Fassung, der andere Weg wären zwei.**
  *
  * ⚠️ *Nichts an dieser Klasse war je WordPress: `esc_attr`/`esc_html` sind
- * {@see RenderResult::escape()} mit anderem Namen — dieselbe `htmlspecialchars`-Maske, die jeder
+ * {@see Html::escape()} mit anderem Namen — dieselbe `htmlspecialchars`-Maske, die jeder
  * Renderer im Kern schon benutzt. **Der Rand ruft sie weiter genauso**, er darf in den Kern hinein.*
  *
  * @see docs/NewConcept/30-renderer.md
@@ -85,7 +84,7 @@ final class HintMarkup
             . '<span class="' . self::ICON . '">'
             . IconMarkup::dashicon('editor-help')
             . '</span>'
-            . '<span class="' . self::TEXT . '">' . RenderResult::escape($hint) . '</span>'
+            . '<span class="' . self::TEXT . '">' . Html::escape($hint) . '</span>'
             . '</span>';
     }
 

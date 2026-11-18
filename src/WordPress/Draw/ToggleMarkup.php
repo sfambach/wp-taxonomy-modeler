@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Draw;
 
-use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * Das eine Stück Code, das weiss, wie ein Schiebeschalter aussieht.
@@ -58,17 +57,17 @@ final class ToggleMarkup
     public static function input(string $name, bool $on, string $formId = ''): string
     {
         return '<label class="taxmod-toggle">'
-            . RenderResult::htmlTag('input', [
+            . Html::tag('input', [
                 'type'  => 'hidden',
                 'name'  => $name,
                 // ⚠️ *Eine Tabellenzeile ist ein `<tr>`, und ein Formular darf keine Zellen
                 // umschliessen; ein Element in einer anderen Zelle steht draussen. Leer wird das
-                // Attribut weggelassen ({@see RenderResult::htmlTag()}), also kostet es nichts, wo
+                // Attribut weggelassen ({@see Html::tag()}), also kostet es nichts, wo
                 // es keins gibt.*
                 'form'  => $formId,
                 'value' => '0',
             ])
-            . RenderResult::htmlTag('input', [
+            . Html::tag('input', [
                 'type'    => 'checkbox',
                 'class'   => 'taxmod-toggle-input',
                 'name'    => $name,

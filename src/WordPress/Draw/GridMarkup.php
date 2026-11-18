@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Draw;
 
-use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * The one read-only table of a Taxmod page: facts, a history, the lines of a form. A list with selection and actions is
@@ -27,7 +26,7 @@ final class GridMarkup
         $head    = '';
 
         foreach ($columns as $n => $column) {
-            $head .= '<th scope="col"' . ($numbers[$n] ? ' class="is-number"' : '') . '>' . RenderResult::escape($column[0]) . '</th>';
+            $head .= '<th scope="col"' . ($numbers[$n] ? ' class="is-number"' : '') . '>' . Html::escape($column[0]) . '</th>';
         }
 
         $body = '';
@@ -43,10 +42,10 @@ final class GridMarkup
         }
 
         if ($rows === [] && $empty !== '') {
-            $body = '<tr class="no-items"><td colspan="' . max(1, count($columns)) . '">' . RenderResult::escape($empty) . '</td></tr>';
+            $body = '<tr class="no-items"><td colspan="' . max(1, count($columns)) . '">' . Html::escape($empty) . '</td></tr>';
         }
 
-        return '<table class="widefat striped taxmod-grid' . ($class === '' ? '' : ' ' . RenderResult::escape($class)) . '">'
+        return '<table class="widefat striped taxmod-grid' . ($class === '' ? '' : ' ' . Html::escape($class)) . '">'
             . ($head === '' ? '' : '<thead><tr>' . $head . '</tr></thead>') . '<tbody>' . $body . '</tbody></table>';
     }
 }

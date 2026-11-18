@@ -125,7 +125,7 @@ final class ComplexRenderer extends RendererNode
 
     /**
      * @param list<list<RenderedField>> $rows
-     * @param list<string>              $rowActs je Zeile ihr Entfernen (D-758)
+     * @param list<\Taxmod\Core\Description\Describes|null> $rowActs je Zeile ihr Entfernen (D-758)
      * @param list<string>              $used
      * @param array<string, \Taxmod\Core\Model\ResolvedSetting> $siteSettings was an der Stelle des Teils eingestellt ist (D-999)
      */
@@ -137,7 +137,7 @@ final class ComplexRenderer extends RendererNode
             $this->with($context, settings: [...$context->settings, ...$siteSettings], surroundings: new Surroundings(
                 records: array_map(fn (array $row): array => $this->summarised($row, $context), $rows),
                 formId: $context->surroundings->formId,
-                rowActs: implode('', $rowActs) === '' ? [] : $rowActs,
+                rowActs: array_filter($rowActs) === [] ? [] : $rowActs,
             ))
         );
         $used   = [...$used, ...$result->usedRelations];

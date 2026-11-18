@@ -64,7 +64,6 @@ use Taxmod\Core\Description\ShownValue;
 use Taxmod\Core\Description\ValueInput;
 use Taxmod\Core\Description\ValueKind;
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\RenderResult;
 
 /**
  * The edge drawer: one way of drawing per kind of description (D-1424, D-1429 A14). The markup is the one the core drew
@@ -468,14 +467,14 @@ final class EdgeDrawer implements Drawer
         $nichts = self::NOTHING;
         $flex   = '<span style="display:flex;align-items:center;gap:.3em">';
         $ziel   = $f->targetHref === null || $f->target === '—'
-            ? $flex . RenderResult::htmlTag('input', ['type' => 'text', 'class' => 'taxmod-chosen', 'readonly' => true, 'tabindex' => '-1', 'value' => $f->target, 'style' => 'flex:1;min-width:8em'])
+            ? $flex . Html::tag('input', ['type' => 'text', 'class' => 'taxmod-chosen', 'readonly' => true, 'tabindex' => '-1', 'value' => $f->target, 'style' => 'flex:1;min-width:8em'])
                 . $this->part($f->targetChooser) . '</span>'
-            : $flex . RenderResult::htmlTag('a', ['href' => $f->targetHref, 'class' => 'taxmod-field-target-link taxmod-chosen', 'style' => 'flex:1;min-width:8em'])
+            : $flex . Html::tag('a', ['href' => $f->targetHref, 'class' => 'taxmod-field-target-link taxmod-chosen', 'style' => 'flex:1;min-width:8em'])
                 . self::e($f->target) . '</a>' . $this->part($f->targetChooser) . '</span>';
         $name   = $f->renameAs === null
             ? '<strong>' . self::e($f->name) . '</strong>'
-            : RenderResult::htmlTag('input', ['type' => 'text', 'class' => 'taxmod-field-rename', 'name' => $f->renameAs, 'value' => $f->name, 'aria-required' => 'true', 'style' => 'width:100%', 'form' => $f->renameForm]);
-        $schloss = ! $f->locked ? '' : ' ' . RenderResult::htmlTag('span', ['class' => 'taxmod-locked', 'title' => $f->lockedReason]) . '&#128274; ' . self::e($f->lockedWord) . '</span>';
+            : Html::tag('input', ['type' => 'text', 'class' => 'taxmod-field-rename', 'name' => $f->renameAs, 'value' => $f->name, 'aria-required' => 'true', 'style' => 'width:100%', 'form' => $f->renameForm]);
+        $schloss = ! $f->locked ? '' : ' ' . Html::tag('span', ['class' => 'taxmod-locked', 'title' => $f->lockedReason]) . '&#128274; ' . self::e($f->lockedWord) . '</span>';
         $knoepfe = $f->actsForm === '' ? '' : '<form method="post" id="' . self::e($f->actsForm) . '" action="' . self::e($f->actsAt) . '" class="taxmod-acts">'
             . $this->draw(new Carried($f->carried)) . implode('', array_map($this->draw(...), $f->acts)) . '</form>';
 
@@ -518,7 +517,7 @@ final class EdgeDrawer implements Drawer
 
             $kurz .= '<label style="display:flex;flex-direction:column;gap:.15em;' . ($slot->translatable ? 'flex:1 1 8em;min-width:7em' : 'flex:0 0 5em') . '">' . $rolle
                 . (! $l->editing ? '<span>' . self::e($slot->shown) . '</span>'
-                    : RenderResult::htmlTag('input', [
+                    : Html::tag('input', [
                         'type' => 'text', 'name' => $slot->fieldName, 'value' => $slot->stored ?? '', 'placeholder' => $slot->shown,
                         'title' => $slot->note === '' ? null : $slot->note, 'form' => $l->formId, 'style' => 'width:100%',
                     ]))

@@ -4,8 +4,6 @@ namespace Taxmod\WordPress\Draw;
 
 use Taxmod\Core\Description\Carried;
 use Taxmod\Core\Renderer\Control;
-use Taxmod\Core\Renderer\Look;
-use Taxmod\Core\Renderer\RenderResult;
 use Taxmod\Core\Renderer\Submission;
 
 /**
@@ -24,7 +22,7 @@ use Taxmod\Core\Renderer\Submission;
  *
  * ⚠️ **Not a base class and not a trait, because a renderer is not a kind of button.** A static
  * composer keeps the renderers free of an inheritance they would then all share for one method — and
- * it is `RenderResult::escape()` all the way down, so nothing here knows a surface.
+ * it is `Html::escape()` all the way down, so nothing here knows a surface.
  *
  * ⚠️ **An icon-only button says so in a class**, rather than the stylesheet guessing from its
  * contents. *The alternative was `:has(> .dashicons:only-child)`, which works and hides the rule in
@@ -34,12 +32,19 @@ use Taxmod\Core\Renderer\Submission;
  */
 final class ControlMarkup
 {
-    /** The class names stand once, in the core, while hand-built core markup still needs them (A15). */
-    public const ICON_ONLY = Look::ICON_ONLY;
+    /** Marks a button whose whole content is an icon, so the surface can strip its box. */
+    public const ICON_ONLY = 'taxmod-icon-button';
 
-    public const GLYPH_FACE = Look::GLYPH_FACE;
+    /**
+     * Marks a drawn character standing in for an icon, so it takes the same size as a Dashicon.
+     *
+     * ⚠️ **Measured: the diskette was 13px beside 17px Dashicons in the same row** — the glyph span had
+     * no class, so the only size it could get was the inherited `font-size` of an admin page.*
+     */
+    public const GLYPH_FACE = 'taxmod-icon-glyph';
 
-    public const SAVE = Look::SAVE;
+    /** Die Klasse jedes Speichern-Knopfs ([D-860](../../../docs/NewConcept/90-decision-log.md)). */
+    public const SAVE = 'taxmod-save';
 
     /**
      * @param bool|null $available Overrides the control's own answer, for a row that decides per
@@ -79,16 +84,16 @@ final class ControlMarkup
             . ($bare ? ' ' . self::ICON_ONLY : '')
             // *Der Speichern-Knopf ist erkennbar, damit die Seite ihn bei automatischem Speichern ausblenden kann (D-860).*
             . ($control->glyph === Control::SAVE_GLYPH ? ' ' . self::SAVE : '') . '"'
-            . ($control->form === '' ? '' : ' form="' . RenderResult::escape($control->form) . '"')
-            . ' name="' . RenderResult::escape($control->name) . '"'
-            . ' value="' . RenderResult::escape($control->value) . '"'
+            . ($control->form === '' ? '' : ' form="' . Html::escape($control->form) . '"')
+            . ' name="' . Html::escape($control->name) . '"'
+            . ' value="' . Html::escape($control->value) . '"'
             . self::address($control)
             // ⚠️ **Ein Symbolknopf zeigt beim Darüberfahren seinen Namen** ([D-847](../../../docs/NewConcept/90-decision-log.md)) — sein Wort:
             // *«knöpfe grundsätzlich ein icon verwenden wenn es eins gibt und rechts vom feld. Tooltip knopf beschreibung/name».* Ohne eigenen
             // Titel ist es die Beschriftung, die das Symbol ersetzt.
             // ⚠️ *Ein gesperrter Knopf bekommt keine Mausereignisse, also zeigt der Browser seinen Tooltip nie — er entfällt (D-869; gemessen an
             // «CPUs»: 141 gesperrte Knöpfe mit je rund 100 Zeichen). Der Name für den Vorleser steht weiter am Symbol.*
-            . (! $usable || ($control->title !== '' ? $control->title : ($bare ? $control->label : '')) === '' ? '' : ' title="' . RenderResult::escape($control->title !== '' ? $control->title : $control->label) . '"')
+            . (! $usable || ($control->title !== '' ? $control->title : ($bare ? $control->label : '')) === '' ? '' : ' title="' . Html::escape($control->title !== '' ? $control->title : $control->label) . '"')
             . ($usable ? '' : ' disabled')
             // ⚠️ **Red only where something is taken away**, and the fact arrives as `destroys`
             // rather than as a colour — so the one control that must never be clicked by accident
@@ -127,9 +132,9 @@ final class ControlMarkup
         return DialogMarkup::of(
             $dialog->id,
             self::face($control, $icon),
-            RenderResult::escape($dialog->title),
+            Html::escape($dialog->title),
             '<span class="taxmod-dialog-body">' . $dialog->body . '</span>',
-            self::button($ok) . '<label class="button taxmod-dialog-cancel" for="' . RenderResult::escape($dialog->id) . '">' . RenderResult::escape($dialog->cancel) . '</label>',
+            self::button($ok) . '<label class="button taxmod-dialog-cancel" for="' . Html::escape($dialog->id) . '">' . Html::escape($dialog->cancel) . '</label>',
             ($icon || $control->glyph !== '') ? 'button taxmod-icon-button taxmod-dialog-open' : 'button taxmod-dialog-open'
         );
     }
@@ -147,18 +152,18 @@ final class ControlMarkup
         // auch die sechs übrigen Fundorte benutzen.*
         // *Symbol und Wort (D-861): das Symbol ist Schmuck, der Name steht als Text daneben.*
         if ($icon && $control->iconWithLabel) {
-            return RenderResult::draw(\Taxmod\Core\Description\Icon::named($control->icon)) . ' ' . RenderResult::escape($control->label);
+            return IconMarkup::dashicon($control->icon) . ' ' . Html::escape($control->label);
         }
 
         if ($icon) {
-            return RenderResult::draw(\Taxmod\Core\Description\Icon::named($control->icon, $control->label));
+            return IconMarkup::dashicon($control->icon, $control->label);
         }
 
         if ($control->glyph !== '') {
-            return RenderResult::draw(\Taxmod\Core\Description\Icon::glyph($control->glyph, $control->label));
+            return IconMarkup::glyph($control->glyph, $control->label);
         }
 
-        return RenderResult::escape($control->label);
+        return Html::escape($control->label);
     }
 
     /**
@@ -187,11 +192,11 @@ final class ControlMarkup
         $formId = $carried->form;
 
         foreach ($carried->values as $name => $value) {
-            $fields .= RenderResult::htmlTag('input', [
+            $fields .= Html::tag('input', [
                 'type'  => 'hidden',
                 'name'  => $name,
                 'value' => $value,
-                // An empty attribute is left out rather than written empty ({@see RenderResult::htmlTag()}),
+                // An empty attribute is left out rather than written empty ({@see Html::tag()}),
                 // so the nested case needs no branch of its own.
                 'form'  => $formId,
             ]);
@@ -227,8 +232,8 @@ final class ControlMarkup
         }
 
         // ⚠️ *`multipart`, damit ein Medienfeld in der Zeile eine Datei mitschicken kann (D-793) — für die übrigen Felder ändert es nichts.*
-        return '<form method="post" enctype="multipart/form-data" id="' . RenderResult::escape($formId) . '"'
-            . ' action="' . RenderResult::escape($submits->action) . '"'
+        return '<form method="post" enctype="multipart/form-data" id="' . Html::escape($formId) . '"'
+            . ' action="' . Html::escape($submits->action) . '"'
             . ' class="taxmod-acts">'
             . self::hidden($submits)
             . $buttons

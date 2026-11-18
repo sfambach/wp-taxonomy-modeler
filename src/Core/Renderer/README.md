@@ -36,7 +36,7 @@ D-217's *not searchable* reached through a missing capability rather than a spec
 
 ## What must not happen here
 
-- **No WordPress.** Not `esc_html()`, not `__()`. Escaping is `RenderResult::escape()`, plain PHP.
+- **No WordPress.** Not `esc_html()`, not `__()`. **No escaping either**: the core describes, the edge draws and escapes (`Taxmod\WordPress\Draw\Html`).
 - **No writing** ([D-159](../../../docs/NewConcept/90-decision-log.md)) — not even to tidy up a
   value that arrives malformed. A renderer is handed what there is and returns a string.
 - **No walking.** The chain is resolved before the renderer is called; it reads settings, it does

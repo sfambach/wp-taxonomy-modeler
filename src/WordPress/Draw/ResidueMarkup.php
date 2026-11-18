@@ -2,7 +2,6 @@
 
 namespace Taxmod\WordPress\Draw;
 
-use Taxmod\Core\Renderer\RenderResult;
 use Taxmod\Core\Renderer\ResidueEntry;
 use Taxmod\Core\Renderer\ResidueGroup;
 
@@ -51,8 +50,8 @@ final class ResidueMarkup
 
         foreach ($groups as $group) {
             $markup .= '<div class="' . self::CLASS_NAME . '-group">'
-                . '<h2>' . RenderResult::escape($group->title) . '</h2>'
-                . '<p class="description">' . RenderResult::escape($group->explains) . '</p>'
+                . '<h2>' . Html::escape($group->title) . '</h2>'
+                . '<p class="description">' . Html::escape($group->explains) . '</p>'
                 . $this->entries($group)
                 . '</div>';
         }
@@ -71,14 +70,14 @@ final class ResidueMarkup
     private function entries(ResidueGroup $group): string
     {
         if ($group->entries === []) {
-            return '<p><em>' . RenderResult::escape($group->whenEmpty) . '</em></p>';
+            return '<p><em>' . Html::escape($group->whenEmpty) . '</em></p>';
         }
 
         $markup = '';
 
         foreach ($group->entries as $entry) {
             $markup .= '<li style="display:flex;align-items:center;gap:.8em;padding:.3em 0">'
-                . '<span style="flex:1;min-width:0">' . RenderResult::escape($entry->what) . '</span>'
+                . '<span style="flex:1;min-width:0">' . Html::escape($entry->what) . '</span>'
                 . $this->form($entry)
                 . '</li>';
         }
@@ -92,7 +91,7 @@ final class ResidueMarkup
      */
     private function form(ResidueEntry $entry): string
     {
-        return RenderResult::htmlTag('form', [
+        return Html::tag('form', [
                 'method' => 'post',
                 'action' => $entry->submits->action,
                 'style'  => 'margin:0;flex:none',
