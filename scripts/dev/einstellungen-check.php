@@ -1362,7 +1362,8 @@ $screen = $plugin->screen();
 $markup = $screen->render();
 // ⚠️ *Seit D-807 trägt der Rahmen die Wahl für den Baumklick, seit D-854 auch, ob automatisch gespeichert wird; seit [D-1417](../../docs/NewConcept/90-decision-log.md)
 // dazwischen die Angaben für das Nachladen des Baums (Grenzlauf 2026-11-17, D-1427, `PR-9`).*
-check('render() liefert Markup, mit Grössen, Baumklick und Autosave am Rahmen', (bool) preg_match('#^<div class="wrap" data-taxmod-tree-click="(?:stay|jump)"[^>]* data-taxmod-autosave="(?:on|off)" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
+// ⚠️ *Seit 6c Schritt 7 steht die Seite auf der Vorlage (`ListPage::page`, D-1194): der Rahmen heisst `wrap taxmod-page` (PR-9, benannt).*
+check('render() liefert Markup, mit Grössen, Baumklick und Autosave am Rahmen', (bool) preg_match('#^<div class="wrap taxmod-page" data-taxmod-tree-click="(?:stay|jump)"[^>]* data-taxmod-autosave="(?:on|off)" style="--taxmod-icon:\d+px;--taxmod-font:\d+px">#', $markup));
 // ⚠️ *Ein «+» mehr als Zeilen: das im Kopf der Seite (D-730, 2026-09-12); `add_child_here` ist darin aufgegangen.*
 // *Gezählt je Zeilenformular des Baums, nicht über die ganze Seite — der Kopf trägt sein eigenes «+» und seinen eigenen Papierkorb.*
 preg_match_all('/style="display:flex;gap:\.2em">(.*?)<\/form>/s', $markup, $zeilenFormulare);
@@ -1484,9 +1485,10 @@ foreach (array_merge(glob(dirname(__DIR__, 2) . '/src/*/*.php') ?: [], glob(dirn
         }
     }
 }
-$formQuelle    = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Renderer/FormRenderer.php') ?: '';
-$compactQuelle = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Renderer/CompactRenderer.php') ?: '';
-check('das Fragezeichen hat genau ein Zuhause im Kern, niemand baut es nach, Formular und Kompaktbehälter rufen es', count($fassungen) === 1 && str_contains(str_replace('\\', '/', $fassungen[0]), '/src/Core/') && $eigenbau === [] && str_contains($formQuelle, 'HintMarkup::icon(') && str_contains($compactQuelle, 'HintMarkup::combined(') && str_contains($compactQuelle, 'HintMarkup::icon('), implode(', ', $eigenbau));
+// ⚠️ *Seit 6c (D-1424) beschreibt der Kern den Hinweis (`Description\Hint`) und der Rand zeichnet ihn: das eine Zuhause liegt am Rand, der
+// Rand-Zeichner ruft es für Formular und Kompaktbehälter (PR-9, benannt; vorher: Zuhause im Kern, FormRenderer/CompactRenderer riefen es).*
+$zeichnerQuelle = file_get_contents(dirname(__DIR__, 2) . '/src/WordPress/Draw/EdgeDrawer.php') ?: '';
+check('das Fragezeichen hat genau ein Zuhause am Rand, niemand baut es nach, der Rand-Zeichner ruft es für Formular und Kompaktbehälter', count($fassungen) === 1 && str_contains(str_replace('\\', '/', $fassungen[0]), '/src/WordPress/Draw/') && $eigenbau === [] && str_contains($zeichnerQuelle, 'HintMarkup::icon($p[\'hint\'])') && str_contains($zeichnerQuelle, 'HintMarkup::icon($zeile[\'hint\'])'), implode(', ', $eigenbau));
 
 require_once ABSPATH . 'wp-admin/includes/plugin.php';
 do_action('admin_menu');

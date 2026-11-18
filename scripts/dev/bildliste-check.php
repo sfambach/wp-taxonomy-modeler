@@ -86,10 +86,12 @@ $pruefe($liste((int) $ref['r'], (int) $ref['b']) === ['media:3', 'media:1', 'med
 $pruefe($liste((int) $ref['s'], (int) $ref['b']) === ['media:7'], 'a record with only a title picture gets a list of one');
 $pruefe($liste((int) $ref['r'], (int) $ref['t']) === [], 'the old field holds nothing any more');
 
-$rendering = (string) file_get_contents(__DIR__ . '/../../src/Core/Service/Rendering.php');
+// ⚠️ *Seit 6c (D-1424) beschreibt der Kern Bildmarke und erstes Bild (`pictures` an der Beschreibung), der Rand-Zeichner zeichnet sie; die
+// Prüfung liest deshalb den Rand-Zeichner statt `Rendering.php` (PR-9, benannt).*
+$rendering = (string) file_get_contents(__DIR__ . '/../../src/WordPress/Draw/EdgeDrawer.php');
 $skript    = (string) file_get_contents(__DIR__ . '/../../assets/admin.js');
-$pruefe(str_contains($rendering, "(\$medium ? ' data-taxmod-pictures=\"1\"' : '')"), 'the edit list of a media field carries the picture mark');
+$pruefe(str_contains($rendering, "(\$k->pictures ? ' data-taxmod-pictures=\"1\"' : '')"), 'the edit list of a media field carries the picture mark');
 $pruefe(preg_match("/function titelSterne\(/", $skript) === 1 && str_contains($skript, "'top'"), 'the script hangs a star on every row of a picture list, it moves the row to place 1');
-$pruefe(preg_match('/taxmod-media-count">\'\s*\.\s*\$titel\s*\./', $rendering) === 1, 'the record table shows the first picture before the count');
+$pruefe(preg_match('/taxmod-media-count">\'\s*\.\s*\(\$l->pictures === \[\] \? \'\' : self::mediaLink\(\$l->pictures\[0\]\)/', $rendering) === 1, 'the record table shows the first picture before the count');
 
 exit($fehler === 0 ? 0 : 1);

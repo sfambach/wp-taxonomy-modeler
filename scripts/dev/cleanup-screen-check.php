@@ -166,7 +166,8 @@ $r->getProperty('file')->setValue($plugin, dirname(__DIR__, 2) . '/wp-taxonomy-m
 
 $markup = $plugin->cleanupScreen()->render();
 
-$say(str_starts_with($markup, '<div class="wrap"'), 'render() gibt Markup zurück statt zu sterben');
+// ⚠️ *Seit 6c Schritt 7 steht die Seite auf der Vorlage (`ListPage::page`, D-1194): der Rahmen heisst `wrap taxmod-page` (PR-9, benannt).*
+$say(str_starts_with($markup, '<div class="wrap taxmod-page"'), 'render() gibt Markup zurück statt zu sterben');
 $say(str_contains($markup, 'value="' . $feld->id . '"'), 'die verschwundene Kante steht mit ihrer Id auf der Seite');
 $say(str_contains($markup, 'value="' . $allein->id . '"'), 'der alleinstehende Knoten steht mit seiner Id auf der Seite');
 $say(str_contains($markup, 'value="forget_values"'), 'ein Knopf für die Werte');
